@@ -1,0 +1,25 @@
+.DS_Store
+/data
+
+# Jira distribution used as a schema reference: never commit it
+/atlassian-jira-software-*/
+
+# Frontend
+frontend/node_modules/
+frontend/coverage/
+*.local
+.vite/
+
+# Vite builds the UI here and the Go binary embeds it; only the placeholder is tracked.
+/backend/internal/web/dist/*
+!/backend/internal/web/dist/.gitkeep
+
+# Real Jira database dumps: private data, never commit them
+*.sql
+*.sql.gz
+*.dump
+/jiradb-*
+
+# Go binaries built in place
+/backend/solstice
+/backend/jira-fixture

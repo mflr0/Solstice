@@ -1,0 +1,146 @@
+<script lang="ts">
+  import { t } from '../i18n/fr.js';
+  import { outside } from '../lib/actions.js';
+
+  /**
+   * Several values from a list (components, versions). The choice is applied
+   * when the list closes, as one change.
+   */
+  interface Option {
+    id: number;
+    name: string;
+    note?: string | undefined;
+  }
+  interface Props {
+    options: Option[];
+    selected: number[];
+    label: string;
+    onchange: (ids: number[]) => void;
+    disabled?: boolean | undefined;
+  }
+  const { options, selected, label, onchange, disabled = false }: Props = $props();
+
+  let open = $state(false);
+  let draft = $state<number[]>([]);
+  const names = $derived(
+    selected
+      .map((id) => options.find((o) => o.id === id)?.name)
+      .filter((n): n is string => n !== undefined),
+  );
+
+  function toggleOpen() {
+    if (disabled) return;
+    if (open) close();
+    else {
+      draft = [...selected];
+      open = true;
+    }
+  }
+
+  function close() {
+    if (!open) return;
+    open = false;
+    const before = [...selected].sort((a, b) => a - b).join();
+    const after = [...draft].sort((a, b) => a - b).join();
+    if (before !== after) onchange(draft);
+  }
+
+  function flip(id: number) {
+    draft = draft.includes(id) ? draft.filter((x) => x !== id) : [...draft, id];
+  }
+</script>
+
+<div class="multi" use:outside={close}>
+  <button
+    type="button"
+    class="current"
+    aria-haspopup="true"
+    aria-expanded={open}
+    aria-label={label}
+    {disabled}
+    onclick={toggleOpen}
+  >
+    {#if names.length}
+      <span class="values">{names.join(', ')}</span>
+    {:else}
+      <span class="none">{t.common.none}</span>
+    {/if}
+    {#if !disabled}<span class="caret" aria-hidden="true">▾</span>{/if}
+  </button>
+  {#if open}
+    <div class="popover" role="menu" aria-label={label}>
+      {#each options as o (o.id)}
+        <button
+          type="button"
+          class="item"
+          role="menuitemcheckbox"
+          aria-checked={draft.includes(o.id)}
+          onclick={() => flip(o.id)}
+        >
+          <span>{o.name}</span>{#if o.note}<span class="muted note">{o.note}</span>{/if}
+        </button>
+      {:else}
+        <p class="empty pad">{t.common.none}</p>
+      {/each}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .multi {
+    position: relative;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .current {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 26px;
+    border: 1px solid transparent;
+    background: none;
+    padding: 2px 4px;
+    margin: -3px -5px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .current:hover:not([disabled]) {
+    border-color: var(--rule-strong);
+    background: var(--paper);
+  }
+
+  .current[disabled] {
+    cursor: default;
+  }
+
+  .values {
+    overflow-wrap: anywhere;
+  }
+
+  .none {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .caret {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .popover {
+    left: -6px;
+    top: calc(100% + 4px);
+  }
+
+  .note {
+    font-size: 12px;
+  }
+
+  .pad {
+    margin: 0 12px;
+  }
+</style>

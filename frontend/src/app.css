@@ -1,0 +1,784 @@
+/*
+ * Design tokens and shared styles. Art direction: a site logbook ("carnet de
+ * chantier"), kept light — cream paper, black ink, one vermilion accent,
+ * statuses printed like rubber stamps, lists ruled with hairlines, the issue
+ * record on a plain card. Light and dark follow the system, with an explicit
+ * data-theme override.
+ */
+
+:root {
+  --paper: #f4f1ea;
+  --paper-raised: #faf8f3;
+  --paper-sunk: #ece7dc;
+  --ink: #1c1b19;
+  --ink-soft: #4a4740;
+  --muted: #7a756a;
+  --rule: #e6e0d4;
+  --rule-strong: #cfc7b7;
+  --accent: #d9381e;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(217, 56, 30, 0.05);
+  --margin-line: rgba(217, 56, 30, 0.38);
+  --shadow-pop: 0 10px 30px rgba(28, 27, 25, 0.1), 0 1px 3px rgba(28, 27, 25, 0.08);
+  --ink-blend: multiply;
+
+  /* Stamp inks, one per status category. */
+  --stamp-todo: #4a4740;
+  --stamp-doing: #24508f;
+  --stamp-done: #2e6b3c;
+
+  /* Issue type inks. */
+  --tone-bug: #8e2f2f;
+  --tone-story: #3f6b45;
+  --tone-epic: #5d4485;
+  --tone-task: #2f5a8a;
+  --tone-subtask: #6b665c;
+
+  --serif: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #1a1916;
+    --paper-raised: #22211d;
+    --paper-sunk: #151412;
+    --ink: #ebe6da;
+    --ink-soft: #c4beb0;
+    --muted: #8f897b;
+    --rule: #2c2a26;
+    --rule-strong: #403d36;
+    --accent: #ec5a3d;
+    --accent-wash: rgba(236, 90, 61, 0.1);
+    --margin-line: rgba(236, 90, 61, 0.35);
+    --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --ink-blend: normal;
+    --stamp-todo: #b4ad9e;
+    --stamp-doing: #7ea6e0;
+    --stamp-done: #7fbf8c;
+    --tone-bug: #e08a7a;
+    --tone-story: #8fc196;
+    --tone-epic: #b39ad8;
+    --tone-task: #86aedb;
+    --tone-subtask: #a49e90;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #1a1916;
+  --paper-raised: #22211d;
+  --paper-sunk: #151412;
+  --ink: #ebe6da;
+  --ink-soft: #c4beb0;
+  --muted: #8f897b;
+  --rule: #2c2a26;
+  --rule-strong: #403d36;
+  --accent: #ec5a3d;
+  --accent-wash: rgba(236, 90, 61, 0.1);
+  --margin-line: rgba(236, 90, 61, 0.35);
+  --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ink-blend: normal;
+  --stamp-todo: #b4ad9e;
+  --stamp-doing: #7ea6e0;
+  --stamp-done: #7fbf8c;
+  --tone-bug: #e08a7a;
+  --tone-story: #8fc196;
+  --tone-epic: #b39ad8;
+  --tone-task: #86aedb;
+  --tone-subtask: #a49e90;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 550;
+}
+
+h2 {
+  font-size: 19px;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+code,
+kbd,
+.key {
+  font-family: var(--mono);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Page frame ---------------------------------------------------------------- */
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 96px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.eyebrow {
+  font: 500 11px/1.2 var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 30px 0 10px;
+  font: 600 13px/1.2 var(--sans);
+  color: var(--ink);
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--rule);
+  transform: translateY(-3px);
+}
+
+.section-title .count {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.section-title .actions {
+  order: 2;
+  display: flex;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+  font-family: var(--serif);
+  font-size: 15px;
+  padding: 10px 0;
+}
+
+.error-text {
+  color: var(--accent);
+}
+
+/* Controls ------------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--paper-raised);
+  font: 500 13px/1 var(--sans);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:hover:not([disabled]) {
+  border-color: var(--ink-soft);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not([disabled]) {
+  background: color-mix(in srgb, var(--accent) 86%, black);
+  border-color: color-mix(in srgb, var(--accent) 86%, black);
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+
+.btn-quiet:hover:not([disabled]) {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.btn-small {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn.on {
+  border-color: var(--ink);
+  background: var(--paper-sunk);
+}
+
+.btn kbd,
+.kbd {
+  font: 500 10.5px/1 var(--mono);
+  padding: 2px 4px 1px;
+  border: 1px solid currentColor;
+  border-bottom-width: 2px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink-soft);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  color: var(--accent);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  background: var(--paper-raised);
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.textarea {
+  font: 13px/1.55 var(--mono);
+  resize: vertical;
+  min-height: 90px;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.field > span:first-child,
+.field-label {
+  font: 500 12px/1.2 var(--sans);
+  color: var(--ink-soft);
+}
+
+.field .hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.grow {
+  flex: 1;
+}
+
+/* Marks --------------------------------------------------------------------- */
+
+.stamp {
+  --c: var(--stamp-todo);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--c);
+  border: 1px solid var(--c);
+  border-radius: 3px;
+  padding: 2px 6px 1px;
+  font: 500 10.5px/1.25 var(--sans);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  mix-blend-mode: var(--ink-blend);
+}
+
+.stamp.doing {
+  --c: var(--stamp-doing);
+}
+
+.stamp.done {
+  --c: var(--stamp-done);
+}
+
+.stamp.large {
+  font-size: 12px;
+  padding: 4px 10px 3px;
+  border-width: 1.5px;
+  letter-spacing: 0.1em;
+  transform: rotate(-1deg);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  font: 12px/1.5 var(--mono);
+  white-space: nowrap;
+}
+
+.chip button {
+  border: none;
+  background: none;
+  padding: 0 0 0 2px;
+  color: var(--muted);
+  cursor: pointer;
+  font: 13px/1 var(--sans);
+}
+
+.chip button:hover {
+  color: var(--accent);
+}
+
+.key {
+  font: 500 12.5px/1 var(--mono);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+a.key {
+  text-decoration: none;
+}
+
+a.key:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Ledger: lists of issues --------------------------------------------------- */
+
+table.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.ledger th {
+  text-align: left;
+  font: 500 12px/1 var(--sans);
+  color: var(--muted);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+
+.ledger td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+}
+
+.ledger tbody tr:hover td {
+  background: var(--accent-wash);
+}
+
+.ledger .num {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ledger th.num {
+  font: 500 12px/1 var(--sans);
+}
+
+/* Popovers, menus, dialogs ------------------------------------------------- */
+
+.popover {
+  position: absolute;
+  z-index: 40;
+  min-width: 220px;
+  max-height: 340px;
+  overflow: auto;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  box-shadow: var(--shadow-pop);
+  padding: 4px 0;
+}
+
+.popover .item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13.5px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.popover .item:hover,
+.popover .item.active {
+  background: var(--accent-wash);
+}
+
+.popover .item[aria-checked='true']::after {
+  content: '✓';
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.popover .sep {
+  border-top: 1px solid var(--rule);
+  margin: 4px 0;
+}
+
+.popover .group-label {
+  padding: 6px 12px 2px;
+  font: 500 11.5px/1 var(--sans);
+  color: var(--muted);
+}
+
+dialog.modal {
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0;
+  width: min(720px, 94vw);
+  box-shadow: var(--shadow-pop);
+}
+
+dialog.modal::backdrop {
+  background: rgba(28, 27, 25, 0.38);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.modal-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 20px;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--rule);
+}
+
+/* Wiki text ----------------------------------------------------------------- */
+
+.wiki {
+  font-size: 14.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.wiki > :first-child {
+  margin-top: 0;
+}
+
+.wiki p {
+  margin: 0 0 0.75em;
+}
+
+.wiki h1,
+.wiki h2,
+.wiki h3,
+.wiki h4,
+.wiki h5,
+.wiki h6 {
+  margin: 1.1em 0 0.45em;
+}
+
+.wiki h1 {
+  font-size: 22px;
+}
+
+.wiki h2 {
+  font-size: 19px;
+}
+
+.wiki h3 {
+  font-size: 17px;
+}
+
+.wiki h4,
+.wiki h5,
+.wiki h6 {
+  font-size: 15px;
+}
+
+.wiki ul,
+.wiki ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.4em;
+}
+
+/* Explicit, so lists keep their bullets inside other lists (comment threads). */
+.wiki ul {
+  list-style: disc;
+}
+
+.wiki ul ul {
+  list-style: circle;
+}
+
+.wiki ol {
+  list-style: decimal;
+}
+
+.wiki pre {
+  font: 12.5px/1.55 var(--mono);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  padding: 10px 12px;
+  margin: 0 0 0.85em;
+  overflow-x: auto;
+}
+
+.wiki .code-title {
+  font: 500 11.5px/1 var(--mono);
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-bottom: none;
+  padding: 6px 12px;
+  background: var(--paper-raised);
+}
+
+.wiki .code-title + pre {
+  margin-top: 0;
+}
+
+.wiki code {
+  font: 0.9em var(--mono);
+  background: var(--paper-sunk);
+  padding: 0 3px;
+}
+
+.wiki pre code {
+  background: none;
+  padding: 0;
+}
+
+.wiki blockquote {
+  margin: 0 0 0.75em;
+  padding: 2px 14px;
+  border-left: 2px solid var(--rule-strong);
+  color: var(--ink-soft);
+}
+
+.wiki .panel {
+  border: 1px solid var(--rule-strong);
+  margin: 0 0 0.85em;
+  padding: 10px 14px;
+  background: var(--paper-raised);
+}
+
+.wiki .panel-title {
+  font-weight: 600;
+  margin: -10px -14px 10px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.wiki table.wiki-table {
+  border-collapse: collapse;
+  margin: 0 0 0.85em;
+  font-size: 13.5px;
+}
+
+.wiki .wiki-table th,
+.wiki .wiki-table td {
+  border: 1px solid var(--rule-strong);
+  padding: 4px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wiki .wiki-table th {
+  background: var(--paper-sunk);
+}
+
+.wiki a {
+  color: var(--accent);
+}
+
+.wiki a.issue-key {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+
+.wiki a.mention {
+  color: var(--ink);
+  background: var(--accent-wash);
+  text-decoration: none;
+  padding: 0 3px;
+  border-bottom: 1px solid var(--margin-line);
+}
+
+.wiki img {
+  max-width: 100%;
+  border: 1px solid var(--rule);
+}
+
+.wiki img.thumbnail {
+  max-width: 260px;
+}
+
+.wiki hr {
+  border: none;
+  border-top: 1px solid var(--rule-strong);
+  margin: 1em 0;
+}
+
+.wiki .emo {
+  font-weight: 700;
+}
+
+.wiki .emo-ok,
+.wiki .emo-up {
+  color: var(--stamp-done);
+}
+
+.wiki .emo-no,
+.wiki .emo-warn,
+.wiki .emo-down {
+  color: var(--accent);
+}
+
+.wiki .emo-help,
+.wiki .emo-info {
+  color: var(--stamp-doing);
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 18px 16px 80px;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+}
