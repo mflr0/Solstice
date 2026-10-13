@@ -1,0 +1,702 @@
+package importer
+
+import (
+	"database/sql"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func (r *run) importIssues() error {
+	// Jira stores "B is a sub-task of A" as a link of a hidden type.
+	parentOf := map[int64]int64{}
+	if len(r.subtaskLink) > 0 {
+		var ids []string
+		for id := range r.subtaskLink {
+			ids = append(ids, strconv.FormatInt(id, 10))
+		}
+		if err := r.each(`SELECT source, destination FROM issuelink WHERE linktype IN (`+strings.Join(ids, ", ")+`)`, func(rows *sql.Rows) error {
+			var parent, child sql.NullInt64
+			if err := rows.Scan(&parent, &child); err != nil {
+				return err
+			}
+			parentOf[child.Int64] = parent.Int64
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	archived := "NULL"
+	if r.hasColumn("jiraissue", "archived") {
+		archived = "archived"
+	}
+	missing := map[string]map[string]bool{
+		"issue_types": {}, "statuses": {}, "priorities": {}, "resolutions": {},
+	}
+	known := map[string]map[string]bool{
+		"issue_types": r.issueTypes, "statuses": r.statuses, "priorities": r.priorities, "resolutions": r.resolutions,
+	}
+	ref := func(table string, id sql.NullString) any {
+		if !id.Valid || id.String == "" {
+			return nil
+		}
+		if !known[table][id.String] {
+			missing[table][id.String] = true
+		}
+		return id.String
+	}
+
+	r.issues = map[int64]issueRef{}
+	ins := r.inserter("issues", "id", "project_id", "num", "issue_type_id", "parent_id", "summary", "description",
+		"environment", "status_id", "priority_id", "resolution_id", "reporter_id", "assignee_id", "creator_id",
+		"security_level_id", "created_at", "updated_at", "resolved_at", "due_date", "original_estimate",
+		"remaining_estimate", "time_spent", "archived")
+	skipped := 0
+	now := time.Now().UTC()
+	if err := r.each(`SELECT id, project, issuenum, issuetype, summary, description, environment, issuestatus,
+		priority, resolution, reporter, assignee, creator, security, created, updated, resolutiondate, duedate,
+		timeoriginalestimate, timeestimate, timespent, `+archived+` FROM jiraissue`, func(rows *sql.Rows) error {
+		var id int64
+		var pid, num, security, estimate, remaining, spent sql.NullInt64
+		var issueType, summary, desc, env, status, priority, resolution, reporter, assignee, creator, arch sql.NullString
+		var created, updated, resolved, due sql.NullTime
+		if err := rows.Scan(&id, &pid, &num, &issueType, &summary, &desc, &env, &status, &priority, &resolution,
+			&reporter, &assignee, &creator, &security, &created, &updated, &resolved, &due,
+			&estimate, &remaining, &spent, &arch); err != nil {
+			return err
+		}
+		p := r.projects[pid.Int64]
+		if p == nil || !num.Valid {
+			skipped++
+			return nil
+		}
+		reporterID, err := r.user(reporter)
+		if err != nil {
+			return err
+		}
+		assigneeID, err := r.user(assignee)
+		if err != nil {
+			return err
+		}
+		creatorID, err := r.user(creator)
+		if err != nil {
+			return err
+		}
+		level, err := r.securityLevel(security, pid.Int64)
+		if err != nil {
+			return err
+		}
+		createdAt := now
+		if created.Valid {
+			createdAt = created.Time.UTC()
+		} else if updated.Valid {
+			createdAt = updated.Time.UTC()
+		}
+		updatedAt := createdAt
+		if updated.Valid {
+			updatedAt = updated.Time.UTC()
+		}
+		var parent any
+		if pa, ok := parentOf[id]; ok {
+			parent = pa
+		}
+		if !status.Valid || status.String == "" {
+			status = sql.NullString{String: "unknown", Valid: true}
+		}
+		if !issueType.Valid || issueType.String == "" {
+			issueType = sql.NullString{String: "unknown", Valid: true}
+		}
+		r.issues[id] = issueRef{project: pid.Int64, num: num.Int64}
+		p.maxNum = max(p.maxNum, num.Int64)
+		return ins.add(id, pid.Int64, num.Int64, ref("issue_types", issueType), parent,
+			truncate(summary.String, 255), nstr(desc), nstr(env), ref("statuses", status),
+			ref("priorities", priority), ref("resolutions", resolution), reporterID, assigneeID, creatorID,
+			level, createdAt, updatedAt, ntime(resolved), r.ndate(due), nint(estimate), nint(remaining),
+			nint(spent), truthy(arch))
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("tickets", ins.total, skipped)
+
+	// Values used by issues but missing from Jira's catalogues.
+	for _, table := range []string{"issue_types", "statuses", "priorities", "resolutions"} {
+		ids := make([]string, 0, len(missing[table]))
+		for id := range missing[table] {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			q := "INSERT INTO " + table + " (id, name) VALUES (?, ?)"
+			if table == "statuses" {
+				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, 'todo')"
+			}
+			if _, err := r.dst.ExecContext(r.ctx, q, id, "Inconnu ("+id+")"); err != nil {
+				return err
+			}
+		}
+		if len(ids) > 0 {
+			r.rep.warn("%s de Jira dans %s, recréées sous le nom « Inconnu (id) »",
+				plural(len(ids), "valeur inconnue", "valeurs inconnues"), table)
+		}
+	}
+
+	// A sub-task whose parent was not imported becomes a standalone issue.
+	if _, err := r.dst.ExecContext(r.ctx, `UPDATE issues c LEFT JOIN issues p ON p.id = c.parent_id
+		SET c.parent_id = NULL WHERE c.parent_id IS NOT NULL AND p.id IS NULL`); err != nil {
+		return err
+	}
+	for pid, p := range r.projects {
+		if _, err := r.dst.ExecContext(r.ctx, `UPDATE projects SET issue_counter = GREATEST(issue_counter, ?)
+			WHERE id = ?`, p.maxNum, pid); err != nil {
+			return err
+		}
+	}
+
+	moved := r.inserter("moved_issue_keys", "old_key", "issue_id")
+	seen := map[string]bool{}
+	skipped = 0
+	if err := r.each(`SELECT old_issue_key, issue_id FROM moved_issue_key`, func(rows *sql.Rows) error {
+		var key sql.NullString
+		var issue sql.NullInt64
+		if err := rows.Scan(&key, &issue); err != nil {
+			return err
+		}
+		if _, ok := r.issues[issue.Int64]; !ok || key.String == "" || seen[key.String] {
+			skipped++
+			return nil
+		}
+		seen[key.String] = true
+		return moved.add(key.String, issue.Int64)
+	}); err != nil {
+		return err
+	}
+	if err := moved.flush(); err != nil {
+		return err
+	}
+	r.rep.step("anciennes clés de tickets déplacés", moved.total, skipped)
+	return nil
+}
+
+func (r *run) hasIssue(id sql.NullInt64) bool {
+	_, ok := r.issues[id.Int64]
+	return id.Valid && ok
+}
+
+// importIssueDetails copies labels, components, versions, links and watchers.
+func (r *run) importIssueDetails() error {
+	ins := r.inserter("labels", "issue_id", "field_id", "label")
+	skipped := 0
+	if err := r.each(`SELECT issue, fieldid, label FROM label`, func(rows *sql.Rows) error {
+		var issue, field sql.NullInt64
+		var label sql.NullString
+		if err := rows.Scan(&issue, &field, &label); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) || strings.TrimSpace(label.String) == "" {
+			skipped++
+			return nil
+		}
+		if field.Valid {
+			if _, ok := r.fields[field.Int64]; !ok {
+				skipped++
+				return nil
+			}
+		}
+		return ins.add(issue.Int64, nint(field), truncate(label.String, 255))
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("étiquettes", ins.total, skipped)
+
+	comps := r.inserter("issue_components", "issue_id", "component_id")
+	vers := r.inserter("issue_versions", "issue_id", "version_id", "kind")
+	skipped = 0
+	if err := r.each(`SELECT source_node_id, sink_node_id, association_type FROM nodeassociation
+		WHERE source_node_entity = 'Issue' AND association_type IN ('IssueComponent', 'IssueVersion', 'IssueFixVersion')`,
+		func(rows *sql.Rows) error {
+			var issue, sink sql.NullInt64
+			var kind sql.NullString
+			if err := rows.Scan(&issue, &sink, &kind); err != nil {
+				return err
+			}
+			if !r.hasIssue(issue) {
+				skipped++
+				return nil
+			}
+			switch kind.String {
+			case "IssueComponent":
+				if r.components[sink.Int64] {
+					return comps.add(issue.Int64, sink.Int64)
+				}
+			case "IssueVersion":
+				if r.versions[sink.Int64] {
+					return vers.add(issue.Int64, sink.Int64, "affects")
+				}
+			case "IssueFixVersion":
+				if r.versions[sink.Int64] {
+					return vers.add(issue.Int64, sink.Int64, "fix")
+				}
+			}
+			skipped++
+			return nil
+		}); err != nil {
+		return err
+	}
+	if err := comps.flush(); err != nil {
+		return err
+	}
+	if err := vers.flush(); err != nil {
+		return err
+	}
+	r.rep.step("composants des tickets", comps.total, 0)
+	r.rep.step("versions des tickets", vers.total, skipped)
+
+	links := r.inserter("issue_links", "id", "type_id", "source_id", "target_id")
+	skipped = 0
+	if err := r.each(`SELECT id, linktype, source, destination FROM issuelink`, func(rows *sql.Rows) error {
+		var id int64
+		var kind, source, target sql.NullInt64
+		if err := rows.Scan(&id, &kind, &source, &target); err != nil {
+			return err
+		}
+		if r.subtaskLink[kind.Int64] {
+			return nil // imported as the parent column
+		}
+		if !r.linkTypes[kind.Int64] || !r.hasIssue(source) || !r.hasIssue(target) {
+			skipped++
+			return nil
+		}
+		return links.add(id, kind.Int64, source.Int64, target.Int64)
+	}); err != nil {
+		return err
+	}
+	if err := links.flush(); err != nil {
+		return err
+	}
+	r.rep.step("liens entre tickets", links.total, skipped)
+
+	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
+	skipped = 0
+	if err := r.each(`SELECT id, issueid, url, title, relationship FROM remotelink`, func(rows *sql.Rows) error {
+		var id int64
+		var issue sql.NullInt64
+		var url, title, rel sql.NullString
+		if err := rows.Scan(&id, &issue, &url, &title, &rel); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) || url.String == "" {
+			skipped++
+			return nil
+		}
+		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), nstr(rel))
+	}); err != nil {
+		return err
+	}
+	if err := remote.flush(); err != nil {
+		return err
+	}
+	r.rep.step("liens externes", remote.total, skipped)
+
+	watch := r.inserter("watchers", "issue_id", "user_id", "created_at")
+	vote := r.inserter("votes", "issue_id", "user_id", "created_at")
+	skipped = 0
+	if err := r.each(`SELECT source_name, sink_node_id, association_type, created FROM userassociation
+		WHERE sink_node_entity = 'Issue' AND association_type IN ('WatchIssue', 'VoteIssue')`, func(rows *sql.Rows) error {
+		var key, kind sql.NullString
+		var issue sql.NullInt64
+		var created sql.NullTime
+		if err := rows.Scan(&key, &issue, &kind, &created); err != nil {
+			return err
+		}
+		uid, ok := r.users[key.String]
+		if !ok || !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		if kind.String == "WatchIssue" {
+			return watch.add(issue.Int64, uid, ntime(created))
+		}
+		return vote.add(issue.Int64, uid, ntime(created))
+	}); err != nil {
+		return err
+	}
+	if err := watch.flush(); err != nil {
+		return err
+	}
+	if err := vote.flush(); err != nil {
+		return err
+	}
+	r.rep.step("observateurs", watch.total, 0)
+	r.rep.step("votes", vote.total, skipped)
+	return nil
+}
+
+// visibilityRole returns the role a comment or work log is restricted to. A
+// role deleted from Jira is recreated without members, so the restricted
+// content stays hidden instead of becoming public.
+func (r *run) visibilityRole(role sql.NullInt64) (any, error) {
+	if !role.Valid || role.Int64 == 0 {
+		return nil, nil
+	}
+	if !r.roles[role.Int64] {
+		if _, err := r.dst.ExecContext(r.ctx, `INSERT INTO project_roles (id, name) VALUES (?, ?)`,
+			role.Int64, fmt.Sprintf("Rôle supprimé (%d)", role.Int64)); err != nil {
+			return nil, err
+		}
+		r.roles[role.Int64] = true
+	}
+	return role.Int64, nil
+}
+
+func (r *run) importCommentsAndWorklogs() error {
+	now := time.Now().UTC()
+	stamp := func(primary, fallback sql.NullTime) time.Time {
+		if primary.Valid {
+			return primary.Time.UTC()
+		}
+		if fallback.Valid {
+			return fallback.Time.UTC()
+		}
+		return now
+	}
+
+	ins := r.inserter("comments", "id", "issue_id", "author_id", "body", "created_at", "updated_at", "updated_by_id",
+		"visibility_group", "visibility_role_id")
+	skipped, restricted := 0, 0
+	if err := r.each(`SELECT id, issueid, author, actionlevel, rolelevel, actionbody, created, updateauthor, updated
+		FROM jiraaction WHERE actiontype = 'comment'`, func(rows *sql.Rows) error {
+		var id int64
+		var issue, role sql.NullInt64
+		var author, group, body, updater sql.NullString
+		var created, updated sql.NullTime
+		if err := rows.Scan(&id, &issue, &author, &group, &role, &body, &created, &updater, &updated); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		authorID, err := r.user(author)
+		if err != nil {
+			return err
+		}
+		updaterID, err := r.user(updater)
+		if err != nil {
+			return err
+		}
+		roleID, err := r.visibilityRole(role)
+		if err != nil {
+			return err
+		}
+		var grp any
+		if group.String != "" {
+			grp = strings.ToLower(group.String)
+		}
+		if grp != nil || roleID != nil {
+			restricted++
+		}
+		c := stamp(created, updated)
+		return ins.add(id, issue.Int64, authorID, body.String, c, stamp(updated, created), updaterID, grp, roleID)
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("commentaires", ins.total, skipped)
+	r.rep.step("dont commentaires restreints", restricted, 0)
+
+	ins = r.inserter("worklogs", "id", "issue_id", "author_id", "body", "started_at", "seconds", "created_at",
+		"updated_at", "updated_by_id", "visibility_group", "visibility_role_id")
+	skipped = 0
+	if err := r.each(`SELECT id, issueid, author, grouplevel, rolelevel, worklogbody, created, updateauthor, updated,
+		startdate, timeworked FROM worklog`, func(rows *sql.Rows) error {
+		var id int64
+		var issue, role, seconds sql.NullInt64
+		var author, group, body, updater sql.NullString
+		var created, updated, started sql.NullTime
+		if err := rows.Scan(&id, &issue, &author, &group, &role, &body, &created, &updater, &updated, &started, &seconds); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		authorID, err := r.user(author)
+		if err != nil {
+			return err
+		}
+		updaterID, err := r.user(updater)
+		if err != nil {
+			return err
+		}
+		roleID, err := r.visibilityRole(role)
+		if err != nil {
+			return err
+		}
+		var grp any
+		if group.String != "" {
+			grp = strings.ToLower(group.String)
+		}
+		c := stamp(created, updated)
+		return ins.add(id, issue.Int64, authorID, nstr(body), stamp(started, created), seconds.Int64, c,
+			stamp(updated, created), updaterID, grp, roleID)
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("temps saisis", ins.total, skipped)
+	return nil
+}
+
+func (r *run) importAttachments() error {
+	dir := filepath.Join(r.opt.DataDir, "attachments")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	ins := r.inserter("attachments", "id", "issue_id", "author_id", "filename", "mime_type", "size", "created_at",
+		"file_missing")
+	skipped, missingFiles := 0, 0
+	now := time.Now().UTC()
+	if err := r.each(`SELECT id, issueid, mimetype, filename, created, filesize, author FROM fileattachment`, func(rows *sql.Rows) error {
+		var id int64
+		var issue, size sql.NullInt64
+		var mime, name, author sql.NullString
+		var created sql.NullTime
+		if err := rows.Scan(&id, &issue, &mime, &name, &created, &size, &author); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		authorID, err := r.user(author)
+		if err != nil {
+			return err
+		}
+		found, err := r.copyAttachment(id, r.issues[issue.Int64], dir)
+		if err != nil {
+			return err
+		}
+		if !found {
+			missingFiles++
+		}
+		at := now
+		if created.Valid {
+			at = created.Time.UTC()
+		}
+		return ins.add(id, issue.Int64, authorID, truncate(orDefault(name, "fichier"), 255),
+			orDefault(mime, "application/octet-stream"), size.Int64, at, !found)
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("pièces jointes", ins.total, skipped)
+	switch {
+	case r.opt.JiraHome == "" && ins.total > 0:
+		r.rep.warn("pièces jointes : seules les métadonnées sont reprises ; relancez avec -jira-home pour copier les fichiers")
+	case missingFiles > 0:
+		r.rep.warn("%s dans le Jira home (déjà absentes côté Jira ?)",
+			plural(missingFiles, "pièce jointe sans fichier", "pièces jointes sans fichier"))
+	}
+	return nil
+}
+
+// copyAttachment looks for an attachment in the Jira home and copies it to
+// dir/<id>. Jira 7+ stores attachments under
+// data/attachments/<project key>/<bucket of 10000>/<issue key>/<id>; older
+// versions had no bucket. Renamed projects keep their original key on disk.
+func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error) {
+	if r.opt.JiraHome == "" {
+		return false, nil
+	}
+	p := r.projects[issue.project]
+	keys := []string{p.originalKey}
+	if p.key != p.originalKey {
+		keys = append(keys, p.key)
+	}
+	base := filepath.Join(r.opt.JiraHome, "data", "attachments")
+	bucket := strconv.FormatInt(((issue.num-1)/10000+1)*10000, 10)
+	name := strconv.FormatInt(id, 10)
+	for _, pk := range keys {
+		for _, ik := range keys {
+			issueKey := ik + "-" + strconv.FormatInt(issue.num, 10)
+			for _, path := range []string{
+				filepath.Join(base, pk, bucket, issueKey, name),
+				filepath.Join(base, pk, issueKey, name),
+			} {
+				ok, err := copyFile(path, filepath.Join(dir, name))
+				if ok || err != nil {
+					return ok, err
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+// copyFile copies src to dst through a temporary file. A missing src is not
+// an error: it returns false.
+func copyFile(src, dst string) (bool, error) {
+	in, err := os.Open(src)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer in.Close()
+	tmp := dst + ".part"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return false, err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(tmp)
+		return false, err
+	}
+	if err := out.Close(); err != nil {
+		os.Remove(tmp)
+		return false, err
+	}
+	return true, os.Rename(tmp, dst)
+}
+
+// fieldKind returns the last part of a Jira custom field type key,
+// e.g. "userpicker" for com.atlassian.jira.plugin.system.customfieldtypes:userpicker.
+func fieldKind(typeKey string) string {
+	if i := strings.LastIndexByte(typeKey, ':'); i >= 0 {
+		return typeKey[i+1:]
+	}
+	return typeKey
+}
+
+func (r *run) importCustomFieldValues() error {
+	ins := r.inserter("custom_field_values", "id", "issue_id", "field_id", "parent_key", "string_value",
+		"number_value", "text_value", "date_value")
+	skipped := 0
+	if err := r.each(`SELECT id, issue, customfield, parentkey, stringvalue, numbervalue, textvalue, datevalue
+		FROM customfieldvalue`, func(rows *sql.Rows) error {
+		var id int64
+		var issue, field sql.NullInt64
+		var parentKey, str, text sql.NullString
+		var num sql.NullFloat64
+		var date sql.NullTime
+		if err := rows.Scan(&id, &issue, &field, &parentKey, &str, &num, &text, &date); err != nil {
+			return err
+		}
+		typeKey, ok := r.fields[field.Int64]
+		if !ok || !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		var strVal, dateVal, numVal any = nstr(str), ntime(date), nil
+		if num.Valid {
+			numVal = num.Float64
+		}
+		switch fieldKind(typeKey) {
+		case "userpicker", "multiuserpicker":
+			uid, ok := r.users[str.String]
+			if !ok {
+				skipped++
+				return nil
+			}
+			strVal = strconv.FormatInt(uid, 10)
+		case "datepicker":
+			if date.Valid {
+				y, m, d := date.Time.In(r.tz).Date()
+				dateVal = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+			}
+		}
+		if s, ok := strVal.(string); ok {
+			strVal = truncate(s, 255)
+		}
+		return ins.add(id, issue.Int64, field.Int64, nstr(parentKey), strVal, numVal, nstr(text), dateVal)
+	}); err != nil {
+		return err
+	}
+	if err := ins.flush(); err != nil {
+		return err
+	}
+	r.rep.step("valeurs de champs personnalisés", ins.total, skipped)
+	return nil
+}
+
+func (r *run) importHistory() error {
+	groups := r.inserter("change_groups", "id", "issue_id", "author_id", "created_at")
+	skipped := 0
+	now := time.Now().UTC()
+	if err := r.each(`SELECT id, issueid, author, created FROM changegroup`, func(rows *sql.Rows) error {
+		var id int64
+		var issue sql.NullInt64
+		var author sql.NullString
+		var created sql.NullTime
+		if err := rows.Scan(&id, &issue, &author, &created); err != nil {
+			return err
+		}
+		if !r.hasIssue(issue) {
+			skipped++
+			return nil
+		}
+		authorID, err := r.user(author)
+		if err != nil {
+			return err
+		}
+		at := now
+		if created.Valid {
+			at = created.Time.UTC()
+		}
+		return groups.add(id, issue.Int64, authorID, at)
+	}); err != nil {
+		return err
+	}
+	if err := groups.flush(); err != nil {
+		return err
+	}
+	r.rep.step("modifications (historique)", groups.total, skipped)
+
+	items := r.inserter("change_items", "id", "group_id", "field_type", "field", "old_value", "old_string",
+		"new_value", "new_string")
+	if err := r.each(`SELECT id, groupid, fieldtype, field, oldvalue, oldstring, newvalue, newstring FROM changeitem`, func(rows *sql.Rows) error {
+		var id int64
+		var group sql.NullInt64
+		var fieldType, field, oldValue, oldString, newValue, newString sql.NullString
+		if err := rows.Scan(&id, &group, &fieldType, &field, &oldValue, &oldString, &newValue, &newString); err != nil {
+			return err
+		}
+		return items.add(id, group.Int64, truncate(orDefault(fieldType, "jira"), 255), truncate(field.String, 255),
+			nstr(oldValue), nstr(oldString), nstr(newValue), nstr(newString))
+	}); err != nil {
+		return err
+	}
+	if err := items.flush(); err != nil {
+		return err
+	}
+	// Change groups can number in the millions: rather than keeping their ids
+	// in memory, items whose group was not imported are removed afterwards.
+	res, err := r.dst.ExecContext(r.ctx, `DELETE ci FROM change_items ci
+		LEFT JOIN change_groups g ON g.id = ci.group_id WHERE g.id IS NULL`)
+	if err != nil {
+		return err
+	}
+	orphans, _ := res.RowsAffected()
+	r.rep.step("détails des modifications", items.total-int(orphans), int(orphans))
+	return nil
+}
