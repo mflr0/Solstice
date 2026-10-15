@@ -13,7 +13,16 @@ describe('matchRoute', () => {
     ['/browse/demo-12', { name: 'issue', key: 'DEMO-12' }],
     ['/people/marie.durand', { name: 'person', username: 'marie.durand' }],
     ['/people/ren%C3%A9', { name: 'person', username: 'rené' }],
-    ['/admin/users', { name: 'adminUsers' }],
+    ['/admin', { name: 'admin', section: 'overview', item: null }],
+    ['/admin/users', { name: 'admin', section: 'users', item: null }],
+    ['/admin/issue-types', { name: 'admin', section: 'issueTypes', item: null }],
+    ['/admin/webhooks/12', { name: 'admin', section: 'webhooks', item: '12' }],
+    ['/admin/webhooks/new', { name: 'admin', section: 'webhooks', item: 'new' }],
+    ['/admin/mail/3', { name: 'notFound' }],
+    ['/admin/nope', { name: 'notFound' }],
+    ['/settings', { name: 'account', section: 'profile' }],
+    ['/settings/notifications', { name: 'account', section: 'notifications' }],
+    ['/settings/profile', { name: 'notFound' }],
     ['/themes', { name: 'themes' }],
     ['/browse', { name: 'notFound' }],
     ['/projects/DEMO/nope', { name: 'notFound' }],
@@ -29,6 +38,16 @@ describe('matchRoute', () => {
       username: 'jeanne dupont',
     });
     expect(paths.search('#urgent @moi')).toBe('/issues?q=%23urgent%20%40moi');
+    expect(paths.admin('overview')).toBe('/admin');
+    expect(paths.admin('linkTypes')).toBe('/admin/link-types');
+    expect(paths.admin('updates')).toBe('/admin/updates');
+    expect(matchRoute(paths.admin('webhooks', 7))).toEqual({
+      name: 'admin',
+      section: 'webhooks',
+      item: '7',
+    });
+    expect(paths.account('profile')).toBe('/settings');
+    expect(matchRoute(paths.account('tokens'))).toEqual({ name: 'account', section: 'tokens' });
   });
 });
 

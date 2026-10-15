@@ -121,6 +121,11 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 			return fieldError("sprint", err)
 		}
 	}
+	var typeID string
+	json.Unmarshal(edit.ui["type"], &typeID)
+	if err := s.checkCustomContext(ctx, projectID, typeID, edit.custom); err != nil {
+		return err
+	}
 	var created struct{ Key string }
 	if err := s.uiCall(r, s.createIssue, http.MethodPost, "/api/issues", nil, edit.ui, &created); err != nil {
 		return err
@@ -158,6 +163,13 @@ func (s *Server) restEdit(r *http.Request, sub *perm.Subject, iss *issueRow, edi
 	}
 	if len(edit.comments) > 0 && !sub.Can(perm.Comment, iss.ProjectID, &pi) {
 		return errForbidden
+	}
+	typeID := iss.TypeID
+	if raw, ok := edit.ui["type"]; ok {
+		json.Unmarshal(raw, &typeID)
+	}
+	if err := s.checkCustomContext(ctx, iss.ProjectID, typeID, edit.custom); err != nil {
+		return err
 	}
 	if edit.sprint != nil && *edit.sprint != 0 {
 		if _, err := s.sprintBoard(ctx, sub, *edit.sprint); err != nil {

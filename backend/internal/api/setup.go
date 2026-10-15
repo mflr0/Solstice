@@ -457,7 +457,11 @@ func (w *Setup) save(values map[string]string) *configSave {
 
 // SetBaseURL sets the public address of the instance (SOLSTICE_BASE_URL):
 // when it is https, session cookies are always Secure.
-func (s *Server) SetBaseURL(u string) { s.baseURL = strings.TrimSuffix(u, "/") }
+// It is an initial value: one saved in the administration wins.
+func (s *Server) SetBaseURL(u string) {
+	s.baseURL = strings.TrimSuffix(u, "/")
+	s.forgetGeneral()
+}
 
 // setupDone answers the wizard's status once the instance is set up.
 func (s *Server) setupDone(w http.ResponseWriter, _ *http.Request) error {

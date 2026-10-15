@@ -18,7 +18,6 @@ var hi = map[string]string{
 	"Identifiant ou mot de passe incorrect.":                          "यूज़रनेम या पासवर्ड गलत है।",
 	"Identifiant invalide : lettres minuscules, chiffres, . _ @ -":    "अमान्य यूज़रनेम: केवल छोटे अक्षर, अंक और . _ @ - इस्तेमाल करें",
 	"Cet identifiant existe déjà.":                                    "यह यूज़रनेम पहले से मौजूद है।",
-	"Le mot de passe doit faire au moins 10 caractères.":              "पासवर्ड कम से कम 10 वर्णों का होना चाहिए।",
 	"Vous ne pouvez pas retirer vos propres droits d'administration.": "आप अपने ही एडमिन अधिकार नहीं हटा सकते।",
 	"Langue non prise en charge (au choix : %s).":                     "यह भाषा समर्थित नहीं है (इनमें से चुनें: %s)।",
 

@@ -32,7 +32,10 @@ for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; d
   [ -f "$root/LICENSE" ] && cp "$root/LICENSE" "$dir/"
   [ -d "$root/docs" ] && cp -R "$root/docs" "$dir/docs"
   if [ "$os" = linux ]; then
-    cp "$root/deploy/linux/install.sh" "$root/deploy/linux/solstice.service" "$dir/"
+    # The installer, the service, and the update helper it sets up.
+    cp "$root/deploy/linux/install.sh" "$root/deploy/linux/solstice.service" \
+      "$root/deploy/linux/update.sh" "$root/deploy/linux/solstice-update.path" \
+      "$root/deploy/linux/solstice-update.service" "$dir/"
   fi
   if [ "$os" = windows ]; then
     (cd "$dist" && zip -qr "$name.zip" "$name")

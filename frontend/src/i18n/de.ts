@@ -937,6 +937,83 @@ export const de: Messages = {
     back: 'Zurück zu meiner Arbeit',
   },
 
+  updates: {
+    title: 'Updates',
+    eyebrow: 'Administration',
+    forbidden: 'Diese Seite ist Administratoren vorbehalten.',
+    current: 'Installierte Version',
+    latest: 'Neueste Version',
+    install: 'Installation',
+    installs: {
+      systemd: 'Linux-Dienst (systemd)',
+      docker: 'Docker-Container',
+      manual: 'Manuelle Installation',
+    },
+    dev: 'Entwicklungsversion',
+    none: 'Noch keine Version veröffentlicht',
+    published: (day: string) => `veröffentlicht am ${day}`,
+    releasePage: 'Veröffentlichung auf GitHub ansehen',
+    checked: (when: string) => `Zuletzt geprüft: ${when}`,
+    neverChecked: 'Noch nie geprüft',
+    checkNow: 'Jetzt prüfen',
+    checking: 'Wird geprüft …',
+    checkErrors: {
+      unreachable: 'GitHub ist von diesem Server aus nicht erreichbar.',
+      refused: 'GitHub hat die Anfrage abgelehnt. Versuchen Sie es später erneut.',
+      invalid: 'Die Antwort von GitHub ist nicht lesbar.',
+    },
+    upToDate: 'Solstice ist auf dem neuesten Stand.',
+    available: (version: string) => `Version ${version} ist verfügbar.`,
+    devNote: 'Eine Entwicklungsversion bietet keine Updates an.',
+    notes: 'Versionshinweise',
+    noNotes: 'Zu dieser Version gibt es keine Hinweise.',
+    apply: (version: string) => `Auf v${version} aktualisieren`,
+    applyHint:
+      'Solstice lädt die Version von GitHub herunter, prüft ihre Prüfsumme, sichert die Datenbank und startet neu. Startet die neue Version nicht, wird die vorherige wiederhergestellt.',
+    confirmBody:
+      'Solstice ist während des Neustarts einige Sekunden lang nicht erreichbar. Angemeldete Personen bleiben angemeldet.',
+    password: 'Ihr Passwort',
+    passwordHint: 'Zur Bestätigung, dass Sie es sind.',
+    start: 'Update starten',
+    requested: 'Update angefordert.',
+    docker: 'Auf dem Server, im Ordner mit den Solstice-Quellen:',
+    dockerHint:
+      'Das Image wird neu gebaut und der Container neu gestartet. Die Daten bleiben in ihren Volumes.',
+    manualLinux:
+      'Laden Sie auf dem Server das Archiv herunter und führen Sie die Installation erneut aus. Konfiguration und Daten bleiben erhalten:',
+    manualLinuxHint:
+      'Die Installation richtet auch den Update-Dienst ein: Die nächsten Versionen lassen sich dann von dieser Seite aus installieren.',
+    manualOther:
+      'Laden Sie das Archiv für Ihr System herunter, ersetzen Sie das Programm solstice durch das darin enthaltene und starten Sie Solstice neu.',
+    download: 'Archiv herunterladen',
+    last: 'Letztes Update',
+    fromTo: (from: string, to: string) => `${from} → ${to}`,
+    statuses: {
+      pending: 'Wartet',
+      running: 'Läuft',
+      ok: 'Erfolgreich',
+      rolled_back: 'Zurückgesetzt',
+      failed: 'Fehlgeschlagen',
+    },
+    statusHints: {
+      pending: 'Der Update-Dienst übernimmt die Anfrage gleich.',
+      running:
+        'Herunterladen, Prüfen, Sichern, dann Neustart. Diese Seite lädt sich von selbst neu.',
+      ok: 'Die neue Version läuft.',
+      rolled_back:
+        'Die neue Version ist nicht gestartet, die vorherige wurde wiederhergestellt. Das Protokoll nennt den Grund.',
+      failed: 'Das Update ist fehlgeschlagen. Das Protokoll nennt den Grund.',
+    },
+    restarting: 'Solstice startet neu …',
+    log: 'Protokoll',
+    auto: 'Automatisch nach neuen Versionen suchen',
+    autoHint:
+      'Höchstens alle 12 Stunden fragt Solstice bei GitHub die Nummer der neuesten Version ab. Sonst wird nichts gesendet.',
+    autoOn: 'Automatische Suche eingeschaltet.',
+    autoOff: 'Automatische Suche ausgeschaltet.',
+    badge: 'Update verfügbar',
+  },
+
   workflows: {
     tab: 'Workflows',
     rightsTab: 'Berechtigungen und Rollen',

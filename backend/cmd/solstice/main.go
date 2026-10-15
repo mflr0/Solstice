@@ -179,6 +179,9 @@ func runServe(ctx context.Context, args []string) error {
 		srv := api.New(conn, dataDir, tz, log)
 		srv.SetBaseURL(baseURL)
 		srv.SetSecretKey(cfg.SecretKey)
+		srv.SetVersion(version)
+		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.Addr,
+			Sources: configSources(cfg, fixed, baseURL, tz)})
 		h := srv.Handler(static)
 		appDB.Store(conn)
 		app.Store(srv)

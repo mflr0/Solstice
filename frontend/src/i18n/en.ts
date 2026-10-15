@@ -929,6 +929,82 @@ export const en: Messages = {
     back: 'Back to my work',
   },
 
+  updates: {
+    title: 'Updates',
+    eyebrow: 'Administration',
+    forbidden: 'This page is for administrators only.',
+    current: 'Installed version',
+    latest: 'Latest release',
+    install: 'Installation',
+    installs: {
+      systemd: 'Linux service (systemd)',
+      docker: 'Docker container',
+      manual: 'Manual installation',
+    },
+    dev: 'development build',
+    none: 'No release published yet',
+    published: (day: string) => `released on ${day}`,
+    releasePage: 'See the release on GitHub',
+    checked: (when: string) => `Last checked: ${when}`,
+    neverChecked: 'Never checked',
+    checkNow: 'Check now',
+    checking: 'Checking…',
+    checkErrors: {
+      unreachable: 'GitHub cannot be reached from this server.',
+      refused: 'GitHub turned the request down. Try again later.',
+      invalid: 'GitHub’s answer could not be read.',
+    },
+    upToDate: 'Solstice is up to date.',
+    available: (version: string) => `Version ${version} is available.`,
+    devNote: 'A development build does not offer updates.',
+    notes: 'Release notes',
+    noNotes: 'This release has no notes.',
+    apply: (version: string) => `Update to v${version}`,
+    applyHint:
+      'Solstice downloads the release from GitHub, verifies its checksum, backs up the database, then restarts. If the new version does not start, the previous one is put back.',
+    confirmBody:
+      'Solstice will be unavailable for a few seconds while it restarts. Signed-in users stay signed in.',
+    password: 'Your password',
+    passwordHint: 'To confirm it is really you.',
+    start: 'Start the update',
+    requested: 'Update requested.',
+    docker: 'On the server, in the folder of the Solstice sources:',
+    dockerHint: 'The image is rebuilt and the container restarted. Data stays in its volumes.',
+    manualLinux:
+      'On the server, download the archive and run the installer again. Configuration and data are kept:',
+    manualLinuxHint:
+      'The installer also sets up the update service: the next versions will install from this page.',
+    manualOther:
+      'Download the archive for your system, replace the solstice program with the one inside, then restart Solstice.',
+    download: 'Download the archive',
+    last: 'Last update',
+    fromTo: (from: string, to: string) => `${from} → ${to}`,
+    statuses: {
+      pending: 'Waiting',
+      running: 'In progress',
+      ok: 'Succeeded',
+      rolled_back: 'Rolled back',
+      failed: 'Failed',
+    },
+    statusHints: {
+      pending: 'The update service is about to take the request.',
+      running:
+        'Downloading, verifying, backing up, then restarting. This page reloads by itself.',
+      ok: 'The new version is running.',
+      rolled_back:
+        'The new version did not start, so the previous one was put back. The log says why.',
+      failed: 'The update failed. The log says why.',
+    },
+    restarting: 'Solstice is restarting…',
+    log: 'Log',
+    auto: 'Check for new versions automatically',
+    autoHint:
+      'At most once every 12 hours, Solstice asks GitHub for the number of the latest version. Nothing else is sent.',
+    autoOn: 'Automatic checks turned on.',
+    autoOff: 'Automatic checks turned off.',
+    badge: 'Update available',
+  },
+
   workflows: {
     tab: 'Workflows',
     rightsTab: 'Permissions and roles',

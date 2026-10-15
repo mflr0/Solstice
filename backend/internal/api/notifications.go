@@ -52,9 +52,11 @@ func (s *Server) startOutgoing() {
 	config := func(ctx context.Context) (mail.Config, error) { return mail.LoadConfig(ctx, o.settings, s.secrets) }
 	o.outbox = mail.NewOutbox(s.db, s.log, config)
 	o.notify = notify.New(s.db, s.perms, o.outbox, s.tz, s.log, config, filterRunner{s})
-	o.notify.BaseURL = func() string { return s.baseURL }
+	o.notify.BaseURL = s.base
+	o.notify.Zone = s.zone
+	o.notify.DefaultLocale = s.defaultLanguage
 	o.hooks = webhook.New(s.db, s.log, s.secrets, s.matchJQL)
-	o.hooks.BaseURL = func() string { return s.baseURL }
+	o.hooks.BaseURL = s.base
 	o.bus.Subscribe(o.notify)
 	o.bus.Subscribe(o.hooks)
 }
@@ -190,9 +192,10 @@ func (s *Server) prefsOut(ctx context.Context, userID int64) (*prefsOut, error) 
 		return nil, err
 	}
 	cfg, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
-	zone := s.tz.String()
-	if zone == "Local" { // no SOLSTICE_TZ: the system's zone, which has no name here
-		zone = time.Now().In(s.tz).Format("MST (UTC-07:00)")
+	tz := s.zone()
+	zone := tz.String()
+	if zone == "Local" { // no time zone set: the system's, which has no name here
+		zone = time.Now().In(tz).Format("MST (UTC-07:00)")
 	}
 	return &prefsOut{Prefs: p, TimeZone: zone, MailEnabled: err == nil && cfg.Enabled}, nil
 }
@@ -381,8 +384,8 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
-	if s.baseURL != "" {
-		out.BaseURL = &s.baseURL
+	if base := s.base(); base != "" {
+		out.BaseURL = &base
 	}
 	return writeJSON(w, http.StatusOK, out)
 }

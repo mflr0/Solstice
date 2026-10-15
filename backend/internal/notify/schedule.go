@@ -110,7 +110,7 @@ func (sub *Subscription) next(now time.Time, tz *time.Location) time.Time {
 // caller, and plans its next run.
 func (s *Service) SaveSubscription(ctx context.Context, sub *Subscription) error {
 	now := s.Now().UTC()
-	sub.NextRun = sub.next(now, s.tz)
+	sub.NextRun = sub.next(now, s.zone())
 	days := make([]string, 0, len(sub.Days))
 	slices.Sort(sub.Days)
 	for _, d := range slices.Compact(sub.Days) {
@@ -188,7 +188,7 @@ func (s *Service) runSubscriptions(ctx context.Context) error {
 		}
 		// Claim the run, so two workers never send it twice.
 		res, err := s.db.ExecContext(ctx, `UPDATE filter_subscriptions SET next_run_at = ?, last_run_at = ?
-			WHERE id = ? AND next_run_at = ?`, sub.next(now, s.tz), now, sub.ID, sub.NextRun)
+			WHERE id = ? AND next_run_at = ?`, sub.next(now, s.zone()), now, sub.ID, sub.NextRun)
 		if err != nil {
 			return err
 		}
@@ -247,7 +247,7 @@ func (s *Service) sendSubscription(ctx context.Context, sub *Subscription) (int,
 		loc := rc.locale
 		p := &page{Lang: loc, Heading: i18n.M("Filtre « %s »", res.Name).In(loc)}
 		p.Title = p.Heading
-		p.Intro = []string{i18n.M("Tickets correspondants : %d (au %s).", res.Total, formatTime(loc, s.Now().In(s.tz))).In(loc)}
+		p.Intro = []string{i18n.M("Tickets correspondants : %d (au %s).", res.Total, formatTime(loc, s.Now().In(s.zone()))).In(loc)}
 		t := s.issueTable(loc, res.Issues, true)
 		t.Empty = i18n.M("Aucun ticket ne correspond à ce filtre.").In(loc)
 		all := s.url("/issues?q=" + url.QueryEscape(res.Query))
@@ -307,7 +307,7 @@ func (s *Service) write(ctx context.Context, cfg mail.Config, kind string, rc *r
 // unresolved issues due today or overdue to those who asked for it.
 func (s *Service) runReminders(ctx context.Context) error {
 	now := s.Now()
-	local := now.In(s.tz)
+	local := now.In(s.zone())
 	today := local.Format(time.DateOnly)
 	type who struct {
 		id   int64

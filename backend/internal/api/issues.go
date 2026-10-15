@@ -874,6 +874,7 @@ var issueFields = map[string]bool{
 	"project": true, "type": true, "summary": true, "description": true, "environment": true, "priority": true,
 	"assignee": true, "labels": true, "components": true, "affectsVersions": true, "fixVersions": true,
 	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true, "epic": true,
+	"customFields": true, // {"<field id>": value as in Jira's REST API}
 }
 
 func readFields(r *http.Request) (fields, error) {
@@ -974,8 +975,20 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, "Cette personne ne peut pas se voir assigner de tickets dans ce projet.")
 		}
 		assignee = id
+	} else if who, ok, err := s.componentAssignee(ctx, f, projectID, leadID); err != nil {
+		return err
+	} else if ok {
+		assignee = who
 	} else if defaultAssignee == "lead" && leadID != 0 {
 		assignee = leadID
+	}
+	custom, err := s.readCustomFields(ctx, f, projectID, typeID)
+	if err != nil {
+		return err
+	}
+	// Custom fields take the permission to edit the issue, as its reporter.
+	if len(custom) > 0 && !sub.Can(perm.Edit, projectID, &perm.Issue{ProjectID: projectID, ReporterID: sub.UserID}) {
+		return errForbidden
 	}
 
 	status, err := s.initialStatusFor(ctx, projectID, typeID)
@@ -1011,8 +1024,13 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		priority = v
 	} else if len(cat.Priorities) > 0 {
-		// Jira's default: the middle priority.
+		// The default priority, else Jira's default: the middle one.
 		priority = cat.Priorities[len(cat.Priorities)/2].ID
+		for _, p := range cat.Priorities {
+			if p.Default {
+				priority = p.ID
+			}
+		}
 	}
 	if f.has("due") && !f.isNull("due") {
 		var v string
@@ -1099,6 +1117,9 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
+	if err := s.applyCustom(ctx, sub, s.restOut(r), created, custom); err != nil {
+		return err
+	}
 	return writeJSON(w, http.StatusCreated, map[string]string{"key": created.Key()})
 }
 
@@ -1311,7 +1332,22 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.applyUpdate(r.Context(), sub, iss, f); err != nil {
+	ctx := r.Context()
+	typeID := iss.TypeID
+	if f.has("type") {
+		f.get("type", &typeID)
+	}
+	custom, err := s.readCustomFields(ctx, f, iss.ProjectID, typeID)
+	if err != nil {
+		return err
+	}
+	if pi := iss.perm(); len(custom) > 0 && !sub.Can(perm.Edit, iss.ProjectID, &pi) {
+		return errForbidden
+	}
+	if err := s.applyUpdate(ctx, sub, iss, f); err != nil {
+		return err
+	}
+	if err := s.applyCustom(ctx, sub, s.restOut(r), iss, custom); err != nil {
 		return err
 	}
 	return s.respondIssue(w, r, sub, iss.ID)
@@ -1839,7 +1875,7 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 	where, args, order, err := jql.Compile(q, jql.Env{
 		Me:  sub.UserID,
 		Now: time.Now(),
-		Loc: s.tz,
+		Loc: s.zone(),
 		CustomField: func(name string) (jql.Field, bool) {
 			f, ok := fields[foldName(name)]
 			return f, ok

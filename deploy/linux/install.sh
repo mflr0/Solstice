@@ -13,10 +13,17 @@
 # Running it again with a newer binary upgrades: configuration and data are
 # kept, the service restarts and migrates the database by itself.
 #
+# With update.sh and the solstice-update units next to it (release archives
+# have them), it also installs the update helper: administrators can then
+# update Solstice from its web interface (Administration, « Mises à jour »).
+#
 # Files: /usr/local/bin/solstice, /etc/solstice/solstice.conf,
-# /var/lib/solstice (attachments, keys), /etc/systemd/system/solstice.service.
-# Uninstall: systemctl disable --now solstice, then remove those files and the
-# "solstice" system user (and the database if you created it).
+# /var/lib/solstice (attachments, keys, update requests, backups),
+# /usr/local/lib/solstice (update helper, previous binary),
+# /etc/systemd/system/solstice.service, solstice-update.path and .service.
+# Uninstall: systemctl disable --now solstice solstice-update.path, then remove
+# those files and the "solstice" system user (and the database if you created
+# it).
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -32,7 +39,7 @@ while [ $# -gt 0 ]; do
     --with-mariadb) with_db=1 ;;
     --port) port=${2:?}; shift ;;
     --binary) binary=${2:?}; shift ;;
-    -h | --help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) fail "option inconnue / unknown option: $1" ;;
   esac
   shift
@@ -99,7 +106,39 @@ SQL
 fi
 
 install -m 0644 "$here/solstice.service" /etc/systemd/system/solstice.service
+
+# The update helper. Solstice, unprivileged, may only drop a request in
+# /var/lib/solstice/update: root's directory, writable by the solstice group,
+# sticky so that Solstice cannot touch root's files there. A root service
+# started by the request installs the release (see update.sh).
+helper=0
+if [ -f "$here/update.sh" ] && [ -f "$here/solstice-update.path" ] && [ -f "$here/solstice-update.service" ]; then
+  helper=1
+  install -d -o root -g root -m 0755 /usr/local/lib/solstice
+  install -m 0755 "$here/update.sh" /usr/local/lib/solstice/update.sh.new
+  mv -f /usr/local/lib/solstice/update.sh.new /usr/local/lib/solstice/update.sh
+  install -m 0644 "$here/solstice-update.path" /etc/systemd/system/solstice-update.path
+  install -m 0644 "$here/solstice-update.service" /etc/systemd/system/solstice-update.service
+  for d in /var/lib/solstice/update /var/lib/solstice/backups; do
+    if [ -L "$d" ] || { [ -e "$d" ] && [ ! -d "$d" ]; }; then rm -f "$d"; fi
+  done
+  install -d -o root -g solstice -m 1770 /var/lib/solstice/update
+  install -d -o root -g root -m 0700 /var/lib/solstice/backups
+  chown root:solstice /var/lib/solstice/update
+  chmod 1770 /var/lib/solstice/update
+  chown root:root /var/lib/solstice/backups
+  chmod 0700 /var/lib/solstice/backups
+fi
 systemctl daemon-reload
+if [ $helper -eq 1 ]; then
+  systemctl enable solstice-update.path
+  systemctl restart solstice-update.path
+  # The marker tells Solstice that it can update itself.
+  marker=$(mktemp /var/lib/solstice/update/.helper.XXXXXX)
+  say "solstice-update 1" > "$marker"
+  chmod 0644 "$marker"
+  mv -f "$marker" /var/lib/solstice/update/helper
+fi
 # A stale code from a previous start must not be shown: Solstice writes a new one.
 rm -f /var/lib/solstice/setup-code
 if [ $upgrade -eq 1 ]; then

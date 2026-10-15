@@ -14,7 +14,8 @@ import (
 // CookieName is the session cookie.
 const CookieName = "solstice_session"
 
-// SessionLifetime is how long a sign-in lasts.
+// SessionLifetime is how long a sign-in lasts by default (administrators
+// may choose another lifetime: NewSessionFor).
 const SessionLifetime = 30 * 24 * time.Hour
 
 // User is the signed-in user attached to a request.
@@ -38,15 +39,20 @@ func tokenHash(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// NewSession opens a session and returns its token.
+// NewSession opens a session of the default lifetime and returns its token.
 func NewSession(ctx context.Context, db *sql.DB, userID int64) (string, time.Time, error) {
+	return NewSessionFor(ctx, db, userID, SessionLifetime)
+}
+
+// NewSessionFor opens a session lasting lifetime and returns its token.
+func NewSessionFor(ctx context.Context, db *sql.DB, userID int64, lifetime time.Duration) (string, time.Time, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", time.Time{}, err
 	}
 	token := base64.RawURLEncoding.EncodeToString(raw)
 	now := time.Now().UTC()
-	expires := now.Add(SessionLifetime)
+	expires := now.Add(lifetime)
 	_, err := db.ExecContext(ctx, `INSERT INTO sessions (token_hash, user_id, created_at, expires_at)
 		VALUES (?, ?, ?, ?)`, tokenHash(token), userID, now, expires)
 	return token, expires, err

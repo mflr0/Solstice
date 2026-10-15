@@ -3,6 +3,16 @@
  * links, bookmarks and e-mails keep working after the move.
  */
 
+import {
+  accountPath,
+  accountSectionOf,
+  ADMIN_ITEM_SECTIONS,
+  adminPath,
+  adminSectionOf,
+  type AccountSection,
+  type AdminSection,
+} from './areas.js';
+
 export type Route =
   | { name: 'login' }
   | { name: 'home' }
@@ -12,7 +22,8 @@ export type Route =
   | { name: 'search' }
   | { name: 'issue'; key: string }
   | { name: 'person'; username: string }
-  | { name: 'adminUsers' }
+  | { name: 'admin'; section: AdminSection; item: string | null }
+  | { name: 'account'; section: AccountSection }
   | { name: 'themes' }
   | { name: 'boards' }
   | { name: 'board'; id: number }
@@ -47,12 +58,21 @@ export function matchRoute(pathname: string): Route {
       if (a === 'issues') return { name: 'search' };
       if (a === 'themes') return { name: 'themes' };
       if (a === 'boards') return { name: 'boards' };
+      if (a === 'admin') return { name: 'admin', section: 'overview', item: null };
+      if (a === 'settings') return { name: 'account', section: 'profile' };
       break;
     case 2:
       if (a === 'browse' && b) return { name: 'issue', key: b.toUpperCase() };
       if (a === 'projects' && b) return { name: 'project', key: b.toUpperCase() };
       if (a === 'people' && b) return { name: 'person', username: b };
-      if (a === 'admin' && b === 'users') return { name: 'adminUsers' };
+      if (a === 'admin' && b) {
+        const section = adminSectionOf(b);
+        if (section) return { name: 'admin', section, item: null };
+      }
+      if (a === 'settings' && b) {
+        const section = accountSectionOf(b);
+        if (section) return { name: 'account', section };
+      }
       if (a === 'boards' && boardId(b)) return { name: 'board', id: Number(b) };
       if (a === 'secure' && (b === 'RapidBoard.jspa' || b === 'RapidView.jspa')) {
         return { name: 'legacyBoard' };
@@ -67,6 +87,12 @@ export function matchRoute(pathname: string): Route {
       }
       if (a === 'boards' && boardId(b) && c === 'settings') {
         return { name: 'boardSettings', id: Number(b) };
+      }
+      if (a === 'admin' && b && c) {
+        const section = adminSectionOf(b);
+        if (section && ADMIN_ITEM_SECTIONS.includes(section)) {
+          return { name: 'admin', section, item: c };
+        }
       }
       break;
   }
@@ -83,7 +109,8 @@ export const paths = {
   search: (q?: string) => (q ? `/issues?q=${encodeURIComponent(q)}` : '/issues'),
   issue: (key: string) => `/browse/${encodeURIComponent(key)}`,
   person: (username: string) => `/people/${encodeURIComponent(username)}`,
-  adminUsers: () => '/admin/users',
+  admin: adminPath,
+  account: accountPath,
   themes: () => '/themes',
   boards: (project?: string) =>
     project ? `/boards?project=${encodeURIComponent(project)}` : '/boards',

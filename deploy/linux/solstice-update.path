@@ -1,0 +1,12 @@
+[Unit]
+Description=Solstice update requests
+Documentation=https://github.com/mflr0/Solstice
+
+# Solstice (the unprivileged web process) writes this file when an
+# administrator asks for an update; the helper takes it from there.
+[Path]
+PathExists=/var/lib/solstice/update/request
+Unit=solstice-update.service
+
+[Install]
+WantedBy=paths.target

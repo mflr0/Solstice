@@ -37,6 +37,11 @@ type Service struct {
 
 	// BaseURL is the public address for links; empty leaves links out.
 	BaseURL func() string
+	// Zone is the time zone of hours (digests, reminders, subscriptions);
+	// by default the one given to New. DefaultLocale is the language of
+	// e-mails to people who chose none (by default French).
+	Zone          func() *time.Location
+	DefaultLocale func() string
 	// Window is how long changes to an issue wait for more before being
 	// mailed; MaxWait bounds the wait when changes keep coming.
 	Window, MaxWait time.Duration
@@ -53,7 +58,16 @@ type Service struct {
 func New(db *sql.DB, perms *perm.Store, outbox *mail.Outbox, tz *time.Location, log *slog.Logger,
 	config func(context.Context) (mail.Config, error), search Searcher) *Service {
 	return &Service{db: db, perms: perms, outbox: outbox, log: log, tz: tz, config: config, search: search,
-		BaseURL: func() string { return "" }, Window: 2 * time.Minute, MaxWait: 10 * time.Minute, Now: time.Now}
+		BaseURL: func() string { return "" }, Window: 2 * time.Minute, MaxWait: 10 * time.Minute, Now: time.Now,
+		Zone: func() *time.Location { return tz }, DefaultLocale: func() string { return "" }}
+}
+
+// zone is the time zone in effect.
+func (s *Service) zone() *time.Location {
+	if tz := s.Zone(); tz != nil {
+		return tz
+	}
+	return time.Local
 }
 
 // mailEnabled tells whether e-mail is on, from a short-lived cache: it is
@@ -373,7 +387,7 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	sendAt := now.Add(s.Window)
 	if digest {
 		batchIssue = 0
-		sendAt = nextAt(now, s.tz, p.DigestHour, nil)
+		sendAt = nextAt(now, s.zone(), p.DigestHour, nil)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

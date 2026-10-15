@@ -34,10 +34,14 @@ type Options struct {
 	JiraHome string
 	// DataDir is Solstice's data directory (attachments go to DataDir/attachments).
 	DataDir string
-	// Replace wipes Solstice's existing data first. Without it, a non-empty
-	// Solstice database is refused.
+	// Replace wipes Solstice's existing data first, keeping its own
+	// configuration (see keep.go). Without it, a non-empty Solstice database
+	// is refused.
 	Replace bool
-	Log     *slog.Logger
+	// Operator is the user name of the administrator who started the import
+	// from Solstice: they keep their account, password and rights.
+	Operator string
+	Log      *slog.Logger
 	// Progress, when set, is told how the import advances: as each phase
 	// starts, now and then while it copies rows, and once at the end. It runs
 	// on the importing goroutine and must return quickly.
@@ -84,6 +88,9 @@ func (r *Report) warn(format string, args ...any) {
 	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
 }
 
+// ErrBusy means another import into the same database is running.
+var ErrBusy = errors.New("another import into this database is running")
+
 // Run performs the import into target.
 func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 	if opt.SourceTZ == nil {
@@ -109,6 +116,16 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		return nil, err
 	}
 	defer dst.Close()
+	// One import at a time per database, whichever process runs it.
+	var locked sql.NullInt64
+	if err := dst.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('solstice-import:', DATABASE()), 0)").Scan(&locked); err != nil {
+		return nil, err
+	}
+	if locked.Int64 != 1 {
+		return nil, ErrBusy
+	}
+	defer dst.QueryRowContext(context.WithoutCancel(ctx), "SELECT RELEASE_LOCK(CONCAT('solstice-import:', DATABASE()))").
+		Scan(&locked)
 	if _, err := dst.ExecContext(ctx, "SET SESSION foreign_key_checks = 0"); err != nil {
 		return nil, err
 	}
@@ -123,7 +140,8 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		opt:    opt,
 		rep:    &Report{},
 	}
-	if err := r.prepareTarget(); err != nil {
+	k, err := r.prepareTarget()
+	if err != nil {
 		return nil, err
 	}
 	steps := []struct {
@@ -151,14 +169,29 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		{"boards and sprints", r.importBoards},
 	}
 	r.phases = len(steps)
+	var runErr error
 	for i, s := range steps {
 		r.phase, r.done = s.name, i
 		r.progress(true)
 		start := time.Now()
 		if err := s.fn(); err != nil {
-			return r.rep, fmt.Errorf("%s: %w", s.name, err)
+			runErr = fmt.Errorf("%s: %w", s.name, err)
+			break
 		}
 		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
+	}
+	// Solstice's own data goes back even after a failure: the operator must
+	// still be able to sign in and try again.
+	r.ctx = context.WithoutCancel(ctx)
+	if err := r.putBack(k); err != nil {
+		if runErr == nil {
+			runErr = fmt.Errorf("restoring Solstice's own data: %w", err)
+		} else {
+			opt.Log.Error("restoring Solstice's own data failed", "err", err)
+		}
+	}
+	if runErr != nil {
+		return r.rep, runErr
 	}
 	r.phase, r.done = "", len(steps)
 	r.progress(true)
@@ -234,41 +267,45 @@ type issueRef struct {
 	num     int64
 }
 
-// prepareTarget refuses to import over existing data unless Replace is set,
-// in which case every table is emptied.
-func (r *run) prepareTarget() error {
+// prepareTarget refuses to import over existing data unless Replace is set.
+// It saves what Solstice keeps (keep.go), then empties every other table,
+// default catalogues of a fresh instance included.
+func (r *run) prepareTarget() (*kept, error) {
 	var n int
 	if err := r.dst.QueryRowContext(r.ctx,
 		"SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM projects)").Scan(&n); err != nil {
-		return fmt.Errorf("the Solstice database is not initialised (run solstice migrate): %w", err)
+		return nil, fmt.Errorf("the Solstice database is not initialised (run solstice migrate): %w", err)
 	}
-	if n == 0 {
-		return nil
+	if n > 0 && !r.opt.Replace {
+		return nil, errors.New("the Solstice database already holds data; use -replace to overwrite it")
 	}
-	if !r.opt.Replace {
-		return errors.New("the Solstice database already holds data; use -replace to overwrite it")
+	k, err := r.keep()
+	if err != nil {
+		return nil, err
 	}
 	rows, err := r.dst.QueryContext(r.ctx, `SELECT table_name FROM information_schema.tables
-		WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'`)
+		WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var tables []string
 	for rows.Next() {
 		var t string
 		if err := rows.Scan(&t); err != nil {
 			rows.Close()
-			return err
+			return nil, err
 		}
-		tables = append(tables, t)
+		if !slices.Contains(keptTables, t) {
+			tables = append(tables, t)
+		}
 	}
 	rows.Close()
 	for _, t := range tables {
 		if _, err := r.dst.ExecContext(r.ctx, "TRUNCATE TABLE `"+t+"`"); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return k, nil
 }
 
 // each runs a query on the Jira database and calls scan for every row.

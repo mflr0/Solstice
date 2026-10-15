@@ -69,6 +69,34 @@ func (f *settingFlags) load() (c *config.Config, fixed map[string]bool, err erro
 	return c, fixed, nil
 }
 
+// configSources tells where each setting in effect comes from, for the
+// administration's system page: env, flag, file or default. baseURL and tz
+// are the values in effect, which the setup wizard may have just written.
+func configSources(c *config.Config, fixed map[string]bool, baseURL string, tz *time.Location) map[string]string {
+	defaults := map[string]string{config.KeyData: config.DefaultData, config.KeyAddr: config.DefaultAddr}
+	out := map[string]string{}
+	for _, k := range config.Keys {
+		v := c.Get(k)
+		switch {
+		case c.FromEnv[k]:
+			out[k] = "env"
+		case fixed[k]:
+			out[k] = "flag"
+		case v == "" || v == defaults[k]:
+			out[k] = "default"
+		default:
+			out[k] = "file"
+		}
+	}
+	if out[config.KeyBaseURL] == "default" && baseURL != "" {
+		out[config.KeyBaseURL] = "file"
+	}
+	if out[config.KeyTZ] == "default" && tz != nil && tz != time.Local {
+		out[config.KeyTZ] = "file"
+	}
+	return out
+}
+
 // requireDB is for the commands that cannot run without a database.
 func requireDB(c *config.Config) error {
 	if c.DB == "" {

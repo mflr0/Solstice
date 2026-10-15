@@ -78,9 +78,10 @@ type level struct {
 
 // rules are the grants of every project, shared by all requests.
 type rules struct {
-	grants map[int64]map[string][]Grant // project → permission → grants
-	leads  map[int64]int64              // project → lead user id
-	levels map[int64]level
+	grants   map[int64]map[string][]Grant // project → permission → grants
+	leads    map[int64]int64              // project → lead user id
+	archived map[int64]bool               // archived projects: read-only
+	levels   map[int64]level
 }
 
 // rulesTTL bounds how long rules are cached: an import run by another
@@ -115,9 +116,10 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
 	r := &rules{
-		grants: map[int64]map[string][]Grant{},
-		leads:  map[int64]int64{},
-		levels: map[int64]level{},
+		grants:   map[int64]map[string][]Grant{},
+		leads:    map[int64]int64{},
+		archived: map[int64]bool{},
+		levels:   map[int64]level{},
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT project_id, permission, holder,
 		COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0) FROM project_permissions`)
@@ -142,17 +144,21 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 		return nil, err
 	}
 
-	rows, err = s.db.QueryContext(ctx, `SELECT id, COALESCE(lead_id, 0) FROM projects`)
+	rows, err = s.db.QueryContext(ctx, `SELECT id, COALESCE(lead_id, 0), archived FROM projects`)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var project, lead int64
-		if err := rows.Scan(&project, &lead); err != nil {
+		var archived bool
+		if err := rows.Scan(&project, &lead, &archived); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		r.leads[project] = lead
+		if archived {
+			r.archived[project] = true
+		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -278,7 +284,11 @@ func (s *Subject) holds(g Grant, project int64, is *Issue) bool {
 
 // Can reports whether the subject has permission p in a project, or on an
 // issue when is is not nil. Any action on an issue also requires seeing it.
+// An archived project is read-only: only Browse is ever granted there.
 func (s *Subject) Can(p string, project int64, is *Issue) bool {
+	if p != Browse && s.rules.archived[project] {
+		return false
+	}
 	if !s.granted(p, project, is) {
 		return false
 	}
@@ -432,6 +442,9 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 func marks(n int) string {
 	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }
+
+// Archived reports whether a project is archived.
+func (s *Subject) Archived(project int64) bool { return s.rules.archived[project] }
 
 // InGroup reports whether the subject belongs to a group.
 func (s *Subject) InGroup(group int64) bool { return s.groups[group] }

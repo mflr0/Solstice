@@ -11,7 +11,8 @@
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
   import Notes from './Notes.svelte';
-  import AdminUsersPage from './pages/AdminUsersPage.svelte';
+  import AccountArea from './account/AccountArea.svelte';
+  import AdminArea from './admin/AdminArea.svelte';
   import BacklogPage from './pages/BacklogPage.svelte';
   import BoardPage from './pages/BoardPage.svelte';
   import BoardSettingsPage from './pages/BoardSettingsPage.svelte';
@@ -24,6 +25,7 @@
   import ProjectSettingsPage from './pages/ProjectSettingsPage.svelte';
   import ProjectsPage from './pages/ProjectsPage.svelte';
   import SearchPage from './pages/SearchPage.svelte';
+  import ShellBanner from './ShellBanner.svelte';
   import ThemesPage from './pages/ThemesPage.svelte';
   import TopBar from './TopBar.svelte';
 
@@ -102,6 +104,7 @@
 {:else}
   <div class="app-shell">
     <TopBar {project} />
+    <ShellBanner />
     <main class="app-main">
       {#if route.name === 'home'}
         <HomePage />
@@ -117,8 +120,10 @@
         <IssuePage issueKey={route.key} />
       {:else if route.name === 'person'}
         {#key route.username}<PersonPage username={route.username} />{/key}
-      {:else if route.name === 'adminUsers'}
-        <AdminUsersPage />
+      {:else if route.name === 'admin'}
+        <AdminArea section={route.section} item={route.item} />
+      {:else if route.name === 'account'}
+        <AccountArea section={route.section} />
       {:else if route.name === 'themes'}
         <ThemesPage />
       {:else if route.name === 'boards'}

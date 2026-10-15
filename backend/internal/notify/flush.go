@@ -127,6 +127,9 @@ func (s *Service) recipientOf(ctx context.Context, userID int64) (*recipient, er
 	}
 	locale := u.Locale
 	if !i18n.Supported(locale) {
+		locale = s.DefaultLocale()
+	}
+	if !i18n.Supported(locale) {
 		locale = i18n.Default
 	}
 	return &recipient{user: u, locale: locale, sub: sub}, nil
@@ -253,7 +256,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 				created = true
 			}
 			en := entry{Headline: headline(loc, it, actorName(loc, actors[it.ActorID]), cur, userID),
-				When: formatTime(loc, it.At.In(s.tz))}
+				When: formatTime(loc, it.At.In(s.zone()))}
 			for _, l := range it.Lines {
 				if l.Field == "" {
 					continue
@@ -309,7 +312,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 	msg := &mail.Message{UserID: userID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
 	if digest {
 		msg.Kind = "digest"
-		p.Heading = i18n.M("Vos notifications du %s", formatDate(loc, s.Now().In(s.tz))).In(loc)
+		p.Heading = i18n.M("Vos notifications du %s", formatDate(loc, s.Now().In(s.zone()))).In(loc)
 		msg.Subject = p.Heading
 		s.footer(p, i18n.M("Vous recevez ce résumé quotidien d'après vos préférences de notification.").In(loc))
 	} else {

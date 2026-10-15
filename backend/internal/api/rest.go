@@ -365,7 +365,7 @@ type restOut struct {
 }
 
 func (s *Server) restOut(r *http.Request) *restOut {
-	base := s.baseURL
+	base := s.base()
 	if base == "" {
 		scheme := "http"
 		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
@@ -376,12 +376,13 @@ func (s *Server) restOut(r *http.Request) *restOut {
 	return &restOut{base: base, api: base + "/rest/api/2", locale: locale(r), tz: s.zone()}
 }
 
-// zone is the time zone of dates typed or shown without one (SOLSTICE_TZ).
+// zone is the time zone of dates typed or shown without one: the
+// instance's setting (initially SOLSTICE_TZ).
 func (s *Server) zone() *time.Location {
-	if s.tz == nil {
-		return time.UTC
+	if loc := s.general(context.Background()).loc; loc != nil {
+		return loc
 	}
-	return s.tz
+	return time.UTC
 }
 
 // jiraTimeLayout is how Jira writes instants: "2026-10-15T09:12:00.000+0200".

@@ -38,6 +38,9 @@ type Server struct {
 	catMu   sync.Mutex
 	catalog *catalog
 	catAt   time.Time
+
+	adm adminState // instance settings, system page, imports (admin_*.go)
+	upd updater    // release checks and the update helper (updates.go)
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time
@@ -45,6 +48,7 @@ type Server struct {
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
 		limiter: auth.NewLimiter()}
+	s.adm.started = time.Now()
 	s.startOutgoing()
 	return s
 }
@@ -139,6 +143,13 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// E-mail notifications, filter subscriptions, webhooks.
 	s.notificationRoutes(route)
 
+	// Instance settings, projects, catalogues, custom fields, groups, roles,
+	// system information and Jira import, configured in the interface.
+	s.adminRoutes(route)
+
+	// Release checks and updates through the root helper.
+	s.updateRoutes(route)
+
 	// The setup wizard is over: it only learns so.
 	route("GET /api/setup/status", s.setupDone, false)
 	mux.Handle("/api/setup/", s.wrap(func(http.ResponseWriter, *http.Request) error { return errInstalled }, false))
@@ -147,7 +158,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 		return fail(http.StatusNotFound, "Adresse inconnue.")
 	}, false))
 	mux.Handle("/", static)
-	return securityHeaders(mux)
+	return securityHeaders(s.instanceMiddleware(mux))
 }
 
 // Mutating requests must carry this header. Browsers refuse to send custom
@@ -291,13 +302,17 @@ func writeJSON(w http.ResponseWriter, status int, v any) error {
 }
 
 // locale is the language of the answer: the first supported language of
-// Accept-Language, else the signed-in user's choice, else French.
+// Accept-Language, else the signed-in user's choice, else the instance's
+// default language, else French.
 func locale(r *http.Request) string {
 	if l := i18n.Negotiate(r.Header.Get("Accept-Language")); l != "" {
 		return l
 	}
 	if u := currentUser(r); u != nil && u.Locale != "" {
 		return u.Locale
+	}
+	if l := requestDefaultLanguage(r); l != "" {
+		return l
 	}
 	return i18n.Default
 }
@@ -334,9 +349,10 @@ type statusRef struct {
 }
 
 type priorityRef struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color,omitempty"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Color   string `json:"color,omitempty"`
+	Default bool   `json:"default,omitempty"` // of issues created without one
 }
 
 type namedRef struct {
@@ -394,9 +410,9 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, COALESCE(color, '') FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = scanAll(ctx, s.db, `SELECT id, name, COALESCE(color, ''), is_default FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v priorityRef
-		if err := rows.Scan(&v.ID, &v.Name, &v.Color); err != nil {
+		if err := rows.Scan(&v.ID, &v.Name, &v.Color, &v.Default); err != nil {
 			return err
 		}
 		c.Priorities = append(c.Priorities, v)

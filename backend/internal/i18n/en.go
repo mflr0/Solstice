@@ -16,7 +16,6 @@ var en = map[string]string{
 	"Identifiant ou mot de passe incorrect.":                          "Incorrect username or password.",
 	"Identifiant invalide : lettres minuscules, chiffres, . _ @ -":    "Invalid username: use lowercase letters, digits and . _ @ -",
 	"Cet identifiant existe déjà.":                                    "This username is already taken.",
-	"Le mot de passe doit faire au moins 10 caractères.":              "The password must be at least 10 characters long.",
 	"Vous ne pouvez pas retirer vos propres droits d'administration.": "You cannot remove your own administrator rights.",
 	"Langue non prise en charge (au choix : %s).":                     "Unsupported language (choose from: %s).",
 

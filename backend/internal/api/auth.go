@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
@@ -43,8 +44,12 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	token, expires, err := auth.NewSession(r.Context(), s.db, u.ID)
+	token, expires, err := auth.NewSessionFor(r.Context(), s.db, u.ID, s.sessionLifetime(r.Context()))
 	if err != nil {
+		return err
+	}
+	if _, err := s.db.ExecContext(r.Context(), `UPDATE users SET last_login_at = ? WHERE id = ?`,
+		time.Now().UTC(), u.ID); err != nil {
 		return err
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -53,7 +58,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   secureRequest(r, s.baseURL),
+		Secure:   secureRequest(r, s.base()),
 		SameSite: http.SameSiteLaxMode,
 	})
 	s.auditLogin(r, in.Username, u, "form")
@@ -76,28 +81,88 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meOf(currentUser(r)))
 }
 
-// updateMe changes the user's own settings: the interface language, one of
-// i18n.Locales, or null to have none.
+// updateMe changes the user's own profile: name, e-mail address,
+// interface language (one of i18n.Locales, or null to have none) and
+// password, which takes the current one. Fields left out keep their value.
 func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
-		Locale json.RawMessage `json:"locale"`
+		Name            *string         `json:"name"`
+		Email           *string         `json:"email"`
+		Locale          json.RawMessage `json:"locale"`
+		CurrentPassword *string         `json:"currentPassword"`
+		NewPassword     *string         `json:"newPassword"`
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
+	ctx := r.Context()
 	u := currentUser(r)
+	sets := map[string]any{}
+	if in.Name != nil {
+		name, err := cleanName(*in.Name, 255)
+		if err != nil {
+			return err
+		}
+		sets["display_name"] = name
+	}
+	if in.Email != nil {
+		email := strings.TrimSpace(*in.Email)
+		if email != "" && !validEmail(email) {
+			return fail(http.StatusBadRequest, "Adresse e-mail invalide.")
+		}
+		sets["email"] = email
+	}
 	if in.Locale != nil {
 		var l *string
 		if err := json.Unmarshal(in.Locale, &l); err != nil || (l != nil && !i18n.Supported(*l)) {
 			return failf(http.StatusBadRequest, "Langue non prise en charge (au choix : %s).", strings.Join(i18n.Locales, ", "))
 		}
-		if _, err := s.db.ExecContext(r.Context(), `UPDATE users SET locale = ? WHERE id = ?`, l, u.ID); err != nil {
+		sets["locale"] = l
+	}
+	if in.NewPassword != nil {
+		if u.TokenID != 0 {
+			return fail(http.StatusForbidden, "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.")
+		}
+		if in.CurrentPassword == nil || *in.CurrentPassword == "" {
+			return fail(http.StatusBadRequest, "Indiquez votre mot de passe actuel.")
+		}
+		if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
 			return err
 		}
-		u.Locale = ""
-		if l != nil {
-			u.Locale = *l
+		if _, err := s.checkPassword(r, u.Username, *in.CurrentPassword); errors.Is(err, auth.ErrNoSession) {
+			return fail(http.StatusBadRequest, "Mot de passe actuel incorrect.")
+		} else if err != nil {
+			return err
 		}
 	}
-	return writeJSON(w, http.StatusOK, meOf(u))
+	before, err := s.userSnapshot(ctx, u.ID)
+	if err != nil {
+		return err
+	}
+	for column, v := range sets {
+		if _, err := s.db.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
+			return err
+		}
+	}
+	if in.NewPassword != nil {
+		if err := auth.SetPassword(ctx, s.db, u.ID, *in.NewPassword); err != nil {
+			return err
+		}
+		// The other sign-ins end; this one goes on.
+		current := ""
+		if c, err := r.Cookie(auth.CookieName); err == nil {
+			current = tokenKey(c.Value)
+		}
+		if err := s.endSessions(ctx, u.ID, current); err != nil {
+			return err
+		}
+	}
+	s.auditUserChange(r, u.ID, before, in.NewPassword != nil)
+	var me auth.User
+	if err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
+		FROM users WHERE id = ?`, u.ID).Scan(&me.ID, &me.Username, &me.DisplayName, &me.Email, &me.Admin,
+		&me.Locale); err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, meOf(&me))
 }

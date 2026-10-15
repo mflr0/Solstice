@@ -6,6 +6,7 @@
   import { outside } from '../lib/actions.js';
   import { chooseLocale } from '../lib/locale.js';
   import { live } from '../lib/live.svelte.js';
+  import { publicSettings } from '../lib/public-settings.svelte.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
@@ -20,6 +21,11 @@
   const { project }: Props = $props();
 
   let menuOpen = $state(false);
+  /** The instance's own name, when the administrators gave it one. */
+  const instanceName = $derived.by(() => {
+    const n = publicSettings.value.instanceName.trim();
+    return n && n !== t.appName ? n : '';
+  });
   let nav: HTMLElement | undefined = $state();
   const section = $derived.by(() => {
     switch (router.route.name) {
@@ -57,6 +63,7 @@
     <a class="brand" href={paths.home()}>
       <Logo />
       <span class="wordmark">{t.appName}</span>
+      {#if instanceName}<span class="instance-name">{instanceName}</span>{/if}
     </a>
 
     <nav class="topbar-nav" bind:this={nav} aria-label={t.common.mainNav}>
@@ -135,12 +142,18 @@
               href={paths.person(session.me.username)}
               onclick={() => (menuOpen = false)}>{t.nav.myPage}</a
             >
+            <a
+              class="item"
+              role="menuitem"
+              href={paths.account('profile')}
+              onclick={() => (menuOpen = false)}>{t.account.menu}</a
+            >
             {#if session.me.admin}
               <a
                 class="item"
                 role="menuitem"
-                href={paths.adminUsers()}
-                onclick={() => (menuOpen = false)}>{t.nav.admin}</a
+                href={paths.admin('overview')}
+                onclick={() => (menuOpen = false)}>{t.adminArea.title}</a
               >
             {/if}
             <div class="sep"></div>
@@ -200,6 +213,24 @@
 </header>
 
 <style>
+  .instance-name {
+    align-self: center;
+    max-width: 18ch;
+    overflow: hidden;
+    padding-left: 8px;
+    border-left: 1px solid currentColor;
+    font: 500 12.5px/1.2 var(--font-body);
+    color: var(--bar-ink-soft);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 860px) {
+    .instance-name {
+      display: none;
+    }
+  }
+
   .account-menu .who {
     display: grid;
     gap: 2px;

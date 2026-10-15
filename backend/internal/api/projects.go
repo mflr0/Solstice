@@ -19,7 +19,9 @@ type projectOut struct {
 	Kind        string   `json:"kind"`
 	Lead        *userRef `json:"lead"`
 	Category    *string  `json:"category"`
+	CategoryID  *int64   `json:"categoryId"`
 	Open        int      `json:"open"`
+	Archived    bool     `json:"archived"`
 }
 
 // projectRow loads a project by key (or a former key).
@@ -56,18 +58,23 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 	var list []projectOut
 	var leads []int64
 	leadOf := map[int64]sql.NullInt64{}
-	if err := scanAll(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.name FROM projects p
+	// Archived projects only when asked for.
+	withArchived := r.URL.Query().Get("archived") == "1" || r.URL.Query().Get("archived") == "true"
+	if err := scanAll(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived FROM projects p
 		LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.name`, func(rows *sql.Rows) error {
 		var p projectOut
-		var lead sql.NullInt64
+		var lead, categoryID sql.NullInt64
 		var category sql.NullString
-		if err := rows.Scan(&p.ID, &p.Key, &p.Name, &p.Kind, &lead, &category); err != nil {
+		if err := rows.Scan(&p.ID, &p.Key, &p.Name, &p.Kind, &lead, &categoryID, &category, &p.Archived); err != nil {
 			return err
 		}
-		if !sub.CanBrowseProject(p.ID) {
+		if !sub.CanBrowseProject(p.ID) || (p.Archived && !withArchived) {
 			return nil
 		}
 		p.Category = nullStr(category)
+		if categoryID.Valid {
+			p.CategoryID = &categoryID.Int64
+		}
 		p.Open = open[p.ID]
 		leadOf[p.ID] = lead
 		leads = append(leads, lead.Int64)
@@ -121,15 +128,19 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var p projectOut
-	var lead sql.NullInt64
+	var lead, categoryID sql.NullInt64
 	var desc, category sql.NullString
 	var defaultAssignee string
-	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.kind, p.lead_id, c.name,
-		p.default_assignee FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &category, &defaultAssignee); err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.kind, p.lead_id, c.id, c.name,
+		p.default_assignee, p.archived FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id
+		WHERE p.id = ?`, id).
+		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
 		return err
 	}
 	p.Description, p.Category = nullStr(desc), nullStr(category)
+	if categoryID.Valid {
+		p.CategoryID = &categoryID.Int64
+	}
 	users, err := s.users(ctx, lead.Int64)
 	if err != nil {
 		return err

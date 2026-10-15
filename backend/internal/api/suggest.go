@@ -202,7 +202,8 @@ func (s *Server) projectParts(table string) handler {
 		if table == "versions" {
 			cols, order = "x.archived, x.released", "x.released, COALESCE(x.release_date, '9999-12-31') DESC, x.name"
 		}
-		where, args := "LOWER(x.name) LIKE ?", []any{"%" + escapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
+		// Archived projects stay out of pickers.
+		where, args := "LOWER(x.name) LIKE ? AND NOT p.archived", []any{"%" + escapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
 		if key := r.URL.Query().Get("project"); key != "" {
 			where += " AND p.pkey = ?"
 			args = append(args, strings.ToUpper(key))

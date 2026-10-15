@@ -932,6 +932,83 @@ export const it: Messages = {
     back: 'Torna al mio lavoro',
   },
 
+  updates: {
+    title: 'Aggiornamenti',
+    eyebrow: 'Amministrazione',
+    forbidden: 'Questa pagina è riservata agli amministratori.',
+    current: 'Versione installata',
+    latest: 'Ultima versione pubblicata',
+    install: 'Installazione',
+    installs: {
+      systemd: 'Servizio Linux (systemd)',
+      docker: 'Container Docker',
+      manual: 'Installazione manuale',
+    },
+    dev: 'versione di sviluppo',
+    none: 'Nessuna versione pubblicata per ora',
+    published: (day: string) => `pubblicata il ${day}`,
+    releasePage: 'Vedi la pubblicazione su GitHub',
+    checked: (when: string) => `Ultimo controllo: ${when}`,
+    neverChecked: 'Mai controllato',
+    checkNow: 'Controlla ora',
+    checking: 'Controllo in corso…',
+    checkErrors: {
+      unreachable: 'GitHub non risponde da questo server.',
+      refused: 'GitHub ha rifiutato la richiesta: riprova più tardi.',
+      invalid: 'La risposta di GitHub è illeggibile.',
+    },
+    upToDate: 'Solstice è aggiornato.',
+    available: (version: string) => `La versione ${version} è disponibile.`,
+    devNote: 'Una versione di sviluppo non propone aggiornamenti.',
+    notes: 'Note di rilascio',
+    noNotes: 'Questa versione non ha note.',
+    apply: (version: string) => `Aggiorna a v${version}`,
+    applyHint:
+      'Solstice scarica la versione da GitHub, ne verifica l’impronta, salva il database e si riavvia. Se la nuova versione non parte, viene ripristinata quella precedente.',
+    confirmBody:
+      'Solstice resterà non disponibile per qualche secondo durante il riavvio. Le sessioni aperte restano attive.',
+    password: 'La tua password',
+    passwordHint: 'Per confermare che sei proprio tu.',
+    start: 'Avvia l’aggiornamento',
+    requested: 'Aggiornamento richiesto.',
+    docker: 'Sul server, nella cartella dei sorgenti di Solstice:',
+    dockerHint:
+      'L’immagine viene ricostruita e il container riavviato; i dati restano nei loro volumi.',
+    manualLinux:
+      'Sul server, scarica l’archivio e rilancia l’installazione; configurazione e dati vengono mantenuti:',
+    manualLinuxHint:
+      'L’installazione configura anche il servizio di aggiornamento: le prossime versioni si installeranno da questa pagina.',
+    manualOther:
+      'Scarica l’archivio per il tuo sistema, sostituisci il programma solstice con quello contenuto, poi riavvia Solstice.',
+    download: 'Scarica l’archivio',
+    last: 'Ultimo aggiornamento',
+    fromTo: (from: string, to: string) => `${from} → ${to}`,
+    statuses: {
+      pending: 'In attesa',
+      running: 'In corso',
+      ok: 'Riuscito',
+      rolled_back: 'Annullato',
+      failed: 'Non riuscito',
+    },
+    statusHints: {
+      pending: 'Il servizio di aggiornamento sta per prendere in carico la richiesta.',
+      running:
+        'Download, verifica, salvataggio, poi riavvio. Questa pagina si ricarica da sola.',
+      ok: 'La nuova versione è in funzione.',
+      rolled_back:
+        'La nuova versione non è partita: è stata ripristinata quella precedente. Il registro spiega perché.',
+      failed: 'L’aggiornamento non è riuscito. Il registro spiega perché.',
+    },
+    restarting: 'Solstice si sta riavviando…',
+    log: 'Registro',
+    auto: 'Controlla automaticamente le nuove versioni',
+    autoHint:
+      'Al massimo una volta ogni 12 ore, Solstice chiede a GitHub il numero dell’ultima versione. Nient’altro viene inviato.',
+    autoOn: 'Controllo automatico attivato.',
+    autoOff: 'Controllo automatico disattivato.',
+    badge: 'Aggiornamento disponibile',
+  },
+
   workflows: {
     tab: 'Workflow',
     rightsTab: 'Permessi e ruoli',

@@ -17,7 +17,6 @@ var it = map[string]string{
 	"Identifiant ou mot de passe incorrect.":                          "Nome utente o password errati.",
 	"Identifiant invalide : lettres minuscules, chiffres, . _ @ -":    "Nome utente non valido: usa lettere minuscole, cifre e . _ @ -",
 	"Cet identifiant existe déjà.":                                    "Questo nome utente esiste già.",
-	"Le mot de passe doit faire au moins 10 caractères.":              "La password deve contenere almeno 10 caratteri.",
 	"Vous ne pouvez pas retirer vos propres droits d'administration.": "Non puoi rimuovere i tuoi diritti di amministratore.",
 	"Langue non prise en charge (au choix : %s).":                     "Lingua non supportata (scegli tra: %s).",
 

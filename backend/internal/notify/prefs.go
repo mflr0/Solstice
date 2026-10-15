@@ -141,7 +141,7 @@ func (s *Service) SavePrefs(ctx context.Context, userID int64, p Prefs) error {
 		}
 	case Digest:
 		if _, err := tx.ExecContext(ctx, `UPDATE notification_batches SET send_at = ? WHERE user_id = ? AND digest`,
-			nextAt(s.Now(), s.tz, p.DigestHour, nil), userID); err != nil {
+			nextAt(s.Now(), s.zone(), p.DigestHour, nil), userID); err != nil {
 			return err
 		}
 	}

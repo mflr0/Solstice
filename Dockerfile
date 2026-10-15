@@ -29,9 +29,12 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=server /out/solstice /usr/local/bin/solstice
 # The data directory belongs to the unprivileged user, so a fresh volume does too.
 COPY --from=server --chown=65532:65532 /out/data /var/lib/solstice
+# SOLSTICE_INSTALL: the update page shows how to update a container (rebuild
+# the image) instead of offering to update in place.
 ENV SOLSTICE_DATA=/var/lib/solstice \
     SOLSTICE_CONFIG=/var/lib/solstice/solstice.conf \
-    SOLSTICE_ADDR=:8080
+    SOLSTICE_ADDR=:8080 \
+    SOLSTICE_INSTALL=docker
 VOLUME /var/lib/solstice
 EXPOSE 8080
 USER nonroot:nonroot
