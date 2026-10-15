@@ -32,6 +32,7 @@ import (
 	"solstice/internal/web"
 )
 
+// #nosec G101 -- usage text that names settings, not credentials
 const usage = `Usage: solstice <command> [options]
 
 Commands:
