@@ -262,6 +262,18 @@ scripts/                end-to-end import test, release archives
 - 1.1: dashboards and agile reports, bulk editing and keyboard shortcuts,
   LDAP/Active Directory and single sign-on.
 
+## Contributing and AI tools
+
+AI tools are welcome in contributions, under one rule: whoever submits a
+change owns it. Every pull request must be understood by its author, who has
+tested it and can explain any part of it. If a contribution turns out to be a
+problem (a bug, malicious code, a license violation), its author is held
+solely responsible, never the tool. Solstice itself is developed with the
+help of AI tools, under the same rule.
+
+The full rules, and what happens when they are broken, are in the
+[code of conduct](CODE_OF_CONDUCT.md).
+
 ## Trademarks
 
 Jira and Atlassian are trademarks of Atlassian. Solstice is an independent

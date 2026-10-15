@@ -282,6 +282,18 @@ scripts/                test d'import de bout en bout, archives de publication
   raccourcis clavier, annuaire LDAP/Active Directory et authentification
   unique.
 
+## Contributions et outils d'IA
+
+Les outils d'IA sont acceptés pour contribuer, à une condition : qui propose
+une modification en répond. Chaque pull request doit être comprise par son
+auteur, qui l'a testée et sait en expliquer n'importe quelle partie. Si une
+contribution pose problème (bug, code malveillant, licence non respectée),
+son auteur en est tenu pour seul responsable, jamais l'outil. Solstice est
+lui-même développé avec l'aide d'outils d'IA, selon la même règle.
+
+Les règles complètes, et ce qui se passe quand elles ne sont pas respectées,
+sont dans le [code de conduite](CODE_OF_CONDUCT.md) (en anglais).
+
 ## Marques
 
 Jira et Atlassian sont des marques d'Atlassian. Solstice est un projet
