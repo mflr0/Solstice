@@ -17,7 +17,10 @@
 
   /** The account follows the browser's language when it chose none. */
   const following = $derived(!session.me?.locale);
-  const browserLocale = negotiate(null, typeof navigator !== 'undefined' ? navigator.languages : []);
+  const browserLocale = negotiate(
+    null,
+    typeof navigator !== 'undefined' ? navigator.languages : [],
+  );
   let busy = $state(false);
 
   async function pick(l: Locale) {

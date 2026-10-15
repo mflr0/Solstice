@@ -432,7 +432,7 @@ type updateRequest struct {
 
 // readSmall reads a regular file of at most limit bytes.
 func readSmall(path string, limit int64) ([]byte, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path built by the server, not from user input
 	if err != nil {
 		return nil, err
 	}

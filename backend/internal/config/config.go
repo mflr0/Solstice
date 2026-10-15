@@ -121,7 +121,7 @@ func Load(path string, lookup func(string) (string, bool)) (*Config, error) {
 	c := &Config{Path: abs, FromEnv: map[string]bool{}}
 
 	values := map[string]string{}
-	f, err := os.Open(abs)
+	f, err := os.Open(abs) // #nosec G304 -- path built by the server, not from user input
 	switch {
 	case err == nil:
 		values, err = Parse(f)
@@ -227,7 +227,7 @@ func Update(path string, values map[string]string) error {
 			return fmt.Errorf("%s: %w", k, err)
 		}
 	}
-	old, err := os.ReadFile(path)
+	old, err := os.ReadFile(path) // #nosec G304 -- path built by the server, not from user input
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

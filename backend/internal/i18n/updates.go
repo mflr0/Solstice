@@ -13,7 +13,7 @@ func init() {
 	}
 }
 
-var updatesFR = map[string]string{
+var updatesFR = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"Incorrect password.": "Mot de passe incorrect.",
 	"This installation cannot be updated from the interface: follow the instructions on the page.": "Cette installation ne se met pas à jour depuis l'interface : suivez les instructions de la page.",
 	"This is not the latest release. Check for updates again.":                                     "Cette version n'est pas la dernière publiée : vérifiez à nouveau les mises à jour.",
@@ -21,7 +21,7 @@ var updatesFR = map[string]string{
 	"An update is already in progress.":                                                            "Une mise à jour est déjà en cours.",
 }
 
-var updatesDE = map[string]string{
+var updatesDE = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"Incorrect password.": "Falsches Passwort.",
 	"This installation cannot be updated from the interface: follow the instructions on the page.": "Diese Installation lässt sich nicht über die Oberfläche aktualisieren. Folgen Sie den Anweisungen auf der Seite.",
 	"This is not the latest release. Check for updates again.":                                     "Diese Version ist nicht die zuletzt veröffentlichte. Suchen Sie erneut nach Updates.",
@@ -37,7 +37,7 @@ var updatesIT = map[string]string{
 	"An update is already in progress.":                                                            "Un aggiornamento è già in corso.",
 }
 
-var updatesHI = map[string]string{
+var updatesHI = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"Incorrect password.": "पासवर्ड गलत है।",
 	"This installation cannot be updated from the interface: follow the instructions on the page.": "यह इंस्टॉलेशन इंटरफ़ेस से अपडेट नहीं होता। पेज पर दिए निर्देशों का पालन करें।",
 	"This is not the latest release. Check for updates again.":                                     "यह नवीनतम प्रकाशित वर्ज़न नहीं है। अपडेट दोबारा जाँचें।",

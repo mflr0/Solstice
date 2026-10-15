@@ -84,7 +84,7 @@ func decodeKey(s string) ([]byte, error) {
 // keyFile reads the key file, creating it if it does not exist yet. The file
 // holds the key in base64, so it can be copied into SOLSTICE_SECRET_KEY.
 func keyFile(path string) ([]byte, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) // #nosec G304 -- path built by the server, not from user input
 	if err == nil {
 		key, err := decodeKey(strings.TrimSpace(string(raw)))
 		if err != nil {
@@ -103,7 +103,7 @@ func keyFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	// O_EXCL: two processes starting together must not each write their own key.
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- path built by the server, not from user input
 	if errors.Is(err, os.ErrExist) {
 		return keyFile(path)
 	}

@@ -186,8 +186,7 @@ export const adminApi = {
 
 /** What a project administrator changes in a project (project settings). */
 export const projectAdminApi = {
-  settings: (key: string) =>
-    request<ProjectSettings>('GET', `/api/projects/${enc(key)}/settings`),
+  settings: (key: string) => request<ProjectSettings>('GET', `/api/projects/${enc(key)}/settings`),
   update: (key: string, patch: ProjectPatch) =>
     request<ProjectSettings>('PATCH', `/api/projects/${enc(key)}`, patch),
   roles: (key: string) => request<ProjectRole[]>('GET', `/api/projects/${enc(key)}/roles`),

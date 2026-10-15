@@ -45,7 +45,9 @@
   let dragged = $state<number | null>(null);
   let over = $state<number | null>(null);
 
-  const list = $derived((items ?? []).filter((i) => matches(q, i.name, i.description, i.outward, i.inward)));
+  const list = $derived(
+    (items ?? []).filter((i) => matches(q, i.name, i.description, i.outward, i.inward)),
+  );
   const canOrder = $derived(q.trim() === '' && !ordering);
   const targets = $derived(items && removing ? moveTargets(kind, items, removing) : []);
   const removingUsage = $derived(removing ? usageOf(removing) : 0);
@@ -175,7 +177,9 @@
       placeholder={t.catalogAdmin.search}
       aria-label={t.catalogAdmin.search}
     />
-    <span class="muted small">{canOrder || ordering ? t.catalogAdmin.orderHint : t.catalogAdmin.orderLocked}</span>
+    <span class="muted small"
+      >{canOrder || ordering ? t.catalogAdmin.orderHint : t.catalogAdmin.orderLocked}</span
+    >
   </div>
 
   {#if list.length === 0}
@@ -253,7 +257,8 @@
                       withName
                     />
                     {#if item.color}<span class="muted mono">{item.color}</span>{/if}
-                    {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span>{/if}
+                    {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span
+                      >{/if}
                   {:else}
                     <strong>{item.name}</strong>
                   {/if}
@@ -273,7 +278,8 @@
                   : usageText(item)}
               </td>
               <td class="row-actions">
-                <button class="link-btn" onclick={() => (dialog = { item })}>{t.common.edit}</button>
+                <button class="link-btn" onclick={() => (dialog = { item })}>{t.common.edit}</button
+                >
                 <button class="link-btn" onclick={() => askRemove(item)}>{t.common.delete}</button>
               </td>
             </tr>

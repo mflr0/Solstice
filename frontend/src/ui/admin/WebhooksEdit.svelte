@@ -376,9 +376,7 @@
             class:failed={tone === 'failed'}
             role={tone === 'failed' ? 'alert' : 'status'}
           >
-            <strong
-              >{tone === 'failed' ? t.hooksAdmin.testFailed : t.hooksAdmin.testOk}</strong
-            >
+            <strong>{tone === 'failed' ? t.hooksAdmin.testFailed : t.hooksAdmin.testOk}</strong>
             <p class="detail">
               {testResult.statusCode !== null
                 ? t.hooksAdmin.httpAnswer(testResult.statusCode)
@@ -395,8 +393,7 @@
 
     <h2 class="section-title">{t.hooksAdmin.dangerTitle}</h2>
     <p class="row danger">
-      <button class="btn btn-danger" onclick={() => (deleting = true)}
-        >{t.hooksAdmin.delete}</button
+      <button class="btn btn-danger" onclick={() => (deleting = true)}>{t.hooksAdmin.delete}</button
       >
       <span class="muted small">{t.hooksAdmin.deleteHint}</span>
     </p>

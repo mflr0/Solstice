@@ -13,7 +13,7 @@ func init() {
 	}
 }
 
-var notifyFR = map[string]string{
+var notifyFR = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// E-mails
 	"Manage my notifications": "Gérer mes notifications",
 	"You can change your notifications in your preferences in Solstice.": "Vos notifications se règlent dans vos préférences, dans Solstice.",
@@ -117,7 +117,7 @@ var notifyFR = map[string]string{
 	"The secret cannot be encrypted: %s":                                                          "Impossible de chiffrer le secret : %s",
 }
 
-var notifyDE = map[string]string{
+var notifyDE = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// E-mails
 	"Manage my notifications": "Meine Benachrichtigungen verwalten",
 	"You can change your notifications in your preferences in Solstice.": "Ihre Benachrichtigungen stellen Sie in Ihren Einstellungen in Solstice ein.",
@@ -221,7 +221,7 @@ var notifyDE = map[string]string{
 	"The secret cannot be encrypted: %s":                                                          "Das Geheimnis kann nicht verschlüsselt werden: %s",
 }
 
-var notifyIT = map[string]string{
+var notifyIT = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// E-mails
 	"Manage my notifications": "Gestisci le mie notifiche",
 	"You can change your notifications in your preferences in Solstice.": "Puoi regolare le notifiche nelle tue preferenze, in Solstice.",
@@ -325,7 +325,7 @@ var notifyIT = map[string]string{
 	"The secret cannot be encrypted: %s":                                                          "Impossibile cifrare il segreto: %s",
 }
 
-var notifyHI = map[string]string{
+var notifyHI = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// E-mails
 	"Manage my notifications": "मेरी सूचनाएँ प्रबंधित करें",
 	"You can change your notifications in your preferences in Solstice.": "अपनी सूचनाएँ Solstice में अपनी प्राथमिकताओं में बदलें।",

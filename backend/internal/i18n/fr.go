@@ -2,7 +2,7 @@ package i18n
 
 // French. Terms: ticket, projet, tableau, sprint, épopée, sous-tâche,
 // couloir, filtre rapide, workflow, statut, niveau de confidentialité, échéance.
-var fr = map[string]string{
+var fr = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests and accounts
 	"Unknown address.": "Adresse inconnue.",
 	"Not found, or you do not have access to it.":                 "Introuvable, ou vous n'y avez pas accès.",

@@ -172,7 +172,7 @@ func (w *Setup) Banner(addr string) string {
 
 // writeSecretFile writes a file only its owner can read.
 func writeSecretFile(path, content string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) // #nosec G304 -- path built by the server, not from user input
 	if err != nil {
 		return err
 	}

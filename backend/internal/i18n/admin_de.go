@@ -9,7 +9,7 @@ func init() {
 	}
 }
 
-var adminDE = map[string]string{
+var adminDE = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"Some comments or work logs are restricted to this group: it cannot be deleted.": "Kommentare oder erfasste Zeiten sind nur für diese Gruppe sichtbar, daher kann sie nicht gelöscht werden.",
 	"The lead must be an active account.":                                            "Der Verantwortliche muss ein aktives Konto sein.",
 	"Unknown field type (choose from: %s).":                                          "Unbekannter Feldtyp (zur Auswahl: %s).",

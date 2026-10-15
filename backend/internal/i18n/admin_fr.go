@@ -9,7 +9,7 @@ func init() {
 	}
 }
 
-var adminFR = map[string]string{
+var adminFR = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"An import from Jira replaces the data: Solstice will be back in a few minutes.": "Un import depuis Jira remplace les données : Solstice revient dans quelques minutes.",
 	"Type the database name (%s) to confirm the replacement.":                        "Tapez le nom de la base de données (%s) pour confirmer le remplacement.",
 	"The group “%s” already exists.":                                                 "Le groupe « %s » existe déjà.",

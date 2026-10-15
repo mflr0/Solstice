@@ -3,7 +3,7 @@ package i18n
 // Italian. Terms: ticket, progetto, board (la), sprint, epic, sotto-task,
 // swimlane, filtro rapido, workflow, stato, transizione, livello di
 // sicurezza, scadenza. Users are addressed with « tu ».
-var it = map[string]string{
+var it = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests and accounts
 	"Unknown address.": "Indirizzo sconosciuto.",
 	"Not found, or you do not have access to it.":                 "Non trovato, oppure non hai accesso.",

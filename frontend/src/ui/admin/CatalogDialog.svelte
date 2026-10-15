@@ -81,11 +81,7 @@
   }
 </script>
 
-<Modal
-  {open}
-  title={item ? m.editTitle(item.name) : m.newItem}
-  onclose={() => !busy && onclose()}
->
+<Modal {open} title={item ? m.editTitle(item.name) : m.newItem} onclose={() => !busy && onclose()}>
   <form id={formId} class="catalog-form" onsubmit={submit} novalidate>
     <label class="field">
       <span>{t.catalogAdmin.name}</span>

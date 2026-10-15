@@ -3,7 +3,7 @@ package i18n
 // German. Terms: Vorgang, Projekt, Board, Sprint, Epic, Unteraufgabe,
 // Swimlane, Schnellfilter, Workflow, Status, Übergang, Sicherheitsstufe,
 // Fälligkeitsdatum. Users are addressed as „Sie“.
-var de = map[string]string{
+var de = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests and accounts
 	"Unknown address.": "Unbekannte Adresse.",
 	"Not found, or you do not have access to it.":                 "Nicht gefunden, oder Sie haben keinen Zugriff darauf.",

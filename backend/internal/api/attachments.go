@@ -109,7 +109,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 
 func writeFile(path string, src io.Reader) (int64, error) {
 	tmp := path + ".part"
-	f, err := os.Create(tmp)
+	f, err := os.Create(tmp) // #nosec G304 -- path built by the server, not from user input
 	if err != nil {
 		return 0, err
 	}

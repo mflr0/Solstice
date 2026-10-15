@@ -4,7 +4,7 @@ package i18n
 // टिकट (issue), प्रोजेक्ट, बोर्ड, स्प्रिंट, एपिक, सब-टास्क, स्विमलेन, क्विक फ़िल्टर,
 // वर्कफ़्लो, स्टेटस, ट्रांज़िशन, सुरक्षा स्तर, नियत तारीख, भूमिका, ग्रुप. Users are
 // addressed as आप; sentences end with ।
-var hi = map[string]string{
+var hi = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests and accounts
 	"Unknown address.": "अज्ञात पता।",
 	"Not found, or you do not have access to it.":                 "नहीं मिला, या आपके पास इसकी पहुँच नहीं है।",

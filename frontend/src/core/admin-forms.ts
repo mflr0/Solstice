@@ -288,7 +288,15 @@ export interface UserForm {
 export type UserProblem = 'usernameRequired' | 'usernameInvalid' | 'emailInvalid' | 'passwordShort';
 
 export function newUserForm(): UserForm {
-  return { username: '', name: '', email: '', password: '', admin: false, active: true, groups: [] };
+  return {
+    username: '',
+    name: '',
+    email: '',
+    password: '',
+    admin: false,
+    active: true,
+    groups: [],
+  };
 }
 
 /**
@@ -327,11 +335,6 @@ export function suggestUsername(name: string): string {
 export function matches(search: string, ...texts: (string | null | undefined)[]): boolean {
   const words = search.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const hay = texts
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+  const hay = texts.filter(Boolean).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
 }

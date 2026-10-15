@@ -561,7 +561,7 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 // copyFile copies src to dst through a temporary file. A missing src is not
 // an error: it returns false.
 func copyFile(src, dst string) (bool, error) {
-	in, err := os.Open(src)
+	in, err := os.Open(src) // #nosec G304 -- path built by the server, not from user input
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -570,7 +570,7 @@ func copyFile(src, dst string) (bool, error) {
 	}
 	defer in.Close()
 	tmp := dst + ".part"
-	out, err := os.Create(tmp)
+	out, err := os.Create(tmp) // #nosec G304 -- path built by the server, not from user input
 	if err != nil {
 		return false, err
 	}

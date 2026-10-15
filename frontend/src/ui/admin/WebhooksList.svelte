@@ -99,8 +99,7 @@
               <td class="c-name">
                 <a class="name" href={paths.admin('webhooks', w.id)}>{w.name}</a>
                 <span class="mono muted url" title={w.url}>{w.url}</span>
-                {#if w.jql}<span class="muted small jql" title={w.jql}
-                    >{t.hooksAdmin.filtered}</span
+                {#if w.jql}<span class="muted small jql" title={w.jql}>{t.hooksAdmin.filtered}</span
                   >{/if}
               </td>
               <td class="num c-events" title={w.events.join(', ')}>

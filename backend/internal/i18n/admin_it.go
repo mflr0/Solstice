@@ -9,7 +9,7 @@ func init() {
 	}
 }
 
-var adminIT = map[string]string{
+var adminIT = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Projects and catalogues
 	"Invalid key: 2 to 10 uppercase letters or digits, starting with a letter.": "Chiave non valida: da 2 a 10 lettere maiuscole o cifre, iniziando con una lettera.",
 	"A project is already named “%s”.":                                          "Un progetto si chiama già «%s».",

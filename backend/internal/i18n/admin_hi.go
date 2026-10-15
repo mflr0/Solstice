@@ -9,7 +9,7 @@ func init() {
 	}
 }
 
-var adminHI = map[string]string{
+var adminHI = map[string]string{ // #nosec G101 -- translation catalogue, not credentials
 	"High": "उच्च",
 	"Some issues use this type: it can no longer become or stop being a sub-task.": "कुछ टिकट इस प्रकार का उपयोग करते हैं: यह अब सब-टास्क नहीं बन सकता, और न ही सब-टास्क रहना छोड़ सकता।",
 	"The order must list every element once and only once.":                        "क्रम में हर तत्व का ज़िक्र ठीक एक बार होना चाहिए।",
