@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -561,7 +562,7 @@ func (s *Server) jiraTransitions(ctx context.Context, o *restOut, sub *perm.Subj
 			"isGlobal": false, "isInitial": false, "isAvailable": true, "isConditional": false}
 		if withFields {
 			fields := map[string]any{}
-			if t.To.Category == "done" {
+			if t.To.Category == issue.Done {
 				allowed := []any{}
 				for _, r := range cat.Resolutions {
 					allowed = append(allowed, o.resolution(&r))
@@ -755,5 +756,5 @@ func (o *restOut) agileEpic(cat *catalog, epic *issueRow, name string) map[strin
 	}
 	return map[string]any{"id": epic.ID, "key": epic.Key(), "self": o.base + "/rest/agile/1.0/epic/" + o.id(epic.ID),
 		"name": name, "summary": epic.Summary, "color": map[string]string{"key": "color_1"},
-		"done": cat.statusOf(epic.StatusID).Category == "done"}
+		"done": cat.statusOf(epic.StatusID).Category == issue.Done}
 }

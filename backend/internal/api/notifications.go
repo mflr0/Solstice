@@ -57,6 +57,7 @@ func (s *Server) startOutgoing() {
 	o.notify.DefaultLocale = s.defaultLanguage
 	o.hooks = webhook.New(s.db, s.log, s.secrets, s.matchJQL)
 	o.hooks.BaseURL = s.base
+	o.hooks.DefaultLocale = s.defaultLanguage
 	o.bus.Subscribe(o.notify)
 	o.bus.Subscribe(o.hooks)
 }

@@ -34,6 +34,7 @@ import (
 
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 )
 
 // integrationRoutes registers the routes of tokens, the audit log, the CSV
@@ -413,24 +414,10 @@ func (o *restOut) msg(m i18n.Message) string { return m.In(o.locale) }
 
 func (o *restOut) id(n int64) string { return strconv.FormatInt(n, 10) }
 
-// Status categories, with Jira's fixed ids, keys and colours.
-var statusCategories = map[string]struct {
-	id          int
-	key, colour string
-	name        i18n.Message
-}{
-	"todo":  {2, "new", "blue-gray", i18n.M("To do")},
-	"doing": {4, "indeterminate", "yellow", i18n.M("In progress")},
-	"done":  {3, "done", "green", i18n.M("Done")},
-}
-
-func (o *restOut) statusCategory(category string) map[string]any {
-	c, ok := statusCategories[category]
-	if !ok {
-		c = statusCategories["todo"]
-	}
-	return map[string]any{"self": o.api + "/statuscategory/" + strconv.Itoa(c.id), "id": c.id, "key": c.key,
-		"colorName": c.colour, "name": o.msg(c.name)}
+func (o *restOut) statusCategory(category issue.StatusCategory) map[string]any {
+	c := category.Jira()
+	return map[string]any{"self": o.api + "/statuscategory/" + strconv.Itoa(c.ID), "id": c.ID, "key": c.Key,
+		"colorName": c.Colour, "name": o.msg(category.Name())}
 }
 
 func (o *restOut) status(st statusRef) map[string]any {

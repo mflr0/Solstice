@@ -19,6 +19,7 @@ import (
 
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/live"
 	"solstice/internal/perm"
 )
@@ -343,9 +344,9 @@ func readJSON(r *http.Request, v any) error {
 // change rarely and are read on almost every request, so they are cached.
 
 type statusRef struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Category string `json:"category"`
+	ID       string               `json:"id"`
+	Name     string               `json:"name"`
+	Category issue.StatusCategory `json:"category"`
 }
 
 type priorityRef struct {

@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"solstice/internal/issue"
 )
 
 // Field is what a filter applies to.
@@ -55,12 +57,12 @@ var prefixes = map[string]Field{
 }
 
 // categories maps est:/is: values to status categories.
-var categories = map[string][]string{
-	"ouvert": {"todo", "doing"}, "open": {"todo", "doing"},
-	"à-faire": {"todo"}, "a-faire": {"todo"}, "todo": {"todo"},
-	"en-cours": {"doing"}, "doing": {"doing"},
-	"fini": {"done"}, "fermé": {"done"}, "ferme": {"done"}, "résolu": {"done"}, "resolu": {"done"},
-	"done": {"done"}, "closed": {"done"}, "resolved": {"done"},
+var categories = map[string][]issue.StatusCategory{
+	"ouvert": {issue.Todo, issue.Doing}, "open": {issue.Todo, issue.Doing},
+	"à-faire": {issue.Todo}, "a-faire": {issue.Todo}, "todo": {issue.Todo},
+	"en-cours": {issue.Doing}, "doing": {issue.Doing},
+	"fini": {issue.Done}, "fermé": {issue.Done}, "ferme": {issue.Done}, "résolu": {issue.Done}, "resolu": {issue.Done},
+	"done": {issue.Done}, "closed": {issue.Done}, "resolved": {issue.Done},
 }
 
 // Sort orders: SQL on the issues alias i, projects alias p, priorities alias pr.
@@ -343,7 +345,7 @@ func escapeLike(s string) string {
 
 func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
-func anys(xs []string) []any {
+func anys[T any](xs []T) []any {
 	out := make([]any, len(xs))
 	for i, x := range xs {
 		out[i] = x

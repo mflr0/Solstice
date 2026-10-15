@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -32,9 +33,6 @@ var jiraPermissions = map[string]string{
 	"SET_ISSUE_SECURITY":  perm.Security,
 	"ADMINISTER_PROJECTS": perm.Admin,
 }
-
-// statusCategories maps Jira's status category ids to Solstice's three columns.
-var statusCategories = map[int64]string{2: "todo", 4: "doing", 3: "done"}
 
 func (r *run) importCatalogues() error {
 	r.issueTypes = map[string]bool{}
@@ -70,12 +68,9 @@ func (r *run) importCatalogues() error {
 		if err := rows.Scan(&id, &name, &desc, &seq, &cat); err != nil {
 			return err
 		}
-		category, ok := statusCategories[cat.Int64]
-		if !ok {
-			category = "todo"
-		}
 		r.statuses[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), category, seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), string(issue.FromJiraStatusCategory(cat.Int64)),
+			seq.Int64)
 	}); err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/issue"
 )
 
 // jiraTime is Jira's date-time format in REST and webhooks.
@@ -25,10 +26,11 @@ func jtimePtr(t *time.Time) any {
 }
 
 // builder renders the parts of a payload, with "self" links when the
-// public address is known.
+// public address is known, and names in the instance's language.
 type builder struct {
-	base  string
-	users map[int64]*events.User
+	base   string
+	locale string
+	users  map[int64]*events.User
 }
 
 func (b *builder) self(path string) string {
@@ -71,15 +73,9 @@ func namedList(list []events.Named) []any {
 	return out
 }
 
-// statusCategory is Jira's status category for Solstice's.
-func statusCategory(cat string) map[string]any {
-	switch cat {
-	case "doing":
-		return map[string]any{"id": 4, "key": "indeterminate", "name": "In Progress", "colorName": "yellow"}
-	case "done":
-		return map[string]any{"id": 3, "key": "done", "name": "Done", "colorName": "green"}
-	}
-	return map[string]any{"id": 2, "key": "new", "name": "To Do", "colorName": "blue-gray"}
+func (b *builder) statusCategory(cat issue.StatusCategory) map[string]any {
+	j := cat.Jira()
+	return map[string]any{"id": j.ID, "key": j.Key, "name": cat.Name().In(b.locale), "colorName": j.Colour}
 }
 
 func intPtr(n *int64) any {
@@ -112,7 +108,7 @@ func (b *builder) issue(iss *events.Issue) map[string]any {
 		"issuetype":   map[string]any{"id": iss.Type.ID, "name": iss.Type.Name, "subtask": iss.Type.Subtask},
 		"project":     project,
 		"status": map[string]any{"id": iss.Status.ID, "name": iss.Status.Name,
-			"statusCategory": statusCategory(iss.Status.Category)},
+			"statusCategory": b.statusCategory(iss.Status.Category)},
 		"priority":             named(iss.Priority),
 		"resolution":           named(iss.Resolution),
 		"assignee":             b.user(iss.Assignee),
@@ -257,7 +253,7 @@ func (s *Service) payload(ctx context.Context, e *events.Event, name string) (ma
 	if err != nil {
 		return nil, err
 	}
-	b := &builder{base: strings.TrimSuffix(s.BaseURL(), "/"), users: users}
+	b := &builder{base: strings.TrimSuffix(s.BaseURL(), "/"), locale: s.DefaultLocale(), users: users}
 	p := map[string]any{"timestamp": e.At.UnixMilli(), "webhookEvent": name}
 	if e.ActorID != 0 {
 		p["user"] = b.userID(e.ActorID)

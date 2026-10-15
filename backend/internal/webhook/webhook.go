@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/i18n"
 	"solstice/internal/secret"
 )
 
@@ -114,6 +115,8 @@ type Service struct {
 
 	// BaseURL is the public address, for "self" links; empty leaves them out.
 	BaseURL func() string
+	// DefaultLocale is the instance's language, for the names in payloads.
+	DefaultLocale func() string
 	// Now is the clock (tests move it).
 	Now func() time.Time
 
@@ -128,7 +131,7 @@ const secretLabel = "webhook.secret"
 // New makes the service: box opens secrets, match evaluates JQL filters.
 func New(db *sql.DB, log *slog.Logger, box func() (*secret.Box, error), match Matcher) *Service {
 	return &Service{db: db, log: log, box: box, match: match, client: guardedClient(), wake: make(chan struct{}, 1),
-		BaseURL: func() string { return "" }, Now: time.Now}
+		BaseURL: func() string { return "" }, DefaultLocale: func() string { return i18n.Default }, Now: time.Now}
 }
 
 const columns = `id, name, url, events, COALESCE(jql, ''), COALESCE(secret, ''), enabled, exclude_body, created_at, updated_at`
