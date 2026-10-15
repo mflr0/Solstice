@@ -19,6 +19,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/events"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/search"
@@ -1288,9 +1289,9 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, boardID, projectID); err != nil {
 		return err
 	}
-	for pos, category := range []string{"todo", "doing", "done"} {
+	for pos, category := range issue.StatusCategories {
 		res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position) VALUES (?, ?, ?)`,
-			boardID, map[string]string{"todo": "To do", "doing": "In progress", "done": "Done"}[category], pos)
+			boardID, category.Name().In(s.defaultLanguage()), pos)
 		if err != nil {
 			return err
 		}

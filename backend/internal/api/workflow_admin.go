@@ -17,6 +17,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -766,9 +767,9 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in struct {
-		Name     string `json:"name"`
-		Category string `json:"category"`
-		Project  string `json:"project"`
+		Name     string               `json:"name"`
+		Category issue.StatusCategory `json:"category"`
+		Project  string               `json:"project"`
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
@@ -783,7 +784,7 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		return fail(http.StatusBadRequest, "The status needs a name.")
 	}
-	if in.Category != "todo" && in.Category != "doing" && in.Category != "done" {
+	if !in.Category.Valid() {
 		return fail(http.StatusBadRequest, "Category: todo, doing or done.")
 	}
 	cat, err := s.catalogue(ctx)
@@ -851,8 +852,8 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	before := st
 	var in struct {
-		Name     *string `json:"name"`
-		Category *string `json:"category"`
+		Name     *string               `json:"name"`
+		Category *issue.StatusCategory `json:"category"`
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
@@ -874,7 +875,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 		st.Name = truncateRunes(name, 255)
 	}
 	if in.Category != nil {
-		if *in.Category != "todo" && *in.Category != "doing" && *in.Category != "done" {
+		if !in.Category.Valid() {
 			return fail(http.StatusBadRequest, "Category: todo, doing or done.")
 		}
 		st.Category = *in.Category
@@ -886,8 +887,8 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 	s.forgetCatalogue()
 	if st != before {
 		s.auditLog(r, audit.StatusUpdate, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, map[string]any{
-			"from": map[string]string{"name": before.Name, "category": before.Category},
-			"to":   map[string]string{"name": st.Name, "category": st.Category}})
+			"from": map[string]any{"name": before.Name, "category": before.Category},
+			"to":   map[string]any{"name": st.Name, "category": st.Category}})
 	}
 	return writeJSON(w, http.StatusOK, st)
 }

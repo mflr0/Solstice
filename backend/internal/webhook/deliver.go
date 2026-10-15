@@ -338,7 +338,7 @@ func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, e
 	if err != nil {
 		return nil, err
 	}
-	b := &builder{base: s.BaseURL(), users: users}
+	b := &builder{base: s.BaseURL(), locale: s.DefaultLocale(), users: users}
 	now := s.Now().UTC()
 	body, err := json.Marshal(map[string]any{"timestamp": now.UnixMilli(), "webhookEvent": TestEvent,
 		"user": b.userID(actor), "webhook": map[string]any{"id": w.ID, "name": w.Name}})

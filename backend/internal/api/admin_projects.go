@@ -17,6 +17,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -63,10 +64,17 @@ func (s *Server) projectKeyCheck(w http.ResponseWriter, r *http.Request) error {
 // statuses in order. Any status can be reached from any other.
 var projectTemplates = map[string]struct {
 	kind     string
-	statuses [][2]string // name, category
+	statuses []templateStatus
 }{
-	"software": {"software", [][2]string{{"To Do", "todo"}, {"In Progress", "doing"}, {"In Review", "doing"}, {"Done", "done"}}},
-	"simple":   {"business", [][2]string{{"To do", "todo"}, {"In progress", "doing"}, {"Done", "done"}}},
+	"software": {"software", []templateStatus{{"To Do", issue.Todo}, {"In Progress", issue.Doing},
+		{"In Review", issue.Doing}, {"Done", issue.Done}}},
+	"simple": {"business", []templateStatus{{"To do", issue.Todo}, {"In progress", issue.Doing},
+		{"Done", issue.Done}}},
+}
+
+type templateStatus struct {
+	name     string
+	category issue.StatusCategory
 }
 
 // memberPermissions are what the people given access to a new project may
@@ -233,7 +241,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	defer tx.Rollback()
 	var statuses []string
 	for _, st := range tmpl.statuses {
-		id, err := ensureStatus(ctx, tx, st[0], st[1])
+		id, err := ensureStatus(ctx, tx, st.name, st.category)
 		if err != nil {
 			return err
 		}
@@ -267,7 +275,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-			position) VALUES (?, ?, NULL, ?, ?)`, wf, tmpl.statuses[i][0], st, i); err != nil {
+			position) VALUES (?, ?, NULL, ?, ?)`, wf, tmpl.statuses[i].name, st, i); err != nil {
 			return err
 		}
 	}
@@ -317,7 +325,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 
 // ensureStatus returns the status of that name (any case), created in the
 // category given if there is none.
-func ensureStatus(ctx context.Context, tx *sql.Tx, name, category string) (string, error) {
+func ensureStatus(ctx context.Context, tx *sql.Tx, name string, category issue.StatusCategory) (string, error) {
 	var id string
 	err := tx.QueryRowContext(ctx, `SELECT id FROM statuses WHERE LOWER(name) = LOWER(?) ORDER BY position, id LIMIT 1`,
 		name).Scan(&id)
