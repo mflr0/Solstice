@@ -92,6 +92,7 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
+	s.auditUserCreated(r, id)
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
 }
 
@@ -123,6 +124,10 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	if exists == 0 {
 		return errNotFound
+	}
+	before, err := s.userSnapshot(ctx, id)
+	if err != nil {
+		return err
 	}
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
 		if _, err := s.db.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, strings.TrimSpace(*in.Name), id); err != nil {
@@ -164,6 +169,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	s.perms.Invalidate()
+	s.auditUserChange(r, id, before, in.Password != nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

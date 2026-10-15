@@ -69,6 +69,20 @@ type Summary struct {
 	FilterShares           int   `json:"filter_shares"`
 	FilterFavourites       int   `json:"filter_favourites"`
 
+	// Jira Software (AO_60DB71_* tables, Sprint field, epic links).
+	AOTables            int `json:"ao_tables"`
+	Boards              int `json:"boards"`
+	BoardColumns        int `json:"board_columns"`
+	BoardColumnStatuses int `json:"board_column_statuses"`
+	QuickFilters        int `json:"quick_filters"`
+	Swimlanes           int `json:"swimlanes"`
+	SprintsClosed       int `json:"sprints_closed"`
+	SprintsActive       int `json:"sprints_active"`
+	SprintsFuture       int `json:"sprints_future"`
+	SprintMemberships   int `json:"sprint_memberships"` // Sprint field values, also counted in custom_field_values
+	RankedIssues        int `json:"ranked_issues"`
+	EpicLinks           int `json:"epic_links"`
+
 	Checkpoints []Checkpoint   `json:"checkpoints"`
 	Rows        map[string]int `json:"rows"` // rows written per table
 }
@@ -86,6 +100,7 @@ type Checkpoint struct {
 	DueDate          *string `json:"due_date"`
 	CommentCount     int     `json:"comment_count"`
 	ParentKey        *string `json:"parent_key"`
+	EpicKey          *string `json:"epic_key"`
 }
 
 // Run recreates the Jira schema in the target database and fills it.
@@ -122,6 +137,7 @@ func Run(ctx context.Context, opt Options) (*Summary, error) {
 	if err != nil {
 		return nil, err
 	}
+	stmts = append(stmts, AODDL(eng)...)
 	logf("recreating %d tables on %s", len(model.Entities), eng)
 	for _, s := range stmts {
 		if _, err := db.ExecContext(ctx, s); err != nil {
@@ -139,7 +155,8 @@ func Run(ctx context.Context, opt Options) (*Summary, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
 
-	sum := &Summary{Engine: eng.String(), Seed: opt.Seed, TZ: opt.TZ.String(), Tables: len(model.Entities)}
+	sum := &Summary{Engine: eng.String(), Seed: opt.Seed, TZ: opt.TZ.String(), Tables: len(model.Entities),
+		AOTables: len(aoTables)}
 	w := NewWriter(ctx, tx, eng, model)
 	start := time.Now()
 	newGenerator(opt, w, sum).run()

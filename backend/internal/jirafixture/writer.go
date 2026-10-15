@@ -68,6 +68,28 @@ func (w *Writer) Table(table string, cols ...string) *Table {
 	return t
 }
 
+// AOTable prepares inserts into a Jira Software (Active Objects) table, which
+// is not part of the entity model; see agile.go.
+func (w *Writer) AOTable(table string, cols ...string) *Table {
+	spec := aoTable(table)
+	quoted := make([]string, len(cols))
+	for i, c := range cols {
+		if !spec.has(c) {
+			panic(fmt.Sprintf("jirafixture: column %s.%s is not an AO column", table, c))
+		}
+		quoted[i] = quoteAO(w.eng, c)
+	}
+	t := &Table{
+		w:     w,
+		name:  strings.ToLower(table),
+		head:  "INSERT INTO " + quoteAO(w.eng, table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
+		ncols: len(cols),
+		max:   min(500, 60000/len(cols)),
+	}
+	w.tables = append(w.tables, t)
+	return t
+}
+
 // Add queues one row; values must follow the column order given to Table.
 func (t *Table) Add(vals ...any) {
 	if len(vals) != t.ncols {

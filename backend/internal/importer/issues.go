@@ -263,6 +263,7 @@ func (r *run) importIssueDetails() error {
 	r.rep.step("composants des tickets", comps.total, 0)
 	r.rep.step("versions des tickets", vers.total, skipped)
 
+	r.epicOf = map[int64]int64{}
 	links := r.inserter("issue_links", "id", "type_id", "source_id", "target_id")
 	skipped = 0
 	if err := r.each(`SELECT id, linktype, source, destination FROM issuelink`, func(rows *sql.Rows) error {
@@ -273,6 +274,12 @@ func (r *run) importIssueDetails() error {
 		}
 		if r.subtaskLink[kind.Int64] {
 			return nil // imported as the parent column
+		}
+		if r.epicLink[kind.Int64] {
+			if r.hasIssue(source) && r.hasIssue(target) {
+				r.epicOf[target.Int64] = source.Int64
+			}
+			return nil // imported as the epic column
 		}
 		if !r.linkTypes[kind.Int64] || !r.hasIssue(source) || !r.hasIssue(target) {
 			skipped++
@@ -612,6 +619,11 @@ func (r *run) importCustomFieldValues() error {
 			numVal = num.Float64
 		}
 		switch fieldKind(typeKey) {
+		case "gh-epic-link":
+			// Older Jira Software kept the epic in this field rather than a link.
+			if num.Valid && r.hasIssue(sql.NullInt64{Int64: int64(num.Float64), Valid: true}) {
+				r.epicOf[issue.Int64] = int64(num.Float64)
+			}
 		case "userpicker", "multiuserpicker":
 			uid, ok := r.users[str.String]
 			if !ok {

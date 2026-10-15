@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -13,12 +14,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
+	_ "time/tzdata" // time zones even on systems (containers) without a zoneinfo database
 
 	"solstice/internal/api"
+	"solstice/internal/audit"
 	"solstice/internal/auth"
+	"solstice/internal/config"
 	"solstice/internal/db"
 	"solstice/internal/importer"
 	"solstice/internal/web"
@@ -31,9 +38,23 @@ Commandes :
   migrate   met à jour le schéma de la base
   import    importe une base Jira (PostgreSQL ou MySQL)
   user      crée un compte ou change un mot de passe (solstice user add|passwd)
+  version   affiche la version
+  health    vérifie qu'un serveur lancé répond (contrôle de santé des conteneurs)
 
 « solstice <commande> -h » détaille les options d'une commande.
-Environnement : SOLSTICE_DB (URL MariaDB), SOLSTICE_DATA (dossier de données), SOLSTICE_ADDR (adresse d'écoute).
+
+Configuration : un fichier de lignes CLÉ=valeur, désigné par -config ou
+SOLSTICE_CONFIG, sinon ./solstice.conf, sinon /etc/solstice/solstice.conf.
+Les variables d'environnement du même nom l'emportent sur le fichier.
+  SOLSTICE_DB          base MariaDB : mysql://utilisateur:mot-de-passe@hôte:3306/base
+  SOLSTICE_DATA        dossier de données (par défaut ./data)
+  SOLSTICE_ADDR        adresse d'écoute (par défaut :8080)
+  SOLSTICE_TZ          fuseau des dates tapées dans les recherches, ex. Europe/Paris
+  SOLSTICE_BASE_URL    adresse publique, ex. https://tickets.example.org
+  SOLSTICE_SECRET_KEY  clé des secrets enregistrés (par défaut <données>/secret.key)
+
+Sans base configurée, ou sur une base sans aucun compte, « solstice serve »
+ouvre l'assistant d'installation sur /setup.
 `
 
 func main() {
@@ -54,6 +75,11 @@ func main() {
 		err = runImport(ctx, args)
 	case "user":
 		err = runUser(ctx, args)
+	case "version", "-version", "--version":
+		fmt.Println(version)
+		return
+	case "health":
+		err = runHealth(ctx, args)
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return
@@ -67,23 +93,19 @@ func main() {
 	}
 }
 
-func env(name, fallback string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func dbFlag(fs *flag.FlagSet) *string {
-	return fs.String("db", env("SOLSTICE_DB", "mysql://solstice:solstice@localhost:13306/solstice"), "MariaDB URL")
-}
-
 func runMigrate(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-	dbURL := dbFlag(fs)
+	settings := commonFlags(fs, false)
 	fs.Parse(args)
+	cfg, _, err := settings.load()
+	if err != nil {
+		return err
+	}
+	if err := requireDB(cfg); err != nil {
+		return err
+	}
 
-	conn, err := db.Open(ctx, *dbURL)
+	conn, err := db.Open(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -97,57 +119,166 @@ func runMigrate(ctx context.Context, args []string) error {
 
 func runServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	dbURL := dbFlag(fs)
-	dataDir := dataFlag(fs)
-	addr := fs.String("addr", env("SOLSTICE_ADDR", ":8080"), "listen address")
-	tzName := fs.String("tz", env("SOLSTICE_TZ", "Local"), "time zone of dates typed in searches, e.g. Europe/Paris")
+	settings := commonFlags(fs, true)
+	addr := fs.String("addr", "", "listen address (default: $SOLSTICE_ADDR, the configuration file, or :8080)")
+	tzName := fs.String("tz", "", "time zone of dates typed in searches, e.g. Europe/Paris "+
+		"(default: $SOLSTICE_TZ, the configuration file, or the system's)")
 	fs.Parse(args)
-	tz, err := time.LoadLocation(*tzName)
-	if err != nil {
-		return fmt.Errorf("unknown time zone %q: %w", *tzName, err)
-	}
-
-	conn, err := db.Open(ctx, *dbURL)
+	cfg, fixed, err := settings.load()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	if err := db.Migrate(ctx, conn); err != nil {
+	if *addr != "" {
+		cfg.Addr = *addr
+	}
+	if *tzName != "" {
+		cfg.TZ, fixed[config.KeyTZ] = *tzName, true
+	}
+	tz, err := loadTZ(cfg.TZ)
+	if err != nil {
+		return err
+	}
+	dataDir, err := filepath.Abs(cfg.Data)
+	if err != nil {
 		return err
 	}
 	log := slog.Default()
+	log.Info("Solstice is starting", "version", version, "config", cfg.Path, "config_found", cfg.Exists, "data", dataDir)
+
+	// Without a database, or on one without any account, the setup wizard
+	// runs first; the application takes over when it is done.
+	var conn *sql.DB
+	if cfg.DB != "" {
+		if conn, err = openDB(ctx, cfg.DB); err != nil {
+			return err
+		}
+		if err := db.Migrate(ctx, conn); err != nil {
+			return err
+		}
+	}
+	setup := conn == nil
+	if !setup {
+		var accounts int
+		if err := conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&accounts); err != nil {
+			return err
+		}
+		setup = accounts == 0
+	}
+
+	static := web.Handler()
+	var (
+		current atomic.Pointer[http.Handler] // the setup wizard, then the application
+		appDB   atomic.Pointer[sql.DB]       // the application's database, once it runs
+		app     atomic.Pointer[api.Server]   // the application, once it runs
+		wizard  *api.Setup
+		workers sync.WaitGroup // e-mails and webhooks
+	)
+	// startApp opens the application. Anything that needs the database in
+	// the background starts here: after setup, it runs without a restart.
+	startApp := func(conn *sql.DB, tz *time.Location, baseURL string) {
+		srv := api.New(conn, dataDir, tz, log)
+		srv.SetBaseURL(baseURL)
+		srv.SetSecretKey(cfg.SecretKey)
+		h := srv.Handler(static)
+		appDB.Store(conn)
+		app.Store(srv)
+		current.Store(&h)
+		go cleanSessions(ctx, conn, log)
+		workers.Go(func() { srv.Run(ctx) })
+	}
+	if setup {
+		wizard, err = api.NewSetup(ctx, api.SetupOptions{
+			DB: conn, DBFixed: fixed[config.KeyDB],
+			DataDir: dataDir, DataFixed: fixed[config.KeyData],
+			ConfigPath: cfg.Path,
+			BaseURL:    strings.TrimSuffix(cfg.BaseURL, "/"), BaseURLFixed: fixed[config.KeyBaseURL],
+			TZ: cfg.TZ, TZFixed: fixed[config.KeyTZ],
+			Version: version, Log: log,
+			Done: func(res api.SetupResult) {
+				tz, err := loadTZ(res.TZ)
+				if err != nil {
+					tz = time.Local
+				}
+				startApp(res.DB, tz, res.BaseURL)
+				log.Info("Solstice is set up: the application is open")
+			},
+		})
+		if err != nil {
+			return err
+		}
+		h := wizard.Handler(static, web.IsAsset)
+		current.Store(&h)
+		fmt.Fprint(os.Stderr, wizard.Banner(cfg.Addr))
+	} else {
+		startApp(conn, tz, cfg.BaseURL)
+	}
+	defer func() {
+		if c := appDB.Load(); c != nil {
+			c.Close()
+		} else if wizard != nil && wizard.DB() != nil {
+			wizard.DB().Close()
+		}
+	}()
+
+	root := http.NewServeMux()
+	root.Handle("GET /healthz", api.Health(version, func() (*sql.DB, bool) {
+		if c := appDB.Load(); c != nil {
+			return c, false
+		}
+		return wizard.DB(), true
+	}))
+	root.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		(*current.Load()).ServeHTTP(w, r)
+	}))
 	srv := &http.Server{
-		Addr:              *addr,
-		Handler:           api.New(conn, *dataDir, tz, log).Handler(web.Handler()),
+		Addr:              cfg.Addr,
+		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 		// No write timeout: live updates and large downloads stream for long.
 	}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	go func() {
-		// Expired sessions are useless; clear them hourly.
-		tick := time.NewTicker(time.Hour)
-		defer tick.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-tick.C:
-				if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
-					log.Warn("session cleanup failed", "err", err)
-				}
-			}
-		}
-	}()
-	log.Info("Solstice is listening", "addr", *addr)
+	log.Info("Solstice is listening", "addr", cfg.Addr, "setup", setup)
 	select {
 	case err := <-errc:
 		return err
 	case <-ctx.Done():
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return srv.Shutdown(shutdown)
+		err := srv.Shutdown(shutdown)
+		// Requests are over: hand their last events to e-mail and webhooks,
+		// and let the workers finish what they are sending.
+		if a := app.Load(); a != nil {
+			a.Close(shutdown)
+		}
+		stopped := make(chan struct{})
+		go func() { workers.Wait(); close(stopped) }()
+		select {
+		case <-stopped:
+		case <-shutdown.Done():
+		}
+		return err
+	}
+}
+
+// cleanSessions deletes expired sessions hourly: they are useless. Audit
+// log entries past their retention period go at the same time.
+func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
+				log.Warn("session cleanup failed", "err", err)
+			}
+			if _, err := audit.Purge(ctx, conn); err != nil {
+				log.Warn("audit log purge failed", "err", err)
+			}
+		}
 	}
 }
 
@@ -157,7 +288,7 @@ func runUser(ctx context.Context, args []string) error {
 	}
 	action := args[0]
 	fs := flag.NewFlagSet("user "+action, flag.ExitOnError)
-	dbURL := dbFlag(fs)
+	settings := commonFlags(fs, false)
 	username := fs.String("username", "", "login")
 	name := fs.String("name", "", "display name")
 	email := fs.String("email", "", "e-mail address")
@@ -176,7 +307,14 @@ func runUser(ctx context.Context, args []string) error {
 		}
 		*password = base64.RawURLEncoding.EncodeToString(raw)
 	}
-	conn, err := db.Open(ctx, *dbURL)
+	cfg, _, err := settings.load()
+	if err != nil {
+		return err
+	}
+	if err := requireDB(cfg); err != nil {
+		return err
+	}
+	conn, err := db.Open(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -225,14 +363,9 @@ func runUser(ctx context.Context, args []string) error {
 	return nil
 }
 
-func dataFlag(fs *flag.FlagSet) *string {
-	return fs.String("data", env("SOLSTICE_DATA", "data"), "data directory (attachments)")
-}
-
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
-	dbURL := dbFlag(fs)
-	dataDir := dataFlag(fs)
+	settings := commonFlags(fs, true)
 	from := fs.String("from", "", "Jira database URL: postgres://user:pass@host/db or mysql://user:pass@host/db")
 	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info)")
 	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files")
@@ -248,7 +381,14 @@ func runImport(ctx context.Context, args []string) error {
 		return fmt.Errorf("unknown time zone %q: %w", *tz, err)
 	}
 
-	conn, err := db.Open(ctx, *dbURL)
+	cfg, _, err := settings.load()
+	if err != nil {
+		return err
+	}
+	if err := requireDB(cfg); err != nil {
+		return err
+	}
+	conn, err := db.Open(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -261,7 +401,7 @@ func runImport(ctx context.Context, args []string) error {
 		SourceURL: *from,
 		SourceTZ:  loc,
 		JiraHome:  *jiraHome,
-		DataDir:   *dataDir,
+		DataDir:   cfg.Data,
 		Replace:   *replace,
 	})
 	if err != nil {

@@ -103,7 +103,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.publish(iss, "attachment", sub.UserID)
+	s.changed(iss, sub.UserID, "attachment", changes)
 	return s.respondIssue(w, r, sub, iss.ID)
 }
 
@@ -250,15 +250,15 @@ func (s *Server) deleteAttachment(w http.ResponseWriter, r *http.Request) error 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, a.id); err != nil {
 		return err
 	}
-	if err := recordChanges(ctx, tx, a.issue.ID, sub.UserID, now, []change{{field: "Attachment",
-		oldValue: strconv.FormatInt(a.id, 10), oldString: a.name}}); err != nil {
+	removed := []change{{field: "Attachment", oldValue: strconv.FormatInt(a.id, 10), oldString: a.name}}
+	if err := recordChanges(ctx, tx, a.issue.ID, sub.UserID, now, removed); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	os.Remove(s.attachmentPath(a.id))
-	s.publish(a.issue, "attachment", sub.UserID)
+	s.changed(a.issue, sub.UserID, "attachment", removed)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

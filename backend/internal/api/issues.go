@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,8 +17,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"solstice/internal/events"
+	"solstice/internal/i18n"
 	"solstice/internal/jql"
-	"solstice/internal/live"
 	"solstice/internal/perm"
 	"solstice/internal/search"
 )
@@ -40,12 +41,14 @@ type issueRow struct {
 	Resolved, Due            sql.NullTime
 	Original, Remaining      sql.NullInt64
 	Spent                    sql.NullInt64
+	EpicID                   sql.NullInt64
+	Rank                     sql.NullString
 }
 
 const issueColumns = `i.id, i.project_id, i.num, p.pkey, p.name, i.summary, i.description, i.environment,
 	i.issue_type_id, i.status_id, i.priority_id, i.resolution_id, i.reporter_id, i.assignee_id, i.creator_id,
 	i.security_level_id, i.parent_id, i.created_at, i.updated_at, i.resolved_at, i.due_date,
-	i.original_estimate, i.remaining_estimate, i.time_spent`
+	i.original_estimate, i.remaining_estimate, i.time_spent, i.epic_id, i.rank_key`
 
 type scanner interface{ Scan(...any) error }
 
@@ -54,7 +57,7 @@ func scanIssue(sc scanner) (*issueRow, error) {
 	err := sc.Scan(&i.ID, &i.ProjectID, &i.Num, &i.ProjectKey, &i.ProjectName, &i.Summary, &i.Description,
 		&i.Environment, &i.TypeID, &i.StatusID, &i.PriorityID, &i.ResolutionID, &i.ReporterID, &i.AssigneeID,
 		&i.CreatorID, &i.LevelID, &i.ParentID, &i.Created, &i.Updated, &i.Resolved, &i.Due,
-		&i.Original, &i.Remaining, &i.Spent)
+		&i.Original, &i.Remaining, &i.Spent, &i.EpicID, &i.Rank)
 	return &i, err
 }
 
@@ -176,30 +179,9 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
-
-	// The search bar takes both syntaxes: JQL is recognised by its shape.
-	mode := "simple"
-	var cond, sort string
-	var cargs []any
-	if src := params.Get("jql"); src != "" || jql.LooksLike(params.Get("q")) {
-		if src == "" {
-			src = params.Get("q")
-		}
-		mode = "jql"
-		if cond, cargs, sort, err = s.compileJQL(r.Context(), sub, src); err != nil {
-			return err
-		}
-	} else {
-		q := search.Parse(params.Get("q"))
-		cond, cargs = q.SQL(sub.UserID)
-		sort = q.Sort
-	}
-	vis, args := sub.VisibleSQL("i")
-	where := vis + " AND " + cond
-	args = append(args, cargs...)
-	if p := params.Get("project"); p != "" {
-		where += " AND p.pkey = ?"
-		args = append(args, strings.ToUpper(p))
+	where, args, sort, mode, err := s.searchCondition(r.Context(), sub, params)
+	if err != nil {
+		return err
 	}
 	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
 		WHERE ` + where
@@ -328,6 +310,8 @@ type issueDetail struct {
 	Statuses        []statusRef     `json:"statuses"`
 	Transitions     []transitionOut `json:"transitions"`
 	SecurityLevels  []idName        `json:"securityLevels"`
+	Epic            *issueBrief     `json:"epic"`
+	Sprints         []sprintRef     `json:"sprints"`
 	CommentCount    int             `json:"commentCount"`
 }
 
@@ -558,6 +542,28 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		return nil, err
 	}
 	d.CommentCount = len(count)
+
+	if iss.EpicID.Valid {
+		if epic, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil && sub.CanSee(epic.perm()) {
+			eu, _ := s.users(ctx, epic.AssigneeID.Int64)
+			d.Epic = &issueBrief{Key: epic.Key(), Summary: epic.Summary, Type: cat.typeOf(epic.TypeID),
+				Status: cat.statusOf(epic.StatusID), Assignee: refOf(eu, epic.AssigneeID)}
+		}
+	}
+	d.Sprints = []sprintRef{}
+	if err := scanAll(ctx, s.db, `SELECT s.id, s.name, s.state, s.board_id FROM sprint_issues si
+		JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = ? ORDER BY s.position, s.id`, func(rows *sql.Rows) error {
+		var sp sprintRef
+		var board sql.NullInt64
+		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &board); err != nil {
+			return err
+		}
+		sp.Board = board.Int64
+		d.Sprints = append(d.Sprints, sp)
+		return nil
+	}, iss.ID); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -588,7 +594,7 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 		err := rows.Scan(&row.ID, &row.ProjectID, &row.Num, &row.ProjectKey, &row.ProjectName, &row.Summary,
 			&row.Description, &row.Environment, &row.TypeID, &row.StatusID, &row.PriorityID, &row.ResolutionID,
 			&row.ReporterID, &row.AssigneeID, &row.CreatorID, &row.LevelID, &row.ParentID, &row.Created,
-			&row.Updated, &row.Resolved, &row.Due, &row.Original, &row.Remaining, &row.Spent,
+			&row.Updated, &row.Resolved, &row.Due, &row.Original, &row.Remaining, &row.Spent, &row.EpicID, &row.Rank,
 			&rel.kind, &rel.linkID, &rel.linkType)
 		if err != nil {
 			return nil, err
@@ -841,13 +847,10 @@ func recordChanges(ctx context.Context, tx *sql.Tx, issueID, author int64, at ti
 	return nil
 }
 
+// publish refreshes the pages showing an issue, and nothing more (a card
+// moved up a board). Changes people hear about go through s.emit.
 func (s *Server) publish(iss *issueRow, what string, by int64) {
-	s.hub.Publish(live.Event{Key: iss.Key(), What: what, By: by, Issue: iss.perm()})
-}
-
-// publishComment announces a comment change only to those who may read it.
-func (s *Server) publishComment(iss *issueRow, by int64, group string, role int64) {
-	s.hub.Publish(live.Event{Key: iss.Key(), What: "comment", By: by, Issue: iss.perm(), Group: group, Role: role})
+	s.emit(events.Event{ActorID: by, IssueID: iss.ID, Key: iss.Key(), Access: iss.perm(), Live: what})
 }
 
 // Create and update ----------------------------------------------------------
@@ -862,7 +865,7 @@ func (f fields) isNull(k string) bool { return string(f[k]) == "null" }
 
 func (f fields) get(k string, v any) error {
 	if err := json.Unmarshal(f[k], v); err != nil {
-		return fail(http.StatusBadRequest, fmt.Sprintf("Champ %s invalide.", k))
+		return failf(http.StatusBadRequest, "Champ %s invalide.", k)
 	}
 	return nil
 }
@@ -870,18 +873,18 @@ func (f fields) get(k string, v any) error {
 var issueFields = map[string]bool{
 	"project": true, "type": true, "summary": true, "description": true, "environment": true, "priority": true,
 	"assignee": true, "labels": true, "components": true, "affectsVersions": true, "fixVersions": true,
-	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true,
+	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true, "epic": true,
 }
 
 func readFields(r *http.Request) (fields, error) {
 	var f fields
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err := dec.Decode(&f); err != nil {
-		return nil, fail(http.StatusBadRequest, "Requête invalide : "+err.Error())
+		return nil, failf(http.StatusBadRequest, "Requête invalide : %s", err.Error())
 	}
 	for k := range f {
 		if !issueFields[k] {
-			return nil, fail(http.StatusBadRequest, "Champ inconnu : "+k+".")
+			return nil, failf(http.StatusBadRequest, "Champ inconnu : %s.", k)
 		}
 	}
 	return f, nil
@@ -900,7 +903,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	var projectKey, typeID, summary string
 	for k, v := range map[string]*string{"project": &projectKey, "type": &typeID, "summary": &summary} {
 		if !f.has(k) {
-			return fail(http.StatusBadRequest, "Le champ "+k+" est obligatoire.")
+			return failf(http.StatusBadRequest, "Le champ %s est obligatoire.", k)
 		}
 		if err := f.get(k, v); err != nil {
 			return err
@@ -1054,11 +1057,16 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	now := time.Now().UTC()
+	// A new issue goes to the bottom of the board order.
+	var lastRank string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(rank_key), '') FROM issues`).Scan(&lastRank); err != nil {
+		return err
+	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO issues (project_id, num, issue_type_id, parent_id, summary,
 		description, environment, status_id, priority_id, reporter_id, assignee_id, creator_id, security_level_id,
-		created_at, updated_at, due_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		created_at, updated_at, due_date, rank_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		projectID, num, typeID, parentID, summary, description, environment, status, priority, sub.UserID, assignee,
-		sub.UserID, level, now, now, due)
+		sub.UserID, level, now, now, due, rankBetween(lastRank, ""))
 	if err != nil {
 		return err
 	}
@@ -1074,6 +1082,15 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.applySets(ctx, tx, f, iss); err != nil {
 		return err
 	}
+	if f.has("epic") {
+		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, ParentID: nullInt64(parentID)}, f)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE issues SET epic_id = ? WHERE id = ?`, epicID, issueID); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -1081,7 +1098,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.publish(created, "issue", sub.UserID)
+	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
 	return writeJSON(w, http.StatusCreated, map[string]string{"key": created.Key()})
 }
 
@@ -1215,7 +1232,7 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		want := map[int64]bool{}
 		for _, id := range ids {
 			if _, ok := names[id]; !ok {
-				return nil, fail(http.StatusBadRequest, "Valeur inconnue dans ce projet pour "+st.key+".")
+				return nil, failf(http.StatusBadRequest, "Valeur inconnue dans ce projet pour %s.", st.key)
 			}
 			want[id] = true
 		}
@@ -1282,7 +1299,6 @@ func (s *Server) userName(ctx context.Context, id int64) (string, string) {
 }
 
 func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
@@ -1295,6 +1311,16 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := s.applyUpdate(r.Context(), sub, iss, f); err != nil {
+		return err
+	}
+	return s.respondIssue(w, r, sub, iss.ID)
+}
+
+// applyUpdate changes an issue's fields, checking each one's permission,
+// recording history and announcing the change. The board reuses it to move
+// cards between columns.
+func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
 	if f.has("project") || f.has("parent") {
 		return fail(http.StatusBadRequest, "Déplacer un ticket n'est pas encore possible.")
 	}
@@ -1334,7 +1360,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, "Le résumé ne peut pas être vide.")
 		}
 		if s, ok := newVal.(string); ok && maxLen > 0 && utf8.RuneCountInString(s) > maxLen {
-			return fail(http.StatusBadRequest, fmt.Sprintf("%d caractères au plus.", maxLen))
+			return failf(http.StatusBadRequest, "%d caractères au plus.", maxLen)
 		}
 		var old any
 		switch key {
@@ -1466,6 +1492,26 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	if f.has("epic") {
+		if err := can(perm.Edit); err != nil {
+			return err
+		}
+		epicID, epicKey, err := s.epicTarget(ctx, sub, cat, iss, f)
+		if err != nil {
+			return err
+		}
+		if nullAny(iss.EpicID) != epicID {
+			c := change{field: "Epic Link", newValue: epicID, newString: epicKey}
+			if iss.EpicID.Valid {
+				if old, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil {
+					c.oldValue, c.oldString = iss.EpicID.Int64, old.Key()
+				}
+			}
+			sets["epic_id"] = epicID
+			changes = append(changes, c)
+		}
+	}
+
 	if f.has("securityLevel") {
 		if err := can(perm.Security); err != nil {
 			return err
@@ -1575,7 +1621,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	changes = append(changes, setChanges...)
 	if len(changes) == 0 {
-		return s.respondIssue(w, r, sub, iss.ID)
+		return nil
 	}
 	now := time.Now().UTC()
 	sets["updated_at"] = now
@@ -1612,11 +1658,13 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	// Announce with the old visibility too: someone who just lost access
 	// must learn the issue changed.
-	s.publish(iss, "issue", sub.UserID)
-	if updated.perm() != iss.perm() {
-		s.publish(updated, "issue", sub.UserID)
+	e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
+	e.Changes = eventChanges(changes)
+	if before := iss.perm(); before != updated.perm() {
+		e.Before = &before
 	}
-	return s.respondIssue(w, r, sub, iss.ID)
+	s.emit(e)
+	return nil
 }
 
 func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.Subject, id int64) error {
@@ -1682,6 +1730,7 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	gone := []*issueRow{iss}
 	for children.Next() {
 		child, err := scanIssue(children)
 		if err != nil {
@@ -1693,11 +1742,24 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 			children.Close()
 			return fail(http.StatusConflict, "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.")
 		}
+		gone = append(gone, child)
 	}
 	children.Close()
 	if err := children.Err(); err != nil {
 		return err
 	}
+	// Deletions are announced with the issues as they were: e-mails and
+	// webhooks are written once they are gone.
+	var deleted []events.Event
+	for _, d := range gone {
+		e := issueEvent(events.IssueDeleted, d, sub.UserID, "")
+		if e.Issue, err = events.LoadIssue(ctx, s.db, d.ID); err != nil {
+			return err
+		}
+		e.HookMatches = s.out.hooks.MatchBeforeDelete(ctx, d.ID)
+		deleted = append(deleted, e)
+	}
+	deleted[0].Live = "deleted"
 	var files []int64
 	if err := scanAll(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
 		WHERE i.id = ? OR i.parent_id = ?`, func(rows *sql.Rows) error {
@@ -1716,17 +1778,51 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	for _, id := range files {
 		os.Remove(filepath.Join(s.dataDir, "attachments", strconv.FormatInt(id, 10)))
 	}
-	s.publish(iss, "deleted", sub.UserID)
+	for _, e := range deleted {
+		s.emit(e)
+	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
 // compileJQL turns a JQL query into SQL. Syntax and field errors come back
-// to the user as they are (in French).
+// to the user as they are (in the user's language).
+// searchCondition turns a search's parameters (jql, or q in either syntax,
+// and project) into a condition on the issues the user sees (aliases i and
+// p), with its ORDER BY and the syntax used.
+func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
+	sort, mode string, err error) {
+	// The search bar takes both syntaxes: JQL is recognised by its shape.
+	mode = "simple"
+	var cond string
+	var cargs []any
+	if src := params.Get("jql"); src != "" || jql.LooksLike(params.Get("q")) {
+		if src == "" {
+			src = params.Get("q")
+		}
+		mode = "jql"
+		if cond, cargs, sort, err = s.compileJQL(ctx, sub, src); err != nil {
+			return "", nil, "", "", err
+		}
+	} else {
+		q := search.Parse(params.Get("q"))
+		cond, cargs = q.SQL(sub.UserID)
+		sort = q.Sort
+	}
+	vis, args := sub.VisibleSQL("i")
+	where = vis + " AND " + cond
+	args = append(args, cargs...)
+	if p := params.Get("project"); p != "" {
+		where += " AND p.pkey = ?"
+		args = append(args, strings.ToUpper(p))
+	}
+	return where, args, sort, mode, nil
+}
+
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {
 	q, err := jql.Parse(src)
 	if err != nil {
-		return "", nil, "", fail(http.StatusBadRequest, "JQL : "+err.Error())
+		return "", nil, "", jqlError(err)
 	}
 	fields := map[string]jql.Field{}
 	if err := scanAll(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
@@ -1734,7 +1830,7 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
 		}
-		fields[strings.ToLower(f.Name)] = f
+		fields[foldName(f.Name)] = f
 		fields[strconv.FormatInt(f.ID, 10)] = f
 		return nil
 	}); err != nil {
@@ -1745,13 +1841,100 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		Now: time.Now(),
 		Loc: s.tz,
 		CustomField: func(name string) (jql.Field, bool) {
-			f, ok := fields[strings.ToLower(name)]
+			f, ok := fields[foldName(name)]
 			return f, ok
 		},
+		Query: func(q string, args []any) ([]string, error) {
+			var out []string
+			err := scanAll(ctx, s.db, q, func(rows *sql.Rows) error {
+				var v sql.NullString
+				if err := rows.Scan(&v); err != nil {
+					return err
+				}
+				if v.Valid {
+					out = append(out, v.String)
+				}
+				return nil
+			}, args...)
+			return out, err
+		},
 	})
-	var je *jql.Error
-	if errors.As(err, &je) {
-		return "", nil, "", fail(http.StatusBadRequest, "JQL : "+je.Msg)
+	if err != nil {
+		return "", nil, "", jqlError(err)
 	}
-	return where, args, order, err
+	return where, args, order, nil
+}
+
+// jqlError answers a query the server cannot read: 400 with the message and
+// where in the query (in characters) the problem is, when known.
+func jqlError(err error) error {
+	var je *jql.Error
+	if !errors.As(err, &je) {
+		return err
+	}
+	return &httpError{status: http.StatusBadRequest, msg: i18n.M("JQL : %s", i18n.M(je.Template, je.Args...)),
+		extra: map[string]any{"pos": je.Pos}}
+}
+
+// foldName compares field names the forgiving way: case and French accents
+// do not matter ("Fonctionnalité" finds "Fonctionnalite").
+func foldName(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case 'à', 'â', 'ä':
+			return 'a'
+		case 'é', 'è', 'ê', 'ë':
+			return 'e'
+		case 'î', 'ï':
+			return 'i'
+		case 'ô', 'ö':
+			return 'o'
+		case 'ù', 'û', 'ü':
+			return 'u'
+		case 'ç':
+			return 'c'
+		}
+		return r
+	}, strings.ToLower(strings.TrimSpace(s)))
+}
+
+func nullInt64(v any) sql.NullInt64 {
+	if id, ok := v.(int64); ok {
+		return sql.NullInt64{Int64: id, Valid: true}
+	}
+	return sql.NullInt64{}
+}
+
+// isEpicType tells whether an issue type is an epic (by name, as Jira
+// Software does not mark it otherwise).
+func isEpicType(t typeRef) bool {
+	n := strings.ToLower(t.Name)
+	return n == "epic" || n == "épopée" || n == "epopee"
+}
+
+// epicTarget reads the "epic" field (an issue key, or null to detach) and
+// checks the target: an epic the user sees. Sub-tasks follow their parent's
+// epic, and an epic cannot be put in an epic.
+func (s *Server) epicTarget(ctx context.Context, sub *perm.Subject, cat *catalog, iss *issueRow, f fields) (any, any, error) {
+	if f.isNull("epic") {
+		return nil, nil, nil
+	}
+	var key string
+	if err := f.get("epic", &key); err != nil {
+		return nil, nil, err
+	}
+	if iss.ParentID.Valid {
+		return nil, nil, fail(http.StatusBadRequest, "Une sous-tâche suit l'épopée de son ticket parent.")
+	}
+	if iss.TypeID != "" && isEpicType(cat.typeOf(iss.TypeID)) {
+		return nil, nil, fail(http.StatusBadRequest, "Une épopée ne peut pas appartenir à une autre épopée.")
+	}
+	epic, err := s.findIssue(ctx, key)
+	if err != nil || !sub.CanSee(epic.perm()) {
+		return nil, nil, fail(http.StatusBadRequest, "Épopée introuvable.")
+	}
+	if !isEpicType(cat.typeOf(epic.TypeID)) {
+		return nil, nil, failf(http.StatusBadRequest, "%s n'est pas une épopée.", epic.Key())
+	}
+	return epic.ID, epic.Key(), nil
 }

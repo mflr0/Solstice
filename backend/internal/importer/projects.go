@@ -126,6 +126,7 @@ func (r *run) importCatalogues() error {
 	// column instead, so those types are not copied.
 	r.linkTypes = map[int64]bool{}
 	r.subtaskLink = map[int64]bool{}
+	r.epicLink = map[int64]bool{}
 	ins = r.inserter("link_types", "id", "name", "inward", "outward", "position")
 	pos := 0
 	if err := r.each(`SELECT id, linkname, inward, outward, pstyle FROM issuelinktype ORDER BY id`, func(rows *sql.Rows) error {
@@ -134,8 +135,13 @@ func (r *run) importCatalogues() error {
 		if err := rows.Scan(&id, &name, &inward, &outward, &style); err != nil {
 			return err
 		}
-		if style.String == "jira_subtask" {
+		switch style.String {
+		case "jira_subtask":
 			r.subtaskLink[id] = true
+			return nil
+		case "jira_gh_epic_story":
+			// Epic → issue links become the issue's epic.
+			r.epicLink[id] = true
 			return nil
 		}
 		r.linkTypes[id] = true

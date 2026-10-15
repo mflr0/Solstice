@@ -365,6 +365,10 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
+	before, err := s.projectGrants(ctx, id)
+	if err != nil {
+		return err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -391,7 +395,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 		case perm.Role:
 			role, table = g.ID, "project_roles"
 		default:
-			return fail(http.StatusBadRequest, "Bénéficiaire inconnu : "+g.Holder+".")
+			return failf(http.StatusBadRequest, "Bénéficiaire inconnu : %s.", g.Holder)
 		}
 		if table != "" {
 			var n int
@@ -411,5 +415,6 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
+	s.auditGrants(r, id, before)
 	return s.getPermissions(w, r)
 }

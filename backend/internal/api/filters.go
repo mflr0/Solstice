@@ -247,7 +247,7 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 				return fail(http.StatusBadRequest, "Personne introuvable.")
 			}
 		default:
-			return fail(http.StatusBadRequest, "Partage inconnu : "+sh.Kind+".")
+			return failf(http.StatusBadRequest, "Partage inconnu : %s.", sh.Kind)
 		}
 	}
 	return nil
@@ -318,6 +318,9 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	if in.Shares != nil {
+		s.auditFilterShares(r, id, strings.TrimSpace(*in.Name), nil, *in.Shares)
+	}
 	rows, err := s.loadFilters(ctx, sub, id)
 	if err != nil || len(rows) == 0 {
 		return err
@@ -376,6 +379,9 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return err
+	}
+	if in.Shares != nil {
+		s.auditFilterShares(r, f.out.ID, f.out.Name, f.out.Shares, *in.Shares)
 	}
 	rows, err := s.loadFilters(ctx, sub, f.out.ID)
 	if err != nil {
