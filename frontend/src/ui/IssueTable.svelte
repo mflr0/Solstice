@@ -30,36 +30,34 @@
   <thead>
     <tr>
       <th class="c-type"><span class="sr-only">{t.table.type}</span></th>
-      <th>{t.table.key}</th>
+      <th class="c-key">{t.table.key}</th>
       <th class="c-summary">{t.table.summary}</th>
-      <th>{t.table.status}</th>
-      <th><span class="sr-only">{t.table.priority}</span></th>
-      {#if showAssignee}<th>{t.table.assignee}</th>{/if}
-      {#if showDue}<th>{t.table.due}</th>{/if}
-      <th class="num">{t.table.updated}</th>
+      <th class="c-status">{t.table.status}</th>
+      <th class="c-priority"><span class="sr-only">{t.table.priority}</span></th>
+      {#if showAssignee}<th class="c-assignee">{t.table.assignee}</th>{/if}
+      {#if showDue}<th class="c-due">{t.table.due}</th>{/if}
+      <th class="num c-updated">{t.table.updated}</th>
     </tr>
   </thead>
   <tbody>
     {#each issues as issue (issue.key)}
       <tr onclick={(e) => open(e, issue.key)}>
         <td class="c-type"><TypeMark type={issue.type} /></td>
-        <td><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
+        <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
         <td class="c-summary">
           <span class="summary">{issue.summary}</span>
           {#if issue.confidential}<Lock />{/if}
         </td>
-        <td><Stamp status={issue.status} /></td>
-        <td><PriorityMark priority={issue.priority} /></td>
-        {#if showAssignee}<td class="c-who"><Who user={issue.assignee} /></td>{/if}
+        <td class="c-status"><Stamp status={issue.status} /></td>
+        <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
+        {#if showAssignee}<td class="c-who c-assignee"><Who user={issue.assignee} /></td>{/if}
         {#if showDue}
-          <td
-            class="c-due"
-            class:late={issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
-          >
+          {@const late = !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
+          <td class="c-due" class:late class:is-overdue={late}>
             {issue.due ? formatDay(issue.due) : ''}
           </td>
         {/if}
-        <td class="num muted"><RelTime iso={issue.updated} /></td>
+        <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
       </tr>
     {/each}
   </tbody>
@@ -104,15 +102,29 @@
   }
 
   .late {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   @media (max-width: 760px) {
-    th:nth-child(5),
-    td:nth-child(5),
-    th:nth-child(6),
-    td:nth-child(6) {
+    .c-priority,
+    .c-assignee {
       display: none;
+    }
+  }
+
+  /* A phone: type, key, summary and status; the summary may take two lines. */
+  @media (max-width: 600px) {
+    .c-due,
+    .c-updated {
+      display: none;
+    }
+
+    .summary {
+      display: -webkit-inline-box;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
     }
   }
 </style>

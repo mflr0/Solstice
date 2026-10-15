@@ -1,7 +1,7 @@
 /**
  * The Solstice API, typed. Every request carries the X-Solstice header the server
  * requires on writes (it blocks cross-site forgery); errors come back as
- * ApiError with the server's French message, ready to show.
+ * ApiError with the server's message, in the interface's language, ready to show.
  */
 
 import type {
@@ -18,17 +18,39 @@ import type {
   Project,
   ProjectDetail,
   ProjectPermissions,
+  ProjectWorkflows,
   Refs,
+  StatusCategory,
+  StatusRef,
   UserRef,
   Worklog,
+  WorkflowInput,
   Counter,
+  SavedFilter,
+  SprintSuggestion,
+  Facets,
+  EpicRef,
+  CustomFieldRef,
+  ProjectValue,
 } from '../core/types.js';
+import type {
+  Backlog,
+  BoardCards,
+  BoardDetail,
+  BoardKind,
+  BoardPatch,
+  BoardSummary,
+  CardMove,
+} from '../core/board-types.js';
 import { t } from '../i18n/fr.js';
+import { locale } from '../i18n/index.js';
 
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** The error's JSON body, for errors that say more than a message. */
+    readonly data: unknown = undefined,
   ) {
     super(message);
   }
@@ -42,7 +64,8 @@ export function setUnauthorizedHandler(fn: () => void): void {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  // The server answers its messages in the interface's language.
+  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': locale };
   let payload: BodyInit | undefined;
   if (method !== 'GET') headers['X-Solstice'] = '1';
   if (body instanceof FormData) {
@@ -65,15 +88,26 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (res.status === 401 && path !== '/api/login') onUnauthorized();
   if (!res.ok) {
     let message: string = t.errors.generic;
+    let data: unknown;
     try {
-      const data: unknown = await res.json();
+      data = await res.json();
       if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
         message = data.error;
       }
     } catch {
       // Not JSON: keep the generic message.
     }
-    throw new ApiError(message, res.status);
+    // Not installed yet: the setup wizard comes first.
+    if (
+      res.status === 503 &&
+      data &&
+      typeof data === 'object' &&
+      'setup' in data &&
+      data.setup === true
+    ) {
+      location.assign('/setup');
+    }
+    throw new ApiError(message, res.status, data);
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -116,6 +150,8 @@ export const api = {
     request<Me>('POST', '/api/login', { username, password }),
   logout: () => request<void>('POST', '/api/logout'),
   me: () => request<Me>('GET', '/api/me'),
+  /** The account's own settings: the interface language, or null for none. */
+  updateMe: (patch: { locale: string | null }) => request<Me>('PATCH', '/api/me', patch),
   meta: () => request<Meta>('GET', '/api/meta'),
 
   projects: () => request<Project[]>('GET', '/api/projects'),
@@ -129,6 +165,8 @@ export const api = {
 
   issues: (params: {
     q?: string | undefined;
+    /** JQL, read as such whatever it looks like. */
+    jql?: string | undefined;
     project?: string | undefined;
     page?: number | undefined;
     size?: number | undefined;
@@ -173,6 +211,44 @@ export const api = {
   refs: (users: string[], issueKeys: string[]) =>
     request<Refs>('POST', '/api/refs', { users, issueKeys }),
 
+  // Boards and sprints.
+  boards: (project?: string) => request<BoardSummary[]>('GET', `/api/boards${query({ project })}`),
+  createBoard: (b: { name?: string; kind: BoardKind; project: string }) =>
+    request<{ id: number }>('POST', '/api/boards', b),
+  board: (id: number) => request<BoardDetail>('GET', `/api/boards/${id}`),
+  saveBoard: (id: number, patch: BoardPatch) =>
+    request<BoardDetail>('PUT', `/api/boards/${id}`, patch),
+  deleteBoard: (id: number) => request<void>('DELETE', `/api/boards/${id}`),
+  boardCards: (id: number, params: { quick?: string | undefined; sprint?: number | undefined }) =>
+    request<BoardCards>('GET', `/api/boards/${id}/cards${query(params)}`),
+  backlog: (id: number, quick?: string) =>
+    request<Backlog>('GET', `/api/boards/${id}/backlog${query({ quick })}`),
+  moveCard: (id: number, move: CardMove) => request<void>('POST', `/api/boards/${id}/move`, move),
+  createSprint: (board: number, s: { name?: string; goal?: string } = {}) =>
+    request<{ id: number }>('POST', `/api/boards/${board}/sprints`, s),
+  startSprint: (id: number, s: { name?: string; goal?: string; end?: string }) =>
+    request<void>('POST', `/api/sprints/${id}/start`, s),
+  completeSprint: (id: number, moveTo?: number) =>
+    request<{ moved: number }>('POST', `/api/sprints/${id}/complete`, moveTo ? { moveTo } : {}),
+  /** The statuses a project's workflows use, for mapping board columns. */
+  boardProjectStatuses: (key: string) =>
+    request<{ workflows: { statuses: StatusRef[] }[] }>(
+      'GET',
+      `/api/projects/${enc(key)}/workflows`,
+    ),
+
+  // Workflows: each project owns its own.
+  workflows: (key: string) =>
+    request<ProjectWorkflows>('GET', `/api/projects/${enc(key)}/workflows`),
+  createWorkflow: (key: string, w: { name: string; copyFrom?: number }) =>
+    request<{ id: number }>('POST', `/api/projects/${enc(key)}/workflows`, w),
+  saveWorkflow: (id: number, w: WorkflowInput) =>
+    request<ProjectWorkflows>('PUT', `/api/workflows/${id}`, w),
+  deleteWorkflow: (id: number, remapDefault?: Record<string, string>) =>
+    request<void>('DELETE', `/api/workflows/${id}`, remapDefault ? { remapDefault } : undefined),
+  createStatus: (s: { name: string; category: StatusCategory; project: string }) =>
+    request<StatusRef>('POST', '/api/statuses', s),
+
   adminUsers: (q: string) => request<AdminUser[]>('GET', `/api/admin/users${query({ q })}`),
   adminCreateUser: (u: {
     username: string;
@@ -185,6 +261,30 @@ export const api = {
     id: number,
     patch: { name?: string; email?: string; active?: boolean; admin?: boolean; password?: string },
   ) => request<void>('PATCH', `/api/admin/users/${id}`, patch),
+
+  // Search: saved filters and values to pick from.
+  filters: () => request<SavedFilter[]>('GET', '/api/filters'),
+  createFilter: (f: { name: string; query: string; description?: string }) =>
+    request<SavedFilter>('POST', '/api/filters', f),
+  updateFilter: (id: number, patch: { name?: string; query?: string; description?: string }) =>
+    request<SavedFilter | undefined>('PATCH', `/api/filters/${id}`, patch),
+  deleteFilter: (id: number) => request<void>('DELETE', `/api/filters/${id}`),
+  favouriteFilter: (id: number, on: boolean) =>
+    request<void>(on ? 'PUT' : 'DELETE', `/api/filters/${id}/favourite`),
+  labels: (q: string, project?: string) =>
+    request<string[]>('GET', `/api/labels${query({ q, project })}`),
+  sprintSuggestions: (q: string) =>
+    request<SprintSuggestion[]>('GET', `/api/sprints${query({ q })}`),
+  /** Counts per value of the given fields (comma-separated) for a JQL search. */
+  facets: (params: { jql: string; project?: string | undefined; fields: string }) =>
+    request<Facets>('GET', `/api/issues/facets${query(params)}`),
+  epics: (q: string, project?: string) =>
+    request<EpicRef[]>('GET', `/api/epics${query({ q, project })}`),
+  customFields: () => request<CustomFieldRef[]>('GET', '/api/fields'),
+  versions: (q: string, project?: string) =>
+    request<ProjectValue[]>('GET', `/api/versions${query({ q, project })}`),
+  components: (q: string, project?: string) =>
+    request<ProjectValue[]>('GET', `/api/components${query({ q, project })}`),
 };
 
 /** Narrows an update response: false when the issue became invisible. */

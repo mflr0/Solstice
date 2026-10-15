@@ -172,7 +172,7 @@
       </label>
       <div class="field">
         <span class="field-label">{t.create.assignee}</span>
-        <div class="boxed">
+        <div class="boxed field-box">
           <UserPicker
             value={assignee}
             label={t.create.assignee}
@@ -195,7 +195,7 @@
         {#if detail.components.length}
           <div class="field">
             <span class="field-label">{t.create.components}</span>
-            <div class="boxed">
+            <div class="boxed field-box">
               <MultiPick
                 options={detail.components.filter((c) => !c.archived)}
                 selected={components}
@@ -208,7 +208,7 @@
         {#if detail.versions.length}
           <div class="field">
             <span class="field-label">{t.create.fixVersions}</span>
-            <div class="boxed">
+            <div class="boxed field-box">
               <MultiPick
                 options={detail.versions.filter((v) => !v.archived && !v.released)}
                 selected={fixVersions}
@@ -234,7 +234,7 @@
 
     <div class="field">
       <span class="field-label">{t.create.labels}</span>
-      <div class="boxed"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
+      <div class="boxed field-box"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
     </div>
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
@@ -271,7 +271,7 @@
   }
 
   .summary {
-    font: 600 16px/1.3 var(--serif);
+    font: var(--title-weight) 16px/1.3 var(--font-title);
     padding: 8px 10px;
   }
 

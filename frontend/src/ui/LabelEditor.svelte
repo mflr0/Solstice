@@ -80,7 +80,7 @@
     border-bottom: 1px dashed var(--rule-strong);
     background: transparent;
     padding: 2px 0;
-    font: 12.5px var(--mono);
+    font: 12.5px var(--font-mono);
   }
 
   .add:focus {

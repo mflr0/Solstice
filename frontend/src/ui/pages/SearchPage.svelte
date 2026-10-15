@@ -1,50 +1,293 @@
 <script lang="ts">
-  import type { SearchMode } from '../../core/types.js';
+  import { readLocation, toJql, writeLocation } from '../../core/filters-url.js';
+  import type { SavedFilter } from '../../core/types.js';
   import { t } from '../../i18n/fr.js';
+  import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
-  import IssueQuery from '../IssueQuery.svelte';
-  import SearchBox from '../SearchBox.svelte';
+  import { notify } from '../../lib/ui.svelte.js';
+  import Modal from '../Modal.svelte';
+  import IssueSearch from '../search/IssueSearch.svelte';
+  import SavedFilters from '../search/SavedFilters.svelte';
 
-  /** Search across every project; the query lives in the address. */
-  const q = $derived(router.param('q') ?? '');
-  const page = $derived(Number(router.param('page') ?? '1') || 1);
-  // Follows the address (back/forward) until the user types.
-  let draft = $derived(q);
-  let total = $state(0);
-  let mode = $state<SearchMode>('simple');
+  /**
+   * Search across every project, with the saved filters beside it. The
+   * search lives in the address (?jql=…); ?filter=12 opens a saved filter,
+   * and a change made to it shows as « modifié » until it is saved.
+   */
+  let filters = $state<SavedFilter[] | null>(null);
+  const loc = $derived(readLocation(router.search).loc);
+  const current = $derived(
+    loc.filter === null ? null : (filters?.find((f) => f.id === loc.filter) ?? null),
+  );
+  const gone = $derived(loc.filter !== null && filters !== null && current === null);
+  /** The query when the address has none: the filter's, or everything. */
+  const fallback = $derived.by(() => {
+    if (loc.filter === null) return '';
+    if (filters === null) return null;
+    return current ? toJql(current.query) : '';
+  });
+  const jql = $derived(loc.jql ?? fallback ?? '');
+  const modified = $derived(
+    current !== null && loc.jql !== null && loc.jql.trim() !== toJql(current.query).trim(),
+  );
+
+  let dialog = $state<'save' | 'rename' | 'delete' | null>(null);
+  let name = $state('');
+  let description = $state('');
+  let busy = $state(false);
+  let dialogError = $state('');
 
   $effect(() => {
-    document.title = `${q || t.search.title} — ${t.appName}`;
+    document.title = `${current?.name ?? t.search.title} — ${t.appName}`;
   });
 
-  function search(v: string) {
-    router.setParams({ q: v, page: null });
+  async function reload() {
+    try {
+      filters = await api.filters();
+    } catch (e) {
+      filters ??= [];
+      notify(errorMessage(e), 'error');
+    }
+  }
+
+  $effect(() => {
+    void reload();
+  });
+
+  /** Opens the saved filter as saved (its own query). */
+  function openFilter(id: number) {
+    router.navigate(
+      `${router.path}${writeLocation({ jql: null, mode: loc.mode, filter: id, page: 1 })}`,
+    );
+  }
+
+  function ask(which: 'save' | 'rename' | 'delete') {
+    dialogError = '';
+    name = which === 'rename' && current ? current.name : '';
+    description = '';
+    dialog = which;
+  }
+
+  async function act(run: () => Promise<void>) {
+    busy = true;
+    dialogError = '';
+    try {
+      await run();
+      dialog = null;
+    } catch (e) {
+      dialogError = errorMessage(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  const saveNew = () =>
+    act(async () => {
+      const f = await api.createFilter({
+        name: name.trim(),
+        query: jql,
+        ...(description.trim() ? { description: description.trim() } : {}),
+      });
+      await reload();
+      notify(t.saved.created(f.name));
+      openFilter(f.id);
+    });
+
+  const rename = () =>
+    act(async () => {
+      if (!current) return;
+      await api.updateFilter(current.id, { name: name.trim() });
+      await reload();
+      notify(t.saved.updated(name.trim()));
+    });
+
+  const remove = () =>
+    act(async () => {
+      if (!current) return;
+      const was = current;
+      await api.deleteFilter(was.id);
+      // Stay on the same search, no longer tied to the filter.
+      router.navigate(
+        `${router.path}${writeLocation({ jql, mode: loc.mode, filter: null, page: 1 })}`,
+        { replace: true },
+      );
+      await reload();
+      notify(t.saved.deleted(was.name));
+    });
+
+  async function saveChanges() {
+    if (!current) return;
+    busy = true;
+    try {
+      await api.updateFilter(current.id, { query: jql });
+      await reload();
+      notify(t.saved.updated(current.name));
+      openFilter(current.id);
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function star(f: SavedFilter) {
+    try {
+      await api.favouriteFilter(f.id, !f.favourite);
+      await reload();
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    }
   }
 </script>
 
-<div class="page">
+<div class="page search-page" data-title={current?.name ?? t.search.title}>
   <header class="page-head">
-    <h1>{t.search.title}</h1>
-    <span class="count muted">{t.search.results(total)}</span>
+    <div class="title-block">
+      {#if current}<p class="eyebrow">{t.saved.current}</p>{/if}
+      <h1 class="page-title">
+        {current?.name ?? t.search.title}
+        {#if modified}<span class="modified">{t.saved.modified}</span>{/if}
+      </h1>
+      {#if current?.description}<p class="description muted">{current.description}</p>{/if}
+    </div>
+    <div class="row head-actions">
+      {#if current?.canEdit}
+        {#if modified}
+          <button class="btn btn-primary" disabled={busy} onclick={saveChanges}
+            >{t.saved.save}</button
+          >
+        {/if}
+        <button class="btn btn-quiet" onclick={() => ask('rename')}>{t.saved.rename}</button>
+        <button class="btn btn-quiet btn-danger" onclick={() => ask('delete')}
+          >{t.saved.delete}</button
+        >
+      {/if}
+      <button class="btn" onclick={() => ask('save')}
+        >{current ? t.saved.saveAs : t.saved.saveSearch}</button
+      >
+    </div>
   </header>
-  <SearchBox bind:value={draft} onsearch={search} {mode} autofocus />
-  <div class="results">
-    <IssueQuery
-      {q}
-      {page}
-      ontotal={(n) => (total = n)}
-      onmode={(m) => (mode = m)}
-      onpage={(p) => router.setParams({ page: String(p) }, { replace: false })}
-    />
+
+  <div class="search-layout">
+    <SavedFilters {filters} current={loc.filter} onstar={star} />
+    <div class="search-main">
+      {#if gone}<p class="error-text gone" role="alert">{t.saved.gone}</p>{/if}
+      <IssueSearch {fallback} autofocus={loc.filter === null && loc.jql === null} />
+    </div>
   </div>
 </div>
 
+<Modal
+  open={dialog === 'save' || dialog === 'rename'}
+  title={dialog === 'rename' ? t.saved.renameTitle : t.saved.newTitle}
+  onclose={() => (dialog = null)}
+>
+  <form
+    id="filter-form"
+    class="filter-form"
+    onsubmit={(e) => {
+      e.preventDefault();
+      if (!name.trim() || busy) return;
+      void (dialog === 'rename' ? rename() : saveNew());
+    }}
+  >
+    <label class="field">
+      <span>{t.saved.name}</span>
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="input" bind:value={name} maxlength="255" required autofocus />
+    </label>
+    {#if dialog === 'save'}
+      <label class="field">
+        <span>{t.saved.description}</span>
+        <input class="input" bind:value={description} />
+      </label>
+      <code class="query">{jql || '—'}</code>
+    {/if}
+    {#if dialogError}<p class="error-text" role="alert">{dialogError}</p>{/if}
+  </form>
+  {#snippet footer()}
+    <button class="btn" type="button" onclick={() => (dialog = null)}>{t.common.cancel}</button>
+    <button class="btn btn-primary" type="submit" form="filter-form" disabled={busy || !name.trim()}
+      >{t.saved.save}</button
+    >
+  {/snippet}
+</Modal>
+
+<Modal open={dialog === 'delete'} title={t.saved.deleteTitle} onclose={() => (dialog = null)}>
+  <p class="confirm">{current ? t.saved.confirmDelete(current.name) : ''}</p>
+  {#if dialogError}<p class="error-text" role="alert">{dialogError}</p>{/if}
+  {#snippet footer()}
+    <button class="btn" type="button" onclick={() => (dialog = null)}>{t.common.cancel}</button>
+    <button class="btn btn-primary" type="button" disabled={busy} onclick={() => void remove()}
+      >{t.saved.delete}</button
+    >
+  {/snippet}
+</Modal>
+
 <style>
-  .count {
-    font: 13px var(--mono);
+  .title-block {
+    min-width: 0;
   }
 
-  .results {
-    margin-top: 18px;
+  .modified {
+    margin-left: 8px;
+    font: italic 400 14px/1 var(--font-body);
+    color: var(--accent-text);
+    vertical-align: 0.25em;
+  }
+
+  .description {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+  }
+
+  .head-actions {
+    justify-content: flex-end;
+  }
+
+  .search-layout {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  .search-layout > :global(.saved-filters) {
+    position: sticky;
+    top: 74px;
+  }
+
+  .gone {
+    margin: 0 0 12px;
+  }
+
+  .filter-form {
+    display: grid;
+    gap: 14px;
+  }
+
+  .query {
+    display: block;
+    padding: 8px 10px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-xs);
+    background: var(--paper-sunk);
+    font: 12.5px/1.5 var(--font-mono);
+    overflow-wrap: anywhere;
+  }
+
+  .confirm {
+    margin: 0;
+  }
+
+  @media (max-width: 1000px) {
+    .search-layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .search-layout > :global(.saved-filters) {
+      position: static;
+    }
   }
 </style>

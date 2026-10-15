@@ -176,7 +176,7 @@
   }
 
   .ext {
-    font: 600 13px/1 var(--mono);
+    font: 600 13px/1 var(--font-mono);
     letter-spacing: 0.06em;
     padding: 4px 7px;
     border: 1.5px solid var(--ink-soft);
@@ -226,7 +226,7 @@
 
   .del:hover,
   .del.armed {
-    color: var(--accent);
+    color: var(--accent-text);
     border-color: var(--accent);
   }
 
@@ -244,8 +244,8 @@
     place-items: center;
     margin: 0;
     background: color-mix(in srgb, var(--paper) 85%, transparent);
-    font: italic 16px var(--serif);
-    color: var(--accent);
+    font: var(--title-italic) 16px var(--font-title);
+    color: var(--accent-text);
     pointer-events: none;
   }
 </style>

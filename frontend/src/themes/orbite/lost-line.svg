@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Orbite, empty state "lost": a crescent on its orbits, a probe drifting away. Used as a mask. -->
+  <defs>
+    <mask id="behind">
+      <rect width="200" height="120" fill="#fff"/>
+      <circle cx="100" cy="60" r="26" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#behind)">
+    <ellipse cx="100" cy="60" rx="88" ry="27" transform="rotate(-10 100 60)" stroke-opacity=".42"/>
+    <ellipse cx="100" cy="60" rx="58" ry="17" transform="rotate(-10 100 60)" stroke-opacity=".38" stroke-dasharray="1.5 4.5"/>
+  </g>
+  <path d="M95.71 38.42A22 22 0 1 0 120.93 66.79A19 19 0 0 1 95.71 38.42Z" stroke-width="1.5"/>
+  <g stroke-opacity=".55">
+    <circle cx="90" cy="66" r="2.6"/>
+    <circle cx="98.5" cy="75" r="1.6"/>
+    <circle cx="86" cy="54" r="1.3"/>
+  </g>
+  <path d="M172.7 33.5c4-5 9-8.5 15-10" stroke-width="1.2" stroke-opacity=".7" stroke-dasharray="1 3.5"/>
+  <g transform="rotate(-25 190 19)" stroke-width="1.2">
+    <rect x="187.5" y="16.5" width="5" height="5" rx=".8"/>
+    <path d="M187.5 19h-4M192.5 19h4"/>
+  </g>
+  <path d="M30 18v5M27.5 20.5h5M150 98v4M148 100h4M58 100v3M56.5 101.5h3" stroke-opacity=".55"/>
+</svg>

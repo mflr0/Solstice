@@ -79,9 +79,9 @@
 {#if !session.me?.admin}
   <NotFoundPage message={t.admin.forbidden} />
 {:else}
-  <div class="page">
+  <div class="page" data-title={t.admin.title}>
     <header class="page-head">
-      <h1>{t.admin.title}</h1>
+      <h1 class="page-title">{t.admin.title}</h1>
       <button class="btn btn-primary" onclick={() => ((creating = true), (formError = ''))}
         >{t.admin.newUser}</button
       >
@@ -98,50 +98,54 @@
     {#if error}
       <p class="error-text" role="alert">{error}</p>
     {:else if !users}
-      <p class="muted">{t.common.loading}</p>
+      <p class="muted loading">{t.common.loading}</p>
     {:else}
-      <table class="ledger">
-        <thead>
-          <tr>
-            <th>{t.admin.name}</th>
-            <th>{t.admin.username}</th>
-            <th>{t.admin.email}</th>
-            <th>{t.admin.state}</th>
-            <th class="num">{t.admin.since}</th>
-            <th><span class="sr-only">{t.common.actions}</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each users as u (u.id)}
-            <tr class:off={!u.active}>
-              <td><strong>{u.name}</strong></td>
-              <td class="key">{u.username}</td>
-              <td>{u.email}</td>
-              <td class="tags">
-                {#if u.admin}<span class="stamp done">{t.admin.admin}</span>{/if}
-                {#if !u.active}<span class="stamp">{t.common.inactive}</span>{/if}
-                {#if !u.hasPassword}<span class="muted small">{t.admin.noPassword}</span>{/if}
-              </td>
-              <td class="num muted">{formatDay(u.created.slice(0, 10))}</td>
-              <td class="row-actions">
-                <button
-                  class="link-btn"
-                  onclick={() => ((resetting = u), (newPassword = ''), (formError = ''))}
-                  >{t.admin.resetPassword}</button
-                >
-                {#if u.id !== session.me.id}
-                  <button class="link-btn" onclick={() => void patch(u, { active: !u.active })}
-                    >{u.active ? t.admin.deactivate : t.admin.activate}</button
-                  >
-                  <button class="link-btn" onclick={() => void patch(u, { admin: !u.admin })}
-                    >{u.admin ? t.admin.removeAdmin : t.admin.makeAdmin}</button
-                  >
-                {/if}
-              </td>
+      <div class="table-scroll">
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th>{t.admin.name}</th>
+              <th>{t.admin.username}</th>
+              <th>{t.admin.email}</th>
+              <th>{t.admin.state}</th>
+              <th class="num">{t.admin.since}</th>
+              <th><span class="sr-only">{t.common.actions}</span></th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each users as u (u.id)}
+              <tr class:off={!u.active}>
+                <td><strong>{u.name}</strong></td>
+                <td class="key">{u.username}</td>
+                <td>{u.email}</td>
+                <td class="tags">
+                  <span class="tag-list">
+                    {#if u.admin}<span class="stamp done">{t.admin.admin}</span>{/if}
+                    {#if !u.active}<span class="stamp">{t.common.inactive}</span>{/if}
+                    {#if !u.hasPassword}<span class="muted small">{t.admin.noPassword}</span>{/if}
+                  </span>
+                </td>
+                <td class="num muted">{formatDay(u.created.slice(0, 10))}</td>
+                <td class="row-actions">
+                  <button
+                    class="link-btn"
+                    onclick={() => ((resetting = u), (newPassword = ''), (formError = ''))}
+                    >{t.admin.resetPassword}</button
+                  >
+                  {#if u.id !== session.me.id}
+                    <button class="link-btn" onclick={() => void patch(u, { active: !u.active })}
+                      >{u.active ? t.admin.deactivate : t.admin.activate}</button
+                    >
+                    <button class="link-btn" onclick={() => void patch(u, { admin: !u.admin })}
+                      >{u.admin ? t.admin.removeAdmin : t.admin.makeAdmin}</button
+                    >
+                  {/if}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </div>
 
@@ -178,7 +182,7 @@
         <span class="hint">{t.admin.passwordHint}</span>
       </label>
       <label class="check"
-        ><input type="checkbox" bind:checked={form.admin} /> {t.admin.admin}</label
+        ><input class="checkbox" type="checkbox" bind:checked={form.admin} /> {t.admin.admin}</label
       >
       {#if formError}<p class="error-text" role="alert">{formError}</p>{/if}
     </form>
@@ -225,7 +229,7 @@
     color: var(--muted);
   }
 
-  .tags {
+  .tag-list {
     display: flex;
     gap: 6px;
     align-items: center;

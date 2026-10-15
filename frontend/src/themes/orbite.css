@@ -1,0 +1,1870 @@
+/*
+ * Orbite — an observatory, for a tool used all day.
+ *
+ * Dark is the night shift: deep navy surfaces under a sparse, layered star
+ * field (a few stars twinkle, slowly), the solstice sun as the one warm
+ * accent. Light is the daylight observatory: pale sky and white surfaces,
+ * navy ink, a faint star chart behind the pages, the same sun.
+ *
+ * The vocabulary, used everywhere and nowhere loudly:
+ *   - instrument panels: hairline frames, small corner marks, graduated
+ *     rules (tick marks) under title bars and page heads;
+ *   - orbits: thin elliptical rings around the logo sun, behind empty
+ *     states and the sign-in card; statuses are pills whose dot is a planet
+ *     on its orbit (waiting at the top, in transit, arrived at the centre);
+ *   - the sun in a ring marks what is chosen (menu checks, pressed buttons);
+ *   - constellation lines divide sections.
+ * Titles in Jost, text in IBM Plex Sans, keys and labels in IBM Plex Mono.
+ * Glows are soft and rare; nothing neon.
+ *
+ * Images in ./orbite/ are original drawings, used as masks so they take the
+ * theme's colours.
+ */
+
+@import '@fontsource-variable/jost/wght.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/* Tokens ------------------------------------------------------------------- */
+
+[data-skin='orbite'] {
+  --desk: var(--paper);
+  --paper: #f3f6fb;
+  --paper-raised: #ffffff;
+  --paper-sunk: #e9eef6;
+  --ink: #0e1830;
+  --ink-soft: #33415e;
+  --muted: #546079;
+  --rule: #dbe2ed;
+  --rule-strong: #c2cbdb;
+  --accent: #c9580c;
+  /* The sun, a shade deeper, where it is text. */
+  --accent-text: #a8460a;
+  --accent-wash: rgba(255, 138, 61, 0.1);
+  /* The bright sun fills the main button; navy ink reads on it. */
+  --primary: #ff8a3d;
+  --primary-ink: #0e1830;
+  --sun: #ff8a3d;
+  --focus: #c9580c;
+  /* A navy console bar in both modes. */
+  --bar: #0f1a33;
+  --bar-ink: #f1f4fa;
+  --bar-ink-soft: #b2bdd5;
+  --margin-line: rgba(201, 88, 12, 0.38);
+  --shadow-pop: 0 16px 40px rgba(14, 24, 48, 0.14), 0 2px 6px rgba(14, 24, 48, 0.08);
+  --backdrop: rgba(10, 16, 34, 0.45);
+  --ink-blend: normal;
+
+  --stamp-todo: #4b5876;
+  --stamp-doing: #0b6a85;
+  --stamp-done: #0b6e54;
+
+  --tone-bug: #b3392a;
+  --tone-story: #1d7a54;
+  --tone-epic: #5a4bc2;
+  --tone-task: #2461b5;
+  --tone-subtask: #5b6681;
+
+  --font-title: 'Jost Variable', 'Jost', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size: 14px;
+  --title-weight: 500;
+  --h1-weight: 500;
+  --title-tracking: -0.01em;
+  --title-italic: normal;
+  --empty-font: 400 14px/1.5 var(--font-body);
+
+  --frame: 1px;
+  --radius-xs: 4px;
+  --radius-s: 7px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --avatar-radius: 50%;
+  --card-top: 1px solid var(--rule);
+
+  --stamp-font: 500 11.5px/1.25 var(--font-body);
+  --stamp-case: none;
+  --stamp-tracking: 0.01em;
+  --stamp-border: 1px;
+  --stamp-radius: 999px;
+  --stamp-padding: 2px 9px 2px 6px;
+  --stamp-fill: 10%;
+  --stamp-dot: inline-block;
+  --stamp-large-size: 12.5px;
+  --stamp-large-padding: 4px 12px 4px 8px;
+  --stamp-large-border: 1px;
+  --stamp-large-tracking: 0.01em;
+  --stamp-large-turn: none;
+
+  /*
+   * The sky behind the pages: a warm glow where the sun sits, a cool one
+   * opposite, then three star layers on tiles of unrelated sizes so the
+   * field never looks gridded. Light mode adds the faint grid of a chart.
+   */
+  --page-texture:
+    radial-gradient(900px 520px at 92% -140px, var(--orb-glow-warm), transparent 70%),
+    radial-gradient(800px 620px at -6% -80px, var(--orb-glow-cool), transparent 70%),
+    radial-gradient(circle at 23px 37px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 141px 91px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 260px 22px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 77px 198px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 205px 241px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 310px 160px, var(--orb-star) 0 0.6px, transparent 1.2px),
+    radial-gradient(circle at 91px 311px, var(--orb-star-2) 0 0.85px, transparent 1.5px),
+    radial-gradient(circle at 402px 71px, var(--orb-star-2) 0 0.85px, transparent 1.5px),
+    radial-gradient(circle at 233px 149px, var(--orb-star-2) 0 0.85px, transparent 1.5px),
+    radial-gradient(circle at 498px 388px, var(--orb-star-2) 0 0.85px, transparent 1.5px),
+    radial-gradient(circle at 30px 440px, var(--orb-star-2) 0 0.85px, transparent 1.5px),
+    radial-gradient(
+      circle at 611px 97px,
+      var(--orb-star-3) 0 1.15px,
+      var(--orb-halo) 1.6px,
+      transparent 4.5px
+    ),
+    radial-gradient(
+      circle at 127px 523px,
+      var(--orb-star-3) 0 1.15px,
+      var(--orb-halo) 1.6px,
+      transparent 4.5px
+    ),
+    radial-gradient(
+      circle at 402px 661px,
+      var(--orb-star-3) 0 1.15px,
+      var(--orb-halo) 1.6px,
+      transparent 4.5px
+    ),
+    linear-gradient(90deg, var(--orb-grid) 0 1px, transparent 1px),
+    linear-gradient(var(--orb-grid) 0 1px, transparent 1px);
+  --page-texture-size:
+    100% 100%, 100% 100%, 331px 283px, 331px 283px, 331px 283px, 331px 283px, 331px 283px,
+    331px 283px, 547px 461px, 547px 461px, 547px 461px, 547px 461px, 547px 461px, 863px 719px,
+    863px 719px, 863px 719px, 160px 160px, 160px 160px;
+  /* Constellation lines: hairlines joining a few stars. */
+  --rule-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='7' viewBox='0 0 420 7'%3E%3Cpath d='M0 4.5h118l30-2.5 41 3h102l26-2.5 34 2h69' fill='none' stroke='%2333415e' stroke-opacity='.26'/%3E%3Cg fill='%2333415e' fill-opacity='.5'%3E%3Ccircle cx='148' cy='2' r='1.4'/%3E%3Ccircle cx='189' cy='5' r='1'/%3E%3Ccircle cx='317' cy='2.5' r='1.2'/%3E%3C/g%3E%3C/svg%3E")
+    repeat-x left center / 420px 7px;
+  --rule-height: 7px;
+  --loader: inline-block;
+
+  /* Orbite's own tokens. */
+  --orb-edge: #7c88a5;
+  --orb-page-wash: rgba(243, 246, 251, 0.8);
+  --orb-hover: rgba(36, 97, 181, 0.055);
+  --orb-tick: #c2cbdb;
+  --orb-tick-major: #8e9ab4;
+  --orb-mark: #8e9ab4;
+  --orb-head: #f6f8fc;
+  --orb-bar-field: #1a2642;
+  --orb-bar-edge: #3a4868;
+  --orb-live: #3fd49b;
+  --orb-scroll: #b4bfd3;
+  --orb-ill-line: #33415e;
+  --orb-ill-ring: #8e9ab4;
+  --orb-star: rgba(14, 24, 48, 0.2);
+  --orb-star-2: rgba(14, 24, 48, 0.26);
+  --orb-star-3: rgba(14, 24, 48, 0.3);
+  --orb-halo: rgba(14, 24, 48, 0.05);
+  --orb-grid: rgba(14, 24, 48, 0.035);
+  --orb-glow-warm: rgba(255, 138, 61, 0.1);
+  --orb-glow-cool: rgba(110, 150, 220, 0.12);
+  --orb-twinkle: rgba(14, 24, 48, 0);
+  --orb-panel-shadow: 0 1px 2px rgba(14, 24, 48, 0.04), 0 6px 18px -10px rgba(14, 24, 48, 0.14);
+  --orb-sun-glow: 0 0 0 3px rgba(255, 138, 61, 0.22), 0 6px 18px -6px rgba(255, 120, 40, 0.55);
+  --orb-corners:
+    linear-gradient(var(--orb-mark) 0 0) top 6px left 6px / 7px 1px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) top 6px left 6px / 1px 7px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) top 6px right 6px / 7px 1px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) top 6px right 6px / 1px 7px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) bottom 6px left 6px / 7px 1px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) bottom 6px left 6px / 1px 7px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) bottom 6px right 6px / 7px 1px no-repeat,
+    linear-gradient(var(--orb-mark) 0 0) bottom 6px right 6px / 1px 7px no-repeat;
+
+  color-scheme: light;
+}
+
+[data-skin='orbite'][data-scheme='dark'] {
+  --paper: #0b1122;
+  --paper-raised: #111a30;
+  --paper-sunk: #080d1b;
+  --ink: #e6eaf3;
+  --ink-soft: #b6c0d7;
+  --muted: #8d99b4;
+  --rule: #1d2742;
+  --rule-strong: #2c3a5c;
+  --accent: #ff8a3d;
+  --accent-text: #ff9a57;
+  --accent-wash: rgba(255, 138, 61, 0.08);
+  --primary: #ff8a3d;
+  --primary-ink: #0b1122;
+  --sun: #ff8a3d;
+  --focus: #ff9a57;
+  --bar: #070c19;
+  --bar-ink: #e6eaf3;
+  --bar-ink-soft: #a3aec8;
+  --margin-line: rgba(255, 138, 61, 0.38);
+  --shadow-pop: 0 18px 44px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --backdrop: rgba(3, 6, 14, 0.66);
+
+  --stamp-todo: #a6b2cb;
+  --stamp-doing: #62c8e8;
+  --stamp-done: #5ccf9f;
+
+  --tone-bug: #ff8f7d;
+  --tone-story: #63d2a0;
+  --tone-epic: #a99cf2;
+  --tone-task: #7fb0ff;
+  --tone-subtask: #a2adc4;
+
+  --rule-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='7' viewBox='0 0 420 7'%3E%3Cpath d='M0 4.5h118l30-2.5 41 3h102l26-2.5 34 2h69' fill='none' stroke='%23b6c0d7' stroke-opacity='.2'/%3E%3Cg fill='%23d6def0' fill-opacity='.55'%3E%3Ccircle cx='148' cy='2' r='1.4'/%3E%3Ccircle cx='189' cy='5' r='1'/%3E%3Ccircle cx='317' cy='2.5' r='1.2'/%3E%3C/g%3E%3C/svg%3E")
+    repeat-x left center / 420px 7px;
+
+  --orb-edge: #5b6990;
+  --orb-page-wash: rgba(11, 17, 34, 0.74);
+  --orb-hover: rgba(150, 180, 245, 0.07);
+  --orb-tick: #26324f;
+  --orb-tick-major: #3d4b70;
+  --orb-mark: #47577f;
+  --orb-head: #0e162a;
+  --orb-bar-field: #0f172b;
+  --orb-bar-edge: #2a3757;
+  --orb-scroll: #2b3858;
+  --orb-ill-line: #b6c0d7;
+  --orb-ill-ring: #56648a;
+  --orb-star: rgba(214, 224, 245, 0.42);
+  --orb-star-2: rgba(214, 224, 245, 0.55);
+  --orb-star-3: rgba(232, 238, 250, 0.85);
+  --orb-halo: rgba(214, 224, 245, 0.12);
+  --orb-grid: rgba(214, 224, 245, 0);
+  --orb-glow-warm: rgba(255, 138, 61, 0.09);
+  --orb-glow-cool: rgba(70, 110, 200, 0.1);
+  --orb-twinkle: rgba(240, 244, 252, 0.9);
+  --orb-panel-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 10px 26px -14px rgba(0, 0, 0, 0.7);
+  --orb-sun-glow: 0 0 0 3px rgba(255, 138, 61, 0.2), 0 6px 22px -6px rgba(255, 138, 61, 0.6);
+
+  color-scheme: dark;
+}
+
+/* Pairs this file draws beyond the standard ones (read by the contrast test). */
+/* contrast: --orb-edge on --paper 3 */
+/* contrast: --orb-edge on --paper-raised 3 */
+/* contrast: --orb-edge on --paper-sunk 3 */
+/* contrast: --focus on --paper-raised 3 */
+/* contrast: --tone-bug on --paper */
+/* contrast: --ink on --orb-head */
+/* contrast: --muted on --orb-head */
+/* contrast: --bar-ink on --orb-bar-field */
+/* contrast: --bar-ink-soft on --orb-bar-field */
+/* contrast: --orb-live on --bar 3 */
+/* contrast: --accent-text on --paper-sunk */
+
+/* Sky, base type, selection, focus ------------------------------------------- */
+
+[data-skin='orbite'] {
+  scrollbar-color: var(--orb-scroll) transparent;
+}
+
+/*
+ * The page is a light wash of paper with soft edges: the sky stays bright in
+ * the margins and is only a whisper behind the text, where a star could pass
+ * for a full stop.
+ */
+[data-skin='orbite'] .page {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--orb-page-wash) 56px,
+    var(--orb-page-wash) calc(100% - 56px),
+    transparent
+  );
+}
+
+/* The wash reaches the bottom of the window, so it never ends mid-screen. */
+[data-skin='orbite'] .app-main > .page {
+  min-height: calc(100vh - 55px);
+}
+
+/*
+ * Two thin layers of brighter stars over the sky, fixed to the window; in
+ * the dark they twinkle out of step (see the motion section).
+ */
+[data-skin='orbite']::before,
+[data-skin='orbite']::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+[data-skin='orbite']::before {
+  background:
+    radial-gradient(circle at 173px 129px, var(--orb-twinkle) 0 1px, transparent 2.2px),
+    radial-gradient(circle at 521px 47px, var(--orb-twinkle) 0 1.1px, transparent 2.4px),
+    radial-gradient(circle at 689px 403px, var(--orb-twinkle) 0 1px, transparent 2.2px),
+    radial-gradient(circle at 341px 577px, var(--orb-twinkle) 0 0.9px, transparent 2px),
+    radial-gradient(circle at 911px 231px, var(--orb-twinkle) 0 1px, transparent 2.2px);
+  background-size: 997px 811px;
+}
+
+[data-skin='orbite']::after {
+  background:
+    radial-gradient(circle at 61px 331px, var(--orb-twinkle) 0 0.9px, transparent 2px),
+    radial-gradient(circle at 433px 241px, var(--orb-twinkle) 0 1.1px, transparent 2.4px),
+    radial-gradient(circle at 617px 563px, var(--orb-twinkle) 0 0.9px, transparent 2px),
+    radial-gradient(circle at 263px 19px, var(--orb-twinkle) 0 1px, transparent 2.2px);
+  background-size: 739px 613px;
+}
+
+[data-skin='orbite'] ::selection {
+  background: color-mix(in srgb, var(--sun) 30%, transparent);
+  color: inherit;
+}
+
+[data-skin='orbite'] :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+[data-skin='orbite'] h1 {
+  letter-spacing: -0.015em;
+}
+
+[data-skin='orbite'] .muted {
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .error-text {
+  color: var(--tone-bug);
+}
+
+[data-skin='orbite'] a.key,
+[data-skin='orbite'] .key {
+  font-weight: 500;
+}
+
+[data-skin='orbite'] a.key:hover {
+  color: var(--accent-text);
+}
+
+/* Top bar: the console ------------------------------------------------------ */
+
+[data-skin='orbite'] .topbar {
+  border-bottom: 1px solid var(--bar);
+  /* A graduated edge along the bottom, like the rim of an instrument. */
+  background:
+    repeating-linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--bar-ink) 16%, transparent) 0 1px,
+        transparent 1px 8px
+      )
+      left bottom / 100% 3px no-repeat,
+    var(--bar);
+  color: var(--bar-ink);
+}
+
+[data-skin='orbite'][data-scheme='dark'] .topbar {
+  border-bottom-color: var(--rule);
+}
+
+[data-skin='orbite'] .brand {
+  gap: 9px;
+  color: var(--bar-ink);
+}
+
+[data-skin='orbite'] .wordmark {
+  font: 500 20px/1 var(--font-title);
+  letter-spacing: 0.015em;
+}
+
+[data-skin='orbite'] .logo .logo-sun {
+  fill: var(--sun);
+  filter: drop-shadow(0 0 2.2px color-mix(in srgb, var(--sun) 75%, transparent));
+}
+
+[data-skin='orbite'] .logo .logo-orbit {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+[data-skin='orbite'] .logo .logo-planet {
+  fill: currentColor;
+}
+
+[data-skin='orbite'] .topbar-nav {
+  gap: 22px;
+}
+
+[data-skin='orbite'] .topbar .nav-link {
+  position: relative;
+  color: var(--bar-ink-soft);
+  border-bottom: 0;
+  padding: 17px 0;
+}
+
+[data-skin='orbite'] .topbar .nav-link:hover {
+  color: var(--bar-ink);
+}
+
+[data-skin='orbite'] .topbar .nav-link[aria-current='page'] {
+  color: var(--bar-ink);
+}
+
+/* The current section: the sun rising on the bar's edge. */
+[data-skin='orbite'] .topbar .nav-link[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--sun);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--sun) 55%, transparent);
+}
+
+[data-skin='orbite'] .topbar-search .input {
+  height: 30px;
+  padding-left: 14px;
+  border-color: var(--orb-bar-edge);
+  border-radius: 999px;
+  background: var(--orb-bar-field);
+  color: var(--bar-ink);
+}
+
+[data-skin='orbite'] .topbar-search .input::placeholder {
+  color: var(--bar-ink-soft);
+  opacity: 1;
+}
+
+[data-skin='orbite'] .topbar-search .input:hover {
+  border-color: color-mix(in srgb, var(--bar-ink) 40%, var(--orb-bar-field));
+}
+
+[data-skin='orbite'] .topbar-search .input:focus {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 25%, transparent);
+}
+
+[data-skin='orbite'] .topbar-search kbd {
+  right: 10px;
+  color: var(--bar-ink-soft);
+}
+
+[data-skin='orbite'] .live-dot {
+  width: 8px;
+  height: 8px;
+  border-color: var(--bar-ink-soft);
+}
+
+[data-skin='orbite'] .live-dot.on {
+  border-color: var(--orb-live);
+  background: var(--orb-live);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--orb-live) 50%, transparent);
+}
+
+[data-skin='orbite'] .topbar-themes {
+  border-radius: 50%;
+  color: var(--bar-ink-soft);
+}
+
+[data-skin='orbite'] .topbar-themes:hover,
+[data-skin='orbite'] .topbar-themes[aria-current='page'] {
+  color: var(--bar-ink);
+  background: color-mix(in srgb, var(--bar-ink) 9%, transparent);
+}
+
+[data-skin='orbite'] .topbar .btn kbd {
+  border-color: currentColor;
+}
+
+[data-skin='orbite'] .account-button {
+  border-radius: 50%;
+}
+
+/* The avatar in the bar, on its own orbit. */
+[data-skin='orbite'] .account-button .avatar.avatar {
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--bar-ink) 45%, transparent);
+  background: color-mix(in srgb, var(--bar-ink) 6%, transparent);
+  color: var(--bar-ink);
+  outline: 1px solid color-mix(in srgb, var(--bar-ink) 16%, transparent);
+  outline-offset: 3px;
+}
+
+[data-skin='orbite'] .account-button:hover .avatar.avatar,
+[data-skin='orbite'] .account-button[aria-expanded='true'] .avatar.avatar {
+  outline-color: var(--sun);
+}
+
+[data-skin='orbite'] .account-menu {
+  top: calc(100% + 12px);
+}
+
+/* Page heads, sections, dividers ------------------------------------------ */
+
+/* A graduated rule: the base line, a tick every 8px, a longer one every 64px. */
+[data-skin='orbite'] .page-head,
+[data-skin='orbite'] .issue-head,
+[data-skin='orbite'] .sprint-head {
+  border-bottom: 0;
+  padding-bottom: 18px;
+  background:
+    linear-gradient(var(--rule-strong) 0 0) left bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
+      4px no-repeat,
+    repeating-linear-gradient(90deg, var(--orb-tick-major) 0 1px, transparent 1px 64px) left
+      bottom / 100% 7px no-repeat;
+}
+
+[data-skin='orbite'] .page-title {
+  font-family: var(--font-title);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+[data-skin='orbite'] .page-head .page-title {
+  font-size: 30px;
+}
+
+/* The eyebrow is a reading on a dial: mono, spaced, after a small sun. */
+[data-skin='orbite'] .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
+[data-skin='orbite'] .eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow:
+    0 0 0 2.5px var(--paper),
+    0 0 0 3.5px color-mix(in srgb, var(--sun) 50%, transparent);
+}
+
+[data-skin='orbite'] .section-title {
+  align-items: center;
+  margin-top: 32px;
+  font: 500 15.5px/1.2 var(--font-title);
+  letter-spacing: 0.005em;
+}
+
+[data-skin='orbite'] .section-title::after {
+  transform: none;
+  opacity: 1;
+}
+
+[data-skin='orbite'] .section-title .count {
+  padding: 3px 7px 2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .page-crumbs {
+  font: 12.5px/1.3 var(--font-mono);
+  gap: 10px;
+}
+
+[data-skin='orbite'] .page-crumbs a {
+  text-decoration: none;
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .page-crumbs a:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+/* Buttons ------------------------------------------------------------------- */
+
+[data-skin='orbite'] .btn {
+  height: 30px;
+  padding: 0 13px;
+  border: 1px solid var(--orb-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: 500 13px/1 var(--font-body);
+  letter-spacing: 0.005em;
+}
+
+[data-skin='orbite'] .btn:hover:not([disabled]) {
+  border-color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
+}
+
+[data-skin='orbite'] .btn:active:not([disabled]) {
+  background: var(--paper-sunk);
+  transform: translateY(0.5px);
+}
+
+[data-skin='orbite'] .btn-small {
+  height: 25px;
+  padding: 0 9px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+[data-skin='orbite'] .btn.btn-primary {
+  border-color: color-mix(in srgb, var(--primary) 80%, #6b2a00);
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+[data-skin='orbite'] .btn.btn-primary:hover:not([disabled]) {
+  border-color: color-mix(in srgb, var(--primary) 80%, #6b2a00);
+  background: color-mix(in srgb, var(--primary) 88%, #ffffff);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    var(--orb-sun-glow);
+}
+
+[data-skin='orbite'] .btn.btn-primary:active:not([disabled]) {
+  background: color-mix(in srgb, var(--primary) 90%, #6b2a00);
+  box-shadow: inset 0 1px 2px rgba(80, 30, 0, 0.3);
+}
+
+[data-skin='orbite'] .btn.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .btn.btn-quiet:hover:not([disabled]) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .btn.btn-danger {
+  border-color: color-mix(in srgb, var(--tone-bug) 60%, var(--paper-raised));
+  color: var(--tone-bug);
+}
+
+[data-skin='orbite'] .btn.btn-danger:hover:not([disabled]) {
+  border-color: var(--tone-bug);
+  background: color-mix(in srgb, var(--tone-bug) 10%, var(--paper-raised));
+}
+
+/* Pressed (watching, a quick filter on): the sun in its ring. */
+[data-skin='orbite'] .btn.on,
+[data-skin='orbite'] .btn[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--paper-raised));
+  background: color-mix(in srgb, var(--sun) 10%, var(--paper-raised));
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .btn.on::before,
+[data-skin='orbite'] .btn[aria-pressed='true']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--sun) 70%, transparent);
+}
+
+[data-skin='orbite'] .btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* A sun not yet risen: dimmed, not muddied. */
+[data-skin='orbite'] .btn.btn-primary[disabled] {
+  opacity: 1;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--primary) 24%, var(--paper-raised));
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .btn kbd,
+[data-skin='orbite'] .kbd {
+  padding: 2px 5px 2px;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: 4px;
+  font: 500 10.5px/1 var(--font-mono);
+  opacity: 0.85;
+}
+
+[data-skin='orbite'] .link-btn {
+  color: var(--ink-soft);
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+}
+
+[data-skin='orbite'] .link-btn:hover {
+  color: var(--accent-text);
+}
+
+/* Fields -------------------------------------------------------------------- */
+
+[data-skin='orbite'] .input,
+[data-skin='orbite'] .select,
+[data-skin='orbite'] .textarea {
+  border: 1px solid var(--orb-edge);
+  border-radius: var(--radius-s);
+  background-color: var(--paper-raised);
+  color: var(--ink);
+}
+
+[data-skin='orbite'][data-scheme='dark'] .input,
+[data-skin='orbite'][data-scheme='dark'] .select,
+[data-skin='orbite'][data-scheme='dark'] .textarea {
+  background-color: var(--paper-sunk);
+}
+
+[data-skin='orbite'] .input::placeholder,
+[data-skin='orbite'] .textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+[data-skin='orbite'] .input:hover:not(:focus):not([disabled]),
+[data-skin='orbite'] .select:hover:not(:focus):not([disabled]),
+[data-skin='orbite'] .textarea:hover:not(:focus) {
+  border-color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .input:focus,
+[data-skin='orbite'] .select:focus,
+[data-skin='orbite'] .textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 24%, transparent);
+}
+
+[data-skin='orbite'] .select {
+  appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position:
+    right 15px center,
+    right 10px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+[data-skin='orbite'] .select[disabled],
+[data-skin='orbite'] .input[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+[data-skin='orbite'] .textarea {
+  font: 13px/1.6 var(--font-mono);
+}
+
+/* Field labels read like instrument labels. */
+[data-skin='orbite'] .field > span:first-child,
+[data-skin='orbite'] .field-label {
+  font: 500 10.5px/1.2 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .field .hint {
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .checkbox {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 6px 0 0;
+  vertical-align: -3px;
+  border: 1px solid var(--orb-edge);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+[data-skin='orbite'] .checkbox:checked {
+  border-color: color-mix(in srgb, var(--sun) 80%, #6b2a00);
+  background: var(--sun)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.4l2.6 2.6L12 5.4' fill='none' stroke='%230e1830' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px no-repeat;
+}
+
+/* Boxed pickers in forms (assignee, components, labels) match the fields. */
+[data-skin='orbite'] .modal .boxed.boxed {
+  border: 1px solid var(--orb-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+}
+
+[data-skin='orbite'][data-scheme='dark'] .modal .boxed.boxed {
+  background: var(--paper-sunk);
+}
+
+[data-skin='orbite'] .chip {
+  padding: 1px 8px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--paper-sunk);
+  font: 12px/1.5 var(--font-mono);
+}
+
+[data-skin='orbite'] a.chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* Instrument panels: tables, the record card, the sign-in card ------------- */
+
+[data-skin='orbite'] table.ledger {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--orb-corners), var(--paper-raised);
+  box-shadow: var(--orb-panel-shadow);
+}
+
+[data-skin='orbite'] .ledger thead tr {
+  background: repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left
+    bottom / 100% 4px no-repeat;
+}
+
+[data-skin='orbite'] .ledger th,
+[data-skin='orbite'] .ledger th.num {
+  padding: 13px 10px 9px;
+  border-bottom: 1px solid var(--rule-strong);
+  font: 500 10.5px/1 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .ledger th:first-child,
+[data-skin='orbite'] .ledger td:first-child {
+  padding-left: 16px;
+}
+
+[data-skin='orbite'] .ledger th:last-child,
+[data-skin='orbite'] .ledger td:last-child {
+  padding-right: 16px;
+}
+
+[data-skin='orbite'] .ledger td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--rule);
+}
+
+[data-skin='orbite'] .ledger tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+[data-skin='orbite'] .ledger tbody tr:last-child td:first-child {
+  border-bottom-left-radius: calc(var(--radius-m) - 1px);
+}
+
+[data-skin='orbite'] .ledger tbody tr:last-child td:last-child {
+  border-bottom-right-radius: calc(var(--radius-m) - 1px);
+}
+
+[data-skin='orbite'] .ledger tbody tr:hover td {
+  background: var(--orb-hover);
+}
+
+[data-skin='orbite'] .ledger tbody tr.is-selected td {
+  background: var(--accent-wash);
+}
+
+/* The row under the pointer gets the sun's mark on its edge. */
+[data-skin='orbite'] .ledger tbody tr:hover td:first-child,
+[data-skin='orbite'] .ledger tbody tr.is-selected td:first-child {
+  box-shadow: inset 2px 0 0 var(--sun);
+}
+
+[data-skin='orbite'] .ledger .num {
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .ledger td.num a {
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .card.card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--orb-corners), var(--paper-raised);
+  box-shadow: var(--orb-panel-shadow);
+}
+
+/* The title bar: a small sun in its ring, a mono label, a graduated rule. */
+[data-skin='orbite'] .card-head.card-head {
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px 11px;
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--rule) 0 0) left bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
+      4px no-repeat;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .card-head.card-head::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow:
+    0 0 0 2.5px var(--paper-raised),
+    0 0 0 3.5px color-mix(in srgb, var(--sun) 50%, transparent);
+}
+
+[data-skin='orbite'] .card-head .key {
+  margin-left: auto;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .card-head.sub {
+  margin-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+[data-skin='orbite'] .card dt {
+  color: var(--muted);
+}
+
+/* Sign-in: the card on graduated orbits, the sun travelling on the outer one. */
+[data-skin='orbite'] .login {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+[data-skin='orbite'] .login::before,
+[data-skin='orbite'] .login::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: min(1180px, 170vw);
+  aspect-ratio: 1000 / 600;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+[data-skin='orbite'] .login::before {
+  background: var(--orb-ill-ring);
+  mask: url('./orbite/orbits-line.svg') center / contain no-repeat;
+}
+
+[data-skin='orbite'] .login::after {
+  background: var(--sun);
+  mask: url('./orbite/orbits-sun.svg') center / contain no-repeat;
+}
+
+[data-skin='orbite'] .login-card.login-card {
+  border-top: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-pop);
+  padding: 32px 32px 24px;
+}
+
+[data-skin='orbite'] .login-card .wordmark {
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+[data-skin='orbite'] .login-card .brand {
+  color: var(--ink);
+}
+
+/* Marks: statuses, types, people ---------------------------------------------- */
+
+[data-skin='orbite'] .stamp {
+  gap: 6px;
+  border-color: color-mix(in srgb, var(--c) 42%, transparent);
+}
+
+/* Waiting: an empty orbit, the planet parked at the top. */
+[data-skin='orbite'] .stamp::before {
+  width: 10px;
+  height: 10px;
+  border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+  background: radial-gradient(circle at 50% 0, var(--c) 0 2px, transparent 2.5px) border-box;
+}
+
+/* In progress: the planet in transit. */
+[data-skin='orbite'] .stamp.doing::before {
+  background: radial-gradient(circle at 100% 50%, var(--c) 0 2px, transparent 2.5px) border-box;
+}
+
+/* Done: arrived at the centre. */
+[data-skin='orbite'] .stamp.done::before {
+  border-color: var(--c);
+  background: radial-gradient(circle, var(--c) 0 2.4px, transparent 2.9px);
+}
+
+[data-skin='orbite'] .stamp.large {
+  gap: 7px;
+  font-weight: 500;
+}
+
+[data-skin='orbite'] .stamp.large::before {
+  width: 12px;
+  height: 12px;
+}
+
+/* Issue types are small bodies: a ring and a letter; epics are solid. */
+[data-skin='orbite'] .type-mark.type-mark {
+  width: 19px;
+  height: 19px;
+  border: 1.25px solid var(--tone);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 8%, var(--paper-raised));
+  color: var(--tone);
+  font: 600 9.5px/1 var(--font-mono);
+}
+
+[data-skin='orbite'] .type-mark[data-type='bug'] {
+  --tone: var(--tone-bug);
+}
+
+[data-skin='orbite'] .type-mark[data-type='story'] {
+  --tone: var(--tone-story);
+}
+
+[data-skin='orbite'] .type-mark[data-type='task'] {
+  --tone: var(--tone-task);
+}
+
+[data-skin='orbite'] .type-mark.type-mark[data-type='epic'] {
+  --tone: var(--tone-epic);
+  background: var(--tone);
+  color: var(--paper);
+}
+
+[data-skin='orbite'] .type-mark.type-mark[data-type='subtask'] {
+  --tone: var(--tone-subtask);
+  border-style: dashed;
+}
+
+[data-skin='orbite'] .priority-mark .glyph {
+  font-size: 10px;
+  letter-spacing: -0.5px;
+}
+
+[data-skin='orbite'] .avatar.avatar {
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* Menus ------------------------------------------------------------------------ */
+
+[data-skin='orbite'] .popover {
+  padding: 6px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  scrollbar-width: thin;
+}
+
+[data-skin='orbite'] .popover .item {
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+
+[data-skin='orbite'] .popover .item:hover,
+[data-skin='orbite'] .popover .item.active,
+[data-skin='orbite'] .popover [aria-selected='true'] > .item {
+  background: var(--orb-hover);
+}
+
+[data-skin='orbite'] .popover .item.active {
+  box-shadow: inset 2px 0 0 var(--sun);
+}
+
+/* Chosen: the sun in its ring instead of a tick. */
+[data-skin='orbite'] .popover .item[aria-checked='true']::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin: 0 3px 0 auto;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow:
+    0 0 0 2.5px var(--paper-raised),
+    0 0 0 3.5px color-mix(in srgb, var(--sun) 55%, transparent);
+}
+
+[data-skin='orbite'] .popover .item.danger {
+  color: var(--tone-bug);
+}
+
+[data-skin='orbite'] .popover .item.danger:hover {
+  background: color-mix(in srgb, var(--tone-bug) 10%, transparent);
+}
+
+[data-skin='orbite'] .popover .sep {
+  margin: 6px -6px;
+  border-top-color: var(--rule);
+}
+
+[data-skin='orbite'] .popover .group-label {
+  padding: 8px 10px 4px;
+  font: 500 10px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Dialogs ----------------------------------------------------------------------- */
+
+[data-skin='orbite'] dialog.modal {
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-l);
+  background: var(--orb-corners), var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+}
+
+[data-skin='orbite'] dialog.modal::backdrop {
+  background:
+    radial-gradient(ellipse at 50% 25%, transparent, var(--backdrop) 70%), var(--backdrop);
+}
+
+[data-skin='orbite'] .modal-head {
+  padding: 18px 22px 14px;
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--rule) 0 0) left bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
+      4px no-repeat;
+}
+
+[data-skin='orbite'] .modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 20px/1.2 var(--font-title);
+}
+
+[data-skin='orbite'] .modal-title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow:
+    0 0 0 3px var(--paper-raised),
+    0 0 0 4px color-mix(in srgb, var(--sun) 50%, transparent);
+}
+
+/* Close: a round button with a drawn cross; the label stays for readers. */
+[data-skin='orbite'] .btn.modal-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  border: 1px solid var(--orb-edge);
+  border-radius: 50%;
+  font-size: 0;
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .btn.modal-close kbd {
+  display: none;
+}
+
+[data-skin='orbite'] .btn.modal-close::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.75px),
+      currentColor calc(50% - 0.75px) calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
+    ),
+    linear-gradient(
+      -45deg,
+      transparent calc(50% - 0.75px),
+      currentColor calc(50% - 0.75px) calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
+    );
+}
+
+[data-skin='orbite'] .btn.modal-close:hover:not([disabled]) {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .modal-body {
+  padding: 18px 22px;
+  scrollbar-width: thin;
+}
+
+[data-skin='orbite'] .modal-foot {
+  padding: 13px 22px;
+  border-top: 1px solid var(--rule);
+  border-radius: 0 0 calc(var(--radius-l) - 1px) calc(var(--radius-l) - 1px);
+  background: color-mix(in srgb, var(--paper-sunk) 55%, transparent);
+}
+
+/* Tabs ------------------------------------------------------------------------- */
+
+[data-skin='orbite'] .tabs[role='tablist'] {
+  border-bottom-color: var(--rule-strong);
+}
+
+[data-skin='orbite'] .tabs .tab {
+  position: relative;
+  border-bottom: 0;
+  padding: 9px 14px 8px;
+  color: var(--ink-soft);
+}
+
+[data-skin='orbite'] .tabs .tab:hover {
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .tabs .tab[aria-selected='true'] {
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .tabs .tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+[data-skin='orbite'] .tabs .tab .n {
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--paper-sunk);
+}
+
+/* Over an editor: a small segmented switch rather than folder tabs. */
+[data-skin='orbite'] .tabs.tabs-folder {
+  gap: 2px;
+  width: fit-content;
+  margin-bottom: 6px;
+  padding: 2px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+}
+
+[data-skin='orbite'] .tabs.tabs-folder .tab {
+  padding: 3px 11px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+[data-skin='orbite'] .tabs.tabs-folder .tab[aria-selected='true'] {
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .tabs.tabs-folder .tab[aria-selected='true']::after {
+  content: none;
+}
+
+/* Toasts ----------------------------------------------------------------------- */
+
+[data-skin='orbite'] .toast {
+  align-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+}
+
+[data-skin='orbite'] .toast::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex: none;
+  margin-right: -4px;
+  border-radius: 50%;
+  background: var(--stamp-doing);
+  box-shadow:
+    0 0 0 2.5px var(--paper-raised),
+    0 0 0 3.5px color-mix(in srgb, var(--stamp-doing) 50%, transparent);
+}
+
+[data-skin='orbite'] .toast.error {
+  border-color: color-mix(in srgb, var(--tone-bug) 55%, var(--rule-strong));
+}
+
+[data-skin='orbite'] .toast.error::before {
+  background: var(--tone-bug);
+  box-shadow:
+    0 0 0 2.5px var(--paper-raised),
+    0 0 0 3.5px color-mix(in srgb, var(--tone-bug) 50%, transparent);
+}
+
+[data-skin='orbite'] .toast > span {
+  flex: 1;
+}
+
+/* Empty and waiting -------------------------------------------------------------- */
+
+/* Drawings on their orbits: lines in ink, the sun (or comet) in the accent. */
+[data-skin='orbite'] .illustration {
+  position: relative;
+  display: block;
+  width: 240px;
+  height: 144px;
+  margin: 14px 0 8px -8px;
+}
+
+[data-skin='orbite'] .illustration > * {
+  display: none;
+}
+
+[data-skin='orbite'] .illustration::before,
+[data-skin='orbite'] .illustration::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
+[data-skin='orbite'] .illustration::before {
+  background: var(--orb-ill-line);
+}
+
+[data-skin='orbite'] .illustration::after {
+  background: var(--sun);
+}
+
+[data-skin='orbite'] .illustration[data-kind='lost']::before {
+  mask-image: url('./orbite/lost-line.svg');
+}
+
+[data-skin='orbite'] .illustration[data-kind='lost']::after {
+  mask-image: url('./orbite/lost-sun.svg');
+}
+
+[data-skin='orbite'] .illustration[data-kind='empty']::before {
+  mask-image: url('./orbite/empty-line.svg');
+}
+
+[data-skin='orbite'] .illustration[data-kind='empty']::after {
+  mask-image: url('./orbite/empty-sun.svg');
+}
+
+[data-skin='orbite'] .illustration[data-kind='search']::before {
+  mask-image: url('./orbite/search-line.svg');
+}
+
+[data-skin='orbite'] .illustration[data-kind='search']::after {
+  mask-image: url('./orbite/search-sun.svg');
+}
+
+/* Short empty notes start with a crescent. */
+[data-skin='orbite'] .empty::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 9px;
+  vertical-align: -1px;
+  background: currentColor;
+  mask: url('./orbite/crescent.svg') center / contain no-repeat;
+  opacity: 0.8;
+}
+
+[data-skin='orbite'] .illustration ~ .empty::before {
+  content: none;
+}
+
+[data-skin='orbite'] .loading::before {
+  width: 14px;
+  height: 14px;
+  border-color: color-mix(in srgb, var(--ink-soft) 45%, transparent);
+  background: radial-gradient(circle at 50% 0, var(--sun) 0 2.3px, transparent 2.8px) border-box;
+}
+
+/* Wiki text ------------------------------------------------------------------- */
+
+[data-skin='orbite'] .wiki pre {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunk);
+  padding: 11px 14px;
+  scrollbar-width: thin;
+}
+
+[data-skin='orbite'] .wiki .code-title {
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+  background: var(--paper-raised);
+  letter-spacing: 0.04em;
+}
+
+[data-skin='orbite'] .wiki .code-title + pre {
+  border-radius: 0 0 var(--radius-s) var(--radius-s);
+}
+
+[data-skin='orbite'] .wiki code {
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+[data-skin='orbite'] .wiki pre code {
+  padding: 0;
+}
+
+[data-skin='orbite'] .wiki blockquote {
+  border-left: 2px solid color-mix(in srgb, var(--sun) 65%, transparent);
+}
+
+[data-skin='orbite'] .wiki .panel {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--orb-corners), var(--paper-raised);
+}
+
+[data-skin='orbite'] .wiki .panel-title {
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+[data-skin='orbite'] .wiki .wiki-table th {
+  font-weight: 500;
+  background: var(--paper-sunk);
+}
+
+[data-skin='orbite'] .wiki a {
+  color: var(--accent-text);
+}
+
+[data-skin='orbite'] .wiki a.mention {
+  padding: 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+[data-skin='orbite'] .wiki hr {
+  height: var(--rule-height);
+  border: 0;
+  background: var(--rule-stroke);
+}
+
+/* Issue page details ---------------------------------------------------------------- */
+
+[data-skin='orbite'] .issue-head .page-title {
+  letter-spacing: -0.015em;
+}
+
+[data-skin='orbite'] .attachments .file {
+  overflow: hidden;
+  border-color: var(--rule);
+  border-radius: var(--radius-s);
+}
+
+[data-skin='orbite'] .attachments .ext {
+  border-width: 1px;
+  border-radius: 4px;
+}
+
+[data-skin='orbite'] .pager .range {
+  font-family: var(--font-mono);
+}
+
+/* Boards ------------------------------------------------------------------------- */
+
+[data-skin='orbite'] .sprint-name {
+  font: 500 19px/1.2 var(--font-title);
+}
+
+[data-skin='orbite'] .board {
+  gap: 14px;
+}
+
+[data-skin='orbite'] .board-column {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--paper-sunk) 70%, transparent);
+}
+
+[data-skin='orbite'] .board-column-head {
+  align-items: center;
+  padding: 11px 12px 9px;
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--rule) 0 0) left bottom / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
+      4px no-repeat;
+}
+
+[data-skin='orbite'] .board-column-title {
+  font: 500 10.5px/1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+[data-skin='orbite'] .board-column-count {
+  padding: 2px 6px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  font-size: 10.5px;
+}
+
+[data-skin='orbite'] .board-column.is-over {
+  border: 1px dashed var(--accent);
+  background: color-mix(in srgb, var(--sun) 7%, var(--paper-sunk));
+}
+
+[data-skin='orbite'] .board-column.over-limit {
+  border-color: color-mix(in srgb, var(--tone-bug) 60%, var(--rule));
+}
+
+[data-skin='orbite'] .board-column.over-limit .board-column-head {
+  box-shadow: inset 0 2px 0 var(--tone-bug);
+  border-radius: calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px) 0 0;
+}
+
+[data-skin='orbite'] .board-column.over-limit .wip-limit {
+  color: var(--tone-bug);
+}
+
+[data-skin='orbite'] .board-cards {
+  gap: 8px;
+  padding: 10px;
+}
+
+[data-skin='orbite'] .board-card {
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  box-shadow: var(--orb-panel-shadow);
+}
+
+[data-skin='orbite'] .board-card:hover {
+  border-color: var(--orb-edge);
+}
+
+[data-skin='orbite'] .board-card.is-dragging {
+  opacity: 0.94;
+  border-color: var(--accent);
+  box-shadow: var(--shadow-pop);
+  transform: rotate(1.2deg);
+}
+
+/* Motion (only for those who have not asked for less) ----------------------------- */
+
+@keyframes orbite-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes orbite-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes orbite-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
+@keyframes orbite-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes orbite-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes orbite-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orb-live) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--orb-live) 0%, transparent);
+  }
+}
+
+@keyframes orbite-drift {
+  from {
+    transform: translate(3px, -2px);
+  }
+  to {
+    transform: translate(-3px, 2px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin='orbite'][data-scheme='dark']::before {
+    animation: orbite-twinkle 9s ease-in-out infinite;
+  }
+
+  [data-skin='orbite'][data-scheme='dark']::after {
+    animation: orbite-twinkle 13s ease-in-out -5s infinite;
+  }
+
+  [data-skin='orbite'] .btn,
+  [data-skin='orbite'] .input,
+  [data-skin='orbite'] .select,
+  [data-skin='orbite'] .textarea,
+  [data-skin='orbite'] .board-card,
+  [data-skin='orbite'] .account-button .avatar {
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
+      box-shadow 180ms ease,
+      outline-color 180ms ease;
+  }
+
+  [data-skin='orbite'] .ledger tbody td {
+    transition: background-color 120ms ease;
+  }
+
+  /* The mark turns a little, as if the planet moved on. */
+  [data-skin='orbite'] .logo {
+    transition: transform 700ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
+
+  [data-skin='orbite'] .brand:hover .logo {
+    transform: rotate(-16deg);
+  }
+
+  [data-skin='orbite'] .popover {
+    animation: orbite-rise 140ms ease-out;
+  }
+
+  [data-skin='orbite'] dialog.modal[open] {
+    animation: orbite-arrive 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  [data-skin='orbite'] dialog.modal[open]::backdrop {
+    animation: orbite-fade 200ms ease-out;
+  }
+
+  [data-skin='orbite'] .toast {
+    animation: orbite-arrive 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  [data-skin='orbite'] .live-dot.on {
+    animation: orbite-ping 2.8s ease-out infinite;
+  }
+
+  /* The issue's own status, when in progress, keeps its planet moving. */
+  [data-skin='orbite'] .stamp.large.doing::before {
+    animation: orbite-turn 7s linear infinite;
+  }
+
+  [data-skin='orbite'] .illustration[data-kind='search']::after {
+    animation: orbite-drift 5s ease-in-out infinite alternate;
+  }
+}
+
+/* Small screens --------------------------------------------------------------------- */
+
+/* A phone: the mark without its name, and the create button as a round sun. */
+@media (max-width: 600px) {
+  [data-skin='orbite'] .page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  [data-skin='orbite'] .topbar-inner {
+    gap: 10px;
+  }
+
+  [data-skin='orbite'] .topbar-nav {
+    gap: 14px;
+  }
+
+  [data-skin='orbite'] .topbar .nav-link {
+    white-space: nowrap;
+    font-size: 13.5px;
+  }
+
+  [data-skin='orbite'] .btn.topbar-create {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  [data-skin='orbite'] .btn.topbar-create::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    background:
+      linear-gradient(currentColor 0 0) center / 14px 2px no-repeat,
+      linear-gradient(currentColor 0 0) center / 2px 14px no-repeat;
+  }
+}
+
+/*
+ * Issue lists on a phone: each row becomes a small card — type, key and
+ * date, then the summary on its own line, then the status. (The headers
+ * stay for screen readers, out of sight.)
+ */
+@media (max-width: 600px) {
+  [data-skin='orbite'] table.ledger:has(.c-summary),
+  [data-skin='orbite'] table.ledger:has(.c-summary) tbody {
+    display: block;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) tbody tr {
+    display: grid;
+    grid-template-columns: 20px auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) tbody td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) tbody tr:hover {
+    background: var(--orb-hover);
+    box-shadow: inset 2px 0 0 var(--sun);
+  }
+
+  /* Row 1: type, key, last change. */
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-type {
+    grid-area: 1 / 1;
+    width: auto;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-key {
+    grid-area: 1 / 2;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.num {
+    grid-area: 1 / 3 / 2 / 5;
+    font-size: 11.5px;
+  }
+
+  /* Row 2: the summary, full width. */
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-summary {
+    grid-area: 2 / 1 / 3 / -1;
+    max-width: none;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-summary .summary {
+    max-width: calc(100% - 20px);
+  }
+
+  /* Row 3: priority under the type, status, assignee, due date. */
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-priority {
+    grid-area: 3 / 1;
+    justify-self: center;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-status {
+    grid-area: 3 / 2;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-who {
+    grid-area: 3 / 3;
+    max-width: none;
+    font-size: 13px;
+  }
+
+  [data-skin='orbite'] table.ledger:has(.c-summary) td.c-due {
+    grid-area: 3 / 4;
+    text-align: right;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-skin='orbite'] .page-head .page-title {
+    font-size: 25px;
+  }
+
+  [data-skin='orbite'] .ledger th:first-child,
+  [data-skin='orbite'] .ledger td:first-child {
+    padding-left: 10px;
+  }
+
+  [data-skin='orbite'] .ledger th:last-child,
+  [data-skin='orbite'] .ledger td:last-child {
+    padding-right: 10px;
+  }
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 104" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Lines of text the lens finds nothing in -->
+  <path d="M30.4 30.2c9.4-.4 18.8-.6 28.2-.9M30.9 41.6c6-.3 12-.4 18-.6M31.6 53.2c5.3-.2 10.5-.4 15.8-.5M104.4 64.6c11.2-.5 22.4-.8 33.6-1.2M108.6 76.3c8.4-.3 16.8-.6 25.2-.8M31.8 64.9c5-.2 10-.4 15-.5" stroke-width="1.5" stroke-opacity=".5"/>
+  <!-- The magnifying glass, drawn round twice -->
+  <path d="M86.2 15.8c13.4.8 22.6 11.4 21.8 24.4-.8 13.1-12 22.4-25.1 21.6-12.9-.8-22.3-11.9-21.5-24.5.7-12.4 11.2-21.6 23.8-21.5 4.4.1 8.1 1.5 11.2 3.4" stroke-width="2.1"/>
+  <path d="M100.9 56.4c5.3 5.6 10.5 11.3 15.8 17M106.6 52.2c5.2 5.7 10.5 11.4 15.7 17.2M116.5 73.6c1.9 1.3 4.1 .3 5.9-1.9" stroke-width="2.1"/>
+  <!-- Hatching on the handle -->
+  <path d="M104.7 58.7l2.6-2.4M107.6 61.9l2.6-2.4M110.5 65.1l2.6-2.4M113.4 68.3l2.6-2.4" stroke-width="1.1" stroke-opacity=".55"/>
+</svg>

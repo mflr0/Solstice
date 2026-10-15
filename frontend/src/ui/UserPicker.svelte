@@ -204,6 +204,6 @@
 
   .item .user {
     margin-left: auto;
-    font: 11.5px var(--mono);
+    font: 11.5px var(--font-mono);
   }
 </style>

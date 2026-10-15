@@ -12,7 +12,9 @@
 </script>
 
 <span class="type" title={type.name}>
-  <span class="box {tone}" aria-hidden={withName}>{typeLetter(type.name)}</span>
+  <span class="box type-mark {tone}" data-type={tone} aria-hidden={withName}
+    >{typeLetter(type.name)}</span
+  >
   {#if withName}<span>{type.name}</span>{:else}<span class="sr-only">{type.name}</span>{/if}
 </span>
 
@@ -32,10 +34,10 @@
     height: 18px;
     flex: none;
     border: 1px solid var(--tone);
-    border-radius: 2px;
+    border-radius: var(--radius-xs);
     color: var(--tone);
     background: var(--paper-raised);
-    font: 600 10.5px/1 var(--mono);
+    font: 600 10.5px/1 var(--font-mono);
   }
 
   .bug {

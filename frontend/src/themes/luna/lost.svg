@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90">
+  <!-- A desk globe asking a question: the page is not here. -->
+  <defs>
+    <radialGradient id="globe" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#d4ebff"/>
+      <stop offset="0.45" stop-color="#5d9ae6"/>
+      <stop offset="1" stop-color="#1b4aa6"/>
+    </radialGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9c46e"/>
+      <stop offset="1" stop-color="#a87a22"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="50" cy="83" rx="30" ry="4" fill="#0a2050" opacity="0.14"/>
+  <path d="M36 82h28l-4-6H40Z" fill="url(#brass)" stroke="#7d5a16" stroke-width="1"
+    stroke-linejoin="round"/>
+  <path d="M50 70v6" stroke="#7d5a16" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24.5 61A30 30 0 0 0 75 30" fill="none" stroke="url(#brass)" stroke-width="3"
+    stroke-linecap="round"/>
+  <circle cx="50" cy="42" r="26" fill="url(#globe)" stroke="#143a86" stroke-width="1.2"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.1">
+    <ellipse cx="50" cy="42" rx="11" ry="26"/>
+    <path d="M24 42h52M28 29h44M28 55h44"/>
+  </g>
+  <path d="M33 30a20 20 0 0 1 14-11" fill="none" stroke="#ffffff" stroke-width="2.6"
+    stroke-linecap="round" opacity="0.8"/>
+  <path d="M80 6h26a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6H88l-9 7 2-7a6 6 0 0 1-7-6V12a6 6 0 0 1 6-6Z"
+    fill="#fffbe2" stroke="#5f5a40" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M88.5 14.5c0-2.9 2.3-4.6 5-4.6s5 1.8 5 4.4c0 2.5-2 3.4-3.4 4.5-.9.7-1.4 1.5-1.4 3"
+    fill="none" stroke="#1d4fae" stroke-width="2.8" stroke-linecap="round"/>
+  <circle cx="93.7" cy="27.2" r="1.8" fill="#1d4fae"/>
+</svg>

@@ -35,6 +35,14 @@
   import StatusControl from './StatusControl.svelte';
   import Worklogs from './Worklogs.svelte';
 
+  // Markers the "created … by …" sentence is split on, so components can sit in it.
+  const WHEN = '\ue000when\ue000';
+  const WHO = '\ue000who\ue000';
+  function createdParts(withCreator: boolean): string[] {
+    const sentence = withCreator ? t.issue.createdBy(WHEN, WHO) : t.issue.createdOn(WHEN);
+    return sentence.split(/(\ue000when\ue000|\ue000who\ue000)/).filter((p) => p !== '');
+  }
+
   /** An issue: its text and activity on the left, its record card on the right. */
   interface Props {
     issueKey: string;
@@ -198,10 +206,10 @@
 {#if missing}
   <NotFoundPage message={missing} />
 {:else if !issue}
-  <div class="page"><p class="muted">{t.common.loading}</p></div>
+  <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
-  <article class="page issue">
-    <nav class="crumbs" aria-label={t.common.breadcrumbs}>
+  <article class="page issue" data-title={`${issue.key} ${issue.summary}`}>
+    <nav class="crumbs page-crumbs" aria-label={t.common.breadcrumbs}>
       <a href={paths.project(issue.project.key)}>{issue.project.name}</a>
       {#if issue.parent}
         <span aria-hidden="true">/</span>
@@ -213,7 +221,7 @@
       <span class="key current">{issue.key}</span>
     </nav>
 
-    <header class="head">
+    <header class="head issue-head">
       {#if editingSummary}
         <input
           class="summary-input"
@@ -228,7 +236,7 @@
           use:focusSelect
         />
       {:else if issue.can.edit}
-        <h1>
+        <h1 class="page-title">
           <button
             class="summary-btn"
             title={t.issue.editSummary}
@@ -239,26 +247,33 @@
           >
         </h1>
       {:else}
-        <h1>{issue.summary}</h1>
+        <h1 class="page-title">{issue.summary}</h1>
       {/if}
 
-      <div class="meta">
-        <StatusControl {issue} onchange={update} />
-        {#if issue.resolution}<span class="resolution">{issue.resolution.name}</span>{/if}
-        <span class="dot" aria-hidden="true">·</span>
-        <TypeMark type={issue.type} withName />
+      <div class="meta issue-meta">
+        <div class="meta-cell"><StatusControl {issue} onchange={update} /></div>
+        {#if issue.resolution}<span class="meta-cell resolution">{issue.resolution.name}</span>{/if}
+        <span class="dot meta-sep" aria-hidden="true">·</span>
+        <span class="meta-cell"><TypeMark type={issue.type} withName /></span>
         {#if issue.priority}
-          <span class="dot" aria-hidden="true">·</span>
-          <PriorityMark priority={issue.priority} withName />
+          <span class="dot meta-sep" aria-hidden="true">·</span>
+          <span class="meta-cell"><PriorityMark priority={issue.priority} withName /></span>
         {/if}
-        <span class="dot" aria-hidden="true">·</span>
-        <span class="created muted">
-          {t.issue.created.toLowerCase()}
-          <RelTime iso={issue.created} />
-          {#if issue.creator}{t.issue.by} <Who user={issue.creator} initialsBox={false} />{/if}
+        <span class="dot meta-sep" aria-hidden="true">·</span>
+        <span class="meta-cell created muted">
+          <!-- The sentence comes whole from the catalogue; markers place the date and the person. -->
+          {#each createdParts(!!issue.creator) as part, i (i)}
+            {#if part === WHEN}<RelTime
+                iso={issue.created}
+                inSentence
+              />{:else if part === WHO && issue.creator}<Who
+                user={issue.creator}
+                initialsBox={false}
+              />{:else}{part}{/if}
+          {/each}
         </span>
 
-        <span class="actions">
+        <span class="meta-cell actions">
           <button
             class="btn btn-small"
             class:on={issue.watchers.me}
@@ -300,8 +315,8 @@
       {#if note}<p class="note" role="status">{note}</p>{/if}
     </header>
 
-    <div class="layout">
-      <div class="sheet">
+    <div class="layout issue-layout">
+      <div class="sheet issue-sheet">
         <section aria-label={t.issue.description}>
           <h2 class="section-title">
             {t.issue.description}
@@ -325,6 +340,8 @@
               attachments={issue.attachments}
               autofocus
               onsubmit={() => void saveDescription()}
+              oncancel={() => (editingDescription = false)}
+              uploadTo={issue.can.attach ? issue.key : undefined}
             />
             <div class="row end">
               <button class="btn btn-quiet" onclick={() => (editingDescription = false)}
@@ -369,7 +386,7 @@
             {#if issue.subtasks.length}
               <ul class="subtasks">
                 {#each issue.subtasks as s (s.key)}
-                  <li>
+                  <li class="list-row">
                     <TypeMark type={s.type} />
                     <a class="key" href={paths.issue(s.key)}>{s.key}</a>
                     <a class="summary" href={paths.issue(s.key)}>{s.summary}</a>
@@ -389,9 +406,10 @@
           onreload={() => void load(issue?.key ?? issueKey)}
         />
 
-        <section class="activity" aria-label={t.issue.activity}>
+        <section class="activity issue-activity" aria-label={t.issue.activity}>
           <div class="tabs" role="tablist" aria-label={t.issue.activity}>
             <button
+              class="tab"
               role="tab"
               aria-selected={tab === 'comments'}
               class:active={tab === 'comments'}
@@ -399,12 +417,14 @@
               >{t.issue.tabs.comments} <span class="n">{issue.commentCount}</span></button
             >
             <button
+              class="tab"
               role="tab"
               aria-selected={tab === 'history'}
               class:active={tab === 'history'}
               onclick={() => (tab = 'history')}>{t.issue.tabs.history}</button
             >
             <button
+              class="tab"
               role="tab"
               aria-selected={tab === 'worklogs'}
               class:active={tab === 'worklogs'}
@@ -475,7 +495,7 @@
 
   .summary-input {
     width: 100%;
-    font: 600 29px/1.2 var(--serif);
+    font: var(--title-weight) 29px/1.2 var(--font-title);
     border: none;
     border-bottom: 2px solid var(--accent);
     background: transparent;
@@ -496,8 +516,13 @@
   }
 
   .resolution {
-    font: italic 14px var(--serif);
+    font: var(--title-italic) 14px var(--font-title);
     color: var(--ink-soft);
+  }
+
+  .meta-cell {
+    display: inline-flex;
+    align-items: center;
   }
 
   .dot {
@@ -519,7 +544,7 @@
   }
 
   .n {
-    font: 11.5px var(--mono);
+    font: 11.5px var(--font-mono);
     color: var(--muted);
   }
 
@@ -534,13 +559,13 @@
   }
 
   .danger {
-    color: var(--accent);
+    color: var(--accent-text);
     white-space: normal;
   }
 
   .note {
     margin: 12px 0 0;
-    font: italic 13.5px var(--serif);
+    font: var(--title-italic) 13.5px var(--font-title);
     color: var(--stamp-doing);
   }
 
@@ -600,28 +625,6 @@
     margin-top: 34px;
   }
 
-  .tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--rule-strong);
-  }
-
-  .tabs button {
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: none;
-    padding: 8px 14px 7px;
-    margin-bottom: -1px;
-    font: 500 13px var(--sans);
-    color: var(--ink-soft);
-    cursor: pointer;
-  }
-
-  .tabs button.active {
-    color: var(--ink);
-    border-bottom-color: var(--accent);
-  }
-
   .panel {
     padding-top: 6px;
   }
@@ -629,6 +632,24 @@
   @media (max-width: 980px) {
     .layout {
       grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* A phone: marks on the first line of a sub-task, its summary on the next. */
+  @media (max-width: 600px) {
+    .subtasks li {
+      flex-wrap: wrap;
+      row-gap: 2px;
+    }
+
+    .subtasks .summary {
+      order: 1;
+      flex-basis: 100%;
+      white-space: normal;
+    }
+
+    .subtasks .who {
+      width: auto;
     }
   }
 </style>

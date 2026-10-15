@@ -166,7 +166,7 @@
 
   .target {
     width: 140px;
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
   }
 
@@ -175,7 +175,7 @@
   }
 
   .relation {
-    font: 500 12px/1.4 var(--sans);
+    font: 500 12px/1.4 var(--font-body);
     color: var(--muted);
     margin: 0 0 4px;
   }
@@ -218,6 +218,6 @@
   }
 
   .del:hover {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 </style>

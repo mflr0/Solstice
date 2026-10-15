@@ -13,6 +13,9 @@
  *    never seen by the line-based parser.
  * 2. Lines are grouped into blocks (paragraphs, headings, lists, tables…) and
  *    the text of each block goes through the inline parser.
+ *
+ * The rich editor (wiki-doc.ts) reads markup with the same rules, so the
+ * scanning helpers and patterns below are exported for it.
  */
 
 /** Looks up what the markup refers to; the renderer itself has no data. */
@@ -120,17 +123,17 @@ function decodeEntities(s: string): string {
 const BLOCK_TAG_RE =
   /<\/?(?:p|br|li|ul|ol|h[1-6]|table|tbody|tr|td|th|pre|blockquote|hr|div)\b[^>]*>/g;
 
-function normalize(src: string): string {
+export function normalize(src: string): string {
   return src.replace(/\r\n?/g, '\n').split(PH_OPEN).join('').split(PH_CLOSE).join('');
 }
 
 const WORD_RE = /[\p{L}\p{N}]/u;
 
-function isWord(c: string): boolean {
+export function isWord(c: string): boolean {
   return c !== '' && WORD_RE.test(c);
 }
 
-function isSpace(c: string): boolean {
+export function isSpace(c: string): boolean {
   return c === '' || /\s/.test(c);
 }
 
@@ -140,7 +143,7 @@ const MAILTO_RE = /^mailto:[^\s]/i;
 const LOCAL_RE = /^(?:\/(?![/\\])|#)/;
 
 /** Whether a URL may appear in href/src. Control characters are never allowed. */
-function isSafeUrl(url: string): boolean {
+export function isSafeUrl(url: string): boolean {
   for (let k = 0; k < url.length; k++) {
     const code = url.charCodeAt(k);
     if (code < 0x20 || code === 0x7f) return false;
@@ -158,12 +161,12 @@ function anchor(url: string, inner: string, cls?: string): string {
   return `<a${classAttr} href="${esc(url.replace(/ /g, '%20'))}"${rel}>${inner}</a>`;
 }
 
-const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/;
-const IMAGE_EXT_RE = /\.(?:png|jpe?g|gif|webp|bmp|svg|avif)$/i;
+export const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/;
+export const IMAGE_EXT_RE = /\.(?:png|jpe?g|gif|webp|bmp|svg|avif)$/i;
 
 /* ---------- pass 1: multi-line macros ---------- */
 
-const MACRO_OPEN_RE = /\{(code|noformat|quote|panel)(?::([^}\n]*))?\}/g;
+export const MACRO_OPEN_RE = /\{(code|noformat|quote|panel)(?::([^}\n]*))?\}/g;
 
 function renderDocument(src: string, ctx: Ctx): string {
   return renderBlocks(extractMacros(src, ctx), ctx);
@@ -212,7 +215,7 @@ function parseParams(params: string): { bare: string[]; named: Map<string, strin
 }
 
 /** Strips the blank lines Jira users put around code. */
-function trimCode(body: string): string {
+export function trimCode(body: string): string {
   return body.replace(/^[ \t]*\n/, '').replace(/\s+$/, '');
 }
 
@@ -240,10 +243,10 @@ function renderMacro(name: string, params: string, body: string, ctx: Ctx): stri
 
 /* ---------- pass 2: blocks ---------- */
 
-const HEADING_RE = /^\s*h([1-6])\.(?:\s+(.*))?$/;
-const BQ_RE = /^\s*bq\.\s+(.*)$/;
-const HR_RE = /^\s*-{4,}\s*$/;
-const LIST_RE = /^\s*([*#]+|-)\s+(.*)$/;
+export const HEADING_RE = /^\s*h([1-6])\.(?:\s+(.*))?$/;
+export const BQ_RE = /^\s*bq\.\s+(.*)$/;
+export const HR_RE = /^\s*-{4,}\s*$/;
+export const LIST_RE = /^\s*([*#]+|-)\s+(.*)$/;
 
 function renderBlocks(src: string, ctx: Ctx): string {
   const lines = src.split('\n');
@@ -355,13 +358,13 @@ function renderList(items: string[], ctx: Ctx): string {
   return out;
 }
 
-interface Cell {
+export interface Cell {
   header: boolean;
   content: string;
 }
 
 /** Splits "||h1||h2||" / "|a|[x|http://y]|" into cells; "|" inside [...] does not split. */
-function splitRow(row: string): Cell[] {
+export function splitRow(row: string): Cell[] {
   const cells: Cell[] = [];
   let i = 0;
   while (i < row.length && row.charAt(i) === '|') {
@@ -413,7 +416,7 @@ const EFFECTS: Record<string, string> = {
   '??': 'cite',
 };
 
-const EMOTICONS: Record<string, [string, string]> = {
+export const EMOTICONS: Record<string, [string, string]> = {
   '(/)': ['✓', 'ok'],
   '(x)': ['✗', 'no'],
   '(!)': ['!', 'warn'],
@@ -423,9 +426,9 @@ const EMOTICONS: Record<string, [string, string]> = {
   '(n)': ['−', 'down'],
 };
 
-const INLINE_MACRO_RE = /\{([a-zA-Z]+)(?::([^}\n]*))?\}/y;
-const URL_RE = /https?:\/\/[^\s<>"'[\]{}|\\^`]+/y;
-const KEY_AT_RE = /[A-Z][A-Z0-9_]+-\d+/y;
+export const INLINE_MACRO_RE = /\{([a-zA-Z]+)(?::([^}\n]*))?\}/y;
+export const URL_RE = /https?:\/\/[^\s<>"'[\]{}|\\^`]+/y;
+export const KEY_AT_RE = /[A-Z][A-Z0-9_]+-\d+/y;
 
 /**
  * Renders one block of text. `links` is false inside link labels, so a label
@@ -433,7 +436,13 @@ const KEY_AT_RE = /[A-Z][A-Z0-9_]+-\d+/y;
  */
 function inline(src: string, ctx: Ctx, links: boolean): string {
   let out = '';
-  const scan: Scan = { noCloser: new Map(), monoMissingUntil: -1, colorMissing: false };
+  const scan: Scan = {
+    noCloser: new Map(),
+    monoMissingUntil: -1,
+    colorMissing: false,
+    lineFrom: -1,
+    lineTo: -1,
+  };
   let i = 0;
 
   while (i < src.length) {
@@ -490,7 +499,7 @@ function inline(src: string, ctx: Ctx, links: boolean): string {
 
     if (c === '!') {
       const close = src.indexOf('!', i + 1);
-      const lineEnd = endOfLine(src, i);
+      const lineEnd = lineEndOf(src, scan, i);
       if (close > i + 1 && close < lineEnd) {
         const content = src.slice(i + 1, close);
         if (!isSpace(content.charAt(0)) && !isSpace(content.charAt(content.length - 1))) {
@@ -543,7 +552,7 @@ function inline(src: string, ctx: Ctx, links: boolean): string {
     const marker = src.startsWith('??', i) ? '??' : c;
     const tag = EFFECTS[marker];
     if (tag && !isWord(prev) && !isSpace(src.charAt(i + marker.length))) {
-      const lineEnd = endOfLine(src, i);
+      const lineEnd = lineEndOf(src, scan, i);
       const known = scan.noCloser.get(marker);
       const close = known === lineEnd ? -1 : findEffectClose(src, i, marker, lineEnd);
       if (close > 0) {
@@ -572,15 +581,32 @@ interface Scan {
   monoMissingUntil: number;
   /** No "{color}" left in the text. */
   colorMissing: boolean;
+  /** The current line, found once: a long line full of markers would otherwise be scanned again for each. */
+  lineFrom: number;
+  lineTo: number;
 }
 
-function endOfLine(src: string, from: number): number {
+/** The end of the line `at` is on, remembered while the scan stays on it. */
+function lineEndOf(src: string, scan: Scan, at: number): number {
+  if (at < scan.lineFrom || at > scan.lineTo) {
+    scan.lineFrom = at;
+    scan.lineTo = endOfLine(src, at);
+  }
+  return scan.lineTo;
+}
+
+export function endOfLine(src: string, from: number): number {
   const nl = src.indexOf('\n', from);
   return nl < 0 ? src.length : nl;
 }
 
 /** First valid closing marker: after non-space, before a non-word character. */
-function findEffectClose(src: string, open: number, marker: string, lineEnd: number): number {
+export function findEffectClose(
+  src: string,
+  open: number,
+  marker: string,
+  lineEnd: number,
+): number {
   let j = src.indexOf(marker, open + marker.length + 1);
   while (j >= 0 && j < lineEnd) {
     if (
@@ -596,7 +622,7 @@ function findEffectClose(src: string, open: number, marker: string, lineEnd: num
 }
 
 /** Index of the "]" closing the "[" at `open`, on the same line, or -1. */
-function findBracketClose(src: string, open: number): number {
+export function findBracketClose(src: string, open: number): number {
   for (let j = open + 1; j < src.length; j++) {
     const c = src.charAt(j);
     if (c === ']') return j;
@@ -606,7 +632,7 @@ function findBracketClose(src: string, open: number): number {
 }
 
 /** Drops trailing punctuation from an autolinked URL, keeping balanced parentheses. */
-function trimUrl(url: string): string {
+export function trimUrl(url: string): string {
   let u = url;
   for (;;) {
     const last = u.charAt(u.length - 1);
@@ -659,7 +685,7 @@ function inlineBrace(
   scan: Scan,
 ): { html: string; next: number } {
   if (src.startsWith('{{', i)) {
-    const lineEnd = endOfLine(src, i);
+    const lineEnd = lineEndOf(src, scan, i);
     if (scan.monoMissingUntil !== lineEnd) {
       const close = src.slice(i + 2, lineEnd).indexOf('}}');
       if (close > 0) {

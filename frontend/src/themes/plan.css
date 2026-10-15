@@ -1,0 +1,1560 @@
+/*
+ * Plan — an architect's drawing.
+ *
+ * Light is a whiteprint on drafting paper: near-white sheet, a cyan-blue
+ * grid, blue-ink line work and a red correction pencil used sparingly.
+ * Dark is a blueprint: deep Prussian blue, a fine white grid, white lines.
+ *
+ * The vocabulary comes from the drawing board: panels are thin double-line
+ * frames with registration marks at the corners; page headers are title
+ * blocks (« cartouches ») cut into small cells; section dividers are
+ * dimension lines with slash ticks; buttons are outlined boxes that fill
+ * with ink; fields are underlined like the blanks of a form; statuses are
+ * stencilled boxes keyed by a legend square (empty, hatched, solid); issue
+ * types are drafting symbols (delta, bubble, hexagon); people are grid
+ * bubbles; empty pages carry small plans that draw themselves in.
+ *
+ * Titles and annotations in Architects Daughter (sparingly), text and
+ * controls in IBM Plex Sans Condensed, keys and numbers in IBM Plex Mono.
+ * Every drawing in ./plan/ is original.
+ */
+
+@import '@fontsource/architects-daughter/latin-400.css';
+@import '@fontsource/ibm-plex-sans-condensed/latin-400.css';
+@import '@fontsource/ibm-plex-sans-condensed/latin-500.css';
+@import '@fontsource/ibm-plex-sans-condensed/latin-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+@import '@fontsource/saira-stencil-one/latin-400.css';
+
+/* The sweep of the compass that draws the loading circle. */
+@property --plan-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* Tokens ------------------------------------------------------------------ */
+
+[data-skin='plan'] {
+  --desk: var(--paper);
+  --paper: #f5f8fa;
+  --paper-raised: #ffffff;
+  --paper-sunk: #e9eff4;
+  --ink: #0f2e57;
+  --ink-soft: #2a4a73;
+  --muted: #425a7b;
+  --rule: #d3dfea;
+  --rule-strong: #7088a8;
+  --accent: #c42b1c;
+  --accent-text: #b3261a;
+  --accent-wash: rgba(15, 46, 87, 0.045);
+  --primary: #173f73;
+  --primary-ink: #ffffff;
+  --sun: #c42b1c;
+  --focus: #c42b1c;
+  --bar: #ffffff;
+  --bar-ink: var(--ink);
+  --bar-ink-soft: var(--ink-soft);
+  --margin-line: rgba(196, 43, 28, 0.4);
+  /* A hard offset shadow, like the poché under a drawn box. */
+  --shadow-pop: 5px 5px 0 rgba(15, 46, 87, 0.13);
+  --backdrop: rgba(15, 46, 87, 0.3);
+  --ink-blend: normal;
+
+  --stamp-todo: #3d587d;
+  --stamp-doing: #1a5a9c;
+  --stamp-done: #22673e;
+
+  --tone-bug: #b02a1d;
+  --tone-story: #22673e;
+  --tone-epic: #7a4f00;
+  --tone-task: #1a5a9c;
+  --tone-subtask: #425a7b;
+
+  --font-title: 'Architects Daughter', cursive;
+  --font-body: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size: 14.5px;
+  --title-weight: 400;
+  --h1-weight: 400;
+  --title-tracking: 0.01em;
+  --title-italic: normal;
+  --empty-font: 400 15px/1.45 var(--font-title);
+
+  --frame: 1px;
+  --radius-xs: 0;
+  --radius-s: 0;
+  --radius-m: 0;
+  --radius-l: 0;
+  --avatar-radius: 50%;
+  --card-top: 1px solid var(--plan-line);
+
+  /* Statuses: the frame is drawn by .stamp below, with stencil bridges. */
+  --stamp-font: 400 11px/1 'Saira Stencil One', var(--font-mono);
+  --stamp-case: uppercase;
+  --stamp-tracking: 0.08em;
+  --stamp-border: 0px;
+  --stamp-radius: 0;
+  --stamp-padding: 4px 7px 4px 6px;
+  --stamp-fill: 0%;
+  --stamp-dot: inline-block;
+  --stamp-large-size: 12px;
+  --stamp-large-padding: 7px 12px 7px 10px;
+  --stamp-large-border: 0px;
+  --stamp-large-tracking: 0.12em;
+  --stamp-large-turn: none;
+
+  /* The drawing grid: minor squares, every fifth line heavier. */
+  --plan-grid: #2b8bc6;
+  --plan-grid-minor: 7%;
+  --plan-grid-major: 13%;
+  --page-texture:
+    linear-gradient(var(--plan-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--plan-major) 1px, transparent 1px),
+    linear-gradient(var(--plan-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--plan-minor) 1px, transparent 1px);
+  --page-texture-size: 60px 60px, 60px 60px, 12px 12px, 12px 12px;
+  /* A dimension line: extension lines and slash ticks at both ends. */
+  --rule-stroke:
+    linear-gradient(var(--plan-dim), var(--plan-dim)) left center / 100% 1px no-repeat,
+    linear-gradient(var(--plan-dim), var(--plan-dim)) left center / 1px 100% no-repeat,
+    linear-gradient(var(--plan-dim), var(--plan-dim)) right center / 1px 100% no-repeat,
+    linear-gradient(
+        135deg,
+        transparent calc(50% - 0.75px),
+        var(--plan-dim) calc(50% - 0.75px) calc(50% + 0.75px),
+        transparent calc(50% + 0.75px)
+      )
+      left center / 9px 9px no-repeat,
+    linear-gradient(
+        135deg,
+        transparent calc(50% - 0.75px),
+        var(--plan-dim) calc(50% - 0.75px) calc(50% + 0.75px),
+        transparent calc(50% + 0.75px)
+      )
+      right center / 9px 9px no-repeat;
+  --rule-height: 11px;
+  --loader: inline-block;
+
+  /* Plan's own: line work, grid strokes, dimension lines, poché. */
+  --plan-line: #2a4a73;
+  --plan-major: color-mix(in srgb, var(--plan-grid) var(--plan-grid-major), transparent);
+  --plan-minor: color-mix(in srgb, var(--plan-grid) var(--plan-grid-minor), transparent);
+  --plan-dim: var(--muted);
+  --plan-tick: color-mix(in srgb, var(--bar-ink) 34%, transparent);
+  --plan-guide: color-mix(in srgb, var(--plan-grid) 22%, transparent);
+  --plan-hatch: color-mix(in srgb, var(--ink) 16%, transparent);
+
+  color-scheme: light;
+}
+
+[data-skin='plan'][data-scheme='dark'] {
+  --paper: #0d2e52;
+  --paper-raised: #11365f;
+  --paper-sunk: #0a2645;
+  --ink: #f2f6fb;
+  --ink-soft: #d5e1ef;
+  --muted: #b8cadf;
+  --rule: #2a4f78;
+  --rule-strong: #7f9dc1;
+  --accent: #ff9a84;
+  --accent-text: #ffb8a8;
+  --accent-wash: rgba(242, 246, 251, 0.055);
+  --primary: #f2f6fb;
+  --primary-ink: #0d2e52;
+  --sun: #ffb36b;
+  --focus: #ffb36b;
+  --bar: #0a2645;
+  --margin-line: rgba(255, 154, 132, 0.45);
+  --shadow-pop: 5px 5px 0 rgba(2, 12, 26, 0.5);
+  --backdrop: rgba(3, 15, 31, 0.62);
+  --stamp-todo: #d2deed;
+  --stamp-doing: #87d1ff;
+  --stamp-done: #9fe0b4;
+  --tone-bug: #ffa08c;
+  --tone-story: #9fe0b4;
+  --tone-epic: #ffd27a;
+  --tone-task: #87d1ff;
+  --tone-subtask: #b3c5dc;
+  --plan-grid: #ffffff;
+  --plan-grid-minor: 4.5%;
+  --plan-grid-major: 9%;
+  --plan-line: #c4d5ea;
+  color-scheme: dark;
+}
+
+/* Pairs this skin draws beyond the standard ones (checked by the contrast test). */
+
+/* contrast: --paper on --ink */
+/* contrast: --paper on --accent */
+/* contrast: --paper-raised on --ink */
+/* contrast: --muted on --bar */
+/* contrast: --tone-bug on --paper */
+/* contrast: --tone-task on --paper */
+/* contrast: --tone-story on --paper */
+/* contrast: --tone-subtask on --paper */
+/* contrast: --tone-epic on --paper-raised */
+/* contrast: --rule-strong on --paper 3 */
+/* contrast: --rule-strong on --paper-raised 3 */
+/* contrast: --plan-line on --paper 3 */
+/* contrast: --plan-line on --paper-raised 3 */
+/* contrast: --primary on --paper 3 */
+/* contrast: --focus on --paper-raised 3 */
+/* contrast: --focus on --bar 3 */
+
+/* Sheet ------------------------------------------------------------------- */
+
+[data-skin='plan'] {
+  background-position: -1px -1px;
+  scrollbar-color: var(--rule-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* The grid runs under the content too: the page is the drawing itself. */
+[data-skin='plan'] .page {
+  background: transparent;
+}
+
+[data-skin='plan'] h1,
+[data-skin='plan'] .page-title {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+[data-skin='plan'] ::selection {
+  background: color-mix(in srgb, var(--focus) 32%, transparent);
+}
+
+/* A selection marquee, as in a drawing program. */
+[data-skin='plan'] :focus-visible {
+  outline: 2px dashed var(--focus);
+  outline-offset: 3px;
+}
+
+[data-skin='plan'] a.key,
+[data-skin='plan'] .key {
+  font-weight: 500;
+}
+
+/* Top bar: a title strip with a scale rule along its lower edge -------------- */
+
+[data-skin='plan'] .topbar {
+  background-color: var(--bar);
+  background-image:
+    linear-gradient(90deg, var(--plan-tick) 1px, transparent 1px),
+    linear-gradient(90deg, var(--plan-tick) 1px, transparent 1px);
+  background-size:
+    12px 4px,
+    60px 9px;
+  background-position:
+    -1px 100%,
+    -1px 100%;
+  background-repeat: repeat-x;
+  border-bottom: 1px solid var(--plan-line);
+  box-shadow:
+    0 2px 0 var(--bar),
+    0 3px 0 var(--plan-line);
+}
+
+[data-skin='plan'] .topbar .wordmark {
+  font: 400 23px/1 var(--font-title);
+  letter-spacing: 0.02em;
+}
+
+[data-skin='plan'] .topbar-nav .nav-link {
+  padding: 18px 2px 14px;
+  border-bottom: 0;
+  font: 500 12.5px/1 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+  /* The current page is measured: a dimension line under its name. */
+  background:
+    linear-gradient(var(--plan-mark), var(--plan-mark)) center bottom 11px / var(--plan-span) 1px
+      no-repeat,
+    linear-gradient(var(--plan-mark), var(--plan-mark)) left bottom 8px / 1px 7px no-repeat,
+    linear-gradient(var(--plan-mark), var(--plan-mark)) right bottom 8px / 1px 7px no-repeat;
+  --plan-mark: transparent;
+  --plan-span: 0%;
+}
+
+[data-skin='plan'] .topbar-nav .nav-link:hover {
+  --plan-mark: var(--rule-strong);
+  --plan-span: 100%;
+}
+
+[data-skin='plan'] .topbar-nav .nav-link[aria-current='page'] {
+  --plan-mark: var(--accent);
+  --plan-span: 100%;
+}
+
+[data-skin='plan'] .topbar-search .input {
+  height: 30px;
+  background: transparent;
+  color: var(--bar-ink);
+}
+
+[data-skin='plan'] .topbar-search kbd {
+  color: var(--bar-ink-soft);
+}
+
+/* A survey point: a ring with a cross; filled when connected. */
+[data-skin='plan'] .live-dot {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--muted);
+  background:
+    linear-gradient(var(--muted), var(--muted)) center / 1px 100% no-repeat,
+    linear-gradient(var(--muted), var(--muted)) center / 100% 1px no-repeat;
+}
+
+[data-skin='plan'] .live-dot.on {
+  border-color: var(--stamp-done);
+  background: radial-gradient(circle, var(--stamp-done) 0 2.5px, transparent 3px);
+}
+
+[data-skin='plan'] .topbar-themes {
+  border-radius: 0;
+}
+
+[data-skin='plan'] .account-button .avatar {
+  width: 30px;
+  height: 30px;
+  border-color: var(--plan-line);
+  background: var(--bar);
+  color: var(--bar-ink);
+  font: 500 11px/1 var(--font-mono);
+}
+
+/* The mark: a sun-path diagram (./plan/logo.svg), the sun in its own colour. */
+[data-skin='plan'] svg.logo > * {
+  display: none;
+}
+
+[data-skin='plan'] svg.logo {
+  background: radial-gradient(10% 10% at 64.6% 42%, var(--sun) 96%, transparent 100%), currentColor;
+  -webkit-mask: url('./plan/logo.svg') center / contain no-repeat;
+  mask: url('./plan/logo.svg') center / contain no-repeat;
+}
+
+/* Page head: a title block ------------------------------------------------- */
+
+[data-skin='plan'] .page-head {
+  position: relative;
+  align-items: flex-end;
+  margin: 6px 4px 30px;
+  padding: 16px 18px 16px;
+  border: 1.5px solid var(--plan-line);
+  outline: 1px solid var(--plan-line);
+  outline-offset: 3px;
+  background: var(--paper-raised);
+}
+
+/* Registration marks at the four corners of the frame. */
+[data-skin='plan'] .page-head::before,
+[data-skin='plan'] .page .issue-head::before,
+[data-skin='plan'] .card::before,
+[data-skin='plan'] dialog.modal::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  pointer-events: none;
+  --m: var(--plan-line);
+  background:
+    linear-gradient(var(--m), var(--m)) 0 7px / 15px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) 7px 0 / 1px 15px no-repeat,
+    linear-gradient(var(--m), var(--m)) 100% 7px / 15px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) calc(100% - 7px) 0 / 1px 15px no-repeat,
+    linear-gradient(var(--m), var(--m)) 0 calc(100% - 7px) / 15px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) 7px 100% / 1px 15px no-repeat,
+    linear-gradient(var(--m), var(--m)) 100% calc(100% - 7px) / 15px 1px no-repeat,
+    linear-gradient(var(--m), var(--m)) calc(100% - 7px) 100% / 1px 15px no-repeat;
+}
+
+/* A graphic scale in the corner of the title block. */
+[data-skin='plan'] .page-head::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 72px;
+  height: 6px;
+  border: 1px solid var(--plan-line);
+  background: linear-gradient(
+    90deg,
+    var(--plan-line) 0 25%,
+    transparent 25% 50%,
+    var(--plan-line) 50% 75%,
+    transparent 75%
+  );
+  pointer-events: none;
+}
+
+/* The eyebrow is the first cell of the block, cut into its top left corner. */
+[data-skin='plan'] .page-head .eyebrow {
+  display: table;
+  margin: -16px 0 14px -18px;
+  padding: 6px 14px 5px 18px;
+  border-right: 1px solid var(--plan-line);
+  border-bottom: 1px solid var(--plan-line);
+  font: 500 11px/1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+[data-skin='plan'] .page-head .page-title {
+  letter-spacing: 0.015em;
+  color: var(--ink);
+}
+
+[data-skin='plan'] .page-head .count {
+  font: 500 12px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* Section titles: a label, then a dimension line ---------------------------- */
+
+[data-skin='plan'] .section-title {
+  align-items: center;
+  margin: 34px 0 12px;
+  font: 600 12px/1.2 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink);
+}
+
+[data-skin='plan'] .section-title::after {
+  transform: none;
+}
+
+[data-skin='plan'] .section-title .count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--plan-line);
+  border-radius: 10px;
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--ink-soft);
+}
+
+[data-skin='plan'] .eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+/* Buttons: outlined boxes that fill with ink -------------------------------- */
+
+[data-skin='plan'] .btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--plan-line);
+  border-radius: 0;
+  background-color: transparent;
+  background-image: linear-gradient(var(--plan-fill, var(--ink)), var(--plan-fill, var(--ink)));
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 0% 100%;
+  color: var(--ink);
+  font: 500 12px/1 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+[data-skin='plan'] .btn:hover:not([disabled]) {
+  background-size: 100% 100%;
+  border-color: var(--plan-fill, var(--ink));
+  color: var(--paper);
+}
+
+[data-skin='plan'] .btn:active:not([disabled]) {
+  background-size: 100% 100%;
+  color: var(--paper);
+  box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+[data-skin='plan'] .btn.btn-small {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+}
+
+/* The main action: filled, with an inner hairline (a double-line box). */
+[data-skin='plan'] .btn.btn-primary {
+  --plan-fill: color-mix(in srgb, var(--primary) 78%, var(--paper));
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--primary-ink);
+  box-shadow:
+    inset 0 0 0 2px var(--primary),
+    inset 0 0 0 3px var(--primary-ink);
+}
+
+[data-skin='plan'] .btn.btn-primary:hover:not([disabled]) {
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+[data-skin='plan'] .btn.btn-primary:active:not([disabled]) {
+  color: var(--primary-ink);
+  box-shadow: inset 0 0 0 1px var(--primary-ink);
+}
+
+/* Ghost: no frame until hovered, then a dashed construction line. */
+[data-skin='plan'] .btn.btn-quiet {
+  border-color: transparent;
+  background-image: none;
+  color: var(--ink-soft);
+}
+
+[data-skin='plan'] .btn.btn-quiet:hover:not([disabled]) {
+  border: 1px dashed var(--rule-strong);
+  background-color: var(--accent-wash);
+  color: var(--ink);
+}
+
+[data-skin='plan'] .btn.btn-danger {
+  --plan-fill: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+[data-skin='plan'] .btn.btn-danger:hover:not([disabled]) {
+  color: var(--paper);
+}
+
+/* Pressed toggles are inked in. */
+[data-skin='plan'] .btn.on,
+[data-skin='plan'] .btn[aria-pressed='true'] {
+  border-color: var(--ink);
+  background-color: var(--ink);
+  color: var(--paper);
+}
+
+[data-skin='plan'] .btn.on .n,
+[data-skin='plan'] .btn[aria-pressed='true'] .n,
+[data-skin='plan'] .btn:hover:not([disabled]) .n {
+  color: inherit;
+}
+
+/* Disabled: drawn in hidden lines. */
+[data-skin='plan'] .btn[disabled] {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+[data-skin='plan'] .btn.btn-primary[disabled] {
+  border-color: var(--rule-strong);
+  background-color: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+[data-skin='plan'] .btn kbd,
+[data-skin='plan'] .kbd {
+  border: 1px solid currentColor;
+  border-radius: 0;
+  padding: 2px 4px;
+  font: 500 10px/1 var(--font-mono);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+[data-skin='plan'] .link-btn {
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+/* Fields: underlined blanks on a form ---------------------------------------- */
+
+[data-skin='plan'] .input,
+[data-skin='plan'] .select {
+  border: 0;
+  border-bottom: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background-color: transparent;
+  padding-top: 6px;
+  padding-bottom: 5px;
+}
+
+[data-skin='plan'] .input::placeholder,
+[data-skin='plan'] .textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+[data-skin='plan'] .select {
+  appearance: none;
+  padding-right: 24px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position:
+    right 10px center,
+    right 5px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+[data-skin='plan'] .select option {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+[data-skin='plan'] .input:hover:not(:focus):not([disabled]),
+[data-skin='plan'] .select:hover:not(:focus):not([disabled]) {
+  border-bottom-color: var(--ink-soft);
+}
+
+[data-skin='plan'] .input:focus,
+[data-skin='plan'] .select:focus,
+[data-skin='plan'] .textarea:focus {
+  outline: 2px dashed var(--focus);
+  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: none;
+  background-color: var(--accent-wash);
+}
+
+[data-skin='plan'] .input[disabled],
+[data-skin='plan'] .select[disabled] {
+  border-bottom-style: dashed;
+  color: var(--muted);
+}
+
+/* Pickers in the new-issue form read as fields too. */
+[data-skin='plan'] .modal-body .boxed {
+  border: 0;
+  border-bottom: 1px solid var(--rule-strong);
+  background: transparent;
+  padding: 6px 2px 5px;
+}
+
+/* A writing area keeps its box, and pale lettering guidelines. */
+[data-skin='plan'] .textarea {
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background-color: var(--paper-raised);
+  background-image: linear-gradient(transparent calc(100% - 1px), var(--plan-guide) 0);
+  background-size: 100% 1.55em;
+  background-position: 0 6px;
+  background-attachment: local;
+}
+
+[data-skin='plan'] .field > span:first-child,
+[data-skin='plan'] .field-label {
+  font: 500 11px/1.2 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+/* Checkboxes: a box, crossed when ticked. */
+[data-skin='plan'] input.checkbox,
+[data-skin='plan'] input[type='checkbox'] {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  vertical-align: -3px;
+  border: 1px solid var(--plan-line);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+[data-skin='plan'] input.checkbox:checked,
+[data-skin='plan'] input[type='checkbox']:checked {
+  border-color: var(--ink);
+  background:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.8px),
+      var(--ink) calc(50% - 0.8px) calc(50% + 0.8px),
+      transparent calc(50% + 0.8px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 0.8px),
+      var(--ink) calc(50% - 0.8px) calc(50% + 0.8px),
+      transparent calc(50% + 0.8px)
+    ),
+    var(--paper-raised);
+}
+
+[data-skin='plan'] input[type='radio'] {
+  accent-color: var(--ink);
+}
+
+/* Marks --------------------------------------------------------------------- */
+
+/*
+ * Statuses: a stencilled box (the frame has bridges at mid-length) keyed by a
+ * legend square: empty to do, hatched in progress, solid done.
+ */
+[data-skin='plan'] .stamp {
+  --plan-w: 1px;
+  --plan-gap: 3px;
+  gap: 6px;
+  background:
+    linear-gradient(var(--c), var(--c)) left top / calc(50% - var(--plan-gap)) var(--plan-w)
+      no-repeat,
+    linear-gradient(var(--c), var(--c)) right top / calc(50% - var(--plan-gap)) var(--plan-w)
+      no-repeat,
+    linear-gradient(var(--c), var(--c)) left bottom / calc(50% - var(--plan-gap)) var(--plan-w)
+      no-repeat,
+    linear-gradient(var(--c), var(--c)) right bottom / calc(50% - var(--plan-gap)) var(--plan-w)
+      no-repeat,
+    linear-gradient(var(--c), var(--c)) left top / var(--plan-w) 100% no-repeat,
+    linear-gradient(var(--c), var(--c)) right top / var(--plan-w) 100% no-repeat;
+}
+
+[data-skin='plan'] .stamp::before {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--c);
+  border-radius: 0;
+  background: none;
+}
+
+[data-skin='plan'] .stamp.doing::before {
+  background: repeating-linear-gradient(135deg, var(--c) 0 1px, transparent 1px 2.5px);
+}
+
+[data-skin='plan'] .stamp.done::before {
+  background: var(--c);
+}
+
+[data-skin='plan'] .stamp.large {
+  --plan-w: 1.5px;
+  --plan-gap: 5px;
+  gap: 8px;
+}
+
+[data-skin='plan'] .stamp.large::before {
+  width: 9px;
+  height: 9px;
+}
+
+[data-skin='plan'] .chip {
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--paper-raised);
+  font: 11.5px/1.5 var(--font-mono);
+}
+
+/* Issue types as drafting symbols: a delta for bugs, a bubble for stories, a
+   hexagon for epics, a dashed box for sub-tasks, a box for the rest. */
+[data-skin='plan'] .type-mark[data-type] {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tone);
+  font: 600 9.5px/1 var(--font-mono);
+}
+
+[data-skin='plan'] .type-mark[data-type]::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: var(--tone);
+  -webkit-mask: var(--plan-shape) center / 100% 100% no-repeat;
+  mask: var(--plan-shape) center / 100% 100% no-repeat;
+  --plan-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Crect x='.5' y='.5' width='17' height='17' fill='none' stroke='%23000'/%3E%3C/svg%3E");
+}
+
+[data-skin='plan'] .type-mark[data-type='bug'] {
+  padding-top: 4px;
+}
+
+[data-skin='plan'] .type-mark[data-type='bug']::before {
+  --plan-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M9 1.3 17.3 16.6H.7Z' fill='none' stroke='%23000' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-skin='plan'] .type-mark[data-type='story']::before {
+  --plan-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='8.4' fill='none' stroke='%23000'/%3E%3C/svg%3E");
+}
+
+[data-skin='plan'] .type-mark[data-type='epic'] {
+  color: var(--paper);
+}
+
+[data-skin='plan'] .type-mark[data-type='epic']::before {
+  --plan-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M9 .3 16.6 4.6v8.8L9 17.7 1.4 13.4V4.6Z'/%3E%3C/svg%3E");
+}
+
+[data-skin='plan'] .type-mark[data-type='subtask'] {
+  border-style: solid;
+}
+
+[data-skin='plan'] .type-mark[data-type='subtask']::before {
+  --plan-shape: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Crect x='.5' y='.5' width='17' height='17' fill='none' stroke='%23000' stroke-dasharray='3 2'/%3E%3C/svg%3E");
+}
+
+[data-skin='plan'] .priority-mark .glyph {
+  font-size: 10px;
+}
+
+/* People: grid bubbles, like the axis labels of a plan. */
+[data-skin='plan'] .avatar {
+  border: 1px solid var(--plan-line);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* Tables: a schedule, ruled, with a double line under its head -------------- */
+
+[data-skin='plan'] table.ledger thead th {
+  padding-bottom: 9px;
+  border-bottom: 3px double var(--plan-line);
+  font: 500 10.5px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+[data-skin='plan'] table.ledger td {
+  border-bottom: 1px solid var(--rule);
+}
+
+[data-skin='plan'] table.ledger tbody tr:last-child td {
+  border-bottom-color: var(--rule-strong);
+}
+
+[data-skin='plan'] table.ledger tbody tr:hover td {
+  background: var(--accent-wash);
+}
+
+[data-skin='plan'] table.ledger tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+
+[data-skin='plan'] table.ledger tr.is-selected td {
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+
+[data-skin='plan'] table.ledger tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+[data-skin='plan'] table.ledger .num {
+  font-family: var(--font-mono);
+}
+
+/* Tabs: the current one is marked by a section arrow ------------------------- */
+
+[data-skin='plan'] .tabs {
+  border-bottom: 1px solid var(--plan-line);
+}
+
+[data-skin='plan'] .tabs .tab {
+  position: relative;
+  border-bottom: 2px solid transparent;
+  font: 500 12px var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-soft);
+}
+
+[data-skin='plan'] .tabs .tab:hover {
+  color: var(--ink);
+  border-bottom-color: var(--rule-strong);
+}
+
+[data-skin='plan'] .tabs .tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+[data-skin='plan'] .tabs .tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 9px;
+  height: 6px;
+  margin-left: -4.5px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+[data-skin='plan'] .tabs.tabs-folder {
+  border-bottom: 0;
+}
+
+[data-skin='plan'] .tabs.tabs-folder .tab {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  font-size: 11px;
+}
+
+[data-skin='plan'] .tabs.tabs-folder .tab[aria-selected='true'] {
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .tabs.tabs-folder .tab[aria-selected='true']::after {
+  content: none;
+}
+
+/* Menus: a drawn box with its poché ------------------------------------------ */
+
+[data-skin='plan'] .popover {
+  border: 1px solid var(--plan-line);
+  border-radius: 0;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  scrollbar-width: thin;
+}
+
+[data-skin='plan'] .popover .item {
+  font-size: 14px;
+}
+
+[data-skin='plan'] .popover .item:hover,
+[data-skin='plan'] .popover .item.active,
+[data-skin='plan'] .popover .item[aria-selected='true'] {
+  background: var(--accent-wash);
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+
+[data-skin='plan'] .popover .item[aria-checked='true'] {
+  font-weight: 600;
+}
+
+[data-skin='plan'] .popover .item.danger {
+  color: var(--accent-text);
+}
+
+[data-skin='plan'] .popover .sep {
+  border-top: 1px dashed var(--rule-strong);
+}
+
+[data-skin='plan'] .popover .group-label {
+  padding-top: 8px;
+  font: 500 10.5px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Dialogs: a sheet laid on the board ---------------------------------------- */
+
+[data-skin='plan'] dialog.modal {
+  overflow: visible;
+  border: 1.5px solid var(--plan-line);
+  border-radius: 0;
+  outline: 1px solid var(--plan-line);
+  outline-offset: -6px;
+  background-color: var(--paper);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
+  box-shadow: var(--shadow-pop);
+}
+
+[data-skin='plan'] dialog.modal::backdrop {
+  background: var(--backdrop);
+}
+
+[data-skin='plan'] .modal-head {
+  margin: 6px 6px 0;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--plan-line);
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .modal-title {
+  font: 400 23px/1.15 var(--font-title);
+  letter-spacing: 0.015em;
+}
+
+[data-skin='plan'] .modal-body {
+  margin: 0 6px;
+  scrollbar-width: thin;
+}
+
+[data-skin='plan'] .modal-foot {
+  margin: 0 6px 6px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--plan-line);
+  background: var(--paper-raised);
+}
+
+/* Cards: the issue record and the sign-in sheet ------------------------------- */
+
+[data-skin='plan'] .card {
+  position: relative;
+  border: 1.5px solid var(--plan-line);
+  border-radius: 0;
+  outline: 1px solid var(--plan-line);
+  outline-offset: 3px;
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .card .card-head {
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--plan-line);
+  font: 600 11.5px/1 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  background: var(--paper-sunk);
+}
+
+[data-skin='plan'] .card .card-head .key {
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+/* The record's labels are the small captions of a title block. */
+[data-skin='plan'] .card dt {
+  font: 500 10.5px/1.5 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+[data-skin='plan'] .login-card {
+  outline-offset: 4px;
+}
+
+[data-skin='plan'] .login-card .wordmark {
+  font: 400 36px/1 var(--font-title);
+  letter-spacing: 0.02em;
+}
+
+[data-skin='plan'] .login-card .tagline {
+  font: 400 15px/1.4 var(--font-title);
+}
+
+/* Toasts ----------------------------------------------------------------------- */
+
+[data-skin='plan'] .toasts .toast {
+  border: 1px solid var(--plan-line);
+  border-left: 1px solid var(--plan-line);
+  border-radius: 0;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+}
+
+/* An error carries the revision delta of a correction. */
+[data-skin='plan'] .toasts .toast.error {
+  border-color: var(--accent);
+}
+
+[data-skin='plan'] .toasts .toast.error::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 13px;
+  height: 11px;
+  background: var(--accent);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* Empty and waiting ------------------------------------------------------------ */
+
+[data-skin='plan'] .empty {
+  color: var(--muted);
+}
+
+/* Small plans, drawn in ./plan/: the line work on ::before, the marks of the
+   correction pencil on ::after (a mask on the box itself would clip both). */
+[data-skin='plan'] .illustration {
+  display: block;
+  position: relative;
+  width: 180px;
+  height: 96px;
+  margin: 10px 0 0;
+  --plan-drawing: url('./plan/empty.svg');
+}
+
+[data-skin='plan'] .illustration::before,
+[data-skin='plan'] .illustration::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ink-soft);
+  -webkit-mask: var(--plan-drawing) left center / contain no-repeat;
+  mask: var(--plan-drawing) left center / contain no-repeat;
+}
+
+[data-skin='plan'] .illustration::after {
+  content: none;
+  background: var(--accent);
+  -webkit-mask-image: var(--plan-marks);
+  mask-image: var(--plan-marks);
+}
+
+[data-skin='plan'] .illustration[data-kind='search'] {
+  --plan-drawing: url('./plan/search.svg');
+  --plan-marks: url('./plan/search-mark.svg');
+}
+
+[data-skin='plan'] .illustration[data-kind='lost'] {
+  width: 300px;
+  height: 177px;
+  margin-bottom: 12px;
+  --plan-drawing: url('./plan/lost.svg');
+  --plan-marks: url('./plan/lost-mark.svg');
+}
+
+[data-skin='plan'] .illustration[data-kind='search']::after,
+[data-skin='plan'] .illustration[data-kind='lost']::after {
+  content: '';
+}
+
+[data-skin='plan'] .loading::before {
+  border: 0;
+  border-radius: 50%;
+  --plan-sweep: 300deg;
+  background: conic-gradient(var(--ink-soft) var(--plan-sweep), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 4.8px, #000 5.3px);
+  mask: radial-gradient(circle, transparent 4.8px, #000 5.3px);
+  animation: none;
+}
+
+/* Issue page: the head is a title block too --------------------------------- */
+
+[data-skin='plan'] .page-crumbs {
+  font: 500 12px/1.2 var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+[data-skin='plan'] .page .issue-head {
+  position: relative;
+  margin: 6px 4px 30px;
+  padding: 18px 18px 0;
+  border: 1.5px solid var(--plan-line);
+  outline: 1px solid var(--plan-line);
+  outline-offset: 3px;
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .page .issue-head .page-title {
+  font-size: 30px;
+  letter-spacing: 0.015em;
+}
+
+/* The meta line becomes the row of cells at the foot of the block. */
+[data-skin='plan'] .page .issue-head .issue-meta {
+  gap: 0;
+  align-items: stretch;
+  margin: 16px -18px 0;
+  border-top: 1px solid var(--plan-line);
+}
+
+[data-skin='plan'] .page .issue-head .issue-meta > * {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-right: 1px solid var(--rule-strong);
+}
+
+[data-skin='plan'] .page .issue-head .issue-meta > .dot {
+  display: none;
+}
+
+[data-skin='plan'] .page .issue-head .issue-meta > .actions {
+  margin-left: auto;
+  border-right: 0;
+  border-left: 1px solid var(--rule-strong);
+}
+
+[data-skin='plan'] .page .issue-head .note {
+  margin: 0 -18px;
+  padding: 8px 18px;
+  border-top: 1px dashed var(--rule-strong);
+}
+
+[data-skin='plan'] .issue-head .resolution {
+  font: 400 15px var(--font-title);
+}
+
+/* Boards ------------------------------------------------------------------------- */
+
+[data-skin='plan'] .board-column {
+  border: 1px solid var(--plan-line);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--paper-sunk) 82%, transparent);
+}
+
+[data-skin='plan'] .board-column-head {
+  border-bottom: 3px double var(--plan-line);
+}
+
+[data-skin='plan'] .board-column-title {
+  font: 600 11.5px/1.2 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+[data-skin='plan'] .board-column.is-over {
+  border-style: dashed;
+  border-color: var(--focus);
+  background:
+    repeating-linear-gradient(135deg, var(--plan-hatch) 0 1px, transparent 1px 7px),
+    var(--accent-wash);
+}
+
+[data-skin='plan'] .board-column.over-limit {
+  border-color: var(--accent);
+}
+
+[data-skin='plan'] .board-column.over-limit .board-column-head {
+  border-bottom-color: var(--accent);
+}
+
+[data-skin='plan'] .board-card {
+  border: 1px solid var(--plan-line);
+  border-radius: 0;
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .board-card:hover {
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--plan-hatch);
+}
+
+[data-skin='plan'] .board-card.is-dragging {
+  opacity: 0.7;
+  border-style: dashed;
+  box-shadow: var(--shadow-pop);
+}
+
+[data-skin='plan'] .sprint-name {
+  font: 400 19px/1.2 var(--font-title);
+}
+
+/* Status bar: the title block in the bottom right corner of the sheet -------- */
+
+/* The sheet is at least a screen tall, so the block sits at its foot. */
+[data-skin='plan']:not(.skin-preview) .app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+[data-skin='plan']:not(.skin-preview) .app-main {
+  flex: 1;
+}
+
+[data-skin='plan'] .app-statusbar {
+  display: flex;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: -64px max(36px, calc((100% - 1280px) / 2 + 36px)) 36px auto;
+  border: 1.5px solid var(--plan-line);
+  outline: 1px solid var(--plan-line);
+  outline-offset: 3px;
+  background: var(--paper-raised);
+  font: 500 10.5px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+[data-skin='plan'] .app-statusbar::before {
+  content: '';
+  width: 38px;
+  flex: none;
+  border-right: 1px solid var(--plan-line);
+  background: var(--ink);
+  -webkit-mask: url('./plan/logo.svg') center / 20px 20px no-repeat;
+  mask: url('./plan/logo.svg') center / 20px 20px no-repeat;
+}
+
+[data-skin='plan'] .statusbar-cell {
+  padding: 9px 14px 8px;
+  border-left: 1px solid var(--plan-line);
+}
+
+[data-skin='plan'] .statusbar-cell:first-child {
+  border-left: 0;
+}
+
+[data-skin='plan'] .statusbar-cell:last-child {
+  color: var(--ink);
+}
+
+[data-skin='plan'].skin-preview .app-statusbar {
+  margin: -14px 14px 8px auto;
+}
+
+/* Wiki text ---------------------------------------------------------------------- */
+
+[data-skin='plan'] .wiki h1,
+[data-skin='plan'] .wiki h2,
+[data-skin='plan'] .wiki h3,
+[data-skin='plan'] .wiki h4,
+[data-skin='plan'] .wiki h5,
+[data-skin='plan'] .wiki h6 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+[data-skin='plan'] .wiki a {
+  color: var(--ink);
+  text-decoration-color: var(--rule-strong);
+}
+
+[data-skin='plan'] .wiki a:hover {
+  color: var(--accent-text);
+  text-decoration-color: currentColor;
+}
+
+[data-skin='plan'] .wiki pre {
+  border: 1px solid var(--rule-strong);
+  border-left-width: 3px;
+  border-left-style: double;
+  background: var(--paper-raised);
+}
+
+[data-skin='plan'] .wiki blockquote {
+  border-left: 1px dashed var(--rule-strong);
+}
+
+[data-skin='plan'] .wiki .panel {
+  border: 1px solid var(--plan-line);
+  outline: 1px solid var(--rule-strong);
+  outline-offset: -4px;
+}
+
+[data-skin='plan'] .wiki .wiki-table th,
+[data-skin='plan'] .wiki .wiki-table td {
+  border-color: var(--plan-line);
+}
+
+[data-skin='plan'] .wiki .wiki-table th {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Motion: only for those who have not asked for less -------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin='plan'] .btn {
+    transition:
+      background-size 0.18s ease-out,
+      color 0.18s ease-out,
+      border-color 0.18s ease-out;
+  }
+
+  [data-skin='plan'] .topbar-nav .nav-link {
+    transition: background-size 0.2s ease-out;
+  }
+
+  [data-skin='plan'] .popover {
+    animation: plan-unroll 0.16s ease-out;
+  }
+
+  [data-skin='plan'] dialog.modal[open] {
+    animation: plan-sheet 0.22s ease-out;
+  }
+
+  /* The second line of each title block is ruled in after the first. */
+  [data-skin='plan'] .page-head,
+  [data-skin='plan'] .page .issue-head {
+    animation: plan-rule-in 0.6s 0.1s ease-out backwards;
+  }
+
+  [data-skin='plan'] .illustration {
+    --plan-drawing: url('./plan/empty.svg#draw');
+  }
+
+  [data-skin='plan'] .illustration[data-kind='search'] {
+    --plan-drawing: url('./plan/search.svg#draw');
+    --plan-marks: url('./plan/search-mark.svg#draw');
+  }
+
+  [data-skin='plan'] .illustration[data-kind='lost'] {
+    --plan-drawing: url('./plan/lost.svg#draw');
+    --plan-marks: url('./plan/lost-mark.svg#draw');
+  }
+
+  [data-skin='plan'] .loading::before {
+    animation: plan-compass 1.3s linear infinite;
+  }
+}
+
+@keyframes plan-unroll {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    clip-path: inset(0 0 -12px 0);
+  }
+}
+
+@keyframes plan-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes plan-rule-in {
+  from {
+    outline-offset: 14px;
+    outline-color: transparent;
+  }
+}
+
+@keyframes plan-compass {
+  from {
+    --plan-sweep: 0deg;
+  }
+
+  to {
+    --plan-sweep: 360deg;
+  }
+}
+
+/* Narrow screens ------------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  [data-skin='plan'] h1,
+  [data-skin='plan'] .page-title,
+  [data-skin='plan'] .page .issue-head .page-title {
+    font-size: 24px;
+  }
+
+  [data-skin='plan'] .page-head {
+    padding: 14px 14px 14px;
+  }
+
+  [data-skin='plan'] .page-head .eyebrow {
+    margin: -14px 0 12px -14px;
+    padding-left: 14px;
+  }
+
+  [data-skin='plan'] .page-head::after {
+    width: 48px;
+  }
+
+  [data-skin='plan'] .page .issue-head {
+    padding: 14px 14px 0;
+  }
+
+  [data-skin='plan'] .page .issue-head .issue-meta {
+    margin: 14px -14px 0;
+  }
+
+  [data-skin='plan'] .page .issue-head .issue-meta > * {
+    min-height: 40px;
+    padding: 6px 10px;
+  }
+
+  [data-skin='plan'] .app-statusbar {
+    margin: -56px 20px 28px auto;
+    letter-spacing: 0.03em;
+  }
+
+  [data-skin='plan'] .app-statusbar::before {
+    display: none;
+  }
+
+  [data-skin='plan'] .statusbar-cell {
+    padding: 8px 9px 7px;
+    white-space: nowrap;
+  }
+
+  /* Issue lists become two-line entries: marks and dates, then the summary. */
+  [data-skin='plan'] table.ledger:has(td.c-summary) thead {
+    display: none;
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    padding: 9px 4px 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) tbody tr:last-child {
+    border-bottom-color: var(--rule-strong);
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) td {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) td.num {
+    margin-left: auto;
+  }
+
+  /* The base hides the update date on phones; the two-line entry has room. */
+  [data-skin='plan'] table.ledger:has(td.c-summary) td.c-updated {
+    display: block;
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) td.c-summary {
+    order: 9;
+    flex: 1 0 100%;
+    max-width: none;
+    padding: 2px 0 0 36px;
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) td.c-summary .summary {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) tbody tr:hover {
+    background: var(--accent-wash);
+    box-shadow: inset 2px 0 0 var(--ink);
+  }
+
+  [data-skin='plan'] table.ledger:has(td.c-summary) tbody tr:hover td,
+  [data-skin='plan'] table.ledger:has(td.c-summary) tbody tr:hover td:first-child {
+    background: none;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 560px) {
+  [data-skin='plan'] .topbar-inner {
+    gap: 10px;
+  }
+
+  [data-skin='plan'] .topbar-nav {
+    gap: 10px;
+  }
+
+  [data-skin='plan'] .topbar-nav .nav-link {
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  [data-skin='plan'] .topbar .btn.topbar-create {
+    padding: 0 8px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Every skin is also listed in the account menu. */
+  [data-skin='plan'] .topbar-themes {
+    display: none;
+  }
+}

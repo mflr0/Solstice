@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- A glossy sun rising over a lit horizon: the Solstice mark, drawn for Luna. -->
+  <defs>
+    <radialGradient id="sun" cx="0.38" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#fff6cf"/>
+      <stop offset="0.32" stop-color="#ffc847"/>
+      <stop offset="0.75" stop-color="#f08a1c"/>
+      <stop offset="1" stop-color="#d4620a"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b9d0ff"/>
+    </linearGradient>
+    <clipPath id="sky"><rect width="24" height="15.2"/></clipPath>
+  </defs>
+  <g clip-path="url(#sky)">
+    <circle cx="12" cy="15.4" r="7" fill="url(#sun)" stroke="#a9500a" stroke-width="0.7"/>
+    <path d="M7.6 12.2c.9-2.2 2.7-3.4 5-3.5" fill="none" stroke="#ffffff" stroke-opacity="0.75"
+      stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <rect x="1.6" y="14.9" width="20.8" height="2.2" rx="1.1" fill="url(#line)" stroke="#173a86"
+    stroke-width="0.6"/>
+  <rect x="6.4" y="18.9" width="11.2" height="1.5" rx="0.75" fill="url(#line)" stroke="#173a86"
+    stroke-width="0.5" opacity="0.8"/>
+</svg>

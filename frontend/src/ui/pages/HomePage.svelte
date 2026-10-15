@@ -19,11 +19,13 @@
   });
 </script>
 
-<div class="page">
+<div class="page" data-title={t.home.title}>
   <header class="page-head">
     <div>
       <p class="eyebrow">{today}</p>
-      <h1>{session.me ? t.home.greeting(session.me.name.split(' ')[0] ?? '') : t.home.title}</h1>
+      <h1 class="page-title">
+        {session.me ? t.home.greeting(session.me.name.split(' ')[0] ?? '') : t.home.title}
+      </h1>
     </div>
   </header>
 

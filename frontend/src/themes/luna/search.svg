@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90">
+  <!-- A magnifying glass over a ruled sheet: nothing found. -->
+  <defs>
+    <linearGradient id="sheet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e6edf9"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="0.35" cy="0.3" r="0.85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#cfe0fd" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#7ba5ea" stop-opacity="0.75"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8fa2c2"/>
+      <stop offset="1" stop-color="#2c3b5b"/>
+    </linearGradient>
+    <linearGradient id="grip" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4b5d84"/>
+      <stop offset="0.45" stop-color="#25324f"/>
+      <stop offset="1" stop-color="#141c30"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="60" cy="82" rx="40" ry="4.5" fill="#0a2050" opacity="0.14"/>
+  <path d="M28 8h38l14 14v54a2 2 0 0 1-2 2H28a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" fill="url(#sheet)"
+    stroke="#6f82a3" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M66 8v12a2 2 0 0 0 2 2h12" fill="#dfe7f6" stroke="#6f82a3" stroke-width="1.2"
+    stroke-linejoin="round"/>
+  <g stroke="#b6c4de" stroke-width="2.2" stroke-linecap="round">
+    <path d="M34 30h30M34 38h38M34 46h24M34 54h34M34 62h20"/>
+  </g>
+  <g transform="rotate(-45 84 66)">
+    <rect x="79.5" y="74" width="9" height="22" rx="3.5" fill="url(#grip)" stroke="#0f1626"
+      stroke-width="1"/>
+    <rect x="81.3" y="76" width="2" height="17" rx="1" fill="#ffffff" opacity="0.28"/>
+  </g>
+  <circle cx="74" cy="54" r="16" fill="url(#lens)" stroke="url(#rim)" stroke-width="5"/>
+  <path d="M64.5 49a11 11 0 0 1 8-6.6" fill="none" stroke="#ffffff" stroke-width="2.4"
+    stroke-linecap="round" opacity="0.9"/>
+</svg>

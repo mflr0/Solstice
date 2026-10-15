@@ -20,7 +20,8 @@
     href={paths.person(user.username)}
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
-    {#if initialsBox}<span class="initials" aria-hidden="true">{initials(user.name)}</span>{/if}
+    {#if initialsBox}<span class="initials avatar" aria-hidden="true">{initials(user.name)}</span
+      >{/if}
     <span class="name">{user.name}</span>
   </a>
 {:else}
@@ -48,10 +49,10 @@
     height: 20px;
     flex: none;
     border: 1px solid var(--rule-strong);
-    border-radius: 2px;
+    border-radius: var(--avatar-radius);
     background: var(--paper-raised);
     color: var(--ink-soft);
-    font: 500 9.5px/1 var(--mono);
+    font: 500 9.5px/1 var(--font-mono);
     letter-spacing: 0.02em;
   }
 

@@ -10,17 +10,17 @@
   }
   const { priority, withName = false }: Props = $props();
 
-  const glyph = $derived.by(() => {
-    if (!priority) return '';
-    const count = session.meta?.priorities.length ?? 0;
-    return PRIORITY_GLYPHS[priorityLevel(session.priorityIndex(priority), count)];
-  });
+  const index = $derived(priority ? session.priorityIndex(priority) : -1);
+  const level = $derived(priorityLevel(index, session.meta?.priorities.length ?? 0));
 </script>
 
 {#if priority}
-  <span class="prio" title={priority.name}>
-    <span class="glyph" style:color={priority.color || 'var(--ink-soft)'} aria-hidden="true"
-      >{glyph}</span
+  <span class="prio priority-mark" title={priority.name}>
+    <span
+      class="glyph"
+      data-level={index < 0 ? 'other' : level}
+      style:--priority-color={priority.color || null}
+      aria-hidden="true">{PRIORITY_GLYPHS[level]}</span
     >
     {#if withName}<span>{priority.name}</span>{:else}<span class="sr-only">{priority.name}</span
       >{/if}
@@ -35,7 +35,9 @@
     white-space: nowrap;
   }
 
+  /* The server's colour comes in --priority-color; skins may override either. */
   .glyph {
+    color: var(--priority-color, var(--ink-soft));
     display: inline-block;
     min-width: 18px;
     font-size: 10.5px;
