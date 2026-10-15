@@ -13,7 +13,7 @@ var adminIT = map[string]string{
 	// Projects and catalogues
 	"Clé invalide : de 2 à 10 lettres majuscules ou chiffres, en commençant par une lettre.": "Chiave non valida: da 2 a 10 lettere maiuscole o cifre, iniziando con una lettera.",
 	"Un projet s'appelle déjà « %s ».":                                                       "Un progetto si chiama già «%s».",
-	"Le responsable doit être un compte actif.":                                              "L'assegnatario deve essere un account attivo.",
+	"Le responsable doit être un compte actif.":                                              "Il responsabile deve essere un account attivo.",
 	"Catégorie introuvable.":                                                                 "Categoria non trovata.",
 	"Choisissez au moins un type de ticket qui ne soit pas une sous-tâche.":                  "Scegli almeno un tipo di ticket che non sia un sotto-task.",
 	"Modèle inconnu : software ou simple.":                                                   "Modello sconosciuto: software o simple.",

@@ -10,12 +10,12 @@ func init() {
 }
 
 var adminDE = map[string]string{
-	"Des commentaires ou des temps saisis sont réservés à ce groupe : il ne peut pas être supprimé.": "Es gibt bereits Kommentare oder erfasste Zeiten für diese Gruppe: sie kann nicht gelöscht werden.",
-	"Le responsable doit être un compte actif.":                                                      "Der Projektleiter muss ein aktives Konto sein.",
+	"Des commentaires ou des temps saisis sont réservés à ce groupe : il ne peut pas être supprimé.": "Kommentare oder erfasste Zeiten sind nur für diese Gruppe sichtbar, daher kann sie nicht gelöscht werden.",
+	"Le responsable doit être un compte actif.":                                                      "Der Verantwortliche muss ein aktives Konto sein.",
 	"Type de champ inconnu (au choix : %s).":                                                         "Unbekannter Feldtyp (zur Auswahl: %s).",
 	"Tapez le nom de la base de données (%s) pour confirmer le remplacement.":                        "Geben Sie den Namen der Datenbank (%s) ein, um den Austausch zu bestätigen.",
 	"L'ordre doit citer chaque élément une fois et une seule.":                                       "Die Reihenfolge muss jedes Element genau einmal auflisten.",
-	"Le texte du bandeau fait %d caractères au plus.":                                                "Der Text des Banner kann höchstens %d Zeichen lang sein.",
+	"Le texte du bandeau fait %d caractères au plus.":                                                "Der Bannertext darf höchstens %d Zeichen lang sein.",
 	"Un import depuis Jira remplace les données : Solstice revient dans quelques minutes.":           "Ein Import aus Jira ersetzt die Daten: Solstice ist in wenigen Minuten wieder verfügbar.",
 	"Utilisateur introuvable.":                                                                       "Benutzer nicht gefunden.",
 	"Moyenne":                                                                                        "Mittel",
@@ -37,7 +37,7 @@ var adminDE = map[string]string{
 	"Les tickets non résolus vont dans une version pas encore sortie.":                               "Nicht gelöste Vorgänge werden einer Version zugeordnet, die noch nicht veröffentlicht ist.",
 	"Bug": "Fehler",
 	"Longueur minimale des mots de passe invalide : de 8 à 128 caractères.": "Ungültige Mindestlänge des Passworts: zwischen 8 und 128 Zeichen.",
-	"clone": "ist geklont als",
+	"clone": "klont",
 	"Durée de connexion invalide : de 1 à 365 jours.": "Ungültige Sitzungsdauer: zwischen 1 und 365 Tagen.",
 	"bloque": "blockiert",
 	"Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.": "Dieses Projekt enthält Vorgänge: Geben Sie seinen Schlüssel ein, um die Löschung zu bestätigen.",
@@ -62,7 +62,7 @@ var adminDE = map[string]string{
 	"La date de début doit précéder la date de sortie.": "Das Startdatum muss vor dem Veröffentlichungsdatum liegen.",
 	"est bloqué par": "ist blockiert durch",
 	"Assignation par défaut inconnue (au choix : %s).":                                             "Unbekannte Standardzuweisung (zur Auswahl: %s).",
-	"Des commentaires ou des temps saisis sont réservés à ce rôle : il ne peut pas être supprimé.": "Es gibt bereits Kommentare oder erfasste Zeiten für diese Rolle: sie kann nicht gelöscht werden.",
+	"Des commentaires ou des temps saisis sont réservés à ce rôle : il ne peut pas être supprimé.": "Kommentare oder erfasste Zeiten sind nur für diese Rolle sichtbar, daher kann sie nicht gelöscht werden.",
 	"Doublon": "Duplikat",
 	"Le champ « %s » n'est pas proposé pour ce projet ou ce type de ticket.": "Das Feld „%s“ ist für dieses Projekt oder diesen Vorgangstyp nicht verfügbar.",
 	"Basse":     "Niedrig",

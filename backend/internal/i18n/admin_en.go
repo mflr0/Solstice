@@ -57,7 +57,7 @@ var adminEN = map[string]string{
 	"Clé invalide : de 2 à 10 lettres majuscules ou chiffres, en commençant par une lettre.":   "Invalid key: 2 to 10 uppercase letters or digits, starting with a letter.",
 	"La clé %s est déjà prise (par un projet actuel ou ancien).":                               "The key %s is already taken (by a current or former project).",
 	"Le nom est obligatoire (%d caractères au plus).":                                          "A name is required (%d characters at most).",
-	"Le responsable doit être un compte actif.":                                                "The assignee must be an active account.",
+	"Le responsable doit être un compte actif.":                                                "The lead must be an active account.",
 	"Un projet s'appelle déjà « %s ».":                                                         "A project is already named “%s”.",
 	"Modèle inconnu : software ou simple.":                                                     "Unknown template: software or simple.",
 	"Assignation par défaut : unassigned ou lead.":                                             "Default assignment: unassigned or lead.",
