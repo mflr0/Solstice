@@ -149,18 +149,18 @@ func systemWorkflow() *workflow {
 		initial:  open,
 		statuses: []string{open, progress, resolved, reopened, closed},
 		transitions: []transition{
-			t("Commencer", open, progress),
-			t("Résoudre", open, resolved),
-			t("Fermer", open, closed),
-			t("Arrêter", progress, open),
-			t("Résoudre", progress, resolved),
-			t("Fermer", progress, closed),
-			t("Fermer", resolved, closed),
-			t("Rouvrir", resolved, reopened),
-			t("Commencer", reopened, progress),
-			t("Résoudre", reopened, resolved),
-			t("Fermer", reopened, closed),
-			t("Rouvrir", closed, reopened),
+			t("Start progress", open, progress),
+			t("Resolve", open, resolved),
+			t("Close", open, closed),
+			t("Stop progress", progress, open),
+			t("Resolve", progress, resolved),
+			t("Close", progress, closed),
+			t("Close", resolved, closed),
+			t("Reopen", resolved, reopened),
+			t("Start progress", reopened, progress),
+			t("Resolve", reopened, resolved),
+			t("Close", reopened, closed),
+			t("Reopen", closed, reopened),
 		},
 	}
 }
@@ -290,10 +290,10 @@ func (r *run) importWorkflows() error {
 			return err
 		}
 	}
-	r.rep.step("workflows (par projet)", wins.total, broken)
+	r.rep.step("workflows (per project)", wins.total, broken)
 	r.rep.step("transitions", tins.total, 0)
 	for name := range missing {
-		r.rep.warn("workflow « %s » introuvable dans Jira : remplacé par le workflow standard", name)
+		r.rep.warn("workflow \"%s\" not found in Jira: replaced by the standard workflow", name)
 	}
 	return nil
 }

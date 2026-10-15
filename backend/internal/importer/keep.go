@@ -221,8 +221,8 @@ func (r *run) putBack(k *kept) error {
 	if n, err := r.restore(k.local, "id"); err != nil {
 		errs = append(errs, err)
 	} else if n > 0 {
-		r.rep.warn("%s créés dans Solstice conservés (sans groupes ni rôles, qui viennent de Jira)",
-			plural(n, "compte", "comptes"))
+		r.rep.warn("%s created in Solstice kept (without groups or roles, which come from Jira)",
+			plural(n, "account", "accounts"))
 	}
 	// The operator keeps their access whatever Jira says.
 	if k.operator != nil && len(k.operator.rows) == 1 {

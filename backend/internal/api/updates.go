@@ -696,7 +696,7 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.ChecksEnabled == nil {
-		return failf(http.StatusBadRequest, "Requête invalide : %s", "checksEnabled")
+		return failf(http.StatusBadRequest, "Invalid request: %s", "checksEnabled")
 	}
 	value := "on"
 	if !*in.ChecksEnabled {
@@ -732,7 +732,7 @@ func (s *Server) applyRelease(w http.ResponseWriter, r *http.Request) error {
 	who, err := s.checkPassword(r, me.Username, in.Password)
 	if errors.Is(err, auth.ErrNoSession) || (err == nil && who.ID != me.ID) {
 		s.auditLog(r, auditUpdateDenied, audit.Target{Type: "version", ID: in.Version}, map[string]any{"reason": "password"})
-		return fail(http.StatusForbidden, "Mot de passe incorrect.")
+		return fail(http.StatusForbidden, "Incorrect password.")
 	}
 	if err != nil {
 		return err
@@ -740,20 +740,20 @@ func (s *Server) applyRelease(w http.ResponseWriter, r *http.Request) error {
 
 	u := &s.upd
 	if u.install() != installSystemd {
-		return fail(http.StatusConflict, "Cette installation ne se met pas à jour depuis l'interface : suivez les instructions de la page.")
+		return fail(http.StatusConflict, "This installation cannot be updated from the interface: follow the instructions on the page.")
 	}
 	rel, err := s.latestRelease(r.Context(), false)
 	if err != nil {
 		return err
 	}
 	if rel.Version == "" || in.Version != rel.Version {
-		return fail(http.StatusConflict, "Cette version n'est pas la dernière publiée : vérifiez à nouveau les mises à jour.")
+		return fail(http.StatusConflict, "This is not the latest release. Check for updates again.")
 	}
 	if !newerVersion(u.current(), rel.Version) {
-		return fail(http.StatusConflict, "Solstice est déjà à jour.")
+		return fail(http.StatusConflict, "Solstice is already up to date.")
 	}
 	if u.busy(u.lastAttempt()) {
-		return fail(http.StatusConflict, "Une mise à jour est déjà en cours.")
+		return fail(http.StatusConflict, "An update is already in progress.")
 	}
 	if err := u.writeRequest(updateRequest{Version: rel.Version, RequestedBy: me.Username, At: u.clock()}); err != nil {
 		return err

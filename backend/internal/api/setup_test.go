@@ -130,7 +130,7 @@ func TestSetupModeGating(t *testing.T) {
 	if info, _ := os.Stat(filepath.Join(s.opt.DataDir, "setup-code")); info.Mode().Perm() != 0o600 {
 		t.Errorf("code file mode %v", info.Mode().Perm())
 	}
-	if !strings.Contains(s.Banner(":8080"), "Code d'installation : "+code) {
+	if !strings.Contains(s.Banner(":8080"), "Setup code: "+code) {
 		t.Errorf("the banner does not show the code:\n%s", s.Banner(":8080"))
 	}
 

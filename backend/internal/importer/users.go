@@ -146,15 +146,15 @@ func (r *run) importUsers() error {
 	r.cwd = best
 	r.usersByName = byName
 
-	r.rep.step("utilisateurs", ins.total, 0)
+	r.rep.step("users", ins.total, 0)
 	if noPassword > 0 {
-		r.rep.warn("%s sans mot de passe utilisable (annuaire externe ou ancien format) : "+
-			"définissez-en un avec « solstice user passwd »", plural(noPassword, "compte actif", "comptes actifs"))
+		r.rep.warn("%s without a usable password (external directory or old format): "+
+			"set one with \"solstice user passwd\"", plural(noPassword, "active account", "active accounts"))
 	}
 	if placeholders > 0 {
-		r.rep.warn("%s (auteurs d'anciens tickets)", plural(placeholders,
-			"utilisateur supprimé de Jira conservé comme compte inactif",
-			"utilisateurs supprimés de Jira conservés comme comptes inactifs"))
+		r.rep.warn("%s (authors of old issues)", plural(placeholders,
+			"user deleted from Jira kept as an inactive account",
+			"users deleted from Jira kept as inactive accounts"))
 	}
 	return nil
 }
@@ -248,8 +248,8 @@ func (r *run) importGroups() error {
 	if err := mins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("groupes", gins.total, 0)
-	r.rep.step("appartenances aux groupes", mins.total, 0)
+	r.rep.step("groups", gins.total, 0)
+	r.rep.step("group memberships", mins.total, 0)
 
 	adminGroups := map[int64]bool{}
 	if err := r.each(`SELECT permission, group_id FROM globalpermissionentry`, func(rows *sql.Rows) error {
@@ -281,7 +281,7 @@ func (r *run) importGroups() error {
 			return err
 		}
 	}
-	r.rep.step("administrateurs", len(admins), 0)
+	r.rep.step("administrators", len(admins), 0)
 	return r.applyApplicationAccess(adminGroups)
 }
 
@@ -330,13 +330,13 @@ func (r *run) applyApplicationAccess(adminGroups map[int64]bool) error {
 		}
 	}
 	if len(noAccess) > 0 {
-		r.rep.warn("%s sans accès applicatif dans Jira (hors des groupes de licence) : importés inactifs",
-			plural(len(noAccess), "compte", "comptes"))
+		r.rep.warn("%s without application access in Jira (outside license groups): imported inactive",
+			plural(len(noAccess), "account", "accounts"))
 	}
 	return nil
 }
 
-// plural writes "1 compte" or "3 comptes".
+// plural writes "1 account" or "3 accounts".
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return "1 " + one

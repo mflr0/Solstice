@@ -170,13 +170,13 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	in.Username = strings.ToLower(strings.TrimSpace(in.Username))
 	if !usernamePattern.MatchString(in.Username) {
-		return fail(http.StatusBadRequest, "Identifiant invalide : lettres minuscules, chiffres, . _ @ -")
+		return fail(http.StatusBadRequest, "Invalid username: use lowercase letters, digits and . _ @ -")
 	}
 	if strings.TrimSpace(in.Name) == "" {
 		in.Name = in.Username
 	}
 	if email := strings.TrimSpace(in.Email); email != "" && !validEmail(email) {
-		return fail(http.StatusBadRequest, "Adresse e-mail invalide.")
+		return fail(http.StatusBadRequest, "Invalid email address.")
 	}
 	if err := s.checkNewPassword(ctx, in.Password); err != nil {
 		return err
@@ -197,7 +197,7 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 		VALUES (?, ?, ?, ?, ?)`, in.Username, strings.TrimSpace(in.Name), strings.TrimSpace(in.Email), hash, in.Admin)
 	if err != nil {
 		if isDuplicate(err) {
-			return fail(http.StatusConflict, "Cet identifiant existe déjà.")
+			return fail(http.StatusConflict, "This username is already taken.")
 		}
 		return err
 	}
@@ -237,7 +237,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if id == currentUser(r).ID && ((in.Active != nil && !*in.Active) || (in.Admin != nil && !*in.Admin)) {
-		return fail(http.StatusBadRequest, "Vous ne pouvez pas retirer vos propres droits d'administration.")
+		return fail(http.StatusBadRequest, "You cannot remove your own administrator rights.")
 	}
 	ctx := r.Context()
 	var exists int
@@ -249,7 +249,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.Email != nil {
 		if email := strings.TrimSpace(*in.Email); email != "" && !validEmail(email) {
-			return fail(http.StatusBadRequest, "Adresse e-mail invalide.")
+			return fail(http.StatusBadRequest, "Invalid email address.")
 		}
 	}
 	if in.Password != nil {
@@ -319,7 +319,7 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	if id == currentUser(r).ID {
-		return fail(http.StatusBadRequest, "Changez votre propre mot de passe depuis votre profil.")
+		return fail(http.StatusBadRequest, "Change your own password from your profile.")
 	}
 	n := max(s.passwordMin(ctx), 16)
 	raw := make([]byte, n)

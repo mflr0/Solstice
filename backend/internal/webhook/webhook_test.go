@@ -209,8 +209,8 @@ func TestDeliveries(t *testing.T) {
 		defer s.Delete(ctx, w.ID)
 	}
 	ev := &events.Event{Kind: events.IssueUpdated, At: clock, IssueID: issue.ID, Key: issue.Key, Issue: issue,
-		Changes: []events.Change{{Field: "status", From: events.Str("1"), FromString: events.Str("À faire"),
-			To: events.Str("3"), ToString: events.Str("En cours")}}}
+		Changes: []events.Change{{Field: "status", From: events.Str("1"), FromString: events.Str("To do"),
+			To: events.Str("3"), ToString: events.Str("In progress")}}}
 	if !s.Wants(ev) {
 		t.Fatal("an enabled webhook listens, but Wants is false")
 	}
@@ -254,7 +254,7 @@ func TestDeliveries(t *testing.T) {
 	if p.WebhookEvent != IssueUpdated || p.EventType != "issue_generic" || p.Timestamp != clock.UnixMilli() ||
 		p.Issue.Key != issue.Key || p.Issue.Fields.Summary != issue.Summary || p.Issue.Fields.Project.Key != "DEMO" ||
 		p.Issue.Self != "https://tickets.exemple.fr/rest/api/2/issue/"+p.Issue.ID ||
-		len(p.Changelog.Items) != 1 || p.Changelog.Items[0].ToString != "En cours" || p.Issue.Fields.Status.StatusCategory.Key == "" {
+		len(p.Changelog.Items) != 1 || p.Changelog.Items[0].ToString != "In progress" || p.Issue.Fields.Status.StatusCategory.Key == "" {
 		t.Errorf("payload: %s", got[0].body)
 	}
 

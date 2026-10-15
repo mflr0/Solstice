@@ -251,7 +251,7 @@ func (s *Server) sessionLifetime(ctx context.Context) time.Duration {
 // checkNewPassword applies the minimum length to a new password.
 func (s *Server) checkNewPassword(ctx context.Context, password string) error {
 	if n := s.passwordMin(ctx); utf8.RuneCountInString(password) < n {
-		return failf(http.StatusBadRequest, "Le mot de passe doit faire au moins %d caractères.", n)
+		return failf(http.StatusBadRequest, "The password must be at least %d characters long.", n)
 	}
 	return nil
 }
@@ -290,7 +290,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	for k := range in {
 		if _, ok := known[k]; !ok {
-			return failf(http.StatusBadRequest, "Champ inconnu : %s.", k)
+			return failf(http.StatusBadRequest, "Unknown field: %s.", k)
 		}
 	}
 	ctx := r.Context()
@@ -345,7 +345,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) error {
 
 // checkSetting validates a new value and returns it as stored.
 func checkSetting(field string, raw json.RawMessage) (any, error) {
-	invalid := failf(http.StatusBadRequest, "Champ %s invalide.", field)
+	invalid := failf(http.StatusBadRequest, "Invalid value for field %s.", field)
 	switch field {
 	case "instanceName":
 		var v string
@@ -354,7 +354,7 @@ func checkSetting(field string, raw json.RawMessage) (any, error) {
 		}
 		v = strings.TrimSpace(v)
 		if v == "" || utf8.RuneCountInString(v) > maxInstanceName {
-			return nil, failf(http.StatusBadRequest, "Le nom de l'instance est obligatoire (%d caractères au plus).", maxInstanceName)
+			return nil, failf(http.StatusBadRequest, "The instance name is required (%d characters at most).", maxInstanceName)
 		}
 		return v, nil
 	case "baseURL":
@@ -382,7 +382,7 @@ func checkSetting(field string, raw json.RawMessage) (any, error) {
 	case "defaultLanguage":
 		var v string
 		if json.Unmarshal(raw, &v) != nil || !i18n.Supported(v) {
-			return nil, failf(http.StatusBadRequest, "Langue non prise en charge (au choix : %s).", strings.Join(i18n.Locales, ", "))
+			return nil, failf(http.StatusBadRequest, "Unsupported language (choose from: %s).", strings.Join(i18n.Locales, ", "))
 		}
 		return v, nil
 	case "banner":
@@ -395,22 +395,22 @@ func checkSetting(field string, raw json.RawMessage) (any, error) {
 			v.Level = "info"
 		}
 		if v.Level != "info" && v.Level != "warning" {
-			return nil, fail(http.StatusBadRequest, "Niveau de bandeau inconnu : info ou warning.")
+			return nil, fail(http.StatusBadRequest, "Unknown banner level: info or warning.")
 		}
 		if utf8.RuneCountInString(v.Text) > maxBannerText {
-			return nil, failf(http.StatusBadRequest, "Le texte du bandeau fait %d caractères au plus.", maxBannerText)
+			return nil, failf(http.StatusBadRequest, "The banner text is %d characters at most.", maxBannerText)
 		}
 		return v, nil
 	case "sessionDays":
 		var v int
 		if json.Unmarshal(raw, &v) != nil || v < 1 || v > 365 {
-			return nil, fail(http.StatusBadRequest, "Durée de connexion invalide : de 1 à 365 jours.")
+			return nil, fail(http.StatusBadRequest, "Invalid session length: 1 to 365 days.")
 		}
 		return v, nil
 	case "passwordMinLength":
 		var v int
 		if json.Unmarshal(raw, &v) != nil || v < 8 || v > 128 {
-			return nil, fail(http.StatusBadRequest, "Longueur minimale des mots de passe invalide : de 8 à 128 caractères.")
+			return nil, fail(http.StatusBadRequest, "Invalid minimum password length: 8 to 128 characters.")
 		}
 		return v, nil
 	}

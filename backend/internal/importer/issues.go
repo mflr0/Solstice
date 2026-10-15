@@ -125,7 +125,7 @@ func (r *run) importIssues() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("tickets", ins.total, skipped)
+	r.rep.step("issues", ins.total, skipped)
 
 	// Values used by issues but missing from Jira's catalogues.
 	for _, table := range []string{"issue_types", "statuses", "priorities", "resolutions"} {
@@ -139,13 +139,13 @@ func (r *run) importIssues() error {
 			if table == "statuses" {
 				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, 'todo')"
 			}
-			if _, err := r.dst.ExecContext(r.ctx, q, id, "Inconnu ("+id+")"); err != nil {
+			if _, err := r.dst.ExecContext(r.ctx, q, id, "Unknown ("+id+")"); err != nil {
 				return err
 			}
 		}
 		if len(ids) > 0 {
-			r.rep.warn("%s de Jira dans %s, recréées sous le nom « Inconnu (id) »",
-				plural(len(ids), "valeur inconnue", "valeurs inconnues"), table)
+			r.rep.warn("%s from Jira in %s, recreated under the name \"Unknown (id)\"",
+				plural(len(ids), "unknown value", "unknown values"), table)
 		}
 	}
 
@@ -182,7 +182,7 @@ func (r *run) importIssues() error {
 	if err := moved.flush(); err != nil {
 		return err
 	}
-	r.rep.step("anciennes clés de tickets déplacés", moved.total, skipped)
+	r.rep.step("old keys of moved issues", moved.total, skipped)
 	return nil
 }
 
@@ -218,7 +218,7 @@ func (r *run) importIssueDetails() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("étiquettes", ins.total, skipped)
+	r.rep.step("labels", ins.total, skipped)
 
 	comps := r.inserter("issue_components", "issue_id", "component_id")
 	vers := r.inserter("issue_versions", "issue_id", "version_id", "kind")
@@ -260,8 +260,8 @@ func (r *run) importIssueDetails() error {
 	if err := vers.flush(); err != nil {
 		return err
 	}
-	r.rep.step("composants des tickets", comps.total, 0)
-	r.rep.step("versions des tickets", vers.total, skipped)
+	r.rep.step("issue components", comps.total, 0)
+	r.rep.step("issue versions", vers.total, skipped)
 
 	r.epicOf = map[int64]int64{}
 	links := r.inserter("issue_links", "id", "type_id", "source_id", "target_id")
@@ -292,7 +292,7 @@ func (r *run) importIssueDetails() error {
 	if err := links.flush(); err != nil {
 		return err
 	}
-	r.rep.step("liens entre tickets", links.total, skipped)
+	r.rep.step("issue links", links.total, skipped)
 
 	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
 	skipped = 0
@@ -314,7 +314,7 @@ func (r *run) importIssueDetails() error {
 	if err := remote.flush(); err != nil {
 		return err
 	}
-	r.rep.step("liens externes", remote.total, skipped)
+	r.rep.step("remote links", remote.total, skipped)
 
 	watch := r.inserter("watchers", "issue_id", "user_id", "created_at")
 	vote := r.inserter("votes", "issue_id", "user_id", "created_at")
@@ -345,7 +345,7 @@ func (r *run) importIssueDetails() error {
 	if err := vote.flush(); err != nil {
 		return err
 	}
-	r.rep.step("observateurs", watch.total, 0)
+	r.rep.step("watchers", watch.total, 0)
 	r.rep.step("votes", vote.total, skipped)
 	return nil
 }
@@ -359,7 +359,7 @@ func (r *run) visibilityRole(role sql.NullInt64) (any, error) {
 	}
 	if !r.roles[role.Int64] {
 		if _, err := r.dst.ExecContext(r.ctx, `INSERT INTO project_roles (id, name) VALUES (?, ?)`,
-			role.Int64, fmt.Sprintf("Rôle supprimé (%d)", role.Int64)); err != nil {
+			role.Int64, fmt.Sprintf("Deleted role (%d)", role.Int64)); err != nil {
 			return nil, err
 		}
 		r.roles[role.Int64] = true
@@ -422,8 +422,8 @@ func (r *run) importCommentsAndWorklogs() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("commentaires", ins.total, skipped)
-	r.rep.step("dont commentaires restreints", restricted, 0)
+	r.rep.step("comments", ins.total, skipped)
+	r.rep.step("of which restricted comments", restricted, 0)
 
 	ins = r.inserter("worklogs", "id", "issue_id", "author_id", "body", "started_at", "seconds", "created_at",
 		"updated_at", "updated_by_id", "visibility_group", "visibility_role_id")
@@ -466,7 +466,7 @@ func (r *run) importCommentsAndWorklogs() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("temps saisis", ins.total, skipped)
+	r.rep.step("worklogs", ins.total, skipped)
 	return nil
 }
 
@@ -506,7 +506,7 @@ func (r *run) importAttachments() error {
 		if created.Valid {
 			at = created.Time.UTC()
 		}
-		return ins.add(id, issue.Int64, authorID, truncate(orDefault(name, "fichier"), 255),
+		return ins.add(id, issue.Int64, authorID, truncate(orDefault(name, "file"), 255),
 			orDefault(mime, "application/octet-stream"), size.Int64, at, !found)
 	}); err != nil {
 		return err
@@ -514,13 +514,13 @@ func (r *run) importAttachments() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("pièces jointes", ins.total, skipped)
+	r.rep.step("attachments", ins.total, skipped)
 	switch {
 	case r.opt.JiraHome == "" && ins.total > 0:
-		r.rep.warn("pièces jointes : seules les métadonnées sont reprises ; relancez avec -jira-home pour copier les fichiers")
+		r.rep.warn("attachments: only the metadata is imported; run again with -jira-home to copy the files")
 	case missingFiles > 0:
-		r.rep.warn("%s dans le Jira home (déjà absentes côté Jira ?)",
-			plural(missingFiles, "pièce jointe sans fichier", "pièces jointes sans fichier"))
+		r.rep.warn("%s in the Jira home (already missing on Jira's side?)",
+			plural(missingFiles, "attachment without a file", "attachments without a file"))
 	}
 	return nil
 }
@@ -647,7 +647,7 @@ func (r *run) importCustomFieldValues() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("valeurs de champs personnalisés", ins.total, skipped)
+	r.rep.step("custom field values", ins.total, skipped)
 	return nil
 }
 
@@ -682,7 +682,7 @@ func (r *run) importHistory() error {
 	if err := groups.flush(); err != nil {
 		return err
 	}
-	r.rep.step("modifications (historique)", groups.total, skipped)
+	r.rep.step("changes (history)", groups.total, skipped)
 
 	items := r.inserter("change_items", "id", "group_id", "field_type", "field", "old_value", "old_string",
 		"new_value", "new_string")
@@ -709,6 +709,6 @@ func (r *run) importHistory() error {
 		return err
 	}
 	orphans, _ := res.RowsAffected()
-	r.rep.step("détails des modifications", items.total-int(orphans), int(orphans))
+	r.rep.step("change details", items.total-int(orphans), int(orphans))
 	return nil
 }

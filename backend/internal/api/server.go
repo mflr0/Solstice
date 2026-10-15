@@ -155,7 +155,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	mux.Handle("/api/setup/", s.wrap(func(http.ResponseWriter, *http.Request) error { return errInstalled }, false))
 
 	mux.Handle("/api/", s.wrap(func(http.ResponseWriter, *http.Request) error {
-		return fail(http.StatusNotFound, "Adresse inconnue.")
+		return fail(http.StatusNotFound, "Unknown address.")
 	}, false))
 	mux.Handle("/", static)
 	return securityHeaders(s.instanceMiddleware(mux))
@@ -208,20 +208,20 @@ func failf(status int, format string, args ...any) error {
 }
 
 var (
-	errNotFound  = fail(http.StatusNotFound, "Introuvable, ou vous n'y avez pas accès.")
-	errForbidden = fail(http.StatusForbidden, "Vous n'avez pas le droit de faire cela.")
+	errNotFound  = fail(http.StatusNotFound, "Not found, or you do not have access to it.")
+	errForbidden = fail(http.StatusForbidden, "You are not allowed to do this.")
 )
 
 func (s *Server) wrap(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
-			writeError(w, r, failf(http.StatusForbidden, "Requête refusée (en-tête %s manquant).", csrfHeader))
+			writeError(w, r, failf(http.StatusForbidden, "Request refused (missing %s header).", csrfHeader))
 			return
 		}
 		if needUser {
 			u, err := s.authenticate(r)
 			if err != nil {
-				writeError(w, r, fail(http.StatusUnauthorized, "Connectez-vous pour continuer."))
+				writeError(w, r, fail(http.StatusUnauthorized, "Sign in to continue."))
 				return
 			}
 			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
@@ -233,7 +233,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 					return
 				}
 				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, "Erreur interne, l'incident a été journalisé.")
+				err = fail(http.StatusInternalServerError, "Internal error. The incident has been logged.")
 			}
 			writeError(w, r, err)
 		}
@@ -255,7 +255,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
 	userKey, ipKey := "user:"+strings.ToLower(username), "ip:"+clientIP(r)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
-		return nil, failf(http.StatusTooManyRequests, "Trop de tentatives : réessayez dans %d s.", int(d.Seconds())+1)
+		return nil, failf(http.StatusTooManyRequests, "Too many attempts. Try again in %d s.", int(d.Seconds())+1)
 	}
 	release, err := s.limiter.Acquire(r.Context())
 	if err != nil {
@@ -334,7 +334,7 @@ func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, "Requête invalide : %s", err.Error())
+		return failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
 	}
 	return nil
 }

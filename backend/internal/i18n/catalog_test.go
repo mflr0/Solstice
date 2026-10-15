@@ -164,9 +164,9 @@ func TestCataloguesComplete(t *testing.T) {
 
 func TestVerbs(t *testing.T) {
 	for s, want := range map[string][]string{
-		"Statut inconnu : %s.":   {"0:s"},
-		"%d caractères au plus.": {"0:d"},
-		"%s : %s":                {"0:s", "1:s"},
+		"Unknown status: %s.":    {"0:s"},
+		"%d characters at most.": {"0:d"},
+		"%s: %s":                 {"0:s", "1:s"},
 		"%[2]s, then %[1]s":      {"0:s", "1:s"},
 		"100 %% sûr, %5.2f":      {"0:f"},
 		"Aucun":                  nil,

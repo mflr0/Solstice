@@ -147,7 +147,7 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		return fail(http.StatusInternalServerError, "Flux non pris en charge.")
+		return fail(http.StatusInternalServerError, "Streaming is not supported.")
 	}
 	sub, err := s.subject(r)
 	if err != nil {

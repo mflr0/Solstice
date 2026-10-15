@@ -178,17 +178,17 @@ func (g *generator) seedAgile() {
 	}
 
 	software := []boardColumn{
-		{"À faire", []string{"10000"}, nil, nil},
-		{"En cours", []string{"3"}, nil, nil},
+		{"To do", []string{"10000"}, nil, nil},
+		{"In progress", []string{"3"}, nil, nil},
 		{"En revue", []string{"10002"}, nil, nil},
-		{"Terminé", []string{"10001"}, nil, nil},
+		{"Done", []string{"10001"}, nil, nil},
 	}
 	web := slices.Clone(software)
 	web[1].max = 5.0
 	web[2].min = 1.0
 	business := []boardColumn{
 		{"Ouvert", []string{"1", "4"}, nil, nil},
-		{"En cours", []string{"3"}, nil, nil},
+		{"In progress", []string{"3"}, nil, nil},
 		{"Résolu", []string{"5", "6"}, nil, nil},
 	}
 	boards := []boardDef{

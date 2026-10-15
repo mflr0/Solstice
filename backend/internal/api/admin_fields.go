@@ -211,7 +211,7 @@ func (s *Server) checkContext(ctx context.Context, in *contextInput) ([]int64, [
 	for _, key := range in.Projects {
 		id, err := s.projectByKey(ctx, key)
 		if errors.Is(err, errNotFound) {
-			return nil, nil, failf(http.StatusBadRequest, "Projet inconnu : %s.", key)
+			return nil, nil, failf(http.StatusBadRequest, "Unknown project: %s.", key)
 		}
 		if err != nil {
 			return nil, nil, err
@@ -227,7 +227,7 @@ func (s *Server) checkContext(ctx context.Context, in *contextInput) ([]int64, [
 	var types []string
 	for _, t := range in.IssueTypes {
 		if _, ok := cat.issueType[t]; !ok {
-			return nil, nil, failf(http.StatusBadRequest, "Type de ticket inconnu : %s.", t)
+			return nil, nil, failf(http.StatusBadRequest, "Unknown issue type: %s.", t)
 		}
 		if !slices.Contains(types, t) {
 			types = append(types, t)
@@ -243,7 +243,7 @@ func (s *Server) fieldNameTaken(ctx context.Context, name string, except int64) 
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "« %s » existe déjà.", name)
+		return failf(http.StatusConflict, "“%s” already exists.", name)
 	}
 	return nil
 }
@@ -273,7 +273,7 @@ func writeContext(ctx context.Context, tx *sql.Tx, field int64, projects []int64
 func cleanOption(v string) (string, error) {
 	v = strings.TrimSpace(v)
 	if v == "" || len([]rune(v)) > 255 {
-		return "", fail(http.StatusBadRequest, "Une option a un texte de 255 caractères au plus.")
+		return "", fail(http.StatusBadRequest, "An option's text is 255 characters at most.")
 	}
 	return v, nil
 }
@@ -306,11 +306,11 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 		for _, t := range fieldTypes {
 			names = append(names, t.name)
 		}
-		return failf(http.StatusBadRequest, "Type de champ inconnu (au choix : %s).", strings.Join(names, ", "))
+		return failf(http.StatusBadRequest, "Unknown field type (choose from: %s).", strings.Join(names, ", "))
 	}
 	ft := fieldTypes[i]
 	if len(in.Options) > 0 && !optionKind(ft.kind) {
-		return fail(http.StatusBadRequest, "Ce type de champ n'a pas d'options.")
+		return fail(http.StatusBadRequest, "This field type has no options.")
 	}
 	var options []string
 	for _, o := range in.Options {
@@ -319,7 +319,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if slices.ContainsFunc(options, func(x string) bool { return strings.EqualFold(x, v) }) {
-			return failf(http.StatusConflict, "« %s » existe déjà.", v)
+			return failf(http.StatusConflict, "“%s” already exists.", v)
 		}
 		options = append(options, v)
 	}
@@ -477,7 +477,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if protectedKind(fieldKind(f.TypeKey)) {
-		return fail(http.StatusConflict, "Ce champ sert au fonctionnement des tableaux : il ne peut pas être supprimé.")
+		return fail(http.StatusConflict, "This field is used by the boards: it cannot be deleted.")
 	}
 	estimate := "customfield_" + strconv.FormatInt(id, 10)
 	var boards int
@@ -487,7 +487,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	if f.Issues > 0 && strings.TrimSpace(in.Confirm) != f.Name {
 		return &httpError{status: http.StatusConflict,
 			extra: map[string]any{"usage": map[string]int{"issues": f.Issues, "boards": boards}},
-			msg:   i18n.M("Des tickets ont une valeur dans ce champ : tapez son nom pour confirmer la suppression.")}
+			msg:   i18n.M("Some issues have a value in this field: type its name to confirm the deletion.")}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -524,7 +524,7 @@ func (s *Server) optionField(r *http.Request) (*fieldAdminOut, error) {
 		return nil, err
 	}
 	if !optionKind(fieldKind(f.TypeKey)) {
-		return nil, fail(http.StatusBadRequest, "Ce type de champ n'a pas d'options.")
+		return nil, fail(http.StatusBadRequest, "This field type has no options.")
 	}
 	return f, nil
 }
@@ -536,7 +536,7 @@ func (s *Server) optionTaken(ctx context.Context, field int64, value string, exc
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "« %s » existe déjà.", value)
+		return failf(http.StatusConflict, "“%s” already exists.", value)
 	}
 	return nil
 }
@@ -713,7 +713,7 @@ func (s *Server) checkCustomContext(ctx context.Context, projectID int64, typeID
 	for _, w := range writes {
 		if w.field.ID == outside[0] {
 			return fieldError(customID(w.field.ID), failf(http.StatusBadRequest,
-				"Le champ « %s » n'est pas proposé pour ce projet ou ce type de ticket.", w.field.Name))
+				"The “%s” field is not offered for this project or issue type.", w.field.Name))
 		}
 	}
 	return nil
@@ -839,7 +839,7 @@ func (s *Server) readCustomFields(ctx context.Context, f fields, projectID int64
 		}
 		if len(edit.ui) > 0 || edit.sprint != nil {
 			return nil, failf(http.StatusBadRequest,
-				"Champ « %s » non modifiable : il n'existe pas ou Solstice ne le prend pas en charge.", field)
+				"Field “%s” cannot be set: it does not exist or Solstice does not support it.", field)
 		}
 	}
 	if err := s.checkCustomContext(ctx, projectID, typeID, edit.custom); err != nil {

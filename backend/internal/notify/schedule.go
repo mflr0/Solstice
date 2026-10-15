@@ -245,23 +245,23 @@ func (s *Service) sendSubscription(ctx context.Context, sub *Subscription) (int,
 			continue
 		}
 		loc := rc.locale
-		p := &page{Lang: loc, Heading: i18n.M("Filtre « %s »", res.Name).In(loc)}
+		p := &page{Lang: loc, Heading: i18n.M("Filter “%s”", res.Name).In(loc)}
 		p.Title = p.Heading
-		p.Intro = []string{i18n.M("Tickets correspondants : %d (au %s).", res.Total, formatTime(loc, s.Now().In(s.zone()))).In(loc)}
+		p.Intro = []string{i18n.M("Matching issues: %d (as of %s).", res.Total, formatTime(loc, s.Now().In(s.zone()))).In(loc)}
 		t := s.issueTable(loc, res.Issues, true)
-		t.Empty = i18n.M("Aucun ticket ne correspond à ce filtre.").In(loc)
+		t.Empty = i18n.M("No issue matches this filter.").In(loc)
 		all := s.url("/issues?q=" + url.QueryEscape(res.Query))
 		switch {
 		case res.Total > len(res.Issues):
-			t.More, t.MoreURL = i18n.M("Seuls les %d premiers tickets sont listés : voir tous les résultats.", len(res.Issues)).In(loc), all
+			t.More, t.MoreURL = i18n.M("Only the first %d issues are listed: see all results.", len(res.Issues)).In(loc), all
 		case all != "":
-			t.More, t.MoreURL = i18n.M("Ouvrir dans Solstice").In(loc), all
+			t.More, t.MoreURL = i18n.M("Open in Solstice").In(loc), all
 		}
 		p.Tables = []table{t}
 		if sub.GroupID != 0 {
-			s.footer(p, i18n.M("Vous recevez ce courriel car le groupe %s est abonné à ce filtre.", sub.GroupName).In(loc))
+			s.footer(p, i18n.M("You receive this email because the group %s is subscribed to this filter.", sub.GroupName).In(loc))
 		} else {
-			s.footer(p, i18n.M("Vous recevez ce courriel car vous êtes abonné à ce filtre.").In(loc))
+			s.footer(p, i18n.M("You receive this email because you are subscribed to this filter.").In(loc))
 		}
 		if err := s.write(ctx, cfg, "subscription", rc, p); err != nil {
 			return n, err
@@ -273,7 +273,7 @@ func (s *Service) sendSubscription(ctx context.Context, sub *Subscription) (int,
 
 // issueTable lists issues: key, summary, status, priority, assignee, due.
 func (s *Service) issueTable(loc string, issues []IssueLine, wide bool) table {
-	t := table{Columns: []string{i18n.M("Clé").In(loc), fieldLabel(loc, "summary"), fieldLabel(loc, "status")}}
+	t := table{Columns: []string{i18n.M("Key").In(loc), fieldLabel(loc, "summary"), fieldLabel(loc, "status")}}
 	if wide {
 		t.Columns = append(t.Columns, fieldLabel(loc, "priority"), fieldLabel(loc, "assignee"))
 	}
@@ -387,18 +387,18 @@ func (s *Service) sendReminder(ctx context.Context, userID int64, today string) 
 		return false, err
 	}
 	loc := rc.locale
-	p := &page{Lang: loc, Heading: i18n.M("Vos échéances du %s", formatDay(loc, today)).In(loc)}
+	p := &page{Lang: loc, Heading: i18n.M("Your due dates for %s", formatDay(loc, today)).In(loc)}
 	p.Title = p.Heading
 	if len(overdue) > 0 {
 		t := s.issueTable(loc, overdue, false)
-		t.Title = i18n.M("En retard").In(loc)
+		t.Title = i18n.M("Overdue").In(loc)
 		p.Tables = append(p.Tables, t)
 	}
 	if len(due) > 0 {
 		t := s.issueTable(loc, due, false)
-		t.Title = i18n.M("Pour aujourd'hui").In(loc)
+		t.Title = i18n.M("Due today").In(loc)
 		p.Tables = append(p.Tables, t)
 	}
-	s.footer(p, i18n.M("Vous recevez ce rappel car vous l'avez demandé dans vos préférences de notification.").In(loc))
+	s.footer(p, i18n.M("You receive this reminder because you asked for it in your notification preferences.").In(loc))
 	return true, s.write(ctx, cfg, "reminder", rc, p)
 }

@@ -30,7 +30,7 @@ func (r *run) importFilters() error {
 		}
 		filters[id] = true
 		r.filters[id] = query.String
-		return ins.add(id, ownerID, truncate(orDefault(name, "Filtre "+strconv.FormatInt(id, 10)), 255), nstr(desc),
+		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), 255), nstr(desc),
 			query.String, now, now)
 	}); err != nil {
 		return err
@@ -38,7 +38,7 @@ func (r *run) importFilters() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("filtres enregistrés", ins.total, 0)
+	r.rep.step("saved filters", ins.total, 0)
 
 	shares := r.inserter("filter_shares", "filter_id", "kind", "group_id", "project_id", "role_id", "user_id")
 	skipped := 0
@@ -87,7 +87,7 @@ func (r *run) importFilters() error {
 	if err := shares.flush(); err != nil {
 		return err
 	}
-	r.rep.step("partages de filtres", shares.total, skipped)
+	r.rep.step("filter shares", shares.total, skipped)
 
 	favs := r.inserter("filter_favourites", "filter_id", "user_id")
 	seen := map[[2]int64]bool{}
@@ -112,6 +112,6 @@ func (r *run) importFilters() error {
 	if err := favs.flush(); err != nil {
 		return err
 	}
-	r.rep.step("filtres favoris", favs.total, skipped)
+	r.rep.step("favorite filters", favs.total, skipped)
 	return nil
 }

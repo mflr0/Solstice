@@ -130,7 +130,7 @@ func (c *compiler) histValues(h histField, vals []Value) (logged, ids frag, empt
 		return frag{}, frag{}, false, err
 	}
 	if empty && h.multi() {
-		return frag{}, frag{}, false, fail("EMPTY ne s'emploie pas avec l'historique des versions.")
+		return frag{}, frag{}, false, fail("EMPTY cannot be used with version history.")
 	}
 	if len(texts) == 0 {
 		return frag{}, frag{}, empty, nil
@@ -214,7 +214,7 @@ func (c *compiler) preds(cl Clause) (*histPreds, error) {
 	pr := &histPreds{}
 	when := func(kind string, v Value) (*time.Time, error) {
 		if v.Empty {
-			return nil, fail("Une date est attendue après %s.", strings.ToUpper(kind))
+			return nil, fail("A date is expected after %s.", strings.ToUpper(kind))
 		}
 		t, err := c.instant(v)
 		return &t, err
@@ -251,7 +251,7 @@ func (c *compiler) preds(cl Clause) (*histPreds, error) {
 				return sub, err
 			})
 			if err == nil && (none || by.sql == "") {
-				err = fail("BY attend un utilisateur.")
+				err = fail("BY expects a user.")
 			}
 			pr.by = &by
 		case "from":
@@ -301,7 +301,7 @@ func (pr *histPreds) byUser(col string) frag {
 func (c *compiler) history(cl Clause) (string, error) {
 	h, ok := histFields[strings.ToLower(strings.ReplaceAll(cl.Field, " ", ""))]
 	if !ok {
-		return "", fail("%s ne s'emploie qu'avec status, assignee, reporter, priority, resolution et fixVersion.",
+		return "", fail("%s can only be used with status, assignee, reporter, priority, resolution and fixVersion.",
 			strings.ToUpper(strings.Fields(cl.Op)[0]))
 	}
 	pr, err := c.preds(cl)

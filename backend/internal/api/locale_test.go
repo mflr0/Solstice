@@ -43,13 +43,14 @@ func (c *client) errorIn(lang, method, path string, body any) (int, string, map[
 func TestErrorLanguage(t *testing.T) {
 	h := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler(http.NotFoundHandler())
 	for _, c := range []struct{ method, lang, want string }{
-		{"GET", "", "Adresse inconnue."},
+		{"GET", "", "Unknown address."},
 		{"GET", "en-GB,en;q=0.9", "Unknown address."},
 		{"GET", "de-CH, fr;q=0.5", "Unbekannte Adresse."},
-		{"GET", "es", "Adresse inconnue."},
+		{"GET", "es", "Unknown address."},
+		{"GET", "fr-FR,fr;q=0.9", "Adresse inconnue."},
 		{"GET", "hi", "अज्ञात पता।"},
 		{"POST", "it", "Richiesta rifiutata (intestazione X-Solstice mancante)."},
-		{"POST", "", "Requête refusée (en-tête X-Solstice manquant)."},
+		{"POST", "", "Request refused (missing X-Solstice header)."},
 	} {
 		req := httptest.NewRequest(c.method, "/api/nope", nil)
 		if c.lang != "" {
@@ -96,7 +97,7 @@ func TestUserLocale(t *testing.T) {
 		return v
 	}
 	const missing = "/api/issues/NOPE-999999"
-	if status, msg, _ := c.errorIn("", "GET", missing, nil); status != 404 || msg != "Introuvable, ou vous n'y avez pas accès." {
+	if status, msg, _ := c.errorIn("", "GET", missing, nil); status != 404 || msg != "Not found, or you do not have access to it." {
 		t.Errorf("before any choice: %d %q", status, msg)
 	}
 
@@ -129,7 +130,7 @@ func TestUserLocale(t *testing.T) {
 	if status, _ := c.do("PATCH", "/api/me", map[string]any{"locale": nil}); status != 200 || locale() != nil {
 		t.Errorf("PATCH locale null: %d, locale %v", status, locale())
 	}
-	if _, msg, _ := c.errorIn("", "GET", missing, nil); msg != "Introuvable, ou vous n'y avez pas accès." {
+	if _, msg, _ := c.errorIn("", "GET", missing, nil); msg != "Not found, or you do not have access to it." {
 		t.Errorf("after clearing: %q, want French", msg)
 	}
 }

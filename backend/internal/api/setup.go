@@ -141,20 +141,20 @@ func (w *Setup) DB() *sql.DB {
 func (w *Setup) Banner(addr string) string {
 	where := "http://localhost" + addr + "/setup"
 	if strings.HasPrefix(addr, ":") {
-		where += " (ou l'adresse de ce serveur)"
+		where += " (or this server's address)"
 	}
 	if w.baseURL != "" {
 		where = w.baseURL + "/setup"
 	}
 	lines := []string{
-		"Solstice n'est pas encore installé.",
-		"Ouvrez " + where,
-		"et saisissez ce code pour commencer :",
+		"Solstice is not installed yet.",
+		"Open " + where,
+		"and type this code to start:",
 		"",
-		"    Code d'installation : " + w.Code(),
+		"    Setup code: " + w.Code(),
 		"",
-		"Le code est aussi dans " + w.codeFile() + ".",
-		"Il change à chaque démarrage tant que l'installation n'est pas faite.",
+		"The code is also in " + w.codeFile() + ".",
+		"It changes on every start until setup is done.",
 	}
 	width := 0
 	for _, l := range lines {
@@ -202,11 +202,11 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 	mux.Handle("GET /api/setup/accounts", w.wrap(w.importedAccounts, true))
 	mux.Handle("POST /api/setup/admin", w.wrap(w.createAdmin, true))
 	mux.Handle("/api/setup/", w.wrap(func(http.ResponseWriter, *http.Request) error {
-		return fail(http.StatusNotFound, "Adresse inconnue.")
+		return fail(http.StatusNotFound, "Unknown address.")
 	}, false))
 	notInstalled := w.wrap(func(http.ResponseWriter, *http.Request) error {
 		return &httpError{status: http.StatusServiceUnavailable, extra: map[string]any{"setup": true},
-			msg: i18n.M("Solstice n'est pas encore installé : terminez l'installation à l'adresse /setup.")}
+			msg: i18n.M("Solstice is not set up yet: finish the setup at /setup.")}
 	}, false)
 	mux.Handle("/api/", notInstalled)
 	mux.Handle("/rest/", notInstalled)
@@ -229,11 +229,11 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
-			writeError(rw, r, failf(http.StatusForbidden, "Requête refusée (en-tête %s manquant).", csrfHeader))
+			writeError(rw, r, failf(http.StatusForbidden, "Request refused (missing %s header).", csrfHeader))
 			return
 		}
 		if needCode && !w.unlocked(r) {
-			writeError(rw, r, fail(http.StatusUnauthorized, "Saisissez d'abord le code d'installation."))
+			writeError(rw, r, fail(http.StatusUnauthorized, "Enter the setup code first."))
 			return
 		}
 		if err := h(rw, r); err != nil {
@@ -243,7 +243,7 @@ func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 					return
 				}
 				w.log.Error("setup request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, "Erreur interne, l'incident a été journalisé.")
+				err = fail(http.StatusInternalServerError, "Internal error. The incident has been logged.")
 			}
 			writeError(rw, r, err)
 		}
@@ -265,7 +265,7 @@ func (w *Setup) unlocked(r *http.Request) bool {
 	return !w.done && w.tokens[tokenKey(c.Value)]
 }
 
-var errInstalled = fail(http.StatusConflict, "Solstice est déjà installé.")
+var errInstalled = fail(http.StatusConflict, "Solstice is already set up.")
 
 // unlock checks the setup code, throttled per client address like
 // passwords, and keeps the browser unlocked with a cookie.
@@ -278,7 +278,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	}
 	key := "setup:" + clientIP(r)
 	if d := w.limiter.Locked(key); d > 0 {
-		return failf(http.StatusTooManyRequests, "Trop de tentatives : réessayez dans %d s.", int(d.Seconds())+1)
+		return failf(http.StatusTooManyRequests, "Too many attempts. Try again in %d s.", int(d.Seconds())+1)
 	}
 	typed := strings.Map(func(c rune) rune {
 		if c == '-' || c == ' ' {
@@ -289,7 +289,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	if subtle.ConstantTimeCompare([]byte(typed), []byte(w.code)) != 1 {
 		w.limiter.Failure(key)
 		w.log.Warn("wrong setup code", "client", clientIP(r))
-		return fail(http.StatusForbidden, "Code d'installation incorrect.")
+		return fail(http.StatusForbidden, "Incorrect setup code.")
 	}
 	w.limiter.Success(key)
 	raw := make([]byte, 32)

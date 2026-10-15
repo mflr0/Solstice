@@ -130,7 +130,7 @@ func lex(s string) ([]token, error) {
 				i++
 			}
 			if i >= len(r) {
-				return nil, errAt(start, "Guillemet non refermé.")
+				return nil, errAt(start, "Unclosed quotation mark.")
 			}
 			i++
 			out = append(out, token{tString, sb.String(), start})
@@ -141,7 +141,7 @@ func lex(s string) ([]token, error) {
 				op += string(r[i+1])
 			}
 			if op == "!" {
-				return nil, errAt(start, "Opérateur « ! » incomplet.")
+				return nil, errAt(start, "Incomplete operator “!”.")
 			}
 			i += len([]rune(op))
 			out = append(out, token{tOp, op, start})
@@ -152,7 +152,7 @@ func lex(s string) ([]token, error) {
 				i++
 			}
 			if i == start {
-				return nil, errAt(start, "Caractère inattendu « %c ».", c)
+				return nil, errAt(start, "Unexpected character “%c”.", c)
 			}
 			out = append(out, token{tWord, string(r[start:i]), start})
 		}
@@ -209,13 +209,13 @@ func Parse(s string) (*Query, error) {
 	if p.keyword("order") {
 		p.next()
 		if !p.keyword("by") {
-			return nil, p.errorf("« BY » attendu après « ORDER ».")
+			return nil, p.errorf("“BY” expected after “ORDER”.")
 		}
 		p.next()
 		for {
 			t := p.next()
 			if t.kind != tWord && t.kind != tString {
-				return nil, p.errorf("Champ de tri attendu.")
+				return nil, p.errorf("Sort field expected.")
 			}
 			s := Sort{Field: t.text}
 			if p.keyword("asc", "desc") {
@@ -229,7 +229,7 @@ func Parse(s string) (*Query, error) {
 		}
 	}
 	if p.peek().kind != tEOF {
-		return nil, p.errorf("« %s » inattendu.", p.peek().text)
+		return nil, p.errorf("Unexpected “%s”.", p.peek().text)
 	}
 	return q, nil
 }
@@ -282,7 +282,7 @@ func (p *parser) not() (Node, error) {
 			return nil, err
 		}
 		if p.next().kind != tRParen {
-			return nil, p.errorf("Parenthèse fermante attendue.")
+			return nil, p.errorf("Closing parenthesis expected.")
 		}
 		return inner, nil
 	}
@@ -292,7 +292,7 @@ func (p *parser) not() (Node, error) {
 func (p *parser) clause() (Node, error) {
 	f := p.next()
 	if f.kind != tWord && f.kind != tString {
-		return nil, p.errorf("Nom de champ attendu.")
+		return nil, p.errorf("Field name expected.")
 	}
 	c := Clause{Field: f.text, Pos: f.pos}
 	switch t := p.peek(); {
@@ -304,7 +304,7 @@ func (p *parser) clause() (Node, error) {
 	case p.keyword("not"):
 		p.next()
 		if !p.keyword("in") {
-			return nil, p.errorf("« IN » attendu après « NOT ».")
+			return nil, p.errorf("“IN” expected after “NOT”.")
 		}
 		p.next()
 		c.Op = "not in"
@@ -343,7 +343,7 @@ func (p *parser) clause() (Node, error) {
 		c.Op = "changed"
 		return p.predicates(c)
 	default:
-		return nil, p.errorf("Opérateur attendu après « %s ».", f.text)
+		return nil, p.errorf("Operator expected after “%s”.", f.text)
 	}
 
 	if c.Op == "in" || c.Op == "not in" {
@@ -359,7 +359,7 @@ func (p *parser) clause() (Node, error) {
 		return nil, err
 	}
 	if (c.Op == "is" || c.Op == "is not") && !v.Empty {
-		return nil, p.errorf("« IS » s'emploie avec EMPTY.")
+		return nil, p.errorf("“IS” is used with EMPTY.")
 	}
 	c.Values = []Value{v}
 	return c, nil
@@ -388,7 +388,7 @@ func (p *parser) list() ([]Value, error) {
 			continue
 		}
 		if p.next().kind != tRParen {
-			return nil, p.errorf("Parenthèse fermante attendue.")
+			return nil, p.errorf("Closing parenthesis expected.")
 		}
 		return vals, nil
 	}
@@ -399,17 +399,17 @@ func (p *parser) predicates(c Clause) (Node, error) {
 	for p.keyword("after", "before", "on", "during", "by", "from", "to") {
 		kind := strings.ToLower(p.next().text)
 		if (kind == "from" || kind == "to") && c.Op != "changed" {
-			return nil, p.errorf("« %s » ne s'emploie qu'avec CHANGED.", strings.ToUpper(kind))
+			return nil, p.errorf("“%s” can only be used with CHANGED.", strings.ToUpper(kind))
 		}
 		var vals []Value
 		var err error
 		switch {
 		case kind == "during":
 			if p.peek().kind != tLParen {
-				return nil, p.errorf("DURING attend deux dates entre parenthèses.")
+				return nil, p.errorf("DURING expects two dates in parentheses.")
 			}
 			if vals, err = p.list(); err == nil && len(vals) != 2 {
-				err = p.errorf("DURING attend deux dates entre parenthèses.")
+				err = p.errorf("DURING expects two dates in parentheses.")
 			}
 		case kind == "by" && p.peek().kind == tLParen:
 			vals, err = p.list()
@@ -441,7 +441,7 @@ func (p *parser) value() (Value, error) {
 			for p.peek().kind != tRParen {
 				a := p.next()
 				if a.kind != tWord && a.kind != tString {
-					return Value{}, p.errorf("Argument de %s() invalide.", t.text)
+					return Value{}, p.errorf("Invalid argument for %s().", t.text)
 				}
 				v.Args = append(v.Args, a.text)
 				if p.peek().kind == tComma {
@@ -453,7 +453,7 @@ func (p *parser) value() (Value, error) {
 		}
 		return Value{Text: t.text}, nil
 	}
-	return Value{}, errAt(t.pos, "Valeur attendue.")
+	return Value{}, errAt(t.pos, "Value expected.")
 }
 
 // looksLike recognises JQL typed in the search bar: a known field followed by

@@ -114,7 +114,7 @@ func (s *Server) myTokens(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	u := currentUser(r)
 	if u.TokenID != 0 {
-		return fail(http.StatusForbidden, "Un jeton d'accès ne peut pas créer d'autres jetons : connectez-vous avec votre mot de passe.")
+		return fail(http.StatusForbidden, "An access token cannot create other tokens: sign in with your password.")
 	}
 	var in struct {
 		Name    string  `json:"name"`
@@ -125,7 +125,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" || utf8.RuneCountInString(name) > 100 {
-		return fail(http.StatusBadRequest, "Le jeton a besoin d'un nom (100 caractères au plus).")
+		return fail(http.StatusBadRequest, "The token needs a name (100 characters at most).")
 	}
 	var expires *time.Time
 	if in.Expires != nil && strings.TrimSpace(*in.Expires) != "" {
@@ -155,10 +155,10 @@ func (s *Server) parseExpiry(v string) (time.Time, error) {
 	if d, err := time.ParseInLocation(time.DateOnly, v, s.zone()); err == nil {
 		t = d.AddDate(0, 0, 1)
 	} else if t, err = time.Parse(time.RFC3339, v); err != nil {
-		return t, fail(http.StatusBadRequest, "Date d'expiration invalide (AAAA-MM-JJ attendu).")
+		return t, fail(http.StatusBadRequest, "Invalid expiry date (YYYY-MM-DD expected).")
 	}
 	if !t.After(time.Now()) {
-		return t, fail(http.StatusBadRequest, "La date d'expiration doit être dans le futur.")
+		return t, fail(http.StatusBadRequest, "The expiry date must be in the future.")
 	}
 	return t.UTC(), nil
 }

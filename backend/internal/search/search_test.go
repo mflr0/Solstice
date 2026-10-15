@@ -33,13 +33,13 @@ func TestParse(t *testing.T) {
 }
 
 func TestSQLGroupsAlternativesAndNegations(t *testing.T) {
-	q := Parse(`statut:Ouvert statut:"En cours" -@personne`)
+	q := Parse(`statut:Ouvert statut:"In progress" -@personne`)
 	sql, args := q.SQL(7)
 	want := "(i.status_id IN (SELECT id FROM statuses WHERE name = ?) OR i.status_id IN (SELECT id FROM statuses WHERE name = ?)) AND NOT COALESCE((i.assignee_id IS NULL), FALSE)"
 	if sql != want {
 		t.Fatalf("got  %s\nwant %s", sql, want)
 	}
-	if !reflect.DeepEqual(args, []any{"Ouvert", "En cours"}) {
+	if !reflect.DeepEqual(args, []any{"Ouvert", "In progress"}) {
 		t.Fatalf("args %v", args)
 	}
 }

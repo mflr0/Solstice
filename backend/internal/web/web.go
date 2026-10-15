@@ -36,8 +36,8 @@ func Handler() http.Handler {
 	index, err := fs.ReadFile(root, "index.html")
 	if err != nil {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "Interface non compilée : lancez « pnpm build » dans frontend/ "+
-				"(ou « pnpm dev » pour le développement).", http.StatusServiceUnavailable)
+			http.Error(w, "Interface not built: run \"pnpm build\" in frontend/ "+
+				"(or \"pnpm dev\" for development).", http.StatusServiceUnavailable)
 		})
 	}
 	files := http.FileServerFS(root)

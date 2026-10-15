@@ -725,7 +725,7 @@ func (g *generator) seedSchemes() {
 	// OPS has no association: Jira falls back to the default scheme (id 0).
 
 	g.w.Table("issuesecurityscheme", "id", "name", "description", "defaultlevel").
-		Add(int64(10000), "Confidentialité", "Tickets réservés à une partie de l'équipe", nil)
+		Add(int64(10000), "Security level", "Tickets réservés à une partie de l'équipe", nil)
 	levels := g.w.Table("schemeissuesecuritylevels", "id", "name", "description", "scheme")
 	levels.Add(int64(10000), "Équipe", "Visible de l'équipe de développement", int64(10000))
 	levels.Add(int64(10001), "Restreint", "Visible du rapporteur et de la direction de projet", int64(10000))

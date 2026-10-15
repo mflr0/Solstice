@@ -101,7 +101,7 @@ func configSources(c *config.Config, fixed map[string]bool, baseURL string, tz *
 func requireDB(c *config.Config) error {
 	if c.DB == "" {
 		return fmt.Errorf("no database configured: set SOLSTICE_DB, pass -db, or put SOLSTICE_DB in %s "+
-			"(« solstice serve » with no database opens the setup wizard)", c.Path)
+			"(\"solstice serve\" with no database opens the setup wizard)", c.Path)
 	}
 	return nil
 }

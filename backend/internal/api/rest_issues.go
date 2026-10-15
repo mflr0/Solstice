@@ -81,7 +81,7 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	pr, ok := parseRef(in.Fields["project"])
 	if !ok || pr.null {
-		return fieldError("project", failf(http.StatusBadRequest, "Le champ %s est obligatoire.", "project"))
+		return fieldError("project", failf(http.StatusBadRequest, "Field %s is required.", "project"))
 	}
 	var projectID int64
 	if pr.key == "" && pr.name == "" {
@@ -106,7 +106,7 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	for jira, ui := range map[string]string{"issuetype": "type", "summary": "summary"} {
 		if _, ok := edit.ui[ui]; !ok {
-			return fieldError(jira, failf(http.StatusBadRequest, "Le champ %s est obligatoire.", jira))
+			return fieldError(jira, failf(http.StatusBadRequest, "Field %s is required.", jira))
 		}
 	}
 	// Check what can still fail before the issue exists. Custom fields and
@@ -251,7 +251,7 @@ func (s *Server) restDeleteIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		if n > 0 {
 			return fail(http.StatusBadRequest,
-				"Ce ticket a des sous-tâches : ajoutez deleteSubtasks=true pour les supprimer avec lui.")
+				"This issue has sub-tasks: add deleteSubtasks=true to delete them with it.")
 		}
 	}
 	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, "/api/issues/"+iss.Key(),
@@ -361,7 +361,7 @@ func (s *Server) restTransition(w http.ResponseWriter, r *http.Request) error {
 	}
 	if target == "" {
 		return fieldError("transition", fail(http.StatusBadRequest,
-			"Cette transition n'est pas possible depuis le statut actuel du ticket."))
+			"This transition is not available from the issue's current status."))
 	}
 	edit, err := s.translateForIssue(ctx, sub, iss, jiraEditInput{Fields: in.Fields, Update: in.Update})
 	if err != nil {
@@ -504,7 +504,7 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 		}
 		if group != c.group.String || role != c.roleID.Int64 {
 			return fieldError("visibility", fail(http.StatusBadRequest,
-				"La visibilité d'un commentaire existant ne peut pas être changée."))
+				"The visibility of an existing comment cannot be changed."))
 		}
 	}
 	id := strconv.FormatInt(c.id, 10)
@@ -584,7 +584,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	}
 	if len(in.Visibility) > 0 && string(in.Visibility) != "null" {
 		return fieldError("visibility", fail(http.StatusBadRequest,
-			"Un temps saisi ne peut pas être restreint à un groupe ou un rôle."))
+			"A work log cannot be restricted to a group or a role."))
 	}
 	var seconds int64
 	switch {
@@ -593,7 +593,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	case strings.TrimSpace(in.TimeSpent) != "":
 		v, ok := jql.Seconds(in.TimeSpent)
 		if !ok {
-			return fieldError("timeLogged", fail(http.StatusBadRequest, "Durée invalide."))
+			return fieldError("timeLogged", fail(http.StatusBadRequest, "Invalid duration."))
 		}
 		seconds = int64(math.Round(v))
 	}
@@ -601,7 +601,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	if in.Started != "" {
 		t, ok := parseJiraTime(in.Started)
 		if !ok {
-			return fieldError("started", failf(http.StatusBadRequest, "Champ %s invalide.", "started"))
+			return fieldError("started", failf(http.StatusBadRequest, "Invalid value for field %s.", "started"))
 		}
 		body["started"] = t
 	}
@@ -729,7 +729,7 @@ func (s *Server) restWatch(on bool) handler {
 				return err
 			}
 			if !active || !watcher.CanSee(pi) {
-				return fieldError("username", fail(http.StatusBadRequest, "Cette personne ne peut pas voir ce ticket."))
+				return fieldError("username", fail(http.StatusBadRequest, "This person cannot see this issue."))
 			}
 			_, err = s.db.ExecContext(ctx, `INSERT IGNORE INTO watchers (issue_id, user_id, created_at) VALUES (?, ?, UTC_TIMESTAMP(3))`,
 				iss.ID, userID)
@@ -753,7 +753,7 @@ func readBody(r *http.Request) ([]byte, error) {
 		if errors.Is(err, io.EOF) {
 			return nil, nil
 		}
-		return nil, failf(http.StatusBadRequest, "Requête invalide : %s", err.Error())
+		return nil, failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
 	}
 	return raw, nil
 }

@@ -176,7 +176,7 @@ func (r *run) importBoards() error {
 				}
 			}
 		}
-		return bins.add(id, truncate(orDefault(name, "Tableau "+strconv.FormatInt(id, 10)), 255), kind, filter.Int64,
+		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), 255), kind, filter.Int64,
 			sub, ownerID, lanes, estimate, nstr(cutoff), now, now)
 	}); err != nil {
 		return err
@@ -187,10 +187,10 @@ func (r *run) importBoards() error {
 	if err := pins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("tableaux", bins.total, skipped)
+	r.rep.step("boards", bins.total, skipped)
 	if skipped > 0 {
-		r.rep.warn("%s", plural(skipped, "tableau non repris : son filtre n'existe plus dans Jira",
-			"tableaux non repris : leur filtre n'existe plus dans Jira"))
+		r.rep.warn("%s", plural(skipped, "board not imported: its filter no longer exists in Jira",
+			"boards not imported: their filter no longer exists in Jira"))
 	}
 
 	columns := map[int64]bool{}
@@ -241,7 +241,7 @@ func (r *run) importBoards() error {
 	if err := csins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("colonnes de tableaux", cins.total, 0)
+	r.rep.step("board columns", cins.total, 0)
 
 	if r.hasTable("AO_60DB71_QUICKFILTER") {
 		qins := r.inserter("board_quick_filters", "id", "board_id", "name", "query", "description", "position")
@@ -263,7 +263,7 @@ func (r *run) importBoards() error {
 		if err := qins.flush(); err != nil {
 			return err
 		}
-		r.rep.step("filtres rapides", qins.total, 0)
+		r.rep.step("quick filters", qins.total, 0)
 	}
 
 	if r.hasTable("AO_60DB71_SWIMLANE") {
@@ -290,7 +290,7 @@ func (r *run) importBoards() error {
 		if err := sins.flush(); err != nil {
 			return err
 		}
-		r.rep.step("couloirs", sins.total, 0)
+		r.rep.step("swimlanes", sins.total, 0)
 	}
 
 	if err := r.importSprints(boards); err != nil {
@@ -357,7 +357,7 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		return err
 	}
 	n, _ := res.RowsAffected()
-	r.rep.step("tickets dans les sprints", int(n), 0)
+	r.rep.step("issues in sprints", int(n), 0)
 	return nil
 }
 
@@ -401,7 +401,7 @@ func (r *run) importRanks() error {
 		SET i.rank_key = k.rank_key`); err != nil {
 		return err
 	}
-	r.rep.step("tickets classés", ins.total, 0)
+	r.rep.step("issues ranked", ins.total, 0)
 	return nil
 }
 
@@ -431,6 +431,6 @@ func (r *run) applyEpics() error {
 		SET i.epic_id = e.epic_id`); err != nil {
 		return err
 	}
-	r.rep.step("tickets rattachés à une épopée", ins.total, 0)
+	r.rep.step("issues attached to an epic", ins.total, 0)
 	return nil
 }

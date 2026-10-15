@@ -178,7 +178,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		}
 		for k := range raw {
 			if k != "name" && !containsStr(c.fields, k) {
-				return failf(http.StatusBadRequest, "Champ inconnu : %s.", k)
+				return failf(http.StatusBadRequest, "Unknown field: %s.", k)
 			}
 		}
 		ctx := r.Context()
@@ -191,12 +191,12 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 				return err
 			}
 		} else if _, ok := raw["name"]; !ok {
-			return failf(http.StatusBadRequest, "Le nom est obligatoire (%d caractères au plus).", 255)
+			return failf(http.StatusBadRequest, "A name is required (%d characters at most).", 255)
 		}
 		str := func(k string) (string, error) {
 			var v string
 			if json.Unmarshal(raw[k], &v) != nil {
-				return "", failf(http.StatusBadRequest, "Champ %s invalide.", k)
+				return "", failf(http.StatusBadRequest, "Invalid value for field %s.", k)
 			}
 			return strings.TrimSpace(v), nil
 		}
@@ -219,13 +219,13 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 					return err
 				}
 				if n > 0 {
-					return failf(http.StatusConflict, "« %s » existe déjà.", name)
+					return failf(http.StatusConflict, "“%s” already exists.", name)
 				}
 				sets["name"] = name
 			case "description":
 				var v *string
 				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, "Champ %s invalide.", k)
+					return failf(http.StatusBadRequest, "Invalid value for field %s.", k)
 				}
 				sets["description"] = optDescription(v)
 			case "inward", "outward":
@@ -243,7 +243,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 					return err
 				}
 				if v != "" && !colorPattern.MatchString(v) {
-					return fail(http.StatusBadRequest, "Couleur invalide : #rrggbb attendu.")
+					return fail(http.StatusBadRequest, "Invalid color: #rrggbb expected.")
 				}
 				sets["color"] = strings.ToLower(v)
 				if v == "" {
@@ -252,24 +252,24 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 			case "subtask":
 				var v bool
 				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, "Champ %s invalide.", k)
+					return failf(http.StatusBadRequest, "Invalid value for field %s.", k)
 				}
 				if !creating && v != *before.Subtask && *before.Issues > 0 {
 					return fail(http.StatusConflict,
-						"Des tickets utilisent ce type : il ne peut plus devenir ou cesser d'être une sous-tâche.")
+						"Some issues use this type: it can no longer become or stop being a sub-task.")
 				}
 				sets["subtask"] = v
 			case "default":
 				var v bool
 				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, "Champ %s invalide.", k)
+					return failf(http.StatusBadRequest, "Invalid value for field %s.", k)
 				}
 				makeDefault = v
 				sets["is_default"] = v
 			}
 		}
 		if creating && c.table == "link_types" && (sets["inward"] == nil || sets["outward"] == nil) {
-			return fail(http.StatusBadRequest, "Un type de lien a un nom, un sens direct et un sens inverse.")
+			return fail(http.StatusBadRequest, "A link type has a name, an outward direction and an inward one.")
 		}
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {
@@ -353,7 +353,7 @@ func readOrder(r *http.Request) ([]string, error) {
 		if json.Unmarshal(raw, &s) != nil {
 			var n json.Number
 			if json.Unmarshal(raw, &n) != nil {
-				return nil, failf(http.StatusBadRequest, "Champ %s invalide.", "ids")
+				return nil, failf(http.StatusBadRequest, "Invalid value for field %s.", "ids")
 			}
 			s = n.String()
 		}
@@ -444,7 +444,7 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 				return err
 			}
 			if n <= 1 {
-				return fail(http.StatusConflict, "Il faut garder au moins un type de ticket.")
+				return fail(http.StatusConflict, "At least one issue type must be kept.")
 			}
 		}
 		var to *catalogueItem
@@ -453,25 +453,25 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 			if json.Unmarshal(*in.MoveTo, &target) != nil {
 				var n json.Number
 				if json.Unmarshal(*in.MoveTo, &n) != nil {
-					return failf(http.StatusBadRequest, "Champ %s invalide.", "moveTo")
+					return failf(http.StatusBadRequest, "Invalid value for field %s.", "moveTo")
 				}
 				target = n.String()
 			}
 			t, err := s.catalogueItem(ctx, c, target)
 			if errors.Is(err, errNotFound) || (err == nil && t.ID == id) {
-				return fail(http.StatusBadRequest, "Élément de remplacement introuvable.")
+				return fail(http.StatusBadRequest, "Replacement element not found.")
 			}
 			if err != nil {
 				return err
 			}
 			if c.table == "issue_types" && *t.Subtask != *it.Subtask {
-				return fail(http.StatusBadRequest, "Le type de remplacement doit être de même nature (sous-tâche ou non).")
+				return fail(http.StatusBadRequest, "The replacement must be of the same kind (sub-task or not).")
 			}
 			to = &t
 		}
 		if used > 0 && to == nil {
 			return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": usage},
-				msg: i18n.M("Cet élément sert encore : choisissez vers quel autre déplacer ce qui l'utilise.")}
+				msg: i18n.M("This element is still in use: choose which other one to move what uses it to.")}
 		}
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {

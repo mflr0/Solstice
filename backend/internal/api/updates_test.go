@@ -510,7 +510,7 @@ func TestUpdatesApply(t *testing.T) {
 		t.Errorf("no password: %d %s", status, body)
 	}
 	if status, body := admin.do("POST", "/api/admin/updates/apply", map[string]string{"version": "1.2.0", "password": "Admin"}); status != http.StatusForbidden ||
-		!strings.Contains(string(body), "Mot de passe incorrect.") {
+		!strings.Contains(string(body), "Incorrect password.") {
 		t.Errorf("wrong password: %d %s", status, body)
 	}
 	if _, err := os.Stat(filepath.Join(f.dir, "request")); err == nil {

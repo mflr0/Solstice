@@ -87,7 +87,7 @@ func (c *compiler) node(n Node) (string, error) {
 		}
 		return sql, err
 	}
-	return "", fail("Requête invalide.")
+	return "", fail("Invalid query.")
 }
 
 func (c *compiler) clause(cl Clause) (string, error) {
@@ -168,12 +168,12 @@ func (c *compiler) clause(cl Clause) (string, error) {
 	case "comment":
 		return c.comment(cl)
 	case "rank", "epic name", "epic status", "epic color":
-		return "", fail("Le champ « %s » (Jira Software) n'est pas encore pris en charge.", cl.Field)
+		return "", fail("The “%s” field (Jira Software) is not supported yet.", cl.Field)
 	}
 	if f, ok := c.customField(cl.Field); ok {
 		return c.custom(cl, f)
 	}
-	return "", fail("Champ inconnu : « %s ».", cl.Field)
+	return "", fail("Unknown field: “%s”.", cl.Field)
 }
 
 // customField finds a custom field by name or cf[id].
@@ -201,7 +201,7 @@ func split(vals []Value) (texts []string, empty bool, err error) {
 		case v.Empty:
 			empty = true
 		case v.Func != "":
-			return nil, false, fail("La fonction %s() ne s'emploie pas ici.", v.Func)
+			return nil, false, fail("The function %s() cannot be used here.", v.Func)
 		default:
 			texts = append(texts, v.Text)
 		}
@@ -215,7 +215,7 @@ func requireOp(cl Clause, allowed ...string) error {
 			return nil
 		}
 	}
-	return fail("L'opérateur « %s » ne s'emploie pas avec « %s ».", strings.ToUpper(cl.Op), cl.Field)
+	return fail("The operator “%s” cannot be used with “%s”.", strings.ToUpper(cl.Op), cl.Field)
 }
 
 // membership combines "col matches a set" and "col is empty" for = != in
@@ -294,7 +294,7 @@ func (c *compiler) statusCategory(cl Clause) (string, error) {
 	for _, t := range texts {
 		cat, ok := categories[strings.ToLower(t)]
 		if !ok {
-			return "", fail("Catégorie de statut inconnue : « %s ».", t)
+			return "", fail("Unknown status category: “%s”.", t)
 		}
 		cats = append(cats, cat)
 	}
@@ -338,12 +338,12 @@ func (c *compiler) users(vals []Value) (sub string, empty bool, err error) {
 			c.arg(c.env.Me)
 		case v.Func == "membersof":
 			if len(v.Args) != 1 {
-				return "", false, fail("membersOf() attend un nom de groupe.")
+				return "", false, fail("membersOf() expects a group name.")
 			}
 			parts = append(parts, "SELECT m.user_id FROM group_members m JOIN user_groups g ON g.id = m.group_id WHERE g.name = ?")
 			c.arg(strings.ToLower(v.Args[0]))
 		case v.Func != "":
-			return "", false, fail("La fonction %s() ne s'emploie pas avec un utilisateur.", v.Func)
+			return "", false, fail("The function %s() cannot be used with a user.", v.Func)
 		default:
 			names = append(names, v.Text)
 		}
@@ -489,7 +489,7 @@ func (c *compiler) instant(v Value) (time.Time, error) {
 		case "endofyear":
 			return time.Date(y+1, 1, 1, 0, 0, 0, 0, c.env.Loc).Add(-time.Millisecond), nil
 		}
-		return time.Time{}, fail("Fonction de date inconnue : %s().", v.Func)
+		return time.Time{}, fail("Unknown date function: %s().", v.Func)
 	}
 	if relative.MatchString(v.Text) {
 		return shift(now, v.Text)
@@ -499,13 +499,13 @@ func (c *compiler) instant(v Value) (time.Time, error) {
 			return t, nil
 		}
 	}
-	return time.Time{}, fail("Date invalide : « %s » (AAAA-MM-JJ, AAAA-MM-JJ HH:MM, ou -7d, 2w…).", v.Text)
+	return time.Time{}, fail("Invalid date: “%s” (YYYY-MM-DD, YYYY-MM-DD HH:MM, or -7d, 2w…).", v.Text)
 }
 
 func shift(t time.Time, s string) (time.Time, error) {
 	m := relative.FindStringSubmatch(strings.TrimSpace(s))
 	if m == nil {
-		return time.Time{}, fail("Décalage invalide : « %s ».", s)
+		return time.Time{}, fail("Invalid offset: “%s”.", s)
 	}
 	n, _ := strconv.Atoi(m[2])
 	if m[1] == "-" {
@@ -534,7 +534,7 @@ func (c *compiler) date(cl Clause, col string, dateOnly bool) (string, error) {
 		return col + " IS NOT NULL", nil
 	case "=", "!=", ">", ">=", "<", "<=":
 	default:
-		return "", fail("L'opérateur « %s » ne s'emploie pas avec une date.", strings.ToUpper(cl.Op))
+		return "", fail("The operator “%s” cannot be used with a date.", strings.ToUpper(cl.Op))
 	}
 	v := cl.Values[0]
 	if v.Empty {
@@ -574,7 +574,7 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 			c.arg(id)
 			continue
 		}
-		return "", fail("Clé de ticket invalide : « %s ».", t)
+		return "", fail("Invalid issue key: “%s”.", t)
 	}
 	if len(conds) == 0 {
 		return "FALSE", nil
@@ -602,7 +602,7 @@ func (c *compiler) key(cl Clause) (string, error) {
 	case ">", ">=", "<", "<=":
 		m := keyPattern.FindStringSubmatch(texts[0])
 		if m == nil {
-			return "", fail("Clé de ticket invalide : « %s ».", texts[0])
+			return "", fail("Invalid issue key: “%s”.", texts[0])
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
 		c.arg(strings.ToUpper(m[1]), num)
@@ -769,7 +769,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 		}
 		n, err := strconv.ParseFloat(v.Text, 64)
 		if err != nil {
-			return "", fail("Nombre attendu pour « %s ».", f.Name)
+			return "", fail("A number is expected for “%s”.", f.Name)
 		}
 		cond := exists() + " AND v.number_value " + cl.Op + " ?)"
 		c.arg(n)
@@ -909,7 +909,7 @@ func (c *compiler) sprint(cl Clause) (string, error) {
 		case v.Func != "":
 			cond, ok := sprintStates[v.Func]
 			if !ok {
-				return "", fail("La fonction %s() ne s'emploie pas avec les sprints.", v.Func)
+				return "", fail("The function %s() cannot be used with sprints.", v.Func)
 			}
 			conds = append(conds, cond)
 		default:
@@ -942,7 +942,7 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 		// Versions compare by their order in their project.
 		v := cl.Values[0]
 		if v.Empty || v.Func != "" {
-			return "", fail("Comparaison de versions : un nom de version est attendu.")
+			return "", fail("Version comparison: a version name is expected.")
 		}
 		c.arg(v.Text, v.Text)
 		return "EXISTS (" + exists + " AND EXISTS (SELECT 1 FROM versions t WHERE t.project_id = v.project_id " +
@@ -994,7 +994,7 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 				"ORDER BY v2.position "+dir+") AS n FROM versions v2 WHERE "+released+" v2.released AND NOT v2.archived"+
 				inProjects("v2", v.Args)+") AS ranked WHERE n = 1)")
 		default:
-			return "", fail("La fonction %s() ne s'emploie pas avec les versions.", v.Func)
+			return "", fail("The function %s() cannot be used with versions.", v.Func)
 		}
 	}
 	if len(conds) == 0 {
@@ -1044,7 +1044,7 @@ func (c *compiler) duration(cl Clause, col string) (string, error) {
 		return col + " IS NOT NULL", nil
 	case "=", "!=", ">", ">=", "<", "<=":
 	default:
-		return "", fail("L'opérateur « %s » ne s'emploie pas avec une durée.", strings.ToUpper(cl.Op))
+		return "", fail("The operator “%s” cannot be used with a duration.", strings.ToUpper(cl.Op))
 	}
 	v := cl.Values[0]
 	if v.Empty {
@@ -1052,7 +1052,7 @@ func (c *compiler) duration(cl Clause, col string) (string, error) {
 	}
 	secs, ok := seconds(v.Text)
 	if !ok {
-		return "", fail("Durée invalide : « %s » (par exemple 2h, 1d 4h, 30m).", v.Text)
+		return "", fail("Invalid duration: “%s” (for example 2h, 1d 4h, 30m).", v.Text)
 	}
 	c.arg(secs)
 	op := map[string]string{"=": "=", "!=": "<>", ">": ">", ">=": ">=", "<": "<", "<=": "<="}[cl.Op]
@@ -1137,7 +1137,7 @@ func (c *compiler) order(sorts []Sort) (string, error) {
 				}
 				continue
 			}
-			return "", fail("Tri impossible sur « %s ».", s.Field)
+			return "", fail("Cannot sort by “%s”.", s.Field)
 		}
 		parts = append(parts, expr+" IS NULL", expr+dir)
 	}

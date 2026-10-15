@@ -76,16 +76,16 @@ func TestParseHistory(t *testing.T) {
 
 func TestParseErrors(t *testing.T) {
 	for s, want := range map[string]string{
-		`project = "DEMO`:             "Guillemet",
-		`project DEMO`:                "Opérateur attendu",
-		`status in (Done`:             "Parenthèse",
-		`(project = DEMO`:             "Parenthèse",
+		`project = "DEMO`:             "quotation mark",
+		`project DEMO`:                "Operator expected",
+		`status in (Done`:             "parenthesis",
+		`(project = DEMO`:             "parenthesis",
 		`status was Done from Open`:   "CHANGED",
 		`status changed during (-1d)`: "DURING",
 		`assignee is bob`:             "EMPTY",
 		`project = DEMO ORDER key`:    "BY",
-		`project = DEMO extra`:        "inattendu",
-		`status ! Done`:               "incomplet",
+		`project = DEMO extra`:        "Unexpected",
+		`status ! Done`:               "Incomplete",
 	} {
 		_, err := Parse(s)
 		var e *Error
@@ -157,7 +157,7 @@ func TestCompileCustomFields(t *testing.T) {
 		t.Errorf("where %s args %v", where, args)
 	}
 	q, _ := Parse(`"Inconnu" = x`)
-	if _, _, _, err := Compile(q, Env{}); err == nil || !strings.Contains(err.Error(), "Champ inconnu") {
+	if _, _, _, err := Compile(q, Env{}); err == nil || !strings.Contains(err.Error(), "Unknown field") {
 		t.Errorf("unknown field: %v", err)
 	}
 }

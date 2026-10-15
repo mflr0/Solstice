@@ -40,7 +40,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return fail(http.StatusBadRequest, "Envoi de fichier invalide.")
+		return fail(http.StatusBadRequest, "Invalid file upload.")
 	}
 	if err := os.MkdirAll(filepath.Join(s.dataDir, "attachments"), 0o750); err != nil {
 		return err
@@ -53,7 +53,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			break
 		}
 		if err != nil {
-			return fail(http.StatusRequestEntityTooLarge, "Fichier trop volumineux (100 Mo au plus).")
+			return fail(http.StatusRequestEntityTooLarge, "File too large (100 MB at most).")
 		}
 		name := cleanFilename(part.FileName())
 		if name == "" {
@@ -73,7 +73,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
-				return fail(http.StatusRequestEntityTooLarge, "Fichier trop volumineux (100 Mo au plus).")
+				return fail(http.StatusRequestEntityTooLarge, "File too large (100 MB at most).")
 			}
 			return err
 		}
@@ -83,7 +83,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		names = append(names, name)
 	}
 	if len(names) == 0 {
-		return fail(http.StatusBadRequest, "Aucun fichier reçu.")
+		return fail(http.StatusBadRequest, "No file received.")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -196,11 +196,11 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if a.missing {
-		return fail(http.StatusNotFound, "Le fichier n'a pas été retrouvé lors de l'import depuis Jira.")
+		return fail(http.StatusNotFound, "This file was not found during the import from Jira.")
 	}
 	f, err := os.Open(s.attachmentPath(a.id))
 	if errors.Is(err, os.ErrNotExist) {
-		return fail(http.StatusNotFound, "Fichier absent du dossier de données.")
+		return fail(http.StatusNotFound, "The file is missing from the data folder.")
 	}
 	if err != nil {
 		return err

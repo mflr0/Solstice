@@ -406,7 +406,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 		case perm.Role:
 			role, table = g.ID, "project_roles"
 		default:
-			return failf(http.StatusBadRequest, "Bénéficiaire inconnu : %s.", g.Holder)
+			return failf(http.StatusBadRequest, "Unknown grantee: %s.", g.Holder)
 		}
 		if table != "" {
 			var n int
@@ -414,7 +414,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if n == 0 {
-				return fail(http.StatusBadRequest, "Bénéficiaire introuvable.")
+				return fail(http.StatusBadRequest, "Grantee not found.")
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,

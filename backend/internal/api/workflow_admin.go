@@ -399,33 +399,33 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return fail(http.StatusBadRequest, "Le workflow a besoin d'un nom.")
+		return fail(http.StatusBadRequest, "The workflow needs a name.")
 	}
 	if len(in.Statuses) == 0 {
-		return fail(http.StatusBadRequest, "Un workflow a au moins un statut.")
+		return fail(http.StatusBadRequest, "A workflow needs at least one status.")
 	}
 	keep := map[string]bool{}
 	for _, st := range in.Statuses {
 		if _, ok := cat.status[st]; !ok {
-			return failf(http.StatusBadRequest, "Statut inconnu : %s.", st)
+			return failf(http.StatusBadRequest, "Unknown status: %s.", st)
 		}
 		if keep[st] {
-			return failf(http.StatusBadRequest, "Le statut « %s » apparaît deux fois.", cat.statusOf(st).Name)
+			return failf(http.StatusBadRequest, "Status “%s” appears twice.", cat.statusOf(st).Name)
 		}
 		keep[st] = true
 	}
 	if !keep[in.Initial] {
-		return fail(http.StatusBadRequest, "Le statut de départ doit faire partie du workflow.")
+		return fail(http.StatusBadRequest, "The initial status must be part of the workflow.")
 	}
 	for _, t := range in.Transitions {
 		if strings.TrimSpace(t.Name) == "" {
-			return fail(http.StatusBadRequest, "Chaque transition a un nom.")
+			return fail(http.StatusBadRequest, "Every transition needs a name.")
 		}
 		if !keep[t.To] || (t.From != nil && !keep[*t.From]) {
-			return failf(http.StatusBadRequest, "La transition « %s » relie un statut absent du workflow.", t.Name)
+			return failf(http.StatusBadRequest, "Transition “%s” uses a status that is not in the workflow.", t.Name)
 		}
 		if t.From != nil && *t.From == t.To {
-			return failf(http.StatusBadRequest, "La transition « %s » ne mène nulle part.", t.Name)
+			return failf(http.StatusBadRequest, "Transition “%s” leads nowhere.", t.Name)
 		}
 	}
 	types, err := s.projectTypes(ctx, cat, projectID)
@@ -436,7 +436,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if !becomesDefault {
 		for _, typ := range in.IssueTypes {
 			if !slices.ContainsFunc(types, func(t typeRef) bool { return t.ID == typ }) {
-				return failf(http.StatusBadRequest, "Type de ticket inconnu dans ce projet : %s.", typ)
+				return failf(http.StatusBadRequest, "Unknown issue type in this project: %s.", typ)
 			}
 		}
 	}
@@ -502,7 +502,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 		}
 		conflict["stranded"] = missing
 		return &httpError{status: http.StatusConflict, extra: conflict,
-			msg: i18n.M("Des tickets sont dans des statuts que leur workflow n'aura plus : choisissez où les déplacer.")}
+			msg: i18n.M("Some issues are in statuses their workflow will no longer have. Choose where to move them.")}
 	}
 
 	now := time.Now().UTC()
@@ -544,7 +544,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if exists == 0 {
-				return fail(http.StatusBadRequest, "Transition inconnue dans ce workflow.")
+				return fail(http.StatusBadRequest, "Unknown transition in this workflow.")
 			}
 			keepIDs = append(keepIDs, t.ID)
 		}
@@ -626,7 +626,7 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return fail(http.StatusBadRequest, "Le workflow a besoin d'un nom.")
+		return fail(http.StatusBadRequest, "The workflow needs a name.")
 	}
 	var source int64
 	var initial string
@@ -634,7 +634,7 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 		AND (id = ? OR (? = 0 AND is_default)) LIMIT 1`, projectID, in.CopyFrom, in.CopyFrom).Scan(&source, &initial)
 	switch {
 	case errors.Is(err, sql.ErrNoRows) && in.CopyFrom != 0:
-		return fail(http.StatusBadRequest, "Workflow à copier introuvable dans ce projet.")
+		return fail(http.StatusBadRequest, "Workflow to copy not found in this project.")
 	case errors.Is(err, sql.ErrNoRows):
 		// A project without workflows: start from the statuses its issues use.
 		if initial, err = s.initialStatus(ctx, projectID); err != nil {
@@ -702,7 +702,7 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if isDefault {
-		return fail(http.StatusConflict, "Le workflow par défaut ne peut pas être supprimé : choisissez-en un autre par défaut d'abord.")
+		return fail(http.StatusConflict, "The default workflow cannot be deleted. Make another workflow the default first.")
 	}
 	name := s.workflowName(ctx, id)
 	var in struct {
@@ -734,7 +734,7 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if conflict != nil {
 		conflict["stranded"] = []strandedStatus{}
 		return &httpError{status: http.StatusConflict, extra: conflict,
-			msg: i18n.M("Des tickets sont dans des statuts que le workflow par défaut n'a pas : choisissez où les déplacer.")}
+			msg: i18n.M("Some issues are in statuses the default workflow does not have. Choose where to move them.")}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -781,10 +781,10 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return fail(http.StatusBadRequest, "Le statut a besoin d'un nom.")
+		return fail(http.StatusBadRequest, "The status needs a name.")
 	}
 	if in.Category != "todo" && in.Category != "doing" && in.Category != "done" {
-		return fail(http.StatusBadRequest, "Catégorie : todo, doing ou done.")
+		return fail(http.StatusBadRequest, "Category: todo, doing or done.")
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
@@ -860,7 +860,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
 		if name == "" {
-			return fail(http.StatusBadRequest, "Le statut a besoin d'un nom.")
+			return fail(http.StatusBadRequest, "The status needs a name.")
 		}
 		cat, err := s.catalogue(ctx)
 		if err != nil {
@@ -868,14 +868,14 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 		}
 		for _, other := range cat.Statuses {
 			if other.ID != st.ID && strings.EqualFold(other.Name, name) {
-				return failf(http.StatusConflict, "Un autre statut s'appelle déjà « %s ».", other.Name)
+				return failf(http.StatusConflict, "Another status is already named “%s”.", other.Name)
 			}
 		}
 		st.Name = truncateRunes(name, 255)
 	}
 	if in.Category != nil {
 		if *in.Category != "todo" && *in.Category != "doing" && *in.Category != "done" {
-			return fail(http.StatusBadRequest, "Catégorie : todo, doing ou done.")
+			return fail(http.StatusBadRequest, "Category: todo, doing or done.")
 		}
 		st.Category = *in.Category
 	}
@@ -914,7 +914,7 @@ func (s *Server) deleteStatus(w http.ResponseWriter, r *http.Request) error {
 		return &httpError{status: http.StatusConflict, extra: map[string]any{
 			"usage":  map[string]int{"issues": issues, "workflows": workflows, "boardColumns": columns},
 			"status": st,
-		}, msg: i18n.M("Ce statut sert encore : retirez-le des workflows et des tableaux, et déplacez ses tickets d'abord.")}
+		}, msg: i18n.M("This status is still in use. Remove it from workflows and boards, and move its issues first.")}
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM statuses WHERE id = ?`, st.ID); err != nil {
 		return err

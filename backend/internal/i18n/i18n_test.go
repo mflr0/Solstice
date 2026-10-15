@@ -46,31 +46,31 @@ func TestSprintf(t *testing.T) {
 		args             []any
 		want             string
 	}{
-		{"fr", "Statut inconnu : %s.", []any{"Fait"}, "Statut inconnu : Fait."},
-		{"en", "Statut inconnu : %s.", []any{"Fait"}, "Unknown status: Fait."},
-		{"de", "Trop de tentatives : réessayez dans %d s.", []any{3}, "Zu viele Versuche. Versuchen Sie es in 3 s erneut."},
-		{"xx", "Statut inconnu : %s.", []any{"Fait"}, "Statut inconnu : Fait."},   // unknown language: French
+		{"fr", "Unknown status: %s.", []any{"Fait"}, "Statut inconnu : Fait."},
+		{"en", "Unknown status: %s.", []any{"Fait"}, "Unknown status: Fait."},
+		{"de", "Too many attempts. Try again in %d s.", []any{3}, "Zu viele Versuche. Versuchen Sie es in 3 s erneut."},
+		{"xx", "Unknown status: %s.", []any{"Fait"}, "Unknown status: Fait."},     // unknown language: English
 		{"en", "Pas encore traduit : %s.", []any{"x"}, "Pas encore traduit : x."}, // missing translation: French
 		{"en", "Sans valeur, 100 % tel quel.", nil, "Sans valeur, 100 % tel quel."},
 		// Messages given as values are rendered in the same language.
-		{"de", "JQL : %s", []any{M("Champ inconnu : « %s ».", "couleur")}, "JQL: Unbekanntes Feld: „couleur“."},
-		{"en", "%s : %s", []any{M("Filtre rapide « %s »", "Mes bugs"), M("JQL : %s", M("Valeur attendue."))},
+		{"de", "JQL: %s", []any{M("Unknown field: “%s”.", "couleur")}, "JQL: Unbekanntes Feld: „couleur“."},
+		{"en", "%s: %s", []any{M("Quick filter “%s”", "Mes bugs"), M("JQL: %s", M("Value expected."))},
 			"Quick filter “Mes bugs”: JQL: Value expected."},
 	} {
 		if got := Sprintf(c.locale, c.template, c.args...); got != c.want {
 			t.Errorf("Sprintf(%s, %q) = %q, want %q", c.locale, c.template, got, c.want)
 		}
 	}
-	if got := M("Statut inconnu : %s.", "Fait").String(); got != "Statut inconnu : Fait." {
-		t.Errorf("String() = %q, want the French text", got)
+	if got := M("Unknown status: %s.", "Fait").String(); got != "Unknown status: Fait." {
+		t.Errorf("String() = %q, want the English text", got)
 	}
 }
 
 // Translations may put the values in another order.
 func TestReorderedValues(t *testing.T) {
-	en["« %s » avant « %s »."] = "%[2]s after %[1]s."
-	defer delete(en, "« %s » avant « %s ».")
-	if got := Sprintf("en", "« %s » avant « %s ».", "a", "b"); got != "b after a." {
+	fr["%s before %s."] = "%[2]s après %[1]s."
+	defer delete(fr, "%s before %s.")
+	if got := Sprintf("fr", "%s before %s.", "a", "b"); got != "b après a." {
 		t.Errorf("got %q", got)
 	}
 }

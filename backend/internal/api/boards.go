@@ -938,7 +938,7 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 		return "", err
 	}
 	if len(statuses) == 0 {
-		return "", fail(http.StatusBadRequest, "Colonne inconnue sur ce tableau.")
+		return "", fail(http.StatusBadRequest, "Unknown column on this board.")
 	}
 	if slices.Contains(statuses, iss.StatusID) {
 		return iss.StatusID, nil
@@ -956,7 +956,7 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 			return st, nil
 		}
 	}
-	return "", fail(http.StatusConflict, "Le workflow ne permet pas d'amener ce ticket dans cette colonne depuis son statut actuel.")
+	return "", fail(http.StatusConflict, "The workflow does not allow moving this issue to this column from its current status.")
 }
 
 // setSprint moves an issue into an open sprint of the board, or back to the
@@ -972,7 +972,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 		err := s.db.QueryRowContext(ctx, `SELECT name, state FROM sprints WHERE id = ? AND board_id = ?`, sprint, b.ID).
 			Scan(&name, &state)
 		if errors.Is(err, sql.ErrNoRows) || state == "closed" {
-			return fail(http.StatusBadRequest, "Sprint inconnu ou terminé.")
+			return fail(http.StatusBadRequest, "Unknown or completed sprint.")
 		}
 		if err != nil {
 			return err
@@ -1056,7 +1056,7 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if b.Kind != "scrum" {
-		return fail(http.StatusBadRequest, "Un tableau Kanban n'a pas de sprints.")
+		return fail(http.StatusBadRequest, "A Kanban board has no sprints.")
 	}
 	if ok, err := s.canManage(ctx, sub, b); err != nil {
 		return err
@@ -1110,7 +1110,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if sp.State != "future" {
-		return fail(http.StatusConflict, "Ce sprint a déjà commencé.")
+		return fail(http.StatusConflict, "This sprint has already started.")
 	}
 	var in struct {
 		Name *string    `json:"name"`
@@ -1123,13 +1123,13 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 	var active int
 	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sprints WHERE board_id = ? AND state = 'active'`, b.ID).Scan(&active)
 	if active > 0 {
-		return fail(http.StatusConflict, "Un sprint est déjà en cours sur ce tableau : terminez-le d'abord.")
+		return fail(http.StatusConflict, "A sprint is already active on this board. Complete it first.")
 	}
 	start := time.Now().UTC()
 	end := start.AddDate(0, 0, 14)
 	if in.End != nil {
 		if !in.End.After(start) {
-			return fail(http.StatusBadRequest, "La fin du sprint doit être dans le futur.")
+			return fail(http.StatusBadRequest, "The sprint end date must be in the future.")
 		}
 		end = in.End.UTC()
 	}
@@ -1168,7 +1168,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if sp.State != "active" {
-		return fail(http.StatusConflict, "Seul un sprint en cours peut être terminé.")
+		return fail(http.StatusConflict, "Only an active sprint can be completed.")
 	}
 	var in struct {
 		MoveTo int64 `json:"moveTo"`
@@ -1180,7 +1180,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 		var state string
 		err := s.db.QueryRowContext(ctx, `SELECT state FROM sprints WHERE id = ? AND board_id = ?`, in.MoveTo, b.ID).Scan(&state)
 		if err != nil || state != "future" || in.MoveTo == sp.ID {
-			return fail(http.StatusBadRequest, "Choisissez un sprint à venir de ce tableau.")
+			return fail(http.StatusBadRequest, "Choose an upcoming sprint of this board.")
 		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1228,7 +1228,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Kind != "kanban" && in.Kind != "scrum" {
-		return fail(http.StatusBadRequest, "Type de tableau : kanban ou scrum.")
+		return fail(http.StatusBadRequest, "Board type: kanban or scrum.")
 	}
 	projectID, err := s.projectByKey(ctx, in.Project)
 	if err != nil || !sub.CanBrowseProject(projectID) {
@@ -1290,7 +1290,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	for pos, category := range []string{"todo", "doing", "done"} {
 		res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position) VALUES (?, ?, ?)`,
-			boardID, map[string]string{"todo": "À faire", "doing": "En cours", "done": "Terminé"}[category], pos)
+			boardID, map[string]string{"todo": "To do", "doing": "In progress", "done": "Done"}[category], pos)
 		if err != nil {
 			return err
 		}

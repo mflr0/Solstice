@@ -70,7 +70,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		if _, _, err := s.queryCondition(ctx, sub, q); err != nil {
 			var he *httpError
 			if errors.As(err, &he) {
-				return failf(http.StatusBadRequest, "%s : %s", what, he.msg)
+				return failf(http.StatusBadRequest, "%s: %s", what, he.msg)
 			}
 			return err
 		}
@@ -82,14 +82,14 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
 		if n == "" {
-			return fail(http.StatusBadRequest, "Le tableau a besoin d'un nom.")
+			return fail(http.StatusBadRequest, "The board needs a name.")
 		}
 		sets, args = append(sets, "name = ?"), append(args, truncateRunes(n, 255))
 	}
 	if in.SubQuery != nil {
 		var v any
 		if q := strings.TrimSpace(*in.SubQuery); q != "" {
-			if err := checkQuery(i18n.M("Sous-filtre"), q); err != nil {
+			if err := checkQuery(i18n.M("Sub-filter"), q); err != nil {
 				return err
 			}
 			v = q
@@ -100,7 +100,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		var v any
 		if c := strings.TrimSpace(*in.DoneCutoff); c != "" {
 			if !cutoffPattern.MatchString(c) {
-				return fail(http.StatusBadRequest, "Délai invalide : un nombre suivi de d, w ou m (par exemple 2w).")
+				return fail(http.StatusBadRequest, "Invalid period: a number followed by d, w or m (for example 2w).")
 			}
 			v = c
 		}
@@ -108,7 +108,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.Swimlanes != nil {
 		if !laneStrategies[*in.Swimlanes] {
-			return fail(http.StatusBadRequest, "Couloirs : none, custom, assignee, epic ou parent.")
+			return fail(http.StatusBadRequest, "Swimlanes: none, custom, assignee, epic or parent.")
 		}
 		sets, args = append(sets, "swimlanes = ?"), append(args, *in.Swimlanes)
 	}
@@ -116,7 +116,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		var v any
 		if e := *in.Estimate; e != "" {
 			if e != "timeoriginalestimate" && !customFieldRef.MatchString(e) {
-				return fail(http.StatusBadRequest, "Estimation : timeoriginalestimate ou customfield_<id>.")
+				return fail(http.StatusBadRequest, "Estimation: timeoriginalestimate or customfield_<id>.")
 			}
 			v = e
 		}
@@ -124,22 +124,22 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.Columns != nil {
 		if len(*in.Columns) == 0 {
-			return fail(http.StatusBadRequest, "Un tableau a au moins une colonne.")
+			return fail(http.StatusBadRequest, "A board needs at least one column.")
 		}
 		seen := map[string]bool{}
 		for _, c := range *in.Columns {
 			if strings.TrimSpace(c.Name) == "" {
-				return fail(http.StatusBadRequest, "Chaque colonne a un nom.")
+				return fail(http.StatusBadRequest, "Every column needs a name.")
 			}
 			if c.Min != nil && c.Max != nil && *c.Min > *c.Max {
-				return failf(http.StatusBadRequest, "Colonne « %s » : le minimum dépasse le maximum.", c.Name)
+				return failf(http.StatusBadRequest, "Column “%s”: the minimum is greater than the maximum.", c.Name)
 			}
 			for _, st := range c.Statuses {
 				if _, ok := cat.status[st]; !ok {
-					return failf(http.StatusBadRequest, "Statut inconnu : %s.", st)
+					return failf(http.StatusBadRequest, "Unknown status: %s.", st)
 				}
 				if seen[st] {
-					return failf(http.StatusBadRequest, "Le statut « %s » est dans deux colonnes.", cat.statusOf(st).Name)
+					return failf(http.StatusBadRequest, "Status “%s” is in two columns.", cat.statusOf(st).Name)
 				}
 				seen[st] = true
 			}
@@ -148,9 +148,9 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 	if in.QuickFilters != nil {
 		for _, q := range *in.QuickFilters {
 			if strings.TrimSpace(q.Name) == "" {
-				return fail(http.StatusBadRequest, "Chaque filtre rapide a un nom.")
+				return fail(http.StatusBadRequest, "Every quick filter needs a name.")
 			}
-			if err := checkQuery(i18n.M("Filtre rapide « %s »", q.Name), q.Query); err != nil {
+			if err := checkQuery(i18n.M("Quick filter “%s”", q.Name), q.Query); err != nil {
 				return err
 			}
 		}
@@ -158,10 +158,10 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 	if in.Lanes != nil {
 		for _, l := range *in.Lanes {
 			if strings.TrimSpace(l.Name) == "" {
-				return fail(http.StatusBadRequest, "Chaque couloir a un nom.")
+				return fail(http.StatusBadRequest, "Every swimlane needs a name.")
 			}
 			if l.Query != nil && strings.TrimSpace(*l.Query) != "" {
-				if err := checkQuery(i18n.M("Couloir « %s »", l.Name), *l.Query); err != nil {
+				if err := checkQuery(i18n.M("Swimlane “%s”", l.Name), *l.Query); err != nil {
 					return err
 				}
 			}
@@ -209,7 +209,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 					return err
 				}
 				if exists == 0 {
-					return fail(http.StatusBadRequest, "Colonne inconnue sur ce tableau.")
+					return fail(http.StatusBadRequest, "Unknown column on this board.")
 				}
 				if _, err := tx.ExecContext(ctx, `UPDATE board_columns SET name = ?, position = ?, min_issues = ?,
 					max_issues = ? WHERE id = ?`, truncateRunes(strings.TrimSpace(c.Name), 255), pos, c.Min, c.Max, id); err != nil {

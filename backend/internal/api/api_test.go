@@ -835,9 +835,9 @@ func TestKanbanMoveFollowsWorkflow(t *testing.T) {
 	var todo, doing int64
 	for _, c := range b.Columns {
 		switch c.Name {
-		case "À faire":
+		case "To do":
 			todo = c.ID
-		case "En cours":
+		case "In progress":
 			doing = c.ID
 		}
 	}

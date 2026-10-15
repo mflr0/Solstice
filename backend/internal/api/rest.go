@@ -120,7 +120,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	rest("GET /secure/useravatar", s.userAvatar, true)
 	rest("GET /secure/projectavatar", s.projectAvatar, true)
 	mux.Handle("/rest/", s.rest(func(http.ResponseWriter, *http.Request) error {
-		return fail(http.StatusNotFound, "Adresse inconnue.")
+		return fail(http.StatusNotFound, "Unknown address.")
 	}, false))
 }
 
@@ -142,7 +142,7 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
 			} else if errors.Is(err, auth.ErrNoSession) {
 				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
-				err = fail(http.StatusUnauthorized, "Identifiants refusés.")
+				err = fail(http.StatusUnauthorized, "Credentials refused.")
 			}
 			s.writeRESTFailure(w, r, err)
 			return
@@ -150,13 +150,13 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if u == nil {
 			w.Header().Set("X-AUSERNAME", "anonymous")
 			if needUser {
-				writeRESTError(w, r, fail(http.StatusUnauthorized, "Connectez-vous pour continuer."))
+				writeRESTError(w, r, fail(http.StatusUnauthorized, "Sign in to continue."))
 				return
 			}
 		}
 		if !forgeryProof(r, via) {
 			writeRESTError(w, r, fail(http.StatusForbidden,
-				"Requête refusée : ajoutez l'en-tête « X-Atlassian-Token: no-check » (protection contre la falsification de requêtes)."))
+				"Request refused: add the header “X-Atlassian-Token: no-check” (protection against cross-site request forgery)."))
 			return
 		}
 		if u != nil {
@@ -235,7 +235,7 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 			return
 		}
 		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-		err = fail(http.StatusInternalServerError, "Erreur interne, l'incident a été journalisé.")
+		err = fail(http.StatusInternalServerError, "Internal error. The incident has been logged.")
 	}
 	writeRESTError(w, r, err)
 }
@@ -336,7 +336,7 @@ func (r *recorder) Write(b []byte) (int, error) {
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
-		return failf(http.StatusBadRequest, "Requête invalide : %s", err.Error())
+		return failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
 	}
 	return nil
 }
@@ -419,9 +419,9 @@ var statusCategories = map[string]struct {
 	key, colour string
 	name        i18n.Message
 }{
-	"todo":  {2, "new", "blue-gray", i18n.M("À faire")},
-	"doing": {4, "indeterminate", "yellow", i18n.M("En cours")},
-	"done":  {3, "done", "green", i18n.M("Terminé")},
+	"todo":  {2, "new", "blue-gray", i18n.M("To do")},
+	"doing": {4, "indeterminate", "yellow", i18n.M("In progress")},
+	"done":  {3, "done", "green", i18n.M("Done")},
 }
 
 func (o *restOut) statusCategory(category string) map[string]any {

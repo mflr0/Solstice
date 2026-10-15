@@ -255,41 +255,41 @@ func fieldLabel(locale, field string) string {
 	var m i18n.Message
 	switch strings.ToLower(field) {
 	case "status":
-		m = i18n.M("Statut")
+		m = i18n.M("Status")
 	case "assignee":
-		m = i18n.M("Assigné")
+		m = i18n.M("Assignee")
 	case "reporter":
-		m = i18n.M("Rapporteur")
+		m = i18n.M("Reporter")
 	case "resolution":
-		m = i18n.M("Résolution")
+		m = i18n.M("Resolution")
 	case "priority":
-		m = i18n.M("Priorité")
+		m = i18n.M("Priority")
 	case "summary":
-		m = i18n.M("Résumé")
+		m = i18n.M("Summary")
 	case "description":
 		m = i18n.M("Description")
 	case "environment":
-		m = i18n.M("Environnement")
+		m = i18n.M("Environment")
 	case "labels":
-		m = i18n.M("Étiquettes")
+		m = i18n.M("Labels")
 	case "component":
-		m = i18n.M("Composant")
+		m = i18n.M("Component")
 	case "fix version":
-		m = i18n.M("Version corrigée")
+		m = i18n.M("Fix version")
 	case "version":
-		m = i18n.M("Version affectée")
+		m = i18n.M("Affects version")
 	case "duedate":
-		m = i18n.M("Échéance")
+		m = i18n.M("Due date")
 	case "issuetype":
-		m = i18n.M("Type")
+		m = i18n.M("Issue type")
 	case "attachment":
-		m = i18n.M("Pièce jointe")
+		m = i18n.M("Attachment")
 	case "link":
-		m = i18n.M("Lien")
+		m = i18n.M("Link")
 	case "parent":
 		m = i18n.M("Parent")
 	case "epic link":
-		m = i18n.M("Épopée")
+		m = i18n.M("Epic")
 	case "sprint":
 		m = i18n.M("Sprint")
 	default:

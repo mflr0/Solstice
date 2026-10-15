@@ -32,30 +32,30 @@ import (
 	"solstice/internal/web"
 )
 
-const usage = `Usage : solstice <commande> [options]
+const usage = `Usage: solstice <command> [options]
 
-Commandes :
-  serve     démarre le serveur web
-  migrate   met à jour le schéma de la base
-  import    importe une base Jira (PostgreSQL ou MySQL)
-  user      crée un compte ou change un mot de passe (solstice user add|passwd)
-  version   affiche la version
-  health    vérifie qu'un serveur lancé répond (contrôle de santé des conteneurs)
+Commands:
+  serve     starts the web server
+  migrate   updates the database schema
+  import    imports a Jira database (PostgreSQL or MySQL)
+  user      creates an account or changes a password (solstice user add|passwd)
+  version   prints the version
+  health    checks that a running server answers (container health check)
 
-« solstice <commande> -h » détaille les options d'une commande.
+"solstice <command> -h" lists a command's options.
 
-Configuration : un fichier de lignes CLÉ=valeur, désigné par -config ou
-SOLSTICE_CONFIG, sinon ./solstice.conf, sinon /etc/solstice/solstice.conf.
-Les variables d'environnement du même nom l'emportent sur le fichier.
-  SOLSTICE_DB          base MariaDB : mysql://utilisateur:mot-de-passe@hôte:3306/base
-  SOLSTICE_DATA        dossier de données (par défaut ./data)
-  SOLSTICE_ADDR        adresse d'écoute (par défaut :8080)
-  SOLSTICE_TZ          fuseau des dates tapées dans les recherches, ex. Europe/Paris
-  SOLSTICE_BASE_URL    adresse publique, ex. https://tickets.example.org
-  SOLSTICE_SECRET_KEY  clé des secrets enregistrés (par défaut <données>/secret.key)
+Configuration: a file of KEY=value lines, named by -config or
+SOLSTICE_CONFIG, otherwise ./solstice.conf, otherwise /etc/solstice/solstice.conf.
+Environment variables of the same name win over the file.
+  SOLSTICE_DB          MariaDB database: mysql://user:password@host:3306/database
+  SOLSTICE_DATA        data directory (default ./data)
+  SOLSTICE_ADDR        listen address (default :8080)
+  SOLSTICE_TZ          time zone of dates typed in searches, e.g. Europe/Paris
+  SOLSTICE_BASE_URL    public address, e.g. https://tickets.example.org
+  SOLSTICE_SECRET_KEY  key of the stored secrets (default <data>/secret.key)
 
-Sans base configurée, ou sur une base sans aucun compte, « solstice serve »
-ouvre l'assistant d'installation sur /setup.
+Without a configured database, or on a database without any account, "solstice serve"
+opens the setup wizard at /setup.
 `
 
 func main() {
@@ -362,7 +362,7 @@ func runUser(ctx context.Context, args []string) error {
 				return err
 			}
 		}
-		fmt.Printf("Compte « %s » créé.\n", login)
+		fmt.Printf("Account \"%s\" created.\n", login)
 	case "passwd":
 		var id int64
 		if err := conn.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, login).Scan(&id); err != nil {
@@ -386,10 +386,10 @@ func runUser(ctx context.Context, args []string) error {
 				return err
 			}
 		}
-		fmt.Printf("Mot de passe de « %s » modifié.\n", login)
+		fmt.Printf("Password for \"%s\" changed.\n", login)
 	}
 	if generated {
-		fmt.Printf("Mot de passe : %s\n", *password)
+		fmt.Printf("Password: %s\n", *password)
 	}
 	return nil
 }
@@ -443,16 +443,16 @@ func runImport(ctx context.Context, args []string) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(rep)
 	}
-	fmt.Printf("\nImport terminé en %s.\n\n", time.Since(start).Round(time.Second))
+	fmt.Printf("\nImport finished in %s.\n\n", time.Since(start).Round(time.Second))
 	for _, s := range rep.Steps {
 		line := fmt.Sprintf("  %-38s %8d", s.Name, s.Imported)
 		if s.Skipped > 0 {
-			line += fmt.Sprintf("   (%d ignorés : références orphelines ou non reprises)", s.Skipped)
+			line += fmt.Sprintf("   (%d skipped: orphaned references or not carried over)", s.Skipped)
 		}
 		fmt.Println(line)
 	}
 	if len(rep.Warnings) > 0 {
-		fmt.Println("\nÀ vérifier :")
+		fmt.Println("\nCheck:")
 		for _, w := range rep.Warnings {
 			fmt.Println("  - " + w)
 		}

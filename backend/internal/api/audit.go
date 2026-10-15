@@ -163,7 +163,7 @@ func (s *Server) parseInstant(v string, end bool) (time.Time, error) {
 	}
 	t, err := time.Parse(time.RFC3339, v)
 	if err != nil {
-		return t, failf(http.StatusBadRequest, "Date invalide : « %s » (AAAA-MM-JJ attendu).", v)
+		return t, failf(http.StatusBadRequest, "Invalid date: “%s” (YYYY-MM-DD expected).", v)
 	}
 	return t.UTC(), nil
 }
@@ -192,7 +192,7 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > 36500 {
-		return fail(http.StatusBadRequest, "Durée de conservation invalide : un nombre de jours, 0 pour tout garder.")
+		return fail(http.StatusBadRequest, "Invalid retention period: a number of days, 0 to keep everything.")
 	}
 	ctx := r.Context()
 	before, err := audit.Retention(ctx, s.db)

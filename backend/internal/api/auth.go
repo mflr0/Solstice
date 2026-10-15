@@ -39,7 +39,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	u, err := s.checkPassword(r, in.Username, in.Password)
 	if errors.Is(err, auth.ErrNoSession) {
 		s.auditLogin(r, in.Username, nil, "form")
-		return fail(http.StatusUnauthorized, "Identifiant ou mot de passe incorrect.")
+		return fail(http.StatusUnauthorized, "Incorrect username or password.")
 	}
 	if err != nil {
 		return err
@@ -108,29 +108,29 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	if in.Email != nil {
 		email := strings.TrimSpace(*in.Email)
 		if email != "" && !validEmail(email) {
-			return fail(http.StatusBadRequest, "Adresse e-mail invalide.")
+			return fail(http.StatusBadRequest, "Invalid email address.")
 		}
 		sets["email"] = email
 	}
 	if in.Locale != nil {
 		var l *string
 		if err := json.Unmarshal(in.Locale, &l); err != nil || (l != nil && !i18n.Supported(*l)) {
-			return failf(http.StatusBadRequest, "Langue non prise en charge (au choix : %s).", strings.Join(i18n.Locales, ", "))
+			return failf(http.StatusBadRequest, "Unsupported language (choose from: %s).", strings.Join(i18n.Locales, ", "))
 		}
 		sets["locale"] = l
 	}
 	if in.NewPassword != nil {
 		if u.TokenID != 0 {
-			return fail(http.StatusForbidden, "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.")
+			return fail(http.StatusForbidden, "An access token cannot change the password: sign in with your password.")
 		}
 		if in.CurrentPassword == nil || *in.CurrentPassword == "" {
-			return fail(http.StatusBadRequest, "Indiquez votre mot de passe actuel.")
+			return fail(http.StatusBadRequest, "Enter your current password.")
 		}
 		if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
 			return err
 		}
 		if _, err := s.checkPassword(r, u.Username, *in.CurrentPassword); errors.Is(err, auth.ErrNoSession) {
-			return fail(http.StatusBadRequest, "Mot de passe actuel incorrect.")
+			return fail(http.StatusBadRequest, "Incorrect current password.")
 		} else if err != nil {
 			return err
 		}

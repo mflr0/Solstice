@@ -537,7 +537,7 @@ func TestDueDateReminders(t *testing.T) {
 		t.Fatalf("reminder: %+v", got)
 	}
 	text := got[0].Text
-	if !strings.Contains(text, "En retard") || !strings.Contains(text, late) || !strings.Contains(text, "Pour aujourd'hui") ||
+	if !strings.Contains(text, "Overdue") || !strings.Contains(text, late) || !strings.Contains(text, "Due today") ||
 		!strings.Contains(text, due) || strings.Contains(text, later) || strings.Contains(text, secret) {
 		t.Errorf("reminder content:\n%s", text)
 	}
@@ -576,7 +576,7 @@ func TestMailSettings(t *testing.T) {
 	admin.call("POST", "/api/admin/mail/test", map[string]any{"to": "x"}, 400, nil)
 	admin.call("POST", "/api/admin/mail/test", map[string]any{"to": "admin@exemple.fr"}, 200, nil)
 	got := env.smtp.Messages()
-	if len(got) != 1 || got[0].Subject != "Courriel d'essai de Solstice" || got[0].To != "admin@exemple.fr" {
+	if len(got) != 1 || got[0].Subject != "Solstice test email" || got[0].To != "admin@exemple.fr" {
 		t.Fatalf("test e-mail: %+v", got)
 	}
 	if auth := env.smtp.Auth(); len(auth) == 0 || auth[len(auth)-1] != "relai:s3cret-smtp" {
