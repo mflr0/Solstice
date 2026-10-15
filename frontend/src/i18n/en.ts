@@ -1323,7 +1323,7 @@ export const en: Messages = {
 
   settingsAdmin: {
     intro:
-      'What applies to the whole of Solstice. Changes take effect right away, without restarting the server.',
+      'Settings for this whole Solstice instance. Changes take effect right away, without restarting the server.',
     identity: 'Instance',
     instanceName: 'Instance name',
     instanceNameHint: 'Shown next to the logo, useful when several Solstice instances coexist.',

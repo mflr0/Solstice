@@ -1128,7 +1128,7 @@ export const it: Messages = {
       settings: 'Nome dell’istanza, indirizzo pubblico, lingua predefinita.',
       banner: 'Un messaggio mostrato in cima a tutte le pagine.',
       users: 'Creare account, disattivarli, cambiare una password.',
-      groups: 'Raccogliere persone per dargli i permessi insieme.',
+      groups: 'Raccogliere persone per dare loro i permessi insieme.',
       roles: 'I ruoli che ogni progetto assegna ai suoi membri.',
       projects: 'Creare, rinominare, archiviare o eliminare un progetto.',
       issueTypes: 'Storia, bug, attività… e i sotto-task.',
