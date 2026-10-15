@@ -411,6 +411,7 @@ export interface CatalogItem {
   subtask?: boolean;
   /** Priorities. */
   color?: string;
+  /** Priorities and resolutions. */
   default?: boolean;
   /** Link types. */
   inward?: string;

@@ -135,6 +135,8 @@ export function catalogPayload(
     // Only ever set: another priority becoming the default unsets this one.
     if (f.default) all.default = true;
   }
+  // A resolution's default can be removed: done issues then stay unresolved.
+  if (section === 'resolutions') all.default = f.default;
   if (section === 'linkTypes') {
     all.outward = f.outward.trim();
     all.inward = f.inward.trim();
@@ -143,7 +145,8 @@ export function catalogPayload(
   const out: Partial<CatalogItem> = {};
   for (const [k, v] of Object.entries(all) as [keyof CatalogItem, unknown][]) {
     const was = before[k] ?? (k === 'description' || k === 'color' ? '' : undefined);
-    if (k === 'default' ? !before.default : was !== v) (out as Record<string, unknown>)[k] = v;
+    if (k === 'default' ? (before.default ?? false) !== v : was !== v)
+      (out as Record<string, unknown>)[k] = v;
   }
   return out;
 }

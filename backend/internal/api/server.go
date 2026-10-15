@@ -378,17 +378,17 @@ type catalog struct {
 	Statuses    []statusRef   `json:"statuses"`
 	Priorities  []priorityRef `json:"priorities"`
 	Resolutions []namedRef    `json:"resolutions"`
-	IssueTypes  []typeRef     `json:"issueTypes"`
-	LinkTypes   []linkTypeRef `json:"linkTypes"`
+	// DefaultResolution is the resolution of issues reaching a done status
+	// without one; "" leaves them unresolved.
+	DefaultResolution string        `json:"defaultResolution"`
+	IssueTypes        []typeRef     `json:"issueTypes"`
+	LinkTypes         []linkTypeRef `json:"linkTypes"`
 
 	status     map[string]statusRef
 	priority   map[string]priorityRef
 	resolution map[string]namedRef
-	// defaultResolution is the resolution of issues reaching a done status
-	// without one; "" leaves them unresolved.
-	defaultResolution string
-	issueType         map[string]typeRef
-	linkType          map[int64]linkTypeRef
+	issueType  map[string]typeRef
+	linkType   map[int64]linkTypeRef
 }
 
 func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
@@ -435,7 +435,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		c.Resolutions = append(c.Resolutions, v)
 		c.resolution[v.ID] = v
 		if def {
-			c.defaultResolution = v.ID
+			c.DefaultResolution = v.ID
 		}
 		return nil
 	})

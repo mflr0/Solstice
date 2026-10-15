@@ -24,15 +24,7 @@
 
   const movable = $derived(issue.can.transition === true && issue.transitions.length > 0);
 
-  function defaultResolution(): string {
-    const list = session.meta?.resolutions ?? [];
-    const preferred = ['done', 'terminé', 'fixed', 'corrigé'];
-    for (const name of preferred) {
-      const r = list.find((x) => x.name.toLowerCase() === name);
-      if (r) return r.id;
-    }
-    return list[0]?.id ?? '';
-  }
+  const defaultResolution = $derived(session.meta?.defaultResolution ?? '');
 
   function close() {
     open = false;
@@ -42,7 +34,7 @@
   async function apply(tr: Transition) {
     if (tr.to.category === 'done' && !pending) {
       pending = tr;
-      resolution = defaultResolution();
+      resolution = defaultResolution;
       return;
     }
     busy = true;
@@ -87,6 +79,7 @@
           <label class="field">
             <span>{t.issue.chooseResolution}</span>
             <select class="select" bind:value={resolution}>
+              {#if !defaultResolution}<option value="">{t.issue.leaveUnresolved}</option>{/if}
               {#each session.meta?.resolutions ?? [] as r (r.id)}
                 <option value={r.id}>{r.name}</option>
               {/each}

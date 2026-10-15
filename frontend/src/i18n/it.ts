@@ -602,6 +602,7 @@ export const it: Messages = {
     parent: 'Sotto-task di',
     changeStatus: 'Cambia stato',
     chooseResolution: 'Risoluzione',
+    leaveUnresolved: 'Lascia senza risoluzione',
     confirmTransition: 'Conferma',
     delete: 'Elimina il ticket',
     confirmDelete: (key: string) =>
@@ -1671,6 +1672,9 @@ export const it: Messages = {
         intro: 'Come un ticket è stato chiuso: corretto, duplicato…',
         newItem: 'Nuova risoluzione',
         namePlaceholder: 'Corretto, duplicato…',
+        defaultLabel: 'Risoluzione predefinita',
+        defaultHint:
+          'Assegnata ai ticket che passano a uno stato completato senza risoluzione. Senza una predefinita restano senza risoluzione.',
         empty: 'Nessuna risoluzione',
         emptyHint: 'Le risoluzioni dicono come un ticket è stato chiuso.',
         editTitle: (name: string) => `Modifica la risoluzione ${name}`,
