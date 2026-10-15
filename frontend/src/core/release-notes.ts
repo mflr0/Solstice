@@ -73,7 +73,11 @@ export function parseNotes(markdown: string): NoteBlock[] {
     if (open) {
       flush();
       const code: string[] = [];
-      for (i++; i < lines.length && !(lines[i] ?? '').trimStart().startsWith(open[1] ?? '```'); i++) {
+      for (
+        i++;
+        i < lines.length && !(lines[i] ?? '').trimStart().startsWith(open[1] ?? '```');
+        i++
+      ) {
         code.push(lines[i] ?? '');
       }
       if (code.length) blocks.push({ kind: 'code', text: code.join('\n') });

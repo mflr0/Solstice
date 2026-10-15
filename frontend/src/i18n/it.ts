@@ -992,8 +992,7 @@ export const it: Messages = {
     },
     statusHints: {
       pending: 'Il servizio di aggiornamento sta per prendere in carico la richiesta.',
-      running:
-        'Download, verifica, salvataggio, poi riavvio. Questa pagina si ricarica da sola.',
+      running: 'Download, verifica, salvataggio, poi riavvio. Questa pagina si ricarica da sola.',
       ok: 'La nuova versione è in funzione.',
       rolled_back:
         'La nuova versione non è partita: è stata ripristinata quella precedente. Il registro spiega perché.',

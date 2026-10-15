@@ -154,7 +154,11 @@ export function parseTab(param: string | null, configure: boolean): ProjectTab {
 }
 
 /** The next tab with the arrow keys, wrapping around. */
-export function nextTab(tabs: readonly ProjectTab[], current: ProjectTab, step: 1 | -1): ProjectTab {
+export function nextTab(
+  tabs: readonly ProjectTab[],
+  current: ProjectTab,
+  step: 1 | -1,
+): ProjectTab {
   const i = tabs.indexOf(current);
   return tabs[(i + step + tabs.length) % tabs.length] ?? current;
 }

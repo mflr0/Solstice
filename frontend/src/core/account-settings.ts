@@ -31,7 +31,13 @@ export type ProfileProblem =
 export type ProfileField = 'name' | 'email' | 'currentPassword' | 'newPassword' | 'confirmPassword';
 
 export function profileForm(me: Me): ProfileForm {
-  return { name: me.name, email: me.email, currentPassword: '', newPassword: '', confirmPassword: '' };
+  return {
+    name: me.name,
+    email: me.email,
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  };
 }
 
 /** Whether the form asks for a new password (any of its three fields typed). */
@@ -53,7 +59,8 @@ export function profileProblems(
     if (!f.currentPassword) out.currentPassword = 'currentRequired';
     if (!f.newPassword) out.newPassword = 'newRequired';
     else if ([...f.newPassword].length < minPassword) out.newPassword = 'newShort';
-    if (f.newPassword && f.confirmPassword !== f.newPassword) out.confirmPassword = 'confirmMismatch';
+    if (f.newPassword && f.confirmPassword !== f.newPassword)
+      out.confirmPassword = 'confirmMismatch';
   }
   return out;
 }

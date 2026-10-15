@@ -39,7 +39,10 @@ export function groupEvents(events: readonly string[]): { group: EventGroup; eve
 }
 
 /** Whether every, some or none of a group's events are chosen. */
-export function groupState(chosen: readonly string[], group: readonly string[]): 'all' | 'some' | 'none' {
+export function groupState(
+  chosen: readonly string[],
+  group: readonly string[],
+): 'all' | 'some' | 'none' {
   const n = group.filter((e) => chosen.includes(e)).length;
   return n === 0 ? 'none' : n === group.length ? 'all' : 'some';
 }
@@ -200,7 +203,8 @@ export function plainValue(v: unknown, yes = 'true', no = 'false', list = ', '):
   if (v === null || v === undefined || v === '') return '—';
   if (typeof v === 'boolean') return v ? yes : no;
   if (typeof v === 'string' || typeof v === 'number') return String(v);
-  if (Array.isArray(v)) return v.length ? v.map((x) => plainValue(x, yes, no, list)).join(list) : '—';
+  if (Array.isArray(v))
+    return v.length ? v.map((x) => plainValue(x, yes, no, list)).join(list) : '—';
   return JSON.stringify(v);
 }
 

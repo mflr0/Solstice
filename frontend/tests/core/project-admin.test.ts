@@ -33,7 +33,13 @@ describe('project keys', () => {
   });
 
   it('always suggests a valid key for a non-empty name', () => {
-    for (const name of ['2026 plan', 'x', 'Projet 42', 'été', 'Une très longue suite de mots pour voir']) {
+    for (const name of [
+      '2026 plan',
+      'x',
+      'Projet 42',
+      'été',
+      'Une très longue suite de mots pour voir',
+    ]) {
       const key = suggestKey(name);
       expect(keyProblem(key), `${name} → ${key}`).toBeNull();
     }

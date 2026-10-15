@@ -1442,7 +1442,8 @@ export const fr = {
     problems: {
       nameRequired: 'Donnez un nom à l’instance.',
       nameTooLong: '100 caractères au plus.',
-      baseUrlInvalid: 'Une adresse en http:// ou https://, sans chemin : https://tickets.exemple.fr',
+      baseUrlInvalid:
+        'Une adresse en http:// ou https://, sans chemin : https://tickets.exemple.fr',
       timeZoneUnknown: 'Fuseau inconnu : choisissez-en un dans la liste, comme Europe/Paris.',
       sessionDaysRange: 'Un nombre de jours de 1 à 365.',
       passwordRange: 'Un nombre de 8 à 128.',

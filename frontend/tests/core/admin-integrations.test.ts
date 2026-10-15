@@ -151,9 +151,7 @@ describe('audit log', () => {
 
   it('turns details into readable lines', () => {
     expect(detailLines(null)).toEqual([]);
-    expect(
-      detailLines({ name: { from: 'Paul', to: 'Paul M.' }, method: 'form', pat: 4 }),
-    ).toEqual([
+    expect(detailLines({ name: { from: 'Paul', to: 'Paul M.' }, method: 'form', pat: 4 })).toEqual([
       { kind: 'change', key: 'name', from: 'Paul', to: 'Paul M.' },
       { kind: 'value', key: 'method', value: 'form' },
       { kind: 'value', key: 'pat', value: 4 },

@@ -988,8 +988,7 @@ export const en: Messages = {
     },
     statusHints: {
       pending: 'The update service is about to take the request.',
-      running:
-        'Downloading, verifying, backing up, then restarting. This page reloads by itself.',
+      running: 'Downloading, verifying, backing up, then restarting. This page reloads by itself.',
       ok: 'The new version is running.',
       rolled_back:
         'The new version did not start, so the previous one was put back. The log says why.',

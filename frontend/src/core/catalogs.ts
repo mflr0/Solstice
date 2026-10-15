@@ -33,7 +33,10 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
 }
 
 /** Whether two lists hold the same ids in the same order. */
-export function sameOrder(a: readonly { id: string | number }[], b: readonly { id: string | number }[]) {
+export function sameOrder(
+  a: readonly { id: string | number }[],
+  b: readonly { id: string | number }[],
+) {
   return a.length === b.length && a.every((x, i) => String(x.id) === String(b[i]?.id));
 }
 
@@ -68,7 +71,8 @@ export interface CatalogForm {
   inward: string;
 }
 
-export type CatalogProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken' | 'colorInvalid' | 'verbRequired';
+export type CatalogProblem =
+  'nameRequired' | 'nameTooLong' | 'nameTaken' | 'colorInvalid' | 'verbRequired';
 
 export function catalogForm(item: CatalogItem | null): CatalogForm {
   return {
