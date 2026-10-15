@@ -176,3 +176,9 @@ La distribution Jira posée à côté du dépôt sert uniquement de référence 
 le schéma de sa base (`entitymodel.xml`), afin de lire les données de Jira.
 Elle n'est pas versionnée et aucun code, style ou visuel d'Atlassian n'est
 repris dans Solstice.
+
+## Licence
+
+Solstice est un logiciel libre, sous licence GNU Affero General Public
+License version 3 ou (à votre choix) toute version ultérieure
+(AGPL-3.0-or-later) : voir [LICENSE](LICENSE).
