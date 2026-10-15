@@ -1,0 +1,45 @@
+[Unit]
+Description=Solstice issue tracker
+Documentation=https://github.com/mflr0/Solstice
+After=network-online.target mariadb.service mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=solstice
+Group=solstice
+Environment=SOLSTICE_CONFIG=/etc/solstice/solstice.conf
+Environment=SOLSTICE_DATA=/var/lib/solstice
+ExecStart=/usr/local/bin/solstice serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0027
+LimitNOFILE=65536
+
+# Hardening: no privileges, the system read-only except Solstice's own
+# directories (the setup wizard writes the configuration file). Jira homes to
+# import from may live anywhere, so other directories stay readable.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/solstice /etc/solstice
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

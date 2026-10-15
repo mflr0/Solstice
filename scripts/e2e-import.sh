@@ -51,7 +51,7 @@ for t in $tables; do
   cols=$(mariadb -e "SELECT GROUP_CONCAT(column_name ORDER BY ordinal_position) FROM information_schema.columns
                      WHERE table_schema = 'solstice_e2e_pg' AND table_name = '$t'
                      AND NOT (table_name = 'users' AND column_name = 'created_at')
-                     AND NOT (table_name = 'filters' AND column_name IN ('created_at', 'updated_at'))")
+                     AND NOT (table_name IN ('filters', 'boards') AND column_name IN ('created_at', 'updated_at'))")
   a=$(mariadb -e "SELECT COUNT(*), COALESCE(SUM(CRC32(CONCAT_WS('|', $cols))), 0) FROM solstice_e2e_pg.$t")
   b=$(mariadb -e "SELECT COUNT(*), COALESCE(SUM(CRC32(CONCAT_WS('|', $cols))), 0) FROM solstice_e2e_my.$t")
   check "$t" "$a" "$b"
@@ -85,12 +85,27 @@ check "mots de passe Jira repris" "$(expect users_with_pkcs5s2)" \
 check "filtres enregistrés" "$(expect filters)" "$(count filters)"
 check "partages de filtres" "$(expect filter_shares)" "$(count filter_shares)"
 check "filtres favoris" "$(expect filter_favourites)" "$(count filter_favourites)"
+check "tableaux" "$(expect boards)" "$(count boards)"
+check "colonnes de tableaux" "$(expect board_columns)" "$(count board_columns)"
+check "statuts des colonnes" "$(expect board_column_statuses)" "$(count board_column_statuses)"
+check "filtres rapides" "$(expect quick_filters)" "$(count board_quick_filters)"
+check "couloirs" "$(expect swimlanes)" "$(count board_swimlanes)"
+check "sprints" "$(( $(expect sprints_closed) + $(expect sprints_active) + $(expect sprints_future) ))" "$(count sprints)"
+check "sprints actifs" "$(expect sprints_active)" "$(count "sprints WHERE state = 'active'")"
+check "tickets dans les sprints" "$(expect sprint_memberships)" "$(count sprint_issues)"
+check "tickets classés" "$(expect ranked_issues)" "$(count 'issues WHERE rank_key IS NOT NULL')"
+check "tickets rattachés à une épopée" "$(expect epic_links)" "$(count 'issues WHERE epic_id IS NOT NULL')"
 check "comptes inactifs (désactivés, supprimés, sans accès applicatif)" \
   "$(( $(expect inactive_users) + $(expect deleted_users) + $(expect users_without_access) ))" \
   "$(count 'users WHERE NOT active')"
 
 echo "› tests Go (unitaires, et API sur la base importée)"
-if (cd "$root/backend" && SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg go test ./... -count=1); then
+# An empty database for the setup wizard's tests, which fill it.
+mariadb -e "DROP DATABASE IF EXISTS solstice_e2e_setup;
+            CREATE DATABASE solstice_e2e_setup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            GRANT ALL ON solstice_e2e_setup.* TO 'solstice'@'%';"
+if (cd "$root/backend" && SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg \
+    SOLSTICE_TEST_EMPTY_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_setup go test ./... -count=1); then
   echo "  ok    go test"
 else
   echo "  ÉCHEC go test"; fail=1
