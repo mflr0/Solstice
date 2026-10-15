@@ -21,12 +21,22 @@ corepack enable pnpm
 (cd frontend && pnpm install)
 ```
 
-Puis, dans deux terminaux (Solstice n'a pas de base par défaut : la base de
-développement de `compose.yaml` se donne explicitement, ou dans un
-`backend/solstice.conf`) :
+**`SOLSTICE_DB` est obligatoire.** Solstice n'a pas de base par défaut et
+n'utilise pas d'office celle de `compose.yaml`. Sans `SOLSTICE_DB`,
+`migrate`, `user` et `import` s'arrêtent sur « no database configured », et
+`serve` ouvre l'assistant d'installation au lieu de la base de développement.
+Exportez la variable dans chaque terminal, ou écrivez-la une fois pour toutes
+dans `backend/solstice.conf` (lu dans le dossier courant, donc en lançant
+depuis `backend/`) :
+
+```
+SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+```
+
+Puis, dans deux terminaux :
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice   # inutile avec backend/solstice.conf
 cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
 cd frontend && pnpm dev                       # interface sur http://localhost:5173
 ```
