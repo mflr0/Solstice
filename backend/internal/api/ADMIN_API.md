@@ -306,7 +306,7 @@ Shared by all projects. Each list is in display order.
 |---|---|---|---|
 | Issue types | `GET /api/admin/issue-types` | `id, name, description, subtask, position` | `issues, projects` |
 | Priorities | `GET /api/admin/priorities` | `id, name, description, color, position, default` | `issues` |
-| Resolutions | `GET /api/admin/resolutions` | `id, name, description, position` | `issues` |
+| Resolutions | `GET /api/admin/resolutions` | `id, name, description, position, default` | `issues` |
 | Link types | `GET /api/admin/link-types` | `id, name, inward, outward, position` | `links` |
 | Statuses | `GET /api/admin/statuses` | `id, name, category, position` | `usage: {issues, workflows, boardColumns}` |
 
@@ -319,7 +319,10 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   - link types: `{name, inward, outward}`
 - `PATCH /api/admin/{kind}/{id}` same fields, all optional → item.
   Priorities also take `default: true` (the priority of new issues created
-  without one; otherwise the middle one). An issue type's `subtask` flag
+  without one; otherwise the middle one), and so do resolutions (the
+  resolution of issues reaching a done status without one; otherwise they
+  stay unresolved). One default per catalogue: setting it moves it.
+  Deleting the default leaves none. An issue type's `subtask` flag
   only changes while no issue uses it (409).
 - `POST /api/admin/{kind}/order` `{ids: [...]}` → the list.
   `POST /api/admin/statuses/order` too.

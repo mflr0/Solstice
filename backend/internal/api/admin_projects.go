@@ -403,9 +403,9 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 			{t(i18n.M("Very high")), "#c9372c", false}, {t(i18n.M("High")), "#e2483d", false},
 			{t(i18n.M("Medium")), "#e98d23", true}, {t(i18n.M("Low")), "#2a7ab0", false},
 			{t(i18n.M("Very low")), "#6b778c", false}}},
-		{"resolutions", "id, name, position", [][]any{
-			{t(i18n.M("Done"))}, {t(i18n.M("Will not be done"))}, {t(i18n.M("Duplicate"))},
-			{t(i18n.M("Cannot Reproduce"))}}},
+		{"resolutions", "id, name, is_default, position", [][]any{
+			{t(i18n.M("Done")), true}, {t(i18n.M("Will not be done")), false}, {t(i18n.M("Duplicate")), false},
+			{t(i18n.M("Cannot Reproduce")), false}}},
 		{"link_types", "name, inward, outward, position", [][]any{
 			{t(i18n.M("Blocks")), t(i18n.M("is blocked by")), t(i18n.M("blocks"))},
 			{t(i18n.M("Link")), t(i18n.M("is linked to")), t(i18n.M("is linked to"))},
