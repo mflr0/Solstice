@@ -20,6 +20,7 @@ var messageFuncs = map[string]map[string]int{
 	"../api":    {"fail": 1, "failf": 1, "M": 0},
 	"../jql":    {"fail": 0, "errorf": 0, "errAt": 1},
 	"../notify": {"M": 0},
+	"../issue":  {"M": 0},
 }
 
 // forwards are the template arguments that are not literals: the helpers

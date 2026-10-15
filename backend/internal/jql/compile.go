@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/issue"
 )
 
 // Field is a custom field known to the compiler.
@@ -276,10 +278,10 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	return membership(cl.Op, match, isNull), nil
 }
 
-var categories = map[string]string{
-	"to do": "todo", "todo": "todo", "new": "todo", "à faire": "todo", "a faire": "todo",
-	"in progress": "doing", "indeterminate": "doing", "doing": "doing", "en cours": "doing",
-	"done": "done", "complete": "done", "terminé": "done", "termine": "done",
+var categories = map[string]issue.StatusCategory{
+	"to do": issue.Todo, "todo": issue.Todo, "new": issue.Todo, "à faire": issue.Todo, "a faire": issue.Todo,
+	"in progress": issue.Doing, "indeterminate": issue.Doing, "doing": issue.Doing, "en cours": issue.Doing,
+	"done": issue.Done, "complete": issue.Done, "terminé": issue.Done, "termine": issue.Done,
 }
 
 func (c *compiler) statusCategory(cl Clause) (string, error) {

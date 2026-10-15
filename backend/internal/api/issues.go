@@ -19,6 +19,7 @@ import (
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/search"
@@ -128,7 +129,7 @@ func (c *catalog) statusOf(id string) statusRef {
 	if v, ok := c.status[id]; ok {
 		return v
 	}
-	return statusRef{ID: id, Name: id, Category: "todo"}
+	return statusRef{ID: id, Name: id, Category: issue.Todo}
 }
 
 func (c *catalog) typeOf(id string) typeRef {
@@ -634,8 +635,7 @@ func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID in
 			out = append(out, st)
 		}
 	}
-	rank := map[string]int{"todo": 0, "doing": 1, "done": 2}
-	sort.SliceStable(out, func(a, b int) bool { return rank[out[a].Category] < rank[out[b].Category] })
+	sort.SliceStable(out, func(a, b int) bool { return out[a].Category.Rank() < out[b].Category.Rank() })
 	return out, nil
 }
 
@@ -1610,7 +1610,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				resolution = sql.NullString{String: *v, Valid: true}
 			}
 		}
-		done := cat.statusOf(status).Category == "done"
+		done := cat.statusOf(status).Category == issue.Done
 		switch {
 		case done && !resolution.Valid:
 			resolution = sql.NullString{String: defaultResolution(cat), Valid: defaultResolution(cat) != ""}

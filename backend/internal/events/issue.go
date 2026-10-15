@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -22,10 +23,10 @@ type IssueType struct {
 	Subtask bool
 }
 
-// Status is an issue's status and its category (todo, doing, done).
+// Status is an issue's status and its category.
 type Status struct {
 	Named
-	Category string
+	Category issue.StatusCategory
 }
 
 // User is a person as consumers need them.
@@ -112,10 +113,8 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 	iss.Key = iss.ProjectKey + "-" + strconv.FormatInt(num, 10)
 	iss.Description, iss.Environment = optString(desc), optString(env)
 	iss.Type = IssueType{Named: Named{typeID.String, orID(typeName, typeID)}, Subtask: subtask.Bool}
-	iss.Status = Status{Named: Named{statusID.String, orID(statusName, statusID)}, Category: statusCat.String}
-	if iss.Status.Category == "" {
-		iss.Status.Category = "todo"
-	}
+	iss.Status = Status{Named: Named{statusID.String, orID(statusName, statusID)},
+		Category: issue.StatusCategory(statusCat.String).OrTodo()}
 	if priID.Valid {
 		iss.Priority = &Named{priID.String, priName.String}
 	}
