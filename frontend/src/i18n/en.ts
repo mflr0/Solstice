@@ -602,6 +602,7 @@ export const en = {
     parent: 'Sub-task of',
     changeStatus: 'Change status',
     chooseResolution: 'Resolution',
+    leaveUnresolved: 'Leave unresolved',
     confirmTransition: 'Confirm',
     delete: 'Delete issue',
     confirmDelete: (key: string) =>
@@ -1664,6 +1665,9 @@ export const en = {
         intro: 'How an issue was closed: fixed, duplicate…',
         newItem: 'New resolution',
         namePlaceholder: 'Fixed, duplicate…',
+        defaultLabel: 'Default resolution',
+        defaultHint:
+          'Given to issues that reach a done status without a resolution. Without a default, they stay unresolved.',
         empty: 'No resolution',
         emptyHint: 'Resolutions tell how an issue was closed.',
         editTitle: (name: string) => `Edit the resolution ${name}`,

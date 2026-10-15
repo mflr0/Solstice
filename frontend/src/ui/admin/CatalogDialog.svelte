@@ -226,6 +226,14 @@
       </p>
     {/if}
 
+    {#if section === 'resolutions'}
+      <label class="check">
+        <input class="checkbox" type="checkbox" bind:checked={form.default} />
+        <span>{t.catalogAdmin.kinds.resolutions.defaultLabel}</span>
+      </label>
+      <p class="form-hint">{t.catalogAdmin.kinds.resolutions.defaultHint}</p>
+    {/if}
+
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
   {#snippet footer()}

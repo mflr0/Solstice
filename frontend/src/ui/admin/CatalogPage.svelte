@@ -261,6 +261,8 @@
                       >{/if}
                   {:else}
                     <strong>{item.name}</strong>
+                    {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span
+                      >{/if}
                   {/if}
                 </span>
                 {#if item.description}<span class="muted small desc">{item.description}</span>{/if}

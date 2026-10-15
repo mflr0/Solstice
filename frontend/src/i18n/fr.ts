@@ -603,6 +603,7 @@ export const fr: Messages = {
     parent: 'Sous-tâche de',
     changeStatus: 'Changer le statut',
     chooseResolution: 'Résolution',
+    leaveUnresolved: 'Laisser non résolu',
     confirmTransition: 'Valider',
     delete: 'Supprimer le ticket',
     confirmDelete: (key: string) =>
@@ -1667,6 +1668,9 @@ export const fr: Messages = {
         intro: 'Comment un ticket a été clos : corrigé, doublon…',
         newItem: 'Nouvelle résolution',
         namePlaceholder: 'Corrigé, doublon…',
+        defaultLabel: 'Résolution par défaut',
+        defaultHint:
+          'Donnée aux tickets qui passent dans un statut terminé sans résolution. Sans résolution par défaut, ils restent non résolus.',
         empty: 'Aucune résolution',
         emptyHint: 'Les résolutions disent comment un ticket a été clos.',
         editTitle: (name: string) => `Modifier la résolution ${name}`,

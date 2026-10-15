@@ -56,6 +56,8 @@ export interface Meta {
   statuses: StatusRef[];
   priorities: PriorityRef[];
   resolutions: NamedRef[];
+  /** The resolution of issues reaching a done status without one; '' leaves them unresolved. */
+  defaultResolution: string;
   issueTypes: TypeRef[];
   linkTypes: LinkTypeRef[];
 }

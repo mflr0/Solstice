@@ -1613,7 +1613,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		done := cat.statusOf(status).Category == issue.Done
 		switch {
 		case done && !resolution.Valid:
-			resolution = sql.NullString{String: cat.defaultResolution, Valid: cat.defaultResolution != ""}
+			resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
 		case !done:
 			resolution = sql.NullString{}
 		}

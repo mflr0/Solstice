@@ -607,6 +607,7 @@ export const de: Messages = {
     parent: 'Unteraufgabe von',
     changeStatus: 'Status ändern',
     chooseResolution: 'Lösung',
+    leaveUnresolved: 'Ohne Lösung lassen',
     confirmTransition: 'Bestätigen',
     delete: 'Vorgang löschen',
     confirmDelete: (key: string) =>
@@ -1685,6 +1686,9 @@ export const de: Messages = {
         intro: 'Wie ein Vorgang geschlossen wurde: behoben, Duplikat…',
         newItem: 'Neue Lösung',
         namePlaceholder: 'Behoben, Duplikat…',
+        defaultLabel: 'Standardlösung',
+        defaultHint:
+          'Wird Vorgängen zugewiesen, die ohne Lösung einen erledigten Status erreichen. Ohne Standardlösung bleiben sie ungelöst.',
         empty: 'Keine Lösungen',
         emptyHint: 'Die Lösungen zeigen, wie ein Vorgang geschlossen wurde.',
         editTitle: (name: string) => `Lösung ${name} bearbeiten`,

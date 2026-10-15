@@ -604,6 +604,7 @@ export const hi: Messages = {
     parent: 'पैरेंट टिकट',
     changeStatus: 'स्टेटस बदलें',
     chooseResolution: 'रिज़ॉल्यूशन',
+    leaveUnresolved: 'बिना रिज़ॉल्यूशन छोड़ें',
     confirmTransition: 'पुष्टि करें',
     delete: 'टिकट मिटाएँ',
     confirmDelete: (key: string) =>
@@ -1659,6 +1660,9 @@ export const hi: Messages = {
         intro: 'टिकट कैसे बंद हुआ: ठीक किया गया, डुप्लिकेट…',
         newItem: 'नया रिज़ॉल्यूशन',
         namePlaceholder: 'ठीक किया गया, डुप्लिकेट…',
+        defaultLabel: 'डिफ़ॉल्ट रिज़ॉल्यूशन',
+        defaultHint:
+          'जो टिकट बिना रिज़ॉल्यूशन के पूर्ण स्टेटस में पहुँचते हैं, उन्हें दिया जाता है। डिफ़ॉल्ट न हो तो वे बिना रिज़ॉल्यूशन रहते हैं।',
         empty: 'कोई रिज़ॉल्यूशन नहीं',
         emptyHint: 'रिज़ॉल्यूशन बताते हैं कि टिकट कैसे बंद हुआ।',
         editTitle: (name: string) => `${name} रिज़ॉल्यूशन संपादित करें`,

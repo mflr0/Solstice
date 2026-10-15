@@ -101,6 +101,11 @@ func TestDefaultResolution(t *testing.T) {
 	if _, def := list(); def != other {
 		t.Fatalf("default is %q, want %q", def, other)
 	}
+	var meta catalog
+	paul.get("/api/meta", &meta)
+	if meta.DefaultResolution != other {
+		t.Errorf("meta gives default %q, want %q", meta.DefaultResolution, other)
+	}
 	if r := resolve(); r == nil || r.ID != other {
 		t.Errorf("resolved as %+v, want the new default %s", r, other)
 	}
