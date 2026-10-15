@@ -13,6 +13,12 @@ export type Route =
   | { name: 'issue'; key: string }
   | { name: 'person'; username: string }
   | { name: 'adminUsers' }
+  | { name: 'themes' }
+  | { name: 'boards' }
+  | { name: 'board'; id: number }
+  | { name: 'backlog'; id: number }
+  | { name: 'boardSettings'; id: number }
+  | { name: 'legacyBoard' }
   | { name: 'notFound' };
 
 function decode(segment: string): string | null {
@@ -21,6 +27,11 @@ function decode(segment: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Whether an address segment is a board id: a positive whole number. */
+function boardId(segment: string | null | undefined): boolean {
+  return !!segment && /^[1-9]\d{0,15}$/.test(segment);
 }
 
 export function matchRoute(pathname: string): Route {
@@ -34,16 +45,28 @@ export function matchRoute(pathname: string): Route {
       if (a === 'login') return { name: 'login' };
       if (a === 'projects') return { name: 'projects' };
       if (a === 'issues') return { name: 'search' };
+      if (a === 'themes') return { name: 'themes' };
+      if (a === 'boards') return { name: 'boards' };
       break;
     case 2:
       if (a === 'browse' && b) return { name: 'issue', key: b.toUpperCase() };
       if (a === 'projects' && b) return { name: 'project', key: b.toUpperCase() };
       if (a === 'people' && b) return { name: 'person', username: b };
       if (a === 'admin' && b === 'users') return { name: 'adminUsers' };
+      if (a === 'boards' && boardId(b)) return { name: 'board', id: Number(b) };
+      if (a === 'secure' && (b === 'RapidBoard.jspa' || b === 'RapidView.jspa')) {
+        return { name: 'legacyBoard' };
+      }
       break;
     case 3:
       if (a === 'projects' && b && c === 'settings') {
         return { name: 'projectSettings', key: b.toUpperCase() };
+      }
+      if (a === 'boards' && boardId(b) && c === 'backlog') {
+        return { name: 'backlog', id: Number(b) };
+      }
+      if (a === 'boards' && boardId(b) && c === 'settings') {
+        return { name: 'boardSettings', id: Number(b) };
       }
       break;
   }
@@ -61,6 +84,12 @@ export const paths = {
   issue: (key: string) => `/browse/${encodeURIComponent(key)}`,
   person: (username: string) => `/people/${encodeURIComponent(username)}`,
   adminUsers: () => '/admin/users',
+  themes: () => '/themes',
+  boards: (project?: string) =>
+    project ? `/boards?project=${encodeURIComponent(project)}` : '/boards',
+  board: (id: number) => `/boards/${id}`,
+  backlog: (id: number) => `/boards/${id}/backlog`,
+  boardSettings: (id: number) => `/boards/${id}/settings`,
 };
 
 /**

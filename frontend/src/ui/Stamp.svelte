@@ -9,4 +9,9 @@
   const { status, large = false }: Props = $props();
 </script>
 
-<span class="stamp {status.category}" class:large title={status.name}>{status.name}</span>
+<span
+  class="stamp {status.category}"
+  class:large
+  data-category={status.category}
+  title={status.name}>{status.name}</span
+>

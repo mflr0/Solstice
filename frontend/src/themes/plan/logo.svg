@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Plan mark: a sun-path diagram. Horizon circle, ground line, the
+       solstice path of the sun, the sun on it, a north tick. -->
+  <g fill="none" stroke="#000" stroke-linecap="round">
+    <circle cx="12" cy="12.5" r="8.4" stroke-width="1.25" />
+    <path d="M1.4 15.5H22.6" stroke-width="1.25" />
+    <path d="M5 15.5C7 7 17 7 19 15.5" stroke-width="0.9" />
+  </g>
+  <circle cx="15.5" cy="10.1" r="2.1" />
+  <path d="M12 0.8 13.5 3.6h-3z" />
+</svg>

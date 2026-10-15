@@ -33,7 +33,7 @@
 </script>
 
 <main class="login">
-  <div class="sheet">
+  <div class="sheet card login-card">
     <div class="brand">
       <Logo size={34} />
       <span class="wordmark">{t.appName}</span>
@@ -77,11 +77,11 @@
   .sheet {
     width: min(360px, 100%);
     background: var(--paper-raised);
-    border: 1px solid var(--rule);
-    border-radius: 6px;
+    border: var(--frame) solid var(--rule);
+    border-radius: var(--radius-l);
     box-shadow: var(--shadow-pop);
     padding: 30px 30px 22px;
-    border-top: 2px solid var(--accent);
+    border-top: var(--card-top);
   }
 
   .brand {
@@ -91,14 +91,14 @@
   }
 
   .wordmark {
-    font: 600 34px/1 var(--serif);
+    font: var(--title-weight) 34px/1 var(--font-title);
     letter-spacing: -0.015em;
   }
 
   .tagline {
     margin: 6px 0 24px;
     color: var(--muted);
-    font: italic 15px var(--serif);
+    font: var(--title-italic) 15px var(--font-title);
   }
 
   form {

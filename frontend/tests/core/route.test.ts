@@ -14,6 +14,7 @@ describe('matchRoute', () => {
     ['/people/marie.durand', { name: 'person', username: 'marie.durand' }],
     ['/people/ren%C3%A9', { name: 'person', username: 'rené' }],
     ['/admin/users', { name: 'adminUsers' }],
+    ['/themes', { name: 'themes' }],
     ['/browse', { name: 'notFound' }],
     ['/projects/DEMO/nope', { name: 'notFound' }],
     ['/people/%E0%A4%A', { name: 'notFound' }],

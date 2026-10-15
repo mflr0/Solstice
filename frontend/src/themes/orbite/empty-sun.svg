@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" fill="none" stroke="#000" stroke-linecap="round">
+  <!-- Orbite, empty state "empty": the planet's ring and a far sun. Used as a mask. -->
+  <defs>
+    <mask id="planet">
+      <rect width="200" height="120" fill="#fff"/>
+      <circle cx="100" cy="58" r="19.5" fill="#000"/>
+    </mask>
+  </defs>
+  <path d="M133 49.8A34 8 -14 0 0 67 66.2" stroke-width="1.5" mask="url(#planet)"/>
+  <path d="M67 66.2A34 8 -14 0 0 133 49.8" stroke-width="1.5"/>
+  <circle cx="19.3" cy="78" r="3.4" fill="#000" stroke="none"/>
+  <circle cx="19.3" cy="78" r="6.5" stroke-opacity=".4"/>
+</svg>

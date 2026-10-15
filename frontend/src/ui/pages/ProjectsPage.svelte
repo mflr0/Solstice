@@ -1,8 +1,10 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { Project } from '../../core/types.js';
+  import { formatLocale } from '../../i18n/format.js';
   import { t } from '../../i18n/fr.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import Illustration from '../Illustration.svelte';
   import Who from '../Who.svelte';
 
   /** Every project one may see, grouped by category. */
@@ -25,20 +27,21 @@
       if (group) group[1].push(p);
       else out.push([c, [p]]);
     }
-    return out.sort(([a], [b]) => a.localeCompare(b, 'fr'));
+    return out.sort(([a], [b]) => a.localeCompare(b, formatLocale()));
   });
 </script>
 
-<div class="page">
+<div class="page" data-title={t.projects.title}>
   <header class="page-head">
-    <h1>{t.projects.title}</h1>
+    <h1 class="page-title">{t.projects.title}</h1>
   </header>
 
   {#if error}
     <p class="error-text" role="alert">{error}</p>
   {:else if !projects}
-    <p class="muted">{t.common.loading}</p>
+    <p class="muted loading">{t.common.loading}</p>
   {:else if projects.length === 0}
+    <Illustration kind="empty" />
     <p class="empty">{t.projects.empty}</p>
   {:else}
     {#each groups as [category, list] (category)}
@@ -88,7 +91,7 @@
   }
 
   .name {
-    font: 600 15.5px/1.3 var(--serif);
+    font: var(--title-weight) 15.5px/1.3 var(--font-title);
     text-decoration: none;
   }
 

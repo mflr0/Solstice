@@ -1,0 +1,2023 @@
+/*
+ * Terminal — a text-mode skin.
+ *
+ * Dark: a green-phosphor screen. Near-black glass with a green cast, text in
+ * three intensities (bright for titles and keys, normal for body, dim for
+ * what matters less), a faint glow, static scanlines and a soft vignette
+ * under the content. Panels are boxed with double lines and carry their
+ * title in the top border; buttons read [ Like this ], the main one in
+ * inverse video; statuses are bracketed labels; the row under the pointer
+ * turns inverse, like a selection bar. A block cursor blinks next to the
+ * field being typed in, and the screen warms up once when the app opens.
+ *
+ * Light: a computer listing. Continuous-form paper with pale green bands,
+ * tractor-feed holes and perforations down both margins, dark grey ink,
+ * a red second ribbon for alerts, dot-matrix logo.
+ *
+ * One monospaced family throughout: VT323 for titles and big numbers,
+ * IBM Plex Mono for everything else. Text added by CSS is punctuation only.
+ *
+ * Every rule is anchored on [data-skin='terminal'] (see ANATOMY.md); motion
+ * only runs with prefers-reduced-motion: no-preference, and glow, scanlines
+ * and vignette go away with prefers-contrast: more.
+ */
+
+@import '@fontsource/vt323/latin-400.css';
+@import '@fontsource/vt323/latin-ext-400.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+
+/* Tokens -------------------------------------------------------------------- */
+
+/* Pairs this file draws beyond the standard ones (checked by the contrast test). */
+/* contrast: --term-bright on --paper */
+/* contrast: --term-bright on --paper-raised */
+/* contrast: --term-alert on --paper */
+/* contrast: --term-alert on --paper-raised */
+/* contrast: --term-inv-ink on --term-inv */
+/* contrast: --term-inv-muted on --term-inv */
+/* contrast: --term-status-ink on --term-status */
+/* contrast: --paper on --stamp-doing */
+/* contrast: --paper on --tone-bug */
+/* contrast: --paper on --tone-story */
+/* contrast: --paper on --tone-task */
+/* contrast: --paper on --primary */
+/* contrast: --primary-ink on --term-bright */
+/* contrast: --bar on --bar-ink */
+/* contrast: --paper on --term-alert */
+/* contrast: --ink on --term-band */
+/* contrast: --ink-soft on --term-band */
+/* contrast: --muted on --term-band */
+/* contrast: --term-bright on --term-band */
+/* contrast: --accent-text on --term-band */
+/* contrast: --stamp-todo on --term-band */
+/* contrast: --stamp-done on --term-band */
+/* contrast: --ink on --paper-sunk */
+/* contrast: --muted on --paper-sunk */
+/* contrast: --rule-strong on --paper 3 */
+/* contrast: --rule-strong on --paper-sunk 3 */
+/* contrast: --term-frame on --paper 3 */
+/* contrast: --focus on --paper 3 */
+/* contrast: --focus on --paper-raised 3 */
+/* contrast: --focus on --paper-sunk 3 */
+
+[data-skin='terminal'] {
+  --desk: var(--paper);
+  --paper: #fbfcf7;
+  --paper-raised: #ffffff;
+  --paper-sunk: #eef3ea;
+  --ink: #232723;
+  --ink-soft: #3b423b;
+  --muted: #566056;
+  --rule: #cbd9c7;
+  --rule-strong: #788877;
+  --accent: #1d6b38;
+  --accent-text: #1d6b38;
+  --accent-wash: rgba(29, 107, 56, 0.07);
+  --primary: #232723;
+  --primary-ink: #fbfcf7;
+  --sun: #b3261e;
+  --focus: #1d6b38;
+  --bar: #fbfcf7;
+  --bar-ink: #232723;
+  --bar-ink-soft: #3b423b;
+  --margin-line: rgba(29, 107, 56, 0.35);
+  --shadow-pop: 5px 5px 0 rgba(35, 39, 35, 0.16);
+  --backdrop: rgba(35, 39, 35, 0.32);
+  --ink-blend: multiply;
+
+  --stamp-todo: #3b423b;
+  --stamp-doing: #1d6b38;
+  --stamp-done: #566056;
+
+  --tone-bug: #b3261e;
+  --tone-story: #1d6b38;
+  --tone-epic: #232723;
+  --tone-task: #3b423b;
+  --tone-subtask: #566056;
+
+  --font-title: 'VT323', ui-monospace, 'Menlo', 'Consolas', monospace;
+  --font-body: 'IBM Plex Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
+  --font-size: 14px;
+  --title-weight: 400;
+  --h1-weight: 400;
+  --title-tracking: 0;
+  --title-italic: normal;
+  --empty-font: 400 14px/1.5 var(--font-mono);
+
+  --frame: 1px;
+  --radius-xs: 0;
+  --radius-s: 0;
+  --radius-m: 0;
+  --radius-l: 0;
+  --avatar-radius: 0;
+  --card-top: 3px double var(--term-frame);
+
+  --stamp-font: 500 12.5px/1.3 var(--font-mono);
+  --stamp-case: uppercase;
+  --stamp-tracking: 0.03em;
+  --stamp-border: 0px;
+  --stamp-radius: 0;
+  --stamp-padding: 1px 0;
+  --stamp-fill: 0%;
+  --stamp-dot: inline;
+  --stamp-large-size: 22px;
+  --stamp-large-padding: 3px 4px 1px;
+  --stamp-large-border: 0px;
+  --stamp-large-tracking: 0.06em;
+  --stamp-large-turn: none;
+
+  /*
+   * Continuous-form paper: tractor holes and perforations down both
+   * margins, pale green bands between them.
+   */
+  --page-texture:
+    radial-gradient(
+      circle,
+      var(--term-hole) 0 var(--term-hole-r),
+      var(--rule-strong) var(--term-hole-r) calc(var(--term-hole-r) + 1px),
+      transparent calc(var(--term-hole-r) + 1.5px)
+    ),
+    radial-gradient(
+      circle,
+      var(--term-hole) 0 var(--term-hole-r),
+      var(--rule-strong) var(--term-hole-r) calc(var(--term-hole-r) + 1px),
+      transparent calc(var(--term-hole-r) + 1.5px)
+    ),
+    linear-gradient(to bottom, var(--rule-strong) 0 4px, transparent 4px),
+    linear-gradient(to bottom, var(--rule-strong) 0 4px, transparent 4px),
+    linear-gradient(to bottom, var(--term-band) 0 50%, transparent 50%);
+  --page-texture-size: 26px 36px, 26px 36px, 1px 8px, 1px 8px, calc(100% - 64px) 96px;
+  --rule-stroke: repeating-linear-gradient(to right, var(--ink-soft) 0 6px, transparent 6px 10px);
+  --rule-height: 1px;
+  --loader: none;
+
+  /* Terminal's own. */
+  --term-bright: #111411;
+  --term-alert: #b3261e;
+  --term-band: #ddefd9;
+  --term-hole: #e2e6df;
+  --term-hole-r: 5px;
+  --term-frame: #3b423b;
+  --term-inv: #232723;
+  --term-inv-ink: #fbfcf7;
+  --term-inv-muted: #c3ccc2;
+  --term-status: #fbfcf7;
+  --term-status-ink: #3b423b;
+  --term-glow: none;
+  --term-glow-strong: none;
+  --term-glow-box: none;
+  --term-scan: none;
+  --term-cursor: var(--ink);
+
+  color-scheme: light;
+}
+
+[data-skin='terminal'][data-scheme='dark'] {
+  --paper: #0b120d;
+  --paper-raised: #0f1912;
+  --paper-sunk: #070c08;
+  --ink: #7ef29d;
+  --ink-soft: #5fd47f;
+  --muted: #45ad66;
+  --rule: #1c3524;
+  --rule-strong: #2f7044;
+  --accent: #9dffb5;
+  --accent-text: #b5ffc8;
+  --accent-wash: rgba(126, 242, 157, 0.08);
+  --primary: #7ef29d;
+  --primary-ink: #0b120d;
+  --sun: #c9ffd6;
+  --focus: #c9ffd6;
+  --bar: #0f1912;
+  --bar-ink: #7ef29d;
+  --bar-ink-soft: #5fd47f;
+  --margin-line: rgba(126, 242, 157, 0.35);
+  --shadow-pop: 6px 6px 0 rgba(0, 0, 0, 0.62), 0 0 22px rgba(126, 242, 157, 0.07);
+  --backdrop: rgba(2, 5, 3, 0.78);
+  --ink-blend: normal;
+
+  --stamp-todo: #5fd47f;
+  --stamp-doing: #b5ffc8;
+  --stamp-done: #45ad66;
+
+  --tone-bug: #ffb84d;
+  --tone-story: #a6f5b8;
+  --tone-epic: #c9ffd6;
+  --tone-task: #7ef29d;
+  --tone-subtask: #5fd47f;
+
+  /* Scanlines on the glass, darker towards the corners. */
+  --page-texture:
+    radial-gradient(ellipse 130% 110% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.5) 100%),
+    repeating-linear-gradient(to bottom, rgba(126, 242, 157, 0.035) 0 1px, transparent 1px 3px);
+  --page-texture-size: 100% 100%, auto;
+  --rule-stroke: linear-gradient(
+    to bottom,
+    var(--rule-strong) 0 1px,
+    transparent 1px 3px,
+    var(--rule-strong) 3px 4px
+  );
+  --rule-height: 4px;
+
+  --term-bright: #c9ffd6;
+  --term-alert: #ffb84d;
+  --term-band: #0d160f;
+  --term-hole: #050806;
+  --term-frame: #3c9a5c;
+  --term-inv: #5fd47f;
+  --term-inv-ink: #04100a;
+  --term-inv-muted: #12401f;
+  --term-status: #173b22;
+  --term-status-ink: #c9ffd6;
+  --term-glow: 0 0 1px rgba(126, 242, 157, 0.35), 0 0 6px rgba(126, 242, 157, 0.12);
+  --term-glow-strong: 0 0 2px rgba(150, 255, 180, 0.55), 0 0 12px rgba(126, 242, 157, 0.3);
+  --term-glow-box: 0 0 10px rgba(126, 242, 157, 0.22);
+  --term-scan: repeating-linear-gradient(
+    to bottom,
+    rgba(126, 242, 157, 0.03) 0 1px,
+    transparent 1px 3px
+  );
+  --term-cursor: var(--term-bright);
+
+  color-scheme: dark;
+}
+
+/* Root, page, type ------------------------------------------------------------ */
+
+/* Gallery miniatures are drawn at under half size: shrink the paper to match. */
+[data-skin='terminal'].skin-preview {
+  --term-hole-r: 1.8px;
+  --page-texture-size: 9px 16px, 9px 16px, 1px 4px, 1px 4px, calc(100% - 22px) 42px;
+  background-position:
+    left 0 top 0,
+    right 0 top 0,
+    left 10px top 0,
+    right 10px top 0,
+    left 11px top 0;
+}
+
+[data-skin='terminal'][data-scheme='dark'].skin-preview {
+  --page-texture-size: 100% 100%, auto;
+  background-position:
+    center,
+    0 0;
+}
+
+[data-skin='terminal'] {
+  background-position:
+    left 0 top 0,
+    right 0 top 0,
+    left 32px top 0,
+    right 32px top 0,
+    left 33px top 0;
+  background-repeat: repeat-y, repeat-y, repeat-y, repeat-y, repeat-y;
+  scrollbar-color: var(--rule-strong) var(--paper-sunk);
+  font-variant-ligatures: none;
+}
+
+[data-skin='terminal'][data-scheme='dark'] {
+  background-position:
+    center,
+    0 0;
+  background-repeat: no-repeat, repeat;
+  text-shadow: var(--term-glow);
+}
+
+/* On the real screen the vignette stays put while the text scrolls. */
+[data-skin='terminal'][data-scheme='dark']:root {
+  background-attachment: fixed, scroll;
+}
+
+[data-skin='terminal'] ::selection {
+  background: var(--ink);
+  color: var(--paper);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+[data-skin='terminal'] .page {
+  background: transparent;
+}
+
+[data-skin='terminal'] h1,
+[data-skin='terminal'] h2,
+[data-skin='terminal'] h3,
+[data-skin='terminal'] h4 {
+  font-weight: 400;
+  color: var(--term-bright);
+  text-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] strong,
+[data-skin='terminal'] b {
+  font-weight: 600;
+}
+
+[data-skin='terminal'] a {
+  text-underline-offset: 3px;
+}
+
+[data-skin='terminal'] .page-head {
+  align-items: flex-end;
+  padding-bottom: 12px;
+  border-bottom: 0;
+  background: var(--rule-stroke) left bottom / 100% var(--rule-height) no-repeat;
+}
+
+[data-skin='terminal'] .page-title {
+  display: flex;
+  align-items: baseline;
+  column-gap: 0.45em;
+  font: 400 42px/1 var(--font-title);
+  letter-spacing: 0.01em;
+}
+
+/* A prompt before every page title. */
+[data-skin='terminal'] .page-title::before {
+  content: '>';
+  flex: none;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .eyebrow {
+  font: 500 13px/1.3 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+[data-skin='terminal'] .section-title {
+  align-items: center;
+  gap: 12px;
+  margin: 34px 0 10px;
+  font: 400 25px/1 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .section-title::after {
+  transform: none;
+}
+
+[data-skin='terminal'] .section-title .count {
+  font: 400 23px/1 var(--font-title);
+  color: var(--muted);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .section-title .count::before {
+  content: '[';
+}
+
+[data-skin='terminal'] .section-title .count::after {
+  content: ']';
+}
+
+[data-skin='terminal'] .section-title .actions {
+  font: 500 13px/1 var(--font-mono);
+  text-transform: none;
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .muted {
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .empty {
+  font: var(--empty-font);
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .empty::before {
+  content: '>';
+  margin-right: 1ch;
+}
+
+[data-skin='terminal'] .error-text {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .error-text::before {
+  content: '!';
+  display: inline-block;
+  margin-right: 1ch;
+  padding: 0 0.5ch;
+  background: var(--term-alert);
+  color: var(--paper);
+  font-weight: 600;
+  text-shadow: none;
+}
+
+/* Waiting: the text, then a block cursor. */
+[data-skin='terminal'] .loading::after {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  margin-left: 0.4ch;
+  vertical-align: -0.2em;
+  background: var(--term-cursor);
+}
+
+[data-skin='terminal'] .app-booting {
+  padding-top: 30vh;
+  font: 400 30px/1 var(--font-title);
+  color: var(--ink);
+}
+
+/* Shell and top bar ------------------------------------------------------------ */
+
+[data-skin='terminal'] .topbar {
+  background: var(--term-scan), var(--bar);
+  border-bottom: 3px double var(--term-frame);
+}
+
+[data-skin='terminal'] .topbar .topbar-inner {
+  gap: 18px;
+}
+
+[data-skin='terminal'] .brand {
+  gap: 9px;
+  color: var(--bar-ink);
+}
+
+[data-skin='terminal'] .brand .wordmark {
+  white-space: nowrap;
+  font: 400 31px/1 var(--font-title);
+  letter-spacing: 0.02em;
+  color: var(--term-bright);
+  text-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] .brand .wordmark::after {
+  content: '';
+  display: inline-block;
+  width: 0.42em;
+  height: 0.72em;
+  margin-left: 0.12em;
+  vertical-align: -0.02em;
+  background: var(--term-cursor);
+  box-shadow: var(--term-glow-box);
+}
+
+/* The mark, raster-scanned on the glass and dotted on paper. */
+[data-skin='terminal'] .logo {
+  overflow: visible;
+  -webkit-mask: radial-gradient(circle at 1px 1px, #000 0.85px, transparent 1.15px) 0 0 / 2px 2px;
+  mask: radial-gradient(circle at 1px 1px, #000 0.85px, transparent 1.15px) 0 0 / 2px 2px;
+}
+
+[data-skin='terminal'] .topbar .logo {
+  width: 26px;
+  height: 26px;
+}
+
+[data-skin='terminal'] .logo .logo-sun {
+  fill: var(--sun);
+}
+
+[data-skin='terminal'] .logo .logo-line {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: square;
+}
+
+[data-skin='terminal'] .logo .logo-faint {
+  stroke-width: 1.6;
+  opacity: 0.7;
+}
+
+[data-skin='terminal'][data-scheme='dark'] .logo {
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 1.5px, transparent 1.5px 2.5px);
+  mask: repeating-linear-gradient(to bottom, #000 0 1.5px, transparent 1.5px 2.5px);
+  filter: drop-shadow(0 0 2px rgba(126, 242, 157, 0.6));
+}
+
+[data-skin='terminal'] .topbar-nav {
+  gap: 6px;
+}
+
+[data-skin='terminal'] .topbar-nav .nav-link {
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-bottom: 0;
+  font: 500 14px/1.2 var(--font-mono);
+  color: var(--bar-ink-soft);
+}
+
+[data-skin='terminal'] .topbar-nav .nav-link:hover {
+  color: var(--bar-ink);
+  text-decoration: underline;
+}
+
+[data-skin='terminal'] .topbar-nav .nav-link[aria-current='page'] {
+  background: var(--bar-ink);
+  color: var(--bar);
+  text-decoration: none;
+  text-shadow: none;
+  box-shadow: var(--term-glow-box);
+}
+
+[data-skin='terminal'] .topbar-search::before {
+  content: '>';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  font: 500 14px/1 var(--font-mono);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+[data-skin='terminal'] .topbar-search .input {
+  height: 30px;
+  padding-left: 22px;
+  padding-right: 26px;
+  font: 13px var(--font-mono);
+  background: var(--paper-sunk);
+}
+
+[data-skin='terminal'] .topbar-search kbd {
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .topbar-search:focus-within kbd {
+  visibility: hidden;
+}
+
+[data-skin='terminal'] .live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  border: 1px solid var(--muted);
+}
+
+[data-skin='terminal'] .live-dot.on {
+  border-color: var(--stamp-done);
+  background: var(--stamp-done);
+  box-shadow: var(--term-glow-box);
+}
+
+[data-skin='terminal'] .topbar-themes {
+  border-radius: 0;
+  color: var(--bar-ink-soft);
+}
+
+[data-skin='terminal'] .topbar-themes:hover,
+[data-skin='terminal'] .topbar-themes[aria-current='page'] {
+  background: var(--bar-ink);
+  color: var(--bar);
+}
+
+[data-skin='terminal'] .account-button .avatar {
+  width: 32px;
+  height: 30px;
+  border: 1px solid var(--bar-ink-soft);
+  background: transparent;
+  color: var(--bar-ink);
+  font: 500 12.5px/1 var(--font-mono);
+}
+
+[data-skin='terminal'] .account-button:hover .avatar,
+[data-skin='terminal'] .account-button[aria-expanded='true'] .avatar {
+  background: var(--bar-ink);
+  color: var(--bar);
+  text-shadow: none;
+}
+
+/* A status line along the bottom of the screen. */
+[data-skin='terminal'] .app-statusbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+  display: flex;
+  height: 26px;
+  align-items: stretch;
+  border-top: 1px solid var(--term-frame);
+  background: var(--term-status);
+  color: var(--term-status-ink);
+  font: 500 13px/25px var(--font-mono);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .statusbar-cell {
+  padding: 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-skin='terminal'] .statusbar-cell:first-child {
+  flex: 1;
+}
+
+[data-skin='terminal'] .statusbar-cell:first-child::before {
+  content: '>';
+  margin-right: 1ch;
+}
+
+[data-skin='terminal'] .statusbar-cell + .statusbar-cell {
+  border-left: 1px solid var(--term-frame);
+}
+
+/* On paper it is the listing's footer line. */
+[data-skin='terminal']:not([data-scheme='dark']) .app-statusbar {
+  border-top-style: dashed;
+}
+
+[data-skin='terminal']:not([data-scheme='dark']) .statusbar-cell + .statusbar-cell {
+  border-left-style: dashed;
+}
+
+/* Keep the status line at the bottom of short pages. */
+[data-skin='terminal']:root .app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+[data-skin='terminal']:root .app-main {
+  flex: 1;
+}
+
+[data-skin='terminal'].skin-preview .app-statusbar {
+  position: static;
+}
+
+/* Buttons ---------------------------------------------------------------------- */
+
+/* [ Secondary ], < Quiet >, and the primary one in inverse video. */
+[data-skin='terminal'] .btn {
+  gap: 0.6ch;
+  height: 30px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 500 14px/1 var(--font-mono);
+  letter-spacing: 0;
+}
+
+[data-skin='terminal'] .btn::before,
+[data-skin='terminal'] .btn::after {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+[data-skin='terminal'] .btn::before {
+  content: '[';
+}
+
+[data-skin='terminal'] .btn::after {
+  content: ']';
+}
+
+[data-skin='terminal'] .btn:hover:not([disabled]),
+[data-skin='terminal'] .btn:focus-visible {
+  border-color: var(--term-inv);
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .btn:hover:not([disabled])::before,
+[data-skin='terminal'] .btn:hover:not([disabled])::after,
+[data-skin='terminal'] .btn:focus-visible::before,
+[data-skin='terminal'] .btn:focus-visible::after {
+  color: inherit;
+}
+
+[data-skin='terminal'] .btn:active:not([disabled]) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+[data-skin='terminal'] .btn.btn-small {
+  height: 26px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+[data-skin='terminal'] .btn.btn-primary {
+  padding: 0 7px;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-ink);
+  text-shadow: none;
+  box-shadow: var(--term-glow-box);
+}
+
+[data-skin='terminal'] .btn.btn-primary::before,
+[data-skin='terminal'] .btn.btn-primary::after {
+  color: inherit;
+}
+
+[data-skin='terminal'] .btn.btn-primary:hover:not([disabled]),
+[data-skin='terminal'] .btn.btn-primary:focus-visible {
+  border-color: var(--term-bright);
+  background: var(--term-bright);
+  color: var(--primary-ink);
+}
+
+[data-skin='terminal'][data-scheme='dark'] .btn.btn-primary:hover:not([disabled]) {
+  box-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] .btn.btn-quiet {
+  color: var(--ink-soft);
+}
+
+[data-skin='terminal'] .btn.btn-quiet::before {
+  content: '<';
+}
+
+[data-skin='terminal'] .btn.btn-quiet::after {
+  content: '>';
+}
+
+[data-skin='terminal'] .btn.btn-danger,
+[data-skin='terminal'] .btn.btn-danger::before,
+[data-skin='terminal'] .btn.btn-danger::after {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled]),
+[data-skin='terminal'] .btn.btn-danger:focus-visible {
+  border-color: var(--term-alert);
+  background: var(--term-alert);
+  color: var(--paper);
+}
+
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled])::before,
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled])::after {
+  color: inherit;
+}
+
+/* Pressed toggles (watching, a quick filter): a dim selection bar. */
+[data-skin='terminal'] .btn.on,
+[data-skin='terminal'] .btn[aria-pressed='true'] {
+  border-color: var(--ink-soft);
+  background: var(--paper-sunk);
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .btn.on::before,
+[data-skin='terminal'] .btn[aria-pressed='true']::before {
+  content: '[*';
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .btn[disabled],
+[data-skin='terminal'] .btn[disabled]::before,
+[data-skin='terminal'] .btn[disabled]::after {
+  opacity: 1;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+[data-skin='terminal'] .btn.btn-primary[disabled] {
+  border: 1px dashed var(--rule-strong);
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-skin='terminal'] .btn kbd,
+[data-skin='terminal'] .kbd {
+  font: 500 11.5px/1 var(--font-mono);
+  padding: 2px 4px 1px;
+  border: 1px solid currentColor;
+  border-radius: 0;
+  opacity: 0.75;
+}
+
+[data-skin='terminal'] .link-btn {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-underline-offset: 3px;
+}
+
+[data-skin='terminal'] .link-btn:hover {
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-decoration: none;
+  text-shadow: none;
+}
+
+/* Fields ------------------------------------------------------------------------ */
+
+[data-skin='terminal'] .input,
+[data-skin='terminal'] .select,
+[data-skin='terminal'] .textarea {
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background-color: var(--paper-sunk);
+  color: var(--ink);
+  font: 14px/1.4 var(--font-mono);
+  caret-color: var(--term-cursor);
+  caret-shape: block;
+}
+
+[data-skin='terminal'] .textarea {
+  font: 14px/1.55 var(--font-mono);
+}
+
+[data-skin='terminal'] .input::placeholder,
+[data-skin='terminal'] .textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+[data-skin='terminal'] .input:focus,
+[data-skin='terminal'] .select:focus,
+[data-skin='terminal'] .textarea:focus {
+  border-color: var(--focus);
+  box-shadow:
+    0 0 0 1px var(--focus),
+    var(--term-glow-box);
+}
+
+/* The clear button of search fields, drawn as a plain ×. */
+[data-skin='terminal'] .input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  background:
+    linear-gradient(45deg, transparent 42%, var(--ink-soft) 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, var(--ink-soft) 42% 58%, transparent 58%);
+}
+
+[data-skin='terminal'] .select {
+  appearance: none;
+  padding-right: 26px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position:
+    right 14px center,
+    right 9px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+[data-skin='terminal'] .select option {
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+[data-skin='terminal'] .field > span:first-child,
+[data-skin='terminal'] .field-label {
+  font: 500 13px/1.25 var(--font-mono);
+  color: var(--ink-soft);
+}
+
+/* The field being typed in: its label lights up, a block cursor beside it. */
+[data-skin='terminal'] .field:focus-within > span:first-child,
+[data-skin='terminal'] .field:focus-within > .field-label {
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .field:focus-within > span:first-child::after,
+[data-skin='terminal'] .field:focus-within > .field-label::after {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  margin-left: 0.6ch;
+  vertical-align: -0.2em;
+  background: var(--term-cursor);
+  box-shadow: var(--term-glow-box);
+}
+
+/* Pickers boxed like fields (new issue form). */
+[data-skin='terminal'] .field .boxed {
+  border-color: var(--rule-strong);
+  background: var(--paper-sunk);
+}
+
+[data-skin='terminal'] .field .hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] input.checkbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  vertical-align: -3px;
+  border: 1px solid var(--ink-soft);
+  border-radius: 0;
+  background: var(--paper-sunk);
+  cursor: pointer;
+}
+
+[data-skin='terminal'] input.checkbox:checked {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 3px var(--paper-sunk);
+}
+
+/* Marks --------------------------------------------------------------------------- */
+
+/* Statuses as bracketed labels; work in progress is in inverse video. */
+[data-skin='terminal'] .stamp {
+  gap: 0;
+  border: 0;
+  padding: var(--stamp-padding);
+  background: none;
+  text-shadow: var(--term-glow);
+}
+
+[data-skin='terminal'] .stamp::before,
+[data-skin='terminal'] .stamp::after {
+  display: inline;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+[data-skin='terminal'] .stamp::before {
+  content: '[';
+}
+
+[data-skin='terminal'] .stamp::after {
+  content: ']';
+}
+
+[data-skin='terminal'] .stamp.doing {
+  padding-inline: 1px;
+  background: var(--c);
+  color: var(--paper);
+  text-shadow: none;
+  box-shadow: var(--term-glow-box);
+}
+
+[data-skin='terminal'] .stamp.large {
+  font-family: var(--font-title);
+  font-weight: 400;
+  line-height: 1;
+}
+
+[data-skin='terminal'] .stamp.large.doing {
+  padding-inline: 4px;
+}
+
+/* Issue types: a letter on a block of its colour; sub-tasks only outlined. */
+[data-skin='terminal'] .type-mark[data-type] {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--tone);
+  border-radius: 0;
+  background: var(--tone);
+  color: var(--paper);
+  font: 600 12px/1 var(--font-mono);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .type-mark[data-type='subtask'] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--tone);
+}
+
+[data-skin='terminal'] .type-mark[data-type='epic'] {
+  box-shadow:
+    0 0 0 1px var(--paper),
+    0 0 0 2px var(--tone);
+}
+
+/* The server tints priorities; here they stay in phosphor (or ink). */
+[data-skin='terminal'] .priority-mark > :first-child {
+  -webkit-text-fill-color: var(--ink-soft);
+  font-size: 11px;
+}
+
+[data-skin='terminal'] .avatar.avatar {
+  border: 1px solid var(--ink-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 500 10.5px/1 var(--font-mono);
+}
+
+[data-skin='terminal'] .chip {
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: transparent;
+  font: 13px/1.5 var(--font-mono);
+}
+
+[data-skin='terminal'] .chip button:hover {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .key {
+  font: 500 13.5px/1 var(--font-mono);
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] a.key {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+[data-skin='terminal'] a.key:hover {
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-decoration: none;
+  text-shadow: none;
+}
+
+/* Ledger ----------------------------------------------------------------------- */
+
+[data-skin='terminal'] table.ledger {
+  font-size: 14px;
+}
+
+[data-skin='terminal'] .ledger th,
+[data-skin='terminal'] .ledger th.num {
+  padding: 0 10px 7px;
+  border-bottom: 0;
+  background: var(--rule-stroke) left bottom / 100% var(--rule-height) no-repeat;
+  font: 500 12.5px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .ledger td {
+  padding: 7px 10px;
+  border-bottom: 1px dotted var(--rule);
+}
+
+/* On paper the listing is banded every other row, over the page's own bands. */
+[data-skin='terminal']:not([data-scheme='dark']) .ledger td {
+  background: var(--paper);
+}
+
+[data-skin='terminal']:not([data-scheme='dark']) .ledger tbody tr:nth-child(even) td {
+  background: var(--term-band);
+}
+
+/* Row actions (users list) may wrap: monospace is wide. */
+[data-skin='terminal'] .ledger td.row-actions {
+  white-space: normal;
+}
+
+[data-skin='terminal'] .ledger td .link-btn {
+  white-space: nowrap;
+}
+
+[data-skin='terminal'] .ledger .num {
+  font-size: 13px;
+}
+
+/* Overdue: in the alert colour, flagged. */
+[data-skin='terminal'] .ledger td.late {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .ledger td.late::before {
+  content: '!';
+  margin-right: 0.6ch;
+  font-weight: 600;
+}
+
+/* The row under the pointer (or holding focus) is the selection bar. */
+[data-skin='terminal'] .ledger tbody tr:hover,
+[data-skin='terminal'] .ledger tbody tr:focus-within,
+[data-skin='terminal'] .ledger tbody tr.is-selected {
+  --ink: var(--term-inv-ink);
+  --ink-soft: var(--term-inv-ink);
+  --muted: var(--term-inv-muted);
+  --term-bright: var(--term-inv-ink);
+  --term-alert: var(--term-inv-ink);
+  --accent-text: var(--term-inv-ink);
+  --stamp-todo: var(--term-inv-ink);
+  --stamp-doing: var(--term-inv-ink);
+  --stamp-done: var(--term-inv-ink);
+  --tone-bug: var(--term-inv-ink);
+  --tone-story: var(--term-inv-ink);
+  --tone-epic: var(--term-inv-ink);
+  --tone-task: var(--term-inv-ink);
+  --tone-subtask: var(--term-inv-ink);
+  --rule-strong: var(--term-inv-ink);
+  --paper: var(--term-inv);
+  --focus: var(--term-inv-ink);
+  --ink-blend: normal;
+  --term-glow: none;
+  --term-glow-box: none;
+  color: var(--term-inv-ink);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] table.ledger.ledger tbody tr:hover td,
+[data-skin='terminal'] table.ledger.ledger tbody tr:focus-within td,
+[data-skin='terminal'] table.ledger.ledger tbody tr.is-selected td {
+  background: var(--term-inv);
+}
+
+[data-skin='terminal'] .ledger tbody tr:hover a.key:hover {
+  background: var(--term-inv-ink);
+  color: var(--term-inv);
+}
+
+/* Projects list: names set like titles. */
+[data-skin='terminal'] .ledger a.name {
+  font: 400 22px/1.1 var(--font-title);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* Menus ------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .popover {
+  border: 1px solid var(--term-frame);
+  border-radius: 0;
+  background: var(--term-scan), var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  padding: 4px 0;
+}
+
+[data-skin='terminal'] .popover .item {
+  padding: 5px 12px;
+  font: 14px/1.3 var(--font-mono);
+  color: var(--ink);
+}
+
+[data-skin='terminal'] .popover .item:hover,
+[data-skin='terminal'] .popover .item.active,
+[data-skin='terminal'] .popover .item:focus-visible,
+[data-skin='terminal'] .popover .item[aria-selected='true'] {
+  --ink: var(--term-inv-ink);
+  --ink-soft: var(--term-inv-ink);
+  --muted: var(--term-inv-muted);
+  --term-bright: var(--term-inv-ink);
+  --stamp-todo: var(--term-inv-ink);
+  --stamp-doing: var(--term-inv-ink);
+  --stamp-done: var(--term-inv-ink);
+  --paper: var(--term-inv);
+  --focus: var(--term-inv-ink);
+  --ink-blend: normal;
+  --term-glow: none;
+  --term-glow-box: none;
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  outline: none;
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .popover .item[aria-checked]::after {
+  content: none;
+}
+
+[data-skin='terminal'] .popover .item[role='menuitemradio']::before {
+  content: '( )';
+  flex: none;
+  white-space: pre;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .popover .item[role='menuitemradio'][aria-checked='true']::before {
+  content: '(*)';
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .popover .item[role='menuitemcheckbox']::before {
+  content: '[ ]';
+  flex: none;
+  white-space: pre;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .popover .item[role='menuitemcheckbox'][aria-checked='true']::before {
+  content: '[x]';
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .popover .item.danger {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .popover .item.danger:hover {
+  background: var(--term-alert);
+  color: var(--paper);
+}
+
+[data-skin='terminal'] .popover .sep {
+  border-top: 1px dashed var(--rule-strong);
+}
+
+[data-skin='terminal'] .popover .group-label {
+  padding: 8px 12px 3px;
+  font: 500 12px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .popover .group-label::before {
+  content: '--';
+  margin-right: 1ch;
+}
+
+/* Dialogs -------------------------------------------------------------------------- */
+
+/* A double-lined box; its title sits in the top border, ┤ like this ├. */
+[data-skin='terminal'] dialog.modal {
+  overflow: visible;
+  border: 3px double var(--term-frame);
+  border-radius: 0;
+  background: var(--term-scan), var(--paper);
+  box-shadow: var(--shadow-pop);
+}
+
+[data-skin='terminal'] dialog.modal::backdrop {
+  background: var(--backdrop);
+}
+
+[data-skin='terminal'] .modal-head {
+  align-items: center;
+  margin-top: -15px;
+  padding: 0 14px 12px;
+  border-bottom: 1px dashed var(--rule-strong);
+}
+
+[data-skin='terminal'] .modal-head .modal-title {
+  padding: 0 10px;
+  border-inline: 1px solid var(--term-frame);
+  background: var(--paper);
+  font: 400 27px/1 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+[data-skin='terminal'] .modal-head .modal-close {
+  height: 26px;
+  padding: 0 6px;
+  border-inline: 1px solid var(--term-frame);
+  background: var(--paper);
+  font-size: 0;
+}
+
+[data-skin='terminal'] .modal-head .modal-close::before {
+  content: '[\00d7]';
+  font: 500 15px/1 var(--font-mono);
+  color: var(--ink);
+}
+
+[data-skin='terminal'] .modal-head .modal-close::after,
+[data-skin='terminal'] .modal-head .modal-close kbd {
+  display: none;
+}
+
+[data-skin='terminal'] .modal-head .modal-close:hover,
+[data-skin='terminal'] .modal-head .modal-close:focus-visible {
+  background: var(--term-inv);
+}
+
+[data-skin='terminal'] .modal-head .modal-close:hover::before,
+[data-skin='terminal'] .modal-head .modal-close:focus-visible::before {
+  color: var(--term-inv-ink);
+}
+
+[data-skin='terminal'] .modal-body {
+  padding: 16px 20px;
+}
+
+[data-skin='terminal'] .modal-foot {
+  border-top: 1px dashed var(--rule-strong);
+}
+
+/* Panels -------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .card {
+  border: 3px double var(--term-frame);
+  border-radius: 0;
+  background: var(--term-scan), var(--paper);
+}
+
+[data-skin='terminal'] .card > .card-head:first-child {
+  display: flex;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  gap: 1.5ch;
+  align-items: center;
+  margin: -13px 0 4px 12px;
+  padding: 1px 9px 0;
+  border: 0;
+  border-inline: 1px solid var(--term-frame);
+  background: var(--paper);
+  font: 400 22px/22px var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--term-bright);
+  text-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] .card > .card-head:first-child .key {
+  font: 400 22px/1 var(--font-title);
+  color: var(--muted);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .card > .card-head:not(:first-child) {
+  margin-top: 4px;
+  padding: 10px 14px 6px;
+  border-top: 1px dashed var(--rule-strong);
+  border-bottom: 0;
+  font: 400 21px/1 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .card dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .card .line {
+  border-bottom: 1px dotted var(--rule);
+}
+
+[data-skin='terminal'] .card .dates {
+  border-top: 1px dashed var(--rule-strong);
+}
+
+[data-skin='terminal'] .card .bar {
+  height: 10px;
+  border: 1px solid var(--rule-strong);
+  background: repeating-linear-gradient(to right, var(--rule) 0 6px, transparent 6px 8px);
+}
+
+[data-skin='terminal'] .card .bar span {
+  background: repeating-linear-gradient(to right, var(--stamp-doing) 0 6px, transparent 6px 8px);
+}
+
+/* Tabs ------------------------------------------------------------------------------ */
+
+[data-skin='terminal'] .tabs {
+  gap: 6px;
+  border-bottom: 1px solid var(--term-frame);
+}
+
+[data-skin='terminal'] .tabs .tab {
+  margin-bottom: 0;
+  padding: 6px 10px 5px;
+  border: 0;
+  font: 500 14px/1.2 var(--font-mono);
+  color: var(--ink-soft);
+}
+
+[data-skin='terminal'] .tabs .tab:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+[data-skin='terminal'] .tabs .tab[aria-selected='true'] {
+  --muted: var(--term-inv-muted);
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-decoration: none;
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .tabs.tabs-folder {
+  gap: 2px;
+  border-bottom: 0;
+}
+
+[data-skin='terminal'] .tabs.tabs-folder .tab {
+  padding: 4px 10px 3px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .tabs.tabs-folder .tab[aria-selected='true'] {
+  border-color: var(--rule-strong);
+  background: var(--paper-sunk);
+  color: var(--term-bright);
+}
+
+/* Toasts ---------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .toasts {
+  bottom: 40px;
+}
+
+[data-skin='terminal'] .toast {
+  border: 1px solid var(--term-frame);
+  border-radius: 0;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font: 14px/1.4 var(--font-mono);
+}
+
+[data-skin='terminal'] .toast::before {
+  content: '>';
+  flex: none;
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .toast.error {
+  border-color: var(--term-alert);
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .toast.error::before {
+  content: '!';
+  padding: 0 0.5ch;
+  background: var(--term-alert);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+[data-skin='terminal'] .toast > span:first-of-type {
+  flex: 1;
+}
+
+/* Empty states ---------------------------------------------------------------------- */
+
+[data-skin='terminal'] .illustration {
+  position: relative;
+  display: block;
+  width: 160px;
+  height: 100px;
+  margin: 10px 0 2px;
+}
+
+[data-skin='terminal'] .illustration::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ink-soft);
+  -webkit-mask: url('./terminal/empty.svg') center / 160px 100px no-repeat;
+  mask: url('./terminal/empty.svg') center / 160px 100px no-repeat;
+}
+
+[data-skin='terminal'] .illustration[data-kind='lost']::before {
+  -webkit-mask-image: url('./terminal/lost.svg');
+  mask-image: url('./terminal/lost.svg');
+}
+
+[data-skin='terminal'] .illustration[data-kind='search']::before {
+  -webkit-mask-image: url('./terminal/search.svg');
+  mask-image: url('./terminal/search.svg');
+}
+
+[data-skin='terminal'][data-scheme='dark'] .illustration {
+  filter: drop-shadow(0 0 3px rgba(126, 242, 157, 0.45));
+}
+
+/* Boards ---------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .sprint-head {
+  border-bottom: 0;
+  background: var(--rule-stroke) left bottom / 100% var(--rule-height) no-repeat;
+}
+
+[data-skin='terminal'] .sprint-name {
+  font: 400 26px/1 var(--font-title);
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .sprint-dates {
+  font-size: 13px;
+}
+
+[data-skin='terminal'] .board {
+  gap: 14px;
+}
+
+[data-skin='terminal'] .board-column {
+  border: 1px solid var(--term-frame);
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-skin='terminal'] .board-column-head {
+  padding: 8px 10px 7px;
+  border-bottom: 3px double var(--term-frame);
+}
+
+[data-skin='terminal'] .board-column-title {
+  font: 400 22px/1 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--term-bright);
+  text-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] .board-column-count,
+[data-skin='terminal'] .wip-limit {
+  font: 400 21px/1 var(--font-title);
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .board-column-count::before {
+  content: '[';
+}
+
+[data-skin='terminal'] .board-column-count::after {
+  content: ']';
+}
+
+[data-skin='terminal'] .board-column.is-over {
+  border-style: dashed;
+  border-color: var(--focus);
+  background: var(--accent-wash);
+}
+
+[data-skin='terminal'] .board-column.over-limit {
+  border-color: var(--term-alert);
+}
+
+[data-skin='terminal'] .board-column.over-limit .board-column-head {
+  border-bottom-color: var(--term-alert);
+}
+
+[data-skin='terminal'] .board-column.over-limit .wip-limit {
+  color: var(--term-alert);
+}
+
+[data-skin='terminal'] .board-column.over-limit .wip-limit::before {
+  content: '!';
+  margin-right: 0.6ch;
+  padding: 0 0.3ch;
+  background: var(--term-alert);
+  color: var(--paper);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .board-card {
+  gap: 6px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--paper);
+  font-size: 14px;
+}
+
+[data-skin='terminal'] .board-card:hover {
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--rule-strong);
+}
+
+[data-skin='terminal'] .board-card.is-dragging {
+  opacity: 1;
+  border-style: dashed;
+  border-color: var(--focus);
+  background: var(--paper-sunk);
+  color: var(--muted);
+}
+
+/* Wiki text ------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .wiki {
+  font-size: 14.5px;
+}
+
+[data-skin='terminal'] .wiki h1,
+[data-skin='terminal'] .wiki h2,
+[data-skin='terminal'] .wiki h3,
+[data-skin='terminal'] .wiki h4,
+[data-skin='terminal'] .wiki h5,
+[data-skin='terminal'] .wiki h6 {
+  font-family: var(--font-title);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+[data-skin='terminal'] .wiki h1 {
+  font-size: 32px;
+}
+
+[data-skin='terminal'] .wiki h2 {
+  font-size: 28px;
+}
+
+[data-skin='terminal'] .wiki h3 {
+  font-size: 24px;
+}
+
+[data-skin='terminal'] .wiki h4,
+[data-skin='terminal'] .wiki h5,
+[data-skin='terminal'] .wiki h6 {
+  font-size: 21px;
+}
+
+[data-skin='terminal'] .wiki h1::before,
+[data-skin='terminal'] .wiki h2::before,
+[data-skin='terminal'] .wiki h3::before {
+  margin-right: 0.5ch;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .wiki h1::before {
+  content: '#';
+}
+
+[data-skin='terminal'] .wiki h2::before {
+  content: '##';
+}
+
+[data-skin='terminal'] .wiki h3::before {
+  content: '###';
+}
+
+[data-skin='terminal'] .wiki ul {
+  list-style-type: '- ';
+}
+
+[data-skin='terminal'] .wiki ul ul {
+  list-style-type: '* ';
+}
+
+[data-skin='terminal'] .wiki li::marker {
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .wiki pre {
+  font: 13.5px/1.55 var(--font-mono);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-strong);
+  border-left: 3px double var(--term-frame);
+}
+
+[data-skin='terminal'] .wiki .code-title {
+  font: 500 13px/1 var(--font-mono);
+  border-color: var(--rule-strong);
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .wiki code {
+  font-size: 0.93em;
+  padding: 0 4px;
+  background: var(--paper-sunk);
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .wiki pre code {
+  color: inherit;
+}
+
+[data-skin='terminal'] .wiki blockquote {
+  border-left: 3px double var(--term-frame);
+  color: var(--ink-soft);
+}
+
+[data-skin='terminal'] .wiki .panel {
+  border: 1px solid var(--term-frame);
+  background: transparent;
+}
+
+[data-skin='terminal'] .wiki .panel-title {
+  border-bottom: 1px dashed var(--rule-strong);
+  font-weight: 600;
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .wiki .wiki-table th,
+[data-skin='terminal'] .wiki .wiki-table td {
+  border-color: var(--rule-strong);
+}
+
+[data-skin='terminal'] .wiki .wiki-table th {
+  background: var(--paper-sunk);
+  color: var(--term-bright);
+}
+
+[data-skin='terminal'] .wiki a {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+[data-skin='terminal'] .wiki a:hover {
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-decoration: none;
+  text-shadow: none;
+}
+
+[data-skin='terminal'] .wiki a.mention {
+  border-bottom: 0;
+  background: transparent;
+  color: var(--term-bright);
+  text-decoration: underline;
+}
+
+[data-skin='terminal'] .wiki img {
+  border: 1px solid var(--term-frame);
+}
+
+[data-skin='terminal'] .wiki hr {
+  border-top: 1px dashed var(--rule-strong);
+}
+
+/* Pages ------------------------------------------------------------------------------- */
+
+[data-skin='terminal'] .pager .range {
+  font: 400 21px/1 var(--font-title);
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .page-crumbs {
+  font: 13.5px/1.3 var(--font-mono);
+}
+
+[data-skin='terminal'] .page-crumbs a {
+  text-decoration: underline;
+}
+
+[data-skin='terminal'] .issue-head {
+  border-bottom: 0;
+  background: var(--rule-stroke) left bottom / 100% var(--rule-height) no-repeat;
+}
+
+[data-skin='terminal'] .issue-head .page-title {
+  font-size: 40px;
+  line-height: 1.05;
+}
+
+[data-skin='terminal'] .issue-head .summary-input {
+  font: 400 40px/1.05 var(--font-title);
+  color: var(--term-bright);
+  caret-color: var(--term-cursor);
+}
+
+[data-skin='terminal'] .issue-meta .resolution,
+[data-skin='terminal'] .issue-head .note {
+  font: 14px/1.4 var(--font-mono);
+}
+
+[data-skin='terminal'] .issue-meta .dot {
+  color: var(--muted);
+}
+
+[data-skin='terminal'] .attachments .drop {
+  font: 400 26px/1 var(--font-title);
+}
+
+[data-skin='terminal'] .attachments .ext {
+  border: 1px solid var(--ink-soft);
+  font: 400 20px/1 var(--font-title);
+}
+
+/* Sign-in sheet. */
+[data-skin='terminal'] .login-card .wordmark {
+  font: 400 46px/1 var(--font-title);
+  color: var(--term-bright);
+  text-shadow: var(--term-glow-strong);
+}
+
+[data-skin='terminal'] .login-card .tagline {
+  font: 14px/1.4 var(--font-mono);
+}
+
+/* New issue: the summary is typed in title letters. */
+[data-skin='terminal'] .modal-body .summary {
+  font: 400 23px/1.2 var(--font-title);
+  padding: 6px 10px 4px;
+}
+
+/* No italics on a terminal. */
+[data-skin='terminal'] .nobody,
+[data-skin='terminal'] .none {
+  font-style: normal;
+}
+
+/* Motion -------------------------------------------------------------------------------- */
+
+@keyframes term-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes term-warm-up {
+  0% {
+    opacity: 0;
+    filter: brightness(2.4) blur(1.5px);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    filter: none;
+  }
+}
+
+@keyframes term-feed {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes term-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin='terminal'] .brand .wordmark::after,
+  [data-skin='terminal'] .loading::after,
+  [data-skin='terminal'] .field:focus-within > span:first-child::after,
+  [data-skin='terminal'] .field:focus-within > .field-label::after {
+    animation: term-blink 1.06s steps(1) infinite;
+  }
+
+  /* The screen warms up once when the app opens; paper feeds in. */
+  [data-skin='terminal'] .app-shell {
+    animation: term-feed 0.26s ease-out;
+  }
+
+  [data-skin='terminal'][data-scheme='dark'] .app-shell {
+    animation: term-warm-up 0.42s ease-out;
+  }
+
+  [data-skin='terminal'] .toast {
+    animation: term-type 0.3s steps(16, end);
+  }
+}
+
+/* High contrast: no glow, no raster, no vignette. ------------------------------------------ */
+
+@media (prefers-contrast: more) {
+  [data-skin='terminal'],
+  [data-skin='terminal'][data-scheme='dark'] {
+    --term-glow: none;
+    --term-glow-strong: none;
+    --term-glow-box: none;
+    --term-scan: none;
+    text-shadow: none;
+  }
+
+  [data-skin='terminal'][data-scheme='dark'] {
+    background-image: none;
+  }
+
+  [data-skin='terminal'] .logo,
+  [data-skin='terminal'][data-scheme='dark'] .logo {
+    -webkit-mask: none;
+    mask: none;
+    filter: none;
+  }
+
+  [data-skin='terminal'][data-scheme='dark'] .illustration {
+    filter: none;
+  }
+}
+
+/* Small screens --------------------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  /* Narrow tractor margins so the holes stay clear of the text. */
+  [data-skin='terminal'] {
+    --term-hole-r: 2.6px;
+    --page-texture-size: 10px 22px, 10px 22px, 1px 8px, 1px 8px, calc(100% - 26px) 96px;
+    background-position:
+      left 0 top 0,
+      right 0 top 0,
+      left 12px top 0,
+      right 12px top 0,
+      left 13px top 0;
+  }
+
+  [data-skin='terminal'] .page-title {
+    font-size: 34px;
+  }
+
+  [data-skin='terminal'] .issue-head .page-title,
+  [data-skin='terminal'] .issue-head .summary-input {
+    font-size: 32px;
+  }
+
+  [data-skin='terminal'] .page {
+    padding-inline: 20px;
+  }
+
+  /* Monospace runs wider: let heads, filters and meta lines wrap. */
+  [data-skin='terminal'] .page-head,
+  [data-skin='terminal'] .page-head .meta,
+  [data-skin='terminal'] .tools .quick {
+    flex-wrap: wrap;
+  }
+
+  [data-skin='terminal'] .statusbar-cell:nth-child(2) {
+    display: none;
+  }
+
+  /* Monospace is wide: tighter cells, dates may wrap. */
+  [data-skin='terminal'] table.ledger {
+    font-size: 13px;
+  }
+
+  [data-skin='terminal'] .ledger th,
+  [data-skin='terminal'] .ledger th.num,
+  [data-skin='terminal'] .ledger td {
+    padding-inline: 5px;
+  }
+
+  [data-skin='terminal'] .ledger td,
+  [data-skin='terminal'] .ledger td.num {
+    white-space: normal;
+  }
+
+  [data-skin='terminal'] .ledger .stamp {
+    font-size: 11.5px;
+  }
+}
+
+/* On a phone, issue lists keep the summary rather than the last-change time. */
+@media (max-width: 520px) {
+  /* A compact top bar: the mark alone (its name kept for screen readers), [ + ]. */
+  [data-skin='terminal'] .topbar .topbar-inner {
+    gap: 8px;
+  }
+
+  [data-skin='terminal'] .topbar .brand .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  [data-skin='terminal'] .topbar-nav {
+    gap: 2px;
+  }
+
+  [data-skin='terminal'] .topbar-nav .nav-link {
+    padding: 3px 5px;
+    font-size: 13px;
+  }
+
+  [data-skin='terminal'] .btn.topbar-create {
+    gap: 0;
+    padding: 0 6px;
+    font-size: 0;
+  }
+
+  [data-skin='terminal'] .btn.topbar-create::before {
+    content: '[ +';
+    font-size: 15px;
+  }
+
+  [data-skin='terminal'] .btn.topbar-create::after {
+    content: ' ]';
+    font-size: 15px;
+    white-space: pre;
+  }
+
+  [data-skin='terminal'] .ledger:has(td.c-type) th.num,
+  [data-skin='terminal'] .ledger:has(td.c-type) td.num,
+  [data-skin='terminal'] .ledger:has(td.c-type) .c-type {
+    display: none;
+  }
+
+  [data-skin='terminal'] .ledger td.c-summary {
+    min-width: 7.5em;
+  }
+
+  [data-skin='terminal'] .ledger td.c-summary .summary {
+    display: -webkit-box;
+    max-width: 100%;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  [data-skin='terminal'] .ledger .key {
+    font-size: 13px;
+  }
+}

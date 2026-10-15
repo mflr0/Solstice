@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 104" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- "You are here", then a route that wanders off the page -->
+  <path d="M59.4 74.6l6.4 6.2M66.2 74.3l-6.6 6.7" stroke-width="2.2"/>
+  <path d="M70.8 76.6c8.2-.4 14.7-4.9 21.2-8.8 7.3-4.4 15.6-6.9 21.9-1.4 5.4 4.7 4.2 13.3 10.9 15.2 7.4 2.1 11.4-6.4 9.8-13.3-1.4-6.3-6.8-10.7-7.1-17.1" stroke-width="1.8" stroke-dasharray="3.4 5.2"/>
+  <!-- A question mark at the end of it -->
+  <path d="M128.8 23.4c1.8-7.2 13.6-8.6 15.4-1.6 1.8 7-8.1 8.6-8.3 16.4" stroke-width="2.4"/>
+  <path d="M135.6 46.3l.3.3" stroke-width="3.6"/>
+</svg>

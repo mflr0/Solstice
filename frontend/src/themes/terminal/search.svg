@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" width="160" height="100" shape-rendering="crispEdges">
+  <!-- A magnifier in blocks over dotted lines: nothing matched. -->
+  <path fill="#000" fill-rule="evenodd" d="M58 12h28v6h8v6h6v8h6v24h-6v8h-6v6h-8v6H58v-6h-8v-6h-6v-8h-6V32h6v-8h6v-6h8zM62 18v6h-8v6h-6v28h6v6h8v6h20v-6h8v-6h6V30h-6v-6h-8v-6z"/>
+  <g fill="#000">
+    <rect x="100" y="70" width="8" height="8"/>
+    <rect x="106" y="76" width="8" height="8"/>
+    <rect x="112" y="82" width="8" height="8"/>
+    <rect x="118" y="88" width="8" height="8"/>
+  </g>
+  <g fill="none" stroke="#000" stroke-width="2" stroke-dasharray="2 4" opacity=".45">
+    <path d="M56 32h32M54 40h36M54 48h36M56 56h32M8 40h26M14 52h20M112 30h40M118 42h32M112 54h26"/>
+  </g>
+</svg>

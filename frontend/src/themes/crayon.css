@@ -1,0 +1,1655 @@
+/*
+ * Crayonné — a pencil sketch.
+ *
+ * Light: graphite on off-white paper with a fine grain. Frames are drawn by
+ * hand: a roughness filter (feTurbulence + feDisplacementMap) on a
+ * pseudo-element behind or over the box, never on text; fields and menus use
+ * a sketched border-image whose strokes run past the corners. Statuses are
+ * circled with the pencil, the active tab and menu entry are scribbled under
+ * in blue pencil, empty states and disabled controls are cross-hatched, hover
+ * leaves an eraser smudge, board cards are sticky notes that tilt when
+ * touched. One blue pencil for the accent; a red pencil for corrections
+ * (errors, overdue dates, struck-out values, a column over its limit).
+ *
+ * Dark: a chalkboard — slate green-grey, chalk strokes, chalk dust and the
+ * ghosts of old eraser smears.
+ *
+ * Kalam for titles and annotations; body text stays in IBM Plex Sans, keys
+ * and code in IBM Plex Mono. Hooks: src/themes/ANATOMY.md.
+ *
+ * The extra pairs below (red pencil text; text on sticky notes, i.e. board
+ * cards and toasts) are checked by tests/core/contrast.test.ts.
+ */
+/* contrast: --cr-red on --paper */
+/* contrast: --cr-red on --paper-raised */
+/* contrast: --ink on --cr-note */
+/* contrast: --ink-soft on --cr-note */
+/* contrast: --muted on --cr-note */
+/* contrast: --accent-text on --cr-note */
+/* contrast: --stamp-todo on --cr-note */
+/* contrast: --stamp-doing on --cr-note */
+/* contrast: --stamp-done on --cr-note */
+
+@import '@fontsource/kalam/latin-400.css';
+@import '@fontsource/kalam/latin-700.css';
+@import '@fontsource/ibm-plex-sans/latin-400-italic.css';
+
+/* Tokens ------------------------------------------------------------------- */
+
+[data-skin='crayon'] {
+  --desk: var(--paper);
+  --paper: #f7f5ee;
+  --paper-raised: #fdfcf8;
+  --paper-sunk: #eeebe2;
+  --ink: #262522;
+  --ink-soft: #46443f;
+  --muted: #5f5d56;
+  --rule: #dcd8cd;
+  --rule-strong: #a29d91;
+  --accent: #2c5daa;
+  --accent-text: #2a5aa4;
+  --accent-wash: rgba(44, 93, 170, 0.08);
+  --primary: #2b5ba7;
+  --primary-ink: #ffffff;
+  --sun: #2c5daa;
+  --focus: #2c5daa;
+  --bar: var(--paper);
+  --bar-ink: var(--ink);
+  --bar-ink-soft: var(--ink-soft);
+  --margin-line: rgba(44, 93, 170, 0.4);
+  /* Pencil shading: a hard offset rather than a blur. */
+  --shadow-pop: 3px 4px 0 rgba(38, 37, 34, 0.12);
+  --backdrop: rgba(38, 37, 34, 0.34);
+  --ink-blend: multiply;
+
+  --stamp-todo: #4a4843;
+  --stamp-doing: #2a5aa4;
+  --stamp-done: #2b7136;
+
+  --tone-bug: #a8372b;
+  --tone-story: #2b7136;
+  --tone-epic: #66478f;
+  --tone-task: #2a5aa4;
+  --tone-subtask: #5f5d57;
+
+  --font-title: 'Kalam', cursive;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size: 14px;
+  --title-weight: 700;
+  --h1-weight: 700;
+  --title-tracking: 0;
+  --title-italic: normal;
+  --empty-font: 400 16px/1.4 var(--font-title);
+
+  /* Uneven corner radii: nothing here was drawn with a ruler. */
+  --frame: 1.5px;
+  --radius-xs: 4px 2px 5px 3px / 3px 5px 2px 4px;
+  --radius-s: 8px 4px 7px 5px / 5px 7px 4px 8px;
+  --radius-m: 12px 5px 10px 6px / 6px 10px 5px 12px;
+  --radius-l: 16px 6px 14px 8px / 8px 14px 6px 16px;
+  --avatar-radius: 52% 46% 55% 47% / 50% 55% 45% 52%;
+  --card-top: var(--frame) solid var(--rule-strong);
+
+  /* Statuses are circled by hand: no border, the loop is the ::before. */
+  --stamp-font: 400 14px/1.2 var(--font-title);
+  --stamp-case: none;
+  --stamp-tracking: 0;
+  --stamp-border: 0px;
+  --stamp-radius: 50%;
+  --stamp-padding: 2px 11px 1px;
+  --stamp-fill: 0%;
+  --stamp-dot: block;
+  --stamp-large-size: 18px;
+  --stamp-large-padding: 4px 17px 2px;
+  --stamp-large-border: 0px;
+  --stamp-large-tracking: 0;
+  --stamp-large-turn: rotate(-2deg);
+
+  /* Paper grain. */
+  --page-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.145 0 0 0 0 0.13 -0.55 0 0 0 0.24'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
+  --page-texture-size: 240px 240px;
+  /* A pencil line, stretched: its wobble stays a few pixels tall. */
+  --rule-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23262522' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.3C80 2.5 170 3.9 260 3.1S430 2.3 520 3.3 580 3.6 599 2.8' stroke-opacity='0.5' stroke-width='1.2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M40 4.4C150 3.8 280 4.7 410 3.9' stroke-opacity='0.225' stroke-width='0.96' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E")
+    left center / 100% 100% no-repeat;
+  --rule-height: 6px;
+  --loader: inline-block;
+
+  /* Theme-private: pencils, papers and drawn shapes. */
+  --cr-red: #b2352a;
+  --cr-note: #fbf4d0;
+  --cr-tape: rgba(206, 190, 140, 0.5);
+  --cr-line: rgba(38, 37, 34, 0.74);
+  --cr-line-soft: rgba(38, 37, 34, 0.36);
+  --cr-shade: rgba(38, 37, 34, 0.12);
+  --cr-ruling: rgba(44, 93, 170, 0.2);
+  --cr-margin: rgba(178, 53, 42, 0.4);
+  /* The strokes of blue pencil inside the main button, at their darkest. */
+  --cr-primary-strokes: #1d4a8e;
+  --cr-primary-grain: rgba(16, 40, 84, 0.3);
+  --cr-row: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23262522' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 2.9C90 3.7 190 2.5 300 3.2S470 4 560 2.9 590 2.7 599 3.3' stroke-opacity='0.26' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M120 4.2C250 3.6 380 4.4 540 3.8' stroke-opacity='0.117' stroke-width='0.8' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23262522' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.1C70 3.8 160 2.4 270 3.3S440 3.6 530 2.6 585 3.2 599 3.4' stroke-opacity='0.26' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M20 4.5C130 3.9 220 4.3 330 3.7' stroke-opacity='0.117' stroke-width='0.8' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-head: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23262522' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.3C80 2.5 170 3.9 260 3.1S430 2.3 520 3.3 580 3.6 599 2.8' stroke-opacity='0.62' stroke-width='1.3' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M40 4.4C150 3.8 280 4.7 410 3.9' stroke-opacity='0.279' stroke-width='1.04' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23b2352a' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.1C70 3.8 160 2.4 270 3.3S440 3.6 530 2.6 585 3.2 599 3.4' stroke-opacity='0.6' stroke-width='1.3' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M20 4.5C130 3.9 220 4.3 330 3.7' stroke-opacity='0.27' stroke-width='1.04' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-hatch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cg stroke='%23262522' stroke-linecap='square'%3E%3Cpath d='M-1 1 1-1M-1 9 9-1M-1 17 17-1M7 17 17 7M15 17 17 15' stroke-opacity='0.16' stroke-width='1'/%3E%3Cpath d='M-1-1 17 17M7-1 17 9M15-1 17 1M-1 7 9 17M-1 15 1 17' stroke-opacity='0.1' stroke-width='.8'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-strokes-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M-1 7 7-1M-1 13 13-1M5 13 13 5' stroke='%232c5daa' stroke-opacity='0.22' stroke-width='1.1' stroke-linecap='square'/%3E%3C/svg%3E");
+  --cr-strokes-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M-1 7 7-1M-1 13 13-1M5 13 13 5' stroke='%23b2352a' stroke-opacity='0.16' stroke-width='1.1' stroke-linecap='square'/%3E%3C/svg%3E");
+  --cr-smudge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'%3E%3Cfilter id='s' x='-.1' y='-.4' width='1.2' height='1.8'%3E%3CfeGaussianBlur stdDeviation='6 4'/%3E%3C/filter%3E%3Cg fill='%23262522' filter='url(%23s)'%3E%3Cpath d='M12 13C58 7 142 8 188 14c7 6 5 13-3 15-50 5-122 5-168 0-8-3-10-11-5-16Z' fill-opacity='0.06'/%3E%3Cpath d='M30 15c44-3 96-3 140 1 3 4 1 7-3 8-44 2-92 2-134-1-4-2-6-6-3-8Z' fill-opacity='0.033'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.2 1.7c1.8 1.3 3.4 2.9 4.9 4.8 1.5-1.9 3.2-3.5 5-4.9' fill='none' stroke='%23262522' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-box: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M2.6 3.4c4.9-.4 9.9-.3 14.8-.5M17 2.4c.4 5 .2 10.1.5 15.2M17.8 17.2c-5 .3-10 .2-15 .4M3.2 17.8c-.3-4.9-.4-9.8-.6-14.8' fill='none' stroke='%23262522' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  --cr-box-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M2.6 3.4c4.9-.4 9.9-.3 14.8-.5M17 2.4c.4 5 .2 10.1.5 15.2M17.8 17.2c-5 .3-10 .2-15 .4M3.2 17.8c-.3-4.9-.4-9.8-.6-14.8' fill='none' stroke='%23262522' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M5.2 10.4c1.5 1.3 2.8 2.8 4 4.5 2.6-5 5.6-9.1 9.6-12.6' fill='none' stroke='%232c5daa' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-frame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23262522' stroke-opacity='0.74' stroke-width='1.5' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-frame-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23262522' stroke-opacity='0.42' stroke-width='1.3' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-frame-focus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3C/filter%3E%3Cg fill='none' stroke='%232c5daa' stroke-opacity='1' stroke-width='2.1' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p' x='-.05' y='-.05' width='1.1' height='1.1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.028' numOctaves='2' seed='2' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='3.2' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' seed='9' result='n'/%3E%3CfeColorMatrix in='n' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.1 0 0 0 1.5' result='m'/%3E%3CfeComposite in='d' in2='m' operator='in'/%3E%3C/filter%3E%3C/svg%3E#p");
+  --cr-rough: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='r' x='-.05' y='-.15' width='1.1' height='1.3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='2' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.4' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/svg%3E#r");
+  --cr-rough-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='r' x='-.05' y='-.15' width='1.1' height='1.3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='2' seed='17'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/svg%3E#r");
+  --cr-loop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M24 5.4C52 2.3 92 3.3 107.6 9.5c10.7 4.3 10.4 15.8.3 20.7C94 37 46 38 20 34 6.5 31.9 2.1 24.6 5 17.5 8.4 9.3 27.6 4.3 55 4.5' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --cr-loop-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M96 6.2C70 2.6 30 3.4 13.6 9.2 3 13 2.4 24.4 12.2 29.6 25.6 36.6 74 38.4 101 34.2 114 32.1 118.5 24.8 115.4 17.4 111.8 9.6 92 4.1 63 4.4' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --cr-loop-bold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M24 5.4C52 2.3 92 3.3 107.6 9.5c10.7 4.3 10.4 15.8.3 20.7C94 37 46 38 20 34 6.5 31.9 2.1 24.6 5 17.5 8.4 9.3 27.6 4.3 55 4.5' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --cr-scribble: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-linecap='round'%3E%3Cpath d='M1.5 4.4C18 3.2 40 4.1 62 3.5S90 3.2 98.5 2.8' stroke-width='2.2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M7 6.6C30 5.3 58 6.2 91 5' stroke-width='1.4' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-ring: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M22 3.6c9.4.6 15.4 7.9 14.8 17-.6 9.4-8.3 15.8-17.4 15.2C10 35.2 3.6 27.7 4.2 18.8 4.8 10 11.8 3.8 20.6 4c3 .1 5.4 1 7.4 2.2' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 16'%3E%3Cpath d='M2.5 8.8c1.6 1.4 3 3 4.3 4.7C9.3 8.6 12.6 4.6 17.5 2' fill='none' stroke='%23000' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 3.2c3.4 3.1 6.6 6.4 9.8 9.9M12.8 2.8C9.6 6.2 6.4 9.6 3.2 13.2' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-spiral: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10.6 3.2c4 .3 6.6 3.4 6.3 7.1-.3 3.9-3.6 6.6-7.4 6.4C5.7 16.4 3 13.3 3.3 9.6 3.5 6.6 5.6 4.3 8.4 3.6' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-vline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 300' preserveAspectRatio='none'%3E%3Cpath d='M3.2 1C2.6 60 3.8 130 2.9 200S3.4 270 3 299' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+
+  scrollbar-color: var(--rule-strong) transparent;
+  color-scheme: light;
+}
+
+[data-skin='crayon'][data-scheme='dark'] {
+  --paper: #1f2b27;
+  --paper-raised: #26332e;
+  --paper-sunk: #19231f;
+  --ink: #ecebe4;
+  --ink-soft: #cfcdc4;
+  --muted: #a7ada4;
+  --rule: #36443f;
+  --rule-strong: #5f6d67;
+  --accent: #9cc0f0;
+  --accent-text: #9cc0f0;
+  --accent-wash: rgba(156, 192, 240, 0.1);
+  --primary: #9cc0f0;
+  --primary-ink: #16211d;
+  --sun: #9cc0f0;
+  --focus: #9cc0f0;
+  --margin-line: rgba(156, 192, 240, 0.42);
+  --shadow-pop: 3px 4px 0 rgba(0, 0, 0, 0.3);
+  --backdrop: rgba(8, 12, 10, 0.6);
+  --ink-blend: normal;
+  --stamp-todo: #d9d6cc;
+  --stamp-doing: #9cc0f0;
+  --stamp-done: #a8dba2;
+  --tone-bug: #f4a49a;
+  --tone-story: #a8dba2;
+  --tone-epic: #cdb6f2;
+  --tone-task: #9cc0f0;
+  --tone-subtask: #bdbab0;
+
+  /* Chalk dust, and the ghosts of old eraser smears. */
+  --page-texture:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.93 0 0 0 0 0.9 -0.9 0 0 0 0.38'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='900'%3E%3Cfilter id='b' x='-.2' y='-.3' width='1.4' height='1.6'%3E%3CfeGaussianBlur stdDeviation='26'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23ffffff' stroke-linecap='round' filter='url(%23b)'%3E%3Cpath d='M90 170c170-52 380-46 590 6s330 30 430-20' stroke-width='84' stroke-opacity='.035'/%3E%3Cpath d='M640 560c120-70 270-84 420-36' stroke-width='100' stroke-opacity='.03'/%3E%3Cpath d='M120 690c110 40 240 34 360-16' stroke-width='70' stroke-opacity='.03'/%3E%3Cpath d='M380 400c90-30 160-24 230 6' stroke-width='60' stroke-opacity='.022'/%3E%3C/g%3E%3C/svg%3E");
+  --page-texture-size: 240px 240px, 1200px 900px;
+  --rule-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23ecebe4' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.3C80 2.5 170 3.9 260 3.1S430 2.3 520 3.3 580 3.6 599 2.8' stroke-opacity='0.46' stroke-width='1.4' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M40 4.4C150 3.8 280 4.7 410 3.9' stroke-opacity='0.20700000000000002' stroke-width='1.1199999999999999' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E")
+    left center / 100% 100% no-repeat;
+
+  --cr-red: #f4a49a;
+  --cr-note: #2b3934;
+  --cr-tape: rgba(236, 235, 228, 0.16);
+  --cr-line: rgba(236, 235, 228, 0.7);
+  --cr-line-soft: rgba(236, 235, 228, 0.32);
+  --cr-shade: rgba(0, 0, 0, 0.28);
+  --cr-ruling: rgba(156, 192, 240, 0.2);
+  --cr-margin: rgba(244, 164, 154, 0.38);
+  --cr-primary-strokes: #b9d3f5;
+  --cr-primary-grain: rgba(255, 255, 255, 0.3);
+  --cr-row: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23ecebe4' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 2.9C90 3.7 190 2.5 300 3.2S470 4 560 2.9 590 2.7 599 3.3' stroke-opacity='0.22' stroke-width='1.1' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M120 4.2C250 3.6 380 4.4 540 3.8' stroke-opacity='0.099' stroke-width='0.8800000000000001' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23ecebe4' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.1C70 3.8 160 2.4 270 3.3S440 3.6 530 2.6 585 3.2 599 3.4' stroke-opacity='0.22' stroke-width='1.1' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M20 4.5C130 3.9 220 4.3 330 3.7' stroke-opacity='0.099' stroke-width='0.8800000000000001' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-head: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23ecebe4' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.3C80 2.5 170 3.9 260 3.1S430 2.3 520 3.3 580 3.6 599 2.8' stroke-opacity='0.56' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M40 4.4C150 3.8 280 4.7 410 3.9' stroke-opacity='0.25200000000000006' stroke-width='1.2000000000000002' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-row-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 6' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23f4a49a' stroke-linecap='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M1 3.1C70 3.8 160 2.4 270 3.3S440 3.6 530 2.6 585 3.2 599 3.4' stroke-opacity='0.6' stroke-width='1.4' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M20 4.5C130 3.9 220 4.3 330 3.7' stroke-opacity='0.27' stroke-width='1.1199999999999999' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-hatch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cg stroke='%23ecebe4' stroke-linecap='square'%3E%3Cpath d='M-1 1 1-1M-1 9 9-1M-1 17 17-1M7 17 17 7M15 17 17 15' stroke-opacity='0.14' stroke-width='1'/%3E%3Cpath d='M-1-1 17 17M7-1 17 9M15-1 17 1M-1 7 9 17M-1 15 1 17' stroke-opacity='0.085' stroke-width='.8'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-strokes-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M-1 7 7-1M-1 13 13-1M5 13 13 5' stroke='%239cc0f0' stroke-opacity='0.22' stroke-width='1.1' stroke-linecap='square'/%3E%3C/svg%3E");
+  --cr-strokes-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M-1 7 7-1M-1 13 13-1M5 13 13 5' stroke='%23f4a49a' stroke-opacity='0.18' stroke-width='1.1' stroke-linecap='square'/%3E%3C/svg%3E");
+  --cr-smudge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'%3E%3Cfilter id='s' x='-.1' y='-.4' width='1.2' height='1.8'%3E%3CfeGaussianBlur stdDeviation='6 4'/%3E%3C/filter%3E%3Cg fill='%23ecebe4' filter='url(%23s)'%3E%3Cpath d='M12 13C58 7 142 8 188 14c7 6 5 13-3 15-50 5-122 5-168 0-8-3-10-11-5-16Z' fill-opacity='0.06'/%3E%3Cpath d='M30 15c44-3 96-3 140 1 3 4 1 7-3 8-44 2-92 2-134-1-4-2-6-6-3-8Z' fill-opacity='0.033'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.2 1.7c1.8 1.3 3.4 2.9 4.9 4.8 1.5-1.9 3.2-3.5 5-4.9' fill='none' stroke='%23ecebe4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-box: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M2.6 3.4c4.9-.4 9.9-.3 14.8-.5M17 2.4c.4 5 .2 10.1.5 15.2M17.8 17.2c-5 .3-10 .2-15 .4M3.2 17.8c-.3-4.9-.4-9.8-.6-14.8' fill='none' stroke='%23ecebe4' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  --cr-box-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M2.6 3.4c4.9-.4 9.9-.3 14.8-.5M17 2.4c.4 5 .2 10.1.5 15.2M17.8 17.2c-5 .3-10 .2-15 .4M3.2 17.8c-.3-4.9-.4-9.8-.6-14.8' fill='none' stroke='%23ecebe4' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M5.2 10.4c1.5 1.3 2.8 2.8 4 4.5 2.6-5 5.6-9.1 9.6-12.6' fill='none' stroke='%239cc0f0' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --cr-frame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' seed='8' result='n'/%3E%3CfeColorMatrix in='n' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.9 0 0 0 1.75' result='m'/%3E%3CfeComposite in='d' in2='m' operator='in'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23ecebe4' stroke-opacity='0.76' stroke-width='1.6' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-frame-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' seed='8' result='n'/%3E%3CfeColorMatrix in='n' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.9 0 0 0 1.75' result='m'/%3E%3CfeComposite in='d' in2='m' operator='in'/%3E%3C/filter%3E%3Cg fill='none' stroke='%23ecebe4' stroke-opacity='0.4' stroke-width='1.4' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-frame-focus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cfilter id='r' x='-.1' y='-.1' width='1.2' height='1.2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.11' numOctaves='2' seed='3' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='1.6' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' seed='8' result='n'/%3E%3CfeColorMatrix in='n' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.9 0 0 0 1.75' result='m'/%3E%3CfeComposite in='d' in2='m' operator='in'/%3E%3C/filter%3E%3Cg fill='none' stroke='%239cc0f0' stroke-opacity='1' stroke-width='2.2' stroke-linecap='round' filter='url(%23r)'%3E%3Cpath d='M5.8 6.5C22 5.8 42 6.9 58.9 6.1'/%3E%3Cpath d='M58 5.1c.4 18 .1 37 .6 54.4'/%3E%3Cpath d='M59.9 58.3C42 58.9 22 57.8 5.4 58.4'/%3E%3Cpath d='M6.3 59.2C5.8 42 6.6 22 6.1 5.6'/%3E%3C/g%3E%3C/svg%3E");
+  --cr-pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p' x='-.05' y='-.05' width='1.1' height='1.1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.028' numOctaves='2' seed='2' result='w'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='w' scale='3.2' xChannelSelector='R' yChannelSelector='G' result='d'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' seed='9' result='n'/%3E%3CfeColorMatrix in='n' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.7 0 0 0 1.65' result='m'/%3E%3CfeComposite in='d' in2='m' operator='in'/%3E%3C/filter%3E%3C/svg%3E#p");
+
+  color-scheme: dark;
+}
+
+/* Paper, selection, focus --------------------------------------------------- */
+
+/* The sheet is the paper itself: the grain runs under the content. */
+[data-skin='crayon'] .page {
+  background: transparent;
+}
+
+[data-skin='crayon'] ::selection {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+[data-skin='crayon'] :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Type ---------------------------------------------------------------------- */
+
+[data-skin='crayon'] .page-title {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+[data-skin='crayon'] .page-head {
+  border-bottom: 0;
+  padding-bottom: 16px;
+  background: var(--cr-row-head) left bottom / 100% 6px no-repeat;
+}
+
+/* The date, jotted in the margin. */
+[data-skin='crayon'] .eyebrow {
+  width: fit-content;
+  margin-bottom: 4px;
+  font: 400 16px/1.2 var(--font-title);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  transform: rotate(-1.2deg);
+  transform-origin: 0 100%;
+}
+
+[data-skin='crayon'] .section-title {
+  font: 700 18px/1.2 var(--font-title);
+}
+
+/* Counts are circled, like the statuses. */
+[data-skin='crayon'] .section-title .count {
+  position: relative;
+  padding: 2px 7px 1px;
+  font: 400 14px/1 var(--font-title);
+  color: var(--muted);
+}
+
+[data-skin='crayon'] .section-title .count::before {
+  content: '';
+  position: absolute;
+  inset: -3px -3px -2px;
+  background: var(--rule-strong);
+  -webkit-mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* Actions next to a section title stay in the reading face. */
+[data-skin='crayon'] .section-title .actions {
+  font: 400 13px/1.2 var(--font-body);
+}
+
+[data-skin='crayon'] .link-btn {
+  text-decoration-style: solid;
+  text-decoration-color: var(--cr-line-soft);
+  text-decoration-thickness: 1px;
+}
+
+[data-skin='crayon'] .link-btn:hover {
+  text-decoration-color: currentColor;
+}
+
+[data-skin='crayon'] .kbd,
+[data-skin='crayon'] .btn kbd {
+  border-radius: var(--radius-xs);
+}
+
+/* Top bar ------------------------------------------------------------------- */
+
+[data-skin='crayon'] .topbar {
+  border-bottom: 0;
+  background-color: var(--bar);
+  background-image: var(--cr-row-head), var(--page-texture);
+  background-size:
+    100% 6px,
+    var(--page-texture-size);
+  background-position:
+    left bottom,
+    0 0;
+  background-repeat: no-repeat, repeat, repeat;
+}
+
+[data-skin='crayon'] .wordmark {
+  font: 700 24px/1 var(--font-title);
+  letter-spacing: 0;
+}
+
+[data-skin='crayon'] .nav-link {
+  position: relative;
+  padding: 15px 2px 14px;
+  border-bottom: 0;
+  font: 400 17px/1.2 var(--font-title);
+  white-space: nowrap;
+}
+
+/* A touch heavier without changing the width, so nothing shifts. */
+[data-skin='crayon'] .nav-link[aria-current='page'] {
+  text-shadow: 0.4px 0 currentColor;
+}
+
+[data-skin='crayon'] .nav-link[aria-current='page']::after,
+[data-skin='crayon'] .nav-link:hover::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  right: -5px;
+  bottom: 8px;
+  height: 7px;
+  background: var(--accent);
+  -webkit-mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+[data-skin='crayon'] .nav-link:not([aria-current='page']):hover::after {
+  background: var(--cr-line-soft);
+}
+
+[data-skin='crayon'] .topbar-search .input {
+  background-color: var(--paper-raised);
+}
+
+[data-skin='crayon'] .live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
+}
+
+[data-skin='crayon'] .topbar-themes {
+  border-radius: var(--radius-s);
+}
+
+[data-skin='crayon'] .topbar-themes:hover {
+  background: var(--cr-smudge) center / 100% 100% no-repeat;
+}
+
+/* The mark: a sun spiral in blue pencil, its rays in graphite. */
+[data-skin='crayon'] svg.logo .logo-sketch {
+  stroke: var(--accent);
+  stroke-width: 1.7;
+}
+
+[data-skin='crayon'] svg.logo .logo-ray {
+  stroke: var(--ink-soft);
+  stroke-width: 1.3;
+}
+
+/* Buttons ------------------------------------------------------------------- */
+
+/*
+ * Every state of a button is drawn on its ::before, under the label: the
+ * fill and the line go wobbly together through the roughness filter, while
+ * the text on top stays crisp.
+ */
+[data-skin='crayon'] .btn {
+  position: relative;
+  isolation: isolate;
+  height: 31px;
+  padding: 0 13px;
+  border-radius: var(--radius-s);
+  color: var(--ink);
+}
+
+/* The box itself draws nothing, whatever state the base styles give it. */
+[data-skin='crayon']
+  :is(
+    .btn,
+    .btn:hover:not([disabled]),
+    .btn-primary:hover:not([disabled]),
+    .btn.on,
+    .btn[aria-pressed='true']
+  ) {
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-skin='crayon'] .btn::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--frame) * -1);
+  z-index: -1;
+  border: var(--frame) solid var(--cr-line);
+  border-radius: inherit;
+  background: var(--paper-raised);
+  filter: var(--cr-rough);
+  pointer-events: none;
+}
+
+[data-skin='crayon'] .btn:nth-child(even)::before {
+  filter: var(--cr-rough-alt);
+}
+
+[data-skin='crayon'] .btn:hover:not([disabled])::before {
+  border-color: var(--ink);
+  background:
+    var(--cr-smudge) center / 100% 100% no-repeat,
+    var(--paper-raised);
+}
+
+[data-skin='crayon'] .btn:active:not([disabled]) {
+  transform: translate(0.5px, 1px);
+}
+
+/* The main button, coloured in with the blue pencil. */
+[data-skin='crayon'] .btn-primary {
+  padding: 1px 15px 0;
+  color: var(--primary-ink);
+  font: 700 15px/1 var(--font-title);
+}
+
+[data-skin='crayon'] .btn-primary::before,
+[data-skin='crayon'] .btn-primary:hover:not([disabled])::before {
+  border-color: var(--cr-primary-strokes);
+  background:
+    repeating-linear-gradient(-58deg, transparent 0 3px, var(--cr-primary-grain) 3px 4.2px),
+    var(--primary);
+}
+
+[data-skin='crayon'] .btn-primary:hover:not([disabled])::before {
+  background:
+    repeating-linear-gradient(-58deg, transparent 0 2px, var(--cr-primary-grain) 2px 3.6px),
+    var(--primary);
+}
+
+[data-skin='crayon'] .btn-primary kbd {
+  font-weight: 500;
+}
+
+[data-skin='crayon'] .btn-quiet {
+  color: var(--ink-soft);
+}
+
+[data-skin='crayon'] .btn-quiet::before {
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-skin='crayon'] .btn-quiet:hover:not([disabled]) {
+  color: var(--ink);
+}
+
+[data-skin='crayon'] .btn-quiet:hover:not([disabled])::before {
+  border-color: var(--cr-line-soft);
+  background: var(--cr-smudge) center / 100% 100% no-repeat;
+}
+
+/* Danger is written in red pencil. */
+[data-skin='crayon'] .btn-danger {
+  color: var(--cr-red);
+}
+
+[data-skin='crayon'] .btn-danger::before,
+[data-skin='crayon'] .btn-danger:hover:not([disabled])::before {
+  border-color: var(--cr-red);
+}
+
+[data-skin='crayon'] .btn-danger:hover:not([disabled])::before {
+  background: var(--cr-strokes-red), var(--paper-raised);
+}
+
+/* Pressed: shaded in blue pencil. */
+[data-skin='crayon'] :is(.btn.on, .btn[aria-pressed='true'])::before {
+  border-color: var(--accent);
+  background: var(--cr-strokes-blue), var(--paper-raised);
+}
+
+[data-skin='crayon'] :is(.btn.on, .btn[aria-pressed='true']):hover:not([disabled])::before {
+  border-color: var(--accent);
+  background:
+    var(--cr-smudge) center / 100% 100% no-repeat,
+    var(--cr-strokes-blue),
+    var(--paper-raised);
+}
+
+/* Disabled: hatched over, the line gone dashed. */
+[data-skin='crayon'] .btn[disabled] {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+[data-skin='crayon'] .btn[disabled]::before {
+  border-style: dashed;
+  border-color: var(--cr-line-soft);
+  background: var(--cr-hatch), var(--paper-sunk);
+}
+
+[data-skin='crayon'] .btn-primary[disabled]::before {
+  border-color: var(--cr-primary-strokes);
+  background: var(--cr-hatch), var(--primary);
+}
+
+[data-skin='crayon'] .btn-small {
+  height: 25px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+[data-skin='crayon'] .btn-primary.btn-small {
+  font-size: 14px;
+}
+
+/* Fields -------------------------------------------------------------------- */
+
+/*
+ * Fields, menus and code blocks get a sketched frame as a border-image: four
+ * strokes that overshoot the corners. It is painted by the box itself, so it
+ * survives overflow: auto, and its corners never stretch.
+ */
+[data-skin='crayon'] :is(.input, .select, .textarea) {
+  border: var(--frame) solid transparent;
+  border-image: var(--cr-frame) 14 / 14px / 6px stretch;
+  border-radius: var(--radius-xs);
+  background-color: var(--paper-raised);
+  background-clip: padding-box;
+}
+
+[data-skin='crayon'] :is(.input, .textarea)::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+[data-skin='crayon'] :is(.input, .select, .textarea):focus {
+  border-color: transparent;
+  border-image-source: var(--cr-frame-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
+}
+
+[data-skin='crayon'] :is(.input, .select, .textarea):focus-visible {
+  outline: none;
+}
+
+[data-skin='crayon'] :is(.input, .select, .textarea):disabled {
+  border-image-source: var(--cr-frame-soft);
+  background-image: var(--cr-hatch);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+[data-skin='crayon'] .select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: var(--cr-chevron);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 8px;
+}
+
+/* A sheet of ruled paper, with its red margin. */
+[data-skin='crayon'] .textarea {
+  padding: 7px 10px 7px 20px;
+  line-height: 20px;
+  background-image:
+    linear-gradient(90deg, transparent 11px, var(--cr-margin) 11px 12.5px, transparent 12.5px),
+    repeating-linear-gradient(transparent 0 19px, var(--cr-ruling) 19px 20px);
+  background-position:
+    0 0,
+    0 7px;
+  background-attachment: local;
+}
+
+[data-skin='crayon'] :is(.field > span:first-child, .field-label) {
+  font: 400 15px/1.2 var(--font-title);
+  color: var(--ink-soft);
+}
+
+[data-skin='crayon'] :is(input.checkbox, input[type='checkbox']) {
+  appearance: none;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0 6px 0 0;
+  vertical-align: -4px;
+  border-radius: 3px;
+  background: var(--cr-box) center / 100% 100% no-repeat;
+  cursor: pointer;
+}
+
+[data-skin='crayon'] :is(input.checkbox, input[type='checkbox']):checked {
+  background-image: var(--cr-box-on);
+}
+
+[data-skin='crayon'] :is(input.checkbox, input[type='checkbox']):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Paper tags. */
+[data-skin='crayon'] .chip {
+  border: 1.2px solid var(--cr-line-soft);
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+}
+
+[data-skin='crayon'] a.chip:hover {
+  border-color: var(--cr-line);
+  background:
+    var(--cr-smudge) center / 100% 100% no-repeat,
+    var(--paper-raised);
+}
+
+/* Struck out in red: a version already released. */
+[data-skin='crayon'] a.chip.released {
+  text-decoration-color: var(--cr-red);
+  text-decoration-thickness: 1.5px;
+}
+
+/* Marks --------------------------------------------------------------------- */
+
+[data-skin='crayon'] .stamp {
+  position: relative;
+  line-height: 1.2;
+}
+
+/* The loop drawn round the status, in the status's own pencil. */
+[data-skin='crayon'] .stamp::before {
+  position: absolute;
+  inset: -3px -2px -2px -3px;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: var(--c);
+  -webkit-mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+[data-skin='crayon'] :is(tr, li, .board-card):nth-child(even) .stamp::before {
+  -webkit-mask-image: var(--cr-loop-alt);
+  mask-image: var(--cr-loop-alt);
+}
+
+[data-skin='crayon'] .stamp.large::before {
+  inset: -3px -4px -2px -5px;
+  -webkit-mask-image: var(--cr-loop-bold);
+  mask-image: var(--cr-loop-bold);
+}
+
+/* Type marks: a letter in a little box drawn freehand, each at its own slant. */
+[data-skin='crayon'] .type-mark.type-mark {
+  width: 19px;
+  height: 19px;
+  padding-top: 2px;
+  border-width: 1.5px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  font: 700 12.5px/1 var(--font-title);
+  transform: rotate(-3deg);
+}
+
+[data-skin='crayon'] .type-mark.type-mark[data-type='story'] {
+  transform: rotate(2.5deg);
+}
+
+[data-skin='crayon'] .type-mark.type-mark[data-type='task'] {
+  transform: rotate(-1deg);
+}
+
+[data-skin='crayon'] .type-mark.type-mark[data-type='epic'] {
+  background: var(--tone-epic);
+  color: var(--paper);
+  transform: rotate(3deg);
+}
+
+[data-skin='crayon'] .type-mark.type-mark[data-type='subtask'] {
+  border-style: dashed;
+  transform: rotate(1.5deg);
+}
+
+[data-skin='crayon'] .priority-mark .glyph {
+  transform: rotate(-4deg);
+}
+
+/* Initials in a circle drawn freehand. */
+[data-skin='crayon'] .avatar.avatar {
+  position: relative;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 700 11.5px/1 var(--font-title);
+}
+
+[data-skin='crayon'] .avatar.avatar::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: currentColor;
+  -webkit-mask: var(--cr-ring) center / 100% 100% no-repeat;
+  mask: var(--cr-ring) center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+[data-skin='crayon'] .account-button .avatar.avatar {
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+/* Struck out in red: someone who has left. */
+[data-skin='crayon'] .who.inactive .name {
+  text-decoration-color: var(--cr-red);
+  text-decoration-thickness: 1.5px;
+}
+
+/* Ledger -------------------------------------------------------------------- */
+
+[data-skin='crayon'] .ledger th,
+[data-skin='crayon'] .ledger th.num {
+  padding: 0 10px 9px;
+  border-bottom: 0;
+  font: 400 15px/1 var(--font-title);
+  color: var(--ink-soft);
+}
+
+/* Rules are drawn on the rows, so each line runs unbroken across the cells. */
+[data-skin='crayon'] .ledger thead tr {
+  background: var(--cr-row-head) left bottom / 100% 6px no-repeat;
+}
+
+[data-skin='crayon'] .ledger td {
+  padding: 9px 10px;
+  border-bottom: 0;
+}
+
+[data-skin='crayon'] .ledger tbody tr {
+  background: var(--cr-row) left bottom / 100% 4px no-repeat;
+}
+
+[data-skin='crayon'] .ledger tbody tr:nth-child(even) {
+  background-image: var(--cr-row-alt);
+}
+
+[data-skin='crayon'] .ledger tbody tr:hover {
+  background:
+    var(--cr-row) left bottom / 100% 4px no-repeat,
+    var(--cr-smudge) center / 100% 100% no-repeat;
+}
+
+[data-skin='crayon'] .ledger tbody tr:hover td {
+  background: none;
+}
+
+[data-skin='crayon'] .ledger tbody :is(tr.is-selected, tr[aria-selected='true']) {
+  background:
+    var(--cr-row) left bottom / 100% 4px no-repeat,
+    var(--cr-strokes-blue);
+}
+
+[data-skin='crayon'] .ledger tbody :is(tr.is-selected, tr[aria-selected='true']) td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Overdue: underlined in red pencil. */
+[data-skin='crayon'] .ledger td.late {
+  color: var(--cr-red);
+  text-decoration: underline wavy var(--cr-red) 1px;
+  text-underline-offset: 4px;
+}
+
+/* Tabs ---------------------------------------------------------------------- */
+
+[data-skin='crayon'] .tabs {
+  border-bottom: 0;
+  background: var(--cr-row-head) left bottom / 100% 5px no-repeat;
+}
+
+[data-skin='crayon'] .tab {
+  position: relative;
+  margin-bottom: 0;
+  padding: 8px 14px 10px;
+  border-bottom: 0;
+  font: 400 16px/1.2 var(--font-title);
+}
+
+[data-skin='crayon'] .tab:hover {
+  color: var(--ink);
+}
+
+[data-skin='crayon'] .tab[aria-selected='true'] {
+  text-shadow: 0.4px 0 currentColor;
+}
+
+[data-skin='crayon'] .tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 2px;
+  height: 7px;
+  background: var(--accent);
+  -webkit-mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* Folder tabs over an editor: the open one is drawn round. */
+[data-skin='crayon'] .tabs-folder {
+  background: none;
+}
+
+[data-skin='crayon'] .tabs-folder .tab {
+  padding: 4px 11px 3px;
+  border: var(--frame) solid transparent;
+  border-bottom: 0;
+  border-radius: 7px 4px 0 0 / 5px 4px 0 0;
+  font: 400 15px/1.2 var(--font-title);
+}
+
+[data-skin='crayon'] .tabs-folder .tab[aria-selected='true'] {
+  border-color: var(--cr-line);
+  background: var(--paper-raised);
+}
+
+[data-skin='crayon'] .tabs-folder .tab[aria-selected='true']::after {
+  content: none;
+}
+
+/* Menus --------------------------------------------------------------------- */
+
+[data-skin='crayon'] .popover {
+  padding: 5px 0;
+  border: var(--frame) solid transparent;
+  border-image: var(--cr-frame) 14 / 14px / 6px stretch;
+  border-radius: var(--radius-s);
+  background-color: var(--paper-raised);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
+  background-clip: padding-box;
+}
+
+[data-skin='crayon'] .popover .item:hover,
+[data-skin='crayon'] .popover .item.active,
+[data-skin='crayon'] .popover [aria-selected='true'] > .item {
+  background: var(--cr-smudge) center / 100% 100% no-repeat;
+}
+
+[data-skin='crayon'] .popover .item.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* The chosen entry gets a pencil tick. */
+[data-skin='crayon'] .popover .item[aria-checked='true']::after {
+  content: '';
+  flex: none;
+  width: 15px;
+  height: 12px;
+  margin-left: auto;
+  background: var(--accent);
+  -webkit-mask: var(--cr-tick) center / contain no-repeat;
+  mask: var(--cr-tick) center / contain no-repeat;
+}
+
+[data-skin='crayon'] .popover .item.danger {
+  color: var(--cr-red);
+}
+
+[data-skin='crayon'] .popover .sep {
+  height: 6px;
+  margin: 3px 10px;
+  border-top: 0;
+  background: var(--rule-stroke);
+}
+
+[data-skin='crayon'] .popover .group-label {
+  padding: 8px 12px 3px;
+  font: 400 14px/1.1 var(--font-title);
+  color: var(--muted);
+}
+
+/* Dialogs ------------------------------------------------------------------- */
+
+[data-skin='crayon'] dialog.modal {
+  border: 0;
+  border-radius: var(--radius-l);
+  background-color: var(--paper);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
+  box-shadow: 6px 8px 0 var(--cr-shade);
+}
+
+/*
+ * A border drawn on the sheet, a little inside its edge, and drawn twice: a
+ * firm line, then a lighter one a little off.
+ */
+[data-skin='crayon'] dialog.modal::before,
+[data-skin='crayon'] dialog.modal::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1.6px solid var(--cr-line);
+  border-radius: var(--radius-m);
+  filter: var(--cr-pencil);
+  pointer-events: none;
+}
+
+[data-skin='crayon'] dialog.modal::after {
+  inset: 8px 4px 4px 8px;
+  border-width: 1px;
+  border-color: var(--cr-line-soft);
+  filter: var(--cr-rough-alt);
+}
+
+/* The room behind, shaded with cross-hatching. */
+[data-skin='crayon'] dialog.modal::backdrop {
+  background:
+    var(--cr-hatch) 0 0 / 16px 16px,
+    var(--backdrop);
+}
+
+[data-skin='crayon'] .modal-head {
+  padding: 18px 24px 13px;
+  border-bottom: 0;
+  background: var(--cr-row-head) 5px bottom / calc(100% - 10px) 6px no-repeat;
+}
+
+[data-skin='crayon'] .modal-body {
+  padding: 16px 24px;
+}
+
+[data-skin='crayon'] .modal-title {
+  font-size: 23px;
+}
+
+[data-skin='crayon'] .modal-foot {
+  padding: 12px 24px 16px;
+  border-top: 0;
+  background: var(--cr-row) 5px top / calc(100% - 10px) 4px no-repeat;
+}
+
+/* The close button: a cross scratched in pencil, red on hover. */
+[data-skin='crayon'] .modal-close.modal-close {
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  font-size: 0;
+}
+
+[data-skin='crayon'] .modal-close kbd {
+  display: none;
+}
+
+[data-skin='crayon'] .modal-close::after {
+  content: '';
+  width: 15px;
+  height: 15px;
+  background: var(--ink-soft);
+  -webkit-mask: var(--cr-cross) center / contain no-repeat;
+  mask: var(--cr-cross) center / contain no-repeat;
+}
+
+[data-skin='crayon'] .modal-close:hover::after {
+  background: var(--cr-red);
+}
+
+/* NewIssueDialog wraps its pickers in a box that should read as a field. */
+[data-skin='crayon'] dialog .boxed {
+  border: var(--frame) solid transparent;
+  border-image: var(--cr-frame) 14 / 14px / 6px stretch;
+  background-color: var(--paper-raised);
+  background-clip: padding-box;
+}
+
+/* Cards: index cards, taped down -------------------------------------------- */
+
+[data-skin='crayon'] .card.card {
+  position: relative;
+  border: 0;
+  border-radius: var(--radius-m);
+  background-color: var(--paper-raised);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
+  box-shadow: 3px 4px 0 var(--cr-shade);
+}
+
+[data-skin='crayon'] .card.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--cr-line);
+  border-radius: inherit;
+  filter: var(--cr-pencil);
+  pointer-events: none;
+}
+
+/* A strip of masking tape across the top edge. */
+[data-skin='crayon'] .card.card::after,
+[data-skin='crayon'] .toast::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 84px;
+  height: 21px;
+  margin-left: -42px;
+  background: var(--cr-tape);
+  clip-path: polygon(
+    0 10%,
+    4% 0,
+    96% 4%,
+    100% 14%,
+    97% 32%,
+    100% 52%,
+    96% 72%,
+    100% 90%,
+    95% 100%,
+    5% 96%,
+    0 86%,
+    3% 66%,
+    0 48%,
+    4% 28%
+  );
+  transform: rotate(-2.5deg);
+  pointer-events: none;
+}
+
+/* The head line of an index card is red; the others are pale blue. */
+[data-skin='crayon'] .card-head {
+  border-bottom: 0;
+  padding: 12px 16px 9px;
+  background: var(--cr-row-red) left bottom / 100% 5px no-repeat;
+  font: 700 18px/1 var(--font-title);
+}
+
+[data-skin='crayon'] .card .line {
+  border-bottom: 1px solid var(--cr-ruling);
+}
+
+[data-skin='crayon'] .card .dates {
+  border-top: 1.5px solid var(--cr-ruling);
+}
+
+[data-skin='crayon'] .card dt {
+  padding-top: 0;
+  font: 400 15px/1.25 var(--font-title);
+  color: var(--ink-soft);
+}
+
+[data-skin='crayon'] .card .inline-select select {
+  background-image: var(--cr-chevron);
+  background-position: right 3px center;
+  background-size: 10px 7px;
+}
+
+[data-skin='crayon'] button.current:hover:not([disabled]) {
+  border-color: var(--cr-line-soft);
+  background: var(--cr-smudge) center / 100% 100% no-repeat;
+}
+
+/* Toasts: notes stuck to the bottom of the screen --------------------------- */
+
+[data-skin='crayon'] .toast {
+  position: relative;
+  padding: 14px 16px 12px;
+  border: 0;
+  border-radius: 2px 3px 2px 12px / 2px 3px 2px 5px;
+  background-color: var(--cr-note);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
+  box-shadow:
+    2px 3px 0 var(--cr-shade),
+    0 12px 18px -14px rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.8deg);
+}
+
+[data-skin='crayon'] .toast:nth-child(even) {
+  transform: rotate(0.6deg);
+}
+
+[data-skin='crayon'] .toast::before {
+  top: -9px;
+  width: 64px;
+  margin-left: -32px;
+}
+
+/* An error gets a red pencil margin. */
+[data-skin='crayon'] .toast.error {
+  padding-left: 26px;
+  background-image: linear-gradient(var(--cr-red), var(--cr-red)), var(--page-texture);
+  background-size:
+    1.5px 100%,
+    var(--page-texture-size);
+  background-position:
+    13px 0,
+    0 0;
+  background-repeat: no-repeat, repeat, repeat;
+}
+
+[data-skin='crayon'][data-scheme='dark'] .toast {
+  border: 1.5px solid var(--cr-line-soft);
+}
+
+/* Empty, waiting, wrong ------------------------------------------------------ */
+
+/* Nothing here: a cross-hatched patch with a dashed outline. */
+[data-skin='crayon'] .empty {
+  position: relative;
+  isolation: isolate;
+  margin: 8px 0;
+  padding: 12px 18px;
+  color: var(--ink-soft);
+}
+
+[data-skin='crayon'] .empty::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1.3px dashed var(--cr-line-soft);
+  border-radius: var(--radius-m);
+  background: var(--cr-hatch) 0 0 / 16px 16px;
+  filter: var(--cr-rough);
+  pointer-events: none;
+}
+
+/* Alone on a page (lost, no project), the note fits its words. */
+[data-skin='crayon'] .page > .empty {
+  width: fit-content;
+  min-width: min(100%, 340px);
+}
+
+/* Little drawings above empty and lost pages: graphite, plus a blue detail. */
+[data-skin='crayon'] .illustration {
+  display: block;
+  position: relative;
+  width: 168px;
+  height: 104px;
+  margin: 4px 0 6px;
+}
+
+[data-skin='crayon'] .illustration::before,
+[data-skin='crayon'] .illustration::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[data-skin='crayon'] .illustration::before {
+  background: var(--ink-soft);
+}
+
+[data-skin='crayon'] .illustration::after {
+  background: var(--accent);
+}
+
+[data-skin='crayon'] .illustration[data-kind='lost']::before {
+  -webkit-mask-image: url('./crayon/lost.svg');
+  mask-image: url('./crayon/lost.svg');
+}
+
+[data-skin='crayon'] .illustration[data-kind='lost']::after {
+  -webkit-mask-image: url('./crayon/lost-blue.svg');
+  mask-image: url('./crayon/lost-blue.svg');
+}
+
+[data-skin='crayon'] .illustration[data-kind='empty']::before {
+  -webkit-mask-image: url('./crayon/empty.svg');
+  mask-image: url('./crayon/empty.svg');
+}
+
+[data-skin='crayon'] .illustration[data-kind='empty']::after {
+  -webkit-mask-image: url('./crayon/empty-blue.svg');
+  mask-image: url('./crayon/empty-blue.svg');
+}
+
+[data-skin='crayon'] .illustration[data-kind='search']::before {
+  -webkit-mask-image: url('./crayon/search.svg');
+  mask-image: url('./crayon/search.svg');
+}
+
+[data-skin='crayon'] .illustration[data-kind='search']::after {
+  -webkit-mask-image: url('./crayon/search-blue.svg');
+  mask-image: url('./crayon/search-blue.svg');
+}
+
+/* Loading: an open loop in blue pencil, turned in jerks like a flip book. */
+[data-skin='crayon'] .loading::before {
+  width: 15px;
+  height: 15px;
+  vertical-align: -3px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  -webkit-mask: var(--cr-spiral) center / contain no-repeat;
+  mask: var(--cr-spiral) center / contain no-repeat;
+  animation: none;
+}
+
+[data-skin='crayon'] .error-text {
+  color: var(--cr-red);
+}
+
+[data-skin='crayon'] .error-text.syntax {
+  border-left-color: var(--cr-red);
+  background: color-mix(in srgb, var(--cr-red) 6%, transparent);
+}
+
+/* Boards: lanes drawn on the page, sticky notes in them ---------------------- */
+
+[data-skin='crayon'] .sprint-head {
+  border-bottom: 0;
+  background: var(--cr-row-head) left bottom / 100% 6px no-repeat;
+}
+
+[data-skin='crayon'] .board {
+  gap: 16px;
+}
+
+[data-skin='crayon'] .board-column {
+  position: relative;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--paper-sunk) 55%, transparent);
+}
+
+[data-skin='crayon'] .board-column::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.4px solid var(--cr-line-soft);
+  border-radius: inherit;
+  filter: var(--cr-pencil);
+  pointer-events: none;
+}
+
+[data-skin='crayon'] .board-column:nth-child(even)::before {
+  filter: var(--cr-rough-alt);
+}
+
+[data-skin='crayon'] .board-column-head {
+  padding: 10px 12px 9px;
+  border-bottom: 0;
+  background: var(--cr-row) left bottom / 100% 4px no-repeat;
+}
+
+[data-skin='crayon'] .board-column-title {
+  font: 700 16px/1.2 var(--font-title);
+}
+
+[data-skin='crayon'] .board-column-count {
+  font: 400 14px/1 var(--font-title);
+}
+
+/* A card is held over this lane: dashed in blue, shaded. */
+[data-skin='crayon'] .board-column.is-over {
+  background: var(--cr-strokes-blue);
+}
+
+[data-skin='crayon'] .board-column.is-over::before {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+/* Over its limit: the lane and its limit corrected in red pencil. */
+[data-skin='crayon'] .board-column.over-limit::before {
+  border-color: var(--cr-red);
+}
+
+[data-skin='crayon'] .board-column.over-limit .wip-limit {
+  position: relative;
+  padding: 2px 8px 1px;
+  color: var(--cr-red);
+  font: 400 14px/1 var(--font-title);
+}
+
+[data-skin='crayon'] .board-column.over-limit .wip-limit::before {
+  content: '';
+  position: absolute;
+  inset: -3px -2px -2px -3px;
+  background: var(--cr-red);
+  -webkit-mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+[data-skin='crayon'] .board-cards {
+  gap: 10px;
+  padding: 10px;
+}
+
+[data-skin='crayon'] .board-card {
+  --cr-tilt: -0.5deg;
+  position: relative;
+  border: 0;
+  border-radius: 2px 2px 3px 14px / 2px 2px 3px 7px;
+  background-color: var(--cr-note);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.035), transparent 14px), var(--page-texture);
+  background-size:
+    100% 14px,
+    var(--page-texture-size);
+  background-repeat: no-repeat, repeat, repeat;
+  box-shadow:
+    0 1px 1px var(--cr-shade),
+    1px 5px 8px -5px rgba(38, 37, 34, 0.4);
+  transform: rotate(var(--cr-tilt));
+}
+
+[data-skin='crayon'] .board-card:nth-child(3n + 2) {
+  --cr-tilt: 0.5deg;
+}
+
+[data-skin='crayon'] .board-card:nth-child(3n) {
+  --cr-tilt: -0.2deg;
+}
+
+[data-skin='crayon'] .board-card:hover {
+  border-color: transparent;
+  box-shadow:
+    0 1px 1px var(--cr-shade),
+    3px 10px 14px -8px rgba(38, 37, 34, 0.45);
+  transform: rotate(calc(var(--cr-tilt) - 1.4deg)) translateY(-2px);
+}
+
+[data-skin='crayon'] .board-card.is-dragging {
+  opacity: 0.92;
+  box-shadow:
+    0 1px 1px var(--cr-shade),
+    6px 16px 20px -10px rgba(38, 37, 34, 0.5);
+  transform: rotate(3deg) scale(1.03);
+}
+
+[data-skin='crayon'][data-scheme='dark'] .board-card {
+  border: 1.5px solid var(--cr-line-soft);
+  box-shadow: 3px 4px 0 var(--cr-shade);
+}
+
+/* Wiki text ----------------------------------------------------------------- */
+
+[data-skin='crayon'] .wiki pre,
+[data-skin='crayon'] .wiki .panel {
+  border: var(--frame) solid transparent;
+  border-image: var(--cr-frame-soft) 14 / 14px / 6px stretch;
+  background-clip: padding-box;
+}
+
+[data-skin='crayon'] .wiki .code-title {
+  border-color: var(--cr-line-soft);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+}
+
+[data-skin='crayon'] .wiki code {
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+}
+
+[data-skin='crayon'] .wiki .panel-title {
+  border-bottom: 0;
+  background: var(--cr-row) left bottom / 100% 4px no-repeat;
+  font: 700 16px/1.2 var(--font-title);
+}
+
+[data-skin='crayon'] .wiki blockquote {
+  position: relative;
+  padding-left: 16px;
+  border-left: 0;
+}
+
+[data-skin='crayon'] .wiki blockquote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 4px;
+  background: var(--rule-strong);
+  -webkit-mask: var(--cr-vline) 0 0 / 100% 100% no-repeat;
+  mask: var(--cr-vline) 0 0 / 100% 100% no-repeat;
+}
+
+[data-skin='crayon'] .wiki .wiki-table th,
+[data-skin='crayon'] .wiki .wiki-table td {
+  border-color: var(--cr-line-soft);
+}
+
+[data-skin='crayon'] .wiki a {
+  text-decoration-color: var(--margin-line);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+[data-skin='crayon'] .wiki a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* A mention is shaded over in blue pencil. */
+[data-skin='crayon'] .wiki a.mention {
+  padding: 0 2px;
+  border-bottom: 0;
+  background: linear-gradient(
+    transparent 52%,
+    color-mix(in srgb, var(--accent) 20%, transparent) 52% 94%,
+    transparent 94%
+  );
+}
+
+[data-skin='crayon'] .wiki hr {
+  height: 6px;
+  border-top: 0;
+  background: var(--rule-stroke);
+}
+
+[data-skin='crayon'] .wiki img {
+  border-color: var(--cr-line-soft);
+  box-shadow: 3px 4px 0 var(--cr-shade);
+}
+
+/* Issue page ---------------------------------------------------------------- */
+
+[data-skin='crayon'] .page.issue .issue-head {
+  border-bottom: 0;
+  background: var(--cr-row-head) left bottom / 100% 6px no-repeat;
+}
+
+[data-skin='crayon'] .page.issue .page-title {
+  font-size: 30px;
+}
+
+/* Lists drawn on ruled lines. */
+[data-skin='crayon'] :is(.subtasks, .thread, .history) > li {
+  border-bottom: 0;
+  background: var(--cr-row) left bottom / 100% 4px no-repeat;
+}
+
+[data-skin='crayon'] :is(.subtasks, .thread, .history) > li:nth-child(even) {
+  background-image: var(--cr-row-alt);
+}
+
+/* An old value, struck out in red pencil. */
+[data-skin='crayon'] .history .old {
+  text-decoration-color: var(--cr-red);
+  text-decoration-thickness: 1.5px;
+}
+
+/* Attachments: pinned scraps of paper. */
+[data-skin='crayon'] .attachments .file {
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow:
+    0 0 0 1.2px var(--cr-line-soft),
+    3px 4px 0 var(--cr-shade);
+}
+
+[data-skin='crayon'] .attachments .file:nth-child(odd) {
+  transform: rotate(-0.6deg);
+}
+
+[data-skin='crayon'] .attachments .file:nth-child(even) {
+  transform: rotate(0.5deg);
+}
+
+[data-skin='crayon'] .attachments .file:hover {
+  transform: rotate(-1.6deg) translateY(-2px);
+}
+
+[data-skin='crayon'] .attachments .thumb {
+  border-bottom-color: var(--cr-line-soft);
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+}
+
+[data-skin='crayon'] .attachments .ext {
+  border-radius: var(--radius-xs);
+  font: 700 14px/1 var(--font-title);
+  letter-spacing: 0.04em;
+  transform: rotate(-3deg);
+}
+
+/* Motion -------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The mark draws itself once: the spiral, then the rays. */
+  [data-skin='crayon'] svg.logo .logo-sketch {
+    stroke-dasharray: 46;
+    stroke-dashoffset: 46;
+    animation: crayon-draw 0.9s 0.15s ease-out forwards;
+  }
+
+  [data-skin='crayon'] svg.logo .logo-ray {
+    opacity: 0;
+    transform-origin: 12px 12px;
+    animation: crayon-appear 0.35s 0.9s ease-out forwards;
+    transition: transform 0.5s ease;
+  }
+
+  [data-skin='crayon'] .brand:hover svg.logo .logo-ray {
+    transform: rotate(15deg);
+  }
+
+  /* Underlines are scribbled in from left to right. */
+  [data-skin='crayon'] .nav-link[aria-current='page']::after,
+  [data-skin='crayon'] .tab[aria-selected='true']::after {
+    animation: crayon-underline 0.4s ease-out both;
+  }
+
+  [data-skin='crayon'] .board-card,
+  [data-skin='crayon'] .attachments .file {
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  [data-skin='crayon'] .toast {
+    animation: crayon-drop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  }
+
+  [data-skin='crayon'] dialog.modal[open] {
+    animation: crayon-settle 0.28s ease-out both;
+  }
+
+  [data-skin='crayon'] .loading::before {
+    animation: crayon-flip 0.9s steps(6) infinite;
+  }
+}
+
+@keyframes crayon-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes crayon-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes crayon-underline {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes crayon-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) rotate(-5deg);
+  }
+}
+
+@keyframes crayon-settle {
+  from {
+    opacity: 0;
+    transform: translateY(12px) rotate(-0.8deg);
+  }
+}
+
+@keyframes crayon-flip {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Small screens ------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  [data-skin='crayon'] .wordmark {
+    font-size: 21px;
+  }
+
+  [data-skin='crayon'] .nav-link {
+    font-size: 15.5px;
+  }
+
+  [data-skin='crayon'] .topbar-create {
+    padding: 1px 10px 0;
+    font-size: 14px;
+  }
+}
+
+/* Narrow phones: the mark alone leads home; its name stays for screen readers. */
+@media (max-width: 480px) {
+  [data-skin='crayon'] .topbar-inner {
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  [data-skin='crayon'] .topbar-nav {
+    gap: 12px;
+  }
+
+  [data-skin='crayon'] .nav-link {
+    font-size: 15px;
+  }
+
+  [data-skin='crayon'] .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  [data-skin='crayon'] .ledger th,
+  [data-skin='crayon'] .ledger th.num {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-skin='crayon'] .page-title,
+  [data-skin='crayon'] .page.issue .page-title {
+    font-size: 25px;
+  }
+}

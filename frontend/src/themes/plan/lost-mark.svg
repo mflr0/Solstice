@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="draw" viewBox="0 0 220 130" width="220" height="130">
+  <!-- The correction: a revision cloud around the missing door, and its delta. -->
+  <style>
+    path { fill: none; stroke: #000; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+    :target path { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 0.8s 1.4s ease-in-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+  </style>
+  <path pathLength="100" d="M128 13a4.25 4.25 0 0 1 8.5 0a4.25 4.25 0 0 1 8.5 0a4.25 4.25 0 0 1 8.5 0a4.25 4.25 0 0 1 8.5 0a4 4 0 0 1 0 8a4 4 0 0 1 0 8a4 4 0 0 1 0 8a4 4 0 0 1 0 8a4 4 0 0 1 0 8a4 4 0 0 1 0 8a4.25 4.25 0 0 1 -8.5 0a4.25 4.25 0 0 1 -8.5 0a4.25 4.25 0 0 1 -8.5 0a4.25 4.25 0 0 1 -8.5 0a4 4 0 0 1 0 -8a4 4 0 0 1 0 -8a4 4 0 0 1 0 -8a4 4 0 0 1 0 -8a4 4 0 0 1 0 -8a4 4 0 0 1 0 -8z" />
+  <path pathLength="100" d="M182 6l7 13h-14z" />
+</svg>

@@ -60,7 +60,7 @@
 {#if error}
   <p class="error-text" role="alert">{error}</p>
 {:else if !logs}
-  <p class="muted">{t.common.loading}</p>
+  <p class="muted loading">{t.common.loading}</p>
 {:else}
   {#if logs.length === 0}
     <p class="empty">{t.worklogs.empty}</p>

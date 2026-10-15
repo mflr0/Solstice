@@ -1,0 +1,2338 @@
+/*
+ * Luna — an early-2000s desktop, drawn with original values.
+ *
+ * The top bar is a glossy blue taskbar on a calm blue desk. Every page is a
+ * window: a blue frame, a glossy title bar with rounded top corners and white
+ * bold text, a cream-beige body, a toolbar strip under the title and a status
+ * bar along the bottom. Side panels (the issue record) are blue-tinted task
+ * panes holding white-headed boxes. Buttons are soft silver-blue with rounded
+ * corners and a warm orange glow on hover; the main action is a glossy green
+ * pill. Lists are white list views with a light header; menus are square with
+ * a blue selection; tabs are raised, the active one marked by an orange top
+ * line; toasts are pale yellow notification balloons. Statuses are small gel
+ * badges with a lit dot, issue types glossy lettered tiles, the loader a
+ * marching green progress bar. Type is Tahoma or Verdana at 12–13px when the
+ * system has them, IBM Plex Sans otherwise.
+ *
+ * Dark mode, "Luna de nuit": deep blue and charcoal frames on a midnight
+ * desk, keeping the glossy bars.
+ *
+ * Every image in ./luna/ is drawn for this theme.
+ */
+
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-700.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+
+/* Tokens ------------------------------------------------------------------ */
+
+[data-skin='luna'] {
+  --desk: #3a69c0;
+  --paper: #efebde;
+  --paper-raised: #fcfbf7;
+  --paper-sunk: #e4dfcd;
+  --ink: #1a1f2b;
+  --ink-soft: #363e52;
+  --muted: #555d70;
+  --rule: #d9d3c1;
+  --rule-strong: #6f82a3;
+  --accent: #2350b5;
+  --accent-text: #1f4aa8;
+  --accent-wash: #e3ebfa;
+  --primary: linear-gradient(180deg, #358535 0%, #2f7d2f 48%, #276f27 52%, #1f611f 100%);
+  --primary-ink: #ffffff;
+  --sun: #f0951c;
+  --focus: #2350b5;
+  --bar: linear-gradient(180deg, #2e64d1 0%, #285cc9 10%, #2253bd 50%, #1e4cb2 88%, #173e96 100%);
+  --bar-ink: #ffffff;
+  --bar-ink-soft: #e9eefc;
+  --margin-line: #9fb6e6;
+  --shadow-pop: 2px 3px 6px rgba(10, 30, 80, 0.28), 0 0 1px rgba(10, 30, 80, 0.3);
+  --backdrop: rgba(12, 30, 74, 0.42);
+  --ink-blend: normal;
+
+  --stamp-todo: #4b5468;
+  --stamp-doing: #1e4fb0;
+  --stamp-done: #1f6826;
+
+  --tone-bug: #b3261e;
+  --tone-story: #2b7a30;
+  --tone-epic: #8a4a00;
+  --tone-task: #1f5bb8;
+  --tone-subtask: #586176;
+
+  --font-title: Tahoma, Verdana, 'IBM Plex Sans', sans-serif;
+  --font-body: Tahoma, Verdana, 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size: 13px;
+  --title-weight: 700;
+  --h1-weight: 700;
+  --title-tracking: 0;
+  --title-italic: normal;
+  --empty-font: 400 12.5px/1.5 var(--font-body);
+
+  --frame: 1px;
+  --radius-xs: 2px;
+  --radius-s: 3px;
+  --radius-m: 5px;
+  --radius-l: 8px;
+  --avatar-radius: 3px;
+  --card-top: 1px solid var(--rule-strong);
+
+  --stamp-font: 700 11px/1.3 var(--font-body);
+  --stamp-case: none;
+  --stamp-tracking: 0;
+  --stamp-border: 1px;
+  --stamp-radius: 9px;
+  --stamp-padding: 1px 8px 1px 6px;
+  --stamp-fill: 16%;
+  --stamp-dot: inline-block;
+  --stamp-large-size: 12px;
+  --stamp-large-padding: 3px 11px 3px 8px;
+  --stamp-large-border: 1px;
+  --stamp-large-tracking: 0;
+  --stamp-large-turn: none;
+
+  /* The desk: a calm blue with a pale moonrise glow, flat further down. */
+  --page-texture:
+    radial-gradient(
+      circle 460px at 86% 90px,
+      rgba(255, 255, 255, 0.26),
+      rgba(255, 255, 255, 0.07) 48%,
+      rgba(255, 255, 255, 0) 72%
+    ),
+    linear-gradient(172deg, #5d8fe0 0, #3f72c9 560px, #3263b8 1100px, #2d5aab 100%);
+  --page-texture-size: auto;
+  --rule-stroke: linear-gradient(90deg, #5d87da 0%, #a6bdec 45%, rgba(166, 189, 236, 0) 100%);
+  --rule-height: 2px;
+  --loader: none;
+
+  /* Luna's own colours. */
+  --luna-frame: #2152bc;
+  --luna-frame-edge: #12347c;
+  --luna-title: linear-gradient(
+    180deg,
+    #2e64d1 0%,
+    #2a5fcd 8%,
+    #2558c4 30%,
+    #2152bc 60%,
+    #1c4aae 88%,
+    #163d93 100%
+  );
+  --luna-title-ink: #ffffff;
+  --luna-title-ink-soft: #e9eefc;
+  --luna-close: linear-gradient(180deg, #dc6237 0%, #c9512a 50%, #b4401a 100%);
+  --luna-focus-bar: #ffd45c;
+  --luna-window-shadow: 0 10px 30px rgba(6, 24, 72, 0.38), 0 2px 6px rgba(6, 24, 72, 0.24);
+  --luna-toolbar: linear-gradient(180deg, #fbfaf4 0%, #f2efe3 60%, #e9e5d5 100%);
+  --luna-toolbar-edge: #c8c1aa;
+  --luna-heading: #1b3d8a;
+  --luna-danger: #b3261e;
+  --luna-edge: #7f93b5;
+  --luna-edge-soft: #c4cee0;
+  --luna-btn: linear-gradient(180deg, #ffffff 0%, #f2f5fa 45%, #e3e9f3 85%, #d4dcea 100%);
+  --luna-btn-press: linear-gradient(180deg, #ccd5e4 0%, #dde4ef 40%, #e9eef6 100%);
+  --luna-btn-edge: #4d6590;
+  --luna-glow: #f2a63a;
+  --luna-glow-soft: #ffd27c;
+  --luna-disabled: #f1f0ea;
+  --luna-disabled-ink: #8f8d84;
+  --luna-field: #ffffff;
+  --luna-placeholder: #646b7c;
+  --luna-th: linear-gradient(180deg, #ffffff 0%, #f4f2ea 50%, #e8e4d6 100%);
+  --luna-th-edge: #d2ccb8;
+  --luna-row-rule: #ebe7dc;
+  --luna-select: #2f5fc4;
+  --luna-select-ink: #ffffff;
+  --luna-select-wash: #cfdcf7;
+  --luna-pane: linear-gradient(180deg, #7ea0e4 0%, #6a8bdb 55%, #5f7fd3 100%);
+  --luna-pane-edge: #4a69b9;
+  --luna-pane-head: linear-gradient(90deg, #ffffff 0%, #e4ebfb 55%, #c6d5f6 100%);
+  --luna-pane-head-ink: #183a87;
+  --luna-pane-body: #eef2fc;
+  --luna-pane-rule: #d5def3;
+  --luna-pane-line: #ffffff;
+  --luna-comment-head: linear-gradient(180deg, #f8faff 0%, #e6edfa 100%);
+  --luna-tab: linear-gradient(180deg, #fefefc 0%, #f1efe6 60%, #e4e0d0 100%);
+  --luna-tab-edge: #8c9cb9;
+  --luna-tab-mark: #e8902a;
+  --luna-chip: linear-gradient(180deg, #fbfcff 0%, #e4ebfa 100%);
+  --luna-chip-edge: #a9bde6;
+  --luna-chip-ink: #1b3d8a;
+  --luna-avatar: linear-gradient(180deg, #eef4fe 0%, #c3d5f6 100%);
+  --luna-avatar-edge: #6f82a3;
+  --luna-avatar-ink: #163a84;
+  --luna-on-tone: #ffffff;
+  --luna-balloon: #fffbe1;
+  --luna-balloon-ink: #1e1d14;
+  --luna-balloon-edge: #6b6650;
+  --luna-balloon-link: #1f4aa8;
+  --luna-status: linear-gradient(180deg, #f3f0e4 0%, #e6e1cf 100%);
+  --luna-status-ink: #363e52;
+  --luna-status-edge: #aaa38c;
+  --luna-task: linear-gradient(180deg, #3468d4 0%, #2d61cd 45%, #2858c2 100%);
+  --luna-task-on: linear-gradient(180deg, #163b8f 0%, #1b44a0 40%, #1f4bae 100%);
+  --luna-task-edge: #12347c;
+  --luna-progress: #33a433;
+  --luna-desk-ink: #ffffff;
+  --luna-scroll-track: #f4f3ec;
+  --luna-scroll-thumb: linear-gradient(90deg, #d3e0fd 0%, #bccff7 100%);
+  --luna-scroll-thumb-edge: #8faae3;
+  --luna-scroll-grip: #7d98d6;
+
+  color-scheme: light;
+}
+
+[data-skin='luna'][data-scheme='dark'] {
+  --desk: #0c1631;
+  --paper: #1d2333;
+  --paper-raised: #252c3e;
+  --paper-sunk: #171c29;
+  --ink: #e7ebf4;
+  --ink-soft: #c3cadb;
+  --muted: #9ba5bc;
+  --rule: #343c51;
+  --rule-strong: #6a7895;
+  --accent: #7ea6ff;
+  --accent-text: #90b3ff;
+  --accent-wash: #2a3756;
+  --primary: linear-gradient(180deg, #358535 0%, #2f7d2f 48%, #276f27 52%, #1f611f 100%);
+  --primary-ink: #ffffff;
+  --sun: #f5a623;
+  --focus: #90b3ff;
+  --bar: linear-gradient(180deg, #24489a 0%, #1f4190 12%, #1a3a83 50%, #153273 88%, #0f275c 100%);
+  --bar-ink: #ffffff;
+  --bar-ink-soft: #d6dff3;
+  --margin-line: #4c629a;
+  --shadow-pop: 2px 3px 8px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.6);
+  --backdrop: rgba(2, 8, 24, 0.6);
+  --stamp-todo: #bac3d6;
+  --stamp-doing: #93b7ff;
+  --stamp-done: #88d48f;
+  --tone-bug: #ff9282;
+  --tone-story: #84d38b;
+  --tone-epic: #f2a85a;
+  --tone-task: #93b7ff;
+  --tone-subtask: #b0b9cb;
+  --page-texture:
+    radial-gradient(
+      circle 460px at 86% 90px,
+      rgba(170, 196, 255, 0.16),
+      rgba(170, 196, 255, 0.05) 48%,
+      rgba(170, 196, 255, 0) 72%
+    ),
+    linear-gradient(172deg, #172a5a 0, #0f1e44 560px, #0b1735 1100px, #0a1430 100%);
+  --rule-stroke: linear-gradient(90deg, #4f72c4 0%, #34497c 45%, rgba(52, 73, 124, 0) 100%);
+
+  --luna-frame: #1d438f;
+  --luna-frame-edge: #0b1f4f;
+  --luna-title: linear-gradient(
+    180deg,
+    #2a58b5 0%,
+    #2652ad 8%,
+    #214a9f 30%,
+    #1c4291 60%,
+    #173a82 88%,
+    #11306e 100%
+  );
+  --luna-title-ink: #ffffff;
+  --luna-title-ink-soft: #d6dff3;
+  --luna-close: linear-gradient(180deg, #d55a31 0%, #c04c25 50%, #a63b16 100%);
+  --luna-focus-bar: #ffd45c;
+  --luna-window-shadow: 0 12px 34px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.45);
+  --luna-toolbar: linear-gradient(180deg, #2b3247 0%, #252c3f 60%, #20273a 100%);
+  --luna-toolbar-edge: #3c4560;
+  --luna-heading: #a9c4ff;
+  --luna-danger: #ffa495;
+  --luna-edge: #56658a;
+  --luna-edge-soft: #3a4560;
+  --luna-btn: linear-gradient(180deg, #3e4964 0%, #343e57 45%, #2c354c 85%, #262e43 100%);
+  --luna-btn-press: linear-gradient(180deg, #1f2638 0%, #262e42 40%, #2c354b 100%);
+  --luna-btn-edge: #7385aa;
+  --luna-glow: #e8962f;
+  --luna-glow-soft: #b8792a;
+  --luna-disabled: #262c3b;
+  --luna-disabled-ink: #737c90;
+  --luna-field: #151a26;
+  --luna-placeholder: #939db3;
+  --luna-th: linear-gradient(180deg, #333c54 0%, #2c344a 50%, #272e42 100%);
+  --luna-th-edge: #434d68;
+  --luna-row-rule: #2f374b;
+  --luna-select: #2f5fc4;
+  --luna-select-ink: #ffffff;
+  --luna-select-wash: #2d4170;
+  --luna-pane: linear-gradient(180deg, #213a75 0%, #1b3166 55%, #172a5a 100%);
+  --luna-pane-edge: #0f2150;
+  --luna-pane-head: linear-gradient(90deg, #3a4a72 0%, #313f63 55%, #2a3757 100%);
+  --luna-pane-head-ink: #e6edff;
+  --luna-pane-body: #222a3d;
+  --luna-pane-rule: #313a52;
+  --luna-pane-line: #3d4a6e;
+  --luna-comment-head: linear-gradient(180deg, #2e3750 0%, #283046 100%);
+  --luna-tab: linear-gradient(180deg, #343d55 0%, #2c344a 60%, #262d41 100%);
+  --luna-tab-edge: #56658a;
+  --luna-tab-mark: #e8902a;
+  --luna-chip: linear-gradient(180deg, #2f3c5e 0%, #28334f 100%);
+  --luna-chip-edge: #4b5f92;
+  --luna-chip-ink: #cddcff;
+  --luna-avatar: linear-gradient(180deg, #3f5488 0%, #2c3d6b 100%);
+  --luna-avatar-edge: #7085b5;
+  --luna-avatar-ink: #e7eeff;
+  --luna-on-tone: #121826;
+  --luna-balloon: #f0e8b8;
+  --luna-balloon-ink: #1e1d14;
+  --luna-balloon-edge: #8f875e;
+  --luna-balloon-link: #1f4aa8;
+  --luna-status: linear-gradient(180deg, #262d40 0%, #1f2536 100%);
+  --luna-status-ink: #c3cadb;
+  --luna-status-edge: #11151f;
+  --luna-task: linear-gradient(180deg, #2a55b0 0%, #244ca2 45%, #1f4596 100%);
+  --luna-task-on: linear-gradient(180deg, #0c1d47 0%, #102454 40%, #132a5e 100%);
+  --luna-task-edge: #091838;
+  --luna-progress: #3fb43f;
+  --luna-desk-ink: #ffffff;
+  --luna-scroll-track: #1a1f2c;
+  --luna-scroll-thumb: linear-gradient(90deg, #3c4c74 0%, #33416a 100%);
+  --luna-scroll-thumb-edge: #56699c;
+  --luna-scroll-grip: #7d90c2;
+
+  color-scheme: dark;
+}
+
+/* Pairs drawn beyond the ones every skin is checked for (see ANATOMY.md). */
+/* contrast: --luna-title-ink on --luna-title */
+/* contrast: --luna-title-ink-soft on --luna-title */
+/* contrast: --luna-title-ink on --luna-close 3 */
+/* contrast: --luna-focus-bar on --luna-title 3 */
+/* contrast: --luna-focus-bar on --bar 3 */
+/* contrast: --bar-ink on --luna-task */
+/* contrast: --bar-ink on --luna-task-on */
+/* contrast: --primary-ink on --luna-select */
+/* contrast: --luna-select-ink on --luna-select */
+/* contrast: --ink on --luna-btn */
+/* contrast: --ink on --luna-btn-press */
+/* contrast: --ink-soft on --luna-btn */
+/* contrast: --luna-danger on --luna-btn */
+/* contrast: --luna-danger on --paper */
+/* contrast: --luna-danger on --paper-raised */
+/* contrast: --luna-btn-edge on --paper 3 */
+/* contrast: --rule-strong on --paper 3 */
+/* contrast: --rule-strong on --paper-raised 3 */
+/* contrast: --focus on --paper-raised 3 */
+/* contrast: --focus on --luna-field 3 */
+/* contrast: --ink on --luna-field */
+/* contrast: --luna-placeholder on --luna-field */
+/* contrast: --luna-heading on --paper */
+/* contrast: --luna-heading on --paper-raised */
+/* contrast: --ink-soft on --luna-th */
+/* contrast: --ink on --luna-th */
+/* contrast: --ink on --accent-wash */
+/* contrast: --ink-soft on --accent-wash */
+/* contrast: --accent-text on --accent-wash */
+/* contrast: --ink on --luna-select-wash */
+/* contrast: --accent-text on --luna-select-wash */
+/* contrast: --muted on --luna-toolbar */
+/* contrast: --ink-soft on --luna-toolbar */
+/* contrast: --luna-pane-head-ink on --luna-pane-head */
+/* contrast: --ink on --luna-pane-body */
+/* contrast: --ink-soft on --luna-pane-body */
+/* contrast: --muted on --luna-pane-body */
+/* contrast: --accent-text on --luna-pane-body */
+/* contrast: --ink on --luna-comment-head */
+/* contrast: --muted on --luna-comment-head */
+/* contrast: --accent-text on --luna-comment-head */
+/* contrast: --ink on --luna-tab */
+/* contrast: --ink-soft on --luna-tab */
+/* contrast: --luna-chip-ink on --luna-chip */
+/* contrast: --luna-avatar-ink on --luna-avatar */
+/* contrast: --luna-on-tone on --tone-bug */
+/* contrast: --luna-on-tone on --tone-story */
+/* contrast: --luna-on-tone on --tone-epic */
+/* contrast: --luna-on-tone on --tone-task */
+/* contrast: --luna-on-tone on --tone-subtask */
+/* contrast: --luna-balloon-ink on --luna-balloon */
+/* contrast: --luna-balloon-link on --luna-balloon */
+/* contrast: --luna-status-ink on --luna-status */
+/* contrast: --luna-desk-ink on --desk */
+/* contrast: --stamp-todo on --paper-sunk */
+/* contrast: --stamp-doing on --luna-pane-body */
+/* contrast: --stamp-done on --luna-pane-body */
+
+/* Base: type, selection, focus, scrollbars --------------------------------- */
+
+[data-skin='luna'] h1 {
+  font-size: 20px;
+}
+
+[data-skin='luna'] h2 {
+  font-size: 15px;
+}
+
+[data-skin='luna'] ::selection {
+  background: var(--luna-select);
+  color: var(--luna-select-ink);
+}
+
+[data-skin='luna'] :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* On the blue bars a blue ring would vanish: a warm yellow one instead. */
+[data-skin='luna'] .topbar :focus-visible,
+[data-skin='luna'] .modal-head :focus-visible,
+[data-skin='luna'] .page-head .page-title :focus-visible,
+[data-skin='luna'] .page-crumbs :focus-visible,
+[data-skin='luna'] .card > .card-head :focus-visible {
+  outline-color: var(--luna-focus-bar);
+}
+
+[data-skin='luna']::-webkit-scrollbar,
+[data-skin='luna'] ::-webkit-scrollbar {
+  width: 15px;
+  height: 15px;
+  background: var(--luna-scroll-track);
+}
+
+[data-skin='luna']::-webkit-scrollbar-thumb,
+[data-skin='luna'] ::-webkit-scrollbar-thumb {
+  border: 1px solid var(--luna-scroll-thumb-edge);
+  border-radius: 3px;
+  background:
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) center / 7px 1px no-repeat,
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) center calc(50% - 3px) / 7px
+      1px no-repeat,
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) center calc(50% + 3px) / 7px
+      1px no-repeat,
+    var(--luna-scroll-thumb);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+[data-skin='luna']::-webkit-scrollbar-thumb:horizontal,
+[data-skin='luna'] ::-webkit-scrollbar-thumb:horizontal {
+  background:
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) center / 1px 7px no-repeat,
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) calc(50% - 3px) center / 1px
+      7px no-repeat,
+    linear-gradient(var(--luna-scroll-grip), var(--luna-scroll-grip)) calc(50% + 3px) center / 1px
+      7px no-repeat,
+    var(--luna-scroll-thumb);
+}
+
+[data-skin='luna']::-webkit-scrollbar-corner,
+[data-skin='luna'] ::-webkit-scrollbar-corner {
+  background: var(--luna-scroll-track);
+}
+
+/* Browsers without the pseudo-elements get the colours at least. */
+@supports not selector(::-webkit-scrollbar) {
+  [data-skin='luna'] {
+    scrollbar-color: var(--luna-scroll-thumb-edge) var(--luna-scroll-track);
+  }
+}
+
+[data-skin='luna'] .app-booting {
+  color: var(--luna-desk-ink);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Taskbar ------------------------------------------------------------------ */
+
+[data-skin='luna'] .topbar {
+  background: var(--bar);
+  color: var(--bar-ink);
+  border-bottom: 1px solid var(--luna-frame-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 1px 4px rgba(4, 18, 60, 0.35);
+}
+
+[data-skin='luna'] .topbar .topbar-inner {
+  height: 42px;
+  gap: 10px;
+}
+
+[data-skin='luna'] .topbar .brand {
+  gap: 7px;
+  padding-right: 6px;
+  color: var(--bar-ink);
+}
+
+[data-skin='luna'] .topbar .wordmark {
+  font: 700 15px/1 var(--font-title);
+  letter-spacing: 0.01em;
+  color: var(--bar-ink);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* A grooved divider, then the pages as taskbar buttons. */
+[data-skin='luna'] .topbar .topbar-nav {
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(4, 18, 60, 0.45);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+[data-skin='luna'] .topbar .topbar-nav .nav-link {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--luna-task-edge);
+  border-radius: 3px;
+  background: var(--luna-task);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12);
+  color: var(--bar-ink);
+  font: 400 12.5px/1 var(--font-body);
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+[data-skin='luna'] .topbar .topbar-nav .nav-link:hover {
+  color: var(--bar-ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+[data-skin='luna'] .topbar .topbar-nav .nav-link[aria-current='page'] {
+  border-color: var(--luna-task-edge);
+  background: var(--luna-task-on);
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.14);
+  color: var(--bar-ink);
+}
+
+[data-skin='luna'] .topbar .topbar-search .input {
+  height: 26px;
+  border: 1px solid var(--luna-frame-edge);
+  border-radius: 3px;
+  background: var(--luna-field);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.18);
+  color: var(--ink);
+  font: 12px var(--font-body);
+}
+
+[data-skin='luna'] .topbar .topbar-search .input:focus {
+  border-color: var(--luna-frame-edge);
+  box-shadow:
+    inset 1px 1px 2px rgba(0, 0, 0, 0.18),
+    0 0 0 2px var(--luna-focus-bar);
+}
+
+[data-skin='luna'] .topbar .topbar-search kbd {
+  color: var(--ink-soft);
+}
+
+/* The live dot is a small lamp. */
+[data-skin='luna'] .topbar .live-dot {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(4, 18, 60, 0.7);
+  background: radial-gradient(circle at 35% 30%, #e9ecf2 0 1.5px, #9aa3b5 3px, #5d6679 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+[data-skin='luna'] .topbar .live-dot.on {
+  border-color: #0d4a12;
+  background: radial-gradient(circle at 35% 30%, #eaffdf 0 1.5px, #5fd85a 3.2px, #1f8a24 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 0 6px rgba(120, 255, 110, 0.55);
+}
+
+[data-skin='luna'] .topbar .topbar-themes {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--bar-ink);
+}
+
+[data-skin='luna'] .topbar .topbar-themes:hover,
+[data-skin='luna'] .topbar .topbar-themes[aria-current='page'] {
+  border-color: var(--luna-task-edge);
+  background: var(--luna-task);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: var(--bar-ink);
+}
+
+[data-skin='luna'] .topbar .account-button {
+  border-radius: 4px;
+}
+
+/* The user picture: a framed tile. */
+[data-skin='luna'] .topbar .account-button .avatar {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  background: var(--luna-avatar);
+  box-shadow:
+    0 0 0 1px var(--luna-frame-edge),
+    0 1px 3px rgba(0, 0, 0, 0.35);
+  color: var(--luna-avatar-ink);
+  font: 700 10.5px/1 var(--font-body);
+}
+
+[data-skin='luna'] .topbar .account-menu {
+  top: calc(100% + 7px);
+  max-height: min(80vh, 560px);
+  padding-top: 0;
+}
+
+/* The menu opens on a blue band with the user's name. */
+[data-skin='luna'] .topbar .account-menu .who {
+  margin: 0 0 2px;
+  padding: 8px 12px 7px;
+  background: var(--luna-title);
+  color: var(--luna-title-ink);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+[data-skin='luna'] .topbar .account-menu .who .key,
+[data-skin='luna'] .topbar .account-menu .who .muted {
+  color: var(--luna-title-ink-soft);
+}
+
+/* Logo: Luna's own glossy sunrise. */
+[data-skin='luna'] .logo > * {
+  display: none;
+}
+
+[data-skin='luna'] .logo {
+  width: 24px;
+  height: 24px;
+  background: url('./luna/logo.svg') center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+/* Frames: pages, title bars, toolbars -------------------------------------- */
+
+[data-skin='luna'] .page {
+  --luna-pad: 22px;
+  position: relative;
+  margin: 18px auto 0;
+  padding: 0 var(--luna-pad) 30px;
+  background: var(--paper);
+  border: 3px solid var(--luna-frame);
+  border-bottom-width: 0;
+  border-radius: 9px 9px 0 0;
+  box-shadow:
+    0 0 0 1px var(--luna-frame-edge),
+    var(--luna-window-shadow);
+}
+
+/* Outside the app frame (no status bar to close it) the window closes itself. */
+[data-skin='luna'] :not(.app-main) > .page {
+  margin-bottom: 24px;
+  border-bottom-width: 3px;
+  border-radius: 9px 9px 4px 4px;
+}
+
+/* The title bar every window wears; pages with a header turn it into one. */
+[data-skin='luna'] .page::before,
+[data-skin='luna'] .page > .page-head .page-title,
+[data-skin='luna'] .page > .page-title,
+[data-skin='luna'] .page.issue > .page-crumbs,
+[data-skin='luna'] dialog.modal > .modal-head,
+[data-skin='luna'] .login-card > .brand,
+[data-skin='luna'] .card > .card-head {
+  background: var(--luna-title);
+  color: var(--luna-title-ink);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+[data-skin='luna'] .page::before {
+  content: '';
+  display: block;
+  height: 27px;
+  margin: 0 calc(-1 * var(--luna-pad)) 20px;
+  border-radius: 6px 6px 0 0;
+}
+
+[data-skin='luna'] .page:has(> .page-head, > .page-crumbs, > .page-title)::before {
+  display: none;
+}
+
+[data-skin='luna'] .page > .page-head {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0 14px;
+  margin: 0 calc(-1 * var(--luna-pad)) 18px;
+  padding: 0 var(--luna-pad);
+  background: var(--luna-toolbar);
+  border-bottom: 1px solid var(--luna-toolbar-edge);
+  border-radius: 6px 6px 0 0;
+}
+
+/* The header's wrapper steps aside, so its pieces line up in the toolbar. */
+[data-skin='luna'] .page > .page-head > div:not(.row) {
+  display: contents;
+}
+
+[data-skin='luna'] .page > .page-head .page-title,
+[data-skin='luna'] .page > .page-title {
+  order: -1;
+  flex: 1 0 100%;
+  margin: 0 calc(-1 * var(--luna-pad));
+  padding: 6px 12px;
+  font: 700 13.5px/1.3 var(--font-title);
+  border-radius: 6px 6px 0 0;
+}
+
+[data-skin='luna'] .page > .page-head > :not(.page-title, div:not(.row)),
+[data-skin='luna'] .page > .page-head > div:not(.row) > :not(.page-title) {
+  margin-block: 6px;
+}
+
+[data-skin='luna'] .page > .page-head .eyebrow {
+  margin-block: 6px;
+  font: 400 12px/1.3 var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .page > .page-head > .row,
+[data-skin='luna'] .page > .page-head > .count {
+  margin-left: auto;
+}
+
+[data-skin='luna'] .page > .page-head .page-title .pkey {
+  color: var(--luna-title-ink-soft);
+  font-size: 0.85em;
+  vertical-align: 0;
+}
+
+/* The issue page's breadcrumbs are its window title. */
+[data-skin='luna'] .page.issue > .page-crumbs {
+  align-items: center;
+  margin: 0 calc(-1 * var(--luna-pad)) 16px;
+  padding: 6px 12px;
+  border-radius: 6px 6px 0 0;
+  color: var(--luna-title-ink-soft);
+  font: 700 13px/1.3 var(--font-title);
+}
+
+[data-skin='luna'] .page.issue > .page-crumbs a,
+[data-skin='luna'] .page.issue > .page-crumbs .current {
+  color: var(--luna-title-ink);
+}
+
+[data-skin='luna'] .page.issue > .page-crumbs .key {
+  font: 500 12.5px/1 var(--font-mono);
+}
+
+/* A page with only a title (not found): the message sits beside a drawing. */
+[data-skin='luna'] .page:has(> .page-title) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  align-content: start;
+  column-gap: 22px;
+}
+
+[data-skin='luna'] .page > .page-title {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-bottom: 22px;
+}
+
+[data-skin='luna'] .page:has(> .page-title) > .illustration {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  width: 120px;
+  height: 90px;
+  margin: 0;
+}
+
+[data-skin='luna'] .page:has(> .page-title) > :not(.page-title, .illustration) {
+  grid-column: 2;
+  justify-self: start;
+}
+
+[data-skin='luna'] .page:has(> .page-title) > .empty {
+  align-self: end;
+  padding: 0 0 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+[data-skin='luna'] .page:has(> .page-title) > .btn {
+  align-self: start;
+}
+
+/* Section headings: bold blue, underlined by a fading line. */
+[data-skin='luna'] .section-title {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+  margin: 24px 0 8px;
+  font: 700 12.5px/1.3 var(--font-title);
+  color: var(--luna-heading);
+}
+
+[data-skin='luna'] .section-title::after {
+  flex: 1 0 100%;
+  order: 3;
+  transform: none;
+}
+
+[data-skin='luna'] .section-title .count {
+  font: 400 11.5px/1 var(--font-body);
+  color: var(--muted);
+}
+
+[data-skin='luna'] .section-title .count::before {
+  content: '(';
+}
+
+[data-skin='luna'] .section-title .count::after {
+  content: ')';
+}
+
+[data-skin='luna'] .section-title .actions {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+/* The window's status bar, glued under the page. */
+[data-skin='luna'] .app-statusbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  gap: 3px;
+  max-width: 1280px;
+  margin: 0 auto 26px;
+  padding: 3px 4px 4px;
+  background: var(--luna-status);
+  border: 3px solid var(--luna-frame);
+  border-top: 1px solid var(--luna-status-edge);
+  border-radius: 0 0 5px 5px;
+  box-shadow:
+    0 0 0 1px var(--luna-frame-edge),
+    0 8px 20px rgba(6, 24, 72, 0.25);
+  color: var(--luna-status-ink);
+  font: 400 11.5px/1.4 var(--font-body);
+}
+
+[data-skin='luna'] .app-statusbar .statusbar-cell {
+  padding: 1px 10px;
+  border: 1px solid;
+  border-color: var(--luna-status-edge) rgba(255, 255, 255, 0.75) rgba(255, 255, 255, 0.75)
+    var(--luna-status-edge);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-skin='luna'][data-scheme='dark'] .app-statusbar .statusbar-cell {
+  border-color: var(--luna-status-edge) #343c51 #343c51 var(--luna-status-edge);
+}
+
+[data-skin='luna'] .app-statusbar .statusbar-cell:first-child {
+  flex: 1;
+}
+
+/* Buttons -------------------------------------------------------------------- */
+
+[data-skin='luna'] .btn {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--luna-btn-edge);
+  border-radius: 3px;
+  background: var(--luna-btn);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  font: 400 12px/1 var(--font-body);
+}
+
+[data-skin='luna'] .btn:hover:not([disabled]) {
+  border-color: var(--luna-btn-edge);
+  box-shadow:
+    inset 0 0 0 1px var(--luna-glow),
+    inset 0 0 0 2px var(--luna-glow-soft);
+  color: var(--ink);
+}
+
+[data-skin='luna'] .btn:active:not([disabled]),
+[data-skin='luna'] .btn.on,
+[data-skin='luna'] .btn[aria-pressed='true'] {
+  border-color: var(--luna-btn-edge);
+  background: var(--luna-btn-press);
+  box-shadow: inset 1px 1px 2px rgba(10, 30, 80, 0.3);
+  color: var(--ink);
+}
+
+[data-skin='luna'] .btn.on,
+[data-skin='luna'] .btn[aria-pressed='true'] {
+  font-weight: 700;
+}
+
+[data-skin='luna'] .btn.btn-small {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11.5px;
+}
+
+[data-skin='luna'] .btn.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .btn.btn-quiet:hover:not([disabled]) {
+  border-color: var(--luna-btn-edge);
+  background: var(--luna-btn);
+  box-shadow:
+    inset 0 0 0 1px var(--luna-glow),
+    inset 0 0 0 2px var(--luna-glow-soft);
+  color: var(--ink);
+}
+
+/* The main action: a glossy green pill. */
+[data-skin='luna'] .btn.btn-primary {
+  padding: 0 16px;
+  border: 1px solid #165416;
+  border-radius: 13px;
+  background: var(--primary);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  color: var(--primary-ink);
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+[data-skin='luna'] .btn.btn-small.btn-primary {
+  border-radius: 11px;
+}
+
+[data-skin='luna'] .btn.btn-primary:hover:not([disabled]) {
+  border-color: #165416;
+  background: var(--primary);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.18),
+    0 0 0 2px var(--luna-glow-soft),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  color: var(--primary-ink);
+}
+
+[data-skin='luna'] .btn.btn-primary:active:not([disabled]) {
+  background: var(--primary);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+[data-skin='luna'] .btn.btn-danger {
+  color: var(--luna-danger);
+}
+
+[data-skin='luna'] .btn.btn-danger:hover:not([disabled]) {
+  border-color: var(--luna-danger);
+  box-shadow:
+    inset 0 0 0 1px #e8643c,
+    inset 0 0 0 2px #f7b29a;
+  color: var(--luna-danger);
+}
+
+[data-skin='luna'] .btn[disabled],
+[data-skin='luna'] .btn.btn-primary[disabled] {
+  opacity: 1;
+  border-color: #b3b9c6;
+  background: var(--luna-disabled);
+  box-shadow: none;
+  color: var(--luna-disabled-ink);
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.8);
+  cursor: default;
+}
+
+[data-skin='luna'][data-scheme='dark'] .btn[disabled],
+[data-skin='luna'][data-scheme='dark'] .btn.btn-primary[disabled] {
+  border-color: #3d4660;
+  text-shadow: none;
+}
+
+/* Buttons on a blue bar keep a yellow ring. */
+[data-skin='luna'] .btn:focus-visible {
+  outline-offset: 1px;
+}
+
+[data-skin='luna'] .btn kbd,
+[data-skin='luna'] .kbd {
+  padding: 2px 4px 1px;
+  border: 1px solid #9aa6bb;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ffffff, #e9edf4);
+  color: #3a4256;
+  font: 500 10px/1 var(--font-mono);
+  text-shadow: none;
+  opacity: 1;
+}
+
+[data-skin='luna'][data-scheme='dark'] .btn kbd,
+[data-skin='luna'][data-scheme='dark'] .kbd {
+  border-color: #6a7895;
+  background: linear-gradient(180deg, #3a4460, #2c344b);
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .btn.btn-primary kbd {
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d4f1d;
+}
+
+[data-skin='luna'] .link-btn {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+[data-skin='luna'] .link-btn:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-style: solid;
+}
+
+/* Fields --------------------------------------------------------------------- */
+
+[data-skin='luna'] .input,
+[data-skin='luna'] .select,
+[data-skin='luna'] .textarea {
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  background-color: var(--luna-field);
+  color: var(--ink);
+  padding: 4px 6px;
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .input:hover,
+[data-skin='luna'] .select:hover,
+[data-skin='luna'] .textarea:hover {
+  border-color: var(--luna-edge);
+}
+
+[data-skin='luna'] .input:focus,
+[data-skin='luna'] .select:focus,
+[data-skin='luna'] .textarea:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 35%, transparent);
+}
+
+[data-skin='luna'] .input::placeholder,
+[data-skin='luna'] .textarea::placeholder {
+  color: var(--luna-placeholder);
+}
+
+[data-skin='luna'] .input[disabled],
+[data-skin='luna'] .select[disabled],
+[data-skin='luna'] .textarea[disabled] {
+  background-color: var(--luna-disabled);
+  color: var(--luna-disabled-ink);
+}
+
+/* Drop-down lists wear a small blue button on their right. */
+[data-skin='luna'] .select {
+  appearance: none;
+  padding-right: 24px;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23163a84' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #e3ecfe 0%, #c4d6fb 50%, #aac3f4 100%);
+  background-position:
+    right 5px center,
+    right 1px top 1px;
+  background-size:
+    9px 6px,
+    17px calc(100% - 2px);
+  background-repeat: no-repeat;
+}
+
+[data-skin='luna'][data-scheme='dark'] .select {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23e6edff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #3d5a9a 0%, #2f4a85 50%, #263f75 100%);
+}
+
+[data-skin='luna'] .textarea {
+  font: 12.5px/1.55 var(--font-mono);
+}
+
+[data-skin='luna'] .field > span:first-child,
+[data-skin='luna'] .field-label {
+  font: 400 12px/1.2 var(--font-body);
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .field .hint {
+  font-size: 11.5px;
+}
+
+/* A drawn check box: white well, green tick. */
+[data-skin='luna'] input.checkbox,
+[data-skin='luna'] input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 14px;
+  height: 14px;
+  margin: 0 4px 0 0;
+  vertical-align: -2px;
+  border: 1px solid var(--luna-frame-edge);
+  border-radius: 2px;
+  background: linear-gradient(135deg, #dcdcd6 0%, #ffffff 70%);
+  cursor: pointer;
+}
+
+[data-skin='luna'][data-scheme='dark'] input.checkbox,
+[data-skin='luna'][data-scheme='dark'] input[type='checkbox'] {
+  border-color: var(--luna-btn-edge);
+  background: linear-gradient(135deg, #10141e 0%, #222a3c 70%);
+}
+
+[data-skin='luna'] input.checkbox:hover,
+[data-skin='luna'] input[type='checkbox']:hover {
+  box-shadow: inset 0 0 0 2px var(--luna-glow-soft);
+}
+
+[data-skin='luna'] input.checkbox:checked,
+[data-skin='luna'] input[type='checkbox']:checked {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='9' viewBox='0 0 10 9'%3E%3Cpath d='M1.2 4.6 3.8 7.2 8.8 1.4' fill='none' stroke='%231f9a1f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 10px 9px no-repeat,
+    linear-gradient(135deg, #dcdcd6 0%, #ffffff 70%);
+}
+
+[data-skin='luna'][data-scheme='dark'] input.checkbox:checked,
+[data-skin='luna'][data-scheme='dark'] input[type='checkbox']:checked {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='9' viewBox='0 0 10 9'%3E%3Cpath d='M1.2 4.6 3.8 7.2 8.8 1.4' fill='none' stroke='%2366dd66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 10px 9px no-repeat,
+    linear-gradient(135deg, #10141e 0%, #222a3c 70%);
+}
+
+/* Marks ---------------------------------------------------------------------- */
+
+/* Statuses: small gel badges, a lamp lit in the category's colour. */
+[data-skin='luna'] .stamp {
+  border-color: color-mix(in srgb, var(--c) 60%, var(--paper-raised));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c) 3%, var(--paper-raised)) 0%,
+    color-mix(in srgb, var(--c) 8%, var(--paper-raised)) 50%,
+    color-mix(in srgb, var(--c) var(--stamp-fill), var(--paper-raised)) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  mix-blend-mode: normal;
+}
+
+[data-skin='luna'][data-scheme='dark'] .stamp {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-skin='luna'] .stamp::before {
+  width: 7px;
+  height: 7px;
+  border: none;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #ffffff 0 0.8px,
+    color-mix(in srgb, var(--c) 55%, white) 1.6px,
+    var(--c) 3.6px
+  );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+[data-skin='luna'] .stamp.large::before {
+  width: 9px;
+  height: 9px;
+}
+
+/* Issue types: glossy lettered tiles. */
+[data-skin='luna'] .type-mark[data-type] {
+  --tone: var(--tone-task);
+  width: 16px;
+  height: 16px;
+  border: 1px solid color-mix(in srgb, var(--tone) 70%, black);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--tone) 0%,
+    var(--tone) 50%,
+    color-mix(in srgb, var(--tone) 80%, black) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: var(--luna-on-tone);
+  font: 700 9.5px/1 var(--font-body);
+}
+
+[data-skin='luna'][data-scheme='dark'] .type-mark[data-type] {
+  border-color: color-mix(in srgb, var(--tone) 60%, black);
+  background: linear-gradient(
+    180deg,
+    var(--tone) 0%,
+    var(--tone) 55%,
+    color-mix(in srgb, var(--tone) 90%, black) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-skin='luna'] .type-mark[data-type='bug'] {
+  --tone: var(--tone-bug);
+}
+
+[data-skin='luna'] .type-mark[data-type='story'] {
+  --tone: var(--tone-story);
+}
+
+[data-skin='luna'] .type-mark[data-type='epic'] {
+  --tone: var(--tone-epic);
+}
+
+[data-skin='luna'] .type-mark[data-type='subtask'] {
+  --tone: var(--tone-subtask);
+  border-style: solid;
+  border-radius: 8px;
+}
+
+/* People: initials on a small framed picture tile. */
+[data-skin='luna'] .who .avatar,
+[data-skin='luna'] .avatar {
+  border: 1px solid var(--luna-avatar-edge);
+  border-radius: 3px;
+  background: var(--luna-avatar);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  color: var(--luna-avatar-ink);
+  font: 700 9px/1 var(--font-body);
+  letter-spacing: 0;
+}
+
+[data-skin='luna'][data-scheme='dark'] .who .avatar,
+[data-skin='luna'][data-scheme='dark'] .avatar {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+[data-skin='luna'] .chip.chip {
+  padding: 0 6px;
+  border: 1px solid var(--luna-chip-edge);
+  border-radius: 3px;
+  background: var(--luna-chip);
+  color: var(--luna-chip-ink);
+  font: 400 11.5px/1.6 var(--font-body);
+}
+
+[data-skin='luna'] .chip.chip:hover {
+  border-color: var(--luna-glow);
+}
+
+[data-skin='luna'] .chip button {
+  color: var(--luna-chip-ink);
+}
+
+[data-skin='luna'] .chip button:hover {
+  color: var(--luna-danger);
+}
+
+[data-skin='luna'] .key {
+  font: 500 12px/1 var(--font-mono);
+}
+
+[data-skin='luna'] a.key {
+  color: var(--accent-text);
+}
+
+/* List views ----------------------------------------------------------------- */
+
+[data-skin='luna'] table.ledger {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--luna-edge);
+  background: var(--paper-raised);
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] table.ledger th {
+  padding: 5px 8px 4px;
+  border-right: 1px solid var(--luna-th-edge);
+  border-bottom: 2px solid var(--luna-th-edge);
+  background: var(--luna-th);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.8);
+  color: var(--ink-soft);
+  font: 400 12px/1.2 var(--font-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-skin='luna'][data-scheme='dark'] table.ledger th {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-skin='luna'] table.ledger th:last-child {
+  border-right: 0;
+}
+
+[data-skin='luna'] table.ledger td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--luna-row-rule);
+}
+
+[data-skin='luna'] table.ledger tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+[data-skin='luna'] table.ledger tbody tr:hover td {
+  background: var(--accent-wash);
+}
+
+[data-skin='luna'] table.ledger tbody tr:focus-within td {
+  background: var(--luna-select-wash);
+}
+
+[data-skin='luna'] table.ledger tbody tr.is-selected td {
+  background: var(--luna-select);
+  color: var(--luna-select-ink);
+}
+
+[data-skin='luna'] table.ledger tbody tr.is-selected :is(a, .key, .muted, .name) {
+  color: inherit;
+}
+
+[data-skin='luna'] table.ledger .num {
+  font: 400 12px var(--font-body);
+}
+
+[data-skin='luna'] table.ledger th.num {
+  font: 400 12px/1.2 var(--font-body);
+}
+
+[data-skin='luna'] table.ledger tfoot td {
+  border-top: 1px solid var(--luna-th-edge);
+  border-bottom: 0;
+  background: var(--paper-sunk);
+}
+
+[data-skin='luna'] table.ledger .late {
+  color: var(--luna-danger);
+  font-weight: 700;
+}
+
+[data-skin='luna'] table.ledger td > a.name {
+  font: 700 12.5px/1.3 var(--font-title);
+  color: var(--accent-text);
+}
+
+/* Panels: framed sheets, and the issue record as a task pane -------------- */
+
+[data-skin='luna'] .card {
+  border: 1px solid var(--luna-frame);
+  border-radius: 6px 6px 3px 3px;
+  background: var(--paper-raised);
+  box-shadow: 0 2px 6px rgba(6, 24, 72, 0.18);
+}
+
+[data-skin='luna'] .card > .card-head {
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+  font: 700 12.5px/1.2 var(--font-title);
+}
+
+[data-skin='luna'] .card > .card-head .key {
+  color: var(--luna-title-ink-soft);
+}
+
+[data-skin='luna'] .issue-layout > aside.card {
+  padding: 10px;
+  border: 1px solid var(--luna-pane-edge);
+  border-radius: 5px;
+  background: var(--luna-pane);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+}
+
+[data-skin='luna'] .issue-layout > aside.card > .card-head {
+  padding: 7px 10px 6px;
+  border: 1px solid var(--luna-pane-line);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: var(--luna-pane-head);
+  box-shadow: none;
+  color: var(--luna-pane-head-ink);
+  text-shadow: none;
+  font: 700 12px/1.2 var(--font-title);
+}
+
+[data-skin='luna'] .issue-layout > aside.card > .card-head .key {
+  color: var(--luna-pane-head-ink);
+  font-size: 11.5px;
+}
+
+[data-skin='luna'] .issue-layout > aside.card > .card-head.sub {
+  margin-top: 10px;
+  border-top: 1px solid var(--luna-pane-line);
+}
+
+[data-skin='luna'] .issue-layout > aside.card > dl {
+  border: 1px solid var(--luna-pane-line);
+  border-top: 0;
+  background: var(--luna-pane-body);
+}
+
+[data-skin='luna'] .issue-layout > aside.card > dl.dates {
+  border-top: 1px dashed var(--luna-pane-rule);
+}
+
+[data-skin='luna'] .issue-layout > aside.card > dl:last-child {
+  border-radius: 0 0 6px 6px;
+}
+
+[data-skin='luna'] .issue-layout > aside.card > dl:has(+ .card-head) {
+  border-radius: 0 0 6px 6px;
+}
+
+[data-skin='luna'] .issue-layout > aside.card .line {
+  grid-template-columns: 100px minmax(0, 1fr);
+  min-height: 30px;
+  padding: 6px 10px 5px;
+  border-bottom: 1px solid var(--luna-pane-rule);
+}
+
+[data-skin='luna'] .issue-layout > aside.card .line:last-child {
+  border-bottom: 0;
+}
+
+[data-skin='luna'] .issue-layout > aside.card dt {
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+
+[data-skin='luna'] .issue-layout > aside.card dd {
+  font-size: 12px;
+}
+
+/* Time spent: a segmented green progress bar. */
+[data-skin='luna'] .issue-layout > aside.card .bar {
+  height: 11px;
+  padding: 1px;
+  border: 1px solid var(--luna-edge);
+  border-radius: 3px;
+  background: var(--luna-field);
+}
+
+[data-skin='luna'] .issue-layout > aside.card .bar span {
+  background: repeating-linear-gradient(90deg, var(--luna-progress) 0 6px, transparent 6px 8px);
+  border-radius: 1px;
+}
+
+/* The sign-in sheet is a window too. */
+[data-skin='luna'] .login .login-card {
+  padding: 0 22px 18px;
+  border: 3px solid var(--luna-frame);
+  border-radius: 9px 9px 5px 5px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1px var(--luna-frame-edge),
+    var(--luna-window-shadow);
+}
+
+[data-skin='luna'] .login .login-card > .brand {
+  gap: 7px;
+  margin: 0 -22px 16px;
+  padding: 6px 10px;
+  border-radius: 6px 6px 0 0;
+}
+
+[data-skin='luna'] .login .login-card > .brand .logo {
+  width: 20px;
+  height: 20px;
+}
+
+[data-skin='luna'] .login .login-card > .brand .wordmark {
+  font: 700 13.5px/1.3 var(--font-title);
+  letter-spacing: 0;
+  color: var(--luna-title-ink);
+}
+
+[data-skin='luna'] .login .login-card .tagline {
+  margin: 0 0 16px;
+  font: 400 12.5px/1.45 var(--font-body);
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .login .login-card .submit {
+  height: 28px;
+}
+
+[data-skin='luna'] .login .login-card .note {
+  font-size: 11.5px;
+  border-top-color: var(--rule);
+}
+
+/* Tabs ----------------------------------------------------------------------- */
+
+[data-skin='luna'] .tabs[role='tablist'] {
+  gap: 1px;
+  padding-left: 4px;
+  border-bottom: 1px solid var(--luna-tab-edge);
+}
+
+[data-skin='luna'] .tabs[role='tablist'] > .tab[role='tab'] {
+  position: relative;
+  margin: 3px 0 0;
+  padding: 4px 12px 4px;
+  border: 1px solid var(--luna-tab-edge);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: var(--luna-tab);
+  color: var(--ink-soft);
+  font: 400 12px/1.3 var(--font-body);
+}
+
+[data-skin='luna'] .tabs[role='tablist'] > .tab[role='tab']:hover {
+  box-shadow: inset 0 2px 0 var(--luna-glow-soft);
+  color: var(--ink);
+}
+
+[data-skin='luna'] .tabs[role='tablist'] > .tab[role='tab'][aria-selected='true'] {
+  z-index: 1;
+  margin: 0 0 -1px;
+  padding: 6px 13px 6px;
+  border-color: var(--luna-tab-edge);
+  background: var(--paper-raised);
+  box-shadow: inset 0 3px 0 var(--luna-tab-mark);
+  color: var(--ink);
+}
+
+[data-skin='luna'] .tabs:not(.tabs-folder) + [role='tabpanel'] {
+  padding: 8px 12px 12px;
+  border: 1px solid var(--luna-tab-edge);
+  border-top: 0;
+  background: var(--paper-raised);
+}
+
+[data-skin='luna'] .tabs.tabs-folder[role='tablist'] {
+  padding-left: 2px;
+  border-bottom: 0;
+}
+
+[data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'] {
+  margin-top: 2px;
+  padding: 3px 10px 2px;
+  font-size: 11.5px;
+}
+
+[data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'][aria-selected='true'] {
+  margin: 0 0 -1px;
+  padding: 4px 11px 4px;
+  border-color: var(--rule-strong);
+  background: var(--luna-field);
+}
+
+/* Menus ---------------------------------------------------------------------- */
+
+[data-skin='luna'] .popover {
+  padding: 2px;
+  border: 1px solid var(--luna-edge);
+  border-radius: 0;
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .popover .item {
+  padding: 4px 10px;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .popover .item:hover,
+[data-skin='luna'] .popover .item.active,
+[data-skin='luna'] .popover .item[aria-selected='true'],
+[data-skin='luna'] .popover [aria-selected='true'] > .item {
+  background: var(--luna-select);
+  color: var(--luna-select-ink);
+}
+
+[data-skin='luna'] .popover .item:hover :is(.muted, .hint, .note, .user, code, .name),
+[data-skin='luna'] .popover .item.active :is(.muted, .hint, .note, .user, code, .name) {
+  color: inherit;
+}
+
+[data-skin='luna'] .popover .item[aria-checked='true']::after {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+[data-skin='luna'] .popover .item[aria-checked='true']:hover::after {
+  color: inherit;
+}
+
+[data-skin='luna'] .popover .item.danger {
+  color: var(--luna-danger);
+}
+
+[data-skin='luna'] .popover .item.danger:hover {
+  background: var(--luna-danger);
+  color: var(--paper-raised);
+}
+
+[data-skin='luna'] .popover .item[disabled] {
+  color: var(--luna-disabled-ink);
+}
+
+[data-skin='luna'] .popover .sep {
+  margin: 3px 2px;
+  border-top: 1px solid var(--luna-edge-soft);
+}
+
+[data-skin='luna'] .popover .group-label {
+  padding: 6px 10px 3px;
+  color: var(--muted);
+  font: 700 11px/1 var(--font-body);
+}
+
+/* Dialogs -------------------------------------------------------------------- */
+
+[data-skin='luna'] dialog.modal {
+  overflow: hidden;
+  border: 3px solid var(--luna-frame);
+  border-radius: 9px 9px 5px 5px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1px var(--luna-frame-edge),
+    var(--luna-window-shadow);
+}
+
+[data-skin='luna'] dialog.modal::backdrop {
+  background: var(--backdrop);
+}
+
+[data-skin='luna'] dialog.modal > .modal-head {
+  padding: 4px 4px 4px 10px;
+  border-bottom: 0;
+}
+
+[data-skin='luna'] dialog.modal .modal-title {
+  font: 700 13.5px/1.3 var(--font-title);
+  color: var(--luna-title-ink);
+}
+
+/* The close button: a warm square with a white cross; its label stays for
+   assistive technology. */
+[data-skin='luna'] dialog.modal .btn.modal-close {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  background: var(--luna-close);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 1px 1px rgba(0, 0, 0, 0.25);
+  font-size: 0;
+  text-shadow: none;
+}
+
+[data-skin='luna'] dialog.modal .btn.modal-close kbd {
+  display: none;
+}
+
+[data-skin='luna'] dialog.modal .btn.modal-close::before,
+[data-skin='luna'] dialog.modal .btn.modal-close::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 2.2px;
+  border-radius: 1px;
+  background: var(--luna-title-ink);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+[data-skin='luna'] dialog.modal .btn.modal-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+[data-skin='luna'] dialog.modal .btn.modal-close:hover:not([disabled]) {
+  border-color: #ffffff;
+  background: var(--luna-close);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 0 0 1px rgba(255, 210, 160, 0.6),
+    0 0 4px rgba(255, 190, 120, 0.7);
+}
+
+[data-skin='luna'] dialog.modal .btn.modal-close:active:not([disabled]) {
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+[data-skin='luna'] dialog.modal .modal-body {
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+/* Picker fields in the form look like the other inputs. */
+[data-skin='luna'] dialog.modal .boxed {
+  border-color: var(--rule-strong);
+  border-radius: 2px;
+  background: var(--luna-field);
+}
+
+[data-skin='luna'] dialog.modal .modal-foot {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--luna-toolbar-edge);
+  background: var(--luna-toolbar);
+}
+
+/* Toasts: pale yellow notification balloons ------------------------------ */
+
+[data-skin='luna'] .toasts {
+  bottom: 44px;
+  gap: 14px;
+}
+
+[data-skin='luna'] .toasts .toast {
+  position: relative;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px 9px 10px;
+  border: 1px solid var(--luna-balloon-edge);
+  border-radius: 8px;
+  background: var(--luna-balloon);
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.28);
+  color: var(--luna-balloon-ink);
+  font-size: 12px;
+}
+
+[data-skin='luna'] .toasts .toast::before {
+  content: '';
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: url('./luna/info.svg') center / contain no-repeat;
+}
+
+[data-skin='luna'] .toasts .toast.error::before {
+  background-image: url('./luna/alert.svg');
+}
+
+/* The balloon's tail. */
+[data-skin='luna'] .toasts .toast::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid var(--luna-balloon-edge);
+  border-bottom: 1px solid var(--luna-balloon-edge);
+  background: var(--luna-balloon);
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+
+[data-skin='luna'] .toasts .toast > span {
+  flex: 1;
+}
+
+[data-skin='luna'] .toasts .toast .link-btn {
+  color: var(--luna-balloon-link);
+}
+
+/* Empty, waiting, errors ------------------------------------------------------ */
+
+[data-skin='luna'] .illustration {
+  display: block;
+  float: left;
+  width: 64px;
+  height: 48px;
+  margin: 6px 14px 4px 0;
+  background: url('./luna/empty.svg') center / contain no-repeat;
+}
+
+[data-skin='luna'] .illustration[data-kind='search'] {
+  background-image: url('./luna/search.svg');
+}
+
+[data-skin='luna'] .illustration[data-kind='lost'] {
+  background-image: url('./luna/lost.svg');
+}
+
+[data-skin='luna'] .illustration + .empty {
+  display: flow-root;
+  min-height: 58px;
+  padding: 20px 0 6px;
+}
+
+[data-skin='luna'] .page:has(> .page-title) > .illustration {
+  float: none;
+}
+
+[data-skin='luna'] .empty {
+  color: var(--muted);
+}
+
+[data-skin='luna'] .error-text {
+  color: var(--luna-danger);
+}
+
+/* Waiting: a green progress bar whose blocks march across. */
+[data-skin='luna'] .loading::before {
+  display: inline-block;
+  width: 62px;
+  height: 11px;
+  margin-right: 9px;
+  vertical-align: -1px;
+  border: 1px solid var(--luna-edge);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%),
+    repeating-linear-gradient(90deg, var(--luna-progress) 0 6px, transparent 6px 8px) 2px 1px / 24px
+      7px no-repeat,
+    var(--luna-field);
+  animation: none;
+}
+
+/* The issue page ------------------------------------------------------------ */
+
+[data-skin='luna'] .page.issue .issue-head {
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--luna-toolbar-edge);
+}
+
+[data-skin='luna'] .page.issue .issue-head .page-title {
+  font: 700 20px/1.25 var(--font-title);
+  color: var(--luna-heading);
+}
+
+[data-skin='luna'] .page.issue .issue-head .summary-input {
+  font: 700 20px/1.25 var(--font-title);
+  color: var(--luna-heading);
+  border-bottom-color: var(--focus);
+}
+
+[data-skin='luna'] .page.issue .issue-meta {
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .page.issue .issue-meta .resolution {
+  font: 700 12.5px var(--font-body);
+}
+
+[data-skin='luna'] .page.issue .issue-meta .n {
+  color: inherit;
+  font: 400 11px var(--font-mono);
+}
+
+[data-skin='luna'] .page.issue .issue-layout {
+  gap: 26px;
+}
+
+[data-skin='luna'] .page.issue .note {
+  font: 400 12.5px var(--font-body);
+}
+
+[data-skin='luna'] .issue-sheet .subtasks li,
+[data-skin='luna'] .issue-sheet .list li {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--luna-row-rule);
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .issue-sheet .subtasks li:hover,
+[data-skin='luna'] .issue-sheet .list li:hover {
+  background: var(--accent-wash);
+}
+
+[data-skin='luna'] .issue-sheet .relation {
+  color: var(--ink-soft);
+  font: 700 11.5px/1.4 var(--font-body);
+}
+
+/* Comments read as small framed messages. */
+[data-skin='luna'] .thread > .comment {
+  margin: 8px 0;
+  padding: 0 0 4px;
+  border: 1px solid var(--luna-edge-soft);
+  border-radius: 4px;
+  background: var(--paper-raised);
+}
+
+[data-skin='luna'] .thread > .comment > header {
+  margin: 0 0 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--luna-edge-soft);
+  border-radius: 3px 3px 0 0;
+  background: var(--luna-comment-head);
+  font-size: 12px;
+}
+
+[data-skin='luna'] .thread > .comment > .wiki {
+  padding: 0 12px;
+}
+
+[data-skin='luna'] .thread > .comment > :not(header, .wiki) {
+  margin-inline: 10px;
+}
+
+[data-skin='luna'] .thread > .comment .restricted {
+  border-color: var(--margin-line);
+  border-radius: 2px;
+  color: var(--accent-text);
+  font: 400 11px var(--font-body);
+}
+
+[data-skin='luna'] .thread > .comment .tools .armed {
+  color: var(--luna-danger);
+}
+
+[data-skin='luna'] .history > li {
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--luna-row-rule);
+}
+
+[data-skin='luna'] .history .items {
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .history .items .field {
+  font-size: 11.5px;
+}
+
+[data-skin='luna'] .history pre {
+  background: var(--luna-field);
+  border-color: var(--luna-edge-soft);
+}
+
+/* Attachments: tiles with a document icon. */
+[data-skin='luna'] .attachments .file {
+  border: 1px solid var(--luna-edge-soft);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  box-shadow: 0 1px 2px rgba(6, 24, 72, 0.12);
+  overflow: hidden;
+}
+
+[data-skin='luna'] .attachments .file:hover {
+  border-color: var(--luna-glow);
+}
+
+[data-skin='luna'] .attachments .thumb {
+  border-bottom-color: var(--luna-edge-soft);
+  background: var(--accent-wash);
+}
+
+[data-skin='luna'] .attachments .ext {
+  position: relative;
+  padding: 16px 8px 5px;
+  border: 1px solid var(--luna-edge);
+  border-radius: 1px 9px 1px 1px;
+  background: linear-gradient(180deg, #ffffff 0%, #e7edf8 100%);
+  box-shadow: 1px 1px 2px rgba(6, 24, 72, 0.18);
+  color: var(--luna-heading);
+  font: 700 11px/1 var(--font-body);
+}
+
+[data-skin='luna'][data-scheme='dark'] .attachments .ext {
+  background: linear-gradient(180deg, #33405f 0%, #283350 100%);
+}
+
+[data-skin='luna'] .attachments .name {
+  font-size: 12px;
+}
+
+[data-skin='luna'] .attachments.dragging {
+  outline: 2px dashed var(--focus);
+}
+
+[data-skin='luna'] .attachments .drop {
+  color: var(--luna-heading);
+  font: 700 14px var(--font-body);
+}
+
+/* Search box and pager. */
+[data-skin='luna'] .search .input {
+  height: 28px;
+  padding-left: 26px;
+  font: 12.5px var(--font-mono);
+}
+
+[data-skin='luna'] .search .input.jql {
+  padding-right: 48px;
+}
+
+[data-skin='luna'] .search .glass {
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .search .mode {
+  border-radius: 2px;
+  color: var(--accent-text);
+}
+
+[data-skin='luna'] .pager .range {
+  font: 400 11.5px var(--font-body);
+}
+
+[data-skin='luna'] .page .tools .count,
+[data-skin='luna'] .page-head > .count {
+  font: 400 12px var(--font-body);
+}
+
+/* Wiki text ------------------------------------------------------------------ */
+
+[data-skin='luna'] .wiki {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-skin='luna'] .wiki :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--luna-heading);
+}
+
+[data-skin='luna'] .wiki h1 {
+  font-size: 17px;
+}
+
+[data-skin='luna'] .wiki h2 {
+  font-size: 15.5px;
+}
+
+[data-skin='luna'] .wiki h3 {
+  font-size: 14px;
+}
+
+[data-skin='luna'] .wiki :is(h4, h5, h6) {
+  font-size: 13px;
+}
+
+[data-skin='luna'] .wiki pre {
+  border: 1px solid var(--luna-edge-soft);
+  border-radius: 2px;
+  background: var(--luna-field);
+  font-size: 12px;
+}
+
+[data-skin='luna'] .wiki .code-title {
+  border-color: var(--luna-edge-soft);
+  background: var(--luna-th);
+  color: var(--ink-soft);
+}
+
+[data-skin='luna'] .wiki blockquote {
+  border-left: 3px solid var(--margin-line);
+}
+
+[data-skin='luna'] .wiki .panel {
+  border: 1px solid var(--luna-edge-soft);
+  border-radius: 5px;
+  background: var(--paper-raised);
+}
+
+[data-skin='luna'] .wiki .panel-title {
+  border-bottom-color: var(--luna-edge-soft);
+  border-radius: 4px 4px 0 0;
+  background: var(--luna-pane-head);
+  color: var(--luna-pane-head-ink);
+}
+
+[data-skin='luna'] .wiki .wiki-table {
+  font-size: 12.5px;
+}
+
+[data-skin='luna'] .wiki .wiki-table :is(th, td) {
+  border-color: var(--luna-edge-soft);
+}
+
+[data-skin='luna'] .wiki .wiki-table th {
+  background: var(--luna-th);
+}
+
+[data-skin='luna'] .wiki a.mention {
+  border: 1px solid var(--luna-chip-edge);
+  border-radius: 3px;
+  background: var(--luna-chip);
+  color: var(--luna-chip-ink);
+}
+
+/* Boards --------------------------------------------------------------------- */
+
+[data-skin='luna'] .sprint-head {
+  padding: 6px 10px;
+  border: 1px solid var(--luna-toolbar-edge);
+  border-radius: 3px;
+  background: var(--luna-toolbar);
+}
+
+[data-skin='luna'] .sprint-name {
+  font: 700 14px/1.2 var(--font-title);
+  color: var(--luna-heading);
+}
+
+[data-skin='luna'] .sprint-dates {
+  font: 400 11.5px var(--font-body);
+}
+
+[data-skin='luna'] .board-column {
+  border: 1px solid var(--luna-edge);
+  border-radius: 6px 6px 3px 3px;
+  background: var(--paper-sunk);
+}
+
+[data-skin='luna'] .board-column-head {
+  padding: 6px 10px 5px;
+  border-bottom: 1px solid var(--luna-edge-soft);
+  border-radius: 5px 5px 0 0;
+  background: var(--luna-pane-head);
+}
+
+[data-skin='luna'] .board-column-title {
+  color: var(--luna-pane-head-ink);
+  font: 700 12px/1.2 var(--font-title);
+}
+
+[data-skin='luna'] .board-column-count {
+  padding: 1px 5px;
+  border: 1px solid var(--luna-chip-edge);
+  border-radius: 7px;
+  background: var(--luna-field);
+  color: var(--luna-pane-head-ink);
+  font: 700 10.5px/1.2 var(--font-body);
+}
+
+[data-skin='luna'] .wip-limit {
+  color: var(--luna-pane-head-ink);
+  font: 400 11px/1.2 var(--font-body);
+}
+
+[data-skin='luna'] .board-cards {
+  gap: 6px;
+  padding: 6px;
+}
+
+[data-skin='luna'] .board-card {
+  padding: 7px 9px;
+  border: 1px solid var(--luna-edge-soft);
+  border-radius: 3px;
+  background: var(--paper-raised);
+  box-shadow: 0 1px 2px rgba(6, 24, 72, 0.14);
+  font-size: 12px;
+}
+
+[data-skin='luna'] .board-card:hover {
+  border-color: var(--luna-glow);
+  box-shadow:
+    inset 0 0 0 1px var(--luna-glow-soft),
+    0 1px 3px rgba(6, 24, 72, 0.2);
+}
+
+/* A dragged card leaves a dotted ghost, as desktop drags did. */
+[data-skin='luna'] .board-card.is-dragging {
+  opacity: 0.6;
+  border: 1px dotted var(--ink);
+  box-shadow: none;
+}
+
+[data-skin='luna'] .board-column.is-over {
+  border-color: var(--focus);
+  background: var(--luna-select-wash);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+
+[data-skin='luna'] .board-column.over-limit {
+  border-color: var(--luna-danger);
+}
+
+[data-skin='luna'] .board-column.over-limit .board-column-head {
+  background: linear-gradient(90deg, #ffffff 0%, #fbe3dc 55%, #f5c6b8 100%);
+}
+
+[data-skin='luna'][data-scheme='dark'] .board-column.over-limit .board-column-head {
+  background: linear-gradient(90deg, #4a3036 0%, #43292e 55%, #3b2328 100%);
+}
+
+[data-skin='luna'] .board-column.over-limit .wip-limit {
+  color: var(--luna-danger);
+  font-weight: 700;
+}
+
+/* Dark details -------------------------------------------------------------- */
+
+[data-skin='luna'][data-scheme='dark'] .btn {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-skin='luna'][data-scheme='dark'] .btn.btn-quiet {
+  box-shadow: none;
+}
+
+[data-skin='luna'][data-scheme='dark'] .issue-layout > aside.card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-skin='luna'][data-scheme='dark'] .topbar .account-button .avatar {
+  border-color: #c9d6f5;
+}
+
+/* Small screens -------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  [data-skin='luna'] .topbar .topbar-inner {
+    gap: 6px;
+  }
+
+  [data-skin='luna'] .topbar .topbar-nav {
+    padding-left: 6px;
+  }
+
+  [data-skin='luna'] .topbar .topbar-nav .nav-link {
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-skin='luna'] .page {
+    --luna-pad: 12px;
+    margin: 8px 6px 0;
+    padding: 0 var(--luna-pad) 24px;
+  }
+
+  [data-skin='luna'] .app-statusbar {
+    margin: 0 6px 10px;
+  }
+
+  [data-skin='luna'] .page:has(> .page-title) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-skin='luna'] .page:has(> .page-title) > :not(.page-title) {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-skin='luna'] .topbar .topbar-inner {
+    padding: 0 8px;
+    gap: 5px;
+  }
+
+  /* The name stays for screen readers; the sun alone marks the home link. */
+  [data-skin='luna'] .topbar .wordmark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  [data-skin='luna'] .topbar .brand {
+    padding-right: 2px;
+  }
+
+  [data-skin='luna'] .topbar .topbar-nav {
+    gap: 3px;
+    padding-left: 5px;
+  }
+
+  [data-skin='luna'] .topbar .topbar-nav .nav-link {
+    padding: 0 7px;
+    font-size: 12px;
+  }
+
+  /* The gallery is also in the account menu ("Tous les thèmes…"). */
+  [data-skin='luna'] .topbar .topbar-themes {
+    display: none;
+  }
+
+  [data-skin='luna'] .topbar .btn.btn-primary.topbar-create {
+    padding: 0 10px;
+  }
+}
+
+/* Motion: dialogs open, menus drop, balloons rise, progress marches. --------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin='luna'] dialog.modal[open] {
+    animation: luna-window-open 170ms ease-out;
+  }
+
+  [data-skin='luna'] .popover {
+    animation: luna-menu-drop 120ms ease-out;
+  }
+
+  [data-skin='luna'] .toasts .toast {
+    animation: luna-balloon-rise 240ms ease-out;
+  }
+
+  [data-skin='luna'] .loading::before {
+    animation: luna-progress 1.6s steps(19) infinite;
+  }
+
+  [data-skin='luna'] .btn,
+  [data-skin='luna'] .nav-link,
+  [data-skin='luna'] .tab,
+  [data-skin='luna'] .board-card {
+    transition:
+      box-shadow 120ms ease-out,
+      border-color 120ms ease-out;
+  }
+}
+
+@keyframes luna-window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+}
+
+@keyframes luna-menu-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes luna-balloon-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* The block group slides from the left edge out past the right one. */
+@keyframes luna-progress {
+  from {
+    background-position:
+      0 0,
+      -24px 1px,
+      0 0;
+  }
+  to {
+    background-position:
+      0 0,
+      62px 1px,
+      0 0;
+  }
+}

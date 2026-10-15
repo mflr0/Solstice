@@ -60,7 +60,7 @@
 <div class="status" use:outside={close}>
   {#if movable}
     <button
-      class="trigger"
+      class="trigger status-trigger"
       aria-haspopup="menu"
       aria-expanded={open}
       aria-label={`${t.issue.changeStatus} (${issue.status.name})`}
@@ -136,7 +136,7 @@
   }
 
   .trigger:hover .caret {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   .popover {

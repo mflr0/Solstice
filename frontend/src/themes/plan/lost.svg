@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="draw" viewBox="0 0 220 130" width="220" height="130">
+  <!-- A stair in section that climbs to a landing and a door that was never
+       built (hidden lines). Plan skin, 404 page. #draw animates the strokes. -->
+  <style>
+    path { fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; }
+    .l { stroke-width: 1.5; }
+    .t { stroke-width: 0.8; }
+    .h { stroke-width: 1.1; stroke-dasharray: 5 3; }
+    :target .l, :target .t { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1.2s ease-out forwards; }
+    :target .t { animation-duration: 0.7s; animation-delay: 1s; }
+    :target .h { opacity: 0; animation: show 0.6s 1.5s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes show { to { opacity: 1; } }
+  </style>
+  <path class="l" pathLength="100" d="M8 108H212" />
+  <path class="t" pathLength="100" d="M12 117l8-8M22 117l8-8M32 117l8-8M42 117l8-8M52 117l8-8M62 117l8-8M72 117l8-8M82 117l8-8M92 117l8-8M102 117l8-8M112 117l8-8M122 117l8-8M132 117l8-8M142 117l8-8M152 117l8-8M162 117l8-8M172 117l8-8M182 117l8-8M192 117l8-8M202 117l8-8" />
+  <path class="l" pathLength="100" d="M36 108V98H50V88H64V78H78V68H92V58H126V66L54 108" />
+  <path class="h" d="M126 58H204M126 66H204M134 58V20H160V58" />
+  <path class="t" pathLength="100" d="M36 34H126M36 30V92M126 30V52M33 37l6-6M123 37l6-6" />
+</svg>
