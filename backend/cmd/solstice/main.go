@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -326,6 +327,14 @@ func runUser(ctx context.Context, args []string) error {
 		return err
 	}
 	login := strings.ToLower(*username)
+	// record writes an audit entry for a change made from the command line.
+	record := func(what string, id int64) error {
+		return audit.Record(ctx, conn, audit.Entry{
+			Action:  what,
+			Target:  audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: login},
+			Details: map[string]any{"via": "command line"},
+		})
+	}
 	switch action {
 	case "add":
 		hash, err := auth.HashPassword(*password)
@@ -336,9 +345,22 @@ func runUser(ctx context.Context, args []string) error {
 		if display == "" {
 			display = login
 		}
-		if _, err := conn.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
-			VALUES (?, ?, ?, ?, ?)`, login, display, *email, hash, *admin); err != nil {
+		res, err := conn.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
+			VALUES (?, ?, ?, ?, ?)`, login, display, *email, hash, *admin)
+		if err != nil {
 			return err
+		}
+		id, err := res.LastInsertId()
+		if err != nil {
+			return err
+		}
+		if err := record(audit.UserCreate, id); err != nil {
+			return err
+		}
+		if *admin {
+			if err := record(audit.AdminGrant, id); err != nil {
+				return err
+			}
 		}
 		fmt.Printf("Compte « %s » créé.\n", login)
 	case "passwd":
@@ -353,8 +375,14 @@ func runUser(ctx context.Context, args []string) error {
 		if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
 			return err
 		}
+		if err := record(audit.PasswordChange, id); err != nil {
+			return err
+		}
 		if *admin {
 			if _, err := conn.ExecContext(ctx, `UPDATE users SET is_admin = TRUE WHERE id = ?`, id); err != nil {
+				return err
+			}
+			if err := record(audit.AdminGrant, id); err != nil {
 				return err
 			}
 		}
