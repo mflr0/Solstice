@@ -24,6 +24,8 @@ type User struct {
 	DisplayName string
 	Email       string
 	Admin       bool
+	Locale      string // interface language chosen by the user, "" to follow the browser
+	TokenID     int64  // the personal access token the request signed in with, 0 for none
 }
 
 // ErrNoSession means the token matches no valid session.
@@ -53,10 +55,10 @@ func NewSession(ctx context.Context, db *sql.DB, userID int64) (string, time.Tim
 // Lookup returns the active user behind a session token.
 func Lookup(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	var u User
-	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin
+	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, '')
 		FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = ? AND s.expires_at > ? AND u.active`, tokenHash(token), time.Now().UTC()).
-		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin)
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoSession
 	}
@@ -77,9 +79,9 @@ func EndSession(ctx context.Context, db *sql.DB, token string) error {
 func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*User, error) {
 	var u User
 	var hash sql.NullString
-	err := db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, password_hash
+	err := db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), password_hash
 		FROM users WHERE username = LOWER(?) AND active`, username).
-		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &hash)
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Spend the same time as a real check so user names cannot be probed.
 		CheckPassword(dummyHash, password)

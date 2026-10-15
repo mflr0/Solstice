@@ -38,6 +38,19 @@ type Options struct {
 	// Solstice database is refused.
 	Replace bool
 	Log     *slog.Logger
+	// Progress, when set, is told how the import advances: as each phase
+	// starts, now and then while it copies rows, and once at the end. It runs
+	// on the importing goroutine and must return quickly.
+	Progress func(Progress)
+}
+
+// Progress is how far an import has gone.
+type Progress struct {
+	Phase string `json:"phase"` // the phase under way ("users", "issues"…), "" once finished
+	Done  int    `json:"done"`  // phases finished
+	Total int    `json:"total"` // phases in all
+	Rows  int    `json:"rows"`  // rows written so far, all tables together
+	Steps []Step `json:"steps"` // the report's lines so far
 }
 
 // Report summarises what an import did.
@@ -135,15 +148,32 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		{"custom field values", r.importCustomFieldValues},
 		{"history", r.importHistory},
 		{"filters", r.importFilters},
+		{"boards and sprints", r.importBoards},
 	}
-	for _, s := range steps {
+	r.phases = len(steps)
+	for i, s := range steps {
+		r.phase, r.done = s.name, i
+		r.progress(true)
 		start := time.Now()
 		if err := s.fn(); err != nil {
 			return r.rep, fmt.Errorf("%s: %w", s.name, err)
 		}
 		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
+	r.phase, r.done = "", len(steps)
+	r.progress(true)
 	return r.rep, nil
+}
+
+// progress tells Options.Progress where the import stands; unless forced,
+// at most a few times a second.
+func (r *run) progress(force bool) {
+	if r.opt.Progress == nil || (!force && time.Since(r.told) < 250*time.Millisecond) {
+		return
+	}
+	r.told = time.Now()
+	r.opt.Progress(Progress{Phase: r.phase, Done: r.done, Total: r.phases, Rows: r.rows,
+		Steps: slices.Clone(r.rep.Steps)})
 }
 
 // run holds the state shared by the import steps: how Jira identifiers map to
@@ -156,6 +186,12 @@ type run struct {
 	dst    *sql.Conn
 	opt    Options
 	rep    *Report
+
+	// Where the import stands, for Options.Progress.
+	phase        string
+	done, phases int
+	rows         int
+	told         time.Time
 
 	users       map[string]int64 // Jira user key → Solstice user id
 	usersByName map[string]int64 // lower-case user name → Solstice user id
@@ -176,7 +212,10 @@ type run struct {
 	fields      map[int64]string // custom field id → type key
 	options     map[int64]bool
 	linkTypes   map[int64]bool
-	subtaskLink map[int64]bool // Jira's hidden link types that encode sub-tasks
+	subtaskLink map[int64]bool   // Jira's hidden link types that encode sub-tasks
+	epicLink    map[int64]bool   // Jira Software's link type from an epic to its issues
+	epicOf      map[int64]int64  // issue → epic, applied once all issues exist
+	filters     map[int64]string // saved filter id → its query
 	issues      map[int64]issueRef
 	// Security levels are copied per project, so one Jira level can become
 	// several Solstice levels: (Jira level id, project id) → Solstice level id.
@@ -250,13 +289,14 @@ func (r *run) each(query string, scan func(*sql.Rows) error) error {
 // hasColumn tells whether the Jira database has a column; some columns only
 // exist in recent Jira versions.
 func (r *run) hasColumn(table, column string) bool {
+	// Case-insensitive: Jira Software's tables are upper-case on PostgreSQL.
 	var q string
 	if r.engine == jiradb.MySQL {
 		q = `SELECT COUNT(*) FROM information_schema.columns
 			WHERE table_schema = DATABASE() AND LOWER(table_name) = ? AND LOWER(column_name) = ?`
 	} else {
 		q = `SELECT COUNT(*) FROM information_schema.columns
-			WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`
+			WHERE table_schema = current_schema() AND LOWER(table_name) = $1 AND LOWER(column_name) = $2`
 	}
 	var n int
 	if err := r.src.QueryRowContext(r.ctx, q, strings.ToLower(table), strings.ToLower(column)).Scan(&n); err != nil {
@@ -374,6 +414,8 @@ func (in *inserter) flush() error {
 		return fmt.Errorf("%s…: %w", strings.TrimSuffix(in.head, " VALUES "), err)
 	}
 	in.total += in.rows
+	in.r.rows += in.rows
+	in.r.progress(false)
 	in.rows, in.bytes, in.args = 0, 0, in.args[:0]
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 // dropped, so a filter is never shown to more people than in Jira.
 func (r *run) importFilters() error {
 	filters := map[int64]bool{}
+	r.filters = map[int64]string{}
 	ins := r.inserter("filters", "id", "owner_id", "name", "description", "query", "created_at", "updated_at")
 	now := time.Now().UTC()
 	if err := r.each(`SELECT id, filtername, description, username, authorname, reqcontent FROM searchrequest`, func(rows *sql.Rows) error {
@@ -28,6 +29,7 @@ func (r *run) importFilters() error {
 			return err
 		}
 		filters[id] = true
+		r.filters[id] = query.String
 		return ins.add(id, ownerID, truncate(orDefault(name, "Filtre "+strconv.FormatInt(id, 10)), 255), nstr(desc),
 			query.String, now, now)
 	}); err != nil {

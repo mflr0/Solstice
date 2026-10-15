@@ -15,16 +15,16 @@ func TestParse(t *testing.T) {
 	}
 	want := And{
 		And{
-			Clause{"project", "=", []Value{{Text: "DEMO"}}},
+			Clause{Field: "project", Op: "=", Values: []Value{{Text: "DEMO"}}},
 			Or{
-				Clause{"status", "in", []Value{{Text: "In Progress"}, {Text: "Done"}}},
-				Clause{"assignee", "=", []Value{{Func: "currentuser"}}},
+				Clause{Field: "status", Op: "in", Values: []Value{{Text: "In Progress"}, {Text: "Done"}}},
+				Clause{Field: "assignee", Op: "=", Values: []Value{{Func: "currentuser"}}},
 			},
 		},
-		Not{Clause{"labels", "is", []Value{{Empty: true}}}},
+		Not{Clause{Field: "labels", Op: "is", Values: []Value{{Empty: true}}}},
 	}
-	if !reflect.DeepEqual(q.Where, want) {
-		t.Errorf("where\n got %#v\nwant %#v", q.Where, want)
+	if got := noPos(q.Where); !reflect.DeepEqual(got, want) {
+		t.Errorf("where\n got %#v\nwant %#v", got, want)
 	}
 	if !reflect.DeepEqual(q.Order, []Sort{{"priority", true}, {"key", false}}) {
 		t.Errorf("order %v", q.Order)
@@ -50,17 +50,42 @@ func TestParseOddities(t *testing.T) {
 	}
 }
 
+func TestParseHistory(t *testing.T) {
+	q, err := Parse(`status was not in (Open, "In Progress") by (bob, currentUser()) during ("2024-01-01", now()) AND assignee changed from EMPTY to bob after -2w`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := And{
+		Clause{Field: "status", Op: "was not in", Values: []Value{{Text: "Open"}, {Text: "In Progress"}}, Preds: []Predicate{
+			{"by", []Value{{Text: "bob"}, {Func: "currentuser"}}},
+			{"during", []Value{{Text: "2024-01-01"}, {Func: "now"}}},
+		}},
+		Clause{Field: "assignee", Op: "changed", Preds: []Predicate{
+			{"from", []Value{{Empty: true}}},
+			{"to", []Value{{Text: "bob"}}},
+			{"after", []Value{{Text: "-2w"}}},
+		}},
+	}
+	if got := noPos(q.Where); !reflect.DeepEqual(got, want) {
+		t.Errorf("where\n got %#v\nwant %#v", got, want)
+	}
+	if !LooksLike(`status was "In Progress"`) || !LooksLike(`assignee changed`) {
+		t.Error("history clauses not recognised as JQL")
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	for s, want := range map[string]string{
-		`project = "DEMO`:          "Guillemet",
-		`project DEMO`:             "Opérateur attendu",
-		`status in (Done`:          "Parenthèse",
-		`(project = DEMO`:          "Parenthèse",
-		`status was Done`:          "historique",
-		`assignee is bob`:          "EMPTY",
-		`project = DEMO ORDER key`: "BY",
-		`project = DEMO extra`:     "inattendu",
-		`status ! Done`:            "incomplet",
+		`project = "DEMO`:             "Guillemet",
+		`project DEMO`:                "Opérateur attendu",
+		`status in (Done`:             "Parenthèse",
+		`(project = DEMO`:             "Parenthèse",
+		`status was Done from Open`:   "CHANGED",
+		`status changed during (-1d)`: "DURING",
+		`assignee is bob`:             "EMPTY",
+		`project = DEMO ORDER key`:    "BY",
+		`project = DEMO extra`:        "inattendu",
+		`status ! Done`:               "incomplet",
 	} {
 		_, err := Parse(s)
 		var e *Error
@@ -170,5 +195,107 @@ func TestLooksLike(t *testing.T) {
 		if got := LooksLike(s); got != want {
 			t.Errorf("LooksLike(%q) = %v", s, got)
 		}
+	}
+}
+
+func TestCompileEqualsEmpty(t *testing.T) {
+	// Found in a real Jira database: a user field compared with EMPTY.
+	where, args, _ := compile(t, `(assignee != currentUser() OR assignee = EMPTY) AND reporter = currentUser()`)
+	if !strings.Contains(where, "i.assignee_id IS NULL") || len(args) != 2 {
+		t.Errorf("where %s args %v", where, args)
+	}
+	for _, q := range []string{`assignee = EMPTY`, `assignee in (EMPTY)`, `priority = EMPTY`, `fixVersion = EMPTY`} {
+		where, _, _ := compile(t, q)
+		if strings.TrimSpace(where) == "" || strings.Contains(where, "()") {
+			t.Errorf("%s compiled to %q", q, where)
+		}
+	}
+}
+
+func TestProjects(t *testing.T) {
+	for s, want := range map[string][]string{
+		`project = DEMO ORDER BY Rank ASC`:                 {"DEMO"},
+		`project in (WEB, "Site web") AND status != Done`:  {"WEB", "Site web"},
+		`assignee = currentUser()`:                         nil,
+		`project = DEMO OR project = WEB`:                  nil,
+		`status = Done AND (project = OPS AND type = Bug)`: {"OPS"},
+	} {
+		q, err := Parse(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := Projects(q); !reflect.DeepEqual(got, want) {
+			t.Errorf("Projects(%q) = %v, want %v", s, got, want)
+		}
+	}
+}
+
+// History clauses assemble SQL from many pieces: every placeholder must get
+// its argument, in order, and no user text may reach the SQL.
+func TestCompileHistoryArguments(t *testing.T) {
+	for _, q := range []string{
+		`status was Done`,
+		`status was not in (Open, "In Progress") by (bob, currentUser()) during ("2024-01-01", now())`,
+		`assignee was "x'; DROP TABLE issues; --" before -2w`,
+		`assignee changed from EMPTY to membersOf("devs") after startOfMonth() by bob`,
+		`priority was High on "2025-03-04" OR resolution was Unresolved after -1d`,
+		`fixVersion was "1.0" during (-30d, -1d) AND fixVersion changed to "2.0"`,
+		`reporter was EMPTY OR status changed`,
+	} {
+		where, args, _ := compile(t, q)
+		if n := strings.Count(where, "?"); n != len(args) {
+			t.Errorf("%s: %d placeholders, %d arguments", q, n, len(args))
+		}
+		if strings.Contains(where, "DROP") {
+			t.Errorf("user text reached the SQL: %s", where)
+		}
+	}
+}
+
+// noPos clears clause positions, to compare trees by structure.
+func noPos(n Node) Node {
+	switch n := n.(type) {
+	case And:
+		return And{noPos(n.Left), noPos(n.Right)}
+	case Or:
+		return Or{noPos(n.Left), noPos(n.Right)}
+	case Not:
+		return Not{noPos(n.Inner)}
+	case Clause:
+		n.Pos = 0
+		return n
+	}
+	return n
+}
+
+func TestCompileParticipant(t *testing.T) {
+	where, args, _ := compile(t, `participant = currentUser() AND commenter in (bob, "x'; DROP")`)
+	if n := strings.Count(where, "?"); n != len(args) {
+		t.Errorf("%d placeholders, %d arguments", n, len(args))
+	}
+	if strings.Contains(where, "DROP") {
+		t.Errorf("user text reached the SQL: %s", where)
+	}
+	if !strings.Contains(where, "visibility_group IS NULL") {
+		t.Errorf("restricted comments and worklogs must not count: %s", where)
+	}
+	if !LooksLike(`participant = bob`) || !LooksLike(`commenter in (bob)`) {
+		t.Error("participant/commenter not recognised as JQL")
+	}
+}
+
+func TestErrorPositions(t *testing.T) {
+	_, err := Parse(`project = DEMO AND status in (Done`)
+	var je *Error
+	if !errors.As(err, &je) || je.Pos != 34 {
+		t.Errorf("syntax error at %+v, want position 34", err)
+	}
+	q, err := Parse(`project = DEMO AND couleur = bleu`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = Compile(q, Env{CustomField: func(string) (Field, bool) { return Field{}, false }})
+	if !errors.As(err, &je) || je.Pos != 19 {
+		t.Errorf("unknown field error at %+v, want position 19", err)
 	}
 }

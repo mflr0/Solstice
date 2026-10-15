@@ -15,6 +15,17 @@ import (
 //go:embed all:dist
 var dist embed.FS
 
+// IsAsset tells whether a request path names a file of the build (scripts,
+// styles, fonts…) rather than a page of the interface.
+func IsAsset(urlPath string) bool {
+	name := strings.TrimPrefix(path.Clean(urlPath), "/")
+	if name == "" || name == "index.html" {
+		return false
+	}
+	info, err := fs.Stat(dist, "dist/"+name)
+	return err == nil && !info.IsDir()
+}
+
 // Handler serves static files, and index.html for every other path so the
 // interface's own routes (/browse/DEMO-1, /projects/…) work on reload.
 func Handler() http.Handler {

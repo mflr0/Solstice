@@ -163,6 +163,18 @@ func (g *generator) seedIssues() {
 		}
 	}
 
+	// Jira Software links a story to its epic with an issue link of a hidden
+	// type (source = epic), not with a custom field value.
+	epicSeq := map[int64]int{}
+	for _, is := range g.issues {
+		if is.epic == nil {
+			continue
+		}
+		t.issueLink.Add(g.next("issuelink"), linkEpic, is.epic.id, is.id, epicSeq[is.epic.id])
+		epicSeq[is.epic.id]++
+		g.sum.EpicLinks++
+	}
+
 	g.planLinks(t)
 	g.seedRemoteLinks(t)
 
@@ -819,9 +831,6 @@ func (g *generator) customFieldValues(t issueTables, is *issue, changes *[]chang
 	if p.key == "DEMO" && g.chance(0.2) {
 		add(cfClientCode, nil, fmt.Sprintf("CLI-%04d", g.rng.IntN(10000)), nil, nil, nil)
 	}
-	if is.epic != nil {
-		add(cfEpicLink, nil, nil, float64(is.epic.id), nil, nil)
-	}
 }
 
 // writeAttachment stores an attachment where Jira keeps it:
@@ -887,6 +896,10 @@ func (g *generator) checkpoints() {
 		if is.parent != nil {
 			k := is.parent.key()
 			c.ParentKey = &k
+		}
+		if is.epic != nil {
+			k := is.epic.key()
+			c.EpicKey = &k
 		}
 		g.sum.Checkpoints = append(g.sum.Checkpoints, c)
 	}
