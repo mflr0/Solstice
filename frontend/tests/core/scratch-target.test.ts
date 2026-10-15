@@ -24,4 +24,4 @@ it('target', () => {
     { numRuns: Number(process.env.RUNS ?? 100000), seed: Number(process.env.SEED ?? 1) },
   );
   process.stdout.write(`diff=${diff} idem=${idem}\n${bad.join('\n')}\n`);
-});
+}, 60_000);

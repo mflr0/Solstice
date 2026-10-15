@@ -24,4 +24,4 @@ it('broad', () => {
     { numRuns: 100000, seed: Number(process.env.SEED ?? 5) },
   );
   process.stdout.write(`all=${all} noneOnly=${none} idem=${idem}\n${bad.join('\n')}\n`);
-});
+}, 60_000);
