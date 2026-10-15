@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -92,6 +93,10 @@ func TestCheckURL(t *testing.T) {
 func TestClientRefusesAtConnection(t *testing.T) {
 	c := guardedClient()
 	for _, target := range []string{"http://169.254.169.254/latest/meta-data/", "http://[fd00:ec2::254]/"} {
+		if strings.Contains(target, "[") && !hasIPv6() {
+			t.Logf("skipping %s: this machine has no IPv6", target)
+			continue
+		}
 		_, err := c.Get(target)
 		var be *blockedError
 		if !errors.As(err, &be) {
@@ -308,4 +313,14 @@ func TestDeliveries(t *testing.T) {
 	if len(log) != 1 || log[0].Status != "failed" || log[0].Error == nil || !strings.Contains(*log[0].Error, "refused") {
 		t.Errorf("delivery to a metadata address: %+v", log)
 	}
+}
+
+// hasIPv6 tells whether this machine can open IPv6 sockets.
+func hasIPv6() bool {
+	l, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		return false
+	}
+	l.Close()
+	return true
 }
