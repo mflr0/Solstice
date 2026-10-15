@@ -42,24 +42,6 @@ cd Solstice/deploy/docker
 ./install.sh
 ```
 
-**`SOLSTICE_DB` est obligatoire.** Solstice n'a pas de base par défaut et
-n'utilise pas d'office celle de `compose.yaml`. Sans `SOLSTICE_DB`,
-`migrate`, `user` et `import` s'arrêtent sur « no database configured », et
-`serve` ouvre l'assistant d'installation au lieu de la base de développement.
-Exportez la variable dans chaque terminal, ou écrivez-la une fois pour toutes
-dans `backend/solstice.conf` (lu dans le dossier courant, donc en lançant
-depuis `backend/`) :
-
-```
-SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
-```
-
-Puis, dans deux terminaux :
-
-```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice   # inutile avec backend/solstice.conf
-cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
-cd frontend && pnpm dev                       # interface sur http://localhost:5173
 The script writes random database passwords to `.env`, starts MariaDB and
 Solstice, then prints the address of the setup wizard and its one-time code.
 Running it again keeps the data and restarts on the current sources.
@@ -191,12 +173,22 @@ corepack enable pnpm
 (cd frontend && pnpm install)
 ```
 
-Then, in two terminals (Solstice has no default database: give the
-development one from `compose.yaml` explicitly, or put it in
-`backend/solstice.conf`):
+**`SOLSTICE_DB` is required.** Solstice has no default database and does not
+pick up the one from `compose.yaml` by itself. Without `SOLSTICE_DB`,
+`migrate`, `user` and `import` stop with "no database configured", and
+`serve` opens the setup wizard instead of using the development database.
+Export the variable in each terminal, or write it once in
+`backend/solstice.conf` (read from the current directory, so start from
+`backend/`):
+
+```
+SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+```
+
+Then, in two terminals:
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice   # not needed with backend/solstice.conf
 cd backend && go run ./cmd/solstice serve      # API on http://localhost:8080
 cd frontend && pnpm dev                       # interface on http://localhost:5173
 ```
