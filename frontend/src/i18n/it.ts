@@ -1165,6 +1165,17 @@ export const it: Messages = {
     hideBanner: 'Nascondi',
   },
 
+  hookDeliveries: {
+    title: 'Ultimi invii',
+    intro: 'Le ultime 100 chiamate di questo webhook, dalla più recente.',
+    empty: 'Ancora nessun invio.',
+    event: 'Evento',
+    result: 'Esito',
+    answer: 'Risposta',
+    attempts: 'Tentativi',
+    when: 'Data',
+    retry: (when: string) => `Nuovo tentativo: ${when}`,
+  },
   mailAdmin: {
     title: 'E-mail',
     intro:

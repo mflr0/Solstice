@@ -1162,6 +1162,17 @@ export const hi: Messages = {
     hideBanner: 'छिपाएँ',
   },
 
+  hookDeliveries: {
+    title: 'हाल की डिलीवरी',
+    intro: 'इस वेबहुक की आखिरी 100 कॉल, सबसे नई पहले।',
+    empty: 'अभी तक कोई डिलीवरी नहीं।',
+    event: 'इवेंट',
+    result: 'नतीजा',
+    answer: 'जवाब',
+    attempts: 'प्रयास',
+    when: 'तारीख',
+    retry: (when: string) => `अगला प्रयास: ${when}`,
+  },
   mailAdmin: {
     title: 'ईमेल',
     intro: 'Solstice इसी SMTP सर्वर से सूचनाएँ, रोज़ के सारांश और फ़िल्टर की सदस्यताएँ भेजता है।',

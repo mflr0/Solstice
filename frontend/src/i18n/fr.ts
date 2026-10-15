@@ -1246,6 +1246,17 @@ export const fr = {
     hideBanner: 'Masquer',
   },
 
+  hookDeliveries: {
+    title: 'Derniers envois',
+    intro: 'Les 100 derniers appels de ce webhook, du plus récent au plus ancien.',
+    empty: 'Aucun envoi pour l’instant.',
+    event: 'Événement',
+    result: 'Résultat',
+    answer: 'Réponse',
+    attempts: 'Essais',
+    when: 'Date',
+    retry: (when: string) => `Nouvel essai : ${when}`,
+  },
   mailAdmin: {
     title: 'E-mail',
     intro:

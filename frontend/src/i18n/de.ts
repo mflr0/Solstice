@@ -1171,6 +1171,17 @@ export const de: Messages = {
     hideBanner: 'Ausblenden',
   },
 
+  hookDeliveries: {
+    title: 'Letzte Zustellungen',
+    intro: 'Die letzten 100 Aufrufe dieses Webhooks, die neuesten zuerst.',
+    empty: 'Noch keine Zustellungen.',
+    event: 'Ereignis',
+    result: 'Ergebnis',
+    answer: 'Antwort',
+    attempts: 'Versuche',
+    when: 'Datum',
+    retry: (when: string) => `Nächster Versuch: ${when}`,
+  },
   mailAdmin: {
     title: 'E-Mail',
     intro:

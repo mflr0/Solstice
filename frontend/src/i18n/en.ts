@@ -1159,6 +1159,17 @@ export const en: Messages = {
     hideBanner: 'Hide',
   },
 
+  hookDeliveries: {
+    title: 'Recent deliveries',
+    intro: 'The last 100 calls of this webhook, newest first.',
+    empty: 'No deliveries yet.',
+    event: 'Event',
+    result: 'Result',
+    answer: 'Response',
+    attempts: 'Attempts',
+    when: 'Date',
+    retry: (when: string) => `Next attempt: ${when}`,
+  },
   mailAdmin: {
     title: 'Email',
     intro:
