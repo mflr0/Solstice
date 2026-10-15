@@ -72,7 +72,6 @@ the admin pages exist, their texts do not yet.
   tag `v1.0.0`, GitHub release with the archives and `SHA256SUMS` (the updater
   needs them), then a one-line installer (`curl … | sudo sh`) fetching the
   latest release.
-- Choose a license.
 
 ## Known bugs and polish
 

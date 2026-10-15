@@ -294,6 +294,14 @@ lui-même développé avec l'aide d'outils d'IA, selon la même règle.
 Les règles complètes, et ce qui se passe quand elles ne sont pas respectées,
 sont dans le [code de conduite](CODE_OF_CONDUCT.md) (en anglais).
 
+## Licence
+
+Solstice est un logiciel libre, sous licence GNU Affero General Public
+License version 3 (AGPL-3.0) : voir [LICENSE](LICENSE). Vous pouvez
+l'utiliser, l'étudier, le modifier et le partager. Si vous faites tourner une
+version modifiée pour des utilisateurs à travers un réseau, vous devez leur
+proposer son code source.
+
 ## Marques
 
 Jira et Atlassian sont des marques d'Atlassian. Solstice est un projet

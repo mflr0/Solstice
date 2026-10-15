@@ -274,6 +274,13 @@ help of AI tools, under the same rule.
 The full rules, and what happens when they are broken, are in the
 [code of conduct](CODE_OF_CONDUCT.md).
 
+## License
+
+Solstice is free software under the GNU Affero General Public License,
+version 3 (AGPL-3.0): see [LICENSE](LICENSE). You may use, study, modify and
+share it. If you run a modified version for users over a network, you must
+offer them its source code.
+
 ## Trademarks
 
 Jira and Atlassian are trademarks of Atlassian. Solstice is an independent
