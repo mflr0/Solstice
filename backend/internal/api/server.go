@@ -384,8 +384,11 @@ type catalog struct {
 	status     map[string]statusRef
 	priority   map[string]priorityRef
 	resolution map[string]namedRef
-	issueType  map[string]typeRef
-	linkType   map[int64]linkTypeRef
+	// defaultResolution is the resolution of issues reaching a done status
+	// without one; "" leaves them unresolved.
+	defaultResolution string
+	issueType         map[string]typeRef
+	linkType          map[int64]linkTypeRef
 }
 
 func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
@@ -423,13 +426,17 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name FROM resolutions ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = scanAll(ctx, s.db, `SELECT id, name, is_default FROM resolutions ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v namedRef
-		if err := rows.Scan(&v.ID, &v.Name); err != nil {
+		var def bool
+		if err := rows.Scan(&v.ID, &v.Name, &def); err != nil {
 			return err
 		}
 		c.Resolutions = append(c.Resolutions, v)
 		c.resolution[v.ID] = v
+		if def {
+			c.defaultResolution = v.ID
+		}
 		return nil
 	})
 	if err != nil {

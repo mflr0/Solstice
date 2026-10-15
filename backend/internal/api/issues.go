@@ -1613,7 +1613,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		done := cat.statusOf(status).Category == issue.Done
 		switch {
 		case done && !resolution.Valid:
-			resolution = sql.NullString{String: defaultResolution(cat), Valid: defaultResolution(cat) != ""}
+			resolution = sql.NullString{String: cat.defaultResolution, Valid: cat.defaultResolution != ""}
 		case !done:
 			resolution = sql.NullString{}
 		}
@@ -1716,20 +1716,6 @@ func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.
 		return err
 	}
 	return writeJSON(w, http.StatusOK, d)
-}
-
-func defaultResolution(cat *catalog) string {
-	for _, name := range []string{"Done", "Done", "Fixed", "Corrigé"} {
-		for _, r := range cat.Resolutions {
-			if strings.EqualFold(r.Name, name) {
-				return r.ID
-			}
-		}
-	}
-	if len(cat.Resolutions) > 0 {
-		return cat.Resolutions[0].ID
-	}
-	return ""
 }
 
 func nullAny[T sql.NullString | sql.NullInt64](n T) any {
