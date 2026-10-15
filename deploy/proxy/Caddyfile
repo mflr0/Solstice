@@ -1,0 +1,12 @@
+# Example Caddyfile for Solstice.
+# Put this file in /etc/caddy/Caddyfile.
+# Replace solstice.example.com before use.
+# Caddy gets and renews the HTTPS certificate by itself and already sends
+# X-Forwarded-Proto and X-Forwarded-For.
+# Check it with caddy validate --config /etc/caddy/Caddyfile, then systemctl reload caddy.
+solstice.example.com {
+	# Live updates (/api/events) must reach the browser without delay.
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+	}
+}
