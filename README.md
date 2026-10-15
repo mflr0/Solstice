@@ -21,14 +21,18 @@ corepack enable pnpm
 (cd frontend && pnpm install)
 ```
 
-Puis, dans deux terminaux :
+Puis, dans deux terminaux (Solstice n'a pas de base par défaut : la base de
+développement de `compose.yaml` se donne explicitement, ou dans un
+`backend/solstice.conf`) :
 
 ```bash
+export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
 cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
 cd frontend && pnpm dev                       # interface sur http://localhost:5173
 ```
 
-Sans import, créez un premier compte :
+Sur une base sans compte, le serveur ouvre l'assistant d'installation
+(`/setup`, code affiché dans son journal). Sinon, créez un premier compte :
 `go run ./cmd/solstice user add -username moi -name "Moi" -admin` (le mot de
 passe généré s'affiche).
 
@@ -88,8 +92,18 @@ tableaux de bord, notifications. Voir la feuille de route.
 ```bash
 (cd frontend && pnpm build)            # écrit dans backend/internal/web/dist
 (cd backend && go build -o solstice ./cmd/solstice)
-SOLSTICE_DB=mysql://solstice:…@db:3306/solstice SOLSTICE_DATA=/var/lib/solstice ./solstice serve
+SOLSTICE_DATA=/var/lib/solstice ./solstice serve
 ```
+
+Au premier démarrage, sans base configurée ou sur une base vide, Solstice
+n'ouvre que son assistant d'installation sur `/setup` : il affiche dans son
+journal un code à usage unique (aussi écrit dans `<données>/setup-code`), puis
+demande la base, l'adresse publique, le fuseau horaire, et crée
+l'administrateur ou importe un Jira. Les réglages vont dans un fichier de
+lignes `CLÉ=valeur` (`-config`, `SOLSTICE_CONFIG`, sinon `./solstice.conf`,
+sinon `/etc/solstice/solstice.conf`), que les variables d'environnement
+surchargent : `solstice -h` les liste. `GET /healthz` répond 200 quand la
+base répond, 503 sinon.
 
 Le binaire contient l'interface. `SOLSTICE_DATA` reçoit les pièces jointes ;
 `SOLSTICE_TZ` (par exemple `Europe/Paris`) est le fuseau des dates tapées dans
@@ -98,6 +112,42 @@ le serveur reprend les nouveaux droits et catalogues d'eux-mêmes en moins
 d'une minute.
 Placez un reverse proxy HTTPS devant (le cookie de session passe en `Secure`
 derrière un proxy qui envoie `X-Forwarded-Proto: https`).
+
+## Courriels et webhooks
+
+- **Serveur SMTP** : il se règle dans l'administration (hôte, port, sécurité
+  aucune / STARTTLS / TLS, identifiant, expéditeur), avec un envoi d'essai qui
+  affiche l'erreur exacte du serveur. `SOLSTICE_BASE_URL` (l'adresse publique)
+  sert aux liens des courriels ; sans elle, ils partent sans liens.
+- **Secrets** : le mot de passe SMTP et les secrets des webhooks sont chiffrés
+  (AES-256-GCM) avec la clé `SOLSTICE_SECRET_KEY` (32 octets en base64 ou en
+  hexadécimal, par exemple `openssl rand -base64 32`), ou à défaut celle de
+  `<données>/secret.key`, créée au premier besoin. Sauvegardez-la avec la
+  base : sans elle, les secrets sont à ressaisir.
+- **Notifications** : observateurs, rapporteur, assigné et personnes
+  mentionnées (`[~identifiant]`). Chacun choisit ses événements, l'envoi
+  immédiat (les changements d'un même ticket à moins de deux minutes
+  d'intervalle partent dans un seul courriel) ou un résumé quotidien, et peut
+  demander un rappel matinal de ses échéances. Un projet peut couper ses
+  notifications ou ajouter un groupe ou un rôle aux destinataires. Les droits
+  sont vérifiés à l'écriture de chaque courriel : personne ne reçoit un ticket
+  ou un commentaire restreint qu'il ne peut pas voir.
+- **Abonnements aux filtres** : les résultats d'un filtre enregistré, chaque
+  jour ou certains jours de la semaine, tels que chaque destinataire les voit
+  (200 tickets au plus, avec un lien vers la suite).
+- **Webhooks** (administration) : événements et contenu au format des
+  webhooks de Jira Server (`jira:issue_updated`, `comment_created`,
+  `sprint_started`…), filtre JQL facultatif, signature
+  `X-Hub-Signature: sha256=…` (HMAC-SHA256 du corps) quand un secret est
+  défini, nouvelles tentatives espacées, journal des 100 derniers envois.
+  Les destinations peuvent être internes (réseau privé, machine locale) : les
+  intégrations auto-hébergées le sont souvent. Les plages lien-local
+  (169.254.0.0/16, fe80::/10) et les adresses de métadonnées des clouds
+  (169.254.169.254, fd00:ec2::254…) sont en revanche toujours refusées,
+  vérifiées après résolution DNS à chaque connexion ; les redirections ne
+  sont pas suivies et aucun proxy n'est utilisé. Comme dans Jira, un webhook
+  voit tous les tickets, confidentiels compris : restreignez-le par son
+  filtre JQL.
 
 ## Tests
 
@@ -127,6 +177,12 @@ backend/
   internal/search/      la recherche simple
   internal/jql/         le JQL
   internal/live/        notifications temps réel (SSE)
+  internal/events/      bus d'événements : temps réel, courriels, webhooks
+  internal/notify/      notifications par courriel, résumés, abonnements, rappels
+  internal/mail/        réglages SMTP, envoi, file d'attente des courriels
+  internal/webhook/     webhooks au format Jira, garde contre les SSRF
+  internal/secret/      chiffrement des secrets enregistrés
+  internal/settings/    réglages de l'instance en base
   internal/auth/        mots de passe et sessions
   internal/db/          connexion MariaDB et migrations
   internal/web/         sert l'interface compilée
