@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
-  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/fr.js';
+  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';

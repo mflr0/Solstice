@@ -2,7 +2,7 @@
   import { isOverdue } from '../core/dates.js';
   import { paths } from '../core/route.js';
   import type { IssueSummary } from '../core/types.js';
-  import { formatDay, t } from '../i18n/fr.js';
+  import { formatDay, t } from '../i18n/t.js';
   import { router } from '../lib/router.svelte.js';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';

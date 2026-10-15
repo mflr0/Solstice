@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /** A value to copy (a new access token): read-only, selected on focus, with a copy button. */
   interface Props {

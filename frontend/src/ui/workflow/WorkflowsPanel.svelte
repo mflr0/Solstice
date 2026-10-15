@@ -2,7 +2,7 @@
   import { paths } from '../../core/route.js';
   import type { ProjectWorkflows, StrandedDefault, Workflow } from '../../core/types.js';
   import { strandedDefaultOf, suggestRemap } from '../../core/workflow.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';

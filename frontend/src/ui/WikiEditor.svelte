@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { Attachment } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /**
    * Text in wiki markup, edited as rich text: what is bound in and out is

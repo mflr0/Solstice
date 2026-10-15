@@ -7,7 +7,7 @@
     toggleCell,
     type DraftTransition,
   } from '../../core/workflow.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
   import Stamp from '../Stamp.svelte';
 

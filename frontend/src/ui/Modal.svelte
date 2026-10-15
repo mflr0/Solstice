@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /**
    * A modal built on <dialog>: the browser traps focus and closes it on

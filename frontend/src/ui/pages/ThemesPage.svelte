@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MODES, SKINS, type Scheme, type Skin } from '../../core/appearance.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { loadSkin, skinSheets } from '../../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin } from '../../lib/ui.svelte.js';
   import SkinMock from '../SkinMock.svelte';

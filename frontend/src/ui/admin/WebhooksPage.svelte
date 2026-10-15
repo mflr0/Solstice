@@ -1,6 +1,6 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import EmptyState from '../EmptyState.svelte';
   import WebhooksEdit from './WebhooksEdit.svelte';
   import WebhooksList from './WebhooksList.svelte';

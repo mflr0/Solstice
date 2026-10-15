@@ -10,7 +10,7 @@
     totalEstimate,
   } from '../../core/board.js';
   import type { BoardCard as Card, BoardDetail, CardMove, Sprint } from '../../core/board-types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';

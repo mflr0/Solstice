@@ -8,7 +8,7 @@
     type DateField,
     type DateRange,
   } from '../../core/filters.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
 
   /** A date filter: shortcuts (« 7 derniers jours »…) or two calendar days. */
   interface Props {

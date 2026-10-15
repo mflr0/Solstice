@@ -20,7 +20,7 @@
     type PeopleRole,
   } from '../../core/filters.js';
   import type { StatusCategory } from '../../core/types.js';
-  import { categoryLabels, t } from '../../i18n/fr.js';
+  import { categoryLabels, t } from '../../i18n/t.js';
   import { formatList } from '../../i18n/format.js';
   import { api } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';

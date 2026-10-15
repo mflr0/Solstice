@@ -14,7 +14,7 @@
     SORT_FIELDS,
     type Completion,
   } from '../../core/jql.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { catalog, fold, kindOf, listFieldOf, loadOptions } from './sources.svelte.js';
 
   /**

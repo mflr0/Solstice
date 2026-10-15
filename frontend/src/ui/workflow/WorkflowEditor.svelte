@@ -17,7 +17,7 @@
     toDraft,
     toInput,
   } from '../../core/workflow.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Stamp from '../Stamp.svelte';

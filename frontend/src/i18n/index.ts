@@ -10,18 +10,19 @@
  * and keep French.
  */
 
-import { fr, useMessages } from './fr.js';
+import { en } from './en.js';
 import { setFormatLocale } from './format.js';
 import { formatTag, LOCALE_STORAGE_KEY, negotiate, type Locale } from './locales.js';
+import { useMessages } from './t.js';
 import type { Messages } from './types.js';
 
 export { LOCALE_NAMES, LOCALES, parseLocale, type Locale } from './locales.js';
 
 /** The language in use. */
-export let locale: Locale = 'fr';
+export let locale: Locale = 'en';
 
-const catalogues: Record<Exclude<Locale, 'fr'>, () => Promise<Messages>> = {
-  en: () => import('./en.js').then((m) => m.en),
+const catalogues: Record<Exclude<Locale, 'en'>, () => Promise<Messages>> = {
+  fr: () => import('./fr.js').then((m) => m.fr),
   de: () => import('./de.js').then((m) => m.de),
   it: () => import('./it.js').then((m) => m.it),
   hi: () => import('./hi.js').then((m) => m.hi),
@@ -34,7 +35,7 @@ const extras: Partial<Record<Locale, () => Promise<unknown>>> = {
 
 /** Loads a language and makes it the interface's. */
 export async function setLocale(next: Locale, languages: readonly string[] = []): Promise<void> {
-  const [messages] = await Promise.all([next === 'fr' ? fr : catalogues[next](), extras[next]?.()]);
+  const [messages] = await Promise.all([next === 'en' ? en : catalogues[next](), extras[next]?.()]);
   useMessages(messages);
   setFormatLocale(formatTag(next, languages));
   locale = next;
@@ -67,7 +68,7 @@ export async function initLocale(): Promise<Locale> {
   try {
     await setLocale(negotiate(savedLocale(), languages), languages);
   } catch {
-    await setLocale('fr');
+    await setLocale('en');
   }
   return locale;
 }

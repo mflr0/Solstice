@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dayAfter, sprintEnd } from '../../core/board.js';
   import type { Sprint } from '../../core/board-types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';

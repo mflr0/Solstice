@@ -2,7 +2,7 @@
   import { initials } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import type { UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /** A person: initials in a small square, then the name, linking to their page. */
   interface Props {

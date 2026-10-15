@@ -12,7 +12,7 @@
   import { untrack } from 'svelte';
   import { paths } from '../../core/route.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
   import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../../lib/api.js';
   import { live } from '../../lib/live.svelte.js';

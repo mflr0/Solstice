@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Comment, IssueDetail } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import RelTime from '../RelTime.svelte';

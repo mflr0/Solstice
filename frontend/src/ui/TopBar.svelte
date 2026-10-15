@@ -1,7 +1,7 @@
 <script lang="ts">
   import { initials } from '../core/marks.js';
   import { paths } from '../core/route.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { locale, LOCALE_NAMES, LOCALES } from '../i18n/index.js';
   import { outside } from '../lib/actions.js';
   import { chooseLocale } from '../lib/locale.js';

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import Illustration from '../Illustration.svelte';
 
   interface Props {

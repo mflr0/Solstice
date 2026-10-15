@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { autofocus, outside } from '../lib/actions.js';
   import Who from './Who.svelte';
 

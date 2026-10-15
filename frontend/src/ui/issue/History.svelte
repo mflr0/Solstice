@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { HistoryEntry, HistoryItem } from '../../core/types.js';
-  import { DURATION_FIELDS, fieldLabel, formatDuration, t } from '../../i18n/fr.js';
+  import { DURATION_FIELDS, fieldLabel, formatDuration, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import RelTime from '../RelTime.svelte';
   import Who from '../Who.svelte';

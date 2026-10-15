@@ -1,11 +1,11 @@
 /**
- * The shape every catalogue has: French's (src/i18n/fr.ts), with each string
+ * The shape every catalogue has: English's (src/i18n/en.ts), with each string
  * literal widened to string and each function keeping its parameters. A
  * locale file is `export const xx: Messages = { … }`; TypeScript then
  * reports any key it lacks or adds.
  */
 
-import type { fr } from './fr.js';
+import type { en } from './en.js';
 
 export type Widen<T> = T extends string
   ? string
@@ -17,4 +17,4 @@ export type Widen<T> = T extends string
         ? { readonly [K in keyof T]: Widen<T[K]> }
         : T;
 
-export type Messages = Widen<typeof fr>;
+export type Messages = Widen<typeof en>;

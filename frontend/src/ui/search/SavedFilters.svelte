@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SavedFilter } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
 
   /**
    * The filters one can open: favourites, one's own, those shared with one.

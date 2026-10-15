@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { dismiss, notes } from '../lib/ui.svelte.js';
 
   /** Short notes pinned at the bottom of the screen. */

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ago } from '../core/dates.js';
   import { longDay } from '../i18n/format.js';
-  import { formatDateTime, renderAgo, t } from '../i18n/fr.js';
+  import { formatDateTime, renderAgo, t } from '../i18n/t.js';
   import { clock } from '../lib/ui.svelte.js';
 
   /**

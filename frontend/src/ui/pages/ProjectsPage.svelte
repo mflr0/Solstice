@@ -2,7 +2,7 @@
   import { paths } from '../../core/route.js';
   import type { Project } from '../../core/types.js';
   import { formatLocale } from '../../i18n/format.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import Illustration from '../Illustration.svelte';
   import Who from '../Who.svelte';

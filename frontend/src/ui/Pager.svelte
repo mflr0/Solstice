@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatNumber } from '../i18n/format.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /** "51–100 sur 158", with previous / next. */
   interface Props {

@@ -8,7 +8,7 @@
     type UserForm,
   } from '../../core/admin-forms.js';
   import type { Group, UserRow } from '../../core/admin-types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';

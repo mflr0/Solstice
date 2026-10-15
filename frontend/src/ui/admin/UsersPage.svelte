@@ -2,7 +2,7 @@
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { adminPath } from '../../core/areas.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/fr.js';
+  import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';

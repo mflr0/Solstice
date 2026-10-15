@@ -6,9 +6,8 @@
 
 import { parseDay } from '../core/dates.js';
 import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo } from './format.js';
-import type { Messages } from './types.js';
 
-export const en: Messages = {
+export const en = {
   appName: 'Solstice',
   tagline: 'Issue tracking',
 
@@ -289,7 +288,10 @@ export const en: Messages = {
     uncategorised: 'Uncategorized',
     empty: 'You don’t have access to any project.',
     settings: 'Settings',
-    kinds: { software: 'software', business: 'business', service_desk: 'service desk' },
+    kinds: { software: 'software', business: 'business', service_desk: 'service desk' } as Record<
+      string,
+      string
+    >,
     components: 'Components',
     versions: 'Versions',
     released: 'released',
@@ -356,7 +358,7 @@ export const en: Messages = {
       creator: 'Creator',
       watcher: 'Watcher',
       commenter: 'Commenter',
-    },
+    } as Record<string, string>,
     roleHint:
       'Assignee and Reporter have filters of their own: picking one moves the choice there.',
     allTickets: 'All their issues',
@@ -408,7 +410,7 @@ export const en: Messages = {
       overdue: 'Overdue',
       next7: 'In the next 7 days',
       none: 'No due date',
-    },
+    } as Record<string, string>,
     customRange: 'Specific dates',
     from: 'From',
     to: 'To',
@@ -482,7 +484,7 @@ export const en: Messages = {
       remainingEstimate: 'remaining estimate',
       participant: 'anyone involved',
       commenter: 'comment author',
-    },
+    } as Record<string, string>,
   },
 
   quick: {
@@ -1690,4 +1692,4 @@ export const en: Messages = {
       },
     },
   },
-};
+} as const;

@@ -8,7 +8,7 @@
     margins,
     type Box,
   } from '../../core/workflow-diagram.js';
-  import { categoryLabels, t } from '../../i18n/fr.js';
+  import { categoryLabels, t } from '../../i18n/t.js';
   import Stamp from '../Stamp.svelte';
 
   /**

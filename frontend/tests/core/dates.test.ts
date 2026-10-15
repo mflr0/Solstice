@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   ago,
@@ -8,7 +8,16 @@ import {
   splitDuration,
   todayISO,
 } from '../../src/core/dates.js';
-import { formatDay, formatDuration, formatSize, relative, renderDay } from '../../src/i18n/fr.js';
+import {
+  formatDay,
+  formatDuration,
+  formatSize,
+  relative,
+  renderDay,
+  useMessages,
+} from '../../src/i18n/t.js';
+import { en } from '../../src/i18n/en.js';
+import { fr } from '../../src/i18n/fr.js';
 
 // Local wall-clock dates, so the tests read the same in every time zone.
 const NOW = new Date(2026, 2, 12, 15, 0, 0);
@@ -37,6 +46,14 @@ describe('ago', () => {
 });
 
 describe('French wording', () => {
+  beforeAll(() => {
+    useMessages(fr);
+  });
+
+  afterAll(() => {
+    useMessages(en);
+  });
+
   it('renders relative times', () => {
     expect(relative(at(2026, 3, 12, 14, 59, 50), NOW)).toBe('à l’instant');
     expect(relative(at(2026, 3, 12, 12, 0), NOW)).toBe('il y a 3 h');

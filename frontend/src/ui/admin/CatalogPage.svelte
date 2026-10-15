@@ -9,7 +9,7 @@
     type CatalogSection,
   } from '../../core/catalogs.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';

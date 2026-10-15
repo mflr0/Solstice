@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { StatusCategory, StatusRef } from '../../core/types.js';
   import { CATEGORIES, searchStatuses, statusNamed } from '../../core/workflow.js';
-  import { categoryLabels, t } from '../../i18n/fr.js';
+  import { categoryLabels, t } from '../../i18n/t.js';
   import { autofocus, outside } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import Stamp from '../Stamp.svelte';

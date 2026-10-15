@@ -16,7 +16,7 @@
   import type { Webhook, WebhookDelivery } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';

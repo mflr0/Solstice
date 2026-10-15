@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { IssueDetail, Transition } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import type { IssueFields } from '../../lib/api.js';
   import { outside } from '../../lib/actions.js';
   import { session } from '../../lib/session.svelte.js';

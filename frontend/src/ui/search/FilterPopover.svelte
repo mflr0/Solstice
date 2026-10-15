@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
 
   /**

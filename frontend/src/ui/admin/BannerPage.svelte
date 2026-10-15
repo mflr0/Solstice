@@ -2,7 +2,7 @@
   import { BANNER_MAX, bannerProblems, sameBanner } from '../../core/admin-general.js';
   import type { BannerSettings } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';

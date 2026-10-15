@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { sameValue, toggle } from '../../core/filters.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
   import type { Option } from './sources.svelte.js';
 

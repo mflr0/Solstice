@@ -21,7 +21,7 @@ import type {
   SprintSuggestion,
   StatusCategory,
 } from '../../core/types.js';
-import { categoryLabels, t } from '../../i18n/fr.js';
+import { categoryLabels, t } from '../../i18n/t.js';
 import { api } from '../../lib/api.js';
 import { refs } from '../../lib/refs.svelte.js';
 import { session } from '../../lib/session.svelte.js';

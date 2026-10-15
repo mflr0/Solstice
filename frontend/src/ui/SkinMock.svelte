@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Scheme, Skin } from '../core/appearance.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { setPreviewSkin } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import TypeMark from './TypeMark.svelte';

@@ -10,7 +10,7 @@
   } from '../../core/admin-forms.js';
   import type { MailEntry, MailQueue, MailSecurity, MailSettings } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/fr.js';
+  import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';

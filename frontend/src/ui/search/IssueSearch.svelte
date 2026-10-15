@@ -11,7 +11,7 @@
     type SortField,
   } from '../../core/filters.js';
   import { readLocation, writeLocation, type SearchLocation } from '../../core/filters-url.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { router } from '../../lib/router.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
   import FilterBar from './FilterBar.svelte';

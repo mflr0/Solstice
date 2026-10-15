@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ADMIN_NAV, adminPath, type AdminSection } from '../../core/areas.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { session } from '../../lib/session.svelte.js';
   import NotFoundPage from '../pages/NotFoundPage.svelte';
   import SettingsLayout from '../SettingsLayout.svelte';

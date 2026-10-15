@@ -41,7 +41,7 @@ export function negotiate(saved: string | null | undefined, languages: readonly 
     const l = parseLocale(languageOf(tag));
     if (l) return l;
   }
-  return 'fr';
+  return 'en';
 }
 
 /**

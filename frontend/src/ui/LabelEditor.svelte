@@ -1,6 +1,6 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /**
    * Labels as chips. Typing then Enter, comma or space adds one (labels

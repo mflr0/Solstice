@@ -11,7 +11,7 @@
     type CatalogForm,
     type CatalogSection,
   } from '../../core/catalogs.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import Modal from '../Modal.svelte';

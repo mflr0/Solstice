@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { IssueDetail, ProjectDetail } from '../../core/types.js';
-  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/fr.js';
+  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
   import { api, type IssueFields } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import LabelEditor from '../LabelEditor.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { localParts } from '../../core/dates.js';
   import { paths } from '../../core/route.js';
-  import { renderDay, t } from '../../i18n/fr.js';
+  import { renderDay, t } from '../../i18n/t.js';
   import { session } from '../../lib/session.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
 

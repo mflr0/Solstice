@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { HiddenIssue, IssueDetail, IssueLink } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';

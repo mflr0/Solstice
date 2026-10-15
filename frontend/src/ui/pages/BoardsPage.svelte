@@ -2,7 +2,7 @@
   import type { BoardKind, BoardSummary } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import type { Project } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';

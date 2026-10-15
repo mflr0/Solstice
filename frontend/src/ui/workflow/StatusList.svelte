@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { StatusRef } from '../../core/types.js';
   import { moveStatus } from '../../core/workflow.js';
-  import { categoryLabels, t } from '../../i18n/fr.js';
+  import { categoryLabels, t } from '../../i18n/t.js';
   import Stamp from '../Stamp.svelte';
   import StatusPicker from './StatusPicker.svelte';
 

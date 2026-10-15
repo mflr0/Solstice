@@ -22,7 +22,7 @@
     serializeWiki,
     type ParsedWiki,
   } from '../../core/wiki-doc.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage, isVisible } from '../../lib/api.js';
   import { refs } from '../../lib/refs.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';

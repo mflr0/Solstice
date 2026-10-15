@@ -2,7 +2,7 @@
   import { deliveryTone, toneClass } from '../../core/admin-integrations.js';
   import type { WebhookDelivery } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/fr.js';
+  import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
 

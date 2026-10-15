@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fileExtension, isImage } from '../../core/marks.js';
   import type { HiddenIssue, IssueDetail } from '../../core/types.js';
-  import { formatDateTime, formatSize, t } from '../../i18n/fr.js';
+  import { formatDateTime, formatSize, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
 

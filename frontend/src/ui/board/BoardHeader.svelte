@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { BoardDetail } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
 
   /** A board's title block, with the switch between its board and backlog. */
   interface Props {

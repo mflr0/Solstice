@@ -1,7 +1,7 @@
 <script lang="ts">
   import { parseDuration, todayISO } from '../../core/dates.js';
   import type { IssueDetail, Worklog } from '../../core/types.js';
-  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/fr.js';
+  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Who from '../Who.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { toggleQuick } from '../../core/board.js';
   import type { QuickFilter } from '../../core/board-types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { router } from '../../lib/router.svelte.js';
 
   /** A board's quick filters as toggle buttons; the choice lives in the address (?quick=1,3). */

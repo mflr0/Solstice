@@ -4,7 +4,7 @@
   import type { Webhook } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/fr.js';
+  import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import EmptyState from '../EmptyState.svelte';

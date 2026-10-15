@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ADMIN_NAV, adminPath } from '../../core/areas.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api } from '../../lib/api.js';
 

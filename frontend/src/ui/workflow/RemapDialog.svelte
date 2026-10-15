@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { StatusRef, StrandedDefault, StrandedStatus } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import Modal from '../Modal.svelte';
   import Stamp from '../Stamp.svelte';
 

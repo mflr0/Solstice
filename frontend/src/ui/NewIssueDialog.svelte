@@ -2,7 +2,7 @@
   import { projectOfKey } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { api, errorMessage, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';

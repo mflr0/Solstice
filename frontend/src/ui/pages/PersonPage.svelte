@@ -3,7 +3,7 @@
   import { quote } from '../../core/jql.js';
   import { initials } from '../../core/marks.js';
   import type { Person } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import IssueTable from '../IssueTable.svelte';
 

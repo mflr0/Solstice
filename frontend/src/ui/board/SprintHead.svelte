@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import { daysLeft } from '../../core/board.js';
   import type { Sprint } from '../../core/board-types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { clock } from '../../lib/ui.svelte.js';
 
   /**

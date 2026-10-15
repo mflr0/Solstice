@@ -1,13 +1,14 @@
 # Interface languages
 
-French (`fr.ts`) is the source text. Every other language is one file of the
-same shape: `en.ts`, `de.ts`, `it.ts`, `hi.ts`.
+English (`en.ts`) is the source text. Every other language is a translation, one
+file of the same shape: `fr.ts`, `de.ts`, `it.ts`, `hi.ts`.
 
 ## Files
 
-- `fr.ts` — the French catalogue (`export const fr = { … } as const`) and the
-  live binding `t` every component reads.
-- `types.ts` — `Messages`, the shape of every catalogue: French's, with strings
+- `en.ts` — the English catalogue (`export const en = { … } as const`), the
+  source text.
+- `t.ts` — the live binding `t` every component reads, with its helpers.
+- `types.ts` — `Messages`, the shape of every catalogue: English's, with strings
   widened to `string` and functions keeping their parameters.
 - `xx.ts` — `export const xx: Messages = { … }`. TypeScript reports any key a
   catalogue lacks or adds (`pnpm lint`).
@@ -35,36 +36,36 @@ same shape: `en.ts`, `de.ts`, `it.ts`, `hi.ts`.
 
 ## Glossary
 
-| French | English | Deutsch | Italiano | हिन्दी |
-| --- | --- | --- | --- | --- |
-| ticket | issue | Vorgang | ticket | टिकट |
-| projet | project | Projekt | progetto | प्रोजेक्ट |
-| tableau (board) | board | Board | board | बोर्ड |
-| sprint | sprint | Sprint | sprint | स्प्रिंट |
-| épopée | epic | Epic | epic | एपिक |
-| workflow | workflow | Workflow | workflow | वर्कफ़्लो |
-| statut | status | Status | stato | स्टेटस |
-| transition | transition | Übergang | transizione | ट्रांज़िशन |
-| sous-tâche | sub-task | Unteraufgabe | sotto-task | सब-टास्क |
-| responsable | assignee | Bearbeiter | assegnatario | असाइनी |
-| rapporteur | reporter | Melder | segnalatore | रिपोर्टर |
-| observateur | watcher | Beobachter | osservatore | वॉचर |
-| priorité | priority | Priorität | priorità | प्राथमिकता |
-| résolution | resolution | Lösung | risoluzione | रिज़ॉल्यूशन |
-| filtre | filter | Filter | filtro | फ़िल्टर |
-| filtre rapide | quick filter | Schnellfilter | filtro rapido | क्विक फ़िल्टर |
-| couloir | swimlane | Swimlane | corsia | स्विमलेन |
-| étiquette | label | Label | etichetta | लेबल |
-| composant | component | Komponente | componente | कंपोनेंट |
-| version corrigée | fix version | Lösungsversion | versione di correzione | फ़िक्स वर्ज़न |
-| commentaire | comment | Kommentar | commento | टिप्पणी |
-| pièce jointe | attachment | Anhang | allegato | अटैचमेंट |
-| temps passé | time spent | erfasste Zeit | tempo impiegato | लगा समय |
-| fiche (record card) | details | Details | dettagli | विवरण |
-| thème | theme | Design | tema | थीम |
-| réglages | settings | Einstellungen | impostazioni | सेटिंग्स |
-| droits | permissions | Berechtigungen | permessi | अनुमतियाँ |
-| Mon travail | My work | Meine Arbeit | Il mio lavoro | मेरा काम |
+| French              | English      | Deutsch        | Italiano               | हिन्दी        |
+| ------------------- | ------------ | -------------- | ---------------------- | ------------- |
+| ticket              | issue        | Vorgang        | ticket                 | टिकट          |
+| projet              | project      | Projekt        | progetto               | प्रोजेक्ट     |
+| tableau (board)     | board        | Board          | board                  | बोर्ड         |
+| sprint              | sprint       | Sprint         | sprint                 | स्प्रिंट      |
+| épopée              | epic         | Epic           | epic                   | एपिक          |
+| workflow            | workflow     | Workflow       | workflow               | वर्कफ़्लो     |
+| statut              | status       | Status         | stato                  | स्टेटस        |
+| transition          | transition   | Übergang       | transizione            | ट्रांज़िशन    |
+| sous-tâche          | sub-task     | Unteraufgabe   | sotto-task             | सब-टास्क      |
+| responsable         | assignee     | Bearbeiter     | assegnatario           | असाइनी        |
+| rapporteur          | reporter     | Melder         | segnalatore            | रिपोर्टर      |
+| observateur         | watcher      | Beobachter     | osservatore            | वॉचर          |
+| priorité            | priority     | Priorität      | priorità               | प्राथमिकता    |
+| résolution          | resolution   | Lösung         | risoluzione            | रिज़ॉल्यूशन   |
+| filtre              | filter       | Filter         | filtro                 | फ़िल्टर       |
+| filtre rapide       | quick filter | Schnellfilter  | filtro rapido          | क्विक फ़िल्टर |
+| couloir             | swimlane     | Swimlane       | corsia                 | स्विमलेन      |
+| étiquette           | label        | Label          | etichetta              | लेबल          |
+| composant           | component    | Komponente     | componente             | कंपोनेंट      |
+| version corrigée    | fix version  | Lösungsversion | versione di correzione | फ़िक्स वर्ज़न |
+| commentaire         | comment      | Kommentar      | commento               | टिप्पणी       |
+| pièce jointe        | attachment   | Anhang         | allegato               | अटैचमेंट      |
+| temps passé         | time spent   | erfasste Zeit  | tempo impiegato        | लगा समय       |
+| fiche (record card) | details      | Details        | dettagli               | विवरण         |
+| thème               | theme        | Design         | tema                   | थीम           |
+| réglages            | settings     | Einstellungen  | impostazioni           | सेटिंग्स      |
+| droits              | permissions  | Berechtigungen | permessi               | अनुमतियाँ     |
+| Mon travail         | My work      | Meine Arbeit   | Il mio lavoro          | मेरा काम      |
 
 Skin names: Carnet → Notebook / Notizbuch / Taccuino / नोटबुक; Orbite → Orbit /
 Orbit / Orbita / ऑर्बिट; Crayonné → Sketch / Skizze / Schizzo / स्केच; Luna,

@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte';
   import { parseNotes } from '../../core/release-notes.js';
   import type { StatusCategory } from '../../core/types.js';
-  import { formatDateTime, formatDay, relative, t } from '../../i18n/fr.js';
+  import { formatDateTime, formatDay, relative, t } from '../../i18n/t.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';

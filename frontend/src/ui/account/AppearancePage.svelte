@@ -1,7 +1,7 @@
 <script lang="ts">
   import { MODES, SKINS, SWATCHES } from '../../core/appearance.js';
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, LOCALES, locale, type Locale } from '../../i18n/index.js';
   import { LOCALE_STORAGE_KEY, negotiate } from '../../i18n/locales.js';
   import { accountApi } from '../../lib/admin-api.js';

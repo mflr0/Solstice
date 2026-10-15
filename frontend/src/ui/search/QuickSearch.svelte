@@ -5,7 +5,7 @@
   import { projectOfKey } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
   import type { IssueSummary, Project, UserRef } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api } from '../../lib/api.js';
   import { outside } from '../../lib/actions.js';
   import { router } from '../../lib/router.svelte.js';

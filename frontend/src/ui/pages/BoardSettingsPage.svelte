@@ -2,7 +2,7 @@
   import type { BoardDetail, BoardPatch, SwimlaneStrategy } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import type { StatusRef } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';

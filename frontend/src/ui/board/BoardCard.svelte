@@ -2,7 +2,7 @@
   import type { BoardCard } from '../../core/board-types.js';
   import { initials } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import Lock from '../Lock.svelte';
   import PriorityMark from '../PriorityMark.svelte';
   import Stamp from '../Stamp.svelte';

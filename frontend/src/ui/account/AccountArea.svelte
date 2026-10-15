@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ACCOUNT_SECTIONS, accountPath, type AccountSection } from '../../core/areas.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import SettingsLayout from '../SettingsLayout.svelte';
   import AppearancePage from './AppearancePage.svelte';
   import NotificationsPage from './NotificationsPage.svelte';

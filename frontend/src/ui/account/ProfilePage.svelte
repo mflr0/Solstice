@@ -10,7 +10,7 @@
   } from '../../core/account-settings.js';
   import { hasProblems } from '../../core/admin-forms.js';
   import { paths } from '../../core/route.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';

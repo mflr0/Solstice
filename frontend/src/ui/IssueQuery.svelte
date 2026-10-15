@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { IssuePage } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { api, ApiError, errorMessage } from '../lib/api.js';
   import { debounce, live } from '../lib/live.svelte.js';
   import Illustration from './Illustration.svelte';

@@ -42,7 +42,7 @@ import type {
   BoardSummary,
   CardMove,
 } from '../core/board-types.js';
-import { t } from '../i18n/fr.js';
+import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
 
 export class ApiError extends Error {

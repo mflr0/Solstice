@@ -11,7 +11,7 @@
   } from '../../core/admin-general.js';
   import type { GeneralField, GeneralSettings } from '../../core/admin-types.js';
   import { guessBaseURL } from '../../core/setup.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, LOCALES } from '../../i18n/index.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';

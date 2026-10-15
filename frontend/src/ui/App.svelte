@@ -3,7 +3,7 @@
   import { legacyBoardPath } from '../core/board.js';
   import { projectOfKey } from '../core/marks.js';
   import { paths, safeNext } from '../core/route.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
   import { interceptLinks, router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';

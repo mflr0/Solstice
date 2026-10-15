@@ -1,7 +1,7 @@
 <script lang="ts">
   import { readLocation, toJql, writeLocation } from '../../core/filters-url.js';
   import type { SavedFilter } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
