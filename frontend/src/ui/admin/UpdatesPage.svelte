@@ -22,7 +22,7 @@
    * elsewhere. While an update runs, the page follows it through the
    * restart and reloads on the new version.
    */
-  let state = $state<UpdateState | null>(null);
+  let info = $state<UpdateState | null>(null);
   let error = $state('');
   let checking = $state(false);
   let saving = $state(false);
@@ -44,9 +44,9 @@
     failed: 'todo',
   };
 
-  const notes = $derived(state?.newer ? parseNotes(state.notes) : []);
-  const attempt = $derived(state?.lastAttempt ?? null);
-  const isDev = $derived(!!state && !/^\d/.test(state.current));
+  const notes = $derived(info?.newer ? parseNotes(info.notes) : []);
+  const attempt = $derived(info?.lastAttempt ?? null);
+  const isDev = $derived(!!info && !/^\d/.test(info.current));
 
   function show(s: UpdateState) {
     loadedVersion ??= s.current;
@@ -55,7 +55,7 @@
       location.reload();
       return;
     }
-    state = s;
+    info = s;
     updateNotice.set(s);
     clearTimeout(timer);
     if (inProgress(s.lastAttempt)) timer = setTimeout(() => void follow(), 2000);
@@ -136,11 +136,11 @@
 
   async function apply(e: SubmitEvent) {
     e.preventDefault();
-    if (!state?.latest) return;
+    if (!info?.latest) return;
     applying = true;
     applyError = '';
     try {
-      const s = await updatesApi.apply(state.latest, password);
+      const s = await updatesApi.apply(info.latest, password);
       confirming = false;
       password = '';
       notify(t.updates.requested);
@@ -169,11 +169,8 @@
         <p class="eyebrow">{t.updates.eyebrow}</p>
         <h1 class="page-title">{t.updates.title}</h1>
       </div>
-      <button
-        type="button"
-        class="btn"
-        disabled={checking || !state}
-        onclick={() => void check()}>{checking ? t.updates.checking : t.updates.checkNow}</button
+      <button type="button" class="btn" disabled={checking || !info} onclick={() => void check()}
+        >{checking ? t.updates.checking : t.updates.checkNow}</button
       >
     </header>
 
@@ -183,26 +180,29 @@
       <p class="muted loading" role="status">{t.updates.restarting}</p>
     {/if}
 
-    {#if !state}
+    {#if !info}
       {#if !error}<p class="muted loading">{t.common.loading}</p>{/if}
     {:else}
       <dl class="facts versions">
         <div>
           <dt>{t.updates.current}</dt>
           <dd>
-            <span class="key">{state.current}</span>
+            <span class="key">{info.current}</span>
             {#if isDev}<span class="muted">({t.updates.dev})</span>{/if}
           </dd>
         </div>
         <div>
           <dt>{t.updates.latest}</dt>
           <dd>
-            {#if state.latest}
-              <span class="key">{state.latest}</span>
-              {#if state.publishedAt}
-                <span class="muted">· {t.updates.published(formatDay(state.publishedAt.slice(0, 10)))}</span>
+            {#if info.latest}
+              <span class="key">{info.latest}</span>
+              {#if info.publishedAt}
+                <span class="muted"
+                  >· {t.updates.published(formatDay(info.publishedAt.slice(0, 10)))}</span
+                >
               {/if}
-              · <a href={state.releaseUrl} rel="noopener noreferrer" target="_blank"
+              ·
+              <a href={info.releaseUrl} rel="noopener noreferrer" target="_blank"
                 >{t.updates.releasePage}</a
               >
             {:else}
@@ -212,22 +212,22 @@
         </div>
         <div>
           <dt>{t.updates.install}</dt>
-          <dd>{t.updates.installs[state.install]}</dd>
+          <dd>{t.updates.installs[info.install]}</dd>
         </div>
       </dl>
 
       <p class="check-line muted">
-        {state.checkedAt ? t.updates.checked(relative(state.checkedAt)) : t.updates.neverChecked}
+        {info.checkedAt ? t.updates.checked(relative(info.checkedAt)) : t.updates.neverChecked}
       </p>
-      {#if state.checkError}
-        <p class="error-text" role="alert">{t.updates.checkErrors[state.checkError]}</p>
+      {#if info.checkError}
+        <p class="error-text" role="alert">{t.updates.checkErrors[info.checkError]}</p>
       {/if}
 
-      {#if state.newer && state.latest}
-        <p class="lead available">{t.updates.available(state.latest)}</p>
-      {:else if state.latest && isDev}
+      {#if info.newer && info.latest}
+        <p class="lead available">{t.updates.available(info.latest)}</p>
+      {:else if info.latest && isDev}
         <p class="lead">{t.updates.devNote}</p>
-      {:else if state.latest}
+      {:else if info.latest}
         <p class="lead">{t.updates.upToDate}</p>
       {/if}
 
@@ -241,7 +241,10 @@
             <span class="key">{t.updates.fromTo(attempt.from, attempt.to)}</span>
             <span class="muted">{formatDateTime(attempt.at)}</span>
           </p>
-          <p class:error-text={attempt.status === 'failed'} class:muted={attempt.status !== 'failed'}>
+          <p
+            class:error-text={attempt.status === 'failed'}
+            class:muted={attempt.status !== 'failed'}
+          >
             {t.updates.statusHints[attempt.status]}
           </p>
           {#if attempt.log}
@@ -253,35 +256,37 @@
         </section>
       {/if}
 
-      {#if state.newer && state.latest}
-        {#if state.install === 'systemd'}
+      {#if info.newer && info.latest}
+        {#if info.install === 'systemd'}
           <div class="apply">
             <p class="muted hint-text">{t.updates.applyHint}</p>
             <button
               type="button"
               class="btn btn-primary"
-              disabled={!state.canApply}
-              onclick={openConfirm}>{t.updates.apply(state.latest)}</button
+              disabled={!info.canApply}
+              onclick={openConfirm}>{t.updates.apply(info.latest)}</button
             >
           </div>
         {:else}
           <section class="install">
-            <h2 class="section-title">{t.updates.apply(state.latest)}</h2>
-            {#if state.install === 'docker'}
+            <h2 class="section-title">{t.updates.apply(info.latest)}</h2>
+            {#if info.install === 'docker'}
               <p>{t.updates.docker}</p>
-              <pre class="commands">{state.commands.join('\n')}</pre>
+              <pre class="commands">{info.commands.join('\n')}</pre>
               <p class="muted hint-text">{t.updates.dockerHint}</p>
-            {:else if state.download.includes('-linux-')}
+            {:else if info.download.includes('-linux-')}
               <p>{t.updates.manualLinux}</p>
-              <pre class="commands">{state.commands.join('\n')}</pre>
+              <pre class="commands">{info.commands.join('\n')}</pre>
               <p class="muted hint-text">{t.updates.manualLinuxHint}</p>
             {:else}
               <p>{t.updates.manualOther}</p>
-              {#if state.commands.length}<pre class="commands">{state.commands.join('\n')}</pre>{/if}
+              {#if info.commands.length}<pre class="commands">{info.commands.join('\n')}</pre>{/if}
             {/if}
-            {#if state.install === 'manual' && state.download}
+            {#if info.install === 'manual' && info.download}
               <p>
-                <a class="btn" href={state.download} rel="noopener noreferrer">{t.updates.download}</a>
+                <a class="btn" href={info.download} rel="noopener noreferrer"
+                  >{t.updates.download}</a
+                >
               </p>
             {/if}
           </section>
@@ -320,7 +325,7 @@
           <input
             class="checkbox"
             type="checkbox"
-            checked={state.checksEnabled}
+            checked={info.checksEnabled}
             disabled={saving}
             onchange={(e) => void toggleChecks(e.currentTarget.checked)}
           />
@@ -333,7 +338,7 @@
 
   <Modal
     open={confirming}
-    title={state?.latest ? t.updates.apply(state.latest) : t.updates.title}
+    title={info?.latest ? t.updates.apply(info.latest) : t.updates.title}
     onclose={() => !applying && (confirming = false)}
   >
     <form id="update-confirm" class="form" onsubmit={apply}>
