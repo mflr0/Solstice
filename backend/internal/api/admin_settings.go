@@ -119,8 +119,9 @@ const (
 
 // bootSource tells where a value given at start (file, environment, flag)
 // comes from.
+// Its only caller, loadGeneral, runs with s.adm.mu held: it reads s.adm.info directly.
 func (s *Server) bootSource(key, value string) string {
-	if src := s.configInfo().Sources[key]; src != "" && value != "" {
+	if src := s.adm.info.Sources[key]; src != "" && value != "" {
 		return src
 	}
 	if value == "" {
@@ -176,6 +177,10 @@ func (s *Server) loadGeneral(ctx context.Context) (*generalSettings, error) {
 		if g.Sources[f.field] == "" {
 			g.Sources[f.field] = sourceDefault
 		}
+	}
+	// Without a database (some unit tests), the defaults are the settings.
+	if s.db == nil {
+		return g, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
