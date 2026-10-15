@@ -34,6 +34,36 @@ var jiraPermissions = map[string]string{
 	"ADMINISTER_PROJECTS": perm.Admin,
 }
 
+// guessDefaultResolution marks a resolution as the default when Jira names
+// none: Done or its usual synonyms, else the first. Migration 0011 applies
+// the same guess to instances that predate the default.
+const guessDefaultResolution = `UPDATE resolutions SET is_default = TRUE WHERE id = (
+	SELECT id FROM (SELECT id FROM resolutions
+		ORDER BY CASE LOWER(name) WHEN 'done' THEN 1 WHEN 'terminé' THEN 2 WHEN 'fixed' THEN 3 WHEN 'corrigé' THEN 4
+			ELSE 5 END, position, name
+		LIMIT 1) x)`
+
+// defaultResolution marks Jira's default resolution as Solstice's, or
+// guesses one when Jira has none.
+func (r *run) defaultResolution() error {
+	var id sql.NullString
+	if r.hasColumn("propertyentry", "property_key") && r.hasColumn("propertystring", "propertyvalue") {
+		err := r.src.QueryRowContext(r.ctx, `SELECT ps.propertyvalue FROM propertyentry pe
+			JOIN propertystring ps ON ps.id = pe.id
+			WHERE pe.entity_name = 'jira.properties' AND pe.entity_id = 1
+			AND pe.property_key = 'jira.constant.default.resolution'`).Scan(&id)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("reading Jira's default resolution: %w", err)
+		}
+	}
+	if r.resolutions[id.String] {
+		_, err := r.dst.ExecContext(r.ctx, `UPDATE resolutions SET is_default = TRUE WHERE id = ?`, id.String)
+		return err
+	}
+	_, err := r.dst.ExecContext(r.ctx, guessDefaultResolution)
+	return err
+}
+
 func (r *run) importCatalogues() error {
 	r.issueTypes = map[string]bool{}
 	ins := r.inserter("issue_types", "id", "name", "description", "subtask", "position")
@@ -116,6 +146,9 @@ func (r *run) importCatalogues() error {
 		return err
 	}
 	r.rep.step("resolutions", ins.total, 0)
+	if err := r.defaultResolution(); err != nil {
+		return err
+	}
 
 	// Jira encodes sub-tasks as links of a hidden type; Solstice has a parent
 	// column instead, so those types are not copied.

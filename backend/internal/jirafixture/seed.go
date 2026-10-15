@@ -130,6 +130,9 @@ var resolutions = []struct{ id, name string }{
 	{"5", "Cannot Reproduce"}, {"10000", "Done"},
 }
 
+// defaultResolution is Jira's default resolution: Fixed.
+const defaultResolution = "1"
+
 func resolutionName(id string) string {
 	for _, r := range resolutions {
 		if r.id == id {
@@ -558,6 +561,11 @@ func (g *generator) seedCatalogs() {
 	for i, r := range resolutions {
 		rs.Add(r.id, i, r.name, "Résolution "+r.name, nil)
 	}
+	// Jira's default resolution is a global property. Fixed rather than Done,
+	// which Solstice would guess from the names.
+	g.w.Table("propertyentry", "id", "entity_name", "entity_id", "property_key", "propertytype").
+		Add(10000, "jira.properties", 1, "jira.constant.default.resolution", 5)
+	g.w.Table("propertystring", "id", "propertyvalue").Add(10000, defaultResolution)
 	lt := g.w.Table("issuelinktype", "id", "linkname", "inward", "outward", "pstyle", "position")
 	for i, l := range linkTypes {
 		lt.Add(l.id, l.name, l.inward, l.outward, nullable(l.style), i)

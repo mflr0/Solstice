@@ -34,7 +34,7 @@ var catalogueKinds = map[string]catalogueKind{
 		history: "issuetype", column: "issue_type_id"},
 	"priorities": {table: "priorities", audit: "priority", fields: []string{"description", "color", "default"},
 		history: "priority", column: "priority_id"},
-	"resolutions": {table: "resolutions", audit: "resolution", fields: []string{"description"},
+	"resolutions": {table: "resolutions", audit: "resolution", fields: []string{"description", "default"},
 		history: "resolution", column: "resolution_id"},
 	"link-types": {table: "link_types", audit: "linktype", fields: []string{"inward", "outward"}},
 }
@@ -89,7 +89,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 		q = `SELECT t.id, t.name, t.description, t.position, t.color, t.is_default,
 			(SELECT COUNT(*) FROM issues i WHERE i.priority_id = t.id) FROM priorities t`
 	case "resolutions":
-		q = `SELECT t.id, t.name, t.description, t.position,
+		q = `SELECT t.id, t.name, t.description, t.position, t.is_default,
 			(SELECT COUNT(*) FROM issues i WHERE i.resolution_id = t.id) FROM resolutions t`
 	case "link_types":
 		q = `SELECT t.id, t.name, t.inward, t.outward, t.position,
@@ -117,8 +117,9 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 				it.Color = &empty
 			}
 		case "resolutions":
-			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &n)
-			it.Issues = &n
+			var def bool
+			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &def, &n)
+			it.Default, it.Issues = &def, &n
 		case "link_types":
 			var inward, outward string
 			err = rows.Scan(&it.ID, &it.Name, &inward, &outward, &it.Position, &n)
@@ -296,7 +297,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 			}
 		}
 		if makeDefault {
-			if _, err := tx.ExecContext(ctx, `UPDATE priorities SET is_default = FALSE`); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE `+c.table+` SET is_default = FALSE`); err != nil {
 				return err
 			}
 		}
