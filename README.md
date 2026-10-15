@@ -277,7 +277,8 @@ The full rules, and what happens when they are broken, are in the
 ## License
 
 Solstice is free software under the GNU Affero General Public License,
-version 3 (AGPL-3.0): see [LICENSE](LICENSE). You may use, study, modify and
+version 3 or (at your option) any later version (AGPL-3.0-or-later): see
+[LICENSE](LICENSE). You may use, study, modify and
 share it. If you run a modified version for users over a network, you must
 offer them its source code.
 

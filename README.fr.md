@@ -297,7 +297,8 @@ sont dans le [code de conduite](CODE_OF_CONDUCT.md) (en anglais).
 ## Licence
 
 Solstice est un logiciel libre, sous licence GNU Affero General Public
-License version 3 (AGPL-3.0) : voir [LICENSE](LICENSE). Vous pouvez
+License version 3 ou (à votre choix) toute version ultérieure
+(AGPL-3.0-or-later) : voir [LICENSE](LICENSE). Vous pouvez
 l'utiliser, l'étudier, le modifier et le partager. Si vous faites tourner une
 version modifiée pour des utilisateurs à travers un réseau, vous devez leur
 proposer son code source.
