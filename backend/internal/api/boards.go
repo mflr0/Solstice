@@ -316,7 +316,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 		if err := rows.Scan(&q.ID, &q.Name, &query, &desc); err != nil {
 			return err
 		}
-		q.Query, q.Description = nullStr(query), nullStr(desc)
+		q.Query, q.Description = sqlq.String(query), sqlq.String(desc)
 		quick = append(quick, q)
 		return nil
 	}, b.ID); err != nil {
@@ -330,7 +330,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 		if err := rows.Scan(&q.ID, &q.Name, &query, &q.Default); err != nil {
 			return err
 		}
-		q.Query = nullStr(query)
+		q.Query = sqlq.String(query)
 		lanes = append(lanes, q)
 		return nil
 	}, b.ID); err != nil {
@@ -376,8 +376,8 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"board": map[string]any{
 			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "query": b.Query,
-			"subQuery": nullStr(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
-			"estimateField": nullStr(b.Estimate), "doneCutoff": nullStr(b.Cutoff),
+			"subQuery": sqlq.String(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
+			"estimateField": sqlq.String(b.Estimate), "doneCutoff": sqlq.String(b.Cutoff),
 		},
 		"estimateFields": estimateFields,
 		"projects":       projects, "columns": columns, "quickFilters": quick, "swimlanes": lanes, "sprints": sprints,
@@ -395,7 +395,7 @@ func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([
 		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &goal, &start, &end, &done); err != nil {
 			return err
 		}
-		sp.Goal = nullStr(goal)
+		sp.Goal = sqlq.String(goal)
 		if start.Valid {
 			sp.Start = &start.Time
 		}
@@ -1001,7 +1001,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 		}
 	}
 	now := time.Now().UTC()
-	c := change{field: "Sprint", oldString: nullAny(oldName), newString: newName}
+	c := change{field: "Sprint", oldString: sqlq.Value(oldName), newString: newName}
 	if oldID.Valid {
 		c.oldValue = strconv.FormatInt(oldID.Int64, 10)
 	}

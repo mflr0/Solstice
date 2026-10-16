@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 // importFilters copies saved searches with their shares and favourites. JQL
@@ -30,7 +32,7 @@ func (r *run) importFilters() error {
 		}
 		filters[id] = true
 		r.filters[id] = query.String
-		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), 255), nstr(desc),
+		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), 255), sqlq.Value(desc),
 			query.String, now, now)
 	}); err != nil {
 		return err

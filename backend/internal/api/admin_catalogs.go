@@ -112,7 +112,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 			var color sql.NullString
 			var def bool
 			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &def, &n)
-			it.Color, it.Default, it.Issues = nullStr(color), &def, &n
+			it.Color, it.Default, it.Issues = sqlq.String(color), &def, &n
 			if it.Color == nil {
 				empty := ""
 				it.Color = &empty
@@ -130,7 +130,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 			return err
 		}
 		if c.table != "link_types" {
-			it.Description = nullStr(desc)
+			it.Description = sqlq.String(desc)
 			if it.Description == nil {
 				empty := ""
 				it.Description = &empty

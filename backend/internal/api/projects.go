@@ -73,7 +73,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 		if !sub.CanBrowseProject(p.ID) || (p.Archived && !withArchived) {
 			return nil
 		}
-		p.Category = nullStr(category)
+		p.Category = sqlq.String(category)
 		if categoryID.Valid {
 			p.CategoryID = &categoryID.Int64
 		}
@@ -139,7 +139,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
 		return err
 	}
-	p.Description, p.Category = nullStr(desc), nullStr(category)
+	p.Description, p.Category = sqlq.String(desc), sqlq.String(category)
 	if categoryID.Valid {
 		p.CategoryID = &categoryID.Int64
 	}

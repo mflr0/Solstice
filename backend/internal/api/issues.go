@@ -329,20 +329,6 @@ type timeTracking struct {
 	Spent     *int64 `json:"spent"`
 }
 
-func nullInt(n sql.NullInt64) *int64 {
-	if !n.Valid {
-		return nil
-	}
-	return &n.Int64
-}
-
-func nullStr(n sql.NullString) *string {
-	if !n.Valid {
-		return nil
-	}
-	return &n.String
-}
-
 func (s *Server) getIssue(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -368,9 +354,9 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	d := &issueDetail{
 		ID:          iss.ID,
 		Project:     projectBrief{ID: iss.ProjectID, Key: iss.ProjectKey, Name: iss.ProjectName},
-		Description: nullStr(iss.Description),
-		Environment: nullStr(iss.Environment),
-		Time:        timeTracking{nullInt(iss.Original), nullInt(iss.Remaining), nullInt(iss.Spent)},
+		Description: sqlq.String(iss.Description),
+		Environment: sqlq.String(iss.Environment),
+		Time:        timeTracking{sqlq.Int(iss.Original), sqlq.Int(iss.Remaining), sqlq.Int(iss.Spent)},
 		Labels:      []string{}, Components: []idName{}, AffectsVersions: []idName{}, FixVersions: []idName{},
 		Subtasks: []issueBrief{}, Links: []issueLink{}, RemoteLinks: []remoteLink{},
 		Attachments: []attachmentOut{}, CustomFields: []customValue{}, SecurityLevels: []idName{},
@@ -1059,7 +1045,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	// A sub-task is exactly as confidential as its parent, as in Jira.
 	if parentID != nil {
-		level = nullAny(parentLevel)
+		level = sqlq.Value(parentLevel)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1391,9 +1377,9 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		case "summary":
 			old = iss.Summary
 		case "description":
-			old = nullAny(iss.Description)
+			old = sqlq.Value(iss.Description)
 		case "environment":
-			old = nullAny(iss.Environment)
+			old = sqlq.Value(iss.Environment)
 		}
 		if old != newVal {
 			sets[column] = newVal
@@ -1448,13 +1434,13 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal, newName = *v, p.Name
 		}
-		if nullAny(iss.PriorityID) != newVal {
+		if sqlq.Value(iss.PriorityID) != newVal {
 			var oldName any
 			if p := cat.priorityOf(iss.PriorityID); p != nil {
 				oldName = p.Name
 			}
 			sets["priority_id"] = newVal
-			changes = append(changes, change{"priority", nullAny(iss.PriorityID), oldName, newVal, newName})
+			changes = append(changes, change{"priority", sqlq.Value(iss.PriorityID), oldName, newVal, newName})
 		}
 	}
 
@@ -1478,7 +1464,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal = *v
 		}
-		if nullAny(iss.AssigneeID) != newVal {
+		if sqlq.Value(iss.AssigneeID) != newVal {
 			c := change{field: "assignee"}
 			if iss.AssigneeID.Valid {
 				c.oldValue, c.oldString = s.userName(ctx, iss.AssigneeID.Int64)
@@ -1524,7 +1510,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		if err != nil {
 			return err
 		}
-		if nullAny(iss.EpicID) != epicID {
+		if sqlq.Value(iss.EpicID) != epicID {
 			c := change{field: "Epic Link", newValue: epicID, newString: epicKey}
 			if iss.EpicID.Valid {
 				if old, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil {
@@ -1554,9 +1540,9 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal = *v
 		}
-		if nullAny(iss.LevelID) != newVal {
+		if sqlq.Value(iss.LevelID) != newVal {
 			sets["security_level_id"] = newVal
-			changes = append(changes, change{field: "security", oldValue: nullAny(iss.LevelID), newValue: newVal})
+			changes = append(changes, change{field: "security", oldValue: sqlq.Value(iss.LevelID), newValue: newVal})
 		}
 	}
 
@@ -1611,7 +1597,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				cat.statusOf(status).Name})
 		}
 		if resolution != iss.ResolutionID {
-			sets["resolution_id"] = nullAny(resolution)
+			sets["resolution_id"] = sqlq.Value(resolution)
 			var oldName, newName any
 			if v := cat.resolutionOf(iss.ResolutionID); v != nil {
 				oldName = v.Name
@@ -1619,7 +1605,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			if v := cat.resolutionOf(resolution); v != nil {
 				newName = v.Name
 			}
-			changes = append(changes, change{"resolution", nullAny(iss.ResolutionID), oldName, nullAny(resolution), newName})
+			changes = append(changes, change{"resolution", sqlq.Value(iss.ResolutionID), oldName, sqlq.Value(resolution), newName})
 			if resolution.Valid {
 				sets["resolved_at"] = time.Now().UTC()
 			} else {
@@ -1704,20 +1690,6 @@ func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.
 		return err
 	}
 	return writeJSON(w, http.StatusOK, d)
-}
-
-func nullAny[T sql.NullString | sql.NullInt64](n T) any {
-	switch v := any(n).(type) {
-	case sql.NullString:
-		if v.Valid {
-			return v.String
-		}
-	case sql.NullInt64:
-		if v.Valid {
-			return v.Int64
-		}
-	}
-	return nil
 }
 
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {

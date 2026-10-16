@@ -111,7 +111,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 		return nil, err
 	}
 	iss.Key = iss.ProjectKey + "-" + strconv.FormatInt(num, 10)
-	iss.Description, iss.Environment = optString(desc), optString(env)
+	iss.Description, iss.Environment = sqlq.String(desc), sqlq.String(env)
 	iss.Type = IssueType{Named: Named{typeID.String, orID(typeName, typeID)}, Subtask: subtask.Bool}
 	iss.Status = Status{Named: Named{statusID.String, orID(statusName, statusID)},
 		Category: issue.StatusCategory(statusCat.String).OrTodo()}
@@ -132,7 +132,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 		d := due.Time.Format(time.DateOnly)
 		iss.Due = &d
 	}
-	iss.Original, iss.Remaining, iss.Spent = optInt(original), optInt(remaining), optInt(spent)
+	iss.Original, iss.Remaining, iss.Spent = sqlq.Int(original), sqlq.Int(remaining), sqlq.Int(spent)
 	if parentID.Valid {
 		iss.Parent = &Ref{ID: parentID.Int64, Key: parentKey.String}
 	}
@@ -224,20 +224,6 @@ func userOf(users map[int64]*User, id sql.NullInt64) *User {
 		return nil
 	}
 	return users[id.Int64]
-}
-
-func optString(s sql.NullString) *string {
-	if !s.Valid {
-		return nil
-	}
-	return &s.String
-}
-
-func optInt(n sql.NullInt64) *int64 {
-	if !n.Valid {
-		return nil
-	}
-	return &n.Int64
 }
 
 func orID(name, id sql.NullString) string {

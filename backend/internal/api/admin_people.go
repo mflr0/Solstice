@@ -126,7 +126,7 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 		if err := rows.Scan(&g.ID, &g.Name, &desc, &g.Members); err != nil {
 			return err
 		}
-		g.Description = nullStr(desc)
+		g.Description = sqlq.String(desc)
 		out = append(out, g)
 		return nil
 	}, like)
@@ -145,7 +145,7 @@ func (s *Server) groupByID(ctx context.Context, id int64) (groupOut, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return g, errNotFound
 	}
-	g.Description = nullStr(desc)
+	g.Description = sqlq.String(desc)
 	return g, err
 }
 
@@ -434,7 +434,7 @@ func (s *Server) rolesList(ctx context.Context, where string, args ...any) ([]ro
 		if err := rows.Scan(&ro.ID, &ro.Name, &desc, &ro.Projects, &ro.Grants); err != nil {
 			return err
 		}
-		ro.Description = nullStr(desc)
+		ro.Description = sqlq.String(desc)
 		out = append(out, ro)
 		return nil
 	}, args...)
@@ -613,7 +613,7 @@ func (s *Server) projectRoles(ctx context.Context, projectID int64) ([]projectRo
 		if err := rows.Scan(&ro.ID, &ro.Name, &desc); err != nil {
 			return err
 		}
-		ro.Description = nullStr(desc)
+		ro.Description = sqlq.String(desc)
 		ro.Users, ro.Groups = []userRef{}, []idName{}
 		index[ro.ID] = len(out)
 		out = append(out, ro)

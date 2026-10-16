@@ -70,7 +70,7 @@ func (s *Server) components(ctx context.Context, projectID int64, where string, 
 		if err := rows.Scan(&c.ID, &c.Name, &desc, &lead, &c.AssigneeType, &c.Archived, &c.Issues); err != nil {
 			return err
 		}
-		c.Description = nullStr(desc)
+		c.Description = sqlq.String(desc)
 		leads = append(leads, lead)
 		ids = append(ids, lead.Int64)
 		out = append(out, c)
@@ -419,7 +419,7 @@ func (s *Server) versions(ctx context.Context, projectID int64, where string, ar
 			&v.Issues.Total, &v.Issues.Unresolved); err != nil {
 			return err
 		}
-		v.Description, v.StartDate, v.ReleaseDate = nullStr(desc), dateOnly(start), dateOnly(release)
+		v.Description, v.StartDate, v.ReleaseDate = sqlq.String(desc), dateOnly(start), dateOnly(release)
 		out = append(out, v)
 		return nil
 	}, append([]any{projectID}, args...)...)

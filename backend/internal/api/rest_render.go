@@ -15,6 +15,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // sysField is one of Jira's system fields, as Solstice keeps them.
@@ -176,8 +177,8 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 		}
 		return nil
 	})
-	put("description", func() any { return nullAny(row.Description) })
-	put("environment", func() any { return nullAny(row.Environment) })
+	put("description", func() any { return sqlq.Value(row.Description) })
+	put("environment", func() any { return sqlq.Value(row.Environment) })
 	put("labels", func() any { return d.labels })
 	put("components", func() any {
 		out := []any{}
@@ -234,9 +235,9 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 		return map[string]any{"self": o.api + "/issue/" + row.Key() + "/votes", "votes": d.votes.Count,
 			"hasVoted": d.votes.Me}
 	})
-	put("timeoriginalestimate", func() any { return nullAny(row.Original) })
-	put("timeestimate", func() any { return nullAny(row.Remaining) })
-	put("timespent", func() any { return nullAny(row.Spent) })
+	put("timeoriginalestimate", func() any { return sqlq.Value(row.Original) })
+	put("timeestimate", func() any { return sqlq.Value(row.Remaining) })
+	put("timespent", func() any { return sqlq.Value(row.Spent) })
 	put("timetracking", func() any {
 		out := map[string]any{}
 		for _, t := range []struct {
@@ -397,7 +398,7 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 		}
 		return out
 	case "gh-lexo-rank":
-		return nullAny(d.row.Rank)
+		return sqlq.Value(d.row.Rank)
 	case "labels":
 		if l := d.customLabels[f.ID]; len(l) > 0 {
 			return l

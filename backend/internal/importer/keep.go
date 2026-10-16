@@ -161,7 +161,7 @@ func (r *run) keep() (*kept, error) {
 		if admin {
 			k.admins = append(k.admins, name)
 		}
-		k.extras[name] = [2]any{nullStr(locale), ntime(last)}
+		k.extras[name] = [2]any{sqlq.Value(locale), ntime(last)}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -206,13 +206,6 @@ func (r *run) keep() (*kept, error) {
 		}
 	}
 	return k, nil
-}
-
-func nullStr(s sql.NullString) any {
-	if !s.Valid {
-		return nil
-	}
-	return s.String
 }
 
 // putBack restores what keep saved, once the import has run (or failed:

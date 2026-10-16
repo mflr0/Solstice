@@ -421,6 +421,7 @@ func (in *inserter) add(vals ...any) error {
 	if len(vals) != in.ncols {
 		return fmt.Errorf("BUG: %d values for %d columns in %s", len(vals), in.ncols, in.head)
 	}
+	// Only plain strings are counted: unwrap sql.NullString with sqlq.Value.
 	for _, v := range vals {
 		if s, ok := v.(string); ok {
 			in.bytes += len(s)
@@ -459,20 +460,6 @@ func (in *inserter) flush() error {
 }
 
 // Value helpers: Jira columns are nullable almost everywhere.
-
-func nstr(s sql.NullString) any {
-	if !s.Valid {
-		return nil
-	}
-	return s.String
-}
-
-func nint(i sql.NullInt64) any {
-	if !i.Valid {
-		return nil
-	}
-	return i.Int64
-}
 
 func ntime(t sql.NullTime) any {
 	if !t.Valid {

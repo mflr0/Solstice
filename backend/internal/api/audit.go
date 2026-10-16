@@ -137,9 +137,9 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) error {
 		if uid.Valid {
 			e.User = &userRef{ID: uid.Int64, Username: username.String, Name: name.String, Active: active.Bool}
 		}
-		e.Username, e.IP = nullStr(recorded), nullStr(ip)
+		e.Username, e.IP = sqlq.String(recorded), sqlq.String(ip)
 		if ttype.Valid {
-			e.Target = &auditTarget{Type: ttype.String, ID: nullStr(tid), Label: nullStr(tlabel)}
+			e.Target = &auditTarget{Type: ttype.String, ID: sqlq.String(tid), Label: sqlq.String(tlabel)}
 		}
 		if details.Valid {
 			json.Unmarshal([]byte(details.String), &e.Details)

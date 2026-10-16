@@ -353,8 +353,8 @@ func (s *Server) issueHistory(ctx context.Context, sub *perm.Subject, iss *issue
 		if it.Field == "security" {
 			return nil
 		}
-		it.fromValue, it.fromString, it.toValue, it.toString = nullStr(fromValue), nullStr(fromString),
-			nullStr(toValue), nullStr(toString)
+		it.fromValue, it.fromString, it.toValue, it.toString = sqlq.String(fromValue), sqlq.String(fromString),
+			sqlq.String(toValue), sqlq.String(toString)
 		it.From, it.To = it.fromString, it.toString
 		if it.From == nil {
 			it.From = it.fromValue
@@ -479,7 +479,7 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 		if !sub.SeesRestricted(iss.ProjectID, group.String, role.Int64) {
 			return nil
 		}
-		x.out.Body = nullStr(body)
+		x.out.Body = sqlq.String(body)
 		if group.Valid || role.Valid {
 			x.out.Visibility = &visibility{Group: group.String, Role: roleName.String}
 		}

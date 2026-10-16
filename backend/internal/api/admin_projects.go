@@ -464,7 +464,7 @@ func (s *Server) projectSettings(ctx context.Context, id int64) (*projectSetting
 	if err != nil {
 		return nil, err
 	}
-	p.Description = nullStr(desc)
+	p.Description = sqlq.String(desc)
 	if categoryID.Valid {
 		p.Category = &idName{categoryID.Int64, category.String}
 	}
@@ -845,7 +845,7 @@ func (s *Server) categories(ctx context.Context, where string, args ...any) ([]c
 		if err := rows.Scan(&c.ID, &c.Name, &desc, &c.Projects); err != nil {
 			return err
 		}
-		c.Description = nullStr(desc)
+		c.Description = sqlq.String(desc)
 		out = append(out, c)
 		return nil
 	}, args...)

@@ -93,7 +93,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &options, &f.Issues); err != nil {
 			return err
 		}
-		f.Description = nullStr(desc)
+		f.Description = sqlq.String(desc)
 		if t := fieldTypeName(f.TypeKey); t != "" {
 			f.Type = &t
 		}

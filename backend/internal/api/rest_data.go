@@ -483,7 +483,7 @@ func (s *Server) loadSprints(ctx context.Context, _ *perm.Subject, set *issueSet
 			&sp.position); err != nil {
 			return err
 		}
-		sp.Goal = nullStr(goal)
+		sp.Goal = sqlq.String(goal)
 		sp.Start, sp.End, sp.Completed = nullTime(start), nullTime(end), nullTime(done)
 		set.byID[id].sprints = append(set.byID[id].sprints, sp)
 		return nil
