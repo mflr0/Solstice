@@ -38,6 +38,13 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordIncorrect:  "Aktuelles Passwort ist falsch.",
 	AccountTokenCannotChangePassword: "Mit einem Zugriffstoken kann das Passwort nicht geändert werden: Melden Sie sich mit Ihrem Passwort an.",
 	AccountLanguageUnsupported:       "Sprache wird nicht unterstützt (zur Auswahl: %s).",
+	AccountResetLinkInvalid:          "Dieser Link ist ungültig oder abgelaufen. Fordern Sie einen neuen an.",
+	AccountMailUnavailable:           "E-Mail-Links sind nicht verfügbar: Richten Sie zuerst E-Mail und die öffentliche Adresse in der Administration ein.",
+	AccountEmailMissing:              "Dieses Konto hat keine E-Mail-Adresse.",
+	AccountInactive:                  "Dieses Konto ist deaktiviert.",
+	AccountAlreadySignedIn:           "Dieses Konto hat sich bereits angemeldet: Senden Sie stattdessen einen Link zum Zurücksetzen des Passworts.",
+	AccountInviteNoPassword:          "Bei einer Einladung wählt die Person das Passwort selbst: Lassen Sie das Passwort leer.",
+	AccountInviteEmailRequired:       "Für eine Einladung wird die E-Mail-Adresse der Person benötigt.",
 
 	// Access tokens.
 	TokenCannotCreate:  "Ein Zugriffstoken kann keine weiteren Token erstellen: Melden Sie sich mit Ihrem Passwort an.",
@@ -446,6 +453,17 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailTestBody:              "Diese E-Mail bestätigt, dass Solstice mit den aktuellen Einstellungen Nachrichten senden kann.",
 	MailTestSettings:          "Server: %s, Absender: %s.",
 	MailTestWhy:               "Sie erhalten diese E-Mail, weil ein Administrator einen Test angefordert hat.",
+	MailResetSubject:          "Solstice-Passwort zurücksetzen",
+	MailResetIntro:            "Für das Konto %s wurde das Zurücksetzen des Passworts angefordert. Wenn Sie das waren, wählen Sie über den Link unten ein neues Passwort.",
+	MailResetAction:           "Neues Passwort wählen",
+	MailResetExpiry:           "Der Link funktioniert nur einmal und läuft in einer Stunde ab.",
+	MailResetIgnore:           "Wenn Sie das nicht angefordert haben, ignorieren Sie diese E-Mail: Ihr Passwort bleibt unverändert.",
+	MailResetWhy:              "Sie erhalten diese E-Mail, weil für Ihr Konto das Zurücksetzen des Passworts angefordert wurde.",
+	MailInviteSubject:         "Einladung zu Solstice",
+	MailInviteIntro:           "Für Sie wurde ein Konto bei Solstice angelegt (Benutzername: %s). Wählen Sie über den Link unten Ihr Passwort.",
+	MailInviteAction:          "Mein Passwort wählen",
+	MailInviteExpiry:          "Der Link funktioniert nur einmal und ist 7 Tage gültig.",
+	MailInviteWhy:             "Sie erhalten diese E-Mail, weil ein Administrator ein Konto für Sie angelegt hat.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Ungültige Stunde: 0 bis 23.",

@@ -39,6 +39,13 @@ const (
 	AccountCurrentPasswordIncorrect  Key = "AccountCurrentPasswordIncorrect"
 	AccountTokenCannotChangePassword Key = "AccountTokenCannotChangePassword"
 	AccountLanguageUnsupported       Key = "AccountLanguageUnsupported"
+	AccountResetLinkInvalid          Key = "AccountResetLinkInvalid"
+	AccountMailUnavailable           Key = "AccountMailUnavailable"
+	AccountEmailMissing              Key = "AccountEmailMissing"
+	AccountInactive                  Key = "AccountInactive"
+	AccountAlreadySignedIn           Key = "AccountAlreadySignedIn"
+	AccountInviteNoPassword          Key = "AccountInviteNoPassword"
+	AccountInviteEmailRequired       Key = "AccountInviteEmailRequired"
 )
 
 // Access tokens.
@@ -507,6 +514,17 @@ const (
 	MailTestBody              Key = "MailTestBody"
 	MailTestSettings          Key = "MailTestSettings"
 	MailTestWhy               Key = "MailTestWhy"
+	MailResetSubject          Key = "MailResetSubject"
+	MailResetIntro            Key = "MailResetIntro"
+	MailResetAction           Key = "MailResetAction"
+	MailResetExpiry           Key = "MailResetExpiry"
+	MailResetIgnore           Key = "MailResetIgnore"
+	MailResetWhy              Key = "MailResetWhy"
+	MailInviteSubject         Key = "MailInviteSubject"
+	MailInviteIntro           Key = "MailInviteIntro"
+	MailInviteAction          Key = "MailInviteAction"
+	MailInviteExpiry          Key = "MailInviteExpiry"
+	MailInviteWhy             Key = "MailInviteWhy"
 )
 
 // Notification preferences and notification e-mails.

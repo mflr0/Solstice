@@ -38,6 +38,13 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordIncorrect:  "Password attuale errata.",
 	AccountTokenCannotChangePassword: "Un token di accesso non può cambiare la password: accedi con la tua password.",
 	AccountLanguageUnsupported:       "Lingua non supportata (scegli tra: %s).",
+	AccountResetLinkInvalid:          "Questo link non è valido o è scaduto. Richiedine uno nuovo.",
+	AccountMailUnavailable:           "I link via email non sono disponibili: configura prima l'email e l'indirizzo pubblico nell'amministrazione.",
+	AccountEmailMissing:              "Questo account non ha un indirizzo email.",
+	AccountInactive:                  "Questo account è disattivato.",
+	AccountAlreadySignedIn:           "Questo account ha già effettuato l'accesso: invia invece un link per reimpostare la password.",
+	AccountInviteNoPassword:          "Con un invito la persona sceglie la password: lascia vuota la password.",
+	AccountInviteEmailRequired:       "Un invito richiede l'indirizzo email della persona.",
 
 	// Access tokens.
 	TokenCannotCreate:  "Un token di accesso non può creare altri token: accedi con la tua password.",
@@ -446,6 +453,17 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailTestBody:              "Questa email conferma che Solstice può inviare messaggi con le impostazioni attuali.",
 	MailTestSettings:          "Server: %s, mittente: %s.",
 	MailTestWhy:               "Ricevi questa email perché un amministratore ha richiesto una prova.",
+	MailResetSubject:          "Reimposta la tua password di Solstice",
+	MailResetIntro:            "È stata richiesta la reimpostazione della password per l'account %s. Se sei stato tu, usa il link qui sotto per scegliere una nuova password.",
+	MailResetAction:           "Scegli una nuova password",
+	MailResetExpiry:           "Il link funziona una sola volta e scade tra un'ora.",
+	MailResetIgnore:           "Se non hai richiesto nulla, ignora questa email: la tua password resta invariata.",
+	MailResetWhy:              "Ricevi questa email perché è stata richiesta la reimpostazione della password del tuo account.",
+	MailInviteSubject:         "Invito a Solstice",
+	MailInviteIntro:           "È stato creato un account per te su Solstice (nome utente: %s). Usa il link qui sotto per scegliere la tua password.",
+	MailInviteAction:          "Scegli la mia password",
+	MailInviteExpiry:          "Il link funziona una sola volta ed è valido per 7 giorni.",
+	MailInviteWhy:             "Ricevi questa email perché un amministratore ha creato un account per te.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Ora non valida: da 0 a 23.",

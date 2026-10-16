@@ -36,6 +36,13 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordIncorrect:  "Incorrect current password.",
 	AccountTokenCannotChangePassword: "An access token cannot change the password: sign in with your password.",
 	AccountLanguageUnsupported:       "Unsupported language (choose from: %s).",
+	AccountResetLinkInvalid:          "This link is invalid or has expired. Ask for a new one.",
+	AccountMailUnavailable:           "Email links are not available: set up email and the public address in the administration first.",
+	AccountEmailMissing:              "This account has no email address.",
+	AccountInactive:                  "This account is deactivated.",
+	AccountAlreadySignedIn:           "This account has already signed in: send a password reset link instead.",
+	AccountInviteNoPassword:          "With an invitation the person chooses the password: leave the password empty.",
+	AccountInviteEmailRequired:       "An invitation needs the person's email address.",
 
 	// Access tokens.
 	TokenCannotCreate:  "An access token cannot create other tokens: sign in with your password.",
@@ -444,6 +451,17 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailTestBody:              "This email confirms that Solstice can send messages with the current settings.",
 	MailTestSettings:          "Server: %s, sender: %s.",
 	MailTestWhy:               "You receive this email because an administrator asked for a test.",
+	MailResetSubject:          "Reset your Solstice password",
+	MailResetIntro:            "A password reset was requested for the account %s. If that was you, use the link below to choose a new password.",
+	MailResetAction:           "Choose a new password",
+	MailResetExpiry:           "The link works once and expires in one hour.",
+	MailResetIgnore:           "If you did not ask for this, ignore this email: your password stays as it is.",
+	MailResetWhy:              "You receive this email because a password reset was requested for your account.",
+	MailInviteSubject:         "You are invited to Solstice",
+	MailInviteIntro:           "An account was created for you on Solstice (username: %s). Use the link below to choose your password.",
+	MailInviteAction:          "Choose my password",
+	MailInviteExpiry:          "The link works once and is valid for 7 days.",
+	MailInviteWhy:             "You receive this email because an administrator created an account for you.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Invalid hour: from 0 to 23.",

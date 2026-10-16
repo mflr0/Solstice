@@ -17,11 +17,18 @@ type page struct {
 	Title    string
 	Heading  string
 	Intro    []string
+	Action   action // a link to follow, after the introduction
+	Outro    []string
 	Sections []section
 	Tables   []table
 	Why      string
 	Prefs    string // link label, with PrefsURL
 	PrefsURL string
+}
+
+// action is a link the e-mail asks the reader to follow (a password reset).
+type action struct {
+	Label, URL string
 }
 
 // section is an issue and what happened to it.
@@ -69,6 +76,13 @@ var htmlPage = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:20px;">{{.Heading}}</p>
 {{- end}}
 {{- range .Intro}}
+<p style="margin:0 0 12px;">{{.}}</p>
+{{- end}}
+{{- if .Action.URL}}
+<p style="margin:16px 0;"><a href="{{.Action.URL}}" style="display:inline-block;padding:10px 18px;background:#d9381e;color:#ffffff;text-decoration:none;font-weight:600;">{{.Action.Label}}</a></p>
+<p style="margin:0 0 16px;color:#6c685e;font-size:12px;word-break:break-all;">{{.Action.URL}}</p>
+{{- end}}
+{{- range .Outro}}
 <p style="margin:0 0 12px;">{{.}}</p>
 {{- end}}
 {{- range .Sections}}
@@ -150,6 +164,12 @@ func (p *page) text() string {
 		b.WriteString(p.Heading + "\n\n")
 	}
 	for _, s := range p.Intro {
+		b.WriteString(s + "\n\n")
+	}
+	if p.Action.URL != "" {
+		b.WriteString(p.Action.Label + colon + "\n" + p.Action.URL + "\n\n")
+	}
+	for _, s := range p.Outro {
 		b.WriteString(s + "\n\n")
 	}
 	for _, s := range p.Sections {

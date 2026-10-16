@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+// Kinds of messages that carry a single-use link. Their bodies are wiped from
+// the outbox once the message is sent or abandoned (the link is a secret),
+// and they are never put back in the queue by Retry.
+const (
+	KindReset      = "reset"
+	KindInvitation = "invitation"
+)
+
 // MaxAttempts is how many times a message is tried before giving up (about
 // two hours with the delays of backoff).
 const MaxAttempts = 8
@@ -172,6 +180,12 @@ func (o *Outbox) finish(ctx context.Context, id int64, status string, attempts i
 		next_attempt_at = ?, claim = NULL WHERE id = ?`, status, attempts, lastErr, sentAt, next, id); err != nil {
 		o.log.Error("outbox update failed", "id", id, "err", err)
 	}
+	if status != "pending" {
+		if _, err := o.db.ExecContext(ctx, `UPDATE mail_outbox SET text_body = '', html_body = ''
+			WHERE id = ? AND kind IN (?, ?)`, id, KindReset, KindInvitation); err != nil {
+			o.log.Error("outbox wipe failed", "id", id, "err", err)
+		}
+	}
 }
 
 // Run sends the outbox until ctx ends: every few seconds, or as soon as
@@ -284,7 +298,7 @@ func (o *Outbox) Stats(ctx context.Context) (*Stats, error) {
 // Retry puts the messages that were given up on back in the queue.
 func (o *Outbox) Retry(ctx context.Context) (int64, error) {
 	res, err := o.db.ExecContext(ctx, `UPDATE mail_outbox SET status = 'pending', attempts = 0, next_attempt_at = ?,
-		claim = NULL WHERE status = 'failed'`, o.Now().UTC())
+		claim = NULL WHERE status = 'failed' AND kind NOT IN (?, ?)`, o.Now().UTC(), KindReset, KindInvitation)
 	if err != nil {
 		return 0, err
 	}
