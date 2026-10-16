@@ -1444,6 +1444,9 @@ export const de: Messages = {
     done: 'Verstanden',
     passwordSaved: (name: string) => `Passwort von ${name} geändert.`,
     limit: 'Es werden nur die ersten 200 Konten angezeigt: Grenzen Sie die Suche ein.',
+    groupFilter: 'Angezeigte Gruppe',
+    allGroups: 'Alle Gruppen',
+    noGroup: 'Ohne Gruppe',
     groupsHint: 'Gruppen werden erstellt und befüllt im Bereich',
   },
 
@@ -1716,6 +1719,104 @@ export const de: Messages = {
     },
   },
 
+  groupsAdmin: {
+    title: 'Gruppen',
+    intro:
+      'Eine Gruppe fasst Personen zusammen, damit eine Berechtigung, eine Rolle oder eine Einschränkung sie alle auf einmal ansprechen kann. Mitglieder werden hier hinzugefügt und entfernt; die Rechte der Gruppe vergeben Sie in den Einstellungen des jeweiligen Projekts.',
+    newGroup: 'Neue Gruppe',
+    search: 'Name oder Beschreibung',
+    name: 'Name',
+    description: 'Beschreibung',
+    members: 'Mitglieder',
+    memberCount: (n: number) => plural(n, 'Mitglied', 'Mitglieder'),
+    empty: 'Noch keine Gruppe',
+    emptyHint: 'Legen Sie eine Gruppe an und fügen Sie dann die Personen hinzu, die dazugehören.',
+    createTitle: 'Neue Gruppe',
+    create: 'Gruppe anlegen',
+    editTitle: (name: string) => `Gruppe ${name} bearbeiten`,
+    nameHint: 'Gruppennamen werden in Kleinbuchstaben gespeichert.',
+    problems: {
+      nameRequired: 'Geben Sie der Gruppe einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Gruppe hat diesen Namen bereits.',
+    },
+    created: (name: string) => `Gruppe ${name} angelegt.`,
+    saved: (name: string) => `Gruppe ${name} gespeichert.`,
+    deleted: (name: string) => `Gruppe ${name} gelöscht.`,
+    manage: 'Mitglieder',
+    deleteTitle: (name: string) => `Gruppe ${name} löschen?`,
+    deleteUnused:
+      'Keine Berechtigung, keine Rolle und keine Sicherheitsstufe verwendet diese Gruppe.',
+    deleteUses: 'Das Löschen der Gruppe entfernt auch:',
+    usage: {
+      grants: (n: number) =>
+        `${plural(n, 'Berechtigung', 'Berechtigungen')}, die ihr in Projekten erteilt wurden`,
+      roles: (n: number) => `${plural(n, 'Mitgliedschaft', 'Mitgliedschaften')} in Projektrollen`,
+      securityLevels: (n: number) =>
+        `${plural(n, 'Mitgliedschaft', 'Mitgliedschaften')} in Sicherheitsstufen`,
+      comments: (n: number) =>
+        `${plural(n, 'Kommentar', 'Kommentare')}, die auf sie beschränkt sind`,
+      worklogs: (n: number) =>
+        `${plural(n, 'Zeiteintrag', 'Zeiteinträge')}, die auf sie beschränkt sind`,
+    },
+    deleteMembers: (n: number) =>
+      n > 0
+        ? 'Die Mitglieder behalten ihr Konto; sie verlieren nur, was die Gruppe ihnen gab.'
+        : 'Die Gruppe hat keine Mitglieder.',
+    blockedTitle: (name: string) => `Die Gruppe ${name} kann nicht gelöscht werden`,
+    blockedBody:
+      'Kommentare oder Zeiteinträge sind auf diese Gruppe beschränkt. Das Löschen würde sie für alle verbergen; die Gruppe bleibt daher, solange es sie gibt.',
+    restricted: (comments: number, worklogs: number) =>
+      `Noch auf diese Gruppe beschränkt: ${[comments > 0 ? plural(comments, 'Kommentar', 'Kommentare') : '', worklogs > 0 ? plural(worklogs, 'Zeiteintrag', 'Zeiteinträge') : ''].filter(Boolean).join(', ')}. Sie kann nicht gelöscht werden.`,
+    typeToConfirm: (name: string) => `Geben Sie ${name} zur Bestätigung ein`,
+    membersTitle: (name: string) => `Mitglieder von ${name}`,
+    membersIntro:
+      'Alles, was die Gruppe vergibt (Berechtigungen, Rollen), gilt für ihre Mitglieder.',
+    addMember: 'Mitglied hinzufügen …',
+    addMemberLabel: 'Hinzuzufügende Person',
+    noMembers: 'Diese Gruppe hat noch keine Mitglieder.',
+    removeMember: (name: string) => `${name} aus der Gruppe entfernen`,
+    memberAdded: (user: string, group: string) => `${user} zu ${group} hinzugefügt.`,
+    memberRemoved: (user: string, group: string) => `${user} aus ${group} entfernt.`,
+    closePanel: 'Mitglieder schließen',
+  },
+
+  rolesAdmin: {
+    title: 'Rollen',
+    intro:
+      'Eine Rolle ist ein Name, den jedes Projekt einem Teil seiner Leute geben kann, etwa Entwickler oder Kunde. Die Projekte bestimmen, wer welche Rolle hat und was sie darf; die Namen sind gemeinsam.',
+    newRole: 'Neue Rolle',
+    search: 'Name oder Beschreibung',
+    name: 'Name',
+    description: 'Beschreibung',
+    projects: 'Projekte',
+    grants: 'Rechte',
+    projectsHint: 'Projekte, in denen jemand die Rolle hat',
+    grantsHint: 'Berechtigungen und Sicherheitsstufen, die die Rolle nennen',
+    holdersHint:
+      'Wer eine Rolle hat, wird in den Einstellungen des jeweiligen Projekts festgelegt.',
+    empty: 'Noch keine Rolle',
+    emptyHint:
+      'Legen Sie eine Rolle an und geben Sie sie dann in den Projekteinstellungen an Personen.',
+    createTitle: 'Neue Rolle',
+    create: 'Rolle anlegen',
+    editTitle: (name: string) => `Rolle ${name} bearbeiten`,
+    problems: {
+      nameRequired: 'Geben Sie der Rolle einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Rolle hat diesen Namen bereits.',
+    },
+    created: (name: string) => `Rolle ${name} angelegt.`,
+    saved: (name: string) => `Rolle ${name} gespeichert.`,
+    deleted: (name: string) => `Rolle ${name} gelöscht.`,
+    deleteTitle: (name: string) => `Rolle ${name} löschen?`,
+    deleteUnused: 'Kein Projekt und keine Berechtigung verwendet diese Rolle.',
+    deleteUsed: (what: string) => `Diese Rolle ist ${what}. Das Löschen entfernt all das.`,
+    inProjects: (n: number) => `in ${plural(n, 'Projekt', 'Projekten')} vergeben`,
+    inGrants: (n: number) => `von ${plural(n, 'Recht', 'Rechten')} genannt`,
+    restricted: (comments: number, worklogs: number) =>
+      `Noch auf diese Rolle beschränkt: ${[comments > 0 ? plural(comments, 'Kommentar', 'Kommentare') : '', worklogs > 0 ? plural(worklogs, 'Zeiteintrag', 'Zeiteinträge') : ''].filter(Boolean).join(', ')}. Sie kann nicht gelöscht werden.`,
+    typeToConfirm: (name: string) => `Geben Sie ${name} zur Bestätigung ein`,
   projectConfig: {
     tabGeneral: 'Allgemein',
     tabPeople: 'Personen',

@@ -1430,6 +1430,9 @@ export const fr: Messages = {
     done: 'C’est noté',
     passwordSaved: (name: string) => `Mot de passe de ${name} changé.`,
     limit: 'Seuls les 200 premiers comptes sont affichés : précisez la recherche.',
+    groupFilter: 'Groupe affiché',
+    allGroups: 'Tous les groupes',
+    noGroup: 'Sans groupe',
     groupsHint: 'Les groupes se créent et se remplissent dans',
   },
 
@@ -1696,6 +1699,99 @@ export const fr: Messages = {
     },
   },
 
+  groupsAdmin: {
+    title: 'Groupes',
+    intro:
+      'Un groupe réunit des personnes pour qu’une permission, un rôle ou une restriction puisse les nommer toutes d’un coup. Ajoutez et retirez les membres ici ; donnez ses droits au groupe dans les réglages de chaque projet.',
+    newGroup: 'Nouveau groupe',
+    search: 'Nom ou description',
+    name: 'Nom',
+    description: 'Description',
+    members: 'Membres',
+    memberCount: (n: number) => plural(n, 'membre', 'membres'),
+    empty: 'Aucun groupe pour l’instant',
+    emptyHint: 'Créez un groupe, puis ajoutez les personnes qui en font partie.',
+    createTitle: 'Nouveau groupe',
+    create: 'Créer le groupe',
+    editTitle: (name: string) => `Modifier le groupe ${name}`,
+    nameHint: 'Les noms de groupe sont conservés en minuscules.',
+    problems: {
+      nameRequired: 'Donnez un nom au groupe.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Un autre groupe porte déjà ce nom.',
+    },
+    created: (name: string) => `Groupe ${name} créé.`,
+    saved: (name: string) => `Groupe ${name} enregistré.`,
+    deleted: (name: string) => `Groupe ${name} supprimé.`,
+    manage: 'Membres',
+    deleteTitle: (name: string) => `Supprimer le groupe ${name} ?`,
+    deleteUnused: 'Aucune permission, aucun rôle ni niveau de sécurité n’utilise ce groupe.',
+    deleteUses: 'Supprimer le groupe retire aussi :',
+    usage: {
+      grants: (n: number) =>
+        `${plural(n, 'permission', 'permissions')} qui lui sont données dans des projets`,
+      roles: (n: number) => `${plural(n, 'appartenance', 'appartenances')} à des rôles de projet`,
+      securityLevels: (n: number) =>
+        `${plural(n, 'appartenance', 'appartenances')} à des niveaux de sécurité`,
+      comments: (n: number) => `${plural(n, 'commentaire', 'commentaires')} qui lui sont réservés`,
+      worklogs: (n: number) =>
+        `${plural(n, 'saisie de temps', 'saisies de temps')} qui lui sont réservés`,
+    },
+    deleteMembers: (n: number) =>
+      n > 0
+        ? 'Les membres gardent leur compte ; ils perdent seulement ce que le groupe leur donnait.'
+        : 'Le groupe n’a aucun membre.',
+    blockedTitle: (name: string) => `Le groupe ${name} ne peut pas être supprimé`,
+    blockedBody:
+      'Des commentaires ou des saisies de temps sont réservés à ce groupe. Le supprimer les cacherait à tout le monde : le groupe reste tant qu’ils existent.',
+    restricted: (comments: number, worklogs: number) =>
+      `Encore réservés à ce groupe : ${[comments > 0 ? plural(comments, 'commentaire', 'commentaires') : '', worklogs > 0 ? plural(worklogs, 'saisie de temps', 'saisies de temps') : ''].filter(Boolean).join(', ')}. Il ne peut pas être supprimé.`,
+    typeToConfirm: (name: string) => `Saisissez ${name} pour confirmer`,
+    membersTitle: (name: string) => `Membres de ${name}`,
+    membersIntro: 'Tout ce que le groupe donne (permissions, rôles) s’applique à ses membres.',
+    addMember: 'Ajouter un membre…',
+    addMemberLabel: 'Personne à ajouter',
+    noMembers: 'Ce groupe n’a pas encore de membres.',
+    removeMember: (name: string) => `Retirer ${name} du groupe`,
+    memberAdded: (user: string, group: string) => `${user} ajouté à ${group}.`,
+    memberRemoved: (user: string, group: string) => `${user} retiré de ${group}.`,
+    closePanel: 'Fermer les membres',
+  },
+
+  rolesAdmin: {
+    title: 'Rôles',
+    intro:
+      'Un rôle est un nom que chaque projet peut donner à certains de ses membres, comme développeur ou client. Les projets choisissent qui tient chaque rôle et ce qu’il permet ; les noms sont communs.',
+    newRole: 'Nouveau rôle',
+    search: 'Nom ou description',
+    name: 'Nom',
+    description: 'Description',
+    projects: 'Projets',
+    grants: 'Droits',
+    projectsHint: 'Projets où quelqu’un tient le rôle',
+    grantsHint: 'Permissions et niveaux de sécurité qui nomment le rôle',
+    holdersHint: 'Qui tient un rôle se règle dans les réglages de chaque projet.',
+    empty: 'Aucun rôle pour l’instant',
+    emptyHint: 'Créez un rôle, puis donnez-le à des personnes dans les réglages d’un projet.',
+    createTitle: 'Nouveau rôle',
+    create: 'Créer le rôle',
+    editTitle: (name: string) => `Modifier le rôle ${name}`,
+    problems: {
+      nameRequired: 'Donnez un nom au rôle.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Un autre rôle porte déjà ce nom.',
+    },
+    created: (name: string) => `Rôle ${name} créé.`,
+    saved: (name: string) => `Rôle ${name} enregistré.`,
+    deleted: (name: string) => `Rôle ${name} supprimé.`,
+    deleteTitle: (name: string) => `Supprimer le rôle ${name} ?`,
+    deleteUnused: 'Aucun projet ni aucune permission n’utilise ce rôle.',
+    deleteUsed: (what: string) => `Ce rôle est ${what}. Le supprimer retire tout cela.`,
+    inProjects: (n: number) => `tenu dans ${plural(n, 'projet', 'projets')}`,
+    inGrants: (n: number) => `nommé par ${plural(n, 'droit', 'droits')}`,
+    restricted: (comments: number, worklogs: number) =>
+      `Encore réservés à ce rôle : ${[comments > 0 ? plural(comments, 'commentaire', 'commentaires') : '', worklogs > 0 ? plural(worklogs, 'saisie de temps', 'saisies de temps') : ''].filter(Boolean).join(', ')}. Il ne peut pas être supprimé.`,
+    typeToConfirm: (name: string) => `Saisissez ${name} pour confirmer`,
   projectConfig: {
     tabGeneral: 'Général',
     tabPeople: 'Personnes',
