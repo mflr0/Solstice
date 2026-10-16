@@ -352,6 +352,31 @@ func (r *run) importIssueDetails() error {
 	return nil
 }
 
+// actionRefs are the Solstice values a comment or work log points to.
+type actionRefs struct {
+	author, updater, group, role any
+}
+
+// refsOf resolves the author, last editor and visibility of a comment or
+// work log.
+func (r *run) refsOf(author, updater, group sql.NullString, role sql.NullInt64) (actionRefs, error) {
+	var ref actionRefs
+	var err error
+	if ref.author, err = r.user(author); err != nil {
+		return ref, err
+	}
+	if ref.updater, err = r.user(updater); err != nil {
+		return ref, err
+	}
+	if ref.role, err = r.visibilityRole(role); err != nil {
+		return ref, err
+	}
+	if group.String != "" {
+		ref.group = strings.ToLower(group.String)
+	}
+	return ref, nil
+}
+
 // visibilityRole returns the role a comment or work log is restricted to. A
 // role deleted from Jira is recreated without members, so the restricted
 // content stays hidden instead of becoming public.
@@ -397,27 +422,15 @@ func (r *run) importCommentsAndWorklogs() error {
 			skipped++
 			return nil
 		}
-		authorID, err := r.user(author)
+		ref, err := r.refsOf(author, updater, group, role)
 		if err != nil {
 			return err
 		}
-		updaterID, err := r.user(updater)
-		if err != nil {
-			return err
-		}
-		roleID, err := r.visibilityRole(role)
-		if err != nil {
-			return err
-		}
-		var grp any
-		if group.String != "" {
-			grp = strings.ToLower(group.String)
-		}
-		if grp != nil || roleID != nil {
+		if ref.group != nil || ref.role != nil {
 			restricted++
 		}
 		c := stamp(created, updated)
-		return ins.add(id, issue.Int64, authorID, body.String, c, stamp(updated, created), updaterID, grp, roleID)
+		return ins.add(id, issue.Int64, ref.author, body.String, c, stamp(updated, created), ref.updater, ref.group, ref.role)
 	}); err != nil {
 		return err
 	}
@@ -443,25 +456,13 @@ func (r *run) importCommentsAndWorklogs() error {
 			skipped++
 			return nil
 		}
-		authorID, err := r.user(author)
+		ref, err := r.refsOf(author, updater, group, role)
 		if err != nil {
 			return err
-		}
-		updaterID, err := r.user(updater)
-		if err != nil {
-			return err
-		}
-		roleID, err := r.visibilityRole(role)
-		if err != nil {
-			return err
-		}
-		var grp any
-		if group.String != "" {
-			grp = strings.ToLower(group.String)
 		}
 		c := stamp(created, updated)
-		return ins.add(id, issue.Int64, authorID, sqlq.Value(body), stamp(started, created), seconds.Int64, c,
-			stamp(updated, created), updaterID, grp, roleID)
+		return ins.add(id, issue.Int64, ref.author, sqlq.Value(body), stamp(started, created), seconds.Int64, c,
+			stamp(updated, created), ref.updater, ref.group, ref.role)
 	}); err != nil {
 		return err
 	}
