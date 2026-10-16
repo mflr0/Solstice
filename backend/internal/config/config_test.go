@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/netip"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -202,5 +203,59 @@ func TestLines(t *testing.T) {
 	got := Lines(map[string]string{KeyTZ: "UTC", KeyDB: "mysql://x"})
 	if got != "SOLSTICE_DB=mysql://x\nSOLSTICE_TZ=UTC\n" {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestParseTrustedProxies(t *testing.T) {
+	// An address is a range of one; a range is masked; a mapped address unmapped.
+	got, err := ParseTrustedProxies("192.0.2.1, 10.0.0.0/8 ,2001:db8::1, ::ffff:127.0.0.1, 10.1.2.3/16, ::ffff:172.16.0.0/108")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []netip.Prefix{netip.MustParsePrefix("192.0.2.1/32"), netip.MustParsePrefix("10.0.0.0/8"),
+		netip.MustParsePrefix("2001:db8::1/128"), netip.MustParsePrefix("127.0.0.1/32"),
+		netip.MustParsePrefix("10.1.0.0/16"), netip.MustParsePrefix("172.16.0.0/12")}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+
+	// An empty list trusts no proxy; empty entries are skipped.
+	for _, in := range []string{"", "  "} {
+		if ps, err := ParseTrustedProxies(in); err != nil || len(ps) != 0 {
+			t.Errorf("ParseTrustedProxies(%q) = %v, %v, want nothing", in, ps, err)
+		}
+	}
+	if ps, err := ParseTrustedProxies("192.0.2.1,"); err != nil || len(ps) != 1 {
+		t.Errorf("a trailing comma: %v %v", ps, err)
+	}
+
+	// An entry Solstice cannot use names the setting it came from.
+	for _, bad := range []string{"example.org", "10.0.0.0/33", "192.0.2.1:80"} {
+		if _, err := ParseTrustedProxies(bad); err == nil || !strings.Contains(err.Error(), KeyTrustedProxies) {
+			t.Errorf("ParseTrustedProxies(%q) = %v, want an error naming %s", bad, err, KeyTrustedProxies)
+		}
+	}
+}
+
+func TestLoadTrustedProxies(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "solstice.conf")
+	write(t, path, "SOLSTICE_TRUSTED_PROXIES=127.0.0.1,10.0.0.0/8\n")
+	c, err := Load(path, env(nil))
+	if err != nil || c.TrustedProxies != "127.0.0.1,10.0.0.0/8" {
+		t.Fatalf("file: %v %q", err, c.TrustedProxies)
+	}
+	c, err = Load(path, env(map[string]string{KeyTrustedProxies: "2001:db8::1"}))
+	if err != nil || c.TrustedProxies != "2001:db8::1" {
+		t.Fatalf("environment: %v %q", err, c.TrustedProxies)
+	}
+
+	// A list Solstice cannot parse stops it at start-up.
+	write(t, path, "SOLSTICE_TRUSTED_PROXIES=not-an-address\n")
+	if _, err = Load(path, env(nil)); err == nil || !strings.Contains(err.Error(), KeyTrustedProxies) {
+		t.Errorf("file: %v, want an error naming %s", err, KeyTrustedProxies)
+	}
+	if _, err = Load(filepath.Join(t.TempDir(), "absent.conf"),
+		env(map[string]string{KeyTrustedProxies: "10.0.0.0/40"})); err == nil || !strings.Contains(err.Error(), KeyTrustedProxies) {
+		t.Errorf("environment: %v, want an error naming %s", err, KeyTrustedProxies)
 	}
 }

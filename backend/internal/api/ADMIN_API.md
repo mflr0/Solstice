@@ -403,7 +403,8 @@ same checks.
   "config": {
     "path": "/etc/solstice/solstice.conf", "found": true,
     "sources": {"SOLSTICE_DB": "env", "SOLSTICE_DATA": "file", "SOLSTICE_ADDR": "default",
-                "SOLSTICE_TZ": "file", "SOLSTICE_BASE_URL": "database", "SOLSTICE_SECRET_KEY": "default"},
+                "SOLSTICE_TZ": "file", "SOLSTICE_BASE_URL": "database", "SOLSTICE_SECRET_KEY": "default",
+                "SOLSTICE_TRUSTED_PROXIES": "default"},
     "addr": ":8080"
   },
   "import": null

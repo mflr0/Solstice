@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,18 +22,19 @@ import (
 
 // The keys Solstice reads.
 const (
-	KeyDB        = "SOLSTICE_DB"         // MariaDB URL: mysql://user:pass@host:port/db
-	KeyData      = "SOLSTICE_DATA"       // data directory (attachments, setup code)
-	KeyAddr      = "SOLSTICE_ADDR"       // listen address
-	KeyTZ        = "SOLSTICE_TZ"         // time zone of dates typed in searches
-	KeyBaseURL   = "SOLSTICE_BASE_URL"   // public address, e.g. https://tickets.example.org
-	KeySecretKey = "SOLSTICE_SECRET_KEY" // optional; <data>/secret.key otherwise
+	KeyDB             = "SOLSTICE_DB"              // MariaDB URL: mysql://user:pass@host:port/db
+	KeyData           = "SOLSTICE_DATA"            // data directory (attachments, setup code)
+	KeyAddr           = "SOLSTICE_ADDR"            // listen address
+	KeyTZ             = "SOLSTICE_TZ"              // time zone of dates typed in searches
+	KeyBaseURL        = "SOLSTICE_BASE_URL"        // public address, e.g. https://tickets.example.org
+	KeySecretKey      = "SOLSTICE_SECRET_KEY"      // optional; <data>/secret.key otherwise
+	KeyTrustedProxies = "SOLSTICE_TRUSTED_PROXIES" // reverse proxies: IP addresses and CIDR ranges
 	// KeyConfig names the file itself; it is only read from the environment.
 	KeyConfig = "SOLSTICE_CONFIG"
 )
 
 // Keys are the settings a file may hold.
-var Keys = []string{KeyDB, KeyData, KeyAddr, KeyTZ, KeyBaseURL, KeySecretKey}
+var Keys = []string{KeyDB, KeyData, KeyAddr, KeyTZ, KeyBaseURL, KeySecretKey, KeyTrustedProxies}
 
 // Defaults for what nothing sets. There is deliberately no default database.
 const (
@@ -51,7 +53,7 @@ type Config struct {
 	// Exists tells whether Path was found.
 	Exists bool
 
-	DB, Data, Addr, TZ, BaseURL, SecretKey string
+	DB, Data, Addr, TZ, BaseURL, SecretKey, TrustedProxies string
 
 	// FromEnv lists the keys set by an environment variable: writing them to
 	// the file would change nothing.
@@ -75,6 +77,8 @@ func (c *Config) Get(key string) string {
 		return c.BaseURL
 	case KeySecretKey:
 		return c.SecretKey
+	case KeyTrustedProxies:
+		return c.TrustedProxies
 	}
 	return ""
 }
@@ -93,6 +97,8 @@ func (c *Config) set(key, value string) {
 		c.BaseURL = value
 	case KeySecretKey:
 		c.SecretKey = value
+	case KeyTrustedProxies:
+		c.TrustedProxies = value
 	}
 }
 
@@ -153,7 +159,42 @@ func Load(path string, lookup func(string) (string, bool)) (*Config, error) {
 	if c.Addr == "" {
 		c.Addr = DefaultAddr
 	}
+	if _, err := ParseTrustedProxies(c.TrustedProxies); err != nil {
+		return nil, err
+	}
 	return c, nil
+}
+
+// ParseTrustedProxies reads the trusted proxy list: IP addresses and CIDR
+// ranges separated by commas, the reverse proxies whose X-Forwarded-For
+// header Solstice may believe. An empty list trusts no proxy. An entry that
+// is neither an address nor a range is an error naming it.
+func ParseTrustedProxies(v string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, part := range strings.Split(v, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if strings.Contains(part, "/") {
+			p, err := netip.ParsePrefix(part)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %q is not a CIDR range", KeyTrustedProxies, part)
+			}
+			if a := p.Addr(); a.Is4In6() && p.Bits() >= 96 { // ::ffff:10.0.0.0/104 is 10.0.0.0/8
+				p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
+			}
+			out = append(out, p.Masked())
+			continue
+		}
+		a, err := netip.ParseAddr(part)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %q is not an IP address", KeyTrustedProxies, part)
+		}
+		a = a.Unmap() // an IPv4 address written mapped, e.g. ::ffff:127.0.0.1
+		out = append(out, netip.PrefixFrom(a, a.BitLen()))
+	}
+	return out, nil
 }
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
