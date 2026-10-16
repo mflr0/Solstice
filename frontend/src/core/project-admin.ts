@@ -6,7 +6,15 @@
  */
 
 import { matches } from './admin-forms.js';
-import type { Category, ExtraRecipient } from './admin-types.js';
+import type {
+  AssigneeType,
+  Category,
+  ExtraRecipient,
+  ProjectPatch,
+  VersionInput,
+  VersionRow,
+} from './admin-types.js';
+import { parseDay } from './dates.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -211,6 +219,7 @@ export const PROJECT_TABS = [
   'general',
   'components',
   'versions',
+  'people',
   'rights',
   'workflows',
   'notifications',
@@ -237,6 +246,130 @@ export function nextTab(
 ): ProjectTab {
   const i = tabs.indexOf(current);
   return tabs[(i + step + tabs.length) % tabs.length] ?? current;
+}
+
+/* General tab -------------------------------------------------------------- */
+
+/** What the General tab edits (a project's key is not editable). */
+export interface GeneralForm {
+  name: string;
+  description: string;
+  lead: UserRef | null;
+  category: number | null;
+  defaultAssignee: 'unassigned' | 'lead';
+  /** The issue types offered, in the catalogue's order. */
+  issueTypes: string[];
+}
+
+export function generalForm(p: ProjectSettings): GeneralForm {
+  return {
+    name: p.name,
+    description: p.description ?? '',
+    lead: p.lead,
+    category: p.category?.id ?? null,
+    defaultAssignee: p.defaultAssignee,
+    issueTypes: p.issueTypes.map((i) => i.id),
+  };
+}
+
+export type GeneralProblem = 'nameRequired' | 'nameTooLong' | 'typesRequired' | 'leadRequired';
+
+export function generalProblems(
+  f: GeneralForm,
+  all: readonly { id: string; subtask: boolean }[],
+): Partial<Record<'name' | 'lead' | 'types', GeneralProblem>> {
+  const out: Partial<Record<'name' | 'lead' | 'types', GeneralProblem>> = {};
+  const name = f.name.trim();
+  if (!name) out.name = 'nameRequired';
+  else if ([...name].length > 255) out.name = 'nameTooLong';
+  if (!f.lead) out.lead = 'leadRequired';
+  if (issueTypesProblem(f.issueTypes, all)) out.types = 'typesRequired';
+  return out;
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
+
+/** The fields of the form that differ from the saved project, as a PATCH body. */
+export function generalPatch(f: GeneralForm, p: ProjectSettings): ProjectPatch {
+  const patch: ProjectPatch = {};
+  const name = f.name.trim();
+  if (name !== p.name) patch.name = name;
+  const description = f.description.trim();
+  if (description !== (p.description ?? '')) patch.description = description || null;
+  if (f.lead && f.lead.id !== p.lead?.id) patch.lead = f.lead.id;
+  if (f.category !== (p.category?.id ?? null)) patch.category = f.category;
+  if (f.defaultAssignee !== p.defaultAssignee) patch.defaultAssignee = f.defaultAssignee;
+  if (
+    !sameSet(
+      f.issueTypes,
+      p.issueTypes.map((i) => i.id),
+    )
+  )
+    patch.issueTypes = f.issueTypes;
+  return patch;
+}
+
+/** The types ticked, kept in the catalogue's order, with one more or less. */
+export function toggleIssueType(
+  all: readonly { id: string }[],
+  selected: readonly string[],
+  id: string,
+  on: boolean,
+): string[] {
+  return all.map((x) => x.id).filter((x) => (x === id ? on : selected.includes(x)));
+}
+
+/* Names and days ------------------------------------------------------------ */
+
+/** A name of a component or version: the rules of category names (any case). */
+export const nameProblem = categoryProblem;
+
+/** Whether text is a real calendar day, "YYYY-MM-DD" (the server refuses others). */
+export function validDay(s: string): boolean {
+  const d = parseDay(s);
+  if (!d) return false;
+  const t = new Date(Date.UTC(d.y, d.m - 1, d.d));
+  return t.getUTCFullYear() === d.y && t.getUTCMonth() === d.m - 1 && t.getUTCDate() === d.d;
+}
+
+export type DayProblem = 'dayInvalid';
+
+/** An optional day: empty is fine, anything else must be a real day. */
+export function dayProblem(s: string): DayProblem | null {
+  return !s.trim() || validDay(s.trim()) ? null : 'dayInvalid';
+}
+
+/* Components ---------------------------------------------------------------- */
+
+export const ASSIGNEE_TYPES: readonly AssigneeType[] = [
+  'project_default',
+  'component_lead',
+  'project_lead',
+  'unassigned',
+];
+
+/** What the component dialog edits. */
+export interface ComponentForm {
+  name: string;
+  description: string;
+  lead: UserRef | null;
+  assigneeType: AssigneeType;
+}
+
+/** A component's lead cannot decide the assignee when there is none. */
+export function componentProblem(f: ComponentForm): 'leadNeeded' | null {
+  return f.assigneeType === 'component_lead' && !f.lead ? 'leadNeeded' : null;
+}
+
+/** The body of POST/PATCH components: a cleared lead is sent as null. */
+export function componentPayload(f: ComponentForm) {
+  return {
+    name: f.name.trim(),
+    description: f.description.trim(),
+    lead: f.lead?.id ?? null,
+    assigneeType: f.assigneeType,
+  };
 }
 
 /* Versions and components --------------------------------------------------- */
@@ -271,6 +404,67 @@ export function otherComponents<C extends { id: number; archived: boolean }>(
   return components.filter((c) => c.id !== self && !c.archived);
 }
 
+/** Where a version stands: archived wins over released. */
+export type VersionState = 'archived' | 'released' | 'unreleased';
+
+export function versionState(v: Pick<VersionLike, 'released' | 'archived'>): VersionState {
+  return v.archived ? 'archived' : v.released ? 'released' : 'unreleased';
+}
+
+/** An unreleased version whose release day is already past (days are "YYYY-MM-DD"). */
+export function versionLate(
+  v: Pick<VersionRow, 'released' | 'archived' | 'releaseDate'>,
+  today: string,
+): boolean {
+  return !v.released && !v.archived && !!v.releaseDate && v.releaseDate < today;
+}
+
+/** What the version dialog edits. */
+export interface VersionForm {
+  name: string;
+  description: string;
+  startDate: string;
+  releaseDate: string;
+}
+
+export type VersionProblems = Partial<
+  Record<'start' | 'release' | 'dates', DayProblem | 'startAfterRelease'>
+>;
+
+export function versionProblems(f: VersionForm): VersionProblems {
+  const out: VersionProblems = {};
+  const s = dayProblem(f.startDate);
+  const r = dayProblem(f.releaseDate);
+  if (s) out.start = s;
+  if (r) out.release = r;
+  if (!s && !r) {
+    const d = datesProblem(f.startDate.trim(), f.releaseDate.trim());
+    if (d) out.dates = d;
+  }
+  return out;
+}
+
+/** The body of POST/PATCH versions: an empty day clears it. */
+export function versionPayload(f: VersionForm): VersionInput {
+  return {
+    name: f.name.trim(),
+    description: f.description.trim(),
+    startDate: f.startDate.trim() || null,
+    releaseDate: f.releaseDate.trim() || null,
+  };
+}
+
+/**
+ * The ids in the order they take when `id` moves one place up (-1) or down
+ * (1); null at an end of the list or when `id` is not there.
+ */
+export function orderAfterStep(ids: readonly number[], id: number, by: -1 | 1): number[] | null {
+  const from = ids.indexOf(id);
+  const to = from + by;
+  if (from < 0 || to < 0 || to >= ids.length) return null;
+  return moveItem(ids, from, to);
+}
+
 /** A list with one item moved from one place to another (reordering). */
 export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
   const out = [...list];
@@ -278,6 +472,28 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
   const [item] = out.splice(from, 1);
   out.splice(to, 0, item as T);
   return out;
+}
+
+/* Project roles ------------------------------------------------------------- */
+
+export interface RoleMembers {
+  users: number[];
+  groups: number[];
+}
+
+/** Who holds a role, after one user or group is added or removed (no duplicates). */
+export function withMember(
+  role: { users: readonly { id: number }[]; groups: readonly { id: number }[] },
+  kind: 'user' | 'group',
+  id: number,
+  on: boolean,
+): RoleMembers {
+  const users = role.users.map((u) => u.id);
+  const groups = role.groups.map((g) => g.id);
+  const list = kind === 'user' ? users : groups;
+  const rest = list.filter((x) => x !== id);
+  const next = on ? [...rest, id] : rest;
+  return kind === 'user' ? { users: next, groups } : { users, groups: next };
 }
 
 /* Project notifications ----------------------------------------------------- */
