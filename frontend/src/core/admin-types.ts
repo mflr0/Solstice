@@ -221,7 +221,7 @@ export interface SubscriptionInput {
 /* General settings ---------------------------------------------------------- */
 
 /** Where a setting's value in effect comes from. */
-export type SettingSource = 'database' | 'env' | 'file' | 'flag' | 'default';
+export type SettingSource = 'database' | 'env' | 'file' | 'default';
 
 export interface BannerSettings {
   enabled: boolean;

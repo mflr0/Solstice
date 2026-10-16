@@ -87,12 +87,33 @@ instance Jira.
 ### Configuration
 
 Les réglages sont dans un fichier de lignes `CLÉ=valeur`, trouvé par
-`-config`, puis `SOLSTICE_CONFIG`, puis `./solstice.conf`, puis
+`SOLSTICE_CONFIG`, puis `./solstice.conf`, puis
 `/etc/solstice/solstice.conf`. Les variables d'environnement du même nom
-l'emportent ; `solstice -h` les liste. `GET /healthz` répond 200 quand la base
-répond, 503 sinon.
+l'emportent ; `solstice -h` les liste. Une clé `SOLSTICE_` inconnue, dans le
+fichier ou l'environnement, est signalée dans le journal au démarrage.
+`GET /healthz` répond 200 quand la base répond, 503 sinon.
 
-`SOLSTICE_DB` s'écrit `mysql://utilisateur:mot_de_passe@hôte:3306/base` ;
+| Clé | Défaut | |
+|---|---|---|
+| `SOLSTICE_DB_URL` | aucune | base MariaDB, voir plus bas |
+| `SOLSTICE_DB_MAXOPENCONNS` | `20` | connexions ouvertes au plus |
+| `SOLSTICE_DB_MAXIDLECONNS` | `10` | connexions inactives gardées, au plus `MAXOPENCONNS` |
+| `SOLSTICE_DB_CONNMAXLIFETIME` | `5m` | durée de vie d'une connexion |
+| `SOLSTICE_DATA` | `./data` | dossier des données |
+| `SOLSTICE_TZ` | celui du système | fuseau des dates tapées dans les recherches, par exemple `Europe/Paris` |
+| `SOLSTICE_SECRETKEY` | `<données>/secret.key` | clé des secrets enregistrés, voir plus bas |
+| `SOLSTICE_INSTALL` | aucune | `docker` dans l'image : la page des mises à jour explique comment mettre à jour un conteneur |
+| `SOLSTICE_HTTP_ADDR` | `:8080` | adresse d'écoute |
+| `SOLSTICE_HTTP_BASEURL` | aucune | adresse publique, par exemple `https://tickets.example.org` |
+| `SOLSTICE_HTTP_TRUSTEDPROXIES` | aucun | reverse proxies, voir plus bas |
+| `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | temps laissé aux requêtes et e-mails en cours à l'arrêt |
+| `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | taille d'un envoi de fichiers ; `KB`, `MB`, `GB` comptent par 1000, `KiB`, `MiB`, `GiB` par 1024. Montez aussi la limite du proxy (`client_max_body_size` pour nginx) |
+| `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
+| `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
+
+Les durées s'écrivent `30s`, `5m`, `1h30m`.
+
+`SOLSTICE_DB_URL` s'écrit `mysql://utilisateur:mot_de_passe@hôte:3306/base` ;
 encodez en pourcentage les caractères spéciaux du mot de passe (`@` en `%40`).
 Pour chiffrer la liaison avec une base située sur une autre machine, ajoutez
 `?tls=true` (certificat vérifié), `?tls=skip-verify` (chiffré, certificat non
@@ -103,12 +124,12 @@ messages d'erreur n'affichent jamais le mot de passe.
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
 `Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`. Les échecs de
 connexion sont comptés par adresse de client : listez votre proxy dans
-`SOLSTICE_TRUSTED_PROXIES` (adresses IP ou plages CIDR séparées par des virgules,
+`SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou plages CIDR séparées par des virgules,
 vide par défaut) pour que Solstice lise le client dans `X-Forwarded-For` et non
 l'adresse du proxy, la même pour tous. Voir `deploy/proxy/README.md`.
 
 Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
-`SOLSTICE_SECRET_KEY` (32 octets en base64 ou en hexadécimal, par exemple
+`SOLSTICE_SECRETKEY` (32 octets en base64 ou en hexadécimal, par exemple
 `openssl rand -base64 32`), ou à défaut avec `<données>/secret.key`, créée au
 premier besoin. Sauvegardez cette clé avec la base et le dossier de données :
 sans elle, ces secrets sont à ressaisir.
@@ -175,7 +196,7 @@ ses propres réglages de notifications).
 - Serveur SMTP : il se règle dans l'administration (hôte, port, sécurité
   aucune / STARTTLS / TLS, identifiant, expéditeur), avec un envoi d'essai qui
   affiche l'erreur exacte du serveur. L'adresse publique
-  (`SOLSTICE_BASE_URL`) sert aux liens des e-mails ; sans elle, ils partent
+  (`SOLSTICE_HTTP_BASEURL`) sert aux liens des e-mails ; sans elle, ils partent
   sans liens.
 - Notifications : observateurs, rapporteur, assigné et personnes mentionnées
   (`[~identifiant]`). Chacun choisit ses événements, l'envoi immédiat (les
@@ -216,7 +237,7 @@ développement de `compose.yaml` se donne explicitement, ou dans un
 `backend/solstice.conf`) :
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice
 cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
 cd frontend && pnpm dev                       # interface sur http://localhost:5173
 ```

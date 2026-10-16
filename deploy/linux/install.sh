@@ -70,13 +70,13 @@ if [ ! -f "$config" ]; then
   umask 077
   {
     say "# Solstice configuration (KEY=value). The setup wizard completes it."
-    say "SOLSTICE_ADDR=:$port"
+    say "SOLSTICE_HTTP_ADDR=:$port"
   } > "$config"
   chown solstice:solstice "$config"
   chmod 0600 "$config"
 fi
 
-if [ $with_db -eq 1 ] && ! grep -q '^SOLSTICE_DB=' "$config"; then
+if [ $with_db -eq 1 ] && ! grep -q '^SOLSTICE_DB_URL=' "$config"; then
   if ! command -v mariadb >/dev/null 2>&1 && ! command -v mysql >/dev/null 2>&1; then
     say "Installation de MariaDB… / Installing MariaDB…"
     if command -v apt-get >/dev/null 2>&1; then
@@ -102,7 +102,7 @@ GRANT ALL PRIVILEGES ON solstice.* TO 'solstice'@'localhost';
 GRANT ALL PRIVILEGES ON solstice.* TO 'solstice'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
-  say "SOLSTICE_DB=mysql://solstice:$pw@127.0.0.1:3306/solstice" >> "$config"
+  say "SOLSTICE_DB_URL=mysql://solstice:$pw@127.0.0.1:3306/solstice" >> "$config"
 fi
 
 install -m 0644 "$here/solstice.service" /etc/systemd/system/solstice.service

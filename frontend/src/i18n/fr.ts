@@ -1982,7 +1982,6 @@ export const fr: Messages = {
     sources: {
       env: 'Valeur venue d’une variable d’environnement : l’enregistrer ici la remplace.',
       file: 'Valeur venue du fichier de configuration : l’enregistrer ici la remplace.',
-      flag: 'Valeur venue de la ligne de commande : l’enregistrer ici la remplace.',
       default: 'Valeur par défaut.',
       database: '',
     },

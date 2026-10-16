@@ -78,9 +78,9 @@ set: only then can reset links and invitations be sent (the sign-in page shows
 - `passwordMinLength`: 8–128, default 12. Applies to new passwords (admin,
   profile, reset); existing passwords keep working.
 - `sources.<field>`: where the value in effect comes from — `database` (set
-  here), `env` (environment variable), `file` (configuration file), `flag`
-  (command line), `default`. Only `baseURL` and `timeZone` can come from
-  env/file/flag (`SOLSTICE_BASE_URL`, `SOLSTICE_TZ`): those are initial
+  here), `env` (environment variable), `file` (configuration file),
+  `default`. Only `baseURL` and `timeZone` can come from env/file
+  (`SOLSTICE_HTTP_BASEURL`, `SOLSTICE_TZ`): those are initial
   values; once saved here, the database wins.
 
 ### `PUT /api/admin/settings` — global admin
@@ -441,9 +441,9 @@ same checks.
   "migrations": {"count": 10, "latest": "0010_admin", "list": [{"version": "0001_init", "appliedAt": "…"}]},
   "config": {
     "path": "/etc/solstice/solstice.conf", "found": true,
-    "sources": {"SOLSTICE_DB": "env", "SOLSTICE_DATA": "file", "SOLSTICE_ADDR": "default",
-                "SOLSTICE_TZ": "file", "SOLSTICE_BASE_URL": "database", "SOLSTICE_SECRET_KEY": "default",
-                "SOLSTICE_TRUSTED_PROXIES": "default"},
+    "sources": {"SOLSTICE_DB_URL": "env", "SOLSTICE_DATA": "file", "SOLSTICE_HTTP_ADDR": "default",
+                "SOLSTICE_TZ": "file", "SOLSTICE_HTTP_BASEURL": "database", "SOLSTICE_SECRETKEY": "default",
+                "SOLSTICE_HTTP_TRUSTEDPROXIES": "default"},
     "addr": ":8080"
   },
   "import": null

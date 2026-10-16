@@ -168,7 +168,7 @@ func emptyDB(t *testing.T) string {
 	if !strings.Contains(dsn, "setup") {
 		t.Fatalf("SOLSTICE_TEST_EMPTY_DB=%s: the name must contain « setup », it is wiped", dsn)
 	}
-	conn, err := db.Open(context.Background(), dsn)
+	conn, err := db.Open(context.Background(), dsn, config.Defaults().DB.Pool())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,11 +221,11 @@ func TestSetupNewInstance(t *testing.T) {
 	if saved["written"] != true {
 		t.Fatalf("configuration not written: %v", saved)
 	}
-	values, err := config.Load(cfgPath, func(string) (string, bool) { return "", false })
+	values, err := config.Load([]string{config.KeyConfig + "=" + cfgPath})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if values.DB == "" || values.Data != dataDir {
+	if values.DB.URL == "" || values.Data != dataDir {
 		t.Errorf("configuration file: %+v", values)
 	}
 	if info, _ := os.Stat(cfgPath); info.Mode().Perm() != 0o600 {
@@ -252,8 +252,8 @@ func TestSetupNewInstance(t *testing.T) {
 	if status != 200 || body["baseURL"] != "https://tickets.example.org" || body["tz"] != "Europe/Paris" {
 		t.Fatalf("instance: %d %v", status, body)
 	}
-	if values, _ = config.Load(cfgPath, func(string) (string, bool) { return "", false }); values.TZ != "Europe/Paris" ||
-		values.BaseURL != "https://tickets.example.org" || values.DB == "" {
+	if values, _ = config.Load([]string{config.KeyConfig + "=" + cfgPath}); values.TZ.String() != "Europe/Paris" ||
+		values.HTTP.BaseURL != "https://tickets.example.org" || values.DB.URL == "" {
 		t.Errorf("configuration after the instance step: %+v", values)
 	}
 

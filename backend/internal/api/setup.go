@@ -33,6 +33,7 @@ import (
 
 	"solstice/internal/auth"
 	"solstice/internal/config"
+	"solstice/internal/db"
 	"solstice/internal/i18n"
 )
 
@@ -41,16 +42,18 @@ type SetupOptions struct {
 	// DB is the database, or nil when none is configured yet: the wizard
 	// then asks for one.
 	DB *sql.DB
-	// DBFixed tells that the database comes from the environment or the
-	// command line, so the wizard cannot change it.
+	// DBFixed tells that the database comes from the environment, so the
+	// wizard cannot change it.
 	DBFixed bool
+	// Pool sizes the connection pool of the database the wizard opens.
+	Pool db.Pool
 	// DataDir is the data directory in use (absolute); DataFixed as DBFixed.
 	DataDir   string
 	DataFixed bool
 	// ConfigPath is the configuration file the wizard writes.
 	ConfigPath string
 	// TrustedProxies are the reverse proxies whose forwarding header the
-	// server believes (SOLSTICE_TRUSTED_PROXIES).
+	// server believes (SOLSTICE_HTTP_TRUSTEDPROXIES).
 	TrustedProxies []netip.Prefix
 	// BaseURL and TZ are the values in effect; *Fixed when the environment sets them.
 	BaseURL, TZ           string
@@ -460,7 +463,7 @@ func (w *Setup) save(values map[string]string) *configSave {
 	return out
 }
 
-// SetBaseURL sets the public address of the instance (SOLSTICE_BASE_URL):
+// SetBaseURL sets the public address of the instance (SOLSTICE_HTTP_BASEURL):
 // when it is https, session cookies are always Secure.
 // It is an initial value: one saved in the administration wins.
 func (s *Server) SetBaseURL(u string) {

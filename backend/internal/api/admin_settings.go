@@ -4,7 +4,7 @@ package api
 // name, public address, time zone, default language, announcement banner,
 // sign-in lifetime and password length. They live in the settings table
 // and apply at once. The public address and the time zone may also come
-// from the configuration file or the environment (SOLSTICE_BASE_URL,
+// from the configuration file or the environment (SOLSTICE_HTTP_BASEURL,
 // SOLSTICE_TZ): those are initial values, and the database wins once an
 // administrator saved one.
 
@@ -31,8 +31,8 @@ type ConfigInfo struct {
 	Path    string // the configuration file
 	Found   bool   // whether it exists
 	Addr    string // listen address
-	// Sources tells where each key of config.Keys comes from: env, flag,
-	// file or default.
+	// Sources tells where each key of config.Keys comes from: env, file
+	// or default.
 	Sources map[string]string
 }
 
@@ -72,7 +72,6 @@ const (
 	sourceDefault  = "default"
 	sourceFile     = "file"
 	sourceEnv      = "env"
-	sourceFlag     = "flag"
 	sourceDatabase = "database"
 )
 
@@ -118,7 +117,7 @@ const (
 	maxBannerText       = 500
 )
 
-// bootSource tells where a value given at start (file, environment, flag)
+// bootSource tells where a value given at start (file, environment)
 // comes from.
 // Its only caller, loadGeneral, runs with s.adm.mu held: it reads s.adm.info directly.
 func (s *Server) bootSource(key, value string) string {

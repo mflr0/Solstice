@@ -2,7 +2,7 @@
 // password, webhook secrets…) so that a copy of the database alone does not
 // reveal them.
 //
-// The key comes from SOLSTICE_SECRET_KEY (32 bytes, hex or base64, from the
+// The key comes from SOLSTICE_SECRETKEY (32 bytes, hex or base64, from the
 // environment or the configuration file) when it is set, otherwise from
 // <data dir>/secret.key, created on first use with mode 0600. Losing the key
 // only loses the secrets: they must be typed again.
@@ -49,13 +49,13 @@ func New(key []byte) (*Box, error) {
 }
 
 // Load returns the box of this installation: the configured key
-// (SOLSTICE_SECRET_KEY) when not empty, otherwise the one in
+// (SOLSTICE_SECRETKEY) when not empty, otherwise the one in
 // dataDir/secret.key, generated if missing.
 func Load(dataDir, configured string) (*Box, error) {
 	if v := strings.TrimSpace(configured); v != "" {
 		key, err := decodeKey(v)
 		if err != nil {
-			return nil, fmt.Errorf("SOLSTICE_SECRET_KEY: %w", err)
+			return nil, fmt.Errorf("SOLSTICE_SECRETKEY: %w", err)
 		}
 		return New(key)
 	}
@@ -82,7 +82,7 @@ func decodeKey(s string) ([]byte, error) {
 }
 
 // keyFile reads the key file, creating it if it does not exist yet. The file
-// holds the key in base64, so it can be copied into SOLSTICE_SECRET_KEY.
+// holds the key in base64, so it can be copied into SOLSTICE_SECRETKEY.
 func keyFile(path string) ([]byte, error) {
 	raw, err := os.ReadFile(path) // #nosec G304 -- path built by the server, not from user input
 	if err == nil {

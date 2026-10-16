@@ -19,12 +19,19 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// Pool sizes the connection pool, as sql.DB's setters of the same names.
+type Pool struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+}
+
 // Open connects to mysql://user:pass@host:port/db (MariaDB). Every session
 // runs in UTC so DATETIME columns always hold UTC. The one option accepted
 // after "?" is tls (true, false, skip-verify or preferred) to encrypt the
 // link to a remote server; any other option is an error. Errors never
 // contain the URL, which holds the password.
-func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
+func Open(ctx context.Context, rawURL string, pool Pool) (*sql.DB, error) {
 	dsn, err := mysqlDSN(rawURL)
 	if err != nil {
 		return nil, err
@@ -33,9 +40,9 @@ func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(10)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(pool.MaxOpenConns)
+	db.SetMaxIdleConns(pool.MaxIdleConns)
+	db.SetConnMaxLifetime(pool.ConnMaxLifetime)
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("cannot reach the database: %w", err)

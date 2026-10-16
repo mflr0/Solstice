@@ -33,8 +33,8 @@ for engine in pg my; do
   echo "› import ($engine)"
   mariadb -e "DROP DATABASE IF EXISTS solstice_e2e_$engine; CREATE DATABASE solstice_e2e_$engine;
               GRANT ALL ON solstice_e2e_$engine.* TO 'solstice'@'%';"
-  "$work/solstice" import -db "mysql://solstice:solstice@localhost:13306/solstice_e2e_$engine" -data "$work/data-$engine" \
-    -from "$src" -tz "$tz" -jira-home "$work/home-$engine" -json > "$work/report-$engine.json"
+  SOLSTICE_DB_URL="mysql://solstice:solstice@localhost:13306/solstice_e2e_$engine" SOLSTICE_DATA="$work/data-$engine" \
+    "$work/solstice" import -from "$src" -tz "$tz" -jira-home "$work/home-$engine" -json > "$work/report-$engine.json"
 done
 
 fail=0

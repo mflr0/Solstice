@@ -93,7 +93,7 @@ func newUpdatesFixture(t *testing.T) *updatesFixture {
 	f.srv = api.New(testDB, t.TempDir(), time.UTC, quiet())
 	f.srv.SetVersion("1.0.0")
 	f.srv.TestHooks().SetUpdateEnv(api.UpdateEnv{GitHubAPI: gh.URL, HelperDir: f.dir, GOOS: "linux", GOARCH: "amd64",
-		DockerEnv: filepath.Join(f.dir, "no-dockerenv"), Getenv: func(string) string { return "" }, Now: f.clock})
+		DockerEnv: filepath.Join(f.dir, "no-dockerenv"), Now: f.clock})
 	hs := httptest.NewServer(f.srv.Handler(http.NotFoundHandler()))
 	t.Cleanup(hs.Close)
 	f.url = hs.URL

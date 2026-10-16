@@ -8,7 +8,7 @@
 # into the matching container of compose.yaml as database <name>, then
 # imported into the Solstice database solstice_<name>. Serve it with:
 #
-#   SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice_<name> \
+#   SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice_<name> \
 #   SOLSTICE_DATA=data/<name> go run ./cmd/solstice serve        (in backend/)
 #
 # Dumps stay local: *.sql and *.sql.gz are ignored by git.
@@ -45,5 +45,5 @@ echo "› base Solstice solstice_$name"
 
 echo "› import (fuseau du serveur Jira : $tz)"
 cd "$root/backend"
-go run ./cmd/solstice import -replace -tz "$tz" -from "$source_url" \
-  -db "mysql://solstice:solstice@localhost:13306/solstice_$name" -data "$root/data/$name"
+SOLSTICE_DB_URL="mysql://solstice:solstice@localhost:13306/solstice_$name" SOLSTICE_DATA="$root/data/$name" \
+  go run ./cmd/solstice import -replace -tz "$tz" -from "$source_url"

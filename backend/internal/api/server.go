@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"solstice/internal/auth"
+	"solstice/internal/config"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/live"
@@ -26,16 +27,17 @@ import (
 
 // Server holds what handlers share.
 type Server struct {
-	db      *sql.DB
-	perms   *perm.Store
-	hub     *live.Hub
-	dataDir string
-	log     *slog.Logger
-	tz      *time.Location // for dates typed without a time zone (JQL)
-	limiter *auth.Limiter
-	baseURL string         // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
-	proxies []netip.Prefix // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
-	out     *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	db        *sql.DB
+	perms     *perm.Store
+	hub       *live.Hub
+	dataDir   string
+	log       *slog.Logger
+	tz        *time.Location // for dates typed without a time zone (JQL)
+	limiter   *auth.Limiter
+	baseURL   string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
+	proxies   []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
+	maxUpload int64          // bytes in one upload request; see SetMaxUpload
+	out       *outgoing      // event bus, e-mail and webhooks (notifications.go)
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -58,7 +60,7 @@ type Server struct {
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter(), streamsDone: make(chan struct{})}
+		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{})}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
 	}

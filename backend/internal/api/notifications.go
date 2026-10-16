@@ -40,7 +40,7 @@ type outgoing struct {
 	notify   *notify.Service
 	hooks    *webhook.Service
 
-	secretKey string // SOLSTICE_SECRET_KEY; empty: <data>/secret.key
+	secretKey string // SOLSTICE_SECRETKEY; empty: <data>/secret.key
 	boxMu     sync.Mutex
 	box       *secret.Box
 }
@@ -66,7 +66,7 @@ func (s *Server) startOutgoing() {
 	o.bus.Subscribe(o.hooks)
 }
 
-// SetSecretKey sets the key that seals stored secrets (SOLSTICE_SECRET_KEY,
+// SetSecretKey sets the key that seals stored secrets (SOLSTICE_SECRETKEY,
 // 32 bytes in hex or base64). Without it, <data>/secret.key is used, and
 // created if needed.
 func (s *Server) SetSecretKey(key string) {

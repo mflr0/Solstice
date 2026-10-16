@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
-	"flag"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net"
 	"os"
 	"time"
@@ -21,78 +21,43 @@ import (
 // version is set at build time: go build -ldflags "-X main.version=1.2.0".
 var version = "dev"
 
-// settingFlags are the flags every command shares; they win over the
-// environment and the configuration file.
-type settingFlags struct {
-	config, db, data *string
-}
-
-func commonFlags(fs *flag.FlagSet, withData bool) *settingFlags {
-	f := &settingFlags{
-		config: fs.String("config", "", "configuration file (default: $SOLSTICE_CONFIG, else ./solstice.conf, else /etc/solstice/solstice.conf)"),
-		db:     fs.String("db", "", "MariaDB URL, mysql://user:password@host:3306/database, optionally ?tls=true|skip-verify|preferred (default: $SOLSTICE_DB or the configuration file)"),
-	}
-	if withData {
-		f.data = fs.String("data", "", "data directory (default: $SOLSTICE_DATA, the configuration file, or ./data)")
-	}
-	return f
-}
-
-// load reads the configuration and applies the flags. fixed tells which
-// settings the setup wizard cannot change: those given by the environment
-// or on the command line.
-func (f *settingFlags) load() (c *config.Config, fixed map[string]bool, err error) {
-	c, err = config.Load(*f.config, os.LookupEnv)
+// loadConfig reads the configuration, sets up logging from it and reports
+// unknown keys. Values are never logged: some are passwords.
+func loadConfig() (*config.Config, error) {
+	c, err := config.Load(os.Environ())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	fixed = map[string]bool{}
-	for k, v := range c.FromEnv {
-		fixed[k] = v
-	}
-	if *f.db != "" {
-		c.DB, fixed[config.KeyDB] = *f.db, true
-	}
-	if f.data != nil && *f.data != "" {
-		c.Data, fixed[config.KeyData] = *f.data, true
-	}
+	setupLog(c.Log)
 	for _, k := range c.Unknown {
-		slog.Warn("unknown setting in the configuration file", "key", k, "file", c.Path)
+		slog.Warn("unknown setting in the configuration file or the environment", "key", k, "file", c.Path)
 	}
-	// Packages that read the environment themselves (the secret key…) see
-	// the file's values too.
-	for _, k := range config.Keys {
-		if v := c.Get(k); v != "" && os.Getenv(k) == "" {
-			os.Setenv(k, v)
-		}
-	}
-	return c, fixed, nil
+	return c, nil
 }
+
+func setupLog(l config.LogSettings) {
+	if l.Format == config.LogJSON {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: l.Level})))
+		return
+	}
+	// The default handler's text output, filtered.
+	slog.SetLogLoggerLevel(l.Level)
+}
+
+// fixed tells whether the environment sets a key: the setup wizard cannot
+// change it.
+func fixed(c *config.Config, key string) bool { return c.Sources[key] == config.SourceEnv }
 
 // configSources tells where each setting in effect comes from, for the
-// administration's system page: env, flag, file or default. baseURL and tz
-// are the values in effect, which the setup wizard may have just written.
-func configSources(c *config.Config, fixed map[string]bool, baseURL string, tz *time.Location) map[string]string {
-	defaults := map[string]string{config.KeyData: config.DefaultData, config.KeyAddr: config.DefaultAddr}
-	out := map[string]string{}
-	for _, k := range config.Keys {
-		v := c.Get(k)
-		switch {
-		case c.FromEnv[k]:
-			out[k] = "env"
-		case fixed[k]:
-			out[k] = "flag"
-		case v == "" || v == defaults[k]:
-			out[k] = "default"
-		default:
-			out[k] = "file"
-		}
+// administration's system page: env, file or default. baseURL and tz are
+// the values in effect, which the setup wizard may have just written.
+func configSources(c *config.Config, baseURL string, tz *time.Location) map[string]string {
+	out := maps.Clone(c.Sources)
+	if out[config.KeyBaseURL] == config.SourceDefault && baseURL != "" {
+		out[config.KeyBaseURL] = config.SourceFile
 	}
-	if out[config.KeyBaseURL] == "default" && baseURL != "" {
-		out[config.KeyBaseURL] = "file"
-	}
-	if out[config.KeyTZ] == "default" && tz != nil && tz != time.Local {
-		out[config.KeyTZ] = "file"
+	if out[config.KeyTZ] == config.SourceDefault && tz != nil && tz != time.Local {
+		out[config.KeyTZ] = config.SourceFile
 	}
 	return out
 }
@@ -100,11 +65,11 @@ func configSources(c *config.Config, fixed map[string]bool, baseURL string, tz *
 // openMigrated connects to Solstice's database and brings it up to date, for
 // the commands that cannot run without one.
 func openMigrated(ctx context.Context, c *config.Config) (*sql.DB, error) {
-	if c.DB == "" {
-		return nil, fmt.Errorf("no database configured: set SOLSTICE_DB, pass -db, or put SOLSTICE_DB in %s "+
-			"(\"solstice serve\" with no database opens the setup wizard)", c.Path)
+	if c.DB.URL == "" {
+		return nil, fmt.Errorf("no database configured: set %s in the environment or in %s "+
+			"(\"solstice serve\" with no database opens the setup wizard)", config.KeyDBURL, c.Path)
 	}
-	conn, err := db.Open(ctx, c.DB)
+	conn, err := db.Open(ctx, c.DB.URL, c.DB.Pool())
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +83,10 @@ func openMigrated(ctx context.Context, c *config.Config) (*sql.DB, error) {
 // openDB connects to Solstice's database. The database may still be
 // starting (containers started together): unreachable servers are retried
 // for a minute; wrong credentials or URLs are not.
-func openDB(ctx context.Context, rawURL string) (*sql.DB, error) {
+func openDB(ctx context.Context, rawURL string, pool db.Pool) (*sql.DB, error) {
 	deadline := time.Now().Add(time.Minute)
 	for {
-		conn, err := db.Open(ctx, rawURL)
+		conn, err := db.Open(ctx, rawURL, pool)
 		var oe *net.OpError
 		retry := errors.As(err, &oe) || errors.Is(err, mysql.ErrInvalidConn) || errors.Is(err, driver.ErrBadConn)
 		if err == nil || !retry || time.Now().After(deadline) {

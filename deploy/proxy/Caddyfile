@@ -2,7 +2,7 @@
 # Put this file in /etc/caddy/Caddyfile.
 # Replace solstice.example.com before use.
 # Caddy gets and renews the HTTPS certificate by itself and already sends
-# X-Forwarded-Proto and X-Forwarded-For: set SOLSTICE_TRUSTED_PROXIES=127.0.0.1
+# X-Forwarded-Proto and X-Forwarded-For: set SOLSTICE_HTTP_TRUSTEDPROXIES=127.0.0.1
 # on Solstice so it believes that header.
 # Check it with caddy validate --config /etc/caddy/Caddyfile, then systemctl reload caddy.
 solstice.example.com {

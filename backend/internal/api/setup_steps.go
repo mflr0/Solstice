@@ -89,10 +89,10 @@ type dbProbe struct {
 // probeDatabase connects and checks the server and the database: version,
 // character set, and that it is empty or Solstice's. The connection is
 // returned open on success.
-func probeDatabase(ctx context.Context, f dbForm, rawURL string) (*sql.DB, *dbProbe, error) {
+func probeDatabase(ctx context.Context, f dbForm, rawURL string, pool db.Pool) (*sql.DB, *dbProbe, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	conn, err := db.Open(ctx, rawURL)
+	conn, err := db.Open(ctx, rawURL, pool)
 	if err != nil {
 		return nil, nil, connectError(err, net.JoinHostPort(f.Host, strconv.Itoa(f.Port)), f.Name, f.User)
 	}
@@ -197,7 +197,7 @@ func (w *Setup) testDatabase(rw http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	conn, p, err := probeDatabase(r.Context(), f, rawURL)
+	conn, p, err := probeDatabase(r.Context(), f, rawURL, w.opt.Pool)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 	case w.imported:
 		return fail(http.StatusConflict, i18n.SetupDatabaseImported)
 	}
-	conn, p, err := probeDatabase(r.Context(), f, rawURL)
+	conn, p, err := probeDatabase(r.Context(), f, rawURL, w.opt.Pool)
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 		w.db.Close()
 	}
 	w.db, w.server = conn, p.Server
-	values := map[string]string{config.KeyDB: rawURL}
+	values := map[string]string{config.KeyDBURL: rawURL}
 	if !w.opt.DataFixed {
 		values[config.KeyData] = w.opt.DataDir
 	}

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"solstice/internal/config"
 )
 
 // runHealth asks a running server whether it is healthy: exit status 0 when
@@ -15,18 +17,18 @@ import (
 // HEALTHCHECK.
 func runHealth(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("health", flag.ExitOnError)
-	target := fs.String("url", "", "URL of /healthz (by default derived from SOLSTICE_ADDR)")
+	target := fs.String("url", "", "URL of /healthz (by default derived from SOLSTICE_HTTP_ADDR)")
 	_ = fs.Parse(args)
 
 	url := *target
 	if url == "" {
-		addr := os.Getenv("SOLSTICE_ADDR")
-		if addr == "" {
-			addr = ":8080"
-		}
-		host, port, err := net.SplitHostPort(addr)
+		cfg, err := config.Load(os.Environ())
 		if err != nil {
-			return fmt.Errorf("SOLSTICE_ADDR %q: %w", addr, err)
+			return err
+		}
+		host, port, err := net.SplitHostPort(cfg.HTTP.Addr)
+		if err != nil {
+			return fmt.Errorf("SOLSTICE_HTTP_ADDR %q: %w", cfg.HTTP.Addr, err)
 		}
 		if host == "" || host == "0.0.0.0" || host == "::" {
 			host = "127.0.0.1"

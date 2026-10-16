@@ -1968,7 +1968,6 @@ export const en = {
     sources: {
       env: 'Value from an environment variable: saving it here replaces it.',
       file: 'Value from the configuration file: saving it here replaces it.',
-      flag: 'Value from the command line: saving it here replaces it.',
       default: 'Default value.',
       database: '',
     },

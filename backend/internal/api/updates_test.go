@@ -166,16 +166,15 @@ func TestFetchLatest(t *testing.T) {
 func TestUpdateInstall(t *testing.T) {
 	dir := t.TempDir()
 	docker := filepath.Join(t.TempDir(), "dockerenv")
-	env := map[string]string{}
-	u := &updater{dir: dir, dockerEnv: docker, goos: "linux", getenv: func(k string) string { return env[k] }}
+	u := &updater{dir: dir, dockerEnv: docker, goos: "linux"}
 	if got := u.install(); got != installManual {
 		t.Errorf("nothing: %s", got)
 	}
-	env["SOLSTICE_INSTALL"] = "docker"
+	u.installed = "docker"
 	if got := u.install(); got != installDocker {
 		t.Errorf("SOLSTICE_INSTALL=docker: %s", got)
 	}
-	delete(env, "SOLSTICE_INSTALL")
+	u.installed = ""
 	os.WriteFile(docker, nil, 0o644)
 	if got := u.install(); got != installDocker {
 		t.Errorf("/.dockerenv: %s", got)

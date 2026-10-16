@@ -3,7 +3,7 @@ package api
 // The client address of a request, for throttling and the audit log. Behind
 // a reverse proxy every connection comes from the proxy, so the client is the
 // address the proxy forwards in X-Forwarded-For. That header is only believed
-// from a proxy listed in SOLSTICE_TRUSTED_PROXIES, as any client could have
+// from a proxy listed in SOLSTICE_HTTP_TRUSTEDPROXIES, as any client could have
 // set it.
 
 import (
@@ -13,7 +13,7 @@ import (
 )
 
 // SetTrustedProxies sets the addresses and CIDR ranges of the reverse proxies
-// whose X-Forwarded-For header the server believes (SOLSTICE_TRUSTED_PROXIES).
+// whose X-Forwarded-For header the server believes (SOLSTICE_HTTP_TRUSTEDPROXIES).
 func (s *Server) SetTrustedProxies(proxies []netip.Prefix) {
 	s.proxies = proxies
 }

@@ -1996,7 +1996,6 @@ export const de: Messages = {
     sources: {
       env: 'Wert aus einer Umgebungsvariablen: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
       file: 'Wert aus der Konfigurationsdatei: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
-      flag: 'Wert aus der Kommandozeile: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
       default: 'Standardwert.',
       database: '',
     },

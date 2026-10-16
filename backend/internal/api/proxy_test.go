@@ -1,6 +1,6 @@
 package api
 
-// The client address behind a reverse proxy: SOLSTICE_TRUSTED_PROXIES lists
+// The client address behind a reverse proxy: SOLSTICE_HTTP_TRUSTEDPROXIES lists
 // the proxies whose X-Forwarded-For the server believes, so that sign-in and
 // setup throttling count each visitor and not the proxy they share.
 
