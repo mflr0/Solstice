@@ -38,17 +38,18 @@ type tokenPolicyOut struct {
 	Group *idName `json:"group"` // for "group", while the group exists
 }
 
-// tokenPolicy reads the policy; a missing or unreadable one means everyone.
+// tokenPolicy reads the policy; a missing or unreadable one means
+// administrators only.
 func (s *Server) tokenPolicy(ctx context.Context) (tokenPolicy, error) {
-	p := tokenPolicy{Who: creatorsEveryone}
+	p := tokenPolicy{Who: creatorsAdmins}
 	if _, err := s.out.settings.GetJSON(ctx, tokenCreatorsSetting, &p); err != nil {
-		return tokenPolicy{Who: creatorsEveryone}, nil
+		return tokenPolicy{Who: creatorsAdmins}, nil
 	}
 	switch p.Who {
 	case creatorsEveryone, creatorsAdmins, creatorsGroup:
 		return p, nil
 	}
-	return tokenPolicy{Who: creatorsEveryone}, nil
+	return tokenPolicy{Who: creatorsAdmins}, nil
 }
 
 // mayCreateTokens tells whether a user may create a personal access token.

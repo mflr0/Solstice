@@ -32,7 +32,7 @@
   let policy = $state<TokenSettings | null>(null);
   let policyOff = $state(false);
   let groups = $state<Group[]>([]);
-  let who = $state<TokenSettings['who']>('everyone');
+  let who = $state<TokenSettings['who']>('admins');
   let group = $state<number | null>(null);
   let policyError = $state('');
   let saving = $state(false);

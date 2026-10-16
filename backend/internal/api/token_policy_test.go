@@ -17,7 +17,7 @@ func TestTokenCreationPolicy(t *testing.T) {
 	paul := login(t, "paul.martin", "motdepasse")
 	hugo := login(t, "hugo.robert", "motdepasse")
 	t.Cleanup(func() {
-		admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "everyone"})
+		admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins"})
 	})
 
 	var policy struct {
@@ -45,9 +45,17 @@ func TestTokenCreationPolicy(t *testing.T) {
 		return status, body
 	}
 
-	// Everyone, as before the setting existed.
-	if status := admin.get("/api/admin/tokens/settings", &policy); status != 200 || policy.Who != "everyone" {
+	// Administrators only by default.
+	if status := admin.get("/api/admin/tokens/settings", &policy); status != 200 || policy.Who != "admins" {
 		t.Fatalf("default policy: %d %+v", status, policy)
+	}
+	if status, _ := create(paul, "politique par défaut"); status != 403 || canCreate(paul) {
+		t.Errorf("a user may create a token under the default policy: %d", status)
+	}
+
+	// Everyone.
+	if status, body := admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "everyone"}); status != 200 {
+		t.Fatalf("set everyone: %d %s", status, body)
 	}
 	if status, body := create(paul, "politique libre"); status != 201 || !canCreate(paul) {
 		t.Fatalf("everyone may create: %d %s", status, body)
@@ -147,4 +155,17 @@ func TestAuditRetentionMinimum(t *testing.T) {
 			t.Errorf("%d days: %d %s", days, status, body)
 		}
 	}
+}
+
+// allowTokensForEveryone lets every account create access tokens for the
+// rest of the test (the default is administrators only).
+func allowTokensForEveryone(t *testing.T) {
+	t.Helper()
+	admin := login(t, "admin", "admin")
+	if status, body := admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "everyone"}); status != 200 {
+		t.Fatalf("set everyone: %d %s", status, body)
+	}
+	t.Cleanup(func() {
+		admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins"})
+	})
 }
