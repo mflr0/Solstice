@@ -45,8 +45,8 @@ const (
 const (
 	TokenCannotCreate  Key = "TokenCannotCreate"
 	TokenNameRequired  Key = "TokenNameRequired"
-	TokenExpiryInvalid Key = "TokenExpiryInvalid"
-	TokenExpiryPast    Key = "TokenExpiryPast"
+	TokenExpiryInvalid Key = "TokenExpiryInvalid" // #nosec G101 -- message key, not a credential
+	TokenExpiryPast    Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
 )
 
 // Groups.
