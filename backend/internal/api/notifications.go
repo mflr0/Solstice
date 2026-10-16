@@ -935,6 +935,7 @@ func (s *Server) notificationRoutes(route func(string, handler, bool)) {
 	route("PUT /api/me/notifications", s.putMyNotifications, true)
 	route("GET /api/projects/{key}/notifications", s.getProjectNotifications, true)
 	route("PUT /api/projects/{key}/notifications", s.putProjectNotifications, true)
+	route("GET /api/me/subscriptions", s.mySubscriptions, true)
 	route("GET /api/filters/{id}/subscriptions", s.listSubscriptions, true)
 	route("POST /api/filters/{id}/subscriptions", s.createSubscription, true)
 	route("PUT /api/filters/{id}/subscriptions/{sid}", s.updateSubscription, true)

@@ -496,3 +496,14 @@ Audit log:
 - `GET /api/admin/audit/settings` → `{retentionDays}`; `PUT` the same:
   `0` keeps everything, otherwise 30 to 36500 days (400 below 30).
   Shortening purges at once. (`settings.audit`)
+
+Filter subscriptions (scheduled e-mail of a filter's results):
+
+- `GET /api/filters/{id}/subscriptions`, `POST` (create), `PUT
+  /api/filters/{id}/subscriptions/{sid}`, `DELETE …/{sid}`, `POST …/{sid}/run`
+  work on one filter. Body: `{schedule: daily|weekly, days: [1-7], hour:
+  0-23, emptyToo, group?}`; `group` (an id) subscribes a group, administrators only.
+- `GET /api/me/subscriptions` → the subscriptions the user receives (their own
+  or a group's they belong to) or created, on the filters they still see,
+  each as above plus `filterName`, by filter name. Administrators get their
+  own here, not everyone's.
