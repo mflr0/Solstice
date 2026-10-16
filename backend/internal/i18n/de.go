@@ -267,6 +267,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Unbekannte Priorität.",
 	IssueResolutionUnknown:     "Unbekannte Lösung.",
 	IssueDueDateInvalid:        "Ungültiges Fälligkeitsdatum (JJJJ-MM-TT erwartet).",
+	IssueEstimateInvalid:       "Ungültige Zeitschätzung (zum Beispiel 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unbekannte Sicherheitsstufe in diesem Projekt.",
 	IssueReporterFixed:         "Der Melder kann nicht geändert werden.",
 	IssueNoTodoStatus:          "Es ist kein Status der Kategorie „Zu erledigen“ definiert.",

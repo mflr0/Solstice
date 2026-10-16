@@ -265,6 +265,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Unknown priority.",
 	IssueResolutionUnknown:     "Unknown resolution.",
 	IssueDueDateInvalid:        "Invalid due date (YYYY-MM-DD expected).",
+	IssueEstimateInvalid:       "Invalid time estimate (for example 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unknown security level in this project.",
 	IssueReporterFixed:         "The reporter cannot be changed.",
 	IssueNoTodoStatus:          "No “to do” status is defined.",

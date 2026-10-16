@@ -304,6 +304,7 @@ const (
 	IssuePriorityUnknown       Key = "IssuePriorityUnknown"
 	IssueResolutionUnknown     Key = "IssueResolutionUnknown"
 	IssueDueDateInvalid        Key = "IssueDueDateInvalid"
+	IssueEstimateInvalid       Key = "IssueEstimateInvalid"
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
 	IssueNoTodoStatus          Key = "IssueNoTodoStatus"

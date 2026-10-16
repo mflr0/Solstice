@@ -268,6 +268,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "अज्ञात प्राथमिकता।",
 	IssueResolutionUnknown:     "अज्ञात रिज़ॉल्यूशन।",
 	IssueDueDateInvalid:        "अमान्य नियत तारीख (YYYY-MM-DD अपेक्षित)।",
+	IssueEstimateInvalid:       "अमान्य समय अनुमान (उदाहरण: 1w 2d 3h 30m)।",
 	IssueSecurityLevelUnknown:  "इस प्रोजेक्ट में अज्ञात सुरक्षा स्तर।",
 	IssueReporterFixed:         "रिपोर्टर बदला नहीं जा सकता।",
 	IssueNoTodoStatus:          "“करना है” श्रेणी का कोई स्टेटस परिभाषित नहीं है।",
