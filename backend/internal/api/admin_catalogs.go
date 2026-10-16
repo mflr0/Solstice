@@ -434,6 +434,8 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 		case it.Issues != nil:
 			used, usage["issues"] = *it.Issues, *it.Issues
 			if it.Projects != nil {
+				// A type some project still offers is in use too.
+				used += *it.Projects
 				usage["projects"] = *it.Projects
 			}
 		case it.Links != nil:

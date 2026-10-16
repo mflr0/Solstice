@@ -327,7 +327,8 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
 - `POST /api/admin/{kind}/order` `{ids: [...]}` → the list.
   `POST /api/admin/statuses/order` too.
 - `DELETE /api/admin/{kind}/{id}` body optional `{moveTo: id}` → 204.
-  Unused: deleted. Used: 409 `{usage: {...}}` unless `moveTo` names another
+  Unused: deleted. Used (for an issue type, by an issue or by a project that
+  offers it): 409 `{usage: {...}}` unless `moveTo` names another
   item of the same catalogue (for issue types, of the same sub-task kind);
   its issues (or links) then move there, with history. The last issue type
   cannot go.
