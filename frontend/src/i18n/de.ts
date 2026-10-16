@@ -492,6 +492,22 @@ export const de: Messages = {
     },
   },
 
+  jql: {
+    unclosedQuote: () => 'Nicht geschlossenes Anführungszeichen.',
+    incompleteBang: () => 'Unvollständiger Operator „!“.',
+    unexpected: (token: string) => `Unerwartetes „${token}“.`,
+    orderBy: () => '„BY“ nach „ORDER“ erwartet.',
+    sortFieldExpected: () => 'Sortierfeld erwartet.',
+    parenExpected: () => 'Schließende Klammer erwartet.',
+    fieldExpected: () => 'Feldname erwartet.',
+    notIn: () => '„IN“ nach „NOT“ erwartet.',
+    operatorExpected: (field: string) => `Operator nach „${field}“ erwartet.`,
+    isEmpty: () => '„IS“ wird mit EMPTY verwendet.',
+    changedOnly: (keyword: string) => `„${keyword}“ kann nur mit CHANGED verwendet werden.`,
+    duringDates: () => 'DURING erwartet zwei Datumsangaben in Klammern.',
+    argumentInvalid: (name: string) => `Ungültiges Argument für ${name}().`,
+    valueExpected: () => 'Wert erwartet.',
+  },
   quick: {
     label: 'Schnellsuche',
     placeholder: 'Vorgänge, Schlüssel, Personen suchen…',

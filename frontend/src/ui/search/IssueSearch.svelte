@@ -11,7 +11,7 @@
     type SortField,
   } from '../../core/filters.js';
   import { readLocation, writeLocation, type SearchLocation } from '../../core/filters-url.js';
-  import { t } from '../../i18n/t.js';
+  import { renderJqlError, t } from '../../i18n/t.js';
   import { router } from '../../lib/router.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
   import FilterBar from './FilterBar.svelte';
@@ -78,7 +78,7 @@
     const q = draft.trim();
     const r = jqlToFilters(q);
     if (!r.ok) {
-      refused = r.reason === 'syntax' ? r.error.message : t.search.tooComplex;
+      refused = r.reason === 'syntax' ? renderJqlError(r.error) : t.search.tooComplex;
       return;
     }
     go({ jql: q === (jql ?? '').trim() ? loc.jql : q, mode: null, page: loc.page });

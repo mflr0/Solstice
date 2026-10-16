@@ -22,13 +22,43 @@ export interface Token {
   closed: boolean;
 }
 
-/** A syntax error, with a French message and the offset it was found at. */
-export class JqlError extends Error {
+/**
+ * The syntax errors and the arguments each message takes. The codes are the
+ * server's JQL* keys without the prefix (backend/internal/i18n/en.go).
+ */
+export interface JqlArgs {
+  unclosedQuote: [];
+  incompleteBang: [];
+  unexpected: [token: string];
+  orderBy: [];
+  sortFieldExpected: [];
+  parenExpected: [];
+  fieldExpected: [];
+  notIn: [];
+  operatorExpected: [field: string];
+  isEmpty: [];
+  changedOnly: [keyword: string];
+  duringDates: [];
+  argumentInvalid: [name: string];
+  valueExpected: [];
+}
+
+export type JqlCode = keyof JqlArgs;
+
+/** What a catalogue supplies for the syntax errors (its `jql` section). */
+export type JqlMessages = { readonly [C in JqlCode]: (...args: JqlArgs[C]) => string };
+
+/** A syntax error: its code, the message's arguments and the offset it was found at. */
+export class JqlError<C extends JqlCode = JqlCode> extends Error {
+  readonly args: JqlArgs[C];
+
   constructor(
-    message: string,
+    readonly code: C,
     readonly pos: number,
+    ...args: JqlArgs[C]
   ) {
-    super(message);
+    super(code);
+    this.args = args;
   }
 }
 
@@ -148,8 +178,8 @@ class Parser {
     return words.includes(w);
   }
 
-  fail(message: string): never {
-    throw new JqlError(message, this.peek().start);
+  fail<C extends JqlCode>(code: C, ...args: JqlArgs[C]): never {
+    throw new JqlError(code, this.peek().start, ...args);
   }
 
   query(): Query {
@@ -157,13 +187,13 @@ class Parser {
     if (!this.keyword('order') && !this.atEnd()) q.where = this.or();
     if (this.keyword('order')) {
       this.next();
-      if (!this.keyword('by')) this.fail('« BY » attendu après « ORDER ».');
+      if (!this.keyword('by')) this.fail('orderBy');
       this.next();
       for (;;) {
         const atEnd = this.atEnd();
         const t = this.next();
         if (atEnd || (t.kind !== 'word' && t.kind !== 'string')) {
-          this.fail('Champ de tri attendu.');
+          this.fail('sortFieldExpected');
         }
         const s: SortTerm = { field: t.text, desc: false };
         if (this.keyword('asc', 'desc')) s.desc = this.next().text.toLowerCase() === 'desc';
@@ -172,7 +202,7 @@ class Parser {
         this.next();
       }
     }
-    if (!this.atEnd()) this.fail(`« ${this.peek().raw} » inattendu.`);
+    if (!this.atEnd()) this.fail('unexpected', this.peek().text);
     return q;
   }
 
@@ -202,7 +232,7 @@ class Parser {
     if (!this.atEnd() && this.peek().kind === 'lparen') {
       this.next();
       const inner = this.or();
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('Parenthèse fermante attendue.');
+      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
       return inner;
     }
     return this.clause();
@@ -211,8 +241,8 @@ class Parser {
   clause(): Node {
     const atEnd = this.atEnd();
     const f = this.next();
-    if (atEnd || (f.kind !== 'word' && f.kind !== 'string')) this.fail('Nom de champ attendu.');
-    if (f.kind === 'string' && !f.closed) throw new JqlError('Guillemet non refermé.', f.start);
+    if (atEnd || (f.kind !== 'word' && f.kind !== 'string')) this.fail('fieldExpected');
+    if (f.kind === 'string' && !f.closed) throw new JqlError('unclosedQuote', f.start);
     const c: Clause = { type: 'clause', field: f.text, op: '', values: [], preds: [] };
     const t = this.peek();
     if (!this.atEnd() && t.kind === 'op') {
@@ -222,7 +252,7 @@ class Parser {
       c.op = 'in';
     } else if (this.keyword('not')) {
       this.next();
-      if (!this.keyword('in')) this.fail('« IN » attendu après « NOT ».');
+      if (!this.keyword('in')) this.fail('notIn');
       this.next();
       c.op = 'not in';
     } else if (this.keyword('is')) {
@@ -252,7 +282,7 @@ class Parser {
       c.op = 'changed';
       return this.predicates(c);
     } else {
-      this.fail(`Opérateur attendu après « ${f.text} ».`);
+      this.fail('operatorExpected', f.text);
     }
 
     if (c.op === 'in' || c.op === 'not in') {
@@ -261,7 +291,7 @@ class Parser {
     }
     const v = this.value();
     if ((c.op === 'is' || c.op === 'is not') && v.kind !== 'empty') {
-      this.fail('« IS » s’emploie avec EMPTY.');
+      this.fail('isEmpty');
     }
     c.values = [v];
     return c;
@@ -277,7 +307,7 @@ class Parser {
         this.next();
         continue;
       }
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('Parenthèse fermante attendue.');
+      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
       return vals;
     }
   }
@@ -286,15 +316,15 @@ class Parser {
     while (this.keyword('after', 'before', 'on', 'during', 'by', 'from', 'to')) {
       const kind = this.next().text.toLowerCase();
       if ((kind === 'from' || kind === 'to') && c.op !== 'changed') {
-        this.fail(`« ${kind.toUpperCase()} » ne s’emploie qu’avec CHANGED.`);
+        this.fail('changedOnly', kind.toUpperCase());
       }
       let values: Value[];
       if (kind === 'during') {
         if (this.atEnd() || this.peek().kind !== 'lparen') {
-          this.fail('DURING attend deux dates entre parenthèses.');
+          this.fail('duringDates');
         }
         values = this.list();
-        if (values.length !== 2) this.fail('DURING attend deux dates entre parenthèses.');
+        if (values.length !== 2) this.fail('duringDates');
       } else if (kind === 'by' && !this.atEnd() && this.peek().kind === 'lparen') {
         values = this.list();
       } else {
@@ -309,7 +339,7 @@ class Parser {
     const atEnd = this.atEnd();
     const t = this.next();
     if (!atEnd && t.kind === 'string') {
-      if (!t.closed) throw new JqlError('Guillemet non refermé.', t.start);
+      if (!t.closed) throw new JqlError('unclosedQuote', t.start);
       return { kind: 'text', text: t.text };
     }
     if (!atEnd && t.kind === 'word') {
@@ -319,11 +349,11 @@ class Parser {
         this.next();
         const v: Value = { kind: 'func', name: t.text, args: [] };
         for (;;) {
-          if (this.atEnd()) this.fail(`Argument de ${t.text}() invalide.`);
+          if (this.atEnd()) this.fail('argumentInvalid', t.text);
           if (this.peek().kind === 'rparen') break;
           const a = this.next();
           if (a.kind !== 'word' && a.kind !== 'string') {
-            throw new JqlError(`Argument de ${t.text}() invalide.`, a.start);
+            throw new JqlError('argumentInvalid', a.start, t.text);
           }
           v.args.push(a.text);
           if (this.peek().kind === 'comma') this.next();
@@ -333,16 +363,16 @@ class Parser {
       }
       return { kind: 'text', text: t.text };
     }
-    throw new JqlError('Valeur attendue.', t.start);
+    throw new JqlError('valueExpected', t.start);
   }
 }
 
-/** Reads a query; throws JqlError with the server's wording on a syntax error. */
+/** Reads a query; throws JqlError, with the server's error codes, on a syntax error. */
 export function parse(src: string): Query {
   const toks = lex(src);
   const bad = toks.find((t) => t.kind === 'error' || (t.kind === 'string' && !t.closed));
-  if (bad?.kind === 'error') throw new JqlError('Opérateur « ! » incomplet.', bad.start);
-  if (bad) throw new JqlError('Guillemet non refermé.', bad.start);
+  if (bad?.kind === 'error') throw new JqlError('incompleteBang', bad.start);
+  if (bad) throw new JqlError('unclosedQuote', bad.start);
   return new Parser(toks, src.length).query();
 }
 

@@ -486,6 +486,22 @@ export const en = {
     } as Record<string, string>,
   },
 
+  jql: {
+    unclosedQuote: () => 'Unclosed quotation mark.',
+    incompleteBang: () => 'Incomplete operator “!”.',
+    unexpected: (token: string) => `Unexpected “${token}”.`,
+    orderBy: () => '“BY” expected after “ORDER”.',
+    sortFieldExpected: () => 'Sort field expected.',
+    parenExpected: () => 'Closing parenthesis expected.',
+    fieldExpected: () => 'Field name expected.',
+    notIn: () => '“IN” expected after “NOT”.',
+    operatorExpected: (field: string) => `Operator expected after “${field}”.`,
+    isEmpty: () => '“IS” is used with EMPTY.',
+    changedOnly: (keyword: string) => `“${keyword}” can only be used with CHANGED.`,
+    duringDates: () => 'DURING expects two dates in parentheses.',
+    argumentInvalid: (name: string) => `Invalid argument for ${name}().`,
+    valueExpected: () => 'Value expected.',
+  },
   quick: {
     label: 'Quick search',
     placeholder: 'Search issues, keys, people…',

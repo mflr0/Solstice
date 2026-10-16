@@ -7,6 +7,7 @@
 
 import type { Ago, Day } from '../core/dates.js';
 import { ago, parseDay, splitDuration } from '../core/dates.js';
+import type { JqlCode, JqlError, JqlMessages } from '../core/jql.js';
 import type { Grant, Holder, Permission, StatusCategory } from '../core/types.js';
 import { dateTime, formatNumber, longDay } from './format.js';
 import type { Messages } from './types.js';
@@ -77,6 +78,12 @@ export function grantLabel(g: Grant): string {
 /** A history entry's field (Jira's names, lower case), as Solstice shows it. */
 export function fieldLabel(field: string): string {
   return (t.historyFields as Record<string, string>)[field.toLowerCase()] ?? field;
+}
+
+/** A JQL syntax error, in the language in use. */
+export function renderJqlError<C extends JqlCode>(e: JqlError<C>): string {
+  const messages: JqlMessages = t.jql;
+  return messages[e.code](...e.args);
 }
 
 /** History fields whose values are durations in seconds. */

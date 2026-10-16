@@ -10,6 +10,7 @@ import {
   formatValue,
   highlight,
   JqlError,
+  type JqlCode,
   lex,
   looksLikeJql,
   operatorsFor,
@@ -17,6 +18,7 @@ import {
   quote,
   quoteField,
 } from '../../src/core/jql.js';
+import { renderJqlError } from '../../src/i18n/t.js';
 
 describe('lex', () => {
   it('splits words, strings, operators and punctuation with positions', () => {
@@ -97,19 +99,21 @@ describe('parse', () => {
     );
   });
 
-  it('reports errors in French with a position', () => {
-    const cases: [string, string, number][] = [
-      ['status', 'Opérateur attendu après « status ».', 6],
-      ['status = ', 'Valeur attendue.', 9],
-      ['status in (Open', 'Parenthèse fermante attendue.', 15],
-      ['summary ~ "abc', 'Guillemet non refermé.', 10],
-      ['status is Open', '« IS » s’emploie avec EMPTY.', 14],
-      ['a = 1 ORDER key', '« BY » attendu après « ORDER ».', 12],
-      ['a = 1 b = 2', '« b » inattendu.', 6],
-      ['a = 1 AND', 'Nom de champ attendu.', 9],
-      ['status = Open FROM x', '« FROM » inattendu.', 14],
+  it('reports errors with a code, arguments and a position', () => {
+    const cases: [string, JqlCode, string[], number][] = [
+      ['status', 'operatorExpected', ['status'], 6],
+      ['status = ', 'valueExpected', [], 9],
+      ['status in (Open', 'parenExpected', [], 15],
+      ['summary ~ "abc', 'unclosedQuote', [], 10],
+      ['status is Open', 'isEmpty', [], 14],
+      ['a = 1 ORDER key', 'orderBy', [], 12],
+      ['a = 1 b = 2', 'unexpected', ['b'], 6],
+      ['a = 1 "b c"', 'unexpected', ['b c'], 6],
+      ['a = 1 AND', 'fieldExpected', [], 9],
+      ['status = Open FROM x', 'unexpected', ['FROM'], 14],
+      ['status was Open from x', 'changedOnly', ['FROM'], 21],
     ];
-    for (const [src, msg, pos] of cases) {
+    for (const [src, code, args, pos] of cases) {
       let err: unknown;
       try {
         parse(src);
@@ -117,9 +121,22 @@ describe('parse', () => {
         err = e;
       }
       expect(err, src).toBeInstanceOf(JqlError);
-      expect((err as JqlError).message, src).toBe(msg);
-      expect((err as JqlError).pos, src).toBe(pos);
+      const e = err as JqlError;
+      expect([e.code, e.args, e.pos], src).toEqual([code, args, pos]);
     }
+  });
+
+  it('renders an error in the language in use', () => {
+    const at = (src: string) => {
+      try {
+        parse(src);
+      } catch (e) {
+        return renderJqlError(e as JqlError);
+      }
+      throw new Error(`${src} parsed`);
+    };
+    expect(at('status')).toBe('Operator expected after “status”.');
+    expect(at('status in (Open')).toBe('Closing parenthesis expected.');
   });
 
   it('accepts an empty query and a query that only sorts', () => {
