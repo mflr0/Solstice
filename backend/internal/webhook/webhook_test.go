@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -118,6 +119,42 @@ func TestJiraDuration(t *testing.T) {
 		if got := jiraDuration(s); got != want {
 			t.Errorf("jiraDuration(%d) = %q, want %q", s, got, want)
 		}
+	}
+}
+
+// A changed or deleted work log fires Jira's events, and is also an issue
+// update.
+func TestWorklogEvents(t *testing.T) {
+	for kind, want := range map[events.Kind][]string{
+		events.WorklogUpdated: {WorklogUpdated, IssueUpdated},
+		events.WorklogDeleted: {WorklogDeleted, IssueUpdated},
+	} {
+		got := namesOf(kind)
+		if !slices.Equal(got, want) {
+			t.Errorf("namesOf(%s) = %v, want %v", kind, got, want)
+		}
+		for _, name := range want {
+			if !slices.Contains(Events, name) {
+				t.Errorf("%s is not in the list of events", name)
+			}
+		}
+	}
+	if got := issueEventType(&events.Event{Kind: events.WorklogUpdated}); got != "issue_worklog_updated" {
+		t.Errorf("updated work log: %s", got)
+	}
+	if got := issueEventType(&events.Event{Kind: events.WorklogDeleted}); got != "issue_worklog_deleted" {
+		t.Errorf("deleted work log: %s", got)
+	}
+	b := &builder{base: "https://solstice.example", users: map[int64]*events.User{7: {ID: 7, Username: "marie.durand"}}}
+	created := time.Date(2026, 10, 14, 9, 0, 0, 0, time.UTC)
+	w := b.worklog(12, &events.Worklog{ID: 3, AuthorID: 7, Seconds: 3600, Created: created})
+	if w["updated"] != jtime(created) {
+		t.Errorf("a work log never changed was updated at %v", w["updated"])
+	}
+	changed := created.Add(time.Hour)
+	w = b.worklog(12, &events.Worklog{ID: 3, AuthorID: 7, UpdatedBy: 7, Seconds: 7200, Created: created, Updated: changed})
+	if w["updated"] != jtime(changed) || w["timeSpentSeconds"] != int64(7200) {
+		t.Errorf("a changed work log: %v", w)
 	}
 }
 

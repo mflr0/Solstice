@@ -21,7 +21,7 @@ import (
 
 // Permissions. Solstice keeps fewer, broader permissions than Jira: resolving
 // and closing are part of moving an issue along, and authors may always edit
-// or delete their own comments.
+// or delete their own comments and work logs.
 const (
 	Browse     = "browse"     // see the project and its issues
 	Create     = "create"     // create issues
@@ -34,7 +34,7 @@ const (
 	Link       = "link"       // link issues
 	Worklog    = "worklog"    // log work
 	Delete     = "delete"     // delete issues
-	Moderate   = "moderate"   // edit or delete anyone's comments and attachments
+	Moderate   = "moderate"   // edit or delete anyone's comments, work logs and attachments
 	Watchers   = "watchers"   // manage other people's watching
 	Security   = "security"   // set the security level
 	Admin      = "admin"      // configure the project

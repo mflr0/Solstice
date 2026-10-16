@@ -127,6 +127,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/issues/{key}/history", s.history, true)
 	route("GET /api/issues/{key}/worklogs", s.listWorklogs, true)
 	route("POST /api/issues/{key}/worklogs", s.addWorklog, true)
+	route("PUT /api/worklogs/{id}", s.editWorklog, true)
+	route("DELETE /api/worklogs/{id}", s.deleteWorklog, true)
 	route("PUT /api/issues/{key}/watch", s.setWatch(true), true)
 	route("DELETE /api/issues/{key}/watch", s.setWatch(false), true)
 	route("PUT /api/issues/{key}/vote", s.setVote(true), true)
