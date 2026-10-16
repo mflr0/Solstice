@@ -1799,6 +1799,19 @@ export const hi: Messages = {
     },
   },
 
+  projectPeople: {
+    intro:
+      'भूमिकाएँ बताती हैं कि इस प्रोजेक्ट में कौन कौन-सा काम सँभालता है, जैसे डेवलपमेंट या टेस्टिंग। किसी भूमिका में जोड़े गए समूह के सभी सदस्य उसमें शामिल माने जाते हैं। इसके बाद अनुमतियाँ किसी भूमिका को दी जा सकती हैं।',
+    noRoles: 'अभी कोई भूमिका नहीं है। भूमिकाएँ Solstice एडमिन प्रशासन में बनाते हैं।',
+    personField: 'व्यक्ति जोड़ें',
+    choosePerson: 'व्यक्ति चुनें…',
+    groupField: 'समूह जोड़ें',
+    noGroupLeft: 'सभी समूह पहले से इस भूमिका में हैं।',
+    removeMember: (name: string, role: string) => `${role} से ${name} को हटाएँ`,
+    added: (name: string, role: string) => `${name} को ${role} में जोड़ा गया।`,
+    removed: (name: string, role: string) => `${name} को ${role} से हटाया गया।`,
+  },
+
   catalogAdmin: {
     name: 'नाम',
     search: 'खोजें',

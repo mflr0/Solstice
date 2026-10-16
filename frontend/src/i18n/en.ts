@@ -1804,6 +1804,19 @@ export const en = {
     },
   },
 
+  projectPeople: {
+    intro:
+      'Roles say who plays which part in this project, such as developers or testers. A group added to a role includes all its members. Permissions can then be granted to a role.',
+    noRoles: 'No role exists yet. Solstice administrators create roles in the administration.',
+    personField: 'Add a person',
+    choosePerson: 'Choose a person…',
+    groupField: 'Add a group',
+    noGroupLeft: 'Every group is already in this role.',
+    removeMember: (name: string, role: string) => `Remove ${name} from ${role}`,
+    added: (name: string, role: string) => `${name} added to ${role}.`,
+    removed: (name: string, role: string) => `${name} removed from ${role}.`,
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',

@@ -1812,6 +1812,20 @@ export const it: Messages = {
     },
   },
 
+  projectPeople: {
+    intro:
+      'I ruoli indicano chi svolge quale parte in questo progetto, come lo sviluppo o i test. Un gruppo aggiunto a un ruolo ne include tutti i membri. I permessi si possono poi concedere a un ruolo.',
+    noRoles:
+      'Non esiste ancora alcun ruolo. Gli amministratori di Solstice creano i ruoli nell’amministrazione.',
+    personField: 'Aggiungi una persona',
+    choosePerson: 'Scegli una persona…',
+    groupField: 'Aggiungi un gruppo',
+    noGroupLeft: 'Tutti i gruppi sono già in questo ruolo.',
+    removeMember: (name: string, role: string) => `Rimuovi ${name} dal ruolo ${role}`,
+    added: (name: string, role: string) => `${name} entra nel ruolo ${role}.`,
+    removed: (name: string, role: string) => `${name} esce dal ruolo ${role}.`,
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',
