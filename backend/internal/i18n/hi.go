@@ -41,10 +41,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountLanguageUnsupported:       "यह भाषा समर्थित नहीं है (इनमें से चुनें: %s)।",
 
 	// Access tokens.
-	TokenCannotCreate:  "एक्सेस टोकन दूसरे टोकन नहीं बना सकता: अपने पासवर्ड से साइन इन करें।",
-	TokenNameRequired:  "टोकन का नाम ज़रूरी है (अधिकतम 100 वर्ण)।",
-	TokenExpiryInvalid: "अमान्य समाप्ति तारीख (YYYY-MM-DD अपेक्षित)।",
-	TokenExpiryPast:    "समाप्ति तारीख भविष्य में होनी चाहिए।",
+	TokenCannotCreate:       "एक्सेस टोकन दूसरे टोकन नहीं बना सकता: अपने पासवर्ड से साइन इन करें।",
+	TokenNameRequired:       "टोकन का नाम ज़रूरी है (अधिकतम 100 वर्ण)।",
+	TokenExpiryInvalid:      "अमान्य समाप्ति तारीख (YYYY-MM-DD अपेक्षित)।",
+	TokenExpiryPast:         "समाप्ति तारीख भविष्य में होनी चाहिए।",
+	TokenCreationRestricted: "आपके खाते को एक्सेस टोकन बनाने की अनुमति नहीं है: किसी एडमिनिस्ट्रेटर से पूछें।",
+	TokenPolicyInvalid:      "चुनें कि एक्सेस टोकन कौन बना सकता है: एडमिनिस्ट्रेटर, कोई समूह या सभी।",
 
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",
@@ -64,7 +66,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "अमान्य न्यूनतम पासवर्ड लंबाई: 8 से 128 वर्ण।",
 
 	// Audit log.
-	AuditRetentionInvalid: "अमान्य संरक्षण अवधि: दिनों की संख्या दें, सब कुछ रखने के लिए 0।",
+	AuditRetentionInvalid:  "अमान्य संरक्षण अवधि: दिनों की संख्या दें, सब कुछ रखने के लिए 0।",
+	AuditRetentionTooShort: "संरक्षण अवधि %d दिन से कम नहीं हो सकती (सब कुछ रखने के लिए 0)।",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice अभी इंस्टॉल नहीं हुआ है: /setup पर इंस्टॉलेशन पूरा करें।",

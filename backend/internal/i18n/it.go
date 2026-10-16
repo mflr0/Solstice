@@ -40,10 +40,12 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountLanguageUnsupported:       "Lingua non supportata (scegli tra: %s).",
 
 	// Access tokens.
-	TokenCannotCreate:  "Un token di accesso non può creare altri token: accedi con la tua password.",
-	TokenNameRequired:  "Il token ha bisogno di un nome (al massimo 100 caratteri).",
-	TokenExpiryInvalid: "Data di scadenza non valida (formato atteso AAAA-MM-GG).",
-	TokenExpiryPast:    "La data di scadenza deve essere nel futuro.",
+	TokenCannotCreate:       "Un token di accesso non può creare altri token: accedi con la tua password.",
+	TokenNameRequired:       "Il token ha bisogno di un nome (al massimo 100 caratteri).",
+	TokenExpiryInvalid:      "Data di scadenza non valida (formato atteso AAAA-MM-GG).",
+	TokenExpiryPast:         "La data di scadenza deve essere nel futuro.",
+	TokenCreationRestricted: "La creazione di token di accesso non è consentita al tuo account: chiedi a un amministratore.",
+	TokenPolicyInvalid:      "Scegli chi può creare token di accesso: gli amministratori, un gruppo o tutti.",
 
 	// Groups.
 	GroupNotFound:   "Gruppo non trovato.",
@@ -63,7 +65,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Lunghezza minima delle password non valida: da 8 a 128 caratteri.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Durata di conservazione non valida: un numero di giorni, 0 per conservare tutto.",
+	AuditRetentionInvalid:  "Durata di conservazione non valida: un numero di giorni, 0 per conservare tutto.",
+	AuditRetentionTooShort: "La durata di conservazione non può essere inferiore a %d giorni (0 per conservare tutto).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice non è ancora installato: completa l'installazione all'indirizzo /setup.",

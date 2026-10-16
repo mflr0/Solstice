@@ -110,13 +110,19 @@ func (s *Server) myTokens(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// createToken makes a token for the current user. The answer is the only
-// time it can be read. A token cannot make other tokens: a leaked one must
-// not be able to outlive its revocation.
+// createToken makes a token for the current user, if the instance's policy
+// lets them (token_policy.go). The answer is the only time it can be read. A
+// token cannot make other tokens: a leaked one must not be able to outlive
+// its revocation.
 func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	u := currentUser(r)
 	if u.TokenID != 0 {
 		return fail(http.StatusForbidden, i18n.TokenCannotCreate)
+	}
+	if ok, err := s.mayCreateTokens(r.Context(), u); err != nil {
+		return err
+	} else if !ok {
+		return fail(http.StatusForbidden, i18n.TokenCreationRestricted)
 	}
 	var in struct {
 		Name    string  `json:"name"`

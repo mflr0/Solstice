@@ -39,10 +39,12 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
 
 	// Access tokens.
-	TokenCannotCreate:  "Un jeton d'accès ne peut pas créer d'autres jetons : connectez-vous avec votre mot de passe.",
-	TokenNameRequired:  "Le jeton a besoin d'un nom (100 caractères au plus).",
-	TokenExpiryInvalid: "Date d'expiration invalide (AAAA-MM-JJ attendu).",
-	TokenExpiryPast:    "La date d'expiration doit être dans le futur.",
+	TokenCannotCreate:       "Un jeton d'accès ne peut pas créer d'autres jetons : connectez-vous avec votre mot de passe.",
+	TokenNameRequired:       "Le jeton a besoin d'un nom (100 caractères au plus).",
+	TokenExpiryInvalid:      "Date d'expiration invalide (AAAA-MM-JJ attendu).",
+	TokenExpiryPast:         "La date d'expiration doit être dans le futur.",
+	TokenCreationRestricted: "La création de jetons d'accès n'est pas autorisée pour votre compte : demandez à un administrateur.",
+	TokenPolicyInvalid:      "Choisissez qui peut créer des jetons d'accès : les administrateurs, un groupe ou tout le monde.",
 
 	// Groups.
 	GroupNotFound:   "Groupe introuvable.",
@@ -62,7 +64,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Longueur minimale des mots de passe invalide : de 8 à 128 caractères.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Durée de conservation invalide : un nombre de jours, 0 pour tout garder.",
+	AuditRetentionInvalid:  "Durée de conservation invalide : un nombre de jours, 0 pour tout garder.",
+	AuditRetentionTooShort: "La durée de conservation ne peut pas être inférieure à %d jours (0 pour tout garder).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice n'est pas encore installé : terminez l'installation à l'adresse /setup.",

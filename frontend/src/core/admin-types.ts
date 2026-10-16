@@ -117,6 +117,13 @@ export interface AccessToken {
   token?: string;
 }
 
+/** Who may create access tokens; administrators always may. */
+export interface TokenSettings {
+  who: 'everyone' | 'admins' | 'group';
+  /** For "group": the group, null if it is gone. */
+  group: IdName | null;
+}
+
 /* Audit log ----------------------------------------------------------------- */
 
 export interface AuditEntry {
@@ -196,6 +203,11 @@ export interface Subscription {
   lastRun: string | null;
   nextRun: string;
   canEdit: boolean;
+}
+
+/** A subscription as the account page lists it: with the filter it is on. */
+export interface MySubscription extends Subscription {
+  filterName: string;
 }
 
 export interface SubscriptionInput {
