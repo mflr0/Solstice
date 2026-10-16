@@ -1,10 +1,12 @@
 <script lang="ts">
   import type { Group, UserRow } from '../../core/admin-types.js';
+  import { canResendInvitation } from '../../core/account-links.js';
   import { adminPath } from '../../core/areas.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
+  import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -81,6 +83,15 @@
       await adminApi.updateUser(u.id, { active: true });
       notify(t.usersAdmin.reactivated(u.name));
       await load();
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    }
+  }
+
+  async function resendInvitation(u: UserRow) {
+    try {
+      await adminApi.inviteUser(u.id);
+      notify(t.usersAdmin.inviteResent(u.name));
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -185,6 +196,11 @@
                 <button class="link-btn" onclick={() => (password = u)}
                   >{t.usersAdmin.password}</button
                 >
+                {#if canResendInvitation(u, publicSettings.value.emailLinks)}
+                  <button class="link-btn" onclick={() => void resendInvitation(u)}
+                    >{t.usersAdmin.resendInvite}</button
+                  >
+                {/if}
                 {#if u.active}
                   <button class="link-btn" onclick={() => (deactivating = u)}
                     >{t.usersAdmin.deactivate}</button

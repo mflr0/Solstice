@@ -314,9 +314,12 @@ export interface UserForm {
   admin: boolean;
   active: boolean;
   groups: number[];
+  /** Create the account without a password and e-mail its person a link to choose one. */
+  invite: boolean;
 }
 
-export type UserProblem = 'usernameRequired' | 'usernameInvalid' | 'emailInvalid' | 'passwordShort';
+export type UserProblem =
+  'usernameRequired' | 'usernameInvalid' | 'emailInvalid' | 'emailRequired' | 'passwordShort';
 
 export function newUserForm(): UserForm {
   return {
@@ -327,12 +330,14 @@ export function newUserForm(): UserForm {
     admin: false,
     active: true,
     groups: [],
+    invite: false,
   };
 }
 
 /**
- * Problems of a user form. A new account needs a user name and a password;
- * an existing one only checks what may change (e-mail).
+ * Problems of a user form. A new account needs a user name and a password
+ * (or, for an invitation, an e-mail address to send it to); an existing one
+ * only checks what may change (e-mail).
  */
 export function userProblems(
   f: UserForm,
@@ -344,7 +349,11 @@ export function userProblems(
     const u = f.username.trim().toLowerCase();
     if (!u) out.username = 'usernameRequired';
     else if (!USERNAME_PATTERN.test(u)) out.username = 'usernameInvalid';
-    if ([...f.password].length < minPassword) out.password = 'passwordShort';
+    if (f.invite) {
+      if (!f.email.trim()) out.email = 'emailRequired';
+    } else if ([...f.password].length < minPassword) {
+      out.password = 'passwordShort';
+    }
   }
   if (f.email.trim() && !isEmail(f.email.trim())) out.email = 'emailInvalid';
   return out;

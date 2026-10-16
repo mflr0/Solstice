@@ -13,6 +13,7 @@
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import EmptyState from '../EmptyState.svelte';
@@ -94,6 +95,8 @@
     saving = true;
     try {
       adopt(await adminApi.saveMail(mailPayload(form)));
+      // Whether links can be e-mailed (sign-in page, users) follows these settings.
+      void publicSettings.load();
       notify(t.mailAdmin.saved);
       return true;
     } catch (e) {
