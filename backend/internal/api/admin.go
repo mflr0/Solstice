@@ -263,41 +263,55 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	var hash string
+	if in.Password != nil {
+		if hash, err = auth.HashPassword(*in.Password); err != nil {
+			return err
+		}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, strings.TrimSpace(*in.Name), id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, strings.TrimSpace(*in.Name), id); err != nil {
 			return err
 		}
 	}
 	if in.Email != nil {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET email = ? WHERE id = ?`, strings.TrimSpace(*in.Email), id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET email = ? WHERE id = ?`, strings.TrimSpace(*in.Email), id); err != nil {
 			return err
 		}
 	}
 	if in.Active != nil {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET active = ? WHERE id = ?`, *in.Active, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET active = ? WHERE id = ?`, *in.Active, id); err != nil {
 			return err
 		}
 		if !*in.Active {
-			if err := s.endSessions(ctx, id, ""); err != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
 				return err
 			}
 		}
 	}
 	if in.Admin != nil {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE id = ?`, *in.Admin, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET is_admin = ? WHERE id = ?`, *in.Admin, id); err != nil {
 			return err
 		}
 	}
 	if in.Password != nil {
-		if err := auth.SetPassword(ctx, s.db, id, *in.Password); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
 			return err
 		}
 		// A new password signs out every session opened with the old one.
 		if id != currentUser(r).ID {
-			if err := s.endSessions(ctx, id, ""); err != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
 				return err
 			}
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	s.perms.Invalidate()
 	s.auditUserChange(r, id, before, in.Password != nil)

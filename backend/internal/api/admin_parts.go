@@ -181,17 +181,25 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 	if in.Archived != nil {
 		sets["archived"] = *in.Archived
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if creating {
-		res, err := s.db.ExecContext(ctx, `INSERT INTO components (project_id, name) VALUES (?, ?)`, projectID, sets["name"])
+		res, err := tx.ExecContext(ctx, `INSERT INTO components (project_id, name) VALUES (?, ?)`, projectID, sets["name"])
 		if err != nil {
 			return err
 		}
 		id, _ = res.LastInsertId()
 	}
 	for column, v := range sets {
-		if _, err := s.db.ExecContext(ctx, `UPDATE components SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE components SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
 			return err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	list, err := s.components(ctx, projectID, "c.id = ?", id)
 	if err != nil || len(list) == 0 {
@@ -554,8 +562,13 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 	if in.Archived != nil {
 		sets["archived"] = *in.Archived
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if creating {
-		res, err := s.db.ExecContext(ctx, `INSERT INTO versions (project_id, name, position)
+		res, err := tx.ExecContext(ctx, `INSERT INTO versions (project_id, name, position)
 			SELECT ?, ?, COALESCE(MAX(position), 0) + 1 FROM versions WHERE project_id = ?`, projectID, sets["name"], projectID)
 		if err != nil {
 			return err
@@ -563,9 +576,12 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 		id, _ = res.LastInsertId()
 	}
 	for column, v := range sets {
-		if _, err := s.db.ExecContext(ctx, `UPDATE versions SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE versions SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
 			return err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	v, err := s.version(ctx, projectID, id)
 	if err != nil {
