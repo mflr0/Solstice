@@ -50,7 +50,7 @@ export const fr: Messages = {
     delete: { label: 'Supprimer', help: 'Supprimer définitivement un ticket.' },
     moderate: {
       label: 'Modérer',
-      help: 'Modifier ou retirer les commentaires et fichiers des autres.',
+      help: 'Modifier ou retirer les commentaires, temps saisis et fichiers des autres.',
     },
     watchers: {
       label: 'Gérer les observateurs',
@@ -1571,6 +1571,8 @@ export const fr: Messages = {
       'Solstice signe chaque envoi avec ce secret ; le destinataire vérifie la signature.',
     keepSecret: 'Garder le secret enregistré',
     changeSecret: 'Le changer',
+      worklog_updated: 'Temps modifié',
+      worklog_deleted: 'Temps supprimé',
     removeSecret: 'Le retirer',
     secretSet: 'Un secret est enregistré.',
     secretRemoved: 'Le secret sera retiré à l’enregistrement.',

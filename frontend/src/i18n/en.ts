@@ -49,7 +49,7 @@ export const en = {
     delete: { label: 'Delete', help: 'Delete an issue for good.' },
     moderate: {
       label: 'Moderate',
-      help: 'Edit or remove other people’s comments and files.',
+      help: 'Edit or remove other people’s comments, work logs and files.',
     },
     watchers: {
       label: 'Manage watchers',
@@ -1568,6 +1568,8 @@ export const en = {
     keepSecret: 'Keep the saved secret',
     changeSecret: 'Change it',
     removeSecret: 'Remove it',
+      worklog_updated: 'Time log changed',
+      worklog_deleted: 'Time log deleted',
     secretSet: 'A secret is saved.',
     secretRemoved: 'The secret will be removed when you save.',
     testTitle: 'Test call',

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { parseDuration, todayISO } from '../../core/dates.js';
+  import { jiraDuration, parseDuration, todayISO } from '../../core/dates.js';
+  import { worklogEdit, worklogStart } from '../../core/estimates.js';
   import type { IssueDetail, Worklog } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
@@ -22,6 +23,12 @@
   let body = $state('');
   let invalid = $state(false);
   let sending = $state(false);
+  let editing = $state<number | null>(null);
+  let editDuration = $state('');
+  let editDay = $state('');
+  let editBody = $state('');
+  let editInvalid = $state(false);
+  let armed = $state<number | null>(null);
 
   const total = $derived((logs ?? []).reduce((s, w) => s + w.seconds, 0));
 
@@ -44,7 +51,7 @@
     sending = true;
     try {
       // Noon local time: the day stays the same in every time zone nearby.
-      const started = new Date(`${day}T12:00:00`).toISOString();
+      const started = worklogStart(day);
       await api.addWorklog(issue.key, { started, seconds, body });
       duration = '';
       body = '';
@@ -53,6 +60,51 @@
       notify(errorMessage(err), 'error');
     } finally {
       sending = false;
+    }
+  }
+
+  function startEdit(w: Worklog) {
+    editing = w.id;
+    editDuration = jiraDuration(w.seconds);
+    editDay = todayISO(new Date(w.started));
+    editBody = w.body ?? '';
+    editInvalid = false;
+    armed = null;
+  }
+
+  async function saveEdit(w: Worklog) {
+    const edit = worklogEdit(w, { duration: editDuration, day: editDay, body: editBody });
+    editInvalid = !edit.ok;
+    if (!edit.ok) return;
+    if (Object.keys(edit.patch).length === 0) {
+      editing = null;
+      return;
+    }
+    sending = true;
+    try {
+      const saved = await api.editWorklog(w.id, edit.patch);
+      logs = (logs ?? []).map((x) => (x.id === w.id ? saved : x));
+      editing = null;
+      onlogged();
+    } catch (err) {
+      notify(errorMessage(err), 'error');
+    } finally {
+      sending = false;
+    }
+  }
+
+  async function remove(w: Worklog) {
+    if (armed !== w.id) {
+      armed = w.id;
+      return;
+    }
+    armed = null;
+    try {
+      await api.deleteWorklog(w.id);
+      logs = (logs ?? []).filter((x) => x.id !== w.id);
+      onlogged();
+    } catch (err) {
+      notify(errorMessage(err), 'error');
     }
   }
 </script>
@@ -68,21 +120,73 @@
     <table class="ledger">
       <tbody>
         {#each logs as w (w.id)}
-          <tr>
-            <td class="c-day" title={formatDateTime(w.started)}
-              >{formatDay(todayISO(new Date(w.started)))}</td
-            >
-            <td class="c-who"><Who user={w.author} empty="—" /></td>
-            <td class="c-body"
-              >{#if w.body}<WikiText source={w.body} />{/if}</td
-            >
-            <td class="num c-dur">{formatDuration(w.seconds)}</td>
-          </tr>
+          {#if editing === w.id}
+            <tr>
+              <td colspan="5" class="c-edit">
+                <form
+                  class="log"
+                  onsubmit={(e) => {
+                    e.preventDefault();
+                    void saveEdit(w);
+                  }}
+                >
+                  <label class="field dur">
+                    <span>{t.worklogs.duration}</span>
+                    <input
+                      class="input"
+                      bind:value={editDuration}
+                      placeholder={t.worklogs.durationHint}
+                      aria-invalid={editInvalid}
+                      required
+                    />
+                  </label>
+                  <label class="field">
+                    <span>{t.worklogs.started}</span>
+                    <input class="input" type="date" bind:value={editDay} required />
+                  </label>
+                  <label class="field grow">
+                    <span>{t.worklogs.body}</span>
+                    <input class="input" bind:value={editBody} />
+                  </label>
+                  <button type="button" class="btn btn-quiet" onclick={() => (editing = null)}
+                    >{t.common.cancel}</button
+                  >
+                  <button class="btn btn-primary" disabled={sending}>{t.common.save}</button>
+                </form>
+                {#if editInvalid}<p class="error-text">{t.worklogs.invalid}</p>{/if}
+              </td>
+            </tr>
+          {:else}
+            <tr>
+              <td class="c-day" title={formatDateTime(w.started)}
+                >{formatDay(todayISO(new Date(w.started)))}</td
+              >
+              <td class="c-who"><Who user={w.author} empty="—" /></td>
+              <td class="c-body"
+                >{#if w.body}<WikiText source={w.body} />{/if}</td
+              >
+              <td class="num c-dur">{formatDuration(w.seconds)}</td>
+              <td class="c-tools">
+                {#if w.canEdit}
+                  <span class="tools">
+                    <button class="link-btn" onclick={() => startEdit(w)}>{t.common.edit}</button>
+                    <button
+                      class="link-btn"
+                      class:armed={armed === w.id}
+                      onclick={() => void remove(w)}
+                      onblur={() => (armed = null)}
+                      >{armed === w.id ? t.common.confirmDelete : t.common.delete}</button
+                    >
+                  </span>
+                {/if}
+              </td>
+            </tr>
+          {/if}
         {/each}
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="4" class="num total">{t.worklogs.total(formatDuration(total))}</td>
+          <td colspan="5" class="num total">{t.worklogs.total(formatDuration(total))}</td>
         </tr>
       </tfoot>
     </table>
@@ -134,6 +238,29 @@
 
   .c-dur {
     width: 80px;
+  }
+
+  .c-tools {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .tools {
+    display: flex;
+    gap: 12px;
+    font-size: 12.5px;
+  }
+
+  .tools .armed {
+    color: var(--accent-text);
+  }
+
+  .c-edit {
+    padding-top: 4px;
+  }
+
+  .c-edit .log {
+    margin-top: 6px;
   }
 
   .total {

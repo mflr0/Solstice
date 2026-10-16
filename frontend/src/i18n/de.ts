@@ -54,7 +54,7 @@ export const de: Messages = {
     delete: { label: 'Löschen', help: 'Einen Vorgang endgültig löschen.' },
     moderate: {
       label: 'Moderieren',
-      help: 'Kommentare und Dateien anderer bearbeiten oder entfernen.',
+      help: 'Kommentare, Zeiteinträge und Dateien anderer bearbeiten oder entfernen.',
     },
     watchers: {
       label: 'Beobachter verwalten',
@@ -1589,6 +1589,8 @@ export const de: Messages = {
       'Solstice signiert jeden Versand mit diesem Geheimnis; das Ziel prüft die Signatur.',
     keepSecret: 'Gespeichertes Geheimnis behalten',
     changeSecret: 'Ändern',
+      worklog_updated: 'Zeit geändert',
+      worklog_deleted: 'Zeit gelöscht',
     removeSecret: 'Entfernen',
     secretSet: 'Ein Geheimnis ist gespeichert.',
     secretRemoved: 'Das Geheimnis wird beim Speichern entfernt.',

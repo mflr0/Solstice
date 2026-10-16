@@ -24,6 +24,7 @@ import type {
   StatusRef,
   UserRef,
   Worklog,
+  WorklogPatch,
   WorkflowInput,
   Counter,
   SavedFilter,
@@ -190,6 +191,9 @@ export const api = {
   worklogs: (key: string) => request<Worklog[]>('GET', `/api/issues/${enc(key)}/worklogs`),
   addWorklog: (key: string, entry: { started?: string; seconds: number; body: string }) =>
     request<void>('POST', `/api/issues/${enc(key)}/worklogs`, entry),
+  editWorklog: (id: number, patch: WorklogPatch) =>
+    request<Worklog>('PUT', `/api/worklogs/${id}`, patch),
+  deleteWorklog: (id: number) => request<void>('DELETE', `/api/worklogs/${id}`),
 
   watch: (key: string, on: boolean) =>
     request<Counter>(on ? 'PUT' : 'DELETE', `/api/issues/${enc(key)}/watch`),

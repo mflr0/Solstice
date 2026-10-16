@@ -54,7 +54,7 @@ export const it: Messages = {
     delete: { label: 'Eliminare', help: 'Eliminare definitivamente un ticket.' },
     moderate: {
       label: 'Moderare',
-      help: 'Modificare o rimuovere commenti e file altrui.',
+      help: 'Modificare o rimuovere commenti, tempi registrati e file altrui.',
     },
     watchers: {
       label: 'Gestire gli osservatori',
@@ -1575,6 +1575,8 @@ export const it: Messages = {
     keepSecret: 'Mantieni il segreto salvato',
     changeSecret: 'Cambialo',
     removeSecret: 'Rimuovilo',
+      worklog_updated: 'Tempo modificato',
+      worklog_deleted: 'Tempo eliminato',
     secretSet: 'Un segreto è salvato.',
     secretRemoved: 'Il segreto sarà rimosso al salvataggio.',
     testTitle: 'Chiamata di prova',

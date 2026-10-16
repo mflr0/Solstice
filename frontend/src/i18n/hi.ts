@@ -55,7 +55,7 @@ export const hi: Messages = {
     delete: { label: 'मिटाना', help: 'टिकट को हमेशा के लिए मिटाना।' },
     moderate: {
       label: 'मॉडरेट करना',
-      help: 'दूसरों की टिप्पणियाँ और फ़ाइलें संपादित करना या हटाना।',
+      help: 'दूसरों की टिप्पणियाँ, दर्ज समय और फ़ाइलें संपादित करना या हटाना।',
     },
     watchers: {
       label: 'वॉचर प्रबंधित करना',
@@ -1561,6 +1561,8 @@ export const hi: Messages = {
     secretLabel: 'गुप्त कुंजी',
     secretHint:
       'Solstice हर भेजे जाने वाले POST पर इस गुप्त कुंजी से हस्ताक्षर करता है; प्राप्तकर्ता हस्ताक्षर जाँचता है।',
+      worklog_updated: 'दर्ज समय बदला गया',
+      worklog_deleted: 'दर्ज समय मिटाया गया',
     keepSecret: 'सहेजी गई गुप्त कुंजी बना रहने दें',
     changeSecret: 'इसे बदलें',
     removeSecret: 'इसे हटाएँ',
