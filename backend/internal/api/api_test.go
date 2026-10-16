@@ -414,6 +414,47 @@ func TestLiveEventsRespectPermissions(t *testing.T) {
 	}
 }
 
+// A live stream must not hold back a graceful shutdown (Ctrl+C).
+func TestShutdownEndsLiveStreams(t *testing.T) {
+	anonymous(t) // skips without a database
+	api := New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ts := httptest.NewServer(api.Handler(http.NotFoundHandler()))
+	defer ts.Close()
+	ts.Config.RegisterOnShutdown(api.CloseStreams)
+
+	jar, _ := cookiejar.New(nil)
+	hc := &http.Client{Jar: jar}
+	body, _ := json.Marshal(map[string]string{"username": "paul.martin", "password": "motdepasse"})
+	req, _ := http.NewRequest("POST", ts.URL+"/api/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(csrfHeader, "1")
+	resp, err := hc.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatalf("login: %v %v", resp, err)
+	}
+	resp.Body.Close()
+
+	resp, err = hc.Get(ts.URL + "/api/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	ended := make(chan struct{})
+	go func() { io.Copy(io.Discard, resp.Body); close(ended) }()
+	time.Sleep(200 * time.Millisecond) // let the stream start
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := ts.Config.Shutdown(ctx); err != nil {
+		t.Fatalf("shutdown: %v", err)
+	}
+	select {
+	case <-ended:
+	case <-time.After(time.Second):
+		t.Fatal("the live stream is still open after the shutdown")
+	}
+}
+
 // Regressions from the security review --------------------------------------
 
 func TestSubtaskInheritsConfidentiality(t *testing.T) {

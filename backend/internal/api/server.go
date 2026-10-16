@@ -42,17 +42,24 @@ type Server struct {
 
 	adm adminState // instance settings, system page, imports (admin_*.go)
 	upd updater    // release checks and the update helper (updates.go)
+
+	streamsDone  chan struct{} // closed by CloseStreams
+	closeStreams sync.Once
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter()}
+		limiter: auth.NewLimiter(), streamsDone: make(chan struct{})}
 	s.adm.started = time.Now()
 	s.startOutgoing()
 	return s
 }
+
+// CloseStreams ends the live-update streams. Called when the HTTP server shuts
+// down, which does not cancel requests and would wait for them forever.
+func (s *Server) CloseStreams() { s.closeStreams.Do(func() { close(s.streamsDone) }) }
 
 // Handler returns the API routes, with static serving of the interface for
 // everything outside /api.
