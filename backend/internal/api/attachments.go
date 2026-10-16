@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -40,7 +41,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return fail(http.StatusBadRequest, "Invalid file upload.")
+		return fail(http.StatusBadRequest, i18n.AttachmentUploadInvalid)
 	}
 	if err := os.MkdirAll(filepath.Join(s.dataDir, "attachments"), 0o750); err != nil {
 		return err
@@ -53,7 +54,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			break
 		}
 		if err != nil {
-			return fail(http.StatusRequestEntityTooLarge, "File too large (100 MB at most).")
+			return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 		}
 		name := cleanFilename(part.FileName())
 		if name == "" {
@@ -73,7 +74,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
-				return fail(http.StatusRequestEntityTooLarge, "File too large (100 MB at most).")
+				return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 			}
 			return err
 		}
@@ -83,7 +84,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		names = append(names, name)
 	}
 	if len(names) == 0 {
-		return fail(http.StatusBadRequest, "No file received.")
+		return fail(http.StatusBadRequest, i18n.AttachmentNoFile)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -196,11 +197,11 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if a.missing {
-		return fail(http.StatusNotFound, "This file was not found during the import from Jira.")
+		return fail(http.StatusNotFound, i18n.AttachmentNotImported)
 	}
 	f, err := os.Open(s.attachmentPath(a.id))
 	if errors.Is(err, os.ErrNotExist) {
-		return fail(http.StatusNotFound, "The file is missing from the data folder.")
+		return fail(http.StatusNotFound, i18n.AttachmentFileMissing)
 	}
 	if err != nil {
 		return err

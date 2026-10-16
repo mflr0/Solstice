@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"solstice/internal/i18n"
 )
 
 // frag is a piece of SQL with its arguments, in placeholder order.
@@ -130,7 +132,7 @@ func (c *compiler) histValues(h histField, vals []Value) (logged, ids frag, empt
 		return frag{}, frag{}, false, err
 	}
 	if empty && h.multi() {
-		return frag{}, frag{}, false, fail("EMPTY cannot be used with version history.")
+		return frag{}, frag{}, false, fail(i18n.JQLEmptyHistory)
 	}
 	if len(texts) == 0 {
 		return frag{}, frag{}, empty, nil
@@ -214,7 +216,7 @@ func (c *compiler) preds(cl Clause) (*histPreds, error) {
 	pr := &histPreds{}
 	when := func(kind string, v Value) (*time.Time, error) {
 		if v.Empty {
-			return nil, fail("A date is expected after %s.", strings.ToUpper(kind))
+			return nil, fail(i18n.JQLDateExpected, strings.ToUpper(kind))
 		}
 		t, err := c.instant(v)
 		return &t, err
@@ -251,7 +253,7 @@ func (c *compiler) preds(cl Clause) (*histPreds, error) {
 				return sub, err
 			})
 			if err == nil && (none || by.sql == "") {
-				err = fail("BY expects a user.")
+				err = fail(i18n.JQLByUser)
 			}
 			pr.by = &by
 		case "from":
@@ -301,7 +303,7 @@ func (pr *histPreds) byUser(col string) frag {
 func (c *compiler) history(cl Clause) (string, error) {
 	h, ok := histFields[strings.ToLower(strings.ReplaceAll(cl.Field, " ", ""))]
 	if !ok {
-		return "", fail("%s can only be used with status, assignee, reporter, priority, resolution and fixVersion.",
+		return "", fail(i18n.JQLHistoryField,
 			strings.ToUpper(strings.Fields(cl.Op)[0]))
 	}
 	pr, err := c.preds(cl)

@@ -42,11 +42,11 @@ func (c StatusCategory) Rank() int { return slices.Index(StatusCategories, c.OrT
 func (c StatusCategory) Name() i18n.Message {
 	switch c.OrTodo() {
 	case Doing:
-		return i18n.M("In progress")
+		return i18n.M(i18n.StatusCategoryInProgress)
 	case Done:
-		return i18n.M("Done")
+		return i18n.M(i18n.StatusCategoryDone)
 	}
-	return i18n.M("To do")
+	return i18n.M(i18n.StatusCategoryToDo)
 }
 
 // JiraStatusCategory is a status category as Jira identifies it.

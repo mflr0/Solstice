@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -163,7 +164,7 @@ func (s *Server) parseInstant(v string, end bool) (time.Time, error) {
 	}
 	t, err := time.Parse(time.RFC3339, v)
 	if err != nil {
-		return t, failf(http.StatusBadRequest, "Invalid date: “%s” (YYYY-MM-DD expected).", v)
+		return t, failf(http.StatusBadRequest, i18n.CommonDateInvalid, v)
 	}
 	return t.UTC(), nil
 }
@@ -192,7 +193,7 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > 36500 {
-		return fail(http.StatusBadRequest, "Invalid retention period: a number of days, 0 to keep everything.")
+		return fail(http.StatusBadRequest, i18n.AuditRetentionInvalid)
 	}
 	ctx := r.Context()
 	before, err := audit.Retention(ctx, s.db)

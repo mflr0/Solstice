@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"solstice/internal/i18n"
 	"strings"
 
 	"solstice/internal/perm"
@@ -406,7 +407,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 		case perm.Role:
 			role, table = g.ID, "project_roles"
 		default:
-			return failf(http.StatusBadRequest, "Unknown grantee: %s.", g.Holder)
+			return failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, g.Holder)
 		}
 		if table != "" {
 			var n int
@@ -414,7 +415,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if n == 0 {
-				return fail(http.StatusBadRequest, "Grantee not found.")
+				return fail(http.StatusBadRequest, i18n.ProjectGranteeNotFound)
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,

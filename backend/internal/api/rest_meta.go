@@ -603,13 +603,13 @@ var jiraPermissions = []struct {
 
 // permissionNames name Solstice's permissions, as the project settings do.
 var permissionNames = map[string]i18n.Message{
-	perm.Browse: i18n.M("Browse"), perm.Create: i18n.M("Create"), perm.Edit: i18n.M("Edit"),
-	perm.Comment: i18n.M("Comment"), perm.Transition: i18n.M("Change status"), perm.Assign: i18n.M("Assign"),
-	perm.Assignable: i18n.M("Assignable"), perm.Attach: i18n.M("Attach files"), perm.Link: i18n.M("Link issues"),
-	perm.Worklog: i18n.M("Log work"), perm.Delete: i18n.M("Delete"), perm.Moderate: i18n.M("Moderate"),
-	perm.Watchers: i18n.M("Manage watchers"), perm.Security: i18n.M("Security level"),
-	perm.Admin: i18n.M("Administer"), "global": i18n.M("Administer Solstice"),
-	"": i18n.M("Not available in Solstice"),
+	perm.Browse: i18n.M(i18n.PermissionBrowse), perm.Create: i18n.M(i18n.PermissionCreate), perm.Edit: i18n.M(i18n.PermissionEdit),
+	perm.Comment: i18n.M(i18n.PermissionComment), perm.Transition: i18n.M(i18n.PermissionTransition), perm.Assign: i18n.M(i18n.PermissionAssign),
+	perm.Assignable: i18n.M(i18n.PermissionAssignable), perm.Attach: i18n.M(i18n.PermissionAttach), perm.Link: i18n.M(i18n.PermissionLink),
+	perm.Worklog: i18n.M(i18n.PermissionWorklog), perm.Delete: i18n.M(i18n.PermissionDelete), perm.Moderate: i18n.M(i18n.PermissionModerate),
+	perm.Watchers: i18n.M(i18n.PermissionWatchers), perm.Security: i18n.M(i18n.PermissionSecurity),
+	perm.Admin: i18n.M(i18n.PermissionAdmin), "global": i18n.M(i18n.PermissionGlobalAdmin),
+	"": i18n.M(i18n.PermissionUnavailable),
 }
 
 // restMyPermissions tells which permissions the user has: in a project

@@ -29,8 +29,7 @@ var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,9}$`)
 // formed, and used by no project, now or formerly.
 func (s *Server) checkProjectKey(ctx context.Context, key string) error {
 	if !projectKeyPattern.MatchString(key) {
-		return fail(http.StatusBadRequest,
-			"Invalid key: 2 to 10 uppercase letters or digits, starting with a letter.")
+		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
 	}
 	var n int
 	if err := s.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
@@ -38,7 +37,7 @@ func (s *Server) checkProjectKey(ctx context.Context, key string) error {
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "The key %s is already taken (by a current or former project).", key)
+		return failf(http.StatusConflict, i18n.ProjectKeyTaken, key)
 	}
 	return nil
 }
@@ -94,7 +93,7 @@ func (s *Server) activeUser(ctx context.Context, id int64) error {
 		return err
 	}
 	if n == 0 {
-		return fail(http.StatusBadRequest, "The lead must be an active account.")
+		return fail(http.StatusBadRequest, i18n.ProjectLeadInactive)
 	}
 	return nil
 }
@@ -108,7 +107,7 @@ func (s *Server) checkCategory(ctx context.Context, id *int64) error {
 		return err
 	}
 	if n == 0 {
-		return fail(http.StatusBadRequest, "Category not found.")
+		return fail(http.StatusBadRequest, i18n.ProjectCategoryNotFound)
 	}
 	return nil
 }
@@ -121,7 +120,7 @@ func (s *Server) projectNameTaken(ctx context.Context, name string, except int64
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "A project is already named “%s”.", name)
+		return failf(http.StatusConflict, i18n.ProjectNameTaken, name)
 	}
 	return nil
 }
@@ -134,7 +133,7 @@ func checkIssueTypes(cat *catalog, ids []string) ([]string, error) {
 	for _, id := range ids {
 		t, ok := cat.issueType[id]
 		if !ok {
-			return nil, failf(http.StatusBadRequest, "Unknown issue type: %s.", id)
+			return nil, failf(http.StatusBadRequest, i18n.IssueTypeUnknown, id)
 		}
 		if !slices.Contains(out, id) {
 			out = append(out, id)
@@ -142,7 +141,7 @@ func checkIssueTypes(cat *catalog, ids []string) ([]string, error) {
 		standard = standard || !t.Subtask
 	}
 	if !standard {
-		return nil, fail(http.StatusBadRequest, "Choose at least one issue type that is not a sub-task.")
+		return nil, fail(http.StatusBadRequest, i18n.ProjectIssueTypeRequired)
 	}
 	return out, nil
 }
@@ -193,12 +192,12 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	tmpl, ok := projectTemplates[in.Template]
 	if !ok {
-		return fail(http.StatusBadRequest, "Unknown template: software or simple.")
+		return fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
 	}
 	assignTo := "unassigned"
 	if in.DefaultAssignee != nil {
 		if *in.DefaultAssignee != "unassigned" && *in.DefaultAssignee != "lead" {
-			return fail(http.StatusBadRequest, "Default assignment: unassigned or lead.")
+			return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
 		}
 		assignTo = *in.DefaultAssignee
 	}
@@ -211,10 +210,10 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 			}
 		case perm.Role:
 			if _, err := s.roleByID(ctx, a.ID); err != nil {
-				return fail(http.StatusBadRequest, "Role not found.")
+				return fail(http.StatusBadRequest, i18n.RoleNotFound)
 			}
 		default:
-			return failf(http.StatusBadRequest, "Unknown grantee: %s.", a.Holder)
+			return failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, a.Holder)
 		}
 	}
 	if err := s.seedCatalogues(ctx); err != nil {
@@ -251,7 +250,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 		default_assignee) VALUES (?, ?, ?, ?, ?, ?, ?)`, key, name, optDescription(in.Description), lead, in.Category,
 		tmpl.kind, assignTo)
 	if isDuplicate(err) {
-		return failf(http.StatusConflict, "The key %s is already taken (by a current or former project).", key)
+		return failf(http.StatusConflict, i18n.ProjectKeyTaken, key)
 	}
 	if err != nil {
 		return err
@@ -397,20 +396,20 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 		rows        [][]any
 	}{
 		{"issue_types", "id, name, subtask, position", [][]any{
-			{t(i18n.M("Task")), false}, {t(i18n.M("Bug")), false}, {t(i18n.M("Story")), false},
-			{t(i18n.M("Epic")), false}, {t(i18n.M("Sub-task")), true}}},
+			{t(i18n.M(i18n.DefaultTypeTask)), false}, {t(i18n.M(i18n.DefaultTypeBug)), false}, {t(i18n.M(i18n.DefaultTypeStory)), false},
+			{t(i18n.M(i18n.DefaultTypeEpic)), false}, {t(i18n.M(i18n.DefaultTypeSubtask)), true}}},
 		{"priorities", "id, name, color, is_default, position", [][]any{
-			{t(i18n.M("Very high")), "#c9372c", false}, {t(i18n.M("High")), "#e2483d", false},
-			{t(i18n.M("Medium")), "#e98d23", true}, {t(i18n.M("Low")), "#2a7ab0", false},
-			{t(i18n.M("Very low")), "#6b778c", false}}},
+			{t(i18n.M(i18n.DefaultPriorityVeryHigh)), "#c9372c", false}, {t(i18n.M(i18n.DefaultPriorityHigh)), "#e2483d", false},
+			{t(i18n.M(i18n.DefaultPriorityMedium)), "#e98d23", true}, {t(i18n.M(i18n.DefaultPriorityLow)), "#2a7ab0", false},
+			{t(i18n.M(i18n.DefaultPriorityVeryLow)), "#6b778c", false}}},
 		{"resolutions", "id, name, is_default, position", [][]any{
-			{t(i18n.M("Done")), true}, {t(i18n.M("Will not be done")), false}, {t(i18n.M("Duplicate")), false},
-			{t(i18n.M("Cannot Reproduce")), false}}},
+			{t(i18n.M(i18n.DefaultResolutionDone)), true}, {t(i18n.M(i18n.DefaultResolutionWontDo)), false}, {t(i18n.M(i18n.DefaultResolutionDuplicate)), false},
+			{t(i18n.M(i18n.DefaultResolutionCannotReproduce)), false}}},
 		{"link_types", "name, inward, outward, position", [][]any{
-			{t(i18n.M("Blocks")), t(i18n.M("is blocked by")), t(i18n.M("blocks"))},
-			{t(i18n.M("Link")), t(i18n.M("is linked to")), t(i18n.M("is linked to"))},
-			{t(i18n.M("Duplicate")), t(i18n.M("is duplicated by")), t(i18n.M("duplicates"))},
-			{t(i18n.M("Clone")), t(i18n.M("is cloned by")), t(i18n.M("clones"))}}},
+			{t(i18n.M(i18n.DefaultLinkBlocksName)), t(i18n.M(i18n.DefaultLinkBlocksInward)), t(i18n.M(i18n.DefaultLinkBlocksOutward))},
+			{t(i18n.M(i18n.DefaultLinkRelatesName)), t(i18n.M(i18n.DefaultLinkRelatesDirection)), t(i18n.M(i18n.DefaultLinkRelatesDirection))},
+			{t(i18n.M(i18n.DefaultLinkDuplicatesName)), t(i18n.M(i18n.DefaultLinkDuplicatesInward)), t(i18n.M(i18n.DefaultLinkDuplicatesOutward))},
+			{t(i18n.M(i18n.DefaultLinkClonesName)), t(i18n.M(i18n.DefaultLinkClonesInward)), t(i18n.M(i18n.DefaultLinkClonesOutward))}}},
 	}
 	for _, st := range steps {
 		if err := insert(st.table, st.cols, st.rows); err != nil {
@@ -420,7 +419,7 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 	if ok, err := empty("project_roles"); err != nil {
 		return err
 	} else if ok {
-		for _, name := range []string{t(i18n.M("Administrators")), t(i18n.M("Developers")), t(i18n.M("Users"))} {
+		for _, name := range []string{t(i18n.M(i18n.DefaultRoleAdministrators)), t(i18n.M(i18n.DefaultRoleDevelopers)), t(i18n.M(i18n.DefaultRoleUsers))} {
 			if _, err := tx.ExecContext(ctx, `INSERT INTO project_roles (name) VALUES (?)`, name); err != nil {
 				return err
 			}
@@ -552,7 +551,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.DefaultAssignee != nil {
 		if *in.DefaultAssignee != "unassigned" && *in.DefaultAssignee != "lead" {
-			return fail(http.StatusBadRequest, "Default assignment: unassigned or lead.")
+			return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
 		}
 		sets["default_assignee"] = *in.DefaultAssignee
 	}
@@ -583,7 +582,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 		}
 		if len(inUse) > 0 {
 			return &httpError{status: http.StatusConflict, extra: map[string]any{"inUse": inUse},
-				msg: i18n.M("Some issues still use the removed types: change their type first.")}
+				msg: i18n.M(i18n.ProjectRemovedTypesInUse)}
 		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -733,7 +732,7 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	if issues > 0 && strings.TrimSpace(in.Confirm) != key {
 		return &httpError{status: http.StatusConflict, extra: map[string]any{"issues": issues},
-			msg: i18n.M("This project contains issues: type its key to confirm the deletion.")}
+			msg: i18n.M(i18n.ProjectDeleteConfirm)}
 	}
 	var files []int64
 	if err := scanAll(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
@@ -867,7 +866,7 @@ func (s *Server) categoryNameTaken(ctx context.Context, name string, except int6
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "“%s” already exists.", name)
+		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
 	}
 	return nil
 }
@@ -897,7 +896,7 @@ func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
 			return errNotFound
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, "A name is required (%d characters at most).", 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
 	}
 	if in.Name != nil {
 		name, err := cleanName(*in.Name, 255)

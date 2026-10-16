@@ -189,7 +189,7 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	if b.Kind != "scrum" {
-		return fail(http.StatusBadRequest, "A Kanban board has no sprints.")
+		return fail(http.StatusBadRequest, i18n.SprintKanban)
 	}
 	var states []string
 	for v := range strings.SplitSeq(r.URL.Query().Get("state"), ",") {
@@ -337,7 +337,7 @@ func (s *Server) agileSprintIssues(w http.ResponseWriter, r *http.Request) error
 // ids]}), all of which the user must see and may edit.
 func (s *Server) agileIssueList(ctx context.Context, sub *perm.Subject, raw []string) ([]*issueRow, error) {
 	if len(raw) == 0 || len(raw) > 50 {
-		return nil, fieldError("issues", fail(http.StatusBadRequest, "Between 1 and 50 issues at a time."))
+		return nil, fieldError("issues", fail(http.StatusBadRequest, i18n.BoardIssueCount))
 	}
 	var out []*issueRow
 	for _, v := range raw {
@@ -441,7 +441,7 @@ func (s *Server) agileRank(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if (in.RankBeforeIssue == "") == (in.RankAfterIssue == "") {
-		return fail(http.StatusBadRequest, "Give rankBeforeIssue or rankAfterIssue.")
+		return fail(http.StatusBadRequest, i18n.BoardRankTargetRequired)
 	}
 	issues, err := s.agileIssueList(ctx, sub, in.Issues)
 	if err != nil {
@@ -467,7 +467,7 @@ func (s *Server) rankIssues(ctx context.Context, sub *perm.Subject, issues []*is
 		return err
 	}
 	if slices.ContainsFunc(issues, func(iss *issueRow) bool { return iss.ID == anchor.ID }) {
-		return fail(http.StatusBadRequest, "An issue cannot be ranked relative to itself.")
+		return fail(http.StatusBadRequest, i18n.BoardRankItself)
 	}
 	var lower, upper string
 	switch {
@@ -508,7 +508,7 @@ func (s *Server) pathEpic(r *http.Request, sub *perm.Subject) (*issueRow, *catal
 		return nil, nil, err
 	}
 	if !isEpicType(cat.typeOf(iss.TypeID)) {
-		return nil, nil, failf(http.StatusNotFound, "%s is not an epic.", iss.Key())
+		return nil, nil, failf(http.StatusNotFound, i18n.IssueNotAnEpic, iss.Key())
 	}
 	return iss, cat, nil
 }

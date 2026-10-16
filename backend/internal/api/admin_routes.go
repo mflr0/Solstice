@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"solstice/internal/i18n"
 )
 
 func (s *Server) adminRoutes(route func(string, handler, bool)) {
@@ -94,11 +95,11 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 func readJSONFields(r *http.Request, v any) (map[string]json.RawMessage, error) {
 	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err != nil {
-		return nil, failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	keys := map[string]json.RawMessage{}
 	if err := json.Unmarshal(raw, &keys); err != nil {
-		return nil, failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	r.Body = io.NopCloser(bytes.NewReader(raw))
 	return keys, readJSON(r, v)

@@ -55,13 +55,13 @@ func (f *dbForm) url() (string, error) {
 	}
 	switch {
 	case !hostPattern.MatchString(f.Host):
-		return "", fail(http.StatusBadRequest, "Invalid host.")
+		return "", fail(http.StatusBadRequest, i18n.SetupHostInvalid)
 	case f.Port < 1 || f.Port > 65535:
-		return "", fail(http.StatusBadRequest, "Invalid port (1 to 65535).")
+		return "", fail(http.StatusBadRequest, i18n.SetupPortInvalid)
 	case !dbNamePattern.MatchString(f.Name):
-		return "", fail(http.StatusBadRequest, "Invalid database name: letters, digits, _ and - only.")
+		return "", fail(http.StatusBadRequest, i18n.SetupDatabaseNameInvalid)
 	case f.User == "":
-		return "", fail(http.StatusBadRequest, "Enter the database user.")
+		return "", fail(http.StatusBadRequest, i18n.SetupDatabaseUserRequired)
 	}
 	return "mysql://" + strictEscape(f.User) + ":" + strictEscape(f.Password) + "@" +
 		net.JoinHostPort(f.Host, strconv.Itoa(f.Port)) + "/" + f.Name, nil
@@ -108,8 +108,7 @@ func checkDatabase(ctx context.Context, conn *sql.DB, name string) (*dbProbe, er
 	server, ok := serverVersion(ctx, conn)
 	p.Server = server
 	if !ok {
-		return nil, failf(http.StatusBadRequest,
-			"Version too old: %s. Solstice needs at least MariaDB 10.6 or MySQL 8.0.", server)
+		return nil, failf(http.StatusBadRequest, i18n.SetupDatabaseTooOld, server)
 	}
 	var charset string
 	if err := conn.QueryRowContext(ctx, `SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA
@@ -117,7 +116,7 @@ func checkDatabase(ctx context.Context, conn *sql.DB, name string) (*dbProbe, er
 		return nil, err
 	}
 	if charset != "utf8mb4" {
-		return nil, failf(http.StatusBadRequest, "The database “%s” uses %s; Solstice needs utf8mb4. While it is empty, convert it: ALTER DATABASE %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+		return nil, failf(http.StatusBadRequest, i18n.SetupDatabaseCharset,
 			name, charset, name)
 	}
 	var ours int
@@ -126,8 +125,7 @@ func checkDatabase(ctx context.Context, conn *sql.DB, name string) (*dbProbe, er
 		return nil, err
 	}
 	if p.Tables > 0 && ours == 0 {
-		return nil, failf(http.StatusBadRequest,
-			"The database “%s” already holds tables that are not Solstice's: choose an empty database.", name)
+		return nil, failf(http.StatusBadRequest, i18n.SetupDatabaseNotEmpty, name)
 	}
 	if ours > 0 {
 		// A Solstice database: an existing instance if it has accounts.
@@ -166,19 +164,18 @@ func connectError(err error, addr, name, user string) error {
 	if errors.As(err, &me) {
 		switch me.Number {
 		case 1045:
-			return fail(http.StatusBadRequest, "The database server rejected the user name or password.")
+			return fail(http.StatusBadRequest, i18n.SetupDatabaseAuth)
 		case 1044:
-			return failf(http.StatusBadRequest, "User %s has no access to the database “%s”, or it does not exist.", user, name)
+			return failf(http.StatusBadRequest, i18n.SetupDatabaseAccess, user, name)
 		case 1049:
-			return failf(http.StatusBadRequest, "There is no database “%s” on this server: create it first.", name)
+			return failf(http.StatusBadRequest, i18n.SetupDatabaseMissing, name)
 		}
-		return failf(http.StatusBadRequest, "Cannot connect to the database: %s", me.Message)
+		return failf(http.StatusBadRequest, i18n.SetupDatabaseConnect, me.Message)
 	}
 	if unreachable(err) {
-		return failf(http.StatusBadRequest,
-			"Cannot reach the database server at %s: check the host, the port and the firewall.", addr)
+		return failf(http.StatusBadRequest, i18n.SetupDatabaseUnreachable, addr)
 	}
-	return failf(http.StatusBadRequest, "Cannot connect to the database: %s", err.Error())
+	return failf(http.StatusBadRequest, i18n.SetupDatabaseConnect, err.Error())
 }
 
 func unreachable(err error) bool {
@@ -230,9 +227,9 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 	}()
 	switch {
 	case w.opt.DBFixed:
-		return fail(http.StatusConflict, "The database is set by the server's environment: it cannot be changed here.")
+		return fail(http.StatusConflict, i18n.SetupDatabaseFromEnv)
 	case w.imported:
-		return fail(http.StatusConflict, "An import has already filled the database: it can no longer be changed.")
+		return fail(http.StatusConflict, i18n.SetupDatabaseImported)
 	}
 	conn, p, err := probeDatabase(r.Context(), f, rawURL)
 	if err != nil {
@@ -240,7 +237,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 	}
 	if err := db.Migrate(r.Context(), conn); err != nil {
 		conn.Close()
-		return failf(http.StatusInternalServerError, "Creating the tables failed: %s", err.Error())
+		return failf(http.StatusInternalServerError, i18n.SetupTablesFailed, err.Error())
 	}
 	if w.db != nil && w.db != conn {
 		w.db.Close()
@@ -269,8 +266,7 @@ func normalizeBaseURL(s string) (string, error) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil ||
 		strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.Fragment != "" ||
 		config.CheckValue(u.Host) != nil {
-		return "", fail(http.StatusBadRequest,
-			"Invalid public address: enter something like https://tickets.example.org, without a path.")
+		return "", fail(http.StatusBadRequest, i18n.SetupPublicURLInvalid)
 	}
 	return strings.ToLower(u.Scheme + "://" + u.Host), nil
 }
@@ -279,7 +275,7 @@ func normalizeBaseURL(s string) (string, error) {
 func checkTZ(name string) error {
 	name = strings.TrimSpace(name)
 	if _, err := time.LoadLocation(name); err != nil || name == "" || name == "Local" || config.CheckValue(name) != nil {
-		return failf(http.StatusBadRequest, "Unknown time zone: %s.", name)
+		return failf(http.StatusBadRequest, i18n.CommonTimeZoneUnknown, name)
 	}
 	return nil
 }
@@ -346,11 +342,11 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 	loc, _ := time.LoadLocation(f.TZ)
 	u, err := url.Parse(f.URL)
 	if err != nil || u.Host == "" {
-		return nil, fail(http.StatusBadRequest, "Invalid Jira database address: postgres://… or mysql://… expected.")
+		return nil, fail(http.StatusBadRequest, i18n.ImportDatabaseURLInvalid)
 	}
 	src, engine, err := jiradb.Open(f.URL, loc)
 	if err != nil {
-		return nil, fail(http.StatusBadRequest, "Invalid Jira database address: postgres://… or mysql://… expected.")
+		return nil, fail(http.StatusBadRequest, i18n.ImportDatabaseURLInvalid)
 	}
 	defer src.Close()
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -361,20 +357,20 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 	p := &sourceProbe{Engine: engine.String()}
 	for table, n := range map[string]*int{"project": &p.Projects, "jiraissue": &p.Issues, "cwd_user": &p.Users} {
 		if err := src.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(n); err != nil {
-			return nil, failf(http.StatusBadRequest, "This does not look like a Jira database (no %s table).", table)
+			return nil, failf(http.StatusBadRequest, i18n.ImportNotJira, table)
 		}
 	}
 	if f.JiraHome != "" {
 		if !filepath.IsAbs(f.JiraHome) {
-			return nil, fail(http.StatusBadRequest, "Enter the full path of the Jira home folder, from the root.")
+			return nil, fail(http.StatusBadRequest, i18n.ImportHomeNotAbsolute)
 		}
 		if info, err := os.Stat(f.JiraHome); err != nil || !info.IsDir() {
-			return nil, failf(http.StatusBadRequest, "Folder not found on the server: %s", f.JiraHome)
+			return nil, failf(http.StatusBadRequest, i18n.ImportHomeNotFound, f.JiraHome)
 		}
 		if info, err := os.Stat(filepath.Join(f.JiraHome, "data", "attachments")); err == nil && info.IsDir() {
 			p.Attachments = true
 		} else {
-			p.Warning = i18n.M("No data/attachments folder in %s: only the attachments' details will be imported, not their files.",
+			p.Warning = i18n.M(i18n.ImportNoAttachments,
 				f.JiraHome).In(lang)
 		}
 	}
@@ -389,18 +385,17 @@ func sourceError(err error, u *url.URL) error {
 	switch {
 	case errors.As(err, &me) && me.Number == 1045,
 		errors.As(err, &pe) && (pe.Code == "28P01" || pe.Code == "28000"):
-		return fail(http.StatusBadRequest, "Jira database: user name or password rejected.")
+		return fail(http.StatusBadRequest, i18n.ImportDatabaseAuth)
 	case errors.As(err, &me) && me.Number == 1049, errors.As(err, &pe) && pe.Code == "3D000":
-		return failf(http.StatusBadRequest, "Jira database: there is no database “%s” on this server.", name)
+		return failf(http.StatusBadRequest, i18n.ImportDatabaseMissing, name)
 	case errors.As(err, &me):
-		return failf(http.StatusBadRequest, "Cannot open the Jira database: %s", me.Message)
+		return failf(http.StatusBadRequest, i18n.ImportDatabaseOpen, me.Message)
 	case errors.As(err, &pe):
-		return failf(http.StatusBadRequest, "Cannot open the Jira database: %s", pe.Message)
+		return failf(http.StatusBadRequest, i18n.ImportDatabaseOpen, pe.Message)
 	case unreachable(err):
-		return failf(http.StatusBadRequest,
-			"Cannot reach the Jira database at %s: check the host, the port and the firewall.", u.Host)
+		return failf(http.StatusBadRequest, i18n.ImportDatabaseUnreachable, u.Host)
 	}
-	return failf(http.StatusBadRequest, "Cannot open the Jira database: %s", err.Error())
+	return failf(http.StatusBadRequest, i18n.ImportDatabaseOpen, err.Error())
 }
 
 func (w *Setup) testSource(rw http.ResponseWriter, r *http.Request) error {
@@ -455,7 +450,7 @@ func (j *importJob) view(lang string) importView {
 	}
 	v.Seconds = int(end.Sub(j.started).Seconds())
 	if j.err != nil {
-		v.Error = i18n.M("The import failed: %s", j.err.Error()).In(lang)
+		v.Error = i18n.M(i18n.ImportFailed, j.err.Error()).In(lang)
 	}
 	return v
 }
@@ -481,10 +476,10 @@ func (w *Setup) startImport(rw http.ResponseWriter, r *http.Request) error {
 	}
 	defer w.mu.Unlock()
 	if w.db == nil {
-		return fail(http.StatusConflict, "Set up the database first.")
+		return fail(http.StatusConflict, i18n.SetupDatabaseRequired)
 	}
 	if w.job != nil && w.job.running() {
-		return fail(http.StatusConflict, "An import is already running.")
+		return fail(http.StatusConflict, i18n.ImportRunning)
 	}
 	loc, _ := time.LoadLocation(f.TZ)
 	job := &importJob{state: "running", started: time.Now()}
@@ -522,7 +517,7 @@ func (w *Setup) importState(rw http.ResponseWriter, r *http.Request) error {
 	job := w.job
 	w.mu.Unlock()
 	if job == nil {
-		return fail(http.StatusNotFound, "No import has been started.")
+		return fail(http.StatusNotFound, i18n.ImportNotStarted)
 	}
 	return writeJSON(rw, http.StatusOK, job.view(locale(r)))
 }
@@ -542,7 +537,7 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 	conn, job := w.db, w.job
 	w.mu.Unlock()
 	if job == nil || job.view("").State != "done" {
-		return fail(http.StatusConflict, "Finish the import first.")
+		return fail(http.StatusConflict, i18n.ImportNotFinished)
 	}
 	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []setupAccount{}
@@ -594,16 +589,16 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 	if w.db == nil {
-		return fail(http.StatusConflict, "Set up the database first.")
+		return fail(http.StatusConflict, i18n.SetupDatabaseRequired)
 	}
 	if w.job != nil && w.job.running() {
-		return fail(http.StatusConflict, "An import is already running.")
+		return fail(http.StatusConflict, i18n.ImportRunning)
 	}
 	ctx := r.Context()
 	var username string
 	if existing := strings.ToLower(strings.TrimSpace(in.Existing)); existing != "" {
 		if !w.imported {
-			return fail(http.StatusBadRequest, "No such account among the imported ones.")
+			return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
 		}
 		res, err := w.db.ExecContext(ctx, `UPDATE users SET is_admin = TRUE
 			WHERE username = ? AND active AND password_hash IS NOT NULL`, existing)
@@ -617,7 +612,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if found == 0 { // otherwise it was an administrator already
-				return fail(http.StatusBadRequest, "No such account among the imported ones.")
+				return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
 			}
 		}
 		username = existing
@@ -625,19 +620,19 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		username = strings.ToLower(strings.TrimSpace(in.Username))
 		name, email := strings.TrimSpace(in.Name), strings.TrimSpace(in.Email)
 		if !usernamePattern.MatchString(username) {
-			return fail(http.StatusBadRequest, "Invalid username: use lowercase letters, digits and . _ @ -")
+			return fail(http.StatusBadRequest, i18n.AccountUsernameInvalid)
 		}
 		if name == "" {
 			name = username
 		}
 		if a, err := mail.ParseAddress(email); err != nil || a.Address != email || a.Name != "" {
-			return fail(http.StatusBadRequest, "Invalid email address.")
+			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
 		}
 		if utf8Len(in.Password) < minAdminPassword {
-			return failf(http.StatusBadRequest, "The password must be at least %d characters long.", minAdminPassword)
+			return failf(http.StatusBadRequest, i18n.AccountPasswordTooShort, minAdminPassword)
 		}
 		if strings.EqualFold(strings.TrimSpace(in.Password), username) {
-			return fail(http.StatusBadRequest, "The password cannot be the username.")
+			return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
 		}
 		hash, err := auth.HashPassword(in.Password)
 		if err != nil {
@@ -646,7 +641,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		if _, err := w.db.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 			VALUES (?, ?, ?, ?, TRUE)`, username, name, email, hash); err != nil {
 			if strings.Contains(err.Error(), "Duplicate") {
-				return fail(http.StatusConflict, "This username is already taken.")
+				return fail(http.StatusConflict, i18n.AccountUsernameTaken)
 			}
 			return err
 		}

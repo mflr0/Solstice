@@ -865,7 +865,7 @@ func (f fields) isNull(k string) bool { return string(f[k]) == "null" }
 
 func (f fields) get(k string, v any) error {
 	if err := json.Unmarshal(f[k], v); err != nil {
-		return failf(http.StatusBadRequest, "Invalid value for field %s.", k)
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
 	}
 	return nil
 }
@@ -881,11 +881,11 @@ func readFields(r *http.Request) (fields, error) {
 	var f fields
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err := dec.Decode(&f); err != nil {
-		return nil, failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	for k := range f {
 		if !issueFields[k] {
-			return nil, failf(http.StatusBadRequest, "Unknown field: %s.", k)
+			return nil, failf(http.StatusBadRequest, i18n.FieldUnknown, k)
 		}
 	}
 	return f, nil
@@ -904,7 +904,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	var projectKey, typeID, summary string
 	for k, v := range map[string]*string{"project": &projectKey, "type": &typeID, "summary": &summary} {
 		if !f.has(k) {
-			return failf(http.StatusBadRequest, "Field %s is required.", k)
+			return failf(http.StatusBadRequest, i18n.FieldRequired, k)
 		}
 		if err := f.get(k, v); err != nil {
 			return err
@@ -912,7 +912,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	summary = strings.TrimSpace(summary)
 	if summary == "" || utf8.RuneCountInString(summary) > 255 {
-		return fail(http.StatusBadRequest, "A summary is required (255 characters at most).")
+		return fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 	}
 	var projectID, leadID int64
 	var defaultAssignee string
@@ -933,7 +933,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	it, ok := cat.issueType[typeID]
 	if !ok || !s.projectHasType(ctx, projectID, typeID) {
-		return fail(http.StatusBadRequest, "This issue type is not available in this project.")
+		return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 
 	var parentID any
@@ -945,19 +945,19 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		parent, err := s.findIssue(ctx, parentKey)
 		if err != nil || !sub.CanSee(parent.perm()) {
-			return fail(http.StatusBadRequest, "Parent issue not found.")
+			return fail(http.StatusBadRequest, i18n.IssueParentNotFound)
 		}
 		if parent.ProjectID != projectID || parent.ParentID.Valid {
-			return fail(http.StatusBadRequest, "The parent must be an issue of the same project, without a parent of its own.")
+			return fail(http.StatusBadRequest, i18n.IssueParentInvalid)
 		}
 		parentID = parent.ID
 		parentLevel = parent.LevelID
 	}
 	if it.Subtask != (parentID != nil) {
 		if it.Subtask {
-			return fail(http.StatusBadRequest, "A sub-task needs a parent issue.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskParentRequired)
 		}
-		return fail(http.StatusBadRequest, "Only a sub-task type can have a parent.")
+		return fail(http.StatusBadRequest, i18n.IssueParentNotSubtask)
 	}
 
 	var assignee any
@@ -967,12 +967,12 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if !sub.Can(perm.Assign, projectID, nil) && id != sub.UserID {
-			return fail(http.StatusForbidden, "You cannot assign this issue to someone else.")
+			return fail(http.StatusForbidden, i18n.IssueAssignOthersForbidden)
 		}
 		if ok, err := s.isAssignable(ctx, projectID, id); err != nil {
 			return err
 		} else if !ok {
-			return fail(http.StatusBadRequest, "This person cannot be assigned issues in this project.")
+			return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
 		assignee = id
 	} else if who, ok, err := s.componentAssignee(ctx, f, projectID, leadID); err != nil {
@@ -1020,7 +1020,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, ok := cat.priority[v]; !ok {
-			return fail(http.StatusBadRequest, "Unknown priority.")
+			return fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 		}
 		priority = v
 	} else if len(cat.Priorities) > 0 {
@@ -1038,7 +1038,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, err := time.Parse(time.DateOnly, v); err != nil {
-			return fail(http.StatusBadRequest, "Invalid due date (YYYY-MM-DD expected).")
+			return fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 		}
 		due = v
 	}
@@ -1052,7 +1052,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if !s.projectHasLevel(ctx, projectID, id) {
-			return fail(http.StatusBadRequest, "Unknown security level in this project.")
+			return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 		}
 		level = id
 	}
@@ -1162,7 +1162,7 @@ func (s *Server) initialStatus(ctx context.Context, projectID int64) (string, er
 			ON u.status_id = s.id
 		WHERE s.category = 'todo' ORDER BY u.n IS NULL, u.n DESC, s.position LIMIT 1`, projectID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", fail(http.StatusConflict, "No “to do” status is defined.")
+		return "", fail(http.StatusConflict, i18n.IssueNoTodoStatus)
 	}
 	return id, err
 }
@@ -1253,7 +1253,7 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		want := map[int64]bool{}
 		for _, id := range ids {
 			if _, ok := names[id]; !ok {
-				return nil, failf(http.StatusBadRequest, "Unknown value in this project for %s.", st.key)
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueNotInProject, st.key)
 			}
 			want[id] = true
 		}
@@ -1358,7 +1358,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 // cards between columns.
 func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
 	if f.has("project") || f.has("parent") {
-		return fail(http.StatusBadRequest, "Moving an issue is not possible yet.")
+		return fail(http.StatusBadRequest, i18n.IssueMoveUnsupported)
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
@@ -1393,10 +1393,10 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 		}
 		if required && newVal == nil {
-			return fail(http.StatusBadRequest, "The summary cannot be empty.")
+			return fail(http.StatusBadRequest, i18n.IssueSummaryEmpty)
 		}
 		if s, ok := newVal.(string); ok && maxLen > 0 && utf8.RuneCountInString(s) > maxLen {
-			return failf(http.StatusBadRequest, "%d characters at most.", maxLen)
+			return failf(http.StatusBadRequest, i18n.FieldTooLong, maxLen)
 		}
 		var old any
 		switch key {
@@ -1433,10 +1433,10 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 		it, ok := cat.issueType[v]
 		if !ok || !s.projectHasType(ctx, iss.ProjectID, v) {
-			return fail(http.StatusBadRequest, "This issue type is not available in this project.")
+			return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 		}
 		if it.Subtask != iss.ParentID.Valid {
-			return fail(http.StatusBadRequest, "A sub-task can only be changed to another sub-task type.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskTypeChange)
 		}
 		if v != iss.TypeID {
 			sets["issue_type_id"] = v
@@ -1456,7 +1456,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		if v != nil {
 			p, ok := cat.priority[*v]
 			if !ok {
-				return fail(http.StatusBadRequest, "Unknown priority.")
+				return fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 			}
 			newVal, newName = *v, p.Name
 		}
@@ -1486,7 +1486,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				return err
 			}
 			if !ok {
-				return fail(http.StatusBadRequest, "This person cannot be assigned issues in this project.")
+				return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 			}
 			newVal = *v
 		}
@@ -1514,7 +1514,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		var newVal any
 		if v != nil && *v != "" {
 			if _, err := time.Parse(time.DateOnly, *v); err != nil {
-				return fail(http.StatusBadRequest, "Invalid due date (YYYY-MM-DD expected).")
+				return fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 			}
 			newVal = *v
 		}
@@ -1553,7 +1553,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			return err
 		}
 		if iss.ParentID.Valid {
-			return fail(http.StatusBadRequest, "A sub-task has the security level of its parent issue.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskSecurity)
 		}
 		var v *int64
 		if err := f.get("securityLevel", &v); err != nil {
@@ -1562,7 +1562,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		var newVal any
 		if v != nil {
 			if !s.projectHasLevel(ctx, iss.ProjectID, *v) {
-				return fail(http.StatusBadRequest, "Unknown security level in this project.")
+				return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 			}
 			newVal = *v
 		}
@@ -1584,7 +1584,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				return err
 			}
 			if _, ok := cat.status[status]; !ok {
-				return fail(http.StatusBadRequest, "Unknown status.")
+				return fail(http.StatusBadRequest, i18n.StatusUnknown)
 			}
 			if status != iss.StatusID {
 				_, allowed, err := s.issueTransitions(ctx, cat, iss)
@@ -1592,7 +1592,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 					return err
 				}
 				if !slices.ContainsFunc(allowed, func(st statusRef) bool { return st.ID == status }) {
-					return fail(http.StatusConflict, "The project's workflow does not allow this status change.")
+					return fail(http.StatusConflict, i18n.IssueTransitionNotAllowed)
 				}
 			}
 		}
@@ -1605,7 +1605,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			resolution = sql.NullString{}
 			if v != nil {
 				if _, ok := cat.resolution[*v]; !ok {
-					return fail(http.StatusBadRequest, "Unknown resolution.")
+					return fail(http.StatusBadRequest, i18n.IssueResolutionUnknown)
 				}
 				resolution = sql.NullString{String: *v, Valid: true}
 			}
@@ -1762,7 +1762,7 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 		cp := child.perm()
 		if !sub.Can(perm.Delete, child.ProjectID, &cp) {
 			children.Close()
-			return fail(http.StatusConflict, "This issue has sub-tasks you cannot delete.")
+			return fail(http.StatusConflict, i18n.IssueSubtasksNotDeletable)
 		}
 		gone = append(gone, child)
 	}
@@ -1894,7 +1894,7 @@ func jqlError(err error) error {
 	if !errors.As(err, &je) {
 		return err
 	}
-	return &httpError{status: http.StatusBadRequest, msg: i18n.M("JQL: %s", i18n.M(je.Template, je.Args...)),
+	return &httpError{status: http.StatusBadRequest, msg: i18n.M(i18n.JQLError, i18n.M(je.Key, je.Args...)),
 		extra: map[string]any{"pos": je.Pos}}
 }
 
@@ -1946,17 +1946,17 @@ func (s *Server) epicTarget(ctx context.Context, sub *perm.Subject, cat *catalog
 		return nil, nil, err
 	}
 	if iss.ParentID.Valid {
-		return nil, nil, fail(http.StatusBadRequest, "A sub-task belongs to the epic of its parent issue.")
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueSubtaskEpic)
 	}
 	if iss.TypeID != "" && isEpicType(cat.typeOf(iss.TypeID)) {
-		return nil, nil, fail(http.StatusBadRequest, "An epic cannot belong to another epic.")
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueEpicInEpic)
 	}
 	epic, err := s.findIssue(ctx, key)
 	if err != nil || !sub.CanSee(epic.perm()) {
-		return nil, nil, fail(http.StatusBadRequest, "Epic not found.")
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueEpicNotFound)
 	}
 	if !isEpicType(cat.typeOf(epic.TypeID)) {
-		return nil, nil, failf(http.StatusBadRequest, "%s is not an epic.", epic.Key())
+		return nil, nil, failf(http.StatusBadRequest, i18n.IssueNotAnEpic, epic.Key())
 	}
 	return epic.ID, epic.Key(), nil
 }

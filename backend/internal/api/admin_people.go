@@ -43,7 +43,7 @@ func (s *Server) checkGroups(ctx context.Context, ids []int64) error {
 			return err
 		}
 		if n == 0 {
-			return fail(http.StatusBadRequest, "Group not found.")
+			return fail(http.StatusBadRequest, i18n.GroupNotFound)
 		}
 	}
 	return nil
@@ -57,7 +57,7 @@ func (s *Server) checkUsers(ctx context.Context, ids []int64) error {
 			return err
 		}
 		if n == 0 {
-			return fail(http.StatusBadRequest, "User not found.")
+			return fail(http.StatusBadRequest, i18n.AccountNotFound)
 		}
 	}
 	return nil
@@ -88,7 +88,7 @@ func (s *Server) namesOf(ctx context.Context, q string, ids []int64) []string {
 func cleanName(name string, max int) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || utf8.RuneCountInString(name) > max {
-		return "", failf(http.StatusBadRequest, "A name is required (%d characters at most).", max)
+		return "", failf(http.StatusBadRequest, i18n.CommonNameRequired, max)
 	}
 	return name, nil
 }
@@ -222,7 +222,7 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) error {
 	res, err := s.db.ExecContext(ctx, `INSERT INTO user_groups (name, description) VALUES (?, ?)`,
 		name, optDescription(in.Description))
 	if isDuplicate(err) {
-		return failf(http.StatusConflict, "The group “%s” already exists.", name)
+		return failf(http.StatusConflict, i18n.GroupExists, name)
 	}
 	if err != nil {
 		return err
@@ -276,7 +276,7 @@ func (s *Server) updateGroup(w http.ResponseWriter, r *http.Request) error {
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE user_groups SET name = ?, description = ? WHERE id = ?`, name, desc, id); err != nil {
 		if isDuplicate(err) {
-			return failf(http.StatusConflict, "The group “%s” already exists.", name)
+			return failf(http.StatusConflict, i18n.GroupExists, name)
 		}
 		return err
 	}
@@ -327,7 +327,7 @@ func (s *Server) deleteGroup(w http.ResponseWriter, r *http.Request) error {
 	}
 	if usage.Comments+usage.Worklogs > 0 {
 		return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": usage},
-			msg: i18n.M("Some comments or work logs are restricted to this group: it cannot be deleted.")}
+			msg: i18n.M(i18n.GroupRestricted)}
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM user_groups WHERE id = ?`, id); err != nil {
 		return err
@@ -489,7 +489,7 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 	if taken, err := s.roleNameTaken(ctx, name, 0); err != nil {
 		return err
 	} else if taken {
-		return failf(http.StatusConflict, "The role “%s” already exists.", name)
+		return failf(http.StatusConflict, i18n.RoleExists, name)
 	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO project_roles (name, description) VALUES (?, ?)`, name,
 		optDescription(in.Description))
@@ -534,7 +534,7 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		if taken, err := s.roleNameTaken(ctx, name, id); err != nil {
 			return err
 		} else if taken {
-			return failf(http.StatusConflict, "The role “%s” already exists.", name)
+			return failf(http.StatusConflict, i18n.RoleExists, name)
 		}
 		if name != ro.Name {
 			details["name"] = map[string]string{"from": ro.Name, "to": name}
@@ -581,7 +581,7 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
 	if comments+worklogs > 0 {
 		return &httpError{status: http.StatusConflict,
 			extra: map[string]any{"usage": map[string]int{"comments": comments, "worklogs": worklogs}},
-			msg:   i18n.M("Some comments or work logs are restricted to this role: it cannot be deleted.")}
+			msg:   i18n.M(i18n.RoleRestricted)}
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM project_roles WHERE id = ?`, id); err != nil {
 		return err

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -99,28 +100,27 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 		wh.Name = strings.TrimSpace(*in.Name)
 	}
 	if wh.Name == "" || utf8.RuneCountInString(wh.Name) > 255 {
-		return nil, fail(http.StatusBadRequest, "A name is required (255 characters at most).")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookNameRequired)
 	}
 	if in.URL != nil {
 		wh.URL = strings.TrimSpace(*in.URL)
 	}
 	if len(wh.URL) > 2000 {
-		return nil, fail(http.StatusBadRequest, "Address too long (2000 characters at most).")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookURLTooLong)
 	}
 	switch err := webhook.CheckURL(r.Context(), wh.URL); {
 	case errors.Is(err, webhook.ErrBlocked):
-		return nil, fail(http.StatusBadRequest,
-			"Address refused: link-local and cloud metadata addresses (169.254.0.0/16…) are not allowed.")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookURLForbidden)
 	case errors.Is(err, webhook.ErrScheme):
-		return nil, fail(http.StatusBadRequest, "Invalid address: http:// or https:// expected.")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookURLScheme)
 	case err != nil:
-		return nil, fail(http.StatusBadRequest, "Invalid address: the host is missing.")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookURLNoHost)
 	}
 	if in.Events != nil {
 		wh.Events = nil
 		for _, e := range *in.Events {
 			if !slices.Contains(webhook.Events, e) {
-				return nil, failf(http.StatusBadRequest, "Unknown event: %s.", e)
+				return nil, failf(http.StatusBadRequest, i18n.NotifyEventUnknown, e)
 			}
 			if !slices.Contains(wh.Events, e) {
 				wh.Events = append(wh.Events, e)
@@ -128,7 +128,7 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 		}
 	}
 	if len(wh.Events) == 0 {
-		return nil, fail(http.StatusBadRequest, "Choose at least one event.")
+		return nil, fail(http.StatusBadRequest, i18n.WebhookEventRequired)
 	}
 	if in.JQL != nil {
 		wh.JQL = strings.TrimSpace(*in.JQL)
@@ -146,11 +146,11 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 	}
 	if in.Secret != nil {
 		if utf8.RuneCountInString(*in.Secret) > 255 {
-			return nil, fail(http.StatusBadRequest, "The secret is 255 characters at most.")
+			return nil, fail(http.StatusBadRequest, i18n.WebhookSecretTooLong)
 		}
 		if *in.Secret != "" {
 			if _, err := s.secrets(); err != nil {
-				return nil, failf(http.StatusInternalServerError, "The secret cannot be encrypted: %s", err.Error())
+				return nil, failf(http.StatusInternalServerError, i18n.WebhookSecretEncryptFailed, err.Error())
 			}
 		}
 	}

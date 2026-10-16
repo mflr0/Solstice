@@ -13,6 +13,7 @@ import (
 	"math"
 	"net/http"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -119,11 +120,11 @@ func parseRefs(raw json.RawMessage) ([]ref, bool) {
 }
 
 func unknownValue(field, value string) error {
-	return fieldError(field, failf(http.StatusBadRequest, "Unknown value: “%s”.", value))
+	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueUnknown, value))
 }
 
 func invalidValue(field string) error {
-	return fieldError(field, failf(http.StatusBadRequest, "Invalid value for field %s.", field))
+	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueInvalid, field))
 }
 
 // named finds an id among (id, name) pairs: by id, or by name ignoring case.
@@ -214,8 +215,7 @@ func (s *Server) translateEdit(ctx context.Context, sub *perm.Subject, cat *cata
 					}
 					values[field] = merged
 				default:
-					return nil, fieldError(field, failf(http.StatusBadRequest,
-						"Operation “%s” is not supported on this field.", verb))
+					return nil, fieldError(field, failf(http.StatusBadRequest, i18n.FieldOperationUnsupported, verb))
 				}
 			}
 		}
@@ -262,7 +262,7 @@ func (s *Server) mergeList(ctx context.Context, p *editProject, cur *issueData, 
 				items = append(items, raw)
 			}
 		default:
-			return nil, fieldError(field, failf(http.StatusBadRequest, "Operation “%s” is not supported on this field.", verb))
+			return nil, fieldError(field, failf(http.StatusBadRequest, i18n.FieldOperationUnsupported, verb))
 		}
 	}
 	// Compare items by what they name, resolved to ids where possible.
@@ -310,7 +310,7 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		}
 		if cur != nil {
 			if r.key != "" && !strings.EqualFold(r.key, p.key) || r.id != "" && r.id != strconv.FormatInt(p.id, 10) {
-				return fieldError(field, fail(http.StatusBadRequest, "Moving an issue is not possible yet."))
+				return fieldError(field, fail(http.StatusBadRequest, i18n.IssueMoveUnsupported))
 			}
 			return nil
 		}
@@ -325,13 +325,13 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 			if r.null && !cur.row.ParentID.Valid || err == nil && cur.row.ParentID.Int64 == parent.ID {
 				return nil
 			}
-			return fieldError(field, fail(http.StatusBadRequest, "Moving an issue is not possible yet."))
+			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueMoveUnsupported))
 		}
 		if r.null {
 			return nil
 		}
 		if err != nil {
-			return fieldError(field, fail(http.StatusBadRequest, "Parent issue not found."))
+			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueParentNotFound))
 		}
 		return set("parent", parent.Key())
 	case "reporter":
@@ -346,7 +346,7 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 			want = cur.row.ReporterID.Int64
 		}
 		if !found || id != want {
-			return fieldError(field, fail(http.StatusBadRequest, "The reporter cannot be changed."))
+			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueReporterFixed))
 		}
 		return nil
 	case "summary", "description", "environment":
@@ -463,8 +463,7 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		}
 		return set(editableFields[field], ids)
 	}
-	return fieldError(field, failf(http.StatusBadRequest,
-		"Field “%s” cannot be set: it does not exist or Solstice does not support it.", field))
+	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldNotSettable, field))
 }
 
 // assigneeRef reads an assignee: a user (by name or key), null for nobody,
@@ -520,8 +519,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 	}
 	if !found {
-		return fieldError(field, failf(http.StatusBadRequest,
-			"Field “%s” cannot be set: it does not exist or Solstice does not support it.", field))
+		return fieldError(field, failf(http.StatusBadRequest, i18n.FieldNotSettable, field))
 	}
 	isNull := len(raw) == 0 || string(raw) == "null"
 	switch f.Kind {
@@ -609,7 +607,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 		d, err := time.Parse(time.DateOnly, v)
 		if err != nil {
-			return fieldError(field, fail(http.StatusBadRequest, "Invalid due date (YYYY-MM-DD expected)."))
+			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueDueDateInvalid))
 		}
 		w.rows = append(w.rows, customRaw{date: sql.NullTime{Time: d, Valid: true}})
 		display = append(display, v)
@@ -705,8 +703,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		slices.Sort(w.labels)
 		display = w.labels
 	default:
-		return fieldError(field, failf(http.StatusBadRequest,
-			"Field “%s” cannot be set: it does not exist or Solstice does not support it.", field))
+		return fieldError(field, failf(http.StatusBadRequest, i18n.FieldNotSettable, field))
 	}
 	w.display = strings.Join(display, ", ")
 	edit.custom = append(edit.custom, w)
@@ -847,14 +844,14 @@ func (s *Server) sprintBoard(ctx context.Context, sub *perm.Subject, sprint int6
 	var state string
 	err := s.db.QueryRowContext(ctx, `SELECT board_id, state FROM sprints WHERE id = ?`, sprint).Scan(&board, &state)
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && (!board.Valid || state == "closed")) {
-		return nil, fail(http.StatusBadRequest, "Unknown or completed sprint.")
+		return nil, fail(http.StatusBadRequest, i18n.SprintUnknown)
 	}
 	if err != nil {
 		return nil, err
 	}
 	b, err := s.boardByID(ctx, sub, board.Int64)
 	if err != nil {
-		return nil, fail(http.StatusBadRequest, "Unknown or completed sprint.")
+		return nil, fail(http.StatusBadRequest, i18n.SprintUnknown)
 	}
 	return b, nil
 }

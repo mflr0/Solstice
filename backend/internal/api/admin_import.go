@@ -84,7 +84,7 @@ func (s *Server) maintenance(w http.ResponseWriter, r *http.Request) bool {
 		}
 	}
 	writeError(w, r, &httpError{status: http.StatusServiceUnavailable, extra: map[string]any{"maintenance": true},
-		msg: i18n.M("An import from Jira replaces the data: Solstice will be back in a few minutes.")})
+		msg: i18n.M(i18n.ImportMaintenance)})
 	return true
 }
 
@@ -143,7 +143,7 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	if strings.TrimSpace(in.Confirm) != name {
-		return failf(http.StatusBadRequest, "Type the database name (%s) to confirm the replacement.", name)
+		return failf(http.StatusBadRequest, i18n.ImportConfirmDatabase, name)
 	}
 	f := in.sourceForm
 	if _, err := probeSource(ctx, &f, locale(r)); err != nil {
@@ -156,7 +156,7 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 	s.adm.impMu.Lock()
 	if s.adm.imp != nil && s.adm.imp.job.running() {
 		s.adm.impMu.Unlock()
-		return fail(http.StatusConflict, "An import is already running.")
+		return fail(http.StatusConflict, i18n.ImportRunning)
 	}
 	s.adm.imp = imp
 	s.adm.impMu.Unlock()
