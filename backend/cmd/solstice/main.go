@@ -62,6 +62,8 @@ opens the setup wizard at /setup.
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// Once shutting down, a second Ctrl+C kills the process.
+	go func() { <-ctx.Done(); stop() }()
 
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
@@ -242,6 +244,11 @@ func runServe(ctx context.Context, args []string) error {
 		IdleTimeout:       2 * time.Minute,
 		// No write timeout: live updates and large downloads stream for long.
 	}
+	srv.RegisterOnShutdown(func() {
+		if a := app.Load(); a != nil {
+			a.CloseStreams()
+		}
+	})
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	log.Info("Solstice is listening", "addr", cfg.Addr, "setup", setup)

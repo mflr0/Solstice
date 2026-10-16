@@ -179,6 +179,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 		select {
 		case <-r.Context().Done():
 			return nil
+		case <-s.streamsDone:
+			return nil
 		case e := <-ch:
 			data, _ := json.Marshal(e)
 			fmt.Fprintf(w, "event: change\ndata: %s\n\n", data)
