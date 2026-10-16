@@ -1,4 +1,4 @@
-package api
+package tests
 
 // Tests of who may create access tokens, and of the shortest audit
 // retention. They need SOLSTICE_TEST_DB and are skipped without it.

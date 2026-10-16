@@ -46,6 +46,10 @@ func (h TestHooks) RunSchedules(ctx context.Context) error { return h.s.out.noti
 // at full speed.
 func (h TestHooks) SkipDelays() { h.s.sleep = func(context.Context, time.Duration) {} }
 
+// ForgotFloor returns the least time the answer to "forgot your password"
+// takes.
+func (h TestHooks) ForgotFloor() time.Duration { return forgotFloor }
+
 // UpdateEnv is what the update check sees of the outside world.
 type UpdateEnv struct {
 	GitHubAPI    string // GitHub's API base URL

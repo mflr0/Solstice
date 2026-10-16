@@ -1,4 +1,4 @@
-package api
+package tests
 
 import (
 	"encoding/json"
@@ -175,7 +175,7 @@ func TestDeleteCascadingOption(t *testing.T) {
 		return id
 	}
 	field := exec(`INSERT INTO custom_fields (type_key, name) VALUES (?, 'Cascade removal test')`,
-		jiraFieldPrefix+"cascadingselect")
+		"com.atlassian.jira.plugin.system.customfieldtypes:cascadingselect")
 	t.Cleanup(func() { exec(`DELETE FROM custom_fields WHERE id = ?`, field) })
 	parent := exec(`INSERT INTO custom_field_options (field_id, position, value) VALUES (?, 1, 'Europe')`, field)
 	child := exec(`INSERT INTO custom_field_options (field_id, parent_id, position, value) VALUES (?, ?, 1, 'Paris')`, field, parent)

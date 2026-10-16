@@ -1,4 +1,4 @@
-package api
+package tests
 
 // Integration tests of the links sent by e-mail: forgotten passwords,
 // resets sent by an administrator, invitations. Each test runs its own
@@ -11,13 +11,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"solstice/internal/auth"
+	"solstice/internal/config"
 	"solstice/internal/mail/mailtest"
 )
 
@@ -28,27 +28,29 @@ var linkPattern = regexp.MustCompile(`https://tickets\.exemple\.fr/reset/([A-Za-
 // linkEnv is a notification environment for the account link tests.
 type linkEnv struct {
 	*notifyEnv
-	admin     *nclient
-	realSleep func(context.Context, time.Duration) // the server's own, before the tests silence it
+	admin *client
 }
 
+// newLinkEnv starts an environment whose answers skip the floor.
 func newLinkEnv(t *testing.T) *linkEnv {
+	e := newTimedLinkEnv(t)
+	e.hooks.SkipDelays()
+	return e
+}
+
+// newTimedLinkEnv starts an environment whose answers keep the floor.
+func newTimedLinkEnv(t *testing.T) *linkEnv {
 	e := newNotifyEnv(t)
-	real := e.srv.sleep
-	e.srv.sleep = func(context.Context, time.Duration) {} // no waiting for the answer's floor
 	clean := func() {
 		testDB.Exec(`DELETE FROM users WHERE username LIKE 'wp7-%'`)
 		testDB.Exec(`DELETE FROM audit_log WHERE target_label LIKE 'wp7-%' OR username LIKE 'wp7-%'`)
 	}
 	clean()
 	t.Cleanup(clean)
-	return &linkEnv{notifyEnv: e, admin: e.login("admin", "admin"), realSleep: real}
+	return &linkEnv{notifyEnv: e, admin: e.login("admin", "admin")}
 }
 
-func (e *linkEnv) anon() *nclient {
-	jar, _ := cookiejar.New(nil)
-	return &nclient{t: e.t, base: e.base, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
-}
+func (e *linkEnv) anon() *client { return anonymousAt(e.t, e.base) }
 
 // account creates an account with a password and an address.
 func (e *linkEnv) account(name, email string) int64 {
@@ -64,7 +66,7 @@ func (e *linkEnv) account(name, email string) int64 {
 // sent sends what the outbox holds and returns the e-mails received.
 func (e *linkEnv) sent() []mailtest.Message {
 	e.t.Helper()
-	if _, err := e.srv.out.outbox.SendDue(context.Background()); err != nil {
+	if err := e.hooks.SendMail(context.Background()); err != nil {
 		e.t.Fatal(err)
 	}
 	msgs := e.smtp.Messages()
@@ -73,7 +75,7 @@ func (e *linkEnv) sent() []mailtest.Message {
 }
 
 // forgot asks for a reset link and returns the status and body.
-func (e *linkEnv) forgot(c *nclient, who string) (int, string) {
+func (e *linkEnv) forgot(c *client, who string) (int, string) {
 	status, body := c.do("POST", "/api/auth/forgot", map[string]string{"identifier": who})
 	return status, string(body)
 }
@@ -100,7 +102,7 @@ func (e *linkEnv) mustMailOne(who string) string {
 	return tokenIn(e.t, msgs[0])
 }
 
-func (e *linkEnv) can(c *nclient, token, password string, want int) {
+func (e *linkEnv) can(c *client, token, password string, want int) {
 	e.t.Helper()
 	c.call("POST", "/api/auth/reset", map[string]string{"token": token, "password": password}, want, nil)
 }
@@ -191,14 +193,13 @@ func TestPublicSettingsAnnounceEmailLinks(t *testing.T) {
 // The floor makes the answer take as long for a matching account as for any
 // other.
 func TestForgotAnswerTakesAtLeastTheFloor(t *testing.T) {
-	e := newLinkEnv(t)
-	e.srv.sleep = e.realSleep
+	e := newTimedLinkEnv(t)
 	e.account("wp7-slow", "slow@exemple.fr")
 	for _, who := range []string{"wp7-slow", "wp7-nobody"} {
 		start := time.Now()
 		e.forgot(e.anon(), who)
-		if d := time.Since(start); d < forgotFloor {
-			t.Errorf("%s: answered in %v, under the floor of %v", who, d, forgotFloor)
+		if d := time.Since(start); d < e.hooks.ForgotFloor() {
+			t.Errorf("%s: answered in %v, under the floor of %v", who, d, e.hooks.ForgotFloor())
 		}
 	}
 }
@@ -625,7 +626,11 @@ func TestForgotIsRateLimited(t *testing.T) {
 
 func TestForgotIsRateLimitedPerAccount(t *testing.T) {
 	e := newLinkEnv(t)
-	e.srv.SetTrustedProxies(parseProxies(t, "127.0.0.1"))
+	proxies, err := config.ParseTrustedProxies("127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.srv.SetTrustedProxies(proxies)
 	e.account("wp7-flood", "flood@exemple.fr")
 
 	// From many addresses, one account gets a few e-mails, then none, and

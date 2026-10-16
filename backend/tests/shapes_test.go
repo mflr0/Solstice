@@ -63,13 +63,12 @@ type issueDetail struct {
 	Project    struct {
 		Key string `json:"key"`
 	} `json:"project"`
-	Time struct {
-		Spent *int64 `json:"spent"`
-	} `json:"time"`
-	Labels          []string `json:"labels"`
-	Components      []idName `json:"components"`
-	AffectsVersions []idName `json:"affectsVersions"`
-	FixVersions     []idName `json:"fixVersions"`
+	Time            timeTracking `json:"time"`
+	Sprints         []idName     `json:"sprints"`
+	Labels          []string     `json:"labels"`
+	Components      []idName     `json:"components"`
+	AffectsVersions []idName     `json:"affectsVersions"`
+	FixVersions     []idName     `json:"fixVersions"`
 	Links           []struct {
 		ID    int64 `json:"id"`
 		Issue struct {
@@ -201,4 +200,52 @@ type updateStateOut struct {
 		To     string `json:"to"`
 		Status string `json:"status"`
 	} `json:"lastAttempt"`
+}
+
+type timeTracking struct {
+	Original  *int64 `json:"original"`
+	Remaining *int64 `json:"remaining"`
+	Spent     *int64 `json:"spent"`
+}
+
+type sprintOut struct {
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	State     string     `json:"state"`
+	Goal      *string    `json:"goal"`
+	Start     *time.Time `json:"start"`
+	End       *time.Time `json:"end"`
+	Completed *time.Time `json:"completed"`
+}
+
+type worklogOut struct {
+	ID      int64     `json:"id"`
+	Author  *userRef  `json:"author"`
+	Started time.Time `json:"started"`
+	Seconds int64     `json:"seconds"`
+	Body    *string   `json:"body"`
+	CanEdit bool      `json:"canEdit"`
+}
+
+type statusUsageOut struct {
+	Workflows []idName `json:"workflows"`
+	Boards    []struct {
+		ID     int64  `json:"id"`
+		Name   string `json:"name"`
+		Column string `json:"column"`
+	} `json:"boards"`
+	Projects []struct {
+		Key    string `json:"key"`
+		Name   string `json:"name"`
+		Issues int    `json:"issues"`
+	} `json:"projects"`
+}
+
+type mySubscriptionOut struct {
+	ID         int64    `json:"id"`
+	FilterID   int64    `json:"filterId"`
+	FilterName string   `json:"filterName"`
+	User       *userRef `json:"user"`
+	Schedule   string   `json:"schedule"`
+	CanEdit    bool     `json:"canEdit"`
 }
