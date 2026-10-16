@@ -1,4 +1,4 @@
-package api
+package tests
 
 // Test of the list of one's own filter subscriptions (GET /api/me/subscriptions).
 // It needs SOLSTICE_TEST_DB and is skipped without it.

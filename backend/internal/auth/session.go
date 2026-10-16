@@ -123,14 +123,17 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 	return &u, nil
 }
 
-// SetPassword stores a new password for a user.
+// SetPassword stores a new password for a user. The links sent by e-mail
+// before (reset, invitation) stop working.
 func SetPassword(ctx context.Context, db *sql.DB, userID int64, password string) error {
 	hash, err := HashPassword(password)
 	if err != nil {
 		return err
 	}
-	_, err = db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
-	return err
+	if _, err = db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID); err != nil {
+		return err
+	}
+	return RevokeAccountTokens(ctx, db, userID, time.Now())
 }
 
 var dummyHash, _ = HashPassword("solstice-timing-equaliser")

@@ -101,6 +101,19 @@ describe('user form', () => {
     expect(hasProblems(userProblems(f, true, 12))).toBe(false);
   });
 
+  it('asks an invitation for an address instead of a password', () => {
+    const f = { ...newUserForm(), username: 'marie.durand', invite: true };
+    expect(userProblems(f, true, 12)).toEqual({ email: 'emailRequired' });
+    f.email = 'marie@example.org';
+    expect(hasProblems(userProblems(f, true, 12))).toBe(false);
+    f.email = 'nope';
+    expect(userProblems(f, true, 12)).toEqual({ email: 'emailInvalid' });
+    // Without the invitation the password is asked for again.
+    expect(userProblems({ ...f, email: '', invite: false }, true, 12)).toEqual({
+      password: 'passwordShort',
+    });
+  });
+
   it('only checks the e-mail of an existing account', () => {
     const f = { ...newUserForm(), email: 'nope' };
     expect(userProblems(f, false, 12)).toEqual({ email: 'emailInvalid' });

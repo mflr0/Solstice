@@ -1,4 +1,4 @@
-package api
+package tests
 
 // Integration tests of time estimates, work logs and sprint editing. Like
 // api_test.go they need the synthetic database (SOLSTICE_TEST_DB) and skip

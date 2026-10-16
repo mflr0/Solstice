@@ -72,6 +72,11 @@ export const adminApi = {
     request<UserRow>('PUT', `/api/admin/users/${id}/groups`, { groups }),
   resetPassword: (id: number) =>
     request<{ password: string }>('POST', `/api/admin/users/${id}/reset-password`),
+  /** Mails the account a link to choose its own password; nothing changes until it is used. */
+  sendResetLink: (id: number) =>
+    request<{ sent: boolean }>('POST', `/api/admin/users/${id}/reset-password`, { method: 'link' }),
+  /** Sends the invitation of an account that never signed in again. */
+  inviteUser: (id: number) => request<{ sent: boolean }>('POST', `/api/admin/users/${id}/invite`),
 
   // Groups.
   groups: (q = '') => request<Group[]>('GET', `/api/admin/groups${query({ q })}`),

@@ -129,6 +129,7 @@ export const AUDIT_FAMILIES = [
   'workflow',
   'status',
   'board',
+  'sprint',
   'filter',
   'issuetype',
   'priority',

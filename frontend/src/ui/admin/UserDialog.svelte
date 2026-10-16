@@ -42,7 +42,10 @@
   const isNew = $derived(user === null);
   const isSelf = $derived(user !== null && user.id === session.me?.id);
   const minPassword = $derived(publicSettings.value.passwordMinLength);
-  const problems = $derived(userProblems(form, isNew, minPassword));
+  /** Invitations need e-mail links to work on this instance. */
+  const canInvite = $derived(isNew && publicSettings.value.emailLinks);
+  const inviting = $derived(canInvite && form.invite);
+  const problems = $derived(userProblems({ ...form, invite: inviting }, isNew, minPassword));
   const shown = (f: 'username' | 'email' | 'password') => {
     const p = problems[f];
     return (tried || touched[f]) && p ? t.usersAdmin.problems[p](minPassword) : '';
@@ -62,6 +65,7 @@
           admin: user.admin,
           active: user.active,
           groups: (user.groups ?? []).map((g) => g.id),
+          invite: false,
         }
       : newUserForm();
     tried = false;
@@ -91,11 +95,13 @@
           username: form.username.trim().toLowerCase(),
           name: form.name.trim(),
           email: form.email.trim(),
-          password: form.password,
+          password: inviting ? '' : form.password,
           admin: form.admin,
+          ...(inviting ? { invite: true } : {}),
           ...(groups ? { groups: form.groups } : {}),
         });
-        onsaved(t.usersAdmin.created(form.name.trim() || form.username.trim()));
+        const who = form.name.trim() || form.username.trim();
+        onsaved(inviting ? t.usersAdmin.invited(who) : t.usersAdmin.created(who));
       } else {
         const patch: Parameters<typeof adminApi.updateUser>[1] = {};
         if (form.name.trim() !== user.name) patch.name = form.name.trim();
@@ -167,7 +173,16 @@
       />
       {#if shown('email')}<span class="field-error">{shown('email')}</span>{/if}
     </label>
-    {#if isNew}
+    {#if canInvite}
+      <div class="choices">
+        <label class="check">
+          <input class="checkbox" type="checkbox" bind:checked={form.invite} />
+          <span>{t.usersAdmin.inviteLabel}</span>
+        </label>
+        {#if inviting}<p class="form-hint">{t.usersAdmin.inviteHint}</p>{/if}
+      </div>
+    {/if}
+    {#if isNew && !inviting}
       <label class="field">
         <span>{t.usersAdmin.password}</span>
         <input

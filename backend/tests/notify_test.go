@@ -27,6 +27,7 @@ import (
 
 type notifyEnv struct {
 	t     *testing.T
+	srv   *api.Server
 	hooks api.TestHooks
 	base  string
 	smtp  *mailtest.Server
@@ -39,7 +40,7 @@ func newNotifyEnv(t *testing.T) *notifyEnv {
 	srv := api.New(testDB, t.TempDir(), time.UTC, quiet())
 	srv.SetBaseURL("https://tickets.exemple.fr")
 	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
-	env := &notifyEnv{t: t, hooks: srv.TestHooks(), base: ts.URL, smtp: mailtest.Start(t)}
+	env := &notifyEnv{t: t, srv: srv, hooks: srv.TestHooks(), base: ts.URL, smtp: mailtest.Start(t)}
 	reset := func() {
 		for _, q := range []string{`DELETE FROM settings WHERE name = 'mail'`, `DELETE FROM notification_batches`,
 			`DELETE FROM mail_outbox`, `DELETE FROM notification_prefs`, `DELETE FROM project_notifications`,

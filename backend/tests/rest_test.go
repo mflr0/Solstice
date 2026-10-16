@@ -21,6 +21,7 @@ import (
 // Sign-in ----------------------------------------------------------------------
 
 func TestTokenLifecycle(t *testing.T) {
+	allowTokensForEveryone(t)
 	paul := login(t, "paul.martin", "motdepasse")
 	status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "CI nocturne", "expires": "2099-12-31"})
 	if status != 201 {

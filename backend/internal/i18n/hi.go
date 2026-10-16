@@ -39,6 +39,13 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordIncorrect:  "मौजूदा पासवर्ड गलत है।",
 	AccountTokenCannotChangePassword: "एक्सेस टोकन पासवर्ड नहीं बदल सकता: अपने पासवर्ड से साइन इन करें।",
 	AccountLanguageUnsupported:       "यह भाषा समर्थित नहीं है (इनमें से चुनें: %s)।",
+	AccountResetLinkInvalid:          "यह लिंक अमान्य है या समाप्त हो चुका है। नया लिंक माँगें।",
+	AccountMailUnavailable:           "ईमेल लिंक उपलब्ध नहीं हैं: पहले एडमिन में ईमेल और सार्वजनिक पता सेट करें।",
+	AccountEmailMissing:              "इस खाते का कोई ईमेल पता नहीं है।",
+	AccountInactive:                  "यह खाता निष्क्रिय है।",
+	AccountAlreadySignedIn:           "इस खाते से पहले ही साइन-इन हो चुका है: इसके बजाय पासवर्ड रीसेट लिंक भेजें।",
+	AccountInviteNoPassword:          "आमंत्रण में व्यक्ति स्वयं पासवर्ड चुनता है: पासवर्ड खाली छोड़ें।",
+	AccountInviteEmailRequired:       "आमंत्रण के लिए व्यक्ति का ईमेल पता आवश्यक है।",
 
 	// Access tokens.
 	TokenCannotCreate:       "एक्सेस टोकन दूसरे टोकन नहीं बना सकता: अपने पासवर्ड से साइन इन करें।",
@@ -458,6 +465,17 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailTestBody:              "यह ईमेल पुष्टि करता है कि Solstice मौजूदा सेटिंग्स से संदेश भेज सकता है।",
 	MailTestSettings:          "सर्वर: %s, प्रेषक: %s।",
 	MailTestWhy:               "आपको यह ईमेल इसलिए मिला है क्योंकि एक एडमिन ने टेस्ट माँगा था।",
+	MailResetSubject:          "अपना Solstice पासवर्ड रीसेट करें",
+	MailResetIntro:            "खाते %s के लिए पासवर्ड रीसेट का अनुरोध किया गया था। यदि यह आपने किया था, तो नया पासवर्ड चुनने के लिए नीचे दिए लिंक का उपयोग करें।",
+	MailResetAction:           "नया पासवर्ड चुनें",
+	MailResetExpiry:           "यह लिंक केवल एक बार काम करता है और एक घंटे में समाप्त हो जाता है।",
+	MailResetIgnore:           "यदि आपने यह अनुरोध नहीं किया, तो इस ईमेल को अनदेखा करें: आपका पासवर्ड वैसा ही रहेगा।",
+	MailResetWhy:              "आपको यह ईमेल इसलिए मिला है क्योंकि आपके खाते के लिए पासवर्ड रीसेट का अनुरोध किया गया था।",
+	MailInviteSubject:         "Solstice में आपका आमंत्रण",
+	MailInviteIntro:           "आपके लिए Solstice पर एक खाता बनाया गया है (यूज़रनेम: %s)। अपना पासवर्ड चुनने के लिए नीचे दिए लिंक का उपयोग करें।",
+	MailInviteAction:          "मेरा पासवर्ड चुनें",
+	MailInviteExpiry:          "यह लिंक केवल एक बार काम करता है और 7 दिनों तक मान्य है।",
+	MailInviteWhy:             "आपको यह ईमेल इसलिए मिला है क्योंकि एक एडमिन ने आपके लिए खाता बनाया है।",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "अमान्य घंटा: 0 से 23 तक।",

@@ -16,6 +16,8 @@ export interface PublicSettings {
   defaultLanguage: string;
   banner: Banner | null;
   passwordMinLength: number;
+  /** Whether links can be sent by e-mail: reset ("forgot your password") and invitations. */
+  emailLinks: boolean;
 }
 
 /** What an older server, without the endpoint, amounts to. */
@@ -24,6 +26,7 @@ const FALLBACK: PublicSettings = {
   defaultLanguage: 'en',
   banner: null,
   passwordMinLength: 10,
+  emailLinks: false,
 };
 
 class PublicSettingsStore {

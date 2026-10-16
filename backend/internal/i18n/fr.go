@@ -37,6 +37,13 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordIncorrect:  "Mot de passe actuel incorrect.",
 	AccountTokenCannotChangePassword: "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.",
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
+	AccountResetLinkInvalid:          "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
+	AccountMailUnavailable:           "Les liens par courriel ne sont pas disponibles : configurez d'abord le courriel et l'adresse publique dans l'administration.",
+	AccountEmailMissing:              "Ce compte n'a pas d'adresse courriel.",
+	AccountInactive:                  "Ce compte est désactivé.",
+	AccountAlreadySignedIn:           "Ce compte s'est déjà connecté : envoyez plutôt un lien de réinitialisation du mot de passe.",
+	AccountInviteNoPassword:          "Avec une invitation, la personne choisit son mot de passe : laissez le mot de passe vide.",
+	AccountInviteEmailRequired:       "Une invitation nécessite l'adresse courriel de la personne.",
 
 	// Access tokens.
 	TokenCannotCreate:       "Un jeton d'accès ne peut pas créer d'autres jetons : connectez-vous avec votre mot de passe.",
@@ -456,6 +463,17 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailTestBody:              "Ce courriel confirme que Solstice peut envoyer des messages avec les réglages actuels.",
 	MailTestSettings:          "Serveur : %s, expéditeur : %s.",
 	MailTestWhy:               "Vous recevez ce courriel car un administrateur a demandé un essai.",
+	MailResetSubject:          "Réinitialisation de votre mot de passe Solstice",
+	MailResetIntro:            "Une réinitialisation du mot de passe a été demandée pour le compte %s. Si c'est bien vous, utilisez le lien ci-dessous pour choisir un nouveau mot de passe.",
+	MailResetAction:           "Choisir un nouveau mot de passe",
+	MailResetExpiry:           "Le lien ne fonctionne qu'une fois et expire dans une heure.",
+	MailResetIgnore:           "Si vous n'êtes pas à l'origine de cette demande, ignorez ce courriel : votre mot de passe reste inchangé.",
+	MailResetWhy:              "Vous recevez ce courriel car une réinitialisation du mot de passe a été demandée pour votre compte.",
+	MailInviteSubject:         "Invitation à rejoindre Solstice",
+	MailInviteIntro:           "Un compte a été créé pour vous sur Solstice (identifiant : %s). Utilisez le lien ci-dessous pour choisir votre mot de passe.",
+	MailInviteAction:          "Choisir mon mot de passe",
+	MailInviteExpiry:          "Le lien ne fonctionne qu'une fois et reste valable 7 jours.",
+	MailInviteWhy:             "Vous recevez ce courriel car un administrateur a créé un compte pour vous.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Heure invalide : de 0 à 23.",

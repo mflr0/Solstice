@@ -7,7 +7,7 @@ import type { Me, Meta, PriorityRef } from '../core/types.js';
 import { api, ApiError, setUnauthorizedHandler } from './api.js';
 import { adoptAccountLocale } from './locale.js';
 import { router } from './router.svelte.js';
-import { paths } from '../core/route.js';
+import { isPublicRoute, paths } from '../core/route.js';
 
 class Session {
   me = $state<Me | null>(null);
@@ -46,9 +46,9 @@ class Session {
   }
 
   private expired(): void {
-    if (this.me === null && router.route.name === 'login') return;
+    if (this.me === null && isPublicRoute(router.route)) return;
     this.me = null;
-    if (router.route.name !== 'login') {
+    if (!isPublicRoute(router.route)) {
       router.navigate(paths.login(router.here), { replace: true });
     }
   }

@@ -13,6 +13,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/mail"
 	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
@@ -165,6 +166,9 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 		Password string  `json:"password"`
 		Admin    bool    `json:"admin"`
 		Groups   []int64 `json:"groups"`
+		// Invite creates the account without a password and mails its
+		// person a link to choose one.
+		Invite bool `json:"invite"`
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
@@ -180,14 +184,30 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	if email := strings.TrimSpace(in.Email); email != "" && !validEmail(email) {
 		return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
 	}
-	if err := s.checkNewPassword(ctx, in.Password); err != nil {
-		return err
+	var cfg mail.Config
+	var hash any // NULL for an invited account: its person chooses
+	if in.Invite {
+		if in.Password != "" {
+			return fail(http.StatusBadRequest, i18n.AccountInviteNoPassword)
+		}
+		if !mail.ValidAddress(strings.TrimSpace(in.Email)) {
+			return fail(http.StatusBadRequest, i18n.AccountInviteEmailRequired)
+		}
+		var ok bool
+		if cfg, ok = s.linkConfig(ctx); !ok {
+			return fail(http.StatusConflict, i18n.AccountMailUnavailable)
+		}
+	} else {
+		if err := s.checkNewPassword(ctx, in.Password); err != nil {
+			return err
+		}
+		h, err := auth.HashPassword(in.Password)
+		if err != nil {
+			return err
+		}
+		hash = h
 	}
 	if err := s.checkGroups(ctx, in.Groups); err != nil {
-		return err
-	}
-	hash, err := auth.HashPassword(in.Password)
-	if err != nil {
 		return err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -209,10 +229,20 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
+	if in.Invite {
+		to := &linkTarget{ID: id, Username: in.Username, Name: strings.TrimSpace(in.Name), Email: strings.TrimSpace(in.Email)}
+		if err := s.queueAccountLink(ctx, tx, cfg, to, auth.PurposeInvite); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.auditUserCreated(r, id)
+	if in.Invite {
+		s.out.outbox.Wake()
+		s.auditLog(r, audit.UserInvite, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: in.Username}, nil)
+	}
 	if len(in.Groups) > 0 {
 		s.auditLog(r, audit.GroupMembers, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: in.Username},
 			map[string]any{"groups": s.groupNames(ctx, in.Groups)})
@@ -283,6 +313,12 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET email = ? WHERE id = ?`, strings.TrimSpace(*in.Email), id); err != nil {
 			return err
 		}
+		// Links mailed to the old address must not work once it is not theirs.
+		if strings.TrimSpace(*in.Email) != before.Email {
+			if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
+				return err
+			}
+		}
 	}
 	if in.Active != nil {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET active = ? WHERE id = ?`, *in.Active, id); err != nil {
@@ -303,6 +339,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
 			return err
 		}
+		if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
+			return err
+		}
 		// A new password signs out every session opened with the old one.
 		if id != currentUser(r).ID {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
@@ -320,7 +359,8 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 // adminResetPassword gives an account a generated password, shown once to
-// the administrator, and signs it out everywhere.
+// the administrator, and signs it out everywhere. With {"method": "link"} it
+// mails the account a link to choose its own password instead.
 func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -329,6 +369,15 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return errNotFound
 	}
+	var in struct {
+		Method string `json:"method"`
+	}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
+	}
+	if in.Method != "" && in.Method != "generate" && in.Method != "link" {
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "method")
+	}
 	ctx := r.Context()
 	u, err := s.adminUserByID(ctx, id)
 	if err != nil {
@@ -336,6 +385,9 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 	}
 	if id == currentUser(r).ID {
 		return fail(http.StatusBadRequest, i18n.AccountOwnPasswordInProfile)
+	}
+	if in.Method == "link" {
+		return s.adminResetLink(w, r, id)
 	}
 	n := max(s.passwordMin(ctx), 16)
 	raw := make([]byte, n)

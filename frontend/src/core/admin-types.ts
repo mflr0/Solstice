@@ -279,9 +279,12 @@ export interface UserInput {
   username: string;
   name: string;
   email: string;
+  /** Empty for an invitation. */
   password: string;
   admin: boolean;
   groups?: number[];
+  /** Send the person a link to choose a password instead of setting one. */
+  invite?: boolean;
 }
 
 export interface Group {
