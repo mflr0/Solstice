@@ -1716,6 +1716,26 @@ export const de: Messages = {
     },
   },
 
+  projectConfig: {
+    tabGeneral: 'Allgemein',
+    tabPeople: 'Personen',
+    tabNotifications: 'Benachrichtigungen',
+    leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
+    general: {
+      intro:
+        'Name, Leitung und Standardwerte des Projekts. Änderungen gelten, sobald Sie speichern.',
+      keyHint:
+        'Der Schlüssel steht am Anfang jedes Vorgangsschlüssels und lässt sich nicht ändern.',
+      leadRequired: 'Wählen Sie eine Leitung.',
+      archiveSection: 'Archivierung und Löschung',
+      archiveHint:
+        'Archivieren macht das Projekt schreibgeschützt und nimmt es aus den Projektlisten. Löschen entfernt es endgültig.',
+      archivedNote: 'Dieses Projekt ist archiviert: Es ist schreibgeschützt.',
+      adminOnly: 'Nur Solstice-Administratoren können ein Projekt archivieren oder löschen.',
+      deleteProject: 'Projekt löschen',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',

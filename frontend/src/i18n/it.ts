@@ -1699,6 +1699,25 @@ export const it: Messages = {
     },
   },
 
+  projectConfig: {
+    tabGeneral: 'Generale',
+    tabPeople: 'Persone',
+    tabNotifications: 'Notifiche',
+    leaveBody: 'Questa scheda ha modifiche non salvate. Scartarle?',
+    general: {
+      intro:
+        'Nome, responsabile e valori predefiniti del progetto. Le modifiche si applicano al salvataggio.',
+      keyHint: 'La chiave apre ogni chiave di ticket e non può essere modificata.',
+      leadRequired: 'Scegli un responsabile.',
+      archiveSection: 'Archiviazione ed eliminazione',
+      archiveHint:
+        'Archiviare rende il progetto di sola lettura e lo toglie dagli elenchi dei progetti. Eliminare lo rimuove definitivamente.',
+      archivedNote: 'Questo progetto è archiviato: è in sola lettura.',
+      adminOnly: 'Solo gli amministratori di Solstice possono archiviare o eliminare un progetto.',
+      deleteProject: 'Elimina il progetto',
+    },
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',

@@ -1696,6 +1696,25 @@ export const fr: Messages = {
     },
   },
 
+  projectConfig: {
+    tabGeneral: 'Général',
+    tabPeople: 'Personnes',
+    tabNotifications: 'Notifications',
+    leaveBody: 'Cet onglet contient des modifications non enregistrées. Les abandonner ?',
+    general: {
+      intro:
+        'Le nom, le responsable et les réglages par défaut du projet. Les changements s’appliquent à l’enregistrement.',
+      keyHint: 'La clé commence chaque clé de ticket et ne peut pas être modifiée.',
+      leadRequired: 'Choisissez un responsable.',
+      archiveSection: 'Archivage et suppression',
+      archiveHint:
+        'Archiver rend le projet en lecture seule et le retire des listes de projets. Supprimer l’efface définitivement.',
+      archivedNote: 'Ce projet est archivé : il est en lecture seule.',
+      adminOnly: 'Seuls les administrateurs de Solstice peuvent archiver ou supprimer un projet.',
+      deleteProject: 'Supprimer le projet',
+    },
+  },
+
   catalogAdmin: {
     name: 'Nom',
     search: 'Rechercher',

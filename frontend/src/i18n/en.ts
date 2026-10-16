@@ -1692,6 +1692,24 @@ export const en = {
     },
   },
 
+  projectConfig: {
+    tabGeneral: 'General',
+    tabPeople: 'People',
+    tabNotifications: 'Notifications',
+    leaveBody: 'This tab has unsaved changes. Discard them?',
+    general: {
+      intro: 'The project’s name, lead and defaults. Changes apply when you save.',
+      keyHint: 'The key starts every issue key and cannot be changed.',
+      leadRequired: 'Choose a lead.',
+      archiveSection: 'Archive and deletion',
+      archiveHint:
+        'Archiving makes the project read-only and removes it from the project lists. Deleting removes it for good.',
+      archivedNote: 'This project is archived: it is read-only.',
+      adminOnly: 'Only Solstice administrators can archive or delete a project.',
+      deleteProject: 'Delete the project',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',
