@@ -29,6 +29,10 @@ current README, code of conduct and license, and it does not compile. Merging
 
 ## Remaining for 1.0, in order
 
+The goal of 1.0 is to be the safest way to leave Jira, not to match its
+features (see `ROADMAP.md`). The release waits for items 10 and 11.
+
+
 1. Check the administration end to end against
    `backend/internal/api/ADMIN_API.md`. It was written by agents that were
    interrupted and never reviewed; a deadlock was already found and fixed
@@ -60,9 +64,23 @@ current README, code of conduct and license, and it does not compile. Merging
    with them.
 9. Documentation in English and French: installation, administration,
    backups and restore, upgrades, reverse proxy (examples in
-   `deploy/proxy/`), REST API, `SECURITY.md`. A contact address for conduct
+   `deploy/proxy/`), REST API, `SECURITY.md`, and a migration guide (dry
+   run, parallel run, cutover, rollback, keeping the domain name so
+   `/browse/KEY-1` links keep working). A contact address for conduct
    reports in CODE_OF_CONDUCT.md.
-10. Release: privacy audit of the whole history, pull request from
+10. Jira audit without migrating: `solstice import -check` reads a Jira
+    database and writes the full report (counts, Jira version, plugins found
+    in `AO_*` tables, unsupported custom field types, inactive users, what
+    would be lost) without writing anything. With `-anonymous`, the report
+    holds no content at all (counts, schema shapes, errors only), so anyone
+    can attach it to an issue.
+11. Jira versions and messy data: `jira-fixture` generates databases for
+    every major Jira version whose distribution can be downloaded (7.x to
+    the latest), each read from its own entity model, with the quirks of old
+    instances: deleted users still in history, renamed projects, moved
+    issues, custom fields whose type changed, odd encodings, orphan rows.
+    `scripts/e2e-import.sh` runs the import against each version.
+12. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
