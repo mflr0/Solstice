@@ -48,23 +48,21 @@ current README, code of conduct and license, and it does not compile. Merging
    failures per client address; behind a reverse proxy every client has the
    proxy's address, so five failures lock everyone out for a minute: support
    a trusted proxy header.
-5. Unit tests for `internal/perm` (who sees what); today only the API tests
-   cover it.
-6. Integrated updates: run the root helper in a systemd container (update
+5. Integrated updates: run the root helper in a systemd container (update
    succeeds, bad checksum refused, unhealthy version rolled back).
-7. Meaning review of the interface translations (about 520 texts per
+6. Meaning review of the interface translations (about 520 texts per
    language) with a strong model; three Hindi link labels ("is blocked by"…)
    need a native speaker.
-8. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
+7. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
    as its source: switch it to English like the rest.
-9. AGPL: a "Source code" link in the interface. Third-party notices: the
+8. AGPL: a "Source code" link in the interface. Third-party notices: the
    fonts (OFL-1.1) ship with the application and their license must come
    with them.
-10. Documentation in English and French: installation, administration,
-    backups and restore, upgrades, reverse proxy (examples in
-    `deploy/proxy/`), REST API, `SECURITY.md`. A contact address for conduct
-    reports in CODE_OF_CONDUCT.md.
-11. Release: privacy audit of the whole history, pull request from
+9. Documentation in English and French: installation, administration,
+   backups and restore, upgrades, reverse proxy (examples in
+   `deploy/proxy/`), REST API, `SECURITY.md`. A contact address for conduct
+   reports in CODE_OF_CONDUCT.md.
+10. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
