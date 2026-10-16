@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IMPORT_PHASES, sourceEngine } from '../../core/setup.js';
+  import { sourceEngine } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import {
     setupApi,
@@ -11,7 +11,9 @@
     type SourceProbe,
   } from '../../lib/setup-api.js';
   import AdminForm from './AdminForm.svelte';
-  import TimeZoneField from './TimeZoneField.svelte';
+  import ImportFields from './ImportFields.svelte';
+  import ImportProgress from './ImportProgress.svelte';
+  import ImportReport from './ImportReport.svelte';
 
   /**
    * Importing a Jira: the source, a test, the import running on the server
@@ -50,10 +52,7 @@
   let creating = $state(false);
 
   const engineName = (e: string) => (e === 'mysql' ? 'MySQL' : 'PostgreSQL');
-  const phaseName = (p: string) => (m.import.phases as Record<string, string>)[p] ?? p;
-  const stepName = (s: string) => (m.import.report as Record<string, string>)[s] ?? s;
   const duration = (s: number) => m.duration(Math.floor(s / 60), s % 60);
-  const anySkipped = $derived(job?.steps.some((s) => s.skipped > 0) ?? false);
 
   // A changed field voids the last test.
   $effect(() => {
@@ -144,32 +143,7 @@
       <h1 class="page-title" id="setup-step-title" tabindex="-1">{m.import.title}</h1>
       <p class="lead">{m.import.lead}</p>
     </div>
-    <label class="field">
-      <span>{m.import.url}</span>
-      <input
-        class="input mono"
-        bind:value={form.url}
-        required
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="postgres://jira:…@db-jira:5432/jira"
-        aria-describedby="source-url-hint"
-      />
-      <span class="hint" id="source-url-hint">{m.import.urlHint}</span>
-    </label>
-    <TimeZoneField label={m.import.tz} hint={m.import.tzHint} bind:value={form.tz} id="source-tz" />
-    <label class="field">
-      <span>{m.import.home}</span>
-      <input
-        class="input mono"
-        bind:value={form.jiraHome}
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="/var/atlassian/application-data/jira"
-        aria-describedby="source-home-hint"
-      />
-      <span class="hint" id="source-home-hint">{m.import.homeHint}</span>
-    </label>
+    <ImportFields {m} bind:form />
 
     <div aria-live="polite">
       {#if error}
@@ -211,31 +185,7 @@
       <h1 class="page-title" id="setup-step-title" tabindex="-1">{m.import.running}</h1>
       <p class="lead">{m.import.runningLead}</p>
     </div>
-    <div class="progress">
-      <progress
-        max={job.total || IMPORT_PHASES.length}
-        value={job.done}
-        aria-label={m.import.progressLabel}
-      ></progress>
-      <span class="rows mono">{m.import.rows(num(job.rows))}</span>
-    </div>
-    <ol class="phases">
-      {#each IMPORT_PHASES as p, i (p)}
-        {@const state = i < job.done ? 'done' : p === job.phase ? 'current' : 'todo'}
-        <li class="phase {state}" aria-current={state === 'current' ? 'step' : undefined}>
-          <span class="mark" aria-hidden="true"
-            >{state === 'done' ? '✓' : state === 'current' ? '›' : ''}</span
-          >
-          {phaseName(p)}
-          {#if state !== 'todo'}
-            <span class="sr-only"
-              >({state === 'done' ? m.import.phaseDone : m.import.phaseCurrent})</span
-            >
-          {/if}
-        </li>
-      {/each}
-    </ol>
-    <p class="sr-only" aria-live="polite">{job.phase ? phaseName(job.phase) : ''}</p>
+    <ImportProgress {m} {num} {job} />
   </div>
 {:else if job.state === 'failed'}
   <div class="setup-body">
@@ -258,40 +208,7 @@
       <p class="lead">{m.import.doneLead(duration(job.seconds))}</p>
     </div>
 
-    <details>
-      <summary>{m.import.reportCaption}</summary>
-      <div class="table-scroll">
-        <table class="ledger report">
-          <thead>
-            <tr>
-              <th scope="col">{m.import.reportItem}</th>
-              <th scope="col" class="num">{m.import.reportImported}</th>
-              {#if anySkipped}<th scope="col" class="num">{m.import.reportSkipped}</th>{/if}
-            </tr>
-          </thead>
-          <tbody>
-            {#each job.steps as s (s.name)}
-              <tr>
-                <td>{stepName(s.name)}</td>
-                <td class="num">{num(s.imported)}</td>
-                {#if anySkipped}<td class="num">{s.skipped ? num(s.skipped) : ''}</td>{/if}
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-      {#if anySkipped}<p class="muted">{m.import.skippedHint}</p>{/if}
-    </details>
-
-    {#if job.warnings.length > 0}
-      <section class="warnings" aria-labelledby="import-warnings">
-        <h2 class="section-title" id="import-warnings">{m.import.warnings}</h2>
-        {#if m.import.warningsNote}<p class="muted">{m.import.warningsNote}</p>{/if}
-        <ul lang="en">
-          {#each job.warnings as w, i (i)}<li>{w}</li>{/each}
-        </ul>
-      </section>
-    {/if}
+    <ImportReport {m} {num} {job} />
 
     <section class="choose" aria-labelledby="import-choose">
       <h2 class="section-title" id="import-choose">{m.import.chooseTitle}</h2>
@@ -337,88 +254,6 @@
 {/if}
 
 <style>
-  .progress {
-    display: grid;
-    gap: 8px;
-  }
-
-  progress {
-    width: 100%;
-    height: 8px;
-    appearance: none;
-    border: 1px solid var(--rule-strong);
-    border-radius: var(--radius-xs);
-    background: var(--paper-sunk);
-    overflow: hidden;
-  }
-
-  progress::-webkit-progress-bar {
-    background: var(--paper-sunk);
-  }
-
-  progress::-webkit-progress-value {
-    background: var(--accent);
-    transition: width 0.4s ease;
-  }
-
-  progress::-moz-progress-bar {
-    background: var(--accent);
-  }
-
-  .rows {
-    color: var(--ink-soft);
-  }
-
-  .phases {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    columns: 2 220px;
-    column-gap: 24px;
-  }
-
-  .phase {
-    display: flex;
-    gap: 8px;
-    padding: 3px 0;
-    color: var(--muted);
-    break-inside: avoid;
-  }
-
-  .phase .mark {
-    width: 1em;
-    flex: none;
-    text-align: center;
-  }
-
-  .phase.done {
-    color: var(--ink-soft);
-  }
-
-  .phase.done .mark {
-    color: var(--stamp-done);
-  }
-
-  .phase.current {
-    color: var(--ink);
-    font-weight: 600;
-  }
-
-  .phase.current .mark {
-    color: var(--accent-text);
-  }
-
-  .report tbody tr {
-    cursor: default;
-  }
-
-  .warnings ul {
-    margin: 0;
-    padding-left: 20px;
-    display: grid;
-    gap: 4px;
-  }
-
   .section-title {
     margin-top: 6px;
   }
