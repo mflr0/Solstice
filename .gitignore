@@ -1,5 +1,6 @@
 .DS_Store
 /data
+backend/data/
 
 # Jira distribution used as a schema reference: never commit it
 /atlassian-jira-software-*/

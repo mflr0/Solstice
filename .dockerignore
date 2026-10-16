@@ -16,3 +16,5 @@ frontend/coverage
 **/*.dump
 # …but the schema migrations are source code.
 !backend/internal/db/migrations/*.sql
+backend/data
+backend/solstice.conf
