@@ -182,7 +182,7 @@ func (s *Server) listWorkflows(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || !sub.CanBrowseProject(projectID) {
+	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
 		return errNotFound
 	}
 	return s.writeWorkflows(w, r, sub, projectID)
@@ -220,7 +220,7 @@ func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projec
 	}
 	err = s.db.QueryRowContext(r.Context(), `SELECT project_id, is_default FROM workflows WHERE id = ?`, id).
 		Scan(&projectID, &isDefault)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && !sub.CanBrowseProject(projectID)) {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !sub.Admin && !sub.CanBrowseProject(projectID)) {
 		return 0, 0, false, errNotFound
 	}
 	if err != nil {
@@ -600,7 +600,7 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || !sub.CanBrowseProject(projectID) {
+	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
 		return errNotFound
 	}
 	if !s.administers(sub, projectID) {
