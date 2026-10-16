@@ -289,6 +289,7 @@ export const de: Messages = {
 
   projects: {
     title: 'Projekte',
+    newProject: 'Neues Projekt',
     key: 'Schlüssel',
     name: 'Name',
     lead: 'Leitung',
@@ -1620,6 +1621,99 @@ export const de: Messages = {
     never: 'nie',
     filtered: 'gefiltert',
     tones: { ok: 'erfolgreich', waiting: 'wartend', failed: 'fehlgeschlagen' },
+  },
+
+  projectsAdmin: {
+    title: 'Projekte',
+    intro:
+      'Legen Sie Projekte an, geben Sie jedem eine Leitung und archivieren Sie abgeschlossene. Ein archiviertes Projekt ist schreibgeschützt und verschwindet aus den Projektlisten; nichts darin geht verloren.',
+    newProject: 'Neues Projekt',
+    search: 'Schlüssel, Name, Leitung oder Kategorie',
+    showLabel: 'Angezeigte Projekte',
+    show: { all: 'Alle Projekte', active: 'Aktive', archived: 'Archivierte' },
+    categoryFilter: 'Angezeigte Kategorie',
+    allCategories: 'Alle Kategorien',
+    noCategory: 'Ohne Kategorie',
+    category: 'Kategorie',
+    issues: 'Vorgänge',
+    state: 'Status',
+    archive: 'Archivieren',
+    unarchive: 'Wiederherstellen',
+    empty: 'Noch kein Projekt',
+    emptyHint:
+      'Ein Projekt fasst die Vorgänge eines Teams oder Produkts zusammen. Legen Sie das erste an.',
+    archiveTitle: (name: string) => `„${name}“ archivieren?`,
+    archiveBody:
+      'Das Projekt wird schreibgeschützt und verschwindet aus den Projektlisten. Seine Vorgänge und sein Verlauf bleiben erhalten, und Sie können es jederzeit wiederherstellen.',
+    archived: (name: string) => `„${name}“ wurde archiviert.`,
+    unarchived: (name: string) => `„${name}“ ist wieder aktiv.`,
+    deleteTitle: (name: string) => `„${name}“ löschen?`,
+    deleteBody: (issues: number) =>
+      issues > 0
+        ? `Das Projekt wird mit seinen ${plural(issues, 'Vorgang', 'Vorgängen')}, Kommentaren, Anhängen und seinem Verlauf endgültig gelöscht. Das lässt sich nicht rückgängig machen. Um die Daten zu behalten, archivieren Sie das Projekt stattdessen.`
+        : 'Das leere Projekt wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
+    typeToConfirm: (key: string) => `Zur Bestätigung ${key} eingeben`,
+    deleted: (name: string) => `„${name}“ wurde gelöscht.`,
+    createTitle: 'Neues Projekt',
+    create: 'Projekt anlegen',
+    namePlaceholder: 'Webseite',
+    keyHint:
+      'Beginnt jeden Vorgangsschlüssel (SW-1). 2 bis 10 Großbuchstaben oder Ziffern, beginnend mit einem Buchstaben. Er lässt sich später nicht mehr ändern.',
+    keyChecking: 'Wird geprüft…',
+    keyFree: (key: string) => `${key} ist verfügbar.`,
+    template: 'Start-Workflow',
+    templates: {
+      software: 'Software: To Do, In Arbeit, In Prüfung, Erledigt',
+      simple: 'Einfach: Zu erledigen, In Arbeit, Erledigt',
+    },
+    leadHint: 'Standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
+    description: 'Beschreibung',
+    access: 'Wer im Projekt arbeiten darf',
+    accessKinds: {
+      lead: 'Nur die Leitung',
+      everyone: 'Alle mit einem Konto',
+      group: 'Eine Gruppe',
+      role: 'Eine Rolle',
+    },
+    accessHint: 'Die Rechte lassen sich später in den Projekteinstellungen verfeinern.',
+    chooseGroup: 'Gruppe wählen…',
+    chooseRole: 'Rolle wählen…',
+    types: 'Vorgangstypen',
+    typesHint: 'Die Typen, die in diesem Projekt zur Auswahl stehen.',
+    assignee: 'Neue Vorgänge werden zugewiesen an',
+    assignees: { unassigned: 'Niemanden', lead: 'Die Projektleitung' },
+    problems: {
+      nameRequired: 'Geben Sie dem Projekt einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      keyRequired: 'Geben Sie dem Projekt einen Schlüssel.',
+      keyPattern:
+        'Der Schlüssel besteht aus 2 bis 10 Großbuchstaben oder Ziffern und beginnt mit einem Buchstaben.',
+      accessRequired: 'Wählen Sie, wer Zugriff erhält.',
+      typesRequired: 'Behalten Sie mindestens einen Typ, der keine Unteraufgabe ist.',
+    },
+    created: (name: string) => `„${name}“ wurde angelegt.`,
+    categoriesTitle: 'Projektkategorien',
+    categoriesIntro:
+      'Kategorien gruppieren die Projekte in der Projektliste. Wird eine Kategorie gelöscht, bleiben ihre Projekte ohne Kategorie.',
+    newCategory: 'Neue Kategorie',
+    categoryTitle: (name: string) => `„${name}“ bearbeiten`,
+    categoryName: 'Name',
+    categoryDescription: 'Beschreibung',
+    categoryProjects: (n: number) => plural(n, 'Projekt', 'Projekte'),
+    categoriesEmpty: 'Noch keine Kategorie.',
+    categoryCreated: (name: string) => `Kategorie „${name}“ angelegt.`,
+    categorySaved: (name: string) => `Kategorie „${name}“ gespeichert.`,
+    categoryDeleted: (name: string) => `Kategorie „${name}“ gelöscht.`,
+    deleteCategoryTitle: (name: string) => `„${name}“ löschen?`,
+    deleteCategoryBody: (n: number) =>
+      n > 0
+        ? `${plural(n, 'Projekt', 'Projekte')} bleiben ohne Kategorie. Die Projekte selbst bleiben unberührt.`
+        : 'Kein Projekt verwendet diese Kategorie.',
+    categoryProblems: {
+      nameRequired: 'Geben Sie der Kategorie einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Kategorie hat bereits diesen Namen.',
+    },
   },
 
   catalogAdmin: {
