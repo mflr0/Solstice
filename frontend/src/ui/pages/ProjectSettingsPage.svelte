@@ -12,6 +12,7 @@
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import Modal from '../Modal.svelte';
+  import ComponentsTab from '../project/ComponentsTab.svelte';
   import GeneralTab from '../project/GeneralTab.svelte';
   import RightsTab from '../project/RightsTab.svelte';
   import WorkflowsPanel from '../workflow/WorkflowsPanel.svelte';
@@ -145,6 +146,8 @@
     >
       {#if tab === 'general' && settings}
         <GeneralTab {settings} onchange={(s) => (settings = s)} ondirty={(d) => (dirty = d)} />
+      {:else if tab === 'components'}
+        <ComponentsTab {projectKey} />
       {:else if tab === 'workflows'}
         <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (dirty = d)} />
       {:else if tab === 'rights'}
