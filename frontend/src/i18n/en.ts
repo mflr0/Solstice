@@ -280,6 +280,7 @@ export const en = {
 
   projects: {
     title: 'Projects',
+    newProject: 'New project',
     key: 'Key',
     name: 'Name',
     lead: 'Lead',
@@ -1627,6 +1628,97 @@ export const en = {
     never: 'never',
     filtered: 'filtered',
     tones: { ok: 'succeeded', waiting: 'waiting', failed: 'failed' },
+  },
+
+  projectsAdmin: {
+    title: 'Projects',
+    intro:
+      'Create projects, give each a lead, and archive the ones that are finished. An archived project is read-only and leaves the project lists; nothing in it is lost.',
+    newProject: 'New project',
+    search: 'Key, name, lead or category',
+    showLabel: 'Projects shown',
+    show: { all: 'All projects', active: 'Active', archived: 'Archived' },
+    categoryFilter: 'Category shown',
+    allCategories: 'All categories',
+    noCategory: 'No category',
+    category: 'Category',
+    issues: 'Issues',
+    state: 'State',
+    archive: 'Archive',
+    unarchive: 'Unarchive',
+    empty: 'No project yet',
+    emptyHint: 'A project holds the issues of a team or a product. Create the first one.',
+    archiveTitle: (name: string) => `Archive ${name}?`,
+    archiveBody:
+      'The project becomes read-only and leaves the project lists. Its issues and history are kept, and you can unarchive it at any time.',
+    archived: (name: string) => `${name} archived.`,
+    unarchived: (name: string) => `${name} is active again.`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteBody: (issues: number) =>
+      issues > 0
+        ? `This permanently deletes the project with its ${plural(issues, 'issue', 'issues')}, comments, attachments and history. This cannot be undone. To keep the data, archive the project instead.`
+        : 'This permanently deletes the empty project. This cannot be undone.',
+    typeToConfirm: (key: string) => `Type ${key} to confirm`,
+    deleted: (name: string) => `${name} deleted.`,
+    createTitle: 'New project',
+    create: 'Create the project',
+    namePlaceholder: 'Website',
+    keyHint:
+      'Starts every issue key (SW-1). 2 to 10 capital letters or digits, beginning with a letter. It cannot be changed afterwards.',
+    keyChecking: 'Checking…',
+    keyFree: (key: string) => `${key} is available.`,
+    template: 'Starting workflow',
+    templates: {
+      software: 'Software: To Do, In Progress, In Review, Done',
+      simple: 'Simple: To do, In progress, Done',
+    },
+    leadHint: 'Defaults to you. The lead has every right in the project.',
+    description: 'Description',
+    access: 'Who can work in the project',
+    accessKinds: {
+      lead: 'Only the lead',
+      everyone: 'Everyone with an account',
+      group: 'A group',
+      role: 'A role',
+    },
+    accessHint: 'You can refine the rights later, in the project settings.',
+    chooseGroup: 'Choose a group…',
+    chooseRole: 'Choose a role…',
+    types: 'Issue types',
+    typesHint: 'The types people can choose in this project.',
+    assignee: 'New issues are assigned to',
+    assignees: { unassigned: 'Nobody', lead: 'The project lead' },
+    problems: {
+      nameRequired: 'Give the project a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      keyRequired: 'Give the project a key.',
+      keyPattern: 'The key is 2 to 10 capital letters or digits, beginning with a letter.',
+      accessRequired: 'Choose who gets access.',
+      typesRequired: 'Keep at least one type that is not a sub-task.',
+    },
+    created: (name: string) => `${name} created.`,
+    categoriesTitle: 'Project categories',
+    categoriesIntro:
+      'Categories group projects in the project list. Deleting a category leaves its projects without one.',
+    newCategory: 'New category',
+    categoryTitle: (name: string) => `Edit ${name}`,
+    categoryName: 'Name',
+    categoryDescription: 'Description',
+    categoryProjects: (n: number) => plural(n, 'project', 'projects'),
+    categoriesEmpty: 'No category yet.',
+    categoryCreated: (name: string) => `Category ${name} created.`,
+    categorySaved: (name: string) => `Category ${name} saved.`,
+    categoryDeleted: (name: string) => `Category ${name} deleted.`,
+    deleteCategoryTitle: (name: string) => `Delete ${name}?`,
+    deleteCategoryBody: (n: number) =>
+      n > 0
+        ? `${plural(n, 'project', 'projects')} will be left without a category. The projects themselves are not touched.`
+        : 'No project uses this category.',
+    categoryProblems: {
+      nameRequired: 'Give the category a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another category already has this name.',
+    },
   },
 
   catalogAdmin: {

@@ -2,11 +2,6 @@ package webhook
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -17,14 +12,7 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
-	"time"
-
-	"solstice/internal/db"
-	"solstice/internal/events"
-	"solstice/internal/mail/mailtest"
-	"solstice/internal/secret"
 )
 
 func TestBlocked(t *testing.T) {

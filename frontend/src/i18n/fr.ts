@@ -282,6 +282,7 @@ export const fr: Messages = {
 
   projects: {
     title: 'Projets',
+    newProject: 'Nouveau projet',
     key: 'Clé',
     name: 'Nom',
     lead: 'Responsable',
@@ -1631,6 +1632,97 @@ export const fr: Messages = {
     never: 'jamais',
     filtered: 'filtré',
     tones: { ok: 'réussi', waiting: 'en attente', failed: 'échec' },
+  },
+
+  projectsAdmin: {
+    title: 'Projets',
+    intro:
+      'Créez les projets, donnez un responsable à chacun et archivez ceux qui sont terminés. Un projet archivé est en lecture seule et disparaît des listes de projets ; rien n’y est perdu.',
+    newProject: 'Nouveau projet',
+    search: 'Clé, nom, responsable ou catégorie',
+    showLabel: 'Projets affichés',
+    show: { all: 'Tous les projets', active: 'Actifs', archived: 'Archivés' },
+    categoryFilter: 'Catégorie affichée',
+    allCategories: 'Toutes les catégories',
+    noCategory: 'Sans catégorie',
+    category: 'Catégorie',
+    issues: 'Tickets',
+    state: 'État',
+    archive: 'Archiver',
+    unarchive: 'Désarchiver',
+    empty: 'Aucun projet pour l’instant',
+    emptyHint: 'Un projet réunit les tickets d’une équipe ou d’un produit. Créez le premier.',
+    archiveTitle: (name: string) => `Archiver « ${name} » ?`,
+    archiveBody:
+      'Le projet passe en lecture seule et disparaît des listes de projets. Ses tickets et son historique sont conservés, et vous pouvez le désarchiver à tout moment.',
+    archived: (name: string) => `« ${name} » est archivé.`,
+    unarchived: (name: string) => `« ${name} » est de nouveau actif.`,
+    deleteTitle: (name: string) => `Supprimer « ${name} » ?`,
+    deleteBody: (issues: number) =>
+      issues > 0
+        ? `Cette action supprime définitivement le projet avec ses ${plural(issues, 'ticket', 'tickets')}, commentaires, pièces jointes et historique. Elle est irréversible. Pour garder les données, archivez plutôt le projet.`
+        : 'Cette action supprime définitivement le projet, qui est vide. Elle est irréversible.',
+    typeToConfirm: (key: string) => `Saisissez ${key} pour confirmer`,
+    deleted: (name: string) => `« ${name} » est supprimé.`,
+    createTitle: 'Nouveau projet',
+    create: 'Créer le projet',
+    namePlaceholder: 'Site web',
+    keyHint:
+      'Commence chaque clé de ticket (SW-1). 2 à 10 majuscules ou chiffres, en commençant par une lettre. Elle ne pourra plus être modifiée.',
+    keyChecking: 'Vérification…',
+    keyFree: (key: string) => `${key} est disponible.`,
+    template: 'Workflow de départ',
+    templates: {
+      software: 'Logiciel : À faire, En cours, En revue, Terminé',
+      simple: 'Simple : À faire, En cours, Terminé',
+    },
+    leadHint: 'Vous par défaut. Le responsable a tous les droits dans le projet.',
+    description: 'Description',
+    access: 'Qui peut travailler dans le projet',
+    accessKinds: {
+      lead: 'Le responsable seulement',
+      everyone: 'Toute personne ayant un compte',
+      group: 'Un groupe',
+      role: 'Un rôle',
+    },
+    accessHint: 'Vous pourrez affiner les droits plus tard, dans les réglages du projet.',
+    chooseGroup: 'Choisir un groupe…',
+    chooseRole: 'Choisir un rôle…',
+    types: 'Types de ticket',
+    typesHint: 'Les types que l’on peut choisir dans ce projet.',
+    assignee: 'Les nouveaux tickets sont assignés à',
+    assignees: { unassigned: 'Personne', lead: 'Le responsable du projet' },
+    problems: {
+      nameRequired: 'Donnez un nom au projet.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      keyRequired: 'Donnez une clé au projet.',
+      keyPattern: 'La clé compte 2 à 10 majuscules ou chiffres, en commençant par une lettre.',
+      accessRequired: 'Choisissez qui a accès.',
+      typesRequired: 'Gardez au moins un type qui n’est pas une sous-tâche.',
+    },
+    created: (name: string) => `« ${name} » est créé.`,
+    categoriesTitle: 'Catégories de projets',
+    categoriesIntro:
+      'Les catégories regroupent les projets dans la liste des projets. Supprimer une catégorie laisse ses projets sans catégorie.',
+    newCategory: 'Nouvelle catégorie',
+    categoryTitle: (name: string) => `Modifier « ${name} »`,
+    categoryName: 'Nom',
+    categoryDescription: 'Description',
+    categoryProjects: (n: number) => plural(n, 'projet', 'projets'),
+    categoriesEmpty: 'Aucune catégorie pour l’instant.',
+    categoryCreated: (name: string) => `Catégorie « ${name} » créée.`,
+    categorySaved: (name: string) => `Catégorie « ${name} » enregistrée.`,
+    categoryDeleted: (name: string) => `Catégorie « ${name} » supprimée.`,
+    deleteCategoryTitle: (name: string) => `Supprimer « ${name} » ?`,
+    deleteCategoryBody: (n: number) =>
+      n > 0
+        ? `${plural(n, 'projet', 'projets')} resteront sans catégorie. Les projets eux-mêmes ne sont pas touchés.`
+        : 'Aucun projet n’utilise cette catégorie.',
+    categoryProblems: {
+      nameRequired: 'Donnez un nom à la catégorie.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Une autre catégorie porte déjà ce nom.',
+    },
   },
 
   catalogAdmin: {

@@ -286,6 +286,7 @@ export const hi: Messages = {
 
   projects: {
     title: 'प्रोजेक्ट',
+    newProject: 'नया प्रोजेक्ट',
     key: 'कुंजी',
     name: 'नाम',
     lead: 'लीड',
@@ -1621,6 +1622,97 @@ export const hi: Messages = {
     never: 'कभी नहीं',
     filtered: 'फ़िल्टर किया गया',
     tones: { ok: 'सफल', waiting: 'प्रतीक्षा में', failed: 'विफल' },
+  },
+
+  projectsAdmin: {
+    title: 'प्रोजेक्ट',
+    intro:
+      'प्रोजेक्ट बनाइए, हर एक को एक लीड दीजिए, और पूरे हो चुके प्रोजेक्ट संग्रहीत कर दीजिए। संग्रहीत प्रोजेक्ट केवल पढ़ने योग्य रहता है और प्रोजेक्ट सूचियों से हट जाता है; उसमें कुछ भी खोता नहीं।',
+    newProject: 'नया प्रोजेक्ट',
+    search: 'कुंजी, नाम, लीड या श्रेणी',
+    showLabel: 'दिखाए गए प्रोजेक्ट',
+    show: { all: 'सभी प्रोजेक्ट', active: 'सक्रिय', archived: 'संग्रहीत' },
+    categoryFilter: 'दिखाई गई श्रेणी',
+    allCategories: 'सभी श्रेणियाँ',
+    noCategory: 'बिना श्रेणी',
+    category: 'श्रेणी',
+    issues: 'टिकट',
+    state: 'स्थिति',
+    archive: 'संग्रहीत करें',
+    unarchive: 'संग्रह से निकालें',
+    empty: 'अभी कोई प्रोजेक्ट नहीं',
+    emptyHint: 'प्रोजेक्ट में किसी टीम या उत्पाद के टिकट रहते हैं। पहला प्रोजेक्ट बनाइए।',
+    archiveTitle: (name: string) => `“${name}” को संग्रहीत करें?`,
+    archiveBody:
+      'प्रोजेक्ट केवल पढ़ने योग्य हो जाएगा और प्रोजेक्ट सूचियों से हट जाएगा। उसके टिकट और इतिहास सुरक्षित रहते हैं, और आप उसे कभी भी संग्रह से निकाल सकते हैं।',
+    archived: (name: string) => `“${name}” संग्रहीत हो गया।`,
+    unarchived: (name: string) => `“${name}” फिर से सक्रिय है।`,
+    deleteTitle: (name: string) => `“${name}” हटाएँ?`,
+    deleteBody: (issues: number) =>
+      issues > 0
+        ? `इससे प्रोजेक्ट अपने ${plural(issues, 'टिकट', 'टिकट')}, टिप्पणियों, अटैचमेंट और इतिहास के साथ हमेशा के लिए हट जाएगा। यह वापस नहीं हो सकता। डेटा रखना हो तो प्रोजेक्ट को हटाने के बजाय संग्रहीत कीजिए।`
+        : 'इससे खाली प्रोजेक्ट हमेशा के लिए हट जाएगा। यह वापस नहीं हो सकता।',
+    typeToConfirm: (key: string) => `पुष्टि के लिए ${key} लिखिए`,
+    deleted: (name: string) => `“${name}” हट गया।`,
+    createTitle: 'नया प्रोजेक्ट',
+    create: 'प्रोजेक्ट बनाएँ',
+    namePlaceholder: 'वेबसाइट',
+    keyHint:
+      'हर टिकट कुंजी की शुरुआत (SW-1)। 2 से 10 बड़े अक्षर या अंक, पहला अक्षर होना चाहिए। इसे बाद में बदला नहीं जा सकता।',
+    keyChecking: 'जाँच हो रही है…',
+    keyFree: (key: string) => `${key} उपलब्ध है।`,
+    template: 'शुरुआती वर्कफ़्लो',
+    templates: {
+      software: 'सॉफ़्टवेयर: करना है, जारी है, समीक्षा में, पूरा',
+      simple: 'सरल: करना है, जारी है, पूरा',
+    },
+    leadHint: 'डिफ़ॉल्ट रूप से आप। लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
+    description: 'विवरण',
+    access: 'प्रोजेक्ट में कौन काम कर सकता है',
+    accessKinds: {
+      lead: 'केवल लीड',
+      everyone: 'खाते वाला हर व्यक्ति',
+      group: 'एक समूह',
+      role: 'एक भूमिका',
+    },
+    accessHint: 'अधिकार बाद में प्रोजेक्ट सेटिंग्स में और बारीकी से तय किए जा सकते हैं।',
+    chooseGroup: 'समूह चुनें…',
+    chooseRole: 'भूमिका चुनें…',
+    types: 'टिकट के प्रकार',
+    typesHint: 'इस प्रोजेक्ट में चुने जा सकने वाले प्रकार।',
+    assignee: 'नए टिकट सौंपे जाते हैं',
+    assignees: { unassigned: 'किसी को नहीं', lead: 'प्रोजेक्ट लीड को' },
+    problems: {
+      nameRequired: 'प्रोजेक्ट को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      keyRequired: 'प्रोजेक्ट को एक कुंजी दीजिए।',
+      keyPattern: 'कुंजी में 2 से 10 बड़े अक्षर या अंक होते हैं, और वह किसी अक्षर से शुरू होती है।',
+      accessRequired: 'चुनिए कि किसे पहुँच मिलेगी।',
+      typesRequired: 'कम से कम एक ऐसा प्रकार रखिए जो उप-कार्य न हो।',
+    },
+    created: (name: string) => `“${name}” बन गया।`,
+    categoriesTitle: 'प्रोजेक्ट श्रेणियाँ',
+    categoriesIntro:
+      'श्रेणियाँ प्रोजेक्ट सूची में प्रोजेक्ट को समूहों में रखती हैं। श्रेणी हटाने पर उसके प्रोजेक्ट बिना श्रेणी के रह जाते हैं।',
+    newCategory: 'नई श्रेणी',
+    categoryTitle: (name: string) => `“${name}” बदलें`,
+    categoryName: 'नाम',
+    categoryDescription: 'विवरण',
+    categoryProjects: (n: number) => plural(n, 'प्रोजेक्ट', 'प्रोजेक्ट'),
+    categoriesEmpty: 'अभी कोई श्रेणी नहीं।',
+    categoryCreated: (name: string) => `श्रेणी “${name}” बन गई।`,
+    categorySaved: (name: string) => `श्रेणी “${name}” सहेजी गई।`,
+    categoryDeleted: (name: string) => `श्रेणी “${name}” हट गई।`,
+    deleteCategoryTitle: (name: string) => `“${name}” हटाएँ?`,
+    deleteCategoryBody: (n: number) =>
+      n > 0
+        ? `${plural(n, 'प्रोजेक्ट', 'प्रोजेक्ट')} बिना श्रेणी के रह जाएँगे। प्रोजेक्ट खुद नहीं छुए जाते।`
+        : 'कोई प्रोजेक्ट इस श्रेणी का उपयोग नहीं करता।',
+    categoryProblems: {
+      nameRequired: 'श्रेणी को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'किसी दूसरी श्रेणी का यही नाम पहले से है।',
+    },
   },
 
   catalogAdmin: {

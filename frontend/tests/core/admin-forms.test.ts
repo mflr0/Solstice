@@ -10,6 +10,7 @@ import {
   matches,
   newUserForm,
   suggestUsername,
+  typedMatches,
   userProblems,
 } from '../../src/core/admin-forms.js';
 import {
@@ -235,5 +236,15 @@ describe('mail form, password after a new destination', () => {
   it('has nothing to protect when no password is stored', () => {
     const none = { ...saved, passwordSet: false };
     expect(mailProblems({ ...mailForm(none), host: 'smtp.other.example' }, none)).toEqual({});
+  });
+});
+
+describe('typed confirmation', () => {
+  it('wants the exact phrase, spaces around ignored', () => {
+    expect(typedMatches('SW', 'SW')).toBe(true);
+    expect(typedMatches('  SW ', 'SW')).toBe(true);
+    expect(typedMatches('sw', 'SW')).toBe(false);
+    expect(typedMatches('S', 'SW')).toBe(false);
+    expect(typedMatches('', '')).toBe(false);
   });
 });
