@@ -10,15 +10,11 @@ import {
   auditActor,
   creatorsProblem,
   filterTokens,
-  hourText,
   importReady,
-  newSubscription,
   retentionProblem,
   sameCreators,
   splitUptime,
-  subscriptionInputOf,
   toggleDay,
-  withSchedule,
 } from '../../src/core/admin-ops.js';
 import type { AccessToken } from '../../src/core/admin-types.js';
 import { de } from '../../src/i18n/de.js';
@@ -193,34 +189,10 @@ describe('the import’s confirmation', () => {
 });
 
 describe('subscription schedules', () => {
-  it('starts daily at 8', () => {
-    expect(newSubscription()).toEqual({ schedule: 'daily', days: [], hour: 8, emptyToo: false });
-  });
-
-  it('copies a subscription into a form value', () => {
-    const s = { schedule: 'weekly' as const, days: [1, 4], hour: 7, emptyToo: true };
-    const input = subscriptionInputOf(s);
-    expect(input).toEqual(s);
-    input.days.push(5);
-    expect(s.days).toEqual([1, 4]);
-  });
-
-  it('picks Monday when going weekly with no day', () => {
-    expect(withSchedule(newSubscription(), 'weekly').days).toEqual([1]);
-    expect(withSchedule({ ...newSubscription(), days: [3] }, 'weekly').days).toEqual([3]);
-    expect(
-      withSchedule({ ...newSubscription(), schedule: 'weekly', days: [3] }, 'daily').schedule,
-    ).toBe('daily');
-  });
-
-  it('keeps the days in week order', () => {
+  it('keeps the days in week order when one is ticked or unticked', () => {
     expect(toggleDay([4], 1, true)).toEqual([1, 4]);
     expect(toggleDay([1, 4], 4, false)).toEqual([1]);
     expect(toggleDay([1], 1, true)).toEqual([1]);
-  });
-
-  it('writes the hour with two digits', () => {
-    expect(hourText(7)).toBe('07:00');
-    expect(hourText(18)).toBe('18:00');
+    expect(toggleDay([], 7, false)).toEqual([]);
   });
 });

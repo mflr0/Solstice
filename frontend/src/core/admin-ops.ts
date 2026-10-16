@@ -5,15 +5,9 @@
  * schedule. Wording lives in i18n; this module decides what to say.
  */
 
-import type {
-  AccessToken,
-  AuditEntry,
-  Schedule,
-  Subscription,
-  SubscriptionInput,
-  TokenSettings,
-} from './admin-types.js';
+import { sortedDays } from './account-settings.js';
 import { tokenState, type TokenState } from './admin-integrations.js';
+import type { AccessToken, AuditEntry, TokenSettings } from './admin-types.js';
 
 /* Audit log ----------------------------------------------------------------- */
 
@@ -197,36 +191,7 @@ export function importReady(c: {
 
 /* Subscriptions ------------------------------------------------------------- */
 
-/** ISO weekdays, Monday first. */
-export const WEEKDAYS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
-
-/** A new subscription: every day at 8. */
-export function newSubscription(): SubscriptionInput {
-  return { schedule: 'daily', days: [], hour: 8, emptyToo: false };
-}
-
-/** The form's value of an existing subscription. */
-export function subscriptionInputOf(
-  s: Pick<Subscription, 'schedule' | 'days' | 'hour' | 'emptyToo'>,
-): SubscriptionInput {
-  return { schedule: s.schedule, days: [...s.days], hour: s.hour, emptyToo: s.emptyToo };
-}
-
-/** Switching to weekly with no day chosen picks Monday, as a start. */
-export function withSchedule(s: SubscriptionInput, schedule: Schedule): SubscriptionInput {
-  const days = schedule === 'weekly' && s.days.length === 0 ? [1] : s.days;
-  return { ...s, schedule, days };
-}
-
-/** Ticks or unticks a weekday, keeping the days in week order. */
+/** Ticks or unticks a weekday of a weekly schedule, keeping the days in week order. */
 export function toggleDay(days: readonly number[], day: number, on: boolean): number[] {
-  const set = new Set(days);
-  if (on) set.add(day);
-  else set.delete(day);
-  return [...set].sort((a, b) => a - b);
-}
-
-/** "08:00". */
-export function hourText(hour: number): string {
-  return `${String(hour).padStart(2, '0')}:00`;
+  return sortedDays(on ? [...days, day] : days.filter((d) => d !== day));
 }
