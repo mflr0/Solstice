@@ -42,9 +42,11 @@
   let retrying = $state(false);
 
   const dirty = $derived(form !== null && JSON.stringify(form) !== saved);
-  const problems = $derived(form ? mailProblems(form) : {});
-  const shown = (field: 'host' | 'port' | 'from') =>
-    (tried || touched[field]) && problems[field] ? t.mailAdmin.problems[problems[field]] : '';
+  const problems = $derived(form ? mailProblems(form, settings ?? undefined) : {});
+  const shown = (field: 'host' | 'port' | 'from' | 'password') =>
+    (tried || touched[field] || field === 'password') && problems[field]
+      ? t.mailAdmin.problems[problems[field]]
+      : '';
   const testProblem = $derived(
     testTo.trim() && !isEmail(testTo.trim()) ? t.mailAdmin.toInvalid : '',
   );
@@ -262,6 +264,7 @@
             >
           </p>
         {/if}
+        {#if shown('password')}<span class="field-error">{shown('password')}</span>{/if}
       </div>
     </div>
 

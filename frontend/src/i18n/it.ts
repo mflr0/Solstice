@@ -1232,6 +1232,8 @@ export const it: Messages = {
       portInvalid: 'Un numero da 1 a 65535.',
       fromRequired: 'Indica l’indirizzo del mittente per attivare l’invio.',
       fromInvalid: 'Questo indirizzo e-mail non è valido.',
+      passwordRequired:
+        'Il server, la porta, la sicurezza o il nome utente sono cambiati: inserisci di nuovo la password, oppure rimuovila.',
     },
     toInvalid: 'Questo indirizzo e-mail non è valido.',
     saved: 'Impostazioni e-mail salvate.',

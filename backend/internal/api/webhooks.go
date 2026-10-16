@@ -5,12 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"net/url"
+	"reflect"
 	"slices"
 	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"solstice/internal/audit"
 	"solstice/internal/perm"
 	"solstice/internal/webhook"
 )
@@ -173,6 +176,7 @@ func (s *Server) createWebhook(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	s.auditLog(r, audit.WebhookCreate, webhookTarget(created), webhookChanges(&webhook.Webhook{}, created, secretText))
 	return writeJSON(w, http.StatusCreated, created)
 }
 
@@ -181,12 +185,17 @@ func (s *Server) updateWebhook(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	before := *wh
+	before.Events = slices.Clone(wh.Events)
 	secretText, err := s.readWebhook(r, wh)
 	if err != nil {
 		return err
 	}
 	if err := s.out.hooks.Save(r.Context(), wh, secretText, 0); err != nil {
 		return err
+	}
+	if changes := webhookChanges(&before, wh, secretText); len(changes) > 0 {
+		s.auditLog(r, audit.WebhookUpdate, webhookTarget(wh), changes)
 	}
 	return s.getWebhook(w, r)
 }
@@ -199,8 +208,70 @@ func (s *Server) deleteWebhook(w http.ResponseWriter, r *http.Request) error {
 	if err := s.out.hooks.Delete(r.Context(), wh.ID); err != nil {
 		return err
 	}
+	s.auditLog(r, audit.WebhookDelete, webhookTarget(wh), map[string]any{
+		"url": redactedHookURL(wh.URL), "events": wh.Events, "enabled": wh.Enabled})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// webhookTarget names a webhook in the audit log.
+func webhookTarget(wh *webhook.Webhook) audit.Target {
+	return audit.Target{Type: "webhook", ID: strconv.FormatInt(wh.ID, 10), Label: wh.Name}
+}
+
+// redactedHookURL is a webhook address without what may be a secret: the
+// user name and password, and the path and query (Slack and similar
+// services put their access token there). "https://example.org/…" tells
+// that there is a path.
+func redactedHookURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	out := u.Scheme + "://" + u.Host
+	if strings.Trim(u.Path, "/") != "" || u.RawQuery != "" {
+		out += "/…"
+	}
+	return out
+}
+
+// webhookChanges lists what differs between two states of a webhook, for the
+// audit log (a new webhook is compared with an empty one). The secret and the
+// path of the address are never written, only that they changed.
+func webhookChanges(before, after *webhook.Webhook, secret *string) map[string]any {
+	out := map[string]any{}
+	pair := func(name string, from, to any) {
+		if !reflect.DeepEqual(from, to) {
+			out[name] = map[string]any{"from": from, "to": to}
+		}
+	}
+	pair("name", before.Name, after.Name)
+	if before.URL != after.URL {
+		from, to := redactedHookURL(before.URL), redactedHookURL(after.URL)
+		if from != to {
+			out["url"] = map[string]any{"from": from, "to": to}
+		} else {
+			out["urlPathChanged"] = true
+		}
+	}
+	pair("events", nonNil(before.Events), nonNil(after.Events))
+	pair("jql", before.JQL, after.JQL)
+	pair("enabled", before.Enabled, after.Enabled)
+	pair("excludeBody", before.ExcludeBody, after.ExcludeBody)
+	switch {
+	case secret != nil && *secret != "":
+		out["secretChanged"] = true
+	case secret != nil && before.HasSecret:
+		out["secretRemoved"] = true
+	}
+	return out
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }
 
 func (s *Server) webhookDeliveries(w http.ResponseWriter, r *http.Request) error {

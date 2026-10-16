@@ -193,3 +193,47 @@ describe('import', () => {
     expect(importProgress(3, 0)).toBe(0);
   });
 });
+
+describe('mail form, password after a new destination', () => {
+  const saved = {
+    ...mail,
+    passwordSet: true,
+    host: 'smtp.example.org',
+    port: 587,
+    security: 'starttls' as const,
+    username: 'relay',
+  };
+
+  it('asks for the password again only when it would follow a new destination', () => {
+    const f = mailForm(saved);
+    expect(mailProblems(f, saved)).toEqual({});
+    f.fromName = 'Tickets';
+    f.host = ' SMTP.example.org ';
+    expect(mailProblems(f, saved)).toEqual({});
+    for (const change of [
+      { host: 'smtp.other.example' },
+      { port: '25' },
+      { security: 'tls' as const },
+      { username: 'other' },
+    ]) {
+      const g = { ...mailForm(saved), ...change };
+      expect(mailProblems(g, saved)).toEqual({ password: 'passwordRequired' });
+    }
+  });
+
+  it('accepts a typed password, or a removal', () => {
+    const f = { ...mailForm(saved), host: 'smtp.other.example' };
+    f.passwordAction = 'replace';
+    f.password = 's3cret';
+    expect(mailProblems(f, saved)).toEqual({});
+    f.password = '';
+    expect(mailProblems(f, saved)).toEqual({ password: 'passwordRequired' });
+    f.passwordAction = 'remove';
+    expect(mailProblems(f, saved)).toEqual({});
+  });
+
+  it('has nothing to protect when no password is stored', () => {
+    const none = { ...saved, passwordSet: false };
+    expect(mailProblems({ ...mailForm(none), host: 'smtp.other.example' }, none)).toEqual({});
+  });
+});

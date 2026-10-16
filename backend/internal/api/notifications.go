@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"slices"
 
+	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/live"
@@ -421,6 +422,11 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.out.settings.GetJSON(ctx, "mail", &cfg); err != nil {
 		return err
 	}
+	before := cfg
+	hadPassword, err := mail.HasPassword(ctx, s.out.settings)
+	if err != nil {
+		return err
+	}
 	keepPassword := in.Password == nil
 	if keepPassword {
 		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
@@ -477,6 +483,12 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if (cfg.Enabled || cfg.From != "") && !mail.ValidAddress(cfg.From) {
 		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
 	}
+	// The stored password must not follow a change of destination: whoever
+	// can change the server could otherwise read it back by pointing the
+	// settings at a server of their own and sending a test e-mail.
+	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
+		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
+	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
 			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, err.Error())
@@ -485,9 +497,59 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {
 		return err
 	}
+	if changes := mailChanges(before, cfg, !keepPassword, hadPassword); len(changes) > 0 {
+		s.auditLog(r, audit.SettingsMail, audit.Target{Type: "settings", ID: "mail"}, changes)
+	}
 	s.out.notify.Invalidate()
 	s.out.outbox.Wake()
 	return s.getMailSettings(w, r)
+}
+
+// mailDefaults fills in what an unset configuration means: STARTTLS and the
+// usual port of the security mode.
+func mailDefaults(c mail.Config) mail.Config {
+	if c.Security == "" {
+		c.Security = mail.SecurityStartTLS
+	}
+	if c.Port == 0 {
+		c.Port = mail.DefaultPort(c.Security)
+	}
+	return c
+}
+
+// mailDestinationChanged tells whether the settings send the password
+// somewhere else: another server, port, security mode or user name.
+func mailDestinationChanged(before, after mail.Config) bool {
+	before, after = mailDefaults(before), mailDefaults(after)
+	return !strings.EqualFold(before.Host, after.Host) || before.Port != after.Port ||
+		before.Security != after.Security || before.Username != after.Username
+}
+
+// mailChanges lists what differs between two states of the SMTP settings,
+// for the audit log. The password is never written, only that it changed or
+// was removed.
+func mailChanges(before, after mail.Config, passwordGiven, hadPassword bool) map[string]any {
+	before, after = mailDefaults(before), mailDefaults(after)
+	out := map[string]any{}
+	pair := func(name string, from, to any) {
+		if from != to {
+			out[name] = map[string]any{"from": from, "to": to}
+		}
+	}
+	pair("enabled", before.Enabled, after.Enabled)
+	pair("host", before.Host, after.Host)
+	pair("port", before.Port, after.Port)
+	pair("security", before.Security, after.Security)
+	pair("username", before.Username, after.Username)
+	pair("from", before.From, after.From)
+	pair("fromName", before.FromName, after.FromName)
+	switch {
+	case passwordGiven && after.Password != "":
+		out["passwordChanged"] = true
+	case passwordGiven && hadPassword:
+		out["passwordRemoved"] = true
+	}
+	return out
 }
 
 // testMail sends a test e-mail with the saved settings, now, and explains

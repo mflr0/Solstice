@@ -493,6 +493,7 @@ const (
 	MailSettingsIncomplete    Key = "MailSettingsIncomplete"
 	MailPasswordUnreadable    Key = "MailPasswordUnreadable"
 	MailPasswordEncryptFailed Key = "MailPasswordEncryptFailed"
+	MailPasswordRequired      Key = "MailPasswordRequired"
 	MailSendFailed            Key = "MailSendFailed"
 	MailConnectFailed         Key = "MailConnectFailed"
 	MailTLSFailed             Key = "MailTLSFailed"

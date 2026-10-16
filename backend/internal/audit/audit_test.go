@@ -19,6 +19,15 @@ func TestMaskHidesSecrets(t *testing.T) {
 	}
 }
 
+// A boolean flag can say that a secret changed; its value is not one.
+func TestMaskKeepsFlags(t *testing.T) {
+	got := mask(map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "hunter2"})
+	want := map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "***"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("mask:\n got %v\nwant %v", got, want)
+	}
+}
+
 func TestCut(t *testing.T) {
 	if got := cut("épopée", 3); got != "épo" {
 		t.Errorf("cut = %q", got)

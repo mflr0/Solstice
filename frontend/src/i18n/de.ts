@@ -1239,6 +1239,8 @@ export const de: Messages = {
       portInvalid: 'Eine Zahl von 1 bis 65535.',
       fromRequired: 'Geben Sie die Absenderadresse an, um den Versand zu aktivieren.',
       fromInvalid: 'Diese E-Mail-Adresse ist ungültig.',
+      passwordRequired:
+        'Server, Port, Sicherheit oder Benutzername wurden geändert: Geben Sie das Passwort erneut ein oder entfernen Sie es.',
     },
     toInvalid: 'Diese E-Mail-Adresse ist ungültig.',
     saved: 'E-Mail-Einstellungen gespeichert.',

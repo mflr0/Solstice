@@ -433,6 +433,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailSettingsIncomplete:    "पहले सर्वर और प्रेषक भरें।",
 	MailPasswordUnreadable:    "सहेजा गया पासवर्ड पढ़ा नहीं जा सकता: %s",
 	MailPasswordEncryptFailed: "पासवर्ड एन्क्रिप्ट नहीं किया जा सका: %s",
+	MailPasswordRequired:      "सर्वर, पोर्ट, सुरक्षा या यूज़रनेम बदल गया है: SMTP पासवर्ड फिर से दर्ज करें, या उसे हटा दें।",
 	MailSendFailed:            "भेजना विफल: %s",
 	MailConnectFailed:         "सर्वर से कनेक्ट नहीं हो सका: %s",
 	MailTLSFailed:             "TLS नेगोशिएशन विफल: %s",

@@ -432,6 +432,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailSettingsIncomplete:    "Indica prima il server e il mittente.",
 	MailPasswordUnreadable:    "La password salvata non è leggibile: %s",
 	MailPasswordEncryptFailed: "Impossibile cifrare la password: %s",
+	MailPasswordRequired:      "Il server, la porta, la sicurezza o il nome utente sono cambiati: inserisci di nuovo la password SMTP, oppure rimuovila.",
 	MailSendFailed:            "Invio non riuscito: %s",
 	MailConnectFailed:         "Impossibile connettersi al server: %s",
 	MailTLSFailed:             "Negoziazione TLS non riuscita: %s",

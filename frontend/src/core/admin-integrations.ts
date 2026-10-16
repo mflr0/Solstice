@@ -139,6 +139,7 @@ export const AUDIT_FAMILIES = [
   'settings',
   'import',
   'update',
+  'webhook',
 ] as const;
 
 export type AuditFamily = (typeof AUDIT_FAMILIES)[number];

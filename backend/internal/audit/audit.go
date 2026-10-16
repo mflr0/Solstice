@@ -81,6 +81,10 @@ const (
 	ImportStart      = "import.start"
 	ImportDone       = "import.done"
 	ImportFailed     = "import.failed"
+	SettingsMail     = "settings.mail"
+	WebhookCreate    = "webhook.create"
+	WebhookUpdate    = "webhook.update"
+	WebhookDelete    = "webhook.delete"
 	// Catalogue items: "<kind>.create", "<kind>.update", "<kind>.delete",
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )
@@ -181,7 +185,9 @@ func Purge(ctx context.Context, db *sql.DB) (int64, error) {
 // secretKeys are parts of detail keys whose values are never logged.
 var secretKeys = []string{"password", "passwd", "secret", "token", "apikey", "api_key", "credential"}
 
-// mask copies details, hiding the values of keys that name a secret.
+// mask copies details, hiding the values of keys that name a secret. A
+// boolean holds no secret: "passwordChanged": true says that a password
+// changed without showing it.
 func mask(details map[string]any) map[string]any {
 	out := make(map[string]any, len(details))
 	for k, v := range details {
@@ -192,8 +198,9 @@ func mask(details map[string]any) map[string]any {
 				secret = true
 			}
 		}
+		_, flag := v.(bool)
 		switch {
-		case secret:
+		case secret && !flag:
 			out[k] = "***"
 		case isMap(v):
 			out[k] = mask(v.(map[string]any))

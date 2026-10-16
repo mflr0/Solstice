@@ -1227,6 +1227,8 @@ export const en = {
       portInvalid: 'A number from 1 to 65535.',
       fromRequired: 'Enter the sending address to turn sending on.',
       fromInvalid: 'This email address is not valid.',
+      passwordRequired:
+        'The server, port, security or username changed: type the password again, or remove it.',
     },
     toInvalid: 'This email address is not valid.',
     saved: 'Email settings saved.',

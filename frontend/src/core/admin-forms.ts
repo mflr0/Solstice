@@ -51,7 +51,24 @@ export interface MailForm {
   fromName: string;
 }
 
-export type MailProblem = 'hostRequired' | 'portInvalid' | 'fromRequired' | 'fromInvalid';
+export type MailProblem =
+  'hostRequired' | 'portInvalid' | 'fromRequired' | 'fromInvalid' | 'passwordRequired';
+
+/**
+ * Whether saving would send the stored password to another server, port,
+ * security mode or user name than the saved ones: the server then wants the
+ * password entered again.
+ */
+export function mailDestinationChanged(f: MailForm, saved: MailSettings): boolean {
+  const port = f.port.trim() ? Number(f.port) : defaultPort(f.security);
+  const savedPort = saved.port || defaultPort(saved.security);
+  return (
+    f.host.trim().toLowerCase() !== saved.host.trim().toLowerCase() ||
+    port !== savedPort ||
+    f.security !== saved.security ||
+    f.username.trim() !== saved.username
+  );
+}
 
 export function mailForm(s: MailSettings): MailForm {
   return {
@@ -67,8 +84,15 @@ export function mailForm(s: MailSettings): MailForm {
   };
 }
 
-export function mailProblems(f: MailForm): Problems<'host' | 'port' | 'from', MailProblem> {
-  const out: Problems<'host' | 'port' | 'from', MailProblem> = {};
+/**
+ * What is wrong with the form. With the saved settings, a stored password
+ * that would follow a new destination must be typed again (or removed).
+ */
+export function mailProblems(
+  f: MailForm,
+  saved?: MailSettings,
+): Problems<'host' | 'port' | 'from' | 'password', MailProblem> {
+  const out: Problems<'host' | 'port' | 'from' | 'password', MailProblem> = {};
   if (f.enabled && !f.host.trim()) out.host = 'hostRequired';
   const port = Number(f.port);
   if (f.port.trim() && (!Number.isInteger(port) || port < 1 || port > 65535)) {
@@ -77,6 +101,13 @@ export function mailProblems(f: MailForm): Problems<'host' | 'port' | 'from', Ma
   const from = f.from.trim();
   if (from && !isEmail(from)) out.from = 'fromInvalid';
   else if (f.enabled && !from) out.from = 'fromRequired';
+  if (
+    saved?.passwordSet &&
+    mailDestinationChanged(f, saved) &&
+    (f.passwordAction === 'keep' || (f.passwordAction === 'replace' && !f.password))
+  ) {
+    out.password = 'passwordRequired';
+  }
   return out;
 }
 
