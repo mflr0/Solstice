@@ -32,7 +32,6 @@ current README, code of conduct and license, and it does not compile. Merging
 The goal of 1.0 is to be the safest way to leave Jira, not to match its
 features (see `ROADMAP.md`). The release waits for items 10 and 11.
 
-
 1. Check the administration end to end against
    `backend/internal/api/ADMIN_API.md`. It was written by agents that were
    interrupted and never reviewed; a deadlock was already found and fixed
@@ -80,7 +79,11 @@ features (see `ROADMAP.md`). The release waits for items 10 and 11.
     instances: deleted users still in history, renamed projects, moved
     issues, custom fields whose type changed, odd encodings, orphan rows.
     `scripts/e2e-import.sh` runs the import against each version.
-12. Release: privacy audit of the whole history, pull request from
+12. Every admin object reachable from the menus: a Projects page in the
+    administration (list, create, archive, open the project settings), and
+    a pass over the whole interface for pages that exist but have no menu
+    entry or link to them.
+13. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
@@ -94,6 +97,16 @@ projects), after item 2 above, starting with an issue.
 
 ## Known bugs and polish
 
+- Custom fields administration returns 500 on MariaDB 11.4
+  (`GET /api/admin/fields`, `GET /api/admin/fields/{id}`, and the response
+  of `POST`, which still creates the field): the issue count in `fieldList`
+  (`internal/api/admin_fields.go:86`) refers to `f.id` inside a derived
+  table, which MySQL 8 accepts and MariaDB rejects (`Unknown column 'f.id'`).
+  Blocks 1.0.
+- A global administrator gets 404 on the workflows of a project they cannot
+  browse (`GET /api/projects/{key}/workflows`), although ADMIN_API.md says
+  global administrators configure every project. Fixed on
+  `oc/review-fixes`, not merged yet.
 - Search results table: the summary column collapses to about 22 px around
   1024 px wide.
 - The "More" filter popover (320 px) opens partly off-screen at 1280 px.
@@ -102,13 +115,17 @@ projects), after item 2 above, starting with an issue.
 - Theme gallery previews: long labels overflow (Italian "Assegnatario"
   overlaps the avatar in the Terminal and Plan previews).
 - Terminal theme in Hindi: monospaced spaces look wide.
+- Time estimates (original and remaining) cannot be set: neither
+  `/api/issues` nor `/rest/api/2/issue` (`timetracking`) accepts them, so the
+  "time" estimate of boards always shows nothing.
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
 - The import report and warnings are in English only (not translated).
 - `internal/api/issues.go:1338` ignores the error of reading the `type` field.
 - Boards: no backlog column on Kanban boards; drag and drop does not work by
   touch (the card menu is used on phones); swimlane collapse buttons come late
-  in the tab order; sprints cannot be edited before they start nor deleted;
+  in the tab order; sprints cannot be edited before they start nor deleted (no route deletes
+  a sprint, and deleting a board leaves its sprints with no board);
   completing a sprint cannot create the next one.
 - Editor: a `[` inside monospace text, in a table cell that is not the last of
   its row, cannot be typed.
