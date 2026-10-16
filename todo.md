@@ -30,7 +30,7 @@ current README, code of conduct and license, and it does not compile. Merging
 ## Remaining for 1.0, in order
 
 The goal of 1.0 is to be the safest way to leave Jira, not to match its
-features (see `ROADMAP.md`). The release waits for items 10 and 11.
+features (see `ROADMAP.md`). The release waits for items 9 and 10.
 
 1. Check the administration end to end against
    `backend/internal/api/ADMIN_API.md`. It was written by agents that were
@@ -43,47 +43,44 @@ features (see `ROADMAP.md`). The release waits for items 10 and 11.
    versioned. Write a Go seeder for a synthetic Solstice database and run the
    tests against a MariaDB service in the workflow. Needed before any large
    refactoring.
-3. Review the administration and update code (an automated review was
-   started and stopped): permissions of every admin route, `go test -race`,
-   SQL, the root update helper, deletions and the replacing import.
-4. Security review: XSS (wiki rendering, editor), CSRF, security headers
-   (CSP, framing, referrer), sessions, uploads. Login throttling counts
-   failures per client address; behind a reverse proxy every client has the
-   proxy's address, so five failures lock everyone out for a minute: support
-   a trusted proxy header.
-5. Integrated updates: run the root helper in a systemd container (update
+3. Login throttling counts failures per client address; behind a reverse
+   proxy every client has the proxy's address, so five failures lock
+   everyone out: support a trusted proxy header, and send HSTS when served
+   over HTTPS. (The administration and security reviews are done and their
+   findings fixed.)
+4. Integrated updates: run the root helper in a systemd container (update
    succeeds, bad checksum refused, unhealthy version rolled back).
-6. Meaning review of the interface translations (about 520 texts per
+5. Meaning review of the interface translations (about 520 texts per
    language) with a strong model; three Hindi link labels ("is blocked by"…)
    need a native speaker.
-7. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
+6. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
    as its source: switch it to English like the rest.
-8. AGPL: a "Source code" link in the interface. Third-party notices: the
+7. AGPL: a "Source code" link in the interface. Third-party notices: the
    fonts (OFL-1.1) ship with the application and their license must come
    with them.
-9. Documentation in English and French: installation, administration,
+8. Documentation in English and French: installation, administration,
    backups and restore, upgrades, reverse proxy (examples in
    `deploy/proxy/`), REST API, `SECURITY.md`, and a migration guide (dry
    run, parallel run, cutover, rollback, keeping the domain name so
    `/browse/KEY-1` links keep working). A contact address for conduct
    reports in CODE_OF_CONDUCT.md.
-10. Jira audit without migrating: `solstice import -check` reads a Jira
+9. Jira audit without migrating: `solstice import -check` reads a Jira
     database and writes the full report (counts, Jira version, plugins found
     in `AO_*` tables, unsupported custom field types, inactive users, what
     would be lost) without writing anything. With `-anonymous`, the report
     holds no content at all (counts, schema shapes, errors only), so anyone
     can attach it to an issue.
-11. Jira versions and messy data: `jira-fixture` generates databases for
+10. Jira versions and messy data: `jira-fixture` generates databases for
     every major Jira version whose distribution can be downloaded (7.x to
     the latest), each read from its own entity model, with the quirks of old
     instances: deleted users still in history, renamed projects, moved
     issues, custom fields whose type changed, odd encodings, orphan rows.
     `scripts/e2e-import.sh` runs the import against each version.
-12. Every admin object reachable from the menus: a Projects page in the
+11. Every admin object reachable from the menus: a Projects page in the
     administration (list, create, archive, open the project settings), and
     a pass over the whole interface for pages that exist but have no menu
     entry or link to them.
-13. Release: privacy audit of the whole history, pull request from
+12. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
@@ -97,10 +94,6 @@ projects), after item 2 above, starting with an issue.
 
 ## Known bugs and polish
 
-- A global administrator gets 404 on the workflows of a project they cannot
-  browse (`GET /api/projects/{key}/workflows`), although ADMIN_API.md says
-  global administrators configure every project. Fixed on
-  `oc/review-fixes`, not merged yet.
 - Account menu (all themes): capped at 340 px by the generic `.popover`
   rule in `frontend/src/app.css`, which overrides `.account-menu`'s own
   max-height; the theme list is cut and Mode, Language and Sign out are below
