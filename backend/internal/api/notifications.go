@@ -60,6 +60,7 @@ func (s *Server) startOutgoing() {
 	o.hooks = webhook.New(s.db, s.log, s.secrets, s.matchJQL)
 	o.hooks.BaseURL = s.base
 	o.hooks.DefaultLocale = s.defaultLanguage
+	o.outbox.Paused, o.notify.Paused, o.hooks.Paused = s.importRunning, s.importRunning, s.importRunning
 	o.bus.Subscribe(o.notify)
 	o.bus.Subscribe(o.hooks)
 }

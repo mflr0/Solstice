@@ -18,6 +18,9 @@ import (
 
 // FlushDue writes the batches whose time has come into the outbox.
 func (s *Service) FlushDue(ctx context.Context) error {
+	if s.Paused != nil && s.Paused() {
+		return nil
+	}
 	var ids []int64
 	if err := sqlq.Each(ctx, s.db, `SELECT id FROM notification_batches WHERE send_at <= ? ORDER BY send_at, id LIMIT 200`,
 		func(rows *sql.Rows) error {

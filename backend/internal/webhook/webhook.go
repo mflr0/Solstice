@@ -119,6 +119,9 @@ type Service struct {
 	DefaultLocale func() string
 	// Now is the clock (tests move it).
 	Now func() time.Time
+	// Paused, when set and true, makes DeliverDue deliver nothing: the
+	// server sets it while a replacing import rewrites the database.
+	Paused func() bool
 
 	mu      sync.Mutex
 	cache   []*Webhook

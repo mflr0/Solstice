@@ -48,6 +48,9 @@ type Service struct {
 	Window, MaxWait time.Duration
 	// Now is the clock (tests move it).
 	Now func() time.Time
+	// Paused, when set and true, makes FlushDue and RunSchedules do nothing:
+	// the server sets it while a replacing import rewrites the database.
+	Paused func() bool
 
 	mu        sync.Mutex
 	enabled   bool

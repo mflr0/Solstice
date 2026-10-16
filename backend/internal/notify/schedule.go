@@ -163,6 +163,9 @@ func (s *Service) RunSubscription(ctx context.Context, sub *Subscription) (int, 
 // RunSchedules sends the subscriptions and due-date reminders whose time
 // has come.
 func (s *Service) RunSchedules(ctx context.Context) error {
+	if s.Paused != nil && s.Paused() {
+		return nil
+	}
 	if !s.mailEnabled(ctx) {
 		return nil
 	}

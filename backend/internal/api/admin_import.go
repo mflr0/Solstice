@@ -59,6 +59,13 @@ func (imp *adminImport) isOperator(r *http.Request) bool {
 	return false
 }
 
+// importRunning tells whether a replacing import is running. The background
+// workers (e-mail, notifications, webhooks) skip their tick meanwhile.
+func (s *Server) importRunning() bool {
+	imp := s.currentImport()
+	return imp != nil && imp.job.running()
+}
+
 // maintenance answers the requests held back while an import runs, and
 // tells whether it did.
 func (s *Server) maintenance(w http.ResponseWriter, r *http.Request) bool {

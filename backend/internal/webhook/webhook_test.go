@@ -324,3 +324,20 @@ func hasIPv6() bool {
 	l.Close()
 	return true
 }
+
+// While a replacing import runs, a delivery tick does nothing: it does not
+// touch the database (there is none here, so touching it would panic).
+func TestDeliverDueSkippedWhilePaused(t *testing.T) {
+	s := New(nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	s.Paused = func() bool { return true }
+	if n, err := s.DeliverDue(context.Background()); n != 0 || err != nil {
+		t.Fatalf("paused: delivered %d, err %v", n, err)
+	}
+	s.Paused = func() bool { return false }
+	defer func() {
+		if recover() == nil {
+			t.Error("not paused: the tick did not reach the database")
+		}
+	}()
+	s.DeliverDue(context.Background())
+}

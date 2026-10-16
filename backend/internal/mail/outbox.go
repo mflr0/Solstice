@@ -27,6 +27,9 @@ type Outbox struct {
 
 	// Now is the clock (tests move it).
 	Now func() time.Time
+	// Paused, when set and true, makes SendDue send nothing: the server
+	// sets it while a replacing import rewrites the database.
+	Paused func() bool
 }
 
 // NewOutbox makes an outbox; config reads the current SMTP settings.
@@ -69,6 +72,9 @@ func backoff(n int) time.Duration {
 // SendDue sends the messages whose time has come, up to a batch. It stops
 // between messages when ctx ends; a message being sent is finished.
 func (o *Outbox) SendDue(ctx context.Context) (int, error) {
+	if o.Paused != nil && o.Paused() {
+		return 0, nil
+	}
 	cfg, err := o.config(ctx)
 	if err != nil || !cfg.Enabled || cfg.Host == "" || cfg.From == "" {
 		return 0, err

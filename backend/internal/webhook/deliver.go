@@ -212,6 +212,9 @@ func (s *Service) post(ctx context.Context, target, event string, delivery int64
 // DeliverDue sends the deliveries whose time has come, up to a batch. It
 // stops between deliveries when ctx ends.
 func (s *Service) DeliverDue(ctx context.Context) (int, error) {
+	if s.Paused != nil && s.Paused() {
+		return 0, nil
+	}
 	raw := make([]byte, 16)
 	rand.Read(raw)
 	claim := hex.EncodeToString(raw)

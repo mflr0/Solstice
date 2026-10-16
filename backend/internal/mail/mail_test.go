@@ -200,3 +200,23 @@ func TestOutbox(t *testing.T) {
 		t.Errorf("%d messages given up after %d attempts, want 2", failed, MaxAttempts)
 	}
 }
+
+// While a replacing import runs, the outbox does not even read its
+// settings: the tick is skipped.
+func TestSendDueSkippedWhilePaused(t *testing.T) {
+	read := 0
+	o := NewOutbox(nil, slog.New(slog.NewTextHandler(io.Discard, nil)), func(context.Context) (Config, error) {
+		read++
+		return Config{}, nil
+	})
+	paused := true
+	o.Paused = func() bool { return paused }
+	if n, err := o.SendDue(context.Background()); n != 0 || err != nil || read != 0 {
+		t.Fatalf("paused: sent %d, err %v, settings read %d times", n, err, read)
+	}
+	paused = false
+	o.SendDue(context.Background())
+	if read != 1 {
+		t.Errorf("not paused: settings read %d times, want 1", read)
+	}
+}
