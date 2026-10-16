@@ -1736,6 +1736,43 @@ export const de: Messages = {
     },
   },
 
+  projectComponents: {
+    intro:
+      'Komponenten teilen ein Projekt in Teile, etwa einen Dienst oder ein Team. Jede kann eine Leitung haben und bestimmen, wem neue Vorgänge zugewiesen werden.',
+    newComponent: 'Neue Komponente',
+    empty: 'Noch keine Komponente',
+    emptyHint: 'Legen Sie Komponenten an, um die Vorgänge des Projekts nach Teilen zu gruppieren.',
+    assignee: 'Neue Vorgänge gehen an',
+    assigneeTypes: {
+      project_default: 'Die Vorgabe des Projekts',
+      component_lead: 'Die Leitung der Komponente',
+      project_lead: 'Die Projektleitung',
+      unassigned: 'Niemanden',
+    },
+    archivedHint:
+      'Eine archivierte Komponente wird bei neuen Vorgängen nicht mehr angeboten; Vorgänge, die sie haben, behalten sie.',
+    createTitle: 'Neue Komponente',
+    editTitle: (name: string) => `${name} bearbeiten`,
+    create: 'Komponente anlegen',
+    created: (name: string) => `Komponente ${name} wurde angelegt.`,
+    saved: (name: string) => `Komponente ${name} wurde gespeichert.`,
+    archived: (name: string) => `Komponente ${name} wurde archiviert.`,
+    unarchived: (name: string) => `Komponente ${name} ist wieder aktiv.`,
+    deleteTitle: (name: string) => `${name} löschen?`,
+    deleteUnused: 'Kein Vorgang hat diese Komponente.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'Vorgang hat', 'Vorgänge haben')} diese Komponente. Verschieben Sie sie in eine andere Komponente oder entfernen Sie nur diese von ihnen.`,
+    moveLabel: 'Verschieben nach',
+    moveNone: 'Komponente nur entfernen',
+    deleted: (name: string) => `Komponente ${name} wurde gelöscht.`,
+    problems: {
+      nameRequired: 'Geben Sie der Komponente einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Komponente hat bereits diesen Namen.',
+      leadNeeded: 'Wählen Sie eine Leitung oder eine andere Art, neue Vorgänge zuzuweisen.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',

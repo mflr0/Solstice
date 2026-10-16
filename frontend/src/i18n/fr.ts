@@ -1715,6 +1715,43 @@ export const fr: Messages = {
     },
   },
 
+  projectComponents: {
+    intro:
+      'Les composants découpent un projet en parties, comme un service ou une équipe. Chacun peut avoir un responsable et décider à qui les nouveaux tickets sont assignés.',
+    newComponent: 'Nouveau composant',
+    empty: 'Aucun composant pour l’instant',
+    emptyHint: 'Créez des composants pour regrouper les tickets du projet par partie.',
+    assignee: 'Les nouveaux tickets vont à',
+    assigneeTypes: {
+      project_default: 'Le réglage du projet',
+      component_lead: 'Le responsable du composant',
+      project_lead: 'Le responsable du projet',
+      unassigned: 'Personne',
+    },
+    archivedHint:
+      'Un composant archivé n’est plus proposé sur les nouveaux tickets ; les tickets qui l’ont le gardent.',
+    createTitle: 'Nouveau composant',
+    editTitle: (name: string) => `Modifier « ${name} »`,
+    create: 'Créer le composant',
+    created: (name: string) => `Composant « ${name} » créé.`,
+    saved: (name: string) => `Composant « ${name} » enregistré.`,
+    archived: (name: string) => `Composant « ${name} » archivé.`,
+    unarchived: (name: string) => `Composant « ${name} » de nouveau actif.`,
+    deleteTitle: (name: string) => `Supprimer « ${name} » ?`,
+    deleteUnused: 'Aucun ticket n’a ce composant.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'ticket a', 'tickets ont')} ce composant. Reportez-les sur un autre composant, ou retirez-leur simplement celui-ci.`,
+    moveLabel: 'Les reporter sur',
+    moveNone: 'Seulement retirer le composant',
+    deleted: (name: string) => `Composant « ${name} » supprimé.`,
+    problems: {
+      nameRequired: 'Donnez un nom au composant.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Un autre composant porte déjà ce nom.',
+      leadNeeded: 'Choisissez un responsable, ou une autre façon d’assigner les nouveaux tickets.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Nom',
     search: 'Rechercher',

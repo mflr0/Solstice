@@ -1718,6 +1718,43 @@ export const it: Messages = {
     },
   },
 
+  projectComponents: {
+    intro:
+      'I componenti dividono un progetto in parti, come un servizio o un team. Ognuno può avere un responsabile e decidere a chi vengono assegnati i nuovi ticket.',
+    newComponent: 'Nuovo componente',
+    empty: 'Ancora nessun componente',
+    emptyHint: 'Crea dei componenti per raggruppare i ticket del progetto per parte.',
+    assignee: 'I nuovi ticket vanno a',
+    assigneeTypes: {
+      project_default: 'L’impostazione del progetto',
+      component_lead: 'Il responsabile del componente',
+      project_lead: 'Il responsabile del progetto',
+      unassigned: 'Nessuno',
+    },
+    archivedHint:
+      'Un componente archiviato non viene più proposto sui nuovi ticket; i ticket che lo hanno lo conservano.',
+    createTitle: 'Nuovo componente',
+    editTitle: (name: string) => `Modifica «${name}»`,
+    create: 'Crea il componente',
+    created: (name: string) => `Componente «${name}» creato.`,
+    saved: (name: string) => `Componente «${name}» salvato.`,
+    archived: (name: string) => `Componente «${name}» archiviato.`,
+    unarchived: (name: string) => `Componente «${name}» di nuovo attivo.`,
+    deleteTitle: (name: string) => `Eliminare «${name}»?`,
+    deleteUnused: 'Nessun ticket ha questo componente.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'ticket ha', 'ticket hanno')} questo componente. Spostali su un altro componente, oppure togli loro soltanto questo.`,
+    moveLabel: 'Sposta su',
+    moveNone: 'Togli soltanto il componente',
+    deleted: (name: string) => `Componente «${name}» eliminato.`,
+    problems: {
+      nameRequired: 'Dai un nome al componente.',
+      nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',
+      nameTaken: 'Un altro componente ha già questo nome.',
+      leadNeeded: 'Scegli un responsabile, oppure un altro modo di assegnare i nuovi ticket.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',

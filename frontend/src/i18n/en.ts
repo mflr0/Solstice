@@ -1710,6 +1710,43 @@ export const en = {
     },
   },
 
+  projectComponents: {
+    intro:
+      'Components split a project into parts, such as a service or a team. Each can have a lead and decide who new issues are assigned to.',
+    newComponent: 'New component',
+    empty: 'No component yet',
+    emptyHint: 'Create components to group the project’s issues by part.',
+    assignee: 'New issues go to',
+    assigneeTypes: {
+      project_default: 'The project’s default',
+      component_lead: 'The component’s lead',
+      project_lead: 'The project’s lead',
+      unassigned: 'Nobody',
+    },
+    archivedHint:
+      'An archived component is no longer offered on new issues; the issues that have it keep it.',
+    createTitle: 'New component',
+    editTitle: (name: string) => `Edit ${name}`,
+    create: 'Create the component',
+    created: (name: string) => `Component ${name} created.`,
+    saved: (name: string) => `Component ${name} saved.`,
+    archived: (name: string) => `Component ${name} archived.`,
+    unarchived: (name: string) => `Component ${name} is active again.`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteUnused: 'No issue has this component.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'issue has', 'issues have')} this component. Move them to another component, or just remove it from them.`,
+    moveLabel: 'Move them to',
+    moveNone: 'Only remove the component from them',
+    deleted: (name: string) => `Component ${name} deleted.`,
+    problems: {
+      nameRequired: 'Give the component a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another component already has this name.',
+      leadNeeded: 'Choose a lead, or pick another way to assign new issues.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',

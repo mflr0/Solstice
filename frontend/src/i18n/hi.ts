@@ -1706,6 +1706,43 @@ export const hi: Messages = {
     },
   },
 
+  projectComponents: {
+    intro:
+      'कंपोनेंट प्रोजेक्ट को हिस्सों में बाँटते हैं, जैसे कोई सेवा या टीम। हर एक का एक लीड हो सकता है और वह तय कर सकता है कि नए टिकट किसे सौंपे जाएँ।',
+    newComponent: 'नया कंपोनेंट',
+    empty: 'अभी कोई कंपोनेंट नहीं',
+    emptyHint: 'प्रोजेक्ट के टिकट हिस्सों के हिसाब से जमाने के लिए कंपोनेंट बनाइए।',
+    assignee: 'नए टिकट जाते हैं',
+    assigneeTypes: {
+      project_default: 'प्रोजेक्ट के डिफ़ॉल्ट को',
+      component_lead: 'कंपोनेंट के लीड को',
+      project_lead: 'प्रोजेक्ट लीड को',
+      unassigned: 'किसी को नहीं',
+    },
+    archivedHint:
+      'संग्रहीत कंपोनेंट नए टिकटों पर नहीं सुझाया जाता; जिन टिकटों में वह है, उनमें बना रहता है।',
+    createTitle: 'नया कंपोनेंट',
+    editTitle: (name: string) => `${name} बदलें`,
+    create: 'कंपोनेंट बनाएँ',
+    created: (name: string) => `कंपोनेंट ${name} बन गया।`,
+    saved: (name: string) => `कंपोनेंट ${name} सहेज लिया गया।`,
+    archived: (name: string) => `कंपोनेंट ${name} संग्रहीत हो गया।`,
+    unarchived: (name: string) => `कंपोनेंट ${name} फिर से सक्रिय है।`,
+    deleteTitle: (name: string) => `${name} हटाएँ?`,
+    deleteUnused: 'किसी टिकट में यह कंपोनेंट नहीं है।',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'टिकट में', 'टिकटों में')} यह कंपोनेंट है। उन्हें किसी दूसरे कंपोनेंट में ले जाइए, या उनसे बस इसे हटा दीजिए।`,
+    moveLabel: 'इनमें ले जाएँ',
+    moveNone: 'बस कंपोनेंट हटाएँ',
+    deleted: (name: string) => `कंपोनेंट ${name} हट गया।`,
+    problems: {
+      nameRequired: 'कंपोनेंट को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'किसी और कंपोनेंट का यही नाम पहले से है।',
+      leadNeeded: 'एक लीड चुनिए, या नए टिकट सौंपने का कोई और तरीका।',
+    },
+  },
+
   catalogAdmin: {
     name: 'नाम',
     search: 'खोजें',
