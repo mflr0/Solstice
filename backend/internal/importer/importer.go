@@ -125,8 +125,12 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 	if locked.Int64 != 1 {
 		return nil, ErrBusy
 	}
-	defer dst.QueryRowContext(context.WithoutCancel(ctx), "SELECT RELEASE_LOCK(CONCAT('solstice-import:', DATABASE()))").
-		Scan(&locked)
+	// In a closure: a plain defer would run the query now and keep its row
+	// open on dst.
+	defer func() {
+		dst.QueryRowContext(context.WithoutCancel(ctx), "SELECT RELEASE_LOCK(CONCAT('solstice-import:', DATABASE()))").
+			Scan(&locked)
+	}()
 	if _, err := dst.ExecContext(ctx, "SET SESSION foreign_key_checks = 0"); err != nil {
 		return nil, err
 	}
