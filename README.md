@@ -78,7 +78,11 @@ Environment variables of the same name take precedence; `solstice -h` lists
 them. `GET /healthz` answers 200 when the database responds and 503 otherwise.
 
 Put an HTTPS reverse proxy in front of Solstice. The session cookie becomes
-`Secure` behind a proxy that sends `X-Forwarded-Proto: https`.
+`Secure` behind a proxy that sends `X-Forwarded-Proto: https`. Failed sign-ins
+are counted per client address: list your proxy in `SOLSTICE_TRUSTED_PROXIES`
+(IP addresses or CIDR ranges, separated by commas, empty by default) so that
+Solstice reads the client from `X-Forwarded-For` and not the proxy's address
+for everyone. See `deploy/proxy/README.md`.
 
 The SMTP password and webhook secrets are encrypted with the key in
 `SOLSTICE_SECRET_KEY` (32 bytes in base64 or hex, for example

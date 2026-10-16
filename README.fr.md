@@ -87,7 +87,11 @@ l'emportent ; `solstice -h` les liste. `GET /healthz` répond 200 quand la base
 répond, 503 sinon.
 
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
-`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`.
+`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`. Les échecs de
+connexion sont comptés par adresse de client : listez votre proxy dans
+`SOLSTICE_TRUSTED_PROXIES` (adresses IP ou plages CIDR séparées par des virgules,
+vide par défaut) pour que Solstice lise le client dans `X-Forwarded-For` et non
+l'adresse du proxy, la même pour tous. Voir `deploy/proxy/README.md`.
 
 Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
 `SOLSTICE_SECRET_KEY` (32 octets en base64 ou en hexadécimal, par exemple
