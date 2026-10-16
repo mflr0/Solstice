@@ -40,11 +40,15 @@ will say when every endpoint below is live).
   "instanceName": "Solstice",
   "defaultLanguage": "fr",
   "banner": {"text": "Maintenance ce soir à 20 h", "level": "warning"},
-  "passwordMinLength": 12
+  "passwordMinLength": 12,
+  "emailLinks": true
 }
 ```
 
 `banner` is `null` when disabled or empty. `level`: `info` | `warning`.
+`emailLinks` is true when e-mail is on and complete and the public address is
+set: only then can reset links and invitations be sent (the sign-in page shows
+"forgot your password" accordingly, the user dialog the invitation option).
 
 ### `GET /api/admin/settings` — global admin
 
@@ -118,13 +122,38 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
 - `GET /api/admin/users/{id}` → `adminUser` plus `tokens` (number of
   personal access tokens).
 - `POST /api/admin/users` `{username, name, email, password, admin,
-  groups?: [groupId]}` → 201 `{id}`. (`user.create`)
+  groups?: [groupId], invite?: bool}` → 201 `{id}`. (`user.create`) With
+  `invite` the account has no password (`password` must be empty, `email` is
+  required) and its person gets an e-mail with a link, valid 7 days, to choose
+  one: 409 when `emailLinks` is false. (`user.invite`)
+- `POST /api/admin/users/{id}/invite` → `{sent: true}`: sends the invitation
+  again (the previous link stops working); only for an active account with an
+  address that never signed in. (`user.invite`)
 - `PATCH /api/admin/users/{id}` `{name?, email?, active?, admin?,
   password?}` → 204. (`user.update`, `user.deactivate`, `admin.grant`, …)
 - `PUT /api/admin/users/{id}/groups` `{groups: [groupId]}` → `adminUser`.
   Replaces the memberships. (`group.members`)
 - `POST /api/admin/users/{id}/reset-password` → `{password}`: a generated
-  password, shown once; the user's sessions end. (`password.reset`)
+  password, shown once; the user's sessions end. (`password.reset`) With the
+  body `{"method": "link"}` it sends the account a link, valid one hour, to
+  choose its own password and answers `{sent: true}`; nothing changes until
+  the link is used. (`password.reset_request`)
+
+### Forgotten password — no sign-in needed
+
+- `POST /api/auth/forgot` `{identifier}` (user name or e-mail address) → always
+  `200 {ok: true}`, whether or not an account matches and whether or not
+  e-mail is set up, and never faster than 400 ms. A matching active account
+  with an address gets an e-mail (to that address, with a link built from the
+  public address); asking again within a minute, or too often, mails nothing.
+  429 when one client address asks too often. (`password.reset_request`)
+- `GET /api/auth/reset/{token}` → `{purpose: reset | invite, name, username}`,
+  or 400 when the link is unknown, used, expired, replaced or its account is
+  deactivated.
+- `POST /api/auth/reset` `{token, password}` → the signed-in `me`: sets the
+  password (the usual minimum length), ends every session and personal access
+  token of the account, kills its other links and signs the person in.
+  (`password.reset_done`, `user.invite_accept`)
 
 ---
 
