@@ -84,8 +84,8 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 	index := map[int64]int{}
 	err := sqlq.Each(ctx, s.db, `SELECT f.id, f.name, f.description, f.type_key,
 		(SELECT COUNT(*) FROM custom_field_options o WHERE o.field_id = f.id AND o.parent_id IS NULL),
-		(SELECT COUNT(*) FROM (SELECT v.issue_id FROM custom_field_values v WHERE v.field_id = f.id
-			UNION SELECT l.issue_id FROM labels l WHERE l.field_id = f.id) x)
+		(SELECT COUNT(*) FROM (SELECT field_id, issue_id FROM custom_field_values
+			UNION SELECT field_id, issue_id FROM labels WHERE field_id IS NOT NULL) x WHERE x.field_id = f.id)
 		FROM custom_fields f WHERE `+where+` ORDER BY f.name, f.id`, func(rows *sql.Rows) error {
 		var f fieldAdminOut
 		var desc sql.NullString

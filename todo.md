@@ -97,12 +97,6 @@ projects), after item 2 above, starting with an issue.
 
 ## Known bugs and polish
 
-- Custom fields administration returns 500 on MariaDB 11.4
-  (`GET /api/admin/fields`, `GET /api/admin/fields/{id}`, and the response
-  of `POST`, which still creates the field): the issue count in `fieldList`
-  (`internal/api/admin_fields.go:86`) refers to `f.id` inside a derived
-  table, which MySQL 8 accepts and MariaDB rejects (`Unknown column 'f.id'`).
-  Blocks 1.0.
 - A global administrator gets 404 on the workflows of a project they cannot
   browse (`GET /api/projects/{key}/workflows`), although ADMIN_API.md says
   global administrators configure every project. Fixed on
