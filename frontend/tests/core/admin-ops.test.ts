@@ -32,7 +32,7 @@ describe('the audit log actions', () => {
   it('lists every action the backend writes', () => {
     const written = new Set<string>();
     // audit.go: the constants of the package, and the catalogue kinds' own.
-    for (const m of go('audit/audit.go').matchAll(/^\s+\w+\s+= "([a-z]+\.[a-z]+)"$/gm)) {
+    for (const m of go('audit/audit.go').matchAll(/^\s+\w+\s+= "([a-z]+\.[a-z_]+)"$/gm)) {
       written.add(m[1]!);
     }
     for (const m of go('api/updates.go').matchAll(/^\s+auditUpdate\w+\s+= "(update\.[a-z]+)"$/gm)) {
