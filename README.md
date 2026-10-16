@@ -62,6 +62,11 @@ installs MariaDB and creates the database with its account; without it, the
 setup wizard asks for an existing database. Running the script again with a
 newer archive upgrades in place.
 
+Updates started from the administration are installed only if the release's
+`SHA256SUMS` carries a valid signature (`SHA256SUMS.sig`) by the release key
+written in `/usr/local/lib/solstice/update.sh`; that script is replaced by
+`install.sh`, not by the updates themselves. It needs OpenSSL 1.1.1 or later.
+
 ### First start: the setup wizard
 
 When no database is configured, or the database has no account yet, Solstice
@@ -204,7 +209,22 @@ password is printed).
 
 `make build` produces the single binary with the interface embedded,
 `make docker` the image, and `make release VERSION=x.y.z` the archives for
-Linux, macOS and Windows with their SHA256SUMS.
+Linux, macOS and Windows with their SHA256SUMS and `SHA256SUMS.sig`, an
+Ed25519 signature of that file. Releasing needs the private key, named by
+`SOLSTICE_RELEASE_KEY` and kept off the repository. To create the key pair
+once:
+
+```bash
+umask 077
+openssl genpkey -algorithm ed25519 -out ~/solstice-release-key.pem
+openssl pkey -in ~/solstice-release-key.pem -pubout    # the public key
+```
+
+Paste the public key (the `-----BEGIN PUBLIC KEY-----` block) in place of the
+placeholder `release_pubkey` in `deploy/linux/update.sh` and commit it. Until
+then the update helper refuses every update. Then
+`SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
+`deploy/linux/test-update-signature.sh` tests the check with a throwaway key.
 
 ### Tests
 

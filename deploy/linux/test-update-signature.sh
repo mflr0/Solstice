@@ -1,0 +1,102 @@
+#!/bin/sh
+# Tests the release signature check of update.sh and the refusals of
+# scripts/release.sh, with a throwaway key pair made in a temporary directory.
+# Nothing here touches the system, and no key is ever kept.
+#
+#   sh deploy/linux/test-update-signature.sh
+#
+# Needs openssl 1.1.1 or later. Exits 0 when every check passes.
+set -eu
+
+here=$(cd "$(dirname "$0")" && pwd)
+update="$here/update.sh"
+release="$here/../../scripts/release.sh"
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT INT TERM
+failures=0
+
+pass() { printf 'ok   %s\n' "$1"; }
+fail() {
+  printf 'FAIL %s\n' "$1"
+  failures=$((failures + 1))
+}
+# expect_ok / expect_refused run a command quietly and check its status.
+expect_ok() {
+  name=$1
+  shift
+  if "$@" >"$tmp/out" 2>&1; then pass "$name"; else
+    fail "$name"
+    cat "$tmp/out"
+  fi
+}
+expect_refused() {
+  name=$1
+  shift
+  if "$@" >"$tmp/out" 2>&1; then fail "$name (accepted)"; else pass "$name"; fi
+}
+
+# The signature code of update.sh, taken from the script itself.
+sed -n '/^# begin signature$/,/^# end signature$/p' "$update" >"$tmp/signature.sh"
+[ -s "$tmp/signature.sh" ] || {
+  echo "no signature block found in update.sh"
+  exit 1
+}
+have() { command -v "$1" >/dev/null 2>&1; }
+say() { printf '%s\n' "$*" >&2; }
+work=$tmp
+# shellcheck disable=SC1091
+. "$tmp/signature.sh"
+
+printf 'abc123  solstice-1.0.0-linux-amd64.tar.gz\n' >"$tmp/SHA256SUMS"
+
+# 1. The copy of the script in the repository still has the placeholder key:
+#    it must refuse every update.
+expect_refused "placeholder key refuses" verify_signature "$tmp/SHA256SUMS" "$tmp/none"
+expect_refused "placeholder key refuses the check made before downloading" release_key_set
+if verify_signature "$tmp/SHA256SUMS" "$tmp/none" 2>&1 | grep -q placeholder; then pass "placeholder refusal says why"; else fail "placeholder refusal says why"; fi
+
+# 2. Throwaway key pairs.
+openssl genpkey -algorithm ed25519 -out "$tmp/good.pem" 2>/dev/null
+openssl pkey -in "$tmp/good.pem" -pubout -out "$tmp/good.pub" 2>/dev/null
+openssl genpkey -algorithm ed25519 -out "$tmp/other.pem" 2>/dev/null
+openssl genpkey -algorithm rsa -pkeyopt rsa_keygen_bits:2048 -out "$tmp/rsa.pem" 2>/dev/null
+openssl pkey -in "$tmp/rsa.pem" -pubout -out "$tmp/rsa.pub" 2>/dev/null
+
+# The signing commands of scripts/release.sh.
+sign() { openssl pkeyutl -sign -inkey "$1" -rawin -in "$2" -out "$3"; }
+sign "$tmp/good.pem" "$tmp/SHA256SUMS" "$tmp/SHA256SUMS.sig"
+sign "$tmp/other.pem" "$tmp/SHA256SUMS" "$tmp/other.sig"
+release_pubkey=$(cat "$tmp/good.pub")
+
+expect_ok "good signature accepted" verify_signature "$tmp/SHA256SUMS" "$tmp/SHA256SUMS.sig"
+
+cp "$tmp/SHA256SUMS" "$tmp/tampered"
+printf 'ffff00  solstice-1.0.0-linux-amd64.tar.gz\n' >"$tmp/tampered"
+expect_refused "tampered SHA256SUMS refused" verify_signature "$tmp/tampered" "$tmp/SHA256SUMS.sig"
+
+expect_refused "missing signature refused" verify_signature "$tmp/SHA256SUMS" "$tmp/absent.sig"
+: >"$tmp/empty.sig"
+expect_refused "empty signature refused" verify_signature "$tmp/SHA256SUMS" "$tmp/empty.sig"
+head -c 63 "$tmp/SHA256SUMS.sig" >"$tmp/short.sig"
+expect_refused "truncated signature refused" verify_signature "$tmp/SHA256SUMS" "$tmp/short.sig"
+expect_refused "signature by another key refused" verify_signature "$tmp/SHA256SUMS" "$tmp/other.sig"
+ln -sf "$tmp/SHA256SUMS.sig" "$tmp/link.sig"
+expect_refused "signature that is a symbolic link refused" verify_signature "$tmp/SHA256SUMS" "$tmp/link.sig"
+
+release_pubkey=$(cat "$tmp/rsa.pub")
+expect_refused "embedded key that is not Ed25519 refused" verify_signature "$tmp/SHA256SUMS" "$tmp/SHA256SUMS.sig"
+release_pubkey='not a key'
+expect_refused "unreadable embedded key refused" verify_signature "$tmp/SHA256SUMS" "$tmp/SHA256SUMS.sig"
+
+# 3. scripts/release.sh refuses to run without a usable private key, before
+#    it builds or deletes anything.
+expect_refused "release.sh without SOLSTICE_RELEASE_KEY refuses" env -u SOLSTICE_RELEASE_KEY sh "$release" 0.0.0
+expect_refused "release.sh with a missing key file refuses" env SOLSTICE_RELEASE_KEY="$tmp/absent.pem" sh "$release" 0.0.0
+expect_refused "release.sh with an RSA key refuses" env SOLSTICE_RELEASE_KEY="$tmp/rsa.pem" sh "$release" 0.0.0
+
+if [ "$failures" -ne 0 ]; then
+  printf '%s check(s) failed\n' "$failures"
+  exit 1
+fi
+echo "all checks passed"

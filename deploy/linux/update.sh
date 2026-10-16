@@ -8,8 +8,9 @@
 # does in /var/lib/solstice/update/status (JSON), and logs to the journal.
 #
 # Steps: validate the requested version; download the archive for this
-# machine and SHA256SUMS from the release on GitHub; verify the checksum;
-# extract; check that the binary reports the requested version; back the
+# machine, SHA256SUMS and its signature SHA256SUMS.sig from the release on
+# GitHub; verify the signature of SHA256SUMS against the public key written
+# in this script, then the checksum of the archive; extract; check that the binary reports the requested version; back the
 # database up (mariadb-dump or mysqldump, if installed) to
 # /var/lib/solstice/backups, keeping the last 5; keep the running binary as
 # /usr/local/lib/solstice/solstice.previous; swap the binary atomically;
@@ -25,11 +26,16 @@
 #    executed, sourced or evaluated, and never echoed back.
 #  - Downloads come only from the GitHub releases of mflr0/Solstice, over
 #    HTTPS. Redirects are followed one by one, and only to GitHub's download
-#    hosts. The archive must match its line in the release's SHA256SUMS, and
-#    the binary inside must report the requested version. The checksum
-#    catches corrupt or truncated downloads; it does not protect against a
-#    compromised GitHub account, which could replace both files. TLS to
-#    GitHub is the trust anchor.
+#    hosts. SHA256SUMS must carry a valid Ed25519 signature (SHA256SUMS.sig)
+#    by the release key, whose public half is written in this script
+#    (release_pubkey): before the signature is checked no checksum is read.
+#    The archive must then match its line in SHA256SUMS, and the binary
+#    inside must report the requested version. The checksum catches corrupt
+#    or truncated downloads; the signature, made with a key that never
+#    leaves the maintainer, is what a compromised GitHub account cannot
+#    forge. A missing or bad signature, an openssl without Ed25519, or the
+#    placeholder key (a copy of this script that has no key yet) refuses the
+#    update.
 #  - Only a newer release than the running one is installed: no downgrade to
 #    an older, vulnerable release.
 #  - Directories the web process can write to are entered once, checked by
@@ -80,6 +86,61 @@ state=""
 backup=""
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# begin signature
+# The release signing key: the Ed25519 public key (PEM) whose private half
+# signs SHA256SUMS in scripts/release.sh. PLACEHOLDER: the maintainer replaces
+# the whole block with the output of
+#   openssl pkey -in <private key> -pubout
+# (see the top of scripts/release.sh). While the marker below is present,
+# this helper refuses every update.
+release_pubkey='-----BEGIN PUBLIC KEY-----
+SOLSTICE_RELEASE_KEY_PLACEHOLDER
+-----END PUBLIC KEY-----'
+placeholder_mark=SOLSTICE_RELEASE_KEY_PLACEHOLDER
+
+# release_key_set fails, saying why, while release_pubkey is the placeholder.
+release_key_set() {
+  case $release_pubkey in
+    *"$placeholder_mark"*)
+      say "This update helper has no release signing key yet (placeholder): updates are refused until the maintainer's public key is set in $0."
+      return 1
+      ;;
+  esac
+}
+
+# verify_signature $1 $2 succeeds only if file $2 is a valid Ed25519
+# signature of file $1 by release_pubkey. It says why on failure. The work
+# directory ($work) holds the key file.
+verify_signature() {
+  release_key_set || return 1
+  if [ -L "$2" ] || [ ! -f "$2" ] || [ ! -s "$2" ]; then
+    say "The release has no signature (SHA256SUMS.sig): refused."
+    return 1
+  fi
+  if ! have openssl; then
+    say "openssl is required to verify the release signature."
+    return 1
+  fi
+  # The key file is private to this run; Ed25519 signatures are 64 bytes.
+  keyfile=$work/release-key.pub
+  printf '%s\n' "$release_pubkey" >"$keyfile" || return 1
+  if ! openssl pkey -pubin -in "$keyfile" -noout -text_pub 2>/dev/null | grep -q 'ED25519' ||
+    ! openssl pkeyutl -help 2>&1 | grep -q -- '-rawin'; then
+    say "This openssl cannot verify Ed25519 signatures (OpenSSL 1.1.1 or later is required): update refused."
+    return 1
+  fi
+  if [ "$(wc -c <"$2")" -ne 64 ]; then
+    say "SHA256SUMS.sig is not an Ed25519 signature: refused."
+    return 1
+  fi
+  if ! openssl pkeyutl -verify -pubin -inkey "$keyfile" -rawin -in "$1" -sigfile "$2" >/dev/null 2>&1; then
+    say "The signature of SHA256SUMS is wrong: refused."
+    return 1
+  fi
+  return 0
+}
+# end signature
 
 # say writes a line to the journal and to the log shown in the interface.
 say() {
@@ -477,9 +538,14 @@ main() {
     say "Test mode: downloading from $base."
   fi
 
+  release_key_set || fail "Updates cannot be verified."
   name=solstice-$to-linux-$arch
   say "Downloading $name.tar.gz."
   fetch "$base/v$to/SHA256SUMS" "$work/SHA256SUMS" 65536 || fail "Could not download SHA256SUMS."
+  fetch "$base/v$to/SHA256SUMS.sig" "$work/SHA256SUMS.sig" 1024 || fail "Could not download SHA256SUMS.sig: a release without a signature is refused."
+  # Nothing in SHA256SUMS is trusted before this.
+  verify_signature "$work/SHA256SUMS" "$work/SHA256SUMS.sig" || fail "The signature of the release could not be verified."
+  say "Signature verified."
   fetch "$base/v$to/$name.tar.gz" "$work/$name.tar.gz" 268435456 || fail "Could not download $name.tar.gz."
   want=$(awk -v n="$name.tar.gz" '($2 == n || $2 == "*" n) && length($1) == 64 && $1 ~ /^[0-9a-f]+$/ { print $1 }' "$work/SHA256SUMS")
   if [ -z "$want" ] || [ "$(printf '%s\n' "$want" | wc -l)" -ne 1 ]; then

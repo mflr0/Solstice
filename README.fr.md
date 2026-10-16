@@ -69,6 +69,12 @@ installe aussi MariaDB et crée la base et son compte ; sans cette option,
 l'assistant demande une base existante. Relancer le script avec une archive
 plus récente met à jour sur place.
 
+Les mises à jour lancées depuis l'administration ne s'installent que si le
+`SHA256SUMS` de la version porte une signature valide (`SHA256SUMS.sig`) de la
+clé de publication écrite dans `/usr/local/lib/solstice/update.sh` ; ce script
+est remplacé par `install.sh`, pas par les mises à jour elles-mêmes. OpenSSL
+1.1.1 ou plus récent est nécessaire.
+
 ### Premier démarrage : l'assistant d'installation
 
 Tant qu'aucune base n'est configurée, ou que la base n'a encore aucun compte,
@@ -222,7 +228,24 @@ passe généré s'affiche).
 
 `make build` produit le binaire unique avec l'interface embarquée,
 `make docker` l'image, et `make release VERSION=x.y.z` les archives pour
-Linux, macOS et Windows avec leurs SHA256SUMS.
+Linux, macOS et Windows avec leurs SHA256SUMS et `SHA256SUMS.sig`, une
+signature Ed25519 de ce fichier. Publier une version demande la clé privée,
+désignée par `SOLSTICE_RELEASE_KEY` et gardée hors du dépôt. Pour créer la
+paire de clés, une fois :
+
+```bash
+umask 077
+openssl genpkey -algorithm ed25519 -out ~/solstice-release-key.pem
+openssl pkey -in ~/solstice-release-key.pem -pubout    # la clé publique
+```
+
+Collez la clé publique (le bloc `-----BEGIN PUBLIC KEY-----`) à la place de
+`release_pubkey`, un texte provisoire, dans `deploy/linux/update.sh`, et
+validez-la. Tant qu'elle n'y est pas, l'assistant de mise à jour refuse toute
+mise à jour. Ensuite
+`SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
+`deploy/linux/test-update-signature.sh` teste la vérification avec une clé
+jetable.
 
 ### Tests
 
