@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"solstice/internal/jiradb"
+	"solstice/internal/sqlq"
 )
 
 // Options configures an import.
@@ -438,7 +439,7 @@ func (in *inserter) flush() error {
 	if in.rows == 0 {
 		return nil
 	}
-	tuple := "(" + strings.TrimSuffix(strings.Repeat("?, ", in.ncols), ", ") + ")"
+	tuple := "(" + sqlq.Marks(in.ncols) + ")"
 	var sb strings.Builder
 	sb.WriteString(in.head)
 	for i := range in.rows {

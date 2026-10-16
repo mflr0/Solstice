@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // Jira resolves a user name against its user directories in order of
@@ -276,7 +278,7 @@ func (r *run) importGroups() error {
 		}
 	}
 	for chunk := range slices.Chunk(admins, 1000) {
-		q := "UPDATE users SET is_admin = TRUE WHERE id IN (" + placeholders(len(chunk)) + ")"
+		q := "UPDATE users SET is_admin = TRUE WHERE id IN (" + sqlq.Marks(len(chunk)) + ")"
 		if _, err := r.dst.ExecContext(r.ctx, q, chunk...); err != nil {
 			return err
 		}
@@ -324,7 +326,7 @@ func (r *run) applyApplicationAccess(adminGroups map[int64]bool) error {
 		}
 	}
 	for chunk := range slices.Chunk(noAccess, 1000) {
-		q := "UPDATE users SET active = FALSE WHERE id IN (" + placeholders(len(chunk)) + ")"
+		q := "UPDATE users SET active = FALSE WHERE id IN (" + sqlq.Marks(len(chunk)) + ")"
 		if _, err := r.dst.ExecContext(r.ctx, q, chunk...); err != nil {
 			return err
 		}
@@ -342,8 +344,4 @@ func plural(n int, one, many string) string {
 		return "1 " + one
 	}
 	return strconv.Itoa(n) + " " + many
-}
-
-func placeholders(n int) string {
-	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }

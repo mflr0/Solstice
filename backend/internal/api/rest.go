@@ -35,6 +35,7 @@ import (
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // integrationRoutes registers the routes of tokens, the audit log, the CSV
@@ -480,8 +481,8 @@ func (s *Server) jiraUsers(ctx context.Context, o *restOut, ids ...int64) (map[i
 	for len(args) > 0 {
 		chunk := args[:min(len(args), 500)]
 		args = args[len(chunk):]
-		err := scanAll(ctx, s.db, `SELECT id, username, COALESCE(user_key, username), display_name, email, active
-			FROM users WHERE id IN (`+marks(len(chunk))+`)`, func(rows *sql.Rows) error {
+		err := sqlq.Each(ctx, s.db, `SELECT id, username, COALESCE(user_key, username), display_name, email, active
+			FROM users WHERE id IN (`+sqlq.Marks(len(chunk))+`)`, func(rows *sql.Rows) error {
 			var id int64
 			u := &jiraUser{TimeZone: o.tz.String()}
 			if err := rows.Scan(&id, &u.Name, &u.Key, &u.DisplayName, &u.EmailAddress, &u.Active); err != nil {

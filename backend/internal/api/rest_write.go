@@ -13,13 +13,14 @@ import (
 	"math"
 	"net/http"
 	"slices"
+
 	"solstice/internal/i18n"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"solstice/internal/perm"
 )
 
 // jiraEditInput is the body of Jira's create and edit requests.
@@ -156,7 +157,7 @@ func intID(s string) (int64, bool) {
 // security levels.
 func (s *Server) pairs(ctx context.Context, table string, projectID int64) (map[int64]string, error) {
 	out := map[int64]string{}
-	err := scanAll(ctx, s.db, `SELECT id, name FROM `+table+` WHERE project_id = ?`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT id, name FROM `+table+` WHERE project_id = ?`, func(rows *sql.Rows) error {
 		var id int64
 		var name string
 		if err := rows.Scan(&id, &name); err != nil {
@@ -718,7 +719,7 @@ type fieldOption struct {
 
 func (s *Server) fieldOptions(ctx context.Context, fieldID int64) ([]fieldOption, error) {
 	var out []fieldOption
-	err := scanAll(ctx, s.db, `SELECT id, COALESCE(parent_id, 0), value, disabled FROM custom_field_options
+	err := sqlq.Each(ctx, s.db, `SELECT id, COALESCE(parent_id, 0), value, disabled FROM custom_field_options
 		WHERE field_id = ? ORDER BY position, id`, func(rows *sql.Rows) error {
 		var o fieldOption
 		if err := rows.Scan(&o.id, &o.parent, &o.value, &o.disabled); err != nil {

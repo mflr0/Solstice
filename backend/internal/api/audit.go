@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
-	"solstice/internal/i18n"
-	"strconv"
-	"strings"
-	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/auth"
+	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // auditLog records an action of the current user. Handlers call it once the
@@ -121,7 +122,7 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	entries := []auditEntryOut{}
-	err := scanAll(ctx, s.db, `SELECT a.id, a.created_at, u.id, u.username, u.display_name, u.active, a.username, a.ip,
+	err := sqlq.Each(ctx, s.db, `SELECT a.id, a.created_at, u.id, u.username, u.display_name, u.active, a.username, a.ip,
 		a.action, a.target_type, a.target_id, a.target_label, a.details`+from+`
 		ORDER BY a.created_at DESC, a.id DESC LIMIT ? OFFSET ?`, func(rows *sql.Rows) error {
 		var e auditEntryOut
@@ -280,7 +281,7 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 // ("edit: role Developers"), for comparing them before and after a change.
 func (s *Server) projectGrants(ctx context.Context, projectID int64) (map[string]bool, error) {
 	out := map[string]bool{}
-	err := scanAll(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(u.username, ug.name, pr.name, '')
+	err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(u.username, ug.name, pr.name, '')
 		FROM project_permissions g
 		LEFT JOIN users u ON u.id = g.user_id
 		LEFT JOIN user_groups ug ON ug.id = g.group_id

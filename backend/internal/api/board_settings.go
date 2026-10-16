@@ -9,6 +9,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 type boardInput struct {
@@ -182,7 +183,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		q := `DELETE FROM ` + table + ` WHERE board_id = ?`
 		a := []any{b.ID}
 		if len(keep) > 0 {
-			q += ` AND id NOT IN (` + marks(len(keep)) + `)`
+			q += ` AND id NOT IN (` + sqlq.Marks(len(keep)) + `)`
 			for _, id := range keep {
 				a = append(a, id)
 			}

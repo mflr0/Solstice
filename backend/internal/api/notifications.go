@@ -14,20 +14,21 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"solstice/internal/i18n"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/i18n"
 	"solstice/internal/live"
 	"solstice/internal/mail"
 	"solstice/internal/notify"
 	"solstice/internal/perm"
 	"solstice/internal/secret"
 	"solstice/internal/settings"
+	"solstice/internal/sqlq"
 	"solstice/internal/webhook"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 // outgoing holds the event bus and what it feeds.
@@ -837,7 +838,7 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 	}
 	var list []*issueRow
 	var ids []int64
-	if err := scanAll(ctx, s.db, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ?`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ?`, func(rows *sql.Rows) error {
 		iss, err := scanIssue(rows)
 		if err != nil {
 			return err

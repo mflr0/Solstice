@@ -19,6 +19,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // projectKeyPattern is Jira's default rule: an upper-case letter, then
@@ -384,7 +385,7 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 				args = append([]any{id}, row...)
 			}
 			args = append(args, i+1)
-			if _, err := tx.ExecContext(ctx, `INSERT INTO `+table+` (`+cols+`) VALUES (`+marks(len(args))+`)`,
+			if _, err := tx.ExecContext(ctx, `INSERT INTO `+table+` (`+cols+`) VALUES (`+sqlq.Marks(len(args))+`)`,
 				args...); err != nil {
 				return err
 			}
@@ -476,7 +477,7 @@ func (s *Server) projectSettings(ctx context.Context, id int64) (*projectSetting
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
+	err = sqlq.Each(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
 		func(rows *sql.Rows) error {
 			var t string
 			if err := rows.Scan(&t); err != nil {
@@ -565,7 +566,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		inUse := []map[string]any{}
-		err = scanAll(ctx, s.db, `SELECT issue_type_id, COUNT(*) FROM issues WHERE project_id = ? GROUP BY issue_type_id`,
+		err = sqlq.Each(ctx, s.db, `SELECT issue_type_id, COUNT(*) FROM issues WHERE project_id = ? GROUP BY issue_type_id`,
 			func(rows *sql.Rows) error {
 				var t string
 				var n int
@@ -735,7 +736,7 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {
 			msg: i18n.M(i18n.ProjectDeleteConfirm)}
 	}
 	var files []int64
-	if err := scanAll(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
+	if err := sqlq.Each(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
 		WHERE i.project_id = ?`, func(rows *sql.Rows) error {
 		var a int64
 		if err := rows.Scan(&a); err != nil {
@@ -796,7 +797,7 @@ func (s *Server) adminProjects(w http.ResponseWriter, r *http.Request) error {
 	}
 	list := []row{}
 	var leads []int64
-	if err := scanAll(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived,
+	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived,
 		(SELECT COUNT(*) FROM issues i WHERE i.project_id = p.id)
 		FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.archived, p.name`,
 		func(rows *sql.Rows) error {
@@ -836,7 +837,7 @@ type categoryOut struct {
 
 func (s *Server) categories(ctx context.Context, where string, args ...any) ([]categoryOut, error) {
 	out := []categoryOut{}
-	err := scanAll(ctx, s.db, `SELECT c.id, c.name, c.description,
+	err := sqlq.Each(ctx, s.db, `SELECT c.id, c.name, c.description,
 		(SELECT COUNT(*) FROM projects p WHERE p.category_id = c.id) FROM project_categories c
 		WHERE `+where+` ORDER BY c.name`, func(rows *sql.Rows) error {
 		var c categoryOut

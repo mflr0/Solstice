@@ -5,15 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+
 	"solstice/internal/i18n"
+	"solstice/internal/jql"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"solstice/internal/jql"
-	"solstice/internal/perm"
 )
 
 // Saved filters: a name on a query (JQL or simple syntax), private to their
@@ -82,7 +83,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 		q += ` WHERE f.id = ?`
 		args = append(args, only)
 	}
-	if err := scanAll(ctx, s.db, q, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 		f := &filterRow{}
 		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.out.Favourite); err != nil {
 			return err
@@ -93,7 +94,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
+	if err := sqlq.Each(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
 		g.name, p.pkey, r.name, u.display_name
 		FROM filter_shares sh
 		LEFT JOIN user_groups g ON g.id = sh.group_id

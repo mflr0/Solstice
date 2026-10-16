@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 // Permissions. Solstice keeps fewer, broader permissions than Jira: resolving
@@ -382,15 +384,15 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	var cond []string
 	var args []any
 	if len(full) > 0 {
-		cond = append(cond, col("project_id")+" IN ("+marks(len(full))+")")
+		cond = append(cond, col("project_id")+" IN ("+sqlq.Marks(len(full))+")")
 		args = append(args, full...)
 	}
 	if len(byReporter) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+marks(len(byReporter))+") AND "+col("reporter_id")+" = ?)")
+		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byReporter))+") AND "+col("reporter_id")+" = ?)")
 		args = append(append(args, byReporter...), s.UserID)
 	}
 	if len(byAssignee) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+marks(len(byAssignee))+") AND "+col("assignee_id")+" = ?)")
+		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byAssignee))+") AND "+col("assignee_id")+" = ?)")
 		args = append(append(args, byAssignee...), s.UserID)
 	}
 	if len(cond) == 0 {
@@ -425,22 +427,18 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	}
 	sec := []string{col("security_level_id") + " IS NULL"}
 	if len(open) > 0 {
-		sec = append(sec, col("security_level_id")+" IN ("+marks(len(open))+")")
+		sec = append(sec, col("security_level_id")+" IN ("+sqlq.Marks(len(open))+")")
 		args = append(args, open...)
 	}
 	if len(levelByReporter) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+marks(len(levelByReporter))+") AND "+col("reporter_id")+" = ?)")
+		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByReporter))+") AND "+col("reporter_id")+" = ?)")
 		args = append(append(args, levelByReporter...), s.UserID)
 	}
 	if len(levelByAssignee) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+marks(len(levelByAssignee))+") AND "+col("assignee_id")+" = ?)")
+		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByAssignee))+") AND "+col("assignee_id")+" = ?)")
 		args = append(append(args, levelByAssignee...), s.UserID)
 	}
 	return where + " AND (" + strings.Join(sec, " OR ") + ")", args
-}
-
-func marks(n int) string {
-	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }
 
 // Archived reports whether a project is archived.

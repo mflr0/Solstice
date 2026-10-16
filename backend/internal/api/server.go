@@ -22,6 +22,7 @@ import (
 	"solstice/internal/issue"
 	"solstice/internal/live"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // Server holds what handlers share.
@@ -408,7 +409,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		status: map[string]statusRef{}, priority: map[string]priorityRef{},
 		resolution: map[string]namedRef{}, issueType: map[string]typeRef{}, linkType: map[int64]linkTypeRef{},
 	}
-	err := scanAll(ctx, s.db, `SELECT id, name, category FROM statuses ORDER BY position, name`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT id, name, category FROM statuses ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v statusRef
 		if err := rows.Scan(&v.ID, &v.Name, &v.Category); err != nil {
 			return err
@@ -420,7 +421,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, COALESCE(color, ''), is_default FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, COALESCE(color, ''), is_default FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v priorityRef
 		if err := rows.Scan(&v.ID, &v.Name, &v.Color, &v.Default); err != nil {
 			return err
@@ -432,7 +433,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, is_default FROM resolutions ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, is_default FROM resolutions ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v namedRef
 		var def bool
 		if err := rows.Scan(&v.ID, &v.Name, &def); err != nil {
@@ -448,7 +449,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, subtask FROM issue_types ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, subtask FROM issue_types ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v typeRef
 		if err := rows.Scan(&v.ID, &v.Name, &v.Subtask); err != nil {
 			return err
@@ -460,7 +461,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, inward, outward FROM link_types ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, inward, outward FROM link_types ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v linkTypeRef
 		if err := rows.Scan(&v.ID, &v.Name, &v.Inward, &v.Outward); err != nil {
 			return err
@@ -474,20 +475,6 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	}
 	s.catalog, s.catAt = c, time.Now()
 	return c, nil
-}
-
-func scanAll(ctx context.Context, db *sql.DB, q string, scan func(*sql.Rows) error, args ...any) error {
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		if err := scan(rows); err != nil {
-			return err
-		}
-	}
-	return rows.Err()
 }
 
 // userRef is how a user appears inside other objects.
@@ -512,7 +499,7 @@ func (s *Server) users(ctx context.Context, ids ...int64) (map[int64]userRef, er
 	if len(args) == 0 {
 		return out, nil
 	}
-	err := scanAll(ctx, s.db, `SELECT id, username, display_name, active FROM users WHERE id IN (`+marks(len(args))+`)`,
+	err := sqlq.Each(ctx, s.db, `SELECT id, username, display_name, active FROM users WHERE id IN (`+sqlq.Marks(len(args))+`)`,
 		func(rows *sql.Rows) error {
 			var u userRef
 			if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Active); err != nil {
@@ -533,8 +520,6 @@ func refOf(users map[int64]userRef, id sql.NullInt64) *userRef {
 	}
 	return nil
 }
-
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
 func dateOnly(t sql.NullTime) *string {
 	if !t.Valid {

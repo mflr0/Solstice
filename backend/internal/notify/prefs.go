@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 // Event groups: what a user can switch on or off.
@@ -98,7 +100,7 @@ func (s *Service) prefsOf(ctx context.Context, ids ...int64) (map[int64]Prefs, e
 		return out, nil
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT user_id, delivery, digest_hour, own_changes, disabled_events,
-		due_reminder, reminder_hour FROM notification_prefs WHERE user_id IN (`+marks(len(args))+`)`, args...)
+		due_reminder, reminder_hour FROM notification_prefs WHERE user_id IN (`+sqlq.Marks(len(args))+`)`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (s *Service) extraMembers(ctx context.Context, projectID int64, extra []Ext
 				WHERE r.project_id = ? AND r.role_id = ?`
 			args = []any{projectID, e.ID, projectID, e.ID}
 		}
-		if err := scan(ctx, s.db, q, func(rows *sql.Rows) error {
+		if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 			var id int64
 			err := rows.Scan(&id)
 			out[id] = true
@@ -273,20 +275,4 @@ func isoWeekday(t time.Time) int {
 		return d
 	}
 	return 7
-}
-
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
-
-func scan(ctx context.Context, db *sql.DB, q string, f func(*sql.Rows) error, args ...any) error {
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		if err := f(rows); err != nil {
-			return err
-		}
-	}
-	return rows.Err()
 }

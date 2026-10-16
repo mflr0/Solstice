@@ -6,13 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+
+	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
-
-	"solstice/internal/events"
-	"solstice/internal/perm"
 )
 
 // Comments -------------------------------------------------------------------
@@ -46,7 +47,7 @@ type commentRow struct {
 // visibleComments returns an issue's comments that the user may read.
 func (s *Server) visibleComments(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]commentRow, error) {
 	var out []commentRow
-	err := scanAll(ctx, s.db, `SELECT c.id, c.author_id, c.updated_by_id, c.body, c.created_at, c.updated_at,
+	err := sqlq.Each(ctx, s.db, `SELECT c.id, c.author_id, c.updated_by_id, c.body, c.created_at, c.updated_at,
 		c.visibility_group, c.visibility_role_id, r.name FROM comments c
 		LEFT JOIN project_roles r ON r.id = c.visibility_role_id
 		WHERE c.issue_id = ? ORDER BY c.created_at, c.id`, func(rows *sql.Rows) error {
@@ -336,7 +337,7 @@ func (s *Server) issueHistory(ctx context.Context, sub *perm.Subject, iss *issue
 	entries := []historyEntry{}
 	index := map[int64]int{}
 	var authors []int64
-	err := scanAll(ctx, s.db, `SELECT g.id, g.author_id, g.created_at, i.field_type, i.field,
+	err := sqlq.Each(ctx, s.db, `SELECT g.id, g.author_id, g.created_at, i.field_type, i.field,
 		i.old_value, i.old_string, i.new_value, i.new_string
 		FROM change_groups g JOIN change_items i ON i.group_id = g.id
 		WHERE g.issue_id = ? ORDER BY g.created_at, g.id, i.id`, func(rows *sql.Rows) error {
@@ -466,7 +467,7 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 	}
 	var list []row
 	var ids []int64
-	err = scanAll(r.Context(), s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
+	err = sqlq.Each(r.Context(), s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
 		w.visibility_role_id, pr.name FROM worklogs w LEFT JOIN project_roles pr ON pr.id = w.visibility_role_id
 		WHERE w.issue_id = ? ORDER BY w.started_at, w.id`, func(rows *sql.Rows) error {
 		var x row

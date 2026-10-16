@@ -24,6 +24,7 @@ import (
 	"unicode"
 
 	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // Field is what a filter applies to.
@@ -265,7 +266,7 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 		if !ok {
 			return "FALSE", nil
 		}
-		return "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + marks(len(cats)) + "))", anys(cats)
+		return "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + sqlq.Marks(len(cats)) + "))", anys(cats)
 	case Type:
 		return "i.issue_type_id IN (SELECT id FROM issue_types WHERE name = ?)", []any{v}
 	case Project:
@@ -342,8 +343,6 @@ func textSQL(words []string) (string, []any) {
 func escapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
-
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
 func anys[T any](xs []T) []any {
 	out := make([]any, len(xs))

@@ -13,12 +13,13 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // FlushDue writes the batches whose time has come into the outbox.
 func (s *Service) FlushDue(ctx context.Context) error {
 	var ids []int64
-	if err := scan(ctx, s.db, `SELECT id FROM notification_batches WHERE send_at <= ? ORDER BY send_at, id LIMIT 200`,
+	if err := sqlq.Each(ctx, s.db, `SELECT id FROM notification_batches WHERE send_at <= ? ORDER BY send_at, id LIMIT 200`,
 		func(rows *sql.Rows) error {
 			var id int64
 			err := rows.Scan(&id)
@@ -68,25 +69,20 @@ func (s *Service) flushBatch(ctx context.Context, id int64) (bool, error) {
 		return false, err
 	}
 	var items []storedItem
-	rows, err := tx.QueryContext(ctx, `SELECT issue_id, data FROM notification_items WHERE batch_id = ? ORDER BY id`, id)
-	if err != nil {
-		return false, err
-	}
-	for rows.Next() {
-		var it storedItem
-		var data string
-		if err := rows.Scan(&it.issueID, &data); err != nil {
-			rows.Close()
-			return false, err
-		}
-		if err := json.Unmarshal([]byte(data), &it.item); err != nil {
-			s.log.Warn("unreadable notification item dropped", "batch", id, "err", err)
-			continue
-		}
-		items = append(items, it)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	if err := sqlq.Each(ctx, tx, `SELECT issue_id, data FROM notification_items WHERE batch_id = ? ORDER BY id`,
+		func(rows *sql.Rows) error {
+			var it storedItem
+			var data string
+			if err := rows.Scan(&it.issueID, &data); err != nil {
+				return err
+			}
+			if err := json.Unmarshal([]byte(data), &it.item); err != nil {
+				s.log.Warn("unreadable notification item dropped", "batch", id, "err", err)
+				return nil
+			}
+			items = append(items, it)
+			return nil
+		}, id); err != nil {
 		return false, err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM notification_batches WHERE id = ?`, id); err != nil {

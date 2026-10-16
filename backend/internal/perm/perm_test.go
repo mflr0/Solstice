@@ -627,16 +627,3 @@ func TestAccessors(t *testing.T) {
 		t.Error("HasRole: wrong role")
 	}
 }
-
-// TestMarks checks the SQL placeholder helper.
-func TestMarks(t *testing.T) {
-	if got := marks(0); got != "" {
-		t.Errorf("marks(0) = %q, want empty", got)
-	}
-	if got := marks(1); got != "?" {
-		t.Errorf("marks(1) = %q, want ?", got)
-	}
-	if got := marks(3); got != "?, ?, ?" {
-		t.Errorf("marks(3) = %q, want \"?, ?, ?\"", got)
-	}
-}

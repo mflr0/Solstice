@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
-	"strings"
 	"time"
 
 	"solstice/internal/issue"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // Named is a catalogue value: an id and its name.
@@ -145,7 +145,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 	}
 	iss.Reporter, iss.Assignee, iss.Creator = userOf(users, reporter), userOf(users, assignee), userOf(users, creator)
 
-	if err := scan(ctx, db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
+	if err := sqlq.Each(ctx, db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
 		func(rows *sql.Rows) error {
 			var l string
 			err := rows.Scan(&l)
@@ -154,7 +154,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 		}, id); err != nil {
 		return nil, err
 	}
-	if err := scan(ctx, db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
+	if err := sqlq.Each(ctx, db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
 		WHERE ic.issue_id = ? ORDER BY c.name`, func(rows *sql.Rows) error {
 		var cid int64
 		var name string
@@ -164,7 +164,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 	}, id); err != nil {
 		return nil, err
 	}
-	if err := scan(ctx, db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+	if err := sqlq.Each(ctx, db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
 		WHERE iv.issue_id = ? ORDER BY v.position, v.name`, func(rows *sql.Rows) error {
 		var vid int64
 		var name, kind string
@@ -181,7 +181,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 	}, id); err != nil {
 		return nil, err
 	}
-	if err := scan(ctx, db, `SELECT user_id FROM watchers WHERE issue_id = ? ORDER BY user_id`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, db, `SELECT user_id FROM watchers WHERE issue_id = ? ORDER BY user_id`, func(rows *sql.Rows) error {
 		var uid int64
 		err := rows.Scan(&uid)
 		iss.Watchers = append(iss.Watchers, uid)
@@ -206,8 +206,8 @@ func LoadUsers(ctx context.Context, db *sql.DB, ids ...int64) (map[int64]*User, 
 	if len(args) == 0 {
 		return out, nil
 	}
-	err := scan(ctx, db, `SELECT id, username, COALESCE(user_key, username), display_name, email, COALESCE(locale, ''),
-		active FROM users WHERE id IN (`+strings.TrimSuffix(strings.Repeat("?, ", len(args)), ", ")+`)`,
+	err := sqlq.Each(ctx, db, `SELECT id, username, COALESCE(user_key, username), display_name, email, COALESCE(locale, ''),
+		active FROM users WHERE id IN (`+sqlq.Marks(len(args))+`)`,
 		func(rows *sql.Rows) error {
 			var u User
 			if err := rows.Scan(&u.ID, &u.Username, &u.Key, &u.Name, &u.Email, &u.Locale, &u.Active); err != nil {
@@ -224,20 +224,6 @@ func userOf(users map[int64]*User, id sql.NullInt64) *User {
 		return nil
 	}
 	return users[id.Int64]
-}
-
-func scan(ctx context.Context, db *sql.DB, q string, f func(*sql.Rows) error, args ...any) error {
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		if err := f(rows); err != nil {
-			return err
-		}
-	}
-	return rows.Err()
 }
 
 func optString(s sql.NullString) *string {

@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // keptTables are never emptied by an import.
@@ -100,7 +102,7 @@ func (r *run) restore(s *savedRows, skip ...string) (int, error) {
 			idx = append(idx, i)
 		}
 	}
-	q := "INSERT IGNORE INTO `" + s.table + "` (" + strings.Join(cols, ", ") + ") VALUES (" + placeholders(len(cols)) + ")"
+	q := "INSERT IGNORE INTO `" + s.table + "` (" + strings.Join(cols, ", ") + ") VALUES (" + sqlq.Marks(len(cols)) + ")"
 	n := 0
 	for i, row := range s.rows {
 		var uid int64
@@ -243,7 +245,7 @@ func (r *run) putBack(k *kept) error {
 			args[i] = a
 		}
 		if _, err := r.dst.ExecContext(r.ctx, `UPDATE users SET is_admin = TRUE WHERE username IN (`+
-			placeholders(len(args))+`)`, args...); err != nil {
+			sqlq.Marks(len(args))+`)`, args...); err != nil {
 			errs = append(errs, err)
 		}
 	}
