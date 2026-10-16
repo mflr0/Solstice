@@ -79,6 +79,27 @@ features (see `ROADMAP.md`). The release waits for items 8 and 9.
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
+## Hardening (from an OWASP Top 10:2025 review of the code, done on 2026-10-16)
+
+No critical or high finding. The review of the access control, injection,
+cryptography, configuration and logging paths found nothing exploitable
+without an account. Remaining hardening, none of it blocking:
+
+- Audit more events: webhook and mail settings changes, issue deletion, CSV
+  export, lockouts and rejected tokens (also as `slog` lines); a minimum
+  retention for the audit log.
+- Supply chain: pin the CI tools (`staticcheck`, `gosec`), the GitHub actions
+  (by commit) and the base images (by digest); add Dependabot, `govulncheck`,
+  `pnpm audit` and a `SECURITY.md`; sign `SHA256SUMS` of the releases and
+  have the updater check the signature.
+- Honour `?tls=` in `SOLSTICE_DB` (today dropped) so the database link can be
+  encrypted; warn when the setup wizard is reached over plain HTTP.
+- Password and sessions: change a password and end the other sessions in one
+  transaction; revoke API tokens when an account is deactivated or reset.
+- Resource limits: a quota for attachments, a cap on live-event streams, a
+  read timeout on request bodies, `recover` in the background workers.
+- Smaller items are tracked outside this file until fixed.
+
 ## Refactoring (after 1.0, or with a freeze on `internal/api`)
 
 `internal/api` has 41 files mixing HTTP, business rules and SQL, and the
