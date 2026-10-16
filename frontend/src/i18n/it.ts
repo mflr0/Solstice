@@ -1755,6 +1755,63 @@ export const it: Messages = {
     },
   },
 
+  projectVersions: {
+    intro:
+      'Le versioni sono i rilasci del progetto. Tienile nell’ordine in cui le rilasci; i ticket sono pianificati in una versione, e quelli non risolti possono passare a un’altra al rilascio.',
+    newVersion: 'Nuova versione',
+    empty: 'Ancora nessuna versione',
+    emptyHint: 'Crea il primo rilascio per pianificarvi dei ticket.',
+    archivedHint: 'Una versione rilasciata o archiviata non viene più proposta sui nuovi ticket.',
+    startDate: 'Data di inizio',
+    releaseDate: 'Data di rilascio',
+    states: { unreleased: 'non rilasciata', released: 'rilasciata', archived: 'archiviata' },
+    late: 'in ritardo',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (di cui ${formatNumber(unresolved)} non risolti)`
+        : `${formatNumber(total)}`,
+    release: 'Rilascia',
+    unrelease: 'Segna come non rilasciata',
+    merge: 'Unisci',
+    createTitle: 'Nuova versione',
+    editTitle: (name: string) => `Modifica «${name}»`,
+    create: 'Crea la versione',
+    created: (name: string) => `Versione «${name}» creata.`,
+    saved: (name: string) => `Versione «${name}» salvata.`,
+    archived: (name: string) => `Versione «${name}» archiviata.`,
+    unarchived: (name: string) => `Versione «${name}» di nuovo attiva.`,
+    released: (name: string) => `Versione «${name}» rilasciata.`,
+    unreleased: (name: string) => `Versione «${name}» segnata come non rilasciata.`,
+    ordered: 'Ordine salvato.',
+    releaseTitle: (name: string) => `Rilasciare «${name}»?`,
+    releaseBody: 'La versione viene segnata come rilasciata alla data indicata sotto.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'ticket pianificato', 'ticket pianificati')} in questa versione ${n === 1 ? 'non è ancora risolto' : 'non sono ancora risolti'}.`,
+    releaseMoveLabel: 'Sposta su',
+    releaseMoveNone: 'Lasciali in questa versione',
+    mergeTitle: (name: string) => `Unire «${name}»?`,
+    mergeBody:
+      'Tutti i ticket di questa versione passano alla versione scelta, poi questa versione viene eliminata.',
+    mergeLabel: 'Unisci in',
+    mergeChoose: 'Scegli una versione…',
+    mergeNone: 'Non c’è un’altra versione in cui unire.',
+    merged: (name: string, into: string) => `Versione «${name}» unita in «${into}».`,
+    deleteTitle: (name: string) => `Eliminare «${name}»?`,
+    deleteUnused: 'Nessun ticket usa questa versione.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'ticket usa', 'ticket usano')} questa versione. Spostali su un’altra versione, oppure togli loro soltanto questa.`,
+    deleteMoveLabel: 'Sposta su',
+    deleteMoveNone: 'Togli soltanto la versione',
+    deleted: (name: string) => `Versione «${name}» eliminata.`,
+    problems: {
+      nameRequired: 'Dai un nome alla versione.',
+      nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',
+      nameTaken: 'Un’altra versione ha già questo nome.',
+      dayInvalid: 'Inserisci una data valida (anno-mese-giorno).',
+      startAfterRelease: 'La data di inizio non può essere successiva alla data di rilascio.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',

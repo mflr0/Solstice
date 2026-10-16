@@ -1773,6 +1773,64 @@ export const de: Messages = {
     },
   },
 
+  projectVersions: {
+    intro:
+      'Versionen sind die Veröffentlichungen des Projekts. Halten Sie sie in der Reihenfolge, in der Sie sie ausliefern; Vorgänge werden in einer Version geplant, und die ungelösten können bei der Veröffentlichung weiterziehen.',
+    newVersion: 'Neue Version',
+    empty: 'Noch keine Version',
+    emptyHint: 'Legen Sie die erste Veröffentlichung an, um Vorgänge darin zu planen.',
+    archivedHint:
+      'Eine veröffentlichte oder archivierte Version wird bei neuen Vorgängen nicht mehr angeboten.',
+    startDate: 'Startdatum',
+    releaseDate: 'Veröffentlichungsdatum',
+    states: { unreleased: 'unveröffentlicht', released: 'veröffentlicht', archived: 'archiviert' },
+    late: 'überfällig',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (davon ${formatNumber(unresolved)} ungelöst)`
+        : `${formatNumber(total)}`,
+    release: 'Veröffentlichen',
+    unrelease: 'Als unveröffentlicht markieren',
+    merge: 'Zusammenführen',
+    createTitle: 'Neue Version',
+    editTitle: (name: string) => `${name} bearbeiten`,
+    create: 'Version anlegen',
+    created: (name: string) => `Version ${name} wurde angelegt.`,
+    saved: (name: string) => `Version ${name} wurde gespeichert.`,
+    archived: (name: string) => `Version ${name} wurde archiviert.`,
+    unarchived: (name: string) => `Version ${name} ist wieder aktiv.`,
+    released: (name: string) => `Version ${name} wurde veröffentlicht.`,
+    unreleased: (name: string) => `Version ${name} ist als unveröffentlicht markiert.`,
+    ordered: 'Reihenfolge gespeichert.',
+    releaseTitle: (name: string) => `${name} veröffentlichen?`,
+    releaseBody: 'Die Version wird mit dem unten stehenden Datum als veröffentlicht markiert.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'in dieser Version geplanter Vorgang ist', 'in dieser Version geplante Vorgänge sind')} noch ungelöst.`,
+    releaseMoveLabel: 'Verschieben nach',
+    releaseMoveNone: 'In dieser Version belassen',
+    mergeTitle: (name: string) => `${name} zusammenführen?`,
+    mergeBody:
+      'Alle Vorgänge dieser Version wandern in die gewählte Version, und diese Version wird gelöscht.',
+    mergeLabel: 'Zusammenführen mit',
+    mergeChoose: 'Version wählen…',
+    mergeNone: 'Es gibt keine andere Version, mit der sich zusammenführen ließe.',
+    merged: (name: string, into: string) => `Version ${name} wurde mit ${into} zusammengeführt.`,
+    deleteTitle: (name: string) => `${name} löschen?`,
+    deleteUnused: 'Kein Vorgang verwendet diese Version.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'Vorgang verwendet', 'Vorgänge verwenden')} diese Version. Verschieben Sie sie in eine andere Version oder entfernen Sie nur diese von ihnen.`,
+    deleteMoveLabel: 'Verschieben nach',
+    deleteMoveNone: 'Version nur entfernen',
+    deleted: (name: string) => `Version ${name} wurde gelöscht.`,
+    problems: {
+      nameRequired: 'Geben Sie der Version einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Version hat bereits diesen Namen.',
+      dayInvalid: 'Geben Sie ein gültiges Datum ein (Jahr-Monat-Tag).',
+      startAfterRelease: 'Das Startdatum darf nicht nach dem Veröffentlichungsdatum liegen.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',

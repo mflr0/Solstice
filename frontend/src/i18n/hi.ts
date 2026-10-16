@@ -1743,6 +1743,62 @@ export const hi: Messages = {
     },
   },
 
+  projectVersions: {
+    intro:
+      'वर्ज़न प्रोजेक्ट की रिलीज़ हैं। उन्हें उसी क्रम में रखिए जिसमें आप उन्हें रिलीज़ करते हैं; टिकट किसी वर्ज़न में योजित होते हैं, और रिलीज़ के समय अनसुलझे टिकट आगे बढ़ाए जा सकते हैं।',
+    newVersion: 'नया वर्ज़न',
+    empty: 'अभी कोई वर्ज़न नहीं',
+    emptyHint: 'टिकट योजित करने के लिए पहली रिलीज़ बनाइए।',
+    archivedHint: 'रिलीज़ हुआ या संग्रहीत वर्ज़न नए टिकटों पर नहीं सुझाया जाता।',
+    startDate: 'आरंभ तिथि',
+    releaseDate: 'रिलीज़ तिथि',
+    states: { unreleased: 'रिलीज़ नहीं हुआ', released: 'रिलीज़ हुआ', archived: 'संग्रहीत' },
+    late: 'देर से',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (${formatNumber(unresolved)} अनसुलझे)`
+        : `${formatNumber(total)}`,
+    release: 'रिलीज़ करें',
+    unrelease: 'रिलीज़ नहीं हुआ चिह्नित करें',
+    merge: 'मर्ज करें',
+    createTitle: 'नया वर्ज़न',
+    editTitle: (name: string) => `${name} बदलें`,
+    create: 'वर्ज़न बनाएँ',
+    created: (name: string) => `वर्ज़न ${name} बन गया।`,
+    saved: (name: string) => `वर्ज़न ${name} सहेज लिया गया।`,
+    archived: (name: string) => `वर्ज़न ${name} संग्रहीत हो गया।`,
+    unarchived: (name: string) => `वर्ज़न ${name} फिर से सक्रिय है।`,
+    released: (name: string) => `वर्ज़न ${name} रिलीज़ हो गया।`,
+    unreleased: (name: string) => `वर्ज़न ${name} रिलीज़ नहीं हुआ चिह्नित है।`,
+    ordered: 'क्रम सहेज लिया गया।',
+    releaseTitle: (name: string) => `${name} रिलीज़ करें?`,
+    releaseBody: 'वर्ज़न नीचे दी गई तारीख़ पर रिलीज़ हुआ चिह्नित होगा।',
+    releaseUnresolved: (n: number) =>
+      `इस वर्ज़न में योजित ${plural(n, 'टिकट', 'टिकट')} अभी अनसुलझे हैं।`,
+    releaseMoveLabel: 'इनमें ले जाएँ',
+    releaseMoveNone: 'इसी वर्ज़न में रहने दें',
+    mergeTitle: (name: string) => `${name} मर्ज करें?`,
+    mergeBody: 'इस वर्ज़न के सभी टिकट आपके चुने वर्ज़न में चले जाएँगे, और यह वर्ज़न हट जाएगा।',
+    mergeLabel: 'इसमें मर्ज करें',
+    mergeChoose: 'वर्ज़न चुनें…',
+    mergeNone: 'मर्ज करने के लिए कोई दूसरा वर्ज़न नहीं है।',
+    merged: (name: string, into: string) => `वर्ज़न ${name} को ${into} में मर्ज कर दिया गया।`,
+    deleteTitle: (name: string) => `${name} हटाएँ?`,
+    deleteUnused: 'किसी टिकट में यह वर्ज़न नहीं है।',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'टिकट', 'टिकट')} इस वर्ज़न का उपयोग करते हैं। उन्हें किसी दूसरे वर्ज़न में ले जाइए, या उनसे बस इसे हटा दीजिए।`,
+    deleteMoveLabel: 'इनमें ले जाएँ',
+    deleteMoveNone: 'बस वर्ज़न हटाएँ',
+    deleted: (name: string) => `वर्ज़न ${name} हट गया।`,
+    problems: {
+      nameRequired: 'वर्ज़न को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'किसी और वर्ज़न का यही नाम पहले से है।',
+      dayInvalid: 'सही तारीख़ लिखिए (वर्ष-माह-दिन)।',
+      startAfterRelease: 'आरंभ तिथि रिलीज़ तिथि के बाद नहीं हो सकती।',
+    },
+  },
+
   catalogAdmin: {
     name: 'नाम',
     search: 'खोजें',

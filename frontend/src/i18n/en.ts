@@ -1747,6 +1747,63 @@ export const en = {
     },
   },
 
+  projectVersions: {
+    intro:
+      'Versions are the releases of the project. Keep them in the order you ship them; issues are planned in a version, and the unresolved ones can move on when it is released.',
+    newVersion: 'New version',
+    empty: 'No version yet',
+    emptyHint: 'Create the first release to plan issues in it.',
+    archivedHint: 'A released or archived version is no longer offered on new issues.',
+    startDate: 'Start date',
+    releaseDate: 'Release date',
+    states: { unreleased: 'unreleased', released: 'released', archived: 'archived' },
+    late: 'late',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (${formatNumber(unresolved)} unresolved)`
+        : `${formatNumber(total)}`,
+    release: 'Release',
+    unrelease: 'Mark as unreleased',
+    merge: 'Merge',
+    createTitle: 'New version',
+    editTitle: (name: string) => `Edit ${name}`,
+    create: 'Create the version',
+    created: (name: string) => `Version ${name} created.`,
+    saved: (name: string) => `Version ${name} saved.`,
+    archived: (name: string) => `Version ${name} archived.`,
+    unarchived: (name: string) => `Version ${name} is active again.`,
+    released: (name: string) => `Version ${name} released.`,
+    unreleased: (name: string) => `Version ${name} is marked as unreleased.`,
+    ordered: 'Order saved.',
+    releaseTitle: (name: string) => `Release ${name}?`,
+    releaseBody: 'The version is marked as released on the date below.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'issue planned', 'issues planned')} in this version ${n === 1 ? 'is' : 'are'} still unresolved.`,
+    releaseMoveLabel: 'Move them to',
+    releaseMoveNone: 'Leave them in this version',
+    mergeTitle: (name: string) => `Merge ${name}?`,
+    mergeBody:
+      'Every issue of this version moves to the version you choose, and this version is deleted.',
+    mergeLabel: 'Merge into',
+    mergeChoose: 'Choose a version…',
+    mergeNone: 'There is no other version to merge into.',
+    merged: (name: string, into: string) => `Version ${name} merged into ${into}.`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteUnused: 'No issue uses this version.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'issue uses', 'issues use')} this version. Move them to another version, or just remove this one from them.`,
+    deleteMoveLabel: 'Move them to',
+    deleteMoveNone: 'Only remove the version from them',
+    deleted: (name: string) => `Version ${name} deleted.`,
+    problems: {
+      nameRequired: 'Give the version a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another version already has this name.',
+      dayInvalid: 'Enter a valid date (year-month-day).',
+      startAfterRelease: 'The start date cannot be after the release date.',
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',
