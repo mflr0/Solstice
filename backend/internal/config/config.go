@@ -96,9 +96,20 @@ type HTTPSettings struct {
 func Defaults() Settings {
 	return Settings{
 		Data: "data",
-		DB:   DBSettings{MaxOpenConns: 20, MaxIdleConns: 10, ConnMaxLifetime: 5 * time.Minute},
-		Log:  LogSettings{Level: slog.LevelInfo, Format: LogText},
-		HTTP: HTTPSettings{Addr: ":8080", ShutdownTimeout: 10 * time.Second, MaxUpload: 100 << 20},
+		DB: DBSettings{
+			MaxOpenConns:    20,
+			MaxIdleConns:    10,
+			ConnMaxLifetime: 5 * time.Minute,
+		},
+		Log: LogSettings{
+			Level:  slog.LevelInfo,
+			Format: LogText,
+		},
+		HTTP: HTTPSettings{
+			Addr:            ":8080",
+			ShutdownTimeout: 10 * time.Second,
+			MaxUpload:       100 << 20,
+		},
 	}
 }
 
