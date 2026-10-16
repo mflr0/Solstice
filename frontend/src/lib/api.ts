@@ -143,6 +143,9 @@ export interface IssueFields {
   status?: string;
   resolution?: string | null;
   securityLevel?: number | null;
+  /** Jira durations ("1w 2d 3h 30m"); null clears. */
+  originalEstimate?: string | null;
+  remainingEstimate?: string | null;
 }
 
 export const api = {
