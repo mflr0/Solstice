@@ -21,7 +21,7 @@ export interface PublicSettings {
 /** What an older server, without the endpoint, amounts to. */
 const FALLBACK: PublicSettings = {
   instanceName: '',
-  defaultLanguage: 'fr',
+  defaultLanguage: 'en',
   banner: null,
   passwordMinLength: 10,
 };

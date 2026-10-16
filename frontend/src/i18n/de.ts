@@ -1,6 +1,6 @@
 /**
- * German. Translated from French (fr.ts), terms checked against en.ts and the
- * glossary in src/i18n/README.md. Formal « Sie », „…“ quotes, sentence case.
+ * German. Translated from English (en.ts), terms from the glossary in
+ * src/i18n/README.md. Formal « Sie », „…“ quotes, sentence case.
  */
 
 import { parseDay } from '../core/dates.js';

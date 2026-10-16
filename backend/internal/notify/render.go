@@ -221,7 +221,7 @@ var dateLayouts = map[string]string{"fr": "02/01/2006", "en": "2006-01-02", "de"
 func formatDate(locale string, t time.Time) string {
 	layout, ok := dateLayouts[locale]
 	if !ok {
-		layout = dateLayouts["fr"]
+		layout = dateLayouts[i18n.Default]
 	}
 	return t.Format(layout)
 }

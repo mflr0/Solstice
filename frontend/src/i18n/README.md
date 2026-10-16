@@ -29,7 +29,7 @@ file of the same shape: `fr.ts`, `de.ts`, `it.ts`, `hi.ts`.
 - Don't translate user data (status names, project names…), keys like `DEMO-12`,
   `JQL`, JQL field names in examples (`assignee = currentUser()`), or the
   product name Solstice.
-- Mentions of the source system in migration texts stay as in French.
+- Mentions of the source system in migration texts stay as in English.
 - Typography: German „…“, Italian «…», English and Hindi “…”; Hindi ends
   sentences with « । ». Non-breaking spaces before punctuation are French only.
 - Tone: German uses « Sie », Italian uses « tu », Hindi uses « आप ».

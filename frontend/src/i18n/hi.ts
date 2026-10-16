@@ -1,8 +1,7 @@
 /**
- * Hindi, in Devanagari. Translated from French (fr.ts), terms checked
- * against en.ts and the glossary in src/i18n/README.md. Polite आप, “…”
- * quotes, sentences end with ।; numbers, dates and plurals come from the
- * format helpers.
+ * Hindi, in Devanagari. Translated from English (en.ts), terms from the
+ * glossary in src/i18n/README.md. Polite आप, “…” quotes, sentences end with
+ * ।; numbers, dates and plurals come from the format helpers.
  */
 
 import { parseDay } from '../core/dates.js';

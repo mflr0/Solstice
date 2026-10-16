@@ -1,7 +1,6 @@
 /**
- * English. The reference translation: other languages translate from French
- * and check their terms against this file (src/i18n/README.md has the
- * glossary). US spelling, sentence case.
+ * English, the source: other languages translate this file and follow the
+ * glossary in src/i18n/README.md. US spelling, sentence case.
  */
 
 import { parseDay } from '../core/dates.js';

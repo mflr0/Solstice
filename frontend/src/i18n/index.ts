@@ -1,13 +1,13 @@
 /**
  * The interface language: chosen once at boot, before the application mounts,
- * and never changed while a page lives (switching reloads it). French ships
+ * and never changed while a page lives (switching reloads it). English ships
  * with the application; any other catalogue is fetched on its own, so a
  * visit downloads one language only.
  *
- * Components read strings from `t` (src/i18n/fr.ts), a live binding that
+ * Components read strings from `t` (src/i18n/t.ts), a live binding that
  * setLocale() points at the catalogue in use. Read `t` inside functions and
  * components, never at the top level of a module: that would run before boot
- * and keep French.
+ * and keep English.
  */
 
 import { en } from './en.js';
@@ -60,8 +60,8 @@ export function saveLocale(l: Locale): void {
 }
 
 /**
- * Boot: the language chosen here, else the browser's, else French. A
- * catalogue that fails to load (offline) leaves French rather than no page.
+ * Boot: the language chosen here, else the browser's, else English. A
+ * catalogue that fails to load (offline) leaves English rather than no page.
  */
 export async function initLocale(): Promise<Locale> {
   const languages = typeof navigator !== 'undefined' ? (navigator.languages ?? []) : [];
