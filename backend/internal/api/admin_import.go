@@ -159,7 +159,7 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 	u := currentUser(r)
 	loc, _ := time.LoadLocation(f.TZ)
 	imp := &adminImport{job: &importJob{state: "running", started: time.Now()}, database: name,
-		operator: u.Username, keys: credentialKeys(r), me: meOf(u), ip: clientIP(r)}
+		operator: u.Username, keys: credentialKeys(r), me: meOf(u), ip: clientIP(r, s.proxies)}
 	s.adm.impMu.Lock()
 	if s.adm.imp != nil && s.adm.imp.job.running() {
 		s.adm.impMu.Unlock()

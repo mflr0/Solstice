@@ -655,7 +655,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 	if in.Existing != "" {
 		how = "imported account"
 	}
-	if err := audit.Record(ctx, w.db, audit.Entry{UserID: id, Username: username, IP: clientIP(r),
+	if err := audit.Record(ctx, w.db, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
 		Action: auditSetupComplete, Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username},
 		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}}); err != nil {
 		w.log.Error("audit log write failed", "action", auditSetupComplete, "err", err)

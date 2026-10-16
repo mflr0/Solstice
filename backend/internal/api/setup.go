@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"math/big"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +49,9 @@ type SetupOptions struct {
 	DataFixed bool
 	// ConfigPath is the configuration file the wizard writes.
 	ConfigPath string
+	// TrustedProxies are the reverse proxies whose forwarding header the
+	// server believes (SOLSTICE_TRUSTED_PROXIES).
+	TrustedProxies []netip.Prefix
 	// BaseURL and TZ are the values in effect; *Fixed when the environment sets them.
 	BaseURL, TZ           string
 	BaseURLFixed, TZFixed bool
@@ -73,6 +77,7 @@ type Setup struct {
 	log     *slog.Logger
 	code    string // the setup code, normalised: 8 characters, no dash
 	limiter *auth.Limiter
+	proxies []netip.Prefix // reverse proxies to believe; see clientIP
 
 	mu       sync.Mutex
 	db       *sql.DB
@@ -110,7 +115,7 @@ func NewSetup(ctx context.Context, opt SetupOptions) (*Setup, error) {
 	w := &Setup{
 		opt: opt, ctx: ctx, log: opt.Log, code: code.String(), limiter: auth.NewLimiter(),
 		db: opt.DB, tokens: map[string]bool{}, baseURL: opt.BaseURL, tz: opt.TZ,
-		pending: map[string]string{},
+		proxies: opt.TrustedProxies, pending: map[string]string{},
 	}
 	if w.db != nil {
 		w.server, _ = serverVersion(ctx, w.db)
@@ -276,7 +281,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	key := "setup:" + clientIP(r)
+	key := "setup:" + clientIP(r, w.proxies)
 	if d := w.limiter.Locked(key); d > 0 {
 		return failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
 	}
@@ -288,7 +293,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	}, strings.ToUpper(strings.TrimSpace(in.Code)))
 	if subtle.ConstantTimeCompare([]byte(typed), []byte(w.code)) != 1 {
 		w.limiter.Failure(key)
-		w.log.Warn("wrong setup code", "client", clientIP(r))
+		w.log.Warn("wrong setup code", "client", clientIP(r, w.proxies))
 		return fail(http.StatusForbidden, i18n.SetupCodeIncorrect)
 	}
 	w.limiter.Success(key)
@@ -308,7 +313,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	// http before the HTTPS proxy of the public address exists.
 	http.SetCookie(rw, &http.Cookie{Name: setupCookie, Value: token, Path: "/api/setup", HttpOnly: true,
 		Secure: secureRequest(r, ""), SameSite: http.SameSiteStrictMode})
-	w.log.Info("setup wizard unlocked", "client", clientIP(r))
+	w.log.Info("setup wizard unlocked", "client", clientIP(r, w.proxies))
 	rw.WriteHeader(http.StatusNoContent)
 	return nil
 }

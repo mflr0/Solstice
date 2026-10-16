@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -34,8 +34,9 @@ type Server struct {
 	log     *slog.Logger
 	tz      *time.Location // for dates typed without a time zone (JQL)
 	limiter *auth.Limiter
-	baseURL string    // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
-	out     *outgoing // event bus, e-mail and webhooks (notifications.go)
+	baseURL string         // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
+	proxies []netip.Prefix // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
+	out     *outgoing      // event bus, e-mail and webhooks (notifications.go)
 
 	catMu   sync.Mutex
 	catalog *catalog
@@ -264,7 +265,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 // checkPassword verifies credentials, throttled per user name and per client
 // address so passwords cannot be guessed at speed.
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
-	userKey, ipKey := "user:"+strings.ToLower(username), "ip:"+clientIP(r)
+	userKey, ipKey := s.throttleKeys(r, username)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
 		return nil, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
 	}
@@ -285,14 +286,11 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	return u, err
 }
 
-// clientIP is the address of the connection. Behind a reverse proxy, all
-// clients share the proxy's address for throttling purposes.
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+// throttleKeys are the limiter keys of a sign-in attempt: the user name, and
+// the client address so that sign-in attempts of one account and from one
+// address are counted separately.
+func (s *Server) throttleKeys(r *http.Request, username string) (userKey, ipKey string) {
+	return "user:" + strings.ToLower(username), "ip:" + clientIP(r, s.proxies)
 }
 
 func currentUser(r *http.Request) *auth.User {

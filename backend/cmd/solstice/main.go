@@ -48,12 +48,14 @@ Commands:
 Configuration: a file of KEY=value lines, named by -config or
 SOLSTICE_CONFIG, otherwise ./solstice.conf, otherwise /etc/solstice/solstice.conf.
 Environment variables of the same name win over the file.
-  SOLSTICE_DB          MariaDB database: mysql://user:password@host:3306/database
-  SOLSTICE_DATA        data directory (default ./data)
-  SOLSTICE_ADDR        listen address (default :8080)
-  SOLSTICE_TZ          time zone of dates typed in searches, e.g. Europe/Paris
-  SOLSTICE_BASE_URL    public address, e.g. https://tickets.example.org
-  SOLSTICE_SECRET_KEY  key of the stored secrets (default <data>/secret.key)
+  SOLSTICE_DB               MariaDB database: mysql://user:password@host:3306/database
+  SOLSTICE_DATA             data directory (default ./data)
+  SOLSTICE_ADDR             listen address (default :8080)
+  SOLSTICE_TZ               time zone of dates typed in searches, e.g. Europe/Paris
+  SOLSTICE_BASE_URL         public address, e.g. https://tickets.example.org
+  SOLSTICE_SECRET_KEY       key of the stored secrets (default <data>/secret.key)
+  SOLSTICE_TRUSTED_PROXIES  reverse proxies in front of Solstice: IP addresses and
+                            CIDR ranges, e.g. 127.0.0.1,10.0.0.0/8 (default none)
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -135,6 +137,10 @@ func runServe(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	proxies, err := config.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
 	dataDir, err := filepath.Abs(cfg.Data)
 	if err != nil {
 		return err
@@ -175,6 +181,7 @@ func runServe(ctx context.Context, args []string) error {
 	startApp := func(conn *sql.DB, tz *time.Location, baseURL string) {
 		srv := api.New(conn, dataDir, tz, log)
 		srv.SetBaseURL(baseURL)
+		srv.SetTrustedProxies(proxies)
 		srv.SetSecretKey(cfg.SecretKey)
 		srv.SetVersion(version)
 		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.Addr,
@@ -190,8 +197,9 @@ func runServe(ctx context.Context, args []string) error {
 		wizard, err = api.NewSetup(ctx, api.SetupOptions{
 			DB: conn, DBFixed: fixed[config.KeyDB],
 			DataDir: dataDir, DataFixed: fixed[config.KeyData],
-			ConfigPath: cfg.Path,
-			BaseURL:    strings.TrimSuffix(cfg.BaseURL, "/"), BaseURLFixed: fixed[config.KeyBaseURL],
+			ConfigPath:     cfg.Path,
+			TrustedProxies: proxies,
+			BaseURL:        strings.TrimSuffix(cfg.BaseURL, "/"), BaseURLFixed: fixed[config.KeyBaseURL],
 			TZ: cfg.TZ, TZFixed: fixed[config.KeyTZ],
 			Version: version, Log: log,
 			Done: func(res api.SetupResult) {

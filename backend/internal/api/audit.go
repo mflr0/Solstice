@@ -23,7 +23,7 @@ import (
 // action succeeded; failing to write the entry is logged but does not undo
 // or fail the action.
 func (s *Server) auditLog(r *http.Request, action string, target audit.Target, details map[string]any) {
-	e := audit.Entry{IP: clientIP(r), Action: action, Target: target, Details: details}
+	e := audit.Entry{IP: clientIP(r, s.proxies), Action: action, Target: target, Details: details}
 	if u := currentUser(r); u != nil {
 		e.UserID, e.Username = u.ID, u.Username
 		if u.TokenID != 0 {
@@ -43,8 +43,8 @@ func (s *Server) auditLog(r *http.Request, action string, target audit.Target, d
 // u is the account signed in, a failure when u is nil. The user name is the
 // one typed: it may match no account.
 func (s *Server) auditLogin(r *http.Request, username string, u *auth.User, method string) {
-	e := audit.Entry{Username: strings.ToLower(strings.TrimSpace(username)), IP: clientIP(r), Action: audit.LoginFailure,
-		Details: map[string]any{"method": method}}
+	e := audit.Entry{Username: strings.ToLower(strings.TrimSpace(username)), IP: clientIP(r, s.proxies),
+		Action: audit.LoginFailure, Details: map[string]any{"method": method}}
 	if u != nil {
 		e.Action, e.UserID, e.Username = audit.LoginSuccess, u.ID, u.Username
 	} else if e.Username != "" {

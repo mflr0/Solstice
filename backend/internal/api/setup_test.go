@@ -28,6 +28,7 @@ type wizard struct {
 	h      http.Handler
 	cookie *http.Cookie
 	ip     string
+	xff    string // X-Forwarded-For, set when ip is a trusted proxy
 }
 
 func (c *wizard) call(method, path, lang string, body any) (int, map[string]any) {
@@ -39,6 +40,9 @@ func (c *wizard) call(method, path, lang string, body any) (int, map[string]any)
 	}
 	req := httptest.NewRequest(method, path, r)
 	req.RemoteAddr = c.ip + ":40000"
+	if c.xff != "" {
+		req.Header.Set("X-Forwarded-For", c.xff)
+	}
 	if method != "GET" {
 		req.Header.Set(csrfHeader, "1")
 	}
