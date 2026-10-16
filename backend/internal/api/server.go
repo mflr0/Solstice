@@ -156,7 +156,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	mux.Handle("/api/setup/", s.wrap(func(http.ResponseWriter, *http.Request) error { return errInstalled }, false))
 
 	mux.Handle("/api/", s.wrap(func(http.ResponseWriter, *http.Request) error {
-		return fail(http.StatusNotFound, "Unknown address.")
+		return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
 	}, false))
 	mux.Handle("/", static)
 	return securityHeaders(s.instanceMiddleware(mux))
@@ -200,29 +200,28 @@ type httpError struct {
 func (e *httpError) Error() string { return e.msg.String() }
 
 // fail is an error for the user with a fixed message; failf inserts values
-// into it. The French message is the key of its translations (package i18n),
-// so it must be a literal.
-func fail(status int, msg string) error { return &httpError{status: status, msg: i18n.M(msg)} }
+// into it.
+func fail(status int, key i18n.Key) error { return &httpError{status: status, msg: i18n.M(key)} }
 
-func failf(status int, format string, args ...any) error {
-	return &httpError{status: status, msg: i18n.M(format, args...)}
+func failf(status int, key i18n.Key, args ...any) error {
+	return &httpError{status: status, msg: i18n.M(key, args...)}
 }
 
 var (
-	errNotFound  = fail(http.StatusNotFound, "Not found, or you do not have access to it.")
-	errForbidden = fail(http.StatusForbidden, "You are not allowed to do this.")
+	errNotFound  = fail(http.StatusNotFound, i18n.RequestNotFound)
+	errForbidden = fail(http.StatusForbidden, i18n.RequestForbidden)
 )
 
 func (s *Server) wrap(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
-			writeError(w, r, failf(http.StatusForbidden, "Request refused (missing %s header).", csrfHeader))
+			writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
 		if needUser {
 			u, err := s.authenticate(r)
 			if err != nil {
-				writeError(w, r, fail(http.StatusUnauthorized, "Sign in to continue."))
+				writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
 			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
@@ -234,7 +233,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 					return
 				}
 				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, "Internal error. The incident has been logged.")
+				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 			}
 			writeError(w, r, err)
 		}
@@ -256,7 +255,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
 	userKey, ipKey := "user:"+strings.ToLower(username), "ip:"+clientIP(r)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
-		return nil, failf(http.StatusTooManyRequests, "Too many attempts. Try again in %d s.", int(d.Seconds())+1)
+		return nil, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
 	}
 	release, err := s.limiter.Acquire(r.Context())
 	if err != nil {
@@ -321,7 +320,7 @@ func locale(r *http.Request) string {
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(err.Error())}
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
 	}
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {
@@ -335,7 +334,7 @@ func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	return nil
 }

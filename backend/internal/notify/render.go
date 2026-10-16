@@ -255,43 +255,43 @@ func fieldLabel(locale, field string) string {
 	var m i18n.Message
 	switch strings.ToLower(field) {
 	case "status":
-		m = i18n.M("Status")
+		m = i18n.M(i18n.FieldNameStatus)
 	case "assignee":
-		m = i18n.M("Assignee")
+		m = i18n.M(i18n.FieldNameAssignee)
 	case "reporter":
-		m = i18n.M("Reporter")
+		m = i18n.M(i18n.FieldNameReporter)
 	case "resolution":
-		m = i18n.M("Resolution")
+		m = i18n.M(i18n.FieldNameResolution)
 	case "priority":
-		m = i18n.M("Priority")
+		m = i18n.M(i18n.FieldNamePriority)
 	case "summary":
-		m = i18n.M("Summary")
+		m = i18n.M(i18n.FieldNameSummary)
 	case "description":
-		m = i18n.M("Description")
+		m = i18n.M(i18n.FieldNameDescription)
 	case "environment":
-		m = i18n.M("Environment")
+		m = i18n.M(i18n.FieldNameEnvironment)
 	case "labels":
-		m = i18n.M("Labels")
+		m = i18n.M(i18n.FieldNameLabels)
 	case "component":
-		m = i18n.M("Component")
+		m = i18n.M(i18n.FieldNameComponent)
 	case "fix version":
-		m = i18n.M("Fix version")
+		m = i18n.M(i18n.FieldNameFixVersion)
 	case "version":
-		m = i18n.M("Affects version")
+		m = i18n.M(i18n.FieldNameAffectsVersion)
 	case "duedate":
-		m = i18n.M("Due date")
+		m = i18n.M(i18n.FieldNameDueDate)
 	case "issuetype":
-		m = i18n.M("Issue type")
+		m = i18n.M(i18n.FieldNameIssueType)
 	case "attachment":
-		m = i18n.M("Attachment")
+		m = i18n.M(i18n.FieldNameAttachment)
 	case "link":
-		m = i18n.M("Link")
+		m = i18n.M(i18n.FieldNameLink)
 	case "parent":
-		m = i18n.M("Parent")
+		m = i18n.M(i18n.FieldNameParent)
 	case "epic link":
-		m = i18n.M("Epic")
+		m = i18n.M(i18n.FieldNameEpic)
 	case "sprint":
-		m = i18n.M("Sprint")
+		m = i18n.M(i18n.FieldNameSprint)
 	default:
 		return field
 	}

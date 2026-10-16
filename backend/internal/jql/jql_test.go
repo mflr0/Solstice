@@ -89,7 +89,7 @@ func TestParseErrors(t *testing.T) {
 	} {
 		_, err := Parse(s)
 		var e *Error
-		if !errors.As(err, &e) || !strings.Contains(e.Msg, want) {
+		if !errors.As(err, &e) || !strings.Contains(e.Error(), want) {
 			t.Errorf("Parse(%q) = %v, want an error mentioning %q", s, err, want)
 		}
 	}

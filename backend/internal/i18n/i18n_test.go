@@ -41,36 +41,47 @@ func TestSupported(t *testing.T) {
 }
 
 func TestSprintf(t *testing.T) {
+	en["TestOnlyEnglish"] = "Only in English: %s."
+	en["TestNoValues"] = "No values, 100 % as is."
+	defer delete(en, "TestOnlyEnglish")
+	defer delete(en, "TestNoValues")
 	for _, c := range []struct {
-		locale, template string
-		args             []any
-		want             string
+		locale string
+		key    Key
+		args   []any
+		want   string
 	}{
-		{"fr", "Unknown status: %s.", []any{"Fait"}, "Statut inconnu : Fait."},
-		{"en", "Unknown status: %s.", []any{"Fait"}, "Unknown status: Fait."},
-		{"de", "Too many attempts. Try again in %d s.", []any{3}, "Zu viele Versuche. Versuchen Sie es in 3 s erneut."},
-		{"xx", "Unknown status: %s.", []any{"Fait"}, "Unknown status: Fait."},     // unknown language: English
-		{"en", "Pas encore traduit : %s.", []any{"x"}, "Pas encore traduit : x."}, // missing translation: French
-		{"en", "Sans valeur, 100 % tel quel.", nil, "Sans valeur, 100 % tel quel."},
+		{"fr", StatusNameUnknown, []any{"Fait"}, "Statut inconnu : Fait."},
+		{"en", StatusNameUnknown, []any{"Fait"}, "Unknown status: Fait."},
+		{"de", RequestTooManyAttempts, []any{3}, "Zu viele Versuche. Versuchen Sie es in 3 s erneut."},
+		{"xx", StatusNameUnknown, []any{"Fait"}, "Unknown status: Fait."}, // unknown language: English
+		{"fr", "TestOnlyEnglish", []any{"x"}, "Only in English: x."},      // missing translation: English
+		{"en", "TestNoValues", nil, "No values, 100 % as is."},
 		// Messages given as values are rendered in the same language.
-		{"de", "JQL: %s", []any{M("Unknown field: “%s”.", "couleur")}, "JQL: Unbekanntes Feld: „couleur“."},
-		{"en", "%s: %s", []any{M("Quick filter “%s”", "Mes bugs"), M("JQL: %s", M("Value expected."))},
+		{"de", JQLError, []any{M(JQLFieldUnknown, "couleur")}, "JQL: Unbekanntes Feld: „couleur“."},
+		{"en", BoardQueryInvalid, []any{M(BoardQuickFilterNamed, "Mes bugs"), M(JQLError, M(JQLValueExpected))},
 			"Quick filter “Mes bugs”: JQL: Value expected."},
+		{"fr", JQLError, []any{Raw("100 % raw")}, "JQL : 100 % raw"},
 	} {
-		if got := Sprintf(c.locale, c.template, c.args...); got != c.want {
-			t.Errorf("Sprintf(%s, %q) = %q, want %q", c.locale, c.template, got, c.want)
+		if got := Sprintf(c.locale, c.key, c.args...); got != c.want {
+			t.Errorf("Sprintf(%s, %s) = %q, want %q", c.locale, c.key, got, c.want)
 		}
 	}
-	if got := M("Unknown status: %s.", "Fait").String(); got != "Unknown status: Fait." {
+	if got := M(StatusNameUnknown, "Fait").String(); got != "Unknown status: Fait." {
 		t.Errorf("String() = %q, want the English text", got)
+	}
+	if got := Raw("Fait %s").In("fr"); got != "Fait %s" {
+		t.Errorf("Raw(…).In(fr) = %q, want the text as is", got)
 	}
 }
 
 // Translations may put the values in another order.
 func TestReorderedValues(t *testing.T) {
-	fr["%s before %s."] = "%[2]s après %[1]s."
-	defer delete(fr, "%s before %s.")
-	if got := Sprintf("fr", "%s before %s.", "a", "b"); got != "b après a." {
+	en["TestBefore"] = "%s before %s."
+	fr["TestBefore"] = "%[2]s après %[1]s."
+	defer delete(en, "TestBefore")
+	defer delete(fr, "TestBefore")
+	if got := Sprintf("fr", "TestBefore", "a", "b"); got != "b après a." {
 		t.Errorf("got %q", got)
 	}
 }

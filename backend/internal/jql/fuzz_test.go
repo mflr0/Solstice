@@ -58,7 +58,7 @@ func FuzzParse(f *testing.F) {
 			if n := utf8.RuneCountInString(s); e.Pos < 0 || e.Pos > n {
 				t.Fatalf("Parse(%q): error position %d outside the query (%d characters)", s, e.Pos, n)
 			}
-			if e.Msg == "" {
+			if e.Key == "" {
 				t.Fatalf("Parse(%q): error without a message", s)
 			}
 			return

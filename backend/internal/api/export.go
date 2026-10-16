@@ -60,9 +60,9 @@ func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]expo
 		}
 		switch {
 		case id == "epic":
-			out = append(out, exportColumn{id: id, header: i18n.M("Epic").In(loc), special: id})
+			out = append(out, exportColumn{id: id, header: i18n.M(i18n.FieldNameEpic).In(loc), special: id})
 		case id == "sprint":
-			out = append(out, exportColumn{id: id, header: i18n.M("Sprint").In(loc), special: id})
+			out = append(out, exportColumn{id: id, header: i18n.M(i18n.FieldNameSprint).In(loc), special: id})
 		case strings.HasPrefix(id, "customfield_"):
 			found := false
 			for i, f := range fields {
@@ -72,12 +72,12 @@ func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]expo
 				}
 			}
 			if !found {
-				return nil, failf(http.StatusBadRequest, "Unknown column: %s.", id)
+				return nil, failf(http.StatusBadRequest, i18n.ExportColumnUnknown, id)
 			}
 		default:
 			f, ok := systemField(id)
 			if !ok {
-				return nil, failf(http.StatusBadRequest, "Unknown column: %s.", id)
+				return nil, failf(http.StatusBadRequest, i18n.ExportColumnUnknown, id)
 			}
 			out = append(out, exportColumn{id: id, header: f.name.In(loc),
 				number: id == "timeoriginalestimate" || id == "timeestimate" || id == "timespent"})
@@ -106,7 +106,7 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	tz := s.zone()
 	if name := r.URL.Query().Get("tz"); name != "" {
 		if tz, err = time.LoadLocation(name); err != nil {
-			return failf(http.StatusBadRequest, "Unknown time zone: %s.", name)
+			return failf(http.StatusBadRequest, i18n.CommonTimeZoneUnknown, name)
 		}
 	}
 	where, args, order, _, err := s.searchCondition(ctx, sub, r.URL.Query())

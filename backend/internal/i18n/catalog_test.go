@@ -6,7 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -14,78 +14,107 @@ import (
 	"testing"
 )
 
-// messageFuncs are the functions that take a message template, by package
-// directory: function name → index of the template argument.
+// messageFuncs are the functions that take a message key, by package
+// directory: function name → index of the key argument. i18n.M counts in
+// every package.
 var messageFuncs = map[string]map[string]int{
-	"../api":    {"fail": 1, "failf": 1, "M": 0},
-	"../jql":    {"fail": 0, "errorf": 0, "errAt": 1},
-	"../notify": {"M": 0},
-	"../issue":  {"M": 0},
+	"../api": {"fail": 1, "failf": 1},
+	"../jql": {"fail": 0, "errorf": 0, "errAt": 1},
 }
 
-// forwards are the template arguments that are not literals: the helpers
-// passing on their own parameter, and messages already built elsewhere.
-var forwards = []string{"msg", "format", "je.Template", "err.Error()"}
+// forwards are the key arguments that are not constants: the helpers passing
+// on their own parameter, and messages already built elsewhere.
+var forwards = []string{"key", "je.Key", "e.Key"}
 
-// sourceTemplates reads the code for every message template, with where it
-// is used.
-func sourceTemplates(t *testing.T) map[string]string {
+// declaredKeys reads keys.go for the Key constants, each valued its own name.
+func declaredKeys(t *testing.T) map[Key]bool {
 	t.Helper()
-	out := map[string]string{}
-	for dir, funcs := range messageFuncs {
-		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
-		if err != nil || len(files) == 0 {
-			t.Fatalf("no Go files in %s: %v", dir, err)
+	file, err := parser.ParseFile(token.NewFileSet(), "keys.go", nil, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[Key]bool{}
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
 		}
-		fset := token.NewFileSet()
-		for _, name := range files {
-			if strings.HasSuffix(name, "_test.go") {
-				continue
+		for _, spec := range gen.Specs {
+			vs := spec.(*ast.ValueSpec)
+			for i, name := range vs.Names {
+				lit, ok := vs.Values[i].(*ast.BasicLit)
+				if v, err := strconv.Unquote(lit.Value); !ok || err != nil || v != name.Name {
+					t.Errorf("keys.go: %s is not valued its own name", name.Name)
+				}
+				out[Key(name.Name)] = true
 			}
-			file, err := parser.ParseFile(fset, name, nil, parser.SkipObjectResolution)
-			if err != nil {
-				t.Fatal(err)
-			}
-			ast.Inspect(file, func(n ast.Node) bool {
-				call, ok := n.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				var fn string
-				switch f := call.Fun.(type) {
-				case *ast.Ident:
-					fn = f.Name
-				case *ast.SelectorExpr:
-					fn = f.Sel.Name
-				}
-				i, ok := funcs[fn]
-				if !ok || len(call.Args) <= i {
-					return true
-				}
-				at := fset.Position(call.Pos()).String()
-				lit, ok := call.Args[i].(*ast.BasicLit)
-				if !ok || lit.Kind != token.STRING {
-					if expr := types.ExprString(call.Args[i]); !slices.Contains(forwards, expr) {
-						t.Errorf("%s: %s takes a message that is not a literal (%s): it cannot be translated", at, fn, expr)
-					}
-					return true
-				}
-				tmpl, err := strconv.Unquote(lit.Value)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if call.Ellipsis == token.NoPos {
-					if want, got := len(verbs(tmpl)), len(call.Args)-i-1; want != got {
-						t.Errorf("%s: %q expects %d values, given %d", at, tmpl, want, got)
-					}
-				}
-				out[tmpl] = at
-				return true
-			})
 		}
 	}
+	return out
+}
+
+// usedKeys reads the code outside this package for every key it uses, with
+// where. It also checks that the message functions get a key and as many
+// values as the English template has placeholders.
+func usedKeys(t *testing.T, keys map[Key]bool) map[Key]string {
+	t.Helper()
+	out := map[Key]string{}
+	fset := token.NewFileSet()
+	err := filepath.WalkDir("..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") ||
+			filepath.Dir(path) == "../i18n" {
+			return err
+		}
+		file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+		if err != nil {
+			return err
+		}
+		funcs := messageFuncs[filepath.Dir(path)]
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.SelectorExpr:
+				if x, ok := n.X.(*ast.Ident); ok && x.Name == "i18n" && keys[Key(n.Sel.Name)] {
+					out[Key(n.Sel.Name)] = fset.Position(n.Pos()).String()
+				}
+			case *ast.CallExpr:
+				var fn string
+				i, ok := 0, false
+				switch f := n.Fun.(type) {
+				case *ast.Ident:
+					fn = f.Name
+					i, ok = funcs[fn]
+				case *ast.SelectorExpr:
+					if x, isIdent := f.X.(*ast.Ident); isIdent && x.Name == "i18n" && f.Sel.Name == "M" {
+						fn, i, ok = "i18n.M", 0, true
+					}
+				}
+				if !ok || len(n.Args) <= i {
+					return true
+				}
+				at := fset.Position(n.Pos()).String()
+				sel, ok := n.Args[i].(*ast.SelectorExpr)
+				if !ok || !keys[Key(sel.Sel.Name)] {
+					if expr := types.ExprString(n.Args[i]); !slices.Contains(forwards, expr) {
+						t.Errorf("%s: %s takes a message that is not a key (%s)", at, fn, expr)
+					}
+					return true
+				}
+				if n.Ellipsis == token.NoPos {
+					key := Key(sel.Sel.Name)
+					if want, got := len(verbs(en[key])), len(n.Args)-i-1; want != got {
+						t.Errorf("%s: %s expects %d values, given %d", at, key, want, got)
+					}
+				}
+			}
+			return true
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(out) < 100 {
-		t.Fatalf("only %d templates found: is the scan still looking in the right places?", len(out))
+		t.Fatalf("only %d keys used: is the scan still looking in the right places?", len(out))
 	}
 	return out
 }
@@ -130,34 +159,31 @@ func verbs(s string) []string {
 }
 
 func TestCataloguesComplete(t *testing.T) {
-	src := sourceTemplates(t)
-	if os.Getenv("I18N_LIST") != "" { // prints the templates, to write a new catalogue
-		keys := make([]string, 0, len(src))
-		for k := range src {
-			keys = append(keys, k)
-		}
-		slices.Sort(keys)
-		for _, k := range keys {
-			fmt.Printf("%q\n", k)
+	keys := declaredKeys(t)
+	used := usedKeys(t, keys)
+	for key := range keys {
+		if _, ok := used[key]; !ok {
+			t.Errorf("%s is not used any more", key)
 		}
 	}
-	for _, locale := range Locales[1:] {
+	for _, locale := range Locales {
 		cat := catalogues[locale]
 		if cat == nil {
 			t.Fatalf("no catalogue for %s", locale)
 		}
-		for tmpl, at := range src {
-			tr, ok := cat[tmpl]
+		for key := range keys {
+			tr, ok := cat[key]
 			switch {
 			case !ok || strings.TrimSpace(tr) == "":
-				t.Errorf("%s: no translation of %q (%s)", locale, tmpl, at)
-			case !slices.Equal(verbs(tr), verbs(tmpl)):
-				t.Errorf("%s: placeholders differ: %q has %v, %q has %v", locale, tmpl, verbs(tmpl), tr, verbs(tr))
+				t.Errorf("%s: no message for %s", locale, key)
+			case !slices.Equal(verbs(tr), verbs(en[key])):
+				t.Errorf("%s: placeholders differ for %s: %q has %v, English %q has %v",
+					locale, key, tr, verbs(tr), en[key], verbs(en[key]))
 			}
 		}
-		for tmpl := range cat {
-			if _, ok := src[tmpl]; !ok {
-				t.Errorf("%s: %q is not used any more", locale, tmpl)
+		for key := range cat {
+			if !keys[key] {
+				t.Errorf("%s: %s is not a key of keys.go", locale, key)
 			}
 		}
 	}

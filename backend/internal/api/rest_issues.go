@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 
@@ -81,7 +82,7 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	pr, ok := parseRef(in.Fields["project"])
 	if !ok || pr.null {
-		return fieldError("project", failf(http.StatusBadRequest, "Field %s is required.", "project"))
+		return fieldError("project", failf(http.StatusBadRequest, i18n.FieldRequired, "project"))
 	}
 	var projectID int64
 	if pr.key == "" && pr.name == "" {
@@ -106,7 +107,7 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	for jira, ui := range map[string]string{"issuetype": "type", "summary": "summary"} {
 		if _, ok := edit.ui[ui]; !ok {
-			return fieldError(jira, failf(http.StatusBadRequest, "Field %s is required.", jira))
+			return fieldError(jira, failf(http.StatusBadRequest, i18n.FieldRequired, jira))
 		}
 	}
 	// Check what can still fail before the issue exists. Custom fields and
@@ -250,8 +251,7 @@ func (s *Server) restDeleteIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if n > 0 {
-			return fail(http.StatusBadRequest,
-				"This issue has sub-tasks: add deleteSubtasks=true to delete them with it.")
+			return fail(http.StatusBadRequest, i18n.IssueDeleteSubtasks)
 		}
 	}
 	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, "/api/issues/"+iss.Key(),
@@ -360,8 +360,7 @@ func (s *Server) restTransition(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if target == "" {
-		return fieldError("transition", fail(http.StatusBadRequest,
-			"This transition is not available from the issue's current status."))
+		return fieldError("transition", fail(http.StatusBadRequest, i18n.IssueTransitionUnavailable))
 	}
 	edit, err := s.translateForIssue(ctx, sub, iss, jiraEditInput{Fields: in.Fields, Update: in.Update})
 	if err != nil {
@@ -503,8 +502,7 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 			group, role = v.Visibility.Group, v.Visibility.Role
 		}
 		if group != c.group.String || role != c.roleID.Int64 {
-			return fieldError("visibility", fail(http.StatusBadRequest,
-				"The visibility of an existing comment cannot be changed."))
+			return fieldError("visibility", fail(http.StatusBadRequest, i18n.CommentVisibilityFixed))
 		}
 	}
 	id := strconv.FormatInt(c.id, 10)
@@ -583,8 +581,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if len(in.Visibility) > 0 && string(in.Visibility) != "null" {
-		return fieldError("visibility", fail(http.StatusBadRequest,
-			"A work log cannot be restricted to a group or a role."))
+		return fieldError("visibility", fail(http.StatusBadRequest, i18n.WorkLogRestricted))
 	}
 	var seconds int64
 	switch {
@@ -593,7 +590,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	case strings.TrimSpace(in.TimeSpent) != "":
 		v, ok := jql.Seconds(in.TimeSpent)
 		if !ok {
-			return fieldError("timeLogged", fail(http.StatusBadRequest, "Invalid duration."))
+			return fieldError("timeLogged", fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid))
 		}
 		seconds = int64(math.Round(v))
 	}
@@ -601,7 +598,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	if in.Started != "" {
 		t, ok := parseJiraTime(in.Started)
 		if !ok {
-			return fieldError("started", failf(http.StatusBadRequest, "Invalid value for field %s.", "started"))
+			return fieldError("started", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "started"))
 		}
 		body["started"] = t
 	}
@@ -729,7 +726,7 @@ func (s *Server) restWatch(on bool) handler {
 				return err
 			}
 			if !active || !watcher.CanSee(pi) {
-				return fieldError("username", fail(http.StatusBadRequest, "This person cannot see this issue."))
+				return fieldError("username", fail(http.StatusBadRequest, i18n.IssueNotVisibleTo))
 			}
 			_, err = s.db.ExecContext(ctx, `INSERT IGNORE INTO watchers (issue_id, user_id, created_at) VALUES (?, ?, UTC_TIMESTAMP(3))`,
 				iss.ID, userID)
@@ -753,7 +750,7 @@ func readBody(r *http.Request) ([]byte, error) {
 		if errors.Is(err, io.EOF) {
 			return nil, nil
 		}
-		return nil, failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	return raw, nil
 }

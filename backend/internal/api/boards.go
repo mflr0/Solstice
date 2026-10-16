@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -939,7 +940,7 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 		return "", err
 	}
 	if len(statuses) == 0 {
-		return "", fail(http.StatusBadRequest, "Unknown column on this board.")
+		return "", fail(http.StatusBadRequest, i18n.BoardColumnUnknown)
 	}
 	if slices.Contains(statuses, iss.StatusID) {
 		return iss.StatusID, nil
@@ -957,7 +958,7 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 			return st, nil
 		}
 	}
-	return "", fail(http.StatusConflict, "The workflow does not allow moving this issue to this column from its current status.")
+	return "", fail(http.StatusConflict, i18n.BoardMoveNotAllowed)
 }
 
 // setSprint moves an issue into an open sprint of the board, or back to the
@@ -973,7 +974,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 		err := s.db.QueryRowContext(ctx, `SELECT name, state FROM sprints WHERE id = ? AND board_id = ?`, sprint, b.ID).
 			Scan(&name, &state)
 		if errors.Is(err, sql.ErrNoRows) || state == "closed" {
-			return fail(http.StatusBadRequest, "Unknown or completed sprint.")
+			return fail(http.StatusBadRequest, i18n.SprintUnknown)
 		}
 		if err != nil {
 			return err
@@ -1057,7 +1058,7 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if b.Kind != "scrum" {
-		return fail(http.StatusBadRequest, "A Kanban board has no sprints.")
+		return fail(http.StatusBadRequest, i18n.SprintKanban)
 	}
 	if ok, err := s.canManage(ctx, sub, b); err != nil {
 		return err
@@ -1111,7 +1112,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if sp.State != "future" {
-		return fail(http.StatusConflict, "This sprint has already started.")
+		return fail(http.StatusConflict, i18n.SprintStarted)
 	}
 	var in struct {
 		Name *string    `json:"name"`
@@ -1124,13 +1125,13 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 	var active int
 	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sprints WHERE board_id = ? AND state = 'active'`, b.ID).Scan(&active)
 	if active > 0 {
-		return fail(http.StatusConflict, "A sprint is already active on this board. Complete it first.")
+		return fail(http.StatusConflict, i18n.SprintAlreadyActive)
 	}
 	start := time.Now().UTC()
 	end := start.AddDate(0, 0, 14)
 	if in.End != nil {
 		if !in.End.After(start) {
-			return fail(http.StatusBadRequest, "The sprint end date must be in the future.")
+			return fail(http.StatusBadRequest, i18n.SprintEndPast)
 		}
 		end = in.End.UTC()
 	}
@@ -1169,7 +1170,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if sp.State != "active" {
-		return fail(http.StatusConflict, "Only an active sprint can be completed.")
+		return fail(http.StatusConflict, i18n.SprintNotActive)
 	}
 	var in struct {
 		MoveTo int64 `json:"moveTo"`
@@ -1181,7 +1182,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 		var state string
 		err := s.db.QueryRowContext(ctx, `SELECT state FROM sprints WHERE id = ? AND board_id = ?`, in.MoveTo, b.ID).Scan(&state)
 		if err != nil || state != "future" || in.MoveTo == sp.ID {
-			return fail(http.StatusBadRequest, "Choose an upcoming sprint of this board.")
+			return fail(http.StatusBadRequest, i18n.SprintTargetInvalid)
 		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1229,7 +1230,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Kind != "kanban" && in.Kind != "scrum" {
-		return fail(http.StatusBadRequest, "Board type: kanban or scrum.")
+		return fail(http.StatusBadRequest, i18n.BoardTypeUnknown)
 	}
 	projectID, err := s.projectByKey(ctx, in.Project)
 	if err != nil || !sub.CanBrowseProject(projectID) {

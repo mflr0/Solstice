@@ -149,9 +149,9 @@ func (s *Service) issueURL(key string) string { return s.url("/browse/" + key) }
 func (s *Service) footer(p *page, why string) {
 	p.Why = why
 	if u := s.url("/settings/notifications"); u != "" {
-		p.Prefs, p.PrefsURL = i18n.M("Manage my notifications").In(p.Lang), u
+		p.Prefs, p.PrefsURL = i18n.M(i18n.NotifyManage).In(p.Lang), u
 	} else {
-		p.Prefs = i18n.M("You can change your notifications in your preferences in Solstice.").In(p.Lang)
+		p.Prefs = i18n.M(i18n.NotifyChangeInPreferences).In(p.Lang)
 	}
 }
 
@@ -248,7 +248,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		if cur != nil {
 			sec.Key, sec.Summary = cur.Key, cur.Summary
 			sec.URL = s.issueURL(cur.Key)
-			sec.Link = i18n.M("Open the issue").In(loc)
+			sec.Link = i18n.M(i18n.NotifyOpenIssue).In(loc)
 			sec.Meta = issueMeta(loc, cur)
 		}
 		for _, it := range kept {
@@ -279,14 +279,14 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 					row.From, row.To = formatDay(loc, l.From), formatDay(loc, l.To)
 				}
 				if row.To == "" {
-					row.To = i18n.M("(empty)").In(loc)
+					row.To = i18n.M(i18n.NotifyEmptyValue).In(loc)
 				}
 				en.Changes = append(en.Changes, row)
 			}
 			if it.Comment != nil {
 				en.Text = excerpt(it.Comment.Body, 4000)
 				if it.Comment.Group != "" || it.Comment.RoleID != 0 {
-					en.Note = i18n.M("Comment with restricted visibility.").In(loc)
+					en.Note = i18n.M(i18n.NotifyRestrictedComment).In(loc)
 				}
 			}
 			if it.Kind == events.IssueCreated && cur != nil && cur.Description != nil {
@@ -312,9 +312,9 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 	msg := &mail.Message{UserID: userID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
 	if digest {
 		msg.Kind = "digest"
-		p.Heading = i18n.M("Your notifications of %s", formatDate(loc, s.Now().In(s.zone()))).In(loc)
+		p.Heading = i18n.M(i18n.NotifyDigestSubject, formatDate(loc, s.Now().In(s.zone()))).In(loc)
 		msg.Subject = p.Heading
-		s.footer(p, i18n.M("You receive this daily digest as set in your notification preferences.").In(loc))
+		s.footer(p, i18n.M(i18n.NotifyWhyDigest).In(loc))
 	} else {
 		msg.Kind = "notification"
 		msg.Subject = "[" + p.Sections[0].Key + "] " + p.Sections[0].Summary
@@ -349,20 +349,20 @@ func strongest(reasons []string) string {
 func why(loc, reason, project string) string {
 	switch reason {
 	case reasonAssignee:
-		return i18n.M("You receive this email because this issue is assigned to you.").In(loc)
+		return i18n.M(i18n.NotifyWhyAssignee).In(loc)
 	case reasonReporter:
-		return i18n.M("You receive this email because you reported this issue.").In(loc)
+		return i18n.M(i18n.NotifyWhyReporter).In(loc)
 	case reasonMentioned:
-		return i18n.M("You receive this email because someone mentioned you.").In(loc)
+		return i18n.M(i18n.NotifyWhyMention).In(loc)
 	case reasonWatcher:
-		return i18n.M("You receive this email because you are watching this issue.").In(loc)
+		return i18n.M(i18n.NotifyWhyWatcher).In(loc)
 	}
-	return i18n.M("You receive this email because project %s lists you among its recipients.", project).In(loc)
+	return i18n.M(i18n.NotifyWhyProject, project).In(loc)
 }
 
 func actorName(loc string, u *events.User) string {
 	if u == nil {
-		return i18n.M("Someone").In(loc)
+		return i18n.M(i18n.NotifySomeone).In(loc)
 	}
 	return u.Name
 }
@@ -375,9 +375,9 @@ func issueMeta(loc string, iss *events.Issue) string {
 		parts = append(parts, iss.Priority.Name)
 	}
 	if iss.Assignee != nil {
-		parts = append(parts, i18n.M("Assigned to %s", iss.Assignee.Name).In(loc))
+		parts = append(parts, i18n.M(i18n.NotifyAssignedTo, iss.Assignee.Name).In(loc))
 	} else {
-		parts = append(parts, i18n.M("Unassigned").In(loc))
+		parts = append(parts, i18n.M(i18n.NotifyUnassigned).In(loc))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -387,19 +387,19 @@ func headline(loc string, it storedItem, actor string, cur *events.Issue, me int
 	switch it.Kind {
 	case events.IssueCreated:
 		if it.Mentioned {
-			return i18n.M("%s mentioned you in the description.", actor).In(loc)
+			return i18n.M(i18n.NotifyMentionDescription, actor).In(loc)
 		}
-		return i18n.M("%s created the issue.", actor).In(loc)
+		return i18n.M(i18n.NotifyCreated, actor).In(loc)
 	case events.IssueDeleted:
-		return i18n.M("%s deleted the issue.", actor).In(loc)
+		return i18n.M(i18n.NotifyDeleted, actor).In(loc)
 	case events.CommentCreated, events.CommentUpdated:
 		if it.Mentioned {
-			return i18n.M("%s mentioned you in a comment.", actor).In(loc)
+			return i18n.M(i18n.NotifyMentionComment, actor).In(loc)
 		}
 		if it.Kind == events.CommentUpdated {
-			return i18n.M("%s edited a comment.", actor).In(loc)
+			return i18n.M(i18n.NotifyCommentEdited, actor).In(loc)
 		}
-		return i18n.M("%s commented.", actor).In(loc)
+		return i18n.M(i18n.NotifyCommented, actor).In(loc)
 	}
 	var resolved, reopened, assignedToMe bool
 	for _, l := range it.Lines {
@@ -412,15 +412,15 @@ func headline(loc string, it storedItem, actor string, cur *events.Issue, me int
 	}
 	switch {
 	case it.Mentioned:
-		return i18n.M("%s mentioned you in the description.", actor).In(loc)
+		return i18n.M(i18n.NotifyMentionDescription, actor).In(loc)
 	case assignedToMe:
-		return i18n.M("%s assigned the issue to you.", actor).In(loc)
+		return i18n.M(i18n.NotifyAssignedToYou, actor).In(loc)
 	case resolved:
-		return i18n.M("%s resolved the issue.", actor).In(loc)
+		return i18n.M(i18n.NotifyResolved, actor).In(loc)
 	case reopened:
-		return i18n.M("%s reopened the issue.", actor).In(loc)
+		return i18n.M(i18n.NotifyReopened, actor).In(loc)
 	}
-	return i18n.M("%s updated the issue.", actor).In(loc)
+	return i18n.M(i18n.NotifyUpdated, actor).In(loc)
 }
 
 // TestMessage is the administrator's test e-mail.
@@ -428,11 +428,11 @@ func TestMessage(cfg mail.Config, to, locale string) mail.Message {
 	if !i18n.Supported(locale) {
 		locale = i18n.Default
 	}
-	p := &page{Lang: locale, Title: i18n.M("Solstice test email").In(locale)}
+	p := &page{Lang: locale, Title: i18n.M(i18n.MailTestSubject).In(locale)}
 	p.Heading = p.Title
-	p.Intro = []string{i18n.M("This email confirms that Solstice can send messages with the current settings.").In(locale),
-		i18n.M("Server: %s, sender: %s.", cfg.Host, cfg.From).In(locale)}
-	p.Why = i18n.M("You receive this email because an administrator asked for a test.").In(locale)
+	p.Intro = []string{i18n.M(i18n.MailTestBody).In(locale),
+		i18n.M(i18n.MailTestSettings, cfg.Host, cfg.From).In(locale)}
+	p.Why = i18n.M(i18n.MailTestWhy).In(locale)
 	html, _ := p.html()
 	return mail.Message{Kind: "test", To: to, Subject: p.Title, Text: p.text(), HTML: html,
 		MessageID: mail.NewMessageID(cfg.Domain())}

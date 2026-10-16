@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"sync"
@@ -211,7 +212,7 @@ func (s *Server) getMyNotifications(w http.ResponseWriter, r *http.Request) erro
 
 func checkHour(h int) error {
 	if h < 0 || h > 23 {
-		return fail(http.StatusBadRequest, "Invalid hour: from 0 to 23.")
+		return fail(http.StatusBadRequest, i18n.NotifyHourInvalid)
 	}
 	return nil
 }
@@ -241,7 +242,7 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 	}
 	if in.Delivery != nil {
 		if !slices.Contains([]string{notify.Immediate, notify.Digest, notify.None}, *in.Delivery) {
-			return fail(http.StatusBadRequest, "Unknown delivery mode: immediate, digest or none.")
+			return fail(http.StatusBadRequest, i18n.NotifyDeliveryUnknown)
 		}
 		p.Delivery = *in.Delivery
 	}
@@ -264,7 +265,7 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 	}
 	for k, v := range in.Events {
 		if !slices.Contains(notify.Groups, k) {
-			return failf(http.StatusBadRequest, "Unknown event: %s.", k)
+			return failf(http.StatusBadRequest, i18n.NotifyEventUnknown, k)
 		}
 		p.Events[k] = v
 	}
@@ -330,22 +331,22 @@ func (s *Server) putProjectNotifications(w http.ResponseWriter, r *http.Request)
 		ps.Extra = nil
 		for _, e := range *in.Extra {
 			if !slices.Contains(projectEvents, e.Event) {
-				return failf(http.StatusBadRequest, "Unknown event: %s.", e.Event)
+				return failf(http.StatusBadRequest, i18n.NotifyEventUnknown, e.Event)
 			}
 			var n int
 			switch e.Kind {
 			case "group":
 				err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_groups WHERE id = ?`, e.ID).Scan(&n)
 				if err == nil && n == 0 {
-					return fail(http.StatusBadRequest, "Group not found.")
+					return fail(http.StatusBadRequest, i18n.GroupNotFound)
 				}
 			case "role":
 				err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_roles WHERE id = ?`, e.ID).Scan(&n)
 				if err == nil && n == 0 {
-					return fail(http.StatusBadRequest, "Role not found.")
+					return fail(http.StatusBadRequest, i18n.RoleNotFound)
 				}
 			default:
-				return fail(http.StatusBadRequest, "Unknown recipient: group or role.")
+				return fail(http.StatusBadRequest, i18n.NotifyRecipientUnknown)
 			}
 			if err != nil {
 				return err
@@ -422,13 +423,13 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword {
 		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
 		if err != nil {
-			return failf(http.StatusInternalServerError, "The stored password cannot be read: %s", err.Error())
+			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
 		}
 		cfg.Password = old.Password
 	} else {
 		var p *string
 		if err := json.Unmarshal(in.Password, &p); err != nil {
-			return failf(http.StatusBadRequest, "Invalid value for field %s.", "password")
+			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "password")
 		}
 		cfg.Password = ""
 		if p != nil {
@@ -454,7 +455,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 		cfg.Security = mail.SecurityStartTLS
 	}
 	if !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, cfg.Security) {
-		return fail(http.StatusBadRequest, "Unknown security: none, starttls or tls.")
+		return fail(http.StatusBadRequest, i18n.MailSecurityUnknown)
 	}
 	if in.Port != nil {
 		cfg.Port = *in.Port
@@ -463,20 +464,20 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 		cfg.Port = mail.DefaultPort(cfg.Security)
 	}
 	if cfg.Port < 1 || cfg.Port > 65535 {
-		return fail(http.StatusBadRequest, "Invalid port.")
+		return fail(http.StatusBadRequest, i18n.MailPortInvalid)
 	}
 	if strings.ContainsAny(cfg.Host+cfg.Username+cfg.FromName, "\r\n") {
-		return failf(http.StatusBadRequest, "Invalid value for field %s.", "host")
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "host")
 	}
 	if cfg.Enabled && cfg.Host == "" {
-		return fail(http.StatusBadRequest, "The SMTP server is required.")
+		return fail(http.StatusBadRequest, i18n.MailServerRequired)
 	}
 	if (cfg.Enabled || cfg.From != "") && !mail.ValidAddress(cfg.From) {
-		return fail(http.StatusBadRequest, "Invalid sender address.")
+		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
 	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
-			return failf(http.StatusInternalServerError, "The password cannot be encrypted: %s", err.Error())
+			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, err.Error())
 		}
 	}
 	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {
@@ -504,14 +505,14 @@ func (s *Server) testMail(w http.ResponseWriter, r *http.Request) error {
 		to = currentUser(r).Email
 	}
 	if !mail.ValidAddress(to) {
-		return fail(http.StatusBadRequest, "Invalid recipient address.")
+		return fail(http.StatusBadRequest, i18n.MailRecipientInvalid)
 	}
 	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
 	if err != nil {
-		return failf(http.StatusInternalServerError, "The stored password cannot be read: %s", err.Error())
+		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
 	}
 	if cfg.Host == "" || cfg.From == "" {
-		return fail(http.StatusConflict, "Fill in the server and the sender first.")
+		return fail(http.StatusConflict, i18n.MailSettingsIncomplete)
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
@@ -525,26 +526,26 @@ func (s *Server) testMail(w http.ResponseWriter, r *http.Request) error {
 func smtpError(err error) error {
 	var me *mail.Error
 	if !errors.As(err, &me) {
-		return failf(http.StatusBadGateway, "Sending failed: %s", err.Error())
+		return failf(http.StatusBadGateway, i18n.MailSendFailed, err.Error())
 	}
 	detail := me.Err.Error()
 	switch me.Stage {
 	case mail.StageConnect:
-		return failf(http.StatusBadGateway, "Cannot connect to the server: %s", detail)
+		return failf(http.StatusBadGateway, i18n.MailConnectFailed, detail)
 	case mail.StageTLS:
-		return failf(http.StatusBadGateway, "TLS negotiation failed: %s", detail)
+		return failf(http.StatusBadGateway, i18n.MailTLSFailed, detail)
 	case mail.StageNoTLS:
-		return fail(http.StatusBadGateway, "The server does not offer STARTTLS: choose another security.")
+		return fail(http.StatusBadGateway, i18n.MailNoStartTLS)
 	case mail.StageAuth:
-		return failf(http.StatusBadGateway, "The server refuses the username or password: %s", detail)
+		return failf(http.StatusBadGateway, i18n.MailAuthRefused, detail)
 	case mail.StageNoAuth:
-		return fail(http.StatusBadGateway, "The server does not ask for credentials: leave the username empty.")
+		return fail(http.StatusBadGateway, i18n.MailAuthUnsupported)
 	case mail.StageSender:
-		return failf(http.StatusBadGateway, "The server refuses the sender: %s", detail)
+		return failf(http.StatusBadGateway, i18n.MailSenderRefused, detail)
 	case mail.StageRecipient:
-		return failf(http.StatusBadGateway, "The server refuses the recipient: %s", detail)
+		return failf(http.StatusBadGateway, i18n.MailRecipientRefused, detail)
 	}
-	return failf(http.StatusBadGateway, "The server refuses the message: %s", detail)
+	return failf(http.StatusBadGateway, i18n.MailMessageRefused, detail)
 }
 
 func (s *Server) mailQueue(w http.ResponseWriter, r *http.Request) error {
@@ -662,15 +663,15 @@ func (s *Server) readSubscription(r *http.Request, sub *perm.Subject, x *notify.
 		in.Days = nil
 	case "weekly":
 		if len(in.Days) == 0 {
-			return fail(http.StatusBadRequest, "Choose at least one day.")
+			return fail(http.StatusBadRequest, i18n.SubscriptionDayRequired)
 		}
 		for _, d := range in.Days {
 			if d < 1 || d > 7 {
-				return fail(http.StatusBadRequest, "Invalid days: from 1 (Monday) to 7 (Sunday).")
+				return fail(http.StatusBadRequest, i18n.SubscriptionDaysInvalid)
 			}
 		}
 	default:
-		return fail(http.StatusBadRequest, "Unknown frequency: daily or weekly.")
+		return fail(http.StatusBadRequest, i18n.SubscriptionFrequencyUnknown)
 	}
 	if err := checkHour(in.Hour); err != nil {
 		return err
@@ -678,12 +679,12 @@ func (s *Server) readSubscription(r *http.Request, sub *perm.Subject, x *notify.
 	x.Frequency, x.Days, x.Hour, x.EmptyToo = in.Schedule, in.Days, in.Hour, in.EmptyToo
 	if in.Group != nil && *in.Group != 0 {
 		if !sub.Admin {
-			return fail(http.StatusForbidden, "Only an administrator can subscribe a group.")
+			return fail(http.StatusForbidden, i18n.SubscriptionGroupAdminOnly)
 		}
 		var name string
 		err := s.db.QueryRowContext(r.Context(), `SELECT name FROM user_groups WHERE id = ?`, *in.Group).Scan(&name)
 		if errors.Is(err, sql.ErrNoRows) {
-			return fail(http.StatusBadRequest, "Group not found.")
+			return fail(http.StatusBadRequest, i18n.GroupNotFound)
 		}
 		if err != nil {
 			return err
@@ -797,7 +798,7 @@ func (s *Server) runSubscription(w http.ResponseWriter, r *http.Request) error {
 	}
 	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
 	if err != nil || !cfg.Enabled {
-		return fail(http.StatusConflict, "Email is not enabled on this Solstice.")
+		return fail(http.StatusConflict, i18n.MailDisabled)
 	}
 	n, err := s.out.notify.RunSubscription(r.Context(), x)
 	if err != nil {

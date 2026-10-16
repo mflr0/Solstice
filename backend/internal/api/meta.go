@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"solstice/internal/i18n"
 	"strings"
 	"time"
 
@@ -147,7 +148,7 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		return fail(http.StatusInternalServerError, "Streaming is not supported.")
+		return fail(http.StatusInternalServerError, i18n.RequestStreamingUnsupported)
 	}
 	sub, err := s.subject(r)
 	if err != nil {

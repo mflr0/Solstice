@@ -11,6 +11,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -106,7 +107,7 @@ func (s *Server) componentNameTaken(ctx context.Context, projectID int64, name s
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "“%s” already exists.", name)
+		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
 	}
 	return nil
 }
@@ -145,7 +146,7 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 		}
 		before = list[0]
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, "A name is required (%d characters at most).", 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
@@ -171,7 +172,7 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.AssigneeType != nil {
 		if !slices.Contains(assigneeTypes, *in.AssigneeType) {
-			return failf(http.StatusBadRequest, "Unknown default assignment (choose from: %s).",
+			return failf(http.StatusBadRequest, i18n.ComponentAssigneeTypeUnknown,
 				strings.Join(assigneeTypes, ", "))
 		}
 		sets["assignee_type"] = *in.AssigneeType
@@ -267,7 +268,7 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if len(other) == 0 || *in.MoveTo == id {
-			return fail(http.StatusBadRequest, "Replacement component not found in this project.")
+			return fail(http.StatusBadRequest, i18n.ComponentReplacementNotFound)
 		}
 		target = &other[0]
 	}
@@ -460,7 +461,7 @@ func (s *Server) versionNameTaken(ctx context.Context, projectID int64, name str
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, "“%s” already exists.", name)
+		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
 	}
 	return nil
 }
@@ -473,13 +474,13 @@ func optDate(raw map[string]json.RawMessage, key string) (any, bool, error) {
 	}
 	var s *string
 	if json.Unmarshal(v, &s) != nil {
-		return nil, true, failf(http.StatusBadRequest, "Invalid value for field %s.", key)
+		return nil, true, failf(http.StatusBadRequest, i18n.FieldValueInvalid, key)
 	}
 	if s == nil || *s == "" {
 		return nil, true, nil
 	}
 	if _, err := time.Parse(time.DateOnly, *s); err != nil {
-		return nil, true, failf(http.StatusBadRequest, "Invalid date: “%s” (YYYY-MM-DD expected).", *s)
+		return nil, true, failf(http.StatusBadRequest, i18n.CommonDateInvalid, *s)
 	}
 	return *s, true, nil
 }
@@ -514,7 +515,7 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, "A name is required (%d characters at most).", 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
@@ -549,7 +550,7 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 	}
 	if a, ok := start.(string); ok {
 		if b, ok := release.(string); ok && a > b {
-			return fail(http.StatusBadRequest, "The start date must precede the release date.")
+			return fail(http.StatusBadRequest, i18n.VersionStartAfterRelease)
 		}
 	}
 	if in.Released != nil {
@@ -644,7 +645,7 @@ func (s *Server) orderVersions(w http.ResponseWriter, r *http.Request) error {
 // sameIDs checks that ids lists every item exactly once.
 func sameIDs[T any, K comparable](items []T, ids []K, id func(T) K) error {
 	if len(items) != len(ids) {
-		return fail(http.StatusBadRequest, "The order must list every element once and only once.")
+		return fail(http.StatusBadRequest, i18n.CommonOrderInvalid)
 	}
 	seen := map[K]bool{}
 	for _, it := range items {
@@ -652,7 +653,7 @@ func sameIDs[T any, K comparable](items []T, ids []K, id func(T) K) error {
 	}
 	for _, k := range ids {
 		if !seen[k] {
-			return fail(http.StatusBadRequest, "The order must list every element once and only once.")
+			return fail(http.StatusBadRequest, i18n.CommonOrderInvalid)
 		}
 		delete(seen, k)
 	}
@@ -710,7 +711,7 @@ func (s *Server) otherVersion(ctx context.Context, projectID, self int64, id *in
 	}
 	v, err := s.version(ctx, projectID, *id)
 	if errors.Is(err, errNotFound) || (err == nil && v.ID == self) {
-		return nil, fail(http.StatusBadRequest, "Target version not found in this project.")
+		return nil, fail(http.StatusBadRequest, i18n.VersionTargetNotFound)
 	}
 	if err != nil {
 		return nil, err
@@ -746,7 +747,7 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 	day := s.today()
 	if in.ReleaseDate != nil && *in.ReleaseDate != "" {
 		if _, err := time.Parse(time.DateOnly, *in.ReleaseDate); err != nil {
-			return failf(http.StatusBadRequest, "Invalid date: “%s” (YYYY-MM-DD expected).", *in.ReleaseDate)
+			return failf(http.StatusBadRequest, i18n.CommonDateInvalid, *in.ReleaseDate)
 		}
 		day = *in.ReleaseDate
 	}
@@ -755,7 +756,7 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if to != nil && to.Released {
-		return fail(http.StatusBadRequest, "Unresolved issues go into a version that has not been released yet.")
+		return fail(http.StatusBadRequest, i18n.VersionMoveToUnreleased)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -808,7 +809,7 @@ func (s *Server) mergeVersion(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Into == nil {
-		return fail(http.StatusBadRequest, "Target version not found in this project.")
+		return fail(http.StatusBadRequest, i18n.VersionTargetNotFound)
 	}
 	into, err := s.otherVersion(ctx, projectID, id, in.Into)
 	if err != nil {

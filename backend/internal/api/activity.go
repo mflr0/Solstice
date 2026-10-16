@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +134,7 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if strings.TrimSpace(in.Body) == "" {
-		return fail(http.StatusBadRequest, "The comment is empty.")
+		return fail(http.StatusBadRequest, i18n.CommentEmpty)
 	}
 	var group, role any
 	var eventGroup string
@@ -143,14 +144,14 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 		// otherwise one could not read one's own comment.
 		if v.Group != "" {
 			if !sub.SeesRestricted(iss.ProjectID, strings.ToLower(v.Group), 0) {
-				return fail(http.StatusBadRequest, "You are not a member of this group.")
+				return fail(http.StatusBadRequest, i18n.CommentGroupNotMember)
 			}
 			group = strings.ToLower(v.Group)
 			eventGroup = strings.ToLower(v.Group)
 		}
 		if v.Role != 0 {
 			if !sub.SeesRestricted(iss.ProjectID, "", v.Role) {
-				return fail(http.StatusBadRequest, "You do not have this role in the project.")
+				return fail(http.StatusBadRequest, i18n.CommentRoleNotHeld)
 			}
 			role = v.Role
 			eventRole = v.Role
@@ -260,7 +261,7 @@ func (s *Server) editComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if strings.TrimSpace(in.Body) == "" {
-		return fail(http.StatusBadRequest, "The comment is empty.")
+		return fail(http.StatusBadRequest, i18n.CommentEmpty)
 	}
 	now := time.Now().UTC()
 	if _, err := s.db.ExecContext(r.Context(), `UPDATE comments SET body = ?, updated_at = ?, updated_by_id = ?
@@ -523,7 +524,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Seconds <= 0 || in.Seconds > 7*24*3600 {
-		return fail(http.StatusBadRequest, "Invalid duration.")
+		return fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid)
 	}
 	now := time.Now().UTC()
 	started := now
@@ -631,14 +632,14 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	lt, ok := cat.linkType[in.Type]
 	if !ok {
-		return fail(http.StatusBadRequest, "Unknown link type.")
+		return fail(http.StatusBadRequest, i18n.LinkTypeUnknown)
 	}
 	target, err := s.findIssue(ctx, in.Target)
 	if err != nil || !sub.CanSee(target.perm()) {
-		return fail(http.StatusBadRequest, "Target issue not found.")
+		return fail(http.StatusBadRequest, i18n.LinkTargetNotFound)
 	}
 	if target.ID == iss.ID {
-		return fail(http.StatusBadRequest, "An issue cannot be linked to itself.")
+		return fail(http.StatusBadRequest, i18n.LinkToItself)
 	}
 	source, dest := iss, target
 	if in.Direction == "inward" {

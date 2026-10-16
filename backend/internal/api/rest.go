@@ -121,7 +121,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	rest("GET /secure/useravatar", s.userAvatar, true)
 	rest("GET /secure/projectavatar", s.projectAvatar, true)
 	mux.Handle("/rest/", s.rest(func(http.ResponseWriter, *http.Request) error {
-		return fail(http.StatusNotFound, "Unknown address.")
+		return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
 	}, false))
 }
 
@@ -143,7 +143,7 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
 			} else if errors.Is(err, auth.ErrNoSession) {
 				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
-				err = fail(http.StatusUnauthorized, "Credentials refused.")
+				err = fail(http.StatusUnauthorized, i18n.RequestCredentialsRefused)
 			}
 			s.writeRESTFailure(w, r, err)
 			return
@@ -151,13 +151,12 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if u == nil {
 			w.Header().Set("X-AUSERNAME", "anonymous")
 			if needUser {
-				writeRESTError(w, r, fail(http.StatusUnauthorized, "Sign in to continue."))
+				writeRESTError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
 		}
 		if !forgeryProof(r, via) {
-			writeRESTError(w, r, fail(http.StatusForbidden,
-				"Request refused: add the header “X-Atlassian-Token: no-check” (protection against cross-site request forgery)."))
+			writeRESTError(w, r, fail(http.StatusForbidden, i18n.RequestXSRFHeader))
 			return
 		}
 		if u != nil {
@@ -236,7 +235,7 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 			return
 		}
 		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-		err = fail(http.StatusInternalServerError, "Internal error. The incident has been logged.")
+		err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 	}
 	writeRESTError(w, r, err)
 }
@@ -251,7 +250,7 @@ type restError struct {
 func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(err.Error())}
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}
 	msg := he.msg.In(locale(r))
@@ -337,7 +336,7 @@ func (r *recorder) Write(b []byte) (int, error) {
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
-		return failf(http.StatusBadRequest, "Invalid request: %s", err.Error())
+		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 	}
 	return nil
 }

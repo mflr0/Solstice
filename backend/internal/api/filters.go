@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"solstice/internal/i18n"
 	"sort"
 	"strconv"
 	"strings"
@@ -213,7 +214,7 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
 		if n == "" || utf8.RuneCountInString(n) > 255 {
-			return fail(http.StatusBadRequest, "A filter name is required (255 characters at most).")
+			return fail(http.StatusBadRequest, i18n.FilterNameRequired)
 		}
 	}
 	if in.Query != nil && jql.LooksLike(*in.Query) {
@@ -229,14 +230,14 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 		case "everyone":
 		case "group":
 			if !sub.InGroup(sh.ID) && !sub.Admin {
-				return fail(http.StatusBadRequest, "You can only share with a group you belong to.")
+				return fail(http.StatusBadRequest, i18n.FilterShareGroupNotMember)
 			}
 		case "project":
 			if !sub.CanBrowseProject(sh.ID) {
-				return fail(http.StatusBadRequest, "Project not found.")
+				return fail(http.StatusBadRequest, i18n.ProjectNotFound)
 			}
 			if sh.Role != 0 && !sub.HasRole(sh.ID, sh.Role) && !sub.Admin {
-				return fail(http.StatusBadRequest, "You can only share with a role you have in the project.")
+				return fail(http.StatusBadRequest, i18n.FilterShareRoleNotHeld)
 			}
 		case "user":
 			var n int
@@ -244,10 +245,10 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 				return err
 			}
 			if n == 0 {
-				return fail(http.StatusBadRequest, "Person not found.")
+				return fail(http.StatusBadRequest, i18n.FilterSharePersonNotFound)
 			}
 		default:
-			return failf(http.StatusBadRequest, "Unknown kind of share: %s.", sh.Kind)
+			return failf(http.StatusBadRequest, i18n.FilterShareKindUnknown, sh.Kind)
 		}
 	}
 	return nil
@@ -289,7 +290,7 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Name == nil || in.Query == nil {
-		return fail(http.StatusBadRequest, "A filter needs a name and a query.")
+		return fail(http.StatusBadRequest, i18n.FilterIncomplete)
 	}
 	if err := s.checkFilter(ctx, sub, in); err != nil {
 		return err

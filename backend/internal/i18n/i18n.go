@@ -1,9 +1,9 @@
 // Package i18n translates the messages Solstice shows its users.
 //
-// English is the source language: messages are written in English in the
-// code, as fmt templates ("Unknown status: %s."), and that English template
-// is the key of every language's catalogue. A translation may reorder the
-// values with explicit argument indexes (%[2]s … %[1]s).
+// Code names a message by its Key (keys.go); every language's catalogue maps
+// it to a fmt template ("Unknown status: %s."), English being the source
+// (en.go). A translation may reorder the values with explicit argument
+// indexes (%[2]s … %[1]s).
 package i18n
 
 import (
@@ -20,9 +20,11 @@ const Default = "en"
 // Locales are the supported languages, the default first.
 var Locales = []string{"en", "fr", "de", "it", "hi"}
 
-// catalogues holds the translations of each language but English, keyed by
-// English template.
-var catalogues = map[string]map[string]string{"fr": fr, "de": de, "it": it, "hi": hi}
+// Key names a message. Its value is its own name.
+type Key string
+
+// catalogues holds the templates of each language.
+var catalogues = map[string]map[Key]string{"en": en, "fr": fr, "de": de, "it": it, "hi": hi}
 
 // Supported tells whether locale is one of Locales.
 func Supported(locale string) bool { return slices.Contains(Locales, locale) }
@@ -54,28 +56,40 @@ func Negotiate(header string) string {
 	return best
 }
 
-// Message is a message not rendered yet: an English template and its values.
-// Passed as a value of another message, it is rendered in the same language.
+// Message is a message not rendered yet: a key and its values, or a text
+// shown as is. Passed as a value of another message, it is rendered in the
+// same language.
 type Message struct {
-	Template string
-	Args     []any
+	Key  Key
+	Args []any
+	raw  string
 }
 
 // M builds a Message.
-func M(template string, args ...any) Message { return Message{Template: template, Args: args} }
+func M(key Key, args ...any) Message { return Message{Key: key, Args: args} }
+
+// Raw builds a Message that is not translated: the text shows as is in
+// every language.
+func Raw(text string) Message { return Message{raw: text} }
 
 // In renders the message in a language.
-func (m Message) In(locale string) string { return Sprintf(locale, m.Template, m.Args...) }
+func (m Message) In(locale string) string {
+	if m.Key == "" {
+		return m.raw
+	}
+	return Sprintf(locale, m.Key, m.Args...)
+}
 
 // String renders the message in the default language (English).
 func (m Message) String() string { return m.In(Default) }
 
-// Sprintf renders an English template in a language: its translation (the
-// template itself in English, or when none exists) with the values inserted.
-// Without values the text is returned as is, so it needs no % escaping.
-func Sprintf(locale, template string, args ...any) string {
-	if t, ok := catalogues[locale][template]; ok {
-		template = t
+// Sprintf renders a message in a language: its template (the English one
+// when the language has none) with the values inserted. Without values the
+// template is returned as is, so it needs no % escaping.
+func Sprintf(locale string, key Key, args ...any) string {
+	template, ok := catalogues[locale][key]
+	if !ok {
+		template = en[key]
 	}
 	if len(args) == 0 {
 		return template
