@@ -196,8 +196,13 @@
   /* Seven tabs do not fit a phone: the strip scrolls inside its own box. */
   .tabs {
     margin: 18px 0 4px;
-    overflow-x: auto;
+    overflow: auto hidden;
     max-width: 100%;
+  }
+
+  /* Air between the tab strip and the tab's first line. */
+  .panel {
+    padding-top: 18px;
   }
 
   .tab {
