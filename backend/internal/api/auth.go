@@ -44,6 +44,16 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := s.startSession(w, r, u); err != nil {
+		return err
+	}
+	s.auditLogin(r, in.Username, u, "form")
+	return writeJSON(w, http.StatusOK, meOf(u))
+}
+
+// startSession signs u in: it opens a session, notes the sign-in and sets
+// the session cookie.
+func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	token, expires, err := auth.NewSessionFor(r.Context(), s.db, u.ID, s.sessionLifetime(r.Context()))
 	if err != nil {
 		return err
@@ -61,8 +71,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		Secure:   secureRequest(r, s.base()),
 		SameSite: http.SameSiteLaxMode,
 	})
-	s.auditLogin(r, in.Username, u, "form")
-	return writeJSON(w, http.StatusOK, meOf(u))
+	return nil
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
@@ -141,6 +150,12 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	}
 	for column, v := range sets {
 		if _, err := s.db.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
+			return err
+		}
+	}
+	// Links mailed to the old address must not work once it is not theirs.
+	if email, ok := sets["email"]; ok && email != before.Email {
+		if err := auth.RevokeAccountTokens(ctx, s.db, u.ID, time.Now()); err != nil {
 			return err
 		}
 	}

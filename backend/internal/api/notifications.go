@@ -501,6 +501,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 		s.auditLog(r, audit.SettingsMail, audit.Target{Type: "settings", ID: "mail"}, changes)
 	}
 	s.out.notify.Invalidate()
+	s.forgetEmailLinks()
 	s.out.outbox.Wake()
 	return s.getMailSettings(w, r)
 }

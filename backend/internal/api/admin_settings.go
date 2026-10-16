@@ -153,6 +153,7 @@ func (s *Server) general(ctx context.Context) *generalSettings {
 
 // forgetGeneral drops the cached settings after a change.
 func (s *Server) forgetGeneral() {
+	s.forgetEmailLinks() // the public address is part of what links need
 	s.adm.mu.Lock()
 	s.adm.gen = nil
 	s.adm.mu.Unlock()
@@ -265,7 +266,8 @@ func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) error {
 		banner = map[string]string{"text": g.Banner.Text, "level": g.Banner.Level}
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"instanceName": g.InstanceName,
-		"defaultLanguage": g.DefaultLanguage, "banner": banner, "passwordMinLength": g.PasswordMinLength})
+		"defaultLanguage": g.DefaultLanguage, "banner": banner, "passwordMinLength": g.PasswordMinLength,
+		"emailLinks": s.emailLinksReady(r.Context())})
 }
 
 func (s *Server) getSettings(w http.ResponseWriter, r *http.Request) error {

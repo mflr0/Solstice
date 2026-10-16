@@ -277,7 +277,8 @@ func runServe(ctx context.Context, args []string) error {
 }
 
 // cleanSessions deletes expired sessions hourly: they are useless. Audit
-// log entries past their retention period go at the same time.
+// log entries past their retention period, and expired or used reset and
+// invitation links, go at the same time.
 func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -291,6 +292,9 @@ func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 			}
 			if _, err := audit.Purge(ctx, conn); err != nil {
 				log.Warn("audit log purge failed", "err", err)
+			}
+			if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
+				log.Warn("expired reset and invitation links purge failed", "err", err)
 			}
 		}
 	}

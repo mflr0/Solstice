@@ -45,6 +45,8 @@ type Server struct {
 	catalog *catalog
 	catAt   time.Time
 
+	acc accountMail // whether links can be sent by e-mail (account_links.go)
+
 	adm adminState // instance settings, system page, imports (admin_*.go)
 	upd updater    // release checks and the update helper (updates.go)
 
@@ -87,6 +89,9 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 
 	route("POST /api/login", s.login, false)
 	route("POST /api/logout", s.logout, false)
+
+	// Forgotten passwords and invitations: links sent by e-mail.
+	s.accountLinkRoutes(route)
 	route("GET /api/me", s.me, true)
 	route("PATCH /api/me", s.updateMe, true)
 	route("GET /api/meta", s.meta, true)
