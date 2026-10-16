@@ -140,7 +140,7 @@ describe('general settings', () => {
     banner: { enabled: false, text: '', level: 'info' },
     sessionDays: 30,
     passwordMinLength: 12,
-    sources: { baseURL: 'env', instanceName: 'database' },
+    sources: { baseURL: 'file', instanceName: 'database' },
     languages: ['fr', 'en'],
   };
 
@@ -179,7 +179,7 @@ describe('general settings', () => {
 
   it('only resets values set from the administration', () => {
     expect(canReset('database')).toBe(true);
-    expect(canReset('env')).toBe(false);
+    expect(canReset('file')).toBe(false);
     expect(canReset(undefined)).toBe(false);
   });
 

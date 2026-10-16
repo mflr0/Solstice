@@ -100,7 +100,6 @@ export const en = {
     dataDir: 'Data folder',
     dataDirHint: 'Attachments and Solstice’s files: back it up along with the database.',
     configFile: 'Configuration file',
-    fixed: 'Set by the server’s environment.',
     save: 'Save and continue',
     saving: 'Saving…',
   },

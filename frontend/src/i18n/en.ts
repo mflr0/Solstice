@@ -1966,8 +1966,7 @@ export const en = {
     passwordMinLengthHint:
       'From 8 to 128 characters. Applies to new passwords; old ones still work.',
     sources: {
-      env: 'Value from an environment variable: saving it here replaces it.',
-      file: 'Value from the configuration file: saving it here replaces it.',
+      file: 'Value from the configuration file or an environment variable: saving it here replaces it.',
       default: 'Default value.',
       database: '',
     },

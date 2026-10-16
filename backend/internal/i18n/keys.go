@@ -105,7 +105,6 @@ const (
 	SetupDatabaseMissing      Key = "SetupDatabaseMissing"
 	SetupDatabaseConnect      Key = "SetupDatabaseConnect"
 	SetupDatabaseUnreachable  Key = "SetupDatabaseUnreachable"
-	SetupDatabaseFromEnv      Key = "SetupDatabaseFromEnv"
 	SetupDatabaseImported     Key = "SetupDatabaseImported"
 	SetupDatabaseRequired     Key = "SetupDatabaseRequired"
 	SetupTablesFailed         Key = "SetupTablesFailed"

@@ -65,21 +65,17 @@
         class="input"
         type="url"
         bind:value={baseURL}
-        required={!status.baseURLFixed}
-        readonly={status.baseURLFixed}
+        required
         spellcheck="false"
         aria-describedby="base-url-hint"
       />
-      <span class="hint" id="base-url-hint"
-        >{status.baseURLFixed ? m.instance.fixed : m.instance.baseURLHint}</span
-      >
+      <span class="hint" id="base-url-hint">{m.instance.baseURLHint}</span>
     </label>
 
     <TimeZoneField
       label={m.instance.tz}
-      hint={status.tzFixed ? m.instance.fixed : m.instance.tzHint}
+      hint={m.instance.tzHint}
       bind:value={tz}
-      readonly={!!status.tzFixed}
       id="instance-tz"
     />
 

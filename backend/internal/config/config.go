@@ -40,13 +40,6 @@ const (
 	KeyConfig = "SOLSTICE_CONFIG"
 )
 
-// Where a setting's value comes from.
-const (
-	SourceEnv     = "env"
-	SourceFile    = "file"
-	SourceDefault = "default"
-)
-
 // Settings are what the file and the environment set.
 type Settings struct {
 	// Data is the data directory (attachments, secret key, setup code).
@@ -135,9 +128,6 @@ type Config struct {
 	Path string
 	// Exists tells whether Path was found.
 	Exists bool
-	// Sources tells where each key's value comes from: SourceEnv,
-	// SourceFile or SourceDefault.
-	Sources map[string]string
 	// Unknown lists the keys of the file, and the SOLSTICE_ variables,
 	// Solstice does not know (typos, renamed settings).
 	Unknown []string
@@ -169,7 +159,7 @@ func Load(env []string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Config{Settings: Defaults(), Path: abs, Sources: map[string]string{}}
+	c := &Config{Settings: Defaults(), Path: abs}
 
 	values := map[string]string{}
 	f, err := os.Open(abs) // #nosec G304 -- path built by the server, not from user input
@@ -186,21 +176,19 @@ func Load(env []string) (*Config, error) {
 	}
 
 	for _, f := range fields(&c.Settings) {
-		raw, src := vars[f.key], SourceEnv
+		raw, inFile := vars[f.key], false
 		if raw == "" {
-			raw, src = values[f.key], SourceFile
+			raw, inFile = values[f.key], true
 		}
 		if raw == "" {
-			c.Sources[f.key] = SourceDefault
 			continue
 		}
 		if err := f.set(raw); err != nil {
-			if src == SourceFile {
+			if inFile {
 				return nil, fmt.Errorf("%s in %s: %w", f.key, abs, err)
 			}
 			return nil, fmt.Errorf("%s: %w", f.key, err)
 		}
-		c.Sources[f.key] = src
 	}
 	for k := range values {
 		if !slices.Contains(Keys, k) {

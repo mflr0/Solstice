@@ -26,7 +26,6 @@ import (
 	"solstice/internal/api"
 	"solstice/internal/audit"
 	"solstice/internal/auth"
-	"solstice/internal/config"
 	"solstice/internal/db"
 	"solstice/internal/importer"
 	"solstice/internal/web"
@@ -180,8 +179,7 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
-		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr,
-			Sources: configSources(cfg, baseURL, tz)})
+		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})
 		h := srv.Handler(static)
 		appDB.Store(conn)
 		app.Store(srv)
@@ -191,13 +189,13 @@ func runServe(ctx context.Context, args []string) error {
 	}
 	if setup {
 		wizard, err = api.NewSetup(ctx, api.SetupOptions{
-			DB: conn, DBFixed: fixed(cfg, config.KeyDBURL), Pool: cfg.DB.Pool(),
-			DataDir: dataDir, DataFixed: fixed(cfg, config.KeyData),
+			DB: conn, Pool: cfg.DB.Pool(),
+			DataDir:        dataDir,
 			ConfigPath:     cfg.Path,
 			TrustedProxies: cfg.HTTP.TrustedProxies,
-			BaseURL:        strings.TrimSuffix(cfg.HTTP.BaseURL, "/"), BaseURLFixed: fixed(cfg, config.KeyBaseURL),
-			TZ: tzName, TZFixed: fixed(cfg, config.KeyTZ),
-			Version: version, Log: log,
+			BaseURL:        strings.TrimSuffix(cfg.HTTP.BaseURL, "/"),
+			TZ:             tzName,
+			Version:        version, Log: log,
 			Done: func(res api.SetupResult) {
 				tz, err := loadTZ(res.TZ)
 				if err != nil {

@@ -99,7 +99,6 @@ export const fr: SetupMessages = {
     dataDir: 'Dossier de données',
     dataDirHint: 'Pièces jointes et fichiers de Solstice : à sauvegarder avec la base.',
     configFile: 'Fichier de configuration',
-    fixed: "Fixé par l'environnement du serveur.",
     save: 'Enregistrer et continuer',
     saving: 'Enregistrement…',
   },

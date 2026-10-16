@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net"
 	"os"
 	"time"
@@ -42,24 +41,6 @@ func setupLog(l config.LogSettings) {
 	}
 	// The default handler's text output, filtered.
 	slog.SetLogLoggerLevel(l.Level)
-}
-
-// fixed tells whether the environment sets a key: the setup wizard cannot
-// change it.
-func fixed(c *config.Config, key string) bool { return c.Sources[key] == config.SourceEnv }
-
-// configSources tells where each setting in effect comes from, for the
-// administration's system page: env, file or default. baseURL and tz are
-// the values in effect, which the setup wizard may have just written.
-func configSources(c *config.Config, baseURL string, tz *time.Location) map[string]string {
-	out := maps.Clone(c.Sources)
-	if out[config.KeyBaseURL] == config.SourceDefault && baseURL != "" {
-		out[config.KeyBaseURL] = config.SourceFile
-	}
-	if out[config.KeyTZ] == config.SourceDefault && tz != nil && tz != time.Local {
-		out[config.KeyTZ] = config.SourceFile
-	}
-	return out
 }
 
 // openMigrated connects to Solstice's database and brings it up to date, for

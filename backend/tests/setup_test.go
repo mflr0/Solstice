@@ -328,7 +328,7 @@ func TestSetupNewInstance(t *testing.T) {
 	// A new start on this database (it has an account now) would not be in
 	// setup mode; a wizard left running notices and stops too.
 	var stopped bool
-	_, c2 := unlocked(t, api.SetupOptions{DB: conn, DBFixed: true, Done: func(api.SetupResult) { stopped = true }})
+	_, c2 := unlocked(t, api.SetupOptions{DB: conn, Done: func(api.SetupResult) { stopped = true }})
 	status, body = c2.call("POST", "/api/setup/admin", "", map[string]string{"username": "intrus",
 		"email": "intrus@example.org", "password": "une autre phrase longue"})
 	if status != http.StatusConflict || !stopped {

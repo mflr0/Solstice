@@ -95,7 +95,6 @@ export const hi: SetupMessages = {
     dataDir: 'डेटा फ़ोल्डर',
     dataDirHint: 'अटैचमेंट और Solstice की फ़ाइलें: इसका बैकअप डेटाबेस के साथ लें।',
     configFile: 'कॉन्फ़िगरेशन फ़ाइल',
-    fixed: 'सर्वर के एनवायरनमेंट में तय है।',
     save: 'सहेजें और आगे बढ़ें',
     saving: 'सहेजा जा रहा है…',
   },

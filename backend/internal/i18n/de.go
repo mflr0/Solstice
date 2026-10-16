@@ -92,7 +92,6 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SetupDatabaseMissing:      "Auf diesem Server gibt es keine Datenbank „%s“: Legen Sie sie zuerst an.",
 	SetupDatabaseConnect:      "Verbindung zur Datenbank nicht möglich: %s",
 	SetupDatabaseUnreachable:  "Datenbankserver unter %s nicht erreichbar: Prüfen Sie Host, Port und Firewall.",
-	SetupDatabaseFromEnv:      "Die Datenbank ist durch die Serverumgebung festgelegt und kann hier nicht geändert werden.",
 	SetupDatabaseImported:     "Ein Import hat die Datenbank bereits gefüllt: Sie kann nicht mehr geändert werden.",
 	SetupDatabaseRequired:     "Richten Sie zuerst die Datenbank ein.",
 	SetupTablesFailed:         "Das Anlegen der Tabellen ist fehlgeschlagen: %s",

@@ -42,24 +42,19 @@ type SetupOptions struct {
 	// DB is the database, or nil when none is configured yet: the wizard
 	// then asks for one.
 	DB *sql.DB
-	// DBFixed tells that the database comes from the environment, so the
-	// wizard cannot change it.
-	DBFixed bool
 	// Pool sizes the connection pool of the database the wizard opens.
 	Pool db.Pool
-	// DataDir is the data directory in use (absolute); DataFixed as DBFixed.
-	DataDir   string
-	DataFixed bool
+	// DataDir is the data directory in use (absolute).
+	DataDir string
 	// ConfigPath is the configuration file the wizard writes.
 	ConfigPath string
 	// TrustedProxies are the reverse proxies whose forwarding header the
 	// server believes (SOLSTICE_HTTP_TRUSTEDPROXIES).
 	TrustedProxies []netip.Prefix
-	// BaseURL and TZ are the values in effect; *Fixed when the environment sets them.
-	BaseURL, TZ           string
-	BaseURLFixed, TZFixed bool
-	Version               string
-	Log                   *slog.Logger
+	// BaseURL and TZ are the values in effect.
+	BaseURL, TZ string
+	Version     string
+	Log         *slog.Logger
 	// Done is called once, when the first administrator exists. It must
 	// switch the server to the application.
 	Done func(SetupResult)
@@ -333,19 +328,16 @@ type setupStatus struct {
 	Version  string `json:"version"`
 	Database struct {
 		Configured bool   `json:"configured"`
-		Fixed      bool   `json:"fixed"`
 		Server     string `json:"server,omitempty"`
 	} `json:"database"`
 	// Only once unlocked:
-	DataDir      string      `json:"dataDir,omitempty"`
-	ConfigPath   string      `json:"configPath,omitempty"`
-	BaseURL      string      `json:"baseURL,omitempty"`
-	BaseURLFixed bool        `json:"baseURLFixed,omitempty"`
-	TZ           string      `json:"tz,omitempty"`
-	TZFixed      bool        `json:"tzFixed,omitempty"`
-	Imported     bool        `json:"imported,omitempty"`
-	Import       *importView `json:"import,omitempty"`
-	Config       *configSave `json:"config,omitempty"`
+	DataDir    string      `json:"dataDir,omitempty"`
+	ConfigPath string      `json:"configPath,omitempty"`
+	BaseURL    string      `json:"baseURL,omitempty"`
+	TZ         string      `json:"tz,omitempty"`
+	Imported   bool        `json:"imported,omitempty"`
+	Import     *importView `json:"import,omitempty"`
+	Config     *configSave `json:"config,omitempty"`
 }
 
 // status tells the wizard where things stand. Before the code is given it
@@ -362,12 +354,10 @@ func (w *Setup) status(rw http.ResponseWriter, r *http.Request) error {
 		return writeJSON(rw, http.StatusOK, out)
 	}
 	out.Database.Configured = w.db != nil
-	out.Database.Fixed = w.opt.DBFixed
 	if unlocked {
 		out.Database.Server = w.server
 		out.DataDir, out.ConfigPath = w.opt.DataDir, w.opt.ConfigPath
-		out.BaseURL, out.BaseURLFixed = w.baseURL, w.opt.BaseURLFixed
-		out.TZ, out.TZFixed = w.tz, w.opt.TZFixed
+		out.BaseURL, out.TZ = w.baseURL, w.tz
 		out.Imported = w.imported
 		out.Config = w.lastSave
 		if w.job != nil {

@@ -98,7 +98,6 @@ export const de: SetupMessages = {
     dataDir: 'Datenordner',
     dataDirHint: 'Anhänge und Dateien von Solstice: zusammen mit der Datenbank sichern.',
     configFile: 'Konfigurationsdatei',
-    fixed: 'Durch die Serverumgebung festgelegt.',
     save: 'Speichern und weiter',
     saving: 'Wird gespeichert…',
   },

@@ -95,7 +95,6 @@ export const it: SetupMessages = {
     dataDir: 'Cartella dei dati',
     dataDirHint: 'Allegati e file di Solstice: da salvare insieme al database.',
     configFile: 'File di configurazione',
-    fixed: "Impostato dall'ambiente del server.",
     save: 'Salva e continua',
     saving: 'Salvataggio…',
   },

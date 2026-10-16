@@ -72,19 +72,19 @@ func TestLoadFileThenEnvironment(t *testing.T) {
 	if !c.Exists || c.Path != path {
 		t.Errorf("path %q exists=%v", c.Path, c.Exists)
 	}
-	if c.DB.URL != "mysql://file@db/solstice" || c.Sources[KeyDBURL] != SourceFile {
-		t.Errorf("DB %q from %s: the file's value should hold", c.DB.URL, c.Sources[KeyDBURL])
+	if c.DB.URL != "mysql://file@db/solstice" {
+		t.Errorf("DB %q: the file's value should hold", c.DB.URL)
 	}
-	if c.TZ.String() != "Asia/Kolkata" || c.Sources[KeyTZ] != SourceEnv {
-		t.Errorf("TZ %v from %s: the environment should override the file", c.TZ, c.Sources[KeyTZ])
+	if c.TZ.String() != "Asia/Kolkata" {
+		t.Errorf("TZ %v: the environment should override the file", c.TZ)
 	}
 	if c.DB.MaxOpenConns != 30 || c.DB.MaxIdleConns != 5 {
 		t.Errorf("pool %+v", c.DB)
 	}
 	// An empty variable does not count as set.
 	def := Defaults()
-	if c.HTTP.Addr != def.HTTP.Addr || c.Sources["SOLSTICE_HTTP_ADDR"] != SourceDefault {
-		t.Errorf("addr %q from %s", c.HTTP.Addr, c.Sources["SOLSTICE_HTTP_ADDR"])
+	if c.HTTP.Addr != def.HTTP.Addr {
+		t.Errorf("addr %q", c.HTTP.Addr)
 	}
 	if c.Data != def.Data {
 		t.Errorf("data %q, want the default", c.Data)
@@ -143,11 +143,6 @@ func TestLoadEverySetting(t *testing.T) {
 	}
 	if !reflect.DeepEqual(c.Settings, want) {
 		t.Errorf("got %+v\nwant %+v", c.Settings, want)
-	}
-	for _, k := range Keys {
-		if c.Sources[k] != SourceEnv {
-			t.Errorf("%s from %q", k, c.Sources[k])
-		}
 	}
 }
 

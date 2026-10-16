@@ -1980,8 +1980,7 @@ export const fr: Messages = {
     passwordMinLengthHint:
       'De 8 à 128 caractères. S’applique aux nouveaux mots de passe ; les anciens restent valables.',
     sources: {
-      env: 'Valeur venue d’une variable d’environnement : l’enregistrer ici la remplace.',
-      file: 'Valeur venue du fichier de configuration : l’enregistrer ici la remplace.',
+      file: 'Valeur venue du fichier de configuration ou d’une variable d’environnement : l’enregistrer ici la remplace.',
       default: 'Valeur par défaut.',
       database: '',
     },
