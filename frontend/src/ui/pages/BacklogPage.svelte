@@ -19,9 +19,11 @@
   import BoardHeader from '../board/BoardHeader.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
+  import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import QuickFilters from '../board/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
@@ -44,6 +46,9 @@
   let announcement = $state('');
   let starting = $state<Sprint | null>(null);
   let completing = $state<Sprint | null>(null);
+  let editing = $state<Sprint | null>(null);
+  /** The sprint about to be deleted, with the issues that go back to the backlog. */
+  let deleting = $state<{ sprint: Sprint; issues: number } | null>(null);
   let creatingSprint = $state(false);
 
   const quick = $derived(parseQuick(router.param('quick')));
@@ -288,9 +293,16 @@
     }
   }
 
+  async function deleteSprint(target: { sprint: Sprint }) {
+    await api.deleteSprint(target.sprint.id);
+    notify(t.boards.sprintDeleted(target.sprint.name));
+    afterSprintChange();
+  }
+
   function afterSprintChange() {
     starting = null;
     completing = null;
+    editing = null;
     reload();
     loadDetail(boardId);
   }
@@ -323,6 +335,14 @@
           >
             {#snippet actions()}
               {#if d.can.manage && s?.state === 'future'}
+                <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
+                  >{t.boards.editSprint}</button
+                >
+                <button
+                  class="btn btn-small btn-quiet"
+                  onclick={() => (deleting = { sprint: s, issues: section.cards.length })}
+                  >{t.boards.deleteSprint}</button
+                >
                 <button
                   class="btn btn-small"
                   disabled={active !== null}
@@ -330,6 +350,9 @@
                   onclick={() => (starting = s)}>{t.boards.startSprint}</button
                 >
               {:else if d.can.manage && s?.state === 'active'}
+                <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
+                  >{t.boards.editSprint}</button
+                >
                 <button class="btn btn-small" onclick={() => (completing = s)}
                   >{t.boards.completeSprint}</button
                 >
@@ -387,6 +410,16 @@
     onclose={() => (completing = null)}
     oncompleted={afterSprintChange}
   />
+  <EditSprintDialog sprint={editing} onclose={() => (editing = null)} onsaved={afterSprintChange} />
+  <ConfirmDialog
+    open={deleting !== null}
+    title={t.boards.deleteTitle(deleting?.sprint.name ?? '')}
+    confirm={t.boards.deleteSprint}
+    onconfirm={() => (deleting ? deleteSprint(deleting) : Promise.resolve())}
+    onclose={() => (deleting = null)}
+  >
+    <p>{t.boards.deleteBody(deleting?.issues ?? 0)}</p>
+  </ConfirmDialog>
 {/if}
 
 <style>

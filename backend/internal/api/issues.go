@@ -861,6 +861,7 @@ var issueFields = map[string]bool{
 	"project": true, "type": true, "summary": true, "description": true, "environment": true, "priority": true,
 	"assignee": true, "labels": true, "components": true, "affectsVersions": true, "fixVersions": true,
 	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true, "epic": true,
+	"originalEstimate": true, "remainingEstimate": true, // Jira durations ("1w 2d 3h 30m"), or null
 	"customFields": true, // {"<field id>": value as in Jira's REST API}
 }
 
@@ -1029,6 +1030,11 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		due = v
 	}
+	estimates, err := readEstimateEdit(f)
+	if err != nil {
+		return err
+	}
+	times := timeEstimates{}.withEstimateEdit(estimates)
 	var level any
 	if f.has("securityLevel") && !f.isNull("securityLevel") {
 		if !sub.Can(perm.Security, projectID, nil) {
@@ -1069,9 +1075,11 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO issues (project_id, num, issue_type_id, parent_id, summary,
 		description, environment, status_id, priority_id, reporter_id, assignee_id, creator_id, security_level_id,
-		created_at, updated_at, due_date, rank_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		created_at, updated_at, due_date, original_estimate, remaining_estimate, rank_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		projectID, num, typeID, parentID, summary, description, environment, status, priority, sub.UserID, assignee,
-		sub.UserID, level, now, now, due, rankBetween(lastRank, ""))
+		sub.UserID, level, now, now, due, sqlq.Value(times.Original), sqlq.Value(times.Remaining),
+		rankBetween(lastRank, ""))
 	if err != nil {
 		return err
 	}
@@ -1500,6 +1508,25 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			sets["due_date"] = newVal
 			changes = append(changes, change{field: "duedate", oldValue: old, oldString: old, newValue: newVal, newString: newVal})
 		}
+	}
+
+	if f.has("originalEstimate") || f.has("remainingEstimate") {
+		if err := can(perm.Edit); err != nil {
+			return err
+		}
+		edit, err := readEstimateEdit(f)
+		if err != nil {
+			return err
+		}
+		cur := timeEstimates{Original: iss.Original, Remaining: iss.Remaining, Spent: iss.Spent}
+		next := cur.withEstimateEdit(edit)
+		if next.Original != cur.Original {
+			sets["original_estimate"] = sqlq.Value(next.Original)
+		}
+		if next.Remaining != cur.Remaining {
+			sets["remaining_estimate"] = sqlq.Value(next.Remaining)
+		}
+		changes = append(changes, cur.changesTo(next)...)
 	}
 
 	if f.has("epic") {

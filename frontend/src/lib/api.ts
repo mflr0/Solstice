@@ -24,6 +24,7 @@ import type {
   StatusRef,
   UserRef,
   Worklog,
+  WorklogPatch,
   WorkflowInput,
   Counter,
   SavedFilter,
@@ -41,6 +42,8 @@ import type {
   BoardPatch,
   BoardSummary,
   CardMove,
+  Sprint,
+  SprintPatch,
 } from '../core/board-types.js';
 import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
@@ -143,6 +146,9 @@ export interface IssueFields {
   status?: string;
   resolution?: string | null;
   securityLevel?: number | null;
+  /** Jira durations ("1w 2d 3h 30m"); null clears. */
+  originalEstimate?: string | null;
+  remainingEstimate?: string | null;
 }
 
 export const api = {
@@ -187,6 +193,9 @@ export const api = {
   worklogs: (key: string) => request<Worklog[]>('GET', `/api/issues/${enc(key)}/worklogs`),
   addWorklog: (key: string, entry: { started?: string; seconds: number; body: string }) =>
     request<void>('POST', `/api/issues/${enc(key)}/worklogs`, entry),
+  editWorklog: (id: number, patch: WorklogPatch) =>
+    request<Worklog>('PUT', `/api/worklogs/${id}`, patch),
+  deleteWorklog: (id: number) => request<void>('DELETE', `/api/worklogs/${id}`),
 
   watch: (key: string, on: boolean) =>
     request<Counter>(on ? 'PUT' : 'DELETE', `/api/issues/${enc(key)}/watch`),
@@ -228,6 +237,9 @@ export const api = {
     request<{ id: number }>('POST', `/api/boards/${board}/sprints`, s),
   startSprint: (id: number, s: { name?: string; goal?: string; end?: string }) =>
     request<void>('POST', `/api/sprints/${id}/start`, s),
+  updateSprint: (id: number, patch: SprintPatch) =>
+    request<Sprint>('PATCH', `/api/sprints/${id}`, patch),
+  deleteSprint: (id: number) => request<void>('DELETE', `/api/sprints/${id}`),
   completeSprint: (id: number, moveTo?: number) =>
     request<{ moved: number }>('POST', `/api/sprints/${id}/complete`, moveTo ? { moveTo } : {}),
   /** The statuses a project's workflows use, for mapping board columns. */

@@ -267,6 +267,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Priorità sconosciuta.",
 	IssueResolutionUnknown:     "Risoluzione sconosciuta.",
 	IssueDueDateInvalid:        "Scadenza non valida (formato atteso AAAA-MM-GG).",
+	IssueEstimateInvalid:       "Stima del tempo non valida (ad esempio 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Livello di sicurezza sconosciuto in questo progetto.",
 	IssueReporterFixed:         "Il segnalatore non può essere cambiato.",
 	IssueNoTodoStatus:          "Non è definito alcuno stato «da fare».",
@@ -359,13 +360,18 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Un ticket non può essere ordinato rispetto a sé stesso.",
 
 	// Sprints.
-	SprintKanban:        "Una board Kanban non ha sprint.",
-	SprintUnknown:       "Sprint sconosciuto o completato.",
-	SprintStarted:       "Questo sprint è già iniziato.",
-	SprintAlreadyActive: "Su questa board c'è già uno sprint attivo. Completalo prima.",
-	SprintEndPast:       "La fine dello sprint deve essere nel futuro.",
-	SprintNotActive:     "Solo uno sprint attivo può essere completato.",
-	SprintTargetInvalid: "Scegli uno sprint futuro di questa board.",
+	SprintKanban:          "Una board Kanban non ha sprint.",
+	SprintUnknown:         "Sprint sconosciuto o completato.",
+	SprintStarted:         "Questo sprint è già iniziato.",
+	SprintAlreadyActive:   "Su questa board c'è già uno sprint attivo. Completalo prima.",
+	SprintEndPast:         "La fine dello sprint deve essere nel futuro.",
+	SprintNotActive:       "Solo uno sprint attivo può essere completato.",
+	SprintTargetInvalid:   "Scegli uno sprint futuro di questa board.",
+	SprintNameRequired:    "Lo sprint ha bisogno di un nome.",
+	SprintClosedLocked:    "Uno sprint completato non può più essere modificato.",
+	SprintDatesOrder:      "Lo sprint deve finire dopo il suo inizio.",
+	SprintStartFuture:     "Uno sprint attivo non può iniziare nel futuro.",
+	SprintDeleteNotFuture: "Solo uno sprint futuro può essere eliminato.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",

@@ -7,7 +7,8 @@
 
   /**
    * Completing the active sprint: how much got done, and where the
-   * unfinished issues go (a future sprint, or back to the backlog).
+   * unfinished issues go (a future sprint, a new one made on the way, or
+   * back to the backlog).
    */
   interface Props {
     boardId: number;
@@ -19,8 +20,13 @@
   }
   const { boardId, sprint, future, onclose, oncompleted }: Props = $props();
 
+  /** The choice that makes a sprint on the way. */
+  const NEW_SPRINT = -1;
+
   let counts = $state<{ done: number; open: number } | null>(null);
   let target = $state(0);
+  /** A sprint made for this completion that failed after it: used again, not made twice. */
+  let made = 0;
   let error = $state('');
   let busy = $state(false);
 
@@ -29,6 +35,7 @@
     if (!s) return;
     counts = null;
     target = 0;
+    made = 0;
     error = '';
     api
       .boardCards(boardId, { sprint: s.id })
@@ -47,7 +54,8 @@
     busy = true;
     error = '';
     try {
-      await api.completeSprint(sprint.id, target || undefined);
+      if (target === NEW_SPRINT && made === 0) made = (await api.createSprint(boardId)).id;
+      await api.completeSprint(sprint.id, (target === NEW_SPRINT ? made : target) || undefined);
       notify(t.boards.completed(sprint.name));
       oncompleted();
     } catch (err) {
@@ -70,6 +78,7 @@
         <span>{t.boards.completeMoveTo}</span>
         <select class="select" bind:value={target}>
           <option value={0}>{t.boards.toBacklog}</option>
+          <option value={NEW_SPRINT}>{t.boards.toNewSprint}</option>
           {#each future as f (f.id)}
             <option value={f.id}>{f.name}</option>
           {/each}

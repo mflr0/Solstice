@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { estimateChanges, estimateText } from '../../core/estimates.js';
   import { paths } from '../../core/route.js';
   import type { IssueDetail, ProjectDetail } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
@@ -42,6 +43,34 @@
   );
   const ids = (list: { id: number }[]) => list.map((x) => x.id);
   const meIsAssignee = $derived(issue.assignee?.id === session.me?.id);
+
+  // The estimates as typed, kept in step with the issue.
+  let originalText = $state('');
+  let remainingText = $state('');
+  let estimateError = $state(false);
+
+  $effect(() => {
+    originalText = estimateText(issue.time.original);
+    remainingText = estimateText(issue.time.remaining);
+    estimateError = false;
+  });
+
+  async function saveEstimates() {
+    const { fields, invalid } = estimateChanges(
+      { original: originalText, remaining: remainingText },
+      issue.time,
+    );
+    estimateError = invalid !== null;
+    if (invalid !== null || Object.keys(fields).length === 0) return;
+    try {
+      await onchange(fields);
+    } catch {
+      // The note already says why; the fields show the issue's own values again.
+      originalText = estimateText(issue.time.original);
+      remainingText = estimateText(issue.time.remaining);
+    }
+  }
+
   const spentRatio = $derived.by(() => {
     const { original, spent } = issue.time;
     if (!original || !spent) return 0;
@@ -261,23 +290,52 @@
         </dd>
       </div>
     {/if}
-    {#if issue.time.original || issue.time.spent || issue.time.remaining}
+    {#if edit || issue.time.original || issue.time.spent || issue.time.remaining !== null}
       <div class="line card-row">
         <dt>{t.issue.time}</dt>
         <dd class="time">
-          <span class="bar" aria-hidden="true"
-            ><span style:width={`${spentRatio * 100}%`}></span></span
-          >
-          <span class="nums">
-            {#if issue.time.spent}<span>{t.issue.spent} {formatDuration(issue.time.spent)}</span
+          {#if issue.time.original || issue.time.spent || issue.time.remaining !== null}
+            <span class="bar" aria-hidden="true"
+              ><span style:width={`${spentRatio * 100}%`}></span></span
+            >
+            <span class="nums">
+              {#if issue.time.spent}<span>{t.issue.spent} {formatDuration(issue.time.spent)}</span
+                >{/if}
+              {#if issue.time.original}<span
+                  >{t.issue.estimate} {formatDuration(issue.time.original)}</span
+                >{/if}
+              {#if issue.time.remaining !== null}<span
+                  >{t.issue.remaining} {formatDuration(issue.time.remaining)}</span
+                >{/if}
+            </span>
+          {/if}
+          {#if edit}
+            <span class="estimates">
+              <label>
+                <span class="muted">{t.issue.originalEstimate}</span>
+                <input
+                  class="est"
+                  bind:value={originalText}
+                  placeholder={t.issue.estimateHint}
+                  aria-invalid={estimateError}
+                  onchange={() => void saveEstimates()}
+                />
+              </label>
+              <label>
+                <span class="muted">{t.issue.remainingEstimate}</span>
+                <input
+                  class="est"
+                  bind:value={remainingText}
+                  placeholder={t.issue.estimateHint}
+                  aria-invalid={estimateError}
+                  onchange={() => void saveEstimates()}
+                />
+              </label>
+            </span>
+            {#if estimateError}<span class="error-text small" role="alert"
+                >{t.issue.estimateInvalid}</span
               >{/if}
-            {#if issue.time.original}<span
-                >{t.issue.estimate} {formatDuration(issue.time.original)}</span
-              >{/if}
-            {#if issue.time.remaining !== null}<span
-                >{t.issue.remaining} {formatDuration(issue.time.remaining)}</span
-              >{/if}
-          </span>
+          {/if}
         </dd>
       </div>
     {/if}
@@ -465,6 +523,36 @@
     gap: 2px 10px;
     font: 12px var(--font-mono);
     color: var(--ink-soft);
+  }
+
+  .estimates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+
+  .estimates label {
+    display: grid;
+    gap: 1px;
+    font-size: 12px;
+  }
+
+  .est {
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 1px 4px;
+    margin-left: -5px;
+    font: 12.5px var(--font-mono);
+    width: 9em;
+  }
+
+  .est:hover,
+  .est:focus {
+    border-color: var(--rule-strong);
+  }
+
+  .est[aria-invalid='true'] {
+    border-color: var(--accent-text);
   }
 
   .chips {

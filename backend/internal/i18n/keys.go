@@ -304,6 +304,7 @@ const (
 	IssuePriorityUnknown       Key = "IssuePriorityUnknown"
 	IssueResolutionUnknown     Key = "IssueResolutionUnknown"
 	IssueDueDateInvalid        Key = "IssueDueDateInvalid"
+	IssueEstimateInvalid       Key = "IssueEstimateInvalid"
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
 	IssueNoTodoStatus          Key = "IssueNoTodoStatus"
@@ -412,13 +413,18 @@ const (
 
 // Sprints.
 const (
-	SprintKanban        Key = "SprintKanban"
-	SprintUnknown       Key = "SprintUnknown"
-	SprintStarted       Key = "SprintStarted"
-	SprintAlreadyActive Key = "SprintAlreadyActive"
-	SprintEndPast       Key = "SprintEndPast"
-	SprintNotActive     Key = "SprintNotActive"
-	SprintTargetInvalid Key = "SprintTargetInvalid"
+	SprintKanban          Key = "SprintKanban"
+	SprintUnknown         Key = "SprintUnknown"
+	SprintStarted         Key = "SprintStarted"
+	SprintAlreadyActive   Key = "SprintAlreadyActive"
+	SprintEndPast         Key = "SprintEndPast"
+	SprintNotActive       Key = "SprintNotActive"
+	SprintTargetInvalid   Key = "SprintTargetInvalid"
+	SprintNameRequired    Key = "SprintNameRequired"
+	SprintClosedLocked    Key = "SprintClosedLocked"
+	SprintDatesOrder      Key = "SprintDatesOrder"
+	SprintStartFuture     Key = "SprintStartFuture"
+	SprintDeleteNotFuture Key = "SprintDeleteNotFuture"
 )
 
 // Saved filters and their shares.
