@@ -34,3 +34,6 @@ frontend/coverage/
 
 # Release archives
 /dist/
+
+# Local configuration (database URL, secrets)
+/backend/solstice.conf
