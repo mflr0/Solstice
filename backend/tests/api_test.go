@@ -1,11 +1,7 @@
-package api
+package tests
 
-// Integration tests against a Solstice database filled by the synthetic Jira
-// import (scripts/e2e-import.sh sets this up and runs them). They exercise
-// what must never break: who sees what, old keys, live updates, and the
-// basic issue lifecycle.
-//
-//	SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg go test ./internal/api/
+// What must never break: who sees what, old keys, live updates, the basic
+// issue lifecycle, searches, filters, boards and workflows.
 
 import (
 	"bufio"
@@ -15,13 +11,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"reflect"
 	"slices"
 	"sort"
@@ -30,107 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"solstice/internal/db"
+	"solstice/internal/api"
 )
-
-var (
-	testDB  *sql.DB
-	testURL string
-)
-
-func TestMain(m *testing.M) {
-	dsn := os.Getenv("SOLSTICE_TEST_DB")
-	if dsn == "" {
-		// Unit tests still run; integration tests skip themselves.
-		os.Exit(m.Run())
-	}
-	ctx := context.Background()
-	var err error
-	testDB, err = db.Open(ctx, dsn)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	dataDir, err := os.MkdirTemp("", "solstice-api-test")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(New(testDB, dataDir, time.UTC, log).Handler(http.NotFoundHandler()))
-	testURL = srv.URL
-	code := m.Run()
-	srv.Close()
-	os.RemoveAll(dataDir)
-	os.Exit(code)
-}
-
-type client struct {
-	t    *testing.T
-	http *http.Client
-}
-
-func anonymous(t *testing.T) *client {
-	if testDB == nil {
-		t.Skip("SOLSTICE_TEST_DB not set: integration test skipped")
-	}
-	jar, _ := cookiejar.New(nil)
-	return &client{t: t, http: &http.Client{Jar: jar, Timeout: 10 * time.Second}}
-}
-
-func login(t *testing.T, username, password string) *client {
-	t.Helper()
-	c := anonymous(t)
-	if status, body := c.do("POST", "/api/login", map[string]string{"username": username, "password": password}); status != 200 {
-		t.Fatalf("login %s: %d %s", username, status, body)
-	}
-	return c
-}
-
-func (c *client) do(method, path string, body any) (int, []byte) {
-	c.t.Helper()
-	var r io.Reader
-	if body != nil {
-		b, _ := json.Marshal(body)
-		r = bytes.NewReader(b)
-	}
-	req, _ := http.NewRequest(method, testURL+path, r)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(csrfHeader, "1")
-	resp, err := c.http.Do(req)
-	if err != nil {
-		c.t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-	return resp.StatusCode, out
-}
-
-func (c *client) get(path string, out any) int {
-	c.t.Helper()
-	status, body := c.do("GET", path, nil)
-	if status == 200 && out != nil {
-		if err := json.Unmarshal(body, out); err != nil {
-			c.t.Fatalf("GET %s: %v\n%s", path, err, body)
-		}
-	}
-	return status
-}
-
-// pick runs a query returning one string (an issue key, a user name…).
-func pick(t *testing.T, query string, args ...any) string {
-	t.Helper()
-	if testDB == nil {
-		t.Skip("SOLSTICE_TEST_DB not set: integration test skipped")
-	}
-	var s string
-	if err := testDB.QueryRow(query, args...).Scan(&s); err != nil {
-		t.Fatalf("fixture lookup failed: %v\n%s", err, query)
-	}
-	return s
-}
-
-const keyExpr = "CONCAT(p.pkey, '-', i.num)"
 
 func TestLogin(t *testing.T) {
 	login(t, "admin", "admin")             // Jira hash, admin's own password
@@ -161,19 +56,6 @@ func TestCSRFHeaderRequired(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("POST without %s: %d, want 403", csrfHeader, resp.StatusCode)
-	}
-}
-
-// The interface's policy allows only its own scripts and styles; inline
-// styles stay allowed for skins, Svelte attributes and wiki colours.
-func TestSecurityHeadersCSP(t *testing.T) {
-	want := "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-		"img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; " +
-		"frame-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-	w := httptest.NewRecorder()
-	securityHeaders(http.NotFoundHandler()).ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
-	if got := w.Header().Get("Content-Security-Policy"); got != want {
-		t.Errorf("Content-Security-Policy = %q", got)
 	}
 }
 
@@ -305,7 +187,7 @@ func TestIssueLifecycle(t *testing.T) {
 	paul.get("/api/issues/"+created.Key, &d)
 	if d.Summary != "Le panier se vide au rafraîchissement" || d.Reporter == nil || d.Reporter.Username != "paul.martin" ||
 		d.Status.Category != "todo" || !d.Watchers.Me || len(d.Labels) != 2 {
-		t.Fatalf("created issue looks wrong: %+v", d.issueSummary)
+		t.Fatalf("created issue looks wrong: %+v", d)
 	}
 
 	var done string
@@ -429,11 +311,11 @@ func TestLiveEventsRespectPermissions(t *testing.T) {
 
 // A live stream must not hold back a graceful shutdown (Ctrl+C).
 func TestShutdownEndsLiveStreams(t *testing.T) {
-	anonymous(t) // skips without a database
-	api := New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	ts := httptest.NewServer(api.Handler(http.NotFoundHandler()))
+	needDB(t)
+	srv := api.New(testDB, t.TempDir(), time.UTC, quiet())
+	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
 	defer ts.Close()
-	ts.Config.RegisterOnShutdown(api.CloseStreams)
+	ts.Config.RegisterOnShutdown(srv.CloseStreams)
 
 	jar, _ := cookiejar.New(nil)
 	hc := &http.Client{Jar: jar}
@@ -525,15 +407,10 @@ func TestNegatedFilterKeepsUnassigned(t *testing.T) {
 }
 
 func TestLoginThrottling(t *testing.T) {
-	if testDB == nil {
-		t.Skip("SOLSTICE_TEST_DB not set: integration test skipped")
-	}
 	// Its own server, so the lock does not affect the other tests.
-	srv := httptest.NewServer(New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil))).
-		Handler(http.NotFoundHandler()))
-	defer srv.Close()
+	base := ownServer(t)
 	try := func(password string) int {
-		req, _ := http.NewRequest("POST", srv.URL+"/api/login",
+		req, _ := http.NewRequest("POST", base+"/api/login",
 			strings.NewReader(`{"username":"hugo.robert","password":"`+password+`"}`))
 		req.Header.Set(csrfHeader, "1")
 		resp, err := http.DefaultClient.Do(req)
