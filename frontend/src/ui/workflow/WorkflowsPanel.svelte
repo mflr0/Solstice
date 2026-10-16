@@ -15,7 +15,7 @@
   /**
    * The project's workflows: the list (default first, with the issue types
    * each one serves), then one of them in the editor. The open workflow is
-   * in the address (?tab=workflows&workflow=ID).
+   * in the address (/projects/KEY/settings/workflows?workflow=ID).
    */
   interface Props {
     projectKey: string;
@@ -42,7 +42,7 @@
   const fallback = $derived(data?.workflows.find((w) => w.default) ?? null);
 
   function href(id: number): string {
-    return `${paths.projectSettings(projectKey)}?tab=workflows&workflow=${id}`;
+    return `${paths.projectSettings(projectKey, 'workflows')}?workflow=${id}`;
   }
 
   async function load() {

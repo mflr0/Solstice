@@ -12,13 +12,14 @@ import {
   type AccountSection,
   type AdminSection,
 } from './areas.js';
+import { PROJECT_TABS, type ProjectTab } from './project-admin.js';
 
 export type Route =
   | { name: 'login' }
   | { name: 'home' }
   | { name: 'projects' }
   | { name: 'project'; key: string }
-  | { name: 'projectSettings'; key: string }
+  | { name: 'projectSettings'; key: string; tab?: ProjectTab }
   | { name: 'search' }
   | { name: 'issue'; key: string }
   | { name: 'person'; username: string }
@@ -47,8 +48,8 @@ function boardId(segment: string | null | undefined): boolean {
 
 export function matchRoute(pathname: string): Route {
   const parts = pathname.split('/').filter((p) => p !== '');
-  const [a, b, c] = parts.map(decode);
-  if (parts.some((_, i) => [a, b, c][i] === null)) return { name: 'notFound' };
+  const [a, b, c, d] = parts.map(decode);
+  if (parts.some((_, i) => [a, b, c, d][i] === null)) return { name: 'notFound' };
   switch (parts.length) {
     case 0:
       return { name: 'home' };
@@ -78,6 +79,13 @@ export function matchRoute(pathname: string): Route {
         return { name: 'legacyBoard' };
       }
       break;
+    case 4: {
+      const tab = PROJECT_TABS.find((x) => x === d);
+      if (a === 'projects' && b && c === 'settings' && tab) {
+        return { name: 'projectSettings', key: b.toUpperCase(), tab };
+      }
+      break;
+    }
     case 3:
       if (a === 'projects' && b && c === 'settings') {
         return { name: 'projectSettings', key: b.toUpperCase() };
@@ -105,7 +113,9 @@ export const paths = {
     next && next !== '/' ? `/login?next=${encodeURIComponent(next)}` : '/login',
   projects: () => '/projects',
   project: (key: string) => `/projects/${encodeURIComponent(key)}`,
-  projectSettings: (key: string) => `/projects/${encodeURIComponent(key)}/settings`,
+  /** A project's settings; the General tab is the bare address. */
+  projectSettings: (key: string, tab?: ProjectTab) =>
+    `/projects/${encodeURIComponent(key)}/settings${tab && tab !== 'general' ? `/${tab}` : ''}`,
   search: (q?: string) => (q ? `/issues?q=${encodeURIComponent(q)}` : '/issues'),
   issue: (key: string) => `/browse/${encodeURIComponent(key)}`,
   person: (username: string) => `/people/${encodeURIComponent(username)}`,

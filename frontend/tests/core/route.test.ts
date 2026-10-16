@@ -26,6 +26,10 @@ describe('matchRoute', () => {
     ['/themes', { name: 'themes' }],
     ['/browse', { name: 'notFound' }],
     ['/projects/DEMO/nope', { name: 'notFound' }],
+    ['/projects/demo/settings/versions', { name: 'projectSettings', key: 'DEMO', tab: 'versions' }],
+    ['/projects/DEMO/settings/general', { name: 'projectSettings', key: 'DEMO', tab: 'general' }],
+    ['/projects/DEMO/settings/nope', { name: 'notFound' }],
+    ['/projects/DEMO/settings/versions/3', { name: 'notFound' }],
     ['/people/%E0%A4%A', { name: 'notFound' }],
   ])('%s', (path, route) => {
     expect(matchRoute(path)).toEqual(route);
@@ -45,6 +49,14 @@ describe('matchRoute', () => {
       name: 'admin',
       section: 'webhooks',
       item: '7',
+    });
+    expect(paths.projectSettings('SW')).toBe('/projects/SW/settings');
+    expect(paths.projectSettings('SW', 'general')).toBe('/projects/SW/settings');
+    expect(paths.projectSettings('SW', 'people')).toBe('/projects/SW/settings/people');
+    expect(matchRoute(paths.projectSettings('SW', 'rights'))).toEqual({
+      name: 'projectSettings',
+      key: 'SW',
+      tab: 'rights',
     });
     expect(paths.account('profile')).toBe('/settings');
     expect(matchRoute(paths.account('tokens'))).toEqual({ name: 'account', section: 'tokens' });
