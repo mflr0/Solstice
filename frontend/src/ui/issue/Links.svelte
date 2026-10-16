@@ -7,6 +7,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
+  import { isSafeUrl } from '../../core/wiki.js';
 
   /** Issues linked to this one, grouped by relation, and external links. */
   interface Props {
@@ -143,9 +144,13 @@
         {#each issue.remoteLinks as r (r.id)}
           <li>
             <span class="arrow" aria-hidden="true">↗</span>
-            <a href={r.url} target="_blank" rel="nofollow noopener noreferrer" class="summary"
-              >{r.title}</a
-            >
+            {#if isSafeUrl(r.url)}
+              <a href={r.url} target="_blank" rel="nofollow noopener noreferrer" class="summary"
+                >{r.title}</a
+              >
+            {:else}
+              <span class="summary">{r.title}</span>
+            {/if}
             {#if r.relationship}<span class="muted">{r.relationship}</span>{/if}
           </li>
         {/each}

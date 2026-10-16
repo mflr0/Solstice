@@ -13,6 +13,7 @@
   import UserPicker from '../UserPicker.svelte';
   import Who from '../Who.svelte';
   import WikiText from '../WikiText.svelte';
+  import { isSafeUrl } from '../../core/wiki.js';
 
   /**
    * The issue's record card: every field on its own ruled line, editable in
@@ -299,11 +300,13 @@
                   attachments={issue.attachments}
                 />{/each}
             {:else if f.kind === 'url'}
-              {#each f.values as v, i (i)}<a
-                  href={v}
-                  rel="nofollow noopener noreferrer"
-                  target="_blank">{v}</a
-                >{/each}
+              {#each f.values as v, i (i)}
+                {#if isSafeUrl(v)}
+                  <a href={v} rel="nofollow noopener noreferrer" target="_blank">{v}</a>
+                {:else}
+                  {v}
+                {/if}
+              {/each}
             {:else if f.kind === 'date'}
               {f.values.map(formatDay).join(', ')}
             {:else if f.kind === 'datetime'}

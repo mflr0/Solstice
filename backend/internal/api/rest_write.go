@@ -12,6 +12,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 
 	"solstice/internal/i18n"
@@ -126,6 +127,20 @@ func unknownValue(field, value string) error {
 
 func invalidValue(field string) error {
 	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueInvalid, field))
+}
+
+// safeURL reports whether a url custom field value may become a link: only
+// the http, https and mailto schemes are accepted.
+func safeURL(v string) bool {
+	u, err := url.Parse(strings.TrimSpace(v))
+	if err != nil {
+		return false
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https", "mailto":
+		return true
+	}
+	return false
 }
 
 // named finds an id among (id, name) pairs: by id, or by name ignoring case.
@@ -571,7 +586,18 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		display = append(display, v)
 	}
 	switch f.Kind {
-	case "textfield", "url", "gh-epic-label":
+	case "url":
+		var v string
+		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > 255 {
+			return invalidValue(field)
+		}
+		if strings.TrimSpace(v) != "" {
+			if !safeURL(v) {
+				return invalidValue(field)
+			}
+			addText("string", v)
+		}
+	case "textfield", "gh-epic-label":
 		var v string
 		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > 255 {
 			return invalidValue(field)

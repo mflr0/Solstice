@@ -738,6 +738,36 @@ func TestRESTIssueRoundTrip(t *testing.T) {
 	}
 }
 
+// A url custom field only accepts http, https or mailto values: anything
+// else (a javascript: URL, say) is refused, so a stored value can safely
+// become a link.
+func TestRESTURLCustomFieldScheme(t *testing.T) {
+	token := newToken(t, "paul.martin", nil)
+	task := pick(t, `SELECT it.name FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
+		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND NOT it.subtask AND it.name NOT IN ('Epic', 'Épopée')
+		ORDER BY t.position LIMIT 1`)
+	create := func(url string) (int, map[string]any) {
+		t.Helper()
+		status, _, raw := call(t, nil, testURL, "POST", "/rest/api/2/issue", map[string]any{"fields": map[string]any{
+			"project": map[string]string{"key": "DEMO"}, "issuetype": map[string]string{"name": task},
+			"summary": "Lien maquette", "customfield_10107": url}}, bearer(token))
+		var m map[string]any
+		json.Unmarshal(raw, &m)
+		return status, m
+	}
+	if status, e := create("javascript:alert(1)"); status != 400 || at(e, "errors", "customfield_10107") == nil {
+		t.Errorf("javascript: URL accepted: %d %v", status, e)
+	}
+	if status, e := create("data:text/html,<b>"); status != 400 {
+		t.Errorf("data: URL accepted: %d %v", status, e)
+	}
+	for _, ok := range []string{"https://maquettes.exemple.fr/x", "http://x.fr", "mailto:a@b.fr"} {
+		if status, created := create(ok); status != 201 {
+			t.Fatalf("valid URL %q refused: %d %v", ok, status, created)
+		}
+	}
+}
+
 func TestRESTSubtaskAndEpic(t *testing.T) {
 	token := newToken(t, "marie.durand", nil)
 	do := func(method, path string, body any) (int, map[string]any) {
@@ -965,5 +995,19 @@ func TestParseJiraTime(t *testing.T) {
 	}
 	if _, ok := parseJiraTime("15/10/2026"); ok {
 		t.Error("accepted 15/10/2026")
+	}
+}
+
+func TestSafeURL(t *testing.T) {
+	for _, v := range []string{"https://maquettes.exemple.fr/x", "http://x.fr", "mailto:a@b.fr"} {
+		if !safeURL(v) {
+			t.Errorf("safeURL(%q) = false", v)
+		}
+	}
+	for _, v := range []string{"javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<b>",
+		"vbscript:msgbox", "file:///etc/passwd", "example.com", ""} {
+		if safeURL(v) {
+			t.Errorf("safeURL(%q) = true", v)
+		}
 	}
 }
