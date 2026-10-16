@@ -4,7 +4,14 @@
  * addresses. Pure functions, tested in tests/core/board.test.ts.
  */
 
-import type { BoardCard, CardMove, Swimlane, SwimlaneStrategy } from './board-types.js';
+import type {
+  BoardCard,
+  CardMove,
+  Sprint,
+  SprintPatch,
+  Swimlane,
+  SwimlaneStrategy,
+} from './board-types.js';
 import type { IssueBrief, UserRef } from './types.js';
 import { formatLocale } from '../i18n/format.js';
 
@@ -235,6 +242,80 @@ export function dayAfter(days: number, now: Date = new Date()): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/** The local day ("YYYY-MM-DD") of an instant; empty for none. */
+export function localDay(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return dayAfter(0, d);
+}
+
+/**
+ * The instant of a local day, at the time of day an earlier instant had, or
+ * at hour:minute when there was none. Null for a day that is not one.
+ */
+export function atDay(day: string, base: string | null, hour: number, minute = 0): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const was = base ? new Date(base) : null;
+  const known = was && !Number.isNaN(was.getTime());
+  const at = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    known ? was.getHours() : hour,
+    known ? was.getMinutes() : minute,
+  );
+  return Number.isNaN(at.getTime()) ? null : at.toISOString();
+}
+
+/** A sprint being edited, as typed. Days are "YYYY-MM-DD", empty for none. */
+export interface SprintForm {
+  name: string;
+  goal: string;
+  start: string;
+  end: string;
+}
+
+/** Why a sprint cannot be saved as typed. */
+export type SprintFormError = 'name' | 'start' | 'end' | 'order' | 'startFuture';
+
+export type SprintEdit = { ok: true; patch: SprintPatch } | { ok: false; error: SprintFormError };
+
+/**
+ * What editing a sprint changes, with the server's rules: it needs a name;
+ * its end follows its start; one that has begun keeps both dates, and began
+ * no later than today. Dates left as they were keep their exact time.
+ */
+export function sprintEdit(sprint: Sprint, form: SprintForm, now: Date = new Date()): SprintEdit {
+  const name = form.name.trim();
+  if (!name) return { ok: false, error: 'name' };
+  const active = sprint.state === 'active';
+  if (active && !form.start) return { ok: false, error: 'start' };
+  if (active && !form.end) return { ok: false, error: 'end' };
+  if (active && form.start > dayAfter(0, now)) return { ok: false, error: 'startFuture' };
+
+  const patch: SprintPatch = {};
+  if (name !== sprint.name) patch.name = name;
+  const goal = form.goal.trim();
+  if (goal !== (sprint.goal ?? '').trim()) patch.goal = goal || null;
+
+  let start = sprint.start;
+  let end = sprint.end;
+  if (form.start !== localDay(sprint.start)) {
+    start = form.start ? atDay(form.start, sprint.start, 9) : null;
+    patch.start = start;
+  }
+  if (form.end !== localDay(sprint.end)) {
+    end = form.end ? atDay(form.end, sprint.end, 17) : null;
+    patch.end = end;
+  }
+  if (start && end && new Date(end).getTime() <= new Date(start).getTime()) {
+    return { ok: false, error: 'order' };
+  }
+  return { ok: true, patch };
 }
 
 /** Quick filter ids as kept in the address ("1,3"), cleaned up. */

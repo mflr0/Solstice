@@ -29,6 +29,7 @@
   import BoardHeader from '../board/BoardHeader.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
+  import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import QuickFilters from '../board/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import Illustration from '../Illustration.svelte';
@@ -55,6 +56,7 @@
   let announcement = $state('');
   let collapsed = $state<Record<string, boolean>>({});
   let completing = $state<Sprint | null>(null);
+  let editing = $state<Sprint | null>(null);
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
@@ -294,6 +296,9 @@
       <SprintHead title={sprint.name} {sprint} meta={t.boards.cards(shownCount)}>
         {#snippet actions()}
           {#if d.can.manage}
+            <button class="btn btn-quiet" onclick={() => (editing = sprint)}
+              >{t.boards.editSprint}</button
+            >
             <button class="btn" onclick={() => (completing = sprint)}
               >{t.boards.completeSprint}</button
             >
@@ -415,6 +420,15 @@
     <p class="sr-only" aria-live="polite">{announcement}</p>
   </div>
 
+  <EditSprintDialog
+    sprint={editing}
+    onclose={() => (editing = null)}
+    onsaved={() => {
+      editing = null;
+      loadDetail(boardId);
+      reload();
+    }}
+  />
   <CompleteSprintDialog
     boardId={d.board.id}
     sprint={completing}

@@ -32,6 +32,14 @@ export interface Sprint {
   completed: string | null;
 }
 
+/** What changing a sprint sends: what is left out stays, null clears. */
+export interface SprintPatch {
+  name?: string;
+  goal?: string | null;
+  start?: string | null;
+  end?: string | null;
+}
+
 export interface BoardSummary {
   id: number;
   name: string;
