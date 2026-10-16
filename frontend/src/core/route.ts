@@ -15,6 +15,8 @@ import {
 
 export type Route =
   | { name: 'login' }
+  | { name: 'forgot' }
+  | { name: 'reset'; token: string }
   | { name: 'home' }
   | { name: 'projects' }
   | { name: 'project'; key: string }
@@ -45,6 +47,14 @@ function boardId(segment: string | null | undefined): boolean {
   return !!segment && /^[1-9]\d{0,15}$/.test(segment);
 }
 
+/**
+ * Pages anyone may open without signing in: the sign-in form and the two
+ * pages of the forgotten-password links.
+ */
+export function isPublicRoute(route: Route): boolean {
+  return route.name === 'login' || route.name === 'forgot' || route.name === 'reset';
+}
+
 export function matchRoute(pathname: string): Route {
   const parts = pathname.split('/').filter((p) => p !== '');
   const [a, b, c] = parts.map(decode);
@@ -54,6 +64,7 @@ export function matchRoute(pathname: string): Route {
       return { name: 'home' };
     case 1:
       if (a === 'login') return { name: 'login' };
+      if (a === 'forgot') return { name: 'forgot' };
       if (a === 'projects') return { name: 'projects' };
       if (a === 'issues') return { name: 'search' };
       if (a === 'themes') return { name: 'themes' };
@@ -63,6 +74,7 @@ export function matchRoute(pathname: string): Route {
       break;
     case 2:
       if (a === 'browse' && b) return { name: 'issue', key: b.toUpperCase() };
+      if (a === 'reset' && b) return { name: 'reset', token: b };
       if (a === 'projects' && b) return { name: 'project', key: b.toUpperCase() };
       if (a === 'people' && b) return { name: 'person', username: b };
       if (a === 'admin' && b) {
@@ -103,6 +115,8 @@ export const paths = {
   home: () => '/',
   login: (next?: string) =>
     next && next !== '/' ? `/login?next=${encodeURIComponent(next)}` : '/login',
+  forgot: () => '/forgot',
+  reset: (token: string) => `/reset/${encodeURIComponent(token)}`,
   projects: () => '/projects',
   project: (key: string) => `/projects/${encodeURIComponent(key)}`,
   projectSettings: (key: string) => `/projects/${encodeURIComponent(key)}/settings`,

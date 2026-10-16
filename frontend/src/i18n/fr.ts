@@ -267,6 +267,41 @@ export const fr: Messages = {
     submit: 'Se connecter',
     pending: 'Connexion…',
     note: 'Les comptes repris de Jira gardent leur mot de passe.',
+    forgot: 'Mot de passe oublié ?',
+    forgotAdmin: 'Mot de passe oublié ? Demandez à un administrateur.',
+  },
+
+  accountLinks: {
+    forgotTitle: 'Mot de passe oublié ?',
+    forgotIntro:
+      'Saisissez votre identifiant ou votre adresse e-mail. Si un compte correspond, nous envoyons un e-mail avec un lien pour choisir un nouveau mot de passe.',
+    identifier: 'Identifiant ou adresse e-mail',
+    send: 'Envoyer le lien',
+    sending: 'Envoi…',
+    sentTitle: 'Consultez votre messagerie',
+    sent: 'Si un compte correspond, un e-mail avec un lien pour choisir un nouveau mot de passe est en route. Le lien ne fonctionne qu’une fois et expire dans une heure. Il peut mettre quelques minutes à arriver.',
+    backToSignIn: 'Retour à la connexion',
+    unavailable:
+      'L’envoi de liens par e-mail n’est pas configuré sur cette instance : demandez à un administrateur de réinitialiser votre mot de passe.',
+    resetTitle: 'Choisir un nouveau mot de passe',
+    inviteTitle: 'Choisir votre mot de passe',
+    inviteIntro: (name: string) =>
+      `Bienvenue, ${name}. Choisissez le mot de passe avec lequel vous vous connecterez.`,
+    resetIntro: (name: string) => `Choisissez un nouveau mot de passe pour ${name}.`,
+    newPassword: 'Nouveau mot de passe',
+    confirm: 'Confirmer le mot de passe',
+    mismatch: 'Les deux mots de passe ne correspondent pas.',
+    tooShort: (n: number) => `${n} caractères au moins.`,
+    save: 'Enregistrer et se connecter',
+    saving: 'Enregistrement…',
+    sessionsEnd:
+      'Vos autres sessions seront fermées et vos jetons d’accès cesseront de fonctionner.',
+    invalidTitle: 'Ce lien ne fonctionne plus',
+    invalid:
+      'Il a déjà été utilisé, il a expiré ou un lien plus récent l’a remplacé. Demandez un nouveau lien, ou demandez à un administrateur de l’envoyer de nouveau.',
+    askAgain: 'Demander un nouveau lien',
+    checking: 'Vérification du lien…',
+    saved: 'Mot de passe enregistré. Connexion établie.',
   },
 
   home: {
@@ -1274,6 +1309,8 @@ export const fr: Messages = {
       subscription: 'abonnement',
       reminder: 'rappel d’échéance',
       test: 'test',
+      reset: 'réinitialisation du mot de passe',
+      invitation: 'invitation',
     },
     attempts: (n: number) => `${n} essais`,
   },
@@ -1405,6 +1442,7 @@ export const fr: Messages = {
       usernameInvalid: (_n: number) =>
         'Minuscules, chiffres et . _ @ - seulement, en commençant par une lettre ou un chiffre.',
       emailInvalid: (_n: number) => 'Cette adresse e-mail n’est pas valide.',
+      emailRequired: (_n: number) => 'Une invitation nécessite une adresse e-mail.',
       passwordShort: (n: number) => `${n} caractères au moins.`,
     },
     editTitle: (name: string) => `Modifier le compte de ${name}`,
@@ -1430,6 +1468,18 @@ export const fr: Messages = {
     passwordSaved: (name: string) => `Mot de passe de ${name} changé.`,
     limit: 'Seuls les 200 premiers comptes sont affichés : précisez la recherche.',
     groupsHint: 'Les groupes se créent et se remplissent dans',
+    inviteLabel: 'Envoyer une invitation par e-mail au lieu de choisir un mot de passe',
+    inviteHint:
+      'La personne reçoit un lien, valable 7 jours, pour choisir elle-même son mot de passe.',
+    invited: (name: string) => `Compte de ${name} créé, invitation envoyée.`,
+    resendInvite: 'Renvoyer l’invitation',
+    inviteResent: (name: string) => `Invitation renvoyée à ${name}.`,
+    sendLink: 'Envoyer par e-mail un lien pour choisir un mot de passe',
+    sendLinkButton: 'Envoyer le lien',
+    linkHint:
+      'Le mot de passe reste inchangé tant que la personne n’utilise pas le lien, valable une fois et pendant une heure.',
+    linkSent: (name: string) => `Lien de réinitialisation envoyé à ${name}.`,
+    linkNeedsEmail: 'Ce compte n’a pas d’adresse e-mail : ajoutez-en une d’abord.',
   },
 
   settingsAdmin: {

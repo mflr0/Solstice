@@ -274,6 +274,41 @@ export const de: Messages = {
     submit: 'Anmelden',
     pending: 'Anmeldung…',
     note: 'Aus Jira übernommene Konten behalten ihr Passwort.',
+    forgot: 'Passwort vergessen?',
+    forgotAdmin: 'Passwort vergessen? Fragen Sie einen Administrator.',
+  },
+
+  accountLinks: {
+    forgotTitle: 'Passwort vergessen?',
+    forgotIntro:
+      'Geben Sie Ihren Benutzernamen oder Ihre E-Mail-Adresse ein. Wenn ein Konto passt, senden wir eine E-Mail mit einem Link zum Wählen eines neuen Passworts.',
+    identifier: 'Benutzername oder E-Mail-Adresse',
+    send: 'Link senden',
+    sending: 'Wird gesendet…',
+    sentTitle: 'Prüfen Sie Ihr Postfach',
+    sent: 'Wenn ein Konto passt, ist eine E-Mail mit einem Link zum Wählen eines neuen Passworts unterwegs. Der Link funktioniert nur einmal und läuft in einer Stunde ab. Es kann einige Minuten dauern, bis sie ankommt.',
+    backToSignIn: 'Zurück zur Anmeldung',
+    unavailable:
+      'Das Senden von Links per E-Mail ist auf dieser Instanz nicht eingerichtet: Bitten Sie einen Administrator, Ihr Passwort zurückzusetzen.',
+    resetTitle: 'Neues Passwort wählen',
+    inviteTitle: 'Passwort wählen',
+    inviteIntro: (name: string) =>
+      `Willkommen, ${name}. Wählen Sie das Passwort, mit dem Sie sich anmelden.`,
+    resetIntro: (name: string) => `Wählen Sie ein neues Passwort für ${name}.`,
+    newPassword: 'Neues Passwort',
+    confirm: 'Passwort bestätigen',
+    mismatch: 'Die beiden Passwörter stimmen nicht überein.',
+    tooShort: (n: number) => `Mindestens ${n} Zeichen.`,
+    save: 'Speichern und anmelden',
+    saving: 'Wird gespeichert…',
+    sessionsEnd:
+      'Alle anderen Sitzungen werden beendet und Ihre Zugriffstoken funktionieren nicht mehr.',
+    invalidTitle: 'Dieser Link funktioniert nicht mehr',
+    invalid:
+      'Er wurde bereits verwendet, ist abgelaufen oder wurde durch einen neueren ersetzt. Fordern Sie einen neuen Link an oder bitten Sie einen Administrator, ihn erneut zu senden.',
+    askAgain: 'Neuen Link anfordern',
+    checking: 'Link wird geprüft…',
+    saved: 'Passwort gespeichert. Sie sind angemeldet.',
   },
 
   home: {
@@ -1283,6 +1318,8 @@ export const de: Messages = {
       subscription: 'Abonnement',
       reminder: 'Fälligkeitserinnerung',
       test: 'Test',
+      reset: 'Passwort zurücksetzen',
+      invitation: 'Einladung',
     },
     attempts: (n: number) => plural(n, `${n} Versuch`, `${n} Versuche`),
   },
@@ -1419,6 +1456,7 @@ export const de: Messages = {
       usernameInvalid: (_n: number) =>
         'Nur Kleinbuchstaben, Ziffern und . _ @ -, beginnend mit einem Buchstaben oder einer Ziffer.',
       emailInvalid: (_n: number) => 'Diese E-Mail-Adresse ist ungültig.',
+      emailRequired: (_n: number) => 'Für eine Einladung wird eine E-Mail-Adresse benötigt.',
       passwordShort: (n: number) => `Mindestens ${n} Zeichen.`,
     },
     editTitle: (name: string) => `Konto von ${name} bearbeiten`,
@@ -1444,6 +1482,17 @@ export const de: Messages = {
     passwordSaved: (name: string) => `Passwort von ${name} geändert.`,
     limit: 'Es werden nur die ersten 200 Konten angezeigt: Grenzen Sie die Suche ein.',
     groupsHint: 'Gruppen werden erstellt und befüllt im Bereich',
+    inviteLabel: 'Einladung per E-Mail senden, statt ein Passwort zu wählen',
+    inviteHint: 'Die Person erhält einen 7 Tage gültigen Link, um ihr Passwort selbst zu wählen.',
+    invited: (name: string) => `Konto von ${name} angelegt, Einladung gesendet.`,
+    resendInvite: 'Einladung erneut senden',
+    inviteResent: (name: string) => `Einladung erneut an ${name} gesendet.`,
+    sendLink: 'Per E-Mail einen Link zum Wählen des Passworts senden',
+    sendLinkButton: 'Link senden',
+    linkHint:
+      'Das Passwort bleibt unverändert, bis die Person den Link nutzt, der einmal und eine Stunde lang gilt.',
+    linkSent: (name: string) => `Link zum Zurücksetzen an ${name} gesendet.`,
+    linkNeedsEmail: 'Dieses Konto hat keine E-Mail-Adresse: Tragen Sie zuerst eine ein.',
   },
 
   settingsAdmin: {

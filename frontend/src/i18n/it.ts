@@ -270,6 +270,41 @@ export const it: Messages = {
     submit: 'Accedi',
     pending: 'Accesso…',
     note: 'Gli account importati da Jira mantengono la loro password.',
+    forgot: 'Password dimenticata?',
+    forgotAdmin: 'Password dimenticata? Chiedi a un amministratore.',
+  },
+
+  accountLinks: {
+    forgotTitle: 'Password dimenticata?',
+    forgotIntro:
+      'Inserisci il tuo nome utente o il tuo indirizzo e-mail. Se un account corrisponde, ti inviamo un’e-mail con un link per scegliere una nuova password.',
+    identifier: 'Nome utente o indirizzo e-mail',
+    send: 'Invia il link',
+    sending: 'Invio…',
+    sentTitle: 'Controlla la tua posta',
+    sent: 'Se un account corrisponde, un’e-mail con un link per scegliere una nuova password è in arrivo. Il link funziona una sola volta e scade tra un’ora. Può volerci qualche minuto.',
+    backToSignIn: 'Torna all’accesso',
+    unavailable:
+      'L’invio di link via e-mail non è configurato su questa istanza: chiedi a un amministratore di reimpostare la tua password.',
+    resetTitle: 'Scegli una nuova password',
+    inviteTitle: 'Scegli la tua password',
+    inviteIntro: (name: string) =>
+      `Ti diamo il benvenuto, ${name}. Scegli la password con cui accederai.`,
+    resetIntro: (name: string) => `Scegli una nuova password per ${name}.`,
+    newPassword: 'Nuova password',
+    confirm: 'Conferma la password',
+    mismatch: 'Le due password non corrispondono.',
+    tooShort: (n: number) => `${n} caratteri almeno.`,
+    save: 'Salva e accedi',
+    saving: 'Salvataggio…',
+    sessionsEnd:
+      'Le tue altre sessioni verranno chiuse e i tuoi token di accesso smetteranno di funzionare.',
+    invalidTitle: 'Questo link non funziona più',
+    invalid:
+      'È già stato usato, è scaduto o è stato sostituito da uno più recente. Richiedi un nuovo link, oppure chiedi a un amministratore di inviarlo di nuovo.',
+    askAgain: 'Richiedi un nuovo link',
+    checking: 'Verifica del link…',
+    saved: 'Password salvata. Hai effettuato l’accesso.',
   },
 
   home: {
@@ -1276,6 +1311,8 @@ export const it: Messages = {
       subscription: 'abbonamento',
       reminder: 'promemoria di scadenza',
       test: 'prova',
+      reset: 'reimpostazione password',
+      invitation: 'invito',
     },
     attempts: (n: number) => plural(n, `${n} tentativo`, `${n} tentativi`),
   },
@@ -1410,6 +1447,7 @@ export const it: Messages = {
       usernameInvalid: (_n: number) =>
         'Solo minuscole, cifre e . _ @ -, a iniziare con una lettera o una cifra.',
       emailInvalid: (_n: number) => 'Questo indirizzo e-mail non è valido.',
+      emailRequired: (_n: number) => 'Un invito richiede un indirizzo e-mail.',
       passwordShort: (n: number) => `${n} caratteri almeno.`,
     },
     editTitle: (name: string) => `Modifica l’account di ${name}`,
@@ -1435,6 +1473,18 @@ export const it: Messages = {
     passwordSaved: (name: string) => `Password di ${name} cambiata.`,
     limit: 'Sono mostrati solo i primi 200 account: affina la ricerca.',
     groupsHint: 'I gruppi si creano e si riempiono in',
+    inviteLabel: 'Invia un invito via e-mail invece di scegliere una password',
+    inviteHint:
+      'La persona riceve un link, valido 7 giorni, per scegliere da sola la propria password.',
+    invited: (name: string) => `Account di ${name} creato, invito inviato.`,
+    resendInvite: 'Reinvia l’invito',
+    inviteResent: (name: string) => `Invito inviato di nuovo a ${name}.`,
+    sendLink: 'Invia via e-mail un link per scegliere la password',
+    sendLinkButton: 'Invia il link',
+    linkHint:
+      'La password resta invariata finché la persona non usa il link, valido una sola volta e per un’ora.',
+    linkSent: (name: string) => `Link di reimpostazione inviato a ${name}.`,
+    linkNeedsEmail: 'Questo account non ha un indirizzo e-mail: aggiungine prima uno.',
   },
 
   settingsAdmin: {

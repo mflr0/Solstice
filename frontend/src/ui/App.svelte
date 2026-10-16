@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { legacyBoardPath } from '../core/board.js';
   import { projectOfKey } from '../core/marks.js';
-  import { paths, safeNext } from '../core/route.js';
+  import { isPublicRoute, paths, safeNext } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
   import { interceptLinks, router } from '../lib/router.svelte.js';
@@ -17,6 +17,7 @@
   import BoardPage from './pages/BoardPage.svelte';
   import BoardSettingsPage from './pages/BoardSettingsPage.svelte';
   import BoardsPage from './pages/BoardsPage.svelte';
+  import ForgotPage from './pages/ForgotPage.svelte';
   import HomePage from './pages/HomePage.svelte';
   import LoginPage from './pages/LoginPage.svelte';
   import NotFoundPage from './pages/NotFoundPage.svelte';
@@ -24,6 +25,7 @@
   import ProjectPage from './pages/ProjectPage.svelte';
   import ProjectSettingsPage from './pages/ProjectSettingsPage.svelte';
   import ProjectsPage from './pages/ProjectsPage.svelte';
+  import ResetPage from './pages/ResetPage.svelte';
   import SearchPage from './pages/SearchPage.svelte';
   import ShellBanner from './ShellBanner.svelte';
   import ThemesPage from './pages/ThemesPage.svelte';
@@ -78,7 +80,7 @@
 
   // Not signed in: every page leads to the sign-in form, remembering where to go back.
   $effect(() => {
-    if (session.ready && !session.me && route.name !== 'login') {
+    if (session.ready && !session.me && !isPublicRoute(route)) {
       router.navigate(paths.login(router.here), { replace: true });
     }
   });
@@ -99,6 +101,10 @@
 
 {#if !session.ready}
   <p class="app-booting booting muted loading">{t.common.loading}</p>
+{:else if route.name === 'forgot'}
+  <ForgotPage />
+{:else if route.name === 'reset'}
+  {#key route.token}<ResetPage token={route.token} />{/key}
 {:else if !session.me || route.name === 'login'}
   <LoginPage />
 {:else}

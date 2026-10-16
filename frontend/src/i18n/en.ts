@@ -265,6 +265,39 @@ export const en = {
     submit: 'Sign in',
     pending: 'Signing in…',
     note: 'Accounts migrated from Jira keep their passwords.',
+    forgot: 'Forgot your password?',
+    forgotAdmin: 'Forgot your password? Ask an administrator.',
+  },
+
+  accountLinks: {
+    forgotTitle: 'Forgot your password?',
+    forgotIntro:
+      'Enter your username or email address. If an account matches, we send an email with a link to choose a new password.',
+    identifier: 'Username or email address',
+    send: 'Send the link',
+    sending: 'Sending…',
+    sentTitle: 'Check your email',
+    sent: 'If an account matches, an email with a link to choose a new password is on its way. The link works once and expires in one hour. It can take a few minutes to arrive.',
+    backToSignIn: 'Back to sign in',
+    unavailable:
+      'Sending links by email is not set up on this instance: ask an administrator to reset your password.',
+    resetTitle: 'Choose a new password',
+    inviteTitle: 'Choose your password',
+    inviteIntro: (name: string) => `Welcome, ${name}. Choose the password you will sign in with.`,
+    resetIntro: (name: string) => `Choose a new password for ${name}.`,
+    newPassword: 'New password',
+    confirm: 'Confirm the password',
+    mismatch: 'The two passwords do not match.',
+    tooShort: (n: number) => `At least ${n} characters.`,
+    save: 'Save and sign in',
+    saving: 'Saving…',
+    sessionsEnd: 'Your other sessions will close and your access tokens will stop working.',
+    invalidTitle: 'This link no longer works',
+    invalid:
+      'It was already used, has expired, or was replaced by a newer one. Ask for a new link, or ask an administrator to send it again.',
+    askAgain: 'Ask for a new link',
+    checking: 'Checking the link…',
+    saved: 'Password saved. You are signed in.',
   },
 
   home: {
@@ -1269,6 +1302,8 @@ export const en = {
       subscription: 'subscription',
       reminder: 'due-date reminder',
       test: 'test',
+      reset: 'password reset',
+      invitation: 'invitation',
     },
     attempts: (n: number) => plural(n, `${n} attempt`, `${n} attempts`),
   },
@@ -1402,6 +1437,7 @@ export const en = {
       usernameInvalid: (_n: number) =>
         'Lowercase, digits and . _ @ - only, starting with a letter or a digit.',
       emailInvalid: (_n: number) => 'This email address is not valid.',
+      emailRequired: (_n: number) => 'An invitation needs an email address.',
       passwordShort: (n: number) => `At least ${n} characters.`,
     },
     editTitle: (name: string) => `Edit ${name}’s account`,
@@ -1427,6 +1463,17 @@ export const en = {
     passwordSaved: (name: string) => `${name}’s password changed.`,
     limit: 'Only the first 200 accounts are shown: narrow the search.',
     groupsHint: 'Groups are created and filled in',
+    inviteLabel: 'Send an invitation by email instead of choosing a password',
+    inviteHint: 'The person receives a link, valid for 7 days, to choose their own password.',
+    invited: (name: string) => `${name}’s account created, invitation sent.`,
+    resendInvite: 'Resend invitation',
+    inviteResent: (name: string) => `Invitation sent again to ${name}.`,
+    sendLink: 'Send a link by email to choose a password',
+    sendLinkButton: 'Send the link',
+    linkHint:
+      'The password stays as it is until the person uses the link, which works once and for one hour.',
+    linkSent: (name: string) => `Reset link sent to ${name}.`,
+    linkNeedsEmail: 'This account has no email address: add one first.',
   },
 
   settingsAdmin: {

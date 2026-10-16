@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isAppLink, matchRoute, paths, safeNext } from '../../src/core/route.js';
+import { isAppLink, isPublicRoute, matchRoute, paths, safeNext } from '../../src/core/route.js';
 
 describe('matchRoute', () => {
   it.each([
@@ -69,5 +69,33 @@ describe('links', () => {
     expect(safeNext('https://evil.example')).toBe('/');
     expect(safeNext('//evil.example')).toBe('/');
     expect(safeNext('/\\evil.example')).toBe('/');
+  });
+});
+
+describe('the pages of the e-mailed links', () => {
+  it('matches them', () => {
+    expect(matchRoute('/forgot')).toEqual({ name: 'forgot' });
+    expect(matchRoute('/reset/AbC_d-123')).toEqual({ name: 'reset', token: 'AbC_d-123' });
+    expect(matchRoute('/reset')).toEqual({ name: 'notFound' });
+    expect(matchRoute('/reset/a/b')).toEqual({ name: 'notFound' });
+    expect(matchRoute('/forgot/x')).toEqual({ name: 'notFound' });
+  });
+
+  it('round-trips the addresses it builds', () => {
+    expect(paths.forgot()).toBe('/forgot');
+    expect(matchRoute(paths.forgot())).toEqual({ name: 'forgot' });
+    expect(matchRoute(paths.reset('AbC_d-123'))).toEqual({ name: 'reset', token: 'AbC_d-123' });
+    // Whatever is in a token cannot break out of the path.
+    expect(paths.reset('a/b?c')).toBe('/reset/a%2Fb%3Fc');
+    expect(matchRoute(paths.reset('a/b?c'))).toEqual({ name: 'reset', token: 'a/b?c' });
+  });
+
+  it('opens them without signing in, and nothing else', () => {
+    for (const path of ['/login', '/forgot', '/reset/abc']) {
+      expect(isPublicRoute(matchRoute(path))).toBe(true);
+    }
+    for (const path of ['/', '/projects', '/admin', '/settings', '/browse/DEMO-1', '/nope']) {
+      expect(isPublicRoute(matchRoute(path))).toBe(false);
+    }
   });
 });

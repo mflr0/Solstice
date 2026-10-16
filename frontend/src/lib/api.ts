@@ -149,6 +149,18 @@ export const api = {
   login: (username: string, password: string) =>
     request<Me>('POST', '/api/login', { username, password }),
   logout: () => request<void>('POST', '/api/logout'),
+  // Links sent by e-mail. Asking for one always gets the same answer.
+  forgotPassword: (identifier: string) =>
+    request<{ ok: boolean }>('POST', '/api/auth/forgot', { identifier }),
+  /** What a link is for; fails when it is unknown, used, expired or replaced. */
+  checkLink: (token: string) =>
+    request<{ purpose: string; name: string; username: string }>(
+      'GET',
+      `/api/auth/reset/${enc(token)}`,
+    ),
+  /** Chooses the password with a link, and signs in. */
+  useLink: (token: string, password: string) =>
+    request<Me>('POST', '/api/auth/reset', { token, password }),
   me: () => request<Me>('GET', '/api/me'),
   /** The account's own settings: the interface language, or null for none. */
   updateMe: (patch: { locale: string | null }) => request<Me>('PATCH', '/api/me', patch),
