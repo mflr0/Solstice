@@ -15,6 +15,7 @@
   import ComponentsTab from '../project/ComponentsTab.svelte';
   import GeneralTab from '../project/GeneralTab.svelte';
   import RightsTab from '../project/RightsTab.svelte';
+  import VersionsTab from '../project/VersionsTab.svelte';
   import WorkflowsPanel from '../workflow/WorkflowsPanel.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
 
@@ -148,6 +149,8 @@
         <GeneralTab {settings} onchange={(s) => (settings = s)} ondirty={(d) => (dirty = d)} />
       {:else if tab === 'components'}
         <ComponentsTab {projectKey} />
+      {:else if tab === 'versions'}
+        <VersionsTab {projectKey} />
       {:else if tab === 'workflows'}
         <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (dirty = d)} />
       {:else if tab === 'rights'}
