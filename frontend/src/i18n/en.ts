@@ -1785,6 +1785,143 @@ export const en = {
     restricted: (comments: number, worklogs: number) =>
       `Still restricted to this role: ${[comments > 0 ? plural(comments, 'comment', 'comments') : '', worklogs > 0 ? plural(worklogs, 'work log', 'work logs') : ''].filter(Boolean).join(', ')}. It cannot be deleted.`,
     typeToConfirm: (name: string) => `Type ${name} to confirm`,
+  projectConfig: {
+    tabGeneral: 'General',
+    tabPeople: 'People',
+    tabNotifications: 'Notifications',
+    leaveBody: 'This tab has unsaved changes. Discard them?',
+    general: {
+      intro: 'The project’s name, lead and defaults. Changes apply when you save.',
+      keyHint: 'The key starts every issue key and cannot be changed.',
+      leadRequired: 'Choose a lead.',
+      archiveSection: 'Archive and deletion',
+      archiveHint:
+        'Archiving makes the project read-only and removes it from the project lists. Deleting removes it for good.',
+      archivedNote: 'This project is archived: it is read-only.',
+      adminOnly: 'Only Solstice administrators can archive or delete a project.',
+      deleteProject: 'Delete the project',
+    },
+  },
+
+  projectComponents: {
+    intro:
+      'Components split a project into parts, such as a service or a team. Each can have a lead and decide who new issues are assigned to.',
+    newComponent: 'New component',
+    empty: 'No component yet',
+    emptyHint: 'Create components to group the project’s issues by part.',
+    assignee: 'New issues go to',
+    assigneeTypes: {
+      project_default: 'The project’s default',
+      component_lead: 'The component’s lead',
+      project_lead: 'The project’s lead',
+      unassigned: 'Nobody',
+    },
+    archivedHint:
+      'An archived component is no longer offered on new issues; the issues that have it keep it.',
+    createTitle: 'New component',
+    editTitle: (name: string) => `Edit ${name}`,
+    create: 'Create the component',
+    created: (name: string) => `Component ${name} created.`,
+    saved: (name: string) => `Component ${name} saved.`,
+    archived: (name: string) => `Component ${name} archived.`,
+    unarchived: (name: string) => `Component ${name} is active again.`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteUnused: 'No issue has this component.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'issue has', 'issues have')} this component. Move them to another component, or just remove it from them.`,
+    moveLabel: 'Move them to',
+    moveNone: 'Only remove the component from them',
+    deleted: (name: string) => `Component ${name} deleted.`,
+    problems: {
+      nameRequired: 'Give the component a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another component already has this name.',
+      leadNeeded: 'Choose a lead, or pick another way to assign new issues.',
+    },
+  },
+
+  projectVersions: {
+    intro:
+      'Versions are the releases of the project. Keep them in the order you ship them; issues are planned in a version, and the unresolved ones can move on when it is released.',
+    newVersion: 'New version',
+    empty: 'No version yet',
+    emptyHint: 'Create the first release to plan issues in it.',
+    archivedHint: 'A released or archived version is no longer offered on new issues.',
+    startDate: 'Start date',
+    releaseDate: 'Release date',
+    states: { unreleased: 'unreleased', released: 'released', archived: 'archived' },
+    late: 'late',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (${formatNumber(unresolved)} unresolved)`
+        : `${formatNumber(total)}`,
+    release: 'Release',
+    unrelease: 'Mark as unreleased',
+    merge: 'Merge',
+    createTitle: 'New version',
+    editTitle: (name: string) => `Edit ${name}`,
+    create: 'Create the version',
+    created: (name: string) => `Version ${name} created.`,
+    saved: (name: string) => `Version ${name} saved.`,
+    archived: (name: string) => `Version ${name} archived.`,
+    unarchived: (name: string) => `Version ${name} is active again.`,
+    released: (name: string) => `Version ${name} released.`,
+    unreleased: (name: string) => `Version ${name} is marked as unreleased.`,
+    ordered: 'Order saved.',
+    releaseTitle: (name: string) => `Release ${name}?`,
+    releaseBody: 'The version is marked as released on the date below.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'issue planned', 'issues planned')} in this version ${n === 1 ? 'is' : 'are'} still unresolved.`,
+    releaseMoveLabel: 'Move them to',
+    releaseMoveNone: 'Leave them in this version',
+    mergeTitle: (name: string) => `Merge ${name}?`,
+    mergeBody:
+      'Every issue of this version moves to the version you choose, and this version is deleted.',
+    mergeLabel: 'Merge into',
+    mergeChoose: 'Choose a version…',
+    mergeNone: 'There is no other version to merge into.',
+    merged: (name: string, into: string) => `Version ${name} merged into ${into}.`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteUnused: 'No issue uses this version.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'issue uses', 'issues use')} this version. Move them to another version, or just remove this one from them.`,
+    deleteMoveLabel: 'Move them to',
+    deleteMoveNone: 'Only remove the version from them',
+    deleted: (name: string) => `Version ${name} deleted.`,
+    problems: {
+      nameRequired: 'Give the version a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another version already has this name.',
+      dayInvalid: 'Enter a valid date (year-month-day).',
+      startAfterRelease: 'The start date cannot be after the release date.',
+    },
+  },
+
+  projectPeople: {
+    intro:
+      'Roles say who plays which part in this project, such as developers or testers. A group added to a role includes all its members. Permissions can then be granted to a role.',
+    noRoles: 'No role exists yet. Solstice administrators create roles in the administration.',
+    personField: 'Add a person',
+    choosePerson: 'Choose a person…',
+    groupField: 'Add a group',
+    noGroupLeft: 'Every group is already in this role.',
+    removeMember: (name: string, role: string) => `Remove ${name} from ${role}`,
+    added: (name: string, role: string) => `${name} added to ${role}.`,
+    removed: (name: string, role: string) => `${name} removed from ${role}.`,
+  },
+
+  projectNotify: {
+    intro:
+      'Decide whether this project sends notification e-mails, and which groups and roles also receive them, on top of the people who report, are assigned to or watch an issue.',
+    enabled: 'Send notification e-mails for this project',
+    enabledHint:
+      'Turned off, nobody is e-mailed about this project’s issues, whatever their own settings.',
+    offNote: 'Notification e-mails are off for this project.',
+    extraTitle: 'Also notify',
+    extraHint: 'Check the events each group or role receives.',
+    extraEmpty: 'There is no group or role to choose from.',
+    recipient: 'Group or role',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
   },
 
   catalogAdmin: {

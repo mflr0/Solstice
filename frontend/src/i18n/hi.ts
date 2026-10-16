@@ -1781,6 +1781,142 @@ export const hi: Messages = {
     restricted: (comments: number, worklogs: number) =>
       `अब भी इस भूमिका तक सीमित: ${[comments > 0 ? plural(comments, 'टिप्पणी', 'टिप्पणियाँ') : '', worklogs > 0 ? plural(worklogs, 'समय प्रविष्टि', 'समय प्रविष्टियाँ') : ''].filter(Boolean).join(', ')}। इसे हटाया नहीं जा सकता।`,
     typeToConfirm: (name: string) => `पुष्टि के लिए ${name} टाइप करें`,
+  projectConfig: {
+    tabGeneral: 'सामान्य',
+    tabPeople: 'लोग',
+    tabNotifications: 'सूचनाएँ',
+    leaveBody: 'इस टैब में बिना सहेजे बदलाव हैं। उन्हें छोड़ दें?',
+    general: {
+      intro: 'प्रोजेक्ट का नाम, लीड और डिफ़ॉल्ट सेटिंग्स। बदलाव सहेजने पर लागू होते हैं।',
+      keyHint: 'कुंजी हर टिकट कुंजी की शुरुआत होती है और बदली नहीं जा सकती।',
+      leadRequired: 'एक लीड चुनिए।',
+      archiveSection: 'संग्रह और हटाना',
+      archiveHint:
+        'संग्रहीत करने पर प्रोजेक्ट केवल पढ़ने योग्य हो जाता है और प्रोजेक्ट सूचियों से हट जाता है। हटाने पर वह हमेशा के लिए चला जाता है।',
+      archivedNote: 'यह प्रोजेक्ट संग्रहीत है: यह केवल पढ़ने योग्य है।',
+      adminOnly: 'प्रोजेक्ट को संग्रहीत करना या हटाना सिर्फ़ Solstice एडमिन कर सकते हैं।',
+      deleteProject: 'प्रोजेक्ट हटाएँ',
+    },
+  },
+
+  projectComponents: {
+    intro:
+      'कंपोनेंट प्रोजेक्ट को हिस्सों में बाँटते हैं, जैसे कोई सेवा या टीम। हर एक का एक लीड हो सकता है और वह तय कर सकता है कि नए टिकट किसे सौंपे जाएँ।',
+    newComponent: 'नया कंपोनेंट',
+    empty: 'अभी कोई कंपोनेंट नहीं',
+    emptyHint: 'प्रोजेक्ट के टिकट हिस्सों के हिसाब से जमाने के लिए कंपोनेंट बनाइए।',
+    assignee: 'नए टिकट जाते हैं',
+    assigneeTypes: {
+      project_default: 'प्रोजेक्ट के डिफ़ॉल्ट को',
+      component_lead: 'कंपोनेंट के लीड को',
+      project_lead: 'प्रोजेक्ट लीड को',
+      unassigned: 'किसी को नहीं',
+    },
+    archivedHint:
+      'संग्रहीत कंपोनेंट नए टिकटों पर नहीं सुझाया जाता; जिन टिकटों में वह है, उनमें बना रहता है।',
+    createTitle: 'नया कंपोनेंट',
+    editTitle: (name: string) => `${name} बदलें`,
+    create: 'कंपोनेंट बनाएँ',
+    created: (name: string) => `कंपोनेंट ${name} बन गया।`,
+    saved: (name: string) => `कंपोनेंट ${name} सहेज लिया गया।`,
+    archived: (name: string) => `कंपोनेंट ${name} संग्रहीत हो गया।`,
+    unarchived: (name: string) => `कंपोनेंट ${name} फिर से सक्रिय है।`,
+    deleteTitle: (name: string) => `${name} हटाएँ?`,
+    deleteUnused: 'किसी टिकट में यह कंपोनेंट नहीं है।',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'टिकट में', 'टिकटों में')} यह कंपोनेंट है। उन्हें किसी दूसरे कंपोनेंट में ले जाइए, या उनसे बस इसे हटा दीजिए।`,
+    moveLabel: 'इनमें ले जाएँ',
+    moveNone: 'बस कंपोनेंट हटाएँ',
+    deleted: (name: string) => `कंपोनेंट ${name} हट गया।`,
+    problems: {
+      nameRequired: 'कंपोनेंट को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'किसी और कंपोनेंट का यही नाम पहले से है।',
+      leadNeeded: 'एक लीड चुनिए, या नए टिकट सौंपने का कोई और तरीका।',
+    },
+  },
+
+  projectVersions: {
+    intro:
+      'वर्ज़न प्रोजेक्ट की रिलीज़ हैं। उन्हें उसी क्रम में रखिए जिसमें आप उन्हें रिलीज़ करते हैं; टिकट किसी वर्ज़न में योजित होते हैं, और रिलीज़ के समय अनसुलझे टिकट आगे बढ़ाए जा सकते हैं।',
+    newVersion: 'नया वर्ज़न',
+    empty: 'अभी कोई वर्ज़न नहीं',
+    emptyHint: 'टिकट योजित करने के लिए पहली रिलीज़ बनाइए।',
+    archivedHint: 'रिलीज़ हुआ या संग्रहीत वर्ज़न नए टिकटों पर नहीं सुझाया जाता।',
+    startDate: 'आरंभ तिथि',
+    releaseDate: 'रिलीज़ तिथि',
+    states: { unreleased: 'रिलीज़ नहीं हुआ', released: 'रिलीज़ हुआ', archived: 'संग्रहीत' },
+    late: 'देर से',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (${formatNumber(unresolved)} अनसुलझे)`
+        : `${formatNumber(total)}`,
+    release: 'रिलीज़ करें',
+    unrelease: 'रिलीज़ नहीं हुआ चिह्नित करें',
+    merge: 'मर्ज करें',
+    createTitle: 'नया वर्ज़न',
+    editTitle: (name: string) => `${name} बदलें`,
+    create: 'वर्ज़न बनाएँ',
+    created: (name: string) => `वर्ज़न ${name} बन गया।`,
+    saved: (name: string) => `वर्ज़न ${name} सहेज लिया गया।`,
+    archived: (name: string) => `वर्ज़न ${name} संग्रहीत हो गया।`,
+    unarchived: (name: string) => `वर्ज़न ${name} फिर से सक्रिय है।`,
+    released: (name: string) => `वर्ज़न ${name} रिलीज़ हो गया।`,
+    unreleased: (name: string) => `वर्ज़न ${name} रिलीज़ नहीं हुआ चिह्नित है।`,
+    ordered: 'क्रम सहेज लिया गया।',
+    releaseTitle: (name: string) => `${name} रिलीज़ करें?`,
+    releaseBody: 'वर्ज़न नीचे दी गई तारीख़ पर रिलीज़ हुआ चिह्नित होगा।',
+    releaseUnresolved: (n: number) =>
+      `इस वर्ज़न में योजित ${plural(n, 'टिकट', 'टिकट')} अभी अनसुलझे हैं।`,
+    releaseMoveLabel: 'इनमें ले जाएँ',
+    releaseMoveNone: 'इसी वर्ज़न में रहने दें',
+    mergeTitle: (name: string) => `${name} मर्ज करें?`,
+    mergeBody: 'इस वर्ज़न के सभी टिकट आपके चुने वर्ज़न में चले जाएँगे, और यह वर्ज़न हट जाएगा।',
+    mergeLabel: 'इसमें मर्ज करें',
+    mergeChoose: 'वर्ज़न चुनें…',
+    mergeNone: 'मर्ज करने के लिए कोई दूसरा वर्ज़न नहीं है।',
+    merged: (name: string, into: string) => `वर्ज़न ${name} को ${into} में मर्ज कर दिया गया।`,
+    deleteTitle: (name: string) => `${name} हटाएँ?`,
+    deleteUnused: 'किसी टिकट में यह वर्ज़न नहीं है।',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'टिकट', 'टिकट')} इस वर्ज़न का उपयोग करते हैं। उन्हें किसी दूसरे वर्ज़न में ले जाइए, या उनसे बस इसे हटा दीजिए।`,
+    deleteMoveLabel: 'इनमें ले जाएँ',
+    deleteMoveNone: 'बस वर्ज़न हटाएँ',
+    deleted: (name: string) => `वर्ज़न ${name} हट गया।`,
+    problems: {
+      nameRequired: 'वर्ज़न को एक नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'किसी और वर्ज़न का यही नाम पहले से है।',
+      dayInvalid: 'सही तारीख़ लिखिए (वर्ष-माह-दिन)।',
+      startAfterRelease: 'आरंभ तिथि रिलीज़ तिथि के बाद नहीं हो सकती।',
+    },
+  },
+
+  projectPeople: {
+    intro:
+      'भूमिकाएँ बताती हैं कि इस प्रोजेक्ट में कौन कौन-सा काम सँभालता है, जैसे डेवलपमेंट या टेस्टिंग। किसी भूमिका में जोड़े गए समूह के सभी सदस्य उसमें शामिल माने जाते हैं। इसके बाद अनुमतियाँ किसी भूमिका को दी जा सकती हैं।',
+    noRoles: 'अभी कोई भूमिका नहीं है। भूमिकाएँ Solstice एडमिन प्रशासन में बनाते हैं।',
+    personField: 'व्यक्ति जोड़ें',
+    choosePerson: 'व्यक्ति चुनें…',
+    groupField: 'समूह जोड़ें',
+    noGroupLeft: 'सभी समूह पहले से इस भूमिका में हैं।',
+    removeMember: (name: string, role: string) => `${role} से ${name} को हटाएँ`,
+    added: (name: string, role: string) => `${name} को ${role} में जोड़ा गया।`,
+    removed: (name: string, role: string) => `${name} को ${role} से हटाया गया।`,
+  },
+
+  projectNotify: {
+    intro:
+      'तय कीजिए कि यह प्रोजेक्ट सूचना ईमेल भेजे या नहीं, और टिकट रिपोर्ट करने वालों, जिन्हें वह सौंपा गया है और उसे फ़ॉलो करने वालों के अलावा कौन-से समूह और भूमिकाएँ उन्हें पाएँ।',
+    enabled: 'इस प्रोजेक्ट के लिए सूचना ईमेल भेजें',
+    enabledHint:
+      'बंद होने पर इस प्रोजेक्ट के टिकटों के बारे में किसी को ईमेल नहीं जाता, चाहे उनकी अपनी सेटिंग कुछ भी हो।',
+    offNote: 'इस प्रोजेक्ट के लिए सूचना ईमेल बंद हैं।',
+    extraTitle: 'इन्हें भी सूचित करें',
+    extraHint: 'चुनिए कि हर समूह या भूमिका को कौन-से इवेंट मिलें।',
+    extraEmpty: 'चुनने के लिए कोई समूह या भूमिका नहीं है।',
+    recipient: 'समूह या भूमिका',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
   },
 
   catalogAdmin: {

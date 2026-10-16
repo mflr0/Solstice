@@ -2,7 +2,22 @@ import { describe, expect, it } from 'vitest';
 
 import {
   categoryProblem,
+  componentPayload,
+  componentProblem,
   datesProblem,
+  dayProblem,
+  generalForm,
+  generalPatch,
+  generalProblems,
+  nameProblem,
+  orderAfterStep,
+  toggleIssueType,
+  validDay,
+  versionLate,
+  versionPayload,
+  versionProblems,
+  versionState,
+  withMember,
   filterProjects,
   issueTypesProblem,
   parseCategoryFilter,
@@ -22,7 +37,9 @@ import {
   releaseTargets,
   suggestKey,
   toggleExtra,
+  type GeneralForm,
   type ProjectForm,
+  type ProjectSettings,
 } from '../../src/core/project-admin.js';
 
 describe('project keys', () => {
@@ -262,5 +279,183 @@ describe('category names', () => {
     expect(categoryProblem('development', cats, null)).toBe('nameTaken');
     expect(categoryProblem('Development', cats, 1)).toBeNull();
     expect(categoryProblem('Sales', cats, null)).toBeNull();
+  });
+});
+
+describe('general tab', () => {
+  const saved: ProjectSettings = {
+    id: 1,
+    key: 'SW',
+    name: 'Website',
+    description: null,
+    kind: 'software',
+    lead: { id: 3, username: 'ada', name: 'Ada', active: true },
+    category: { id: 2, name: 'Web' },
+    defaultAssignee: 'unassigned',
+    archived: false,
+    issueTypes: [
+      { id: 'task', name: 'Task', subtask: false },
+      { id: 'sub', name: 'Sub-task', subtask: true },
+    ],
+    issues: 4,
+  };
+  const all = [
+    { id: 'task', subtask: false },
+    { id: 'bug', subtask: false },
+    { id: 'sub', subtask: true },
+  ];
+
+  it('starts from the saved project and changes nothing', () => {
+    expect(generalPatch(generalForm(saved), saved)).toEqual({});
+  });
+
+  it('sends only what changed', () => {
+    const f: GeneralForm = {
+      ...generalForm(saved),
+      name: '  Site  ',
+      description: ' About us ',
+      category: null,
+      defaultAssignee: 'lead',
+    };
+    expect(generalPatch(f, saved)).toEqual({
+      name: 'Site',
+      description: 'About us',
+      category: null,
+      defaultAssignee: 'lead',
+    });
+  });
+
+  it('clears the description with null, and treats blank as unchanged when it was empty', () => {
+    expect(generalPatch({ ...generalForm(saved), description: '   ' }, saved)).toEqual({});
+    const withText = { ...saved, description: 'Old' };
+    expect(generalPatch({ ...generalForm(withText), description: '' }, withText)).toEqual({
+      description: null,
+    });
+  });
+
+  it('sends the lead by id and the types as a set', () => {
+    const f = {
+      ...generalForm(saved),
+      lead: { id: 9, username: 'bob', name: 'Bob', active: true },
+      issueTypes: ['sub', 'task'],
+    };
+    expect(generalPatch(f, saved)).toEqual({ lead: 9 });
+    expect(generalPatch({ ...f, issueTypes: ['task', 'bug'] }, saved).issueTypes).toEqual([
+      'task',
+      'bug',
+    ]);
+  });
+
+  it('finds what is missing', () => {
+    const f = generalForm(saved);
+    expect(generalProblems(f, all)).toEqual({});
+    expect(generalProblems({ ...f, name: ' ', lead: null, issueTypes: ['sub'] }, all)).toEqual({
+      name: 'nameRequired',
+      lead: 'leadRequired',
+      types: 'typesRequired',
+    });
+    expect(generalProblems({ ...f, name: 'x'.repeat(256) }, all).name).toBe('nameTooLong');
+  });
+
+  it('keeps ticked types in the catalogue order', () => {
+    expect(toggleIssueType(all, ['sub', 'task'], 'bug', true)).toEqual(['task', 'bug', 'sub']);
+    expect(toggleIssueType(all, ['task', 'bug'], 'task', false)).toEqual(['bug']);
+  });
+});
+
+describe('components', () => {
+  const form = (o: Partial<Parameters<typeof componentPayload>[0]> = {}) => ({
+    name: ' Api ',
+    description: '',
+    lead: null,
+    assigneeType: 'project_default' as const,
+    ...o,
+  });
+
+  it('checks the name like every name', () => {
+    const others = [{ id: 1, name: 'Api' }];
+    expect(nameProblem('api', others, null)).toBe('nameTaken');
+    expect(nameProblem('api', others, 1)).toBeNull();
+    expect(nameProblem(' ', others, null)).toBe('nameRequired');
+  });
+
+  it('needs a lead when the lead decides the assignee', () => {
+    expect(componentProblem(form({ assigneeType: 'component_lead' }))).toBe('leadNeeded');
+    expect(componentProblem(form())).toBeNull();
+  });
+
+  it('sends a cleared lead as null', () => {
+    expect(componentPayload(form())).toEqual({
+      name: 'Api',
+      description: '',
+      lead: null,
+      assigneeType: 'project_default',
+    });
+    expect(
+      componentPayload(form({ lead: { id: 5, username: 'u', name: 'U', active: true } })).lead,
+    ).toBe(5);
+  });
+});
+
+describe('versions', () => {
+  it('reads real calendar days only', () => {
+    expect(validDay('2026-02-28')).toBe(true);
+    expect(validDay('2028-02-29')).toBe(true);
+    expect(validDay('2026-02-30')).toBe(false);
+    expect(validDay('2026-13-01')).toBe(false);
+    expect(validDay('1/2/2026')).toBe(false);
+    expect(dayProblem('')).toBeNull();
+    expect(dayProblem('soon')).toBe('dayInvalid');
+  });
+
+  it('checks the dates of a version', () => {
+    const f = { name: '1.0', description: '', startDate: '', releaseDate: '' };
+    expect(versionProblems(f)).toEqual({});
+    expect(versionProblems({ ...f, startDate: '2026-05-02', releaseDate: '2026-05-01' })).toEqual({
+      dates: 'startAfterRelease',
+    });
+    expect(versionProblems({ ...f, startDate: 'x', releaseDate: '2026-05-01' })).toEqual({
+      start: 'dayInvalid',
+    });
+  });
+
+  it('sends empty days as null', () => {
+    expect(
+      versionPayload({ name: ' 1.1 ', description: ' ', startDate: '', releaseDate: '2026-06-01' }),
+    ).toEqual({ name: '1.1', description: '', startDate: null, releaseDate: '2026-06-01' });
+  });
+
+  it('tells where a version stands', () => {
+    expect(versionState({ released: true, archived: false })).toBe('released');
+    expect(versionState({ released: true, archived: true })).toBe('archived');
+    expect(versionState({ released: false, archived: false })).toBe('unreleased');
+    const v = { released: false, archived: false, releaseDate: '2026-05-01' };
+    expect(versionLate(v, '2026-05-02')).toBe(true);
+    expect(versionLate(v, '2026-05-01')).toBe(false);
+    expect(versionLate({ ...v, released: true }, '2026-06-01')).toBe(false);
+    expect(versionLate({ ...v, releaseDate: null }, '2026-06-01')).toBe(false);
+  });
+
+  it('moves one place with the buttons, and stops at the ends', () => {
+    expect(orderAfterStep([1, 2, 3], 2, -1)).toEqual([2, 1, 3]);
+    expect(orderAfterStep([1, 2, 3], 2, 1)).toEqual([1, 3, 2]);
+    expect(orderAfterStep([1, 2, 3], 1, -1)).toBeNull();
+    expect(orderAfterStep([1, 2, 3], 3, 1)).toBeNull();
+    expect(orderAfterStep([1, 2, 3], 9, 1)).toBeNull();
+  });
+});
+
+describe('project roles', () => {
+  const role = { users: [{ id: 1 }, { id: 2 }], groups: [{ id: 7 }] };
+
+  it('adds and removes a user or a group without touching the other list', () => {
+    expect(withMember(role, 'user', 3, true)).toEqual({ users: [1, 2, 3], groups: [7] });
+    expect(withMember(role, 'user', 1, false)).toEqual({ users: [2], groups: [7] });
+    expect(withMember(role, 'group', 8, true)).toEqual({ users: [1, 2], groups: [7, 8] });
+    expect(withMember(role, 'group', 7, false)).toEqual({ users: [1, 2], groups: [] });
+  });
+
+  it('never lists someone twice', () => {
+    expect(withMember(role, 'user', 2, true).users).toEqual([1, 2]);
   });
 });

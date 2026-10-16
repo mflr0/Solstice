@@ -113,7 +113,7 @@
       {:else if route.name === 'project'}
         <ProjectPage projectKey={route.key} />
       {:else if route.name === 'projectSettings'}
-        <ProjectSettingsPage projectKey={route.key} />
+        <ProjectSettingsPage projectKey={route.key} tab={route.tab} />
       {:else if route.name === 'search'}
         <SearchPage />
       {:else if route.name === 'issue'}

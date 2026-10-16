@@ -1794,6 +1794,145 @@ export const it: Messages = {
     restricted: (comments: number, worklogs: number) =>
       `Ancora riservati a questo ruolo: ${[comments > 0 ? plural(comments, 'commento', 'commenti') : '', worklogs > 0 ? plural(worklogs, 'registrazione di tempo', 'registrazioni di tempo') : ''].filter(Boolean).join(', ')}. Non può essere eliminato.`,
     typeToConfirm: (name: string) => `Digita ${name} per confermare`,
+  projectConfig: {
+    tabGeneral: 'Generale',
+    tabPeople: 'Persone',
+    tabNotifications: 'Notifiche',
+    leaveBody: 'Questa scheda ha modifiche non salvate. Scartarle?',
+    general: {
+      intro:
+        'Nome, responsabile e valori predefiniti del progetto. Le modifiche si applicano al salvataggio.',
+      keyHint: 'La chiave apre ogni chiave di ticket e non può essere modificata.',
+      leadRequired: 'Scegli un responsabile.',
+      archiveSection: 'Archiviazione ed eliminazione',
+      archiveHint:
+        'Archiviare rende il progetto di sola lettura e lo toglie dagli elenchi dei progetti. Eliminare lo rimuove definitivamente.',
+      archivedNote: 'Questo progetto è archiviato: è in sola lettura.',
+      adminOnly: 'Solo gli amministratori di Solstice possono archiviare o eliminare un progetto.',
+      deleteProject: 'Elimina il progetto',
+    },
+  },
+
+  projectComponents: {
+    intro:
+      'I componenti dividono un progetto in parti, come un servizio o un team. Ognuno può avere un responsabile e decidere a chi vengono assegnati i nuovi ticket.',
+    newComponent: 'Nuovo componente',
+    empty: 'Ancora nessun componente',
+    emptyHint: 'Crea dei componenti per raggruppare i ticket del progetto per parte.',
+    assignee: 'I nuovi ticket vanno a',
+    assigneeTypes: {
+      project_default: 'L’impostazione del progetto',
+      component_lead: 'Il responsabile del componente',
+      project_lead: 'Il responsabile del progetto',
+      unassigned: 'Nessuno',
+    },
+    archivedHint:
+      'Un componente archiviato non viene più proposto sui nuovi ticket; i ticket che lo hanno lo conservano.',
+    createTitle: 'Nuovo componente',
+    editTitle: (name: string) => `Modifica «${name}»`,
+    create: 'Crea il componente',
+    created: (name: string) => `Componente «${name}» creato.`,
+    saved: (name: string) => `Componente «${name}» salvato.`,
+    archived: (name: string) => `Componente «${name}» archiviato.`,
+    unarchived: (name: string) => `Componente «${name}» di nuovo attivo.`,
+    deleteTitle: (name: string) => `Eliminare «${name}»?`,
+    deleteUnused: 'Nessun ticket ha questo componente.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'ticket ha', 'ticket hanno')} questo componente. Spostali su un altro componente, oppure togli loro soltanto questo.`,
+    moveLabel: 'Sposta su',
+    moveNone: 'Togli soltanto il componente',
+    deleted: (name: string) => `Componente «${name}» eliminato.`,
+    problems: {
+      nameRequired: 'Dai un nome al componente.',
+      nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',
+      nameTaken: 'Un altro componente ha già questo nome.',
+      leadNeeded: 'Scegli un responsabile, oppure un altro modo di assegnare i nuovi ticket.',
+    },
+  },
+
+  projectVersions: {
+    intro:
+      'Le versioni sono i rilasci del progetto. Tienile nell’ordine in cui le rilasci; i ticket sono pianificati in una versione, e quelli non risolti possono passare a un’altra al rilascio.',
+    newVersion: 'Nuova versione',
+    empty: 'Ancora nessuna versione',
+    emptyHint: 'Crea il primo rilascio per pianificarvi dei ticket.',
+    archivedHint: 'Una versione rilasciata o archiviata non viene più proposta sui nuovi ticket.',
+    startDate: 'Data di inizio',
+    releaseDate: 'Data di rilascio',
+    states: { unreleased: 'non rilasciata', released: 'rilasciata', archived: 'archiviata' },
+    late: 'in ritardo',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (di cui ${formatNumber(unresolved)} non risolti)`
+        : `${formatNumber(total)}`,
+    release: 'Rilascia',
+    unrelease: 'Segna come non rilasciata',
+    merge: 'Unisci',
+    createTitle: 'Nuova versione',
+    editTitle: (name: string) => `Modifica «${name}»`,
+    create: 'Crea la versione',
+    created: (name: string) => `Versione «${name}» creata.`,
+    saved: (name: string) => `Versione «${name}» salvata.`,
+    archived: (name: string) => `Versione «${name}» archiviata.`,
+    unarchived: (name: string) => `Versione «${name}» di nuovo attiva.`,
+    released: (name: string) => `Versione «${name}» rilasciata.`,
+    unreleased: (name: string) => `Versione «${name}» segnata come non rilasciata.`,
+    ordered: 'Ordine salvato.',
+    releaseTitle: (name: string) => `Rilasciare «${name}»?`,
+    releaseBody: 'La versione viene segnata come rilasciata alla data indicata sotto.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'ticket pianificato', 'ticket pianificati')} in questa versione ${n === 1 ? 'non è ancora risolto' : 'non sono ancora risolti'}.`,
+    releaseMoveLabel: 'Sposta su',
+    releaseMoveNone: 'Lasciali in questa versione',
+    mergeTitle: (name: string) => `Unire «${name}»?`,
+    mergeBody:
+      'Tutti i ticket di questa versione passano alla versione scelta, poi questa versione viene eliminata.',
+    mergeLabel: 'Unisci in',
+    mergeChoose: 'Scegli una versione…',
+    mergeNone: 'Non c’è un’altra versione in cui unire.',
+    merged: (name: string, into: string) => `Versione «${name}» unita in «${into}».`,
+    deleteTitle: (name: string) => `Eliminare «${name}»?`,
+    deleteUnused: 'Nessun ticket usa questa versione.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'ticket usa', 'ticket usano')} questa versione. Spostali su un’altra versione, oppure togli loro soltanto questa.`,
+    deleteMoveLabel: 'Sposta su',
+    deleteMoveNone: 'Togli soltanto la versione',
+    deleted: (name: string) => `Versione «${name}» eliminata.`,
+    problems: {
+      nameRequired: 'Dai un nome alla versione.',
+      nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',
+      nameTaken: 'Un’altra versione ha già questo nome.',
+      dayInvalid: 'Inserisci una data valida (anno-mese-giorno).',
+      startAfterRelease: 'La data di inizio non può essere successiva alla data di rilascio.',
+    },
+  },
+
+  projectPeople: {
+    intro:
+      'I ruoli indicano chi svolge quale parte in questo progetto, come lo sviluppo o i test. Un gruppo aggiunto a un ruolo ne include tutti i membri. I permessi si possono poi concedere a un ruolo.',
+    noRoles:
+      'Non esiste ancora alcun ruolo. Gli amministratori di Solstice creano i ruoli nell’amministrazione.',
+    personField: 'Aggiungi una persona',
+    choosePerson: 'Scegli una persona…',
+    groupField: 'Aggiungi un gruppo',
+    noGroupLeft: 'Tutti i gruppi sono già in questo ruolo.',
+    removeMember: (name: string, role: string) => `Rimuovi ${name} dal ruolo ${role}`,
+    added: (name: string, role: string) => `${name} entra nel ruolo ${role}.`,
+    removed: (name: string, role: string) => `${name} esce dal ruolo ${role}.`,
+  },
+
+  projectNotify: {
+    intro:
+      'Decidi se questo progetto invia e-mail di notifica, e quali gruppi e ruoli le ricevono in più rispetto alle persone che segnalano, a cui è assegnato o che seguono un ticket.',
+    enabled: 'Invia e-mail di notifica per questo progetto',
+    enabledHint:
+      'Disattivato, nessuno riceve e-mail sui ticket di questo progetto, qualunque siano le sue impostazioni.',
+    offNote: 'Le e-mail di notifica sono disattivate per questo progetto.',
+    extraTitle: 'Avvisa anche',
+    extraHint: 'Spunta gli eventi che ogni gruppo o ruolo riceve.',
+    extraEmpty: 'Non c’è alcun gruppo né ruolo tra cui scegliere.',
+    recipient: 'Gruppo o ruolo',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
   },
 
   catalogAdmin: {

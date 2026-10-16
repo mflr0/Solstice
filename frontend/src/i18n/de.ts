@@ -1817,6 +1817,147 @@ export const de: Messages = {
     restricted: (comments: number, worklogs: number) =>
       `Noch auf diese Rolle beschränkt: ${[comments > 0 ? plural(comments, 'Kommentar', 'Kommentare') : '', worklogs > 0 ? plural(worklogs, 'Zeiteintrag', 'Zeiteinträge') : ''].filter(Boolean).join(', ')}. Sie kann nicht gelöscht werden.`,
     typeToConfirm: (name: string) => `Geben Sie ${name} zur Bestätigung ein`,
+  projectConfig: {
+    tabGeneral: 'Allgemein',
+    tabPeople: 'Personen',
+    tabNotifications: 'Benachrichtigungen',
+    leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
+    general: {
+      intro:
+        'Name, Leitung und Standardwerte des Projekts. Änderungen gelten, sobald Sie speichern.',
+      keyHint:
+        'Der Schlüssel steht am Anfang jedes Vorgangsschlüssels und lässt sich nicht ändern.',
+      leadRequired: 'Wählen Sie eine Leitung.',
+      archiveSection: 'Archivierung und Löschung',
+      archiveHint:
+        'Archivieren macht das Projekt schreibgeschützt und nimmt es aus den Projektlisten. Löschen entfernt es endgültig.',
+      archivedNote: 'Dieses Projekt ist archiviert: Es ist schreibgeschützt.',
+      adminOnly: 'Nur Solstice-Administratoren können ein Projekt archivieren oder löschen.',
+      deleteProject: 'Projekt löschen',
+    },
+  },
+
+  projectComponents: {
+    intro:
+      'Komponenten teilen ein Projekt in Teile, etwa einen Dienst oder ein Team. Jede kann eine Leitung haben und bestimmen, wem neue Vorgänge zugewiesen werden.',
+    newComponent: 'Neue Komponente',
+    empty: 'Noch keine Komponente',
+    emptyHint: 'Legen Sie Komponenten an, um die Vorgänge des Projekts nach Teilen zu gruppieren.',
+    assignee: 'Neue Vorgänge gehen an',
+    assigneeTypes: {
+      project_default: 'Die Vorgabe des Projekts',
+      component_lead: 'Die Leitung der Komponente',
+      project_lead: 'Die Projektleitung',
+      unassigned: 'Niemanden',
+    },
+    archivedHint:
+      'Eine archivierte Komponente wird bei neuen Vorgängen nicht mehr angeboten; Vorgänge, die sie haben, behalten sie.',
+    createTitle: 'Neue Komponente',
+    editTitle: (name: string) => `${name} bearbeiten`,
+    create: 'Komponente anlegen',
+    created: (name: string) => `Komponente ${name} wurde angelegt.`,
+    saved: (name: string) => `Komponente ${name} wurde gespeichert.`,
+    archived: (name: string) => `Komponente ${name} wurde archiviert.`,
+    unarchived: (name: string) => `Komponente ${name} ist wieder aktiv.`,
+    deleteTitle: (name: string) => `${name} löschen?`,
+    deleteUnused: 'Kein Vorgang hat diese Komponente.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'Vorgang hat', 'Vorgänge haben')} diese Komponente. Verschieben Sie sie in eine andere Komponente oder entfernen Sie nur diese von ihnen.`,
+    moveLabel: 'Verschieben nach',
+    moveNone: 'Komponente nur entfernen',
+    deleted: (name: string) => `Komponente ${name} wurde gelöscht.`,
+    problems: {
+      nameRequired: 'Geben Sie der Komponente einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Komponente hat bereits diesen Namen.',
+      leadNeeded: 'Wählen Sie eine Leitung oder eine andere Art, neue Vorgänge zuzuweisen.',
+    },
+  },
+
+  projectVersions: {
+    intro:
+      'Versionen sind die Veröffentlichungen des Projekts. Halten Sie sie in der Reihenfolge, in der Sie sie ausliefern; Vorgänge werden in einer Version geplant, und die ungelösten können bei der Veröffentlichung weiterziehen.',
+    newVersion: 'Neue Version',
+    empty: 'Noch keine Version',
+    emptyHint: 'Legen Sie die erste Veröffentlichung an, um Vorgänge darin zu planen.',
+    archivedHint:
+      'Eine veröffentlichte oder archivierte Version wird bei neuen Vorgängen nicht mehr angeboten.',
+    startDate: 'Startdatum',
+    releaseDate: 'Veröffentlichungsdatum',
+    states: { unreleased: 'unveröffentlicht', released: 'veröffentlicht', archived: 'archiviert' },
+    late: 'überfällig',
+    issuesCell: (total: number, unresolved: number) =>
+      unresolved > 0
+        ? `${formatNumber(total)} (davon ${formatNumber(unresolved)} ungelöst)`
+        : `${formatNumber(total)}`,
+    release: 'Veröffentlichen',
+    unrelease: 'Als unveröffentlicht markieren',
+    merge: 'Zusammenführen',
+    createTitle: 'Neue Version',
+    editTitle: (name: string) => `${name} bearbeiten`,
+    create: 'Version anlegen',
+    created: (name: string) => `Version ${name} wurde angelegt.`,
+    saved: (name: string) => `Version ${name} wurde gespeichert.`,
+    archived: (name: string) => `Version ${name} wurde archiviert.`,
+    unarchived: (name: string) => `Version ${name} ist wieder aktiv.`,
+    released: (name: string) => `Version ${name} wurde veröffentlicht.`,
+    unreleased: (name: string) => `Version ${name} ist als unveröffentlicht markiert.`,
+    ordered: 'Reihenfolge gespeichert.',
+    releaseTitle: (name: string) => `${name} veröffentlichen?`,
+    releaseBody: 'Die Version wird mit dem unten stehenden Datum als veröffentlicht markiert.',
+    releaseUnresolved: (n: number) =>
+      `${plural(n, 'in dieser Version geplanter Vorgang ist', 'in dieser Version geplante Vorgänge sind')} noch ungelöst.`,
+    releaseMoveLabel: 'Verschieben nach',
+    releaseMoveNone: 'In dieser Version belassen',
+    mergeTitle: (name: string) => `${name} zusammenführen?`,
+    mergeBody:
+      'Alle Vorgänge dieser Version wandern in die gewählte Version, und diese Version wird gelöscht.',
+    mergeLabel: 'Zusammenführen mit',
+    mergeChoose: 'Version wählen…',
+    mergeNone: 'Es gibt keine andere Version, mit der sich zusammenführen ließe.',
+    merged: (name: string, into: string) => `Version ${name} wurde mit ${into} zusammengeführt.`,
+    deleteTitle: (name: string) => `${name} löschen?`,
+    deleteUnused: 'Kein Vorgang verwendet diese Version.',
+    deleteUsed: (n: number) =>
+      `${plural(n, 'Vorgang verwendet', 'Vorgänge verwenden')} diese Version. Verschieben Sie sie in eine andere Version oder entfernen Sie nur diese von ihnen.`,
+    deleteMoveLabel: 'Verschieben nach',
+    deleteMoveNone: 'Version nur entfernen',
+    deleted: (name: string) => `Version ${name} wurde gelöscht.`,
+    problems: {
+      nameRequired: 'Geben Sie der Version einen Namen.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Eine andere Version hat bereits diesen Namen.',
+      dayInvalid: 'Geben Sie ein gültiges Datum ein (Jahr-Monat-Tag).',
+      startAfterRelease: 'Das Startdatum darf nicht nach dem Veröffentlichungsdatum liegen.',
+    },
+  },
+
+  projectPeople: {
+    intro:
+      'Rollen legen fest, wer in diesem Projekt welche Aufgabe übernimmt, etwa Entwicklung oder Test. Eine zu einer Rolle hinzugefügte Gruppe schließt alle ihre Mitglieder ein. Berechtigungen lassen sich dann einer Rolle erteilen.',
+    noRoles:
+      'Es gibt noch keine Rolle. Solstice-Administratoren legen Rollen in der Administration an.',
+    personField: 'Person hinzufügen',
+    choosePerson: 'Person wählen…',
+    groupField: 'Gruppe hinzufügen',
+    noGroupLeft: 'Alle Gruppen sind bereits in dieser Rolle.',
+    removeMember: (name: string, role: string) => `${name} aus der Rolle ${role} entfernen`,
+    added: (name: string, role: string) => `${name} wurde zur Rolle ${role} hinzugefügt.`,
+    removed: (name: string, role: string) => `${name} wurde aus der Rolle ${role} entfernt.`,
+  },
+
+  projectNotify: {
+    intro:
+      'Legen Sie fest, ob dieses Projekt Benachrichtigungs-E-Mails versendet und welche Gruppen und Rollen sie zusätzlich erhalten, neben den Personen, die einen Vorgang melden, zugewiesen bekommen oder beobachten.',
+    enabled: 'Benachrichtigungs-E-Mails für dieses Projekt senden',
+    enabledHint:
+      'Ausgeschaltet erhält niemand E-Mails zu Vorgängen dieses Projekts, unabhängig von den eigenen Einstellungen.',
+    offNote: 'Benachrichtigungs-E-Mails sind für dieses Projekt ausgeschaltet.',
+    extraTitle: 'Zusätzlich benachrichtigen',
+    extraHint: 'Wählen Sie die Ereignisse, die jede Gruppe oder Rolle erhält.',
+    extraEmpty: 'Es gibt keine Gruppe und keine Rolle zur Auswahl.',
+    recipient: 'Gruppe oder Rolle',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
   },
 
   catalogAdmin: {
