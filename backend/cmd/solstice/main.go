@@ -105,18 +105,11 @@ func runMigrate(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := requireDB(cfg); err != nil {
-		return err
-	}
-
-	conn, err := db.Open(ctx, cfg.DB)
+	conn, err := openMigrated(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	if err := db.Migrate(ctx, conn); err != nil {
-		return err
-	}
+	conn.Close()
 	slog.Info("database is up to date")
 	return nil
 }
@@ -323,17 +316,11 @@ func runUser(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := requireDB(cfg); err != nil {
-		return err
-	}
-	conn, err := db.Open(ctx, cfg.DB)
+	conn, err := openMigrated(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	if err := db.Migrate(ctx, conn); err != nil {
-		return err
-	}
 	login := strings.ToLower(*username)
 	// record writes an audit entry for a change made from the command line.
 	record := func(what string, id int64) error {
@@ -424,17 +411,11 @@ func runImport(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := requireDB(cfg); err != nil {
-		return err
-	}
-	conn, err := db.Open(ctx, cfg.DB)
+	conn, err := openMigrated(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	if err := db.Migrate(ctx, conn); err != nil {
-		return err
-	}
 	start := time.Now()
 	rep, err := importer.Run(ctx, conn, importer.Options{
 		SourceURL: *from,
