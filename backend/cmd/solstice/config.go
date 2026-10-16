@@ -30,7 +30,7 @@ type settingFlags struct {
 func commonFlags(fs *flag.FlagSet, withData bool) *settingFlags {
 	f := &settingFlags{
 		config: fs.String("config", "", "configuration file (default: $SOLSTICE_CONFIG, else ./solstice.conf, else /etc/solstice/solstice.conf)"),
-		db:     fs.String("db", "", "MariaDB URL, mysql://user:password@host:3306/database (default: $SOLSTICE_DB or the configuration file)"),
+		db:     fs.String("db", "", "MariaDB URL, mysql://user:password@host:3306/database, optionally ?tls=true|skip-verify|preferred (default: $SOLSTICE_DB or the configuration file)"),
 	}
 	if withData {
 		f.data = fs.String("data", "", "data directory (default: $SOLSTICE_DATA, the configuration file, or ./data)")

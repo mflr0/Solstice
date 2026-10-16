@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -19,20 +20,16 @@ import (
 var migrations embed.FS
 
 // Open connects to mysql://user:pass@host:port/db (MariaDB). Every session
-// runs in UTC so DATETIME columns always hold UTC.
+// runs in UTC so DATETIME columns always hold UTC. The one option accepted
+// after "?" is tls (true, false, skip-verify or preferred) to encrypt the
+// link to a remote server; any other option is an error. Errors never
+// contain the URL, which holds the password.
 func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
-	u, err := url.Parse(rawURL)
+	dsn, err := mysqlDSN(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid database URL: %w", err)
+		return nil, err
 	}
-	if u.Scheme != "mysql" && u.Scheme != "mariadb" {
-		return nil, fmt.Errorf("unsupported database %q: expected mysql:// or mariadb://", u.Scheme)
-	}
-	cfg := MySQLConfig(u)
-	cfg.Loc = time.UTC
-	cfg.Params = map[string]string{"time_zone": "'+00:00'", "charset": "utf8mb4"}
-
-	db, err := sql.Open("mysql", cfg.FormatDSN())
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +41,31 @@ func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
 		return nil, fmt.Errorf("cannot reach the database: %w", err)
 	}
 	return db, nil
+}
+
+// mysqlDSN turns the URL of Solstice's database into a driver DSN.
+func mysqlDSN(rawURL string) (string, error) {
+	u, err := ParseURL(rawURL)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "mysql" && u.Scheme != "mariadb" {
+		if u.Host == "" {
+			return "", errors.New("invalid database URL: expected mysql://user:password@host:3306/database")
+		}
+		return "", fmt.Errorf("unsupported database %q: expected mysql:// or mariadb://", u.Scheme)
+	}
+	cfg := MySQLConfig(u)
+	q, err := URLQuery(u)
+	if err != nil {
+		return "", err
+	}
+	if err := ApplyMySQLParams(cfg, q, ParamTLS); err != nil {
+		return "", err
+	}
+	cfg.Loc = time.UTC
+	cfg.Params = map[string]string{"time_zone": "'+00:00'", "charset": "utf8mb4"}
+	return cfg.FormatDSN(), nil
 }
 
 // MySQLConfig is the driver configuration for a mysql:// URL: credentials,

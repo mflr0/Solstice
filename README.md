@@ -77,6 +77,13 @@ Settings live in a file of `KEY=value` lines, found through `-config`, then
 Environment variables of the same name take precedence; `solstice -h` lists
 them. `GET /healthz` answers 200 when the database responds and 503 otherwise.
 
+`SOLSTICE_DB` is `mysql://user:password@host:3306/database`; percent-encode
+special characters of the password (`@` as `%40`). To encrypt the link to a
+database on another machine, add `?tls=true` (certificate checked), or
+`?tls=skip-verify` (encrypted, certificate not checked) or `?tls=preferred`;
+`tls=false` is the default. No other option after `?` is accepted, and
+Solstice refuses to start on one. Error messages never print the password.
+
 Put an HTTPS reverse proxy in front of Solstice. The session cookie becomes
 `Secure` behind a proxy that sends `X-Forwarded-Proto: https`. Failed sign-ins
 are counted per client address: list your proxy in `SOLSTICE_TRUSTED_PROXIES`

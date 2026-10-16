@@ -86,6 +86,14 @@ Les réglages sont dans un fichier de lignes `CLÉ=valeur`, trouvé par
 l'emportent ; `solstice -h` les liste. `GET /healthz` répond 200 quand la base
 répond, 503 sinon.
 
+`SOLSTICE_DB` s'écrit `mysql://utilisateur:mot_de_passe@hôte:3306/base` ;
+encodez en pourcentage les caractères spéciaux du mot de passe (`@` en `%40`).
+Pour chiffrer la liaison avec une base située sur une autre machine, ajoutez
+`?tls=true` (certificat vérifié), `?tls=skip-verify` (chiffré, certificat non
+vérifié) ou `?tls=preferred` ; `tls=false` est le défaut. Aucune autre option
+après `?` n'est acceptée et Solstice refuse de démarrer avec une autre. Les
+messages d'erreur n'affichent jamais le mot de passe.
+
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
 `Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`. Les échecs de
 connexion sont comptés par adresse de client : listez votre proxy dans

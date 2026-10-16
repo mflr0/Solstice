@@ -49,6 +49,7 @@ Configuration: a file of KEY=value lines, named by -config or
 SOLSTICE_CONFIG, otherwise ./solstice.conf, otherwise /etc/solstice/solstice.conf.
 Environment variables of the same name win over the file.
   SOLSTICE_DB               MariaDB database: mysql://user:password@host:3306/database
+                            add ?tls=true (or skip-verify, preferred) to encrypt the link
   SOLSTICE_DATA             data directory (default ./data)
   SOLSTICE_ADDR             listen address (default :8080)
   SOLSTICE_TZ               time zone of dates typed in searches, e.g. Europe/Paris
