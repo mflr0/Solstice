@@ -61,7 +61,8 @@ type optionOut struct {
 	Value    string `json:"value"`
 	Disabled bool   `json:"disabled"`
 	Position int    `json:"position"`
-	Issues   int    `json:"issues"` // issues with this option (or one under it) chosen
+	Issues   int    `json:"issues"`   // issues with this option (or one under it) chosen
+	Children int    `json:"children"` // options under it (cascading fields)
 }
 
 type fieldContext struct {
@@ -152,11 +153,12 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 	if err := sqlq.Each(ctx, s.db, `SELECT o.id, o.value, o.disabled, o.position,
 		(SELECT COUNT(DISTINCT v.issue_id) FROM custom_field_values v WHERE v.field_id = o.field_id
 			AND v.string_value IN (SELECT CAST(c.id AS CHAR) FROM custom_field_options c
-				WHERE c.id = o.id OR c.parent_id = o.id))
+				WHERE c.id = o.id OR c.parent_id = o.id)),
+		(SELECT COUNT(*) FROM custom_field_options c WHERE c.parent_id = o.id)
 		FROM custom_field_options o WHERE o.field_id = ? AND o.parent_id IS NULL ORDER BY o.position, o.id`,
 		func(rows *sql.Rows) error {
 			var o optionOut
-			if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position, &o.Issues); err != nil {
+			if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position, &o.Issues, &o.Children); err != nil {
 				return err
 			}
 			options = append(options, o)

@@ -11,6 +11,7 @@ type fieldOptionOut struct {
 	Value    string `json:"value"`
 	Disabled bool   `json:"disabled"`
 	Issues   int    `json:"issues"`
+	Children int    `json:"children"`
 }
 
 type fieldDetailOut struct {
@@ -185,7 +186,7 @@ func TestDeleteCascadingOption(t *testing.T) {
 	path := "/api/admin/fields/" + strconv.FormatInt(field, 10)
 	var f fieldDetailOut
 	admin.get(path, &f)
-	if len(f.Options) != 1 || f.Options[0].Issues != 1 {
+	if len(f.Options) != 1 || f.Options[0].Issues != 1 || f.Options[0].Children != 1 {
 		t.Fatalf("detail: %+v", f.Options)
 	}
 	optionPath := path + "/options/" + strconv.FormatInt(parent, 10)
