@@ -388,6 +388,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	JQLSortFieldExpected:     "सॉर्ट फ़ील्ड अपेक्षित है।",
 	JQLSortUnsupported:       "“%s” के अनुसार सॉर्ट नहीं किया जा सकता।",
 	JQLParenExpected:         "बंद कोष्ठक अपेक्षित है।",
+	JQLTooLong:               "क्वेरी बहुत लंबी है (अधिकतम %d अक्षर)।",
+	JQLTooDeep:               "क्वेरी बहुत गहराई तक नेस्टेड है (अधिकतम %d स्तर)।",
 	JQLFieldExpected:         "फ़ील्ड का नाम अपेक्षित है।",
 	JQLNotIn:                 "“NOT” के बाद “IN” अपेक्षित है।",
 	JQLOperatorExpected:      "“%s” के बाद ऑपरेटर अपेक्षित है।",

@@ -299,3 +299,23 @@ func TestErrorPositions(t *testing.T) {
 		t.Errorf("unknown field error at %+v, want position 19", err)
 	}
 }
+
+// TestParseHostileNesting checks that a query nested to millions of levels,
+// or longer than MaxQueryLen, is refused instead of overflowing the stack.
+func TestParseHostileNesting(t *testing.T) {
+	deep := strings.Repeat("(", maxDepth+1) + "x = 1" + strings.Repeat(")", maxDepth+1)
+	for name, q := range map[string]string{
+		"parentheses": deep,
+		"not":         strings.Repeat("NOT ", maxDepth+1) + "x = 1",
+		"huge":        "project = A AND " + strings.Repeat("(", 4_000_000) + "x = 1",
+	} {
+		_, err := Parse(q)
+		var je *Error
+		if !errors.As(err, &je) {
+			t.Errorf("%s: want a *Error, got %v", name, err)
+		}
+	}
+	if _, err := Parse(strings.Repeat("(", maxDepth-1) + "x = 1" + strings.Repeat(")", maxDepth-1)); err != nil {
+		t.Errorf("nesting within the limit refused: %v", err)
+	}
+}

@@ -158,8 +158,9 @@ func lex(s string) ([]token, error) {
 }
 
 type parser struct {
-	toks []token
-	i    int
+	toks  []token
+	i     int
+	depth int // nesting of parentheses and NOT, see maxDepth
 }
 
 func (p *parser) peek() token { return p.toks[p.i] }
@@ -190,8 +191,20 @@ func (p *parser) errorf(key i18n.Key, args ...any) error {
 	return errAt(p.peek().pos, key, args...)
 }
 
+// Limits that keep a hostile query from exhausting the stack: a stack
+// overflow is a fatal error that ends the whole process.
+const (
+	// MaxQueryLen is the longest query Parse accepts, in bytes.
+	MaxQueryLen = 20000
+	// maxDepth is the deepest nesting of parentheses and NOT.
+	maxDepth = 64
+)
+
 // Parse reads a JQL query.
 func Parse(s string) (*Query, error) {
+	if len(s) > MaxQueryLen {
+		return nil, errAt(0, i18n.JQLTooLong, MaxQueryLen)
+	}
 	toks, err := lex(s)
 	if err != nil {
 		return nil, err
@@ -264,6 +277,11 @@ func (p *parser) and() (Node, error) {
 }
 
 func (p *parser) not() (Node, error) {
+	if p.depth >= maxDepth {
+		return nil, errAt(p.peek().pos, i18n.JQLTooDeep, maxDepth)
+	}
+	p.depth++
+	defer func() { p.depth-- }()
 	if p.keyword("not") {
 		p.next()
 		inner, err := p.not()

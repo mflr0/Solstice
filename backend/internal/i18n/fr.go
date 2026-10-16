@@ -386,6 +386,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	JQLSortFieldExpected:     "Champ de tri attendu.",
 	JQLSortUnsupported:       "Tri impossible sur « %s ».",
 	JQLParenExpected:         "Parenthèse fermante attendue.",
+	JQLTooLong:               "La requête est trop longue (au plus %d caractères).",
+	JQLTooDeep:               "La requête est trop imbriquée (au plus %d niveaux).",
 	JQLFieldExpected:         "Nom de champ attendu.",
 	JQLNotIn:                 "« IN » attendu après « NOT ».",
 	JQLOperatorExpected:      "Opérateur attendu après « %s ».",

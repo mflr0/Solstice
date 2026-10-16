@@ -385,6 +385,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	JQLSortFieldExpected:     "Sort field expected.",
 	JQLSortUnsupported:       "Cannot sort by “%s”.",
 	JQLParenExpected:         "Closing parenthesis expected.",
+	JQLTooLong:               "The query is too long (at most %d characters).",
+	JQLTooDeep:               "The query is nested too deeply (at most %d levels).",
 	JQLFieldExpected:         "Field name expected.",
 	JQLNotIn:                 "“IN” expected after “NOT”.",
 	JQLOperatorExpected:      "Operator expected after “%s”.",

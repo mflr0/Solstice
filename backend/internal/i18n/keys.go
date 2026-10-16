@@ -446,6 +446,8 @@ const (
 	JQLSortFieldExpected     Key = "JQLSortFieldExpected"
 	JQLSortUnsupported       Key = "JQLSortUnsupported"
 	JQLParenExpected         Key = "JQLParenExpected"
+	JQLTooLong               Key = "JQLTooLong"
+	JQLTooDeep               Key = "JQLTooDeep"
 	JQLFieldExpected         Key = "JQLFieldExpected"
 	JQLNotIn                 Key = "JQLNotIn"
 	JQLOperatorExpected      Key = "JQLOperatorExpected"

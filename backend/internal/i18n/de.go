@@ -387,6 +387,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	JQLSortFieldExpected:     "Sortierfeld erwartet.",
 	JQLSortUnsupported:       "Nach „%s“ kann nicht sortiert werden.",
 	JQLParenExpected:         "Schließende Klammer erwartet.",
+	JQLTooLong:               "Die Abfrage ist zu lang (höchstens %d Zeichen).",
+	JQLTooDeep:               "Die Abfrage ist zu tief verschachtelt (höchstens %d Ebenen).",
 	JQLFieldExpected:         "Feldname erwartet.",
 	JQLNotIn:                 "„IN“ nach „NOT“ erwartet.",
 	JQLOperatorExpected:      "Operator nach „%s“ erwartet.",

@@ -387,6 +387,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	JQLSortFieldExpected:     "Atteso un campo di ordinamento.",
 	JQLSortUnsupported:       "Impossibile ordinare per «%s».",
 	JQLParenExpected:         "Attesa una parentesi chiusa.",
+	JQLTooLong:               "La query è troppo lunga (al massimo %d caratteri).",
+	JQLTooDeep:               "La query è annidata troppo in profondità (al massimo %d livelli).",
 	JQLFieldExpected:         "Atteso il nome di un campo.",
 	JQLNotIn:                 "Atteso «IN» dopo «NOT».",
 	JQLOperatorExpected:      "Atteso un operatore dopo «%s».",
