@@ -152,9 +152,14 @@ func (r *run) importIssues() error {
 	}
 
 	// A sub-task whose parent was not imported becomes a standalone issue.
-	if _, err := r.dst.ExecContext(r.ctx, `UPDATE issues c LEFT JOIN issues p ON p.id = c.parent_id
-		SET c.parent_id = NULL WHERE c.parent_id IS NOT NULL AND p.id IS NULL`); err != nil {
+	res, err := r.dst.ExecContext(r.ctx, `UPDATE issues c LEFT JOIN issues p ON p.id = c.parent_id
+		SET c.parent_id = NULL WHERE c.parent_id IS NOT NULL AND p.id IS NULL`)
+	if err != nil {
 		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		r.rep.warn("%s whose parent was not imported, now standalone",
+			plural(int(n), "sub-task", "sub-tasks"))
 	}
 	for pid, p := range r.projects {
 		if _, err := r.dst.ExecContext(r.ctx, `UPDATE projects SET issue_counter = GREATEST(issue_counter, ?)
