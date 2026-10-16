@@ -85,15 +85,16 @@ No critical or high finding. The review of the access control, injection,
 cryptography, configuration and logging paths found nothing exploitable
 without an account. Remaining hardening, none of it blocking:
 
-- Audit more events: webhook and mail settings changes, issue deletion, CSV
-  export, lockouts and rejected tokens (also as `slog` lines); a minimum
+- Audit more events: issue deletion, CSV export, lockouts and rejected tokens (also as `slog` lines); a minimum
   retention for the audit log.
 - Supply chain: pin the CI tools (`staticcheck`, `gosec`), the GitHub actions
   (by commit) and the base images (by digest); add Dependabot, `govulncheck`,
-  `pnpm audit` and a `SECURITY.md`; sign `SHA256SUMS` of the releases and
-  have the updater check the signature.
-- Honour `?tls=` in `SOLSTICE_DB` (today dropped) so the database link can be
-  encrypted; warn when the setup wizard is reached over plain HTTP.
+  `pnpm audit` and a `SECURITY.md`. Releases are signed: before the first
+  one, the maintainer generates the Ed25519 key pair and puts the public key
+  in `deploy/linux/update.sh` (see `scripts/release.sh`); until then the
+  update helper refuses every update.
+- Warn when the setup wizard is reached over plain HTTP; the database backup
+  of `update.sh` ignores `?tls=`.
 - Password and sessions: change a password and end the other sessions in one
   transaction; revoke API tokens when an account is deactivated or reset.
 - Resource limits: a quota for attachments, a cap on live-event streams, a
