@@ -14,6 +14,7 @@
   import Modal from '../Modal.svelte';
   import ComponentsTab from '../project/ComponentsTab.svelte';
   import GeneralTab from '../project/GeneralTab.svelte';
+  import PeopleTab from '../project/PeopleTab.svelte';
   import RightsTab from '../project/RightsTab.svelte';
   import VersionsTab from '../project/VersionsTab.svelte';
   import WorkflowsPanel from '../workflow/WorkflowsPanel.svelte';
@@ -153,6 +154,8 @@
         <VersionsTab {projectKey} />
       {:else if tab === 'workflows'}
         <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (dirty = d)} />
+      {:else if tab === 'people'}
+        <PeopleTab {projectKey} />
       {:else if tab === 'rights'}
         <RightsTab {projectKey} ondirty={(d) => (dirty = d)} />
       {/if}
