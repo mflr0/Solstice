@@ -181,9 +181,12 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
 		h.Set("X-Frame-Options", "DENY")
-		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; "+
-			"style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; "+
-			"frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+		// 'unsafe-inline' stays for styles: skins add a <style> block, Svelte
+		// sets style attributes and wiki colours use <span style>.
+		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; "+
+			"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; "+
+			"connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; "+
+			"form-action 'self'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
 	})
 }
