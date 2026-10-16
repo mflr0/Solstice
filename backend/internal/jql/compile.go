@@ -10,6 +10,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // Field is a custom field known to the compiler.
@@ -195,8 +196,6 @@ var cfRef = regexp.MustCompile(`(?i)^cf\[(\d+)\]$`)
 func upper(s string) string { return strings.ToUpper(s) }
 func lower(s string) string { return strings.ToLower(s) }
 
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
-
 // split separates literal values from EMPTY.
 func split(vals []Value) (texts []string, empty bool, err error) {
 	for _, v := range vals {
@@ -255,7 +254,7 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	}
 	match := ""
 	if len(texts) > 0 {
-		m := marks(len(texts))
+		m := sqlq.Marks(len(texts))
 		match = col + " IN (" + fmt.Sprintf(tmpl, m, m, m) + ")"
 		for range 3 {
 			for _, t := range texts {
@@ -302,7 +301,7 @@ func (c *compiler) statusCategory(cl Clause) (string, error) {
 		cats = append(cats, cat)
 	}
 	c.arg(cats...)
-	match := "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + marks(len(cats)) + "))"
+	match := "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + sqlq.Marks(len(cats)) + "))"
 	return membership(cl.Op, match, "FALSE"), nil
 }
 
@@ -352,7 +351,7 @@ func (c *compiler) users(vals []Value) (sub string, empty bool, err error) {
 		}
 	}
 	if len(names) > 0 {
-		m := marks(len(names))
+		m := sqlq.Marks(len(names))
 		parts = append(parts, "SELECT id FROM users WHERE username IN ("+m+") OR user_key IN ("+m+") OR display_name IN ("+m+")")
 		for _, n := range names {
 			c.arg(strings.ToLower(n))
@@ -406,7 +405,7 @@ func (c *compiler) multi(cl Clause, exists, cond string, norm func(string) strin
 		}
 		return any, nil
 	}
-	m := marks(len(texts))
+	m := sqlq.Marks(len(texts))
 	n := strings.Count(cond, "%")
 	match := "EXISTS (" + exists + " AND " + fmt.Sprintf(cond, m) + ")"
 	if strings.Contains(cond, "%[1]s") {
@@ -806,7 +805,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 			return "FALSE", err
 		}
 		start := exists()
-		m := marks(len(texts))
+		m := sqlq.Marks(len(texts))
 		cond = start + " AND (v.string_value IN (" + m + ") OR CAST(v.number_value AS CHAR) IN (" + m + ")" +
 			fmt.Sprintf(" OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = %d", f.ID) +
 			" AND o.value IN (" + m + "))))"
@@ -964,7 +963,7 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 		if len(args) == 0 {
 			return ""
 		}
-		m := marks(len(args))
+		m := sqlq.Marks(len(args))
 		for range 2 {
 			for _, a := range args {
 				c.arg(a)

@@ -28,16 +28,7 @@ func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
 	if u.Scheme != "mysql" && u.Scheme != "mariadb" {
 		return nil, fmt.Errorf("unsupported database %q: expected mysql:// or mariadb://", u.Scheme)
 	}
-	cfg := mysql.NewConfig()
-	cfg.User = u.User.Username()
-	cfg.Passwd, _ = u.User.Password()
-	cfg.Net = "tcp"
-	cfg.Addr = u.Host
-	if u.Port() == "" {
-		cfg.Addr = u.Host + ":3306"
-	}
-	cfg.DBName = strings.TrimPrefix(u.Path, "/")
-	cfg.ParseTime = true
+	cfg := MySQLConfig(u)
 	cfg.Loc = time.UTC
 	cfg.Params = map[string]string{"time_zone": "'+00:00'", "charset": "utf8mb4"}
 
@@ -53,6 +44,23 @@ func Open(ctx context.Context, rawURL string) (*sql.DB, error) {
 		return nil, fmt.Errorf("cannot reach the database: %w", err)
 	}
 	return db, nil
+}
+
+// MySQLConfig is the driver configuration for a mysql:// URL: credentials,
+// address (port 3306 by default), database and parsed times. Callers set the
+// time zone and parameters.
+func MySQLConfig(u *url.URL) *mysql.Config {
+	cfg := mysql.NewConfig()
+	cfg.User = u.User.Username()
+	cfg.Passwd, _ = u.User.Password()
+	cfg.Net = "tcp"
+	cfg.Addr = u.Host
+	if u.Port() == "" {
+		cfg.Addr = u.Host + ":3306"
+	}
+	cfg.DBName = strings.TrimPrefix(u.Path, "/")
+	cfg.ParseTime = true
+	return cfg
 }
 
 // Migrate applies the embedded migrations that have not run yet, in name order.

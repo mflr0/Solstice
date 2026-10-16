@@ -18,6 +18,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 type groupOut struct {
@@ -117,7 +118,7 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 	}
 	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []groupOut{}
-	err := scanAll(r.Context(), s.db, `SELECT g.id, g.name, g.description,
+	err := sqlq.Each(r.Context(), s.db, `SELECT g.id, g.name, g.description,
 		(SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id)
 		FROM user_groups g WHERE g.name LIKE ? ORDER BY g.name`, func(rows *sql.Rows) error {
 		var g groupOut
@@ -125,7 +126,7 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 		if err := rows.Scan(&g.ID, &g.Name, &desc, &g.Members); err != nil {
 			return err
 		}
-		g.Description = nullStr(desc)
+		g.Description = sqlq.String(desc)
 		out = append(out, g)
 		return nil
 	}, like)
@@ -144,7 +145,7 @@ func (s *Server) groupByID(ctx context.Context, id int64) (groupOut, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return g, errNotFound
 	}
-	g.Description = nullStr(desc)
+	g.Description = sqlq.String(desc)
 	return g, err
 }
 
@@ -171,7 +172,7 @@ func (s *Server) writeGroup(w http.ResponseWriter, r *http.Request, id int64, st
 		return err
 	}
 	members := []userRef{}
-	if err := scanAll(ctx, s.db, `SELECT u.id, u.username, u.display_name, u.active FROM group_members m
+	if err := sqlq.Each(ctx, s.db, `SELECT u.id, u.username, u.display_name, u.active FROM group_members m
 		JOIN users u ON u.id = m.user_id WHERE m.group_id = ? ORDER BY u.display_name`, func(rows *sql.Rows) error {
 		var u userRef
 		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Active); err != nil {
@@ -423,7 +424,7 @@ type roleAdminOut struct {
 
 func (s *Server) rolesList(ctx context.Context, where string, args ...any) ([]roleAdminOut, error) {
 	out := []roleAdminOut{}
-	err := scanAll(ctx, s.db, `SELECT r.id, r.name, r.description,
+	err := sqlq.Each(ctx, s.db, `SELECT r.id, r.name, r.description,
 		(SELECT COUNT(DISTINCT m.project_id) FROM project_role_members m WHERE m.role_id = r.id),
 		(SELECT COUNT(*) FROM project_permissions p WHERE p.role_id = r.id)
 			+ (SELECT COUNT(*) FROM security_level_members l WHERE l.role_id = r.id)
@@ -433,7 +434,7 @@ func (s *Server) rolesList(ctx context.Context, where string, args ...any) ([]ro
 		if err := rows.Scan(&ro.ID, &ro.Name, &desc, &ro.Projects, &ro.Grants); err != nil {
 			return err
 		}
-		ro.Description = nullStr(desc)
+		ro.Description = sqlq.String(desc)
 		out = append(out, ro)
 		return nil
 	}, args...)
@@ -526,6 +527,11 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	details := map[string]any{}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if in.Name != nil {
 		name, err := cleanName(*in.Name, 255)
 		if err != nil {
@@ -539,16 +545,19 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		if name != ro.Name {
 			details["name"] = map[string]string{"from": ro.Name, "to": name}
 		}
-		if _, err := s.db.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
 			return err
 		}
 	}
 	if in.Description != nil {
 		details["description"] = optDescription(in.Description)
-		if _, err := s.db.ExecContext(ctx, `UPDATE project_roles SET description = ? WHERE id = ?`,
+		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET description = ? WHERE id = ?`,
 			optDescription(in.Description), id); err != nil {
 			return err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	ro, err = s.roleByID(ctx, id)
 	if err != nil {
@@ -606,13 +615,13 @@ type projectRoleOut struct {
 func (s *Server) projectRoles(ctx context.Context, projectID int64) ([]projectRoleOut, error) {
 	out := []projectRoleOut{}
 	index := map[int64]int{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, description FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, description FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
 		var ro projectRoleOut
 		var desc sql.NullString
 		if err := rows.Scan(&ro.ID, &ro.Name, &desc); err != nil {
 			return err
 		}
-		ro.Description = nullStr(desc)
+		ro.Description = sqlq.String(desc)
 		ro.Users, ro.Groups = []userRef{}, []idName{}
 		index[ro.ID] = len(out)
 		out = append(out, ro)
@@ -620,7 +629,7 @@ func (s *Server) projectRoles(ctx context.Context, projectID int64) ([]projectRo
 	}); err != nil {
 		return nil, err
 	}
-	err := scanAll(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
+	err := sqlq.Each(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
 		FROM project_role_members m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
 		WHERE m.project_id = ? ORDER BY u.display_name, g.name`, func(rows *sql.Rows) error {
 		var role int64

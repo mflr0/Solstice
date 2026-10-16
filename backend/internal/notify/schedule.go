@@ -13,6 +13,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // IssueLine is an issue in a list e-mail.
@@ -86,7 +87,7 @@ func scanSubscription(sc interface{ Scan(...any) error }) (*Subscription, error)
 // Subscriptions lists a filter's subscriptions.
 func (s *Service) Subscriptions(ctx context.Context, filterID int64) ([]*Subscription, error) {
 	var out []*Subscription
-	err := scan(ctx, s.db, `SELECT `+subscriptionColumns+` WHERE s.filter_id = ? ORDER BY s.id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT `+subscriptionColumns+` WHERE s.filter_id = ? ORDER BY s.id`, func(rows *sql.Rows) error {
 		sub, err := scanSubscription(rows)
 		out = append(out, sub)
 		return err
@@ -173,7 +174,7 @@ func (s *Service) RunSchedules(ctx context.Context) error {
 func (s *Service) runSubscriptions(ctx context.Context) error {
 	now := s.Now().UTC()
 	var due []*Subscription
-	if err := scan(ctx, s.db, `SELECT `+subscriptionColumns+` WHERE s.next_run_at <= ? ORDER BY s.next_run_at LIMIT 100`,
+	if err := sqlq.Each(ctx, s.db, `SELECT `+subscriptionColumns+` WHERE s.next_run_at <= ? ORDER BY s.next_run_at LIMIT 100`,
 		func(rows *sql.Rows) error {
 			sub, err := scanSubscription(rows)
 			due = append(due, sub)
@@ -212,7 +213,7 @@ func (s *Service) runSubscriptions(ctx context.Context) error {
 func (s *Service) sendSubscription(ctx context.Context, sub *Subscription) (int, error) {
 	var users []int64
 	if sub.GroupID != 0 {
-		if err := scan(ctx, s.db, `SELECT m.user_id FROM group_members m JOIN users u ON u.id = m.user_id
+		if err := sqlq.Each(ctx, s.db, `SELECT m.user_id FROM group_members m JOIN users u ON u.id = m.user_id
 			WHERE m.group_id = ? AND u.active ORDER BY m.user_id`, func(rows *sql.Rows) error {
 			var id int64
 			err := rows.Scan(&id)
@@ -314,7 +315,7 @@ func (s *Service) runReminders(ctx context.Context) error {
 		hour int
 	}
 	var list []who
-	if err := scan(ctx, s.db, `SELECT p.user_id, p.reminder_hour FROM notification_prefs p JOIN users u ON u.id = p.user_id
+	if err := sqlq.Each(ctx, s.db, `SELECT p.user_id, p.reminder_hour FROM notification_prefs p JOIN users u ON u.id = p.user_id
 		WHERE p.due_reminder AND u.active AND (p.reminder_sent IS NULL OR p.reminder_sent < ?)`, func(rows *sql.Rows) error {
 		var w who
 		err := rows.Scan(&w.id, &w.hour)
@@ -356,7 +357,7 @@ func (s *Service) sendReminder(ctx context.Context, userID int64, today string) 
 	}
 	vis, args := rc.sub.VisibleSQL("i")
 	var overdue, due []IssueLine
-	err = scan(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.due_date, st.name, COALESCE(pr.name, '')
+	err = sqlq.Each(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.due_date, st.name, COALESCE(pr.name, '')
 		FROM issues i JOIN projects p ON p.id = i.project_id JOIN statuses st ON st.id = i.status_id
 		LEFT JOIN priorities pr ON pr.id = i.priority_id
 		WHERE i.assignee_id = ? AND i.resolution_id IS NULL AND st.category <> 'done'

@@ -18,6 +18,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 // catalogueKind describes one catalogue.
@@ -96,7 +97,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 			(SELECT COUNT(*) FROM issue_links l WHERE l.type_id = t.id) FROM link_types t`
 	}
 	out := []catalogueItem{}
-	err := scanAll(ctx, s.db, q+` WHERE `+where+` ORDER BY t.position, t.name, t.id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, q+` WHERE `+where+` ORDER BY t.position, t.name, t.id`, func(rows *sql.Rows) error {
 		var it catalogueItem
 		var desc sql.NullString
 		var n int
@@ -111,7 +112,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 			var color sql.NullString
 			var def bool
 			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &def, &n)
-			it.Color, it.Default, it.Issues = nullStr(color), &def, &n
+			it.Color, it.Default, it.Issues = sqlq.String(color), &def, &n
 			if it.Color == nil {
 				empty := ""
 				it.Color = &empty
@@ -129,7 +130,7 @@ func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where stri
 			return err
 		}
 		if c.table != "link_types" {
-			it.Description = nullStr(desc)
+			it.Description = sqlq.String(desc)
 			if it.Description == nil {
 				empty := ""
 				it.Description = &empty
@@ -540,7 +541,7 @@ type statusAdminOut struct {
 
 func (s *Server) statusList(ctx context.Context) ([]statusAdminOut, error) {
 	out := []statusAdminOut{}
-	err := scanAll(ctx, s.db, `SELECT s.id, s.name, s.category, s.position,
+	err := sqlq.Each(ctx, s.db, `SELECT s.id, s.name, s.category, s.position,
 		(SELECT COUNT(*) FROM issues i WHERE i.status_id = s.id),
 		(SELECT COUNT(DISTINCT u.workflow_id) FROM (SELECT workflow_id, status_id FROM workflow_statuses
 			UNION ALL SELECT workflow_id, from_status_id FROM workflow_transitions

@@ -13,17 +13,18 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
-	"solstice/internal/i18n"
-	"strconv"
-	"strings"
-	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/events"
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/search"
+	"solstice/internal/sqlq"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type sprintRef struct {
@@ -111,7 +112,7 @@ func (s *Server) boardByID(ctx context.Context, sub *perm.Subject, id int64) (*b
 // boardProjects returns the projects a board belongs to.
 func (s *Server) boardProjects(ctx context.Context, board int64) ([]projectBrief, error) {
 	var out []projectBrief
-	err := scanAll(ctx, s.db, `SELECT p.id, p.pkey, p.name FROM board_projects bp JOIN projects p ON p.id = bp.project_id
+	err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name FROM board_projects bp JOIN projects p ON p.id = bp.project_id
 		WHERE bp.board_id = ? ORDER BY p.pkey`, func(rows *sql.Rows) error {
 		var p projectBrief
 		if err := rows.Scan(&p.ID, &p.Key, &p.Name); err != nil {
@@ -165,7 +166,7 @@ func (s *Server) listBoards(w http.ResponseWriter, r *http.Request) error {
 	var list []*boardSummary
 	owners := map[int64]sql.NullInt64{}
 	var ownerIDs []int64
-	err = scanAll(ctx, s.db, `SELECT b.id, b.name, b.kind, b.filter_id, b.owner_id FROM boards b ORDER BY b.name`,
+	err = sqlq.Each(ctx, s.db, `SELECT b.id, b.name, b.kind, b.filter_id, b.owner_id FROM boards b ORDER BY b.name`,
 		func(rows *sql.Rows) error {
 			var b boardSummary
 			var filter int64
@@ -189,7 +190,7 @@ func (s *Server) listBoards(w http.ResponseWriter, r *http.Request) error {
 	for _, b := range list {
 		byID[b.ID] = b
 	}
-	if err := scanAll(ctx, s.db, `SELECT bp.board_id, p.id, p.pkey, p.name FROM board_projects bp
+	if err := sqlq.Each(ctx, s.db, `SELECT bp.board_id, p.id, p.pkey, p.name FROM board_projects bp
 		JOIN projects p ON p.id = bp.project_id ORDER BY p.pkey`, func(rows *sql.Rows) error {
 		var board int64
 		var p projectBrief
@@ -203,7 +204,7 @@ func (s *Server) listBoards(w http.ResponseWriter, r *http.Request) error {
 	}); err != nil {
 		return err
 	}
-	if err := scanAll(ctx, s.db, `SELECT id, name, state, board_id FROM sprints WHERE state = 'active'
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, state, board_id FROM sprints WHERE state = 'active'
 		ORDER BY position`, func(rows *sql.Rows) error {
 		var sp sprintRef
 		var board sql.NullInt64
@@ -252,7 +253,7 @@ type namedQuery struct {
 func (s *Server) boardColumns(ctx context.Context, cat *catalog, board int64) ([]columnOut, error) {
 	var cols []columnOut
 	index := map[int64]int{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, min_issues, max_issues FROM board_columns WHERE board_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, min_issues, max_issues FROM board_columns WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var c columnOut
 		var lo, hi sql.NullInt64
@@ -274,7 +275,7 @@ func (s *Server) boardColumns(ctx context.Context, cat *catalog, board int64) ([
 	}, board); err != nil {
 		return nil, err
 	}
-	err := scanAll(ctx, s.db, `SELECT cs.column_id, cs.status_id FROM board_column_statuses cs
+	err := sqlq.Each(ctx, s.db, `SELECT cs.column_id, cs.status_id FROM board_column_statuses cs
 		JOIN board_columns c ON c.id = cs.column_id WHERE c.board_id = ? ORDER BY cs.position`, func(rows *sql.Rows) error {
 		var col int64
 		var status string
@@ -308,28 +309,28 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	quick := []namedQuery{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, query, description FROM board_quick_filters WHERE board_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, query, description FROM board_quick_filters WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var q namedQuery
 		var query, desc sql.NullString
 		if err := rows.Scan(&q.ID, &q.Name, &query, &desc); err != nil {
 			return err
 		}
-		q.Query, q.Description = nullStr(query), nullStr(desc)
+		q.Query, q.Description = sqlq.String(query), sqlq.String(desc)
 		quick = append(quick, q)
 		return nil
 	}, b.ID); err != nil {
 		return err
 	}
 	lanes := []namedQuery{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, query, is_default FROM board_swimlanes WHERE board_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, query, is_default FROM board_swimlanes WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var q namedQuery
 		var query sql.NullString
 		if err := rows.Scan(&q.ID, &q.Name, &query, &q.Default); err != nil {
 			return err
 		}
-		q.Query = nullStr(query)
+		q.Query = sqlq.String(query)
 		lanes = append(lanes, q)
 		return nil
 	}, b.ID); err != nil {
@@ -352,7 +353,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	// Number fields a board may estimate with (story points…).
 	estimateFields := []namedRef{}
-	if err := scanAll(ctx, s.db, `SELECT id, name FROM custom_fields WHERE type_key LIKE '%:float' ORDER BY name`,
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM custom_fields WHERE type_key LIKE '%:float' ORDER BY name`,
 		func(rows *sql.Rows) error {
 			var id int64
 			var f namedRef
@@ -375,8 +376,8 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"board": map[string]any{
 			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "query": b.Query,
-			"subQuery": nullStr(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
-			"estimateField": nullStr(b.Estimate), "doneCutoff": nullStr(b.Cutoff),
+			"subQuery": sqlq.String(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
+			"estimateField": sqlq.String(b.Estimate), "doneCutoff": sqlq.String(b.Cutoff),
 		},
 		"estimateFields": estimateFields,
 		"projects":       projects, "columns": columns, "quickFilters": quick, "swimlanes": lanes, "sprints": sprints,
@@ -386,7 +387,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([]sprintOut, error) {
 	out := []sprintOut{}
-	err := scanAll(ctx, s.db, `SELECT id, name, state, goal, start_at, end_at, completed_at FROM sprints
+	err := sqlq.Each(ctx, s.db, `SELECT id, name, state, goal, start_at, end_at, completed_at FROM sprints
 		WHERE board_id = ? AND `+where+` ORDER BY state = 'active' DESC, position, id`, func(rows *sql.Rows) error {
 		var sp sprintOut
 		var goal sql.NullString
@@ -394,7 +395,7 @@ func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([
 		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &goal, &start, &end, &done); err != nil {
 			return err
 		}
-		sp.Goal = nullStr(goal)
+		sp.Goal = sqlq.String(goal)
 		if start.Valid {
 			sp.Start = &start.Time
 		}
@@ -532,7 +533,7 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 		return nil, false, err
 	}
 	statusColumn := map[string]int64{}
-	if err := scanAll(ctx, s.db, `SELECT cs.status_id, cs.column_id FROM board_column_statuses cs
+	if err := sqlq.Each(ctx, s.db, `SELECT cs.status_id, cs.column_id FROM board_column_statuses cs
 		JOIN board_columns c ON c.id = cs.column_id WHERE c.board_id = ?`, func(rows *sql.Rows) error {
 		var st string
 		var col int64
@@ -578,8 +579,8 @@ func (s *Server) briefs(ctx context.Context, cat *catalog, ids []int64) (map[int
 		}
 	}
 	for chunk := range slices.Chunk(args, 500) {
-		err := scanAll(ctx, s.db, `SELECT i.id, p.pkey, i.num, i.summary, i.issue_type_id, i.status_id FROM issues i
-			JOIN projects p ON p.id = i.project_id WHERE i.id IN (`+marks(len(chunk))+`)`, func(rows *sql.Rows) error {
+		err := sqlq.Each(ctx, s.db, `SELECT i.id, p.pkey, i.num, i.summary, i.issue_type_id, i.status_id FROM issues i
+			JOIN projects p ON p.id = i.project_id WHERE i.id IN (`+sqlq.Marks(len(chunk))+`)`, func(rows *sql.Rows) error {
 			var id, num int64
 			var key, summary, typeID, statusID string
 			if err := rows.Scan(&id, &key, &num, &summary, &typeID, &statusID); err != nil {
@@ -623,8 +624,8 @@ func (s *Server) estimates(ctx context.Context, b *boardRow, cards []*card) (map
 		ids[i] = c.ID
 	}
 	for chunk := range slices.Chunk(ids, 500) {
-		err := scanAll(ctx, s.db, `SELECT issue_id, number_value FROM custom_field_values
-			WHERE field_id = ? AND number_value IS NOT NULL AND issue_id IN (`+marks(len(chunk))+`)`,
+		err := sqlq.Each(ctx, s.db, `SELECT issue_id, number_value FROM custom_field_values
+			WHERE field_id = ? AND number_value IS NOT NULL AND issue_id IN (`+sqlq.Marks(len(chunk))+`)`,
 			func(rows *sql.Rows) error {
 				var id int64
 				var v float64
@@ -653,7 +654,7 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		def   bool
 	}
 	var lanes []lane
-	if err := scanAll(ctx, s.db, `SELECT id, query, is_default FROM board_swimlanes WHERE board_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, query, is_default FROM board_swimlanes WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var l lane
 		if err := rows.Scan(&l.id, &l.query, &l.def); err != nil {
@@ -682,7 +683,7 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 			continue // a lane whose query no longer compiles keeps no card
 		}
 		rows, err := s.db.QueryContext(ctx, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
-			WHERE i.id IN (`+marks(len(ids))+`) AND (`+cond+`)`, append(slices.Clone(ids), args...)...)
+			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, append(slices.Clone(ids), args...)...)
 		if err != nil {
 			return err
 		}
@@ -805,8 +806,8 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 		for _, c := range cards {
 			ids = append(ids, c.ID)
 		}
-		if err := scanAll(ctx, s.db, `SELECT si.issue_id, si.sprint_id FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-			WHERE s.board_id = ? AND s.state <> 'closed' AND si.issue_id IN (`+marks(len(ids))+`)`, func(rows *sql.Rows) error {
+		if err := sqlq.Each(ctx, s.db, `SELECT si.issue_id, si.sprint_id FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
+			WHERE s.board_id = ? AND s.state <> 'closed' AND si.issue_id IN (`+sqlq.Marks(len(ids))+`)`, func(rows *sql.Rows) error {
 			var issue, sprint int64
 			if err := rows.Scan(&issue, &sprint); err != nil {
 				return err
@@ -928,7 +929,7 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 // already in that column).
 func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, column int64) (string, error) {
 	var statuses []string
-	if err := scanAll(ctx, s.db, `SELECT cs.status_id FROM board_column_statuses cs JOIN board_columns c ON c.id = cs.column_id
+	if err := sqlq.Each(ctx, s.db, `SELECT cs.status_id FROM board_column_statuses cs JOIN board_columns c ON c.id = cs.column_id
 		WHERE c.id = ? AND c.board_id = ? ORDER BY cs.position`, func(rows *sql.Rows) error {
 		var st string
 		if err := rows.Scan(&st); err != nil {
@@ -1000,7 +1001,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 		}
 	}
 	now := time.Now().UTC()
-	c := change{field: "Sprint", oldString: nullAny(oldName), newString: newName}
+	c := change{field: "Sprint", oldString: sqlq.Value(oldName), newString: newName}
 	if oldID.Valid {
 		c.oldValue = strconv.FormatInt(oldID.Int64, 10)
 	}
@@ -1253,7 +1254,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	// The project's statuses (its workflows', or those its issues use).
 	var statuses []statusRef
-	if err := scanAll(ctx, s.db, `SELECT DISTINCT ws.status_id FROM workflow_statuses ws JOIN workflows w ON w.id = ws.workflow_id
+	if err := sqlq.Each(ctx, s.db, `SELECT DISTINCT ws.status_id FROM workflow_statuses ws JOIN workflows w ON w.id = ws.workflow_id
 		WHERE w.project_id = ? UNION SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
 		var id string
 		if err := rows.Scan(&id); err != nil {

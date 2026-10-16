@@ -6,10 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-	"solstice/internal/i18n"
-	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
+	"strings"
 )
 
 type projectOut struct {
@@ -44,7 +45,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 	}
 	open := map[int64]int{}
 	vis, args := sub.VisibleSQL("i")
-	if err := scanAll(ctx, s.db, `SELECT i.project_id, COUNT(*) FROM issues i JOIN statuses st ON st.id = i.status_id
+	if err := sqlq.Each(ctx, s.db, `SELECT i.project_id, COUNT(*) FROM issues i JOIN statuses st ON st.id = i.status_id
 		WHERE `+vis+` AND st.category <> 'done' GROUP BY i.project_id`, func(rows *sql.Rows) error {
 		var id int64
 		var n int
@@ -61,7 +62,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 	leadOf := map[int64]sql.NullInt64{}
 	// Archived projects only when asked for.
 	withArchived := r.URL.Query().Get("archived") == "1" || r.URL.Query().Get("archived") == "true"
-	if err := scanAll(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived FROM projects p
+	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived FROM projects p
 		LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.name`, func(rows *sql.Rows) error {
 		var p projectOut
 		var lead, categoryID sql.NullInt64
@@ -72,7 +73,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 		if !sub.CanBrowseProject(p.ID) || (p.Archived && !withArchived) {
 			return nil
 		}
-		p.Category = nullStr(category)
+		p.Category = sqlq.String(category)
 		if categoryID.Valid {
 			p.CategoryID = &categoryID.Int64
 		}
@@ -138,7 +139,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
 		return err
 	}
-	p.Description, p.Category = nullStr(desc), nullStr(category)
+	p.Description, p.Category = sqlq.String(desc), sqlq.String(category)
 	if categoryID.Valid {
 		p.CategoryID = &categoryID.Int64
 	}
@@ -149,7 +150,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 	p.Lead = refOf(users, lead)
 
 	types := []typeRef{}
-	if err := scanAll(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
+	if err := sqlq.Each(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
 		func(rows *sql.Rows) error {
 			var t string
 			if err := rows.Scan(&t); err != nil {
@@ -161,7 +162,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	components := []componentOut{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, archived FROM components WHERE project_id = ? ORDER BY name`,
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, archived FROM components WHERE project_id = ? ORDER BY name`,
 		func(rows *sql.Rows) error {
 			var c componentOut
 			if err := rows.Scan(&c.ID, &c.Name, &c.Archived); err != nil {
@@ -173,7 +174,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	versions := []versionOut{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, released, archived, release_date FROM versions
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, released, archived, release_date FROM versions
 		WHERE project_id = ? ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v versionOut
 		var release sql.NullTime
@@ -188,7 +189,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	levels := []idName{}
 	if sub.Can(perm.Security, id, nil) {
-		if err := scanAll(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
+		if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
 			func(rows *sql.Rows) error {
 				var v idName
 				if err := rows.Scan(&v.ID, &v.Name); err != nil {
@@ -231,7 +232,7 @@ func (s *Server) assignableUsers(w http.ResponseWriter, r *http.Request) error {
 	}
 	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []userRef{}
-	err = scanAll(ctx, s.db, `SELECT id, username, display_name, active FROM users
+	err = sqlq.Each(ctx, s.db, `SELECT id, username, display_name, active FROM users
 		WHERE active AND id IN (`+holders+`) AND (username LIKE ? OR LOWER(display_name) LIKE ?)
 		ORDER BY display_name LIMIT 30`, func(rows *sql.Rows) error {
 		var u userRef
@@ -290,7 +291,7 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 		return errForbidden
 	}
 	grants := []grantOut{}
-	if err := scanAll(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, g.role_id, 0),
+	if err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, g.role_id, 0),
 		COALESCE(u.display_name, ug.name, pr.name, '')
 		FROM project_permissions g
 		LEFT JOIN users u ON u.id = g.user_id
@@ -308,7 +309,7 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	}
 	roles := []roleOut{}
 	index := map[int64]int{}
-	if err := scanAll(ctx, s.db, `SELECT id, name FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
 		var ro roleOut
 		if err := rows.Scan(&ro.ID, &ro.Name); err != nil {
 			return err
@@ -320,7 +321,7 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	}); err != nil {
 		return err
 	}
-	if err := scanAll(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
+	if err := sqlq.Each(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
 		FROM project_role_members m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
 		WHERE m.project_id = ?`, func(rows *sql.Rows) error {
 		var role int64
@@ -345,7 +346,7 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	groups := []idName{}
-	if err := scanAll(ctx, s.db, `SELECT id, name FROM user_groups ORDER BY name`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM user_groups ORDER BY name`, func(rows *sql.Rows) error {
 		var g idName
 		if err := rows.Scan(&g.ID, &g.Name); err != nil {
 			return err

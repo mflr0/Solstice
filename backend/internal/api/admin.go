@@ -9,13 +9,14 @@ import (
 	"net/http"
 	netmail "net/mail"
 	"regexp"
-	"solstice/internal/i18n"
-	"strconv"
-	"strings"
-	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/auth"
+	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type adminUser struct {
@@ -77,8 +78,8 @@ func (s *Server) withGroups(ctx context.Context, users []adminUser) error {
 		index[u.ID] = i
 		args = append(args, u.ID)
 	}
-	return scanAll(ctx, s.db, `SELECT m.user_id, g.id, g.name FROM group_members m JOIN user_groups g ON g.id = m.group_id
-		WHERE m.user_id IN (`+marks(len(args))+`) ORDER BY g.name`, func(rows *sql.Rows) error {
+	return sqlq.Each(ctx, s.db, `SELECT m.user_id, g.id, g.name FROM group_members m JOIN user_groups g ON g.id = m.group_id
+		WHERE m.user_id IN (`+sqlq.Marks(len(args))+`) ORDER BY g.name`, func(rows *sql.Rows) error {
 		var uid int64
 		var g idName
 		if err := rows.Scan(&uid, &g.ID, &g.Name); err != nil {
@@ -96,7 +97,7 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) error {
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	like := "%" + escapeLike(q) + "%"
 	out := []adminUser{}
-	err := scanAll(r.Context(), s.db, `SELECT `+adminUserColumns+` FROM users
+	err := sqlq.Each(r.Context(), s.db, `SELECT `+adminUserColumns+` FROM users
 		WHERE username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?
 		ORDER BY active DESC, display_name LIMIT 200`, func(rows *sql.Rows) error {
 		u, err := scanAdminUser(rows)

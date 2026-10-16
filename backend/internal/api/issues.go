@@ -23,6 +23,7 @@ import (
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/search"
+	"solstice/internal/sqlq"
 )
 
 var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
@@ -328,20 +329,6 @@ type timeTracking struct {
 	Spent     *int64 `json:"spent"`
 }
 
-func nullInt(n sql.NullInt64) *int64 {
-	if !n.Valid {
-		return nil
-	}
-	return &n.Int64
-}
-
-func nullStr(n sql.NullString) *string {
-	if !n.Valid {
-		return nil
-	}
-	return &n.String
-}
-
 func (s *Server) getIssue(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -367,9 +354,9 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	d := &issueDetail{
 		ID:          iss.ID,
 		Project:     projectBrief{ID: iss.ProjectID, Key: iss.ProjectKey, Name: iss.ProjectName},
-		Description: nullStr(iss.Description),
-		Environment: nullStr(iss.Environment),
-		Time:        timeTracking{nullInt(iss.Original), nullInt(iss.Remaining), nullInt(iss.Spent)},
+		Description: sqlq.String(iss.Description),
+		Environment: sqlq.String(iss.Environment),
+		Time:        timeTracking{sqlq.Int(iss.Original), sqlq.Int(iss.Remaining), sqlq.Int(iss.Spent)},
 		Labels:      []string{}, Components: []idName{}, AffectsVersions: []idName{}, FixVersions: []idName{},
 		Subtasks: []issueBrief{}, Links: []issueLink{}, RemoteLinks: []remoteLink{},
 		Attachments: []attachmentOut{}, CustomFields: []customValue{}, SecurityLevels: []idName{},
@@ -392,7 +379,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		userIDs = append(userIDs, rel.row.AssigneeID.Int64)
 	}
 
-	if err := scanAll(ctx, s.db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
+	if err := sqlq.Each(ctx, s.db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
 		func(rows *sql.Rows) error {
 			var l string
 			if err := rows.Scan(&l); err != nil {
@@ -403,7 +390,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
+	if err := sqlq.Each(ctx, s.db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
 		WHERE ic.issue_id = ? ORDER BY c.name`, func(rows *sql.Rows) error {
 		var v idName
 		if err := rows.Scan(&v.ID, &v.Name); err != nil {
@@ -414,7 +401,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+	if err := sqlq.Each(ctx, s.db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
 		WHERE iv.issue_id = ? ORDER BY v.position, v.name`, func(rows *sql.Rows) error {
 		var v idName
 		var kind string
@@ -430,7 +417,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
+	if err := sqlq.Each(ctx, s.db, `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
 		WHERE issue_id = ? ORDER BY id`, func(rows *sql.Rows) error {
 		var v remoteLink
 		if err := rows.Scan(&v.ID, &v.URL, &v.Title, &v.Relationship); err != nil {
@@ -447,7 +434,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		author sql.NullInt64
 	}
 	var atts []att
-	if err := scanAll(ctx, s.db, `SELECT id, filename, mime_type, size, created_at, author_id, file_missing
+	if err := sqlq.Each(ctx, s.db, `SELECT id, filename, mime_type, size, created_at, author_id, file_missing
 		FROM attachments WHERE issue_id = ? ORDER BY created_at, id`, func(rows *sql.Rows) error {
 		var a att
 		if err := rows.Scan(&a.out.ID, &a.out.Filename, &a.out.MimeType, &a.out.Size, &a.out.Created, &a.author,
@@ -522,7 +509,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 	}
 	if d.Can[perm.Security] {
-		if err := scanAll(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
+		if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
 			func(rows *sql.Rows) error {
 				var v idName
 				if err := rows.Scan(&v.ID, &v.Name); err != nil {
@@ -552,7 +539,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 	}
 	d.Sprints = []sprintRef{}
-	if err := scanAll(ctx, s.db, `SELECT s.id, s.name, s.state, s.board_id FROM sprint_issues si
+	if err := sqlq.Each(ctx, s.db, `SELECT s.id, s.name, s.state, s.board_id FROM sprint_issues si
 		JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = ? ORDER BY s.position, s.id`, func(rows *sql.Rows) error {
 		var sp sprintRef
 		var board sql.NullInt64
@@ -619,7 +606,7 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 // in use in its project. (Per-project workflows come with the workflow editor.)
 func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID int64, current string) ([]statusRef, error) {
 	used := map[string]bool{current: true}
-	if err := scanAll(ctx, s.db, `SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return err
@@ -656,7 +643,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 	}
 	var vals []raw
 	optionIDs := map[int64]bool{}
-	if err := scanAll(ctx, s.db, `SELECT v.field_id, f.name, f.type_key, v.parent_key, v.string_value,
+	if err := sqlq.Each(ctx, s.db, `SELECT v.field_id, f.name, f.type_key, v.parent_key, v.string_value,
 		v.number_value, v.text_value, v.date_value FROM custom_field_values v JOIN custom_fields f ON f.id = v.field_id
 		WHERE v.issue_id = ? ORDER BY f.name, v.parent_key IS NOT NULL, v.id`, func(rows *sql.Rows) error {
 		var v raw
@@ -677,7 +664,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 		for id := range optionIDs {
 			args = append(args, id)
 		}
-		if err := scanAll(ctx, s.db, `SELECT id, value FROM custom_field_options WHERE id IN (`+marks(len(args))+`)`,
+		if err := sqlq.Each(ctx, s.db, `SELECT id, value FROM custom_field_options WHERE id IN (`+sqlq.Marks(len(args))+`)`,
 			func(rows *sql.Rows) error {
 				var id int64
 				var v string
@@ -774,7 +761,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 	}
 
 	// Labels-type custom fields keep their values in the labels table.
-	if err := scanAll(ctx, s.db, `SELECT f.id, f.name, l.label FROM labels l JOIN custom_fields f ON f.id = l.field_id
+	if err := sqlq.Each(ctx, s.db, `SELECT f.id, f.name, l.label FROM labels l JOIN custom_fields f ON f.id = l.field_id
 		WHERE l.issue_id = ? ORDER BY f.name, l.label`, func(rows *sql.Rows) error {
 		var id int64
 		var name, label string
@@ -1058,7 +1045,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	// A sub-task is exactly as confidential as its parent, as in Jira.
 	if parentID != nil {
-		level = nullAny(parentLevel)
+		level = sqlq.Value(parentLevel)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1186,19 +1173,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 			}
 		}
 		var before []string
-		rows, err := tx.QueryContext(ctx, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`, iss.ID)
-		if err != nil {
+		if err := sqlq.Each(ctx, tx, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
+			func(rows *sql.Rows) error {
+				var l string
+				err := rows.Scan(&l)
+				before = append(before, l)
+				return err
+			}, iss.ID); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var l string
-			if err := rows.Scan(&l); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			before = append(before, l)
-		}
-		rows.Close()
 		after := make([]string, 0, len(clean))
 		for l := range clean {
 			after = append(after, l)
@@ -1236,20 +1219,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 			}
 		}
 		names := map[int64]string{}
-		rows, err := tx.QueryContext(ctx, `SELECT id, name FROM `+st.table+` WHERE project_id = ?`, iss.ProjectID)
-		if err != nil {
-			return nil, err
-		}
-		for rows.Next() {
+		if err := sqlq.Each(ctx, tx, `SELECT id, name FROM `+st.table+` WHERE project_id = ?`, func(rows *sql.Rows) error {
 			var id int64
 			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				rows.Close()
-				return nil, err
-			}
+			err := rows.Scan(&id, &name)
 			names[id] = name
+			return err
+		}, iss.ProjectID); err != nil {
+			return nil, err
 		}
-		rows.Close()
 		want := map[int64]bool{}
 		for _, id := range ids {
 			if _, ok := names[id]; !ok {
@@ -1265,19 +1243,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 			q, args = `SELECT version_id FROM issue_versions WHERE issue_id = ? AND kind = ?`, []any{iss.ID, st.kind}
 		}
 		have := map[int64]bool{}
-		rows, err = tx.QueryContext(ctx, q, args...)
-		if err != nil {
+		if err := sqlq.Each(ctx, tx, q, func(rows *sql.Rows) error {
+			var id int64
+			err := rows.Scan(&id)
+			have[id] = true
+			return err
+		}, args...); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			have[id] = true
-		}
-		rows.Close()
+		var err error
 		for id := range have {
 			if want[id] {
 				continue
@@ -1403,9 +1377,9 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		case "summary":
 			old = iss.Summary
 		case "description":
-			old = nullAny(iss.Description)
+			old = sqlq.Value(iss.Description)
 		case "environment":
-			old = nullAny(iss.Environment)
+			old = sqlq.Value(iss.Environment)
 		}
 		if old != newVal {
 			sets[column] = newVal
@@ -1460,13 +1434,13 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal, newName = *v, p.Name
 		}
-		if nullAny(iss.PriorityID) != newVal {
+		if sqlq.Value(iss.PriorityID) != newVal {
 			var oldName any
 			if p := cat.priorityOf(iss.PriorityID); p != nil {
 				oldName = p.Name
 			}
 			sets["priority_id"] = newVal
-			changes = append(changes, change{"priority", nullAny(iss.PriorityID), oldName, newVal, newName})
+			changes = append(changes, change{"priority", sqlq.Value(iss.PriorityID), oldName, newVal, newName})
 		}
 	}
 
@@ -1490,7 +1464,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal = *v
 		}
-		if nullAny(iss.AssigneeID) != newVal {
+		if sqlq.Value(iss.AssigneeID) != newVal {
 			c := change{field: "assignee"}
 			if iss.AssigneeID.Valid {
 				c.oldValue, c.oldString = s.userName(ctx, iss.AssigneeID.Int64)
@@ -1536,7 +1510,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		if err != nil {
 			return err
 		}
-		if nullAny(iss.EpicID) != epicID {
+		if sqlq.Value(iss.EpicID) != epicID {
 			c := change{field: "Epic Link", newValue: epicID, newString: epicKey}
 			if iss.EpicID.Valid {
 				if old, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil {
@@ -1566,9 +1540,9 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			}
 			newVal = *v
 		}
-		if nullAny(iss.LevelID) != newVal {
+		if sqlq.Value(iss.LevelID) != newVal {
 			sets["security_level_id"] = newVal
-			changes = append(changes, change{field: "security", oldValue: nullAny(iss.LevelID), newValue: newVal})
+			changes = append(changes, change{field: "security", oldValue: sqlq.Value(iss.LevelID), newValue: newVal})
 		}
 	}
 
@@ -1623,7 +1597,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				cat.statusOf(status).Name})
 		}
 		if resolution != iss.ResolutionID {
-			sets["resolution_id"] = nullAny(resolution)
+			sets["resolution_id"] = sqlq.Value(resolution)
 			var oldName, newName any
 			if v := cat.resolutionOf(iss.ResolutionID); v != nil {
 				oldName = v.Name
@@ -1631,7 +1605,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			if v := cat.resolutionOf(resolution); v != nil {
 				newName = v.Name
 			}
-			changes = append(changes, change{"resolution", nullAny(iss.ResolutionID), oldName, nullAny(resolution), newName})
+			changes = append(changes, change{"resolution", sqlq.Value(iss.ResolutionID), oldName, sqlq.Value(resolution), newName})
 			if resolution.Valid {
 				sets["resolved_at"] = time.Now().UTC()
 			} else {
@@ -1718,20 +1692,6 @@ func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.
 	return writeJSON(w, http.StatusOK, d)
 }
 
-func nullAny[T sql.NullString | sql.NullInt64](n T) any {
-	switch v := any(n).(type) {
-	case sql.NullString:
-		if v.Valid {
-			return v.String
-		}
-	case sql.NullInt64:
-		if v.Valid {
-			return v.Int64
-		}
-	}
-	return nil
-}
-
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
@@ -1783,7 +1743,7 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	deleted[0].Live = "deleted"
 	var files []int64
-	if err := scanAll(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
+	if err := sqlq.Each(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
 		WHERE i.id = ? OR i.parent_id = ?`, func(rows *sql.Rows) error {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
@@ -1847,7 +1807,7 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		return "", nil, "", jqlError(err)
 	}
 	fields := map[string]jql.Field{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
 		var f jql.Field
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
@@ -1868,7 +1828,7 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		},
 		Query: func(q string, args []any) ([]string, error) {
 			var out []string
-			err := scanAll(ctx, s.db, q, func(rows *sql.Rows) error {
+			err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 				var v sql.NullString
 				if err := rows.Scan(&v); err != nil {
 					return err

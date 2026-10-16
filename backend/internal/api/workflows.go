@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"slices"
+
+	"solstice/internal/sqlq"
 )
 
 // transitionOut is a move an issue can make from its current status.
@@ -73,7 +75,7 @@ func (s *Server) issueTransitions(ctx context.Context, cat *catalog, iss *issueR
 		return nil, nil, err
 	}
 	if inWorkflow == 0 {
-		err := scanAll(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+		err := sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
 			func(rows *sql.Rows) error {
 				var id string
 				if err := rows.Scan(&id); err != nil {
@@ -86,7 +88,7 @@ func (s *Server) issueTransitions(ctx context.Context, cat *catalog, iss *issueR
 			}, wf)
 		return out, statuses, err
 	}
-	err = scanAll(ctx, s.db, `SELECT id, name, to_status_id FROM workflow_transitions
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, to_status_id FROM workflow_transitions
 		WHERE workflow_id = ? AND (from_status_id = ? OR from_status_id IS NULL) AND to_status_id <> ?
 		ORDER BY from_status_id IS NULL, position, id`, func(rows *sql.Rows) error {
 		var t transitionOut

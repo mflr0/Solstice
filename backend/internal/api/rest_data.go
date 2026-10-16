@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // issueData is an issue with what was loaded about it.
@@ -124,7 +125,7 @@ const (
 // customFields lists the custom fields, by name.
 func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 	var out []customFieldDef
-	err := scanAll(ctx, s.db, `SELECT id, name, type_key FROM custom_fields ORDER BY name, id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT id, name, type_key FROM custom_fields ORDER BY name, id`, func(rows *sql.Rows) error {
 		var f customFieldDef
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
@@ -157,7 +158,7 @@ func (s *Server) scanIn(ctx context.Context, ids []int64, query func(in string) 
 		for _, id := range chunk {
 			all = append(all, id)
 		}
-		if err := scanAll(ctx, s.db, query("("+marks(len(chunk))+")"), scan, all...); err != nil {
+		if err := sqlq.Each(ctx, s.db, query("("+sqlq.Marks(len(chunk))+")"), scan, all...); err != nil {
 			return err
 		}
 	}
@@ -207,7 +208,7 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, rows []*issu
 	if set.fields, err = s.customFields(ctx); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT id, kind FROM projects`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, kind FROM projects`, func(rows *sql.Rows) error {
 		var id int64
 		var kind string
 		if err := rows.Scan(&id, &kind); err != nil {
@@ -218,7 +219,7 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, rows []*issu
 	}); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT id, name FROM security_levels`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels`, func(rows *sql.Rows) error {
 		var id int64
 		var name string
 		if err := rows.Scan(&id, &name); err != nil {
@@ -482,7 +483,7 @@ func (s *Server) loadSprints(ctx context.Context, _ *perm.Subject, set *issueSet
 			&sp.position); err != nil {
 			return err
 		}
-		sp.Goal = nullStr(goal)
+		sp.Goal = sqlq.String(goal)
 		sp.Start, sp.End, sp.Completed = nullTime(start), nullTime(end), nullTime(done)
 		set.byID[id].sprints = append(set.byID[id].sprints, sp)
 		return nil

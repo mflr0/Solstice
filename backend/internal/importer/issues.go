@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 func (r *run) importIssues() error {
@@ -115,10 +117,10 @@ func (r *run) importIssues() error {
 		r.issues[id] = issueRef{project: pid.Int64, num: num.Int64}
 		p.maxNum = max(p.maxNum, num.Int64)
 		return ins.add(id, pid.Int64, num.Int64, ref("issue_types", issueType), parent,
-			truncate(summary.String, 255), nstr(desc), nstr(env), ref("statuses", status),
+			truncate(summary.String, 255), sqlq.Value(desc), sqlq.Value(env), ref("statuses", status),
 			ref("priorities", priority), ref("resolutions", resolution), reporterID, assigneeID, creatorID,
-			level, createdAt, updatedAt, ntime(resolved), r.ndate(due), nint(estimate), nint(remaining),
-			nint(spent), truthy(arch))
+			level, createdAt, updatedAt, ntime(resolved), r.ndate(due), sqlq.Value(estimate), sqlq.Value(remaining),
+			sqlq.Value(spent), truthy(arch))
 	}); err != nil {
 		return err
 	}
@@ -211,7 +213,7 @@ func (r *run) importIssueDetails() error {
 				return nil
 			}
 		}
-		return ins.add(issue.Int64, nint(field), truncate(label.String, 255))
+		return ins.add(issue.Int64, sqlq.Value(field), truncate(label.String, 255))
 	}); err != nil {
 		return err
 	}
@@ -307,7 +309,7 @@ func (r *run) importIssueDetails() error {
 			skipped++
 			return nil
 		}
-		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), nstr(rel))
+		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel))
 	}); err != nil {
 		return err
 	}
@@ -348,6 +350,31 @@ func (r *run) importIssueDetails() error {
 	r.rep.step("watchers", watch.total, 0)
 	r.rep.step("votes", vote.total, skipped)
 	return nil
+}
+
+// actionRefs are the Solstice values a comment or work log points to.
+type actionRefs struct {
+	author, updater, group, role any
+}
+
+// refsOf resolves the author, last editor and visibility of a comment or
+// work log.
+func (r *run) refsOf(author, updater, group sql.NullString, role sql.NullInt64) (actionRefs, error) {
+	var ref actionRefs
+	var err error
+	if ref.author, err = r.user(author); err != nil {
+		return ref, err
+	}
+	if ref.updater, err = r.user(updater); err != nil {
+		return ref, err
+	}
+	if ref.role, err = r.visibilityRole(role); err != nil {
+		return ref, err
+	}
+	if group.String != "" {
+		ref.group = strings.ToLower(group.String)
+	}
+	return ref, nil
 }
 
 // visibilityRole returns the role a comment or work log is restricted to. A
@@ -395,27 +422,15 @@ func (r *run) importCommentsAndWorklogs() error {
 			skipped++
 			return nil
 		}
-		authorID, err := r.user(author)
+		ref, err := r.refsOf(author, updater, group, role)
 		if err != nil {
 			return err
 		}
-		updaterID, err := r.user(updater)
-		if err != nil {
-			return err
-		}
-		roleID, err := r.visibilityRole(role)
-		if err != nil {
-			return err
-		}
-		var grp any
-		if group.String != "" {
-			grp = strings.ToLower(group.String)
-		}
-		if grp != nil || roleID != nil {
+		if ref.group != nil || ref.role != nil {
 			restricted++
 		}
 		c := stamp(created, updated)
-		return ins.add(id, issue.Int64, authorID, body.String, c, stamp(updated, created), updaterID, grp, roleID)
+		return ins.add(id, issue.Int64, ref.author, body.String, c, stamp(updated, created), ref.updater, ref.group, ref.role)
 	}); err != nil {
 		return err
 	}
@@ -441,25 +456,13 @@ func (r *run) importCommentsAndWorklogs() error {
 			skipped++
 			return nil
 		}
-		authorID, err := r.user(author)
+		ref, err := r.refsOf(author, updater, group, role)
 		if err != nil {
 			return err
-		}
-		updaterID, err := r.user(updater)
-		if err != nil {
-			return err
-		}
-		roleID, err := r.visibilityRole(role)
-		if err != nil {
-			return err
-		}
-		var grp any
-		if group.String != "" {
-			grp = strings.ToLower(group.String)
 		}
 		c := stamp(created, updated)
-		return ins.add(id, issue.Int64, authorID, nstr(body), stamp(started, created), seconds.Int64, c,
-			stamp(updated, created), updaterID, grp, roleID)
+		return ins.add(id, issue.Int64, ref.author, sqlq.Value(body), stamp(started, created), seconds.Int64, c,
+			stamp(updated, created), ref.updater, ref.group, ref.role)
 	}); err != nil {
 		return err
 	}
@@ -614,7 +617,7 @@ func (r *run) importCustomFieldValues() error {
 			skipped++
 			return nil
 		}
-		var strVal, dateVal, numVal any = nstr(str), ntime(date), nil
+		var strVal, dateVal, numVal any = sqlq.Value(str), ntime(date), nil
 		if num.Valid {
 			numVal = num.Float64
 		}
@@ -640,7 +643,7 @@ func (r *run) importCustomFieldValues() error {
 		if s, ok := strVal.(string); ok {
 			strVal = truncate(s, 255)
 		}
-		return ins.add(id, issue.Int64, field.Int64, nstr(parentKey), strVal, numVal, nstr(text), dateVal)
+		return ins.add(id, issue.Int64, field.Int64, sqlq.Value(parentKey), strVal, numVal, sqlq.Value(text), dateVal)
 	}); err != nil {
 		return err
 	}
@@ -694,7 +697,7 @@ func (r *run) importHistory() error {
 			return err
 		}
 		return items.add(id, group.Int64, truncate(orDefault(fieldType, "jira"), 255), truncate(field.String, 255),
-			nstr(oldValue), nstr(oldString), nstr(newValue), nstr(newString))
+			sqlq.Value(oldValue), sqlq.Value(oldString), sqlq.Value(newValue), sqlq.Value(newString))
 	}); err != nil {
 		return err
 	}

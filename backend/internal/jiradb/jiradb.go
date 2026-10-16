@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" driver
+
+	soldb "solstice/internal/db"
 )
 
 // Engine is the database engine behind a Jira instance.
@@ -53,26 +53,17 @@ func Open(rawURL string, loc *time.Location) (*sql.DB, Engine, error) {
 		db, err := sql.Open("pgx", rawURL)
 		return db, Postgres, err
 	case "mysql", "mariadb":
-		db, err := sql.Open("mysql", MySQLDSN(u, loc))
+		db, err := sql.Open("mysql", mysqlDSN(u, loc))
 		return db, MySQL, err
 	default:
 		return nil, 0, fmt.Errorf("unsupported database %q: expected postgres:// or mysql://", u.Scheme)
 	}
 }
 
-// MySQLDSN converts a mysql:// URL into a go-sql-driver DSN. Query
+// mysqlDSN converts a mysql:// URL into a go-sql-driver DSN. Query
 // parameters of the URL are passed through to the driver.
-func MySQLDSN(u *url.URL, loc *time.Location) string {
-	cfg := mysql.NewConfig()
-	cfg.User = u.User.Username()
-	cfg.Passwd, _ = u.User.Password()
-	cfg.Net = "tcp"
-	cfg.Addr = u.Host
-	if u.Port() == "" {
-		cfg.Addr = u.Host + ":3306"
-	}
-	cfg.DBName = strings.TrimPrefix(u.Path, "/")
-	cfg.ParseTime = true
+func mysqlDSN(u *url.URL, loc *time.Location) string {
+	cfg := soldb.MySQLConfig(u)
 	cfg.Loc = loc
 	if cfg.Loc == nil {
 		cfg.Loc = time.UTC

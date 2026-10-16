@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // keptTables are never emptied by an import.
@@ -100,7 +102,7 @@ func (r *run) restore(s *savedRows, skip ...string) (int, error) {
 			idx = append(idx, i)
 		}
 	}
-	q := "INSERT IGNORE INTO `" + s.table + "` (" + strings.Join(cols, ", ") + ") VALUES (" + placeholders(len(cols)) + ")"
+	q := "INSERT IGNORE INTO `" + s.table + "` (" + strings.Join(cols, ", ") + ") VALUES (" + sqlq.Marks(len(cols)) + ")"
 	n := 0
 	for i, row := range s.rows {
 		var uid int64
@@ -159,7 +161,7 @@ func (r *run) keep() (*kept, error) {
 		if admin {
 			k.admins = append(k.admins, name)
 		}
-		k.extras[name] = [2]any{nullStr(locale), ntime(last)}
+		k.extras[name] = [2]any{sqlq.Value(locale), ntime(last)}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -206,13 +208,6 @@ func (r *run) keep() (*kept, error) {
 	return k, nil
 }
 
-func nullStr(s sql.NullString) any {
-	if !s.Valid {
-		return nil
-	}
-	return s.String
-}
-
 // putBack restores what keep saved, once the import has run (or failed:
 // the operator must still be able to sign in and try again).
 func (r *run) putBack(k *kept) error {
@@ -243,7 +238,7 @@ func (r *run) putBack(k *kept) error {
 			args[i] = a
 		}
 		if _, err := r.dst.ExecContext(r.ctx, `UPDATE users SET is_admin = TRUE WHERE username IN (`+
-			placeholders(len(args))+`)`, args...); err != nil {
+			sqlq.Marks(len(args))+`)`, args...); err != nil {
 			errs = append(errs, err)
 		}
 	}

@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"solstice/internal/i18n"
-	"strings"
-	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/live"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
+	"strings"
+	"time"
 )
 
 func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
@@ -26,7 +27,7 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	like := "%" + escapeLike(q) + "%"
 	out := []userRef{}
-	err := scanAll(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
+	err := sqlq.Each(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
 		WHERE active AND (username LIKE ? OR LOWER(display_name) LIKE ?) ORDER BY display_name LIMIT 20`,
 		func(rows *sql.Rows) error {
 			var u userRef
@@ -121,7 +122,7 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 		for i, u := range in.Users[:n] {
 			args[i] = strings.ToLower(u)
 		}
-		err := scanAll(r.Context(), s.db, `SELECT username, display_name FROM users WHERE username IN (`+marks(n)+`)`,
+		err := sqlq.Each(r.Context(), s.db, `SELECT username, display_name FROM users WHERE username IN (`+sqlq.Marks(n)+`)`,
 			func(rows *sql.Rows) error {
 				var username, name string
 				if err := rows.Scan(&username, &name); err != nil {

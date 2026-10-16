@@ -19,6 +19,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 type workflowTransition struct {
@@ -43,7 +44,7 @@ type workflowOut struct {
 // it, or every type when none is.
 func (s *Server) projectTypes(ctx context.Context, cat *catalog, projectID int64) ([]typeRef, error) {
 	var out []typeRef
-	err := scanAll(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ?`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ?`, func(rows *sql.Rows) error {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return err
@@ -85,7 +86,7 @@ func (s *Server) typeWorkflows(ctx context.Context, q interface {
 func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID int64) ([]*workflowOut, error) {
 	list := []*workflowOut{}
 	byID := map[int64]*workflowOut{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, is_default, initial_status_id FROM workflows WHERE project_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, is_default, initial_status_id FROM workflows WHERE project_id = ?
 		ORDER BY is_default DESC, name, id`, func(rows *sql.Rows) error {
 		var w workflowOut
 		var initial string
@@ -101,7 +102,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 	}, projectID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT ws.workflow_id, ws.status_id FROM workflow_statuses ws
+	if err := sqlq.Each(ctx, s.db, `SELECT ws.workflow_id, ws.status_id FROM workflow_statuses ws
 		JOIN workflows w ON w.id = ws.workflow_id WHERE w.project_id = ? ORDER BY ws.position`, func(rows *sql.Rows) error {
 		var wf int64
 		var st string
@@ -113,7 +114,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 	}, projectID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT t.workflow_id, t.id, t.name, t.from_status_id, t.to_status_id
+	if err := sqlq.Each(ctx, s.db, `SELECT t.workflow_id, t.id, t.name, t.from_status_id, t.to_status_id
 		FROM workflow_transitions t JOIN workflows w ON w.id = t.workflow_id WHERE w.project_id = ?
 		ORDER BY t.position, t.id`, func(rows *sql.Rows) error {
 		var wf int64
@@ -159,7 +160,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 			w.IssueTypes = append(w.IssueTypes, t)
 		}
 	}
-	err = scanAll(ctx, s.db, `SELECT issue_type_id, status_id, COUNT(*) FROM issues WHERE project_id = ?
+	err = sqlq.Each(ctx, s.db, `SELECT issue_type_id, status_id, COUNT(*) FROM issues WHERE project_id = ?
 		GROUP BY issue_type_id, status_id`, func(rows *sql.Rows) error {
 		var typ, st string
 		var n int
@@ -259,7 +260,7 @@ type strandedStatus struct {
 func (s *Server) stranded(ctx context.Context, cat *catalog, projectID int64, cond string, args []any,
 	keep map[string]bool) ([]strandedStatus, error) {
 	var out []strandedStatus
-	err := scanAll(ctx, s.db, `SELECT status_id, COUNT(*) FROM issues WHERE project_id = ? AND `+cond+`
+	err := sqlq.Each(ctx, s.db, `SELECT status_id, COUNT(*) FROM issues WHERE project_id = ? AND `+cond+`
 		GROUP BY status_id ORDER BY status_id`, func(rows *sql.Rows) error {
 		var st string
 		var n int
@@ -292,22 +293,9 @@ func moveStranded(ctx context.Context, tx *sql.Tx, cat *catalog, projectID, auth
 	lost []strandedStatus, remap map[string]string, now time.Time) error {
 	for _, l := range lost {
 		to := remap[l.Status.ID]
-		rows, err := tx.QueryContext(ctx, `SELECT id FROM issues WHERE project_id = ? AND status_id = ? AND `+cond,
+		issues, err := idsOf(ctx, tx, `SELECT id FROM issues WHERE project_id = ? AND status_id = ? AND `+cond,
 			append([]any{projectID, l.Status.ID}, args...)...)
 		if err != nil {
-			return err
-		}
-		var issues []int64
-		for rows.Next() {
-			var issue int64
-			if err := rows.Scan(&issue); err != nil {
-				rows.Close()
-				return err
-			}
-			issues = append(issues, issue)
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
 			return err
 		}
 		for _, issue := range issues {
@@ -332,7 +320,7 @@ func (s *Server) defaultWorkflow(ctx context.Context, cat *catalog, projectID in
 	if err != nil {
 		return 0, "", nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
 		func(rows *sql.Rows) error {
 			var st string
 			if err := rows.Scan(&st); err != nil {
@@ -363,7 +351,7 @@ func (s *Server) toDefault(ctx context.Context, cat *catalog, projectID int64, t
 	for _, st := range defStatuses {
 		keep[st.ID] = true
 	}
-	cond = `issue_type_id IN (` + marks(len(types)) + `)`
+	cond = `issue_type_id IN (` + sqlq.Marks(len(types)) + `)`
 	if lost, err = s.stranded(ctx, cat, projectID, cond, types, keep); err != nil {
 		return nil, "", nil, err
 	}
@@ -475,13 +463,13 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 		if len(others) > 0 {
-			followCond, followArgs = `issue_type_id NOT IN (`+marks(len(others))+`)`, others
+			followCond, followArgs = `issue_type_id NOT IN (`+sqlq.Marks(len(others))+`)`, others
 		}
 	} else if len(in.IssueTypes) > 0 {
 		for _, typ := range in.IssueTypes {
 			followArgs = append(followArgs, typ)
 		}
-		followCond = `issue_type_id IN (` + marks(len(followArgs)) + `)`
+		followCond = `issue_type_id IN (` + sqlq.Marks(len(followArgs)) + `)`
 	}
 
 	// Issues left in a status the workflow drops, or that the default
@@ -552,7 +540,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	}
 	q := `DELETE FROM workflow_transitions WHERE workflow_id = ?`
 	if len(keepIDs) > 0 {
-		q += ` AND id NOT IN (` + marks(len(keepIDs)) + `)`
+		q += ` AND id NOT IN (` + sqlq.Marks(len(keepIDs)) + `)`
 	}
 	if _, err := tx.ExecContext(ctx, q, append([]any{id}, keepIDs...)...); err != nil {
 		return err

@@ -27,6 +27,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/importer"
 	"solstice/internal/jiradb"
+	"solstice/internal/sqlq"
 )
 
 // The database step ---------------------------------------------------------
@@ -541,7 +542,7 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 	}
 	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []setupAccount{}
-	err := scanAll(r.Context(), conn, `SELECT username, display_name, email, is_admin FROM users
+	err := sqlq.Each(r.Context(), conn, `SELECT username, display_name, email, is_admin FROM users
 		WHERE active AND password_hash IS NOT NULL
 		AND (username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?)
 		ORDER BY is_admin DESC, display_name, username LIMIT 50`, func(rows *sql.Rows) error {

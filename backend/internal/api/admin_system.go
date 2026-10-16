@@ -14,6 +14,7 @@ import (
 
 	"solstice/internal/config"
 	"solstice/internal/mail"
+	"solstice/internal/sqlq"
 )
 
 // dataDirSize measures the data directory, at most every 5 minutes.
@@ -111,7 +112,7 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {
 		AppliedAt time.Time `json:"appliedAt"`
 	}
 	migrations := []migration{}
-	if err := scanAll(ctx, s.db, `SELECT version, applied_at FROM schema_migrations ORDER BY version`,
+	if err := sqlq.Each(ctx, s.db, `SELECT version, applied_at FROM schema_migrations ORDER BY version`,
 		func(rows *sql.Rows) error {
 			var m migration
 			if err := rows.Scan(&m.Version, &m.AppliedAt); err != nil {
@@ -168,7 +169,7 @@ func (s *Server) failingWebhooks(ctx context.Context) (map[string]any, error) {
 	}
 	list := []failing{}
 	since := time.Now().UTC().Add(-24 * time.Hour)
-	err := scanAll(ctx, s.db, `SELECT w.id, w.name, COUNT(*), MAX(d.attempted_at),
+	err := sqlq.Each(ctx, s.db, `SELECT w.id, w.name, COUNT(*), MAX(d.attempted_at),
 		(SELECT d2.error FROM webhook_deliveries d2 WHERE d2.webhook_id = w.id AND d2.error IS NOT NULL
 			ORDER BY d2.id DESC LIMIT 1)
 		FROM webhooks w JOIN webhook_deliveries d ON d.webhook_id = w.id
@@ -183,7 +184,7 @@ func (s *Server) failingWebhooks(ctx context.Context) (map[string]any, error) {
 		if last.Valid {
 			f.LastAttempt = &last.Time
 		}
-		f.LastError = nullStr(lastErr)
+		f.LastError = sqlq.String(lastErr)
 		list = append(list, f)
 		return nil
 	}, since)

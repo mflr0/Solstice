@@ -10,6 +10,7 @@ import (
 
 	"solstice/internal/jiradb"
 	"solstice/internal/jql"
+	"solstice/internal/sqlq"
 )
 
 // Jira Software (formerly GreenHopper) keeps boards, sprints and ranks in
@@ -177,7 +178,7 @@ func (r *run) importBoards() error {
 			}
 		}
 		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), 255), kind, filter.Int64,
-			sub, ownerID, lanes, estimate, nstr(cutoff), now, now)
+			sub, ownerID, lanes, estimate, sqlq.Value(cutoff), now, now)
 	}); err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func (r *run) importBoards() error {
 				return nil
 			}
 			return qins.add(id, board.Int64, truncate(name.String, 255), orDefault(long, short.String),
-				nstr(desc), pos.Int64)
+				sqlq.Value(desc), pos.Int64)
 		}); err != nil {
 			return err
 		}

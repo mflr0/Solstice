@@ -8,14 +8,15 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+
+	"solstice/internal/audit"
+	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"solstice/internal/audit"
-	"solstice/internal/auth"
 )
 
 // credentials reads what scripts and API clients send: "Authorization:
@@ -77,7 +78,7 @@ func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]t
 	}
 	now := time.Now()
 	out := []tokenOut{}
-	err := scanAll(r.Context(), s.db, q+` ORDER BY t.created_at DESC, t.id DESC`, func(rows *sql.Rows) error {
+	err := sqlq.Each(r.Context(), s.db, q+` ORDER BY t.created_at DESC, t.id DESC`, func(rows *sql.Rows) error {
 		var t tokenOut
 		var expires, used sql.NullTime
 		var owner userRef

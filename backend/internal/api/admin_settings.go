@@ -22,6 +22,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/config"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 // ConfigInfo tells how the server was started, for the system page.
@@ -185,7 +186,7 @@ func (s *Server) loadGeneral(ctx context.Context) (*generalSettings, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var loadErr error
-	err := scanAll(ctx, s.db, `SELECT name, value FROM settings WHERE name LIKE 'general.%'`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT name, value FROM settings WHERE name LIKE 'general.%'`, func(rows *sql.Rows) error {
 		var name, raw string
 		if err := rows.Scan(&name, &raw); err != nil {
 			return err

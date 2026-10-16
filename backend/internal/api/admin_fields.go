@@ -18,6 +18,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 const jiraFieldPrefix = "com.atlassian.jira.plugin.system.customfieldtypes:"
@@ -81,7 +82,7 @@ type fieldAdminOut struct {
 func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fieldAdminOut, error) {
 	out := []fieldAdminOut{}
 	index := map[int64]int{}
-	err := scanAll(ctx, s.db, `SELECT f.id, f.name, f.description, f.type_key,
+	err := sqlq.Each(ctx, s.db, `SELECT f.id, f.name, f.description, f.type_key,
 		(SELECT COUNT(*) FROM custom_field_options o WHERE o.field_id = f.id AND o.parent_id IS NULL),
 		(SELECT COUNT(*) FROM (SELECT v.issue_id FROM custom_field_values v WHERE v.field_id = f.id
 			UNION SELECT l.issue_id FROM labels l WHERE l.field_id = f.id) x)
@@ -92,7 +93,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &options, &f.Issues); err != nil {
 			return err
 		}
-		f.Description = nullStr(desc)
+		f.Description = sqlq.String(desc)
 		if t := fieldTypeName(f.TypeKey); t != "" {
 			f.Type = &t
 		}
@@ -105,7 +106,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 	if err != nil || len(out) == 0 {
 		return out, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT c.field_id, p.id, p.pkey, p.name FROM custom_field_projects c
+	if err := sqlq.Each(ctx, s.db, `SELECT c.field_id, p.id, p.pkey, p.name FROM custom_field_projects c
 		JOIN projects p ON p.id = c.project_id ORDER BY p.pkey`, func(rows *sql.Rows) error {
 		var field int64
 		var p projectBrief
@@ -123,7 +124,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 	if err != nil {
 		return nil, err
 	}
-	err = scanAll(ctx, s.db, `SELECT field_id, issue_type_id FROM custom_field_issue_types`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT field_id, issue_type_id FROM custom_field_issue_types`, func(rows *sql.Rows) error {
 		var field int64
 		var t string
 		if err := rows.Scan(&field, &t); err != nil {
@@ -147,7 +148,7 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 	}
 	f := list[0]
 	options := []optionOut{}
-	if err := scanAll(ctx, s.db, `SELECT id, value, disabled, position FROM custom_field_options
+	if err := sqlq.Each(ctx, s.db, `SELECT id, value, disabled, position FROM custom_field_options
 		WHERE field_id = ? AND parent_id IS NULL ORDER BY position, id`, func(rows *sql.Rows) error {
 		var o optionOut
 		if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position); err != nil {
@@ -683,7 +684,7 @@ func (s *Server) fieldsOutside(ctx context.Context, projectID int64, typeID stri
 	}
 	args = append(args, projectID, typeID)
 	var out []int64
-	err := scanAll(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+marks(len(ids))+`) AND NOT (
+	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`) AND NOT (
 		(NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
 			OR EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?))
 		AND (NOT EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id)
@@ -773,7 +774,7 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 		index[f.ID] = len(out)
 		out = append(out, fieldBrief{ID: f.ID, Name: f.Name, Type: t, TypeKey: f.TypeKey, Options: []optionBrief{}})
 	}
-	err = scanAll(ctx, s.db, `SELECT field_id, id, value FROM custom_field_options WHERE parent_id IS NULL AND NOT disabled
+	err = sqlq.Each(ctx, s.db, `SELECT field_id, id, value FROM custom_field_options WHERE parent_id IS NULL AND NOT disabled
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var field int64
 		var o optionBrief
@@ -801,7 +802,7 @@ func (s *Server) fieldsOutsideProject(ctx context.Context, projectID int64, ids 
 	}
 	args = append(args, projectID)
 	var out []int64
-	err := scanAll(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+marks(len(ids))+`)
+	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`)
 		AND EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
 		AND NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?)`,
 		func(rows *sql.Rows) error {

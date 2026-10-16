@@ -19,6 +19,7 @@ import (
 	"solstice/internal/auth"
 	"solstice/internal/config"
 	"solstice/internal/db"
+	"solstice/internal/sqlq"
 )
 
 // wizard drives the setup handler directly, as one browser.
@@ -298,7 +299,7 @@ func emptyDB(t *testing.T) string {
 	}
 	defer conn.Close()
 	var tables []string
-	if err := scanAll(context.Background(), conn, `SELECT table_name FROM information_schema.tables
+	if err := sqlq.Each(context.Background(), conn, `SELECT table_name FROM information_schema.tables
 		WHERE table_schema = DATABASE()`, func(rows *sql.Rows) error {
 		var name string
 		if err := rows.Scan(&name); err != nil {

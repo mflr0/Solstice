@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 // frag is a piece of SQL with its arguments, in placeholder order.
@@ -137,7 +138,7 @@ func (c *compiler) histValues(h histField, vals []Value) (logged, ids frag, empt
 	if len(texts) == 0 {
 		return frag{}, frag{}, empty, nil
 	}
-	m := marks(len(texts))
+	m := sqlq.Marks(len(texts))
 	var args []any
 	for range 2 {
 		for _, t := range texts {
@@ -166,7 +167,7 @@ func (c *compiler) literals(sub frag) (frag, error) {
 	for i, v := range vals {
 		args[i] = v
 	}
-	return frag{marks(len(vals)), args}, nil
+	return frag{sqlq.Marks(len(vals)), args}, nil
 }
 
 // match is "col is one of the values".

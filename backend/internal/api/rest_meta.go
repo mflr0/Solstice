@@ -19,6 +19,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // The version of Jira's REST API that Solstice answers like: clients test it
@@ -52,7 +53,7 @@ func (s *Server) fullUser(ctx context.Context, o *restOut, id int64, withGroups 
 		return nil, err
 	}
 	groups := []any{}
-	if err := scanAll(ctx, s.db, `SELECT g.name FROM group_members m JOIN user_groups g ON g.id = m.group_id
+	if err := sqlq.Each(ctx, s.db, `SELECT g.name FROM group_members m JOIN user_groups g ON g.id = m.group_id
 		WHERE m.user_id = ? AND ? ORDER BY g.name`, func(rows *sql.Rows) error {
 		var name string
 		if err := rows.Scan(&name); err != nil {
@@ -104,7 +105,7 @@ func (s *Server) restUser(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) userList(w http.ResponseWriter, r *http.Request, where string, args []any) error {
 	startAt, maxResults := paging(r, 50, 1000)
 	var ids []int64
-	if err := scanAll(r.Context(), s.db, `SELECT u.id FROM users u WHERE `+where+`
+	if err := sqlq.Each(r.Context(), s.db, `SELECT u.id FROM users u WHERE `+where+`
 		ORDER BY u.display_name, u.username LIMIT ? OFFSET ?`, func(rows *sql.Rows) error {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
@@ -336,7 +337,7 @@ func (s *Server) restProjectStatuses(w http.ResponseWriter, r *http.Request) err
 		}
 		var statuses []statusRef
 		if ok {
-			err = scanAll(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+			err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
 				func(rows *sql.Rows) error {
 					var id string
 					if err := rows.Scan(&id); err != nil {
@@ -640,7 +641,7 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 		has = func(p string) bool { return sub.Can(p, id, nil) }
 	default:
 		var projects []int64
-		if err := scanAll(ctx, s.db, `SELECT id FROM projects`, func(rows *sql.Rows) error {
+		if err := sqlq.Each(ctx, s.db, `SELECT id FROM projects`, func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
 				return err

@@ -11,12 +11,13 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+
+	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
-
-	"solstice/internal/audit"
 )
 
 // browsableProject loads a project the user sees (or, for a global
@@ -60,7 +61,7 @@ func (s *Server) components(ctx context.Context, projectID int64, where string, 
 	out := []componentAdminOut{}
 	var leads []sql.NullInt64
 	var ids []int64
-	err := scanAll(ctx, s.db, `SELECT c.id, c.name, c.description, c.lead_id, c.assignee_type, c.archived,
+	err := sqlq.Each(ctx, s.db, `SELECT c.id, c.name, c.description, c.lead_id, c.assignee_type, c.archived,
 		(SELECT COUNT(*) FROM issue_components ic WHERE ic.component_id = c.id)
 		FROM components c WHERE c.project_id = ? AND `+where+` ORDER BY c.name, c.id`, func(rows *sql.Rows) error {
 		var c componentAdminOut
@@ -69,7 +70,7 @@ func (s *Server) components(ctx context.Context, projectID int64, where string, 
 		if err := rows.Scan(&c.ID, &c.Name, &desc, &lead, &c.AssigneeType, &c.Archived, &c.Issues); err != nil {
 			return err
 		}
-		c.Description = nullStr(desc)
+		c.Description = sqlq.String(desc)
 		leads = append(leads, lead)
 		ids = append(ids, lead.Int64)
 		out = append(out, c)
@@ -324,20 +325,14 @@ func touchIssue(ctx context.Context, tx *sql.Tx, issue int64, now time.Time) err
 }
 
 func idsOf(ctx context.Context, tx *sql.Tx, q string, args ...any) ([]int64, error) {
-	rows, err := tx.QueryContext(ctx, q, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 	var out []int64
-	for rows.Next() {
+	err := sqlq.Each(ctx, tx, q, func(rows *sql.Rows) error {
 		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
+		err := rows.Scan(&id)
 		out = append(out, id)
-	}
-	return out, rows.Err()
+		return err
+	}, args...)
+	return out, err
 }
 
 // componentAssignee applies the default assignee of a new issue's
@@ -357,8 +352,8 @@ func (s *Server) componentAssignee(ctx context.Context, f fields, projectID int6
 	}
 	var who any
 	decided := false
-	err := scanAll(ctx, s.db, `SELECT assignee_type, lead_id FROM components WHERE project_id = ? AND id IN (`+
-		marks(len(ids))+`) ORDER BY name, id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT assignee_type, lead_id FROM components WHERE project_id = ? AND id IN (`+
+		sqlq.Marks(len(ids))+`) ORDER BY name, id`, func(rows *sql.Rows) error {
 		var kind string
 		var lead sql.NullInt64
 		if err := rows.Scan(&kind, &lead); err != nil {
@@ -411,7 +406,7 @@ type versionAdminOut struct {
 
 func (s *Server) versions(ctx context.Context, projectID int64, where string, args ...any) ([]versionAdminOut, error) {
 	out := []versionAdminOut{}
-	err := scanAll(ctx, s.db, `SELECT v.id, v.name, v.description, v.start_date, v.release_date, v.released, v.archived,
+	err := sqlq.Each(ctx, s.db, `SELECT v.id, v.name, v.description, v.start_date, v.release_date, v.released, v.archived,
 		v.position,
 		(SELECT COUNT(DISTINCT iv.issue_id) FROM issue_versions iv WHERE iv.version_id = v.id),
 		(SELECT COUNT(DISTINCT iv.issue_id) FROM issue_versions iv JOIN issues i ON i.id = iv.issue_id
@@ -424,7 +419,7 @@ func (s *Server) versions(ctx context.Context, projectID int64, where string, ar
 			&v.Issues.Total, &v.Issues.Unresolved); err != nil {
 			return err
 		}
-		v.Description, v.StartDate, v.ReleaseDate = nullStr(desc), dateOnly(start), dateOnly(release)
+		v.Description, v.StartDate, v.ReleaseDate = sqlq.String(desc), dateOnly(start), dateOnly(release)
 		out = append(out, v)
 		return nil
 	}, append([]any{projectID}, args...)...)

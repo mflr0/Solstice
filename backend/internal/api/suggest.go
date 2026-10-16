@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 const maxSuggestions = 30
@@ -37,7 +39,7 @@ func (s *Server) labels(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, "%"+escapeLike(strings.ToLower(q))+"%")
 	}
 	out := []string{}
-	err = scanAll(ctx, s.db, `SELECT l.label FROM labels l JOIN issues i ON i.id = l.issue_id
+	err = sqlq.Each(ctx, s.db, `SELECT l.label FROM labels l JOIN issues i ON i.id = l.issue_id
 		JOIN projects p ON p.id = i.project_id WHERE `+where+` GROUP BY l.label ORDER BY COUNT(*) DESC, l.label LIMIT ?`,
 		func(rows *sql.Rows) error {
 			var label string
@@ -71,7 +73,7 @@ func (s *Server) sprints(w http.ResponseWriter, r *http.Request) error {
 		BoardName string `json:"boardName"`
 	}
 	out := []sprintSuggestion{}
-	err = scanAll(ctx, s.db, `SELECT sp.id, sp.name, sp.state, b.id, b.name, b.filter_id FROM sprints sp
+	err = sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state, b.id, b.name, b.filter_id FROM sprints sp
 		JOIN boards b ON b.id = sp.board_id WHERE LOWER(sp.name) LIKE ?
 		ORDER BY sp.state = 'closed', sp.state <> 'active', COALESCE(sp.completed_at, sp.start_at) DESC, sp.id DESC`,
 		func(rows *sql.Rows) error {
@@ -120,7 +122,7 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 		return writeJSON(w, http.StatusOK, out)
 	}
 	vis, args := sub.VisibleSQL("i")
-	where := vis + " AND i.issue_type_id IN (" + marks(len(types)) + ")"
+	where := vis + " AND i.issue_type_id IN (" + sqlq.Marks(len(types)) + ")"
 	args = append(args, types...)
 	if key := r.URL.Query().Get("project"); key != "" {
 		where += " AND p.pkey = ?"
@@ -131,7 +133,7 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 		like := "%" + escapeLike(strings.ToLower(q)) + "%"
 		args = append(args, strings.ToUpper(like), like)
 	}
-	err = scanAll(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.status_id FROM issues i JOIN projects p ON p.id = i.project_id
+	err = sqlq.Each(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.status_id FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE `+where+` ORDER BY i.updated_at DESC LIMIT ?`, func(rows *sql.Rows) error {
 		var e epicOut
 		var num int64
@@ -164,7 +166,7 @@ func (s *Server) fields(w http.ResponseWriter, r *http.Request) error {
 		JQL  string `json:"jql"`
 	}
 	out := []fieldOut{}
-	err := scanAll(r.Context(), s.db, `SELECT id, name, type_key FROM custom_fields ORDER BY name`, func(rows *sql.Rows) error {
+	err := sqlq.Each(r.Context(), s.db, `SELECT id, name, type_key FROM custom_fields ORDER BY name`, func(rows *sql.Rows) error {
 		var f fieldOut
 		var typeKey string
 		if err := rows.Scan(&f.ID, &f.Name, &typeKey); err != nil {
@@ -209,7 +211,7 @@ func (s *Server) projectParts(table string) handler {
 			args = append(args, strings.ToUpper(key))
 		}
 		out := []projectPart{}
-		err = scanAll(ctx, s.db, `SELECT x.id, x.name, p.id, p.pkey, p.name, `+cols+` FROM `+table+` x
+		err = sqlq.Each(ctx, s.db, `SELECT x.id, x.name, p.id, p.pkey, p.name, `+cols+` FROM `+table+` x
 			JOIN projects p ON p.id = x.project_id WHERE `+where+` ORDER BY `+order, func(rows *sql.Rows) error {
 			var part projectPart
 			var archived, released sql.NullBool
@@ -276,7 +278,7 @@ func (s *Server) facets(w http.ResponseWriter, r *http.Request) error {
 			continue
 		}
 		counts := map[string]int{}
-		if err := scanAll(ctx, s.db, q, func(rows *sql.Rows) error {
+		if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 			var v sql.NullString
 			var n int
 			if err := rows.Scan(&v, &n); err != nil {

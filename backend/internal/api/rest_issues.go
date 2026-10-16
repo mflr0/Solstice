@@ -12,12 +12,13 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"solstice/internal/i18n"
-	"strconv"
-	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
+	"strconv"
+	"strings"
 )
 
 // restIssue loads the issue named in the path, by key or id, if the user
@@ -634,7 +635,7 @@ func (s *Server) restWatchers(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var ids []int64
-	if err := scanAll(r.Context(), s.db, `SELECT user_id FROM watchers WHERE issue_id = ? ORDER BY created_at, user_id`,
+	if err := sqlq.Each(r.Context(), s.db, `SELECT user_id FROM watchers WHERE issue_id = ? ORDER BY created_at, user_id`,
 		func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {

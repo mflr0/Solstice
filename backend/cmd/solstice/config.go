@@ -97,13 +97,22 @@ func configSources(c *config.Config, fixed map[string]bool, baseURL string, tz *
 	return out
 }
 
-// requireDB is for the commands that cannot run without a database.
-func requireDB(c *config.Config) error {
+// openMigrated connects to Solstice's database and brings it up to date, for
+// the commands that cannot run without one.
+func openMigrated(ctx context.Context, c *config.Config) (*sql.DB, error) {
 	if c.DB == "" {
-		return fmt.Errorf("no database configured: set SOLSTICE_DB, pass -db, or put SOLSTICE_DB in %s "+
+		return nil, fmt.Errorf("no database configured: set SOLSTICE_DB, pass -db, or put SOLSTICE_DB in %s "+
 			"(\"solstice serve\" with no database opens the setup wizard)", c.Path)
 	}
-	return nil
+	conn, err := db.Open(ctx, c.DB)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Migrate(ctx, conn); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return conn, nil
 }
 
 // openDB connects to Solstice's database. The database may still be
