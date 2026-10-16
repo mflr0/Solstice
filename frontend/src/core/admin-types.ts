@@ -275,7 +275,7 @@ export interface UserInput {
 export interface Group {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   /** Number of members. */
   members: number;
 }
@@ -291,7 +291,7 @@ export interface GroupUsage {
 export interface GroupDetail {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   members: UserRef[];
   usage: GroupUsage;
 }
@@ -299,7 +299,7 @@ export interface GroupDetail {
 export interface RoleRow {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   /** Projects with members in the role. */
   projects: number;
   /** Grants naming the role. */
