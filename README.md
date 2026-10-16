@@ -265,8 +265,11 @@ scripts/                end-to-end import test, release archives
 - Administrators configure, they don't read everything: being an
   administrator gives no access to projects or confidential issues.
 - Sub-tasks always follow the security level of their parent.
-- Sign-in: after five failures for the same user name or the same address,
-  attempts are suspended for a minute, then longer.
+- Sign-in: after five failures from the same address, or for the same user
+  name from the same address, that address is suspended for a minute, then
+  longer. An account is never locked: its right password always works, but
+  when many wrong passwords come in for it from anywhere, wrong answers are
+  held back by up to ten seconds, so nobody can lock an administrator out.
 
 ## Roadmap
 

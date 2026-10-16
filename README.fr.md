@@ -285,8 +285,12 @@ scripts/                test d'import de bout en bout, archives de publication
 - Les administrateurs configurent, ils ne lisent pas tout : être
   administrateur ne donne accès ni aux projets ni aux tickets confidentiels.
 - Les sous-tâches suivent toujours la confidentialité de leur parent.
-- Connexion : après cinq échecs pour un même identifiant ou une même adresse,
-  les tentatives sont suspendues une minute, puis davantage.
+- Connexion : après cinq échecs depuis une même adresse, ou pour un même
+  identifiant depuis une même adresse, cette adresse est suspendue une minute,
+  puis davantage. Un compte n'est jamais verrouillé : son bon mot de passe
+  fonctionne toujours, mais quand beaucoup de mauvais mots de passe arrivent
+  pour lui, de n'importe où, les réponses négatives sont retardées jusqu'à dix
+  secondes ; personne ne peut donc bloquer l'accès d'un administrateur.
 
 ## Feuille de route
 

@@ -56,3 +56,41 @@ func TestLimiterForgetsOnSuccessAndOverTime(t *testing.T) {
 		t.Fatal("old failures still counted")
 	}
 }
+
+func TestAccountSlowdownNeverLocks(t *testing.T) {
+	clock := time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC)
+	l := NewLimiter()
+	l.now = func() time.Time { return clock }
+
+	// The first failures, from any address, cost nothing.
+	for i := range accountFreeFailures {
+		if d := l.AccountFailure("account:admin"); d != 0 {
+			t.Fatalf("failure %d delayed by %v", i+1, d)
+		}
+	}
+	// Then each wrong answer is held back a little longer, up to a limit.
+	prev := time.Duration(0)
+	for range 200 {
+		d := l.AccountFailure("account:admin")
+		if d < prev || d > accountMaxDelay {
+			t.Fatalf("delay %v after %v, limit %v", d, prev, accountMaxDelay)
+		}
+		prev = d
+	}
+	if prev != accountMaxDelay {
+		t.Fatalf("delay stops at %v, want %v", prev, accountMaxDelay)
+	}
+	// The account itself is never locked, whatever the number of failures.
+	if d := l.Locked("account:admin", "user:admin", "ip:203.0.113.9"); d != 0 {
+		t.Fatalf("account locked for %v", d)
+	}
+	// Another account is not slowed.
+	if d := l.AccountFailure("account:marie"); d != 0 {
+		t.Fatalf("other account delayed by %v", d)
+	}
+	// A quiet period clears the count.
+	clock = clock.Add(failureReset + time.Second)
+	if d := l.AccountFailure("account:admin"); d != 0 {
+		t.Fatalf("delay %v after a quiet period", d)
+	}
+}

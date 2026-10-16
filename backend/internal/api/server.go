@@ -33,10 +33,13 @@ type Server struct {
 	log     *slog.Logger
 	tz      *time.Location // for dates typed without a time zone (JQL)
 	limiter *auth.Limiter
-	verify  func(ctx context.Context, username, password string) (*auth.User, error) // checks a password; a field so tests can run without a database
-	baseURL string                                                                   // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
-	proxies []netip.Prefix                                                           // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
-	out     *outgoing                                                                // event bus, e-mail and webhooks (notifications.go)
+	baseURL string         // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
+	proxies []netip.Prefix // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
+	out     *outgoing      // event bus, e-mail and webhooks (notifications.go)
+
+	// Set by New; tests replace them to run without a database or a real wait.
+	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
+	sleep  func(ctx context.Context, d time.Duration)                               // holds back a wrong answer
 
 	catMu   sync.Mutex
 	catalog *catalog
@@ -56,6 +59,14 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		limiter: auth.NewLimiter(), streamsDone: make(chan struct{})}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
+	}
+	s.sleep = func(ctx context.Context, d time.Duration) {
+		t := time.NewTimer(d)
+		defer t.Stop()
+		select {
+		case <-t.C:
+		case <-ctx.Done():
+		}
 	}
 	s.adm.started = time.Now()
 	s.startOutgoing()
@@ -265,8 +276,12 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 	return u, err
 }
 
-// checkPassword verifies credentials, throttled per user name and per client
-// address so passwords cannot be guessed at speed.
+// checkPassword verifies credentials, throttled so that passwords cannot be
+// guessed at speed and nobody can keep someone else out of their account.
+// The design is described on auth.Limiter: the client address, and the pair
+// (account, client address), are locked after repeated failures; the account
+// alone is never locked, so the right password is always accepted, but its
+// wrong answers are held back once many have come in from any address.
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
 	userKey, ipKey := s.throttleKeys(r, username)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
@@ -276,14 +291,23 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	if err != nil {
 		return nil, err
 	}
-	u, err := s.verify(r.Context(), auth.CanonicalUsername(username), password)
+	account := auth.CanonicalUsername(username)
+	u, err := s.verify(r.Context(), account, password)
 	release()
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
 		s.limiter.Failure(userKey, ipKey)
+		if delay := s.limiter.AccountFailure("account:" + account); delay > 0 {
+			// The account is being guessed at, from here or elsewhere: this
+			// address gets half as many tries, and the answer waits (the
+			// password-checking slot is already free).
+			s.limiter.Failure(userKey)
+			s.sleep(r.Context(), delay)
+		}
 	case err == nil:
-		// Only the account is cleared: signing into one's own account must not
-		// reset the count of an address guessing other passwords.
+		// Only the account at this address is cleared: signing into one's own
+		// account must not reset the count of an address guessing other
+		// passwords, nor the account's count from other addresses.
 		s.limiter.Success(userKey)
 	}
 	return u, err
