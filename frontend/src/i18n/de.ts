@@ -1845,6 +1845,20 @@ export const de: Messages = {
     removed: (name: string, role: string) => `${name} wurde aus der Rolle ${role} entfernt.`,
   },
 
+  projectNotify: {
+    intro:
+      'Legen Sie fest, ob dieses Projekt Benachrichtigungs-E-Mails versendet und welche Gruppen und Rollen sie zusätzlich erhalten, neben den Personen, die einen Vorgang melden, zugewiesen bekommen oder beobachten.',
+    enabled: 'Benachrichtigungs-E-Mails für dieses Projekt senden',
+    enabledHint:
+      'Ausgeschaltet erhält niemand E-Mails zu Vorgängen dieses Projekts, unabhängig von den eigenen Einstellungen.',
+    offNote: 'Benachrichtigungs-E-Mails sind für dieses Projekt ausgeschaltet.',
+    extraTitle: 'Zusätzlich benachrichtigen',
+    extraHint: 'Wählen Sie die Ereignisse, die jede Gruppe oder Rolle erhält.',
+    extraEmpty: 'Es gibt keine Gruppe und keine Rolle zur Auswahl.',
+    recipient: 'Gruppe oder Rolle',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',

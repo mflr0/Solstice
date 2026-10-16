@@ -1826,6 +1826,20 @@ export const it: Messages = {
     removed: (name: string, role: string) => `${name} esce dal ruolo ${role}.`,
   },
 
+  projectNotify: {
+    intro:
+      'Decidi se questo progetto invia e-mail di notifica, e quali gruppi e ruoli le ricevono in più rispetto alle persone che segnalano, a cui è assegnato o che seguono un ticket.',
+    enabled: 'Invia e-mail di notifica per questo progetto',
+    enabledHint:
+      'Disattivato, nessuno riceve e-mail sui ticket di questo progetto, qualunque siano le sue impostazioni.',
+    offNote: 'Le e-mail di notifica sono disattivate per questo progetto.',
+    extraTitle: 'Avvisa anche',
+    extraHint: 'Spunta gli eventi che ogni gruppo o ruolo riceve.',
+    extraEmpty: 'Non c’è alcun gruppo né ruolo tra cui scegliere.',
+    recipient: 'Gruppo o ruolo',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',

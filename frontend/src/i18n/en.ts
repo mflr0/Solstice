@@ -1817,6 +1817,20 @@ export const en = {
     removed: (name: string, role: string) => `${name} removed from ${role}.`,
   },
 
+  projectNotify: {
+    intro:
+      'Decide whether this project sends notification e-mails, and which groups and roles also receive them, on top of the people who report, are assigned to or watch an issue.',
+    enabled: 'Send notification e-mails for this project',
+    enabledHint:
+      'Turned off, nobody is e-mailed about this project’s issues, whatever their own settings.',
+    offNote: 'Notification e-mails are off for this project.',
+    extraTitle: 'Also notify',
+    extraHint: 'Check the events each group or role receives.',
+    extraEmpty: 'There is no group or role to choose from.',
+    recipient: 'Group or role',
+    cell: (recipient: string, event: string) => `${recipient}: ${event}`,
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',
