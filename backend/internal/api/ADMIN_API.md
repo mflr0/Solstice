@@ -333,7 +333,9 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   its issues (or links) then move there, with history. The last issue type
   cannot go.
 - Statuses: create/rename/delete stay on `POST /api/statuses`,
-  `PATCH|DELETE /api/statuses/{id}`.
+  `PATCH|DELETE /api/statuses/{id}`. `GET /api/admin/statuses/{id}/usage` →
+  where one is used: `{workflows: [{id, name, project: {id, key, name}}],
+  boards: [{id, name, column}], projects: [{key, name, issues}]}`.
 
 (`issuetype.*`, `priority.*`, `resolution.*`, `linktype.*`, `status.order`)
 

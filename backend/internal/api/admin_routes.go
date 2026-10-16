@@ -71,6 +71,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	}
 	route("GET /api/admin/statuses", s.adminStatuses, true)
 	route("POST /api/admin/statuses/order", s.orderStatuses, true)
+	route("GET /api/admin/statuses/{id}/usage", s.adminStatusUsage, true)
 
 	// Custom fields.
 	route("GET /api/admin/fields", s.adminFields, true)
