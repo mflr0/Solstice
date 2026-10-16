@@ -222,6 +222,8 @@ const (
 	CustomFieldOptionTooLong Key = "CustomFieldOptionTooLong"
 	CustomFieldUsedByBoards  Key = "CustomFieldUsedByBoards"
 	CustomFieldDeleteConfirm Key = "CustomFieldDeleteConfirm"
+	CustomFieldOptionInUse   Key = "CustomFieldOptionInUse"
+	CustomFieldOptionMoveTo  Key = "CustomFieldOptionMoveTo"
 )
 
 // Field values of an issue.

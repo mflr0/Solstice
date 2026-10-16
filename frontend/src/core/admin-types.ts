@@ -422,6 +422,13 @@ export interface CatalogItem {
   links?: number;
 }
 
+/** Where a status is used (GET /api/admin/statuses/{id}/usage). */
+export interface StatusUsage {
+  workflows: { id: number; name: string; project: { id: number; key: string; name: string } }[];
+  boards: { id: number; name: string; column: string }[];
+  projects: { key: string; name: string; issues: number }[];
+}
+
 export interface StatusRow {
   id: string;
   name: string;
@@ -457,6 +464,18 @@ export interface FieldOption {
   value: string;
   disabled: boolean;
   position: number;
+  /** Issues with this option (or one under it) chosen. */
+  issues: number;
+  /** Options under it: a cascading field imported from Jira. */
+  children: number;
+}
+
+/** What a field type is offered as when creating a field (GET /api/admin/fields/types). */
+export interface FieldTypeInfo {
+  type: FieldType;
+  typeKey: string;
+  /** Whether the type takes a list of options. */
+  options: boolean;
 }
 
 export interface FieldRow {

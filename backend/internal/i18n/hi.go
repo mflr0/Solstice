@@ -196,6 +196,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
 	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे डिलीट नहीं किया जा सकता।",
 	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: डिलीट की पुष्टि के लिए इसका नाम टाइप करें।",
+	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
+	CustomFieldOptionMoveTo:  "बदले में दिया गया विकल्प उसी फ़ील्ड का, उसी स्तर का कोई दूसरा विकल्प होना चाहिए।",
 
 	// Field values of an issue.
 	FieldUnknown:              "अज्ञात फ़ील्ड: %s।",

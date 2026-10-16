@@ -194,6 +194,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "Une option a un texte de 255 caractères au plus.",
 	CustomFieldUsedByBoards:  "Ce champ sert au fonctionnement des tableaux : il ne peut pas être supprimé.",
 	CustomFieldDeleteConfirm: "Des tickets ont une valeur dans ce champ : tapez son nom pour confirmer la suppression.",
+	CustomFieldOptionInUse:   "Des tickets ont cette option : choisissez une autre option vers laquelle les déplacer, ou effacez leur valeur.",
+	CustomFieldOptionMoveTo:  "Le remplaçant doit être une autre option du même champ, au même niveau.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Champ inconnu : %s.",

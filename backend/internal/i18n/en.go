@@ -193,6 +193,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "An option's text is 255 characters at most.",
 	CustomFieldUsedByBoards:  "This field is used by the boards: it cannot be deleted.",
 	CustomFieldDeleteConfirm: "Some issues have a value in this field: type its name to confirm the deletion.",
+	CustomFieldOptionInUse:   "Some issues have this option chosen: choose another option to move them to, or clear their value.",
+	CustomFieldOptionMoveTo:  "The replacement must be another option of the same field, at the same level.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Unknown field: %s.",
