@@ -35,6 +35,9 @@ The detailed list of what remains before 1.0 is in `todo.md`.
   (JSON and attachments), at any time.
 - **Commits on issues.** Link commits and merge requests that mention an
   issue key, from GitHub, GitLab and Gitea webhooks.
+- **Other sources.** Import from other issue trackers (Redmine, OpenProject,
+  Huly and others), on the same model as the Jira import: read the source,
+  report, then import.
 - **PostgreSQL for Solstice itself**, not only as an import source. After the
   refactoring of `internal/api` into a service layer (see `todo.md`), so the
   SQL is changed once.
