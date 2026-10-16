@@ -36,7 +36,8 @@ func TestAccountTokenHash(t *testing.T) {
 	if got := AccountTokenHash(tok); got != hex.EncodeToString(sum[:]) || len(got) != 64 {
 		t.Fatalf("hash %q is not the SHA-256 of the token in hexadecimal", got)
 	}
-	if AccountTokenHash(tok) != AccountTokenHash(tok) {
+	again := AccountTokenHash("a token")
+	if AccountTokenHash(tok) != again {
 		t.Fatal("the hash is not stable")
 	}
 	if AccountTokenHash(tok) == AccountTokenHash(tok+" ") {
