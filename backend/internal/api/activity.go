@@ -450,6 +450,7 @@ type worklogOut struct {
 	Seconds    int64       `json:"seconds"`
 	Body       *string     `json:"body"`
 	Visibility *visibility `json:"visibility"`
+	CanEdit    bool        `json:"canEdit"`
 }
 
 func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
@@ -461,13 +462,23 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	out, err := s.visibleWorklogs(r.Context(), sub, iss)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// visibleWorklogs returns an issue's work logs that the user may read, and
+// tells for each whether the user may edit or delete it.
+func (s *Server) visibleWorklogs(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]worklogOut, error) {
 	type row struct {
 		out    worklogOut
 		author sql.NullInt64
 	}
 	var list []row
 	var ids []int64
-	err = sqlq.Each(r.Context(), s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
+	err := sqlq.Each(ctx, s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
 		w.visibility_role_id, pr.name FROM worklogs w LEFT JOIN project_roles pr ON pr.id = w.visibility_role_id
 		WHERE w.issue_id = ? ORDER BY w.started_at, w.id`, func(rows *sql.Rows) error {
 		var x row
@@ -488,18 +499,22 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}, iss.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	users, err := s.users(r.Context(), ids...)
+	users, err := s.users(ctx, ids...)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	pi := iss.perm()
+	moderate := sub.Can(perm.Moderate, iss.ProjectID, &pi)
+	own := sub.Can(perm.Worklog, iss.ProjectID, &pi)
 	out := make([]worklogOut, 0, len(list))
 	for _, x := range list {
 		x.out.Author = refOf(users, x.author)
+		x.out.CanEdit = moderate || (own && x.author.Valid && x.author.Int64 == sub.UserID)
 		out = append(out, x.out)
 	}
-	return writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
@@ -524,7 +539,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if in.Seconds <= 0 || in.Seconds > 7*24*3600 {
+	if in.Seconds <= 0 || in.Seconds > maxWorklog {
 		return fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid)
 	}
 	now := time.Now().UTC()
@@ -548,9 +563,12 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	}
 	worklogID, _ := res.LastInsertId()
 	// Logged time is spent time; the remaining estimate shrinks accordingly.
-	if _, err := tx.ExecContext(ctx, `UPDATE issues SET time_spent = COALESCE(time_spent, 0) + ?,
-		remaining_estimate = CASE WHEN remaining_estimate IS NULL THEN NULL ELSE GREATEST(remaining_estimate - ?, 0) END,
-		updated_at = ? WHERE id = ?`, in.Seconds, in.Seconds, now, iss.ID); err != nil {
+	cur, err := lockTimeTracking(ctx, tx, iss.ID)
+	if err != nil {
+		return err
+	}
+	changes, err := storeTimeTracking(ctx, tx, iss.ID, sub.UserID, now, cur, cur.withLogged(in.Seconds))
+	if err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -559,6 +577,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	e := issueEvent(events.WorklogCreated, iss, sub.UserID, "worklog")
 	e.Worklog = &events.Worklog{ID: worklogID, AuthorID: sub.UserID, Body: in.Body, Started: started,
 		Seconds: in.Seconds, Created: now}
+	e.Changes = eventChanges(changes)
 	s.emit(e)
 	w.WriteHeader(http.StatusCreated)
 	return nil

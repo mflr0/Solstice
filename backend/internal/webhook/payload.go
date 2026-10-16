@@ -177,9 +177,13 @@ func jiraDuration(seconds int64) string {
 
 func (b *builder) worklog(issueID int64, w *events.Worklog) map[string]any {
 	id := strconv.FormatInt(w.ID, 10)
+	updatedBy, updated := w.AuthorID, w.Created
+	if w.UpdatedBy != 0 {
+		updatedBy, updated = w.UpdatedBy, w.Updated
+	}
 	out := map[string]any{"id": id, "issueId": strconv.FormatInt(issueID, 10), "author": b.userID(w.AuthorID),
-		"updateAuthor": b.userID(w.AuthorID), "comment": w.Body, "created": jtime(w.Created),
-		"updated": jtime(w.Created), "started": jtime(w.Started), "timeSpent": jiraDuration(w.Seconds),
+		"updateAuthor": b.userID(updatedBy), "comment": w.Body, "created": jtime(w.Created),
+		"updated": jtime(updated), "started": jtime(w.Started), "timeSpent": jiraDuration(w.Seconds),
 		"timeSpentSeconds": w.Seconds}
 	b.put(out, "self", "/rest/api/2/issue/"+strconv.FormatInt(issueID, 10)+"/worklog/"+id)
 	return out
@@ -214,6 +218,10 @@ func issueEventType(e *events.Event) string {
 		return "issue_comment_deleted"
 	case events.WorklogCreated:
 		return "issue_work_logged"
+	case events.WorklogUpdated:
+		return "issue_worklog_updated"
+	case events.WorklogDeleted:
+		return "issue_worklog_deleted"
 	}
 	assigned, status := false, false
 	for _, c := range e.Changes {
@@ -247,7 +255,7 @@ func (s *Service) payload(ctx context.Context, e *events.Event, name string) (ma
 		ids = append(ids, e.Comment.AuthorID, e.Comment.UpdatedBy)
 	}
 	if e.Worklog != nil {
-		ids = append(ids, e.Worklog.AuthorID)
+		ids = append(ids, e.Worklog.AuthorID, e.Worklog.UpdatedBy)
 	}
 	users, err := events.LoadUsers(ctx, s.db, ids...)
 	if err != nil {

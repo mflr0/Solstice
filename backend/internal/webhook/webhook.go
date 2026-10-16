@@ -34,9 +34,13 @@ const (
 	CommentUpdated = "comment_updated"
 	CommentDeleted = "comment_deleted"
 	WorklogCreated = "worklog_created"
+	WorklogUpdated = "worklog_updated"
+	WorklogDeleted = "worklog_deleted"
 	SprintCreated  = "sprint_created"
 	SprintStarted  = "sprint_started"
+	SprintUpdated  = "sprint_updated"
 	SprintClosed   = "sprint_closed"
+	SprintDeleted  = "sprint_deleted"
 	BoardCreated   = "board_created"
 	BoardUpdated   = "board_updated"
 	BoardDeleted   = "board_deleted"
@@ -46,7 +50,8 @@ const (
 
 // Events lists the events Solstice sends, in display order.
 var Events = []string{IssueCreated, IssueUpdated, IssueDeleted, CommentCreated, CommentUpdated, CommentDeleted,
-	WorklogCreated, SprintCreated, SprintStarted, SprintClosed, BoardCreated, BoardUpdated, BoardDeleted}
+	WorklogCreated, WorklogUpdated, WorklogDeleted, SprintCreated, SprintStarted, SprintUpdated, SprintClosed,
+	SprintDeleted, BoardCreated, BoardUpdated, BoardDeleted}
 
 // namesOf gives the webhook events an internal event fires. Comments and
 // work logs also count as issue updates, as in Jira.
@@ -66,12 +71,20 @@ func namesOf(k events.Kind) []string {
 		return []string{CommentDeleted, IssueUpdated}
 	case events.WorklogCreated:
 		return []string{WorklogCreated, IssueUpdated}
+	case events.WorklogUpdated:
+		return []string{WorklogUpdated, IssueUpdated}
+	case events.WorklogDeleted:
+		return []string{WorklogDeleted, IssueUpdated}
 	case events.SprintCreated:
 		return []string{SprintCreated}
 	case events.SprintStarted:
 		return []string{SprintStarted}
+	case events.SprintUpdated:
+		return []string{SprintUpdated}
 	case events.SprintClosed:
 		return []string{SprintClosed}
+	case events.SprintDeleted:
+		return []string{SprintDeleted}
 	case events.BoardCreated:
 		return []string{BoardCreated}
 	case events.BoardUpdated:

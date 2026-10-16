@@ -48,10 +48,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountInviteEmailRequired:       "आमंत्रण के लिए व्यक्ति का ईमेल पता आवश्यक है।",
 
 	// Access tokens.
-	TokenCannotCreate:  "एक्सेस टोकन दूसरे टोकन नहीं बना सकता: अपने पासवर्ड से साइन इन करें।",
-	TokenNameRequired:  "टोकन का नाम ज़रूरी है (अधिकतम 100 वर्ण)।",
-	TokenExpiryInvalid: "अमान्य समाप्ति तारीख (YYYY-MM-DD अपेक्षित)।",
-	TokenExpiryPast:    "समाप्ति तारीख भविष्य में होनी चाहिए।",
+	TokenCannotCreate:       "एक्सेस टोकन दूसरे टोकन नहीं बना सकता: अपने पासवर्ड से साइन इन करें।",
+	TokenNameRequired:       "टोकन का नाम ज़रूरी है (अधिकतम 100 वर्ण)।",
+	TokenExpiryInvalid:      "अमान्य समाप्ति तारीख (YYYY-MM-DD अपेक्षित)।",
+	TokenExpiryPast:         "समाप्ति तारीख भविष्य में होनी चाहिए।",
+	TokenCreationRestricted: "आपके खाते को एक्सेस टोकन बनाने की अनुमति नहीं है: किसी एडमिनिस्ट्रेटर से पूछें।",
+	TokenPolicyInvalid:      "चुनें कि एक्सेस टोकन कौन बना सकता है: एडमिनिस्ट्रेटर, कोई समूह या सभी।",
 
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",
@@ -71,7 +73,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "अमान्य न्यूनतम पासवर्ड लंबाई: 8 से 128 वर्ण।",
 
 	// Audit log.
-	AuditRetentionInvalid: "अमान्य संरक्षण अवधि: दिनों की संख्या दें, सब कुछ रखने के लिए 0।",
+	AuditRetentionInvalid:  "अमान्य संरक्षण अवधि: दिनों की संख्या दें, सब कुछ रखने के लिए 0।",
+	AuditRetentionTooShort: "संरक्षण अवधि %d दिन से कम नहीं हो सकती (सब कुछ रखने के लिए 0)।",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice अभी इंस्टॉल नहीं हुआ है: /setup पर इंस्टॉलेशन पूरा करें।",
@@ -203,6 +206,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
 	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे डिलीट नहीं किया जा सकता।",
 	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: डिलीट की पुष्टि के लिए इसका नाम टाइप करें।",
+	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
+	CustomFieldOptionMoveTo:  "बदले में दिया गया विकल्प उसी फ़ील्ड का, उसी स्तर का कोई दूसरा विकल्प होना चाहिए।",
 
 	// Field values of an issue.
 	FieldUnknown:              "अज्ञात फ़ील्ड: %s।",
@@ -275,6 +280,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "अज्ञात प्राथमिकता।",
 	IssueResolutionUnknown:     "अज्ञात रिज़ॉल्यूशन।",
 	IssueDueDateInvalid:        "अमान्य नियत तारीख (YYYY-MM-DD अपेक्षित)।",
+	IssueEstimateInvalid:       "अमान्य समय अनुमान (उदाहरण: 1w 2d 3h 30m)।",
 	IssueSecurityLevelUnknown:  "इस प्रोजेक्ट में अज्ञात सुरक्षा स्तर।",
 	IssueReporterFixed:         "रिपोर्टर बदला नहीं जा सकता।",
 	IssueNoTodoStatus:          "“करना है” श्रेणी का कोई स्टेटस परिभाषित नहीं है।",
@@ -367,13 +373,18 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "किसी टिकट को उसी के सापेक्ष रैंक नहीं किया जा सकता।",
 
 	// Sprints.
-	SprintKanban:        "Kanban बोर्ड में स्प्रिंट नहीं होते।",
-	SprintUnknown:       "अज्ञात या पूरा हो चुका स्प्रिंट।",
-	SprintStarted:       "यह स्प्रिंट पहले ही शुरू हो चुका है।",
-	SprintAlreadyActive: "इस बोर्ड पर एक स्प्रिंट पहले से चल रहा है। पहले उसे पूरा करें।",
-	SprintEndPast:       "स्प्रिंट की समाप्ति तारीख भविष्य में होनी चाहिए।",
-	SprintNotActive:     "केवल चल रहे स्प्रिंट को ही पूरा किया जा सकता है।",
-	SprintTargetInvalid: "इस बोर्ड का कोई आगामी स्प्रिंट चुनें।",
+	SprintKanban:          "Kanban बोर्ड में स्प्रिंट नहीं होते।",
+	SprintUnknown:         "अज्ञात या पूरा हो चुका स्प्रिंट।",
+	SprintStarted:         "यह स्प्रिंट पहले ही शुरू हो चुका है।",
+	SprintAlreadyActive:   "इस बोर्ड पर एक स्प्रिंट पहले से चल रहा है। पहले उसे पूरा करें।",
+	SprintEndPast:         "स्प्रिंट की समाप्ति तारीख भविष्य में होनी चाहिए।",
+	SprintNotActive:       "केवल चल रहे स्प्रिंट को ही पूरा किया जा सकता है।",
+	SprintTargetInvalid:   "इस बोर्ड का कोई आगामी स्प्रिंट चुनें।",
+	SprintNameRequired:    "स्प्रिंट का नाम ज़रूरी है।",
+	SprintClosedLocked:    "पूरा हो चुका स्प्रिंट बदला नहीं जा सकता।",
+	SprintDatesOrder:      "स्प्रिंट अपनी शुरुआत के बाद खत्म होना चाहिए।",
+	SprintStartFuture:     "सक्रिय स्प्रिंट भविष्य में शुरू नहीं हो सकता।",
+	SprintDeleteNotFuture: "केवल आगामी स्प्रिंट को मिटाया जा सकता है।",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",

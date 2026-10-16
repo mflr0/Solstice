@@ -26,8 +26,7 @@ Conventions (as for the rest of `/api`):
 - Every change below is written to the audit log (`GET /api/admin/audit`),
   action names in parentheses.
 
-Status: **contract fixed, backend implementation in progress** (this line
-will say when every endpoint below is live).
+Status: every endpoint below is live.
 
 ---
 
@@ -362,7 +361,9 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   its issues (or links) then move there, with history. The last issue type
   cannot go.
 - Statuses: create/rename/delete stay on `POST /api/statuses`,
-  `PATCH|DELETE /api/statuses/{id}`.
+  `PATCH|DELETE /api/statuses/{id}`. `GET /api/admin/statuses/{id}/usage` →
+  where one is used: `{workflows: [{id, name, project: {id, key, name}}],
+  boards: [{id, name, column}], projects: [{key, name, issues}]}`.
 
 (`issuetype.*`, `priority.*`, `resolution.*`, `linktype.*`, `status.order`)
 
@@ -395,7 +396,16 @@ fields created here behave alike (issue view, REST API, JQL).
   `POST /api/admin/fields/{id}/options` `{value}`,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
+  Each option of the detail counts its `issues` (those with it, or an option
+  under it, chosen) and its `children` (options under it, for a cascading field
+  imported from Jira; only the top level is listed).
   A disabled option keeps its values but cannot be chosen any more.
+  `DELETE /api/admin/fields/{id}/options/{optionId}` body optional
+  `{moveTo?: optionId, clear?: true}` → field detail. Options under it (a
+  cascading field's children) go too. An option issues have chosen: 409
+  `{usage: {issues}}` unless `moveTo` names another option of the field at the
+  same level (400 otherwise; their value moves there, an issue already holding
+  it keeps one) or `clear` is true (their value goes).
   (`field.create|update|delete|options`)
 
 For issue forms (signed in, browse permission):
@@ -494,3 +504,46 @@ Solstice's own configuration survives it, from the administration and from
   filter subscriptions, project notification settings, e-mails waiting to be
   sent, notification batches, webhook deliveries. Audit entries stay; their
   link to an account is restored by user name.
+
+---
+
+## 11. Access tokens and audit log
+
+Personal access tokens (`Authorization: Bearer sol_…`):
+
+- `GET /api/me/tokens` → the user's own tokens `[{id, name, created, expires,
+  lastUsed, expired}]`; `POST /api/me/tokens` `{name, expires?}` → 201 with the
+  same plus `token`, the secret, readable this once; `DELETE
+  /api/me/tokens/{id}`. (`token.create`, `token.revoke`)
+- `GET /api/me/tokens/policy` → `{canCreate}`: whether the current user may
+  create a token now (false for a request signed in with a token, and for
+  users the policy below leaves out).
+- `GET /api/admin/tokens?user=<name>` → everyone's tokens, each with its
+  `user` (`userRef`); `DELETE /api/admin/tokens/{id}` revokes any.
+- `GET /api/admin/tokens/settings` → `{who: everyone|admins|group, group:
+  idName | null}`; `PUT` the same with `group` as an id: who may create
+  tokens. Administrators always may; the default is everyone. Creating a
+  token against the policy answers 403. Tokens that exist keep working.
+  (`settings.tokens`)
+
+Audit log:
+
+- `GET /api/admin/audit?user=&action=&from=&to=&q=&page=` → `{total, page, size,
+  entries: [{id, created, user, username, ip, action, target, details}]}`,
+  newest first, 50 a page. `action` is exact or a family (`user` matches
+  `user.*`); `from`/`to` are dates (inclusive) or instants; `q` searches the
+  target, user name, address and details.
+- `GET /api/admin/audit/settings` → `{retentionDays}`; `PUT` the same:
+  `0` keeps everything, otherwise 30 to 36500 days (400 below 30).
+  Shortening purges at once. (`settings.audit`)
+
+Filter subscriptions (scheduled e-mail of a filter's results):
+
+- `GET /api/filters/{id}/subscriptions`, `POST` (create), `PUT
+  /api/filters/{id}/subscriptions/{sid}`, `DELETE …/{sid}`, `POST …/{sid}/run`
+  work on one filter. Body: `{schedule: daily|weekly, days: [1-7], hour:
+  0-23, emptyToo, group?}`; `group` (an id) subscribes a group, administrators only.
+- `GET /api/me/subscriptions` → the subscriptions the user receives (their own
+  or a group's they belong to) or created, on the filters they still see,
+  each as above plus `filterName`, by filter name. Administrators get their
+  own here, not everyone's.

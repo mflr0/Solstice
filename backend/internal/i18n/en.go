@@ -45,10 +45,12 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountInviteEmailRequired:       "An invitation needs the person's email address.",
 
 	// Access tokens.
-	TokenCannotCreate:  "An access token cannot create other tokens: sign in with your password.",
-	TokenNameRequired:  "The token needs a name (100 characters at most).",
-	TokenExpiryInvalid: "Invalid expiry date (YYYY-MM-DD expected).",
-	TokenExpiryPast:    "The expiry date must be in the future.",
+	TokenCannotCreate:       "An access token cannot create other tokens: sign in with your password.",
+	TokenNameRequired:       "The token needs a name (100 characters at most).",
+	TokenExpiryInvalid:      "Invalid expiry date (YYYY-MM-DD expected).",
+	TokenExpiryPast:         "The expiry date must be in the future.",
+	TokenCreationRestricted: "Creating access tokens is not allowed for your account: ask an administrator.",
+	TokenPolicyInvalid:      "Choose who may create access tokens: administrators, a group or everyone.",
 
 	// Groups.
 	GroupNotFound:   "Group not found.",
@@ -68,7 +70,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Invalid minimum password length: 8 to 128 characters.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Invalid retention period: a number of days, 0 to keep everything.",
+	AuditRetentionInvalid:  "Invalid retention period: a number of days, 0 to keep everything.",
+	AuditRetentionTooShort: "The retention period cannot be shorter than %d days (0 keeps everything).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice is not set up yet: finish the setup at /setup.",
@@ -200,6 +203,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "An option's text is 255 characters at most.",
 	CustomFieldUsedByBoards:  "This field is used by the boards: it cannot be deleted.",
 	CustomFieldDeleteConfirm: "Some issues have a value in this field: type its name to confirm the deletion.",
+	CustomFieldOptionInUse:   "Some issues have this option chosen: choose another option to move them to, or clear their value.",
+	CustomFieldOptionMoveTo:  "The replacement must be another option of the same field, at the same level.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Unknown field: %s.",
@@ -272,6 +277,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Unknown priority.",
 	IssueResolutionUnknown:     "Unknown resolution.",
 	IssueDueDateInvalid:        "Invalid due date (YYYY-MM-DD expected).",
+	IssueEstimateInvalid:       "Invalid time estimate (for example 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unknown security level in this project.",
 	IssueReporterFixed:         "The reporter cannot be changed.",
 	IssueNoTodoStatus:          "No “to do” status is defined.",
@@ -364,13 +370,18 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "An issue cannot be ranked relative to itself.",
 
 	// Sprints.
-	SprintKanban:        "A Kanban board has no sprints.",
-	SprintUnknown:       "Unknown or completed sprint.",
-	SprintStarted:       "This sprint has already started.",
-	SprintAlreadyActive: "A sprint is already active on this board. Complete it first.",
-	SprintEndPast:       "The sprint end date must be in the future.",
-	SprintNotActive:     "Only an active sprint can be completed.",
-	SprintTargetInvalid: "Choose an upcoming sprint of this board.",
+	SprintKanban:          "A Kanban board has no sprints.",
+	SprintUnknown:         "Unknown or completed sprint.",
+	SprintStarted:         "This sprint has already started.",
+	SprintAlreadyActive:   "A sprint is already active on this board. Complete it first.",
+	SprintEndPast:         "The sprint end date must be in the future.",
+	SprintNotActive:       "Only an active sprint can be completed.",
+	SprintTargetInvalid:   "Choose an upcoming sprint of this board.",
+	SprintNameRequired:    "The sprint needs a name.",
+	SprintClosedLocked:    "A completed sprint cannot be changed.",
+	SprintDatesOrder:      "The sprint must end after it starts.",
+	SprintStartFuture:     "An active sprint cannot start in the future.",
+	SprintDeleteNotFuture: "Only an upcoming sprint can be deleted.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "A filter name is required (255 characters at most).",

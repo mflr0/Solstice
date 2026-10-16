@@ -61,6 +61,8 @@ type optionOut struct {
 	Value    string `json:"value"`
 	Disabled bool   `json:"disabled"`
 	Position int    `json:"position"`
+	Issues   int    `json:"issues"`   // issues with this option (or one under it) chosen
+	Children int    `json:"children"` // options under it (cascading fields)
 }
 
 type fieldContext struct {
@@ -148,15 +150,20 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 	}
 	f := list[0]
 	options := []optionOut{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, value, disabled, position FROM custom_field_options
-		WHERE field_id = ? AND parent_id IS NULL ORDER BY position, id`, func(rows *sql.Rows) error {
-		var o optionOut
-		if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position); err != nil {
-			return err
-		}
-		options = append(options, o)
-		return nil
-	}, id); err != nil {
+	if err := sqlq.Each(ctx, s.db, `SELECT o.id, o.value, o.disabled, o.position,
+		(SELECT COUNT(DISTINCT v.issue_id) FROM custom_field_values v WHERE v.field_id = o.field_id
+			AND v.string_value IN (SELECT CAST(c.id AS CHAR) FROM custom_field_options c
+				WHERE c.id = o.id OR c.parent_id = o.id)),
+		(SELECT COUNT(*) FROM custom_field_options c WHERE c.parent_id = o.id)
+		FROM custom_field_options o WHERE o.field_id = ? AND o.parent_id IS NULL ORDER BY o.position, o.id`,
+		func(rows *sql.Rows) error {
+			var o optionOut
+			if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position, &o.Issues, &o.Children); err != nil {
+				return err
+			}
+			options = append(options, o)
+			return nil
+		}, id); err != nil {
 		return nil, err
 	}
 	f.Options = options
@@ -634,6 +641,115 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
 			details)
 	}
+	return s.writeField(w, r, f.ID)
+}
+
+// deleteFieldOption removes an option, and the options under it (a cascading
+// field's children). An option some issues have chosen is refused (409 with
+// the number of issues) unless the body names where their value goes
+// (`moveTo`, another option of the field at the same level) or asks to
+// clear it (`clear`).
+func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error {
+	f, err := s.optionField(r)
+	if err != nil {
+		return err
+	}
+	option, err := pathID(r, "option")
+	if err != nil {
+		return err
+	}
+	var in struct {
+		MoveTo *int64 `json:"moveTo"`
+		Clear  bool   `json:"clear"`
+	}
+	if r.ContentLength != 0 {
+		if err := readJSON(r, &in); err != nil {
+			return err
+		}
+	}
+	ctx := r.Context()
+	var value string
+	var parent sql.NullInt64
+	err = s.db.QueryRowContext(ctx, `SELECT value, parent_id FROM custom_field_options WHERE id = ? AND field_id = ?`,
+		option, f.ID).Scan(&value, &parent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errNotFound
+	}
+	if err != nil {
+		return err
+	}
+	// The option and those under it: their ids are what values hold.
+	gone := []int64{option}
+	if err := sqlq.Each(ctx, s.db, `SELECT id FROM custom_field_options WHERE parent_id = ? AND field_id = ?`,
+		func(rows *sql.Rows) error {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			gone = append(gone, id)
+			return nil
+		}, option, f.ID); err != nil {
+		return err
+	}
+	marks := sqlq.Marks(len(gone))
+	args := []any{f.ID}
+	for _, id := range gone {
+		args = append(args, strconv.FormatInt(id, 10))
+	}
+	var issues int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT issue_id) FROM custom_field_values
+		WHERE field_id = ? AND string_value IN (`+marks+`)`, args...).Scan(&issues); err != nil {
+		return err
+	}
+	var target string
+	if in.MoveTo != nil {
+		var n int
+		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_field_options WHERE id = ? AND field_id = ?
+			AND parent_id <=> ? AND id <> ?`, *in.MoveTo, f.ID, parent, option).Scan(&n); err != nil {
+			return err
+		}
+		if n == 0 {
+			return fail(http.StatusBadRequest, i18n.CustomFieldOptionMoveTo)
+		}
+		target = strconv.FormatInt(*in.MoveTo, 10)
+	}
+	if issues > 0 && target == "" && !in.Clear {
+		return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": map[string]int{"issues": issues}},
+			msg: i18n.M(i18n.CustomFieldOptionInUse)}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if target != "" && issues > 0 {
+		// An issue already holding the target (a multiple choice) keeps one value.
+		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ? AND string_value = ?
+			AND issue_id IN (SELECT issue_id FROM (SELECT issue_id FROM custom_field_values
+				WHERE field_id = ? AND string_value = ?) t)`, f.ID, strconv.FormatInt(option, 10), f.ID, target); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE custom_field_values SET string_value = ?
+			WHERE field_id = ? AND string_value = ?`, target, f.ID, strconv.FormatInt(option, 10)); err != nil {
+			return err
+		}
+	}
+	// What is left (cleared values, children's values) goes with the option.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ? AND string_value IN (`+marks+`)`,
+		args...); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_options WHERE id = ? AND field_id = ?`, option, f.ID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	details := map[string]any{"removed": value, "issues": issues}
+	if target != "" {
+		details["movedTo"] = target
+	}
+	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name}, details)
 	return s.writeField(w, r, f.ID)
 }
 

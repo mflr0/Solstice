@@ -1,4 +1,4 @@
-package api
+package tests
 
 // Integration tests of e-mail notifications, filter subscriptions, due-date
 // reminders and webhooks. Each runs its own server with e-mail switched on
@@ -6,7 +6,6 @@ package api
 // handled, batches written as if their time had come, e-mails sent.
 
 import (
-	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -14,9 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -24,68 +21,25 @@ import (
 	"testing"
 	"time"
 
+	"solstice/internal/api"
 	"solstice/internal/mail/mailtest"
 )
 
-// nclient talks to a test's own server.
-type nclient struct {
-	t    *testing.T
-	base string
-	http *http.Client
-}
-
-func (c *nclient) do(method, path string, body any) (int, []byte) {
-	c.t.Helper()
-	var r io.Reader
-	if body != nil {
-		b, _ := json.Marshal(body)
-		r = bytes.NewReader(b)
-	}
-	req, _ := http.NewRequest(method, c.base+path, r)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(csrfHeader, "1")
-	resp, err := c.http.Do(req)
-	if err != nil {
-		c.t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-	return resp.StatusCode, out
-}
-
-// call does a request that must answer want, and decodes the answer.
-func (c *nclient) call(method, path string, body any, want int, out any) []byte {
-	c.t.Helper()
-	status, raw := c.do(method, path, body)
-	if status != want {
-		c.t.Fatalf("%s %s: %d, want %d\n%s", method, path, status, want, raw)
-	}
-	if out != nil {
-		if err := json.Unmarshal(raw, out); err != nil {
-			c.t.Fatalf("%s %s: %v\n%s", method, path, err, raw)
-		}
-	}
-	return raw
-}
-
 type notifyEnv struct {
-	t    *testing.T
-	srv  *Server
-	base string
-	smtp *mailtest.Server
+	t     *testing.T
+	hooks api.TestHooks
+	base  string
+	smtp  *mailtest.Server
 }
 
 // newNotifyEnv starts a server with e-mail on, sent to a fake SMTP server.
 func newNotifyEnv(t *testing.T) *notifyEnv {
-	if testDB == nil {
-		t.Skip("SOLSTICE_TEST_DB not set: integration test skipped")
-	}
+	needDB(t)
 	mailtest.Lock(t, testDB)
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := New(testDB, t.TempDir(), time.UTC, log)
+	srv := api.New(testDB, t.TempDir(), time.UTC, quiet())
 	srv.SetBaseURL("https://tickets.exemple.fr")
 	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
-	env := &notifyEnv{t: t, srv: srv, base: ts.URL, smtp: mailtest.Start(t)}
+	env := &notifyEnv{t: t, hooks: srv.TestHooks(), base: ts.URL, smtp: mailtest.Start(t)}
 	reset := func() {
 		for _, q := range []string{`DELETE FROM settings WHERE name = 'mail'`, `DELETE FROM notification_batches`,
 			`DELETE FROM mail_outbox`, `DELETE FROM notification_prefs`, `DELETE FROM project_notifications`,
@@ -107,12 +61,9 @@ func newNotifyEnv(t *testing.T) *notifyEnv {
 	return env
 }
 
-func (e *notifyEnv) login(username, password string) *nclient {
+func (e *notifyEnv) login(username, password string) *client {
 	e.t.Helper()
-	jar, _ := cookiejar.New(nil)
-	c := &nclient{t: e.t, base: e.base, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
-	c.call("POST", "/api/login", map[string]string{"username": username, "password": password}, 200, nil)
-	return c
+	return loginAt(e.t, e.base, username, password)
 }
 
 // deliverAt handles the events published so far, writes the batches due
@@ -121,15 +72,11 @@ func (e *notifyEnv) login(username, password string) *nclient {
 func (e *notifyEnv) deliverAt(d time.Duration) []mailtest.Message {
 	e.t.Helper()
 	ctx := context.Background()
-	e.srv.out.bus.Wait()
-	n := e.srv.out.notify
-	n.Now = func() time.Time { return time.Now().Add(d) }
-	err := n.FlushDue(ctx)
-	n.Now = time.Now
-	if err != nil {
+	e.hooks.Settle()
+	if err := e.hooks.FlushNotifications(ctx, time.Now().Add(d)); err != nil {
 		e.t.Fatal(err)
 	}
-	if _, err := e.srv.out.outbox.SendDue(ctx); err != nil {
+	if err := e.hooks.SendMail(ctx); err != nil {
 		e.t.Fatal(err)
 	}
 	msgs := e.smtp.Messages()
@@ -156,35 +103,6 @@ func recipients(msgs []mailtest.Message) []string {
 		out = append(out, m.To)
 	}
 	return out
-}
-
-// createIssue creates an issue of the first standard type of a project.
-func createIssue(t *testing.T, c *nclient, project, summary, description string) string {
-	t.Helper()
-	var p struct {
-		IssueTypes []typeRef `json:"issueTypes"`
-	}
-	c.call("GET", "/api/projects/"+project, nil, 200, &p)
-	var typ string
-	for _, it := range p.IssueTypes {
-		if !it.Subtask {
-			typ = it.ID
-			break
-		}
-	}
-	var created struct{ Key string }
-	c.call("POST", "/api/issues", map[string]any{"project": project, "type": typ, "summary": summary,
-		"description": description}, 201, &created)
-	return created.Key
-}
-
-func issueID(t *testing.T, key string) string {
-	return pick(t, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+keyExpr+` = ?`, key)
-}
-
-func userID(t *testing.T, username string) int64 {
-	id, _ := strconv.ParseInt(pick(t, `SELECT id FROM users WHERE username = ?`, username), 10, 64)
-	return id
 }
 
 func TestNotificationRecipientsAndVisibility(t *testing.T) {
@@ -360,7 +278,7 @@ func TestNotificationPreferences(t *testing.T) {
 
 	// None: nothing at all, and what was waiting is dropped.
 	paul.call("POST", "/api/issues/"+key+"/comments", map[string]any{"body": "Encore un."}, 201, nil)
-	env.srv.out.bus.Wait()
+	env.hooks.Settle()
 	chloe.call("PUT", "/api/me/notifications", map[string]any{"delivery": "none"}, 200, nil)
 	if got := to(env.deliverAt(25*time.Hour), "chloe.simon@exemple.fr"); len(got) != 0 {
 		t.Error("e-mail sent although delivery is none")
@@ -474,7 +392,7 @@ func TestFilterSubscriptions(t *testing.T) {
 		time.Now().UTC().Add(-time.Minute), mine.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := env.srv.out.notify.RunSchedules(context.Background()); err != nil {
+	if err := env.hooks.RunSchedules(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got := to(env.deliver(), "paul.martin@exemple.fr"); len(got) != 1 {
@@ -529,7 +447,7 @@ func TestDueDateReminders(t *testing.T) {
 	}
 	env.deliver() // the assignment e-mails
 	ctx := context.Background()
-	if err := env.srv.out.notify.RunSchedules(ctx); err != nil {
+	if err := env.hooks.RunSchedules(ctx); err != nil {
 		t.Fatal(err)
 	}
 	got := to(env.deliver(), "hugo.robert@exemple.fr")
@@ -542,7 +460,7 @@ func TestDueDateReminders(t *testing.T) {
 		t.Errorf("reminder content:\n%s", text)
 	}
 	// Once a day.
-	env.srv.out.notify.RunSchedules(ctx)
+	env.hooks.RunSchedules(ctx)
 	if got := to(env.deliver(), "hugo.robert@exemple.fr"); len(got) != 0 {
 		t.Error("a second reminder the same day")
 	}
@@ -649,8 +567,8 @@ func TestWebhooks(t *testing.T) {
 	rc := newHookReceiver(t)
 	ctx := context.Background()
 	deliver := func() []hookRequest {
-		env.srv.out.bus.Wait()
-		if _, err := env.srv.out.hooks.DeliverDue(ctx); err != nil {
+		env.hooks.Settle()
+		if err := env.hooks.DeliverWebhooks(ctx); err != nil {
 			t.Fatal(err)
 		}
 		return rc.take()

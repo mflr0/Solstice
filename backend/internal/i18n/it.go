@@ -47,10 +47,12 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountInviteEmailRequired:       "Un invito richiede l'indirizzo email della persona.",
 
 	// Access tokens.
-	TokenCannotCreate:  "Un token di accesso non può creare altri token: accedi con la tua password.",
-	TokenNameRequired:  "Il token ha bisogno di un nome (al massimo 100 caratteri).",
-	TokenExpiryInvalid: "Data di scadenza non valida (formato atteso AAAA-MM-GG).",
-	TokenExpiryPast:    "La data di scadenza deve essere nel futuro.",
+	TokenCannotCreate:       "Un token di accesso non può creare altri token: accedi con la tua password.",
+	TokenNameRequired:       "Il token ha bisogno di un nome (al massimo 100 caratteri).",
+	TokenExpiryInvalid:      "Data di scadenza non valida (formato atteso AAAA-MM-GG).",
+	TokenExpiryPast:         "La data di scadenza deve essere nel futuro.",
+	TokenCreationRestricted: "La creazione di token di accesso non è consentita al tuo account: chiedi a un amministratore.",
+	TokenPolicyInvalid:      "Scegli chi può creare token di accesso: gli amministratori, un gruppo o tutti.",
 
 	// Groups.
 	GroupNotFound:   "Gruppo non trovato.",
@@ -70,7 +72,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Lunghezza minima delle password non valida: da 8 a 128 caratteri.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Durata di conservazione non valida: un numero di giorni, 0 per conservare tutto.",
+	AuditRetentionInvalid:  "Durata di conservazione non valida: un numero di giorni, 0 per conservare tutto.",
+	AuditRetentionTooShort: "La durata di conservazione non può essere inferiore a %d giorni (0 per conservare tutto).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice non è ancora installato: completa l'installazione all'indirizzo /setup.",
@@ -202,6 +205,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "Un'opzione ha un testo di al massimo 255 caratteri.",
 	CustomFieldUsedByBoards:  "Questo campo serve al funzionamento delle board: non può essere eliminato.",
 	CustomFieldDeleteConfirm: "Alcuni ticket hanno un valore in questo campo: digita il suo nome per confermare l'eliminazione.",
+	CustomFieldOptionInUse:   "Alcuni ticket hanno scelto questa opzione: scegli un'altra opzione a cui spostarli, oppure cancella il loro valore.",
+	CustomFieldOptionMoveTo:  "Il sostituto deve essere un'altra opzione dello stesso campo, allo stesso livello.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Campo sconosciuto: %s.",
@@ -274,6 +279,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Priorità sconosciuta.",
 	IssueResolutionUnknown:     "Risoluzione sconosciuta.",
 	IssueDueDateInvalid:        "Scadenza non valida (formato atteso AAAA-MM-GG).",
+	IssueEstimateInvalid:       "Stima del tempo non valida (ad esempio 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Livello di sicurezza sconosciuto in questo progetto.",
 	IssueReporterFixed:         "Il segnalatore non può essere cambiato.",
 	IssueNoTodoStatus:          "Non è definito alcuno stato «da fare».",
@@ -366,13 +372,18 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Un ticket non può essere ordinato rispetto a sé stesso.",
 
 	// Sprints.
-	SprintKanban:        "Una board Kanban non ha sprint.",
-	SprintUnknown:       "Sprint sconosciuto o completato.",
-	SprintStarted:       "Questo sprint è già iniziato.",
-	SprintAlreadyActive: "Su questa board c'è già uno sprint attivo. Completalo prima.",
-	SprintEndPast:       "La fine dello sprint deve essere nel futuro.",
-	SprintNotActive:     "Solo uno sprint attivo può essere completato.",
-	SprintTargetInvalid: "Scegli uno sprint futuro di questa board.",
+	SprintKanban:          "Una board Kanban non ha sprint.",
+	SprintUnknown:         "Sprint sconosciuto o completato.",
+	SprintStarted:         "Questo sprint è già iniziato.",
+	SprintAlreadyActive:   "Su questa board c'è già uno sprint attivo. Completalo prima.",
+	SprintEndPast:         "La fine dello sprint deve essere nel futuro.",
+	SprintNotActive:       "Solo uno sprint attivo può essere completato.",
+	SprintTargetInvalid:   "Scegli uno sprint futuro di questa board.",
+	SprintNameRequired:    "Lo sprint ha bisogno di un nome.",
+	SprintClosedLocked:    "Uno sprint completato non può più essere modificato.",
+	SprintDatesOrder:      "Lo sprint deve finire dopo il suo inizio.",
+	SprintStartFuture:     "Uno sprint attivo non può iniziare nel futuro.",
+	SprintDeleteNotFuture: "Solo uno sprint futuro può essere eliminato.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",

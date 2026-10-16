@@ -50,10 +50,12 @@ const (
 
 // Access tokens.
 const (
-	TokenCannotCreate  Key = "TokenCannotCreate"
-	TokenNameRequired  Key = "TokenNameRequired"
-	TokenExpiryInvalid Key = "TokenExpiryInvalid" // #nosec G101 -- message key, not a credential
-	TokenExpiryPast    Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
+	TokenCannotCreate       Key = "TokenCannotCreate"
+	TokenNameRequired       Key = "TokenNameRequired"
+	TokenExpiryInvalid      Key = "TokenExpiryInvalid" // #nosec G101 -- message key, not a credential
+	TokenExpiryPast         Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
+	TokenCreationRestricted Key = "TokenCreationRestricted"
+	TokenPolicyInvalid      Key = "TokenPolicyInvalid"
 )
 
 // Groups.
@@ -81,7 +83,8 @@ const (
 
 // Audit log.
 const (
-	AuditRetentionInvalid Key = "AuditRetentionInvalid"
+	AuditRetentionInvalid  Key = "AuditRetentionInvalid"
+	AuditRetentionTooShort Key = "AuditRetentionTooShort"
 )
 
 // Setup: setup code, database, public address, first administrator.
@@ -229,6 +232,8 @@ const (
 	CustomFieldOptionTooLong Key = "CustomFieldOptionTooLong"
 	CustomFieldUsedByBoards  Key = "CustomFieldUsedByBoards"
 	CustomFieldDeleteConfirm Key = "CustomFieldDeleteConfirm"
+	CustomFieldOptionInUse   Key = "CustomFieldOptionInUse"
+	CustomFieldOptionMoveTo  Key = "CustomFieldOptionMoveTo"
 )
 
 // Field values of an issue.
@@ -311,6 +316,7 @@ const (
 	IssuePriorityUnknown       Key = "IssuePriorityUnknown"
 	IssueResolutionUnknown     Key = "IssueResolutionUnknown"
 	IssueDueDateInvalid        Key = "IssueDueDateInvalid"
+	IssueEstimateInvalid       Key = "IssueEstimateInvalid"
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
 	IssueNoTodoStatus          Key = "IssueNoTodoStatus"
@@ -419,13 +425,18 @@ const (
 
 // Sprints.
 const (
-	SprintKanban        Key = "SprintKanban"
-	SprintUnknown       Key = "SprintUnknown"
-	SprintStarted       Key = "SprintStarted"
-	SprintAlreadyActive Key = "SprintAlreadyActive"
-	SprintEndPast       Key = "SprintEndPast"
-	SprintNotActive     Key = "SprintNotActive"
-	SprintTargetInvalid Key = "SprintTargetInvalid"
+	SprintKanban          Key = "SprintKanban"
+	SprintUnknown         Key = "SprintUnknown"
+	SprintStarted         Key = "SprintStarted"
+	SprintAlreadyActive   Key = "SprintAlreadyActive"
+	SprintEndPast         Key = "SprintEndPast"
+	SprintNotActive       Key = "SprintNotActive"
+	SprintTargetInvalid   Key = "SprintTargetInvalid"
+	SprintNameRequired    Key = "SprintNameRequired"
+	SprintClosedLocked    Key = "SprintClosedLocked"
+	SprintDatesOrder      Key = "SprintDatesOrder"
+	SprintStartFuture     Key = "SprintStartFuture"
+	SprintDeleteNotFuture Key = "SprintDeleteNotFuture"
 )
 
 // Saved filters and their shares.

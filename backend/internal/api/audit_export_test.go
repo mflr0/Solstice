@@ -1,16 +1,8 @@
 package api
 
-// Tests of the audit log, the CSV export and the wiki renderer.
+// Tests of the CSV export's formula guard and the wiki renderer.
 
 import (
-	"bytes"
-	"encoding/csv"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
-	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +51,7 @@ func TestAuditLog(t *testing.T) {
 		}
 	}
 
+	allowTokensForEveryone(t)
 	paul := login(t, "paul.martin", "motdepasse")
 	status, body = paul.do("POST", "/api/me/tokens", map[string]any{"name": "jeton audité"})
 	if status != 201 {

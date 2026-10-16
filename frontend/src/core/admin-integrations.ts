@@ -117,7 +117,6 @@ export function tokenState(tok: Pick<AccessToken, 'expires' | 'expired'>, now: D
 export const AUDIT_FAMILIES = [
   'login',
   'password',
-  'profile',
   'token',
   'user',
   'admin',
@@ -139,6 +138,7 @@ export const AUDIT_FAMILIES = [
   'settings',
   'import',
   'update',
+  'setup',
   'webhook',
 ] as const;
 

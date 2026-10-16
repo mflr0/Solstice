@@ -7,6 +7,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
@@ -316,6 +317,119 @@ func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, s.restOut(r).agileSprint(sp, board))
+}
+
+// agileEditSprint changes a sprint as Jira's update does: name, goal, start
+// and end dates (an empty or null date clears one), and the state, which
+// starts a future sprint ("active") or completes an active one ("closed",
+// its open issues going back to the backlog). Starting takes the time it
+// is done as the start date. PUT is read like POST: what is not given is
+// left alone.
+func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	sp, _, err := s.pathSprint(r, sub)
+	if err != nil {
+		return err
+	}
+	var in map[string]json.RawMessage
+	if err := readRESTJSON(r, &in); err != nil {
+		return err
+	}
+	text := func(key string) (*string, bool, error) {
+		raw, ok := in[key]
+		if !ok {
+			return nil, false, nil
+		}
+		var v *string
+		if json.Unmarshal(raw, &v) != nil {
+			return nil, true, fieldError(key, failf(http.StatusBadRequest, i18n.FieldValueInvalid, key))
+		}
+		return v, true, nil
+	}
+	body := map[string]any{}
+	for _, f := range []struct{ key, to string }{{"name", "name"}, {"goal", "goal"}} {
+		v, ok, err := text(f.key)
+		if err != nil {
+			return err
+		}
+		if ok {
+			body[f.to] = v
+		}
+	}
+	var end any
+	for _, f := range []struct{ key, to string }{{"startDate", "start"}, {"endDate", "end"}} {
+		v, ok, err := text(f.key)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		body[f.to] = nil
+		if v != nil && strings.TrimSpace(*v) != "" {
+			t, ok := parseJiraTime(*v)
+			if !ok {
+				return fieldError(f.key, failf(http.StatusBadRequest, i18n.FieldValueInvalid, f.key))
+			}
+			body[f.to] = t
+		}
+		if f.to == "end" {
+			end = body[f.to]
+		}
+	}
+	state, _, err := text("state")
+	if err != nil {
+		return err
+	}
+	id := strconv.FormatInt(sp.ID, 10)
+	values := map[string]string{"id": id}
+	if len(body) > 0 {
+		if err := s.uiCall(r, s.editSprint, http.MethodPatch, "/api/sprints/"+id, values, body, nil); err != nil {
+			return err
+		}
+	}
+	switch {
+	case state == nil || *state == sp.State:
+	case *state == "active" && sp.State == "future":
+		start := map[string]any{}
+		if end != nil {
+			start["end"] = end
+		}
+		if err := s.uiCall(r, s.startSprint, http.MethodPost, "/api/sprints/"+id+"/start", values, start, nil); err != nil {
+			return err
+		}
+	case *state == "closed" && sp.State == "active":
+		if err := s.uiCall(r, s.completeSprint, http.MethodPost, "/api/sprints/"+id+"/complete", values,
+			map[string]any{}, nil); err != nil {
+			return err
+		}
+	default:
+		return fieldError("state", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "state"))
+	}
+	return s.agileSprint(w, r)
+}
+
+// agileDeleteSprint deletes a sprint that has not started; its issues go
+// back to the backlog.
+func (s *Server) agileDeleteSprint(w http.ResponseWriter, r *http.Request) error {
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	sp, _, err := s.pathSprint(r, sub)
+	if err != nil {
+		return err
+	}
+	id := strconv.FormatInt(sp.ID, 10)
+	if err := s.uiCall(r, s.deleteSprint, http.MethodDelete, "/api/sprints/"+id, map[string]string{"id": id}, nil,
+		nil); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 // agileSprintIssues lists the issues in a sprint that the user sees.

@@ -181,8 +181,9 @@ func (s *Server) auditSettings(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]int{"retentionDays": days})
 }
 
-// putAuditSettings changes how long entries are kept: 0 keeps them forever.
-// Shortening the period purges at once.
+// putAuditSettings changes how long entries are kept: 0 keeps them forever,
+// otherwise at least audit.MinRetentionDays. Shortening the period purges at
+// once.
 func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -195,6 +196,9 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 	}
 	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > 36500 {
 		return fail(http.StatusBadRequest, i18n.AuditRetentionInvalid)
+	}
+	if days := *in.RetentionDays; days != 0 && days < audit.MinRetentionDays {
+		return failf(http.StatusBadRequest, i18n.AuditRetentionTooShort, audit.MinRetentionDays)
 	}
 	ctx := r.Context()
 	before, err := audit.Retention(ctx, s.db)
@@ -348,6 +352,11 @@ func (s *Server) workflowName(ctx context.Context, id int64) string {
 // auditBoard records a change to a board.
 func (s *Server) auditBoard(r *http.Request, action string, id int64, name string, details map[string]any) {
 	s.auditLog(r, action, audit.Target{Type: "board", ID: strconv.FormatInt(id, 10), Label: name}, details)
+}
+
+// auditSprint records a change to a sprint.
+func (s *Server) auditSprint(r *http.Request, action string, id int64, name string, details map[string]any) {
+	s.auditLog(r, action, audit.Target{Type: "sprint", ID: strconv.FormatInt(id, 10), Label: name}, details)
 }
 
 // boardChanges names what a change to a board's settings touched.

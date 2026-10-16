@@ -42,6 +42,8 @@ const (
 	BoardCreate    = "board.create"
 	BoardUpdate    = "board.update"
 	BoardDelete    = "board.delete"
+	SprintUpdate   = "sprint.update"
+	SprintDelete   = "sprint.delete"
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
 
@@ -92,6 +94,7 @@ const (
 	WebhookCreate        = "webhook.create"
 	WebhookUpdate        = "webhook.update"
 	WebhookDelete        = "webhook.delete"
+	SettingsTokens       = "settings.tokens"
 	// Catalogue items: "<kind>.create", "<kind>.update", "<kind>.delete",
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )
@@ -121,6 +124,11 @@ const RetentionSetting = "audit.retention_days"
 
 // DefaultRetentionDays applies while the setting was never changed.
 const DefaultRetentionDays = 365
+
+// MinRetentionDays is the shortest retention an administrator may set (0,
+// keeping everything, aside): a log that forgets within days cannot answer
+// who changed what last month.
+const MinRetentionDays = 30
 
 // purgeEvery spaces the purges that Record runs as it goes.
 const purgeEvery = time.Hour

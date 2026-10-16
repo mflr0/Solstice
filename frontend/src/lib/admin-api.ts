@@ -14,6 +14,7 @@ import type {
   ComponentRow,
   FieldInput,
   FieldRow,
+  FieldTypeInfo,
   GeneralSettings,
   GeneralSettingsInput,
   Group,
@@ -27,6 +28,7 @@ import type {
   ProjectRole,
   RoleRow,
   StatusRow,
+  StatusUsage,
   SystemInfo,
   UserInput,
   UserRow,
@@ -38,8 +40,10 @@ import type {
   MailSettingsInput,
   NotificationPrefs,
   ProjectNotifications,
+  MySubscription,
   Subscription,
   SubscriptionInput,
+  TokenSettings,
   Webhook,
   WebhookDelivery,
   WebhookInput,
@@ -127,12 +131,16 @@ export const adminApi = {
       moveTo !== undefined ? { moveTo } : {},
     ),
   statuses: () => request<StatusRow[]>('GET', '/api/admin/statuses'),
+  createStatus: (s: { name: string; category: string }) =>
+    request<{ id: string; name: string; category: string }>('POST', '/api/statuses', s),
+  statusUsage: (id: string) => request<StatusUsage>('GET', `/api/admin/statuses/${enc(id)}/usage`),
   updateStatus: (id: string, s: { name?: string; category?: string }) =>
     request<StatusRow>('PATCH', `/api/statuses/${enc(id)}`, s),
   deleteStatus: (id: string) => request<void>('DELETE', `/api/statuses/${enc(id)}`),
 
   // Custom fields.
   fields: () => request<FieldRow[]>('GET', '/api/admin/fields'),
+  fieldTypes: () => request<FieldTypeInfo[]>('GET', '/api/admin/fields/types'),
   field: (id: number) => request<FieldRow>('GET', `/api/admin/fields/${id}`),
   createField: (f: FieldInput) => request<FieldRow>('POST', '/api/admin/fields', f),
   updateField: (id: number, f: FieldInput) =>
@@ -143,6 +151,9 @@ export const adminApi = {
     request<FieldRow>('POST', `/api/admin/fields/${id}/options`, { value }),
   updateOption: (id: number, option: number, o: { value?: string; disabled?: boolean }) =>
     request<FieldRow>('PATCH', `/api/admin/fields/${id}/options/${option}`, o),
+  /** Removes an option; an option in use needs where its values go, or `clear`. */
+  deleteOption: (id: number, option: number, how: { moveTo?: number; clear?: boolean } = {}) =>
+    request<FieldRow>('DELETE', `/api/admin/fields/${id}/options/${option}`, how),
   orderOptions: (id: number, ids: number[]) =>
     request<FieldRow>('POST', `/api/admin/fields/${id}/options/order`, { ids }),
 
@@ -177,6 +188,10 @@ export const adminApi = {
   // Access tokens, everyone's.
   tokens: (user: string) => request<AccessToken[]>('GET', `/api/admin/tokens${query({ user })}`),
   revokeToken: (id: number) => request<void>('DELETE', `/api/admin/tokens/${id}`),
+  /** Who may create tokens. */
+  tokenSettings: () => request<TokenSettings>('GET', '/api/admin/tokens/settings'),
+  saveTokenSettings: (who: TokenSettings['who'], group?: number) =>
+    request<TokenSettings>('PUT', '/api/admin/tokens/settings', { who, group }),
 
   // Audit log.
   audit: (q: AuditQuery) =>
@@ -240,6 +255,8 @@ export const accountApi = {
   createToken: (name: string, expires: string | null) =>
     request<AccessToken>('POST', '/api/me/tokens', { name, expires }),
   revokeToken: (id: number) => request<void>('DELETE', `/api/me/tokens/${id}`),
+  /** Whether the instance lets this user create a token now. */
+  tokenPolicy: () => request<{ canCreate: boolean }>('GET', '/api/me/tokens/policy'),
 
   // E-mail notifications.
   notifications: () => request<NotificationPrefs>('GET', '/api/me/notifications'),
@@ -251,6 +268,8 @@ export const accountApi = {
     request<ProjectNotifications>('PUT', `/api/projects/${enc(key)}/notifications`, s),
 
   // Filter subscriptions.
+  /** Every subscription of the user, on every filter. */
+  mySubscriptions: () => request<MySubscription[]>('GET', '/api/me/subscriptions'),
   subscriptions: (filter: number) =>
     request<Subscription[]>('GET', `/api/filters/${filter}/subscriptions`),
   subscribe: (filter: number, s: SubscriptionInput) =>

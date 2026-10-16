@@ -253,6 +253,15 @@ export interface Worklog {
   seconds: number;
   body: string | null;
   visibility: Visibility | null;
+  /** Whether the user may edit or delete it: its author, or a moderator. */
+  canEdit: boolean;
+}
+
+/** What changing a work log sends; what is left out stays as it is. */
+export interface WorklogPatch {
+  started?: string;
+  seconds?: number;
+  body?: string;
 }
 
 export interface Project {

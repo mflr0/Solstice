@@ -377,6 +377,27 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 			return invalidValue(field)
 		}
 		return set("due", v)
+	case "timetracking":
+		// {"originalEstimate": "1w 2d", "remainingEstimate": "3h"}; what is
+		// not given stays as it is, "" or null clears.
+		var v map[string]*string
+		if json.Unmarshal(raw, &v) != nil {
+			return invalidValue(field)
+		}
+		for key, text := range v {
+			if key != "originalEstimate" && key != "remainingEstimate" {
+				return invalidValue(field)
+			}
+			if text != nil {
+				if _, ok := parseEstimate(*text); !ok && strings.TrimSpace(*text) != "" {
+					return fieldError(field, fail(http.StatusBadRequest, i18n.IssueEstimateInvalid))
+				}
+			}
+			if err := set(key, text); err != nil {
+				return err
+			}
+		}
+		return nil
 	case "labels":
 		var v []string
 		if json.Unmarshal(raw, &v) != nil {

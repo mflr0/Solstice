@@ -21,6 +21,11 @@ export function hasProblems(p: Problems<string>): boolean {
   return Object.values(p).some(Boolean);
 }
 
+/** Whether what was typed to confirm a deletion is the phrase asked for (spaces around ignored). */
+export function typedMatches(typed: string, phrase: string): boolean {
+  return phrase !== '' && typed.trim() === phrase;
+}
+
 /**
  * An e-mail address as the server takes it: one address, no display name,
  * something on both sides of a single "@" (the server has the last word).

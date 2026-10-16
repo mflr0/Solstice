@@ -47,10 +47,12 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountInviteEmailRequired:       "Für eine Einladung wird die E-Mail-Adresse der Person benötigt.",
 
 	// Access tokens.
-	TokenCannotCreate:  "Ein Zugriffstoken kann keine weiteren Token erstellen: Melden Sie sich mit Ihrem Passwort an.",
-	TokenNameRequired:  "Das Token braucht einen Namen (höchstens 100 Zeichen).",
-	TokenExpiryInvalid: "Ungültiges Ablaufdatum (JJJJ-MM-TT erwartet).",
-	TokenExpiryPast:    "Das Ablaufdatum muss in der Zukunft liegen.",
+	TokenCannotCreate:       "Ein Zugriffstoken kann keine weiteren Token erstellen: Melden Sie sich mit Ihrem Passwort an.",
+	TokenNameRequired:       "Das Token braucht einen Namen (höchstens 100 Zeichen).",
+	TokenExpiryInvalid:      "Ungültiges Ablaufdatum (JJJJ-MM-TT erwartet).",
+	TokenExpiryPast:         "Das Ablaufdatum muss in der Zukunft liegen.",
+	TokenCreationRestricted: "Das Erstellen von Zugriffstoken ist für Ihr Konto nicht erlaubt: Wenden Sie sich an einen Administrator.",
+	TokenPolicyInvalid:      "Wählen Sie, wer Zugriffstoken erstellen darf: Administratoren, eine Gruppe oder alle.",
 
 	// Groups.
 	GroupNotFound:   "Gruppe nicht gefunden.",
@@ -70,7 +72,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Ungültige Mindestlänge des Passworts: zwischen 8 und 128 Zeichen.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Ungültige Aufbewahrungsdauer: eine Anzahl von Tagen, 0 für unbegrenzt.",
+	AuditRetentionInvalid:  "Ungültige Aufbewahrungsdauer: eine Anzahl von Tagen, 0 für unbegrenzt.",
+	AuditRetentionTooShort: "Die Aufbewahrungsdauer darf nicht kürzer als %d Tage sein (0 für unbegrenzt).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice ist noch nicht eingerichtet: Schließen Sie die Einrichtung unter /setup ab.",
@@ -202,6 +205,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "Eine Option darf höchstens 255 Zeichen lang sein.",
 	CustomFieldUsedByBoards:  "Dieses Feld wird für die Funktion der Boards benötigt und kann nicht gelöscht werden.",
 	CustomFieldDeleteConfirm: "Einige Vorgänge haben einen Wert in diesem Feld: Geben Sie seinen Namen ein, um die Löschung zu bestätigen.",
+	CustomFieldOptionInUse:   "Bei einigen Vorgängen ist diese Option gewählt: Wählen Sie eine andere Option, auf die sie verschoben werden, oder löschen Sie ihren Wert.",
+	CustomFieldOptionMoveTo:  "Der Ersatz muss eine andere Option desselben Felds auf derselben Ebene sein.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Unbekanntes Feld: %s.",
@@ -274,6 +279,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Unbekannte Priorität.",
 	IssueResolutionUnknown:     "Unbekannte Lösung.",
 	IssueDueDateInvalid:        "Ungültiges Fälligkeitsdatum (JJJJ-MM-TT erwartet).",
+	IssueEstimateInvalid:       "Ungültige Zeitschätzung (zum Beispiel 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unbekannte Sicherheitsstufe in diesem Projekt.",
 	IssueReporterFixed:         "Der Melder kann nicht geändert werden.",
 	IssueNoTodoStatus:          "Es ist kein Status der Kategorie „Zu erledigen“ definiert.",
@@ -366,13 +372,18 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Ein Vorgang kann nicht relativ zu sich selbst eingeordnet werden.",
 
 	// Sprints.
-	SprintKanban:        "Ein Kanban-Board hat keine Sprints.",
-	SprintUnknown:       "Unbekannter oder abgeschlossener Sprint.",
-	SprintStarted:       "Dieser Sprint hat bereits begonnen.",
-	SprintAlreadyActive: "Auf diesem Board läuft bereits ein Sprint. Schließen Sie ihn zuerst ab.",
-	SprintEndPast:       "Das Sprint-Ende muss in der Zukunft liegen.",
-	SprintNotActive:     "Nur ein laufender Sprint kann abgeschlossen werden.",
-	SprintTargetInvalid: "Wählen Sie einen künftigen Sprint dieses Boards.",
+	SprintKanban:          "Ein Kanban-Board hat keine Sprints.",
+	SprintUnknown:         "Unbekannter oder abgeschlossener Sprint.",
+	SprintStarted:         "Dieser Sprint hat bereits begonnen.",
+	SprintAlreadyActive:   "Auf diesem Board läuft bereits ein Sprint. Schließen Sie ihn zuerst ab.",
+	SprintEndPast:         "Das Sprint-Ende muss in der Zukunft liegen.",
+	SprintNotActive:       "Nur ein laufender Sprint kann abgeschlossen werden.",
+	SprintTargetInvalid:   "Wählen Sie einen künftigen Sprint dieses Boards.",
+	SprintNameRequired:    "Der Sprint braucht einen Namen.",
+	SprintClosedLocked:    "Ein abgeschlossener Sprint kann nicht mehr geändert werden.",
+	SprintDatesOrder:      "Der Sprint muss nach seinem Beginn enden.",
+	SprintStartFuture:     "Ein aktiver Sprint kann nicht in der Zukunft beginnen.",
+	SprintDeleteNotFuture: "Nur ein künftiger Sprint kann gelöscht werden.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",
