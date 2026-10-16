@@ -350,6 +350,11 @@ func (s *Server) auditBoard(r *http.Request, action string, id int64, name strin
 	s.auditLog(r, action, audit.Target{Type: "board", ID: strconv.FormatInt(id, 10), Label: name}, details)
 }
 
+// auditSprint records a change to a sprint.
+func (s *Server) auditSprint(r *http.Request, action string, id int64, name string, details map[string]any) {
+	s.auditLog(r, action, audit.Target{Type: "sprint", ID: strconv.FormatInt(id, 10), Label: name}, details)
+}
+
 // boardChanges names what a change to a board's settings touched.
 func boardChanges(in boardInput) []string {
 	var out []string

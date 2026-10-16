@@ -361,13 +361,18 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "किसी टिकट को उसी के सापेक्ष रैंक नहीं किया जा सकता।",
 
 	// Sprints.
-	SprintKanban:        "Kanban बोर्ड में स्प्रिंट नहीं होते।",
-	SprintUnknown:       "अज्ञात या पूरा हो चुका स्प्रिंट।",
-	SprintStarted:       "यह स्प्रिंट पहले ही शुरू हो चुका है।",
-	SprintAlreadyActive: "इस बोर्ड पर एक स्प्रिंट पहले से चल रहा है। पहले उसे पूरा करें।",
-	SprintEndPast:       "स्प्रिंट की समाप्ति तारीख भविष्य में होनी चाहिए।",
-	SprintNotActive:     "केवल चल रहे स्प्रिंट को ही पूरा किया जा सकता है।",
-	SprintTargetInvalid: "इस बोर्ड का कोई आगामी स्प्रिंट चुनें।",
+	SprintKanban:          "Kanban बोर्ड में स्प्रिंट नहीं होते।",
+	SprintUnknown:         "अज्ञात या पूरा हो चुका स्प्रिंट।",
+	SprintStarted:         "यह स्प्रिंट पहले ही शुरू हो चुका है।",
+	SprintAlreadyActive:   "इस बोर्ड पर एक स्प्रिंट पहले से चल रहा है। पहले उसे पूरा करें।",
+	SprintEndPast:         "स्प्रिंट की समाप्ति तारीख भविष्य में होनी चाहिए।",
+	SprintNotActive:       "केवल चल रहे स्प्रिंट को ही पूरा किया जा सकता है।",
+	SprintTargetInvalid:   "इस बोर्ड का कोई आगामी स्प्रिंट चुनें।",
+	SprintNameRequired:    "स्प्रिंट का नाम ज़रूरी है।",
+	SprintClosedLocked:    "पूरा हो चुका स्प्रिंट बदला नहीं जा सकता।",
+	SprintDatesOrder:      "स्प्रिंट अपनी शुरुआत के बाद खत्म होना चाहिए।",
+	SprintStartFuture:     "सक्रिय स्प्रिंट भविष्य में शुरू नहीं हो सकता।",
+	SprintDeleteNotFuture: "केवल आगामी स्प्रिंट को मिटाया जा सकता है।",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",

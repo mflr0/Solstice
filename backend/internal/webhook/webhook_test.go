@@ -158,6 +158,18 @@ func TestWorklogEvents(t *testing.T) {
 	}
 }
 
+// A sprint that is changed or deleted fires its own event.
+func TestSprintEvents(t *testing.T) {
+	for kind, want := range map[events.Kind]string{events.SprintUpdated: SprintUpdated, events.SprintDeleted: SprintDeleted} {
+		if got := namesOf(kind); !slices.Equal(got, []string{want}) {
+			t.Errorf("namesOf(%s) = %v, want [%s]", kind, got, want)
+		}
+		if !slices.Contains(Events, want) {
+			t.Errorf("%s is not in the list of events", want)
+		}
+	}
+}
+
 // receiver records what webhooks receive and answers with a chosen status.
 type receiver struct {
 	mu     sync.Mutex

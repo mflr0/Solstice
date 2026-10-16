@@ -42,6 +42,8 @@ const (
 	BoardCreate    = "board.create"
 	BoardUpdate    = "board.update"
 	BoardDelete    = "board.delete"
+	SprintUpdate   = "sprint.update"
+	SprintDelete   = "sprint.delete"
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
 

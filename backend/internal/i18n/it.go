@@ -360,13 +360,18 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Un ticket non può essere ordinato rispetto a sé stesso.",
 
 	// Sprints.
-	SprintKanban:        "Una board Kanban non ha sprint.",
-	SprintUnknown:       "Sprint sconosciuto o completato.",
-	SprintStarted:       "Questo sprint è già iniziato.",
-	SprintAlreadyActive: "Su questa board c'è già uno sprint attivo. Completalo prima.",
-	SprintEndPast:       "La fine dello sprint deve essere nel futuro.",
-	SprintNotActive:     "Solo uno sprint attivo può essere completato.",
-	SprintTargetInvalid: "Scegli uno sprint futuro di questa board.",
+	SprintKanban:          "Una board Kanban non ha sprint.",
+	SprintUnknown:         "Sprint sconosciuto o completato.",
+	SprintStarted:         "Questo sprint è già iniziato.",
+	SprintAlreadyActive:   "Su questa board c'è già uno sprint attivo. Completalo prima.",
+	SprintEndPast:         "La fine dello sprint deve essere nel futuro.",
+	SprintNotActive:       "Solo uno sprint attivo può essere completato.",
+	SprintTargetInvalid:   "Scegli uno sprint futuro di questa board.",
+	SprintNameRequired:    "Lo sprint ha bisogno di un nome.",
+	SprintClosedLocked:    "Uno sprint completato non può più essere modificato.",
+	SprintDatesOrder:      "Lo sprint deve finire dopo il suo inizio.",
+	SprintStartFuture:     "Uno sprint attivo non può iniziare nel futuro.",
+	SprintDeleteNotFuture: "Solo uno sprint futuro può essere eliminato.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",

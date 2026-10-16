@@ -360,13 +360,18 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Ein Vorgang kann nicht relativ zu sich selbst eingeordnet werden.",
 
 	// Sprints.
-	SprintKanban:        "Ein Kanban-Board hat keine Sprints.",
-	SprintUnknown:       "Unbekannter oder abgeschlossener Sprint.",
-	SprintStarted:       "Dieser Sprint hat bereits begonnen.",
-	SprintAlreadyActive: "Auf diesem Board läuft bereits ein Sprint. Schließen Sie ihn zuerst ab.",
-	SprintEndPast:       "Das Sprint-Ende muss in der Zukunft liegen.",
-	SprintNotActive:     "Nur ein laufender Sprint kann abgeschlossen werden.",
-	SprintTargetInvalid: "Wählen Sie einen künftigen Sprint dieses Boards.",
+	SprintKanban:          "Ein Kanban-Board hat keine Sprints.",
+	SprintUnknown:         "Unbekannter oder abgeschlossener Sprint.",
+	SprintStarted:         "Dieser Sprint hat bereits begonnen.",
+	SprintAlreadyActive:   "Auf diesem Board läuft bereits ein Sprint. Schließen Sie ihn zuerst ab.",
+	SprintEndPast:         "Das Sprint-Ende muss in der Zukunft liegen.",
+	SprintNotActive:       "Nur ein laufender Sprint kann abgeschlossen werden.",
+	SprintTargetInvalid:   "Wählen Sie einen künftigen Sprint dieses Boards.",
+	SprintNameRequired:    "Der Sprint braucht einen Namen.",
+	SprintClosedLocked:    "Ein abgeschlossener Sprint kann nicht mehr geändert werden.",
+	SprintDatesOrder:      "Der Sprint muss nach seinem Beginn enden.",
+	SprintStartFuture:     "Ein aktiver Sprint kann nicht in der Zukunft beginnen.",
+	SprintDeleteNotFuture: "Nur ein künftiger Sprint kann gelöscht werden.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",
