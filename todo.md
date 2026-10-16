@@ -101,9 +101,34 @@ projects), after item 2 above, starting with an issue.
   browse (`GET /api/projects/{key}/workflows`), although ADMIN_API.md says
   global administrators configure every project. Fixed on
   `oc/review-fixes`, not merged yet.
+- Account menu (all themes): capped at 340 px by the generic `.popover`
+  rule in `frontend/src/app.css`, which overrides `.account-menu`'s own
+  max-height; the theme list is cut and Mode, Language and Sign out are below
+  the fold. Only Luna and Retro override it.
+- Orbite, light mode: account menu text is near-white on the white menu (it
+  inherits the top bar's ink colour, `themes/orbite.css`).
+- Retro: on pages using SettingsLayout, the eyebrow and title are white on
+  the grey window body and an empty title bar is drawn above them (the
+  title-bar style only matches `.page > .page-head`, `themes/retro.css`).
+- Classique: the NOVA scrum board's last column is cut at 1440 px, with no
+  sign that the board scrolls sideways.
+- Crayon: hand-drawn glyphs overhang their boxes by 3 to 5 px (nav links,
+  status stamp, count badges); anything with `overflow: hidden` clips them.
+- Carnet: home page tables stacked one above the other have unaligned
+  columns; the orange and red priority glyphs have low contrast on paper.
+- After a few quick reloads, pages can wait about 10 s on "Loading…":
+  likely stale `/api/events` streams using up the browser's 6 connections
+  per host (`frontend/src/lib/live.svelte.ts`); check the server closes the
+  stream when the client goes away.
+- Saved filters created with a board are named in French in every language
+  ("Tableau …", `internal/api/boards.go:1275`).
 - Search results table: the summary column collapses to about 22 px around
-  1024 px wide.
-- The "More" filter popover (320 px) opens partly off-screen at 1280 px.
+  1024 px wide, and to about 10 characters at 1440 px in the Terminal theme.
+- Visual pass not done yet: 390 px and 1024 px widths, backlog and
+  administration pages in the non-default themes.
+- The "More" filter popover (320 px) opens partly off-screen up to at least
+  1440 px (45 to 109 px past the edge depending on the theme, page scrolls
+  sideways): it is always left-aligned (`ui/search/FilterPopover.svelte`).
 - `/projects/KEY/settings` scrolls horizontally at 390 px.
 - Top bar navigation is clipped at 390 px.
 - Theme gallery previews: long labels overflow (Italian "Assegnatario"
