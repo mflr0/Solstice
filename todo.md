@@ -1,77 +1,86 @@
 # Solstice: what remains
 
-Status on 2026-10-15, branch `feat/v1.0`.
+Status on 2026-10-16. Work happens on `feat/v1.0` (CI green: vet, staticcheck,
+gosec and tests for the server; format, lint, tests and build for the
+interface). `main` is protected (pull request and green CI required, no force
+push) and has not been merged yet: it still holds the first version plus the
+current README, code of conduct and license, and it does not compile. Merging
+`feat/v1.0` into `main` is the maintainer's decision.
 
-## In progress (interrupted by a usage limit)
+## Working conventions
 
-These three pieces of work stopped mid-way; their files are committed as they
-were. Current state: the backend builds and passes `go vet`; the frontend unit
-tests pass (651), but `svelte-check` reports 190 type errors, almost all
-missing catalogue strings (`hooksAdmin`, `catalogAdmin`, some `account` keys):
-the admin pages exist, their texts do not yet.
+- Commits: plain messages, no `Co-Authored-By` line.
+- Private data: the maintainer's machine holds real Jira database dumps of a
+  customer (repository root, ignored by git). Never commit them, never let an
+  agent read them, never paste them into an AI tool. Use the synthetic data of
+  `backend/cmd/jira-fixture` (rule 6 of CODE_OF_CONDUCT.md).
+- Legal: no code, assets, fonts or styles from Atlassian or Microsoft, and no
+  brand names in themes. Jira is named only for migration, API compatibility
+  and the trademark note.
+- Design: no generic "AI" look (no purple gradients, glassmorphism, Inter
+  font, emojis).
+- Languages: English is the source (`frontend/src/i18n/en.ts`, Go string
+  literals); French, German, Italian and Hindi are translations. A new text
+  needs all five. Translations from cheap models need a meaning review: about
+  3% of the server messages they translated had lost their meaning.
+- Large changes start with an issue (rule 7 of CODE_OF_CONDUCT.md).
+- Delegating to opencode worked well with: one git worktree per task on an
+  `oc/*` branch (private files stay out of reach), a prompt with fixed rules,
+  a starting check, exact commands and expected outputs, a report file that is
+  not committed, and a review of every branch before cherry-picking it. The
+  prompts written so far live only on the first machine
+  (`~/Documents/Programming/solstice-opencode`).
 
-### 1. Administration API (backend)
+## Remaining for 1.0, in order
 
-- Contract: `backend/internal/api/ADMIN_API.md`; migration `0010_admin.sql`.
-- Covered by the contract: general and public settings, profile (`PATCH /api/me`),
-  users, groups, project roles, projects (create, update, archive, delete,
-  categories, components, versions with release and merge), catalogues (issue
-  types, priorities, resolutions, link types), custom fields, system
-  information, import from Jira from the administration, and what a replacing
-  import keeps.
-- Stopped while wiring `backend/cmd/solstice/main.go`.
-- To do: check each endpoint against the contract, finish the wiring, tests
-  (permissions included), full `./scripts/e2e-import.sh` run.
+1. Check the administration end to end against
+   `backend/internal/api/ADMIN_API.md`. It was written by agents that were
+   interrupted and never reviewed; a deadlock was already found and fixed
+   there. Also check the project settings tabs (general, components,
+   versions, notifications), the instance name and banner in the app shell,
+   and the "update available" badge.
+2. Run the API tests in CI. They need an imported database
+   (`SOLSTICE_TEST_DB`), today built from a Jira schema file that is not
+   versioned. Write a Go seeder for a synthetic Solstice database and run the
+   tests against a MariaDB service in the workflow. Needed before any large
+   refactoring.
+3. Review the administration and update code (an automated review was
+   started and stopped): permissions of every admin route, `go test -race`,
+   SQL, the root update helper, deletions and the replacing import.
+4. Security review: XSS (wiki rendering, editor), CSRF, security headers
+   (CSP, framing, referrer), sessions, uploads. Login throttling counts
+   failures per client address; behind a reverse proxy every client has the
+   proxy's address, so five failures lock everyone out for a minute: support
+   a trusted proxy header.
+5. Unit tests for `internal/perm` (who sees what); today only the API tests
+   cover it.
+6. Integrated updates: run the root helper in a systemd container (update
+   succeeds, bad checksum refused, unhealthy version rolled back).
+7. Meaning review of the interface translations (about 520 texts per
+   language) with a strong model; three Hindi link labels ("is blocked by"…)
+   need a native speaker.
+8. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
+   as its source: switch it to English like the rest.
+9. AGPL: a "Source code" link in the interface. Third-party notices: the
+   fonts (OFL-1.1) ship with the application and their license must come
+   with them.
+10. Documentation in English and French: installation, administration,
+    backups and restore, upgrades, reverse proxy (examples in
+    `deploy/proxy/`), REST API, `SECURITY.md`. A contact address for conduct
+    reports in CODE_OF_CONDUCT.md.
+11. Clean-up on the first machine: test databases, `.cache/`, the local
+    `backup/*` branches, the old `solstice` demo database.
+12. Release: privacy audit of the whole history, pull request from
+    `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
+    `SHA256SUMS` (the updater needs them), then a one-line installer.
 
-### 2. Administration and personal settings (frontend)
+## Refactoring (after 1.0, or with a freeze on `internal/api`)
 
-- Admin area `src/ui/admin/`: overview, settings, banner, users, groups, roles,
-  projects, catalogues, statuses, custom fields, mail, webhooks, tokens, audit,
-  import, system, updates.
-- Personal settings `src/ui/account/`: profile, appearance, notifications
-  (must stay at `/settings/notifications`: e-mails link there), subscriptions,
-  tokens.
-- To do:
-  - add the missing strings to the five catalogues (`fr`, `en`, `de`, `it`,
-    `hi`): webhooks (`hooksAdmin`), catalogues (`catalogAdmin`), account pages;
-  - project settings tabs: general, components, versions, notifications;
-  - show the instance name and the announcement banner in the app shell;
-  - check the skins (Carnet, Orbite, Rétro at least) in light and dark, at
-    1440 and 390 px;
-  - `pnpm lint` and `pnpm test` green.
-
-### 3. Integrated updates
-
-- Done so far: update check and apply API, `deploy/linux/update.sh` with
-  `solstice-update.path` and `solstice-update.service`, installer and release
-  script ship them, the Docker image sets `SOLSTICE_INSTALL=docker`, admin page
-  `src/ui/admin/UpdatesPage.svelte`.
-- To do: its strings (9 type errors), Go tests, a run of the helper in a
-  systemd container (update succeeds, bad checksum refused, unhealthy version
-  rolled back), link from the admin navigation, "update available" badge in
-  the account menu for administrators.
-
-## Remaining for 1.0
-
-- Security review and hardening: every endpoint (including the new admin and
-  update ones), XSS in wiki rendering and in the editor, uploads, sessions and
-  CSRF, security headers (CSP, framing, referrer), `govulncheck` and
-  `pnpm audit`.
-- Documentation in English and French: installation (Docker, Linux, from
-  source), administration (configuration, backups and restore, upgrades,
-  import, e-mail, webhooks, REST API, languages, themes), `SECURITY.md`.
-- Fix the known bugs below.
-- Clean-up: leftover test databases (`solstice_restagent`, `jira_restagent`,
-  and `solstice_admb` / `solstice_admui` if they remain), the old `solstice`
-  demo database and its test issues, `.cache/` scratch directories, stray Vite
-  dev servers.
-- Final verification: fresh install from a release archive and from Docker
-  through the setup wizard, a Jira import, backup and restore, end-to-end
-  suite, lint, tests.
-- Publish: privacy audit of the whole history, merge `feat/v1.0` into `main`,
-  tag `v1.0.0`, GitHub release with the archives and `SHA256SUMS` (the updater
-  needs them), then a one-line installer (`curl … | sudo sh`) fetching the
-  latest release.
+`internal/api` has 41 files mixing HTTP, business rules and SQL, and the
+issue logic likely exists twice: `issues.go` for the interface, and
+`rest_issues.go` / `rest_write.go` for the REST compatibility layer. Extract a
+shared service layer, one domain per pull request (issues, then boards, then
+projects), after item 2 above, starting with an issue.
 
 ## Known bugs and polish
 
@@ -85,8 +94,8 @@ the admin pages exist, their texts do not yet.
 - Terminal theme in Hindi: monospaced spaces look wide.
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
-- `solstice user passwd` (command line) is not written to the audit log.
-- Import warnings stay in French in the setup wizard.
+- The import report and warnings are in English only (not translated).
+- `internal/api/issues.go:1338` ignores the error of reading the `type` field.
 - Boards: no backlog column on Kanban boards; drag and drop does not work by
   touch (the card menu is used on phones); swimlane collapse buttons come late
   in the tab order; sprints cannot be edited before they start nor deleted;
