@@ -5,7 +5,8 @@
  * projectConfig).
  */
 
-import type { ExtraRecipient } from './admin-types.js';
+import { matches } from './admin-forms.js';
+import type { Category, ExtraRecipient } from './admin-types.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -93,6 +94,10 @@ export interface ProjectForm {
   access: AccessKind;
   accessId: number | null;
   description: string;
+  /** The issue types offered in the project; left out, the server offers them all. */
+  issueTypes?: string[];
+  /** Who new issues go to when nobody is chosen; left out, nobody. */
+  defaultAssignee?: 'unassigned' | 'lead';
 }
 
 export type ProjectProblem = 'nameRequired' | 'nameTooLong' | KeyProblem | 'accessRequired';
@@ -119,6 +124,8 @@ export function projectPayload(f: ProjectForm) {
     template: f.template,
     ...(description ? { description } : {}),
     ...(f.lead ? { lead: f.lead.id } : {}),
+    ...(f.issueTypes ? { issueTypes: f.issueTypes } : {}),
+    ...(f.defaultAssignee ? { defaultAssignee: f.defaultAssignee } : {}),
     category: f.category,
     access:
       f.access === 'everyone'
@@ -127,6 +134,75 @@ export function projectPayload(f: ProjectForm) {
           ? { holder: f.access, id: f.accessId }
           : null,
   };
+}
+
+/**
+ * The server wants at least one issue type that is not a sub-task: a
+ * project made only of sub-tasks could never hold a first issue.
+ */
+export function issueTypesProblem(
+  selected: readonly string[],
+  all: readonly { id: string; subtask: boolean }[],
+): 'typesRequired' | null {
+  return all.some((t) => !t.subtask && selected.includes(t.id)) ? null : 'typesRequired';
+}
+
+/* The administrators' list -------------------------------------------------- */
+
+export type ProjectShow = 'all' | 'active' | 'archived';
+
+export const PROJECT_SHOWS: readonly ProjectShow[] = ['all', 'active', 'archived'];
+
+/** The category filter: every project, those without one, or one category. */
+export type CategoryFilter = 'all' | 'none' | number;
+
+/** The page's filters as the address keeps them (?show=, ?category=). */
+export function parseShow(param: string | null): ProjectShow {
+  return (PROJECT_SHOWS as readonly string[]).includes(param ?? '')
+    ? (param as ProjectShow)
+    : 'all';
+}
+
+export function parseCategoryFilter(param: string | null): CategoryFilter {
+  if (param === 'none') return 'none';
+  const n = Number(param);
+  return param && Number.isInteger(n) && n > 0 ? n : 'all';
+}
+
+/** What the search box, the state and the category choose among the rows. */
+export function filterProjects<
+  R extends {
+    key: string;
+    name: string;
+    archived: boolean;
+    lead: { name: string; username: string } | null;
+    category: { id: number; name: string } | null;
+  },
+>(rows: readonly R[], q: string, show: ProjectShow, category: CategoryFilter): R[] {
+  return rows.filter((r) => {
+    if (show === 'active' && r.archived) return false;
+    if (show === 'archived' && !r.archived) return false;
+    if (category === 'none' && r.category) return false;
+    if (typeof category === 'number' && r.category?.id !== category) return false;
+    return matches(q, r.key, r.name, r.lead?.name, r.lead?.username, r.category?.name);
+  });
+}
+
+export type CategoryProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken';
+
+/** A category name: present, 255 characters at most, and not another's (any case). */
+export function categoryProblem(
+  name: string,
+  categories: readonly Pick<Category, 'id' | 'name'>[],
+  self: number | null,
+): CategoryProblem | null {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  if ([...n].length > 255) return 'nameTooLong';
+  const lower = n.toLowerCase();
+  return categories.some((c) => c.id !== self && c.name.trim().toLowerCase() === lower)
+    ? 'nameTaken'
+    : null;
 }
 
 /* Project settings tabs ----------------------------------------------------- */
