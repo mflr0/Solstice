@@ -263,8 +263,13 @@ func (s *Store) Subject(ctx context.Context, userID int64, admin bool) (*Subject
 }
 
 // holds reports whether the subject matches a grant. Without an issue,
-// reporter and assignee grants never match.
+// reporter and assignee grants never match. A subject without a user
+// (UserID 0) holds nothing: a project with no lead is cached with lead 0, and
+// an Everyone grant is meant for accounts, not for a visitor with none.
 func (s *Subject) holds(g Grant, project int64, is *Issue) bool {
+	if s.UserID == 0 {
+		return false
+	}
 	switch g.Holder {
 	case Everyone:
 		return true

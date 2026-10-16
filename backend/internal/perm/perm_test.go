@@ -230,11 +230,10 @@ func TestAnonymousVisitorGetsNoGrant(t *testing.T) {
 	}
 }
 
-// TestLeadGrantWithNoLeadMatchesAnonymous documents a possible bug: a project
-// whose lead_id is NULL is cached as lead 0, so the Lead grants of that project
-// match a subject whose UserID is 0 (an anonymous visitor).
+// TestLeadGrantWithNoLeadMatchesAnonymous checks that a project whose lead_id
+// is NULL (cached as lead 0) does not let its Lead grants match a subject
+// whose UserID is 0 (an anonymous visitor).
 func TestLeadGrantWithNoLeadMatchesAnonymous(t *testing.T) {
-	t.Skip("possible bug: a project with no lead (lead_id NULL, cached as 0) lets its Lead grants match a subject with UserID 0")
 	const p int64 = 7
 	r := testRules()
 	r.grant(p, Browse, Grant{Holder: Lead})
@@ -244,15 +243,18 @@ func TestLeadGrantWithNoLeadMatchesAnonymous(t *testing.T) {
 	}
 }
 
-// TestEveryoneGrantMatchesAnonymous documents that the Everyone holder is
-// unconditional: the package cannot tell an anonymous visitor from a
-// signed-in one; the API never builds a Subject for anonymous requests.
+// TestEveryoneGrantMatchesAnonymous checks that the Everyone holder does not
+// reach a subject without a user: the API never builds one for anonymous
+// requests, and such a subject holds no grant at all.
 func TestEveryoneGrantMatchesAnonymous(t *testing.T) {
 	const p int64 = 7
 	r := testRules()
 	r.grant(p, Browse, Grant{Holder: Everyone})
-	if !subject(r, 0, false).Can(Browse, p, nil) {
-		t.Error("Everyone grant did not match a subject with UserID 0")
+	if subject(r, 0, false).Can(Browse, p, nil) {
+		t.Error("Everyone grant matched a subject with UserID 0")
+	}
+	if !subject(r, 1, false).Can(Browse, p, nil) {
+		t.Error("Everyone grant did not match a signed-in user")
 	}
 }
 
