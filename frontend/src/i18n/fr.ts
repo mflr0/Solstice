@@ -488,6 +488,22 @@ export const fr: Messages = {
     } as Record<string, string>,
   },
 
+  jql: {
+    unclosedQuote: () => 'Guillemet non refermé.',
+    incompleteBang: () => 'Opérateur « ! » incomplet.',
+    unexpected: (token: string) => `« ${token} » inattendu.`,
+    orderBy: () => '« BY » attendu après « ORDER ».',
+    sortFieldExpected: () => 'Champ de tri attendu.',
+    parenExpected: () => 'Parenthèse fermante attendue.',
+    fieldExpected: () => 'Nom de champ attendu.',
+    notIn: () => '« IN » attendu après « NOT ».',
+    operatorExpected: (field: string) => `Opérateur attendu après « ${field} ».`,
+    isEmpty: () => "« IS » s'emploie avec EMPTY.",
+    changedOnly: (keyword: string) => `« ${keyword} » ne s'emploie qu'avec CHANGED.`,
+    duringDates: () => 'DURING attend deux dates entre parenthèses.',
+    argumentInvalid: (name: string) => `Argument de ${name}() invalide.`,
+    valueExpected: () => 'Valeur attendue.',
+  },
   quick: {
     label: 'Recherche rapide',
     placeholder: 'Rechercher des tickets, une clé, une personne…',

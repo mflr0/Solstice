@@ -1,7 +1,6 @@
 /**
- * Italian. Translated from French (fr.ts), terms checked against en.ts and
- * the glossary in src/i18n/README.md. Informal « tu », «…» quotes, sentence
- * case.
+ * Italian. Translated from English (en.ts), terms from the glossary in
+ * src/i18n/README.md. Informal « tu », «…» quotes, sentence case.
  */
 
 import { parseDay } from '../core/dates.js';
@@ -487,6 +486,22 @@ export const it: Messages = {
     },
   },
 
+  jql: {
+    unclosedQuote: () => 'Virgolette non chiuse.',
+    incompleteBang: () => 'Operatore «!» incompleto.',
+    unexpected: (token: string) => `«${token}» imprevisto.`,
+    orderBy: () => 'Atteso «BY» dopo «ORDER».',
+    sortFieldExpected: () => 'Atteso un campo di ordinamento.',
+    parenExpected: () => 'Attesa una parentesi chiusa.',
+    fieldExpected: () => 'Atteso il nome di un campo.',
+    notIn: () => 'Atteso «IN» dopo «NOT».',
+    operatorExpected: (field: string) => `Atteso un operatore dopo «${field}».`,
+    isEmpty: () => '«IS» si usa con EMPTY.',
+    changedOnly: (keyword: string) => `«${keyword}» si usa solo con CHANGED.`,
+    duringDates: () => 'DURING richiede due date tra parentesi.',
+    argumentInvalid: (name: string) => `Argomento di ${name}() non valido.`,
+    valueExpected: () => 'Atteso un valore.',
+  },
   quick: {
     label: 'Ricerca rapida',
     placeholder: 'Cerca ticket, chiavi, persone…',

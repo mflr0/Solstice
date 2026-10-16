@@ -39,7 +39,7 @@ type Service struct {
 	BaseURL func() string
 	// Zone is the time zone of hours (digests, reminders, subscriptions);
 	// by default the one given to New. DefaultLocale is the language of
-	// e-mails to people who chose none (by default French).
+	// e-mails to people who chose none (by default English).
 	Zone          func() *time.Location
 	DefaultLocale func() string
 	// Window is how long changes to an issue wait for more before being

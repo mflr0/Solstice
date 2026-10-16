@@ -213,8 +213,7 @@ describe('jqlToFilters', () => {
   it('reports syntax errors', () => {
     const r = jqlToFilters('status in (Open');
     expect(r.ok).toBe(false);
-    if (!r.ok && r.reason === 'syntax')
-      expect(r.error.message).toBe('Parenthèse fermante attendue.');
+    if (!r.ok && r.reason === 'syntax') expect(r.error.code).toBe('parenExpected');
     else throw new Error('expected a syntax error');
   });
 });

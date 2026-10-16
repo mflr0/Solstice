@@ -171,7 +171,7 @@ export const it: SetupMessages = {
     reportSkipped: 'Ignorati',
     skippedHint: 'Ignorati: riferimenti orfani in Jira, oppure dati che Solstice non riprende.',
     warnings: 'Da verificare',
-    warningsNote: "L'importazione scrive queste note in francese.",
+    warningsNote: "L'importazione scrive queste note in inglese.",
     chooseTitle: 'Chi amministra Solstice?',
     chooseLead:
       'Scegli un account importato: mantiene la sua password di Jira. Gli amministratori di Jira sono già amministratori di Solstice.',

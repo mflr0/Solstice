@@ -1,8 +1,7 @@
 /**
- * Hindi, in Devanagari. Translated from French (fr.ts), terms checked
- * against en.ts and the glossary in src/i18n/README.md. Polite आप, “…”
- * quotes, sentences end with ।; numbers, dates and plurals come from the
- * format helpers.
+ * Hindi, in Devanagari. Translated from English (en.ts), terms from the
+ * glossary in src/i18n/README.md. Polite आप, “…” quotes, sentences end with
+ * ।; numbers, dates and plurals come from the format helpers.
  */
 
 import { parseDay } from '../core/dates.js';
@@ -489,6 +488,23 @@ export const hi: Messages = {
     },
   },
 
+  jql: {
+    unclosedQuote: () => 'उद्धरण चिह्न बंद नहीं किया गया।',
+    incompleteBang: () => 'अधूरा ऑपरेटर “!”।',
+    unexpected: (token: string) => `अनपेक्षित “${token}”।`,
+    orderBy: () => '“ORDER” के बाद “BY” अपेक्षित है।',
+    sortFieldExpected: () => 'सॉर्ट फ़ील्ड अपेक्षित है।',
+    parenExpected: () => 'बंद कोष्ठक अपेक्षित है।',
+    fieldExpected: () => 'फ़ील्ड का नाम अपेक्षित है।',
+    notIn: () => '“NOT” के बाद “IN” अपेक्षित है।',
+    operatorExpected: (field: string) => `“${field}” के बाद ऑपरेटर अपेक्षित है।`,
+    isEmpty: () => '“IS” का इस्तेमाल EMPTY के साथ होता है।',
+    changedOnly: (keyword: string) =>
+      `“${keyword}” का इस्तेमाल केवल CHANGED के साथ किया जा सकता है।`,
+    duringDates: () => 'DURING के लिए कोष्ठक में दो तारीखें अपेक्षित हैं।',
+    argumentInvalid: (name: string) => `${name}() का आर्ग्युमेंट अमान्य है।`,
+    valueExpected: () => 'मान अपेक्षित है।',
+  },
   quick: {
     label: 'क्विक खोज',
     placeholder: 'टिकट, कुंजी, लोग खोजें…',

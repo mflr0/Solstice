@@ -196,8 +196,8 @@ const (
 	subjectKey
 )
 
-// httpError is an error meant for the user. Its message keeps its French
-// template and values, so the answer can render it in the request's language.
+// httpError is an error meant for the user. Its message keeps its key and
+// values, so the answer can render it in the request's language.
 type httpError struct {
 	status int
 	msg    i18n.Message
@@ -310,7 +310,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) error {
 
 // locale is the language of the answer: the first supported language of
 // Accept-Language, else the signed-in user's choice, else the instance's
-// default language, else French.
+// default language, else English.
 func locale(r *http.Request) string {
 	if l := i18n.Negotiate(r.Header.Get("Accept-Language")); l != "" {
 		return l

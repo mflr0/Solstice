@@ -22,8 +22,8 @@
       window.matchMedia('(prefers-color-scheme: dark)').matches);
   // The interface language, as src/i18n/locales.ts negotiates it, so
   // :lang() rules (Devanagari typography) hold from the first paint.
-  var locales = ['fr', 'en', 'de', 'it', 'hi'];
-  var lang = 'fr';
+  var locales = ['en', 'fr', 'de', 'it', 'hi'];
+  var lang = 'en';
   var saved = null;
   try {
     saved = localStorage.getItem('solstice.locale');

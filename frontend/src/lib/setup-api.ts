@@ -121,7 +121,7 @@ export class SetupError extends Error {
   }
 }
 
-const settings = { locale: 'fr' as Locale, network: '', generic: '' };
+const settings = { locale: 'en' as Locale, network: '', generic: '' };
 
 /** The language answers come in, and the messages for failures without one. */
 export function configureSetupApi(locale: Locale, network: string, generic: string): void {

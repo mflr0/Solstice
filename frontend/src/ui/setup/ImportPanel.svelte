@@ -287,7 +287,7 @@
       <section class="warnings" aria-labelledby="import-warnings">
         <h2 class="section-title" id="import-warnings">{m.import.warnings}</h2>
         {#if m.import.warningsNote}<p class="muted">{m.import.warningsNote}</p>{/if}
-        <ul lang="fr">
+        <ul lang="en">
           {#each job.warnings as w, i (i)}<li>{w}</li>{/each}
         </ul>
       </section>

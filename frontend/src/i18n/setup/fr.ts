@@ -1,11 +1,8 @@
-/**
- * The setup wizard's texts, in French, the source. The wizard runs before
- * any account exists and stands alone: it never loads the application's
- * catalogue (src/i18n/fr.ts). en.ts, de.ts, it.ts and hi.ts in this folder
- * have exactly these keys (SetupMessages, in types.ts).
- */
+/** The setup wizard's texts in French. The source is English (en.ts). */
 
-export const fr = {
+import type { SetupMessages } from './types.js';
+
+export const fr: SetupMessages = {
   appName: 'Solstice',
   documentTitle: 'Installation de Solstice',
   eyebrow: 'Installation',
@@ -178,7 +175,7 @@ export const fr = {
     skippedHint:
       'Ignorées : références orphelines dans Jira, ou données que Solstice ne reprend pas.',
     warnings: 'À vérifier',
-    warningsNote: '',
+    warningsNote: "L'import écrit ces notes en anglais.",
     chooseTitle: 'Qui administre Solstice ?',
     chooseLead:
       'Choisissez un compte importé : il garde son mot de passe Jira. Les administrateurs de Jira sont déjà administrateurs de Solstice.',
@@ -282,4 +279,4 @@ export const fr = {
     configToComplete: (path: string) => `${path} (à compléter à la main)`,
     signIn: 'Se connecter',
   },
-} as const;
+};

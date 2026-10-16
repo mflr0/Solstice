@@ -176,7 +176,7 @@ export const de: SetupMessages = {
     skippedHint:
       'Übersprungen: verwaiste Verweise in Jira oder Daten, die Solstice nicht übernimmt.',
     warnings: 'Zu prüfen',
-    warningsNote: 'Der Import verfasst diese Hinweise auf Französisch.',
+    warningsNote: 'Der Import verfasst diese Hinweise auf Englisch.',
     chooseTitle: 'Wer verwaltet Solstice?',
     chooseLead:
       'Wählen Sie ein importiertes Konto: Es behält sein Jira-Passwort. Jira-Administratoren sind bereits Administratoren von Solstice.',

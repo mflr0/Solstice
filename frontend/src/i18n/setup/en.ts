@@ -1,6 +1,11 @@
-import type { SetupMessages } from './types.js';
+/**
+ * The setup wizard's texts, in English, the source. The wizard runs before
+ * any account exists and stands alone: it never loads the application's
+ * catalogue (src/i18n/en.ts). fr.ts, de.ts, it.ts and hi.ts in this folder
+ * have exactly these keys (SetupMessages, in types.ts).
+ */
 
-export const en: SetupMessages = {
+export const en = {
   appName: 'Solstice',
   documentTitle: 'Solstice setup',
   eyebrow: 'Setup',
@@ -170,7 +175,7 @@ export const en: SetupMessages = {
     reportSkipped: 'Skipped',
     skippedHint: 'Skipped: references left dangling in Jira, or data Solstice does not take over.',
     warnings: 'To check',
-    warningsNote: 'The importer writes these notes in French.',
+    warningsNote: '',
     chooseTitle: 'Who administers Solstice?',
     chooseLead:
       'Choose an imported account: it keeps its Jira password. Jira administrators are already Solstice administrators.',
@@ -274,4 +279,4 @@ export const en: SetupMessages = {
     configToComplete: (path: string) => `${path} (to complete by hand)`,
     signIn: 'Sign in',
   },
-};
+} as const;

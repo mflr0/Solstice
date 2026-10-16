@@ -2,7 +2,7 @@
  * Numbers, plurals, lists, dates and relative times in the language in use,
  * built on Intl so a catalogue only supplies words. Boot points these at the
  * visitor's locale (src/i18n/index.ts); until then they speak French, which
- * keeps tests and the French interface exactly as they were.
+ * the tests are written against.
  */
 
 import type { Day } from '../core/dates.js';

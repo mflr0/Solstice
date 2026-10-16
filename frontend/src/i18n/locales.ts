@@ -6,8 +6,8 @@
 
 export type Locale = 'fr' | 'en' | 'de' | 'it' | 'hi';
 
-/** In the order the language menu lists them; French, the source, first. */
-export const LOCALES: readonly Locale[] = ['fr', 'en', 'de', 'it', 'hi'];
+/** In the order the language menu lists them. */
+export const LOCALES: readonly Locale[] = ['en', 'fr', 'de', 'it', 'hi'];
 
 /** Each language in its own name, as the menu shows it whatever the interface language. */
 export const LOCALE_NAMES: Record<Locale, string> = {
@@ -32,7 +32,7 @@ function languageOf(tag: string): string {
 /**
  * The language to show: the one chosen on this browser, else the first of
  * the browser's languages Solstice speaks (regional variants count as their
- * language), else French.
+ * language), else English.
  */
 export function negotiate(saved: string | null | undefined, languages: readonly string[]): Locale {
   const chosen = parseLocale(saved);
