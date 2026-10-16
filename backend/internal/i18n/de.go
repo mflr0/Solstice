@@ -195,6 +195,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "Eine Option darf höchstens 255 Zeichen lang sein.",
 	CustomFieldUsedByBoards:  "Dieses Feld wird für die Funktion der Boards benötigt und kann nicht gelöscht werden.",
 	CustomFieldDeleteConfirm: "Einige Vorgänge haben einen Wert in diesem Feld: Geben Sie seinen Namen ein, um die Löschung zu bestätigen.",
+	CustomFieldOptionInUse:   "Bei einigen Vorgängen ist diese Option gewählt: Wählen Sie eine andere Option, auf die sie verschoben werden, oder löschen Sie ihren Wert.",
+	CustomFieldOptionMoveTo:  "Der Ersatz muss eine andere Option desselben Felds auf derselben Ebene sein.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Unbekanntes Feld: %s.",

@@ -82,6 +82,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	route("POST /api/admin/fields/{id}/options", s.addFieldOption, true)
 	route("POST /api/admin/fields/{id}/options/order", s.orderFieldOptions, true)
 	route("PATCH /api/admin/fields/{id}/options/{option}", s.updateFieldOption, true)
+	route("DELETE /api/admin/fields/{id}/options/{option}", s.deleteFieldOption, true)
 
 	// System and import.
 	route("GET /api/admin/system", s.systemInfo, true)

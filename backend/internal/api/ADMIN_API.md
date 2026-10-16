@@ -366,7 +366,15 @@ fields created here behave alike (issue view, REST API, JQL).
   `POST /api/admin/fields/{id}/options` `{value}`,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
+  Each option of the detail counts its `issues` (those with it, or an option
+  under it, chosen).
   A disabled option keeps its values but cannot be chosen any more.
+  `DELETE /api/admin/fields/{id}/options/{optionId}` body optional
+  `{moveTo?: optionId, clear?: true}` → field detail. Options under it (a
+  cascading field's children) go too. An option issues have chosen: 409
+  `{usage: {issues}}` unless `moveTo` names another option of the field at the
+  same level (400 otherwise; their value moves there, an issue already holding
+  it keeps one) or `clear` is true (their value goes).
   (`field.create|update|delete|options`)
 
 For issue forms (signed in, browse permission):
