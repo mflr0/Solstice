@@ -12,8 +12,8 @@ func TestJQLErrorLanguage(t *testing.T) {
 	c := login(t, "admin", "admin")
 	path := "/api/issues?jql=" + url.QueryEscape("project = DEMO AND couleur = bleu")
 	for lang, want := range map[string]string{
-		"":      "JQL : Champ inconnu : « couleur ».",
-		"en":    "JQL: Unknown field: “couleur”.",
+		"":      "JQL: Unknown field: “couleur”.",
+		"fr":    "JQL : Champ inconnu : « couleur ».",
 		"de-DE": "JQL: Unbekanntes Feld: „couleur“.",
 	} {
 		status, msg, out := c.errorIn(lang, "GET", path, nil)
@@ -63,7 +63,7 @@ func TestUserLocale(t *testing.T) {
 
 	for _, bad := range []any{"xx", "EN", "de-CH", 3} {
 		status, msg, _ := c.errorIn("", "PATCH", "/api/me", map[string]any{"locale": bad})
-		if status != 400 || msg != "Sprache wird nicht unterstützt (zur Auswahl: fr, en, de, it, hi)." {
+		if status != 400 || msg != "Sprache wird nicht unterstützt (zur Auswahl: en, fr, de, it, hi)." {
 			t.Errorf("PATCH locale %v: %d %q", bad, status, msg)
 		}
 	}
@@ -74,6 +74,6 @@ func TestUserLocale(t *testing.T) {
 		t.Errorf("PATCH locale null: %d, locale %v", status, locale())
 	}
 	if _, msg, _ := c.errorIn("", "GET", missing, nil); msg != "Not found, or you do not have access to it." {
-		t.Errorf("after clearing: %q, want French", msg)
+		t.Errorf("after clearing: %q, want English", msg)
 	}
 }

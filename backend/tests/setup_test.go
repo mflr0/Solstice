@@ -137,11 +137,11 @@ func TestSetupDatabaseTest(t *testing.T) {
 		form map[string]any
 		want string
 	}{
-		{with("port", 1), "injoignable"},
-		{with("password", "wrong-password"), "Utilisateur ou mot de passe refusé"},
-		{with("name", "solstice_no_such_db"), "n'existe pas"},
-		{with("host", "bad host"), "Hôte invalide"},
-		{with("name", "x;DROP"), "Nom de base invalide"},
+		{with("port", 1), "Cannot reach"},
+		{with("password", "wrong-password"), "rejected the user name or password"},
+		{with("name", "solstice_no_such_db"), "or it does not exist"},
+		{with("host", "bad host"), "Invalid host"},
+		{with("name", "x;DROP"), "Invalid database name"},
 	} {
 		status, body := c.call("POST", "/api/setup/database/test", "", tc.form)
 		if msg, _ := body["error"].(string); status != http.StatusBadRequest && status != http.StatusForbidden || !strings.Contains(msg, tc.want) {
@@ -263,11 +263,11 @@ func TestSetupNewInstance(t *testing.T) {
 	for _, tc := range []struct {
 		field, value, want string
 	}{
-		{"password", "onze-signes", "au moins 12 caractères"},
-		{"email", "pas-une-adresse", "Adresse e-mail invalide"},
-		{"email", "", "Adresse e-mail invalide"},
-		{"username", "Bad Name", "Identifiant invalide"},
-		{"password", "CHEF.DE.PROJET", "ne peut pas être l'identifiant"},
+		{"password", "onze-signes", "at least 12 characters"},
+		{"email", "pas-une-adresse", "Invalid email address"},
+		{"email", "", "Invalid email address"},
+		{"username", "Bad Name", "Invalid username"},
+		{"password", "CHEF.DE.PROJET", "cannot be the username"},
 	} {
 		form := map[string]string{}
 		for k, v := range admin {

@@ -274,7 +274,7 @@ func TestCSVExport(t *testing.T) {
 		t.Errorf("German default headers: %v", records[0])
 	}
 	_, _, raw = exportCSVFor(t, paul, "q="+url.QueryEscape(created.Key)+"&columns=key,summary", "fr")
-	if records = readCSV(t, raw); records[0][0] != "Key" || len(records) != 2 {
+	if records = readCSV(t, raw); records[0][0] != "Clé" || len(records) != 2 {
 		t.Errorf("simple search, French: %v", records)
 	}
 
