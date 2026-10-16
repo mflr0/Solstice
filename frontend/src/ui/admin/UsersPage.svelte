@@ -1,6 +1,14 @@
 <script lang="ts">
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { adminPath } from '../../core/areas.js';
+  import {
+    filterUsers,
+    parseGroupFilter,
+    parseUserShow,
+    USER_SHOWS,
+    type GroupFilter,
+    type UserShow,
+  } from '../../core/people-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -14,28 +22,19 @@
   import UserDialog from './UserDialog.svelte';
 
   /** Accounts: who exists, who may sign in, who administers, in which groups. */
-  type Show = 'all' | 'active' | 'inactive' | 'admins';
-  const SHOWS: Show[] = ['all', 'active', 'inactive', 'admins'];
-
   let users = $state<UserRow[] | null>(null);
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
-  let show = $state<Show>('all');
+  let show = $state<UserShow>(parseUserShow(router.param('show')));
+  let group = $state<GroupFilter>(parseGroupFilter(router.param('group')));
   let dialog = $state<{ user: UserRow | null } | null>(null);
   let password = $state<UserRow | null>(null);
   let deactivating = $state<UserRow | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
 
-  const list = $derived(
-    (users ?? []).filter((u) => {
-      if (show === 'active' && !u.active) return false;
-      if (show === 'inactive' && u.active) return false;
-      if (show === 'admins' && !u.admin) return false;
-      return true;
-    }),
-  );
+  const list = $derived(filterUsers(users ?? [], show, group));
 
   async function load() {
     const mine = ++seq;
@@ -61,18 +60,33 @@
       });
   });
 
+  /** The address keeps the search and filters, so a reload or a link finds them again. */
+  function keepFilters() {
+    router.setParams({
+      q: q.trim() || null,
+      show: show === 'all' ? null : show,
+      group: group === 'all' ? null : String(group),
+    });
+  }
+
   function typed() {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      router.setParams({ q: q.trim() || null });
+      keepFilters();
       void load();
     }, 250);
+  }
+
+  function groupChosen(value: string) {
+    group = parseGroupFilter(value);
+    keepFilters();
   }
 
   function clear() {
     q = '';
     show = 'all';
-    router.setParams({ q: null });
+    group = 'all';
+    keepFilters();
     void load();
   }
 
@@ -115,9 +129,26 @@
     placeholder={t.usersAdmin.search}
     aria-label={t.usersAdmin.search}
   />
-  <select class="select" bind:value={show} aria-label={t.usersAdmin.showLabel}>
-    {#each SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
+  <select
+    class="select"
+    bind:value={show}
+    onchange={keepFilters}
+    aria-label={t.usersAdmin.showLabel}
+  >
+    {#each USER_SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
   </select>
+  {#if groups}
+    <select
+      class="select"
+      value={String(group)}
+      onchange={(e) => groupChosen(e.currentTarget.value)}
+      aria-label={t.usersAdmin.groupFilter}
+    >
+      <option value="all">{t.usersAdmin.allGroups}</option>
+      <option value="none">{t.usersAdmin.noGroup}</option>
+      {#each groups as g (g.id)}<option value={String(g.id)}>{g.name}</option>{/each}
+    </select>
+  {/if}
 </div>
 
 {#if error}
