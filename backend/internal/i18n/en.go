@@ -38,10 +38,12 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountLanguageUnsupported:       "Unsupported language (choose from: %s).",
 
 	// Access tokens.
-	TokenCannotCreate:  "An access token cannot create other tokens: sign in with your password.",
-	TokenNameRequired:  "The token needs a name (100 characters at most).",
-	TokenExpiryInvalid: "Invalid expiry date (YYYY-MM-DD expected).",
-	TokenExpiryPast:    "The expiry date must be in the future.",
+	TokenCannotCreate:       "An access token cannot create other tokens: sign in with your password.",
+	TokenNameRequired:       "The token needs a name (100 characters at most).",
+	TokenExpiryInvalid:      "Invalid expiry date (YYYY-MM-DD expected).",
+	TokenExpiryPast:         "The expiry date must be in the future.",
+	TokenCreationRestricted: "Creating access tokens is not allowed for your account: ask an administrator.",
+	TokenPolicyInvalid:      "Choose who may create access tokens: administrators, a group or everyone.",
 
 	// Groups.
 	GroupNotFound:   "Group not found.",
@@ -61,7 +63,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SettingsPasswordLengthInvalid: "Invalid minimum password length: 8 to 128 characters.",
 
 	// Audit log.
-	AuditRetentionInvalid: "Invalid retention period: a number of days, 0 to keep everything.",
+	AuditRetentionInvalid:  "Invalid retention period: a number of days, 0 to keep everything.",
+	AuditRetentionTooShort: "The retention period cannot be shorter than %d days (0 keeps everything).",
 
 	// Setup: setup code, database, public address, first administrator.
 	SetupNotDone:              "Solstice is not set up yet: finish the setup at /setup.",

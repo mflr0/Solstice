@@ -43,10 +43,12 @@ const (
 
 // Access tokens.
 const (
-	TokenCannotCreate  Key = "TokenCannotCreate"
-	TokenNameRequired  Key = "TokenNameRequired"
-	TokenExpiryInvalid Key = "TokenExpiryInvalid" // #nosec G101 -- message key, not a credential
-	TokenExpiryPast    Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
+	TokenCannotCreate       Key = "TokenCannotCreate"
+	TokenNameRequired       Key = "TokenNameRequired"
+	TokenExpiryInvalid      Key = "TokenExpiryInvalid" // #nosec G101 -- message key, not a credential
+	TokenExpiryPast         Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
+	TokenCreationRestricted Key = "TokenCreationRestricted"
+	TokenPolicyInvalid      Key = "TokenPolicyInvalid"
 )
 
 // Groups.
@@ -74,7 +76,8 @@ const (
 
 // Audit log.
 const (
-	AuditRetentionInvalid Key = "AuditRetentionInvalid"
+	AuditRetentionInvalid  Key = "AuditRetentionInvalid"
+	AuditRetentionTooShort Key = "AuditRetentionTooShort"
 )
 
 // Setup: setup code, database, public address, first administrator.
