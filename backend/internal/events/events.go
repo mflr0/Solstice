@@ -30,9 +30,13 @@ const (
 	CommentUpdated Kind = "comment_updated"
 	CommentDeleted Kind = "comment_deleted"
 	WorklogCreated Kind = "worklog_created"
+	WorklogUpdated Kind = "worklog_updated"
+	WorklogDeleted Kind = "worklog_deleted"
 	SprintCreated  Kind = "sprint_created"
 	SprintStarted  Kind = "sprint_started"
+	SprintUpdated  Kind = "sprint_updated"
 	SprintClosed   Kind = "sprint_closed"
+	SprintDeleted  Kind = "sprint_deleted"
 	BoardCreated   Kind = "board_created"
 	BoardUpdated   Kind = "board_updated"
 	BoardDeleted   Kind = "board_deleted"
@@ -62,12 +66,14 @@ type Comment struct {
 
 // Worklog is a work log as it was when the event happened.
 type Worklog struct {
-	ID       int64
-	AuthorID int64
-	Body     string
-	Started  time.Time
-	Seconds  int64
-	Created  time.Time
+	ID        int64
+	AuthorID  int64
+	UpdatedBy int64 // who last changed it, 0 when never
+	Body      string
+	Started   time.Time
+	Seconds   int64
+	Created   time.Time
+	Updated   time.Time // zero when never changed
 }
 
 // Sprint is a sprint as it was when the event happened.

@@ -82,10 +82,14 @@ export function splitDuration(seconds: number): { h: number; m: number } {
 /** A working day, as Jira counts it when people type "1j". */
 const WORKDAY_HOURS = 8;
 
+/** A working week, in days. */
+const WORKWEEK_DAYS = 5;
+
 /**
  * Reads a duration typed by someone logging work: "2h30", "2 h 30",
- * "1,5 h", "45 min", "45m", "1j 2h", or a bare number of hours ("2").
- * Returns seconds, or null when the text is not a positive duration.
+ * "1,5 h", "45 min", "45m", "1j 2h", "1w 2d" or a bare number of hours
+ * ("2"). A day is 8 hours and a week 5 days, as in Jira. Returns seconds, or
+ * null when the text is not a positive duration.
  */
 export function parseDuration(text: string): number | null {
   const s = text.toLowerCase().replace(/,/g, '.').trim();
@@ -95,7 +99,7 @@ export function parseDuration(text: string): number | null {
     return seconds > 0 ? seconds : null;
   }
   // Spaces may separate a number from its unit, never two numbers' digits.
-  const token = /\s*(\d+(?:\.\d+)?)\s*(j|d|h|min|mn|m)?\s*/y;
+  const token = /\s*(\d+(?:\.\d+)?)\s*(j|d|h|min|mn|m|w)?\s*/y;
   let seconds = 0;
   let previousUnit = '';
   let pos = 0;
@@ -108,6 +112,9 @@ export function parseDuration(text: string): number | null {
     const unit = m[2] ?? (previousUnit === 'h' ? 'min' : '');
     if (unit === '') return null;
     switch (unit) {
+      case 'w':
+        seconds += value * WORKWEEK_DAYS * WORKDAY_HOURS * 3600;
+        break;
       case 'j':
       case 'd':
         seconds += value * WORKDAY_HOURS * 3600;
@@ -123,4 +130,27 @@ export function parseDuration(text: string): number | null {
   }
   const rounded = Math.round(seconds);
   return rounded > 0 ? rounded : null;
+}
+
+/**
+ * Seconds in Jira's duration syntax, as the server reads it: "1w 2d 3h 30m"
+ * (a day is 8 hours, a week 5 days). Seconds below a minute are dropped; a
+ * duration under a minute is "0m". Not translated: it is what is typed and
+ * sent, whatever the language.
+ */
+export function jiraDuration(seconds: number): string {
+  let rest = Math.max(0, Math.round(seconds));
+  const parts: string[] = [];
+  for (const [size, unit] of [
+    [WORKWEEK_DAYS * WORKDAY_HOURS * 3600, 'w'],
+    [WORKDAY_HOURS * 3600, 'd'],
+    [3600, 'h'],
+    [60, 'm'],
+  ] as const) {
+    if (rest >= size) {
+      parts.push(`${Math.floor(rest / size)}${unit}`);
+      rest %= size;
+    }
+  }
+  return parts.length ? parts.join(' ') : '0m';
 }

@@ -6,7 +6,14 @@
  * fieldsAdmin).
  */
 
-import type { CatalogItem, CatalogKind, FieldType, StatusRow } from './admin-types.js';
+import type {
+  CatalogItem,
+  CatalogKind,
+  FieldOption,
+  FieldRow,
+  FieldType,
+  StatusRow,
+} from './admin-types.js';
 import type { Problems } from './admin-forms.js';
 
 /** The four catalogues of the "Tickets" group, as the navigation names them. */
@@ -189,6 +196,21 @@ export function statusProblems(
   return {};
 }
 
+/** The three categories a status belongs to, in the order of a ticket's life. */
+export const STATUS_CATEGORIES: readonly StatusRow['category'][] = ['todo', 'doing', 'done'];
+
+/** What to send to change a status: only what differs from `before`. */
+export function statusPayload(
+  before: Pick<StatusRow, 'name' | 'category'>,
+  name: string,
+  category: StatusRow['category'],
+): { name?: string; category?: string } {
+  const out: { name?: string; category?: string } = {};
+  if (name.trim() !== before.name) out.name = name.trim();
+  if (category !== before.category) out.category = category;
+  return out;
+}
+
 /** Whether nothing uses a status any more (it may then be deleted). */
 export function statusUnused(s: StatusRow): boolean {
   return s.usage.issues + s.usage.workflows + s.usage.boardColumns === 0;
@@ -293,4 +315,98 @@ export function fieldContextPayload(f: FieldForm): { projects: string[]; issueTy
     projects: f.allProjects ? [] : [...f.projects],
     issueTypes: f.allTypes ? [] : [...f.issueTypes],
   };
+}
+
+/* Custom field: change, contexts, options ------------------------------------ */
+
+/** A copy of the list with `value` in it (once) or out of it. */
+export function toggleIn<T>(list: readonly T[], value: T, on: boolean): T[] {
+  const without = list.filter((x) => x !== value);
+  return on ? [...without, value] : without;
+}
+
+/** The form of an existing field: name, description and context (the type and options do not change here). */
+export function fieldFormOf(f: FieldRow): FieldForm {
+  return {
+    name: f.name,
+    description: f.description ?? '',
+    type: f.type ?? 'text',
+    options: '',
+    allProjects: f.context.projects.length === 0,
+    projects: f.context.projects.map((p) => p.key),
+    allTypes: f.context.issueTypes.length === 0,
+    issueTypes: f.context.issueTypes.map((t) => t.id),
+  };
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
+
+/**
+ * What to send to change a field: only the name, description and context
+ * that differ from the field as it is. An empty object: nothing to save.
+ */
+export function fieldChanges(
+  before: FieldRow,
+  f: FieldForm,
+): {
+  name?: string;
+  description?: string | null;
+  context?: { projects: string[]; issueTypes: string[] };
+} {
+  const out: ReturnType<typeof fieldChanges> = {};
+  if (f.name.trim() !== before.name) out.name = f.name.trim();
+  if (f.description.trim() !== (before.description ?? '')) {
+    out.description = f.description.trim() === '' ? null : f.description.trim();
+  }
+  const now = fieldContextPayload(f);
+  if (
+    !sameSet(
+      now.projects,
+      before.context.projects.map((p) => p.key),
+    ) ||
+    !sameSet(
+      now.issueTypes,
+      before.context.issueTypes.map((t) => t.id),
+    )
+  ) {
+    out.context = now;
+  }
+  return out;
+}
+
+/** The end of a Jira type key: "…customfieldtypes:cascadingselect" gives "cascadingselect". */
+export function typeKind(typeKey: string): string {
+  return typeKey.slice(typeKey.lastIndexOf(':') + 1);
+}
+
+/**
+ * Whether a field's options can be managed here: the types Solstice
+ * creates with options, and a cascading field imported from Jira (its top
+ * level only).
+ */
+export function optionsEditable(f: Pick<FieldRow, 'type' | 'typeKey'>): boolean {
+  return hasOptions(f.type) || typeKind(f.typeKey) === 'cascadingselect';
+}
+
+export type OptionProblem = 'optionRequired' | 'optionTooLong' | 'optionTaken';
+
+/** Checks an option's text against the field's other options (case does not count). */
+export function optionProblem(
+  value: string,
+  options: readonly { id: number; value: string }[],
+  editing: number | null,
+): OptionProblem | null {
+  if (!value.trim()) return 'optionRequired';
+  if (tooLong(value)) return 'optionTooLong';
+  const v = value.trim().toLowerCase();
+  if (options.some((o) => o.id !== editing && o.value.trim().toLowerCase() === v)) {
+    return 'optionTaken';
+  }
+  return null;
+}
+
+/** The options an option's values may move to when it is deleted: the other enabled ones. */
+export function optionTargets(options: readonly FieldOption[], option: FieldOption): FieldOption[] {
+  return options.filter((o) => o.id !== option.id && !o.disabled);
 }

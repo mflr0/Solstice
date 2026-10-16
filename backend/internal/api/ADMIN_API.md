@@ -332,7 +332,9 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   its issues (or links) then move there, with history. The last issue type
   cannot go.
 - Statuses: create/rename/delete stay on `POST /api/statuses`,
-  `PATCH|DELETE /api/statuses/{id}`.
+  `PATCH|DELETE /api/statuses/{id}`. `GET /api/admin/statuses/{id}/usage` →
+  where one is used: `{workflows: [{id, name, project: {id, key, name}}],
+  boards: [{id, name, column}], projects: [{key, name, issues}]}`.
 
 (`issuetype.*`, `priority.*`, `resolution.*`, `linktype.*`, `status.order`)
 
@@ -365,7 +367,16 @@ fields created here behave alike (issue view, REST API, JQL).
   `POST /api/admin/fields/{id}/options` `{value}`,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
+  Each option of the detail counts its `issues` (those with it, or an option
+  under it, chosen) and its `children` (options under it, for a cascading field
+  imported from Jira; only the top level is listed).
   A disabled option keeps its values but cannot be chosen any more.
+  `DELETE /api/admin/fields/{id}/options/{optionId}` body optional
+  `{moveTo?: optionId, clear?: true}` → field detail. Options under it (a
+  cascading field's children) go too. An option issues have chosen: 409
+  `{usage: {issues}}` unless `moveTo` names another option of the field at the
+  same level (400 otherwise; their value moves there, an issue already holding
+  it keeps one) or `clear` is true (their value goes).
   (`field.create|update|delete|options`)
 
 For issue forms (signed in, browse permission):

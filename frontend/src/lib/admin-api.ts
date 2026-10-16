@@ -14,6 +14,7 @@ import type {
   ComponentRow,
   FieldInput,
   FieldRow,
+  FieldTypeInfo,
   GeneralSettings,
   GeneralSettingsInput,
   Group,
@@ -27,6 +28,7 @@ import type {
   ProjectRole,
   RoleRow,
   StatusRow,
+  StatusUsage,
   SystemInfo,
   UserInput,
   UserRow,
@@ -124,12 +126,16 @@ export const adminApi = {
       moveTo !== undefined ? { moveTo } : {},
     ),
   statuses: () => request<StatusRow[]>('GET', '/api/admin/statuses'),
+  createStatus: (s: { name: string; category: string }) =>
+    request<{ id: string; name: string; category: string }>('POST', '/api/statuses', s),
+  statusUsage: (id: string) => request<StatusUsage>('GET', `/api/admin/statuses/${enc(id)}/usage`),
   updateStatus: (id: string, s: { name?: string; category?: string }) =>
     request<StatusRow>('PATCH', `/api/statuses/${enc(id)}`, s),
   deleteStatus: (id: string) => request<void>('DELETE', `/api/statuses/${enc(id)}`),
 
   // Custom fields.
   fields: () => request<FieldRow[]>('GET', '/api/admin/fields'),
+  fieldTypes: () => request<FieldTypeInfo[]>('GET', '/api/admin/fields/types'),
   field: (id: number) => request<FieldRow>('GET', `/api/admin/fields/${id}`),
   createField: (f: FieldInput) => request<FieldRow>('POST', '/api/admin/fields', f),
   updateField: (id: number, f: FieldInput) =>
@@ -140,6 +146,9 @@ export const adminApi = {
     request<FieldRow>('POST', `/api/admin/fields/${id}/options`, { value }),
   updateOption: (id: number, option: number, o: { value?: string; disabled?: boolean }) =>
     request<FieldRow>('PATCH', `/api/admin/fields/${id}/options/${option}`, o),
+  /** Removes an option; an option in use needs where its values go, or `clear`. */
+  deleteOption: (id: number, option: number, how: { moveTo?: number; clear?: boolean } = {}) =>
+    request<FieldRow>('DELETE', `/api/admin/fields/${id}/options/${option}`, how),
   orderOptions: (id: number, ids: number[]) =>
     request<FieldRow>('POST', `/api/admin/fields/${id}/options/order`, { ids }),
 

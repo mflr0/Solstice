@@ -574,6 +574,88 @@ func (s *Server) adminStatuses(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+// statusUsageOut tells where a status is used: the workflows (with their
+// project), the board columns and, per project, the issues in it.
+type statusUsageOut struct {
+	Workflows []statusWorkflow `json:"workflows"`
+	Boards    []statusBoard    `json:"boards"`
+	Projects  []statusProject  `json:"projects"`
+}
+
+type statusWorkflow struct {
+	ID      int64        `json:"id"`
+	Name    string       `json:"name"`
+	Project projectBrief `json:"project"`
+}
+
+type statusBoard struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Column string `json:"column"`
+}
+
+type statusProject struct {
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Issues int    `json:"issues"`
+}
+
+func (s *Server) adminStatusUsage(w http.ResponseWriter, r *http.Request) error {
+	if err := requireAdmin(r); err != nil {
+		return err
+	}
+	ctx := r.Context()
+	cat, err := s.catalogue(ctx)
+	if err != nil {
+		return err
+	}
+	id := r.PathValue("id")
+	if _, ok := cat.status[id]; !ok {
+		return errNotFound
+	}
+	out := statusUsageOut{Workflows: []statusWorkflow{}, Boards: []statusBoard{}, Projects: []statusProject{}}
+	if err := sqlq.Each(ctx, s.db, `SELECT w.id, w.name, p.id, p.pkey, p.name FROM workflows w
+		JOIN projects p ON p.id = w.project_id WHERE w.id IN (
+			SELECT workflow_id FROM workflow_statuses WHERE status_id = ?
+			UNION SELECT workflow_id FROM workflow_transitions WHERE from_status_id = ? OR to_status_id = ?
+			UNION SELECT id FROM workflows WHERE initial_status_id = ?)
+		ORDER BY p.pkey, w.name`, func(rows *sql.Rows) error {
+		var w statusWorkflow
+		if err := rows.Scan(&w.ID, &w.Name, &w.Project.ID, &w.Project.Key, &w.Project.Name); err != nil {
+			return err
+		}
+		out.Workflows = append(out.Workflows, w)
+		return nil
+	}, id, id, id, id); err != nil {
+		return err
+	}
+	if err := sqlq.Each(ctx, s.db, `SELECT b.id, b.name, c.name FROM board_column_statuses bs
+		JOIN board_columns c ON c.id = bs.column_id JOIN boards b ON b.id = c.board_id
+		WHERE bs.status_id = ? ORDER BY b.name, c.position`, func(rows *sql.Rows) error {
+		var b statusBoard
+		if err := rows.Scan(&b.ID, &b.Name, &b.Column); err != nil {
+			return err
+		}
+		out.Boards = append(out.Boards, b)
+		return nil
+	}, id); err != nil {
+		return err
+	}
+	if err := sqlq.Each(ctx, s.db, `SELECT p.pkey, p.name, COUNT(*) FROM issues i
+		JOIN projects p ON p.id = i.project_id WHERE i.status_id = ? GROUP BY p.id, p.pkey, p.name
+		ORDER BY p.pkey`, func(rows *sql.Rows) error {
+		var p statusProject
+		if err := rows.Scan(&p.Key, &p.Name, &p.Issues); err != nil {
+			return err
+		}
+		out.Projects = append(out.Projects, p)
+		return nil
+	}, id); err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
 func (s *Server) orderStatuses(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err

@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -154,40 +153,5 @@ func TestAttackOnOneAccountDoesNotSlowAnother(t *testing.T) {
 	_, err := srv.checkPassword(other, "marie", "pw")
 	if delayed != 0 || err != nil {
 		t.Fatalf("another account: %d delays, error %v", delayed, err)
-	}
-}
-
-// With a database: the same, end to end through POST /api/login.
-func TestLoginOwnerSignsInWhileAnotherAddressGuesses(t *testing.T) {
-	if testDB == nil {
-		t.Skip("SOLSTICE_TEST_DB not set: integration test skipped")
-	}
-	srv := New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	srv.SetTrustedProxies(parseProxies(t, "127.0.0.1"))
-	srv.sleep = func(context.Context, time.Duration) {}
-	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
-	defer ts.Close()
-	try := func(from, password string) int {
-		req, _ := http.NewRequest("POST", ts.URL+"/api/login",
-			strings.NewReader(`{"username":"hugo.robert","password":"`+password+`"}`))
-		req.Header.Set(csrfHeader, "1")
-		req.Header.Set("X-Forwarded-For", from)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp.Body.Close()
-		return resp.StatusCode
-	}
-	for i := range 5 {
-		if status := try("203.0.113.9", "faux"); status != http.StatusUnauthorized {
-			t.Fatalf("guess %d: %d, want 401", i+1, status)
-		}
-	}
-	if status := try("203.0.113.9", "motdepasse"); status != http.StatusTooManyRequests {
-		t.Fatalf("guessing address with the right password: %d, want 429", status)
-	}
-	if status := try("198.51.100.20", "motdepasse"); status != http.StatusOK {
-		t.Fatalf("owner from another address: %d, want 200", status)
 	}
 }

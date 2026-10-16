@@ -1,27 +1,9 @@
 package api
 
-// Integration tests of the Jira-compatible REST API and personal access
-// tokens (see api_test.go for the database they need).
-
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"log/slog"
-	"mime/multipart"
-	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"regexp"
-	"slices"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
-
-	"solstice/internal/auth"
 )
 
 // call sends a request with the client's cookies (c may be nil for none);

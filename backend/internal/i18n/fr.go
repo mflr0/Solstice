@@ -197,6 +197,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldOptionTooLong: "Une option a un texte de 255 caractères au plus.",
 	CustomFieldUsedByBoards:  "Ce champ sert au fonctionnement des tableaux : il ne peut pas être supprimé.",
 	CustomFieldDeleteConfirm: "Des tickets ont une valeur dans ce champ : tapez son nom pour confirmer la suppression.",
+	CustomFieldOptionInUse:   "Des tickets ont cette option : choisissez une autre option vers laquelle les déplacer, ou effacez leur valeur.",
+	CustomFieldOptionMoveTo:  "Le remplaçant doit être une autre option du même champ, au même niveau.",
 
 	// Field values of an issue.
 	FieldUnknown:              "Champ inconnu : %s.",
@@ -269,6 +271,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssuePriorityUnknown:       "Priorité inconnue.",
 	IssueResolutionUnknown:     "Résolution inconnue.",
 	IssueDueDateInvalid:        "Échéance invalide (AAAA-MM-JJ attendu).",
+	IssueEstimateInvalid:       "Estimation invalide (par exemple 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Niveau de confidentialité inconnu dans ce projet.",
 	IssueReporterFixed:         "Le rapporteur ne peut pas être changé.",
 	IssueNoTodoStatus:          "Aucun statut « à faire » n'est défini.",
@@ -361,13 +364,18 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardRankItself:              "Un ticket ne peut pas être classé par rapport à lui-même.",
 
 	// Sprints.
-	SprintKanban:        "Un tableau Kanban n'a pas de sprints.",
-	SprintUnknown:       "Sprint inconnu ou terminé.",
-	SprintStarted:       "Ce sprint a déjà commencé.",
-	SprintAlreadyActive: "Un sprint est déjà en cours sur ce tableau : terminez-le d'abord.",
-	SprintEndPast:       "La fin du sprint doit être dans le futur.",
-	SprintNotActive:     "Seul un sprint en cours peut être terminé.",
-	SprintTargetInvalid: "Choisissez un sprint à venir de ce tableau.",
+	SprintKanban:          "Un tableau Kanban n'a pas de sprints.",
+	SprintUnknown:         "Sprint inconnu ou terminé.",
+	SprintStarted:         "Ce sprint a déjà commencé.",
+	SprintAlreadyActive:   "Un sprint est déjà en cours sur ce tableau : terminez-le d'abord.",
+	SprintEndPast:         "La fin du sprint doit être dans le futur.",
+	SprintNotActive:       "Seul un sprint en cours peut être terminé.",
+	SprintTargetInvalid:   "Choisissez un sprint à venir de ce tableau.",
+	SprintNameRequired:    "Le sprint doit avoir un nom.",
+	SprintClosedLocked:    "Un sprint terminé ne peut plus être modifié.",
+	SprintDatesOrder:      "Le sprint doit se terminer après son début.",
+	SprintStartFuture:     "Un sprint actif ne peut pas commencer dans le futur.",
+	SprintDeleteNotFuture: "Seul un sprint à venir peut être supprimé.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Le nom du filtre est obligatoire (255 caractères au plus).",

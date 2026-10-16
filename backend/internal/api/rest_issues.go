@@ -565,43 +565,59 @@ func (s *Server) restWorklogs(w http.ResponseWriter, r *http.Request) error {
 		"total": len(logs), "worklogs": list})
 }
 
+// restWorklogInput is Jira's body for adding or changing a work log.
+type restWorklogInput struct {
+	Comment          *string         `json:"comment"`
+	Started          string          `json:"started"`
+	TimeSpent        string          `json:"timeSpent"`
+	TimeSpentSeconds *int64          `json:"timeSpentSeconds"`
+	Visibility       json.RawMessage `json:"visibility"`
+}
+
+// uiBody translates it into the interface API's body, with only what the
+// request gave. Jira's adjustEstimate options are not supported: the
+// remaining estimate always adjusts automatically.
+func (in restWorklogInput) uiBody() (map[string]any, error) {
+	if len(in.Visibility) > 0 && string(in.Visibility) != "null" {
+		return nil, fieldError("visibility", fail(http.StatusBadRequest, i18n.WorkLogRestricted))
+	}
+	body := map[string]any{}
+	switch {
+	case in.TimeSpentSeconds != nil:
+		body["seconds"] = *in.TimeSpentSeconds
+	case strings.TrimSpace(in.TimeSpent) != "":
+		v, ok := jql.Seconds(in.TimeSpent)
+		if !ok {
+			return nil, fieldError("timeLogged", fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid))
+		}
+		body["seconds"] = int64(math.Round(v))
+	}
+	if in.Comment != nil {
+		body["body"] = *in.Comment
+	}
+	if in.Started != "" {
+		t, ok := parseJiraTime(in.Started)
+		if !ok {
+			return nil, fieldError("started", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "started"))
+		}
+		body["started"] = t
+	}
+	return body, nil
+}
+
 func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
 		return err
 	}
-	var in struct {
-		Comment          string          `json:"comment"`
-		Started          string          `json:"started"`
-		TimeSpent        string          `json:"timeSpent"`
-		TimeSpentSeconds *int64          `json:"timeSpentSeconds"`
-		Visibility       json.RawMessage `json:"visibility"`
-	}
+	var in restWorklogInput
 	if err := readRESTJSON(r, &in); err != nil {
 		return err
 	}
-	if len(in.Visibility) > 0 && string(in.Visibility) != "null" {
-		return fieldError("visibility", fail(http.StatusBadRequest, i18n.WorkLogRestricted))
-	}
-	var seconds int64
-	switch {
-	case in.TimeSpentSeconds != nil:
-		seconds = *in.TimeSpentSeconds
-	case strings.TrimSpace(in.TimeSpent) != "":
-		v, ok := jql.Seconds(in.TimeSpent)
-		if !ok {
-			return fieldError("timeLogged", fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid))
-		}
-		seconds = int64(math.Round(v))
-	}
-	body := map[string]any{"seconds": seconds, "body": in.Comment}
-	if in.Started != "" {
-		t, ok := parseJiraTime(in.Started)
-		if !ok {
-			return fieldError("started", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "started"))
-		}
-		body["started"] = t
+	body, err := in.uiBody()
+	if err != nil {
+		return err
 	}
 	if err := s.uiCall(r, s.addWorklog, http.MethodPost, "/api/issues/"+iss.Key()+"/worklogs",
 		map[string]string{"key": iss.Key()}, body, nil); err != nil {
@@ -612,17 +628,94 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 		iss.ID, sub.UserID).Scan(&id); err != nil {
 		return err
 	}
+	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusCreated)
+}
+
+// restRespondWorklog answers with a work log of an issue, as Jira renders it.
+func (s *Server) restRespondWorklog(w http.ResponseWriter, r *http.Request, sub *perm.Subject, iss *issueRow, id int64,
+	status int) error {
 	o := s.restOut(r)
-	logs, users, err := s.issueWorklogs(ctx, o, sub, iss)
+	logs, users, err := s.issueWorklogs(r.Context(), o, sub, iss)
 	if err != nil {
 		return err
 	}
 	for _, wl := range logs {
 		if wl.id == id {
-			return writeJSON(w, http.StatusCreated, o.worklog(iss, wl, users))
+			return writeJSON(w, status, o.worklog(iss, wl, users))
 		}
 	}
 	return errNotFound
+}
+
+// restWorklogOfIssue checks that the work log of the path belongs to the
+// issue of the path, and returns its id.
+func (s *Server) restWorklogOfIssue(r *http.Request, iss *issueRow) (int64, error) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		return 0, errNotFound
+	}
+	var n int
+	if err := s.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM worklogs WHERE id = ? AND issue_id = ?`,
+		id, iss.ID).Scan(&n); err != nil {
+		return 0, err
+	}
+	if n == 0 {
+		return 0, errNotFound
+	}
+	return id, nil
+}
+
+func (s *Server) restWorklog(w http.ResponseWriter, r *http.Request) error {
+	sub, iss, err := s.restSubjectIssue(r)
+	if err != nil {
+		return err
+	}
+	id, err := s.restWorklogOfIssue(r, iss)
+	if err != nil {
+		return err
+	}
+	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusOK)
+}
+
+func (s *Server) restEditWorklog(w http.ResponseWriter, r *http.Request) error {
+	sub, iss, err := s.restSubjectIssue(r)
+	if err != nil {
+		return err
+	}
+	id, err := s.restWorklogOfIssue(r, iss)
+	if err != nil {
+		return err
+	}
+	var in restWorklogInput
+	if err := readRESTJSON(r, &in); err != nil {
+		return err
+	}
+	body, err := in.uiBody()
+	if err != nil {
+		return err
+	}
+	if err := s.uiCall(r, s.editWorklog, http.MethodPut, "/api/worklogs/"+strconv.FormatInt(id, 10),
+		map[string]string{"id": strconv.FormatInt(id, 10)}, body, nil); err != nil {
+		return err
+	}
+	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusOK)
+}
+
+func (s *Server) restDeleteWorklog(w http.ResponseWriter, r *http.Request) error {
+	_, iss, err := s.restSubjectIssue(r)
+	if err != nil {
+		return err
+	}
+	id, err := s.restWorklogOfIssue(r, iss)
+	if err != nil {
+		return err
+	}
+	if err := s.uiCall(r, s.deleteWorklog, http.MethodDelete, "/api/worklogs/"+strconv.FormatInt(id, 10),
+		map[string]string{"id": strconv.FormatInt(id, 10)}, nil, nil); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 // Watchers and votes -----------------------------------------------------------

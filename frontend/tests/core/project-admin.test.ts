@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  categoryProblem,
   datesProblem,
+  filterProjects,
+  issueTypesProblem,
+  parseCategoryFilter,
+  parseShow,
   extraSignature,
   hasExtra,
   keyProblem,
@@ -160,5 +165,102 @@ describe('project notifications', () => {
     expect(extraSignature([r, { ...r, event: 'assigned' }])).toBe(
       extraSignature([{ ...r, event: 'assigned' }, r]),
     );
+  });
+});
+
+describe('creation: issue types and default assignee', () => {
+  const form: ProjectForm = {
+    name: 'Site web',
+    key: 'SW',
+    template: 'software',
+    lead: null,
+    category: null,
+    access: 'lead',
+    accessId: null,
+    description: '',
+  };
+  const types = [
+    { id: 'task', subtask: false },
+    { id: 'bug', subtask: false },
+    { id: 'sub', subtask: true },
+  ];
+
+  it('needs one type that is not a sub-task', () => {
+    expect(issueTypesProblem(['task'], types)).toBeNull();
+    expect(issueTypesProblem(['sub'], types)).toBe('typesRequired');
+    expect(issueTypesProblem([], types)).toBe('typesRequired');
+    expect(issueTypesProblem(['sub', 'bug'], types)).toBeNull();
+  });
+
+  it('sends them only when chosen', () => {
+    expect(projectPayload(form)).not.toHaveProperty('issueTypes');
+    expect(projectPayload(form)).not.toHaveProperty('defaultAssignee');
+    expect(
+      projectPayload({ ...form, issueTypes: ['task'], defaultAssignee: 'lead' }),
+    ).toMatchObject({ issueTypes: ['task'], defaultAssignee: 'lead' });
+  });
+});
+
+describe('administrators project list', () => {
+  const dev = { id: 1, name: 'Development' };
+  const rows = [
+    {
+      key: 'SW',
+      name: 'Site web',
+      archived: false,
+      lead: { name: 'Marie Durand', username: 'marie.durand' },
+      category: dev,
+    },
+    { key: 'OPS', name: 'Opérations', archived: true, lead: null, category: null },
+    {
+      key: 'MKT',
+      name: 'Marketing',
+      archived: false,
+      lead: { name: 'Léa Martin', username: 'lea' },
+      category: null,
+    },
+  ];
+  const keys = (r: typeof rows) => r.map((x) => x.key);
+
+  it('searches key, name, lead and category without accents or case', () => {
+    expect(keys(filterProjects(rows, '', 'all', 'all'))).toEqual(['SW', 'OPS', 'MKT']);
+    expect(keys(filterProjects(rows, 'operations', 'all', 'all'))).toEqual(['OPS']);
+    expect(keys(filterProjects(rows, 'lea', 'all', 'all'))).toEqual(['MKT']);
+    expect(keys(filterProjects(rows, 'durand dev', 'all', 'all'))).toEqual(['SW']);
+    expect(keys(filterProjects(rows, 'mkt', 'all', 'all'))).toEqual(['MKT']);
+  });
+
+  it('filters by state and category', () => {
+    expect(keys(filterProjects(rows, '', 'active', 'all'))).toEqual(['SW', 'MKT']);
+    expect(keys(filterProjects(rows, '', 'archived', 'all'))).toEqual(['OPS']);
+    expect(keys(filterProjects(rows, '', 'all', 'none'))).toEqual(['OPS', 'MKT']);
+    expect(keys(filterProjects(rows, '', 'all', 1))).toEqual(['SW']);
+    expect(keys(filterProjects(rows, '', 'archived', 1))).toEqual([]);
+  });
+
+  it('reads the filters from the address', () => {
+    expect(parseShow('archived')).toBe('archived');
+    expect(parseShow('x')).toBe('all');
+    expect(parseShow(null)).toBe('all');
+    expect(parseCategoryFilter('none')).toBe('none');
+    expect(parseCategoryFilter('7')).toBe(7);
+    expect(parseCategoryFilter('-2')).toBe('all');
+    expect(parseCategoryFilter('abc')).toBe('all');
+    expect(parseCategoryFilter(null)).toBe('all');
+  });
+});
+
+describe('category names', () => {
+  const cats = [
+    { id: 1, name: 'Development' },
+    { id: 2, name: 'Support' },
+  ];
+
+  it('checks the name', () => {
+    expect(categoryProblem('  ', cats, null)).toBe('nameRequired');
+    expect(categoryProblem('x'.repeat(256), cats, null)).toBe('nameTooLong');
+    expect(categoryProblem('development', cats, null)).toBe('nameTaken');
+    expect(categoryProblem('Development', cats, 1)).toBeNull();
+    expect(categoryProblem('Sales', cats, null)).toBeNull();
   });
 });
