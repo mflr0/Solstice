@@ -527,6 +527,11 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	details := map[string]any{}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if in.Name != nil {
 		name, err := cleanName(*in.Name, 255)
 		if err != nil {
@@ -540,16 +545,19 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		if name != ro.Name {
 			details["name"] = map[string]string{"from": ro.Name, "to": name}
 		}
-		if _, err := s.db.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
 			return err
 		}
 	}
 	if in.Description != nil {
 		details["description"] = optDescription(in.Description)
-		if _, err := s.db.ExecContext(ctx, `UPDATE project_roles SET description = ? WHERE id = ?`,
+		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET description = ? WHERE id = ?`,
 			optDescription(in.Description), id); err != nil {
 			return err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	ro, err = s.roleByID(ctx, id)
 	if err != nil {
