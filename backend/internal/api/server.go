@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
-	"strings"
 	"sync"
 	"time"
 
@@ -34,9 +33,10 @@ type Server struct {
 	log     *slog.Logger
 	tz      *time.Location // for dates typed without a time zone (JQL)
 	limiter *auth.Limiter
-	baseURL string         // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
-	proxies []netip.Prefix // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
-	out     *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	verify  func(ctx context.Context, username, password string) (*auth.User, error) // checks a password; a field so tests can run without a database
+	baseURL string                                                                   // public address (SOLSTICE_BASE_URL), "" when not set; see SetBaseURL
+	proxies []netip.Prefix                                                           // reverse proxies to believe (SOLSTICE_TRUSTED_PROXIES); see SetTrustedProxies
+	out     *outgoing                                                                // event bus, e-mail and webhooks (notifications.go)
 
 	catMu   sync.Mutex
 	catalog *catalog
@@ -54,6 +54,9 @@ type Server struct {
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
 		limiter: auth.NewLimiter(), streamsDone: make(chan struct{})}
+	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
+		return auth.Authenticate(ctx, s.db, username, password)
+	}
 	s.adm.started = time.Now()
 	s.startOutgoing()
 	return s
@@ -273,7 +276,7 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	if err != nil {
 		return nil, err
 	}
-	u, err := auth.Authenticate(r.Context(), s.db, username, password)
+	u, err := s.verify(r.Context(), auth.CanonicalUsername(username), password)
 	release()
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
@@ -286,11 +289,12 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	return u, err
 }
 
-// throttleKeys are the limiter keys of a sign-in attempt: the user name, and
-// the client address so that sign-in attempts of one account and from one
-// address are counted separately.
+// throttleKeys are the limiter keys of a sign-in attempt: the account as seen
+// from the client address (the canonical user name, see auth.CanonicalUsername,
+// so that "Admin" and "admin " count together), and the client address.
 func (s *Server) throttleKeys(r *http.Request, username string) (userKey, ipKey string) {
-	return "user:" + strings.ToLower(username), "ip:" + clientIP(r, s.proxies)
+	ip := clientIP(r, s.proxies)
+	return "user:" + auth.CanonicalUsername(username) + "|" + ip, "ip:" + ip
 }
 
 func currentUser(r *http.Request) *auth.User {

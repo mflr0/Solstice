@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -80,9 +81,19 @@ func EndSession(ctx context.Context, db *sql.DB, token string) error {
 	return err
 }
 
+// CanonicalUsername is the one form of a typed user name used to look the
+// account up and to count failed sign-ins: surrounding spaces removed, lower
+// case. The database compares names with a collation that ignores trailing
+// spaces, so "admin" and "admin " are the same account and must share their
+// counters.
+func CanonicalUsername(typed string) string {
+	return strings.ToLower(strings.TrimSpace(typed))
+}
+
 // Authenticate checks a user name and password. Jira hashes are upgraded to
 // Argon2id on the first successful sign-in.
 func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*User, error) {
+	username = CanonicalUsername(username)
 	var u User
 	var hash sql.NullString
 	err := db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), password_hash
