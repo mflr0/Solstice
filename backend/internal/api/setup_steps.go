@@ -347,7 +347,7 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 	}
 	src, engine, err := jiradb.Open(f.URL, loc)
 	if err != nil {
-		return nil, fail(http.StatusBadRequest, i18n.ImportDatabaseURLInvalid)
+		return nil, sourceURLError(err)
 	}
 	defer src.Close()
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -376,6 +376,21 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 		}
 	}
 	return p, nil
+}
+
+// sourceURLError explains a Jira database address that was refused: an
+// option that is not accepted is named, anything else is a malformed address.
+func sourceURLError(err error) error {
+	var unknown *db.UnknownParamsError
+	var invalid *db.InvalidParamError
+	switch {
+	case errors.As(err, &unknown):
+		return failf(http.StatusBadRequest, i18n.ImportOptionRefused,
+			strings.Join(unknown.Names, ", "), strings.Join(unknown.Allowed, ", "))
+	case errors.As(err, &invalid):
+		return failf(http.StatusBadRequest, i18n.ImportOptionInvalid, invalid.Name)
+	}
+	return fail(http.StatusBadRequest, i18n.ImportDatabaseURLInvalid)
 }
 
 // sourceError explains a failed connection to the Jira database.

@@ -103,7 +103,10 @@ solstice import \
 
 - `-from`: the Jira database, `postgres://…` or `mysql://…`. Read access is
   enough. For a consistent result, stop Jira first or import from a copy of
-  its database.
+  its database. Options after `?` are limited to `tls` (`true`, `false`,
+  `skip-verify`, `preferred`), `timeout`, `readTimeout` and `charset` for
+  MySQL, and `sslmode` and `connect_timeout` for PostgreSQL; any other option
+  is refused.
 - `-tz`: the time zone of the Jira server (Administration › System info).
   MySQL stores dates without a time zone, and dates without a time (due
   dates, versions) depend on it with both engines.

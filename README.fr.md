@@ -113,7 +113,10 @@ solstice import \
 
 - `-from` : la base de Jira, `postgres://…` ou `mysql://…`. Un accès en
   lecture suffit. Pour un résultat cohérent, arrêtez Jira ou importez depuis
-  une copie de la base.
+  une copie de la base. Les options après `?` se limitent à `tls` (`true`,
+  `false`, `skip-verify`, `preferred`), `timeout`, `readTimeout` et `charset`
+  pour MySQL, et `sslmode` et `connect_timeout` pour PostgreSQL ; toute autre
+  option est refusée.
 - `-tz` : le fuseau horaire du serveur Jira (Administration › Infos système).
   MySQL stocke les dates sans fuseau, et les dates sans heure (échéances,
   versions) en dépendent avec les deux moteurs.

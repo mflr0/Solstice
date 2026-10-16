@@ -98,6 +98,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportFailed:              "इम्पोर्ट विफल रहा: %s",
 	ImportConfirmDatabase:     "रिप्लेसमेंट की पुष्टि के लिए डेटाबेस का नाम (%s) टाइप करें।",
 	ImportDatabaseURLInvalid:  "Jira डेटाबेस का पता अमान्य है: postgres://… या mysql://… अपेक्षित है।",
+	ImportOptionRefused:       "Jira डेटाबेस का पता: विकल्प %s स्वीकार नहीं है। स्वीकार किए गए विकल्प: %s।",
+	ImportOptionInvalid:       "Jira डेटाबेस का पता: विकल्प “%s” का मान अमान्य है।",
 	ImportDatabaseAuth:        "Jira डेटाबेस: यूज़रनेम या पासवर्ड अस्वीकार कर दिया गया।",
 	ImportDatabaseMissing:     "Jira डेटाबेस: इस सर्वर पर “%s” नाम का डेटाबेस नहीं है।",
 	ImportDatabaseOpen:        "Jira डेटाबेस तक पहुँच नहीं हो सकी: %s",

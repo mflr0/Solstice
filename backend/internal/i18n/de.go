@@ -97,6 +97,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportFailed:              "Der Import ist fehlgeschlagen: %s",
 	ImportConfirmDatabase:     "Geben Sie den Namen der Datenbank (%s) ein, um den Austausch zu bestätigen.",
 	ImportDatabaseURLInvalid:  "Ungültige Adresse der Jira-Datenbank: postgres://… oder mysql://… erwartet.",
+	ImportOptionRefused:       "Adresse der Jira-Datenbank: Die Option %s wird nicht akzeptiert. Erlaubte Optionen: %s.",
+	ImportOptionInvalid:       "Adresse der Jira-Datenbank: Der Wert der Option „%s“ ist ungültig.",
 	ImportDatabaseAuth:        "Jira-Datenbank: Benutzername oder Passwort abgelehnt.",
 	ImportDatabaseMissing:     "Jira-Datenbank: Auf diesem Server gibt es keine Datenbank „%s“.",
 	ImportDatabaseOpen:        "Jira-Datenbank nicht zugänglich: %s",

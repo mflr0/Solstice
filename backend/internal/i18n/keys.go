@@ -112,6 +112,8 @@ const (
 	ImportFailed              Key = "ImportFailed"
 	ImportConfirmDatabase     Key = "ImportConfirmDatabase"
 	ImportDatabaseURLInvalid  Key = "ImportDatabaseURLInvalid"
+	ImportOptionRefused       Key = "ImportOptionRefused"
+	ImportOptionInvalid       Key = "ImportOptionInvalid"
 	ImportDatabaseAuth        Key = "ImportDatabaseAuth"
 	ImportDatabaseMissing     Key = "ImportDatabaseMissing"
 	ImportDatabaseOpen        Key = "ImportDatabaseOpen"
