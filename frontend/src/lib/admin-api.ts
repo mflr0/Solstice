@@ -38,8 +38,10 @@ import type {
   MailSettingsInput,
   NotificationPrefs,
   ProjectNotifications,
+  MySubscription,
   Subscription,
   SubscriptionInput,
+  TokenSettings,
   Webhook,
   WebhookDelivery,
   WebhookInput,
@@ -172,6 +174,10 @@ export const adminApi = {
   // Access tokens, everyone's.
   tokens: (user: string) => request<AccessToken[]>('GET', `/api/admin/tokens${query({ user })}`),
   revokeToken: (id: number) => request<void>('DELETE', `/api/admin/tokens/${id}`),
+  /** Who may create tokens. */
+  tokenSettings: () => request<TokenSettings>('GET', '/api/admin/tokens/settings'),
+  saveTokenSettings: (who: TokenSettings['who'], group?: number) =>
+    request<TokenSettings>('PUT', '/api/admin/tokens/settings', { who, group }),
 
   // Audit log.
   audit: (q: AuditQuery) =>
@@ -235,6 +241,8 @@ export const accountApi = {
   createToken: (name: string, expires: string | null) =>
     request<AccessToken>('POST', '/api/me/tokens', { name, expires }),
   revokeToken: (id: number) => request<void>('DELETE', `/api/me/tokens/${id}`),
+  /** Whether the instance lets this user create a token now. */
+  tokenPolicy: () => request<{ canCreate: boolean }>('GET', '/api/me/tokens/policy'),
 
   // E-mail notifications.
   notifications: () => request<NotificationPrefs>('GET', '/api/me/notifications'),
@@ -246,6 +254,8 @@ export const accountApi = {
     request<ProjectNotifications>('PUT', `/api/projects/${enc(key)}/notifications`, s),
 
   // Filter subscriptions.
+  /** Every subscription of the user, on every filter. */
+  mySubscriptions: () => request<MySubscription[]>('GET', '/api/me/subscriptions'),
   subscriptions: (filter: number) =>
     request<Subscription[]>('GET', `/api/filters/${filter}/subscriptions`),
   subscribe: (filter: number, s: SubscriptionInput) =>
