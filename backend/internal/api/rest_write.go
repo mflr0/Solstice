@@ -544,17 +544,14 @@ func (s *Server) refIssue(ctx context.Context, sub *perm.Subject, r ref) (*issue
 	return iss, nil
 }
 
-// settableKind tells whether translateCustom takes values for the custom
-// fields of a kind: the forms the REST API describes list those.
-func settableKind(kind string) bool {
-	switch kind {
-	case "gh-epic-link", "gh-sprint", "url", "textfield", "gh-epic-label", "textarea", "float", "datepicker", "datetime",
-		"select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect", "userpicker",
-		"multiuserpicker", "labels":
-		return true
-	}
-	return false
-}
+// settableKinds are the kinds of custom fields translateCustom takes values
+// for: the forms the REST API describes list those. A test checks that
+// translateCustom takes each.
+var settableKinds = []string{"gh-epic-link", "gh-sprint", "url", "textfield", "gh-epic-label", "textarea", "float",
+	"datepicker", "datetime", "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect",
+	"userpicker", "multiuserpicker", "labels"}
+
+func settableKind(kind string) bool { return slices.Contains(settableKinds, kind) }
 
 // translateCustom reads a custom field's new value. The epic link and the
 // sprint, which Solstice keeps as properties of the issue, become those.
