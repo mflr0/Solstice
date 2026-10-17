@@ -1332,7 +1332,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err := s.applyCustom(ctx, sub, s.restOut(r), iss, custom); err != nil {
 		return err
 	}
-	return s.respondIssue(w, r, sub, iss.ID)
+	return s.respondIssue(w, r, http.StatusOK, sub, iss.ID)
 }
 
 // applyUpdate changes an issue's fields, checking each one's permission,
@@ -1704,19 +1704,19 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 	return nil
 }
 
-func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.Subject, id int64) error {
+func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, status int, sub *perm.Subject, id int64) error {
 	iss, err := s.findIssueByID(r.Context(), id)
 	if err != nil {
 		return err
 	}
 	if !sub.CanSee(iss.perm()) {
-		return writeJSON(w, http.StatusOK, map[string]any{"key": iss.Key(), "hidden": true})
+		return writeJSON(w, status, map[string]any{"key": iss.Key(), "hidden": true})
 	}
 	d, err := s.issueDetail(r.Context(), sub, iss)
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, d)
+	return writeJSON(w, status, d)
 }
 
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {

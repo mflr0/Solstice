@@ -119,7 +119,7 @@ func TestCustomFields(t *testing.T) {
 	}
 
 	// Options: added, disabled (no longer offered), reordered.
-	admin.call("POST", path+"/options", map[string]any{"value": "Moyen"}, 200, &f)
+	admin.call("POST", path+"/options", map[string]any{"value": "Moyen"}, 201, &f)
 	admin.call("POST", path+"/options", map[string]any{"value": "moyen"}, 409, nil)
 	middle := f.Options[2].ID
 	admin.call("PATCH", fmt.Sprintf("%s/options/%d", path, low), map[string]any{"disabled": true}, 200, nil)
