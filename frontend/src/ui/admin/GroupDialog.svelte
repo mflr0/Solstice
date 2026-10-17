@@ -30,6 +30,8 @@
   let touched = $state(false);
   let error = $state('');
   let busy = $state(false);
+  /** A member is being added or removed: no second change meanwhile. */
+  let changing = $state(false);
   let detail = $state<GroupDetail | null>(null);
   let seq = 0;
 
@@ -68,20 +70,24 @@
   }
 
   async function add(user: UserRef | null) {
-    if (!group || !user) return;
+    if (!group || !user || changing) return;
     error = '';
+    changing = true;
     try {
       detail = await adminApi.addMembers(group.id, [user.id]);
       notify(t.adminArea.groupsPage.memberAdded(user.name));
       onchanged();
     } catch (e) {
       error = errorMessage(e);
+    } finally {
+      changing = false;
     }
   }
 
   async function remove(user: UserRef) {
-    if (!group) return;
+    if (!group || changing) return;
     error = '';
+    changing = true;
     try {
       await adminApi.removeMember(group.id, user.id);
       if (detail) detail = { ...detail, members: detail.members.filter((m) => m.id !== user.id) };
@@ -89,6 +95,8 @@
       onchanged();
     } catch (e) {
       error = errorMessage(e);
+    } finally {
+      changing = false;
     }
   }
 
@@ -164,6 +172,7 @@
             search={candidates}
             onpick={(u) => void add(u)}
             allowNone={false}
+            disabled={changing}
             field
           />
           <p class="form-hint">{t.adminArea.groupsPage.membersHint}</p>
@@ -180,8 +189,11 @@
                         <span class="key muted">{m.username}</span>
                       </td>
                       <td class="row-actions">
-                        <button type="button" class="link-btn" onclick={() => void remove(m)}
-                          >{t.common.remove}</button
+                        <button
+                          type="button"
+                          class="link-btn"
+                          disabled={changing}
+                          onclick={() => void remove(m)}>{t.common.remove}</button
                         >
                       </td>
                     </tr>
