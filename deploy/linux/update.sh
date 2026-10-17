@@ -509,7 +509,8 @@ back_up() (
   export MYSQL_PWD
   set -- --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP
   # The tls option read before the update started, in the dialect of the
-  # dump client. The options never contain a space: split on purpose.
+  # dump client. The options contain no globbing characters; split into words
+  # on purpose.
   # shellcheck disable=SC2046
   set -- "$@" $(dump_tls_opts "$dump" "$db_tls")
   set -- "$@" --host="$db_host" --port="$db_port" --user="$db_user" "$db_name"
