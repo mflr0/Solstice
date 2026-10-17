@@ -40,17 +40,17 @@ features (see `ROADMAP.md`). The release waits for items 7 and 8.
    interrupted and never reviewed; a deadlock was already found and fixed
    there. Also check the project settings tabs (general, components,
    versions, notifications), the instance name and banner in the app shell,
-   and the "update available" badge.
+   and the "update available" badge (pull request #81).
 2. Run the API tests in CI. They need an imported database
    (`SOLSTICE_TEST_DB`), today built from a Jira schema file that is not
    versioned. Write a Go seeder for a synthetic Solstice database and run the
    tests against a MariaDB service in the workflow. Needed before any large
-   refactoring.
+   refactoring (pull request #106).
 3. Integrated updates: run the root helper in a systemd container (update
    succeeds, bad checksum refused, unhealthy version rolled back).
 4. Meaning review of the interface translations (about 520 texts per
    language) with a strong model; three Hindi link labels ("is blocked by"…)
-   need a native speaker.
+   need a native speaker (pull request #94).
 5. AGPL: a "Source code" link in the interface. Third-party notices: the
    fonts (OFL-1.1) ship with the application and their license must come
    with them.
@@ -59,7 +59,7 @@ features (see `ROADMAP.md`). The release waits for items 7 and 8.
    `deploy/proxy/`), REST API, `SECURITY.md`, and a migration guide (dry
    run, parallel run, cutover, rollback, keeping the domain name so
    `/browse/KEY-1` links keep working). A contact address for conduct
-   reports in CODE_OF_CONDUCT.md.
+   reports in CODE_OF_CONDUCT.md (pull requests #85 and #91).
 7. Jira audit without migrating: `solstice import -check` reads a Jira
     database and writes the full report (counts, Jira version, plugins found
     in `AO_*` tables, unsupported custom field types, inactive users, what
@@ -96,6 +96,10 @@ without an account. Remaining hardening, none of it blocking:
   update helper refuses every update.
 - Warn when the setup wizard is reached over plain HTTP; the database backup
   of `update.sh` ignores `?tls=`.
+- A password change by the user: in one transaction (`updateMe` sets the
+  password and ends the other sessions in separate statements), and revoke
+  the personal access tokens, which it keeps. The change by an administrator
+  revokes the reset links, not the personal tokens.
 - Resource limits: a quota for attachments, a cap on live-event streams, a
   read timeout on request bodies, `recover` in the background workers.
 - Smaller items are tracked outside this file until fixed.
@@ -145,8 +149,8 @@ projects), after item 2 above, starting with an issue.
 - Terminal theme in Hindi: monospaced spaces look wide.
 - `secureRequest` (cookie `Secure` flag) and `restOut` in `rest.go` still
   believe `X-Forwarded-Proto` from any client; gate them on
-  `SOLSTICE_TRUSTED_PROXIES` without dropping `Secure` on existing proxied
-  installs.
+  `SOLSTICE_HTTP_TRUSTEDPROXIES` without dropping `Secure` on existing
+  proxied installs.
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
 - The import report and warnings are in English only (not translated).
@@ -158,7 +162,8 @@ projects), after item 2 above, starting with an issue.
   its row, cannot be typed.
 - REST API not implemented: createmeta and editmeta, issue picker, remote
   links, `/rest/auth/1/session`, groups, create/update/delete of versions,
-  components and filters.
+  components and filters, creating sprints (`POST /rest/agile/1.0/sprint` is
+  not registered), changing the reporter (refused by design).
 
 ## 1.1
 
