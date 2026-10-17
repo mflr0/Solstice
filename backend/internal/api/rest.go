@@ -378,7 +378,7 @@ func (s *Server) restOut(r *http.Request) *restOut {
 	base := s.base()
 	if base == "" {
 		scheme := "http"
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		if secureRequest(r, "", s.proxies) {
 			scheme = "https"
 		}
 		base = scheme + "://" + r.Host

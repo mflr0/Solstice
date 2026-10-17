@@ -5,6 +5,7 @@ package api
 // setup throttling count each visitor and not the proxy they share.
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"log/slog"
@@ -171,5 +172,38 @@ func TestLoginThrottlingIgnoresSpoofedHeader(t *testing.T) {
 		if ipKey != first || ipKey != "ip:198.51.100.7" {
 			t.Errorf("X-Forwarded-For %q: counted as %s, want ip:198.51.100.7", forged, ipKey)
 		}
+	}
+}
+
+func TestSecureRequest(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		tls     bool
+		remote  string
+		proto   string
+		baseURL string
+		want    bool
+	}{
+		{"direct TLS", true, "198.51.100.7:40000", "", "", true},
+		{"header from a trusted proxy", false, "192.0.2.1:40000", "https", "", true},
+		{"http header from a trusted proxy", false, "192.0.2.1:40000", "http", "", false},
+		{"header from an untrusted peer", false, "198.51.100.7:40000", "https", "", false},
+		{"https base URL", false, "198.51.100.7:40000", "", "https://example.test", true},
+		{"http base URL", false, "198.51.100.7:40000", "", "http://example.test", false},
+		{"plain request", false, "198.51.100.7:40000", "", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r.RemoteAddr = tc.remote
+			if tc.tls {
+				r.TLS = &tls.ConnectionState{}
+			}
+			if tc.proto != "" {
+				r.Header.Set("X-Forwarded-Proto", tc.proto)
+			}
+			if got := secureRequest(r, tc.baseURL, parseProxies(t, "192.0.2.0/24")); got != tc.want {
+				t.Errorf("secureRequest = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

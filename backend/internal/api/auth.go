@@ -68,7 +68,7 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u *auth.Us
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   secureRequest(r, s.base()),
+		Secure:   secureRequest(r, s.base(), s.proxies),
 		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
@@ -81,7 +81,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	http.SetCookie(w, &http.Cookie{Name: auth.CookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
-		SameSite: http.SameSiteLaxMode})
+		Secure: secureRequest(r, s.base(), s.proxies), SameSite: http.SameSiteLaxMode})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

@@ -310,16 +310,21 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	// Secure only when this request is: the wizard often runs over plain
 	// http before the HTTPS proxy of the public address exists.
 	http.SetCookie(rw, &http.Cookie{Name: setupCookie, Value: token, Path: "/api/setup", HttpOnly: true,
-		Secure: secureRequest(r, ""), SameSite: http.SameSiteStrictMode})
+		Secure: secureRequest(r, "", w.proxies), SameSite: http.SameSiteStrictMode})
 	w.log.Info("setup wizard unlocked", "client", clientIP(r, w.proxies))
 	rw.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
 // secureRequest tells whether cookies must be marked Secure: the request
-// came over HTTPS, directly or through a proxy, or the public address is HTTPS.
-func secureRequest(r *http.Request, baseURL string) bool {
-	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" || strings.HasPrefix(baseURL, "https://")
+// came over HTTPS, directly or through a trusted proxy (the only peers whose
+// X-Forwarded-Proto is believed), or the public address is HTTPS.
+func secureRequest(r *http.Request, baseURL string, trusted []netip.Prefix) bool {
+	if r.TLS != nil || strings.HasPrefix(baseURL, "https://") {
+		return true
+	}
+	addr, ok := peerAddr(r.RemoteAddr)
+	return ok && isTrusted(trusted, addr) && r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
 type setupStatus struct {
