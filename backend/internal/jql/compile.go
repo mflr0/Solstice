@@ -100,8 +100,8 @@ func (c *compiler) clause(cl Clause) (string, error) {
 	}
 	switch strings.ToLower(cl.Field) {
 	case "project":
-		return c.lookup(cl, "i.project_id", "SELECT id FROM projects WHERE pkey IN (%s) OR name IN (%s) OR id IN (%s) "+
-			"OR id IN (SELECT project_id FROM project_keys WHERE pkey IN (%s))", upper)
+		return c.lookup(cl, "i.project_id", "SELECT pk.id FROM projects pk WHERE "+sqlq.ProjectKey("pk", "%s")+
+			" OR pk.name IN (%s) OR pk.id IN (%s)", upper)
 	case "status":
 		return c.lookup(cl, "i.status_id", "SELECT id FROM statuses WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
 	case "statuscategory":
@@ -566,12 +566,6 @@ func (c *compiler) date(cl Clause, col string, dateOnly bool) (string, error) {
 
 var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
 
-// formerKeys is a condition on a project (alias pa) naming it by its key or
-// by a key it had before it was renamed; it takes the key twice.
-func formerKeys(pa string) string {
-	return "(" + pa + ".pkey = ? OR " + pa + ".id IN (SELECT project_id FROM project_keys WHERE pkey = ?))"
-}
-
 // keysSQL is a condition matching the given issue keys or numeric ids on
 // the issue under alias a (projects under pa).
 func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
@@ -579,7 +573,7 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	for _, t := range texts {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			conds = append(conds, "("+formerKeys(pa)+" AND "+a+".num = ?)")
+			conds = append(conds, "("+sqlq.ProjectKey(pa, "?")+" AND "+a+".num = ?)")
 			c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
 			continue
 		}
@@ -620,7 +614,7 @@ func (c *compiler) key(cl Clause) (string, error) {
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
 		c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
-		return "(" + formerKeys("p") + " AND i.num " + cl.Op + " ?)", nil
+		return "(" + sqlq.ProjectKey("p", "?") + " AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")
 }
@@ -981,8 +975,8 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 				c.arg(a)
 			}
 		}
-		return " AND " + alias + ".project_id IN (SELECT id FROM projects WHERE pkey IN (" + m + ") OR name IN (" + m + ") " +
-			"OR id IN (SELECT project_id FROM project_keys WHERE pkey IN (" + m + ")))"
+		return " AND " + alias + ".project_id IN (SELECT pk.id FROM projects pk WHERE " + sqlq.ProjectKey("pk", m) +
+			" OR pk.name IN (" + m + "))"
 	}
 	var conds []string
 	empty := false

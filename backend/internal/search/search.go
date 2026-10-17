@@ -185,12 +185,6 @@ func tokenize(s string) []token {
 	return out
 }
 
-// ProjectKeySQL is a condition on a project (alias pa) named by its key or by
-// a key it had before it was renamed. It takes the upper-case key twice.
-func ProjectKeySQL(pa string) string {
-	return "(" + pa + ".pkey = ? OR " + pa + ".id IN (SELECT project_id FROM project_keys WHERE pkey = ?))"
-}
-
 // SQL returns a condition on the issues table (alias i, with projects as p)
 // and its arguments. me is the current user, for @moi.
 func (q Query) SQL(me int64) (string, []any) {
@@ -202,7 +196,7 @@ func (q Query) SQL(me int64) (string, []any) {
 		for _, k := range q.Keys {
 			m := issueKey.FindStringSubmatch(k)
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			keys = append(keys, "("+ProjectKeySQL("p")+" AND i.num = ?)")
+			keys = append(keys, "("+sqlq.ProjectKey("p", "?")+" AND i.num = ?)")
 			args = append(args, m[1], m[1], num)
 		}
 		conds = append(conds, "("+strings.Join(keys, " OR ")+")")
@@ -277,7 +271,7 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 		return "i.issue_type_id IN (SELECT id FROM issue_types WHERE name = ?)", []any{v}
 	case Project:
 		key := strings.ToUpper(v)
-		return "(" + ProjectKeySQL("p") + " OR p.name = ?)", []any{key, key, v}
+		return "(" + sqlq.ProjectKey("p", "?") + " OR p.name = ?)", []any{key, key, v}
 	case Priority:
 		return "i.priority_id IN (SELECT id FROM priorities WHERE name = ?)", []any{v}
 	case Label:

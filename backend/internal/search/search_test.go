@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"solstice/internal/sqlq"
 )
 
 func TestParse(t *testing.T) {
@@ -83,7 +85,7 @@ func TestSQLUnknownCategoryMatchesNothing(t *testing.T) {
 
 func TestSQLKeys(t *testing.T) {
 	sql, args := Parse("DEMO-12 web-3").SQL(1)
-	one := "(" + ProjectKeySQL("p") + " AND i.num = ?)"
+	one := "(" + sqlq.ProjectKey("p", "?") + " AND i.num = ?)"
 	if sql != "("+one+" OR "+one+")" || !strings.Contains(one, "project_keys") {
 		t.Fatalf("got %s", sql)
 	}

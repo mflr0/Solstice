@@ -905,7 +905,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	var projectID, leadID int64
 	var defaultAssignee string
 	var lead sql.NullInt64
-	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.lead_id, p.default_assignee FROM projects p WHERE `+search.ProjectKeySQL("p"),
+	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.lead_id, p.default_assignee FROM projects p WHERE `+sqlq.ProjectKey("p", "?"),
 		strings.ToUpper(projectKey), strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	} else if err != nil {
@@ -1822,7 +1822,7 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 	where = vis + " AND " + cond
 	args = append(args, cargs...)
 	if p := params.Get("project"); p != "" {
-		where += " AND " + search.ProjectKeySQL("p")
+		where += " AND " + sqlq.ProjectKey("p", "?")
 		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
 	}
 	return where, args, sort, mode, nil

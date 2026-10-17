@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"solstice/internal/search"
 	"solstice/internal/sqlq"
 )
 
@@ -126,7 +125,7 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 	where := vis + " AND i.issue_type_id IN (" + sqlq.Marks(len(types)) + ")"
 	args = append(args, types...)
 	if key := r.URL.Query().Get("project"); key != "" {
-		where += " AND " + search.ProjectKeySQL("p")
+		where += " AND " + sqlq.ProjectKey("p", "?")
 		args = append(args, strings.ToUpper(key), strings.ToUpper(key))
 	}
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
@@ -208,7 +207,7 @@ func (s *Server) projectParts(table string) handler {
 		// Archived projects stay out of pickers.
 		where, args := "LOWER(x.name) LIKE ? AND NOT p.archived", []any{"%" + escapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
 		if key := r.URL.Query().Get("project"); key != "" {
-			where += " AND " + search.ProjectKeySQL("p")
+			where += " AND " + sqlq.ProjectKey("p", "?")
 			args = append(args, strings.ToUpper(key), strings.ToUpper(key))
 		}
 		out := []projectPart{}

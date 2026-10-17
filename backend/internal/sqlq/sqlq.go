@@ -12,6 +12,14 @@ import (
 // VALUES tuples.
 func Marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
+// ProjectKey is a condition on a project (alias pa) named by its key or by a
+// key it had before it was renamed. marks is the bind markers of the keys, "?"
+// for one key or Marks(n) for n; the upper-case keys are bound twice, first
+// for the current key and then for the former ones.
+func ProjectKey(pa, marks string) string {
+	return "(" + pa + ".pkey IN (" + marks + ") OR " + pa + ".id IN (SELECT project_id FROM project_keys WHERE pkey IN (" + marks + ")))"
+}
+
 // Querier is what Each needs: a *sql.DB, *sql.Tx or *sql.Conn.
 type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
