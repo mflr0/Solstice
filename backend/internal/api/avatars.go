@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -172,6 +173,19 @@ func (s *Server) adminDeleteAvatar(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// serveAvatar answers with an avatar that the browser may keep but must check
+// with the server before showing, so a change is seen at once. The ETag lets
+// the check end in a 304.
+func serveAvatar(w http.ResponseWriter, r *http.Request, contentType, etag string, body io.ReadSeeker) {
+	h := w.Header()
+	h.Set("Content-Type", contentType)
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+	h.Set("Cache-Control", "private, no-cache")
+	h.Set("ETag", etag)
+	http.ServeContent(w, r, "", time.Time{}, body)
+}
+
 // getAvatar serves a person's picture, or their initials when they have none.
 func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	id, err := pathID(r, "userId")
@@ -187,20 +201,21 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(s.avatarPath(id))
+	f, err := os.Open(s.avatarPath(id))
 	if errors.Is(err, os.ErrNotExist) {
-		return writeAvatar(w, r, username, name)
+		svg := avatarSVG(r, username, name)
+		sum := sha256.Sum256(svg)
+		serveAvatar(w, r, "image/svg+xml", `"`+hex.EncodeToString(sum[:16])+`"`, bytes.NewReader(svg))
+		return nil
 	}
 	if err != nil {
 		return err
 	}
-	sum := sha256.Sum256(data)
-	h := w.Header()
-	h.Set("Content-Type", "image/png")
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "default-src 'none'")
-	h.Set("Cache-Control", "private, max-age=300")
-	h.Set("ETag", `"`+hex.EncodeToString(sum[:16])+`"`)
-	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	serveAvatar(w, r, "image/png", fmt.Sprintf(`"%x-%x"`, info.ModTime().UnixNano(), info.Size()), f)
 	return nil
 }

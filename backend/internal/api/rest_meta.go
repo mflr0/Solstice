@@ -682,7 +682,8 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 // name.
 var avatarColours = []string{"#8a5a44", "#5f7a61", "#4f6d7a", "#7a6a4f", "#6d5a7a", "#7a4f5a", "#4f7a72", "#6b6b4f"}
 
-func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) error {
+// avatarSVG draws the initials of label on a colour drawn from seed.
+func avatarSVG(r *http.Request, seed, label string) []byte {
 	size := map[string]int{"xsmall": 16, "small": 24, "medium": 32}[r.URL.Query().Get("size")]
 	if size == 0 {
 		size = 48
@@ -696,13 +697,17 @@ func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) err
 	h := fnv.New32a()
 	h.Write([]byte(seed))
 	colour := avatarColours[int(h.Sum32()%uint32(len(avatarColours)))]
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "private, max-age=3600")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
-	_, err := fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 48 48">`+
+	return fmt.Appendf(nil, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 48 48">`+
 		`<rect width="48" height="48" rx="6" fill="%s"/><text x="24" y="24" dy=".35em" text-anchor="middle" `+
 		`font-family="sans-serif" font-size="19" fill="#fff">%s</text></svg>`, size, size, colour,
 		html.EscapeString(string(initials)))
+}
+
+func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) error {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+	_, err := w.Write(avatarSVG(r, seed, label))
 	return err
 }
 

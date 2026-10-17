@@ -66,6 +66,13 @@ func TestAvatarLifecycle(t *testing.T) {
 	if status != 200 || !strings.HasPrefix(h.Get("Content-Type"), "image/svg+xml") || !bytes.Contains(body, []byte("<svg")) {
 		t.Errorf("no picture: %d %s %.60s", status, h.Get("Content-Type"), body)
 	}
+	initialsTag := h.Get("ETag")
+	if cc := h.Get("Cache-Control"); cc != "private, no-cache" || initialsTag == "" {
+		t.Errorf("initials: Cache-Control = %q, ETag = %q", cc, initialsTag)
+	}
+	if status, _, _ := getPicture(t, other, id, header("If-None-Match", initialsTag)); status != 304 {
+		t.Errorf("initials revalidation: %d", status)
+	}
 	if status, _, _ := getPicture(t, anonymous(t), id, nil); status != 401 {
 		t.Errorf("signed out: %d", status)
 	}
@@ -82,7 +89,7 @@ func TestAvatarLifecycle(t *testing.T) {
 	if status != 200 || h.Get("Content-Type") != "image/png" || h.Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("picture: %d %v", status, h)
 	}
-	if cc := h.Get("Cache-Control"); !strings.HasPrefix(cc, "private, max-age=") {
+	if cc := h.Get("Cache-Control"); cc != "private, no-cache" {
 		t.Errorf("Cache-Control = %q", cc)
 	}
 	if bytes.Contains(body, []byte(trailer)) {
@@ -92,8 +99,12 @@ func TestAvatarLifecycle(t *testing.T) {
 		t.Errorf("stored picture: %v %v", err, img)
 	}
 	etag := h.Get("ETag")
-	if etag == "" {
-		t.Fatal("no ETag")
+	if etag == "" || etag == initialsTag {
+		t.Fatalf("ETag = %q, initials had %q", etag, initialsTag)
+	}
+	// What a browser kept before the upload is not answered with a 304.
+	if status, _, _ := getPicture(t, other, id, header("If-None-Match", initialsTag)); status != 200 {
+		t.Errorf("revalidation of the initials after an upload: %d", status)
 	}
 	if status, _, _ := getPicture(t, other, id, header("If-None-Match", etag)); status != 304 {
 		t.Errorf("revalidation: %d", status)
@@ -124,6 +135,9 @@ func TestAvatarLifecycle(t *testing.T) {
 	me.call("DELETE", "/api/me/avatar", nil, 204, nil)
 	if status, h, _ := getPicture(t, other, id, nil); status != 200 || !strings.HasPrefix(h.Get("Content-Type"), "image/svg+xml") {
 		t.Errorf("after removal: %d %s", status, h.Get("Content-Type"))
+	}
+	if status, _, _ := getPicture(t, other, id, header("If-None-Match", etag)); status != 200 {
+		t.Errorf("revalidation of the picture after its removal: %d", status)
 	}
 }
 
