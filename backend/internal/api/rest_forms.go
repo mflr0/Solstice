@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -487,7 +488,7 @@ var pickerKey = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*-[0-9]+$`)
 // history (hs) and the current search (cs). Solstice keeps no record of the
 // issues people viewed: the history is the issues the user last changed or
 // commented. Both only hold issues the user sees. The sections' label and sub
-// texts are left empty.
+// texts are in the caller's language.
 func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
@@ -537,7 +538,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		where += " AND i.parent_id IS NULL"
 	}
 
-	history, _, err := s.searchRows(ctx, where+` AND i.id IN (SELECT issue_id FROM change_groups WHERE author_id = ?
+	history, historyTotal, err := s.searchRows(ctx, where+` AND i.id IN (SELECT issue_id FROM change_groups WHERE author_id = ?
 		UNION SELECT issue_id FROM comments WHERE author_id = ?)`, append(slices.Clone(args), sub.UserID, sub.UserID),
 		exact+"i.updated_at DESC", 0, pickerHistory)
 	if err != nil {
@@ -555,7 +556,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		current, order = where+" AND "+jqlWhere, jqlOrder
 		currentArgs = append(currentArgs, jqlArgs...)
 	}
-	found, _, err := s.searchRows(ctx, current, currentArgs, exact+order, 0, pickerCurrent)
+	found, foundTotal, err := s.searchRows(ctx, current, currentArgs, exact+order, 0, pickerCurrent)
 	if err != nil {
 		return err
 	}
@@ -564,13 +565,17 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	if query != "" {
 		re = regexp.MustCompile("(?i)" + regexp.QuoteMeta(query))
 	}
-	section := func(id string, rows []*issueRow) map[string]any {
+	o := s.restOut(r)
+	section := func(id string, label i18n.Message, rows []*issueRow, total int) map[string]any {
 		issues := []any{}
 		for _, iss := range rows {
 			issues = append(issues, map[string]any{"id": iss.ID, "key": iss.Key(), "keyHtml": highlight(iss.Key(), re),
 				"summary": highlight(iss.Summary, re), "summaryText": iss.Summary})
 		}
-		return map[string]any{"id": id, "label": "", "sub": "", "issues": issues}
+		return map[string]any{"id": id, "label": o.msg(label),
+			"sub": o.msg(i18n.M(i18n.RESTPickerShowing, len(rows), total)), "issues": issues}
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"sections": []any{section("hs", history), section("cs", found)}})
+	return writeJSON(w, http.StatusOK, map[string]any{"sections": []any{
+		section("hs", i18n.M(i18n.RESTPickerHistory), history, historyTotal),
+		section("cs", i18n.M(i18n.RESTPickerCurrent), found, foundTotal)}})
 }

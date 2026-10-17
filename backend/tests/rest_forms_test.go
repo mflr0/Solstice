@@ -812,6 +812,37 @@ func TestRESTIssuePicker(t *testing.T) {
 		t.Errorf("picker without a query: %v", pickerKeys(answer, "cs"))
 	}
 
+	// The section titles come in the caller's language; the second number of the
+	// sub text is the count of matching issues, the first the count listed.
+	for _, c := range []struct{ lang, history, current, sub string }{
+		{"en", "History Search", "Current Search", "Showing %d of %d matching issues"},
+		{"fr", "Historique de recherche", "Recherche en cours", "%d tickets affichés sur %d correspondants"},
+		{"hi", "खोज इतिहास", "वर्तमान खोज", "मेल खाने वाले %[2]d टिकटों में से %[1]d दिखाए जा रहे हैं"},
+	} {
+		_, _, raw := call(t, nil, testURL, "GET", "/rest/api/2/issue/picker", nil, func(r *http.Request) {
+			basic("paul.martin", formUsers["paul.martin"])(r)
+			r.Header.Set("Accept-Language", c.lang)
+		})
+		var answer any
+		json.Unmarshal(raw, &answer)
+		if str(answer, "sections", 0, "label") != c.history || str(answer, "sections", 1, "label") != c.current {
+			t.Errorf("%s section labels: %q, %q", c.lang, str(answer, "sections", 0, "label"), str(answer, "sections", 1, "label"))
+		}
+		for i := range 2 {
+			var shown, total int
+			sub := str(answer, "sections", i, "sub")
+			if _, err := fmt.Sscanf(sub, strings.NewReplacer("[2]", "", "[1]", "").Replace(c.sub), &shown, &total); err != nil {
+				t.Errorf("%s section %d sub %q: %v", c.lang, i, sub, err)
+			}
+			if c.lang == "hi" { // Sscanf has no argument indexes: Hindi writes the total first
+				shown, total = total, shown
+			}
+			if shown != len(list(at(answer, "sections", i, "issues"))) || total < shown {
+				t.Errorf("%s section %d sub %q: %d issues listed", c.lang, i, sub, len(list(at(answer, "sections", i, "issues"))))
+			}
+		}
+	}
+
 	// Only issues the user sees: RH and the restricted level are hidden from paul.martin.
 	var rhKey, rhSummary string
 	if err := testDB.QueryRow(base, "RH").Scan(&rhKey, &rhSummary); err != nil {

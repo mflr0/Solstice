@@ -300,6 +300,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Vorgänge können noch nicht verschoben werden.",
 	IssueSubtasksNotDeletable:  "Dieser Vorgang hat Unteraufgaben, die Sie nicht löschen dürfen.",
 	IssueDeleteSubtasks:        "Dieser Vorgang hat Unteraufgaben: Fügen Sie deleteSubtasks=true hinzu, um sie mitzulöschen.",
+	RESTPickerHistory:          "Suchverlauf",
+	RESTPickerCurrent:          "Aktuelle Suche",
+	RESTPickerShowing:          "%d von %d passenden Vorgängen angezeigt",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

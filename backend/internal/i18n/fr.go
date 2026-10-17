@@ -299,6 +299,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Déplacer un ticket n'est pas encore possible.",
 	IssueSubtasksNotDeletable:  "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.",
 	IssueDeleteSubtasks:        "Ce ticket a des sous-tâches : ajoutez deleteSubtasks=true pour les supprimer avec lui.",
+	RESTPickerHistory:          "Historique de recherche",
+	RESTPickerCurrent:          "Recherche en cours",
+	RESTPickerShowing:          "%d tickets affichés sur %d correspondants",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",
