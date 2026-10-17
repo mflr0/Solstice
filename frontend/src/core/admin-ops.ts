@@ -78,6 +78,7 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'sprint.update',
   'sprint.delete',
   'filter.share',
+  'issue.move',
   ...CATALOGUE_KINDS.flatMap((k) =>
     ['create', 'update', 'delete', 'order'].map((v) => `${k}.${v}`),
   ),

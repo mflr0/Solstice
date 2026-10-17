@@ -712,7 +712,7 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.auditLog(r, "issue.move", audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: moved.Key()},
+	s.auditLog(r, audit.IssueMove, audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: moved.Key()},
 		map[string]any{"from": orig.Key(), "to": moved.Key(), "project": plan.dest.key, "subtasks": len(plan.items) - 1})
 	return writeJSON(w, http.StatusOK, map[string]string{"key": moved.Key()})
 }

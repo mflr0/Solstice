@@ -46,6 +46,7 @@ const (
 	SprintDelete   = "sprint.delete"
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
+	IssueMove      = "issue.move"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"
