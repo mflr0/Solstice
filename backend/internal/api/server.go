@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,17 +28,18 @@ import (
 
 // Server holds what handlers share.
 type Server struct {
-	db        *sql.DB
-	perms     *perm.Store
-	hub       *live.Hub
-	dataDir   string
-	log       *slog.Logger
-	tz        *time.Location // for dates typed without a time zone (JQL)
-	limiter   *auth.Limiter
-	baseURL   string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
-	proxies   []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
-	maxUpload int64          // bytes in one upload request; see SetMaxUpload
-	out       *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	db         *sql.DB
+	perms      *perm.Store
+	hub        *live.Hub
+	dataDir    string
+	log        *slog.Logger
+	tz         *time.Location // for dates typed without a time zone (JQL)
+	limiter    *auth.Limiter
+	baseURL    string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
+	proxies    []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
+	maxUpload  int64          // bytes in one upload request; see SetMaxUpload
+	maxStorage int64          // bytes in all attachments, 0 for no limit; see SetMaxStorage
+	out        *outgoing      // event bus, e-mail and webhooks (notifications.go)
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -54,13 +56,15 @@ type Server struct {
 
 	streamsDone  chan struct{} // closed by CloseStreams
 	closeStreams sync.Once
+	streams      streamSlots // open live-event streams, capped (meta.go)
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{})}
+		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
+		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{})}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
 	}
@@ -201,6 +205,21 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
+// How long a client gets to send its request body; uploads travel as slow
+// files. The http.Server has no ReadTimeout, which would also cut the
+// live-event streams: these deadlines only concern bodies (see wrap).
+const (
+	bodyReadTimeout   = time.Minute
+	uploadReadTimeout = 15 * time.Minute
+)
+
+// setBodyReadDeadline gives the connection a read deadline at the given
+// time; the zero time clears it. A connection that does not support
+// deadlines (http.ErrNotSupported) is left as it is.
+func setBodyReadDeadline(w http.ResponseWriter, at time.Time) {
+	_ = http.NewResponseController(w).SetReadDeadline(at)
+}
+
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -251,6 +270,18 @@ var (
 
 func (s *Server) wrap(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A request with a body gets a read deadline, so a client trickling
+		// one cannot hold a connection open; upload routes get more time.
+		// The deadline is cleared afterwards: it must not cut a live stream
+		// later opened on the same connection.
+		if r.ContentLength != 0 {
+			timeout := bodyReadTimeout
+			if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/attachments") {
+				timeout = uploadReadTimeout
+			}
+			setBodyReadDeadline(w, time.Now().Add(timeout))
+			defer setBodyReadDeadline(w, time.Time{})
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
 			writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
