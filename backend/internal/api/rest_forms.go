@@ -552,6 +552,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	// change the query are written into it.
 	exact := ""
 	if pickerKey.MatchString(query) {
+		// Safe as text, as pickerKey allows only letters, digits, "_" and "-"; searchRows binds no argument for its ORDER BY.
 		exact = "(CONCAT(p.pkey, '-', i.num) = '" + strings.ToUpper(query) + "') DESC, "
 	}
 	if query != "" {
