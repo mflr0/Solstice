@@ -47,6 +47,7 @@ const (
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
 	IssueDelete    = "issue.delete"
+	IssueExport    = "issue.export"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"

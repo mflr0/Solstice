@@ -4,6 +4,8 @@ package tests
 // deletion, CSV export, sign-in lockout and refused access tokens.
 
 import (
+	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -32,5 +34,34 @@ func TestIssueDeletionIsAudited(t *testing.T) {
 	}
 	if n2, _ := latestAudit(t, "issue.delete"); n2 != n+1 {
 		t.Errorf("REST deletion: %d entries (was %d)", n2, n)
+	}
+}
+
+// A CSV export is audited with the search, never with the exported rows.
+func TestCSVExportIsAudited(t *testing.T) {
+	paul := login(t, "paul.martin", "motdepasse")
+	key := createIssue(t, paul, "DEMO", "Export audité", "")
+	before, _ := latestAudit(t, "issue.export")
+	query := "jql=" + url.QueryEscape("key = "+key)
+	if status, _, _ := exportCSVFor(t, paul, query, ""); status != 200 {
+		t.Fatalf("export: %d", status)
+	}
+	n, details := latestAudit(t, "issue.export")
+	if n != before+1 || !strings.Contains(details, key) {
+		t.Fatalf("export: %d entries (was %d), details %s", n, before, details)
+	}
+	if strings.Contains(details, "Export audité") {
+		t.Errorf("the exported rows reached the audit log: %s", details)
+	}
+	if who := pick(t, `SELECT COALESCE(username, '') FROM audit_log WHERE action = 'issue.export' ORDER BY id DESC LIMIT 1`); who != "paul.martin" {
+		t.Errorf("author %q, want paul.martin", who)
+	}
+	// A refused export (an unknown column) leaves no entry.
+	bad, _ := latestAudit(t, "issue.export")
+	if status, _, _ := exportCSVFor(t, paul, "columns=key,couleur", ""); status != 400 {
+		t.Fatalf("unknown column: %d", status)
+	}
+	if n2, _ := latestAudit(t, "issue.export"); n2 != bad {
+		t.Errorf("a refused export was recorded: %d entries (was %d)", n2, bad)
 	}
 }

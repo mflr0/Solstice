@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/audit"
 	"solstice/internal/i18n"
 )
 
@@ -144,6 +145,14 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+
+	// The search, as the user typed it: never the exported rows.
+	query := strings.TrimSpace(r.URL.Query().Get("jql"))
+	if query == "" {
+		query = strings.TrimSpace(r.URL.Query().Get("q"))
+	}
+	s.log.Info("search exported as CSV", "query", query, "rows", total)
+	s.auditLog(r, audit.IssueExport, audit.Target{}, map[string]any{"query": query})
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="solstice-`+time.Now().In(tz).Format("2006-01-02")+`.csv"`)
