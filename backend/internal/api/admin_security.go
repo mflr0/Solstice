@@ -3,7 +3,9 @@ package api
 // The issue security levels of a project and their members. Each project has
 // its own levels (the importer copies a Jira scheme into each project); an
 // issue at a level is seen only by the level's members (see package perm).
-// Project administrators manage them, and so do global administrators.
+// Only global administrators manage them: a project administrator could
+// otherwise add themselves to a confidential level, or delete it and expose
+// its issues.
 
 import (
 	"context"
@@ -120,8 +122,16 @@ func (s *Server) securityLevel(ctx context.Context, projectID, id int64) (securi
 	return list[0], nil
 }
 
+// levelProject loads the project of the route for a global administrator.
+func (s *Server) levelProject(r *http.Request) (int64, error) {
+	if err := requireAdmin(r); err != nil {
+		return 0, err
+	}
+	return s.projectByKey(r.Context(), r.PathValue("key"))
+}
+
 func (s *Server) listSecurityLevels(w http.ResponseWriter, r *http.Request) error {
-	projectID, err := s.configurableProject(r)
+	projectID, err := s.levelProject(r)
 	if err != nil {
 		return err
 	}
@@ -157,7 +167,7 @@ func (s *Server) auditLevel(r *http.Request, action string, projectID int64, lev
 
 // saveSecurityLevel creates a level (no id in the path) or changes one.
 func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error {
-	projectID, err := s.configurableProject(r)
+	projectID, err := s.levelProject(r)
 	if err != nil {
 		return err
 	}
@@ -256,7 +266,7 @@ func levelInUse(issues int) error {
 // level of the project, or clear: they then have no level (everyone who sees
 // the project sees them), which is never the default.
 func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) error {
-	projectID, err := s.configurableProject(r)
+	projectID, err := s.levelProject(r)
 	if err != nil {
 		return err
 	}
@@ -366,7 +376,7 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 // or a project role who sees the issues of the level, the project lead, or
 // the reporter or assignee of each issue.
 func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) error {
-	projectID, err := s.configurableProject(r)
+	projectID, err := s.levelProject(r)
 	if err != nil {
 		return err
 	}
@@ -468,7 +478,7 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 // removeSecurityLevelMember takes a holder off a level. A level left with no
 // member hides its issues from everyone.
 func (s *Server) removeSecurityLevelMember(w http.ResponseWriter, r *http.Request) error {
-	projectID, err := s.configurableProject(r)
+	projectID, err := s.levelProject(r)
 	if err != nil {
 		return err
 	}

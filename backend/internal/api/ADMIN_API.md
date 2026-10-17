@@ -544,13 +544,15 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   each as above plus `filterName`, by filter name. Administrators get their
   own here, not everyone's.
 
-## 12. Issue security levels — project admin
+## 12. Issue security levels — global admin
 
 Each project has its own levels (the import copies a Jira security scheme
 into each project). An issue at a level is seen only by the level's members;
 a level with no member hides its issues from everyone. Every route below
-needs the project `admin` permission or a global admin (403 otherwise; 404
-for a project the caller cannot see, and for a level of another project).
+is for global administrators only (403 otherwise, whatever the project): a
+project administrator could add themselves to a confidential level, or delete
+it and expose its issues. 404 for an unknown project, and for a level of
+another project.
 
 - `GET /api/projects/{key}/security-levels` → `[{id, name, description,
   issues, memberCount, members: [{id, holder, user: userRef|null, group:
