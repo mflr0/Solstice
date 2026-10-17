@@ -97,6 +97,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/issueLinkType", s.restLinkTypes, true)
 		rest("GET "+p+"/issue/createmeta", s.restCreateMeta, true)
 		rest("GET "+p+"/issue/{key}/editmeta", s.restEditMeta, true)
+		rest("GET "+p+"/issue/picker", s.restIssuePicker, true)
 
 		rest("GET "+p+"/search", s.restSearch, true)
 		rest("POST "+p+"/search", s.restSearch, true)

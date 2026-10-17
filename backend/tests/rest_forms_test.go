@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -745,5 +746,169 @@ func TestRESTEditMetaVisibility(t *testing.T) {
 	}
 	if status, _ := paul("GET", "/rest/api/2/issue/NOPE-1/editmeta", nil); status != http.StatusNotFound {
 		t.Errorf("editmeta of an unknown issue: %d", status)
+	}
+}
+
+// Issue picker -----------------------------------------------------------------
+
+// pickerKeys lists the issues of a picker section.
+func pickerKeys(answer any, section string) []string {
+	var out []string
+	for _, s := range list(at(answer, "sections")) {
+		if str(s, "id") == section {
+			for _, it := range list(at(s, "issues")) {
+				out = append(out, str(it, "key"))
+			}
+		}
+	}
+	return out
+}
+
+func TestRESTIssuePicker(t *testing.T) {
+	paul, chloe := restAs(t, "paul.martin"), restAs(t, "chloe.simon")
+	picker := func(rest restCall, query string) (int, any) {
+		t.Helper()
+		return rest("GET", "/rest/api/2/issue/picker?"+query, nil)
+	}
+	demo := pick(t, `SELECT id FROM projects WHERE pkey = 'DEMO'`)
+	base := `SELECT ` + keyExpr + `, i.summary FROM issues i JOIN projects p ON p.id = i.project_id WHERE p.pkey = ?
+		AND i.security_level_id IS NULL AND i.parent_id IS NULL AND CHAR_LENGTH(i.summary) > 8 ORDER BY i.num LIMIT 1`
+	var key, summary string
+	if err := testDB.QueryRow(base, "DEMO").Scan(&key, &summary); err != nil {
+		t.Fatal(err)
+	}
+
+	// Jira's answer: two sections, issues with their key and summary.
+	word := strings.Fields(summary)[0]
+	status, answer := picker(paul, "query="+url.QueryEscape(strings.ToUpper(word)))
+	if status != 200 || len(list(at(answer, "sections"))) != 2 || str(answer, "sections", 0, "id") != "hs" ||
+		str(answer, "sections", 1, "id") != "cs" {
+		t.Fatalf("picker: %d %v", status, answer)
+	}
+	cs := list(at(answer, "sections", 1, "issues"))
+	if len(cs) == 0 || len(cs) > 10 {
+		t.Fatalf("current search: %v", cs)
+	}
+	for _, it := range cs {
+		if num(it, "id") == 0 || str(it, "key") == "" || str(it, "summaryText") == "" ||
+			!strings.Contains(strings.ToLower(str(it, "summaryText")+str(it, "key")), strings.ToLower(word)) ||
+			!strings.Contains(str(it, "keyHtml")+str(it, "summary"), "<b>") {
+			t.Errorf("picker issue for %q: %v", word, it)
+		}
+	}
+
+	// By key, in any case, and by number in the current project.
+	for _, q := range []string{"query=" + strings.ToLower(key), "query=" + strings.Split(key, "-")[1] + "&currentProjectId=" + demo} {
+		if status, answer := picker(paul, q); status != 200 || !slices.Contains(pickerKeys(answer, "cs"), key) {
+			t.Errorf("picker?%s: %d %v", q, status, pickerKeys(answer, "cs"))
+		}
+	}
+	if _, answer := picker(paul, "query="+strings.Split(key, "-")[1]); slices.Contains(pickerKeys(answer, "cs"), key) &&
+		len(pickerKeys(answer, "cs")) == 1 {
+		t.Errorf("a bare number found %s without a current project", key)
+	}
+	// No query: the latest issues.
+	if _, answer := picker(paul, ""); len(pickerKeys(answer, "cs")) != 10 {
+		t.Errorf("picker without a query: %v", pickerKeys(answer, "cs"))
+	}
+
+	// Only issues the user sees: RH and the restricted level are hidden from paul.martin.
+	var rhKey, rhSummary string
+	if err := testDB.QueryRow(base, "RH").Scan(&rhKey, &rhSummary); err != nil {
+		t.Fatal(err)
+	}
+	restricted := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
+		JOIN security_levels l ON l.id = i.security_level_id JOIN users u ON u.id = i.reporter_id
+		WHERE l.name = 'Restreint' AND u.username NOT IN ('paul.martin', 'marie.durand') AND u.active
+		ORDER BY i.num LIMIT 1`)
+	for _, k := range []string{rhKey, restricted} {
+		_, mine := picker(paul, "query="+k)
+		_, hers := picker(chloe, "query="+k)
+		if slices.Contains(pickerKeys(mine, "cs"), k) || slices.Contains(pickerKeys(mine, "hs"), k) {
+			t.Errorf("paul.martin is offered %s: %v", k, mine)
+		}
+		if k == rhKey && !slices.Contains(pickerKeys(hers, "cs"), k) {
+			t.Errorf("chloe.simon is not offered %s: %v", k, hers)
+		}
+		// Not by its text either.
+		_, mine = picker(paul, "query="+url.QueryEscape(rhSummary))
+		if slices.Contains(pickerKeys(mine, "cs"), rhKey) {
+			t.Errorf("paul.martin finds %s by its summary", rhKey)
+		}
+	}
+
+	// The current search follows the JQL the client shows.
+	_, answer = picker(chloe, "query="+rhKey+"&currentJQL="+url.QueryEscape("project = DEMO"))
+	if len(pickerKeys(answer, "cs")) != 0 {
+		t.Errorf("%s is outside the current search: %v", rhKey, pickerKeys(answer, "cs"))
+	}
+	_, answer = picker(chloe, "currentJQL="+url.QueryEscape("project = RH ORDER BY key"))
+	for _, k := range pickerKeys(answer, "cs") {
+		if !strings.HasPrefix(k, "RH-") {
+			t.Errorf("current search of project = RH has %s", k)
+		}
+	}
+	if len(pickerKeys(answer, "cs")) == 0 {
+		t.Errorf("current search of project = RH is empty")
+	}
+	if status, _ := picker(paul, "currentJQL="+url.QueryEscape("project = (")); status != 400 {
+		t.Errorf("invalid currentJQL: %d", status)
+	}
+
+	// The current issue is left out; sub-tasks and the parent can be too.
+	_, answer = picker(paul, "query="+key+"&currentIssueKey="+key)
+	if slices.Contains(pickerKeys(answer, "cs"), key) {
+		t.Errorf("the current issue %s is offered", key)
+	}
+	var child, childSummary, parent string
+	if err := testDB.QueryRow(`SELECT `+keyExpr+`, i.summary, CONCAT(pp.pkey, '-', par.num) FROM issues i
+		JOIN projects p ON p.id = i.project_id JOIN issues par ON par.id = i.parent_id
+		JOIN projects pp ON pp.id = par.project_id WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL
+		AND par.security_level_id IS NULL ORDER BY i.num LIMIT 1`).Scan(&child, &childSummary, &parent); err != nil {
+		t.Skipf("no sub-task in DEMO: %v", err)
+	}
+	for query, wantChild := range map[string]bool{"": true, "&showSubTasks=false": false, "&showSubTasks=true": true} {
+		_, answer := picker(paul, "query="+child+query)
+		if got := slices.Contains(pickerKeys(answer, "cs"), child); got != wantChild {
+			t.Errorf("sub-task %s offered: %v, want %v (%s)", child, got, wantChild, query)
+		}
+	}
+	for query, wantParent := range map[string]bool{"": true, "&showSubTaskParent=false": false} {
+		_, answer := picker(paul, "query="+parent+"&currentIssueKey="+child+query)
+		if got := slices.Contains(pickerKeys(answer, "cs"), parent); got != wantParent {
+			t.Errorf("parent %s of the current sub-task offered: %v, want %v (%s)", parent, got, wantParent, query)
+		}
+	}
+
+	// The history holds what the user worked on, for them alone, and the text
+	// is escaped.
+	title := `<img src=x onerror=1> & ` + unique("Picker")
+	status, created := paul("POST", "/rest/api/2/issue", map[string]any{"fields": map[string]any{
+		"project": map[string]string{"key": "DEMO"}, "summary": title,
+		"issuetype": map[string]string{"id": column(t, `SELECT it.id FROM project_issue_types t
+			JOIN issue_types it ON it.id = t.issue_type_id JOIN projects p ON p.id = t.project_id
+			WHERE p.pkey = 'DEMO' AND NOT it.subtask ORDER BY t.position LIMIT 1`)[0]}}})
+	if status != 201 {
+		t.Fatalf("create: %d %v", status, created)
+	}
+	mine := str(created, "key")
+	if status, _ := paul("POST", "/rest/api/2/issue/"+mine+"/comment", map[string]any{"body": "Vu."}); status != 201 {
+		t.Fatalf("comment: %d", status)
+	}
+	_, answer = picker(paul, "query="+url.QueryEscape("IMG src"))
+	if got := pickerKeys(answer, "hs"); len(got) != 1 || got[0] != mine {
+		t.Errorf("history: %v, want [%s]", got, mine)
+	}
+	item := at(answer, "sections", 0, "issues", 0)
+	if str(item, "summaryText") != title || strings.Contains(str(item, "summary"), "<img") ||
+		!strings.Contains(str(item, "summary"), "&lt;<b>img src</b>=x") {
+		t.Errorf("picker text: %v", item)
+	}
+	if _, other := picker(restAs(t, "hugo.robert"), "query="+url.QueryEscape("IMG src")); len(pickerKeys(other, "hs")) != 0 ||
+		!slices.Contains(pickerKeys(other, "cs"), mine) {
+		t.Errorf("hugo.robert's history holds %s: %v", mine, other)
+	}
+	if status, _, _ := call(t, nil, testURL, "GET", "/rest/api/2/issue/picker", nil, nil); status != 401 {
+		t.Errorf("picker without credentials: %d", status)
 	}
 }

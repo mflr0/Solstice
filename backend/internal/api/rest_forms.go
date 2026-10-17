@@ -5,13 +5,16 @@ package api
 // from what rest_write.go really accepts (editableFields, settableKind,
 // checkCustomContext) and from the permissions applyUpdate and createIssue
 // check, so that a field listed here can be set, and one that can be set is
-// listed.
+// listed. The issue picker, which clients use for autocompletion, is here too.
 
 import (
 	"context"
 	"database/sql"
 	"errors"
+	"html"
 	"net/http"
+	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -452,4 +455,122 @@ func (s *Server) restEditMeta(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"fields": fields})
+}
+
+// Issue picker sizes, as Jira's: the history and the current search show a
+// few issues each.
+const (
+	pickerHistory = 5
+	pickerCurrent = 10
+)
+
+// highlight escapes text for HTML and bolds where it contains the query.
+func highlight(text string, query *regexp.Regexp) string {
+	if query == nil {
+		return html.EscapeString(text)
+	}
+	var b strings.Builder
+	last := 0
+	for _, m := range query.FindAllStringIndex(text, -1) {
+		b.WriteString(html.EscapeString(text[last:m[0]]))
+		b.WriteString("<b>" + html.EscapeString(text[m[0]:m[1]]) + "</b>")
+		last = m[1]
+	}
+	b.WriteString(html.EscapeString(text[last:]))
+	return b.String()
+}
+
+// pickerKey is an issue key typed whole.
+var pickerKey = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*-[0-9]+$`)
+
+// restIssuePicker suggests issues to pick, in Jira's two sections: the
+// history (hs) and the current search (cs). Solstice keeps no record of the
+// issues people viewed: the history is the issues the user last changed or
+// commented. Both only hold issues the user sees. The sections' label and sub
+// texts are left empty.
+func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	q := r.URL.Query()
+	query := strings.TrimSpace(q.Get("query"))
+
+	// The condition every section shares: what the query matches, and what the
+	// current issue and the sub-task options leave out.
+	vis, args := sub.VisibleSQL("i")
+	where := vis
+	// The issue the query names whole comes first: a key, or the number of an
+	// issue of the current project. Only characters and numbers that cannot
+	// change the query are written into it.
+	exact := ""
+	if pickerKey.MatchString(query) {
+		exact = "(CONCAT(p.pkey, '-', i.num) = '" + strings.ToUpper(query) + "') DESC, "
+	}
+	if query != "" {
+		like := "%" + escapeLike(strings.ToLower(query)) + "%"
+		cond := "LOWER(i.summary) LIKE ? OR CONCAT(p.pkey, '-', i.num) LIKE ?"
+		more := []any{like, strings.ToUpper(like)}
+		// A number alone is an issue of the current project.
+		if num, err := strconv.ParseInt(query, 10, 64); err == nil {
+			if project, err := strconv.ParseInt(q.Get("currentProjectId"), 10, 64); err == nil {
+				cond += " OR (i.project_id = ? AND i.num = ?)"
+				more = append(more, project, num)
+				exact = "(i.project_id = " + strconv.FormatInt(project, 10) + " AND i.num = " + strconv.FormatInt(num, 10) + ") DESC, "
+			}
+		}
+		where += " AND (" + cond + ")"
+		args = append(args, more...)
+	}
+	if key := q.Get("currentIssueKey"); key != "" {
+		if cur, err := s.findIssue(ctx, key); err == nil && sub.CanSee(cur.perm()) {
+			where += " AND i.id <> ?"
+			args = append(args, cur.ID)
+			if cur.ParentID.Valid && q.Get("showSubTaskParent") == "false" {
+				where += " AND i.id <> ?"
+				args = append(args, cur.ParentID.Int64)
+			}
+		}
+	}
+	if q.Get("showSubTasks") == "false" {
+		where += " AND i.parent_id IS NULL"
+	}
+
+	history, _, err := s.searchRows(ctx, where+` AND i.id IN (SELECT issue_id FROM change_groups WHERE author_id = ?
+		UNION SELECT issue_id FROM comments WHERE author_id = ?)`, append(slices.Clone(args), sub.UserID, sub.UserID),
+		exact+"i.updated_at DESC", 0, pickerHistory)
+	if err != nil {
+		return err
+	}
+
+	// The current search: the issues of the JQL the client is showing, if any.
+	current, order := where, "i.updated_at DESC"
+	currentArgs := slices.Clone(args)
+	if jqlText := strings.TrimSpace(q.Get("currentJQL")); jqlText != "" {
+		jqlWhere, jqlArgs, jqlOrder, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {jqlText}})
+		if err != nil {
+			return err
+		}
+		current, order = where+" AND "+jqlWhere, jqlOrder
+		currentArgs = append(currentArgs, jqlArgs...)
+	}
+	found, _, err := s.searchRows(ctx, current, currentArgs, exact+order, 0, pickerCurrent)
+	if err != nil {
+		return err
+	}
+
+	var re *regexp.Regexp
+	if query != "" {
+		re = regexp.MustCompile("(?i)" + regexp.QuoteMeta(query))
+	}
+	section := func(id string, rows []*issueRow) map[string]any {
+		issues := []any{}
+		for _, iss := range rows {
+			issues = append(issues, map[string]any{"id": iss.ID, "key": iss.Key(), "keyHtml": highlight(iss.Key(), re),
+				"summary": highlight(iss.Summary, re), "summaryText": iss.Summary})
+		}
+		return map[string]any{"id": id, "label": "", "sub": "", "issues": issues}
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"sections": []any{section("hs", history), section("cs", found)}})
 }
