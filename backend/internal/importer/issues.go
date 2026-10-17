@@ -558,7 +558,11 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 			return false, nil
 		}
 	}
-	root := filepath.Clean(r.opt.JiraHome)
+	// Symlinks are resolved on both sides: a link inside the home can point out of it.
+	root, err := filepath.EvalSymlinks(r.opt.JiraHome)
+	if err != nil {
+		return false, nil
+	}
 	base := filepath.Join(root, "data", "attachments")
 	bucket := strconv.FormatInt(((issue.num-1)/10000+1)*10000, 10)
 	name := strconv.FormatInt(id, 10)
@@ -569,10 +573,11 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 				filepath.Join(base, pk, bucket, issueKey, name),
 				filepath.Join(base, pk, issueKey, name),
 			} {
-				if !within(root, path) {
+				resolved, err := filepath.EvalSymlinks(path)
+				if err != nil || !within(root, resolved) {
 					continue
 				}
-				ok, err := copyFile(path, filepath.Join(dir, name))
+				ok, err := copyFile(resolved, filepath.Join(dir, name))
 				if ok || err != nil {
 					return ok, err
 				}

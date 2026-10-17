@@ -83,3 +83,65 @@ func TestCopyAttachmentCopiesAFileWithASafeKey(t *testing.T) {
 		t.Errorf("warnings = %q, want none", r.rep.Warnings)
 	}
 }
+
+func TestCopyAttachmentSkipsASymlinkLeavingTheHome(t *testing.T) {
+	for name, link := range map[string]func(home, outside string) error{
+		"folder": func(home, outside string) error {
+			return os.Symlink(outside, filepath.Join(home, "data", "attachments", "ABC"))
+		},
+		"file": func(home, outside string) error {
+			dir := filepath.Join(home, "data", "attachments", "ABC", "10000", "ABC-1")
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				return err
+			}
+			return os.Symlink(filepath.Join(outside, "10000", "ABC-1", "7"), filepath.Join(dir, "7"))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			home, outside, data := t.TempDir(), t.TempDir(), t.TempDir()
+			target := filepath.Join(outside, "10000", "ABC-1", "7")
+			if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, []byte("secret"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(home, "data", "attachments"), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			if err := link(home, outside); err != nil {
+				t.Skipf("no symlinks here: %v", err)
+			}
+			r := &run{opt: Options{JiraHome: home}, rep: &Report{}, projects: map[int64]*project{1: {key: "ABC", originalKey: "ABC"}}}
+			found, err := r.copyAttachment(7, issueRef{project: 1, num: 1}, data)
+			if found || err != nil {
+				t.Fatalf("found = %v, err = %v, want neither", found, err)
+			}
+			if _, err := os.Stat(filepath.Join(data, "7")); !os.IsNotExist(err) {
+				t.Errorf("the file was copied: %v", err)
+			}
+		})
+	}
+}
+
+func TestCopyAttachmentFollowsASymlinkInsideTheHome(t *testing.T) {
+	home, data := t.TempDir(), t.TempDir()
+	store := filepath.Join(home, "data", "store", "ABC")
+	if err := os.MkdirAll(filepath.Join(store, "10000", "ABC-1"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(store, "10000", "ABC-1", "7"), []byte("hi"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, "data", "attachments"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(store, filepath.Join(home, "data", "attachments", "ABC")); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	r := &run{opt: Options{JiraHome: home}, rep: &Report{}, projects: map[int64]*project{1: {key: "ABC", originalKey: "ABC"}}}
+	found, err := r.copyAttachment(7, issueRef{project: 1, num: 1}, data)
+	if !found || err != nil {
+		t.Fatalf("found = %v, err = %v", found, err)
+	}
+}
