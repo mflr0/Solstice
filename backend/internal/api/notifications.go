@@ -576,7 +576,8 @@ func (s *Server) testMail(w http.ResponseWriter, r *http.Request) error {
 	}
 	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
 	if err != nil {
-		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
+		s.log.Error("stored mail password not readable", "err", err)
+		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
 	}
 	if cfg.Host == "" || cfg.From == "" {
 		return fail(http.StatusConflict, i18n.MailSettingsIncomplete)

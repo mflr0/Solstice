@@ -527,6 +527,20 @@ func TestMailSettings(t *testing.T) {
 	}
 }
 
+// A stored password that cannot be opened is logged, not sent to the client.
+func TestMailTestHidesUnreadablePassword(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	admin.call("PUT", "/api/admin/mail", map[string]any{"password": "s3cret-smtp"}, 200, nil)
+	if _, err := testDB.Exec(`UPDATE settings SET value = JSON_SET(value, '$.password', 'garbage') WHERE name = 'mail'`); err != nil {
+		t.Fatal(err)
+	}
+	status, msg, _ := admin.errorIn("en", "POST", "/api/admin/mail/test", map[string]any{"to": "admin@exemple.fr"})
+	if status != 500 || strings.Contains(msg, "sealed secret") || !strings.Contains(msg, "Internal error") {
+		t.Errorf("unreadable password: %d %q", status, msg)
+	}
+}
+
 // hookReceiver records webhook deliveries.
 type hookReceiver struct {
 	mu   sync.Mutex
