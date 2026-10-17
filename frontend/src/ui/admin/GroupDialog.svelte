@@ -193,6 +193,7 @@
                           type="button"
                           class="link-btn"
                           disabled={changing}
+                          aria-label={t.adminArea.groupsPage.removeMember(m.name)}
                           onclick={() => void remove(m)}>{t.common.remove}</button
                         >
                       </td>

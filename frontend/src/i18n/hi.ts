@@ -1263,6 +1263,7 @@ export const hi: Messages = {
       addMember: 'सदस्य जोड़ें',
       memberAdded: (name: string) => `${name} समूह में जुड़ गए।`,
       memberRemoved: (name: string) => `${name} समूह से हट गए।`,
+      removeMember: (name: string) => `${name} को समूह से हटाएँ`,
       deleteTitle: (name: string) => `समूह ${name} हटाएँ?`,
       deleteBody:
         'समूह उन अनुमतियों, भूमिकाओं और सुरक्षा स्तरों से हट जाएगा जो उसका इस्तेमाल करते हैं। उसके सदस्यों के खाते बने रहते हैं।',

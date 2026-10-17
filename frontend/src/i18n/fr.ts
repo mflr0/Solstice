@@ -1270,6 +1270,7 @@ export const fr: Messages = {
       addMember: 'Ajouter un membre',
       memberAdded: (name: string) => `${name} a été ajouté au groupe.`,
       memberRemoved: (name: string) => `${name} a été retiré du groupe.`,
+      removeMember: (name: string) => `Retirer ${name} du groupe`,
       deleteTitle: (name: string) => `Supprimer le groupe ${name} ?`,
       deleteBody:
         'Le groupe disparaît des droits, des rôles et des niveaux de sécurité qui l’utilisent. Ses membres gardent leur compte.',

@@ -1263,6 +1263,7 @@ export const en = {
       addMember: 'Add a member',
       memberAdded: (name: string) => `${name} added to the group.`,
       memberRemoved: (name: string) => `${name} removed from the group.`,
+      removeMember: (name: string) => `Remove ${name} from the group`,
       deleteTitle: (name: string) => `Delete the group ${name}?`,
       deleteBody:
         'The group is removed from the permissions, roles and security levels that use it. Its members keep their accounts.',
