@@ -234,6 +234,7 @@ func (s *Settings) check() error {
 		{s.DB.ConnMaxLifetime <= 0, &s.DB.ConnMaxLifetime, "a positive duration"},
 		{s.HTTP.ShutdownTimeout <= 0, &s.HTTP.ShutdownTimeout, "a positive duration"},
 		{s.HTTP.MaxUpload <= 0, &s.HTTP.MaxUpload, "a positive size"},
+		{s.HTTP.MaxStorage < 0, &s.HTTP.MaxStorage, "a size, or 0 for no limit"},
 	} {
 		if r.bad {
 			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)

@@ -179,6 +179,24 @@ func TestLoadInvalid(t *testing.T) {
 	}
 }
 
+func TestCheckRefusesNegativeSizes(t *testing.T) {
+	for key, set := range map[string]func(*Settings){
+		"SOLSTICE_HTTP_MAXUPLOAD":  func(s *Settings) { s.HTTP.MaxUpload = -1 },
+		"SOLSTICE_HTTP_MAXSTORAGE": func(s *Settings) { s.HTTP.MaxStorage = -1 },
+	} {
+		s := Defaults()
+		set(&s)
+		if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), key+":") {
+			t.Errorf("%s negative: %v, want an error naming the key", key, err)
+		}
+	}
+	s := Defaults()
+	s.HTTP.MaxStorage = 0
+	if err := s.check(); err != nil {
+		t.Errorf("no storage limit: %v", err)
+	}
+}
+
 func TestByteSize(t *testing.T) {
 	for in, want := range map[string]ByteSize{
 		"0": 0, "512": 512, "100B": 100, "1kb": 1000, "100MB": 100e6, "100 MiB": 100 << 20, "2GiB": 2 << 30, "1TB": 1e12,
