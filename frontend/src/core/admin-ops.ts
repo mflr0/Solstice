@@ -25,6 +25,7 @@ const CATALOGUE_KINDS = ['issuetype', 'priority', 'resolution', 'linktype'] as c
 export const AUDIT_ACTIONS: readonly string[] = [
   'login.success',
   'login.failure',
+  'login.lockout',
   'password.change',
   'password.reset',
   'password.reset_request',

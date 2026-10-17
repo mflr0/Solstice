@@ -308,6 +308,11 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
 		s.limiter.Failure(userKey, ipKey)
+		// The address was not locked before this attempt (the check above),
+		// so a lock now means this failure locked it: record it once.
+		if d := s.limiter.Locked(ipKey); d > 0 {
+			s.auditLockout(r, username, d)
+		}
 		if delay := s.limiter.AccountFailure("account:" + account); delay > 0 {
 			// The account is being guessed at, from here or elsewhere: this
 			// address gets half as many tries, and the answer waits (the

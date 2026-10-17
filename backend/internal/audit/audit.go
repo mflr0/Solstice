@@ -23,6 +23,7 @@ import (
 const (
 	LoginSuccess   = "login.success"
 	LoginFailure   = "login.failure"
+	LoginLockout   = "login.lockout"
 	PasswordChange = "password.change"
 	TokenCreate    = "token.create"
 	TokenRevoke    = "token.revoke"

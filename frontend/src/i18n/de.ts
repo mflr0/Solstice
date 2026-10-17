@@ -1312,6 +1312,7 @@ export const de: Messages = {
     actions: {
       'login.success': 'Angemeldet',
       'login.failure': 'Anmeldung fehlgeschlagen',
+      'login.lockout': 'Anmeldeadresse gesperrt',
       'password.change': 'Passwort geändert',
       'password.reset': 'Passwort von einem Administrator zurückgesetzt',
       'password.reset_request': 'Link zum Zurücksetzen des Passworts gesendet',

@@ -1306,6 +1306,7 @@ export const fr: Messages = {
     actions: {
       'login.success': 'Connexion',
       'login.failure': 'Connexion échouée',
+      'login.lockout': 'Adresse de connexion bloquée',
       'password.change': 'Mot de passe modifié',
       'password.reset': 'Mot de passe réinitialisé par un administrateur',
       'password.reset_request': 'Lien de réinitialisation envoyé',

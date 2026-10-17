@@ -1299,6 +1299,7 @@ export const hi: Messages = {
     actions: {
       'login.success': 'साइन इन किया',
       'login.failure': 'साइन-इन विफल',
+      'login.lockout': 'साइन-इन पता लॉक',
       'password.change': 'पासवर्ड बदला',
       'password.reset': 'एडमिन ने पासवर्ड रीसेट किया',
       'password.reset_request': 'पासवर्ड रीसेट लिंक भेजा',

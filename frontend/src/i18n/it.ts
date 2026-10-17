@@ -1305,6 +1305,7 @@ export const it: Messages = {
     actions: {
       'login.success': 'Accesso effettuato',
       'login.failure': 'Accesso non riuscito',
+      'login.lockout': 'Indirizzo di accesso bloccato',
       'password.change': 'Password cambiata',
       'password.reset': 'Password reimpostata da un amministratore',
       'password.reset_request': 'Link di reimpostazione della password inviato',

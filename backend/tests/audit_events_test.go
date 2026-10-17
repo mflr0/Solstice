@@ -4,9 +4,12 @@ package tests
 // deletion, CSV export, sign-in lockout and refused access tokens.
 
 import (
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+
+	"solstice/internal/config"
 )
 
 // Issue deletions are audited, from the interface and from the REST API
@@ -63,5 +66,49 @@ func TestCSVExportIsAudited(t *testing.T) {
 	}
 	if n2, _ := latestAudit(t, "issue.export"); n2 != bad {
 		t.Errorf("a refused export was recorded: %d entries (was %d)", n2, bad)
+	}
+}
+
+// An address that keeps failing is locked: one audit entry when the lock
+// starts, none for the attempts it refuses while it lasts.
+func TestSignInLockoutIsAudited(t *testing.T) {
+	srv, base := newServer(t)
+	proxies, err := config.ParseTrustedProxies("127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.SetTrustedProxies(proxies)
+	try := func(password string) int {
+		t.Helper()
+		setup := func(r *http.Request) {
+			r.Header.Set(csrfHeader, "1")
+			r.Header.Set("X-Forwarded-For", "203.0.113.7")
+		}
+		status, _, _ := call(t, nil, base, "POST", "/api/login",
+			map[string]string{"username": "hugo.robert", "password": password}, setup)
+		return status
+	}
+	before, _ := latestAudit(t, "login.lockout")
+	for i := range 5 {
+		if status := try("faux"); status != http.StatusUnauthorized {
+			t.Fatalf("guess %d: %d, want 401", i+1, status)
+		}
+	}
+	n, details := latestAudit(t, "login.lockout")
+	if n != before+1 || !strings.Contains(details, "seconds") {
+		t.Fatalf("lockout: %d entries (was %d), details %s", n, before, details)
+	}
+	if who := pick(t, `SELECT COALESCE(username, '') FROM audit_log WHERE action = 'login.lockout' ORDER BY id DESC LIMIT 1`); who != "hugo.robert" {
+		t.Errorf("lockout name %q, want hugo.robert", who)
+	}
+	if addr := pick(t, `SELECT COALESCE(ip, '') FROM audit_log WHERE action = 'login.lockout' ORDER BY id DESC LIMIT 1`); addr != "203.0.113.7" {
+		t.Errorf("lockout address %q, want 203.0.113.7", addr)
+	}
+	// While locked, even the right password is refused, and nothing more is recorded.
+	if status := try("motdepasse"); status != http.StatusTooManyRequests {
+		t.Fatalf("locked address with the right password: %d, want 429", status)
+	}
+	if n2, _ := latestAudit(t, "login.lockout"); n2 != n {
+		t.Errorf("a refused attempt while locked was recorded: %d entries (was %d)", n2, n)
 	}
 }

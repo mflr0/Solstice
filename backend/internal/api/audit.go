@@ -55,6 +55,25 @@ func (s *Server) auditLogin(r *http.Request, username string, u *auth.User, meth
 	}
 }
 
+// auditLockout records that an address was locked after repeated failed
+// sign-ins, once when the lock starts (not for each attempt while it lasts).
+// The entry names the address and the user name that was typed.
+func (s *Server) auditLockout(r *http.Request, username string, d time.Duration) {
+	name, ip, seconds := strings.ToLower(strings.TrimSpace(username)), clientIP(r, s.proxies), int(d.Seconds())+1
+	s.log.Warn("sign-in address locked out", "address", ip, "username", name, "seconds", seconds)
+	if s.db == nil {
+		return
+	}
+	e := audit.Entry{Username: name, IP: ip, Action: audit.LoginLockout,
+		Details: map[string]any{"seconds": seconds}}
+	if name != "" {
+		s.db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE username = ?`, name).Scan(&e.UserID)
+	}
+	if err := audit.Record(r.Context(), s.db, e); err != nil {
+		s.log.Error("audit log write failed", "action", e.Action, "err", err)
+	}
+}
+
 type auditEntryOut struct {
 	ID       int64          `json:"id"`
 	Created  time.Time      `json:"created"`

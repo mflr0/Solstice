@@ -1299,6 +1299,7 @@ export const en = {
     actions: {
       'login.success': 'Signed in',
       'login.failure': 'Failed sign-in',
+      'login.lockout': 'Sign-in address locked',
       'password.change': 'Password changed',
       'password.reset': 'Password reset by an administrator',
       'password.reset_request': 'Password reset link sent',
