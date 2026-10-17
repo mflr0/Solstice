@@ -714,7 +714,8 @@ func (s *Server) archiveProject(archived bool) handler {
 // renameProject gives a project another key. Issue keys are not stored: they
 // are the project key and the issue number, so the new key shows at once on
 // every issue. The old key goes to project_keys, which findIssue and
-// projectByKey read, so OLD-12 keeps finding its issue.
+// projectByKey read, so OLD-12 keeps finding its issue. A key the project
+// had before can be taken again: its row in project_keys is then removed.
 func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	id, key, err := s.adminProject(r)
 	if err != nil {
@@ -732,14 +733,25 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx := r.Context()
 	newKey := strings.ToUpper(strings.TrimSpace(in.NewKey))
-	if err := s.checkProjectKey(ctx, newKey); err != nil {
+	// A key the project once had may come back; any other taken key is refused.
+	var back int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id = ?`,
+		newKey, id).Scan(&back); err != nil {
 		return err
+	}
+	if back == 0 {
+		if err := s.checkProjectKey(ctx, newKey); err != nil {
+			return err
+		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM project_keys WHERE pkey = ? AND project_id = ?`, newKey, id); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `UPDATE projects SET pkey = ? WHERE id = ?`, newKey, id); err != nil {
 		return err
 	}

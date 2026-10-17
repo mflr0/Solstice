@@ -13,6 +13,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
+	"solstice/internal/search"
 	"solstice/internal/sqlq"
 )
 
@@ -194,7 +195,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		var reporter, assignee sql.NullInt64
 		project, num, _ := strings.Cut(key, "-")
 		err := s.db.QueryRowContext(ctx, `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id
-			FROM issues i JOIN projects p ON p.id = i.project_id WHERE p.pkey = ? AND i.num = ?`, project, num).
+			FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+search.ProjectKeySQL("p")+` AND i.num = ?`, project, project, num).
 			Scan(&access.ProjectID, &reporter, &assignee, &level)
 		access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
 		v := err == nil && rc.sub.CanSee(access)

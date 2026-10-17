@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/search"
 	"solstice/internal/sqlq"
 )
 
@@ -125,8 +126,8 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 	where := vis + " AND i.issue_type_id IN (" + sqlq.Marks(len(types)) + ")"
 	args = append(args, types...)
 	if key := r.URL.Query().Get("project"); key != "" {
-		where += " AND p.pkey = ?"
-		args = append(args, strings.ToUpper(key))
+		where += " AND " + search.ProjectKeySQL("p")
+		args = append(args, strings.ToUpper(key), strings.ToUpper(key))
 	}
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
 		where += " AND (CONCAT(p.pkey, '-', i.num) LIKE ? OR LOWER(i.summary) LIKE ?)"
@@ -207,8 +208,8 @@ func (s *Server) projectParts(table string) handler {
 		// Archived projects stay out of pickers.
 		where, args := "LOWER(x.name) LIKE ? AND NOT p.archived", []any{"%" + escapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
 		if key := r.URL.Query().Get("project"); key != "" {
-			where += " AND p.pkey = ?"
-			args = append(args, strings.ToUpper(key))
+			where += " AND " + search.ProjectKeySQL("p")
+			args = append(args, strings.ToUpper(key), strings.ToUpper(key))
 		}
 		out := []projectPart{}
 		err = sqlq.Each(ctx, s.db, `SELECT x.id, x.name, p.id, p.pkey, p.name, `+cols+` FROM `+table+` x

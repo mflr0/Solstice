@@ -282,13 +282,17 @@ Boards and filters remain (they may show nothing). (`project.delete`)
 "confirm": "WEB"}` → the `GET /api/projects/{key}` settings object, with the
 new key. `confirm` must be the current key (409 otherwise). The new key
 follows the rules of a new project (`GET /api/admin/project-key?key=`):
-400 if ill-formed, 409 if used by a project now or formerly, which includes
-the project's own former keys. Issue keys are not stored (they are the
-project key and the issue number), so every issue takes the new key at once;
-the old key is kept as a former key, and `OLD-12` still finds its issue in
-`/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`, `/api/projects/OLD` and in
-JQL (`project = OLD`, `key = OLD-12`). Saved filters, board filters and
-other texts that name the old key are left as they are. (`project.rename`,
+400 if ill-formed, 409 if used by a project now or formerly. The exception
+is a key this project had itself: it may take it back (that key then stops
+being a former key; `project-key` still reports it as taken). Issue keys are
+not stored (they are the project key and the issue number), so every issue
+takes the new key at once; the old key is kept as a former key, and `OLD-12`
+still finds its issue in `/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`,
+`/api/projects/OLD` and in JQL (`project = OLD`, `key = OLD-12`), in the
+simple search (`project:OLD`, `OLD-12`), in the `project` parameter of
+`/api/issues`, `/api/epics`, `/api/versions` and `/api/components`, and as
+the `project` of a new issue. Saved filters, board filters and other texts
+that name the old key are left as they are. (`project.rename`,
 details `{oldKey, newKey}`)
 
 ### Categories

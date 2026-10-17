@@ -5,8 +5,10 @@ package tests
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestProjectRename(t *testing.T) {
@@ -120,4 +122,174 @@ func TestProjectRename(t *testing.T) {
 	if got := pick(t, `SELECT COUNT(*) FROM project_keys k JOIN projects p ON p.id = k.project_id WHERE p.pkey = ?`, again); got != "2" {
 		t.Errorf("%s has %s former keys, want 2", again, got)
 	}
+}
+
+// renamedProject makes a project with a version, a component, an epic and a
+// story, renames it, and returns the old key, the new one and the issue keys
+// as the old key wrote them.
+func renamedProject(t *testing.T, admin *client) (old, fresh, epic, story string) {
+	t.Helper()
+	old = newProject(t, admin, nil)
+	admin.call("POST", "/api/projects/"+old+"/versions", map[string]any{"name": "1.0"}, 201, nil)
+	admin.call("POST", "/api/projects/"+old+"/components", map[string]any{"name": "Noyau"}, 201, nil)
+	var p struct {
+		IssueTypes []typeRef `json:"issueTypes"`
+	}
+	admin.call("GET", "/api/projects/"+old, nil, 200, &p)
+	var epicType string
+	for _, it := range p.IssueTypes {
+		if strings.EqualFold(it.Name, "epic") {
+			epicType = it.ID
+		}
+	}
+	if epicType == "" {
+		t.Fatalf("%s has no epic type", old)
+	}
+	var created struct{ Key string }
+	admin.call("POST", "/api/issues", map[string]any{"project": old, "type": epicType, "summary": "Grand chantier"}, 201, &created)
+	epic = created.Key
+	story = createIssue(t, admin, old, "Petit chantier", "")
+	fresh = newProjectKey()
+	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
+	return old, fresh, epic, story
+}
+
+// After a rename the old key still names the project where a key is typed:
+// the simple search, the project filter of lists and pickers, a new issue.
+func TestProjectOldKeyWorks(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	old, fresh, epic, story := renamedProject(t, admin)
+	storyNum := strings.TrimPrefix(story, old+"-")
+
+	// The simple search: a filter and an issue key typed as a word.
+	for _, q := range []string{"project:" + old, "projet:" + strings.ToLower(old), "project:" + fresh,
+		story, strings.ToLower(story), fresh + "-" + storyNum} {
+		var res struct{ Total int }
+		if status := admin.get("/api/issues?q="+url.QueryEscape(q), &res); status != 200 || res.Total < 1 {
+			t.Errorf("simple search %q: %d, %d issues", q, status, res.Total)
+		}
+	}
+	var res struct{ Total int }
+	admin.call("GET", "/api/issues?q="+url.QueryEscape("project:"+old+" "+story), nil, 200, &res)
+	if res.Total != 1 {
+		t.Errorf("simple search of one issue by its old key: %d issues, want 1", res.Total)
+	}
+	admin.call("GET", "/api/issues?q="+url.QueryEscape("-project:"+old+" "+story), nil, 200, &res)
+	if res.Total != 0 {
+		t.Errorf("not project:OLD finds %d issues of the project", res.Total)
+	}
+
+	// The project filter of the list and the facets.
+	for _, key := range []string{old, fresh} {
+		admin.call("GET", "/api/issues?project="+key, nil, 200, &res)
+		if res.Total != 2 {
+			t.Errorf("/api/issues?project=%s: %d issues, want 2", key, res.Total)
+		}
+		var facets struct{ Total int }
+		admin.call("GET", "/api/issues/facets?fields=status&project="+key, nil, 200, &facets)
+		if facets.Total != 2 {
+			t.Errorf("facets of project=%s: %d issues, want 2", key, facets.Total)
+		}
+	}
+
+	// The pickers.
+	for _, key := range []string{old, fresh} {
+		var epics []struct{ Key string }
+		admin.call("GET", "/api/epics?project="+key, nil, 200, &epics)
+		if len(epics) != 1 || epics[0].Key != fresh+"-"+strings.TrimPrefix(epic, old+"-") {
+			t.Errorf("epics of project=%s: %+v", key, epics)
+		}
+		for _, kind := range []string{"versions", "components"} {
+			var parts []struct{ Name string }
+			admin.call("GET", "/api/"+kind+"?project="+key, nil, 200, &parts)
+			if len(parts) != 1 {
+				t.Errorf("%s of project=%s: %+v", kind, key, parts)
+			}
+		}
+	}
+
+	// A new issue created in the old key lands in the project.
+	var created struct{ Key string }
+	admin.call("POST", "/api/issues", map[string]any{"project": strings.ToLower(old), "type": standardType(t, admin, fresh),
+		"summary": "Créé sous l'ancienne clé"}, 201, &created)
+	if !strings.HasPrefix(created.Key, fresh+"-") {
+		t.Errorf("an issue created in %s has the key %s, want %s-n", old, created.Key, fresh)
+	}
+	admin.call("POST", "/api/issues", map[string]any{"project": "NOPE", "type": standardType(t, admin, fresh),
+		"summary": "Nulle part"}, 404, nil)
+}
+
+// The digest checks the issues a change names; a key written before a rename
+// is still an issue the reader may see.
+func TestProjectOldKeyInDigest(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	paul := env.login("paul.martin", "motdepasse")
+	old := newProject(t, admin, nil)
+	a, b := createIssue(t, admin, old, "Source du lien", ""), createIssue(t, admin, old, "Cible du lien", "")
+	paul.call("PUT", "/api/me/notifications", map[string]any{"delivery": "digest", "digestHour": 7}, 200, nil)
+	paul.call("PUT", "/api/issues/"+a+"/watch", nil, 200, nil)
+	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
+	admin.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
+		"target": b}, 200, nil)
+	fresh := newProjectKey()
+	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
+
+	got := to(env.deliverAt(25*time.Hour), "paul.martin@exemple.fr")
+	if len(got) != 1 || !strings.Contains(got[0].Text, b) {
+		t.Fatalf("the digest lost the link to %s: %+v", b, got)
+	}
+}
+
+// A project may take back a key it had; a key another project has or had
+// stays refused.
+func TestProjectRenameBack(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	first := newProject(t, admin, nil)
+	issue := createIssue(t, admin, first, "Aller-retour", "")
+	num := strings.TrimPrefix(issue, first+"-")
+	second := newProjectKey()
+	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	admin.call("POST", path(first), map[string]any{"newKey": second, "confirm": first}, 200, nil)
+	t.Cleanup(func() {
+		admin.do("DELETE", "/api/projects/"+first, map[string]string{"confirm": first})
+		admin.do("DELETE", "/api/projects/"+second, map[string]string{"confirm": second})
+	})
+
+	// Another project cannot take either key; the one it has is refused too.
+	other := newProject(t, admin, nil)
+	admin.call("POST", path(other), map[string]any{"newKey": first, "confirm": other}, 409, nil)
+	admin.call("POST", path(second), map[string]any{"newKey": second, "confirm": second}, 409, nil)
+
+	// Back to the first key: it is the project's again, and the second one,
+	// now a former key, still finds the issue.
+	var back struct{ Key string }
+	admin.call("POST", path(second), map[string]any{"newKey": first, "confirm": second}, 200, &back)
+	if back.Key != first {
+		t.Fatalf("renamed back to %q, want %s", back.Key, first)
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, first); got != "0" {
+		t.Errorf("the key %s is still listed as former (%s rows)", first, got)
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, second); got != "1" {
+		t.Errorf("the key %s is listed %s times as former, want 1", second, got)
+	}
+	for _, key := range []string{first + "-" + num, second + "-" + num} {
+		var d struct{ Key string }
+		if status := admin.get("/api/issues/"+key, &d); status != 200 || d.Key != first+"-"+num {
+			t.Errorf("GET /api/issues/%s: %d %q, want %s-%s", key, status, d.Key, first, num)
+		}
+	}
+	for _, q := range []string{"project = " + first, "project = " + second, "key = " + second + "-" + num} {
+		if status, total, _ := runSearch(t, admin, q); status != 200 || total != 1 {
+			t.Errorf("%s: %d, %d issues, want 1", q, status, total)
+		}
+	}
+
+	// Still refused: the former key of this project, for another one, and the
+	// key another project has, for this one.
+	admin.call("POST", path(other), map[string]any{"newKey": second, "confirm": other}, 409, nil)
+	admin.call("POST", path(first), map[string]any{"newKey": other, "confirm": first}, 409, nil)
 }
