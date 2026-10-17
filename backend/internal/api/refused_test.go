@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,8 @@ import (
 const (
 	refusedLine   = `msg="request refused"`
 	refusedNotice = `msg="further refused requests from this address are not logged for a minute"`
+
+	refusedTotalNotice = `msg="further refused requests are not logged for a minute"`
 )
 
 // newRefuser is a refuser logging into buf, its clock at the instant the
@@ -145,5 +148,58 @@ func TestRefusedBehindProxy(t *testing.T) {
 	}
 	if strings.Contains(line, "client=192.0.2.1") {
 		t.Errorf("a line names the proxy as the client:\n%s", line)
+	}
+}
+
+// An IPv6 address counts as its /64: changing the low bits does not
+// give a new budget, another /64 does.
+func TestRefusedIPv6Budget(t *testing.T) {
+	var buf bytes.Buffer
+	rf := newRefuser(&buf, time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
+
+	for i := range refusedCap {
+		rf.logRefused(refusedRequest(fmt.Sprintf("[2001:db8:1:2::%x]:41000", i+1)), http.StatusForbidden, nil)
+	}
+	rf.logRefused(refusedRequest("[2001:db8:1:2:aaaa::7]:41000"), http.StatusForbidden, nil)
+	if got := count(buf.String(), refusedLine); got != refusedCap {
+		t.Errorf("one /64: %d refused lines, want %d", got, refusedCap)
+	}
+	if got := count(buf.String(), refusedNotice); got != 1 {
+		t.Errorf("one /64 over the cap: %d notices, want 1", got)
+	}
+
+	rf.logRefused(refusedRequest("[2001:db8:1:3::1]:41000"), http.StatusForbidden, nil)
+	if got := count(buf.String(), refusedLine); got != refusedCap+1 {
+		t.Errorf("another /64: %d refused lines, want %d", got, refusedCap+1)
+	}
+}
+
+// All addresses together get refusedTotal lines per period, then one
+// notice; the map of counts never outgrows that.
+func TestRefusedTotalCap(t *testing.T) {
+	var buf bytes.Buffer
+	start := time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	rf := newRefuser(&buf, start)
+	from := func(i int) *http.Request {
+		return refusedRequest(fmt.Sprintf("10.%d.%d.%d:41000", i>>16&255, i>>8&255, i&255))
+	}
+
+	for i := range 3 * refusedTotal {
+		rf.logRefused(from(i), http.StatusForbidden, nil)
+	}
+	if got := count(buf.String(), refusedLine); got != refusedTotal {
+		t.Errorf("%d refused lines, want %d", got, refusedTotal)
+	}
+	if got := count(buf.String(), refusedTotalNotice); got != 1 {
+		t.Errorf("%d notices, want 1", got)
+	}
+	if got := len(rf.count); got > refusedTotal {
+		t.Errorf("%d addresses kept, want at most %d", got, refusedTotal)
+	}
+
+	moveTime(rf, start.Add(refusedPeriod))
+	rf.logRefused(from(0), http.StatusForbidden, nil)
+	if got := count(buf.String(), refusedLine); got != refusedTotal+1 {
+		t.Errorf("after the period: %d refused lines, want %d", got, refusedTotal+1)
 	}
 }
