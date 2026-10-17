@@ -40,7 +40,10 @@ func TestFitsType(t *testing.T) {
 		{"float", str, none, sql.NullFloat64{}, sql.NullTime{}, false}, // text entered before the type became a number
 		{"datepicker", none, none, sql.NullFloat64{}, date, true},
 		{"datepicker", str, none, num, sql.NullTime{}, false},
-		{"datetime", none, none, sql.NullFloat64{}, sql.NullTime{}, false},
+		{"datetime", str, none, sql.NullFloat64{}, sql.NullTime{}, false},
+		{"datetime", none, none, sql.NullFloat64{}, sql.NullTime{}, true}, // every column empty: an empty value, not a misfit
+		{"float", none, none, sql.NullFloat64{}, sql.NullTime{}, true},
+		{"textfield", none, none, sql.NullFloat64{}, sql.NullTime{}, true},
 		{"textfield", str, none, sql.NullFloat64{}, sql.NullTime{}, true},
 		{"textfield", none, none, sql.NullFloat64{}, date, false}, // date entered before the type became text
 		{"textarea", none, text, sql.NullFloat64{}, sql.NullTime{}, true},
