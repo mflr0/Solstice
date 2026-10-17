@@ -1252,6 +1252,7 @@ export const fr: Messages = {
       create: 'Créer le groupe',
       search: 'Nom du groupe',
       name: 'Nom',
+      nameHint: 'Les noms sont enregistrés en minuscules.',
       description: 'Description',
       members: 'Membres',
       count: (n: number) => plural(n, 'membre', 'membres'),

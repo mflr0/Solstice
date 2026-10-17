@@ -146,6 +146,7 @@
         aria-invalid={!!shownName}
         onblur={() => (touched = true)}
       />
+      <span class="form-hint">{t.adminArea.groupsPage.nameHint}</span>
       {#if shownName}<span class="field-error">{shownName}</span>{/if}
     </label>
     <label class="field">
@@ -225,6 +226,7 @@
     gap: 14px;
   }
 
+  .field .form-hint,
   .choices .form-hint {
     margin: 0;
   }

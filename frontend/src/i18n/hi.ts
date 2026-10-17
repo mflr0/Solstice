@@ -1245,6 +1245,7 @@ export const hi: Messages = {
       create: 'समूह बनाएँ',
       search: 'समूह का नाम',
       name: 'नाम',
+      nameHint: 'नाम छोटे अक्षरों में सहेजे जाते हैं।',
       description: 'विवरण',
       members: 'सदस्य',
       count: (n: number) => plural(n, 'सदस्य', 'सदस्य'),

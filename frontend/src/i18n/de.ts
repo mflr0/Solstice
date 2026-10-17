@@ -1258,6 +1258,7 @@ export const de: Messages = {
       create: 'Gruppe erstellen',
       search: 'Gruppenname',
       name: 'Name',
+      nameHint: 'Namen werden in Kleinbuchstaben gespeichert.',
       description: 'Beschreibung',
       members: 'Mitglieder',
       count: (n: number) => plural(n, 'Mitglied', 'Mitglieder'),

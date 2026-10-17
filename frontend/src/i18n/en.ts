@@ -1245,6 +1245,7 @@ export const en = {
       create: 'Create the group',
       search: 'Group name',
       name: 'Name',
+      nameHint: 'Names are saved in lower case.',
       description: 'Description',
       members: 'Members',
       count: (n: number) => plural(n, 'member', 'members'),
