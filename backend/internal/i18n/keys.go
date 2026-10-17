@@ -367,6 +367,7 @@ const (
 	AttachmentTooLarge      Key = "AttachmentTooLarge"
 	AttachmentNotImported   Key = "AttachmentNotImported"
 	AttachmentFileMissing   Key = "AttachmentFileMissing"
+	AttachmentStorageQuota  Key = "AttachmentStorageQuota"
 )
 
 // Statuses and their categories.

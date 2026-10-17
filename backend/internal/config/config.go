@@ -89,6 +89,8 @@ type HTTPSettings struct {
 	ShutdownTimeout time.Duration
 	// MaxUpload caps a single upload request.
 	MaxUpload ByteSize
+	// MaxStorage caps the total size of all attachments; 0 for no limit.
+	MaxStorage ByteSize
 }
 
 // Defaults returns the settings nothing sets. There is deliberately no

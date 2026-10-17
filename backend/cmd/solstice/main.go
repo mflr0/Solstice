@@ -62,6 +62,7 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
                                  CIDR ranges, e.g. 127.0.0.1,10.0.0.0/8 (default none)
   SOLSTICE_HTTP_SHUTDOWNTIMEOUT  time given to work in progress on stop (default 10s)
   SOLSTICE_HTTP_MAXUPLOAD        size of one upload, e.g. 100MB or 1GiB (default 100MiB)
+  SOLSTICE_HTTP_MAXSTORAGE       total size of all attachments, e.g. 10GiB (default 0: no limit)
   SOLSTICE_LOG_LEVEL             debug, info, warn or error (default info)
   SOLSTICE_LOG_FORMAT            text or json (default text)
 
@@ -177,6 +178,7 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetTrustedProxies(cfg.HTTP.TrustedProxies)
 		srv.SetSecretKey(cfg.SecretKey)
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
+		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
 		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})

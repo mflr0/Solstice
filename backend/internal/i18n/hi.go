@@ -323,6 +323,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "फ़ाइल बहुत बड़ी है (अधिकतम 100 MB)।",
 	AttachmentNotImported:   "Jira से इम्पोर्ट के दौरान यह फ़ाइल नहीं मिली।",
 	AttachmentFileMissing:   "डेटा फ़ोल्डर में फ़ाइल मौजूद नहीं है।",
+	AttachmentStorageQuota:  "अनुलग्नक भंडारण सीमा पूरी हो गई है।",
 
 	// Statuses and their categories.
 	StatusUnknown:            "अज्ञात स्टेटस।",

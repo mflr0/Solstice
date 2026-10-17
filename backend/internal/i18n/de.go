@@ -322,6 +322,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "Datei zu groß (höchstens 100 MB).",
 	AttachmentNotImported:   "Diese Datei wurde beim Import aus Jira nicht gefunden.",
 	AttachmentFileMissing:   "Die Datei fehlt im Datenverzeichnis.",
+	AttachmentStorageQuota:  "Das Speicherlimit für Anhänge ist erreicht.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Unbekannter Status.",

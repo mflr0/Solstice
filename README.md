@@ -99,6 +99,7 @@ and 503 otherwise.
 | `SOLSTICE_HTTP_TRUSTEDPROXIES` | none | reverse proxies, see below |
 | `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | time given to requests and e-mails in progress on stop |
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | size of one upload; `KB`, `MB`, `GB` count in 1000s, `KiB`, `MiB`, `GiB` in 1024s. Raise the proxy's limit too (`client_max_body_size` for nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | total size of all attachments; `0` means no limit |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
 
