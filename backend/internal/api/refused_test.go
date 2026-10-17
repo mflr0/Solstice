@@ -91,7 +91,8 @@ func TestRefusedLineFields(t *testing.T) {
 	var buf bytes.Buffer
 	rf := newRefuser(&buf, time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
 	r := httptest.NewRequest(http.MethodPost,
-		"http://example.test/rest/api/2/issue?token=secret-jql%20value", nil)
+		"http://example.test/rest/api/2/issue/KEY-17/attachments/report-reset-9f3a.pdf?token=secret-jql%20value", nil)
+	r.Pattern = "POST /rest/api/2/issue/{key}/attachments/{name}"
 	r.RemoteAddr = "192.0.2.8:41000"
 	r.Header.Set("Authorization", "Bearer sneaky-token")
 	r.Header.Set("Cookie", "solstice_session=sneaky-cookie")
@@ -104,7 +105,7 @@ func TestRefusedLineFields(t *testing.T) {
 		refusedLine,
 		"status=401",
 		"method=POST",
-		"path=/rest/api/2/issue", // the path, without the query string
+		`route="POST /rest/api/2/issue/{key}/attachments/{name}"`, // the pattern
 		"client=192.0.2.8",
 		`user=""`, // no signed-in user, so an empty one
 	} {
@@ -114,6 +115,7 @@ func TestRefusedLineFields(t *testing.T) {
 	}
 	for _, no := range []string{
 		"token=", "secret-jql", "?", // never the query string
+		"path=", "KEY-17", "report-reset-9f3a", // nor the path
 		"sneaky-token", "sneaky-cookie", // never a header or cookie
 	} {
 		if strings.Contains(line, no) {

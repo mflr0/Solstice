@@ -55,11 +55,13 @@ func (rf *refuser) logger() *slog.Logger {
 	return slog.Default()
 }
 
-// logRefused logs one refused request at Warn level — never its query
-// string, headers, cookies or body — unless it is a 401 without
-// credentials (see sentCredentials), or its address has already had
-// refusedCap of them this period or all addresses refusedTotal, in which
-// case one line says the rest are dropped until the period passes.
+// logRefused logs one refused request at Warn level: its route pattern
+// (not its path, which can hold a reset token or a file name), never its
+// query string, headers, cookies or body. It logs nothing for a 401
+// without credentials (see sentCredentials), nor when its address has
+// already had refusedCap lines this period or all addresses refusedTotal,
+// in which case one line says the rest are dropped until the period
+// passes.
 func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefix) {
 	if status == http.StatusUnauthorized && !sentCredentials(r) {
 		return
@@ -72,7 +74,7 @@ func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefi
 			user = u.Username
 		}
 		rf.logger().Warn("request refused", "status", status, "method", r.Method,
-			"path", r.URL.Path, "user", user, "client", client)
+			"route", r.Pattern, "user", user, "client", client)
 	case verdictAddressNotice:
 		rf.logger().Warn("further refused requests from this address are not logged for a minute",
 			"client", refusedKey(client))
