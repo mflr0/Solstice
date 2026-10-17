@@ -20,6 +20,8 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	// People.
 	route("GET /api/admin/users/{id}", s.adminGetUser, true)
 	route("PUT /api/admin/users/{id}/groups", s.adminUserGroups, true)
+	route("PUT /api/admin/users/{id}/avatar", s.adminPutAvatar, true)
+	route("DELETE /api/admin/users/{id}/avatar", s.adminDeleteAvatar, true)
 	route("POST /api/admin/users/{id}/reset-password", s.adminResetPassword, true)
 	route("GET /api/admin/groups", s.listGroups, true)
 	route("POST /api/admin/groups", s.createGroup, true)

@@ -111,6 +111,15 @@ incorrect.", throttled like sign-ins) and `newPassword` of at least
 `passwordMinLength` characters; other sessions of the user are signed out.
 Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
 
+### `PUT /api/me/avatar`, `DELETE /api/me/avatar`
+
+`PUT` takes a multipart body (as attachments do) whose first file is the
+picture: a PNG or JPEG of 1 MiB at most and 512 × 512 pixels at most (400
+when it is neither or does not decode, 413 when too heavy). The server stores
+a re-encoded PNG, so no metadata or extra bytes survive; the interface sends a
+256 × 256 square. Both answer 204; `DELETE` also answers 204 when there is no
+picture. `GET /api/avatars/{userId}` shows it (section 3).
+
 ---
 
 ## 3. Users — global admin
@@ -132,6 +141,13 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
   password?}` → 204. (`user.update`, `user.deactivate`, `admin.grant`, …)
 - `PUT /api/admin/users/{id}/groups` `{groups: [groupId]}` → `adminUser`.
   Replaces the memberships. (`group.members`)
+- `PUT /api/admin/users/{id}/avatar` (multipart, as `PUT /api/me/avatar`) and
+  `DELETE /api/admin/users/{id}/avatar` → 204: set or remove an account's
+  picture. (`user.update`, with the detail `avatar: set | remove`)
+- `GET /api/avatars/{userId}` (every signed-in user) → the picture as
+  `image/png` (`X-Content-Type-Options: nosniff`, `Cache-Control: private,
+  max-age=300`, `ETag`), or the initials as an SVG when the account has none;
+  404 for an unknown account.
 - `POST /api/admin/users/{id}/reset-password` → `{password}`: a generated
   password, shown once; the user's sessions end. (`password.reset`) With the
   body `{"method": "link"}` it sends the account a link, valid one hour, to
