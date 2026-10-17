@@ -143,6 +143,7 @@ export const it: Messages = {
     modes: { system: 'sistema', light: 'chiaro', dark: 'scuro' },
     language: 'Lingua',
     logout: 'Esci',
+    sourceCode: 'Codice sorgente',
     live: 'Aggiornamenti in tempo reale',
     offline: 'Offline: le pagine non si aggiornano più da sole',
   },

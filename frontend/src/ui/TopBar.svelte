@@ -202,6 +202,14 @@
               >
             {/each}
             <div class="sep"></div>
+            <a
+              class="item"
+              role="menuitem"
+              href="https://github.com/mflr0/Solstice"
+              target="_blank"
+              rel="noopener noreferrer">{t.nav.sourceCode}</a
+            >
+            <div class="sep"></div>
             <button class="item" role="menuitem" onclick={() => void session.signOut()}
               >{t.nav.logout}</button
             >
