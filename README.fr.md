@@ -122,10 +122,14 @@ après `?` n'est acceptée et Solstice refuse de démarrer avec une autre. Les
 messages d'erreur n'affichent jamais le mot de passe.
 
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
-`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`. Les échecs de
-connexion sont comptés par adresse de client : listez votre proxy dans
-`SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou plages CIDR séparées par des virgules,
-vide par défaut) pour que Solstice lise le client dans `X-Forwarded-For` et non
+`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`, mais
+seulement si ce proxy figure dans `SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou
+plages CIDR séparées par des virgules, vide par défaut) ou si
+`SOLSTICE_HTTP_BASEURL` commence par `https://`. Sans l'un ni l'autre, l'en-tête
+est ignoré : les cookies ne sont pas `Secure`, les liens des réponses REST sont
+en `http://` et Solstice écrit un avertissement dans son journal (au plus un par
+heure). Les échecs de connexion sont comptés par adresse de client : la même
+liste permet à Solstice de lire le client dans `X-Forwarded-For` et non
 l'adresse du proxy, la même pour tous. Voir `deploy/proxy/README.md`.
 
 Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé

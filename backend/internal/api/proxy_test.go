@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
@@ -201,9 +202,55 @@ func TestSecureRequest(t *testing.T) {
 			if tc.proto != "" {
 				r.Header.Set("X-Forwarded-Proto", tc.proto)
 			}
-			if got := secureRequest(r, tc.baseURL, parseProxies(t, "192.0.2.0/24")); got != tc.want {
+			if got := secureRequest(r, tc.baseURL, parseProxies(t, "192.0.2.0/24"), slog.New(slog.DiscardHandler)); got != tc.want {
 				t.Errorf("secureRequest = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// A TLS proxy missing from the trusted list is told once, then once an hour,
+// and never when the header is not believed for no such reason.
+func TestUntrustedProtoWarning(t *testing.T) {
+	var out strings.Builder
+	log := slog.New(slog.NewTextHandler(&out, nil))
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	protoWarn.last, protoWarn.now = time.Time{}, func() time.Time { return now }
+	t.Cleanup(func() { protoWarn.last, protoWarn.now = time.Time{}, nil })
+
+	request := func(remote, proto string) {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.RemoteAddr = remote
+		if proto != "" {
+			r.Header.Set("X-Forwarded-Proto", proto)
+		}
+		secureRequest(r, "", parseProxies(t, "192.0.2.0/24"), log)
+	}
+	warnings := func() int { return strings.Count(out.String(), "level=WARN") }
+
+	request("198.51.100.7:40000", "")
+	request("198.51.100.7:40000", "http")
+	request("192.0.2.1:40000", "https")
+	if warnings() != 0 {
+		t.Fatalf("no untrusted https claim, yet: %s", out.String())
+	}
+	request("198.51.100.7:40000", "https")
+	if warnings() != 1 {
+		t.Fatalf("first untrusted https claim: %d warnings, want 1: %s", warnings(), out.String())
+	}
+	for _, name := range []string{"SOLSTICE_HTTP_TRUSTEDPROXIES", "SOLSTICE_HTTP_BASEURL"} {
+		if !strings.Contains(out.String(), name) {
+			t.Errorf("the warning does not name %s: %s", name, out.String())
+		}
+	}
+	now = now.Add(protoWarnEvery - time.Second)
+	request("198.51.100.8:40000", "https")
+	if warnings() != 1 {
+		t.Errorf("within the hour: %d warnings, want 1", warnings())
+	}
+	now = now.Add(time.Second)
+	request("198.51.100.8:40000", "https")
+	if warnings() != 2 {
+		t.Errorf("after the hour: %d warnings, want 2", warnings())
 	}
 }
