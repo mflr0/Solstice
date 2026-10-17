@@ -535,4 +535,11 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "कम से कम एक इवेंट चुनें।",
 	WebhookSecretTooLong:       "सीक्रेट अधिकतम 255 वर्णों का हो सकता है।",
 	WebhookSecretEncryptFailed: "सीक्रेट एन्क्रिप्ट नहीं किया जा सका: %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "चित्र अपलोड अमान्य है।",
+	AvatarNoFile:        "कोई चित्र नहीं मिला।",
+	AvatarTooLarge:      "चित्र बहुत बड़ा है (अधिकतम 1 MB)।",
+	AvatarNotImage:      "चित्र एक मान्य PNG या JPEG फ़ाइल होना चाहिए।",
+	AvatarDimensions:    "चित्र अधिकतम 512 × 512 पिक्सेल का हो सकता है।",
 }

@@ -1818,6 +1818,14 @@ export const fr: Messages = {
     saved: 'Réglages enregistrés.',
     profileUnsupported:
       'Ce serveur ne sait pas encore modifier le nom ni l’adresse e-mail : mettez Solstice à jour.',
+    picture: 'Image',
+    pictureHint:
+      'Affichée à côté de votre nom. L’image est recadrée en carré et réduite dans votre navigateur avant l’envoi.',
+    pictureChange: 'Changer l’image',
+    pictureRemove: 'Supprimer l’image',
+    pictureSaved: 'Image enregistrée.',
+    pictureRemoved: 'Image supprimée.',
+    pictureUnreadable: 'Ce fichier ne peut pas être lu comme une image.',
     problems: {
       nameRequired: 'Indiquez un nom.',
       nameTooLong: '100 caractères au plus.',
