@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { VersionRow } from '../../core/admin-types.js';
   import { todayISO } from '../../core/dates.js';
-  import { moveItem, otherVersions, releaseTargets } from '../../core/project-admin.js';
+  import {
+    datesProblem,
+    moveItem,
+    otherVersions,
+    releaseTargets,
+  } from '../../core/project-admin.js';
   import { formatDay, t } from '../../i18n/t.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
@@ -36,6 +41,9 @@
   let affectsTo = $state('');
 
   const releaseChoices = $derived(items && releasing ? releaseTargets(items, releasing.id) : []);
+  const releaseProblem = $derived(
+    releasing ? datesProblem(releasing.startDate ?? '', releaseDate || todayISO()) : null,
+  );
   const mergeChoices = $derived(items && merging ? otherVersions(items, merging.id) : []);
   const removeChoices = $derived(items && removing ? otherVersions(items, removing.id) : []);
 
@@ -110,6 +118,7 @@
   async function release() {
     const v = releasing;
     if (!v) return;
+    if (releaseProblem) throw new Error(t.projectConfig.problems[releaseProblem]);
     const target = releaseChoices.find((x) => String(x.id) === moveTo)?.id;
     await projectAdminApi.releaseVersion(projectKey, v.id, {
       ...(releaseDate ? { releaseDate } : {}),
@@ -290,7 +299,10 @@
 >
   <label class="field">
     <span>{t.projectConfig.versions.releaseDate}</span>
-    <input class="input" type="date" bind:value={releaseDate} />
+    <input class="input" type="date" bind:value={releaseDate} aria-invalid={!!releaseProblem} />
+    {#if releaseProblem}
+      <span class="field-error">{t.projectConfig.problems[releaseProblem]}</span>
+    {/if}
   </label>
   {#if releasing && releasing.issues.unresolved > 0}
     <p>{t.projectConfig.versions.releaseUnresolved(releasing.issues.unresolved)}</p>
