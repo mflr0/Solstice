@@ -489,6 +489,9 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
 		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
 	}
+	if cfg.Security == mail.SecurityNone && cfg.Username != "" && !mail.Loopback(cfg.Host) {
+		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
+	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
 			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, err.Error())
@@ -605,6 +608,8 @@ func smtpError(err error) error {
 		return failf(http.StatusBadGateway, i18n.MailAuthRefused, detail)
 	case mail.StageNoAuth:
 		return fail(http.StatusBadGateway, i18n.MailAuthUnsupported)
+	case mail.StageInsecure:
+		return fail(http.StatusBadGateway, i18n.MailCredentialsNeedTLS)
 	case mail.StageSender:
 		return failf(http.StatusBadGateway, i18n.MailSenderRefused, detail)
 	case mail.StageRecipient:

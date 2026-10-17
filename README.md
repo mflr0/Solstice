@@ -181,8 +181,9 @@ notification settings).
 
 - SMTP server: set in the administration (host, port, security none /
   STARTTLS / TLS, user name, sender), with a test message that shows the
-  server's exact error. The public address (`SOLSTICE_HTTP_BASEURL`) is used for
-  links in e-mails; without it, e-mails go out without links.
+  server's exact error. A user name is sent only over TLS or STARTTLS, except
+  to a server on the same machine. The public address (`SOLSTICE_HTTP_BASEURL`)
+  is used for links in e-mails; without it, e-mails go out without links.
 - Notifications: watchers, reporter, assignee and mentioned people
   (`[~username]`). Each person picks their events, immediate delivery
   (changes to the same issue less than two minutes apart go in one e-mail) or

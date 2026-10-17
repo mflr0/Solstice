@@ -195,7 +195,8 @@ ses propres réglages de notifications).
 
 - Serveur SMTP : il se règle dans l'administration (hôte, port, sécurité
   aucune / STARTTLS / TLS, identifiant, expéditeur), avec un envoi d'essai qui
-  affiche l'erreur exacte du serveur. L'adresse publique
+  affiche l'erreur exacte du serveur. L'identifiant ne part qu'en TLS ou
+  STARTTLS, sauf vers un serveur de cette machine. L'adresse publique
   (`SOLSTICE_HTTP_BASEURL`) sert aux liens des e-mails ; sans elle, ils partent
   sans liens.
 - Notifications : observateurs, rapporteur, assigné et personnes mentionnées

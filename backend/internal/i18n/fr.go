@@ -473,6 +473,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Choisir mon mot de passe",
 	MailInviteExpiry:          "Le lien ne fonctionne qu'une fois et reste valable 7 jours.",
 	MailInviteWhy:             "Vous recevez ce courriel car un administrateur a créé un compte pour vous.",
+	MailCredentialsNeedTLS:    "L'identifiant et le mot de passe ne partent que sur une connexion chiffrée : choisissez STARTTLS ou TLS, ou laissez l'identifiant vide. Seul un serveur sur cette machine fait exception.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Heure invalide : de 0 à 23.",

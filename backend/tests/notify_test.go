@@ -677,3 +677,24 @@ func TestWebhooks(t *testing.T) {
 	admin.call("DELETE", path, nil, 204, nil)
 	admin.call("GET", path, nil, 404, nil)
 }
+
+func TestMailSettingsRefuseCredentialsInClear(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	plain := func(host string) map[string]any {
+		return map[string]any{"host": host, "port": env.smtp.Port, "security": "none", "username": "relai",
+			"password": "s3cret-smtp"}
+	}
+	status, body := admin.do("PUT", "/api/admin/mail", plain("smtp.autre.example"))
+	if status != http.StatusBadRequest || !strings.Contains(string(body), "encrypted") {
+		t.Errorf("credentials, no encryption, remote host: %d %s, want 400", status, body)
+	}
+	// Encryption, no credentials, or a local server: accepted.
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 587, "security": "starttls",
+		"username": "relai", "password": "s3cret-smtp"}, 200, nil)
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "security": "none", "username": "",
+		"password": nil}, 200, nil)
+	for _, host := range []string{"localhost", "::1", env.smtp.Host} {
+		admin.call("PUT", "/api/admin/mail", plain(host), 200, nil)
+	}
+}
