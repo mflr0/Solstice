@@ -1,3 +1,5 @@
+# Not run on pull requests on purpose: a new advisory must not fail an
+# unrelated PR. It runs daily, on demand and on the long-lived branches.
 name: Security
 
 on:
