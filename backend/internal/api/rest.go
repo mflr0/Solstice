@@ -262,7 +262,7 @@ type restError struct {
 func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
 		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}

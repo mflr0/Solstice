@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -29,6 +31,32 @@ func TestWriteErrorHidesInternalErrors(t *testing.T) {
 	if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "10.0.0.5") ||
 		!strings.Contains(w.Body.String(), "Erreur interne") {
 		t.Errorf("REST error: %d %s", w.Code, w.Body)
+	}
+}
+
+// The log of an unexpected error names the route, never the path, which can
+// hold a secret (a reset token).
+func TestWriteErrorLogsRouteNotPath(t *testing.T) {
+	var logged bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	r := httptest.NewRequest("POST", "/api/auth/reset/s3cret-token", nil)
+	r.Pattern = "POST /api/auth/reset/{token}"
+	for name, write := range map[string]func(http.ResponseWriter, *http.Request, error){
+		"interface": writeError, "REST": writeRESTError,
+	} {
+		logged.Reset()
+		w := httptest.NewRecorder()
+		write(w, r, errors.New("boom"))
+		if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "boom") {
+			t.Errorf("%s: %d %s", name, w.Code, w.Body)
+		}
+		if out := logged.String(); strings.Contains(out, "s3cret-token") || !strings.Contains(out, "/api/auth/reset/{token}") ||
+			!strings.Contains(out, "boom") {
+			t.Errorf("%s log: %s", name, out)
+		}
 	}
 }
 
