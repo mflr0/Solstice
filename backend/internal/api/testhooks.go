@@ -56,7 +56,7 @@ type UpdateEnv struct {
 	HelperDir    string // the update helper's directory
 	DockerEnv    string // the file Docker puts in containers
 	GOOS, GOARCH string
-	Getenv       func(string) string
+	Install      string // SOLSTICE_INSTALL
 	Now          func() time.Time
 }
 
@@ -65,5 +65,5 @@ type UpdateEnv struct {
 func (h TestHooks) SetUpdateEnv(e UpdateEnv) {
 	u := &h.s.upd
 	u.apiBase, u.dir, u.dockerEnv = e.GitHubAPI, e.HelperDir, e.DockerEnv
-	u.goos, u.goarch, u.getenv, u.now = e.GOOS, e.GOARCH, e.Getenv, e.Now
+	u.goos, u.goarch, u.installed, u.now = e.GOOS, e.GOARCH, e.Install, e.Now
 }

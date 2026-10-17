@@ -36,7 +36,7 @@ services:
         condition: service_healthy
     environment:
       # The setup wizard skips its database step: the database is this one.
-      SOLSTICE_DB: mysql://solstice:${DB_PASSWORD}@mariadb:3306/solstice
+      SOLSTICE_DB_URL: mysql://solstice:${DB_PASSWORD}@mariadb:3306/solstice
     ports:
       # "127.0.0.1:8080:8080" to only accept connections from a reverse proxy
       # on this machine.

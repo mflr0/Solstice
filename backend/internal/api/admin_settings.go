@@ -4,7 +4,7 @@ package api
 // name, public address, time zone, default language, announcement banner,
 // sign-in lifetime and password length. They live in the settings table
 // and apply at once. The public address and the time zone may also come
-// from the configuration file or the environment (SOLSTICE_BASE_URL,
+// from the configuration file or the environment (SOLSTICE_HTTP_BASEURL,
 // SOLSTICE_TZ): those are initial values, and the database wins once an
 // administrator saved one.
 
@@ -20,7 +20,6 @@ import (
 	"unicode/utf8"
 
 	"solstice/internal/audit"
-	"solstice/internal/config"
 	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
 )
@@ -31,9 +30,6 @@ type ConfigInfo struct {
 	Path    string // the configuration file
 	Found   bool   // whether it exists
 	Addr    string // listen address
-	// Sources tells where each key of config.Keys comes from: env, flag,
-	// file or default.
-	Sources map[string]string
 }
 
 // adminState is what the administration keeps in memory.
@@ -71,8 +67,6 @@ func (s *Server) configInfo() ConfigInfo {
 const (
 	sourceDefault  = "default"
 	sourceFile     = "file"
-	sourceEnv      = "env"
-	sourceFlag     = "flag"
 	sourceDatabase = "database"
 )
 
@@ -118,13 +112,9 @@ const (
 	maxBannerText       = 500
 )
 
-// bootSource tells where a value given at start (file, environment, flag)
-// comes from.
-// Its only caller, loadGeneral, runs with s.adm.mu held: it reads s.adm.info directly.
-func (s *Server) bootSource(key, value string) string {
-	if src := s.adm.info.Sources[key]; src != "" && value != "" {
-		return src
-	}
+// bootSource tells where a value given at start comes from: the
+// configuration file (or the environment, which overrides it) when set.
+func bootSource(value string) string {
 	if value == "" {
 		return sourceDefault
 	}
@@ -172,7 +162,7 @@ func (s *Server) loadGeneral(ctx context.Context) (*generalSettings, error) {
 		SessionDays: defaultSessionDays, PasswordMinLength: defaultPasswordMin,
 		Languages: i18n.Locales,
 		Sources: map[string]string{
-			"baseURL": s.bootSource(config.KeyBaseURL, s.baseURL), "timeZone": s.bootSource(config.KeyTZ, bootTZ),
+			"baseURL": bootSource(s.baseURL), "timeZone": bootSource(bootTZ),
 		},
 	}
 	for _, f := range generalFields {

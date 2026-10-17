@@ -17,8 +17,9 @@ import (
 	"solstice/internal/perm"
 )
 
-// maxUpload caps a single upload request.
-const maxUpload = 100 << 20
+// SetMaxUpload caps a single upload request, in bytes. Call it before the
+// server takes requests.
+func (s *Server) SetMaxUpload(n int64) { s.maxUpload = n }
 
 func (s *Server) attachmentPath(id int64) string {
 	return filepath.Join(s.dataDir, "attachments", strconv.FormatInt(id, 10))
@@ -38,7 +39,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	if !sub.Can(perm.Attach, iss.ProjectID, &pi) {
 		return errForbidden
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
+	r.Body = http.MaxBytesReader(w, r.Body, s.maxUpload)
 	reader, err := r.MultipartReader()
 	if err != nil {
 		return fail(http.StatusBadRequest, i18n.AttachmentUploadInvalid)

@@ -28,7 +28,7 @@
   <div class="setup-warn" role="alert">
     <p>
       {m.config.notWritten(config.path)}
-      {#if config.lines?.includes('SOLSTICE_DB=')}{m.config.passwordNote}{/if}
+      {#if config.lines?.includes('SOLSTICE_DB_URL=')}{m.config.passwordNote}{/if}
     </p>
     <pre class="setup-code">{config.lines}</pre>
     <div class="row">

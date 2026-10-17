@@ -1983,9 +1983,7 @@ export const it: Messages = {
     passwordMinLengthHint:
       'Da 8 a 128 caratteri. Vale per le nuove password; le vecchie restano valide.',
     sources: {
-      env: 'Valore proveniente da una variabile d’ambiente: salvarlo qui lo sostituisce.',
-      file: 'Valore proveniente dal file di configurazione: salvarlo qui lo sostituisce.',
-      flag: 'Valore proveniente dalla riga di comando: salvarlo qui lo sostituisce.',
+      file: 'Valore proveniente dal file di configurazione o da una variabile d’ambiente: salvarlo qui lo sostituisce.',
       default: 'Valore predefinito.',
       database: '',
     },

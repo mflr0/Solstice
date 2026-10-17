@@ -5,9 +5,8 @@
     hint: string;
     value: string;
     id: string;
-    readonly?: boolean;
   }
-  let { label, hint, value = $bindable(), id, readonly = false }: Props = $props();
+  let { label, hint, value = $bindable(), id }: Props = $props();
 
   const zones: string[] = (() => {
     try {
@@ -24,8 +23,7 @@
     class="input"
     bind:value
     list={`${id}-zones`}
-    required={!readonly}
-    {readonly}
+    required
     autocomplete="off"
     spellcheck="false"
     aria-describedby={`${id}-hint`}

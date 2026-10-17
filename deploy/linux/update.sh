@@ -353,9 +353,9 @@ fetch() {
 }
 
 # read_db sets db_user, db_pass, db_host, db_port and db_name from
-# SOLSTICE_DB. Returns 2 when no database is configured.
+# SOLSTICE_DB_URL. Returns 2 when no database is configured.
 read_db() {
-  url=$(conf_value SOLSTICE_DB)
+  url=$(conf_value SOLSTICE_DB_URL)
   [ -n "$url" ] || return 2
   parsed=$(printf '%s\n' "$url" | awk '
     function hex(c) { return index("0123456789abcdef", tolower(c)) - 1 }
@@ -427,7 +427,7 @@ back_up() (
       exit 0
       ;;
     *)
-      say "SOLSTICE_DB in $conf cannot be read: refusing to update without a backup."
+      say "SOLSTICE_DB_URL in $conf cannot be read: refusing to update without a backup."
       exit 1
       ;;
   esac
@@ -466,7 +466,7 @@ healthy() {
     sleep 2
     i=$((i + 2))
     if systemctl is-active --quiet "$service" &&
-      as_user env SOLSTICE_ADDR="$addr" "$bin" health >/dev/null 2>&1; then
+      as_user env SOLSTICE_HTTP_ADDR="$addr" "$bin" health >/dev/null 2>&1; then
       return 0
     fi
   done
@@ -526,10 +526,10 @@ main() {
     aarch64 | arm64) arch=arm64 ;;
     *) fail "No release is built for this machine ($(uname -m))." ;;
   esac
-  addr=$(conf_value SOLSTICE_ADDR)
+  addr=$(conf_value SOLSTICE_HTTP_ADDR)
   addr=${addr:-:8080}
   if ! printf '%s\n' "$addr" | grep -Eq '^[][A-Za-z0-9.:-]{0,253}:[0-9]{1,5}$'; then
-    fail "SOLSTICE_ADDR in $conf is not an address."
+    fail "SOLSTICE_HTTP_ADDR in $conf is not an address."
   fi
   if test_base=$(read_test_base); then
     base=$test_base

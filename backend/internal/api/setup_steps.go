@@ -89,10 +89,10 @@ type dbProbe struct {
 // probeDatabase connects and checks the server and the database: version,
 // character set, and that it is empty or Solstice's. The connection is
 // returned open on success.
-func probeDatabase(ctx context.Context, f dbForm, rawURL string) (*sql.DB, *dbProbe, error) {
+func probeDatabase(ctx context.Context, f dbForm, rawURL string, pool db.Pool) (*sql.DB, *dbProbe, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	conn, err := db.Open(ctx, rawURL)
+	conn, err := db.Open(ctx, rawURL, pool)
 	if err != nil {
 		return nil, nil, connectError(err, net.JoinHostPort(f.Host, strconv.Itoa(f.Port)), f.Name, f.User)
 	}
@@ -197,7 +197,7 @@ func (w *Setup) testDatabase(rw http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	conn, p, err := probeDatabase(r.Context(), f, rawURL)
+	conn, p, err := probeDatabase(r.Context(), f, rawURL, w.opt.Pool)
 	if err != nil {
 		return err
 	}
@@ -226,13 +226,10 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 			w.mu.Unlock()
 		}
 	}()
-	switch {
-	case w.opt.DBFixed:
-		return fail(http.StatusConflict, i18n.SetupDatabaseFromEnv)
-	case w.imported:
+	if w.imported {
 		return fail(http.StatusConflict, i18n.SetupDatabaseImported)
 	}
-	conn, p, err := probeDatabase(r.Context(), f, rawURL)
+	conn, p, err := probeDatabase(r.Context(), f, rawURL, w.opt.Pool)
 	if err != nil {
 		return err
 	}
@@ -244,11 +241,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 		w.db.Close()
 	}
 	w.db, w.server = conn, p.Server
-	values := map[string]string{config.KeyDB: rawURL}
-	if !w.opt.DataFixed {
-		values[config.KeyData] = w.opt.DataDir
-	}
-	saved := w.save(values)
+	saved := w.save(map[string]string{config.KeyDBURL: rawURL, config.KeyData: w.opt.DataDir})
 	out := map[string]any{"server": p.Server, "config": saved, "existing": p.Accounts > 0}
 	if p.Accounts > 0 {
 		locked = false
@@ -293,26 +286,16 @@ func (w *Setup) saveInstance(rw http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer w.mu.Unlock()
-	values := map[string]string{}
-	if !w.opt.DataFixed {
-		// Kept whatever the working directory of the next start.
-		values[config.KeyData] = w.opt.DataDir
+	u, err := normalizeBaseURL(in.BaseURL)
+	if err != nil {
+		return err
 	}
-	if !w.opt.BaseURLFixed {
-		u, err := normalizeBaseURL(in.BaseURL)
-		if err != nil {
-			return err
-		}
-		w.baseURL, values[config.KeyBaseURL] = u, u
+	if err := checkTZ(in.TZ); err != nil {
+		return err
 	}
-	if !w.opt.TZFixed {
-		if err := checkTZ(in.TZ); err != nil {
-			return err
-		}
-		w.tz = strings.TrimSpace(in.TZ)
-		values[config.KeyTZ] = w.tz
-	}
-	saved := w.save(values)
+	w.baseURL, w.tz = u, strings.TrimSpace(in.TZ)
+	// The data directory is written too: kept whatever the working directory of the next start.
+	saved := w.save(map[string]string{config.KeyData: w.opt.DataDir, config.KeyBaseURL: w.baseURL, config.KeyTZ: w.tz})
 	return writeJSON(rw, http.StatusOK, map[string]any{"baseURL": w.baseURL, "tz": w.tz, "config": saved})
 }
 

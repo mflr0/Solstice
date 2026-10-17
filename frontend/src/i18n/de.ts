@@ -1994,9 +1994,7 @@ export const de: Messages = {
     passwordMinLengthHint:
       'Von 8 bis 128 Zeichen. Gilt für neue Passwörter; bestehende bleiben gültig.',
     sources: {
-      env: 'Wert aus einer Umgebungsvariablen: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
-      file: 'Wert aus der Konfigurationsdatei: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
-      flag: 'Wert aus der Kommandozeile: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
+      file: 'Wert aus der Konfigurationsdatei oder einer Umgebungsvariablen: Wenn Sie hier speichern, wird dieser Wert ersetzt.',
       default: 'Standardwert.',
       database: '',
     },

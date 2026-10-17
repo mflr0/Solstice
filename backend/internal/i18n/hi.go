@@ -93,7 +93,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SetupDatabaseMissing:      "इस सर्वर पर “%s” डेटाबेस नहीं है: पहले इसे बनाएँ।",
 	SetupDatabaseConnect:      "डेटाबेस से कनेक्ट नहीं हो सका: %s",
 	SetupDatabaseUnreachable:  "%s पर डेटाबेस सर्वर से संपर्क नहीं हो सका: होस्ट, पोर्ट और फ़ायरवॉल जाँचें।",
-	SetupDatabaseFromEnv:      "डेटाबेस सर्वर के एनवायरनमेंट में तय है: इसे यहाँ नहीं बदला जा सकता।",
 	SetupDatabaseImported:     "एक इम्पोर्ट डेटाबेस को पहले ही भर चुका है: अब इसे बदला नहीं जा सकता।",
 	SetupDatabaseRequired:     "पहले डेटाबेस कॉन्फ़िगर करें।",
 	SetupTablesFailed:         "टेबल बनाना विफल रहा: %s",

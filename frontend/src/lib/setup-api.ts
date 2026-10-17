@@ -20,13 +20,11 @@ export interface SetupStatus {
   unlocked: boolean;
   version: string;
   /** Absent once the instance is set up. */
-  database?: { configured: boolean; fixed: boolean; server?: string };
+  database?: { configured: boolean; server?: string };
   dataDir?: string;
   configPath?: string;
   baseURL?: string;
-  baseURLFixed?: boolean;
   tz?: string;
-  tzFixed?: boolean;
   imported?: boolean;
   import?: ImportState;
   config?: ConfigSave;

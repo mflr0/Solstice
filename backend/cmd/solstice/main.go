@@ -26,7 +26,6 @@ import (
 	"solstice/internal/api"
 	"solstice/internal/audit"
 	"solstice/internal/auth"
-	"solstice/internal/config"
 	"solstice/internal/db"
 	"solstice/internal/importer"
 	"solstice/internal/web"
@@ -45,18 +44,26 @@ Commands:
 
 "solstice <command> -h" lists a command's options.
 
-Configuration: a file of KEY=value lines, named by -config or
-SOLSTICE_CONFIG, otherwise ./solstice.conf, otherwise /etc/solstice/solstice.conf.
-Environment variables of the same name win over the file.
-  SOLSTICE_DB               MariaDB database: mysql://user:password@host:3306/database
-                            add ?tls=true (or skip-verify, preferred) to encrypt the link
-  SOLSTICE_DATA             data directory (default ./data)
-  SOLSTICE_ADDR             listen address (default :8080)
-  SOLSTICE_TZ               time zone of dates typed in searches, e.g. Europe/Paris
-  SOLSTICE_BASE_URL         public address, e.g. https://tickets.example.org
-  SOLSTICE_SECRET_KEY       key of the stored secrets (default <data>/secret.key)
-  SOLSTICE_TRUSTED_PROXIES  reverse proxies in front of Solstice: IP addresses and
-                            CIDR ranges, e.g. 127.0.0.1,10.0.0.0/8 (default none)
+Configuration: a file of KEY=value lines, named by SOLSTICE_CONFIG, otherwise
+./solstice.conf, otherwise /etc/solstice/solstice.conf. Environment variables
+of the same name win over the file. Durations are written 30s, 5m, 1h30m.
+  SOLSTICE_DB_URL                MariaDB database: mysql://user:password@host:3306/database
+                                 add ?tls=true (or skip-verify, preferred) to encrypt the link
+  SOLSTICE_DB_MAXOPENCONNS       open connections at most (default 20)
+  SOLSTICE_DB_MAXIDLECONNS       idle connections kept (default 10)
+  SOLSTICE_DB_CONNMAXLIFETIME    lifetime of a connection (default 5m)
+  SOLSTICE_DATA                  data directory (default ./data)
+  SOLSTICE_TZ                    time zone of dates typed in searches, e.g. Europe/Paris
+  SOLSTICE_SECRETKEY             key of the stored secrets (default <data>/secret.key)
+  SOLSTICE_INSTALL               "docker" in a container image
+  SOLSTICE_HTTP_ADDR             listen address (default :8080)
+  SOLSTICE_HTTP_BASEURL          public address, e.g. https://tickets.example.org
+  SOLSTICE_HTTP_TRUSTEDPROXIES   reverse proxies in front of Solstice: IP addresses and
+                                 CIDR ranges, e.g. 127.0.0.1,10.0.0.0/8 (default none)
+  SOLSTICE_HTTP_SHUTDOWNTIMEOUT  time given to work in progress on stop (default 10s)
+  SOLSTICE_HTTP_MAXUPLOAD        size of one upload, e.g. 100MB or 1GiB (default 100MiB)
+  SOLSTICE_LOG_LEVEL             debug, info, warn or error (default info)
+  SOLSTICE_LOG_FORMAT            text or json (default text)
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -102,9 +109,8 @@ func main() {
 
 func runMigrate(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-	settings := commonFlags(fs, false)
 	fs.Parse(args)
-	cfg, _, err := settings.load()
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
@@ -119,28 +125,14 @@ func runMigrate(ctx context.Context, args []string) error {
 
 func runServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	settings := commonFlags(fs, true)
-	addr := fs.String("addr", "", "listen address (default: $SOLSTICE_ADDR, the configuration file, or :8080)")
-	tzName := fs.String("tz", "", "time zone of dates typed in searches, e.g. Europe/Paris "+
-		"(default: $SOLSTICE_TZ, the configuration file, or the system's)")
 	fs.Parse(args)
-	cfg, fixed, err := settings.load()
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
-	if *addr != "" {
-		cfg.Addr = *addr
-	}
-	if *tzName != "" {
-		cfg.TZ, fixed[config.KeyTZ] = *tzName, true
-	}
-	tz, err := loadTZ(cfg.TZ)
-	if err != nil {
-		return err
-	}
-	proxies, err := config.ParseTrustedProxies(cfg.TrustedProxies)
-	if err != nil {
-		return err
+	tz, tzName := time.Local, ""
+	if cfg.TZ != nil {
+		tz, tzName = cfg.TZ, cfg.TZ.String()
 	}
 	dataDir, err := filepath.Abs(cfg.Data)
 	if err != nil {
@@ -152,8 +144,8 @@ func runServe(ctx context.Context, args []string) error {
 	// Without a database, or on one without any account, the setup wizard
 	// runs first; the application takes over when it is done.
 	var conn *sql.DB
-	if cfg.DB != "" {
-		if conn, err = openDB(ctx, cfg.DB); err != nil {
+	if cfg.DB.URL != "" {
+		if conn, err = openDB(ctx, cfg.DB.URL, cfg.DB.Pool()); err != nil {
 			return err
 		}
 		if err := db.Migrate(ctx, conn); err != nil {
@@ -182,11 +174,12 @@ func runServe(ctx context.Context, args []string) error {
 	startApp := func(conn *sql.DB, tz *time.Location, baseURL string) {
 		srv := api.New(conn, dataDir, tz, log)
 		srv.SetBaseURL(baseURL)
-		srv.SetTrustedProxies(proxies)
+		srv.SetTrustedProxies(cfg.HTTP.TrustedProxies)
 		srv.SetSecretKey(cfg.SecretKey)
+		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
+		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
-		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.Addr,
-			Sources: configSources(cfg, fixed, baseURL, tz)})
+		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})
 		h := srv.Handler(static)
 		appDB.Store(conn)
 		app.Store(srv)
@@ -196,13 +189,13 @@ func runServe(ctx context.Context, args []string) error {
 	}
 	if setup {
 		wizard, err = api.NewSetup(ctx, api.SetupOptions{
-			DB: conn, DBFixed: fixed[config.KeyDB],
-			DataDir: dataDir, DataFixed: fixed[config.KeyData],
+			DB: conn, Pool: cfg.DB.Pool(),
+			DataDir:        dataDir,
 			ConfigPath:     cfg.Path,
-			TrustedProxies: proxies,
-			BaseURL:        strings.TrimSuffix(cfg.BaseURL, "/"), BaseURLFixed: fixed[config.KeyBaseURL],
-			TZ: cfg.TZ, TZFixed: fixed[config.KeyTZ],
-			Version: version, Log: log,
+			TrustedProxies: cfg.HTTP.TrustedProxies,
+			BaseURL:        strings.TrimSuffix(cfg.HTTP.BaseURL, "/"),
+			TZ:             tzName,
+			Version:        version, Log: log,
 			Done: func(res api.SetupResult) {
 				tz, err := loadTZ(res.TZ)
 				if err != nil {
@@ -217,9 +210,9 @@ func runServe(ctx context.Context, args []string) error {
 		}
 		h := wizard.Handler(static, web.IsAsset)
 		current.Store(&h)
-		fmt.Fprint(os.Stderr, wizard.Banner(cfg.Addr))
+		fmt.Fprint(os.Stderr, wizard.Banner(cfg.HTTP.Addr))
 	} else {
-		startApp(conn, tz, cfg.BaseURL)
+		startApp(conn, tz, cfg.HTTP.BaseURL)
 	}
 	defer func() {
 		if c := appDB.Load(); c != nil {
@@ -240,7 +233,7 @@ func runServe(ctx context.Context, args []string) error {
 		(*current.Load()).ServeHTTP(w, r)
 	}))
 	srv := &http.Server{
-		Addr:              cfg.Addr,
+		Addr:              cfg.HTTP.Addr,
 		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
@@ -253,12 +246,12 @@ func runServe(ctx context.Context, args []string) error {
 	})
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	log.Info("Solstice is listening", "addr", cfg.Addr, "setup", setup)
+	log.Info("Solstice is listening", "addr", cfg.HTTP.Addr, "setup", setup)
 	select {
 	case err := <-errc:
 		return err
 	case <-ctx.Done():
-		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdown, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 		defer cancel()
 		err := srv.Shutdown(shutdown)
 		// Requests are over: hand their last events to e-mail and webhooks,
@@ -306,7 +299,6 @@ func runUser(ctx context.Context, args []string) error {
 	}
 	action := args[0]
 	fs := flag.NewFlagSet("user "+action, flag.ExitOnError)
-	settings := commonFlags(fs, false)
 	username := fs.String("username", "", "login")
 	name := fs.String("name", "", "display name")
 	email := fs.String("email", "", "e-mail address")
@@ -325,7 +317,7 @@ func runUser(ctx context.Context, args []string) error {
 		}
 		*password = base64.RawURLEncoding.EncodeToString(raw)
 	}
-	cfg, _, err := settings.load()
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
@@ -404,7 +396,6 @@ func runUser(ctx context.Context, args []string) error {
 
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
-	settings := commonFlags(fs, true)
 	from := fs.String("from", "", "Jira database URL: postgres://user:pass@host/db or mysql://user:pass@host/db")
 	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info)")
 	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files")
@@ -420,7 +411,7 @@ func runImport(ctx context.Context, args []string) error {
 		return fmt.Errorf("unknown time zone %q: %w", *tz, err)
 	}
 
-	cfg, _, err := settings.load()
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}

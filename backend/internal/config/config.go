@@ -2,8 +2,11 @@
 //
 // The file holds KEY=value lines and # comments: the format of systemd's
 // EnvironmentFile and Docker's --env-file, so one file serves all three.
-// Real environment variables override the file; command-line flags override
-// both (the caller applies them).
+// Real environment variables override the file.
+//
+// Each field of Settings is one key, named after its path: SOLSTICE, then
+// the field names upper-cased, joined by "_" (HTTP.BaseURL is
+// SOLSTICE_HTTP_BASEURL). Adding a field adds a key.
 package config
 
 import (
@@ -12,35 +15,117 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
+
+	"solstice/internal/db"
 )
 
-// The keys Solstice reads.
+// Prefix starts every key.
+const Prefix = "SOLSTICE"
+
+// The keys other packages name; TestKeyNames checks them against Settings.
 const (
-	KeyDB             = "SOLSTICE_DB"              // MariaDB URL: mysql://user:pass@host:port/db
-	KeyData           = "SOLSTICE_DATA"            // data directory (attachments, setup code)
-	KeyAddr           = "SOLSTICE_ADDR"            // listen address
-	KeyTZ             = "SOLSTICE_TZ"              // time zone of dates typed in searches
-	KeyBaseURL        = "SOLSTICE_BASE_URL"        // public address, e.g. https://tickets.example.org
-	KeySecretKey      = "SOLSTICE_SECRET_KEY"      // optional; <data>/secret.key otherwise
-	KeyTrustedProxies = "SOLSTICE_TRUSTED_PROXIES" // reverse proxies: IP addresses and CIDR ranges
+	KeyDBURL   = "SOLSTICE_DB_URL"
+	KeyData    = "SOLSTICE_DATA"
+	KeyTZ      = "SOLSTICE_TZ"
+	KeyBaseURL = "SOLSTICE_HTTP_BASEURL"
 	// KeyConfig names the file itself; it is only read from the environment.
 	KeyConfig = "SOLSTICE_CONFIG"
 )
 
-// Keys are the settings a file may hold.
-var Keys = []string{KeyDB, KeyData, KeyAddr, KeyTZ, KeyBaseURL, KeySecretKey, KeyTrustedProxies}
+// Settings are what the file and the environment set.
+type Settings struct {
+	// Data is the data directory (attachments, secret key, setup code).
+	Data string
+	// TZ is the time zone of dates typed in searches; nil for the system's.
+	TZ *time.Location
+	// SecretKey seals stored secrets; empty for <data>/secret.key.
+	SecretKey string
+	// Install tells how Solstice was installed ("docker"), for the update page.
+	Install string
 
-// Defaults for what nothing sets. There is deliberately no default database.
-const (
-	DefaultData = "data"
-	DefaultAddr = ":8080"
-)
+	DB   DBSettings
+	Log  LogSettings
+	HTTP HTTPSettings
+}
+
+// DBSettings are Solstice's database and its connection pool.
+type DBSettings struct {
+	// URL is mysql://user:password@host:3306/database, optionally ?tls=true.
+	URL             string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+}
+
+// Pool returns the pool settings for db.Open.
+func (d DBSettings) Pool() db.Pool {
+	return db.Pool{MaxOpenConns: d.MaxOpenConns, MaxIdleConns: d.MaxIdleConns, ConnMaxLifetime: d.ConnMaxLifetime}
+}
+
+// LogSettings are what is logged and how.
+type LogSettings struct {
+	Level  slog.Level
+	Format LogFormat
+}
+
+// HTTPSettings are the web server's.
+type HTTPSettings struct {
+	// Addr is the listen address.
+	Addr string
+	// BaseURL is the public address, e.g. https://tickets.example.org.
+	BaseURL string
+	// TrustedProxies are the reverse proxies whose X-Forwarded-For header
+	// Solstice believes.
+	TrustedProxies Proxies
+	// ShutdownTimeout is how long requests and workers get to finish on stop.
+	ShutdownTimeout time.Duration
+	// MaxUpload caps a single upload request.
+	MaxUpload ByteSize
+}
+
+// Defaults returns the settings nothing sets. There is deliberately no
+// default database.
+func Defaults() Settings {
+	return Settings{
+		Data: "data",
+		DB: DBSettings{
+			MaxOpenConns:    20,
+			MaxIdleConns:    10,
+			ConnMaxLifetime: 5 * time.Minute,
+		},
+		Log: LogSettings{
+			Level:  slog.LevelInfo,
+			Format: LogText,
+		},
+		HTTP: HTTPSettings{
+			Addr:            ":8080",
+			ShutdownTimeout: 10 * time.Second,
+			MaxUpload:       100 << 20,
+		},
+	}
+}
+
+// Keys are the settings a file may hold, in Settings order.
+var Keys = func() []string {
+	var out []string
+	for _, f := range fields(&Settings{}) {
+		out = append(out, f.key)
+	}
+	return out
+}()
+
+// toolEnv are SOLSTICE_ variables of the scripts and tests, not settings:
+// they are not reported as unknown.
+var toolEnv = []string{KeyConfig, "SOLSTICE_TEST_DB", "SOLSTICE_TEST_EMPTY_DB", "SOLSTICE_BACKEND",
+	"SOLSTICE_VERSION", "SOLSTICE_PORT", "SOLSTICE_RELEASE_KEY"}
 
 // searchPaths are tried in order when no file is named. The first is also
 // where a new file is written when none exists.
@@ -48,69 +133,30 @@ var searchPaths = []string{"solstice.conf", "/etc/solstice/solstice.conf"}
 
 // Config is the configuration in effect.
 type Config struct {
+	Settings
+
 	// Path is the file read, or the one to write when none exists yet.
 	Path string
 	// Exists tells whether Path was found.
 	Exists bool
-
-	DB, Data, Addr, TZ, BaseURL, SecretKey, TrustedProxies string
-
-	// FromEnv lists the keys set by an environment variable: writing them to
-	// the file would change nothing.
-	FromEnv map[string]bool
-	// Unknown lists the keys of the file Solstice does not know (typos).
+	// Unknown lists the keys of the file, and the SOLSTICE_ variables,
+	// Solstice does not know (typos, renamed settings).
 	Unknown []string
 }
 
-// Get returns a setting by key.
-func (c *Config) Get(key string) string {
-	switch key {
-	case KeyDB:
-		return c.DB
-	case KeyData:
-		return c.Data
-	case KeyAddr:
-		return c.Addr
-	case KeyTZ:
-		return c.TZ
-	case KeyBaseURL:
-		return c.BaseURL
-	case KeySecretKey:
-		return c.SecretKey
-	case KeyTrustedProxies:
-		return c.TrustedProxies
+// Load reads the configuration. env is the environment, as os.Environ
+// returns it. The file is the one SOLSTICE_CONFIG names, else
+// ./solstice.conf or /etc/solstice/solstice.conf, the first that exists. A
+// named file that does not exist yet is not an error: it is where the setup
+// wizard will write. An empty value counts as unset.
+func Load(env []string) (*Config, error) {
+	vars := map[string]string{}
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			vars[k] = v
+		}
 	}
-	return ""
-}
-
-func (c *Config) set(key, value string) {
-	switch key {
-	case KeyDB:
-		c.DB = value
-	case KeyData:
-		c.Data = value
-	case KeyAddr:
-		c.Addr = value
-	case KeyTZ:
-		c.TZ = value
-	case KeyBaseURL:
-		c.BaseURL = value
-	case KeySecretKey:
-		c.SecretKey = value
-	case KeyTrustedProxies:
-		c.TrustedProxies = value
-	}
-}
-
-// Load reads the configuration. path is the file named on the command line
-// ("" for none); then SOLSTICE_CONFIG; then ./solstice.conf and
-// /etc/solstice/solstice.conf, the first that exists. A named file that does
-// not exist yet is not an error: it is where the setup wizard will write.
-// lookup reads the environment (os.LookupEnv).
-func Load(path string, lookup func(string) (string, bool)) (*Config, error) {
-	if path == "" {
-		path, _ = lookup(KeyConfig)
-	}
+	path := vars[KeyConfig]
 	if path == "" {
 		path = searchPaths[0]
 		for _, p := range searchPaths {
@@ -124,7 +170,7 @@ func Load(path string, lookup func(string) (string, bool)) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Config{Path: abs, FromEnv: map[string]bool{}}
+	c := &Config{Settings: Defaults(), Path: abs}
 
 	values := map[string]string{}
 	f, err := os.Open(abs) // #nosec G304 -- path built by the server, not from user input
@@ -139,36 +185,65 @@ func Load(path string, lookup func(string) (string, bool)) (*Config, error) {
 	case !errors.Is(err, fs.ErrNotExist):
 		return nil, err
 	}
-	for k, v := range values {
-		if slices.Contains(Keys, k) {
-			c.set(k, v)
-		} else {
+
+	for _, f := range fields(&c.Settings) {
+		raw, inFile := vars[f.key], false
+		if raw == "" {
+			raw, inFile = values[f.key], true
+		}
+		if raw == "" {
+			continue
+		}
+		if err := f.set(raw); err != nil {
+			if inFile {
+				return nil, fmt.Errorf("%s in %s: %w", f.key, abs, err)
+			}
+			return nil, fmt.Errorf("%s: %w", f.key, err)
+		}
+	}
+	for k := range values {
+		if !slices.Contains(Keys, k) {
+			c.Unknown = append(c.Unknown, k)
+		}
+	}
+	for k := range vars {
+		if strings.HasPrefix(k, Prefix+"_") && !slices.Contains(Keys, k) && !slices.Contains(toolEnv, k) &&
+			!slices.Contains(c.Unknown, k) {
 			c.Unknown = append(c.Unknown, k)
 		}
 	}
 	slices.Sort(c.Unknown)
-	for _, k := range Keys {
-		if v, ok := lookup(k); ok && v != "" {
-			c.set(k, v)
-			c.FromEnv[k] = true
-		}
-	}
-	if c.Data == "" {
-		c.Data = DefaultData
-	}
-	if c.Addr == "" {
-		c.Addr = DefaultAddr
-	}
-	if _, err := ParseTrustedProxies(c.TrustedProxies); err != nil {
+	if err := c.check(); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
+// check rejects values that parse but cannot work.
+func (s *Settings) check() error {
+	for _, r := range []struct {
+		bad  bool
+		p    any
+		want string
+	}{
+		{s.DB.MaxOpenConns < 1, &s.DB.MaxOpenConns, "at least 1"},
+		{s.DB.MaxIdleConns < 0 || s.DB.MaxIdleConns > s.DB.MaxOpenConns, &s.DB.MaxIdleConns,
+			"between 0 and " + keyOf(s, &s.DB.MaxOpenConns)},
+		{s.DB.ConnMaxLifetime <= 0, &s.DB.ConnMaxLifetime, "a positive duration"},
+		{s.HTTP.ShutdownTimeout <= 0, &s.HTTP.ShutdownTimeout, "a positive duration"},
+		{s.HTTP.MaxUpload <= 0, &s.HTTP.MaxUpload, "a positive size"},
+	} {
+		if r.bad {
+			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
+		}
+	}
+	return nil
+}
+
 // ParseTrustedProxies reads the trusted proxy list: IP addresses and CIDR
 // ranges separated by commas, the reverse proxies whose X-Forwarded-For
 // header Solstice may believe. An empty list trusts no proxy. An entry that
-// is neither an address nor a range is an error naming it.
+// is neither an address nor a range is an error quoting it.
 func ParseTrustedProxies(v string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
 	for _, part := range strings.Split(v, ",") {
@@ -179,7 +254,7 @@ func ParseTrustedProxies(v string) ([]netip.Prefix, error) {
 		if strings.Contains(part, "/") {
 			p, err := netip.ParsePrefix(part)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %q is not a CIDR range", KeyTrustedProxies, part)
+				return nil, fmt.Errorf("%q is not a CIDR range", part)
 			}
 			if a := p.Addr(); a.Is4In6() && p.Bits() >= 96 { // ::ffff:10.0.0.0/104 is 10.0.0.0/8
 				p = netip.PrefixFrom(a.Unmap(), p.Bits()-96)
@@ -189,7 +264,7 @@ func ParseTrustedProxies(v string) ([]netip.Prefix, error) {
 		}
 		a, err := netip.ParseAddr(part)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %q is not an IP address", KeyTrustedProxies, part)
+			return nil, fmt.Errorf("%q is not an IP address", part)
 		}
 		a = a.Unmap() // an IPv4 address written mapped, e.g. ::ffff:127.0.0.1
 		out = append(out, netip.PrefixFrom(a, a.BitLen()))

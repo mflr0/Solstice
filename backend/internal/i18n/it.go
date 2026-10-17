@@ -92,7 +92,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SetupDatabaseMissing:      "Il database «%s» non esiste su questo server: crealo prima.",
 	SetupDatabaseConnect:      "Impossibile connettersi al database: %s",
 	SetupDatabaseUnreachable:  "Server del database non raggiungibile all'indirizzo %s: controlla host, porta e firewall.",
-	SetupDatabaseFromEnv:      "Il database è impostato dall'ambiente del server: non si può cambiare qui.",
 	SetupDatabaseImported:     "Un'importazione ha già riempito il database: non si può più cambiare.",
 	SetupDatabaseRequired:     "Configura prima il database.",
 	SetupTablesFailed:         "Creazione delle tabelle non riuscita: %s",

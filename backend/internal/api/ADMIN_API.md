@@ -78,9 +78,9 @@ set: only then can reset links and invitations be sent (the sign-in page shows
 - `passwordMinLength`: 8–128, default 12. Applies to new passwords (admin,
   profile, reset); existing passwords keep working.
 - `sources.<field>`: where the value in effect comes from — `database` (set
-  here), `env` (environment variable), `file` (configuration file), `flag`
-  (command line), `default`. Only `baseURL` and `timeZone` can come from
-  env/file/flag (`SOLSTICE_BASE_URL`, `SOLSTICE_TZ`): those are initial
+  here), `file` (configuration file or environment variable), `default`.
+  Only `baseURL` and `timeZone` can come from the file or the environment
+  (`SOLSTICE_HTTP_BASEURL`, `SOLSTICE_TZ`): those are initial
   values; once saved here, the database wins.
 
 ### `PUT /api/admin/settings` — global admin
@@ -440,11 +440,7 @@ same checks.
   "webhooks": {"total": 4, "failing": [{"id": 2, "name": "CI", "failed": 5, "lastError": "…", "lastAttempt": "…"}]},
   "migrations": {"count": 10, "latest": "0010_admin", "list": [{"version": "0001_init", "appliedAt": "…"}]},
   "config": {
-    "path": "/etc/solstice/solstice.conf", "found": true,
-    "sources": {"SOLSTICE_DB": "env", "SOLSTICE_DATA": "file", "SOLSTICE_ADDR": "default",
-                "SOLSTICE_TZ": "file", "SOLSTICE_BASE_URL": "database", "SOLSTICE_SECRET_KEY": "default",
-                "SOLSTICE_TRUSTED_PROXIES": "default"},
-    "addr": ":8080"
+    "path": "/etc/solstice/solstice.conf", "found": true, "addr": ":8080"
   },
   "import": null
 }

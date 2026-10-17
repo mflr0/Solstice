@@ -187,10 +187,14 @@ type updater struct {
 	dockerEnv string // the file Docker puts in containers
 	goos      string
 	goarch    string
-	getenv    func(string) string
+	installed string // SOLSTICE_INSTALL; see SetInstall
 	now       func() time.Time
 	client    *http.Client
 }
+
+// SetInstall tells how the instance was installed (SOLSTICE_INSTALL):
+// "docker" in the container image. Call it before the server takes requests.
+func (s *Server) SetInstall(v string) { s.upd.installed = v }
 
 // SetVersion tells the API which version is running, for the update check.
 func (s *Server) SetVersion(v string) { s.upd.version = v }
@@ -215,13 +219,6 @@ func (u *updater) os() string         { return cmp.Or(u.goos, runtime.GOOS) }
 func (u *updater) arch() string       { return cmp.Or(u.goarch, runtime.GOARCH) }
 func (u *updater) dockerFile() string { return cmp.Or(u.dockerEnv, "/.dockerenv") }
 
-func (u *updater) env(key string) string {
-	if u.getenv != nil {
-		return u.getenv(key)
-	}
-	return os.Getenv(key)
-}
-
 func (u *updater) httpClient() *http.Client {
 	if u.client != nil {
 		return u.client
@@ -236,7 +233,7 @@ func (u *updater) install() string {
 	if u.os() == "linux" && isFile(filepath.Join(u.helper(), "helper")) {
 		return installSystemd
 	}
-	if u.env("SOLSTICE_INSTALL") == "docker" || isFile(u.dockerFile()) {
+	if u.installed == "docker" || isFile(u.dockerFile()) {
 		return installDocker
 	}
 	return installManual

@@ -28,6 +28,7 @@ import (
 
 	"solstice/internal/api"
 	"solstice/internal/auth"
+	"solstice/internal/config"
 	"solstice/internal/db"
 )
 
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	var err error
-	testDB, err = db.Open(context.Background(), dsn)
+	testDB, err = db.Open(context.Background(), dsn, config.Defaults().DB.Pool())
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

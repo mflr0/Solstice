@@ -77,12 +77,34 @@ creates the administrator or imports a Jira instance.
 
 ### Configuration
 
-Settings live in a file of `KEY=value` lines, found through `-config`, then
+Settings live in a file of `KEY=value` lines, found through
 `SOLSTICE_CONFIG`, then `./solstice.conf`, then `/etc/solstice/solstice.conf`.
 Environment variables of the same name take precedence; `solstice -h` lists
-them. `GET /healthz` answers 200 when the database responds and 503 otherwise.
+them. An unknown `SOLSTICE_` key in the file or the environment is reported
+in the log at start. `GET /healthz` answers 200 when the database responds
+and 503 otherwise.
 
-`SOLSTICE_DB` is `mysql://user:password@host:3306/database`; percent-encode
+| Key | Default | |
+|---|---|---|
+| `SOLSTICE_DB_URL` | none | MariaDB database, see below |
+| `SOLSTICE_DB_MAXOPENCONNS` | `20` | open connections at most |
+| `SOLSTICE_DB_MAXIDLECONNS` | `10` | idle connections kept, at most `MAXOPENCONNS` |
+| `SOLSTICE_DB_CONNMAXLIFETIME` | `5m` | a connection's lifetime |
+| `SOLSTICE_DATA` | `./data` | data directory |
+| `SOLSTICE_TZ` | the system's | time zone of dates typed in searches, e.g. `Europe/Paris` |
+| `SOLSTICE_SECRETKEY` | `<data>/secret.key` | key of the stored secrets, see below |
+| `SOLSTICE_INSTALL` | none | `docker` in the image: the update page explains how to update a container |
+| `SOLSTICE_HTTP_ADDR` | `:8080` | listen address |
+| `SOLSTICE_HTTP_BASEURL` | none | public address, e.g. `https://tickets.example.org` |
+| `SOLSTICE_HTTP_TRUSTEDPROXIES` | none | reverse proxies, see below |
+| `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | time given to requests and e-mails in progress on stop |
+| `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | size of one upload; `KB`, `MB`, `GB` count in 1000s, `KiB`, `MiB`, `GiB` in 1024s. Raise the proxy's limit too (`client_max_body_size` for nginx) |
+| `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
+
+Durations are written `30s`, `5m`, `1h30m`.
+
+`SOLSTICE_DB_URL` is `mysql://user:password@host:3306/database`; percent-encode
 special characters of the password (`@` as `%40`). To encrypt the link to a
 database on another machine, add `?tls=true` (certificate checked), or
 `?tls=skip-verify` (encrypted, certificate not checked) or `?tls=preferred`;
@@ -91,13 +113,13 @@ Solstice refuses to start on one. Error messages never print the password.
 
 Put an HTTPS reverse proxy in front of Solstice. The session cookie becomes
 `Secure` behind a proxy that sends `X-Forwarded-Proto: https`. Failed sign-ins
-are counted per client address: list your proxy in `SOLSTICE_TRUSTED_PROXIES`
+are counted per client address: list your proxy in `SOLSTICE_HTTP_TRUSTEDPROXIES`
 (IP addresses or CIDR ranges, separated by commas, empty by default) so that
 Solstice reads the client from `X-Forwarded-For` and not the proxy's address
 for everyone. See `deploy/proxy/README.md`.
 
 The SMTP password and webhook secrets are encrypted with the key in
-`SOLSTICE_SECRET_KEY` (32 bytes in base64 or hex, for example
+`SOLSTICE_SECRETKEY` (32 bytes in base64 or hex, for example
 `openssl rand -base64 32`), or else with `<data>/secret.key`, created when
 first needed. Back up this key along with the database and the data
 directory: without it, those secrets have to be entered again.
@@ -159,7 +181,7 @@ notification settings).
 
 - SMTP server: set in the administration (host, port, security none /
   STARTTLS / TLS, user name, sender), with a test message that shows the
-  server's exact error. The public address (`SOLSTICE_BASE_URL`) is used for
+  server's exact error. The public address (`SOLSTICE_HTTP_BASEURL`) is used for
   links in e-mails; without it, e-mails go out without links.
 - Notifications: watchers, reporter, assignee and mentioned people
   (`[~username]`). Each person picks their events, immediate delivery
@@ -197,7 +219,7 @@ development one from `compose.yaml` explicitly, or put it in
 `backend/solstice.conf`):
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice
 cd backend && go run ./cmd/solstice serve      # API on http://localhost:8080
 cd frontend && pnpm dev                       # interface on http://localhost:5173
 ```

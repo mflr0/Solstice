@@ -63,7 +63,7 @@ func TestOpenErrorsNeverContainThePassword(t *testing.T) {
 		"solstice:secret@localhost/db",
 		"solstice:secret",
 	} {
-		_, err := Open(context.Background(), raw)
+		_, err := Open(context.Background(), raw, Pool{})
 		if err == nil {
 			t.Errorf("%s: no error", raw)
 			continue

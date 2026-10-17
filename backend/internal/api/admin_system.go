@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"time"
 
-	"solstice/internal/config"
 	"solstice/internal/mail"
 	"solstice/internal/sqlq"
 )
@@ -129,21 +128,7 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {
 	}
 	out["migrations"] = map[string]any{"count": len(migrations), "latest": latest, "list": migrations}
 
-	sources := map[string]string{}
-	for _, k := range config.Keys {
-		sources[k] = sourceDefault
-		if src := info.Sources[k]; src != "" {
-			sources[k] = src
-		}
-	}
-	g := s.general(ctx)
-	if g.Sources["baseURL"] == sourceDatabase {
-		sources[config.KeyBaseURL] = sourceDatabase
-	}
-	if g.Sources["timeZone"] == sourceDatabase {
-		sources[config.KeyTZ] = sourceDatabase
-	}
-	out["config"] = map[string]any{"path": info.Path, "found": info.Found, "sources": sources, "addr": info.Addr}
+	out["config"] = map[string]any{"path": info.Path, "found": info.Found, "addr": info.Addr}
 
 	var imp any
 	if a := s.currentImport(); a != nil {
