@@ -349,3 +349,39 @@ func TestRESTFilters(t *testing.T) {
 		t.Errorf("owner DELETE: %d", status)
 	}
 }
+
+// An id of 0 is no filter: it must not reach the code that reads 0 as "all".
+func TestFilterIDZero(t *testing.T) {
+	paul, admin := restAs(t, "paul.martin"), restAs(t, "admin")
+	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Id zero (REST)", "jql": "project = DEMO"})
+	if status != 200 {
+		t.Fatalf("create: %d %v", status, f)
+	}
+	defer admin("DELETE", "/rest/api/2/filter/"+str(f, "id"), nil)
+	count := pick(t, `SELECT COUNT(*) FROM filters`)
+
+	for _, who := range []func(string, string, any) (int, map[string]any){paul, admin} {
+		if status, _ := who("GET", "/rest/api/2/filter/0", nil); status != 404 {
+			t.Errorf("GET filter 0: %d", status)
+		}
+		if status, _ := who("PUT", "/rest/api/2/filter/0", map[string]any{"name": "x"}); status != 404 {
+			t.Errorf("PUT filter 0: %d", status)
+		}
+		if status, _ := who("DELETE", "/rest/api/2/filter/0", nil); status != 404 {
+			t.Errorf("DELETE filter 0: %d", status)
+		}
+	}
+	ui := login(t, "admin", "admin")
+	if status, _ := ui.do("DELETE", "/api/filters/0", nil); status != 404 {
+		t.Errorf("interface DELETE filter 0: %d", status)
+	}
+	if status, _ := ui.do("PUT", "/api/filters/0/favourite", nil); status != 404 {
+		t.Errorf("interface favourite filter 0: %d", status)
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM filters`); got != count {
+		t.Errorf("filters before %s, after %s", count, got)
+	}
+	if got := pick(t, `SELECT name FROM filters WHERE id = ?`, str(f, "id")); got != "Id zero (REST)" {
+		t.Errorf("the filter was changed: %q", got)
+	}
+}

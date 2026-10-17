@@ -474,10 +474,6 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 		err = s.uiCall(r, s.createFilter, http.MethodPost, "/api/filters", nil, ui, &saved)
 	} else {
 		id := r.PathValue("id")
-		// loadFilters reads id 0 as "every filter", so 0 must not get that far.
-		if n, perr := strconv.ParseInt(id, 10, 64); perr != nil || n <= 0 {
-			return errNotFound
-		}
 		err = s.uiCall(r, s.updateFilter, http.MethodPatch, "/api/filters/"+id, map[string]string{"id": id}, ui, &saved)
 		if err == nil && saved.ID == 0 {
 			saved.ID, _ = strconv.ParseInt(id, 10, 64)
