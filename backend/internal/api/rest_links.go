@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -373,4 +374,115 @@ func (s *Server) restSignOut(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// Groups -----------------------------------------------------------------------
+
+// restGroupPicker finds groups by part of their name. As in the interface,
+// administrators see every group; the others only those they belong to.
+func (s *Server) restGroupPicker(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	u := currentUser(r)
+	q := r.URL.Query()
+	_, limit := paging(r, 20, 1000)
+	query := strings.TrimSpace(q.Get("query"))
+
+	where, args := `WHERE g.name LIKE ?`, []any{"%" + escapeLike(strings.ToLower(query)) + "%"}
+	if exclude := q["exclude"]; len(exclude) > 0 {
+		where += ` AND g.name NOT IN (` + sqlq.Marks(len(exclude)) + `)`
+		for _, name := range exclude {
+			args = append(args, strings.TrimSpace(name))
+		}
+	}
+	if !u.Admin {
+		where += ` AND g.id IN (SELECT group_id FROM group_members WHERE user_id = ?)`
+		args = append(args, u.ID)
+	}
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_groups g `+where, args...).Scan(&total); err != nil {
+		return err
+	}
+	groups := []any{}
+	if err := sqlq.Each(ctx, s.db, `SELECT g.name FROM user_groups g `+where+` ORDER BY g.name LIMIT ?`,
+		func(rows *sql.Rows) error {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				return err
+			}
+			groups = append(groups, map[string]any{"name": name, "html": highlight(name, query), "labels": []any{}})
+			return nil
+		}, append(args, limit)...); err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{
+		"header": s.restOut(r).msg(i18n.M(i18n.GroupPickerHeader, len(groups), total)), "total": total, "groups": groups})
+}
+
+// highlight is a name in HTML with the first occurrence of part of it in bold.
+func highlight(name, part string) string {
+	lower, needle := strings.ToLower(name), strings.ToLower(part)
+	i := strings.Index(lower, needle)
+	// Lower-casing some letters changes their length: the offsets would not fit.
+	if needle == "" || i < 0 || len(lower) != len(name) {
+		return html.EscapeString(name)
+	}
+	j := i + len(needle)
+	return html.EscapeString(name[:i]) + "<b>" + html.EscapeString(name[i:j]) + "</b>" + html.EscapeString(name[j:])
+}
+
+// restGroupMembers lists the users of a group. As in the interface, only
+// administrators see who belongs to a group.
+func (s *Server) restGroupMembers(w http.ResponseWriter, r *http.Request) error {
+	if err := requireAdmin(r); err != nil {
+		return err
+	}
+	ctx := r.Context()
+	q := r.URL.Query()
+	name := strings.TrimSpace(q.Get("groupname"))
+	if name == "" {
+		return fieldError("groupname", failf(http.StatusBadRequest, i18n.FieldRequired, "groupname"))
+	}
+	var group int64
+	if err := s.db.QueryRowContext(ctx, `SELECT id FROM user_groups WHERE LOWER(name) = LOWER(?)`, name).Scan(&group); errors.Is(err, sql.ErrNoRows) {
+		return fail(http.StatusNotFound, i18n.GroupNotFound)
+	} else if err != nil {
+		return err
+	}
+	inactive := q.Get("includeInactiveUsers") == "true"
+	startAt, maxResults := paging(r, 50, 50)
+	from := `FROM group_members m JOIN users u ON u.id = m.user_id WHERE m.group_id = ? AND (u.active OR ?)`
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) `+from, group, inactive).Scan(&total); err != nil {
+		return err
+	}
+	var ids []int64
+	if err := sqlq.Each(ctx, s.db, `SELECT u.id `+from+` ORDER BY u.username LIMIT ? OFFSET ?`, func(rows *sql.Rows) error {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+		return nil
+	}, group, inactive, maxResults, startAt); err != nil {
+		return err
+	}
+	o := s.restOut(r)
+	users, err := s.jiraUsers(ctx, o, ids...)
+	if err != nil {
+		return err
+	}
+	values := []any{}
+	for _, id := range ids {
+		values = append(values, users[id])
+	}
+	page := func(at int) string {
+		return o.api + "/group/member?" + url.Values{"groupname": {name}, "includeInactiveUsers": {strconv.FormatBool(inactive)},
+			"startAt": {strconv.Itoa(at)}, "maxResults": {strconv.Itoa(maxResults)}}.Encode()
+	}
+	out := map[string]any{"self": page(startAt), "maxResults": maxResults, "startAt": startAt, "total": total,
+		"isLast": startAt+len(ids) >= total, "values": values}
+	if startAt+len(ids) < total {
+		out["nextPage"] = page(startAt + maxResults)
+	}
+	return writeJSON(w, http.StatusOK, out)
 }

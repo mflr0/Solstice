@@ -318,6 +318,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Remote links.
 	RemoteLinkGlobalIDUnsupported: "Les liens distants ne se retrouvent ni ne se suppriment par globalId.",
 
+	// Group picker.
+	GroupPickerHeader: "%d groupes affichés sur %d correspondants",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Envoi de fichier invalide.",
 	AttachmentNoFile:        "Aucun fichier reçu.",

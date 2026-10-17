@@ -5,6 +5,8 @@ package tests
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -303,5 +305,125 @@ func TestRESTSession(t *testing.T) {
 	if status, _ := anonymousAt(t, base).do("POST", "/api/login",
 		map[string]string{"username": "lucas.bernard", "password": "motdepasse"}); status != http.StatusTooManyRequests {
 		t.Errorf("the form is not locked as well: %d", status)
+	}
+}
+
+// Groups -----------------------------------------------------------------------
+
+func TestRESTGroups(t *testing.T) {
+	needDB(t)
+	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", "motdepasse")
+	get := func(who *client, path string) (int, map[string]any) {
+		status, _, raw := call(t, who, testURL, "GET", path, nil, nil)
+		if status != 200 {
+			return status, nil
+		}
+		return status, obj(t, raw)
+	}
+	group := pick(t, `SELECT g.name FROM user_groups g
+		ORDER BY (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id) DESC, g.name LIMIT 1`)
+	groupCount := pick(t, `SELECT COUNT(*) FROM user_groups`)
+	names := func(out map[string]any) []string {
+		var l []string
+		for _, g := range at(out, "groups").([]any) {
+			l = append(l, str(g, "name"))
+		}
+		return l
+	}
+
+	// The picker: administrators find every group, others only their own.
+	status, out := get(admin, "/rest/api/2/groups/picker?maxResults=1000")
+	if status != 200 || strconv.Itoa(num(out, "total")) != groupCount || len(names(out)) != num(out, "total") ||
+		!slices.IsSorted(names(out)) || !strings.Contains(str(out, "header"), groupCount) {
+		t.Fatalf("admin picker: %d %v", status, out)
+	}
+	part := group[:min(3, len(group))]
+	status, out = get(admin, "/rest/api/2/groups/picker?query="+url.QueryEscape(strings.ToUpper(part)))
+	if status != 200 || !slices.Contains(names(out), group) {
+		t.Fatalf("picker query %q: %d %v", part, status, out)
+	}
+	for _, g := range at(out, "groups").([]any) {
+		if !strings.Contains(strings.ToLower(str(g, "name")), part) || !strings.Contains(str(g, "html"), "<b>") ||
+			at(g, "labels") == nil {
+			t.Errorf("picker group: %v", g)
+		}
+	}
+	if status, out = get(admin, "/rest/api/2/groups/picker?query="+url.QueryEscape(group)+"&exclude="+url.QueryEscape(group)); status != 200 ||
+		slices.Contains(names(out), group) {
+		t.Errorf("picker exclude: %d %v", status, out)
+	}
+	if status, out = get(admin, "/rest/api/2/groups/picker?maxResults=1"); status != 200 || len(names(out)) != 1 ||
+		strconv.Itoa(num(out, "total")) != groupCount {
+		t.Errorf("picker maxResults: %d %v", status, out)
+	}
+	if status, out = get(admin, "/rest/api/2/groups/picker?query=%25%5F"); status != 200 || num(out, "total") != 0 {
+		t.Errorf("picker query with wildcards: %d %v", status, out)
+	}
+	own := map[string]bool{}
+	for _, g := range strings.Split(pick(t, `SELECT GROUP_CONCAT(g.name SEPARATOR ',') FROM group_members m
+		JOIN user_groups g ON g.id = m.group_id JOIN users u ON u.id = m.user_id WHERE u.username = 'paul.martin'`), ",") {
+		own[g] = true
+	}
+	status, out = get(paul, "/rest/api/2/groups/picker?maxResults=1000")
+	if status != 200 || len(names(out)) != len(own) {
+		t.Errorf("paul.martin's picker: %d %v, groups %v", status, out, own)
+	}
+	for _, g := range names(out) {
+		if !own[g] {
+			t.Errorf("paul.martin's picker shows %s, which he is not in", g)
+		}
+	}
+	if status, _ := get(nil, "/rest/api/2/groups/picker"); status != 401 {
+		t.Errorf("anonymous picker: %d", status)
+	}
+
+	// Members: for administrators only, as in the interface.
+	if status := paul.get("/api/admin/groups", nil); status != 403 {
+		t.Fatalf("the interface lets paul.martin list groups: %d", status)
+	}
+	member := "/rest/api/2/group/member?groupname=" + url.QueryEscape(group)
+	if status, _ := get(paul, member); status != 403 {
+		t.Errorf("paul.martin lists members: %d", status)
+	}
+	active := pick(t, `SELECT COUNT(*) FROM group_members m JOIN user_groups g ON g.id = m.group_id JOIN users u ON u.id = m.user_id
+		WHERE g.name = ? AND u.active`, group)
+	everyone := pick(t, `SELECT COUNT(*) FROM group_members m JOIN user_groups g ON g.id = m.group_id WHERE g.name = ?`, group)
+	status, out = get(admin, member)
+	values, _ := out["values"].([]any)
+	if status != 200 || strconv.Itoa(num(out, "total")) != active || strconv.Itoa(len(values)) != active || out["isLast"] != true ||
+		num(out, "startAt") != 0 || num(out, "maxResults") != 50 || str(out, "self") == "" || out["nextPage"] != nil {
+		t.Fatalf("members: %d %v (%s active)", status, out, active)
+	}
+	for _, u := range values {
+		if str(u, "name") == "" || str(u, "displayName") == "" || at(u, "active") != true || str(u, "self") == "" {
+			t.Errorf("member: %v", u)
+		}
+	}
+	if status, out = get(admin, member+"&includeInactiveUsers=true"); status != 200 || strconv.Itoa(num(out, "total")) != everyone {
+		t.Errorf("members with the inactive: %d %v, want %s", status, out, everyone)
+	}
+	if status, out = get(admin, "/rest/api/2/group/member?groupname="+url.QueryEscape(strings.ToUpper(group))); status != 200 ||
+		strconv.Itoa(num(out, "total")) != active {
+		t.Errorf("group name in capitals: %d %v", status, out)
+	}
+	if n, _ := strconv.Atoi(active); n >= 2 {
+		status, out = get(admin, member+"&maxResults=1&startAt=1")
+		if status != 200 || len(at(out, "values").([]any)) != 1 || num(out, "startAt") != 1 || num(out, "maxResults") != 1 ||
+			out["isLast"] != (n == 2) || (n > 2) != strings.Contains(str(out, "nextPage"), "startAt=2") {
+			t.Errorf("second page: %d %v", status, out)
+		}
+		_, first := get(admin, member+"&maxResults=1")
+		if str(first, "values", 0, "name") == str(out, "values", 0, "name") {
+			t.Errorf("both pages start with %s", str(out, "values", 0, "name"))
+		}
+	}
+	if status, _ := get(admin, "/rest/api/2/group/member?groupname=no-such-group"); status != 404 {
+		t.Errorf("unknown group: %d", status)
+	}
+	if status, _ := get(admin, "/rest/api/2/group/member"); status != 400 {
+		t.Errorf("no group name: %d", status)
+	}
+	if status, _ := get(nil, member); status != 401 {
+		t.Errorf("anonymous members: %d", status)
 	}
 }

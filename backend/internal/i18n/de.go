@@ -319,6 +319,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Remote links.
 	RemoteLinkGlobalIDUnsupported: "Remote-Links lassen sich nicht über die globalId finden oder entfernen.",
 
+	// Group picker.
+	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Ungültiger Datei-Upload.",
 	AttachmentNoFile:        "Keine Datei empfangen.",

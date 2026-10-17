@@ -363,6 +363,9 @@ const (
 // Remote links.
 const RemoteLinkGlobalIDUnsupported Key = "RemoteLinkGlobalIDUnsupported"
 
+// Group picker.
+const GroupPickerHeader Key = "GroupPickerHeader"
+
 // Attachments.
 const (
 	AttachmentUploadInvalid Key = "AttachmentUploadInvalid"

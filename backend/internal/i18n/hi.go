@@ -320,6 +320,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Remote links.
 	RemoteLinkGlobalIDUnsupported: "रिमोट लिंक को globalId से खोजा या हटाया नहीं जा सकता।",
 
+	// Group picker.
+	GroupPickerHeader: "मेल खाने वाले %[2]d ग्रुप में से %[1]d दिखाए गए",
+
 	// Attachments.
 	AttachmentUploadInvalid: "अमान्य फ़ाइल अपलोड।",
 	AttachmentNoFile:        "कोई फ़ाइल प्राप्त नहीं हुई।",
