@@ -148,6 +148,29 @@ solstice import \
   metadata is imported.
 - `-replace`: overwrites existing Solstice data (otherwise the import refuses
   a non-empty database). The import can be run again: identifiers are kept.
+- `-check`: audits the Jira database without importing anything (see below).
+
+To know what an import will do before running it, add `-check`:
+
+```bash
+solstice import -check \
+  -from postgres://jira:secret@db-jira:5432/jira \
+  -jira-home /var/atlassian/application-data/jira
+```
+
+It reads the Jira database as the import does and writes nothing: no Solstice
+database is needed (`SOLSTICE_DB_URL` can be unset), no file is copied, and
+`-tz` is optional (counts do not depend on it). The report gives the Jira
+version when the database records it, and the counts: projects, issues,
+comments, work logs, attachments (and, with `-jira-home`, how many have their
+file), users (and how many have a usable password), groups, roles, workflows,
+custom fields by type, boards, sprints and saved filters. It lists everything
+the import would leave out and why (rows that point at something missing,
+grantees Solstice cannot express, workflow conditions, validators and post
+functions, attachment files not found…), then the warnings the import itself
+would give. `-json` prints the same as JSON. The exit status is 0 if the import
+would work and 1 if it would refuse the source, for example a schema older than
+Jira 7.
 
 The final report lists what was imported and what deserves a look. Imported:
 
