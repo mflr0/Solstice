@@ -169,3 +169,32 @@ func TestBacklogMoveKeepsSprintsOfHiddenBoards(t *testing.T) {
 		t.Errorf("%s left the sprint of the hidden board", dragged)
 	}
 }
+
+// A board lists what its filter says today: after the filter is edited to
+// include a second project, that project's issues can enter the board's sprints.
+func TestSprintMoveFollowsTheBoardFilter(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	paul := login(t, "paul.martin", "motdepasse")
+	board, sprint := scopeBoard(t, marie, "WEB")
+	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
+	foreign := newTestIssue(t, paul, "Ajouté par le filtre", nil)
+	move := map[string]any{"issue": foreign, "sprint": sprint}
+
+	if status, _ := marie.do("POST", "/api/boards/"+board+"/move", move); status != 400 {
+		t.Fatalf("move before the filter changes: %d", status)
+	}
+	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"query": `project in ("WEB", "DEMO") ORDER BY Rank ASC`}, 200, nil)
+	if status, body := marie.do("POST", "/api/boards/"+board+"/move", move); status != 204 {
+		t.Fatalf("move after the filter includes DEMO: %d %s", status, body)
+	}
+	if n := sprintMembers(t, sprint, foreign); n != "1" {
+		t.Errorf("%s is not in the sprint", foreign)
+	}
+
+	// And the other way: a filter that no longer covers WEB refuses its issues.
+	own := createIssue(t, marie, "WEB", "Sorti par le filtre", "")
+	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"query": `project = "DEMO" ORDER BY Rank ASC`}, 200, nil)
+	if status, _ := marie.do("POST", "/api/boards/"+board+"/move", map[string]any{"issue": own, "sprint": sprint}); status != 400 {
+		t.Errorf("move of an issue the filter dropped: %d", status)
+	}
+}

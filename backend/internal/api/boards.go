@@ -982,6 +982,31 @@ func (s *Server) visibleBoardIDs(ctx context.Context, sub *perm.Subject) ([]any,
 	return out, err
 }
 
+// issuesOnBoard checks, with one query, that the board lists every issue: they
+// match its filter as the board view reads it.
+func (s *Server) issuesOnBoard(ctx context.Context, sub *perm.Subject, b *boardRow, issues []*issueRow) error {
+	where, args, err := s.boardWhere(ctx, sub, b, nil)
+	if err != nil {
+		return err
+	}
+	ids := map[int64]bool{}
+	for _, iss := range issues {
+		if !ids[iss.ID] {
+			ids[iss.ID] = true
+			args = append(args, iss.ID)
+		}
+	}
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE `+where+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, args...).Scan(&n); err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return fail(http.StatusBadRequest, i18n.SprintNotOnBoard)
+	}
+	return nil
+}
+
 // setSprint moves an issue into an open sprint of the board, or back to the
 // backlog (0). Closed sprints stay in its history. The backlog move, on a board
 // or not (an empty boardRow), only leaves the open sprints of boards the user
@@ -1014,14 +1039,8 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 			return err
 		}
 		newName = name
-		// The sprint's board must include the issue's project.
-		var onBoard bool
-		if err := s.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM board_projects WHERE board_id = ? AND project_id = ?)`,
-			b.ID, iss.ProjectID).Scan(&onBoard); err != nil {
+		if err := s.issuesOnBoard(ctx, sub, b, []*issueRow{iss}); err != nil {
 			return err
-		}
-		if !onBoard {
-			return fail(http.StatusBadRequest, i18n.SprintNotOnBoard)
 		}
 	}
 	if oldID.Valid && oldID.Int64 == sprint || sprint == 0 && !oldID.Valid {
