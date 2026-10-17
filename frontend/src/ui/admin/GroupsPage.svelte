@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { restrictionUsage } from '../../core/admin-forms.js';
   import type { Group } from '../../core/admin-types.js';
   import { formatList, formatNumber } from '../../i18n/format.js';
@@ -46,8 +47,9 @@
     }
   }
 
+  // Once: typing is loaded by typed(), after its pause.
   $effect(() => {
-    void load();
+    untrack(() => void load());
   });
 
   function typed() {
