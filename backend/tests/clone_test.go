@@ -417,3 +417,54 @@ func TestCloneLinksTheOriginalOnlyWithTheLinkPermission(t *testing.T) {
 		t.Errorf("the warning is not translated: %q and %q", got.Warnings, french.Warnings)
 	}
 }
+
+func TestCloneSubtasksNeedCreateInTheirOwnProject(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+	subtaskType := pick(t, `SELECT t.issue_type_id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
+		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND it.subtask LIMIT 1`)
+
+	orig := createIssue(t, paul, "DEMO", "Avec des sous-tâches", "")
+	origID := issueIDOf(t, orig)
+	paul.call("POST", "/api/issues", map[string]any{"project": "DEMO", "type": subtaskType,
+		"summary": "Sous-tâche du même projet", "parent": orig}, 201, nil)
+
+	// Sub-tasks put under the original straight in the database: the API keeps them in its project.
+	adopt := func(key string) {
+		t.Helper()
+		if _, err := testDB.Exec(`UPDATE issues SET parent_id = ? WHERE id = ?`, origID, issueIDOf(t, key)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Seen by paul, who may not create there: the project is archived.
+	frozenProject := newProject(t, admin, nil)
+	frozen := createIssue(t, admin, frozenProject, "Sous-tâche d'un projet archivé", "")
+	admin.call("POST", "/api/projects/"+frozenProject+"/archive", nil, 200, nil)
+	adopt(frozen)
+	// Paul may create there, but the project no longer has the sub-task's type.
+	typeless := newProject(t, admin, nil)
+	untyped := createIssue(t, admin, typeless, "Sous-tâche d'un type retiré", "")
+	if _, err := testDB.Exec(`DELETE t FROM project_issue_types t JOIN projects p ON p.id = t.project_id
+		JOIN issues i ON i.project_id = p.id AND i.issue_type_id = t.issue_type_id WHERE p.pkey = ? AND `+
+		`i.id = ?`, typeless, issueIDOf(t, untyped)); err != nil {
+		t.Fatal(err)
+	}
+	adopt(untyped)
+
+	got := cloneOf(t, paul, "en", orig, map[string]any{"includeSubtasks": true})
+	if len(got.Warnings) != 2 || !strings.Contains(got.Warnings[0], frozen) || !strings.Contains(got.Warnings[1], untyped) {
+		t.Errorf("warnings: %q, want one for %s and one for %s", got.Warnings, frozen, untyped)
+	}
+	copyID := issueIDOf(t, got.Key)
+	if n := dbInt(t, `SELECT COUNT(*) FROM issues WHERE parent_id = ? AND summary = 'Sous-tâche du même projet'`, copyID); n != 1 {
+		t.Errorf("the clone has %d copies of the sub-task of its project, want 1", n)
+	}
+	if n := dbInt(t, `SELECT COUNT(*) FROM issues WHERE parent_id = ?`, copyID); n != 1 {
+		t.Errorf("the clone has %d sub-tasks, want only the one it may create", n)
+	}
+	for _, p := range []string{frozenProject, typeless} {
+		if n := dbInt(t, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id WHERE p.pkey = ?`, p); n != 1 {
+			t.Errorf("project %s has %d issues after the clone, want 1", p, n)
+		}
+	}
+}

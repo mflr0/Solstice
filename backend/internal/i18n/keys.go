@@ -341,6 +341,7 @@ const (
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
 	IssueCloneLinkSkipped      Key = "IssueCloneLinkSkipped"
+	IssueCloneSubtaskSkipped   Key = "IssueCloneSubtaskSkipped"
 )
 
 // Comments and their visibility.

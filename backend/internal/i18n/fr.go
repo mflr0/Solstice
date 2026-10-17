@@ -303,6 +303,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneHistory:          "créé en clonant %s",
 	IssueCloneAttachmentFailed: "La pièce jointe « %s » n'a pas pu être copiée.",
 	IssueCloneLinkSkipped:      "Le lien vers %s n'a pas été ajouté : vous n'avez pas le droit de lier des tickets dans son projet.",
+	IssueCloneSubtaskSkipped:   "La sous-tâche %s n'a pas été clonée : vous ne pouvez pas créer de tickets de ce type dans son projet.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

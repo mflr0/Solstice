@@ -264,6 +264,12 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		for _, child := range children {
+			// The sub-task is created in its own project, which may not be the original's.
+			if !sub.Can(perm.Create, child.ProjectID, nil) || !sub.CanBrowseProject(child.ProjectID) ||
+				!s.projectHasType(ctx, child.ProjectID, child.TypeID) {
+				warnings = append(warnings, i18n.M(i18n.IssueCloneSubtaskSkipped, child.Key()).In(lang))
+				continue
+			}
 			p, err := newPlan(child, child.Summary)
 			if err != nil {
 				return err

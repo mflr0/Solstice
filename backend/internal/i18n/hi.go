@@ -305,6 +305,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneHistory:          "%s को क्लोन करके बनाया गया",
 	IssueCloneAttachmentFailed: "अटैचमेंट “%s” कॉपी नहीं हो सका।",
 	IssueCloneLinkSkipped:      "%s का लिंक नहीं जोड़ा गया: आपको उसके प्रोजेक्ट में टिकट लिंक करने की अनुमति नहीं है।",
+	IssueCloneSubtaskSkipped:   "सब-टास्क %s क्लोन नहीं किया गया: आप उसके प्रोजेक्ट में इस प्रकार के टिकट नहीं बना सकते।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
