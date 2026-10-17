@@ -369,3 +369,51 @@ func TestCloneReportsAFileItCannotCopy(t *testing.T) {
 		t.Errorf("attachments of the clone: %+v", d.Attachments)
 	}
 }
+
+func TestCloneLinksTheOriginalOnlyWithTheLinkPermission(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+
+	// With the permission (DEMO): the link is made and nothing is reported.
+	allowed := createIssue(t, paul, "DEMO", "Liens permis", "")
+	linked := cloneOf(t, paul, "en", allowed, map[string]any{})
+	if len(linked.Warnings) != 0 {
+		t.Errorf("warnings with the Link permission: %q", linked.Warnings)
+	}
+	if n := dbInt(t, `SELECT COUNT(*) FROM issue_links WHERE source_id = ? AND target_id = ?`,
+		issueIDOf(t, linked.Key), issueIDOf(t, allowed)); n != 1 {
+		t.Errorf("%d links to the original with the Link permission, want 1", n)
+	}
+
+	// Without it: paul may create and see, not link. The clone is made, the original is left alone.
+	project := newProject(t, admin, nil)
+	orig := createIssue(t, admin, project, "Liens refusés", "")
+	var perms struct {
+		Grants []grantOut `json:"grants"`
+	}
+	admin.get("/api/projects/"+project+"/permissions", &perms)
+	kept := slices.DeleteFunc(slices.Clone(perms.Grants), func(g grantOut) bool {
+		return g.Permission == "link" && g.Holder == "group"
+	})
+	if len(kept) == len(perms.Grants) {
+		t.Fatalf("no Link grant to withdraw from the new project: %+v", perms.Grants)
+	}
+	admin.call("PUT", "/api/projects/"+project+"/permissions", map[string]any{"grants": kept}, 200, nil)
+
+	got := cloneOf(t, paul, "en", orig, map[string]any{})
+	if len(got.Warnings) != 1 || !strings.Contains(got.Warnings[0], orig) {
+		t.Errorf("warnings without the Link permission: %q, want one naming %s", got.Warnings, orig)
+	}
+	if n := dbInt(t, `SELECT COUNT(*) FROM issue_links WHERE source_id IN (?, ?) OR target_id IN (?, ?)`,
+		issueIDOf(t, got.Key), issueIDOf(t, orig), issueIDOf(t, got.Key), issueIDOf(t, orig)); n != 0 {
+		t.Errorf("%d links written without the Link permission, want 0", n)
+	}
+	if n := dbInt(t, `SELECT COUNT(*) FROM change_groups g JOIN change_items i ON i.group_id = g.id
+		WHERE g.issue_id = ? AND i.field = 'Link'`, issueIDOf(t, orig)); n != 0 {
+		t.Errorf("the original got %d link history lines without the Link permission, want 0", n)
+	}
+	french := cloneOf(t, paul, "fr", orig, map[string]any{})
+	if len(french.Warnings) != 1 || french.Warnings[0] == got.Warnings[0] {
+		t.Errorf("the warning is not translated: %q and %q", got.Warnings, french.Warnings)
+	}
+}

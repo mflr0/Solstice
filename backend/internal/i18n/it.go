@@ -303,6 +303,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "creato clonando %s",
 	IssueCloneAttachmentFailed: "Non è stato possibile copiare l'allegato «%s».",
+	IssueCloneLinkSkipped:      "Il collegamento a %s non è stato aggiunto: non puoi collegare ticket nel suo progetto.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

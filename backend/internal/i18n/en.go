@@ -301,6 +301,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "created by cloning %s",
 	IssueCloneAttachmentFailed: "The attachment “%s” could not be copied.",
+	IssueCloneLinkSkipped:      "The link to %s was not added: you are not allowed to link issues in its project.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

@@ -340,6 +340,7 @@ const (
 	IssueCloneSummary          Key = "IssueCloneSummary"
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
+	IssueCloneLinkSkipped      Key = "IssueCloneLinkSkipped"
 )
 
 // Comments and their visibility.

@@ -303,6 +303,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "KLON - %s",
 	IssueCloneHistory:          "durch Klonen von %s erstellt",
 	IssueCloneAttachmentFailed: "Der Anhang „%s“ konnte nicht kopiert werden.",
+	IssueCloneLinkSkipped:      "Die Verknüpfung mit %s wurde nicht hinzugefügt: Sie dürfen in dessen Projekt keine Vorgänge verknüpfen.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
