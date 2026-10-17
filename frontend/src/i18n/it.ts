@@ -1330,6 +1330,7 @@ export const it: Messages = {
       'project.archive': 'Progetto archiviato',
       'project.unarchive': 'Progetto ripristinato dall’archivio',
       'project.delete': 'Progetto eliminato',
+      'project.rename': 'Chiave del progetto cambiata',
       'project.permissions': 'Permessi del progetto modificati',
       'project.roles': 'Ruoli del progetto modificati',
       'category.create': 'Categoria di progetti creata',
@@ -2160,11 +2161,19 @@ export const it: Messages = {
         : 'Il progetto, che è vuoto, viene eliminato definitivamente. L’azione è irreversibile.',
     typeToConfirm: (key: string) => `Digita ${key} per confermare`,
     deleted: (name: string) => `«${name}» è stato eliminato.`,
+    changeKey: 'Cambia chiave',
+    changeKeyTitle: (name: string) => `Cambia la chiave di ${name}`,
+    changeKeyBody: (key: string) =>
+      `Tutti i ticket del progetto prendono la nuova chiave. La vecchia chiave resta riservata e continua a funzionare: ${key}-12 apre ancora il ticket, nei link, nelle ricerche JQL e nell’API REST. I filtri salvati e le board che citano ${key} restano invariati.`,
+    newKey: 'Nuova chiave',
+    keyUnchanged: 'Questa è la chiave attuale.',
+    keyChanged: (name: string, oldKey: string, newKey: string) =>
+      `${name}: ${oldKey} ora è ${newKey}.`,
     createTitle: 'Nuovo progetto',
     create: 'Crea il progetto',
     namePlaceholder: 'Sito web',
     keyHint:
-      'Apre ogni chiave di ticket (SW-1). Da 2 a 10 lettere maiuscole o cifre, a partire da una lettera. Non potrà più essere modificata.',
+      'Apre ogni chiave di ticket (SW-1). Da 2 a 10 lettere maiuscole o cifre, a partire da una lettera. Potrai cambiarla più avanti nell’amministrazione dei progetti.',
     keyChecking: 'Verifica in corso…',
     keyFree: (key: string) => `${key} è disponibile.`,
     template: 'Workflow iniziale',

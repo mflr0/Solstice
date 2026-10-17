@@ -138,6 +138,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.",
 	ProjectGranteeUnknown:      "Bénéficiaire inconnu : %s.",
 	ProjectGranteeNotFound:     "Bénéficiaire introuvable.",
+	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Tâche",

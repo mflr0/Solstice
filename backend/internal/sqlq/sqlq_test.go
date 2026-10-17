@@ -24,3 +24,10 @@ func TestValue(t *testing.T) {
 		t.Errorf("Value(7) = %#v", v)
 	}
 }
+
+func TestProjectKey(t *testing.T) {
+	want := "(p.pkey IN (?, ?) OR p.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?, ?)))"
+	if got := ProjectKey("p", Marks(2)); got != want {
+		t.Errorf("ProjectKey = %q, want %q", got, want)
+	}
+}

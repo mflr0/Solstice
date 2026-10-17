@@ -1324,6 +1324,7 @@ export const hi: Messages = {
       'project.archive': 'प्रोजेक्ट आर्काइव किया',
       'project.unarchive': 'प्रोजेक्ट आर्काइव से निकाला',
       'project.delete': 'प्रोजेक्ट मिटाया',
+      'project.rename': 'प्रोजेक्ट की कुंजी बदली',
       'project.permissions': 'प्रोजेक्ट की अनुमतियाँ बदलीं',
       'project.roles': 'प्रोजेक्ट की भूमिकाएँ बदलीं',
       'category.create': 'प्रोजेक्ट श्रेणी बनाई',
@@ -2141,11 +2142,19 @@ export const hi: Messages = {
         : 'इससे खाली प्रोजेक्ट हमेशा के लिए हट जाएगा। यह वापस नहीं हो सकता।',
     typeToConfirm: (key: string) => `पुष्टि के लिए ${key} लिखिए`,
     deleted: (name: string) => `“${name}” हट गया।`,
+    changeKey: 'कुंजी बदलें',
+    changeKeyTitle: (name: string) => `${name} की कुंजी बदलें`,
+    changeKeyBody: (key: string) =>
+      `प्रोजेक्ट के सभी टिकट नई कुंजी ले लेते हैं। पुरानी कुंजी आरक्षित रहती है और काम करती रहती है: ${key}-12 अब भी टिकट खोलता है, लिंक, JQL खोज और REST API में। ${key} का नाम लेने वाले सहेजे गए फ़िल्टर और बोर्ड जैसे हैं वैसे ही रहते हैं।`,
+    newKey: 'नई कुंजी',
+    keyUnchanged: 'यह मौजूदा कुंजी है।',
+    keyChanged: (name: string, oldKey: string, newKey: string) =>
+      `${name}: ${oldKey} अब ${newKey} है।`,
     createTitle: 'नया प्रोजेक्ट',
     create: 'प्रोजेक्ट बनाएँ',
     namePlaceholder: 'वेबसाइट',
     keyHint:
-      'हर टिकट कुंजी की शुरुआत (SW-1)। 2 से 10 बड़े अक्षर या अंक, पहला अक्षर होना चाहिए। इसे बाद में बदला नहीं जा सकता।',
+      'हर टिकट कुंजी की शुरुआत (SW-1)। 2 से 10 बड़े अक्षर या अंक, पहला अक्षर होना चाहिए। आप इसे बाद में प्रोजेक्ट प्रशासन में बदल सकते हैं।',
     keyChecking: 'जाँच हो रही है…',
     keyFree: (key: string) => `${key} उपलब्ध है।`,
     template: 'शुरुआती वर्कफ़्लो',

@@ -158,6 +158,7 @@ const (
 	ProjectDeleteConfirm       Key = "ProjectDeleteConfirm"
 	ProjectGranteeUnknown      Key = "ProjectGranteeUnknown"
 	ProjectGranteeNotFound     Key = "ProjectGranteeNotFound"
+	ProjectRenameConfirm       Key = "ProjectRenameConfirm"
 )
 
 // Data a new instance starts with: issue types, priorities, resolutions, link types, roles.

@@ -140,6 +140,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: डिलीट की पुष्टि के लिए इसकी कुंजी टाइप करें।",
 	ProjectGranteeUnknown:      "अज्ञात अनुमति-प्राप्तकर्ता: %s।",
 	ProjectGranteeNotFound:     "अनुमति-प्राप्तकर्ता नहीं मिला।",
+	ProjectRenameConfirm:       "बदलाव की पुष्टि के लिए प्रोजेक्ट की मौजूदा कुंजी टाइप करें।",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "टास्क",
