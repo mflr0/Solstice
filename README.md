@@ -132,6 +132,10 @@ Operations guides, in English and in [French](docs/fr/):
   every setting.
 - [Reverse proxy](docs/en/reverse-proxy.md): HTTPS, the public address and
   trusted proxies.
+- [Backups](docs/en/backups.md): what to back up, dump and restore, and what
+  `secret.key` protects.
+- [Upgrades](docs/en/upgrades.md): the integrated update, manual and Docker
+  upgrades.
 
 ## Migrating from Jira
 

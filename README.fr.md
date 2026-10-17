@@ -142,6 +142,10 @@ Guides d'exploitation, en français et en [anglais](docs/en/) :
   d'installation et tous les réglages.
 - [Reverse proxy](docs/fr/reverse-proxy.md) : HTTPS, l'adresse publique et les
   proxies de confiance.
+- [Sauvegardes](docs/fr/backups.md) : quoi sauvegarder, exporter et restaurer,
+  et ce que protège `secret.key`.
+- [Mises à jour](docs/fr/upgrades.md) : la mise à jour intégrée, manuelle ou
+  avec Docker.
 
 ## Migrer depuis Jira
 
