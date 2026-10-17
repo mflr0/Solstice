@@ -153,7 +153,8 @@ func (s *Server) restVersion(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) restSaveVersion(w http.ResponseWriter, r *http.Request) error {
 	creating := r.PathValue("id") == ""
 	in, err := restBody(r, append([]string{"project", "projectId"}, versionBodyFields...),
-		"self", "id", "overdue", "userStartDate", "userReleaseDate")
+		"self", "id", "overdue", "userStartDate", "userReleaseDate", "moveUnfixedIssuesTo", "operations", "remotelinks",
+		"expand")
 	if err != nil {
 		return err
 	}
@@ -265,7 +266,8 @@ func (s *Server) restSaveComponent(w http.ResponseWriter, r *http.Request) error
 	ctx := r.Context()
 	creating := r.PathValue("id") == ""
 	in, err := restBody(r, []string{"project", "projectId", "name", "description", "leadUserName", "assigneeType",
-		"archived"}, "self", "id", "lead", "isAssigneeTypeValid", "assignee", "realAssignee", "realAssigneeType")
+		"archived"}, "self", "id", "lead", "isAssigneeTypeValid", "assignee", "realAssignee", "realAssigneeType",
+		"moveUnfixedIssuesTo", "operations", "remotelinks", "expand")
 	if err != nil {
 		return err
 	}
@@ -442,7 +444,8 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	creating := r.PathValue("id") == ""
 	in, err := restBody(r, []string{"name", "description", "jql", "favourite", "sharePermissions"},
-		"self", "id", "owner", "viewUrl", "searchUrl", "subscriptions")
+		"self", "id", "owner", "viewUrl", "searchUrl", "subscriptions", "sharedUsers", "editPermissions",
+		"approximateLastUsed")
 	if err != nil {
 		return err
 	}

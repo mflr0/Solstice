@@ -59,7 +59,8 @@ func TestRESTVersions(t *testing.T) {
 
 	// Partial edit, with what a client sends back after reading the version.
 	status, v = admin("PUT", path, map[string]any{"self": "x", "id": id, "projectId": 1, "released": true,
-		"releaseDate": "2026-11-30", "userReleaseDate": "30/Nov/26"})
+		"releaseDate": "2026-11-30", "userReleaseDate": "30/Nov/26", "moveUnfixedIssuesTo": "https://x/version/1",
+		"operations": []any{}, "remotelinks": []any{}, "expand": "operations"})
 	if status != 200 || v["released"] != true || str(v, "releaseDate") != "2026-11-30" || str(v, "name") != "9.1-rest" ||
 		str(v, "startDate") != "2026-11-01" {
 		t.Fatalf("edit: %d %v", status, v)
@@ -177,7 +178,8 @@ func TestRESTComponents(t *testing.T) {
 	}
 
 	status, c = admin("PUT", path, map[string]any{"leadUserName": nil, "assigneeType": "PROJECT_DEFAULT",
-		"description": "Changé", "self": "x", "id": id, "isAssigneeTypeValid": true})
+		"description": "Changé", "self": "x", "id": id, "isAssigneeTypeValid": true, "operations": []any{},
+		"remotelinks": []any{}, "expand": "operations", "moveUnfixedIssuesTo": "https://x/version/1"})
 	if status != 200 || c["lead"] != nil || str(c, "assigneeType") != "PROJECT_DEFAULT" || str(c, "description") != "Changé" ||
 		str(c, "name") != "Export-rest" {
 		t.Fatalf("edit: %d %v", status, c)
@@ -275,7 +277,8 @@ func TestRESTFilters(t *testing.T) {
 
 	// Shared with everyone, it is read by others but changed by its owner (or an administrator) only.
 	status, f = paul("PUT", path, map[string]any{"name": "Bugs partagés", "jql": "project = DEMO AND statusCategory != Done",
-		"description": nil, "favourite": false, "self": "x", "id": id,
+		"description": nil, "favourite": false, "self": "x", "id": id, "sharedUsers": map[string]any{"size": 0},
+		"editPermissions": []any{}, "approximateLastUsed": "2026-01-01T00:00:00.000+0000",
 		"sharePermissions": []any{map[string]any{"type": "global"}}})
 	if status != 200 || str(f, "name") != "Bugs partagés" || str(f, "jql") != "project = DEMO AND statusCategory != Done" ||
 		f["description"] != nil && str(f, "description") != "" || f["favourite"] != false ||
