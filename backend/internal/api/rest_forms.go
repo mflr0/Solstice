@@ -261,11 +261,7 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 	out := map[string]any{}
 	system := func(id string, required bool, operations ...string) map[string]any {
 		f, _ := systemField(id)
-		schema := map[string]any{"type": f.typ, "system": f.id}
-		if f.items != "" {
-			schema["items"] = f.items
-		}
-		field := map[string]any{"required": required, "schema": schema, "name": b.o.msg(f.name), "key": id,
+		field := map[string]any{"required": required, "schema": systemSchema(f), "name": b.o.msg(f.name), "key": id,
 			"hasDefaultValue": false, "operations": operations}
 		out[id] = field
 		return field
@@ -372,12 +368,7 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 				continue
 			}
 		}
-		stype, items := customSchema(f.Kind)
-		schema := map[string]any{"type": stype, "custom": f.TypeKey, "customId": f.ID}
-		if items != "" {
-			schema["items"] = items
-		}
-		field := map[string]any{"required": false, "schema": schema, "name": f.Name, "key": customID(f.ID),
+		field := map[string]any{"required": false, "schema": customFieldSchema(f), "name": f.Name, "key": customID(f.ID),
 			"hasDefaultValue": false, "operations": []string{"set"}}
 		switch f.Kind {
 		case "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect":
