@@ -9,6 +9,7 @@ import {
   mailPayload,
   mailProblems,
   matches,
+  namedPatch,
   namedPayload,
   newUserForm,
   restrictionUsage,
@@ -160,6 +161,28 @@ describe('group and role forms', () => {
       name: 'devs',
       description: '',
     });
+  });
+
+  it('sends only the name or the description that changed', () => {
+    const role = { name: 'Developers', description: 'Write code' };
+    expect(namedPatch({ name: ' Developers ', description: 'Write code ' }, role)).toEqual({});
+    expect(namedPatch({ name: 'Devs', description: 'Write code' }, role)).toEqual({ name: 'Devs' });
+    expect(namedPatch({ name: 'Developers', description: '' }, role)).toEqual({ description: '' });
+  });
+
+  it('takes a missing description as empty', () => {
+    const group = { name: 'devs', description: null };
+    expect(namedPatch({ name: 'devs', description: '  ' }, group, true)).toEqual({});
+    expect(namedPatch({ name: 'devs', description: 'Code' }, group, true)).toEqual({
+      description: 'Code',
+    });
+  });
+
+  it('does not take a group name changed by case alone for a change', () => {
+    const group = { name: 'devs', description: '' };
+    expect(namedPatch({ name: ' Devs', description: '' }, group, true)).toEqual({});
+    expect(namedPatch({ name: 'Devs', description: '' }, group)).toEqual({ name: 'Devs' });
+    expect(namedPatch({ name: 'Ops', description: '' }, group, true)).toEqual({ name: 'Ops' });
   });
 
   it('reads what restricts a deletion from the server answer', () => {

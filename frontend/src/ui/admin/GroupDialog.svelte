@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { groupProblems, hasProblems, namedPayload } from '../../core/admin-forms.js';
+  import { groupProblems, hasProblems, namedPatch, namedPayload } from '../../core/admin-forms.js';
   import type { Group, GroupDetail } from '../../core/admin-types.js';
   import type { UserRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
@@ -97,12 +97,16 @@
     tried = true;
     error = '';
     if (hasProblems(problems)) return;
-    const input = namedPayload({ name, description });
+    const patch = group ? namedPatch({ name, description }, group, true) : null;
+    if (patch && Object.keys(patch).length === 0) {
+      onclose();
+      return;
+    }
     busy = true;
     try {
       const saved = group
-        ? await adminApi.updateGroup(group.id, input)
-        : await adminApi.createGroup(input);
+        ? await adminApi.updateGroup(group.id, patch ?? {})
+        : await adminApi.createGroup(namedPayload({ name, description }));
       onsaved(
         group
           ? t.adminArea.groupsPage.updated(saved.name)

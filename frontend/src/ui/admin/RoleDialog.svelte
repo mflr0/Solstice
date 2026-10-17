@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { hasProblems, namedPayload, roleProblems } from '../../core/admin-forms.js';
+  import { hasProblems, namedPatch, namedPayload, roleProblems } from '../../core/admin-forms.js';
   import type { RoleRow } from '../../core/admin-types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -42,12 +42,16 @@
     tried = true;
     error = '';
     if (hasProblems(problems)) return;
-    const input = namedPayload({ name, description });
+    const patch = role ? namedPatch({ name, description }, role) : null;
+    if (patch && Object.keys(patch).length === 0) {
+      onclose();
+      return;
+    }
     busy = true;
     try {
       const saved = role
-        ? await adminApi.updateRole(role.id, input)
-        : await adminApi.createRole(input);
+        ? await adminApi.updateRole(role.id, patch ?? {})
+        : await adminApi.createRole(namedPayload({ name, description }));
       onsaved(
         role
           ? t.adminArea.rolesPage.updated(saved.name)

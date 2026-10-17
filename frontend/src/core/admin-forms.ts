@@ -425,6 +425,24 @@ export function namedPayload(f: NamedForm): { name: string; description: string 
 }
 
 /**
+ * Only what changed in a group or a role, trimmed; an empty object when nothing
+ * did. The server stores a group name in lower case (`lowerName`), so a name
+ * that differs by case alone is not a change. A description may be null.
+ */
+export function namedPatch(
+  f: NamedForm,
+  current: { name: string; description: string | null },
+  lowerName = false,
+): Partial<NamedForm> {
+  const out: Partial<NamedForm> = {};
+  const name = f.name.trim();
+  if ((lowerName ? name.toLowerCase() : name) !== current.name) out.name = name;
+  const description = f.description.trim();
+  if (description !== (current.description ?? '')) out.description = description;
+  return out;
+}
+
+/**
  * The comments and work logs that keep a group or a role from being deleted,
  * read from the server's 409 answer; null when the answer does not say.
  */
