@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
+
   /**
    * The two links the AGPL asks every user to be offered, signed in or not:
    * the source code, and the licences of what ships with the application.
@@ -12,9 +14,9 @@
 </script>
 
 <p class="source-links">
-  <a href="https://github.com/mflr0/Solstice" target="_blank" rel="noopener noreferrer">{source}</a>
+  <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">{source}</a>
   <span aria-hidden="true">·</span>
-  <a href="/licenses/README.txt" target="_blank" rel="noopener noreferrer">{licenses}</a>
+  <a href={LICENSES_PATH} target="_blank" rel="noopener noreferrer">{licenses}</a>
 </p>
 
 <style>
