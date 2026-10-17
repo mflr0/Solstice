@@ -440,9 +440,10 @@ read_db_tls() {
   esac
 }
 
-# dump_tls_opts prints the TLS options for the given dump binary and tls
-# setting, so a test can call it without a database. The client flavour is
-# detected from "$dump" --version (MariaDB contains "MariaDB"; else MySQL).
+# dump_tls_opts DUMP TLS prints the dump options for the tls value of
+# SOLSTICE_DB_URL. MariaDB clients (their --version says MariaDB) check the
+# server certificate by default since 11.4, so skip-verify and preferred
+# turn the check off; MySQL clients take --ssl-mode. Empty prints nothing.
 dump_tls_opts() {
   dump_bin=$1
   tls_val=$2
@@ -501,26 +502,10 @@ back_up() (
   MYSQL_PWD=$db_pass
   export MYSQL_PWD
   set -- --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP
-  # Add TLS options per client flavour.
-  case $("$dump" --version 2>/dev/null) in
-    *MariaDB*)
-      case $db_tls in
-        true) set -- "$@" --ssl --ssl-verify-server-cert ;;
-        skip-verify | preferred) set -- "$@" --ssl --skip-ssl-verify-server-cert ;;
-        false) set -- "$@" --skip-ssl ;;
-        "") ;; # absent: nothing
-      esac
-      ;;
-    *)
-      case $db_tls in
-        true) set -- "$@" --ssl-mode=VERIFY_IDENTITY ;;
-        skip-verify) set -- "$@" --ssl-mode=REQUIRED ;;
-        preferred) set -- "$@" --ssl-mode=PREFERRED ;;
-        false) set -- "$@" --ssl-mode=DISABLED ;;
-        "") ;; # absent: nothing
-      esac
-      ;;
-  esac
+  # The tls option read before the update started, in the dialect of the
+  # dump client. The options never contain a space: split on purpose.
+  # shellcheck disable=SC2046
+  set -- "$@" $(dump_tls_opts "$dump" "$db_tls")
   set -- "$@" --host="$db_host" --port="$db_port" --user="$db_user" "$db_name"
   if ! as_user "$dump" "$@" >"$tmp" 2>>"$log"; then
     rm -f "$tmp"
