@@ -207,3 +207,45 @@ func TestSecurityLevelDeleteRace(t *testing.T) {
 		t.Errorf("the level was deleted (%s rows)", n)
 	}
 }
+
+// Every issue at a deleted level moves with the level, and each keeps its own
+// history entry.
+func TestSecurityLevelDeleteMovesIssues(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+	key := newProject(t, admin, nil)
+	base := "/api/projects/" + key + "/security-levels"
+	var from, to securityLevelAdmin
+	admin.call("POST", base, map[string]any{"name": "Source"}, 201, &from)
+	admin.call("POST", base, map[string]any{"name": "Cible"}, 201, &to)
+	ids := []string{}
+	for _, summary := range []string{"Un", "Deux", "Trois"} {
+		id := issueID(t, createIssue(t, paul, key, summary, ""))
+		if _, err := testDB.Exec(`UPDATE issues SET security_level_id = ? WHERE id = ?`, from.ID, id); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	other := issueID(t, createIssue(t, paul, key, "Ailleurs", ""))
+	if _, err := testDB.Exec(`UPDATE issues SET security_level_id = ? WHERE id = ?`, to.ID, other); err != nil {
+		t.Fatal(err)
+	}
+	admin.call("DELETE", fmt.Sprintf("%s/%d", base, from.ID), map[string]any{"moveTo": to.ID}, 204, nil)
+	for _, id := range ids {
+		if got := pick(t, `SELECT security_level_id FROM issues WHERE id = ?`, id); got != fmt.Sprint(to.ID) {
+			t.Errorf("issue %s at level %s, want %d", id, got, to.ID)
+		}
+		if got := pick(t, `SELECT COUNT(*) FROM change_items i JOIN change_groups g ON g.id = i.group_id
+			WHERE g.issue_id = ? AND i.field = 'security' AND i.old_value = ? AND i.new_value = ?`, id, from.ID, to.ID); got != "1" {
+			t.Errorf("history of issue %s: %s entries", id, got)
+		}
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM change_groups WHERE issue_id = ?`, other); got != "0" {
+		t.Errorf("history of the issue that stayed: %s groups", got)
+	}
+	var audit struct{ Total int }
+	admin.call("GET", "/api/admin/audit?action=securitylevel.delete&q="+key, nil, 200, &audit)
+	if audit.Total != 1 {
+		t.Errorf("audit entries: %d", audit.Total)
+	}
+}

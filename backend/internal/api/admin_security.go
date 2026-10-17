@@ -324,11 +324,11 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 			return err
 		}
 		now := time.Now().UTC()
+		if _, err := tx.ExecContext(ctx, `UPDATE issues SET security_level_id = ?, updated_at = ? WHERE security_level_id = ?`,
+			to, now, id); err != nil {
+			return err
+		}
 		for _, issue := range issues {
-			if _, err := tx.ExecContext(ctx, `UPDATE issues SET security_level_id = ?, updated_at = ? WHERE id = ?`,
-				to, now, issue); err != nil {
-				return err
-			}
 			if err := recordChanges(ctx, tx, issue, currentUser(r).ID, now,
 				[]change{{field: "security", oldValue: id, newValue: to}}); err != nil {
 				return err
