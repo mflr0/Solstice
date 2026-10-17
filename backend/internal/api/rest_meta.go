@@ -537,7 +537,8 @@ func (s *Server) restFilter(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
+	// loadFilters reads id 0 as "every filter".
+	if err != nil || id <= 0 {
 		return errNotFound
 	}
 	rows, err := s.loadFilters(r.Context(), sub, id)

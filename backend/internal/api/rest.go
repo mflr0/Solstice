@@ -66,6 +66,14 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/project/{key}/statuses", s.restProjectStatuses, true)
 		rest("GET "+p+"/project/{key}/versions", s.restProjectParts("versions"), true)
 		rest("GET "+p+"/project/{key}/components", s.restProjectParts("components"), true)
+		rest("GET "+p+"/version/{id}", s.restVersion, true)
+		rest("POST "+p+"/version", s.restSaveVersion, true)
+		rest("PUT "+p+"/version/{id}", s.restSaveVersion, true)
+		rest("DELETE "+p+"/version/{id}", s.restDeleteVersion, true)
+		rest("GET "+p+"/component/{id}", s.restComponent, true)
+		rest("POST "+p+"/component", s.restSaveComponent, true)
+		rest("PUT "+p+"/component/{id}", s.restSaveComponent, true)
+		rest("DELETE "+p+"/component/{id}", s.restDeleteComponent, true)
 
 		rest("POST "+p+"/issue", s.restCreateIssue, true)
 		rest("GET "+p+"/issue/{key}", s.restGetIssue, true)
@@ -105,6 +113,9 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/resolution", s.restResolutions, true)
 		rest("GET "+p+"/filter/favourite", s.restFavouriteFilters, true)
 		rest("GET "+p+"/filter/{id}", s.restFilter, true)
+		rest("POST "+p+"/filter", s.restSaveFilter, true)
+		rest("PUT "+p+"/filter/{id}", s.restSaveFilter, true)
+		rest("DELETE "+p+"/filter/{id}", s.deleteFilter, true)
 		rest("GET "+p+"/mypermissions", s.restMyPermissions, true)
 	}
 	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
