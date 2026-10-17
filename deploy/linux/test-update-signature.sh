@@ -129,6 +129,8 @@ expect_tls "tls=false is read" "mysql://solstice:secret@db.example.org:3306/sols
 expect_tls "tls=true is read" "mariadb://solstice:secret@db/solstice?tls=true" "true"
 expect_tls "tls=skip-verify is read" "mysql://solstice:secret@db/solstice?tls=skip-verify" "skip-verify"
 expect_tls "tls=preferred is read" "mysql://solstice:secret@db/solstice?tls=preferred" "preferred"
+expect_tls "tls=True is read as true" "mariadb://solstice:secret@db/solstice?tls=True" "true"
+expect_tls "tls=SKIP-VERIFY is read as skip-verify" "mysql://solstice:secret@db/solstice?tls=SKIP-VERIFY" "skip-verify"
 expect_tls "tls among other options is read" \
   "mysql://solstice:secret@db/solstice?charset=utf8mb4&tls=true" "true"
 expect_tls "an unknown tls value is refused" "mysql://solstice:secret@db/solstice?tls=sometimes" refused

@@ -434,6 +434,8 @@ read_db_tls() {
     esac
   done
   if [ "$found" = 0 ]; then return 0; fi
+  # The server lower-cases the value (backend/internal/db/params.go).
+  tls=$(printf '%s\n' "$tls" | tr '[:upper:]' '[:lower:]')
   case $tls in
     true | false | skip-verify | preferred) printf '%s\n' "$tls" ;;
     *) return 1 ;;
