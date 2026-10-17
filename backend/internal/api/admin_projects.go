@@ -6,6 +6,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"net/http"
 	"os"
@@ -248,11 +249,21 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	// Another change of a key waits, and the key is checked again once the
+	// lock is held: it may have been taken since the first check.
+	conn, release, err := s.lockProjectKeys(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err := s.checkProjectKey(ctx, tx, key, 0); err != nil {
+		return err
+	}
 	var statuses []string
 	for _, st := range tmpl.statuses {
 		id, err := ensureStatus(ctx, tx, st.name, st.category)
@@ -734,6 +745,40 @@ func keyConflict(err error, key string) error {
 	return err
 }
 
+// projectKeysLock is the named lock that serialises the changes of project
+// keys (a creation, a rename): the checks on a key and the writes of it must
+// not interleave with another change, or a key could end up both a project's
+// key and another's former key.
+const projectKeysLock = "solstice-project-keys"
+
+// lockProjectKeys takes the lock on a connection of its own: the transaction
+// of the change is opened on that connection, and release is called once it
+// has ended.
+func (s *Server) lockProjectKeys(ctx context.Context) (conn *sql.Conn, release func(), err error) {
+	conn, err = s.db.Conn(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	var got sql.NullInt64
+	err = conn.QueryRowContext(ctx, `SELECT GET_LOCK(?, 10)`, projectKeysLock).Scan(&got)
+	if err == nil && got.Int64 != 1 {
+		err = errors.New("the lock on the project keys was not obtained")
+	}
+	if err != nil {
+		conn.Close()
+		return nil, nil, err
+	}
+	return conn, func() {
+		// The request may be over by now. A lock that cannot be released must
+		// not go back to the pool with its connection.
+		var released sql.NullInt64
+		if conn.QueryRowContext(context.WithoutCancel(ctx), `SELECT RELEASE_LOCK(?)`, projectKeysLock).Scan(&released) != nil {
+			conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
+		conn.Close()
+	}, nil
+}
+
 // renameProject gives a project another key. Issue keys are not stored: they
 // are the project key and the issue number, so the new key shows at once on
 // every issue. The old key goes to project_keys, which findIssue and
@@ -753,7 +798,12 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx := r.Context()
 	newKey := strings.ToUpper(strings.TrimSpace(in.NewKey))
-	tx, err := s.db.BeginTx(ctx, nil)
+	conn, release, err := s.lockProjectKeys(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

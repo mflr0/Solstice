@@ -412,6 +412,63 @@ func TestProjectRenameConcurrent(t *testing.T) {
 	}
 }
 
+// Two renames to one key in a row: the second is refused as taken, and the
+// key is not also a former key. A project created with a key another one has
+// just left is refused too.
+func TestProjectRenameSameKeyInARow(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	first, second := newProject(t, admin, nil), newProject(t, admin, nil)
+	target := newProjectKey()
+	admin.call("POST", path(first), map[string]any{"newKey": target, "confirm": first}, 200, nil)
+	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+target, map[string]string{"confirm": target}) })
+	admin.call("POST", path(second), map[string]any{"newKey": target, "confirm": second}, 409, nil)
+	if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, target); got != "0" {
+		t.Errorf("%s is also a former key", target)
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM projects WHERE pkey = ?`, second); got != "1" {
+		t.Errorf("a refused rename changed the project (%s with the key %s)", got, second)
+	}
+	admin.call("POST", "/api/projects", map[string]any{"key": first, "name": "Reprise " + first}, 409, nil)
+}
+
+// A project created and another renamed at the same moment to one key: one
+// wins, the other is refused as taken, none fails with a server error, and
+// the key is never both current and former.
+func TestProjectCreateRenameConcurrent(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	for round := 0; round < 5; round++ {
+		old := newProject(t, admin, nil)
+		target := newProjectKey()
+		var statuses [2]int
+		var bodies [2][]byte
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			statuses[0], bodies[0] = admin.do("POST", "/api/admin/projects/"+old+"/rename",
+				map[string]any{"newKey": target, "confirm": old})
+		}()
+		go func() {
+			defer wg.Done()
+			statuses[1], bodies[1] = admin.do("POST", "/api/projects", map[string]any{"key": target, "name": "Course " + target})
+		}()
+		wg.Wait()
+		t.Cleanup(func() {
+			admin.do("DELETE", "/api/projects/"+target, map[string]string{"confirm": target})
+			admin.do("DELETE", "/api/projects/"+old, map[string]string{"confirm": old})
+		})
+		renamed, created := statuses[0], statuses[1]
+		if !(renamed == 200 && created == 409) && !(renamed == 409 && created == 201) {
+			t.Errorf("round %d: rename %d, creation %d, want one success and one 409: %q %q",
+				round, renamed, created, bodies[0], bodies[1])
+		}
+		if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, target); got != "0" {
+			t.Errorf("round %d: %s is also a former key", round, target)
+		}
+	}
+}
+
 // A former key that does not follow the key rules (one the import kept as it
 // was) cannot be taken back: the new key is always checked for its form.
 func TestProjectRenameBackChecksForm(t *testing.T) {
