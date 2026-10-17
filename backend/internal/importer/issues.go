@@ -546,7 +546,20 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 	if p.key != p.originalKey {
 		keys = append(keys, p.key)
 	}
-	base := filepath.Join(r.opt.JiraHome, "data", "attachments")
+	for _, k := range keys {
+		if !safePathPart(k) {
+			if !r.unsafeKeys[k] {
+				if r.unsafeKeys == nil {
+					r.unsafeKeys = map[string]bool{}
+				}
+				r.unsafeKeys[k] = true
+				r.rep.warn("attachments: the project key %q cannot be used in a file path, its attachment files are not copied", k)
+			}
+			return false, nil
+		}
+	}
+	root := filepath.Clean(r.opt.JiraHome)
+	base := filepath.Join(root, "data", "attachments")
 	bucket := strconv.FormatInt(((issue.num-1)/10000+1)*10000, 10)
 	name := strconv.FormatInt(id, 10)
 	for _, pk := range keys {
@@ -556,6 +569,9 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 				filepath.Join(base, pk, bucket, issueKey, name),
 				filepath.Join(base, pk, issueKey, name),
 			} {
+				if !within(root, path) {
+					continue
+				}
 				ok, err := copyFile(path, filepath.Join(dir, name))
 				if ok || err != nil {
 					return ok, err
@@ -564,6 +580,18 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+// safePathPart tells whether a string from the source database can be one
+// element of a file path: no separator, no "..", no NUL byte, not empty.
+func safePathPart(s string) bool {
+	return s != "" && s != "." && !strings.ContainsAny(s, "/\\\x00") && !strings.Contains(s, "..")
+}
+
+// within tells whether path, once cleaned, is inside root.
+func within(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // copyFile copies src to dst through a temporary file. A missing src is not
