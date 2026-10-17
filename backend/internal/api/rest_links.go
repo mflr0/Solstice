@@ -285,6 +285,9 @@ func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) erro
 	if err := in.clean(); err != nil {
 		return err
 	}
+	if in.GlobalID != "" && in.GlobalID != old.GlobalID { // the stored one stays: say so, do not ignore it
+		return invalidValue("globalId")
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

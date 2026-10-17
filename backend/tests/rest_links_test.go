@@ -150,6 +150,22 @@ func TestRESTRemoteLinks(t *testing.T) {
 	if _, raw = do(paul, "GET", one, nil); str(obj(t, raw), "globalId") != "gitlab:mr:7" {
 		t.Errorf("PUT lost the globalId: %s", raw)
 	}
+	// A globalId in the body of a PUT must be the stored one: it is never changed.
+	for name, globalID := range map[string]string{"another globalId": "gitlab:mr:8", "another case": "GitLab:MR:7"} {
+		body := link("https://git.example.com/mr/other", "Other")
+		body["globalId"] = globalID
+		if status, raw := do(paul, "PUT", one, body); status != 400 || str(obj(t, raw), "errors", "globalId") == "" {
+			t.Errorf("PUT with %s: %d %s, want 400 on globalId", name, status, raw)
+		}
+	}
+	if _, raw = do(paul, "GET", one, nil); str(obj(t, raw), "object", "title") != "Merge request 7" || str(obj(t, raw), "globalId") != "gitlab:mr:7" {
+		t.Errorf("a refused PUT changed the link: %s", raw)
+	}
+	same := link("https://git.example.com/mr/7", "Merge request 7")
+	same["globalId"] = "gitlab:mr:7"
+	if status, raw = do(paul, "PUT", one, same); status != 204 {
+		t.Errorf("PUT with the stored globalId: %d %s", status, raw)
+	}
 	twin := map[string]any{"globalId": "gitlab:mr:7", "object": map[string]any{"url": "https://git.example.com/mr/7", "title": "Twin"}}
 	if status, raw = do(paul, "POST", "/rest/api/2/issue/"+other+"/remotelink", twin); status != 201 || num(obj(t, raw), "id") == id {
 		t.Errorf("the same globalId on another issue: %d %s", status, raw)
