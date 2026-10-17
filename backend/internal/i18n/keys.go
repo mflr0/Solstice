@@ -360,6 +360,9 @@ const (
 	LinkToItself       Key = "LinkToItself"
 )
 
+// Group picker.
+const GroupPickerHeader Key = "GroupPickerHeader"
+
 // Attachments.
 const (
 	AttachmentUploadInvalid Key = "AttachmentUploadInvalid"

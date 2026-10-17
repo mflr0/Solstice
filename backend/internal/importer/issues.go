@@ -301,20 +301,22 @@ func (r *run) importIssueDetails() error {
 	}
 	r.rep.step("issue links", links.total, skipped)
 
-	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
+	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship", "global_id")
+	globals := globalIDs{}
 	skipped = 0
-	if err := r.each(`SELECT id, issueid, url, title, relationship FROM remotelink`, func(rows *sql.Rows) error {
+	if err := r.each(`SELECT id, issueid, url, title, relationship, globalid FROM remotelink ORDER BY id`, func(rows *sql.Rows) error {
 		var id int64
 		var issue sql.NullInt64
-		var url, title, rel sql.NullString
-		if err := rows.Scan(&id, &issue, &url, &title, &rel); err != nil {
+		var url, title, rel, global sql.NullString
+		if err := rows.Scan(&id, &issue, &url, &title, &rel, &global); err != nil {
 			return err
 		}
 		if !r.hasIssue(issue) || url.String == "" {
 			skipped++
 			return nil
 		}
-		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel))
+		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel),
+			globals.take(issue.Int64, global))
 	}); err != nil {
 		return err
 	}

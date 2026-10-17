@@ -316,6 +316,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Zielvorgang nicht gefunden.",
 	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
 
+	// Group picker.
+	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Ungültiger Datei-Upload.",
 	AttachmentNoFile:        "Keine Datei empfangen.",

@@ -316,6 +316,9 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Ticket di destinazione non trovato.",
 	LinkToItself:       "Un ticket non può essere collegato a se stesso.",
 
+	// Group picker.
+	GroupPickerHeader: "%d gruppi mostrati su %d corrispondenti",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Caricamento del file non valido.",
 	AttachmentNoFile:        "Nessun file ricevuto.",
