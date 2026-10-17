@@ -311,17 +311,20 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	release()
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
-		s.limiter.Failure(userKey, ipKey)
-		// The address was not locked before this attempt (the check above),
-		// so a lock now means this failure locked it: record it once.
-		if d := s.limiter.Locked(ipKey); d > 0 {
-			s.auditLockout(r, username, d)
-		}
-		if delay := s.limiter.AccountFailure("account:" + account); delay > 0 {
+		locked := s.limiter.Failure(userKey, ipKey)
+		delay := s.limiter.AccountFailure("account:" + account)
+		if delay > 0 {
 			// The account is being guessed at, from here or elsewhere: this
-			// address gets half as many tries, and the answer waits (the
-			// password-checking slot is already free).
-			s.limiter.Failure(userKey)
+			// address gets half as many tries.
+			locked = s.limiter.Failure(userKey) || locked
+		}
+		// Failure reports a lock that this very attempt started, so it is
+		// recorded once, not for the attempts the lock then refuses.
+		if locked {
+			s.auditLockout(r, username, s.limiter.Locked(userKey, ipKey))
+		}
+		if delay > 0 {
+			// The answer waits (the password-checking slot is already free).
 			s.sleep(r.Context(), delay)
 		}
 	case err == nil:

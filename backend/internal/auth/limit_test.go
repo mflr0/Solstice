@@ -11,12 +11,16 @@ func TestLimiterLocksAfterRepeatedFailures(t *testing.T) {
 	l.now = func() time.Time { return clock }
 
 	for range maxFailures - 1 {
-		l.Failure("user:paul")
+		if l.Failure("user:paul") {
+			t.Fatal("Failure reported a lock before the limit")
+		}
 	}
 	if d := l.Locked("user:paul"); d != 0 {
 		t.Fatalf("locked after %d failures", maxFailures-1)
 	}
-	l.Failure("user:paul")
+	if !l.Failure("user:paul") {
+		t.Fatal("Failure did not report the lock it started")
+	}
 	if d := l.Locked("ip:1.2.3.4", "user:paul"); d != firstLock {
 		t.Fatalf("lock %v, want %v", d, firstLock)
 	}
@@ -28,6 +32,9 @@ func TestLimiterLocksAfterRepeatedFailures(t *testing.T) {
 	}
 	for range maxFailures {
 		l.Failure("user:paul")
+	}
+	if l.Failure("user:paul") {
+		t.Fatal("Failure reported a lock that was already running")
 	}
 	if d := l.Locked("user:paul"); d != 2*firstLock {
 		t.Fatalf("second lock %v, want %v", d, 2*firstLock)
