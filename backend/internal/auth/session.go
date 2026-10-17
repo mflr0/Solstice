@@ -112,6 +112,11 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 		return nil, ErrNoSession
 	}
 	ok, rehash := CheckPassword(hash.String, password)
+	if !strings.HasPrefix(hash.String, "$argon2id$") {
+		// An imported Jira hash is checked quicker than Argon2id: spend that
+		// time too, so such accounts cannot be told from the others.
+		CheckPassword(dummyHash, password)
+	}
 	if !ok {
 		return nil, ErrNoSession
 	}
