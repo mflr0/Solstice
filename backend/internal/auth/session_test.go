@@ -6,9 +6,9 @@ import (
 )
 
 // TestDummyHashCostsArgon2id guards the timing equaliser of Authenticate:
-// checking an imported (non-Argon2id) hash must also spend an Argon2id
-// verification, so the time a sign-in takes does not reveal which hash
-// algorithm an account uses.
+// refusing a password against an imported (non-Argon2id) hash must also
+// spend an Argon2id verification, so the time a failed sign-in takes does not
+// reveal which hash algorithm an account uses.
 //
 // Authenticate itself cannot be unit-tested without a database, and the
 // database tests skip when SOLSTICE_TEST_DB is unset (no database is used
