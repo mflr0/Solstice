@@ -317,7 +317,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkToItself:       "Un ticket non può essere collegato a se stesso.",
 
 	// Remote links.
-	RemoteLinkGlobalIDUnsupported: "I link remoti non si possono trovare né rimuovere tramite globalId.",
 
 	// Group picker.
 	GroupPickerHeader: "%d gruppi mostrati su %d corrispondenti",

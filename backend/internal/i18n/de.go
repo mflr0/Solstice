@@ -317,7 +317,6 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
 
 	// Remote links.
-	RemoteLinkGlobalIDUnsupported: "Remote-Links lassen sich nicht über die globalId finden oder entfernen.",
 
 	// Group picker.
 	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",

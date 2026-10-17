@@ -23,10 +23,10 @@ import (
 // Remote links -----------------------------------------------------------------
 
 // remoteLinkIn is a remote link as Jira clients write one. Solstice keeps
-// the address, the title and the relationship; the rest (application, icon,
-// summary, status) is accepted and ignored, as is the globalId, which the
-// table has no column for.
+// the globalId, the address, the title and the relationship; the rest
+// (application, icon, summary, status) is accepted and ignored.
 type remoteLinkIn struct {
+	GlobalID     string `json:"globalId"`
 	Relationship string `json:"relationship"`
 	Object       struct {
 		URL   string `json:"url"`
@@ -41,7 +41,7 @@ func remoteLinkOK(v string) bool { return safeHref(v) && safeURL(v) }
 // clean checks and trims what a client sent.
 func (in *remoteLinkIn) clean() error {
 	in.Object.URL, in.Object.Title = strings.TrimSpace(in.Object.URL), strings.TrimSpace(in.Object.Title)
-	in.Relationship = strings.TrimSpace(in.Relationship)
+	in.Relationship, in.GlobalID = strings.TrimSpace(in.Relationship), strings.TrimSpace(in.GlobalID)
 	switch {
 	case in.Object.URL == "":
 		return fieldError("object.url", failf(http.StatusBadRequest, i18n.FieldRequired, "object.url"))
@@ -55,13 +55,30 @@ func (in *remoteLinkIn) clean() error {
 		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
 	case len([]rune(in.Relationship)) > 255:
 		return fieldError("relationship", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
+	case len([]rune(in.GlobalID)) > 255:
+		return fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
 	}
 	return nil
 }
 
-func (o *restOut) remoteLink(key string, v remoteLink) map[string]any {
+// remoteLinkRow is a stored remote link with its globalId.
+type remoteLinkRow struct {
+	remoteLink
+	GlobalID string
+}
+
+const remoteLinkColumns = `id, url, title, COALESCE(relationship, ''), COALESCE(global_id, '')`
+
+func (v *remoteLinkRow) scan(rows interface{ Scan(...any) error }) error {
+	return rows.Scan(&v.ID, &v.URL, &v.Title, &v.Relationship, &v.GlobalID)
+}
+
+func (o *restOut) remoteLink(key string, v remoteLinkRow) map[string]any {
 	out := map[string]any{"id": v.ID, "self": o.api + "/issue/" + key + "/remotelink/" + o.id(v.ID),
 		"object": map[string]any{"url": v.URL, "title": v.Title}}
+	if v.GlobalID != "" {
+		out["globalId"] = v.GlobalID
+	}
 	if v.Relationship != "" {
 		out["relationship"] = v.Relationship
 	}
@@ -70,14 +87,6 @@ func (o *restOut) remoteLink(key string, v remoteLink) map[string]any {
 
 // remoteLinkText is how the history names a remote link, as Jira writes it.
 func remoteLinkText(title string) string { return `This issue links to "` + title + `"` }
-
-// refuseGlobalID answers requests that name a link by its globalId.
-func refuseGlobalID(r *http.Request) error {
-	if r.URL.Query().Get("globalId") != "" {
-		return fieldError("globalId", fail(http.StatusBadRequest, i18n.RemoteLinkGlobalIDUnsupported))
-	}
-	return nil
-}
 
 // restEditableIssue returns the issue of the path, which the user must be
 // allowed to edit.
@@ -93,15 +102,24 @@ func (s *Server) restEditableIssue(r *http.Request) (*perm.Subject, *issueRow, e
 	return sub, iss, nil
 }
 
-// pathRemoteLink loads the remote link of the path, which belongs to iss.
-func (s *Server) pathRemoteLink(r *http.Request, iss *issueRow) (remoteLink, error) {
-	var v remoteLink
-	id, err := strconv.ParseInt(r.PathValue("linkId"), 10, 64)
-	if err != nil {
+// pathRemoteLink loads the remote link of iss that the request names: by the
+// id of the path, or on the routes without one by the globalId of the query.
+func (s *Server) pathRemoteLink(r *http.Request, iss *issueRow) (remoteLinkRow, error) {
+	var v remoteLinkRow
+	where, arg := `id = ?`, any(nil)
+	if raw := r.PathValue("linkId"); raw != "" {
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return v, errNotFound
+		}
+		arg = id
+	} else if global := r.URL.Query().Get("globalId"); global != "" {
+		where, arg = `global_id = ?`, global
+	} else {
 		return v, errNotFound
 	}
-	err = s.db.QueryRowContext(r.Context(), `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
-		WHERE id = ? AND issue_id = ?`, id, iss.ID).Scan(&v.ID, &v.URL, &v.Title, &v.Relationship)
+	err := v.scan(s.db.QueryRowContext(r.Context(), `SELECT `+remoteLinkColumns+` FROM remote_links
+		WHERE `+where+` AND issue_id = ?`, arg, iss.ID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return v, errNotFound
 	}
@@ -109,19 +127,23 @@ func (s *Server) pathRemoteLink(r *http.Request, iss *issueRow) (remoteLink, err
 }
 
 func (s *Server) restRemoteLinks(w http.ResponseWriter, r *http.Request) error {
-	if err := refuseGlobalID(r); err != nil {
-		return err
-	}
 	_, iss, err := s.restSubjectIssue(r)
 	if err != nil {
 		return err
 	}
 	o := s.restOut(r)
+	if r.URL.Query().Get("globalId") != "" { // as Jira answers: the one link, not a list
+		v, err := s.pathRemoteLink(r, iss)
+		if err != nil {
+			return err
+		}
+		return writeJSON(w, http.StatusOK, o.remoteLink(iss.Key(), v))
+	}
 	list := []any{}
-	if err := sqlq.Each(r.Context(), s.db, `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
+	if err := sqlq.Each(r.Context(), s.db, `SELECT `+remoteLinkColumns+` FROM remote_links
 		WHERE issue_id = ? ORDER BY id`, func(rows *sql.Rows) error {
-		var v remoteLink
-		if err := rows.Scan(&v.ID, &v.URL, &v.Title, &v.Relationship); err != nil {
+		var v remoteLinkRow
+		if err := v.scan(rows); err != nil {
 			return err
 		}
 		list = append(list, o.remoteLink(iss.Key(), v))
@@ -162,26 +184,61 @@ func (s *Server) restAddRemoteLink(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, `INSERT INTO remote_links (issue_id, url, title, relationship) VALUES (?, ?, ?, ?)`,
-		iss.ID, in.Object.URL, in.Object.Title, sql.NullString{String: in.Relationship, Valid: in.Relationship != ""})
-	if err != nil {
-		return err
+	// As in Jira, a globalId the issue already has makes this an update.
+	var old remoteLinkRow
+	updating := false
+	if in.GlobalID != "" {
+		err := old.scan(tx.QueryRowContext(ctx, `SELECT `+remoteLinkColumns+` FROM remote_links
+			WHERE issue_id = ? AND global_id = ? FOR UPDATE`, iss.ID, in.GlobalID))
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		updating = err == nil
 	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return err
+	id, status := old.ID, http.StatusOK
+	var changes []change
+	if updating {
+		if changes, err = updateRemoteLink(ctx, tx, old, in); err != nil {
+			return err
+		}
+	} else {
+		res, err := tx.ExecContext(ctx, `INSERT INTO remote_links (issue_id, url, title, relationship, global_id) VALUES (?, ?, ?, ?, ?)`,
+			iss.ID, in.Object.URL, in.Object.Title, nullIfEmpty(in.Relationship), nullIfEmpty(in.GlobalID))
+		if err != nil {
+			return err
+		}
+		if id, err = res.LastInsertId(); err != nil {
+			return err
+		}
+		status = http.StatusCreated
+		changes = []change{{field: "RemoteIssueLink", newValue: id, newString: remoteLinkText(in.Object.Title)}}
 	}
-	changes := []change{{field: "RemoteIssueLink", newValue: id, newString: remoteLinkText(in.Object.Title)}}
 	if err := recordChanges(ctx, tx, iss.ID, sub.UserID, time.Now().UTC(), changes); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.changed(iss, sub.UserID, "link", changes)
+	if len(changes) > 0 {
+		s.changed(iss, sub.UserID, "link", changes)
+	}
 	o := s.restOut(r)
-	return writeJSON(w, http.StatusCreated, map[string]any{"id": id,
+	return writeJSON(w, status, map[string]any{"id": id,
 		"self": o.api + "/issue/" + iss.Key() + "/remotelink/" + o.id(id)})
+}
+
+// updateRemoteLink replaces the address, title and relationship of a link and
+// returns the change to record, none when nothing differs. The globalId stays.
+func updateRemoteLink(ctx context.Context, tx *sql.Tx, old remoteLinkRow, in remoteLinkIn) ([]change, error) {
+	if _, err := tx.ExecContext(ctx, `UPDATE remote_links SET url = ?, title = ?, relationship = ? WHERE id = ?`,
+		in.Object.URL, in.Object.Title, nullIfEmpty(in.Relationship), old.ID); err != nil {
+		return nil, err
+	}
+	if in.Object.URL == old.URL && in.Object.Title == old.Title && in.Relationship == old.Relationship {
+		return nil, nil
+	}
+	return []change{{field: "RemoteIssueLink", oldValue: old.ID, oldString: remoteLinkText(old.Title),
+		newValue: old.ID, newString: remoteLinkText(in.Object.Title)}}, nil
 }
 
 func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) error {
@@ -206,15 +263,9 @@ func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `UPDATE remote_links SET url = ?, title = ?, relationship = ? WHERE id = ?`,
-		in.Object.URL, in.Object.Title, sql.NullString{String: in.Relationship, Valid: in.Relationship != ""},
-		old.ID); err != nil {
+	changes, err := updateRemoteLink(ctx, tx, old, in)
+	if err != nil {
 		return err
-	}
-	var changes []change
-	if in.Object.URL != old.URL || in.Object.Title != old.Title || in.Relationship != old.Relationship {
-		changes = []change{{field: "RemoteIssueLink", oldValue: old.ID, oldString: remoteLinkText(old.Title),
-			newValue: old.ID, newString: remoteLinkText(in.Object.Title)}}
 	}
 	if err := recordChanges(ctx, tx, iss.ID, sub.UserID, time.Now().UTC(), changes); err != nil {
 		return err
@@ -231,9 +282,6 @@ func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) erro
 
 func (s *Server) restDeleteRemoteLink(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	if err := refuseGlobalID(r); err != nil {
-		return err
-	}
 	sub, iss, err := s.restEditableIssue(r)
 	if err != nil {
 		return err

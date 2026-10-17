@@ -119,12 +119,72 @@ func TestRESTRemoteLinks(t *testing.T) {
 	if status, _ := do(paul, "GET", "/rest/api/2/issue/"+other+"/remotelink/"+strconv.Itoa(id), nil); status != 404 {
 		t.Errorf("link read through another issue: %d", status)
 	}
-	// Links are not stored with a globalId: asking for one is refused, not answered wrongly.
-	if status, _ := do(paul, "GET", path+"?globalId=gitlab:mr:7", nil); status != 400 {
-		t.Errorf("GET by globalId: %d", status)
+	// The globalId: found by it, updated by posting it again, removed by it.
+	byGlobal := path + "?globalId=" + url.QueryEscape("gitlab:mr:7")
+	status, raw = do(paul, "GET", byGlobal, nil)
+	if got := obj(t, raw); status != 200 || num(got, "id") != id || str(got, "globalId") != "gitlab:mr:7" {
+		t.Errorf("GET by globalId: %d %s", status, raw)
 	}
-	if status, _ := do(paul, "DELETE", path+"?globalId=gitlab:mr:7", nil); status != 400 {
-		t.Errorf("DELETE by globalId: %d", status)
+	if _, raw = do(paul, "GET", one, nil); str(obj(t, raw), "globalId") != "gitlab:mr:7" {
+		t.Errorf("the link does not tell its globalId: %s", raw)
+	}
+	status, raw = do(paul, "POST", path, map[string]any{"globalId": "gitlab:mr:7", "relationship": "reviewed by",
+		"object": map[string]any{"url": "https://git.example.com/mr/7/diffs", "title": "Merge request 7, diffs"}})
+	if got := obj(t, raw); status != 200 || num(got, "id") != id || !strings.HasSuffix(str(got, "self"), one) {
+		t.Fatalf("POST with a known globalId: %d %s", status, raw)
+	}
+	_, raw = do(paul, "GET", one, nil)
+	got = obj(t, raw)
+	if str(got, "object", "title") != "Merge request 7, diffs" || str(got, "object", "url") != "https://git.example.com/mr/7/diffs" ||
+		str(got, "relationship") != "reviewed by" || str(got, "globalId") != "gitlab:mr:7" {
+		t.Errorf("after POST with a known globalId: %s", raw)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM remote_links WHERE global_id = 'gitlab:mr:7' AND issue_id = (
+		SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+keyExpr+` = ?)`, key); n != "1" {
+		t.Errorf("links with the globalId: %s, want 1", n)
+	}
+	// An update by PUT keeps the globalId; the globalId is compared exactly and belongs to one issue.
+	if status, raw = do(paul, "PUT", one, link("https://git.example.com/mr/7", "Merge request 7")); status != 204 {
+		t.Fatalf("PUT: %d %s", status, raw)
+	}
+	if _, raw = do(paul, "GET", one, nil); str(obj(t, raw), "globalId") != "gitlab:mr:7" {
+		t.Errorf("PUT lost the globalId: %s", raw)
+	}
+	twin := map[string]any{"globalId": "gitlab:mr:7", "object": map[string]any{"url": "https://git.example.com/mr/7", "title": "Twin"}}
+	if status, raw = do(paul, "POST", "/rest/api/2/issue/"+other+"/remotelink", twin); status != 201 || num(obj(t, raw), "id") == id {
+		t.Errorf("the same globalId on another issue: %d %s", status, raw)
+	}
+	twin["globalId"] = "GitLab:MR:7"
+	if status, raw = do(paul, "POST", path, twin); status != 201 || num(obj(t, raw), "id") == id {
+		t.Errorf("a globalId in another case: %d %s", status, raw)
+	}
+	if status, raw = do(paul, "GET", path+"?globalId="+url.QueryEscape("GitLab:MR:7"), nil); status != 200 || str(obj(t, raw), "object", "title") != "Twin" {
+		t.Errorf("GET by a globalId in another case: %d %s", status, raw)
+	}
+	twin["globalId"] = strings.Repeat("g", 256)
+	if status, raw = do(paul, "POST", path, twin); status != 400 || str(obj(t, raw), "errors", "globalId") == "" {
+		t.Errorf("globalId too long: %d %s", status, raw)
+	}
+	for _, p := range []string{path + "?globalId=unknown", "/rest/api/2/issue/" + other + "/remotelink?globalId=" + url.QueryEscape("GitLab:MR:7")} {
+		if status, _ := do(paul, "GET", p, nil); status != 404 {
+			t.Errorf("GET %s: %d, want 404", p, status)
+		}
+		if status, _ := do(paul, "DELETE", p, nil); status != 404 {
+			t.Errorf("DELETE %s: %d, want 404", p, status)
+		}
+	}
+	if status, _ := do(paul, "DELETE", path, nil); status != 404 {
+		t.Errorf("DELETE with no id and no globalId: %d, want 404", status)
+	}
+	twinPath := path + "?globalId=" + url.QueryEscape("GitLab:MR:7")
+	if status, raw = do(paul, "DELETE", twinPath, nil); status != 204 {
+		t.Errorf("DELETE by globalId: %d %s", status, raw)
+	}
+	if status, _ = do(paul, "GET", twinPath, nil); status != 404 {
+		t.Errorf("GET after DELETE by globalId: %d, want 404", status)
+	}
+	if status, _ = do(paul, "GET", one, nil); status != 200 {
+		t.Errorf("the link with the other globalId went too: %d", status)
 	}
 
 	// Who may do what: sign-in, forgery protection, visibility, editing.
@@ -137,7 +197,8 @@ func TestRESTRemoteLinks(t *testing.T) {
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	chloe := login(t, "chloe.simon", "motdepasse")
-	if status, raw := do(chloe, "POST", "/rest/api/2/issue/"+hidden+"/remotelink", link("https://example.com", "RH")); status != 201 {
+	if status, raw := do(chloe, "POST", "/rest/api/2/issue/"+hidden+"/remotelink", map[string]any{"globalId": "rh:1",
+		"object": map[string]any{"url": "https://example.com", "title": "RH"}}); status != 201 {
 		t.Fatalf("chloe.simon on %s: %d %s", hidden, status, raw)
 	}
 	rhLink := pick(t, `SELECT MAX(r.id) FROM remote_links r JOIN issues i ON i.id = r.issue_id JOIN projects p ON p.id = i.project_id
@@ -147,6 +208,8 @@ func TestRESTRemoteLinks(t *testing.T) {
 		{"GET", "/rest/api/2/issue/" + hidden + "/remotelink/" + rhLink},
 		{"PUT", "/rest/api/2/issue/" + hidden + "/remotelink/" + rhLink},
 		{"DELETE", "/rest/api/2/issue/" + hidden + "/remotelink/" + rhLink},
+		{"GET", "/rest/api/2/issue/" + hidden + "/remotelink?globalId=rh:1"},
+		{"DELETE", "/rest/api/2/issue/" + hidden + "/remotelink?globalId=rh:1"},
 	} {
 		if status, _ := do(paul, c.method, c.p, link("https://example.com", "x")); status != 404 {
 			t.Errorf("paul.martin %s %s: %d, want 404", c.method, c.p, status)
@@ -161,6 +224,12 @@ func TestRESTRemoteLinks(t *testing.T) {
 	}
 	if status, _ := do(viewer, "DELETE", one, nil); status != 403 {
 		t.Errorf("a user who cannot edit %s deleted a link: %d, want 403", key, status)
+	}
+	if status, _ := do(viewer, "DELETE", byGlobal, nil); status != 403 {
+		t.Errorf("a user who cannot edit %s deleted a link by its globalId: %d, want 403", key, status)
+	}
+	if status, _ := do(viewer, "GET", byGlobal, nil); status != 200 {
+		t.Errorf("a user who sees %s reads a link by its globalId: %d, want 200", key, status)
 	}
 	if status, _ := do(viewer, "GET", one, nil); status != 200 {
 		t.Errorf("a user who sees %s reads its links: %d, want 200", key, status)

@@ -361,7 +361,6 @@ const (
 )
 
 // Remote links.
-const RemoteLinkGlobalIDUnsupported Key = "RemoteLinkGlobalIDUnsupported"
 
 // Group picker.
 const GroupPickerHeader Key = "GroupPickerHeader"

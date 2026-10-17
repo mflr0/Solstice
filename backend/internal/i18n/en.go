@@ -315,7 +315,6 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkToItself:       "An issue cannot be linked to itself.",
 
 	// Remote links.
-	RemoteLinkGlobalIDUnsupported: "Remote links cannot be found or removed by globalId.",
 
 	// Group picker.
 	GroupPickerHeader: "Showing %d of %d matching groups",
