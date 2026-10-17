@@ -26,14 +26,19 @@ import (
 // upper-case letters or digits, 2 to 10 characters in all.
 var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,9}$`)
 
+// rowQuerier is what a database or a transaction offers to read one row.
+type rowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // checkProjectKey tells whether a key may be given to a new project: well
 // formed, and used by no project, now or formerly.
-func (s *Server) checkProjectKey(ctx context.Context, key string) error {
+func (s *Server) checkProjectKey(ctx context.Context, q rowQuerier, key string) error {
 	if !projectKeyPattern.MatchString(key) {
 		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
 	}
 	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
+	if err := q.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
 		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ?)`, key, key).Scan(&n); err != nil {
 		return err
 	}
@@ -50,7 +55,7 @@ func (s *Server) projectKeyCheck(w http.ResponseWriter, r *http.Request) error {
 	}
 	key := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("key")))
 	out := map[string]any{"key": key, "available": true}
-	if err := s.checkProjectKey(r.Context(), key); err != nil {
+	if err := s.checkProjectKey(r.Context(), s.db, key); err != nil {
 		var he *httpError
 		if !errors.As(err, &he) {
 			return err
@@ -168,7 +173,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	me := currentUser(r)
 	key := strings.ToUpper(strings.TrimSpace(in.Key))
-	if err := s.checkProjectKey(ctx, key); err != nil {
+	if err := s.checkProjectKey(ctx, s.db, key); err != nil {
 		return err
 	}
 	name, err := cleanName(in.Name, 255)
@@ -711,6 +716,15 @@ func (s *Server) archiveProject(archived bool) handler {
 	}
 }
 
+// keyConflict turns the duplicate-key error of a write of a project key (one
+// taken since it was checked) into the refusal the check gives.
+func keyConflict(err error, key string) error {
+	if isDuplicate(err) {
+		return failf(http.StatusConflict, i18n.ProjectKeyTaken, key)
+	}
+	return err
+}
+
 // renameProject gives a project another key. Issue keys are not stored: they
 // are the project key and the issue number, so the new key shows at once on
 // every issue. The old key goes to project_keys, which findIssue and
@@ -728,35 +742,43 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if strings.TrimSpace(in.Confirm) != key {
-		return fail(http.StatusConflict, i18n.ProjectRenameConfirm)
-	}
 	ctx := r.Context()
 	newKey := strings.ToUpper(strings.TrimSpace(in.NewKey))
-	// A key the project once had may come back; any other taken key is refused.
-	var back int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id = ?`,
-		newKey, id).Scan(&back); err != nil {
-		return err
-	}
-	if back == 0 {
-		if err := s.checkProjectKey(ctx, newKey); err != nil {
-			return err
-		}
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM project_keys WHERE pkey = ? AND project_id = ?`, newKey, id); err != nil {
+	// The project's row is locked, and the checks made on what it holds now:
+	// another rename of it waits, and a key taken meanwhile fails the write.
+	err = tx.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ? FOR UPDATE`, id).Scan(&key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.Confirm) != key {
+		return fail(http.StatusConflict, i18n.ProjectRenameConfirm)
+	}
+	// A key the project once had may come back; any other taken key is refused.
+	var back int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id = ?`,
+		newKey, id).Scan(&back); err != nil {
+		return err
+	}
+	if back == 0 {
+		if err := s.checkProjectKey(ctx, tx, newKey); err != nil {
+			return err
+		}
+	} else if _, err := tx.ExecContext(ctx, `DELETE FROM project_keys WHERE pkey = ? AND project_id = ?`, newKey, id); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE projects SET pkey = ? WHERE id = ?`, newKey, id); err != nil {
-		return err
+		return keyConflict(err, newKey)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO project_keys (pkey, project_id) VALUES (?, ?)`, key, id); err != nil {
-		return err
+		return keyConflict(err, key)
 	}
 	if err := tx.Commit(); err != nil {
 		return err

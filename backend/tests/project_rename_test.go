@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -344,6 +345,51 @@ func TestProjectOldKeyInVersionFunctions(t *testing.T) {
 			if len(res.Issues) != 1 || res.Issues[0].Key != fresh+"-"+strings.TrimPrefix(c.want, old+"-") {
 				t.Errorf("%s: %+v, want the issue %s", q, res.Issues, c.want)
 			}
+		}
+	}
+}
+
+// Projects renamed at the same moment to one key: one wins, the others are
+// refused as taken, none fails with a server error, and the key is never
+// both current and former.
+func TestProjectRenameConcurrent(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	for round := 0; round < 5; round++ {
+		const racers = 4
+		keys := make([]string, racers)
+		for i := range keys {
+			keys[i] = newProject(t, admin, nil)
+		}
+		target := newProjectKey()
+		statuses := make([]int, racers)
+		bodies := make([][]byte, racers)
+		var wg sync.WaitGroup
+		for i := range keys {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				statuses[i], bodies[i] = admin.do("POST", path(keys[i]), map[string]any{"newKey": target, "confirm": keys[i]})
+			}()
+		}
+		wg.Wait()
+		won := 0
+		for i, status := range statuses {
+			switch status {
+			case 200:
+				won++
+				t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+target, map[string]string{"confirm": target}) })
+			case 409:
+				t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+keys[i], map[string]string{"confirm": keys[i]}) })
+			default:
+				t.Errorf("round %d: renaming %s to %s: %d, want 200 or 409: %q", round, keys[i], target, status, bodies[i])
+			}
+		}
+		if won != 1 {
+			t.Errorf("round %d: %d renames to %s succeeded, want 1", round, won, target)
+		}
+		if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, target); got != "0" {
+			t.Errorf("round %d: %s is also a former key", round, target)
 		}
 	}
 }
