@@ -140,6 +140,8 @@ func (noRows) RowsAffected() (int64, error) { return 0, nil }
 type checkData struct {
 	passwords                           int
 	attachmentsWith, attachmentsWithout int
+	unreadableFiles                     int   // attachment paths that could not be looked at
+	unreadableFirst                     error // the first of them
 	workflows                           []workflowFacts
 	broken                              map[string]error
 	changeGroups                        []int64 // ids of the changes that would be imported
@@ -168,6 +170,15 @@ func (c *checkData) attachment(withFile bool) {
 		c.attachmentsWith++
 	} else {
 		c.attachmentsWithout++
+	}
+}
+
+func (c *checkData) unreadable(err error) {
+	if c == nil {
+		return
+	}
+	if c.unreadableFiles++; c.unreadableFirst == nil {
+		c.unreadableFirst = err
 	}
 }
 
@@ -402,6 +413,10 @@ func (r *run) summarise(rep *CheckReport) {
 	}
 	for _, typeKey := range r.fields {
 		rep.Counts.CustomFieldTypes[typeKey]++
+	}
+	if c.unreadableFiles > 0 {
+		r.rep.warn("%s in the Jira home could not be read, so the attachments are counted without a file (first: %v)",
+			plural(c.unreadableFiles, "path", "paths"), c.unreadableFirst)
 	}
 	rep.Steps = r.rep.Steps
 	rep.Warnings = r.rep.Warnings

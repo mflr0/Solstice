@@ -8,6 +8,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -91,6 +93,7 @@ func TestCheckDataOnAnImport(t *testing.T) {
 	c.changeItem(2)
 	c.sprint(3)
 	c.sprintMember(4, sql.NullString{}, sql.NullFloat64{})
+	c.unreadable(errors.New("denied"))
 }
 
 func TestOrphanChangeItems(t *testing.T) {
@@ -263,5 +266,55 @@ func TestCheckRefusalKeepsTheStepsBefore(t *testing.T) {
 	}
 	if len(names) == 0 || names[0] != "users" || slices.Contains(names, "issues") {
 		t.Errorf("steps = %v, want those before permissions only", names)
+	}
+}
+
+// A check only looks at attachment files: a regular file is found, anything
+// else is missing, and a path it may not look at is missing with a warning
+// instead of an error.
+func TestCheckFetchFile(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "10001")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "10002"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	locked := filepath.Join(dir, "locked")
+	if err := os.Mkdir(locked, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "10003"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(locked, 0o700) // so that the temporary directory can be removed
+
+	r := &run{check: &checkData{}}
+	for name, tc := range map[string]struct {
+		path       string
+		found      bool
+		unreadable int
+	}{
+		"regular file":     {file, true, 0},
+		"missing":          {filepath.Join(dir, "10009"), false, 0},
+		"directory":        {filepath.Join(dir, "10002"), false, 0},
+		"permission error": {filepath.Join(locked, "10003"), false, 1},
+	} {
+		if name == "permission error" && os.Geteuid() == 0 {
+			continue // root can look anywhere
+		}
+		before := r.check.unreadableFiles
+		found, err := r.fetchFile(tc.path, "")
+		if err != nil || found != tc.found || r.check.unreadableFiles-before != tc.unreadable {
+			t.Errorf("%s: found %v, err %v, unreadable %d; want %v, nil, %d",
+				name, found, err, r.check.unreadableFiles-before, tc.found, tc.unreadable)
+		}
+	}
+	if r.check.unreadableFiles > 0 && r.check.unreadableFirst == nil {
+		t.Error("the first unreadable path is not kept")
 	}
 }

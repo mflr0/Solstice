@@ -579,16 +579,20 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 	return false, nil
 }
 
-// fetchFile copies src to dst. A check copies nothing: it only looks.
+// fetchFile copies src to dst. A check copies nothing: it only looks, and a
+// file it cannot look at counts as missing instead of stopping it.
 func (r *run) fetchFile(src, dst string) (bool, error) {
 	if r.check == nil {
 		return copyFile(src, dst)
 	}
-	_, err := os.Stat(src)
-	if os.IsNotExist(err) {
+	info, err := os.Stat(src)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			r.check.unreadable(err)
+		}
 		return false, nil
 	}
-	return err == nil, err
+	return info.Mode().IsRegular(), nil
 }
 
 // copyFile copies src to dst through a temporary file. A missing src is not
