@@ -384,6 +384,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "स्प्रिंट अपनी शुरुआत के बाद खत्म होना चाहिए।",
 	SprintStartFuture:     "सक्रिय स्प्रिंट भविष्य में शुरू नहीं हो सकता।",
 	SprintDeleteNotFuture: "केवल आगामी स्प्रिंट को मिटाया जा सकता है।",
+	SprintNotOnBoard:      "इस टिकट का प्रोजेक्ट इस स्प्रिंट के बोर्ड पर नहीं है।",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",
