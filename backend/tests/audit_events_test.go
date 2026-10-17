@@ -242,3 +242,50 @@ func TestRefusedTokenLogLevels(t *testing.T) {
 		t.Errorf("log lines missing (unknown %v, known %v):\n%s", sawUnknown, sawKnown, logs.String())
 	}
 }
+
+// The log line of a lockout names the address and, if the typed name matches
+// an account, its id: never the typed text, which may be a password.
+func TestLockoutLogLineKeepsTypedNameOut(t *testing.T) {
+	needDB(t)
+	logs := &logBuffer{}
+	srv := api.New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(logs, nil)))
+	proxies, err := config.ParseTrustedProxies("127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.SetTrustedProxies(proxies)
+	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+	lockOut := func(address, typed string) {
+		t.Helper()
+		setup := func(r *http.Request) {
+			r.Header.Set(csrfHeader, "1")
+			r.Header.Set("X-Forwarded-For", address)
+		}
+		for range 5 {
+			call(t, nil, ts.URL, "POST", "/api/login", map[string]string{"username": typed, "password": "faux"}, setup)
+		}
+	}
+	lockLine := func(address string) string {
+		t.Helper()
+		for _, line := range strings.Split(logs.String(), "\n") {
+			if strings.Contains(line, "sign-in address locked out") && strings.Contains(line, "address="+address) {
+				return line
+			}
+		}
+		t.Fatalf("no lockout line for %s in:\n%s", address, logs.String())
+		return ""
+	}
+
+	lockOut("203.0.113.21", "Hugo.Robert")
+	id := pick(t, `SELECT id FROM users WHERE username = 'hugo.robert'`)
+	known := lockLine("203.0.113.21")
+	if !strings.Contains(known, " user="+id) || strings.Contains(strings.ToLower(known), "robert") || strings.Contains(known, "username") {
+		t.Errorf("lockout of a known account (id %s): %s", id, known)
+	}
+	lockOut("203.0.113.22", "Tapé-Par-Erreur")
+	unknown := lockLine("203.0.113.22")
+	if strings.Contains(unknown, "user=") || strings.Contains(strings.ToLower(unknown), "tap") {
+		t.Errorf("lockout of an unknown name: %s", unknown)
+	}
+}
