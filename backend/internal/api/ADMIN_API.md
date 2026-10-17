@@ -223,7 +223,7 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 - `name` required, unique (409); `lead` an active user (default: the
   creator); `category` a category id or null.
 - `template`: `software` (statuses To Do / In Progress / In Review / Done) or
-  `simple` (À faire / En cours / Terminé). Statuses are reused by name or
+  `simple` (To do / In progress / Done). Statuses are reused by name or
   created; the project gets one workflow where any status can be reached
   from any other.
 - `access`: who else works in the project — `{"holder": "group", "id"}`,
@@ -470,10 +470,10 @@ setup wizard).
 
 **While the import runs, Solstice is in maintenance:** every other `/api` and
 `/rest` request answers 503 `{"error": …, "maintenance": true}`, except
-`GET /api/settings/public` and `GET /api/admin/import` for the administrator
-who started it (their session is recognised without the database). Poll
-`GET /api/admin/import` every second or two; when `state` is `done` or
-`failed`, the application is back.
+`GET /api/settings/public`, and `GET /api/admin/import` and `GET /api/me` for
+the administrator who started it (their session is recognised without the
+database). Poll `GET /api/admin/import` every second or two; when `state` is
+`done` or `failed`, the application is back.
 
 ### What a replacing import keeps
 
@@ -518,8 +518,9 @@ Personal access tokens (`Authorization: Bearer sol_…`):
   `user` (`userRef`); `DELETE /api/admin/tokens/{id}` revokes any.
 - `GET /api/admin/tokens/settings` → `{who: everyone|admins|group, group:
   idName | null}`; `PUT` the same with `group` as an id: who may create
-  tokens. Administrators always may; the default is everyone. Creating a
-  token against the policy answers 403. Tokens that exist keep working.
+  tokens. Administrators always may; the default is administrators only.
+  Creating a token against the policy answers 403. Tokens that exist keep
+  working.
   (`settings.tokens`)
 
 Audit log:
