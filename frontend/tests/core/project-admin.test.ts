@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ComponentRow } from '../../src/core/admin-types.js';
+import type { ComponentRow, VersionRow } from '../../src/core/admin-types.js';
 
 import {
   ASSIGNEE_TYPES,
@@ -34,6 +34,9 @@ import {
   toggleIssueType,
   typesInUse,
   uniqueNameProblem,
+  versionForm,
+  versionPayload,
+  versionProblems,
   type ProjectForm,
   type ProjectSettings,
 } from '../../src/core/project-admin.js';
@@ -422,6 +425,71 @@ describe('components', () => {
     expect(componentPayload({ ...f, lead: { ...lead, id: 9 } }, row)).toEqual({ lead: 9 });
     expect(componentPayload({ ...f, assigneeType: 'unassigned' }, row)).toEqual({
       assigneeType: 'unassigned',
+    });
+  });
+});
+
+describe('versions', () => {
+  const row: VersionRow = {
+    id: 3,
+    name: '1.0',
+    description: 'First release',
+    startDate: '2026-01-05',
+    releaseDate: '2026-02-01',
+    released: false,
+    archived: false,
+    position: 1,
+    issues: { total: 4, unresolved: 1 },
+  };
+
+  it('starts blank, or from the version', () => {
+    expect(versionForm(null)).toEqual({
+      name: '',
+      description: '',
+      startDate: '',
+      releaseDate: '',
+    });
+    expect(versionForm({ ...row, startDate: null, description: null })).toEqual({
+      name: '1.0',
+      description: '',
+      startDate: '',
+      releaseDate: '2026-02-01',
+    });
+  });
+
+  it('checks the name and the dates', () => {
+    const f = versionForm(row);
+    const others = [
+      { id: 3, name: '1.0' },
+      { id: 4, name: '2.0' },
+    ];
+    expect(versionProblems(f, others, 3)).toEqual({});
+    expect(versionProblems({ ...f, name: '2.0' }, others, 3)).toEqual({ name: 'nameTaken' });
+    expect(versionProblems({ ...f, name: ' ' }, others, 3).name).toBe('nameRequired');
+    expect(versionProblems({ ...f, startDate: '2026-03-01' }, others, 3)).toEqual({
+      dates: 'startAfterRelease',
+    });
+    expect(versionProblems({ ...f, startDate: '' }, others, 3)).toEqual({});
+  });
+
+  it('sends what is filled in to create', () => {
+    expect(versionPayload({ ...versionForm(null), name: ' 2.0 ' }, null)).toEqual({ name: '2.0' });
+    expect(versionPayload(versionForm(row), null)).toEqual({
+      name: '1.0',
+      description: 'First release',
+      startDate: '2026-01-05',
+      releaseDate: '2026-02-01',
+    });
+  });
+
+  it('sends only the changes to update, and null to clear a day', () => {
+    const f = versionForm(row);
+    expect(versionPayload(f, row)).toEqual({});
+    expect(versionPayload({ ...f, name: ' 1.1 ' }, row)).toEqual({ name: '1.1' });
+    expect(versionPayload({ ...f, description: '' }, row)).toEqual({ description: '' });
+    expect(versionPayload({ ...f, startDate: '' }, row)).toEqual({ startDate: null });
+    expect(versionPayload({ ...f, releaseDate: '2026-02-15' }, row)).toEqual({
+      releaseDate: '2026-02-15',
     });
   });
 });

@@ -13,6 +13,8 @@ import type {
   ComponentRow,
   ExtraRecipient,
   ProjectPatch,
+  VersionInput,
+  VersionRow,
 } from './admin-types.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
@@ -460,5 +462,60 @@ export function componentPayload(f: ComponentForm, before: ComponentRow | null):
   if (description !== (before.description ?? '')) out.description = description;
   if ((f.lead?.id ?? null) !== (before.lead?.id ?? null)) out.lead = f.lead?.id ?? null;
   if (f.assigneeType !== before.assigneeType) out.assigneeType = f.assigneeType;
+  return out;
+}
+
+/* Versions tab ---------------------------------------------------------------- */
+
+/** What the version dialog edits. Days are "YYYY-MM-DD"; empty is no date. */
+export interface VersionForm {
+  name: string;
+  description: string;
+  startDate: string;
+  releaseDate: string;
+}
+
+export function versionForm(v: VersionRow | null): VersionForm {
+  return {
+    name: v?.name ?? '',
+    description: v?.description ?? '',
+    startDate: v?.startDate ?? '',
+    releaseDate: v?.releaseDate ?? '',
+  };
+}
+
+export function versionProblems(
+  f: VersionForm,
+  versions: readonly { id: number; name: string }[],
+  self: number | null,
+): { name?: NameProblem; dates?: 'startAfterRelease' } {
+  const out: { name?: NameProblem; dates?: 'startAfterRelease' } = {};
+  const name = uniqueNameProblem(f.name, versions, self);
+  if (name) out.name = name;
+  const dates = datesProblem(f.startDate, f.releaseDate);
+  if (dates) out.dates = dates;
+  return out;
+}
+
+/**
+ * The body of POST (no `before`) or PATCH on a version. A change sends only
+ * the fields that differ; an emptied day goes as null, which clears it.
+ */
+export function versionPayload(f: VersionForm, before: VersionRow | null): VersionInput {
+  const name = f.name.trim();
+  const description = f.description.trim();
+  if (!before) {
+    return {
+      name,
+      ...(description ? { description } : {}),
+      ...(f.startDate ? { startDate: f.startDate } : {}),
+      ...(f.releaseDate ? { releaseDate: f.releaseDate } : {}),
+    };
+  }
+  const out: VersionInput = {};
+  if (name !== before.name) out.name = name;
+  if (description !== (before.description ?? '')) out.description = description;
+  if (f.startDate !== (before.startDate ?? '')) out.startDate = f.startDate || null;
+  if (f.releaseDate !== (before.releaseDate ?? '')) out.releaseDate = f.releaseDate || null;
   return out;
 }
