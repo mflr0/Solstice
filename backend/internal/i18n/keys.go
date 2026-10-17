@@ -360,6 +360,9 @@ const (
 	LinkToItself       Key = "LinkToItself"
 )
 
+// Remote links.
+const RemoteLinkGlobalIDUnsupported Key = "RemoteLinkGlobalIDUnsupported"
+
 // Attachments.
 const (
 	AttachmentUploadInvalid Key = "AttachmentUploadInvalid"

@@ -106,6 +106,13 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/filter/favourite", s.restFavouriteFilters, true)
 		rest("GET "+p+"/filter/{id}", s.restFilter, true)
 		rest("GET "+p+"/mypermissions", s.restMyPermissions, true)
+
+		rest("GET "+p+"/issue/{key}/remotelink", s.restRemoteLinks, true)
+		rest("POST "+p+"/issue/{key}/remotelink", s.restAddRemoteLink, true)
+		rest("DELETE "+p+"/issue/{key}/remotelink", s.restDeleteRemoteLink, true)
+		rest("GET "+p+"/issue/{key}/remotelink/{linkId}", s.restRemoteLink, true)
+		rest("PUT "+p+"/issue/{key}/remotelink/{linkId}", s.restEditRemoteLink, true)
+		rest("DELETE "+p+"/issue/{key}/remotelink/{linkId}", s.restDeleteRemoteLink, true)
 	}
 	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
 		rest("GET "+p+"/board", s.agileBoards, true)
