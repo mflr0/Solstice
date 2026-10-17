@@ -428,28 +428,40 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 	o := s.restOut(r)
 	out := []any{}
 	for _, f := range systemFields {
-		schema := map[string]any{"type": f.typ, "system": f.id}
-		if f.items != "" {
-			schema["items"] = f.items
-		}
 		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable,
 			"navigable": f.navigable, "searchable": len(f.clauses) > 0, "clauseNames": f.clauses}
 		if f.typ != "" {
-			jf["schema"] = schema
+			jf["schema"] = systemSchema(f)
 		}
 		out = append(out, jf)
 	}
 	for _, f := range fields {
-		typ, items := customSchema(f.Kind)
-		schema := map[string]any{"type": typ, "custom": f.TypeKey, "customId": f.ID}
-		if items != "" {
-			schema["items"] = items
-		}
 		out = append(out, map[string]any{"id": customID(f.ID), "name": f.Name, "custom": true, "orderable": true,
-			"navigable": true, "searchable": true, "schema": schema,
+			"navigable": true, "searchable": true, "schema": customFieldSchema(f),
 			"clauseNames": []string{"cf[" + strconv.FormatInt(f.ID, 10) + "]", f.Name}})
 	}
 	return writeJSON(w, http.StatusOK, out)
+}
+
+// fieldSchema is the schema of a field in Jira's answers: its type, the type
+// of the items of an array, and what tells it apart (named by who).
+func fieldSchema(typ, items string, who map[string]any) map[string]any {
+	who["type"] = typ
+	if items != "" {
+		who["items"] = items
+	}
+	return who
+}
+
+// systemSchema is the schema of a system field.
+func systemSchema(f sysField) map[string]any {
+	return fieldSchema(f.typ, f.items, map[string]any{"system": f.id})
+}
+
+// customFieldSchema is the schema of a custom field.
+func customFieldSchema(f customFieldDef) map[string]any {
+	typ, items := customSchema(f.Kind)
+	return fieldSchema(typ, items, map[string]any{"custom": f.TypeKey, "customId": f.ID})
 }
 
 // customSchema gives the schema type of a custom field kind.

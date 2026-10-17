@@ -337,6 +337,9 @@ const (
 	IssueMoveUnsupported       Key = "IssueMoveUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
+	RESTPickerHistory          Key = "RESTPickerHistory"
+	RESTPickerCurrent          Key = "RESTPickerCurrent"
+	RESTPickerShowing          Key = "RESTPickerShowing"
 )
 
 // Comments and their visibility.
