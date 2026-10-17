@@ -1241,6 +1241,62 @@ export const fr: Messages = {
     unavailable:
       'Ce serveur ne propose pas encore ce réglage : mettez Solstice à jour pour l’utiliser.',
     hideBanner: 'Masquer',
+    restricted: {
+      comments: (n: number) => plural(n, 'commentaire', 'commentaires'),
+      worklogs: (n: number) => plural(n, 'saisie de temps', 'saisies de temps'),
+    },
+    groupsPage: {
+      intro:
+        'Les groupes rassemblent des personnes pour leur donner des droits en une seule fois. Les noms sont enregistrés en minuscules.',
+      newGroup: 'Nouveau groupe',
+      create: 'Créer le groupe',
+      search: 'Nom ou description du groupe',
+      name: 'Nom',
+      description: 'Description',
+      members: 'Membres',
+      count: (n: number) => plural(n, 'membre', 'membres'),
+      empty: 'Aucun groupe pour l’instant.',
+      emptyHint: 'Créez un groupe pour donner des droits à plusieurs personnes à la fois.',
+      problems: {
+        nameRequired: 'Donnez un nom au groupe.',
+        nameTooLong: '255 caractères au plus.',
+        descriptionTooLong: '255 caractères au plus.',
+      },
+      editTitle: (name: string) => `Groupe ${name}`,
+      created: (name: string) => `Groupe ${name} créé.`,
+      updated: (name: string) => `Groupe ${name} enregistré.`,
+      membersHint: 'Les membres sont ajoutés et retirés tout de suite, sans enregistrer.',
+      noMembers: 'Aucun membre pour l’instant.',
+      addMember: 'Ajouter un membre',
+      memberAdded: (name: string) => `${name} a été ajouté au groupe.`,
+      memberRemoved: (name: string) => `${name} a été retiré du groupe.`,
+      deleteTitle: (name: string) => `Supprimer le groupe ${name} ?`,
+      deleteBody:
+        'Le groupe disparaît des droits, des rôles et des niveaux de sécurité qui l’utilisent. Ses membres gardent leur compte.',
+      deleted: (name: string) => `Groupe ${name} supprimé.`,
+      inUse: (items: string) => `Encore réservés à ce groupe : ${items}.`,
+    },
+    rolesPage: {
+      shared:
+        'Les rôles sont communs à tous les projets. Qui a un rôle se règle dans chaque projet.',
+      newRole: 'Nouveau rôle',
+      create: 'Créer le rôle',
+      name: 'Nom',
+      description: 'Description',
+      empty: 'Aucun rôle pour l’instant.',
+      emptyHint: 'Créez un rôle, puis donnez-le à des personnes dans chaque projet.',
+      problems: {
+        nameRequired: 'Donnez un nom au rôle.',
+        nameTooLong: '255 caractères au plus.',
+      },
+      editTitle: (name: string) => `Rôle ${name}`,
+      created: (name: string) => `Rôle ${name} créé.`,
+      updated: (name: string) => `Rôle ${name} enregistré.`,
+      deleteTitle: (name: string) => `Supprimer le rôle ${name} ?`,
+      deleteBody: 'Le rôle disparaît de tous les projets.',
+      deleted: (name: string) => `Rôle ${name} supprimé.`,
+      inUse: (items: string) => `Encore réservés à ce rôle : ${items}.`,
+    },
   },
 
   auditAdmin: {
