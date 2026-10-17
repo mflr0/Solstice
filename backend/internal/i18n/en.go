@@ -12,6 +12,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Request refused: add the header “X-Atlassian-Token: no-check” (protection against cross-site request forgery).",
 	RequestInvalid:              "Invalid request: %s",
 	RequestTooManyAttempts:      "Too many attempts. Try again in %d s.",
+	RequestTooManyStreams:       "Too many live connections.",
 	RequestStreamingUnsupported: "Streaming is not supported.",
 	RequestInternalError:        "Internal error. The incident has been logged.",
 

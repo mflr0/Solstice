@@ -11,6 +11,7 @@ const (
 	RequestXSRFHeader           Key = "RequestXSRFHeader"
 	RequestInvalid              Key = "RequestInvalid"
 	RequestTooManyAttempts      Key = "RequestTooManyAttempts"
+	RequestTooManyStreams       Key = "RequestTooManyStreams"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
 )

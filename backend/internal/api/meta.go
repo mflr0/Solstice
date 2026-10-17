@@ -11,6 +11,7 @@ import (
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -144,6 +145,45 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+// Caps on open live-event streams: one user cannot hold many, and the
+// server cannot hold an unbounded number.
+const (
+	maxStreamsPerUser = 10
+	maxStreamsTotal   = 1000
+)
+
+// streamSlots counts the open live-event streams, per user and in total.
+type streamSlots struct {
+	mu      sync.Mutex
+	perUser map[int64]int
+	total   int
+}
+
+// acquire takes a slot for a user and reports whether one was free.
+func (c *streamSlots) acquire(user int64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.perUser == nil {
+		c.perUser = map[int64]int{}
+	}
+	if c.total >= maxStreamsTotal || c.perUser[user] >= maxStreamsPerUser {
+		return false
+	}
+	c.total++
+	c.perUser[user]++
+	return true
+}
+
+// release gives back a slot taken by acquire.
+func (c *streamSlots) release(user int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.total--
+	if c.perUser[user]--; c.perUser[user] == 0 {
+		delete(c.perUser, user)
+	}
+}
+
 // events streams change notifications (Server-Sent Events). Permissions are
 // re-read every minute so a revoked access stops the flow.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
@@ -155,6 +195,10 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if !s.streams.acquire(sub.UserID) {
+		return fail(http.StatusTooManyRequests, i18n.RequestTooManyStreams)
+	}
+	defer s.streams.release(sub.UserID)
 	current := make(chan *perm.Subject, 1)
 	current <- sub
 	can := func(e live.Event) bool {
