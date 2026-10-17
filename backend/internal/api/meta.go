@@ -195,6 +195,14 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.streamEvents(w, r, flusher, sub)
+}
+
+// streamEvents holds one live-event stream for sub: it returns when the
+// client goes away (the request's context is done), when the server shuts
+// down, or when the session behind the stream ends, so the slot it took is
+// given back.
+func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, flusher http.Flusher, sub *perm.Subject) error {
 	if !s.streams.acquire(sub.UserID) {
 		return fail(http.StatusTooManyRequests, i18n.RequestTooManyStreams)
 	}

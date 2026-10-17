@@ -1,6 +1,13 @@
 package api
 
-import "testing"
+import (
+	"context"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"solstice/internal/perm"
+)
 
 // A user can hold a few streams but not more than the cap, even by opening
 // them from several accounts at once, and one user's cap is another's.
@@ -54,5 +61,43 @@ func TestStreamSlotsTotal(t *testing.T) {
 	c.release(1)
 	if !c.acquire(maxStreamsTotal + 1) {
 		t.Fatal("a slot freed at the total cap was not counted again")
+	}
+}
+
+// A closed stream gives its slot back: cancelling the client request ends the
+// stream and the slot count returns to zero within a second.
+func TestStreamSlotReleasedWhenClientCancels(t *testing.T) {
+	srv := quietServer()
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest("GET", "/api/events", nil).WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	slots := func() (total, perUser int) {
+		srv.streams.mu.Lock()
+		defer srv.streams.mu.Unlock()
+		return srv.streams.total, srv.streams.perUser[42]
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- srv.streamEvents(w, req, w, &perm.Subject{UserID: 42})
+	}()
+
+	// Wait for the slot to be taken, then let the client go away.
+	for total, _ := slots(); total == 0; total, _ = slots() {
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("streamEvents: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the stream did not end after the client cancelled")
+	}
+	if total, perUser := slots(); total != 0 || perUser != 0 {
+		t.Errorf("slots not released: total=%d perUser[42]=%d", total, perUser)
 	}
 }
