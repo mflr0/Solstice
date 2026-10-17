@@ -42,6 +42,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	route("GET /api/projects/{key}/settings", s.getProjectSettings, true)
 	route("PATCH /api/projects/{key}", s.updateProject, true)
 	route("DELETE /api/projects/{key}", s.deleteProject, true)
+	route("POST /api/admin/projects/{key}/rename", s.renameProject, true)
 	route("POST /api/projects/{key}/archive", s.archiveProject(true), true)
 	route("POST /api/projects/{key}/unarchive", s.archiveProject(false), true)
 	route("GET /api/project-categories", s.listCategories, true)

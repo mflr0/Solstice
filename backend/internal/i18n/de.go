@@ -139,6 +139,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Dieses Projekt enthält Vorgänge: Geben Sie seinen Schlüssel ein, um die Löschung zu bestätigen.",
 	ProjectGranteeUnknown:      "Unbekannter Berechtigungsempfänger: %s.",
 	ProjectGranteeNotFound:     "Berechtigungsempfänger nicht gefunden.",
+	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Aufgabe",

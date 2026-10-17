@@ -276,6 +276,21 @@ they hold (comments, attachments and their files, history…), components,
 versions, workflows, grants, role members, security levels, former keys.
 Boards and filters remain (they may show nothing). (`project.delete`)
 
+### Change the key — global admin
+
+`POST /api/admin/projects/{key}/rename` with body `{"newKey": "SHOP",
+"confirm": "WEB"}` → the `GET /api/projects/{key}` settings object, with the
+new key. `confirm` must be the current key (409 otherwise). The new key
+follows the rules of a new project (`GET /api/admin/project-key?key=`):
+400 if ill-formed, 409 if used by a project now or formerly, which includes
+the project's own former keys. Issue keys are not stored (they are the
+project key and the issue number), so every issue takes the new key at once;
+the old key is kept as a former key, and `OLD-12` still finds its issue in
+`/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`, `/api/projects/OLD` and in
+JQL (`project = OLD`, `key = OLD-12`). Saved filters, board filters and
+other texts that name the old key are left as they are. (`project.rename`,
+details `{oldKey, newKey}`)
+
 ### Categories
 
 - `GET /api/project-categories` (signed in) → `[{id, name, description,

@@ -711,6 +711,54 @@ func (s *Server) archiveProject(archived bool) handler {
 	}
 }
 
+// renameProject gives a project another key. Issue keys are not stored: they
+// are the project key and the issue number, so the new key shows at once on
+// every issue. The old key goes to project_keys, which findIssue and
+// projectByKey read, so OLD-12 keeps finding its issue.
+func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
+	id, key, err := s.adminProject(r)
+	if err != nil {
+		return err
+	}
+	var in struct {
+		NewKey  string `json:"newKey"`
+		Confirm string `json:"confirm"`
+	}
+	if err := readJSON(r, &in); err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.Confirm) != key {
+		return fail(http.StatusConflict, i18n.ProjectRenameConfirm)
+	}
+	ctx := r.Context()
+	newKey := strings.ToUpper(strings.TrimSpace(in.NewKey))
+	if err := s.checkProjectKey(ctx, newKey); err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `UPDATE projects SET pkey = ? WHERE id = ?`, newKey, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO project_keys (pkey, project_id) VALUES (?, ?)`, key, id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.perms.Invalidate()
+	s.auditLog(r, audit.ProjectRename, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: newKey},
+		map[string]any{"oldKey": key, "newKey": newKey})
+	p, err := s.projectSettings(ctx, id)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, p)
+}
+
 // deleteProject removes a project and everything in it. One with issues
 // needs its key typed as confirmation.
 func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {

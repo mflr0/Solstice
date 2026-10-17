@@ -100,7 +100,8 @@ func (c *compiler) clause(cl Clause) (string, error) {
 	}
 	switch strings.ToLower(cl.Field) {
 	case "project":
-		return c.lookup(cl, "i.project_id", "SELECT id FROM projects WHERE pkey IN (%s) OR name IN (%s) OR id IN (%s)", upper)
+		return c.lookup(cl, "i.project_id", "SELECT id FROM projects WHERE pkey IN (%s) OR name IN (%s) OR id IN (%s) "+
+			"OR id IN (SELECT project_id FROM project_keys WHERE pkey IN (%s))", upper)
 	case "status":
 		return c.lookup(cl, "i.status_id", "SELECT id FROM statuses WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
 	case "statuscategory":
@@ -255,8 +256,13 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	match := ""
 	if len(texts) > 0 {
 		m := sqlq.Marks(len(texts))
-		match = col + " IN (" + fmt.Sprintf(tmpl, m, m, m) + ")"
-		for range 3 {
+		n := strings.Count(tmpl, "%s")
+		marks := make([]any, n)
+		for i := range marks {
+			marks[i] = m
+		}
+		match = col + " IN (" + fmt.Sprintf(tmpl, marks...) + ")"
+		for range n {
 			for _, t := range texts {
 				if norm != nil {
 					t = norm(t)
@@ -560,6 +566,12 @@ func (c *compiler) date(cl Clause, col string, dateOnly bool) (string, error) {
 
 var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
 
+// formerKeys is a condition on a project (alias pa) naming it by its key or
+// by a key it had before it was renamed; it takes the key twice.
+func formerKeys(pa string) string {
+	return "(" + pa + ".pkey = ? OR " + pa + ".id IN (SELECT project_id FROM project_keys WHERE pkey = ?))"
+}
+
 // keysSQL is a condition matching the given issue keys or numeric ids on
 // the issue under alias a (projects under pa).
 func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
@@ -567,8 +579,8 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	for _, t := range texts {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			conds = append(conds, "("+pa+".pkey = ? AND "+a+".num = ?)")
-			c.arg(strings.ToUpper(m[1]), num)
+			conds = append(conds, "("+formerKeys(pa)+" AND "+a+".num = ?)")
+			c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
 			continue
 		}
 		if id, err := strconv.ParseInt(t, 10, 64); err == nil {
@@ -607,8 +619,8 @@ func (c *compiler) key(cl Clause) (string, error) {
 			return "", fail(i18n.JQLIssueKeyInvalid, texts[0])
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
-		c.arg(strings.ToUpper(m[1]), num)
-		return "(p.pkey = ? AND i.num " + cl.Op + " ?)", nil
+		c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
+		return "(" + formerKeys("p") + " AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")
 }
