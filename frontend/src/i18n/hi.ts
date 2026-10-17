@@ -1794,6 +1794,7 @@ export const hi: Messages = {
     name: 'दिखने वाला नाम',
     email: 'ईमेल पता',
     emailHint: 'आपको सूचित करने और आपसे संपर्क करने के लिए भी काम आता है।',
+    emailChangeHint: 'पता बदलने के लिए आपका मौजूदा पासवर्ड चाहिए।',
     passwordTitle: 'पासवर्ड',
     passwordIntro: 'मौजूदा पासवर्ड रखने के लिए फ़ील्ड ख़ाली छोड़ दें।',
     currentPassword: 'मौजूदा पासवर्ड',

@@ -37,6 +37,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Geben Sie Ihr aktuelles Passwort ein.",
 	AccountCurrentPasswordIncorrect:  "Aktuelles Passwort ist falsch.",
 	AccountTokenCannotChangePassword: "Mit einem Zugriffstoken kann das Passwort nicht geändert werden: Melden Sie sich mit Ihrem Passwort an.",
+	AccountTokenCannotChangeEmail:    "Mit einem Zugriffstoken kann die E-Mail-Adresse nicht geändert werden: Melden Sie sich mit Ihrem Passwort an.",
 	AccountLanguageUnsupported:       "Sprache wird nicht unterstützt (zur Auswahl: %s).",
 	AccountResetLinkInvalid:          "Dieser Link ist ungültig oder abgelaufen. Fordern Sie einen neuen an.",
 	AccountMailUnavailable:           "E-Mail-Links sind nicht verfügbar: Richten Sie zuerst E-Mail und die öffentliche Adresse in der Administration ein.",
