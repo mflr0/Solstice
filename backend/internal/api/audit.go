@@ -57,17 +57,17 @@ func (s *Server) auditLogin(r *http.Request, username string, u *auth.User, meth
 
 // auditLockout records that an address was locked after repeated failed
 // sign-ins, once when the lock starts (not for each attempt while it lasts).
-// The entry names the address and the user name that was typed; the log line
-// only the address and the id of the account that name matches, as what was
-// typed may be a password.
+// The entry names the address and, if the user name that was typed matches an
+// account, that account; the log line the address and the id of the account.
+// What was typed is kept nowhere, as it may be a password.
 func (s *Server) auditLockout(r *http.Request, username string, d time.Duration) {
 	name, ip, seconds := strings.ToLower(strings.TrimSpace(username)), clientIP(r, s.proxies), int(d.Seconds())+1
-	e := audit.Entry{Username: name, IP: ip, Action: audit.LoginLockout,
-		Details: map[string]any{"seconds": seconds}}
+	e := audit.Entry{IP: ip, Action: audit.LoginLockout, Details: map[string]any{"seconds": seconds}}
 	logged := []any{"address", ip}
 	if s.db != nil && name != "" {
 		s.db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE username = ?`, name).Scan(&e.UserID)
 		if e.UserID != 0 {
+			e.Username = name
 			logged = append(logged, "user", e.UserID)
 		}
 	}

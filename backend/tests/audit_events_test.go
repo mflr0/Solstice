@@ -132,6 +132,46 @@ func TestSignInLockoutIsAudited(t *testing.T) {
 	}
 }
 
+// A lockout caused by a name that matches no account records the address
+// only: what was typed may be a password and must not reach the audit log.
+func TestLockoutOfUnknownNameKeepsTypedTextOut(t *testing.T) {
+	srv, base := newServer(t)
+	proxies, err := config.ParseTrustedProxies("127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.SetTrustedProxies(proxies)
+	setup := func(r *http.Request) {
+		r.Header.Set(csrfHeader, "1")
+		r.Header.Set("X-Forwarded-For", "203.0.113.31")
+	}
+	before, _ := latestAudit(t, "login.lockout")
+	for range 5 {
+		call(t, nil, base, "POST", "/api/login", map[string]string{"username": "Tapé-Par-Erreur", "password": "faux"}, setup)
+	}
+	if n, _ := latestAudit(t, "login.lockout"); n != before+1 {
+		t.Fatalf("lockout: %d entries (was %d)", n, before)
+	}
+	var recorded, address string
+	if err := testDB.QueryRow(`SELECT CONCAT(COALESCE(username, ''), COALESCE(target_id, ''), COALESCE(target_label, ''),
+		COALESCE(details, '')), COALESCE(ip, '') FROM audit_log WHERE action = 'login.lockout' ORDER BY id DESC LIMIT 1`).
+		Scan(&recorded, &address); err != nil {
+		t.Fatal(err)
+	}
+	if address != "203.0.113.31" {
+		t.Errorf("lockout address %q, want 203.0.113.31", address)
+	}
+	if strings.Contains(strings.ToLower(recorded), "tap") {
+		t.Errorf("the typed name reached the audit log: %s", recorded)
+	}
+	if who := pick(t, `SELECT COALESCE(username, '') FROM audit_log WHERE action = 'login.lockout' ORDER BY id DESC LIMIT 1`); who != "" {
+		t.Errorf("lockout of an unknown name has a user name %q", who)
+	}
+	if id := pick(t, `SELECT COALESCE(user_id, 0) FROM audit_log WHERE action = 'login.lockout' ORDER BY id DESC LIMIT 1`); id != "0" {
+		t.Errorf("lockout of an unknown name has a user id %s", id)
+	}
+}
+
 // A token that exists but can no longer be used gets one audit entry, naming
 // its id and name and never the token; an unknown string is only logged.
 func TestRefusedTokensAreAudited(t *testing.T) {
