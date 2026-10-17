@@ -318,7 +318,7 @@ func (r *run) importIssueDetails() error {
 	r.leftOut(skipped, "issue link", "issue links", "of a missing issue or link type")
 
 	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
-	skipped = 0
+	skipped, noURL := 0, 0
 	if err := r.each(`SELECT id, issueid, url, title, relationship FROM remotelink`, func(rows *sql.Rows) error {
 		var id int64
 		var issue sql.NullInt64
@@ -326,8 +326,13 @@ func (r *run) importIssueDetails() error {
 		if err := rows.Scan(&id, &issue, &url, &title, &rel); err != nil {
 			return err
 		}
-		if !r.hasIssue(issue) || url.String == "" {
+		if !r.hasIssue(issue) {
 			skipped++
+			return nil
+		}
+		if url.String == "" {
+			skipped++
+			noURL++
 			return nil
 		}
 		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel))
@@ -338,6 +343,7 @@ func (r *run) importIssueDetails() error {
 		return err
 	}
 	r.rep.step("remote links", remote.total, skipped)
+	r.leftOut(noURL, "remote link", "remote links", "without a URL")
 
 	watch := r.inserter("watchers", "issue_id", "user_id", "created_at")
 	vote := r.inserter("votes", "issue_id", "user_id", "created_at")

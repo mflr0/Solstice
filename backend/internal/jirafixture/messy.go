@@ -46,6 +46,7 @@ type MessySummary struct {
 	OrphanIssueLinks     int `json:"orphan_issue_links"`
 	OrphanComponentLinks int `json:"orphan_component_links"`
 	OrphanMovedKeys      int `json:"orphan_moved_keys"`
+	EmptyRemoteLinks     int `json:"empty_remote_links"` // remote links without a URL
 }
 
 func (m *MessySummary) addMisfitField(id int) {
@@ -459,5 +460,13 @@ func (g *generator) messyOrphans() {
 		m.OrphanIssueLinks++
 		g.assoc(is.id, "Issue", missingID+int64(m.OrphanComponentLinks), "Component", "IssueComponent")
 		m.OrphanComponentLinks++
+	}
+
+	remote := g.w.Table("remotelink", "id", "issueid", "globalid", "title", "summary", "url", "iconurl",
+		"icontitle", "relationship", "resolved", "applicationtype", "applicationname")
+	for _, is := range g.messyIssues(2, anyIssue) {
+		remote.Add(g.next("remotelink"), is.id, nil, "Lien sans adresse", nil, "", nil, nil, "mentionné dans", nil, nil,
+			nil)
+		m.EmptyRemoteLinks++
 	}
 }

@@ -141,6 +141,8 @@ if [ -n "$messy" ]; then
     "$(many "$(expect_messy duplicate_keys)" "old issue key" "old issue keys") already given to another issue (it keeps the first), not imported"
   warned "observateurs et votes d'un utilisateur inconnu" \
     "$(many "$(expect_messy ghost_watches)" "watch or vote" "watches or votes") of an unknown user or a missing issue, not imported"
+  warned "liens externes sans adresse" \
+    "$(many "$(expect_messy empty_remote_links)" "remote link" "remote links") without a URL, not imported"
   warned "valeurs d'un ancien type de champ" \
     "$(many "$(expect_messy misfit_field_values)" value values) stored for a former type of their custom field, not imported (fields $(fields))"
   echo "  avertissements du rapport :"
