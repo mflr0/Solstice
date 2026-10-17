@@ -33,30 +33,34 @@ type formProject struct {
 	types     []typeRef // its issue types, in order
 }
 
-type formComponent struct {
-	ID       int64
-	Name     string
-	Archived bool
+// formParts are the allowed values a project gives its forms: its components,
+// versions and security levels, built once for all its issue types.
+type formParts struct {
+	components, versions, levels []any
 }
 
-// formParts are the components, versions and security levels of a project.
-type formParts struct {
-	components []formComponent
-	versions   []versionData
-	levels     []idName
+// formContext is the context of a custom field: the projects and issue types
+// it applies to, nil for all of them.
+type formContext struct {
+	projects map[int64]bool
+	types    map[string]bool
 }
 
 // formBuilder describes fields for one request, keeping what several forms
-// share (a project's components, a field's options) once loaded.
+// share (a project's components, a field's options and context) once loaded.
 type formBuilder struct {
-	s       *Server
-	ctx     context.Context
-	o       *restOut
-	sub     *perm.Subject
-	cat     *catalog
-	customs []customFieldDef
-	options map[int64][]fieldOption
-	parts   map[int64]*formParts
+	s           *Server
+	ctx         context.Context
+	o           *restOut
+	sub         *perm.Subject
+	cat         *catalog
+	customs     []customFieldDef
+	options     map[int64][]fieldOption
+	values      map[int64][]any // the allowed values of the fields with options
+	parts       map[int64]*formParts
+	contexts    map[int64]*formContext // loaded with the first form that needs it
+	priorities  []any
+	resolutions []any
 }
 
 func (s *Server) newFormBuilder(r *http.Request, sub *perm.Subject) (*formBuilder, error) {
@@ -68,8 +72,66 @@ func (s *Server) newFormBuilder(r *http.Request, sub *perm.Subject) (*formBuilde
 	if err != nil {
 		return nil, err
 	}
-	return &formBuilder{s: s, ctx: r.Context(), o: s.restOut(r), sub: sub, cat: cat, customs: customs,
-		options: map[int64][]fieldOption{}, parts: map[int64]*formParts{}}, nil
+	b := &formBuilder{s: s, ctx: r.Context(), o: s.restOut(r), sub: sub, cat: cat, customs: customs,
+		options: map[int64][]fieldOption{}, values: map[int64][]any{}, parts: map[int64]*formParts{}}
+	b.priorities, b.resolutions = []any{}, []any{}
+	for _, v := range cat.Priorities {
+		b.priorities = append(b.priorities, b.o.priority(&v))
+	}
+	for _, v := range cat.Resolutions {
+		b.resolutions = append(b.resolutions, b.o.resolution(&v))
+	}
+	return b, nil
+}
+
+// outside tells whether the context of a custom field excludes a project and
+// issue type, as fieldsOutside does for the database, from contexts loaded
+// once.
+func (b *formBuilder) outside(f customFieldDef, projectID int64, typeID string) (bool, error) {
+	if b.contexts == nil {
+		contexts := map[int64]*formContext{}
+		of := func(id int64) *formContext {
+			if contexts[id] == nil {
+				contexts[id] = &formContext{}
+			}
+			return contexts[id]
+		}
+		if err := sqlq.Each(b.ctx, b.s.db, `SELECT field_id, project_id FROM custom_field_projects`, func(rows *sql.Rows) error {
+			var field, project int64
+			if err := rows.Scan(&field, &project); err != nil {
+				return err
+			}
+			if c := of(field); c.projects == nil {
+				c.projects = map[int64]bool{project: true}
+			} else {
+				c.projects[project] = true
+			}
+			return nil
+		}); err != nil {
+			return false, err
+		}
+		if err := sqlq.Each(b.ctx, b.s.db, `SELECT field_id, issue_type_id FROM custom_field_issue_types`, func(rows *sql.Rows) error {
+			var field int64
+			var typ string
+			if err := rows.Scan(&field, &typ); err != nil {
+				return err
+			}
+			if c := of(field); c.types == nil {
+				c.types = map[string]bool{typ: true}
+			} else {
+				c.types[typ] = true
+			}
+			return nil
+		}); err != nil {
+			return false, err
+		}
+		b.contexts = contexts
+	}
+	c := b.contexts[f.ID]
+	if c == nil {
+		return false, nil
+	}
+	return (c.projects != nil && !c.projects[projectID]) || (c.types != nil && !c.types[typeID]), nil
 }
 
 // projectTypes lists the issue types of a project, in order.
@@ -91,14 +153,17 @@ func (b *formBuilder) partsOf(projectID int64) (*formParts, error) {
 	if p, ok := b.parts[projectID]; ok {
 		return p, nil
 	}
-	p := &formParts{}
+	p := &formParts{components: []any{}, versions: []any{}, levels: []any{}}
 	if err := sqlq.Each(b.ctx, b.s.db, `SELECT id, name, archived FROM components WHERE project_id = ? ORDER BY name`,
 		func(rows *sql.Rows) error {
-			var c formComponent
-			if err := rows.Scan(&c.ID, &c.Name, &c.Archived); err != nil {
+			var id int64
+			var name string
+			var archived bool
+			if err := rows.Scan(&id, &name, &archived); err != nil {
 				return err
 			}
-			p.components = append(p.components, c)
+			p.components = append(p.components, map[string]any{"self": b.o.api + "/component/" + b.o.id(id), "id": b.o.id(id),
+				"name": name, "archived": archived})
 			return nil
 		}, projectID); err != nil {
 		return nil, err
@@ -109,7 +174,7 @@ func (b *formBuilder) partsOf(projectID int64) (*formParts, error) {
 		if err := rows.Scan(&v.ID, &v.Name, &v.Released, &v.Archived, &v.Release); err != nil {
 			return err
 		}
-		p.versions = append(p.versions, v)
+		p.versions = append(p.versions, b.o.version(v, projectID))
 		return nil
 	}, projectID); err != nil {
 		return nil, err
@@ -120,7 +185,8 @@ func (b *formBuilder) partsOf(projectID int64) (*formParts, error) {
 			if err := rows.Scan(&v.ID, &v.Name); err != nil {
 				return err
 			}
-			p.levels = append(p.levels, v)
+			p.levels = append(p.levels, map[string]any{"self": b.o.api + "/securitylevel/" + b.o.id(v.ID),
+				"id": b.o.id(v.ID), "name": v.Name, "description": ""})
 			return nil
 		}, projectID); err != nil {
 		return nil, err
@@ -141,6 +207,9 @@ func (b *formBuilder) optionsOf(f customFieldDef) ([]fieldOption, error) {
 // optionValues lists the options a user may choose in a custom field: the
 // enabled ones, a cascading field's children under their parent.
 func (b *formBuilder) optionValues(f customFieldDef) ([]any, error) {
+	if v, ok := b.values[f.ID]; ok {
+		return v, nil
+	}
 	options, err := b.optionsOf(f)
 	if err != nil {
 		return nil, err
@@ -166,6 +235,7 @@ func (b *formBuilder) optionValues(f customFieldDef) ([]any, error) {
 		}
 		out = append(out, v)
 	}
+	b.values[f.ID] = out
 	return out, nil
 }
 
@@ -249,37 +319,15 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 		switch id {
 		case "priority":
 			f["hasDefaultValue"] = creating && len(b.cat.Priorities) > 0
-			allowed := []any{}
-			for _, v := range b.cat.Priorities {
-				allowed = append(allowed, b.o.priority(&v))
-			}
-			f["allowedValues"] = allowed
+			f["allowedValues"] = b.priorities
 		case "resolution":
-			allowed := []any{}
-			for _, v := range b.cat.Resolutions {
-				allowed = append(allowed, b.o.resolution(&v))
-			}
-			f["allowedValues"] = allowed
+			f["allowedValues"] = b.resolutions
 		case "components":
-			allowed := []any{}
-			for _, c := range parts.components {
-				allowed = append(allowed, map[string]any{"self": b.o.api + "/component/" + b.o.id(c.ID), "id": b.o.id(c.ID),
-					"name": c.Name, "archived": c.Archived})
-			}
-			f["allowedValues"] = allowed
+			f["allowedValues"] = parts.components
 		case "fixVersions", "versions":
-			allowed := []any{}
-			for _, v := range parts.versions {
-				allowed = append(allowed, b.o.version(v, p.id))
-			}
-			f["allowedValues"] = allowed
+			f["allowedValues"] = parts.versions
 		case "security":
-			allowed := []any{}
-			for _, l := range parts.levels {
-				allowed = append(allowed, map[string]any{"self": b.o.api + "/securitylevel/" + b.o.id(l.ID),
-					"id": b.o.id(l.ID), "name": l.Name, "description": ""})
-			}
-			f["allowedValues"] = allowed
+			f["allowedValues"] = parts.levels
 		case "assignee":
 			f["autoCompleteUrl"] = b.o.api + "/user/assignable/search?project=" + p.key + "&username="
 			if !creating {
@@ -297,16 +345,6 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 	// Custom fields: those whose kind translateCustom takes and, but for the
 	// epic link and the sprint, which checkCustomContext does not look at,
 	// whose context holds this project and type.
-	var contextual []int64
-	for _, f := range b.customs {
-		if settableKind(f.Kind) && f.Kind != "gh-epic-link" && f.Kind != "gh-sprint" {
-			contextual = append(contextual, f.ID)
-		}
-	}
-	outside, err := b.s.fieldsOutside(b.ctx, p.id, typ.ID, contextual)
-	if err != nil {
-		return nil, err
-	}
 	for _, f := range b.customs {
 		if !settableKind(f.Kind) {
 			continue
@@ -323,7 +361,14 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 				continue
 			}
 		default:
-			if !canEditCustom || slices.Contains(outside, f.ID) {
+			if !canEditCustom {
+				continue
+			}
+			outside, err := b.outside(f, p.id, typ.ID)
+			if err != nil {
+				return nil, err
+			}
+			if outside {
 				continue
 			}
 		}

@@ -435,6 +435,74 @@ func TestRESTCreateMeta(t *testing.T) {
 	}
 }
 
+// TestRESTCreateMetaManyTypes: the fields of a project's issue types, asked
+// for all together, are those asked for one type at a time, and follow the
+// context of the custom fields.
+func TestRESTCreateMetaManyTypes(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := restAs(t, "paul.martin")
+	key := newProject(t, admin, nil)
+	path := "/rest/api/2/issue/createmeta?expand=projects.issuetypes.fields&projectKeys="
+
+	_, meta := paul("GET", path+key, nil)
+	types := list(at(meta, "projects", 0, "issuetypes"))
+	if len(types) < 3 {
+		t.Fatalf("%s has %d issue types: %v", key, len(types), meta)
+	}
+	first, second := str(types[0], "id"), str(types[1], "id")
+
+	newField := func(context map[string]any) string {
+		var f struct{ ID int64 }
+		admin.call("POST", "/api/admin/fields", map[string]any{"name": unique("Champ "), "type": "text", "context": context}, 201, &f)
+		t.Cleanup(func() { admin.do("DELETE", fmt.Sprintf("/api/admin/fields/%d", f.ID), nil) })
+		return fmt.Sprintf("customfield_%d", f.ID)
+	}
+	inFirst := newField(map[string]any{"projects": []string{key}, "issueTypes": []string{first}})
+	inSecond := newField(map[string]any{"issueTypes": []string{second}})
+	elsewhere := newField(map[string]any{"projects": []string{"DEMO"}})
+	everywhere := newField(map[string]any{})
+
+	for _, name := range []string{"1.0", "0.9"} {
+		admin.call("POST", "/api/projects/"+key+"/versions", map[string]any{"name": name}, 201, nil)
+	}
+
+	_, meta = paul("GET", path+key, nil)
+	types = list(at(meta, "projects", 0, "issuetypes"))
+	var components string
+	for i, it := range types {
+		id, form := str(it, "id"), at(it, "fields")
+		for field, want := range map[string]bool{inFirst: id == first, inSecond: id == second, elsewhere: false, everywhere: true} {
+			if listed(form, field) != want {
+				t.Errorf("type %s: %s listed %v, want %v", id, field, listed(form, field), want)
+			}
+		}
+		for _, field := range []string{"fixVersions", "versions"} {
+			if got := ids(at(form, field, "allowedValues")); len(got) != 2 {
+				t.Errorf("type %s: %s %v, want the project's two versions", id, field, got)
+			}
+		}
+		if i == 0 {
+			components = fmt.Sprint(at(form, "components"))
+		} else if got := fmt.Sprint(at(form, "components")); got != components {
+			t.Errorf("type %s: components %s, as %s for the first", id, got, components)
+		}
+		// Asked for alone, a type has the same form.
+		_, one := paul("GET", path+key+"&issuetypeIds="+id, nil)
+		if got, want := fmt.Sprint(at(one, "projects", 0, "issuetypes", 0, "fields")), fmt.Sprint(form); got != want {
+			t.Errorf("type %s alone:\n%s\nwith the others:\n%s", id, got, want)
+		}
+	}
+
+	// The same in a project of the sample data, which has more fields.
+	_, meta = paul("GET", path+"DEMO", nil)
+	for _, it := range list(at(meta, "projects", 0, "issuetypes")) {
+		_, one := paul("GET", path+"DEMO&issuetypeIds="+str(it, "id"), nil)
+		if got, want := fmt.Sprint(at(one, "projects", 0, "issuetypes", 0, "fields")), fmt.Sprint(at(it, "fields")); got != want {
+			t.Errorf("DEMO, type %s alone:\n%s\nwith the others:\n%s", str(it, "id"), got, want)
+		}
+	}
+}
+
 // TestRESTCreateMetaMatchesCreate: for every user, project and issue type, an
 // issue created with a value for every field createmeta lists is created
 // with them, and a field it does not list is refused.
