@@ -27,8 +27,8 @@ report; if you do not, the release does not name you.
 `scripts/release.sh` writes `SHA256SUMS`, the SHA-256 checksum of every
 archive of the release, and signs that file with Ed25519. The signature comes
 from `SHA256SUMS.sig`. The private key stays outside the repository, named by
-`SOLSTICE_RELEASE_KEY`; the public key is written in the update helper
-(`deploy/linux/update.sh`).
+`SOLSTICE_RELEASE_KEY`. The update helper (`deploy/linux/update.sh`) carries
+the release public key; until it is set, in-app updates are refused.
 
 The update helper only downloads from the GitHub releases of the project. It
 verifies `SHA256SUMS.sig` against its public key before it reads any
