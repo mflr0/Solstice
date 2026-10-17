@@ -337,6 +337,9 @@ const (
 	IssueMoveUnsupported       Key = "IssueMoveUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
+	IssueCloneSummary          Key = "IssueCloneSummary"
+	IssueCloneHistory          Key = "IssueCloneHistory"
+	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
 )
 
 // Comments and their visibility.

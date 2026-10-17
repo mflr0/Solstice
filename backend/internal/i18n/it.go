@@ -300,6 +300,9 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Non è ancora possibile spostare un ticket.",
 	IssueSubtasksNotDeletable:  "Questo ticket ha sotto-task che non puoi eliminare.",
 	IssueDeleteSubtasks:        "Questo ticket ha dei sotto-task: aggiungi deleteSubtasks=true per eliminarli insieme.",
+	IssueCloneSummary:          "CLONE - %s",
+	IssueCloneHistory:          "creato clonando %s",
+	IssueCloneAttachmentFailed: "Non è stato possibile copiare l'allegato «%s».",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

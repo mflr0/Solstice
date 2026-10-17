@@ -301,6 +301,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
 	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप डिलीट नहीं कर सकते।",
 	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी डिलीट करने के लिए deleteSubtasks=true जोड़ें।",
+	IssueCloneSummary:          "क्लोन - %s",
+	IssueCloneHistory:          "%s को क्लोन करके बनाया गया",
+	IssueCloneAttachmentFailed: "अटैचमेंट “%s” कॉपी नहीं हो सका।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",

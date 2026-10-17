@@ -300,6 +300,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Vorgänge können noch nicht verschoben werden.",
 	IssueSubtasksNotDeletable:  "Dieser Vorgang hat Unteraufgaben, die Sie nicht löschen dürfen.",
 	IssueDeleteSubtasks:        "Dieser Vorgang hat Unteraufgaben: Fügen Sie deleteSubtasks=true hinzu, um sie mitzulöschen.",
+	IssueCloneSummary:          "KLON - %s",
+	IssueCloneHistory:          "durch Klonen von %s erstellt",
+	IssueCloneAttachmentFailed: "Der Anhang „%s“ konnte nicht kopiert werden.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
