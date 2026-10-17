@@ -318,3 +318,23 @@ func TestCheckFetchFile(t *testing.T) {
 		t.Error("the first unreadable path is not kept")
 	}
 }
+
+// A source without schemepermissions.permission_key gives a report with Refused
+// set, and one with it does not.
+func TestCheckRefusesAnOldSchema(t *testing.T) {
+	for name, tc := range map[string]struct {
+		columns int64
+		refused bool
+	}{"old Jira": {0, true}, "Jira 7 or later": {1, false}} {
+		src := sql.OpenDB(&fakeJira{count: tc.columns})
+		rep, err := check(context.Background(), src, jiradb.MySQL, Options{Log: slog.Default(), SourceTZ: time.UTC})
+		src.Close()
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if tc.refused != (rep.Refused != "") || tc.refused && !strings.HasSuffix(rep.Refused, errTooOld.Error()) {
+			t.Errorf("%s: refused = %q", name, rep.Refused)
+		}
+	}
+}
