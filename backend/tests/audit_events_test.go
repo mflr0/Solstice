@@ -4,12 +4,16 @@ package tests
 // deletion, CSV export, sign-in lockout and refused access tokens.
 
 import (
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"solstice/internal/api"
 	"solstice/internal/config"
 )
 
@@ -173,5 +177,68 @@ func TestRefusedTokensAreAudited(t *testing.T) {
 	}
 	if n3, _ := latestAudit(t, "token.reject"); n3 != n {
 		t.Errorf("an unknown token was recorded: %d entries (was %d)", n3, n)
+	}
+}
+
+// logBuffer is a log destination that the server and the test can share.
+type logBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *logBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *logBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// A string that matches no token is logged at Debug level, so that anyone
+// can send one without filling the log; a known token that is refused is a
+// warning. Neither line holds the token.
+func TestRefusedTokenLogLevels(t *testing.T) {
+	needDB(t)
+	logs := &logBuffer{}
+	srv := api.New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+
+	unknown := "sol_" + strings.Repeat("y", 40)
+	if status, _, _ := call(t, nil, ts.URL, "GET", "/api/me", nil, bearer(unknown)); status != http.StatusUnauthorized {
+		t.Fatalf("unknown token: %d, want 401", status)
+	}
+	past := time.Now().Add(-time.Hour)
+	expired := newToken(t, "paul.martin", &past)
+	if status, _, _ := call(t, nil, ts.URL, "GET", "/api/me", nil, bearer(expired)); status != http.StatusUnauthorized {
+		t.Fatalf("expired token: %d, want 401", status)
+	}
+	var sawUnknown, sawKnown bool
+	for _, line := range strings.Split(logs.String(), "\n") {
+		if !strings.Contains(line, "API token rejected") {
+			continue
+		}
+		if strings.Contains(line, unknown) || strings.Contains(line, expired) {
+			t.Errorf("a token reached the log: %s", line)
+		}
+		switch {
+		case strings.Contains(line, "reason=unknown"):
+			sawUnknown = true
+			if !strings.Contains(line, "level=DEBUG") {
+				t.Errorf("unknown token not logged at Debug: %s", line)
+			}
+		case strings.Contains(line, "owner=paul.martin"):
+			sawKnown = true
+			if !strings.Contains(line, "level=WARN") {
+				t.Errorf("refused token not logged at Warn: %s", line)
+			}
+		}
+	}
+	if !sawUnknown || !sawKnown {
+		t.Errorf("log lines missing (unknown %v, known %v):\n%s", sawUnknown, sawKnown, logs.String())
 	}
 }
