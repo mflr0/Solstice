@@ -321,6 +321,3 @@ Anything not listed above is not registered and answers 404. Notably:
   `editmeta`, the changelog as its own endpoint, remote links, issue
   properties, dashboards, and Jira Service Management APIs.
 - Plugin APIs.
-
-For changes the REST API cannot make, use the interface or the administration
-API described in `backend/internal/api/ADMIN_API.md`.

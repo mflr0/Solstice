@@ -103,19 +103,30 @@ restreindre des commentaires et des saisies de temps, pour partager des
 filtres et dans la politique des jetons d'accès. Les noms de groupe sont
 stockés en minuscules et sont uniques.
 
+La page Groupes liste tous les groupes avec leur description et leur nombre de
+membres. Un champ de recherche filtre par nom ou par description. « Nouveau
+groupe » demande un nom et une description, 255 caractères au plus chacun.
+Ouvrez un groupe pour le renommer, changer sa description ou gérer ses
+membres.
+
+- **Membres.** Une fois le groupe créé, sa fenêtre permet d'ajouter des
+  personnes avec un sélecteur et d'en retirer depuis une liste. Contrairement
+  au nom et à la description, les membres sont ajoutés et retirés aussitôt,
+  sans « Enregistrer ». On peut aussi mettre des personnes dans des groupes
+  depuis la fenêtre du compte (voir Utilisateurs).
+- **Supprimer** demande une confirmation. Le groupe disparaît des permissions,
+  des rôles et des niveaux de confidentialité qui l'utilisent ; ses membres
+  gardent leur compte.
+
 À surveiller :
 
 - Supprimer un groupe retire ses permissions, ses appartenances à des rôles et
   à des niveaux de confidentialité. La suppression est refusée tant que des
   commentaires ou des saisies de temps sont restreints au groupe, car elle les
-  cacherait à tout le monde.
+  cacherait à tout le monde. La fenêtre indique alors combien de commentaires
+  et de saisies de temps dépendent encore du groupe.
 - Renommer un groupe conserve les commentaires et les saisies de temps qui lui
   sont restreints.
-
-Dans cette version, la page Groupes du menu n'affiche que son titre. On peut
-affecter des groupes aux personnes depuis la fenêtre du compte, et l'API
-d'administration crée, renomme et supprime les groupes (`/api/admin/groups`,
-décrite dans `backend/internal/api/ADMIN_API.md`).
 
 ### Rôles
 
@@ -124,13 +135,15 @@ projet par projet, dans les réglages du projet, sous « Rôles dans ce
 projet ». On peut ensuite donner des permissions à ce rôle dans le projet,
 comme à un groupe.
 
+La page Rôles liste les rôles avec leur description. On peut créer un rôle,
+changer son nom et sa description, et le supprimer. Seul le rôle lui-même se
+gère ici ; ses titulaires se choisissent projet par projet.
+
 À surveiller :
 
-- La suppression d'un rôle est refusée tant que des commentaires ou des
-  saisies de temps lui sont restreints.
-- Comme pour les groupes, la page Rôles du menu n'affiche que son titre dans
-  cette version. Les rôles se créent, se renomment et se suppriment par l'API
-  d'administration (`/api/admin/roles`).
+- Supprimer un rôle le retire de tous les projets. La suppression est refusée
+  tant que des commentaires ou des saisies de temps lui sont restreints, et la
+  fenêtre indique combien.
 
 ## Projets
 
@@ -164,7 +177,55 @@ nombre de tickets et leur état, et renvoie vers les réglages de chacun.
 Chaque projet a ses propres règles. Rien n'est partagé par des schémas : un
 changement ne touche aucun autre projet. Seuls les administrateurs du projet
 (et les administrateurs globaux) peuvent ouvrir les réglages. La page compte
-deux onglets.
+six onglets, dans cet ordre : Général, Composants, Versions, Permissions et
+rôles, Workflows et Notifications. Elle s'ouvre sur Général. Les changements
+de Général, de Notifications et de Workflows attendent « Enregistrer », et la
+page demande confirmation avant de quitter un onglet aux modifications non
+enregistrées. Composants et Versions agissent aussitôt, depuis leurs fenêtres.
+
+**Général.** Le nom, la description, le responsable, la catégorie, l'assigné
+par défaut et les types de ticket du projet. La clé ne peut pas changer.
+
+- Le responsable a tous les droits dans le projet.
+- L'assigné par défaut, pour les tickets créés sans assigné, est personne ou
+  le responsable du projet.
+- Les types de ticket sont ceux que l'on peut choisir dans ce projet ; il en
+  faut au moins un. Un type utilisé par des tickets ne peut pas être retiré :
+  l'enregistrement est refusé et liste chacun de ces types avec son nombre de
+  tickets. Changez d'abord le type de ces tickets.
+
+**Composants.** Les composants découpent un projet en parties, comme « API » ou
+« Facturation ». Un ticket peut appartenir à un ou plusieurs composants. Un
+composant a un nom (unique dans le projet, quelle que soit la casse), une
+description, un responsable et une règle pour l'assigné des nouveaux
+tickets : le défaut du projet, le responsable du composant, le responsable du
+projet, ou personne.
+
+- Avec plusieurs composants sur un même nouveau ticket, le premier par nom qui
+  désigne quelqu'un décide de l'assigné. Cela ne joue qu'à la création d'un
+  ticket sans assigné.
+- Supprimer un composant utilisé par des tickets demande si ceux-ci le perdent
+  simplement ou passent à un autre composant.
+
+**Versions.** Les versions marquent les livraisons du produit. Un ticket dit
+quelle version le corrige et quelles versions il touche. La liste montre les
+dates de chaque version, son état et le nombre de tickets encore non résolus.
+Son ordre est celui des listes de versions ailleurs dans Solstice : changez-le
+avec les flèches. Les noms sont uniques dans le projet, et la date de début ne
+peut pas suivre la date de livraison.
+
+- **Livrer** fixe la date de livraison (aujourd'hui par défaut). Quand des
+  tickets corrigés dans la version ne sont pas résolus, on peut les déplacer
+  vers une autre version ni livrée ni archivée, ou les laisser où ils sont.
+  « Annuler la livraison » revient en arrière.
+- **Archiver** conserve la version mais la marque archivée ; on peut la
+  restaurer. Une version archivée n'est pas proposée pour accueillir les
+  tickets non résolus lors d'une livraison.
+- **Fusionner** déplace chaque ticket qui utilise la version, comme version
+  corrigée ou touchée, vers une autre version, puis la supprime.
+- **Supprimer** demande quelle version prennent à sa place les tickets
+  corrigés dans celle-ci et ceux qu'elle touche, ou aucune.
+- Les déplacements sont consignés dans l'historique des tickets.
 
 **Permissions et rôles.** Un tableau de ce que chaque titulaire peut faire. Les
 permissions sont : voir, créer, modifier, commenter, changer le statut,
@@ -185,6 +246,18 @@ rôle, au responsable du projet, au rapporteur ou à l'assigné.
   traduire sont retirées, jamais élargies.
 
 **Workflows.** Voir ci-dessous.
+
+**Notifications.** Si le projet envoie des e-mails sur ses tickets, et qui
+d'autre les reçoit.
+
+- « Envoyer des notifications par e-mail pour ce projet », décoché, coupe tous
+  les e-mails sur les tickets du projet, quels que soient les réglages de
+  chacun. Il faut que l'envoi d'e-mails fonctionne (voir E-mail).
+- « Destinataires supplémentaires » est un tableau des événements en regard des
+  groupes de l'instance et des rôles du projet. Un groupe ou un rôle coché pour
+  un événement reçoit aussi l'e-mail de cet événement dans ce projet, en plus
+  des personnes qui suivent déjà le ticket. Chacun choisit toujours, dans ses
+  propres réglages, les événements qui lui parviennent.
 
 ### Workflows
 

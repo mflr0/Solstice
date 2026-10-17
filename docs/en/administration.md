@@ -96,17 +96,26 @@ project permissions, in project roles, to restrict comments and work logs, to
 share filters, and in the access token policy. Group names are stored in lower
 case and are unique.
 
+The Groups page lists every group with its description and its number of
+members. A search box filters by name or description. "New group" asks for a
+name and a description, 255 characters at most each. Open a group to rename
+it, change its description or manage its members.
+
+- **Members.** Once a group exists, its dialog has a picker to add people and
+  a list to remove them. Unlike the name and the description, members are
+  added and removed at once, without "Save". People can also be put in groups
+  from the account dialog (see Users).
+- **Deleting** asks for confirmation. The group disappears from the
+  permissions, roles and security levels that use it; its members keep their
+  accounts.
+
 Watch for:
 
 - Deleting a group removes its grants, role memberships and security level
   memberships. It is refused while comments or work logs are restricted to the
-  group, because deleting it would hide them from everyone.
+  group, because deleting it would hide them from everyone. The dialog then says
+  how many comments and work logs still depend on the group.
 - Renaming a group keeps the comments and work logs restricted to it.
-
-In this version, the Groups page of the menu shows only its title. Groups can
-be assigned to people from the account dialog, and the administration API
-creates, renames and deletes them (`/api/admin/groups`, described in
-`backend/internal/api/ADMIN_API.md`).
 
 ### Roles
 
@@ -114,12 +123,14 @@ Project roles are shared by all projects. Who holds a role is set for each
 project, in the project settings, under "Roles in this project". A role can
 then be given permissions in that project, like a group.
 
+The Roles page lists the roles with their description. You can create a role,
+change its name and description, and delete it. Only the role itself is
+managed here; its holders are chosen project by project.
+
 Watch for:
 
-- A role is refused deletion while comments or work logs are restricted to it.
-- As for groups, the Roles page of the menu shows only its title in this
-  version. Roles are created, renamed and deleted through the administration
-  API (`/api/admin/roles`).
+- Deleting a role removes it from every project. It is refused while comments
+  or work logs are restricted to it, and the dialog says how many.
 
 ## Projects
 
@@ -151,7 +162,53 @@ links to each project's settings.
 
 Each project has its own rules. Nothing is shared through schemes, so a change
 touches no other project. Only the project's administrators (and global
-administrators) can open the settings. The page has two tabs.
+administrators) can open the settings. The page has six tabs, in this order:
+General, Components, Versions, Permissions and roles, Workflows and
+Notifications. It opens on General. Changes in General, Notifications and
+Workflows wait for "Save", and the page asks before you leave a tab with
+unsaved changes. Components and Versions act at once, from their dialogs.
+
+**General.** The project's name, description, lead, category, default assignee
+and issue types. The key cannot be changed.
+
+- The lead has every right in the project.
+- The default assignee, for issues created without one, is nobody or the
+  project lead.
+- The issue types are the ones people can choose in this project; at least one
+  must stay. A type that issues use cannot be removed: the save is refused and
+  lists each such type with its number of issues. Change the type of those
+  issues first.
+
+**Components.** Components split a project into parts, such as "API" or
+"Billing". An issue can belong to one or several of them. A component has a
+name (unique in the project, whatever the case), a description, a lead and a
+rule for who new issues are assigned to: the project's default, the
+component's lead, the project lead, or nobody.
+
+- With several components on one new issue, the first by name that names
+  someone decides the assignee. It applies only when the issue is created
+  without an assignee.
+- Deleting a component that issues use asks whether they just lose it or move
+  to another component.
+
+**Versions.** Versions mark the releases of the product. An issue says which
+version fixes it and which versions it affects. The list shows each version's
+dates, its state and how many issues are still unresolved. Its order is the
+order of the version lists elsewhere in Solstice: change it with the arrows.
+Names are unique in the project, and the start date cannot be after the
+release date.
+
+- **Release** sets the release date (today by default). When issues fixed in
+  the version are not resolved, you can move them to another version that is
+  neither released nor archived, or leave them where they are. "Unrelease"
+  reverts it.
+- **Archive** keeps the version but marks it archived; you can restore it. An
+  archived version is not offered as a place for unresolved issues on release.
+- **Merge** moves every issue that uses the version, as fixed or affected
+  version, to another version, then deletes it.
+- **Delete** asks which version the issues fixed in it, and those it affects,
+  get in its place, or none.
+- The moves are recorded in the issues' history.
 
 **Permissions and roles.** A table of what each holder may do. The
 permissions are: browse, create, edit, comment, change status, assign,
@@ -171,6 +228,17 @@ Watch for:
   never widened.
 
 **Workflows.** See below.
+
+**Notifications.** Whether the project sends e-mail about its issues, and who
+else receives it.
+
+- "Send email notifications for this project" turns off all e-mail about the
+  project's issues when unchecked, whatever each person chose in their own
+  settings. It needs working e-mail (see E-mail).
+- "More recipients" is a table of events against the instance's groups and the
+  project's roles. A group or role checked for an event also receives that
+  event's e-mail in this project, on top of the people who already follow the
+  issue. Everyone still chooses, in their own settings, which events reach them.
 
 ### Workflows
 

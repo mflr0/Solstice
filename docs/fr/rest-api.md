@@ -342,6 +342,3 @@ Notamment :
   liens distants, les propriétés de ticket, les tableaux de bord et les API de
   Jira Service Management.
 - Les API des modules complémentaires.
-
-Pour les changements que l'API REST ne permet pas, utilisez l'interface ou
-l'API d'administration décrite dans `backend/internal/api/ADMIN_API.md`.
