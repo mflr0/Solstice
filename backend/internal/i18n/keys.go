@@ -360,8 +360,6 @@ const (
 	LinkToItself       Key = "LinkToItself"
 )
 
-// Remote links.
-
 // Group picker.
 const GroupPickerHeader Key = "GroupPickerHeader"
 

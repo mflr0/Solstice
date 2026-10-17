@@ -317,8 +317,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "लक्ष्य टिकट नहीं मिला।",
 	LinkToItself:       "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
 
-	// Remote links.
-
 	// Group picker.
 	GroupPickerHeader: "मेल खाने वाले %[2]d ग्रुप में से %[1]d दिखाए गए",
 

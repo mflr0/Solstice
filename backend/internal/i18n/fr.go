@@ -315,8 +315,6 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Ticket cible introuvable.",
 	LinkToItself:       "Un ticket ne peut pas être lié à lui-même.",
 
-	// Remote links.
-
 	// Group picker.
 	GroupPickerHeader: "%d groupes affichés sur %d correspondants",
 

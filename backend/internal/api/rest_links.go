@@ -49,7 +49,7 @@ func (in *remoteLinkIn) clean() error {
 		return fieldError("object.url", failf(http.StatusBadRequest, i18n.FieldRequired, "object.url"))
 	case !remoteLinkOK(in.Object.URL):
 		return invalidValue("object.url")
-	case len(in.Object.URL) > 2000:
+	case len(in.Object.URL) > 2000: // length in bytes, not characters
 		return fieldError("object.url", failf(http.StatusBadRequest, i18n.FieldTooLong, 2000))
 	case in.Object.Title == "":
 		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldRequired, "object.title"))
@@ -88,6 +88,7 @@ func (o *restOut) remoteLink(key string, v remoteLinkRow) map[string]any {
 }
 
 // remoteLinkText is how the history names a remote link, as Jira writes it.
+// The English wording is Jira's on purpose, not a message to translate.
 func remoteLinkText(title string) string { return `This issue links to "` + title + `"` }
 
 // restLinkableIssue returns the issue of the path, which the user must be

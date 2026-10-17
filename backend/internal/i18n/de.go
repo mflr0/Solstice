@@ -316,8 +316,6 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Zielvorgang nicht gefunden.",
 	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
 
-	// Remote links.
-
 	// Group picker.
 	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",
 

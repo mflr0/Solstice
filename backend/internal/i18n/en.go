@@ -314,8 +314,6 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Target issue not found.",
 	LinkToItself:       "An issue cannot be linked to itself.",
 
-	// Remote links.
-
 	// Group picker.
 	GroupPickerHeader: "Showing %d of %d matching groups",
 
