@@ -2221,6 +2221,20 @@ export const it: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: { general: 'Generale' },
+    leaveBody: 'Questa scheda ha modifiche non salvate. Vuoi scartarle?',
+    general: {
+      title: 'Generale',
+      intro: 'Il nome del progetto, chi lo guida e come vengono gestiti i nuovi ticket.',
+      leadHint: 'Il responsabile ha tutti i diritti nel progetto.',
+      typesInUse: (list: string) =>
+        `Questi tipi sono ancora usati da dei ticket, quindi non si possono rimuovere: ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'ticket', 'ticket')})`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { nextTab, parseTab, type ProjectTab } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
   import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
@@ -7,6 +8,8 @@
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';
+  import GeneralPanel from '../project-settings/GeneralPanel.svelte';
+  import '../settings.css';
   import UserPicker from '../UserPicker.svelte';
   import WorkflowsPanel from '../workflow/WorkflowsPanel.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
@@ -39,29 +42,33 @@
       .join('|');
   const dirty = $derived(signature(grants) !== saved);
 
-  type Tab = 'rights' | 'workflows';
-  const tabs: Tab[] = ['rights', 'workflows'];
-  const tab = $derived<Tab>(
-    forbidden || router.param('tab') === 'workflows' ? 'workflows' : 'rights',
-  );
-  let workflowDirty = $state(false);
+  const tabs: ProjectTab[] = ['general', 'rights', 'workflows'];
+  const asked = $derived(parseTab(router.param('tab'), !forbidden));
+  const tab = $derived(tabs.includes(asked) ? asked : 'general');
+  const tabLabels = $derived<Partial<Record<ProjectTab, string>>>({
+    ...t.projectConfig.tabs,
+    rights: t.workflows.rightsTab,
+    workflows: t.workflows.tab,
+  });
+  /** A tab has changes that are not saved yet. */
+  let panelDirty = $state(false);
   let leaving = $state<(() => void) | null>(null);
 
   /** Runs `go`, after asking when a workflow has unsaved changes. */
   function guard(go: () => void) {
-    if (workflowDirty) leaving = go;
+    if (panelDirty) leaving = go;
     else go();
   }
 
-  function showTab(next: Tab) {
+  function showTab(next: ProjectTab) {
     if (next === tab) return;
-    guard(() => router.setParams({ tab: next === 'rights' ? null : next, workflow: null }));
+    guard(() => router.setParams({ tab: next === 'general' ? null : next, workflow: null }));
   }
 
   function tabKey(e: KeyboardEvent) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
-    const next = tabs[(tabs.indexOf(tab) + 1) % tabs.length] ?? 'rights';
+    const next = nextTab(tabs, tab, e.key === 'ArrowRight' ? 1 : -1);
     showTab(next);
     queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
   }
@@ -136,7 +143,7 @@
 {:else if !data && !forbidden}
   <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
-  <div class="page" data-title={`${t.settings.title} ${projectKey}`}>
+  <div class="page settings-area" data-title={`${t.settings.title} ${projectKey}`}>
     <header class="page-head">
       <div>
         <p class="eyebrow">
@@ -160,7 +167,7 @@
             aria-selected={tab === k}
             tabindex={tab === k ? 0 : -1}
             onclick={() => showTab(k)}
-            onkeydown={tabKey}>{k === 'rights' ? t.workflows.rightsTab : t.workflows.tab}</button
+            onkeydown={tabKey}>{tabLabels[k]}</button
           >
         {/each}
       </div>
@@ -173,7 +180,11 @@
         id="panel-workflows"
         aria-labelledby={forbidden ? undefined : 'tab-workflows'}
       >
-        <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (workflowDirty = d)} />
+        <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (panelDirty = d)} />
+      </div>
+    {:else if tab === 'general'}
+      <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
+        <GeneralPanel {projectKey} ondirty={(d) => (panelDirty = d)} />
       </div>
     {:else}
       <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
@@ -307,7 +318,7 @@
   </div>
 
   <Modal open={leaving !== null} title={t.workflows.leaveTitle} onclose={() => (leaving = null)}>
-    <p class="leave">{t.workflows.leaveBody}</p>
+    <p class="leave">{tab === 'workflows' ? t.workflows.leaveBody : t.projectConfig.leaveBody}</p>
     {#snippet footer()}
       <button type="button" class="btn btn-quiet" onclick={() => (leaving = null)}
         >{t.workflows.stay}</button
@@ -318,7 +329,7 @@
         onclick={() => {
           const go = leaving;
           leaving = null;
-          workflowDirty = false;
+          panelDirty = false;
           go?.();
         }}>{t.workflows.leave}</button
       >

@@ -8,6 +8,10 @@ import {
   parseCategoryFilter,
   parseShow,
   extraSignature,
+  generalChanged,
+  generalForm,
+  generalPatch,
+  generalProblems,
   hasExtra,
   keyProblem,
   moveItem,
@@ -22,7 +26,10 @@ import {
   releaseTargets,
   suggestKey,
   toggleExtra,
+  toggleIssueType,
+  typesInUse,
   type ProjectForm,
+  type ProjectSettings,
 } from '../../src/core/project-admin.js';
 
 describe('project keys', () => {
@@ -262,5 +269,75 @@ describe('category names', () => {
     expect(categoryProblem('development', cats, null)).toBe('nameTaken');
     expect(categoryProblem('Development', cats, 1)).toBeNull();
     expect(categoryProblem('Sales', cats, null)).toBeNull();
+  });
+});
+
+describe('general tab', () => {
+  const lead = { id: 7, username: 'ada', name: 'Ada', active: true };
+  const settings: ProjectSettings = {
+    id: 1,
+    key: 'WEB',
+    name: 'Site web',
+    description: 'The site',
+    kind: 'software',
+    lead,
+    category: { id: 3, name: 'Internal' },
+    defaultAssignee: 'unassigned',
+    archived: false,
+    issueTypes: [
+      { id: '1', name: 'Task', subtask: false },
+      { id: '2', name: 'Sub-task', subtask: true },
+    ],
+    issues: 4,
+  };
+  const all = settings.issueTypes;
+
+  it('starts from the saved settings and sends nothing when nothing changed', () => {
+    const f = generalForm(settings);
+    expect(f.issueTypes).toEqual(['1', '2']);
+    expect(generalPatch(settings, f)).toEqual({});
+    expect(generalChanged(settings, f)).toBe(false);
+    expect(generalChanged(settings, { ...f, name: '  Site web  ' })).toBe(false);
+  });
+
+  it('sends only the fields that changed', () => {
+    const f = generalForm(settings);
+    expect(generalPatch(settings, { ...f, name: ' Portal ' })).toEqual({ name: 'Portal' });
+    expect(generalPatch(settings, { ...f, category: null })).toEqual({ category: null });
+    expect(generalPatch(settings, { ...f, defaultAssignee: 'lead' })).toEqual({
+      defaultAssignee: 'lead',
+    });
+    expect(generalPatch(settings, { ...f, lead: { ...lead, id: 9 } })).toEqual({ lead: 9 });
+    expect(generalPatch(settings, { ...f, issueTypes: ['1'] })).toEqual({ issueTypes: ['1'] });
+  });
+
+  it('clears the description with null, and ignores an order-only change of types', () => {
+    const f = generalForm(settings);
+    expect(generalPatch(settings, { ...f, description: '  ' })).toEqual({ description: null });
+    expect(generalPatch({ ...settings, description: null }, { ...f, description: '' })).toEqual({});
+    expect(generalPatch(settings, { ...f, issueTypes: ['2', '1'] })).toEqual({});
+  });
+
+  it('checks the name and the types', () => {
+    const f = generalForm(settings);
+    expect(generalProblems(f, all)).toEqual({});
+    expect(generalProblems({ ...f, name: '  ' }, all).name).toBe('nameRequired');
+    expect(generalProblems({ ...f, name: 'x'.repeat(256) }, all).name).toBe('nameTooLong');
+    expect(generalProblems({ ...f, issueTypes: ['2'] }, all).types).toBe('typesRequired');
+  });
+
+  it('adds and removes an issue type', () => {
+    expect(toggleIssueType(['1'], '2', true)).toEqual(['1', '2']);
+    expect(toggleIssueType(['1', '2'], '1', false)).toEqual(['2']);
+    expect(toggleIssueType(['1', '2'], '2', true)).toEqual(['1', '2']);
+  });
+
+  it('reads the types still in use from a refusal', () => {
+    expect(typesInUse({ inUse: [{ type: { id: '1', name: 'Bug' }, issues: 3 }] })).toEqual([
+      { name: 'Bug', issues: 3 },
+    ]);
+    expect(typesInUse(undefined)).toEqual([]);
+    expect(typesInUse({ inUse: 'x' })).toEqual([]);
+    expect(typesInUse({ inUse: [{ issues: 2 }] })).toEqual([]);
   });
 });

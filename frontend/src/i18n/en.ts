@@ -2205,6 +2205,19 @@ export const en = {
     },
   },
 
+  projectConfig: {
+    tabs: { general: 'General' },
+    leaveBody: 'This tab has unsaved changes. Discard them?',
+    general: {
+      title: 'General',
+      intro: 'The project’s name, who leads it and how new issues are handled.',
+      leadHint: 'The lead has every right in the project.',
+      typesInUse: (list: string) =>
+        `These types are still used by issues, so they cannot be removed: ${list}.`,
+      typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'issue', 'issues')})`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Search',

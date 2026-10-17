@@ -2239,6 +2239,20 @@ export const de: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: { general: 'Allgemein' },
+    leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
+    general: {
+      title: 'Allgemein',
+      intro: 'Name des Projekts, wer es leitet und wie neue Vorgänge behandelt werden.',
+      leadHint: 'Die Leitung hat alle Rechte im Projekt.',
+      typesInUse: (list: string) =>
+        `Diese Typen werden noch von Vorgängen verwendet und können deshalb nicht entfernt werden: ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'Vorgang', 'Vorgänge')})`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',

@@ -2202,6 +2202,19 @@ export const hi: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: { general: 'सामान्य' },
+    leaveBody: 'इस टैब में बिना सहेजे बदलाव हैं। उन्हें छोड़ दें?',
+    general: {
+      title: 'सामान्य',
+      intro: 'प्रोजेक्ट का नाम, उसका लीड कौन है और नए टिकट कैसे संभाले जाएँ।',
+      leadHint: 'लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
+      typesInUse: (list: string) =>
+        `ये प्रकार अभी भी टिकटों में इस्तेमाल हो रहे हैं, इसलिए इन्हें हटाया नहीं जा सकता: ${list}।`,
+      typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'टिकट', 'टिकट')})`,
+    },
+  },
+
   catalogAdmin: {
     name: 'नाम',
     search: 'खोजें',

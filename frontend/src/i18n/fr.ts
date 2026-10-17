@@ -2220,6 +2220,21 @@ export const fr: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: { general: 'Général' },
+    leaveBody: 'Cet onglet a des modifications non enregistrées. Les abandonner ?',
+    general: {
+      title: 'Général',
+      intro:
+        'Le nom du projet, son responsable et la façon dont les nouveaux tickets sont traités.',
+      leadHint: 'Le responsable a tous les droits dans le projet.',
+      typesInUse: (list: string) =>
+        `Ces types sont encore utilisés par des tickets, ils ne peuvent donc pas être retirés : ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'ticket', 'tickets')})`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Nom',
     search: 'Rechercher',
