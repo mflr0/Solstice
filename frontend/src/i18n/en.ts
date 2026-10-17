@@ -615,7 +615,12 @@ export const en = {
     missingFile: 'file not migrated from Jira',
     download: 'Download',
     activity: 'Activity',
-    tabs: { comments: 'Comments', history: 'History', worklogs: 'Work log' },
+    tabs: {
+      comments: 'Comments',
+      history: 'History',
+      worklogs: 'Work log',
+      components: 'Components',
+    },
     fiche: 'Details',
     assignee: 'Assignee',
     assignToMe: 'Assign to me',
@@ -2215,6 +2220,41 @@ export const en = {
       typesInUse: (list: string) =>
         `These types are still used by issues, so they cannot be removed: ${list}.`,
       typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'issue', 'issues')})`,
+    },
+    problems: {
+      nameRequired: 'Give it a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another one in this project already has this name.',
+    },
+    components: {
+      title: 'Components',
+      intro:
+        'Components split a project into parts, such as “API” or “Billing”. An issue can belong to one or several of them.',
+      new: 'New component',
+      empty: 'No component yet',
+      emptyHint: 'Create the first one to sort the project’s issues by part.',
+      noLead: 'No lead',
+      namePlaceholder: 'API',
+      newTitle: 'New component',
+      editTitle: (name: string) => `Edit ${name}`,
+      assignee: 'New issues are assigned to',
+      assignees: {
+        project_default: 'The project’s default',
+        component_lead: 'The component’s lead',
+        project_lead: 'The project lead',
+        unassigned: 'Nobody',
+      },
+      assigneeHint:
+        'Applies to a new issue created without an assignee. With several components, the first one by name that names someone is used.',
+      created: (name: string) => `Component ${name} created.`,
+      saved: (name: string) => `Component ${name} saved.`,
+      deleted: (name: string) => `Component ${name} deleted.`,
+      deleteTitle: (name: string) => `Delete ${name}?`,
+      deleteUnused: 'No issue uses this component.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'issue uses', 'issues use')} this component. They can lose it, or move to another component.`,
+      moveLabel: 'Issues move to',
+      moveNone: 'Nowhere: they just lose the component',
     },
   },
 

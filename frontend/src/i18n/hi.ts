@@ -618,7 +618,7 @@ export const hi: Messages = {
     missingFile: 'फ़ाइल Jira से माइग्रेट नहीं हुई',
     download: 'डाउनलोड करें',
     activity: 'गतिविधि',
-    tabs: { comments: 'टिप्पणियाँ', history: 'इतिहास', worklogs: 'समय' },
+    tabs: { comments: 'टिप्पणियाँ', history: 'इतिहास', worklogs: 'समय', components: 'कंपोनेंट' },
     fiche: 'विवरण',
     assignee: 'असाइनी',
     assignToMe: 'मुझे असाइन करें',
@@ -2212,6 +2212,41 @@ export const hi: Messages = {
       typesInUse: (list: string) =>
         `ये प्रकार अभी भी टिकटों में इस्तेमाल हो रहे हैं, इसलिए इन्हें हटाया नहीं जा सकता: ${list}।`,
       typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'टिकट', 'टिकट')})`,
+    },
+    problems: {
+      nameRequired: 'इसे कोई नाम दीजिए।',
+      nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',
+      nameTaken: 'इस प्रोजेक्ट में किसी और का यही नाम पहले से है।',
+    },
+    components: {
+      title: 'कंपोनेंट',
+      intro:
+        'कंपोनेंट प्रोजेक्ट को हिस्सों में बाँटते हैं, जैसे “API” या “बिलिंग”। एक टिकट एक या कई कंपोनेंट में हो सकता है।',
+      new: 'नया कंपोनेंट',
+      empty: 'अभी कोई कंपोनेंट नहीं',
+      emptyHint: 'प्रोजेक्ट के टिकटों को हिस्सों के अनुसार छाँटने के लिए पहला कंपोनेंट बनाइए।',
+      noLead: 'कोई लीड नहीं',
+      namePlaceholder: 'API',
+      newTitle: 'नया कंपोनेंट',
+      editTitle: (name: string) => `${name} बदलें`,
+      assignee: 'नए टिकट सौंपे जाते हैं',
+      assignees: {
+        project_default: 'प्रोजेक्ट की डिफ़ॉल्ट पसंद',
+        component_lead: 'कंपोनेंट के लीड',
+        project_lead: 'प्रोजेक्ट के लीड',
+        unassigned: 'किसी को नहीं',
+      },
+      assigneeHint:
+        'यह उस नए टिकट पर लागू होता है जो बिना असाइनी के बना हो। कई कंपोनेंट हों तो नाम के क्रम में पहला वह कंपोनेंट लिया जाता है जिसमें कोई नाम तय हो।',
+      created: (name: string) => `कंपोनेंट ${name} बन गया।`,
+      saved: (name: string) => `कंपोनेंट ${name} सहेज लिया गया।`,
+      deleted: (name: string) => `कंपोनेंट ${name} हटा दिया गया।`,
+      deleteTitle: (name: string) => `${name} हटाएँ?`,
+      deleteUnused: 'कोई टिकट इस कंपोनेंट का उपयोग नहीं करता।',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'टिकट', 'टिकट')} इस कंपोनेंट का उपयोग करते हैं। वे इसे खो सकते हैं, या किसी दूसरे कंपोनेंट में जा सकते हैं।`,
+      moveLabel: 'टिकट यहाँ जाएँगे',
+      moveNone: 'कहीं नहीं: वे बस कंपोनेंट खो देंगे',
     },
   },
 

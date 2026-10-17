@@ -623,7 +623,12 @@ export const de: Messages = {
     missingFile: 'Datei nicht aus Jira übernommen',
     download: 'Herunterladen',
     activity: 'Aktivität',
-    tabs: { comments: 'Kommentare', history: 'Verlauf', worklogs: 'Zeiterfassung' },
+    tabs: {
+      comments: 'Kommentare',
+      history: 'Verlauf',
+      worklogs: 'Zeiterfassung',
+      components: 'Komponenten',
+    },
     fiche: 'Details',
     assignee: 'Bearbeiter',
     assignToMe: 'Mir zuweisen',
@@ -2250,6 +2255,41 @@ export const de: Messages = {
         `Diese Typen werden noch von Vorgängen verwendet und können deshalb nicht entfernt werden: ${list}.`,
       typeUsage: (name: string, issues: number) =>
         `${name} (${plural(issues, 'Vorgang', 'Vorgänge')})`,
+    },
+    problems: {
+      nameRequired: 'Geben Sie einen Namen ein.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Ein anderer Eintrag in diesem Projekt heißt schon so.',
+    },
+    components: {
+      title: 'Komponenten',
+      intro:
+        'Komponenten teilen ein Projekt in Bereiche auf, etwa „API“ oder „Abrechnung“. Ein Vorgang kann zu einer oder mehreren gehören.',
+      new: 'Neue Komponente',
+      empty: 'Noch keine Komponente',
+      emptyHint: 'Legen Sie die erste an, um die Vorgänge des Projekts nach Bereich zu ordnen.',
+      noLead: 'Keine Leitung',
+      namePlaceholder: 'API',
+      newTitle: 'Neue Komponente',
+      editTitle: (name: string) => `${name} bearbeiten`,
+      assignee: 'Neue Vorgänge werden zugewiesen an',
+      assignees: {
+        project_default: 'Die Vorgabe des Projekts',
+        component_lead: 'Die Leitung der Komponente',
+        project_lead: 'Die Projektleitung',
+        unassigned: 'Niemand',
+      },
+      assigneeHint:
+        'Gilt für neue Vorgänge ohne Bearbeiter. Bei mehreren Komponenten zählt die erste nach Name, die jemanden nennt.',
+      created: (name: string) => `Komponente ${name} angelegt.`,
+      saved: (name: string) => `Komponente ${name} gespeichert.`,
+      deleted: (name: string) => `Komponente ${name} gelöscht.`,
+      deleteTitle: (name: string) => `${name} löschen?`,
+      deleteUnused: 'Kein Vorgang verwendet diese Komponente.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'Vorgang verwendet', 'Vorgänge verwenden')} diese Komponente. Sie können sie verlieren oder zu einer anderen Komponente wechseln.`,
+      moveLabel: 'Vorgänge wechseln zu',
+      moveNone: 'Nirgendwohin: sie verlieren nur die Komponente',
     },
   },
 

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ComponentRow } from '../../src/core/admin-types.js';
+
 import {
+  ASSIGNEE_TYPES,
   categoryProblem,
+  componentForm,
+  componentPayload,
   datesProblem,
   filterProjects,
   issueTypesProblem,
@@ -28,6 +33,7 @@ import {
   toggleExtra,
   toggleIssueType,
   typesInUse,
+  uniqueNameProblem,
   type ProjectForm,
   type ProjectSettings,
 } from '../../src/core/project-admin.js';
@@ -339,5 +345,83 @@ describe('general tab', () => {
     expect(typesInUse(undefined)).toEqual([]);
     expect(typesInUse({ inUse: 'x' })).toEqual([]);
     expect(typesInUse({ inUse: [{ issues: 2 }] })).toEqual([]);
+  });
+});
+
+describe('names in a project', () => {
+  const others = [
+    { id: 1, name: 'Backend' },
+    { id: 2, name: ' API ' },
+  ];
+
+  it('asks for a name, short and not taken by another', () => {
+    expect(uniqueNameProblem('  ', others, null)).toBe('nameRequired');
+    expect(uniqueNameProblem('x'.repeat(256), others, null)).toBe('nameTooLong');
+    expect(uniqueNameProblem('backend', others, null)).toBe('nameTaken');
+    expect(uniqueNameProblem('api', others, null)).toBe('nameTaken');
+    expect(uniqueNameProblem('Backend', others, 1)).toBeNull();
+    expect(uniqueNameProblem('Frontend', others, null)).toBeNull();
+  });
+});
+
+describe('components', () => {
+  const lead = { id: 7, username: 'ada', name: 'Ada', active: true };
+  const row: ComponentRow = {
+    id: 5,
+    name: 'API',
+    description: 'The public API',
+    lead,
+    assigneeType: 'component_lead',
+    archived: false,
+    issues: 2,
+  };
+
+  it('knows the four ways a new issue gets its assignee', () => {
+    expect(ASSIGNEE_TYPES).toEqual([
+      'project_default',
+      'component_lead',
+      'project_lead',
+      'unassigned',
+    ]);
+  });
+
+  it('starts blank, or from the component', () => {
+    expect(componentForm(null)).toEqual({
+      name: '',
+      description: '',
+      lead: null,
+      assigneeType: 'project_default',
+    });
+    expect(componentForm(row)).toEqual({
+      name: 'API',
+      description: 'The public API',
+      lead,
+      assigneeType: 'component_lead',
+    });
+  });
+
+  it('sends what is filled in to create', () => {
+    expect(componentPayload({ ...componentForm(null), name: ' Web ' }, null)).toEqual({
+      name: 'Web',
+      assigneeType: 'project_default',
+    });
+    expect(componentPayload({ ...componentForm(row), name: 'Web' }, null)).toEqual({
+      name: 'Web',
+      description: 'The public API',
+      lead: 7,
+      assigneeType: 'component_lead',
+    });
+  });
+
+  it('sends only the changes to update, and null to clear the lead', () => {
+    const f = componentForm(row);
+    expect(componentPayload(f, row)).toEqual({});
+    expect(componentPayload({ ...f, name: ' Core ' }, row)).toEqual({ name: 'Core' });
+    expect(componentPayload({ ...f, description: '' }, row)).toEqual({ description: '' });
+    expect(componentPayload({ ...f, lead: null }, row)).toEqual({ lead: null });
+    expect(componentPayload({ ...f, lead: { ...lead, id: 9 } }, row)).toEqual({ lead: 9 });
+    expect(componentPayload({ ...f, assigneeType: 'unassigned' }, row)).toEqual({
+      assigneeType: 'unassigned',
+    });
   });
 });

@@ -619,7 +619,12 @@ export const fr: Messages = {
     missingFile: 'fichier non repris de Jira',
     download: 'Télécharger',
     activity: 'Activité',
-    tabs: { comments: 'Commentaires', history: 'Historique', worklogs: 'Temps' },
+    tabs: {
+      comments: 'Commentaires',
+      history: 'Historique',
+      worklogs: 'Temps',
+      components: 'Composants',
+    },
     fiche: 'Fiche',
     assignee: 'Assigné',
     assignToMe: 'M’assigner',
@@ -2232,6 +2237,41 @@ export const fr: Messages = {
         `Ces types sont encore utilisés par des tickets, ils ne peuvent donc pas être retirés : ${list}.`,
       typeUsage: (name: string, issues: number) =>
         `${name} (${plural(issues, 'ticket', 'tickets')})`,
+    },
+    problems: {
+      nameRequired: 'Donnez-lui un nom.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Un autre élément de ce projet porte déjà ce nom.',
+    },
+    components: {
+      title: 'Composants',
+      intro:
+        'Les composants découpent un projet en parties, comme « API » ou « Facturation ». Un ticket peut appartenir à un ou plusieurs composants.',
+      new: 'Nouveau composant',
+      empty: 'Aucun composant pour l’instant',
+      emptyHint: 'Créez le premier pour classer les tickets du projet par partie.',
+      noLead: 'Aucun responsable',
+      namePlaceholder: 'API',
+      newTitle: 'Nouveau composant',
+      editTitle: (name: string) => `Modifier ${name}`,
+      assignee: 'Les nouveaux tickets sont assignés à',
+      assignees: {
+        project_default: 'Le choix du projet',
+        component_lead: 'Le responsable du composant',
+        project_lead: 'Le responsable du projet',
+        unassigned: 'Personne',
+      },
+      assigneeHint:
+        'Concerne un nouveau ticket créé sans assigné. Avec plusieurs composants, on prend le premier, par ordre alphabétique, qui désigne quelqu’un.',
+      created: (name: string) => `Composant ${name} créé.`,
+      saved: (name: string) => `Composant ${name} enregistré.`,
+      deleted: (name: string) => `Composant ${name} supprimé.`,
+      deleteTitle: (name: string) => `Supprimer ${name} ?`,
+      deleteUnused: 'Aucun ticket n’utilise ce composant.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'ticket utilise', 'tickets utilisent')} ce composant. Ils peuvent le perdre, ou passer à un autre composant.`,
+      moveLabel: 'Les tickets passent à',
+      moveNone: 'Nulle part : ils perdent simplement le composant',
     },
   },
 

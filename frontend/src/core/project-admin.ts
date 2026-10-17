@@ -6,7 +6,14 @@
  */
 
 import { matches } from './admin-forms.js';
-import type { Category, ExtraRecipient, ProjectPatch } from './admin-types.js';
+import type {
+  AssigneeType,
+  Category,
+  ComponentInput,
+  ComponentRow,
+  ExtraRecipient,
+  ProjectPatch,
+} from './admin-types.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -388,4 +395,70 @@ export function typesInUse(data: unknown): { name: string; issues: number }[] {
       ? [{ name: x.type.name, issues: x.issues }]
       : [],
   );
+}
+
+/* Components tab -------------------------------------------------------------- */
+
+export const ASSIGNEE_TYPES: readonly AssigneeType[] = [
+  'project_default',
+  'component_lead',
+  'project_lead',
+  'unassigned',
+];
+
+export type NameProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken';
+
+/** A component or version name: present, 255 characters at most, and not another's (any case). */
+export function uniqueNameProblem(
+  name: string,
+  others: readonly { id: number; name: string }[],
+  self: number | null,
+): NameProblem | null {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  if ([...n].length > 255) return 'nameTooLong';
+  const lower = n.toLowerCase();
+  return others.some((o) => o.id !== self && o.name.trim().toLowerCase() === lower)
+    ? 'nameTaken'
+    : null;
+}
+
+/** What the component dialog edits. */
+export interface ComponentForm {
+  name: string;
+  description: string;
+  lead: UserRef | null;
+  assigneeType: AssigneeType;
+}
+
+export function componentForm(c: ComponentRow | null): ComponentForm {
+  return {
+    name: c?.name ?? '',
+    description: c?.description ?? '',
+    lead: c?.lead ?? null,
+    assigneeType: c?.assigneeType ?? 'project_default',
+  };
+}
+
+/**
+ * The body of POST (no `before`) or PATCH on a component. A change sends only
+ * the fields that differ; an emptied lead goes as null, which clears it.
+ */
+export function componentPayload(f: ComponentForm, before: ComponentRow | null): ComponentInput {
+  const name = f.name.trim();
+  const description = f.description.trim();
+  if (!before) {
+    return {
+      name,
+      ...(description ? { description } : {}),
+      ...(f.lead ? { lead: f.lead.id } : {}),
+      assigneeType: f.assigneeType,
+    };
+  }
+  const out: ComponentInput = {};
+  if (name !== before.name) out.name = name;
+  if (description !== (before.description ?? '')) out.description = description;
+  if ((f.lead?.id ?? null) !== (before.lead?.id ?? null)) out.lead = f.lead?.id ?? null;
+  if (f.assigneeType !== before.assigneeType) out.assigneeType = f.assigneeType;
+  return out;
 }

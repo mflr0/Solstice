@@ -8,6 +8,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';
+  import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
   import '../settings.css';
   import UserPicker from '../UserPicker.svelte';
@@ -42,7 +43,7 @@
       .join('|');
   const dirty = $derived(signature(grants) !== saved);
 
-  const tabs: ProjectTab[] = ['general', 'rights', 'workflows'];
+  const tabs: ProjectTab[] = ['general', 'components', 'rights', 'workflows'];
   const asked = $derived(parseTab(router.param('tab'), !forbidden));
   const tab = $derived(tabs.includes(asked) ? asked : 'general');
   const tabLabels = $derived<Partial<Record<ProjectTab, string>>>({
@@ -185,6 +186,10 @@
     {:else if tab === 'general'}
       <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
         <GeneralPanel {projectKey} ondirty={(d) => (panelDirty = d)} />
+      </div>
+    {:else if tab === 'components'}
+      <div class="panel" role="tabpanel" id="panel-components" aria-labelledby="tab-components">
+        <ComponentsPanel {projectKey} />
       </div>
     {:else}
       <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
