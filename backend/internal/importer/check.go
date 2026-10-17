@@ -182,9 +182,11 @@ func (c *checkData) unreadable(err error) {
 	}
 }
 
-func (c *checkData) workflow(w *workflow) {
+// workflow notes a workflow that would be imported, and what is not carried
+// over from its descriptor.
+func (c *checkData) workflow(w *workflow, descriptor string) {
 	if c != nil {
-		c.workflows = append(c.workflows, workflowFacts{w.name, w.logic})
+		c.workflows = append(c.workflows, workflowFacts{w.name, countWorkflowLogic(descriptor)})
 	}
 }
 

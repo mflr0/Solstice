@@ -17,7 +17,6 @@ type workflow struct {
 	initial     string   // status id of new issues
 	statuses    []string // in step order
 	transitions []transition
-	logic       workflowLogic // what is not carried over
 }
 
 type transition struct {
@@ -67,7 +66,7 @@ func parseWorkflow(name, descriptor string) (*workflow, error) {
 		return nil, fmt.Errorf("workflow %q: %w", name, err)
 	}
 	stepStatus := map[string]string{}
-	w := &workflow{name: name, logic: countWorkflowLogic(descriptor)}
+	w := &workflow{name: name}
 	for _, s := range doc.Steps {
 		for _, m := range s.Meta {
 			if m.Name == "jira.status.id" {
@@ -185,7 +184,7 @@ func (r *run) importWorkflows() error {
 			return nil
 		}
 		defs[name.String] = w
-		r.check.workflow(w)
+		r.check.workflow(w, descriptor.String)
 		return nil
 	}); err != nil {
 		return err

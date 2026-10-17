@@ -62,13 +62,15 @@ func TestCountWorkflowLogic(t *testing.T) {
 	}
 }
 
-func TestParseWorkflowKeepsLogic(t *testing.T) {
+func TestCheckDataKeepsWorkflowLogic(t *testing.T) {
 	w, err := parseWorkflow("Logic", logicDescriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w.logic.conditions != 2 {
-		t.Errorf("conditions = %d", w.logic.conditions)
+	c := &checkData{}
+	c.workflow(w, logicDescriptor)
+	if len(c.workflows) != 1 || c.workflows[0].name != "Logic" || c.workflows[0].logic.conditions != 2 {
+		t.Errorf("workflows = %+v", c.workflows)
 	}
 }
 
@@ -88,6 +90,7 @@ func TestCheckDataOnAnImport(t *testing.T) {
 	var c *checkData
 	c.password()
 	c.attachment(true)
+	c.workflow(&workflow{}, "<workflow")
 	c.changeGroup(1)
 	c.sortChangeGroups()
 	c.changeItem(2)
