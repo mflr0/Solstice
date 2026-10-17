@@ -109,6 +109,7 @@ func (r *run) importUsers() error {
 		var hash any
 		if strings.HasPrefix(u.credential, "{PKCS5S2}") {
 			hash = u.credential
+			r.check.password()
 		} else if u.active {
 			noPassword++
 		}

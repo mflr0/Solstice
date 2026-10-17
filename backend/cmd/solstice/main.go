@@ -37,7 +37,7 @@ const usage = `Usage: solstice <command> [options]
 Commands:
   serve     starts the web server
   migrate   updates the database schema
-  import    imports a Jira database (PostgreSQL or MySQL)
+  import    imports a Jira database (PostgreSQL or MySQL); "import -check" audits it first
   user      creates an account or changes a password (solstice user add|passwd)
   version   prints the version
   health    checks that a running server answers (container health check)
@@ -397,18 +397,48 @@ func runUser(ctx context.Context, args []string) error {
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
 	from := fs.String("from", "", "Jira database URL: postgres://user:pass@host/db or mysql://user:pass@host/db")
-	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info)")
-	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files")
+	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info); with -check, UTC if omitted")
+	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files (with -check: to look for them)")
 	replace := fs.Bool("replace", false, "wipe Solstice's data before importing")
+	check := fs.Bool("check", false, "audit the Jira database without importing: what there is, what would be left out and why; "+
+		"writes nothing, needs no Solstice database, exits with status 1 if the import would refuse the source")
 	asJSON := fs.Bool("json", false, "print the report as JSON")
 	fs.Parse(args)
-	if *from == "" || *tz == "" {
+	if *from == "" || (*tz == "" && !*check) {
 		fs.Usage()
+		if *check {
+			return errors.New("-from is required")
+		}
 		return errors.New("-from and -tz are required")
 	}
-	loc, err := time.LoadLocation(*tz)
-	if err != nil {
-		return fmt.Errorf("unknown time zone %q: %w", *tz, err)
+	if *check && *replace {
+		return errors.New("-replace has no meaning with -check, which writes nothing")
+	}
+	var loc *time.Location
+	if *tz != "" {
+		var err error
+		if loc, err = time.LoadLocation(*tz); err != nil {
+			return fmt.Errorf("unknown time zone %q: %w", *tz, err)
+		}
+	}
+	if *check {
+		rep, err := importer.Check(ctx, importer.Options{SourceURL: *from, SourceTZ: loc, JiraHome: *jiraHome})
+		if err != nil {
+			return err
+		}
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(rep); err != nil {
+				return err
+			}
+		} else {
+			rep.WriteText(os.Stdout)
+		}
+		if rep.Refused != "" {
+			return errors.New("the import would refuse this source")
+		}
+		return nil
 	}
 
 	cfg, err := loadConfig()

@@ -64,7 +64,7 @@ func (r *run) save(table, userCol, where string, args ...any) (*savedRows, error
 	if where != "" {
 		q += " WHERE " + where
 	}
-	rows, err := r.dst.QueryContext(r.ctx, q, args...)
+	rows, err := r.conn.QueryContext(r.ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (r *run) restore(s *savedRows, skip ...string) (int, error) {
 	for i, row := range s.rows {
 		var uid int64
 		if s.column != "id" {
-			err := r.dst.QueryRowContext(r.ctx, `SELECT id FROM users WHERE username = ?`, s.users[i]).Scan(&uid)
+			err := r.conn.QueryRowContext(r.ctx, `SELECT id FROM users WHERE username = ?`, s.users[i]).Scan(&uid)
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
@@ -145,7 +145,7 @@ func (r *run) keep() (*kept, error) {
 			return nil, err
 		}
 	}
-	rows, err := r.dst.QueryContext(r.ctx, `SELECT username, is_admin, locale, last_login_at FROM users`)
+	rows, err := r.conn.QueryContext(r.ctx, `SELECT username, is_admin, locale, last_login_at FROM users`)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (r *run) keep() (*kept, error) {
 		}
 		k.rows = append(k.rows, s)
 	}
-	rows, err = r.dst.QueryContext(r.ctx, `SELECT w.id, u.username FROM webhooks w JOIN users u ON u.id = w.created_by`)
+	rows, err = r.conn.QueryContext(r.ctx, `SELECT w.id, u.username FROM webhooks w JOIN users u ON u.id = w.created_by`)
 	if err != nil {
 		return nil, err
 	}
