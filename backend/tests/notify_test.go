@@ -730,3 +730,32 @@ func TestMailSettingsReportCredentialsInClear(t *testing.T) {
 		t.Errorf("GET after switching to STARTTLS: problem %q, want none", got.Problem)
 	}
 }
+
+// Switching to no encryption never carries the stored password along: it must
+// be typed again, and then credentials in clear are refused for a remote server.
+func TestMailSettingsKeepPasswordNotCarriedToNoEncryption(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 587, "security": "starttls",
+		"username": "relai", "password": "s3cret-smtp"}, 200, nil)
+	// No "password" key: the stored one is kept.
+	for _, host := range []string{"smtp.autre.example", "localhost"} {
+		status, body := admin.do("PUT", "/api/admin/mail", map[string]any{"host": host, "port": 25, "security": "none"})
+		if status != http.StatusBadRequest || !strings.Contains(string(body), "SMTP password again") {
+			t.Errorf("keep the password, security none, host %s: %d %s, want 400 asking for the password", host, status, body)
+		}
+	}
+	status, body := admin.do("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 25,
+		"security": "none", "password": "s3cret-smtp"})
+	if status != http.StatusBadRequest || !strings.Contains(string(body), "encrypted") {
+		t.Errorf("retyped password, security none, remote host: %d %s, want 400 about encryption", status, body)
+	}
+	var got struct {
+		Security    string `json:"security"`
+		PasswordSet bool   `json:"passwordSet"`
+	}
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Security != "starttls" || !got.PasswordSet {
+		t.Errorf("after the refusals: security %q, password set %v, want starttls and true", got.Security, got.PasswordSet)
+	}
+}
