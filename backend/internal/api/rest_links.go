@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
+
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
@@ -179,9 +181,42 @@ func (s *Server) restAddRemoteLink(w http.ResponseWriter, r *http.Request) error
 	if err := in.clean(); err != nil {
 		return err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	// Two POSTs with the same new globalId at once both find nothing to update.
+	// The one that loses fails on the unique key or as a deadlock victim; its
+	// second try finds the link of the other and updates it, as Jira answers.
+	var id int64
+	var status int
+	var changes []change
+	for try := 0; ; try++ {
+		id, status, changes, err = s.saveRemoteLink(ctx, iss, sub.UserID, in)
+		if err == nil || try > 0 || !lostRace(err) {
+			break
+		}
+	}
 	if err != nil {
 		return err
+	}
+	if len(changes) > 0 {
+		s.changed(iss, sub.UserID, "link", changes)
+	}
+	o := s.restOut(r)
+	return writeJSON(w, status, map[string]any{"id": id,
+		"self": o.api + "/issue/" + iss.Key() + "/remotelink/" + o.id(id)})
+}
+
+// lostRace tells the errors of a request that met a concurrent one on the
+// same globalId: a unique key violation (1062) or a deadlock (1213).
+func lostRace(err error) bool {
+	var me *mysql.MySQLError
+	return errors.As(err, &me) && (me.Number == 1062 || me.Number == 1213)
+}
+
+// saveRemoteLink adds a remote link to an issue, or updates the one that has
+// the globalId. It answers the id, 201 or 200, and the changes it recorded.
+func (s *Server) saveRemoteLink(ctx context.Context, iss *issueRow, userID int64, in remoteLinkIn) (int64, int, []change, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, nil, err
 	}
 	defer tx.Rollback()
 	// As in Jira, a globalId the issue already has makes this an update.
@@ -191,7 +226,7 @@ func (s *Server) restAddRemoteLink(w http.ResponseWriter, r *http.Request) error
 		err := old.scan(tx.QueryRowContext(ctx, `SELECT `+remoteLinkColumns+` FROM remote_links
 			WHERE issue_id = ? AND global_id = ? FOR UPDATE`, iss.ID, in.GlobalID))
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
+			return 0, 0, nil, err
 		}
 		updating = err == nil
 	}
@@ -199,32 +234,24 @@ func (s *Server) restAddRemoteLink(w http.ResponseWriter, r *http.Request) error
 	var changes []change
 	if updating {
 		if changes, err = updateRemoteLink(ctx, tx, old, in); err != nil {
-			return err
+			return 0, 0, nil, err
 		}
 	} else {
 		res, err := tx.ExecContext(ctx, `INSERT INTO remote_links (issue_id, url, title, relationship, global_id) VALUES (?, ?, ?, ?, ?)`,
 			iss.ID, in.Object.URL, in.Object.Title, nullIfEmpty(in.Relationship), nullIfEmpty(in.GlobalID))
 		if err != nil {
-			return err
+			return 0, 0, nil, err
 		}
 		if id, err = res.LastInsertId(); err != nil {
-			return err
+			return 0, 0, nil, err
 		}
 		status = http.StatusCreated
 		changes = []change{{field: "RemoteIssueLink", newValue: id, newString: remoteLinkText(in.Object.Title)}}
 	}
-	if err := recordChanges(ctx, tx, iss.ID, sub.UserID, time.Now().UTC(), changes); err != nil {
-		return err
+	if err := recordChanges(ctx, tx, iss.ID, userID, time.Now().UTC(), changes); err != nil {
+		return 0, 0, nil, err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	if len(changes) > 0 {
-		s.changed(iss, sub.UserID, "link", changes)
-	}
-	o := s.restOut(r)
-	return writeJSON(w, status, map[string]any{"id": id,
-		"self": o.api + "/issue/" + iss.Key() + "/remotelink/" + o.id(id)})
+	return id, status, changes, tx.Commit()
 }
 
 // updateRemoteLink replaces the address, title and relationship of a link and

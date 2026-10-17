@@ -284,6 +284,72 @@ func viewerOf(t *testing.T, key string) *client {
 	return c
 }
 
+// TestRESTRemoteLinksSameGlobalID posts the same new globalId several times at
+// once: one request creates the link, the others update it, none fails.
+func TestRESTRemoteLinksSameGlobalID(t *testing.T) {
+	needDB(t)
+	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
+	path := "/rest/api/2/issue/" + key + "/remotelink"
+	paul := login(t, "paul.martin", "motdepasse")
+	post := func(globalID, title string) (int, []byte) {
+		status, _, raw := call(t, paul, testURL, "POST", path, map[string]any{"globalId": globalID,
+			"object": map[string]any{"url": "https://example.com/race", "title": title}}, header("X-Atlassian-Token", "no-check"))
+		return status, raw
+	}
+
+	// Two in a row: the second one is an update.
+	status, raw := post("race:sequence", "first")
+	id := num(obj(t, raw), "id")
+	if status != 201 {
+		t.Fatalf("first POST: %d %s", status, raw)
+	}
+	if status, raw = post("race:sequence", "second"); status != 200 || num(obj(t, raw), "id") != id {
+		t.Errorf("second POST: %d %s, want 200 and id %d", status, raw, id)
+	}
+
+	const posts = 8
+	type answer struct {
+		status int
+		raw    []byte
+	}
+	answers := make(chan answer, posts)
+	start := make(chan struct{})
+	for i := range posts {
+		go func() {
+			<-start
+			status, raw := post("race:parallel", "parallel "+strconv.Itoa(i))
+			answers <- answer{status, raw}
+		}()
+	}
+	close(start)
+	created, ids := 0, map[int]bool{}
+	for range posts {
+		a := <-answers
+		switch a.status {
+		case 201:
+			created++
+		case 200:
+		default:
+			t.Errorf("POST with the same globalId at once: %d %s", a.status, a.raw)
+			continue
+		}
+		ids[num(obj(t, a.raw), "id")] = true
+	}
+	if created != 1 || len(ids) != 1 {
+		t.Errorf("%d links created, answers for ids %v, want 1 and 1", created, ids)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM remote_links WHERE global_id IN ('race:sequence', 'race:parallel') AND issue_id = (
+		SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+keyExpr+` = ?)`, key); n != "2" {
+		t.Errorf("links with the globalIds: %s, want 2", n)
+	}
+	for _, g := range []string{"race:sequence", "race:parallel"} {
+		if status, _, raw := call(t, paul, testURL, "DELETE", path+"?globalId="+url.QueryEscape(g), nil, header("X-Atlassian-Token", "no-check")); status != 204 {
+			t.Errorf("DELETE %s: %d %s", g, status, raw)
+		}
+	}
+}
+
 // TestRESTRemoteLinksPermission checks that remote links ask for the right to
 // link issues, as Jira does, and not for the right to edit them.
 func TestRESTRemoteLinksPermission(t *testing.T) {
