@@ -1249,7 +1249,7 @@ export const it: Messages = {
         'I gruppi riuniscono persone per dare loro dei permessi tutti insieme. I nomi vengono salvati in minuscolo.',
       newGroup: 'Nuovo gruppo',
       create: 'Crea il gruppo',
-      search: 'Nome o descrizione del gruppo',
+      search: 'Nome del gruppo',
       name: 'Nome',
       description: 'Descrizione',
       members: 'Membri',

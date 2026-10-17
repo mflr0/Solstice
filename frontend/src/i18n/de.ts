@@ -1256,7 +1256,7 @@ export const de: Messages = {
         'Gruppen fassen Personen zusammen, damit Berechtigungen allen auf einmal erteilt werden können. Namen werden in Kleinbuchstaben gespeichert.',
       newGroup: 'Neue Gruppe',
       create: 'Gruppe erstellen',
-      search: 'Gruppenname oder Beschreibung',
+      search: 'Gruppenname',
       name: 'Name',
       description: 'Beschreibung',
       members: 'Mitglieder',

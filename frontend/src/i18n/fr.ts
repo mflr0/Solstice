@@ -1250,7 +1250,7 @@ export const fr: Messages = {
         'Les groupes rassemblent des personnes pour leur donner des droits en une seule fois. Les noms sont enregistrés en minuscules.',
       newGroup: 'Nouveau groupe',
       create: 'Créer le groupe',
-      search: 'Nom ou description du groupe',
+      search: 'Nom du groupe',
       name: 'Nom',
       description: 'Description',
       members: 'Membres',

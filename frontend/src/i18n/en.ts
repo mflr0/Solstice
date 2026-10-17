@@ -1243,7 +1243,7 @@ export const en = {
         'Groups gather people so that permissions can be given to all of them at once. Names are saved in lowercase.',
       newGroup: 'New group',
       create: 'Create the group',
-      search: 'Group name or description',
+      search: 'Group name',
       name: 'Name',
       description: 'Description',
       members: 'Members',
