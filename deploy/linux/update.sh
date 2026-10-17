@@ -445,7 +445,10 @@ read_db_tls() {
 # dump_tls_opts DUMP TLS prints the dump options for the tls value of
 # SOLSTICE_DB_URL. MariaDB clients (their --version says MariaDB) check the
 # server certificate by default since 11.4, so skip-verify and preferred
-# turn the check off; MySQL clients take --ssl-mode. Empty prints nothing.
+# turn the check off; MySQL clients take --ssl-mode. For preferred on MariaDB
+# there is no --ssl: that keeps the client's own default (TLS when the server
+# offers it, plain otherwise), as the driver's preferred does; --ssl would make
+# the backup fail on a server without TLS. Empty prints nothing.
 dump_tls_opts() {
   dump_bin=$1
   tls_val=$2
@@ -454,7 +457,8 @@ dump_tls_opts() {
     *MariaDB*)
       case $tls_val in
         true) printf '%s\n' "--ssl --ssl-verify-server-cert" ;;
-        skip-verify | preferred) printf '%s\n' "--ssl --skip-ssl-verify-server-cert" ;;
+        skip-verify) printf '%s\n' "--ssl --skip-ssl-verify-server-cert" ;;
+        preferred) printf '%s\n' "--skip-ssl-verify-server-cert" ;;
         false) printf '%s\n' "--skip-ssl" ;;
         "") return 0 ;;
       esac

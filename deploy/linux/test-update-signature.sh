@@ -153,7 +153,7 @@ expect_opts() {
 }
 expect_opts "MariaDB, tls=true checks the certificate" mariadb_dump true "--ssl --ssl-verify-server-cert"
 expect_opts "MariaDB, tls=skip-verify" mariadb_dump skip-verify "--ssl --skip-ssl-verify-server-cert"
-expect_opts "MariaDB, tls=preferred" mariadb_dump preferred "--ssl --skip-ssl-verify-server-cert"
+expect_opts "MariaDB, tls=preferred" mariadb_dump preferred "--skip-ssl-verify-server-cert"
 expect_opts "MariaDB, tls=false" mariadb_dump false "--skip-ssl"
 expect_opts "MariaDB, no tls" mariadb_dump "" ""
 expect_opts "MySQL, tls=true checks the certificate" mysql_dump true "--ssl-mode=VERIFY_IDENTITY"
