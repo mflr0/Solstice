@@ -301,6 +301,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "created by cloning %s",
 	IssueCloneAttachmentFailed: "The attachment “%s” could not be copied.",
+	IssueMoveSameProject:       "The issue is already in this project.",
+	IssueMoveSubtask:           "A sub-task moves with its parent: move the parent issue.",
+	IssueMoveChoiceNeeded:      "Choose before moving: %s.",
+	IssueMoveChanged:           "The issue changed while it was being moved. Reload it and try again.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

@@ -567,8 +567,11 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	for _, t := range texts {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			conds = append(conds, "("+pa+".pkey = ? AND "+a+".num = ?)")
-			c.arg(strings.ToUpper(m[1]), num)
+			// The key of an issue moved to another project still finds it.
+			conds = append(conds, "(("+pa+".pkey = ? AND "+a+".num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
+				"WHERE mk.issue_id = "+a+".id AND mk.old_key = ?))")
+			pkey := strings.ToUpper(m[1])
+			c.arg(pkey, num, pkey+"-"+strconv.FormatInt(num, 10))
 			continue
 		}
 		if id, err := strconv.ParseInt(t, 10, 64); err == nil {

@@ -340,6 +340,10 @@ const (
 	IssueCloneSummary          Key = "IssueCloneSummary"
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
+	IssueMoveSameProject       Key = "IssueMoveSameProject"
+	IssueMoveSubtask           Key = "IssueMoveSubtask"
+	IssueMoveChoiceNeeded      Key = "IssueMoveChoiceNeeded"
+	IssueMoveChanged           Key = "IssueMoveChanged"
 )
 
 // Comments and their visibility.

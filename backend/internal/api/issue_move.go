@@ -1,0 +1,877 @@
+package api
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"solstice/internal/audit"
+	"solstice/internal/events"
+	"solstice/internal/i18n"
+	"solstice/internal/issue"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
+)
+
+// Moving --------------------------------------------------------------------
+
+// moveInput is the request. The choices are the ones the dry run
+// ("check": true) asks for: a list given replaces what would be mapped by
+// name, and is the whole list the issue ends with.
+type moveInput struct {
+	Project         string          `json:"project"`
+	Check           bool            `json:"check"`
+	Type            *string         `json:"type"`
+	SubtaskType     *string         `json:"subtaskType"` // for the sub-tasks whose type the target lacks
+	Status          *string         `json:"status"`
+	Components      *[]int64        `json:"components"`
+	FixVersions     *[]int64        `json:"fixVersions"`
+	AffectsVersions *[]int64        `json:"affectsVersions"`
+	SecurityLevel   json.RawMessage `json:"securityLevel"` // an id, or null for none
+}
+
+// moveParts is what an issue has that the target project has no same-named
+// match for, and what the target offers instead.
+type moveParts struct {
+	Unmatched []idName `json:"unmatched"`
+	Options   []idName `json:"options"`
+}
+
+type moveSubtasks struct {
+	Count int `json:"count"`
+	// Reset counts the sub-tasks whose status is not in the target workflow:
+	// they start over; Lost the components and versions they leave behind.
+	Reset int `json:"reset"`
+	Lost  int `json:"lost"`
+}
+
+type moveAssignee struct {
+	From *userRef `json:"from"`
+	To   *userRef `json:"to"`
+}
+
+// moveCheck is the dry run's answer: what must still be chosen (Missing),
+// the options for it, and what the move changes or drops.
+type moveCheck struct {
+	Project         projectBrief  `json:"project"`
+	Ready           bool          `json:"ready"`
+	Missing         []string      `json:"missing"`
+	Types           []typeRef     `json:"types,omitempty"`
+	SubtaskTypes    []typeRef     `json:"subtaskTypes,omitempty"`
+	Statuses        []statusRef   `json:"statuses,omitempty"`
+	Components      *moveParts    `json:"components,omitempty"`
+	AffectsVersions *moveParts    `json:"affectsVersions,omitempty"`
+	FixVersions     *moveParts    `json:"fixVersions,omitempty"`
+	SecurityLevel   *moveParts    `json:"securityLevel,omitempty"`
+	DroppedFields   []string      `json:"droppedFields"`
+	Sprints         []string      `json:"sprints"` // the open sprints the issue leaves
+	Assignee        *moveAssignee `json:"assignee,omitempty"`
+	Subtasks        moveSubtasks  `json:"subtasks"`
+}
+
+// moveKinds are the multi-valued fields that belong to a project, in the
+// order of their choices.
+var moveKinds = []struct {
+	key, field, kind, from, options string
+}{
+	{"components", "Component", "", `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
+		WHERE ic.issue_id = ? ORDER BY c.name, c.id`,
+		`SELECT id, name FROM components WHERE project_id = ? AND NOT archived ORDER BY name, id`},
+	{"affectsVersions", "Version", "affects", `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+		WHERE iv.issue_id = ? AND iv.kind = ? ORDER BY v.position, v.id`,
+		`SELECT id, name FROM versions WHERE project_id = ? AND NOT archived ORDER BY position, id`},
+	{"fixVersions", "Fix Version", "fix", `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+		WHERE iv.issue_id = ? AND iv.kind = ? ORDER BY v.position, v.id`,
+		`SELECT id, name FROM versions WHERE project_id = ? AND NOT archived ORDER BY position, id`},
+}
+
+// moveSet is a component or version list before and after the move.
+type moveSet struct{ from, to []idName }
+
+// moveItem is one issue to move: the issue itself, then its sub-tasks.
+type moveItem struct {
+	row        *issueRow
+	typeID     string
+	status     string
+	resolution sql.NullString
+	sets       [3]moveSet
+	level      any // the id of the level, or nil
+	assignee   any // the id of the assignee, or nil
+	dropped    []int64
+	sprints    []sprintRef // the open sprints it leaves
+	num        int64
+}
+
+// moveDest is the project the issue goes to.
+type moveDest struct {
+	id, lead        int64
+	key, name       string
+	defaultAssignee string
+	types           []typeRef
+}
+
+type movePlan struct {
+	dest    *moveDest
+	cat     *catalog
+	items   []*moveItem
+	check   moveCheck
+	levels  [2]string // the level's name before and after
+	fieldNm map[int64]string
+}
+
+func (d *moveDest) hasType(id string) bool {
+	return slices.ContainsFunc(d.types, func(t typeRef) bool { return t.ID == id })
+}
+
+// moveDestination loads the project an issue goes to: unknown or hidden to
+// the user, it does not exist.
+func (s *Server) moveDestination(ctx context.Context, sub *perm.Subject, cat *catalog, key string) (*moveDest, error) {
+	if key == "" {
+		return nil, failf(http.StatusBadRequest, i18n.FieldRequired, "project")
+	}
+	d := &moveDest{}
+	var lead sql.NullInt64
+	err := s.db.QueryRowContext(ctx, `SELECT id, pkey, name, lead_id, default_assignee FROM projects WHERE pkey = ?`,
+		strings.ToUpper(key)).Scan(&d.id, &d.key, &d.name, &lead, &d.defaultAssignee)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !sub.CanBrowseProject(d.id) {
+		return nil, errNotFound
+	}
+	if !sub.Can(perm.Create, d.id, nil) {
+		return nil, errForbidden
+	}
+	d.lead = lead.Int64
+	err = sqlq.Each(ctx, s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
+		func(rows *sql.Rows) error {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			d.types = append(d.types, cat.typeOf(id))
+			return nil
+		}, d.id)
+	return d, err
+}
+
+func moveArgs(ids []int64) []any {
+	out := make([]any, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id)
+	}
+	return out
+}
+
+// moveNames reads (id, name) pairs.
+func (s *Server) moveNames(ctx context.Context, q string, args ...any) ([]idName, error) {
+	var out []idName
+	err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
+		var v idName
+		if err := rows.Scan(&v.ID, &v.Name); err != nil {
+			return err
+		}
+		out = append(out, v)
+		return nil
+	}, args...)
+	return out, err
+}
+
+// mapNames puts each of from on the option of the same name (case aside);
+// the ones with none are left over.
+func mapNames(from, options []idName) (mapped, unmatched []idName) {
+	for _, f := range from {
+		i := slices.IndexFunc(options, func(o idName) bool { return strings.EqualFold(o.Name, f.Name) })
+		switch {
+		case i < 0:
+			unmatched = append(unmatched, f)
+		case !slices.ContainsFunc(mapped, func(m idName) bool { return m.ID == options[i].ID }):
+			mapped = append(mapped, options[i])
+		}
+	}
+	return mapped, unmatched
+}
+
+// moveStatuses are the statuses an issue of a type can have in a project.
+func (s *Server) moveStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
+	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return s.projectStatuses(ctx, cat, projectID, "")
+	}
+	var out []statusRef
+	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+		func(rows *sql.Rows) error {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			out = append(out, cat.statusOf(id))
+			return nil
+		}, wf)
+	return out, err
+}
+
+// statusResolution is the resolution that goes with a new status: reaching a
+// "done" status resolves the issue, leaving it reopens it.
+func statusResolution(cat *catalog, iss *issueRow, status string) sql.NullString {
+	resolution := iss.ResolutionID
+	switch done := cat.statusOf(status).Category == issue.Done; {
+	case done && !resolution.Valid:
+		resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
+	case !done:
+		resolution = sql.NullString{}
+	}
+	return resolution
+}
+
+// moveAssigneeFor keeps the assignee if the target project lets them be
+// assigned; otherwise the project's rule for a new issue with these
+// components applies.
+func (s *Server) moveAssigneeFor(ctx context.Context, d *moveDest, row *issueRow, components []idName) (any, error) {
+	if !row.AssigneeID.Valid {
+		return nil, nil
+	}
+	ok, err := s.isAssignable(ctx, d.id, row.AssigneeID.Int64)
+	if err != nil || ok {
+		return sqlq.Value(row.AssigneeID), err
+	}
+	ids := make([]int64, 0, len(components))
+	for _, c := range components {
+		ids = append(ids, c.ID)
+	}
+	raw, err := json.Marshal(ids)
+	if err != nil {
+		return nil, err
+	}
+	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, d.id, d.lead); err != nil || ok {
+		return who, err
+	}
+	if d.defaultAssignee == "lead" && d.lead != 0 {
+		return d.lead, nil
+	}
+	return nil, nil
+}
+
+// movedFields are the custom fields with values on an issue that do not
+// apply in the target project for its type.
+func (s *Server) movedFields(ctx context.Context, projectID int64, typeID string, issueID int64) ([]int64, error) {
+	hidden := make([]any, 0, len(hiddenKinds))
+	for kind := range hiddenKinds {
+		hidden = append(hidden, kind)
+	}
+	marks := sqlq.Marks(len(hidden))
+	args := append([]any{issueID}, hidden...)
+	args = append(args, issueID)
+	args = append(args, hidden...)
+	var ids []int64
+	err := sqlq.Each(ctx, s.db, `SELECT v.field_id FROM custom_field_values v JOIN custom_fields f ON f.id = v.field_id
+		WHERE v.issue_id = ? AND SUBSTRING_INDEX(f.type_key, ':', -1) NOT IN (`+marks+`)
+		UNION SELECT l.field_id FROM labels l JOIN custom_fields f ON f.id = l.field_id
+		WHERE l.issue_id = ? AND SUBSTRING_INDEX(f.type_key, ':', -1) NOT IN (`+marks+`)`, func(rows *sql.Rows) error {
+		var id int64
+		err := rows.Scan(&id)
+		ids = append(ids, id)
+		return err
+	}, args...)
+	if err != nil {
+		return nil, err
+	}
+	return s.fieldsOutside(ctx, projectID, typeID, ids)
+}
+
+// leavingSprints are the open sprints of an issue on a board the target
+// project is not on.
+func (s *Server) leavingSprints(ctx context.Context, projectID, issueID int64) ([]sprintRef, error) {
+	var out []sprintRef
+	err := sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
+		WHERE si.issue_id = ? AND sp.state <> 'closed' AND (sp.board_id IS NULL OR NOT EXISTS
+			(SELECT 1 FROM board_projects bp WHERE bp.board_id = sp.board_id AND bp.project_id = ?)) ORDER BY sp.id`,
+		func(rows *sql.Rows) error {
+			var sp sprintRef
+			err := rows.Scan(&sp.ID, &sp.Name, &sp.State)
+			out = append(out, sp)
+			return err
+		}, issueID, projectID)
+	return out, err
+}
+
+// choice reads a list of ids given in the request against the target's
+// options.
+func choice(key string, ids []int64, options []idName) ([]idName, error) {
+	var out []idName
+	for _, id := range ids {
+		i := slices.IndexFunc(options, func(o idName) bool { return o.ID == id })
+		if i < 0 {
+			return nil, failf(http.StatusBadRequest, i18n.FieldValueNotInProject, key)
+		}
+		if !slices.Contains(out, options[i]) {
+			out = append(out, options[i])
+		}
+	}
+	return out, nil
+}
+
+// planMove works out what moving orig does, and what is still to choose.
+func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow, in *moveInput) (*movePlan, error) {
+	if orig.ParentID.Valid {
+		return nil, fail(http.StatusBadRequest, i18n.IssueMoveSubtask)
+	}
+	pi := orig.perm()
+	if !sub.Can(perm.Edit, orig.ProjectID, &pi) {
+		return nil, errForbidden
+	}
+	cat, err := s.catalogue(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dest, err := s.moveDestination(ctx, sub, cat, strings.TrimSpace(in.Project))
+	if err != nil {
+		return nil, err
+	}
+	if dest.id == orig.ProjectID {
+		return nil, fail(http.StatusBadRequest, i18n.IssueMoveSameProject)
+	}
+
+	// The sub-tasks go with it: the user must be able to change each.
+	var children []*issueRow
+	if err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE i.parent_id = ? ORDER BY i.num`, func(rows *sql.Rows) error {
+		child, err := scanIssue(rows)
+		children = append(children, child)
+		return err
+	}, orig.ID); err != nil {
+		return nil, err
+	}
+	for _, child := range children {
+		cp := child.perm()
+		if !sub.CanSee(cp) || !sub.Can(perm.Edit, child.ProjectID, &cp) {
+			return nil, errForbidden
+		}
+	}
+
+	plan := &movePlan{dest: dest, cat: cat}
+	chk := &plan.check
+	chk.Project = projectBrief{ID: dest.id, Key: dest.key, Name: dest.name}
+	chk.Missing, chk.DroppedFields, chk.Sprints = []string{}, []string{}, []string{}
+	chk.Subtasks.Count = len(children)
+	missing := func(key string) { chk.Missing = append(chk.Missing, key) }
+	head := &moveItem{row: orig, assignee: sqlq.Value(orig.AssigneeID)}
+	plan.items = append(plan.items, head)
+
+	// Type, then the status, which depends on the workflow of the type.
+	switch {
+	case in.Type != nil:
+		if it, ok := cat.issueType[*in.Type]; !ok || it.Subtask || !dest.hasType(*in.Type) {
+			return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
+		}
+		head.typeID = *in.Type
+	case dest.hasType(orig.TypeID):
+		head.typeID = orig.TypeID
+	default:
+		for _, t := range dest.types {
+			if !t.Subtask {
+				chk.Types = append(chk.Types, t)
+			}
+		}
+		missing("type")
+	}
+	if head.typeID != "" {
+		statuses, err := s.moveStatuses(ctx, cat, dest.id, head.typeID)
+		if err != nil {
+			return nil, err
+		}
+		has := func(id string) bool {
+			return slices.ContainsFunc(statuses, func(st statusRef) bool { return st.ID == id })
+		}
+		switch {
+		case in.Status != nil:
+			if !has(*in.Status) {
+				return nil, fail(http.StatusBadRequest, i18n.StatusUnknown)
+			}
+			head.status = *in.Status
+		case has(orig.StatusID):
+			head.status = orig.StatusID
+		default:
+			chk.Statuses = statuses
+			missing("status")
+		}
+	}
+	head.resolution = orig.ResolutionID
+	if head.status != "" && head.status != orig.StatusID {
+		head.resolution = statusResolution(cat, orig, head.status)
+	}
+
+	// Components and versions are matched by name.
+	chosen := [3]*[]int64{in.Components, in.AffectsVersions, in.FixVersions}
+	shown := [3]**moveParts{&chk.Components, &chk.AffectsVersions, &chk.FixVersions}
+	options := [3][]idName{}
+	for k, kind := range moveKinds {
+		if options[k], err = s.moveNames(ctx, kind.options, dest.id); err != nil {
+			return nil, err
+		}
+		from, err := s.movedParts(ctx, k, orig.ID)
+		if err != nil {
+			return nil, err
+		}
+		mapped, unmatched := mapNames(from, options[k])
+		head.sets[k].from = from
+		switch {
+		case chosen[k] != nil:
+			if head.sets[k].to, err = choice(kind.key, *chosen[k], options[k]); err != nil {
+				return nil, err
+			}
+		case len(unmatched) == 0:
+			head.sets[k].to = mapped
+		default:
+			missing(kind.key)
+		}
+		if len(unmatched) > 0 {
+			*shown[k] = &moveParts{Unmatched: unmatched, Options: options[k]}
+		}
+	}
+
+	// The security level: the one of the same name, else a choice.
+	if err := s.planLevel(ctx, sub, orig, dest, in, plan, missing); err != nil {
+		return nil, err
+	}
+
+	// Sub-tasks: same mapping, and as confidential as their parent.
+	subtaskTypes := []typeRef{}
+	for _, t := range dest.types {
+		if t.Subtask {
+			subtaskTypes = append(subtaskTypes, t)
+		}
+	}
+	statusesOf := map[string][]statusRef{}
+	for _, child := range children {
+		c := &moveItem{row: child, assignee: sqlq.Value(child.AssigneeID), level: head.level}
+		plan.items = append(plan.items, c)
+		switch {
+		case dest.hasType(child.TypeID):
+			c.typeID = child.TypeID
+		case in.SubtaskType != nil:
+			if it, ok := cat.issueType[*in.SubtaskType]; !ok || !it.Subtask || !dest.hasType(*in.SubtaskType) {
+				return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
+			}
+			c.typeID = *in.SubtaskType
+		case chk.SubtaskTypes == nil:
+			chk.SubtaskTypes = subtaskTypes
+			missing("subtaskType")
+		}
+		if c.typeID != "" {
+			statuses, ok := statusesOf[c.typeID]
+			if !ok {
+				if statuses, err = s.moveStatuses(ctx, cat, dest.id, c.typeID); err != nil {
+					return nil, err
+				}
+				statusesOf[c.typeID] = statuses
+			}
+			if slices.ContainsFunc(statuses, func(st statusRef) bool { return st.ID == child.StatusID }) {
+				c.status = child.StatusID
+			} else {
+				if c.status, err = s.initialStatusFor(ctx, dest.id, c.typeID); err != nil {
+					return nil, err
+				}
+				chk.Subtasks.Reset++
+			}
+			c.resolution = child.ResolutionID
+			if c.status != child.StatusID {
+				c.resolution = statusResolution(cat, child, c.status)
+			}
+		}
+		for k := range moveKinds {
+			from, err := s.movedParts(ctx, k, child.ID)
+			if err != nil {
+				return nil, err
+			}
+			c.sets[k].from = from
+			c.sets[k].to, _ = mapNames(from, options[k])
+			chk.Subtasks.Lost += len(from) - len(c.sets[k].to)
+		}
+	}
+
+	// What the move drops or changes. The fields that apply depend on the type.
+	dropped := map[int64]bool{}
+	var droppedIDs []int64
+	for _, it := range plan.items {
+		if it.typeID != "" {
+			if it.dropped, err = s.movedFields(ctx, dest.id, it.typeID, it.row.ID); err != nil {
+				return nil, err
+			}
+			for _, id := range it.dropped {
+				if !dropped[id] {
+					dropped[id] = true
+					droppedIDs = append(droppedIDs, id)
+				}
+			}
+		}
+		if it.sprints, err = s.leavingSprints(ctx, dest.id, it.row.ID); err != nil {
+			return nil, err
+		}
+		for _, sp := range it.sprints {
+			if !slices.Contains(chk.Sprints, sp.Name) {
+				chk.Sprints = append(chk.Sprints, sp.Name)
+			}
+		}
+		if it.assignee, err = s.moveAssigneeFor(ctx, dest, it.row, it.sets[0].to); err != nil {
+			return nil, err
+		}
+	}
+	if len(droppedIDs) > 0 {
+		plan.fieldNm = map[int64]string{}
+		names, err := s.moveNames(ctx, `SELECT id, name FROM custom_fields WHERE id IN (`+sqlq.Marks(len(droppedIDs))+`)`,
+			moveArgs(droppedIDs)...)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range names {
+			plan.fieldNm[n.ID] = n.Name
+			chk.DroppedFields = append(chk.DroppedFields, n.Name)
+		}
+		sort.Strings(chk.DroppedFields)
+	}
+	if sqlq.Value(orig.AssigneeID) != head.assignee {
+		ids := []int64{orig.AssigneeID.Int64}
+		if to, ok := head.assignee.(int64); ok {
+			ids = append(ids, to)
+		}
+		users, err := s.users(ctx, ids...)
+		if err != nil {
+			return nil, err
+		}
+		chk.Assignee = &moveAssignee{From: refOf(users, orig.AssigneeID), To: refOf(users, nullInt64(head.assignee))}
+	}
+	chk.Ready = len(chk.Missing) == 0
+	return plan, nil
+}
+
+// movedParts reads the components or versions (by kind index) of an issue.
+func (s *Server) movedParts(ctx context.Context, k int, issueID int64) ([]idName, error) {
+	args := []any{issueID}
+	if moveKinds[k].kind != "" {
+		args = append(args, moveKinds[k].kind)
+	}
+	return s.moveNames(ctx, moveKinds[k].from, args...)
+}
+
+// planLevel decides the security level of the moved issue: the choice given
+// (which takes the right to set levels), else the target's level of the same
+// name, else something to choose.
+func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRow, dest *moveDest, in *moveInput,
+	plan *movePlan, missing func(string)) error {
+	head := plan.items[0]
+	levels, err := s.moveNames(ctx, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name, id`, dest.id)
+	if err != nil {
+		return err
+	}
+	var current idName
+	if orig.LevelID.Valid {
+		current.ID = orig.LevelID.Int64
+		s.db.QueryRowContext(ctx, `SELECT name FROM security_levels WHERE id = ?`, current.ID).Scan(&current.Name)
+		plan.levels[0] = current.Name
+	}
+	switch {
+	case len(in.SecurityLevel) > 0:
+		pi := orig.perm()
+		if !sub.Can(perm.Security, dest.id, nil) || !sub.Can(perm.Security, orig.ProjectID, &pi) {
+			return errForbidden
+		}
+		if string(in.SecurityLevel) == "null" {
+			return nil
+		}
+		var id int64
+		if err := json.Unmarshal(in.SecurityLevel, &id); err != nil {
+			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "securityLevel")
+		}
+		i := slices.IndexFunc(levels, func(l idName) bool { return l.ID == id })
+		if i < 0 {
+			return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
+		}
+		head.level, plan.levels[1] = id, levels[i].Name
+	case !orig.LevelID.Valid:
+	default:
+		if i := slices.IndexFunc(levels, func(l idName) bool { return strings.EqualFold(l.Name, current.Name) }); i >= 0 {
+			head.level, plan.levels[1] = levels[i].ID, levels[i].Name
+			return nil
+		}
+		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: levels}
+		missing("securityLevel")
+	}
+	return nil
+}
+
+// moveIssue moves an issue, and its sub-tasks, to another project. The
+// issue gets the next key of the target and keeps answering to its old one.
+func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	orig, err := s.visibleIssue(r, sub)
+	if err != nil {
+		return err
+	}
+	var in moveInput
+	if err := readJSON(r, &in); err != nil {
+		return err
+	}
+	plan, err := s.planMove(ctx, sub, orig, &in)
+	if err != nil {
+		return err
+	}
+	if in.Check {
+		return writeJSON(w, http.StatusOK, plan.check)
+	}
+	if !plan.check.Ready {
+		return &httpError{status: http.StatusBadRequest,
+			msg:   i18n.M(i18n.IssueMoveChoiceNeeded, strings.Join(plan.check.Missing, ", ")),
+			extra: map[string]any{"missing": plan.check.Missing}}
+	}
+
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Someone else may have moved the issue, or changed its sub-tasks, since
+	// the plan was made.
+	var project int64
+	if err := tx.QueryRowContext(ctx, `SELECT project_id FROM issues WHERE id = ? FOR UPDATE`, orig.ID).
+		Scan(&project); err != nil {
+		return err
+	}
+	var children []int64
+	if err := sqlq.Each(ctx, tx, `SELECT id FROM issues WHERE parent_id = ? ORDER BY num FOR UPDATE`,
+		func(rows *sql.Rows) error {
+			var id int64
+			err := rows.Scan(&id)
+			children = append(children, id)
+			return err
+		}, orig.ID); err != nil {
+		return err
+	}
+	if project != orig.ProjectID || len(children) != len(plan.items)-1 {
+		return fail(http.StatusConflict, i18n.IssueMoveChanged)
+	}
+	for i, id := range children {
+		if plan.items[i+1].row.ID != id {
+			return fail(http.StatusConflict, i18n.IssueMoveChanged)
+		}
+	}
+
+	var next int64
+	if err := tx.QueryRowContext(ctx, `SELECT issue_counter + 1 FROM projects WHERE id = ? FOR UPDATE`, plan.dest.id).
+		Scan(&next); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE projects SET issue_counter = ? WHERE id = ?`,
+		next+int64(len(plan.items))-1, plan.dest.id); err != nil {
+		return err
+	}
+	changes := make([][]change, len(plan.items))
+	for i, it := range plan.items {
+		it.num = next + int64(i)
+		if changes[i], err = s.applyMove(ctx, tx, plan, it, sub.UserID, now); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Announced like an edit, with the visibility from before: someone who
+	// just lost access must hear of it. Pages open on the old key refresh.
+	for i, it := range plan.items {
+		updated, err := s.findIssueByID(ctx, it.row.ID)
+		if err != nil {
+			return err
+		}
+		before := it.row.perm()
+		e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
+		e.Changes = eventChanges(changes[i])
+		e.Before = &before
+		s.emit(e)
+		s.publish(it.row, "issue", sub.UserID)
+	}
+	moved, err := s.findIssueByID(ctx, orig.ID)
+	if err != nil {
+		return err
+	}
+	s.auditLog(r, "issue.move", audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: moved.Key()},
+		map[string]any{"from": orig.Key(), "to": moved.Key(), "project": plan.dest.key, "subtasks": len(plan.items) - 1})
+	return writeJSON(w, http.StatusOK, map[string]string{"key": moved.Key()})
+}
+
+// applyMove writes one issue's move and returns its history lines.
+func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *moveItem, by int64, now time.Time) ([]change, error) {
+	row, cat, dest := it.row, plan.cat, plan.dest
+	newKey := dest.key + "-" + strconv.FormatInt(it.num, 10)
+	changes := []change{
+		{field: "Key", oldString: row.Key(), newString: newKey},
+		{field: "project", oldValue: strconv.FormatInt(row.ProjectID, 10), oldString: row.ProjectName,
+			newValue: strconv.FormatInt(dest.id, 10), newString: dest.name},
+	}
+	sets := []string{"project_id = ?", "num = ?", "issue_type_id = ?", "status_id = ?", "resolution_id = ?",
+		"security_level_id = ?", "assignee_id = ?", "updated_at = ?"}
+	args := []any{dest.id, it.num, it.typeID, it.status, sqlq.Value(it.resolution), it.level, it.assignee, now}
+	if it.typeID != row.TypeID {
+		changes = append(changes, change{"issuetype", row.TypeID, cat.typeOf(row.TypeID).Name, it.typeID,
+			cat.typeOf(it.typeID).Name})
+	}
+	if it.status != row.StatusID {
+		changes = append(changes, change{"status", row.StatusID, cat.statusOf(row.StatusID).Name, it.status,
+			cat.statusOf(it.status).Name})
+	}
+	if it.resolution != row.ResolutionID {
+		var oldName, newName any
+		if v := cat.resolutionOf(row.ResolutionID); v != nil {
+			oldName = v.Name
+		}
+		if v := cat.resolutionOf(it.resolution); v != nil {
+			newName = v.Name
+		}
+		changes = append(changes, change{"resolution", sqlq.Value(row.ResolutionID), oldName, sqlq.Value(it.resolution), newName})
+		sets = append(sets, "resolved_at = ?")
+		if it.resolution.Valid {
+			args = append(args, now)
+		} else {
+			args = append(args, nil)
+		}
+	}
+	if sqlq.Value(row.LevelID) != it.level {
+		changes = append(changes, change{"security", sqlq.Value(row.LevelID), plan.levels[0], it.level, plan.levels[1]})
+	}
+	if sqlq.Value(row.AssigneeID) != it.assignee {
+		c := change{field: "assignee"}
+		if row.AssigneeID.Valid {
+			c.oldValue, c.oldString = s.userName(ctx, row.AssigneeID.Int64)
+		}
+		if who, ok := it.assignee.(int64); ok {
+			c.newValue, c.newString = s.userName(ctx, who)
+		}
+		changes = append(changes, c)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE issues SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
+		append(args, row.ID)...); err != nil {
+		return nil, err
+	}
+
+	// The old keys: the issue's own, and those the project went by before.
+	if _, err := tx.ExecContext(ctx, `INSERT INTO moved_issue_keys (old_key, issue_id) VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE issue_id = ?`, row.Key(), row.ID, row.ID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO moved_issue_keys (old_key, issue_id)
+		SELECT CONCAT(pkey, '-', ?), ? FROM project_keys WHERE project_id = ?`, row.Num, row.ID, row.ProjectID); err != nil {
+		return nil, err
+	}
+
+	// Components and versions.
+	for k, kind := range moveKinds {
+		set := it.sets[k]
+		var err error
+		if kind.kind == "" {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ?`, row.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND kind = ?`, row.ID, kind.kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range set.to {
+			if kind.kind == "" {
+				_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, row.ID, v.ID)
+			} else {
+				_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
+					row.ID, v.ID, kind.kind)
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+		same := func(a, b idName) bool { return strings.EqualFold(a.Name, b.Name) }
+		for _, v := range set.from {
+			if !slices.ContainsFunc(set.to, func(o idName) bool { return same(o, v) }) {
+				changes = append(changes, change{field: kind.field, oldValue: strconv.FormatInt(v.ID, 10), oldString: v.Name})
+			}
+		}
+		for _, v := range set.to {
+			if !slices.ContainsFunc(set.from, func(o idName) bool { return same(o, v) }) {
+				changes = append(changes, change{field: kind.field, newValue: strconv.FormatInt(v.ID, 10), newString: v.Name})
+			}
+		}
+	}
+
+	// Values of the fields that do not apply here are dropped, and said so.
+	if len(it.dropped) > 0 {
+		marks, ids := sqlq.Marks(len(it.dropped)), moveArgs(it.dropped)
+		values := map[int64][]string{}
+		if err := sqlq.Each(ctx, tx, `SELECT field_id, string_value, number_value, text_value, date_value
+			FROM custom_field_values WHERE issue_id = ? AND field_id IN (`+marks+`)`, func(rows *sql.Rows) error {
+			var id int64
+			var text, long sql.NullString
+			var n sql.NullFloat64
+			var d sql.NullTime
+			if err := rows.Scan(&id, &text, &n, &long, &d); err != nil {
+				return err
+			}
+			switch {
+			case text.Valid:
+				values[id] = append(values[id], text.String)
+			case n.Valid:
+				values[id] = append(values[id], strconv.FormatFloat(n.Float64, 'f', -1, 64))
+			case long.Valid:
+				values[id] = append(values[id], long.String)
+			case d.Valid:
+				values[id] = append(values[id], d.Time.Format(time.DateOnly))
+			}
+			return nil
+		}, append([]any{row.ID}, ids...)...); err != nil {
+			return nil, err
+		}
+		if err := sqlq.Each(ctx, tx, `SELECT field_id, label FROM labels WHERE issue_id = ? AND field_id IN (`+marks+`)`,
+			func(rows *sql.Rows) error {
+				var id int64
+				var label string
+				err := rows.Scan(&id, &label)
+				values[id] = append(values[id], label)
+				return err
+			}, append([]any{row.ID}, ids...)...); err != nil {
+			return nil, err
+		}
+		for _, id := range it.dropped {
+			changes = append(changes, change{field: plan.fieldNm[id], oldString: strings.Join(values[id], ", ")})
+		}
+		for _, table := range []string{"custom_field_values", "labels"} {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE issue_id = ? AND field_id IN (`+marks+`)`,
+				append([]any{row.ID}, ids...)...); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Open sprints of a board the target is not on are left; closed ones stay
+	// in the history.
+	for _, sp := range it.sprints {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM sprint_issues WHERE sprint_id = ? AND issue_id = ?`, sp.ID, row.ID); err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: "Sprint", oldValue: strconv.FormatInt(sp.ID, 10), oldString: sp.Name})
+	}
+	return changes, recordChanges(ctx, tx, row.ID, by, now, changes)
+}

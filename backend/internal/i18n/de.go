@@ -303,6 +303,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "KLON - %s",
 	IssueCloneHistory:          "durch Klonen von %s erstellt",
 	IssueCloneAttachmentFailed: "Der Anhang „%s“ konnte nicht kopiert werden.",
+	IssueMoveSameProject:       "Der Vorgang befindet sich bereits in diesem Projekt.",
+	IssueMoveSubtask:           "Ein Teilvorgang wird mit seinem übergeordneten Vorgang verschoben: Verschieben Sie den übergeordneten Vorgang.",
+	IssueMoveChoiceNeeded:      "Vor dem Verschieben auswählen: %s.",
+	IssueMoveChanged:           "Der Vorgang wurde während des Verschiebens geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

@@ -302,6 +302,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "créé en clonant %s",
 	IssueCloneAttachmentFailed: "La pièce jointe « %s » n'a pas pu être copiée.",
+	IssueMoveSameProject:       "Le ticket est déjà dans ce projet.",
+	IssueMoveSubtask:           "Une sous-tâche se déplace avec son parent : déplacez le ticket parent.",
+	IssueMoveChoiceNeeded:      "À choisir avant de déplacer : %s.",
+	IssueMoveChanged:           "Le ticket a changé pendant son déplacement. Rechargez-le et réessayez.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

@@ -304,6 +304,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "क्लोन - %s",
 	IssueCloneHistory:          "%s को क्लोन करके बनाया गया",
 	IssueCloneAttachmentFailed: "अटैचमेंट “%s” कॉपी नहीं हो सका।",
+	IssueMoveSameProject:       "टिकट पहले से इसी प्रोजेक्ट में है।",
+	IssueMoveSubtask:           "उप-कार्य अपने मूल टिकट के साथ ही स्थानांतरित होता है: मूल टिकट को स्थानांतरित करें।",
+	IssueMoveChoiceNeeded:      "स्थानांतरित करने से पहले चुनें: %s।",
+	IssueMoveChanged:           "स्थानांतरित करते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
