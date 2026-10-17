@@ -8,13 +8,18 @@ a new binary (or image) and a restart. Related pages:
 Back up before you upgrade, as described in [backups](backups.md). The
 integrated update dumps the database for you; the other methods do not.
 
-To see the running version, use `solstice version`, the updates page of the
+To see the running version, use `solstice version`, the System page of the
 administration, or `GET /healthz`, which answers `{"status":"ok","version":...}`.
 
 ## Integrated update (Linux, systemd)
 
 On an installation made with the release archive's `install.sh`, global
 administrators can update from the administration, on the Updates page.
+
+> Until issue #28 is fixed, the Updates page has no route: `/admin/updates`
+> shows "not found". The System page shows whether a newer version is
+> available, but its link to the Updates page does not work yet. Until then,
+> use the manual upgrade below.
 
 Solstice checks GitHub for a new release at most every 12 hours. This is the
 only request it makes on its own, and an administrator can turn the checks
@@ -81,8 +86,8 @@ taken before the update. To go back fully, restore it as described in
 ### Status and logs
 
 The helper writes its progress to `/var/lib/solstice/update/status`, which the
-Updates page reads. The status is `running`, `ok`, `failed` or `rolled_back`.
-The same lines go to the journal:
+Updates page reads. The status is `pending`, `running`, `ok`, `rolled_back` or
+`failed`. The same lines go to the journal:
 
 ```sh
 journalctl -u solstice-update

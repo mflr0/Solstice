@@ -25,7 +25,7 @@ L'installateur exige systemd et accepte ces options :
 
 | Option | Effet |
 |---|---|
-| `--with-mariadb` | Installe MariaDB depuis les paquets de la distribution si aucun client `mariadb` ou `mysql` n'est trouvé (`apt-get`, `dnf` ou `zypper`), crée la base `solstice` et son compte avec un mot de passe aléatoire, et écrit `SOLSTICE_DB_URL` dans le fichier de configuration. L'assistant d'installation saute alors son étape de la base. |
+| `--with-mariadb` | Installe MariaDB depuis les paquets de la distribution si aucun client `mariadb` ou `mysql` n'est trouvé (`apt-get`, `dnf` ou `zypper`), crée la base `solstice` et son compte avec un mot de passe aléatoire, et écrit `SOLSTICE_DB_URL` dans le fichier de configuration. L'assistant d'installation saute alors son étape de la base. Sans effet quand le fichier de configuration contient déjà `SOLSTICE_DB_URL`. |
 | `--port N` | Port d'écoute de Solstice. Défaut : `8080`. Écrit sous la forme `SOLSTICE_HTTP_ADDR=:N` quand l'installateur crée le fichier de configuration. |
 | `--binary CHEMIN` | Le binaire `solstice` à installer. Défaut : celui qui se trouve à côté du script. |
 
@@ -249,8 +249,9 @@ dans [mises à jour](upgrades.md#loption-tls-et-la-sauvegarde).
 
 ### Vérification d'état
 
-`GET /healthz` répond 200 quand la base répond, 503 sinon. Il répond aussi
-pendant l'installation. `solstice health` fait cette requête sur
+`GET /healthz` répond 200 quand la base répond, 503 sinon. Pendant
+l'installation, il répond 503, avec `"setup": true` dans le corps, tant qu'une
+base n'est pas configurée. `solstice health` fait cette requête sur
 `SOLSTICE_HTTP_ADDR` et se termine avec le statut 0 si la réponse est 200 ;
 `-url` donne une autre adresse.
 

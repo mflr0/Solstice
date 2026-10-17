@@ -13,7 +13,9 @@ renews the certificate by itself.
 - Redirect plain HTTP to HTTPS.
 - Pass the original `Host` header.
 - Send `X-Forwarded-Proto` (`https`) and `X-Forwarded-For`. Solstice marks its
-  session cookie `Secure` when it sees `X-Forwarded-Proto: https`.
+  session cookie `Secure` from `X-Forwarded-Proto: https` only when the proxy
+  is listed in `SOLSTICE_HTTP_TRUSTEDPROXIES` (see below), or when the public
+  address is `https://`.
 - Send `Strict-Transport-Security` (HSTS) on the HTTPS site, so that browsers
   keep using HTTPS. Never send it on the plain HTTP redirect.
 - Keep `GET /api/events` open, without buffering and without closing it after
@@ -166,9 +168,9 @@ every client:
 - The setup wizard throttles wrong codes per address in the same way, so
   everyone behind the proxy shares one count.
 
-Sessions still work, and the cookie is still `Secure` when the proxy sends
-`X-Forwarded-Proto: https` or the public address is `https://`. The trusted
-proxy list changes only which client address Solstice reads.
+Sessions still work. The cookie is `Secure` only if the public address is
+`https://`, because Solstice ignores `X-Forwarded-Proto` from a proxy that is
+not listed.
 
 ## Checking
 

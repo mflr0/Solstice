@@ -9,8 +9,8 @@ Sauvegardez avant de mettre à jour, comme décrit dans
 [sauvegardes](backups.md). La mise à jour intégrée exporte la base pour vous ;
 les autres méthodes ne le font pas.
 
-Pour connaître la version en cours, utilisez `solstice version`, la page des
-mises à jour de l'administration, ou `GET /healthz`, qui répond
+Pour connaître la version en cours, utilisez `solstice version`, la page
+Système de l'administration, ou `GET /healthz`, qui répond
 `{"status":"ok","version":...}`.
 
 ## Mise à jour intégrée (Linux, systemd)
@@ -18,6 +18,12 @@ mises à jour de l'administration, ou `GET /healthz`, qui répond
 Sur une installation faite avec le `install.sh` de l'archive publiée, les
 administrateurs globaux peuvent mettre à jour depuis l'administration, sur la
 page Mises à jour.
+
+> Tant que le ticket #28 n'est pas corrigé, la page Mises à jour n'a pas de
+> route : `/admin/updates` affiche « introuvable ». La page Système indique
+> si une version plus récente existe, mais son lien vers la page Mises à jour
+> ne fonctionne pas encore. D'ici là, utilisez la mise à jour manuelle
+> ci-dessous.
 
 Solstice interroge GitHub pour savoir si une nouvelle version existe, au plus
 toutes les 12 heures. C'est la seule requête qu'il fait de lui-même, et un
@@ -90,8 +96,8 @@ revenir complètement en arrière, restaurez-la comme décrit dans
 ### État et journaux
 
 L'assistant écrit sa progression dans `/var/lib/solstice/update/status`, que
-lit la page Mises à jour. L'état est `running`, `ok`, `failed` ou
-`rolled_back`. Les mêmes lignes vont dans le journal systemd :
+lit la page Mises à jour. L'état est `pending`, `running`, `ok`,
+`rolled_back` ou `failed`. Les mêmes lignes vont dans le journal systemd :
 
 ```sh
 journalctl -u solstice-update

@@ -24,7 +24,7 @@ The installer needs systemd and takes these options:
 
 | Option | Effect |
 |---|---|
-| `--with-mariadb` | Installs MariaDB from the distribution's packages if no `mariadb` or `mysql` client is found (`apt-get`, `dnf` or `zypper`), creates the `solstice` database and account with a random password, and writes `SOLSTICE_DB_URL` to the configuration file. The setup wizard then skips its database step. |
+| `--with-mariadb` | Installs MariaDB from the distribution's packages if no `mariadb` or `mysql` client is found (`apt-get`, `dnf` or `zypper`), creates the `solstice` database and account with a random password, and writes `SOLSTICE_DB_URL` to the configuration file. The setup wizard then skips its database step. Does nothing when the configuration file already has `SOLSTICE_DB_URL`. |
 | `--port N` | Port Solstice listens on. Default `8080`. Written as `SOLSTICE_HTTP_ADDR=:N` when the installer creates the configuration file. |
 | `--binary PATH` | The `solstice` binary to install. Default: the one next to the script. |
 
@@ -237,8 +237,9 @@ update helper's backup is described in [upgrades](upgrades.md#the-tls-option-and
 
 ### Health check
 
-`GET /healthz` answers 200 when the database responds and 503 otherwise. It
-also answers during setup. `solstice health` makes this request against
+`GET /healthz` answers 200 when the database responds and 503 otherwise. During
+setup it answers 503, with `"setup": true` in the body, until a database is
+configured. `solstice health` makes this request against
 `SOLSTICE_HTTP_ADDR` and exits with status 0 on a 200 answer; `-url` gives
 another address.
 

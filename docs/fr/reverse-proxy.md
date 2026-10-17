@@ -14,7 +14,9 @@ car il obtient et renouvelle lui-même le certificat.
 - Rediriger le HTTP simple vers HTTPS.
 - Transmettre l'en-tête `Host` d'origine.
 - Envoyer `X-Forwarded-Proto` (`https`) et `X-Forwarded-For`. Solstice marque
-  son cookie de session `Secure` quand il voit `X-Forwarded-Proto: https`.
+  son cookie de session `Secure` d'après `X-Forwarded-Proto: https`
+  seulement si le proxy figure dans `SOLSTICE_HTTP_TRUSTEDPROXIES` (voir
+  plus bas), ou si l'adresse publique est `https://`.
 - Envoyer `Strict-Transport-Security` (HSTS) sur le site HTTPS, pour que les
   navigateurs continuent d'utiliser HTTPS. Ne l'envoyez jamais sur la
   redirection HTTP simple.
@@ -175,10 +177,9 @@ tous les clients :
 - L'assistant d'installation limite les codes erronés par adresse de la même
   façon : tous ceux qui passent par le proxy partagent un seul compte.
 
-Les sessions fonctionnent toujours, et le cookie reste `Secure` quand le proxy
-envoie `X-Forwarded-Proto: https` ou que l'adresse publique est `https://`. La
-liste des proxies de confiance change seulement l'adresse de client que
-Solstice lit.
+Les sessions fonctionnent toujours. Le cookie n'est `Secure` que si l'adresse
+publique est `https://`, car Solstice ignore `X-Forwarded-Proto` venant d'un
+proxy absent de la liste.
 
 ## Vérification
 
