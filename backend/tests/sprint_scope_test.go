@@ -100,9 +100,14 @@ func TestSprintMoveStaysWithinBoardProjects(t *testing.T) {
 func TestBacklogMoveKeepsSprintsOfHiddenBoards(t *testing.T) {
 	marie := login(t, "marie.durand", "motdepasse")
 	paul := login(t, "paul.martin", "motdepasse")
-	hiddenBoard, hiddenSprint := scopeBoard(t, marie, "RH")
+	// Nobody can create a board on RH (only the rh group browses it, and no
+	// one there administers it), so marie makes a WEB board and keeps its
+	// filter to herself: paul, who edits issues of DEMO and WEB, cannot see it.
+	hiddenBoard, hiddenSprint := scopeBoard(t, marie, "WEB")
+	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, hiddenBoard)
+	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"shares": []map[string]any{}}, 200, nil)
 	if status := paul.get("/api/boards/"+hiddenBoard, nil); status != 404 {
-		t.Fatalf("paul.martin sees the RH board: %d", status)
+		t.Fatalf("paul.martin sees the private board: %d", status)
 	}
 	demoSprint := scopeSprint(t, marie, boardID(t, "DEMO — Scrum"))
 	toBacklog := func(key string) {
@@ -144,5 +149,23 @@ func TestBacklogMoveKeepsSprintsOfHiddenBoards(t *testing.T) {
 	}
 	if n := sprintMembers(t, hiddenSprint, both); n != "1" {
 		t.Errorf("%s left the sprint of the hidden board", both)
+	}
+
+	// The same drag to the backlog on a board paul sees.
+	dragged := newTestIssue(t, paul, "Sprint caché et glissé", nil)
+	if status, body := marie.do("POST", "/api/boards/"+boardID(t, "DEMO — Scrum")+"/move",
+		map[string]any{"issue": dragged, "sprint": demoSprint}); status != 204 {
+		t.Fatalf("plan the issue: %d %s", status, body)
+	}
+	hide(dragged)
+	if status, body := paul.do("POST", "/api/boards/"+boardID(t, "DEMO — Scrum")+"/move",
+		map[string]any{"issue": dragged, "sprint": 0}); status != 204 {
+		t.Fatalf("board move to the backlog: %d %s", status, body)
+	}
+	if n := sprintMembers(t, demoSprint, dragged); n != "0" {
+		t.Errorf("%s is still in the sprint it sees", dragged)
+	}
+	if n := sprintMembers(t, hiddenSprint, dragged); n != "1" {
+		t.Errorf("%s left the sprint of the hidden board", dragged)
 	}
 }

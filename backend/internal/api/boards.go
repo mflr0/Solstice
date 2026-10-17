@@ -983,12 +983,12 @@ func (s *Server) visibleBoardIDs(ctx context.Context, sub *perm.Subject) ([]any,
 }
 
 // setSprint moves an issue into an open sprint of the board, or back to the
-// backlog (0). Closed sprints stay in its history. Without a board (an empty
-// boardRow), the backlog move only leaves the open sprints of boards the user
+// backlog (0). Closed sprints stay in its history. The backlog move, on a board
+// or not (an empty boardRow), only leaves the open sprints of boards the user
 // sees.
 func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64) error {
 	scope, scopeArgs := "", []any(nil)
-	if sprint == 0 && b.ID == 0 {
+	if sprint == 0 {
 		boards, err := s.visibleBoardIDs(ctx, sub)
 		if err != nil {
 			return err
