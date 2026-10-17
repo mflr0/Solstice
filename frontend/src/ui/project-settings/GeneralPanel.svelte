@@ -42,7 +42,7 @@
   let touched = $state(false);
   let saving = $state(false);
 
-  const allTypes = $derived(session.meta?.issueTypes ?? settings?.issueTypes ?? []);
+  const allTypes = $derived(session.meta?.issueTypes ?? []);
   const problems = $derived(form ? generalProblems(form, allTypes) : {});
   const nameShown = $derived(
     (tried || touched) && problems.name ? t.projectsAdmin.problems[problems.name] : '',
