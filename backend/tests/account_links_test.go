@@ -438,7 +438,8 @@ func TestPasswordOrAddressChangeKillsLinks(t *testing.T) {
 		t.Error("a link survives a change of address")
 	}
 	token = issue()
-	e.login("wp7-change", "set by the administrator").call("PATCH", "/api/me", map[string]any{"email": "mine@exemple.fr"}, 200, nil)
+	e.login("wp7-change", "set by the administrator").call("PATCH", "/api/me",
+		map[string]any{"email": "mine@exemple.fr", "currentPassword": "set by the administrator"}, 200, nil)
 	if valid(token) {
 		t.Error("a link survives a change of address by the person")
 	}

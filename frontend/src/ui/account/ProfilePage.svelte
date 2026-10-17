@@ -32,7 +32,7 @@
   let unsupported = $state(false);
 
   const min = $derived(publicSettings.value.passwordMinLength);
-  const problems = $derived(profileProblems(form, min));
+  const problems = $derived(profileProblems(form, min, session.me));
   const dirty = $derived(
     session.me !== null &&
       (form.name.trim() !== session.me.name ||

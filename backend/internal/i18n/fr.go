@@ -36,6 +36,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Indiquez votre mot de passe actuel.",
 	AccountCurrentPasswordIncorrect:  "Mot de passe actuel incorrect.",
 	AccountTokenCannotChangePassword: "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.",
+	AccountTokenCannotChangeEmail:    "Un jeton d'accès ne peut pas changer l'adresse électronique : connectez-vous avec votre mot de passe.",
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
 	AccountResetLinkInvalid:          "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
 	AccountMailUnavailable:           "Les liens par courriel ne sont pas disponibles : configurez d'abord le courriel et l'adresse publique dans l'administration.",

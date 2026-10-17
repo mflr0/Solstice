@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  changesEmail,
   changesPassword,
   hourLabel,
   isWorkingWeek,
@@ -84,14 +85,40 @@ describe('changesPassword', () => {
   });
 });
 
+describe('changesEmail', () => {
+  it('is false when the address is the stored one', () => {
+    expect(changesEmail(profileForm(me), me)).toBe(false);
+  });
+
+  it('ignores surrounding spaces', () => {
+    expect(changesEmail({ ...profileForm(me), email: ' marie@example.com ' }, me)).toBe(false);
+  });
+
+  it('is true when another address is typed', () => {
+    expect(changesEmail({ ...profileForm(me), email: 'other@example.com' }, me)).toBe(true);
+  });
+
+  it('is true when the address is cleared', () => {
+    expect(changesEmail({ ...profileForm(me), email: '' }, me)).toBe(true);
+  });
+
+  it('is false without anyone signed in', () => {
+    expect(changesEmail({ ...profileForm(me), email: 'other@example.com' }, null)).toBe(false);
+  });
+});
+
 describe('profileProblems', () => {
   it.each<[ProfileForm, Problems<ProfileField, ProfileProblem>]>([
     [profileForm(me), {}],
     [{ ...profileForm(me), name: '   ' }, { name: 'nameRequired' }],
     [{ ...profileForm(me), name: 'a'.repeat(256) }, { name: 'nameTooLong' }],
     [{ ...profileForm(me), name: 'a'.repeat(255) }, {}],
-    [{ ...profileForm(me), email: 'not an email' }, { email: 'emailInvalid' }],
-    [{ ...profileForm(me), email: '' }, {}],
+    [
+      { ...profileForm(me), email: 'not an email' },
+      { email: 'emailInvalid', currentPassword: 'currentRequired' },
+    ],
+    [{ ...profileForm(me), email: '' }, { currentPassword: 'currentRequired' }],
+    [{ ...profileForm(me), email: 'other@example.com', currentPassword: 'old' }, {}],
     [
       { ...profileForm(me), newPassword: 'abcdefgh' },
       { currentPassword: 'currentRequired', confirmPassword: 'confirmMismatch' },
@@ -116,7 +143,11 @@ describe('profileProblems', () => {
       {},
     ],
   ])('%j gives %j', (form, want) => {
-    expect(profileProblems(form, 8)).toEqual(want);
+    expect(profileProblems(form, 8, me)).toEqual(want);
+  });
+
+  it('asks no current password when the address is the stored one', () => {
+    expect(profileProblems(profileForm(me), 8, null)).toEqual({});
   });
 });
 

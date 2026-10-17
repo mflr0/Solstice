@@ -274,9 +274,20 @@ func TestProfile(t *testing.T) {
 		Name     string
 		Email    string
 	}
-	one.call("PATCH", "/api/me", map[string]any{"name": "Nom Choisi", "email": "choisi@exemple.fr"}, 200, &me)
-	if me.Name != "Nom Choisi" || me.Email != "choisi@exemple.fr" {
+	// Changing the address takes the current password, as the password does.
+	one.call("PATCH", "/api/me", map[string]any{"email": "sans-mot-de-passe@exemple.fr"}, 400, nil)
+	one.call("PATCH", "/api/me", map[string]any{"email": "mauvais-mot-de-passe@exemple.fr",
+		"currentPassword": "faux"}, 400, nil)
+	// The form always sends the address: unchanged, it needs no password.
+	original := username + "@exemple.fr"
+	one.call("PATCH", "/api/me", map[string]any{"name": "Nom Choisi", "email": original}, 200, &me)
+	if me.Name != "Nom Choisi" || me.Email != original {
 		t.Errorf("after PATCH: %+v", me)
+	}
+	one.call("PATCH", "/api/me", map[string]any{"email": "choisi@exemple.fr",
+		"currentPassword": "premier-secret-123"}, 200, &me)
+	if me.Email != "choisi@exemple.fr" {
+		t.Errorf("after the address change: %+v", me)
 	}
 	for _, bad := range []map[string]any{
 		{"email": "pas-une-adresse"},
@@ -295,10 +306,15 @@ func TestProfile(t *testing.T) {
 	}
 	loginAt(t, base, username, "second-secret-456")
 
-	// A token may not change the password.
+	// A token may change neither the password nor the address.
 	token := newToken(t, username, nil)
 	if status, _, _ := call(t, nil, base, "PATCH", "/api/me", map[string]any{"currentPassword": "second-secret-456",
 		"newPassword": "troisième-secret-789"}, func(r *http.Request) { bearer(token)(r); r.Header.Set(csrfHeader, "1") }); status != 403 {
 		t.Errorf("password change with a token: %d", status)
+	}
+	if status, _, _ := call(t, nil, base, "PATCH", "/api/me", map[string]any{"email": "jeton@exemple.fr",
+		"currentPassword": "second-secret-456"},
+		func(r *http.Request) { bearer(token)(r); r.Header.Set(csrfHeader, "1") }); status != 403 {
+		t.Errorf("address change with a token: %d", status)
 	}
 }
