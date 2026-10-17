@@ -29,6 +29,8 @@ export const de: SetupMessages = {
       'Der Server antwortet nicht. Prüfen Sie, ob er noch läuft, und versuchen Sie es dann erneut.',
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
   },
+  insecureWarning:
+    'Diese Seite ist nicht verschlüsselt (HTTP). Die Passwörter, die Sie hier eingeben, können im Netzwerk mitgelesen werden. Verwenden Sie HTTPS, oder schließen Sie die Einrichtung auf dem Server selbst ab.',
 
   installed: {
     title: 'Solstice ist bereits eingerichtet',

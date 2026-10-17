@@ -13,6 +13,7 @@
   } from '../../lib/setup-api.js';
   import { initAppearance } from '../../lib/ui.svelte.js';
   import Logo from '../Logo.svelte';
+  import { insecurePage } from './insecure.js';
   import StepCode from './StepCode.svelte';
   import StepDatabase from './StepDatabase.svelte';
   import StepDone from './StepDone.svelte';
@@ -43,6 +44,8 @@
 
   const steps = $derived(setupSteps(needDatabase));
   const index = $derived(Math.max(0, steps.indexOf(step)));
+  /** The passwords typed here cross the network readable: say so. */
+  const insecure = $derived(insecurePage(location.protocol, location.hostname));
   const num = $derived.by(() => {
     const nf = new Intl.NumberFormat(locale);
     return (n: number) => nf.format(n);
@@ -145,6 +148,10 @@
         <span class="eyebrow">{m.eyebrow}</span>
       </header>
 
+      {#if insecure}
+        <p class="setup-warn insecure" role="alert">{m.insecureWarning}</p>
+      {/if}
+
       {#if loadError}
         <p class="error-text" role="alert">{loadError}</p>
         <div class="setup-actions">
@@ -239,6 +246,10 @@
 
   .setup-head .eyebrow {
     margin: 0;
+  }
+
+  .setup-warn.insecure {
+    margin: 14px 0 0;
   }
 
   .setup-loading {

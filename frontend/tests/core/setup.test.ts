@@ -10,6 +10,17 @@ import {
   setupSteps,
   sourceEngine,
 } from '../../src/core/setup.js';
+import { insecurePage } from '../../src/ui/setup/insecure.js';
+
+describe('setup over plain HTTP', () => {
+  it('warns when another machine serves the page without encryption', () => {
+    expect(insecurePage('http:', 'solstice.example.org')).toBe(true);
+    expect(insecurePage('https:', 'solstice.example.org')).toBe(false);
+    expect(insecurePage('http:', 'localhost')).toBe(false);
+    expect(insecurePage('http:', '127.0.0.1')).toBe(false);
+    expect(insecurePage('http:', '[::1]')).toBe(false);
+  });
+});
 
 describe('setup steps', () => {
   it('asks for a database only when the server has none', () => {
