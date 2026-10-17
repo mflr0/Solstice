@@ -88,15 +88,15 @@ func (o *restOut) remoteLink(key string, v remoteLinkRow) map[string]any {
 // remoteLinkText is how the history names a remote link, as Jira writes it.
 func remoteLinkText(title string) string { return `This issue links to "` + title + `"` }
 
-// restEditableIssue returns the issue of the path, which the user must be
-// allowed to edit.
-func (s *Server) restEditableIssue(r *http.Request) (*perm.Subject, *issueRow, error) {
+// restLinkableIssue returns the issue of the path, which the user must be
+// allowed to link, as Jira asks for "Link issues" on remote links.
+func (s *Server) restLinkableIssue(r *http.Request) (*perm.Subject, *issueRow, error) {
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
 		return nil, nil, err
 	}
 	pi := iss.perm()
-	if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
+	if !sub.Can(perm.Link, iss.ProjectID, &pi) {
 		return nil, nil, errForbidden
 	}
 	return sub, iss, nil
@@ -168,7 +168,7 @@ func (s *Server) restRemoteLink(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) restAddRemoteLink(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	sub, iss, err := s.restEditableIssue(r)
+	sub, iss, err := s.restLinkableIssue(r)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func updateRemoteLink(ctx context.Context, tx *sql.Tx, old remoteLinkRow, in rem
 
 func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	sub, iss, err := s.restEditableIssue(r)
+	sub, iss, err := s.restLinkableIssue(r)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (s *Server) restEditRemoteLink(w http.ResponseWriter, r *http.Request) erro
 
 func (s *Server) restDeleteRemoteLink(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	sub, iss, err := s.restEditableIssue(r)
+	sub, iss, err := s.restLinkableIssue(r)
 	if err != nil {
 		return err
 	}

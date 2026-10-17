@@ -196,10 +196,10 @@ func TestRESTRemoteLinks(t *testing.T) {
 	}
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
-	chloe := login(t, "chloe.simon", "motdepasse")
-	if status, raw := do(chloe, "POST", "/rest/api/2/issue/"+hidden+"/remotelink", map[string]any{"globalId": "rh:1",
-		"object": map[string]any{"url": "https://example.com", "title": "RH"}}); status != 201 {
-		t.Fatalf("chloe.simon on %s: %d %s", hidden, status, raw)
+	// The link is a fixture: whoever may link there is not what this part checks.
+	if _, err := testDB.Exec(`INSERT INTO remote_links (issue_id, url, title, global_id) SELECT i.id, 'https://example.com', 'RH', 'rh:1'
+		FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+keyExpr+` = ?`, hidden); err != nil {
+		t.Fatalf("link on %s: %v", hidden, err)
 	}
 	rhLink := pick(t, `SELECT MAX(r.id) FROM remote_links r JOIN issues i ON i.id = r.issue_id JOIN projects p ON p.id = i.project_id
 		WHERE `+keyExpr+` = ?`, hidden)
@@ -282,6 +282,88 @@ func viewerOf(t *testing.T, key string) *client {
 		t.Fatalf("a new account on %s: %s", key, raw)
 	}
 	return c
+}
+
+// TestRESTRemoteLinksPermission checks that remote links ask for the right to
+// link issues, as Jira does, and not for the right to edit them.
+func TestRESTRemoteLinksPermission(t *testing.T) {
+	needDB(t)
+	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
+	path := "/rest/api/2/issue/" + key + "/remotelink"
+	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", "motdepasse")
+	const password = "linker passphrase 2026"
+	account := func(name string) (*client, int64) {
+		admin.call("POST", "/api/admin/users", map[string]any{"username": name, "name": name,
+			"email": name + "@example.com", "password": password}, 201, nil)
+		id, _ := strconv.ParseInt(pick(t, `SELECT id FROM users WHERE username = ?`, name), 10, 64)
+		return login(t, name, password), id
+	}
+	linker, linkerID := account("links-linker-" + strings.ToLower(key))
+	editor, editorID := account("links-editor-" + strings.ToLower(key))
+
+	var perms struct {
+		Grants []grantOut `json:"grants"`
+	}
+	admin.get("/api/projects/DEMO/permissions", &perms)
+	put := func(grants []grantOut) {
+		t.Helper()
+		if status, body := admin.do("PUT", "/api/projects/DEMO/permissions", map[string]any{"grants": grants}); status != 200 {
+			t.Fatalf("permissions: %d %s", status, body)
+		}
+	}
+	t.Cleanup(func() { put(perms.Grants) })
+	put(append(slices.Clone(perms.Grants), grantOut{Permission: "link", Holder: "user", ID: linkerID},
+		grantOut{Permission: "edit", Holder: "user", ID: editorID}))
+
+	have := func(who *client, permission string) bool {
+		_, _, raw := call(t, who, testURL, "GET", "/rest/api/2/mypermissions?issueKey="+key, nil, nil)
+		return at(obj(t, raw), "permissions", permission, "havePermission") == true
+	}
+	if !have(linker, "LINK_ISSUES") || have(linker, "EDIT_ISSUES") || !have(editor, "EDIT_ISSUES") || have(editor, "LINK_ISSUES") {
+		t.Fatalf("the accounts do not have the permissions of the test: linker %v/%v, editor %v/%v",
+			have(linker, "LINK_ISSUES"), have(linker, "EDIT_ISSUES"), have(editor, "LINK_ISSUES"), have(editor, "EDIT_ISSUES"))
+	}
+	do := func(who *client, method, p string, body any) (int, []byte) {
+		status, _, raw := call(t, who, testURL, method, p, body, header("X-Atlassian-Token", "no-check"))
+		return status, raw
+	}
+	link := map[string]any{"globalId": "permission:1", "object": map[string]any{"url": "https://example.com/p", "title": "Permission"}}
+
+	// Link without Edit: allowed.
+	status, raw := do(linker, "POST", path, link)
+	if status != 201 {
+		t.Fatalf("a user who can link %s created a link: %d %s", key, status, raw)
+	}
+	one := path + "/" + strconv.Itoa(num(obj(t, raw), "id"))
+	if status, raw = do(linker, "PUT", one, link); status != 204 {
+		t.Errorf("a user who can link %s changed a link: %d %s", key, status, raw)
+	}
+	if status, raw = do(linker, "DELETE", one, nil); status != 204 {
+		t.Errorf("a user who can link %s deleted a link: %d %s", key, status, raw)
+	}
+
+	// Edit without Link: refused.
+	status, raw = do(paul, "POST", path, link)
+	if status != 201 {
+		t.Fatalf("create: %d %s", status, raw)
+	}
+	one = path + "/" + strconv.Itoa(num(obj(t, raw), "id"))
+	if status, _ := do(editor, "POST", path, link); status != 403 {
+		t.Errorf("a user who can edit %s but not link created a link: %d, want 403", key, status)
+	}
+	if status, _ := do(editor, "PUT", one, link); status != 403 {
+		t.Errorf("a user who can edit %s but not link changed a link: %d, want 403", key, status)
+	}
+	if status, _ := do(editor, "DELETE", one, nil); status != 403 {
+		t.Errorf("a user who can edit %s but not link deleted a link: %d, want 403", key, status)
+	}
+	if status, _ := do(editor, "GET", one, nil); status != 200 {
+		t.Errorf("a user who sees %s reads its links: %d, want 200", key, status)
+	}
+	if status, raw = do(paul, "DELETE", one, nil); status != 204 {
+		t.Errorf("delete: %d %s", status, raw)
+	}
 }
 
 // Session ----------------------------------------------------------------------
