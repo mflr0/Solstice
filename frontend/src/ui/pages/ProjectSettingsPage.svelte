@@ -174,170 +174,172 @@
       </div>
     {/if}
 
-    {#if tab === 'workflows' || !data}
-      <div
-        class="panel"
-        role="tabpanel"
-        id="panel-workflows"
-        aria-labelledby={forbidden ? undefined : 'tab-workflows'}
-      >
-        <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (panelDirty = d)} />
-      </div>
-    {:else if tab === 'general'}
-      <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
-        <GeneralPanel {projectKey} ondirty={(d) => (panelDirty = d)} />
-      </div>
-    {:else if tab === 'components'}
-      <div class="panel" role="tabpanel" id="panel-components" aria-labelledby="tab-components">
-        <ComponentsPanel {projectKey} />
-      </div>
-    {:else if tab === 'versions'}
-      <div class="panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions">
-        <VersionsPanel {projectKey} />
-      </div>
-    {:else if tab === 'notifications'}
-      <div
-        class="panel"
-        role="tabpanel"
-        id="panel-notifications"
-        aria-labelledby="tab-notifications"
-      >
-        <NotificationsPanel
-          {projectKey}
-          groups={data.groups}
-          roles={data.roles}
-          ondirty={(d) => (panelDirty = d)}
-        />
-      </div>
-    {:else}
-      <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
-        <h2 class="section-title">{t.settings.permissions}</h2>
-        <div class="table-scroll">
-          <table class="ledger matrix">
-            <tbody>
-              {#each data.permissions as p (p)}
-                <tr>
-                  <th scope="row">
-                    <span class="label">{permissionLabels[p].label}</span>
-                    <span class="help">{permissionLabels[p].help}</span>
-                  </th>
-                  <td>
-                    <div class="holders">
-                      {#each holdersOf(p) as g (signature([g]))}
-                        <span class="chip holder {g.holder}">
-                          {#if g.holder === 'group' || g.holder === 'role' || g.holder === 'user'}<span
-                              class="kind">{holderLabels[g.holder]}</span
-                            >{/if}
-                          {grantLabel(g)}
+    {#key projectKey}
+      {#if tab === 'workflows' || !data}
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-workflows"
+          aria-labelledby={forbidden ? undefined : 'tab-workflows'}
+        >
+          <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (panelDirty = d)} />
+        </div>
+      {:else if tab === 'general'}
+        <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
+          <GeneralPanel {projectKey} ondirty={(d) => (panelDirty = d)} />
+        </div>
+      {:else if tab === 'components'}
+        <div class="panel" role="tabpanel" id="panel-components" aria-labelledby="tab-components">
+          <ComponentsPanel {projectKey} />
+        </div>
+      {:else if tab === 'versions'}
+        <div class="panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions">
+          <VersionsPanel {projectKey} />
+        </div>
+      {:else if tab === 'notifications'}
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-notifications"
+          aria-labelledby="tab-notifications"
+        >
+          <NotificationsPanel
+            {projectKey}
+            groups={data.groups}
+            roles={data.roles}
+            ondirty={(d) => (panelDirty = d)}
+          />
+        </div>
+      {:else}
+        <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
+          <h2 class="section-title">{t.settings.permissions}</h2>
+          <div class="table-scroll">
+            <table class="ledger matrix">
+              <tbody>
+                {#each data.permissions as p (p)}
+                  <tr>
+                    <th scope="row">
+                      <span class="label">{permissionLabels[p].label}</span>
+                      <span class="help">{permissionLabels[p].help}</span>
+                    </th>
+                    <td>
+                      <div class="holders">
+                        {#each holdersOf(p) as g (signature([g]))}
+                          <span class="chip holder {g.holder}">
+                            {#if g.holder === 'group' || g.holder === 'role' || g.holder === 'user'}<span
+                                class="kind">{holderLabels[g.holder]}</span
+                              >{/if}
+                            {grantLabel(g)}
+                            <button
+                              type="button"
+                              aria-label={`${t.common.remove} ${grantLabel(g)}`}
+                              onclick={() => remove(g)}>×</button
+                            >
+                          </span>
+                        {:else}
+                          <span class="nobody">{t.settings.nobody}</span>
+                        {/each}
+                        <span class="adder" use:outside={() => adding === p && (adding = null)}>
                           <button
                             type="button"
-                            aria-label={`${t.common.remove} ${grantLabel(g)}`}
-                            onclick={() => remove(g)}>×</button
+                            class="link-btn"
+                            aria-expanded={adding === p}
+                            onclick={() => {
+                              adding = adding === p ? null : p;
+                              kind = 'group';
+                              pick = '';
+                            }}>+ {t.settings.addHolder}</button
                           >
-                        </span>
-                      {:else}
-                        <span class="nobody">{t.settings.nobody}</span>
-                      {/each}
-                      <span class="adder" use:outside={() => adding === p && (adding = null)}>
-                        <button
-                          type="button"
-                          class="link-btn"
-                          aria-expanded={adding === p}
-                          onclick={() => {
-                            adding = adding === p ? null : p;
-                            kind = 'group';
-                            pick = '';
-                          }}>+ {t.settings.addHolder}</button
-                        >
-                        {#if adding === p}
-                          <div class="popover add">
-                            <label class="field">
-                              <span>{t.settings.chooseKind}</span>
-                              <select class="select" bind:value={kind}>
-                                {#each kinds as k (k)}<option value={k}>{holderLabels[k]}</option
-                                  >{/each}
-                              </select>
-                            </label>
-                            {#if kind === 'group' || kind === 'role'}
+                          {#if adding === p}
+                            <div class="popover add">
                               <label class="field">
-                                <span
-                                  >{kind === 'group'
-                                    ? t.settings.chooseGroup
-                                    : t.settings.chooseRole}</span
-                                >
-                                <select class="select" bind:value={pick}>
-                                  <option value="" disabled></option>
-                                  {#each kind === 'group' ? data.groups : data.roles as x (x.id)}
-                                    <option value={String(x.id)}>{x.name}</option>
-                                  {/each}
+                                <span>{t.settings.chooseKind}</span>
+                                <select class="select" bind:value={kind}>
+                                  {#each kinds as k (k)}<option value={k}>{holderLabels[k]}</option
+                                    >{/each}
                                 </select>
                               </label>
-                            {:else if kind === 'user'}
-                              <div class="field">
-                                <span class="field-label">{t.settings.chooseUser}</span>
-                                <div class="boxed">
-                                  <UserPicker
-                                    value={null}
-                                    label={t.settings.chooseUser}
-                                    allowNone={false}
-                                    noneLabel="…"
-                                    search={(q) => api.users(q)}
-                                    onpick={(u: UserRef | null) =>
-                                      u && add(p, { holder: 'user', id: u.id, name: u.name })}
-                                  />
+                              {#if kind === 'group' || kind === 'role'}
+                                <label class="field">
+                                  <span
+                                    >{kind === 'group'
+                                      ? t.settings.chooseGroup
+                                      : t.settings.chooseRole}</span
+                                  >
+                                  <select class="select" bind:value={pick}>
+                                    <option value="" disabled></option>
+                                    {#each kind === 'group' ? data.groups : data.roles as x (x.id)}
+                                      <option value={String(x.id)}>{x.name}</option>
+                                    {/each}
+                                  </select>
+                                </label>
+                              {:else if kind === 'user'}
+                                <div class="field">
+                                  <span class="field-label">{t.settings.chooseUser}</span>
+                                  <div class="boxed">
+                                    <UserPicker
+                                      value={null}
+                                      label={t.settings.chooseUser}
+                                      allowNone={false}
+                                      noneLabel="…"
+                                      search={(q) => api.users(q)}
+                                      onpick={(u: UserRef | null) =>
+                                        u && add(p, { holder: 'user', id: u.id, name: u.name })}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            {/if}
-                            {#if kind !== 'user'}
-                              <button
-                                class="btn btn-small btn-primary"
-                                disabled={(kind === 'group' || kind === 'role') && !pick}
-                                onclick={() => addPicked(p)}>{t.common.add}</button
-                              >
-                            {/if}
-                          </div>
-                        {/if}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-
-        <h2 class="section-title">{t.settings.roles}</h2>
-        <dl class="roles">
-          {#each data.roles as r (r.id)}
-            <div>
-              <dt>{r.name}</dt>
-              <dd>
-                {#each r.groups as g (g.id)}<span class="chip">{holderLabels.group} {g.name}</span
-                  >{/each}
-                {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
-                {#if !r.groups.length && !r.users.length}<span class="nobody"
-                    >{t.settings.noMembers}</span
-                  >{/if}
-              </dd>
-            </div>
-          {/each}
-        </dl>
-
-        {#if dirty}
-          <div class="savebar" role="region" aria-label={t.settings.unsaved}>
-            <span>{t.settings.unsaved}</span>
-            <button
-              class="btn btn-quiet"
-              onclick={() => data && ((grants = data.grants), undefined)}
-              >{t.settings.discard}</button
-            >
-            <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
-              >{saving ? t.common.saving : t.common.save}</button
-            >
+                              {/if}
+                              {#if kind !== 'user'}
+                                <button
+                                  class="btn btn-small btn-primary"
+                                  disabled={(kind === 'group' || kind === 'role') && !pick}
+                                  onclick={() => addPicked(p)}>{t.common.add}</button
+                                >
+                              {/if}
+                            </div>
+                          {/if}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
           </div>
-        {/if}
-      </div>
-    {/if}
+
+          <h2 class="section-title">{t.settings.roles}</h2>
+          <dl class="roles">
+            {#each data.roles as r (r.id)}
+              <div>
+                <dt>{r.name}</dt>
+                <dd>
+                  {#each r.groups as g (g.id)}<span class="chip">{holderLabels.group} {g.name}</span
+                    >{/each}
+                  {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
+                  {#if !r.groups.length && !r.users.length}<span class="nobody"
+                      >{t.settings.noMembers}</span
+                    >{/if}
+                </dd>
+              </div>
+            {/each}
+          </dl>
+
+          {#if dirty}
+            <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+              <span>{t.settings.unsaved}</span>
+              <button
+                class="btn btn-quiet"
+                onclick={() => data && ((grants = data.grants), undefined)}
+                >{t.settings.discard}</button
+              >
+              <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
+                >{saving ? t.common.saving : t.common.save}</button
+              >
+            </div>
+          {/if}
+        </div>
+      {/if}
+    {/key}
   </div>
 
   <Modal open={leaving !== null} title={t.workflows.leaveTitle} onclose={() => (leaving = null)}>
