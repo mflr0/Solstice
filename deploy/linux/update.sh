@@ -440,6 +440,34 @@ read_db_tls() {
   esac
 }
 
+# dump_tls_opts prints the TLS options for the given dump binary and tls
+# setting, so a test can call it without a database. The client flavour is
+# detected from "$dump" --version (MariaDB contains "MariaDB"; else MySQL).
+dump_tls_opts() {
+  dump_bin=$1
+  tls_val=$2
+
+  case $($dump_bin --version 2>/dev/null) in
+    *MariaDB*)
+      case $tls_val in
+        true) printf '%s\n' "--ssl --ssl-verify-server-cert" ;;
+        skip-verify | preferred) printf '%s\n' "--ssl --skip-ssl-verify-server-cert" ;;
+        false) printf '%s\n' "--skip-ssl" ;;
+        "") return 0 ;;
+      esac
+      ;;
+    *)
+      case $tls_val in
+        true) printf '%s\n' "--ssl-mode=VERIFY_IDENTITY" ;;
+        skip-verify) printf '%s\n' "--ssl-mode=REQUIRED" ;;
+        preferred) printf '%s\n' "--ssl-mode=PREFERRED" ;;
+        false) printf '%s\n' "--ssl-mode=DISABLED" ;;
+        "") return 0 ;;
+      esac
+      ;;
+  esac
+}
+
 # back_up dumps the database to $backup_dir/<time>.sql.gz and keeps the last
 # few. Runs in a subshell: it changes directory and holds the password.
 back_up() (
@@ -472,12 +500,26 @@ back_up() (
   say "Backing up the database $db_name to $backup_dir/$stamp.sql.gz."
   MYSQL_PWD=$db_pass
   export MYSQL_PWD
-  # The tls option read before the update started: true checks the server
-  # certificate, skip-verify and preferred encrypt without checking it.
   set -- --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP
-  case $db_tls in
-    true) set -- "$@" --ssl --ssl-verify-server-cert ;;
-    skip-verify | preferred) set -- "$@" --ssl ;;
+  # Add TLS options per client flavour.
+  case $("$dump" --version 2>/dev/null) in
+    *MariaDB*)
+      case $db_tls in
+        true) set -- "$@" --ssl --ssl-verify-server-cert ;;
+        skip-verify | preferred) set -- "$@" --ssl --skip-ssl-verify-server-cert ;;
+        false) set -- "$@" --skip-ssl ;;
+        "") ;; # absent: nothing
+      esac
+      ;;
+    *)
+      case $db_tls in
+        true) set -- "$@" --ssl-mode=VERIFY_IDENTITY ;;
+        skip-verify) set -- "$@" --ssl-mode=REQUIRED ;;
+        preferred) set -- "$@" --ssl-mode=PREFERRED ;;
+        false) set -- "$@" --ssl-mode=DISABLED ;;
+        "") ;; # absent: nothing
+      esac
+      ;;
   esac
   set -- "$@" --host="$db_host" --port="$db_port" --user="$db_user" "$db_name"
   if ! as_user "$dump" "$@" >"$tmp" 2>>"$log"; then
