@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -128,7 +129,7 @@ func TestOversizedJSONBody(t *testing.T) {
 	}
 	// An interface route (readJSON).
 	if w := post(srv.wrap(srv.login, false)); w.Code != http.StatusRequestEntityTooLarge ||
-		!strings.Contains(w.Body.String(), "trop volumineuse") {
+		!strings.Contains(w.Body.String(), "trop volumineuse (4096 Kio au maximum)") {
 		t.Errorf("interface: %d %s", w.Code, w.Body)
 	}
 	// A REST route (readRESTJSON).
@@ -137,8 +138,15 @@ func TestOversizedJSONBody(t *testing.T) {
 		return readRESTJSON(r, &v)
 	}
 	if w := post(srv.rest(read, false)); w.Code != http.StatusRequestEntityTooLarge ||
-		!strings.Contains(w.Body.String(), "trop volumineuse") {
+		!strings.Contains(w.Body.String(), "trop volumineuse (4096 Kio au maximum)") {
 		t.Errorf("REST: %d %s", w.Code, w.Body)
+	}
+	// The message gives the limit of the route that refused the body.
+	small := httptest.NewRecorder()
+	_, err := io.ReadAll(http.MaxBytesReader(small, io.NopCloser(strings.NewReader(strings.Repeat("a", 1<<17))), 1<<16))
+	writeError(small, httptest.NewRequest("POST", "/x", nil), badBody(err))
+	if small.Code != http.StatusRequestEntityTooLarge || !strings.Contains(small.Body.String(), "64 KiB") {
+		t.Errorf("64 KiB limit: %d %s", small.Code, small.Body)
 	}
 	// A body within the limit but not JSON is still 400.
 	r := httptest.NewRequest("POST", "/x", strings.NewReader("{"))

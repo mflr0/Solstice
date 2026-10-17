@@ -15,7 +15,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyAttempts:      "Trop de tentatives : réessayez dans %d s.",
 	RequestStreamingUnsupported: "Flux non pris en charge.",
 	RequestInternalError:        "Erreur interne, l'incident a été journalisé.",
-	RequestBodyTooLarge:         "La requête est trop volumineuse.",
+	RequestBodyTooLargeLimit:    "La requête est trop volumineuse (%d Kio au maximum).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Le nom est obligatoire (%d caractères au plus).",
