@@ -117,8 +117,10 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
 picture: a PNG or JPEG of 1 MiB at most and 512 × 512 pixels at most (400
 when it is neither or does not decode, 413 when too heavy). The server stores
 a re-encoded PNG, so no metadata or extra bytes survive; the interface sends a
-256 × 256 square. Both answer 204; `DELETE` also answers 204 when there is no
-picture. `GET /api/avatars/{userId}` shows it (section 3).
+256 × 256 square. The image must be upright: the EXIF orientation is not
+applied (it is dropped with the other metadata), so a client sends the
+picture already turned the right way. Both answer 204; `DELETE` also answers
+204 when there is no picture. `GET /api/avatars/{userId}` shows it (section 3).
 
 ---
 
