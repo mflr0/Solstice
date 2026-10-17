@@ -112,7 +112,7 @@ export const adminApi = {
   deleteProject: (key: string, confirm?: string) =>
     request<void>('DELETE', `/api/projects/${enc(key)}`, confirm ? { confirm } : {}),
   renameProject: (key: string, newKey: string, confirm: string) =>
-    request<ProjectSettings>('POST', `/api/admin/projects/${enc(key)}/rename`, { newKey, confirm }),
+    request<ProjectSettings>('POST', `/api/projects/${enc(key)}/rename`, { newKey, confirm }),
   categories: () => request<Category[]>('GET', '/api/project-categories'),
   createCategory: (c: { name: string; description?: string }) =>
     request<Category>('POST', '/api/admin/project-categories', c),

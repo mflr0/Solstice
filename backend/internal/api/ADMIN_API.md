@@ -281,7 +281,7 @@ Boards and filters remain (they may show nothing). (`project.delete`)
 
 ### Change the key — global admin
 
-`POST /api/admin/projects/{key}/rename` with body `{"newKey": "SHOP",
+`POST /api/projects/{key}/rename` with body `{"newKey": "SHOP",
 "confirm": "WEB"}` → the `GET /api/projects/{key}` settings object, with the
 new key. `confirm` must be the current key (409 otherwise). The new key
 follows the rules of a new project (`GET /api/admin/project-key?key=`):

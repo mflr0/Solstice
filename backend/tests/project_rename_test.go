@@ -20,7 +20,7 @@ func TestProjectRename(t *testing.T) {
 	old := newProject(t, admin, nil)
 	issue := createIssue(t, admin, old, "Avant le changement", "")
 	num := strings.TrimPrefix(issue, old+"-")
-	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	path := func(key string) string { return "/api/projects/" + key + "/rename" }
 
 	// Refused: not an administrator, an unknown project, a wrong confirmation,
 	// and keys that are ill-formed or taken now or formerly.
@@ -152,7 +152,7 @@ func renamedProject(t *testing.T, admin *client) (old, fresh, epic, story string
 	epic = created.Key
 	story = createIssue(t, admin, old, "Petit chantier", "")
 	fresh = newProjectKey()
-	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
 	return old, fresh, epic, story
 }
@@ -236,7 +236,7 @@ func TestProjectOldKeyInDigest(t *testing.T) {
 	admin.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
 		"target": b}, 200, nil)
 	fresh := newProjectKey()
-	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
 
 	got := to(env.deliverAt(25*time.Hour), "paul.martin@exemple.fr")
@@ -253,7 +253,7 @@ func TestProjectRenameBack(t *testing.T) {
 	issue := createIssue(t, admin, first, "Aller-retour", "")
 	num := strings.TrimPrefix(issue, first+"-")
 	second := newProjectKey()
-	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	path := func(key string) string { return "/api/projects/" + key + "/rename" }
 	admin.call("POST", path(first), map[string]any{"newKey": second, "confirm": first}, 200, nil)
 	t.Cleanup(func() {
 		admin.do("DELETE", "/api/projects/"+first, map[string]string{"confirm": first})
@@ -344,7 +344,7 @@ func TestProjectOldKeyInVersionFunctions(t *testing.T) {
 	admin.call("POST", base+"/"+strconv.FormatInt(shipped.ID, 10)+"/release", map[string]any{}, 200, nil)
 
 	fresh := newProjectKey()
-	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
 
 	for _, c := range []struct{ fn, want string }{
@@ -372,7 +372,7 @@ func TestProjectOldKeyInVersionFunctions(t *testing.T) {
 // both current and former.
 func TestProjectRenameConcurrent(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	path := func(key string) string { return "/api/projects/" + key + "/rename" }
 	for round := 0; round < 5; round++ {
 		const racers = 4
 		keys := make([]string, racers)
@@ -417,7 +417,7 @@ func TestProjectRenameConcurrent(t *testing.T) {
 // just left is refused too.
 func TestProjectRenameSameKeyInARow(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	path := func(key string) string { return "/api/admin/projects/" + key + "/rename" }
+	path := func(key string) string { return "/api/projects/" + key + "/rename" }
 	first, second := newProject(t, admin, nil), newProject(t, admin, nil)
 	target := newProjectKey()
 	admin.call("POST", path(first), map[string]any{"newKey": target, "confirm": first}, 200, nil)
@@ -446,7 +446,7 @@ func TestProjectCreateRenameConcurrent(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			statuses[0], bodies[0] = admin.do("POST", "/api/admin/projects/"+old+"/rename",
+			statuses[0], bodies[0] = admin.do("POST", "/api/projects/"+old+"/rename",
 				map[string]any{"newKey": target, "confirm": old})
 		}()
 		go func() {
@@ -480,7 +480,7 @@ func TestProjectRenameBackChecksForm(t *testing.T) {
 		legacy, key); err != nil {
 		t.Fatal(err)
 	}
-	admin.call("POST", "/api/admin/projects/"+key+"/rename", map[string]any{"newKey": legacy, "confirm": key}, 400, nil)
+	admin.call("POST", "/api/projects/"+key+"/rename", map[string]any{"newKey": legacy, "confirm": key}, 400, nil)
 	if got := pick(t, `SELECT COUNT(*) FROM projects WHERE pkey = ?`, key); got != "1" {
 		t.Errorf("a refused rename changed the project (%s with the key %s)", got, key)
 	}
