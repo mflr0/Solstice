@@ -2239,6 +2239,122 @@ export const de: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: {
+      general: 'Allgemein',
+      components: 'Komponenten',
+      versions: 'Versionen',
+      notifications: 'Benachrichtigungen',
+    },
+    leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
+    general: {
+      title: 'Allgemein',
+      intro: 'Name des Projekts, wer es leitet und wie neue Vorgänge behandelt werden.',
+      leadHint: 'Die Leitung hat alle Rechte im Projekt.',
+      typesInUse: (list: string) =>
+        `Diese Typen werden noch von Vorgängen verwendet und können deshalb nicht entfernt werden: ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'Vorgang', 'Vorgänge')})`,
+    },
+    problems: {
+      nameRequired: 'Geben Sie einen Namen ein.',
+      nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',
+      nameTaken: 'Ein anderer Eintrag in diesem Projekt heißt schon so.',
+      startAfterRelease: 'Das Startdatum darf nicht nach dem Veröffentlichungsdatum liegen.',
+    },
+    components: {
+      title: 'Komponenten',
+      intro:
+        'Komponenten teilen ein Projekt in Bereiche auf, etwa „API“ oder „Abrechnung“. Ein Vorgang kann zu einer oder mehreren gehören.',
+      new: 'Neue Komponente',
+      empty: 'Noch keine Komponente',
+      emptyHint: 'Legen Sie die erste an, um die Vorgänge des Projekts nach Bereich zu ordnen.',
+      noLead: 'Keine Leitung',
+      namePlaceholder: 'API',
+      newTitle: 'Neue Komponente',
+      editTitle: (name: string) => `${name} bearbeiten`,
+      assignee: 'Neue Vorgänge werden zugewiesen an',
+      assignees: {
+        project_default: 'Die Vorgabe des Projekts',
+        component_lead: 'Die Leitung der Komponente',
+        project_lead: 'Die Projektleitung',
+        unassigned: 'Niemand',
+      },
+      assigneeHint:
+        'Gilt für neue Vorgänge ohne Bearbeiter. Bei mehreren Komponenten zählt die erste nach Name, die jemanden nennt.',
+      created: (name: string) => `Komponente ${name} angelegt.`,
+      saved: (name: string) => `Komponente ${name} gespeichert.`,
+      deleted: (name: string) => `Komponente ${name} gelöscht.`,
+      deleteTitle: (name: string) => `${name} löschen?`,
+      deleteUnused: 'Kein Vorgang verwendet diese Komponente.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'Vorgang verwendet', 'Vorgänge verwenden')} diese Komponente. Sie können sie verlieren oder zu einer anderen Komponente wechseln.`,
+      moveLabel: 'Vorgänge wechseln zu',
+      moveNone: 'Nirgendwohin: sie verlieren nur die Komponente',
+    },
+    versions: {
+      title: 'Versionen',
+      intro:
+        'Versionen markieren die Veröffentlichungen des Produkts. Ein Vorgang gibt an, welche Version ihn behebt und welche Versionen er betrifft. Die Reihenfolge hier ist die der Versionslisten.',
+      new: 'Neue Version',
+      empty: 'Noch keine Version',
+      emptyHint: 'Legen Sie die erste an, um zu planen, was jede Veröffentlichung enthält.',
+      orderHint: 'Mit den Pfeilen ändern Sie die Reihenfolge.',
+      start: 'Start',
+      release: 'Veröffentlichung',
+      state: 'Stand',
+      unresolved: (n: number) => `${n} ungelöst`,
+      namePlaceholder: '1.0',
+      newTitle: 'Neue Version',
+      editTitle: (name: string) => `${name} bearbeiten`,
+      startDate: 'Startdatum',
+      releaseDate: 'Veröffentlichungsdatum',
+      created: (name: string) => `Version ${name} angelegt.`,
+      saved: (name: string) => `Version ${name} gespeichert.`,
+      releaseAction: 'Veröffentlichen',
+      unreleaseAction: 'Zurücknehmen',
+      released: (name: string) => `${name} veröffentlicht.`,
+      unreleased: (name: string) => `${name} ist nicht mehr veröffentlicht.`,
+      releaseTitle: (name: string) => `${name} veröffentlichen`,
+      releaseUnresolved: (n: number) =>
+        `${plural(n, 'Vorgang, der in dieser Version behoben wird, ist', 'Vorgänge, die in dieser Version behoben werden, sind')} noch nicht gelöst.`,
+      releaseMove: 'Ungelöste Vorgänge wechseln zu',
+      releaseKeep: 'Nirgendwohin: sie bleiben in dieser Version',
+      releaseNoUnresolved: 'Alle in dieser Version behobenen Vorgänge sind gelöst.',
+      archived: (name: string) => `${name} archiviert.`,
+      unarchived: (name: string) => `${name} ist nicht mehr archiviert.`,
+      mergeAction: 'Zusammenführen',
+      mergeTitle: (name: string) => `${name} zusammenführen`,
+      mergeBody: (name: string) =>
+        `Jeder Vorgang, der ${name} als Lösungs- oder betroffene Version verwendet, wechselt zur gewählten Version. Danach wird ${name} gelöscht.`,
+      mergeInto: 'Zusammenführen mit',
+      mergeNoOther: 'Es gibt keine andere Version zum Zusammenführen.',
+      merged: (name: string, into: string) => `${name} mit ${into} zusammengeführt.`,
+      deleteTitle: (name: string) => `${name} löschen?`,
+      deleteUnused: 'Kein Vorgang verwendet diese Version.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'Vorgang verwendet', 'Vorgänge verwenden')} diese Version. Sie können sie verlieren oder stattdessen eine andere Version erhalten.`,
+      deleteFix: 'Vorgänge, die sie behebt, erhalten',
+      deleteAffects: 'Vorgänge, die sie betrifft, erhalten',
+      deleteNone: 'Keine Version: sie verlieren sie nur',
+      deleted: (name: string) => `Version ${name} gelöscht.`,
+    },
+    notifications: {
+      title: 'Benachrichtigungen',
+      intro:
+        'E-Mails zu den Vorgängen dieses Projekts. Jeder wählt weiterhin in den eigenen Einstellungen, welche Ereignisse ihn erreichen.',
+      enabled: 'E-Mail-Benachrichtigungen für dieses Projekt senden',
+      enabledHint:
+        'Ist dies ausgeschaltet, erhält niemand E-Mails zu den Vorgängen dieses Projekts, egal wie die eigenen Einstellungen sind.',
+      extraTitle: 'Weitere Empfänger',
+      extraIntro:
+        'Eine Gruppe oder Rolle, die für ein Ereignis angekreuzt ist, erhält in diesem Projekt ebenfalls die E-Mail dazu, zusätzlich zu den Personen, die den Vorgang schon verfolgen.',
+      recipient: 'Gruppe oder Rolle',
+      none: 'Es gibt noch keine Gruppe und keine Rolle zur Auswahl.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Name',
     search: 'Suchen',
