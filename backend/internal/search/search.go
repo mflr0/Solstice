@@ -196,8 +196,10 @@ func (q Query) SQL(me int64) (string, []any) {
 		for _, k := range q.Keys {
 			m := issueKey.FindStringSubmatch(k)
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			keys = append(keys, "(p.pkey = ? AND i.num = ?)")
-			args = append(args, m[1], num)
+			// The key of an issue moved to another project still finds it.
+			keys = append(keys, "((p.pkey = ? AND i.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
+				"WHERE mk.issue_id = i.id AND mk.old_key = ?))")
+			args = append(args, m[1], num, m[1]+"-"+strconv.FormatInt(num, 10))
 		}
 		conds = append(conds, "("+strings.Join(keys, " OR ")+")")
 	}

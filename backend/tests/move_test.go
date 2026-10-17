@@ -466,6 +466,18 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 		t.Errorf("audit entries: %+v", page.Entries)
 	}
 
+	// The search bar finds the issue under its old key as well as the new one.
+	for _, k := range []string{e.issue, newKey} {
+		var found struct {
+			Total int
+			Mode  string
+		}
+		e.admin.call("GET", "/api/issues?q="+k, nil, 200, &found)
+		if found.Total != 1 || found.Mode != "simple" {
+			t.Errorf("search %s: %d issues in %s mode", k, found.Total, found.Mode)
+		}
+	}
+
 	// Moved back, the issue gets a new key and answers to all its old ones.
 	e.admin.call("POST", "/api/issues/"+newKey+"/move", map[string]any{"project": e.src, "type": e.typeA,
 		"subtaskType": e.subSrc, "status": e.inReview}, 400, nil) // a component and a version are asked for
