@@ -1043,7 +1043,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 			return err
 		}
 	}
-	if oldID.Valid && oldID.Int64 == sprint || sprint == 0 && !oldID.Valid {
+	if (oldID.Valid && oldID.Int64 == sprint) || (sprint == 0 && !oldID.Valid) {
 		return nil
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
