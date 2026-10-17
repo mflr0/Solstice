@@ -676,6 +676,14 @@ export const de: Messages = {
     moved: (oldKey: string, key: string) => `${oldKey} heißt jetzt ${key}.`,
     editSummary: 'Zusammenfassung bearbeiten',
     menu: 'Weitere Aktionen',
+    clone: 'Klonen',
+    cloneTitle: (key: string) => `${key} klonen`,
+    cloneSummaryHint:
+      'Leer lassen, um die ursprüngliche Zusammenfassung mit einem Präfix zu übernehmen.',
+    cloneSubtasks: 'Unteraufgaben klonen',
+    cloneLinks: 'Verknüpfungen kopieren',
+    cloneAttachments: 'Anhänge kopieren',
+    cloneSubmit: 'Klonen',
   },
 
   comments: {

@@ -672,6 +672,13 @@ export const fr: Messages = {
     moved: (oldKey: string, key: string) => `${oldKey} s’appelle désormais ${key}.`,
     editSummary: 'Modifier le résumé',
     menu: 'Autres actions',
+    clone: 'Cloner',
+    cloneTitle: (key: string) => `Cloner ${key}`,
+    cloneSummaryHint: 'Laissez vide pour reprendre le résumé d’origine, précédé d’un préfixe.',
+    cloneSubtasks: 'Cloner les sous-tâches',
+    cloneLinks: 'Copier les liens',
+    cloneAttachments: 'Copier les pièces jointes',
+    cloneSubmit: 'Cloner',
   },
 
   comments: {

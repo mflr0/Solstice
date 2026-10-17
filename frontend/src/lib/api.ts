@@ -194,6 +194,17 @@ export const api = {
   updateIssue: (key: string, fields: IssueFields) =>
     request<IssueDetail | HiddenIssue>('PATCH', `/api/issues/${enc(key)}`, fields),
   deleteIssue: (key: string) => request<void>('DELETE', `/api/issues/${enc(key)}`),
+  /** Without a summary the server makes one; warnings are files it could not copy. */
+  cloneIssue: (
+    key: string,
+    options: {
+      summary?: string | undefined;
+      includeSubtasks: boolean;
+      includeLinks: boolean;
+      includeAttachments: boolean;
+    },
+  ) =>
+    request<{ key: string; warnings: string[] }>('POST', `/api/issues/${enc(key)}/clone`, options),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>
