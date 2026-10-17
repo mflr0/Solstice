@@ -245,11 +245,6 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 	var first error
 	for i := range targets {
 		t := &targets[i]
-		userKey := "forgot-user:" + strconv.FormatInt(t.ID, 10)
-		if s.limiter.Locked(userKey) > 0 {
-			continue
-		}
-		s.limiter.Failure(userKey)
 		if !mail.ValidAddress(t.Email) {
 			continue
 		}

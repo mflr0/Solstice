@@ -628,7 +628,7 @@ func TestForgotIsRateLimited(t *testing.T) {
 	}
 }
 
-func TestForgotIsRateLimitedPerAccount(t *testing.T) {
+func TestForgotFloodDoesNotMuteTheOwner(t *testing.T) {
 	e := newLinkEnv(t)
 	proxies, err := config.ParseTrustedProxies("127.0.0.1")
 	if err != nil {
@@ -637,15 +637,12 @@ func TestForgotIsRateLimitedPerAccount(t *testing.T) {
 	e.srv.SetTrustedProxies(proxies)
 	e.account("wp7-flood", "flood@exemple.fr")
 
-	// From many addresses, one account gets a few e-mails, then none, and
-	// every answer is the neutral one.
-	mails := 0
-	for i := range 8 {
-		postdate(t, "wp7-flood") // set the one-minute spacing aside
+	forgotFrom := func(addr string) {
+		t.Helper()
 		req, _ := http.NewRequest("POST", e.base+"/api/auth/forgot", strings.NewReader(`{"identifier":"wp7-flood"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(csrfHeader, "1")
-		req.Header.Set("X-Forwarded-For", "198.51.100."+jsonInt(int64(10+i)))
+		req.Header.Set("X-Forwarded-For", addr)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)
@@ -653,12 +650,24 @@ func TestForgotIsRateLimitedPerAccount(t *testing.T) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
-			t.Fatalf("request %d: %d, want the neutral 200", i+1, resp.StatusCode)
+			t.Fatalf("request from %s: %d, want the neutral 200", addr, resp.StatusCode)
 		}
-		mails += len(e.sent())
 	}
-	if mails == 0 || mails > 5 {
-		t.Fatalf("%d e-mails for 8 requests, want a few but at most 5", mails)
+
+	// Two addresses ask more than five times for one account: the spacing
+	// lets one e-mail through, and the flood does not lock the account.
+	for i := range 8 {
+		forgotFrom("198.51.100." + jsonInt(int64(10+i%2)))
+	}
+	if msgs := e.sent(); len(msgs) != 1 {
+		t.Fatalf("%d e-mails for 8 requests within the minute, want 1", len(msgs))
+	}
+
+	// Once the spacing has passed, the owner's own request mails a link.
+	postdate(t, "wp7-flood")
+	forgotFrom("198.51.100.20")
+	if msgs := e.sent(); len(msgs) != 1 {
+		t.Fatalf("%d e-mails for the owner's request after the flood, want 1", len(msgs))
 	}
 }
 
