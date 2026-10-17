@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
+
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
@@ -237,6 +239,19 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, http.StatusOK, level)
 }
 
+// levelIssues counts the issues at a level.
+func levelIssues(ctx context.Context, tx *sql.Tx, id int64) (int, error) {
+	var n int
+	err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM issues WHERE security_level_id = ?`, id).Scan(&n)
+	return n, err
+}
+
+// levelInUse is the answer for a level that issues still use.
+func levelInUse(issues int) error {
+	return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": map[string]int{"issues": issues}},
+		msg: i18n.M(i18n.SecurityLevelInUse, issues)}
+}
+
 // deleteSecurityLevel removes a level. Issues still at it need moveTo, another
 // level of the project, or clear: they then have no level (everyone who sees
 // the project sees them), which is never the default.
@@ -277,17 +292,29 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 		}
 		target = &other
 	}
-	if level.Issues > 0 && target == nil && !in.Clear {
-		return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": map[string]int{"issues": level.Issues}},
-			msg: i18n.M(i18n.SecurityLevelInUse, level.Issues)}
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	// With the level row locked, no issue can be set to the level until the
+	// commit: the count below holds to the delete.
+	var locked int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM security_levels WHERE id = ? FOR UPDATE`, id).Scan(&locked); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errNotFound
+		}
+		return err
+	}
+	used, err := levelIssues(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	if used > 0 && target == nil && !in.Clear {
+		return levelInUse(used)
+	}
 	moved := 0
-	if level.Issues > 0 {
+	if used > 0 {
 		var to any
 		if target != nil {
 			to = target.ID
@@ -310,6 +337,13 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 		moved = len(issues)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM security_levels WHERE id = ?`, id); err != nil {
+		// 1451: a row still refers to the level.
+		var me *mysql.MySQLError
+		if errors.As(err, &me) && me.Number == 1451 {
+			if used, err := levelIssues(ctx, tx, id); err == nil && used > 0 {
+				return levelInUse(used)
+			}
+		}
 		return err
 	}
 	if err := tx.Commit(); err != nil {

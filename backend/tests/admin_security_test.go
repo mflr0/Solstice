@@ -6,6 +6,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 type securityMember struct {
@@ -161,5 +162,48 @@ func TestSecurityLevelsAdmin(t *testing.T) {
 		if audit.Total != want {
 			t.Errorf("audit entries %s: %d, want %d", action, audit.Total, want)
 		}
+	}
+}
+
+// An issue set to a level between the count of its issues and the delete
+// must keep the level: 409, not a foreign key error.
+func TestSecurityLevelDeleteRace(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+	key := newProject(t, admin, nil)
+	var level securityLevelAdmin
+	admin.call("POST", "/api/projects/"+key+"/security-levels", map[string]any{"name": "Course"}, 201, &level)
+	levelPath := fmt.Sprintf("/api/projects/%s/security-levels/%d", key, level.ID)
+	issue := createIssue(t, paul, key, "Course", "")
+
+	// The issue joins the level in a transaction that is still open when the
+	// delete starts.
+	tx, err := testDB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE issues SET security_level_id = ? WHERE id = ?`, level.ID, issueID(t, issue)); err != nil {
+		t.Fatal(err)
+	}
+	type answer struct {
+		status int
+		body   []byte
+	}
+	done := make(chan answer)
+	go func() {
+		status, body := admin.do("DELETE", levelPath, nil)
+		done <- answer{status, body}
+	}()
+	time.Sleep(300 * time.Millisecond)
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	got := <-done
+	if got.status != 409 || num(obj(t, got.body), "usage", "issues") != 1 {
+		t.Errorf("delete a level that gained an issue: %d %s", got.status, got.body)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM security_levels WHERE id = ?`, level.ID); n != "1" {
+		t.Errorf("the level was deleted (%s rows)", n)
 	}
 }
