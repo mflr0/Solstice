@@ -3,14 +3,30 @@
   import { paths } from '../core/route.js';
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
+  import { hasPicture, pictureUrl } from '../lib/api.js';
 
-  /** A person: initials in a small square, then the name, linking to their page. */
+  /** A person: their picture, else initials, in a small square, then the name, linking to their page. */
   interface Props {
     user: UserRef | null;
     initialsBox?: boolean | undefined;
     empty?: string | undefined;
   }
   const { user, initialsBox = true, empty = t.common.unassigned }: Props = $props();
+
+  let picture = $state(false);
+
+  $effect(() => {
+    const id = user?.id;
+    picture = false;
+    if (id === undefined || !initialsBox) return;
+    let current = true;
+    void hasPicture(id).then((has) => {
+      if (current) picture = has;
+    });
+    return () => {
+      current = false;
+    };
+  });
 </script>
 
 {#if user}
@@ -20,7 +36,12 @@
     href={paths.person(user.username)}
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
-    {#if initialsBox}<span class="initials avatar" aria-hidden="true">{initials(user.name)}</span
+    {#if initialsBox}<span class="initials avatar" aria-hidden="true"
+        >{#if picture}<img
+            src={pictureUrl(user.id)}
+            alt=""
+            onerror={() => (picture = false)}
+          />{:else}{initials(user.name)}{/if}</span
       >{/if}
     <span class="name">{user.name}</span>
   </a>
@@ -54,6 +75,14 @@
     color: var(--ink-soft);
     font: 500 9.5px/1 var(--font-mono);
     letter-spacing: 0.02em;
+    overflow: hidden;
+  }
+
+  .initials img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .name {

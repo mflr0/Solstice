@@ -1828,6 +1828,14 @@ export const de: Messages = {
     saved: 'Einstellungen gespeichert.',
     profileUnsupported:
       'Dieser Server kann Name und E-Mail-Adresse noch nicht ändern: Aktualisieren Sie Solstice.',
+    picture: 'Bild',
+    pictureHint:
+      'Wird neben Ihrem Namen angezeigt. Das Bild wird in Ihrem Browser quadratisch zugeschnitten und verkleinert, bevor es gesendet wird.',
+    pictureChange: 'Bild ändern',
+    pictureRemove: 'Bild entfernen',
+    pictureSaved: 'Bild gespeichert.',
+    pictureRemoved: 'Bild entfernt.',
+    pictureUnreadable: 'Diese Datei kann nicht als Bild gelesen werden.',
     problems: {
       nameRequired: 'Geben Sie einen Namen an.',
       nameTooLong: 'Höchstens 100 Zeichen.',
