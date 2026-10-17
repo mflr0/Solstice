@@ -185,7 +185,7 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		}
 		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
-	if runErr == nil && r.strangers > 0 {
+	if r.strangers > 0 {
 		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
 			plural(r.strangers, "user", "users"))
 	}
