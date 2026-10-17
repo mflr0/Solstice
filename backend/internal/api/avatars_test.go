@@ -14,6 +14,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
+	"solstice/internal/i18n"
 	"strings"
 	"sync"
 	"testing"
@@ -214,5 +216,32 @@ func TestSetAvatarConcurrent(t *testing.T) {
 	}
 	if len(entries) != 1 {
 		t.Errorf("%d files in the directory, want only the picture", len(entries))
+	}
+}
+
+// A few bytes that declare 20000 × 20000 pixels are refused for their
+// dimensions, from the header alone: nothing near the 1.6 GB of pixels is
+// allocated, and the answer is not "not a picture", which decoding would give.
+func TestReencodeAvatarDeclaredSize(t *testing.T) {
+	ihdr := binary.BigEndian.AppendUint32(binary.BigEndian.AppendUint32(nil, 20000), 20000)
+	in := append([]byte("\x89PNG\r\n\x1a\n"), pngChunk("IHDR", append(ihdr, 8, 6, 0, 0, 0))...)
+	in = append(in, pngChunk("IEND", nil)...)
+
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	_, err := reencodeAvatar(in)
+	runtime.ReadMemStats(&after)
+
+	if err == nil {
+		t.Fatal("accepted")
+	}
+	if got := statusOf(t, err); got != http.StatusBadRequest {
+		t.Errorf("status %d, want %d", got, http.StatusBadRequest)
+	}
+	if want := i18n.M(i18n.AvatarDimensions).String(); err.Error() != want {
+		t.Errorf("message %q, want the dimensions one %q", err.Error(), want)
+	}
+	if grown := after.TotalAlloc - before.TotalAlloc; grown > 16<<20 {
+		t.Errorf("%d bytes allocated for a header", grown)
 	}
 }
