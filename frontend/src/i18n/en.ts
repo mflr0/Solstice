@@ -1424,6 +1424,7 @@ export const en = {
       method: 'Method',
       query: 'Query',
       project: 'Project',
+      rows: 'Rows',
       source: 'Source',
       seconds: 'Duration (seconds)',
       error: 'Error',

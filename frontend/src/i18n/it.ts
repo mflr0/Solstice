@@ -1430,6 +1430,7 @@ export const it: Messages = {
       method: 'Metodo',
       query: 'Query',
       project: 'Progetto',
+      rows: 'Righe',
       source: 'Origine',
       seconds: 'Durata (secondi)',
       error: 'Errore',

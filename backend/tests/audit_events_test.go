@@ -60,6 +60,20 @@ func TestCSVExportIsAudited(t *testing.T) {
 	if who := pick(t, `SELECT COALESCE(username, '') FROM audit_log WHERE action = 'issue.export' ORDER BY id DESC LIMIT 1`); who != "paul.martin" {
 		t.Errorf("author %q, want paul.martin", who)
 	}
+	if !strings.Contains(details, `"rows":1`) {
+		t.Errorf("the number of rows is missing: %s", details)
+	}
+	// A whole project, with no query, is audited by its key and its size.
+	before, _ = latestAudit(t, "issue.export")
+	status, header, _ := exportCSVFor(t, paul, "project=demo", "")
+	if status != 200 {
+		t.Fatalf("project export: %d", status)
+	}
+	n, details = latestAudit(t, "issue.export")
+	if n != before+1 || !strings.Contains(details, `"project":"DEMO"`) ||
+		!strings.Contains(details, `"rows":`+header.Get("X-Total-Count")) {
+		t.Errorf("project export: %d entries (was %d), details %s, %s rows", n, before, details, header.Get("X-Total-Count"))
+	}
 	// A refused export (an unknown column) leaves no entry.
 	bad, _ := latestAudit(t, "issue.export")
 	if status, _, _ := exportCSVFor(t, paul, "columns=key,couleur", ""); status != 400 {

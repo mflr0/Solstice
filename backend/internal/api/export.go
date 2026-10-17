@@ -146,13 +146,20 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// The search, as the user typed it: never the exported rows.
-	query := strings.TrimSpace(r.URL.Query().Get("jql"))
+	// The search, as the user typed it (as searchCondition reads it: jql,
+	// else q, and project), and how many rows left: never the rows themselves.
+	params := r.URL.Query()
+	query := params.Get("jql")
 	if query == "" {
-		query = strings.TrimSpace(r.URL.Query().Get("q"))
+		query = params.Get("q")
 	}
+	query = strings.TrimSpace(query)
 	s.log.Info("search exported as CSV", "query", query, "rows", total)
-	s.auditLog(r, audit.IssueExport, audit.Target{}, map[string]any{"query": query})
+	details := map[string]any{"query": query, "rows": len(set.list)}
+	if p := params.Get("project"); p != "" {
+		details["project"] = strings.ToUpper(p)
+	}
+	s.auditLog(r, audit.IssueExport, audit.Target{}, details)
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="solstice-`+time.Now().In(tz).Format("2006-01-02")+`.csv"`)

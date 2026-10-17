@@ -1424,6 +1424,7 @@ export const hi: Messages = {
       method: 'तरीक़ा',
       query: 'क्वेरी',
       project: 'प्रोजेक्ट',
+      rows: 'पंक्तियाँ',
       source: 'स्रोत',
       seconds: 'अवधि (सेकंड)',
       error: 'त्रुटि',

@@ -1437,6 +1437,7 @@ export const de: Messages = {
       method: 'Methode',
       query: 'Abfrage',
       project: 'Projekt',
+      rows: 'Zeilen',
       source: 'Quelle',
       seconds: 'Dauer (Sekunden)',
       error: 'Fehler',

@@ -1431,6 +1431,7 @@ export const fr: Messages = {
       method: 'Méthode',
       query: 'Requête',
       project: 'Projet',
+      rows: 'Lignes',
       source: 'Source',
       seconds: 'Durée (secondes)',
       error: 'Erreur',
