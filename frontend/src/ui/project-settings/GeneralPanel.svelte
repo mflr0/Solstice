@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
   import type { Category } from '../../core/admin-types.js';
   import {
@@ -53,6 +54,15 @@
 
   $effect(() => {
     ondirty(dirty);
+  });
+  onDestroy(() => ondirty(false));
+
+  // Reloading or closing the tab with unsaved changes asks first.
+  $effect(() => {
+    if (!dirty) return;
+    const hold = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', hold);
+    return () => window.removeEventListener('beforeunload', hold);
   });
 
   $effect(() => {

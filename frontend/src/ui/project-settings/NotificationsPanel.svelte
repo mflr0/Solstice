@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { ExtraRecipient, ProjectNotifications } from '../../core/admin-types.js';
   import { hasExtra, notificationsChanged, toggleExtra } from '../../core/project-admin.js';
   import type { IdName } from '../../core/types.js';
@@ -38,6 +39,15 @@
 
   $effect(() => {
     ondirty(dirty);
+  });
+  onDestroy(() => ondirty(false));
+
+  // Reloading or closing the tab with unsaved changes asks first.
+  $effect(() => {
+    if (!dirty) return;
+    const hold = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', hold);
+    return () => window.removeEventListener('beforeunload', hold);
   });
 
   function adopt(n: ProjectNotifications) {
