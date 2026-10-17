@@ -534,4 +534,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Wählen Sie mindestens ein Ereignis.",
 	WebhookSecretTooLong:       "Das Geheimnis darf höchstens 255 Zeichen lang sein.",
 	WebhookSecretEncryptFailed: "Das Geheimnis kann nicht verschlüsselt werden: %s",
+
+	// Issue security levels.
+	SecurityLevelInUse:     "Vorgänge auf dieser Stufe: %d. Verschieben Sie sie auf eine andere Stufe des Projekts oder entfernen Sie ihre Stufe.",
+	SecurityTargetNotFound: "Ersatzstufe in diesem Projekt nicht gefunden.",
+	SecurityMoveOrClear:    "Wählen Sie eine Ersatzstufe oder entfernen Sie die Stufe, nicht beides.",
+	SecurityMemberExists:   "Dieser Inhaber gehört bereits zur Stufe.",
 }

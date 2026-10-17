@@ -604,3 +604,11 @@ const (
 	WebhookSecretTooLong       Key = "WebhookSecretTooLong"
 	WebhookSecretEncryptFailed Key = "WebhookSecretEncryptFailed"
 )
+
+// Issue security levels.
+const (
+	SecurityLevelInUse     Key = "SecurityLevelInUse"
+	SecurityTargetNotFound Key = "SecurityTargetNotFound"
+	SecurityMoveOrClear    Key = "SecurityMoveOrClear"
+	SecurityMemberExists   Key = "SecurityMemberExists"
+)

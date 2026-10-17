@@ -535,4 +535,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "कम से कम एक इवेंट चुनें।",
 	WebhookSecretTooLong:       "सीक्रेट अधिकतम 255 वर्णों का हो सकता है।",
 	WebhookSecretEncryptFailed: "सीक्रेट एन्क्रिप्ट नहीं किया जा सका: %s",
+
+	// Issue security levels.
+	SecurityLevelInUse:     "इस स्तर पर टिकट: %d। उन्हें प्रोजेक्ट के किसी दूसरे स्तर पर ले जाएँ, या उनका स्तर हटा दें।",
+	SecurityTargetNotFound: "रिप्लेसमेंट स्तर इस प्रोजेक्ट में नहीं मिला।",
+	SecurityMoveOrClear:    "रिप्लेसमेंट स्तर चुनें या स्तर हटाएँ, दोनों नहीं।",
+	SecurityMemberExists:   "यह धारक पहले से इस स्तर का सदस्य है।",
 }
