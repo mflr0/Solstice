@@ -1,0 +1,370 @@
+# Administration guide
+
+This page is for Solstice administrators. It follows the menu of the
+administration (`/admin`), which only accounts with the administrator right
+can open. It says what each part does and what to watch for. It does not
+describe every button.
+
+Installation, the reverse proxy, backups and upgrades are in
+[install.md](install.md), [reverse-proxy.md](reverse-proxy.md),
+[backups.md](backups.md) and [upgrades.md](upgrades.md).
+
+What lives where:
+
+- The configuration file and environment variables only bootstrap the
+  server: database URL, data directory, listen address. See `solstice -h`.
+- Everything described below is stored in the database and applies at once,
+  without a restart.
+- Every change made in the administration is written to the audit log.
+
+## General
+
+### Overview
+
+Lists what is left to set up (no project yet, e-mail turned off) and links to
+every section.
+
+### General settings
+
+| Setting | Notes |
+|---|---|
+| Instance name | 100 characters at most. Shown next to the logo. |
+| Public address | The address people open Solstice at: `https://solstice.example.org`, without a path. Used for links in e-mails. An `https://` address makes session cookies `Secure`. |
+| Time zone | An IANA name such as `Europe/Paris`. Used for dates typed in searches, hours in e-mails and daily digests. Empty means the server's own zone. |
+| Default language | For people who chose none, and for the e-mails they receive. `en`, `fr`, `de`, `it` or `hi`. |
+| Session length | 1 to 365 days, 30 by default. Applies to future sign-ins. |
+| Minimum password length | 8 to 128, 12 by default. Applies to new passwords; existing ones keep working. |
+
+Watch for:
+
+- The public address and the time zone can first come from
+  `SOLSTICE_HTTP_BASEURL` and `SOLSTICE_TZ`. Once saved here, the value in the
+  database wins. "Restore the original value" removes it and goes back to the
+  file, the environment or the default.
+- Without a public address, e-mails go out without links, and invitations and
+  password reset links cannot be sent.
+
+### Announcement banner
+
+A message at the top of every page, for everyone. Up to 500 characters, with
+the tone "information" or "warning". Anyone can hide it for themselves; it
+comes back if the text changes. Use it for planned maintenance.
+
+## Users and groups
+
+### Users
+
+Every person who signs in has an account. The list shows the first 200
+matches: narrow the search to find the others.
+
+- **User names** are lower case: letters, digits and `. _ @ -`, starting with
+  a letter or a digit.
+- **Creating an account.** Either choose a password (at least the minimum
+  length), or send an invitation by e-mail. An invitation needs an e-mail
+  address on the account, working e-mail and a public address. The person gets
+  a link, valid for 7 days, to choose their own password. "Resend invitation"
+  replaces the link.
+- **Deactivating** an account closes its sessions at once and stops sign-ins.
+  Its issues, comments and history stay. You can reactivate it later.
+- **Administrator right.** Gives access to all of the administration. You
+  cannot remove your own right.
+- **Changing a password.** Three ways: type one, generate one (shown once,
+  pass it on at once), or send the person a link by e-mail. The link works
+  once and for one hour; the password does not change until it is used.
+  Typing or generating a password closes the person's sessions.
+- **Groups.** The account dialog sets which groups a person belongs to.
+- People can also ask for a reset link themselves from the sign-in page, when
+  e-mail links are available.
+- Accounts imported from a Jira external directory (LDAP and similar) have no
+  password. Send them a link, or set one.
+
+If every administrator is locked out, create or repair an account from the
+server's command line. The commands run against the configured database and
+are written to the audit log:
+
+```sh
+solstice user add -username admin2 -name "Second Admin" -admin
+solstice user passwd -username admin2
+```
+
+Without `-password`, a password is generated and printed.
+
+### Groups
+
+Groups gather people to give them permissions together. They are used in
+project permissions, in project roles, to restrict comments and work logs, to
+share filters, and in the access token policy. Group names are stored in lower
+case and are unique.
+
+Watch for:
+
+- Deleting a group removes its grants, role memberships and security level
+  memberships. It is refused while comments or work logs are restricted to the
+  group, because deleting it would hide them from everyone.
+- Renaming a group keeps the comments and work logs restricted to it.
+
+In this version, the Groups page of the menu shows only its title. Groups can
+be assigned to people from the account dialog, and the administration API
+creates, renames and deletes them (`/api/admin/groups`, described in
+`backend/internal/api/ADMIN_API.md`).
+
+### Roles
+
+Project roles are shared by all projects. Who holds a role is set for each
+project, in the project settings, under "Roles in this project". A role can
+then be given permissions in that project, like a group.
+
+Watch for:
+
+- A role is refused deletion while comments or work logs are restricted to it.
+- As for groups, the Roles page of the menu shows only its title in this
+  version. Roles are created, renamed and deleted through the administration
+  API (`/api/admin/roles`).
+
+## Projects
+
+### Projects page
+
+Lists every project with its key, lead, category, issue count and state, and
+links to each project's settings.
+
+- **Creating a project.** The key is 2 to 10 capital letters or digits,
+  starting with a letter. It cannot be changed afterwards, and it must differ
+  from every current and former key. You also choose the starting workflow
+  (Software: To Do, In Progress, In Review, Done; or Simple: three statuses),
+  the lead (you by default), who can work in the project (only the lead,
+  everyone with an account, a group or a role), the issue types and the
+  default assignee. The lead gets every permission. The first project of a
+  fresh instance also fills the empty catalogues with defaults, in the
+  instance's language.
+- **Archiving** makes a project read-only and removes it from the project
+  lists and pickers. Nothing is lost, and you can unarchive it at any time.
+  Prefer it to deleting.
+- **Deleting** is permanent: issues, comments, attachments and their files,
+  history, components, versions, workflows and permissions all go. A project
+  with issues asks you to type its key. Boards and saved filters stay, and
+  may show nothing.
+- **Categories** group projects in the project list. Deleting a category leaves
+  its projects without one.
+
+### Project settings
+
+Each project has its own rules. Nothing is shared through schemes, so a change
+touches no other project. Only the project's administrators (and global
+administrators) can open the settings. The page has two tabs.
+
+**Permissions and roles.** A table of what each holder may do. The
+permissions are: browse, create, edit, comment, change status, assign,
+assignable, attach files, link, log work, delete, moderate, manage watchers,
+security level and administer. A permission is granted to everyone, a user, a
+group, a role, the project lead, the reporter or the assignee.
+
+Watch for:
+
+- "Administer" lets someone configure the project. Global administrators
+  configure every project, but they do not see issue content unless a
+  permission lets them.
+- "Moderate" allows editing or removing other people's comments, work logs and
+  files. Grant it sparingly.
+- A permission with no holder is granted to nobody. After a Jira import, read
+  the import report: permissions Solstice could not translate are removed,
+  never widened.
+
+**Workflows.** See below.
+
+### Workflows
+
+A workflow sets the statuses of an issue and the moves allowed between them.
+Workflows belong to a project. Each issue type follows one of the project's
+workflows. The default workflow takes every type that follows no other.
+
+- A workflow has an initial status (where new issues start), a list of
+  statuses and a table of transitions. Tick a box to allow a move from the
+  row's status to the column's. A row "Any status" allows a move from anywhere.
+  The transition's name is the button shown on the issue.
+- You can create a workflow from a copy of an existing one.
+- Statuses are common to all projects, and so are their names. Adding a status
+  that does not exist creates it, with a category.
+- When you remove a status that issues are in, or delete a workflow that
+  leaves issues in statuses the default workflow lacks, a dialog asks where
+  those issues go. Each move is recorded in the issue's history.
+- Deleting a workflow sends its issue types back to the default workflow.
+  Issues keep their current status.
+- When an issue reaches a status in the "Done" category without a resolution,
+  it gets the default resolution if one is set.
+- Jira conditions, validators and post-functions do not exist in Solstice.
+  Permissions decide who can make a transition.
+- Without the "administer" permission, workflows are read only.
+
+## Issues
+
+These catalogues are shared by all projects. Each list is in display order:
+drag the rows or use the arrows. Clear the search to reorder.
+
+### Issue types
+
+Name, description and whether the type is a sub-task type. Watch for:
+
+- The sub-task box can only change while no issue uses the type.
+- Deleting a type used by issues, or offered by a project, asks you to move
+  its issues to another type of the same kind (sub-task or not). The last type
+  cannot be deleted.
+
+### Priorities
+
+Name, description and a color (`#rrggbb`). One priority is the default, given
+to issues created without one. Without a default, the middle priority is used.
+Deleting a used priority asks where to move its issues.
+
+### Resolutions
+
+How an issue was closed. The default resolution is given to issues that reach
+a done status without one. Without a default, they stay unresolved. Deleting
+a used resolution asks where to move its issues.
+
+### Statuses
+
+Each status has a category: to do, in progress or done. Boards and reports use
+the category, whatever the status is called. A status in use cannot be deleted.
+"Where used" lists the workflows, board columns and issues that hold it; take
+it out of those first. Deleted statuses keep their name in issue history.
+
+### Link types
+
+A name and two verbs, for example "blocks" and "is blocked by". Deleting a
+used link type asks which type its links move to.
+
+### Custom fields
+
+Fields added to issues, on top of the built-in ones. Types: one-line text,
+multi-line text, link, choice (one or several values), radio buttons,
+checkboxes, number, date, date and time, labels, one user, several users.
+
+- A field applies to all projects and issue types, or only to the ones you
+  choose. It appears on an issue when both its project and its type match.
+- The type of a field cannot change after creation.
+- Options can be added, renamed, reordered and disabled. A disabled option
+  keeps its existing values but can no longer be chosen. Prefer disabling to
+  deleting.
+- Deleting an option that issues use asks you to move their value to another
+  option or to clear it.
+- Deleting a field that holds values asks you to type its name. The values go
+  with it and cannot be recovered. Boards that estimate with the field fall
+  back to no estimate, and saved filters that name it stop matching.
+- Fields imported from Jira keep their Jira type. A type Solstice cannot edit
+  is shown as "Jira type, display only". A cascading field imported from Jira
+  shows only its first level of options.
+
+## E-mail and integrations
+
+### E-mail
+
+Solstice sends notifications, daily digests, filter subscriptions, reminders,
+invitations and password reset links through one SMTP server.
+
+- Set the server, the port and the connection security: STARTTLS (port 587,
+  the usual choice), TLS from the start (port 465) or none (port 25, for a
+  relay on an internal network). Add a user name and password if the server
+  requires them, and a sending address.
+- The password is stored encrypted with the secret key. Back that key up with
+  the database (see [backups.md](backups.md)).
+- If you change the server, port, security or user name, type the password
+  again or remove it.
+- "Send a test email" uses the saved settings and shows the server's exact
+  reply when it fails. Run it after every change.
+- The outbox shows pending, failed and recently sent messages. "Retry failed
+  sends" is useful after fixing the settings.
+- Unchecking "Send email" keeps the settings but stops all sending.
+
+### Webhooks
+
+A webhook sends a POST in Jira's webhook format to another tool when
+something changes.
+
+- Choose the address, the events (issues, comments, time logs, sprints,
+  boards) and, optionally, a JQL query: only issues that match trigger a
+  delivery.
+- With a secret, each delivery carries `X-Hub-Signature: sha256=…`, an
+  HMAC-SHA256 of the body. The recipient should check it. The secret is stored
+  encrypted.
+- "Send an empty body" is for a service that only checks the signature.
+- "Send a test call" posts to the address at once and shows the response.
+- A delivery that fails is tried up to 6 times, after 30 seconds, 2 minutes,
+  10 minutes, 30 minutes and 2 hours. Each webhook keeps its last 100
+  deliveries, with the response of each.
+- Webhooks failing in the last 24 hours show on the system page.
+
+Watch for:
+
+- A webhook sees every issue, confidential ones included. Restrict it with its
+  JQL query.
+- Targets may be on your private network or local machine. Link-local
+  addresses and cloud metadata addresses are always refused, redirects are not
+  followed and no proxy is used.
+
+### Access tokens
+
+Personal access tokens let scripts, CI jobs and IDE plugins sign in as a
+person without their password. People create their own under their settings
+(see [rest-api.md](rest-api.md)). This page lists the tokens of every account,
+with their last use and expiry, and revokes any of them at once.
+
+Policy, "Who may create tokens":
+
+- **Administrators only** (the default).
+- **Members of a group.**
+- **Everyone.**
+
+Administrators always may. Tightening the policy does not revoke existing
+tokens: revoke them from the list. A token cannot create other tokens.
+Resetting a password through a reset link also deletes the account's tokens.
+
+## System
+
+### Audit log
+
+A read-only record of who signed in and who changed accounts, access rights,
+projects, workflows, catalogues, settings, webhooks, tokens, imports and
+updates, with the address and time. Filter by kind of action, user, dates or a
+word in the target or details. Open an entry to see the details, such as the
+old and new value of a setting.
+
+Retention: entries older than the retention period are deleted automatically,
+once an hour. The default is 365 days. Choose 30 days or more, or 0 to keep
+everything. Shortening the period deletes the older entries at once, after a
+confirmation, and this cannot be undone. Keep a database backup first if you
+need the older entries.
+
+### Jira import
+
+Replaces everything Solstice holds with the data of a Jira database. This is
+the most destructive page of the administration. Read
+[migration.md](migration.md) before using it. It asks for a backup
+confirmation and for the database name to be typed. Solstice is in maintenance
+while it runs.
+
+### System information
+
+Version, Go version, start time, the database server, name and size, the data
+directory and the space it uses, the configuration file and listen address,
+counts of accounts, projects, issues, comments and attachments, the e-mail
+queue, failing webhooks, applied database migrations and a running import. No
+secret is shown. Look here first when something seems wrong: a growing
+"failed" count in the mail queue, or a failing webhook, shows up here.
+
+### Updates
+
+Shows the installed version and the latest release published on GitHub.
+
+- Solstice checks for new versions at most every 12 hours, and sends nothing
+  but the request for the latest version number. You can turn the automatic
+  checks off, or use "Check now". This is the only request Solstice makes on
+  its own.
+- On a Linux installation made with the installer, "Update" downloads the
+  release, verifies it, backs up the database, restarts, and puts the previous
+  version back if the new one does not start. You confirm with your password.
+  Solstice is unavailable for a few seconds; signed-in people stay signed in.
+- In a container or after a manual installation, the page shows the commands
+  to run instead.
+
+See [upgrades.md](upgrades.md) before updating a production instance.
