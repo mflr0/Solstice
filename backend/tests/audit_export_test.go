@@ -111,7 +111,15 @@ func TestAuditLog(t *testing.T) {
 		t.Errorf("hugo.robert's sign-ins: %v", acts)
 	}
 	for _, e := range logins.Entries {
-		if e.User == nil || e.User.Username != "hugo.robert" || e.IP == nil || *e.IP == "" || e.Details["method"] != "form" {
+		if e.User == nil || e.User.Username != "hugo.robert" || e.IP == nil || *e.IP == "" {
+			t.Errorf("sign-in entry: %+v", e)
+		}
+		// A lockout is not a sign-in attempt: it has no method, but its length.
+		if e.Action == "login.lockout" {
+			if _, ok := e.Details["seconds"]; !ok {
+				t.Errorf("lockout entry without seconds: %+v", e)
+			}
+		} else if e.Details["method"] != "form" {
 			t.Errorf("sign-in entry: %+v", e)
 		}
 	}

@@ -47,6 +47,9 @@ type Server struct {
 	catalog *catalog
 	catAt   time.Time
 
+	tokenMu  sync.Mutex
+	tokenAud map[int64]time.Time // when each refused token was last audited (tokens.go)
+
 	acc accountMail // whether links can be sent by e-mail (account_links.go)
 
 	adm adminState // instance settings, system page, imports (admin_*.go)
@@ -60,7 +63,8 @@ type Server struct {
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{})}
+		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{}),
+		tokenAud: map[int64]time.Time{}}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
 	}
@@ -307,12 +311,20 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	release()
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
-		s.limiter.Failure(userKey, ipKey)
-		if delay := s.limiter.AccountFailure("account:" + account); delay > 0 {
+		locked := s.limiter.Failure(userKey, ipKey)
+		delay := s.limiter.AccountFailure("account:" + account)
+		if delay > 0 {
 			// The account is being guessed at, from here or elsewhere: this
-			// address gets half as many tries, and the answer waits (the
-			// password-checking slot is already free).
-			s.limiter.Failure(userKey)
+			// address gets half as many tries.
+			locked = s.limiter.Failure(userKey) || locked
+		}
+		// Failure reports a lock that this very attempt started, so it is
+		// recorded once, not for the attempts the lock then refuses.
+		if locked {
+			s.auditLockout(r, username, s.limiter.Locked(userKey, ipKey))
+		}
+		if delay > 0 {
+			// The answer waits (the password-checking slot is already free).
 			s.sleep(r.Context(), delay)
 		}
 	case err == nil:
