@@ -78,6 +78,22 @@ func TestCSVExportIsAudited(t *testing.T) {
 		!strings.Contains(details, `"rows":`+header.Get("X-Total-Count")) {
 		t.Errorf("project export: %d entries (was %d), details %s, %s rows", n, before, details, header.Get("X-Total-Count"))
 	}
+	// A project that does not exist is not recorded, and a long query is cut.
+	before, _ = latestAudit(t, "issue.export")
+	if status, _, _ := exportCSVFor(t, paul, "project=Pas%20Un%20Projet", ""); status != 200 {
+		t.Fatalf("unknown project export: %d", status)
+	}
+	n, details = latestAudit(t, "issue.export")
+	if n != before+1 || strings.Contains(details, "project") || strings.Contains(details, "PAS") {
+		t.Errorf("unknown project export: %d entries (was %d), details %s", n, before, details)
+	}
+	long := strings.Repeat("é", 300)
+	if status, _, _ := exportCSVFor(t, paul, "q="+url.QueryEscape(long), ""); status != 200 {
+		t.Fatalf("long query export: %d", status)
+	}
+	if recorded := pick(t, `SELECT JSON_UNQUOTE(JSON_EXTRACT(details, '$.query')) FROM audit_log WHERE action = 'issue.export' ORDER BY id DESC LIMIT 1`); recorded != strings.Repeat("é", 255) {
+		t.Errorf("long query recorded with %d characters, want 255", len([]rune(recorded)))
+	}
 	// A refused export (an unknown column) leaves no entry.
 	bad, _ := latestAudit(t, "issue.export")
 	if status, _, _ := exportCSVFor(t, paul, "columns=key,couleur", ""); status != 400 {
