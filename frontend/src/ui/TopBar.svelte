@@ -5,7 +5,7 @@
   import { locale, LOCALE_NAMES, LOCALES } from '../i18n/index.js';
   import { outside } from '../lib/actions.js';
   import { chooseLocale } from '../lib/locale.js';
-  import { SOURCE_URL } from '../lib/links.js';
+  import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
   import { router } from '../lib/router.svelte.js';
@@ -209,6 +209,13 @@
               href={SOURCE_URL}
               target="_blank"
               rel="noopener noreferrer">{t.nav.sourceCode}</a
+            >
+            <a
+              class="item"
+              role="menuitem"
+              href={LICENSES_PATH}
+              target="_blank"
+              rel="noopener noreferrer">{t.nav.licenses}</a
             >
             <div class="sep"></div>
             <button class="item" role="menuitem" onclick={() => void session.signOut()}
