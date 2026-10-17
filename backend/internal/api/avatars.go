@@ -102,10 +102,25 @@ func (s *Server) setAvatar(w http.ResponseWriter, r *http.Request, id int64) err
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(s.dataDir, "avatars"), 0o750); err != nil {
+	dir := filepath.Join(s.dataDir, "avatars")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	_, err = writeFile(s.avatarPath(id), bytes.NewReader(data))
+	// Each upload has its own temporary file, so two at once cannot mix.
+	tmp, err := os.CreateTemp(dir, strconv.FormatInt(id, 10)+"-*.part")
+	if err != nil {
+		return err
+	}
+	_, err = tmp.Write(data)
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), s.avatarPath(id))
+	}
+	if err != nil {
+		os.Remove(tmp.Name())
+	}
 	return err
 }
 

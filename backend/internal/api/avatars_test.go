@@ -9,9 +9,13 @@ import (
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -161,5 +165,54 @@ func TestInitialsSVG(t *testing.T) {
 		if !strings.Contains(svg, want) {
 			t.Errorf("missing %s in %s", want, svg)
 		}
+	}
+}
+
+// Uploads of the same picture at once each use a temporary file of their own:
+// the stored picture is one of them, whole, and nothing is left behind.
+func TestSetAvatarConcurrent(t *testing.T) {
+	s := &Server{dataDir: t.TempDir()}
+	const uploads = 12
+	var wg sync.WaitGroup
+	errs := make(chan error, uploads)
+	for i := range uploads {
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		fw, _ := mw.CreateFormFile("file", "avatar.png")
+		fw.Write(encodePNG(t, 100+i, 100+i))
+		mw.Close()
+		r := httptest.NewRequest("PUT", "/api/me/avatar", &body)
+		r.Header.Set("Content-Type", mw.FormDataContentType())
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- s.setAvatar(httptest.NewRecorder(), r, 7)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	f, err := os.Open(s.avatarPath(7))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	img, err := png.Decode(f)
+	if err != nil {
+		t.Fatalf("stored picture: %v", err)
+	}
+	if b := img.Bounds(); b.Dx() != b.Dy() || b.Dx() < 100 || b.Dx() >= 100+uploads {
+		t.Errorf("stored picture is none of the uploads: %v", b)
+	}
+	entries, err := os.ReadDir(filepath.Dir(s.avatarPath(7)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("%d files in the directory, want only the picture", len(entries))
 	}
 }
