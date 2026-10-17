@@ -29,6 +29,7 @@ import (
 	"solstice/internal/db"
 	"solstice/internal/importer"
 	"solstice/internal/web"
+	"solstice/internal/worker"
 )
 
 // #nosec G101 -- usage text that names settings, not credentials
@@ -282,15 +283,17 @@ func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
-			if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
-				log.Warn("session cleanup failed", "err", err)
-			}
-			if _, err := audit.Purge(ctx, conn); err != nil {
-				log.Warn("audit log purge failed", "err", err)
-			}
-			if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
-				log.Warn("expired reset and invitation links purge failed", "err", err)
-			}
+			worker.Guard(log, "sessions", func() {
+				if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
+					log.Warn("session cleanup failed", "err", err)
+				}
+				if _, err := audit.Purge(ctx, conn); err != nil {
+					log.Warn("audit log purge failed", "err", err)
+				}
+				if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
+					log.Warn("expired reset and invitation links purge failed", "err", err)
+				}
+			})
 		}
 	}
 }
