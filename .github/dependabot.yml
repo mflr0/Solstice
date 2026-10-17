@@ -40,13 +40,23 @@ updates:
         update-types:
           - minor
           - patch
-  - package-ecosystem: docker
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      compose-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker-compose
     directory: /deploy/docker
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      docker-deploy-minor-and-patch:
+      compose-deploy-minor-and-patch:
         update-types:
           - minor
           - patch
