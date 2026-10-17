@@ -2222,7 +2222,12 @@ export const it: Messages = {
   },
 
   projectConfig: {
-    tabs: { general: 'Generale', components: 'Componenti', versions: 'Versioni' },
+    tabs: {
+      general: 'Generale',
+      components: 'Componenti',
+      versions: 'Versioni',
+      notifications: 'Notifiche',
+    },
     leaveBody: 'Questa scheda ha modifiche non salvate. Vuoi scartarle?',
     general: {
       title: 'Generale',
@@ -2315,6 +2320,20 @@ export const it: Messages = {
       deleteAffects: 'I ticket che interessa ricevono',
       deleteNone: 'Nessuna versione: la perdono e basta',
       deleted: (name: string) => `Versione ${name} eliminata.`,
+    },
+    notifications: {
+      title: 'Notifiche',
+      intro:
+        'Le email sui ticket di questo progetto. Ognuno sceglie comunque nelle proprie impostazioni gli eventi che lo raggiungono.',
+      enabled: 'Invia notifiche via email per questo progetto',
+      enabledHint:
+        'Se è disattivato, nessuno riceve email sui ticket di questo progetto, qualunque siano le sue impostazioni.',
+      extraTitle: 'Altri destinatari',
+      extraIntro:
+        'Un gruppo o un ruolo selezionato per un evento riceve anche l’email corrispondente in questo progetto, oltre alle persone che già seguono il ticket.',
+      recipient: 'Gruppo o ruolo',
+      none: 'Non c’è ancora nessun gruppo o ruolo da scegliere.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
     },
   },
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { nextTab, parseTab, type ProjectTab } from '../../core/project-admin.js';
+  import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
   import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
@@ -10,6 +10,7 @@
   import Modal from '../Modal.svelte';
   import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
+  import NotificationsPanel from '../project-settings/NotificationsPanel.svelte';
   import VersionsPanel from '../project-settings/VersionsPanel.svelte';
   import '../settings.css';
   import UserPicker from '../UserPicker.svelte';
@@ -44,10 +45,8 @@
       .join('|');
   const dirty = $derived(signature(grants) !== saved);
 
-  const tabs: ProjectTab[] = ['general', 'components', 'versions', 'rights', 'workflows'];
-  const asked = $derived(parseTab(router.param('tab'), !forbidden));
-  const tab = $derived(tabs.includes(asked) ? asked : 'general');
-  const tabLabels = $derived<Partial<Record<ProjectTab, string>>>({
+  const tab = $derived(parseTab(router.param('tab'), !forbidden));
+  const tabLabels = $derived<Record<ProjectTab, string>>({
     ...t.projectConfig.tabs,
     rights: t.workflows.rightsTab,
     workflows: t.workflows.tab,
@@ -70,7 +69,7 @@
   function tabKey(e: KeyboardEvent) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
-    const next = nextTab(tabs, tab, e.key === 'ArrowRight' ? 1 : -1);
+    const next = nextTab(PROJECT_TABS, tab, e.key === 'ArrowRight' ? 1 : -1);
     showTab(next);
     queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
   }
@@ -159,7 +158,7 @@
 
     {#if !forbidden}
       <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
-        {#each tabs as k (k)}
+        {#each PROJECT_TABS as k (k)}
           <button
             type="button"
             class="tab"
@@ -195,6 +194,20 @@
     {:else if tab === 'versions'}
       <div class="panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions">
         <VersionsPanel {projectKey} />
+      </div>
+    {:else if tab === 'notifications'}
+      <div
+        class="panel"
+        role="tabpanel"
+        id="panel-notifications"
+        aria-labelledby="tab-notifications"
+      >
+        <NotificationsPanel
+          {projectKey}
+          groups={data.groups}
+          roles={data.roles}
+          ondirty={(d) => (panelDirty = d)}
+        />
       </div>
     {:else}
       <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">

@@ -2221,7 +2221,12 @@ export const fr: Messages = {
   },
 
   projectConfig: {
-    tabs: { general: 'Général', components: 'Composants', versions: 'Versions' },
+    tabs: {
+      general: 'Général',
+      components: 'Composants',
+      versions: 'Versions',
+      notifications: 'Notifications',
+    },
     leaveBody: 'Cet onglet a des modifications non enregistrées. Les abandonner ?',
     general: {
       title: 'Général',
@@ -2315,6 +2320,20 @@ export const fr: Messages = {
       deleteAffects: 'Les tickets qu’elle touche reçoivent',
       deleteNone: 'Aucune version : ils la perdent simplement',
       deleted: (name: string) => `Version ${name} supprimée.`,
+    },
+    notifications: {
+      title: 'Notifications',
+      intro:
+        'Les e-mails sur les tickets de ce projet. Chacun choisit toujours dans ses propres réglages les événements qui lui parviennent.',
+      enabled: 'Envoyer des notifications par e-mail pour ce projet',
+      enabledHint:
+        'Si cette case est décochée, personne ne reçoit d’e-mail sur les tickets de ce projet, quels que soient ses propres réglages.',
+      extraTitle: 'Destinataires supplémentaires',
+      extraIntro:
+        'Un groupe ou un rôle coché pour un événement reçoit aussi l’e-mail correspondant dans ce projet, en plus des personnes qui suivent déjà le ticket.',
+      recipient: 'Groupe ou rôle',
+      none: 'Il n’y a pas encore de groupe ni de rôle à choisir.',
+      cell: (who: string, event: string) => `${who} : ${event}`,
     },
   },
 

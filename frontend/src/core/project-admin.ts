@@ -12,6 +12,7 @@ import type {
   ComponentInput,
   ComponentRow,
   ExtraRecipient,
+  ProjectNotifications,
   ProjectPatch,
   VersionInput,
   VersionRow,
@@ -518,4 +519,13 @@ export function versionPayload(f: VersionForm, before: VersionRow | null): Versi
   if (f.startDate !== (before.startDate ?? '')) out.startDate = f.startDate || null;
   if (f.releaseDate !== (before.releaseDate ?? '')) out.releaseDate = f.releaseDate || null;
   return out;
+}
+
+/** Whether the e-mail switch or the extra recipients differ from what was saved. */
+export function notificationsChanged(
+  saved: Pick<ProjectNotifications, 'enabled' | 'extra'>,
+  enabled: boolean,
+  extra: readonly ExtraRecipient[],
+): boolean {
+  return saved.enabled !== enabled || extraSignature(saved.extra) !== extraSignature(extra);
 }

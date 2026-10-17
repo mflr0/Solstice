@@ -2206,7 +2206,12 @@ export const en = {
   },
 
   projectConfig: {
-    tabs: { general: 'General', components: 'Components', versions: 'Versions' },
+    tabs: {
+      general: 'General',
+      components: 'Components',
+      versions: 'Versions',
+      notifications: 'Notifications',
+    },
     leaveBody: 'This tab has unsaved changes. Discard them?',
     general: {
       title: 'General',
@@ -2298,6 +2303,20 @@ export const en = {
       deleteAffects: 'Issues it affects get',
       deleteNone: 'No version: they just lose it',
       deleted: (name: string) => `Version ${name} deleted.`,
+    },
+    notifications: {
+      title: 'Notifications',
+      intro:
+        'Emails about the issues of this project. Everyone still chooses which events reach them in their own settings.',
+      enabled: 'Send email notifications for this project',
+      enabledHint:
+        'When this is off, nobody gets emails about the issues of this project, whatever their own settings.',
+      extraTitle: 'More recipients',
+      extraIntro:
+        'A group or role checked for an event also receives the email for it in this project, on top of the people who already follow the issue.',
+      recipient: 'Group or role',
+      none: 'There is no group or role to choose from yet.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
     },
   },
 

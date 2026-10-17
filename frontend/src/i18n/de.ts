@@ -2240,7 +2240,12 @@ export const de: Messages = {
   },
 
   projectConfig: {
-    tabs: { general: 'Allgemein', components: 'Komponenten', versions: 'Versionen' },
+    tabs: {
+      general: 'Allgemein',
+      components: 'Komponenten',
+      versions: 'Versionen',
+      notifications: 'Benachrichtigungen',
+    },
     leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
     general: {
       title: 'Allgemein',
@@ -2333,6 +2338,20 @@ export const de: Messages = {
       deleteAffects: 'Vorgänge, die sie betrifft, erhalten',
       deleteNone: 'Keine Version: sie verlieren sie nur',
       deleted: (name: string) => `Version ${name} gelöscht.`,
+    },
+    notifications: {
+      title: 'Benachrichtigungen',
+      intro:
+        'E-Mails zu den Vorgängen dieses Projekts. Jeder wählt weiterhin in den eigenen Einstellungen, welche Ereignisse ihn erreichen.',
+      enabled: 'E-Mail-Benachrichtigungen für dieses Projekt senden',
+      enabledHint:
+        'Ist dies ausgeschaltet, erhält niemand E-Mails zu den Vorgängen dieses Projekts, egal wie die eigenen Einstellungen sind.',
+      extraTitle: 'Weitere Empfänger',
+      extraIntro:
+        'Eine Gruppe oder Rolle, die für ein Ereignis angekreuzt ist, erhält in diesem Projekt ebenfalls die E-Mail dazu, zusätzlich zu den Personen, die den Vorgang schon verfolgen.',
+      recipient: 'Gruppe oder Rolle',
+      none: 'Es gibt noch keine Gruppe und keine Rolle zur Auswahl.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
     },
   },
 

@@ -20,6 +20,7 @@ import {
   hasExtra,
   keyProblem,
   moveItem,
+  notificationsChanged,
   nextTab,
   normalizeKey,
   otherComponents,
@@ -181,6 +182,16 @@ describe('project notifications', () => {
     expect(extraSignature([r, { ...r, event: 'assigned' }])).toBe(
       extraSignature([{ ...r, event: 'assigned' }, r]),
     );
+  });
+
+  it('tells unsaved changes from the saved ones', () => {
+    const r = { event: 'created', kind: 'group' as const, id: 4, name: 'dev' };
+    const other = { event: 'status', kind: 'role' as const, id: 2, name: 'qa' };
+    const saved = { enabled: true, extra: [r, other] };
+    expect(notificationsChanged(saved, true, [other, r])).toBe(false);
+    expect(notificationsChanged(saved, false, [r, other])).toBe(true);
+    expect(notificationsChanged(saved, true, [r])).toBe(true);
+    expect(notificationsChanged(saved, true, [r, other, { ...r, event: 'deleted' }])).toBe(true);
   });
 });
 
