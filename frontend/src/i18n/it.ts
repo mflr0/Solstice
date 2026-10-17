@@ -261,6 +261,7 @@ export const it: Messages = {
     network: 'Il server non risponde. Controlla la connessione.',
     generic: 'Si è verificato un errore.',
     notFound: 'Questa pagina non esiste, o non hai i permessi per vederla.',
+    pageLoad: 'Impossibile caricare questa pagina. Controlla la connessione e ricarica.',
   },
 
   login: {

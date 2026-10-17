@@ -265,6 +265,8 @@ export const de: Messages = {
     network: 'Der Server antwortet nicht. Prüfen Sie Ihre Verbindung.',
     generic: 'Ein Fehler ist aufgetreten.',
     notFound: 'Diese Seite existiert nicht, oder Sie haben keinen Zugriff darauf.',
+    pageLoad:
+      'Diese Seite konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und laden Sie neu.',
   },
 
   login: {
