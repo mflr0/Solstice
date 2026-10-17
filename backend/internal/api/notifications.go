@@ -431,7 +431,8 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword {
 		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
 		if err != nil {
-			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
+			s.log.Error("stored mail password not readable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
 		}
 		cfg.Password = old.Password
 	} else {
@@ -491,7 +492,8 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
-			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, err.Error())
+			s.log.Error("mail password not encryptable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
 		}
 	}
 	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {

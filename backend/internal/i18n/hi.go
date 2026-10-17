@@ -17,6 +17,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyAttempts:      "बहुत अधिक प्रयास। %d सेकंड बाद फिर से कोशिश करें।",
 	RequestStreamingUnsupported: "स्ट्रीमिंग समर्थित नहीं है।",
 	RequestInternalError:        "आंतरिक त्रुटि। इस घटना को लॉग कर लिया गया है।",
+	RequestBodyTooLarge:         "अनुरोध बहुत बड़ा है।",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "नाम आवश्यक है (अधिकतम %d वर्ण)।",

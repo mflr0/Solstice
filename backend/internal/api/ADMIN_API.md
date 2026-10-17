@@ -393,7 +393,7 @@ fields created here behave alike (issue view, REST API, JQL).
   {issues, boards}}` otherwise. Values go; boards estimating with it fall
   back to none. Saved filters naming it stop matching.
 - Options (`select`, `multiselect`, `checkboxes`, `radio`):
-  `POST /api/admin/fields/{id}/options` `{value}`,
+  `POST /api/admin/fields/{id}/options` `{value}` → 201 field detail,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
   Each option of the detail counts its `issues` (those with it, or an option
