@@ -5,6 +5,18 @@
 #   2. counts match what the generator reports;
 #   3. invariants hold (sub-tasks, secured issues, copied files, passwords).
 #
+# With MESSY=1 the generator adds the quirks of old Jira instances (-messy:
+# deleted users, a renamed project, moved issues, a custom field whose type
+# changed, odd text, orphan rows). The import must still succeed, both engines
+# must still give the same result, and what cannot be imported must be in the
+# report's warnings. Checks that do not make sense with such data are skipped:
+#   - the Go tests on the imported database: they know the standard data (its
+#     keys, authors and counts), which the quirks change;
+# and one is adjusted: the users the importer creates for deleted users
+# (inactive accounts) are added to the expected inactive accounts.
+# The other counts still hold: what the importer copies is counted in the
+# generator's summary, what it cannot import is not.
+#
 # Needs the containers of compose.yaml (docker compose up -d) and the Jira
 # distribution next to the repository (its entitymodel.xml describes the schema).
 set -euo pipefail
@@ -12,6 +24,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist=${JIRA_DIST:-$(ls -d "$root"/atlassian-jira-software-*-standalone 2>/dev/null | head -1)}
 issues=${ISSUES:-300}
+messy=${MESSY:-}
 seed=${SEED:-42}
 tz=Europe/Paris
 work=$(mktemp -d)
@@ -29,7 +42,7 @@ for engine in pg my; do
   esac
   echo "› base Jira synthétique ($engine, $issues tickets)"
   "$work/jira-fixture" -url "$src" -jira-dist "$dist" -jira-home "$work/home-$engine" \
-    -issues "$issues" -seed "$seed" -tz "$tz" > "$work/fixture-$engine.json"
+    -issues "$issues" -seed "$seed" -tz "$tz" ${messy:+-messy} > "$work/fixture-$engine.json"
   echo "› import ($engine)"
   mariadb -e "DROP DATABASE IF EXISTS solstice_e2e_$engine; CREATE DATABASE solstice_e2e_$engine;
               GRANT ALL ON solstice_e2e_$engine.* TO 'solstice'@'%';"
@@ -59,6 +72,7 @@ done
 
 echo "› nombres conformes au générateur"
 expect() { python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$work/fixture-pg.json" "$1"; }
+expect_messy() { python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))['messy'][sys.argv[2]])" "$work/fixture-pg.json" "$1"; }
 count() { mariadb -e "SELECT COUNT(*) FROM solstice_e2e_pg.$1"; }
 check "tickets" "$(expect issues)" "$(count issues)"
 check "sous-tâches" "$(expect subtasks)" "$(count 'issues WHERE parent_id IS NOT NULL')"
@@ -95,20 +109,57 @@ check "sprints actifs" "$(expect sprints_active)" "$(count "sprints WHERE state 
 check "tickets dans les sprints" "$(expect sprint_memberships)" "$(count sprint_issues)"
 check "tickets classés" "$(expect ranked_issues)" "$(count 'issues WHERE rank_key IS NOT NULL')"
 check "tickets rattachés à une épopée" "$(expect epic_links)" "$(count 'issues WHERE epic_id IS NOT NULL')"
+ghosts=0
+if [ -n "$messy" ]; then ghosts=$(expect_messy ghost_users); fi
 check "comptes inactifs (désactivés, supprimés, sans accès applicatif)" \
-  "$(( $(expect inactive_users) + $(expect deleted_users) + $(expect users_without_access) ))" \
+  "$(( $(expect inactive_users) + $(expect deleted_users) + $(expect users_without_access) + ghosts ))" \
   "$(count 'users WHERE NOT active')"
 
-echo "› tests Go (unitaires, et API sur la base importée)"
-# An empty database for the setup wizard's tests, which fill it.
-mariadb -e "DROP DATABASE IF EXISTS solstice_e2e_setup;
-            CREATE DATABASE solstice_e2e_setup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-            GRANT ALL ON solstice_e2e_setup.* TO 'solstice'@'%';"
-if (cd "$root/backend" && SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg \
-    SOLSTICE_TEST_EMPTY_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_setup go test ./... -count=1); then
-  echo "  ok    go test"
+if [ -n "$messy" ]; then
+  echo "› avertissements de l'import (données désordonnées)"
+  warned() { # description, expected warning: the report holds exactly this line
+    if python3 -I -c "import json,sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1]))['warnings'] else 1)" \
+      "$work/report-pg.json" "$2"; then echo "  ok    $1"; else echo "  ÉCHEC $1 : \"$2\" absent"; fail=1; fi
+  }
+  many() { if [ "$1" = 1 ]; then echo "1 $2"; else echo "$1 $3"; fi; } # count, singular, plural
+  check "mêmes avertissements sur PostgreSQL et MySQL" \
+    "$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))['warnings'])" "$work/report-pg.json")" \
+    "$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))['warnings'])" "$work/report-my.json")"
+  warned "utilisateurs inconnus" "$(many "$ghosts" user users) named by issues, comments or history but unknown to Jira, kept as inactive accounts"
+  warned "détails d'historique orphelins" \
+    "$(many "$(expect_messy orphan_change_items)" "change detail" "change details") of a missing change, not imported"
+  warned "temps saisis orphelins" "$(many "$(expect_messy orphan_worklogs)" "work log" "work logs") of a missing issue, not imported"
+  warned "commentaires orphelins" "$(many "$(expect_messy orphan_comments)" comment comments) of a missing issue, not imported"
+  warned "liens orphelins" \
+    "$(many "$(expect_messy orphan_issue_links)" "issue link" "issue links") of a missing issue or link type, not imported"
+  warned "composants manquants" \
+    "$(many "$(expect_messy orphan_component_links)" "component link" "component links") to a missing component, not imported"
+  warned "anciennes clés de tickets manquants" \
+    "$(many "$(expect_messy orphan_moved_keys)" "old issue key" "old issue keys") of a missing issue, not imported"
+  warned "anciennes clés données à deux tickets" \
+    "$(many "$(expect_messy duplicate_keys)" "old issue key" "old issue keys") already given to another issue (it keeps the first), not imported"
+  warned "observateurs et votes d'un utilisateur inconnu" \
+    "$(many "$(expect_messy ghost_watches)" "watch or vote" "watches or votes") of an unknown user or a missing issue, not imported"
+  warned "valeurs d'un ancien type de champ" \
+    "$(many "$(expect_messy misfit_field_values)" value values) stored for a former type of their custom field, not imported (fields 10114, 10115)"
+  echo "  avertissements du rapport :"
+  python3 -I -c "import json,sys; [print('    -', w) for w in json.load(open(sys.argv[1]))['warnings']]" "$work/report-pg.json"
+fi
+
+if [ -n "$messy" ]; then
+  echo "› tests Go ignorés (ils connaissent les données standard)"
 else
-  echo "  ÉCHEC go test"; fail=1
+  echo "› tests Go (unitaires, et API sur la base importée)"
+  # An empty database for the setup wizard's tests, which fill it.
+  mariadb -e "DROP DATABASE IF EXISTS solstice_e2e_setup;
+              CREATE DATABASE solstice_e2e_setup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+              GRANT ALL ON solstice_e2e_setup.* TO 'solstice'@'%';"
+  if (cd "$root/backend" && SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg \
+      SOLSTICE_TEST_EMPTY_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_setup go test ./... -count=1); then
+    echo "  ok    go test"
+  else
+    echo "  ÉCHEC go test"; fail=1
+  fi
 fi
 
 if [ $fail = 0 ]; then echo "Tout est conforme."; else echo "Des écarts ont été trouvés."; exit 1; fi
