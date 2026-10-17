@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -1010,4 +1011,155 @@ func TestRESTIssuePicker(t *testing.T) {
 	if status, _, _ := call(t, nil, testURL, "GET", "/rest/api/2/issue/picker", nil, nil); status != 401 {
 		t.Errorf("picker without credentials: %d", status)
 	}
+}
+
+// The schema of each system field, as /field, createmeta and editmeta give it:
+// the type, and for an array the type of its items. issuekey has none.
+var systemSchemas = map[string][2]string{
+	"summary": {"string", ""}, "issuetype": {"issuetype", ""}, "project": {"project", ""}, "status": {"status", ""},
+	"priority": {"priority", ""}, "resolution": {"resolution", ""}, "resolutiondate": {"datetime", ""},
+	"assignee": {"user", ""}, "reporter": {"user", ""}, "creator": {"user", ""}, "created": {"datetime", ""},
+	"updated": {"datetime", ""}, "duedate": {"date", ""}, "description": {"string", ""}, "environment": {"string", ""},
+	"labels": {"array", "string"}, "components": {"array", "component"}, "fixVersions": {"array", "version"},
+	"versions": {"array", "version"}, "issuelinks": {"array", "issuelinks"}, "subtasks": {"array", "issuelinks"},
+	"parent": {"issuelink", ""}, "security": {"securitylevel", ""}, "watches": {"watches", ""}, "votes": {"votes", ""},
+	"timeoriginalestimate": {"number", ""}, "timeestimate": {"number", ""}, "timespent": {"number", ""},
+	"timetracking": {"timetracking", ""}, "attachment": {"array", "attachment"}, "comment": {"comments-page", ""},
+	"worklog": {"array", "worklog"},
+}
+
+// The schema of each kind of custom field (the end of its type key).
+var customSchemas = map[string][2]string{
+	"textfield": {"string", ""}, "textarea": {"string", ""}, "url": {"string", ""}, "float": {"number", ""},
+	"datepicker": {"date", ""}, "datetime": {"datetime", ""}, "select": {"option", ""}, "radiobuttons": {"option", ""},
+	"gh-epic-status": {"option", ""}, "cascadingselect": {"option-with-child", ""}, "multiselect": {"array", "option"},
+	"multicheckboxes": {"array", "option"}, "userpicker": {"user", ""}, "multiuserpicker": {"array", "user"},
+	"labels": {"array", "string"}, "gh-sprint": {"array", "string"}, "gh-epic-link": {"any", ""},
+	"gh-lexo-rank": {"string", ""}, "gh-global-rank": {"string", ""},
+}
+
+// TestRESTFieldSchemas: /field gives each field the schema of its kind, and
+// createmeta and editmeta give the fields they list the same one.
+func TestRESTFieldSchemas(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := restAs(t, "paul.martin")
+
+	// One field of each type an administrator can create.
+	kinds := map[string]string{"text": "textfield", "textarea": "textarea", "number": "float", "date": "datepicker",
+		"datetime": "datetime", "select": "select", "multiselect": "multiselect", "checkboxes": "multicheckboxes",
+		"radio": "radiobuttons", "user": "userpicker", "multiuser": "multiuserpicker", "labels": "labels", "url": "url"}
+	created := map[string]bool{} // by id
+	for typ := range kinds {
+		in := map[string]any{"name": unique("Schéma "), "type": typ}
+		if strings.Contains("select multiselect checkboxes radio", typ) {
+			in["options"] = []string{"a", "b"}
+		}
+		var f struct{ ID int64 }
+		admin.call("POST", "/api/admin/fields", in, 201, &f)
+		t.Cleanup(func() {
+			admin.do("DELETE", fmt.Sprintf("/api/admin/fields/%d", f.ID), map[string]string{"confirm": str(in, "name")})
+		})
+		created[customIDOf(f.ID)] = true
+	}
+
+	status, all := paul("GET", "/rest/api/2/field", nil)
+	if status != 200 {
+		t.Fatalf("fields: %d", status)
+	}
+	want := map[string]any{} // the schema of each field, by id
+	for _, f := range list(all) {
+		id := str(f, "id")
+		switch {
+		case strings.HasPrefix(id, "customfield_"):
+			custom := str(f, "schema", "custom")
+			s, ok := customSchemas[custom[strings.LastIndex(custom, ":")+1:]]
+			if !ok {
+				t.Errorf("%s: no schema known for the type %q", id, custom)
+				continue
+			}
+			want[id] = schemaOf(s, "custom", custom, "customId", float64(num(f, "schema", "customId")))
+			if id != customIDOf(int64(num(f, "schema", "customId"))) {
+				t.Errorf("%s: customId %v", id, at(f, "schema", "customId"))
+			}
+		case id == "issuekey":
+			if at(f, "schema") != nil {
+				t.Errorf("issuekey has a schema: %v", at(f, "schema"))
+			}
+			continue
+		default:
+			s, ok := systemSchemas[id]
+			if !ok {
+				t.Errorf("%s: no schema known", id)
+				continue
+			}
+			want[id] = schemaOf(s, "system", id)
+		}
+		if !reflect.DeepEqual(at(f, "schema"), want[id]) {
+			t.Errorf("/field %s: schema %v, want %v", id, at(f, "schema"), want[id])
+		}
+	}
+	for id := range systemSchemas {
+		if want[id] == nil {
+			t.Errorf("/field lacks %s", id)
+		}
+	}
+	for id := range created {
+		if want[id] == nil {
+			t.Errorf("/field lacks the new field %s", id)
+		}
+	}
+
+	// The forms: every field they list has the schema /field gives it, and they
+	// list the new fields.
+	form := func(path string, fields ...any) map[string]any {
+		t.Helper()
+		status, meta := paul("GET", path, nil)
+		if status != 200 {
+			t.Fatalf("%s: %d %v", path, status, meta)
+		}
+		return asMap(at(meta, fields...))
+	}
+	task := pick(t, `SELECT it.id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
+		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND NOT it.subtask AND it.name NOT IN ('Epic', 'Épopée')
+		ORDER BY t.position LIMIT 1`)
+	issue := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
+		JOIN issue_types it ON it.id = i.issue_type_id WHERE p.pkey = 'DEMO' AND NOT it.subtask AND it.name NOT IN ('Epic', 'Épopée')
+		AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
+	for name, fields := range map[string]map[string]any{
+		"createmeta": form("/rest/api/2/issue/createmeta?expand=projects.issuetypes.fields&projectKeys=DEMO&issuetypeIds="+task,
+			"projects", 0, "issuetypes", 0, "fields"),
+		"editmeta": form("/rest/api/2/issue/"+issue+"/editmeta", "fields"),
+	} {
+		for id, f := range fields {
+			if s, ok := want[id]; !ok {
+				t.Errorf("%s lists %s, which /field does not", name, id)
+			} else if !reflect.DeepEqual(asMap(f)["schema"], s) {
+				t.Errorf("%s %s: schema %v, want %v", name, id, asMap(f)["schema"], s)
+			}
+		}
+		for id := range created {
+			if fields[id] == nil {
+				t.Errorf("%s lacks the new field %s", name, id)
+			}
+		}
+		for _, id := range []string{"summary", "description", "priority", "assignee", "labels", "components", "fixVersions", "duedate"} {
+			if fields[id] == nil {
+				t.Errorf("%s lacks %s", name, id)
+			}
+		}
+	}
+}
+
+func customIDOf(id int64) string { return fmt.Sprintf("customfield_%d", id) }
+
+// schemaOf builds the schema a field is expected to have, as decoded from JSON.
+func schemaOf(s [2]string, extra ...any) map[string]any {
+	out := map[string]any{"type": s[0]}
+	for i := 0; i+1 < len(extra); i += 2 {
+		out[extra[i].(string)] = extra[i+1]
+	}
+	if s[1] != "" {
+		out["items"] = s[1]
+	}
+	return out
 }
