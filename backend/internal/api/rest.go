@@ -114,6 +114,10 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("PUT "+p+"/issue/{key}/remotelink/{linkId}", s.restEditRemoteLink, true)
 		rest("DELETE "+p+"/issue/{key}/remotelink/{linkId}", s.restDeleteRemoteLink, true)
 	}
+	// Jira's cookie sign-in, which old scripts still use.
+	mux.Handle("GET /rest/auth/1/session", s.rest(s.restSession, true))
+	mux.Handle("POST /rest/auth/1/session", s.restSessionRoute(s.restSignIn, false))
+	mux.Handle("DELETE /rest/auth/1/session", s.restSessionRoute(s.restSignOut, true))
 	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
 		rest("GET "+p+"/board", s.agileBoards, true)
 		rest("GET "+p+"/board/{id}", s.agileBoard, true)

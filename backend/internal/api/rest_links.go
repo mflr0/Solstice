@@ -3,13 +3,17 @@ package api
 // Remote links, Jira's session route and groups of the REST API.
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"solstice/internal/audit"
+	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -253,6 +257,120 @@ func (s *Server) restDeleteRemoteLink(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 	s.changed(iss, sub.UserID, "link", changes)
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// Session ----------------------------------------------------------------------
+
+// restSessionRoute lets scripts written for Jira's cookie sign-in call the
+// session routes the way they did there: a JSON body or a DELETE needs no
+// X-Atlassian-Token header. A browser cannot send either cross-site without a
+// CORS preflight, which Solstice never grants; form-like POSTs still need the
+// header.
+func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
+	inner := s.rest(h, needUser)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete || (r.Method == http.MethodPost && !formEncoded(r)) {
+			r = r.Clone(r.Context())
+			r.Header.Set("X-Atlassian-Token", "no-check")
+		}
+		inner.ServeHTTP(w, r)
+	})
+}
+
+// restLoginInfo is what Solstice knows of a user's sign-ins, from the audit
+// log: how many, since when they failed, and the one before the latest.
+func (s *Server) restLoginInfo(ctx context.Context, o *restOut, userID int64) (map[string]any, error) {
+	info := map[string]any{"loginCount": 0, "failedLoginCount": 0}
+	var successes []time.Time
+	if err := sqlq.Each(ctx, s.db, `SELECT created_at FROM audit_log WHERE user_id = ? AND action = ?
+		ORDER BY created_at DESC, id DESC LIMIT 2`, func(rows *sql.Rows) error {
+		var at time.Time
+		if err := rows.Scan(&at); err != nil {
+			return err
+		}
+		successes = append(successes, at)
+		return nil
+	}, userID, audit.LoginSuccess); err != nil {
+		return nil, err
+	}
+	var count int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE user_id = ? AND action = ?`,
+		userID, audit.LoginSuccess).Scan(&count); err != nil {
+		return nil, err
+	}
+	info["loginCount"] = count
+	since := time.Unix(0, 0).UTC()
+	if len(successes) > 0 {
+		since = successes[0]
+	}
+	if len(successes) > 1 {
+		info["previousLoginTime"] = o.time(successes[1])
+	}
+	var failed int
+	var last sql.NullTime
+	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(created_at > ?), 0), MAX(created_at) FROM audit_log
+		WHERE user_id = ? AND action = ?`, since, userID, audit.LoginFailure).Scan(&failed, &last); err != nil {
+		return nil, err
+	}
+	info["failedLoginCount"] = failed
+	if last.Valid {
+		info["lastFailedLoginTime"] = o.time(last.Time)
+	}
+	return info, nil
+}
+
+// restSession tells who is signed in.
+func (s *Server) restSession(w http.ResponseWriter, r *http.Request) error {
+	u := currentUser(r)
+	o := s.restOut(r)
+	info, err := s.restLoginInfo(r.Context(), o, u.ID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"self": o.api + "/user?username=" + url.QueryEscape(u.Username),
+		"name": u.Username, "loginInfo": info})
+}
+
+// restSignIn signs in as POST /api/login does and answers with the session.
+func (s *Server) restSignIn(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := readRESTJSON(r, &in); err != nil {
+		return err
+	}
+	u, err := s.signIn(w, r, in.Username, in.Password, "session")
+	if err != nil {
+		var he *httpError
+		if errors.As(err, &he) && he.status == http.StatusUnauthorized {
+			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
+		} else if he != nil && he.status == http.StatusTooManyRequests {
+			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
+		}
+		return err
+	}
+	var token string
+	for _, c := range (&http.Response{Header: w.Header()}).Cookies() {
+		if c.Name == auth.CookieName {
+			token = c.Value
+		}
+	}
+	info, err := s.restLoginInfo(r.Context(), s.restOut(r), u.ID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{
+		"session": map[string]string{"name": auth.CookieName, "value": token}, "loginInfo": info})
+}
+
+// restSignOut signs out like the interface's logout.
+func (s *Server) restSignOut(w http.ResponseWriter, r *http.Request) error {
+	if err := s.signOut(w, r); err != nil {
+		return err
+	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

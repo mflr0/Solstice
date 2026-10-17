@@ -4,6 +4,7 @@ package tests
 
 import (
 	"encoding/json"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -210,4 +211,97 @@ func viewerOf(t *testing.T, key string) *client {
 		t.Fatalf("a new account on %s: %s", key, raw)
 	}
 	return c
+}
+
+// Session ----------------------------------------------------------------------
+
+func TestRESTSession(t *testing.T) {
+	needDB(t)
+	const path = "/rest/auth/1/session"
+	base := ownServer(t) // failed sign-ins count against the address: not on the shared server
+	signIn := func(base, user, password string, setup func(*http.Request)) (int, http.Header, []byte) {
+		return call(t, nil, base, "POST", path, map[string]string{"username": user, "password": password}, setup)
+	}
+
+	// Nobody is signed in: 401 in Jira's format.
+	if status, h, raw := call(t, nil, base, "GET", path, nil, nil); status != 401 || h.Get("X-AUSERNAME") != "anonymous" ||
+		at(obj(t, raw), "errorMessages", 0) == nil {
+		t.Errorf("anonymous GET: %d %s", status, raw)
+	}
+	if status, _, _ := call(t, nil, base, "DELETE", path, nil, nil); status != 401 {
+		t.Errorf("anonymous DELETE: %d", status)
+	}
+
+	// A wrong password is refused and audited like the form's.
+	before := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'login.failure' AND username = 'paul.martin'`)
+	status, h, raw := signIn(base, "paul.martin", "faux", nil)
+	if status != 401 || h.Get("X-Seraph-LoginReason") != "AUTHENTICATED_FAILED" || len(h.Values("Set-Cookie")) != 0 {
+		t.Errorf("wrong password: %d %v %s", status, h, raw)
+	}
+	if after := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'login.failure' AND username = 'paul.martin'`); after == before {
+		t.Error("the failed sign-in is not in the audit log")
+	}
+
+	// A browser could send a form-like body cross-site: that needs the header.
+	if status, _, _ := signIn(base, "paul.martin", "motdepasse", header("Content-Type", "text/plain")); status != 403 {
+		t.Errorf("form-like sign-in without header: %d", status)
+	}
+
+	// Signing in sets the cookie, as /api/login does, and answers Jira's session.
+	status, h, raw = signIn(base, "paul.martin", "motdepasse", nil)
+	out := obj(t, raw)
+	value := str(out, "session", "value")
+	if status != 200 || str(out, "session", "name") != "solstice_session" || value == "" || at(out, "loginInfo", "loginCount") == nil ||
+		at(out, "loginInfo", "failedLoginCount") == nil {
+		t.Fatalf("sign-in: %d %s", status, raw)
+	}
+	cookie := (&http.Response{Header: h}).Cookies()
+	if len(cookie) != 1 || cookie[0].Value != value || !cookie[0].HttpOnly || cookie[0].Path != "/" {
+		t.Errorf("cookie: %v", h.Values("Set-Cookie"))
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'login.success' AND username = 'paul.martin'
+		AND details LIKE '%"session"%'`); n == "0" {
+		t.Error("the sign-in is not in the audit log")
+	}
+	withCookie := header("Cookie", "solstice_session="+value)
+	status, _, raw = call(t, nil, base, "GET", path, nil, withCookie)
+	got := obj(t, raw)
+	if status != 200 || str(got, "name") != "paul.martin" || !strings.HasSuffix(str(got, "self"), "/rest/api/2/user?username=paul.martin") ||
+		num(got, "loginInfo", "loginCount") < 1 || num(got, "loginInfo", "failedLoginCount") != 0 ||
+		!jiraTime.MatchString(str(got, "loginInfo", "lastFailedLoginTime")) {
+		t.Errorf("GET: %d %s", status, raw)
+	}
+	// The session is the interface's too.
+	if status, _, _ := call(t, nil, base, "GET", "/api/me", nil, withCookie); status != 200 {
+		t.Errorf("/api/me with the session: %d", status)
+	}
+	if status, _, _ := call(t, nil, base, "GET", "/rest/api/2/myself", nil, withCookie); status != 200 {
+		t.Errorf("/myself with the session: %d", status)
+	}
+
+	// Signing out ends the session and clears the cookie.
+	status, h, _ = call(t, nil, base, "DELETE", path, nil, withCookie)
+	cleared := (&http.Response{Header: h}).Cookies()
+	if status != 204 || len(cleared) != 1 || cleared[0].MaxAge >= 0 {
+		t.Errorf("sign-out: %d %v", status, h.Values("Set-Cookie"))
+	}
+	if status, _, _ := call(t, nil, base, "GET", path, nil, withCookie); status != 401 {
+		t.Errorf("GET after the sign-out: %d", status)
+	}
+
+	// The same throttle as the form's.
+	base = ownServer(t)
+	for i := range 5 {
+		if status, _, _ := signIn(base, "lucas.bernard", "faux", nil); status != 401 {
+			t.Fatalf("attempt %d: %d, want 401", i+1, status)
+		}
+	}
+	if status, h, _ := signIn(base, "lucas.bernard", "motdepasse", nil); status != http.StatusTooManyRequests ||
+		h.Get("X-Seraph-LoginReason") != "AUTHENTICATION_DENIED" {
+		t.Errorf("right password after 5 failures: %d %v", status, h)
+	}
+	if status, _ := anonymousAt(t, base).do("POST", "/api/login",
+		map[string]string{"username": "lucas.bernard", "password": "motdepasse"}); status != http.StatusTooManyRequests {
+		t.Errorf("the form is not locked as well: %d", status)
+	}
 }
