@@ -117,8 +117,8 @@ func (s *Server) pathRemoteLink(r *http.Request, iss *issueRow) (remoteLinkRow, 
 		arg = id
 	} else if global := r.URL.Query().Get("globalId"); global != "" {
 		where, arg = `global_id = ?`, global
-	} else {
-		return v, errNotFound
+	} else { // DELETE on the collection: Jira asks for the globalId
+		return v, fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldRequired, "globalId"))
 	}
 	err := v.scan(s.db.QueryRowContext(r.Context(), `SELECT `+remoteLinkColumns+` FROM remote_links
 		WHERE `+where+` AND issue_id = ?`, arg, iss.ID))

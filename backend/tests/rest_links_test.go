@@ -173,8 +173,8 @@ func TestRESTRemoteLinks(t *testing.T) {
 			t.Errorf("DELETE %s: %d, want 404", p, status)
 		}
 	}
-	if status, _ := do(paul, "DELETE", path, nil); status != 404 {
-		t.Errorf("DELETE with no id and no globalId: %d, want 404", status)
+	if status, raw := do(paul, "DELETE", path, nil); status != 400 || str(obj(t, raw), "errors", "globalId") == "" {
+		t.Errorf("DELETE with no id and no globalId: %d %s, want 400 on globalId", status, raw)
 	}
 	twinPath := path + "?globalId=" + url.QueryEscape("GitLab:MR:7")
 	if status, raw = do(paul, "DELETE", twinPath, nil); status != 204 {
