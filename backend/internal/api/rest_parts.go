@@ -470,10 +470,15 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	var saved filterOut
-	if creating {
+	// A body with only "favourite" changes nothing else, so there is nothing to save.
+	favouriteOnly := !creating && len(ui) == 0 && favourite != nil
+	id := r.PathValue("id")
+	switch {
+	case creating:
 		err = s.uiCall(r, s.createFilter, http.MethodPost, "/api/filters", nil, ui, &saved)
-	} else {
-		id := r.PathValue("id")
+	case favouriteOnly:
+		saved.ID, _ = strconv.ParseInt(id, 10, 64)
+	default:
 		err = s.uiCall(r, s.updateFilter, http.MethodPatch, "/api/filters/"+id, map[string]string{"id": id}, ui, &saved)
 		if err == nil && saved.ID == 0 {
 			saved.ID, _ = strconv.ParseInt(id, 10, 64)
@@ -487,9 +492,15 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 		if *favourite {
 			method = http.MethodPut
 		}
+		// The save and the favourite are two steps, not one transaction. When
+		// the save went through, a failing favourite is logged, not answered
+		// with an error: the client would take the saved change for a failed one.
 		if err := s.uiCall(r, s.setFavourite(*favourite), method, "/api/filters/"+id+"/favourite",
 			map[string]string{"id": id}, nil, nil); err != nil {
-			return err
+			if favouriteOnly {
+				return err
+			}
+			s.log.Warn("setting the favourite of a saved filter failed", "filter", saved.ID, "err", err)
 		}
 	}
 	sub, err := s.subject(r)

@@ -385,3 +385,44 @@ func TestFilterIDZero(t *testing.T) {
 		t.Errorf("the filter was changed: %q", got)
 	}
 }
+
+// "favourite" alone changes the favourite only; once a change is saved, a
+// favourite that fails does not turn the answer into an error.
+func TestRESTFilterFavourite(t *testing.T) {
+	paul, hugo, admin := restAs(t, "paul.martin"), restAs(t, "hugo.robert"), restAs(t, "admin")
+	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Favori (REST)", "jql": "project = DEMO",
+		"sharePermissions": []any{map[string]any{"type": "global"}}})
+	if status != 200 {
+		t.Fatalf("create: %d %v", status, f)
+	}
+	id := str(f, "id")
+	path := "/rest/api/2/filter/" + id
+	defer admin("DELETE", path, nil)
+
+	// Someone who only reads the filter may still make it a favourite of theirs.
+	status, got := hugo("PUT", path, map[string]any{"favourite": true, "self": "x", "id": id})
+	if status != 200 || got["favourite"] != true || str(got, "name") != "Favori (REST)" {
+		t.Errorf("favourite alone by a reader: %d %v", status, got)
+	}
+	if status, got = paul("GET", path, nil); status != 200 || got["favourite"] != false {
+		t.Errorf("the favourite of another user changed: %d %v", status, got)
+	}
+	if status, got = hugo("PUT", path, map[string]any{"favourite": false}); status != 200 || got["favourite"] != false {
+		t.Errorf("removing the favourite: %d %v", status, got)
+	}
+	if status, _ := hugo("PUT", path, map[string]any{"favourite": true, "name": "x"}); status != 403 {
+		t.Errorf("a reader changing the name: %d", status)
+	}
+	if status, _ := hugo("PUT", "/rest/api/2/filter/0", map[string]any{"favourite": true}); status != 404 {
+		t.Errorf("favourite of filter 0: %d", status)
+	}
+
+	// An administrator unshares paul's filter and asks for a favourite: the change
+	// is saved, then the filter is out of sight, so the favourite cannot be set.
+	if status, _ := admin("PUT", path, map[string]any{"sharePermissions": []any{}, "favourite": true}); status != 204 {
+		t.Errorf("saved change with a failing favourite: %d", status)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM filter_shares WHERE filter_id = ?`, id); n != "0" {
+		t.Errorf("the change was not saved: %s shares", n)
+	}
+}
