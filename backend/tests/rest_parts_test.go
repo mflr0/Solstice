@@ -5,6 +5,7 @@ package tests
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 )
 
@@ -235,4 +236,112 @@ func TestRESTComponents(t *testing.T) {
 		t.Errorf("deleted component: %d", status)
 	}
 	admin("DELETE", "/rest/api/2/component/"+str(to, "id"), nil)
+}
+
+func TestRESTFilters(t *testing.T) {
+	paul, hugo, admin := restAs(t, "paul.martin"), restAs(t, "hugo.robert"), restAs(t, "admin")
+
+	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Mes bugs (REST)", "description": "Via l'API",
+		"jql": "project = DEMO ORDER BY key", "favourite": true})
+	if status != 200 || str(f, "name") != "Mes bugs (REST)" || str(f, "jql") != "project = DEMO ORDER BY key" ||
+		str(f, "description") != "Via l'API" || f["favourite"] != true || str(f, "owner", "name") != "paul.martin" ||
+		str(f, "self") != testURL+"/rest/api/2/filter/"+str(f, "id") {
+		t.Fatalf("create: %d %v", status, f)
+	}
+	id := str(f, "id")
+	path := "/rest/api/2/filter/" + id
+	// What was created shows in the interface.
+	var ui []struct {
+		ID        int64
+		Name      string
+		Query     string
+		Favourite bool
+	}
+	login(t, "paul.martin", "motdepasse").get("/api/filters", &ui)
+	found := false
+	for _, v := range ui {
+		found = found || (strconv.FormatInt(v.ID, 10) == id && v.Query == "project = DEMO ORDER BY key" && v.Favourite)
+	}
+	if !found {
+		t.Errorf("the interface does not list the filter: %+v", ui)
+	}
+
+	// A private filter does not exist for others.
+	for method, body := range map[string]any{"GET": nil, "PUT": map[string]any{"name": "x"}, "DELETE": nil} {
+		if status, _ := hugo(method, path, body); status != 404 {
+			t.Errorf("hugo.robert %s a private filter: %d", method, status)
+		}
+	}
+
+	// Shared with everyone, it is read by others but changed by its owner (or an administrator) only.
+	status, f = paul("PUT", path, map[string]any{"name": "Bugs partagés", "jql": "project = DEMO AND statusCategory != Done",
+		"description": nil, "favourite": false, "self": "x", "id": id,
+		"sharePermissions": []any{map[string]any{"type": "global"}}})
+	if status != 200 || str(f, "name") != "Bugs partagés" || str(f, "jql") != "project = DEMO AND statusCategory != Done" ||
+		f["description"] != nil && str(f, "description") != "" || f["favourite"] != false ||
+		str(f, "sharePermissions", 0, "type") != "global" {
+		t.Fatalf("edit: %d %v", status, f)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'filter.share' AND target_type = 'filter' AND target_id = ?`, id); n != "1" {
+		t.Errorf("audit entries of the sharing: %s", n)
+	}
+	if status, got := hugo("GET", path, nil); status != 200 || str(got, "name") != "Bugs partagés" {
+		t.Errorf("hugo.robert GET a shared filter: %d %v", status, got)
+	}
+	if status, _ := hugo("PUT", path, map[string]any{"name": "x"}); status != 403 {
+		t.Errorf("hugo.robert PUT a shared filter: %d", status)
+	}
+	if status, _ := hugo("DELETE", path, nil); status != 403 {
+		t.Errorf("hugo.robert DELETE a shared filter: %d", status)
+	}
+
+	// Sharing as the interface supports it, nothing more.
+	if status, e := paul("PUT", path, map[string]any{"sharePermissions": []any{map[string]any{"type": "authenticated"}}}); status != 400 ||
+		at(e, "errors", "sharePermissions") == nil {
+		t.Errorf("unsupported share type: %d %v", status, e)
+	}
+	if status, e := paul("PUT", path, map[string]any{"sharePermissions": []any{map[string]any{"type": "group",
+		"group": map[string]any{"name": "groupe.inconnu"}}}}); status != 400 || at(e, "errors", "sharePermissions") == nil {
+		t.Errorf("unknown group: %d %v", status, e)
+	}
+	if status, _ := paul("PUT", path, map[string]any{"sharePermissions": []any{map[string]any{"type": "project",
+		"project": map[string]any{"key": "RH"}}}}); status != 400 {
+		t.Errorf("sharing with a project one does not see: %d", status)
+	}
+	if status, _ := paul("PUT", path, map[string]any{"sharePermissions": []any{map[string]any{"type": "user",
+		"user": map[string]any{"name": "hugo.robert"}}, map[string]any{"type": "project", "project": map[string]any{"key": "DEMO"}}}}); status != 200 {
+		t.Errorf("sharing with a person and a project: %d", status)
+	}
+
+	// Refusals, in Jira's format.
+	if status, e := paul("PUT", path, map[string]any{"couleur": "bleu"}); status != 400 || at(e, "errors", "couleur") == nil {
+		t.Errorf("unknown field: %d %v", status, e)
+	}
+	if status, _ := paul("POST", "/rest/api/2/filter", map[string]any{"jql": "project = DEMO"}); status != 400 {
+		t.Errorf("filter without a name: %d", status)
+	}
+	if status, _ := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Faux", "jql": "project = "}); status != 400 {
+		t.Errorf("invalid JQL: %d", status)
+	}
+	if status, _ := paul("PUT", path, map[string]any{"favourite": "oui"}); status != 400 {
+		t.Errorf("invalid favourite: %d", status)
+	}
+	if status, _ := paul("PUT", "/rest/api/2/filter/0", map[string]any{"name": "x"}); status != 404 {
+		t.Errorf("unknown filter: %d", status)
+	}
+
+	// An administrator tidies up other people's filters.
+	if status, _ := admin("DELETE", path, nil); status != 204 {
+		t.Fatalf("admin DELETE: %d", status)
+	}
+	if status, _ := paul("GET", path, nil); status != 404 {
+		t.Errorf("deleted filter: %d", status)
+	}
+	status, g := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Sans JQL (REST)"})
+	if status != 200 || str(g, "jql") != "" {
+		t.Fatalf("create without jql: %d %v", status, g)
+	}
+	if status, _ := paul("DELETE", "/rest/api/2/filter/"+str(g, "id"), nil); status != 204 {
+		t.Errorf("owner DELETE: %d", status)
+	}
 }

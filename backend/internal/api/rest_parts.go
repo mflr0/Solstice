@@ -6,6 +6,7 @@ package api
 // history and the audit log); these translate Jira's requests and answers.
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -348,4 +349,170 @@ func (s *Server) restDeleteComponent(w http.ResponseWriter, r *http.Request) err
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+// Filters ----------------------------------------------------------------------
+
+// restShare is one of a filter's sharePermissions, as Jira writes it.
+type restShare struct {
+	Type  string `json:"type"`
+	Group *struct {
+		Name string `json:"name"`
+	} `json:"group"`
+	Project *struct {
+		ID  json.Number `json:"id"`
+		Key string      `json:"key"`
+	} `json:"project"`
+	Role *struct {
+		ID json.Number `json:"id"`
+	} `json:"role"`
+	User *struct {
+		Name string `json:"name"`
+		Key  string `json:"key"`
+	} `json:"user"`
+}
+
+// filterShares turns sharePermissions into the shares the interface knows:
+// everyone, a group, a project (or a role in it), a person.
+func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filterShare, error) {
+	var list []restShare
+	if json.Unmarshal(raw, &list) != nil {
+		return nil, invalidValue("sharePermissions")
+	}
+	shares := []filterShare{}
+	for _, in := range list {
+		switch in.Type {
+		case "global":
+			shares = append(shares, filterShare{Kind: "everyone"})
+		case "group":
+			if in.Group == nil {
+				return nil, invalidValue("sharePermissions")
+			}
+			var id int64
+			if err := s.db.QueryRowContext(ctx, `SELECT id FROM user_groups WHERE name = ?`, in.Group.Name).Scan(&id); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, unknownValue("sharePermissions", in.Group.Name)
+				}
+				return nil, err
+			}
+			shares = append(shares, filterShare{Kind: "group", ID: id})
+		case "project", "projectRole":
+			if in.Project == nil {
+				return nil, invalidValue("sharePermissions")
+			}
+			ref := in.Project.ID.String()
+			if ref == "" {
+				ref = in.Project.Key
+			}
+			id, err := s.restProjectID(ctx, ref)
+			if errors.Is(err, errNotFound) {
+				return nil, unknownValue("sharePermissions", ref)
+			} else if err != nil {
+				return nil, err
+			}
+			share := filterShare{Kind: "project", ID: id}
+			if in.Type == "projectRole" {
+				if in.Role == nil {
+					return nil, invalidValue("sharePermissions")
+				}
+				if share.Role, err = strconv.ParseInt(in.Role.ID.String(), 10, 64); err != nil {
+					return nil, invalidValue("sharePermissions")
+				}
+			}
+			shares = append(shares, share)
+		case "user":
+			if in.User == nil {
+				return nil, invalidValue("sharePermissions")
+			}
+			name := cmp.Or(in.User.Name, in.User.Key)
+			id, found := s.userByName(ctx, name)
+			if !found {
+				return nil, unknownValue("sharePermissions", name)
+			}
+			shares = append(shares, filterShare{Kind: "user", ID: id})
+		default:
+			return nil, fieldError("sharePermissions", failf(http.StatusBadRequest, i18n.FilterShareKindUnknown, in.Type))
+		}
+	}
+	return shares, nil
+}
+
+// restSaveFilter creates a filter (no id in the path) or changes one.
+func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	creating := r.PathValue("id") == ""
+	in, err := restBody(r, []string{"name", "description", "jql", "favourite", "sharePermissions"},
+		"self", "id", "owner", "viewUrl", "searchUrl", "subscriptions")
+	if err != nil {
+		return err
+	}
+	ui := map[string]any{}
+	copyFields(ui, in, "name")
+	if raw, ok := in["description"]; ok {
+		// Null clears the description, which the interface does by an empty one.
+		ui["description"] = raw
+		if string(raw) == "null" {
+			ui["description"] = ""
+		}
+	}
+	if raw, ok := in["jql"]; ok {
+		ui["query"] = raw
+	} else if creating {
+		ui["query"] = ""
+	}
+	if raw, ok := in["sharePermissions"]; ok {
+		if ui["shares"], err = s.filterShares(ctx, raw); err != nil {
+			return err
+		}
+	}
+	var favourite *bool
+	if raw, ok := in["favourite"]; ok {
+		if json.Unmarshal(raw, &favourite) != nil {
+			return invalidValue("favourite")
+		}
+	}
+	var saved filterOut
+	if creating {
+		err = s.uiCall(r, s.createFilter, http.MethodPost, "/api/filters", nil, ui, &saved)
+	} else {
+		id := r.PathValue("id")
+		if _, perr := strconv.ParseInt(id, 10, 64); perr != nil {
+			return errNotFound
+		}
+		err = s.uiCall(r, s.updateFilter, http.MethodPatch, "/api/filters/"+id, map[string]string{"id": id}, ui, &saved)
+		if err == nil && saved.ID == 0 {
+			saved.ID, _ = strconv.ParseInt(id, 10, 64)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if favourite != nil {
+		id, method := strconv.FormatInt(saved.ID, 10), http.MethodDelete
+		if *favourite {
+			method = http.MethodPut
+		}
+		if err := s.uiCall(r, s.setFavourite(*favourite), method, "/api/filters/"+id+"/favourite",
+			map[string]string{"id": id}, nil, nil); err != nil {
+			return err
+		}
+	}
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	rows, err := s.loadFilters(ctx, sub, saved.ID)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		// An administrator unshared someone else's filter: they no longer see it.
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	out, err := s.jiraFilter(ctx, s.restOut(r), rows[0].out)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
 }

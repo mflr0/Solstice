@@ -113,6 +113,9 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/resolution", s.restResolutions, true)
 		rest("GET "+p+"/filter/favourite", s.restFavouriteFilters, true)
 		rest("GET "+p+"/filter/{id}", s.restFilter, true)
+		rest("POST "+p+"/filter", s.restSaveFilter, true)
+		rest("PUT "+p+"/filter/{id}", s.restSaveFilter, true)
+		rest("DELETE "+p+"/filter/{id}", s.deleteFilter, true)
 		rest("GET "+p+"/mypermissions", s.restMyPermissions, true)
 	}
 	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
