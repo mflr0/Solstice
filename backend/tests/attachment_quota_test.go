@@ -20,6 +20,13 @@ func uploadText(t *testing.T, c *client, key, name, content string) (int, []byte
 // uploadTexts posts several files (name, content) in one multipart request.
 func uploadTexts(t *testing.T, c *client, key string, files ...[2]string) (int, []byte) {
 	t.Helper()
+	return postFiles(t, c, key, false, files...)
+}
+
+// postFiles posts the files; chunked sends the body without a length, so the
+// server cannot tell its size beforehand.
+func postFiles(t *testing.T, c *client, key string, chunked bool, files ...[2]string) (int, []byte) {
+	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	for _, f := range files {
@@ -32,7 +39,11 @@ func uploadTexts(t *testing.T, c *client, key string, files ...[2]string) (int, 
 		}
 	}
 	mw.Close()
-	req, err := http.NewRequest("POST", c.base+"/api/issues/"+key+"/attachments", &buf)
+	var body io.Reader = &buf
+	if chunked {
+		body = io.MultiReader(&buf)
+	}
+	req, err := http.NewRequest("POST", c.base+"/api/issues/"+key+"/attachments", body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,8 +54,8 @@ func uploadTexts(t *testing.T, c *client, key string, files ...[2]string) (int, 
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	return resp.StatusCode, body
+	answer, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, answer
 }
 
 // storedFiles counts the attachments of an issue.
@@ -115,5 +126,29 @@ func TestAttachmentQuotaRefusesWholeRequest(t *testing.T) {
 	paul.get("/api/issues/"+key+"/history", &history)
 	if historyHas(history, "Attachment") {
 		t.Errorf("history records the refused upload: %+v", history)
+	}
+}
+
+// A file cannot take the storage past the quota, even when the request does
+// not say how long it is.
+func TestAttachmentQuotaStopsAnOversizedPart(t *testing.T) {
+	needDB(t)
+	srv, base := newServer(t)
+	srv.SetMaxStorage(storedBytes(t) + 1000)
+	paul := loginAt(t, base, "paul.martin", "motdepasse")
+	key := createIssue(t, paul, "DEMO", unique("quota"), "")
+
+	status, body := postFiles(t, paul, key, true, [2]string{"big.txt", strings.Repeat("a", 1500)})
+	if status != 507 {
+		t.Fatalf("a file over the quota: %d %s, want 507", status, body)
+	}
+	if msg := str(obj(t, body), "error"); msg != "The attachment storage quota is reached." {
+		t.Errorf("a file over the quota: %q", msg)
+	}
+	if n := storedFiles(t, key); n != "0" {
+		t.Errorf("%s files stored, want none", n)
+	}
+	if status, body := postFiles(t, paul, key, true, [2]string{"small.txt", strings.Repeat("a", 900)}); status != 200 {
+		t.Fatalf("a file within the quota: %d %s, want 200", status, body)
 	}
 }

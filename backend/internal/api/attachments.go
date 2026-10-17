@@ -53,8 +53,8 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	}
 	var names []string
 	now := time.Now().UTC()
-	// The quota is what the database stores; a file that passes it is
-	// accepted, and the next upload is refused until files are deleted.
+	// The quota is what the database stores; a file that would go over it is
+	// refused, until files are deleted.
 	var stored int64
 	if s.maxStorage > 0 {
 		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
@@ -91,11 +91,18 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		id, _ := res.LastInsertId()
-		size, err := writeFile(s.attachmentPath(id), part)
+		var src io.Reader = part
+		if s.maxStorage > 0 {
+			src = &quotaReader{r: part, left: s.maxStorage - stored}
+		}
+		size, err := writeFile(s.attachmentPath(id), src)
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
 				return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
+			}
+			if errors.Is(err, errStorageQuota) {
+				return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 			}
 			return err
 		}
@@ -128,6 +135,28 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
 	return s.respondIssue(w, r, sub, iss.ID)
+}
+
+var errStorageQuota = errors.New("attachment storage quota reached")
+
+// quotaReader reads at most left bytes, and fails with errStorageQuota when
+// the source has more.
+type quotaReader struct {
+	r    io.Reader
+	left int64
+}
+
+func (q *quotaReader) Read(p []byte) (int, error) {
+	if int64(len(p)) > q.left+1 {
+		p = p[:q.left+1]
+	}
+	n, err := q.r.Read(p)
+	if int64(n) > q.left {
+		n = int(q.left)
+		err = errStorageQuota
+	}
+	q.left -= int64(n)
+	return n, err
 }
 
 func writeFile(path string, src io.Reader) (int64, error) {
