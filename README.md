@@ -169,8 +169,8 @@ the import would leave out and why (rows that point at something missing,
 grantees Solstice cannot express, workflow conditions, validators and post
 functions, attachment files not found…), then the warnings the import itself
 would give. `-json` prints the same as JSON. The exit status is 0 if the import
-would work and 1 if it would refuse the source, for example a schema older than
-Jira 7.
+would work, 1 if it would refuse the source, for example a schema older than
+Jira 7, and 2 if the database could not be read.
 
 The final report lists what was imported and what deserves a look. Imported:
 

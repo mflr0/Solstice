@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -74,8 +75,8 @@ type LeftOut struct {
 
 // Check reads the Jira database of opt.SourceURL as an import would, and
 // writes nothing: opt.DataDir and Solstice's database are not used. A source
-// the import would refuse gives a report with Refused set; an error means the
-// source could not be read at all.
+// the import would refuse for its schema gives a report with Refused set; any
+// other error means the source could not be read.
 func Check(ctx context.Context, opt Options) (*CheckReport, error) {
 	if opt.SourceTZ == nil {
 		opt.SourceTZ = time.UTC // dates only: no count depends on it
@@ -91,6 +92,10 @@ func Check(ctx context.Context, opt Options) (*CheckReport, error) {
 	if err := src.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("cannot reach the Jira database: %w", err)
 	}
+	return check(ctx, src, engine, opt)
+}
+
+func check(ctx context.Context, src *sql.DB, engine jiradb.Engine, opt Options) (*CheckReport, error) {
 	r := &run{
 		ctx:    ctx,
 		src:    src,
@@ -102,15 +107,17 @@ func Check(ctx context.Context, opt Options) (*CheckReport, error) {
 		check:  &checkData{sprints: map[int64]bool{}, sprintRefs: map[[2]int64]bool{}},
 	}
 	rep := &CheckReport{Source: r.describe()}
-	err = r.requireSchema()
+	err := r.requireSchema()
 	if err == nil {
 		err = r.runSteps()
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	if err != nil {
+	if errors.Is(err, errTooOld) {
 		rep.Refused = err.Error()
+	} else if err != nil {
+		return nil, err
 	}
 	r.summarise(rep)
 	return rep, nil

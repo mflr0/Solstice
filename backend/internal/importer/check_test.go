@@ -4,8 +4,15 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
+	"time"
+
+	"solstice/internal/jiradb"
 )
 
 const logicDescriptor = `<workflow>
@@ -135,5 +142,69 @@ func TestWriteText(t *testing.T) {
 	rep.WriteText(&b)
 	if !strings.Contains(b.String(), "would refuse this source: too old") {
 		t.Errorf("a refusal is not reported:\n%s", b.String())
+	}
+}
+
+// fakeJira is a Jira database with no rows. Every query finds nothing, except
+// the COUNT(*) ones, which find count; a query that holds failOn fails, as does
+// a ping while down is set.
+type fakeJira struct {
+	count  int64
+	failOn string
+	down   bool
+}
+
+func (f *fakeJira) Connect(context.Context) (driver.Conn, error) { return fakeConn{f}, nil }
+func (f *fakeJira) Driver() driver.Driver                        { return nil }
+
+type fakeConn struct{ *fakeJira }
+
+func (fakeConn) Prepare(string) (driver.Stmt, error) { return nil, errors.New("not supported") }
+func (fakeConn) Close() error                        { return nil }
+func (fakeConn) Begin() (driver.Tx, error)           { return nil, errors.New("not supported") }
+
+func (c fakeConn) Ping(context.Context) error {
+	if c.down {
+		return errors.New("connection reset by peer")
+	}
+	return nil
+}
+
+func (c fakeConn) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
+	if c.failOn != "" && strings.Contains(query, c.failOn) {
+		return nil, errors.New("connection reset by peer")
+	}
+	if strings.Contains(query, "COUNT(*)") {
+		return &fakeRows{rows: [][]driver.Value{{c.count}}}, nil
+	}
+	return &fakeRows{}, nil
+}
+
+type fakeRows struct{ rows [][]driver.Value }
+
+func (*fakeRows) Columns() []string { return []string{"n"} }
+func (*fakeRows) Close() error      { return nil }
+func (r *fakeRows) Next(dest []driver.Value) error {
+	if len(r.rows) == 0 {
+		return io.EOF
+	}
+	copy(dest, r.rows[0])
+	r.rows = r.rows[1:]
+	return nil
+}
+
+// A source that cannot be read is an error, not a report that says the import
+// would refuse it.
+func TestCheckFailsOnAnUnreadableSource(t *testing.T) {
+	for name, jira := range map[string]*fakeJira{
+		"a query fails":   {count: 1, failOn: "cwd_user"},
+		"connection lost": {failOn: "information_schema", down: true},
+	} {
+		src := sql.OpenDB(jira)
+		rep, err := check(context.Background(), src, jiradb.MySQL, Options{Log: slog.Default(), SourceTZ: time.UTC})
+		src.Close()
+		if err == nil {
+			t.Errorf("%s: no error, report %+v", name, rep)
+		}
 	}
 }

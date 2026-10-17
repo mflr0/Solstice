@@ -182,8 +182,9 @@ laisserait de côté, avec la raison (lignes qui pointent vers un élément abse
 destinataires que Solstice ne sait pas exprimer, conditions, validateurs et
 post-fonctions de workflow, fichiers de pièces jointes introuvables…), puis les
 avertissements que l'import donnerait lui-même. `-json` affiche la même chose
-en JSON. Le code de sortie est 0 si l'import fonctionnerait et 1 s'il
-refuserait la source, par exemple un schéma antérieur à Jira 7.
+en JSON. Le code de sortie est 0 si l'import fonctionnerait, 1 s'il
+refuserait la source, par exemple un schéma antérieur à Jira 7, et 2 si la base
+n'a pas pu être lue.
 
 Le rapport final liste ce qui a été repris et ce qui mérite un coup d'œil. Ce
 qui est repris :

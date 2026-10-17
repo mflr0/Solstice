@@ -401,7 +401,7 @@ func runImport(ctx context.Context, args []string) error {
 	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files (with -check: to look for them)")
 	replace := fs.Bool("replace", false, "wipe Solstice's data before importing")
 	check := fs.Bool("check", false, "audit the Jira database without importing: what there is, what would be left out and why; "+
-		"writes nothing, needs no Solstice database, exits with status 1 if the import would refuse the source")
+		"writes nothing, needs no Solstice database, exits with status 1 if the import would refuse the source, 2 if it cannot read it")
 	asJSON := fs.Bool("json", false, "print the report as JSON")
 	fs.Parse(args)
 	if *from == "" || (*tz == "" && !*check) {
@@ -423,8 +423,9 @@ func runImport(ctx context.Context, args []string) error {
 	}
 	if *check {
 		rep, err := importer.Check(ctx, importer.Options{SourceURL: *from, SourceTZ: loc, JiraHome: *jiraHome})
-		if err != nil {
-			return err
+		if err != nil { // not a refusal: the source could not be read
+			slog.Error(err.Error())
+			os.Exit(2)
 		}
 		if *asJSON {
 			enc := json.NewEncoder(os.Stdout)
