@@ -467,6 +467,9 @@ func (s *Server) restGroupPicker(w http.ResponseWriter, r *http.Request) error {
 
 	where, args := `WHERE g.name LIKE ?`, []any{"%" + escapeLike(strings.ToLower(query)) + "%"}
 	if exclude := q["exclude"]; len(exclude) > 0 {
+		if len(exclude) > 100 {
+			return invalidValue("exclude")
+		}
 		where += ` AND g.name NOT IN (` + sqlq.Marks(len(exclude)) + `)`
 		for _, name := range exclude {
 			args = append(args, strings.TrimSpace(name))

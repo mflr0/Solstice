@@ -585,6 +585,19 @@ func TestRESTGroups(t *testing.T) {
 		slices.Contains(names(out), group) {
 		t.Errorf("picker exclude: %d %v", status, out)
 	}
+	excluded := func(n int) string {
+		v := url.Values{}
+		for i := range n {
+			v.Add("exclude", "no-such-group-"+strconv.Itoa(i))
+		}
+		return "/rest/api/2/groups/picker?" + v.Encode()
+	}
+	if status, out = get(admin, excluded(100)); status != 200 || strconv.Itoa(num(out, "total")) != groupCount {
+		t.Errorf("picker with 100 excluded names: %d %v", status, out)
+	}
+	if status, _ := get(admin, excluded(101)); status != 400 {
+		t.Errorf("picker with 101 excluded names: %d, want 400", status)
+	}
 	if status, out = get(admin, "/rest/api/2/groups/picker?maxResults=1"); status != 200 || len(names(out)) != 1 ||
 		strconv.Itoa(num(out, "total")) != groupCount {
 		t.Errorf("picker maxResults: %d %v", status, out)
