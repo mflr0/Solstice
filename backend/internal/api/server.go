@@ -368,7 +368,8 @@ func locale(r *http.Request) string {
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
+		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {

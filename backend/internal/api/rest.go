@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -260,7 +261,8 @@ type restError struct {
 func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
+		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}
 	msg := he.msg.In(locale(r))
