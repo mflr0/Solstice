@@ -13,8 +13,10 @@ dans [install.md](install.md), les sauvegardes dans [backups.md](backups.md).
 
 **Sources prises en charge.**
 
-- Jira Server ou Data Center, version 7 ou plus récente. Une base plus ancienne
-  est refusée avec un message qui demande de mettre Jira à jour d'abord.
+- Jira Server ou Data Center, version 7 ou plus récente. Solstice vérifie le
+  schéma, pas un numéro de version : une base sans la colonne
+  `schemepermissions.permission_key` est refusée avec un message qui demande de
+  mettre Jira à jour d'abord.
 - Une base Jira sous PostgreSQL (`postgres://…`) ou MySQL (`mysql://…`). Les
   autres moteurs ne sont pas pris en charge comme source.
 - Solstice lui-même fonctionne sur MariaDB.
@@ -97,9 +99,11 @@ instance en service. La page demande les mêmes trois valeurs que l'assistant et
 propose un bouton de test. Pour démarrer, vous devez cocher que vous avez une
 sauvegarde et saisir le nom de la base de Solstice.
 
-Pendant l'import, Solstice est en maintenance : toutes les autres requêtes
-répondent 503, sauf la page de progression de l'administrateur qui l'a lancé.
-Gardez cette page ouverte. À la fin, rechargez.
+Pendant l'import, Solstice est en maintenance. Sous `/api/` et `/rest/`, seules
+trois requêtes répondent encore : `GET /api/settings/public` et, pour
+l'administrateur qui a lancé l'import, `GET /api/admin/import` (la progression)
+et `GET /api/me`. Toutes les autres requêtes répondent 503. Gardez la page de
+progression ouverte. À la fin, rechargez.
 
 Un seul import s'exécute à la fois par base, qu'il soit lancé d'ici, depuis
 l'assistant ou depuis la ligne de commande.

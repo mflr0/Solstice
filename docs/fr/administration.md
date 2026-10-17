@@ -470,6 +470,15 @@ voit.
 
 Affiche la version installée et la dernière version publiée sur GitHub.
 
+La page des mises à jour elle-même n'est pas encore accessible : son adresse
+(`/admin/updates`) n'a pas de route dans l'interface tant que le ticket #28
+n'est pas fait. D'ici là, le bloc « Mises à jour » de la page Système indique
+si une version plus récente est disponible, si Solstice est à jour ou n'a pas
+encore vérifié, quand a eu lieu la dernière vérification et pourquoi une
+vérification a échoué. Il ne propose pas les actions ci-dessous.
+
+Ce que fait la page des mises à jour :
+
 - Solstice cherche les nouvelles versions au plus toutes les 12 heures, et
   n'envoie que la demande du numéro de la dernière version. Vous pouvez
   désactiver les vérifications automatiques, ou utiliser « Vérifier

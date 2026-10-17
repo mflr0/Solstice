@@ -424,6 +424,14 @@ secret is shown. Look here first when something seems wrong: a growing
 
 Shows the installed version and the latest release published on GitHub.
 
+The Updates page itself is not reachable yet: its address (`/admin/updates`)
+has no route in the interface until issue #28 is done. Until then, the
+"Updates" block of the System page shows whether a newer version is available,
+whether Solstice is up to date or has not checked yet, when it last checked,
+and why a check failed. It does not offer the actions below.
+
+What the Updates page does:
+
 - Solstice checks for new versions at most every 12 hours, and sends nothing
   but the request for the latest version number. You can turn the automatic
   checks off, or use "Check now". This is the only request Solstice makes on

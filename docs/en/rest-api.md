@@ -85,8 +85,9 @@ curl -u alice:sol_example \
 - Dates are written like Jira: `2026-10-15T09:12:00.000+0200`, in the
   instance's time zone. Requests also accept RFC 3339.
 - Paging uses `startAt` and `maxResults`. The defaults and maximums are:
-  50 and 1000 for search and user lists, 5000 for comments and work logs.
-  `maxResults=0` only counts.
+  50 and 1000 for search, user lists and the issues of a board, a backlog, a
+  sprint or an epic; 50 and 50 for boards and sprints; 5000 for comments and
+  work logs. `maxResults=0` only counts.
 - Issues can be named by key (`DEMO-1`) or by numeric id. A former project key
   still resolves.
 - A request to an address under `/rest/` that is not listed below answers 404.

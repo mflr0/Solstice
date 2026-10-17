@@ -92,9 +92,10 @@ curl -u alice:sol_example \
 - Les dates s'écrivent comme dans Jira : `2026-10-15T09:12:00.000+0200`, dans
   le fuseau horaire de l'instance. Les requêtes acceptent aussi le RFC 3339.
 - La pagination utilise `startAt` et `maxResults`. Valeurs par défaut et
-  maximales : 50 et 1000 pour la recherche et les listes d'utilisateurs, 5000
-  pour les commentaires et les saisies de temps. `maxResults=0` ne fait que
-  compter.
+  maximales : 50 et 1000 pour la recherche, les listes d'utilisateurs et les
+  tickets d'un tableau, d'un backlog, d'un sprint ou d'une épopée ; 50 et 50
+  pour les tableaux et les sprints ; 5000 pour les commentaires et les saisies
+  de temps. `maxResults=0` ne fait que compter.
 - Un ticket se désigne par sa clé (`DEMO-1`) ou par son identifiant numérique.
   Une ancienne clé de projet est toujours résolue.
 - Une requête vers une adresse sous `/rest/` qui n'est pas listée ci-dessous

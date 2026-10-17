@@ -13,8 +13,9 @@ migration, and what comes across and what does not. Installing Solstice is in
 
 **Supported sources.**
 
-- Jira Server or Data Center, version 7 or later. An older database is refused
-  with a message asking you to upgrade Jira first.
+- Jira Server or Data Center, version 7 or later. Solstice checks the schema,
+  not a version number: a database without the `schemepermissions.permission_key`
+  column is refused with a message asking you to upgrade Jira first.
 - A Jira database on PostgreSQL (`postgres://…`) or MySQL (`mysql://…`).
   Other engines are not supported as a source.
 - Solstice itself runs on MariaDB.
@@ -94,9 +95,11 @@ instance. It takes the same three values as the wizard and a test button. To
 start, you must tick that you have a backup, and type the name of Solstice's
 database.
 
-While the import runs, Solstice is in maintenance: every other request answers
-503, except the progress page of the administrator who started it. Keep that
-page open. When it finishes, reload.
+While the import runs, Solstice is in maintenance. Under `/api/` and `/rest/`,
+only three requests still answer: `GET /api/settings/public`, and, for the
+administrator who started the import, `GET /api/admin/import` (the progress)
+and `GET /api/me`. Every other request answers 503. Keep the progress page
+open. When it finishes, reload.
 
 Only one import runs at a time per database, whether started from here, from
 the wizard or from the command line.
