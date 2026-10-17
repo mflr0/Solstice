@@ -18,6 +18,8 @@ describe('setup over plain HTTP', () => {
     expect(insecurePage('https:', 'solstice.example.org')).toBe(false);
     expect(insecurePage('http:', 'localhost')).toBe(false);
     expect(insecurePage('http:', '127.0.0.1')).toBe(false);
+    expect(insecurePage('http:', '127.0.1.1')).toBe(false);
+    expect(insecurePage('http:', '127.example.org')).toBe(true);
     expect(insecurePage('http:', '[::1]')).toBe(false);
   });
 });

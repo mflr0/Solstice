@@ -4,5 +4,5 @@
  */
 export function insecurePage(protocol: string, hostname: string): boolean {
   if (protocol !== 'http:') return false;
-  return hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '[::1]';
+  return hostname !== 'localhost' && !/^127(\.\d{1,3}){3}$/.test(hostname) && hostname !== '[::1]';
 }
