@@ -90,7 +90,7 @@
   }
 
   async function save() {
-    if (!settings || !form) return;
+    if (!settings || !form || !dirty) return;
     tried = true;
     error = '';
     if (hasProblems(problems)) return;
