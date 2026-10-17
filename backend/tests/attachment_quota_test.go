@@ -5,6 +5,8 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -12,14 +14,22 @@ import (
 // the status and the answer.
 func uploadText(t *testing.T, c *client, key, name, content string) (int, []byte) {
 	t.Helper()
+	return uploadTexts(t, c, key, [2]string{name, content})
+}
+
+// uploadTexts posts several files (name, content) in one multipart request.
+func uploadTexts(t *testing.T, c *client, key string, files ...[2]string) (int, []byte) {
+	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	fw, err := mw.CreateFormFile("file", name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := io.WriteString(fw, content); err != nil {
-		t.Fatal(err)
+	for _, f := range files {
+		fw, err := mw.CreateFormFile("file", f[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(fw, f[1]); err != nil {
+			t.Fatal(err)
+		}
 	}
 	mw.Close()
 	req, err := http.NewRequest("POST", c.base+"/api/issues/"+key+"/attachments", &buf)
@@ -37,19 +47,36 @@ func uploadText(t *testing.T, c *client, key, name, content string) (int, []byte
 	return resp.StatusCode, body
 }
 
+// storedFiles counts the attachments of an issue.
+func storedFiles(t *testing.T, key string) string {
+	t.Helper()
+	return pick(t, `SELECT COUNT(*) FROM attachments WHERE issue_id = ?`, issueID(t, key))
+}
+
+// storedBytes is the size of all the attachments in the database, which is
+// what the quota counts.
+func storedBytes(t *testing.T) int64 {
+	t.Helper()
+	n, err := strconv.ParseInt(pick(t, `SELECT COALESCE(SUM(size), 0) FROM attachments`), 10, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 // Once the attachments hold their whole storage quota, further uploads are
 // refused; without a quota (the default), they are accepted.
 func TestAttachmentStorageQuota(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
-	srv.SetMaxStorage(1) // one byte: the first file passes, and fills it
+	srv.SetMaxStorage(storedBytes(t) + 1000)
 	paul := loginAt(t, base, "paul.martin", "motdepasse")
 	key := createIssue(t, paul, "DEMO", unique("quota"), "")
 
-	if status, body := uploadText(t, paul, key, "first.txt", "petit"); status != 200 {
+	if status, body := uploadText(t, paul, key, "first.txt", strings.Repeat("a", 600)); status != 200 {
 		t.Fatalf("first upload: %d %s, want 200", status, body)
 	}
-	status, body := uploadText(t, paul, key, "second.txt", "encore")
+	status, body := uploadText(t, paul, key, "second.txt", strings.Repeat("b", 600))
 	if status != 507 {
 		t.Fatalf("second upload: %d %s, want 507", status, body)
 	}
@@ -64,5 +91,29 @@ func TestAttachmentStorageQuota(t *testing.T) {
 		if status, body := uploadText(t, free, other, name, "sans limite"); status != 200 {
 			t.Fatalf("upload %s without a quota: %d %s, want 200", name, status, body)
 		}
+	}
+}
+
+// A request that cannot fit in the quota is refused whole: the files before
+// the one that does not fit are not stored either.
+func TestAttachmentQuotaRefusesWholeRequest(t *testing.T) {
+	needDB(t)
+	srv, base := newServer(t)
+	srv.SetMaxStorage(storedBytes(t) + 1000)
+	paul := loginAt(t, base, "paul.martin", "motdepasse")
+	key := createIssue(t, paul, "DEMO", unique("quota"), "")
+
+	status, body := uploadTexts(t, paul, key,
+		[2]string{"one.txt", strings.Repeat("a", 600)}, [2]string{"two.txt", strings.Repeat("b", 600)})
+	if status != 507 {
+		t.Fatalf("two files over the quota: %d %s, want 507", status, body)
+	}
+	if n := storedFiles(t, key); n != "0" {
+		t.Errorf("%s files stored, want none", n)
+	}
+	var history []historyEntry
+	paul.get("/api/issues/"+key+"/history", &history)
+	if historyHas(history, "Attachment") {
+		t.Errorf("history records the refused upload: %+v", history)
 	}
 }

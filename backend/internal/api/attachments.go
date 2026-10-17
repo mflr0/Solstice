@@ -60,6 +60,11 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
 			return err
 		}
+		// The body is at least as long as its parts: refuse it whole, before
+		// any file is written, when it cannot fit.
+		if r.ContentLength > 0 && stored+r.ContentLength > s.maxStorage {
+			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+		}
 	}
 	for {
 		part, err := reader.NextPart()
