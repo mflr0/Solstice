@@ -223,8 +223,14 @@ func (s *Server) saveRemoteLink(ctx context.Context, iss *issueRow, userID int64
 	var old remoteLinkRow
 	updating := false
 	if in.GlobalID != "" {
+		// A plain read, then a lock on the row found: a locking read of a missing
+		// key locks its gap, and requests that all find nothing would deadlock
+		// on their inserts.
 		err := old.scan(tx.QueryRowContext(ctx, `SELECT `+remoteLinkColumns+` FROM remote_links
-			WHERE issue_id = ? AND global_id = ? FOR UPDATE`, iss.ID, in.GlobalID))
+			WHERE issue_id = ? AND global_id = ?`, iss.ID, in.GlobalID))
+		if err == nil {
+			err = old.scan(tx.QueryRowContext(ctx, `SELECT `+remoteLinkColumns+` FROM remote_links WHERE id = ? FOR UPDATE`, old.ID))
+		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, 0, nil, err
 		}
