@@ -4,6 +4,7 @@ package tests
 // decide who sees the issues at the level, and the change counts at once.
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -351,4 +352,30 @@ func TestSecurityLevelsProjectAdmin(t *testing.T) {
 	}
 	admin.call("PATCH", fmt.Sprintf("/api/projects/%s/security-levels/%d", mine, levels[theirs].ID),
 		map[string]any{"name": "x"}, 404, nil)
+}
+
+// 0 and below are no id: not "every level", not the first one.
+func TestSecurityLevelsIdBelowOne(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	key := newProject(t, admin, nil)
+	base := "/api/projects/" + key + "/security-levels"
+	var level securityLevelAdmin
+	admin.call("POST", base, map[string]any{"name": "Premier"}, 201, &level)
+	admin.call("POST", fmt.Sprintf("%s/%d/members", base, level.ID), map[string]any{"holder": "lead"}, 201, &level)
+	levelPath := fmt.Sprintf("%s/%d", base, level.ID)
+
+	for _, id := range []string{"0", "-1"} {
+		admin.call("PATCH", base+"/"+id, map[string]any{"name": "Pirate"}, 404, nil)
+		admin.call("DELETE", base+"/"+id, map[string]any{"clear": true}, 404, nil)
+		admin.call("POST", base+"/"+id+"/members", map[string]any{"holder": "everyone"}, 404, nil)
+		admin.call("DELETE", base+"/"+id+"/members/"+fmt.Sprint(level.Members[0].ID), nil, 404, nil)
+		admin.call("DELETE", levelPath+"/members/"+id, nil, 404, nil)
+		admin.call("DELETE", levelPath, map[string]any{"moveTo": json.Number(id)}, 400, nil)
+	}
+
+	var after []securityLevelAdmin
+	admin.call("GET", base, nil, 200, &after)
+	if len(after) != 1 || after[0].Name != "Premier" || after[0].MemberCount != 1 {
+		t.Errorf("the level changed: %+v", after)
+	}
 }

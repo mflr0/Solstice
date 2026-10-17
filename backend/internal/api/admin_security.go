@@ -53,14 +53,18 @@ type securityLevelOut struct {
 	Members     []levelMemberOut `json:"members"`
 }
 
-// securityLevels loads the levels of a project (only one when only is not
-// 0), with their members.
-func (s *Server) securityLevels(ctx context.Context, projectID, only int64) ([]securityLevelOut, error) {
+// securityLevels loads the levels of a project (only the one with the id
+// only points to, when it is not nil), with their members.
+func (s *Server) securityLevels(ctx context.Context, projectID int64, only *int64) ([]securityLevelOut, error) {
 	out := []securityLevelOut{}
 	index := map[int64]int{}
+	filter, args := "", []any{projectID}
+	if only != nil {
+		filter, args = " AND l.id = ?", append(args, *only)
+	}
 	err := sqlq.Each(ctx, s.db, `SELECT l.id, l.name, l.description,
 		(SELECT COUNT(*) FROM issues i WHERE i.security_level_id = l.id)
-		FROM security_levels l WHERE l.project_id = ? AND (? = 0 OR l.id = ?) ORDER BY l.name, l.id`,
+		FROM security_levels l WHERE l.project_id = ?`+filter+` ORDER BY l.name, l.id`,
 		func(rows *sql.Rows) error {
 			var l securityLevelOut
 			var desc sql.NullString
@@ -72,7 +76,7 @@ func (s *Server) securityLevels(ctx context.Context, projectID, only int64) ([]s
 			index[l.ID] = len(out)
 			out = append(out, l)
 			return nil
-		}, projectID, only, only)
+		}, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +85,7 @@ func (s *Server) securityLevels(ctx context.Context, projectID, only int64) ([]s
 		FROM security_level_members m JOIN security_levels l ON l.id = m.level_id
 		LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
 		LEFT JOIN project_roles r ON r.id = m.role_id
-		WHERE l.project_id = ? AND (? = 0 OR l.id = ?)
+		WHERE l.project_id = ?`+filter+`
 		ORDER BY m.holder, COALESCE(u.display_name, g.name, r.name, ''), m.id`, func(rows *sql.Rows) error {
 		var level int64
 		var m levelMemberOut
@@ -105,14 +109,17 @@ func (s *Server) securityLevels(ctx context.Context, projectID, only int64) ([]s
 		out[i].Members = append(out[i].Members, m)
 		out[i].MemberCount++
 		return nil
-	}, projectID, only, only)
+	}, args...)
 	return out, err
 }
 
 // securityLevel loads one level of the project: errNotFound for another
 // project's.
 func (s *Server) securityLevel(ctx context.Context, projectID, id int64) (securityLevelOut, error) {
-	list, err := s.securityLevels(ctx, projectID, id)
+	if id <= 0 {
+		return securityLevelOut{}, errNotFound
+	}
+	list, err := s.securityLevels(ctx, projectID, &id)
 	if err != nil {
 		return securityLevelOut{}, err
 	}
@@ -120,6 +127,15 @@ func (s *Server) securityLevel(ctx context.Context, projectID, id int64) (securi
 		return securityLevelOut{}, errNotFound
 	}
 	return list[0], nil
+}
+
+// levelPathID reads an id of the path: 0 and below are no id, so not found.
+func levelPathID(r *http.Request, name string) (int64, error) {
+	id, err := pathID(r, name)
+	if err == nil && id <= 0 {
+		return 0, errNotFound
+	}
+	return id, err
 }
 
 // levelProject loads the project of the route for a global administrator.
@@ -135,7 +151,7 @@ func (s *Server) listSecurityLevels(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	out, err := s.securityLevels(r.Context(), projectID, 0)
+	out, err := s.securityLevels(r.Context(), projectID, nil)
 	if err != nil {
 		return err
 	}
@@ -184,7 +200,7 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 	var id int64
 	var before securityLevelOut
 	if !creating {
-		if id, err = pathID(r, "id"); err != nil {
+		if id, err = levelPathID(r, "id"); err != nil {
 			return err
 		}
 		if before, err = s.securityLevel(ctx, projectID, id); err != nil {
@@ -270,7 +286,7 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return err
 	}
-	id, err := pathID(r, "id")
+	id, err := levelPathID(r, "id")
 	if err != nil {
 		return err
 	}
@@ -380,7 +396,7 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return err
 	}
-	levelID, err := pathID(r, "id")
+	levelID, err := levelPathID(r, "id")
 	if err != nil {
 		return err
 	}
@@ -482,11 +498,11 @@ func (s *Server) removeSecurityLevelMember(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
-	levelID, err := pathID(r, "id")
+	levelID, err := levelPathID(r, "id")
 	if err != nil {
 		return err
 	}
-	memberID, err := pathID(r, "member")
+	memberID, err := levelPathID(r, "member")
 	if err != nil {
 		return err
 	}
