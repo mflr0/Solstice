@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -63,7 +65,7 @@ func (r *run) importIssues() error {
 	now := time.Now().UTC()
 	if err := r.each(`SELECT id, project, issuenum, issuetype, summary, description, environment, issuestatus,
 		priority, resolution, reporter, assignee, creator, security, created, updated, resolutiondate, duedate,
-		timeoriginalestimate, timeestimate, timespent, `+archived+` FROM jiraissue`, func(rows *sql.Rows) error {
+		timeoriginalestimate, timeestimate, timespent, `+archived+` FROM jiraissue ORDER BY id`, func(rows *sql.Rows) error {
 		var id int64
 		var pid, num, security, estimate, remaining, spent sql.NullInt64
 		var issueType, summary, desc, env, status, priority, resolution, reporter, assignee, creator, arch sql.NullString
@@ -170,12 +172,18 @@ func (r *run) importIssues() error {
 
 	moved := r.inserter("moved_issue_keys", "old_key", "issue_id")
 	seen := map[string]bool{}
-	skipped = 0
-	if err := r.each(`SELECT old_issue_key, issue_id FROM moved_issue_key`, func(rows *sql.Rows) error {
+	skipped, gone, reused := 0, 0, 0
+	// In order, so that a key given to two issues stays with the first.
+	if err := r.each(`SELECT old_issue_key, issue_id FROM moved_issue_key ORDER BY id`, func(rows *sql.Rows) error {
 		var key sql.NullString
 		var issue sql.NullInt64
 		if err := rows.Scan(&key, &issue); err != nil {
 			return err
+		}
+		if _, ok := r.issues[issue.Int64]; !ok {
+			gone++
+		} else if seen[key.String] {
+			reused++
 		}
 		if _, ok := r.issues[issue.Int64]; !ok || key.String == "" || seen[key.String] {
 			skipped++
@@ -190,6 +198,8 @@ func (r *run) importIssues() error {
 		return err
 	}
 	r.rep.step("old keys of moved issues", moved.total, skipped)
+	r.leftOut(gone, "old issue key", "old issue keys", "of a missing issue")
+	r.leftOut(reused, "old issue key", "old issue keys", "already given to another issue (it keeps the first)")
 	return nil
 }
 
@@ -229,7 +239,7 @@ func (r *run) importIssueDetails() error {
 
 	comps := r.inserter("issue_components", "issue_id", "component_id")
 	vers := r.inserter("issue_versions", "issue_id", "version_id", "kind")
-	skipped = 0
+	skipped, noComponent, noIssue := 0, 0, 0
 	if err := r.each(`SELECT source_node_id, sink_node_id, association_type FROM nodeassociation
 		WHERE source_node_entity = 'Issue' AND association_type IN ('IssueComponent', 'IssueVersion', 'IssueFixVersion')`,
 		func(rows *sql.Rows) error {
@@ -240,6 +250,7 @@ func (r *run) importIssueDetails() error {
 			}
 			if !r.hasIssue(issue) {
 				skipped++
+				noIssue++
 				return nil
 			}
 			switch kind.String {
@@ -247,6 +258,8 @@ func (r *run) importIssueDetails() error {
 				if r.components[sink.Int64] {
 					return comps.add(issue.Int64, sink.Int64)
 				}
+				noComponent++
+				return nil
 			case "IssueVersion":
 				if r.versions[sink.Int64] {
 					return vers.add(issue.Int64, sink.Int64, "affects")
@@ -267,8 +280,10 @@ func (r *run) importIssueDetails() error {
 	if err := vers.flush(); err != nil {
 		return err
 	}
-	r.rep.step("issue components", comps.total, 0)
+	r.rep.step("issue components", comps.total, noComponent)
 	r.rep.step("issue versions", vers.total, skipped)
+	r.leftOut(noComponent, "component link", "component links", "to a missing component")
+	r.leftOut(noIssue, "component or version link", "component or version links", "of a missing issue")
 
 	r.epicOf = map[int64]int64{}
 	links := r.inserter("issue_links", "id", "type_id", "source_id", "target_id")
@@ -300,6 +315,7 @@ func (r *run) importIssueDetails() error {
 		return err
 	}
 	r.rep.step("issue links", links.total, skipped)
+	r.leftOut(skipped, "issue link", "issue links", "of a missing issue or link type")
 
 	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
 	skipped = 0
@@ -354,6 +370,7 @@ func (r *run) importIssueDetails() error {
 	}
 	r.rep.step("watchers", watch.total, 0)
 	r.rep.step("votes", vote.total, skipped)
+	r.leftOut(skipped, "watch or vote", "watches or votes", "of an unknown user or a missing issue")
 	return nil
 }
 
@@ -443,6 +460,7 @@ func (r *run) importCommentsAndWorklogs() error {
 		return err
 	}
 	r.rep.step("comments", ins.total, skipped)
+	r.leftOut(skipped, "comment", "comments", "of a missing issue")
 	r.rep.step("of which restricted comments", restricted, 0)
 
 	ins = r.inserter("worklogs", "id", "issue_id", "author_id", "body", "started_at", "seconds", "created_at",
@@ -475,6 +493,7 @@ func (r *run) importCommentsAndWorklogs() error {
 		return err
 	}
 	r.rep.step("worklogs", ins.total, skipped)
+	r.leftOut(skipped, "work log", "work logs", "of a missing issue")
 	return nil
 }
 
@@ -606,7 +625,8 @@ func fieldKind(typeKey string) string {
 func (r *run) importCustomFieldValues() error {
 	ins := r.inserter("custom_field_values", "id", "issue_id", "field_id", "parent_key", "string_value",
 		"number_value", "text_value", "date_value")
-	skipped := 0
+	skipped, orphans, unknownUsers := 0, 0, 0
+	misfit := map[int64]int{}
 	if err := r.each(`SELECT id, issue, customfield, parentkey, stringvalue, numbervalue, textvalue, datevalue
 		FROM customfieldvalue`, func(rows *sql.Rows) error {
 		var id int64
@@ -620,6 +640,12 @@ func (r *run) importCustomFieldValues() error {
 		typeKey, ok := r.fields[field.Int64]
 		if !ok || !r.hasIssue(issue) {
 			skipped++
+			orphans++
+			return nil
+		}
+		if !fitsType(typeKey, str, text, num, date) {
+			skipped++
+			misfit[field.Int64]++
 			return nil
 		}
 		var strVal, dateVal, numVal any = sqlq.Value(str), ntime(date), nil
@@ -636,6 +662,7 @@ func (r *run) importCustomFieldValues() error {
 			uid, ok := r.users[str.String]
 			if !ok {
 				skipped++
+				unknownUsers++
 				return nil
 			}
 			strVal = strconv.FormatInt(uid, 10)
@@ -656,7 +683,37 @@ func (r *run) importCustomFieldValues() error {
 		return err
 	}
 	r.rep.step("custom field values", ins.total, skipped)
+	r.leftOut(orphans, "custom field value", "custom field values", "of a missing issue or field")
+	r.leftOut(unknownUsers, "custom field value", "custom field values", "naming an unknown user")
+	if len(misfit) > 0 {
+		n := 0
+		for _, c := range misfit {
+			n += c
+		}
+		ids := make([]string, 0, len(misfit))
+		for _, id := range slices.Sorted(maps.Keys(misfit)) {
+			ids = append(ids, strconv.FormatInt(id, 10))
+		}
+		r.rep.warn("%s stored for a former type of their custom field, not imported (fields %s)",
+			plural(n, "value", "values"), strings.Join(ids, ", "))
+	}
 	return nil
+}
+
+// fitsType tells whether a custom field value sits in a column that the
+// current type of its field reads. When the type of a field changes, Jira
+// leaves the existing values in the column of the former type. Only the types
+// whose column is certain are checked.
+func fitsType(typeKey string, str, text sql.NullString, num sql.NullFloat64, date sql.NullTime) bool {
+	switch fieldKind(typeKey) {
+	case "float":
+		return num.Valid
+	case "datepicker", "datetime":
+		return date.Valid
+	case "textfield", "url", "textarea":
+		return str.Valid || text.Valid
+	}
+	return true
 }
 
 func (r *run) importHistory() error {
@@ -691,6 +748,7 @@ func (r *run) importHistory() error {
 		return err
 	}
 	r.rep.step("changes (history)", groups.total, skipped)
+	r.leftOut(skipped, "change", "changes", "of a missing issue")
 
 	items := r.inserter("change_items", "id", "group_id", "field_type", "field", "old_value", "old_string",
 		"new_value", "new_string")
@@ -718,5 +776,6 @@ func (r *run) importHistory() error {
 	}
 	orphans, _ := res.RowsAffected()
 	r.rep.step("change details", items.total-int(orphans), int(orphans))
+	r.leftOut(int(orphans), "change detail", "change details", "of a missing change")
 	return nil
 }
