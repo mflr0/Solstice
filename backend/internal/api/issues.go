@@ -869,7 +869,7 @@ func readFields(r *http.Request) (fields, error) {
 	var f fields
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err := dec.Decode(&f); err != nil {
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	for k := range f {
 		if !issueFields[k] {

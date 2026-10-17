@@ -353,7 +353,7 @@ func (r *recorder) Write(b []byte) (int, error) {
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	return nil
 }

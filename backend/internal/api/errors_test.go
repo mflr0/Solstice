@@ -83,3 +83,41 @@ func TestTooManyAttemptsRetryAfter(t *testing.T) {
 		t.Fatalf("REST: %d %v %s", w.Code, w.Header(), w.Body)
 	}
 }
+
+// A JSON body over the size limit is refused with 413, in the request's
+// language, not with 400.
+func TestOversizedJSONBody(t *testing.T) {
+	srv := quietServer()
+	big := `{"username":"` + strings.Repeat("a", 4<<20) + `"}`
+
+	post := func(h http.Handler) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/x", strings.NewReader(big))
+		r.Header.Set(csrfHeader, "1")
+		r.Header.Set("Accept-Language", "fr")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	// An interface route (readJSON).
+	if w := post(srv.wrap(srv.login, false)); w.Code != http.StatusRequestEntityTooLarge ||
+		!strings.Contains(w.Body.String(), "trop volumineuse") {
+		t.Errorf("interface: %d %s", w.Code, w.Body)
+	}
+	// A REST route (readRESTJSON).
+	read := func(w http.ResponseWriter, r *http.Request) error {
+		var v map[string]any
+		return readRESTJSON(r, &v)
+	}
+	if w := post(srv.rest(read, false)); w.Code != http.StatusRequestEntityTooLarge ||
+		!strings.Contains(w.Body.String(), "trop volumineuse") {
+		t.Errorf("REST: %d %s", w.Code, w.Body)
+	}
+	// A body within the limit but not JSON is still 400.
+	r := httptest.NewRequest("POST", "/x", strings.NewReader("{"))
+	r.Header.Set(csrfHeader, "1")
+	w := httptest.NewRecorder()
+	srv.wrap(srv.login, false).ServeHTTP(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("malformed: %d %s", w.Code, w.Body)
+	}
+}

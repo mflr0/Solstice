@@ -14,6 +14,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyAttempts:      "Too many attempts. Try again in %d s.",
 	RequestStreamingUnsupported: "Streaming is not supported.",
 	RequestInternalError:        "Internal error. The incident has been logged.",
+	RequestBodyTooLarge:         "The request is too large.",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "A name is required (%d characters at most).",

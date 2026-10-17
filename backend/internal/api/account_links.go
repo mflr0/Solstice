@@ -479,7 +479,7 @@ func (s *Server) adminResetLink(w http.ResponseWriter, r *http.Request, id int64
 func readOptionalJSON(r *http.Request, v any) error {
 	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 1<<20))
 	if err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	if len(bytes.TrimSpace(body)) == 0 {
 		return nil

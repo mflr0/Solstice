@@ -13,6 +13,7 @@ const (
 	RequestTooManyAttempts      Key = "RequestTooManyAttempts"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
+	RequestBodyTooLarge         Key = "RequestBodyTooLarge"
 )
 
 // Values shared by several forms.

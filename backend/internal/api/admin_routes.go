@@ -97,7 +97,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 func readJSONFields(r *http.Request, v any) (map[string]json.RawMessage, error) {
 	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err != nil {
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	keys := map[string]json.RawMessage{}
 	if err := json.Unmarshal(raw, &keys); err != nil {

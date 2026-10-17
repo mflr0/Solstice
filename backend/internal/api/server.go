@@ -392,12 +392,21 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	writeJSON(w, he.status, body)
 }
 
+// badBody is the answer to a request body that cannot be read: 413 when it is
+// over the size limit, else 400 with the decoder's words.
+func badBody(err error) error {
+	if errors.As(err, new(*http.MaxBytesError)) {
+		return fail(http.StatusRequestEntityTooLarge, i18n.RequestBodyTooLarge)
+	}
+	return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+}
+
 // readJSON decodes a request body, rejecting unknown fields so typos surface.
 func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	return nil
 }
