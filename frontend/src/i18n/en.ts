@@ -1720,6 +1720,8 @@ export const en = {
     baseUrl: (url: string) => `Email links point to ${url}.`,
     baseUrlMissing:
       'The public address of Solstice is not set: emails will go out without links to the issues.',
+    credentialsNeedTls:
+      'The saved settings send a username and password without encryption to a server that is not on this machine, so no email can be sent. Choose STARTTLS or TLS, or leave the username empty. Only a server on this machine is exempt; a relay on a private network needs STARTTLS or TLS too.',
     problems: {
       hostRequired: 'Enter the SMTP server to turn sending on.',
       portInvalid: 'A number from 1 to 65535.',

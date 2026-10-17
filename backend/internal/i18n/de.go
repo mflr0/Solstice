@@ -474,6 +474,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Mein Passwort wählen",
 	MailInviteExpiry:          "Der Link funktioniert nur einmal und ist 7 Tage gültig.",
 	MailInviteWhy:             "Sie erhalten diese E-Mail, weil ein Administrator ein Konto für Sie angelegt hat.",
+	MailCredentialsNeedTLS:    "Benutzername und Passwort werden nur über eine verschlüsselte Verbindung gesendet: Wählen Sie STARTTLS oder TLS, oder lassen Sie den Benutzernamen leer. Nur ein Server auf diesem Rechner ist ausgenommen; ein Relay in einem privaten Netz braucht ebenfalls STARTTLS oder TLS.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Ungültige Stunde: 0 bis 23.",

@@ -128,3 +128,38 @@ func TestSendDueSkippedWhilePaused(t *testing.T) {
 		t.Errorf("not paused: settings read %d times, want 1", read)
 	}
 }
+
+func TestLoopback(t *testing.T) {
+	for host, want := range map[string]bool{
+		"localhost": true, "LocalHost": true, "127.0.0.1": true, "127.12.0.9": true, "::1": true,
+		"::ffff:127.0.0.1": true, "smtp.exemple.fr": false, "192.0.2.10": false, "0.0.0.0": false,
+		"2001:db8::1": false, "": false, "127.0.0.1.exemple.fr": false,
+	} {
+		if got := Loopback(host); got != want {
+			t.Errorf("Loopback(%q) = %v, want %v", host, got, want)
+		}
+	}
+}
+
+// Credentials are not sent over a plain connection to a server that is not
+// local. 0.0.0.0 is no loopback address but reaches the test server.
+func TestSendRefusesCredentialsInClear(t *testing.T) {
+	srv := mailtest.Start(t)
+	cfg := Config{Enabled: true, Host: "0.0.0.0", Port: srv.Port, Security: SecurityNone, Username: "relai",
+		Password: "mot de passe", From: "solstice@exemple.fr"}
+	err := Send(context.Background(), cfg, Message{To: "paul@exemple.fr", Subject: "Essai"})
+	var me *Error
+	if asError(err, &me) && me.Stage == StageConnect {
+		t.Skipf("0.0.0.0 does not reach the local machine here: %v", err)
+	}
+	if !asError(err, &me) || me.Stage != StageInsecure {
+		t.Fatalf("credentials over a plain connection: %v, want stage %s", err, StageInsecure)
+	}
+	if auth, msgs := srv.Auth(), srv.Messages(); len(auth) != 0 || len(msgs) != 0 {
+		t.Errorf("the server received credentials %v and messages %v", auth, msgs)
+	}
+	cfg.Username = ""
+	if err := Send(context.Background(), cfg, Message{To: "paul@exemple.fr", Subject: "Essai"}); err != nil {
+		t.Errorf("no credentials, plain connection: %v", err)
+	}
+}

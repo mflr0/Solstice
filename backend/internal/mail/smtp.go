@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/smtp"
 	"net/textproto"
 	"os"
@@ -21,6 +22,7 @@ const (
 	StageNoTLS     = "notls"     // STARTTLS asked but not offered
 	StageAuth      = "auth"      // credentials refused
 	StageNoAuth    = "noauth"    // credentials given but the server takes none
+	StageInsecure  = "insecure"  // credentials given but the connection is not encrypted
 	StageSender    = "sender"    // MAIL FROM refused
 	StageRecipient = "recipient" // RCPT TO refused
 	StageData      = "data"      // message refused
@@ -99,6 +101,9 @@ func (s *session) dial(ctx context.Context) error {
 		}
 	}
 	if cfg.Username != "" {
+		if _, encrypted := c.TLSConnectionState(); !encrypted && !Loopback(cfg.Host) {
+			return fail(StageInsecure, errors.New("credentials are not sent over an unencrypted connection"))
+		}
 		ok, mechanisms := c.Extension("AUTH")
 		if !ok {
 			return fail(StageNoAuth, errors.New("the server does not offer authentication"))
@@ -173,9 +178,18 @@ func helloName() string {
 	return "localhost"
 }
 
+// Loopback tells whether host is the local machine: localhost or a loopback
+// address. Names are not resolved, so only these spellings count.
+func Loopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	a, err := netip.ParseAddr(host)
+	return err == nil && a.Unmap().IsLoopback()
+}
+
 // pickAuth chooses PLAIN, LOGIN or CRAM-MD5, whichever the server offers.
-// Credentials go in clear only over TLS, or when the administrator chose a
-// connection without encryption.
+// Credentials go in clear only over TLS, or to the local machine (see dial).
 func pickAuth(offered, user, pass string) (smtp.Auth, error) {
 	has := map[string]bool{}
 	for _, m := range strings.Fields(strings.ToUpper(offered)) {

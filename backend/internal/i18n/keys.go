@@ -535,6 +535,7 @@ const (
 	MailInviteAction          Key = "MailInviteAction"
 	MailInviteExpiry          Key = "MailInviteExpiry"
 	MailInviteWhy             Key = "MailInviteWhy"
+	MailCredentialsNeedTLS    Key = "MailCredentialsNeedTLS"
 )
 
 // Notification preferences and notification e-mails.
