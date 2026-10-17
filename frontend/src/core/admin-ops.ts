@@ -50,6 +50,7 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'project.update',
   'project.archive',
   'project.unarchive',
+  'project.rename',
   'project.delete',
   'project.permissions',
   'project.roles',

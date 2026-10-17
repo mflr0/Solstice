@@ -22,11 +22,12 @@
   import Who from '../Who.svelte';
   import CategoryDialog from './CategoryDialog.svelte';
   import ProjectDialog from './ProjectDialog.svelte';
+  import RenameKeyDialog from './RenameKeyDialog.svelte';
 
   /**
    * Every project, archived ones included: find, create, archive and delete
    * them, with a link to each one's settings, and the categories that group
-   * them. Deleting wants the project's key typed.
+   * them. Deleting wants the project's key typed; so does changing the key.
    */
   type AdminProject = AdminProjectRow;
 
@@ -39,6 +40,7 @@
   let creating = $state(false);
   let archiving = $state<AdminProject | null>(null);
   let deleting = $state<AdminProject | null>(null);
+  let renaming = $state<AdminProject | null>(null);
   let categoryDialog = $state<{ category: Category | null } | null>(null);
   let removingCategory = $state<Category | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -126,6 +128,11 @@
     await adminApi.archiveProject(p.key, true);
     notify(t.projectsAdmin.archived(p.name));
     await load();
+  }
+
+  function renamed(oldKey: string, newKey: string, name: string) {
+    notify(t.projectsAdmin.keyChanged(name, oldKey, newKey));
+    void load();
   }
 
   async function remove() {
@@ -250,6 +257,9 @@
                     >{t.projectsAdmin.archive}</button
                   >
                 {/if}
+                <button class="link-btn" onclick={() => (renaming = p)}
+                  >{t.projectsAdmin.changeKey}</button
+                >
                 <button class="link-btn" onclick={() => (deleting = p)}>{t.common.delete}</button>
               </td>
             </tr>
@@ -313,6 +323,13 @@
   categories={categories ?? []}
   onclose={() => (categoryDialog = null)}
   onsaved={categorySaved}
+/>
+
+<RenameKeyDialog
+  open={renaming !== null}
+  project={renaming}
+  onrenamed={renamed}
+  onclose={() => (renaming = null)}
 />
 
 <ConfirmDialog

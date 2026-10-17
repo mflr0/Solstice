@@ -1331,6 +1331,7 @@ export const fr: Messages = {
       'project.archive': 'Projet archivé',
       'project.unarchive': 'Projet désarchivé',
       'project.delete': 'Projet supprimé',
+      'project.rename': 'Clé du projet changée',
       'project.permissions': 'Droits du projet modifiés',
       'project.roles': 'Rôles du projet modifiés',
       'category.create': 'Catégorie de projets créée',
@@ -2159,11 +2160,19 @@ export const fr: Messages = {
         : 'Cette action supprime définitivement le projet, qui est vide. Elle est irréversible.',
     typeToConfirm: (key: string) => `Saisissez ${key} pour confirmer`,
     deleted: (name: string) => `« ${name} » est supprimé.`,
+    changeKey: 'Changer la clé',
+    changeKeyTitle: (name: string) => `Changer la clé de ${name}`,
+    changeKeyBody: (key: string) =>
+      `Tous les tickets du projet prennent la nouvelle clé. L’ancienne clé reste réservée et continue de fonctionner : ${key}-12 ouvre toujours le ticket, dans les liens, les recherches JQL et l’API REST. Les filtres enregistrés et les tableaux qui citent ${key} sont laissés tels quels.`,
+    newKey: 'Nouvelle clé',
+    keyUnchanged: 'C’est la clé actuelle.',
+    keyChanged: (name: string, oldKey: string, newKey: string) =>
+      `${name} : ${oldKey} devient ${newKey}.`,
     createTitle: 'Nouveau projet',
     create: 'Créer le projet',
     namePlaceholder: 'Site web',
     keyHint:
-      'Commence chaque clé de ticket (SW-1). 2 à 10 majuscules ou chiffres, en commençant par une lettre. Elle ne pourra plus être modifiée.',
+      'Commence chaque clé de ticket (SW-1). 2 à 10 majuscules ou chiffres, en commençant par une lettre. Vous pourrez la changer plus tard dans l’administration des projets.',
     keyChecking: 'Vérification…',
     keyFree: (key: string) => `${key} est disponible.`,
     template: 'Workflow de départ',
