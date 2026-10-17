@@ -1247,6 +1247,65 @@ export const de: Messages = {
     unavailable:
       'Dieser Server bietet diese Einstellung noch nicht: Aktualisieren Sie Solstice, um sie zu nutzen.',
     hideBanner: 'Ausblenden',
+    restricted: {
+      comments: (n: number) => plural(n, 'Kommentar', 'Kommentare'),
+      worklogs: (n: number) => plural(n, 'Zeiteintrag', 'Zeiteinträge'),
+    },
+    groupsPage: {
+      intro:
+        'Gruppen fassen Personen zusammen, damit Berechtigungen allen auf einmal erteilt werden können. Namen werden in Kleinbuchstaben gespeichert.',
+      newGroup: 'Neue Gruppe',
+      create: 'Gruppe erstellen',
+      search: 'Gruppenname',
+      name: 'Name',
+      nameHint: 'Namen werden in Kleinbuchstaben gespeichert.',
+      description: 'Beschreibung',
+      members: 'Mitglieder',
+      count: (n: number) => plural(n, 'Mitglied', 'Mitglieder'),
+      empty: 'Noch keine Gruppen.',
+      emptyHint:
+        'Erstellen Sie eine Gruppe, um mehreren Personen auf einmal Berechtigungen zu geben.',
+      problems: {
+        nameRequired: 'Geben Sie der Gruppe einen Namen.',
+        nameTooLong: 'Höchstens 255 Zeichen.',
+        descriptionTooLong: 'Höchstens 255 Zeichen.',
+      },
+      editTitle: (name: string) => `Gruppe ${name}`,
+      created: (name: string) => `Gruppe ${name} erstellt.`,
+      updated: (name: string) => `Gruppe ${name} gespeichert.`,
+      membersHint: 'Mitglieder werden sofort hinzugefügt und entfernt, ohne zu speichern.',
+      noMembers: 'Noch keine Mitglieder.',
+      addMember: 'Mitglied hinzufügen',
+      memberAdded: (name: string) => `${name} wurde zur Gruppe hinzugefügt.`,
+      memberRemoved: (name: string) => `${name} wurde aus der Gruppe entfernt.`,
+      removeMember: (name: string) => `${name} aus der Gruppe entfernen`,
+      deleteTitle: (name: string) => `Gruppe ${name} löschen?`,
+      deleteBody:
+        'Die Gruppe wird aus den Berechtigungen, Rollen und Sicherheitsstufen entfernt, die sie verwenden. Ihre Mitglieder behalten ihre Konten.',
+      deleted: (name: string) => `Gruppe ${name} gelöscht.`,
+      inUse: (items: string) => `Noch auf diese Gruppe beschränkt: ${items}.`,
+    },
+    rolesPage: {
+      shared:
+        'Rollen gelten für alle Projekte. Wer eine Rolle innehat, wird in jedem Projekt festgelegt.',
+      newRole: 'Neue Rolle',
+      create: 'Rolle erstellen',
+      name: 'Name',
+      description: 'Beschreibung',
+      empty: 'Noch keine Rollen.',
+      emptyHint: 'Erstellen Sie eine Rolle und weisen Sie sie in jedem Projekt Personen zu.',
+      problems: {
+        nameRequired: 'Geben Sie der Rolle einen Namen.',
+        nameTooLong: 'Höchstens 255 Zeichen.',
+      },
+      editTitle: (name: string) => `Rolle ${name}`,
+      created: (name: string) => `Rolle ${name} erstellt.`,
+      updated: (name: string) => `Rolle ${name} gespeichert.`,
+      deleteTitle: (name: string) => `Rolle ${name} löschen?`,
+      deleteBody: 'Die Rolle verschwindet aus allen Projekten.',
+      deleted: (name: string) => `Rolle ${name} gelöscht.`,
+      inUse: (items: string) => `Noch auf diese Rolle beschränkt: ${items}.`,
+    },
   },
 
   auditAdmin: {
