@@ -144,6 +144,7 @@ export const it: Messages = {
     language: 'Lingua',
     logout: 'Esci',
     sourceCode: 'Codice sorgente',
+    licenses: 'Licenze',
     live: 'Aggiornamenti in tempo reale',
     offline: 'Offline: le pagine non si aggiornano più da sole',
   },

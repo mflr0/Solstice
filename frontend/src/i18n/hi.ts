@@ -145,6 +145,7 @@ export const hi: Messages = {
     language: 'भाषा',
     logout: 'साइन आउट करें',
     sourceCode: 'सोर्स कोड',
+    licenses: 'लाइसेंस',
     live: 'लाइव अपडेट',
     offline: 'ऑफ़लाइन: पेज अब अपने-आप अपडेट नहीं होते',
   },

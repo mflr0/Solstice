@@ -23,6 +23,8 @@ export const de: SetupMessages = {
   copy: 'Kopieren',
   copied: 'Kopiert',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Quellcode',
+  licenses: 'Lizenzen',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network:
