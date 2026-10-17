@@ -251,6 +251,10 @@ ones. Each project now has `archived` (bool).
 `project.archived`, `project.categoryId` (number | null) and, in
 `issueTypes`, every type allowed in the project.
 
+`GET /api/admin/projects` — global admin. Every project, seen or not:
+`[{id, key, name, kind, lead (userRef), category (idName | null), archived,
+issues}]`, active first, then archived, by name.
+
 ### Update — project admin
 
 `PATCH /api/projects/{key}`
@@ -258,6 +262,14 @@ ones. Each project now has `archived` (bool).
 defaultAssignee? ("unassigned" | "lead"), issueTypes?: [typeId]}`
 → the `GET /api/projects/{key}` object. Removing an issue type still used
 by issues: 409 `{inUse: [{type: typeRef, issues}]}`. (`project.update`)
+
+### Project settings — project admin
+
+`GET /api/projects/{key}/settings` → `{id, key, name, description, kind,
+lead (userRef), category (idName | null), defaultAssignee, archived,
+issueTypes: [typeRef], issues}` — the project as its administrators
+configure it: the fields `PATCH /api/projects/{key}` changes, with `id`,
+`key`, `kind`, `archived` and `issues` (the issue count).
 
 ### Archive — global admin
 
@@ -376,6 +388,10 @@ Types: `text`, `textarea`, `number`, `date`, `datetime`, `select`,
 They are stored with Jira's type keys, so fields imported from Jira and
 fields created here behave alike (issue view, REST API, JQL).
 
+- `GET /api/admin/fields/types` → the types a field can have:
+  `[{type, typeKey, options}]`, each with its Jira key (`typeKey` =
+  `com.atlassian.jira.plugin.system.customfieldtypes:` + kind) and `options`
+  true for the option types.
 - `GET /api/admin/fields` → `[field]`, `field` = `{id, name, description,
   type (one of the above, or null for a Jira type Solstice only displays),
   typeKey, options (count, option types only), issues (issues with a value),
@@ -544,3 +560,152 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   or a group's they belong to) or created, on the filters they still see,
   each as above plus `filterName`, by filter name. Administrators get their
   own here, not everyone's.
+
+---
+
+## 12. Notification preferences
+
+`GET|PUT /api/me/notifications` — everyone signed in:
+
+- GET → `{delivery, digestHour, ownChanges, events, dueReminder,
+  reminderHour, timeZone, mailEnabled}`.
+  - `delivery`: `immediate` (within a couple of minutes, default) | `digest`
+    (once a day) | `none` (no notification e-mails).
+  - `digestHour`, `reminderHour`: 0–23, default 8, in `timeZone` (the
+    server's time zone).
+  - `ownChanges`: also e-mail the user's own changes (default false).
+  - `dueReminder`: a daily e-mail of issues due (default false).
+  - `events`: one switch per group — `created`, `assigned`, `commented`,
+    `mentioned`, `status`, `updated`, `attachments`, `deleted` (all true by
+    default).
+  - `timeZone` and `mailEnabled` are read-only (the hours' time zone above;
+    whether this Solstice sends e-mail at all).
+- PUT any subset `{delivery?, digestHour?, ownChanges?, events? (one switch
+  per group), dueReminder?, reminderHour?}`; fields left out keep their
+  value. 400 for an unknown delivery or event group, or an hour outside
+  0–23. Answers GET. E-mails already waiting follow: `none` drops them, a
+  new digest hour moves the digest.
+
+`GET|PUT /api/projects/{key}/notifications` — project admin:
+
+- GET → `{enabled, extra, events}`; `events` lists the groups a project may
+  send to extra people: `created`, `assigned`, `commented`, `status`,
+  `updated`, `attachments`, `deleted`.
+  - `enabled` (default true): false stops every notification e-mail about
+    the project's issues.
+  - `extra`: `[{event, kind: group|role, id, name}]` — a group or role that
+    also receives one of those events.
+- PUT `{enabled?, extra?}`; `extra` replaces the list, each entry
+  `{event, kind: "group"|"role", id}`. 400 for an unknown event group or a
+  group or role that does not exist. Answers GET.
+
+---
+
+## 13. E-mail, webhooks and updates — global admin
+
+### Mail
+
+- `GET /api/admin/mail` → `{enabled, host, port, security, username, from,
+  fromName, passwordSet, baseUrl}` — the SMTP settings. The password is
+  never sent back, only `passwordSet` (bool); `baseUrl` (string | null) is
+  the public address links in e-mails are built from. `security`: `none` |
+  `starttls` (default) | `tls`; an empty saved configuration means STARTTLS
+  and its usual port.
+- `PUT /api/admin/mail` any subset of `{enabled, host, port, security,
+  username, password, from, fromName}` → the settings as GET. The password
+  is left out to keep it, `null` or `""` to remove it; keeping it while
+  changing the server, port, security or user name is refused (400):
+  whoever can change the destination must send the password again rather
+  than collect it on a server of their own. Validation (400): unknown
+  security, port outside 1–65535, carriage return or line feed in the host,
+  user name or display name, `enabled` without a host, an invalid sender
+  address. (`settings.mail`, details: changed fields, the password only as
+  changed or removed)
+- `POST /api/admin/mail/test` `{to?}` → `{sent: true, to}`: sends a test
+  e-mail now with the saved settings (`to` empty: the administrator's own
+  address). 400 for an invalid address; 409 when no host or sender is
+  saved; 502 with the SMTP server's own words (connect, TLS, auth,
+  sender, recipient…).
+- `GET /api/admin/mail/queue` → `{pending, failed, sentLastDay,
+  oldestPending, recent, errors, batching, digests}`: messages waiting,
+  given up on, sent in the last day, the oldest waiting (instant | null),
+  the last messages and the last failures (newest first) each `[{id, kind,
+  to, subject, status, attempts, lastError (string | null), created,
+  nextAttempt (instant | null), sent (instant | null)}]`, and the
+  notification batches waiting now (`batching`) and the digest batches
+  (`digests`).
+- `POST /api/admin/mail/queue/retry` → `{retried}`: failed messages go back
+  in the queue (resets and invitations excepted).
+
+### Webhooks
+
+A webhook POSTs the event to its address. `delivery` = `{id, event, status
+(pending|sent|failed), statusCode, durationMs, attempts, error, created,
+attempted, nextAttempt}`; `statusCode`, `durationMs`, `error`, `attempted`
+and `nextAttempt` are null when unknown.
+
+- `GET /api/admin/webhooks` → `[webhook]`, `webhook` = `{id, name, url,
+  events, jql, hasSecret, enabled, excludeBody, created, updated,
+  lastDelivery (delivery | null)}`.
+- `GET /api/admin/webhooks/events` → the events Solstice sends: `[event]` —
+  `jira:issue_created`, `jira:issue_updated`, `jira:issue_deleted`,
+  `comment_created`, `comment_updated`, `comment_deleted`,
+  `worklog_created`, `worklog_updated`, `worklog_deleted`,
+  `sprint_created`, `sprint_started`, `sprint_updated`, `sprint_closed`,
+  `sprint_deleted`, `board_created`, `board_updated`, `board_deleted`.
+- `GET /api/admin/webhooks/{id}` → webhook; 404 when unknown.
+- `POST /api/admin/webhooks` `{name, url, events, jql?, secret?, enabled?,
+  excludeBody?}` → 201 webhook. (`webhook.create`) `PUT
+  /api/admin/webhooks/{id}` the same fields, all optional → webhook.
+  (`webhook.update`)
+  - `name` required, 255 characters max; `url` (2000 max) must be
+    `http(s)://` with a host, and must not resolve to a link-local or cloud
+    metadata address (400).
+  - `events`: at least one of the names above (400).
+  - `jql`: only issues matching it are sent; empty means every issue. The
+    query is checked when saved (400).
+  - `secret` (255 max) is sealed and never sent back (`hasSecret`); left
+    out it is kept, `""` removes it.
+  - `enabled` defaults to true on creation; `excludeBody` sends the event
+    without the issue's payload.
+- `DELETE /api/admin/webhooks/{id}` → 204. (`webhook.delete`) The audit log
+  never holds the secret nor the address's user name, path and query.
+- `GET /api/admin/webhooks/{id}/deliveries` → the last 100 deliveries
+  `[delivery]`, newest first.
+- `POST /api/admin/webhooks/{id}/test` → the delivery of a `solstice:test`
+  event sent now.
+
+### Updates
+
+Solstice learns of the releases published on GitHub; that check is the only
+request it makes on its own, at most every 12 hours, and never once checks
+are turned off.
+
+- `GET /api/admin/updates` → `{current, latest, newer, notes, publishedAt,
+  releaseUrl, checkedAt, checkError, checksEnabled, install, canApply,
+  commands, download, lastAttempt}`.
+  - `latest` (string | null) and `newer`: a release is published, and is it
+    newer than `current`; `notes` (Markdown), `publishedAt` (instant |
+    null), `releaseUrl`.
+  - `checkedAt` (instant | null) and `checkError` (`unreachable` |
+    `refused` | `invalid` | null): the last check.
+  - `checksEnabled` (default true); `install`: `systemd` | `docker` |
+    `manual`.
+  - When `newer`: `canApply` (true on a systemd installation with no update
+    waiting or running), and for docker and manual the `commands` to run
+    and, for manual, the `download` archive for this machine.
+  - `lastAttempt` (instant | null): `{at, from, to, status, log}` with
+    `status` `pending` | `running` | `ok` | `rolled_back` | `failed` — the
+    update helper's work (Linux installations only).
+- `POST /api/admin/updates/check` → the same, checking again now (at most
+  once every 30 seconds; asking sooner answers the previous check).
+  (`update.check`)
+- `PUT /api/admin/updates/settings` `{checksEnabled}` → the state. 400 when
+  the field is missing. (`update.settings`)
+- `POST /api/admin/updates/apply` `{version, password}` → 202 the state:
+  the helper is asked to install `version`. The administrator's password is
+  asked again; 403 when wrong. (`update.denied`) 409: an installation that
+  cannot update from the interface, `version` not the latest release,
+  nothing newer to install, or another update waiting or running.
+  (`update.request`) The outcome reaches the audit log once the application
+  is back (`update.result`).
