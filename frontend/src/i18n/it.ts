@@ -1807,6 +1807,7 @@ export const it: Messages = {
     name: 'Nome visualizzato',
     email: 'Indirizzo e-mail',
     emailHint: 'Serve anche per avvisarti e contattarti.',
+    emailChangeHint: 'Per cambiare l’indirizzo serve la tua password attuale.',
     passwordTitle: 'Password',
     passwordIntro: 'Lascia i campi vuoti per mantenere la password attuale.',
     currentPassword: 'Password attuale',

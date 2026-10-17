@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    changesEmail,
     changesPassword,
     profileApplied,
     profileForm,
@@ -30,6 +31,7 @@
   let error = $state('');
   /** The server is too old to change the name or e-mail. */
   let unsupported = $state(false);
+  let currentInput = $state<HTMLInputElement>();
 
   const min = $derived(publicSettings.value.passwordMinLength);
   const problems = $derived(profileProblems(form, min, session.me));
@@ -63,7 +65,11 @@
     if (!me) return;
     tried = true;
     error = '';
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      // The current password sits in the section below the address.
+      if (problems.currentPassword) currentInput?.focus();
+      return;
+    }
     const patch = profilePatch(form, me);
     if (Object.keys(patch).length === 0) return;
     saving = true;
@@ -142,6 +148,8 @@
         />
         {#if shown('email')}
           <span class="field-error">{shown('email')}</span>
+        {:else if changesEmail(form, session.me)}
+          <span class="hint">{t.account.emailChangeHint}</span>
         {:else}
           <span class="hint">{t.account.emailHint}</span>
         {/if}
@@ -166,6 +174,7 @@
       <input
         class="input"
         type="password"
+        bind:this={currentInput}
         bind:value={form.currentPassword}
         autocomplete="current-password"
         aria-invalid={!!shown('currentPassword')}
