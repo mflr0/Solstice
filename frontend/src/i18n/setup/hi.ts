@@ -107,7 +107,7 @@ export const hi: SetupMessages = {
     newText: 'एक खाली डेटाबेस: आप एडमिनिस्ट्रेटर खाता बनाते हैं, फिर प्रोजेक्ट।',
     importTitle: 'Jira से इम्पोर्ट करें',
     importText:
-      'Jira Data Center के खाते, प्रोजेक्ट, टिकट, हिस्ट्री और अटैचमेंट, PostgreSQL या MySQL से।',
+      'Jira Data Center के खाते, प्रोजेक्ट, टिकट, इतिहास और अटैचमेंट, PostgreSQL या MySQL से।',
   },
 
   admin: {
@@ -198,7 +198,7 @@ export const hi: SetupMessages = {
       'comments and work logs': 'टिप्पणियाँ और लगा समय',
       attachments: 'अटैचमेंट',
       'custom field values': 'कस्टम फ़ील्ड के मान',
-      history: 'हिस्ट्री',
+      history: 'इतिहास',
       filters: 'सहेजे गए फ़िल्टर',
       'boards and sprints': 'बोर्ड और स्प्रिंट',
     },
@@ -240,7 +240,7 @@ export const hi: SetupMessages = {
       'temps saisis': 'लगा समय',
       'pièces jointes': 'अटैचमेंट',
       'valeurs de champs personnalisés': 'कस्टम फ़ील्ड के मान',
-      'modifications (historique)': 'बदलाव (हिस्ट्री)',
+      'modifications (historique)': 'बदलाव (इतिहास)',
       'détails des modifications': 'बदलावों का विवरण',
       'filtres enregistrés': 'सहेजे गए फ़िल्टर',
       'partages de filtres': 'फ़िल्टर शेयर',
