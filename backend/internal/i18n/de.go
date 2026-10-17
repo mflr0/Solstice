@@ -383,6 +383,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Der Sprint muss nach seinem Beginn enden.",
 	SprintStartFuture:     "Ein aktiver Sprint kann nicht in der Zukunft beginnen.",
 	SprintDeleteNotFuture: "Nur ein künftiger Sprint kann gelöscht werden.",
+	SprintNotOnBoard:      "Das Projekt des Vorgangs gehört nicht zum Board dieses Sprints.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",

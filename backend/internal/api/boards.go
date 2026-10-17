@@ -962,13 +962,46 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 	return "", fail(http.StatusConflict, i18n.BoardMoveNotAllowed)
 }
 
+// visibleBoardIDs lists the boards the user sees.
+func (s *Server) visibleBoardIDs(ctx context.Context, sub *perm.Subject) ([]any, error) {
+	visible, err := s.visibleFilterIDs(ctx, sub)
+	if err != nil {
+		return nil, err
+	}
+	var out []any
+	err = sqlq.Each(ctx, s.db, `SELECT id, filter_id FROM boards`, func(rows *sql.Rows) error {
+		var id, filter int64
+		if err := rows.Scan(&id, &filter); err != nil {
+			return err
+		}
+		if visible[filter] {
+			out = append(out, id)
+		}
+		return nil
+	})
+	return out, err
+}
+
 // setSprint moves an issue into an open sprint of the board, or back to the
-// backlog (0). Closed sprints stay in its history.
+// backlog (0). Closed sprints stay in its history. Without a board (an empty
+// boardRow), the backlog move only leaves the open sprints of boards the user
+// sees.
 func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64) error {
+	scope, scopeArgs := "", []any(nil)
+	if sprint == 0 && b.ID == 0 {
+		boards, err := s.visibleBoardIDs(ctx, sub)
+		if err != nil {
+			return err
+		}
+		if len(boards) == 0 {
+			return nil
+		}
+		scope, scopeArgs = ` AND s.board_id IN (`+sqlq.Marks(len(boards))+`)`, boards
+	}
 	var oldID sql.NullInt64
 	var oldName sql.NullString
 	s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed' LIMIT 1`, iss.ID).Scan(&oldID, &oldName)
+		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope+` LIMIT 1`, append([]any{iss.ID}, scopeArgs...)...).Scan(&oldID, &oldName)
 	var newName any
 	if sprint != 0 {
 		var name, state string
@@ -981,8 +1014,17 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 			return err
 		}
 		newName = name
+		// The sprint's board must include the issue's project.
+		var onBoard bool
+		if err := s.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM board_projects WHERE board_id = ? AND project_id = ?)`,
+			b.ID, iss.ProjectID).Scan(&onBoard); err != nil {
+			return err
+		}
+		if !onBoard {
+			return fail(http.StatusBadRequest, i18n.SprintNotOnBoard)
+		}
 	}
-	if oldID.Valid && oldID.Int64 == sprint {
+	if oldID.Valid && oldID.Int64 == sprint || sprint == 0 && !oldID.Valid {
 		return nil
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -991,7 +1033,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `DELETE si FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed'`, iss.ID); err != nil {
+		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope, append([]any{iss.ID}, scopeArgs...)...); err != nil {
 		return err
 	}
 	if sprint != 0 {
