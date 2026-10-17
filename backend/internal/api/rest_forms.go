@@ -413,7 +413,10 @@ func (s *Server) restCreateMeta(w http.ResponseWriter, r *http.Request) error {
 		wanted = map[int64]bool{}
 		for key := range keys {
 			id, err := s.projectByKey(ctx, key)
-			if err != nil && !errors.Is(err, errNotFound) {
+			if errors.Is(err, errNotFound) {
+				continue
+			}
+			if err != nil {
 				return err
 			}
 			wanted[id] = true
