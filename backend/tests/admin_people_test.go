@@ -284,6 +284,11 @@ func TestProfile(t *testing.T) {
 	if me.Name != "Nom Choisi" || me.Email != original {
 		t.Errorf("after PATCH: %+v", me)
 	}
+	// Surrounding spaces do not make it another address.
+	one.call("PATCH", "/api/me", map[string]any{"email": "  " + original + "  "}, 200, &me)
+	if me.Email != original {
+		t.Errorf("after a padded, unchanged address: %+v", me)
+	}
 	one.call("PATCH", "/api/me", map[string]any{"email": "choisi@exemple.fr",
 		"currentPassword": "premier-secret-123"}, 200, &me)
 	if me.Email != "choisi@exemple.fr" {

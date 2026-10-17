@@ -119,6 +119,7 @@ describe('profileProblems', () => {
     ],
     [{ ...profileForm(me), email: '' }, { currentPassword: 'currentRequired' }],
     [{ ...profileForm(me), email: 'other@example.com', currentPassword: 'old' }, {}],
+    [{ ...profileForm(me), email: '  marie@example.com  ' }, {}],
     [
       { ...profileForm(me), newPassword: 'abcdefgh' },
       { currentPassword: 'currentRequired', confirmPassword: 'confirmMismatch' },
@@ -155,6 +156,7 @@ describe('profilePatch', () => {
   it.each<[ProfileForm, ProfilePatch]>([
     [profileForm(me), {}],
     [{ ...profileForm(me), name: '  Marie D.  ' }, { name: 'Marie D.' }],
+    [{ ...profileForm(me), email: '  marie@example.com  ' }, {}],
     [
       { ...profileForm(me), currentPassword: 'old', newPassword: 'abcdefgh' },
       { currentPassword: 'old', newPassword: 'abcdefgh' },
