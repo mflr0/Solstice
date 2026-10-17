@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -204,6 +205,21 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
+// How long a client gets to send its request body; uploads travel as slow
+// files. The http.Server has no ReadTimeout, which would also cut the
+// live-event streams: these deadlines only concern bodies (see wrap).
+const (
+	bodyReadTimeout   = time.Minute
+	uploadReadTimeout = 15 * time.Minute
+)
+
+// setBodyReadDeadline gives the connection a read deadline at the given
+// time; the zero time clears it. A connection that does not support
+// deadlines (http.ErrNotSupported) is left as it is.
+func setBodyReadDeadline(w http.ResponseWriter, at time.Time) {
+	_ = http.NewResponseController(w).SetReadDeadline(at)
+}
+
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -254,6 +270,18 @@ var (
 
 func (s *Server) wrap(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A request with a body gets a read deadline, so a client trickling
+		// one cannot hold a connection open; upload routes get more time.
+		// The deadline is cleared afterwards: it must not cut a live stream
+		// later opened on the same connection.
+		if r.ContentLength != 0 {
+			timeout := bodyReadTimeout
+			if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/attachments") {
+				timeout = uploadReadTimeout
+			}
+			setBodyReadDeadline(w, time.Now().Add(timeout))
+			defer setBodyReadDeadline(w, time.Time{})
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
 			writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
