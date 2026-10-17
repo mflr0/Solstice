@@ -148,9 +148,18 @@ func TestSecurityLevelsAdmin(t *testing.T) {
 	}
 
 	// Every change is in the audit log.
-	var audit struct{ Total int }
-	admin.call("GET", "/api/admin/audit?action=project.update&q="+key, nil, 200, &audit)
-	if audit.Total != 12 { // 2 created, 1 renamed, 6 members added, 1 removed, 2 deleted
-		t.Errorf("audit entries for security levels: %d, want 12", audit.Total)
+	for action, want := range map[string]int{
+		"securitylevel.create":        2,
+		"securitylevel.update":        1,
+		"securitylevel.member_add":    6,
+		"securitylevel.member_remove": 1,
+		"securitylevel.delete":        2,
+		"securitylevel":               12, // the family
+	} {
+		var audit struct{ Total int }
+		admin.call("GET", "/api/admin/audit?action="+action+"&q="+key, nil, 200, &audit)
+		if audit.Total != want {
+			t.Errorf("audit entries %s: %d, want %d", action, audit.Total, want)
+		}
 	}
 }

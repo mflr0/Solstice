@@ -576,6 +576,10 @@ for a project the caller cannot see, and for a level of another project).
   `{member}` is a `members[].id`.
 
 Changes to levels and members apply at once (the permission cache is
-refreshed). They are written to the audit log as `project.update` on the
-project, with details `{securityLevel, change: created|updated|deleted|
-memberAdded|memberRemoved, …}`.
+refreshed). They are written to the audit log on the project (target type
+`project`, label the key) as `securitylevel.create`, `securitylevel.update`,
+`securitylevel.delete`, `securitylevel.member_add` and
+`securitylevel.member_remove` (family `securitylevel`), with details
+`{securityLevel, …}`: `name` and `description` as `{from, to}` for an update,
+`issues`, `members`, `movedTo`, `cleared` for a delete, `holder` and `member`
+for the members.

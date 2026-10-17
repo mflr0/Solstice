@@ -142,14 +142,14 @@ func (s *Server) securityLevelNameTaken(ctx context.Context, projectID int64, na
 	return nil
 }
 
-// auditLevel writes a change to a level, as a change of its project.
-func (s *Server) auditLevel(r *http.Request, projectID int64, level string, change string, more map[string]any) {
-	details := map[string]any{"securityLevel": level, "change": change}
+// auditLevel writes a change to a level, on the project it belongs to.
+func (s *Server) auditLevel(r *http.Request, action string, projectID int64, level string, more map[string]any) {
+	details := map[string]any{"securityLevel": level}
 	for k, v := range more {
 		details[k] = v
 	}
 	key := s.projectKeyOf(r.Context(), projectID)
-	s.auditLog(r, audit.ProjectUpdate, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
+	s.auditLog(r, action, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
 		details)
 }
 
@@ -221,7 +221,7 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	if creating {
-		s.auditLevel(r, projectID, level.Name, "created", nil)
+		s.auditLevel(r, audit.SecurityLevelCreate, projectID, level.Name, nil)
 		return writeJSON(w, http.StatusCreated, level)
 	}
 	if level.Name != before.Name || derefStr(level.Description) != derefStr(before.Description) {
@@ -232,7 +232,7 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 		if derefStr(level.Description) != derefStr(before.Description) {
 			more["description"] = map[string]any{"from": derefStr(before.Description), "to": derefStr(level.Description)}
 		}
-		s.auditLevel(r, projectID, level.Name, "updated", more)
+		s.auditLevel(r, audit.SecurityLevelUpdate, projectID, level.Name, more)
 	}
 	return writeJSON(w, http.StatusOK, level)
 }
@@ -323,7 +323,7 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 	if in.Clear {
 		more["cleared"] = true
 	}
-	s.auditLevel(r, projectID, level.Name, "deleted", more)
+	s.auditLevel(r, audit.SecurityLevelDelete, projectID, level.Name, more)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -410,7 +410,7 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 			member = m.label()
 		}
 	}
-	s.auditLevel(r, projectID, level.Name, "memberAdded", map[string]any{"holder": in.Holder, "member": member})
+	s.auditLevel(r, audit.SecurityLevelMemberAdd, projectID, level.Name, map[string]any{"holder": in.Holder, "member": member})
 	return writeJSON(w, http.StatusCreated, level)
 }
 
@@ -448,7 +448,7 @@ func (s *Server) removeSecurityLevelMember(w http.ResponseWriter, r *http.Reques
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditLevel(r, projectID, level.Name, "memberRemoved", map[string]any{"holder": gone.Holder, "member": gone.label()})
+	s.auditLevel(r, audit.SecurityLevelMemberRemove, projectID, level.Name, map[string]any{"holder": gone.Holder, "member": gone.label()})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
