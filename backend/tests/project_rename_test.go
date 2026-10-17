@@ -6,6 +6,7 @@ package tests
 import (
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -292,4 +293,57 @@ func TestProjectRenameBack(t *testing.T) {
 	// key another project has, for this one.
 	admin.call("POST", path(other), map[string]any{"newKey": second, "confirm": other}, 409, nil)
 	admin.call("POST", path(first), map[string]any{"newKey": other, "confirm": first}, 409, nil)
+}
+
+// The version functions of JQL take a project key, and a former key names
+// the project there too.
+func TestProjectOldKeyInVersionFunctions(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	old := newProject(t, admin, nil)
+	base := "/api/projects/" + old + "/versions"
+	var shipped, coming versionAdmin
+	admin.call("POST", base, map[string]any{"name": "1.0"}, 201, &shipped)
+	admin.call("POST", base, map[string]any{"name": "2.0"}, 201, &coming)
+	typ := standardType(t, admin, old)
+	issue := func(summary string, version int64) string {
+		var c struct{ Key string }
+		admin.call("POST", "/api/issues", map[string]any{"project": old, "type": typ, "summary": summary,
+			"fixVersions": []int64{version}}, 201, &c)
+		return c.Key
+	}
+	done, open := issue("Livré", shipped.ID), issue("À venir", coming.ID)
+
+	// 1.0 is released once its only issue is resolved.
+	var d issueDetail
+	admin.get("/api/issues/"+done, &d)
+	for _, s := range d.Statuses {
+		if s.Category == "done" {
+			admin.call("PATCH", "/api/issues/"+done, map[string]any{"status": s.ID, "resolution": firstResolution(t)}, 200, nil)
+			break
+		}
+	}
+	admin.call("POST", base+"/"+strconv.FormatInt(shipped.ID, 10)+"/release", map[string]any{}, 200, nil)
+
+	fresh := newProjectKey()
+	admin.call("POST", "/api/admin/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
+	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
+
+	for _, c := range []struct{ fn, want string }{
+		{"releasedVersions", done}, {"latestReleasedVersion", done},
+		{"unreleasedVersions", open}, {"earliestUnreleasedVersion", open},
+	} {
+		for _, key := range []string{old, fresh} {
+			q := "fixVersion in " + c.fn + "(" + key + ") AND project = " + fresh
+			status, total, mode := runSearch(t, admin, q)
+			if status != 200 || mode != "jql" || total != 1 {
+				t.Errorf("%s: %d, %d issues (%s), want 1", q, status, total, mode)
+				continue
+			}
+			var res struct{ Issues []struct{ Key string } }
+			admin.get("/api/issues?q="+url.QueryEscape(q), &res)
+			if len(res.Issues) != 1 || res.Issues[0].Key != fresh+"-"+strings.TrimPrefix(c.want, old+"-") {
+				t.Errorf("%s: %+v, want the issue %s", q, res.Issues, c.want)
+			}
+		}
+	}
 }

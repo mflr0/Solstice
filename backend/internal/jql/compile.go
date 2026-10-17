@@ -976,12 +976,13 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 			return ""
 		}
 		m := sqlq.Marks(len(args))
-		for range 2 {
+		for range 3 {
 			for _, a := range args {
 				c.arg(a)
 			}
 		}
-		return " AND " + alias + ".project_id IN (SELECT id FROM projects WHERE pkey IN (" + m + ") OR name IN (" + m + "))"
+		return " AND " + alias + ".project_id IN (SELECT id FROM projects WHERE pkey IN (" + m + ") OR name IN (" + m + ") " +
+			"OR id IN (SELECT project_id FROM project_keys WHERE pkey IN (" + m + ")))"
 	}
 	var conds []string
 	empty := false
