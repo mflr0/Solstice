@@ -680,7 +680,7 @@ export const it: Messages = {
     move: 'Sposta',
     moveTitle: (key: string) => `Sposta ${key}`,
     moveProjectHint:
-      'Il ticket riceve una nuova chiave in quel progetto; la vecchia chiave continua a funzionare.',
+      'Il ticket riceve una nuova chiave in quel progetto; la vecchia chiave continua a funzionare. Per spostarlo serve il permesso «Modificare» nel progetto attuale e «Creare» in quello di destinazione.',
     moveChoicesHint: (project: string) =>
       `${project} non ha tutto ciò che questo ticket usa. Scegli cosa diventa lì.`,
     moveSubtaskType: 'Tipo di sotto-task',

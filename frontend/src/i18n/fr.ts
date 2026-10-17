@@ -682,7 +682,7 @@ export const fr: Messages = {
     move: 'Déplacer',
     moveTitle: (key: string) => `Déplacer ${key}`,
     moveProjectHint:
-      'Le ticket reçoit une nouvelle clé dans ce projet ; l’ancienne clé continue de fonctionner.',
+      'Le ticket reçoit une nouvelle clé dans ce projet ; l’ancienne clé continue de fonctionner. Le déplacer demande la permission Modifier dans le projet actuel et Créer dans le projet cible.',
     moveChoicesHint: (project: string) =>
       `${project} n’a pas tout ce que ce ticket utilise. Choisissez ce qu’il devient là-bas.`,
     moveSubtaskType: 'Type de sous-tâche',

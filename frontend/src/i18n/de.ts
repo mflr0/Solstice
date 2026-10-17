@@ -687,7 +687,7 @@ export const de: Messages = {
     move: 'Verschieben',
     moveTitle: (key: string) => `${key} verschieben`,
     moveProjectHint:
-      'Der Vorgang erhält in diesem Projekt einen neuen Schlüssel; der alte Schlüssel funktioniert weiter.',
+      'Der Vorgang erhält in diesem Projekt einen neuen Schlüssel; der alte Schlüssel funktioniert weiter. Zum Verschieben braucht es die Berechtigung Bearbeiten im aktuellen Projekt und Erstellen im Zielprojekt.',
     moveChoicesHint: (project: string) =>
       `${project} hat nicht alles, was dieser Vorgang nutzt. Wählen Sie, was daraus dort wird.`,
     moveSubtaskType: 'Typ der Unteraufgabe',

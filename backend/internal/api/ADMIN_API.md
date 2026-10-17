@@ -423,6 +423,13 @@ and type is refused (400). JQL finds new fields by name or
 `cf[<id>]`, as imported ones. The REST API (`/rest/api/2/issue`) applies the
 same checks.
 
+Moving an issue: `POST /api/issues/{key}/move` (signed in) → `{key}`, the new
+key; the old key keeps resolving (`moved_issue_keys`). Solstice has no
+separate move permission: the right to move is **Edit** in the issue's
+current project (and on each of its sub-tasks), plus **Create** in the target
+project, which the user must also be able to browse. Written to the audit log
+as `issue.move`.
+
 ---
 
 ## 9. System — global admin

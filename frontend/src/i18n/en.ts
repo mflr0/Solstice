@@ -677,7 +677,8 @@ export const en = {
     cloneSubmit: 'Clone',
     move: 'Move',
     moveTitle: (key: string) => `Move ${key}`,
-    moveProjectHint: 'The issue gets a new key in that project; the old key keeps working.',
+    moveProjectHint:
+      'The issue gets a new key in that project; the old key keeps working. Moving needs the Edit permission in the current project and Create in the target.',
     moveChoicesHint: (project: string) =>
       `${project} lacks some of what this issue uses. Choose what it becomes there.`,
     moveSubtaskType: 'Sub-task type',
