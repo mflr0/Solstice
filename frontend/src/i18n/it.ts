@@ -192,7 +192,7 @@ export const it: Messages = {
         },
         {
           key: 'DEMO-9',
-          type: 'Storia',
+          type: 'Story',
           summary: 'Rivedere i permessi degli ospiti',
           status: 'Da fare',
           category: 'todo',

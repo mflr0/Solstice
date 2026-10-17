@@ -1197,7 +1197,7 @@ export const de: Messages = {
       priorities: 'Prioritäten',
       resolutions: 'Lösungen',
       statuses: 'Status',
-      linkTypes: 'Verknüpfungsarten',
+      linkTypes: 'Verknüpfungstypen',
       fields: 'Benutzerdefinierte Felder',
       mail: 'E-Mail',
       webhooks: 'Webhooks',
