@@ -129,6 +129,27 @@ func TestRESTVersions(t *testing.T) {
 	if status, _ := admin("DELETE", path+"?moveFixIssuesTo="+id, nil); status != 400 {
 		t.Errorf("moving to itself: %d", status)
 	}
+	for _, param := range []string{"moveFixIssuesTo", "moveAffectedIssuesTo"} {
+		for _, target := range []string{"0", "-1"} {
+			if status, _ := admin("DELETE", path+"?"+param+"="+target, nil); status != 400 {
+				t.Errorf("%s=%s: %d", param, target, status)
+			}
+		}
+	}
+	// A version of another project is no target.
+	status, other := admin("POST", "/rest/api/2/version", map[string]any{"project": "RH", "name": "9.2-rh"})
+	if status != 201 {
+		t.Fatalf("create in RH: %d %v", status, other)
+	}
+	for _, param := range []string{"moveFixIssuesTo", "moveAffectedIssuesTo"} {
+		if status, _ := admin("DELETE", path+"?"+param+"="+str(other, "id"), nil); status != 400 {
+			t.Errorf("%s in another project: %d", param, status)
+		}
+	}
+	admin("DELETE", "/rest/api/2/version/"+str(other, "id"), nil)
+	if status, _ := admin("GET", path, nil); status != 200 {
+		t.Errorf("the refused deletions removed the version: %d", status)
+	}
 	if status, _ := admin("DELETE", path+"?moveFixIssuesTo="+str(to, "id"), nil); status != 204 {
 		t.Fatalf("delete: %d", status)
 	}
@@ -227,6 +248,23 @@ func TestRESTComponents(t *testing.T) {
 	}
 	if status, _ := admin("DELETE", path+"?moveIssuesTo=abc", nil); status != 400 {
 		t.Errorf("bad moveIssuesTo: %d", status)
+	}
+	for _, target := range []string{"0", "-1", id} {
+		if status, _ := admin("DELETE", path+"?moveIssuesTo="+target, nil); status != 400 {
+			t.Errorf("moveIssuesTo=%s: %d", target, status)
+		}
+	}
+	// A component of another project is no target.
+	status, other := admin("POST", "/rest/api/2/component", map[string]any{"project": "RH", "name": "Archives-rest"})
+	if status != 201 {
+		t.Fatalf("create in RH: %d %v", status, other)
+	}
+	if status, _ := admin("DELETE", path+"?moveIssuesTo="+str(other, "id"), nil); status != 400 {
+		t.Errorf("moveIssuesTo in another project: %d", status)
+	}
+	admin("DELETE", "/rest/api/2/component/"+str(other, "id"), nil)
+	if status, _ := admin("GET", path, nil); status != 200 {
+		t.Errorf("the refused deletions removed the component: %d", status)
 	}
 	if status, _ := admin("DELETE", path+"?moveIssuesTo="+str(to, "id"), nil); status != 204 {
 		t.Fatalf("delete: %d", status)
