@@ -337,9 +337,13 @@ func TestRESTFilters(t *testing.T) {
 	if status, _ := paul("GET", path, nil); status != 404 {
 		t.Errorf("deleted filter: %d", status)
 	}
-	status, g := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Sans JQL (REST)"})
-	if status != 200 || str(g, "jql") != "" {
-		t.Fatalf("create without jql: %d %v", status, g)
+	// The interface requires a query, so the REST route does too.
+	if status, _ := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Sans JQL (REST)"}); status != 400 {
+		t.Errorf("create without jql: %d", status)
+	}
+	status, g := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Pour supprimer (REST)", "jql": "project = DEMO"})
+	if status != 200 {
+		t.Fatalf("create: %d %v", status, g)
 	}
 	if status, _ := paul("DELETE", "/rest/api/2/filter/"+str(g, "id"), nil); status != 204 {
 		t.Errorf("owner DELETE: %d", status)

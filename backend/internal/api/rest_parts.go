@@ -457,8 +457,6 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	if raw, ok := in["jql"]; ok {
 		ui["query"] = raw
-	} else if creating {
-		ui["query"] = ""
 	}
 	if raw, ok := in["sharePermissions"]; ok {
 		if ui["shares"], err = s.filterShares(ctx, raw); err != nil {
@@ -476,7 +474,8 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 		err = s.uiCall(r, s.createFilter, http.MethodPost, "/api/filters", nil, ui, &saved)
 	} else {
 		id := r.PathValue("id")
-		if _, perr := strconv.ParseInt(id, 10, 64); perr != nil {
+		// loadFilters reads id 0 as "every filter", so 0 must not get that far.
+		if n, perr := strconv.ParseInt(id, 10, 64); perr != nil || n <= 0 {
 			return errNotFound
 		}
 		err = s.uiCall(r, s.updateFilter, http.MethodPatch, "/api/filters/"+id, map[string]string{"id": id}, ui, &saved)
