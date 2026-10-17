@@ -208,7 +208,7 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 	}
 	ipKey := "forgot-ip:" + clientIP(r, s.proxies)
 	if d := s.limiter.Locked(ipKey); d > 0 {
-		return failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return tooManyAttempts(d)
 	}
 	// Every request counts, whatever it finds.
 	s.limiter.Failure(ipKey)
@@ -280,7 +280,7 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 func (s *Server) linkGuard(r *http.Request) (key string, err error) {
 	key = "reset-ip:" + clientIP(r, s.proxies)
 	if d := s.limiter.Locked(key); d > 0 {
-		return key, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return key, tooManyAttempts(d)
 	}
 	return key, nil
 }

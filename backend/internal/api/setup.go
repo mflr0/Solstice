@@ -281,7 +281,7 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 	}
 	key := "setup:" + clientIP(r, w.proxies)
 	if d := w.limiter.Locked(key); d > 0 {
-		return failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return tooManyAttempts(d)
 	}
 	typed := strings.Map(func(c rune) rune {
 		if c == '-' || c == ' ' {

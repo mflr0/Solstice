@@ -256,6 +256,7 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 type restError struct {
 	ErrorMessages []string          `json:"errorMessages"`
 	Errors        map[string]string `json:"errors"`
+	RetryAfter    int               `json:"retryAfter,omitempty"`
 }
 
 func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
@@ -270,6 +271,10 @@ func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 		body.Errors[field] = msg
 	} else {
 		body.ErrorMessages = append(body.ErrorMessages, msg)
+	}
+	if he.retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(he.retry))
+		body.RetryAfter = he.retry
 	}
 	writeJSON(w, he.status, body)
 }

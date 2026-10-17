@@ -11,8 +11,10 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/netip"
+	"strconv"
 	"sync"
 	"time"
 
@@ -232,6 +234,7 @@ type httpError struct {
 	status int
 	msg    i18n.Message
 	extra  map[string]any // more fields for the JSON answer
+	retry  int            // seconds to wait, for a 429: Retry-After and "retryAfter"
 }
 
 func (e *httpError) Error() string { return e.msg.String() }
@@ -242,6 +245,13 @@ func fail(status int, key i18n.Key) error { return &httpError{status: status, ms
 
 func failf(status int, key i18n.Key, args ...any) error {
 	return &httpError{status: status, msg: i18n.M(key, args...)}
+}
+
+// tooManyAttempts is the 429 answer for a locked-out client: the wait is
+// rounded up to whole seconds.
+func tooManyAttempts(wait time.Duration) error {
+	secs := int(math.Ceil(wait.Seconds()))
+	return &httpError{status: http.StatusTooManyRequests, msg: i18n.M(i18n.RequestTooManyAttempts, secs), retry: secs}
 }
 
 var (
@@ -296,7 +306,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
 	userKey, ipKey := s.throttleKeys(r, username)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
-		return nil, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return nil, tooManyAttempts(d)
 	}
 	release, err := s.limiter.Acquire(r.Context())
 	if err != nil {
@@ -374,6 +384,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {
 		body[k] = v
+	}
+	if he.retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(he.retry))
+		body["retryAfter"] = he.retry
 	}
 	writeJSON(w, he.status, body)
 }
