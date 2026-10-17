@@ -678,6 +678,32 @@ export const hi: Messages = {
     cloneLinks: 'लिंक कॉपी करें',
     cloneAttachments: 'अटैचमेंट कॉपी करें',
     cloneSubmit: 'क्लोन करें',
+    move: 'स्थानांतरित करें',
+    moveTitle: (key: string) => `${key} स्थानांतरित करें`,
+    moveProjectHint:
+      'टिकट को उस प्रोजेक्ट में नई कुंजी मिलती है; पुरानी कुंजी भी काम करती रहती है।',
+    moveChoicesHint: (project: string) =>
+      `${project} में वह सब नहीं है जो यह टिकट इस्तेमाल करता है। चुनें कि वहाँ यह क्या बनेगा।`,
+    moveSubtaskType: 'सब-टास्क प्रकार',
+    moveStatus: 'स्टेटस',
+    moveAffectsVersions: 'प्रभावित वर्ज़न',
+    moveUnmatched: (names: string) => `नए प्रोजेक्ट में कोई मेल नहीं: ${names}।`,
+    moveNext: 'आगे',
+    moveBack: 'वापस',
+    moveSubmit: 'स्थानांतरित करें',
+    moveSummary: (key: string, project: string) =>
+      `${key} अपने सब-टास्क के साथ ${project} में जाएगा और उसे नई कुंजी मिलेगी। पुरानी कुंजी फिर भी इसी तक पहुँचाएगी।`,
+    moveDropped: (names: string) =>
+      `नया प्रोजेक्ट इन फ़ील्ड का इस्तेमाल नहीं करता, इसलिए इनके मान हटा दिए जाएँगे: ${names}।`,
+    moveSprints: (names: string) => `यह खुले स्प्रिंट छोड़ देगा: ${names}।`,
+    moveSubtasks: (n: number) => `${plural(n, 'सब-टास्क', 'सब-टास्क')} साथ में जाएँगे।`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'सब-टास्क', 'सब-टास्क')} नए वर्कफ़्लो के पहले स्टेटस से फिर शुरू होंगे।`,
+    moveSubtasksLost: (n: number) =>
+      `सब-टास्क के ${plural(n, 'कंपोनेंट या वर्ज़न', 'कंपोनेंट और वर्ज़न')} का कोई मेल नहीं है और उन्हें हटा दिया जाएगा।`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} को नए प्रोजेक्ट में असाइन नहीं किया जा सकता: असाइनी ${to} हो जाएगा।`,
+    moveNoProject: 'इसे ले जाने के लिए कोई दूसरा प्रोजेक्ट नहीं है।',
   },
 
   comments: {

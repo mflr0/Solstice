@@ -675,6 +675,31 @@ export const en = {
     cloneLinks: 'Copy the links',
     cloneAttachments: 'Copy the attachments',
     cloneSubmit: 'Clone',
+    move: 'Move',
+    moveTitle: (key: string) => `Move ${key}`,
+    moveProjectHint: 'The issue gets a new key in that project; the old key keeps working.',
+    moveChoicesHint: (project: string) =>
+      `${project} lacks some of what this issue uses. Choose what it becomes there.`,
+    moveSubtaskType: 'Sub-task type',
+    moveStatus: 'Status',
+    moveAffectsVersions: 'Affects version',
+    moveUnmatched: (names: string) => `No match in the new project: ${names}.`,
+    moveNext: 'Next',
+    moveBack: 'Back',
+    moveSubmit: 'Move',
+    moveSummary: (key: string, project: string) =>
+      `${key} will move to ${project} with its sub-tasks and get a new key. The old key will still lead to it.`,
+    moveDropped: (names: string) =>
+      `The new project doesn’t use these fields, so their values are dropped: ${names}.`,
+    moveSprints: (names: string) => `It leaves the open sprints: ${names}.`,
+    moveSubtasks: (n: number) => `${plural(n, 'sub-task', 'sub-tasks')} will move with it.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'sub-task', 'sub-tasks')} will start again at the first status of the new workflow.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'component or version', 'components and versions')} of the sub-tasks have no match and are dropped.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} can’t be assigned in the new project: the assignee becomes ${to}.`,
+    moveNoProject: 'There is no other project to move it to.',
   },
 
   comments: {

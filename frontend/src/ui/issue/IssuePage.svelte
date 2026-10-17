@@ -33,6 +33,7 @@
   import Fiche from './Fiche.svelte';
   import History from './History.svelte';
   import Links from './Links.svelte';
+  import MoveDialog from './MoveDialog.svelte';
   import StatusControl from './StatusControl.svelte';
   import Worklogs from './Worklogs.svelte';
 
@@ -64,6 +65,9 @@
   let menuOpen = $state(false);
   let deleteArmed = $state(false);
   let cloneOpen = $state(false);
+  let moveOpen = $state(false);
+  // A sub-task moves with its parent.
+  const canMove = $derived(!!issue?.can.edit && !issue.parent);
 
   async function load(key: string) {
     try {
@@ -294,7 +298,7 @@
             {issue.votes.me ? t.issue.voted : t.issue.vote}
             <span class="n">{issue.votes.count}</span>
           </button>
-          {#if issue.can.create || issue.can.delete}
+          {#if issue.can.create || issue.can.delete || canMove}
             <span class="more" use:outside={() => ((menuOpen = false), (deleteArmed = false))}>
               <button
                 class="btn btn-small btn-quiet"
@@ -311,6 +315,13 @@
                       role="menuitem"
                       onclick={() => ((cloneOpen = true), (menuOpen = false))}
                       >{t.issue.clone}</button
+                    >
+                  {/if}
+                  {#if canMove}
+                    <button
+                      class="item"
+                      role="menuitem"
+                      onclick={() => ((moveOpen = true), (menuOpen = false))}>{t.issue.move}</button
                     >
                   {/if}
                   {#if issue.can.delete}
@@ -459,6 +470,7 @@
     </div>
   </article>
   <CloneDialog open={cloneOpen} issueKey={issue.key} onclose={() => (cloneOpen = false)} />
+  <MoveDialog open={moveOpen} {issue} onclose={() => (moveOpen = false)} />
 {/if}
 
 <style>

@@ -10,6 +10,7 @@ import type {
   Grant,
   HiddenIssue,
   HistoryEntry,
+  IdName,
   IssueDetail,
   IssuePage,
   Me,
@@ -22,6 +23,7 @@ import type {
   Refs,
   StatusCategory,
   StatusRef,
+  TypeRef,
   UserRef,
   Worklog,
   WorklogPatch,
@@ -47,6 +49,41 @@ import type {
 } from '../core/board-types.js';
 import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
+
+/** What an issue has with no same-named match in the project it moves to, and what that offers. */
+export interface MoveParts {
+  unmatched: IdName[];
+  options: IdName[];
+}
+
+/** The dry run of a move: what is still to choose, and what the move drops or changes. */
+export interface MoveCheck {
+  ready: boolean;
+  missing: string[];
+  types?: TypeRef[];
+  subtaskTypes?: TypeRef[];
+  statuses?: StatusRef[];
+  components?: MoveParts;
+  affectsVersions?: MoveParts;
+  fixVersions?: MoveParts;
+  securityLevel?: MoveParts;
+  droppedFields: string[];
+  sprints: string[];
+  assignee?: { from: UserRef | null; to: UserRef | null };
+  subtasks: { count: number; reset: number; lost: number };
+}
+
+/** The choices a move can be given; a list replaces the whole list the issue ends with. */
+export interface MoveChoices {
+  type?: string;
+  subtaskType?: string;
+  status?: string;
+  components?: number[];
+  affectsVersions?: number[];
+  fixVersions?: number[];
+  /** A level of the new project, or null for none. */
+  securityLevel?: number | null;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -205,6 +242,16 @@ export const api = {
     },
   ) =>
     request<{ key: string; warnings: string[] }>('POST', `/api/issues/${enc(key)}/clone`, options),
+  /** What the target project lacks for the issue (a dry run), given the choices made so far. */
+  checkMove: (key: string, project: string, choices: MoveChoices) =>
+    request<MoveCheck>('POST', `/api/issues/${enc(key)}/move`, {
+      project,
+      check: true,
+      ...choices,
+    }),
+  /** Moves the issue (and its sub-tasks) to another project; answers its new key. */
+  moveIssue: (key: string, project: string, choices: MoveChoices) =>
+    request<{ key: string }>('POST', `/api/issues/${enc(key)}/move`, { project, ...choices }),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>

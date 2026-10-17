@@ -677,6 +677,33 @@ export const it: Messages = {
     cloneLinks: 'Copia i collegamenti',
     cloneAttachments: 'Copia gli allegati',
     cloneSubmit: 'Clona',
+    move: 'Sposta',
+    moveTitle: (key: string) => `Sposta ${key}`,
+    moveProjectHint:
+      'Il ticket riceve una nuova chiave in quel progetto; la vecchia chiave continua a funzionare.',
+    moveChoicesHint: (project: string) =>
+      `${project} non ha tutto ciò che questo ticket usa. Scegli cosa diventa lì.`,
+    moveSubtaskType: 'Tipo di sotto-task',
+    moveStatus: 'Stato',
+    moveAffectsVersions: 'Versione interessata',
+    moveUnmatched: (names: string) => `Nessuna corrispondenza nel nuovo progetto: ${names}.`,
+    moveNext: 'Avanti',
+    moveBack: 'Indietro',
+    moveSubmit: 'Sposta',
+    moveSummary: (key: string, project: string) =>
+      `${key} passerà a ${project} con i suoi sotto-task e riceverà una nuova chiave. La vecchia chiave continuerà a portarci.`,
+    moveDropped: (names: string) =>
+      `Il nuovo progetto non usa questi campi, i loro valori vengono eliminati: ${names}.`,
+    moveSprints: (names: string) => `Lascia gli sprint aperti: ${names}.`,
+    moveSubtasks: (n: number) =>
+      `${plural(n, 'sotto-task', 'sotto-task')} verranno spostati insieme.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'sotto-task', 'sotto-task')} ripartiranno dal primo stato del nuovo workflow.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'componente o versione', 'componenti e versioni')} dei sotto-task non hanno corrispondenza e vengono eliminati.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} non può essere assegnatario nel nuovo progetto: l’assegnatario diventa ${to}.`,
+    moveNoProject: 'Non c’è un altro progetto in cui spostarlo.',
   },
 
   comments: {

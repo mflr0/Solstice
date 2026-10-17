@@ -679,6 +679,32 @@ export const fr: Messages = {
     cloneLinks: 'Copier les liens',
     cloneAttachments: 'Copier les pièces jointes',
     cloneSubmit: 'Cloner',
+    move: 'Déplacer',
+    moveTitle: (key: string) => `Déplacer ${key}`,
+    moveProjectHint:
+      'Le ticket reçoit une nouvelle clé dans ce projet ; l’ancienne clé continue de fonctionner.',
+    moveChoicesHint: (project: string) =>
+      `${project} n’a pas tout ce que ce ticket utilise. Choisissez ce qu’il devient là-bas.`,
+    moveSubtaskType: 'Type de sous-tâche',
+    moveStatus: 'Statut',
+    moveAffectsVersions: 'Version affectée',
+    moveUnmatched: (names: string) => `Sans équivalent dans le nouveau projet : ${names}.`,
+    moveNext: 'Suivant',
+    moveBack: 'Retour',
+    moveSubmit: 'Déplacer',
+    moveSummary: (key: string, project: string) =>
+      `${key} va passer dans ${project} avec ses sous-tâches et recevoir une nouvelle clé. L’ancienne clé y mènera toujours.`,
+    moveDropped: (names: string) =>
+      `Le nouveau projet n’utilise pas ces champs, leurs valeurs sont supprimées : ${names}.`,
+    moveSprints: (names: string) => `Il quitte les sprints ouverts : ${names}.`,
+    moveSubtasks: (n: number) => `${plural(n, 'sous-tâche', 'sous-tâches')} suivront.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'sous-tâche', 'sous-tâches')} repartiront du premier statut du nouveau workflow.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'composant ou version', 'composants et versions')} des sous-tâches n’ont pas d’équivalent et sont supprimés.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} ne peut pas être responsable dans le nouveau projet : le responsable devient ${to}.`,
+    moveNoProject: 'Il n’y a pas d’autre projet où le déplacer.',
   },
 
   comments: {

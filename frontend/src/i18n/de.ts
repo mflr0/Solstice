@@ -684,6 +684,33 @@ export const de: Messages = {
     cloneLinks: 'Verknüpfungen kopieren',
     cloneAttachments: 'Anhänge kopieren',
     cloneSubmit: 'Klonen',
+    move: 'Verschieben',
+    moveTitle: (key: string) => `${key} verschieben`,
+    moveProjectHint:
+      'Der Vorgang erhält in diesem Projekt einen neuen Schlüssel; der alte Schlüssel funktioniert weiter.',
+    moveChoicesHint: (project: string) =>
+      `${project} hat nicht alles, was dieser Vorgang nutzt. Wählen Sie, was daraus dort wird.`,
+    moveSubtaskType: 'Typ der Unteraufgabe',
+    moveStatus: 'Status',
+    moveAffectsVersions: 'Betroffene Version',
+    moveUnmatched: (names: string) => `Keine Entsprechung im neuen Projekt: ${names}.`,
+    moveNext: 'Weiter',
+    moveBack: 'Zurück',
+    moveSubmit: 'Verschieben',
+    moveSummary: (key: string, project: string) =>
+      `${key} wird mit seinen Unteraufgaben nach ${project} verschoben und erhält einen neuen Schlüssel. Der alte Schlüssel führt weiterhin dorthin.`,
+    moveDropped: (names: string) =>
+      `Das neue Projekt nutzt diese Felder nicht, ihre Werte werden entfernt: ${names}.`,
+    moveSprints: (names: string) => `Er verlässt die offenen Sprints: ${names}.`,
+    moveSubtasks: (n: number) =>
+      `${plural(n, 'Unteraufgabe', 'Unteraufgaben')} werden mitverschoben.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'Unteraufgabe', 'Unteraufgaben')} beginnen beim ersten Status des neuen Workflows von vorn.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'Komponente oder Version', 'Komponenten und Versionen')} der Unteraufgaben haben keine Entsprechung und werden entfernt.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} kann im neuen Projekt nicht zugewiesen werden: Bearbeiter wird ${to}.`,
+    moveNoProject: 'Es gibt kein anderes Projekt, in das er verschoben werden könnte.',
   },
 
   comments: {
