@@ -36,8 +36,9 @@ type MessySummary struct {
 	MovedIssues   int `json:"moved_issues"`   // issues moved to another project
 	DuplicateKeys int `json:"duplicate_keys"` // an old issue key given to a second issue
 
-	MisfitFieldValues int `json:"misfit_field_values"` // values in the column of the field's former type
-	OddTexts          int `json:"odd_texts"`
+	MisfitFieldValues int   `json:"misfit_field_values"` // values in the column of the field's former type
+	MisfitFieldIDs    []int `json:"misfit_field_ids"`    // the fields they belong to, in order
+	OddTexts          int   `json:"odd_texts"`
 
 	OrphanChangeItems    int `json:"orphan_change_items"`
 	OrphanWorklogs       int `json:"orphan_worklogs"`
@@ -45,6 +46,12 @@ type MessySummary struct {
 	OrphanIssueLinks     int `json:"orphan_issue_links"`
 	OrphanComponentLinks int `json:"orphan_component_links"`
 	OrphanMovedKeys      int `json:"orphan_moved_keys"`
+}
+
+func (m *MessySummary) addMisfitField(id int) {
+	if !slices.Contains(m.MisfitFieldIDs, id) {
+		m.MisfitFieldIDs = append(m.MisfitFieldIDs, id)
+	}
 }
 
 func (g *generator) seedMessy() {
@@ -314,6 +321,7 @@ func (g *generator) messyFieldTypeChange() {
 			values.Add(id, is.id, int64(cfLegacyNumber), nil, nil, fmt.Sprintf("CLI-%04d", g.rng.IntN(10000)), nil,
 				nil, nil, nil)
 			m.MisfitFieldValues++
+			m.addMisfitField(cfLegacyNumber)
 			continue
 		case 2: // text entered since the change
 			values.Add(id, is.id, int64(cfLegacyText), nil, nil, fmt.Sprintf("REC-%03d", g.rng.IntN(1000)), nil, nil,
@@ -322,6 +330,7 @@ func (g *generator) messyFieldTypeChange() {
 			values.Add(id, is.id, int64(cfLegacyText), nil, nil, nil, nil, nil,
 				g.midnight(is.created).AddDate(0, 0, 10+g.rng.IntN(60)), nil)
 			m.MisfitFieldValues++
+			m.addMisfitField(cfLegacyText)
 			continue
 		}
 		g.sum.CustomFieldValues++

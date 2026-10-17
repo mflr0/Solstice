@@ -121,6 +121,7 @@ if [ -n "$messy" ]; then
     if python3 -I -c "import json,sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1]))['warnings'] else 1)" \
       "$work/report-pg.json" "$2"; then echo "  ok    $1"; else echo "  ÉCHEC $1 : \"$2\" absent"; fail=1; fi
   }
+  fields() { python3 -I -c "import json,sys; print(', '.join(map(str, json.load(open(sys.argv[1]))['messy']['misfit_field_ids'])))" "$work/fixture-pg.json"; }
   many() { if [ "$1" = 1 ]; then echo "1 $2"; else echo "$1 $3"; fi; } # count, singular, plural
   check "mêmes avertissements sur PostgreSQL et MySQL" \
     "$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))['warnings'])" "$work/report-pg.json")" \
@@ -141,7 +142,7 @@ if [ -n "$messy" ]; then
   warned "observateurs et votes d'un utilisateur inconnu" \
     "$(many "$(expect_messy ghost_watches)" "watch or vote" "watches or votes") of an unknown user or a missing issue, not imported"
   warned "valeurs d'un ancien type de champ" \
-    "$(many "$(expect_messy misfit_field_values)" value values) stored for a former type of their custom field, not imported (fields 10114, 10115)"
+    "$(many "$(expect_messy misfit_field_values)" value values) stored for a former type of their custom field, not imported (fields $(fields))"
   echo "  avertissements du rapport :"
   python3 -I -c "import json,sys; [print('    -', w) for w in json.load(open(sys.argv[1]))['warnings']]" "$work/report-pg.json"
 fi

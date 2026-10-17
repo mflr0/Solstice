@@ -102,3 +102,13 @@ func TestUpdateSQL(t *testing.T) {
 		t.Errorf("mysql: %s", q)
 	}
 }
+
+func TestAddMisfitField(t *testing.T) {
+	m := &MessySummary{}
+	m.addMisfitField(cfLegacyNumber)
+	m.addMisfitField(cfLegacyText)
+	m.addMisfitField(cfLegacyNumber)
+	if want := []int{cfLegacyNumber, cfLegacyText}; !reflect.DeepEqual(m.MisfitFieldIDs, want) {
+		t.Errorf("misfit fields = %v, want %v", m.MisfitFieldIDs, want)
+	}
+}
