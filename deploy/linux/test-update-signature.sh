@@ -89,7 +89,52 @@ expect_refused "embedded key that is not Ed25519 refused" verify_signature "$tmp
 release_pubkey='not a key'
 expect_refused "unreadable embedded key refused" verify_signature "$tmp/SHA256SUMS" "$tmp/SHA256SUMS.sig"
 
-# 3. scripts/release.sh refuses to run without a usable private key, before
+# 3. The tls option of SOLSTICE_DB_URL: update.sh reads it for the database
+#    backup and refuses a value the server would not accept.
+sed -n '/^conf_value() {/,/^}/p' "$update" >"$tmp/db.sh"
+sed -n '/^read_db_tls() {/,/^}/p' "$update" >>"$tmp/db.sh"
+if [ ! -s "$tmp/db.sh" ]; then
+  echo "no database URL functions found in update.sh"
+  exit 1
+fi
+# shellcheck disable=SC1091
+conf=$tmp/solstice.conf
+. "$tmp/db.sh"
+
+tls_got=
+tls_status=0
+read_tls() {
+  printf 'SOLSTICE_DB_URL=%s\n' "$1" >"$conf"
+  tls_status=0
+  tls_got=$(read_db_tls) || tls_status=$?
+}
+# expect_tls NAME URL EXPECTED: EXPECTED is the value read_db_tls prints, or
+# the word refused when it must fail.
+expect_tls() {
+  read_tls "$2"
+  case $3 in
+    refused)
+      if [ "$tls_status" -ne 0 ]; then pass "$1"; else fail "$1 (accepted)"; fi
+      ;;
+    *)
+      if [ "$tls_status" -eq 0 ] && [ "$tls_got" = "$3" ]; then pass "$1"; else
+        fail "$1 (status $tls_status, value '$tls_got')"
+      fi
+      ;;
+  esac
+}
+
+expect_tls "a URL without tls reads as empty" "mysql://solstice:secret@db.example.org:3306/solstice" ""
+expect_tls "tls=false is read" "mysql://solstice:secret@db.example.org:3306/solstice?tls=false" "false"
+expect_tls "tls=true is read" "mariadb://solstice:secret@db/solstice?tls=true" "true"
+expect_tls "tls=skip-verify is read" "mysql://solstice:secret@db/solstice?tls=skip-verify" "skip-verify"
+expect_tls "tls=preferred is read" "mysql://solstice:secret@db/solstice?tls=preferred" "preferred"
+expect_tls "tls among other options is read" \
+  "mysql://solstice:secret@db/solstice?charset=utf8mb4&tls=true" "true"
+expect_tls "an unknown tls value is refused" "mysql://solstice:secret@db/solstice?tls=sometimes" refused
+expect_tls "an empty tls value is refused" "mysql://solstice:secret@db/solstice?tls=" refused
+
+# 4. scripts/release.sh refuses to run without a usable private key, before
 #    it builds or deletes anything.
 expect_refused "release.sh without SOLSTICE_RELEASE_KEY refuses" env -u SOLSTICE_RELEASE_KEY sh "$release" 0.0.0
 expect_refused "release.sh with a missing key file refuses" env SOLSTICE_RELEASE_KEY="$tmp/absent.pem" sh "$release" 0.0.0
