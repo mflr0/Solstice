@@ -144,6 +144,8 @@ export const hi: Messages = {
     modes: { system: 'सिस्टम', light: 'लाइट', dark: 'डार्क' },
     language: 'भाषा',
     logout: 'साइन आउट करें',
+    sourceCode: 'सोर्स कोड',
+    licenses: 'लाइसेंस',
     live: 'लाइव अपडेट',
     offline: 'ऑफ़लाइन: पेज अब अपने-आप अपडेट नहीं होते',
   },

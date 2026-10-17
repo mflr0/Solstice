@@ -146,6 +146,8 @@ export const de: Messages = {
     modes: { system: 'System', light: 'Hell', dark: 'Dunkel' },
     language: 'Sprache',
     logout: 'Abmelden',
+    sourceCode: 'Quellcode',
+    licenses: 'Lizenzen',
     live: 'Live-Aktualisierung',
     offline: 'Offline: Seiten aktualisieren sich nicht mehr von selbst',
   },

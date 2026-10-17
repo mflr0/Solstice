@@ -140,6 +140,8 @@ export const fr: Messages = {
     modes: { system: 'système', light: 'clair', dark: 'sombre' },
     language: 'Langue',
     logout: 'Se déconnecter',
+    sourceCode: 'Code source',
+    licenses: 'Licences',
     live: 'Mises à jour en direct',
     offline: 'Hors ligne : les pages ne se mettent plus à jour seules',
   },
