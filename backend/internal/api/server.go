@@ -370,6 +370,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	if !errors.As(err, &he) {
 		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
 	}
+	// Refused: leave a trace at Warn, capped per address (refused.go).
+	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
+		refused.logRefused(r, he.status)
+	}
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {
 		body[k] = v
