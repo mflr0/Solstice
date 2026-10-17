@@ -1,6 +1,6 @@
 # Solstice: what remains
 
-Status on 2026-10-16. Work happens on `feat/v1.0` (CI green: vet, staticcheck,
+Status on 2026-10-17. Work happens on `feat/v1.0` (CI green: vet, staticcheck,
 gosec and tests for the server; format, lint, tests and build for the
 interface). `main` is protected (pull request and green CI required, no force
 push) and has not been merged yet: it still holds the first version plus the
@@ -10,8 +10,11 @@ current README, code of conduct and license, and it does not compile. Merging
 ## Working conventions
 
 - Commits: plain messages, no `Co-Authored-By` line.
+- Every change goes on a `v1.0/<topic>` branch and a pull request to
+  `feat/v1.0`; the maintainer merges by hand.
 - Data: tests and agents use only the synthetic data of
   `backend/cmd/jira-fixture`, never real data (rule 6 of CODE_OF_CONDUCT.md).
+- Integration tests live in `backend/tests`.
 - Legal: no code, assets, fonts or styles from Atlassian or Microsoft, and no
   brand names in themes. Jira is named only for migration, API compatibility
   and the trademark note.
@@ -30,7 +33,7 @@ current README, code of conduct and license, and it does not compile. Merging
 ## Remaining for 1.0, in order
 
 The goal of 1.0 is to be the safest way to leave Jira, not to match its
-features (see `ROADMAP.md`). The release waits for items 8 and 9.
+features (see `ROADMAP.md`). The release waits for items 7 and 8.
 
 1. Check the administration end to end against
    `backend/internal/api/ADMIN_API.md`. It was written by agents that were
@@ -48,34 +51,31 @@ features (see `ROADMAP.md`). The release waits for items 8 and 9.
 4. Meaning review of the interface translations (about 520 texts per
    language) with a strong model; three Hindi link labels ("is blocked by"…)
    need a native speaker.
-5. The setup wizard catalogue (`frontend/src/i18n/setup/`) still has French
-   as its source: switch it to English like the rest.
-6. AGPL: a "Source code" link in the interface. Third-party notices: the
+5. AGPL: a "Source code" link in the interface. Third-party notices: the
    fonts (OFL-1.1) ship with the application and their license must come
    with them.
-7. Documentation in English and French: installation, administration,
+6. Documentation in English and French: installation, administration,
    backups and restore, upgrades, reverse proxy (examples in
    `deploy/proxy/`), REST API, `SECURITY.md`, and a migration guide (dry
    run, parallel run, cutover, rollback, keeping the domain name so
    `/browse/KEY-1` links keep working). A contact address for conduct
    reports in CODE_OF_CONDUCT.md.
-8. Jira audit without migrating: `solstice import -check` reads a Jira
+7. Jira audit without migrating: `solstice import -check` reads a Jira
     database and writes the full report (counts, Jira version, plugins found
     in `AO_*` tables, unsupported custom field types, inactive users, what
     would be lost) without writing anything. With `-anonymous`, the report
     holds no content at all (counts, schema shapes, errors only), so anyone
     can attach it to an issue.
-9. Jira versions and messy data: `jira-fixture` generates databases for
+8. Jira versions and messy data: `jira-fixture` generates databases for
     every major Jira version whose distribution can be downloaded (7.x to
     the latest), each read from its own entity model, with the quirks of old
     instances: deleted users still in history, renamed projects, moved
     issues, custom fields whose type changed, odd encodings, orphan rows.
     `scripts/e2e-import.sh` runs the import against each version.
-10. Every admin object reachable from the menus: a Projects page in the
-    administration (list, create, archive, open the project settings), and
-    a pass over the whole interface for pages that exist but have no menu
-    entry or link to them.
-11. Release: privacy audit of the whole history, pull request from
+9. Every admin object reachable from the menus: the Updates page exists
+    (`frontend/src/ui/admin/UpdatesPage.svelte`) and is linked from the
+    administration, but no route matches `/admin/updates`.
+10. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
 
@@ -85,8 +85,8 @@ No critical or high finding. The review of the access control, injection,
 cryptography, configuration and logging paths found nothing exploitable
 without an account. Remaining hardening, none of it blocking:
 
-- Audit more events: issue deletion, CSV export, lockouts and rejected tokens (also as `slog` lines); a minimum
-  retention for the audit log.
+- Audit more events: issue deletion, CSV export, lockouts and rejected
+  tokens (also as `slog` lines).
 - Supply chain: pin the CI tools (`staticcheck`, `gosec`), the GitHub actions
   (by commit) and the base images (by digest); add Dependabot, `govulncheck`,
   `pnpm audit` and a `SECURITY.md`. Releases are signed: before the first
@@ -95,8 +95,6 @@ without an account. Remaining hardening, none of it blocking:
   update helper refuses every update.
 - Warn when the setup wizard is reached over plain HTTP; the database backup
   of `update.sh` ignores `?tls=`.
-- Password and sessions: change a password and end the other sessions in one
-  transaction; revoke API tokens when an account is deactivated or reset.
 - Resource limits: a quota for attachments, a cap on live-event streams, a
   read timeout on request bodies, `recover` in the background workers.
 - Smaller items are tracked outside this file until fixed.
@@ -144,9 +142,6 @@ projects), after item 2 above, starting with an issue.
 - Theme gallery previews: long labels overflow (Italian "Assegnatario"
   overlaps the avatar in the Terminal and Plan previews).
 - Terminal theme in Hindi: monospaced spaces look wide.
-- Time estimates (original and remaining) cannot be set: neither
-  `/api/issues` nor `/rest/api/2/issue` (`timetracking`) accepts them, so the
-  "time" estimate of boards always shows nothing.
 - `secureRequest` (cookie `Secure` flag) and `restOut` in `rest.go` still
   believe `X-Forwarded-Proto` from any client; gate them on
   `SOLSTICE_TRUSTED_PROXIES` without dropping `Secure` on existing proxied
@@ -154,18 +149,15 @@ projects), after item 2 above, starting with an issue.
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
 - The import report and warnings are in English only (not translated).
-- `internal/api/issues.go:1338` ignores the error of reading the `type` field.
+- `internal/api/issues.go:1320` ignores the error of reading the `type` field.
 - Boards: no backlog column on Kanban boards; drag and drop does not work by
   touch (the card menu is used on phones); swimlane collapse buttons come late
-  in the tab order; sprints cannot be edited before they start nor deleted (no route deletes
-  a sprint, and deleting a board leaves its sprints with no board);
-  completing a sprint cannot create the next one.
+  in the tab order; deleting a board leaves its sprints with no board.
 - Editor: a `[` inside monospace text, in a table cell that is not the last of
   its row, cannot be typed.
 - REST API not implemented: createmeta and editmeta, issue picker, remote
-  links, editing or deleting work logs, changing the reporter, time tracking
-  writes, `/rest/auth/1/session`, groups, create/update/delete of versions,
-  components, filters and sprints.
+  links, `/rest/auth/1/session`, groups, create/update/delete of versions,
+  components and filters.
 
 ## 1.1
 
