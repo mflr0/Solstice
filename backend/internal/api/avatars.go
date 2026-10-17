@@ -12,16 +12,20 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html"
 	"image"
 	"image/png"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	_ "image/jpeg" // registers the JPEG decoder
 )
@@ -173,6 +177,37 @@ func (s *Server) adminDeleteAvatar(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
+// initialsOf is the letters shown for a name, as initials() in
+// frontend/src/core/marks.ts finds them: "Marie Durand" is "MD", "admin" is "AD".
+func initialsOf(name string) string {
+	words := strings.FieldsFunc(name, func(r rune) bool { return unicode.IsSpace(r) || r == '.' || r == '_' || r == '-' })
+	words = slices.DeleteFunc(words, func(w string) bool {
+		return !strings.ContainsFunc(w, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsNumber(r) })
+	})
+	switch len(words) {
+	case 0:
+		return "?"
+	case 1:
+		rs := []rune(words[0])
+		return strings.ToUpper(string(rs[:min(2, len(rs))]))
+	}
+	first, last := []rune(words[0]), []rune(words[len(words)-1])
+	return strings.ToUpper(string(first[:1]) + string(last[:1]))
+}
+
+// initialsSVG draws initials like the interface does where a person has no
+// picture: the same colours, font and proportions as a person's mark, whose
+// box (18 units inside its border) the picture fills. The dark colours follow
+// the system's setting, the only one an image can see.
+func initialsSVG(r *http.Request, name string) []byte {
+	size := avatarSize(r)
+	return fmt.Appendf(nil, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 18 18">`+
+		`<style>@media (prefers-color-scheme: dark) { rect { fill: #22211d } text { fill: #c4beb0 } }</style>`+
+		`<rect width="18" height="18" fill="#faf8f3"/><text x="9" y="9" dy=".35em" text-anchor="middle" `+
+		`font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9.5" font-weight="500" `+
+		`letter-spacing=".02em" fill="#4a4740">%s</text></svg>`, size, size, html.EscapeString(initialsOf(name)))
+}
+
 // serveAvatar answers with an avatar that the browser may keep but must check
 // with the server before showing, so a change is seen at once. The ETag lets
 // the check end in a 304.
@@ -192,9 +227,8 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var username, name string
-	err = s.db.QueryRowContext(r.Context(), `SELECT username, display_name FROM users WHERE id = ?`, id).
-		Scan(&username, &name)
+	var name string
+	err = s.db.QueryRowContext(r.Context(), `SELECT display_name FROM users WHERE id = ?`, id).Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	}
@@ -203,7 +237,7 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	}
 	f, err := os.Open(s.avatarPath(id))
 	if errors.Is(err, os.ErrNotExist) {
-		svg := avatarSVG(r, username, name)
+		svg := initialsSVG(r, name)
 		sum := sha256.Sum256(svg)
 		serveAvatar(w, r, "image/svg+xml", `"`+hex.EncodeToString(sum[:16])+`"`, bytes.NewReader(svg))
 		return nil

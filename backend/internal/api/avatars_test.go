@@ -10,6 +10,8 @@ import (
 	"image/jpeg"
 	"image/png"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -130,6 +132,34 @@ func TestReencodeAvatarRefusals(t *testing.T) {
 		}
 		if got := statusOf(t, err); got != c.want {
 			t.Errorf("%s: status %d, want %d", name, got, c.want)
+		}
+	}
+}
+
+// The same cases as initials() in the interface, so a person's letters do not
+// change when their picture is removed.
+func TestInitialsOf(t *testing.T) {
+	for in, want := range map[string]string{
+		"Marie Durand":               "MD",
+		"Jean-Pierre de la Fontaine": "JF",
+		"admin":                      "AD",
+		"marie.durand":               "MD",
+		"élodie":                     "ÉL",
+		"":                           "?",
+		" - ":                        "?",
+	} {
+		if got := initialsOf(in); got != want {
+			t.Errorf("initialsOf(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestInitialsSVG(t *testing.T) {
+	req := httptest.NewRequest("GET", "/api/avatars/1?size=small", nil)
+	svg := string(initialsSVG(req, "Marie <Durand"))
+	for _, want := range []string{`width="24"`, `fill="#faf8f3"`, `fill="#4a4740"`, `font-size="9.5"`, `>M&lt;<`} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("missing %s in %s", want, svg)
 		}
 	}
 }

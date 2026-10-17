@@ -682,12 +682,17 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 // name.
 var avatarColours = []string{"#8a5a44", "#5f7a61", "#4f6d7a", "#7a6a4f", "#6d5a7a", "#7a4f5a", "#4f7a72", "#6b6b4f"}
 
+// avatarSize is the side, in pixels, a client asks for with ?size=.
+func avatarSize(r *http.Request) int {
+	if size := map[string]int{"xsmall": 16, "small": 24, "medium": 32}[r.URL.Query().Get("size")]; size != 0 {
+		return size
+	}
+	return 48
+}
+
 // avatarSVG draws the initials of label on a colour drawn from seed.
 func avatarSVG(r *http.Request, seed, label string) []byte {
-	size := map[string]int{"xsmall": 16, "small": 24, "medium": 32}[r.URL.Query().Get("size")]
-	if size == 0 {
-		size = 48
-	}
+	size := avatarSize(r)
 	var initials []rune
 	for word := range strings.FieldsSeq(label) {
 		if rs := []rune(word); len(rs) > 0 && len(initials) < 2 && (unicode.IsLetter(rs[0]) || unicode.IsDigit(rs[0])) {
