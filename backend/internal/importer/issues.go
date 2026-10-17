@@ -157,7 +157,17 @@ func (r *run) importIssues() error {
 	if err != nil {
 		return err
 	}
-	if n, _ := res.RowsAffected(); n > 0 {
+	n, _ := res.RowsAffected()
+	if r.check != nil { // nothing was updated: count the sub-tasks that would be
+		for child, parent := range parentOf {
+			if _, ok := r.issues[child]; ok {
+				if _, ok := r.issues[parent]; !ok {
+					n++
+				}
+			}
+		}
+	}
+	if n > 0 {
 		r.rep.warn("%s whose parent was not imported, now standalone",
 			plural(int(n), "sub-task", "sub-tasks"))
 	}
@@ -480,8 +490,10 @@ func (r *run) importCommentsAndWorklogs() error {
 
 func (r *run) importAttachments() error {
 	dir := filepath.Join(r.opt.DataDir, "attachments")
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return err
+	if r.check == nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return err
+		}
 	}
 	ins := r.inserter("attachments", "id", "issue_id", "author_id", "filename", "mime_type", "size", "created_at",
 		"file_missing")
@@ -510,6 +522,7 @@ func (r *run) importAttachments() error {
 		if !found {
 			missingFiles++
 		}
+		r.check.attachment(found)
 		at := now
 		if created.Valid {
 			at = created.Time.UTC()
@@ -556,7 +569,7 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 				filepath.Join(base, pk, bucket, issueKey, name),
 				filepath.Join(base, pk, issueKey, name),
 			} {
-				ok, err := copyFile(path, filepath.Join(dir, name))
+				ok, err := r.fetchFile(path, filepath.Join(dir, name))
 				if ok || err != nil {
 					return ok, err
 				}
@@ -564,6 +577,18 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+// fetchFile copies src to dst. A check copies nothing: it only looks.
+func (r *run) fetchFile(src, dst string) (bool, error) {
+	if r.check == nil {
+		return copyFile(src, dst)
+	}
+	_, err := os.Stat(src)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // copyFile copies src to dst through a temporary file. A missing src is not
@@ -632,6 +657,8 @@ func (r *run) importCustomFieldValues() error {
 			if num.Valid && r.hasIssue(sql.NullInt64{Int64: int64(num.Float64), Valid: true}) {
 				r.epicOf[issue.Int64] = int64(num.Float64)
 			}
+		case "gh-sprint":
+			r.check.sprintMember(issue.Int64, str, num)
 		case "userpicker", "multiuserpicker":
 			uid, ok := r.users[str.String]
 			if !ok {
@@ -683,6 +710,7 @@ func (r *run) importHistory() error {
 		if created.Valid {
 			at = created.Time.UTC()
 		}
+		r.check.changeGroup(id)
 		return groups.add(id, issue.Int64, authorID, at)
 	}); err != nil {
 		return err
@@ -694,6 +722,7 @@ func (r *run) importHistory() error {
 
 	items := r.inserter("change_items", "id", "group_id", "field_type", "field", "old_value", "old_string",
 		"new_value", "new_string")
+	r.check.sortChangeGroups()
 	if err := r.each(`SELECT id, groupid, fieldtype, field, oldvalue, oldstring, newvalue, newstring FROM changeitem`, func(rows *sql.Rows) error {
 		var id int64
 		var group sql.NullInt64
@@ -701,6 +730,7 @@ func (r *run) importHistory() error {
 		if err := rows.Scan(&id, &group, &fieldType, &field, &oldValue, &oldString, &newValue, &newString); err != nil {
 			return err
 		}
+		r.check.changeItem(group.Int64)
 		return items.add(id, group.Int64, truncate(orDefault(fieldType, "jira"), 255), truncate(field.String, 255),
 			sqlq.Value(oldValue), sqlq.Value(oldString), sqlq.Value(newValue), sqlq.Value(newString))
 	}); err != nil {
@@ -717,6 +747,9 @@ func (r *run) importHistory() error {
 		return err
 	}
 	orphans, _ := res.RowsAffected()
+	if r.check != nil {
+		orphans = r.check.orphanItems
+	}
 	r.rep.step("change details", items.total-int(orphans), int(orphans))
 	return nil
 }
