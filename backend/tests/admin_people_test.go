@@ -248,7 +248,7 @@ func TestRoles(t *testing.T) {
 	if status := chloe.get("/api/projects/"+key, nil); status != 200 {
 		t.Errorf("chloe.simon GET %s in the role: %d", key, status)
 	}
-	paul.call("GET", "/api/projects/"+key+"/roles", nil, 403, nil)
+	paul.call("GET", "/api/projects/"+key+"/roles", nil, 404, nil) // not found, or no access
 	var all []role
 	admin.call("GET", "/api/admin/roles", nil, 200, &all)
 	if j := slices.IndexFunc(all, func(x role) bool { return x.ID == r.ID }); j < 0 || all[j].Projects != 1 || all[j].Grants == 0 {

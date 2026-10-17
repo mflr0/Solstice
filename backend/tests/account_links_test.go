@@ -210,6 +210,9 @@ func TestResetFlowEndToEnd(t *testing.T) {
 	_ = id
 
 	// An open session and a personal access token, both to be revoked.
+	// Only administrators create tokens by default.
+	e.admin.call("PUT", "/api/admin/tokens/settings", map[string]any{"who": "everyone"}, 200, nil)
+	t.Cleanup(func() { e.admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins"}) })
 	old := e.login("wp7-flow", linkPassword)
 	var pat struct {
 		Token string `json:"token"`

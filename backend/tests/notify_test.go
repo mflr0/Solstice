@@ -132,8 +132,8 @@ func TestNotificationRecipientsAndVisibility(t *testing.T) {
 		!strings.Contains(m.Text, "https://tickets.exemple.fr/browse/"+key) {
 		t.Error("no link to the issue")
 	}
-	if !strings.Contains(m.Text, "vous a mentionné dans la description") ||
-		!strings.Contains(m.Text, "car quelqu'un vous a mentionné") ||
+	if !strings.Contains(m.Text, "mentioned you in the description") ||
+		!strings.Contains(m.Text, "because someone mentioned you") ||
 		!strings.Contains(m.Text, "https://tickets.exemple.fr/settings/notifications") {
 		t.Errorf("headline, reason or preferences link missing:\n%s", m.Text)
 	}
@@ -210,7 +210,7 @@ func TestNotificationRecipientsAndVisibility(t *testing.T) {
 	// Deletion: watchers hear of it, with the issue as it was.
 	env.login("admin", "admin").call("DELETE", "/api/issues/"+key, nil, 204, nil)
 	msgs = env.deliver()
-	if cm = to(msgs, "chloe.simon@exemple.fr"); len(cm) != 1 || !strings.Contains(cm[0].Text, "a supprimé le ticket") ||
+	if cm = to(msgs, "chloe.simon@exemple.fr"); len(cm) != 1 || !strings.Contains(cm[0].Text, "deleted the issue") ||
 		cm[0].Subject != "["+key+"] Le formulaire <b>plante</b>" {
 		t.Errorf("deletion e-mail: %+v", cm)
 	}
@@ -272,7 +272,7 @@ func TestNotificationPreferences(t *testing.T) {
 		t.Fatal("a digest reader got an immediate e-mail")
 	}
 	got := to(env.deliverAt(25*time.Hour), "chloe.simon@exemple.fr")
-	if len(got) != 1 || !strings.HasPrefix(got[0].Subject, "Vos notifications du ") ||
+	if len(got) != 1 || !strings.HasPrefix(got[0].Subject, "Your notifications of ") ||
 		!strings.Contains(got[0].Text, "Pour le résumé de "+key) || !strings.Contains(got[0].Text, "Pour le résumé de "+other) {
 		t.Fatalf("digest: %+v", got)
 	}
@@ -315,7 +315,7 @@ func TestProjectNotificationSettings(t *testing.T) {
 	msgs := env.deliver()
 	for _, who := range []string{"manon.michel", "louis.fournier", "marie.durand"} {
 		got := to(msgs, who+"@exemple.fr")
-		if len(got) != 1 || !strings.Contains(got[0].Text, "le projet WEB vous compte parmi ses destinataires") {
+		if len(got) != 1 || !strings.Contains(got[0].Text, "project WEB lists you among its recipients") {
 			t.Errorf("%s: %d e-mails about the new issue", who, len(got))
 		}
 	}
@@ -368,14 +368,14 @@ func TestFilterSubscriptions(t *testing.T) {
 	paul.call("POST", fmt.Sprintf("%s/%d/run", base, mine.ID), nil, 200, nil)
 	msgs := env.deliver()
 	pm := to(msgs, "paul.martin@exemple.fr")
-	if len(pm) != 1 || pm[0].Subject != "Filtre « Abonnement RH et WEB »" {
+	if len(pm) != 1 || pm[0].Subject != "Filter “Abonnement RH et WEB”" {
 		t.Fatalf("paul.martin's subscription e-mail: %+v", pm)
 	}
 	if strings.Contains(pm[0].Raw, "/browse/RH-") || !strings.Contains(pm[0].HTML, "/browse/WEB-") {
 		t.Error("paul.martin's results must list WEB issues and no RH issue")
 	}
 	web := pick(t, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id WHERE p.pkey = 'WEB'`)
-	if !strings.Contains(pm[0].Text, "Tickets correspondants : "+web+" ") {
+	if !strings.Contains(pm[0].Text, "Matching issues: "+web+" ") {
 		t.Errorf("count missing (%s WEB issues):\n%.400s", web, pm[0].Text)
 	}
 	admin.call("POST", fmt.Sprintf("%s/%d/run", base, group.ID), nil, 200, nil)
@@ -384,7 +384,7 @@ func TestFilterSubscriptions(t *testing.T) {
 		t.Errorf("group subscription mailed %v, want the 3 members of rh", got)
 	}
 	if cm := to(msgs, "chloe.simon@exemple.fr"); len(cm) != 1 || !strings.Contains(cm[0].HTML, "/browse/RH-") ||
-		!strings.Contains(cm[0].Text, "le groupe rh est abonné") {
+		!strings.Contains(cm[0].Text, "the group rh is subscribed") {
 		t.Errorf("chloe.simon (rh) must see RH issues: %+v", cm)
 	}
 
@@ -419,7 +419,7 @@ func TestFilterSubscriptions(t *testing.T) {
 	if n := strings.Count(pm[0].HTML, `href="https://tickets.exemple.fr/browse/`); n != 200 {
 		t.Errorf("%d issues listed, want 200", n)
 	}
-	if !strings.Contains(pm[0].Text, "Seuls les 200 premiers tickets sont listés") ||
+	if !strings.Contains(pm[0].Text, "Only the first 200 issues are listed") ||
 		!strings.Contains(pm[0].HTML, "https://tickets.exemple.fr/issues?q=") {
 		t.Error("no note nor link for the issues left out")
 	}
@@ -452,7 +452,7 @@ func TestDueDateReminders(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := to(env.deliver(), "hugo.robert@exemple.fr")
-	if len(got) != 1 || !strings.HasPrefix(got[0].Subject, "Vos échéances du ") {
+	if len(got) != 1 || !strings.HasPrefix(got[0].Subject, "Your due dates for ") {
 		t.Fatalf("reminder: %+v", got)
 	}
 	text := got[0].Text
@@ -508,13 +508,13 @@ func TestMailSettings(t *testing.T) {
 	// Failures are explained.
 	admin.call("PUT", "/api/admin/mail", map[string]any{"port": 1}, 200, nil)
 	_, body := admin.do("POST", "/api/admin/mail/test", map[string]any{"to": "admin@exemple.fr"})
-	if !strings.Contains(string(body), "Connexion au serveur impossible") {
+	if !strings.Contains(string(body), "Cannot connect to the server") {
 		t.Errorf("unreachable server: %s", body)
 	}
 	env.smtp.FailWith("550 5.7.1 relaying denied")
 	admin.call("PUT", "/api/admin/mail", map[string]any{"port": env.smtp.Port}, 200, nil)
 	_, body = admin.do("POST", "/api/admin/mail/test", map[string]any{"to": "admin@exemple.fr"})
-	if !strings.Contains(string(body), "Le serveur refuse l'expéditeur") || !strings.Contains(string(body), "relaying denied") {
+	if !strings.Contains(string(body), "The server refuses the sender") || !strings.Contains(string(body), "relaying denied") {
 		t.Errorf("sender refused: %s", body)
 	}
 	env.smtp.FailWith("")

@@ -318,7 +318,10 @@ func TestShutdownEndsLiveStreams(t *testing.T) {
 	ts.Config.RegisterOnShutdown(srv.CloseStreams)
 
 	jar, _ := cookiejar.New(nil)
-	hc := &http.Client{Jar: jar}
+	// One connection: a second one dialled while the login's is being
+	// returned to the pool would sit unused, and Shutdown waits 5 s for
+	// connections that never sent a request.
+	hc := &http.Client{Jar: jar, Transport: &http.Transport{MaxConnsPerHost: 1}}
 	body, _ := json.Marshal(map[string]string{"username": "paul.martin", "password": "motdepasse"})
 	req, _ := http.NewRequest("POST", ts.URL+"/api/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
