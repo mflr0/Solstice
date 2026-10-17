@@ -5,6 +5,7 @@ package tests
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -247,5 +248,42 @@ func TestSecurityLevelDeleteMovesIssues(t *testing.T) {
 	admin.call("GET", "/api/admin/audit?action=securitylevel.delete&q="+key, nil, 200, &audit)
 	if audit.Total != 1 {
 		t.Errorf("audit entries: %d", audit.Total)
+	}
+}
+
+// The same holder submitted many times at once is added once.
+func TestSecurityLevelMemberDoubleSubmit(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	key := newProject(t, admin, nil)
+	var level securityLevelAdmin
+	admin.call("POST", "/api/projects/"+key+"/security-levels", map[string]any{"name": "Double"}, 201, &level)
+	path := fmt.Sprintf("/api/projects/%s/security-levels/%d/members", key, level.ID)
+	for _, in := range []map[string]any{{"holder": "everyone"}, {"holder": "user", "id": userID(t, "paul.martin")}} {
+		statuses := make([]int, 10)
+		var wg sync.WaitGroup
+		for i := range statuses {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				statuses[i], _ = admin.do("POST", path, in)
+			}()
+		}
+		wg.Wait()
+		created := 0
+		for _, status := range statuses {
+			switch status {
+			case 201:
+				created++
+			case 409:
+			default:
+				t.Errorf("add %v: status %d", in, status)
+			}
+		}
+		if created != 1 {
+			t.Errorf("add %v: %d added, want 1 (%v)", in, created, statuses)
+		}
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM security_level_members WHERE level_id = ?`, level.ID); got != "2" {
+		t.Errorf("%s members, want 2", got)
 	}
 }

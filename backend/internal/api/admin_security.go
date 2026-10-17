@@ -419,17 +419,34 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 			role = *in.ID
 		}
 	}
+	// The level row is locked so that two submissions of the same holder
+	// cannot both pass the check.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var locked int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM security_levels WHERE id = ? FOR UPDATE`, levelID).Scan(&locked); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errNotFound
+		}
+		return err
+	}
 	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_level_members WHERE level_id = ? AND holder = ?
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_level_members WHERE level_id = ? AND holder = ?
 		AND user_id <=> ? AND group_id <=> ? AND role_id <=> ?`, levelID, in.Holder, user, group, role).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
 		return fail(http.StatusConflict, i18n.SecurityMemberExists)
 	}
-	res, err := s.db.ExecContext(ctx, `INSERT INTO security_level_members (level_id, holder, user_id, group_id, role_id)
+	res, err := tx.ExecContext(ctx, `INSERT INTO security_level_members (level_id, holder, user_id, group_id, role_id)
 		VALUES (?, ?, ?, ?, ?)`, levelID, in.Holder, user, group, role)
 	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.perms.Invalidate()
