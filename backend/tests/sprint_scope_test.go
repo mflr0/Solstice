@@ -198,3 +198,34 @@ func TestSprintMoveFollowsTheBoardFilter(t *testing.T) {
 		t.Errorf("move of an issue the filter dropped: %d", status)
 	}
 }
+
+// A REST move of several issues is refused as a whole: none moves when one of
+// them is not on the sprint's board.
+func TestSprintMoveOfSeveralIssuesIsAllOrNothing(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	paul := login(t, "paul.martin", "motdepasse")
+	_, sprint := scopeBoard(t, marie, "WEB")
+	first := createIssue(t, marie, "WEB", "Premier du lot", "")
+	foreign := newTestIssue(t, paul, "Dernier du lot", nil)
+	second := createIssue(t, marie, "WEB", "Deuxième du lot", "")
+
+	path := fmt.Sprintf("/rest/agile/1.0/sprint/%d/issue", sprint)
+	if status, _, body := call(t, marie, testURL, "POST", path, map[string]any{"issues": []string{first, foreign, second}},
+		header("X-Atlassian-Token", "no-check")); status != 400 {
+		t.Fatalf("move of a batch with a foreign issue: %d %s", status, body)
+	}
+	for _, key := range []string{first, second, foreign} {
+		if n := sprintMembers(t, sprint, key); n != "0" {
+			t.Errorf("%s moved although the batch was refused", key)
+		}
+	}
+	if status, _, body := call(t, marie, testURL, "POST", path, map[string]any{"issues": []string{first, second}},
+		header("X-Atlassian-Token", "no-check")); status != 204 {
+		t.Fatalf("move of a batch on the board: %d %s", status, body)
+	}
+	for _, key := range []string{first, second} {
+		if n := sprintMembers(t, sprint, key); n != "1" {
+			t.Errorf("%s is not in the sprint", key)
+		}
+	}
+}

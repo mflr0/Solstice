@@ -502,6 +502,9 @@ func (s *Server) agileMoveToSprint(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
+	if err := s.issuesOnBoard(ctx, sub, b, issues); err != nil {
+		return err
+	}
 	for _, iss := range issues {
 		if err := s.setSprint(ctx, sub, b, iss, sp.ID); err != nil {
 			return err
