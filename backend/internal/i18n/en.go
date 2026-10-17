@@ -298,6 +298,11 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Moving an issue is not possible yet.",
 	IssueSubtasksNotDeletable:  "This issue has sub-tasks you cannot delete.",
 	IssueDeleteSubtasks:        "This issue has sub-tasks: add deleteSubtasks=true to delete them with it.",
+	IssueCloneSummary:          "CLONE - %s",
+	IssueCloneHistory:          "created by cloning %s",
+	IssueCloneAttachmentFailed: "The attachment “%s” could not be copied.",
+	IssueCloneLinkSkipped:      "The link to %s was not added: you are not allowed to link issues in its project.",
+	IssueCloneSubtaskSkipped:   "The sub-task %s was not cloned: you cannot create issues of its type in its project.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",
