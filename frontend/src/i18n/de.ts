@@ -1219,7 +1219,7 @@ export const de: Messages = {
       priorities: 'Die Dringlichkeit und die Farbe jeder Priorität.',
       resolutions: 'Wie ein Vorgang geschlossen wurde: behoben, Duplikat…',
       statuses: 'Die gemeinsamen Status aller Workflows.',
-      linkTypes: 'Blockiert, dupliziert, betrifft…',
+      linkTypes: 'Blockiert, dupliziert, verweist auf…',
       fields: 'Die Felder, die Vorgängen hinzugefügt werden.',
       mail: 'SMTP-Server, Test-E-Mail, Sendewarteschlange.',
       webhooks: 'Andere Tools bei jeder Änderung benachrichtigen.',
@@ -1442,7 +1442,7 @@ export const de: Messages = {
       group: 'Gruppe',
       enabled: 'Aktiv',
       expires: 'Läuft ab',
-      owner: 'Besitzer',
+      owner: 'Eigentümer',
       version: 'Version',
       status: 'Status',
     },
@@ -1794,7 +1794,7 @@ export const de: Messages = {
       reset: 'Passwort zurücksetzen',
       invitation: 'Einladung',
     },
-    attempts: (n: number) => plural(n, `${n} Versuch`, `${n} Versuche`),
+    attempts: (n: number) => plural(n, 'Versuch', 'Versuche'),
   },
 
   account: {
@@ -2064,7 +2064,7 @@ export const de: Messages = {
     urlPlaceholder: 'https://beispiel.de/webhook',
     urlHint: 'Die vollständige Adresse mit http:// oder https://, die das POST empfängt.',
     enabled: 'Webhook aktiviert',
-    excludeBody: 'Leeren Körper senden',
+    excludeBody: 'Leeren Body senden',
     excludeBodyHint:
       'Das POST geht ohne Inhalt raus: nützlich für einen Dienst, der nur die Signatur prüft.',
     events: 'Ereignisse',
@@ -2230,7 +2230,7 @@ export const de: Messages = {
     deleteCategoryTitle: (name: string) => `„${name}“ löschen?`,
     deleteCategoryBody: (n: number) =>
       n > 0
-        ? `${plural(n, 'Projekt', 'Projekte')} bleiben ohne Kategorie. Die Projekte selbst bleiben unberührt.`
+        ? `${plural(n, 'Projekt bleibt', 'Projekte bleiben')} ohne Kategorie. Die Projekte selbst bleiben unberührt.`
         : 'Kein Projekt verwendet diese Kategorie.',
     categoryProblems: {
       nameRequired: 'Geben Sie der Kategorie einen Namen.',
