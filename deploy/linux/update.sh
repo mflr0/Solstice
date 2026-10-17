@@ -11,7 +11,8 @@
 # machine, SHA256SUMS and its signature SHA256SUMS.sig from the release on
 # GitHub; verify the signature of SHA256SUMS against the public key written
 # in this script, then the checksum of the archive; extract; check that the binary reports the requested version; back the
-# database up (mariadb-dump or mysqldump, if installed) to
+# database up (mariadb-dump or mysqldump, if installed), with the encryption
+# the tls option of SOLSTICE_DB_URL asks for, to
 # /var/lib/solstice/backups, keeping the last 5; keep the running binary as
 # /usr/local/lib/solstice/solstice.previous; swap the binary atomically;
 # restart Solstice and wait for it to be healthy; otherwise put the previous
@@ -48,7 +49,8 @@
 #    the listen address are validated field by field. The downloaded binary
 #    and the database dump run as the "solstice" user, not as root. The
 #    database password reaches the dump tool in its environment, never on a
-#    command line.
+#    command line. The dump connects with the encryption the tls option of
+#    the URL asks for; a value the server would not take stops the update.
 #  - The test override of the download address (a loopback HTTP server) is
 #    read only from a root-owned file in a root-owned directory, out of the
 #    web process's reach: /usr/local/lib/solstice/update-test.
@@ -84,6 +86,7 @@ from=unknown
 to=unknown
 state=""
 backup=""
+db_tls=""
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -410,6 +413,68 @@ read_db() {
     printf '%s\n' "$db_name" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$'
 }
 
+# read_db_tls prints the tls option of SOLSTICE_DB_URL, or nothing when the
+# URL has none. It fails when the value is not one the server accepts (true,
+# false, skip-verify or preferred): the update must stop rather than back the
+# database up over a link the server would never have used.
+read_db_tls() {
+  url=$(conf_value SOLSTICE_DB_URL)
+  query=${url#*\?}
+  [ "$query" != "$url" ] || return 0
+  found=0
+  tls=
+  remaining=$query
+  while [ -n "$remaining" ]; do
+    case $remaining in
+      *\&*) param=${remaining%%&*}; remaining=${remaining#*&} ;;
+      *) param=$remaining; remaining="" ;;
+    esac
+    case $param in
+      tls | tls=*) found=1; tls=${param#tls}; tls=${tls#=} ;;
+    esac
+  done
+  if [ "$found" = 0 ]; then return 0; fi
+  # The server lower-cases the value (backend/internal/db/params.go).
+  tls=$(printf '%s\n' "$tls" | tr '[:upper:]' '[:lower:]')
+  case $tls in
+    true | false | skip-verify | preferred) printf '%s\n' "$tls" ;;
+    *) return 1 ;;
+  esac
+}
+
+# dump_tls_opts DUMP TLS prints the dump options for the tls value of
+# SOLSTICE_DB_URL. MariaDB clients (their --version says MariaDB) check the
+# server certificate by default since 11.4, so skip-verify and preferred
+# turn the check off; MySQL clients take --ssl-mode. For preferred on MariaDB
+# there is no --ssl: that keeps the client's own default (TLS when the server
+# offers it, plain otherwise), as the driver's preferred does; --ssl would make
+# the backup fail on a server without TLS. Empty prints nothing.
+dump_tls_opts() {
+  dump_bin=$1
+  tls_val=$2
+
+  case $($dump_bin --version 2>/dev/null) in
+    *MariaDB*)
+      case $tls_val in
+        true) printf '%s\n' "--ssl --ssl-verify-server-cert" ;;
+        skip-verify) printf '%s\n' "--ssl --skip-ssl-verify-server-cert" ;;
+        preferred) printf '%s\n' "--skip-ssl-verify-server-cert" ;;
+        false) printf '%s\n' "--skip-ssl" ;;
+        "") return 0 ;;
+      esac
+      ;;
+    *)
+      case $tls_val in
+        true) printf '%s\n' "--ssl-mode=VERIFY_IDENTITY" ;;
+        skip-verify) printf '%s\n' "--ssl-mode=REQUIRED" ;;
+        preferred) printf '%s\n' "--ssl-mode=PREFERRED" ;;
+        false) printf '%s\n' "--ssl-mode=DISABLED" ;;
+        "") return 0 ;;
+      esac
+      ;;
+  esac
+}
+
 # back_up dumps the database to $backup_dir/<time>.sql.gz and keeps the last
 # few. Runs in a subshell: it changes directory and holds the password.
 back_up() (
@@ -442,8 +507,14 @@ back_up() (
   say "Backing up the database $db_name to $backup_dir/$stamp.sql.gz."
   MYSQL_PWD=$db_pass
   export MYSQL_PWD
-  if ! as_user "$dump" --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP \
-    --host="$db_host" --port="$db_port" --user="$db_user" "$db_name" >"$tmp" 2>>"$log"; then
+  set -- --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP
+  # The tls option read before the update started, in the dialect of the
+  # dump client. The options contain no globbing characters; split into words
+  # on purpose.
+  # shellcheck disable=SC2046
+  set -- "$@" $(dump_tls_opts "$dump" "$db_tls")
+  set -- "$@" --host="$db_host" --port="$db_port" --user="$db_user" "$db_name"
+  if ! as_user "$dump" "$@" >"$tmp" 2>>"$log"; then
     rm -f "$tmp"
     say "The database backup failed: refusing to update without one."
     exit 1
@@ -530,6 +601,11 @@ main() {
   addr=${addr:-:8080}
   if ! printf '%s\n' "$addr" | grep -Eq '^[][A-Za-z0-9.:-]{0,253}:[0-9]{1,5}$'; then
     fail "SOLSTICE_HTTP_ADDR in $conf is not an address."
+  fi
+  # The backup dump follows the URL's tls option: a value the server would
+  # not accept stops the update here, before anything is downloaded.
+  if ! db_tls=$(read_db_tls); then
+    fail "The tls option of SOLSTICE_DB_URL in $conf is not true, false, skip-verify or preferred."
   fi
   if test_base=$(read_test_base); then
     base=$test_base
