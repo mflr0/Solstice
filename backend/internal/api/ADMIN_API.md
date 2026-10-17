@@ -109,6 +109,10 @@ All fields optional. `locale`: a language or `null` (follow the browser).
 Changing the password needs `currentPassword` (400 "Mot de passe actuel
 incorrect.", throttled like sign-ins) and `newPassword` of at least
 `passwordMinLength` characters; other sessions of the user are signed out.
+Changing `email` to a different address needs `currentPassword`, exactly like
+`newPassword` (400 when missing or wrong, throttled like sign-ins), and is
+refused (403) when the request is authenticated by a personal access token.
+An unchanged address needs nothing.
 Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
 
 ---
@@ -120,6 +124,8 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
   created, lastLogin (instant | null), groups: [idName]}`.
 - `GET /api/admin/users/{id}` → `adminUser` plus `tokens` (number of
   personal access tokens).
+- `GET /api/people/{username}` → `{user: userRef, email, assigned: [...]}`.
+  `email` is empty unless the caller is an administrator or the person.
 - `POST /api/admin/users` `{username, name, email, password, admin,
   groups?: [groupId], invite?: bool}` → 201 `{id}`. (`user.create`) With
   `invite` the account has no password (`password` must be empty, `email` is
@@ -260,8 +266,10 @@ issues}]`, active first, then archived, by name.
 `PATCH /api/projects/{key}`
 `{name?, description? (null clears), lead?, category? (id | null),
 defaultAssignee? ("unassigned" | "lead"), issueTypes?: [typeId]}`
-→ the `GET /api/projects/{key}` object. Removing an issue type still used
-by issues: 409 `{inUse: [{type: typeRef, issues}]}`. (`project.update`)
+→ the settings object: `{id, key, name, description, kind, lead (userRef),
+category (idName | null), defaultAssignee, archived, issueTypes: [typeRef],
+issues}`. Removing an issue type still used by issues: 409 `{inUse:
+[{type: typeRef, issues}]}`. (`project.update`)
 
 ### Project settings — project admin
 
@@ -616,11 +624,16 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   is left out to keep it, `null` or `""` to remove it; keeping it while
   changing the server, port, security or user name is refused (400):
   whoever can change the destination must send the password again rather
-  than collect it on a server of their own. Validation (400): unknown
-  security, port outside 1–65535, carriage return or line feed in the host,
-  user name or display name, `enabled` without a host, an invalid sender
-  address. (`settings.mail`, details: changed fields, the password only as
-  changed or removed)
+  than collect it on a server of their own. `security: none` with a user
+  name is refused (400) unless the host is `localhost` or a loopback
+  address; credentials are only ever sent over TLS or STARTTLS, or to the
+  local machine. The test e-mail and the queue show the error
+  `credentials are not sent over an unencrypted connection` for a saved
+  configuration that breaks this rule. Validation (400): unknown security,
+  port outside 1–65535, carriage return or line feed in the host, user name
+  or display name, `enabled` without a host, an invalid sender address.
+  (`settings.mail`, details: changed fields, the password only as changed
+  or removed)
 - `POST /api/admin/mail/test` `{to?}` → `{sent: true, to}`: sends a test
   e-mail now with the saved settings (`to` empty: the administrator's own
   address). 400 for an invalid address; 409 when no host or sender is
