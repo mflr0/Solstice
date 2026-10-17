@@ -64,7 +64,7 @@
     const mine = ++seq;
     timer = setTimeout(async () => {
       try {
-        const check = await adminApi.checkKey(key);
+        const check = await adminApi.checkKey(key, current);
         if (mine === seq) keyState = { key, check };
       } catch {
         // The server has the last word when the change is sent.

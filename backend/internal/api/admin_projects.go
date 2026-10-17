@@ -31,15 +31,16 @@ type rowQuerier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// checkProjectKey tells whether a key may be given to a new project: well
-// formed, and used by no project, now or formerly.
-func (s *Server) checkProjectKey(ctx context.Context, q rowQuerier, key string) error {
+// checkProjectKey tells whether a key may be given to a project: well
+// formed, and used by no project, now or formerly. The former keys of the
+// project own (0 for a new project) do not count: it may take them back.
+func (s *Server) checkProjectKey(ctx context.Context, q rowQuerier, key string, own int64) error {
 	if !projectKeyPattern.MatchString(key) {
 		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
 	}
 	var n int
 	if err := q.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
-		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ?)`, key, key).Scan(&n); err != nil {
+		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id <> ?)`, key, key, own).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
@@ -48,14 +49,22 @@ func (s *Server) checkProjectKey(ctx context.Context, q rowQuerier, key string) 
 	return nil
 }
 
-// projectKeyCheck answers the creation form as the key is typed.
+// projectKeyCheck answers the creation form as the key is typed; with
+// project (a key, current or former) it answers for changing that project's key.
 func (s *Server) projectKeyCheck(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
 	key := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("key")))
+	var own int64
+	if project := strings.TrimSpace(r.URL.Query().Get("project")); project != "" {
+		var err error
+		if own, err = s.projectByKey(r.Context(), project); err != nil {
+			return err
+		}
+	}
 	out := map[string]any{"key": key, "available": true}
-	if err := s.checkProjectKey(r.Context(), s.db, key); err != nil {
+	if err := s.checkProjectKey(r.Context(), s.db, key, own); err != nil {
 		var he *httpError
 		if !errors.As(err, &he) {
 			return err
@@ -173,7 +182,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	me := currentUser(r)
 	key := strings.ToUpper(strings.TrimSpace(in.Key))
-	if err := s.checkProjectKey(ctx, s.db, key); err != nil {
+	if err := s.checkProjectKey(ctx, s.db, key, 0); err != nil {
 		return err
 	}
 	name, err := cleanName(in.Name, 255)
@@ -761,21 +770,19 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	if strings.TrimSpace(in.Confirm) != key {
 		return fail(http.StatusConflict, i18n.ProjectRenameConfirm)
 	}
-	if !projectKeyPattern.MatchString(newKey) {
-		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
-	}
 	// A key the project once had may come back; any other taken key is refused.
+	if err := s.checkProjectKey(ctx, tx, newKey, id); err != nil {
+		return err
+	}
 	var back int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id = ?`,
 		newKey, id).Scan(&back); err != nil {
 		return err
 	}
-	if back == 0 {
-		if err := s.checkProjectKey(ctx, tx, newKey); err != nil {
+	if back > 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM project_keys WHERE pkey = ? AND project_id = ?`, newKey, id); err != nil {
 			return err
 		}
-	} else if _, err := tx.ExecContext(ctx, `DELETE FROM project_keys WHERE pkey = ? AND project_id = ?`, newKey, id); err != nil {
-		return err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE projects SET pkey = ? WHERE id = ?`, newKey, id); err != nil {
 		return keyConflict(err, newKey)

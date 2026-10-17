@@ -265,6 +265,24 @@ func TestProjectRenameBack(t *testing.T) {
 	admin.call("POST", path(other), map[string]any{"newKey": first, "confirm": other}, 409, nil)
 	admin.call("POST", path(second), map[string]any{"newKey": second, "confirm": second}, 409, nil)
 
+	// The check as one types: for this project its former key is free, for a
+	// new project or another one it is not, and neither is the key it has.
+	for _, c := range []struct {
+		query     string
+		available bool
+	}{
+		{"key=" + first, false}, {"key=" + first + "&project=" + second, true},
+		{"key=" + first + "&project=" + first, true}, {"key=" + first + "&project=" + other, false},
+		{"key=" + second + "&project=" + second, false}, {"key=" + first + "&project=", false},
+	} {
+		var check struct{ Available bool }
+		admin.call("GET", "/api/admin/project-key?"+c.query, nil, 200, &check)
+		if check.Available != c.available {
+			t.Errorf("project-key?%s: available %t, want %t", c.query, check.Available, c.available)
+		}
+	}
+	admin.call("GET", "/api/admin/project-key?key=ABCD&project=NOPE", nil, 404, nil)
+
 	// Back to the first key: it is the project's again, and the second one,
 	// now a former key, still finds the issue.
 	var back struct{ Key string }

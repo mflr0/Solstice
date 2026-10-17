@@ -102,7 +102,9 @@ export const adminApi = {
   // Projects.
   /** Every project, archived ones included, seen or not. */
   projects: () => request<AdminProjectRow[]>('GET', '/api/admin/projects'),
-  checkKey: (key: string) => request<KeyCheck>('GET', `/api/admin/project-key${query({ key })}`),
+  /** `project` is the project whose key is being changed: its former keys are free to it. */
+  checkKey: (key: string, project?: string) =>
+    request<KeyCheck>('GET', `/api/admin/project-key${query({ key, project })}`),
   createProject: (p: ProjectInput) =>
     request<{ id: number; key: string }>('POST', '/api/projects', p),
   archiveProject: (key: string, on: boolean) =>
