@@ -161,12 +161,12 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if u == nil {
 			w.Header().Set("X-AUSERNAME", "anonymous")
 			if needUser {
-				writeRESTError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
+				s.writeRESTError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
 		}
 		if !forgeryProof(r, via) {
-			writeRESTError(w, r, fail(http.StatusForbidden, i18n.RequestXSRFHeader))
+			s.writeRESTError(w, r, fail(http.StatusForbidden, i18n.RequestXSRFHeader))
 			return
 		}
 		if u != nil {
@@ -247,7 +247,7 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 	}
-	writeRESTError(w, r, err)
+	s.writeRESTError(w, r, err)
 }
 
 // restError is Jira's error body: general messages, and messages per field
@@ -257,14 +257,14 @@ type restError struct {
 	Errors        map[string]string `json:"errors"`
 }
 
-func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
+func (s *Server) writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
 		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
 	}
 	// Refused: leave a trace at Warn, capped per address (refused.go).
 	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
-		refused.logRefused(r, he.status)
+		refused.logRefused(r, he.status, s.proxies)
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}
 	msg := he.msg.In(locale(r))

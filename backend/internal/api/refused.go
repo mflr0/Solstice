@@ -10,6 +10,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"sync"
 	"time"
 )
@@ -33,9 +34,9 @@ type refuser struct {
 }
 
 // refused is the cap shared by the interface's API and the REST API, so
-// that one address probing both fills a single budget. writeError and
-// writeRESTError are plain functions — wrap, rest and the setup wizard
-// call them and must not change — so the cap cannot hang off a server.
+// that one address probing both fills a single budget. writeError is a
+// plain function the setup wizard calls, so the cap cannot hang off a
+// server; the trusted proxies are passed to logRefused instead.
 var refused = &refuser{now: time.Now}
 
 func (rf *refuser) logger() *slog.Logger {
@@ -49,10 +50,8 @@ func (rf *refuser) logger() *slog.Logger {
 // string, headers, cookies or body — unless its address has already had
 // refusedCap of them this period, in which case one line says the rest
 // are dropped until the period passes.
-func (rf *refuser) logRefused(r *http.Request, status int) {
-	// The connection address: these error writers have no server at hand
-	// to read the trusted proxies from (see the note on refused).
-	client := clientIP(r, nil)
+func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefix) {
+	client := clientIP(r, proxies)
 	ok, notice := rf.allow(client)
 	switch {
 	case ok:

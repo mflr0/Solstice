@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func TestRefusedCapPerAddress(t *testing.T) {
 	r := refusedRequest("192.0.2.7:41000")
 
 	for range refusedCap {
-		rf.logRefused(r, http.StatusForbidden)
+		rf.logRefused(r, http.StatusForbidden, nil)
 	}
 	if got := count(buf.String(), refusedLine); got != refusedCap {
 		t.Fatalf("after %d refused requests: %d lines, want %d",
@@ -57,9 +58,9 @@ func TestRefusedCapPerAddress(t *testing.T) {
 	}
 
 	// Over the cap: one notice, once, then silence.
-	rf.logRefused(r, http.StatusForbidden)
-	rf.logRefused(r, http.StatusForbidden)
-	rf.logRefused(r, http.StatusForbidden)
+	rf.logRefused(r, http.StatusForbidden, nil)
+	rf.logRefused(r, http.StatusForbidden, nil)
+	rf.logRefused(r, http.StatusForbidden, nil)
 	if got := count(buf.String(), refusedNotice); got != 1 {
 		t.Errorf("over the cap: %d notices, want 1", got)
 	}
@@ -68,14 +69,14 @@ func TestRefusedCapPerAddress(t *testing.T) {
 	}
 
 	// The cap is per address: another one is still logged.
-	rf.logRefused(refusedRequest("198.51.100.9:41000"), http.StatusUnauthorized)
+	rf.logRefused(refusedRequest("198.51.100.9:41000"), http.StatusUnauthorized, nil)
 	if got := count(buf.String(), refusedLine); got != refusedCap+1 {
 		t.Errorf("a second address: %d refused lines, want %d", got, refusedCap+1)
 	}
 
 	// Once the period has passed, the first address is logged again.
 	moveTime(rf, start.Add(refusedPeriod))
-	rf.logRefused(r, http.StatusForbidden)
+	rf.logRefused(r, http.StatusForbidden, nil)
 	if got := count(buf.String(), refusedLine); got != refusedCap+2 {
 		t.Errorf("after the period: %d refused lines, want %d", got, refusedCap+2)
 	}
@@ -90,7 +91,7 @@ func TestRefusedLineFields(t *testing.T) {
 	r.Header.Set("Authorization", "Bearer sneaky-token")
 	r.Header.Set("Cookie", "solstice_session=sneaky-cookie")
 
-	rf.logRefused(r, http.StatusUnauthorized)
+	rf.logRefused(r, http.StatusUnauthorized, nil)
 
 	line := buf.String()
 	for _, want := range []string{
@@ -113,5 +114,36 @@ func TestRefusedLineFields(t *testing.T) {
 		if strings.Contains(line, no) {
 			t.Errorf("logged line holds %q:\n%s", no, line)
 		}
+	}
+}
+
+// Behind a trusted proxy, each client has its own budget and is logged
+// by its own address, not the proxy's.
+func TestRefusedBehindProxy(t *testing.T) {
+	var buf bytes.Buffer
+	rf := newRefuser(&buf, time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
+	proxies := []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}
+	viaProxy := func(client string) *http.Request {
+		r := refusedRequest("192.0.2.1:41000")
+		r.Header.Set("X-Forwarded-For", client)
+		return r
+	}
+
+	for range refusedCap + 1 {
+		rf.logRefused(viaProxy("203.0.113.5"), http.StatusForbidden, proxies)
+	}
+	rf.logRefused(viaProxy("203.0.113.6"), http.StatusForbidden, proxies)
+
+	line := buf.String()
+	if got := count(line, refusedLine); got != refusedCap+1 {
+		t.Errorf("%d refused lines, want %d: the second client has its own budget", got, refusedCap+1)
+	}
+	for _, want := range []string{"client=203.0.113.5", "client=203.0.113.6"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("logged lines lack %q:\n%s", want, line)
+		}
+	}
+	if strings.Contains(line, "client=192.0.2.1") {
+		t.Errorf("a line names the proxy as the client:\n%s", line)
 	}
 }
