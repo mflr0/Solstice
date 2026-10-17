@@ -118,7 +118,6 @@
   async function release() {
     const v = releasing;
     if (!v) return;
-    if (releaseProblem) throw new Error(t.projectConfig.problems[releaseProblem]);
     const target = releaseChoices.find((x) => String(x.id) === moveTo)?.id;
     await projectAdminApi.releaseVersion(projectKey, v.id, {
       ...(releaseDate ? { releaseDate } : {}),
@@ -294,6 +293,7 @@
   title={t.projectConfig.versions.releaseTitle(releasing?.name ?? '')}
   confirm={t.projectConfig.versions.releaseAction}
   danger={false}
+  disabled={!!releaseProblem}
   onclose={() => (releasing = null)}
   onconfirm={release}
 >
@@ -322,6 +322,7 @@
   open={merging !== null}
   title={t.projectConfig.versions.mergeTitle(merging?.name ?? '')}
   confirm={t.projectConfig.versions.mergeAction}
+  disabled={!into}
   onclose={() => (merging = null)}
   onconfirm={merge}
 >
