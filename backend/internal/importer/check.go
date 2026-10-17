@@ -107,10 +107,7 @@ func check(ctx context.Context, src *sql.DB, engine jiradb.Engine, opt Options) 
 		check:  &checkData{sprints: map[int64]bool{}, sprintRefs: map[[2]int64]bool{}},
 	}
 	rep := &CheckReport{Source: r.describe()}
-	err := r.requireSchema()
-	if err == nil {
-		err = r.runSteps()
-	}
+	err := r.runSteps() // importPermissions refuses an old schema, as in an import
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

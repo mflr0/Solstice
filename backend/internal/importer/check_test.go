@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -206,5 +207,26 @@ func TestCheckFailsOnAnUnreadableSource(t *testing.T) {
 		if err == nil {
 			t.Errorf("%s: no error, report %+v", name, rep)
 		}
+	}
+}
+
+// A refused source reports the steps that ran before the refusal, not figures
+// that are all zero.
+func TestCheckRefusalKeepsTheStepsBefore(t *testing.T) {
+	src := sql.OpenDB(&fakeJira{}) // no column at all: schemepermissions.permission_key neither
+	defer src.Close()
+	rep, err := check(context.Background(), src, jiradb.MySQL, Options{Log: slog.Default(), SourceTZ: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rep.Refused, "too old") {
+		t.Fatalf("refused = %q", rep.Refused)
+	}
+	var names []string
+	for _, s := range rep.Steps {
+		names = append(names, s.Name)
+	}
+	if len(names) == 0 || names[0] != "users" || slices.Contains(names, "issues") {
+		t.Errorf("steps = %v, want those before permissions only", names)
 	}
 }
