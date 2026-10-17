@@ -698,3 +698,32 @@ func TestMailSettingsRefuseCredentialsInClear(t *testing.T) {
 		admin.call("PUT", "/api/admin/mail", plain(host), 200, nil)
 	}
 }
+
+// A configuration saved before credentials were refused in clear is reported
+// by GET, so that the mail page can warn, and stops being reported once fixed.
+func TestMailSettingsReportCredentialsInClear(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	saved := `{"enabled":true,"host":"smtp.autre.example","port":25,"security":"none","username":"relai",` +
+		`"from":"solstice@exemple.fr","fromName":"Solstice"}`
+	if _, err := testDB.Exec(`UPDATE settings SET value = ? WHERE name = 'mail'`, saved); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Problem string `json:"problem"`
+	}
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Problem != "credentialsNeedTLS" {
+		t.Errorf("credentials, no encryption, remote host: problem %q, want credentialsNeedTLS", got.Problem)
+	}
+	got.Problem = "" // the field is left out when there is none
+	admin.call("PUT", "/api/admin/mail", map[string]any{"security": "starttls", "port": 587, "password": "s3cret-smtp"}, 200, &got)
+	if got.Problem != "" {
+		t.Errorf("after switching to STARTTLS: problem %q, want none", got.Problem)
+	}
+	got.Problem = ""
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Problem != "" {
+		t.Errorf("GET after switching to STARTTLS: problem %q, want none", got.Problem)
+	}
+}

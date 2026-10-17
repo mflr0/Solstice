@@ -1735,6 +1735,8 @@ export const fr: Messages = {
     baseUrl: (url: string) => `Les liens des e-mails mènent à ${url}.`,
     baseUrlMissing:
       'L’adresse publique de Solstice n’est pas réglée : les e-mails partiront sans lien vers les tickets.',
+    credentialsNeedTls:
+      'Les réglages enregistrés envoient l’identifiant et le mot de passe sans chiffrement à un serveur qui n’est pas sur cette machine : aucun e-mail ne peut partir. Choisissez STARTTLS ou TLS, ou laissez l’identifiant vide. Seul un serveur sur cette machine est dispensé de chiffrement ; un relais d’un réseau privé exige lui aussi STARTTLS ou TLS.',
     problems: {
       hostRequired: 'Indiquez le serveur SMTP pour activer l’envoi.',
       portInvalid: 'Un nombre de 1 à 65535.',

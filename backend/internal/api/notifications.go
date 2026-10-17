@@ -368,7 +368,18 @@ func (s *Server) putProjectNotifications(w http.ResponseWriter, r *http.Request)
 type mailSettingsOut struct {
 	mail.Config
 	PasswordSet bool    `json:"passwordSet"`
-	BaseURL     *string `json:"baseUrl"` // links in e-mails; null: not set, links left out
+	BaseURL     *string `json:"baseUrl"`           // links in e-mails; null: not set, links left out
+	Problem     string  `json:"problem,omitempty"` // what keeps the saved settings from sending, see mailProblem
+}
+
+// mailProblemCredentialsNeedTLS is the problem of settings saved before
+// credentials were refused over a plain connection to a remote server.
+const mailProblemCredentialsNeedTLS = "credentialsNeedTLS"
+
+// credentialsInClear tells whether the settings would send a user name over
+// an unencrypted connection to a server that is not on this machine.
+func credentialsInClear(c mail.Config) bool {
+	return c.Security == mail.SecurityNone && c.Username != "" && !mail.Loopback(c.Host)
 }
 
 func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
@@ -389,6 +400,9 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
+	if credentialsInClear(cfg) {
+		out.Problem = mailProblemCredentialsNeedTLS
+	}
 	if base := s.base(); base != "" {
 		out.BaseURL = &base
 	}
@@ -489,7 +503,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
 		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
 	}
-	if cfg.Security == mail.SecurityNone && cfg.Username != "" && !mail.Loopback(cfg.Host) {
+	if credentialsInClear(cfg) {
 		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
 	}
 	if cfg.Password != "" {
