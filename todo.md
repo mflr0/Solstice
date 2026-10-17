@@ -74,7 +74,8 @@ features (see `ROADMAP.md`). The release waits for items 7 and 8.
     `scripts/e2e-import.sh` runs the import against each version.
 9. Every admin object reachable from the menus: the Updates page exists
     (`frontend/src/ui/admin/UpdatesPage.svelte`) and is linked from the
-    administration, but no route matches `/admin/updates`.
+    administration, but no route matches `/admin/updates`. Then a pass
+    over the whole interface for other pages with no menu entry or link.
 10. Release: privacy audit of the whole history, pull request from
     `feat/v1.0` to `main`, tag `v1.0.0`, GitHub release with the archives and
     `SHA256SUMS` (the updater needs them), then a one-line installer.
