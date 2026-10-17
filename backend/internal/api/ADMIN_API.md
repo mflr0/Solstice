@@ -148,7 +148,8 @@ picture. `GET /api/avatars/{userId}` shows it (section 3).
   `image/png` (`X-Content-Type-Options: nosniff`), or the initials as an SVG
   when the account has none; 404 for an unknown account. Both come with
   `Cache-Control: private, no-cache` and an `ETag`, and answer 304 to
-  `If-None-Match`, so a change shows at once.
+  `If-None-Match`, so a change shows at once. Jira's
+  `GET /secure/useravatar?ownerId={username}` answers the same.
 - `POST /api/admin/users/{id}/reset-password` → `{password}`: a generated
   password, shown once; the user's sessions end. (`password.reset`) With the
   body `{"method": "link"}` it sends the account a link, valid one hour, to

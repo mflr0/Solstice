@@ -242,8 +242,21 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.serveUserAvatar(w, r, id)
+}
+
+// serveInitials answers with the initials of name.
+func serveInitials(w http.ResponseWriter, r *http.Request, name string) {
+	svg := initialsSVG(r, name)
+	sum := sha256.Sum256(svg)
+	serveAvatar(w, r, "image/svg+xml", `"`+hex.EncodeToString(sum[:16])+`"`, bytes.NewReader(svg))
+}
+
+// serveUserAvatar is what /api/avatars/{userId} and Jira's /secure/useravatar
+// both answer with.
+func (s *Server) serveUserAvatar(w http.ResponseWriter, r *http.Request, id int64) error {
 	var name string
-	err = s.db.QueryRowContext(r.Context(), `SELECT display_name FROM users WHERE id = ?`, id).Scan(&name)
+	err := s.db.QueryRowContext(r.Context(), `SELECT display_name FROM users WHERE id = ?`, id).Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	}
@@ -252,9 +265,7 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) error {
 	}
 	f, err := os.Open(s.avatarPath(id))
 	if errors.Is(err, os.ErrNotExist) {
-		svg := initialsSVG(r, name)
-		sum := sha256.Sum256(svg)
-		serveAvatar(w, r, "image/svg+xml", `"`+hex.EncodeToString(sum[:16])+`"`, bytes.NewReader(svg))
+		serveInitials(w, r, name)
 		return nil
 	}
 	if err != nil {

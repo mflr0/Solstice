@@ -174,3 +174,38 @@ func TestAdminAvatar(t *testing.T) {
 		t.Errorf("audit details: %q", d)
 	}
 }
+
+// Jira's own address for a user's picture answers with the same picture or
+// initials as /api/avatars.
+func TestJiraUserAvatar(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	id, username := newAccount(t, admin, "une phrase assez longue")
+	me := login(t, username, "une phrase assez longue")
+	other := login(t, "paul.martin", "motdepasse")
+	jira := func() (int, http.Header, []byte) {
+		return call(t, other, other.base, "GET", "/secure/useravatar?ownerId="+username, nil, nil)
+	}
+
+	status, h, body := jira()
+	_, _, same := getPicture(t, other, id, nil)
+	if status != 200 || !strings.HasPrefix(h.Get("Content-Type"), "image/svg+xml") || !bytes.Equal(body, same) {
+		t.Errorf("no picture: %d %s %.60s", status, h.Get("Content-Type"), body)
+	}
+	if status, _, small := call(t, other, other.base, "GET", "/secure/useravatar?size=small&ownerId="+username, nil, nil); status != 200 || !bytes.Contains(small, []byte(`width="24"`)) {
+		t.Errorf("size=small: %d %.80s", status, small)
+	}
+
+	if status, body := putPicture(t, me, "/api/me/avatar", picturePNG(t, 60, 60)); status != 204 {
+		t.Fatalf("upload: %d %s", status, body)
+	}
+	status, h, body = jira()
+	_, apiHeader, same := getPicture(t, other, id, nil)
+	if status != 200 || h.Get("Content-Type") != "image/png" || !bytes.Equal(body, same) || h.Get("ETag") != apiHeader.Get("ETag") {
+		t.Errorf("picture: %d %s", status, h.Get("Content-Type"))
+	}
+
+	status, h, _ = call(t, other, other.base, "GET", "/secure/useravatar?ownerId=nobody.at.all", nil, nil)
+	if status != 200 || !strings.HasPrefix(h.Get("Content-Type"), "image/svg+xml") {
+		t.Errorf("unknown owner: %d %s", status, h.Get("Content-Type"))
+	}
+}
