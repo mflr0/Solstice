@@ -761,6 +761,9 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	if strings.TrimSpace(in.Confirm) != key {
 		return fail(http.StatusConflict, i18n.ProjectRenameConfirm)
 	}
+	if !projectKeyPattern.MatchString(newKey) {
+		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
+	}
 	// A key the project once had may come back; any other taken key is refused.
 	var back int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id = ?`,

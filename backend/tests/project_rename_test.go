@@ -393,3 +393,23 @@ func TestProjectRenameConcurrent(t *testing.T) {
 		}
 	}
 }
+
+// A former key that does not follow the key rules (one the import kept as it
+// was) cannot be taken back: the new key is always checked for its form.
+func TestProjectRenameBackChecksForm(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	key := newProject(t, admin, nil)
+	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+key, map[string]string{"confirm": key}) })
+	const legacy = "OLD_KEY"
+	if _, err := testDB.Exec(`INSERT INTO project_keys (pkey, project_id) SELECT ?, id FROM projects WHERE pkey = ?`,
+		legacy, key); err != nil {
+		t.Fatal(err)
+	}
+	admin.call("POST", "/api/admin/projects/"+key+"/rename", map[string]any{"newKey": legacy, "confirm": key}, 400, nil)
+	if got := pick(t, `SELECT COUNT(*) FROM projects WHERE pkey = ?`, key); got != "1" {
+		t.Errorf("a refused rename changed the project (%s with the key %s)", got, key)
+	}
+	if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, legacy); got != "1" {
+		t.Errorf("a refused rename removed the former key (%s rows)", got)
+	}
+}
