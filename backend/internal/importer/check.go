@@ -15,6 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"maps"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -215,17 +216,31 @@ func (c *checkData) sprint(id int64) {
 	}
 }
 
-// sprintMember notes a value of the Sprint field: the sprint's id is in the
-// string value, or else in the number.
+// sprintMember notes a value of the Sprint field as the import's SQL reads it:
+// a string of digits is the sprint's id, even one too long to be an id; any
+// other string leaves the number, rounded like CAST AS UNSIGNED does.
 func (c *checkData) sprintMember(issue int64, str sql.NullString, num sql.NullFloat64) {
 	if c == nil {
 		return
 	}
-	if id, err := strconv.ParseUint(str.String, 10, 63); err == nil {
-		c.sprintRefs[[2]int64{int64(id), issue}] = true
-	} else if num.Valid && num.Float64 >= 0 {
-		c.sprintRefs[[2]int64{int64(num.Float64), issue}] = true
+	var id int64
+	if isDigits(str.String) {
+		n, err := strconv.ParseUint(str.String, 10, 63)
+		if err != nil { // too big for a sprint id
+			return
+		}
+		id = int64(n)
+	} else if f := math.Round(num.Float64); num.Valid && f >= 0 && f < 1<<63 {
+		id = int64(f)
+	} else {
+		return
 	}
+	c.sprintRefs[[2]int64{id, issue}] = true
+}
+
+// isDigits tells whether s is made of ASCII digits only, and not empty.
+func isDigits(s string) bool {
+	return s != "" && strings.IndexFunc(s, func(r rune) bool { return r < '0' || r > '9' }) < 0
 }
 
 // sprintMembers counts the issues in sprints that would be imported.

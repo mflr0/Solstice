@@ -123,6 +123,41 @@ func TestSprintMembers(t *testing.T) {
 	}
 }
 
+// The import's SQL casts the number with CAST AS UNSIGNED, which rounds, and
+// takes a string of digits whatever its length before looking at the number.
+func TestSprintMembersRoundAndLongStrings(t *testing.T) {
+	str := func(s string) sql.NullString { return sql.NullString{String: s, Valid: s != ""} }
+	num := func(f float64) sql.NullFloat64 { return sql.NullFloat64{Float64: f, Valid: true} }
+	for name, tc := range map[string]struct {
+		str  sql.NullString
+		num  sql.NullFloat64
+		want int64 // the sprint the issue is in, 0 for none
+	}{
+		"rounded up":          {sql.NullString{}, num(5.6), 6},
+		"rounded down":        {sql.NullString{}, num(5.4), 5},
+		"whole":               {str("name=x"), num(5), 5},
+		"negative":            {sql.NullString{}, num(-5), 0},
+		"too big":             {sql.NullString{}, num(1e30), 0},
+		"digits win":          {str("5"), num(6), 5},
+		"long digits win":     {str("99999999999999999999"), num(6), 0},
+		"long digits, no id":  {str("99999999999999999999"), sql.NullFloat64{}, 0},
+		"leading zeros":       {str("0006"), sql.NullFloat64{}, 6},
+		"signed is no digits": {str("-6"), num(5), 5},
+		"digits and a space":  {str("6 "), num(5), 5},
+		"no value at all":     {sql.NullString{}, sql.NullFloat64{}, 0},
+	} {
+		c := &checkData{sprints: map[int64]bool{5: true, 6: true}, sprintRefs: map[[2]int64]bool{}}
+		c.sprintMember(100, tc.str, tc.num)
+		want := int64(0)
+		if tc.want != 0 {
+			want = 1
+		}
+		if n := c.sprintMembers(); n != want || (want == 1 && !c.sprintRefs[[2]int64{tc.want, 100}]) {
+			t.Errorf("%s: refs %v, members %d, want sprint %d", name, c.sprintRefs, n, tc.want)
+		}
+	}
+}
+
 func TestWriteText(t *testing.T) {
 	rep := &CheckReport{
 		Source:   CheckSource{Database: "postgres", Server: "PostgreSQL 16"},
