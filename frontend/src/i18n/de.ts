@@ -1319,6 +1319,7 @@ export const de: Messages = {
       'password.reset_done': 'Passwort über einen Link zum Zurücksetzen gewählt',
       'token.create': 'Zugriffstoken erstellt',
       'token.revoke': 'Zugriffstoken widerrufen',
+      'token.reject': 'Zugriffstoken abgelehnt',
       'user.create': 'Konto erstellt',
       'user.update': 'Konto geändert',
       'user.deactivate': 'Konto deaktiviert',

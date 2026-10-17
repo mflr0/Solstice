@@ -1313,6 +1313,7 @@ export const fr: Messages = {
       'password.reset_done': 'Mot de passe choisi par un lien de réinitialisation',
       'token.create': 'Jeton d’accès créé',
       'token.revoke': 'Jeton d’accès révoqué',
+      'token.reject': 'Jeton d’accès refusé',
       'user.create': 'Compte créé',
       'user.update': 'Compte modifié',
       'user.deactivate': 'Compte désactivé',

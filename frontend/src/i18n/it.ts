@@ -1312,6 +1312,7 @@ export const it: Messages = {
       'password.reset_done': 'Password scelta tramite un link di reimpostazione',
       'token.create': 'Token di accesso creato',
       'token.revoke': 'Token di accesso revocato',
+      'token.reject': 'Token di accesso rifiutato',
       'user.create': 'Account creato',
       'user.update': 'Account modificato',
       'user.deactivate': 'Account disattivato',

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"solstice/internal/config"
 )
@@ -110,5 +111,53 @@ func TestSignInLockoutIsAudited(t *testing.T) {
 	}
 	if n2, _ := latestAudit(t, "login.lockout"); n2 != n {
 		t.Errorf("a refused attempt while locked was recorded: %d entries (was %d)", n2, n)
+	}
+}
+
+// A token that exists but can no longer be used gets one audit entry, naming
+// its id and name and never the token; an unknown string is only logged.
+func TestRefusedTokensAreAudited(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	token := newToken(t, "paul.martin", &past)
+	before, _ := latestAudit(t, "token.reject")
+	if status, _, _ := call(t, nil, testURL, "GET", "/api/me", nil, bearer(token)); status != http.StatusUnauthorized {
+		t.Fatalf("expired token: %d, want 401", status)
+	}
+	n, _ := latestAudit(t, "token.reject")
+	if n != before+1 {
+		t.Fatalf("refused token: %d entries (was %d)", n, before)
+	}
+	const row = `SELECT COALESCE(target_label, '') FROM audit_log WHERE action = 'token.reject' ORDER BY id DESC LIMIT 1`
+	if label := pick(t, row); label != "test paul.martin" {
+		t.Errorf("target label %q, want the token name", label)
+	}
+	if id := pick(t, `SELECT COALESCE(target_id, '') FROM audit_log WHERE action = 'token.reject' ORDER BY id DESC LIMIT 1`); id == "" {
+		t.Error("target id empty")
+	}
+	if who := pick(t, `SELECT COALESCE(username, '') FROM audit_log WHERE action = 'token.reject' ORDER BY id DESC LIMIT 1`); who != "paul.martin" {
+		t.Errorf("owner %q, want paul.martin", who)
+	}
+	var recorded string
+	if err := testDB.QueryRow(`SELECT CONCAT(COALESCE(target_id, ''), COALESCE(target_label, ''), COALESCE(details, ''),
+		COALESCE(username, '')) FROM audit_log WHERE action = 'token.reject' ORDER BY id DESC LIMIT 1`).Scan(&recorded); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(recorded, token) {
+		t.Fatal("the token reached the audit log")
+	}
+
+	// The same token within the hour adds nothing...
+	if status, _, _ := call(t, nil, testURL, "GET", "/api/me", nil, bearer(token)); status != http.StatusUnauthorized {
+		t.Fatalf("expired token again: %d", status)
+	}
+	if n2, _ := latestAudit(t, "token.reject"); n2 != n {
+		t.Errorf("a repeated presentation was recorded: %d entries (was %d)", n2, n)
+	}
+	// ...nor does a string that matches no token at all.
+	if status, _, _ := call(t, nil, testURL, "GET", "/api/me", nil, bearer("sol_"+strings.Repeat("x", 40))); status != http.StatusUnauthorized {
+		t.Fatalf("unknown token: %d", status)
+	}
+	if n3, _ := latestAudit(t, "token.reject"); n3 != n {
+		t.Errorf("an unknown token was recorded: %d entries (was %d)", n3, n)
 	}
 }

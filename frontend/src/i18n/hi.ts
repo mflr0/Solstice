@@ -1306,6 +1306,7 @@ export const hi: Messages = {
       'password.reset_done': 'रीसेट लिंक से पासवर्ड चुना',
       'token.create': 'एक्सेस टोकन बनाया',
       'token.revoke': 'एक्सेस टोकन रद्द किया',
+      'token.reject': 'एक्सेस टोकन अस्वीकार किया',
       'user.create': 'खाता बनाया',
       'user.update': 'खाता बदला',
       'user.deactivate': 'खाता निष्क्रिय किया',

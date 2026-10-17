@@ -1306,6 +1306,7 @@ export const en = {
       'password.reset_done': 'Password chosen through a reset link',
       'token.create': 'Access token created',
       'token.revoke': 'Access token revoked',
+      'token.reject': 'Access token rejected',
       'user.create': 'Account created',
       'user.update': 'Account changed',
       'user.deactivate': 'Account deactivated',

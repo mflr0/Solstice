@@ -47,6 +47,9 @@ type Server struct {
 	catalog *catalog
 	catAt   time.Time
 
+	tokenMu  sync.Mutex
+	tokenAud map[int64]time.Time // when each refused token was last audited (tokens.go)
+
 	acc accountMail // whether links can be sent by e-mail (account_links.go)
 
 	adm adminState // instance settings, system page, imports (admin_*.go)
@@ -60,7 +63,8 @@ type Server struct {
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{})}
+		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{}),
+		tokenAud: map[int64]time.Time{}}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
 	}

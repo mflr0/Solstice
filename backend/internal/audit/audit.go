@@ -27,6 +27,7 @@ const (
 	PasswordChange = "password.change"
 	TokenCreate    = "token.create"
 	TokenRevoke    = "token.revoke"
+	TokenReject    = "token.reject"
 	UserCreate     = "user.create"
 	UserUpdate     = "user.update"
 	UserDeactivate = "user.deactivate"

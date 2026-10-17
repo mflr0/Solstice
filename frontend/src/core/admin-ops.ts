@@ -32,6 +32,7 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'password.reset_done',
   'token.create',
   'token.revoke',
+  'token.reject',
   'user.create',
   'user.update',
   'user.deactivate',
