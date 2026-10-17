@@ -287,3 +287,60 @@ func TestSecurityLevelMemberDoubleSubmit(t *testing.T) {
 		t.Errorf("%s members, want 2", got)
 	}
 }
+
+// Administering one project's levels gives no access to another project's:
+// the other project does not exist for its administrator.
+func TestSecurityLevelsOtherProject(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+	mine := newProject(t, admin, nil)
+
+	// paul.martin administers mine, and is not a global administrator.
+	var perms struct {
+		Grants []grantOut `json:"grants"`
+	}
+	admin.call("GET", "/api/projects/"+mine+"/permissions", nil, 200, &perms)
+	grants := append(perms.Grants, grantOut{Permission: "admin", Holder: "user", ID: userID(t, "paul.martin")})
+	admin.call("PUT", "/api/projects/"+mine+"/permissions", map[string]any{"grants": grants}, 200, nil)
+	paul.call("GET", "/api/projects/"+mine+"/security-levels", nil, 200, nil)
+	paul.call("GET", "/api/admin/roles", nil, 403, nil)
+
+	// The other project is open to a role paul.martin is not in.
+	var role struct{ ID int64 }
+	admin.call("POST", "/api/admin/roles", map[string]any{"name": unique("Fermés ")}, 201, &role)
+	t.Cleanup(func() { admin.do("DELETE", fmt.Sprintf("/api/admin/roles/%d", role.ID), nil) })
+	theirs := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "role", "id": role.ID}})
+	theirBase := "/api/projects/" + theirs + "/security-levels"
+	var level securityLevelAdmin
+	admin.call("POST", theirBase, map[string]any{"name": "Secret"}, 201, &level)
+	admin.call("POST", fmt.Sprintf("%s/%d/members", theirBase, level.ID), map[string]any{"holder": "everyone"}, 201, &level)
+	levelPath := fmt.Sprintf("%s/%d", theirBase, level.ID)
+	memberPath := fmt.Sprintf("%s/members/%d", levelPath, level.Members[0].ID)
+
+	for _, c := range []struct {
+		method, path string
+		body         any
+	}{
+		{"GET", theirBase, nil},
+		{"POST", theirBase, map[string]any{"name": "Pirate"}},
+		{"PATCH", levelPath, map[string]any{"name": "Pirate"}},
+		{"DELETE", levelPath, map[string]any{"clear": true}},
+		{"POST", levelPath + "/members", map[string]any{"holder": "lead"}},
+		{"DELETE", memberPath, nil},
+		// The level of the other project, asked through the project paul.martin administers.
+		{"PATCH", fmt.Sprintf("/api/projects/%s/security-levels/%d", mine, level.ID), map[string]any{"name": "Pirate"}},
+		{"DELETE", fmt.Sprintf("/api/projects/%s/security-levels/%d", mine, level.ID), map[string]any{"clear": true}},
+		{"POST", fmt.Sprintf("/api/projects/%s/security-levels/%d/members", mine, level.ID), map[string]any{"holder": "lead"}},
+		{"DELETE", fmt.Sprintf("/api/projects/%s/security-levels/%d/members/%d", mine, level.ID, level.Members[0].ID), nil},
+	} {
+		if status, body := paul.do(c.method, c.path, c.body); status != 404 {
+			t.Errorf("paul.martin %s %s: %d %s, want 404", c.method, c.path, status, body)
+		}
+	}
+
+	var after []securityLevelAdmin
+	admin.call("GET", theirBase, nil, 200, &after)
+	if len(after) != 1 || after[0].Name != "Secret" || after[0].MemberCount != 1 {
+		t.Errorf("the other project's levels changed: %+v", after)
+	}
+}
