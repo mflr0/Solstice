@@ -6,6 +6,14 @@
 //
 //	SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_e2e_pg go test ./tests/
 //
+// CI has no Jira distribution, so it loads testdata/seed.sql instead, a dump
+// of that synthetic import (scripts/make-test-seed.sh rebuilds it). To use it
+// locally, load it into a database made for the tests, then bring it up to date:
+//
+//	mariadb -uroot -p solstice_t < tests/testdata/seed.sql
+//	SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice_t go run ./cmd/solstice migrate
+//	SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_t go test ./tests/
+//
 // Without SOLSTICE_TEST_DB, every test skips itself. The tests change the
 // database: give them a copy made for them, never a real instance.
 package tests
