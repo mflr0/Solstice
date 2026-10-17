@@ -318,3 +318,23 @@ func TestProfile(t *testing.T) {
 		t.Errorf("address change with a token: %d", status)
 	}
 }
+
+// A person's page shows the address only to administrators and to the person.
+func TestPersonPageHidesTheAddress(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	_, username := newAccount(t, admin, "une phrase assez longue")
+	address := username + "@exemple.fr"
+	var page struct{ Email string }
+	login(t, username, "une phrase assez longue").call("GET", "/api/people/"+username, nil, 200, &page)
+	if page.Email != address {
+		t.Errorf("the person sees %q, want %q", page.Email, address)
+	}
+	login(t, "paul.martin", "motdepasse").call("GET", "/api/people/"+username, nil, 200, &page)
+	if page.Email != "" {
+		t.Errorf("another user sees the address %q", page.Email)
+	}
+	admin.call("GET", "/api/people/"+username, nil, 200, &page)
+	if page.Email != address {
+		t.Errorf("the administrator sees %q, want %q", page.Email, address)
+	}
+}

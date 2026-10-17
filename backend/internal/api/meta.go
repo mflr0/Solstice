@@ -63,6 +63,10 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// The address is private: only an administrator and the person see it.
+	if me := currentUser(r); !me.Admin && me.ID != u.ID {
+		email = ""
+	}
 	cat, err := s.catalogue(r.Context())
 	if err != nil {
 		return err
