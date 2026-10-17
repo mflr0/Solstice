@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/auth"
 )
 
 const (
@@ -72,7 +74,7 @@ func TestRefusedCapPerAddress(t *testing.T) {
 	}
 
 	// The cap is per address: another one is still logged.
-	rf.logRefused(refusedRequest("198.51.100.9:41000"), http.StatusUnauthorized, nil)
+	rf.logRefused(refusedRequest("198.51.100.9:41000"), http.StatusForbidden, nil)
 	if got := count(buf.String(), refusedLine); got != refusedCap+1 {
 		t.Errorf("a second address: %d refused lines, want %d", got, refusedCap+1)
 	}
@@ -201,5 +203,39 @@ func TestRefusedTotalCap(t *testing.T) {
 	rf.logRefused(from(0), http.StatusForbidden, nil)
 	if got := count(buf.String(), refusedLine); got != refusedTotal+1 {
 		t.Errorf("after the period: %d refused lines, want %d", got, refusedTotal+1)
+	}
+}
+
+// A 403 is always logged; a 401 only when the request sent a session
+// cookie or an Authorization header, and an ignored 401 spends no budget.
+func TestRefusedUnauthorizedNeedsCredentials(t *testing.T) {
+	var buf bytes.Buffer
+	rf := newRefuser(&buf, time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
+	withHeader := func(name, value string) *http.Request {
+		r := refusedRequest("192.0.2.7:41000")
+		r.Header.Set(name, value)
+		return r
+	}
+
+	for range 2 * refusedCap { // anonymous visitors: nothing logged, no budget spent
+		rf.logRefused(refusedRequest("192.0.2.7:41000"), http.StatusUnauthorized, nil)
+	}
+	if buf.Len() != 0 {
+		t.Fatalf("anonymous 401s were logged:\n%s", buf.String())
+	}
+	if len(rf.count) != 0 {
+		t.Errorf("anonymous 401s spent budget: %v", rf.count)
+	}
+
+	rf.logRefused(withHeader("Authorization", "Bearer x"), http.StatusUnauthorized, nil)
+	rf.logRefused(withHeader("Cookie", auth.CookieName+"=x"), http.StatusUnauthorized, nil)
+	rf.logRefused(withHeader("Cookie", "other=x"), http.StatusUnauthorized, nil)
+	if got := count(buf.String(), refusedLine); got != 2 {
+		t.Errorf("401s with credentials: %d lines, want 2", got)
+	}
+
+	rf.logRefused(refusedRequest("192.0.2.7:41000"), http.StatusForbidden, nil)
+	if got := count(buf.String(), refusedLine); got != 3 {
+		t.Errorf("a 403 without credentials: %d lines, want 3", got)
 	}
 }

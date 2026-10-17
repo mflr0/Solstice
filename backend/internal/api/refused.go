@@ -1,12 +1,14 @@
 package api
 
-// Refused requests (401 and 403 answers) are logged: probing other
-// projects, a missing X-Solstice header, a bad session cookie or a
-// non-administrator calling an admin route leave a trace. They come in
-// floods, so at most refusedCap lines are logged per client address
-// (an IPv6 address counting as its /64) per refusedPeriod, then one line
-// saying the rest are dropped until the period passes. All addresses
-// together get refusedTotal lines per period, then one line likewise.
+// Refused requests are logged: probing other projects, a missing
+// X-Solstice header, a bad session cookie or a non-administrator calling
+// an admin route leave a trace. Every 403 is, a 401 only when the request
+// sent credentials: a visitor who is not signed in, or a page checking
+// for a session, is no one to watch. They come in floods, so at most
+// refusedCap lines are logged per client address (an IPv6 address
+// counting as its /64) per refusedPeriod, then one line saying the rest
+// are dropped until the period passes. All addresses together get
+// refusedTotal lines per period, then one line likewise.
 
 import (
 	"log/slog"
@@ -14,6 +16,8 @@ import (
 	"net/netip"
 	"sync"
 	"time"
+
+	"solstice/internal/auth"
 )
 
 const (
@@ -52,10 +56,14 @@ func (rf *refuser) logger() *slog.Logger {
 }
 
 // logRefused logs one refused request at Warn level — never its query
-// string, headers, cookies or body — unless its address has already had
+// string, headers, cookies or body — unless it is a 401 without
+// credentials (see sentCredentials), or its address has already had
 // refusedCap of them this period or all addresses refusedTotal, in which
 // case one line says the rest are dropped until the period passes.
 func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefix) {
+	if status == http.StatusUnauthorized && !sentCredentials(r) {
+		return
+	}
 	client := clientIP(r, proxies)
 	switch rf.allow(refusedKey(client)) {
 	case verdictLog:
@@ -71,6 +79,16 @@ func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefi
 	case verdictTotalNotice:
 		rf.logger().Warn("further refused requests are not logged for a minute")
 	}
+}
+
+// sentCredentials tells whether a request carries a session cookie or an
+// Authorization header, whatever their value.
+func sentCredentials(r *http.Request) bool {
+	if r.Header.Get("Authorization") != "" {
+		return true
+	}
+	_, err := r.Cookie(auth.CookieName)
+	return err == nil
 }
 
 // refusedKey is what a client address is counted as: an IPv6 address by
