@@ -486,7 +486,7 @@ func (w *Setup) startImport(rw http.ResponseWriter, r *http.Request) error {
 	conn := w.db
 	w.log.Info("import from Jira started", "jira_home", f.JiraHome)
 	go func() {
-		rep, err := importer.Run(w.ctx, conn, importer.Options{
+		rep, err := importer.RunGuarded(w.ctx, conn, importer.Options{
 			SourceURL: f.URL, SourceTZ: loc, JiraHome: f.JiraHome, DataDir: w.opt.DataDir, Replace: true, Log: w.log,
 			Progress: func(p importer.Progress) {
 				job.mu.Lock()
