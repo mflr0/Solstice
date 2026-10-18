@@ -689,7 +689,7 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.changed(source, sub.UserID, "link", sourceChange)
 	s.changed(dest, sub.UserID, "link", destChange)
-	return s.respondIssue(w, r, sub, iss.ID)
+	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
 }
 
 func (s *Server) deleteLink(w http.ResponseWriter, r *http.Request) error {

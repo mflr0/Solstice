@@ -146,6 +146,8 @@ export const de: Messages = {
     modes: { system: 'System', light: 'Hell', dark: 'Dunkel' },
     language: 'Sprache',
     logout: 'Abmelden',
+    sourceCode: 'Quellcode',
+    licenses: 'Lizenzen',
     live: 'Live-Aktualisierung',
     offline: 'Offline: Seiten aktualisieren sich nicht mehr von selbst',
   },
@@ -265,6 +267,8 @@ export const de: Messages = {
     network: 'Der Server antwortet nicht. Prüfen Sie Ihre Verbindung.',
     generic: 'Ein Fehler ist aufgetreten.',
     notFound: 'Diese Seite existiert nicht, oder Sie haben keinen Zugriff darauf.',
+    pageLoad:
+      'Diese Seite konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und laden Sie neu.',
   },
 
   login: {
@@ -1198,7 +1202,7 @@ export const de: Messages = {
       priorities: 'Prioritäten',
       resolutions: 'Lösungen',
       statuses: 'Status',
-      linkTypes: 'Verknüpfungsarten',
+      linkTypes: 'Verknüpfungstypen',
       fields: 'Benutzerdefinierte Felder',
       mail: 'E-Mail',
       webhooks: 'Webhooks',
@@ -1221,7 +1225,7 @@ export const de: Messages = {
       priorities: 'Die Dringlichkeit und die Farbe jeder Priorität.',
       resolutions: 'Wie ein Vorgang geschlossen wurde: behoben, Duplikat…',
       statuses: 'Die gemeinsamen Status aller Workflows.',
-      linkTypes: 'Blockiert, dupliziert, betrifft…',
+      linkTypes: 'Blockiert, dupliziert, verweist auf…',
       fields: 'Die Felder, die Vorgängen hinzugefügt werden.',
       mail: 'SMTP-Server, Test-E-Mail, Sendewarteschlange.',
       webhooks: 'Andere Tools bei jeder Änderung benachrichtigen.',
@@ -1249,6 +1253,65 @@ export const de: Messages = {
     unavailable:
       'Dieser Server bietet diese Einstellung noch nicht: Aktualisieren Sie Solstice, um sie zu nutzen.',
     hideBanner: 'Ausblenden',
+    restricted: {
+      comments: (n: number) => plural(n, 'Kommentar', 'Kommentare'),
+      worklogs: (n: number) => plural(n, 'Zeiteintrag', 'Zeiteinträge'),
+    },
+    groupsPage: {
+      intro:
+        'Gruppen fassen Personen zusammen, damit Berechtigungen allen auf einmal erteilt werden können. Namen werden in Kleinbuchstaben gespeichert.',
+      newGroup: 'Neue Gruppe',
+      create: 'Gruppe erstellen',
+      search: 'Gruppenname',
+      name: 'Name',
+      nameHint: 'Namen werden in Kleinbuchstaben gespeichert.',
+      description: 'Beschreibung',
+      members: 'Mitglieder',
+      count: (n: number) => plural(n, 'Mitglied', 'Mitglieder'),
+      empty: 'Noch keine Gruppen.',
+      emptyHint:
+        'Erstellen Sie eine Gruppe, um mehreren Personen auf einmal Berechtigungen zu geben.',
+      problems: {
+        nameRequired: 'Geben Sie der Gruppe einen Namen.',
+        nameTooLong: 'Höchstens 255 Zeichen.',
+        descriptionTooLong: 'Höchstens 255 Zeichen.',
+      },
+      editTitle: (name: string) => `Gruppe ${name}`,
+      created: (name: string) => `Gruppe ${name} erstellt.`,
+      updated: (name: string) => `Gruppe ${name} gespeichert.`,
+      membersHint: 'Mitglieder werden sofort hinzugefügt und entfernt, ohne zu speichern.',
+      noMembers: 'Noch keine Mitglieder.',
+      addMember: 'Mitglied hinzufügen',
+      memberAdded: (name: string) => `${name} wurde zur Gruppe hinzugefügt.`,
+      memberRemoved: (name: string) => `${name} wurde aus der Gruppe entfernt.`,
+      removeMember: (name: string) => `${name} aus der Gruppe entfernen`,
+      deleteTitle: (name: string) => `Gruppe ${name} löschen?`,
+      deleteBody:
+        'Die Gruppe wird aus den Berechtigungen, Rollen und Sicherheitsstufen entfernt, die sie verwenden. Ihre Mitglieder behalten ihre Konten.',
+      deleted: (name: string) => `Gruppe ${name} gelöscht.`,
+      inUse: (items: string) => `Noch auf diese Gruppe beschränkt: ${items}.`,
+    },
+    rolesPage: {
+      shared:
+        'Rollen gelten für alle Projekte. Wer eine Rolle innehat, wird in jedem Projekt festgelegt.',
+      newRole: 'Neue Rolle',
+      create: 'Rolle erstellen',
+      name: 'Name',
+      description: 'Beschreibung',
+      empty: 'Noch keine Rollen.',
+      emptyHint: 'Erstellen Sie eine Rolle und weisen Sie sie in jedem Projekt Personen zu.',
+      problems: {
+        nameRequired: 'Geben Sie der Rolle einen Namen.',
+        nameTooLong: 'Höchstens 255 Zeichen.',
+      },
+      editTitle: (name: string) => `Rolle ${name}`,
+      created: (name: string) => `Rolle ${name} erstellt.`,
+      updated: (name: string) => `Rolle ${name} gespeichert.`,
+      deleteTitle: (name: string) => `Rolle ${name} löschen?`,
+      deleteBody: 'Die Rolle verschwindet aus allen Projekten.',
+      deleted: (name: string) => `Rolle ${name} gelöscht.`,
+      inUse: (items: string) => `Noch auf diese Rolle beschränkt: ${items}.`,
+    },
   },
 
   auditAdmin: {
@@ -1299,6 +1362,7 @@ export const de: Messages = {
       board: 'Boards',
       sprint: 'Sprints',
       filter: 'Filter',
+      issue: 'Vorgänge',
       issuetype: 'Vorgangstypen',
       priority: 'Prioritäten',
       resolution: 'Lösungen',
@@ -1314,12 +1378,14 @@ export const de: Messages = {
     actions: {
       'login.success': 'Angemeldet',
       'login.failure': 'Anmeldung fehlgeschlagen',
+      'login.lockout': 'Anmeldeadresse gesperrt',
       'password.change': 'Passwort geändert',
       'password.reset': 'Passwort von einem Administrator zurückgesetzt',
       'password.reset_request': 'Link zum Zurücksetzen des Passworts gesendet',
       'password.reset_done': 'Passwort über einen Link zum Zurücksetzen gewählt',
       'token.create': 'Zugriffstoken erstellt',
       'token.revoke': 'Zugriffstoken widerrufen',
+      'token.reject': 'Zugriffstoken abgelehnt',
       'user.create': 'Konto erstellt',
       'user.update': 'Konto geändert',
       'user.deactivate': 'Konto deaktiviert',
@@ -1367,6 +1433,8 @@ export const de: Messages = {
       'sprint.update': 'Sprint geändert',
       'sprint.delete': 'Sprint gelöscht',
       'filter.share': 'Freigabe eines Filters geändert',
+      'issue.delete': 'Vorgang gelöscht',
+      'issue.export': 'Suche als CSV exportiert',
       'issuetype.create': 'Vorgangstyp erstellt',
       'issuetype.update': 'Vorgangstyp geändert',
       'issuetype.delete': 'Vorgangstyp gelöscht',
@@ -1418,6 +1486,7 @@ export const de: Messages = {
       board: 'Board',
       sprint: 'Sprint',
       filter: 'Filter',
+      issue: 'Vorgang',
       settings: 'Einstellung',
       import: 'Import',
       version: 'Version',
@@ -1437,7 +1506,9 @@ export const de: Messages = {
       email: 'E-Mail',
       admin: 'Administrator',
       method: 'Methode',
+      query: 'Abfrage',
       project: 'Projekt',
+      rows: 'Zeilen',
       source: 'Quelle',
       seconds: 'Dauer (Sekunden)',
       error: 'Fehler',
@@ -1450,7 +1521,7 @@ export const de: Messages = {
       group: 'Gruppe',
       enabled: 'Aktiv',
       expires: 'Läuft ab',
-      owner: 'Besitzer',
+      owner: 'Eigentümer',
       version: 'Version',
       status: 'Status',
     },
@@ -1804,7 +1875,7 @@ export const de: Messages = {
       reset: 'Passwort zurücksetzen',
       invitation: 'Einladung',
     },
-    attempts: (n: number) => plural(n, `${n} Versuch`, `${n} Versuche`),
+    attempts: (n: number) => plural(n, 'Versuch', 'Versuche'),
   },
 
   account: {
@@ -1827,6 +1898,7 @@ export const de: Messages = {
     name: 'Anzeigename',
     email: 'E-Mail-Adresse',
     emailHint: 'Dient auch dazu, Sie zu benachrichtigen und zu erreichen.',
+    emailChangeHint: 'Zum Ändern der Adresse wird Ihr aktuelles Passwort benötigt.',
     passwordTitle: 'Passwort',
     passwordIntro: 'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten.',
     currentPassword: 'Aktuelles Passwort',
@@ -1838,6 +1910,14 @@ export const de: Messages = {
     saved: 'Einstellungen gespeichert.',
     profileUnsupported:
       'Dieser Server kann Name und E-Mail-Adresse noch nicht ändern: Aktualisieren Sie Solstice.',
+    picture: 'Bild',
+    pictureHint:
+      'Wird neben Ihrem Namen angezeigt. Das Bild wird in Ihrem Browser quadratisch zugeschnitten und verkleinert, bevor es gesendet wird.',
+    pictureChange: 'Bild ändern',
+    pictureRemove: 'Bild entfernen',
+    pictureSaved: 'Bild gespeichert.',
+    pictureRemoved: 'Bild entfernt.',
+    pictureUnreadable: 'Diese Datei kann nicht als Bild gelesen werden.',
     problems: {
       nameRequired: 'Geben Sie einen Namen an.',
       nameTooLong: 'Höchstens 100 Zeichen.',
@@ -2074,7 +2154,7 @@ export const de: Messages = {
     urlPlaceholder: 'https://beispiel.de/webhook',
     urlHint: 'Die vollständige Adresse mit http:// oder https://, die das POST empfängt.',
     enabled: 'Webhook aktiviert',
-    excludeBody: 'Leeren Körper senden',
+    excludeBody: 'Leeren Body senden',
     excludeBodyHint:
       'Das POST geht ohne Inhalt raus: nützlich für einen Dienst, der nur die Signatur prüft.',
     events: 'Ereignisse',
@@ -2240,7 +2320,7 @@ export const de: Messages = {
     deleteCategoryTitle: (name: string) => `„${name}“ löschen?`,
     deleteCategoryBody: (n: number) =>
       n > 0
-        ? `${plural(n, 'Projekt', 'Projekte')} bleiben ohne Kategorie. Die Projekte selbst bleiben unberührt.`
+        ? `${plural(n, 'Projekt bleibt', 'Projekte bleiben')} ohne Kategorie. Die Projekte selbst bleiben unberührt.`
         : 'Kein Projekt verwendet diese Kategorie.',
     categoryProblems: {
       nameRequired: 'Geben Sie der Kategorie einen Namen.',

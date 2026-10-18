@@ -18,6 +18,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyStreams:       "बहुत अधिक लाइव कनेक्शन।",
 	RequestStreamingUnsupported: "स्ट्रीमिंग समर्थित नहीं है।",
 	RequestInternalError:        "आंतरिक त्रुटि। इस घटना को लॉग कर लिया गया है।",
+	RequestBodyTooLargeLimit:    "अनुरोध बहुत बड़ा है (अधिकतम %d KiB)।",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "नाम आवश्यक है (अधिकतम %d वर्ण)।",
@@ -39,6 +40,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "अपना मौजूदा पासवर्ड बताएँ।",
 	AccountCurrentPasswordIncorrect:  "मौजूदा पासवर्ड गलत है।",
 	AccountTokenCannotChangePassword: "एक्सेस टोकन पासवर्ड नहीं बदल सकता: अपने पासवर्ड से साइन इन करें।",
+	AccountTokenCannotChangeEmail:    "एक्सेस टोकन ईमेल पता नहीं बदल सकता: अपने पासवर्ड से साइन इन करें।",
 	AccountLanguageUnsupported:       "यह भाषा समर्थित नहीं है (इनमें से चुनें: %s)।",
 	AccountResetLinkInvalid:          "यह लिंक अमान्य है या समाप्त हो चुका है। नया लिंक माँगें।",
 	AccountMailUnavailable:           "ईमेल लिंक उपलब्ध नहीं हैं: पहले एडमिन में ईमेल और सार्वजनिक पता सेट करें।",
@@ -59,12 +61,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",
 	GroupExists:     "ग्रुप “%s” पहले से मौजूद है।",
-	GroupRestricted: "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे डिलीट नहीं किया जा सकता।",
+	GroupRestricted: "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
 
 	// Project roles.
 	RoleNotFound:   "भूमिका नहीं मिली।",
 	RoleExists:     "भूमिका “%s” पहले से मौजूद है।",
-	RoleRestricted: "टिप्पणियाँ या दर्ज समय इस भूमिका तक सीमित हैं: इसे डिलीट नहीं किया जा सकता।",
+	RoleRestricted: "टिप्पणियाँ या दर्ज समय इस भूमिका तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
 
 	// Instance settings.
 	SettingsNameRequired:          "इंस्टेंस का नाम आवश्यक है (अधिकतम %d वर्ण)।",
@@ -132,13 +134,13 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectKeyInvalid:          "अमान्य कुंजी: 2 से 10 बड़े अक्षर या अंक, जिसकी शुरुआत किसी अक्षर से हो।",
 	ProjectKeyTaken:            "कुंजी %s पहले से ली गई है (किसी मौजूदा या पुराने प्रोजेक्ट द्वारा)।",
 	ProjectNameTaken:           "“%s” नाम का एक प्रोजेक्ट पहले से मौजूद है।",
-	ProjectLeadInactive:        "ज़िम्मेदार व्यक्ति कोई सक्रिय खाता होना चाहिए।",
+	ProjectLeadInactive:        "प्रोजेक्ट लीड कोई सक्रिय खाता होना चाहिए।",
 	ProjectCategoryNotFound:    "श्रेणी नहीं मिली।",
 	ProjectTemplateUnknown:     "अज्ञात टेम्पलेट: software या simple।",
 	ProjectAssigneeTypeUnknown: "डिफ़ॉल्ट असाइनमेंट: unassigned या lead।",
 	ProjectIssueTypeRequired:   "कम से कम एक ऐसा टिकट प्रकार चुनें जो सब-टास्क न हो।",
 	ProjectRemovedTypesInUse:   "कुछ टिकट अभी भी हटाए गए प्रकार इस्तेमाल करते हैं: पहले उनका टिकट प्रकार बदलें।",
-	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: डिलीट की पुष्टि के लिए इसकी कुंजी टाइप करें।",
+	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: मिटाने की पुष्टि के लिए इसकी कुंजी टाइप करें।",
 	ProjectGranteeUnknown:      "अज्ञात अनुमति-प्राप्तकर्ता: %s।",
 	ProjectGranteeNotFound:     "अनुमति-प्राप्तकर्ता नहीं मिला।",
 
@@ -204,8 +206,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "अज्ञात फ़ील्ड प्रकार (इनमें से चुनें: %s)।",
 	CustomFieldNoOptions:     "इस फ़ील्ड प्रकार के कोई विकल्प नहीं होते।",
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
-	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे डिलीट नहीं किया जा सकता।",
-	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: डिलीट की पुष्टि के लिए इसका नाम टाइप करें।",
+	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे मिटाया नहीं जा सकता।",
+	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: मिटाने की पुष्टि के लिए इसका नाम टाइप करें।",
 	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
 	CustomFieldOptionMoveTo:  "बदले में दिया गया विकल्प उसी फ़ील्ड का, उसी स्तर का कोई दूसरा विकल्प होना चाहिए।",
 
@@ -300,8 +302,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssigneeNotAssignable: "इस प्रोजेक्ट में इस व्यक्ति को टिकट असाइन नहीं किए जा सकते।",
 	IssueNotVisibleTo:          "यह व्यक्ति यह टिकट नहीं देख सकता।",
 	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
-	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप डिलीट नहीं कर सकते।",
-	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी डिलीट करने के लिए deleteSubtasks=true जोड़ें।",
+	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप मिटा नहीं सकते।",
+	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी मिटाने के लिए deleteSubtasks=true जोड़ें।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
@@ -317,6 +319,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTypeUnknown:    "अज्ञात लिंक प्रकार।",
 	LinkTargetNotFound: "लक्ष्य टिकट नहीं मिला।",
 	LinkToItself:       "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
+
+	// Group picker.
+	GroupPickerHeader: "मेल खाने वाले %[2]d ग्रुप में से %[1]d दिखाए गए",
 
 	// Attachments.
 	AttachmentUploadInvalid: "अमान्य फ़ाइल अपलोड।",
@@ -348,7 +353,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "इस वर्कफ़्लो में अज्ञात ट्रांज़िशन।",
 	WorkflowStatusesRemoved:        "कुछ टिकट ऐसे स्टेटस में हैं जो उनके वर्कफ़्लो में अब नहीं रहेंगे। चुनें कि उन्हें कहाँ ले जाना है।",
 	WorkflowCopyNotFound:           "कॉपी करने के लिए वर्कफ़्लो इस प्रोजेक्ट में नहीं मिला।",
-	WorkflowDefaultDelete:          "डिफ़ॉल्ट वर्कफ़्लो डिलीट नहीं किया जा सकता। पहले किसी दूसरे वर्कफ़्लो को डिफ़ॉल्ट बनाएँ।",
+	WorkflowDefaultDelete:          "डिफ़ॉल्ट वर्कफ़्लो मिटाया नहीं जा सकता। पहले किसी दूसरे वर्कफ़्लो को डिफ़ॉल्ट बनाएँ।",
 	WorkflowDefaultStatusesMissing: "कुछ टिकट ऐसे स्टेटस में हैं जो डिफ़ॉल्ट वर्कफ़्लो में नहीं हैं। चुनें कि उन्हें कहाँ ले जाना है।",
 
 	// Boards, their settings and ranking.
@@ -386,6 +391,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "स्प्रिंट अपनी शुरुआत के बाद खत्म होना चाहिए।",
 	SprintStartFuture:     "सक्रिय स्प्रिंट भविष्य में शुरू नहीं हो सकता।",
 	SprintDeleteNotFuture: "केवल आगामी स्प्रिंट को मिटाया जा सकता है।",
+	SprintNotOnBoard:      "इस टिकट का प्रोजेक्ट इस स्प्रिंट के बोर्ड पर नहीं है।",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",
@@ -500,7 +506,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyWhyWatcher:          "आपको यह ईमेल इसलिए मिला है क्योंकि आप यह टिकट वॉच कर रहे हैं।",
 	NotifyWhyProject:          "आपको यह ईमेल इसलिए मिला है क्योंकि प्रोजेक्ट %s ने आपको अपने प्राप्तकर्ताओं में शामिल किया है।",
 	NotifyCreated:             "%s ने टिकट बनाया।",
-	NotifyDeleted:             "%s ने टिकट हटाया।",
+	NotifyDeleted:             "%s ने टिकट मिटाया।",
 	NotifyUpdated:             "%s ने टिकट बदला।",
 	NotifyResolved:            "%s ने टिकट रिज़ॉल्व किया।",
 	NotifyReopened:            "%s ने टिकट फिर से खोला।",
@@ -539,6 +545,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookSecretTooLong:       "सीक्रेट अधिकतम 255 वर्णों का हो सकता है।",
 	WebhookSecretEncryptFailed: "सीक्रेट एन्क्रिप्ट नहीं किया जा सका: %s",
 
+	// Profile pictures.
+	AvatarUploadInvalid: "चित्र अपलोड अमान्य है।",
+	AvatarNoFile:        "कोई चित्र नहीं मिला।",
+	AvatarTooLarge:      "चित्र बहुत बड़ा है (अधिकतम 1 MB)।",
+	AvatarNotImage:      "चित्र एक मान्य PNG या JPEG फ़ाइल होना चाहिए।",
+	AvatarDimensions:    "चित्र अधिकतम 512 × 512 पिक्सेल का हो सकता है।",
 	// Issue security levels.
 	SecurityLevelInUse:     "इस स्तर पर टिकट: %d। उन्हें प्रोजेक्ट के किसी दूसरे स्तर पर ले जाएँ, या उनका स्तर हटा दें।",
 	SecurityTargetNotFound: "रिप्लेसमेंट स्तर इस प्रोजेक्ट में नहीं मिला।",

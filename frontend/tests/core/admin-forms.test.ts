@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   defaultPort,
+  groupProblems,
   hasProblems,
   holderNeedsId,
   isEmail,
@@ -12,7 +13,11 @@ import {
   mailProblems,
   matches,
   memberPayload,
+  namedPatch,
+  namedPayload,
   newUserForm,
+  restrictionUsage,
+  roleProblems,
   securityLevelProblem,
   suggestUsername,
   typedMatches,
@@ -113,7 +118,6 @@ describe('user form', () => {
     expect(hasProblems(userProblems(f, true, 12))).toBe(false);
     f.email = 'nope';
     expect(userProblems(f, true, 12)).toEqual({ email: 'emailInvalid' });
-    // Without the invitation the password is asked for again.
     expect(userProblems({ ...f, email: '', invite: false }, true, 12)).toEqual({
       password: 'passwordShort',
     });
@@ -133,6 +137,69 @@ describe('user form', () => {
     expect(matches('ren dur', 'René Durand', 'rene.durand')).toBe(true);
     expect(matches('paul', 'René Durand')).toBe(false);
     expect(matches('  ', 'anything')).toBe(true);
+  });
+});
+
+describe('group and role forms', () => {
+  it('asks for a name, trimmed, of 255 characters at most', () => {
+    expect(groupProblems({ name: '  ', description: '' })).toEqual({ name: 'nameRequired' });
+    expect(roleProblems({ name: '', description: '' })).toEqual({ name: 'nameRequired' });
+    expect(hasProblems(groupProblems({ name: ` ${'a'.repeat(255)} `, description: '' }))).toBe(
+      false,
+    );
+    expect(roleProblems({ name: 'é'.repeat(256), description: '' })).toEqual({
+      name: 'nameTooLong',
+    });
+  });
+
+  it('limits the description of a group only', () => {
+    const description = 'x'.repeat(256);
+    expect(groupProblems({ name: 'devs', description })).toEqual({
+      description: 'descriptionTooLong',
+    });
+    expect(hasProblems(roleProblems({ name: 'Developers', description }))).toBe(false);
+  });
+
+  it('sends trimmed texts, an empty description clearing it', () => {
+    expect(namedPayload({ name: ' devs ', description: '  ' })).toEqual({
+      name: 'devs',
+      description: '',
+    });
+  });
+
+  it('sends only the name or the description that changed', () => {
+    const role = { name: 'Developers', description: 'Write code' };
+    expect(namedPatch({ name: ' Developers ', description: 'Write code ' }, role)).toEqual({});
+    expect(namedPatch({ name: 'Devs', description: 'Write code' }, role)).toEqual({ name: 'Devs' });
+    expect(namedPatch({ name: 'Developers', description: '' }, role)).toEqual({ description: '' });
+  });
+
+  it('takes a missing description as empty', () => {
+    const group = { name: 'devs', description: null };
+    expect(namedPatch({ name: 'devs', description: '  ' }, group, true)).toEqual({});
+    expect(namedPatch({ name: 'devs', description: 'Code' }, group, true)).toEqual({
+      description: 'Code',
+    });
+  });
+
+  it('does not take a group name changed by case alone for a change', () => {
+    const group = { name: 'devs', description: '' };
+    expect(namedPatch({ name: ' Devs', description: '' }, group, true)).toEqual({});
+    expect(namedPatch({ name: 'Devs', description: '' }, group)).toEqual({ name: 'Devs' });
+    expect(namedPatch({ name: 'Ops', description: '' }, group, true)).toEqual({ name: 'Ops' });
+  });
+
+  it('reads what restricts a deletion from the server answer', () => {
+    expect(
+      restrictionUsage({ error: 'x', usage: { comments: 3, worklogs: 1, grants: 2 } }),
+    ).toEqual({
+      comments: 3,
+      worklogs: 1,
+    });
+    expect(restrictionUsage({ usage: { comments: 2 } })).toEqual({ comments: 2, worklogs: 0 });
+    expect(restrictionUsage({ error: 'x' })).toBeNull();
+    expect(restrictionUsage(undefined)).toBeNull();
+    expect(restrictionUsage({ usage: null })).toBeNull();
   });
 });
 
@@ -170,7 +237,6 @@ describe('general settings', () => {
       timeZone: 'timeZoneUnknown',
       instanceName: 'nameRequired',
     });
-    // A browser that cannot list zones leaves the check to the server.
     expect(generalProblems(f, null).timeZone).toBeUndefined();
   });
 

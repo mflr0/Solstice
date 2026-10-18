@@ -15,6 +15,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyStreams:       "Too many live connections.",
 	RequestStreamingUnsupported: "Streaming is not supported.",
 	RequestInternalError:        "Internal error. The incident has been logged.",
+	RequestBodyTooLargeLimit:    "The request is too large (%d KiB at most).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "A name is required (%d characters at most).",
@@ -36,6 +37,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Enter your current password.",
 	AccountCurrentPasswordIncorrect:  "Incorrect current password.",
 	AccountTokenCannotChangePassword: "An access token cannot change the password: sign in with your password.",
+	AccountTokenCannotChangeEmail:    "An access token cannot change the email address: sign in with your password.",
 	AccountLanguageUnsupported:       "Unsupported language (choose from: %s).",
 	AccountResetLinkInvalid:          "This link is invalid or has expired. Ask for a new one.",
 	AccountMailUnavailable:           "Email links are not available: set up email and the public address in the administration first.",
@@ -315,6 +317,9 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Target issue not found.",
 	LinkToItself:       "An issue cannot be linked to itself.",
 
+	// Group picker.
+	GroupPickerHeader: "Showing %d of %d matching groups",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Invalid file upload.",
 	AttachmentNoFile:        "No file received.",
@@ -383,6 +388,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "The sprint must end after it starts.",
 	SprintStartFuture:     "An active sprint cannot start in the future.",
 	SprintDeleteNotFuture: "Only an upcoming sprint can be deleted.",
+	SprintNotOnBoard:      "The issue's project is not on this sprint's board.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "A filter name is required (255 characters at most).",
@@ -536,6 +542,12 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookSecretTooLong:       "The secret is 255 characters at most.",
 	WebhookSecretEncryptFailed: "The secret cannot be encrypted: %s",
 
+	// Profile pictures.
+	AvatarUploadInvalid: "Invalid picture upload.",
+	AvatarNoFile:        "No picture received.",
+	AvatarTooLarge:      "Picture too large (1 MB at most).",
+	AvatarNotImage:      "The picture must be a valid PNG or JPEG image.",
+	AvatarDimensions:    "The picture must be 512 × 512 pixels at most.",
 	// Issue security levels.
 	SecurityLevelInUse:     "Issues at this level: %d. Move them to another level of the project, or clear their level.",
 	SecurityTargetNotFound: "Replacement level not found in this project.",

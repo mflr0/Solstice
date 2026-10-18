@@ -25,6 +25,8 @@ export const fr: SetupMessages = {
   copy: 'Copier',
   copied: 'Copié',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Code source',
+  licenses: 'Licences',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: "Le serveur ne répond pas. Vérifiez qu'il tourne toujours, puis réessayez.",

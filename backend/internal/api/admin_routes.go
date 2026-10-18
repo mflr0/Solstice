@@ -20,6 +20,8 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	// People.
 	route("GET /api/admin/users/{id}", s.adminGetUser, true)
 	route("PUT /api/admin/users/{id}/groups", s.adminUserGroups, true)
+	route("PUT /api/admin/users/{id}/avatar", s.adminPutAvatar, true)
+	route("DELETE /api/admin/users/{id}/avatar", s.adminDeleteAvatar, true)
 	route("POST /api/admin/users/{id}/reset-password", s.adminResetPassword, true)
 	route("GET /api/admin/groups", s.listGroups, true)
 	route("POST /api/admin/groups", s.createGroup, true)
@@ -103,7 +105,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 func readJSONFields(r *http.Request, v any) (map[string]json.RawMessage, error) {
 	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err != nil {
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	keys := map[string]json.RawMessage{}
 	if err := json.Unmarshal(raw, &keys); err != nil {

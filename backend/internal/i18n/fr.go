@@ -16,6 +16,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyStreams:       "Trop de connexions en direct.",
 	RequestStreamingUnsupported: "Flux non pris en charge.",
 	RequestInternalError:        "Erreur interne, l'incident a été journalisé.",
+	RequestBodyTooLargeLimit:    "La requête est trop volumineuse (%d Kio au maximum).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Le nom est obligatoire (%d caractères au plus).",
@@ -37,6 +38,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Indiquez votre mot de passe actuel.",
 	AccountCurrentPasswordIncorrect:  "Mot de passe actuel incorrect.",
 	AccountTokenCannotChangePassword: "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.",
+	AccountTokenCannotChangeEmail:    "Un jeton d'accès ne peut pas changer l'adresse électronique : connectez-vous avec votre mot de passe.",
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
 	AccountResetLinkInvalid:          "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
 	AccountMailUnavailable:           "Les liens par courriel ne sont pas disponibles : configurez d'abord le courriel et l'adresse publique dans l'administration.",
@@ -265,9 +267,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ComponentReplacementNotFound: "Composant de remplacement introuvable dans ce projet.",
 
 	// Versions.
-	VersionStartAfterRelease: "La date de début doit précéder la date de sortie.",
+	VersionStartAfterRelease: "La date de début doit précéder la date de livraison.",
 	VersionTargetNotFound:    "Version de destination introuvable dans ce projet.",
-	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore sortie.",
+	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore livrée.",
 
 	// Issues: creation, editing, hierarchy, assignment, deletion.
 	IssueTypeUnknown:           "Type de ticket inconnu : %s.",
@@ -315,6 +317,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTypeUnknown:    "Type de lien inconnu.",
 	LinkTargetNotFound: "Ticket cible introuvable.",
 	LinkToItself:       "Un ticket ne peut pas être lié à lui-même.",
+
+	// Group picker.
+	GroupPickerHeader: "%d groupes affichés sur %d correspondants",
 
 	// Attachments.
 	AttachmentUploadInvalid: "Envoi de fichier invalide.",
@@ -384,6 +389,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Le sprint doit se terminer après son début.",
 	SprintStartFuture:     "Un sprint actif ne peut pas commencer dans le futur.",
 	SprintDeleteNotFuture: "Seul un sprint à venir peut être supprimé.",
+	SprintNotOnBoard:      "Le projet du ticket n'est pas sur le tableau de ce sprint.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Le nom du filtre est obligatoire (255 caractères au plus).",
@@ -537,6 +543,12 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookSecretTooLong:       "Le secret fait 255 caractères au plus.",
 	WebhookSecretEncryptFailed: "Impossible de chiffrer le secret : %s",
 
+	// Profile pictures.
+	AvatarUploadInvalid: "Envoi de l'image invalide.",
+	AvatarNoFile:        "Aucune image reçue.",
+	AvatarTooLarge:      "Image trop volumineuse (1 Mo au plus).",
+	AvatarNotImage:      "L'image doit être un fichier PNG ou JPEG valide.",
+	AvatarDimensions:    "L'image doit faire 512 × 512 pixels au plus.",
 	// Issue security levels.
 	SecurityLevelInUse:     "Tickets à ce niveau : %d. Déplacez-les vers un autre niveau du projet, ou retirez leur niveau.",
 	SecurityTargetNotFound: "Niveau de remplacement introuvable dans ce projet.",

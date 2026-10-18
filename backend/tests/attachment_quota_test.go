@@ -78,8 +78,8 @@ func TestAttachmentStorageQuota(t *testing.T) {
 	paul := loginAt(t, base, "paul.martin", "motdepasse")
 	key := createIssue(t, paul, "DEMO", unique("quota"), "")
 
-	if status, body := uploadText(t, paul, key, "first.txt", strings.Repeat("a", 600)); status != 200 {
-		t.Fatalf("first upload: %d %s, want 200", status, body)
+	if status, body := uploadText(t, paul, key, "first.txt", strings.Repeat("a", 600)); status != 201 {
+		t.Fatalf("first upload: %d %s, want 201", status, body)
 	}
 	status, body := uploadText(t, paul, key, "second.txt", strings.Repeat("b", 600))
 	if status != 507 {
@@ -92,8 +92,8 @@ func TestAttachmentStorageQuota(t *testing.T) {
 	free := loginAt(t, ownServer(t), "paul.martin", "motdepasse")
 	other := createIssue(t, free, "DEMO", unique("quota"), "")
 	for _, name := range []string{"one.txt", "two.txt"} {
-		if status, body := uploadText(t, free, other, name, "sans limite"); status != 200 {
-			t.Fatalf("upload %s without a quota: %d %s, want 200", name, status, body)
+		if status, body := uploadText(t, free, other, name, "sans limite"); status != 201 {
+			t.Fatalf("upload %s without a quota: %d %s, want 201", name, status, body)
 		}
 	}
 }
@@ -138,7 +138,7 @@ func TestAttachmentQuotaStopsAnOversizedPart(t *testing.T) {
 	if n := storedFiles(t, key); n != "0" {
 		t.Errorf("%s files stored, want none", n)
 	}
-	if status, body := postFiles(t, paul, key, true, [2]string{"small.txt", strings.Repeat("a", 900)}); status != 200 {
-		t.Fatalf("a file within the quota: %d %s, want 200", status, body)
+	if status, body := postFiles(t, paul, key, true, [2]string{"small.txt", strings.Repeat("a", 900)}); status != 201 {
+		t.Fatalf("a file within the quota: %d %s, want 201", status, body)
 	}
 }

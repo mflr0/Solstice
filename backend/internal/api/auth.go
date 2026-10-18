@@ -36,19 +36,29 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	u, err := s.checkPassword(r, in.Username, in.Password)
-	if errors.Is(err, auth.ErrNoSession) {
-		s.auditLogin(r, in.Username, nil, "form")
-		return fail(http.StatusUnauthorized, i18n.AccountSignInFailed)
-	}
+	u, err := s.signIn(w, r, in.Username, in.Password, "form")
 	if err != nil {
 		return err
 	}
-	if err := s.startSession(w, r, u); err != nil {
-		return err
-	}
-	s.auditLogin(r, in.Username, u, "form")
 	return writeJSON(w, http.StatusOK, meOf(u))
+}
+
+// signIn throttles and audits every way of signing in with a password;
+// method says how the user came in, for the audit log.
+func (s *Server) signIn(w http.ResponseWriter, r *http.Request, username, password, method string) (*auth.User, error) {
+	u, err := s.checkPassword(r, username, password)
+	if errors.Is(err, auth.ErrNoSession) {
+		s.auditLogin(r, username, nil, method)
+		return nil, fail(http.StatusUnauthorized, i18n.AccountSignInFailed)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := s.startSession(w, r, u); err != nil {
+		return nil, err
+	}
+	s.auditLogin(r, username, u, method)
+	return u, nil
 }
 
 // startSession signs u in: it opens a session, notes the sign-in and sets
@@ -75,6 +85,14 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u *auth.Us
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
+	if err := s.signOut(w, r); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) signOut(w http.ResponseWriter, r *http.Request) error {
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		if err := auth.EndSession(r.Context(), s.db, c.Value); err != nil {
 			return err
@@ -114,10 +132,20 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 		sets["display_name"] = name
 	}
+	emailChanged := false
 	if in.Email != nil {
 		email := strings.TrimSpace(*in.Email)
 		if email != "" && !validEmail(email) {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
+		}
+		if email != strings.TrimSpace(u.Email) {
+			// The address receives the links that reset the account: as for
+			// the password, a token cannot change it and the current password
+			// is asked for.
+			if u.TokenID != 0 {
+				return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
+			}
+			emailChanged = true
 		}
 		sets["email"] = email
 	}
@@ -128,15 +156,17 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 		sets["locale"] = l
 	}
-	if in.NewPassword != nil {
+	if in.NewPassword != nil || emailChanged {
 		if u.TokenID != 0 {
 			return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
 		}
 		if in.CurrentPassword == nil || *in.CurrentPassword == "" {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordRequired)
 		}
-		if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
-			return err
+		if in.NewPassword != nil {
+			if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
+				return err
+			}
 		}
 		if _, err := s.checkPassword(r, u.Username, *in.CurrentPassword); errors.Is(err, auth.ErrNoSession) {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordIncorrect)

@@ -139,6 +139,19 @@ Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
 premier besoin. Sauvegardez cette clé avec la base et le dossier de données :
 sans elle, ces secrets sont à ressaisir.
 
+## Documentation
+
+Guides d'exploitation, en français et en [anglais](docs/en/) :
+
+- [Installation](docs/fr/install.md) : Linux, Docker, l'assistant
+  d'installation et tous les réglages.
+- [Reverse proxy](docs/fr/reverse-proxy.md) : HTTPS, l'adresse publique et les
+  proxies de confiance.
+- [Sauvegardes](docs/fr/backups.md) : quoi sauvegarder, exporter et restaurer,
+  et ce que protège `secret.key`.
+- [Mises à jour](docs/fr/upgrades.md) : la mise à jour intégrée, manuelle ou
+  avec Docker.
+
 ## Migrer depuis Jira
 
 L'assistant d'installation sait importer une instance Jira, la ligne de

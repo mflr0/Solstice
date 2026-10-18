@@ -131,6 +131,7 @@ export const AUDIT_FAMILIES = [
   'board',
   'sprint',
   'filter',
+  'issue',
   'issuetype',
   'priority',
   'resolution',
