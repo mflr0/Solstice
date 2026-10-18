@@ -128,6 +128,19 @@ The SMTP password and webhook secrets are encrypted with the key in
 first needed. Back up this key along with the database and the data
 directory: without it, those secrets have to be entered again.
 
+## Documentation
+
+Operations guides, in English and in [French](docs/fr/):
+
+- [Installation](docs/en/install.md): Linux, Docker, the setup wizard and
+  every setting.
+- [Reverse proxy](docs/en/reverse-proxy.md): HTTPS, the public address and
+  trusted proxies.
+- [Backups](docs/en/backups.md): what to back up, dump and restore, and what
+  `secret.key` protects.
+- [Upgrades](docs/en/upgrades.md): the integrated update, manual and Docker
+  upgrades.
+
 ## Migrating from Jira
 
 The setup wizard can import a Jira instance, and so can the command line:
