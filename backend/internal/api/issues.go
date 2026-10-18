@@ -997,12 +997,16 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
 		assignee = id
-	} else if who, ok, err := s.componentAssignee(ctx, f, projectID, leadID); err != nil {
-		return err
-	} else if ok {
-		assignee = who
-	} else if defaultAssignee == "lead" && leadID != 0 {
-		assignee = leadID
+	} else {
+		var components []int64
+		if f.has("components") && !f.isNull("components") {
+			if err := f.get("components", &components); err != nil {
+				return err
+			}
+		}
+		if assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
+			return err
+		}
 	}
 	custom, err := s.readCustomFields(ctx, f, projectID, typeID)
 	if err != nil {
@@ -1169,6 +1173,23 @@ func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) 
 	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_levels WHERE project_id = ? AND id = ?`,
 		projectID, levelID).Scan(&n)
 	return n > 0
+}
+
+// newIssueAssignee is who a new issue with these components is assigned to
+// when nobody is named: the first component that decides, else the project's
+// lead if that is its rule.
+func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead int64, defaultAssignee string, components []int64) (any, error) {
+	raw, err := json.Marshal(components)
+	if err != nil {
+		return nil, err
+	}
+	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, projectID, lead); err != nil || ok {
+		return who, err
+	}
+	if defaultAssignee == "lead" && lead != 0 {
+		return lead, nil
+	}
+	return nil, nil
 }
 
 func (s *Server) isAssignable(ctx context.Context, projectID, userID int64) (bool, error) {

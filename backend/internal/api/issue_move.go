@@ -244,17 +244,7 @@ func (s *Server) moveAssigneeFor(ctx context.Context, d *moveDest, row *issueRow
 	for _, c := range components {
 		ids = append(ids, c.ID)
 	}
-	raw, err := json.Marshal(ids)
-	if err != nil {
-		return nil, err
-	}
-	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, d.id, d.lead); err != nil || ok {
-		return who, err
-	}
-	if d.defaultAssignee == "lead" && d.lead != 0 {
-		return d.lead, nil
-	}
-	return nil, nil
+	return s.newIssueAssignee(ctx, d.id, d.lead, d.defaultAssignee, ids)
 }
 
 // movedFields are the custom fields with values on an issue that do not
