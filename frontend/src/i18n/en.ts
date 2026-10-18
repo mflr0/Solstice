@@ -1795,6 +1795,7 @@ export const en = {
     name: 'Display name',
     email: 'Email address',
     emailHint: 'Also used to notify you and to reach you.',
+    emailChangeHint: 'Changing the address asks for your current password.',
     passwordTitle: 'Password',
     passwordIntro: 'Leave the fields empty to keep the current password.',
     currentPassword: 'Current password',

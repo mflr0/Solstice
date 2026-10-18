@@ -114,10 +114,20 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 		sets["display_name"] = name
 	}
+	emailChanged := false
 	if in.Email != nil {
 		email := strings.TrimSpace(*in.Email)
 		if email != "" && !validEmail(email) {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
+		}
+		if email != strings.TrimSpace(u.Email) {
+			// The address receives the links that reset the account: as for
+			// the password, a token cannot change it and the current password
+			// is asked for.
+			if u.TokenID != 0 {
+				return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
+			}
+			emailChanged = true
 		}
 		sets["email"] = email
 	}
@@ -128,15 +138,17 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 		sets["locale"] = l
 	}
-	if in.NewPassword != nil {
+	if in.NewPassword != nil || emailChanged {
 		if u.TokenID != 0 {
 			return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
 		}
 		if in.CurrentPassword == nil || *in.CurrentPassword == "" {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordRequired)
 		}
-		if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
-			return err
+		if in.NewPassword != nil {
+			if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
+				return err
+			}
 		}
 		if _, err := s.checkPassword(r, u.Username, *in.CurrentPassword); errors.Is(err, auth.ErrNoSession) {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordIncorrect)

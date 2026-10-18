@@ -210,15 +210,11 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 	if d := s.limiter.Locked(ipKey); d > 0 {
 		return failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
 	}
-	// Every request counts, whatever it finds.
+	// Every request counts, whatever it finds. Only the client address is
+	// counted here: a name key would let anyone mute someone else's account.
 	s.limiter.Failure(ipKey)
-	nameKey := "forgot-name:" + id
-	muted := s.limiter.Locked(nameKey) > 0
-	s.limiter.Failure(nameKey)
-	if !muted {
-		if err := s.mailResetLinks(r, id); err != nil {
-			s.log.Error("sending a password reset link failed", "err", err)
-		}
+	if err := s.mailResetLinks(r, id); err != nil {
+		s.log.Error("sending a password reset link failed", "err", err)
 	}
 	s.hold(r.Context(), started, forgotFloor)
 	return writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
@@ -249,11 +245,6 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 	var first error
 	for i := range targets {
 		t := &targets[i]
-		userKey := "forgot-user:" + strconv.FormatInt(t.ID, 10)
-		if s.limiter.Locked(userKey) > 0 {
-			continue
-		}
-		s.limiter.Failure(userKey)
 		if !mail.ValidAddress(t.Email) {
 			continue
 		}

@@ -1819,6 +1819,7 @@ export const de: Messages = {
     name: 'Anzeigename',
     email: 'E-Mail-Adresse',
     emailHint: 'Dient auch dazu, Sie zu benachrichtigen und zu erreichen.',
+    emailChangeHint: 'Zum Ändern der Adresse wird Ihr aktuelles Passwort benötigt.',
     passwordTitle: 'Passwort',
     passwordIntro: 'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten.',
     currentPassword: 'Aktuelles Passwort',

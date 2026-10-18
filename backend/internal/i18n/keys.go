@@ -39,6 +39,7 @@ const (
 	AccountCurrentPasswordRequired   Key = "AccountCurrentPasswordRequired"
 	AccountCurrentPasswordIncorrect  Key = "AccountCurrentPasswordIncorrect"
 	AccountTokenCannotChangePassword Key = "AccountTokenCannotChangePassword"
+	AccountTokenCannotChangeEmail    Key = "AccountTokenCannotChangeEmail"
 	AccountLanguageUnsupported       Key = "AccountLanguageUnsupported"
 	AccountResetLinkInvalid          Key = "AccountResetLinkInvalid"
 	AccountMailUnavailable           Key = "AccountMailUnavailable"

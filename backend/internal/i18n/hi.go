@@ -39,6 +39,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "अपना मौजूदा पासवर्ड बताएँ।",
 	AccountCurrentPasswordIncorrect:  "मौजूदा पासवर्ड गलत है।",
 	AccountTokenCannotChangePassword: "एक्सेस टोकन पासवर्ड नहीं बदल सकता: अपने पासवर्ड से साइन इन करें।",
+	AccountTokenCannotChangeEmail:    "एक्सेस टोकन ईमेल पता नहीं बदल सकता: अपने पासवर्ड से साइन इन करें।",
 	AccountLanguageUnsupported:       "यह भाषा समर्थित नहीं है (इनमें से चुनें: %s)।",
 	AccountResetLinkInvalid:          "यह लिंक अमान्य है या समाप्त हो चुका है। नया लिंक माँगें।",
 	AccountMailUnavailable:           "ईमेल लिंक उपलब्ध नहीं हैं: पहले एडमिन में ईमेल और सार्वजनिक पता सेट करें।",
