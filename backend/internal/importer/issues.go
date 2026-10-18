@@ -706,11 +706,8 @@ func (r *run) importCustomFieldValues() error {
 	return nil
 }
 
-// fitsType tells whether a custom field value sits in a column that the
-// current type of its field reads. When the type of a field changes, Jira
-// leaves the existing values in the column of the former type. Only the types
-// whose column is certain are checked. A value with every column empty fits
-// any type: it is imported as an empty value.
+// When the type of a field changes, Jira leaves the existing values in the
+// column of the former type, which the current type never reads.
 func fitsType(typeKey string, str, text sql.NullString, num sql.NullFloat64, date sql.NullTime) bool {
 	if !str.Valid && !text.Valid && !num.Valid && !date.Valid {
 		return true

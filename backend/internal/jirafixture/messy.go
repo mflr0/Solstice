@@ -8,13 +8,11 @@ import (
 	"strings"
 )
 
-// The quirks of old Jira instances, generated with Options.Messy. They come
-// after everything else: each one adds rows to the finished data, or rewrites
-// a few rows, so without the option nothing changes. Each quirk draws from a
-// random source of its own, derived from the seed and its name: the same seed
-// gives the same quirks, and a quirk can change without moving the others.
+// The quirks of old Jira instances, generated with Options.Messy. Each quirk
+// draws from a random source of its own, derived from the seed and its name:
+// the same seed gives the same quirks, and a quirk can change without moving
+// the others.
 
-// Custom fields whose type changed.
 const (
 	cfLegacyNumber = 10114 // was a text field, is a number field now
 	cfLegacyText   = 10115 // was a date field, is a text field now
@@ -32,8 +30,8 @@ type MessySummary struct {
 	GhostIssues  int `json:"ghost_issues"` // issues reported or assigned by one of them
 	GhostWatches int `json:"ghost_watches"`
 
-	RenamedKeys   int `json:"renamed_keys"`   // moved_issue_key rows under a former project key
-	MovedIssues   int `json:"moved_issues"`   // issues moved to another project
+	RenamedKeys   int `json:"renamed_keys"` // moved_issue_key rows under a former project key
+	MovedIssues   int `json:"moved_issues"`
 	DuplicateKeys int `json:"duplicate_keys"` // an old issue key given to a second issue
 
 	MisfitFieldValues int   `json:"misfit_field_values"` // values in the column of the field's former type
@@ -84,8 +82,7 @@ func (g *generator) quirk(name string, fn func()) {
 
 func anyIssue(*issue) bool { return true }
 
-// messyIssues draws up to n distinct issues for which ok is true. The
-// checkpoints are never drawn: the importer tests know them by their key.
+// The checkpoints are never drawn: the importer tests know them by their key.
 func (g *generator) messyIssues(n int, ok func(*issue) bool) []*issue {
 	checkpoint := map[string]bool{}
 	for _, c := range g.sum.Checkpoints {
@@ -101,15 +98,11 @@ func (g *generator) messyIssues(n int, ok func(*issue) bool) []*issue {
 	return candidates[:min(n, len(candidates))]
 }
 
-// --- 1. deleted users -----------------------------------------------------------
-
 // Users deleted so long ago that not even an app_user row is left: the rows
 // that name them hold a user name (Jira before 6) or a key nobody knows.
 var ghostUsers = []string{"j.dupond", "ex.stagiaire", "RLEBLANC"}
 
-// ghostWatcher only watches and votes. The importer gives an inactive account
-// to the ghosts that issues, comments or history name, and then copies their
-// watches and votes; this one is named by nothing else, so it has no account
+// ghostWatcher only watches and votes, so the importer gives it no account
 // and its rows cannot be imported.
 const ghostWatcher = "ancien.observateur"
 
@@ -119,9 +112,7 @@ var ghostComments = []string{
 	"Même problème chez un autre client, à regrouper.",
 }
 
-// messyDeletedUsers makes deleted users appear as reporter or assignee of
-// issues, and as author of comments, work logs and history; another one
-// only watches and votes.
+// Deleted users still named as reporter, assignee or author.
 func (g *generator) messyDeletedUsers() {
 	m := g.sum.Messy
 	for i, is := range g.messyIssues(max(3, len(g.issues)/25), anyIssue) {
@@ -181,15 +172,11 @@ func (g *generator) messyDeletedUsers() {
 	}
 }
 
-// --- 2. a renamed project --------------------------------------------------------
-
 // formerProjectKey is the key WEB had before SITE.
 const formerProjectKey = "PORTAL"
 
-// messyRenamedProject gives WEB, renamed from SITE (see seedProjects), what a
-// rename leaves behind: an older key in project_key, the old keys of its
-// issues in moved_issue_key and the rename in their history; other issues
-// are linked to WEB issues through the former key.
+// A rename leaves the former key in project_key, the old issue keys in
+// moved_issue_key and the rename in the issues' history.
 func (g *generator) messyRenamedProject() {
 	m := g.sum.Messy
 	web := g.byKey["WEB"]
@@ -239,11 +226,7 @@ func (g *generator) messyRenamedProject() {
 	}
 }
 
-// --- 3. issues moved between projects --------------------------------------------
-
-// messyMovedIssues moves a few issues of WEB and OPS to DEMO: new project and
-// number, the old key in moved_issue_key, the move in the history. One of the
-// old keys was later given to another issue.
+// One of the old keys is later given to another issue.
 func (g *generator) messyMovedIssues() {
 	m := g.sum.Messy
 	demo := g.byKey["DEMO"]
@@ -284,11 +267,8 @@ func (g *generator) messyMovedIssues() {
 	}
 }
 
-// --- 4. custom fields whose type changed -----------------------------------------
-
-// messyFieldTypeChange adds two fields whose type changed after values were
-// entered. Jira leaves the old values where they were, in the column of the
-// former type, which the current type never reads.
+// Jira leaves the values of a field in the column of its former type after
+// the type changed; the current type never reads them there.
 func (g *generator) messyFieldTypeChange() {
 	m := g.sum.Messy
 	cf := g.w.Table("customfield", "id", "cfkey", "customfieldtypekey", "customfieldsearcherkey", "cfname",
@@ -338,12 +318,10 @@ func (g *generator) messyFieldTypeChange() {
 	}
 }
 
-// --- 5. odd text -------------------------------------------------------------------
-
 // mojibake reads the UTF-8 bytes of s as Latin-1, as a tool does that does
-// not know the encoding of what it reads ("é" becomes "Ã©"). Bytes that are not
-// UTF-8 cannot be stored in a UTF-8 column of either database, so this is the
-// form mis-encoded Latin-1 takes in the data.
+// not know the encoding of what it reads ("é" becomes "Ã©"). Bytes that are
+// not UTF-8 cannot be stored in a UTF-8 column of either database, so this is
+// the form mis-encoded Latin-1 takes in the data.
 func mojibake(s string) string {
 	runes := make([]rune, len(s))
 	for i := range len(s) {
@@ -352,9 +330,7 @@ func mojibake(s string) string {
 	return string(runes)
 }
 
-// oddTexts are texts that cause trouble: mixed line endings, control
-// characters other than NUL (which the databases refuse), lines that are
-// longer than any sensible limit, emoji, right-to-left text and mojibake.
+// Texts that cause trouble; NUL is left out, the databases refuse it.
 func oddTexts() []string {
 	return []string{
 		"Première ligne\r\nDeuxième ligne\rTroisième ligne\nQuatrième ligne\r\n\r\nFin\r",
@@ -376,8 +352,6 @@ func oddSummaries() []string {
 	}
 }
 
-// messyOddText adds one comment per odd text, rewrites a few descriptions
-// and summaries with them and adds a work log.
 func (g *generator) messyOddText() {
 	m := g.sum.Messy
 	texts, summaries := oddTexts(), oddSummaries()
@@ -422,12 +396,7 @@ func (g *generator) messyOddText() {
 	}
 }
 
-// --- 6. orphan rows ----------------------------------------------------------------
-
-// messyOrphans adds rows that point to something that was deleted without
-// them: change items of a missing change group, a work log, a comment and a
-// link of a missing issue, a component link to a missing component, an old
-// issue key of a missing issue.
+// Rows that point to something Jira deleted without them.
 func (g *generator) messyOrphans() {
 	m := g.sum.Messy
 	admin := g.byName["admin"].key

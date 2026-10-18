@@ -318,8 +318,7 @@ func (r *run) prepareTarget() (*kept, error) {
 	return k, nil
 }
 
-// leftOut warns about rows that were not imported because they point to
-// something Jira no longer has.
+// leftOut warns about rows that point to something Jira no longer has.
 func (r *run) leftOut(n int, one, many, why string) {
 	if n > 0 {
 		r.rep.warn("%s %s, not imported", plural(n, one, many), why)

@@ -5,17 +5,12 @@
 #   2. counts match what the generator reports;
 #   3. invariants hold (sub-tasks, secured issues, copied files, passwords).
 #
-# With MESSY=1 the generator adds the quirks of old Jira instances (-messy:
-# deleted users, a renamed project, moved issues, a custom field whose type
-# changed, odd text, orphan rows). The import must still succeed, both engines
-# must still give the same result, and what cannot be imported must be in the
-# report's warnings. Checks that do not make sense with such data are skipped:
-#   - the Go tests on the imported database: they know the standard data (its
-#     keys, authors and counts), which the quirks change;
-# and one is adjusted: the users the importer creates for deleted users
-# (inactive accounts) are added to the expected inactive accounts.
-# The other counts still hold: what the importer copies is counted in the
-# generator's summary, what it cannot import is not.
+# With MESSY=1 the generator adds the quirks of old Jira instances (-messy).
+# The import must still succeed, both engines must still agree, and what
+# cannot be imported must be in the report's warnings. The Go tests on the
+# imported database are skipped: they know the standard data, which the quirks
+# change. The inactive accounts the importer creates for deleted users are
+# added to the expected count.
 #
 # Needs the containers of compose.yaml (docker compose up -d) and the Jira
 # distribution next to the repository (its entitymodel.xml describes the schema).
