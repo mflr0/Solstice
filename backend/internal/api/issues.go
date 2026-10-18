@@ -17,6 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
@@ -1790,6 +1791,8 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	for _, e := range deleted {
 		s.emit(e)
 	}
+	s.log.Info("issue deleted", "key", iss.Key())
+	s.auditLog(r, audit.IssueDelete, audit.Target{Type: "issue", ID: strconv.FormatInt(iss.ID, 10), Label: iss.Key()}, nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
