@@ -5,7 +5,9 @@ package tests
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -355,33 +357,37 @@ func TestMoveNeedsTheChoices(t *testing.T) {
 		t.Errorf("move with the types only: %d %s", status, body)
 	}
 
-	// Choices must be the target's.
-	step := func(extra map[string]any) map[string]any {
-		in := map[string]any{"project": e.dst, "type": e.typeB}
-		for k, v := range extra {
-			in[k] = v
-		}
-		return in
-	}
-	for name, in := range map[string]map[string]any{
-		"a type of the source":      {"project": e.dst, "type": e.typeA},
-		"a sub-task type for it":    {"project": e.dst, "type": e.subDst},
-		"an unknown status":         step(map[string]any{"status": "NOPE"}),
-		"a component of the source": step(map[string]any{"components": []int64{e.apiSrc}}),
-		"a version of the source":   step(map[string]any{"fixVersions": []int64{e.v2Src}}),
-		"a sub-task type unknown":   step(map[string]any{"subtaskType": e.subSrc}),
-		"a level of the source":     step(map[string]any{"securityLevel": e.levelSrc}),
-		"a level that is no number": step(map[string]any{"securityLevel": "haut"}),
-		"an unknown field":          step(map[string]any{"colour": "red"}),
+	// Choices must be the target's: everything else is right, one value is not.
+	for name, c := range map[string]struct {
+		field string
+		value any
+		want  string
+	}{
+		"a type of the source":       {"type", e.typeA, "issue type is not available"},
+		"a sub-task type for it":     {"type", e.subDst, "issue type is not available"},
+		"an unknown status":          {"status", "NOPE", "Unknown status"},
+		"a component of the source":  {"components", []int64{e.apiSrc}, "Unknown value in this project for components"},
+		"an affected version":        {"affectsVersions", []int64{e.v1Src}, "Unknown value in this project for affectsVersions"},
+		"a version of the source":    {"fixVersions", []int64{e.v2Src}, "Unknown value in this project for fixVersions"},
+		"a sub-task type unknown":    {"subtaskType", e.subSrc, "issue type is not available"},
+		"a level of the source":      {"securityLevel", e.levelSrc, "Unknown security level"},
+		"a level that is no number":  {"securityLevel", "haut", "Invalid value for field securityLevel"},
+		"an unknown field":           {"colour", "red", "Invalid request"},
+		"a status of another type":   {"status", e.inReview, "Unknown status"},
+		"a component that is absent": {"components", []int64{0}, "Unknown value in this project for components"},
 	} {
-		if status, body := e.admin.do("POST", "/api/issues/"+e.issue+"/move", in); status != 400 {
-			t.Errorf("%s: %d %s, want 400", name, status, body)
+		in := maps.Clone(e.allChoices)
+		in[c.field] = c.value
+		status, msg, _ := e.admin.errorIn("en", "POST", "/api/issues/"+e.issue+"/move", in)
+		if status != 400 || !strings.Contains(msg, c.want) {
+			t.Errorf("%s: %d %q, want 400 and %q", name, status, msg, c.want)
 		}
 	}
 
 	var d issueDetail
 	e.admin.call("GET", "/api/issues/"+e.issue, nil, 200, &d)
-	if d.Key != e.issue || dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID) != counter {
+	if d.Key != e.issue || dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID) != counter ||
+		dbInt(t, `SELECT COUNT(*) FROM issues WHERE id IN (?, ?) AND project_id = ?`, e.issueID, e.childID, e.srcID) != 2 {
 		t.Errorf("a refused move changed something: %s", d.Key)
 	}
 }
@@ -646,6 +652,43 @@ func TestMovePermissions(t *testing.T) {
 	}
 }
 
+func TestMoveTakesTheEditRightOnEachSubtask(t *testing.T) {
+	e := newMoveEnv(t)
+	paulID := userID(t, "paul.martin")
+	paul := login(t, "paul.martin", "motdepasse")
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	// Edit only through being the reporter: paul.martin may change the parent, and the sub-task if he reported it.
+	moveInsert(t, `UPDATE issues SET reporter_id = ? WHERE id IN (?, ?)`, paulID, e.issueID, e.childID)
+	var p struct{ Grants []grantOut }
+	e.admin.call("GET", "/api/projects/"+e.src+"/permissions", nil, 200, &p)
+	grants := []grantOut{{Permission: "edit", Holder: "reporter"}}
+	for _, g := range p.Grants {
+		if g.Permission != "edit" {
+			grants = append(grants, g)
+		}
+	}
+	e.admin.call("PUT", "/api/projects/"+e.src+"/permissions", map[string]any{"grants": grants}, 200, nil)
+	body := maps.Clone(e.allChoices)
+	delete(body, "securityLevel")
+	path := "/api/issues/" + e.issue + "/move"
+
+	if c := e.check(paul, e.issue, body); !c.Ready {
+		t.Fatalf("the reporter of the issue and of its sub-task: %+v", c)
+	}
+	refused := func(why string) {
+		t.Helper()
+		paul.call("POST", path, map[string]any{"check": true, "project": e.dst}, 403, nil)
+		paul.call("POST", path, body, 403, nil)
+		if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id IN (?, ?) AND project_id = ?`, e.issueID, e.childID, e.srcID) != 2 {
+			t.Fatalf("%s: a refused move moved something", why)
+		}
+	}
+	moveInsert(t, `UPDATE issues SET reporter_id = ? WHERE id = ?`, userID(t, "admin"), e.childID)
+	refused("a sub-task paul.martin may not edit")
+	moveInsert(t, `UPDATE issues SET reporter_id = ?, security_level_id = ? WHERE id = ?`, paulID, e.levelSrc, e.childID)
+	refused("a sub-task at a level paul.martin does not see")
+}
+
 func TestMoveRefusesWhatCannotMove(t *testing.T) {
 	e := newMoveEnv(t)
 	post := func(key string, body map[string]any) int {
@@ -739,6 +782,61 @@ func TestMoveOfAnIssueWithALevelTakesTheSecurityRight(t *testing.T) {
 	c = e.check(paul, e.issue, body)
 	if c.Ready || c.SecurityLevel == nil || len(c.SecurityLevel.Options) != 1 || c.SecurityLevel.Options[0].ID != e.levelDst {
 		t.Errorf("the right in both projects: %+v", c.SecurityLevel)
+	}
+}
+
+func TestMoveChoosingOrRemovingTheLevelTakesTheSecurityRightInBothProjects(t *testing.T) {
+	paulID := userID(t, "paul.martin")
+	paul := login(t, "paul.martin", "motdepasse")
+	for _, c := range []struct {
+		name          string
+		level         func(*moveEnv) any
+		inSrc, inDest bool
+		want          int
+	}{
+		{"another level, no right", func(e *moveEnv) any { return e.levelDst }, false, false, 403},
+		{"another level, the right in the target", func(e *moveEnv) any { return e.levelDst }, false, true, 403},
+		{"another level, the right in the source", func(e *moveEnv) any { return e.levelDst }, true, false, 403},
+		{"another level, the right in both", func(e *moveEnv) any { return e.levelDst }, true, true, 200},
+		{"no level, no right", func(*moveEnv) any { return nil }, false, false, 403},
+		{"no level, the right in the target", func(*moveEnv) any { return nil }, false, true, 403},
+		{"no level, the right in the source", func(*moveEnv) any { return nil }, true, false, 403},
+		{"no level, the right in both", func(*moveEnv) any { return nil }, true, true, 200},
+	} {
+		e := newMoveEnv(t)
+		moveInsert(t, `INSERT INTO security_level_members (level_id, holder, user_id) VALUES (?, 'user', ?)`, e.levelSrc, paulID)
+		e.refreshRules(e.src)
+		for project, granted := range map[string]bool{e.src: c.inSrc, e.dst: c.inDest} {
+			if granted {
+				var p struct{ Grants []grantOut }
+				e.admin.call("GET", "/api/projects/"+project+"/permissions", nil, 200, &p)
+				grants := append(p.Grants, grantOut{Permission: "security", Holder: "user", ID: paulID})
+				e.admin.call("PUT", "/api/projects/"+project+"/permissions", map[string]any{"grants": grants}, 200, nil)
+			}
+		}
+		body := maps.Clone(e.allChoices)
+		body["securityLevel"] = c.level(e)
+
+		status, msg, _ := paul.errorIn("en", "POST", "/api/issues/"+e.issue+"/move", body)
+		if status != c.want || (c.want == 403 && !strings.Contains(msg, "Security level permission")) {
+			t.Errorf("%s: %d %q, want %d", c.name, status, msg, c.want)
+		}
+		if c.want == 403 {
+			if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id IN (?, ?) AND project_id = ? AND security_level_id = ?`,
+				e.issueID, e.childID, e.srcID, e.levelSrc) != 2 {
+				t.Errorf("%s: a refused move changed the issue", c.name)
+			}
+			continue
+		}
+		for _, id := range []int64{e.issueID, e.childID} {
+			var level sql.NullInt64
+			if err := testDB.QueryRow(`SELECT security_level_id FROM issues WHERE id = ?`, id).Scan(&level); err != nil {
+				t.Fatal(err)
+			}
+			if want, _ := body["securityLevel"].(int64); level.Int64 != want || level.Valid != (want != 0) {
+				t.Errorf("%s: level of issue %d is %+v, want %d", c.name, id, level, want)
+			}
+		}
 	}
 }
 
