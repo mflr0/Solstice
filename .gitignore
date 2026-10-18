@@ -1,5 +1,6 @@
 .DS_Store
 /data
+backend/data/
 
 # Jira distribution used as a schema reference: never commit it
 /atlassian-jira-software-*/
@@ -19,7 +20,23 @@ frontend/coverage/
 *.sql.gz
 *.dump
 /jiradb-*
+# …but Solstice's own schema migrations are source code (embedded by the binary).
+!/backend/internal/db/migrations/*.sql
+# …and so is the synthetic seed the CI integration tests load (scripts/make-test-seed.sh).
+!/backend/tests/testdata/seed.sql
 
 # Go binaries built in place
 /backend/solstice
 /backend/jira-fixture
+
+# Local build outputs and logs
+/.cache/
+
+# Docker install: generated database passwords
+/deploy/docker/.env
+
+# Release archives
+/dist/
+
+# Local configuration (database URL, secrets)
+/backend/solstice.conf

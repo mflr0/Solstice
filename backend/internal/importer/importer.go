@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"solstice/internal/jiradb"
+	"solstice/internal/sqlq"
 )
 
 // Options configures an import.
@@ -34,10 +35,27 @@ type Options struct {
 	JiraHome string
 	// DataDir is Solstice's data directory (attachments go to DataDir/attachments).
 	DataDir string
-	// Replace wipes Solstice's existing data first. Without it, a non-empty
-	// Solstice database is refused.
+	// Replace wipes Solstice's existing data first, keeping its own
+	// configuration (see keep.go). Without it, a non-empty Solstice database
+	// is refused.
 	Replace bool
-	Log     *slog.Logger
+	// Operator is the user name of the administrator who started the import
+	// from Solstice: they keep their account, password and rights.
+	Operator string
+	Log      *slog.Logger
+	// Progress, when set, is told how the import advances: as each phase
+	// starts, now and then while it copies rows, and once at the end. It runs
+	// on the importing goroutine and must return quickly.
+	Progress func(Progress)
+}
+
+// Progress is how far an import has gone.
+type Progress struct {
+	Phase string `json:"phase"` // the phase under way ("users", "issues"…), "" once finished
+	Done  int    `json:"done"`  // phases finished
+	Total int    `json:"total"` // phases in all
+	Rows  int    `json:"rows"`  // rows written so far, all tables together
+	Steps []Step `json:"steps"` // the report's lines so far
 }
 
 // Report summarises what an import did.
@@ -71,6 +89,9 @@ func (r *Report) warn(format string, args ...any) {
 	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
 }
 
+// ErrBusy means another import into the same database is running.
+var ErrBusy = errors.New("another import into this database is running")
+
 // Run performs the import into target.
 func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 	if opt.SourceTZ == nil {
@@ -96,6 +117,20 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		return nil, err
 	}
 	defer dst.Close()
+	// One import at a time per database, whichever process runs it.
+	var locked sql.NullInt64
+	if err := dst.QueryRowContext(ctx, "SELECT GET_LOCK(CONCAT('solstice-import:', DATABASE()), 0)").Scan(&locked); err != nil {
+		return nil, err
+	}
+	if locked.Int64 != 1 {
+		return nil, ErrBusy
+	}
+	// In a closure: a plain defer would run the query now and keep its row
+	// open on dst.
+	defer func() {
+		dst.QueryRowContext(context.WithoutCancel(ctx), "SELECT RELEASE_LOCK(CONCAT('solstice-import:', DATABASE()))").
+			Scan(&locked)
+	}()
 	if _, err := dst.ExecContext(ctx, "SET SESSION foreign_key_checks = 0"); err != nil {
 		return nil, err
 	}
@@ -107,12 +142,36 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		engine: engine,
 		tz:     opt.SourceTZ,
 		dst:    dst,
+		conn:   dst,
 		opt:    opt,
 		rep:    &Report{},
 	}
-	if err := r.prepareTarget(); err != nil {
+	k, err := r.prepareTarget()
+	if err != nil {
 		return nil, err
 	}
+	runErr := r.runSteps()
+	// Solstice's own data goes back even after a failure: the operator must
+	// still be able to sign in and try again.
+	r.ctx = context.WithoutCancel(ctx)
+	if err := r.putBack(k); err != nil {
+		if runErr == nil {
+			runErr = fmt.Errorf("restoring Solstice's own data: %w", err)
+		} else {
+			opt.Log.Error("restoring Solstice's own data failed", "err", err)
+		}
+	}
+	if runErr != nil {
+		return r.rep, runErr
+	}
+	r.phase, r.done = "", r.phases
+	r.progress(true)
+	return r.rep, nil
+}
+
+// runSteps copies Jira's data, one step after the other, and stops at the
+// first that fails.
+func (r *run) runSteps() error {
 	steps := []struct {
 		name string
 		fn   func() error
@@ -135,15 +194,40 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		{"custom field values", r.importCustomFieldValues},
 		{"history", r.importHistory},
 		{"filters", r.importFilters},
+		{"boards and sprints", r.importBoards},
 	}
-	for _, s := range steps {
+	r.phases = len(steps)
+	for i, s := range steps {
+		r.phase, r.done = s.name, i
+		r.progress(true)
 		start := time.Now()
 		if err := s.fn(); err != nil {
-			return r.rep, fmt.Errorf("%s: %w", s.name, err)
+			return fmt.Errorf("%s: %w", s.name, err)
 		}
-		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
+		r.opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
-	return r.rep, nil
+	if r.strangers > 0 {
+		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
+			plural(r.strangers, "user", "users"))
+	}
+	return nil
+}
+
+// progress tells Options.Progress where the import stands; unless forced,
+// at most a few times a second.
+func (r *run) progress(force bool) {
+	if r.opt.Progress == nil || (!force && time.Since(r.told) < 250*time.Millisecond) {
+		return
+	}
+	r.told = time.Now()
+	r.opt.Progress(Progress{Phase: r.phase, Done: r.done, Total: r.phases, Rows: r.rows,
+		Steps: slices.Clone(r.rep.Steps)})
+}
+
+// target is where an import writes. The Solstice database is one; the other
+// is a check's (check.go), which takes every write and keeps none.
+type target interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
 // run holds the state shared by the import steps: how Jira identifiers map to
@@ -153,9 +237,17 @@ type run struct {
 	src    *sql.DB
 	engine jiradb.Engine
 	tz     *time.Location
-	dst    *sql.Conn
+	dst    target
+	conn   *sql.Conn // dst, to read the Solstice database: nil in a check
 	opt    Options
 	rep    *Report
+	check  *checkData // set in a check, which writes nothing
+
+	// Where the import stands, for Options.Progress.
+	phase        string
+	done, phases int
+	rows         int
+	told         time.Time
 
 	users       map[string]int64 // Jira user key → Solstice user id
 	usersByName map[string]int64 // lower-case user name → Solstice user id
@@ -166,6 +258,7 @@ type run struct {
 	groups      map[string]int64 // lower-case group name → Solstice group id
 	userGroups  map[int64][]int64
 	projects    map[int64]*project
+	unsafeKeys  map[string]bool // project keys already reported as unusable in a path
 	roles       map[int64]bool
 	issueTypes  map[string]bool
 	statuses    map[string]bool
@@ -176,12 +269,16 @@ type run struct {
 	fields      map[int64]string // custom field id → type key
 	options     map[int64]bool
 	linkTypes   map[int64]bool
-	subtaskLink map[int64]bool // Jira's hidden link types that encode sub-tasks
+	subtaskLink map[int64]bool   // Jira's hidden link types that encode sub-tasks
+	epicLink    map[int64]bool   // Jira Software's link type from an epic to its issues
+	epicOf      map[int64]int64  // issue → epic, applied once all issues exist
+	filters     map[int64]string // saved filter id → its query
 	issues      map[int64]issueRef
 	// Security levels are copied per project, so one Jira level can become
 	// several Solstice levels: (Jira level id, project id) → Solstice level id.
 	levels      map[[2]int64]int64
 	nextLevelID int64
+	strangers   int // users named by rows but unknown to Jira, given an inactive account
 }
 
 type project struct {
@@ -195,41 +292,52 @@ type issueRef struct {
 	num     int64
 }
 
-// prepareTarget refuses to import over existing data unless Replace is set,
-// in which case every table is emptied.
-func (r *run) prepareTarget() error {
+// prepareTarget refuses to import over existing data unless Replace is set.
+// It saves what Solstice keeps (keep.go), then empties every other table,
+// default catalogues of a fresh instance included.
+func (r *run) prepareTarget() (*kept, error) {
 	var n int
-	if err := r.dst.QueryRowContext(r.ctx,
+	if err := r.conn.QueryRowContext(r.ctx,
 		"SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM projects)").Scan(&n); err != nil {
-		return fmt.Errorf("the Solstice database is not initialised (run solstice migrate): %w", err)
+		return nil, fmt.Errorf("the Solstice database is not initialised (run solstice migrate): %w", err)
 	}
-	if n == 0 {
-		return nil
+	if n > 0 && !r.opt.Replace {
+		return nil, errors.New("the Solstice database already holds data; use -replace to overwrite it")
 	}
-	if !r.opt.Replace {
-		return errors.New("the Solstice database already holds data; use -replace to overwrite it")
-	}
-	rows, err := r.dst.QueryContext(r.ctx, `SELECT table_name FROM information_schema.tables
-		WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND table_name <> 'schema_migrations'`)
+	k, err := r.keep()
 	if err != nil {
-		return err
+		return nil, err
+	}
+	rows, err := r.conn.QueryContext(r.ctx, `SELECT table_name FROM information_schema.tables
+		WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`)
+	if err != nil {
+		return nil, err
 	}
 	var tables []string
 	for rows.Next() {
 		var t string
 		if err := rows.Scan(&t); err != nil {
 			rows.Close()
-			return err
+			return nil, err
 		}
-		tables = append(tables, t)
+		if !slices.Contains(keptTables, t) {
+			tables = append(tables, t)
+		}
 	}
 	rows.Close()
 	for _, t := range tables {
 		if _, err := r.dst.ExecContext(r.ctx, "TRUNCATE TABLE `"+t+"`"); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return k, nil
+}
+
+// leftOut warns about rows that point to something Jira no longer has.
+func (r *run) leftOut(n int, one, many, why string) {
+	if n > 0 {
+		r.rep.warn("%s %s, not imported", plural(n, one, many), why)
+	}
 }
 
 // each runs a query on the Jira database and calls scan for every row.
@@ -250,13 +358,14 @@ func (r *run) each(query string, scan func(*sql.Rows) error) error {
 // hasColumn tells whether the Jira database has a column; some columns only
 // exist in recent Jira versions.
 func (r *run) hasColumn(table, column string) bool {
+	// Case-insensitive: Jira Software's tables are upper-case on PostgreSQL.
 	var q string
 	if r.engine == jiradb.MySQL {
 		q = `SELECT COUNT(*) FROM information_schema.columns
 			WHERE table_schema = DATABASE() AND LOWER(table_name) = ? AND LOWER(column_name) = ?`
 	} else {
 		q = `SELECT COUNT(*) FROM information_schema.columns
-			WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2`
+			WHERE table_schema = current_schema() AND LOWER(table_name) = $1 AND LOWER(column_name) = $2`
 	}
 	var n int
 	if err := r.src.QueryRowContext(r.ctx, q, strings.ToLower(table), strings.ToLower(column)).Scan(&n); err != nil {
@@ -315,6 +424,7 @@ func (r *run) user(key sql.NullString) (any, error) {
 		return nil, err
 	}
 	r.users[key.String] = id
+	r.strangers++
 	return id, nil
 }
 
@@ -343,6 +453,7 @@ func (in *inserter) add(vals ...any) error {
 	if len(vals) != in.ncols {
 		return fmt.Errorf("BUG: %d values for %d columns in %s", len(vals), in.ncols, in.head)
 	}
+	// Only plain strings are counted: unwrap sql.NullString with sqlq.Value.
 	for _, v := range vals {
 		if s, ok := v.(string); ok {
 			in.bytes += len(s)
@@ -361,7 +472,7 @@ func (in *inserter) flush() error {
 	if in.rows == 0 {
 		return nil
 	}
-	tuple := "(" + strings.TrimSuffix(strings.Repeat("?, ", in.ncols), ", ") + ")"
+	tuple := "(" + sqlq.Marks(in.ncols) + ")"
 	var sb strings.Builder
 	sb.WriteString(in.head)
 	for i := range in.rows {
@@ -374,25 +485,13 @@ func (in *inserter) flush() error {
 		return fmt.Errorf("%s…: %w", strings.TrimSuffix(in.head, " VALUES "), err)
 	}
 	in.total += in.rows
+	in.r.rows += in.rows
+	in.r.progress(false)
 	in.rows, in.bytes, in.args = 0, 0, in.args[:0]
 	return nil
 }
 
 // Value helpers: Jira columns are nullable almost everywhere.
-
-func nstr(s sql.NullString) any {
-	if !s.Valid {
-		return nil
-	}
-	return s.String
-}
-
-func nint(i sql.NullInt64) any {
-	if !i.Valid {
-		return nil
-	}
-	return i.Int64
-}
 
 func ntime(t sql.NullTime) any {
 	if !t.Valid {

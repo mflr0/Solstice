@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Orbite, empty state "search": an empty reticle over the orbits. Used as a mask. -->
+  <defs>
+    <mask id="field">
+      <rect width="200" height="120" fill="#fff"/>
+      <circle cx="96" cy="64" r="16" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#field)">
+    <ellipse cx="96" cy="64" rx="86" ry="26" transform="rotate(-6 96 64)" stroke-opacity=".42"/>
+    <ellipse cx="96" cy="64" rx="56" ry="16" transform="rotate(-6 96 64)" stroke-opacity=".38" stroke-dasharray="1.5 4.5"/>
+  </g>
+  <circle cx="96" cy="64" r="13" stroke-width="1.4"/>
+  <path d="M96 45v6M96 77v6M77 64h6M109 64h6" stroke-width="1.4"/>
+  <circle cx="96" cy="64" r="1.2" fill="#000" stroke="none" fill-opacity=".6"/>
+  <path d="M28 26v5M25.5 28.5h5M176 92v4M174 94h4M44 98v3M42.5 99.5h3" stroke-opacity=".55"/>
+</svg>

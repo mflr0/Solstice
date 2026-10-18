@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // jiraPermissions maps Jira permission keys to Solstice permissions. Jira keys
@@ -33,8 +35,35 @@ var jiraPermissions = map[string]string{
 	"ADMINISTER_PROJECTS": perm.Admin,
 }
 
-// statusCategories maps Jira's status category ids to Solstice's three columns.
-var statusCategories = map[int64]string{2: "todo", 4: "doing", 3: "done"}
+// guessDefaultResolution marks a resolution as the default when Jira names
+// none: Done or its usual synonyms, else the first. Migration 0011 applies
+// the same guess to instances that predate the default.
+const guessDefaultResolution = `UPDATE resolutions SET is_default = TRUE WHERE id = (
+	SELECT id FROM (SELECT id FROM resolutions
+		ORDER BY CASE LOWER(name) WHEN 'done' THEN 1 WHEN 'terminé' THEN 2 WHEN 'fixed' THEN 3 WHEN 'corrigé' THEN 4
+			ELSE 5 END, position, name
+		LIMIT 1) x)`
+
+// defaultResolution marks Jira's default resolution as Solstice's, or
+// guesses one when Jira has none.
+func (r *run) defaultResolution() error {
+	var id sql.NullString
+	if r.hasColumn("propertyentry", "property_key") && r.hasColumn("propertystring", "propertyvalue") {
+		err := r.src.QueryRowContext(r.ctx, `SELECT ps.propertyvalue FROM propertyentry pe
+			JOIN propertystring ps ON ps.id = pe.id
+			WHERE pe.entity_name = 'jira.properties' AND pe.entity_id = 1
+			AND pe.property_key = 'jira.constant.default.resolution'`).Scan(&id)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("reading Jira's default resolution: %w", err)
+		}
+	}
+	if r.resolutions[id.String] {
+		_, err := r.dst.ExecContext(r.ctx, `UPDATE resolutions SET is_default = TRUE WHERE id = ?`, id.String)
+		return err
+	}
+	_, err := r.dst.ExecContext(r.ctx, guessDefaultResolution)
+	return err
+}
 
 func (r *run) importCatalogues() error {
 	r.issueTypes = map[string]bool{}
@@ -47,14 +76,14 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.issueTypes[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), style.String == "jira_subtask", seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), style.String == "jira_subtask", seq.Int64)
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("types de tickets", ins.total, 0)
+	r.rep.step("issue types", ins.total, 0)
 
 	r.statuses = map[string]bool{}
 	ins = r.inserter("statuses", "id", "name", "description", "category", "position")
@@ -70,19 +99,16 @@ func (r *run) importCatalogues() error {
 		if err := rows.Scan(&id, &name, &desc, &seq, &cat); err != nil {
 			return err
 		}
-		category, ok := statusCategories[cat.Int64]
-		if !ok {
-			category = "todo"
-		}
 		r.statuses[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), category, seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), string(issue.FromJiraStatusCategory(cat.Int64)),
+			seq.Int64)
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("statuts", ins.total, 0)
+	r.rep.step("statuses", ins.total, 0)
 
 	r.priorities = map[string]bool{}
 	ins = r.inserter("priorities", "id", "name", "description", "color", "position")
@@ -94,14 +120,14 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.priorities[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), nstr(color), seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), sqlq.Value(color), seq.Int64)
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("priorités", ins.total, 0)
+	r.rep.step("priorities", ins.total, 0)
 
 	r.resolutions = map[string]bool{}
 	ins = r.inserter("resolutions", "id", "name", "description", "position")
@@ -113,19 +139,23 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.resolutions[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), nstr(desc), seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), seq.Int64)
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("résolutions", ins.total, 0)
+	r.rep.step("resolutions", ins.total, 0)
+	if err := r.defaultResolution(); err != nil {
+		return err
+	}
 
 	// Jira encodes sub-tasks as links of a hidden type; Solstice has a parent
 	// column instead, so those types are not copied.
 	r.linkTypes = map[int64]bool{}
 	r.subtaskLink = map[int64]bool{}
+	r.epicLink = map[int64]bool{}
 	ins = r.inserter("link_types", "id", "name", "inward", "outward", "position")
 	pos := 0
 	if err := r.each(`SELECT id, linkname, inward, outward, pstyle FROM issuelinktype ORDER BY id`, func(rows *sql.Rows) error {
@@ -134,8 +164,13 @@ func (r *run) importCatalogues() error {
 		if err := rows.Scan(&id, &name, &inward, &outward, &style); err != nil {
 			return err
 		}
-		if style.String == "jira_subtask" {
+		switch style.String {
+		case "jira_subtask":
 			r.subtaskLink[id] = true
+			return nil
+		case "jira_gh_epic_story":
+			// Epic → issue links become the issue's epic.
+			r.epicLink[id] = true
 			return nil
 		}
 		r.linkTypes[id] = true
@@ -147,7 +182,7 @@ func (r *run) importCatalogues() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("types de liens", ins.total, 0)
+	r.rep.step("link types", ins.total, 0)
 	return nil
 }
 
@@ -161,7 +196,7 @@ func (r *run) importProjects() error {
 			return err
 		}
 		cats[id] = true
-		return ins.add(id, truncate(name.String, 255), nstr(desc))
+		return ins.add(id, truncate(name.String, 255), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
@@ -210,15 +245,15 @@ func (r *run) importProjects() error {
 		if assigneeType.Int64 == 2 {
 			defaultAssignee = "lead"
 		}
-		return ins.add(id, key.String, truncate(orDefault(name, key.String), 255), nstr(desc), leadID, category,
-			nstr(url), orDefault(kind, "software"), defaultAssignee, counter.Int64)
+		return ins.add(id, key.String, truncate(orDefault(name, key.String), 255), sqlq.Value(desc), leadID, category,
+			sqlq.Value(url), orDefault(kind, "software"), defaultAssignee, counter.Int64)
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("projets", ins.total, 0)
+	r.rep.step("projects", ins.total, 0)
 
 	// Former keys of renamed projects, so old issue keys keep working.
 	ins = r.inserter("project_keys", "pkey", "project_id")
@@ -241,7 +276,7 @@ func (r *run) importProjects() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("anciennes clés de projet", ins.total, 0)
+	r.rep.step("old project keys", ins.total, 0)
 	return nil
 }
 
@@ -271,14 +306,14 @@ func (r *run) importRoles() error {
 			return err
 		}
 		r.roles[id] = true
-		return ins.add(id, truncate(name.String, 255), nstr(desc))
+		return ins.add(id, truncate(name.String, 255), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("rôles", ins.total, 0)
+	r.rep.step("roles", ins.total, 0)
 
 	ins = r.inserter("project_role_members", "project_id", "role_id", "user_id", "group_id")
 	skipped := 0
@@ -311,7 +346,7 @@ func (r *run) importRoles() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("membres des rôles", ins.total, skipped)
+	r.rep.step("role members", ins.total, skipped)
 	return nil
 }
 
@@ -416,7 +451,7 @@ func (r *run) importProjectIssueTypes() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("types de tickets par projet", ins.total, 0)
+	r.rep.step("issue types per project", ins.total, 0)
 	return nil
 }
 
@@ -474,11 +509,26 @@ func grantArgs(g perm.Grant) (any, any, any) {
 	return u, gr, ro
 }
 
+// errTooOld is why the import refuses a Jira database older than version 7.
+var errTooOld = errors.New("this Jira version is too old (no schemepermissions.permission_key): upgrade Jira to 7 or later first")
+
+// requireSchema returns errTooOld for a Jira database older than version 7.
+func (r *run) requireSchema() error {
+	if !r.hasColumn("schemepermissions", "permission_key") {
+		// hasColumn also says false when it cannot ask: a lost connection is no old Jira.
+		if err := r.src.PingContext(r.ctx); err != nil {
+			return err
+		}
+		return errTooOld
+	}
+	return nil
+}
+
 // importPermissions copies each project's permission scheme into the
 // project's own grants.
 func (r *run) importPermissions() error {
-	if !r.hasColumn("schemepermissions", "permission_key") {
-		return errors.New("this Jira version is too old (no schemepermissions.permission_key): upgrade Jira to 7 or later first")
+	if err := r.requireSchema(); err != nil {
+		return err
 	}
 	type grant struct {
 		key         string
@@ -513,8 +563,8 @@ func (r *run) importPermissions() error {
 		}
 		grants, ok := byScheme[scheme]
 		if !ok {
-			r.rep.warn("projet %s : aucun schéma de permissions dans Jira, personne n'y a accès "+
-				"tant qu'un administrateur ne l'a pas configuré", p.key)
+			r.rep.warn("project %s: no permission scheme in Jira, nobody has access "+
+				"until an administrator configures it", p.key)
 			continue
 		}
 		seen := map[string]bool{}
@@ -566,10 +616,10 @@ func (r *run) importPermissions() error {
 	skipped := 0
 	for kind, n := range unsupported {
 		skipped += n
-		r.rep.warn("%s de type « %s » non reprises (accès retiré, à reconfigurer si besoin)",
-			plural(n, "autorisation Jira", "autorisations Jira"), kind)
+		r.rep.warn("%s of type \"%s\" not imported (access removed, to be reconfigured if needed)",
+			plural(n, "Jira permission", "Jira permissions"), kind)
 	}
-	r.rep.step("permissions par projet", ins.total, skipped)
+	r.rep.step("project permissions", ins.total, skipped)
 	return nil
 }
 
@@ -624,7 +674,7 @@ func (r *run) importSecurityLevels() error {
 		for _, l := range levelsOf[scheme] {
 			next++
 			r.levels[[2]int64{l.id, pid}] = next
-			if err := lins.add(next, pid, truncate(orDefault(l.name, "Niveau "+strconv.FormatInt(l.id, 10)), 255), nstr(l.desc)); err != nil {
+			if err := lins.add(next, pid, truncate(orDefault(l.name, "Level "+strconv.FormatInt(l.id, 10)), 255), sqlq.Value(l.desc)); err != nil {
 				return err
 			}
 			for _, m := range membersOf[l.id] {
@@ -649,11 +699,11 @@ func (r *run) importSecurityLevels() error {
 	if err := mins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("niveaux de confidentialité", lins.total, 0)
-	r.rep.step("membres des niveaux", mins.total, skipped)
+	r.rep.step("security levels", lins.total, 0)
+	r.rep.step("level members", mins.total, skipped)
 	if skipped > 0 {
-		r.rep.warn("%s de niveaux de confidentialité non repris (type non géré) : ces tickets sont "+
-			"visibles par moins de monde qu'avant, jamais par plus", plural(skipped, "membre", "membres"))
+		r.rep.warn("%s of security levels not imported (unsupported type): these issues are "+
+			"visible by fewer people than before, never by more", plural(skipped, "member", "members"))
 	}
 	return nil
 }
@@ -672,12 +722,12 @@ func (r *run) securityLevel(jiraLevel sql.NullInt64, pid int64) (any, error) {
 	r.nextLevelID++
 	id := r.nextLevelID
 	if _, err := r.dst.ExecContext(r.ctx, `INSERT INTO security_levels (id, project_id, name, description)
-		VALUES (?, ?, ?, ?)`, id, pid, "Restreint (import)",
-		"Niveau de confidentialité introuvable dans Jira : aucun membre."); err != nil {
+		VALUES (?, ?, ?, ?)`, id, pid, "Restricted (import)",
+		"Security level not found in Jira: no member."); err != nil {
 		return nil, err
 	}
 	r.levels[k] = id
-	r.rep.warn("projet %s : un niveau de confidentialité introuvable a été remplacé par « Restreint (import) », sans membre",
+	r.rep.warn("project %s: a security level not found in Jira was replaced by \"Restricted (import)\", with no member",
 		r.projects[pid].key)
 	return id, nil
 }
@@ -711,14 +761,14 @@ func (r *run) importComponentsAndVersions() error {
 			return err
 		}
 		r.components[id] = true
-		return ins.add(id, pid.Int64, truncate(name.String, 255), nstr(desc), leadID, truthy(arch) || truthy(del))
+		return ins.add(id, pid.Int64, truncate(name.String, 255), sqlq.Value(desc), leadID, truthy(arch) || truthy(del))
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("composants", ins.total, skipped)
+	r.rep.step("components", ins.total, skipped)
 
 	startDate := "NULL"
 	if r.hasColumn("projectversion", "startdate") {
@@ -742,7 +792,7 @@ func (r *run) importComponentsAndVersions() error {
 			return nil
 		}
 		r.versions[id] = true
-		return ins.add(id, pid.Int64, truncate(name.String, 255), nstr(desc), seq.Int64, truthy(released), truthy(arch),
+		return ins.add(id, pid.Int64, truncate(name.String, 255), sqlq.Value(desc), seq.Int64, truthy(released), truthy(arch),
 			r.ndate(start), r.ndate(release))
 	}); err != nil {
 		return err
@@ -764,14 +814,14 @@ func (r *run) importCustomFields() error {
 			return err
 		}
 		r.fields[id] = typeKey.String
-		return ins.add(id, truncate(typeKey.String, 255), nstr(searcher), truncate(orDefault(name, "customfield_"+strconv.FormatInt(id, 10)), 255), nstr(desc))
+		return ins.add(id, truncate(typeKey.String, 255), sqlq.Value(searcher), truncate(orDefault(name, "customfield_"+strconv.FormatInt(id, 10)), 255), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("champs personnalisés", ins.total, 0)
+	r.rep.step("custom fields", ins.total, 0)
 
 	type opt struct {
 		id, field, parent, seq int64
@@ -812,6 +862,6 @@ func (r *run) importCustomFields() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("options de champs", ins.total, skipped)
+	r.rep.step("field options", ins.total, skipped)
 	return nil
 }

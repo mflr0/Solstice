@@ -4,7 +4,7 @@ package auth
 import (
 	"crypto/pbkdf2"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- PBKDF2-SHA1 of passwords imported from Jira, replaced by Argon2id at first sign-in
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"

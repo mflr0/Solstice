@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { autofocus, outside } from '../lib/actions.js';
   import Who from './Who.svelte';
 
@@ -16,6 +16,8 @@
     allowNone?: boolean | undefined;
     disabled?: boolean | undefined;
     noneLabel?: string | undefined;
+    /** Draw it as a form field (a frame, like an input) rather than inline text. */
+    field?: boolean | undefined;
   }
   const {
     value,
@@ -25,6 +27,7 @@
     allowNone = true,
     disabled = false,
     noneLabel = t.common.unassigned,
+    field = false,
   }: Props = $props();
 
   let open = $state(false);
@@ -85,7 +88,7 @@
   }
 </script>
 
-<div class="picker" use:outside={() => (open = false)}>
+<div class="picker" class:framed={field} use:outside={() => (open = false)}>
   <button
     type="button"
     class="current"
@@ -163,6 +166,30 @@
     background: var(--paper);
   }
 
+  .framed .current {
+    min-height: 32px;
+    border: var(--frame) solid var(--rule-strong);
+    border-radius: var(--radius-xs);
+    background: var(--paper-raised);
+    padding: 5px 8px;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .framed .current:hover:not([disabled]) {
+    background: var(--paper-raised);
+  }
+
+  .framed .current:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .framed .popover {
+    left: 0;
+  }
+
   .current[disabled] {
     cursor: default;
   }
@@ -204,6 +231,6 @@
 
   .item .user {
     margin-left: auto;
-    font: 11.5px var(--mono);
+    font: 11.5px var(--font-mono);
   }
 </style>

@@ -1,0 +1,52 @@
+# Solstice and its MariaDB database.
+#
+# Quickest start: ./install.sh (creates .env with random passwords, starts
+# everything and prints the address and the setup code).
+# By hand: create .env next to this file with DB_PASSWORD and DB_ROOT_PASSWORD
+# (letters and digits only), then `docker compose up -d` and read the setup
+# code with `docker compose logs solstice`.
+name: solstice
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: solstice
+      MARIADB_USER: solstice
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  solstice:
+    image: solstice:${SOLSTICE_VERSION:-latest}
+    build:
+      context: ../..
+      args:
+        VERSION: ${SOLSTICE_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      # The setup wizard skips its database step: the database is this one.
+      SOLSTICE_DB_URL: mysql://solstice:${DB_PASSWORD}@mariadb:3306/solstice
+    ports:
+      # "127.0.0.1:8080:8080" to only accept connections from a reverse proxy
+      # on this machine.
+      - "${SOLSTICE_PORT:-8080}:8080"
+    volumes:
+      - data:/var/lib/solstice
+      # To import from Jira in the wizard, make its home directory (for the
+      # attachments) visible, then give /import/jira-home as its path:
+      # - /path/to/jira-home:/import/jira-home:ro
+
+volumes:
+  db:
+  data:

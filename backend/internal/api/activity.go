@@ -6,11 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+
+	"solstice/internal/events"
+	"solstice/internal/i18n"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
-
-	"solstice/internal/perm"
 )
 
 // Comments -------------------------------------------------------------------
@@ -44,7 +47,7 @@ type commentRow struct {
 // visibleComments returns an issue's comments that the user may read.
 func (s *Server) visibleComments(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]commentRow, error) {
 	var out []commentRow
-	err := scanAll(ctx, s.db, `SELECT c.id, c.author_id, c.updated_by_id, c.body, c.created_at, c.updated_at,
+	err := sqlq.Each(ctx, s.db, `SELECT c.id, c.author_id, c.updated_by_id, c.body, c.created_at, c.updated_at,
 		c.visibility_group, c.visibility_role_id, r.name FROM comments c
 		LEFT JOIN project_roles r ON r.id = c.visibility_role_id
 		WHERE c.issue_id = ? ORDER BY c.created_at, c.id`, func(rows *sql.Rows) error {
@@ -132,7 +135,7 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if strings.TrimSpace(in.Body) == "" {
-		return fail(http.StatusBadRequest, "Le commentaire est vide.")
+		return fail(http.StatusBadRequest, i18n.CommentEmpty)
 	}
 	var group, role any
 	var eventGroup string
@@ -142,14 +145,14 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 		// otherwise one could not read one's own comment.
 		if v.Group != "" {
 			if !sub.SeesRestricted(iss.ProjectID, strings.ToLower(v.Group), 0) {
-				return fail(http.StatusBadRequest, "Vous ne faites pas partie de ce groupe.")
+				return fail(http.StatusBadRequest, i18n.CommentGroupNotMember)
 			}
 			group = strings.ToLower(v.Group)
 			eventGroup = strings.ToLower(v.Group)
 		}
 		if v.Role != 0 {
 			if !sub.SeesRestricted(iss.ProjectID, "", v.Role) {
-				return fail(http.StatusBadRequest, "Vous n'avez pas ce rôle dans le projet.")
+				return fail(http.StatusBadRequest, i18n.CommentRoleNotHeld)
 			}
 			role = v.Role
 			eventRole = v.Role
@@ -174,7 +177,8 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.publishComment(iss, sub.UserID, eventGroup, eventRole)
+	s.emit(commentEvent(events.CommentCreated, iss, sub.UserID, &events.Comment{ID: id, AuthorID: sub.UserID,
+		Body: in.Body, Group: eventGroup, RoleID: eventRole, Created: now, Updated: now}))
 	return s.respondComment(w, r, sub, iss, id, http.StatusCreated)
 }
 
@@ -197,10 +201,13 @@ func (s *Server) respondComment(w http.ResponseWriter, r *http.Request, sub *per
 
 // editableComment is a comment the current user may edit or delete.
 type editableComment struct {
-	issue *issueRow
-	id    int64
-	group string
-	role  int64
+	issue   *issueRow
+	id      int64
+	group   string
+	role    int64
+	author  int64
+	body    string
+	created time.Time
 }
 
 // commentForEdit loads a comment the user may edit or delete.
@@ -213,8 +220,10 @@ func (s *Server) commentForEdit(r *http.Request, sub *perm.Subject) (*editableCo
 	var author sql.NullInt64
 	var group sql.NullString
 	var role sql.NullInt64
-	err = s.db.QueryRowContext(r.Context(), `SELECT issue_id, author_id, visibility_group, visibility_role_id
-		FROM comments WHERE id = ?`, id).Scan(&issueID, &author, &group, &role)
+	var body string
+	var created time.Time
+	err = s.db.QueryRowContext(r.Context(), `SELECT issue_id, author_id, visibility_group, visibility_role_id, body,
+		created_at FROM comments WHERE id = ?`, id).Scan(&issueID, &author, &group, &role, &body, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
 	}
@@ -233,7 +242,8 @@ func (s *Server) commentForEdit(r *http.Request, sub *perm.Subject) (*editableCo
 	if !own && !sub.Can(perm.Moderate, iss.ProjectID, &pi) {
 		return nil, errForbidden
 	}
-	return &editableComment{issue: iss, id: id, group: group.String, role: role.Int64}, nil
+	return &editableComment{issue: iss, id: id, group: group.String, role: role.Int64, author: author.Int64, body: body,
+		created: created}, nil
 }
 
 func (s *Server) editComment(w http.ResponseWriter, r *http.Request) error {
@@ -252,13 +262,16 @@ func (s *Server) editComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if strings.TrimSpace(in.Body) == "" {
-		return fail(http.StatusBadRequest, "Le commentaire est vide.")
+		return fail(http.StatusBadRequest, i18n.CommentEmpty)
 	}
+	now := time.Now().UTC()
 	if _, err := s.db.ExecContext(r.Context(), `UPDATE comments SET body = ?, updated_at = ?, updated_by_id = ?
-		WHERE id = ?`, in.Body, time.Now().UTC(), sub.UserID, c.id); err != nil {
+		WHERE id = ?`, in.Body, now, sub.UserID, c.id); err != nil {
 		return err
 	}
-	s.publishComment(c.issue, sub.UserID, c.group, c.role)
+	s.emit(commentEvent(events.CommentUpdated, c.issue, sub.UserID, &events.Comment{ID: c.id, AuthorID: c.author,
+		UpdatedBy: sub.UserID, Body: in.Body, OldBody: c.body, Group: c.group, RoleID: c.role, Created: c.created,
+		Updated: now}))
 	return s.respondComment(w, r, sub, c.issue, c.id, http.StatusOK)
 }
 
@@ -274,7 +287,8 @@ func (s *Server) deleteComment(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.db.ExecContext(r.Context(), `DELETE FROM comments WHERE id = ?`, c.id); err != nil {
 		return err
 	}
-	s.publishComment(c.issue, sub.UserID, c.group, c.role)
+	s.emit(commentEvent(events.CommentDeleted, c.issue, sub.UserID, &events.Comment{ID: c.id, AuthorID: c.author,
+		Body: c.body, Group: c.group, RoleID: c.role, Created: c.created, Updated: c.created}))
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -286,18 +300,18 @@ type historyItem struct {
 	FieldType string  `json:"fieldType"`
 	From      *string `json:"from"`
 	To        *string `json:"to"`
+	// Raw values (ids) and display strings apart, for Jira's changelog.
+	fromValue, fromString, toValue, toString *string
 }
 
 type historyEntry struct {
-	ID      int64         `json:"id"`
-	Author  *userRef      `json:"author"`
-	Created time.Time     `json:"created"`
-	Items   []historyItem `json:"items"`
+	ID       int64         `json:"id"`
+	Author   *userRef      `json:"author"`
+	Created  time.Time     `json:"created"`
+	Items    []historyItem `json:"items"`
+	authorID sql.NullInt64
 }
 
-// Fields whose old and new values may reveal restricted information are not
-// shown to everyone. (Jira hides nothing here; Solstice errs on the safe side
-// only for the security level, whose ids mean nothing to readers anyway.)
 func (s *Server) history(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -307,52 +321,69 @@ func (s *Server) history(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var entries []historyEntry
+	entries, err := s.issueHistory(r.Context(), sub, iss)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, entries)
+}
+
+// issueHistory returns the history of an issue, oldest first, without what
+// the user may not read. Fields whose old and new values may reveal
+// restricted information are not shown to everyone. (Jira hides nothing
+// here; Solstice errs on the safe side only for the security level, whose
+// ids mean nothing to readers anyway.)
+func (s *Server) issueHistory(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]historyEntry, error) {
+	entries := []historyEntry{}
 	index := map[int64]int{}
 	var authors []int64
-	authorOf := map[int64]sql.NullInt64{}
-	err = scanAll(r.Context(), s.db, `SELECT g.id, g.author_id, g.created_at, i.field_type, i.field,
-		COALESCE(i.old_string, i.old_value), COALESCE(i.new_string, i.new_value)
+	err := sqlq.Each(ctx, s.db, `SELECT g.id, g.author_id, g.created_at, i.field_type, i.field,
+		i.old_value, i.old_string, i.new_value, i.new_string
 		FROM change_groups g JOIN change_items i ON i.group_id = g.id
 		WHERE g.issue_id = ? ORDER BY g.created_at, g.id, i.id`, func(rows *sql.Rows) error {
 		var id int64
 		var author sql.NullInt64
 		var created time.Time
 		var it historyItem
-		var from, to sql.NullString
-		if err := rows.Scan(&id, &author, &created, &it.FieldType, &it.Field, &from, &to); err != nil {
+		var fromValue, fromString, toValue, toString sql.NullString
+		if err := rows.Scan(&id, &author, &created, &it.FieldType, &it.Field, &fromValue, &fromString, &toValue,
+			&toString); err != nil {
 			return err
 		}
 		if it.Field == "security" {
 			return nil
 		}
-		it.From, it.To = nullStr(from), nullStr(to)
+		it.fromValue, it.fromString, it.toValue, it.toString = sqlq.String(fromValue), sqlq.String(fromString),
+			sqlq.String(toValue), sqlq.String(toString)
+		it.From, it.To = it.fromString, it.toString
+		if it.From == nil {
+			it.From = it.fromValue
+		}
+		if it.To == nil {
+			it.To = it.toValue
+		}
 		i, ok := index[id]
 		if !ok {
 			i = len(entries)
 			index[id] = i
-			entries = append(entries, historyEntry{ID: id, Created: created})
+			entries = append(entries, historyEntry{ID: id, Created: created, authorID: author})
 			authors = append(authors, author.Int64)
-			authorOf[id] = author
 		}
 		entries[i].Items = append(entries[i].Items, it)
 		return nil
 	}, iss.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	entries = s.hideRestrictedHistory(r.Context(), sub, entries)
-	users, err := s.users(r.Context(), authors...)
+	entries = s.hideRestrictedHistory(ctx, sub, entries)
+	users, err := s.users(ctx, authors...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for i := range entries {
-		entries[i].Author = refOf(users, authorOf[entries[i].ID])
+		entries[i].Author = refOf(users, entries[i].authorID)
 	}
-	if entries == nil {
-		entries = []historyEntry{}
-	}
-	return writeJSON(w, http.StatusOK, entries)
+	return entries, nil
 }
 
 // History lines that name other issues: "This issue blocks RH-12".
@@ -419,6 +450,7 @@ type worklogOut struct {
 	Seconds    int64       `json:"seconds"`
 	Body       *string     `json:"body"`
 	Visibility *visibility `json:"visibility"`
+	CanEdit    bool        `json:"canEdit"`
 }
 
 func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
@@ -430,13 +462,23 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	out, err := s.visibleWorklogs(r.Context(), sub, iss)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// visibleWorklogs returns an issue's work logs that the user may read, and
+// tells for each whether the user may edit or delete it.
+func (s *Server) visibleWorklogs(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]worklogOut, error) {
 	type row struct {
 		out    worklogOut
 		author sql.NullInt64
 	}
 	var list []row
 	var ids []int64
-	err = scanAll(r.Context(), s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
+	err := sqlq.Each(ctx, s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
 		w.visibility_role_id, pr.name FROM worklogs w LEFT JOIN project_roles pr ON pr.id = w.visibility_role_id
 		WHERE w.issue_id = ? ORDER BY w.started_at, w.id`, func(rows *sql.Rows) error {
 		var x row
@@ -448,7 +490,7 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 		if !sub.SeesRestricted(iss.ProjectID, group.String, role.Int64) {
 			return nil
 		}
-		x.out.Body = nullStr(body)
+		x.out.Body = sqlq.String(body)
 		if group.Valid || role.Valid {
 			x.out.Visibility = &visibility{Group: group.String, Role: roleName.String}
 		}
@@ -457,18 +499,22 @@ func (s *Server) listWorklogs(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}, iss.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	users, err := s.users(r.Context(), ids...)
+	users, err := s.users(ctx, ids...)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	pi := iss.perm()
+	moderate := sub.Can(perm.Moderate, iss.ProjectID, &pi)
+	own := sub.Can(perm.Worklog, iss.ProjectID, &pi)
 	out := make([]worklogOut, 0, len(list))
 	for _, x := range list {
 		x.out.Author = refOf(users, x.author)
+		x.out.CanEdit = moderate || (own && x.author.Valid && x.author.Int64 == sub.UserID)
 		out = append(out, x.out)
 	}
-	return writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
@@ -493,8 +539,8 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if in.Seconds <= 0 || in.Seconds > 7*24*3600 {
-		return fail(http.StatusBadRequest, "Durée invalide.")
+	if in.Seconds <= 0 || in.Seconds > maxWorklog {
+		return fail(http.StatusBadRequest, i18n.WorkLogDurationInvalid)
 	}
 	now := time.Now().UTC()
 	started := now
@@ -510,20 +556,29 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO worklogs (issue_id, author_id, body, started_at, seconds, created_at,
-		updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, iss.ID, sub.UserID, body, started, in.Seconds, now, now); err != nil {
+	res, err := tx.ExecContext(ctx, `INSERT INTO worklogs (issue_id, author_id, body, started_at, seconds, created_at,
+		updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, iss.ID, sub.UserID, body, started, in.Seconds, now, now)
+	if err != nil {
 		return err
 	}
+	worklogID, _ := res.LastInsertId()
 	// Logged time is spent time; the remaining estimate shrinks accordingly.
-	if _, err := tx.ExecContext(ctx, `UPDATE issues SET time_spent = COALESCE(time_spent, 0) + ?,
-		remaining_estimate = CASE WHEN remaining_estimate IS NULL THEN NULL ELSE GREATEST(remaining_estimate - ?, 0) END,
-		updated_at = ? WHERE id = ?`, in.Seconds, in.Seconds, now, iss.ID); err != nil {
+	cur, err := lockTimeTracking(ctx, tx, iss.ID)
+	if err != nil {
+		return err
+	}
+	changes, err := storeTimeTracking(ctx, tx, iss.ID, sub.UserID, now, cur, cur.withLogged(in.Seconds))
+	if err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.publish(iss, "worklog", sub.UserID)
+	e := issueEvent(events.WorklogCreated, iss, sub.UserID, "worklog")
+	e.Worklog = &events.Worklog{ID: worklogID, AuthorID: sub.UserID, Body: in.Body, Started: started,
+		Seconds: in.Seconds, Created: now}
+	e.Changes = eventChanges(changes)
+	s.emit(e)
 	w.WriteHeader(http.StatusCreated)
 	return nil
 }
@@ -597,14 +652,14 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	lt, ok := cat.linkType[in.Type]
 	if !ok {
-		return fail(http.StatusBadRequest, "Type de lien inconnu.")
+		return fail(http.StatusBadRequest, i18n.LinkTypeUnknown)
 	}
 	target, err := s.findIssue(ctx, in.Target)
 	if err != nil || !sub.CanSee(target.perm()) {
-		return fail(http.StatusBadRequest, "Ticket cible introuvable.")
+		return fail(http.StatusBadRequest, i18n.LinkTargetNotFound)
 	}
 	if target.ID == iss.ID {
-		return fail(http.StatusBadRequest, "Un ticket ne peut pas être lié à lui-même.")
+		return fail(http.StatusBadRequest, i18n.LinkToItself)
 	}
 	source, dest := iss, target
 	if in.Direction == "inward" {
@@ -621,20 +676,20 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	// Jira records links in the history of both issues.
-	if err := recordChanges(ctx, tx, source.ID, sub.UserID, now, []change{{field: "Link", newValue: dest.Key(),
-		newString: "This issue " + lt.Outward + " " + dest.Key()}}); err != nil {
+	sourceChange := []change{{field: "Link", newValue: dest.Key(), newString: "This issue " + lt.Outward + " " + dest.Key()}}
+	destChange := []change{{field: "Link", newValue: source.Key(), newString: "This issue " + lt.Inward + " " + source.Key()}}
+	if err := recordChanges(ctx, tx, source.ID, sub.UserID, now, sourceChange); err != nil {
 		return err
 	}
-	if err := recordChanges(ctx, tx, dest.ID, sub.UserID, now, []change{{field: "Link", newValue: source.Key(),
-		newString: "This issue " + lt.Inward + " " + source.Key()}}); err != nil {
+	if err := recordChanges(ctx, tx, dest.ID, sub.UserID, now, destChange); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.publish(iss, "link", sub.UserID)
-	s.publish(target, "link", sub.UserID)
-	return s.respondIssue(w, r, sub, iss.ID)
+	s.changed(source, sub.UserID, "link", sourceChange)
+	s.changed(dest, sub.UserID, "link", destChange)
+	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
 }
 
 func (s *Server) deleteLink(w http.ResponseWriter, r *http.Request) error {
@@ -647,9 +702,9 @@ func (s *Server) deleteLink(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errNotFound
 	}
-	var sourceID, targetID int64
-	if err := s.db.QueryRowContext(ctx, `SELECT source_id, target_id FROM issue_links WHERE id = ?`, id).
-		Scan(&sourceID, &targetID); errors.Is(err, sql.ErrNoRows) {
+	var sourceID, targetID, typeID int64
+	if err := s.db.QueryRowContext(ctx, `SELECT source_id, target_id, type_id FROM issue_links WHERE id = ?`, id).
+		Scan(&sourceID, &targetID, &typeID); errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	} else if err != nil {
 		return err
@@ -663,14 +718,26 @@ func (s *Server) deleteLink(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	sp, tp := source.perm(), target.perm()
+	// Links are only shown between issues one sees: others do not exist
+	// for the user.
+	if !sub.CanSee(sp) || !sub.CanSee(tp) {
+		return errNotFound
+	}
 	if !sub.Can(perm.Link, source.ProjectID, &sp) && !sub.Can(perm.Link, target.ProjectID, &tp) {
 		return errForbidden
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM issue_links WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.publish(source, "link", sub.UserID)
-	s.publish(target, "link", sub.UserID)
+	// Announced like the history lines of a new link, the other way round.
+	var lt linkTypeRef
+	if cat, err := s.catalogue(ctx); err == nil {
+		lt = cat.linkType[typeID]
+	}
+	s.changed(source, sub.UserID, "link", []change{{field: "Link", oldValue: target.Key(),
+		oldString: "This issue " + lt.Outward + " " + target.Key()}})
+	s.changed(target, sub.UserID, "link", []change{{field: "Link", oldValue: source.Key(),
+		oldString: "This issue " + lt.Inward + " " + source.Key()}})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

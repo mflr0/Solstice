@@ -23,6 +23,7 @@ const (
 	roleAdmins     int64 = 10002
 
 	linkSubtask int64 = 10100
+	linkEpic    int64 = 10200 // Jira Software's Epic-Story Link
 
 	cfStoryPoints = 10100
 	cfEnvironment = 10101
@@ -35,6 +36,9 @@ const (
 	cfClientCode  = 10108
 	cfThemes      = 10109
 	cfEpicLink    = 10110
+	cfSprint      = 10111 // Jira Software: one value per sprint the issue has been in
+	cfRank        = 10112 // Jira Software: values live in AO_60DB71_LEXORANK
+	cfGlobalRank  = 10113 // Jira Software's legacy rank field, present but unused
 )
 
 type user struct {
@@ -126,6 +130,9 @@ var resolutions = []struct{ id, name string }{
 	{"5", "Cannot Reproduce"}, {"10000", "Done"},
 }
 
+// defaultResolution is Jira's default resolution: Fixed.
+const defaultResolution = "1"
+
 func resolutionName(id string) string {
 	for _, r := range resolutions {
 		if r.id == id {
@@ -147,6 +154,7 @@ var linkTypes = []linkType{
 	{10002, "Duplicate", "is duplicated by", "duplicates", ""},
 	{10003, "Relates", "relates to", "relates to", ""},
 	{linkSubtask, "jira_subtask_link", "jira_subtask_inward", "jira_subtask_outward", "jira_subtask"},
+	{linkEpic, "Epic-Story Link", "has Epic", "is Epic of", "jira_gh_epic_story"},
 }
 
 type component struct {
@@ -334,6 +342,10 @@ func (g *generator) run() {
 	g.seedWorkflows()
 	g.seedIssues()
 	g.seedFilters()
+	g.seedAgile()
+	if g.opt.Messy {
+		g.seedMessy()
+	}
 	g.seedSequences()
 }
 
@@ -552,6 +564,11 @@ func (g *generator) seedCatalogs() {
 	for i, r := range resolutions {
 		rs.Add(r.id, i, r.name, "Résolution "+r.name, nil)
 	}
+	// Jira's default resolution is a global property. Fixed rather than Done,
+	// which Solstice would guess from the names.
+	g.w.Table("propertyentry", "id", "entity_name", "entity_id", "property_key", "propertytype").
+		Add(10000, "jira.properties", 1, "jira.constant.default.resolution", 5)
+	g.w.Table("propertystring", "id", "propertyvalue").Add(10000, defaultResolution)
 	lt := g.w.Table("issuelinktype", "id", "linkname", "inward", "outward", "pstyle", "position")
 	for i, l := range linkTypes {
 		lt.Add(l.id, l.name, l.inward, l.outward, nullable(l.style), i)
@@ -719,7 +736,7 @@ func (g *generator) seedSchemes() {
 	// OPS has no association: Jira falls back to the default scheme (id 0).
 
 	g.w.Table("issuesecurityscheme", "id", "name", "description", "defaultlevel").
-		Add(int64(10000), "Confidentialité", "Tickets réservés à une partie de l'équipe", nil)
+		Add(int64(10000), "Security level", "Tickets réservés à une partie de l'équipe", nil)
 	levels := g.w.Table("schemeissuesecuritylevels", "id", "name", "description", "scheme")
 	levels.Add(int64(10000), "Équipe", "Visible de l'équipe de développement", int64(10000))
 	levels.Add(int64(10001), "Restreint", "Visible du rapporteur et de la direction de projet", int64(10000))
@@ -780,6 +797,9 @@ var customFields = []customFieldDef{
 	{cfClientCode, "Code client", cfPrefix + "textfield", cfPrefix + "textsearcher"},
 	{cfThemes, "Thèmes", cfPrefix + "labels", cfPrefix + "labelsearcher"},
 	{cfEpicLink, "Epic Link", "com.pyxis.greenhopper.jira:gh-epic-link", "com.pyxis.greenhopper.jira:gh-epic-link-searcher"},
+	{cfSprint, "Sprint", "com.pyxis.greenhopper.jira:gh-sprint", "com.pyxis.greenhopper.jira:gh-sprint-searcher"},
+	{cfRank, "Rank", "com.pyxis.greenhopper.jira:gh-lexo-rank", "com.pyxis.greenhopper.jira:gh-lexo-rank-searcher"},
+	{cfGlobalRank, "Rank (Obsolete)", "com.pyxis.greenhopper.jira:gh-global-rank", "com.pyxis.greenhopper.jira:gh-global-rank-searcher"},
 }
 
 // Option ids of the select-like custom fields.

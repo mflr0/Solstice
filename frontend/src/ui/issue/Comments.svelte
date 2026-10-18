@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Comment, IssueDetail } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import RelTime from '../RelTime.svelte';
@@ -81,14 +81,14 @@
 {#if error}
   <p class="error-text" role="alert">{error}</p>
 {:else if !comments}
-  <p class="muted">{t.common.loading}</p>
+  <p class="muted loading">{t.common.loading}</p>
 {:else}
   {#if comments.length === 0}
     <p class="empty">{t.comments.empty}</p>
   {/if}
   <ol class="thread">
     {#each comments as c (c.id)}
-      <li class="comment" id={`comment-${c.id}`}>
+      <li class="comment list-row" id={`comment-${c.id}`}>
         <header>
           <Who user={c.author} empty="—" />
           <span class="when muted">
@@ -130,6 +130,8 @@
             attachments={issue.attachments}
             autofocus
             onsubmit={() => void saveEdit(c.id)}
+            oncancel={() => (editing = null)}
+            uploadTo={issue.can.attach ? issue.key : undefined}
           />
           <div class="row end">
             <button class="btn btn-quiet btn-small" onclick={() => (editing = null)}
@@ -155,6 +157,7 @@
         rows={4}
         attachments={issue.attachments}
         onsubmit={() => void send()}
+        uploadTo={issue.can.attach ? issue.key : undefined}
       />
       <div class="row end">
         <button
@@ -201,8 +204,8 @@
   }
 
   .restricted {
-    font: 11.5px var(--mono);
-    color: var(--accent);
+    font: 11.5px var(--font-mono);
+    color: var(--accent-text);
     border: 1px solid var(--margin-line);
     padding: 0 5px;
   }
@@ -215,7 +218,7 @@
   }
 
   .tools .armed {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   .comment :global(.wiki) {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /**
    * A modal built on <dialog>: the browser traps focus and closes it on
@@ -29,8 +29,8 @@
 <dialog bind:this={dialog} class="modal" aria-labelledby={titleId} {onclose}>
   {#if open}
     <header class="modal-head">
-      <h2 id={titleId}>{title}</h2>
-      <button type="button" class="btn btn-quiet btn-small" onclick={onclose}
+      <h2 class="modal-title" id={titleId}>{title}</h2>
+      <button type="button" class="btn btn-quiet btn-small modal-close" onclick={onclose}
         >{t.common.close} <kbd>{t.common.escKey}</kbd></button
       >
     </header>

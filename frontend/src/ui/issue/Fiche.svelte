@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { estimateChanges, estimateText } from '../../core/estimates.js';
   import { paths } from '../../core/route.js';
   import type { IssueDetail, ProjectDetail } from '../../core/types.js';
-  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/fr.js';
+  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
   import { api, type IssueFields } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import LabelEditor from '../LabelEditor.svelte';
@@ -13,6 +14,7 @@
   import UserPicker from '../UserPicker.svelte';
   import Who from '../Who.svelte';
   import WikiText from '../WikiText.svelte';
+  import { isSafeUrl } from '../../core/wiki.js';
 
   /**
    * The issue's record card: every field on its own ruled line, editable in
@@ -41,6 +43,34 @@
   );
   const ids = (list: { id: number }[]) => list.map((x) => x.id);
   const meIsAssignee = $derived(issue.assignee?.id === session.me?.id);
+
+  // The estimates as typed, kept in step with the issue.
+  let originalText = $state('');
+  let remainingText = $state('');
+  let estimateError = $state(false);
+
+  $effect(() => {
+    originalText = estimateText(issue.time.original);
+    remainingText = estimateText(issue.time.remaining);
+    estimateError = false;
+  });
+
+  async function saveEstimates() {
+    const { fields, invalid } = estimateChanges(
+      { original: originalText, remaining: remainingText },
+      issue.time,
+    );
+    estimateError = invalid !== null;
+    if (invalid !== null || Object.keys(fields).length === 0) return;
+    try {
+      await onchange(fields);
+    } catch {
+      // The note already says why; the fields show the issue's own values again.
+      originalText = estimateText(issue.time.original);
+      remainingText = estimateText(issue.time.remaining);
+    }
+  }
+
   const spentRatio = $derived.by(() => {
     const { original, spent } = issue.time;
     if (!original || !spent) return 0;
@@ -48,10 +78,10 @@
   });
 </script>
 
-<aside class="fiche" aria-label={t.issue.fiche}>
-  <div class="head">{t.issue.fiche} <span class="key">{issue.key}</span></div>
+<aside class="fiche card" aria-label={t.issue.fiche}>
+  <div class="head card-head">{t.issue.fiche} <span class="key">{issue.key}</span></div>
   <dl>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.assignee}</dt>
       <dd class="stack">
         <UserPicker
@@ -70,11 +100,11 @@
         {/if}
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.reporter}</dt>
       <dd><Who user={issue.reporter} empty="—" /></dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.priority}</dt>
       <dd>
         {#if edit}
@@ -95,7 +125,7 @@
         {/if}
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.type}</dt>
       <dd>
         {#if edit && types.length > 1}
@@ -116,7 +146,7 @@
         {/if}
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.components}</dt>
       <dd>
         <MultiPick
@@ -128,7 +158,7 @@
         />
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.fixVersions}</dt>
       <dd>
         <MultiPick
@@ -144,7 +174,7 @@
         />
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.affectsVersions}</dt>
       <dd>
         <MultiPick
@@ -159,7 +189,33 @@
         />
       </dd>
     </div>
-    <div class="line">
+    {#if issue.epic}
+      <div class="line card-row">
+        <dt>{t.boards.epic}</dt>
+        <dd>
+          <a class="key" href={paths.issue(issue.epic.key)}>{issue.epic.key}</a>
+          {issue.epic.summary}
+        </dd>
+      </div>
+    {/if}
+    {#if issue.sprints?.length}
+      <div class="line card-row">
+        <dt>{t.boards.sprint}</dt>
+        <dd class="sprints">
+          {#each issue.sprints as sp (sp.id)}
+            {#if sp.board && sp.state !== 'closed'}
+              <a href={sp.state === 'active' ? paths.board(sp.board) : paths.backlog(sp.board)}
+                >{sp.name}</a
+              >
+            {:else}
+              <span class:muted={sp.state === 'closed'}>{sp.name}</span>
+            {/if}
+            <span class="muted">({t.boards.sprintStates[sp.state]})</span>
+          {/each}
+        </dd>
+      </div>
+    {/if}
+    <div class="line card-row">
       <dt>{t.issue.labels}</dt>
       <dd>
         <LabelEditor
@@ -169,7 +225,7 @@
         />
       </dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.due}</dt>
       <dd>
         {#if edit}
@@ -186,7 +242,7 @@
       </dd>
     </div>
     {#if issue.securityLevel || issue.can.security}
-      <div class="line">
+      <div class="line card-row">
         <dt>{t.issue.security}</dt>
         <dd>
           {#if issue.can.security && issue.securityLevels.length}
@@ -217,16 +273,16 @@
   </dl>
 
   <dl class="dates">
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.created}</dt>
       <dd><RelTime iso={issue.created} /></dd>
     </div>
-    <div class="line">
+    <div class="line card-row">
       <dt>{t.issue.updated}</dt>
       <dd><RelTime iso={issue.updated} /></dd>
     </div>
     {#if issue.resolved}
-      <div class="line">
+      <div class="line card-row">
         <dt>{t.issue.resolved}</dt>
         <dd>
           <span title={formatDateTime(issue.resolved)}><RelTime iso={issue.resolved} /></span>
@@ -234,33 +290,62 @@
         </dd>
       </div>
     {/if}
-    {#if issue.time.original || issue.time.spent || issue.time.remaining}
-      <div class="line">
+    {#if edit || issue.time.original || issue.time.spent || issue.time.remaining !== null}
+      <div class="line card-row">
         <dt>{t.issue.time}</dt>
         <dd class="time">
-          <span class="bar" aria-hidden="true"
-            ><span style:width={`${spentRatio * 100}%`}></span></span
-          >
-          <span class="nums">
-            {#if issue.time.spent}<span>{t.issue.spent} {formatDuration(issue.time.spent)}</span
+          {#if issue.time.original || issue.time.spent || issue.time.remaining !== null}
+            <span class="bar" aria-hidden="true"
+              ><span style:width={`${spentRatio * 100}%`}></span></span
+            >
+            <span class="nums">
+              {#if issue.time.spent}<span>{t.issue.spent} {formatDuration(issue.time.spent)}</span
+                >{/if}
+              {#if issue.time.original}<span
+                  >{t.issue.estimate} {formatDuration(issue.time.original)}</span
+                >{/if}
+              {#if issue.time.remaining !== null}<span
+                  >{t.issue.remaining} {formatDuration(issue.time.remaining)}</span
+                >{/if}
+            </span>
+          {/if}
+          {#if edit}
+            <span class="estimates">
+              <label>
+                <span class="muted">{t.issue.originalEstimate}</span>
+                <input
+                  class="est"
+                  bind:value={originalText}
+                  placeholder={t.issue.estimateHint}
+                  aria-invalid={estimateError}
+                  onchange={() => void saveEstimates()}
+                />
+              </label>
+              <label>
+                <span class="muted">{t.issue.remainingEstimate}</span>
+                <input
+                  class="est"
+                  bind:value={remainingText}
+                  placeholder={t.issue.estimateHint}
+                  aria-invalid={estimateError}
+                  onchange={() => void saveEstimates()}
+                />
+              </label>
+            </span>
+            {#if estimateError}<span class="error-text small" role="alert"
+                >{t.issue.estimateInvalid}</span
               >{/if}
-            {#if issue.time.original}<span
-                >{t.issue.estimate} {formatDuration(issue.time.original)}</span
-              >{/if}
-            {#if issue.time.remaining !== null}<span
-                >{t.issue.remaining} {formatDuration(issue.time.remaining)}</span
-              >{/if}
-          </span>
+          {/if}
         </dd>
       </div>
     {/if}
   </dl>
 
   {#if issue.customFields.length}
-    <div class="head sub">{t.issue.customFields}</div>
+    <div class="head card-head sub">{t.issue.customFields}</div>
     <dl>
       {#each issue.customFields as f (f.id)}
-        <div class="line">
+        <div class="line card-row">
           <dt>{f.name}</dt>
           <dd>
             {#if f.kind === 'user'}
@@ -273,11 +358,13 @@
                   attachments={issue.attachments}
                 />{/each}
             {:else if f.kind === 'url'}
-              {#each f.values as v, i (i)}<a
-                  href={v}
-                  rel="nofollow noopener noreferrer"
-                  target="_blank">{v}</a
-                >{/each}
+              {#each f.values as v, i (i)}
+                {#if isSafeUrl(v)}
+                  <a href={v} rel="nofollow noopener noreferrer" target="_blank">{v}</a>
+                {:else}
+                  {v}
+                {/if}
+              {/each}
             {:else if f.kind === 'date'}
               {f.values.map(formatDay).join(', ')}
             {:else if f.kind === 'datetime'}
@@ -299,22 +386,14 @@
 </aside>
 
 <style>
-  .fiche {
-    background: var(--paper-raised);
-    border: 1px solid var(--rule);
-    border-top: 2px solid var(--accent);
-    border-radius: 4px;
-    font-size: 13.5px;
+  .sprints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 6px;
   }
 
-  .head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 10px 14px 8px;
-    border-bottom: 1px solid var(--rule);
-    font: 600 13px/1 var(--sans);
-    color: var(--ink);
+  .fiche {
+    font-size: 13.5px;
   }
 
   .head .key {
@@ -407,7 +486,7 @@
     background: transparent;
     padding: 1px 4px;
     margin-left: -5px;
-    font: 13px var(--mono);
+    font: 13px var(--font-mono);
   }
 
   .date:hover {
@@ -442,8 +521,38 @@
     display: flex;
     flex-wrap: wrap;
     gap: 2px 10px;
-    font: 12px var(--mono);
+    font: 12px var(--font-mono);
     color: var(--ink-soft);
+  }
+
+  .estimates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+
+  .estimates label {
+    display: grid;
+    gap: 1px;
+    font-size: 12px;
+  }
+
+  .est {
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 1px 4px;
+    margin-left: -5px;
+    font: 12.5px var(--font-mono);
+    width: 9em;
+  }
+
+  .est:hover,
+  .est:focus {
+    border-color: var(--rule-strong);
+  }
+
+  .est[aria-invalid='true'] {
+    border-color: var(--accent-text);
   }
 
   .chips {

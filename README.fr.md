@@ -69,6 +69,12 @@ installe aussi MariaDB et crée la base et son compte ; sans cette option,
 l'assistant demande une base existante. Relancer le script avec une archive
 plus récente met à jour sur place.
 
+Les mises à jour lancées depuis l'administration ne s'installent que si le
+`SHA256SUMS` de la version porte une signature valide (`SHA256SUMS.sig`) de la
+clé de publication écrite dans `/usr/local/lib/solstice/update.sh` ; ce script
+est remplacé par `install.sh`, pas par les mises à jour elles-mêmes. OpenSSL
+1.1.1 ou plus récent est nécessaire.
+
 ### Premier démarrage : l'assistant d'installation
 
 Tant qu'aucune base n'est configurée, ou que la base n'a encore aucun compte,
@@ -81,19 +87,70 @@ instance Jira.
 ### Configuration
 
 Les réglages sont dans un fichier de lignes `CLÉ=valeur`, trouvé par
-`-config`, puis `SOLSTICE_CONFIG`, puis `./solstice.conf`, puis
+`SOLSTICE_CONFIG`, puis `./solstice.conf`, puis
 `/etc/solstice/solstice.conf`. Les variables d'environnement du même nom
-l'emportent ; `solstice -h` les liste. `GET /healthz` répond 200 quand la base
-répond, 503 sinon.
+l'emportent ; `solstice -h` les liste. Une clé `SOLSTICE_` inconnue, dans le
+fichier ou l'environnement, est signalée dans le journal au démarrage.
+`GET /healthz` répond 200 quand la base répond, 503 sinon.
+
+| Clé | Défaut | |
+|---|---|---|
+| `SOLSTICE_DB_URL` | aucune | base MariaDB, voir plus bas |
+| `SOLSTICE_DB_MAXOPENCONNS` | `20` | connexions ouvertes au plus |
+| `SOLSTICE_DB_MAXIDLECONNS` | `10` | connexions inactives gardées, au plus `MAXOPENCONNS` |
+| `SOLSTICE_DB_CONNMAXLIFETIME` | `5m` | durée de vie d'une connexion |
+| `SOLSTICE_DATA` | `./data` | dossier des données |
+| `SOLSTICE_TZ` | celui du système | fuseau des dates tapées dans les recherches, par exemple `Europe/Paris` |
+| `SOLSTICE_SECRETKEY` | `<données>/secret.key` | clé des secrets enregistrés, voir plus bas |
+| `SOLSTICE_INSTALL` | aucune | `docker` dans l'image : la page des mises à jour explique comment mettre à jour un conteneur |
+| `SOLSTICE_HTTP_ADDR` | `:8080` | adresse d'écoute |
+| `SOLSTICE_HTTP_BASEURL` | aucune | adresse publique, par exemple `https://tickets.example.org` |
+| `SOLSTICE_HTTP_TRUSTEDPROXIES` | aucun | reverse proxies, voir plus bas |
+| `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | temps laissé aux requêtes et e-mails en cours à l'arrêt |
+| `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | taille d'un envoi de fichiers ; `KB`, `MB`, `GB` comptent par 1000, `KiB`, `MiB`, `GiB` par 1024. Montez aussi la limite du proxy (`client_max_body_size` pour nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | taille totale de toutes les pièces jointes ; `0` signifie sans limite |
+| `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
+| `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
+
+Les durées s'écrivent `30s`, `5m`, `1h30m`.
+
+`SOLSTICE_DB_URL` s'écrit `mysql://utilisateur:mot_de_passe@hôte:3306/base` ;
+encodez en pourcentage les caractères spéciaux du mot de passe (`@` en `%40`).
+Pour chiffrer la liaison avec une base située sur une autre machine, ajoutez
+`?tls=true` (certificat vérifié), `?tls=skip-verify` (chiffré, certificat non
+vérifié) ou `?tls=preferred` ; `tls=false` est le défaut. Aucune autre option
+après `?` n'est acceptée et Solstice refuse de démarrer avec une autre. Les
+messages d'erreur n'affichent jamais le mot de passe.
 
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
-`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`.
+`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`, mais
+seulement si ce proxy figure dans `SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou
+plages CIDR séparées par des virgules, vide par défaut) ou si
+`SOLSTICE_HTTP_BASEURL` commence par `https://`. Sans l'un ni l'autre, l'en-tête
+est ignoré : les cookies ne sont pas `Secure`, les liens des réponses REST sont
+en `http://` et Solstice écrit un avertissement dans son journal (au plus un par
+heure). Les échecs de connexion sont comptés par adresse de client : la même
+liste permet à Solstice de lire le client dans `X-Forwarded-For` et non
+l'adresse du proxy, la même pour tous. Voir `deploy/proxy/README.md`.
 
 Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
-`SOLSTICE_SECRET_KEY` (32 octets en base64 ou en hexadécimal, par exemple
+`SOLSTICE_SECRETKEY` (32 octets en base64 ou en hexadécimal, par exemple
 `openssl rand -base64 32`), ou à défaut avec `<données>/secret.key`, créée au
 premier besoin. Sauvegardez cette clé avec la base et le dossier de données :
 sans elle, ces secrets sont à ressaisir.
+
+## Documentation
+
+Guides d'exploitation, en français et en [anglais](docs/en/) :
+
+- [Installation](docs/fr/install.md) : Linux, Docker, l'assistant
+  d'installation et tous les réglages.
+- [Reverse proxy](docs/fr/reverse-proxy.md) : HTTPS, l'adresse publique et les
+  proxies de confiance.
+- [Sauvegardes](docs/fr/backups.md) : quoi sauvegarder, exporter et restaurer,
+  et ce que protège `secret.key`.
+- [Mises à jour](docs/fr/upgrades.md) : la mise à jour intégrée, manuelle ou
+  avec Docker.
 
 ## Migrer depuis Jira
 
@@ -109,7 +166,10 @@ solstice import \
 
 - `-from` : la base de Jira, `postgres://…` ou `mysql://…`. Un accès en
   lecture suffit. Pour un résultat cohérent, arrêtez Jira ou importez depuis
-  une copie de la base.
+  une copie de la base. Les options après `?` se limitent à `tls` (`true`,
+  `false`, `skip-verify`, `preferred`), `timeout`, `readTimeout` et `charset`
+  pour MySQL, et `sslmode` et `connect_timeout` pour PostgreSQL ; toute autre
+  option est refusée.
 - `-tz` : le fuseau horaire du serveur Jira (Administration › Infos système).
   MySQL stocke les dates sans fuseau, et les dates sans heure (échéances,
   versions) en dépendent avec les deux moteurs.
@@ -118,6 +178,31 @@ solstice import \
 - `-replace` : écrase les données Solstice existantes (sinon l'import refuse
   une base non vide). L'import peut être rejoué : les identifiants sont
   conservés.
+- `-check` : audite la base Jira sans rien importer (voir ci-dessous).
+
+Pour savoir ce qu'un import fera avant de le lancer, ajoutez `-check` :
+
+```bash
+solstice import -check \
+  -from postgres://jira:secret@db-jira:5432/jira \
+  -jira-home /var/atlassian/application-data/jira
+```
+
+La commande lit la base Jira comme l'import et n'écrit rien : aucune base
+Solstice n'est nécessaire (`SOLSTICE_DB_URL` peut être absente), aucun fichier
+n'est copié, et `-tz` est facultatif (les nombres n'en dépendent pas). Le
+rapport donne la version de Jira quand la base la consigne, puis les nombres :
+projets, tickets, commentaires, temps saisis, pièces jointes (et, avec
+`-jira-home`, combien ont leur fichier), utilisateurs (et combien ont un mot de
+passe utilisable), groupes, rôles, workflows, champs personnalisés par type,
+tableaux, sprints et filtres enregistrés. Il liste tout ce que l'import
+laisserait de côté, avec la raison (lignes qui pointent vers un élément absent,
+destinataires que Solstice ne sait pas exprimer, conditions, validateurs et
+post-fonctions de workflow, fichiers de pièces jointes introuvables…), puis les
+avertissements que l'import donnerait lui-même. `-json` affiche la même chose
+en JSON. Le code de sortie est 0 si l'import fonctionnerait, 1 s'il
+refuserait la source, par exemple un schéma antérieur à Jira 7, et 2 si la base
+n'a pas pu être lue.
 
 Le rapport final liste ce qui a été repris et ce qui mérite un coup d'œil. Ce
 qui est repris :
@@ -153,8 +238,9 @@ ses propres réglages de notifications).
 
 - Serveur SMTP : il se règle dans l'administration (hôte, port, sécurité
   aucune / STARTTLS / TLS, identifiant, expéditeur), avec un envoi d'essai qui
-  affiche l'erreur exacte du serveur. L'adresse publique
-  (`SOLSTICE_BASE_URL`) sert aux liens des e-mails ; sans elle, ils partent
+  affiche l'erreur exacte du serveur. L'identifiant ne part qu'en TLS ou
+  STARTTLS, sauf vers un serveur de cette machine. L'adresse publique
+  (`SOLSTICE_HTTP_BASEURL`) sert aux liens des e-mails ; sans elle, ils partent
   sans liens.
 - Notifications : observateurs, rapporteur, assigné et personnes mentionnées
   (`[~identifiant]`). Chacun choisit ses événements, l'envoi immédiat (les
@@ -195,7 +281,7 @@ développement de `compose.yaml` se donne explicitement, ou dans un
 `backend/solstice.conf`) :
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice
 cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
 cd frontend && pnpm dev                       # interface sur http://localhost:5173
 ```
@@ -207,7 +293,24 @@ passe généré s'affiche).
 
 `make build` produit le binaire unique avec l'interface embarquée,
 `make docker` l'image, et `make release VERSION=x.y.z` les archives pour
-Linux, macOS et Windows avec leurs SHA256SUMS.
+Linux, macOS et Windows avec leurs SHA256SUMS et `SHA256SUMS.sig`, une
+signature Ed25519 de ce fichier. Publier une version demande la clé privée,
+désignée par `SOLSTICE_RELEASE_KEY` et gardée hors du dépôt. Pour créer la
+paire de clés, une fois :
+
+```bash
+umask 077
+openssl genpkey -algorithm ed25519 -out ~/solstice-release-key.pem
+openssl pkey -in ~/solstice-release-key.pem -pubout    # la clé publique
+```
+
+Collez la clé publique (le bloc `-----BEGIN PUBLIC KEY-----`) à la place de
+`release_pubkey`, un texte provisoire, dans `deploy/linux/update.sh`, et
+validez-la. Tant qu'elle n'y est pas, l'assistant de mise à jour refuse toute
+mise à jour. Ensuite
+`SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
+`deploy/linux/test-update-signature.sh` teste la vérification avec une clé
+jetable.
 
 ### Tests
 
@@ -270,8 +373,12 @@ scripts/                test d'import de bout en bout, archives de publication
 - Les administrateurs configurent, ils ne lisent pas tout : être
   administrateur ne donne accès ni aux projets ni aux tickets confidentiels.
 - Les sous-tâches suivent toujours la confidentialité de leur parent.
-- Connexion : après cinq échecs pour un même identifiant ou une même adresse,
-  les tentatives sont suspendues une minute, puis davantage.
+- Connexion : après cinq échecs depuis une même adresse, ou pour un même
+  identifiant depuis une même adresse, cette adresse est suspendue une minute,
+  puis davantage. Un compte n'est jamais verrouillé : son bon mot de passe
+  fonctionne toujours, mais quand beaucoup de mauvais mots de passe arrivent
+  pour lui, de n'importe où, les réponses négatives sont retardées jusqu'à dix
+  secondes ; personne ne peut donc bloquer l'accès d'un administrateur.
 
 ## Feuille de route
 

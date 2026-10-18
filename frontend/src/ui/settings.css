@@ -1,0 +1,226 @@
+/*
+ * Shared look of the settings areas: the administration (/admin), the
+ * personal settings (/settings) and the project settings. Every rule is
+ * anchored on .settings-area so nothing leaks into other pages; skins
+ * restyle these hooks like any other (src/themes/ANATOMY.md, "Settings").
+ */
+
+/* The paragraph under a section's title. */
+.settings-area .lead-text {
+  max-width: 72ch;
+  margin: -6px 0 18px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* A settings form: fields one under the other, two side by side when short. */
+.settings-area .settings-form {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.settings-area .settings-form > .section-title:first-child {
+  margin-top: 0;
+}
+
+.settings-area .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-area .form-grid.wide-first {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.settings-area .check {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.settings-area .check input {
+  flex: none;
+  transform: translateY(1px);
+}
+
+.settings-area fieldset.choices {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.settings-area fieldset.choices > legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.settings-area .choices.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.settings-area .form-hint {
+  margin: -8px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.settings-area .field-error {
+  font-size: 12.5px;
+  color: var(--accent-text);
+}
+
+.settings-area .input[aria-invalid='true'],
+.settings-area .select[aria-invalid='true'],
+.settings-area .textarea[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.settings-area .small {
+  font-size: 12.5px;
+}
+
+.settings-area .mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Above a list: the search field, filters, then the main action at the end. */
+.settings-area .list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.settings-area .list-tools .input,
+.settings-area .list-tools .select {
+  width: auto;
+}
+
+.settings-area .list-tools .search {
+  flex: 1 1 220px;
+  max-width: 340px;
+}
+
+.settings-area .list-tools .end {
+  margin-left: auto;
+}
+
+/* A panel inside a section (test e-mail, new token…). */
+.settings-area .card-head {
+  margin: 0;
+}
+
+.settings-area .card-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+
+.settings-area .card-body > p {
+  margin: 0;
+}
+
+/* The outcome of a check (test e-mail, webhook test). */
+.settings-area .result {
+  margin: 0;
+  padding: 10px 12px;
+  border: var(--frame) solid var(--rule-strong);
+  border-left: 3px solid var(--stamp-done);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+}
+
+.settings-area .result.failed {
+  border-left-color: var(--accent);
+}
+
+.settings-area .result.failed > strong {
+  color: var(--accent-text);
+}
+
+.settings-area .result .detail {
+  margin: 4px 0 0;
+  font: 12.5px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Figures in a row (queue, system). */
+.settings-area dl.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 0 0 12px;
+}
+
+.settings-area .stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settings-area .stats dd {
+  margin: 2px 0 0;
+  font: 600 20px/1.1 var(--font-mono);
+}
+
+.settings-area .stats .is-alert dd {
+  color: var(--accent-text);
+}
+
+.settings-area .sub-title {
+  margin: 18px 0 6px;
+  font: 600 12.5px/1.2 var(--font-body);
+  color: var(--ink-soft);
+}
+
+/* A failed delivery or message. */
+.settings-area .stamp.is-failed {
+  --c: var(--accent-text);
+}
+
+/* Row actions at the end of a ledger line. */
+.settings-area .row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.settings-area .row-actions > * + * {
+  margin-left: 12px;
+}
+
+/* Rows are not all links here: only rows that open something point. */
+.settings-area table.ledger tbody tr {
+  cursor: default;
+}
+
+.settings-area tr.is-off td {
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .settings-area .form-grid,
+  .settings-area .form-grid.wide-first {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-area .list-tools .search {
+    max-width: none;
+  }
+
+  .settings-area .list-tools .end {
+    margin-left: 0;
+  }
+}

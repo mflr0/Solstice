@@ -9,7 +9,7 @@ services:
       MARIADB_DATABASE: solstice
       MARIADB_USER: solstice
       MARIADB_PASSWORD: solstice
-    ports: ["13306:3306"]
+    ports: ["127.0.0.1:13306:3306"]
 
   jira-pg:
     image: postgres:16
@@ -17,7 +17,7 @@ services:
       POSTGRES_USER: jira
       POSTGRES_PASSWORD: jira
       POSTGRES_DB: jira
-    ports: ["15432:5432"]
+    ports: ["127.0.0.1:15432:5432"]
 
   jira-mysql:
     image: mysql:8.4
@@ -27,4 +27,4 @@ services:
       MYSQL_USER: jira
       MYSQL_PASSWORD: jira
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin"]
-    ports: ["23306:3306"]
+    ports: ["127.0.0.1:23306:3306"]

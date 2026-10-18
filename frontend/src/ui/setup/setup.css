@@ -1,0 +1,154 @@
+/*
+ * The setup wizard's shared layout, drawn from the skin tokens and the
+ * common hooks (.card, .field, .input, .btn, .ledger…) so every skin
+ * dresses it. Loaded with the wizard only.
+ */
+
+.setup .page-title {
+  margin-bottom: 6px;
+}
+
+.setup .page-title:focus {
+  outline: none;
+}
+
+.setup .lead {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+.setup form,
+.setup .setup-body {
+  display: grid;
+  gap: 16px;
+}
+
+/* Long lines (SQL, paths) scroll in their box instead of widening the form. */
+.setup form > *,
+.setup .setup-body > *,
+.setup .setup-row > * {
+  min-width: 0;
+}
+
+/* Fields side by side on wide screens: host and port, user and password. */
+.setup .setup-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.setup .setup-row.narrow-last {
+  grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr);
+}
+
+.setup .field .hint {
+  line-height: 1.4;
+}
+
+.setup .setup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.setup .setup-actions .end {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* A result line: a check that passed, or a note. */
+.setup .setup-ok {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--stamp-done);
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+.setup .setup-warn {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--paper-sunk);
+}
+
+.setup .error-text {
+  margin: 0;
+}
+
+.setup pre.setup-code {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--paper-sunk);
+  border: var(--frame) solid var(--rule);
+  border-radius: var(--radius-s);
+  font: 12.5px/1.5 var(--font-mono);
+  white-space: pre;
+}
+
+.setup details {
+  border: var(--frame) solid var(--rule);
+  border-radius: var(--radius-s);
+  padding: 8px 12px;
+}
+
+.setup details > summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.setup details[open] > summary {
+  margin-bottom: 8px;
+}
+
+.setup details p {
+  margin: 0 0 6px;
+}
+
+.setup details pre + p {
+  margin-top: 10px;
+}
+
+.setup dl.setup-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 0;
+}
+
+.setup dl.setup-facts dt {
+  color: var(--muted);
+}
+
+.setup dl.setup-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup .mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .setup dl.setup-facts {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .setup dl.setup-facts dd {
+    margin-bottom: 8px;
+  }
+}

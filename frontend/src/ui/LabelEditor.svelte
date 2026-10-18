@@ -1,6 +1,6 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
 
   /**
    * Labels as chips. Typing then Enter, comma or space adds one (labels
@@ -80,7 +80,7 @@
     border-bottom: 1px dashed var(--rule-strong);
     background: transparent;
     padding: 2px 0;
-    font: 12.5px var(--mono);
+    font: 12.5px var(--font-mono);
   }
 
   .add:focus {

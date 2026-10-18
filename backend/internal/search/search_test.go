@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"solstice/internal/sqlq"
 )
 
 func TestParse(t *testing.T) {
@@ -33,13 +35,13 @@ func TestParse(t *testing.T) {
 }
 
 func TestSQLGroupsAlternativesAndNegations(t *testing.T) {
-	q := Parse(`statut:Ouvert statut:"En cours" -@personne`)
+	q := Parse(`statut:Ouvert statut:"In progress" -@personne`)
 	sql, args := q.SQL(7)
 	want := "(i.status_id IN (SELECT id FROM statuses WHERE name = ?) OR i.status_id IN (SELECT id FROM statuses WHERE name = ?)) AND NOT COALESCE((i.assignee_id IS NULL), FALSE)"
 	if sql != want {
 		t.Fatalf("got  %s\nwant %s", sql, want)
 	}
-	if !reflect.DeepEqual(args, []any{"Ouvert", "En cours"}) {
+	if !reflect.DeepEqual(args, []any{"Ouvert", "In progress"}) {
 		t.Fatalf("args %v", args)
 	}
 }
@@ -83,10 +85,11 @@ func TestSQLUnknownCategoryMatchesNothing(t *testing.T) {
 
 func TestSQLKeys(t *testing.T) {
 	sql, args := Parse("DEMO-12 web-3").SQL(1)
-	if sql != "((p.pkey = ? AND i.num = ?) OR (p.pkey = ? AND i.num = ?))" {
+	one := "((" + sqlq.ProjectKey("p", "?") + " AND i.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk WHERE mk.issue_id = i.id AND mk.old_key = ?))"
+	if sql != "("+one+" OR "+one+")" || !strings.Contains(one, "project_keys") {
 		t.Fatalf("got %s", sql)
 	}
-	if !reflect.DeepEqual(args, []any{"DEMO", int64(12), "WEB", int64(3)}) {
+	if !reflect.DeepEqual(args, []any{"DEMO", "DEMO", int64(12), "DEMO-12", "WEB", "WEB", int64(3), "WEB-3"}) {
 		t.Fatalf("args %v", args)
 	}
 }

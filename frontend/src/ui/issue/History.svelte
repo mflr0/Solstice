@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { HistoryEntry, HistoryItem } from '../../core/types.js';
-  import { DURATION_FIELDS, fieldLabel, formatDuration, t } from '../../i18n/fr.js';
+  import { DURATION_FIELDS, fieldLabel, formatDuration, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import RelTime from '../RelTime.svelte';
   import Who from '../Who.svelte';
@@ -41,13 +41,13 @@
 {#if error}
   <p class="error-text" role="alert">{error}</p>
 {:else if !entries}
-  <p class="muted">{t.common.loading}</p>
+  <p class="muted loading">{t.common.loading}</p>
 {:else if entries.length === 0}
   <p class="empty">{t.history.empty}</p>
 {:else}
   <ol class="history">
     {#each entries as e (e.id)}
-      <li>
+      <li class="list-row">
         <header>
           <Who user={e.author} empty="—" />
           <span class="muted"><RelTime iso={e.created} /></span>
@@ -141,7 +141,7 @@
 
   pre {
     white-space: pre-wrap;
-    font: 12px/1.5 var(--mono);
+    font: 12px/1.5 var(--font-mono);
     background: var(--paper-sunk);
     border: 1px solid var(--rule);
     padding: 6px 8px;

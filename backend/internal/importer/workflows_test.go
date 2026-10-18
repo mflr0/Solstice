@@ -18,15 +18,15 @@ const descriptor = `<?xml version="1.0" encoding="UTF-8"?>
     <action id="5" name="Livrer"><results><unconditional-result step="3" status="closed"/></results></action>
   </common-actions>
   <steps>
-    <step id="1" name="À faire">
+    <step id="1" name="To do">
       <meta name="jira.status.id">10000</meta>
       <actions>
         <common-action id="5"/>
         <action id="11" name="Commencer"><results><unconditional-result step="2" status="underway"/></results></action>
-        <action id="12" name="Commenter"><results><unconditional-result step="-1" status="open"/></results></action>
+        <action id="12" name="Comment"><results><unconditional-result step="-1" status="open"/></results></action>
       </actions>
     </step>
-    <step id="2" name="En cours">
+    <step id="2" name="In progress">
       <meta name="jira.status.id">3</meta>
       <actions>
         <common-action id="5"/>

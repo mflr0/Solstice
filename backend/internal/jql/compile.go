@@ -1,11 +1,16 @@
 package jql
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/i18n"
+	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // Field is a custom field known to the compiler.
@@ -22,6 +27,10 @@ type Env struct {
 	Loc *time.Location // time zone of dates typed without one
 	// CustomField finds a custom field by name (case-insensitive) or id.
 	CustomField func(nameOrID string) (Field, bool)
+	// Query, when set, runs a query returning one column, so history clauses
+	// can turn the values they look for into a list of literals: matching
+	// the change log against a subquery is many times slower.
+	Query func(sql string, args []any) ([]string, error)
 }
 
 // Compile turns a query into a SQL condition on issues (alias i, projects
@@ -52,7 +61,7 @@ type compiler struct {
 
 func (c *compiler) arg(v ...any) { c.args = append(c.args, v...) }
 
-func fail(format string, a ...any) error { return &Error{Msg: fmt.Sprintf(format, a...)} }
+func fail(key i18n.Key, a ...any) error { return errAt(0, key, a...) }
 
 func (c *compiler) node(n Node) (string, error) {
 	switch n := n.(type) {
@@ -75,21 +84,42 @@ func (c *compiler) node(n Node) (string, error) {
 		// NOT of an unknown (NULL) comparison keeps the row.
 		return "NOT COALESCE(" + inner + ", FALSE)", err
 	case Clause:
-		return c.clause(n)
+		sql, err := c.clause(n)
+		var je *Error
+		if errors.As(err, &je) && je.Pos == 0 {
+			je.Pos = n.Pos // a meaning error: point at its clause
+		}
+		return sql, err
 	}
-	return "", fail("Requête invalide.")
+	return "", fail(i18n.JQLInvalid)
 }
 
 func (c *compiler) clause(cl Clause) (string, error) {
+	if strings.HasPrefix(cl.Op, "was") || cl.Op == "changed" {
+		return c.history(cl)
+	}
 	switch strings.ToLower(cl.Field) {
 	case "project":
-		return c.lookup(cl, "i.project_id", "SELECT id FROM projects WHERE pkey IN (%s) OR name IN (%s) OR id IN (%s)", upper)
+		return c.lookup(cl, "i.project_id", "SELECT pk.id FROM projects pk WHERE "+sqlq.ProjectKey("pk", "%s")+
+			" OR pk.name IN (%s) OR pk.id IN (%s)", upper)
 	case "status":
 		return c.lookup(cl, "i.status_id", "SELECT id FROM statuses WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
 	case "statuscategory":
 		return c.statusCategory(cl)
 	case "type", "issuetype":
-		return c.lookup(cl, "i.issue_type_id", "SELECT id FROM issue_types WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
+		return c.issueType(cl)
+	case "level":
+		return c.lookup(cl, "i.security_level_id", "SELECT id FROM security_levels WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
+	case "sprint":
+		return c.sprint(cl)
+	case "epic link", "epiclink":
+		return c.issueRef(cl, "i.epic_id")
+	case "timespent":
+		return c.duration(cl, "i.time_spent")
+	case "originalestimate", "timeoriginalestimate":
+		return c.duration(cl, "i.original_estimate")
+	case "remainingestimate", "timeestimate":
+		return c.duration(cl, "i.remaining_estimate")
 	case "priority":
 		return c.lookup(cl, "i.priority_id", "SELECT id FROM priorities WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
 	case "resolution":
@@ -107,13 +137,17 @@ func (c *compiler) clause(cl Clause) (string, error) {
 		return c.multi(cl, "SELECT 1 FROM issue_components ic JOIN components co ON co.id = ic.component_id WHERE ic.issue_id = i.id",
 			"(co.name IN (%[1]s) OR co.id IN (%[1]s))", nil)
 	case "fixversion":
-		return c.multi(cl, "SELECT 1 FROM issue_versions iv JOIN versions v ON v.id = iv.version_id WHERE iv.issue_id = i.id AND iv.kind = 'fix'",
-			"(v.name IN (%[1]s) OR v.id IN (%[1]s))", nil)
+		return c.versions(cl, "fix")
 	case "affectedversion":
-		return c.multi(cl, "SELECT 1 FROM issue_versions iv JOIN versions v ON v.id = iv.version_id WHERE iv.issue_id = i.id AND iv.kind = 'affects'",
-			"(v.name IN (%[1]s) OR v.id IN (%[1]s))", nil)
+		return c.versions(cl, "affects")
 	case "watcher":
 		return c.userSet(cl, "SELECT 1 FROM watchers w WHERE w.issue_id = i.id", "w.user_id")
+	case "commenter":
+		// Restricted comments are left out: who wrote them is not for everyone.
+		return c.userSet(cl, "SELECT 1 FROM comments cm WHERE cm.issue_id = i.id AND cm.visibility_group IS NULL "+
+			"AND cm.visibility_role_id IS NULL", "cm.author_id")
+	case "participant", "participants", "involves":
+		return c.participant(cl)
 	case "voter":
 		return c.userSet(cl, "SELECT 1 FROM votes vo WHERE vo.issue_id = i.id", "vo.user_id")
 	case "created", "createddate":
@@ -138,27 +172,30 @@ func (c *compiler) clause(cl Clause) (string, error) {
 		return c.text(cl)
 	case "comment":
 		return c.comment(cl)
-	case "sprint", "rank", "epic name", "epic status", "epic color":
-		return "", fail("Le champ « %s » (Jira Software) n'est pas encore pris en charge.", cl.Field)
+	case "rank", "epic name", "epic status", "epic color":
+		return "", fail(i18n.JQLFieldUnsupported, cl.Field)
 	}
-	if c.env.CustomField != nil {
-		name := cl.Field
-		if m := cfRef.FindStringSubmatch(name); m != nil {
-			name = m[1]
-		}
-		if f, ok := c.env.CustomField(name); ok {
-			return c.custom(cl, f)
-		}
+	if f, ok := c.customField(cl.Field); ok {
+		return c.custom(cl, f)
 	}
-	return "", fail("Champ inconnu : « %s ».", cl.Field)
+	return "", fail(i18n.JQLFieldUnknown, cl.Field)
+}
+
+// customField finds a custom field by name or cf[id].
+func (c *compiler) customField(name string) (Field, bool) {
+	if c.env.CustomField == nil {
+		return Field{}, false
+	}
+	if m := cfRef.FindStringSubmatch(name); m != nil {
+		name = m[1]
+	}
+	return c.env.CustomField(name)
 }
 
 var cfRef = regexp.MustCompile(`(?i)^cf\[(\d+)\]$`)
 
 func upper(s string) string { return strings.ToUpper(s) }
 func lower(s string) string { return strings.ToLower(s) }
-
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
 // split separates literal values from EMPTY.
 func split(vals []Value) (texts []string, empty bool, err error) {
@@ -167,7 +204,7 @@ func split(vals []Value) (texts []string, empty bool, err error) {
 		case v.Empty:
 			empty = true
 		case v.Func != "":
-			return nil, false, fail("La fonction %s() ne s'emploie pas ici.", v.Func)
+			return nil, false, fail(i18n.JQLFunctionMisplaced, v.Func)
 		default:
 			texts = append(texts, v.Text)
 		}
@@ -181,7 +218,7 @@ func requireOp(cl Clause, allowed ...string) error {
 			return nil
 		}
 	}
-	return fail("L'opérateur « %s » ne s'emploie pas avec « %s ».", strings.ToUpper(cl.Op), cl.Field)
+	return fail(i18n.JQLOperatorField, strings.ToUpper(cl.Op), cl.Field)
 }
 
 // membership combines "col matches a set" and "col is empty" for = != in
@@ -190,6 +227,10 @@ func membership(op, match, isNull string) string {
 	switch op {
 	case "is":
 		return isNull
+	case "=", "in":
+		if match == "" { // only EMPTY was given
+			return isNull
+		}
 	case "is not":
 		return "NOT " + isNull
 	case "!=", "not in":
@@ -214,9 +255,14 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	}
 	match := ""
 	if len(texts) > 0 {
-		m := marks(len(texts))
-		match = col + " IN (" + fmt.Sprintf(tmpl, m, m, m) + ")"
-		for range 3 {
+		m := sqlq.Marks(len(texts))
+		n := strings.Count(tmpl, "%s")
+		marks := make([]any, n)
+		for i := range marks {
+			marks[i] = m
+		}
+		match = col + " IN (" + fmt.Sprintf(tmpl, marks...) + ")"
+		for range n {
 			for _, t := range texts {
 				if norm != nil {
 					t = norm(t)
@@ -238,10 +284,10 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	return membership(cl.Op, match, isNull), nil
 }
 
-var categories = map[string]string{
-	"to do": "todo", "todo": "todo", "new": "todo", "à faire": "todo", "a faire": "todo",
-	"in progress": "doing", "indeterminate": "doing", "doing": "doing", "en cours": "doing",
-	"done": "done", "complete": "done", "terminé": "done", "termine": "done",
+var categories = map[string]issue.StatusCategory{
+	"to do": issue.Todo, "todo": issue.Todo, "new": issue.Todo, "à faire": issue.Todo, "a faire": issue.Todo,
+	"in progress": issue.Doing, "indeterminate": issue.Doing, "doing": issue.Doing, "en cours": issue.Doing,
+	"done": issue.Done, "complete": issue.Done, "terminé": issue.Done, "termine": issue.Done,
 }
 
 func (c *compiler) statusCategory(cl Clause) (string, error) {
@@ -256,12 +302,12 @@ func (c *compiler) statusCategory(cl Clause) (string, error) {
 	for _, t := range texts {
 		cat, ok := categories[strings.ToLower(t)]
 		if !ok {
-			return "", fail("Catégorie de statut inconnue : « %s ».", t)
+			return "", fail(i18n.JQLStatusCategoryUnknown, t)
 		}
 		cats = append(cats, cat)
 	}
 	c.arg(cats...)
-	match := "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + marks(len(cats)) + "))"
+	match := "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + sqlq.Marks(len(cats)) + "))"
 	return membership(cl.Op, match, "FALSE"), nil
 }
 
@@ -300,18 +346,18 @@ func (c *compiler) users(vals []Value) (sub string, empty bool, err error) {
 			c.arg(c.env.Me)
 		case v.Func == "membersof":
 			if len(v.Args) != 1 {
-				return "", false, fail("membersOf() attend un nom de groupe.")
+				return "", false, fail(i18n.JQLMembersOfGroup)
 			}
 			parts = append(parts, "SELECT m.user_id FROM group_members m JOIN user_groups g ON g.id = m.group_id WHERE g.name = ?")
 			c.arg(strings.ToLower(v.Args[0]))
 		case v.Func != "":
-			return "", false, fail("La fonction %s() ne s'emploie pas avec un utilisateur.", v.Func)
+			return "", false, fail(i18n.JQLFunctionUser, v.Func)
 		default:
 			names = append(names, v.Text)
 		}
 	}
 	if len(names) > 0 {
-		m := marks(len(names))
+		m := sqlq.Marks(len(names))
 		parts = append(parts, "SELECT id FROM users WHERE username IN ("+m+") OR user_key IN ("+m+") OR display_name IN ("+m+")")
 		for _, n := range names {
 			c.arg(strings.ToLower(n))
@@ -365,7 +411,7 @@ func (c *compiler) multi(cl Clause, exists, cond string, norm func(string) strin
 		}
 		return any, nil
 	}
-	m := marks(len(texts))
+	m := sqlq.Marks(len(texts))
 	n := strings.Count(cond, "%")
 	match := "EXISTS (" + exists + " AND " + fmt.Sprintf(cond, m) + ")"
 	if strings.Contains(cond, "%[1]s") {
@@ -451,7 +497,7 @@ func (c *compiler) instant(v Value) (time.Time, error) {
 		case "endofyear":
 			return time.Date(y+1, 1, 1, 0, 0, 0, 0, c.env.Loc).Add(-time.Millisecond), nil
 		}
-		return time.Time{}, fail("Fonction de date inconnue : %s().", v.Func)
+		return time.Time{}, fail(i18n.JQLDateFunctionUnknown, v.Func)
 	}
 	if relative.MatchString(v.Text) {
 		return shift(now, v.Text)
@@ -461,13 +507,13 @@ func (c *compiler) instant(v Value) (time.Time, error) {
 			return t, nil
 		}
 	}
-	return time.Time{}, fail("Date invalide : « %s » (AAAA-MM-JJ, AAAA-MM-JJ HH:MM, ou -7d, 2w…).", v.Text)
+	return time.Time{}, fail(i18n.JQLDateInvalid, v.Text)
 }
 
 func shift(t time.Time, s string) (time.Time, error) {
 	m := relative.FindStringSubmatch(strings.TrimSpace(s))
 	if m == nil {
-		return time.Time{}, fail("Décalage invalide : « %s ».", s)
+		return time.Time{}, fail(i18n.JQLOffsetInvalid, s)
 	}
 	n, _ := strconv.Atoi(m[2])
 	if m[1] == "-" {
@@ -496,7 +542,7 @@ func (c *compiler) date(cl Clause, col string, dateOnly bool) (string, error) {
 		return col + " IS NOT NULL", nil
 	case "=", "!=", ">", ">=", "<", "<=":
 	default:
-		return "", fail("L'opérateur « %s » ne s'emploie pas avec une date.", strings.ToUpper(cl.Op))
+		return "", fail(i18n.JQLOperatorDate, strings.ToUpper(cl.Op))
 	}
 	v := cl.Values[0]
 	if v.Empty {
@@ -527,8 +573,11 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	for _, t := range texts {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			conds = append(conds, "("+pa+".pkey = ? AND "+a+".num = ?)")
-			c.arg(strings.ToUpper(m[1]), num)
+			// The key of an issue moved to another project still finds it.
+			conds = append(conds, "(("+sqlq.ProjectKey(pa, "?")+" AND "+a+".num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
+				"WHERE mk.issue_id = "+a+".id AND mk.old_key = ?))")
+			pkey := strings.ToUpper(m[1])
+			c.arg(pkey, pkey, num, pkey+"-"+strconv.FormatInt(num, 10))
 			continue
 		}
 		if id, err := strconv.ParseInt(t, 10, 64); err == nil {
@@ -536,7 +585,7 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 			c.arg(id)
 			continue
 		}
-		return "", fail("Clé de ticket invalide : « %s ».", t)
+		return "", fail(i18n.JQLIssueKeyInvalid, t)
 	}
 	if len(conds) == 0 {
 		return "FALSE", nil
@@ -545,6 +594,12 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 }
 
 func (c *compiler) key(cl Clause) (string, error) {
+	for _, v := range cl.Values {
+		if v.Func == "issuehistory" {
+			// Solstice does not record which issues people viewed.
+			return "FALSE", nil
+		}
+	}
 	texts, _, err := split(cl.Values)
 	if err != nil {
 		return "", err
@@ -558,11 +613,11 @@ func (c *compiler) key(cl Clause) (string, error) {
 	case ">", ">=", "<", "<=":
 		m := keyPattern.FindStringSubmatch(texts[0])
 		if m == nil {
-			return "", fail("Clé de ticket invalide : « %s ».", texts[0])
+			return "", fail(i18n.JQLIssueKeyInvalid, texts[0])
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
-		c.arg(strings.ToUpper(m[1]), num)
-		return "(p.pkey = ? AND i.num " + cl.Op + " ?)", nil
+		c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
+		return "(" + sqlq.ProjectKey("p", "?") + " AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")
 }
@@ -725,7 +780,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 		}
 		n, err := strconv.ParseFloat(v.Text, 64)
 		if err != nil {
-			return "", fail("Nombre attendu pour « %s ».", f.Name)
+			return "", fail(i18n.JQLNumberExpected, f.Name)
 		}
 		cond := exists() + " AND v.number_value " + cl.Op + " ?)"
 		c.arg(n)
@@ -759,7 +814,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 			return "FALSE", err
 		}
 		start := exists()
-		m := marks(len(texts))
+		m := sqlq.Marks(len(texts))
 		cond = start + " AND (v.string_value IN (" + m + ") OR CAST(v.number_value AS CHAR) IN (" + m + ")" +
 			fmt.Sprintf(" OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = %d", f.ID) +
 			" AND o.value IN (" + m + "))))"
@@ -773,6 +828,247 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 		return "(" + exists() + ") AND NOT " + cond + ")", nil
 	}
 	return cond, nil
+}
+
+// issueType filters by type, accepting standardIssueTypes() and
+// subTaskIssueTypes().
+func (c *compiler) issueType(cl Clause) (string, error) {
+	var funcs []string
+	var rest []Value
+	for _, v := range cl.Values {
+		switch v.Func {
+		case "standardissuetypes":
+			funcs = append(funcs, "NOT subtask")
+		case "subtaskissuetypes":
+			funcs = append(funcs, "subtask")
+		default:
+			rest = append(rest, v)
+		}
+	}
+	if len(funcs) == 0 {
+		return c.lookup(cl, "i.issue_type_id", "SELECT id FROM issue_types WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
+	}
+	if err := requireOp(cl, "in", "not in", "="); err != nil {
+		return "", err
+	}
+	cond := "i.issue_type_id IN (SELECT id FROM issue_types WHERE " + strings.Join(funcs, " OR ") + ")"
+	if len(rest) > 0 {
+		other, err := c.lookup(Clause{Field: cl.Field, Op: "in", Values: rest}, "i.issue_type_id",
+			"SELECT id FROM issue_types WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
+		if err != nil {
+			return "", err
+		}
+		cond = "(" + cond + " OR " + other + ")"
+	}
+	if cl.Op == "not in" {
+		return "NOT " + cond, nil
+	}
+	return cond, nil
+}
+
+// issueRef filters a column holding an issue id by issue keys (Epic Link).
+func (c *compiler) issueRef(cl Clause, col string) (string, error) {
+	if err := requireOp(cl, "=", "!=", "in", "not in", "is", "is not"); err != nil {
+		return "", err
+	}
+	if cl.Op == "is" || cl.Op == "is not" {
+		return membership(cl.Op, "", col+" IS NULL"), nil
+	}
+	texts, empty, err := split(cl.Values)
+	if err != nil {
+		return "", err
+	}
+	if len(texts) == 0 {
+		return membership(cl.Op, "", col+" IS NULL"), nil
+	}
+	keys, err := c.keysSQL(texts, "i2", "p2")
+	if err != nil {
+		return "", err
+	}
+	match := col + " IN (SELECT i2.id FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE " + keys + ")"
+	if empty && (cl.Op == "=" || cl.Op == "in") {
+		return "(" + match + " OR " + col + " IS NULL)", nil
+	}
+	return membership(cl.Op, match, col+" IS NULL"), nil
+}
+
+var sprintStates = map[string]string{
+	"opensprints": "s.state IN ('active', 'future')", "closedsprints": "s.state = 'closed'",
+	"futuresprints": "s.state = 'future'",
+}
+
+// sprint filters by the sprints an issue has been in: ids, names, or
+// openSprints(), closedSprints(), futureSprints().
+func (c *compiler) sprint(cl Clause) (string, error) {
+	if err := requireOp(cl, "=", "!=", "in", "not in", "is", "is not"); err != nil {
+		return "", err
+	}
+	exists := "SELECT 1 FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = i.id"
+	anySprint := "EXISTS (" + exists + ")"
+	if cl.Op == "is" {
+		return "NOT " + anySprint, nil
+	}
+	if cl.Op == "is not" {
+		return anySprint, nil
+	}
+	var conds []string
+	empty := false
+	for _, v := range cl.Values {
+		switch {
+		case v.Empty:
+			empty = true
+		case v.Func != "":
+			cond, ok := sprintStates[v.Func]
+			if !ok {
+				return "", fail(i18n.JQLFunctionSprint, v.Func)
+			}
+			conds = append(conds, cond)
+		default:
+			conds = append(conds, "(s.name = ? OR CAST(s.id AS CHAR) = ?)")
+			c.arg(v.Text, v.Text)
+		}
+	}
+	if len(conds) == 0 {
+		return membership(map[string]string{"=": "is", "in": "is", "!=": "is not", "not in": "is not"}[cl.Op], "", "NOT "+anySprint), nil
+	}
+	match := "EXISTS (" + exists + " AND (" + strings.Join(conds, " OR ") + "))"
+	switch cl.Op {
+	case "!=", "not in":
+		return "(" + anySprint + " AND NOT " + match + ")", nil
+	}
+	if empty {
+		return "(" + match + " OR NOT " + anySprint + ")", nil
+	}
+	return match, nil
+}
+
+// versions filters fix or affected versions by name or id, or by
+// unreleasedVersions(), releasedVersions(), earliestUnreleasedVersion(),
+// latestReleasedVersion() — each optionally limited to projects.
+func (c *compiler) versions(cl Clause, kind string) (string, error) {
+	exists := "SELECT 1 FROM issue_versions iv JOIN versions v ON v.id = iv.version_id WHERE iv.issue_id = i.id AND iv.kind = '" + kind + "'"
+	anyVersion := "EXISTS (" + exists + ")"
+	switch cl.Op {
+	case ">", ">=", "<", "<=":
+		// Versions compare by their order in their project.
+		v := cl.Values[0]
+		if v.Empty || v.Func != "" {
+			return "", fail(i18n.JQLVersionExpected)
+		}
+		c.arg(v.Text, v.Text)
+		return "EXISTS (" + exists + " AND EXISTS (SELECT 1 FROM versions t WHERE t.project_id = v.project_id " +
+			"AND (t.name = ? OR CAST(t.id AS CHAR) = ?) AND v.position " + cl.Op + " t.position))", nil
+	}
+	if err := requireOp(cl, "=", "!=", "in", "not in", "is", "is not"); err != nil {
+		return "", err
+	}
+	if cl.Op == "is" {
+		return "NOT " + anyVersion, nil
+	}
+	if cl.Op == "is not" {
+		return anyVersion, nil
+	}
+	inProjects := func(alias string, args []string) string {
+		if len(args) == 0 {
+			return ""
+		}
+		m := sqlq.Marks(len(args))
+		for range 3 {
+			for _, a := range args {
+				c.arg(a)
+			}
+		}
+		return " AND " + alias + ".project_id IN (SELECT pk.id FROM projects pk WHERE " + sqlq.ProjectKey("pk", m) +
+			" OR pk.name IN (" + m + "))"
+	}
+	var conds []string
+	empty := false
+	for _, v := range cl.Values {
+		switch v.Func {
+		case "":
+			if v.Empty {
+				empty = true
+				continue
+			}
+			conds = append(conds, "(v.name = ? OR CAST(v.id AS CHAR) = ?)")
+			c.arg(v.Text, v.Text)
+		case "unreleasedversions":
+			conds = append(conds, "(NOT v.released AND NOT v.archived"+inProjects("v", v.Args)+")")
+		case "releasedversions":
+			conds = append(conds, "(v.released AND NOT v.archived"+inProjects("v", v.Args)+")")
+		case "earliestunreleasedversion", "latestreleasedversion":
+			released, dir := "NOT", "ASC"
+			if v.Func == "latestreleasedversion" {
+				released, dir = "", "DESC"
+			}
+			// The first unreleased (or last released) version of each project.
+			conds = append(conds, "v.id IN (SELECT id FROM (SELECT v2.id, ROW_NUMBER() OVER (PARTITION BY v2.project_id "+
+				"ORDER BY v2.position "+dir+") AS n FROM versions v2 WHERE "+released+" v2.released AND NOT v2.archived"+
+				inProjects("v2", v.Args)+") AS ranked WHERE n = 1)")
+		default:
+			return "", fail(i18n.JQLFunctionVersion, v.Func)
+		}
+	}
+	if len(conds) == 0 {
+		return "NOT " + anyVersion, nil
+	}
+	match := "EXISTS (" + exists + " AND (" + strings.Join(conds, " OR ") + "))"
+	switch cl.Op {
+	case "!=", "not in":
+		return "(" + anyVersion + " AND NOT " + match + ")", nil
+	}
+	if empty {
+		return "(" + match + " OR NOT " + anyVersion + ")", nil
+	}
+	return match, nil
+}
+
+var durationPart = regexp.MustCompile(`(?i)(\d+(?:[.,]\d+)?)\s*([wdhm]?)`)
+
+// seconds reads a Jira duration: "2h", "1d 4h", "30m", "1w" (a day is 8
+// hours and a week 5 days, Jira's defaults); a bare number is minutes.
+func seconds(s string) (float64, bool) {
+	parts := durationPart.FindAllStringSubmatch(strings.TrimSpace(s), -1)
+	if len(parts) == 0 {
+		return 0, false
+	}
+	unit := map[string]float64{"w": 5 * 8 * 3600, "d": 8 * 3600, "h": 3600, "m": 60, "": 60}
+	total := 0.0
+	for _, p := range parts {
+		n, err := strconv.ParseFloat(strings.Replace(p[1], ",", ".", 1), 64)
+		if err != nil {
+			return 0, false
+		}
+		total += n * unit[strings.ToLower(p[2])]
+	}
+	return total, true
+}
+
+// Seconds reads a Jira duration as JQL does (see seconds), for work logs
+// sent through the REST API.
+func Seconds(s string) (float64, bool) { return seconds(s) }
+
+func (c *compiler) duration(cl Clause, col string) (string, error) {
+	switch cl.Op {
+	case "is":
+		return col + " IS NULL", nil
+	case "is not":
+		return col + " IS NOT NULL", nil
+	case "=", "!=", ">", ">=", "<", "<=":
+	default:
+		return "", fail(i18n.JQLOperatorDuration, strings.ToUpper(cl.Op))
+	}
+	v := cl.Values[0]
+	if v.Empty {
+		return membership(map[string]string{"=": "is", "!=": "is not"}[cl.Op], "", col+" IS NULL"), nil
+	}
+	secs, ok := seconds(v.Text)
+	if !ok {
+		return "", fail(i18n.JQLDurationInvalid, v.Text)
+	}
+	c.arg(secs)
+	op := map[string]string{"=": "=", "!=": "<>", ">": ">", ">=": ">=", "<": "<", "<=": "<="}[cl.Op]
+	return col + " " + op + " ?", nil
 }
 
 // order compiles ORDER BY; with none, the most recently updated come first.
@@ -791,9 +1087,9 @@ func (c *compiler) order(sorts []Sort) (string, error) {
 		case "key", "issuekey", "issue", "id":
 			parts = append(parts, "p.pkey"+dir, "i.num"+dir)
 			continue
-		case "created":
+		case "created", "createddate":
 			expr = "i.created_at"
-		case "updated":
+		case "updated", "updateddate", "lastviewed":
 			expr = "i.updated_at"
 		case "resolved", "resolutiondate":
 			expr = "i.resolved_at"
@@ -817,13 +1113,73 @@ func (c *compiler) order(sorts []Sort) (string, error) {
 		case "type", "issuetype":
 			expr = "(SELECT position FROM issue_types WHERE id = i.issue_type_id)"
 		case "rank":
-			// Jira Software's manual ranking is not imported: fall back to keys.
-			parts = append(parts, "p.pkey ASC", "i.num ASC")
-			continue
+			expr = "i.rank_key"
+		case "fixversion", "affectedversion":
+			kind := "fix"
+			if strings.EqualFold(s.Field, "affectedversion") {
+				kind = "affects"
+			}
+			expr = "(SELECT MIN(v.position) FROM issue_versions iv JOIN versions v ON v.id = iv.version_id " +
+				"WHERE iv.issue_id = i.id AND iv.kind = '" + kind + "')"
+		case "component":
+			expr = "(SELECT MIN(co.name) FROM issue_components ic JOIN components co ON co.id = ic.component_id WHERE ic.issue_id = i.id)"
+		case "resolution":
+			expr = "(SELECT position FROM resolutions WHERE id = i.resolution_id)"
+		case "originalestimate", "timeoriginalestimate":
+			expr = "i.original_estimate"
+		case "remainingestimate", "timeestimate":
+			expr = "i.remaining_estimate"
+		case "timespent":
+			expr = "i.time_spent"
+		case "epic link", "epiclink":
+			expr = "i.epic_id"
+		case "sprint":
+			expr = "(SELECT MAX(s.position) FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = i.id)"
 		default:
-			return "", fail("Tri impossible sur « %s ».", s.Field)
+			if f, ok := c.customField(s.Field); ok {
+				// Numbers, then options in their set order, then text.
+				for _, e := range []string{
+					fmt.Sprintf("(SELECT MIN(v.number_value) FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+					fmt.Sprintf("(SELECT MIN(o.position) FROM custom_field_values v JOIN custom_field_options o "+
+						"ON CAST(o.id AS CHAR) = v.string_value WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+					fmt.Sprintf("(SELECT MIN(COALESCE(v.string_value, v.text_value)) FROM custom_field_values v "+
+						"WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+				} {
+					parts = append(parts, e+" IS NULL", e+dir)
+				}
+				continue
+			}
+			return "", fail(i18n.JQLSortUnsupported, s.Field)
 		}
 		parts = append(parts, expr+" IS NULL", expr+dir)
 	}
 	return strings.Join(parts, ", "), nil
+}
+
+// participant matches the issues a user takes part in, in any role:
+// assignee, reporter, creator, watcher, author of a public comment or
+// worklog, or of a change (a Solstice extension of JQL).
+func (c *compiler) participant(cl Clause) (string, error) {
+	if err := requireOp(cl, "=", "!=", "in", "not in"); err != nil {
+		return "", err
+	}
+	sub, err := c.capture(func() (string, error) {
+		s, _, err := c.users(cl.Values)
+		return s, err
+	})
+	if err != nil || sub.sql == "" {
+		return "FALSE", err
+	}
+	public := " AND x.visibility_group IS NULL AND x.visibility_role_id IS NULL"
+	f := join("(i.assignee_id IN (", sub, ") OR i.reporter_id IN (", sub, ") OR i.creator_id IN (", sub, ")",
+		" OR EXISTS (SELECT 1 FROM watchers x WHERE x.issue_id = i.id AND x.user_id IN (", sub, "))",
+		" OR EXISTS (SELECT 1 FROM comments x WHERE x.issue_id = i.id"+public+" AND x.author_id IN (", sub, "))",
+		" OR EXISTS (SELECT 1 FROM worklogs x WHERE x.issue_id = i.id"+public+" AND x.author_id IN (", sub, "))",
+		" OR EXISTS (SELECT 1 FROM change_groups x WHERE x.issue_id = i.id AND x.author_id IN (", sub, ")))")
+	c.arg(f.args...)
+	if cl.Op == "!=" || cl.Op == "not in" {
+		// An empty assignee (NULL) must not make the whole test unknown.
+		return "NOT COALESCE(" + f.sql + ", FALSE)", nil
+	}
+	return f.sql, nil
 }

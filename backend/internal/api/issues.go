@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,10 +17,14 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"solstice/internal/audit"
+	"solstice/internal/events"
+	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
-	"solstice/internal/live"
 	"solstice/internal/perm"
 	"solstice/internal/search"
+	"solstice/internal/sqlq"
 )
 
 var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
@@ -40,12 +44,14 @@ type issueRow struct {
 	Resolved, Due            sql.NullTime
 	Original, Remaining      sql.NullInt64
 	Spent                    sql.NullInt64
+	EpicID                   sql.NullInt64
+	Rank                     sql.NullString
 }
 
 const issueColumns = `i.id, i.project_id, i.num, p.pkey, p.name, i.summary, i.description, i.environment,
 	i.issue_type_id, i.status_id, i.priority_id, i.resolution_id, i.reporter_id, i.assignee_id, i.creator_id,
 	i.security_level_id, i.parent_id, i.created_at, i.updated_at, i.resolved_at, i.due_date,
-	i.original_estimate, i.remaining_estimate, i.time_spent`
+	i.original_estimate, i.remaining_estimate, i.time_spent, i.epic_id, i.rank_key`
 
 type scanner interface{ Scan(...any) error }
 
@@ -54,7 +60,7 @@ func scanIssue(sc scanner) (*issueRow, error) {
 	err := sc.Scan(&i.ID, &i.ProjectID, &i.Num, &i.ProjectKey, &i.ProjectName, &i.Summary, &i.Description,
 		&i.Environment, &i.TypeID, &i.StatusID, &i.PriorityID, &i.ResolutionID, &i.ReporterID, &i.AssigneeID,
 		&i.CreatorID, &i.LevelID, &i.ParentID, &i.Created, &i.Updated, &i.Resolved, &i.Due,
-		&i.Original, &i.Remaining, &i.Spent)
+		&i.Original, &i.Remaining, &i.Spent, &i.EpicID, &i.Rank)
 	return &i, err
 }
 
@@ -125,7 +131,7 @@ func (c *catalog) statusOf(id string) statusRef {
 	if v, ok := c.status[id]; ok {
 		return v
 	}
-	return statusRef{ID: id, Name: id, Category: "todo"}
+	return statusRef{ID: id, Name: id, Category: issue.Todo}
 }
 
 func (c *catalog) typeOf(id string) typeRef {
@@ -176,30 +182,9 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
-
-	// The search bar takes both syntaxes: JQL is recognised by its shape.
-	mode := "simple"
-	var cond, sort string
-	var cargs []any
-	if src := params.Get("jql"); src != "" || jql.LooksLike(params.Get("q")) {
-		if src == "" {
-			src = params.Get("q")
-		}
-		mode = "jql"
-		if cond, cargs, sort, err = s.compileJQL(r.Context(), sub, src); err != nil {
-			return err
-		}
-	} else {
-		q := search.Parse(params.Get("q"))
-		cond, cargs = q.SQL(sub.UserID)
-		sort = q.Sort
-	}
-	vis, args := sub.VisibleSQL("i")
-	where := vis + " AND " + cond
-	args = append(args, cargs...)
-	if p := params.Get("project"); p != "" {
-		where += " AND p.pkey = ?"
-		args = append(args, strings.ToUpper(p))
+	where, args, sort, mode, err := s.searchCondition(r.Context(), sub, params)
+	if err != nil {
+		return err
 	}
 	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
 		WHERE ` + where
@@ -328,6 +313,8 @@ type issueDetail struct {
 	Statuses        []statusRef     `json:"statuses"`
 	Transitions     []transitionOut `json:"transitions"`
 	SecurityLevels  []idName        `json:"securityLevels"`
+	Epic            *issueBrief     `json:"epic"`
+	Sprints         []sprintRef     `json:"sprints"`
 	CommentCount    int             `json:"commentCount"`
 }
 
@@ -341,20 +328,6 @@ type timeTracking struct {
 	Original  *int64 `json:"original"`
 	Remaining *int64 `json:"remaining"`
 	Spent     *int64 `json:"spent"`
-}
-
-func nullInt(n sql.NullInt64) *int64 {
-	if !n.Valid {
-		return nil
-	}
-	return &n.Int64
-}
-
-func nullStr(n sql.NullString) *string {
-	if !n.Valid {
-		return nil
-	}
-	return &n.String
 }
 
 func (s *Server) getIssue(w http.ResponseWriter, r *http.Request) error {
@@ -382,9 +355,9 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	d := &issueDetail{
 		ID:          iss.ID,
 		Project:     projectBrief{ID: iss.ProjectID, Key: iss.ProjectKey, Name: iss.ProjectName},
-		Description: nullStr(iss.Description),
-		Environment: nullStr(iss.Environment),
-		Time:        timeTracking{nullInt(iss.Original), nullInt(iss.Remaining), nullInt(iss.Spent)},
+		Description: sqlq.String(iss.Description),
+		Environment: sqlq.String(iss.Environment),
+		Time:        timeTracking{sqlq.Int(iss.Original), sqlq.Int(iss.Remaining), sqlq.Int(iss.Spent)},
 		Labels:      []string{}, Components: []idName{}, AffectsVersions: []idName{}, FixVersions: []idName{},
 		Subtasks: []issueBrief{}, Links: []issueLink{}, RemoteLinks: []remoteLink{},
 		Attachments: []attachmentOut{}, CustomFields: []customValue{}, SecurityLevels: []idName{},
@@ -407,7 +380,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		userIDs = append(userIDs, rel.row.AssigneeID.Int64)
 	}
 
-	if err := scanAll(ctx, s.db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
+	if err := sqlq.Each(ctx, s.db, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
 		func(rows *sql.Rows) error {
 			var l string
 			if err := rows.Scan(&l); err != nil {
@@ -418,7 +391,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
+	if err := sqlq.Each(ctx, s.db, `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
 		WHERE ic.issue_id = ? ORDER BY c.name`, func(rows *sql.Rows) error {
 		var v idName
 		if err := rows.Scan(&v.ID, &v.Name); err != nil {
@@ -429,7 +402,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+	if err := sqlq.Each(ctx, s.db, `SELECT v.id, v.name, iv.kind FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
 		WHERE iv.issue_id = ? ORDER BY v.position, v.name`, func(rows *sql.Rows) error {
 		var v idName
 		var kind string
@@ -445,7 +418,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 	}, iss.ID); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
+	if err := sqlq.Each(ctx, s.db, `SELECT id, url, title, COALESCE(relationship, '') FROM remote_links
 		WHERE issue_id = ? ORDER BY id`, func(rows *sql.Rows) error {
 		var v remoteLink
 		if err := rows.Scan(&v.ID, &v.URL, &v.Title, &v.Relationship); err != nil {
@@ -462,7 +435,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		author sql.NullInt64
 	}
 	var atts []att
-	if err := scanAll(ctx, s.db, `SELECT id, filename, mime_type, size, created_at, author_id, file_missing
+	if err := sqlq.Each(ctx, s.db, `SELECT id, filename, mime_type, size, created_at, author_id, file_missing
 		FROM attachments WHERE issue_id = ? ORDER BY created_at, id`, func(rows *sql.Rows) error {
 		var a att
 		if err := rows.Scan(&a.out.ID, &a.out.Filename, &a.out.MimeType, &a.out.Size, &a.out.Created, &a.author,
@@ -537,7 +510,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 	}
 	if d.Can[perm.Security] {
-		if err := scanAll(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
+		if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels WHERE project_id = ? ORDER BY name`,
 			func(rows *sql.Rows) error {
 				var v idName
 				if err := rows.Scan(&v.ID, &v.Name); err != nil {
@@ -558,6 +531,28 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		return nil, err
 	}
 	d.CommentCount = len(count)
+
+	if iss.EpicID.Valid {
+		if epic, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil && sub.CanSee(epic.perm()) {
+			eu, _ := s.users(ctx, epic.AssigneeID.Int64)
+			d.Epic = &issueBrief{Key: epic.Key(), Summary: epic.Summary, Type: cat.typeOf(epic.TypeID),
+				Status: cat.statusOf(epic.StatusID), Assignee: refOf(eu, epic.AssigneeID)}
+		}
+	}
+	d.Sprints = []sprintRef{}
+	if err := sqlq.Each(ctx, s.db, `SELECT s.id, s.name, s.state, s.board_id FROM sprint_issues si
+		JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = ? ORDER BY s.position, s.id`, func(rows *sql.Rows) error {
+		var sp sprintRef
+		var board sql.NullInt64
+		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &board); err != nil {
+			return err
+		}
+		sp.Board = board.Int64
+		d.Sprints = append(d.Sprints, sp)
+		return nil
+	}, iss.ID); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 
@@ -588,7 +583,7 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 		err := rows.Scan(&row.ID, &row.ProjectID, &row.Num, &row.ProjectKey, &row.ProjectName, &row.Summary,
 			&row.Description, &row.Environment, &row.TypeID, &row.StatusID, &row.PriorityID, &row.ResolutionID,
 			&row.ReporterID, &row.AssigneeID, &row.CreatorID, &row.LevelID, &row.ParentID, &row.Created,
-			&row.Updated, &row.Resolved, &row.Due, &row.Original, &row.Remaining, &row.Spent,
+			&row.Updated, &row.Resolved, &row.Due, &row.Original, &row.Remaining, &row.Spent, &row.EpicID, &row.Rank,
 			&rel.kind, &rel.linkID, &rel.linkType)
 		if err != nil {
 			return nil, err
@@ -612,7 +607,7 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 // in use in its project. (Per-project workflows come with the workflow editor.)
 func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID int64, current string) ([]statusRef, error) {
 	used := map[string]bool{current: true}
-	if err := scanAll(ctx, s.db, `SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			return err
@@ -628,9 +623,42 @@ func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID in
 			out = append(out, st)
 		}
 	}
-	rank := map[string]int{"todo": 0, "doing": 1, "done": 2}
-	sort.SliceStable(out, func(a, b int) bool { return rank[out[a].Category] < rank[out[b].Category] })
+	sort.SliceStable(out, func(a, b int) bool { return out[a].Category.Rank() < out[b].Category.Rank() })
 	return out, nil
+}
+
+// typeStatuses are the statuses an issue of a type can have in a project.
+func (s *Server) typeStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
+	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return s.projectStatuses(ctx, cat, projectID, "")
+	}
+	var out []statusRef
+	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+		func(rows *sql.Rows) error {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			out = append(out, cat.statusOf(id))
+			return nil
+		}, wf)
+	return out, err
+}
+
+// statusResolution is the resolution that goes with a new status: reaching a
+// "done" status resolves the issue, leaving it reopens it.
+func statusResolution(cat *catalog, resolution sql.NullString, status string) sql.NullString {
+	switch done := cat.statusOf(status).Category == issue.Done; {
+	case done && !resolution.Valid:
+		resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
+	case !done:
+		resolution = sql.NullString{}
+	}
+	return resolution
 }
 
 type customRow struct {
@@ -650,7 +678,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 	}
 	var vals []raw
 	optionIDs := map[int64]bool{}
-	if err := scanAll(ctx, s.db, `SELECT v.field_id, f.name, f.type_key, v.parent_key, v.string_value,
+	if err := sqlq.Each(ctx, s.db, `SELECT v.field_id, f.name, f.type_key, v.parent_key, v.string_value,
 		v.number_value, v.text_value, v.date_value FROM custom_field_values v JOIN custom_fields f ON f.id = v.field_id
 		WHERE v.issue_id = ? ORDER BY f.name, v.parent_key IS NOT NULL, v.id`, func(rows *sql.Rows) error {
 		var v raw
@@ -671,7 +699,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 		for id := range optionIDs {
 			args = append(args, id)
 		}
-		if err := scanAll(ctx, s.db, `SELECT id, value FROM custom_field_options WHERE id IN (`+marks(len(args))+`)`,
+		if err := sqlq.Each(ctx, s.db, `SELECT id, value FROM custom_field_options WHERE id IN (`+sqlq.Marks(len(args))+`)`,
 			func(rows *sql.Rows) error {
 				var id int64
 				var v string
@@ -768,7 +796,7 @@ func (s *Server) customValues(ctx context.Context, sub *perm.Subject, issueID in
 	}
 
 	// Labels-type custom fields keep their values in the labels table.
-	if err := scanAll(ctx, s.db, `SELECT f.id, f.name, l.label FROM labels l JOIN custom_fields f ON f.id = l.field_id
+	if err := sqlq.Each(ctx, s.db, `SELECT f.id, f.name, l.label FROM labels l JOIN custom_fields f ON f.id = l.field_id
 		WHERE l.issue_id = ? ORDER BY f.name, l.label`, func(rows *sql.Rows) error {
 		var id int64
 		var name, label string
@@ -841,13 +869,10 @@ func recordChanges(ctx context.Context, tx *sql.Tx, issueID, author int64, at ti
 	return nil
 }
 
+// publish refreshes the pages showing an issue, and nothing more (a card
+// moved up a board). Changes people hear about go through s.emit.
 func (s *Server) publish(iss *issueRow, what string, by int64) {
-	s.hub.Publish(live.Event{Key: iss.Key(), What: what, By: by, Issue: iss.perm()})
-}
-
-// publishComment announces a comment change only to those who may read it.
-func (s *Server) publishComment(iss *issueRow, by int64, group string, role int64) {
-	s.hub.Publish(live.Event{Key: iss.Key(), What: "comment", By: by, Issue: iss.perm(), Group: group, Role: role})
+	s.emit(events.Event{ActorID: by, IssueID: iss.ID, Key: iss.Key(), Access: iss.perm(), Live: what})
 }
 
 // Create and update ----------------------------------------------------------
@@ -862,7 +887,7 @@ func (f fields) isNull(k string) bool { return string(f[k]) == "null" }
 
 func (f fields) get(k string, v any) error {
 	if err := json.Unmarshal(f[k], v); err != nil {
-		return fail(http.StatusBadRequest, fmt.Sprintf("Champ %s invalide.", k))
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
 	}
 	return nil
 }
@@ -870,18 +895,20 @@ func (f fields) get(k string, v any) error {
 var issueFields = map[string]bool{
 	"project": true, "type": true, "summary": true, "description": true, "environment": true, "priority": true,
 	"assignee": true, "labels": true, "components": true, "affectsVersions": true, "fixVersions": true,
-	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true,
+	"due": true, "parent": true, "status": true, "resolution": true, "securityLevel": true, "epic": true,
+	"originalEstimate": true, "remainingEstimate": true, // Jira durations ("1w 2d 3h 30m"), or null
+	"customFields": true, // {"<field id>": value as in Jira's REST API}
 }
 
 func readFields(r *http.Request) (fields, error) {
 	var f fields
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err := dec.Decode(&f); err != nil {
-		return nil, fail(http.StatusBadRequest, "Requête invalide : "+err.Error())
+		return nil, badBody(err)
 	}
 	for k := range f {
 		if !issueFields[k] {
-			return nil, fail(http.StatusBadRequest, "Champ inconnu : "+k+".")
+			return nil, failf(http.StatusBadRequest, i18n.FieldUnknown, k)
 		}
 	}
 	return f, nil
@@ -900,7 +927,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	var projectKey, typeID, summary string
 	for k, v := range map[string]*string{"project": &projectKey, "type": &typeID, "summary": &summary} {
 		if !f.has(k) {
-			return fail(http.StatusBadRequest, "Le champ "+k+" est obligatoire.")
+			return failf(http.StatusBadRequest, i18n.FieldRequired, k)
 		}
 		if err := f.get(k, v); err != nil {
 			return err
@@ -908,13 +935,13 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	summary = strings.TrimSpace(summary)
 	if summary == "" || utf8.RuneCountInString(summary) > 255 {
-		return fail(http.StatusBadRequest, "Le résumé est obligatoire (255 caractères au plus).")
+		return fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 	}
 	var projectID, leadID int64
 	var defaultAssignee string
 	var lead sql.NullInt64
-	if err := s.db.QueryRowContext(ctx, `SELECT id, lead_id, default_assignee FROM projects WHERE pkey = ?`,
-		strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
+	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.lead_id, p.default_assignee FROM projects p WHERE `+sqlq.ProjectKey("p", "?"),
+		strings.ToUpper(projectKey), strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	} else if err != nil {
 		return err
@@ -929,7 +956,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	it, ok := cat.issueType[typeID]
 	if !ok || !s.projectHasType(ctx, projectID, typeID) {
-		return fail(http.StatusBadRequest, "Ce type de ticket n'est pas proposé dans ce projet.")
+		return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 
 	var parentID any
@@ -941,19 +968,19 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		parent, err := s.findIssue(ctx, parentKey)
 		if err != nil || !sub.CanSee(parent.perm()) {
-			return fail(http.StatusBadRequest, "Ticket parent introuvable.")
+			return fail(http.StatusBadRequest, i18n.IssueParentNotFound)
 		}
 		if parent.ProjectID != projectID || parent.ParentID.Valid {
-			return fail(http.StatusBadRequest, "Le parent doit être un ticket du même projet, sans parent lui-même.")
+			return fail(http.StatusBadRequest, i18n.IssueParentInvalid)
 		}
 		parentID = parent.ID
 		parentLevel = parent.LevelID
 	}
 	if it.Subtask != (parentID != nil) {
 		if it.Subtask {
-			return fail(http.StatusBadRequest, "Une sous-tâche a besoin d'un ticket parent.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskParentRequired)
 		}
-		return fail(http.StatusBadRequest, "Seul un type « sous-tâche » peut avoir un parent.")
+		return fail(http.StatusBadRequest, i18n.IssueParentNotSubtask)
 	}
 
 	var assignee any
@@ -963,16 +990,32 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if !sub.Can(perm.Assign, projectID, nil) && id != sub.UserID {
-			return fail(http.StatusForbidden, "Vous ne pouvez pas assigner ce ticket à quelqu'un d'autre.")
+			return fail(http.StatusForbidden, i18n.IssueAssignOthersForbidden)
 		}
 		if ok, err := s.isAssignable(ctx, projectID, id); err != nil {
 			return err
 		} else if !ok {
-			return fail(http.StatusBadRequest, "Cette personne ne peut pas se voir assigner de tickets dans ce projet.")
+			return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
 		assignee = id
-	} else if defaultAssignee == "lead" && leadID != 0 {
-		assignee = leadID
+	} else {
+		var components []int64
+		if f.has("components") && !f.isNull("components") {
+			if err := f.get("components", &components); err != nil {
+				return err
+			}
+		}
+		if assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
+			return err
+		}
+	}
+	custom, err := s.readCustomFields(ctx, f, projectID, typeID)
+	if err != nil {
+		return err
+	}
+	// Custom fields take the permission to edit the issue, as its reporter.
+	if len(custom) > 0 && !sub.Can(perm.Edit, projectID, &perm.Issue{ProjectID: projectID, ReporterID: sub.UserID}) {
+		return errForbidden
 	}
 
 	status, err := s.initialStatusFor(ctx, projectID, typeID)
@@ -1004,12 +1047,17 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, ok := cat.priority[v]; !ok {
-			return fail(http.StatusBadRequest, "Priorité inconnue.")
+			return fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 		}
 		priority = v
 	} else if len(cat.Priorities) > 0 {
-		// Jira's default: the middle priority.
+		// The default priority, else Jira's default: the middle one.
 		priority = cat.Priorities[len(cat.Priorities)/2].ID
+		for _, p := range cat.Priorities {
+			if p.Default {
+				priority = p.ID
+			}
+		}
 	}
 	if f.has("due") && !f.isNull("due") {
 		var v string
@@ -1017,10 +1065,15 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, err := time.Parse(time.DateOnly, v); err != nil {
-			return fail(http.StatusBadRequest, "Échéance invalide (AAAA-MM-JJ attendu).")
+			return fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 		}
 		due = v
 	}
+	estimates, err := readEstimateEdit(f)
+	if err != nil {
+		return err
+	}
+	times := timeEstimates{}.withEstimateEdit(estimates)
 	var level any
 	if f.has("securityLevel") && !f.isNull("securityLevel") {
 		if !sub.Can(perm.Security, projectID, nil) {
@@ -1031,13 +1084,13 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if !s.projectHasLevel(ctx, projectID, id) {
-			return fail(http.StatusBadRequest, "Niveau de confidentialité inconnu dans ce projet.")
+			return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 		}
 		level = id
 	}
 	// A sub-task is exactly as confidential as its parent, as in Jira.
 	if parentID != nil {
-		level = nullAny(parentLevel)
+		level = sqlq.Value(parentLevel)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -1054,11 +1107,18 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	now := time.Now().UTC()
+	// A new issue goes to the bottom of the board order.
+	var lastRank string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(rank_key), '') FROM issues`).Scan(&lastRank); err != nil {
+		return err
+	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO issues (project_id, num, issue_type_id, parent_id, summary,
 		description, environment, status_id, priority_id, reporter_id, assignee_id, creator_id, security_level_id,
-		created_at, updated_at, due_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		created_at, updated_at, due_date, original_estimate, remaining_estimate, rank_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		projectID, num, typeID, parentID, summary, description, environment, status, priority, sub.UserID, assignee,
-		sub.UserID, level, now, now, due)
+		sub.UserID, level, now, now, due, sqlq.Value(times.Original), sqlq.Value(times.Remaining),
+		rankBetween(lastRank, ""))
 	if err != nil {
 		return err
 	}
@@ -1074,6 +1134,15 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.applySets(ctx, tx, f, iss); err != nil {
 		return err
 	}
+	if f.has("epic") {
+		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, ParentID: nullInt64(parentID)}, f)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE issues SET epic_id = ? WHERE id = ?`, epicID, issueID); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -1081,7 +1150,10 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.publish(created, "issue", sub.UserID)
+	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
+	if err := s.applyCustom(ctx, sub, s.restOut(r), created, custom); err != nil {
+		return err
+	}
 	return writeJSON(w, http.StatusCreated, map[string]string{"key": created.Key()})
 }
 
@@ -1104,6 +1176,23 @@ func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) 
 	return n > 0
 }
 
+// newIssueAssignee is who a new issue with these components is assigned to
+// when nobody is named: the first component that decides, else the project's
+// lead if that is its rule.
+func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead int64, defaultAssignee string, components []int64) (any, error) {
+	raw, err := json.Marshal(components)
+	if err != nil {
+		return nil, err
+	}
+	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, projectID, lead); err != nil || ok {
+		return who, err
+	}
+	if defaultAssignee == "lead" && lead != 0 {
+		return lead, nil
+	}
+	return nil, nil
+}
+
 func (s *Server) isAssignable(ctx context.Context, projectID, userID int64) (bool, error) {
 	holders, args, err := s.perms.HoldersSQL(ctx, projectID, perm.Assignable)
 	if err != nil {
@@ -1124,9 +1213,51 @@ func (s *Server) initialStatus(ctx context.Context, projectID int64) (string, er
 			ON u.status_id = s.id
 		WHERE s.category = 'todo' ORDER BY u.n IS NULL, u.n DESC, s.position LIMIT 1`, projectID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", fail(http.StatusConflict, "Aucun statut « à faire » n'est défini.")
+		return "", fail(http.StatusConflict, i18n.IssueNoTodoStatus)
 	}
 	return id, err
+}
+
+// replaceSet makes the components (kind "") or the versions of a kind of an
+// issue be want, and returns the history lines for what differs from have.
+func replaceSet(ctx context.Context, tx *sql.Tx, issueID int64, field, kind string, have, want []idName) ([]change, error) {
+	var changes []change
+	has := func(list []idName, v idName) bool {
+		return slices.ContainsFunc(list, func(o idName) bool { return o.ID == v.ID })
+	}
+	for _, v := range have {
+		if has(want, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, oldValue: strconv.FormatInt(v.ID, 10), oldString: v.Name})
+	}
+	for _, v := range want {
+		if has(have, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, newValue: strconv.FormatInt(v.ID, 10), newString: v.Name})
+	}
+	return changes, nil
 }
 
 // applySets writes the multi-valued fields (labels, components, versions)
@@ -1148,19 +1279,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 			}
 		}
 		var before []string
-		rows, err := tx.QueryContext(ctx, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`, iss.ID)
-		if err != nil {
+		if err := sqlq.Each(ctx, tx, `SELECT label FROM labels WHERE issue_id = ? AND field_id IS NULL ORDER BY label`,
+			func(rows *sql.Rows) error {
+				var l string
+				err := rows.Scan(&l)
+				before = append(before, l)
+				return err
+			}, iss.ID); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var l string
-			if err := rows.Scan(&l); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			before = append(before, l)
-		}
-		rows.Close()
 		after := make([]string, 0, len(clean))
 		for l := range clean {
 			after = append(after, l)
@@ -1198,26 +1325,24 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 			}
 		}
 		names := map[int64]string{}
-		rows, err := tx.QueryContext(ctx, `SELECT id, name FROM `+st.table+` WHERE project_id = ?`, iss.ProjectID)
-		if err != nil {
-			return nil, err
-		}
-		for rows.Next() {
+		if err := sqlq.Each(ctx, tx, `SELECT id, name FROM `+st.table+` WHERE project_id = ?`, func(rows *sql.Rows) error {
 			var id int64
 			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				rows.Close()
-				return nil, err
-			}
+			err := rows.Scan(&id, &name)
 			names[id] = name
+			return err
+		}, iss.ProjectID); err != nil {
+			return nil, err
 		}
-		rows.Close()
-		want := map[int64]bool{}
+		var want []idName
 		for _, id := range ids {
-			if _, ok := names[id]; !ok {
-				return nil, fail(http.StatusBadRequest, "Valeur inconnue dans ce projet pour "+st.key+".")
+			name, ok := names[id]
+			if !ok {
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueNotInProject, st.key)
 			}
-			want[id] = true
+			if !slices.ContainsFunc(want, func(o idName) bool { return o.ID == id }) {
+				want = append(want, idName{id, name})
+			}
 		}
 		var q string
 		var args []any
@@ -1226,50 +1351,20 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		} else {
 			q, args = `SELECT version_id FROM issue_versions WHERE issue_id = ? AND kind = ?`, []any{iss.ID, st.kind}
 		}
-		have := map[int64]bool{}
-		rows, err = tx.QueryContext(ctx, q, args...)
+		var have []idName
+		if err := sqlq.Each(ctx, tx, q, func(rows *sql.Rows) error {
+			var id int64
+			err := rows.Scan(&id)
+			have = append(have, idName{id, names[id]})
+			return err
+		}, args...); err != nil {
+			return nil, err
+		}
+		lines, err := replaceSet(ctx, tx, iss.ID, st.field, st.kind, have, want)
 		if err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				rows.Close()
-				return nil, err
-			}
-			have[id] = true
-		}
-		rows.Close()
-		for id := range have {
-			if want[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, oldValue: strconv.FormatInt(id, 10), oldString: names[id]})
-		}
-		for id := range want {
-			if have[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, newValue: strconv.FormatInt(id, 10), newString: names[id]})
-		}
+		changes = append(changes, lines...)
 	}
 	return changes, nil
 }
@@ -1282,7 +1377,6 @@ func (s *Server) userName(ctx context.Context, id int64) (string, string) {
 }
 
 func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
@@ -1295,8 +1389,36 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if f.has("project") || f.has("parent") {
-		return fail(http.StatusBadRequest, "Déplacer un ticket n'est pas encore possible.")
+	ctx := r.Context()
+	typeID := iss.TypeID
+	if f.has("type") {
+		f.get("type", &typeID)
+	}
+	custom, err := s.readCustomFields(ctx, f, iss.ProjectID, typeID)
+	if err != nil {
+		return err
+	}
+	if pi := iss.perm(); len(custom) > 0 && !sub.Can(perm.Edit, iss.ProjectID, &pi) {
+		return errForbidden
+	}
+	if err := s.applyUpdate(ctx, sub, iss, f); err != nil {
+		return err
+	}
+	if err := s.applyCustom(ctx, sub, s.restOut(r), iss, custom); err != nil {
+		return err
+	}
+	return s.respondIssue(w, r, http.StatusOK, sub, iss.ID)
+}
+
+// applyUpdate changes an issue's fields, checking each one's permission,
+// recording history and announcing the change. The board reuses it to move
+// cards between columns.
+func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
+	if f.has("project") {
+		return fail(http.StatusBadRequest, i18n.IssueMoveUseAction)
+	}
+	if f.has("parent") {
+		return fail(http.StatusBadRequest, i18n.IssueParentUnsupported)
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
@@ -1331,19 +1453,19 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 		if required && newVal == nil {
-			return fail(http.StatusBadRequest, "Le résumé ne peut pas être vide.")
+			return fail(http.StatusBadRequest, i18n.IssueSummaryEmpty)
 		}
 		if s, ok := newVal.(string); ok && maxLen > 0 && utf8.RuneCountInString(s) > maxLen {
-			return fail(http.StatusBadRequest, fmt.Sprintf("%d caractères au plus.", maxLen))
+			return failf(http.StatusBadRequest, i18n.FieldTooLong, maxLen)
 		}
 		var old any
 		switch key {
 		case "summary":
 			old = iss.Summary
 		case "description":
-			old = nullAny(iss.Description)
+			old = sqlq.Value(iss.Description)
 		case "environment":
-			old = nullAny(iss.Environment)
+			old = sqlq.Value(iss.Environment)
 		}
 		if old != newVal {
 			sets[column] = newVal
@@ -1371,10 +1493,10 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		it, ok := cat.issueType[v]
 		if !ok || !s.projectHasType(ctx, iss.ProjectID, v) {
-			return fail(http.StatusBadRequest, "Ce type de ticket n'est pas proposé dans ce projet.")
+			return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 		}
 		if it.Subtask != iss.ParentID.Valid {
-			return fail(http.StatusBadRequest, "Une sous-tâche ne peut changer que pour un autre type de sous-tâche.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskTypeChange)
 		}
 		if v != iss.TypeID {
 			sets["issue_type_id"] = v
@@ -1394,17 +1516,17 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		if v != nil {
 			p, ok := cat.priority[*v]
 			if !ok {
-				return fail(http.StatusBadRequest, "Priorité inconnue.")
+				return fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 			}
 			newVal, newName = *v, p.Name
 		}
-		if nullAny(iss.PriorityID) != newVal {
+		if sqlq.Value(iss.PriorityID) != newVal {
 			var oldName any
 			if p := cat.priorityOf(iss.PriorityID); p != nil {
 				oldName = p.Name
 			}
 			sets["priority_id"] = newVal
-			changes = append(changes, change{"priority", nullAny(iss.PriorityID), oldName, newVal, newName})
+			changes = append(changes, change{"priority", sqlq.Value(iss.PriorityID), oldName, newVal, newName})
 		}
 	}
 
@@ -1424,11 +1546,11 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if !ok {
-				return fail(http.StatusBadRequest, "Cette personne ne peut pas se voir assigner de tickets dans ce projet.")
+				return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 			}
 			newVal = *v
 		}
-		if nullAny(iss.AssigneeID) != newVal {
+		if sqlq.Value(iss.AssigneeID) != newVal {
 			c := change{field: "assignee"}
 			if iss.AssigneeID.Valid {
 				c.oldValue, c.oldString = s.userName(ctx, iss.AssigneeID.Int64)
@@ -1452,7 +1574,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		var newVal any
 		if v != nil && *v != "" {
 			if _, err := time.Parse(time.DateOnly, *v); err != nil {
-				return fail(http.StatusBadRequest, "Échéance invalide (AAAA-MM-JJ attendu).")
+				return fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 			}
 			newVal = *v
 		}
@@ -1466,12 +1588,51 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	if f.has("originalEstimate") || f.has("remainingEstimate") {
+		if err := can(perm.Edit); err != nil {
+			return err
+		}
+		edit, err := readEstimateEdit(f)
+		if err != nil {
+			return err
+		}
+		cur := timeEstimates{Original: iss.Original, Remaining: iss.Remaining, Spent: iss.Spent}
+		next := cur.withEstimateEdit(edit)
+		if next.Original != cur.Original {
+			sets["original_estimate"] = sqlq.Value(next.Original)
+		}
+		if next.Remaining != cur.Remaining {
+			sets["remaining_estimate"] = sqlq.Value(next.Remaining)
+		}
+		changes = append(changes, cur.changesTo(next)...)
+	}
+
+	if f.has("epic") {
+		if err := can(perm.Edit); err != nil {
+			return err
+		}
+		epicID, epicKey, err := s.epicTarget(ctx, sub, cat, iss, f)
+		if err != nil {
+			return err
+		}
+		if sqlq.Value(iss.EpicID) != epicID {
+			c := change{field: "Epic Link", newValue: epicID, newString: epicKey}
+			if iss.EpicID.Valid {
+				if old, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil {
+					c.oldValue, c.oldString = iss.EpicID.Int64, old.Key()
+				}
+			}
+			sets["epic_id"] = epicID
+			changes = append(changes, c)
+		}
+	}
+
 	if f.has("securityLevel") {
 		if err := can(perm.Security); err != nil {
 			return err
 		}
 		if iss.ParentID.Valid {
-			return fail(http.StatusBadRequest, "Une sous-tâche suit la confidentialité de son ticket parent.")
+			return fail(http.StatusBadRequest, i18n.IssueSubtaskSecurity)
 		}
 		var v *int64
 		if err := f.get("securityLevel", &v); err != nil {
@@ -1480,13 +1641,13 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 		var newVal any
 		if v != nil {
 			if !s.projectHasLevel(ctx, iss.ProjectID, *v) {
-				return fail(http.StatusBadRequest, "Niveau de confidentialité inconnu dans ce projet.")
+				return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 			}
 			newVal = *v
 		}
-		if nullAny(iss.LevelID) != newVal {
+		if sqlq.Value(iss.LevelID) != newVal {
 			sets["security_level_id"] = newVal
-			changes = append(changes, change{field: "security", oldValue: nullAny(iss.LevelID), newValue: newVal})
+			changes = append(changes, change{field: "security", oldValue: sqlq.Value(iss.LevelID), newValue: newVal})
 		}
 	}
 
@@ -1502,7 +1663,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			if _, ok := cat.status[status]; !ok {
-				return fail(http.StatusBadRequest, "Statut inconnu.")
+				return fail(http.StatusBadRequest, i18n.StatusUnknown)
 			}
 			if status != iss.StatusID {
 				_, allowed, err := s.issueTransitions(ctx, cat, iss)
@@ -1510,7 +1671,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 					return err
 				}
 				if !slices.ContainsFunc(allowed, func(st statusRef) bool { return st.ID == status }) {
-					return fail(http.StatusConflict, "Le workflow du projet ne prévoit pas ce changement de statut.")
+					return fail(http.StatusConflict, i18n.IssueTransitionNotAllowed)
 				}
 			}
 		}
@@ -1523,25 +1684,19 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 			resolution = sql.NullString{}
 			if v != nil {
 				if _, ok := cat.resolution[*v]; !ok {
-					return fail(http.StatusBadRequest, "Résolution inconnue.")
+					return fail(http.StatusBadRequest, i18n.IssueResolutionUnknown)
 				}
 				resolution = sql.NullString{String: *v, Valid: true}
 			}
 		}
-		done := cat.statusOf(status).Category == "done"
-		switch {
-		case done && !resolution.Valid:
-			resolution = sql.NullString{String: defaultResolution(cat), Valid: defaultResolution(cat) != ""}
-		case !done:
-			resolution = sql.NullString{}
-		}
+		resolution = statusResolution(cat, resolution, status)
 		if status != iss.StatusID {
 			sets["status_id"] = status
 			changes = append(changes, change{"status", iss.StatusID, cat.statusOf(iss.StatusID).Name, status,
 				cat.statusOf(status).Name})
 		}
 		if resolution != iss.ResolutionID {
-			sets["resolution_id"] = nullAny(resolution)
+			sets["resolution_id"] = sqlq.Value(resolution)
 			var oldName, newName any
 			if v := cat.resolutionOf(iss.ResolutionID); v != nil {
 				oldName = v.Name
@@ -1549,7 +1704,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 			if v := cat.resolutionOf(resolution); v != nil {
 				newName = v.Name
 			}
-			changes = append(changes, change{"resolution", nullAny(iss.ResolutionID), oldName, nullAny(resolution), newName})
+			changes = append(changes, change{"resolution", sqlq.Value(iss.ResolutionID), oldName, sqlq.Value(resolution), newName})
 			if resolution.Valid {
 				sets["resolved_at"] = time.Now().UTC()
 			} else {
@@ -1575,7 +1730,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	changes = append(changes, setChanges...)
 	if len(changes) == 0 {
-		return s.respondIssue(w, r, sub, iss.ID)
+		return nil
 	}
 	now := time.Now().UTC()
 	sets["updated_at"] = now
@@ -1612,54 +1767,28 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	// Announce with the old visibility too: someone who just lost access
 	// must learn the issue changed.
-	s.publish(iss, "issue", sub.UserID)
-	if updated.perm() != iss.perm() {
-		s.publish(updated, "issue", sub.UserID)
+	e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
+	e.Changes = eventChanges(changes)
+	if before := iss.perm(); before != updated.perm() {
+		e.Before = &before
 	}
-	return s.respondIssue(w, r, sub, iss.ID)
+	s.emit(e)
+	return nil
 }
 
-func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.Subject, id int64) error {
+func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, status int, sub *perm.Subject, id int64) error {
 	iss, err := s.findIssueByID(r.Context(), id)
 	if err != nil {
 		return err
 	}
 	if !sub.CanSee(iss.perm()) {
-		return writeJSON(w, http.StatusOK, map[string]any{"key": iss.Key(), "hidden": true})
+		return writeJSON(w, status, map[string]any{"key": iss.Key(), "hidden": true})
 	}
 	d, err := s.issueDetail(r.Context(), sub, iss)
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, d)
-}
-
-func defaultResolution(cat *catalog) string {
-	for _, name := range []string{"Done", "Terminé", "Fixed", "Corrigé"} {
-		for _, r := range cat.Resolutions {
-			if strings.EqualFold(r.Name, name) {
-				return r.ID
-			}
-		}
-	}
-	if len(cat.Resolutions) > 0 {
-		return cat.Resolutions[0].ID
-	}
-	return ""
-}
-
-func nullAny[T sql.NullString | sql.NullInt64](n T) any {
-	switch v := any(n).(type) {
-	case sql.NullString:
-		if v.Valid {
-			return v.String
-		}
-	case sql.NullInt64:
-		if v.Valid {
-			return v.Int64
-		}
-	}
-	return nil
+	return writeJSON(w, status, d)
 }
 
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
@@ -1682,6 +1811,7 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	gone := []*issueRow{iss}
 	for children.Next() {
 		child, err := scanIssue(children)
 		if err != nil {
@@ -1691,15 +1821,28 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 		cp := child.perm()
 		if !sub.Can(perm.Delete, child.ProjectID, &cp) {
 			children.Close()
-			return fail(http.StatusConflict, "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.")
+			return fail(http.StatusConflict, i18n.IssueSubtasksNotDeletable)
 		}
+		gone = append(gone, child)
 	}
 	children.Close()
 	if err := children.Err(); err != nil {
 		return err
 	}
+	// Deletions are announced with the issues as they were: e-mails and
+	// webhooks are written once they are gone.
+	var deleted []events.Event
+	for _, d := range gone {
+		e := issueEvent(events.IssueDeleted, d, sub.UserID, "")
+		if e.Issue, err = events.LoadIssue(ctx, s.db, d.ID); err != nil {
+			return err
+		}
+		e.HookMatches = s.out.hooks.MatchBeforeDelete(ctx, d.ID)
+		deleted = append(deleted, e)
+	}
+	deleted[0].Live = "deleted"
 	var files []int64
-	if err := scanAll(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
+	if err := sqlq.Each(ctx, s.db, `SELECT a.id FROM attachments a JOIN issues i ON i.id = a.issue_id
 		WHERE i.id = ? OR i.parent_id = ?`, func(rows *sql.Rows) error {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
@@ -1716,25 +1859,61 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	for _, id := range files {
 		os.Remove(filepath.Join(s.dataDir, "attachments", strconv.FormatInt(id, 10)))
 	}
-	s.publish(iss, "deleted", sub.UserID)
+	for _, e := range deleted {
+		s.emit(e)
+	}
+	s.log.Info("issue deleted", "key", iss.Key())
+	s.auditLog(r, audit.IssueDelete, audit.Target{Type: "issue", ID: strconv.FormatInt(iss.ID, 10), Label: iss.Key()}, nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
 // compileJQL turns a JQL query into SQL. Syntax and field errors come back
-// to the user as they are (in French).
+// to the user as they are (in the user's language).
+// searchCondition turns a search's parameters (jql, or q in either syntax,
+// and project) into a condition on the issues the user sees (aliases i and
+// p), with its ORDER BY and the syntax used.
+func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
+	sort, mode string, err error) {
+	// The search bar takes both syntaxes: JQL is recognised by its shape.
+	mode = "simple"
+	var cond string
+	var cargs []any
+	if src := params.Get("jql"); src != "" || jql.LooksLike(params.Get("q")) {
+		if src == "" {
+			src = params.Get("q")
+		}
+		mode = "jql"
+		if cond, cargs, sort, err = s.compileJQL(ctx, sub, src); err != nil {
+			return "", nil, "", "", err
+		}
+	} else {
+		q := search.Parse(params.Get("q"))
+		cond, cargs = q.SQL(sub.UserID)
+		sort = q.Sort
+	}
+	vis, args := sub.VisibleSQL("i")
+	where = vis + " AND " + cond
+	args = append(args, cargs...)
+	if p := params.Get("project"); p != "" {
+		where += " AND " + sqlq.ProjectKey("p", "?")
+		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
+	}
+	return where, args, sort, mode, nil
+}
+
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {
 	q, err := jql.Parse(src)
 	if err != nil {
-		return "", nil, "", fail(http.StatusBadRequest, "JQL : "+err.Error())
+		return "", nil, "", jqlError(err)
 	}
 	fields := map[string]jql.Field{}
-	if err := scanAll(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
 		var f jql.Field
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
 		}
-		fields[strings.ToLower(f.Name)] = f
+		fields[foldName(f.Name)] = f
 		fields[strconv.FormatInt(f.ID, 10)] = f
 		return nil
 	}); err != nil {
@@ -1743,15 +1922,102 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 	where, args, order, err := jql.Compile(q, jql.Env{
 		Me:  sub.UserID,
 		Now: time.Now(),
-		Loc: s.tz,
+		Loc: s.zone(),
 		CustomField: func(name string) (jql.Field, bool) {
-			f, ok := fields[strings.ToLower(name)]
+			f, ok := fields[foldName(name)]
 			return f, ok
 		},
+		Query: func(q string, args []any) ([]string, error) {
+			var out []string
+			err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
+				var v sql.NullString
+				if err := rows.Scan(&v); err != nil {
+					return err
+				}
+				if v.Valid {
+					out = append(out, v.String)
+				}
+				return nil
+			}, args...)
+			return out, err
+		},
 	})
-	var je *jql.Error
-	if errors.As(err, &je) {
-		return "", nil, "", fail(http.StatusBadRequest, "JQL : "+je.Msg)
+	if err != nil {
+		return "", nil, "", jqlError(err)
 	}
-	return where, args, order, err
+	return where, args, order, nil
+}
+
+// jqlError answers a query the server cannot read: 400 with the message and
+// where in the query (in characters) the problem is, when known.
+func jqlError(err error) error {
+	var je *jql.Error
+	if !errors.As(err, &je) {
+		return err
+	}
+	return &httpError{status: http.StatusBadRequest, msg: i18n.M(i18n.JQLError, i18n.M(je.Key, je.Args...)),
+		extra: map[string]any{"pos": je.Pos}}
+}
+
+// foldName compares field names the forgiving way: case and French accents
+// do not matter ("Fonctionnalité" finds "Fonctionnalite").
+func foldName(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case 'à', 'â', 'ä':
+			return 'a'
+		case 'é', 'è', 'ê', 'ë':
+			return 'e'
+		case 'î', 'ï':
+			return 'i'
+		case 'ô', 'ö':
+			return 'o'
+		case 'ù', 'û', 'ü':
+			return 'u'
+		case 'ç':
+			return 'c'
+		}
+		return r
+	}, strings.ToLower(strings.TrimSpace(s)))
+}
+
+func nullInt64(v any) sql.NullInt64 {
+	if id, ok := v.(int64); ok {
+		return sql.NullInt64{Int64: id, Valid: true}
+	}
+	return sql.NullInt64{}
+}
+
+// isEpicType tells whether an issue type is an epic (by name, as Jira
+// Software does not mark it otherwise).
+func isEpicType(t typeRef) bool {
+	n := strings.ToLower(t.Name)
+	return n == "epic" || n == "épopée" || n == "epopee"
+}
+
+// epicTarget reads the "epic" field (an issue key, or null to detach) and
+// checks the target: an epic the user sees. Sub-tasks follow their parent's
+// epic, and an epic cannot be put in an epic.
+func (s *Server) epicTarget(ctx context.Context, sub *perm.Subject, cat *catalog, iss *issueRow, f fields) (any, any, error) {
+	if f.isNull("epic") {
+		return nil, nil, nil
+	}
+	var key string
+	if err := f.get("epic", &key); err != nil {
+		return nil, nil, err
+	}
+	if iss.ParentID.Valid {
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueSubtaskEpic)
+	}
+	if iss.TypeID != "" && isEpicType(cat.typeOf(iss.TypeID)) {
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueEpicInEpic)
+	}
+	epic, err := s.findIssue(ctx, key)
+	if err != nil || !sub.CanSee(epic.perm()) {
+		return nil, nil, fail(http.StatusBadRequest, i18n.IssueEpicNotFound)
+	}
+	if !isEpicType(cat.typeOf(epic.TypeID)) {
+		return nil, nil, failf(http.StatusBadRequest, i18n.IssueNotAnEpic, epic.Key())
+	}
+	return epic.ID, epic.Key(), nil
 }

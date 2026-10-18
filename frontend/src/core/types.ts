@@ -11,6 +11,8 @@ export interface Me {
   name: string;
   email: string;
   admin: boolean;
+  /** The interface language chosen on the account (src/i18n/locales.ts); absent on older servers. */
+  locale?: string | null;
 }
 
 export interface UserRef {
@@ -54,6 +56,8 @@ export interface Meta {
   statuses: StatusRef[];
   priorities: PriorityRef[];
   resolutions: NamedRef[];
+  /** The resolution of issues reaching a done status without one; '' leaves them unresolved. */
+  defaultResolution: string;
   issueTypes: TypeRef[];
   linkTypes: LinkTypeRef[];
 }
@@ -200,6 +204,10 @@ export interface IssueDetail extends IssueSummary {
   transitions: Transition[];
   securityLevels: IdName[];
   commentCount: number;
+  /** The epic it belongs to (boards). */
+  epic?: IssueBrief | null;
+  /** The sprints it has been in, closed ones included. */
+  sprints?: { id: number; name: string; state: 'active' | 'future' | 'closed'; board?: number }[];
 }
 
 /** What PATCH returns when the change hid the issue from its author. */
@@ -245,6 +253,15 @@ export interface Worklog {
   seconds: number;
   body: string | null;
   visibility: Visibility | null;
+  /** Whether the user may edit or delete it: its author, or a moderator. */
+  canEdit: boolean;
+}
+
+/** What changing a work log sends; what is left out stays as it is. */
+export interface WorklogPatch {
+  started?: string;
+  seconds?: number;
+  body?: string;
 }
 
 export interface Project {
@@ -332,4 +349,132 @@ export interface ChangeEvent {
   key: string;
   what: 'issue' | 'comment' | 'attachment' | 'link' | 'worklog' | 'deleted';
   by: number;
+}
+
+/* Workflows ---------------------------------------------------------------- */
+
+/** A move between two statuses of a workflow; from null: from any status. */
+export interface WorkflowTransition {
+  id: number;
+  name: string;
+  from: StatusRef | null;
+  to: StatusRef;
+}
+
+export interface Workflow {
+  id: number;
+  name: string;
+  default: boolean;
+  initial: StatusRef;
+  /** In the workflow's order. */
+  statuses: StatusRef[];
+  transitions: WorkflowTransition[];
+  /** The issue types following it; the default takes every type not given another. */
+  issueTypes: TypeRef[];
+  /** Issues per status id. */
+  usage: Record<string, number>;
+}
+
+export interface ProjectWorkflows {
+  workflows: Workflow[];
+  /** The project's issue types. */
+  issueTypes: TypeRef[];
+  /** The whole status catalogue, shared by every project. */
+  statuses: StatusRef[];
+  can: { edit: boolean };
+}
+
+/** What saving a workflow sends. */
+export interface WorkflowInput {
+  name: string;
+  initial: string;
+  statuses: string[];
+  transitions: { id?: number; name: string; from: string | null; to: string }[];
+  /** Ignored for the default workflow. */
+  issueTypes?: string[];
+  /** Makes it the project's default. */
+  default?: true;
+  /** Removed status id → status its issues move to. */
+  remap?: Record<string, string>;
+  /** For issue types going back to the default workflow: status it lacks → one of its statuses. */
+  remapDefault?: Record<string, string>;
+}
+
+/** Issues sitting in a status a workflow is about to lose. */
+export interface StrandedStatus {
+  status: StatusRef;
+  count: number;
+}
+
+/** Issues of types going back to the default workflow, in statuses it lacks. */
+export interface StrandedDefault {
+  stranded: StrandedStatus[];
+  workflow: { id: number; name: string; statuses: StatusRef[] };
+}
+
+/* Search -------------------------------------------------------------------- */
+
+export interface FilterShare {
+  kind: 'everyone' | 'group' | 'project' | 'user';
+  id?: number;
+  /** With kind project: only this role. */
+  role?: number;
+  name?: string;
+}
+
+/** A saved search (GET /api/filters). */
+export interface SavedFilter {
+  id: number;
+  name: string;
+  description: string | null;
+  /** JQL, or the former search syntax for old filters. */
+  query: string;
+  owner: UserRef | null;
+  mine: boolean;
+  favourite: boolean;
+  canEdit: boolean;
+  shares: FilterShare[];
+}
+
+/** A sprint offered as a search value (GET /api/sprints). */
+export interface SprintSuggestion {
+  id: number;
+  name: string;
+  state: 'active' | 'future' | 'closed';
+  board: number;
+  boardName: string;
+}
+
+/** Issue counts per value of a few fields (GET /api/issues/facets). */
+export interface Facets {
+  total: number;
+  /** field → value → count; values are ids (users, statuses…), project keys, label text; "" counts the empty ones. */
+  facets: Record<string, Record<string, number>>;
+}
+
+/** An epic offered as a search value (GET /api/epics). */
+export interface EpicRef {
+  key: string;
+  summary: string;
+  status: StatusRef;
+  project: string;
+}
+
+/** A custom field, for the query editor (GET /api/fields). */
+export interface CustomFieldRef {
+  id: number;
+  name: string;
+  /** The field type: float, select, multiselect, datepicker, userpicker, labels… */
+  kind: string;
+  /** How a query names it, quoted when needed. */
+  jql: string;
+}
+
+/** A version or component across projects (GET /api/versions, /api/components). */
+export interface ProjectValue {
+  id: number;
+  name: string;
+  project: { id: number; key: string; name: string };
+  released?: boolean;
+  archived?: boolean;
 }

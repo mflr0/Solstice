@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // Jira resolves a user name against its user directories in order of
@@ -107,6 +109,7 @@ func (r *run) importUsers() error {
 		var hash any
 		if strings.HasPrefix(u.credential, "{PKCS5S2}") {
 			hash = u.credential
+			r.check.password()
 		} else if u.active {
 			noPassword++
 		}
@@ -146,15 +149,15 @@ func (r *run) importUsers() error {
 	r.cwd = best
 	r.usersByName = byName
 
-	r.rep.step("utilisateurs", ins.total, 0)
+	r.rep.step("users", ins.total, 0)
 	if noPassword > 0 {
-		r.rep.warn("%s sans mot de passe utilisable (annuaire externe ou ancien format) : "+
-			"définissez-en un avec « solstice user passwd »", plural(noPassword, "compte actif", "comptes actifs"))
+		r.rep.warn("%s without a usable password (external directory or old format): "+
+			"set one with \"solstice user passwd\"", plural(noPassword, "active account", "active accounts"))
 	}
 	if placeholders > 0 {
-		r.rep.warn("%s (auteurs d'anciens tickets)", plural(placeholders,
-			"utilisateur supprimé de Jira conservé comme compte inactif",
-			"utilisateurs supprimés de Jira conservés comme comptes inactifs"))
+		r.rep.warn("%s (authors of old issues)", plural(placeholders,
+			"user deleted from Jira kept as an inactive account",
+			"users deleted from Jira kept as inactive accounts"))
 	}
 	return nil
 }
@@ -248,8 +251,8 @@ func (r *run) importGroups() error {
 	if err := mins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("groupes", gins.total, 0)
-	r.rep.step("appartenances aux groupes", mins.total, 0)
+	r.rep.step("groups", gins.total, 0)
+	r.rep.step("group memberships", mins.total, 0)
 
 	adminGroups := map[int64]bool{}
 	if err := r.each(`SELECT permission, group_id FROM globalpermissionentry`, func(rows *sql.Rows) error {
@@ -276,12 +279,12 @@ func (r *run) importGroups() error {
 		}
 	}
 	for chunk := range slices.Chunk(admins, 1000) {
-		q := "UPDATE users SET is_admin = TRUE WHERE id IN (" + placeholders(len(chunk)) + ")"
+		q := "UPDATE users SET is_admin = TRUE WHERE id IN (" + sqlq.Marks(len(chunk)) + ")"
 		if _, err := r.dst.ExecContext(r.ctx, q, chunk...); err != nil {
 			return err
 		}
 	}
-	r.rep.step("administrateurs", len(admins), 0)
+	r.rep.step("administrators", len(admins), 0)
 	return r.applyApplicationAccess(adminGroups)
 }
 
@@ -324,26 +327,22 @@ func (r *run) applyApplicationAccess(adminGroups map[int64]bool) error {
 		}
 	}
 	for chunk := range slices.Chunk(noAccess, 1000) {
-		q := "UPDATE users SET active = FALSE WHERE id IN (" + placeholders(len(chunk)) + ")"
+		q := "UPDATE users SET active = FALSE WHERE id IN (" + sqlq.Marks(len(chunk)) + ")"
 		if _, err := r.dst.ExecContext(r.ctx, q, chunk...); err != nil {
 			return err
 		}
 	}
 	if len(noAccess) > 0 {
-		r.rep.warn("%s sans accès applicatif dans Jira (hors des groupes de licence) : importés inactifs",
-			plural(len(noAccess), "compte", "comptes"))
+		r.rep.warn("%s without application access in Jira (outside license groups): imported inactive",
+			plural(len(noAccess), "account", "accounts"))
 	}
 	return nil
 }
 
-// plural writes "1 compte" or "3 comptes".
+// plural writes "1 account" or "3 accounts".
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return "1 " + one
 	}
 	return strconv.Itoa(n) + " " + many
-}
-
-func placeholders(n int) string {
-	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Orbite, empty state "empty": a ringed planet alone on its orbits. Used as a mask. -->
+  <defs>
+    <mask id="behind">
+      <rect width="200" height="120" fill="#fff"/>
+      <circle cx="100" cy="58" r="23" fill="#000"/>
+    </mask>
+    <clipPath id="disc">
+      <circle cx="100" cy="58" r="17.5"/>
+    </clipPath>
+  </defs>
+  <g mask="url(#behind)">
+    <ellipse cx="100" cy="58" rx="88" ry="25" transform="rotate(-8 100 58)" stroke-opacity=".42"/>
+    <ellipse cx="100" cy="58" rx="62" ry="17" transform="rotate(-8 100 58)" stroke-opacity=".38" stroke-dasharray="1.5 4.5"/>
+  </g>
+  <circle cx="100" cy="58" r="18" stroke-width="1.5"/>
+  <path clip-path="url(#disc)" d="M80 50.5c12 3.5 28 3 40-1.5M80 60.5c13 3 27 2.5 40-1.5M80 67c12 2 26 1.5 40-1" stroke-opacity=".4"/>
+  <circle cx="158.5" cy="55.6" r="2.8" fill="#000" stroke="none"/>
+  <path d="M36 22v5M33.5 24.5h5M164 92v4M162 94h4M128 16v3M126.5 17.5h3" stroke-opacity=".55"/>
+</svg>

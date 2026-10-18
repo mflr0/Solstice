@@ -15,11 +15,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 // Permissions. Solstice keeps fewer, broader permissions than Jira: resolving
 // and closing are part of moving an issue along, and authors may always edit
-// or delete their own comments.
+// or delete their own comments and work logs.
 const (
 	Browse     = "browse"     // see the project and its issues
 	Create     = "create"     // create issues
@@ -32,7 +34,7 @@ const (
 	Link       = "link"       // link issues
 	Worklog    = "worklog"    // log work
 	Delete     = "delete"     // delete issues
-	Moderate   = "moderate"   // edit or delete anyone's comments and attachments
+	Moderate   = "moderate"   // edit or delete anyone's comments, work logs and attachments
 	Watchers   = "watchers"   // manage other people's watching
 	Security   = "security"   // set the security level
 	Admin      = "admin"      // configure the project
@@ -78,9 +80,10 @@ type level struct {
 
 // rules are the grants of every project, shared by all requests.
 type rules struct {
-	grants map[int64]map[string][]Grant // project → permission → grants
-	leads  map[int64]int64              // project → lead user id
-	levels map[int64]level
+	grants   map[int64]map[string][]Grant // project → permission → grants
+	leads    map[int64]int64              // project → lead user id
+	archived map[int64]bool               // archived projects: read-only
+	levels   map[int64]level
 }
 
 // rulesTTL bounds how long rules are cached: an import run by another
@@ -115,9 +118,10 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
 	r := &rules{
-		grants: map[int64]map[string][]Grant{},
-		leads:  map[int64]int64{},
-		levels: map[int64]level{},
+		grants:   map[int64]map[string][]Grant{},
+		leads:    map[int64]int64{},
+		archived: map[int64]bool{},
+		levels:   map[int64]level{},
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT project_id, permission, holder,
 		COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0) FROM project_permissions`)
@@ -142,17 +146,21 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 		return nil, err
 	}
 
-	rows, err = s.db.QueryContext(ctx, `SELECT id, COALESCE(lead_id, 0) FROM projects`)
+	rows, err = s.db.QueryContext(ctx, `SELECT id, COALESCE(lead_id, 0), archived FROM projects`)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var project, lead int64
-		if err := rows.Scan(&project, &lead); err != nil {
+		var archived bool
+		if err := rows.Scan(&project, &lead, &archived); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		r.leads[project] = lead
+		if archived {
+			r.archived[project] = true
+		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -255,8 +263,13 @@ func (s *Store) Subject(ctx context.Context, userID int64, admin bool) (*Subject
 }
 
 // holds reports whether the subject matches a grant. Without an issue,
-// reporter and assignee grants never match.
+// reporter and assignee grants never match. A subject without a user
+// (UserID 0) holds nothing: a project with no lead is cached with lead 0, and
+// an Everyone grant is meant for accounts, not for a visitor with none.
 func (s *Subject) holds(g Grant, project int64, is *Issue) bool {
+	if s.UserID == 0 {
+		return false
+	}
 	switch g.Holder {
 	case Everyone:
 		return true
@@ -278,7 +291,11 @@ func (s *Subject) holds(g Grant, project int64, is *Issue) bool {
 
 // Can reports whether the subject has permission p in a project, or on an
 // issue when is is not nil. Any action on an issue also requires seeing it.
+// An archived project is read-only: only Browse is ever granted there.
 func (s *Subject) Can(p string, project int64, is *Issue) bool {
+	if p != Browse && s.rules.archived[project] {
+		return false
+	}
 	if !s.granted(p, project, is) {
 		return false
 	}
@@ -372,15 +389,15 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	var cond []string
 	var args []any
 	if len(full) > 0 {
-		cond = append(cond, col("project_id")+" IN ("+marks(len(full))+")")
+		cond = append(cond, col("project_id")+" IN ("+sqlq.Marks(len(full))+")")
 		args = append(args, full...)
 	}
 	if len(byReporter) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+marks(len(byReporter))+") AND "+col("reporter_id")+" = ?)")
+		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byReporter))+") AND "+col("reporter_id")+" = ?)")
 		args = append(append(args, byReporter...), s.UserID)
 	}
 	if len(byAssignee) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+marks(len(byAssignee))+") AND "+col("assignee_id")+" = ?)")
+		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byAssignee))+") AND "+col("assignee_id")+" = ?)")
 		args = append(append(args, byAssignee...), s.UserID)
 	}
 	if len(cond) == 0 {
@@ -415,23 +432,22 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	}
 	sec := []string{col("security_level_id") + " IS NULL"}
 	if len(open) > 0 {
-		sec = append(sec, col("security_level_id")+" IN ("+marks(len(open))+")")
+		sec = append(sec, col("security_level_id")+" IN ("+sqlq.Marks(len(open))+")")
 		args = append(args, open...)
 	}
 	if len(levelByReporter) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+marks(len(levelByReporter))+") AND "+col("reporter_id")+" = ?)")
+		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByReporter))+") AND "+col("reporter_id")+" = ?)")
 		args = append(append(args, levelByReporter...), s.UserID)
 	}
 	if len(levelByAssignee) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+marks(len(levelByAssignee))+") AND "+col("assignee_id")+" = ?)")
+		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByAssignee))+") AND "+col("assignee_id")+" = ?)")
 		args = append(append(args, levelByAssignee...), s.UserID)
 	}
 	return where + " AND (" + strings.Join(sec, " OR ") + ")", args
 }
 
-func marks(n int) string {
-	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
-}
+// Archived reports whether a project is archived.
+func (s *Subject) Archived(project int64) bool { return s.rules.archived[project] }
 
 // InGroup reports whether the subject belongs to a group.
 func (s *Subject) InGroup(group int64) bool { return s.groups[group] }

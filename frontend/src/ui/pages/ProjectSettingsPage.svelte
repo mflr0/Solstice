@@ -1,16 +1,28 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
-  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/fr.js';
+  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
+  import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Modal from '../Modal.svelte';
+  import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
+  import GeneralPanel from '../project-settings/GeneralPanel.svelte';
+  import NotificationsPanel from '../project-settings/NotificationsPanel.svelte';
+  import VersionsPanel from '../project-settings/VersionsPanel.svelte';
+  import '../settings.css';
   import UserPicker from '../UserPicker.svelte';
+  import WorkflowsPanel from '../workflow/WorkflowsPanel.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A project's rules, on one page: each permission with who holds it.
-   * Nothing here is shared with another project — the "no scheme" model.
+   * A project's rules, on one page: each permission with who holds it, and
+   * the project's workflows. Nothing here is shared with another project —
+   * the "no scheme" model. People who do not administer the project only
+   * see the workflows, read-only.
    */
   interface Props {
     projectKey: string;
@@ -33,6 +45,50 @@
       .sort()
       .join('|');
   const dirty = $derived(signature(grants) !== saved);
+
+  const tab = $derived(parseTab(router.param('tab'), !forbidden));
+  const tabLabels = $derived<Record<ProjectTab, string>>({
+    ...t.projectConfig.tabs,
+    rights: t.workflows.rightsTab,
+    workflows: t.workflows.tab,
+  });
+  /** A tab has changes that are not saved yet. */
+  let panelDirty = $state(false);
+  let leaving = $state<(() => void) | null>(null);
+
+  /** Runs `go`, after asking when a workflow has unsaved changes. */
+  function guard(go: () => void) {
+    if (panelDirty) leaving = go;
+    else go();
+  }
+
+  // Another project's settings, reached while a tab has unsaved changes (the
+  // back button, a link): the address goes back to where the page was and the
+  // switch waits for the answer.
+  let shown = { key: untrack(() => projectKey), at: router.here };
+  $effect.pre(() => {
+    const key = projectKey;
+    const here = router.here;
+    if (key === shown.key || !untrack(() => panelDirty)) {
+      shown = { key, at: here };
+      return;
+    }
+    leaving = () => router.navigate(here, { replace: true });
+    router.navigate(shown.at, { replace: true });
+  });
+
+  function showTab(next: ProjectTab) {
+    if (next === tab) return;
+    guard(() => router.setParams({ tab: next === 'general' ? null : next, workflow: null }));
+  }
+
+  function tabKey(e: KeyboardEvent) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const next = nextTab(PROJECT_TABS, tab, e.key === 'ArrowRight' ? 1 : -1);
+    showTab(next);
+    queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
+  }
 
   $effect(() => {
     const key = projectKey;
@@ -99,153 +155,234 @@
   }
 </script>
 
-{#if forbidden}
-  <NotFoundPage message={t.settings.forbidden} />
-{:else if error}
+{#if error}
   <NotFoundPage message={error} />
-{:else if !data}
-  <div class="page"><p class="muted">{t.common.loading}</p></div>
+{:else if !data && !forbidden}
+  <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
-  <div class="page">
+  <div class="page settings-area" data-title={`${t.settings.title} ${projectKey}`}>
     <header class="page-head">
       <div>
         <p class="eyebrow">
           <a href={paths.project(projectKey)}>{projectKey}</a> · {t.projects.settings}
         </p>
-        <h1>{t.settings.title}</h1>
+        <h1 class="page-title">{t.settings.title}</h1>
       </div>
       <a class="btn" href={paths.project(projectKey)}>{t.settings.backToProject}</a>
     </header>
     <p class="intro">{t.settings.intro}</p>
 
-    <h2 class="section-title">{t.settings.permissions}</h2>
-    <table class="ledger matrix">
-      <tbody>
-        {#each data.permissions as p (p)}
-          <tr>
-            <th scope="row">
-              <span class="label">{permissionLabels[p].label}</span>
-              <span class="help">{permissionLabels[p].help}</span>
-            </th>
-            <td>
-              <div class="holders">
-                {#each holdersOf(p) as g (signature([g]))}
-                  <span class="chip holder {g.holder}">
-                    {#if g.holder === 'group' || g.holder === 'role' || g.holder === 'user'}<span
-                        class="kind">{holderLabels[g.holder]}</span
-                      >{/if}
-                    {grantLabel(g)}
-                    <button
-                      type="button"
-                      aria-label={`${t.common.remove} ${grantLabel(g)}`}
-                      onclick={() => remove(g)}>×</button
-                    >
-                  </span>
-                {:else}
-                  <span class="nobody">{t.settings.nobody}</span>
-                {/each}
-                <span class="adder" use:outside={() => adding === p && (adding = null)}>
-                  <button
-                    type="button"
-                    class="link-btn"
-                    aria-expanded={adding === p}
-                    onclick={() => {
-                      adding = adding === p ? null : p;
-                      kind = 'group';
-                      pick = '';
-                    }}>+ {t.settings.addHolder}</button
-                  >
-                  {#if adding === p}
-                    <div class="popover add">
-                      <label class="field">
-                        <span>{t.settings.chooseKind}</span>
-                        <select class="select" bind:value={kind}>
-                          {#each kinds as k (k)}<option value={k}>{holderLabels[k]}</option>{/each}
-                        </select>
-                      </label>
-                      {#if kind === 'group' || kind === 'role'}
-                        <label class="field">
-                          <span
-                            >{kind === 'group'
-                              ? t.settings.chooseGroup
-                              : t.settings.chooseRole}</span
-                          >
-                          <select class="select" bind:value={pick}>
-                            <option value="" disabled></option>
-                            {#each kind === 'group' ? data.groups : data.roles as x (x.id)}
-                              <option value={String(x.id)}>{x.name}</option>
-                            {/each}
-                          </select>
-                        </label>
-                      {:else if kind === 'user'}
-                        <div class="field">
-                          <span class="field-label">{t.settings.chooseUser}</span>
-                          <div class="boxed">
-                            <UserPicker
-                              value={null}
-                              label={t.settings.chooseUser}
-                              allowNone={false}
-                              noneLabel="…"
-                              search={(q) => api.users(q)}
-                              onpick={(u: UserRef | null) =>
-                                u && add(p, { holder: 'user', id: u.id, name: u.name })}
-                            />
-                          </div>
-                        </div>
-                      {/if}
-                      {#if kind !== 'user'}
-                        <button
-                          class="btn btn-small btn-primary"
-                          disabled={(kind === 'group' || kind === 'role') && !pick}
-                          onclick={() => addPicked(p)}>{t.common.add}</button
-                        >
-                      {/if}
-                    </div>
-                  {/if}
-                </span>
-              </div>
-            </td>
-          </tr>
+    {#if !forbidden}
+      <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
+        {#each PROJECT_TABS as k (k)}
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            id="tab-{k}"
+            aria-controls="panel-{k}"
+            aria-selected={tab === k}
+            tabindex={tab === k ? 0 : -1}
+            onclick={() => showTab(k)}
+            onkeydown={tabKey}>{tabLabels[k]}</button
+          >
         {/each}
-      </tbody>
-    </table>
-
-    <h2 class="section-title">{t.settings.roles}</h2>
-    <dl class="roles">
-      {#each data.roles as r (r.id)}
-        <div>
-          <dt>{r.name}</dt>
-          <dd>
-            {#each r.groups as g (g.id)}<span class="chip">{holderLabels.group} {g.name}</span
-              >{/each}
-            {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
-            {#if !r.groups.length && !r.users.length}<span class="nobody"
-                >{t.settings.noMembers}</span
-              >{/if}
-          </dd>
-        </div>
-      {/each}
-    </dl>
-
-    {#if dirty}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
-        <span>{t.settings.unsaved}</span>
-        <button class="btn btn-quiet" onclick={() => data && ((grants = data.grants), undefined)}
-          >{t.settings.discard}</button
-        >
-        <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
-          >{saving ? t.common.saving : t.common.save}</button
-        >
       </div>
     {/if}
+
+    {#key projectKey}
+      {#if tab === 'workflows' || !data}
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-workflows"
+          aria-labelledby={forbidden ? undefined : 'tab-workflows'}
+        >
+          <WorkflowsPanel {projectKey} {guard} ondirty={(d) => (panelDirty = d)} />
+        </div>
+      {:else if tab === 'general'}
+        <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
+          <GeneralPanel {projectKey} ondirty={(d) => (panelDirty = d)} />
+        </div>
+      {:else if tab === 'components'}
+        <div class="panel" role="tabpanel" id="panel-components" aria-labelledby="tab-components">
+          <ComponentsPanel {projectKey} />
+        </div>
+      {:else if tab === 'versions'}
+        <div class="panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions">
+          <VersionsPanel {projectKey} />
+        </div>
+      {:else if tab === 'notifications'}
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-notifications"
+          aria-labelledby="tab-notifications"
+        >
+          <NotificationsPanel
+            {projectKey}
+            groups={data.groups}
+            roles={data.roles}
+            ondirty={(d) => (panelDirty = d)}
+          />
+        </div>
+      {:else}
+        <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
+          <h2 class="section-title">{t.settings.permissions}</h2>
+          <div class="table-scroll">
+            <table class="ledger matrix">
+              <tbody>
+                {#each data.permissions as p (p)}
+                  <tr>
+                    <th scope="row">
+                      <span class="label">{permissionLabels[p].label}</span>
+                      <span class="help">{permissionLabels[p].help}</span>
+                    </th>
+                    <td>
+                      <div class="holders">
+                        {#each holdersOf(p) as g (signature([g]))}
+                          <span class="chip holder {g.holder}">
+                            {#if g.holder === 'group' || g.holder === 'role' || g.holder === 'user'}<span
+                                class="kind">{holderLabels[g.holder]}</span
+                              >{/if}
+                            {grantLabel(g)}
+                            <button
+                              type="button"
+                              aria-label={`${t.common.remove} ${grantLabel(g)}`}
+                              onclick={() => remove(g)}>×</button
+                            >
+                          </span>
+                        {:else}
+                          <span class="nobody">{t.settings.nobody}</span>
+                        {/each}
+                        <span class="adder" use:outside={() => adding === p && (adding = null)}>
+                          <button
+                            type="button"
+                            class="link-btn"
+                            aria-expanded={adding === p}
+                            onclick={() => {
+                              adding = adding === p ? null : p;
+                              kind = 'group';
+                              pick = '';
+                            }}>+ {t.settings.addHolder}</button
+                          >
+                          {#if adding === p}
+                            <div class="popover add">
+                              <label class="field">
+                                <span>{t.settings.chooseKind}</span>
+                                <select class="select" bind:value={kind}>
+                                  {#each kinds as k (k)}<option value={k}>{holderLabels[k]}</option
+                                    >{/each}
+                                </select>
+                              </label>
+                              {#if kind === 'group' || kind === 'role'}
+                                <label class="field">
+                                  <span
+                                    >{kind === 'group'
+                                      ? t.settings.chooseGroup
+                                      : t.settings.chooseRole}</span
+                                  >
+                                  <select class="select" bind:value={pick}>
+                                    <option value="" disabled></option>
+                                    {#each kind === 'group' ? data.groups : data.roles as x (x.id)}
+                                      <option value={String(x.id)}>{x.name}</option>
+                                    {/each}
+                                  </select>
+                                </label>
+                              {:else if kind === 'user'}
+                                <div class="field">
+                                  <span class="field-label">{t.settings.chooseUser}</span>
+                                  <div class="boxed">
+                                    <UserPicker
+                                      value={null}
+                                      label={t.settings.chooseUser}
+                                      allowNone={false}
+                                      noneLabel="…"
+                                      search={(q) => api.users(q)}
+                                      onpick={(u: UserRef | null) =>
+                                        u && add(p, { holder: 'user', id: u.id, name: u.name })}
+                                    />
+                                  </div>
+                                </div>
+                              {/if}
+                              {#if kind !== 'user'}
+                                <button
+                                  class="btn btn-small btn-primary"
+                                  disabled={(kind === 'group' || kind === 'role') && !pick}
+                                  onclick={() => addPicked(p)}>{t.common.add}</button
+                                >
+                              {/if}
+                            </div>
+                          {/if}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          <h2 class="section-title">{t.settings.roles}</h2>
+          <dl class="roles">
+            {#each data.roles as r (r.id)}
+              <div>
+                <dt>{r.name}</dt>
+                <dd>
+                  {#each r.groups as g (g.id)}<span class="chip">{holderLabels.group} {g.name}</span
+                    >{/each}
+                  {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
+                  {#if !r.groups.length && !r.users.length}<span class="nobody"
+                      >{t.settings.noMembers}</span
+                    >{/if}
+                </dd>
+              </div>
+            {/each}
+          </dl>
+
+          {#if dirty}
+            <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+              <span>{t.settings.unsaved}</span>
+              <button
+                class="btn btn-quiet"
+                onclick={() => data && ((grants = data.grants), undefined)}
+                >{t.settings.discard}</button
+              >
+              <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
+                >{saving ? t.common.saving : t.common.save}</button
+              >
+            </div>
+          {/if}
+        </div>
+      {/if}
+    {/key}
   </div>
+
+  <Modal open={leaving !== null} title={t.workflows.leaveTitle} onclose={() => (leaving = null)}>
+    <p class="leave">{tab === 'workflows' ? t.workflows.leaveBody : t.projectConfig.leaveBody}</p>
+    {#snippet footer()}
+      <button type="button" class="btn btn-quiet" onclick={() => (leaving = null)}
+        >{t.workflows.stay}</button
+      >
+      <button
+        type="button"
+        class="btn btn-danger"
+        onclick={() => {
+          const go = leaving;
+          leaving = null;
+          panelDirty = false;
+          go?.();
+        }}>{t.workflows.leave}</button
+      >
+    {/snippet}
+  </Modal>
 {/if}
 
 <style>
   .intro {
     max-width: 70ch;
     margin: 0 0 6px;
-    font: italic 15px/1.5 var(--serif);
+    font: var(--title-italic) 15px/1.5 var(--font-title);
     color: var(--ink-soft);
   }
 
@@ -261,13 +398,13 @@
 
   .label {
     display: block;
-    font: 600 14px/1.3 var(--sans);
+    font: 600 14px/1.3 var(--font-body);
     color: var(--ink);
   }
 
   .help {
     display: block;
-    font: 400 12.5px/1.35 var(--sans);
+    font: 400 12.5px/1.35 var(--font-body);
     color: var(--muted);
   }
 
@@ -288,12 +425,12 @@
   }
 
   .holder {
-    font-family: var(--sans);
+    font-family: var(--font-body);
     font-size: 12.5px;
   }
 
   .holder .kind {
-    font: 500 11px/1 var(--sans);
+    font: 500 11px/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -357,23 +494,11 @@
     gap: 4px;
   }
 
-  .savebar {
-    position: sticky;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 24px;
-    padding: 10px 14px;
-    background: var(--paper-raised);
-    border: 1px solid var(--rule-strong);
-    border-radius: 6px;
-    box-shadow: var(--shadow-pop);
+  .tabs {
+    margin: 18px 0 4px;
   }
 
-  .savebar span {
-    margin-right: auto;
-    font-style: italic;
-    font-family: var(--serif);
+  .leave {
+    margin: 0;
   }
 </style>

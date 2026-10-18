@@ -5,8 +5,9 @@
 
 import type { Me, Meta, PriorityRef } from '../core/types.js';
 import { api, ApiError, setUnauthorizedHandler } from './api.js';
+import { adoptAccountLocale } from './locale.js';
 import { router } from './router.svelte.js';
-import { paths } from '../core/route.js';
+import { isPublicRoute, paths } from '../core/route.js';
 
 class Session {
   me = $state<Me | null>(null);
@@ -15,18 +16,22 @@ class Session {
 
   async init(): Promise<void> {
     setUnauthorizedHandler(() => this.expired());
+    // The account speaks another language: the page reloads in it, still booting.
+    let reloading = false;
     try {
       this.me = await api.me();
-      this.meta = await api.meta();
+      reloading = adoptAccountLocale(this.me.locale);
+      if (!reloading) this.meta = await api.meta();
     } catch (e) {
       if (!(e instanceof ApiError) || e.status !== 401) throw e;
       this.me = null;
     } finally {
-      this.ready = true;
+      if (!reloading) this.ready = true;
     }
   }
 
   async signedIn(me: Me): Promise<void> {
+    if (adoptAccountLocale(me.locale)) return;
     this.me = me;
     this.meta = await api.meta();
   }
@@ -41,9 +46,9 @@ class Session {
   }
 
   private expired(): void {
-    if (this.me === null && router.route.name === 'login') return;
+    if (this.me === null && isPublicRoute(router.route)) return;
     this.me = null;
-    if (router.route.name !== 'login') {
+    if (!isPublicRoute(router.route)) {
       router.navigate(paths.login(router.here), { replace: true });
     }
   }

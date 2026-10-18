@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="draw" viewBox="0 0 180 96" width="180" height="96">
+  <!-- The detail callout circle (dashed) and its target cross. -->
+  <style>
+    path, circle { fill: none; stroke: #000; stroke-width: 1.2; stroke-linecap: round; }
+    circle { stroke-dasharray: 5 3; }
+    :target circle, :target path { opacity: 0; animation: show 0.6s 1.2s ease-out forwards; }
+    @keyframes show { to { opacity: 1; } }
+  </style>
+  <circle cx="84" cy="46" r="16" />
+  <path d="M80 46h8M84 42v8" />
+</svg>

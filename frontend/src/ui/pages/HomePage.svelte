@@ -1,7 +1,7 @@
 <script lang="ts">
   import { localParts } from '../../core/dates.js';
   import { paths } from '../../core/route.js';
-  import { renderDay, t } from '../../i18n/fr.js';
+  import { renderDay, t } from '../../i18n/t.js';
   import { session } from '../../lib/session.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
 
@@ -19,11 +19,13 @@
   });
 </script>
 
-<div class="page">
+<div class="page" data-title={t.home.title}>
   <header class="page-head">
     <div>
       <p class="eyebrow">{today}</p>
-      <h1>{session.me ? t.home.greeting(session.me.name.split(' ')[0] ?? '') : t.home.title}</h1>
+      <h1 class="page-title">
+        {session.me ? t.home.greeting(session.me.name.split(' ')[0] ?? '') : t.home.title}
+      </h1>
     </div>
   </header>
 

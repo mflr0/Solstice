@@ -1,0 +1,280 @@
+<script lang="ts">
+  import { tokenState, type TokenState } from '../../core/admin-integrations.js';
+  import {
+    TOKEN_SHOWS,
+    creatorsProblem,
+    filterTokens,
+    sameCreators,
+    type TokenShow,
+  } from '../../core/admin-ops.js';
+  import type { AccessToken, Group, TokenSettings } from '../../core/admin-types.js';
+  import { formatNumber } from '../../i18n/format.js';
+  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { adminApi } from '../../lib/admin-api.js';
+  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { notify } from '../../lib/ui.svelte.js';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
+  import EmptyState from '../EmptyState.svelte';
+
+  /**
+   * Every account's personal access tokens, to revoke, and who may create
+   * them: administrators only, the members of a group, or everyone.
+   */
+  const WHO: TokenSettings['who'][] = ['admins', 'group', 'everyone'];
+  const STAMPS: Record<TokenState, string> = { active: 'done', expiring: 'doing', expired: '' };
+
+  let tokens = $state<AccessToken[] | null>(null);
+  let error = $state('');
+  let q = $state('');
+  let show = $state<TokenShow>('all');
+  let revoking = $state<AccessToken | null>(null);
+
+  let policy = $state<TokenSettings | null>(null);
+  let policyOff = $state(false);
+  let groups = $state<Group[]>([]);
+  let who = $state<TokenSettings['who']>('admins');
+  let group = $state<number | null>(null);
+  let policyError = $state('');
+  let saving = $state(false);
+
+  const now = $derived(new Date());
+  const list = $derived(filterTokens(tokens ?? [], q, show, now));
+  const groupProblem = $derived(creatorsProblem(who, group));
+  const dirty = $derived(policy !== null && !sameCreators(policy, who, group));
+
+  function adopt(s: TokenSettings) {
+    policy = s;
+    who = s.who;
+    group = s.group?.id ?? null;
+  }
+
+  async function load() {
+    try {
+      tokens = await adminApi.tokens('');
+      error = '';
+    } catch (e) {
+      error = errorMessage(e);
+    }
+  }
+
+  $effect(() => {
+    void load();
+    adminApi
+      .tokenSettings()
+      .then(adopt)
+      .catch((e: unknown) => {
+        // An older server has no policy: the list still works.
+        if (e instanceof ApiError && e.status === 404) policyOff = true;
+        else policyError = errorMessage(e);
+      });
+    adminApi
+      .groups()
+      .then((g) => (groups = g))
+      .catch(() => (groups = []));
+  });
+
+  async function save(e: SubmitEvent) {
+    e.preventDefault();
+    if (groupProblem) return;
+    saving = true;
+    policyError = '';
+    try {
+      adopt(
+        await adminApi.saveTokenSettings(who, who === 'group' ? (group ?? undefined) : undefined),
+      );
+      notify(t.tokensAdmin.policySaved);
+    } catch (err) {
+      policyError = errorMessage(err);
+    } finally {
+      saving = false;
+    }
+  }
+
+  function clear() {
+    q = '';
+    show = 'all';
+  }
+</script>
+
+<header class="page-head">
+  <div>
+    <p class="eyebrow">{t.adminArea.groups.integrations}</p>
+    <h1 class="page-title">
+      {t.adminArea.sections.tokens}
+      {#if tokens}<span class="count muted">{formatNumber(tokens.length)}</span>{/if}
+    </h1>
+  </div>
+</header>
+<p class="lead-text">{t.tokensAdmin.intro}</p>
+
+{#if !policyOff}
+  <section class="card policy" aria-labelledby="token-policy">
+    <h2 class="card-head" id="token-policy">{t.tokensAdmin.policyTitle}</h2>
+    <div class="card-body">
+      <p class="muted small">{t.tokensAdmin.policyIntro}</p>
+      {#if policyError}<p class="error-text" role="alert">{policyError}</p>{/if}
+      {#if policy}
+        <form class="policy-form" onsubmit={save} novalidate>
+          <fieldset class="choices">
+            <legend class="sr-only">{t.tokensAdmin.policyTitle}</legend>
+            {#each WHO as w (w)}
+              <label class="check">
+                <input type="radio" name="token-who" value={w} bind:group={who} />
+                <span>{t.tokensAdmin.who[w]}</span>
+              </label>
+            {/each}
+          </fieldset>
+          {#if who === 'group'}
+            <label class="field">
+              <span>{t.tokensAdmin.group}</span>
+              <select class="select" bind:value={group} aria-invalid={!!groupProblem}>
+                <option value={null}>{t.tokensAdmin.groupPlaceholder}</option>
+                {#each groups as g (g.id)}<option value={g.id}>{g.name}</option>{/each}
+              </select>
+              {#if groups.length === 0}
+                <span class="hint">{t.tokensAdmin.noGroups}</span>
+              {:else if policy.who === 'group' && !policy.group}
+                <span class="field-error">{t.tokensAdmin.groupGone}</span>
+              {/if}
+            </label>
+            {#if groupProblem && dirty}
+              <p class="field-error">{t.tokensAdmin.problems[groupProblem]}</p>
+            {/if}
+          {/if}
+          <div>
+            <button
+              class="btn btn-primary"
+              type="submit"
+              disabled={saving || !dirty || !!groupProblem}
+              >{saving ? t.common.saving : t.common.save}</button
+            >
+          </div>
+        </form>
+      {:else if !policyError}
+        <p class="muted loading">{t.common.loading}</p>
+      {/if}
+    </div>
+  </section>
+{/if}
+
+<div class="list-tools">
+  <input
+    class="input search"
+    type="search"
+    bind:value={q}
+    placeholder={t.tokensAdmin.search}
+    aria-label={t.tokensAdmin.search}
+  />
+  <select class="select" bind:value={show} aria-label={t.tokensAdmin.show}>
+    {#each TOKEN_SHOWS as s (s)}<option value={s}>{t.tokensAdmin.shows[s]}</option>{/each}
+  </select>
+</div>
+
+{#if error}
+  <p class="error-text" role="alert">{error}</p>
+{:else if !tokens}
+  <p class="muted loading">{t.common.loading}</p>
+{:else if tokens.length === 0}
+  <EmptyState message={t.tokensAdmin.empty} hint={t.tokensAdmin.emptyHint} />
+{:else if list.length === 0}
+  <EmptyState kind="search" message={t.adminArea.noMatch}>
+    <button class="btn" onclick={clear}>{t.adminArea.clearSearch}</button>
+  </EmptyState>
+{:else}
+  <div class="table-scroll">
+    <table class="ledger tokens">
+      <thead>
+        <tr>
+          <th>{t.tokensAdmin.colOwner}</th>
+          <th>{t.tokensAdmin.colName}</th>
+          <th class="c-created">{t.tokensAdmin.colCreated}</th>
+          <th class="c-used">{t.tokensAdmin.colUsed}</th>
+          <th>{t.tokensAdmin.colExpires}</th>
+          <th><span class="sr-only">{t.common.actions}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each list as tok (tok.id)}
+          {@const state = tokenState(tok, now)}
+          <tr class:is-off={state === 'expired' || tok.user?.active === false}>
+            <td>
+              {#if tok.user}
+                {tok.user.name}
+                <span class="key muted">{tok.user.username}</span>
+                {#if !tok.user.active}<span class="stamp">{t.tokensAdmin.inactiveOwner}</span>{/if}
+              {/if}
+            </td>
+            <td>{tok.name}</td>
+            <td class="c-created muted" title={formatDateTime(tok.created)}
+              >{relative(tok.created)}</td
+            >
+            <td
+              class="c-used muted"
+              title={tok.lastUsed ? formatDateTime(tok.lastUsed) : undefined}
+            >
+              {tok.lastUsed ? relative(tok.lastUsed) : t.tokensAdmin.neverUsed}
+            </td>
+            <td>
+              <span class="stamp {STAMPS[state]}">{t.tokensAdmin.states[state]}</span>
+              <span
+                class="muted small"
+                title={tok.expires ? formatDateTime(tok.expires) : undefined}
+              >
+                {tok.expires ? relative(tok.expires) : t.tokensAdmin.never}
+              </span>
+            </td>
+            <td class="row-actions">
+              <button class="link-btn" onclick={() => (revoking = tok)}
+                >{t.tokensAdmin.revoke}</button
+              >
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+{/if}
+
+<ConfirmDialog
+  open={revoking !== null}
+  title={t.tokensAdmin.revokeTitle(revoking?.name ?? '')}
+  confirm={t.tokensAdmin.revoke}
+  onclose={() => (revoking = null)}
+  onconfirm={async () => {
+    if (!revoking) return;
+    await adminApi.revokeToken(revoking.id);
+    notify(t.tokensAdmin.revoked);
+    void load();
+  }}
+>
+  <p>{t.tokensAdmin.revokeBody(revoking?.user?.name ?? '')}</p>
+</ConfirmDialog>
+
+<style>
+  .count {
+    margin-left: 6px;
+    font: 500 14px/1 var(--font-mono);
+  }
+
+  .policy {
+    max-width: 720px;
+    margin-bottom: 26px;
+  }
+
+  .policy-form {
+    display: grid;
+    gap: 12px;
+  }
+
+  @media (max-width: 760px) {
+    .c-created {
+      display: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .c-used {
+      display: none;
+    }
+  }
+</style>

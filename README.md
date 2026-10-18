@@ -62,6 +62,11 @@ installs MariaDB and creates the database with its account; without it, the
 setup wizard asks for an existing database. Running the script again with a
 newer archive upgrades in place.
 
+Updates started from the administration are installed only if the release's
+`SHA256SUMS` carries a valid signature (`SHA256SUMS.sig`) by the release key
+written in `/usr/local/lib/solstice/update.sh`; that script is replaced by
+`install.sh`, not by the updates themselves. It needs OpenSSL 1.1.1 or later.
+
 ### First start: the setup wizard
 
 When no database is configured, or the database has no account yet, Solstice
@@ -72,19 +77,69 @@ creates the administrator or imports a Jira instance.
 
 ### Configuration
 
-Settings live in a file of `KEY=value` lines, found through `-config`, then
+Settings live in a file of `KEY=value` lines, found through
 `SOLSTICE_CONFIG`, then `./solstice.conf`, then `/etc/solstice/solstice.conf`.
 Environment variables of the same name take precedence; `solstice -h` lists
-them. `GET /healthz` answers 200 when the database responds and 503 otherwise.
+them. An unknown `SOLSTICE_` key in the file or the environment is reported
+in the log at start. `GET /healthz` answers 200 when the database responds
+and 503 otherwise.
+
+| Key | Default | |
+|---|---|---|
+| `SOLSTICE_DB_URL` | none | MariaDB database, see below |
+| `SOLSTICE_DB_MAXOPENCONNS` | `20` | open connections at most |
+| `SOLSTICE_DB_MAXIDLECONNS` | `10` | idle connections kept, at most `MAXOPENCONNS` |
+| `SOLSTICE_DB_CONNMAXLIFETIME` | `5m` | a connection's lifetime |
+| `SOLSTICE_DATA` | `./data` | data directory |
+| `SOLSTICE_TZ` | the system's | time zone of dates typed in searches, e.g. `Europe/Paris` |
+| `SOLSTICE_SECRETKEY` | `<data>/secret.key` | key of the stored secrets, see below |
+| `SOLSTICE_INSTALL` | none | `docker` in the image: the update page explains how to update a container |
+| `SOLSTICE_HTTP_ADDR` | `:8080` | listen address |
+| `SOLSTICE_HTTP_BASEURL` | none | public address, e.g. `https://tickets.example.org` |
+| `SOLSTICE_HTTP_TRUSTEDPROXIES` | none | reverse proxies, see below |
+| `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | time given to requests and e-mails in progress on stop |
+| `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | size of one upload; `KB`, `MB`, `GB` count in 1000s, `KiB`, `MiB`, `GiB` in 1024s. Raise the proxy's limit too (`client_max_body_size` for nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | total size of all attachments; `0` means no limit |
+| `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
+
+Durations are written `30s`, `5m`, `1h30m`.
+
+`SOLSTICE_DB_URL` is `mysql://user:password@host:3306/database`; percent-encode
+special characters of the password (`@` as `%40`). To encrypt the link to a
+database on another machine, add `?tls=true` (certificate checked), or
+`?tls=skip-verify` (encrypted, certificate not checked) or `?tls=preferred`;
+`tls=false` is the default. No other option after `?` is accepted, and
+Solstice refuses to start on one. Error messages never print the password.
 
 Put an HTTPS reverse proxy in front of Solstice. The session cookie becomes
-`Secure` behind a proxy that sends `X-Forwarded-Proto: https`.
+`Secure` behind a proxy that sends `X-Forwarded-Proto: https`, but only if that
+proxy is listed in `SOLSTICE_HTTP_TRUSTEDPROXIES` (IP addresses or CIDR ranges,
+separated by commas, empty by default) or `SOLSTICE_HTTP_BASEURL` starts with
+`https://`. Without either, the header is ignored: cookies are not `Secure`,
+links in REST responses are `http://`, and Solstice logs a warning (at most once
+an hour). Failed sign-ins are counted per client address: the same list lets
+Solstice read the client from `X-Forwarded-For` and not the proxy's address
+for everyone. See `deploy/proxy/README.md`.
 
 The SMTP password and webhook secrets are encrypted with the key in
-`SOLSTICE_SECRET_KEY` (32 bytes in base64 or hex, for example
+`SOLSTICE_SECRETKEY` (32 bytes in base64 or hex, for example
 `openssl rand -base64 32`), or else with `<data>/secret.key`, created when
 first needed. Back up this key along with the database and the data
 directory: without it, those secrets have to be entered again.
+
+## Documentation
+
+Operations guides, in English and in [French](docs/fr/):
+
+- [Installation](docs/en/install.md): Linux, Docker, the setup wizard and
+  every setting.
+- [Reverse proxy](docs/en/reverse-proxy.md): HTTPS, the public address and
+  trusted proxies.
+- [Backups](docs/en/backups.md): what to back up, dump and restore, and what
+  `secret.key` protects.
+- [Upgrades](docs/en/upgrades.md): the integrated update, manual and Docker
+  upgrades.
 
 ## Migrating from Jira
 
@@ -99,7 +154,10 @@ solstice import \
 
 - `-from`: the Jira database, `postgres://…` or `mysql://…`. Read access is
   enough. For a consistent result, stop Jira first or import from a copy of
-  its database.
+  its database. Options after `?` are limited to `tls` (`true`, `false`,
+  `skip-verify`, `preferred`), `timeout`, `readTimeout` and `charset` for
+  MySQL, and `sslmode` and `connect_timeout` for PostgreSQL; any other option
+  is refused.
 - `-tz`: the time zone of the Jira server (Administration › System info).
   MySQL stores dates without a time zone, and dates without a time (due
   dates, versions) depend on it with both engines.
@@ -107,6 +165,29 @@ solstice import \
   metadata is imported.
 - `-replace`: overwrites existing Solstice data (otherwise the import refuses
   a non-empty database). The import can be run again: identifiers are kept.
+- `-check`: audits the Jira database without importing anything (see below).
+
+To know what an import will do before running it, add `-check`:
+
+```bash
+solstice import -check \
+  -from postgres://jira:secret@db-jira:5432/jira \
+  -jira-home /var/atlassian/application-data/jira
+```
+
+It reads the Jira database as the import does and writes nothing: no Solstice
+database is needed (`SOLSTICE_DB_URL` can be unset), no file is copied, and
+`-tz` is optional (counts do not depend on it). The report gives the Jira
+version when the database records it, and the counts: projects, issues,
+comments, work logs, attachments (and, with `-jira-home`, how many have their
+file), users (and how many have a usable password), groups, roles, workflows,
+custom fields by type, boards, sprints and saved filters. It lists everything
+the import would leave out and why (rows that point at something missing,
+grantees Solstice cannot express, workflow conditions, validators and post
+functions, attachment files not found…), then the warnings the import itself
+would give. `-json` prints the same as JSON. The exit status is 0 if the import
+would work, 1 if it would refuse the source, for example a schema older than
+Jira 7, and 2 if the database could not be read.
 
 The final report lists what was imported and what deserves a look. Imported:
 
@@ -140,8 +221,9 @@ notification settings).
 
 - SMTP server: set in the administration (host, port, security none /
   STARTTLS / TLS, user name, sender), with a test message that shows the
-  server's exact error. The public address (`SOLSTICE_BASE_URL`) is used for
-  links in e-mails; without it, e-mails go out without links.
+  server's exact error. A user name is sent only over TLS or STARTTLS, except
+  to a server on the same machine. The public address (`SOLSTICE_HTTP_BASEURL`)
+  is used for links in e-mails; without it, e-mails go out without links.
 - Notifications: watchers, reporter, assignee and mentioned people
   (`[~username]`). Each person picks their events, immediate delivery
   (changes to the same issue less than two minutes apart go in one e-mail) or
@@ -178,7 +260,7 @@ development one from `compose.yaml` explicitly, or put it in
 `backend/solstice.conf`):
 
 ```bash
-export SOLSTICE_DB=mysql://solstice:solstice@localhost:13306/solstice
+export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice
 cd backend && go run ./cmd/solstice serve      # API on http://localhost:8080
 cd frontend && pnpm dev                       # interface on http://localhost:5173
 ```
@@ -190,7 +272,22 @@ password is printed).
 
 `make build` produces the single binary with the interface embedded,
 `make docker` the image, and `make release VERSION=x.y.z` the archives for
-Linux, macOS and Windows with their SHA256SUMS.
+Linux, macOS and Windows with their SHA256SUMS and `SHA256SUMS.sig`, an
+Ed25519 signature of that file. Releasing needs the private key, named by
+`SOLSTICE_RELEASE_KEY` and kept off the repository. To create the key pair
+once:
+
+```bash
+umask 077
+openssl genpkey -algorithm ed25519 -out ~/solstice-release-key.pem
+openssl pkey -in ~/solstice-release-key.pem -pubout    # the public key
+```
+
+Paste the public key (the `-----BEGIN PUBLIC KEY-----` block) in place of the
+placeholder `release_pubkey` in `deploy/linux/update.sh` and commit it. Until
+then the update helper refuses every update. Then
+`SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
+`deploy/linux/test-update-signature.sh` tests the check with a throwaway key.
 
 ### Tests
 
@@ -251,8 +348,11 @@ scripts/                end-to-end import test, release archives
 - Administrators configure, they don't read everything: being an
   administrator gives no access to projects or confidential issues.
 - Sub-tasks always follow the security level of their parent.
-- Sign-in: after five failures for the same user name or the same address,
-  attempts are suspended for a minute, then longer.
+- Sign-in: after five failures from the same address, or for the same user
+  name from the same address, that address is suspended for a minute, then
+  longer. An account is never locked: its right password always works, but
+  when many wrong passwords come in for it from anywhere, wrong answers are
+  held back by up to ten seconds, so nobody can lock an administrator out.
 
 ## Roadmap
 

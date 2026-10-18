@@ -1,12 +1,13 @@
 <script lang="ts">
+  import { writeLocation } from '../../core/filters-url.js';
+  import { quote } from '../../core/jql.js';
   import { paths } from '../../core/route.js';
-  import type { ProjectDetail, SearchMode } from '../../core/types.js';
-  import { formatDay, t } from '../../i18n/fr.js';
+  import type { ProjectDetail } from '../../core/types.js';
+  import { formatDay, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { openCreate } from '../../lib/ui.svelte.js';
-  import IssueQuery from '../IssueQuery.svelte';
-  import SearchBox from '../SearchBox.svelte';
+  import IssueSearch from '../search/IssueSearch.svelte';
   import Who from '../Who.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
 
@@ -16,14 +17,16 @@
   }
   const { projectKey }: Props = $props();
 
-  const DEFAULT_Q = 'est:ouvert';
+  /** Without a search in the address, the open issues. */
+  const DEFAULT_JQL = 'statusCategory != Done';
   let detail = $state<ProjectDetail | null>(null);
   let error = $state('');
-  let total = $state(0);
-  let mode = $state<SearchMode>('simple');
-  const q = $derived(router.param('q') ?? DEFAULT_Q);
-  const page = $derived(Number(router.param('page') ?? '1') || 1);
-  let draft = $derived(q);
+
+  /** This page, its list filtered by a field's value (a version, a component). */
+  function filtered(key: string, field: string, value: string): string {
+    const jql = `${field} = ${quote(value)}`;
+    return paths.project(key) + writeLocation({ jql, mode: null, filter: null, page: 1 });
+  }
 
   $effect(() => {
     const key = projectKey;
@@ -39,29 +42,28 @@
       })
       .catch((e: unknown) => (error = errorMessage(e)));
   });
-
-  function search(v: string) {
-    router.setParams({ q: v === DEFAULT_Q ? null : v, page: null });
-  }
 </script>
 
 {#if error}
   <NotFoundPage message={error} />
 {:else if !detail}
-  <div class="page"><p class="muted">{t.common.loading}</p></div>
+  <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
   {@const p = detail.project}
-  <div class="page">
+  <div class="page" data-title={p.name}>
     <header class="page-head">
       <div>
         <p class="eyebrow">
           {t.projects.title}{#if p.category}&nbsp;· {p.category}{/if} · {t.projects.kinds[p.kind] ??
             p.kind}
         </p>
-        <h1><span class="pkey">{p.key}</span> {p.name}</h1>
-        {#if p.lead}<p class="lead">{t.projects.lead} : <Who user={p.lead} /></p>{/if}
+        <h1 class="page-title"><span class="pkey">{p.key}</span> {p.name}</h1>
+        {#if p.lead}<p class="lead">
+            {t.projects.lead}{t.common.labelSep}<Who user={p.lead} />
+          </p>{/if}
       </div>
       <div class="row">
+        <a class="btn" href={paths.boards(p.key)}>{t.boards.title}</a>
         {#if detail.can.configure}
           <a class="btn" href={paths.projectSettings(p.key)}>{t.projects.settings}</a>
         {/if}
@@ -83,7 +85,7 @@
                 <a
                   class="chip"
                   class:released={v.released}
-                  href={paths.search(`projet:${p.key} version:"${v.name}"`)}
+                  href={filtered(p.key, 'fixVersion', v.name)}
                   title={v.releaseDate ? formatDay(v.releaseDate) : ''}
                   >{v.name}{#if v.released}<span class="sr-only">
                       ({t.projects.released})</span
@@ -98,9 +100,7 @@
             <dt>{t.projects.components}</dt>
             <dd>
               {#each detail.components.filter((c) => !c.archived) as c (c.id)}
-                <a class="chip" href={paths.search(`projet:${p.key} composant:"${c.name}"`)}
-                  >{c.name}</a
-                >
+                <a class="chip" href={filtered(p.key, 'component', c.name)}>{c.name}</a>
               {/each}
             </dd>
           </div>
@@ -108,32 +108,13 @@
       </dl>
     {/if}
 
-    <div class="tools">
-      <div class="grow"><SearchBox bind:value={draft} onsearch={search} {mode} /></div>
-      <div class="quick" role="group" aria-label={t.projects.filters}>
-        {#each t.projects.quick as f (f.q)}
-          <button class="btn btn-small" class:on={q === f.q} onclick={() => search(f.q)}
-            >{f.label}</button
-          >
-        {/each}
-      </div>
-      <span class="count muted">{t.search.results(total)}</span>
-    </div>
-
-    <IssueQuery
-      {q}
-      project={p.key}
-      {page}
-      ontotal={(n) => (total = n)}
-      onmode={(m) => (mode = m)}
-      onpage={(n) => router.setParams({ page: String(n) }, { replace: false })}
-    />
+    <IssueSearch project={p.key} fallback={DEFAULT_JQL} />
   </div>
 {/if}
 
 <style>
   .pkey {
-    font: 500 0.62em/1 var(--mono);
+    font: 500 0.62em/1 var(--font-mono);
     color: var(--muted);
     vertical-align: 0.2em;
     margin-right: 4px;
@@ -162,7 +143,7 @@
   }
 
   dt {
-    font: 500 12px/1 var(--sans);
+    font: 500 12px/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -185,27 +166,5 @@
     color: var(--muted);
     text-decoration: line-through;
     text-decoration-color: var(--rule-strong);
-  }
-
-  .tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 16px;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-
-  .grow {
-    flex: 1;
-    min-width: 280px;
-  }
-
-  .quick {
-    display: flex;
-    gap: 4px;
-  }
-
-  .count {
-    font: 12.5px var(--mono);
   }
 </style>

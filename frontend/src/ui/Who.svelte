@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { initials } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import type { UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
+  import Picture from './Picture.svelte';
 
-  /** A person: initials in a small square, then the name, linking to their page. */
+  /** A person: their picture, else initials, in a small square, then the name, linking to their page. */
   interface Props {
     user: UserRef | null;
     initialsBox?: boolean | undefined;
@@ -20,7 +20,7 @@
     href={paths.person(user.username)}
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
-    {#if initialsBox}<span class="initials" aria-hidden="true">{initials(user.name)}</span>{/if}
+    {#if initialsBox}<span class="initials avatar" aria-hidden="true"><Picture {user} /></span>{/if}
     <span class="name">{user.name}</span>
   </a>
 {:else}
@@ -48,11 +48,12 @@
     height: 20px;
     flex: none;
     border: 1px solid var(--rule-strong);
-    border-radius: 2px;
+    border-radius: var(--avatar-radius);
     background: var(--paper-raised);
     color: var(--ink-soft);
-    font: 500 9.5px/1 var(--mono);
+    font: 500 9.5px/1 var(--font-mono);
     letter-spacing: 0.02em;
+    overflow: hidden;
   }
 
   .name {

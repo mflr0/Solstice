@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { t } from '../i18n/fr.js';
+  import { formatNumber } from '../i18n/format.js';
+  import { t } from '../i18n/t.js';
 
   /** "51–100 sur 158", with previous / next. */
   interface Props {
@@ -12,13 +13,12 @@
   const first = $derived(total === 0 ? 0 : (page - 1) * size + 1);
   const last = $derived(Math.min(total, page * size));
   const pages = $derived(Math.max(1, Math.ceil(total / size)));
-  const fmt = new Intl.NumberFormat('fr-FR');
 </script>
 
 {#if total > size}
   <nav class="pager" aria-label={t.common.pagination}>
     <span class="range"
-      >{fmt.format(first)}–{fmt.format(last)} {t.common.of} {fmt.format(total)}</span
+      >{t.common.range(formatNumber(first), formatNumber(last), formatNumber(total))}</span
     >
     <button class="btn btn-small" disabled={page <= 1} onclick={() => onpage(page - 1)}
       >← {t.common.previous}</button
@@ -39,7 +39,7 @@
   }
 
   .range {
-    font: 12.5px var(--mono);
+    font: 12.5px var(--font-mono);
     color: var(--muted);
     margin-right: 6px;
   }

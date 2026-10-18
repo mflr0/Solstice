@@ -1,0 +1,26 @@
+[Unit]
+Description=Solstice update helper
+Documentation=https://github.com/mflr0/Solstice
+After=network-online.target
+Wants=network-online.target
+
+# Started by solstice-update.path. Runs as root: it replaces the binary and
+# restarts the service. See the threat model at the top of update.sh.
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/solstice/update.sh
+TimeoutStartSec=30min
+UMask=0077
+
+# Writes only where an update needs to: the binary, the previous one, the
+# helper's directories under /var/lib/solstice. Its work files are private.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/usr/local/bin /usr/local/lib/solstice /var/lib/solstice
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes

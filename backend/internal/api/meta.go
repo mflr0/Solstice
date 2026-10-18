@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/live"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
+	"strings"
+	"sync"
+	"time"
 )
 
 func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
@@ -25,7 +28,7 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	like := "%" + escapeLike(q) + "%"
 	out := []userRef{}
-	err := scanAll(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
+	err := sqlq.Each(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
 		WHERE active AND (username LIKE ? OR LOWER(display_name) LIKE ?) ORDER BY display_name LIMIT 20`,
 		func(rows *sql.Rows) error {
 			var u userRef
@@ -60,6 +63,10 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err != nil {
 		return err
+	}
+	// The address is private: only an administrator and the person see it.
+	if me := currentUser(r); !me.Admin && me.ID != u.ID {
+		email = ""
 	}
 	cat, err := s.catalogue(r.Context())
 	if err != nil {
@@ -120,7 +127,7 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 		for i, u := range in.Users[:n] {
 			args[i] = strings.ToLower(u)
 		}
-		err := scanAll(r.Context(), s.db, `SELECT username, display_name FROM users WHERE username IN (`+marks(n)+`)`,
+		err := sqlq.Each(r.Context(), s.db, `SELECT username, display_name FROM users WHERE username IN (`+sqlq.Marks(n)+`)`,
 			func(rows *sql.Rows) error {
 				var username, name string
 				if err := rows.Scan(&username, &name); err != nil {
@@ -142,17 +149,61 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+const (
+	maxStreamsPerUser = 10
+	maxStreamsTotal   = 1000
+)
+
+type streamSlots struct {
+	mu      sync.Mutex
+	perUser map[int64]int
+	total   int
+}
+
+func (c *streamSlots) acquire(user int64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.perUser == nil {
+		c.perUser = map[int64]int{}
+	}
+	if c.total >= maxStreamsTotal || c.perUser[user] >= maxStreamsPerUser {
+		return false
+	}
+	c.total++
+	c.perUser[user]++
+	return true
+}
+
+func (c *streamSlots) release(user int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.total--
+	if c.perUser[user]--; c.perUser[user] == 0 {
+		delete(c.perUser, user)
+	}
+}
+
 // events streams change notifications (Server-Sent Events). Permissions are
 // re-read every minute so a revoked access stops the flow.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		return fail(http.StatusInternalServerError, "Flux non pris en charge.")
+		return fail(http.StatusInternalServerError, i18n.RequestStreamingUnsupported)
 	}
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
 	}
+	return s.streamEvents(w, r, flusher, sub)
+}
+
+// streamEvents ends when the client goes away, the server shuts down or the
+// session behind the stream ends, so its slot is always given back.
+func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, flusher http.Flusher, sub *perm.Subject) error {
+	if !s.streams.acquire(sub.UserID) {
+		return fail(http.StatusTooManyRequests, i18n.RequestTooManyStreams)
+	}
+	defer s.streams.release(sub.UserID)
 	current := make(chan *perm.Subject, 1)
 	current <- sub
 	can := func(e live.Event) bool {
@@ -177,6 +228,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
 	for {
 		select {
 		case <-r.Context().Done():
+			return nil
+		case <-s.streamsDone:
 			return nil
 		case e := <-ch:
 			data, _ := json.Marshal(e)

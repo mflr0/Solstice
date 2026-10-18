@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <!-- Orbite: the sun travelling on the outer orbit behind the sign-in card. Used as a mask. -->
+  <circle cx="70.2" cy="326.6" r="8"/>
+  <circle cx="70.2" cy="326.6" r="14" fill="none" stroke="#000" stroke-opacity=".35"/>
+</svg>

@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/sqlq"
 )
 
 // importFilters copies saved searches with their shares and favourites. JQL
@@ -12,6 +14,7 @@ import (
 // dropped, so a filter is never shown to more people than in Jira.
 func (r *run) importFilters() error {
 	filters := map[int64]bool{}
+	r.filters = map[int64]string{}
 	ins := r.inserter("filters", "id", "owner_id", "name", "description", "query", "created_at", "updated_at")
 	now := time.Now().UTC()
 	if err := r.each(`SELECT id, filtername, description, username, authorname, reqcontent FROM searchrequest`, func(rows *sql.Rows) error {
@@ -28,7 +31,8 @@ func (r *run) importFilters() error {
 			return err
 		}
 		filters[id] = true
-		return ins.add(id, ownerID, truncate(orDefault(name, "Filtre "+strconv.FormatInt(id, 10)), 255), nstr(desc),
+		r.filters[id] = query.String
+		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), 255), sqlq.Value(desc),
 			query.String, now, now)
 	}); err != nil {
 		return err
@@ -36,7 +40,7 @@ func (r *run) importFilters() error {
 	if err := ins.flush(); err != nil {
 		return err
 	}
-	r.rep.step("filtres enregistrés", ins.total, 0)
+	r.rep.step("saved filters", ins.total, 0)
 
 	shares := r.inserter("filter_shares", "filter_id", "kind", "group_id", "project_id", "role_id", "user_id")
 	skipped := 0
@@ -85,7 +89,7 @@ func (r *run) importFilters() error {
 	if err := shares.flush(); err != nil {
 		return err
 	}
-	r.rep.step("partages de filtres", shares.total, skipped)
+	r.rep.step("filter shares", shares.total, skipped)
 
 	favs := r.inserter("filter_favourites", "filter_id", "user_id")
 	seen := map[[2]int64]bool{}
@@ -110,6 +114,6 @@ func (r *run) importFilters() error {
 	if err := favs.flush(); err != nil {
 		return err
 	}
-	r.rep.step("filtres favoris", favs.total, skipped)
+	r.rep.step("favorite filters", favs.total, skipped)
 	return nil
 }

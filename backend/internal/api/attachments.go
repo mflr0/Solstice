@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"solstice/internal/i18n"
 	"strconv"
 	"strings"
 	"time"
@@ -16,8 +17,13 @@ import (
 	"solstice/internal/perm"
 )
 
-// maxUpload caps a single upload request.
-const maxUpload = 100 << 20
+// SetMaxUpload caps a single upload request, in bytes. Call it before the
+// server takes requests.
+func (s *Server) SetMaxUpload(n int64) { s.maxUpload = n }
+
+// SetMaxStorage caps the total size of all attachments, in bytes; 0 for no
+// limit. Call it before the server takes requests.
+func (s *Server) SetMaxStorage(n int64) { s.maxStorage = n }
 
 func (s *Server) attachmentPath(id int64) string {
 	return filepath.Join(s.dataDir, "attachments", strconv.FormatInt(id, 10))
@@ -37,27 +43,42 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	if !sub.Can(perm.Attach, iss.ProjectID, &pi) {
 		return errForbidden
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
+	r.Body = http.MaxBytesReader(w, r.Body, s.maxUpload)
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return fail(http.StatusBadRequest, "Envoi de fichier invalide.")
+		return fail(http.StatusBadRequest, i18n.AttachmentUploadInvalid)
 	}
 	if err := os.MkdirAll(filepath.Join(s.dataDir, "attachments"), 0o750); err != nil {
 		return err
 	}
 	var names []string
 	now := time.Now().UTC()
+	// The quota is what the database stores, not what the disk holds.
+	var stored int64
+	if s.maxStorage > 0 {
+		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
+			return err
+		}
+		// A body is at least as long as its parts, so one over the quota is
+		// refused whole before any file is written.
+		if r.ContentLength > 0 && stored+r.ContentLength > s.maxStorage {
+			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+		}
+	}
 	for {
 		part, err := reader.NextPart()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return fail(http.StatusRequestEntityTooLarge, "Fichier trop volumineux (100 Mo au plus).")
+			return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 		}
 		name := cleanFilename(part.FileName())
 		if name == "" {
 			continue
+		}
+		if s.maxStorage > 0 && stored >= s.maxStorage {
+			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 		}
 		mimeType := part.Header.Get("Content-Type")
 		if mimeType == "" {
@@ -69,21 +90,29 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		id, _ := res.LastInsertId()
-		size, err := writeFile(s.attachmentPath(id), part)
+		var src io.Reader = part
+		if s.maxStorage > 0 {
+			src = &quotaReader{r: part, left: s.maxStorage - stored}
+		}
+		size, err := writeFile(s.attachmentPath(id), src)
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
-				return fail(http.StatusRequestEntityTooLarge, "Fichier trop volumineux (100 Mo au plus).")
+				return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
+			}
+			if errors.Is(err, errStorageQuota) {
+				return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 			}
 			return err
 		}
 		if _, err := s.db.ExecContext(ctx, `UPDATE attachments SET size = ? WHERE id = ?`, size, id); err != nil {
 			return err
 		}
+		stored += size
 		names = append(names, name)
 	}
 	if len(names) == 0 {
-		return fail(http.StatusBadRequest, "Aucun fichier reçu.")
+		return fail(http.StatusBadRequest, i18n.AttachmentNoFile)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -103,13 +132,33 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.publish(iss, "attachment", sub.UserID)
-	return s.respondIssue(w, r, sub, iss.ID)
+	s.changed(iss, sub.UserID, "attachment", changes)
+	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
+}
+
+var errStorageQuota = errors.New("attachment storage quota reached")
+
+type quotaReader struct {
+	r    io.Reader
+	left int64
+}
+
+func (q *quotaReader) Read(p []byte) (int, error) {
+	if int64(len(p)) > q.left+1 {
+		p = p[:q.left+1]
+	}
+	n, err := q.r.Read(p)
+	if int64(n) > q.left {
+		n = int(q.left)
+		err = errStorageQuota
+	}
+	q.left -= int64(n)
+	return n, err
 }
 
 func writeFile(path string, src io.Reader) (int64, error) {
 	tmp := path + ".part"
-	f, err := os.Create(tmp)
+	f, err := os.Create(tmp) // #nosec G304 -- path built by the server, not from user input
 	if err != nil {
 		return 0, err
 	}
@@ -196,11 +245,11 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if a.missing {
-		return fail(http.StatusNotFound, "Le fichier n'a pas été retrouvé lors de l'import depuis Jira.")
+		return fail(http.StatusNotFound, i18n.AttachmentNotImported)
 	}
 	f, err := os.Open(s.attachmentPath(a.id))
 	if errors.Is(err, os.ErrNotExist) {
-		return fail(http.StatusNotFound, "Fichier absent du dossier de données.")
+		return fail(http.StatusNotFound, i18n.AttachmentFileMissing)
 	}
 	if err != nil {
 		return err
@@ -250,15 +299,15 @@ func (s *Server) deleteAttachment(w http.ResponseWriter, r *http.Request) error 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, a.id); err != nil {
 		return err
 	}
-	if err := recordChanges(ctx, tx, a.issue.ID, sub.UserID, now, []change{{field: "Attachment",
-		oldValue: strconv.FormatInt(a.id, 10), oldString: a.name}}); err != nil {
+	removed := []change{{field: "Attachment", oldValue: strconv.FormatInt(a.id, 10), oldString: a.name}}
+	if err := recordChanges(ctx, tx, a.issue.ID, sub.UserID, now, removed); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	os.Remove(s.attachmentPath(a.id))
-	s.publish(a.issue, "attachment", sub.UserID)
+	s.changed(a.issue, sub.UserID, "attachment", removed)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

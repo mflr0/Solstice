@@ -5,14 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+
+	"solstice/internal/i18n"
+	"solstice/internal/jql"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"solstice/internal/jql"
-	"solstice/internal/perm"
 )
 
 // Saved filters: a name on a query (JQL or simple syntax), private to their
@@ -81,7 +83,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 		q += ` WHERE f.id = ?`
 		args = append(args, only)
 	}
-	if err := scanAll(ctx, s.db, q, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 		f := &filterRow{}
 		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.out.Favourite); err != nil {
 			return err
@@ -92,7 +94,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	if err := scanAll(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
+	if err := sqlq.Each(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
 		g.name, p.pkey, r.name, u.display_name
 		FROM filter_shares sh
 		LEFT JOIN user_groups g ON g.id = sh.group_id
@@ -187,7 +189,8 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) filterForEdit(r *http.Request, sub *perm.Subject) (*filterRow, error) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
+	// loadFilters reads id 0 as "every filter", so 0 must not get that far.
+	if err != nil || id <= 0 {
 		return nil, errNotFound
 	}
 	rows, err := s.loadFilters(r.Context(), sub, id)
@@ -213,7 +216,7 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
 		if n == "" || utf8.RuneCountInString(n) > 255 {
-			return fail(http.StatusBadRequest, "Le nom du filtre est obligatoire (255 caractères au plus).")
+			return fail(http.StatusBadRequest, i18n.FilterNameRequired)
 		}
 	}
 	if in.Query != nil && jql.LooksLike(*in.Query) {
@@ -229,14 +232,14 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 		case "everyone":
 		case "group":
 			if !sub.InGroup(sh.ID) && !sub.Admin {
-				return fail(http.StatusBadRequest, "On ne partage qu'avec un groupe dont on fait partie.")
+				return fail(http.StatusBadRequest, i18n.FilterShareGroupNotMember)
 			}
 		case "project":
 			if !sub.CanBrowseProject(sh.ID) {
-				return fail(http.StatusBadRequest, "Projet introuvable.")
+				return fail(http.StatusBadRequest, i18n.ProjectNotFound)
 			}
 			if sh.Role != 0 && !sub.HasRole(sh.ID, sh.Role) && !sub.Admin {
-				return fail(http.StatusBadRequest, "On ne partage qu'avec un rôle que l'on a dans le projet.")
+				return fail(http.StatusBadRequest, i18n.FilterShareRoleNotHeld)
 			}
 		case "user":
 			var n int
@@ -244,10 +247,10 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 				return err
 			}
 			if n == 0 {
-				return fail(http.StatusBadRequest, "Personne introuvable.")
+				return fail(http.StatusBadRequest, i18n.FilterSharePersonNotFound)
 			}
 		default:
-			return fail(http.StatusBadRequest, "Partage inconnu : "+sh.Kind+".")
+			return failf(http.StatusBadRequest, i18n.FilterShareKindUnknown, sh.Kind)
 		}
 	}
 	return nil
@@ -289,7 +292,7 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.Name == nil || in.Query == nil {
-		return fail(http.StatusBadRequest, "Un filtre a un nom et une requête.")
+		return fail(http.StatusBadRequest, i18n.FilterIncomplete)
 	}
 	if err := s.checkFilter(ctx, sub, in); err != nil {
 		return err
@@ -317,6 +320,9 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return err
+	}
+	if in.Shares != nil {
+		s.auditFilterShares(r, id, strings.TrimSpace(*in.Name), nil, *in.Shares)
 	}
 	rows, err := s.loadFilters(ctx, sub, id)
 	if err != nil || len(rows) == 0 {
@@ -376,6 +382,9 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return err
+	}
+	if in.Shares != nil {
+		s.auditFilterShares(r, f.out.ID, f.out.Name, f.out.Shares, *in.Shares)
 	}
 	rows, err := s.loadFilters(ctx, sub, f.out.ID)
 	if err != nil {

@@ -1,24 +1,25 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { legacyBoardPath } from '../core/board.js';
   import { projectOfKey } from '../core/marks.js';
-  import { paths, safeNext } from '../core/route.js';
-  import { t } from '../i18n/fr.js';
+  import { isPublicRoute, paths, safeNext } from '../core/route.js';
+  import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
   import { interceptLinks, router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
-  import { applyTheme, dialogs, isTyping, notify, openCreate, theme } from '../lib/ui.svelte.js';
+  import { dialogs, initAppearance, isTyping, notify, openCreate } from '../lib/ui.svelte.js';
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
   import Notes from './Notes.svelte';
-  import AdminUsersPage from './pages/AdminUsersPage.svelte';
+  import ForgotPage from './pages/ForgotPage.svelte';
   import HomePage from './pages/HomePage.svelte';
   import LoginPage from './pages/LoginPage.svelte';
   import NotFoundPage from './pages/NotFoundPage.svelte';
-  import PersonPage from './pages/PersonPage.svelte';
   import ProjectPage from './pages/ProjectPage.svelte';
-  import ProjectSettingsPage from './pages/ProjectSettingsPage.svelte';
   import ProjectsPage from './pages/ProjectsPage.svelte';
+  import ResetPage from './pages/ResetPage.svelte';
   import SearchPage from './pages/SearchPage.svelte';
+  import ShellBanner from './ShellBanner.svelte';
   import TopBar from './TopBar.svelte';
 
   const route = $derived(router.route);
@@ -37,11 +38,12 @@
   });
 
   onMount(() => {
-    applyTheme(theme.value);
+    const stopAppearance = initAppearance();
     session.init().catch(() => notify(t.errors.network, 'error'));
     document.addEventListener('click', interceptLinks);
     window.addEventListener('keydown', shortcuts);
     return () => {
+      stopAppearance();
       document.removeEventListener('click', interceptLinks);
       window.removeEventListener('keydown', shortcuts);
     };
@@ -59,9 +61,17 @@
     }
   });
 
+  // Old board addresses (/secure/RapidBoard.jspa?rapidView=…) lead to the board.
+  $effect(() => {
+    if (session.me && route.name === 'legacyBoard') {
+      const to = legacyBoardPath(router.path, router.search) ?? paths.boards();
+      router.navigate(to, { replace: true });
+    }
+  });
+
   // Not signed in: every page leads to the sign-in form, remembering where to go back.
   $effect(() => {
-    if (session.ready && !session.me && route.name !== 'login') {
+    if (session.ready && !session.me && !isPublicRoute(route)) {
       router.navigate(paths.login(router.here), { replace: true });
     }
   });
@@ -80,33 +90,123 @@
   }
 </script>
 
+{#snippet pending()}
+  <div class="page"><p class="muted loading">{t.common.loading}</p></div>
+{/snippet}
+
+{#snippet failed()}
+  <div class="page"><p class="error-text" role="alert">{t.errors.pageLoad}</p></div>
+{/snippet}
+
 {#if !session.ready}
-  <p class="booting muted">{t.common.loading}</p>
+  <p class="app-booting booting muted loading">{t.common.loading}</p>
+{:else if route.name === 'forgot'}
+  <ForgotPage />
+{:else if route.name === 'reset'}
+  {#key route.token}<ResetPage token={route.token} />{/key}
 {:else if !session.me || route.name === 'login'}
   <LoginPage />
 {:else}
-  <TopBar {project} />
-  <main>
-    {#if route.name === 'home'}
-      <HomePage />
-    {:else if route.name === 'projects'}
-      <ProjectsPage />
-    {:else if route.name === 'project'}
-      <ProjectPage projectKey={route.key} />
-    {:else if route.name === 'projectSettings'}
-      <ProjectSettingsPage projectKey={route.key} />
-    {:else if route.name === 'search'}
-      <SearchPage />
-    {:else if route.name === 'issue'}
-      <IssuePage issueKey={route.key} />
-    {:else if route.name === 'person'}
-      {#key route.username}<PersonPage username={route.username} />{/key}
-    {:else if route.name === 'adminUsers'}
-      <AdminUsersPage />
-    {:else}
-      <NotFoundPage />
-    {/if}
-  </main>
+  <div class="app-shell">
+    <TopBar {project} />
+    <ShellBanner />
+    <main class="app-main">
+      {#if route.name === 'home'}
+        <HomePage />
+      {:else if route.name === 'projects'}
+        <ProjectsPage />
+      {:else if route.name === 'project'}
+        <ProjectPage projectKey={route.key} />
+      {:else if route.name === 'projectSettings'}
+        {#await import('./pages/ProjectSettingsPage.svelte')}
+          {@render pending()}
+        {:then { default: ProjectSettingsPage }}
+          <ProjectSettingsPage projectKey={route.key} />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'search'}
+        <SearchPage />
+      {:else if route.name === 'issue'}
+        <IssuePage issueKey={route.key} />
+      {:else if route.name === 'person'}
+        {#key route.username}{#await import('./pages/PersonPage.svelte')}
+            {@render pending()}
+          {:then { default: PersonPage }}
+            <PersonPage username={route.username} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
+      {:else if route.name === 'admin'}
+        {#await import('./admin/AdminArea.svelte')}
+          {@render pending()}
+        {:then { default: AdminArea }}
+          <AdminArea section={route.section} item={route.item} />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'account'}
+        {#await import('./account/AccountArea.svelte')}
+          {@render pending()}
+        {:then { default: AccountArea }}
+          <AccountArea section={route.section} />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'themes'}
+        {#await import('./pages/ThemesPage.svelte')}
+          {@render pending()}
+        {:then { default: ThemesPage }}
+          <ThemesPage />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'boards'}
+        {#await import('./pages/BoardsPage.svelte')}
+          {@render pending()}
+        {:then { default: BoardsPage }}
+          <BoardsPage />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'board'}
+        {#key route.id}{#await import('./pages/BoardPage.svelte')}
+            {@render pending()}
+          {:then { default: BoardPage }}
+            <BoardPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
+      {:else if route.name === 'backlog'}
+        {#key route.id}{#await import('./pages/BacklogPage.svelte')}
+            {@render pending()}
+          {:then { default: BacklogPage }}
+            <BacklogPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
+      {:else if route.name === 'boardSettings'}
+        {#key route.id}{#await import('./pages/BoardSettingsPage.svelte')}
+            {@render pending()}
+          {:then { default: BoardSettingsPage }}
+            <BoardSettingsPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
+      {:else if route.name === 'legacyBoard'}
+        <div class="page"><p class="muted loading">{t.common.loading}</p></div>
+      {:else}
+        <NotFoundPage />
+      {/if}
+    </main>
+    <footer class="app-statusbar">
+      <span class="statusbar-cell">{t.statusbar.ready}</span>
+      <span class="statusbar-cell" class:is-live={live.connected}
+        >{live.connected ? t.nav.live : t.nav.offline}</span
+      >
+      <span class="statusbar-cell">{session.me.name}</span>
+    </footer>
+  </div>
   <NewIssueDialog />
 {/if}
 <Notes />

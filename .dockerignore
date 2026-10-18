@@ -1,0 +1,20 @@
+# Only the sources go into the build: everything else (private database
+# dumps, imported data, caches, the Jira distribution) stays out.
+*
+!backend/
+!frontend/
+
+backend/solstice
+backend/jira-fixture
+backend/internal/web/dist/*
+!backend/internal/web/dist/.gitkeep
+frontend/node_modules
+frontend/coverage
+**/.DS_Store
+**/*.sql
+**/*.sql.gz
+**/*.dump
+# …but the schema migrations are source code.
+!backend/internal/db/migrations/*.sql
+backend/data
+backend/solstice.conf

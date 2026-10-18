@@ -1,12 +1,13 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { HiddenIssue, IssueDetail, IssueLink } from '../../core/types.js';
-  import { t } from '../../i18n/fr.js';
+  import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
+  import { isSafeUrl } from '../../core/wiki.js';
 
   /** Issues linked to this one, grouped by relation, and external links. */
   interface Props {
@@ -143,9 +144,13 @@
         {#each issue.remoteLinks as r (r.id)}
           <li>
             <span class="arrow" aria-hidden="true">↗</span>
-            <a href={r.url} target="_blank" rel="nofollow noopener noreferrer" class="summary"
-              >{r.title}</a
-            >
+            {#if isSafeUrl(r.url)}
+              <a href={r.url} target="_blank" rel="nofollow noopener noreferrer" class="summary"
+                >{r.title}</a
+              >
+            {:else}
+              <span class="summary">{r.title}</span>
+            {/if}
             {#if r.relationship}<span class="muted">{r.relationship}</span>{/if}
           </li>
         {/each}
@@ -166,7 +171,7 @@
 
   .target {
     width: 140px;
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     text-transform: uppercase;
   }
 
@@ -175,7 +180,7 @@
   }
 
   .relation {
-    font: 500 12px/1.4 var(--sans);
+    font: 500 12px/1.4 var(--font-body);
     color: var(--muted);
     margin: 0 0 4px;
   }
@@ -218,6 +223,6 @@
   }
 
   .del:hover {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 </style>

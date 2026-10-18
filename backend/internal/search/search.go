@@ -22,6 +22,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // Field is what a filter applies to.
@@ -55,12 +58,12 @@ var prefixes = map[string]Field{
 }
 
 // categories maps est:/is: values to status categories.
-var categories = map[string][]string{
-	"ouvert": {"todo", "doing"}, "open": {"todo", "doing"},
-	"à-faire": {"todo"}, "a-faire": {"todo"}, "todo": {"todo"},
-	"en-cours": {"doing"}, "doing": {"doing"},
-	"fini": {"done"}, "fermé": {"done"}, "ferme": {"done"}, "résolu": {"done"}, "resolu": {"done"},
-	"done": {"done"}, "closed": {"done"}, "resolved": {"done"},
+var categories = map[string][]issue.StatusCategory{
+	"ouvert": {issue.Todo, issue.Doing}, "open": {issue.Todo, issue.Doing},
+	"à-faire": {issue.Todo}, "a-faire": {issue.Todo}, "todo": {issue.Todo},
+	"en-cours": {issue.Doing}, "doing": {issue.Doing},
+	"fini": {issue.Done}, "fermé": {issue.Done}, "ferme": {issue.Done}, "résolu": {issue.Done}, "resolu": {issue.Done},
+	"done": {issue.Done}, "closed": {issue.Done}, "resolved": {issue.Done},
 }
 
 // Sort orders: SQL on the issues alias i, projects alias p, priorities alias pr.
@@ -193,8 +196,10 @@ func (q Query) SQL(me int64) (string, []any) {
 		for _, k := range q.Keys {
 			m := issueKey.FindStringSubmatch(k)
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			keys = append(keys, "(p.pkey = ? AND i.num = ?)")
-			args = append(args, m[1], num)
+			// The key of an issue moved to another project still finds it.
+			keys = append(keys, "(("+sqlq.ProjectKey("p", "?")+" AND i.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
+				"WHERE mk.issue_id = i.id AND mk.old_key = ?))")
+			args = append(args, m[1], m[1], num, m[1]+"-"+strconv.FormatInt(num, 10))
 		}
 		conds = append(conds, "("+strings.Join(keys, " OR ")+")")
 	}
@@ -263,11 +268,12 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 		if !ok {
 			return "FALSE", nil
 		}
-		return "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + marks(len(cats)) + "))", anys(cats)
+		return "i.status_id IN (SELECT id FROM statuses WHERE category IN (" + sqlq.Marks(len(cats)) + "))", anys(cats)
 	case Type:
 		return "i.issue_type_id IN (SELECT id FROM issue_types WHERE name = ?)", []any{v}
 	case Project:
-		return "(p.pkey = ? OR p.name = ?)", []any{strings.ToUpper(v), v}
+		key := strings.ToUpper(v)
+		return "(" + sqlq.ProjectKey("p", "?") + " OR p.name = ?)", []any{key, key, v}
 	case Priority:
 		return "i.priority_id IN (SELECT id FROM priorities WHERE name = ?)", []any{v}
 	case Label:
@@ -341,9 +347,7 @@ func escapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
-func marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
-
-func anys(xs []string) []any {
+func anys[T any](xs []T) []any {
 	out := make([]any, len(xs))
 	for i, x := range xs {
 		out[i] = x

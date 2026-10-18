@@ -4,15 +4,17 @@
 //
 // Supported: AND, OR, NOT, parentheses; the operators = != ~ !~ > >= < <=
 // IN, NOT IN, IS EMPTY, IS NOT EMPTY; functions such as currentUser(),
-// membersOf(), now(), startOfDay(); relative dates (-7d, 2w); ORDER BY.
-// History operators (WAS, CHANGED) are not supported yet.
+// membersOf(), now(), startOfDay(); relative dates (-7d, 2w); ORDER BY;
+// the history operators WAS, WAS NOT, WAS IN, WAS NOT IN and CHANGED, with
+// their predicates AFTER, BEFORE, ON, DURING, BY, FROM and TO.
 package jql
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"solstice/internal/i18n"
 )
 
 // Node is a boolean expression.
@@ -25,7 +27,16 @@ type Not struct{ Inner Node }
 // Clause is "field operator value(s)".
 type Clause struct {
 	Field  string
-	Op     string // = != ~ !~ > >= < <= in "not in" is "is not"
+	Op     string // = != ~ !~ > >= < <= in "not in" is "is not" was "was not" "was in" "was not in" changed
+	Values []Value
+	Preds  []Predicate // history clauses only
+	Pos    int         // where the clause starts in the query, in characters
+}
+
+// Predicate narrows a history clause: AFTER, BEFORE, ON, DURING, BY, and for
+// CHANGED, FROM and TO.
+type Predicate struct {
+	Kind   string // after, before, on, during, by, from, to
 	Values []Value
 }
 
@@ -54,13 +65,20 @@ type Query struct {
 	Order []Sort
 }
 
-// Error is a syntax error, with a French message for the user.
+// Error is a syntax or meaning error, with a message for the user: callers
+// can render i18n.M(Key, Args...) in their language.
 type Error struct {
-	Pos int
-	Msg string
+	Pos  int
+	Key  i18n.Key
+	Args []any
 }
 
-func (e *Error) Error() string { return e.Msg }
+func (e *Error) Error() string { return i18n.M(e.Key, e.Args...).String() }
+
+// errAt builds an Error at a position (in characters) of the query.
+func errAt(pos int, key i18n.Key, args ...any) *Error {
+	return &Error{Pos: pos, Key: key, Args: args}
+}
 
 type tokKind int
 
@@ -109,7 +127,7 @@ func lex(s string) ([]token, error) {
 				i++
 			}
 			if i >= len(r) {
-				return nil, &Error{start, "Guillemet non refermé."}
+				return nil, errAt(start, i18n.JQLUnclosedQuote)
 			}
 			i++
 			out = append(out, token{tString, sb.String(), start})
@@ -120,7 +138,7 @@ func lex(s string) ([]token, error) {
 				op += string(r[i+1])
 			}
 			if op == "!" {
-				return nil, &Error{start, "Opérateur « ! » incomplet."}
+				return nil, errAt(start, i18n.JQLIncompleteBang)
 			}
 			i += len([]rune(op))
 			out = append(out, token{tOp, op, start})
@@ -131,7 +149,7 @@ func lex(s string) ([]token, error) {
 				i++
 			}
 			if i == start {
-				return nil, &Error{start, fmt.Sprintf("Caractère inattendu « %c ».", c)}
+				return nil, errAt(start, i18n.JQLUnexpectedChar, c)
 			}
 			out = append(out, token{tWord, string(r[start:i]), start})
 		}
@@ -140,8 +158,9 @@ func lex(s string) ([]token, error) {
 }
 
 type parser struct {
-	toks []token
-	i    int
+	toks  []token
+	i     int
+	depth int // nesting of parentheses and NOT, see maxDepth
 }
 
 func (p *parser) peek() token { return p.toks[p.i] }
@@ -168,12 +187,24 @@ func (p *parser) keyword(words ...string) bool {
 	return false
 }
 
-func (p *parser) errorf(format string, args ...any) error {
-	return &Error{p.peek().pos, fmt.Sprintf(format, args...)}
+func (p *parser) errorf(key i18n.Key, args ...any) error {
+	return errAt(p.peek().pos, key, args...)
 }
+
+// Limits that keep a hostile query from exhausting the stack: a stack
+// overflow is a fatal error that ends the whole process.
+const (
+	// MaxQueryLen is the longest query Parse accepts, in bytes.
+	MaxQueryLen = 20000
+	// maxDepth is the deepest nesting of parentheses and NOT.
+	maxDepth = 64
+)
 
 // Parse reads a JQL query.
 func Parse(s string) (*Query, error) {
+	if len(s) > MaxQueryLen {
+		return nil, errAt(0, i18n.JQLTooLong, MaxQueryLen)
+	}
 	toks, err := lex(s)
 	if err != nil {
 		return nil, err
@@ -188,13 +219,13 @@ func Parse(s string) (*Query, error) {
 	if p.keyword("order") {
 		p.next()
 		if !p.keyword("by") {
-			return nil, p.errorf("« BY » attendu après « ORDER ».")
+			return nil, p.errorf(i18n.JQLOrderBy)
 		}
 		p.next()
 		for {
 			t := p.next()
 			if t.kind != tWord && t.kind != tString {
-				return nil, p.errorf("Champ de tri attendu.")
+				return nil, p.errorf(i18n.JQLSortFieldExpected)
 			}
 			s := Sort{Field: t.text}
 			if p.keyword("asc", "desc") {
@@ -208,7 +239,7 @@ func Parse(s string) (*Query, error) {
 		}
 	}
 	if p.peek().kind != tEOF {
-		return nil, p.errorf("« %s » inattendu.", p.peek().text)
+		return nil, p.errorf(i18n.JQLUnexpected, p.peek().text)
 	}
 	return q, nil
 }
@@ -246,6 +277,11 @@ func (p *parser) and() (Node, error) {
 }
 
 func (p *parser) not() (Node, error) {
+	if p.depth >= maxDepth {
+		return nil, errAt(p.peek().pos, i18n.JQLTooDeep, maxDepth)
+	}
+	p.depth++
+	defer func() { p.depth-- }()
 	if p.keyword("not") {
 		p.next()
 		inner, err := p.not()
@@ -261,7 +297,7 @@ func (p *parser) not() (Node, error) {
 			return nil, err
 		}
 		if p.next().kind != tRParen {
-			return nil, p.errorf("Parenthèse fermante attendue.")
+			return nil, p.errorf(i18n.JQLParenExpected)
 		}
 		return inner, nil
 	}
@@ -271,9 +307,9 @@ func (p *parser) not() (Node, error) {
 func (p *parser) clause() (Node, error) {
 	f := p.next()
 	if f.kind != tWord && f.kind != tString {
-		return nil, p.errorf("Nom de champ attendu.")
+		return nil, p.errorf(i18n.JQLFieldExpected)
 	}
-	c := Clause{Field: f.text}
+	c := Clause{Field: f.text, Pos: f.pos}
 	switch t := p.peek(); {
 	case t.kind == tOp:
 		c.Op = p.next().text
@@ -283,7 +319,7 @@ func (p *parser) clause() (Node, error) {
 	case p.keyword("not"):
 		p.next()
 		if !p.keyword("in") {
-			return nil, p.errorf("« IN » attendu après « NOT ».")
+			return nil, p.errorf(i18n.JQLNotIn)
 		}
 		p.next()
 		c.Op = "not in"
@@ -294,38 +330,43 @@ func (p *parser) clause() (Node, error) {
 			p.next()
 			c.Op = "is not"
 		}
-	case p.keyword("was", "changed"):
-		return nil, p.errorf("L'historique (« %s ») n'est pas encore pris en charge.", strings.ToUpper(t.text))
-	default:
-		return nil, p.errorf("Opérateur attendu après « %s ».", f.text)
-	}
-
-	if c.Op == "in" || c.Op == "not in" {
-		if p.peek().kind != tLParen {
-			// A function returning a list: assignee in membersOf("devs").
+	case p.keyword("was"):
+		p.next()
+		c.Op = "was"
+		if p.keyword("not") {
+			p.next()
+			c.Op = "was not"
+		}
+		if p.keyword("in") {
+			p.next()
+			c.Op += " in"
+			vals, err := p.list()
+			if err != nil {
+				return nil, err
+			}
+			c.Values = vals
+		} else {
 			v, err := p.value()
 			if err != nil {
 				return nil, err
 			}
 			c.Values = []Value{v}
-			return c, nil
 		}
+		return p.predicates(c)
+	case p.keyword("changed"):
 		p.next()
-		for {
-			v, err := p.value()
-			if err != nil {
-				return nil, err
-			}
-			c.Values = append(c.Values, v)
-			if p.peek().kind == tComma {
-				p.next()
-				continue
-			}
-			if p.next().kind != tRParen {
-				return nil, p.errorf("Parenthèse fermante attendue.")
-			}
-			break
+		c.Op = "changed"
+		return p.predicates(c)
+	default:
+		return nil, p.errorf(i18n.JQLOperatorExpected, f.text)
+	}
+
+	if c.Op == "in" || c.Op == "not in" {
+		vals, err := p.list()
+		if err != nil {
+			return nil, err
 		}
+		c.Values = vals
 		return c, nil
 	}
 	v, err := p.value()
@@ -333,9 +374,70 @@ func (p *parser) clause() (Node, error) {
 		return nil, err
 	}
 	if (c.Op == "is" || c.Op == "is not") && !v.Empty {
-		return nil, p.errorf("« IS » s'emploie avec EMPTY.")
+		return nil, p.errorf(i18n.JQLIsEmpty)
 	}
 	c.Values = []Value{v}
+	return c, nil
+}
+
+// list reads the values after IN: a parenthesised list, or a function
+// returning a list (assignee in membersOf("devs")).
+func (p *parser) list() ([]Value, error) {
+	if p.peek().kind != tLParen {
+		v, err := p.value()
+		if err != nil {
+			return nil, err
+		}
+		return []Value{v}, nil
+	}
+	p.next()
+	var vals []Value
+	for {
+		v, err := p.value()
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+		if p.peek().kind == tComma {
+			p.next()
+			continue
+		}
+		if p.next().kind != tRParen {
+			return nil, p.errorf(i18n.JQLParenExpected)
+		}
+		return vals, nil
+	}
+}
+
+// predicates reads what follows WAS … or CHANGED.
+func (p *parser) predicates(c Clause) (Node, error) {
+	for p.keyword("after", "before", "on", "during", "by", "from", "to") {
+		kind := strings.ToLower(p.next().text)
+		if (kind == "from" || kind == "to") && c.Op != "changed" {
+			return nil, p.errorf(i18n.JQLChangedOnly, strings.ToUpper(kind))
+		}
+		var vals []Value
+		var err error
+		switch {
+		case kind == "during":
+			if p.peek().kind != tLParen {
+				return nil, p.errorf(i18n.JQLDuringDates)
+			}
+			if vals, err = p.list(); err == nil && len(vals) != 2 {
+				err = p.errorf(i18n.JQLDuringDates)
+			}
+		case kind == "by" && p.peek().kind == tLParen:
+			vals, err = p.list()
+		default:
+			var v Value
+			v, err = p.value()
+			vals = []Value{v}
+		}
+		if err != nil {
+			return nil, err
+		}
+		c.Preds = append(c.Preds, Predicate{Kind: kind, Values: vals})
+	}
 	return c, nil
 }
 
@@ -354,7 +456,7 @@ func (p *parser) value() (Value, error) {
 			for p.peek().kind != tRParen {
 				a := p.next()
 				if a.kind != tWord && a.kind != tString {
-					return Value{}, p.errorf("Argument de %s() invalide.", t.text)
+					return Value{}, p.errorf(i18n.JQLArgumentInvalid, t.text)
 				}
 				v.Args = append(v.Args, a.text)
 				if p.peek().kind == tComma {
@@ -366,13 +468,42 @@ func (p *parser) value() (Value, error) {
 		}
 		return Value{Text: t.text}, nil
 	}
-	return Value{}, &Error{t.pos, "Valeur attendue."}
+	return Value{}, errAt(t.pos, i18n.JQLValueExpected)
 }
 
 // looksLike recognises JQL typed in the search bar: a known field followed by
 // an operator, or an ORDER BY.
-var looksLike = regexp.MustCompile(`(?i)(^|[\s(])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|cf\[\d+\]|"[^"]+")\s*(=|!=|~|!~|>=?|<=?|\s+in\s*\(|\s+not\s+in\s|\s+is\s)|\border\s+by\b`)
+var looksLike = regexp.MustCompile(`(?i)(^|[\s(])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|commenter|participants?|involves|cf\[\d+\]|"[^"]+")\s*(=|!=|~|!~|>=?|<=?|\s+in\s*\(|\s+not\s+in\s|\s+is\s|\s+was\s|\s+changed\b)|\border\s+by\b`)
 
 // LooksLike reports whether a search string is JQL rather than the simple
 // search syntax.
 func LooksLike(s string) bool { return looksLike.MatchString(s) }
+
+// Projects returns the project keys or names a query is limited to by
+// top-level "project = X" or "project in (…)" clauses joined with AND, or
+// nil when it may span any project.
+func Projects(q *Query) []string {
+	var out []string
+	var walk func(Node) bool
+	walk = func(n Node) bool {
+		switch n := n.(type) {
+		case And:
+			l, r := walk(n.Left), walk(n.Right)
+			return l || r
+		case Clause:
+			if strings.EqualFold(n.Field, "project") && (n.Op == "=" || n.Op == "in") {
+				for _, v := range n.Values {
+					if v.Func == "" && !v.Empty {
+						out = append(out, v.Text)
+					}
+				}
+				return true
+			}
+		}
+		return false
+	}
+	if q == nil || q.Where == nil || !walk(q.Where) {
+		return nil
+	}
+	return out
+}

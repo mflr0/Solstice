@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="draw" viewBox="0 0 180 96" width="180" height="96">
+  <!-- An empty room in plan: walls, a door and its swing, a window, the
+       crossed lines of a void, a dimension line. Plan skin, empty lists. -->
+  <style>
+    path { fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; }
+    .l { stroke-width: 1.5; }
+    .t { stroke-width: 0.8; }
+    .h { stroke-width: 0.8; stroke-dasharray: 4 3; }
+    :target .l, :target .t { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1.2s ease-out forwards; }
+    :target .t { animation-duration: 0.7s; animation-delay: 0.9s; }
+    :target .h { opacity: 0; animation: show 0.6s 1.3s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes show { to { opacity: 1; } }
+  </style>
+  <path class="l" pathLength="100" d="M40 82H20V14H160V34M160 58V82H64" />
+  <path class="l" pathLength="100" d="M40 76H26V20H154V34M154 58V76H64" />
+  <path class="t" pathLength="100" d="M40 76V82M64 76V82M154 34H160M154 58H160M156 34V58M158 34V58" />
+  <path class="l" pathLength="100" d="M40 76V52" />
+  <path class="h" d="M40 52A24 24 0 0 1 64 76M30 23 150 73M150 23 30 73" />
+  <path class="t" pathLength="100" d="M20 91H160M20 86V94M160 86V94M17 94l6-6M157 94l6-6" />
+</svg>

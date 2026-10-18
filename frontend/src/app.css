@@ -1,28 +1,48 @@
 /*
- * Design tokens and shared styles. Art direction: a site logbook ("carnet de
+ * Design tokens and shared styles.
+ *
+ * Carnet, the default skin, is defined here: a site logbook ("carnet de
  * chantier"), kept light — cream paper, black ink, one vermilion accent,
- * statuses printed like rubber stamps, lists ruled with hairlines, the issue
- * record on a plain card. Light and dark follow the system, with an explicit
- * data-theme override.
+ * statuses printed like rubber stamps, hairline rules, the issue record on a
+ * plain card. Every rule below draws Carnet from tokens; the other skins live
+ * in src/themes/<id>.css, redefine the tokens and reshape the hooks listed in
+ * src/themes/ANATOMY.md.
+ *
+ * The skin root (<html>, or a .skin-preview in the theme gallery) carries
+ * data-skin and data-scheme (the light/dark actually in effect; see
+ * src/core/appearance.ts).
  */
 
-:root {
+/* Carnet ------------------------------------------------------------------ */
+
+:where(:root),
+[data-skin='carnet'] {
+  --desk: var(--paper);
   --paper: #f4f1ea;
   --paper-raised: #faf8f3;
   --paper-sunk: #ece7dc;
   --ink: #1c1b19;
   --ink-soft: #4a4740;
-  --muted: #7a756a;
+  --muted: #6c685e;
   --rule: #e6e0d4;
   --rule-strong: #cfc7b7;
   --accent: #d9381e;
-  --accent-ink: #ffffff;
+  /* The vermilion, a shade deeper, where it is text. */
+  --accent-text: #c2321b;
   --accent-wash: rgba(217, 56, 30, 0.05);
+  --primary: var(--accent);
+  --primary-ink: #ffffff;
+  --sun: #d9381e;
+  --focus: var(--accent);
+  --bar: var(--paper-raised);
+  --bar-ink: var(--ink);
+  --bar-ink-soft: var(--ink-soft);
   --margin-line: rgba(217, 56, 30, 0.38);
   --shadow-pop: 0 10px 30px rgba(28, 27, 25, 0.1), 0 1px 3px rgba(28, 27, 25, 0.08);
+  --backdrop: rgba(28, 27, 25, 0.38);
   --ink-blend: multiply;
 
-  /* Stamp inks, one per status category. */
+  /* Status inks, one per category. */
   --stamp-todo: #4a4740;
   --stamp-doing: #24508f;
   --stamp-done: #2e6b3c;
@@ -34,41 +54,52 @@
   --tone-task: #2f5a8a;
   --tone-subtask: #6b665c;
 
-  --serif: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
-  --sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* Type: title, body and code roles. */
+  --font-title: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-size: 14px;
+  --title-weight: 600;
+  --h1-weight: 550;
+  --title-tracking: -0.005em;
+  --title-italic: italic;
+  --empty-font: italic 400 15px/1.45 var(--font-title);
+
+  /* Shapes. */
+  --frame: 1px;
+  --radius-xs: 2px;
+  --radius-s: 3px;
+  --radius-m: 4px;
+  --radius-l: 6px;
+  --avatar-radius: 2px;
+  --card-top: 2px solid var(--accent);
+
+  /* Statuses. */
+  --stamp-font: 500 10.5px/1.25 var(--font-body);
+  --stamp-case: uppercase;
+  --stamp-tracking: 0.07em;
+  --stamp-border: 1px;
+  --stamp-radius: 3px;
+  --stamp-padding: 2px 6px 1px;
+  --stamp-fill: 0%;
+  --stamp-dot: none;
+  --stamp-large-size: 12px;
+  --stamp-large-padding: 4px 10px 3px;
+  --stamp-large-border: 1.5px;
+  --stamp-large-tracking: 0.1em;
+  --stamp-large-turn: rotate(-1deg);
+
+  /* Page background, section rules, loading mark. */
+  --page-texture: none;
+  --page-texture-size: auto;
+  --rule-stroke: var(--rule);
+  --rule-height: 1px;
+  --loader: none;
 
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #1a1916;
-    --paper-raised: #22211d;
-    --paper-sunk: #151412;
-    --ink: #ebe6da;
-    --ink-soft: #c4beb0;
-    --muted: #8f897b;
-    --rule: #2c2a26;
-    --rule-strong: #403d36;
-    --accent: #ec5a3d;
-    --accent-wash: rgba(236, 90, 61, 0.1);
-    --margin-line: rgba(236, 90, 61, 0.35);
-    --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
-    --ink-blend: normal;
-    --stamp-todo: #b4ad9e;
-    --stamp-doing: #7ea6e0;
-    --stamp-done: #7fbf8c;
-    --tone-bug: #e08a7a;
-    --tone-story: #8fc196;
-    --tone-epic: #b39ad8;
-    --tone-task: #86aedb;
-    --tone-subtask: #a49e90;
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
+[data-skin='carnet'][data-scheme='dark'] {
   --paper: #1a1916;
   --paper-raised: #22211d;
   --paper-sunk: #151412;
@@ -78,9 +109,14 @@
   --rule: #2c2a26;
   --rule-strong: #403d36;
   --accent: #ec5a3d;
+  --accent-text: #ec5a3d;
   --accent-wash: rgba(236, 90, 61, 0.1);
+  /* A deeper fill keeps white text readable on the main button. */
+  --primary: #cb4d34;
+  --sun: #ec5a3d;
   --margin-line: rgba(236, 90, 61, 0.35);
   --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --backdrop: rgba(28, 27, 25, 0.38);
   --ink-blend: normal;
   --stamp-todo: #b4ad9e;
   --stamp-doing: #7ea6e0;
@@ -99,36 +135,56 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  background: var(--paper);
+/* The skin root: <html>, or a preview in the theme gallery. */
+:root,
+.skin-preview {
+  background-color: var(--desk);
+  background-image: var(--page-texture);
+  background-size: var(--page-texture-size);
   color: var(--ink);
-  font-family: var(--sans);
-  font-size: 14px;
+  font-family: var(--font-body);
+  font-size: var(--font-size);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 body {
+  margin: 0;
   min-height: 100vh;
+}
+
+/*
+ * While a skin's stylesheet loads (public/theme-boot.js, src/lib/skins.ts):
+ * a blank page of the right brightness rather than a flash of Carnet.
+ */
+:root[data-skin-loading] {
+  background: #ffffff;
+}
+
+:root[data-skin-loading][data-scheme='dark'] {
+  background: #121212;
+  color-scheme: dark;
+}
+
+:root[data-skin-loading] body {
+  visibility: hidden;
 }
 
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--serif);
-  font-weight: 600;
+  font-family: var(--font-title);
+  font-weight: var(--title-weight);
   line-height: 1.2;
   margin: 0;
-  letter-spacing: -0.005em;
+  letter-spacing: var(--title-tracking);
 }
 
 h1 {
   font-size: 26px;
-  font-weight: 550;
+  font-weight: var(--h1-weight);
 }
 
 h2 {
@@ -152,7 +208,7 @@ textarea {
 code,
 kbd,
 .key {
-  font-family: var(--mono);
+  font-family: var(--font-mono);
 }
 
 ::selection {
@@ -160,7 +216,7 @@ kbd,
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -173,12 +229,248 @@ kbd,
   white-space: nowrap;
 }
 
+/* Shell and top bar ------------------------------------------------------- */
+
+/* A column at least a screen tall, so a status bar sits at the foot of short pages. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1 0 auto;
+}
+
+.skin-preview .app-shell {
+  min-height: 0;
+}
+
+/* Shown by skins that want one (a status bar along the bottom). */
+.app-statusbar {
+  display: none;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bar);
+  color: var(--bar-ink);
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  height: 54px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.wordmark {
+  font: var(--title-weight) 21px/1 var(--font-title);
+  letter-spacing: -0.01em;
+}
+
+/* When the bar is short of room the pages scroll sideways inside it, never the page. */
+.topbar-nav {
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar-nav .nav-link {
+  flex: none;
+  white-space: nowrap;
+}
+
+.topbar-nav .nav-link:focus-visible {
+  outline-offset: -2px;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-weight: 500;
+  color: var(--bar-ink-soft);
+  padding: 17px 0 15px;
+  border-bottom: 2px solid transparent;
+}
+
+.nav-link:hover {
+  color: var(--bar-ink);
+}
+
+.nav-link[aria-current='page'] {
+  color: var(--bar-ink);
+  border-bottom-color: var(--accent);
+}
+
+.topbar-search {
+  position: relative;
+  margin-left: auto;
+  width: min(300px, 28vw);
+  /* It gives way long before the pages do. */
+  flex-shrink: 1000;
+}
+
+.topbar-search .input {
+  height: 30px;
+  padding-right: 28px;
+  font: 13px var(--font-mono);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.topbar-search kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--ink);
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  flex: none;
+}
+
+.live-dot.on {
+  border-color: var(--stamp-done);
+  background: var(--stamp-done);
+}
+
+.topbar-themes {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--radius-s);
+  color: var(--bar-ink-soft);
+}
+
+.topbar-themes:hover,
+.topbar-themes[aria-current='page'] {
+  color: var(--bar-ink);
+}
+
+.topbar-themes circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.topbar-themes path {
+  fill: currentColor;
+}
+
+.topbar-create .plus {
+  display: none;
+}
+
+.account {
+  position: relative;
+}
+
+.account-button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.account-button .avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: var(--frame) solid var(--ink-soft);
+  border-radius: var(--avatar-radius);
+  font: 500 11px/1 var(--font-mono);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.account-menu {
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 280px;
+  max-height: min(82vh, 700px);
+}
+
+@media (max-width: 860px) {
+  .topbar-inner {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .topbar-search,
+  .topbar-create kbd {
+    display: none;
+  }
+
+  /* Without the search field, the tools still keep to the right. */
+  .live-dot {
+    margin-left: auto;
+  }
+}
+
+/* A phone: the mark alone leads home and the create button is a "+"; both
+   names stay for screen readers. */
+@media (max-width: 600px) {
+  .topbar .wordmark,
+  .topbar-create .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .topbar-create {
+    padding: 0 9px;
+  }
+
+  /* In em: a skin that sets the button's font-size to 0 hides it too. */
+  .topbar-create .plus {
+    display: inline;
+    font-size: 1.55em;
+    line-height: 1;
+  }
+}
+
+/* The theme gallery stays in the account menu. */
+@media (max-width: 420px) {
+  .topbar-themes {
+    display: none;
+  }
+}
+
 /* Page frame ---------------------------------------------------------------- */
 
 .page {
   max-width: 1280px;
   margin: 0 auto;
   padding: 28px 32px 96px;
+  /* Plain behind the content, so a page texture only shows in the margins. */
+  background: var(--paper);
 }
 
 .page-head {
@@ -192,7 +484,7 @@ kbd,
 }
 
 .eyebrow {
-  font: 500 11px/1.2 var(--sans);
+  font: 500 11px/1.2 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--muted);
@@ -204,19 +496,20 @@ kbd,
   align-items: baseline;
   gap: 10px;
   margin: 30px 0 10px;
-  font: 600 13px/1.2 var(--sans);
+  font: 600 13px/1.2 var(--font-body);
   color: var(--ink);
 }
 
 .section-title::after {
   content: '';
   flex: 1;
-  border-top: 1px solid var(--rule);
-  transform: translateY(-3px);
+  height: var(--rule-height);
+  background: var(--rule-stroke);
+  transform: translateY(calc(-2.5px - var(--rule-height) / 2));
 }
 
 .section-title .count {
-  font: 500 11px/1 var(--mono);
+  font: 500 11px/1 var(--font-mono);
   letter-spacing: 0;
   color: var(--muted);
 }
@@ -235,14 +528,39 @@ kbd,
 
 .empty {
   color: var(--muted);
-  font-style: italic;
-  font-family: var(--serif);
-  font-size: 15px;
+  font: var(--empty-font);
   padding: 10px 0;
 }
 
+/* A loading message; some skins draw a small mark before it. */
+.loading::before {
+  content: '';
+  display: var(--loader);
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  /* The dot sits on the ring; turning the ring makes it orbit. */
+  background: radial-gradient(circle at 50% 0, var(--sun) 0 2.2px, transparent 2.7px);
+  animation: orbit 1.1s linear infinite;
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading::before {
+    animation: none;
+  }
+}
+
 .error-text {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Controls ------------------------------------------------------------------ */
@@ -253,10 +571,10 @@ kbd,
   gap: 6px;
   height: 30px;
   padding: 0 12px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 3px;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-s);
   background: var(--paper-raised);
-  font: 500 13px/1 var(--sans);
+  font: 500 13px/1 var(--font-body);
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -267,14 +585,14 @@ kbd,
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
 }
 
 .btn-primary:hover:not([disabled]) {
-  background: color-mix(in srgb, var(--accent) 86%, black);
-  border-color: color-mix(in srgb, var(--accent) 86%, black);
+  background: color-mix(in srgb, var(--primary) 86%, black);
+  border-color: color-mix(in srgb, var(--primary) 86%, black);
 }
 
 .btn-quiet {
@@ -299,18 +617,27 @@ kbd,
   cursor: default;
 }
 
-.btn.on {
+.btn.on,
+.btn[aria-pressed='true'] {
   border-color: var(--ink);
   background: var(--paper-sunk);
 }
 
+.btn-danger {
+  color: var(--accent-text);
+}
+
+.btn-danger:hover:not([disabled]) {
+  border-color: var(--accent);
+}
+
 .btn kbd,
 .kbd {
-  font: 500 10.5px/1 var(--mono);
+  font: 500 10.5px/1 var(--font-mono);
   padding: 2px 4px 1px;
   border: 1px solid currentColor;
   border-bottom-width: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   opacity: 0.7;
 }
 
@@ -327,15 +654,15 @@ kbd,
 }
 
 .link-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-xs);
   background: var(--paper-raised);
   padding: 6px 8px;
   font-size: 14px;
@@ -350,8 +677,12 @@ kbd,
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+.checkbox {
+  accent-color: var(--accent);
+}
+
 .textarea {
-  font: 13px/1.55 var(--mono);
+  font: 13px/1.55 var(--font-mono);
   resize: vertical;
   min-height: 90px;
 }
@@ -363,7 +694,7 @@ kbd,
 
 .field > span:first-child,
 .field-label {
-  font: 500 12px/1.2 var(--sans);
+  font: 500 12px/1.2 var(--font-body);
   color: var(--ink-soft);
 }
 
@@ -391,14 +722,27 @@ kbd,
   align-items: center;
   gap: 5px;
   color: var(--c);
-  border: 1px solid var(--c);
-  border-radius: 3px;
-  padding: 2px 6px 1px;
-  font: 500 10.5px/1.25 var(--sans);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  border: var(--stamp-border) solid var(--c);
+  border-radius: var(--stamp-radius);
+  padding: var(--stamp-padding);
+  background: color-mix(in srgb, var(--c) var(--stamp-fill), transparent);
+  font: var(--stamp-font);
+  letter-spacing: var(--stamp-tracking);
+  text-transform: var(--stamp-case);
   white-space: nowrap;
   mix-blend-mode: var(--ink-blend);
+}
+
+/* A small planet on its orbit, for skins that want one. */
+.stamp::before {
+  content: '';
+  display: var(--stamp-dot);
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border: 1px solid var(--c);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c) 0 1.8px, transparent 2.3px);
 }
 
 .stamp.doing {
@@ -410,11 +754,11 @@ kbd,
 }
 
 .stamp.large {
-  font-size: 12px;
-  padding: 4px 10px 3px;
-  border-width: 1.5px;
-  letter-spacing: 0.1em;
-  transform: rotate(-1deg);
+  font-size: var(--stamp-large-size);
+  padding: var(--stamp-large-padding);
+  border-width: var(--stamp-large-border);
+  letter-spacing: var(--stamp-large-tracking);
+  transform: var(--stamp-large-turn);
 }
 
 .chip {
@@ -422,10 +766,10 @@ kbd,
   align-items: center;
   gap: 4px;
   padding: 1px 6px;
-  border: 1px solid var(--rule);
-  border-radius: 3px;
+  border: var(--frame) solid var(--rule);
+  border-radius: var(--radius-s);
   background: var(--paper);
-  font: 12px/1.5 var(--mono);
+  font: 12px/1.5 var(--font-mono);
   white-space: nowrap;
 }
 
@@ -435,15 +779,15 @@ kbd,
   padding: 0 0 0 2px;
   color: var(--muted);
   cursor: pointer;
-  font: 13px/1 var(--sans);
+  font: 13px/1 var(--font-body);
 }
 
 .chip button:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .key {
-  font: 500 12.5px/1 var(--mono);
+  font: 500 12.5px/1 var(--font-mono);
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -453,7 +797,7 @@ a.key {
 }
 
 a.key:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
 }
 
@@ -467,7 +811,7 @@ table.ledger {
 
 .ledger th {
   text-align: left;
-  font: 500 12px/1 var(--sans);
+  font: 500 12px/1 var(--font-body);
   color: var(--muted);
   padding: 0 10px 8px;
   border-bottom: 1px solid var(--rule-strong);
@@ -486,14 +830,21 @@ table.ledger {
 
 .ledger .num {
   text-align: right;
-  font-family: var(--mono);
+  font-family: var(--font-mono);
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .ledger th.num {
-  font: 500 12px/1 var(--sans);
+  font: 500 12px/1 var(--font-body);
+}
+
+/* A table wider than the screen scrolls inside this box, not the page. */
+.table-scroll {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* Popovers, menus, dialogs ------------------------------------------------- */
@@ -505,8 +856,8 @@ table.ledger {
   max-height: 340px;
   overflow: auto;
   background: var(--paper-raised);
-  border: 1px solid var(--rule-strong);
-  border-radius: 4px;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-pop);
   padding: 4px 0;
 }
@@ -533,7 +884,7 @@ table.ledger {
 .popover .item[aria-checked='true']::after {
   content: '✓';
   margin-left: auto;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .popover .sep {
@@ -543,13 +894,13 @@ table.ledger {
 
 .popover .group-label {
   padding: 6px 12px 2px;
-  font: 500 11.5px/1 var(--sans);
+  font: 500 11.5px/1 var(--font-body);
   color: var(--muted);
 }
 
 dialog.modal {
-  border: 1px solid var(--rule-strong);
-  border-radius: 6px;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-l);
   background: var(--paper);
   color: var(--ink);
   padding: 0;
@@ -558,7 +909,7 @@ dialog.modal {
 }
 
 dialog.modal::backdrop {
-  background: rgba(28, 27, 25, 0.38);
+  background: var(--backdrop);
 }
 
 .modal-head {
@@ -585,6 +936,308 @@ dialog.modal::backdrop {
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--rule);
+}
+
+/* Panels, tabs, toasts ------------------------------------------------------ */
+
+/* A framed panel with a title bar: the issue record, the sign-in sheet. */
+.card {
+  background: var(--paper-raised);
+  border: var(--frame) solid var(--rule);
+  border-top: var(--card-top);
+  border-radius: var(--radius-m);
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--rule);
+  font: 600 13px/1 var(--font-body);
+  color: var(--ink);
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 8px 14px 7px;
+  margin-bottom: -1px;
+  font: 500 13px var(--font-body);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+/* Folder tabs over an editor. */
+.tabs-folder {
+  gap: 2px;
+  margin-bottom: -1px;
+  border-bottom: none;
+}
+
+.tabs-folder .tab {
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: 0;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tabs-folder .tab[aria-selected='true'] {
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.toasts {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+  max-width: min(440px, calc(100vw - 40px));
+}
+
+.toast {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-left: 3px solid var(--ink-soft);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  font-size: 13.5px;
+}
+
+.toast.error {
+  border-left-color: var(--accent);
+}
+
+/* Unsaved changes: a bar pinned to the bottom of the page, its message first. */
+.savebar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 10px 14px;
+  background: var(--paper-raised);
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-pop);
+}
+
+.savebar > :first-child {
+  margin: 0 auto 0 0;
+  font-style: var(--title-italic);
+  font-family: var(--font-title);
+}
+
+/* An empty-state drawing; skins that have one show it. */
+.illustration {
+  display: none;
+}
+
+/* Boards --------------------------------------------------------------------- */
+
+.sprint-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 10px 0 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.sprint-name {
+  font: var(--title-weight) 17px/1.2 var(--font-title);
+}
+
+.sprint-dates {
+  font: 12px var(--font-mono);
+  color: var(--muted);
+}
+
+.sprint-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(250px, 1fr);
+  gap: 12px;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.board-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  background: var(--paper-sunk);
+  border: var(--frame) solid var(--rule);
+  border-radius: var(--radius-m);
+}
+
+.board-column.is-over {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+}
+
+.board-column-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 10px 7px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.board-column-title {
+  font: 600 12.5px/1.2 var(--font-body);
+  color: var(--ink);
+}
+
+.board-column-count,
+.wip-limit {
+  font: 500 11px/1 var(--font-mono);
+  color: var(--muted);
+}
+
+.wip-limit {
+  margin-left: auto;
+}
+
+.board-column.over-limit {
+  border-color: var(--accent);
+}
+
+.board-column.over-limit .wip-limit {
+  color: var(--accent-text);
+}
+
+.board-cards {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+.board-card {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--paper-raised);
+  border: var(--frame) solid var(--rule);
+  border-radius: var(--radius-s);
+  font-size: 13px;
+  cursor: grab;
+}
+
+.board-card:hover {
+  border-color: var(--rule-strong);
+}
+
+.board-card.is-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.board-column.under-limit .wip-limit {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.sprint-meta {
+  font: 12px var(--font-mono);
+  color: var(--muted);
+}
+
+.sprint-goal {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* Where a dragged card would land: a line between two cards. */
+.drop-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.drop-marker.before {
+  top: -5px;
+}
+
+.drop-marker.after {
+  bottom: -5px;
+}
+
+/* In an empty list. */
+.drop-marker:not(.before, .after) {
+  top: 4px;
+}
+
+/* Swimlanes: a band across the columns, above each lane's cells. */
+.board-lane {
+  background: var(--paper);
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.board-lane-title {
+  font-weight: 600;
+}
+
+.board-lane-count {
+  font: 11px var(--font-mono);
+  color: var(--muted);
+}
+
+/* Theme gallery previews ----------------------------------------------------- */
+
+/* A skin root of its own; contained, so fixed overlays stay inside it. */
+.skin-preview {
+  position: relative;
+  overflow: hidden;
+  contain: paint;
+  pointer-events: none;
+  user-select: none;
+}
+
+.skin-preview .topbar {
+  position: static;
 }
 
 /* Wiki text ----------------------------------------------------------------- */
@@ -650,7 +1303,7 @@ dialog.modal::backdrop {
 }
 
 .wiki pre {
-  font: 12.5px/1.55 var(--mono);
+  font: 12.5px/1.55 var(--font-mono);
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
   padding: 10px 12px;
@@ -659,7 +1312,7 @@ dialog.modal::backdrop {
 }
 
 .wiki .code-title {
-  font: 500 11.5px/1 var(--mono);
+  font: 500 11.5px/1 var(--font-mono);
   color: var(--ink-soft);
   border: 1px solid var(--rule);
   border-bottom: none;
@@ -672,7 +1325,7 @@ dialog.modal::backdrop {
 }
 
 .wiki code {
-  font: 0.9em var(--mono);
+  font: 0.9em var(--font-mono);
   background: var(--paper-sunk);
   padding: 0 3px;
 }
@@ -703,7 +1356,11 @@ dialog.modal::backdrop {
   border-bottom: 1px solid var(--rule);
 }
 
+/* Wide tables scroll sideways rather than breaking words letter by letter. */
 .wiki table.wiki-table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 0 0 0.85em;
   font-size: 13.5px;
@@ -715,6 +1372,8 @@ dialog.modal::backdrop {
   padding: 4px 9px;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: normal;
+  min-width: 4em;
 }
 
 .wiki .wiki-table th {
@@ -722,11 +1381,11 @@ dialog.modal::backdrop {
 }
 
 .wiki a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .wiki a.issue-key {
-  font-family: var(--mono);
+  font-family: var(--font-mono);
   font-size: 0.92em;
 }
 
@@ -765,12 +1424,306 @@ dialog.modal::backdrop {
 .wiki .emo-no,
 .wiki .emo-warn,
 .wiki .emo-down {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .wiki .emo-help,
 .wiki .emo-info {
   color: var(--stamp-doing);
+}
+
+/* Editor ------------------------------------------------------------------- */
+/* Rich text editing of wiki markup. The editable area is also a `.wiki`, so
+   it has the typography of displayed text in every skin. */
+
+.editor {
+  position: relative;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: var(--radius-xs);
+  background: var(--paper-raised);
+}
+
+.editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-sunk);
+}
+
+.editor-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px;
+  padding: 0 5px;
+}
+
+.editor-group + .editor-group {
+  border-left: 1px solid var(--rule);
+}
+
+.editor-end {
+  margin-left: auto;
+}
+
+.editor-group.editor-context {
+  flex-basis: 100%;
+  border-left: none;
+  border-top: 1px dashed var(--rule);
+  padding-top: 3px;
+}
+
+.editor-context-label {
+  margin-right: 6px;
+  font: 500 11.5px/1 var(--font-body);
+  color: var(--muted);
+}
+
+.editor-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--ink-soft);
+  font: 600 14px/1 var(--font-title);
+  cursor: pointer;
+}
+
+.editor-button svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.editor-button:hover:not(:disabled) {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.editor-button[aria-pressed='true'] {
+  border-color: var(--rule-strong);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+}
+
+.editor-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Fingers need bigger targets than a mouse. */
+@media (pointer: coarse) {
+  .editor-button {
+    min-width: 34px;
+    height: 34px;
+  }
+}
+
+.editor-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.editor-mark[data-mark='em'] span {
+  font-style: italic;
+}
+
+.editor-mark[data-mark='underline'] span {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.editor-mark[data-mark='strike'] span {
+  text-decoration: line-through;
+}
+
+.editor-source-toggle {
+  padding: 0 8px;
+  font: 500 12px/1 var(--font-mono);
+}
+
+.editor-style.select {
+  width: auto;
+  height: 28px;
+  padding: 2px 4px;
+  font-size: 12.5px;
+}
+
+.editor-language.input {
+  width: 9em;
+  padding: 3px 6px;
+  font: 12.5px var(--font-mono);
+}
+
+.editor-content {
+  min-height: calc(var(--editor-rows, 6) * 1.6em + 20px);
+  max-height: min(70vh, 720px);
+  overflow-y: auto;
+  padding: 10px 12px;
+  outline: none;
+  color: var(--ink);
+}
+
+.editor-content > :last-child {
+  margin-bottom: 0;
+}
+
+/* One paragraph per list item or cell: no paragraph spacing inside them. */
+.editor-content li > p,
+.editor-content td > p,
+.editor-content th > p {
+  margin: 0;
+}
+
+.editor-content p.is-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.editor-content .editor-mention {
+  cursor: default;
+}
+
+/* Issue keys are decorated, not real links: give them the link underline. */
+.editor-content a.issue-key {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.editor-at {
+  font-family: var(--font-mono);
+}
+
+/* Markup shown but kept as written: a dashed frame says it is not edited here. */
+.editor-raw {
+  outline: 1px dashed var(--rule-strong);
+  outline-offset: 1px;
+  cursor: default;
+}
+
+span.editor-raw {
+  border-radius: var(--radius-xs);
+}
+
+div.editor-raw {
+  margin: 0 0 0.85em;
+  padding: 2px 4px;
+}
+
+.editor-raw > code:only-child {
+  color: var(--muted);
+}
+
+.editor-content .ProseMirror-selectednode {
+  outline: 2px solid var(--focus);
+}
+
+.editor-content .selectedCell {
+  background: var(--accent-wash);
+}
+
+.editor-content .ProseMirror-gapcursor {
+  display: none;
+  position: absolute;
+  pointer-events: none;
+}
+
+.editor-content .ProseMirror-gapcursor::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  display: block;
+  width: 20px;
+  border-top: 1px solid var(--ink);
+}
+
+.editor-content.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+.editor-drop {
+  background: var(--accent);
+}
+
+.editor-source.textarea {
+  display: block;
+  min-height: 120px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  resize: none;
+}
+
+.editor-menu,
+.editor-link {
+  max-width: calc(100% - 8px);
+}
+
+.editor-menu .item .muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.editor-menu-empty {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.editor-link {
+  width: 300px;
+  padding: 10px 12px;
+}
+
+.editor-link form {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-link-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.editor-hint {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.editor.is-loading .loading {
+  margin: 0;
+  padding: 12px;
+}
+
+.editor-status {
+  margin: 0;
+  padding: 4px 12px 6px;
+  border-top: 1px dashed var(--rule);
+  font-size: 12px;
 }
 
 @media (max-width: 760px) {
@@ -780,5 +1733,13 @@ dialog.modal::backdrop {
 
   h1 {
     font-size: 23px;
+  }
+}
+
+/* A phone: a page's buttons go under its title when they cannot sit beside it. */
+@media (max-width: 600px) {
+  .page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
 }

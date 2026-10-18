@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 
-import { renderWiki, wikiReferences, wikiToText, type WikiResolver } from '../../src/core/wiki.js';
+import {
+  isSafeUrl,
+  renderWiki,
+  wikiReferences,
+  wikiToText,
+  type WikiResolver,
+} from '../../src/core/wiki.js';
 
 const USERS: Record<string, string> = { 'marie.durand': 'Marie Durand' };
 const FILES = new Set(['capture.png', 'spec.pdf', 'schéma réseau.png']);
@@ -543,6 +549,32 @@ describe('wikiToText', () => {
 
   it('prefers cutting at a word boundary', () => {
     expect(wikiToText('un deux trois quatre cinq', 16)).toBe('un deux trois…');
+  });
+});
+
+describe('isSafeUrl', () => {
+  it.each([
+    'https://example.com/a',
+    'http://example.com',
+    'mailto:a@b.fr',
+    '/projects/DEMO',
+    '#haut',
+  ])('accepts %s', (url) => {
+    expect(isSafeUrl(url)).toBe(true);
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    'data:text/html,<b>',
+    'vbscript:msgbox',
+    'file:///etc/passwd',
+    '//evil.example',
+    '/\\evil.example',
+    'java\tscript:alert(1)',
+    'example.com',
+  ])('refuses %s', (url) => {
+    expect(isSafeUrl(url)).toBe(false);
   });
 });
 

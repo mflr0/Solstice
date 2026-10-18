@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { estimateText, readEstimate } from '../core/estimates.js';
   import { projectOfKey } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
-  import { t } from '../i18n/fr.js';
+  import { t } from '../i18n/t.js';
   import { api, errorMessage, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
@@ -27,6 +28,7 @@
   let components = $state<number[]>([]);
   let fixVersions = $state<number[]>([]);
   let due = $state('');
+  let estimate = $state('');
   let level = $state('');
   let pending = $state(false);
   let error = $state('');
@@ -53,6 +55,7 @@
     components = [];
     fixVersions = [];
     due = '';
+    estimate = '';
     level = '';
     error = '';
     const prios = session.meta?.priorities ?? [];
@@ -86,6 +89,11 @@
   async function submit(e?: SubmitEvent) {
     e?.preventDefault();
     if (!detail || !summary.trim() || pending) return;
+    const typed = readEstimate(estimate);
+    if (!typed.ok) {
+      error = t.issue.estimateInvalid;
+      return;
+    }
     pending = true;
     error = '';
     const fields: IssueFields = {
@@ -100,6 +108,7 @@
     if (priorityId) fields.priority = priorityId;
     if (assignee) fields.assignee = assignee.id;
     if (due) fields.due = due;
+    if (typed.seconds !== null) fields.originalEstimate = estimateText(typed.seconds);
     if (parent) fields.parent = parent;
     if (level) fields.securityLevel = Number(level);
     try {
@@ -172,7 +181,7 @@
       </label>
       <div class="field">
         <span class="field-label">{t.create.assignee}</span>
-        <div class="boxed">
+        <div class="boxed field-box">
           <UserPicker
             value={assignee}
             label={t.create.assignee}
@@ -190,12 +199,19 @@
       </label>
     </div>
 
+    <div class="three">
+      <label class="field">
+        <span>{t.create.estimate}</span>
+        <input class="input" bind:value={estimate} placeholder={t.issue.estimateHint} />
+      </label>
+    </div>
+
     {#if detail}
       <div class="three">
         {#if detail.components.length}
           <div class="field">
             <span class="field-label">{t.create.components}</span>
-            <div class="boxed">
+            <div class="boxed field-box">
               <MultiPick
                 options={detail.components.filter((c) => !c.archived)}
                 selected={components}
@@ -208,7 +224,7 @@
         {#if detail.versions.length}
           <div class="field">
             <span class="field-label">{t.create.fixVersions}</span>
-            <div class="boxed">
+            <div class="boxed field-box">
               <MultiPick
                 options={detail.versions.filter((v) => !v.archived && !v.released)}
                 selected={fixVersions}
@@ -234,7 +250,7 @@
 
     <div class="field">
       <span class="field-label">{t.create.labels}</span>
-      <div class="boxed"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
+      <div class="boxed field-box"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
     </div>
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
@@ -271,7 +287,7 @@
   }
 
   .summary {
-    font: 600 16px/1.3 var(--serif);
+    font: var(--title-weight) 16px/1.3 var(--font-title);
     padding: 8px 10px;
   }
 

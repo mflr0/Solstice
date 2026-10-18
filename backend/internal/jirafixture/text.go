@@ -118,7 +118,7 @@ const logicielWorkflow = `<?xml version="1.0" encoding="UTF-8"?>
 <workflow>
   <meta name="jira.description">Cycle de vie des tickets des projets logiciels</meta>
   <initial-actions>
-    <action id="1" name="Créer">
+    <action id="1" name="Create">
       <results>
         <unconditional-result old-status="null" status="open" step="1"/>
       </results>
