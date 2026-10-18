@@ -607,7 +607,12 @@ func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRo
 			head.level, plan.levels[1] = levels[i].ID, levels[i].Name
 			return nil
 		}
-		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: levels}
+		// The levels of the target are listed only to who may set them there.
+		offered := []idName{}
+		if sub.Can(perm.Security, dest.id, nil) {
+			offered = levels
+		}
+		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: offered}
 		missing("securityLevel")
 	}
 	return nil

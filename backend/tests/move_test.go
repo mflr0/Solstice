@@ -604,3 +604,28 @@ func TestMoveRefusesWhatCannotMove(t *testing.T) {
 		t.Errorf("missing choices in German: %d %q", status, msg)
 	}
 }
+
+func TestMoveDryRunHidesTheLevelsFromWhoCannotSetThem(t *testing.T) {
+	e := newMoveEnv(t)
+	paul := login(t, "paul.martin", "motdepasse")
+	// paul.martin sees the level of the issue, which gives him Edit here and
+	// Create in the target, but not the right to set a level there.
+	moveInsert(t, `INSERT INTO security_level_members (level_id, holder, user_id) VALUES (?, 'user', ?)`,
+		e.levelSrc, userID(t, "paul.martin"))
+	e.refreshRules(e.src)
+	body := map[string]any{"project": e.dst, "type": e.typeB, "subtaskType": e.subDst, "status": e.toDo,
+		"components": []int64{e.apiDst}, "fixVersions": []int64{e.v3Dst}}
+
+	c := e.check(e.admin, e.issue, body)
+	if c.SecurityLevel == nil || len(c.SecurityLevel.Options) != 1 || c.SecurityLevel.Options[0].ID != e.levelDst {
+		t.Fatalf("the project lead is not offered the target's levels: %+v", c.SecurityLevel)
+	}
+	c = e.check(paul, e.issue, body)
+	if c.Ready || !slices.Contains(c.Missing, "securityLevel") || c.SecurityLevel == nil ||
+		len(c.SecurityLevel.Unmatched) != 1 || c.SecurityLevel.Unmatched[0].Name != "Interne" {
+		t.Errorf("no match must still be reported: %+v", c)
+	}
+	if c.SecurityLevel != nil && len(c.SecurityLevel.Options) != 0 {
+		t.Errorf("the target's levels are listed to a user without the Security right: %+v", c.SecurityLevel.Options)
+	}
+}

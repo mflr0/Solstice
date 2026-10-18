@@ -427,8 +427,11 @@ Moving an issue: `POST /api/issues/{key}/move` (signed in) → `{key}`, the new
 key; the old key keeps resolving (`moved_issue_keys`). Solstice has no
 separate move permission: the right to move is **Edit** in the issue's
 current project (and on each of its sub-tasks), plus **Create** in the target
-project, which the user must also be able to browse. Written to the audit log
-as `issue.move`.
+project, which the user must also be able to browse. A security level is
+matched by name (case aside) with a level of the target project; when there is
+none, the dry run lists the target's levels only to a user with the Security
+right there, and otherwise reports just that the current level has no match.
+Written to the audit log as `issue.move`.
 
 ---
 
