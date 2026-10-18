@@ -142,6 +142,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Dieses Projekt enthält Vorgänge: Geben Sie seinen Schlüssel ein, um die Löschung zu bestätigen.",
 	ProjectGranteeUnknown:      "Unbekannter Berechtigungsempfänger: %s.",
 	ProjectGranteeNotFound:     "Berechtigungsempfänger nicht gefunden.",
+	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
+	ProjectKeysBusy:            "Eine andere Änderung eines Projektschlüssels läuft gerade. Versuchen Sie es gleich noch einmal.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Aufgabe",
@@ -303,6 +305,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Vorgänge können noch nicht verschoben werden.",
 	IssueSubtasksNotDeletable:  "Dieser Vorgang hat Unteraufgaben, die Sie nicht löschen dürfen.",
 	IssueDeleteSubtasks:        "Dieser Vorgang hat Unteraufgaben: Fügen Sie deleteSubtasks=true hinzu, um sie mitzulöschen.",
+	RESTPickerHistory:          "Suchverlauf",
+	RESTPickerCurrent:          "Aktuelle Suche",
+	RESTPickerShowing:          "%d von %d passenden Vorgängen angezeigt",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
@@ -550,4 +555,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AvatarTooLarge:      "Bild zu groß (höchstens 1 MB).",
 	AvatarNotImage:      "Das Bild muss eine gültige PNG- oder JPEG-Datei sein.",
 	AvatarDimensions:    "Das Bild darf höchstens 512 × 512 Pixel groß sein.",
+	// Issue security levels.
+	SecurityLevelInUse:     "Vorgänge auf dieser Stufe: %d. Verschieben Sie sie auf eine andere Stufe des Projekts oder entfernen Sie ihre Stufe.",
+	SecurityTargetNotFound: "Ersatzstufe in diesem Projekt nicht gefunden.",
+	SecurityMoveOrClear:    "Wählen Sie eine Ersatzstufe oder entfernen Sie die Stufe, nicht beides.",
+	SecurityMemberExists:   "Dieser Inhaber gehört bereits zur Stufe.",
 }

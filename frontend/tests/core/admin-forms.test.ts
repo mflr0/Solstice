@@ -4,16 +4,21 @@ import {
   defaultPort,
   groupProblems,
   hasProblems,
+  holderNeedsId,
   isEmail,
+  LEVEL_HOLDERS,
+  levelTargets,
   mailForm,
   mailPayload,
   mailProblems,
   matches,
+  memberPayload,
   namedPatch,
   namedPayload,
   newUserForm,
   restrictionUsage,
   roleProblems,
+  securityLevelProblem,
   suggestUsername,
   typedMatches,
   userProblems,
@@ -325,5 +330,41 @@ describe('typed confirmation', () => {
     expect(typedMatches('sw', 'SW')).toBe(false);
     expect(typedMatches('S', 'SW')).toBe(false);
     expect(typedMatches('', '')).toBe(false);
+  });
+});
+
+describe('security levels', () => {
+  const levels = [
+    { id: 1, name: 'Équipe' },
+    { id: 2, name: 'Direction' },
+  ];
+
+  it('asks for a name no other level of the project has, whatever the case', () => {
+    expect(securityLevelProblem('  ', levels, null)).toBe('nameRequired');
+    expect(securityLevelProblem('x'.repeat(256), levels, null)).toBe('nameTooLong');
+    expect(securityLevelProblem('x'.repeat(255), levels, null)).toBeNull();
+    expect(securityLevelProblem(' direction ', levels, null)).toBe('nameTaken');
+    expect(securityLevelProblem('Direction', levels, 2)).toBeNull();
+    expect(securityLevelProblem('Direction', levels, 1)).toBe('nameTaken');
+  });
+
+  it('moves the issues of a deleted level to the others only', () => {
+    expect(levelTargets(levels, levels[0]!)).toEqual([levels[1]]);
+    expect(levelTargets([levels[0]!], levels[0]!)).toEqual([]);
+  });
+
+  it('offers exactly the holders of the permission checks', () => {
+    expect([...LEVEL_HOLDERS].sort()).toEqual(
+      ['assignee', 'everyone', 'group', 'lead', 'reporter', 'role', 'user'].sort(),
+    );
+    expect(LEVEL_HOLDERS.filter(holderNeedsId).sort()).toEqual(['group', 'role', 'user']);
+  });
+
+  it('sends the one chosen for a user, a group or a role, and nothing for the others', () => {
+    expect(memberPayload('group', 4)).toEqual({ holder: 'group', id: 4 });
+    expect(memberPayload('user', null)).toBeNull();
+    expect(memberPayload('role', null)).toBeNull();
+    expect(memberPayload('lead', null)).toEqual({ holder: 'lead' });
+    expect(memberPayload('everyone', 7)).toEqual({ holder: 'everyone' });
   });
 });

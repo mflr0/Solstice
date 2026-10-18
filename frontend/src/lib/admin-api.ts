@@ -49,13 +49,38 @@ import type {
   WebhookInput,
 } from '../core/admin-types.js';
 import type { AdminProjectRow, ProjectSettings } from '../core/project-admin.js';
-import type { Me } from '../core/types.js';
+import type { IdName, Me, UserRef } from '../core/types.js';
 import { query, request } from './api.js';
 
 const enc = encodeURIComponent;
 
 /** The SMTP settings, and what keeps them from sending: saved with a username, no encryption, a remote server. */
 export type MailSettingsReply = MailSettings & { problem?: 'credentialsNeedTLS' };
+
+/** Who may see the issues at a security level: one holder, with the user, group or role it names. */
+export interface SecurityMember {
+  id: number;
+  holder: 'everyone' | 'user' | 'group' | 'role' | 'lead' | 'reporter' | 'assignee';
+  user: UserRef | null;
+  group: IdName | null;
+  role: IdName | null;
+}
+
+/** An issue security level of a project. */
+export interface SecurityLevel {
+  id: number;
+  name: string;
+  description: string | null;
+  /** Issues at the level. */
+  issues: number;
+  memberCount: number;
+  members: SecurityMember[];
+}
+
+export interface SecurityLevelInput {
+  name?: string;
+  description?: string | null;
+}
 
 export const adminApi = {
   // General settings.
@@ -105,13 +130,17 @@ export const adminApi = {
   // Projects.
   /** Every project, archived ones included, seen or not. */
   projects: () => request<AdminProjectRow[]>('GET', '/api/admin/projects'),
-  checkKey: (key: string) => request<KeyCheck>('GET', `/api/admin/project-key${query({ key })}`),
+  /** `project` is the project whose key is being changed: its former keys are free to it. */
+  checkKey: (key: string, project?: string) =>
+    request<KeyCheck>('GET', `/api/admin/project-key${query({ key, project })}`),
   createProject: (p: ProjectInput) =>
     request<{ id: number; key: string }>('POST', '/api/projects', p),
   archiveProject: (key: string, on: boolean) =>
     request<ProjectSettings>('POST', `/api/projects/${enc(key)}/${on ? 'archive' : 'unarchive'}`),
   deleteProject: (key: string, confirm?: string) =>
     request<void>('DELETE', `/api/projects/${enc(key)}`, confirm ? { confirm } : {}),
+  renameProject: (key: string, newKey: string, confirm: string) =>
+    request<ProjectSettings>('POST', `/api/projects/${enc(key)}/rename`, { newKey, confirm }),
   categories: () => request<Category[]>('GET', '/api/project-categories'),
   createCategory: (c: { name: string; description?: string }) =>
     request<Category>('POST', '/api/admin/project-categories', c),
@@ -242,6 +271,27 @@ export const projectAdminApi = {
     request<void>('POST', `/api/projects/${enc(key)}/versions/${id}/merge`, { into }),
   deleteVersion: (key: string, id: number, to: { fixTo?: number; affectsTo?: number } = {}) =>
     request<void>('DELETE', `/api/projects/${enc(key)}/versions/${id}`, to),
+};
+
+/** The issue security levels of a project, and who sees the issues at each. */
+export const securityApi = {
+  levels: (key: string) =>
+    request<SecurityLevel[]>('GET', `/api/projects/${enc(key)}/security-levels`),
+  create: (key: string, l: SecurityLevelInput) =>
+    request<SecurityLevel>('POST', `/api/projects/${enc(key)}/security-levels`, l),
+  update: (key: string, id: number, l: SecurityLevelInput) =>
+    request<SecurityLevel>('PATCH', `/api/projects/${enc(key)}/security-levels/${id}`, l),
+  /** Removes a level; one with issues needs where they go, or `clear` (they then have no level). */
+  remove: (key: string, id: number, how: { moveTo?: number; clear?: boolean } = {}) =>
+    request<void>('DELETE', `/api/projects/${enc(key)}/security-levels/${id}`, how),
+  addMember: (key: string, id: number, member: { holder: SecurityMember['holder']; id?: number }) =>
+    request<SecurityLevel>(
+      'POST',
+      `/api/projects/${enc(key)}/security-levels/${id}/members`,
+      member,
+    ),
+  removeMember: (key: string, id: number, member: number) =>
+    request<void>('DELETE', `/api/projects/${enc(key)}/security-levels/${id}/members/${member}`),
 };
 
 export const accountApi = {

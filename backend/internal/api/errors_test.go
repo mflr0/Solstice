@@ -28,7 +28,7 @@ func TestWriteErrorHidesInternalErrors(t *testing.T) {
 	}
 
 	w = httptest.NewRecorder()
-	writeRESTError(w, r, secret)
+	(&Server{}).writeRESTError(w, r, secret)
 	if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "10.0.0.5") ||
 		!strings.Contains(w.Body.String(), "Erreur interne") {
 		t.Errorf("REST error: %d %s", w.Code, w.Body)
@@ -46,7 +46,7 @@ func TestWriteErrorLogsRouteNotPath(t *testing.T) {
 	r := httptest.NewRequest("POST", "/api/auth/reset/s3cret-token", nil)
 	r.Pattern = "POST /api/auth/reset/{token}"
 	for name, write := range map[string]func(http.ResponseWriter, *http.Request, error){
-		"interface": writeError, "REST": writeRESTError,
+		"interface": writeError, "REST": (&Server{}).writeRESTError,
 	} {
 		logged.Reset()
 		w := httptest.NewRecorder()

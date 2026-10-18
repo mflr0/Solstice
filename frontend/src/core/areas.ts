@@ -13,6 +13,7 @@ export const ADMIN_SECTIONS = [
   'groups',
   'roles',
   'projects',
+  'securityLevels',
   'issueTypes',
   'priorities',
   'resolutions',
@@ -40,6 +41,7 @@ const ADMIN_SLUGS: Record<AdminSection, string> = {
   groups: 'groups',
   roles: 'roles',
   projects: 'projects',
+  securityLevels: 'security-levels',
   issueTypes: 'issue-types',
   priorities: 'priorities',
   resolutions: 'resolutions',
@@ -60,7 +62,7 @@ export type AdminGroup = 'general' | 'people' | 'projects' | 'issues' | 'integra
 export const ADMIN_NAV: readonly { group: AdminGroup; items: readonly AdminNavItem[] }[] = [
   { group: 'general', items: ['overview', 'settings', 'banner'] },
   { group: 'people', items: ['users', 'groups', 'roles'] },
-  { group: 'projects', items: ['projects'] },
+  { group: 'projects', items: ['projects', 'securityLevels'] },
   {
     group: 'issues',
     items: ['issueTypes', 'priorities', 'resolutions', 'statuses', 'linkTypes', 'fields'],
