@@ -389,6 +389,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Lo sprint deve finire dopo il suo inizio.",
 	SprintStartFuture:     "Uno sprint attivo non può iniziare nel futuro.",
 	SprintDeleteNotFuture: "Solo uno sprint futuro può essere eliminato.",
+	SprintNotOnBoard:      "Il progetto del ticket non è nella board di questo sprint.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",

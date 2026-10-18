@@ -442,6 +442,7 @@ const (
 	SprintDatesOrder      Key = "SprintDatesOrder"
 	SprintStartFuture     Key = "SprintStartFuture"
 	SprintDeleteNotFuture Key = "SprintDeleteNotFuture"
+	SprintNotOnBoard      Key = "SprintNotOnBoard"
 )
 
 // Saved filters and their shares.
