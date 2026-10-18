@@ -9,8 +9,6 @@ import (
 	"solstice/internal/perm"
 )
 
-// A user can hold a few streams but not more than the cap, even by opening
-// them from several accounts at once, and one user's cap is another's.
 func TestStreamSlotsPerUser(t *testing.T) {
 	var c streamSlots
 	for i := range maxStreamsPerUser {
@@ -29,7 +27,6 @@ func TestStreamSlotsPerUser(t *testing.T) {
 	}
 }
 
-// A stream that ends frees its slot for the next one.
 func TestStreamSlotsReleased(t *testing.T) {
 	var c streamSlots
 	for range maxStreamsPerUser {
@@ -46,8 +43,6 @@ func TestStreamSlotsReleased(t *testing.T) {
 	}
 }
 
-// The total cap refuses everyone once reached, and freeing a slot opens the
-// server again.
 func TestStreamSlotsTotal(t *testing.T) {
 	var c streamSlots
 	for i := range maxStreamsTotal {
@@ -64,8 +59,6 @@ func TestStreamSlotsTotal(t *testing.T) {
 	}
 }
 
-// A closed stream gives its slot back: cancelling the client request ends the
-// stream and the slot count returns to zero within a second.
 func TestStreamSlotReleasedWhenClientCancels(t *testing.T) {
 	srv := quietServer()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -83,7 +76,6 @@ func TestStreamSlotReleasedWhenClientCancels(t *testing.T) {
 		done <- srv.streamEvents(w, req, w, &perm.Subject{UserID: 42})
 	}()
 
-	// Wait for the slot to be taken, then let the client go away.
 	for total, _ := slots(); total == 0; total, _ = slots() {
 		time.Sleep(10 * time.Millisecond)
 	}

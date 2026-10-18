@@ -10,21 +10,18 @@ import (
 	"testing"
 )
 
-// uploadText posts one file as a multipart attachment upload, and returns
-// the status and the answer.
 func uploadText(t *testing.T, c *client, key, name, content string) (int, []byte) {
 	t.Helper()
 	return uploadTexts(t, c, key, [2]string{name, content})
 }
 
-// uploadTexts posts several files (name, content) in one multipart request.
 func uploadTexts(t *testing.T, c *client, key string, files ...[2]string) (int, []byte) {
 	t.Helper()
 	return postFiles(t, c, key, false, files...)
 }
 
-// postFiles posts the files; chunked sends the body without a length, so the
-// server cannot tell its size beforehand.
+// chunked sends the body without a length, so the server cannot tell its size
+// beforehand.
 func postFiles(t *testing.T, c *client, key string, chunked bool, files ...[2]string) (int, []byte) {
 	t.Helper()
 	var buf bytes.Buffer
@@ -58,14 +55,12 @@ func postFiles(t *testing.T, c *client, key string, chunked bool, files ...[2]st
 	return resp.StatusCode, answer
 }
 
-// storedFiles counts the attachments of an issue.
 func storedFiles(t *testing.T, key string) string {
 	t.Helper()
 	return pick(t, `SELECT COUNT(*) FROM attachments WHERE issue_id = ?`, issueID(t, key))
 }
 
-// storedBytes is the size of all the attachments in the database, which is
-// what the quota counts.
+// storedBytes is what the quota counts.
 func storedBytes(t *testing.T) int64 {
 	t.Helper()
 	n, err := strconv.ParseInt(pick(t, `SELECT COALESCE(SUM(size), 0) FROM attachments`), 10, 64)
@@ -75,8 +70,7 @@ func storedBytes(t *testing.T) int64 {
 	return n
 }
 
-// Once the attachments hold their whole storage quota, further uploads are
-// refused; without a quota (the default), they are accepted.
+// Without a quota (the default) the same uploads are accepted.
 func TestAttachmentStorageQuota(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
@@ -95,7 +89,6 @@ func TestAttachmentStorageQuota(t *testing.T) {
 		t.Errorf("second upload: %q", msg)
 	}
 
-	// A server without a quota accepts both.
 	free := loginAt(t, ownServer(t), "paul.martin", "motdepasse")
 	other := createIssue(t, free, "DEMO", unique("quota"), "")
 	for _, name := range []string{"one.txt", "two.txt"} {
@@ -105,8 +98,6 @@ func TestAttachmentStorageQuota(t *testing.T) {
 	}
 }
 
-// A request that cannot fit in the quota is refused whole: the files before
-// the one that does not fit are not stored either.
 func TestAttachmentQuotaRefusesWholeRequest(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
@@ -129,8 +120,7 @@ func TestAttachmentQuotaRefusesWholeRequest(t *testing.T) {
 	}
 }
 
-// A file cannot take the storage past the quota, even when the request does
-// not say how long it is.
+// The quota holds even when the request does not say how long it is.
 func TestAttachmentQuotaStopsAnOversizedPart(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)

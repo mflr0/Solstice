@@ -53,15 +53,14 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	}
 	var names []string
 	now := time.Now().UTC()
-	// The quota is what the database stores; a file that would go over it is
-	// refused, until files are deleted.
+	// The quota is what the database stores, not what the disk holds.
 	var stored int64
 	if s.maxStorage > 0 {
 		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
 			return err
 		}
-		// The body is at least as long as its parts: refuse it whole, before
-		// any file is written, when it cannot fit.
+		// A body is at least as long as its parts, so one over the quota is
+		// refused whole before any file is written.
 		if r.ContentLength > 0 && stored+r.ContentLength > s.maxStorage {
 			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 		}
@@ -139,8 +138,6 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 
 var errStorageQuota = errors.New("attachment storage quota reached")
 
-// quotaReader reads at most left bytes, and fails with errStorageQuota when
-// the source has more.
 type quotaReader struct {
 	r    io.Reader
 	left int64

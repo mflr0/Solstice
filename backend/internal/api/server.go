@@ -213,9 +213,8 @@ const (
 	uploadReadTimeout = 15 * time.Minute
 )
 
-// setBodyReadDeadline gives the connection a read deadline at the given
-// time; the zero time clears it. A connection that does not support
-// deadlines (http.ErrNotSupported) is left as it is.
+// The zero time clears the deadline. The error is ignored: a connection that
+// cannot do deadlines (http.ErrNotSupported) is left as it is.
 func setBodyReadDeadline(w http.ResponseWriter, at time.Time) {
 	_ = http.NewResponseController(w).SetReadDeadline(at)
 }

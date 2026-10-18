@@ -9,9 +9,8 @@ import type { ChangeEvent } from '../core/types.js';
 type Listener = (e: ChangeEvent) => void;
 
 /**
- * Wait before reopening the stream after its n-th failure in a row (0 for the
- * first): 5 s, doubling up to 60 s. The server refuses with a 429 when there
- * are too many streams, and the browser then gives up on its own.
+ * The server refuses with a 429 when there are too many streams, and the
+ * browser then gives up on its own, so the stream must be reopened later.
  */
 export function reconnectDelay(failures: number): number {
   return Math.min(5000 * 2 ** failures, 60000);

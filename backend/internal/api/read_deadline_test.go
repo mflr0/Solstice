@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// A body sent at once goes through; one that stops mid-way past the read
-// deadline loses the connection.
 func TestSlowBodyIsCut(t *testing.T) {
 	read := make(chan error, 2)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +44,8 @@ func TestSlowBodyIsCut(t *testing.T) {
 	}
 }
 
-// A handler that has read its whole body keeps working past the body read
-// deadline: net/http clears the deadline when the body hits EOF.
+// net/http clears the read deadline when the body hits EOF, so a handler
+// that has read its whole body keeps working past it.
 func TestDeadlineClearedOnceBodyIsRead(t *testing.T) {
 	done := make(chan error, 1)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

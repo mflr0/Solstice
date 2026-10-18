@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// A panic in one run is logged with its name, and the next run still happens.
 func TestPanicDoesNotStopTheNextRun(t *testing.T) {
 	var log bytes.Buffer
 	runs := 0
