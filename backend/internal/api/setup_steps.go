@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/mail"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -460,6 +462,22 @@ func (j *importJob) running() bool {
 	return j.state == "running"
 }
 
+// covers the code around RunGuarded: a panic there fails a job still running
+// instead of stopping the server.
+func (j *importJob) crashed(log *slog.Logger) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	log.Error("import panicked", "panic", r, "stack", string(debug.Stack()))
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.state == "running" {
+		j.state, j.err = "failed", fmt.Errorf("import stopped by an internal error: %v", r)
+		j.finished = time.Now()
+	}
+}
+
 // startImport copies a Jira instance into the database, in the background.
 // It replaces whatever an earlier attempt of this wizard left.
 func (w *Setup) startImport(rw http.ResponseWriter, r *http.Request) error {
@@ -486,7 +504,8 @@ func (w *Setup) startImport(rw http.ResponseWriter, r *http.Request) error {
 	conn := w.db
 	w.log.Info("import from Jira started", "jira_home", f.JiraHome)
 	go func() {
-		rep, err := importer.Run(w.ctx, conn, importer.Options{
+		defer job.crashed(w.log)
+		rep, err := importer.RunGuarded(w.ctx, conn, importer.Options{
 			SourceURL: f.URL, SourceTZ: loc, JiraHome: f.JiraHome, DataDir: w.opt.DataDir, Replace: true, Log: w.log,
 			Progress: func(p importer.Progress) {
 				job.mu.Lock()
