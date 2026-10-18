@@ -2223,6 +2223,122 @@ export const it: Messages = {
     },
   },
 
+  projectConfig: {
+    tabs: {
+      general: 'Generale',
+      components: 'Componenti',
+      versions: 'Versioni',
+      notifications: 'Notifiche',
+    },
+    leaveBody: 'Questa scheda ha modifiche non salvate. Vuoi scartarle?',
+    general: {
+      title: 'Generale',
+      intro: 'Il nome del progetto, chi lo guida e come vengono gestiti i nuovi ticket.',
+      leadHint: 'Il responsabile ha tutti i diritti nel progetto.',
+      typesInUse: (list: string) =>
+        `Questi tipi sono ancora usati da dei ticket, quindi non si possono rimuovere: ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'ticket', 'ticket')})`,
+    },
+    problems: {
+      nameRequired: 'Dagli un nome.',
+      nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',
+      nameTaken: 'Un altro elemento di questo progetto ha già questo nome.',
+      startAfterRelease: 'La data di inizio non può essere successiva alla data di rilascio.',
+    },
+    components: {
+      title: 'Componenti',
+      intro:
+        'I componenti dividono un progetto in parti, come «API» o «Fatturazione». Un ticket può appartenere a uno o più componenti.',
+      new: 'Nuovo componente',
+      empty: 'Ancora nessun componente',
+      emptyHint: 'Crea il primo per ordinare i ticket del progetto per parte.',
+      noLead: 'Nessun responsabile',
+      namePlaceholder: 'API',
+      newTitle: 'Nuovo componente',
+      editTitle: (name: string) => `Modifica ${name}`,
+      assignee: 'I nuovi ticket sono assegnati a',
+      assignees: {
+        project_default: 'La scelta del progetto',
+        component_lead: 'Il responsabile del componente',
+        project_lead: 'Il responsabile del progetto',
+        unassigned: 'Nessuno',
+      },
+      assigneeHint:
+        'Vale per un nuovo ticket creato senza assegnatario. Con più componenti si usa il primo, in ordine di nome, che indica qualcuno.',
+      created: (name: string) => `Componente ${name} creato.`,
+      saved: (name: string) => `Componente ${name} salvato.`,
+      deleted: (name: string) => `Componente ${name} eliminato.`,
+      deleteTitle: (name: string) => `Eliminare ${name}?`,
+      deleteUnused: 'Nessun ticket usa questo componente.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'ticket usa', 'ticket usano')} questo componente. Possono perderlo o passare a un altro componente.`,
+      moveLabel: 'I ticket passano a',
+      moveNone: 'Da nessuna parte: perdono solo il componente',
+    },
+    versions: {
+      title: 'Versioni',
+      intro:
+        'Le versioni segnano i rilasci del prodotto. Un ticket indica quale versione lo corregge e quali versioni interessa. L’ordine qui è quello degli elenchi di versioni.',
+      new: 'Nuova versione',
+      empty: 'Ancora nessuna versione',
+      emptyHint: 'Crea la prima per pianificare cosa contiene ogni rilascio.',
+      orderHint: 'Usa le frecce per cambiare ordine.',
+      start: 'Inizio',
+      release: 'Rilascio',
+      state: 'Stato',
+      unresolved: (n: number) => `${n} non risolti`,
+      namePlaceholder: '1.0',
+      newTitle: 'Nuova versione',
+      editTitle: (name: string) => `Modifica ${name}`,
+      startDate: 'Data di inizio',
+      releaseDate: 'Data di rilascio',
+      created: (name: string) => `Versione ${name} creata.`,
+      saved: (name: string) => `Versione ${name} salvata.`,
+      releaseAction: 'Rilascia',
+      unreleaseAction: 'Annulla il rilascio',
+      released: (name: string) => `${name} rilasciata.`,
+      unreleased: (name: string) => `${name} non è più rilasciata.`,
+      releaseTitle: (name: string) => `Rilascia ${name}`,
+      releaseUnresolved: (n: number) =>
+        `${plural(n, 'ticket corretto in questa versione non è risolto', 'ticket corretti in questa versione non sono risolti')}.`,
+      releaseMove: 'I ticket non risolti passano a',
+      releaseKeep: 'Da nessuna parte: restano in questa versione',
+      releaseNoUnresolved: 'Tutti i ticket corretti in questa versione sono risolti.',
+      archived: (name: string) => `${name} archiviata.`,
+      unarchived: (name: string) => `${name} non è più archiviata.`,
+      mergeAction: 'Unisci',
+      mergeTitle: (name: string) => `Unisci ${name}`,
+      mergeBody: (name: string) =>
+        `Ogni ticket che usa ${name}, come versione di correzione o interessata, passa alla versione che scegli. Poi ${name} viene eliminata.`,
+      mergeInto: 'Unisci in',
+      mergeNoOther: 'Non c’è un’altra versione in cui unire.',
+      merged: (name: string, into: string) => `${name} unita a ${into}.`,
+      deleteTitle: (name: string) => `Eliminare ${name}?`,
+      deleteUnused: 'Nessun ticket usa questa versione.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'ticket usa', 'ticket usano')} questa versione. Possono perderla o ricevere un’altra versione al suo posto.`,
+      deleteFix: 'I ticket che corregge ricevono',
+      deleteAffects: 'I ticket che interessa ricevono',
+      deleteNone: 'Nessuna versione: la perdono e basta',
+      deleted: (name: string) => `Versione ${name} eliminata.`,
+    },
+    notifications: {
+      title: 'Notifiche',
+      intro:
+        'Le email sui ticket di questo progetto. Ognuno sceglie comunque nelle proprie impostazioni gli eventi che lo raggiungono.',
+      enabled: 'Invia notifiche via email per questo progetto',
+      enabledHint:
+        'Se è disattivato, nessuno riceve email sui ticket di questo progetto, qualunque siano le sue impostazioni.',
+      extraTitle: 'Altri destinatari',
+      extraIntro:
+        'Un gruppo o un ruolo selezionato per un evento riceve anche l’email corrispondente in questo progetto, oltre alle persone che già seguono il ticket.',
+      recipient: 'Gruppo o ruolo',
+      none: 'Non c’è ancora nessun gruppo o ruolo da scegliere.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+  },
+
   catalogAdmin: {
     name: 'Nome',
     search: 'Cerca',
