@@ -1047,16 +1047,19 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 	if len(it.dropped) > 0 {
 		marks, ids := sqlq.Marks(len(it.dropped)), moveArgs(it.dropped)
 		values := map[int64][]string{}
-		if err := sqlq.Each(ctx, tx, `SELECT field_id, string_value, number_value, text_value, date_value
-			FROM custom_field_values WHERE issue_id = ? AND field_id IN (`+marks+`)`, func(rows *sql.Rows) error {
+		if err := sqlq.Each(ctx, tx, `SELECT v.field_id, o.value, v.string_value, v.number_value, v.text_value, v.date_value
+			FROM custom_field_values v LEFT JOIN custom_field_options o ON o.field_id = v.field_id AND o.id = v.string_value
+			WHERE v.issue_id = ? AND v.field_id IN (`+marks+`)`, func(rows *sql.Rows) error {
 			var id int64
-			var text, long sql.NullString
+			var option, text, long sql.NullString
 			var n sql.NullFloat64
 			var d sql.NullTime
-			if err := rows.Scan(&id, &text, &n, &long, &d); err != nil {
+			if err := rows.Scan(&id, &option, &text, &n, &long, &d); err != nil {
 				return err
 			}
 			switch {
+			case option.Valid:
+				values[id] = append(values[id], option.String)
 			case text.Valid:
 				values[id] = append(values[id], text.String)
 			case n.Valid:

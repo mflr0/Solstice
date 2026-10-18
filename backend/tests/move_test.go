@@ -358,6 +358,22 @@ func TestMoveNeedsTheChoices(t *testing.T) {
 	}
 }
 
+func TestMoveHistoryNamesTheDroppedOption(t *testing.T) {
+	e := newMoveEnv(t)
+	var f fieldDetail
+	e.admin.call("POST", "/api/admin/fields", map[string]any{"name": unique("Choix "), "type": "select",
+		"options": []string{"Rouge", "Vert"}, "context": map[string]any{"projects": []string{e.src}}}, 201, &f)
+	t.Cleanup(func() { e.admin.do("DELETE", fmt.Sprintf("/api/admin/fields/%d", f.ID), nil) })
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"customFields": map[string]any{
+		strconv.FormatInt(f.ID, 10): "Vert"}}, 200, nil)
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", e.allChoices, 200, nil)
+
+	if got := pick(t, `SELECT ci.old_string FROM change_items ci JOIN change_groups cg ON cg.id = ci.group_id
+		WHERE cg.issue_id = ? AND ci.field = ? AND ci.old_string IS NOT NULL`, e.issueID, f.Name); got != "Vert" {
+		t.Errorf("history of the dropped option: %q, want Vert", got)
+	}
+}
+
 func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 	e := newMoveEnv(t)
 	srcCounter := dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.srcID)
