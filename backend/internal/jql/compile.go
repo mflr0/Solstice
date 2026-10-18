@@ -36,6 +36,14 @@ type Env struct {
 // Compile turns a query into a SQL condition on issues (alias i, projects
 // as p) with its arguments, and an ORDER BY clause.
 func Compile(q *Query, env Env) (where string, args []any, order string, err error) {
+	where, args, order, _, err = CompileUsing(q, env)
+	return
+}
+
+// CompileUsing is Compile that also tells whether the condition reads the
+// projects alias p: a count of the matches can then skip that join when the
+// condition does not need it. The ORDER BY is not part of that answer.
+func CompileUsing(q *Query, env Env) (where string, args []any, order string, usesProject bool, err error) {
 	if env.Loc == nil {
 		env.Loc = time.UTC
 	}
@@ -47,16 +55,17 @@ func Compile(q *Query, env Env) (where string, args []any, order string, err err
 	if q.Where != nil {
 		where, err = c.node(q.Where)
 		if err != nil {
-			return "", nil, "", err
+			return "", nil, "", false, err
 		}
 	}
 	order, err = c.order(q.Order)
-	return where, c.args, order, err
+	return where, c.args, order, c.project, err
 }
 
 type compiler struct {
-	env  Env
-	args []any
+	env     Env
+	args    []any
+	project bool // the condition reads the projects alias p
 }
 
 func (c *compiler) arg(v ...any) { c.args = append(c.args, v...) }
@@ -568,6 +577,7 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
 			conds = append(conds, "("+pa+".pkey = ? AND "+a+".num = ?)")
+			c.project = c.project || pa == "p"
 			c.arg(strings.ToUpper(m[1]), num)
 			continue
 		}
@@ -608,6 +618,7 @@ func (c *compiler) key(cl Clause) (string, error) {
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
 		c.arg(strings.ToUpper(m[1]), num)
+		c.project = true
 		return "(p.pkey = ? AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")

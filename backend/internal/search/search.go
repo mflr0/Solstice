@@ -185,6 +185,19 @@ func tokenize(s string) []token {
 	return out
 }
 
+// UsesProject tells whether SQL reads the projects alias p.
+func (q Query) UsesProject() bool {
+	if len(q.Keys) > 0 {
+		return true
+	}
+	for _, f := range q.Filters {
+		if f.Field == Project {
+			return true
+		}
+	}
+	return false
+}
+
 // SQL returns a condition on the issues table (alias i, with projects as p)
 // and its arguments. me is the current user, for @moi.
 func (q Query) SQL(me int64) (string, []any) {

@@ -1407,3 +1407,33 @@ func TestJQLParticipant(t *testing.T) {
 		t.Errorf("participant = and != paul.martin: %d + %d, want %d", all, none, total)
 	}
 }
+
+// The total of a search is counted with only the joins its condition needs:
+// it must stay the number of issues the page lists, with the project, with
+// the priority and with neither.
+func TestSearchTotalWithoutUselessJoins(t *testing.T) {
+	c := login(t, "admin", "admin")
+	for _, path := range []string{
+		"?jql=" + url.QueryEscape("project = DEMO"),
+		"?jql=" + url.QueryEscape("project = DEMO AND key >= DEMO-1"),
+		"?jql=" + url.QueryEscape("project = DEMO AND key in (DEMO-1, DEMO-2, DEMO-3) ORDER BY key"),
+		"?jql=" + url.QueryEscape("project = DEMO AND priority is not EMPTY ORDER BY priority DESC"),
+		"?jql=" + url.QueryEscape("project = DEMO AND created is not EMPTY"),
+		"?q=" + url.QueryEscape("projet:DEMO"),
+		"?q=" + url.QueryEscape("projet:DEMO DEMO-1"),
+		"?q=" + url.QueryEscape("projet:DEMO tri:priorité"),
+		"?q=" + url.QueryEscape("est:ouvert") + "&project=demo",
+		"?jql=" + url.QueryEscape("created is not EMPTY") + "&project=DEMO",
+	} {
+		var res struct {
+			Total  int
+			Issues []struct{ Key string }
+		}
+		if status := c.get("/api/issues"+path+"&size=200", &res); status != 200 {
+			t.Fatalf("%s: %d", path, status)
+		}
+		if res.Total == 0 || res.Total != len(res.Issues) {
+			t.Errorf("%s: total %d, %d issues listed", path, res.Total, len(res.Issues))
+		}
+	}
+}

@@ -181,15 +181,15 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
-	where, args, sort, mode, err := s.searchCondition(r.Context(), sub, params)
+	where, args, sort, mode, project, err := s.searchCondition(r.Context(), sub, params)
 	if err != nil {
 		return err
 	}
 	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
 		WHERE ` + where
 
-	var total int
-	if err := s.db.QueryRowContext(r.Context(), `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
+	total, err := s.countIssues(r.Context(), where, args, project)
+	if err != nil {
 		return err
 	}
 	rows, err := s.db.QueryContext(r.Context(), `SELECT `+issueColumns+from+` ORDER BY `+sort+`, i.id DESC
@@ -1794,13 +1794,12 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// compileJQL turns a JQL query into SQL. Syntax and field errors come back
-// to the user as they are (in the user's language).
 // searchCondition turns a search's parameters (jql, or q in either syntax,
 // and project) into a condition on the issues the user sees (aliases i and
-// p), with its ORDER BY and the syntax used.
+// p), with its ORDER BY and the syntax used. project tells whether the
+// condition reads p: when it does not, a count needs no join on projects.
 func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
-	sort, mode string, err error) {
+	sort, mode string, project bool, err error) {
 	// The search bar takes both syntaxes: JQL is recognised by its shape.
 	mode = "simple"
 	var cond string
@@ -1810,13 +1809,13 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 			src = params.Get("q")
 		}
 		mode = "jql"
-		if cond, cargs, sort, err = s.compileJQL(ctx, sub, src); err != nil {
-			return "", nil, "", "", err
+		if cond, cargs, sort, project, err = s.compileJQLUsing(ctx, sub, src); err != nil {
+			return "", nil, "", "", false, err
 		}
 	} else {
 		q := search.Parse(params.Get("q"))
 		cond, cargs = q.SQL(sub.UserID)
-		sort = q.Sort
+		sort, project = q.Sort, q.UsesProject()
 	}
 	vis, args := sub.VisibleSQL("i")
 	where = vis + " AND " + cond
@@ -1824,14 +1823,24 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 	if p := params.Get("project"); p != "" {
 		where += " AND p.pkey = ?"
 		args = append(args, strings.ToUpper(p))
+		project = true
 	}
-	return where, args, sort, mode, nil
+	return where, args, sort, mode, project, nil
 }
 
+// compileJQL turns a JQL query into SQL. Syntax and field errors come back
+// to the user as they are (in the user's language).
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {
+	where, args, order, _, err := s.compileJQLUsing(ctx, sub, src)
+	return where, args, order, err
+}
+
+// compileJQLUsing is compileJQL that also tells whether the condition reads
+// the projects alias p.
+func (s *Server) compileJQLUsing(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, bool, error) {
 	q, err := jql.Parse(src)
 	if err != nil {
-		return "", nil, "", jqlError(err)
+		return "", nil, "", false, jqlError(err)
 	}
 	fields := map[string]jql.Field{}
 	if err := sqlq.Each(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
@@ -1843,9 +1852,9 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		fields[strconv.FormatInt(f.ID, 10)] = f
 		return nil
 	}); err != nil {
-		return "", nil, "", err
+		return "", nil, "", false, err
 	}
-	where, args, order, err := jql.Compile(q, jql.Env{
+	where, args, order, project, err := jql.CompileUsing(q, jql.Env{
 		Me:  sub.UserID,
 		Now: time.Now(),
 		Loc: s.zone(),
@@ -1869,9 +1878,9 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		},
 	})
 	if err != nil {
-		return "", nil, "", jqlError(err)
+		return "", nil, "", false, jqlError(err)
 	}
-	return where, args, order, nil
+	return where, args, order, project, nil
 }
 
 // jqlError answers a query the server cannot read: 400 with the message and

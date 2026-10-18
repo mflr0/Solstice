@@ -119,6 +119,23 @@ func compile(t *testing.T, s string) (string, []any, string) {
 	return where, args, order
 }
 
+func TestCompileUsingProject(t *testing.T) {
+	for in, want := range map[string]bool{
+		``: false, `priority = High`: false, `project = DEMO`: false, `parent = DEMO-1`: false,
+		`status = Open ORDER BY key`: false, `key = DEMO-1`: true, `issuekey in (DEMO-1, 7)`: true,
+		`key != DEMO-1`: true, `key >= DEMO-3`: true, `priority = High OR key = DEMO-1`: true,
+	} {
+		q, err := Parse(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		where, _, _, got, err := CompileUsing(q, Env{})
+		if err != nil || got != want {
+			t.Errorf("CompileUsing(%q) = %v, %v, want %v\n%s", in, got, err, want, where)
+		}
+	}
+}
+
 func TestCompileDates(t *testing.T) {
 	_, args, _ := compile(t, `created >= -7d AND updated < startOfWeek() AND due <= endOfMonth()`)
 	want := []any{

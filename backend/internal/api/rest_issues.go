@@ -1005,14 +1005,27 @@ func (s *Server) restLinkTypes(w http.ResponseWriter, r *http.Request) error {
 
 // Search -----------------------------------------------------------------------
 
+// countIssues counts the issues matching a condition (aliases i and p). The
+// condition never reads pr, and reads p only when project says so: the count
+// joins only what it needs, so it can stay on the issues indexes.
+func (s *Server) countIssues(ctx context.Context, where string, args []any, project bool) (int, error) {
+	from := ` FROM issues i`
+	if project {
+		from += ` JOIN projects p ON p.id = i.project_id`
+	}
+	var total int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from+` WHERE `+where, args...).Scan(&total)
+	return total, err
+}
+
 // searchRows runs a search condition (aliases i, p and pr) and returns a page
-// of issues with the total.
-func (s *Server) searchRows(ctx context.Context, where string, args []any, order string, offset, limit int) (
+// of issues with the total. project tells whether the condition reads p.
+func (s *Server) searchRows(ctx context.Context, where string, args []any, project bool, order string, offset, limit int) (
 	[]*issueRow, int, error) {
 	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
 		WHERE ` + where
-	var total int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
+	total, err := s.countIssues(ctx, where, args, project)
+	if err != nil {
 		return nil, 0, err
 	}
 	if limit <= 0 || offset >= total {
@@ -1072,11 +1085,11 @@ func (s *Server) restSearch(w http.ResponseWriter, r *http.Request) error {
 		q := r.URL.Query()
 		query, fieldList, expandList = q.Get("jql"), q["fields"], q["expand"]
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
+	where, args, order, _, project, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
 	if err != nil {
 		return err
 	}
-	rows, total, err := s.searchRows(ctx, where, args, order, startAt, maxResults)
+	rows, total, err := s.searchRows(ctx, where, args, project, order, startAt, maxResults)
 	if err != nil {
 		return err
 	}

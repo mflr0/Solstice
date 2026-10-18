@@ -109,11 +109,11 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 			return failf(http.StatusBadRequest, i18n.CommonTimeZoneUnknown, name)
 		}
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, r.URL.Query())
+	where, args, order, _, project, err := s.searchCondition(ctx, sub, r.URL.Query())
 	if err != nil {
 		return err
 	}
-	rows, total, err := s.searchRows(ctx, where, args, order, 0, maxExportRows)
+	rows, total, err := s.searchRows(ctx, where, args, project, order, 0, maxExportRows)
 	if err != nil {
 		return err
 	}

@@ -232,7 +232,7 @@ func (s *Server) agileIssues(w http.ResponseWriter, r *http.Request, sub *perm.S
 		args = append(args, cargs...)
 	}
 	startAt, maxResults := paging(r, 50, 1000)
-	rows, total, err := s.searchRows(ctx, where, args, "i.rank_key IS NULL, i.rank_key", startAt, maxResults)
+	rows, total, err := s.searchRows(ctx, where, args, true, "i.rank_key IS NULL, i.rank_key", startAt, maxResults)
 	if err != nil {
 		return err
 	}

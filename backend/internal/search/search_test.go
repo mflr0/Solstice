@@ -90,3 +90,14 @@ func TestSQLKeys(t *testing.T) {
 		t.Fatalf("args %v", args)
 	}
 }
+
+func TestUsesProject(t *testing.T) {
+	for in, want := range map[string]bool{
+		"": false, "panier vide": false, "@marie est:ouvert priorité:haute": false, "tri:priorité": false,
+		"DEMO-12": true, "projet:DEMO": true, "panier project:web": true,
+	} {
+		if got := Parse(in).UsesProject(); got != want {
+			t.Errorf("UsesProject(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
