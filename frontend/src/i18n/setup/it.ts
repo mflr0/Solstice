@@ -23,6 +23,8 @@ export const it: SetupMessages = {
   copy: 'Copia',
   copied: 'Copiato',
   version: (v: string) => `Versione ${v}`,
+  sourceCode: 'Codice sorgente',
+  licenses: 'Licenze',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: 'Il server non risponde. Controlla che sia ancora in esecuzione, poi riprova.',

@@ -138,6 +138,8 @@ export const en = {
     modes: { system: 'system', light: 'light', dark: 'dark' },
     language: 'Language',
     logout: 'Sign out',
+    sourceCode: 'Source code',
+    licenses: 'Licences',
     live: 'Live updates',
     offline: 'Offline: pages no longer update by themselves',
   },

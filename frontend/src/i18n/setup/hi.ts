@@ -23,6 +23,8 @@ export const hi: SetupMessages = {
   copy: 'कॉपी करें',
   copied: 'कॉपी हो गया',
   version: (v: string) => `वर्ज़न ${v}`,
+  sourceCode: 'सोर्स कोड',
+  licenses: 'लाइसेंस',
   duration: (min: number, sec: number) => (min > 0 ? `${min} मिनट ${sec} सेकंड` : `${sec} सेकंड`),
   errors: {
     network: 'सर्वर जवाब नहीं दे रहा है। जाँचें कि वह अभी चल रहा है, फिर दोबारा कोशिश करें।',
