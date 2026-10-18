@@ -260,6 +260,7 @@ export const fr: Messages = {
     network: 'Le serveur ne répond pas. Vérifiez votre connexion.',
     generic: 'Une erreur est survenue.',
     notFound: 'Cette page n’existe pas, ou vous n’y avez pas accès.',
+    pageLoad: 'Cette page n’a pas pu être chargée. Vérifiez votre connexion et rechargez.',
   },
 
   login: {

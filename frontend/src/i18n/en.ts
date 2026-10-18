@@ -258,6 +258,7 @@ export const en = {
     network: 'The server isn’t responding. Check your connection.',
     generic: 'Something went wrong.',
     notFound: 'This page doesn’t exist, or you don’t have access to it.',
+    pageLoad: 'This page could not be loaded. Check your connection and reload.',
   },
 
   login: {
