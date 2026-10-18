@@ -36,19 +36,29 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	u, err := s.checkPassword(r, in.Username, in.Password)
-	if errors.Is(err, auth.ErrNoSession) {
-		s.auditLogin(r, in.Username, nil, "form")
-		return fail(http.StatusUnauthorized, i18n.AccountSignInFailed)
-	}
+	u, err := s.signIn(w, r, in.Username, in.Password, "form")
 	if err != nil {
 		return err
 	}
-	if err := s.startSession(w, r, u); err != nil {
-		return err
-	}
-	s.auditLogin(r, in.Username, u, "form")
 	return writeJSON(w, http.StatusOK, meOf(u))
+}
+
+// signIn throttles and audits every way of signing in with a password;
+// method says how the user came in, for the audit log.
+func (s *Server) signIn(w http.ResponseWriter, r *http.Request, username, password, method string) (*auth.User, error) {
+	u, err := s.checkPassword(r, username, password)
+	if errors.Is(err, auth.ErrNoSession) {
+		s.auditLogin(r, username, nil, method)
+		return nil, fail(http.StatusUnauthorized, i18n.AccountSignInFailed)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := s.startSession(w, r, u); err != nil {
+		return nil, err
+	}
+	s.auditLogin(r, username, u, method)
+	return u, nil
 }
 
 // startSession signs u in: it opens a session, notes the sign-in and sets
@@ -75,6 +85,14 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u *auth.Us
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
+	if err := s.signOut(w, r); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (s *Server) signOut(w http.ResponseWriter, r *http.Request) error {
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		if err := auth.EndSession(r.Context(), s.db, c.Value); err != nil {
 			return err
