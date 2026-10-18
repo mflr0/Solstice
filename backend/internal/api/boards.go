@@ -915,7 +915,7 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
 			return errForbidden
 		}
-		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint); err != nil {
+		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint, false); err != nil {
 			return err
 		}
 	}
@@ -1010,8 +1010,8 @@ func (s *Server) issuesOnBoard(ctx context.Context, sub *perm.Subject, b *boardR
 // setSprint moves an issue into an open sprint of the board, or back to the
 // backlog (0). Closed sprints stay in its history. The backlog move, on a board
 // or not (an empty boardRow), only leaves the open sprints of boards the user
-// sees.
-func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64) error {
+// sees. onBoard says the caller has already checked the issue against the board.
+func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64, onBoard bool) error {
 	scope, scopeArgs := "", []any(nil)
 	if sprint == 0 {
 		boards, err := s.visibleBoardIDs(ctx, sub)
@@ -1043,7 +1043,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	if (oldID.Valid && oldID.Int64 == sprint) || (sprint == 0 && !oldID.Valid) {
 		return nil
 	}
-	if sprint != 0 {
+	if sprint != 0 && !onBoard {
 		if err := s.issuesOnBoard(ctx, sub, b, []*issueRow{iss}); err != nil {
 			return err
 		}

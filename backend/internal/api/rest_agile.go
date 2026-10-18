@@ -506,7 +506,7 @@ func (s *Server) agileMoveToSprint(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	for _, iss := range issues {
-		if err := s.setSprint(ctx, sub, b, iss, sp.ID); err != nil {
+		if err := s.setSprint(ctx, sub, b, iss, sp.ID, true); err != nil {
 			return err
 		}
 		s.publish(iss, "issue", sub.UserID)
@@ -536,7 +536,7 @@ func (s *Server) agileMoveToBacklog(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	for _, iss := range issues {
-		if err := s.setSprint(ctx, sub, &boardRow{}, iss, 0); err != nil {
+		if err := s.setSprint(ctx, sub, &boardRow{}, iss, 0, false); err != nil {
 			return err
 		}
 		s.publish(iss, "issue", sub.UserID)
