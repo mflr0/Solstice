@@ -959,38 +959,11 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 	}
 
 	for k, kind := range moveKinds {
-		set := it.sets[k]
-		var err error
-		if kind.kind == "" {
-			_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ?`, row.ID)
-		} else {
-			_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND kind = ?`, row.ID, kind.kind)
-		}
+		lines, err := replaceSet(ctx, tx, row.ID, kind.field, kind.kind, it.sets[k].from, it.sets[k].to)
 		if err != nil {
 			return nil, err
 		}
-		for _, v := range set.to {
-			if kind.kind == "" {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, row.ID, v.ID)
-			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
-					row.ID, v.ID, kind.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
-		same := func(a, b idName) bool { return strings.EqualFold(a.Name, b.Name) }
-		for _, v := range set.from {
-			if !slices.ContainsFunc(set.to, func(o idName) bool { return same(o, v) }) {
-				changes = append(changes, change{field: kind.field, oldValue: strconv.FormatInt(v.ID, 10), oldString: v.Name})
-			}
-		}
-		for _, v := range set.to {
-			if !slices.ContainsFunc(set.from, func(o idName) bool { return same(o, v) }) {
-				changes = append(changes, change{field: kind.field, newValue: strconv.FormatInt(v.ID, 10), newString: v.Name})
-			}
-		}
+		changes = append(changes, lines...)
 	}
 
 	if len(it.dropped) > 0 {

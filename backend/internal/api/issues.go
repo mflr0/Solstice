@@ -1196,6 +1196,48 @@ func (s *Server) initialStatus(ctx context.Context, projectID int64) (string, er
 	return id, err
 }
 
+// replaceSet makes the components (kind "") or the versions of a kind of an
+// issue be want, and returns the history lines for what differs from have.
+func replaceSet(ctx context.Context, tx *sql.Tx, issueID int64, field, kind string, have, want []idName) ([]change, error) {
+	var changes []change
+	has := func(list []idName, v idName) bool {
+		return slices.ContainsFunc(list, func(o idName) bool { return o.ID == v.ID })
+	}
+	for _, v := range have {
+		if has(want, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, oldValue: strconv.FormatInt(v.ID, 10), oldString: v.Name})
+	}
+	for _, v := range want {
+		if has(have, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, newValue: strconv.FormatInt(v.ID, 10), newString: v.Name})
+	}
+	return changes, nil
+}
+
 // applySets writes the multi-valued fields (labels, components, versions)
 // present in f and returns the history lines for them.
 func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issueRow) ([]change, error) {
@@ -1270,12 +1312,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		}, iss.ProjectID); err != nil {
 			return nil, err
 		}
-		want := map[int64]bool{}
+		var want []idName
 		for _, id := range ids {
-			if _, ok := names[id]; !ok {
+			name, ok := names[id]
+			if !ok {
 				return nil, failf(http.StatusBadRequest, i18n.FieldValueNotInProject, st.key)
 			}
-			want[id] = true
+			if !slices.ContainsFunc(want, func(o idName) bool { return o.ID == id }) {
+				want = append(want, idName{id, name})
+			}
 		}
 		var q string
 		var args []any
@@ -1284,46 +1329,20 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		} else {
 			q, args = `SELECT version_id FROM issue_versions WHERE issue_id = ? AND kind = ?`, []any{iss.ID, st.kind}
 		}
-		have := map[int64]bool{}
+		var have []idName
 		if err := sqlq.Each(ctx, tx, q, func(rows *sql.Rows) error {
 			var id int64
 			err := rows.Scan(&id)
-			have[id] = true
+			have = append(have, idName{id, names[id]})
 			return err
 		}, args...); err != nil {
 			return nil, err
 		}
-		var err error
-		for id := range have {
-			if want[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, oldValue: strconv.FormatInt(id, 10), oldString: names[id]})
+		lines, err := replaceSet(ctx, tx, iss.ID, st.field, st.kind, have, want)
+		if err != nil {
+			return nil, err
 		}
-		for id := range want {
-			if have[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, newValue: strconv.FormatInt(id, 10), newString: names[id]})
-		}
+		changes = append(changes, lines...)
 	}
 	return changes, nil
 }

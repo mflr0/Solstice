@@ -328,6 +328,17 @@ func TestEditingTheProjectPointsToTheMoveAction(t *testing.T) {
 	}
 }
 
+func TestMoveHistoryKeepsTheIdOfAComponentThatOnlyChangesCase(t *testing.T) {
+	e := newMoveEnv(t)
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", e.allChoices, 200, nil)
+	for field, id := range map[string]int64{"old_value": e.apiSrc, "new_value": e.apiDst} {
+		if dbInt(t, `SELECT COUNT(*) FROM change_items ci JOIN change_groups cg ON cg.id = ci.group_id
+			WHERE cg.issue_id = ? AND ci.field = 'Component' AND ci.`+field+` = ?`, e.issueID, strconv.FormatInt(id, 10)) != 1 {
+			t.Errorf("no Component line with %s %d", field, id)
+		}
+	}
+}
+
 func TestMoveNeedsTheChoices(t *testing.T) {
 	e := newMoveEnv(t)
 	counter := dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID)
