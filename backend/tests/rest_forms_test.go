@@ -25,7 +25,7 @@ var formUsers = map[string]string{
 
 type restCall func(method, path string, body any) (int, any)
 
-func restAs(t *testing.T, username string) restCall {
+func restBasicAs(t *testing.T, username string) restCall {
 	t.Helper()
 	needDB(t)
 	return func(method, path string, body any) (int, any) {
@@ -252,7 +252,7 @@ func empty(v any) bool {
 func creatorOf(t *testing.T, project string) string {
 	t.Helper()
 	for _, u := range []string{"paul.martin", "hugo.robert", "lucas.bernard", "chloe.simon", "admin"} {
-		status, meta := restAs(t, u)("GET", "/rest/api/2/issue/createmeta?projectKeys="+project, nil)
+		status, meta := restBasicAs(t, u)("GET", "/rest/api/2/issue/createmeta?projectKeys="+project, nil)
 		if status == 200 && len(list(at(meta, "projects"))) == 1 {
 			return u
 		}
@@ -286,7 +286,7 @@ func epicOf(t *testing.T, project string) string {
 }
 
 func TestRESTCreateMeta(t *testing.T) {
-	paul := restAs(t, "paul.martin")
+	paul := restBasicAs(t, "paul.martin")
 	task := pick(t, `SELECT it.id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
 		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND NOT it.subtask AND it.name NOT IN ('Epic', 'Épopée')
 		ORDER BY t.position LIMIT 1`)
@@ -396,7 +396,7 @@ func TestRESTCreateMeta(t *testing.T) {
 
 	// The projects are those where the interface lets the user create issues.
 	for username := range formUsers {
-		rest := restAs(t, username)
+		rest := restBasicAs(t, username)
 		var want []string
 		c := login(t, username, formUsers[username])
 		var projects []struct{ Key string }
@@ -423,7 +423,7 @@ func TestRESTCreateMeta(t *testing.T) {
 
 func TestRESTCreateMetaManyTypes(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := restAs(t, "paul.martin")
+	paul := restBasicAs(t, "paul.martin")
 	key := newProject(t, admin, nil)
 	path := "/rest/api/2/issue/createmeta?expand=projects.issuetypes.fields&projectKeys="
 
@@ -495,10 +495,10 @@ func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 		}
 	})
 	for username := range formUsers {
-		rest := restAs(t, username)
+		rest := restBasicAs(t, username)
 		for _, project := range userProjects(t, rest) {
 			t.Run(username+"/"+project, func(t *testing.T) {
-				rest := restAs(t, username)
+				rest := restBasicAs(t, username)
 				status, meta := rest("GET", "/rest/api/2/issue/createmeta?expand=projects.issuetypes.fields&projectKeys="+project, nil)
 				if status != 200 {
 					t.Fatalf("createmeta: %d", status)
@@ -610,13 +610,13 @@ func TestRESTEditMeta(t *testing.T) {
 		}
 	})
 	for username := range formUsers {
-		for _, project := range userProjects(t, restAs(t, username)) {
+		for _, project := range userProjects(t, restBasicAs(t, username)) {
 			creator := creatorOf(t, project)
 			if creator == "" {
 				continue
 			}
 			t.Run(username+"/"+project, func(t *testing.T) {
-				rest, by := restAs(t, username), restAs(t, creator)
+				rest, by := restBasicAs(t, username), restBasicAs(t, creator)
 				_, meta := by("GET", "/rest/api/2/issue/createmeta?projectKeys="+project, nil)
 				var typeID string
 				for _, it := range list(at(meta, "projects", 0, "issuetypes")) {
@@ -727,7 +727,7 @@ func TestRESTEditMeta(t *testing.T) {
 }
 
 func TestRESTEditMetaResolution(t *testing.T) {
-	paul := restAs(t, "paul.martin")
+	paul := restBasicAs(t, "paul.martin")
 	status, meta := paul("GET", "/rest/api/2/issue/createmeta?projectKeys=DEMO", nil)
 	if status != 200 {
 		t.Fatalf("createmeta: %d", status)
@@ -774,7 +774,7 @@ func TestRESTEditMetaResolution(t *testing.T) {
 }
 
 func TestRESTEditMetaVisibility(t *testing.T) {
-	paul := restAs(t, "paul.martin")
+	paul := restBasicAs(t, "paul.martin")
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	if status, _ := paul("GET", "/rest/api/2/issue/"+hidden+"/editmeta", nil); status != http.StatusNotFound {
@@ -798,7 +798,7 @@ func pickerKeys(answer any, section string) []string {
 }
 
 func TestRESTIssuePicker(t *testing.T) {
-	paul, chloe := restAs(t, "paul.martin"), restAs(t, "chloe.simon")
+	paul, chloe := restBasicAs(t, "paul.martin"), restBasicAs(t, "chloe.simon")
 	picker := func(rest restCall, query string) (int, any) {
 		t.Helper()
 		return rest("GET", "/rest/api/2/issue/picker?"+query, nil)
@@ -959,7 +959,7 @@ func TestRESTIssuePicker(t *testing.T) {
 		!strings.Contains(str(item, "summary"), "&lt;<b>img src</b>=x") {
 		t.Errorf("picker text: %v", item)
 	}
-	if _, other := picker(restAs(t, "hugo.robert"), "query="+url.QueryEscape("IMG src")); len(pickerKeys(other, "hs")) != 0 ||
+	if _, other := picker(restBasicAs(t, "hugo.robert"), "query="+url.QueryEscape("IMG src")); len(pickerKeys(other, "hs")) != 0 ||
 		!slices.Contains(pickerKeys(other, "cs"), mine) {
 		t.Errorf("hugo.robert's history holds %s: %v", mine, other)
 	}
@@ -992,7 +992,7 @@ var customSchemas = map[string][2]string{
 
 func TestRESTFieldSchemas(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := restAs(t, "paul.martin")
+	paul := restBasicAs(t, "paul.martin")
 
 	kinds := map[string]string{"text": "textfield", "textarea": "textarea", "number": "float", "date": "datepicker",
 		"datetime": "datetime", "select": "select", "multiselect": "multiselect", "checkboxes": "multicheckboxes",
