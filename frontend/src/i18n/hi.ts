@@ -909,7 +909,7 @@ export const hi: Messages = {
     seeIssues: 'ये टिकट देखें',
     subQuery: 'सब-फ़िल्टर',
     subQueryHint: 'वैकल्पिक JQL क्वेरी, जो फ़िल्टर के ऊपर से लागू होती है।',
-    doneCutoff: 'पूर्ण टिकट कितने समय बाद हटाएँ',
+    doneCutoff: 'पूर्ण टिकट कितने समय बाद छिपाएँ',
     doneCutoffHint:
       'एक संख्या और उसके बाद d (दिन), w (हफ़्ते) या m (महीने), जैसे 2w। ख़ाली: कभी नहीं।',
     columns: 'कॉलम',
@@ -1429,7 +1429,7 @@ export const hi: Messages = {
       group: 'समूह',
       enabled: 'चालू',
       expires: 'समाप्ति',
-      owner: 'मालिक',
+      owner: 'स्वामी',
       version: 'वर्ज़न',
       status: 'स्टेटस',
     },
@@ -1696,7 +1696,7 @@ export const hi: Messages = {
     off: 'बंद',
     server: 'SMTP सर्वर',
     enabled: 'ईमेल भेजें',
-    enabledHint: 'हटाने पर Solstice कोई ईमेल नहीं भेजता; सेटिंग्स वैसे ही सहेजी रहती हैं।',
+    enabledHint: 'टिक हटाने पर Solstice कोई ईमेल नहीं भेजता; सेटिंग्स वैसे ही सहेजी रहती हैं।',
     host: 'सर्वर',
     hostPlaceholder: 'smtp.example.com',
     port: 'पोर्ट',
@@ -2137,13 +2137,13 @@ export const hi: Messages = {
       'प्रोजेक्ट केवल पढ़ने योग्य हो जाएगा और प्रोजेक्ट सूचियों से हट जाएगा। उसके टिकट और इतिहास सुरक्षित रहते हैं, और आप उसे कभी भी संग्रह से निकाल सकते हैं।',
     archived: (name: string) => `“${name}” संग्रहीत हो गया।`,
     unarchived: (name: string) => `“${name}” फिर से सक्रिय है।`,
-    deleteTitle: (name: string) => `“${name}” हटाएँ?`,
+    deleteTitle: (name: string) => `“${name}” मिटाएँ?`,
     deleteBody: (issues: number) =>
       issues > 0
-        ? `इससे प्रोजेक्ट अपने ${plural(issues, 'टिकट', 'टिकट')}, टिप्पणियों, अटैचमेंट और इतिहास के साथ हमेशा के लिए हट जाएगा। यह वापस नहीं हो सकता। डेटा रखना हो तो प्रोजेक्ट को हटाने के बजाय संग्रहीत कीजिए।`
-        : 'इससे खाली प्रोजेक्ट हमेशा के लिए हट जाएगा। यह वापस नहीं हो सकता।',
+        ? `इससे प्रोजेक्ट अपने ${plural(issues, 'टिकट', 'टिकट')}, टिप्पणियों, अटैचमेंट और इतिहास के साथ हमेशा के लिए मिट जाएगा। यह वापस नहीं हो सकता। डेटा रखना हो तो प्रोजेक्ट को मिटाने के बजाय संग्रहीत कीजिए।`
+        : 'इससे खाली प्रोजेक्ट हमेशा के लिए मिट जाएगा। यह वापस नहीं हो सकता।',
     typeToConfirm: (key: string) => `पुष्टि के लिए ${key} लिखिए`,
-    deleted: (name: string) => `“${name}” हट गया।`,
+    deleted: (name: string) => `“${name}” मिट गया।`,
     createTitle: 'नया प्रोजेक्ट',
     create: 'प्रोजेक्ट बनाएँ',
     namePlaceholder: 'वेबसाइट',
@@ -2178,12 +2178,12 @@ export const hi: Messages = {
       keyRequired: 'प्रोजेक्ट को एक कुंजी दीजिए।',
       keyPattern: 'कुंजी में 2 से 10 बड़े अक्षर या अंक होते हैं, और वह किसी अक्षर से शुरू होती है।',
       accessRequired: 'चुनिए कि किसे पहुँच मिलेगी।',
-      typesRequired: 'कम से कम एक ऐसा प्रकार रखिए जो उप-कार्य न हो।',
+      typesRequired: 'कम से कम एक ऐसा प्रकार रखिए जो सब-टास्क न हो।',
     },
     created: (name: string) => `“${name}” बन गया।`,
     categoriesTitle: 'प्रोजेक्ट श्रेणियाँ',
     categoriesIntro:
-      'श्रेणियाँ प्रोजेक्ट सूची में प्रोजेक्ट को समूहों में रखती हैं। श्रेणी हटाने पर उसके प्रोजेक्ट बिना श्रेणी के रह जाते हैं।',
+      'श्रेणियाँ प्रोजेक्ट सूची में प्रोजेक्ट को समूहों में रखती हैं। श्रेणी मिटाने पर उसके प्रोजेक्ट बिना श्रेणी के रह जाते हैं।',
     newCategory: 'नई श्रेणी',
     categoryTitle: (name: string) => `“${name}” बदलें`,
     categoryName: 'नाम',
@@ -2192,8 +2192,8 @@ export const hi: Messages = {
     categoriesEmpty: 'अभी कोई श्रेणी नहीं।',
     categoryCreated: (name: string) => `श्रेणी “${name}” बन गई।`,
     categorySaved: (name: string) => `श्रेणी “${name}” सहेजी गई।`,
-    categoryDeleted: (name: string) => `श्रेणी “${name}” हट गई।`,
-    deleteCategoryTitle: (name: string) => `“${name}” हटाएँ?`,
+    categoryDeleted: (name: string) => `श्रेणी “${name}” मिट गई।`,
+    deleteCategoryTitle: (name: string) => `“${name}” मिटाएँ?`,
     deleteCategoryBody: (n: number) =>
       n > 0
         ? `${plural(n, 'प्रोजेक्ट', 'प्रोजेक्ट')} बिना श्रेणी के रह जाएँगे। प्रोजेक्ट खुद नहीं छुए जाते।`

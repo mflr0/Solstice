@@ -132,7 +132,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectKeyInvalid:          "Ungültiger Schlüssel: 2 bis 10 Großbuchstaben oder Ziffern, beginnend mit einem Buchstaben.",
 	ProjectKeyTaken:            "Der Schlüssel %s ist bereits vergeben (von einem aktuellen oder früheren Projekt).",
 	ProjectNameTaken:           "Ein Projekt mit dem Namen „%s“ existiert bereits.",
-	ProjectLeadInactive:        "Der Verantwortliche muss ein aktives Konto sein.",
+	ProjectLeadInactive:        "Die Projektleitung muss ein aktives Konto sein.",
 	ProjectCategoryNotFound:    "Kategorie nicht gefunden.",
 	ProjectTemplateUnknown:     "Unbekanntes Vorlagenmodell: software oder simple.",
 	ProjectAssigneeTypeUnknown: "Standardzuweisung: unassigned oder lead.",
@@ -194,7 +194,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Catalogues: issue types, priorities, resolutions, link types.
 	CatalogColorInvalid:        "Ungültige Farbe: #rrggbb erwartet.",
 	CatalogTypeSubtaskLocked:   "Einige Vorgänge verwenden diesen Typ: Er kann nicht mehr zu einer Unteraufgabe werden oder aufhören, eine Unteraufgabe zu sein.",
-	CatalogLinkTypeIncomplete:  "Ein Verknüpfungstyp braucht einen Namen, eine Hinwärts- und eine Rückwärtsrichtung.",
+	CatalogLinkTypeIncomplete:  "Ein Verknüpfungstyp braucht einen Namen, eine ausgehende und eine eingehende Richtung.",
 	CatalogLastIssueType:       "Es muss mindestens ein Vorgangstyp beibehalten werden.",
 	CatalogReplacementNotFound: "Ersetzungselement nicht gefunden.",
 	CatalogReplacementKind:     "Der Ersetzungstyp muss von gleicher Art sein (Unteraufgabe oder nicht).",

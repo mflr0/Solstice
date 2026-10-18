@@ -266,9 +266,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ComponentReplacementNotFound: "Composant de remplacement introuvable dans ce projet.",
 
 	// Versions.
-	VersionStartAfterRelease: "La date de début doit précéder la date de sortie.",
+	VersionStartAfterRelease: "La date de début doit précéder la date de livraison.",
 	VersionTargetNotFound:    "Version de destination introuvable dans ce projet.",
-	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore sortie.",
+	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore livrée.",
 
 	// Issues: creation, editing, hierarchy, assignment, deletion.
 	IssueTypeUnknown:           "Type de ticket inconnu : %s.",

@@ -517,14 +517,14 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SubscriptionDayRequired:      "Scegli almeno un giorno.",
 	SubscriptionDaysInvalid:      "Giorni non validi: da 1 (lunedì) a 7 (domenica).",
 	SubscriptionFrequencyUnknown: "Frequenza sconosciuta: daily o weekly.",
-	SubscriptionGroupAdminOnly:   "Solo un amministratore può iscrivere un gruppo.",
+	SubscriptionGroupAdminOnly:   "Solo un amministratore può abbonare un gruppo.",
 	SubscriptionSubject:          "Filtro «%s»",
 	SubscriptionCount:            "Ticket corrispondenti: %d (al %s).",
 	SubscriptionNoMatch:          "Nessun ticket corrisponde a questo filtro.",
 	SubscriptionTruncated:        "Sono elencati solo i primi %d ticket: vedi tutti i risultati.",
 	SubscriptionOpen:             "Apri in Solstice",
-	SubscriptionWhyGroup:         "Ricevi questa email perché il gruppo %s è iscritto a questo filtro.",
-	SubscriptionWhyUser:          "Ricevi questa email perché sei iscritto a questo filtro.",
+	SubscriptionWhyGroup:         "Ricevi questa email perché il gruppo %s è abbonato a questo filtro.",
+	SubscriptionWhyUser:          "Ricevi questa email perché sei abbonato a questo filtro.",
 
 	// Due date reminders.
 	ReminderSubject:  "Le tue scadenze del %s",

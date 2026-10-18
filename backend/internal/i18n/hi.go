@@ -60,12 +60,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",
 	GroupExists:     "ग्रुप “%s” पहले से मौजूद है।",
-	GroupRestricted: "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे डिलीट नहीं किया जा सकता।",
+	GroupRestricted: "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
 
 	// Project roles.
 	RoleNotFound:   "भूमिका नहीं मिली।",
 	RoleExists:     "भूमिका “%s” पहले से मौजूद है।",
-	RoleRestricted: "टिप्पणियाँ या दर्ज समय इस भूमिका तक सीमित हैं: इसे डिलीट नहीं किया जा सकता।",
+	RoleRestricted: "टिप्पणियाँ या दर्ज समय इस भूमिका तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
 
 	// Instance settings.
 	SettingsNameRequired:          "इंस्टेंस का नाम आवश्यक है (अधिकतम %d वर्ण)।",
@@ -133,13 +133,13 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectKeyInvalid:          "अमान्य कुंजी: 2 से 10 बड़े अक्षर या अंक, जिसकी शुरुआत किसी अक्षर से हो।",
 	ProjectKeyTaken:            "कुंजी %s पहले से ली गई है (किसी मौजूदा या पुराने प्रोजेक्ट द्वारा)।",
 	ProjectNameTaken:           "“%s” नाम का एक प्रोजेक्ट पहले से मौजूद है।",
-	ProjectLeadInactive:        "ज़िम्मेदार व्यक्ति कोई सक्रिय खाता होना चाहिए।",
+	ProjectLeadInactive:        "प्रोजेक्ट लीड कोई सक्रिय खाता होना चाहिए।",
 	ProjectCategoryNotFound:    "श्रेणी नहीं मिली।",
 	ProjectTemplateUnknown:     "अज्ञात टेम्पलेट: software या simple।",
 	ProjectAssigneeTypeUnknown: "डिफ़ॉल्ट असाइनमेंट: unassigned या lead।",
 	ProjectIssueTypeRequired:   "कम से कम एक ऐसा टिकट प्रकार चुनें जो सब-टास्क न हो।",
 	ProjectRemovedTypesInUse:   "कुछ टिकट अभी भी हटाए गए प्रकार इस्तेमाल करते हैं: पहले उनका टिकट प्रकार बदलें।",
-	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: डिलीट की पुष्टि के लिए इसकी कुंजी टाइप करें।",
+	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: मिटाने की पुष्टि के लिए इसकी कुंजी टाइप करें।",
 	ProjectGranteeUnknown:      "अज्ञात अनुमति-प्राप्तकर्ता: %s।",
 	ProjectGranteeNotFound:     "अनुमति-प्राप्तकर्ता नहीं मिला।",
 
@@ -205,8 +205,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "अज्ञात फ़ील्ड प्रकार (इनमें से चुनें: %s)।",
 	CustomFieldNoOptions:     "इस फ़ील्ड प्रकार के कोई विकल्प नहीं होते।",
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
-	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे डिलीट नहीं किया जा सकता।",
-	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: डिलीट की पुष्टि के लिए इसका नाम टाइप करें।",
+	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे मिटाया नहीं जा सकता।",
+	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: मिटाने की पुष्टि के लिए इसका नाम टाइप करें।",
 	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
 	CustomFieldOptionMoveTo:  "बदले में दिया गया विकल्प उसी फ़ील्ड का, उसी स्तर का कोई दूसरा विकल्प होना चाहिए।",
 
@@ -301,8 +301,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssigneeNotAssignable: "इस प्रोजेक्ट में इस व्यक्ति को टिकट असाइन नहीं किए जा सकते।",
 	IssueNotVisibleTo:          "यह व्यक्ति यह टिकट नहीं देख सकता।",
 	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
-	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप डिलीट नहीं कर सकते।",
-	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी डिलीट करने के लिए deleteSubtasks=true जोड़ें।",
+	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप मिटा नहीं सकते।",
+	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी मिटाने के लिए deleteSubtasks=true जोड़ें।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
@@ -352,7 +352,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "इस वर्कफ़्लो में अज्ञात ट्रांज़िशन।",
 	WorkflowStatusesRemoved:        "कुछ टिकट ऐसे स्टेटस में हैं जो उनके वर्कफ़्लो में अब नहीं रहेंगे। चुनें कि उन्हें कहाँ ले जाना है।",
 	WorkflowCopyNotFound:           "कॉपी करने के लिए वर्कफ़्लो इस प्रोजेक्ट में नहीं मिला।",
-	WorkflowDefaultDelete:          "डिफ़ॉल्ट वर्कफ़्लो डिलीट नहीं किया जा सकता। पहले किसी दूसरे वर्कफ़्लो को डिफ़ॉल्ट बनाएँ।",
+	WorkflowDefaultDelete:          "डिफ़ॉल्ट वर्कफ़्लो मिटाया नहीं जा सकता। पहले किसी दूसरे वर्कफ़्लो को डिफ़ॉल्ट बनाएँ।",
 	WorkflowDefaultStatusesMissing: "कुछ टिकट ऐसे स्टेटस में हैं जो डिफ़ॉल्ट वर्कफ़्लो में नहीं हैं। चुनें कि उन्हें कहाँ ले जाना है।",
 
 	// Boards, their settings and ranking.
@@ -504,7 +504,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyWhyWatcher:          "आपको यह ईमेल इसलिए मिला है क्योंकि आप यह टिकट वॉच कर रहे हैं।",
 	NotifyWhyProject:          "आपको यह ईमेल इसलिए मिला है क्योंकि प्रोजेक्ट %s ने आपको अपने प्राप्तकर्ताओं में शामिल किया है।",
 	NotifyCreated:             "%s ने टिकट बनाया।",
-	NotifyDeleted:             "%s ने टिकट हटाया।",
+	NotifyDeleted:             "%s ने टिकट मिटाया।",
 	NotifyUpdated:             "%s ने टिकट बदला।",
 	NotifyResolved:            "%s ने टिकट रिज़ॉल्व किया।",
 	NotifyReopened:            "%s ने टिकट फिर से खोला।",

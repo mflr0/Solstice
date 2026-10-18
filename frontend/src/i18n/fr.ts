@@ -62,7 +62,7 @@ export const fr: Messages = {
 
   holders: {
     everyone: 'Tout le monde',
-    user: 'Personne',
+    user: 'Utilisateur',
     group: 'Groupe',
     role: 'Rôle',
     lead: 'Responsable du projet',
@@ -346,7 +346,7 @@ export const fr: Messages = {
     chooseKind: 'Type de bénéficiaire',
     chooseGroup: 'Groupe',
     chooseRole: 'Rôle',
-    chooseUser: 'Personne',
+    chooseUser: 'Utilisateur',
     roles: 'Rôles dans ce projet',
     roleMembers: 'Membres',
     noMembers: 'Aucun membre',
@@ -953,11 +953,11 @@ export const fr: Messages = {
       parent: 'Par ticket parent',
     },
     strategyHints: {
-      none: 'Une seule bande.',
-      custom: 'Une bande par requête, dans l’ordre ; un ticket va dans la première qui le prend.',
-      assignee: 'Une bande par personne.',
-      epic: 'Une bande par épopée.',
-      parent: 'Une bande par ticket ayant des sous-tâches.',
+      none: 'Un seul couloir.',
+      custom: 'Un couloir par requête, dans l’ordre ; un ticket va dans le premier qui le prend.',
+      assignee: 'Un couloir par personne.',
+      epic: 'Un couloir par épopée.',
+      parent: 'Un couloir par ticket ayant des sous-tâches.',
     },
     lanes: 'Couloirs par requête',
     noLanes: 'Aucun couloir.',
@@ -1787,7 +1787,7 @@ export const fr: Messages = {
       reset: 'réinitialisation du mot de passe',
       invitation: 'invitation',
     },
-    attempts: (n: number) => `${n} essais`,
+    attempts: (n: number) => plural(n, 'essai', 'essais'),
   },
   account: {
     title: 'Mes réglages',
