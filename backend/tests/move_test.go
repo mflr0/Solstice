@@ -1239,3 +1239,19 @@ func TestMoveRestrictsAPendingNotificationByTheCommentsNewRestriction(t *testing
 		}
 	}
 }
+
+func TestMoveKeepsItsOldKeyFromBeingGivenToAnotherProject(t *testing.T) {
+	e := newMoveEnv(t)
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", e.allChoices, 200, nil)
+	if status, raw := e.admin.do("DELETE", "/api/projects/"+e.src, map[string]string{"confirm": e.src}); status != 204 {
+		t.Fatalf("deleting the source project: %d %s", status, raw)
+	}
+	var check struct{ Available bool }
+	e.admin.call("GET", "/api/admin/project-key?key="+e.src, nil, 200, &check)
+	if check.Available {
+		t.Error("the key of a deleted project is offered, though issues moved away from it")
+	}
+	if status, _ := e.admin.do("POST", "/api/projects", map[string]any{"key": e.src, "name": unique("Réutilisé ")}); status != 409 {
+		t.Errorf("creating a project with that key: %d, want 409", status)
+	}
+}

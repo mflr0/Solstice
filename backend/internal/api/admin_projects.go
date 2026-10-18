@@ -27,14 +27,16 @@ import (
 var projectKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,9}$`)
 
 // checkProjectKey tells whether a key may be given to a new project: well
-// formed, and used by no project, now or formerly.
+// formed, and used by no project, now or formerly, nor by an issue that moved
+// away from a project of that key.
 func (s *Server) checkProjectKey(ctx context.Context, key string) error {
 	if !projectKeyPattern.MatchString(key) {
 		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
 	}
 	var n int
 	if err := s.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
-		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ?)`, key, key).Scan(&n); err != nil {
+		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ?)
+		+ (SELECT COUNT(*) FROM moved_issue_keys WHERE old_key LIKE CONCAT(?, '-%'))`, key, key, key).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
