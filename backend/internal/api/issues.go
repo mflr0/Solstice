@@ -1339,8 +1339,11 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 // recording history and announcing the change. The board reuses it to move
 // cards between columns.
 func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
-	if f.has("project") || f.has("parent") {
-		return fail(http.StatusBadRequest, i18n.IssueMoveUnsupported)
+	if f.has("project") {
+		return fail(http.StatusBadRequest, i18n.IssueMoveUseAction)
+	}
+	if f.has("parent") {
+		return fail(http.StatusBadRequest, i18n.IssueParentUnsupported)
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {

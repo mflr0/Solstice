@@ -322,6 +322,14 @@ func TestMoveDryRunCountsReassignedSubtasks(t *testing.T) {
 	}
 }
 
+func TestEditingTheProjectPointsToTheMoveAction(t *testing.T) {
+	e := newMoveEnv(t)
+	status, body := e.admin.do("PATCH", "/api/issues/"+e.issue, map[string]any{"project": e.dst})
+	if status != 400 || !strings.Contains(string(body), "Move action") {
+		t.Errorf("editing the project: %d %s", status, body)
+	}
+}
+
 func TestMoveNeedsTheChoices(t *testing.T) {
 	e := newMoveEnv(t)
 	counter := dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID)

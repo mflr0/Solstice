@@ -296,7 +296,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssignOthersForbidden: "Vous ne pouvez pas assigner ce ticket à quelqu'un d'autre.",
 	IssueAssigneeNotAssignable: "Cette personne ne peut pas se voir assigner de tickets dans ce projet.",
 	IssueNotVisibleTo:          "Cette personne ne peut pas voir ce ticket.",
-	IssueMoveUnsupported:       "Déplacer un ticket n'est pas encore possible.",
+	IssueParentUnsupported:     "Changer le parent d'un ticket n'est pas encore possible.",
 	IssueSubtasksNotDeletable:  "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.",
 	IssueDeleteSubtasks:        "Ce ticket a des sous-tâches : ajoutez deleteSubtasks=true pour les supprimer avec lui.",
 	IssueCloneSummary:          "CLONE - %s",
@@ -310,6 +310,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveRestrictedHidden:  "%d commentaires et saisies de temps réservés à un rôle de ce projet ne vous sont pas lisibles, et le projet cible n'a aucun rôle du même nom. Un administrateur peut déplacer le ticket.",
 	IssueMoveSecurityNeeded:    "Déplacer un ticket qui a un niveau de confidentialité demande la permission Confidentialité dans le projet cible, et dans ce projet pour en choisir un autre.",
 	IssueMoveNoSubtaskType:     "Le ticket a des sous-tâches, et le projet cible n'a aucun type de sous-tâche à leur donner. Ajoutez-en un au projet d'abord.",
+	IssueMoveUseAction:         "Un ticket change de projet avec l'action Déplacer.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

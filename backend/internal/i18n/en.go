@@ -295,7 +295,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssignOthersForbidden: "You cannot assign this issue to someone else.",
 	IssueAssigneeNotAssignable: "This person cannot be assigned issues in this project.",
 	IssueNotVisibleTo:          "This person cannot see this issue.",
-	IssueMoveUnsupported:       "Moving an issue is not possible yet.",
+	IssueParentUnsupported:     "Changing the parent of an issue is not possible yet.",
 	IssueSubtasksNotDeletable:  "This issue has sub-tasks you cannot delete.",
 	IssueDeleteSubtasks:        "This issue has sub-tasks: add deleteSubtasks=true to delete them with it.",
 	IssueCloneSummary:          "CLONE - %s",
@@ -309,6 +309,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveRestrictedHidden:  "%d comments and work logs restricted to a role of this project are not readable by you, and the target project has no role of the same name. An administrator can move the issue.",
 	IssueMoveSecurityNeeded:    "Moving an issue that has a security level takes the Security level permission in the target project, and in this project to choose another level.",
 	IssueMoveNoSubtaskType:     "The issue has sub-tasks, and the target project has no sub-task type to give them. Add one to the project first.",
+	IssueMoveUseAction:         "An issue changes project with the Move action.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

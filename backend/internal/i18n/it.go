@@ -297,7 +297,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssignOthersForbidden: "Non puoi assegnare questo ticket a un'altra persona.",
 	IssueAssigneeNotAssignable: "A questa persona non possono essere assegnati ticket in questo progetto.",
 	IssueNotVisibleTo:          "Questa persona non può vedere questo ticket.",
-	IssueMoveUnsupported:       "Non è ancora possibile spostare un ticket.",
+	IssueParentUnsupported:     "Non è ancora possibile cambiare il padre di un ticket.",
 	IssueSubtasksNotDeletable:  "Questo ticket ha sotto-task che non puoi eliminare.",
 	IssueDeleteSubtasks:        "Questo ticket ha dei sotto-task: aggiungi deleteSubtasks=true per eliminarli insieme.",
 	IssueCloneSummary:          "CLONE - %s",
@@ -311,6 +311,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveRestrictedHidden:  "%d commenti e registri di lavoro riservati a un ruolo di questo progetto non sono leggibili da te, e il progetto di destinazione non ha un ruolo con lo stesso nome. Un amministratore può spostare il ticket.",
 	IssueMoveSecurityNeeded:    "Spostare un ticket che ha un livello di riservatezza richiede il permesso Riservatezza nel progetto di destinazione, e in questo progetto per sceglierne un altro.",
 	IssueMoveNoSubtaskType:     "Il ticket ha dei sotto-task, e il progetto di destinazione non ha alcun tipo di sotto-task da assegnare loro. Aggiungine prima uno al progetto.",
+	IssueMoveUseAction:         "Un ticket cambia progetto con l'azione Sposta.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

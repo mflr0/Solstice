@@ -297,7 +297,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssignOthersForbidden: "Sie können diesen Vorgang niemand anderem zuweisen.",
 	IssueAssigneeNotAssignable: "Dieser Person können in diesem Projekt keine Vorgänge zugewiesen werden.",
 	IssueNotVisibleTo:          "Diese Person kann diesen Vorgang nicht sehen.",
-	IssueMoveUnsupported:       "Vorgänge können noch nicht verschoben werden.",
+	IssueParentUnsupported:     "Der übergeordnete Vorgang kann noch nicht geändert werden.",
 	IssueSubtasksNotDeletable:  "Dieser Vorgang hat Unteraufgaben, die Sie nicht löschen dürfen.",
 	IssueDeleteSubtasks:        "Dieser Vorgang hat Unteraufgaben: Fügen Sie deleteSubtasks=true hinzu, um sie mitzulöschen.",
 	IssueCloneSummary:          "KLON - %s",
@@ -311,6 +311,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveRestrictedHidden:  "%d auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle sind für Sie nicht lesbar, und das Zielprojekt hat keine Rolle mit demselben Namen. Ein Administrator kann den Vorgang verschieben.",
 	IssueMoveSecurityNeeded:    "Das Verschieben eines Vorgangs mit Sicherheitsstufe erfordert die Berechtigung Sicherheitsstufe im Zielprojekt, und in diesem Projekt, um eine andere Stufe zu wählen.",
 	IssueMoveNoSubtaskType:     "Der Vorgang hat Unteraufgaben, und das Zielprojekt hat keinen Unteraufgabentyp für sie. Fügen Sie dem Projekt zuerst einen hinzu.",
+	IssueMoveUseAction:         "Ein Vorgang wechselt das Projekt über die Aktion „Verschieben“.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

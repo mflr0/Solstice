@@ -334,7 +334,7 @@ const (
 	IssueAssignOthersForbidden Key = "IssueAssignOthersForbidden"
 	IssueAssigneeNotAssignable Key = "IssueAssigneeNotAssignable"
 	IssueNotVisibleTo          Key = "IssueNotVisibleTo"
-	IssueMoveUnsupported       Key = "IssueMoveUnsupported"
+	IssueParentUnsupported     Key = "IssueParentUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
 	IssueCloneSummary          Key = "IssueCloneSummary"
@@ -348,6 +348,7 @@ const (
 	IssueMoveRestrictedHidden  Key = "IssueMoveRestrictedHidden"
 	IssueMoveSecurityNeeded    Key = "IssueMoveSecurityNeeded"
 	IssueMoveNoSubtaskType     Key = "IssueMoveNoSubtaskType"
+	IssueMoveUseAction         Key = "IssueMoveUseAction"
 )
 
 // Comments and their visibility.

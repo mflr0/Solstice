@@ -298,7 +298,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueAssignOthersForbidden: "आप यह टिकट किसी और को असाइन नहीं कर सकते।",
 	IssueAssigneeNotAssignable: "इस प्रोजेक्ट में इस व्यक्ति को टिकट असाइन नहीं किए जा सकते।",
 	IssueNotVisibleTo:          "यह व्यक्ति यह टिकट नहीं देख सकता।",
-	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
+	IssueParentUnsupported:     "टिकट का पैरेंट बदलना अभी संभव नहीं है।",
 	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप डिलीट नहीं कर सकते।",
 	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी डिलीट करने के लिए deleteSubtasks=true जोड़ें।",
 	IssueCloneSummary:          "क्लोन - %s",
@@ -312,6 +312,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveRestrictedHidden:  "इस प्रोजेक्ट की किसी भूमिका तक सीमित %d टिप्पणियाँ और कार्य-लॉग आपके लिए पढ़ने योग्य नहीं हैं, और लक्ष्य प्रोजेक्ट में उसी नाम की कोई भूमिका नहीं है। कोई प्रशासक टिकट को स्थानांतरित कर सकता है।",
 	IssueMoveSecurityNeeded:    "सुरक्षा स्तर वाले टिकट को स्थानांतरित करने के लिए लक्ष्य प्रोजेक्ट में सुरक्षा स्तर की अनुमति चाहिए, और दूसरा स्तर चुनने के लिए इस प्रोजेक्ट में भी।",
 	IssueMoveNoSubtaskType:     "टिकट में सब-टास्क हैं, और लक्ष्य प्रोजेक्ट में उन्हें देने के लिए कोई सब-टास्क प्रकार नहीं है। पहले प्रोजेक्ट में एक जोड़ें।",
+	IssueMoveUseAction:         "टिकट का प्रोजेक्ट ‘स्थानांतरित करें’ कार्रवाई से बदलता है।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
