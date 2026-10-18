@@ -677,3 +677,83 @@ func TestWebhooks(t *testing.T) {
 	admin.call("DELETE", path, nil, 204, nil)
 	admin.call("GET", path, nil, 404, nil)
 }
+
+func TestMailSettingsRefuseCredentialsInClear(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	plain := func(host string) map[string]any {
+		return map[string]any{"host": host, "port": env.smtp.Port, "security": "none", "username": "relai",
+			"password": "s3cret-smtp"}
+	}
+	status, body := admin.do("PUT", "/api/admin/mail", plain("smtp.autre.example"))
+	if status != http.StatusBadRequest || !strings.Contains(string(body), "encrypted") {
+		t.Errorf("credentials, no encryption, remote host: %d %s, want 400", status, body)
+	}
+	if !strings.Contains(string(body), "private network") {
+		t.Errorf("the refusal does not say that a private network needs encryption too: %s", body)
+	}
+	// Encryption, no credentials, or a local server: accepted.
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 587, "security": "starttls",
+		"username": "relai", "password": "s3cret-smtp"}, 200, nil)
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "security": "none", "username": "",
+		"password": nil}, 200, nil)
+	for _, host := range []string{"localhost", "::1", env.smtp.Host} {
+		admin.call("PUT", "/api/admin/mail", plain(host), 200, nil)
+	}
+}
+
+// A configuration saved before credentials were refused in clear is reported
+// by GET, so that the mail page can warn, and stops being reported once fixed.
+func TestMailSettingsReportCredentialsInClear(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	saved := `{"enabled":true,"host":"smtp.autre.example","port":25,"security":"none","username":"relai",` +
+		`"from":"solstice@exemple.fr","fromName":"Solstice"}`
+	if _, err := testDB.Exec(`UPDATE settings SET value = ? WHERE name = 'mail'`, saved); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Problem string `json:"problem"`
+	}
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Problem != "credentialsNeedTLS" {
+		t.Errorf("credentials, no encryption, remote host: problem %q, want credentialsNeedTLS", got.Problem)
+	}
+	got.Problem = "" // the field is left out when there is none
+	admin.call("PUT", "/api/admin/mail", map[string]any{"security": "starttls", "port": 587, "password": "s3cret-smtp"}, 200, &got)
+	if got.Problem != "" {
+		t.Errorf("after switching to STARTTLS: problem %q, want none", got.Problem)
+	}
+	got.Problem = ""
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Problem != "" {
+		t.Errorf("GET after switching to STARTTLS: problem %q, want none", got.Problem)
+	}
+}
+
+func TestMailSettingsKeepPasswordNotCarriedToNoEncryption(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	admin.call("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 587, "security": "starttls",
+		"username": "relai", "password": "s3cret-smtp"}, 200, nil)
+	// No "password" key: the stored one is kept.
+	for _, host := range []string{"smtp.autre.example", "localhost"} {
+		status, body := admin.do("PUT", "/api/admin/mail", map[string]any{"host": host, "port": 25, "security": "none"})
+		if status != http.StatusBadRequest || !strings.Contains(string(body), "SMTP password again") {
+			t.Errorf("keep the password, security none, host %s: %d %s, want 400 asking for the password", host, status, body)
+		}
+	}
+	status, body := admin.do("PUT", "/api/admin/mail", map[string]any{"host": "smtp.autre.example", "port": 25,
+		"security": "none", "password": "s3cret-smtp"})
+	if status != http.StatusBadRequest || !strings.Contains(string(body), "encrypted") {
+		t.Errorf("retyped password, security none, remote host: %d %s, want 400 about encryption", status, body)
+	}
+	var got struct {
+		Security    string `json:"security"`
+		PasswordSet bool   `json:"passwordSet"`
+	}
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Security != "starttls" || !got.PasswordSet {
+		t.Errorf("after the refusals: security %q, password set %v, want starttls and true", got.Security, got.PasswordSet)
+	}
+}

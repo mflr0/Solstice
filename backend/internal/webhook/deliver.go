@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/worker"
 )
 
 // MaxAttempts is how many times a delivery is tried before giving up
@@ -318,15 +319,17 @@ func (s *Service) Run(ctx context.Context) {
 		case <-tick.C:
 		case <-s.wake:
 		}
-		for {
-			n, err := s.DeliverDue(ctx)
-			if err != nil {
-				s.log.Error("webhook deliveries failed", "err", err)
+		worker.Guard(s.log, "webhook", func() {
+			for {
+				n, err := s.DeliverDue(ctx)
+				if err != nil {
+					s.log.Error("webhook deliveries failed", "err", err)
+				}
+				if n < 50 || ctx.Err() != nil {
+					break
+				}
 			}
-			if n < 50 || ctx.Err() != nil {
-				break
-			}
-		}
+		})
 	}
 }
 
