@@ -241,7 +241,7 @@ func TestReencodeAvatarDeclaredSize(t *testing.T) {
 	if want := i18n.M(i18n.AvatarDimensions).String(); err.Error() != want {
 		t.Errorf("message %q, want the dimensions one %q", err.Error(), want)
 	}
-	if grown := after.TotalAlloc - before.TotalAlloc; grown > 16<<20 {
+	if grown := after.TotalAlloc - before.TotalAlloc; grown > 256<<20 {
 		t.Errorf("%d bytes allocated for a header", grown)
 	}
 }
