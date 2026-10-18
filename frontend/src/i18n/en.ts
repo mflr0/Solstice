@@ -693,11 +693,11 @@ export const en = {
     moveDropped: (names: string) =>
       `The new project doesn’t use these fields, so their values are dropped: ${names}.`,
     moveSprints: (names: string) => `It leaves the open sprints: ${names}.`,
-    moveSubtasks: (n: number) => `${plural(n, 'sub-task', 'sub-tasks')} will move with it.`,
+    moveSubtasks: (n: number) => `${plural(n, 'sub-task will', 'sub-tasks will')} move with it.`,
     moveSubtasksReset: (n: number) =>
-      `${plural(n, 'sub-task', 'sub-tasks')} will start again at the first status of the new workflow.`,
+      `${plural(n, 'sub-task will', 'sub-tasks will')} start again at the first status of the new workflow.`,
     moveSubtasksLost: (n: number) =>
-      `${plural(n, 'component or version', 'components and versions')} of the sub-tasks have no match and are dropped.`,
+      `${plural(n, 'component or version of the sub-tasks has no match and is', 'components and versions of the sub-tasks have no match and are')} dropped.`,
     moveAssignee: (from: string, to: string) =>
       `${from} can’t be assigned in the new project: the assignee becomes ${to}.`,
     moveNoProject: 'There is no other project to move it to.',

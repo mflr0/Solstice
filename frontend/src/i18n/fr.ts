@@ -697,11 +697,11 @@ export const fr: Messages = {
     moveDropped: (names: string) =>
       `Le nouveau projet n’utilise pas ces champs, leurs valeurs sont supprimées : ${names}.`,
     moveSprints: (names: string) => `Il quitte les sprints ouverts : ${names}.`,
-    moveSubtasks: (n: number) => `${plural(n, 'sous-tâche', 'sous-tâches')} suivront.`,
+    moveSubtasks: (n: number) => `${plural(n, 'sous-tâche suivra', 'sous-tâches suivront')}.`,
     moveSubtasksReset: (n: number) =>
-      `${plural(n, 'sous-tâche', 'sous-tâches')} repartiront du premier statut du nouveau workflow.`,
+      `${plural(n, 'sous-tâche repartira', 'sous-tâches repartiront')} du premier statut du nouveau workflow.`,
     moveSubtasksLost: (n: number) =>
-      `${plural(n, 'composant ou version', 'composants et versions')} des sous-tâches n’ont pas d’équivalent et sont supprimés.`,
+      `${plural(n, 'composant ou version des sous-tâches n’a pas d’équivalent et est supprimé', 'composants et versions des sous-tâches n’ont pas d’équivalent et sont supprimés')}.`,
     moveAssignee: (from: string, to: string) =>
       `${from} ne peut pas être responsable dans le nouveau projet : le responsable devient ${to}.`,
     moveNoProject: 'Il n’y a pas d’autre projet où le déplacer.',

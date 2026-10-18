@@ -703,11 +703,11 @@ export const de: Messages = {
       `Das neue Projekt nutzt diese Felder nicht, ihre Werte werden entfernt: ${names}.`,
     moveSprints: (names: string) => `Er verlässt die offenen Sprints: ${names}.`,
     moveSubtasks: (n: number) =>
-      `${plural(n, 'Unteraufgabe', 'Unteraufgaben')} werden mitverschoben.`,
+      `${plural(n, 'Unteraufgabe wird', 'Unteraufgaben werden')} mitverschoben.`,
     moveSubtasksReset: (n: number) =>
-      `${plural(n, 'Unteraufgabe', 'Unteraufgaben')} beginnen beim ersten Status des neuen Workflows von vorn.`,
+      `${plural(n, 'Unteraufgabe beginnt', 'Unteraufgaben beginnen')} beim ersten Status des neuen Workflows von vorn.`,
     moveSubtasksLost: (n: number) =>
-      `${plural(n, 'Komponente oder Version', 'Komponenten und Versionen')} der Unteraufgaben haben keine Entsprechung und werden entfernt.`,
+      `${plural(n, 'Komponente oder Version der Unteraufgaben hat keine Entsprechung und wird', 'Komponenten und Versionen der Unteraufgaben haben keine Entsprechung und werden')} entfernt.`,
     moveAssignee: (from: string, to: string) =>
       `${from} kann im neuen Projekt nicht zugewiesen werden: Bearbeiter wird ${to}.`,
     moveNoProject: 'Es gibt kein anderes Projekt, in das er verschoben werden könnte.',

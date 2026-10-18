@@ -696,11 +696,11 @@ export const it: Messages = {
       `Il nuovo progetto non usa questi campi, i loro valori vengono eliminati: ${names}.`,
     moveSprints: (names: string) => `Lascia gli sprint aperti: ${names}.`,
     moveSubtasks: (n: number) =>
-      `${plural(n, 'sotto-task', 'sotto-task')} verranno spostati insieme.`,
+      `${plural(n, 'sotto-task verrà spostato', 'sotto-task verranno spostati')} insieme.`,
     moveSubtasksReset: (n: number) =>
-      `${plural(n, 'sotto-task', 'sotto-task')} ripartiranno dal primo stato del nuovo workflow.`,
+      `${plural(n, 'sotto-task ripartirà', 'sotto-task ripartiranno')} dal primo stato del nuovo workflow.`,
     moveSubtasksLost: (n: number) =>
-      `${plural(n, 'componente o versione', 'componenti e versioni')} dei sotto-task non hanno corrispondenza e vengono eliminati.`,
+      `${plural(n, 'componente o versione dei sotto-task non ha corrispondenza e viene eliminato', 'componenti e versioni dei sotto-task non hanno corrispondenza e vengono eliminati')}.`,
     moveAssignee: (from: string, to: string) =>
       `${from} non può essere assegnatario nel nuovo progetto: l’assegnatario diventa ${to}.`,
     moveNoProject: 'Non c’è un altro progetto in cui spostarlo.',
