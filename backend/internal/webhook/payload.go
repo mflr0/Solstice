@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -222,6 +223,9 @@ func issueEventType(e *events.Event) string {
 		return "issue_worklog_updated"
 	case events.WorklogDeleted:
 		return "issue_worklog_deleted"
+	}
+	if slices.ContainsFunc(e.Changes, func(c events.Change) bool { return c.Field == "Key" }) {
+		return "issue_moved"
 	}
 	assigned, status := false, false
 	for _, c := range e.Changes {
