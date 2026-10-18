@@ -7,8 +7,9 @@
 # What it does: runs the synthetic import (scripts/e2e-import.sh --import-only),
 # then dumps the MySQL-sourced result (solstice_e2e_my) with mariadb-dump, in a
 # stable form: no dump date, no comments, rows in primary key order, one row per
-# INSERT unless that makes the file larger than 2 MB. It then checks that the
-# seed is synthetic.
+# INSERT unless that makes the file larger than 2 MB, and the dates the import
+# sets itself (not the fixture's) replaced by one fixed value, so that two
+# regenerations give the same file. It then checks that the seed is synthetic.
 #
 # When to run it: after changing the fixture (backend/internal/jirafixture) or
 # the migrations. The seed may lag behind the migrations: CI migrates it after
@@ -24,6 +25,8 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 seed="$root/backend/tests/testdata/seed.sql"
 max=$((2 * 1024 * 1024))
+# Any valid date will do for the import's own dates.
+fixed_date="2026-10-01 18:00:00.000"
 
 # The fixture gives every account an @exemple.fr address; any other e-mail
 # domain in the seed means real data slipped in.
@@ -47,13 +50,19 @@ dump() { # mariadb-dump options...
     --single-transaction --skip-comments --skip-dump-date --skip-add-locks --order-by-primary "$@" solstice_e2e_my
 }
 
+# The tables whose datetime columns are all set when the import runs (the
+# fixture's dates in the other tables are already stable).
+normalise() {
+  sed -E "/^INSERT INTO \`(boards|filters|schema_migrations|users)\` /s/'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+'/'$fixed_date'/g"
+}
+
 echo "› dump of solstice_e2e_my"
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
-dump --skip-extended-insert > "$tmp"
+dump --skip-extended-insert | normalise > "$tmp"
 if [ "$(wc -c < "$tmp")" -gt "$max" ]; then
   echo "  more than 2 MB with one row per INSERT, using extended inserts"
-  dump > "$tmp"
+  dump | normalise > "$tmp"
 fi
 
 mkdir -p "$(dirname "$seed")"
