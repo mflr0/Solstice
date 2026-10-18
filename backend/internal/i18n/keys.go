@@ -11,8 +11,10 @@ const (
 	RequestXSRFHeader           Key = "RequestXSRFHeader"
 	RequestInvalid              Key = "RequestInvalid"
 	RequestTooManyAttempts      Key = "RequestTooManyAttempts"
+	RequestTooManyStreams       Key = "RequestTooManyStreams"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
+	RequestBodyTooLargeLimit    Key = "RequestBodyTooLargeLimit"
 )
 
 // Values shared by several forms.
@@ -38,6 +40,7 @@ const (
 	AccountCurrentPasswordRequired   Key = "AccountCurrentPasswordRequired"
 	AccountCurrentPasswordIncorrect  Key = "AccountCurrentPasswordIncorrect"
 	AccountTokenCannotChangePassword Key = "AccountTokenCannotChangePassword"
+	AccountTokenCannotChangeEmail    Key = "AccountTokenCannotChangeEmail"
 	AccountLanguageUnsupported       Key = "AccountLanguageUnsupported"
 	AccountResetLinkInvalid          Key = "AccountResetLinkInvalid"
 	AccountMailUnavailable           Key = "AccountMailUnavailable"
@@ -360,6 +363,9 @@ const (
 	LinkToItself       Key = "LinkToItself"
 )
 
+// Group picker.
+const GroupPickerHeader Key = "GroupPickerHeader"
+
 // Attachments.
 const (
 	AttachmentUploadInvalid Key = "AttachmentUploadInvalid"
@@ -367,6 +373,7 @@ const (
 	AttachmentTooLarge      Key = "AttachmentTooLarge"
 	AttachmentNotImported   Key = "AttachmentNotImported"
 	AttachmentFileMissing   Key = "AttachmentFileMissing"
+	AttachmentStorageQuota  Key = "AttachmentStorageQuota"
 )
 
 // Statuses and their categories.
@@ -436,6 +443,7 @@ const (
 	SprintDatesOrder      Key = "SprintDatesOrder"
 	SprintStartFuture     Key = "SprintStartFuture"
 	SprintDeleteNotFuture Key = "SprintDeleteNotFuture"
+	SprintNotOnBoard      Key = "SprintNotOnBoard"
 )
 
 // Saved filters and their shares.
@@ -535,6 +543,7 @@ const (
 	MailInviteAction          Key = "MailInviteAction"
 	MailInviteExpiry          Key = "MailInviteExpiry"
 	MailInviteWhy             Key = "MailInviteWhy"
+	MailCredentialsNeedTLS    Key = "MailCredentialsNeedTLS"
 )
 
 // Notification preferences and notification e-mails.
@@ -603,4 +612,13 @@ const (
 	WebhookEventRequired       Key = "WebhookEventRequired"
 	WebhookSecretTooLong       Key = "WebhookSecretTooLong"
 	WebhookSecretEncryptFailed Key = "WebhookSecretEncryptFailed"
+)
+
+// Profile pictures.
+const (
+	AvatarUploadInvalid Key = "AvatarUploadInvalid"
+	AvatarNoFile        Key = "AvatarNoFile"
+	AvatarTooLarge      Key = "AvatarTooLarge"
+	AvatarNotImage      Key = "AvatarNotImage"
+	AvatarDimensions    Key = "AvatarDimensions"
 )

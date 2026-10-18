@@ -13,6 +13,7 @@
   } from '../../lib/setup-api.js';
   import { initAppearance } from '../../lib/ui.svelte.js';
   import Logo from '../Logo.svelte';
+  import SourceLinks from '../SourceLinks.svelte';
   import { insecurePage } from './insecure.js';
   import StepCode from './StepCode.svelte';
   import StepDatabase from './StepDatabase.svelte';
@@ -200,9 +201,10 @@
         {/if}
       {/if}
 
-      {#if status?.version}
-        <footer class="setup-foot">{m.version(status.version)}</footer>
-      {/if}
+      <footer class="setup-foot">
+        <SourceLinks source={m.sourceCode} licenses={m.licenses} />
+        {#if status?.version}<span>{m.version(status.version)}</span>{/if}
+      </footer>
     </div>
   </main>
 </div>
@@ -317,9 +319,13 @@
 
   .setup-foot {
     margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
     font: 11.5px var(--font-mono);
     color: var(--muted);
-    text-align: right;
   }
 
   @media (max-width: 600px) {
