@@ -307,6 +307,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChoiceNeeded:      "À choisir avant de déplacer : %s.",
 	IssueMoveChanged:           "Le ticket a changé pendant son déplacement. Rechargez-le et réessayez.",
 	IssueMoveRestrictedRefused: "Les commentaires et saisies de temps réservés à un rôle de ce projet ne peuvent pas rester tels quels dans un autre projet.",
+	IssueMoveRestrictedHidden:  "%d commentaires et saisies de temps réservés à un rôle de ce projet ne vous sont pas lisibles, et le projet cible n'a aucun rôle du même nom. Un administrateur peut déplacer le ticket.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

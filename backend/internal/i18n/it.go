@@ -308,6 +308,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChoiceNeeded:      "Da scegliere prima di spostare: %s.",
 	IssueMoveChanged:           "Il ticket è cambiato durante lo spostamento. Ricaricalo e riprova.",
 	IssueMoveRestrictedRefused: "I commenti e i registri di lavoro riservati a un ruolo di questo progetto non possono restare invariati in un altro progetto.",
+	IssueMoveRestrictedHidden:  "%d commenti e registri di lavoro riservati a un ruolo di questo progetto non sono leggibili da te, e il progetto di destinazione non ha un ruolo con lo stesso nome. Un amministratore può spostare il ticket.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

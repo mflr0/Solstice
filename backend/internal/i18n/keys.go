@@ -345,6 +345,7 @@ const (
 	IssueMoveChoiceNeeded      Key = "IssueMoveChoiceNeeded"
 	IssueMoveChanged           Key = "IssueMoveChanged"
 	IssueMoveRestrictedRefused Key = "IssueMoveRestrictedRefused"
+	IssueMoveRestrictedHidden  Key = "IssueMoveRestrictedHidden"
 )
 
 // Comments and their visibility.

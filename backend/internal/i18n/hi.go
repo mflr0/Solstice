@@ -309,6 +309,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChoiceNeeded:      "स्थानांतरित करने से पहले चुनें: %s।",
 	IssueMoveChanged:           "स्थानांतरित करते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
 	IssueMoveRestrictedRefused: "इस प्रोजेक्ट की किसी भूमिका तक सीमित टिप्पणियाँ और कार्य-लॉग किसी दूसरे प्रोजेक्ट में जस के तस नहीं रह सकते।",
+	IssueMoveRestrictedHidden:  "इस प्रोजेक्ट की किसी भूमिका तक सीमित %d टिप्पणियाँ और कार्य-लॉग आपके लिए पढ़ने योग्य नहीं हैं, और लक्ष्य प्रोजेक्ट में उसी नाम की कोई भूमिका नहीं है। कोई प्रशासक टिकट को स्थानांतरित कर सकता है।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",

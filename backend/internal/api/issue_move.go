@@ -127,6 +127,7 @@ type moveItem struct {
 	assignee   any // the id of the assignee, or nil
 	dropped    []int64
 	sprints    []sprintRef // the open sprints it leaves
+	restricted []movedRestriction
 	num        int64
 }
 
@@ -145,14 +146,21 @@ type movePlan struct {
 	check   moveCheck
 	levels  [2]string // the level's name before and after
 	fieldNm map[int64]string
-	remap   *moveRemap // for the role-restricted comments and work logs; nil if there are none
 }
 
-// moveRemap is the SET clause that gives the role-restricted comments and work
-// logs their new restriction, and its argument.
+// moveRemap is the SET clause that gives a role-restricted comment or work log
+// its new restriction, and its argument.
 type moveRemap struct {
 	set string
 	arg int64
+}
+
+// movedRestriction is a role-restricted comment or work log of an issue, and
+// what it becomes.
+type movedRestriction struct {
+	table string
+	id    int64
+	remap moveRemap
 }
 
 func (d *moveDest) hasType(id string) bool {
@@ -653,30 +661,79 @@ func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRo
 
 // planRestricted decides what becomes of the comments and work logs restricted
 // to a project role: the role is held per project, so they cannot keep it as
-// it is. A role of the target, or a group, must be chosen.
+// it is. The ones the user reads take a role of the target, or a group, as
+// chosen. The others take the role of the same name in the target, or the move
+// is refused: a choice would let the user read what they could not.
 func (s *Server) planRestricted(ctx context.Context, sub *perm.Subject, plan *movePlan, in *moveInput,
 	missing func(string)) error {
 	ids := make([]int64, 0, len(plan.items))
+	byID := map[int64]*moveItem{}
 	for _, it := range plan.items {
 		ids = append(ids, it.row.ID)
+		byID[it.row.ID] = it
 	}
 	marks := sqlq.Marks(len(ids))
-	args := append(moveArgs(ids), moveArgs(ids)...)
-	r := &moveRestrict{}
-	if err := s.db.QueryRowContext(ctx, `SELECT
-		(SELECT COUNT(*) FROM comments WHERE visibility_role_id IS NOT NULL AND issue_id IN (`+marks+`)),
-		(SELECT COUNT(*) FROM worklogs WHERE visibility_role_id IS NOT NULL AND issue_id IN (`+marks+`))`, args...).
-		Scan(&r.Comments, &r.Worklogs); err != nil {
+	type restriction struct {
+		movedRestriction
+		item     *moveItem
+		role     string
+		readable bool
+	}
+	var found []*restriction
+	var comments, worklogs int
+	if err := sqlq.Each(ctx, s.db, `SELECT 'comments', x.id, x.issue_id, x.visibility_group, x.visibility_role_id, r.name
+		FROM comments x JOIN project_roles r ON r.id = x.visibility_role_id WHERE x.issue_id IN (`+marks+`)
+		UNION ALL SELECT 'worklogs', x.id, x.issue_id, x.visibility_group, x.visibility_role_id, r.name
+		FROM worklogs x JOIN project_roles r ON r.id = x.visibility_role_id WHERE x.issue_id IN (`+marks+`)`,
+		func(rows *sql.Rows) error {
+			var f restriction
+			var issueID, role int64
+			var group sql.NullString
+			if err := rows.Scan(&f.table, &f.id, &issueID, &group, &role, &f.role); err != nil {
+				return err
+			}
+			f.item = byID[issueID]
+			f.readable = sub.Admin || sub.SeesRestricted(f.item.row.ProjectID, group.String, role)
+			if f.readable && f.table == "comments" {
+				comments++
+			} else if f.readable {
+				worklogs++
+			}
+			found = append(found, &f)
+			return nil
+		}, append(moveArgs(ids), moveArgs(ids)...)...); err != nil {
 		return err
 	}
-	if r.Comments+r.Worklogs == 0 {
+	if len(found) == 0 {
 		return nil
 	}
-	var err error
-	if r.Roles, err = s.moveNames(ctx, `SELECT DISTINCT r.id, r.name FROM project_role_members m
-		JOIN project_roles r ON r.id = m.role_id WHERE m.project_id = ? ORDER BY r.name, r.id`, plan.dest.id); err != nil {
+	roles, err := s.moveNames(ctx, `SELECT DISTINCT r.id, r.name FROM project_role_members m
+		JOIN project_roles r ON r.id = m.role_id WHERE m.project_id = ? ORDER BY r.name, r.id`, plan.dest.id)
+	if err != nil {
 		return err
 	}
+
+	unmatched := 0
+	for _, f := range found {
+		if f.readable {
+			continue
+		}
+		i := slices.IndexFunc(roles, func(o idName) bool { return strings.EqualFold(o.Name, f.role) })
+		if i < 0 {
+			unmatched++
+			continue
+		}
+		f.remap = moveRemap{set: "visibility_role_id = ?", arg: roles[i].ID}
+		f.item.restricted = append(f.item.restricted, f.movedRestriction)
+	}
+	if unmatched > 0 {
+		return failf(http.StatusBadRequest, i18n.IssueMoveRestrictedHidden, unmatched)
+	}
+	if comments+worklogs == 0 {
+		return nil
+	}
+
+	r := &moveRestrict{Comments: comments, Worklogs: worklogs, Roles: roles}
 	// Groups are global: the mover may pick one they belong to (any, for an administrator).
 	groups := `SELECT g.id, g.name FROM user_groups g JOIN group_members m ON m.group_id = g.id
 		WHERE m.user_id = ? ORDER BY g.name, g.id`
@@ -694,22 +751,29 @@ func (s *Server) planRestricted(ctx context.Context, sub *perm.Subject, plan *mo
 		missing("restricted")
 		return nil
 	}
+	var remap moveRemap
 	switch c.To {
 	case "role":
 		if !slices.ContainsFunc(r.Roles, func(o idName) bool { return o.ID == c.Role }) {
 			return failf(http.StatusBadRequest, i18n.FieldValueNotInProject, "restricted")
 		}
-		plan.remap = &moveRemap{set: "visibility_role_id = ?", arg: c.Role}
+		remap = moveRemap{set: "visibility_role_id = ?", arg: c.Role}
 	case "group":
 		if !slices.ContainsFunc(r.Groups, func(o idName) bool { return o.ID == c.Group }) {
 			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "restricted")
 		}
-		plan.remap = &moveRemap{set: "visibility_group = (SELECT name FROM user_groups WHERE id = ?), visibility_role_id = NULL",
+		remap = moveRemap{set: "visibility_group = (SELECT name FROM user_groups WHERE id = ?), visibility_role_id = NULL",
 			arg: c.Group}
 	case "refuse":
 		return fail(http.StatusBadRequest, i18n.IssueMoveRestrictedRefused)
 	default:
 		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "restricted")
+	}
+	for _, f := range found {
+		if f.readable {
+			f.remap = remap
+			f.item.restricted = append(f.item.restricted, f.movedRestriction)
+		}
 	}
 	return nil
 }
@@ -882,22 +946,26 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 		return nil, err
 	}
 
-	// A role is held per project: what was restricted to one follows the choice
-	// made. The issue is locked, so nothing restricted appeared since the plan.
+	// A role is held per project: what was restricted to one follows the
+	// choice made. The issue is locked, so nothing restricted appeared since the plan.
 	for _, table := range []string{"comments", "worklogs"} {
-		if plan.remap == nil {
-			var n int
-			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE issue_id = ? AND visibility_role_id IS NOT NULL`,
-				row.ID).Scan(&n); err != nil {
-				return nil, err
-			}
-			if n > 0 {
-				return nil, fail(http.StatusConflict, i18n.IssueMoveChanged)
-			}
-			continue
+		var n int
+		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE issue_id = ? AND visibility_role_id IS NOT NULL`,
+			row.ID).Scan(&n); err != nil {
+			return nil, err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE `+table+` SET `+plan.remap.set+` WHERE issue_id = ? AND visibility_role_id IS NOT NULL`,
-			plan.remap.arg, row.ID); err != nil {
+		planned := 0
+		for _, r := range it.restricted {
+			if r.table == table {
+				planned++
+			}
+		}
+		if n != planned {
+			return nil, fail(http.StatusConflict, i18n.IssueMoveChanged)
+		}
+	}
+	for _, r := range it.restricted {
+		if _, err := tx.ExecContext(ctx, `UPDATE `+r.table+` SET `+r.remap.set+` WHERE id = ?`, r.remap.arg, r.id); err != nil {
 			return nil, err
 		}
 	}
