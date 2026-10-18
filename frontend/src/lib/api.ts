@@ -79,7 +79,7 @@ export interface MoveCheck {
   droppedFields: string[];
   sprints: string[];
   assignee?: { from: UserRef | null; to: UserRef | null };
-  subtasks: { count: number; reset: number; lost: number };
+  subtasks: { count: number; reset: number; lost: number; reassigned: number };
 }
 
 /** The choices a move can be given; a list replaces the whole list the issue ends with. */

@@ -710,6 +710,8 @@ export const it: Messages = {
     moveRestrictedGroup: 'Riservarli a un gruppo',
     moveRestrictedNone:
       'Il nuovo progetto non ha ruoli con membri e non appartieni a nessun gruppo: questi elementi non possono mantenere lì la restrizione, quindi il ticket non può essere spostato.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'sotto-task ha un assegnatario che non può esserlo nel nuovo progetto: viene sostituito', 'sotto-task hanno assegnatari che non possono esserlo nel nuovo progetto: vengono sostituiti')}.`,
   },
 
   comments: {

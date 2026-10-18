@@ -601,7 +601,7 @@ The dry run answers 200 with:
  "restricted": {"comments": 0, "worklogs": 0, "roles": [], "groups": []},
  "droppedFields": [], "sprints": [],
  "assignee": {"from": null, "to": null},
- "subtasks": {"count": 0, "reset": 0, "lost": 0}}
+ "subtasks": {"count": 0, "reset": 0, "lost": 0, "reassigned": 0}}
 ```
 
 - `missing` names the choices still to make, `ready` is true when it is empty.
@@ -622,7 +622,8 @@ The dry run answers 200 with:
 - `droppedFields` (names), `sprints` (names) and `assignee` (`userRef`s,
   present when it changes) say what is lost or changed. `subtasks.reset`
   counts the sub-tasks that start over at an initial status, `lost` the
-  components and versions they leave behind.
+  components and versions they leave behind, `reassigned` the ones whose
+  assignee cannot be assigned in the target.
 
 Without `check`, the same plan is made and then applied in one transaction;
 a move with choices still missing is a 400 `{"error", "missing": [...]}`.

@@ -71,6 +71,8 @@ type moveSubtasks struct {
 	// they start over; Lost the components and versions they leave behind.
 	Reset int `json:"reset"`
 	Lost  int `json:"lost"`
+	// Reassigned counts the ones whose assignee cannot be assigned in the target.
+	Reassigned int `json:"reassigned"`
 }
 
 type moveAssignee struct {
@@ -594,6 +596,9 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		}
 		if it.assignee, err = s.moveAssigneeFor(ctx, dest, it.row, it.sets[0].to); err != nil {
 			return nil, err
+		}
+		if it != head && sqlq.Value(it.row.AssigneeID) != it.assignee {
+			chk.Subtasks.Reassigned++
 		}
 	}
 	if len(droppedIDs) > 0 {

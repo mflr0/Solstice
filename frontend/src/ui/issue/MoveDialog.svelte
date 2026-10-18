@@ -386,6 +386,9 @@
         {#if check.subtasks.count}<li>{t.issue.moveSubtasks(check.subtasks.count)}</li>{/if}
         {#if check.subtasks.reset}<li>{t.issue.moveSubtasksReset(check.subtasks.reset)}</li>{/if}
         {#if check.subtasks.lost}<li>{t.issue.moveSubtasksLost(check.subtasks.lost)}</li>{/if}
+        {#if check.subtasks.reassigned}
+          <li>{t.issue.moveSubtasksReassigned(check.subtasks.reassigned)}</li>
+        {/if}
       </ul>
     {/if}
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}

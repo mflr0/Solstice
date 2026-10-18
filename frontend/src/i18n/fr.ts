@@ -711,6 +711,8 @@ export const fr: Messages = {
     moveRestrictedGroup: 'Les réserver à un groupe',
     moveRestrictedNone:
       'Le nouveau projet n’a aucun rôle avec des membres et vous n’appartenez à aucun groupe : ces éléments ne peuvent pas y garder leur restriction, le ticket ne peut donc pas être déplacé.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'sous-tâche a un responsable qui ne peut pas l’être dans le nouveau projet : il est remplacé', 'sous-tâches ont des responsables qui ne peuvent pas l’être dans le nouveau projet : ils sont remplacés')}.`,
   },
 
   comments: {

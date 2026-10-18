@@ -717,6 +717,8 @@ export const de: Messages = {
     moveRestrictedGroup: 'Auf eine Gruppe beschränken',
     moveRestrictedNone:
       'Das neue Projekt hat keine Rolle mit Mitgliedern und Sie gehören keiner Gruppe an: Diese Einträge können ihre Beschränkung dort nicht behalten, der Vorgang kann daher nicht verschoben werden.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'Unteraufgabe hat einen Bearbeiter, der im neuen Projekt nicht zugewiesen werden kann: Er wird ersetzt', 'Unteraufgaben haben Bearbeiter, die im neuen Projekt nicht zugewiesen werden können: Sie werden ersetzt')}.`,
   },
 
   comments: {

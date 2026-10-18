@@ -707,6 +707,8 @@ export const en = {
     moveRestrictedGroup: 'Restrict them to a group',
     moveRestrictedNone:
       'The new project has no role with members and you belong to no group: these items can’t keep their restriction there, so the issue can’t be moved.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'sub-task has an assignee who can’t be assigned in the new project: the assignee is changed', 'sub-tasks have assignees who can’t be assigned in the new project: the assignees are changed')}.`,
   },
 
   comments: {

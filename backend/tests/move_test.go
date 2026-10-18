@@ -35,7 +35,7 @@ type moveCheckOut struct {
 	DroppedFields   []string
 	Sprints         []string
 	Assignee        *struct{ From, To *userRef }
-	Subtasks        struct{ Count, Reset, Lost int }
+	Subtasks        struct{ Count, Reset, Lost, Reassigned int }
 	Restricted      *struct {
 		Comments, Worklogs int
 		Roles, Groups      []idName
@@ -308,6 +308,17 @@ func TestMoveDryRunAsks(t *testing.T) {
 		dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID) != counter ||
 		dbInt(t, `SELECT COUNT(*) FROM moved_issue_keys WHERE issue_id IN (?, ?)`, e.issueID, e.childID) != 0 {
 		t.Errorf("the dry run moved the issue: %s in %s", d.Key, d.Project.Key)
+	}
+}
+
+func TestMoveDryRunCountsReassignedSubtasks(t *testing.T) {
+	e := newMoveEnv(t)
+	if c := e.check(e.admin, e.issue, e.allChoices); c.Subtasks.Reassigned != 0 {
+		t.Errorf("a sub-task without assignee: %+v", c.Subtasks)
+	}
+	e.admin.call("PATCH", "/api/issues/"+e.child, map[string]any{"assignee": e.chloe}, 200, nil)
+	if c := e.check(e.admin, e.issue, e.allChoices); c.Subtasks.Reassigned != 1 {
+		t.Errorf("a sub-task whose assignee cannot be assigned in the target: %+v", c.Subtasks)
 	}
 }
 
