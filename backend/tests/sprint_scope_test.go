@@ -243,3 +243,25 @@ func TestSprintMoveOfSeveralIssuesIsAllOrNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestSprintMoveOfSeveralIssuesSkipsThoseAlreadyInTheSprint(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	paul := login(t, "paul.martin", "motdepasse")
+	board, sprint := scopeBoard(t, marie, "WEB")
+	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
+	inside := createIssue(t, marie, "WEB", "Déjà dans le lot", "")
+	foreign := newTestIssue(t, paul, "Nouveau dans le lot", nil)
+
+	marie.call("POST", "/api/boards/"+board+"/move", map[string]any{"issue": inside, "sprint": sprint}, 204, nil)
+	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"query": `project = "DEMO" ORDER BY Rank ASC`}, 200, nil)
+	path := fmt.Sprintf("/rest/agile/1.0/sprint/%d/issue", sprint)
+	if status, _, body := call(t, marie, testURL, "POST", path, map[string]any{"issues": []string{inside, foreign}},
+		header("X-Atlassian-Token", "no-check")); status != 204 {
+		t.Fatalf("move of a batch holding an issue the filter dropped: %d %s", status, body)
+	}
+	for _, key := range []string{inside, foreign} {
+		if n := sprintMembers(t, sprint, key); n != "1" {
+			t.Errorf("%s is not in the sprint", key)
+		}
+	}
+}
