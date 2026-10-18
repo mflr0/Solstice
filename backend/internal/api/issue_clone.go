@@ -216,6 +216,7 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 	lang := locale(r)
+	warnings := []string{}
 	summary := i18n.M(i18n.IssueCloneSummary, orig.Summary).In(lang)
 	if utf8.RuneCountInString(summary) > 255 {
 		summary = string([]rune(summary)[:255])
@@ -263,6 +264,12 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		for _, child := range children {
+			// The sub-task is created in its own project, which may not be the original's.
+			if !sub.Can(perm.Create, child.ProjectID, nil) || !sub.CanBrowseProject(child.ProjectID) ||
+				!s.projectHasType(ctx, child.ProjectID, child.TypeID) {
+				warnings = append(warnings, i18n.M(i18n.IssueCloneSubtaskSkipped, child.Key()).In(lang))
+				continue
+			}
 			p, err := newPlan(child, child.Summary)
 			if err != nil {
 				return err
@@ -353,9 +360,15 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 		others = append(others, announced{other, otherChange})
 		return nil
 	}
+	// The link is written on the original too: that takes the Link permission there.
 	if lt, ok := clonesLinkType(cat); ok {
-		if err := link(lt.ID, orig, true); err != nil {
-			return err
+		op := orig.perm()
+		if sub.Can(perm.Link, orig.ProjectID, &op) {
+			if err := link(lt.ID, orig, true); err != nil {
+				return err
+			}
+		} else {
+			warnings = append(warnings, i18n.M(i18n.IssueCloneLinkSkipped, orig.Key()).In(lang))
 		}
 	}
 	for _, l := range links {
@@ -367,7 +380,6 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	warnings := []string{}
 	for _, f := range files {
 		if f.missing {
 			continue // never imported: nothing to copy, the row says so

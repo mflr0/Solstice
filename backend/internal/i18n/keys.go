@@ -340,6 +340,8 @@ const (
 	IssueCloneSummary          Key = "IssueCloneSummary"
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
+	IssueCloneLinkSkipped      Key = "IssueCloneLinkSkipped"
+	IssueCloneSubtaskSkipped   Key = "IssueCloneSubtaskSkipped"
 	IssueMoveSameProject       Key = "IssueMoveSameProject"
 	IssueMoveSubtask           Key = "IssueMoveSubtask"
 	IssueMoveChoiceNeeded      Key = "IssueMoveChoiceNeeded"

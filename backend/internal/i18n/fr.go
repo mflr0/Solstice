@@ -302,6 +302,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "créé en clonant %s",
 	IssueCloneAttachmentFailed: "La pièce jointe « %s » n'a pas pu être copiée.",
+	IssueCloneLinkSkipped:      "Le lien vers %s n'a pas été ajouté : vous n'avez pas le droit de lier des tickets dans son projet.",
+	IssueCloneSubtaskSkipped:   "La sous-tâche %s n'a pas été clonée : vous ne pouvez pas créer de tickets de ce type dans son projet.",
 	IssueMoveSameProject:       "Le ticket est déjà dans ce projet.",
 	IssueMoveSubtask:           "Une sous-tâche se déplace avec son parent : déplacez le ticket parent.",
 	IssueMoveChoiceNeeded:      "À choisir avant de déplacer : %s.",
