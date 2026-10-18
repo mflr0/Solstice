@@ -888,17 +888,15 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// Announced like an edit, with the visibility from before: someone who
-	// just lost access must hear of it. Pages open on the old key refresh.
+	// Announced like an edit; pages open on the old key refresh through the
+	// second event, which only those who could see the issue there hear.
 	for i, it := range plan.items {
 		updated, err := s.findIssueByID(ctx, it.row.ID)
 		if err != nil {
 			return err
 		}
-		before := it.row.perm()
 		e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
 		e.Changes = eventChanges(changes[i])
-		e.Before = &before
 		s.emit(e)
 		s.publish(it.row, "issue", sub.UserID)
 	}

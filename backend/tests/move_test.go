@@ -3,7 +3,10 @@ package tests
 // Moving an issue to another project: POST /api/issues/{key}/move.
 
 import (
+	"bufio"
+	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"slices"
 	"sort"
@@ -1091,6 +1094,61 @@ func TestMoveSaysWhenTheTargetHasNoSubtaskType(t *testing.T) {
 		status, msg, _ := e.admin.errorIn("en", "POST", "/api/issues/"+e.issue+"/move", map[string]any{"project": bare, "check": check})
 		if status != 400 || !strings.Contains(msg, "no sub-task type") {
 			t.Errorf("check %v: %d %q, want 400 and the reason", check, status, msg)
+		}
+	}
+}
+
+func TestMoveDoesNotAnnounceTheNewKeyToWhoCannotSeeIt(t *testing.T) {
+	e := newMoveEnv(t)
+	chloe := login(t, "chloe.simon", "motdepasse")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", testURL+"/api/events", nil)
+	resp, err := chloe.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	events := make(chan string, 16)
+	go func() {
+		sc := bufio.NewScanner(resp.Body)
+		for sc.Scan() {
+			if line, ok := strings.CutPrefix(sc.Text(), "data: "); ok {
+				events <- line
+			}
+		}
+	}()
+	time.Sleep(200 * time.Millisecond) // let the subscription register
+
+	// Without its level the issue is visible to the user, in the source.
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	body := map[string]any{}
+	for k, v := range e.allChoices {
+		if k != "securityLevel" {
+			body[k] = v
+		}
+	}
+	var moved struct{ Key string }
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
+	if status, _ := chloe.do("GET", "/api/issues/"+moved.Key, nil); status != 404 {
+		t.Fatalf("the user sees the target project: %d", status)
+	}
+	var got []string
+	for timeout := time.After(time.Second); ; {
+		select {
+		case line := <-events:
+			got = append(got, line)
+			continue
+		case <-timeout:
+		}
+		break
+	}
+	if len(got) == 0 || !strings.Contains(strings.Join(got, "\n"), `"`+e.issue+`"`) {
+		t.Errorf("a page open on the old key is not told: %q", got)
+	}
+	for _, line := range got {
+		if strings.Contains(line, moved.Key) {
+			t.Errorf("the new key reaches a user who cannot see it: %s", line)
 		}
 	}
 }
