@@ -654,8 +654,7 @@ func TestForgotFloodDoesNotMuteTheOwner(t *testing.T) {
 		}
 	}
 
-	// Two addresses ask more than five times for one account: the spacing
-	// lets one e-mail through, and the flood does not lock the account.
+	// The one-minute spacing lets one e-mail through.
 	for i := range 8 {
 		forgotFrom("198.51.100." + jsonInt(int64(10+i%2)))
 	}
@@ -663,7 +662,6 @@ func TestForgotFloodDoesNotMuteTheOwner(t *testing.T) {
 		t.Fatalf("%d e-mails for 8 requests within the minute, want 1", len(msgs))
 	}
 
-	// Once the spacing has passed, the owner's own request mails a link.
 	postdate(t, "wp7-flood")
 	forgotFrom("198.51.100.20")
 	if msgs := e.sent(); len(msgs) != 1 {

@@ -93,8 +93,6 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) error {
 // updateMe changes the user's own profile: name, e-mail address,
 // interface language (one of i18n.Locales, or null to have none) and
 // password, which takes the current one. Fields left out keep their value.
-// Changing the address, like the password, takes the current one and is
-// refused from a token.
 func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Name            *string         `json:"name"`
