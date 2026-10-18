@@ -523,7 +523,8 @@ func (s *Server) jiraUsers(ctx context.Context, o *restOut, ids ...int64) (map[i
 				return err
 			}
 			u.Self = o.api + "/user?username=" + url.QueryEscape(u.Name)
-			u.AvatarURLs = o.avatars("useravatar", u.Name)
+			pic := o.base + "/api/avatars/" + o.id(id)
+			u.AvatarURLs = map[string]string{"48x48": pic, "32x32": pic, "24x24": pic, "16x16": pic}
 			out[id] = u
 			return nil
 		}, chunk...)

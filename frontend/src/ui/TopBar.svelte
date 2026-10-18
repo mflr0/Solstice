@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { initials } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { locale, LOCALE_NAMES, LOCALES } from '../i18n/index.js';
@@ -13,6 +12,7 @@
   import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
   import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
+  import Picture from './Picture.svelte';
   import QuickSearch from './search/QuickSearch.svelte';
 
   interface Props {
@@ -128,7 +128,7 @@
           aria-label={t.nav.account}
           onclick={() => (menuOpen = !menuOpen)}
         >
-          <span class="avatar">{initials(session.me.name)}</span>
+          <span class="avatar"><Picture user={session.me} /></span>
         </button>
         {#if menuOpen}
           <div class="popover account-menu" role="menu">

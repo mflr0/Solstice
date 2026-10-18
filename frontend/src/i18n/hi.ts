@@ -1875,6 +1875,14 @@ export const hi: Messages = {
     passwordChanged: 'पासवर्ड बदल दिया गया।',
     saved: 'सेटिंग्स सहेजी गईं।',
     profileUnsupported: 'यह सर्वर अभी नाम या ईमेल पता बदलना नहीं जानता: Solstice अपडेट करें।',
+    picture: 'चित्र',
+    pictureHint:
+      'आपके नाम के पास दिखता है। भेजने से पहले आपके ब्राउज़र में चित्र को वर्गाकार काटा और छोटा किया जाता है।',
+    pictureChange: 'चित्र बदलें',
+    pictureRemove: 'चित्र हटाएँ',
+    pictureSaved: 'चित्र सहेजा गया।',
+    pictureRemoved: 'चित्र हटाया गया।',
+    pictureUnreadable: 'इस फ़ाइल को चित्र के रूप में नहीं पढ़ा जा सकता।',
     problems: {
       nameRequired: 'नाम बताएँ।',
       nameTooLong: '100 अक्षर से ज़्यादा नहीं।',

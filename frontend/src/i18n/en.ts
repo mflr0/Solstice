@@ -1874,6 +1874,14 @@ export const en = {
     saved: 'Settings saved.',
     profileUnsupported:
       'This server cannot change the name or the email address yet: update Solstice.',
+    picture: 'Picture',
+    pictureHint:
+      'Shown next to your name. The image is cut to a square and scaled down in your browser before it is sent.',
+    pictureChange: 'Change picture',
+    pictureRemove: 'Remove picture',
+    pictureSaved: 'Picture saved.',
+    pictureRemoved: 'Picture removed.',
+    pictureUnreadable: 'This file cannot be read as an image.',
     problems: {
       nameRequired: 'Enter a name.',
       nameTooLong: '100 characters at most.',

@@ -540,4 +540,11 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Choose at least one event.",
 	WebhookSecretTooLong:       "The secret is 255 characters at most.",
 	WebhookSecretEncryptFailed: "The secret cannot be encrypted: %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "Invalid picture upload.",
+	AvatarNoFile:        "No picture received.",
+	AvatarTooLarge:      "Picture too large (1 MB at most).",
+	AvatarNotImage:      "The picture must be a valid PNG or JPEG image.",
+	AvatarDimensions:    "The picture must be 512 × 512 pixels at most.",
 }

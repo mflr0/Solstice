@@ -612,3 +612,12 @@ const (
 	WebhookSecretTooLong       Key = "WebhookSecretTooLong"
 	WebhookSecretEncryptFailed Key = "WebhookSecretEncryptFailed"
 )
+
+// Profile pictures.
+const (
+	AvatarUploadInvalid Key = "AvatarUploadInvalid"
+	AvatarNoFile        Key = "AvatarNoFile"
+	AvatarTooLarge      Key = "AvatarTooLarge"
+	AvatarNotImage      Key = "AvatarNotImage"
+	AvatarDimensions    Key = "AvatarDimensions"
+)

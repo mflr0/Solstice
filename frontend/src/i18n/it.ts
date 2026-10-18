@@ -1889,6 +1889,14 @@ export const it: Messages = {
     saved: 'Impostazioni salvate.',
     profileUnsupported:
       'Questo server non sa ancora modificare nome e indirizzo e-mail: aggiorna Solstice.',
+    picture: 'Immagine',
+    pictureHint:
+      'Mostrata accanto al tuo nome. L’immagine viene ritagliata in un quadrato e ridotta nel browser prima dell’invio.',
+    pictureChange: 'Cambia immagine',
+    pictureRemove: 'Rimuovi immagine',
+    pictureSaved: 'Immagine salvata.',
+    pictureRemoved: 'Immagine rimossa.',
+    pictureUnreadable: 'Questo file non può essere letto come immagine.',
     problems: {
       nameRequired: 'Indica un nome.',
       nameTooLong: 'Al massimo 100 caratteri.',
