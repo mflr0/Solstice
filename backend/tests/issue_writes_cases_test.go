@@ -430,7 +430,7 @@ func uploadTo(t *testing.T, c *client, key, name, content string) int64 {
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 201 {
 		t.Fatalf("upload %s: %d %s", name, resp.StatusCode, raw)
 	}
 	var d issueDetail
