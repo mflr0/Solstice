@@ -304,6 +304,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
 	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप मिटा नहीं सकते।",
 	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी मिटाने के लिए deleteSubtasks=true जोड़ें।",
+	RESTPickerHistory:          "खोज इतिहास",
+	RESTPickerCurrent:          "वर्तमान खोज",
+	RESTPickerShowing:          "मेल खाने वाले %[2]d टिकटों में से %[1]d दिखाए जा रहे हैं",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",

@@ -301,6 +301,9 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Moving an issue is not possible yet.",
 	IssueSubtasksNotDeletable:  "This issue has sub-tasks you cannot delete.",
 	IssueDeleteSubtasks:        "This issue has sub-tasks: add deleteSubtasks=true to delete them with it.",
+	RESTPickerHistory:          "History Search",
+	RESTPickerCurrent:          "Current Search",
+	RESTPickerShowing:          "Showing %d of %d matching issues",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",
