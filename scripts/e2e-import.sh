@@ -12,6 +12,11 @@
 # uses this to dump the result).
 set -euo pipefail
 
+case "$*" in
+  ""|--import-only) ;;
+  *) echo "usage: e2e-import.sh [--import-only]" >&2; exit 2 ;;
+esac
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist=${JIRA_DIST:-$(ls -d "$root"/atlassian-jira-software-*-standalone 2>/dev/null | head -1)}
 issues=${ISSUES:-300}
