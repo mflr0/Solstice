@@ -11,6 +11,7 @@ import type {
   Grant,
   HiddenIssue,
   HistoryEntry,
+  IdName,
   IssueDetail,
   IssuePage,
   Me,
@@ -23,6 +24,7 @@ import type {
   Refs,
   StatusCategory,
   StatusRef,
+  TypeRef,
   UserRef,
   Worklog,
   WorklogPatch,
@@ -48,6 +50,53 @@ import type {
 } from '../core/board-types.js';
 import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
+
+/** What an issue has with no same-named match in the project it moves to, and what that offers. */
+export interface MoveParts {
+  unmatched: IdName[];
+  options: IdName[];
+}
+
+/** The comments and work logs restricted to a role of the current project, and what they can be restricted to instead. */
+export interface MoveRestricted {
+  comments: number;
+  worklogs: number;
+  roles: IdName[];
+  groups: IdName[];
+}
+
+/** The dry run of a move: what is still to choose, and what the move drops or changes. */
+export interface MoveCheck {
+  project: { id: number; key: string; name: string };
+  ready: boolean;
+  missing: string[];
+  types?: TypeRef[];
+  subtaskTypes?: TypeRef[];
+  statuses?: StatusRef[];
+  components?: MoveParts;
+  affectsVersions?: MoveParts;
+  fixVersions?: MoveParts;
+  securityLevel?: MoveParts;
+  restricted?: MoveRestricted;
+  droppedFields: string[];
+  sprints: string[];
+  assignee?: { from: UserRef | null; to: UserRef | null };
+  subtasks: { count: number; reset: number; lost: number; reassigned: number };
+}
+
+/** The choices a move can be given; a list replaces the whole list the issue ends with. */
+export interface MoveChoices {
+  type?: string;
+  subtaskType?: string;
+  status?: string;
+  components?: number[];
+  affectsVersions?: number[];
+  fixVersions?: number[];
+  /** A level of the new project, or null for none. */
+  securityLevel?: number | null;
+  /** A role of the new project, or a group, for what was restricted to a role of the current one; or giving the move up. */
+  restricted?: { to: 'role'; role: number } | { to: 'group'; group: number } | { to: 'refuse' };
+}
 
 export class ApiError extends Error {
   constructor(
@@ -206,6 +255,16 @@ export const api = {
     },
   ) =>
     request<{ key: string; warnings: string[] }>('POST', `/api/issues/${enc(key)}/clone`, options),
+  /** What the target project lacks for the issue (a dry run), given the choices made so far. */
+  checkMove: (key: string, project: string, choices: MoveChoices) =>
+    request<MoveCheck>('POST', `/api/issues/${enc(key)}/move`, {
+      project,
+      check: true,
+      ...choices,
+    }),
+  /** Moves the issue (and its sub-tasks) to another project; answers its new key. */
+  moveIssue: (key: string, project: string, choices: MoveChoices) =>
+    request<{ key: string }>('POST', `/api/issues/${enc(key)}/move`, { project, ...choices }),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>

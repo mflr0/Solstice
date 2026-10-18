@@ -339,7 +339,7 @@ const (
 	IssueAssignOthersForbidden Key = "IssueAssignOthersForbidden"
 	IssueAssigneeNotAssignable Key = "IssueAssigneeNotAssignable"
 	IssueNotVisibleTo          Key = "IssueNotVisibleTo"
-	IssueMoveUnsupported       Key = "IssueMoveUnsupported"
+	IssueParentUnsupported     Key = "IssueParentUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
 	RESTPickerHistory          Key = "RESTPickerHistory"
@@ -350,6 +350,15 @@ const (
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
 	IssueCloneLinkSkipped      Key = "IssueCloneLinkSkipped"
 	IssueCloneSubtaskSkipped   Key = "IssueCloneSubtaskSkipped"
+	IssueMoveSameProject       Key = "IssueMoveSameProject"
+	IssueMoveSubtask           Key = "IssueMoveSubtask"
+	IssueMoveChoiceNeeded      Key = "IssueMoveChoiceNeeded"
+	IssueMoveChanged           Key = "IssueMoveChanged"
+	IssueMoveRestrictedRefused Key = "IssueMoveRestrictedRefused"
+	IssueMoveRestrictedHidden  Key = "IssueMoveRestrictedHidden"
+	IssueMoveSecurityNeeded    Key = "IssueMoveSecurityNeeded"
+	IssueMoveNoSubtaskType     Key = "IssueMoveNoSubtaskType"
+	IssueMoveUseAction         Key = "IssueMoveUseAction"
 )
 
 // Comments and their visibility.

@@ -817,3 +817,102 @@ refreshed). They are written to the audit log on the project (target type
 `{securityLevel, …}`: `name` and `description` as `{from, to}` for an update,
 `issues`, `members`, `movedTo`, `cleared` for a delete, `holder` and `member`
 for the members.
+
+---
+
+## 15. Moving an issue — signed in
+
+`POST /api/issues/{key}/move` moves an issue, and its sub-tasks, to another
+project and answers `{key}`, the new key. The old key keeps resolving, as do
+the keys the source project went by before (`moved_issue_keys`). The issue
+gets the next number of the target, and its history gets lines for what
+changed (`Key`, `project`, and the rest below). It is announced to webhooks as
+`issue_moved`, and written to the audit log as `issue.move`.
+
+Solstice has no separate move permission: the right to move is **Edit** in the
+issue's current project (and on each of its sub-tasks), plus **Create** in the
+target project, which the user must also be able to browse. A sub-task cannot
+be moved alone.
+
+Request, with `project` (a key) the only field always needed:
+
+```json
+{"project": "KEY", "check": false, "type": "bug", "subtaskType": "sub-task",
+ "status": "open", "components": [3], "affectsVersions": [4], "fixVersions": [5],
+ "securityLevel": 2, "restricted": {"to": "role", "role": 7}}
+```
+
+- `check: true` is a dry run: nothing is written, the answer says what is
+  still to choose and what the move changes.
+- `type`, `subtaskType` and `status` are ids; the others are ids of the
+  target project's own components, versions and security levels. A list given
+  is the whole list the issue ends with; `securityLevel` is an id, or `null`
+  for none.
+- `restricted` is `{"to": "role", "role": id}`, `{"to": "group", "group":
+  id}` or `{"to": "refuse"}`.
+
+What is matched by itself: the type, when the target has it; the status, when
+it is in the target's workflow for that type; components and versions by name
+(case aside); the security level by name; the assignee, when they may be
+assigned in the target, else the rule of a new issue there (the components'
+default assignee, then the project's). A sub-task whose type the target lacks
+takes `subtaskType`; one whose status is not in the target's workflow starts
+at its initial status. Values of custom fields that do not apply in the
+target are dropped, and an open sprint on a board whose filter names projects
+but not the target is left. `status` may only be given when the issue's own is
+not in the target's workflow (it needs the Transition right otherwise: 400).
+
+The dry run answers 200 with:
+
+```json
+{"project": {"id": 2, "key": "KEY", "name": "Name"}, "ready": false,
+ "missing": ["type", "components", "restricted"],
+ "types": [], "subtaskTypes": [], "statuses": [],
+ "components": {"unmatched": [], "options": []},
+ "affectsVersions": {"unmatched": [], "options": []},
+ "fixVersions": {"unmatched": [], "options": []},
+ "securityLevel": {"unmatched": [], "options": []},
+ "restricted": {"comments": 0, "worklogs": 0, "roles": [], "groups": []},
+ "droppedFields": [], "sprints": [],
+ "assignee": {"from": null, "to": null},
+ "subtasks": {"count": 0, "reset": 0, "lost": 0, "reassigned": 0}}
+```
+
+- `missing` names the choices still to make, `ready` is true when it is empty.
+  `types`, `subtaskTypes`, `statuses` and each `unmatched`/`options` pair are
+  only there when a choice is asked for: `unmatched` is what the issue has
+  that the target has no same-named match for, `options` what the target
+  offers. Lists are never `null`.
+- `securityLevel`: the target's levels are listed only to a user with the
+  Security right in both projects.
+- `restricted`: the comments and work logs restricted to a project role the
+  user can read, since roles are held per project; `roles` are the target's
+  roles that have a member (empty to a user who cannot browse the whole
+  target), `groups` the groups the user belongs to (all of them for an
+  administrator). The ones the user cannot read are not offered a choice: they
+  take the role of the same name in the target (one with a member there). An
+  item already restricted to a group keeps it. A global administrator reads
+  them all.
+- `droppedFields` (names), `sprints` (names) and `assignee` (`userRef`s,
+  present when it changes) say what is lost or changed. `subtasks.reset`
+  counts the sub-tasks that start over at an initial status, `lost` the
+  components and versions they leave behind, `reassigned` the ones whose
+  assignee cannot be assigned in the target.
+
+Without `check`, the same plan is made and then applied in one transaction;
+a move with choices still missing is a 400 `{"error", "missing": [...]}`.
+
+Errors:
+
+- 404: the issue, or the target project, is not visible to the user.
+- 403: no Edit right on the issue or a sub-task, or no Create right in the
+  target; moving an issue that has a security level without the Security
+  right in the target, or choosing a level without it in both projects.
+- 400: no `project`, or the issue's own project; a sub-task; a choice that is
+  not one of the target's (type, status, component, version, level, role,
+  group); `restricted` set to `refuse`; comments restricted to a role the user
+  cannot read, with no same-named role in the target (the message says an
+  administrator can move the issue); sub-tasks and no sub-task type in the
+  target; choices still missing.
+- 409: the issue or a sub-task changed after the plan was made, or while the
+  move ran. Nothing moved; reload and try again.

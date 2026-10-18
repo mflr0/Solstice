@@ -193,9 +193,14 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		var level sql.NullInt64
 		var reporter, assignee sql.NullInt64
 		project, num, _ := strings.Cut(key, "-")
-		err := s.db.QueryRowContext(ctx, `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id
-			FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+sqlq.ProjectKey("p", "?")+` AND i.num = ?`, project, project, num).
-			Scan(&access.ProjectID, &reporter, &assignee, &level)
+		const columns = `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id FROM issues i `
+		err := s.db.QueryRowContext(ctx, columns+`JOIN projects p ON p.id = i.project_id WHERE `+sqlq.ProjectKey("p", "?")+` AND i.num = ?`,
+			project, project, num).Scan(&access.ProjectID, &reporter, &assignee, &level)
+		if errors.Is(err, sql.ErrNoRows) {
+			// The key of an issue moved to another project still names it.
+			err = s.db.QueryRowContext(ctx, columns+`JOIN moved_issue_keys k ON k.issue_id = i.id WHERE k.old_key = ?`, key).
+				Scan(&access.ProjectID, &reporter, &assignee, &level)
+		}
 		access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
 		v := err == nil && rc.sub.CanSee(access)
 		seen[key] = v
@@ -224,8 +229,22 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 			if !rc.sub.CanSee(access) {
 				continue
 			}
-			if it.Comment != nil && !rc.sub.SeesRestricted(access.ProjectID, it.Comment.Group, it.Comment.RoleID) {
-				continue
+			if it.Comment != nil {
+				// A move gives a comment restricted to a role another restriction.
+				group, role, project := it.Comment.Group, it.Comment.RoleID, it.Access.ProjectID
+				var g sql.NullString
+				var r sql.NullInt64
+				err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM comments WHERE id = ?`,
+					it.Comment.ID).Scan(&g, &r)
+				switch {
+				case err == nil:
+					group, role, project = g.String, r.Int64, access.ProjectID
+				case !errors.Is(err, sql.ErrNoRows):
+					return nil, err
+				}
+				if !rc.sub.SeesRestricted(project, group, role) {
+					continue
+				}
 			}
 			kept = append(kept, it)
 		}

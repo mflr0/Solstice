@@ -326,7 +326,7 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		}
 		if cur != nil {
 			if r.key != "" && !strings.EqualFold(r.key, p.key) || r.id != "" && r.id != strconv.FormatInt(p.id, 10) {
-				return fieldError(field, fail(http.StatusBadRequest, i18n.IssueMoveUnsupported))
+				return fieldError(field, fail(http.StatusBadRequest, i18n.IssueMoveUseAction))
 			}
 			return nil
 		}
@@ -341,7 +341,7 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 			if r.null && !cur.row.ParentID.Valid || err == nil && cur.row.ParentID.Int64 == parent.ID {
 				return nil
 			}
-			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueMoveUnsupported))
+			return fieldError(field, fail(http.StatusBadRequest, i18n.IssueParentUnsupported))
 		}
 		if r.null {
 			return nil

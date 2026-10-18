@@ -174,6 +174,18 @@ func TestWorklogEvents(t *testing.T) {
 	}
 }
 
+func TestIssueMovedEventType(t *testing.T) {
+	moved := &events.Event{Kind: events.IssueUpdated, Changes: []events.Change{
+		{Field: "Key"}, {Field: "project"}, {Field: "resolution", To: new(string)}}}
+	if got := issueEventType(moved); got != "issue_moved" {
+		t.Errorf("a move: %s", got)
+	}
+	edited := &events.Event{Kind: events.IssueUpdated, Changes: []events.Change{{Field: "summary"}}}
+	if got := issueEventType(edited); got != "issue_updated" {
+		t.Errorf("an edit: %s", got)
+	}
+}
+
 // A sprint that is changed or deleted fires its own event.
 func TestSprintEvents(t *testing.T) {
 	for kind, want := range map[events.Kind]string{events.SprintUpdated: SprintUpdated, events.SprintDeleted: SprintDeleted} {

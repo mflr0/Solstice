@@ -85,11 +85,11 @@ func TestSQLUnknownCategoryMatchesNothing(t *testing.T) {
 
 func TestSQLKeys(t *testing.T) {
 	sql, args := Parse("DEMO-12 web-3").SQL(1)
-	one := "(" + sqlq.ProjectKey("p", "?") + " AND i.num = ?)"
+	one := "((" + sqlq.ProjectKey("p", "?") + " AND i.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk WHERE mk.issue_id = i.id AND mk.old_key = ?))"
 	if sql != "("+one+" OR "+one+")" || !strings.Contains(one, "project_keys") {
 		t.Fatalf("got %s", sql)
 	}
-	if !reflect.DeepEqual(args, []any{"DEMO", "DEMO", int64(12), "WEB", "WEB", int64(3)}) {
+	if !reflect.DeepEqual(args, []any{"DEMO", "DEMO", int64(12), "DEMO-12", "WEB", "WEB", int64(3), "WEB-3"}) {
 		t.Fatalf("args %v", args)
 	}
 }

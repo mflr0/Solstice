@@ -50,6 +50,7 @@ const (
 	AuditSettings  = "settings.audit"
 	IssueDelete    = "issue.delete"
 	IssueExport    = "issue.export"
+	IssueMove      = "issue.move"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"

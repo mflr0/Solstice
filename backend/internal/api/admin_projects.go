@@ -34,15 +34,17 @@ type rowQuerier interface {
 }
 
 // checkProjectKey tells whether a key may be given to a project: well
-// formed, and used by no project, now or formerly. The former keys of the
-// project own (0 for a new project) do not count: it may take them back.
+// formed, and used by no project, now or formerly, nor by an issue that moved away from a
+// project of that key. The former keys of the project own (0 for a new project)
+// do not count: it may take them back.
 func (s *Server) checkProjectKey(ctx context.Context, q rowQuerier, key string, own int64) error {
 	if !projectKeyPattern.MatchString(key) {
 		return fail(http.StatusBadRequest, i18n.ProjectKeyInvalid)
 	}
 	var n int
 	if err := q.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM projects WHERE pkey = ?)
-		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id <> ?)`, key, key, own).Scan(&n); err != nil {
+		+ (SELECT COUNT(*) FROM project_keys WHERE pkey = ? AND project_id <> ?)
+		+ (SELECT COUNT(*) FROM moved_issue_keys WHERE old_key LIKE CONCAT(?, '-%'))`, key, key, own, key).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {

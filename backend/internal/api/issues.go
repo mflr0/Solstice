@@ -627,6 +627,40 @@ func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID in
 	return out, nil
 }
 
+// typeStatuses are the statuses an issue of a type can have in a project.
+func (s *Server) typeStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
+	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return s.projectStatuses(ctx, cat, projectID, "")
+	}
+	var out []statusRef
+	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+		func(rows *sql.Rows) error {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			out = append(out, cat.statusOf(id))
+			return nil
+		}, wf)
+	return out, err
+}
+
+// statusResolution is the resolution that goes with a new status: reaching a
+// "done" status resolves the issue, leaving it reopens it.
+func statusResolution(cat *catalog, resolution sql.NullString, status string) sql.NullString {
+	switch done := cat.statusOf(status).Category == issue.Done; {
+	case done && !resolution.Valid:
+		resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
+	case !done:
+		resolution = sql.NullString{}
+	}
+	return resolution
+}
+
 type customRow struct {
 	out     customValue
 	userIDs []int64
@@ -964,12 +998,16 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
 		assignee = id
-	} else if who, ok, err := s.componentAssignee(ctx, f, projectID, leadID); err != nil {
-		return err
-	} else if ok {
-		assignee = who
-	} else if defaultAssignee == "lead" && leadID != 0 {
-		assignee = leadID
+	} else {
+		var components []int64
+		if f.has("components") && !f.isNull("components") {
+			if err := f.get("components", &components); err != nil {
+				return err
+			}
+		}
+		if assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
+			return err
+		}
 	}
 	custom, err := s.readCustomFields(ctx, f, projectID, typeID)
 	if err != nil {
@@ -1138,6 +1176,23 @@ func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) 
 	return n > 0
 }
 
+// newIssueAssignee is who a new issue with these components is assigned to
+// when nobody is named: the first component that decides, else the project's
+// lead if that is its rule.
+func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead int64, defaultAssignee string, components []int64) (any, error) {
+	raw, err := json.Marshal(components)
+	if err != nil {
+		return nil, err
+	}
+	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, projectID, lead); err != nil || ok {
+		return who, err
+	}
+	if defaultAssignee == "lead" && lead != 0 {
+		return lead, nil
+	}
+	return nil, nil
+}
+
 func (s *Server) isAssignable(ctx context.Context, projectID, userID int64) (bool, error) {
 	holders, args, err := s.perms.HoldersSQL(ctx, projectID, perm.Assignable)
 	if err != nil {
@@ -1161,6 +1216,48 @@ func (s *Server) initialStatus(ctx context.Context, projectID int64) (string, er
 		return "", fail(http.StatusConflict, i18n.IssueNoTodoStatus)
 	}
 	return id, err
+}
+
+// replaceSet makes the components (kind "") or the versions of a kind of an
+// issue be want, and returns the history lines for what differs from have.
+func replaceSet(ctx context.Context, tx *sql.Tx, issueID int64, field, kind string, have, want []idName) ([]change, error) {
+	var changes []change
+	has := func(list []idName, v idName) bool {
+		return slices.ContainsFunc(list, func(o idName) bool { return o.ID == v.ID })
+	}
+	for _, v := range have {
+		if has(want, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, oldValue: strconv.FormatInt(v.ID, 10), oldString: v.Name})
+	}
+	for _, v := range want {
+		if has(have, v) {
+			continue
+		}
+		var err error
+		if kind == "" {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, issueID, v.ID)
+		} else {
+			_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
+				issueID, v.ID, kind)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change{field: field, newValue: strconv.FormatInt(v.ID, 10), newString: v.Name})
+	}
+	return changes, nil
 }
 
 // applySets writes the multi-valued fields (labels, components, versions)
@@ -1237,12 +1334,15 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		}, iss.ProjectID); err != nil {
 			return nil, err
 		}
-		want := map[int64]bool{}
+		var want []idName
 		for _, id := range ids {
-			if _, ok := names[id]; !ok {
+			name, ok := names[id]
+			if !ok {
 				return nil, failf(http.StatusBadRequest, i18n.FieldValueNotInProject, st.key)
 			}
-			want[id] = true
+			if !slices.ContainsFunc(want, func(o idName) bool { return o.ID == id }) {
+				want = append(want, idName{id, name})
+			}
 		}
 		var q string
 		var args []any
@@ -1251,46 +1351,20 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		} else {
 			q, args = `SELECT version_id FROM issue_versions WHERE issue_id = ? AND kind = ?`, []any{iss.ID, st.kind}
 		}
-		have := map[int64]bool{}
+		var have []idName
 		if err := sqlq.Each(ctx, tx, q, func(rows *sql.Rows) error {
 			var id int64
 			err := rows.Scan(&id)
-			have[id] = true
+			have = append(have, idName{id, names[id]})
 			return err
 		}, args...); err != nil {
 			return nil, err
 		}
-		var err error
-		for id := range have {
-			if want[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_components WHERE issue_id = ? AND component_id = ?`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `DELETE FROM issue_versions WHERE issue_id = ? AND version_id = ? AND kind = ?`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, oldValue: strconv.FormatInt(id, 10), oldString: names[id]})
+		lines, err := replaceSet(ctx, tx, iss.ID, st.field, st.kind, have, want)
+		if err != nil {
+			return nil, err
 		}
-		for id := range want {
-			if have[id] {
-				continue
-			}
-			if st.kind == "" {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?)`, iss.ID, id)
-			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, ?)`,
-					iss.ID, id, st.kind)
-			}
-			if err != nil {
-				return nil, err
-			}
-			changes = append(changes, change{field: st.field, newValue: strconv.FormatInt(id, 10), newString: names[id]})
-		}
+		changes = append(changes, lines...)
 	}
 	return changes, nil
 }
@@ -1340,8 +1414,11 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 // recording history and announcing the change. The board reuses it to move
 // cards between columns.
 func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
-	if f.has("project") || f.has("parent") {
-		return fail(http.StatusBadRequest, i18n.IssueMoveUnsupported)
+	if f.has("project") {
+		return fail(http.StatusBadRequest, i18n.IssueMoveUseAction)
+	}
+	if f.has("parent") {
+		return fail(http.StatusBadRequest, i18n.IssueParentUnsupported)
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
@@ -1612,13 +1689,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				resolution = sql.NullString{String: *v, Valid: true}
 			}
 		}
-		done := cat.statusOf(status).Category == issue.Done
-		switch {
-		case done && !resolution.Valid:
-			resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
-		case !done:
-			resolution = sql.NullString{}
-		}
+		resolution = statusResolution(cat, resolution, status)
 		if status != iss.StatusID {
 			sets["status_id"] = status
 			changes = append(changes, change{"status", iss.StatusID, cat.statusOf(iss.StatusID).Name, status,

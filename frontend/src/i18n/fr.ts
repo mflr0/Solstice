@@ -682,6 +682,40 @@ export const fr: Messages = {
     cloneLinks: 'Copier les liens',
     cloneAttachments: 'Copier les pièces jointes',
     cloneSubmit: 'Cloner',
+    move: 'Déplacer',
+    moveTitle: (key: string) => `Déplacer ${key}`,
+    moveProjectHint:
+      'Le ticket reçoit une nouvelle clé dans ce projet ; l’ancienne clé continue de fonctionner. Le déplacer demande la permission Modifier dans le projet actuel et Créer dans le projet cible.',
+    moveChoicesHint: (project: string) =>
+      `${project} n’a pas tout ce que ce ticket utilise. Choisissez ce qu’il devient là-bas.`,
+    moveSubtaskType: 'Type de sous-tâche',
+    moveStatus: 'Statut',
+    moveAffectsVersions: 'Version affectée',
+    moveUnmatched: (names: string) => `Sans équivalent dans le nouveau projet : ${names}.`,
+    moveNext: 'Suivant',
+    moveBack: 'Retour',
+    moveSubmit: 'Déplacer',
+    moveSummary: (key: string, project: string) =>
+      `${key} va passer dans ${project} avec ses sous-tâches et recevoir une nouvelle clé. L’ancienne clé y mènera toujours.`,
+    moveDropped: (names: string) =>
+      `Le nouveau projet n’utilise pas ces champs, leurs valeurs sont supprimées : ${names}.`,
+    moveSprints: (names: string) => `Il quitte les sprints ouverts : ${names}.`,
+    moveSubtasks: (n: number) => `${plural(n, 'sous-tâche suivra', 'sous-tâches suivront')}.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'sous-tâche repartira', 'sous-tâches repartiront')} du premier statut du nouveau workflow.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'composant ou version des sous-tâches n’a pas d’équivalent et est supprimé', 'composants et versions des sous-tâches n’ont pas d’équivalent et sont supprimés')}.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} ne peut pas être responsable dans le nouveau projet : le responsable devient ${to}.`,
+    moveNoProject: 'Il n’y a pas d’autre projet où le déplacer.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'commentaire ou temps saisi est réservé', 'commentaires et temps saisis sont réservés')} à un rôle du projet actuel. Un rôle appartient à un seul projet : choisissez qui pourra lire ces éléments après le déplacement.`,
+    moveRestrictedRole: 'Les garder réservés à un rôle du nouveau projet',
+    moveRestrictedGroup: 'Les réserver à un groupe',
+    moveRestrictedNone:
+      'Le nouveau projet n’a aucun rôle avec des membres et vous n’appartenez à aucun groupe : ces éléments ne peuvent pas y garder leur restriction, le ticket ne peut donc pas être déplacé.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'sous-tâche a un responsable qui ne peut pas l’être dans le nouveau projet : il est remplacé', 'sous-tâches ont des responsables qui ne peuvent pas l’être dans le nouveau projet : ils sont remplacés')}.`,
   },
 
   comments: {
@@ -1476,6 +1510,7 @@ export const fr: Messages = {
       'update.denied': 'Mise à jour refusée',
       'update.result': 'Mise à jour terminée',
       'setup.complete': 'Installation terminée',
+      'issue.move': 'Ticket déplacé',
     },
     targets: {
       user: 'Compte',

@@ -680,6 +680,41 @@ export const it: Messages = {
     cloneLinks: 'Copia i collegamenti',
     cloneAttachments: 'Copia gli allegati',
     cloneSubmit: 'Clona',
+    move: 'Sposta',
+    moveTitle: (key: string) => `Sposta ${key}`,
+    moveProjectHint:
+      'Il ticket riceve una nuova chiave in quel progetto; la vecchia chiave continua a funzionare. Per spostarlo serve il permesso «Modificare» nel progetto attuale e «Creare» in quello di destinazione.',
+    moveChoicesHint: (project: string) =>
+      `${project} non ha tutto ciò che questo ticket usa. Scegli cosa diventa lì.`,
+    moveSubtaskType: 'Tipo di sotto-task',
+    moveStatus: 'Stato',
+    moveAffectsVersions: 'Versione interessata',
+    moveUnmatched: (names: string) => `Nessuna corrispondenza nel nuovo progetto: ${names}.`,
+    moveNext: 'Avanti',
+    moveBack: 'Indietro',
+    moveSubmit: 'Sposta',
+    moveSummary: (key: string, project: string) =>
+      `${key} passerà a ${project} con i suoi sotto-task e riceverà una nuova chiave. La vecchia chiave continuerà a portarci.`,
+    moveDropped: (names: string) =>
+      `Il nuovo progetto non usa questi campi, i loro valori vengono eliminati: ${names}.`,
+    moveSprints: (names: string) => `Lascia gli sprint aperti: ${names}.`,
+    moveSubtasks: (n: number) =>
+      `${plural(n, 'sotto-task verrà spostato', 'sotto-task verranno spostati')} insieme.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'sotto-task ripartirà', 'sotto-task ripartiranno')} dal primo stato del nuovo workflow.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'componente o versione dei sotto-task non ha corrispondenza e viene eliminato', 'componenti e versioni dei sotto-task non hanno corrispondenza e vengono eliminati')}.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} non può essere assegnatario nel nuovo progetto: l’assegnatario diventa ${to}.`,
+    moveNoProject: 'Non c’è un altro progetto in cui spostarlo.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'commento o tempo registrato è riservato', 'commenti e tempi registrati sono riservati')} a un ruolo del progetto attuale. Un ruolo appartiene a un solo progetto: scegli chi potrà leggere questi elementi dopo lo spostamento.`,
+    moveRestrictedRole: 'Mantenerli riservati a un ruolo del nuovo progetto',
+    moveRestrictedGroup: 'Riservarli a un gruppo',
+    moveRestrictedNone:
+      'Il nuovo progetto non ha ruoli con membri e non appartieni a nessun gruppo: questi elementi non possono mantenere lì la restrizione, quindi il ticket non può essere spostato.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'sotto-task ha un assegnatario che non può esserlo nel nuovo progetto: viene sostituito', 'sotto-task hanno assegnatari che non possono esserlo nel nuovo progetto: vengono sostituiti')}.`,
   },
 
   comments: {
@@ -1475,6 +1510,7 @@ export const it: Messages = {
       'update.denied': 'Aggiornamento rifiutato',
       'update.result': 'Aggiornamento concluso',
       'setup.complete': 'Installazione completata',
+      'issue.move': 'Ticket spostato',
     },
     targets: {
       user: 'Account',

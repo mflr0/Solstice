@@ -331,24 +331,7 @@ func (s *Server) restProjectStatuses(w http.ResponseWriter, r *http.Request) err
 	o := s.restOut(r)
 	out := []any{}
 	for _, t := range p.IssueTypes {
-		wf, _, ok, err := s.workflowOf(ctx, p.Project.ID, t.ID)
-		if err != nil {
-			return err
-		}
-		var statuses []statusRef
-		if ok {
-			err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
-				func(rows *sql.Rows) error {
-					var id string
-					if err := rows.Scan(&id); err != nil {
-						return err
-					}
-					statuses = append(statuses, cat.statusOf(id))
-					return nil
-				}, wf)
-		} else {
-			statuses, err = s.projectStatuses(ctx, cat, p.Project.ID, "")
-		}
+		statuses, err := s.typeStatuses(ctx, cat, p.Project.ID, t.ID)
 		if err != nil {
 			return err
 		}

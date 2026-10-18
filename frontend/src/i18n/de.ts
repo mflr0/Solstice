@@ -688,6 +688,41 @@ export const de: Messages = {
     cloneLinks: 'Verknüpfungen kopieren',
     cloneAttachments: 'Anhänge kopieren',
     cloneSubmit: 'Klonen',
+    move: 'Verschieben',
+    moveTitle: (key: string) => `${key} verschieben`,
+    moveProjectHint:
+      'Der Vorgang erhält in diesem Projekt einen neuen Schlüssel; der alte Schlüssel funktioniert weiter. Zum Verschieben braucht es die Berechtigung Bearbeiten im aktuellen Projekt und Erstellen im Zielprojekt.',
+    moveChoicesHint: (project: string) =>
+      `${project} hat nicht alles, was dieser Vorgang nutzt. Wählen Sie, was daraus dort wird.`,
+    moveSubtaskType: 'Typ der Unteraufgabe',
+    moveStatus: 'Status',
+    moveAffectsVersions: 'Betroffene Version',
+    moveUnmatched: (names: string) => `Keine Entsprechung im neuen Projekt: ${names}.`,
+    moveNext: 'Weiter',
+    moveBack: 'Zurück',
+    moveSubmit: 'Verschieben',
+    moveSummary: (key: string, project: string) =>
+      `${key} wird mit seinen Unteraufgaben nach ${project} verschoben und erhält einen neuen Schlüssel. Der alte Schlüssel führt weiterhin dorthin.`,
+    moveDropped: (names: string) =>
+      `Das neue Projekt nutzt diese Felder nicht, ihre Werte werden entfernt: ${names}.`,
+    moveSprints: (names: string) => `Er verlässt die offenen Sprints: ${names}.`,
+    moveSubtasks: (n: number) =>
+      `${plural(n, 'Unteraufgabe wird', 'Unteraufgaben werden')} mitverschoben.`,
+    moveSubtasksReset: (n: number) =>
+      `${plural(n, 'Unteraufgabe beginnt', 'Unteraufgaben beginnen')} beim ersten Status des neuen Workflows von vorn.`,
+    moveSubtasksLost: (n: number) =>
+      `${plural(n, 'Komponente oder Version der Unteraufgaben hat keine Entsprechung und wird', 'Komponenten und Versionen der Unteraufgaben haben keine Entsprechung und werden')} entfernt.`,
+    moveAssignee: (from: string, to: string) =>
+      `${from} kann im neuen Projekt nicht zugewiesen werden: Bearbeiter wird ${to}.`,
+    moveNoProject: 'Es gibt kein anderes Projekt, in das er verschoben werden könnte.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'Kommentar oder Zeiteintrag ist', 'Kommentare und Zeiteinträge sind')} auf eine Rolle des aktuellen Projekts beschränkt. Eine Rolle gehört zu genau einem Projekt: Wählen Sie, wer diese Einträge nach dem Verschieben lesen darf.`,
+    moveRestrictedRole: 'Auf eine Rolle des neuen Projekts beschränkt lassen',
+    moveRestrictedGroup: 'Auf eine Gruppe beschränken',
+    moveRestrictedNone:
+      'Das neue Projekt hat keine Rolle mit Mitgliedern und Sie gehören keiner Gruppe an: Diese Einträge können ihre Beschränkung dort nicht behalten, der Vorgang kann daher nicht verschoben werden.',
+    moveSubtasksReassigned: (n: number) =>
+      `${plural(n, 'Unteraufgabe hat einen Bearbeiter, der im neuen Projekt nicht zugewiesen werden kann: Er wird ersetzt', 'Unteraufgaben haben Bearbeiter, die im neuen Projekt nicht zugewiesen werden können: Sie werden ersetzt')}.`,
   },
 
   comments: {
@@ -1485,6 +1520,7 @@ export const de: Messages = {
       'update.denied': 'Update abgelehnt',
       'update.result': 'Update abgeschlossen',
       'setup.complete': 'Einrichtung abgeschlossen',
+      'issue.move': 'Vorgang verschoben',
     },
     targets: {
       user: 'Konto',
