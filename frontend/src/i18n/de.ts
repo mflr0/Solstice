@@ -1742,6 +1742,8 @@ export const de: Messages = {
     baseUrl: (url: string) => `Die Links in E-Mails führen zu ${url}.`,
     baseUrlMissing:
       'Die öffentliche Adresse von Solstice ist nicht hinterlegt: E-Mails werden ohne Links zu den Vorgängen versendet.',
+    credentialsNeedTls:
+      'Die gespeicherten Einstellungen senden Benutzername und Passwort unverschlüsselt an einen Server, der nicht auf diesem Rechner liegt, daher kann keine E-Mail gesendet werden. Wählen Sie STARTTLS oder TLS, oder lassen Sie den Benutzernamen leer. Nur ein Server auf diesem Rechner ist ausgenommen; ein Relay in einem privaten Netz braucht ebenfalls STARTTLS oder TLS.',
     problems: {
       hostRequired: 'Geben Sie den SMTP-Server an, um den Versand zu aktivieren.',
       portInvalid: 'Eine Zahl von 1 bis 65535.',

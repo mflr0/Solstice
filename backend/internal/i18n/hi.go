@@ -477,6 +477,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "मेरा पासवर्ड चुनें",
 	MailInviteExpiry:          "यह लिंक केवल एक बार काम करता है और 7 दिनों तक मान्य है।",
 	MailInviteWhy:             "आपको यह ईमेल इसलिए मिला है क्योंकि एक एडमिन ने आपके लिए खाता बनाया है।",
+	MailCredentialsNeedTLS:    "यूज़रनेम और पासवर्ड केवल एन्क्रिप्टेड कनेक्शन पर भेजे जाते हैं: STARTTLS या TLS चुनें, या यूज़रनेम खाली छोड़ें। केवल इसी मशीन का सर्वर इससे मुक्त है; निजी नेटवर्क के रिले को भी STARTTLS या TLS चाहिए।",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "अमान्य घंटा: 0 से 23 तक।",
