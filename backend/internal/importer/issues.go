@@ -587,13 +587,10 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 	return false, nil
 }
 
-// safePathPart tells whether a string from the source database can be one
-// element of a file path: no separator, no "..", no NUL byte, not empty.
 func safePathPart(s string) bool {
 	return s != "" && s != "." && !strings.ContainsAny(s, "/\\\x00") && !strings.Contains(s, "..")
 }
 
-// within tells whether path, once cleaned, is inside root.
 func within(root, path string) bool {
 	rel, err := filepath.Rel(root, path)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))

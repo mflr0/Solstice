@@ -462,9 +462,8 @@ func (j *importJob) running() bool {
 	return j.state == "running"
 }
 
-// crashed is deferred first in an import goroutine. importer.RunGuarded covers
-// the import itself; this covers the code around it: a panic there fails a
-// job still running instead of stopping the server.
+// covers the code around RunGuarded: a panic there fails a job still running
+// instead of stopping the server.
 func (j *importJob) crashed(log *slog.Logger) {
 	r := recover()
 	if r == nil {
