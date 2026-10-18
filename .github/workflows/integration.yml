@@ -61,5 +61,6 @@ jobs:
       - name: Test
         run: go test -count=1 ./tests/
         env:
+          SOLSTICE_TEST_REQUIRE_DB: "1"
           SOLSTICE_TEST_DB: mysql://solstice:solstice@127.0.0.1:3306/solstice_t
           SOLSTICE_TEST_EMPTY_DB: mysql://solstice:solstice@127.0.0.1:3306/solstice_t_setup

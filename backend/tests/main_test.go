@@ -14,8 +14,11 @@
 //	SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice_t go run ./cmd/solstice migrate
 //	SOLSTICE_TEST_DB=mysql://solstice:solstice@localhost:13306/solstice_t go test ./tests/
 //
-// Without SOLSTICE_TEST_DB, every test skips itself. The tests change the
-// database: give them a copy made for them, never a real instance.
+// Without SOLSTICE_TEST_DB, every test skips itself, unless
+// SOLSTICE_TEST_REQUIRE_DB is set: then a missing SOLSTICE_TEST_DB or
+// SOLSTICE_TEST_EMPTY_DB fails the run (the integration workflow sets it).
+// The tests change the database: give them a copy made for them, never a real
+// instance.
 package tests
 
 import (
@@ -53,6 +56,10 @@ const keyExpr = "CONCAT(p.pkey, '-', i.num)"
 
 func TestMain(m *testing.M) {
 	dsn := os.Getenv("SOLSTICE_TEST_DB")
+	if os.Getenv("SOLSTICE_TEST_REQUIRE_DB") != "" && (dsn == "" || os.Getenv("SOLSTICE_TEST_EMPTY_DB") == "") {
+		fmt.Println("SOLSTICE_TEST_REQUIRE_DB is set: SOLSTICE_TEST_DB and SOLSTICE_TEST_EMPTY_DB must both be set")
+		os.Exit(1)
+	}
 	if dsn == "" {
 		os.Exit(m.Run())
 	}
