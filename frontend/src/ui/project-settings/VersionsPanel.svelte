@@ -120,7 +120,7 @@
     if (!v) return;
     const target = releaseChoices.find((x) => String(x.id) === moveTo)?.id;
     await projectAdminApi.releaseVersion(projectKey, v.id, {
-      ...(releaseDate ? { releaseDate } : {}),
+      releaseDate: releaseDate || todayISO(),
       ...(target ? { moveUnresolvedTo: target } : {}),
     });
     notify(t.projectConfig.versions.released(v.name));
