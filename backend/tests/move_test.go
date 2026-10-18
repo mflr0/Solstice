@@ -1613,7 +1613,7 @@ func TestMoveDigestNamesAMovedIssueByItsOldKeyToWhoSeesItNow(t *testing.T) {
 		who.call("PUT", "/api/issues/"+peer+"/watch", nil, 200, nil)
 	}
 	admin.call("POST", "/api/issues/"+peer+"/links", map[string]any{"direction": "outward", "target": e.issue,
-		"type": dbInt(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)}, 200, nil)
+		"type": dbInt(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)}, 201, nil)
 	body := maps.Clone(e.allChoices)
 	delete(body, "securityLevel")
 	admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
