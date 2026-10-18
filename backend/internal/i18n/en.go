@@ -12,6 +12,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Request refused: add the header “X-Atlassian-Token: no-check” (protection against cross-site request forgery).",
 	RequestInvalid:              "Invalid request: %s",
 	RequestTooManyAttempts:      "Too many attempts. Try again in %d s.",
+	RequestTooManyStreams:       "Too many live connections.",
 	RequestStreamingUnsupported: "Streaming is not supported.",
 	RequestInternalError:        "Internal error. The incident has been logged.",
 
@@ -35,6 +36,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Enter your current password.",
 	AccountCurrentPasswordIncorrect:  "Incorrect current password.",
 	AccountTokenCannotChangePassword: "An access token cannot change the password: sign in with your password.",
+	AccountTokenCannotChangeEmail:    "An access token cannot change the email address: sign in with your password.",
 	AccountLanguageUnsupported:       "Unsupported language (choose from: %s).",
 	AccountResetLinkInvalid:          "This link is invalid or has expired. Ask for a new one.",
 	AccountMailUnavailable:           "Email links are not available: set up email and the public address in the administration first.",
@@ -323,6 +325,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "File too large (100 MB at most).",
 	AttachmentNotImported:   "This file was not found during the import from Jira.",
 	AttachmentFileMissing:   "The file is missing from the data folder.",
+	AttachmentStorageQuota:  "The attachment storage quota is reached.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Unknown status.",
@@ -475,6 +478,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Choose my password",
 	MailInviteExpiry:          "The link works once and is valid for 7 days.",
 	MailInviteWhy:             "You receive this email because an administrator created an account for you.",
+	MailCredentialsNeedTLS:    "A user name and password are sent only over an encrypted connection: choose STARTTLS or TLS, or leave the username empty. Only a server on this machine is exempt; a relay on a private network needs STARTTLS or TLS too.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Invalid hour: from 0 to 23.",

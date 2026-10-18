@@ -13,6 +13,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Requête refusée : ajoutez l'en-tête « X-Atlassian-Token: no-check » (protection contre la falsification de requêtes).",
 	RequestInvalid:              "Requête invalide : %s",
 	RequestTooManyAttempts:      "Trop de tentatives : réessayez dans %d s.",
+	RequestTooManyStreams:       "Trop de connexions en direct.",
 	RequestStreamingUnsupported: "Flux non pris en charge.",
 	RequestInternalError:        "Erreur interne, l'incident a été journalisé.",
 
@@ -36,6 +37,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Indiquez votre mot de passe actuel.",
 	AccountCurrentPasswordIncorrect:  "Mot de passe actuel incorrect.",
 	AccountTokenCannotChangePassword: "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.",
+	AccountTokenCannotChangeEmail:    "Un jeton d'accès ne peut pas changer l'adresse électronique : connectez-vous avec votre mot de passe.",
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
 	AccountResetLinkInvalid:          "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
 	AccountMailUnavailable:           "Les liens par courriel ne sont pas disponibles : configurez d'abord le courriel et l'adresse publique dans l'administration.",
@@ -324,6 +326,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "Fichier trop volumineux (100 Mo au plus).",
 	AttachmentNotImported:   "Le fichier n'a pas été retrouvé lors de l'import depuis Jira.",
 	AttachmentFileMissing:   "Fichier absent du dossier de données.",
+	AttachmentStorageQuota:  "Le quota de stockage des pièces jointes est atteint.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Statut inconnu.",
@@ -476,6 +479,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Choisir mon mot de passe",
 	MailInviteExpiry:          "Le lien ne fonctionne qu'une fois et reste valable 7 jours.",
 	MailInviteWhy:             "Vous recevez ce courriel car un administrateur a créé un compte pour vous.",
+	MailCredentialsNeedTLS:    "L'identifiant et le mot de passe ne partent que sur une connexion chiffrée : choisissez STARTTLS ou TLS, ou laissez l'identifiant vide. Seul un serveur sur cette machine est dispensé de chiffrement ; un relais d'un réseau privé exige lui aussi STARTTLS ou TLS.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Heure invalide : de 0 à 23.",

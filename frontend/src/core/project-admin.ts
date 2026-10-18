@@ -6,7 +6,17 @@
  */
 
 import { matches } from './admin-forms.js';
-import type { Category, ExtraRecipient } from './admin-types.js';
+import type {
+  AssigneeType,
+  Category,
+  ComponentInput,
+  ComponentRow,
+  ExtraRecipient,
+  ProjectNotifications,
+  ProjectPatch,
+  VersionInput,
+  VersionRow,
+} from './admin-types.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -307,4 +317,215 @@ export function extraSignature(extra: readonly ExtraRecipient[]): string {
     .map((e) => `${e.event}:${e.kind}:${e.id}`)
     .sort()
     .join('|');
+}
+
+/* General tab ----------------------------------------------------------------- */
+
+/** What the General tab edits. */
+export interface GeneralForm {
+  name: string;
+  description: string;
+  lead: UserRef | null;
+  category: number | null;
+  defaultAssignee: 'unassigned' | 'lead';
+  /** The issue types offered, in the project's order. */
+  issueTypes: string[];
+}
+
+export function generalForm(s: ProjectSettings): GeneralForm {
+  return {
+    name: s.name,
+    description: s.description ?? '',
+    lead: s.lead,
+    category: s.category?.id ?? null,
+    defaultAssignee: s.defaultAssignee,
+    issueTypes: s.issueTypes.map((i) => i.id),
+  };
+}
+
+export type GeneralProblem = 'nameRequired' | 'nameTooLong' | 'typesRequired';
+
+export function generalProblems(
+  f: GeneralForm,
+  allTypes: readonly { id: string; subtask: boolean }[],
+): Partial<Record<'name' | 'types', GeneralProblem>> {
+  const out: Partial<Record<'name' | 'types', GeneralProblem>> = {};
+  const name = f.name.trim();
+  if (!name) out.name = 'nameRequired';
+  else if ([...name].length > 255) out.name = 'nameTooLong';
+  const types = issueTypesProblem(f.issueTypes, allTypes);
+  if (types) out.types = types;
+  return out;
+}
+
+/** An issue type added at the end of the list or taken out of it. */
+export function toggleIssueType(list: readonly string[], id: string, on: boolean): string[] {
+  const rest = list.filter((x) => x !== id);
+  return on ? [...rest, id] : rest;
+}
+
+/** The body of PATCH /api/projects/{key}: only what the form changed. */
+export function generalPatch(before: ProjectSettings, f: GeneralForm): ProjectPatch {
+  const patch: ProjectPatch = {};
+  const name = f.name.trim();
+  if (name !== before.name) patch.name = name;
+  const description = f.description.trim();
+  if (description !== (before.description ?? '')) patch.description = description || null;
+  if (f.lead && f.lead.id !== before.lead?.id) patch.lead = f.lead.id;
+  if (f.category !== (before.category?.id ?? null)) patch.category = f.category;
+  if (f.defaultAssignee !== before.defaultAssignee) patch.defaultAssignee = f.defaultAssignee;
+  const had = before.issueTypes.map((i) => i.id);
+  if (f.issueTypes.length !== had.length || f.issueTypes.some((id) => !had.includes(id))) {
+    patch.issueTypes = f.issueTypes;
+  }
+  return patch;
+}
+
+/** Whether the form differs from the saved settings. */
+export function generalChanged(before: ProjectSettings, f: GeneralForm): boolean {
+  return Object.keys(generalPatch(before, f)).length > 0;
+}
+
+/**
+ * The issue types still used by issues, from the 409 body of a refused
+ * change ({inUse: [{type, issues}]}); empty when the body says otherwise.
+ */
+export function typesInUse(data: unknown): { name: string; issues: number }[] {
+  const list = (data as { inUse?: unknown } | null | undefined)?.inUse;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((x: { type?: { name?: unknown }; issues?: unknown }) =>
+    typeof x?.type?.name === 'string' && typeof x.issues === 'number'
+      ? [{ name: x.type.name, issues: x.issues }]
+      : [],
+  );
+}
+
+/* Components tab -------------------------------------------------------------- */
+
+export const ASSIGNEE_TYPES: readonly AssigneeType[] = [
+  'project_default',
+  'component_lead',
+  'project_lead',
+  'unassigned',
+];
+
+export type NameProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken';
+
+/** A component or version name: present, 255 characters at most, and not another's (any case). */
+export function uniqueNameProblem(
+  name: string,
+  others: readonly { id: number; name: string }[],
+  self: number | null,
+): NameProblem | null {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  if ([...n].length > 255) return 'nameTooLong';
+  const lower = n.toLowerCase();
+  return others.some((o) => o.id !== self && o.name.trim().toLowerCase() === lower)
+    ? 'nameTaken'
+    : null;
+}
+
+/** What the component dialog edits. */
+export interface ComponentForm {
+  name: string;
+  description: string;
+  lead: UserRef | null;
+  assigneeType: AssigneeType;
+}
+
+export function componentForm(c: ComponentRow | null): ComponentForm {
+  return {
+    name: c?.name ?? '',
+    description: c?.description ?? '',
+    lead: c?.lead ?? null,
+    assigneeType: c?.assigneeType ?? 'project_default',
+  };
+}
+
+/**
+ * The body of POST (no `before`) or PATCH on a component. A change sends only
+ * the fields that differ; an emptied lead goes as null, which clears it.
+ */
+export function componentPayload(f: ComponentForm, before: ComponentRow | null): ComponentInput {
+  const name = f.name.trim();
+  const description = f.description.trim();
+  if (!before) {
+    return {
+      name,
+      ...(description ? { description } : {}),
+      ...(f.lead ? { lead: f.lead.id } : {}),
+      assigneeType: f.assigneeType,
+    };
+  }
+  const out: ComponentInput = {};
+  if (name !== before.name) out.name = name;
+  if (description !== (before.description ?? '')) out.description = description;
+  if ((f.lead?.id ?? null) !== (before.lead?.id ?? null)) out.lead = f.lead?.id ?? null;
+  if (f.assigneeType !== before.assigneeType) out.assigneeType = f.assigneeType;
+  return out;
+}
+
+/* Versions tab ---------------------------------------------------------------- */
+
+/** What the version dialog edits. Days are "YYYY-MM-DD"; empty is no date. */
+export interface VersionForm {
+  name: string;
+  description: string;
+  startDate: string;
+  releaseDate: string;
+}
+
+export function versionForm(v: VersionRow | null): VersionForm {
+  return {
+    name: v?.name ?? '',
+    description: v?.description ?? '',
+    startDate: v?.startDate ?? '',
+    releaseDate: v?.releaseDate ?? '',
+  };
+}
+
+export function versionProblems(
+  f: VersionForm,
+  versions: readonly { id: number; name: string }[],
+  self: number | null,
+): { name?: NameProblem; dates?: 'startAfterRelease' } {
+  const out: { name?: NameProblem; dates?: 'startAfterRelease' } = {};
+  const name = uniqueNameProblem(f.name, versions, self);
+  if (name) out.name = name;
+  const dates = datesProblem(f.startDate, f.releaseDate);
+  if (dates) out.dates = dates;
+  return out;
+}
+
+/**
+ * The body of POST (no `before`) or PATCH on a version. A change sends only
+ * the fields that differ; an emptied day goes as null, which clears it.
+ */
+export function versionPayload(f: VersionForm, before: VersionRow | null): VersionInput {
+  const name = f.name.trim();
+  const description = f.description.trim();
+  if (!before) {
+    return {
+      name,
+      ...(description ? { description } : {}),
+      ...(f.startDate ? { startDate: f.startDate } : {}),
+      ...(f.releaseDate ? { releaseDate: f.releaseDate } : {}),
+    };
+  }
+  const out: VersionInput = {};
+  if (name !== before.name) out.name = name;
+  if (description !== (before.description ?? '')) out.description = description;
+  if (f.startDate !== (before.startDate ?? '')) out.startDate = f.startDate || null;
+  if (f.releaseDate !== (before.releaseDate ?? '')) out.releaseDate = f.releaseDate || null;
+  return out;
+}
+
+/** Whether the e-mail switch or the extra recipients differ from what was saved. */
+export function notificationsChanged(
+  saved: Pick<ProjectNotifications, 'enabled' | 'extra'>,
+  enabled: boolean,
+  extra: readonly ExtraRecipient[],
+): boolean {
+  return saved.enabled !== enabled || extraSignature(saved.extra) !== extraSignature(extra);
 }

@@ -1720,6 +1720,8 @@ export const en = {
     baseUrl: (url: string) => `Email links point to ${url}.`,
     baseUrlMissing:
       'The public address of Solstice is not set: emails will go out without links to the issues.',
+    credentialsNeedTls:
+      'The saved settings send a username and password without encryption to a server that is not on this machine, so no email can be sent. Choose STARTTLS or TLS, or leave the username empty. Only a server on this machine is exempt; a relay on a private network needs STARTTLS or TLS too.',
     problems: {
       hostRequired: 'Enter the SMTP server to turn sending on.',
       portInvalid: 'A number from 1 to 65535.',
@@ -1793,6 +1795,7 @@ export const en = {
     name: 'Display name',
     email: 'Email address',
     emailHint: 'Also used to notify you and to reach you.',
+    emailChangeHint: 'Changing the address asks for your current password.',
     passwordTitle: 'Password',
     passwordIntro: 'Leave the fields empty to keep the current password.',
     currentPassword: 'Current password',
@@ -2202,6 +2205,121 @@ export const en = {
       nameRequired: 'Give the category a name.',
       nameTooLong: 'The name is too long (255 characters at most).',
       nameTaken: 'Another category already has this name.',
+    },
+  },
+
+  projectConfig: {
+    tabs: {
+      general: 'General',
+      components: 'Components',
+      versions: 'Versions',
+      notifications: 'Notifications',
+    },
+    leaveBody: 'This tab has unsaved changes. Discard them?',
+    general: {
+      title: 'General',
+      intro: 'The project’s name, who leads it and how new issues are handled.',
+      leadHint: 'The lead has every right in the project.',
+      typesInUse: (list: string) =>
+        `These types are still used by issues, so they cannot be removed: ${list}.`,
+      typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'issue', 'issues')})`,
+    },
+    problems: {
+      nameRequired: 'Give it a name.',
+      nameTooLong: 'The name is too long (255 characters at most).',
+      nameTaken: 'Another one in this project already has this name.',
+      startAfterRelease: 'The start date cannot be after the release date.',
+    },
+    components: {
+      title: 'Components',
+      intro:
+        'Components split a project into parts, such as “API” or “Billing”. An issue can belong to one or several of them.',
+      new: 'New component',
+      empty: 'No component yet',
+      emptyHint: 'Create the first one to sort the project’s issues by part.',
+      noLead: 'No lead',
+      namePlaceholder: 'API',
+      newTitle: 'New component',
+      editTitle: (name: string) => `Edit ${name}`,
+      assignee: 'New issues are assigned to',
+      assignees: {
+        project_default: 'The project’s default',
+        component_lead: 'The component’s lead',
+        project_lead: 'The project lead',
+        unassigned: 'Nobody',
+      },
+      assigneeHint:
+        'Applies to a new issue created without an assignee. With several components, the first one by name that names someone is used.',
+      created: (name: string) => `Component ${name} created.`,
+      saved: (name: string) => `Component ${name} saved.`,
+      deleted: (name: string) => `Component ${name} deleted.`,
+      deleteTitle: (name: string) => `Delete ${name}?`,
+      deleteUnused: 'No issue uses this component.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'issue uses', 'issues use')} this component. They can lose it, or move to another component.`,
+      moveLabel: 'Issues move to',
+      moveNone: 'Nowhere: they just lose the component',
+    },
+    versions: {
+      title: 'Versions',
+      intro:
+        'Versions mark the releases of the product. An issue says which version fixes it and which versions it affects. The order here is the order of the version lists.',
+      new: 'New version',
+      empty: 'No version yet',
+      emptyHint: 'Create the first one to plan what each release holds.',
+      orderHint: 'Use the arrows to change the order.',
+      start: 'Start',
+      release: 'Release',
+      state: 'State',
+      unresolved: (n: number) => `${n} unresolved`,
+      namePlaceholder: '1.0',
+      newTitle: 'New version',
+      editTitle: (name: string) => `Edit ${name}`,
+      startDate: 'Start date',
+      releaseDate: 'Release date',
+      created: (name: string) => `Version ${name} created.`,
+      saved: (name: string) => `Version ${name} saved.`,
+      releaseAction: 'Release',
+      unreleaseAction: 'Unrelease',
+      released: (name: string) => `${name} released.`,
+      unreleased: (name: string) => `${name} is no longer released.`,
+      releaseTitle: (name: string) => `Release ${name}`,
+      releaseUnresolved: (n: number) =>
+        `${plural(n, 'issue fixed in this version is', 'issues fixed in this version are')} not resolved yet.`,
+      releaseMove: 'Unresolved issues move to',
+      releaseKeep: 'Nowhere: they stay in this version',
+      releaseNoUnresolved: 'Every issue fixed in this version is resolved.',
+      archived: (name: string) => `${name} archived.`,
+      unarchived: (name: string) => `${name} is no longer archived.`,
+      mergeAction: 'Merge',
+      mergeTitle: (name: string) => `Merge ${name}`,
+      mergeBody: (name: string) =>
+        `Every issue that uses ${name}, as fixed or affected version, moves to the version you choose. ${name} is then deleted.`,
+      mergeInto: 'Merge into',
+      mergeNoOther: 'There is no other version to merge into.',
+      merged: (name: string, into: string) => `${name} merged into ${into}.`,
+      deleteTitle: (name: string) => `Delete ${name}?`,
+      deleteUnused: 'No issue uses this version.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'issue uses', 'issues use')} this version. They can lose it, or get another version in its place.`,
+      deleteFix: 'Issues fixed in it get',
+      deleteAffects: 'Issues it affects get',
+      deleteNone: 'No version: they just lose it',
+      deleted: (name: string) => `Version ${name} deleted.`,
+    },
+    notifications: {
+      title: 'Notifications',
+      intro:
+        'Emails about the issues of this project. Everyone still chooses which events reach them in their own settings.',
+      enabled: 'Send email notifications for this project',
+      enabledHint:
+        'When this is off, nobody gets emails about the issues of this project, whatever their own settings.',
+      extraTitle: 'More recipients',
+      extraIntro:
+        'A group or role checked for an event also receives the email for it in this project, on top of the people who already follow the issue.',
+      recipient: 'Group or role',
+      none: 'There is no group or role to choose from yet.',
+      cell: (who: string, event: string) => `${who}: ${event}`,
     },
   },
 
