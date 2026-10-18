@@ -893,6 +893,17 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	newKey := plan.dest.key + "-" + strconv.FormatInt(plan.items[0].num, 10)
+	details := map[string]any{"from": orig.Key(), "to": newKey, "fromProject": orig.ProjectKey, "project": plan.dest.key,
+		"subtasks": len(plan.items) - 1}
+	if plan.levels != [2]string{} {
+		details["levelFrom"], details["levelTo"] = plan.levels[0], plan.levels[1]
+	}
+	if plan.check.Restricted != nil {
+		details["restricted"] = in.Restricted
+	}
+	s.auditLog(r, audit.IssueMove, audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: newKey}, details)
+
 	// Announced like an edit; pages open on the old key refresh through the
 	// second event, which only those who could see the issue there hear.
 	for i, it := range plan.items {
@@ -905,13 +916,7 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 		s.emit(e)
 		s.publish(it.row, "issue", sub.UserID)
 	}
-	moved, err := s.findIssueByID(ctx, orig.ID)
-	if err != nil {
-		return err
-	}
-	s.auditLog(r, audit.IssueMove, audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: moved.Key()},
-		map[string]any{"from": orig.Key(), "to": moved.Key(), "project": plan.dest.key, "subtasks": len(plan.items) - 1})
-	return writeJSON(w, http.StatusOK, map[string]string{"key": moved.Key()})
+	return writeJSON(w, http.StatusOK, map[string]string{"key": newKey})
 }
 
 // applyMove writes one issue's move and returns its history lines.

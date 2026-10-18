@@ -489,7 +489,9 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 	e.admin.call("GET", "/api/admin/audit?action=issue.move", nil, 200, &page)
 	if i := slices.IndexFunc(page.Entries, func(a auditEntryOut) bool {
 		return a.Target != nil && a.Target.Label != nil && *a.Target.Label == newKey
-	}); i < 0 || page.Entries[i].Details["from"] != e.issue || page.Entries[i].Details["project"] != e.dst {
+	}); i < 0 || page.Entries[i].Details["from"] != e.issue || page.Entries[i].Details["project"] != e.dst ||
+		page.Entries[i].Details["fromProject"] != e.src || page.Entries[i].Details["levelFrom"] != "Interne" ||
+		page.Entries[i].Details["levelTo"] != "Autre" {
 		t.Errorf("audit entries: %+v", page.Entries)
 	}
 
@@ -873,6 +875,16 @@ func TestMoveRestrictsRoleRestrictedItemsToAGroup(t *testing.T) {
 	}
 	var moved struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
+
+	var page auditPage
+	e.admin.call("GET", "/api/admin/audit?action=issue.move", nil, 200, &page)
+	if i := slices.IndexFunc(page.Entries, func(a auditEntryOut) bool {
+		return a.Target != nil && a.Target.Label != nil && *a.Target.Label == moved.Key
+	}); i < 0 {
+		t.Errorf("audit entries: %+v", page.Entries)
+	} else if choice, _ := page.Entries[i].Details["restricted"].(map[string]any); choice["to"] != "group" || choice["group"] != float64(g.ID) {
+		t.Errorf("audited choice: %v", page.Entries[i].Details["restricted"])
+	}
 
 	// One already restricted to a group and a role keeps its group.
 	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ? AND visibility_role_id IS NULL`, both); g != "developpeurs" {
