@@ -83,8 +83,9 @@ func (l *Limiter) Locked(keys ...string) time.Duration {
 	return 0
 }
 
-// Failure records a failed attempt for each key.
-func (l *Limiter) Failure(keys ...string) {
+// Failure records a failed attempt for each key, and reports whether it
+// started a lock on any of them.
+func (l *Limiter) Failure(keys ...string) (locked bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
@@ -104,6 +105,7 @@ func (l *Limiter) Failure(keys ...string) {
 			a.until = now.Add(lock)
 			a.locks++
 			a.failures = 0
+			locked = true
 		}
 	}
 	if len(l.keys) > 10000 {
@@ -113,6 +115,7 @@ func (l *Limiter) Failure(keys ...string) {
 			}
 		}
 	}
+	return locked
 }
 
 // lockCount keeps the escalation of a key that was locked recently.

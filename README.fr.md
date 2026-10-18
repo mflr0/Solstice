@@ -108,6 +108,7 @@ fichier ou l'environnement, est signalée dans le journal au démarrage.
 | `SOLSTICE_HTTP_TRUSTEDPROXIES` | aucun | reverse proxies, voir plus bas |
 | `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | temps laissé aux requêtes et e-mails en cours à l'arrêt |
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | taille d'un envoi de fichiers ; `KB`, `MB`, `GB` comptent par 1000, `KiB`, `MiB`, `GiB` par 1024. Montez aussi la limite du proxy (`client_max_body_size` pour nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | taille totale de toutes les pièces jointes ; `0` signifie sans limite |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
 
@@ -122,10 +123,14 @@ après `?` n'est acceptée et Solstice refuse de démarrer avec une autre. Les
 messages d'erreur n'affichent jamais le mot de passe.
 
 Placez un reverse proxy HTTPS devant Solstice. Le cookie de session passe en
-`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`. Les échecs de
-connexion sont comptés par adresse de client : listez votre proxy dans
-`SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou plages CIDR séparées par des virgules,
-vide par défaut) pour que Solstice lise le client dans `X-Forwarded-For` et non
+`Secure` derrière un proxy qui envoie `X-Forwarded-Proto: https`, mais
+seulement si ce proxy figure dans `SOLSTICE_HTTP_TRUSTEDPROXIES` (adresses IP ou
+plages CIDR séparées par des virgules, vide par défaut) ou si
+`SOLSTICE_HTTP_BASEURL` commence par `https://`. Sans l'un ni l'autre, l'en-tête
+est ignoré : les cookies ne sont pas `Secure`, les liens des réponses REST sont
+en `http://` et Solstice écrit un avertissement dans son journal (au plus un par
+heure). Les échecs de connexion sont comptés par adresse de client : la même
+liste permet à Solstice de lire le client dans `X-Forwarded-For` et non
 l'adresse du proxy, la même pour tous. Voir `deploy/proxy/README.md`.
 
 Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
@@ -133,6 +138,19 @@ Le mot de passe SMTP et les secrets des webhooks sont chiffrés avec la clé
 `openssl rand -base64 32`), ou à défaut avec `<données>/secret.key`, créée au
 premier besoin. Sauvegardez cette clé avec la base et le dossier de données :
 sans elle, ces secrets sont à ressaisir.
+
+## Documentation
+
+Guides d'exploitation, en français et en [anglais](docs/en/) :
+
+- [Installation](docs/fr/install.md) : Linux, Docker, l'assistant
+  d'installation et tous les réglages.
+- [Reverse proxy](docs/fr/reverse-proxy.md) : HTTPS, l'adresse publique et les
+  proxies de confiance.
+- [Sauvegardes](docs/fr/backups.md) : quoi sauvegarder, exporter et restaurer,
+  et ce que protège `secret.key`.
+- [Mises à jour](docs/fr/upgrades.md) : la mise à jour intégrée, manuelle ou
+  avec Docker.
 
 ## Migrer depuis Jira
 
@@ -160,6 +178,31 @@ solstice import \
 - `-replace` : écrase les données Solstice existantes (sinon l'import refuse
   une base non vide). L'import peut être rejoué : les identifiants sont
   conservés.
+- `-check` : audite la base Jira sans rien importer (voir ci-dessous).
+
+Pour savoir ce qu'un import fera avant de le lancer, ajoutez `-check` :
+
+```bash
+solstice import -check \
+  -from postgres://jira:secret@db-jira:5432/jira \
+  -jira-home /var/atlassian/application-data/jira
+```
+
+La commande lit la base Jira comme l'import et n'écrit rien : aucune base
+Solstice n'est nécessaire (`SOLSTICE_DB_URL` peut être absente), aucun fichier
+n'est copié, et `-tz` est facultatif (les nombres n'en dépendent pas). Le
+rapport donne la version de Jira quand la base la consigne, puis les nombres :
+projets, tickets, commentaires, temps saisis, pièces jointes (et, avec
+`-jira-home`, combien ont leur fichier), utilisateurs (et combien ont un mot de
+passe utilisable), groupes, rôles, workflows, champs personnalisés par type,
+tableaux, sprints et filtres enregistrés. Il liste tout ce que l'import
+laisserait de côté, avec la raison (lignes qui pointent vers un élément absent,
+destinataires que Solstice ne sait pas exprimer, conditions, validateurs et
+post-fonctions de workflow, fichiers de pièces jointes introuvables…), puis les
+avertissements que l'import donnerait lui-même. `-json` affiche la même chose
+en JSON. Le code de sortie est 0 si l'import fonctionnerait, 1 s'il
+refuserait la source, par exemple un schéma antérieur à Jira 7, et 2 si la base
+n'a pas pu être lue.
 
 Le rapport final liste ce qui a été repris et ce qui mérite un coup d'œil. Ce
 qui est repris :
@@ -195,7 +238,8 @@ ses propres réglages de notifications).
 
 - Serveur SMTP : il se règle dans l'administration (hôte, port, sécurité
   aucune / STARTTLS / TLS, identifiant, expéditeur), avec un envoi d'essai qui
-  affiche l'erreur exacte du serveur. L'adresse publique
+  affiche l'erreur exacte du serveur. L'identifiant ne part qu'en TLS ou
+  STARTTLS, sauf vers un serveur de cette machine. L'adresse publique
   (`SOLSTICE_HTTP_BASEURL`) sert aux liens des e-mails ; sans elle, ils partent
   sans liens.
 - Notifications : observateurs, rapporteur, assigné et personnes mentionnées

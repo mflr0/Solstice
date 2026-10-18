@@ -16,6 +16,13 @@ Conventions (as for the rest of `/api`):
 - 401: not signed in. 403: signed in but not allowed. 404: unknown, or a
   project the user cannot see (keys cannot be probed). 400: invalid input,
   with a message saying what to fix. 409: conflicts (in use, already exists…).
+- 429: too many sign-in attempts. The `Retry-After` header and the `retryAfter`
+  field of the body both give the wait in whole seconds. 413: a JSON body over
+  the size limit of the route; the message gives the limit in KiB. Any other
+  failure is a 500 with a generic message, the cause is only in the server log.
+- Creations answer 201: besides those listed below, `POST
+  /api/issues/{key}/links`, `POST /api/issues/{key}/attachments` and `POST
+  /api/admin/fields/{id}/options`.
 - "Global admin" means `admin: true` in `GET /api/me`. "Project admin" means
   the `admin` permission in that project (`can.configure` in
   `GET /api/projects/{key}`); global admins count as project admins for
@@ -106,10 +113,23 @@ banner text over 500 characters or unknown level; numbers out of range.
 ```
 
 All fields optional. `locale`: a language or `null` (follow the browser).
-Changing the password needs `currentPassword` (400 "Mot de passe actuel
-incorrect.", throttled like sign-ins) and `newPassword` of at least
-`passwordMinLength` characters; other sessions of the user are signed out.
-Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
+Changing the password or the e-mail address needs `currentPassword` (400
+"Mot de passe actuel incorrect.", throttled like sign-ins); `newPassword`
+must be at least `passwordMinLength` characters and changing the password
+signs the user's other sessions out. An address change is refused to a
+personal access token (403); an unchanged address needs nothing. Answers `GET /api/me`'s object. (`profile.update`,
+`password.change`)
+
+### `PUT /api/me/avatar`, `DELETE /api/me/avatar`
+
+`PUT` takes a multipart body (as attachments do) whose first file is the
+picture: a PNG or JPEG of 1 MiB at most and 512 × 512 pixels at most (400
+when it is neither or does not decode, 413 when too heavy). The server stores
+a re-encoded PNG, so no metadata or extra bytes survive; the interface sends a
+256 × 256 square. The image must be upright: the EXIF orientation is not
+applied (it is dropped with the other metadata), so a client sends the
+picture already turned the right way. Both answer 204; `DELETE` also answers
+204 when there is no picture. `GET /api/avatars/{userId}` shows it (section 3).
 
 ---
 
@@ -120,6 +140,8 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
   created, lastLogin (instant | null), groups: [idName]}`.
 - `GET /api/admin/users/{id}` → `adminUser` plus `tokens` (number of
   personal access tokens).
+- `GET /api/people/{username}` → `{user: userRef, email, assigned: [...]}`.
+  `email` is empty unless the caller is an administrator or the person.
 - `POST /api/admin/users` `{username, name, email, password, admin,
   groups?: [groupId], invite?: bool}` → 201 `{id}`. (`user.create`) With
   `invite` the account has no password (`password` must be empty, `email` is
@@ -132,6 +154,15 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
   password?}` → 204. (`user.update`, `user.deactivate`, `admin.grant`, …)
 - `PUT /api/admin/users/{id}/groups` `{groups: [groupId]}` → `adminUser`.
   Replaces the memberships. (`group.members`)
+- `PUT /api/admin/users/{id}/avatar` (multipart, as `PUT /api/me/avatar`) and
+  `DELETE /api/admin/users/{id}/avatar` → 204: set or remove an account's
+  picture. (`user.update`, with the detail `avatar: set | remove`)
+- `GET /api/avatars/{userId}` (every signed-in user) → the picture as
+  `image/png` (`X-Content-Type-Options: nosniff`), or the initials as an SVG
+  when the account has none; 404 for an unknown account. Both come with
+  `Cache-Control: private, max-age=60` and an `ETag`, and answer 304 to
+  `If-None-Match`, so a change shows within a minute. Jira's
+  `GET /secure/useravatar?ownerId={username}` answers the same.
 - `POST /api/admin/users/{id}/reset-password` → `{password}`: a generated
   password, shown once; the user's sessions end. (`password.reset`) With the
   body `{"method": "link"}` it sends the account a link, valid one hour, to
@@ -223,7 +254,7 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 - `name` required, unique (409); `lead` an active user (default: the
   creator); `category` a category id or null.
 - `template`: `software` (statuses To Do / In Progress / In Review / Done) or
-  `simple` (À faire / En cours / Terminé). Statuses are reused by name or
+  `simple` (To do / In progress / Done). Statuses are reused by name or
   created; the project gets one workflow where any status can be reached
   from any other.
 - `access`: who else works in the project — `{"holder": "group", "id"}`,
@@ -241,6 +272,9 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 
 `GET /api/admin/project-key?key=WEB` → `{key, available: true}` or
 `{key, available: false, reason}` — for checking as one types. Global admin.
+With `&project=WEB` (a key of an existing project, current or former; 404
+otherwise) the former keys of that project are not counted as taken, as when
+changing its key.
 
 ### Read
 
@@ -251,13 +285,27 @@ ones. Each project now has `archived` (bool).
 `project.archived`, `project.categoryId` (number | null) and, in
 `issueTypes`, every type allowed in the project.
 
+`GET /api/admin/projects` — global admin. Every project, seen or not:
+`[{id, key, name, kind, lead (userRef), category (idName | null), archived,
+issues}]`, active first, then archived, by name.
+
 ### Update — project admin
 
 `PATCH /api/projects/{key}`
 `{name?, description? (null clears), lead?, category? (id | null),
 defaultAssignee? ("unassigned" | "lead"), issueTypes?: [typeId]}`
-→ the `GET /api/projects/{key}` object. Removing an issue type still used
-by issues: 409 `{inUse: [{type: typeRef, issues}]}`. (`project.update`)
+→ the settings object: `{id, key, name, description, kind, lead (userRef),
+category (idName | null), defaultAssignee, archived, issueTypes: [typeRef],
+issues}`. Removing an issue type still used by issues: 409 `{inUse:
+[{type: typeRef, issues}]}`. (`project.update`)
+
+### Project settings — project admin
+
+`GET /api/projects/{key}/settings` → `{id, key, name, description, kind,
+lead (userRef), category (idName | null), defaultAssignee, archived,
+issueTypes: [typeRef], issues}` — the project as its administrators
+configure it: the fields `PATCH /api/projects/{key}` changes, with `id`,
+`key`, `kind`, `archived` and `issues` (the issue count).
 
 ### Archive — global admin
 
@@ -275,6 +323,29 @@ stay readable by those who could see them, but nothing in it can be changed.
 they hold (comments, attachments and their files, history…), components,
 versions, workflows, grants, role members, security levels, former keys.
 Boards and filters remain (they may show nothing). (`project.delete`)
+
+### Change the key — global admin
+
+`POST /api/projects/{key}/rename` (it was `POST
+/api/admin/projects/{key}/rename` on the development branch only, never in a
+release) with body `{"newKey": "SHOP",
+"confirm": "WEB"}` → the `GET /api/projects/{key}` settings object, with the
+new key. `confirm` must be the current key (409 otherwise). The new key
+follows the rules of a new project (`GET /api/admin/project-key?key=`):
+400 if ill-formed, 409 if used by a project now or formerly. The exception
+is a key this project had itself: it may take it back (that key then stops
+being a former key; `project-key?project=` reports it as free). Issue keys are
+not stored (they are the project key and the issue number), so every issue
+takes the new key at once; the old key is kept as a former key, and `OLD-12`
+still finds its issue in `/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`,
+`/api/projects/OLD` and in JQL (`project = OLD`, `key = OLD-12`), in the
+simple search (`project:OLD`, `OLD-12`), in the `project` parameter of
+`/api/issues`, `/api/epics`, `/api/versions` and `/api/components`, and as
+the `project` of a new issue. Saved filters, board filters and other texts
+that name the old key are left as they are. Changes of keys (this one and
+the creation of a project) wait for each other; if another one has not ended
+after 10 seconds, the answer is 503 and the call can be repeated.
+(`project.rename`, details `{oldKey, newKey}`)
 
 ### Categories
 
@@ -376,6 +447,10 @@ Types: `text`, `textarea`, `number`, `date`, `datetime`, `select`,
 They are stored with Jira's type keys, so fields imported from Jira and
 fields created here behave alike (issue view, REST API, JQL).
 
+- `GET /api/admin/fields/types` → the types a field can have:
+  `[{type, typeKey, options}]`, each with its Jira key (`typeKey` =
+  `com.atlassian.jira.plugin.system.customfieldtypes:` + kind) and `options`
+  true for the option types.
 - `GET /api/admin/fields` → `[field]`, `field` = `{id, name, description,
   type (one of the above, or null for a Jira type Solstice only displays),
   typeKey, options (count, option types only), issues (issues with a value),
@@ -393,7 +468,7 @@ fields created here behave alike (issue view, REST API, JQL).
   {issues, boards}}` otherwise. Values go; boards estimating with it fall
   back to none. Saved filters naming it stop matching.
 - Options (`select`, `multiselect`, `checkboxes`, `radio`):
-  `POST /api/admin/fields/{id}/options` `{value}`,
+  `POST /api/admin/fields/{id}/options` `{value}` → 201 field detail,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
   Each option of the detail counts its `issues` (those with it, or an option
@@ -470,10 +545,10 @@ setup wizard).
 
 **While the import runs, Solstice is in maintenance:** every other `/api` and
 `/rest` request answers 503 `{"error": …, "maintenance": true}`, except
-`GET /api/settings/public` and `GET /api/admin/import` for the administrator
-who started it (their session is recognised without the database). Poll
-`GET /api/admin/import` every second or two; when `state` is `done` or
-`failed`, the application is back.
+`GET /api/settings/public`, and `GET /api/admin/import` and `GET /api/me` for
+the administrator who started it (their session is recognised without the
+database). Poll `GET /api/admin/import` every second or two; when `state` is
+`done` or `failed`, the application is back.
 
 ### What a replacing import keeps
 
@@ -518,8 +593,9 @@ Personal access tokens (`Authorization: Bearer sol_…`):
   `user` (`userRef`); `DELETE /api/admin/tokens/{id}` revokes any.
 - `GET /api/admin/tokens/settings` → `{who: everyone|admins|group, group:
   idName | null}`; `PUT` the same with `group` as an id: who may create
-  tokens. Administrators always may; the default is everyone. Creating a
-  token against the policy answers 403. Tokens that exist keep working.
+  tokens. Administrators always may; the default is administrators only.
+  Creating a token against the policy answers 403. Tokens that exist keep
+  working.
   (`settings.tokens`)
 
 Audit log:
@@ -546,7 +622,205 @@ Filter subscriptions (scheduled e-mail of a filter's results):
 
 ---
 
-## 12. Moving an issue — signed in
+## 12. Notification preferences
+
+`GET|PUT /api/me/notifications` — everyone signed in:
+
+- GET → `{delivery, digestHour, ownChanges, events, dueReminder,
+  reminderHour, timeZone, mailEnabled}`.
+  - `delivery`: `immediate` (within a couple of minutes, default) | `digest`
+    (once a day) | `none` (no notification e-mails).
+  - `digestHour`, `reminderHour`: 0–23, default 8, in `timeZone` (the
+    server's time zone).
+  - `ownChanges`: also e-mail the user's own changes (default false).
+  - `dueReminder`: a daily e-mail of issues due (default false).
+  - `events`: one switch per group — `created`, `assigned`, `commented`,
+    `mentioned`, `status`, `updated`, `attachments`, `deleted` (all true by
+    default).
+  - `timeZone` and `mailEnabled` are read-only (the hours' time zone above;
+    whether this Solstice sends e-mail at all).
+- PUT any subset `{delivery?, digestHour?, ownChanges?, events? (one switch
+  per group), dueReminder?, reminderHour?}`; fields left out keep their
+  value. 400 for an unknown delivery or event group, or an hour outside
+  0–23. Answers GET. E-mails already waiting follow: `none` drops them, a
+  new digest hour moves the digest.
+
+`GET|PUT /api/projects/{key}/notifications` — project admin:
+
+- GET → `{enabled, extra, events}`; `events` lists the groups a project may
+  send to extra people: `created`, `assigned`, `commented`, `status`,
+  `updated`, `attachments`, `deleted`.
+  - `enabled` (default true): false stops every notification e-mail about
+    the project's issues.
+  - `extra`: `[{event, kind: group|role, id, name}]` — a group or role that
+    also receives one of those events.
+- PUT `{enabled?, extra?}`; `extra` replaces the list, each entry
+  `{event, kind: "group"|"role", id}`. 400 for an unknown event group or a
+  group or role that does not exist. Answers GET.
+
+---
+
+## 13. E-mail, webhooks and updates — global admin
+
+### Mail
+
+- `GET /api/admin/mail` → `{enabled, host, port, security, username, from,
+  fromName, passwordSet, baseUrl}` — the SMTP settings. The password is
+  never sent back, only `passwordSet` (bool); `baseUrl` (string | null) is
+  the public address links in e-mails are built from. `security`: `none` |
+  `starttls` (default) | `tls`; an empty saved configuration means STARTTLS
+  and its usual port.
+- `PUT /api/admin/mail` any subset of `{enabled, host, port, security,
+  username, password, from, fromName}` → the settings as GET. The password
+  is left out to keep it, `null` or `""` to remove it; keeping it while
+  changing the server, port, security or user name is refused (400):
+  whoever can change the destination must send the password again rather
+  than collect it on a server of their own. `security: none` with a user
+  name is refused (400) unless the host is `localhost` or a loopback
+  address; credentials are only ever sent over TLS or STARTTLS, or to the
+  local machine. The test e-mail and the queue show the error
+  `credentials are not sent over an unencrypted connection` for a saved
+  configuration that breaks this rule. Validation (400): unknown security,
+  port outside 1–65535, carriage return or line feed in the host, user name
+  or display name, `enabled` without a host, an invalid sender address.
+  (`settings.mail`, details: changed fields, the password only as changed
+  or removed)
+- `POST /api/admin/mail/test` `{to?}` → `{sent: true, to}`: sends a test
+  e-mail now with the saved settings (`to` empty: the administrator's own
+  address). 400 for an invalid address; 409 when no host or sender is
+  saved; 502 with the SMTP server's own words (connect, TLS, auth,
+  sender, recipient…).
+- `GET /api/admin/mail/queue` → `{pending, failed, sentLastDay,
+  oldestPending, recent, errors, batching, digests}`: messages waiting,
+  given up on, sent in the last day, the oldest waiting (instant | null),
+  the last messages and the last failures (newest first) each `[{id, kind,
+  to, subject, status, attempts, lastError (string | null), created,
+  nextAttempt (instant | null), sent (instant | null)}]`, and the
+  notification batches waiting now (`batching`) and the digest batches
+  (`digests`).
+- `POST /api/admin/mail/queue/retry` → `{retried}`: failed messages go back
+  in the queue (resets and invitations excepted).
+
+### Webhooks
+
+A webhook POSTs the event to its address. `delivery` = `{id, event, status
+(pending|sent|failed), statusCode, durationMs, attempts, error, created,
+attempted, nextAttempt}`; `statusCode`, `durationMs`, `error`, `attempted`
+and `nextAttempt` are null when unknown.
+
+- `GET /api/admin/webhooks` → `[webhook]`, `webhook` = `{id, name, url,
+  events, jql, hasSecret, enabled, excludeBody, created, updated,
+  lastDelivery (delivery | null)}`.
+- `GET /api/admin/webhooks/events` → the events Solstice sends: `[event]` —
+  `jira:issue_created`, `jira:issue_updated`, `jira:issue_deleted`,
+  `comment_created`, `comment_updated`, `comment_deleted`,
+  `worklog_created`, `worklog_updated`, `worklog_deleted`,
+  `sprint_created`, `sprint_started`, `sprint_updated`, `sprint_closed`,
+  `sprint_deleted`, `board_created`, `board_updated`, `board_deleted`.
+- `GET /api/admin/webhooks/{id}` → webhook; 404 when unknown.
+- `POST /api/admin/webhooks` `{name, url, events, jql?, secret?, enabled?,
+  excludeBody?}` → 201 webhook. (`webhook.create`) `PUT
+  /api/admin/webhooks/{id}` the same fields, all optional → webhook.
+  (`webhook.update`)
+  - `name` required, 255 characters max; `url` (2000 max) must be
+    `http(s)://` with a host, and must not resolve to a link-local or cloud
+    metadata address (400).
+  - `events`: at least one of the names above (400).
+  - `jql`: only issues matching it are sent; empty means every issue. The
+    query is checked when saved (400).
+  - `secret` (255 max) is sealed and never sent back (`hasSecret`); left
+    out it is kept, `""` removes it.
+  - `enabled` defaults to true on creation; `excludeBody` sends the event
+    without the issue's payload.
+- `DELETE /api/admin/webhooks/{id}` → 204. (`webhook.delete`) The audit log
+  never holds the secret nor the address's user name, path and query.
+- `GET /api/admin/webhooks/{id}/deliveries` → the last 100 deliveries
+  `[delivery]`, newest first.
+- `POST /api/admin/webhooks/{id}/test` → the delivery of a `solstice:test`
+  event sent now.
+
+### Updates
+
+Solstice learns of the releases published on GitHub; that check is the only
+request it makes on its own, at most every 12 hours, and never once checks
+are turned off.
+
+- `GET /api/admin/updates` → `{current, latest, newer, notes, publishedAt,
+  releaseUrl, checkedAt, checkError, checksEnabled, install, canApply,
+  commands, download, lastAttempt}`.
+  - `latest` (string | null) and `newer`: a release is published, and is it
+    newer than `current`; `notes` (Markdown), `publishedAt` (instant |
+    null), `releaseUrl`.
+  - `checkedAt` (instant | null) and `checkError` (`unreachable` |
+    `refused` | `invalid` | null): the last check.
+  - `checksEnabled` (default true); `install`: `systemd` | `docker` |
+    `manual`.
+  - When `newer`: `canApply` (true on a systemd installation with no update
+    waiting or running), and for docker and manual the `commands` to run
+    and, for manual, the `download` archive for this machine.
+  - `lastAttempt` (instant | null): `{at, from, to, status, log}` with
+    `status` `pending` | `running` | `ok` | `rolled_back` | `failed` — the
+    update helper's work (Linux installations only).
+- `POST /api/admin/updates/check` → the same, checking again now (at most
+  once every 30 seconds; asking sooner answers the previous check).
+  (`update.check`)
+- `PUT /api/admin/updates/settings` `{checksEnabled}` → the state. 400 when
+  the field is missing. (`update.settings`)
+- `POST /api/admin/updates/apply` `{version, password}` → 202 the state:
+  the helper is asked to install `version`. The administrator's password is
+  asked again; 403 when wrong. (`update.denied`) 409: an installation that
+  cannot update from the interface, `version` not the latest release,
+  nothing newer to install, or another update waiting or running.
+  (`update.request`) The outcome reaches the audit log once the application
+  is back (`update.result`).
+
+---
+
+## 14. Issue security levels — global admin
+
+Each project has its own levels (the import copies a Jira security scheme
+into each project). An issue at a level is seen only by the level's members;
+a level with no member hides its issues from everyone. Every route below
+is for global administrators only (403 otherwise, whatever the project): a
+project administrator could add themselves to a confidential level, or delete
+it and expose its issues. 404 for an unknown project, and for a level of
+another project.
+
+- `GET /api/projects/{key}/security-levels` → `[{id, name, description,
+  issues, memberCount, members: [{id, holder, user: userRef|null, group:
+  idName|null, role: idName|null}]}]`, by name. `issues` is how many issues
+  are at the level.
+- `POST /api/projects/{key}/security-levels` `{name, description?}` → 201
+  level. Names unique in the project (409).
+- `PATCH /api/projects/{key}/security-levels/{id}` `{name?, description?
+  (or null)}` → level.
+- `DELETE /api/projects/{key}/security-levels/{id}` body optional `{moveTo?:
+  levelId, clear?: bool}` → 204. Issues still at the level (sub-tasks
+  included) make it 409 `{error, usage: {issues}}`, unless `moveTo` names
+  another level of the project (400 otherwise) or `clear` is true: those
+  issues then have no level, so everyone who sees the project sees them.
+  Both together is 400. The change is written to each issue's history.
+- `POST /api/projects/{key}/security-levels/{id}/members` `{holder, id?}` →
+  201 level. `holder` is one of exactly the kinds the permission checks
+  know: `everyone` (any signed-in account), `user`, `group`, `role` (these
+  three with the `id` of the user, group or project role), `lead` (the
+  project lead), `reporter`, `assignee` (of each issue). Already a member:
+  409; unknown holder or id: 400.
+- `DELETE /api/projects/{key}/security-levels/{id}/members/{member}` → 204;
+  `{member}` is a `members[].id`.
+
+Changes to levels and members apply at once (the permission cache is
+refreshed). They are written to the audit log on the project (target type
+`project`, label the key) as `securitylevel.create`, `securitylevel.update`,
+`securitylevel.delete`, `securitylevel.member_add` and
+`securitylevel.member_remove` (family `securitylevel`), with details
+`{securityLevel, …}`: `name` and `description` as `{from, to}` for an update,
+`issues`, `members`, `movedTo`, `cleared` for a delete, `holder` and `member`
+for the members.
+
+---
+
+## 15. Moving an issue — signed in
 
 `POST /api/issues/{key}/move` moves an issue, and its sub-tasks, to another
 project and answers `{key}`, the new key. The old key keeps resolving, as do

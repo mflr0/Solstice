@@ -11,8 +11,10 @@ const (
 	RequestXSRFHeader           Key = "RequestXSRFHeader"
 	RequestInvalid              Key = "RequestInvalid"
 	RequestTooManyAttempts      Key = "RequestTooManyAttempts"
+	RequestTooManyStreams       Key = "RequestTooManyStreams"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
+	RequestBodyTooLargeLimit    Key = "RequestBodyTooLargeLimit"
 )
 
 // Values shared by several forms.
@@ -38,6 +40,7 @@ const (
 	AccountCurrentPasswordRequired   Key = "AccountCurrentPasswordRequired"
 	AccountCurrentPasswordIncorrect  Key = "AccountCurrentPasswordIncorrect"
 	AccountTokenCannotChangePassword Key = "AccountTokenCannotChangePassword"
+	AccountTokenCannotChangeEmail    Key = "AccountTokenCannotChangeEmail"
 	AccountLanguageUnsupported       Key = "AccountLanguageUnsupported"
 	AccountResetLinkInvalid          Key = "AccountResetLinkInvalid"
 	AccountMailUnavailable           Key = "AccountMailUnavailable"
@@ -158,6 +161,8 @@ const (
 	ProjectDeleteConfirm       Key = "ProjectDeleteConfirm"
 	ProjectGranteeUnknown      Key = "ProjectGranteeUnknown"
 	ProjectGranteeNotFound     Key = "ProjectGranteeNotFound"
+	ProjectRenameConfirm       Key = "ProjectRenameConfirm"
+	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )
 
 // Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
@@ -337,6 +342,9 @@ const (
 	IssueParentUnsupported     Key = "IssueParentUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
+	RESTPickerHistory          Key = "RESTPickerHistory"
+	RESTPickerCurrent          Key = "RESTPickerCurrent"
+	RESTPickerShowing          Key = "RESTPickerShowing"
 	IssueCloneSummary          Key = "IssueCloneSummary"
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
@@ -374,6 +382,9 @@ const (
 	LinkToItself       Key = "LinkToItself"
 )
 
+// Group picker.
+const GroupPickerHeader Key = "GroupPickerHeader"
+
 // Attachments.
 const (
 	AttachmentUploadInvalid Key = "AttachmentUploadInvalid"
@@ -381,6 +392,7 @@ const (
 	AttachmentTooLarge      Key = "AttachmentTooLarge"
 	AttachmentNotImported   Key = "AttachmentNotImported"
 	AttachmentFileMissing   Key = "AttachmentFileMissing"
+	AttachmentStorageQuota  Key = "AttachmentStorageQuota"
 )
 
 // Statuses and their categories.
@@ -450,6 +462,7 @@ const (
 	SprintDatesOrder      Key = "SprintDatesOrder"
 	SprintStartFuture     Key = "SprintStartFuture"
 	SprintDeleteNotFuture Key = "SprintDeleteNotFuture"
+	SprintNotOnBoard      Key = "SprintNotOnBoard"
 )
 
 // Saved filters and their shares.
@@ -549,6 +562,7 @@ const (
 	MailInviteAction          Key = "MailInviteAction"
 	MailInviteExpiry          Key = "MailInviteExpiry"
 	MailInviteWhy             Key = "MailInviteWhy"
+	MailCredentialsNeedTLS    Key = "MailCredentialsNeedTLS"
 )
 
 // Notification preferences and notification e-mails.
@@ -617,4 +631,21 @@ const (
 	WebhookEventRequired       Key = "WebhookEventRequired"
 	WebhookSecretTooLong       Key = "WebhookSecretTooLong"
 	WebhookSecretEncryptFailed Key = "WebhookSecretEncryptFailed"
+)
+
+// Profile pictures.
+const (
+	AvatarUploadInvalid Key = "AvatarUploadInvalid"
+	AvatarNoFile        Key = "AvatarNoFile"
+	AvatarTooLarge      Key = "AvatarTooLarge"
+	AvatarNotImage      Key = "AvatarNotImage"
+	AvatarDimensions    Key = "AvatarDimensions"
+)
+
+// Issue security levels.
+const (
+	SecurityLevelInUse     Key = "SecurityLevelInUse"
+	SecurityTargetNotFound Key = "SecurityTargetNotFound"
+	SecurityMoveOrClear    Key = "SecurityMoveOrClear"
+	SecurityMemberExists   Key = "SecurityMemberExists"
 )

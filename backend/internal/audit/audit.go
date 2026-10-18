@@ -23,9 +23,11 @@ import (
 const (
 	LoginSuccess   = "login.success"
 	LoginFailure   = "login.failure"
+	LoginLockout   = "login.lockout"
 	PasswordChange = "password.change"
 	TokenCreate    = "token.create"
 	TokenRevoke    = "token.revoke"
+	TokenReject    = "token.reject"
 	UserCreate     = "user.create"
 	UserUpdate     = "user.update"
 	UserDeactivate = "user.deactivate"
@@ -46,6 +48,8 @@ const (
 	SprintDelete   = "sprint.delete"
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
+	IssueDelete    = "issue.delete"
+	IssueExport    = "issue.export"
 	IssueMove      = "issue.move"
 
 	// Administration from the interface.
@@ -71,6 +75,7 @@ const (
 	ProjectArchive       = "project.archive"
 	ProjectUnarchive     = "project.unarchive"
 	ProjectDelete        = "project.delete"
+	ProjectRename        = "project.rename"
 	CategoryCreate       = "category.create"
 	CategoryUpdate       = "category.update"
 	CategoryDelete       = "category.delete"
@@ -96,6 +101,12 @@ const (
 	WebhookUpdate        = "webhook.update"
 	WebhookDelete        = "webhook.delete"
 	SettingsTokens       = "settings.tokens"
+	// Issue security levels of a project, and who may see their issues.
+	SecurityLevelCreate       = "securitylevel.create"
+	SecurityLevelUpdate       = "securitylevel.update"
+	SecurityLevelDelete       = "securitylevel.delete"
+	SecurityLevelMemberAdd    = "securitylevel.member_add"
+	SecurityLevelMemberRemove = "securitylevel.member_remove"
 	// Catalogue items: "<kind>.create", "<kind>.update", "<kind>.delete",
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )

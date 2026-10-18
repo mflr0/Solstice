@@ -27,6 +27,9 @@ func (s *Server) credentials(r *http.Request) (u *auth.User, method string, err 
 	ctx := r.Context()
 	if scheme, value, ok := strings.Cut(r.Header.Get("Authorization"), " "); ok && strings.EqualFold(scheme, "Bearer") {
 		u, err := auth.LookupToken(ctx, s.db, strings.TrimSpace(value))
+		if errors.Is(err, auth.ErrNoSession) {
+			s.rejectToken(r, strings.TrimSpace(value))
+		}
 		return u, "token", err
 	}
 	name, pass, ok := r.BasicAuth()
@@ -49,6 +52,43 @@ func (s *Server) credentials(r *http.Request) (u *auth.User, method string, err 
 		s.auditLogin(r, name, nil, "basic")
 	}
 	return u, "basic", err
+}
+
+// rejectToken audits a refused token at most once an hour, so that anyone
+// sending a string cannot fill the log; the token itself is never logged.
+func (s *Server) rejectToken(r *http.Request, token string) {
+	ref := auth.LookupRefused(r.Context(), s.db, token)
+	if ref == nil {
+		s.log.Debug("API token rejected", "reason", "unknown")
+		return
+	}
+	s.log.Warn("API token rejected", "token", ref.ID, "name", ref.Name, "owner", ref.Username, "reason", ref.Reason)
+	if !s.noteRefusedToken(ref.ID) {
+		return
+	}
+	e := audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies), Action: audit.TokenReject,
+		Target: audit.Target{Type: "token", ID: strconv.FormatInt(ref.ID, 10), Label: ref.Name}}
+	if err := audit.Record(r.Context(), s.db, e); err != nil {
+		s.log.Error("audit log write failed", "action", e.Action, "err", err)
+	}
+}
+
+func (s *Server) noteRefusedToken(id int64) bool {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
+	now := time.Now()
+	if at, ok := s.tokenAud[id]; ok && now.Sub(at) < time.Hour {
+		return false
+	}
+	s.tokenAud[id] = now
+	if len(s.tokenAud) > 1000 {
+		for k, at := range s.tokenAud {
+			if now.Sub(at) >= time.Hour {
+				delete(s.tokenAud, k)
+			}
+		}
+	}
+	return true
 }
 
 type tokenOut struct {

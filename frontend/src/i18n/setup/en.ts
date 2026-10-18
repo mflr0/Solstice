@@ -28,11 +28,15 @@ export const en = {
   copy: 'Copy',
   copied: 'Copied',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Source code',
+  licenses: 'Licences',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: 'The server is not answering. Check that it is still running, then try again.',
     generic: 'Something went wrong. Please try again.',
   },
+  insecureWarning:
+    'This page is not encrypted (HTTP). The passwords you type here can be read on the network. Use HTTPS, or finish the setup from the server itself.',
 
   installed: {
     title: 'Solstice is already set up',

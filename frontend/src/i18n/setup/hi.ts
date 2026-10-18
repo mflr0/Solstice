@@ -23,11 +23,15 @@ export const hi: SetupMessages = {
   copy: 'कॉपी करें',
   copied: 'कॉपी हो गया',
   version: (v: string) => `वर्ज़न ${v}`,
+  sourceCode: 'सोर्स कोड',
+  licenses: 'लाइसेंस',
   duration: (min: number, sec: number) => (min > 0 ? `${min} मिनट ${sec} सेकंड` : `${sec} सेकंड`),
   errors: {
     network: 'सर्वर जवाब नहीं दे रहा है। जाँचें कि वह अभी चल रहा है, फिर दोबारा कोशिश करें।',
     generic: 'कोई गड़बड़ी हुई। कृपया फिर से कोशिश करें।',
   },
+  insecureWarning:
+    'यह पृष्ठ एन्क्रिप्टेड नहीं है (HTTP)। यहाँ आप जो पासवर्ड भरते हैं वे नेटवर्क पर पढ़े जा सकते हैं। HTTPS इस्तेमाल करें, या सेटअप सर्वर से स्वयं पूरा करें।',
 
   installed: {
     title: 'Solstice पहले से इंस्टॉल है',
@@ -107,7 +111,7 @@ export const hi: SetupMessages = {
     newText: 'एक खाली डेटाबेस: आप एडमिनिस्ट्रेटर खाता बनाते हैं, फिर प्रोजेक्ट।',
     importTitle: 'Jira से इम्पोर्ट करें',
     importText:
-      'Jira Data Center के खाते, प्रोजेक्ट, टिकट, हिस्ट्री और अटैचमेंट, PostgreSQL या MySQL से।',
+      'Jira Data Center के खाते, प्रोजेक्ट, टिकट, इतिहास और अटैचमेंट, PostgreSQL या MySQL से।',
   },
 
   admin: {
@@ -198,7 +202,7 @@ export const hi: SetupMessages = {
       'comments and work logs': 'टिप्पणियाँ और लगा समय',
       attachments: 'अटैचमेंट',
       'custom field values': 'कस्टम फ़ील्ड के मान',
-      history: 'हिस्ट्री',
+      history: 'इतिहास',
       filters: 'सहेजे गए फ़िल्टर',
       'boards and sprints': 'बोर्ड और स्प्रिंट',
     },
@@ -240,7 +244,7 @@ export const hi: SetupMessages = {
       'temps saisis': 'लगा समय',
       'pièces jointes': 'अटैचमेंट',
       'valeurs de champs personnalisés': 'कस्टम फ़ील्ड के मान',
-      'modifications (historique)': 'बदलाव (हिस्ट्री)',
+      'modifications (historique)': 'बदलाव (इतिहास)',
       'détails des modifications': 'बदलावों का विवरण',
       'filtres enregistrés': 'सहेजे गए फ़िल्टर',
       'partages de filtres': 'फ़िल्टर शेयर',

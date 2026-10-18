@@ -12,8 +12,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Request refused: add the header “X-Atlassian-Token: no-check” (protection against cross-site request forgery).",
 	RequestInvalid:              "Invalid request: %s",
 	RequestTooManyAttempts:      "Too many attempts. Try again in %d s.",
+	RequestTooManyStreams:       "Too many live connections.",
 	RequestStreamingUnsupported: "Streaming is not supported.",
 	RequestInternalError:        "Internal error. The incident has been logged.",
+	RequestBodyTooLargeLimit:    "The request is too large (%d KiB at most).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "A name is required (%d characters at most).",
@@ -35,6 +37,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Enter your current password.",
 	AccountCurrentPasswordIncorrect:  "Incorrect current password.",
 	AccountTokenCannotChangePassword: "An access token cannot change the password: sign in with your password.",
+	AccountTokenCannotChangeEmail:    "An access token cannot change the email address: sign in with your password.",
 	AccountLanguageUnsupported:       "Unsupported language (choose from: %s).",
 	AccountResetLinkInvalid:          "This link is invalid or has expired. Ask for a new one.",
 	AccountMailUnavailable:           "Email links are not available: set up email and the public address in the administration first.",
@@ -137,6 +140,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "This project contains issues: type its key to confirm the deletion.",
 	ProjectGranteeUnknown:      "Unknown grantee: %s.",
 	ProjectGranteeNotFound:     "Grantee not found.",
+	ProjectRenameConfirm:       "Type the current key of the project to confirm the change.",
+	ProjectKeysBusy:            "Another change of a project key is in progress. Try again in a moment.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Task",
@@ -298,6 +303,9 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueParentUnsupported:     "Changing the parent of an issue is not possible yet.",
 	IssueSubtasksNotDeletable:  "This issue has sub-tasks you cannot delete.",
 	IssueDeleteSubtasks:        "This issue has sub-tasks: add deleteSubtasks=true to delete them with it.",
+	RESTPickerHistory:          "History Search",
+	RESTPickerCurrent:          "Current Search",
+	RESTPickerShowing:          "Showing %d of %d matching issues",
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "created by cloning %s",
 	IssueCloneAttachmentFailed: "The attachment “%s” could not be copied.",
@@ -328,12 +336,16 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Target issue not found.",
 	LinkToItself:       "An issue cannot be linked to itself.",
 
+	// Group picker.
+	GroupPickerHeader: "Showing %d of %d matching groups",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Invalid file upload.",
 	AttachmentNoFile:        "No file received.",
 	AttachmentTooLarge:      "File too large (100 MB at most).",
 	AttachmentNotImported:   "This file was not found during the import from Jira.",
 	AttachmentFileMissing:   "The file is missing from the data folder.",
+	AttachmentStorageQuota:  "The attachment storage quota is reached.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Unknown status.",
@@ -395,6 +407,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "The sprint must end after it starts.",
 	SprintStartFuture:     "An active sprint cannot start in the future.",
 	SprintDeleteNotFuture: "Only an upcoming sprint can be deleted.",
+	SprintNotOnBoard:      "The issue's project is not on this sprint's board.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "A filter name is required (255 characters at most).",
@@ -486,6 +499,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Choose my password",
 	MailInviteExpiry:          "The link works once and is valid for 7 days.",
 	MailInviteWhy:             "You receive this email because an administrator created an account for you.",
+	MailCredentialsNeedTLS:    "A user name and password are sent only over an encrypted connection: choose STARTTLS or TLS, or leave the username empty. Only a server on this machine is exempt; a relay on a private network needs STARTTLS or TLS too.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Invalid hour: from 0 to 23.",
@@ -546,4 +560,16 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Choose at least one event.",
 	WebhookSecretTooLong:       "The secret is 255 characters at most.",
 	WebhookSecretEncryptFailed: "The secret cannot be encrypted: %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "Invalid picture upload.",
+	AvatarNoFile:        "No picture received.",
+	AvatarTooLarge:      "Picture too large (1 MB at most).",
+	AvatarNotImage:      "The picture must be a valid PNG or JPEG image.",
+	AvatarDimensions:    "The picture must be 512 × 512 pixels at most.",
+	// Issue security levels.
+	SecurityLevelInUse:     "Issues at this level: %d. Move them to another level of the project, or clear their level.",
+	SecurityTargetNotFound: "Replacement level not found in this project.",
+	SecurityMoveOrClear:    "Choose a replacement level or clear the level, not both.",
+	SecurityMemberExists:   "This holder is already a member of the level.",
 }

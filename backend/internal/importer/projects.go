@@ -509,11 +509,26 @@ func grantArgs(g perm.Grant) (any, any, any) {
 	return u, gr, ro
 }
 
+// errTooOld is why the import refuses a Jira database older than version 7.
+var errTooOld = errors.New("this Jira version is too old (no schemepermissions.permission_key): upgrade Jira to 7 or later first")
+
+// requireSchema returns errTooOld for a Jira database older than version 7.
+func (r *run) requireSchema() error {
+	if !r.hasColumn("schemepermissions", "permission_key") {
+		// hasColumn also says false when it cannot ask: a lost connection is no old Jira.
+		if err := r.src.PingContext(r.ctx); err != nil {
+			return err
+		}
+		return errTooOld
+	}
+	return nil
+}
+
 // importPermissions copies each project's permission scheme into the
 // project's own grants.
 func (r *run) importPermissions() error {
-	if !r.hasColumn("schemepermissions", "permission_key") {
-		return errors.New("this Jira version is too old (no schemepermissions.permission_key): upgrade Jira to 7 or later first")
+	if err := r.requireSchema(); err != nil {
+		return err
 	}
 	type grant struct {
 		key         string

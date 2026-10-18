@@ -29,6 +29,7 @@ import (
 	"solstice/internal/db"
 	"solstice/internal/importer"
 	"solstice/internal/web"
+	"solstice/internal/worker"
 )
 
 // #nosec G101 -- usage text that names settings, not credentials
@@ -37,7 +38,7 @@ const usage = `Usage: solstice <command> [options]
 Commands:
   serve     starts the web server
   migrate   updates the database schema
-  import    imports a Jira database (PostgreSQL or MySQL)
+  import    imports a Jira database (PostgreSQL or MySQL); "import -check" audits it first
   user      creates an account or changes a password (solstice user add|passwd)
   version   prints the version
   health    checks that a running server answers (container health check)
@@ -62,6 +63,7 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
                                  CIDR ranges, e.g. 127.0.0.1,10.0.0.0/8 (default none)
   SOLSTICE_HTTP_SHUTDOWNTIMEOUT  time given to work in progress on stop (default 10s)
   SOLSTICE_HTTP_MAXUPLOAD        size of one upload, e.g. 100MB or 1GiB (default 100MiB)
+  SOLSTICE_HTTP_MAXSTORAGE       total size of all attachments, 0 for no limit, e.g. 10GiB (default 0)
   SOLSTICE_LOG_LEVEL             debug, info, warn or error (default info)
   SOLSTICE_LOG_FORMAT            text or json (default text)
 
@@ -177,6 +179,7 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetTrustedProxies(cfg.HTTP.TrustedProxies)
 		srv.SetSecretKey(cfg.SecretKey)
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
+		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
 		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})
@@ -280,15 +283,17 @@ func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
-			if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
-				log.Warn("session cleanup failed", "err", err)
-			}
-			if _, err := audit.Purge(ctx, conn); err != nil {
-				log.Warn("audit log purge failed", "err", err)
-			}
-			if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
-				log.Warn("expired reset and invitation links purge failed", "err", err)
-			}
+			worker.Guard(log, "sessions", func() {
+				if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, time.Now().UTC()); err != nil {
+					log.Warn("session cleanup failed", "err", err)
+				}
+				if _, err := audit.Purge(ctx, conn); err != nil {
+					log.Warn("audit log purge failed", "err", err)
+				}
+				if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
+					log.Warn("expired reset and invitation links purge failed", "err", err)
+				}
+			})
 		}
 	}
 }
@@ -397,18 +402,49 @@ func runUser(ctx context.Context, args []string) error {
 func runImport(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("import", flag.ExitOnError)
 	from := fs.String("from", "", "Jira database URL: postgres://user:pass@host/db or mysql://user:pass@host/db")
-	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info)")
-	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files")
+	tz := fs.String("tz", "", "time zone of the Jira server, e.g. Europe/Paris (see Jira › System info); with -check, UTC if omitted")
+	jiraHome := fs.String("jira-home", "", "Jira home directory, to copy attachment files (with -check: to look for them)")
 	replace := fs.Bool("replace", false, "wipe Solstice's data before importing")
+	check := fs.Bool("check", false, "audit the Jira database without importing: what there is, what would be left out and why; "+
+		"writes nothing, needs no Solstice database, exits with status 1 if the import would refuse the source, 2 if it cannot read it")
 	asJSON := fs.Bool("json", false, "print the report as JSON")
 	fs.Parse(args)
-	if *from == "" || *tz == "" {
+	if *from == "" || (*tz == "" && !*check) {
 		fs.Usage()
+		if *check {
+			return errors.New("-from is required")
+		}
 		return errors.New("-from and -tz are required")
 	}
-	loc, err := time.LoadLocation(*tz)
-	if err != nil {
-		return fmt.Errorf("unknown time zone %q: %w", *tz, err)
+	if *check && *replace {
+		return errors.New("-replace has no meaning with -check, which writes nothing")
+	}
+	var loc *time.Location
+	if *tz != "" {
+		var err error
+		if loc, err = time.LoadLocation(*tz); err != nil {
+			return fmt.Errorf("unknown time zone %q: %w", *tz, err)
+		}
+	}
+	if *check {
+		rep, err := importer.Check(ctx, importer.Options{SourceURL: *from, SourceTZ: loc, JiraHome: *jiraHome})
+		if err != nil { // not a refusal: the source could not be read
+			slog.Error(err.Error())
+			os.Exit(2)
+		}
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(rep); err != nil {
+				return err
+			}
+		} else {
+			rep.WriteText(os.Stdout)
+		}
+		if rep.Refused != "" {
+			return errors.New("the import would refuse this source")
+		}
+		return nil
 	}
 
 	cfg, err := loadConfig()

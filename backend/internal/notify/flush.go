@@ -194,8 +194,8 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		var reporter, assignee sql.NullInt64
 		project, num, _ := strings.Cut(key, "-")
 		const columns = `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id FROM issues i `
-		err := s.db.QueryRowContext(ctx, columns+`JOIN projects p ON p.id = i.project_id WHERE p.pkey = ? AND i.num = ?`,
-			project, num).Scan(&access.ProjectID, &reporter, &assignee, &level)
+		err := s.db.QueryRowContext(ctx, columns+`JOIN projects p ON p.id = i.project_id WHERE `+sqlq.ProjectKey("p", "?")+` AND i.num = ?`,
+			project, project, num).Scan(&access.ProjectID, &reporter, &assignee, &level)
 		if errors.Is(err, sql.ErrNoRows) {
 			// The key of an issue moved to another project still names it.
 			err = s.db.QueryRowContext(ctx, columns+`JOIN moved_issue_keys k ON k.issue_id = i.id WHERE k.old_key = ?`, key).

@@ -25,11 +25,15 @@ export const fr: SetupMessages = {
   copy: 'Copier',
   copied: 'Copié',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Code source',
+  licenses: 'Licences',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: "Le serveur ne répond pas. Vérifiez qu'il tourne toujours, puis réessayez.",
     generic: 'Une erreur est survenue. Réessayez.',
   },
+  insecureWarning:
+    "Cette page n'est pas chiffrée (HTTP). Les mots de passe que vous saisissez ici peuvent être lus sur le réseau. Utilisez HTTPS, ou terminez l'installation depuis le serveur lui-même.",
 
   installed: {
     title: 'Solstice est déjà installé',

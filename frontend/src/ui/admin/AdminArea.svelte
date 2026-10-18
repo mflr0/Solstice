@@ -14,6 +14,7 @@
   import ImportPage from './ImportPage.svelte';
   import MailPage from './MailPage.svelte';
   import RolesPage from './RolesPage.svelte';
+  import SecurityLevelsPage from './SecurityLevelsPage.svelte';
   import SettingsPage from './SettingsPage.svelte';
   import StatusesPage from './StatusesPage.svelte';
   import SystemPage from './SystemPage.svelte';
@@ -71,6 +72,8 @@
         <RolesPage />
       {:else if section === 'projects'}
         <AdminProjectsPage />
+      {:else if section === 'securityLevels'}
+        <SecurityLevelsPage />
       {:else if section === 'issueTypes' || section === 'priorities' || section === 'resolutions' || section === 'linkTypes'}
         <CatalogPage kind={section} />
       {:else if section === 'statuses'}

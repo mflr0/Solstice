@@ -8,10 +8,10 @@
     mailProblems,
     type MailForm,
   } from '../../core/admin-forms.js';
-  import type { MailEntry, MailQueue, MailSecurity, MailSettings } from '../../core/admin-types.js';
+  import type { MailEntry, MailQueue, MailSecurity } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
-  import { adminApi } from '../../lib/admin-api.js';
+  import { adminApi, type MailSettingsReply } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
@@ -25,7 +25,7 @@
 
   const SECURITIES: MailSecurity[] = ['starttls', 'tls', 'none'];
 
-  let settings = $state<MailSettings | null>(null);
+  let settings = $state<MailSettingsReply | null>(null);
   let form = $state<MailForm | null>(null);
   let saved = $state('');
   let loadError = $state('');
@@ -52,7 +52,7 @@
     testTo.trim() && !isEmail(testTo.trim()) ? t.mailAdmin.toInvalid : '',
   );
 
-  function adopt(s: MailSettings) {
+  function adopt(s: MailSettingsReply) {
     settings = s;
     form = mailForm(s);
     saved = JSON.stringify(form);
@@ -166,6 +166,9 @@
 {:else if !form || !settings}
   <p class="muted loading">{t.common.loading}</p>
 {:else}
+  {#if settings.problem === 'credentialsNeedTLS'}
+    <p class="result failed problem" role="alert">{t.mailAdmin.credentialsNeedTls}</p>
+  {/if}
   <form class="settings-form" onsubmit={submit} novalidate>
     <h2 class="section-title">{t.mailAdmin.server}</h2>
     <label class="check">
@@ -445,6 +448,11 @@
 {/if}
 
 <style>
+  .problem {
+    max-width: 720px;
+    margin-bottom: 22px;
+  }
+
   .secret-note {
     margin: 4px 0 0;
     display: flex;

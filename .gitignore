@@ -22,6 +22,8 @@ frontend/coverage/
 /jiradb-*
 # …but Solstice's own schema migrations are source code (embedded by the binary).
 !/backend/internal/db/migrations/*.sql
+# …and so is the synthetic seed the CI integration tests load (scripts/make-test-seed.sh).
+!/backend/tests/testdata/seed.sql
 
 # Go binaries built in place
 /backend/solstice

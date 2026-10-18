@@ -331,6 +331,7 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		if sequence.Valid {
 			position = sequence.Int64
 		}
+		r.check.sprint(id)
 		var g any
 		if strings.TrimSpace(goal.String) != "" {
 			g = goal.String
@@ -358,6 +359,9 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		return err
 	}
 	n, _ := res.RowsAffected()
+	if r.check != nil {
+		n = r.check.sprintMembers()
+	}
 	r.rep.step("issues in sprints", int(n), 0)
 	return nil
 }

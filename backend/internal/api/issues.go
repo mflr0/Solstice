@@ -17,6 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
@@ -903,7 +904,7 @@ func readFields(r *http.Request) (fields, error) {
 	var f fields
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err := dec.Decode(&f); err != nil {
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	for k := range f {
 		if !issueFields[k] {
@@ -939,8 +940,8 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	var projectID, leadID int64
 	var defaultAssignee string
 	var lead sql.NullInt64
-	if err := s.db.QueryRowContext(ctx, `SELECT id, lead_id, default_assignee FROM projects WHERE pkey = ?`,
-		strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
+	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.lead_id, p.default_assignee FROM projects p WHERE `+sqlq.ProjectKey("p", "?"),
+		strings.ToUpper(projectKey), strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
 		return errNotFound
 	} else if err != nil {
 		return err
@@ -1406,7 +1407,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err := s.applyCustom(ctx, sub, s.restOut(r), iss, custom); err != nil {
 		return err
 	}
-	return s.respondIssue(w, r, sub, iss.ID)
+	return s.respondIssue(w, r, http.StatusOK, sub, iss.ID)
 }
 
 // applyUpdate changes an issue's fields, checking each one's permission,
@@ -1775,19 +1776,19 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 	return nil
 }
 
-func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, sub *perm.Subject, id int64) error {
+func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, status int, sub *perm.Subject, id int64) error {
 	iss, err := s.findIssueByID(r.Context(), id)
 	if err != nil {
 		return err
 	}
 	if !sub.CanSee(iss.perm()) {
-		return writeJSON(w, http.StatusOK, map[string]any{"key": iss.Key(), "hidden": true})
+		return writeJSON(w, status, map[string]any{"key": iss.Key(), "hidden": true})
 	}
 	d, err := s.issueDetail(r.Context(), sub, iss)
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, d)
+	return writeJSON(w, status, d)
 }
 
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
@@ -1861,6 +1862,8 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	for _, e := range deleted {
 		s.emit(e)
 	}
+	s.log.Info("issue deleted", "key", iss.Key())
+	s.auditLog(r, audit.IssueDelete, audit.Target{Type: "issue", ID: strconv.FormatInt(iss.ID, 10), Label: iss.Key()}, nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -1893,8 +1896,8 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 	where = vis + " AND " + cond
 	args = append(args, cargs...)
 	if p := params.Get("project"); p != "" {
-		where += " AND p.pkey = ?"
-		args = append(args, strings.ToUpper(p))
+		where += " AND " + sqlq.ProjectKey("p", "?")
+		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
 	}
 	return where, args, sort, mode, nil
 }

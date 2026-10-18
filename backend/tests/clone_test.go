@@ -63,7 +63,7 @@ func attachFile(t *testing.T, c *client, key, name, content string) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	if body, _ := io.ReadAll(resp.Body); resp.StatusCode != 200 {
+	if body, _ := io.ReadAll(resp.Body); resp.StatusCode != 201 {
 		t.Fatalf("upload to %s: %d %s", key, resp.StatusCode, body)
 	}
 }
@@ -107,7 +107,7 @@ func TestCloneCopiesTheIssue(t *testing.T) {
 	// The RH issue is seen by chloe.simon (RH), not by paul.martin.
 	for target, who := range map[string]*client{visible: admin, hidden: chloe} {
 		who.call("POST", "/api/issues/"+orig+"/links", map[string]any{"type": linkType, "direction": "outward",
-			"target": target}, 200, nil)
+			"target": target}, 201, nil)
 	}
 	origID := issueIDOf(t, orig)
 	// A custom field, and one of Jira Software's internal ones (the rank), which is not copied.

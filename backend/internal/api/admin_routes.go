@@ -20,6 +20,8 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	// People.
 	route("GET /api/admin/users/{id}", s.adminGetUser, true)
 	route("PUT /api/admin/users/{id}/groups", s.adminUserGroups, true)
+	route("PUT /api/admin/users/{id}/avatar", s.adminPutAvatar, true)
+	route("DELETE /api/admin/users/{id}/avatar", s.adminDeleteAvatar, true)
 	route("POST /api/admin/users/{id}/reset-password", s.adminResetPassword, true)
 	route("GET /api/admin/groups", s.listGroups, true)
 	route("POST /api/admin/groups", s.createGroup, true)
@@ -42,6 +44,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	route("GET /api/projects/{key}/settings", s.getProjectSettings, true)
 	route("PATCH /api/projects/{key}", s.updateProject, true)
 	route("DELETE /api/projects/{key}", s.deleteProject, true)
+	route("POST /api/projects/{key}/rename", s.renameProject, true)
 	route("POST /api/projects/{key}/archive", s.archiveProject(true), true)
 	route("POST /api/projects/{key}/unarchive", s.archiveProject(false), true)
 	route("GET /api/project-categories", s.listCategories, true)
@@ -60,6 +63,12 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	route("POST /api/projects/{key}/versions/{id}/release", s.releaseVersion, true)
 	route("POST /api/projects/{key}/versions/{id}/merge", s.mergeVersion, true)
 	route("GET /api/projects/{key}/fields", s.projectFields, true)
+	route("GET /api/projects/{key}/security-levels", s.listSecurityLevels, true)
+	route("POST /api/projects/{key}/security-levels", s.saveSecurityLevel, true)
+	route("PATCH /api/projects/{key}/security-levels/{id}", s.saveSecurityLevel, true)
+	route("DELETE /api/projects/{key}/security-levels/{id}", s.deleteSecurityLevel, true)
+	route("POST /api/projects/{key}/security-levels/{id}/members", s.addSecurityLevelMember, true)
+	route("DELETE /api/projects/{key}/security-levels/{id}/members/{member}", s.removeSecurityLevelMember, true)
 
 	// Catalogues.
 	for kind, c := range catalogueKinds {
@@ -97,7 +106,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 func readJSONFields(r *http.Request, v any) (map[string]json.RawMessage, error) {
 	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
 	if err != nil {
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	keys := map[string]json.RawMessage{}
 	if err := json.Unmarshal(raw, &keys); err != nil {

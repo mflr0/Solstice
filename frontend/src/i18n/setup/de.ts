@@ -23,12 +23,16 @@ export const de: SetupMessages = {
   copy: 'Kopieren',
   copied: 'Kopiert',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Quellcode',
+  licenses: 'Lizenzen',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network:
       'Der Server antwortet nicht. Prüfen Sie, ob er noch läuft, und versuchen Sie es dann erneut.',
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
   },
+  insecureWarning:
+    'Diese Seite ist nicht verschlüsselt (HTTP). Die Passwörter, die Sie hier eingeben, können im Netzwerk mitgelesen werden. Verwenden Sie HTTPS, oder schließen Sie die Einrichtung auf dem Server selbst ab.',
 
   installed: {
     title: 'Solstice ist bereits eingerichtet',
@@ -200,7 +204,7 @@ export const de: SetupMessages = {
       'components and versions': 'Komponenten und Versionen',
       'custom fields': 'Benutzerdefinierte Felder',
       issues: 'Vorgänge',
-      'issue details': 'Links, Labels, Beobachter',
+      'issue details': 'Verknüpfungen, Labels, Beobachter',
       'comments and work logs': 'Kommentare und erfasste Zeit',
       attachments: 'Anhänge',
       'custom field values': 'Werte benutzerdefinierter Felder',
@@ -217,7 +221,7 @@ export const de: SetupMessages = {
       statuts: 'Status',
       priorités: 'Prioritäten',
       résolutions: 'Lösungen',
-      'types de liens': 'Linktypen',
+      'types de liens': 'Verknüpfungstypen',
       projets: 'Projekte',
       'anciennes clés de projet': 'Frühere Projektschlüssel',
       rôles: 'Rollen',

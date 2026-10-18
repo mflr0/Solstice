@@ -179,10 +179,12 @@ func (r *run) importWorkflows() error {
 		w, err := parseWorkflow(name.String, descriptor.String)
 		if err != nil {
 			broken++
+			r.check.brokenWorkflow(name.String, err)
 			r.opt.Log.Warn("workflow not imported", "err", err)
 			return nil
 		}
 		defs[name.String] = w
+		r.check.workflow(w, descriptor.String)
 		return nil
 	}); err != nil {
 		return err
