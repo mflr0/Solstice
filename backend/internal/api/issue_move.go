@@ -212,7 +212,7 @@ func moveArgs(ids []int64) []any {
 
 // moveNames reads (id, name) pairs.
 func (s *Server) moveNames(ctx context.Context, q string, args ...any) ([]idName, error) {
-	var out []idName
+	out := []idName{}
 	err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 		var v idName
 		if err := rows.Scan(&v.ID, &v.Name); err != nil {

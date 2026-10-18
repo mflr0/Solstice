@@ -943,3 +943,20 @@ func TestMoveDoesNotLimitAGlobalAdministratorToTheirRoles(t *testing.T) {
 		t.Errorf("%d comments on the chosen group, want 2", n)
 	}
 }
+
+func TestMoveDryRunSendsEmptyListsNotNull(t *testing.T) {
+	e := newRestrictedMove(t)
+	bare := newProject(t, e.admin, map[string]any{"issueTypes": []string{e.typeA, e.subSrc}})
+	status, raw := e.admin.do("POST", "/api/issues/"+e.issue+"/move", map[string]any{"project": bare, "check": true})
+	if status != 200 {
+		t.Fatalf("dry run: %d %s", status, raw)
+	}
+	out := obj(t, raw)
+	for _, path := range [][2]string{{"components", "options"}, {"fixVersions", "options"}, {"securityLevel", "options"},
+		{"restricted", "roles"}} {
+		part, _ := out[path[0]].(map[string]any)
+		if list, ok := part[path[1]].([]any); !ok || len(list) != 0 {
+			t.Errorf("%s.%s: %v, want an empty list", path[0], path[1], part[path[1]])
+		}
+	}
+}
