@@ -12,13 +12,11 @@
   import EmptyState from '../EmptyState.svelte';
   import GroupDialog from './GroupDialog.svelte';
 
-  /** Groups: sets of people that permissions and roles are given to together. */
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
   let dialog = $state<{ group: Group | null } | null>(null);
   let removing = $state<Group | null>(null);
-  /** What the server says still uses the group being deleted. */
   let blocked = $state<{ comments: number; worklogs: number } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
@@ -47,7 +45,6 @@
     }
   }
 
-  // Once: typing is loaded by typed(), after its pause.
   $effect(() => {
     untrack(() => void load());
   });

@@ -9,17 +9,11 @@
   import Modal from '../Modal.svelte';
   import UserPicker from '../UserPicker.svelte';
 
-  /**
-   * Creating a group, or changing one: its name and description, and, once it
-   * exists, its members (added and removed right away).
-   */
   interface Props {
     open: boolean;
-    /** The group to change; null to create one. */
     group: Group | null;
     onclose: () => void;
     onsaved: (message: string) => void;
-    /** The members changed: the list's counts are out of date. */
     onchanged: () => void;
   }
   const { open, group, onclose, onsaved, onchanged }: Props = $props();
@@ -30,7 +24,6 @@
   let touched = $state(false);
   let error = $state('');
   let busy = $state(false);
-  /** A member is being added or removed: no second change meanwhile. */
   let changing = $state(false);
   let detail = $state<GroupDetail | null>(null);
   let seq = 0;
@@ -63,7 +56,6 @@
       });
   });
 
-  /** People who are not members yet. */
   async function candidates(q: string): Promise<UserRef[]> {
     const members = new Set((detail?.members ?? []).map((m) => m.id));
     return (await adminApi.users(q)).filter((u) => !members.has(u.id));

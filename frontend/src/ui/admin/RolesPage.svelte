@@ -10,12 +10,10 @@
   import EmptyState from '../EmptyState.svelte';
   import RoleDialog from './RoleDialog.svelte';
 
-  /** Project roles: named once here, given to people and groups in each project. */
   let roles = $state<RoleRow[] | null>(null);
   let error = $state('');
   let dialog = $state<{ role: RoleRow | null } | null>(null);
   let removing = $state<RoleRow | null>(null);
-  /** What the server says still uses the role being deleted. */
   let blocked = $state<{ comments: number; worklogs: number } | null>(null);
 
   const restrictedTo = $derived(

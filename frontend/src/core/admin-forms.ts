@@ -384,8 +384,6 @@ export function matches(search: string, ...texts: (string | null | undefined)[])
   return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
 }
 
-/* Groups and roles ------------------------------------------------------------ */
-
 /** Longest name of a group or a role, in characters, as the server takes it. */
 export const NAME_MAX = 255;
 
@@ -425,9 +423,8 @@ export function namedPayload(f: NamedForm): { name: string; description: string 
 }
 
 /**
- * Only what changed in a group or a role, trimmed; an empty object when nothing
- * did. The server stores a group name in lower case (`lowerName`), so a name
- * that differs by case alone is not a change. A description may be null.
+ * The server stores a group name in lower case (`lowerName`), so a name that
+ * differs by case alone is not a change; a description may be null.
  */
 export function namedPatch(
   f: NamedForm,

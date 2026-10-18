@@ -113,7 +113,6 @@ describe('user form', () => {
     expect(hasProblems(userProblems(f, true, 12))).toBe(false);
     f.email = 'nope';
     expect(userProblems(f, true, 12)).toEqual({ email: 'emailInvalid' });
-    // Without the invitation the password is asked for again.
     expect(userProblems({ ...f, email: '', invite: false }, true, 12)).toEqual({
       password: 'passwordShort',
     });
@@ -233,7 +232,6 @@ describe('general settings', () => {
       timeZone: 'timeZoneUnknown',
       instanceName: 'nameRequired',
     });
-    // A browser that cannot list zones leaves the check to the server.
     expect(generalProblems(f, null).timeZone).toBeUndefined();
   });
 

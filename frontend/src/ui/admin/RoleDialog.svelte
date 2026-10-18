@@ -6,10 +6,8 @@
   import { errorMessage } from '../../lib/api.js';
   import Modal from '../Modal.svelte';
 
-  /** Creating a project role, or changing one: its name and description. */
   interface Props {
     open: boolean;
-    /** The role to change; null to create one. */
     role: RoleRow | null;
     onclose: () => void;
     onsaved: (message: string) => void;
