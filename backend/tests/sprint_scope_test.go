@@ -199,6 +199,20 @@ func TestSprintMoveFollowsTheBoardFilter(t *testing.T) {
 	}
 }
 
+func TestSprintMoveWithoutChangeIgnoresTheFilter(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	board, sprint := scopeBoard(t, marie, "WEB")
+	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
+	key := createIssue(t, marie, "WEB", "Déjà dans le sprint", "")
+	move := map[string]any{"issue": key, "sprint": sprint}
+
+	marie.call("POST", "/api/boards/"+board+"/move", move, 204, nil)
+	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"query": `project = "DEMO" ORDER BY Rank ASC`}, 200, nil)
+	if status, body := marie.do("POST", "/api/boards/"+board+"/move", move); status != 204 {
+		t.Errorf("move into the sprint the issue is already in: %d %s", status, body)
+	}
+}
+
 // A REST move of several issues is refused as a whole: none moves when one of
 // them is not on the sprint's board.
 func TestSprintMoveOfSeveralIssuesIsAllOrNothing(t *testing.T) {

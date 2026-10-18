@@ -1039,12 +1039,14 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 			return err
 		}
 		newName = name
-		if err := s.issuesOnBoard(ctx, sub, b, []*issueRow{iss}); err != nil {
-			return err
-		}
 	}
 	if (oldID.Valid && oldID.Int64 == sprint) || (sprint == 0 && !oldID.Valid) {
 		return nil
+	}
+	if sprint != 0 {
+		if err := s.issuesOnBoard(ctx, sub, b, []*issueRow{iss}); err != nil {
+			return err
+		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
