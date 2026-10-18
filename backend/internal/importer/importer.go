@@ -142,6 +142,7 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		engine: engine,
 		tz:     opt.SourceTZ,
 		dst:    dst,
+		conn:   dst,
 		opt:    opt,
 		rep:    &Report{},
 	}
@@ -149,6 +150,28 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
+	runErr := r.runSteps()
+	// Solstice's own data goes back even after a failure: the operator must
+	// still be able to sign in and try again.
+	r.ctx = context.WithoutCancel(ctx)
+	if err := r.putBack(k); err != nil {
+		if runErr == nil {
+			runErr = fmt.Errorf("restoring Solstice's own data: %w", err)
+		} else {
+			opt.Log.Error("restoring Solstice's own data failed", "err", err)
+		}
+	}
+	if runErr != nil {
+		return r.rep, runErr
+	}
+	r.phase, r.done = "", r.phases
+	r.progress(true)
+	return r.rep, nil
+}
+
+// runSteps copies Jira's data, one step after the other, and stops at the
+// first that fails.
+func (r *run) runSteps() error {
 	steps := []struct {
 		name string
 		fn   func() error
@@ -174,37 +197,20 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		{"boards and sprints", r.importBoards},
 	}
 	r.phases = len(steps)
-	var runErr error
 	for i, s := range steps {
 		r.phase, r.done = s.name, i
 		r.progress(true)
 		start := time.Now()
 		if err := s.fn(); err != nil {
-			runErr = fmt.Errorf("%s: %w", s.name, err)
-			break
+			return fmt.Errorf("%s: %w", s.name, err)
 		}
-		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
+		r.opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
 	if r.strangers > 0 {
 		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
 			plural(r.strangers, "user", "users"))
 	}
-	// Solstice's own data goes back even after a failure: the operator must
-	// still be able to sign in and try again.
-	r.ctx = context.WithoutCancel(ctx)
-	if err := r.putBack(k); err != nil {
-		if runErr == nil {
-			runErr = fmt.Errorf("restoring Solstice's own data: %w", err)
-		} else {
-			opt.Log.Error("restoring Solstice's own data failed", "err", err)
-		}
-	}
-	if runErr != nil {
-		return r.rep, runErr
-	}
-	r.phase, r.done = "", len(steps)
-	r.progress(true)
-	return r.rep, nil
+	return nil
 }
 
 // progress tells Options.Progress where the import stands; unless forced,
@@ -218,6 +224,12 @@ func (r *run) progress(force bool) {
 		Steps: slices.Clone(r.rep.Steps)})
 }
 
+// target is where an import writes. The Solstice database is one; the other
+// is a check's (check.go), which takes every write and keeps none.
+type target interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // run holds the state shared by the import steps: how Jira identifiers map to
 // Solstice rows, and which records exist (to filter orphans).
 type run struct {
@@ -225,9 +237,11 @@ type run struct {
 	src    *sql.DB
 	engine jiradb.Engine
 	tz     *time.Location
-	dst    *sql.Conn
+	dst    target
+	conn   *sql.Conn // dst, to read the Solstice database: nil in a check
 	opt    Options
 	rep    *Report
+	check  *checkData // set in a check, which writes nothing
 
 	// Where the import stands, for Options.Progress.
 	phase        string
@@ -283,7 +297,7 @@ type issueRef struct {
 // default catalogues of a fresh instance included.
 func (r *run) prepareTarget() (*kept, error) {
 	var n int
-	if err := r.dst.QueryRowContext(r.ctx,
+	if err := r.conn.QueryRowContext(r.ctx,
 		"SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM projects)").Scan(&n); err != nil {
 		return nil, fmt.Errorf("the Solstice database is not initialised (run solstice migrate): %w", err)
 	}
@@ -294,7 +308,7 @@ func (r *run) prepareTarget() (*kept, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.dst.QueryContext(r.ctx, `SELECT table_name FROM information_schema.tables
+	rows, err := r.conn.QueryContext(r.ctx, `SELECT table_name FROM information_schema.tables
 		WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'`)
 	if err != nil {
 		return nil, err

@@ -178,6 +178,31 @@ solstice import \
 - `-replace` : écrase les données Solstice existantes (sinon l'import refuse
   une base non vide). L'import peut être rejoué : les identifiants sont
   conservés.
+- `-check` : audite la base Jira sans rien importer (voir ci-dessous).
+
+Pour savoir ce qu'un import fera avant de le lancer, ajoutez `-check` :
+
+```bash
+solstice import -check \
+  -from postgres://jira:secret@db-jira:5432/jira \
+  -jira-home /var/atlassian/application-data/jira
+```
+
+La commande lit la base Jira comme l'import et n'écrit rien : aucune base
+Solstice n'est nécessaire (`SOLSTICE_DB_URL` peut être absente), aucun fichier
+n'est copié, et `-tz` est facultatif (les nombres n'en dépendent pas). Le
+rapport donne la version de Jira quand la base la consigne, puis les nombres :
+projets, tickets, commentaires, temps saisis, pièces jointes (et, avec
+`-jira-home`, combien ont leur fichier), utilisateurs (et combien ont un mot de
+passe utilisable), groupes, rôles, workflows, champs personnalisés par type,
+tableaux, sprints et filtres enregistrés. Il liste tout ce que l'import
+laisserait de côté, avec la raison (lignes qui pointent vers un élément absent,
+destinataires que Solstice ne sait pas exprimer, conditions, validateurs et
+post-fonctions de workflow, fichiers de pièces jointes introuvables…), puis les
+avertissements que l'import donnerait lui-même. `-json` affiche la même chose
+en JSON. Le code de sortie est 0 si l'import fonctionnerait, 1 s'il
+refuserait la source, par exemple un schéma antérieur à Jira 7, et 2 si la base
+n'a pas pu être lue.
 
 Le rapport final liste ce qui a été repris et ce qui mérite un coup d'œil. Ce
 qui est repris :

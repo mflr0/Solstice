@@ -120,6 +120,38 @@ check "comptes inactifs (désactivés, supprimés, sans accès applicatif)" \
   "$(( $(expect inactive_users) + $(expect deleted_users) + $(expect users_without_access) + ghosts ))" \
   "$(count 'users WHERE NOT active')"
 
+echo "› import -check : mêmes nombres que l'import, rien d'écrit"
+for engine in pg my; do
+  case $engine in
+    pg) src=postgres://jira:jira@localhost:15432/jira ;;
+    my) src=mysql://jira:jira@localhost:23306/jira ;;
+  esac
+  # No Solstice database, no data directory: the check needs neither.
+  env -u SOLSTICE_DB_URL -u SOLSTICE_CONFIG SOLSTICE_DATA="$work/data-check-$engine" \
+    "$work/solstice" import -check -from "$src" -tz "$tz" -jira-home "$work/home-$engine" -json > "$work/check-$engine.json"
+  check "rien d'écrit ($engine)" "absent" "$([ -e "$work/data-check-$engine" ] && echo présent || echo absent)"
+  same=$(python3 -I -c "import json,sys
+a, b = (json.load(open(f)) for f in sys.argv[1:])
+print('oui' if a['steps'] == b['steps'] and a['warnings'] == b['warnings'] else 'non')" \
+    "$work/check-$engine.json" "$work/report-$engine.json")
+  check "lignes et avertissements identiques à l'import ($engine)" "oui" "$same"
+done
+checked() { python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))['counts'][sys.argv[2]])" "$work/check-pg.json" "$1"; }
+check "refus" "None" "$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1])).get('refused'))" "$work/check-pg.json")"
+check "projets (check)" "$(count projects)" "$(checked projects)"
+check "tickets (check)" "$(count issues)" "$(checked issues)"
+check "commentaires (check)" "$(count comments)" "$(checked comments)"
+check "temps saisis (check)" "$(count worklogs)" "$(checked worklogs)"
+check "pièces jointes (check)" "$(count attachments)" "$(checked attachments)"
+check "pièces jointes sans fichier (check)" "$(count 'attachments WHERE file_missing')" "$(checked attachmentsWithoutFile)"
+check "groupes (check)" "$(count user_groups)" "$(checked groups)"
+check "rôles (check)" "$(count project_roles)" "$(checked roles)"
+check "champs personnalisés (check)" "$(count custom_fields)" "$(checked customFields)"
+check "tableaux (check)" "$(count boards)" "$(checked boards)"
+check "sprints (check)" "$(count sprints)" "$(checked sprints)"
+check "filtres enregistrés (check)" "$(count filters)" "$(checked filters)"
+check "mots de passe Jira repris (check)" "$(count "users WHERE password_hash LIKE '{PKCS5S2}%'")" "$(checked usersWithPassword)"
+
 if [ -n "$messy" ]; then
   echo "› avertissements de l'import (données désordonnées)"
   warned() { # description, expected warning: the report holds exactly this line
