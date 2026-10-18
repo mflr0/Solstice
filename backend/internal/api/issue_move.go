@@ -438,6 +438,10 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 			if !has(*in.Status) {
 				return nil, fail(http.StatusBadRequest, i18n.StatusUnknown)
 			}
+			// Changing the status takes the Transition right; a move only has to find one.
+			if *in.Status != orig.StatusID && has(orig.StatusID) {
+				return nil, fail(http.StatusBadRequest, i18n.IssueTransitionNotAllowed)
+			}
 			head.status = *in.Status
 		case has(orig.StatusID):
 			head.status = orig.StatusID

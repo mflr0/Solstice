@@ -484,10 +484,10 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 
 	// Moved back, the issue gets a new key and answers to all its old ones.
 	e.admin.call("POST", "/api/issues/"+newKey+"/move", map[string]any{"project": e.src, "type": e.typeA,
-		"subtaskType": e.subSrc, "status": e.inReview}, 400, nil) // a component and a version are asked for
+		"subtaskType": e.subSrc}, 400, nil) // a component and a version are asked for
 	var back struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+newKey+"/move", map[string]any{"project": e.src, "type": e.typeA,
-		"subtaskType": e.subSrc, "status": e.inReview, "components": []int64{}, "fixVersions": []int64{},
+		"subtaskType": e.subSrc, "components": []int64{}, "fixVersions": []int64{},
 		"securityLevel": e.levelSrc}, 200, &back)
 	if !strings.HasPrefix(back.Key, e.src+"-") || back.Key == e.issue {
 		t.Errorf("moved back as %s", back.Key)
@@ -966,5 +966,30 @@ func TestMoveDryRunSendsEmptyListsNotNull(t *testing.T) {
 		if list, ok := part[path[1]].([]any); !ok || len(list) != 0 {
 			t.Errorf("%s.%s: %v, want an empty list", path[0], path[1], part[path[1]])
 		}
+	}
+}
+
+func TestMoveDoesNotChangeAStatusTheTargetHas(t *testing.T) {
+	e := newMoveEnv(t)
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"status": e.toDo}, 200, nil)
+	done := pick(t, `SELECT id FROM statuses WHERE LOWER(name) = 'done' ORDER BY position, id LIMIT 1`)
+	path := "/api/issues/" + e.issue + "/move"
+
+	body := map[string]any{"status": done}
+	for k, v := range e.allChoices {
+		if k != "status" {
+			body[k] = v
+		}
+	}
+	if status, raw := e.admin.do("POST", path, body); status != 400 {
+		t.Errorf("a status other than the current one: %d %s, want 400", status, raw)
+	}
+	if got := pick(t, `SELECT status_id FROM issues WHERE id = ?`, e.issueID); got != e.toDo {
+		t.Errorf("a refused move changed the status to %q", got)
+	}
+	body["status"] = e.toDo
+	body["check"] = true
+	if c := e.check(e.admin, e.issue, body); !c.Ready {
+		t.Errorf("the current status is refused: %+v", c)
 	}
 }
