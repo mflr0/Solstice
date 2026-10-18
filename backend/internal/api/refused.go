@@ -76,10 +76,10 @@ func (rf *refuser) logRefused(r *http.Request, status int, proxies []netip.Prefi
 		rf.logger().Warn("request refused", "status", status, "method", r.Method,
 			"route", r.Pattern, "user", user, "client", client)
 	case verdictAddressNotice:
-		rf.logger().Warn("further refused requests from this address are not logged for a minute",
+		rf.logger().Warn("further refused requests from this address are not logged until the period ends",
 			"client", refusedKey(client))
 	case verdictTotalNotice:
-		rf.logger().Warn("further refused requests are not logged for a minute")
+		rf.logger().Warn("further refused requests are not logged until the period ends")
 	}
 }
 

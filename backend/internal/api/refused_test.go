@@ -20,9 +20,9 @@ import (
 
 const (
 	refusedLine   = `msg="request refused"`
-	refusedNotice = `msg="further refused requests from this address are not logged for a minute"`
+	refusedNotice = `msg="further refused requests from this address are not logged until the period ends"`
 
-	refusedTotalNotice = `msg="further refused requests are not logged for a minute"`
+	refusedTotalNotice = `msg="further refused requests are not logged until the period ends"`
 )
 
 // newRefuser is a refuser logging into buf, its clock at the instant the
