@@ -206,7 +206,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 		return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
 	}, false))
 	mux.Handle("/", static)
-	return securityHeaders(s.instanceMiddleware(mux))
+	return securityHeaders(gzipHandler(s.instanceMiddleware(mux)))
 }
 
 // Mutating requests must carry this header. Browsers refuse to send custom
