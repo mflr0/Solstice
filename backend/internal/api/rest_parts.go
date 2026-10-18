@@ -1,9 +1,8 @@
 package api
 
-// Versions and components through the REST API: reading one by its id, and
-// creating, editing and deleting them. The interface's handlers do the work
-// (they check that the user administers the project, validate, write the
-// history and the audit log); these translate Jira's requests and answers.
+// The interface's handlers do the work (they check that the user administers
+// the project, validate, write the history and the audit log); these translate
+// Jira's requests and answers.
 
 import (
 	"cmp"
@@ -21,10 +20,7 @@ import (
 	"solstice/internal/i18n"
 )
 
-// restBody reads a flat Jira body. Keys in writable are returned; keys in
-// echoed are what a client sends back after reading the object (read-only
-// values, ignored); any other key is refused, as unknown fields are in an
-// issue's "fields".
+// Unknown keys are refused, as unknown fields are in an issue's "fields".
 func restBody(r *http.Request, writable []string, echoed ...string) (map[string]json.RawMessage, error) {
 	var in map[string]json.RawMessage
 	if err := readRESTJSON(r, &in); err != nil {
@@ -38,8 +34,6 @@ func restBody(r *http.Request, writable []string, echoed ...string) (map[string]
 	return in, nil
 }
 
-// restPartProject finds the project of a version or a component (table) from
-// its id.
 func (s *Server) restPartProject(r *http.Request, table string) (id, projectID int64, key string, err error) {
 	if id, err = strconv.ParseInt(r.PathValue("id"), 10, 64); err != nil {
 		return 0, 0, "", errNotFound
@@ -52,7 +46,6 @@ func (s *Server) restPartProject(r *http.Request, table string) (id, projectID i
 	return id, projectID, key, err
 }
 
-// restPartBrowse is restPartProject for reading: the user must see the project.
 func (s *Server) restPartBrowse(r *http.Request, table string) (id, projectID int64, key string, err error) {
 	if id, projectID, key, err = s.restPartProject(r, table); err != nil {
 		return 0, 0, "", err
@@ -67,8 +60,6 @@ func (s *Server) restPartBrowse(r *http.Request, table string) (id, projectID in
 	return id, projectID, key, nil
 }
 
-// restBodyProject finds the project a new version or component belongs to:
-// "project" (its key) or "projectId".
 func (s *Server) restBodyProject(ctx context.Context, in map[string]json.RawMessage) (string, error) {
 	var ref string
 	if raw, ok := in["project"]; ok && string(raw) != "null" {
@@ -91,8 +82,6 @@ func (s *Server) restBodyProject(ctx context.Context, in map[string]json.RawMess
 	return s.projectKeyOf(ctx, id), nil
 }
 
-// copyFields puts the fields of a Jira body that the interface's API names
-// the same into its body.
 func copyFields(ui map[string]any, in map[string]json.RawMessage, names ...string) {
 	for _, k := range names {
 		if v, ok := in[k]; ok {
@@ -101,7 +90,6 @@ func copyFields(ui map[string]any, in map[string]json.RawMessage, names ...strin
 	}
 }
 
-// restMoveTo reads the id of a query parameter naming where issues move.
 func restMoveTo(r *http.Request, name string) (*int64, error) {
 	v := r.URL.Query().Get(name)
 	if v == "" {
@@ -114,9 +102,6 @@ func restMoveTo(r *http.Request, name string) (*int64, error) {
 	return &id, nil
 }
 
-// Versions ---------------------------------------------------------------------
-
-// versionBodyFields are what a version's body may set.
 var versionBodyFields = []string{"name", "description", "startDate", "releaseDate", "released", "archived"}
 
 // partVersion is a version as Jira shows one: the project's list shows less.
@@ -149,7 +134,6 @@ func (s *Server) restVersion(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, s.restOut(r).partVersion(v, projectID))
 }
 
-// restSaveVersion creates a version (no id in the path) or changes one.
 func (s *Server) restSaveVersion(w http.ResponseWriter, r *http.Request) error {
 	creating := r.PathValue("id") == ""
 	in, err := restBody(r, append([]string{"project", "projectId"}, versionBodyFields...),
@@ -190,8 +174,6 @@ func (s *Server) restSaveVersion(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, s.restOut(r).partVersion(out, projectID))
 }
 
-// restDeleteVersion deletes a version; moveFixIssuesTo and moveAffectedIssuesTo
-// name the versions its issues get instead.
 func (s *Server) restDeleteVersion(w http.ResponseWriter, r *http.Request) error {
 	id, _, key, err := s.restPartProject(r, "versions")
 	if err != nil {
@@ -220,8 +202,6 @@ func (s *Server) restDeleteVersion(w http.ResponseWriter, r *http.Request) error
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-
-// Components -------------------------------------------------------------------
 
 // partComponent is a component as Jira shows one: the project's list shows less.
 func (s *Server) partComponent(ctx context.Context, o *restOut, c componentAdminOut, projectID int64,
@@ -261,7 +241,6 @@ func (s *Server) restComponent(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// restSaveComponent creates a component (no id in the path) or changes one.
 func (s *Server) restSaveComponent(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	creating := r.PathValue("id") == ""
@@ -329,8 +308,6 @@ func (s *Server) restSaveComponent(w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, status, jc)
 }
 
-// restDeleteComponent deletes a component; moveIssuesTo names the component
-// its issues get instead.
 func (s *Server) restDeleteComponent(w http.ResponseWriter, r *http.Request) error {
 	id, _, key, err := s.restPartProject(r, "components")
 	if err != nil {
@@ -353,8 +330,6 @@ func (s *Server) restDeleteComponent(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
-// Filters ----------------------------------------------------------------------
-
 // restShare is one of a filter's sharePermissions, as Jira writes it.
 type restShare struct {
 	Type  string `json:"type"`
@@ -374,8 +349,7 @@ type restShare struct {
 	} `json:"user"`
 }
 
-// filterShares turns sharePermissions into the shares the interface knows:
-// everyone, a group, a project (or a role in it), a person.
+// filterShares turns sharePermissions into the shares the interface knows.
 func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filterShare, error) {
 	var list []restShare
 	if json.Unmarshal(raw, &list) != nil {
@@ -439,7 +413,6 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 	return shares, nil
 }
 
-// restSaveFilter creates a filter (no id in the path) or changes one.
 func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	creating := r.PathValue("id") == ""

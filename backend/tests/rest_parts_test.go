@@ -1,7 +1,5 @@
 package tests
 
-// Versions, components and saved filters through the Jira-compatible REST API.
-
 import (
 	"encoding/json"
 	"net/http"
@@ -9,7 +7,6 @@ import (
 	"testing"
 )
 
-// restAs returns a function that calls the REST API with a user's token.
 func restAs(t *testing.T, username string) func(method, path string, body any) (int, map[string]any) {
 	token := newToken(t, username, nil)
 	return func(method, path string, body any) (int, map[string]any) {
