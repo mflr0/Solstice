@@ -1152,3 +1152,37 @@ func TestMoveDoesNotAnnounceTheNewKeyToWhoCannotSeeIt(t *testing.T) {
 		}
 	}
 }
+
+func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) {
+	e := newRestrictedMove(t)
+	paul := login(t, "paul.martin", "motdepasse")
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
+		userID(t, "paul.martin"))
+	e.refreshRules(e.src)
+	body := map[string]any{}
+	for k, v := range e.allChoices {
+		if k != "securityLevel" {
+			body[k] = v
+		}
+	}
+
+	c := e.check(paul, e.issue, body)
+	if c.Restricted == nil || c.Restricted.Comments != 2 || len(c.Restricted.Roles) == 0 {
+		t.Fatalf("a member of the target is not offered its roles: %+v", c.Restricted)
+	}
+
+	var perms struct{ Grants []grantOut }
+	e.admin.call("GET", "/api/projects/"+e.dst+"/permissions", nil, 200, &perms)
+	grants := []grantOut{{Permission: "browse", Holder: "reporter"}}
+	for _, g := range perms.Grants {
+		if g.Permission != "browse" {
+			grants = append(grants, g)
+		}
+	}
+	e.admin.call("PUT", "/api/projects/"+e.dst+"/permissions", map[string]any{"grants": grants}, 200, nil)
+	c = e.check(paul, e.issue, body)
+	if c.Restricted == nil || c.Restricted.Comments != 2 || len(c.Restricted.Roles) != 0 {
+		t.Errorf("the roles of a project one sees only the own issues of: %+v", c.Restricted)
+	}
+}

@@ -759,7 +759,12 @@ func (s *Server) planRestricted(ctx context.Context, sub *perm.Subject, plan *mo
 		return nil
 	}
 
-	r := &moveRestrict{Comments: comments, Worklogs: worklogs, Roles: roles}
+	// Seeing only one's own issues in the target is not seeing who holds its roles.
+	offered := []idName{}
+	if sub.Can(perm.Browse, plan.dest.id, nil) {
+		offered = roles
+	}
+	r := &moveRestrict{Comments: comments, Worklogs: worklogs, Roles: offered}
 	// Groups are global: the mover may pick one they belong to (any, for an administrator).
 	groups := `SELECT g.id, g.name FROM user_groups g JOIN group_members m ON m.group_id = g.id
 		WHERE m.user_id = ? ORDER BY g.name, g.id`
