@@ -104,6 +104,9 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("POST "+p+"/issueLink", s.restLink, true)
 		rest("DELETE "+p+"/issueLink/{id}", s.deleteLink, true)
 		rest("GET "+p+"/issueLinkType", s.restLinkTypes, true)
+		rest("GET "+p+"/issue/createmeta", s.restCreateMeta, true)
+		rest("GET "+p+"/issue/{key}/editmeta", s.restEditMeta, true)
+		rest("GET "+p+"/issue/picker", s.restIssuePicker, true)
 
 		rest("GET "+p+"/search", s.restSearch, true)
 		rest("POST "+p+"/search", s.restSearch, true)
@@ -187,12 +190,12 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if u == nil {
 			w.Header().Set("X-AUSERNAME", "anonymous")
 			if needUser {
-				writeRESTError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
+				s.writeRESTError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
 		}
 		if !forgeryProof(r, via) {
-			writeRESTError(w, r, fail(http.StatusForbidden, i18n.RequestXSRFHeader))
+			s.writeRESTError(w, r, fail(http.StatusForbidden, i18n.RequestXSRFHeader))
 			return
 		}
 		if u != nil {
@@ -273,7 +276,7 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 	}
-	writeRESTError(w, r, err)
+	s.writeRESTError(w, r, err)
 }
 
 // restError is Jira's error body: general messages, and messages per field
@@ -284,11 +287,15 @@ type restError struct {
 	RetryAfter    int               `json:"retryAfter,omitempty"`
 }
 
-func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
+func (s *Server) writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
 		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
 		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
+	}
+	// Refused: leave a trace at Warn, capped per address (refused.go).
+	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
+		refused.logRefused(r, he.status, s.proxies)
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}
 	msg := he.msg.In(locale(r))

@@ -300,13 +300,13 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			defer setBodyReadDeadline(w, time.Time{})
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
-			writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
+			s.writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
 		if needUser {
 			u, err := s.authenticate(r)
 			if err != nil {
-				writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
+				s.writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
 			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
@@ -320,7 +320,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 			}
-			writeError(w, r, err)
+			s.writeError(w, r, err)
 		}
 	})
 }
@@ -419,11 +419,28 @@ func locale(r *http.Request) string {
 	return i18n.Default
 }
 
+// writeError answers err for code that has no server at hand (the setup
+// wizard): the refused request is logged with the address of the
+// connection.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	writeErrorVia(nil, w, r, err)
+}
+
+// writeError answers err, a refused request being logged with the client
+// address behind the trusted proxies.
+func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
+	writeErrorVia(s.proxies, w, r, err)
+}
+
+func writeErrorVia(proxies []netip.Prefix, w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
 		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
 		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
+	}
+	// Refused: leave a trace at Warn, capped per address (refused.go).
+	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
+		refused.logRefused(r, he.status, proxies)
 	}
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {

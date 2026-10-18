@@ -30,6 +30,8 @@ export const it: SetupMessages = {
     network: 'Il server non risponde. Controlla che sia ancora in esecuzione, poi riprova.',
     generic: 'Si è verificato un errore. Riprova.',
   },
+  insecureWarning:
+    'Questa pagina non è crittografata (HTTP). Le password che digiti qui possono essere lette sulla rete. Usa HTTPS, oppure completa la configurazione dal server stesso.',
 
   installed: {
     title: 'Solstice è già installato',

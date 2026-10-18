@@ -270,6 +270,9 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 
 `GET /api/admin/project-key?key=WEB` → `{key, available: true}` or
 `{key, available: false, reason}` — for checking as one types. Global admin.
+With `&project=WEB` (a key of an existing project, current or former; 404
+otherwise) the former keys of that project are not counted as taken, as when
+changing its key.
 
 ### Read
 
@@ -304,6 +307,29 @@ stay readable by those who could see them, but nothing in it can be changed.
 they hold (comments, attachments and their files, history…), components,
 versions, workflows, grants, role members, security levels, former keys.
 Boards and filters remain (they may show nothing). (`project.delete`)
+
+### Change the key — global admin
+
+`POST /api/projects/{key}/rename` (it was `POST
+/api/admin/projects/{key}/rename` on the development branch only, never in a
+release) with body `{"newKey": "SHOP",
+"confirm": "WEB"}` → the `GET /api/projects/{key}` settings object, with the
+new key. `confirm` must be the current key (409 otherwise). The new key
+follows the rules of a new project (`GET /api/admin/project-key?key=`):
+400 if ill-formed, 409 if used by a project now or formerly. The exception
+is a key this project had itself: it may take it back (that key then stops
+being a former key; `project-key?project=` reports it as free). Issue keys are
+not stored (they are the project key and the issue number), so every issue
+takes the new key at once; the old key is kept as a former key, and `OLD-12`
+still finds its issue in `/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`,
+`/api/projects/OLD` and in JQL (`project = OLD`, `key = OLD-12`), in the
+simple search (`project:OLD`, `OLD-12`), in the `project` parameter of
+`/api/issues`, `/api/epics`, `/api/versions` and `/api/components`, and as
+the `project` of a new issue. Saved filters, board filters and other texts
+that name the old key are left as they are. Changes of keys (this one and
+the creation of a project) wait for each other; if another one has not ended
+after 10 seconds, the answer is 503 and the call can be repeated.
+(`project.rename`, details `{oldKey, newKey}`)
 
 ### Categories
 
@@ -572,3 +598,45 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   or a group's they belong to) or created, on the filters they still see,
   each as above plus `filterName`, by filter name. Administrators get their
   own here, not everyone's.
+
+## 12. Issue security levels — global admin
+
+Each project has its own levels (the import copies a Jira security scheme
+into each project). An issue at a level is seen only by the level's members;
+a level with no member hides its issues from everyone. Every route below
+is for global administrators only (403 otherwise, whatever the project): a
+project administrator could add themselves to a confidential level, or delete
+it and expose its issues. 404 for an unknown project, and for a level of
+another project.
+
+- `GET /api/projects/{key}/security-levels` → `[{id, name, description,
+  issues, memberCount, members: [{id, holder, user: userRef|null, group:
+  idName|null, role: idName|null}]}]`, by name. `issues` is how many issues
+  are at the level.
+- `POST /api/projects/{key}/security-levels` `{name, description?}` → 201
+  level. Names unique in the project (409).
+- `PATCH /api/projects/{key}/security-levels/{id}` `{name?, description?
+  (or null)}` → level.
+- `DELETE /api/projects/{key}/security-levels/{id}` body optional `{moveTo?:
+  levelId, clear?: bool}` → 204. Issues still at the level (sub-tasks
+  included) make it 409 `{error, usage: {issues}}`, unless `moveTo` names
+  another level of the project (400 otherwise) or `clear` is true: those
+  issues then have no level, so everyone who sees the project sees them.
+  Both together is 400. The change is written to each issue's history.
+- `POST /api/projects/{key}/security-levels/{id}/members` `{holder, id?}` →
+  201 level. `holder` is one of exactly the kinds the permission checks
+  know: `everyone` (any signed-in account), `user`, `group`, `role` (these
+  three with the `id` of the user, group or project role), `lead` (the
+  project lead), `reporter`, `assignee` (of each issue). Already a member:
+  409; unknown holder or id: 400.
+- `DELETE /api/projects/{key}/security-levels/{id}/members/{member}` → 204;
+  `{member}` is a `members[].id`.
+
+Changes to levels and members apply at once (the permission cache is
+refreshed). They are written to the audit log on the project (target type
+`project`, label the key) as `securitylevel.create`, `securitylevel.update`,
+`securitylevel.delete`, `securitylevel.member_add` and
+`securitylevel.member_remove` (family `securitylevel`), with details
+`{securityLevel, …}`: `name` and `description` as `{from, to}` for an update,
+`issues`, `members`, `movedTo`, `cleared` for a delete, `holder` and `member`
+for the members.

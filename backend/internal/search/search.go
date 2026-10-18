@@ -196,8 +196,8 @@ func (q Query) SQL(me int64) (string, []any) {
 		for _, k := range q.Keys {
 			m := issueKey.FindStringSubmatch(k)
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			keys = append(keys, "(p.pkey = ? AND i.num = ?)")
-			args = append(args, m[1], num)
+			keys = append(keys, "("+sqlq.ProjectKey("p", "?")+" AND i.num = ?)")
+			args = append(args, m[1], m[1], num)
 		}
 		conds = append(conds, "("+strings.Join(keys, " OR ")+")")
 	}
@@ -270,7 +270,8 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 	case Type:
 		return "i.issue_type_id IN (SELECT id FROM issue_types WHERE name = ?)", []any{v}
 	case Project:
-		return "(p.pkey = ? OR p.name = ?)", []any{strings.ToUpper(v), v}
+		key := strings.ToUpper(v)
+		return "(" + sqlq.ProjectKey("p", "?") + " OR p.name = ?)", []any{key, key, v}
 	case Priority:
 		return "i.priority_id IN (SELECT id FROM priorities WHERE name = ?)", []any{v}
 	case Label:

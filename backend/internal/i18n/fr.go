@@ -141,6 +141,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.",
 	ProjectGranteeUnknown:      "Bénéficiaire inconnu : %s.",
 	ProjectGranteeNotFound:     "Bénéficiaire introuvable.",
+	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
+	ProjectKeysBusy:            "Un autre changement de clé de projet est en cours. Réessayez dans un instant.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Tâche",
@@ -302,6 +304,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Déplacer un ticket n'est pas encore possible.",
 	IssueSubtasksNotDeletable:  "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.",
 	IssueDeleteSubtasks:        "Ce ticket a des sous-tâches : ajoutez deleteSubtasks=true pour les supprimer avec lui.",
+	RESTPickerHistory:          "Historique de recherche",
+	RESTPickerCurrent:          "Recherche en cours",
+	RESTPickerShowing:          "%d tickets affichés sur %d correspondants",
 	IssueCloneSummary:          "CLONE - %s",
 	IssueCloneHistory:          "créé en clonant %s",
 	IssueCloneAttachmentFailed: "La pièce jointe « %s » n'a pas pu être copiée.",
@@ -554,4 +559,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AvatarTooLarge:      "Image trop volumineuse (1 Mo au plus).",
 	AvatarNotImage:      "L'image doit être un fichier PNG ou JPEG valide.",
 	AvatarDimensions:    "L'image doit faire 512 × 512 pixels au plus.",
+	// Issue security levels.
+	SecurityLevelInUse:     "Tickets à ce niveau : %d. Déplacez-les vers un autre niveau du projet, ou retirez leur niveau.",
+	SecurityTargetNotFound: "Niveau de remplacement introuvable dans ce projet.",
+	SecurityMoveOrClear:    "Choisissez un niveau de remplacement ou retirez le niveau, pas les deux.",
+	SecurityMemberExists:   "Ce titulaire est déjà membre du niveau.",
 }

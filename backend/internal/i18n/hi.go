@@ -143,6 +143,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: मिटाने की पुष्टि के लिए इसकी कुंजी टाइप करें।",
 	ProjectGranteeUnknown:      "अज्ञात अनुमति-प्राप्तकर्ता: %s।",
 	ProjectGranteeNotFound:     "अनुमति-प्राप्तकर्ता नहीं मिला।",
+	ProjectRenameConfirm:       "बदलाव की पुष्टि के लिए प्रोजेक्ट की मौजूदा कुंजी टाइप करें।",
+	ProjectKeysBusy:            "प्रोजेक्ट कुंजी का एक और बदलाव चल रहा है। थोड़ी देर बाद फिर कोशिश करें।",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "टास्क",
@@ -304,6 +306,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "टिकट को स्थानांतरित करना अभी संभव नहीं है।",
 	IssueSubtasksNotDeletable:  "इस टिकट में ऐसे सब-टास्क हैं जिन्हें आप मिटा नहीं सकते।",
 	IssueDeleteSubtasks:        "इस टिकट में सब-टास्क हैं: उन्हें भी मिटाने के लिए deleteSubtasks=true जोड़ें।",
+	RESTPickerHistory:          "खोज इतिहास",
+	RESTPickerCurrent:          "वर्तमान खोज",
+	RESTPickerShowing:          "मेल खाने वाले %[2]d टिकटों में से %[1]d दिखाए जा रहे हैं",
 	IssueCloneSummary:          "क्लोन - %s",
 	IssueCloneHistory:          "%s को क्लोन करके बनाया गया",
 	IssueCloneAttachmentFailed: "अटैचमेंट “%s” कॉपी नहीं हो सका।",
@@ -556,4 +561,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AvatarTooLarge:      "चित्र बहुत बड़ा है (अधिकतम 1 MB)।",
 	AvatarNotImage:      "चित्र एक मान्य PNG या JPEG फ़ाइल होना चाहिए।",
 	AvatarDimensions:    "चित्र अधिकतम 512 × 512 पिक्सेल का हो सकता है।",
+	// Issue security levels.
+	SecurityLevelInUse:     "इस स्तर पर टिकट: %d। उन्हें प्रोजेक्ट के किसी दूसरे स्तर पर ले जाएँ, या उनका स्तर हटा दें।",
+	SecurityTargetNotFound: "रिप्लेसमेंट स्तर इस प्रोजेक्ट में नहीं मिला।",
+	SecurityMoveOrClear:    "रिप्लेसमेंट स्तर चुनें या स्तर हटाएँ, दोनों नहीं।",
+	SecurityMemberExists:   "यह धारक पहले से इस स्तर का सदस्य है।",
 }

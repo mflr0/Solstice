@@ -161,6 +161,8 @@ const (
 	ProjectDeleteConfirm       Key = "ProjectDeleteConfirm"
 	ProjectGranteeUnknown      Key = "ProjectGranteeUnknown"
 	ProjectGranteeNotFound     Key = "ProjectGranteeNotFound"
+	ProjectRenameConfirm       Key = "ProjectRenameConfirm"
+	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )
 
 // Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
@@ -340,6 +342,9 @@ const (
 	IssueMoveUnsupported       Key = "IssueMoveUnsupported"
 	IssueSubtasksNotDeletable  Key = "IssueSubtasksNotDeletable"
 	IssueDeleteSubtasks        Key = "IssueDeleteSubtasks"
+	RESTPickerHistory          Key = "RESTPickerHistory"
+	RESTPickerCurrent          Key = "RESTPickerCurrent"
+	RESTPickerShowing          Key = "RESTPickerShowing"
 	IssueCloneSummary          Key = "IssueCloneSummary"
 	IssueCloneHistory          Key = "IssueCloneHistory"
 	IssueCloneAttachmentFailed Key = "IssueCloneAttachmentFailed"
@@ -626,4 +631,12 @@ const (
 	AvatarTooLarge      Key = "AvatarTooLarge"
 	AvatarNotImage      Key = "AvatarNotImage"
 	AvatarDimensions    Key = "AvatarDimensions"
+)
+
+// Issue security levels.
+const (
+	SecurityLevelInUse     Key = "SecurityLevelInUse"
+	SecurityTargetNotFound Key = "SecurityTargetNotFound"
+	SecurityMoveOrClear    Key = "SecurityMoveOrClear"
+	SecurityMemberExists   Key = "SecurityMemberExists"
 )
