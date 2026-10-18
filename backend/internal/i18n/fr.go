@@ -139,6 +139,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectGranteeUnknown:      "Bénéficiaire inconnu : %s.",
 	ProjectGranteeNotFound:     "Bénéficiaire introuvable.",
 	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
+	ProjectKeysBusy:            "Un autre changement de clé de projet est en cours. Réessayez dans un instant.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Tâche",

@@ -140,6 +140,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectGranteeUnknown:      "Unbekannter Berechtigungsempfänger: %s.",
 	ProjectGranteeNotFound:     "Berechtigungsempfänger nicht gefunden.",
 	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
+	ProjectKeysBusy:            "Eine andere Änderung eines Projektschlüssels läuft gerade. Versuchen Sie es gleich noch einmal.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Aufgabe",

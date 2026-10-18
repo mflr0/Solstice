@@ -765,7 +765,7 @@ func (s *Server) lockProjectKeys(ctx context.Context) (conn *sql.Conn, release f
 	var got sql.NullInt64
 	err = conn.QueryRowContext(ctx, `SELECT GET_LOCK(?, 10)`, projectKeysLock).Scan(&got)
 	if err == nil && got.Int64 != 1 {
-		err = errors.New("the lock on the project keys was not obtained")
+		err = fail(http.StatusServiceUnavailable, i18n.ProjectKeysBusy)
 	}
 	if err != nil {
 		conn.Close()

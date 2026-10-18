@@ -519,3 +519,26 @@ func TestProjectKeyLockReleasedBeforeAudit(t *testing.T) {
 	})
 	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 }
+
+// A change of a key that cannot get the lock in time answers 503 with a
+// message to try again, in the language of the request.
+func TestProjectKeyLockBusy(t *testing.T) {
+	needDB(t)
+	admin := login(t, "admin", "admin")
+	key := newProject(t, admin, nil)
+	holder, err := testDB.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Close()
+	var got int
+	if err := holder.QueryRowContext(context.Background(), `SELECT GET_LOCK('solstice-project-keys', 0)`).Scan(&got); err != nil || got != 1 {
+		t.Fatalf("the test could not take the lock: %d, %v", got, err)
+	}
+	defer holder.ExecContext(context.Background(), `SELECT RELEASE_LOCK('solstice-project-keys')`)
+	status, body := admin.request("fr", "POST", "/api/projects/"+key+"/rename",
+		map[string]any{"newKey": newProjectKey(), "confirm": key})
+	if status != 503 || !strings.Contains(string(body), "Réessayez") {
+		t.Errorf("rename while the keys are locked: %d %q, want 503 and a message in French", status, body)
+	}
+}

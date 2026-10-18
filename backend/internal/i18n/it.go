@@ -140,6 +140,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectGranteeUnknown:      "Destinatario del permesso sconosciuto: %s.",
 	ProjectGranteeNotFound:     "Destinatario del permesso non trovato.",
 	ProjectRenameConfirm:       "Digita la chiave attuale del progetto per confermare la modifica.",
+	ProjectKeysBusy:            "Un'altra modifica di una chiave di progetto è in corso. Riprova tra un momento.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Task",

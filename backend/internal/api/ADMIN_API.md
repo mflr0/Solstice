@@ -295,8 +295,10 @@ still finds its issue in `/api/issues/OLD-12`, `/rest/api/2/issue/OLD-12`,
 simple search (`project:OLD`, `OLD-12`), in the `project` parameter of
 `/api/issues`, `/api/epics`, `/api/versions` and `/api/components`, and as
 the `project` of a new issue. Saved filters, board filters and other texts
-that name the old key are left as they are. (`project.rename`,
-details `{oldKey, newKey}`)
+that name the old key are left as they are. Changes of keys (this one and
+the creation of a project) wait for each other; if another one has not ended
+after 10 seconds, the answer is 503 and the call can be repeated.
+(`project.rename`, details `{oldKey, newKey}`)
 
 ### Categories
 
