@@ -21,8 +21,6 @@ import (
 	"solstice/internal/sqlq"
 )
 
-// Moving --------------------------------------------------------------------
-
 // moveInput is the request. The choices are the ones the dry run
 // ("check": true) asks for: a list given replaces what would be mapped by
 // name, and is the whole list the issue ends with.
@@ -49,8 +47,6 @@ type moveChoice struct {
 	Group int64  `json:"group"`
 }
 
-// moveRestrict counts the comments and work logs restricted to a role, and
-// offers what they can be restricted to in the target project.
 type moveRestrict struct {
 	Comments int      `json:"comments"`
 	Worklogs int      `json:"worklogs"`
@@ -80,8 +76,6 @@ type moveAssignee struct {
 	To   *userRef `json:"to"`
 }
 
-// moveCheck is the dry run's answer: what must still be chosen (Missing),
-// the options for it, and what the move changes or drops.
 type moveCheck struct {
 	Project         projectBrief  `json:"project"`
 	Ready           bool          `json:"ready"`
@@ -95,7 +89,7 @@ type moveCheck struct {
 	SecurityLevel   *moveParts    `json:"securityLevel,omitempty"`
 	Restricted      *moveRestrict `json:"restricted,omitempty"`
 	DroppedFields   []string      `json:"droppedFields"`
-	Sprints         []string      `json:"sprints"` // the open sprints the issue leaves
+	Sprints         []string      `json:"sprints"`
 	Assignee        *moveAssignee `json:"assignee,omitempty"`
 	Subtasks        moveSubtasks  `json:"subtasks"`
 }
@@ -116,25 +110,22 @@ var moveKinds = []struct {
 		`SELECT id, name FROM versions WHERE project_id = ? AND NOT archived ORDER BY position, id`},
 }
 
-// moveSet is a component or version list before and after the move.
 type moveSet struct{ from, to []idName }
 
-// moveItem is one issue to move: the issue itself, then its sub-tasks.
 type moveItem struct {
 	row        *issueRow
 	typeID     string
 	status     string
 	resolution sql.NullString
 	sets       [3]moveSet
-	level      any // the id of the level, or nil
-	assignee   any // the id of the assignee, or nil
+	level      any
+	assignee   any
 	dropped    []int64
-	sprints    []sprintRef // the open sprints it leaves
+	sprints    []sprintRef
 	restricted []movedRestriction
 	num        int64
 }
 
-// moveDest is the project the issue goes to.
 type moveDest struct {
 	id, lead        int64
 	key, name       string
@@ -158,8 +149,6 @@ type moveRemap struct {
 	arg any
 }
 
-// movedRestriction is a role-restricted comment or work log of an issue, and
-// what it becomes.
 type movedRestriction struct {
 	table string
 	id    int64
@@ -213,7 +202,6 @@ func moveArgs(ids []int64) []any {
 	return out
 }
 
-// moveNames reads (id, name) pairs.
 func (s *Server) moveNames(ctx context.Context, q string, args ...any) ([]idName, error) {
 	out := []idName{}
 	err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
@@ -366,8 +354,6 @@ func filterReaches(query string, dest *moveDest) bool {
 	})
 }
 
-// choice reads a list of ids given in the request against the target's
-// options.
 func choice(key string, ids []int64, options []idName) ([]idName, error) {
 	var out []idName
 	for _, id := range ids {
@@ -476,7 +462,6 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		head.resolution = statusResolution(cat, orig, head.status)
 	}
 
-	// Components and versions are matched by name.
 	chosen := [3]*[]int64{in.Components, in.AffectsVersions, in.FixVersions}
 	shown := [3]**moveParts{&chk.Components, &chk.AffectsVersions, &chk.FixVersions}
 	options := [3][]idName{}
@@ -505,7 +490,6 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		}
 	}
 
-	// The security level: the one of the same name, else a choice.
 	if err := s.planLevel(ctx, sub, orig, dest, in, plan, missing); err != nil {
 		return nil, err
 	}
@@ -571,7 +555,6 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		return nil, err
 	}
 
-	// What the move drops or changes. The fields that apply depend on the type.
 	dropped := map[int64]bool{}
 	var droppedIDs []int64
 	for _, it := range plan.items {
@@ -978,7 +961,6 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 		return nil, err
 	}
 
-	// The old keys: the issue's own, and those the project went by before.
 	if _, err := tx.ExecContext(ctx, `INSERT INTO moved_issue_keys (old_key, issue_id) VALUES (?, ?)
 		ON DUPLICATE KEY UPDATE issue_id = ?`, row.Key(), row.ID, row.ID); err != nil {
 		return nil, err
@@ -1012,7 +994,6 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 		}
 	}
 
-	// Components and versions.
 	for k, kind := range moveKinds {
 		set := it.sets[k]
 		var err error
@@ -1048,7 +1029,6 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 		}
 	}
 
-	// Values of the fields that do not apply here are dropped, and said so.
 	if len(it.dropped) > 0 {
 		marks, ids := sqlq.Marks(len(it.dropped)), moveArgs(it.dropped)
 		values := map[int64][]string{}

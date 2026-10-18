@@ -42,7 +42,6 @@ type moveCheckOut struct {
 	}
 }
 
-// moveInsert runs an INSERT on the test database and returns the new id.
 func moveInsert(t *testing.T, query string, args ...any) int64 {
 	t.Helper()
 	needDB(t)
@@ -207,7 +206,6 @@ func newMoveEnv(t *testing.T) *moveEnv {
 	return e
 }
 
-// moveCheckOf is a dry run that must succeed.
 func moveCheckOf(t *testing.T, who *client, key string, body map[string]any) moveCheckOut {
 	t.Helper()
 	in := map[string]any{"check": true}
