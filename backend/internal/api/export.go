@@ -146,8 +146,7 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// The search, as the user typed it (as searchCondition reads it: jql,
-	// else q, and project), and how many rows left: never the rows themselves.
+	// Only the search and its size are recorded, never the exported rows.
 	params := r.URL.Query()
 	query := params.Get("jql")
 	if query == "" {

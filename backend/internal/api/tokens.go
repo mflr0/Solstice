@@ -54,12 +54,8 @@ func (s *Server) credentials(r *http.Request) (u *auth.User, method string, err 
 	return u, "basic", err
 }
 
-// rejectToken handles a personal access token that did not sign anyone in.
-// A string that matches no token is only logged at Debug level; a token that
-// exists but is refused (it expired, or its account is inactive) is logged as
-// a warning and also gets an audit entry, at most one per token per hour, so
-// that anyone sending a string cannot fill the log.
-// The token itself is never logged or stored: only its id and name.
+// rejectToken audits a refused token at most once an hour, so that anyone
+// sending a string cannot fill the log; the token itself is never logged.
 func (s *Server) rejectToken(r *http.Request, token string) {
 	ref := auth.LookupRefused(r.Context(), s.db, token)
 	if ref == nil {
@@ -77,8 +73,6 @@ func (s *Server) rejectToken(r *http.Request, token string) {
 	}
 }
 
-// noteRefusedToken reports whether a refused token may be audited now, and
-// remembers it: at most one entry per token per hour.
 func (s *Server) noteRefusedToken(id int64) bool {
 	s.tokenMu.Lock()
 	defer s.tokenMu.Unlock()

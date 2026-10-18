@@ -1,8 +1,5 @@
 package tests
 
-// The audit entries of the events added with the four new actions: issue
-// deletion, CSV export, sign-in lockout and refused access tokens.
-
 import (
 	"log/slog"
 	"net/http"
@@ -17,8 +14,6 @@ import (
 	"solstice/internal/config"
 )
 
-// Issue deletions are audited, from the interface and from the REST API
-// (which goes through the same handler).
 func TestIssueDeletionIsAudited(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	key := createIssue(t, admin, "DEMO", "Suppression auditée", "")
@@ -45,7 +40,7 @@ func TestIssueDeletionIsAudited(t *testing.T) {
 	}
 }
 
-// A CSV export is audited with the search, never with the exported rows.
+// The exported rows never reach the audit log.
 func TestCSVExportIsAudited(t *testing.T) {
 	paul := login(t, "paul.martin", "motdepasse")
 	key := createIssue(t, paul, "DEMO", "Export audité", "")
@@ -67,7 +62,6 @@ func TestCSVExportIsAudited(t *testing.T) {
 	if !strings.Contains(details, `"rows":1`) {
 		t.Errorf("the number of rows is missing: %s", details)
 	}
-	// A whole project, with no query, is audited by its key and its size.
 	before, _ = latestAudit(t, "issue.export")
 	status, header, _ := exportCSVFor(t, paul, "project=demo", "")
 	if status != 200 {
@@ -78,7 +72,6 @@ func TestCSVExportIsAudited(t *testing.T) {
 		!strings.Contains(details, `"rows":`+header.Get("X-Total-Count")) {
 		t.Errorf("project export: %d entries (was %d), details %s, %s rows", n, before, details, header.Get("X-Total-Count"))
 	}
-	// A project that does not exist is not recorded, and a long query is cut.
 	before, _ = latestAudit(t, "issue.export")
 	if status, _, _ := exportCSVFor(t, paul, "project=Pas%20Un%20Projet", ""); status != 200 {
 		t.Fatalf("unknown project export: %d", status)
@@ -94,7 +87,6 @@ func TestCSVExportIsAudited(t *testing.T) {
 	if recorded := pick(t, `SELECT JSON_UNQUOTE(JSON_EXTRACT(details, '$.query')) FROM audit_log WHERE action = 'issue.export' ORDER BY id DESC LIMIT 1`); recorded != strings.Repeat("é", 255) {
 		t.Errorf("long query recorded with %d characters, want 255", len([]rune(recorded)))
 	}
-	// A refused export (an unknown column) leaves no entry.
 	bad, _ := latestAudit(t, "issue.export")
 	if status, _, _ := exportCSVFor(t, paul, "columns=key,couleur", ""); status != 400 {
 		t.Fatalf("unknown column: %d", status)
@@ -104,8 +96,6 @@ func TestCSVExportIsAudited(t *testing.T) {
 	}
 }
 
-// An address that keeps failing is locked: one audit entry when the lock
-// starts, none for the attempts it refuses while it lasts.
 func TestSignInLockoutIsAudited(t *testing.T) {
 	srv, base := newServer(t)
 	proxies, err := config.ParseTrustedProxies("127.0.0.1")
@@ -148,8 +138,7 @@ func TestSignInLockoutIsAudited(t *testing.T) {
 	}
 }
 
-// A lockout caused by a name that matches no account records the address
-// only: what was typed may be a password and must not reach the audit log.
+// What was typed may be a password, so only the address is recorded.
 func TestLockoutOfUnknownNameKeepsTypedTextOut(t *testing.T) {
 	srv, base := newServer(t)
 	proxies, err := config.ParseTrustedProxies("127.0.0.1")
@@ -188,8 +177,7 @@ func TestLockoutOfUnknownNameKeepsTypedTextOut(t *testing.T) {
 	}
 }
 
-// A token that exists but can no longer be used gets one audit entry, naming
-// its id and name and never the token; an unknown string is only logged.
+// The token itself never reaches the audit log.
 func TestRefusedTokensAreAudited(t *testing.T) {
 	past := time.Now().Add(-time.Hour)
 	token := newToken(t, "paul.martin", &past)
@@ -220,14 +208,12 @@ func TestRefusedTokensAreAudited(t *testing.T) {
 		t.Fatal("the token reached the audit log")
 	}
 
-	// The same token within the hour adds nothing...
 	if status, _, _ := call(t, nil, testURL, "GET", "/api/me", nil, bearer(token)); status != http.StatusUnauthorized {
 		t.Fatalf("expired token again: %d", status)
 	}
 	if n2, _ := latestAudit(t, "token.reject"); n2 != n {
 		t.Errorf("a repeated presentation was recorded: %d entries (was %d)", n2, n)
 	}
-	// ...nor does a string that matches no token at all.
 	if status, _, _ := call(t, nil, testURL, "GET", "/api/me", nil, bearer("sol_"+strings.Repeat("x", 40))); status != http.StatusUnauthorized {
 		t.Fatalf("unknown token: %d", status)
 	}
@@ -236,7 +222,6 @@ func TestRefusedTokensAreAudited(t *testing.T) {
 	}
 }
 
-// logBuffer is a log destination that the server and the test can share.
 type logBuffer struct {
 	mu  sync.Mutex
 	buf strings.Builder
@@ -254,9 +239,8 @@ func (b *logBuffer) String() string {
 	return b.buf.String()
 }
 
-// A string that matches no token is logged at Debug level, so that anyone
-// can send one without filling the log; a known token that is refused is a
-// warning. Neither line holds the token.
+// An unknown string stays at Debug so anyone can send one without filling
+// the log; neither line holds the token.
 func TestRefusedTokenLogLevels(t *testing.T) {
 	needDB(t)
 	logs := &logBuffer{}
@@ -299,8 +283,6 @@ func TestRefusedTokenLogLevels(t *testing.T) {
 	}
 }
 
-// The log line of a lockout names the address and, if the typed name matches
-// an account, its id: never the typed text, which may be a password.
 func TestLockoutLogLineKeepsTypedNameOut(t *testing.T) {
 	needDB(t)
 	logs := &logBuffer{}

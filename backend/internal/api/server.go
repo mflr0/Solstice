@@ -318,8 +318,6 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 			// address gets half as many tries.
 			locked = s.limiter.Failure(userKey) || locked
 		}
-		// Failure reports a lock that this very attempt started, so it is
-		// recorded once, not for the attempts the lock then refuses.
 		if locked {
 			s.auditLockout(r, username, s.limiter.Locked(userKey, ipKey))
 		}
