@@ -3,7 +3,7 @@
 # - jira-pg / jira-mysql : bases Jira synthétiques (remplies par jira-fixture) servant de source d'import
 services:
   mariadb:
-    image: mariadb:11.4
+    image: mariadb:12.2
     environment:
       MARIADB_ROOT_PASSWORD: root
       MARIADB_DATABASE: solstice
