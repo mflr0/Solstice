@@ -241,7 +241,7 @@ func TestProjectOldKeyInDigest(t *testing.T) {
 	paul.call("PUT", "/api/issues/"+a+"/watch", nil, 200, nil)
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 	admin.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
-		"target": b}, 200, nil)
+		"target": b}, 201, nil)
 	fresh := newProjectKey()
 	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 	t.Cleanup(func() { admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh}) })
