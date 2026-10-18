@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"slices"
 	"sort"
@@ -164,14 +163,14 @@ func (s *Server) moveDestination(ctx context.Context, sub *perm.Subject, cat *ca
 	if key == "" {
 		return nil, failf(http.StatusBadRequest, i18n.FieldRequired, "project")
 	}
+	id, err := s.projectByKey(ctx, key)
+	if err != nil {
+		return nil, err
+	}
 	d := &moveDest{}
 	var lead sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `SELECT id, pkey, name, lead_id, default_assignee FROM projects WHERE pkey = ?`,
-		strings.ToUpper(key)).Scan(&d.id, &d.key, &d.name, &lead, &d.defaultAssignee)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errNotFound
-	}
-	if err != nil {
+	if err := s.db.QueryRowContext(ctx, `SELECT id, pkey, name, lead_id, default_assignee FROM projects WHERE id = ?`, id).
+		Scan(&d.id, &d.key, &d.name, &lead, &d.defaultAssignee); err != nil {
 		return nil, err
 	}
 	if !sub.CanBrowseProject(d.id) {
