@@ -544,9 +544,7 @@ func (s *Server) refIssue(ctx context.Context, sub *perm.Subject, r ref) (*issue
 	return iss, nil
 }
 
-// settableKinds are the kinds of custom fields translateCustom takes values
-// for: the forms the REST API describes list those. A test checks that
-// translateCustom takes each.
+// The kinds translateCustom takes values for; a test checks the list.
 var settableKinds = []string{"gh-epic-link", "gh-sprint", "url", "textfield", "gh-epic-label", "textarea", "float",
 	"datepicker", "datetime", "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect",
 	"userpicker", "multiuserpicker", "labels"}

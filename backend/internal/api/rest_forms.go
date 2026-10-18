@@ -1,11 +1,7 @@
 package api
 
-// REST API v2: the forms of issues. createmeta and editmeta tell clients
-// which fields a form has before they create or edit an issue. They are built
-// from what rest_write.go really accepts (editableFields, settableKind,
-// checkCustomContext) and from the permissions applyUpdate and createIssue
-// check, so that a field listed here can be set, and one that can be set is
-// listed. The issue picker, which clients use for autocompletion, is here too.
+// REST API v2 forms of issues: createmeta and editmeta. They are built from
+// what rest_write.go accepts, so a field they list can be set.
 
 import (
 	"context"
@@ -25,7 +21,6 @@ import (
 	"solstice/internal/sqlq"
 )
 
-// formProject is the project of a form.
 type formProject struct {
 	id        int64
 	key, name string
@@ -134,7 +129,6 @@ func (b *formBuilder) outside(f customFieldDef, projectID int64, typeID string) 
 	return (c.projects != nil && !c.projects[projectID]) || (c.types != nil && !c.types[typeID]), nil
 }
 
-// projectTypes lists the issue types of a project, in order.
 func (b *formBuilder) projectTypes(projectID int64) ([]typeRef, error) {
 	var out []typeRef
 	err := sqlq.Each(b.ctx, b.s.db, `SELECT issue_type_id FROM project_issue_types WHERE project_id = ? ORDER BY position`,
@@ -204,8 +198,6 @@ func (b *formBuilder) optionsOf(f customFieldDef) ([]fieldOption, error) {
 	return o, err
 }
 
-// optionValues lists the options a user may choose in a custom field: the
-// enabled ones, a cascading field's children under their parent.
 func (b *formBuilder) optionValues(f customFieldDef) ([]any, error) {
 	if v, ok := b.values[f.ID]; ok {
 		return v, nil
@@ -239,9 +231,6 @@ func (b *formBuilder) optionValues(f customFieldDef) ([]any, error) {
 	return out, nil
 }
 
-// fields describes the fields of the form for an issue type of a project: to
-// create an issue (cur nil), or to edit cur. Only the fields the user may set
-// are listed.
 func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[string]any, error) {
 	creating := cur == nil
 	subtask := typ.Subtask
@@ -383,10 +372,6 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 	return out, nil
 }
 
-// restCreateMeta describes the forms for creating issues: the projects the
-// user may create issues in, their issue types and, with
-// expand=projects.issuetypes.fields, the fields of each. projectKeys,
-// projectIds, issuetypeIds and issuetypeNames narrow the answer.
 func (s *Server) restCreateMeta(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
@@ -476,7 +461,6 @@ func (s *Server) restCreateMeta(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]any{"expand": "projects", "projects": out})
 }
 
-// restEditMeta describes the fields the user may edit on an issue.
 func (s *Server) restEditMeta(w http.ResponseWriter, r *http.Request) error {
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
@@ -504,7 +488,6 @@ const (
 	pickerCurrent = 10
 )
 
-// highlight escapes text for HTML and bolds where it contains the query.
 func highlight(text string, query *regexp.Regexp) string {
 	if query == nil {
 		return html.EscapeString(text)
@@ -520,14 +503,12 @@ func highlight(text string, query *regexp.Regexp) string {
 	return b.String()
 }
 
-// pickerKey is an issue key typed whole.
 var pickerKey = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*-[0-9]+$`)
 
-// restIssuePicker suggests issues to pick, in Jira's two sections: the
-// history (hs) and the current search (cs). Solstice keeps no record of the
-// issues people viewed: the history is the issues the user last changed or
-// commented. Both only hold issues the user sees. The sections' label and sub
-// texts are in the caller's language.
+// restIssuePicker suggests issues to pick, in Jira's two sections: the history
+// (hs) and the current search (cs). Solstice keeps no record of the issues
+// people viewed, so the history is the issues the user last changed or
+// commented.
 func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
@@ -537,13 +518,8 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	query := strings.TrimSpace(q.Get("query"))
 
-	// The condition every section shares: what the query matches, and what the
-	// current issue and the sub-task options leave out.
 	vis, args := sub.VisibleSQL("i")
 	where := vis
-	// The issue the query names whole comes first: a key, or the number of an
-	// issue of the current project. Only characters and numbers that cannot
-	// change the query are written into it.
 	exact := ""
 	if pickerKey.MatchString(query) {
 		// Safe as text, as pickerKey allows only letters, digits, "_" and "-"; searchRows binds no argument for its ORDER BY.
@@ -553,7 +529,6 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		like := "%" + escapeLike(strings.ToLower(query)) + "%"
 		cond := "LOWER(i.summary) LIKE ? OR CONCAT(p.pkey, '-', i.num) LIKE ?"
 		more := []any{like, strings.ToUpper(like)}
-		// A number alone is an issue of the current project.
 		if num, err := strconv.ParseInt(query, 10, 64); err == nil {
 			if project, err := strconv.ParseInt(q.Get("currentProjectId"), 10, 64); err == nil {
 				cond += " OR (i.project_id = ? AND i.num = ?)"
@@ -585,7 +560,6 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// The current search: the issues of the JQL the client is showing, if any.
 	current, order := where, "i.updated_at DESC"
 	currentArgs := slices.Clone(args)
 	if jqlText := strings.TrimSpace(q.Get("currentJQL")); jqlText != "" {

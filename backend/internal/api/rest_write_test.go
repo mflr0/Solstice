@@ -11,8 +11,6 @@ import (
 	"solstice/internal/i18n"
 )
 
-// failingDB is a database whose every query fails, for code that reads a
-// value before it reads the database.
 type failingDB struct{}
 
 func (failingDB) Connect(context.Context) (driver.Conn, error) { return failingDB{}, nil }
@@ -21,9 +19,7 @@ func (failingDB) Prepare(string) (driver.Stmt, error)          { return nil, err
 func (failingDB) Close() error                                 { return nil }
 func (failingDB) Begin() (driver.Tx, error)                    { return nil, errors.New("no database") }
 
-// TestTranslateCustomTakesSettableKinds: translateCustom does not refuse any
-// kind settableKind accepts as one it cannot set. The value given is not valid
-// for any kind: what matters is the refusal each kind gives.
+// The value given is not valid for any kind: what matters is the refusal.
 func TestTranslateCustomTakesSettableKinds(t *testing.T) {
 	s := &Server{db: sql.OpenDB(failingDB{})}
 	for _, kind := range settableKinds {

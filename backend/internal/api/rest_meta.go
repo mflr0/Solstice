@@ -443,8 +443,6 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// fieldSchema is the schema of a field in Jira's answers: its type, the type
-// of the items of an array, and what tells it apart (named by who).
 func fieldSchema(typ, items string, who map[string]any) map[string]any {
 	who["type"] = typ
 	if items != "" {
@@ -453,12 +451,10 @@ func fieldSchema(typ, items string, who map[string]any) map[string]any {
 	return who
 }
 
-// systemSchema is the schema of a system field.
 func systemSchema(f sysField) map[string]any {
 	return fieldSchema(f.typ, f.items, map[string]any{"system": f.id})
 }
 
-// customFieldSchema is the schema of a custom field.
 func customFieldSchema(f customFieldDef) map[string]any {
 	typ, items := customSchema(f.Kind)
 	return fieldSchema(typ, items, map[string]any{"custom": f.TypeKey, "customId": f.ID})

@@ -23,7 +23,6 @@ var formUsers = map[string]string{
 	"lucas.bernard": "motdepasse", "admin": "admin",
 }
 
-// restCall sends a REST request as one user and decodes the answer.
 type restCall func(method, path string, body any) (int, any)
 
 func restAs(t *testing.T, username string) restCall {
@@ -40,7 +39,6 @@ func restAs(t *testing.T, username string) restCall {
 
 func list(v any) []any { l, _ := v.([]any); return l }
 
-// column runs a query returning one text column.
 func column(t *testing.T, query string, args ...any) []string {
 	t.Helper()
 	needDB(t)
@@ -62,7 +60,6 @@ func column(t *testing.T, query string, args ...any) []string {
 
 func asMap(v any) map[string]any { m, _ := v.(map[string]any); return m }
 
-// sortedKeys lists the keys of a map.
 func sortedKeys[V any](m map[string]V) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
@@ -81,7 +78,6 @@ func ids(v any) []string {
 	return out
 }
 
-// sampler makes valid values for fields.
 type sampler struct {
 	t       *testing.T
 	rest    restCall
@@ -91,8 +87,6 @@ type sampler struct {
 	epic    string // an epic the user sees, or ""
 }
 
-// value gives a valid value for a field as the forms describe it (schema,
-// allowedValues, autoCompleteUrl); false when it has none to give.
 func (s *sampler) value(key string, f map[string]any) (any, bool) {
 	typ, items, custom := str(f, "schema", "type"), str(f, "schema", "items"), str(f, "schema", "custom")
 	allowed := list(f["allowedValues"])
@@ -241,10 +235,8 @@ func (s *sampler) settings(form any) (fields, update map[string]any) {
 	return fields, update
 }
 
-// listed tells whether a form lists a field.
 func listed(form any, key string) bool { return at(form, key) != nil }
 
-// empty tells whether a field shows no value.
 func empty(v any) bool {
 	switch x := v.(type) {
 	case nil:
@@ -257,7 +249,6 @@ func empty(v any) bool {
 	return false
 }
 
-// creatorOf finds a user who can create issues in a project, among formUsers.
 func creatorOf(t *testing.T, project string) string {
 	t.Helper()
 	for _, u := range []string{"paul.martin", "hugo.robert", "lucas.bernard", "chloe.simon", "admin"} {
@@ -269,7 +260,6 @@ func creatorOf(t *testing.T, project string) string {
 	return ""
 }
 
-// userProjects lists the keys of the projects a user sees.
 func userProjects(t *testing.T, rest restCall) []string {
 	t.Helper()
 	status, projects := rest("GET", "/rest/api/2/project", nil)
@@ -302,7 +292,6 @@ func TestRESTCreateMeta(t *testing.T) {
 		ORDER BY t.position LIMIT 1`)
 	taskName := pick(t, `SELECT name FROM issue_types WHERE id = ?`, task)
 
-	// Without the expand, projects and issue types only.
 	status, meta := paul("GET", "/rest/api/2/issue/createmeta?projectKeys=DEMO", nil)
 	if status != 200 || len(list(at(meta, "projects"))) != 1 || str(meta, "projects", 0, "key") != "DEMO" ||
 		str(meta, "projects", 0, "id") == "" || len(list(at(meta, "projects", 0, "issuetypes"))) == 0 {
@@ -314,7 +303,6 @@ func TestRESTCreateMeta(t *testing.T) {
 		}
 	}
 
-	// With it, the fields of each issue type.
 	path := "/rest/api/2/issue/createmeta?expand=projects.issuetypes.fields&projectKeys=demo&issuetypeIds=" + task
 	status, meta = paul("GET", path, nil)
 	if status != 200 || len(list(at(meta, "projects", 0, "issuetypes"))) != 1 || str(meta, "projects", 0, "issuetypes", 0, "id") != task {
@@ -354,7 +342,6 @@ func TestRESTCreateMeta(t *testing.T) {
 	if str(form, "assignee", "autoCompleteUrl") == "" || str(form, "assignee", "schema", "type") != "user" {
 		t.Errorf("assignee: %v", at(form, "assignee"))
 	}
-	// A number field and a select field, as the field list describes them.
 	if str(form, "customfield_10100", "schema", "type") != "number" || str(form, "customfield_10100", "name") != "Story Points" ||
 		str(form, "customfield_10100", "key") != "customfield_10100" || num(form, "customfield_10100", "schema", "customId") != 10100 {
 		t.Errorf("customfield_10100: %v", at(form, "customfield_10100"))
@@ -376,7 +363,6 @@ func TestRESTCreateMeta(t *testing.T) {
 		}
 	}
 
-	// A sub-task type needs a parent.
 	subtask := column(t, `SELECT it.id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
 		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND it.subtask LIMIT 1`)
 	if len(subtask) == 1 {
@@ -387,7 +373,6 @@ func TestRESTCreateMeta(t *testing.T) {
 		}
 	}
 
-	// Filters.
 	for _, c := range []struct {
 		query string
 		want  int // projects
@@ -436,9 +421,6 @@ func TestRESTCreateMeta(t *testing.T) {
 	}
 }
 
-// TestRESTCreateMetaManyTypes: the fields of a project's issue types, asked
-// for all together, are those asked for one type at a time, and follow the
-// context of the custom fields.
 func TestRESTCreateMetaManyTypes(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := restAs(t, "paul.martin")
@@ -487,14 +469,12 @@ func TestRESTCreateMetaManyTypes(t *testing.T) {
 		} else if got := fmt.Sprint(at(form, "components")); got != components {
 			t.Errorf("type %s: components %s, as %s for the first", id, got, components)
 		}
-		// Asked for alone, a type has the same form.
 		_, one := paul("GET", path+key+"&issuetypeIds="+id, nil)
 		if got, want := fmt.Sprint(at(one, "projects", 0, "issuetypes", 0, "fields")), fmt.Sprint(form); got != want {
 			t.Errorf("type %s alone:\n%s\nwith the others:\n%s", id, got, want)
 		}
 	}
 
-	// The same in a project of the sample data, which has more fields.
 	_, meta = paul("GET", path+"DEMO", nil)
 	for _, it := range list(at(meta, "projects", 0, "issuetypes")) {
 		_, one := paul("GET", path+"DEMO&issuetypeIds="+str(it, "id"), nil)
@@ -504,9 +484,6 @@ func TestRESTCreateMetaManyTypes(t *testing.T) {
 	}
 }
 
-// TestRESTCreateMetaMatchesCreate: for every user, project and issue type, an
-// issue created with a value for every field createmeta lists is created
-// with them, and a field it does not list is refused.
 func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 	var accepted, refused int
 	t.Cleanup(func() {
@@ -527,7 +504,6 @@ func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 					t.Fatalf("createmeta: %d", status)
 				}
 				if len(list(at(meta, "projects"))) == 0 {
-					// Not listed: creating is refused.
 					status, _ := rest("POST", "/rest/api/2/issue", map[string]any{"fields": map[string]any{
 						"project": map[string]string{"key": project}, "summary": "Refusé",
 						"issuetype": map[string]string{"id": column(t, `SELECT issue_type_id FROM project_issue_types t
@@ -539,7 +515,6 @@ func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 				}
 				s := &sampler{t: t, rest: rest, user: username, project: project, epic: epicOf(t, project)}
 				types := list(at(meta, "projects", 0, "issuetypes"))
-				// A parent for sub-tasks: a standard issue of the project.
 				for _, it := range types {
 					if at(it, "subtask") == false {
 						status, created := rest("POST", "/rest/api/2/issue", map[string]any{"fields": map[string]any{
@@ -568,7 +543,6 @@ func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 						return f
 					}
 
-					// Every listed field is accepted, all at once.
 					fields, update := s.settings(form)
 					for k, v := range base() {
 						fields[k] = v
@@ -625,8 +599,6 @@ func TestRESTCreateMetaMatchesCreate(t *testing.T) {
 	}
 }
 
-// TestRESTEditMeta: the fields editmeta lists can be edited, and the others
-// cannot.
 func TestRESTEditMeta(t *testing.T) {
 	var accepted, refused int
 	t.Cleanup(func() {
@@ -680,7 +652,6 @@ func TestRESTEditMeta(t *testing.T) {
 					t.Errorf("comment listed: %v, the interface lets comment: %v", got, detail.Can["comment"])
 				}
 
-				// Each listed field is accepted by itself, the type and the security level last.
 				fields, update := s.settings(form)
 				order := sortedKeys(fields)
 				order = slices.DeleteFunc(order, func(k string) bool { return k == "issuetype" || k == "security" })
@@ -692,7 +663,6 @@ func TestRESTEditMeta(t *testing.T) {
 				for _, k := range order {
 					v := fields[k]
 					if k == "issuetype" {
-						// Another type than the current one, when there is one.
 						for _, a := range list(at(form, k, "allowedValues")) {
 							if str(a, "id") != typeID {
 								v = map[string]any{"id": str(a, "id")}
@@ -709,7 +679,6 @@ func TestRESTEditMeta(t *testing.T) {
 						t.Errorf("%s is listed, yet adding to it: %d %v", k, status, body)
 					}
 				}
-				// The operations announced work.
 				for _, k := range []string{"labels", "components", "fixVersions", "versions"} {
 					if !listed(form, k) {
 						continue
@@ -757,7 +726,6 @@ func TestRESTEditMeta(t *testing.T) {
 	}
 }
 
-// The resolution can be edited on an issue that is done, and only then.
 func TestRESTEditMetaResolution(t *testing.T) {
 	paul := restAs(t, "paul.martin")
 	status, meta := paul("GET", "/rest/api/2/issue/createmeta?projectKeys=DEMO", nil)
@@ -805,7 +773,6 @@ func TestRESTEditMetaResolution(t *testing.T) {
 	}
 }
 
-// Issues one does not see have no edit form.
 func TestRESTEditMetaVisibility(t *testing.T) {
 	paul := restAs(t, "paul.martin")
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -818,9 +785,6 @@ func TestRESTEditMetaVisibility(t *testing.T) {
 	}
 }
 
-// Issue picker -----------------------------------------------------------------
-
-// pickerKeys lists the issues of a picker section.
 func pickerKeys(answer any, section string) []string {
 	var out []string
 	for _, s := range list(at(answer, "sections")) {
@@ -847,7 +811,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Jira's answer: two sections, issues with their key and summary.
 	word := strings.Fields(summary)[0]
 	status, answer := picker(paul, "query="+url.QueryEscape(strings.ToUpper(word)))
 	if status != 200 || len(list(at(answer, "sections"))) != 2 || str(answer, "sections", 0, "id") != "hs" ||
@@ -866,7 +829,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		}
 	}
 
-	// By key, in any case, and by number in the current project.
 	for _, q := range []string{"query=" + strings.ToLower(key), "query=" + strings.Split(key, "-")[1] + "&currentProjectId=" + demo} {
 		if status, answer := picker(paul, q); status != 200 || !slices.Contains(pickerKeys(answer, "cs"), key) {
 			t.Errorf("picker?%s: %d %v", q, status, pickerKeys(answer, "cs"))
@@ -876,7 +838,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		len(pickerKeys(answer, "cs")) == 1 {
 		t.Errorf("a bare number found %s without a current project", key)
 	}
-	// No query: the latest issues.
 	if _, answer := picker(paul, ""); len(pickerKeys(answer, "cs")) != 10 {
 		t.Errorf("picker without a query: %v", pickerKeys(answer, "cs"))
 	}
@@ -912,7 +873,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		}
 	}
 
-	// Only issues the user sees: RH and the restricted level are hidden from paul.martin.
 	var rhKey, rhSummary string
 	if err := testDB.QueryRow(base, "RH").Scan(&rhKey, &rhSummary); err != nil {
 		t.Fatal(err)
@@ -930,14 +890,12 @@ func TestRESTIssuePicker(t *testing.T) {
 		if k == rhKey && !slices.Contains(pickerKeys(hers, "cs"), k) {
 			t.Errorf("chloe.simon is not offered %s: %v", k, hers)
 		}
-		// Not by its text either.
 		_, mine = picker(paul, "query="+url.QueryEscape(rhSummary))
 		if slices.Contains(pickerKeys(mine, "cs"), rhKey) {
 			t.Errorf("paul.martin finds %s by its summary", rhKey)
 		}
 	}
 
-	// The current search follows the JQL the client shows.
 	_, answer = picker(chloe, "query="+rhKey+"&currentJQL="+url.QueryEscape("project = DEMO"))
 	if len(pickerKeys(answer, "cs")) != 0 {
 		t.Errorf("%s is outside the current search: %v", rhKey, pickerKeys(answer, "cs"))
@@ -955,7 +913,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		t.Errorf("invalid currentJQL: %d", status)
 	}
 
-	// The current issue is left out; sub-tasks and the parent can be too.
 	_, answer = picker(paul, "query="+key+"&currentIssueKey="+key)
 	if slices.Contains(pickerKeys(answer, "cs"), key) {
 		t.Errorf("the current issue %s is offered", key)
@@ -980,8 +937,6 @@ func TestRESTIssuePicker(t *testing.T) {
 		}
 	}
 
-	// The history holds what the user worked on, for them alone, and the text
-	// is escaped.
 	title := `<img src=x onerror=1> & ` + unique("Picker")
 	status, created := paul("POST", "/rest/api/2/issue", map[string]any{"fields": map[string]any{
 		"project": map[string]string{"key": "DEMO"}, "summary": title,
@@ -1013,8 +968,6 @@ func TestRESTIssuePicker(t *testing.T) {
 	}
 }
 
-// The schema of each system field, as /field, createmeta and editmeta give it:
-// the type, and for an array the type of its items. issuekey has none.
 var systemSchemas = map[string][2]string{
 	"summary": {"string", ""}, "issuetype": {"issuetype", ""}, "project": {"project", ""}, "status": {"status", ""},
 	"priority": {"priority", ""}, "resolution": {"resolution", ""}, "resolutiondate": {"datetime", ""},
@@ -1028,7 +981,6 @@ var systemSchemas = map[string][2]string{
 	"worklog": {"array", "worklog"},
 }
 
-// The schema of each kind of custom field (the end of its type key).
 var customSchemas = map[string][2]string{
 	"textfield": {"string", ""}, "textarea": {"string", ""}, "url": {"string", ""}, "float": {"number", ""},
 	"datepicker": {"date", ""}, "datetime": {"datetime", ""}, "select": {"option", ""}, "radiobuttons": {"option", ""},
@@ -1038,13 +990,10 @@ var customSchemas = map[string][2]string{
 	"gh-lexo-rank": {"string", ""}, "gh-global-rank": {"string", ""},
 }
 
-// TestRESTFieldSchemas: /field gives each field the schema of its kind, and
-// createmeta and editmeta give the fields they list the same one.
 func TestRESTFieldSchemas(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := restAs(t, "paul.martin")
 
-	// One field of each type an administrator can create.
 	kinds := map[string]string{"text": "textfield", "textarea": "textarea", "number": "float", "date": "datepicker",
 		"datetime": "datetime", "select": "select", "multiselect": "multiselect", "checkboxes": "multicheckboxes",
 		"radio": "radiobuttons", "user": "userpicker", "multiuser": "multiuserpicker", "labels": "labels", "url": "url"}
@@ -1109,8 +1058,6 @@ func TestRESTFieldSchemas(t *testing.T) {
 		}
 	}
 
-	// The forms: every field they list has the schema /field gives it, and they
-	// list the new fields.
 	form := func(path string, fields ...any) map[string]any {
 		t.Helper()
 		status, meta := paul("GET", path, nil)
@@ -1152,7 +1099,6 @@ func TestRESTFieldSchemas(t *testing.T) {
 
 func customIDOf(id int64) string { return fmt.Sprintf("customfield_%d", id) }
 
-// schemaOf builds the schema a field is expected to have, as decoded from JSON.
 func schemaOf(s [2]string, extra ...any) map[string]any {
 	out := map[string]any{"type": s[0]}
 	for i := 0; i+1 < len(extra); i += 2 {
