@@ -762,6 +762,9 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 		}
 		day = *in.ReleaseDate
 	}
+	if v.StartDate != nil && *v.StartDate > day {
+		return fail(http.StatusBadRequest, i18n.VersionStartAfterRelease)
+	}
 	to, err := s.otherVersion(ctx, projectID, id, in.MoveUnresolvedTo)
 	if err != nil {
 		return err

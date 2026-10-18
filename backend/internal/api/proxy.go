@@ -7,10 +7,38 @@ package api
 // set it.
 
 import (
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"strings"
+	"sync"
+	"time"
 )
+
+const protoWarnEvery = time.Hour
+
+var protoWarn struct {
+	mu   sync.Mutex
+	last time.Time
+	now  func() time.Time // tests replace it
+}
+
+// Behind a TLS proxy missing from the trusted list, cookies lose Secure and
+// links become http, so the ignored claim is worth a warning.
+func warnUntrustedProto(log *slog.Logger, peer string) {
+	protoWarn.mu.Lock()
+	defer protoWarn.mu.Unlock()
+	now := time.Now
+	if protoWarn.now != nil {
+		now = protoWarn.now
+	}
+	if !protoWarn.last.IsZero() && now().Sub(protoWarn.last) < protoWarnEvery {
+		return
+	}
+	protoWarn.last = now()
+	log.Warn("X-Forwarded-Proto: https ignored, its sender is not a trusted proxy: cookies are not Secure and links are http. "+
+		"Behind a TLS proxy, list it in SOLSTICE_HTTP_TRUSTEDPROXIES or set an https SOLSTICE_HTTP_BASEURL", "peer", peer)
+}
 
 // SetTrustedProxies sets the addresses and CIDR ranges of the reverse proxies
 // whose X-Forwarded-For header the server believes (SOLSTICE_HTTP_TRUSTEDPROXIES).

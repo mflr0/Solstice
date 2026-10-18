@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"time"
+
+	"solstice/internal/worker"
 )
 
 // Kinds of messages that carry a single-use link. Their bodies are wiped from
@@ -201,23 +203,25 @@ func (o *Outbox) Run(ctx context.Context) {
 		case <-tick.C:
 		case <-o.wake:
 		}
-		for {
-			n, err := o.SendDue(ctx)
-			if err != nil {
-				o.log.Error("sending e-mails failed", "err", err)
+		worker.Guard(o.log, "mail", func() {
+			for {
+				n, err := o.SendDue(ctx)
+				if err != nil {
+					o.log.Error("sending e-mails failed", "err", err)
+				}
+				if n < 50 || ctx.Err() != nil {
+					break
+				}
 			}
-			if n < 50 || ctx.Err() != nil {
-				break
+			if time.Since(pruned) > time.Hour {
+				pruned = time.Now()
+				now := o.Now().UTC()
+				if _, err := o.db.ExecContext(ctx, `DELETE FROM mail_outbox WHERE (status = 'sent' AND created_at < ?)
+					OR (status = 'failed' AND created_at < ?)`, now.AddDate(0, 0, -7), now.AddDate(0, 0, -30)); err != nil {
+					o.log.Warn("outbox pruning failed", "err", err)
+				}
 			}
-		}
-		if time.Since(pruned) > time.Hour {
-			pruned = time.Now()
-			now := o.Now().UTC()
-			if _, err := o.db.ExecContext(ctx, `DELETE FROM mail_outbox WHERE (status = 'sent' AND created_at < ?)
-				OR (status = 'failed' AND created_at < ?)`, now.AddDate(0, 0, -7), now.AddDate(0, 0, -30)); err != nil {
-				o.log.Warn("outbox pruning failed", "err", err)
-			}
-		}
+		})
 	}
 }
 

@@ -54,6 +54,9 @@ import { query, request } from './api.js';
 
 const enc = encodeURIComponent;
 
+/** The SMTP settings, and what keeps them from sending: saved with a username, no encryption, a remote server. */
+export type MailSettingsReply = MailSettings & { problem?: 'credentialsNeedTLS' };
+
 export const adminApi = {
   // General settings.
   settings: () => request<GeneralSettings>('GET', '/api/admin/settings'),
@@ -170,8 +173,9 @@ export const adminApi = {
     request<ImportView>('POST', '/api/admin/import', src),
 
   // E-mail.
-  mail: () => request<MailSettings>('GET', '/api/admin/mail'),
-  saveMail: (input: MailSettingsInput) => request<MailSettings>('PUT', '/api/admin/mail', input),
+  mail: () => request<MailSettingsReply>('GET', '/api/admin/mail'),
+  saveMail: (input: MailSettingsInput) =>
+    request<MailSettingsReply>('PUT', '/api/admin/mail', input),
   testMail: (to: string) =>
     request<{ sent: boolean; to: string }>('POST', '/api/admin/mail/test', { to }),
   mailQueue: () => request<MailQueue>('GET', '/api/admin/mail/queue'),

@@ -25,12 +25,14 @@ const CATALOGUE_KINDS = ['issuetype', 'priority', 'resolution', 'linktype'] as c
 export const AUDIT_ACTIONS: readonly string[] = [
   'login.success',
   'login.failure',
+  'login.lockout',
   'password.change',
   'password.reset',
   'password.reset_request',
   'password.reset_done',
   'token.create',
   'token.revoke',
+  'token.reject',
   'user.create',
   'user.update',
   'user.deactivate',
@@ -79,6 +81,8 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'sprint.update',
   'sprint.delete',
   'filter.share',
+  'issue.delete',
+  'issue.export',
   ...CATALOGUE_KINDS.flatMap((k) =>
     ['create', 'update', 'delete', 'order'].map((v) => `${k}.${v}`),
   ),
