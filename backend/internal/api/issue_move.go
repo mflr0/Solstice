@@ -819,30 +819,31 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	// Someone else may have moved the issue, or changed its sub-tasks, since
-	// the plan was made.
+	// Someone else may have changed the issue or its sub-tasks since the plan
+	// was made, and the plan would undo it.
 	var project int64
-	if err := tx.QueryRowContext(ctx, `SELECT project_id FROM issues WHERE id = ? FOR UPDATE`, orig.ID).
-		Scan(&project); err != nil {
+	var updated time.Time
+	if err := tx.QueryRowContext(ctx, `SELECT project_id, updated_at FROM issues WHERE id = ? FOR UPDATE`, orig.ID).
+		Scan(&project, &updated); err != nil {
 		return err
 	}
-	var children []int64
-	if err := sqlq.Each(ctx, tx, `SELECT id FROM issues WHERE parent_id = ? ORDER BY num FOR UPDATE`,
+	if project != orig.ProjectID || !updated.Equal(orig.Updated) {
+		return fail(http.StatusConflict, i18n.IssueMoveChanged)
+	}
+	n, changed := 0, false
+	if err := sqlq.Each(ctx, tx, `SELECT id, updated_at FROM issues WHERE parent_id = ? ORDER BY num FOR UPDATE`,
 		func(rows *sql.Rows) error {
 			var id int64
-			err := rows.Scan(&id)
-			children = append(children, id)
+			var at time.Time
+			err := rows.Scan(&id, &at)
+			n++
+			changed = changed || n >= len(plan.items) || plan.items[n].row.ID != id || !plan.items[n].row.Updated.Equal(at)
 			return err
 		}, orig.ID); err != nil {
 		return err
 	}
-	if project != orig.ProjectID || len(children) != len(plan.items)-1 {
+	if changed || n != len(plan.items)-1 {
 		return fail(http.StatusConflict, i18n.IssueMoveChanged)
-	}
-	for i, id := range children {
-		if plan.items[i+1].row.ID != id {
-			return fail(http.StatusConflict, i18n.IssueMoveChanged)
-		}
 	}
 
 	var next int64

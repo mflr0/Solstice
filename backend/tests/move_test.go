@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 type moveOptionsOut struct {
@@ -991,5 +992,36 @@ func TestMoveDoesNotChangeAStatusTheTargetHas(t *testing.T) {
 	body["check"] = true
 	if c := e.check(e.admin, e.issue, body); !c.Ready {
 		t.Errorf("the current status is refused: %+v", c)
+	}
+}
+
+func TestMoveRefusesWhenTheIssueChangedAfterThePlan(t *testing.T) {
+	e := newMoveEnv(t)
+	tx, err := testDB.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SELECT id FROM issues WHERE id = ? FOR UPDATE`, e.issueID); err != nil {
+		t.Fatal(err)
+	}
+	// The move plans without a lock, then waits for this one.
+	answer := make(chan int, 1)
+	go func() {
+		status, _ := e.admin.do("POST", "/api/issues/"+e.issue+"/move", e.allChoices)
+		answer <- status
+	}()
+	time.Sleep(time.Second)
+	if _, err := tx.Exec(`UPDATE issues SET summary = 'Changé entre-temps', updated_at = NOW(3) WHERE id = ?`, e.issueID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if status := <-answer; status != 409 {
+		t.Errorf("move of an issue edited after the plan: %d, want 409", status)
+	}
+	if dbInt(t, `SELECT project_id FROM issues WHERE id = ?`, e.issueID) != e.srcID {
+		t.Error("the issue moved all the same")
 	}
 }
