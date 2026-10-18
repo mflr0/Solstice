@@ -2,13 +2,15 @@ package jql
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
 )
 
-// fuzzEnv is a compile environment that needs no database.
+// fuzzEnv is a compile environment that needs no database. Production sets
+// Env.Query; envs returns both shapes of it.
 func fuzzEnv() Env {
 	paris, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
@@ -25,6 +27,21 @@ func fuzzEnv() Env {
 			return Field{}, false
 		},
 	}
+}
+
+// stubQuery answers like a database would, and refuses a subquery whose
+// placeholders and arguments differ.
+func stubQuery(sql string, args []any) ([]string, error) {
+	if n := strings.Count(sql, "?"); n != len(args) {
+		return nil, fmt.Errorf("subquery has %d placeholders and %d arguments: %s", n, len(args), sql)
+	}
+	return []string{"101", "102"}, nil
+}
+
+func envs() []Env {
+	withQuery := fuzzEnv()
+	withQuery.Query = stubQuery
+	return []Env{fuzzEnv(), withQuery}
 }
 
 // FuzzParse checks that any text either parses, or fails with an *Error whose
@@ -66,7 +83,12 @@ func FuzzParse(f *testing.F) {
 		if q == nil {
 			t.Fatalf("Parse(%q) returned neither a query nor an error", s)
 		}
-		_, _, _, _ = Compile(q, fuzzEnv())
+		for _, env := range envs() {
+			where, args, _, err := Compile(q, env)
+			if err == nil && strings.Count(where, "?") != len(args) {
+				t.Fatalf("Compile(%q): %d placeholders, %d arguments:\n%s", s, strings.Count(where, "?"), len(args), where)
+			}
+		}
 	})
 }
 
@@ -107,12 +129,14 @@ func FuzzCompileKeepsValuesOut(f *testing.F) {
 			if err != nil {
 				continue
 			}
-			where, _, order, err := Compile(q, fuzzEnv())
-			if err != nil {
-				continue
-			}
-			if strings.Contains(strings.ToUpper(where+order), "ZQXMARK") {
-				t.Fatalf("Compile(%q) copied the value into the SQL:\n%s %s", query, where, order)
+			for _, env := range envs() {
+				where, _, order, err := Compile(q, env)
+				if err != nil {
+					continue
+				}
+				if strings.Contains(strings.ToUpper(where+order), "ZQXMARK") {
+					t.Fatalf("Compile(%q) copied the value into the SQL:\n%s %s", query, where, order)
+				}
 			}
 		}
 	})
