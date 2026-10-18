@@ -2,6 +2,8 @@
 
 Solstice serves plain HTTP. Put a reverse proxy in front of it for HTTPS. `nginx.conf` and `Caddyfile` are examples to copy and adapt; Caddy is the shorter one because it handles certificates itself.
 
+Each example is explained in [docs/en/reverse-proxy.md](../../docs/en/reverse-proxy.md) ([français](../../docs/fr/reverse-proxy.md)).
+
 ## What the proxy must do
 
 - Redirect plain HTTP to HTTPS.

@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { BoardCard } from '../../core/board-types.js';
-  import { initials } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import Lock from '../Lock.svelte';
+  import Picture from '../Picture.svelte';
   import PriorityMark from '../PriorityMark.svelte';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -46,7 +46,7 @@
       role="img"
       title={card.assignee.name}
       aria-label={`${t.issue.assignee}${t.common.labelSep}${card.assignee.name}`}
-      >{initials(card.assignee.name)}</span
+      ><Picture user={card.assignee} /></span
     >
   {/if}
 {/snippet}

@@ -11,24 +11,15 @@
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
   import Notes from './Notes.svelte';
-  import AccountArea from './account/AccountArea.svelte';
-  import AdminArea from './admin/AdminArea.svelte';
-  import BacklogPage from './pages/BacklogPage.svelte';
-  import BoardPage from './pages/BoardPage.svelte';
-  import BoardSettingsPage from './pages/BoardSettingsPage.svelte';
-  import BoardsPage from './pages/BoardsPage.svelte';
   import ForgotPage from './pages/ForgotPage.svelte';
   import HomePage from './pages/HomePage.svelte';
   import LoginPage from './pages/LoginPage.svelte';
   import NotFoundPage from './pages/NotFoundPage.svelte';
-  import PersonPage from './pages/PersonPage.svelte';
   import ProjectPage from './pages/ProjectPage.svelte';
-  import ProjectSettingsPage from './pages/ProjectSettingsPage.svelte';
   import ProjectsPage from './pages/ProjectsPage.svelte';
   import ResetPage from './pages/ResetPage.svelte';
   import SearchPage from './pages/SearchPage.svelte';
   import ShellBanner from './ShellBanner.svelte';
-  import ThemesPage from './pages/ThemesPage.svelte';
   import TopBar from './TopBar.svelte';
 
   const route = $derived(router.route);
@@ -99,6 +90,14 @@
   }
 </script>
 
+{#snippet pending()}
+  <div class="page"><p class="muted loading">{t.common.loading}</p></div>
+{/snippet}
+
+{#snippet failed()}
+  <div class="page"><p class="error-text" role="alert">{t.errors.pageLoad}</p></div>
+{/snippet}
+
 {#if !session.ready}
   <p class="app-booting booting muted loading">{t.common.loading}</p>
 {:else if route.name === 'forgot'}
@@ -119,27 +118,81 @@
       {:else if route.name === 'project'}
         <ProjectPage projectKey={route.key} />
       {:else if route.name === 'projectSettings'}
-        <ProjectSettingsPage projectKey={route.key} />
+        {#await import('./pages/ProjectSettingsPage.svelte')}
+          {@render pending()}
+        {:then { default: ProjectSettingsPage }}
+          <ProjectSettingsPage projectKey={route.key} />
+        {:catch}
+          {@render failed()}
+        {/await}
       {:else if route.name === 'search'}
         <SearchPage />
       {:else if route.name === 'issue'}
         <IssuePage issueKey={route.key} />
       {:else if route.name === 'person'}
-        {#key route.username}<PersonPage username={route.username} />{/key}
+        {#key route.username}{#await import('./pages/PersonPage.svelte')}
+            {@render pending()}
+          {:then { default: PersonPage }}
+            <PersonPage username={route.username} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
       {:else if route.name === 'admin'}
-        <AdminArea section={route.section} item={route.item} />
+        {#await import('./admin/AdminArea.svelte')}
+          {@render pending()}
+        {:then { default: AdminArea }}
+          <AdminArea section={route.section} item={route.item} />
+        {:catch}
+          {@render failed()}
+        {/await}
       {:else if route.name === 'account'}
-        <AccountArea section={route.section} />
+        {#await import('./account/AccountArea.svelte')}
+          {@render pending()}
+        {:then { default: AccountArea }}
+          <AccountArea section={route.section} />
+        {:catch}
+          {@render failed()}
+        {/await}
       {:else if route.name === 'themes'}
-        <ThemesPage />
+        {#await import('./pages/ThemesPage.svelte')}
+          {@render pending()}
+        {:then { default: ThemesPage }}
+          <ThemesPage />
+        {:catch}
+          {@render failed()}
+        {/await}
       {:else if route.name === 'boards'}
-        <BoardsPage />
+        {#await import('./pages/BoardsPage.svelte')}
+          {@render pending()}
+        {:then { default: BoardsPage }}
+          <BoardsPage />
+        {:catch}
+          {@render failed()}
+        {/await}
       {:else if route.name === 'board'}
-        {#key route.id}<BoardPage boardId={route.id} />{/key}
+        {#key route.id}{#await import('./pages/BoardPage.svelte')}
+            {@render pending()}
+          {:then { default: BoardPage }}
+            <BoardPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
       {:else if route.name === 'backlog'}
-        {#key route.id}<BacklogPage boardId={route.id} />{/key}
+        {#key route.id}{#await import('./pages/BacklogPage.svelte')}
+            {@render pending()}
+          {:then { default: BacklogPage }}
+            <BacklogPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
       {:else if route.name === 'boardSettings'}
-        {#key route.id}<BoardSettingsPage boardId={route.id} />{/key}
+        {#key route.id}{#await import('./pages/BoardSettingsPage.svelte')}
+            {@render pending()}
+          {:then { default: BoardSettingsPage }}
+            <BoardSettingsPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
       {:else if route.name === 'legacyBoard'}
         <div class="page"><p class="muted loading">{t.common.loading}</p></div>
       {:else}

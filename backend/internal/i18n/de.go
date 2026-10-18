@@ -14,8 +14,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Anfrage abgelehnt: Fügen Sie den Header „X-Atlassian-Token: no-check“ hinzu (Schutz vor Cross-Site-Request-Forgery).",
 	RequestInvalid:              "Ungültige Anfrage: %s",
 	RequestTooManyAttempts:      "Zu viele Versuche. Versuchen Sie es in %d s erneut.",
+	RequestTooManyStreams:       "Zu viele Live-Verbindungen.",
 	RequestStreamingUnsupported: "Streaming wird nicht unterstützt.",
 	RequestInternalError:        "Interner Fehler. Der Vorfall wurde protokolliert.",
+	RequestBodyTooLargeLimit:    "Die Anfrage ist zu groß (höchstens %d KiB).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Der Name ist erforderlich (höchstens %d Zeichen).",
@@ -37,6 +39,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Geben Sie Ihr aktuelles Passwort ein.",
 	AccountCurrentPasswordIncorrect:  "Aktuelles Passwort ist falsch.",
 	AccountTokenCannotChangePassword: "Mit einem Zugriffstoken kann das Passwort nicht geändert werden: Melden Sie sich mit Ihrem Passwort an.",
+	AccountTokenCannotChangeEmail:    "Mit einem Zugriffstoken kann die E-Mail-Adresse nicht geändert werden: Melden Sie sich mit Ihrem Passwort an.",
 	AccountLanguageUnsupported:       "Sprache wird nicht unterstützt (zur Auswahl: %s).",
 	AccountResetLinkInvalid:          "Dieser Link ist ungültig oder abgelaufen. Fordern Sie einen neuen an.",
 	AccountMailUnavailable:           "E-Mail-Links sind nicht verfügbar: Richten Sie zuerst E-Mail und die öffentliche Adresse in der Administration ein.",
@@ -130,7 +133,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectKeyInvalid:          "Ungültiger Schlüssel: 2 bis 10 Großbuchstaben oder Ziffern, beginnend mit einem Buchstaben.",
 	ProjectKeyTaken:            "Der Schlüssel %s ist bereits vergeben (von einem aktuellen oder früheren Projekt).",
 	ProjectNameTaken:           "Ein Projekt mit dem Namen „%s“ existiert bereits.",
-	ProjectLeadInactive:        "Der Verantwortliche muss ein aktives Konto sein.",
+	ProjectLeadInactive:        "Die Projektleitung muss ein aktives Konto sein.",
 	ProjectCategoryNotFound:    "Kategorie nicht gefunden.",
 	ProjectTemplateUnknown:     "Unbekanntes Vorlagenmodell: software oder simple.",
 	ProjectAssigneeTypeUnknown: "Standardzuweisung: unassigned oder lead.",
@@ -192,7 +195,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Catalogues: issue types, priorities, resolutions, link types.
 	CatalogColorInvalid:        "Ungültige Farbe: #rrggbb erwartet.",
 	CatalogTypeSubtaskLocked:   "Einige Vorgänge verwenden diesen Typ: Er kann nicht mehr zu einer Unteraufgabe werden oder aufhören, eine Unteraufgabe zu sein.",
-	CatalogLinkTypeIncomplete:  "Ein Verknüpfungstyp braucht einen Namen, eine Hinwärts- und eine Rückwärtsrichtung.",
+	CatalogLinkTypeIncomplete:  "Ein Verknüpfungstyp braucht einen Namen, eine ausgehende und eine eingehende Richtung.",
 	CatalogLastIssueType:       "Es muss mindestens ein Vorgangstyp beibehalten werden.",
 	CatalogReplacementNotFound: "Ersetzungselement nicht gefunden.",
 	CatalogReplacementKind:     "Der Ersetzungstyp muss von gleicher Art sein (Unteraufgabe oder nicht).",
@@ -321,12 +324,16 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Zielvorgang nicht gefunden.",
 	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
 
+	// Group picker.
+	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Ungültiger Datei-Upload.",
 	AttachmentNoFile:        "Keine Datei empfangen.",
 	AttachmentTooLarge:      "Datei zu groß (höchstens 100 MB).",
 	AttachmentNotImported:   "Diese Datei wurde beim Import aus Jira nicht gefunden.",
 	AttachmentFileMissing:   "Die Datei fehlt im Datenverzeichnis.",
+	AttachmentStorageQuota:  "Das Speicherlimit für Anhänge ist erreicht.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Unbekannter Status.",
@@ -388,6 +395,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Der Sprint muss nach seinem Beginn enden.",
 	SprintStartFuture:     "Ein aktiver Sprint kann nicht in der Zukunft beginnen.",
 	SprintDeleteNotFuture: "Nur ein künftiger Sprint kann gelöscht werden.",
+	SprintNotOnBoard:      "Das Projekt des Vorgangs gehört nicht zum Board dieses Sprints.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",
@@ -479,6 +487,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Mein Passwort wählen",
 	MailInviteExpiry:          "Der Link funktioniert nur einmal und ist 7 Tage gültig.",
 	MailInviteWhy:             "Sie erhalten diese E-Mail, weil ein Administrator ein Konto für Sie angelegt hat.",
+	MailCredentialsNeedTLS:    "Benutzername und Passwort werden nur über eine verschlüsselte Verbindung gesendet: Wählen Sie STARTTLS oder TLS, oder lassen Sie den Benutzernamen leer. Nur ein Server auf diesem Rechner ist ausgenommen; ein Relay in einem privaten Netz braucht ebenfalls STARTTLS oder TLS.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Ungültige Stunde: 0 bis 23.",
@@ -539,4 +548,11 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Wählen Sie mindestens ein Ereignis.",
 	WebhookSecretTooLong:       "Das Geheimnis darf höchstens 255 Zeichen lang sein.",
 	WebhookSecretEncryptFailed: "Das Geheimnis kann nicht verschlüsselt werden: %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "Ungültiger Bild-Upload.",
+	AvatarNoFile:        "Kein Bild empfangen.",
+	AvatarTooLarge:      "Bild zu groß (höchstens 1 MB).",
+	AvatarNotImage:      "Das Bild muss eine gültige PNG- oder JPEG-Datei sein.",
+	AvatarDimensions:    "Das Bild darf höchstens 512 × 512 Pixel groß sein.",
 }
