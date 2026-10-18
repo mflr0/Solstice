@@ -453,3 +453,54 @@ export function restrictionUsage(data: unknown): { comments: number; worklogs: n
   };
   return { comments: count('comments'), worklogs: count('worklogs') };
 }
+
+/* Security levels ------------------------------------------------------------ */
+
+export type SecurityLevelProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken';
+
+/** A level's name: present, 255 characters at most, and not another level's of the project (any case). */
+export function securityLevelProblem(
+  name: string,
+  levels: readonly { id: number; name: string }[],
+  self: number | null,
+): SecurityLevelProblem | null {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  if ([...n].length > 255) return 'nameTooLong';
+  const lower = n.toLowerCase();
+  return levels.some((l) => l.id !== self && l.name.trim().toLowerCase() === lower)
+    ? 'nameTaken'
+    : null;
+}
+
+/** The levels the issues of a deleted level can move to: the project's other levels. */
+export function levelTargets<T extends { id: number }>(levels: readonly T[], removing: T): T[] {
+  return levels.filter((l) => l.id !== removing.id);
+}
+
+/** The kinds of holder a level takes (those of the permission checks), in the order offered. */
+export const LEVEL_HOLDERS = [
+  'group',
+  'role',
+  'user',
+  'everyone',
+  'lead',
+  'reporter',
+  'assignee',
+] as const;
+
+export type LevelHolder = (typeof LEVEL_HOLDERS)[number];
+
+/** Whether a holder kind names someone: a user, a group or a role. */
+export function holderNeedsId(holder: LevelHolder): boolean {
+  return holder === 'user' || holder === 'group' || holder === 'role';
+}
+
+/** What to send to add a holder; null while the one it names is not chosen. */
+export function memberPayload(
+  holder: LevelHolder,
+  id: number | null,
+): { holder: LevelHolder; id?: number } | null {
+  if (!holderNeedsId(holder)) return { holder };
+  return id === null ? null : { holder, id };
+}

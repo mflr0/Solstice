@@ -554,4 +554,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AvatarTooLarge:      "चित्र बहुत बड़ा है (अधिकतम 1 MB)।",
 	AvatarNotImage:      "चित्र एक मान्य PNG या JPEG फ़ाइल होना चाहिए।",
 	AvatarDimensions:    "चित्र अधिकतम 512 × 512 पिक्सेल का हो सकता है।",
+	// Issue security levels.
+	SecurityLevelInUse:     "इस स्तर पर टिकट: %d। उन्हें प्रोजेक्ट के किसी दूसरे स्तर पर ले जाएँ, या उनका स्तर हटा दें।",
+	SecurityTargetNotFound: "रिप्लेसमेंट स्तर इस प्रोजेक्ट में नहीं मिला।",
+	SecurityMoveOrClear:    "रिप्लेसमेंट स्तर चुनें या स्तर हटाएँ, दोनों नहीं।",
+	SecurityMemberExists:   "यह धारक पहले से इस स्तर का सदस्य है।",
 }

@@ -625,3 +625,11 @@ const (
 	AvatarNotImage      Key = "AvatarNotImage"
 	AvatarDimensions    Key = "AvatarDimensions"
 )
+
+// Issue security levels.
+const (
+	SecurityLevelInUse     Key = "SecurityLevelInUse"
+	SecurityTargetNotFound Key = "SecurityTargetNotFound"
+	SecurityMoveOrClear    Key = "SecurityMoveOrClear"
+	SecurityMemberExists   Key = "SecurityMemberExists"
+)

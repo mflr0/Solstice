@@ -553,4 +553,9 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AvatarTooLarge:      "Immagine troppo grande (1 MB al massimo).",
 	AvatarNotImage:      "L'immagine deve essere un file PNG o JPEG valido.",
 	AvatarDimensions:    "L'immagine può essere al massimo di 512 × 512 pixel.",
+	// Issue security levels.
+	SecurityLevelInUse:     "Ticket a questo livello: %d. Spostali su un altro livello del progetto, oppure rimuovi il loro livello.",
+	SecurityTargetNotFound: "Livello di sostituzione non trovato in questo progetto.",
+	SecurityMoveOrClear:    "Scegli un livello di sostituzione oppure rimuovi il livello, non entrambi.",
+	SecurityMemberExists:   "Questo titolare è già membro del livello.",
 }

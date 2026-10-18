@@ -99,6 +99,12 @@ const (
 	WebhookUpdate        = "webhook.update"
 	WebhookDelete        = "webhook.delete"
 	SettingsTokens       = "settings.tokens"
+	// Issue security levels of a project, and who may see their issues.
+	SecurityLevelCreate       = "securitylevel.create"
+	SecurityLevelUpdate       = "securitylevel.update"
+	SecurityLevelDelete       = "securitylevel.delete"
+	SecurityLevelMemberAdd    = "securitylevel.member_add"
+	SecurityLevelMemberRemove = "securitylevel.member_remove"
 	// Catalogue items: "<kind>.create", "<kind>.update", "<kind>.delete",
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )

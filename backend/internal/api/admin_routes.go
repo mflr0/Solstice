@@ -62,6 +62,12 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 	route("POST /api/projects/{key}/versions/{id}/release", s.releaseVersion, true)
 	route("POST /api/projects/{key}/versions/{id}/merge", s.mergeVersion, true)
 	route("GET /api/projects/{key}/fields", s.projectFields, true)
+	route("GET /api/projects/{key}/security-levels", s.listSecurityLevels, true)
+	route("POST /api/projects/{key}/security-levels", s.saveSecurityLevel, true)
+	route("PATCH /api/projects/{key}/security-levels/{id}", s.saveSecurityLevel, true)
+	route("DELETE /api/projects/{key}/security-levels/{id}", s.deleteSecurityLevel, true)
+	route("POST /api/projects/{key}/security-levels/{id}/members", s.addSecurityLevelMember, true)
+	route("DELETE /api/projects/{key}/security-levels/{id}/members/{member}", s.removeSecurityLevelMember, true)
 
 	// Catalogues.
 	for kind, c := range catalogueKinds {
