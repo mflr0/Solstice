@@ -626,6 +626,40 @@ func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID in
 	return out, nil
 }
 
+// typeStatuses are the statuses an issue of a type can have in a project.
+func (s *Server) typeStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
+	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return s.projectStatuses(ctx, cat, projectID, "")
+	}
+	var out []statusRef
+	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
+		func(rows *sql.Rows) error {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			out = append(out, cat.statusOf(id))
+			return nil
+		}, wf)
+	return out, err
+}
+
+// statusResolution is the resolution that goes with a new status: reaching a
+// "done" status resolves the issue, leaving it reopens it.
+func statusResolution(cat *catalog, resolution sql.NullString, status string) sql.NullString {
+	switch done := cat.statusOf(status).Category == issue.Done; {
+	case done && !resolution.Valid:
+		resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
+	case !done:
+		resolution = sql.NullString{}
+	}
+	return resolution
+}
+
 type customRow struct {
 	out     customValue
 	userIDs []int64
@@ -1614,13 +1648,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 				resolution = sql.NullString{String: *v, Valid: true}
 			}
 		}
-		done := cat.statusOf(status).Category == issue.Done
-		switch {
-		case done && !resolution.Valid:
-			resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
-		case !done:
-			resolution = sql.NullString{}
-		}
+		resolution = statusResolution(cat, resolution, status)
 		if status != iss.StatusID {
 			sets["status_id"] = status
 			changes = append(changes, change{"status", iss.StatusID, cat.statusOf(iss.StatusID).Name, status,

@@ -15,7 +15,6 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
-	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -230,41 +229,6 @@ func mapNames(from, options []idName) (mapped, unmatched []idName) {
 	return mapped, unmatched
 }
 
-// moveStatuses are the statuses an issue of a type can have in a project.
-func (s *Server) moveStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
-	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return s.projectStatuses(ctx, cat, projectID, "")
-	}
-	var out []statusRef
-	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
-		func(rows *sql.Rows) error {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			out = append(out, cat.statusOf(id))
-			return nil
-		}, wf)
-	return out, err
-}
-
-// statusResolution is the resolution that goes with a new status: reaching a
-// "done" status resolves the issue, leaving it reopens it.
-func statusResolution(cat *catalog, iss *issueRow, status string) sql.NullString {
-	resolution := iss.ResolutionID
-	switch done := cat.statusOf(status).Category == issue.Done; {
-	case done && !resolution.Valid:
-		resolution = sql.NullString{String: cat.DefaultResolution, Valid: cat.DefaultResolution != ""}
-	case !done:
-		resolution = sql.NullString{}
-	}
-	return resolution
-}
-
 // moveAssigneeFor keeps the assignee if the target project lets them be
 // assigned; otherwise the project's rule for a new issue with these
 // components applies.
@@ -433,7 +397,7 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		missing("type")
 	}
 	if head.typeID != "" {
-		statuses, err := s.moveStatuses(ctx, cat, dest.id, head.typeID)
+		statuses, err := s.typeStatuses(ctx, cat, dest.id, head.typeID)
 		if err != nil {
 			return nil, err
 		}
@@ -459,7 +423,7 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 	}
 	head.resolution = orig.ResolutionID
 	if head.status != "" && head.status != orig.StatusID {
-		head.resolution = statusResolution(cat, orig, head.status)
+		head.resolution = statusResolution(cat, orig.ResolutionID, head.status)
 	}
 
 	chosen := [3]*[]int64{in.Components, in.AffectsVersions, in.FixVersions}
@@ -522,7 +486,7 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		if c.typeID != "" {
 			statuses, ok := statusesOf[c.typeID]
 			if !ok {
-				if statuses, err = s.moveStatuses(ctx, cat, dest.id, c.typeID); err != nil {
+				if statuses, err = s.typeStatuses(ctx, cat, dest.id, c.typeID); err != nil {
 					return nil, err
 				}
 				statusesOf[c.typeID] = statuses
@@ -537,7 +501,7 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 			}
 			c.resolution = child.ResolutionID
 			if c.status != child.StatusID {
-				c.resolution = statusResolution(cat, child, c.status)
+				c.resolution = statusResolution(cat, child.ResolutionID, c.status)
 			}
 		}
 		for k := range moveKinds {
