@@ -141,8 +141,7 @@ func TestLoopback(t *testing.T) {
 	}
 }
 
-// Credentials are not sent over a plain connection to a server that is not
-// local. 0.0.0.0 is no loopback address but reaches the test server.
+// 0.0.0.0 is no loopback address but reaches the test server.
 func TestSendRefusesCredentialsInClear(t *testing.T) {
 	srv := mailtest.Start(t)
 	cfg := Config{Enabled: true, Host: "0.0.0.0", Port: srv.Port, Security: SecurityNone, Username: "relai",

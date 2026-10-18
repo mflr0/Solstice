@@ -731,8 +731,6 @@ func TestMailSettingsReportCredentialsInClear(t *testing.T) {
 	}
 }
 
-// Switching to no encryption never carries the stored password along: it must
-// be typed again, and then credentials in clear are refused for a remote server.
 func TestMailSettingsKeepPasswordNotCarriedToNoEncryption(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")

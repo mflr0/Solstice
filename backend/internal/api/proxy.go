@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-// protoWarnEvery is the least time between two warnings about an
-// X-Forwarded-Proto that was not believed.
 const protoWarnEvery = time.Hour
 
 var protoWarn struct {
@@ -25,10 +23,8 @@ var protoWarn struct {
 	now  func() time.Time // tests replace it
 }
 
-// warnUntrustedProto logs that a peer claimed HTTPS in X-Forwarded-Proto and
-// was not believed: behind a TLS proxy that is not listed, cookies lose
-// Secure and links become http. It speaks once per process, then at most once
-// an hour.
+// Behind a TLS proxy missing from the trusted list, cookies lose Secure and
+// links become http, so the ignored claim is worth a warning.
 func warnUntrustedProto(log *slog.Logger, peer string) {
 	protoWarn.mu.Lock()
 	defer protoWarn.mu.Unlock()

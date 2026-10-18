@@ -178,8 +178,8 @@ func helloName() string {
 	return "localhost"
 }
 
-// Loopback tells whether host is the local machine: localhost or a loopback
-// address. Names are not resolved, so only these spellings count.
+// Loopback tells whether host is the local machine. Host names are not
+// resolved, so only the spelling "localhost" and literal loopback addresses count.
 func Loopback(host string) bool {
 	if strings.EqualFold(host, "localhost") {
 		return true

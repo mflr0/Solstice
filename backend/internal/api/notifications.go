@@ -376,8 +376,6 @@ type mailSettingsOut struct {
 // credentials were refused over a plain connection to a remote server.
 const mailProblemCredentialsNeedTLS = "credentialsNeedTLS"
 
-// credentialsInClear tells whether the settings would send a user name over
-// an unencrypted connection to a server that is not on this machine.
 func credentialsInClear(c mail.Config) bool {
 	return c.Security == mail.SecurityNone && c.Username != "" && !mail.Loopback(c.Host)
 }

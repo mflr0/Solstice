@@ -317,10 +317,9 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 }
 
 // secureRequest tells whether cookies must be marked Secure: the request
-// came over HTTPS, directly or through a trusted proxy (the only peers whose
-// X-Forwarded-Proto is believed), or the public address is HTTPS. An
-// X-Forwarded-Proto: https from any other peer is not believed, and logged
-// (see warnUntrustedProto) as it is probably a proxy missing from the list.
+// came over HTTPS, directly or through a trusted proxy, or the public
+// address is HTTPS. A https claim from any other peer is not believed and
+// logged, as it is probably a proxy missing from the list.
 func secureRequest(r *http.Request, baseURL string, trusted []netip.Prefix, log *slog.Logger) bool {
 	if r.TLS != nil || strings.HasPrefix(baseURL, "https://") {
 		return true
