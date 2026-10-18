@@ -43,9 +43,8 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, meOf(u))
 }
 
-// signIn checks a password, as throttled and audited for every way of
-// signing in with one, and opens a session with its cookie. method says how
-// the user came in, for the audit log.
+// signIn throttles and audits every way of signing in with a password;
+// method says how the user came in, for the audit log.
 func (s *Server) signIn(w http.ResponseWriter, r *http.Request, username, password, method string) (*auth.User, error) {
 	u, err := s.checkPassword(r, username, password)
 	if errors.Is(err, auth.ErrNoSession) {
@@ -93,7 +92,6 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// signOut ends the session of the request's cookie and clears the cookie.
 func (s *Server) signOut(w http.ResponseWriter, r *http.Request) error {
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		if err := auth.EndSession(r.Context(), s.db, c.Value); err != nil {

@@ -22,11 +22,8 @@ import (
 	"solstice/internal/sqlq"
 )
 
-// Remote links -----------------------------------------------------------------
-
-// remoteLinkIn is a remote link as Jira clients write one. Solstice keeps
-// the globalId, the address, the title and the relationship; the rest
-// (application, icon, summary, status) is accepted and ignored.
+// remoteLinkIn is Jira's link as clients write it; the rest (application,
+// icon, summary, status) is accepted and ignored.
 type remoteLinkIn struct {
 	GlobalID     string `json:"globalId"`
 	Relationship string `json:"relationship"`
@@ -40,7 +37,6 @@ type remoteLinkIn struct {
 // only the http, https and mailto schemes.
 func remoteLinkOK(v string) bool { return safeHref(v) && safeURL(v) }
 
-// clean checks and trims what a client sent.
 func (in *remoteLinkIn) clean() error {
 	in.Object.URL, in.Object.Title = strings.TrimSpace(in.Object.URL), strings.TrimSpace(in.Object.Title)
 	in.Relationship, in.GlobalID = strings.TrimSpace(in.Relationship), strings.TrimSpace(in.GlobalID)
@@ -63,7 +59,6 @@ func (in *remoteLinkIn) clean() error {
 	return nil
 }
 
-// remoteLinkRow is a stored remote link with its globalId.
 type remoteLinkRow struct {
 	remoteLink
 	GlobalID string
@@ -87,12 +82,11 @@ func (o *restOut) remoteLink(key string, v remoteLinkRow) map[string]any {
 	return out
 }
 
-// remoteLinkText is how the history names a remote link, as Jira writes it.
-// The English wording is Jira's on purpose, not a message to translate.
+// remoteLinkText is how the history names a link; its English is Jira's on
+// purpose, not a message to translate.
 func remoteLinkText(title string) string { return `This issue links to "` + title + `"` }
 
-// restLinkableIssue returns the issue of the path, which the user must be
-// allowed to link, as Jira asks for "Link issues" on remote links.
+// Jira asks for "Link issues" on remote links, not for editing them.
 func (s *Server) restLinkableIssue(r *http.Request) (*perm.Subject, *issueRow, error) {
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
@@ -105,8 +99,6 @@ func (s *Server) restLinkableIssue(r *http.Request) (*perm.Subject, *issueRow, e
 	return sub, iss, nil
 }
 
-// pathRemoteLink loads the remote link of iss that the request names: by the
-// id of the path, or on the routes without one by the globalId of the query.
 func (s *Server) pathRemoteLink(r *http.Request, iss *issueRow) (remoteLinkRow, error) {
 	var v remoteLinkRow
 	where, arg := `id = ?`, any(nil)
@@ -212,8 +204,6 @@ func lostRace(err error) bool {
 	return errors.As(err, &me) && (me.Number == 1062 || me.Number == 1213)
 }
 
-// saveRemoteLink adds a remote link to an issue, or updates the one that has
-// the globalId. It answers the id, 201 or 200, and the changes it recorded.
 func (s *Server) saveRemoteLink(ctx context.Context, iss *issueRow, userID int64, in remoteLinkIn) (int64, int, []change, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -261,8 +251,6 @@ func (s *Server) saveRemoteLink(ctx context.Context, iss *issueRow, userID int64
 	return id, status, changes, tx.Commit()
 }
 
-// updateRemoteLink replaces the address, title and relationship of a link and
-// returns the change to record, none when nothing differs. The globalId stays.
 func updateRemoteLink(ctx context.Context, tx *sql.Tx, old remoteLinkRow, in remoteLinkIn) ([]change, error) {
 	if _, err := tx.ExecContext(ctx, `UPDATE remote_links SET url = ?, title = ?, relationship = ? WHERE id = ?`,
 		in.Object.URL, in.Object.Title, nullIfEmpty(in.Relationship), old.ID); err != nil {
@@ -347,8 +335,6 @@ func (s *Server) restDeleteRemoteLink(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// Session ----------------------------------------------------------------------
-
 // restSessionRoute lets scripts written for Jira's cookie sign-in call the
 // session routes the way they did there: a JSON body or a DELETE needs no
 // X-Atlassian-Token header. A browser cannot send either cross-site without a
@@ -365,8 +351,8 @@ func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
 	})
 }
 
-// restLoginInfo is what Solstice knows of a user's sign-ins, from the audit
-// log: how many, since when they failed, and the one before the latest.
+// restLoginInfo counts the sign-ins, and the failures since the last
+// successful one.
 func (s *Server) restLoginInfo(ctx context.Context, o *restOut, userID int64) (map[string]any, error) {
 	info := map[string]any{"loginCount": 0, "failedLoginCount": 0}
 	var successes []time.Time
@@ -407,7 +393,6 @@ func (s *Server) restLoginInfo(ctx context.Context, o *restOut, userID int64) (m
 	return info, nil
 }
 
-// restSession tells who is signed in.
 func (s *Server) restSession(w http.ResponseWriter, r *http.Request) error {
 	u := currentUser(r)
 	o := s.restOut(r)
@@ -419,7 +404,6 @@ func (s *Server) restSession(w http.ResponseWriter, r *http.Request) error {
 		"name": u.Username, "loginInfo": info})
 }
 
-// restSignIn signs in as POST /api/login does and answers with the session.
 func (s *Server) restSignIn(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Username string `json:"username"`
@@ -452,7 +436,6 @@ func (s *Server) restSignIn(w http.ResponseWriter, r *http.Request) error {
 		"session": map[string]string{"name": auth.CookieName, "value": token}, "loginInfo": info})
 }
 
-// restSignOut signs out like the interface's logout.
 func (s *Server) restSignOut(w http.ResponseWriter, r *http.Request) error {
 	if err := s.signOut(w, r); err != nil {
 		return err
@@ -461,10 +444,8 @@ func (s *Server) restSignOut(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Groups -----------------------------------------------------------------------
-
-// restGroupPicker finds groups by part of their name. As in the interface,
-// administrators see every group; the others only those they belong to.
+// As in the interface, administrators see every group; the others only those
+// they belong to.
 func (s *Server) restGroupPicker(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	u := currentUser(r)
@@ -506,7 +487,6 @@ func (s *Server) restGroupPicker(w http.ResponseWriter, r *http.Request) error {
 		"header": s.restOut(r).msg(i18n.M(i18n.GroupPickerHeader, len(groups), total)), "total": total, "groups": groups})
 }
 
-// highlight is a name in HTML with the first occurrence of part of it in bold.
 func highlight(name, part string) string {
 	lower, needle := strings.ToLower(name), strings.ToLower(part)
 	i := strings.Index(lower, needle)
@@ -518,8 +498,7 @@ func highlight(name, part string) string {
 	return html.EscapeString(name[:i]) + "<b>" + html.EscapeString(name[i:j]) + "</b>" + html.EscapeString(name[j:])
 }
 
-// restGroupMembers lists the users of a group. As in the interface, only
-// administrators see who belongs to a group.
+// As in the interface, only administrators see who belongs to a group.
 func (s *Server) restGroupMembers(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err

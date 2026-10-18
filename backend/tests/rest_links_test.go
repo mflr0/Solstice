@@ -12,8 +12,6 @@ import (
 	"testing"
 )
 
-// Remote links -----------------------------------------------------------------
-
 func TestRESTRemoteLinks(t *testing.T) {
 	needDB(t)
 	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -448,8 +446,6 @@ func TestRESTRemoteLinksPermission(t *testing.T) {
 	}
 }
 
-// Session ----------------------------------------------------------------------
-
 func TestRESTSession(t *testing.T) {
 	needDB(t)
 	const path = "/rest/auth/1/session"
@@ -540,8 +536,6 @@ func TestRESTSession(t *testing.T) {
 		t.Errorf("the form is not locked as well: %d", status)
 	}
 }
-
-// Groups -----------------------------------------------------------------------
 
 func TestRESTGroups(t *testing.T) {
 	needDB(t)

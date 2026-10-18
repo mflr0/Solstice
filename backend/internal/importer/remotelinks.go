@@ -17,8 +17,6 @@ type globalKey struct {
 	id    string
 }
 
-// take returns the globalId to store for a link of an issue: nil when it has
-// none or a link of the same issue already took it.
 func (g globalIDs) take(issue int64, id sql.NullString) any {
 	value := strings.TrimSpace(truncate(id.String, 255))
 	if !id.Valid || value == "" || g[globalKey{issue, value}] {
