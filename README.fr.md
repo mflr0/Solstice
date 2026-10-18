@@ -108,6 +108,7 @@ fichier ou l'environnement, est signalée dans le journal au démarrage.
 | `SOLSTICE_HTTP_TRUSTEDPROXIES` | aucun | reverse proxies, voir plus bas |
 | `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | temps laissé aux requêtes et e-mails en cours à l'arrêt |
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | taille d'un envoi de fichiers ; `KB`, `MB`, `GB` comptent par 1000, `KiB`, `MiB`, `GiB` par 1024. Montez aussi la limite du proxy (`client_max_body_size` pour nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | taille totale de toutes les pièces jointes ; `0` signifie sans limite |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
 

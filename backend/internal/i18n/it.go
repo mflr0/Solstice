@@ -14,6 +14,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Richiesta rifiutata: aggiungi l'intestazione «X-Atlassian-Token: no-check» (protezione contro la falsificazione delle richieste).",
 	RequestInvalid:              "Richiesta non valida: %s",
 	RequestTooManyAttempts:      "Troppi tentativi. Riprova tra %d s.",
+	RequestTooManyStreams:       "Troppe connessioni in tempo reale.",
 	RequestStreamingUnsupported: "Streaming non supportato.",
 	RequestInternalError:        "Errore interno. L'incidente è stato registrato.",
 
@@ -322,6 +323,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "File troppo grande (massimo 100 MB).",
 	AttachmentNotImported:   "Questo file non è stato trovato durante l'importazione da Jira.",
 	AttachmentFileMissing:   "Il file non è presente nella cartella dei dati.",
+	AttachmentStorageQuota:  "È stata raggiunta la quota di archiviazione degli allegati.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Stato sconosciuto.",
