@@ -28,8 +28,9 @@ max=$((2 * 1024 * 1024))
 # Any valid date will do for the import's own dates.
 fixed_date="2026-10-01 18:00:00.000"
 
-# The fixture gives every account an @exemple.fr address; any other e-mail
-# domain in the seed means real data slipped in.
+# The fixture gives every account an @exemple.fr address and its own name, and
+# every URL an example/exemple host; anything else in the seed means real data
+# slipped in.
 check_synthetic() {
   local other
   other=$(grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "$seed" | grep -viE '@exemple\.fr$' | sort -u || true)
@@ -38,7 +39,14 @@ check_synthetic() {
     echo "$other" | sed 's/^[^@]*/…/' >&2
     return 1
   fi
-  echo "› the seed only holds @exemple.fr addresses"
+  other=$(grep -oE 'https?://[A-Za-z0-9.-]+' "$seed" | sed -E 's|^https?://||' | grep -vE '^([a-z0-9-]+\.)*(example|exemple)\.[a-z]+$' | sort -u || true)
+  if [ -n "$other" ]; then
+    echo "the seed holds URL hosts that are not example.* or exemple.*, it is not synthetic:" >&2
+    echo "$other" >&2
+    return 1
+  fi
+  (cd "$root/backend" && go test ./internal/jirafixture -run TestCommittedSeedAccounts -count=1 >&2)
+  echo "› the seed only holds the fixture's accounts, @exemple.fr addresses and example hosts"
 }
 
 if [ "${1:-}" = "--check" ]; then check_synthetic; exit; fi
