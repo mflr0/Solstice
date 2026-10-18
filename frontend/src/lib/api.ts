@@ -66,6 +66,7 @@ export interface MoveRestricted {
 
 /** The dry run of a move: what is still to choose, and what the move drops or changes. */
 export interface MoveCheck {
+  project: { id: number; key: string; name: string };
   ready: boolean;
   missing: string[];
   types?: TypeRef[];
@@ -92,8 +93,8 @@ export interface MoveChoices {
   fixVersions?: number[];
   /** A level of the new project, or null for none. */
   securityLevel?: number | null;
-  /** A role of the new project, or a group, for what was restricted to a role of the current one. */
-  restricted?: { to: 'role'; role: number } | { to: 'group'; group: number };
+  /** A role of the new project, or a group, for what was restricted to a role of the current one; or giving the move up. */
+  restricted?: { to: 'role'; role: number } | { to: 'group'; group: number } | { to: 'refuse' };
 }
 
 export class ApiError extends Error {
