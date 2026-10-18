@@ -4,13 +4,20 @@ package tests
 // finding them, and the key is checked like a new project's.
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"solstice/internal/api"
+	"solstice/internal/db"
 )
 
 func TestProjectRename(t *testing.T) {
@@ -487,4 +494,28 @@ func TestProjectRenameBackChecksForm(t *testing.T) {
 	if got := pick(t, `SELECT COUNT(*) FROM project_keys WHERE pkey = ?`, legacy); got != "1" {
 		t.Errorf("a refused rename removed the former key (%s rows)", got)
 	}
+}
+
+// With a pool of one connection, the lock on the keys is let go as soon as the
+// change is committed: the audit entry and the read that follow need that
+// connection. A rename and a creation both answer, instead of waiting for it.
+func TestProjectKeyLockReleasedBeforeAudit(t *testing.T) {
+	needDB(t)
+	one, err := db.Open(context.Background(), os.Getenv("SOLSTICE_TEST_DB"),
+		db.Pool{MaxOpenConns: 1, MaxIdleConns: 1, ConnMaxLifetime: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { one.Close() })
+	ts := httptest.NewServer(api.New(one, t.TempDir(), time.UTC, quiet()).Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+	admin := loginAt(t, ts.URL, "admin", "admin")
+	admin.http.Timeout = 10 * time.Second
+	old, fresh := newProjectKey(), newProjectKey()
+	admin.call("POST", "/api/projects", map[string]any{"key": old, "name": "Pool " + old}, 201, nil)
+	t.Cleanup(func() {
+		admin.do("DELETE", "/api/projects/"+fresh, map[string]string{"confirm": fresh})
+		admin.do("DELETE", "/api/projects/"+old, map[string]string{"confirm": old})
+	})
+	admin.call("POST", "/api/projects/"+old+"/rename", map[string]any{"newKey": fresh, "confirm": old}, 200, nil)
 }

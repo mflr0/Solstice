@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"solstice/internal/audit"
@@ -337,6 +338,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	release()
 	s.perms.Invalidate()
 	s.forgetCatalogue()
 	details := map[string]any{"name": name, "template": in.Template, "lead": s.userNames(ctx, []int64{lead}),
@@ -752,8 +754,9 @@ func keyConflict(err error, key string) error {
 const projectKeysLock = "solstice-project-keys"
 
 // lockProjectKeys takes the lock on a connection of its own: the transaction
-// of the change is opened on that connection, and release is called once it
-// has ended.
+// of the change is opened on that connection, and release is called as soon as
+// it has ended (what follows uses the pool, which this connection is part of).
+// Calling release again does nothing, so a deferred call can back it up.
 func (s *Server) lockProjectKeys(ctx context.Context) (conn *sql.Conn, release func(), err error) {
 	conn, err = s.db.Conn(ctx)
 	if err != nil {
@@ -768,14 +771,17 @@ func (s *Server) lockProjectKeys(ctx context.Context) (conn *sql.Conn, release f
 		conn.Close()
 		return nil, nil, err
 	}
+	var once sync.Once
 	return conn, func() {
-		// The request may be over by now. A lock that cannot be released must
-		// not go back to the pool with its connection.
-		var released sql.NullInt64
-		if conn.QueryRowContext(context.WithoutCancel(ctx), `SELECT RELEASE_LOCK(?)`, projectKeysLock).Scan(&released) != nil {
-			conn.Raw(func(any) error { return driver.ErrBadConn })
-		}
-		conn.Close()
+		once.Do(func() {
+			// The request may be over by now. A lock that cannot be released must
+			// not go back to the pool with its connection.
+			var released sql.NullInt64
+			if conn.QueryRowContext(context.WithoutCancel(ctx), `SELECT RELEASE_LOCK(?)`, projectKeysLock).Scan(&released) != nil {
+				conn.Raw(func(any) error { return driver.ErrBadConn })
+			}
+			conn.Close()
+		})
 	}, nil
 }
 
@@ -843,6 +849,7 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	release()
 	s.perms.Invalidate()
 	s.auditLog(r, audit.ProjectRename, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: newKey},
 		map[string]any{"oldKey": key, "newKey": newKey})
