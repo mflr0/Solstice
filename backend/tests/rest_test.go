@@ -319,6 +319,12 @@ func TestRESTShapes(t *testing.T) {
 			t.Errorf("fields.%v is missing", path)
 		}
 	}
+	picture := testURL + "/api/avatars/" + strconv.FormatInt(userID(t, str(f, "reporter", "name")), 10)
+	for _, size := range []string{"48x48", "32x32", "24x24", "16x16"} {
+		if got := str(f, "reporter", "avatarUrls", size); got != picture {
+			t.Errorf("reporter avatarUrls[%s] = %q, want %q", size, got, picture)
+		}
+	}
 	for _, k := range []string{"created", "updated"} {
 		if !jiraTime.MatchString(str(f, k)) {
 			t.Errorf("%s = %q, not Jira's date format", k, str(f, k))

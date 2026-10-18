@@ -8,19 +8,38 @@ import type { ChangeEvent } from '../core/types.js';
 
 type Listener = (e: ChangeEvent) => void;
 
+/**
+ * The server refuses with a 429 when there are too many streams, and the
+ * browser then gives up on its own, so the stream must be reopened later.
+ */
+export function reconnectDelay(failures: number): number {
+  return Math.min(5000 * 2 ** failures, 60000);
+}
+
 class Live {
   connected = $state(false);
   private source: EventSource | null = null;
   private listeners = new Set<Listener>();
+  private failures = 0;
+  private retry: ReturnType<typeof setTimeout> | undefined;
 
   start(): void {
     if (this.source) return;
     const source = new EventSource('/api/events');
-    source.addEventListener('open', () => (this.connected = true));
-    source.addEventListener(
-      'error',
-      () => (this.connected = source.readyState === EventSource.OPEN),
-    );
+    source.addEventListener('open', () => {
+      this.connected = true;
+      this.failures = 0;
+    });
+    source.addEventListener('error', () => {
+      this.connected = source.readyState === EventSource.OPEN;
+      // Closed by the browser: it will not retry, so reopen it later.
+      if (source.readyState !== EventSource.CLOSED || this.retry !== undefined) return;
+      this.retry = setTimeout(() => {
+        this.retry = undefined;
+        this.source = null;
+        this.start();
+      }, reconnectDelay(this.failures++));
+    });
     source.addEventListener('change', (ev) => {
       let data: ChangeEvent;
       try {
@@ -34,6 +53,9 @@ class Live {
   }
 
   stop(): void {
+    clearTimeout(this.retry);
+    this.retry = undefined;
+    this.failures = 0;
     this.source?.close();
     this.source = null;
     this.connected = false;

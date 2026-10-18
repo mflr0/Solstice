@@ -11,8 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/netip"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,17 +30,18 @@ import (
 
 // Server holds what handlers share.
 type Server struct {
-	db        *sql.DB
-	perms     *perm.Store
-	hub       *live.Hub
-	dataDir   string
-	log       *slog.Logger
-	tz        *time.Location // for dates typed without a time zone (JQL)
-	limiter   *auth.Limiter
-	baseURL   string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
-	proxies   []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
-	maxUpload int64          // bytes in one upload request; see SetMaxUpload
-	out       *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	db         *sql.DB
+	perms      *perm.Store
+	hub        *live.Hub
+	dataDir    string
+	log        *slog.Logger
+	tz         *time.Location // for dates typed without a time zone (JQL)
+	limiter    *auth.Limiter
+	baseURL    string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
+	proxies    []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
+	maxUpload  int64          // bytes in one upload request; see SetMaxUpload
+	maxStorage int64          // bytes in all attachments, 0 for no limit; see SetMaxStorage
+	out        *outgoing      // event bus, e-mail and webhooks (notifications.go)
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -47,6 +51,9 @@ type Server struct {
 	catalog *catalog
 	catAt   time.Time
 
+	tokenMu  sync.Mutex
+	tokenAud map[int64]time.Time // when each refused token was last audited (tokens.go)
+
 	acc accountMail // whether links can be sent by e-mail (account_links.go)
 
 	adm adminState // instance settings, system page, imports (admin_*.go)
@@ -54,13 +61,16 @@ type Server struct {
 
 	streamsDone  chan struct{} // closed by CloseStreams
 	closeStreams sync.Once
+	streams      streamSlots // open live-event streams, capped (meta.go)
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time
 // zone of dates typed in searches.
 func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Server {
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
-		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload), streamsDone: make(chan struct{})}
+		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
+		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
+		tokenAud: map[int64]time.Time{}}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, username, password)
 	}
@@ -96,6 +106,9 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	s.accountLinkRoutes(route)
 	route("GET /api/me", s.me, true)
 	route("PATCH /api/me", s.updateMe, true)
+	route("PUT /api/me/avatar", s.putMyAvatar, true)
+	route("DELETE /api/me/avatar", s.deleteMyAvatar, true)
+	route("GET /api/avatars/{userId}", s.getAvatar, true)
 	route("GET /api/meta", s.meta, true)
 	route("GET /api/users", s.searchUsers, true)
 	route("GET /api/labels", s.labels, true)
@@ -193,13 +206,27 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 		return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
 	}, false))
 	mux.Handle("/", static)
-	return securityHeaders(s.instanceMiddleware(mux))
+	return securityHeaders(gzipHandler(s.instanceMiddleware(mux)))
 }
 
 // Mutating requests must carry this header. Browsers refuse to send custom
 // headers cross-site without a CORS preflight, which Solstice never grants, so
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
+
+// How long a client gets to send its request body; uploads travel as slow
+// files. The http.Server has no ReadTimeout, which would also cut the
+// live-event streams: these deadlines only concern bodies (see wrap).
+const (
+	bodyReadTimeout   = time.Minute
+	uploadReadTimeout = 15 * time.Minute
+)
+
+// The zero time clears the deadline. The error is ignored: a connection that
+// cannot do deadlines (http.ErrNotSupported) is left as it is.
+func setBodyReadDeadline(w http.ResponseWriter, at time.Time) {
+	_ = http.NewResponseController(w).SetReadDeadline(at)
+}
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -232,6 +259,7 @@ type httpError struct {
 	status int
 	msg    i18n.Message
 	extra  map[string]any // more fields for the JSON answer
+	retry  int            // seconds to wait, for a 429: Retry-After and "retryAfter"
 }
 
 func (e *httpError) Error() string { return e.msg.String() }
@@ -244,6 +272,13 @@ func failf(status int, key i18n.Key, args ...any) error {
 	return &httpError{status: status, msg: i18n.M(key, args...)}
 }
 
+// tooManyAttempts is the 429 answer for a locked-out client: the wait is
+// rounded up to whole seconds.
+func tooManyAttempts(wait time.Duration) error {
+	secs := int(math.Ceil(wait.Seconds()))
+	return &httpError{status: http.StatusTooManyRequests, msg: i18n.M(i18n.RequestTooManyAttempts, secs), retry: secs}
+}
+
 var (
 	errNotFound  = fail(http.StatusNotFound, i18n.RequestNotFound)
 	errForbidden = fail(http.StatusForbidden, i18n.RequestForbidden)
@@ -251,6 +286,18 @@ var (
 
 func (s *Server) wrap(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A request with a body gets a read deadline, so a client trickling
+		// one cannot hold a connection open; upload routes get more time.
+		// The deadline is cleared afterwards: it must not cut a live stream
+		// later opened on the same connection.
+		if r.ContentLength != 0 {
+			timeout := bodyReadTimeout
+			if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/attachments") {
+				timeout = uploadReadTimeout
+			}
+			setBodyReadDeadline(w, time.Now().Add(timeout))
+			defer setBodyReadDeadline(w, time.Time{})
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
 			writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
@@ -296,7 +343,7 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
 	userKey, ipKey := s.throttleKeys(r, username)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
-		return nil, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return nil, tooManyAttempts(d)
 	}
 	release, err := s.limiter.Acquire(r.Context())
 	if err != nil {
@@ -307,12 +354,18 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	release()
 	switch {
 	case errors.Is(err, auth.ErrNoSession):
-		s.limiter.Failure(userKey, ipKey)
-		if delay := s.limiter.AccountFailure("account:" + account); delay > 0 {
+		locked := s.limiter.Failure(userKey, ipKey)
+		delay := s.limiter.AccountFailure("account:" + account)
+		if delay > 0 {
 			// The account is being guessed at, from here or elsewhere: this
-			// address gets half as many tries, and the answer waits (the
-			// password-checking slot is already free).
-			s.limiter.Failure(userKey)
+			// address gets half as many tries.
+			locked = s.limiter.Failure(userKey) || locked
+		}
+		if locked {
+			s.auditLockout(r, username, s.limiter.Locked(userKey, ipKey))
+		}
+		if delay > 0 {
+			// The answer waits (the password-checking slot is already free).
 			s.sleep(r.Context(), delay)
 		}
 	case err == nil:
@@ -368,13 +421,28 @@ func locale(r *http.Request) string {
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
+		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	body := map[string]any{"error": he.msg.In(locale(r))}
 	for k, v := range he.extra {
 		body[k] = v
 	}
+	if he.retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(he.retry))
+		body["retryAfter"] = he.retry
+	}
 	writeJSON(w, he.status, body)
+}
+
+// badBody is the answer to a request body that cannot be read: 413, naming
+// the limit, when it is over the size limit, else 400 with the decoder's words.
+func badBody(err error) error {
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		return failf(http.StatusRequestEntityTooLarge, i18n.RequestBodyTooLargeLimit, tooBig.Limit>>10)
+	}
+	return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
 }
 
 // readJSON decodes a request body, rejecting unknown fields so typos surface.
@@ -382,7 +450,7 @@ func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	return nil
 }

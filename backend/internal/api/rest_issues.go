@@ -844,7 +844,7 @@ func readBody(r *http.Request) ([]byte, error) {
 		if errors.Is(err, io.EOF) {
 			return nil, nil
 		}
-		return nil, failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return nil, badBody(err)
 	}
 	return raw, nil
 }

@@ -153,7 +153,8 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 		}
 		if *in.Secret != "" {
 			if _, err := s.secrets(); err != nil {
-				return nil, failf(http.StatusInternalServerError, i18n.WebhookSecretEncryptFailed, err.Error())
+				s.log.Error("webhook secret not encryptable", "err", err)
+				return nil, failf(http.StatusInternalServerError, i18n.WebhookSecretEncryptFailed, i18n.M(i18n.RequestInternalError))
 			}
 		}
 	}

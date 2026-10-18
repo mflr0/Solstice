@@ -28,6 +28,8 @@ export const en = {
   copy: 'Copy',
   copied: 'Copied',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Source code',
+  licenses: 'Licences',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: 'The server is not answering. Check that it is still running, then try again.',

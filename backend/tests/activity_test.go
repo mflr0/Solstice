@@ -132,7 +132,7 @@ func TestLinkDeletion(t *testing.T) {
 	}
 	var d issueDetail
 	paul.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
-		"target": b}, 200, &d)
+		"target": b}, 201, &d)
 	if len(d.Links) != 1 || d.Links[0].Issue.Key != b {
 		t.Fatalf("links of %s: %+v", a, d.Links)
 	}

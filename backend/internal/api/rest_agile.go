@@ -16,6 +16,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // agilePage is the Agile API's paging envelope for boards and sprints.
@@ -502,8 +503,35 @@ func (s *Server) agileMoveToSprint(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
+	args := []any{sp.ID}
 	for _, iss := range issues {
-		if err := s.setSprint(ctx, sub, b, iss, sp.ID); err != nil {
+		args = append(args, iss.ID)
+	}
+	inSprint := map[int64]bool{}
+	if err := sqlq.Each(ctx, s.db, `SELECT issue_id FROM sprint_issues WHERE sprint_id = ? AND issue_id IN (`+sqlq.Marks(len(issues))+`)`,
+		func(rows *sql.Rows) error {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			inSprint[id] = true
+			return nil
+		}, args...); err != nil {
+		return err
+	}
+	var moving []*issueRow
+	for _, iss := range issues {
+		if !inSprint[iss.ID] {
+			moving = append(moving, iss)
+		}
+	}
+	if len(moving) > 0 {
+		if err := s.issuesOnBoard(ctx, sub, b, moving); err != nil {
+			return err
+		}
+	}
+	for _, iss := range moving {
+		if err := s.setSprint(ctx, sub, b, iss, sp.ID, true); err != nil {
 			return err
 		}
 		s.publish(iss, "issue", sub.UserID)
@@ -533,7 +561,7 @@ func (s *Server) agileMoveToBacklog(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	for _, iss := range issues {
-		if err := s.setSprint(ctx, sub, &boardRow{}, iss, 0); err != nil {
+		if err := s.setSprint(ctx, sub, &boardRow{}, iss, 0, false); err != nil {
 			return err
 		}
 		s.publish(iss, "issue", sub.UserID)

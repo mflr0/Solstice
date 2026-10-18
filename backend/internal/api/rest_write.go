@@ -918,13 +918,13 @@ func (s *Server) sprintBoard(ctx context.Context, sub *perm.Subject, sprint int6
 // takes it out of its open sprint (0), as the board does.
 func (s *Server) applySprint(ctx context.Context, sub *perm.Subject, iss *issueRow, sprint int64) error {
 	if sprint == 0 {
-		return s.setSprint(ctx, sub, &boardRow{}, iss, 0)
+		return s.setSprint(ctx, sub, &boardRow{}, iss, 0, false)
 	}
 	b, err := s.sprintBoard(ctx, sub, sprint)
 	if err != nil {
 		return err
 	}
-	return s.setSprint(ctx, sub, b, iss, sprint)
+	return s.setSprint(ctx, sub, b, iss, sprint, false)
 }
 
 // commentVisibility translates a Jira comment (body and visibility) into

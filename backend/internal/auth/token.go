@@ -73,3 +73,44 @@ func LookupToken(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	}
 	return &u, nil
 }
+
+// RefusedToken is a personal access token that exists but cannot sign anyone
+// in: it has expired, or its owner's account is inactive. It never carries
+// the token itself, only its id and name.
+type RefusedToken struct {
+	ID       int64
+	Name     string
+	UserID   int64
+	Username string
+	Reason   string // "expired" or "inactive"
+}
+
+// LookupRefused returns what is known of a token that was presented but
+// cannot be used, or nil when no row has that hash. A revoked token is
+// deleted, so it is indistinguishable from an unknown one; only its log line
+// reports the rejection. It never reads back the token.
+func LookupRefused(ctx context.Context, db *sql.DB, token string) *RefusedToken {
+	if !LooksLikeToken(token) {
+		return nil
+	}
+	var t RefusedToken
+	var expires sql.NullTime
+	var active bool
+	now := time.Now().UTC()
+	err := db.QueryRowContext(ctx, `SELECT t.id, t.name, t.user_id, u.username, u.active, t.expires_at
+		FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?`, tokenHash(token)).
+		Scan(&t.ID, &t.Name, &t.UserID, &t.Username, &active, &expires)
+	if err != nil {
+		return nil
+	}
+	switch {
+	case !active:
+		t.Reason = "inactive"
+	case expires.Valid && !expires.Time.After(now):
+		t.Reason = "expired"
+	default:
+		// Valid and active: LookupToken would have signed it in.
+		return nil
+	}
+	return &t
+}
