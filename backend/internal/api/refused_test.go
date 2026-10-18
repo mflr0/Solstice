@@ -12,10 +12,12 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"solstice/internal/auth"
+	"solstice/internal/i18n"
 )
 
 const (
@@ -239,5 +241,104 @@ func TestRefusedUnauthorizedNeedsCredentials(t *testing.T) {
 	rf.logRefused(refusedRequest("192.0.2.7:41000"), http.StatusForbidden, nil)
 	if got := count(buf.String(), refusedLine); got != 3 {
 		t.Errorf("a 403 without credentials: %d lines, want 3", got)
+	}
+}
+
+// Parallel callers share the budget without a race (run with -race): the
+// lines and notices come out to exactly the caps.
+func TestRefusedParallel(t *testing.T) {
+	var buf bytes.Buffer
+	rf := &refuser{log: slog.New(slog.NewTextHandler(&lockedWriter{w: &buf}, nil)), now: time.Now}
+	const callers, each = 8, 50 // 400 requests from one address, 400 > refusedCap
+
+	var wg sync.WaitGroup
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r := refusedRequest("192.0.2.7:41000")
+			for range each {
+				rf.logRefused(r, http.StatusForbidden, nil)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := count(buf.String(), refusedLine); got != refusedCap {
+		t.Errorf("%d refused lines, want %d", got, refusedCap)
+	}
+	if got := count(buf.String(), refusedNotice); got != 1 {
+		t.Errorf("%d notices, want 1", got)
+	}
+}
+
+// lockedWriter lets the handlers of several goroutines share one buffer.
+type lockedWriter struct {
+	mu sync.Mutex
+	w  *bytes.Buffer
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
+}
+
+// useRefuser points the package's shared refuser at a buffer for the
+// test, and puts it back after.
+func useRefuser(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	saved := refused
+	refused = newRefuser(&buf, time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
+	t.Cleanup(func() { refused = saved })
+	return &buf
+}
+
+// The error writers are wired to the refuser: a 403 is logged by each of
+// them, with the client behind the trusted proxies for the writers of a
+// server and the connection's address for the setup wizard's; a 404 is
+// not logged. The answer is the same either way.
+func TestRefusedWriters(t *testing.T) {
+	proxies := []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}
+	s := &Server{proxies: proxies}
+	forbidden := fail(http.StatusForbidden, i18n.RequestSignIn)
+	notFound := fail(http.StatusNotFound, i18n.RequestSignIn)
+
+	for _, tc := range []struct {
+		name   string
+		write  func(http.ResponseWriter, *http.Request, error)
+		client string // the address logged for a request from 203.0.113.5 via 192.0.2.1
+	}{
+		{"interface", s.writeError, "client=203.0.113.5"},
+		{"REST", s.writeRESTError, "client=203.0.113.5"},
+		{"setup wizard", writeError, "client=192.0.2.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := useRefuser(t)
+			r := refusedRequest("192.0.2.1:41000")
+			r.Header.Set("X-Forwarded-For", "203.0.113.5")
+			r.Pattern = "GET /issue/{key}"
+
+			w := httptest.NewRecorder()
+			tc.write(w, r, notFound)
+			if w.Code != http.StatusNotFound || buf.Len() != 0 {
+				t.Errorf("a 404: status %d, logged %q", w.Code, buf.String())
+			}
+
+			w = httptest.NewRecorder()
+			tc.write(w, r, forbidden)
+			if w.Code != http.StatusForbidden {
+				t.Errorf("a 403: status %d, want %d", w.Code, http.StatusForbidden)
+			}
+			for _, want := range []string{refusedLine, "status=403", `route="GET /issue/{key}"`, tc.client} {
+				if !strings.Contains(buf.String(), want) {
+					t.Errorf("a 403: logged line lacks %q:\n%s", want, buf.String())
+				}
+			}
+			if got := count(buf.String(), refusedLine); got != 1 {
+				t.Errorf("a 403: %d lines, want 1", got)
+			}
+		})
 	}
 }
