@@ -35,6 +35,26 @@ type moveInput struct {
 	FixVersions     *[]int64        `json:"fixVersions"`
 	AffectsVersions *[]int64        `json:"affectsVersions"`
 	SecurityLevel   json.RawMessage `json:"securityLevel"` // an id, or null for none
+	Restricted      *moveChoice     `json:"restricted"`
+}
+
+// moveChoice says what becomes of the comments and work logs that are
+// restricted to a project role, since roles are held per project: "role" keeps
+// them restricted to a role of the target project, "group" restricts them to a
+// group instead, "refuse" gives the move up.
+type moveChoice struct {
+	To    string `json:"to"`
+	Role  int64  `json:"role"`
+	Group int64  `json:"group"`
+}
+
+// moveRestrict counts the comments and work logs restricted to a role, and
+// offers what they can be restricted to in the target project.
+type moveRestrict struct {
+	Comments int      `json:"comments"`
+	Worklogs int      `json:"worklogs"`
+	Roles    []idName `json:"roles"`
+	Groups   []idName `json:"groups"`
 }
 
 // moveParts is what an issue has that the target project has no same-named
@@ -70,6 +90,7 @@ type moveCheck struct {
 	AffectsVersions *moveParts    `json:"affectsVersions,omitempty"`
 	FixVersions     *moveParts    `json:"fixVersions,omitempty"`
 	SecurityLevel   *moveParts    `json:"securityLevel,omitempty"`
+	Restricted      *moveRestrict `json:"restricted,omitempty"`
 	DroppedFields   []string      `json:"droppedFields"`
 	Sprints         []string      `json:"sprints"` // the open sprints the issue leaves
 	Assignee        *moveAssignee `json:"assignee,omitempty"`
@@ -124,6 +145,14 @@ type movePlan struct {
 	check   moveCheck
 	levels  [2]string // the level's name before and after
 	fieldNm map[int64]string
+	remap   *moveRemap // for the role-restricted comments and work logs; nil if there are none
+}
+
+// moveRemap is the SET clause that gives the role-restricted comments and work
+// logs their new restriction, and its argument.
+type moveRemap struct {
+	set string
+	arg int64
 }
 
 func (d *moveDest) hasType(id string) bool {
@@ -503,6 +532,10 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		}
 	}
 
+	if err := s.planRestricted(ctx, sub, plan, in, missing); err != nil {
+		return nil, err
+	}
+
 	// What the move drops or changes. The fields that apply depend on the type.
 	dropped := map[int64]bool{}
 	var droppedIDs []int64
@@ -614,6 +647,69 @@ func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRo
 		}
 		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: offered}
 		missing("securityLevel")
+	}
+	return nil
+}
+
+// planRestricted decides what becomes of the comments and work logs restricted
+// to a project role: the role is held per project, so they cannot keep it as
+// it is. A role of the target, or a group, must be chosen.
+func (s *Server) planRestricted(ctx context.Context, sub *perm.Subject, plan *movePlan, in *moveInput,
+	missing func(string)) error {
+	ids := make([]int64, 0, len(plan.items))
+	for _, it := range plan.items {
+		ids = append(ids, it.row.ID)
+	}
+	marks := sqlq.Marks(len(ids))
+	args := append(moveArgs(ids), moveArgs(ids)...)
+	r := &moveRestrict{}
+	if err := s.db.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM comments WHERE visibility_role_id IS NOT NULL AND issue_id IN (`+marks+`)),
+		(SELECT COUNT(*) FROM worklogs WHERE visibility_role_id IS NOT NULL AND issue_id IN (`+marks+`))`, args...).
+		Scan(&r.Comments, &r.Worklogs); err != nil {
+		return err
+	}
+	if r.Comments+r.Worklogs == 0 {
+		return nil
+	}
+	var err error
+	if r.Roles, err = s.moveNames(ctx, `SELECT DISTINCT r.id, r.name FROM project_role_members m
+		JOIN project_roles r ON r.id = m.role_id WHERE m.project_id = ? ORDER BY r.name, r.id`, plan.dest.id); err != nil {
+		return err
+	}
+	// Groups are global: the mover may pick one they belong to (any, for an administrator).
+	groups := `SELECT g.id, g.name FROM user_groups g JOIN group_members m ON m.group_id = g.id
+		WHERE m.user_id = ? ORDER BY g.name, g.id`
+	groupArgs := []any{sub.UserID}
+	if sub.Admin {
+		groups, groupArgs = `SELECT id, name FROM user_groups ORDER BY name, id`, nil
+	}
+	if r.Groups, err = s.moveNames(ctx, groups, groupArgs...); err != nil {
+		return err
+	}
+	plan.check.Restricted = r
+
+	c := in.Restricted
+	if c == nil {
+		missing("restricted")
+		return nil
+	}
+	switch c.To {
+	case "role":
+		if !slices.ContainsFunc(r.Roles, func(o idName) bool { return o.ID == c.Role }) {
+			return failf(http.StatusBadRequest, i18n.FieldValueNotInProject, "restricted")
+		}
+		plan.remap = &moveRemap{set: "visibility_role_id = ?", arg: c.Role}
+	case "group":
+		if !slices.ContainsFunc(r.Groups, func(o idName) bool { return o.ID == c.Group }) {
+			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "restricted")
+		}
+		plan.remap = &moveRemap{set: "visibility_group = (SELECT name FROM user_groups WHERE id = ?), visibility_role_id = NULL",
+			arg: c.Group}
+	case "refuse":
+		return fail(http.StatusBadRequest, i18n.IssueMoveRestrictedRefused)
+	default:
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "restricted")
 	}
 	return nil
 }
@@ -784,6 +880,26 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 	if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO moved_issue_keys (old_key, issue_id)
 		SELECT CONCAT(pkey, '-', ?), ? FROM project_keys WHERE project_id = ?`, row.Num, row.ID, row.ProjectID); err != nil {
 		return nil, err
+	}
+
+	// A role is held per project: what was restricted to one follows the choice
+	// made. The issue is locked, so nothing restricted appeared since the plan.
+	for _, table := range []string{"comments", "worklogs"} {
+		if plan.remap == nil {
+			var n int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE issue_id = ? AND visibility_role_id IS NOT NULL`,
+				row.ID).Scan(&n); err != nil {
+				return nil, err
+			}
+			if n > 0 {
+				return nil, fail(http.StatusConflict, i18n.IssueMoveChanged)
+			}
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE `+table+` SET `+plan.remap.set+` WHERE issue_id = ? AND visibility_role_id IS NOT NULL`,
+			plan.remap.arg, row.ID); err != nil {
+			return nil, err
+		}
 	}
 
 	// Components and versions.

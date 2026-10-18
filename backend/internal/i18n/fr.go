@@ -306,6 +306,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "Une sous-tâche se déplace avec son parent : déplacez le ticket parent.",
 	IssueMoveChoiceNeeded:      "À choisir avant de déplacer : %s.",
 	IssueMoveChanged:           "Le ticket a changé pendant son déplacement. Rechargez-le et réessayez.",
+	IssueMoveRestrictedRefused: "Les commentaires et saisies de temps réservés à un rôle de ce projet ne peuvent pas rester tels quels dans un autre projet.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

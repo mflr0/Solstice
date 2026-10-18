@@ -308,6 +308,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "उप-कार्य अपने मूल टिकट के साथ ही स्थानांतरित होता है: मूल टिकट को स्थानांतरित करें।",
 	IssueMoveChoiceNeeded:      "स्थानांतरित करने से पहले चुनें: %s।",
 	IssueMoveChanged:           "स्थानांतरित करते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
+	IssueMoveRestrictedRefused: "इस प्रोजेक्ट की किसी भूमिका तक सीमित टिप्पणियाँ और कार्य-लॉग किसी दूसरे प्रोजेक्ट में जस के तस नहीं रह सकते।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",

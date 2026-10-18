@@ -431,6 +431,14 @@ project, which the user must also be able to browse. A security level is
 matched by name (case aside) with a level of the target project; when there is
 none, the dry run lists the target's levels only to a user with the Security
 right there, and otherwise reports just that the current level has no match.
+Comments and work logs restricted to a project role (on the issue and its
+sub-tasks) cannot keep it, since roles are held per project: the dry run counts
+them (`restricted: {comments, worklogs, roles, groups}`, with the target's
+roles that have a member, and the groups the user belongs to, all of them for an
+administrator) and the move needs `"restricted": {"to": "role", "role": id}`,
+`{"to": "group", "group": id}` or `{"to": "refuse"}` (400, nothing moves);
+without it the move is a 400 `missing: ["restricted"]`. Items restricted to a
+group only stay as they are; the choice is made in the move's transaction.
 Written to the audit log as `issue.move`.
 
 ---

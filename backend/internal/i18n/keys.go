@@ -344,6 +344,7 @@ const (
 	IssueMoveSubtask           Key = "IssueMoveSubtask"
 	IssueMoveChoiceNeeded      Key = "IssueMoveChoiceNeeded"
 	IssueMoveChanged           Key = "IssueMoveChanged"
+	IssueMoveRestrictedRefused Key = "IssueMoveRestrictedRefused"
 )
 
 // Comments and their visibility.

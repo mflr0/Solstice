@@ -305,6 +305,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "A sub-task moves with its parent: move the parent issue.",
 	IssueMoveChoiceNeeded:      "Choose before moving: %s.",
 	IssueMoveChanged:           "The issue changed while it was being moved. Reload it and try again.",
+	IssueMoveRestrictedRefused: "Comments and work logs restricted to a role of this project cannot stay as they are in another project.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

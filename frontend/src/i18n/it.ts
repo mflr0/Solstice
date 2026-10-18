@@ -704,6 +704,12 @@ export const it: Messages = {
     moveAssignee: (from: string, to: string) =>
       `${from} non può essere assegnatario nel nuovo progetto: l’assegnatario diventa ${to}.`,
     moveNoProject: 'Non c’è un altro progetto in cui spostarlo.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'commento o tempo registrato è riservato', 'commenti e tempi registrati sono riservati')} a un ruolo del progetto attuale. Un ruolo appartiene a un solo progetto: scegli chi potrà leggere questi elementi dopo lo spostamento.`,
+    moveRestrictedRole: 'Mantenerli riservati a un ruolo del nuovo progetto',
+    moveRestrictedGroup: 'Riservarli a un gruppo',
+    moveRestrictedNone:
+      'Il nuovo progetto non ha ruoli con membri e non appartieni a nessun gruppo: questi elementi non possono mantenere lì la restrizione, quindi il ticket non può essere spostato.',
   },
 
   comments: {

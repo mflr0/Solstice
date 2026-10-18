@@ -10,6 +10,7 @@
     type MoveCheck,
     type MoveChoices,
     type MoveParts,
+    type MoveRestricted,
   } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -45,6 +46,7 @@
   let affectsVersions = $state<MoveParts | null>(null);
   let fixVersions = $state<MoveParts | null>(null);
   let securityLevel = $state<MoveParts | null>(null);
+  let restricted = $state<MoveRestricted | null>(null);
   let typeId = $state('');
   let subtaskTypeId = $state('');
   let statusId = $state('');
@@ -52,6 +54,9 @@
   let affectsIds = $state<number[]>([]);
   let fixIds = $state<number[]>([]);
   let levelId = $state('');
+  let restrictTo = $state<'role' | 'group'>('role');
+  let roleId = $state('');
+  let groupId = $state('');
 
   const targetProject = $derived(projects.find((p) => p.key === target));
   const targetLabel = $derived(
@@ -64,7 +69,12 @@
       components !== null ||
       affectsVersions !== null ||
       fixVersions !== null ||
-      securityLevel !== null,
+      securityLevel !== null ||
+      restricted !== null,
+  );
+  // Nothing to restrict the items to: the move cannot be made.
+  const stuck = $derived(
+    restricted !== null && !restricted.roles.length && !restricted.groups.length,
   );
 
   function forget() {
@@ -75,6 +85,7 @@
     affectsVersions = null;
     fixVersions = null;
     securityLevel = null;
+    restricted = null;
     typeId = '';
     subtaskTypeId = '';
     statusId = '';
@@ -82,6 +93,8 @@
     affectsIds = [];
     fixIds = [];
     levelId = '';
+    roleId = '';
+    groupId = '';
   }
 
   // Each opening starts from the project list.
@@ -150,6 +163,13 @@
       levelId = String(c.securityLevel.options[0]?.id ?? '');
       news = true;
     }
+    if (c.restricted && !restricted) {
+      restricted = c.restricted;
+      restrictTo = c.restricted.roles.length ? 'role' : 'group';
+      roleId = String(c.restricted.roles[0]?.id ?? '');
+      groupId = String(c.restricted.groups[0]?.id ?? '');
+      news = true;
+    }
     return news;
   }
 
@@ -162,6 +182,12 @@
     if (affectsVersions) c.affectsVersions = affectsIds;
     if (fixVersions) c.fixVersions = fixIds;
     if (securityLevel) c.securityLevel = levelId === '' ? null : Number(levelId);
+    if (restricted) {
+      c.restricted =
+        restrictTo === 'role'
+          ? { to: 'role', role: Number(roleId) }
+          : { to: 'group', group: Number(groupId) };
+    }
     return c;
   }
 
@@ -299,6 +325,47 @@
           >
         </label>
       {/if}
+      {#if restricted}
+        <fieldset class="restricted">
+          <legend>{t.issue.moveRestricted(restricted.comments + restricted.worklogs)}</legend>
+          {#if stuck}
+            <p class="hint">{t.issue.moveRestrictedNone}</p>
+          {:else}
+            {#if restricted.roles.length}
+              <label class="check">
+                <input type="radio" name="move-restrict" value="role" bind:group={restrictTo} />
+                <span>{t.issue.moveRestrictedRole}</span>
+              </label>
+              <select
+                class="select"
+                bind:value={roleId}
+                disabled={restrictTo !== 'role'}
+                aria-label={t.issue.moveRestrictedRole}
+              >
+                {#each restricted.roles as r (r.id)}
+                  <option value={String(r.id)}>{r.name}</option>
+                {/each}
+              </select>
+            {/if}
+            {#if restricted.groups.length}
+              <label class="check">
+                <input type="radio" name="move-restrict" value="group" bind:group={restrictTo} />
+                <span>{t.issue.moveRestrictedGroup}</span>
+              </label>
+              <select
+                class="select"
+                bind:value={groupId}
+                disabled={restrictTo !== 'group'}
+                aria-label={t.issue.moveRestrictedGroup}
+              >
+                {#each restricted.groups as g (g.id)}
+                  <option value={String(g.id)}>{g.name}</option>
+                {/each}
+              </select>
+            {/if}
+          {/if}
+        </fieldset>
+      {/if}
     {:else if check}
       <p>{t.issue.moveSummary(issue.key, targetLabel)}</p>
       <ul class="notes">
@@ -338,7 +405,7 @@
       <button
         type="button"
         class="btn btn-primary"
-        disabled={busy || (step === 'project' && !target)}
+        disabled={busy || (step === 'project' && !target) || (step === 'choices' && stuck)}
         onclick={step === 'project' ? toChoices : toConfirm}
         >{busy ? t.adminArea.working : t.issue.moveNext}</button
       >
@@ -362,6 +429,25 @@
     padding: 6px 8px;
     min-height: 34px;
     display: flex;
+    align-items: center;
+  }
+
+  .restricted {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .restricted legend {
+    padding: 0;
+    margin-bottom: 8px;
+  }
+
+  .check {
+    display: flex;
+    gap: 8px;
     align-items: center;
   }
 

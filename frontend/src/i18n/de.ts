@@ -711,6 +711,12 @@ export const de: Messages = {
     moveAssignee: (from: string, to: string) =>
       `${from} kann im neuen Projekt nicht zugewiesen werden: Bearbeiter wird ${to}.`,
     moveNoProject: 'Es gibt kein anderes Projekt, in das er verschoben werden könnte.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'Kommentar oder Zeiteintrag ist', 'Kommentare und Zeiteinträge sind')} auf eine Rolle des aktuellen Projekts beschränkt. Eine Rolle gehört zu genau einem Projekt: Wählen Sie, wer diese Einträge nach dem Verschieben lesen darf.`,
+    moveRestrictedRole: 'Auf eine Rolle des neuen Projekts beschränkt lassen',
+    moveRestrictedGroup: 'Auf eine Gruppe beschränken',
+    moveRestrictedNone:
+      'Das neue Projekt hat keine Rolle mit Mitgliedern und Sie gehören keiner Gruppe an: Diese Einträge können ihre Beschränkung dort nicht behalten, der Vorgang kann daher nicht verschoben werden.',
   },
 
   comments: {

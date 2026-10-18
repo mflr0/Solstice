@@ -307,6 +307,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "Ein Teilvorgang wird mit seinem übergeordneten Vorgang verschoben: Verschieben Sie den übergeordneten Vorgang.",
 	IssueMoveChoiceNeeded:      "Vor dem Verschieben auswählen: %s.",
 	IssueMoveChanged:           "Der Vorgang wurde während des Verschiebens geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
+	IssueMoveRestrictedRefused: "Auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle können in einem anderen Projekt nicht unverändert bleiben.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

@@ -701,6 +701,12 @@ export const en = {
     moveAssignee: (from: string, to: string) =>
       `${from} can’t be assigned in the new project: the assignee becomes ${to}.`,
     moveNoProject: 'There is no other project to move it to.',
+    moveRestricted: (n: number) =>
+      `${plural(n, 'comment or time entry is', 'comments and time entries are')} restricted to a role of the current project. Roles belong to one project, so choose who can read these items after the move.`,
+    moveRestrictedRole: 'Keep them restricted to a role of the new project',
+    moveRestrictedGroup: 'Restrict them to a group',
+    moveRestrictedNone:
+      'The new project has no role with members and you belong to no group: these items can’t keep their restriction there, so the issue can’t be moved.',
   },
 
   comments: {

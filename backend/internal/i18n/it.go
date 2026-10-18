@@ -307,6 +307,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "Una sotto-attività si sposta con il suo padre: sposta il ticket padre.",
 	IssueMoveChoiceNeeded:      "Da scegliere prima di spostare: %s.",
 	IssueMoveChanged:           "Il ticket è cambiato durante lo spostamento. Ricaricalo e riprova.",
+	IssueMoveRestrictedRefused: "I commenti e i registri di lavoro riservati a un ruolo di questo progetto non possono restare invariati in un altro progetto.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

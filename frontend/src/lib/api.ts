@@ -56,6 +56,14 @@ export interface MoveParts {
   options: IdName[];
 }
 
+/** The comments and work logs restricted to a role of the current project, and what they can be restricted to instead. */
+export interface MoveRestricted {
+  comments: number;
+  worklogs: number;
+  roles: IdName[];
+  groups: IdName[];
+}
+
 /** The dry run of a move: what is still to choose, and what the move drops or changes. */
 export interface MoveCheck {
   ready: boolean;
@@ -67,6 +75,7 @@ export interface MoveCheck {
   affectsVersions?: MoveParts;
   fixVersions?: MoveParts;
   securityLevel?: MoveParts;
+  restricted?: MoveRestricted;
   droppedFields: string[];
   sprints: string[];
   assignee?: { from: UserRef | null; to: UserRef | null };
@@ -83,6 +92,8 @@ export interface MoveChoices {
   fixVersions?: number[];
   /** A level of the new project, or null for none. */
   securityLevel?: number | null;
+  /** A role of the new project, or a group, for what was restricted to a role of the current one. */
+  restricted?: { to: 'role'; role: number } | { to: 'group'; group: number };
 }
 
 export class ApiError extends Error {
