@@ -1735,6 +1735,8 @@ export const fr: Messages = {
     baseUrl: (url: string) => `Les liens des e-mails mènent à ${url}.`,
     baseUrlMissing:
       'L’adresse publique de Solstice n’est pas réglée : les e-mails partiront sans lien vers les tickets.',
+    credentialsNeedTls:
+      'Les réglages enregistrés envoient l’identifiant et le mot de passe sans chiffrement à un serveur qui n’est pas sur cette machine : aucun e-mail ne peut partir. Choisissez STARTTLS ou TLS, ou laissez l’identifiant vide. Seul un serveur sur cette machine est dispensé de chiffrement ; un relais d’un réseau privé exige lui aussi STARTTLS ou TLS.',
     problems: {
       hostRequired: 'Indiquez le serveur SMTP pour activer l’envoi.',
       portInvalid: 'Un nombre de 1 à 65535.',
@@ -2217,6 +2219,123 @@ export const fr: Messages = {
       nameRequired: 'Donnez un nom à la catégorie.',
       nameTooLong: 'Le nom est trop long (255 caractères au plus).',
       nameTaken: 'Une autre catégorie porte déjà ce nom.',
+    },
+  },
+
+  projectConfig: {
+    tabs: {
+      general: 'Général',
+      components: 'Composants',
+      versions: 'Versions',
+      notifications: 'Notifications',
+    },
+    leaveBody: 'Cet onglet a des modifications non enregistrées. Les abandonner ?',
+    general: {
+      title: 'Général',
+      intro:
+        'Le nom du projet, son responsable et la façon dont les nouveaux tickets sont traités.',
+      leadHint: 'Le responsable a tous les droits dans le projet.',
+      typesInUse: (list: string) =>
+        `Ces types sont encore utilisés par des tickets, ils ne peuvent donc pas être retirés : ${list}.`,
+      typeUsage: (name: string, issues: number) =>
+        `${name} (${plural(issues, 'ticket', 'tickets')})`,
+    },
+    problems: {
+      nameRequired: 'Donnez-lui un nom.',
+      nameTooLong: 'Le nom est trop long (255 caractères au plus).',
+      nameTaken: 'Un autre élément de ce projet porte déjà ce nom.',
+      startAfterRelease: 'La date de début ne peut pas être après la date de livraison.',
+    },
+    components: {
+      title: 'Composants',
+      intro:
+        'Les composants découpent un projet en parties, comme « API » ou « Facturation ». Un ticket peut appartenir à un ou plusieurs composants.',
+      new: 'Nouveau composant',
+      empty: 'Aucun composant pour l’instant',
+      emptyHint: 'Créez le premier pour classer les tickets du projet par partie.',
+      noLead: 'Aucun responsable',
+      namePlaceholder: 'API',
+      newTitle: 'Nouveau composant',
+      editTitle: (name: string) => `Modifier ${name}`,
+      assignee: 'Les nouveaux tickets sont assignés à',
+      assignees: {
+        project_default: 'Le choix du projet',
+        component_lead: 'Le responsable du composant',
+        project_lead: 'Le responsable du projet',
+        unassigned: 'Personne',
+      },
+      assigneeHint:
+        'Concerne un nouveau ticket créé sans assigné. Avec plusieurs composants, on prend le premier, par ordre alphabétique, qui désigne quelqu’un.',
+      created: (name: string) => `Composant ${name} créé.`,
+      saved: (name: string) => `Composant ${name} enregistré.`,
+      deleted: (name: string) => `Composant ${name} supprimé.`,
+      deleteTitle: (name: string) => `Supprimer ${name} ?`,
+      deleteUnused: 'Aucun ticket n’utilise ce composant.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'ticket utilise', 'tickets utilisent')} ce composant. Ils peuvent le perdre, ou passer à un autre composant.`,
+      moveLabel: 'Les tickets passent à',
+      moveNone: 'Nulle part : ils perdent simplement le composant',
+    },
+    versions: {
+      title: 'Versions',
+      intro:
+        'Les versions marquent les livraisons du produit. Un ticket indique quelle version le corrige et quelles versions il touche. L’ordre ici est celui des listes de versions.',
+      new: 'Nouvelle version',
+      empty: 'Aucune version pour l’instant',
+      emptyHint: 'Créez la première pour planifier le contenu de chaque livraison.',
+      orderHint: 'Utilisez les flèches pour changer l’ordre.',
+      start: 'Début',
+      release: 'Livraison',
+      state: 'État',
+      unresolved: (n: number) => `${plural(n, 'non résolu', 'non résolus')}`,
+      namePlaceholder: '1.0',
+      newTitle: 'Nouvelle version',
+      editTitle: (name: string) => `Modifier ${name}`,
+      startDate: 'Date de début',
+      releaseDate: 'Date de livraison',
+      created: (name: string) => `Version ${name} créée.`,
+      saved: (name: string) => `Version ${name} enregistrée.`,
+      releaseAction: 'Livrer',
+      unreleaseAction: 'Annuler la livraison',
+      released: (name: string) => `${name} livrée.`,
+      unreleased: (name: string) => `${name} n’est plus livrée.`,
+      releaseTitle: (name: string) => `Livrer ${name}`,
+      releaseUnresolved: (n: number) =>
+        `${plural(n, 'ticket corrigé dans cette version n’est pas résolu', 'tickets corrigés dans cette version ne sont pas résolus')}.`,
+      releaseMove: 'Les tickets non résolus passent à',
+      releaseKeep: 'Nulle part : ils restent dans cette version',
+      releaseNoUnresolved: 'Tous les tickets corrigés dans cette version sont résolus.',
+      archived: (name: string) => `${name} archivée.`,
+      unarchived: (name: string) => `${name} n’est plus archivée.`,
+      mergeAction: 'Fusionner',
+      mergeTitle: (name: string) => `Fusionner ${name}`,
+      mergeBody: (name: string) =>
+        `Tous les tickets qui utilisent ${name}, comme version corrigée ou touchée, passent à la version que vous choisissez. ${name} est ensuite supprimée.`,
+      mergeInto: 'Fusionner dans',
+      mergeNoOther: 'Il n’y a pas d’autre version dans laquelle fusionner.',
+      merged: (name: string, into: string) => `${name} fusionnée dans ${into}.`,
+      deleteTitle: (name: string) => `Supprimer ${name} ?`,
+      deleteUnused: 'Aucun ticket n’utilise cette version.',
+      deleteUsed: (n: number) =>
+        `${plural(n, 'ticket utilise', 'tickets utilisent')} cette version. Ils peuvent la perdre, ou recevoir une autre version à sa place.`,
+      deleteFix: 'Les tickets qu’elle corrige reçoivent',
+      deleteAffects: 'Les tickets qu’elle touche reçoivent',
+      deleteNone: 'Aucune version : ils la perdent simplement',
+      deleted: (name: string) => `Version ${name} supprimée.`,
+    },
+    notifications: {
+      title: 'Notifications',
+      intro:
+        'Les e-mails sur les tickets de ce projet. Chacun choisit toujours dans ses propres réglages les événements qui lui parviennent.',
+      enabled: 'Envoyer des notifications par e-mail pour ce projet',
+      enabledHint:
+        'Si cette case est décochée, personne ne reçoit d’e-mail sur les tickets de ce projet, quels que soient ses propres réglages.',
+      extraTitle: 'Destinataires supplémentaires',
+      extraIntro:
+        'Un groupe ou un rôle coché pour un événement reçoit aussi l’e-mail correspondant dans ce projet, en plus des personnes qui suivent déjà le ticket.',
+      recipient: 'Groupe ou rôle',
+      none: 'Il n’y a pas encore de groupe ni de rôle à choisir.',
+      cell: (who: string, event: string) => `${who} : ${event}`,
     },
   },
 

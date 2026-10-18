@@ -11,6 +11,7 @@ const (
 	RequestXSRFHeader           Key = "RequestXSRFHeader"
 	RequestInvalid              Key = "RequestInvalid"
 	RequestTooManyAttempts      Key = "RequestTooManyAttempts"
+	RequestTooManyStreams       Key = "RequestTooManyStreams"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
 	RequestBodyTooLargeLimit    Key = "RequestBodyTooLargeLimit"
@@ -368,6 +369,7 @@ const (
 	AttachmentTooLarge      Key = "AttachmentTooLarge"
 	AttachmentNotImported   Key = "AttachmentNotImported"
 	AttachmentFileMissing   Key = "AttachmentFileMissing"
+	AttachmentStorageQuota  Key = "AttachmentStorageQuota"
 )
 
 // Statuses and their categories.
@@ -536,6 +538,7 @@ const (
 	MailInviteAction          Key = "MailInviteAction"
 	MailInviteExpiry          Key = "MailInviteExpiry"
 	MailInviteWhy             Key = "MailInviteWhy"
+	MailCredentialsNeedTLS    Key = "MailCredentialsNeedTLS"
 )
 
 // Notification preferences and notification e-mails.

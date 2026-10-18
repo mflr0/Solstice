@@ -24,6 +24,7 @@ import (
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
+	"solstice/internal/worker"
 )
 
 // Service turns events into e-mails.
@@ -434,14 +435,16 @@ func (s *Service) Run(ctx context.Context) {
 			return
 		case <-tick.C:
 		}
-		if err := s.FlushDue(ctx); err != nil && ctx.Err() == nil {
-			s.log.Error("writing notifications failed", "err", err)
-		}
-		if time.Since(scheduled) >= time.Minute {
-			scheduled = time.Now()
-			if err := s.RunSchedules(ctx); err != nil && ctx.Err() == nil {
-				s.log.Error("scheduled e-mails failed", "err", err)
+		worker.Guard(s.log, "notify", func() {
+			if err := s.FlushDue(ctx); err != nil && ctx.Err() == nil {
+				s.log.Error("writing notifications failed", "err", err)
 			}
-		}
+			if time.Since(scheduled) >= time.Minute {
+				scheduled = time.Now()
+				if err := s.RunSchedules(ctx); err != nil && ctx.Err() == nil {
+					s.log.Error("scheduled e-mails failed", "err", err)
+				}
+			}
+		})
 	}
 }

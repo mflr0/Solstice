@@ -99,6 +99,7 @@ and 503 otherwise.
 | `SOLSTICE_HTTP_TRUSTEDPROXIES` | none | reverse proxies, see below |
 | `SOLSTICE_HTTP_SHUTDOWNTIMEOUT` | `10s` | time given to requests and e-mails in progress on stop |
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | size of one upload; `KB`, `MB`, `GB` count in 1000s, `KiB`, `MiB`, `GiB` in 1024s. Raise the proxy's limit too (`client_max_body_size` for nginx) |
+| `SOLSTICE_HTTP_MAXSTORAGE` | `0` | total size of all attachments; `0` means no limit |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
 
@@ -112,10 +113,13 @@ database on another machine, add `?tls=true` (certificate checked), or
 Solstice refuses to start on one. Error messages never print the password.
 
 Put an HTTPS reverse proxy in front of Solstice. The session cookie becomes
-`Secure` behind a proxy that sends `X-Forwarded-Proto: https`. Failed sign-ins
-are counted per client address: list your proxy in `SOLSTICE_HTTP_TRUSTEDPROXIES`
-(IP addresses or CIDR ranges, separated by commas, empty by default) so that
-Solstice reads the client from `X-Forwarded-For` and not the proxy's address
+`Secure` behind a proxy that sends `X-Forwarded-Proto: https`, but only if that
+proxy is listed in `SOLSTICE_HTTP_TRUSTEDPROXIES` (IP addresses or CIDR ranges,
+separated by commas, empty by default) or `SOLSTICE_HTTP_BASEURL` starts with
+`https://`. Without either, the header is ignored: cookies are not `Secure`,
+links in REST responses are `http://`, and Solstice logs a warning (at most once
+an hour). Failed sign-ins are counted per client address: the same list lets
+Solstice read the client from `X-Forwarded-For` and not the proxy's address
 for everyone. See `deploy/proxy/README.md`.
 
 The SMTP password and webhook secrets are encrypted with the key in
@@ -181,8 +185,9 @@ notification settings).
 
 - SMTP server: set in the administration (host, port, security none /
   STARTTLS / TLS, user name, sender), with a test message that shows the
-  server's exact error. The public address (`SOLSTICE_HTTP_BASEURL`) is used for
-  links in e-mails; without it, e-mails go out without links.
+  server's exact error. A user name is sent only over TLS or STARTTLS, except
+  to a server on the same machine. The public address (`SOLSTICE_HTTP_BASEURL`)
+  is used for links in e-mails; without it, e-mails go out without links.
 - Notifications: watchers, reporter, assignee and mentioned people
   (`[~username]`). Each person picks their events, immediate delivery
   (changes to the same issue less than two minutes apart go in one e-mail) or

@@ -100,7 +100,7 @@ func TestKeys(t *testing.T) {
 		"SOLSTICE_DB_URL", "SOLSTICE_DB_MAXOPENCONNS", "SOLSTICE_DB_MAXIDLECONNS", "SOLSTICE_DB_CONNMAXLIFETIME",
 		"SOLSTICE_LOG_LEVEL", "SOLSTICE_LOG_FORMAT",
 		"SOLSTICE_HTTP_ADDR", "SOLSTICE_HTTP_BASEURL", "SOLSTICE_HTTP_TRUSTEDPROXIES", "SOLSTICE_HTTP_SHUTDOWNTIMEOUT",
-		"SOLSTICE_HTTP_MAXUPLOAD"}
+		"SOLSTICE_HTTP_MAXUPLOAD", "SOLSTICE_HTTP_MAXSTORAGE"}
 	if !reflect.DeepEqual(Keys, want) {
 		t.Errorf("got %v\nwant %v", Keys, want)
 	}
@@ -129,6 +129,7 @@ func TestLoadEverySetting(t *testing.T) {
 		"SOLSTICE_HTTP_TRUSTEDPROXIES":  "10.0.0.0/8",
 		"SOLSTICE_HTTP_SHUTDOWNTIMEOUT": "30s",
 		"SOLSTICE_HTTP_MAXUPLOAD":       "1GiB",
+		"SOLSTICE_HTTP_MAXSTORAGE":      "10GiB",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +140,8 @@ func TestLoadEverySetting(t *testing.T) {
 		DB:  DBSettings{URL: "mysql://u:p@db/s", MaxOpenConns: 40, MaxIdleConns: 0, ConnMaxLifetime: time.Hour},
 		Log: LogSettings{Level: slog.LevelDebug, Format: LogJSON},
 		HTTP: HTTPSettings{Addr: "127.0.0.1:9000", BaseURL: "https://t.example",
-			TrustedProxies: Proxies{netip.MustParsePrefix("10.0.0.0/8")}, ShutdownTimeout: 30 * time.Second, MaxUpload: 1 << 30},
+			TrustedProxies: Proxies{netip.MustParsePrefix("10.0.0.0/8")}, ShutdownTimeout: 30 * time.Second,
+			MaxUpload: 1 << 30, MaxStorage: 10 << 30},
 	}
 	if !reflect.DeepEqual(c.Settings, want) {
 		t.Errorf("got %+v\nwant %+v", c.Settings, want)
@@ -174,6 +176,24 @@ func TestLoadInvalid(t *testing.T) {
 	if _, err := Load(env(map[string]string{KeyConfig: path})); err == nil || !strings.Contains(err.Error(), path) ||
 		strings.Contains(err.Error(), "s3cret") {
 		t.Errorf("file: %v", err)
+	}
+}
+
+func TestCheckRefusesNegativeSizes(t *testing.T) {
+	for key, set := range map[string]func(*Settings){
+		"SOLSTICE_HTTP_MAXUPLOAD":  func(s *Settings) { s.HTTP.MaxUpload = -1 },
+		"SOLSTICE_HTTP_MAXSTORAGE": func(s *Settings) { s.HTTP.MaxStorage = -1 },
+	} {
+		s := Defaults()
+		set(&s)
+		if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), key+":") {
+			t.Errorf("%s negative: %v, want an error naming the key", key, err)
+		}
+	}
+	s := Defaults()
+	s.HTTP.MaxStorage = 0
+	if err := s.check(); err != nil {
+		t.Errorf("no storage limit: %v", err)
 	}
 }
 
