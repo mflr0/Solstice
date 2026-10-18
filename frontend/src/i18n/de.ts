@@ -1340,7 +1340,6 @@ export const de: Messages = {
       board: 'Boards',
       sprint: 'Sprints',
       filter: 'Filter',
-      issue: 'Vorgänge',
       issuetype: 'Vorgangstypen',
       priority: 'Prioritäten',
       resolution: 'Lösungen',
@@ -1351,6 +1350,7 @@ export const de: Messages = {
       update: 'Updates',
       setup: 'Einrichtung',
       webhook: 'Webhooks',
+      issue: 'Vorgänge',
     },
     actions: {
       'login.success': 'Angemeldet',
@@ -1408,7 +1408,6 @@ export const de: Messages = {
       'sprint.update': 'Sprint geändert',
       'sprint.delete': 'Sprint gelöscht',
       'filter.share': 'Freigabe eines Filters geändert',
-      'issue.move': 'Vorgang verschoben',
       'issuetype.create': 'Vorgangstyp erstellt',
       'issuetype.update': 'Vorgangstyp geändert',
       'issuetype.delete': 'Vorgangstyp gelöscht',
@@ -1445,6 +1444,7 @@ export const de: Messages = {
       'update.denied': 'Update abgelehnt',
       'update.result': 'Update abgeschlossen',
       'setup.complete': 'Einrichtung abgeschlossen',
+      'issue.move': 'Vorgang verschoben',
     },
     targets: {
       user: 'Konto',
@@ -1455,7 +1455,6 @@ export const de: Messages = {
       board: 'Board',
       sprint: 'Sprint',
       filter: 'Filter',
-      issue: 'Vorgang',
       settings: 'Einstellung',
       import: 'Import',
       version: 'Version',
@@ -1469,6 +1468,7 @@ export const de: Messages = {
       priority: 'Priorität',
       resolution: 'Lösung',
       linktype: 'Verknüpfungstyp',
+      issue: 'Vorgang',
     },
     detailKeys: {
       name: 'Name',

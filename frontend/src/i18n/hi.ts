@@ -1326,7 +1326,6 @@ export const hi: Messages = {
       board: 'बोर्ड',
       sprint: 'स्प्रिंट',
       filter: 'फ़िल्टर',
-      issue: 'टिकट',
       issuetype: 'टिकट के प्रकार',
       priority: 'प्राथमिकताएँ',
       resolution: 'रिज़ॉल्यूशन',
@@ -1337,6 +1336,7 @@ export const hi: Messages = {
       update: 'अपडेट',
       setup: 'सेटअप',
       webhook: 'वेबहुक',
+      issue: 'टिकट',
     },
     actions: {
       'login.success': 'साइन इन किया',
@@ -1394,7 +1394,6 @@ export const hi: Messages = {
       'sprint.update': 'स्प्रिंट बदला',
       'sprint.delete': 'स्प्रिंट मिटाया',
       'filter.share': 'फ़िल्टर की साझेदारी बदली',
-      'issue.move': 'टिकट दूसरे प्रोजेक्ट में ले जाया गया',
       'issuetype.create': 'टिकट का प्रकार बनाया',
       'issuetype.update': 'टिकट का प्रकार बदला',
       'issuetype.delete': 'टिकट का प्रकार मिटाया',
@@ -1431,6 +1430,7 @@ export const hi: Messages = {
       'update.denied': 'अपडेट अस्वीकार किया गया',
       'update.result': 'अपडेट पूरा हुआ',
       'setup.complete': 'सेटअप पूरा हुआ',
+      'issue.move': 'टिकट दूसरे प्रोजेक्ट में ले जाया गया',
     },
     targets: {
       user: 'खाता',
@@ -1441,7 +1441,6 @@ export const hi: Messages = {
       board: 'बोर्ड',
       sprint: 'स्प्रिंट',
       filter: 'फ़िल्टर',
-      issue: 'टिकट',
       settings: 'सेटिंग',
       import: 'आयात',
       version: 'वर्ज़न',
@@ -1455,6 +1454,7 @@ export const hi: Messages = {
       priority: 'प्राथमिकता',
       resolution: 'रिज़ॉल्यूशन',
       linktype: 'लिंक का प्रकार',
+      issue: 'टिकट',
     },
     detailKeys: {
       name: 'नाम',

@@ -1332,7 +1332,6 @@ export const fr: Messages = {
       board: 'Tableaux',
       sprint: 'Sprints',
       filter: 'Filtres',
-      issue: 'Tickets',
       issuetype: 'Types de tickets',
       priority: 'Priorités',
       resolution: 'Résolutions',
@@ -1343,6 +1342,7 @@ export const fr: Messages = {
       update: 'Mises à jour',
       setup: 'Installation',
       webhook: 'Webhooks',
+      issue: 'Tickets',
     },
     actions: {
       'login.success': 'Connexion',
@@ -1400,7 +1400,6 @@ export const fr: Messages = {
       'sprint.update': 'Sprint modifié',
       'sprint.delete': 'Sprint supprimé',
       'filter.share': 'Partage de filtre modifié',
-      'issue.move': 'Ticket déplacé',
       'issuetype.create': 'Type de ticket créé',
       'issuetype.update': 'Type de ticket modifié',
       'issuetype.delete': 'Type de ticket supprimé',
@@ -1437,6 +1436,7 @@ export const fr: Messages = {
       'update.denied': 'Mise à jour refusée',
       'update.result': 'Mise à jour terminée',
       'setup.complete': 'Installation terminée',
+      'issue.move': 'Ticket déplacé',
     },
     targets: {
       user: 'Compte',
@@ -1447,7 +1447,6 @@ export const fr: Messages = {
       board: 'Tableau',
       sprint: 'Sprint',
       filter: 'Filtre',
-      issue: 'Ticket',
       settings: 'Réglage',
       import: 'Import',
       version: 'Version',
@@ -1461,6 +1460,7 @@ export const fr: Messages = {
       priority: 'Priorité',
       resolution: 'Résolution',
       linktype: 'Type de lien',
+      issue: 'Ticket',
     },
     detailKeys: {
       name: 'Nom',

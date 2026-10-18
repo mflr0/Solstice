@@ -1325,7 +1325,6 @@ export const en = {
       board: 'Boards',
       sprint: 'Sprints',
       filter: 'Filters',
-      issue: 'Issues',
       issuetype: 'Issue types',
       priority: 'Priorities',
       resolution: 'Resolutions',
@@ -1336,6 +1335,7 @@ export const en = {
       update: 'Updates',
       setup: 'Setup',
       webhook: 'Webhooks',
+      issue: 'Issues',
     },
     actions: {
       'login.success': 'Signed in',
@@ -1393,7 +1393,6 @@ export const en = {
       'sprint.update': 'Sprint changed',
       'sprint.delete': 'Sprint deleted',
       'filter.share': 'Filter sharing changed',
-      'issue.move': 'Issue moved',
       'issuetype.create': 'Issue type created',
       'issuetype.update': 'Issue type changed',
       'issuetype.delete': 'Issue type deleted',
@@ -1430,6 +1429,7 @@ export const en = {
       'update.denied': 'Update refused',
       'update.result': 'Update finished',
       'setup.complete': 'Setup completed',
+      'issue.move': 'Issue moved',
     },
     targets: {
       user: 'Account',
@@ -1440,7 +1440,6 @@ export const en = {
       board: 'Board',
       sprint: 'Sprint',
       filter: 'Filter',
-      issue: 'Issue',
       settings: 'Setting',
       import: 'Import',
       version: 'Version',
@@ -1454,6 +1453,7 @@ export const en = {
       priority: 'Priority',
       resolution: 'Resolution',
       linktype: 'Link type',
+      issue: 'Issue',
     },
     detailKeys: {
       name: 'Name',
