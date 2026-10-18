@@ -100,7 +100,8 @@ func (c *compiler) clause(cl Clause) (string, error) {
 	}
 	switch strings.ToLower(cl.Field) {
 	case "project":
-		return c.lookup(cl, "i.project_id", "SELECT id FROM projects WHERE pkey IN (%s) OR name IN (%s) OR id IN (%s)", upper)
+		return c.lookup(cl, "i.project_id", "SELECT pk.id FROM projects pk WHERE "+sqlq.ProjectKey("pk", "%s")+
+			" OR pk.name IN (%s) OR pk.id IN (%s)", upper)
 	case "status":
 		return c.lookup(cl, "i.status_id", "SELECT id FROM statuses WHERE id IN (%s) OR name IN (%s) OR id IN (%s)", nil)
 	case "statuscategory":
@@ -255,8 +256,13 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 	match := ""
 	if len(texts) > 0 {
 		m := sqlq.Marks(len(texts))
-		match = col + " IN (" + fmt.Sprintf(tmpl, m, m, m) + ")"
-		for range 3 {
+		n := strings.Count(tmpl, "%s")
+		marks := make([]any, n)
+		for i := range marks {
+			marks[i] = m
+		}
+		match = col + " IN (" + fmt.Sprintf(tmpl, marks...) + ")"
+		for range n {
 			for _, t := range texts {
 				if norm != nil {
 					t = norm(t)
@@ -567,8 +573,8 @@ func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	for _, t := range texts {
 		if m := keyPattern.FindStringSubmatch(t); m != nil {
 			num, _ := strconv.ParseInt(m[2], 10, 64)
-			conds = append(conds, "("+pa+".pkey = ? AND "+a+".num = ?)")
-			c.arg(strings.ToUpper(m[1]), num)
+			conds = append(conds, "("+sqlq.ProjectKey(pa, "?")+" AND "+a+".num = ?)")
+			c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
 			continue
 		}
 		if id, err := strconv.ParseInt(t, 10, 64); err == nil {
@@ -607,8 +613,8 @@ func (c *compiler) key(cl Clause) (string, error) {
 			return "", fail(i18n.JQLIssueKeyInvalid, texts[0])
 		}
 		num, _ := strconv.ParseInt(m[2], 10, 64)
-		c.arg(strings.ToUpper(m[1]), num)
-		return "(p.pkey = ? AND i.num " + cl.Op + " ?)", nil
+		c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
+		return "(" + sqlq.ProjectKey("p", "?") + " AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")
 }
@@ -964,12 +970,13 @@ func (c *compiler) versions(cl Clause, kind string) (string, error) {
 			return ""
 		}
 		m := sqlq.Marks(len(args))
-		for range 2 {
+		for range 3 {
 			for _, a := range args {
 				c.arg(a)
 			}
 		}
-		return " AND " + alias + ".project_id IN (SELECT id FROM projects WHERE pkey IN (" + m + ") OR name IN (" + m + "))"
+		return " AND " + alias + ".project_id IN (SELECT pk.id FROM projects pk WHERE " + sqlq.ProjectKey("pk", m) +
+			" OR pk.name IN (" + m + "))"
 	}
 	var conds []string
 	empty := false

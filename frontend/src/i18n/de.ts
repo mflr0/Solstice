@@ -1406,6 +1406,7 @@ export const de: Messages = {
       'project.archive': 'Projekt archiviert',
       'project.unarchive': 'Projekt wiederhergestellt',
       'project.delete': 'Projekt gelöscht',
+      'project.rename': 'Projektschlüssel geändert',
       'project.permissions': 'Projektberechtigungen geändert',
       'project.roles': 'Projektrollen geändert',
       'category.create': 'Projektkategorie erstellt',
@@ -2267,11 +2268,19 @@ export const de: Messages = {
         : 'Das leere Projekt wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
     typeToConfirm: (key: string) => `Zur Bestätigung ${key} eingeben`,
     deleted: (name: string) => `„${name}“ wurde gelöscht.`,
+    changeKey: 'Schlüssel ändern',
+    changeKeyTitle: (name: string) => `Schlüssel von ${name} ändern`,
+    changeKeyBody: (key: string) =>
+      `Alle Vorgänge des Projekts erhalten den neuen Schlüssel. Der alte Schlüssel bleibt reserviert und funktioniert weiter: ${key}-12 öffnet den Vorgang nach wie vor, in Links, JQL-Suchen und der REST-API. Gespeicherte Filter und Boards, die ${key} nennen, bleiben unverändert.`,
+    newKey: 'Neuer Schlüssel',
+    keyUnchanged: 'Das ist der aktuelle Schlüssel.',
+    keyChanged: (name: string, oldKey: string, newKey: string) =>
+      `${name}: ${oldKey} heißt jetzt ${newKey}.`,
     createTitle: 'Neues Projekt',
     create: 'Projekt anlegen',
     namePlaceholder: 'Webseite',
     keyHint:
-      'Beginnt jeden Vorgangsschlüssel (SW-1). 2 bis 10 Großbuchstaben oder Ziffern, beginnend mit einem Buchstaben. Er lässt sich später nicht mehr ändern.',
+      'Beginnt jeden Vorgangsschlüssel (SW-1). 2 bis 10 Großbuchstaben oder Ziffern, beginnend mit einem Buchstaben. Sie können ihn später in der Projektverwaltung ändern.',
     keyChecking: 'Wird geprüft…',
     keyFree: (key: string) => `${key} ist verfügbar.`,
     template: 'Start-Workflow',

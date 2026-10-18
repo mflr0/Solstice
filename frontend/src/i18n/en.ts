@@ -1390,6 +1390,7 @@ export const en = {
       'project.archive': 'Project archived',
       'project.unarchive': 'Project unarchived',
       'project.delete': 'Project deleted',
+      'project.rename': 'Project key changed',
       'project.permissions': 'Project permissions changed',
       'project.roles': 'Project roles changed',
       'category.create': 'Project category created',
@@ -2231,11 +2232,19 @@ export const en = {
         : 'This permanently deletes the empty project. This cannot be undone.',
     typeToConfirm: (key: string) => `Type ${key} to confirm`,
     deleted: (name: string) => `${name} deleted.`,
+    changeKey: 'Change key',
+    changeKeyTitle: (name: string) => `Change the key of ${name}`,
+    changeKeyBody: (key: string) =>
+      `Every issue of the project takes the new key. The old key stays reserved and keeps working: ${key}-12 still opens the issue, in links, JQL searches and the REST API. Saved filters and boards that name ${key} are left as they are.`,
+    newKey: 'New key',
+    keyUnchanged: 'This is the current key.',
+    keyChanged: (name: string, oldKey: string, newKey: string) =>
+      `${name}: ${oldKey} is now ${newKey}.`,
     createTitle: 'New project',
     create: 'Create the project',
     namePlaceholder: 'Website',
     keyHint:
-      'Starts every issue key (SW-1). 2 to 10 capital letters or digits, beginning with a letter. It cannot be changed afterwards.',
+      'Starts every issue key (SW-1). 2 to 10 capital letters or digits, beginning with a letter. You can change it later in the projects administration.',
     keyChecking: 'Checking…',
     keyFree: (key: string) => `${key} is available.`,
     template: 'Starting workflow',

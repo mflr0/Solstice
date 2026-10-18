@@ -74,6 +74,7 @@ const (
 	ProjectArchive       = "project.archive"
 	ProjectUnarchive     = "project.unarchive"
 	ProjectDelete        = "project.delete"
+	ProjectRename        = "project.rename"
 	CategoryCreate       = "category.create"
 	CategoryUpdate       = "category.update"
 	CategoryDelete       = "category.delete"
