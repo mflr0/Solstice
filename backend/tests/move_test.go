@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"net/http"
@@ -411,6 +412,8 @@ func TestMoveHistoryNamesTheDroppedOption(t *testing.T) {
 func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 	e := newMoveEnv(t)
 	srcCounter := dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.srcID)
+	// A status the target lacks, so that the sub-task cannot keep it.
+	e.admin.call("PATCH", "/api/issues/"+e.child, map[string]any{"status": e.inReview}, 200, nil)
 	var moved struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", e.allChoices, 200, &moved)
 	newKey, newChild := e.dst+"-1", e.dst+"-2"
@@ -530,7 +533,7 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 		t.Error("no history line for the security level")
 	}
 	e.admin.call("GET", "/api/issues/"+newChild+"/history", nil, 200, &history)
-	if !historyHas(history, "Key") || !historyHas(history, "issuetype") {
+	if !historyHas(history, "Key") || !historyHas(history, "issuetype") || !historyHas(history, "status") {
 		t.Errorf("sub-task history: %+v", history)
 	}
 
@@ -1395,5 +1398,310 @@ func TestMoveKeepsItsOldKeyFromBeingGivenToAnotherProject(t *testing.T) {
 	}
 	if status, _ := e.admin.do("POST", "/api/projects", map[string]any{"key": e.src, "name": unique("Réutilisé ")}); status != 409 {
 		t.Errorf("creating a project with that key: %d, want 409", status)
+	}
+}
+
+func TestMoveSubtasksKeepWhatTheTargetHasAndLoseTheRest(t *testing.T) {
+	e := newMoveEnv(t)
+	resolution := pick(t, `SELECT id FROM resolutions ORDER BY position, id LIMIT 1`)
+	closed := pick(t, `SELECT id FROM statuses WHERE LOWER(name) = 'closed' ORDER BY position, id LIMIT 1`)
+	done := pick(t, `SELECT id FROM statuses WHERE LOWER(name) = 'done' ORDER BY position, id LIMIT 1`)
+	var made struct{ Key string }
+	e.admin.call("POST", "/api/issues", map[string]any{"project": e.src, "type": e.subSrc, "summary": "Sous-tâche terminée",
+		"parent": e.issue}, 201, &made)
+	finished := issueIDOf(t, made.Key)
+	// The target has Done, not Closed.
+	for id, status := range map[int64]string{e.childID: closed, finished: done} {
+		moveInsert(t, `UPDATE issues SET status_id = ?, resolution_id = ?, resolved_at = NOW(3) WHERE id = ?`, status, resolution, id)
+	}
+	moveInsert(t, `INSERT INTO issue_components (issue_id, component_id) VALUES (?, ?), (?, ?)`, e.childID, e.apiSrc, e.childID, e.legacySrc)
+	moveInsert(t, `INSERT INTO issue_versions (issue_id, version_id, kind) VALUES (?, ?, 'affects'), (?, ?, 'fix')`,
+		e.childID, e.v1Src, e.childID, e.v2Src)
+
+	c := e.check(e.admin, e.issue, e.allChoices)
+	if c.Subtasks.Count != 2 || c.Subtasks.Reset != 1 || c.Subtasks.Lost != 2 {
+		t.Errorf("sub-tasks in the dry run: %+v, want 2 of them, 1 reset, 2 lost", c.Subtasks)
+	}
+	var moved struct{ Key string }
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", e.allChoices, 200, &moved)
+
+	var status string
+	var resolved sql.NullString
+	var resolvedAt sql.NullTime
+	row := func(id int64) {
+		t.Helper()
+		if err := testDB.QueryRow(`SELECT status_id, resolution_id, resolved_at FROM issues WHERE id = ?`, id).
+			Scan(&status, &resolved, &resolvedAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	row(e.childID)
+	if status != e.toDo || resolved.Valid || resolvedAt.Valid {
+		t.Errorf("sub-task in a status the target lacks: %q, resolution %+v, resolved at %+v, want the first status and none",
+			status, resolved, resolvedAt)
+	}
+	row(finished)
+	if status != done || resolved.String != resolution || !resolvedAt.Valid {
+		t.Errorf("sub-task in a status the target has: %q, resolution %+v, resolved at %+v", status, resolved, resolvedAt)
+	}
+
+	var components, affects, fix []string
+	for query, into := range map[string]*[]string{
+		`SELECT c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id WHERE ic.issue_id = ?`:                   &components,
+		`SELECT v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id WHERE iv.issue_id = ? AND iv.kind = 'affects'`: &affects,
+		`SELECT v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id WHERE iv.issue_id = ? AND iv.kind = 'fix'`:     &fix,
+	} {
+		rows, err := testDB.Query(query, e.childID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var name string
+			rows.Scan(&name)
+			*into = append(*into, name)
+		}
+		rows.Close()
+	}
+	if !slices.Equal(components, []string{"api"}) || !slices.Equal(affects, []string{"1.0"}) || len(fix) != 0 {
+		t.Errorf("sub-task parts after the move: components %v, affects %v, fix %v", components, affects, fix)
+	}
+
+	var history []historyEntry
+	e.admin.call("GET", "/api/issues/"+e.dst+"-2/history", nil, 200, &history)
+	for _, field := range []string{"status", "resolution", "Component", "Fix Version"} {
+		if !historyHas(history, field) {
+			t.Errorf("no history line for %s on the sub-task", field)
+		}
+	}
+}
+
+func TestMoveLeavesNothingWhenAWriteFails(t *testing.T) {
+	e := newMoveEnv(t)
+	// The target's counter lags behind: the head of the move takes a free key and the sub-task a taken one.
+	var other struct{ Key string }
+	e.admin.call("POST", "/api/issues", map[string]any{"project": e.dst, "type": e.typeB, "summary": "Déjà là"}, 201, &other)
+	moveInsert(t, `UPDATE issues SET num = 2 WHERE id = ?`, issueIDOf(t, other.Key))
+	moveInsert(t, `UPDATE projects SET issue_counter = 0 WHERE id = ?`, e.dstID)
+
+	if status, body := e.admin.do("POST", "/api/issues/"+e.issue+"/move", e.allChoices); status < 500 {
+		t.Fatalf("the move onto a taken key: %d %s, want a server error", status, body)
+	}
+	if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id IN (?, ?) AND project_id = ? AND status_id = ?`,
+		e.issueID, e.childID, e.srcID, e.inReview) != 1 ||
+		dbInt(t, `SELECT COUNT(*) FROM issues WHERE id = ? AND project_id = ?`, e.childID, e.srcID) != 1 {
+		t.Error("the issues are not where they were, or not as they were")
+	}
+	if dbInt(t, `SELECT issue_counter FROM projects WHERE id = ?`, e.dstID) != 0 ||
+		dbInt(t, `SELECT COUNT(*) FROM moved_issue_keys WHERE issue_id IN (?, ?)`, e.issueID, e.childID) != 0 ||
+		dbInt(t, `SELECT COUNT(*) FROM change_items ci JOIN change_groups cg ON cg.id = ci.group_id
+			WHERE cg.issue_id IN (?, ?) AND ci.field = 'Key'`, e.issueID, e.childID) != 0 ||
+		dbInt(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'issue.move' AND details LIKE ?`, "%"+e.issue+"%") != 0 {
+		t.Error("the failed move left a counter, an old key, a history line or an audit entry")
+	}
+}
+
+// moveWhile starts a move that waits for a lock on one issue, lets change edit
+// the data while it waits, and returns the answer of the move.
+func (e *moveEnv) moveWhile(lock int64, body map[string]any, change func(tx *sql.Tx)) int {
+	e.t.Helper()
+	tx, err := testDB.Begin()
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`SELECT id FROM issues WHERE id = ? FOR UPDATE`, lock); err != nil {
+		e.t.Fatal(err)
+	}
+	answer := make(chan int, 1)
+	go func() {
+		status, _ := e.admin.do("POST", "/api/issues/"+e.issue+"/move", body)
+		answer <- status
+	}()
+	time.Sleep(time.Second)
+	change(tx)
+	if err := tx.Commit(); err != nil {
+		e.t.Fatal(err)
+	}
+	return <-answer
+}
+
+func TestMoveRefusesWhenASubtaskOrAnItemChangedAfterThePlan(t *testing.T) {
+	e := newRestrictedMove(t)
+	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
+	body := maps.Clone(e.allChoices)
+	body["restricted"] = map[string]any{"to": "group", "group": developers}
+	stayed := func(why string) {
+		t.Helper()
+		if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id IN (?, ?) AND project_id = ?`, e.issueID, e.childID, e.srcID) != 2 {
+			t.Fatalf("%s: the issues moved all the same", why)
+		}
+	}
+
+	if status := e.moveWhile(e.childID, body, func(tx *sql.Tx) {
+		tx.Exec(`UPDATE issues SET summary = 'Changée entre-temps', updated_at = NOW(3) WHERE id = ?`, e.childID)
+	}); status != 409 {
+		t.Errorf("a sub-task edited after the plan: %d, want 409", status)
+	}
+	stayed("a sub-task edited after the plan")
+
+	if status := e.moveWhile(e.issueID, body, func(tx *sql.Tx) {
+		tx.Exec(`INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_role_id)
+			VALUES (?, ?, 'Réservé, arrivé entre-temps', NOW(3), NOW(3), ?)`, e.issueID, userID(t, "admin"), e.srcRole)
+	}); status != 409 {
+		t.Errorf("a restricted comment added after the plan: %d, want 409", status)
+	}
+	stayed("a restricted comment added after the plan")
+
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
+}
+
+func TestMoveIsAnnouncedToWatchersWhoSeeTheTargetAndToWebhooks(t *testing.T) {
+	env := newNotifyEnv(t)
+	e := newMoveEnv(t)
+	admin := env.login("admin", "admin")
+	paul := env.login("paul.martin", "motdepasse")
+	chloe := env.login("chloe.simon", "motdepasse")
+	admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	paul.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
+	chloe.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
+	rc := newHookReceiver(t)
+	admin.call("POST", "/api/admin/webhooks", map[string]any{"name": unique("Déplacements "), "url": rc.srv.URL,
+		"events": []string{"jira:issue_updated"}}, 201, nil)
+	body := maps.Clone(e.allChoices)
+	delete(body, "securityLevel")
+	admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
+
+	mails := env.deliver()
+	if got := to(mails, "paul.martin@exemple.fr"); len(got) == 0 || !strings.Contains(got[0].Text, e.dst+"-1") {
+		t.Errorf("a watcher who sees the target: %+v", got)
+	}
+	for _, m := range to(mails, "chloe.simon@exemple.fr") {
+		t.Errorf("a watcher who does not see the target was mailed:\n%s", m.Text)
+	}
+
+	if err := env.hooks.DeliverWebhooks(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var keys []string
+	for _, h := range rc.take() {
+		var p struct {
+			WebhookEvent string `json:"webhookEvent"`
+			EventType    string `json:"issue_event_type_name"`
+			Issue        struct{ Key string }
+		}
+		json.Unmarshal(h.body, &p)
+		if p.WebhookEvent != "jira:issue_updated" || p.EventType != "issue_moved" {
+			t.Errorf("webhook payload: %s", h.body)
+		}
+		keys = append(keys, p.Issue.Key)
+	}
+	sort.Strings(keys)
+	if want := []string{e.dst + "-1", e.dst + "-2"}; !slices.Equal(keys, want) {
+		t.Errorf("webhooks about %v, want %v", keys, want)
+	}
+}
+
+func TestMoveDigestNamesAMovedIssueByItsOldKeyToWhoSeesItNow(t *testing.T) {
+	env := newNotifyEnv(t)
+	e := newMoveEnv(t)
+	admin := env.login("admin", "admin")
+	admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	peer := createIssue(t, admin, e.src, "Voisin du ticket déplacé", "")
+	for _, name := range []string{"paul.martin", "chloe.simon"} {
+		who := env.login(name, "motdepasse")
+		who.call("PUT", "/api/me/notifications", map[string]any{"delivery": "digest", "digestHour": 7}, 200, nil)
+		who.call("PUT", "/api/issues/"+peer+"/watch", nil, 200, nil)
+	}
+	admin.call("POST", "/api/issues/"+peer+"/links", map[string]any{"direction": "outward", "target": e.issue,
+		"type": dbInt(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)}, 200, nil)
+	body := maps.Clone(e.allChoices)
+	delete(body, "securityLevel")
+	admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
+
+	mails := env.deliverAt(25 * time.Hour)
+	if got := to(mails, "paul.martin@exemple.fr"); len(got) != 1 || !strings.Contains(got[0].Text, e.issue) {
+		t.Errorf("the digest of a reader who sees the moved issue: %+v", got)
+	}
+	for _, m := range to(mails, "chloe.simon@exemple.fr") {
+		if strings.Contains(m.Text, e.issue) {
+			t.Errorf("the old key of an issue chloe.simon cannot see reached her:\n%s", m.Text)
+		}
+	}
+}
+
+func TestMoveOffersAndAcceptsOnlyTheGroupsOfWhoMoves(t *testing.T) {
+	e := newRestrictedMove(t)
+	paul := login(t, "paul.martin", "motdepasse")
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
+		userID(t, "paul.martin"))
+	e.refreshRules(e.src)
+	var stranger struct{ ID int64 }
+	name := strings.ToLower(unique("etranger"))
+	e.admin.call("POST", "/api/admin/groups", map[string]any{"name": name}, 201, &stranger)
+	t.Cleanup(func() { e.admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", stranger.ID), nil) })
+	body := maps.Clone(e.allChoices)
+	delete(body, "securityLevel")
+	path := "/api/issues/" + e.issue + "/move"
+
+	offered := func(who *client) []string {
+		t.Helper()
+		c := e.check(who, e.issue, body)
+		if c.Restricted == nil {
+			t.Fatalf("no restricted items counted for the mover: %+v", c)
+		}
+		return names(c.Restricted.Groups)
+	}
+	if got := offered(paul); !slices.Contains(got, "developpeurs") || slices.Contains(got, name) {
+		t.Errorf("groups offered to a member of developpeurs: %v", got)
+	}
+	if got := offered(e.admin); !slices.Contains(got, name) {
+		t.Errorf("groups offered to an administrator: %v", got)
+	}
+
+	body["restricted"] = map[string]any{"to": "group", "group": stranger.ID}
+	if status, _, _ := paul.errorIn("en", "POST", path, body); status != 400 {
+		t.Errorf("a group the mover is not in: %d, want 400", status)
+	}
+	if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id = ? AND project_id = ?`, e.issueID, e.srcID) != 1 ||
+		dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?`, e.srcRole) != 2 {
+		t.Error("a refused move changed the issue or its comments")
+	}
+
+	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
+	body["restricted"] = map[string]any{"to": "group", "group": developers}
+	paul.call("POST", path, body, 200, nil)
+	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = 'developpeurs' AND visibility_role_id IS NULL
+		AND id IN (?, ?)`, e.restricted[0], e.restricted[1]); n != 2 {
+		t.Errorf("%d comments on the chosen group, want 2", n)
+	}
+}
+
+func TestMoveFollowsFormerKeysOfBothProjects(t *testing.T) {
+	e := newMoveEnv(t)
+	formerSrc, formerDst := unique("ANCIENNE"), unique("ANCIENNEB")
+	moveInsert(t, `INSERT INTO project_keys (pkey, project_id) VALUES (?, ?), (?, ?)`, formerSrc, e.srcID, formerDst, e.dstID)
+	body := maps.Clone(e.allChoices)
+	body["project"] = formerDst
+	var moved struct{ Key string }
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
+	if moved.Key != e.dst+"-1" {
+		t.Fatalf("moved to a project by its former key: %q, want %s-1", moved.Key, e.dst)
+	}
+
+	for old, now := range map[string]string{formerSrc + strings.TrimPrefix(e.issue, e.src): e.dst + "-1",
+		formerSrc + strings.TrimPrefix(e.child, e.src): e.dst + "-2"} {
+		var o struct{ Key string }
+		if status := e.admin.get("/api/issues/"+old, &o); status != 200 || o.Key != now {
+			t.Errorf("GET /api/issues/%s: %d %q, want %s", old, status, o.Key, now)
+		}
+		var found struct {
+			Total  int
+			Issues []struct{ Key string }
+		}
+		if status := e.admin.get("/api/issues?jql="+url.QueryEscape("key = "+old), &found); status != 200 || found.Total != 1 ||
+			found.Issues[0].Key != now {
+			t.Errorf("JQL key = %s: %d %+v", old, status, found)
+		}
 	}
 }
