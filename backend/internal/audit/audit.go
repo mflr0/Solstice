@@ -23,9 +23,11 @@ import (
 const (
 	LoginSuccess   = "login.success"
 	LoginFailure   = "login.failure"
+	LoginLockout   = "login.lockout"
 	PasswordChange = "password.change"
 	TokenCreate    = "token.create"
 	TokenRevoke    = "token.revoke"
+	TokenReject    = "token.reject"
 	UserCreate     = "user.create"
 	UserUpdate     = "user.update"
 	UserDeactivate = "user.deactivate"
@@ -46,6 +48,8 @@ const (
 	SprintDelete   = "sprint.delete"
 	FilterShare    = "filter.share"
 	AuditSettings  = "settings.audit"
+	IssueDelete    = "issue.delete"
+	IssueExport    = "issue.export"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"
