@@ -205,6 +205,12 @@ describe('looksLikeJql', () => {
     expect(looksLikeJql('panier vide')).toBe(false);
     expect(looksLikeJql('projet:DEMO version:"2.4"')).toBe(false);
   });
+
+  it('does not read U+0085 as a space', () => {
+    expect(looksLikeJql('project\u0085= DEMO')).toBe(false);
+    expect(looksLikeJql('\u0085project = DEMO')).toBe(false);
+    expect(looksLikeJql('ORDER\u0085BY created')).toBe(false);
+  });
 });
 
 describe('highlight', () => {
