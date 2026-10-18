@@ -343,6 +343,9 @@ func (g *generator) run() {
 	g.seedIssues()
 	g.seedFilters()
 	g.seedAgile()
+	if g.opt.Messy {
+		g.seedMessy()
+	}
 	g.seedSequences()
 }
 

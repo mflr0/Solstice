@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"solstice/internal/config"
 )
@@ -234,4 +235,32 @@ func TestSetupHelpers(t *testing.T) {
 			t.Errorf("normalizeBaseURL(%q) accepted", bad)
 		}
 	}
+}
+
+func TestImportJobCrashedFailsARunningJob(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	job := &importJob{state: "running", started: time.Now()}
+	func() {
+		defer job.crashed(log)
+		panic("boom")
+	}()
+	if v := job.view("en"); v.State != "failed" || v.Error == "" {
+		t.Errorf("state = %q, error = %q, want a failed job with an error", v.State, v.Error)
+	}
+	if job.running() {
+		t.Error("the job is still running")
+	}
+}
+
+func TestImportJobCrashedKeepsAFinishedJob(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	job := &importJob{state: "done", started: time.Now()}
+	func() {
+		defer job.crashed(log)
+		panic("late")
+	}()
+	if v := job.view("en"); v.State != "done" {
+		t.Errorf("state = %q, want done", v.State)
+	}
+	func() { defer job.crashed(log) }() // no panic: nothing changes
 }

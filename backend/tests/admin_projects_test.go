@@ -403,6 +403,15 @@ func TestVersions(t *testing.T) {
 		t.Errorf("1.0's counts: %+v", list)
 	}
 
+	// A release date before the start date is refused, as when editing.
+	var v5 versionAdmin
+	admin.call("POST", base, map[string]any{"name": "3.0", "startDate": "2026-06-01"}, 201, &v5)
+	admin.call("POST", fmt.Sprintf("%s/%d/release", base, v5.ID), map[string]any{"releaseDate": "2026-05-01"}, 400, nil)
+	admin.call("POST", fmt.Sprintf("%s/%d/release", base, v5.ID), map[string]any{"releaseDate": "2026-06-01"}, 200, &v5)
+	if !v5.Released || v5.ReleaseDate == nil || *v5.ReleaseDate != "2026-06-01" {
+		t.Errorf("released on its start date: %+v", v5)
+	}
+
 	// Releasing 1.0 moves its unresolved issue to 1.1.
 	admin.call("POST", fmt.Sprintf("%s/%d/release", base, v1.ID), map[string]any{"moveUnresolvedTo": v1.ID}, 400, nil)
 	admin.call("POST", fmt.Sprintf("%s/%d/release", base, v1.ID), map[string]any{"releaseDate": "2026-10-01",

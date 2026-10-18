@@ -13,8 +13,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Requête refusée : ajoutez l'en-tête « X-Atlassian-Token: no-check » (protection contre la falsification de requêtes).",
 	RequestInvalid:              "Requête invalide : %s",
 	RequestTooManyAttempts:      "Trop de tentatives : réessayez dans %d s.",
+	RequestTooManyStreams:       "Trop de connexions en direct.",
 	RequestStreamingUnsupported: "Flux non pris en charge.",
 	RequestInternalError:        "Erreur interne, l'incident a été journalisé.",
+	RequestBodyTooLargeLimit:    "La requête est trop volumineuse (%d Kio au maximum).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Le nom est obligatoire (%d caractères au plus).",
@@ -36,6 +38,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Indiquez votre mot de passe actuel.",
 	AccountCurrentPasswordIncorrect:  "Mot de passe actuel incorrect.",
 	AccountTokenCannotChangePassword: "Un jeton d'accès ne peut pas changer le mot de passe : connectez-vous avec votre mot de passe.",
+	AccountTokenCannotChangeEmail:    "Un jeton d'accès ne peut pas changer l'adresse électronique : connectez-vous avec votre mot de passe.",
 	AccountLanguageUnsupported:       "Langue non prise en charge (au choix : %s).",
 	AccountResetLinkInvalid:          "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
 	AccountMailUnavailable:           "Les liens par courriel ne sont pas disponibles : configurez d'abord le courriel et l'adresse publique dans l'administration.",
@@ -138,6 +141,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.",
 	ProjectGranteeUnknown:      "Bénéficiaire inconnu : %s.",
 	ProjectGranteeNotFound:     "Bénéficiaire introuvable.",
+	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
+	ProjectKeysBusy:            "Un autre changement de clé de projet est en cours. Réessayez dans un instant.",
 
 	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
 	DefaultTypeTask:                  "Tâche",
@@ -264,9 +269,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ComponentReplacementNotFound: "Composant de remplacement introuvable dans ce projet.",
 
 	// Versions.
-	VersionStartAfterRelease: "La date de début doit précéder la date de sortie.",
+	VersionStartAfterRelease: "La date de début doit précéder la date de livraison.",
 	VersionTargetNotFound:    "Version de destination introuvable dans ce projet.",
-	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore sortie.",
+	VersionMoveToUnreleased:  "Les tickets non résolus vont dans une version pas encore livrée.",
 
 	// Issues: creation, editing, hierarchy, assignment, deletion.
 	IssueTypeUnknown:           "Type de ticket inconnu : %s.",
@@ -299,6 +304,14 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveUnsupported:       "Déplacer un ticket n'est pas encore possible.",
 	IssueSubtasksNotDeletable:  "Ce ticket a des sous-tâches que vous ne pouvez pas supprimer.",
 	IssueDeleteSubtasks:        "Ce ticket a des sous-tâches : ajoutez deleteSubtasks=true pour les supprimer avec lui.",
+	RESTPickerHistory:          "Historique de recherche",
+	RESTPickerCurrent:          "Recherche en cours",
+	RESTPickerShowing:          "%d tickets affichés sur %d correspondants",
+	IssueCloneSummary:          "CLONE - %s",
+	IssueCloneHistory:          "créé en clonant %s",
+	IssueCloneAttachmentFailed: "La pièce jointe « %s » n'a pas pu être copiée.",
+	IssueCloneLinkSkipped:      "Le lien vers %s n'a pas été ajouté : vous n'avez pas le droit de lier des tickets dans son projet.",
+	IssueCloneSubtaskSkipped:   "La sous-tâche %s n'a pas été clonée : vous ne pouvez pas créer de tickets de ce type dans son projet.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",
@@ -315,12 +328,16 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Ticket cible introuvable.",
 	LinkToItself:       "Un ticket ne peut pas être lié à lui-même.",
 
+	// Group picker.
+	GroupPickerHeader: "%d groupes affichés sur %d correspondants",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Envoi de fichier invalide.",
 	AttachmentNoFile:        "Aucun fichier reçu.",
 	AttachmentTooLarge:      "Fichier trop volumineux (100 Mo au plus).",
 	AttachmentNotImported:   "Le fichier n'a pas été retrouvé lors de l'import depuis Jira.",
 	AttachmentFileMissing:   "Fichier absent du dossier de données.",
+	AttachmentStorageQuota:  "Le quota de stockage des pièces jointes est atteint.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Statut inconnu.",
@@ -382,6 +399,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Le sprint doit se terminer après son début.",
 	SprintStartFuture:     "Un sprint actif ne peut pas commencer dans le futur.",
 	SprintDeleteNotFuture: "Seul un sprint à venir peut être supprimé.",
+	SprintNotOnBoard:      "Le projet du ticket n'est pas sur le tableau de ce sprint.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Le nom du filtre est obligatoire (255 caractères au plus).",
@@ -473,6 +491,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Choisir mon mot de passe",
 	MailInviteExpiry:          "Le lien ne fonctionne qu'une fois et reste valable 7 jours.",
 	MailInviteWhy:             "Vous recevez ce courriel car un administrateur a créé un compte pour vous.",
+	MailCredentialsNeedTLS:    "L'identifiant et le mot de passe ne partent que sur une connexion chiffrée : choisissez STARTTLS ou TLS, ou laissez l'identifiant vide. Seul un serveur sur cette machine est dispensé de chiffrement ; un relais d'un réseau privé exige lui aussi STARTTLS ou TLS.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Heure invalide : de 0 à 23.",
@@ -533,4 +552,16 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Choisissez au moins un événement.",
 	WebhookSecretTooLong:       "Le secret fait 255 caractères au plus.",
 	WebhookSecretEncryptFailed: "Impossible de chiffrer le secret : %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "Envoi de l'image invalide.",
+	AvatarNoFile:        "Aucune image reçue.",
+	AvatarTooLarge:      "Image trop volumineuse (1 Mo au plus).",
+	AvatarNotImage:      "L'image doit être un fichier PNG ou JPEG valide.",
+	AvatarDimensions:    "L'image doit faire 512 × 512 pixels au plus.",
+	// Issue security levels.
+	SecurityLevelInUse:     "Tickets à ce niveau : %d. Déplacez-les vers un autre niveau du projet, ou retirez leur niveau.",
+	SecurityTargetNotFound: "Niveau de remplacement introuvable dans ce projet.",
+	SecurityMoveOrClear:    "Choisissez un niveau de remplacement ou retirez le niveau, pas les deux.",
+	SecurityMemberExists:   "Ce titulaire est déjà membre du niveau.",
 }

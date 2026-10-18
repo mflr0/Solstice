@@ -133,6 +133,51 @@ func (t *Table) flush() {
 	t.vals, t.n = t.vals[:0], 0
 }
 
+// updateSQL builds an UPDATE of the row of e whose id column is id; set is a
+// list of column name, value pairs.
+func updateSQL(eng jiradb.Engine, e *Entity, id int64, set []any) (string, []any) {
+	var b strings.Builder
+	b.WriteString("UPDATE " + quoteTable(eng, e.Table) + " SET ")
+	args := make([]any, 0, len(set)/2+1)
+	for i := 0; i < len(set); i += 2 {
+		f, ok := e.Column(set[i].(string))
+		if !ok {
+			panic(fmt.Sprintf("jirafixture: column %s.%s is not in the entity model", e.Table, set[i]))
+		}
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		args = append(args, set[i+1])
+		b.WriteString(quoteColumn(eng, f.Column) + " = " + eng.Placeholder(len(args)))
+	}
+	f, ok := e.Column("id")
+	if !ok {
+		panic(fmt.Sprintf("jirafixture: table %s has no id column", e.Table))
+	}
+	args = append(args, id)
+	b.WriteString(" WHERE " + quoteColumn(eng, f.Column) + " = " + eng.Placeholder(len(args)))
+	return b.String(), args
+}
+
+// Update rewrites columns of a row written earlier, for the quirks that change
+// what was generated (messy.go). Pending batches are written first.
+func (w *Writer) Update(table string, id int64, set ...any) {
+	e := w.model.Entity(table)
+	if e == nil {
+		panic(fmt.Sprintf("jirafixture: table %s is not in the entity model", table))
+	}
+	for _, t := range w.tables {
+		t.flush()
+	}
+	if w.err != nil {
+		return
+	}
+	q, args := updateSQL(w.eng, e, id, set)
+	if _, err := w.tx.ExecContext(w.ctx, q, args...); err != nil {
+		w.err = fmt.Errorf("update %s: %w", e.Table, err)
+	}
+}
+
 // Fail records an error that did not come from the database.
 func (w *Writer) Fail(err error) {
 	if w.err == nil {

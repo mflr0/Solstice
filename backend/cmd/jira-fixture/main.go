@@ -25,6 +25,7 @@ func main() {
 	flag.StringVar(&opt.JiraHome, "jira-home", "", "directory that receives data/attachments/…")
 	flag.IntVar(&opt.Issues, "issues", 300, "number of issues")
 	flag.Uint64Var(&opt.Seed, "seed", 42, "random seed; the same seed gives the same data")
+	flag.BoolVar(&opt.Messy, "messy", false, "add the quirks of old Jira instances (deleted users, renamed project, orphan rows…)")
 	tz := flag.String("tz", "Europe/Paris", "time zone of the simulated Jira server")
 	flag.Parse()
 

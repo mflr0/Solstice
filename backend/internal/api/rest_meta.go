@@ -428,28 +428,36 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 	o := s.restOut(r)
 	out := []any{}
 	for _, f := range systemFields {
-		schema := map[string]any{"type": f.typ, "system": f.id}
-		if f.items != "" {
-			schema["items"] = f.items
-		}
 		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable,
 			"navigable": f.navigable, "searchable": len(f.clauses) > 0, "clauseNames": f.clauses}
 		if f.typ != "" {
-			jf["schema"] = schema
+			jf["schema"] = systemSchema(f)
 		}
 		out = append(out, jf)
 	}
 	for _, f := range fields {
-		typ, items := customSchema(f.Kind)
-		schema := map[string]any{"type": typ, "custom": f.TypeKey, "customId": f.ID}
-		if items != "" {
-			schema["items"] = items
-		}
 		out = append(out, map[string]any{"id": customID(f.ID), "name": f.Name, "custom": true, "orderable": true,
-			"navigable": true, "searchable": true, "schema": schema,
+			"navigable": true, "searchable": true, "schema": customFieldSchema(f),
 			"clauseNames": []string{"cf[" + strconv.FormatInt(f.ID, 10) + "]", f.Name}})
 	}
 	return writeJSON(w, http.StatusOK, out)
+}
+
+func fieldSchema(typ, items string, who map[string]any) map[string]any {
+	who["type"] = typ
+	if items != "" {
+		who["items"] = items
+	}
+	return who
+}
+
+func systemSchema(f sysField) map[string]any {
+	return fieldSchema(f.typ, f.items, map[string]any{"system": f.id})
+}
+
+func customFieldSchema(f customFieldDef) map[string]any {
+	typ, items := customSchema(f.Kind)
+	return fieldSchema(typ, items, map[string]any{"custom": f.TypeKey, "customId": f.ID})
 }
 
 // customSchema gives the schema type of a custom field kind.
@@ -537,7 +545,8 @@ func (s *Server) restFilter(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
+	// loadFilters reads id 0 as "every filter".
+	if err != nil || id <= 0 {
 		return errNotFound
 	}
 	rows, err := s.loadFilters(r.Context(), sub, id)
@@ -678,15 +687,21 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 
 // Avatars ----------------------------------------------------------------------
 
-// Solstice keeps no pictures: avatars are initials on a colour drawn from the
-// name.
+// People's pictures are in avatars.go. A project has none: its avatar is its
+// initials on a colour drawn from the key.
 var avatarColours = []string{"#8a5a44", "#5f7a61", "#4f6d7a", "#7a6a4f", "#6d5a7a", "#7a4f5a", "#4f7a72", "#6b6b4f"}
 
-func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) error {
-	size := map[string]int{"xsmall": 16, "small": 24, "medium": 32}[r.URL.Query().Get("size")]
-	if size == 0 {
-		size = 48
+// avatarSize is the side, in pixels, a client asks for with ?size=.
+func avatarSize(r *http.Request) int {
+	if size := map[string]int{"xsmall": 16, "small": 24, "medium": 32}[r.URL.Query().Get("size")]; size != 0 {
+		return size
 	}
+	return 48
+}
+
+// avatarSVG draws the initials of label on a colour drawn from seed.
+func avatarSVG(r *http.Request, seed, label string) []byte {
+	size := avatarSize(r)
 	var initials []rune
 	for word := range strings.FieldsSeq(label) {
 		if rs := []rune(word); len(rs) > 0 && len(initials) < 2 && (unicode.IsLetter(rs[0]) || unicode.IsDigit(rs[0])) {
@@ -696,23 +711,29 @@ func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) err
 	h := fnv.New32a()
 	h.Write([]byte(seed))
 	colour := avatarColours[int(h.Sum32()%uint32(len(avatarColours)))]
-	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "private, max-age=3600")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
-	_, err := fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 48 48">`+
+	return fmt.Appendf(nil, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 48 48">`+
 		`<rect width="48" height="48" rx="6" fill="%s"/><text x="24" y="24" dy=".35em" text-anchor="middle" `+
 		`font-family="sans-serif" font-size="19" fill="#fff">%s</text></svg>`, size, size, colour,
 		html.EscapeString(string(initials)))
+}
+
+func writeAvatar(w http.ResponseWriter, r *http.Request, seed, label string) error {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+	_, err := w.Write(avatarSVG(r, seed, label))
 	return err
 }
 
+// userAvatar answers Jira's address for a user's picture, with the same
+// picture or initials as /api/avatars; a name that is no account gets initials.
 func (s *Server) userAvatar(w http.ResponseWriter, r *http.Request) error {
 	name := strings.TrimSpace(r.URL.Query().Get("ownerId"))
-	display := name
 	if id, ok := s.userByName(r.Context(), name); ok {
-		_, display = s.userName(r.Context(), id)
+		return s.serveUserAvatar(w, r, id)
 	}
-	return writeAvatar(w, r, name, display)
+	serveInitials(w, r, name)
+	return nil
 }
 
 func (s *Server) projectAvatar(w http.ResponseWriter, r *http.Request) error {

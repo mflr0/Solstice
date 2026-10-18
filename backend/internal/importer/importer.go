@@ -206,6 +206,10 @@ func (r *run) runSteps() error {
 		}
 		r.opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
+	if r.strangers > 0 {
+		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
+			plural(r.strangers, "user", "users"))
+	}
 	return nil
 }
 
@@ -254,6 +258,7 @@ type run struct {
 	groups      map[string]int64 // lower-case group name → Solstice group id
 	userGroups  map[int64][]int64
 	projects    map[int64]*project
+	unsafeKeys  map[string]bool // project keys already reported as unusable in a path
 	roles       map[int64]bool
 	issueTypes  map[string]bool
 	statuses    map[string]bool
@@ -273,6 +278,7 @@ type run struct {
 	// several Solstice levels: (Jira level id, project id) → Solstice level id.
 	levels      map[[2]int64]int64
 	nextLevelID int64
+	strangers   int // users named by rows but unknown to Jira, given an inactive account
 }
 
 type project struct {
@@ -325,6 +331,13 @@ func (r *run) prepareTarget() (*kept, error) {
 		}
 	}
 	return k, nil
+}
+
+// leftOut warns about rows that point to something Jira no longer has.
+func (r *run) leftOut(n int, one, many, why string) {
+	if n > 0 {
+		r.rep.warn("%s %s, not imported", plural(n, one, many), why)
+	}
 }
 
 // each runs a query on the Jira database and calls scan for every row.
@@ -411,6 +424,7 @@ func (r *run) user(key sql.NullString) (any, error) {
 		return nil, err
 	}
 	r.users[key.String] = id
+	r.strangers++
 	return id, nil
 }
 

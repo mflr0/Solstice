@@ -16,11 +16,22 @@
     confirm: string;
     /** Destructive actions draw the button in the danger style. */
     danger?: boolean | undefined;
+    /** Holds the confirm button back until what the action needs is chosen. */
+    disabled?: boolean | undefined;
     onconfirm: () => Promise<unknown>;
     onclose: () => void;
     children: Snippet;
   }
-  const { open, title, confirm, danger = true, onconfirm, onclose, children }: Props = $props();
+  const {
+    open,
+    title,
+    confirm,
+    danger = true,
+    disabled = false,
+    onconfirm,
+    onclose,
+    children,
+  }: Props = $props();
 
   let busy = $state(false);
   let error = $state('');
@@ -53,7 +64,7 @@
     <button
       type="button"
       class="btn {danger ? 'btn-danger' : 'btn-primary'}"
-      disabled={busy}
+      disabled={busy || disabled}
       onclick={() => void run()}>{busy ? t.adminArea.working : confirm}</button
     >
   {/snippet}

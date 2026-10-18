@@ -4,6 +4,7 @@
  * ApiError with the server's message, in the interface's language, ready to show.
  */
 
+import { avatarUrl } from '../core/avatar.js';
 import type {
   AdminUser,
   Comment,
@@ -194,6 +195,17 @@ export const api = {
   updateIssue: (key: string, fields: IssueFields) =>
     request<IssueDetail | HiddenIssue>('PATCH', `/api/issues/${enc(key)}`, fields),
   deleteIssue: (key: string) => request<void>('DELETE', `/api/issues/${enc(key)}`),
+  /** Without a summary the server makes one; warnings are files it could not copy. */
+  cloneIssue: (
+    key: string,
+    options: {
+      summary?: string | undefined;
+      includeSubtasks: boolean;
+      includeLinks: boolean;
+      includeAttachments: boolean;
+    },
+  ) =>
+    request<{ key: string; warnings: string[] }>('POST', `/api/issues/${enc(key)}/clone`, options),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>
@@ -226,6 +238,13 @@ export const api = {
     return request<IssueDetail | HiddenIssue>('POST', `/api/issues/${enc(key)}/attachments`, form);
   },
   deleteAttachment: (id: number) => request<void>('DELETE', `/api/attachments/${id}`),
+
+  setMyAvatar: (picture: Blob) => {
+    const form = new FormData();
+    form.append('file', picture, 'avatar.png');
+    return request<void>('PUT', '/api/me/avatar', form);
+  },
+  removeMyAvatar: () => request<void>('DELETE', '/api/me/avatar'),
 
   users: (q: string) => request<UserRef[]>('GET', `/api/users${query({ q })}`),
   person: (username: string) => request<Person>('GET', `/api/people/${enc(username)}`),
@@ -310,6 +329,37 @@ export const api = {
   components: (q: string, project?: string) =>
     request<ProjectValue[]>('GET', `/api/components${query({ q, project })}`),
 };
+
+// Profile pictures: the server draws initials for people without one, so a
+// request says which. Asked once per person; changes only forget what is known.
+const pictures = new Map<number, Promise<boolean>>();
+const pictureVersions = new Map<number, number>();
+
+/** Where a person's picture is served. */
+export function pictureUrl(userId: number): string {
+  return avatarUrl(userId, pictureVersions.get(userId));
+}
+
+/** Whether a person has uploaded a picture. */
+export function hasPicture(userId: number): Promise<boolean> {
+  let known = pictures.get(userId);
+  if (!known) {
+    known = fetch(pictureUrl(userId), { credentials: 'same-origin' })
+      .then(async (res) => {
+        await res.blob();
+        return res.headers.get('Content-Type') === 'image/png';
+      })
+      .catch(() => false);
+    pictures.set(userId, known);
+  }
+  return known;
+}
+
+/** Forgets what is known of a person's picture, after it changed. */
+export function pictureChanged(userId: number): void {
+  pictures.delete(userId);
+  pictureVersions.set(userId, Date.now());
+}
 
 /** Narrows an update response: false when the issue became invisible. */
 export function isVisible(d: IssueDetail | HiddenIssue): d is IssueDetail {

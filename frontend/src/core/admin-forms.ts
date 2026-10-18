@@ -383,3 +383,124 @@ export function matches(search: string, ...texts: (string | null | undefined)[])
   const hay = texts.filter(Boolean).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
 }
+
+/** Longest name of a group or a role, in characters, as the server takes it. */
+export const NAME_MAX = 255;
+
+/** Longest group description: the server stores it in a 255-character column. */
+export const GROUP_DESCRIPTION_MAX = 255;
+
+export interface NamedForm {
+  name: string;
+  description: string;
+}
+
+export type NamedProblem = 'nameRequired' | 'nameTooLong' | 'descriptionTooLong';
+
+function nameProblem(name: string): 'nameRequired' | 'nameTooLong' | undefined {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  return [...n].length > NAME_MAX ? 'nameTooLong' : undefined;
+}
+
+export function groupProblems(f: NamedForm): Problems<'name' | 'description', NamedProblem> {
+  const out: Problems<'name' | 'description', NamedProblem> = {};
+  const name = nameProblem(f.name);
+  if (name) out.name = name;
+  if ([...f.description.trim()].length > GROUP_DESCRIPTION_MAX)
+    out.description = 'descriptionTooLong';
+  return out;
+}
+
+export function roleProblems(f: NamedForm): Problems<'name', 'nameRequired' | 'nameTooLong'> {
+  const name = nameProblem(f.name);
+  return name ? { name } : {};
+}
+
+/** What to send for a group or a role: trimmed; an empty description clears it. */
+export function namedPayload(f: NamedForm): { name: string; description: string } {
+  return { name: f.name.trim(), description: f.description.trim() };
+}
+
+/**
+ * The server stores a group name in lower case (`lowerName`), so a name that
+ * differs by case alone is not a change; a description may be null.
+ */
+export function namedPatch(
+  f: NamedForm,
+  current: { name: string; description: string | null },
+  lowerName = false,
+): Partial<NamedForm> {
+  const out: Partial<NamedForm> = {};
+  const name = f.name.trim();
+  if ((lowerName ? name.toLowerCase() : name) !== current.name) out.name = name;
+  const description = f.description.trim();
+  if (description !== (current.description ?? '')) out.description = description;
+  return out;
+}
+
+/**
+ * The comments and work logs that keep a group or a role from being deleted,
+ * read from the server's 409 answer; null when the answer does not say.
+ */
+export function restrictionUsage(data: unknown): { comments: number; worklogs: number } | null {
+  if (!data || typeof data !== 'object' || !('usage' in data)) return null;
+  const u = data.usage;
+  if (!u || typeof u !== 'object') return null;
+  const count = (k: string) => {
+    const n = (u as Record<string, unknown>)[k];
+    return typeof n === 'number' ? n : 0;
+  };
+  return { comments: count('comments'), worklogs: count('worklogs') };
+}
+
+/* Security levels ------------------------------------------------------------ */
+
+export type SecurityLevelProblem = 'nameRequired' | 'nameTooLong' | 'nameTaken';
+
+/** A level's name: present, 255 characters at most, and not another level's of the project (any case). */
+export function securityLevelProblem(
+  name: string,
+  levels: readonly { id: number; name: string }[],
+  self: number | null,
+): SecurityLevelProblem | null {
+  const n = name.trim();
+  if (!n) return 'nameRequired';
+  if ([...n].length > 255) return 'nameTooLong';
+  const lower = n.toLowerCase();
+  return levels.some((l) => l.id !== self && l.name.trim().toLowerCase() === lower)
+    ? 'nameTaken'
+    : null;
+}
+
+/** The levels the issues of a deleted level can move to: the project's other levels. */
+export function levelTargets<T extends { id: number }>(levels: readonly T[], removing: T): T[] {
+  return levels.filter((l) => l.id !== removing.id);
+}
+
+/** The kinds of holder a level takes (those of the permission checks), in the order offered. */
+export const LEVEL_HOLDERS = [
+  'group',
+  'role',
+  'user',
+  'everyone',
+  'lead',
+  'reporter',
+  'assignee',
+] as const;
+
+export type LevelHolder = (typeof LEVEL_HOLDERS)[number];
+
+/** Whether a holder kind names someone: a user, a group or a role. */
+export function holderNeedsId(holder: LevelHolder): boolean {
+  return holder === 'user' || holder === 'group' || holder === 'role';
+}
+
+/** What to send to add a holder; null while the one it names is not chosen. */
+export function memberPayload(
+  holder: LevelHolder,
+  id: number | null,
+): { holder: LevelHolder; id?: number } | null {
+  if (!holderNeedsId(holder)) return { holder };
+  return id === null ? null : { holder, id };
+}
