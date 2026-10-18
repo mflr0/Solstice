@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
@@ -60,6 +61,21 @@
     if (panelDirty) leaving = go;
     else go();
   }
+
+  // Another project's settings, reached while a tab has unsaved changes (the
+  // back button, a link): the address goes back to where the page was and the
+  // switch waits for the answer.
+  let shown = { key: untrack(() => projectKey), at: router.here };
+  $effect.pre(() => {
+    const key = projectKey;
+    const here = router.here;
+    if (key === shown.key || !untrack(() => panelDirty)) {
+      shown = { key, at: here };
+      return;
+    }
+    leaving = () => router.navigate(here, { replace: true });
+    router.navigate(shown.at, { replace: true });
+  });
 
   function showTab(next: ProjectTab) {
     if (next === tab) return;
