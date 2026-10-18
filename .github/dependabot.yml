@@ -1,7 +1,10 @@
 version: 2
+# Version updates go to the branch the work happens on; security updates
+# always target the default branch, that's how GitHub does it.
 updates:
   - package-ecosystem: gomod
     directory: /backend
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -12,6 +15,7 @@ updates:
           - patch
   - package-ecosystem: npm
     directory: /frontend
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -22,6 +26,7 @@ updates:
           - patch
   - package-ecosystem: github-actions
     directory: /
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -32,6 +37,7 @@ updates:
           - patch
   - package-ecosystem: docker
     directory: /
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -42,6 +48,7 @@ updates:
           - patch
   - package-ecosystem: docker-compose
     directory: /
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -52,6 +59,7 @@ updates:
           - patch
   - package-ecosystem: docker-compose
     directory: /deploy/docker
+    target-branch: feat/v1.0
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
