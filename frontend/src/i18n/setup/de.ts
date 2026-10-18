@@ -23,6 +23,8 @@ export const de: SetupMessages = {
   copy: 'Kopieren',
   copied: 'Kopiert',
   version: (v: string) => `Version ${v}`,
+  sourceCode: 'Quellcode',
+  licenses: 'Lizenzen',
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network:
@@ -200,7 +202,7 @@ export const de: SetupMessages = {
       'components and versions': 'Komponenten und Versionen',
       'custom fields': 'Benutzerdefinierte Felder',
       issues: 'Vorgänge',
-      'issue details': 'Links, Labels, Beobachter',
+      'issue details': 'Verknüpfungen, Labels, Beobachter',
       'comments and work logs': 'Kommentare und erfasste Zeit',
       attachments: 'Anhänge',
       'custom field values': 'Werte benutzerdefinierter Felder',
@@ -217,7 +219,7 @@ export const de: SetupMessages = {
       statuts: 'Status',
       priorités: 'Prioritäten',
       résolutions: 'Lösungen',
-      'types de liens': 'Linktypen',
+      'types de liens': 'Verknüpfungstypen',
       projets: 'Projekte',
       'anciennes clés de projet': 'Frühere Projektschlüssel',
       rôles: 'Rollen',

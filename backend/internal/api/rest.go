@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -66,6 +67,14 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/project/{key}/statuses", s.restProjectStatuses, true)
 		rest("GET "+p+"/project/{key}/versions", s.restProjectParts("versions"), true)
 		rest("GET "+p+"/project/{key}/components", s.restProjectParts("components"), true)
+		rest("GET "+p+"/version/{id}", s.restVersion, true)
+		rest("POST "+p+"/version", s.restSaveVersion, true)
+		rest("PUT "+p+"/version/{id}", s.restSaveVersion, true)
+		rest("DELETE "+p+"/version/{id}", s.restDeleteVersion, true)
+		rest("GET "+p+"/component/{id}", s.restComponent, true)
+		rest("POST "+p+"/component", s.restSaveComponent, true)
+		rest("PUT "+p+"/component/{id}", s.restSaveComponent, true)
+		rest("DELETE "+p+"/component/{id}", s.restDeleteComponent, true)
 
 		rest("POST "+p+"/issue", s.restCreateIssue, true)
 		rest("GET "+p+"/issue/{key}", s.restGetIssue, true)
@@ -105,8 +114,25 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 		rest("GET "+p+"/resolution", s.restResolutions, true)
 		rest("GET "+p+"/filter/favourite", s.restFavouriteFilters, true)
 		rest("GET "+p+"/filter/{id}", s.restFilter, true)
+		rest("POST "+p+"/filter", s.restSaveFilter, true)
+		rest("PUT "+p+"/filter/{id}", s.restSaveFilter, true)
+		rest("DELETE "+p+"/filter/{id}", s.deleteFilter, true)
 		rest("GET "+p+"/mypermissions", s.restMyPermissions, true)
+
+		rest("GET "+p+"/issue/{key}/remotelink", s.restRemoteLinks, true)
+		rest("POST "+p+"/issue/{key}/remotelink", s.restAddRemoteLink, true)
+		rest("DELETE "+p+"/issue/{key}/remotelink", s.restDeleteRemoteLink, true)
+		rest("GET "+p+"/issue/{key}/remotelink/{linkId}", s.restRemoteLink, true)
+		rest("PUT "+p+"/issue/{key}/remotelink/{linkId}", s.restEditRemoteLink, true)
+		rest("DELETE "+p+"/issue/{key}/remotelink/{linkId}", s.restDeleteRemoteLink, true)
+
+		rest("GET "+p+"/groups/picker", s.restGroupPicker, true)
+		rest("GET "+p+"/group/member", s.restGroupMembers, true)
 	}
+	// Jira's cookie sign-in, which old scripts still use.
+	mux.Handle("GET /rest/auth/1/session", s.rest(s.restSession, true))
+	mux.Handle("POST /rest/auth/1/session", s.restSessionRoute(s.restSignIn, false))
+	mux.Handle("DELETE /rest/auth/1/session", s.restSessionRoute(s.restSignOut, true))
 	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
 		rest("GET "+p+"/board", s.agileBoards, true)
 		rest("GET "+p+"/board/{id}", s.agileBoard, true)
@@ -255,12 +281,14 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 type restError struct {
 	ErrorMessages []string          `json:"errorMessages"`
 	Errors        map[string]string `json:"errors"`
+	RetryAfter    int               `json:"retryAfter,omitempty"`
 }
 
 func (s *Server) writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
+		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	// Refused: leave a trace at Warn, capped per address (refused.go).
 	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
@@ -272,6 +300,10 @@ func (s *Server) writeRESTError(w http.ResponseWriter, r *http.Request, err erro
 		body.Errors[field] = msg
 	} else {
 		body.ErrorMessages = append(body.ErrorMessages, msg)
+	}
+	if he.retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(he.retry))
+		body.RetryAfter = he.retry
 	}
 	writeJSON(w, he.status, body)
 }
@@ -350,7 +382,7 @@ func (r *recorder) Write(b []byte) (int, error) {
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	return nil
 }
@@ -382,7 +414,7 @@ func (s *Server) restOut(r *http.Request) *restOut {
 	base := s.base()
 	if base == "" {
 		scheme := "http"
-		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		if secureRequest(r, "", s.proxies, s.log) {
 			scheme = "https"
 		}
 		base = scheme + "://" + r.Host
@@ -502,7 +534,8 @@ func (s *Server) jiraUsers(ctx context.Context, o *restOut, ids ...int64) (map[i
 				return err
 			}
 			u.Self = o.api + "/user?username=" + url.QueryEscape(u.Name)
-			u.AvatarURLs = o.avatars("useravatar", u.Name)
+			pic := o.base + "/api/avatars/" + o.id(id)
+			u.AvatarURLs = map[string]string{"48x48": pic, "32x32": pic, "24x24": pic, "16x16": pic}
 			out[id] = u
 			return nil
 		}, chunk...)

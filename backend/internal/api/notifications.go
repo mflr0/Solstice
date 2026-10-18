@@ -368,7 +368,16 @@ func (s *Server) putProjectNotifications(w http.ResponseWriter, r *http.Request)
 type mailSettingsOut struct {
 	mail.Config
 	PasswordSet bool    `json:"passwordSet"`
-	BaseURL     *string `json:"baseUrl"` // links in e-mails; null: not set, links left out
+	BaseURL     *string `json:"baseUrl"`           // links in e-mails; null: not set, links left out
+	Problem     string  `json:"problem,omitempty"` // what keeps the saved settings from sending, see mailProblem
+}
+
+// mailProblemCredentialsNeedTLS is the problem of settings saved before
+// credentials were refused over a plain connection to a remote server.
+const mailProblemCredentialsNeedTLS = "credentialsNeedTLS"
+
+func credentialsInClear(c mail.Config) bool {
+	return c.Security == mail.SecurityNone && c.Username != "" && !mail.Loopback(c.Host)
 }
 
 func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
@@ -389,6 +398,9 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
+	if credentialsInClear(cfg) {
+		out.Problem = mailProblemCredentialsNeedTLS
+	}
 	if base := s.base(); base != "" {
 		out.BaseURL = &base
 	}
@@ -431,7 +443,8 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword {
 		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
 		if err != nil {
-			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
+			s.log.Error("stored mail password not readable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
 		}
 		cfg.Password = old.Password
 	} else {
@@ -489,9 +502,13 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
 		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
 	}
+	if credentialsInClear(cfg) {
+		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
+	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
-			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, err.Error())
+			s.log.Error("mail password not encryptable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
 		}
 	}
 	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {
@@ -574,7 +591,8 @@ func (s *Server) testMail(w http.ResponseWriter, r *http.Request) error {
 	}
 	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
 	if err != nil {
-		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, err.Error())
+		s.log.Error("stored mail password not readable", "err", err)
+		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
 	}
 	if cfg.Host == "" || cfg.From == "" {
 		return fail(http.StatusConflict, i18n.MailSettingsIncomplete)
@@ -605,6 +623,8 @@ func smtpError(err error) error {
 		return failf(http.StatusBadGateway, i18n.MailAuthRefused, detail)
 	case mail.StageNoAuth:
 		return fail(http.StatusBadGateway, i18n.MailAuthUnsupported)
+	case mail.StageInsecure:
+		return fail(http.StatusBadGateway, i18n.MailCredentialsNeedTLS)
 	case mail.StageSender:
 		return failf(http.StatusBadGateway, i18n.MailSenderRefused, detail)
 	case mail.StageRecipient:

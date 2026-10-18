@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import { t } from '../i18n/t.js';
   import Logo from './Logo.svelte';
+  import SourceLinks from './SourceLinks.svelte';
 
   /**
    * The sheet the pages outside the application sit on: the sign-in form and
@@ -23,6 +24,9 @@
     </div>
     <p class="tagline">{t.tagline}</p>
     {@render children()}
+    <div class="links">
+      <SourceLinks source={t.nav.sourceCode} licenses={t.nav.licenses} />
+    </div>
   </div>
 </main>
 
@@ -88,6 +92,10 @@
     margin: 14px 0 0;
     font-size: 13px;
     color: var(--muted);
+  }
+
+  .links {
+    margin-top: 14px;
   }
 
   .sheet :global(.note) {
