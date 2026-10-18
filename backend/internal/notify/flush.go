@@ -229,8 +229,22 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 			if !rc.sub.CanSee(access) {
 				continue
 			}
-			if it.Comment != nil && !rc.sub.SeesRestricted(access.ProjectID, it.Comment.Group, it.Comment.RoleID) {
-				continue
+			if it.Comment != nil {
+				// A move gives a comment restricted to a role another restriction.
+				group, role, project := it.Comment.Group, it.Comment.RoleID, it.Access.ProjectID
+				var g sql.NullString
+				var r sql.NullInt64
+				err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM comments WHERE id = ?`,
+					it.Comment.ID).Scan(&g, &r)
+				switch {
+				case err == nil:
+					group, role, project = g.String, r.Int64, access.ProjectID
+				case !errors.Is(err, sql.ErrNoRows):
+					return nil, err
+				}
+				if !rc.sub.SeesRestricted(project, group, role) {
+					continue
+				}
 			}
 			kept = append(kept, it)
 		}

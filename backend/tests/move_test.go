@@ -1198,3 +1198,44 @@ func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) 
 		t.Errorf("the roles of a project one sees only the own issues of: %+v", c.Restricted)
 	}
 }
+
+func TestMoveRestrictsAPendingNotificationByTheCommentsNewRestriction(t *testing.T) {
+	env := newNotifyEnv(t)
+	e := newRestrictedMove(t)
+	admin := env.login("admin", "admin")
+	paul := env.login("paul.martin", "motdepasse")
+	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
+	// paul.martin holds the role in both projects, so the old restriction would let him read.
+	for _, project := range []int64{e.srcID, e.dstID} {
+		moveInsert(t, `INSERT IGNORE INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`,
+			project, e.srcRole, userID(t, "paul.martin"))
+	}
+	e.refreshRules(e.src)
+	e.refreshRules(e.dst)
+	paul.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
+	admin.call("POST", "/api/issues/"+e.issue+"/comments", map[string]any{"body": "Réservé, en attente",
+		"visibility": map[string]any{"role": e.srcRole}}, 201, nil)
+	env.hooks.Settle()
+
+	var g struct{ ID int64 }
+	name := strings.ToLower(unique("pivot"))
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": name}, 201, &g)
+	t.Cleanup(func() {
+		testDB.Exec(`UPDATE comments SET visibility_group = NULL WHERE visibility_group = ?`, name)
+		testDB.Exec(`UPDATE worklogs SET visibility_group = NULL WHERE visibility_group = ?`, name)
+		admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
+	})
+	body := map[string]any{"restricted": map[string]any{"to": "group", "group": g.ID}}
+	for k, v := range e.allChoices {
+		if k != "securityLevel" {
+			body[k] = v
+		}
+	}
+	admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
+
+	for _, m := range to(env.deliver(), "paul.martin@exemple.fr") {
+		if strings.Contains(m.Text, "Réservé, en attente") {
+			t.Errorf("a comment moved to a group paul.martin is not in reached him:\n%s", m.Text)
+		}
+	}
+}
