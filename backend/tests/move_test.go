@@ -802,12 +802,20 @@ func TestMoveRestrictsRoleRestrictedItemsToAGroup(t *testing.T) {
 		testDB.Exec(`UPDATE worklogs SET visibility_group = NULL WHERE visibility_group = ?`, name)
 		e.admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
 	})
+	both := moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group,
+		visibility_role_id) VALUES (?, ?, 'Groupe et rôle', NOW(3), NOW(3), 'developpeurs', ?)`,
+		e.issueID, userID(t, "admin"), e.srcRole)
 	body := map[string]any{"restricted": map[string]any{"to": "group", "group": g.ID}}
 	for k, v := range e.allChoices {
 		body[k] = v
 	}
 	var moved struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
+
+	// One already restricted to a group and a role keeps its group.
+	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ? AND visibility_role_id IS NULL`, both); g != "developpeurs" {
+		t.Errorf("comment restricted to a group and a role: %q", g)
+	}
 
 	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = ? AND visibility_role_id IS NULL
 		AND id IN (?, ?)`, name, e.restricted[0], e.restricted[1]); n != 2 {

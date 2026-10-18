@@ -152,7 +152,7 @@ type movePlan struct {
 // its new restriction, and its argument.
 type moveRemap struct {
 	set string
-	arg int64
+	arg any
 }
 
 // movedRestriction is a role-restricted comment or work log of an issue, and
@@ -759,11 +759,13 @@ func (s *Server) planRestricted(ctx context.Context, sub *perm.Subject, plan *mo
 		}
 		remap = moveRemap{set: "visibility_role_id = ?", arg: c.Role}
 	case "group":
-		if !slices.ContainsFunc(r.Groups, func(o idName) bool { return o.ID == c.Group }) {
+		i := slices.IndexFunc(r.Groups, func(o idName) bool { return o.ID == c.Group })
+		if i < 0 {
 			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "restricted")
 		}
-		remap = moveRemap{set: "visibility_group = (SELECT name FROM user_groups WHERE id = ?), visibility_role_id = NULL",
-			arg: c.Group}
+		// An item already restricted to a group keeps it.
+		remap = moveRemap{set: "visibility_group = COALESCE(visibility_group, ?), visibility_role_id = NULL",
+			arg: r.Groups[i].Name}
 	case "refuse":
 		return fail(http.StatusBadRequest, i18n.IssueMoveRestrictedRefused)
 	default:
