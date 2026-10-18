@@ -2,8 +2,7 @@
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
 
   /**
-   * The two links the AGPL asks every user to be offered, signed in or not:
-   * the source code, and the licences of what ships with the application.
+   * The two links the AGPL asks every user to be offered, signed in or not.
    * The texts come from the caller, as the setup wizard has its own catalogue.
    */
   interface Props {
