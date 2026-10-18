@@ -488,7 +488,7 @@ const (
 	pickerCurrent = 10
 )
 
-func highlight(text string, query *regexp.Regexp) string {
+func highlightMatches(text string, query *regexp.Regexp) string {
 	if query == nil {
 		return html.EscapeString(text)
 	}
@@ -583,8 +583,8 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	section := func(id string, label i18n.Message, rows []*issueRow, total int) map[string]any {
 		issues := []any{}
 		for _, iss := range rows {
-			issues = append(issues, map[string]any{"id": iss.ID, "key": iss.Key(), "keyHtml": highlight(iss.Key(), re),
-				"summary": highlight(iss.Summary, re), "summaryText": iss.Summary})
+			issues = append(issues, map[string]any{"id": iss.ID, "key": iss.Key(), "keyHtml": highlightMatches(iss.Key(), re),
+				"summary": highlightMatches(iss.Summary, re), "summaryText": iss.Summary})
 		}
 		return map[string]any{"id": id, "label": o.msg(label),
 			"sub": o.msg(i18n.M(i18n.RESTPickerShowing, len(rows), total)), "issues": issues}
