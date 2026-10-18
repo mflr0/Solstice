@@ -189,7 +189,8 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) filterForEdit(r *http.Request, sub *perm.Subject) (*filterRow, error) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
+	// loadFilters reads id 0 as "every filter", so 0 must not get that far.
+	if err != nil || id <= 0 {
 		return nil, errNotFound
 	}
 	rows, err := s.loadFilters(r.Context(), sub, id)

@@ -244,6 +244,7 @@ type run struct {
 	groups      map[string]int64 // lower-case group name → Solstice group id
 	userGroups  map[int64][]int64
 	projects    map[int64]*project
+	unsafeKeys  map[string]bool // project keys already reported as unusable in a path
 	roles       map[int64]bool
 	issueTypes  map[string]bool
 	statuses    map[string]bool

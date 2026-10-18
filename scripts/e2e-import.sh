@@ -14,7 +14,15 @@
 #
 # Needs the containers of compose.yaml (docker compose up -d) and the Jira
 # distribution next to the repository (its entitymodel.xml describes the schema).
+#
+# With --import-only, it stops once both imports are done (make-test-seed.sh
+# uses this to dump the result).
 set -euo pipefail
+
+case "$*" in
+  ""|--import-only) ;;
+  *) echo "usage: e2e-import.sh [--import-only]" >&2; exit 2 ;;
+esac
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist=${JIRA_DIST:-$(ls -d "$root"/atlassian-jira-software-*-standalone 2>/dev/null | head -1)}
@@ -44,6 +52,8 @@ for engine in pg my; do
   SOLSTICE_DB_URL="mysql://solstice:solstice@localhost:13306/solstice_e2e_$engine" SOLSTICE_DATA="$work/data-$engine" \
     "$work/solstice" import -from "$src" -tz "$tz" -jira-home "$work/home-$engine" -json > "$work/report-$engine.json"
 done
+
+if [ "${1:-}" = "--import-only" ]; then exit 0; fi
 
 fail=0
 check() { # description, expected, actual

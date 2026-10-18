@@ -248,7 +248,7 @@ func TestIssueLifecycle(t *testing.T) {
 	}
 	upload, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 201 {
 		t.Fatalf("upload: %d %s", resp.StatusCode, upload)
 	}
 	json.Unmarshal(upload, &d)
@@ -383,7 +383,7 @@ func TestHistoryHidesInvisibleIssues(t *testing.T) {
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num DESC LIMIT 1`)
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 	if status, body := login(t, "chloe.simon", "motdepasse").do("POST", "/api/issues/"+visible+"/links",
-		map[string]any{"type": json.Number(linkType), "direction": "outward", "target": hidden}); status != 200 {
+		map[string]any{"type": json.Number(linkType), "direction": "outward", "target": hidden}); status != 201 {
 		t.Fatalf("link: %d %s", status, body)
 	}
 	_, raw := login(t, "paul.martin", "motdepasse").do("GET", "/api/issues/"+visible+"/history", nil)

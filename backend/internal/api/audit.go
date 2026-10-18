@@ -55,6 +55,28 @@ func (s *Server) auditLogin(r *http.Request, username string, u *auth.User, meth
 	}
 }
 
+// auditLockout is called once, when a lock starts; what was typed is never
+// stored, as it may be a password.
+func (s *Server) auditLockout(r *http.Request, username string, d time.Duration) {
+	name, ip, seconds := strings.ToLower(strings.TrimSpace(username)), clientIP(r, s.proxies), int(d.Seconds())+1
+	e := audit.Entry{IP: ip, Action: audit.LoginLockout, Details: map[string]any{"seconds": seconds}}
+	logged := []any{"address", ip}
+	if s.db != nil && name != "" {
+		s.db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE username = ?`, name).Scan(&e.UserID)
+		if e.UserID != 0 {
+			e.Username = name
+			logged = append(logged, "user", e.UserID)
+		}
+	}
+	s.log.Warn("sign-in address locked out", logged...)
+	if s.db == nil {
+		return
+	}
+	if err := audit.Record(r.Context(), s.db, e); err != nil {
+		s.log.Error("audit log write failed", "action", e.Action, "err", err)
+	}
+}
+
 type auditEntryOut struct {
 	ID       int64          `json:"id"`
 	Created  time.Time      `json:"created"`

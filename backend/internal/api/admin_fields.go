@@ -549,12 +549,12 @@ func (s *Server) optionTaken(ctx context.Context, field int64, value string, exc
 	return nil
 }
 
-func (s *Server) writeField(w http.ResponseWriter, r *http.Request, id int64) error {
+func (s *Server) writeField(w http.ResponseWriter, r *http.Request, status int, id int64) error {
 	f, err := s.fieldDetail(r.Context(), id)
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, f)
+	return writeJSON(w, status, f)
 }
 
 func (s *Server) addFieldOption(w http.ResponseWriter, r *http.Request) error {
@@ -582,7 +582,7 @@ func (s *Server) addFieldOption(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
 		map[string]any{"added": v})
-	return s.writeField(w, r, f.ID)
+	return s.writeField(w, r, http.StatusCreated, f.ID)
 }
 
 func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error {
@@ -641,7 +641,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
 			details)
 	}
-	return s.writeField(w, r, f.ID)
+	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
 // deleteFieldOption removes an option, and the options under it (a cascading
@@ -750,7 +750,7 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		details["movedTo"] = target
 	}
 	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name}, details)
-	return s.writeField(w, r, f.ID)
+	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
 func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error {
@@ -783,7 +783,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	}
 	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
 		map[string]any{"order": ids})
-	return s.writeField(w, r, f.ID)
+	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
 // Contexts at work ------------------------------------------------------------------

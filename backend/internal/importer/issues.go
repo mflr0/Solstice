@@ -317,13 +317,14 @@ func (r *run) importIssueDetails() error {
 	r.rep.step("issue links", links.total, skipped)
 	r.leftOut(skipped, "issue link", "issue links", "of a missing issue or link type")
 
-	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship")
+	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship", "global_id")
+	globals := globalIDs{}
 	skipped, noURL := 0, 0
-	if err := r.each(`SELECT id, issueid, url, title, relationship FROM remotelink`, func(rows *sql.Rows) error {
+	if err := r.each(`SELECT id, issueid, url, title, relationship, globalid FROM remotelink ORDER BY id`, func(rows *sql.Rows) error {
 		var id int64
 		var issue sql.NullInt64
-		var url, title, rel sql.NullString
-		if err := rows.Scan(&id, &issue, &url, &title, &rel); err != nil {
+		var url, title, rel, global sql.NullString
+		if err := rows.Scan(&id, &issue, &url, &title, &rel, &global); err != nil {
 			return err
 		}
 		if !r.hasIssue(issue) {
@@ -335,7 +336,8 @@ func (r *run) importIssueDetails() error {
 			noURL++
 			return nil
 		}
-		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel))
+		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel),
+			globals.take(issue.Int64, global))
 	}); err != nil {
 		return err
 	}
@@ -571,7 +573,24 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 	if p.key != p.originalKey {
 		keys = append(keys, p.key)
 	}
-	base := filepath.Join(r.opt.JiraHome, "data", "attachments")
+	for _, k := range keys {
+		if !safePathPart(k) {
+			if !r.unsafeKeys[k] {
+				if r.unsafeKeys == nil {
+					r.unsafeKeys = map[string]bool{}
+				}
+				r.unsafeKeys[k] = true
+				r.rep.warn("attachments: the project key %q cannot be used in a file path, its attachment files are not copied", k)
+			}
+			return false, nil
+		}
+	}
+	// Symlinks are resolved on both sides: a link inside the home can point out of it.
+	root, err := filepath.EvalSymlinks(r.opt.JiraHome)
+	if err != nil {
+		return false, nil
+	}
+	base := filepath.Join(root, "data", "attachments")
 	bucket := strconv.FormatInt(((issue.num-1)/10000+1)*10000, 10)
 	name := strconv.FormatInt(id, 10)
 	for _, pk := range keys {
@@ -581,7 +600,11 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 				filepath.Join(base, pk, bucket, issueKey, name),
 				filepath.Join(base, pk, issueKey, name),
 			} {
-				ok, err := copyFile(path, filepath.Join(dir, name))
+				resolved, err := filepath.EvalSymlinks(path)
+				if err != nil || !within(root, resolved) {
+					continue
+				}
+				ok, err := copyFile(resolved, filepath.Join(dir, name))
 				if ok || err != nil {
 					return ok, err
 				}
@@ -589,6 +612,15 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+func safePathPart(s string) bool {
+	return s != "" && s != "." && !strings.ContainsAny(s, "/\\\x00") && !strings.Contains(s, "..")
+}
+
+func within(root, path string) bool {
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // copyFile copies src to dst through a temporary file. A missing src is not
