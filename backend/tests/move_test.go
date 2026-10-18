@@ -73,9 +73,11 @@ type moveEnv struct {
 	issue, child          string
 	issueID, childID      int64
 	leaving, staying      string // names of the open sprints
+	unfiltered            string
 	closedSprint          int64
 	stayingSprint         int64
 	leavingSprint         int64
+	unfilteredSprint      int64
 	chloe                 int64
 	allChoices, firstStep map[string]any
 }
@@ -160,23 +162,39 @@ func newMoveEnv(t *testing.T) *moveEnv {
 	admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"status": e.inReview, "securityLevel": e.levelSrc}, 200, nil)
 	e.issueID, e.childID = issueIDOf(t, e.issue), issueIDOf(t, e.child)
 
-	// Sprints: the board of the first leaves out the target, the other has it.
-	board1 := dbInt(t, `SELECT id FROM boards ORDER BY id LIMIT 1`)
-	board2 := dbInt(t, `SELECT id FROM boards ORDER BY id LIMIT 1 OFFSET 1`)
-	moveInsert(t, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, board1, e.srcID)
-	moveInsert(t, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, board2, e.srcID)
-	moveInsert(t, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, board2, e.dstID)
-	e.leaving, e.staying = unique("Sprint partant "), unique("Sprint restant ")
-	e.leavingSprint = moveInsert(t, `INSERT INTO sprints (board_id, name, state, position) VALUES (?, ?, 'future', 0)`,
-		board1, e.leaving)
-	e.stayingSprint = moveInsert(t, `INSERT INTO sprints (board_id, name, state, position) VALUES (?, ?, 'future', 0)`,
-		board2, e.staying)
-	e.closedSprint = moveInsert(t, `INSERT INTO sprints (board_id, name, state, position) VALUES (?, ?, 'closed', 0)`,
-		board1, unique("Sprint fini "))
+	// Sprints: the filter of the first board leaves out the target (a pin
+	// that outlived an edit of the filter says otherwise), the filter of the
+	// second has it, the filter of the third names no project.
+	board := func(query string, pinned ...int64) int64 {
+		filter := moveInsert(t, `INSERT INTO filters (name, query, created_at, updated_at) VALUES (?, ?, NOW(3), NOW(3))`,
+			unique("Filtre "), query)
+		id := moveInsert(t, `INSERT INTO boards (name, kind, filter_id, created_at, updated_at) VALUES (?, 'scrum', ?, NOW(3), NOW(3))`,
+			unique("Tableau "), filter)
+		for _, project := range pinned {
+			moveInsert(t, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, id, project)
+		}
+		t.Cleanup(func() {
+			testDB.Exec(`DELETE FROM boards WHERE id = ?`, id)
+			testDB.Exec(`DELETE FROM filters WHERE id = ?`, filter)
+		})
+		return id
+	}
+	board1 := board(`project = "`+e.src+`"`, e.srcID, e.dstID)
+	board2 := board(`project in ("`+e.src+`", "`+e.dst+`")`, e.srcID, e.dstID)
+	board3 := board(`resolution = Unresolved`, e.srcID)
+	e.leaving, e.staying, e.unfiltered = unique("Sprint partant "), unique("Sprint restant "), unique("Sprint sans projet ")
+	sprint := func(board int64, name, state string) int64 {
+		return moveInsert(t, `INSERT INTO sprints (board_id, name, state, position) VALUES (?, ?, ?, 0)`, board, name, state)
+	}
+	e.leavingSprint, e.stayingSprint = sprint(board1, e.leaving, "future"), sprint(board2, e.staying, "future")
+	e.unfilteredSprint = sprint(board3, e.unfiltered, "future")
+	e.closedSprint = sprint(board1, unique("Sprint fini "), "closed")
 	t.Cleanup(func() {
-		testDB.Exec(`DELETE FROM sprints WHERE id IN (?, ?, ?)`, e.leavingSprint, e.stayingSprint, e.closedSprint)
+		testDB.Exec(`DELETE FROM sprints WHERE id IN (?, ?, ?, ?)`, e.leavingSprint, e.stayingSprint, e.unfilteredSprint,
+			e.closedSprint)
 	})
-	for _, sp := range [][2]int64{{e.leavingSprint, e.issueID}, {e.closedSprint, e.issueID}, {e.stayingSprint, e.childID}} {
+	for _, sp := range [][2]int64{{e.leavingSprint, e.issueID}, {e.closedSprint, e.issueID}, {e.stayingSprint, e.childID},
+		{e.unfilteredSprint, e.issueID}} {
 		moveInsert(t, `INSERT INTO sprint_issues (sprint_id, issue_id) VALUES (?, ?)`, sp[0], sp[1])
 	}
 
@@ -393,12 +411,13 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 		t.Errorf("the source reused the key %s", fresh)
 	}
 
-	// Open sprints of a board without the target are left, the others and the
-	// closed ones kept.
+	// Open sprints of a board whose filter names projects but not the target
+	// are left, the others and the closed ones kept.
 	inSprint := func(sprint, issue int64) bool {
 		return dbInt(t, `SELECT COUNT(*) FROM sprint_issues WHERE sprint_id = ? AND issue_id = ?`, sprint, issue) == 1
 	}
-	if inSprint(e.leavingSprint, e.issueID) || !inSprint(e.closedSprint, e.issueID) || !inSprint(e.stayingSprint, e.childID) {
+	if inSprint(e.leavingSprint, e.issueID) || !inSprint(e.closedSprint, e.issueID) || !inSprint(e.stayingSprint, e.childID) ||
+		!inSprint(e.unfilteredSprint, e.issueID) {
 		t.Error("sprint membership after the move is wrong")
 	}
 

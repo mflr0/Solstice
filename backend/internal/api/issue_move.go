@@ -16,6 +16,7 @@ import (
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -329,20 +330,38 @@ func (s *Server) movedFields(ctx context.Context, projectID int64, typeID string
 	return s.fieldsOutside(ctx, projectID, typeID, ids)
 }
 
-// leavingSprints are the open sprints of an issue on a board the target
-// project is not on.
-func (s *Server) leavingSprints(ctx context.Context, projectID, issueID int64) ([]sprintRef, error) {
+// leavingSprints are the open sprints of an issue on a board whose filter
+// names projects but not the target one.
+func (s *Server) leavingSprints(ctx context.Context, dest *moveDest, issueID int64) ([]sprintRef, error) {
 	var out []sprintRef
-	err := sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
-		WHERE si.issue_id = ? AND sp.state <> 'closed' AND (sp.board_id IS NULL OR NOT EXISTS
-			(SELECT 1 FROM board_projects bp WHERE bp.board_id = sp.board_id AND bp.project_id = ?)) ORDER BY sp.id`,
+	err := sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state, f.query FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
+		LEFT JOIN boards b ON b.id = sp.board_id LEFT JOIN filters f ON f.id = b.filter_id
+		WHERE si.issue_id = ? AND sp.state <> 'closed' ORDER BY sp.id`,
 		func(rows *sql.Rows) error {
 			var sp sprintRef
-			err := rows.Scan(&sp.ID, &sp.Name, &sp.State)
-			out = append(out, sp)
-			return err
-		}, issueID, projectID)
+			var query sql.NullString
+			if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &query); err != nil {
+				return err
+			}
+			if !query.Valid || !filterReaches(query.String, dest) {
+				out = append(out, sp)
+			}
+			return nil
+		}, issueID)
 	return out, err
+}
+
+// filterReaches tells whether a filter can show issues of the project: it can
+// when it names no project at all.
+func filterReaches(query string, dest *moveDest) bool {
+	parsed, err := jql.Parse(query)
+	if err != nil {
+		return true
+	}
+	names := jql.Projects(parsed)
+	return len(names) == 0 || slices.ContainsFunc(names, func(n string) bool {
+		return strings.EqualFold(n, dest.key) || strings.EqualFold(n, dest.name) || n == strconv.FormatInt(dest.id, 10)
+	})
 }
 
 // choice reads a list of ids given in the request against the target's
@@ -563,7 +582,7 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 				}
 			}
 		}
-		if it.sprints, err = s.leavingSprints(ctx, dest.id, it.row.ID); err != nil {
+		if it.sprints, err = s.leavingSprints(ctx, dest, it.row.ID); err != nil {
 			return nil, err
 		}
 		for _, sp := range it.sprints {
