@@ -20,6 +20,7 @@ type Options struct {
 	Issues   int            // number of issues
 	Seed     uint64         // same seed ⇒ same data, on either engine
 	TZ       *time.Location // time zone of the simulated Jira server
+	Messy    bool           // add the quirks of old instances (messy.go)
 	Log      io.Writer      // progress messages; nil for none
 }
 
@@ -82,6 +83,8 @@ type Summary struct {
 	SprintMemberships   int `json:"sprint_memberships"` // Sprint field values, also counted in custom_field_values
 	RankedIssues        int `json:"ranked_issues"`
 	EpicLinks           int `json:"epic_links"`
+
+	Messy *MessySummary `json:"messy,omitempty"` // only with Options.Messy
 
 	Checkpoints []Checkpoint   `json:"checkpoints"`
 	Rows        map[string]int `json:"rows"` // rows written per table

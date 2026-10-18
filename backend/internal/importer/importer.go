@@ -185,6 +185,10 @@ func Run(ctx context.Context, target *sql.DB, opt Options) (*Report, error) {
 		}
 		opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
+	if r.strangers > 0 {
+		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
+			plural(r.strangers, "user", "users"))
+	}
 	// Solstice's own data goes back even after a failure: the operator must
 	// still be able to sign in and try again.
 	r.ctx = context.WithoutCancel(ctx)
@@ -260,6 +264,7 @@ type run struct {
 	// several Solstice levels: (Jira level id, project id) → Solstice level id.
 	levels      map[[2]int64]int64
 	nextLevelID int64
+	strangers   int // users named by rows but unknown to Jira, given an inactive account
 }
 
 type project struct {
@@ -312,6 +317,13 @@ func (r *run) prepareTarget() (*kept, error) {
 		}
 	}
 	return k, nil
+}
+
+// leftOut warns about rows that point to something Jira no longer has.
+func (r *run) leftOut(n int, one, many, why string) {
+	if n > 0 {
+		r.rep.warn("%s %s, not imported", plural(n, one, many), why)
+	}
 }
 
 // each runs a query on the Jira database and calls scan for every row.
@@ -398,6 +410,7 @@ func (r *run) user(key sql.NullString) (any, error) {
 		return nil, err
 	}
 	r.users[key.String] = id
+	r.strangers++
 	return id, nil
 }
 
