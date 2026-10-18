@@ -414,9 +414,9 @@ read_db() {
 }
 
 # read_db_tls prints the tls option of SOLSTICE_DB_URL, or nothing when the
-# URL has none. It fails when the value is not one the server accepts (true,
-# false, skip-verify or preferred): the update must stop rather than back the
-# database up over a link the server would never have used.
+# URL has none. It fails when the value is not one the server accepts: the
+# update must stop rather than back the database up over a link the server
+# would never have used.
 read_db_tls() {
   url=$(conf_value SOLSTICE_DB_URL)
   query=${url#*\?}
@@ -442,13 +442,13 @@ read_db_tls() {
   esac
 }
 
-# dump_tls_opts DUMP TLS prints the dump options for the tls value of
-# SOLSTICE_DB_URL. MariaDB clients (their --version says MariaDB) check the
-# server certificate by default since 11.4, so skip-verify and preferred
-# turn the check off; MySQL clients take --ssl-mode. For preferred on MariaDB
-# there is no --ssl: that keeps the client's own default (TLS when the server
-# offers it, plain otherwise), as the driver's preferred does; --ssl would make
-# the backup fail on a server without TLS. Empty prints nothing.
+# dump_tls_opts prints the dump options for the tls value of SOLSTICE_DB_URL.
+# MariaDB clients (their --version says MariaDB) check the server certificate
+# by default since 11.4, so skip-verify and preferred turn the check off;
+# MySQL clients take --ssl-mode. For preferred on MariaDB there is no --ssl:
+# that keeps the client's own default (TLS when the server offers it, plain
+# otherwise), as the driver's preferred does; --ssl would make the backup
+# fail on a server without TLS.
 dump_tls_opts() {
   dump_bin=$1
   tls_val=$2
@@ -508,9 +508,7 @@ back_up() (
   MYSQL_PWD=$db_pass
   export MYSQL_PWD
   set -- --single-transaction --quick --hex-blob --no-tablespaces --protocol=TCP
-  # The tls option read before the update started, in the dialect of the
-  # dump client. The options contain no globbing characters; split into words
-  # on purpose.
+  # The options contain no globbing characters; split into words on purpose.
   # shellcheck disable=SC2046
   set -- "$@" $(dump_tls_opts "$dump" "$db_tls")
   set -- "$@" --host="$db_host" --port="$db_port" --user="$db_user" "$db_name"
@@ -602,8 +600,7 @@ main() {
   if ! printf '%s\n' "$addr" | grep -Eq '^[][A-Za-z0-9.:-]{0,253}:[0-9]{1,5}$'; then
     fail "SOLSTICE_HTTP_ADDR in $conf is not an address."
   fi
-  # The backup dump follows the URL's tls option: a value the server would
-  # not accept stops the update here, before anything is downloaded.
+  # A value the server would not take stops the update before any download.
   if ! db_tls=$(read_db_tls); then
     fail "The tls option of SOLSTICE_DB_URL in $conf is not true, false, skip-verify or preferred."
   fi

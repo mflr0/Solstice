@@ -146,7 +146,6 @@ sed -n '/^dump_tls_opts() {/,/^}/p' "$update" >"$tmp/dump.sh"
 . "$tmp/dump.sh"
 mariadb_dump() { printf 'mariadb-dump from 11.4.5-MariaDB, client 10.19\n'; }
 mysql_dump() { printf 'mysqldump  Ver 8.0.41 for Linux on x86_64\n'; }
-# expect_opts NAME DUMP TLS EXPECTED
 expect_opts() {
   opts_got=$(dump_tls_opts "$2" "$3")
   if [ "$opts_got" = "$4" ]; then pass "$1"; else fail "$1 (got '$opts_got')"; fi
