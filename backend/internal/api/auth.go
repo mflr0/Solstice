@@ -100,7 +100,6 @@ func (s *Server) signOut(w http.ResponseWriter, r *http.Request) error {
 	}
 	http.SetCookie(w, &http.Cookie{Name: auth.CookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
 		Secure: secureRequest(r, s.base(), s.proxies, s.log), SameSite: http.SameSiteLaxMode})
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
