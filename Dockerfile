@@ -6,7 +6,7 @@
 #
 # See deploy/docker/ for a ready-to-run setup with MariaDB.
 
-FROM node:24-alpine AS ui
+FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS ui
 WORKDIR /src/frontend
 RUN npm install --global pnpm@12.11.2
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
@@ -15,7 +15,7 @@ COPY frontend/ ./
 # Type-checks, then writes ../backend/internal/web/dist.
 RUN pnpm build
 
-FROM golang:1.27-alpine AS server
+FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS server
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
@@ -25,7 +25,7 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/solstice ./cmd/solstice \
  && mkdir -p /out/data
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 COPY --from=server /out/solstice /usr/local/bin/solstice
 # The data directory belongs to the unprivileged user, so a fresh volume does too.
 COPY --from=server --chown=65532:65532 /out/data /var/lib/solstice

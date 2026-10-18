@@ -1,11 +1,11 @@
 <script lang="ts">
   import { searchHref } from '../../core/filters-url.js';
   import { quote } from '../../core/jql.js';
-  import { initials } from '../../core/marks.js';
   import type { Person } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import IssueTable from '../IssueTable.svelte';
+  import Picture from '../Picture.svelte';
 
   /** Someone's page: who they are and what is open in their name. */
   interface Props {
@@ -38,7 +38,8 @@
   {:else}
     <header class="page-head">
       <div class="id">
-        <span class="mark avatar avatar-large" aria-hidden="true">{initials(person.user.name)}</span
+        <span class="mark avatar avatar-large" aria-hidden="true"
+          ><Picture user={person.user} /></span
         >
         <div>
           <h1 class="page-title">{person.user.name}</h1>

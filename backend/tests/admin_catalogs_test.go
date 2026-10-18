@@ -145,7 +145,7 @@ func TestLinkTypes(t *testing.T) {
 		t.Fatalf("a link type's id is a number: %s", lt.ID)
 	}
 	admin.call("POST", "/api/admin/link-types", map[string]any{"name": unique("Incomplet "), "inward": "x"}, 400, nil)
-	paul.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": n, "direction": "outward", "target": b}, 200, nil)
+	paul.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": n, "direction": "outward", "target": b}, 201, nil)
 
 	path := fmt.Sprintf("/api/admin/link-types/%d", n)
 	status, body := admin.do("DELETE", path, nil)

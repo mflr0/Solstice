@@ -16,6 +16,13 @@ Conventions (as for the rest of `/api`):
 - 401: not signed in. 403: signed in but not allowed. 404: unknown, or a
   project the user cannot see (keys cannot be probed). 400: invalid input,
   with a message saying what to fix. 409: conflicts (in use, already exists…).
+- 429: too many sign-in attempts. The `Retry-After` header and the `retryAfter`
+  field of the body both give the wait in whole seconds. 413: a JSON body over
+  the size limit of the route; the message gives the limit in KiB. Any other
+  failure is a 500 with a generic message, the cause is only in the server log.
+- Creations answer 201: besides those listed below, `POST
+  /api/issues/{key}/links`, `POST /api/issues/{key}/attachments` and `POST
+  /api/admin/fields/{id}/options`.
 - "Global admin" means `admin: true` in `GET /api/me`. "Project admin" means
   the `admin` permission in that project (`can.configure` in
   `GET /api/projects/{key}`); global admins count as project admins for
@@ -106,14 +113,23 @@ banner text over 500 characters or unknown level; numbers out of range.
 ```
 
 All fields optional. `locale`: a language or `null` (follow the browser).
-Changing the password needs `currentPassword` (400 "Mot de passe actuel
-incorrect.", throttled like sign-ins) and `newPassword` of at least
-`passwordMinLength` characters; other sessions of the user are signed out.
-Changing `email` to a different address needs `currentPassword`, exactly like
-`newPassword` (400 when missing or wrong, throttled like sign-ins), and is
-refused (403) when the request is authenticated by a personal access token.
-An unchanged address needs nothing.
-Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
+Changing the password or the e-mail address needs `currentPassword` (400
+"Mot de passe actuel incorrect.", throttled like sign-ins); `newPassword`
+must be at least `passwordMinLength` characters and changing the password
+signs the user's other sessions out. An address change is refused to a
+personal access token (403); an unchanged address needs nothing. Answers `GET /api/me`'s object. (`profile.update`,
+`password.change`)
+
+### `PUT /api/me/avatar`, `DELETE /api/me/avatar`
+
+`PUT` takes a multipart body (as attachments do) whose first file is the
+picture: a PNG or JPEG of 1 MiB at most and 512 × 512 pixels at most (400
+when it is neither or does not decode, 413 when too heavy). The server stores
+a re-encoded PNG, so no metadata or extra bytes survive; the interface sends a
+256 × 256 square. The image must be upright: the EXIF orientation is not
+applied (it is dropped with the other metadata), so a client sends the
+picture already turned the right way. Both answer 204; `DELETE` also answers
+204 when there is no picture. `GET /api/avatars/{userId}` shows it (section 3).
 
 ---
 
@@ -138,6 +154,15 @@ Answers `GET /api/me`'s object. (`profile.update`, `password.change`)
   password?}` → 204. (`user.update`, `user.deactivate`, `admin.grant`, …)
 - `PUT /api/admin/users/{id}/groups` `{groups: [groupId]}` → `adminUser`.
   Replaces the memberships. (`group.members`)
+- `PUT /api/admin/users/{id}/avatar` (multipart, as `PUT /api/me/avatar`) and
+  `DELETE /api/admin/users/{id}/avatar` → 204: set or remove an account's
+  picture. (`user.update`, with the detail `avatar: set | remove`)
+- `GET /api/avatars/{userId}` (every signed-in user) → the picture as
+  `image/png` (`X-Content-Type-Options: nosniff`), or the initials as an SVG
+  when the account has none; 404 for an unknown account. Both come with
+  `Cache-Control: private, max-age=60` and an `ETag`, and answer 304 to
+  `If-None-Match`, so a change shows within a minute. Jira's
+  `GET /secure/useravatar?ownerId={username}` answers the same.
 - `POST /api/admin/users/{id}/reset-password` → `{password}`: a generated
   password, shown once; the user's sessions end. (`password.reset`) With the
   body `{"method": "link"}` it sends the account a link, valid one hour, to
@@ -417,7 +442,7 @@ fields created here behave alike (issue view, REST API, JQL).
   {issues, boards}}` otherwise. Values go; boards estimating with it fall
   back to none. Saved filters naming it stop matching.
 - Options (`select`, `multiselect`, `checkboxes`, `radio`):
-  `POST /api/admin/fields/{id}/options` `{value}`,
+  `POST /api/admin/fields/{id}/options` `{value}` → 201 field detail,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
   Each option of the detail counts its `issues` (those with it, or an option

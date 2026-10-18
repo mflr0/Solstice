@@ -915,7 +915,7 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
 			return errForbidden
 		}
-		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint); err != nil {
+		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint, false); err != nil {
 			return err
 		}
 	}
@@ -962,13 +962,71 @@ func (s *Server) columnTarget(ctx context.Context, b *boardRow, iss *issueRow, c
 	return "", fail(http.StatusConflict, i18n.BoardMoveNotAllowed)
 }
 
+// visibleBoardIDs lists the boards the user sees.
+func (s *Server) visibleBoardIDs(ctx context.Context, sub *perm.Subject) ([]any, error) {
+	visible, err := s.visibleFilterIDs(ctx, sub)
+	if err != nil {
+		return nil, err
+	}
+	var out []any
+	err = sqlq.Each(ctx, s.db, `SELECT id, filter_id FROM boards`, func(rows *sql.Rows) error {
+		var id, filter int64
+		if err := rows.Scan(&id, &filter); err != nil {
+			return err
+		}
+		if visible[filter] {
+			out = append(out, id)
+		}
+		return nil
+	})
+	return out, err
+}
+
+// issuesOnBoard checks, with one query, that the board lists every issue: they
+// match its filter as the board view reads it.
+func (s *Server) issuesOnBoard(ctx context.Context, sub *perm.Subject, b *boardRow, issues []*issueRow) error {
+	where, args, err := s.boardWhere(ctx, sub, b, nil)
+	if err != nil {
+		return err
+	}
+	ids := map[int64]bool{}
+	for _, iss := range issues {
+		if !ids[iss.ID] {
+			ids[iss.ID] = true
+			args = append(args, iss.ID)
+		}
+	}
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE `+where+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, args...).Scan(&n); err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return fail(http.StatusBadRequest, i18n.SprintNotOnBoard)
+	}
+	return nil
+}
+
 // setSprint moves an issue into an open sprint of the board, or back to the
-// backlog (0). Closed sprints stay in its history.
-func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64) error {
+// backlog (0). Closed sprints stay in its history. The backlog move, on a board
+// or not (an empty boardRow), only leaves the open sprints of boards the user
+// sees. onBoard says the caller has already checked the issue against the board.
+func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, iss *issueRow, sprint int64, onBoard bool) error {
+	scope, scopeArgs := "", []any(nil)
+	if sprint == 0 {
+		boards, err := s.visibleBoardIDs(ctx, sub)
+		if err != nil {
+			return err
+		}
+		if len(boards) == 0 {
+			return nil
+		}
+		scope, scopeArgs = ` AND s.board_id IN (`+sqlq.Marks(len(boards))+`)`, boards
+	}
 	var oldID sql.NullInt64
 	var oldName sql.NullString
 	s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed' LIMIT 1`, iss.ID).Scan(&oldID, &oldName)
+		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope+` LIMIT 1`, append([]any{iss.ID}, scopeArgs...)...).Scan(&oldID, &oldName)
 	var newName any
 	if sprint != 0 {
 		var name, state string
@@ -982,8 +1040,13 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 		}
 		newName = name
 	}
-	if oldID.Valid && oldID.Int64 == sprint {
+	if (oldID.Valid && oldID.Int64 == sprint) || (sprint == 0 && !oldID.Valid) {
 		return nil
+	}
+	if sprint != 0 && !onBoard {
+		if err := s.issuesOnBoard(ctx, sub, b, []*issueRow{iss}); err != nil {
+			return err
+		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -991,7 +1054,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `DELETE si FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed'`, iss.ID); err != nil {
+		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope, append([]any{iss.ID}, scopeArgs...)...); err != nil {
 		return err
 	}
 	if sprint != 0 {

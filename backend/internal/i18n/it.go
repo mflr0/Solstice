@@ -14,8 +14,10 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "Richiesta rifiutata: aggiungi l'intestazione «X-Atlassian-Token: no-check» (protezione contro la falsificazione delle richieste).",
 	RequestInvalid:              "Richiesta non valida: %s",
 	RequestTooManyAttempts:      "Troppi tentativi. Riprova tra %d s.",
+	RequestTooManyStreams:       "Troppe connessioni in tempo reale.",
 	RequestStreamingUnsupported: "Streaming non supportato.",
 	RequestInternalError:        "Errore interno. L'incidente è stato registrato.",
+	RequestBodyTooLargeLimit:    "La richiesta è troppo grande (al massimo %d KiB).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Il nome è obbligatorio (al massimo %d caratteri).",
@@ -37,6 +39,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountCurrentPasswordRequired:   "Indica la tua password attuale.",
 	AccountCurrentPasswordIncorrect:  "Password attuale errata.",
 	AccountTokenCannotChangePassword: "Un token di accesso non può cambiare la password: accedi con la tua password.",
+	AccountTokenCannotChangeEmail:    "Un token di accesso non può cambiare l'indirizzo email: accedi con la tua password.",
 	AccountLanguageUnsupported:       "Lingua non supportata (scegli tra: %s).",
 	AccountResetLinkInvalid:          "Questo link non è valido o è scaduto. Richiedine uno nuovo.",
 	AccountMailUnavailable:           "I link via email non sono disponibili: configura prima l'email e l'indirizzo pubblico nell'amministrazione.",
@@ -316,12 +319,16 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	LinkTargetNotFound: "Ticket di destinazione non trovato.",
 	LinkToItself:       "Un ticket non può essere collegato a se stesso.",
 
+	// Group picker.
+	GroupPickerHeader: "%d gruppi mostrati su %d corrispondenti",
+
 	// Attachments.
 	AttachmentUploadInvalid: "Caricamento del file non valido.",
 	AttachmentNoFile:        "Nessun file ricevuto.",
 	AttachmentTooLarge:      "File troppo grande (massimo 100 MB).",
 	AttachmentNotImported:   "Questo file non è stato trovato durante l'importazione da Jira.",
 	AttachmentFileMissing:   "Il file non è presente nella cartella dei dati.",
+	AttachmentStorageQuota:  "È stata raggiunta la quota di archiviazione degli allegati.",
 
 	// Statuses and their categories.
 	StatusUnknown:            "Stato sconosciuto.",
@@ -383,6 +390,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintDatesOrder:      "Lo sprint deve finire dopo il suo inizio.",
 	SprintStartFuture:     "Uno sprint attivo non può iniziare nel futuro.",
 	SprintDeleteNotFuture: "Solo uno sprint futuro può essere eliminato.",
+	SprintNotOnBoard:      "Il progetto del ticket non è nella board di questo sprint.",
 
 	// Saved filters and their shares.
 	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",
@@ -474,6 +482,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "Scegli la mia password",
 	MailInviteExpiry:          "Il link funziona una sola volta ed è valido per 7 giorni.",
 	MailInviteWhy:             "Ricevi questa email perché un amministratore ha creato un account per te.",
+	MailCredentialsNeedTLS:    "Nome utente e password vengono inviati solo su una connessione cifrata: scegli STARTTLS o TLS, oppure lascia vuoto il nome utente. Solo un server su questa macchina è escluso; anche un relay su una rete privata richiede STARTTLS o TLS.",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Ora non valida: da 0 a 23.",
@@ -510,14 +519,14 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SubscriptionDayRequired:      "Scegli almeno un giorno.",
 	SubscriptionDaysInvalid:      "Giorni non validi: da 1 (lunedì) a 7 (domenica).",
 	SubscriptionFrequencyUnknown: "Frequenza sconosciuta: daily o weekly.",
-	SubscriptionGroupAdminOnly:   "Solo un amministratore può iscrivere un gruppo.",
+	SubscriptionGroupAdminOnly:   "Solo un amministratore può abbonare un gruppo.",
 	SubscriptionSubject:          "Filtro «%s»",
 	SubscriptionCount:            "Ticket corrispondenti: %d (al %s).",
 	SubscriptionNoMatch:          "Nessun ticket corrisponde a questo filtro.",
 	SubscriptionTruncated:        "Sono elencati solo i primi %d ticket: vedi tutti i risultati.",
 	SubscriptionOpen:             "Apri in Solstice",
-	SubscriptionWhyGroup:         "Ricevi questa email perché il gruppo %s è iscritto a questo filtro.",
-	SubscriptionWhyUser:          "Ricevi questa email perché sei iscritto a questo filtro.",
+	SubscriptionWhyGroup:         "Ricevi questa email perché il gruppo %s è abbonato a questo filtro.",
+	SubscriptionWhyUser:          "Ricevi questa email perché sei abbonato a questo filtro.",
 
 	// Due date reminders.
 	ReminderSubject:  "Le tue scadenze del %s",
@@ -534,4 +543,11 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WebhookEventRequired:       "Scegli almeno un evento.",
 	WebhookSecretTooLong:       "Il segreto può avere al massimo 255 caratteri.",
 	WebhookSecretEncryptFailed: "Impossibile cifrare il segreto: %s",
+
+	// Profile pictures.
+	AvatarUploadInvalid: "Caricamento dell'immagine non valido.",
+	AvatarNoFile:        "Nessuna immagine ricevuta.",
+	AvatarTooLarge:      "Immagine troppo grande (1 MB al massimo).",
+	AvatarNotImage:      "L'immagine deve essere un file PNG o JPEG valido.",
+	AvatarDimensions:    "L'immagine può essere al massimo di 512 × 512 pixel.",
 }

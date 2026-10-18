@@ -45,9 +45,15 @@ export function changesPassword(f: ProfileForm): boolean {
   return f.currentPassword !== '' || f.newPassword !== '' || f.confirmPassword !== '';
 }
 
+/** Whether the typed address differs from the stored one. */
+export function changesEmail(f: ProfileForm, me: Me | null): boolean {
+  return me !== null && f.email.trim() !== me.email;
+}
+
 export function profileProblems(
   f: ProfileForm,
   minPassword: number,
+  me: Me | null,
 ): Problems<ProfileField, ProfileProblem> {
   const out: Problems<ProfileField, ProfileProblem> = {};
   const name = f.name.trim();
@@ -55,10 +61,16 @@ export function profileProblems(
   else if ([...name].length > 255) out.name = 'nameTooLong';
   const email = f.email.trim();
   if (email && !isEmail(email)) out.email = 'emailInvalid';
-  if (changesPassword(f)) {
+  // Changing the address, like the password, takes the current one.
+  const mailChanged = changesEmail(f, me);
+  if (changesPassword(f) || mailChanged) {
     if (!f.currentPassword) out.currentPassword = 'currentRequired';
-    if (!f.newPassword) out.newPassword = 'newRequired';
-    else if ([...f.newPassword].length < minPassword) out.newPassword = 'newShort';
+  }
+  if (changesPassword(f)) {
+    // A current password typed on its own means a new one is wanted, unless
+    // it only confirms the address change.
+    if (!f.newPassword && !mailChanged) out.newPassword = 'newRequired';
+    else if (f.newPassword && [...f.newPassword].length < minPassword) out.newPassword = 'newShort';
     if (f.newPassword && f.confirmPassword !== f.newPassword)
       out.confirmPassword = 'confirmMismatch';
   }
@@ -76,11 +88,11 @@ export interface ProfilePatch {
 export function profilePatch(f: ProfileForm, me: Me): ProfilePatch {
   const out: ProfilePatch = {};
   if (f.name.trim() !== me.name) out.name = f.name.trim();
-  if (f.email.trim() !== me.email) out.email = f.email.trim();
-  if (f.newPassword) {
-    out.currentPassword = f.currentPassword;
-    out.newPassword = f.newPassword;
-  }
+  const mailChanged = changesEmail(f, me);
+  if (mailChanged) out.email = f.email.trim();
+  // The server asks for the current password when the address changes.
+  if (mailChanged || f.newPassword) out.currentPassword = f.currentPassword;
+  if (f.newPassword) out.newPassword = f.newPassword;
   return out;
 }
 

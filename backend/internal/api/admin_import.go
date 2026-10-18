@@ -174,7 +174,8 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 	s.log.Info("import from Jira started from the administration", "by", u.Username, "source", source)
 	job := imp.job
 	go func() {
-		rep, err := importer.Run(context.Background(), s.db, importer.Options{
+		defer job.crashed(s.log)
+		rep, err := importer.RunGuarded(context.Background(), s.db, importer.Options{
 			SourceURL: f.URL, SourceTZ: loc, JiraHome: f.JiraHome, DataDir: s.dataDir, Replace: true,
 			Operator: u.Username, Log: s.log,
 			Progress: func(p importer.Progress) {
