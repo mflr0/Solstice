@@ -97,22 +97,16 @@ func TestParseErrors(t *testing.T) {
 
 func compile(t *testing.T, s string) (string, []any, string) {
 	t.Helper()
+	return compileIn(t, s, fuzzEnv())
+}
+
+func compileIn(t *testing.T, s string, env Env) (string, []any, string) {
+	t.Helper()
 	q, err := Parse(s)
 	if err != nil {
 		t.Fatal(err)
 	}
-	paris, _ := time.LoadLocation("Europe/Paris")
-	where, args, order, err := Compile(q, Env{
-		Me:  7,
-		Now: time.Date(2026, 10, 14, 10, 30, 0, 0, paris), // a Wednesday
-		Loc: paris,
-		CustomField: func(name string) (Field, bool) {
-			if strings.EqualFold(name, "Story Points") || name == "10100" {
-				return Field{ID: 10100, Name: "Story Points", TypeKey: "x:float"}, true
-			}
-			return Field{}, false
-		},
-	})
+	where, args, order, err := Compile(q, env)
 	if err != nil {
 		t.Fatalf("Compile(%q): %v", s, err)
 	}
@@ -242,12 +236,14 @@ func TestCompileHistoryArguments(t *testing.T) {
 		`fixVersion was "1.0" during (-30d, -1d) AND fixVersion changed to "2.0"`,
 		`reporter was EMPTY OR status changed`,
 	} {
-		where, args, _ := compile(t, q)
-		if n := strings.Count(where, "?"); n != len(args) {
-			t.Errorf("%s: %d placeholders, %d arguments", q, n, len(args))
-		}
-		if strings.Contains(where, "DROP") {
-			t.Errorf("user text reached the SQL: %s", where)
+		for i, env := range envs() {
+			where, args, _ := compileIn(t, q, env)
+			if n := strings.Count(where, "?"); n != len(args) {
+				t.Errorf("%s (env %d): %d placeholders, %d arguments", q, i, n, len(args))
+			}
+			if strings.Contains(where, "DROP") {
+				t.Errorf("user text reached the SQL: %s", where)
+			}
 		}
 	}
 }
