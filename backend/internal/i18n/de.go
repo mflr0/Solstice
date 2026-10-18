@@ -17,6 +17,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestTooManyStreams:       "Zu viele Live-Verbindungen.",
 	RequestStreamingUnsupported: "Streaming wird nicht unterstützt.",
 	RequestInternalError:        "Interner Fehler. Der Vorfall wurde protokolliert.",
+	RequestBodyTooLargeLimit:    "Die Anfrage ist zu groß (höchstens %d KiB).",
 
 	// Values shared by several forms.
 	CommonNameRequired:    "Der Name ist erforderlich (höchstens %d Zeichen).",

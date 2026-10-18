@@ -14,6 +14,7 @@ const (
 	RequestTooManyStreams       Key = "RequestTooManyStreams"
 	RequestStreamingUnsupported Key = "RequestStreamingUnsupported"
 	RequestInternalError        Key = "RequestInternalError"
+	RequestBodyTooLargeLimit    Key = "RequestBodyTooLargeLimit"
 )
 
 // Values shared by several forms.

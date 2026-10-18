@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -280,12 +281,14 @@ func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err er
 type restError struct {
 	ErrorMessages []string          `json:"errorMessages"`
 	Errors        map[string]string `json:"errors"`
+	RetryAfter    int               `json:"retryAfter,omitempty"`
 }
 
 func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
 	if !errors.As(err, &he) {
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.Raw(err.Error())}
+		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
+		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
 	}
 	body := restError{ErrorMessages: []string{}, Errors: map[string]string{}}
 	msg := he.msg.In(locale(r))
@@ -293,6 +296,10 @@ func writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 		body.Errors[field] = msg
 	} else {
 		body.ErrorMessages = append(body.ErrorMessages, msg)
+	}
+	if he.retry > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(he.retry))
+		body.RetryAfter = he.retry
 	}
 	writeJSON(w, he.status, body)
 }
@@ -371,7 +378,7 @@ func (r *recorder) Write(b []byte) (int, error) {
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
 	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	return nil
 }

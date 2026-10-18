@@ -16,6 +16,13 @@ Conventions (as for the rest of `/api`):
 - 401: not signed in. 403: signed in but not allowed. 404: unknown, or a
   project the user cannot see (keys cannot be probed). 400: invalid input,
   with a message saying what to fix. 409: conflicts (in use, already exists…).
+- 429: too many sign-in attempts. The `Retry-After` header and the `retryAfter`
+  field of the body both give the wait in whole seconds. 413: a JSON body over
+  the size limit of the route; the message gives the limit in KiB. Any other
+  failure is a 500 with a generic message, the cause is only in the server log.
+- Creations answer 201: besides those listed below, `POST
+  /api/issues/{key}/links`, `POST /api/issues/{key}/attachments` and `POST
+  /api/admin/fields/{id}/options`.
 - "Global admin" means `admin: true` in `GET /api/me`. "Project admin" means
   the `admin` permission in that project (`can.configure` in
   `GET /api/projects/{key}`); global admins count as project admins for
@@ -415,7 +422,7 @@ fields created here behave alike (issue view, REST API, JQL).
   {issues, boards}}` otherwise. Values go; boards estimating with it fall
   back to none. Saved filters naming it stop matching.
 - Options (`select`, `multiselect`, `checkboxes`, `radio`):
-  `POST /api/admin/fields/{id}/options` `{value}`,
+  `POST /api/admin/fields/{id}/options` `{value}` → 201 field detail,
   `PATCH /api/admin/fields/{id}/options/{optionId}` `{value?, disabled?}`,
   `POST /api/admin/fields/{id}/options/order` `{ids}` → field detail.
   Each option of the detail counts its `issues` (those with it, or an option

@@ -133,7 +133,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
-	return s.respondIssue(w, r, sub, iss.ID)
+	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
 }
 
 var errStorageQuota = errors.New("attachment storage quota reached")

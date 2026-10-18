@@ -208,7 +208,7 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 	}
 	ipKey := "forgot-ip:" + clientIP(r, s.proxies)
 	if d := s.limiter.Locked(ipKey); d > 0 {
-		return failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return tooManyAttempts(d)
 	}
 	// Every request counts, whatever it finds. Only the client address is
 	// counted here: a name key would let anyone mute someone else's account.
@@ -271,7 +271,7 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 func (s *Server) linkGuard(r *http.Request) (key string, err error) {
 	key = "reset-ip:" + clientIP(r, s.proxies)
 	if d := s.limiter.Locked(key); d > 0 {
-		return key, failf(http.StatusTooManyRequests, i18n.RequestTooManyAttempts, int(d.Seconds())+1)
+		return key, tooManyAttempts(d)
 	}
 	return key, nil
 }
@@ -470,7 +470,7 @@ func (s *Server) adminResetLink(w http.ResponseWriter, r *http.Request, id int64
 func readOptionalJSON(r *http.Request, v any) error {
 	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 1<<20))
 	if err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
+		return badBody(err)
 	}
 	if len(bytes.TrimSpace(body)) == 0 {
 		return nil

@@ -237,7 +237,8 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 	}
 	if err := db.Migrate(r.Context(), conn); err != nil {
 		conn.Close()
-		return failf(http.StatusInternalServerError, i18n.SetupTablesFailed, err.Error())
+		w.log.Error("creating the tables failed", "err", err)
+		return failf(http.StatusInternalServerError, i18n.SetupTablesFailed, i18n.M(i18n.RequestInternalError))
 	}
 	if w.db != nil && w.db != conn {
 		w.db.Close()
