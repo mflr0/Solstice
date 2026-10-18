@@ -522,6 +522,8 @@ func (s *Server) planMove(ctx context.Context, sub *perm.Subject, orig *issueRow
 		switch {
 		case dest.hasType(child.TypeID):
 			c.typeID = child.TypeID
+		case len(subtaskTypes) == 0:
+			return nil, fail(http.StatusBadRequest, i18n.IssueMoveNoSubtaskType)
 		case in.SubtaskType != nil:
 			if it, ok := cat.issueType[*in.SubtaskType]; !ok || !it.Subtask || !dest.hasType(*in.SubtaskType) {
 				return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
@@ -647,11 +649,12 @@ func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRo
 		s.db.QueryRowContext(ctx, `SELECT name FROM security_levels WHERE id = ?`, current.ID).Scan(&current.Name)
 		plan.levels[0] = current.Name
 	}
+	pi := orig.perm()
+	mayChoose := sub.Can(perm.Security, dest.id, nil) && sub.Can(perm.Security, orig.ProjectID, &pi)
 	switch {
 	case len(in.SecurityLevel) > 0:
-		pi := orig.perm()
-		if !sub.Can(perm.Security, dest.id, nil) || !sub.Can(perm.Security, orig.ProjectID, &pi) {
-			return errForbidden
+		if !mayChoose {
+			return fail(http.StatusForbidden, i18n.IssueMoveSecurityNeeded)
 		}
 		if string(in.SecurityLevel) == "null" {
 			return nil
@@ -666,17 +669,17 @@ func (s *Server) planLevel(ctx context.Context, sub *perm.Subject, orig *issueRo
 		}
 		head.level, plan.levels[1] = id, levels[i].Name
 	case !orig.LevelID.Valid:
+	case !sub.Can(perm.Security, dest.id, nil):
+		return fail(http.StatusForbidden, i18n.IssueMoveSecurityNeeded)
 	default:
 		if i := slices.IndexFunc(levels, func(l idName) bool { return strings.EqualFold(l.Name, current.Name) }); i >= 0 {
 			head.level, plan.levels[1] = levels[i].ID, levels[i].Name
 			return nil
 		}
-		// The levels of the target are listed only to who may set them there.
-		offered := []idName{}
-		if sub.Can(perm.Security, dest.id, nil) {
-			offered = levels
+		if !mayChoose {
+			return fail(http.StatusForbidden, i18n.IssueMoveSecurityNeeded)
 		}
-		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: offered}
+		plan.check.SecurityLevel = &moveParts{Unmatched: []idName{current}, Options: levels}
 		missing("securityLevel")
 	}
 	return nil

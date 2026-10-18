@@ -309,6 +309,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChanged:           "Il ticket è cambiato durante lo spostamento. Ricaricalo e riprova.",
 	IssueMoveRestrictedRefused: "I commenti e i registri di lavoro riservati a un ruolo di questo progetto non possono restare invariati in un altro progetto.",
 	IssueMoveRestrictedHidden:  "%d commenti e registri di lavoro riservati a un ruolo di questo progetto non sono leggibili da te, e il progetto di destinazione non ha un ruolo con lo stesso nome. Un amministratore può spostare il ticket.",
+	IssueMoveSecurityNeeded:    "Spostare un ticket che ha un livello di riservatezza richiede il permesso Riservatezza nel progetto di destinazione, e in questo progetto per sceglierne un altro.",
+	IssueMoveNoSubtaskType:     "Il ticket ha dei sotto-task, e il progetto di destinazione non ha alcun tipo di sotto-task da assegnare loro. Aggiungine prima uno al progetto.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

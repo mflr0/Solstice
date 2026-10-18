@@ -309,6 +309,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChanged:           "Der Vorgang wurde während des Verschiebens geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
 	IssueMoveRestrictedRefused: "Auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle können in einem anderen Projekt nicht unverändert bleiben.",
 	IssueMoveRestrictedHidden:  "%d auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle sind für Sie nicht lesbar, und das Zielprojekt hat keine Rolle mit demselben Namen. Ein Administrator kann den Vorgang verschieben.",
+	IssueMoveSecurityNeeded:    "Das Verschieben eines Vorgangs mit Sicherheitsstufe erfordert die Berechtigung Sicherheitsstufe im Zielprojekt, und in diesem Projekt, um eine andere Stufe zu wählen.",
+	IssueMoveNoSubtaskType:     "Der Vorgang hat Unteraufgaben, und das Zielprojekt hat keinen Unteraufgabentyp für sie. Fügen Sie dem Projekt zuerst einen hinzu.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

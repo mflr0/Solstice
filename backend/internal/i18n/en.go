@@ -307,6 +307,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChanged:           "The issue changed while it was being moved. Reload it and try again.",
 	IssueMoveRestrictedRefused: "Comments and work logs restricted to a role of this project cannot stay as they are in another project.",
 	IssueMoveRestrictedHidden:  "%d comments and work logs restricted to a role of this project are not readable by you, and the target project has no role of the same name. An administrator can move the issue.",
+	IssueMoveSecurityNeeded:    "Moving an issue that has a security level takes the Security level permission in the target project, and in this project to choose another level.",
+	IssueMoveNoSubtaskType:     "The issue has sub-tasks, and the target project has no sub-task type to give them. Add one to the project first.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

@@ -308,6 +308,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveChanged:           "Le ticket a changé pendant son déplacement. Rechargez-le et réessayez.",
 	IssueMoveRestrictedRefused: "Les commentaires et saisies de temps réservés à un rôle de ce projet ne peuvent pas rester tels quels dans un autre projet.",
 	IssueMoveRestrictedHidden:  "%d commentaires et saisies de temps réservés à un rôle de ce projet ne vous sont pas lisibles, et le projet cible n'a aucun rôle du même nom. Un administrateur peut déplacer le ticket.",
+	IssueMoveSecurityNeeded:    "Déplacer un ticket qui a un niveau de confidentialité demande la permission Confidentialité dans le projet cible, et dans ce projet pour en choisir un autre.",
+	IssueMoveNoSubtaskType:     "Le ticket a des sous-tâches, et le projet cible n'a aucun type de sous-tâche à leur donner. Ajoutez-en un au projet d'abord.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",

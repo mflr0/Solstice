@@ -629,28 +629,67 @@ func TestMoveRefusesWhatCannotMove(t *testing.T) {
 	}
 }
 
-func TestMoveDryRunHidesTheLevelsFromWhoCannotSetThem(t *testing.T) {
+func TestMoveOfAnIssueWithALevelTakesTheSecurityRight(t *testing.T) {
 	e := newMoveEnv(t)
 	paul := login(t, "paul.martin", "motdepasse")
 	// paul.martin sees the level of the issue, which gives him Edit here and
-	// Create in the target, but not the right to set a level there.
+	// Create in the target, but not the right to set a level.
 	moveInsert(t, `INSERT INTO security_level_members (level_id, holder, user_id) VALUES (?, 'user', ?)`,
 		e.levelSrc, userID(t, "paul.martin"))
 	e.refreshRules(e.src)
 	body := map[string]any{"project": e.dst, "type": e.typeB, "subtaskType": e.subDst, "status": e.toDo,
-		"components": []int64{e.apiDst}, "fixVersions": []int64{e.v3Dst}}
+		"components": []int64{e.apiDst}, "fixVersions": []int64{e.v3Dst}, "check": true}
+	path := "/api/issues/" + e.issue + "/move"
 
 	c := e.check(e.admin, e.issue, body)
 	if c.SecurityLevel == nil || len(c.SecurityLevel.Options) != 1 || c.SecurityLevel.Options[0].ID != e.levelDst {
 		t.Fatalf("the project lead is not offered the target's levels: %+v", c.SecurityLevel)
 	}
-	c = e.check(paul, e.issue, body)
-	if c.Ready || !slices.Contains(c.Missing, "securityLevel") || c.SecurityLevel == nil ||
-		len(c.SecurityLevel.Unmatched) != 1 || c.SecurityLevel.Unmatched[0].Name != "Interne" {
-		t.Errorf("no match must still be reported: %+v", c)
+
+	refused := func(who *client, in map[string]any, why string) {
+		t.Helper()
+		status, msg, _ := who.errorIn("en", "POST", path, in)
+		if status != 403 || !strings.Contains(msg, "Security level permission") {
+			t.Errorf("%s: %d %q, want 403 and the reason", why, status, msg)
+		}
 	}
-	if c.SecurityLevel != nil && len(c.SecurityLevel.Options) != 0 {
-		t.Errorf("the target's levels are listed to a user without the Security right: %+v", c.SecurityLevel.Options)
+	refused(paul, body, "no Security right")
+	// A level of the same name in the target does not make up for it.
+	moveInsert(t, `INSERT INTO security_levels (project_id, name) VALUES (?, 'interne')`, e.dstID)
+	e.refreshRules(e.dst)
+	if c := e.check(e.admin, e.issue, body); !c.Ready || c.SecurityLevel != nil {
+		t.Errorf("the lead's move onto the level of the same name: %+v", c)
+	}
+	refused(paul, body, "a level of the same name")
+	in := map[string]any{"securityLevel": nil}
+	for k, v := range body {
+		in[k] = v
+	}
+	refused(paul, in, "no level asked for")
+
+	// The right in the target alone carries the level over by name, but does not choose another.
+	grants := func(project string) []grantOut {
+		var p struct{ Grants []grantOut }
+		e.admin.call("GET", "/api/projects/"+project+"/permissions", nil, 200, &p)
+		return p.Grants
+	}
+	grantSecurity := func(project string) {
+		t.Helper()
+		g := grantOut{Permission: "security", Holder: "user", ID: userID(t, "paul.martin")}
+		e.admin.call("PUT", "/api/projects/"+project+"/permissions", map[string]any{"grants": append(grants(project), g)}, 200, nil)
+	}
+	grantSecurity(e.dst)
+	if c := e.check(paul, e.issue, body); !c.Ready {
+		t.Errorf("the right in the target, a level of the same name: %+v", c)
+	}
+	testDB.Exec(`DELETE FROM security_levels WHERE project_id = ? AND name = 'interne'`, e.dstID)
+	e.refreshRules(e.dst)
+	refused(paul, body, "the right in the target alone, no level of the same name")
+
+	grantSecurity(e.src)
+	c = e.check(paul, e.issue, body)
+	if c.Ready || c.SecurityLevel == nil || len(c.SecurityLevel.Options) != 1 || c.SecurityLevel.Options[0].ID != e.levelDst {
+		t.Errorf("the right in both projects: %+v", c.SecurityLevel)
 	}
 }
 
@@ -1042,5 +1081,16 @@ func TestMoveRefusesWhenTheIssueChangedAfterThePlan(t *testing.T) {
 	}
 	if dbInt(t, `SELECT project_id FROM issues WHERE id = ?`, e.issueID) != e.srcID {
 		t.Error("the issue moved all the same")
+	}
+}
+
+func TestMoveSaysWhenTheTargetHasNoSubtaskType(t *testing.T) {
+	e := newMoveEnv(t)
+	bare := newProject(t, e.admin, map[string]any{"issueTypes": []string{e.typeA}})
+	for _, check := range []bool{true, false} {
+		status, msg, _ := e.admin.errorIn("en", "POST", "/api/issues/"+e.issue+"/move", map[string]any{"project": bare, "check": check})
+		if status != 400 || !strings.Contains(msg, "no sub-task type") {
+			t.Errorf("check %v: %d %q, want 400 and the reason", check, status, msg)
+		}
 	}
 }
