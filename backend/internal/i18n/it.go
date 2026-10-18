@@ -308,6 +308,11 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RESTPickerHistory:          "Cronologia di ricerca",
 	RESTPickerCurrent:          "Ricerca corrente",
 	RESTPickerShowing:          "%d ticket visualizzati su %d corrispondenti",
+	IssueCloneSummary:          "CLONE - %s",
+	IssueCloneHistory:          "creato clonando %s",
+	IssueCloneAttachmentFailed: "Non è stato possibile copiare l'allegato «%s».",
+	IssueCloneLinkSkipped:      "Il collegamento a %s non è stato aggiunto: non puoi collegare ticket nel suo progetto.",
+	IssueCloneSubtaskSkipped:   "Il sotto-task %s non è stato clonato: non puoi creare ticket di questo tipo nel suo progetto.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

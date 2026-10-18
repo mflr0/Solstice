@@ -674,6 +674,13 @@ export const hi: Messages = {
     moved: (oldKey: string, key: string) => `${oldKey} अब ${key} है।`,
     editSummary: 'सारांश संपादित करें',
     menu: 'और कार्रवाइयाँ',
+    clone: 'क्लोन करें',
+    cloneTitle: (key: string) => `${key} क्लोन करें`,
+    cloneSummaryHint: 'खाली छोड़ने पर मूल सारांश एक उपसर्ग के साथ इस्तेमाल होगा।',
+    cloneSubtasks: 'सब-टास्क क्लोन करें',
+    cloneLinks: 'लिंक कॉपी करें',
+    cloneAttachments: 'अटैचमेंट कॉपी करें',
+    cloneSubmit: 'क्लोन करें',
   },
 
   comments: {

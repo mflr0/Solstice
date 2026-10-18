@@ -28,6 +28,7 @@
   import WikiText from '../WikiText.svelte';
   import NotFoundPage from '../pages/NotFoundPage.svelte';
   import Attachments from './Attachments.svelte';
+  import CloneDialog from './CloneDialog.svelte';
   import Comments from './Comments.svelte';
   import Fiche from './Fiche.svelte';
   import History from './History.svelte';
@@ -62,6 +63,7 @@
   let savingDescription = $state(false);
   let menuOpen = $state(false);
   let deleteArmed = $state(false);
+  let cloneOpen = $state(false);
 
   async function load(key: string) {
     try {
@@ -292,7 +294,7 @@
             {issue.votes.me ? t.issue.voted : t.issue.vote}
             <span class="n">{issue.votes.count}</span>
           </button>
-          {#if issue.can.delete}
+          {#if issue.can.create || issue.can.delete}
             <span class="more" use:outside={() => ((menuOpen = false), (deleteArmed = false))}>
               <button
                 class="btn btn-small btn-quiet"
@@ -303,9 +305,19 @@
               >
               {#if menuOpen}
                 <div class="popover" role="menu">
-                  <button class="item danger" role="menuitem" onclick={() => void remove()}>
-                    {deleteArmed ? t.issue.confirmDelete(issue.key) : t.issue.delete}
-                  </button>
+                  {#if issue.can.create}
+                    <button
+                      class="item"
+                      role="menuitem"
+                      onclick={() => ((cloneOpen = true), (menuOpen = false))}
+                      >{t.issue.clone}</button
+                    >
+                  {/if}
+                  {#if issue.can.delete}
+                    <button class="item danger" role="menuitem" onclick={() => void remove()}>
+                      {deleteArmed ? t.issue.confirmDelete(issue.key) : t.issue.delete}
+                    </button>
+                  {/if}
                 </div>
               {/if}
             </span>
@@ -446,6 +458,7 @@
       <Fiche {issue} onchange={update} />
     </div>
   </article>
+  <CloneDialog open={cloneOpen} issueKey={issue.key} onclose={() => (cloneOpen = false)} />
 {/if}
 
 <style>

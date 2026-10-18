@@ -308,6 +308,11 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RESTPickerHistory:          "Suchverlauf",
 	RESTPickerCurrent:          "Aktuelle Suche",
 	RESTPickerShowing:          "%d von %d passenden Vorgängen angezeigt",
+	IssueCloneSummary:          "KLON - %s",
+	IssueCloneHistory:          "durch Klonen von %s erstellt",
+	IssueCloneAttachmentFailed: "Der Anhang „%s“ konnte nicht kopiert werden.",
+	IssueCloneLinkSkipped:      "Die Verknüpfung mit %s wurde nicht hinzugefügt: Sie dürfen in dessen Projekt keine Vorgänge verknüpfen.",
+	IssueCloneSubtaskSkipped:   "Die Unteraufgabe %s wurde nicht geklont: Sie dürfen in deren Projekt keine Vorgänge dieses Typs erstellen.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
