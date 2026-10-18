@@ -67,7 +67,7 @@ func TestAvatarLifecycle(t *testing.T) {
 		t.Errorf("no picture: %d %s %.60s", status, h.Get("Content-Type"), body)
 	}
 	initialsTag := h.Get("ETag")
-	if cc := h.Get("Cache-Control"); cc != "private, no-cache" || initialsTag == "" {
+	if cc := h.Get("Cache-Control"); cc != "private, max-age=60" || initialsTag == "" {
 		t.Errorf("initials: Cache-Control = %q, ETag = %q", cc, initialsTag)
 	}
 	if status, _, _ := getPicture(t, other, id, header("If-None-Match", initialsTag)); status != 304 {
@@ -89,7 +89,7 @@ func TestAvatarLifecycle(t *testing.T) {
 	if status != 200 || h.Get("Content-Type") != "image/png" || h.Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("picture: %d %v", status, h)
 	}
-	if cc := h.Get("Cache-Control"); cc != "private, no-cache" {
+	if cc := h.Get("Cache-Control"); cc != "private, max-age=60" {
 		t.Errorf("Cache-Control = %q", cc)
 	}
 	if bytes.Contains(body, []byte(trailer)) {

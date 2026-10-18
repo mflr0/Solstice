@@ -223,15 +223,15 @@ func initialsSVG(r *http.Request, name string) []byte {
 		`letter-spacing=".02em" fill="#4a4740">%s</text></svg>`, size, size, html.EscapeString(initialsOf(name)))
 }
 
-// serveAvatar answers with an avatar that the browser may keep but must check
-// with the server before showing, so a change is seen at once. The ETag lets
-// the check end in a 304.
+// serveAvatar answers with an avatar that the browser may keep for a minute, so
+// a page full of people costs no request, and a change shows within that
+// minute. After it, the ETag lets the check end in a 304.
 func serveAvatar(w http.ResponseWriter, r *http.Request, contentType, etag string, body io.ReadSeeker) {
 	h := w.Header()
 	h.Set("Content-Type", contentType)
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
-	h.Set("Cache-Control", "private, no-cache")
+	h.Set("Cache-Control", "private, max-age=60")
 	h.Set("ETag", etag)
 	http.ServeContent(w, r, "", time.Time{}, body)
 }
