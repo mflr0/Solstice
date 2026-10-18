@@ -368,7 +368,16 @@ func (s *Server) putProjectNotifications(w http.ResponseWriter, r *http.Request)
 type mailSettingsOut struct {
 	mail.Config
 	PasswordSet bool    `json:"passwordSet"`
-	BaseURL     *string `json:"baseUrl"` // links in e-mails; null: not set, links left out
+	BaseURL     *string `json:"baseUrl"`           // links in e-mails; null: not set, links left out
+	Problem     string  `json:"problem,omitempty"` // what keeps the saved settings from sending, see mailProblem
+}
+
+// mailProblemCredentialsNeedTLS is the problem of settings saved before
+// credentials were refused over a plain connection to a remote server.
+const mailProblemCredentialsNeedTLS = "credentialsNeedTLS"
+
+func credentialsInClear(c mail.Config) bool {
+	return c.Security == mail.SecurityNone && c.Username != "" && !mail.Loopback(c.Host)
 }
 
 func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
@@ -389,6 +398,9 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
+	if credentialsInClear(cfg) {
+		out.Problem = mailProblemCredentialsNeedTLS
+	}
 	if base := s.base(); base != "" {
 		out.BaseURL = &base
 	}
@@ -488,6 +500,9 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	// settings at a server of their own and sending a test e-mail.
 	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
 		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
+	}
+	if credentialsInClear(cfg) {
+		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
 	}
 	if cfg.Password != "" {
 		if _, err := s.secrets(); err != nil {
@@ -605,6 +620,8 @@ func smtpError(err error) error {
 		return failf(http.StatusBadGateway, i18n.MailAuthRefused, detail)
 	case mail.StageNoAuth:
 		return fail(http.StatusBadGateway, i18n.MailAuthUnsupported)
+	case mail.StageInsecure:
+		return fail(http.StatusBadGateway, i18n.MailCredentialsNeedTLS)
 	case mail.StageSender:
 		return failf(http.StatusBadGateway, i18n.MailSenderRefused, detail)
 	case mail.StageRecipient:

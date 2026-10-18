@@ -15,6 +15,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	RequestXSRFHeader:           "अनुरोध अस्वीकार: हेडर “X-Atlassian-Token: no-check” जोड़ें (क्रॉस-साइट अनुरोध जालसाज़ी से सुरक्षा)।",
 	RequestInvalid:              "अमान्य अनुरोध: %s",
 	RequestTooManyAttempts:      "बहुत अधिक प्रयास। %d सेकंड बाद फिर से कोशिश करें।",
+	RequestTooManyStreams:       "बहुत अधिक लाइव कनेक्शन।",
 	RequestStreamingUnsupported: "स्ट्रीमिंग समर्थित नहीं है।",
 	RequestInternalError:        "आंतरिक त्रुटि। इस घटना को लॉग कर लिया गया है।",
 
@@ -323,6 +324,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AttachmentTooLarge:      "फ़ाइल बहुत बड़ी है (अधिकतम 100 MB)।",
 	AttachmentNotImported:   "Jira से इम्पोर्ट के दौरान यह फ़ाइल नहीं मिली।",
 	AttachmentFileMissing:   "डेटा फ़ोल्डर में फ़ाइल मौजूद नहीं है।",
+	AttachmentStorageQuota:  "अनुलग्नक भंडारण सीमा पूरी हो गई है।",
 
 	// Statuses and their categories.
 	StatusUnknown:            "अज्ञात स्टेटस।",
@@ -475,6 +477,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	MailInviteAction:          "मेरा पासवर्ड चुनें",
 	MailInviteExpiry:          "यह लिंक केवल एक बार काम करता है और 7 दिनों तक मान्य है।",
 	MailInviteWhy:             "आपको यह ईमेल इसलिए मिला है क्योंकि एक एडमिन ने आपके लिए खाता बनाया है।",
+	MailCredentialsNeedTLS:    "यूज़रनेम और पासवर्ड केवल एन्क्रिप्टेड कनेक्शन पर भेजे जाते हैं: STARTTLS या TLS चुनें, या यूज़रनेम खाली छोड़ें। केवल इसी मशीन का सर्वर इससे मुक्त है; निजी नेटवर्क के रिले को भी STARTTLS या TLS चाहिए।",
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "अमान्य घंटा: 0 से 23 तक।",

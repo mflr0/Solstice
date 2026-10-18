@@ -21,6 +21,10 @@ import (
 // server takes requests.
 func (s *Server) SetMaxUpload(n int64) { s.maxUpload = n }
 
+// SetMaxStorage caps the total size of all attachments, in bytes; 0 for no
+// limit. Call it before the server takes requests.
+func (s *Server) SetMaxStorage(n int64) { s.maxStorage = n }
+
 func (s *Server) attachmentPath(id int64) string {
 	return filepath.Join(s.dataDir, "attachments", strconv.FormatInt(id, 10))
 }
@@ -49,6 +53,18 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	}
 	var names []string
 	now := time.Now().UTC()
+	// The quota is what the database stores, not what the disk holds.
+	var stored int64
+	if s.maxStorage > 0 {
+		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
+			return err
+		}
+		// A body is at least as long as its parts, so one over the quota is
+		// refused whole before any file is written.
+		if r.ContentLength > 0 && stored+r.ContentLength > s.maxStorage {
+			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+		}
+	}
 	for {
 		part, err := reader.NextPart()
 		if errors.Is(err, io.EOF) {
@@ -61,6 +77,9 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		if name == "" {
 			continue
 		}
+		if s.maxStorage > 0 && stored >= s.maxStorage {
+			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+		}
 		mimeType := part.Header.Get("Content-Type")
 		if mimeType == "" {
 			mimeType = "application/octet-stream"
@@ -71,17 +90,25 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		id, _ := res.LastInsertId()
-		size, err := writeFile(s.attachmentPath(id), part)
+		var src io.Reader = part
+		if s.maxStorage > 0 {
+			src = &quotaReader{r: part, left: s.maxStorage - stored}
+		}
+		size, err := writeFile(s.attachmentPath(id), src)
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
 				return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
+			}
+			if errors.Is(err, errStorageQuota) {
+				return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 			}
 			return err
 		}
 		if _, err := s.db.ExecContext(ctx, `UPDATE attachments SET size = ? WHERE id = ?`, size, id); err != nil {
 			return err
 		}
+		stored += size
 		names = append(names, name)
 	}
 	if len(names) == 0 {
@@ -107,6 +134,26 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
 	return s.respondIssue(w, r, sub, iss.ID)
+}
+
+var errStorageQuota = errors.New("attachment storage quota reached")
+
+type quotaReader struct {
+	r    io.Reader
+	left int64
+}
+
+func (q *quotaReader) Read(p []byte) (int, error) {
+	if int64(len(p)) > q.left+1 {
+		p = p[:q.left+1]
+	}
+	n, err := q.r.Read(p)
+	if int64(n) > q.left {
+		n = int(q.left)
+		err = errStorageQuota
+	}
+	q.left -= int64(n)
+	return n, err
 }
 
 func writeFile(path string, src io.Reader) (int64, error) {
