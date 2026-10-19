@@ -43,140 +43,135 @@ func renderWiki(src string) string {
 	if len(src) > maxWiki {
 		return "<pre>" + html.EscapeString(src) + "</pre>"
 	}
-	var out strings.Builder
+	var w wikiWriter
 	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
-	var para []string
-	var lists []string // open list tags, outermost first
-	flushPara := func() {
-		if len(para) > 0 {
-			out.WriteString("<p>" + strings.Join(para, "<br/>") + "</p>")
-			para = nil
+	for i := 0; i < len(lines); {
+		trimmed := strings.TrimSpace(lines[i])
+		next := i + 1
+		if m := wikiBlock.FindStringSubmatch(trimmed); m != nil {
+			w.endBlock()
+			var block string
+			block, next = wikiBlockAt(lines, i, m[1], m[2])
+			w.out.WriteString(block)
+		} else if trimmed == "" {
+			w.endBlock()
+		} else if trimmed == "----" {
+			w.endBlock()
+			w.out.WriteString("<hr/>")
+		} else if m := wikiHeading.FindStringSubmatch(trimmed); m != nil {
+			w.endBlock()
+			w.out.WriteString("<h" + m[1] + ">" + wikiInline(m[2]) + "</h" + m[1] + ">")
+		} else if text, ok := strings.CutPrefix(trimmed, "bq. "); ok {
+			w.endBlock()
+			w.out.WriteString("<blockquote><p>" + wikiInline(text) + "</p></blockquote>")
+		} else if strings.HasPrefix(trimmed, "|") {
+			w.endBlock()
+			var table string
+			table, next = wikiTableAt(lines, i)
+			w.out.WriteString(table)
+		} else if m := wikiList.FindStringSubmatch(trimmed); m != nil {
+			w.flushPara()
+			w.listItem(m[1], m[2])
+		} else {
+			w.closeLists(0)
+			w.para = append(w.para, wikiInline(trimmed))
 		}
+		i = next
 	}
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimRight(lines[i], " \t")
-		trimmed := strings.TrimSpace(line)
-		if block, next, ok := wikiBlockAt(lines, i, trimmed); ok {
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-			out.WriteString(block)
-			i = next
-			continue
-		}
-		heading := wikiHeading.FindStringSubmatch(trimmed)
-		item := wikiList.FindStringSubmatch(trimmed)
-		switch {
-		case trimmed == "":
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-		case trimmed == "----":
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-			out.WriteString("<hr/>")
-		case heading != nil:
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-			out.WriteString("<h" + heading[1] + ">" + wikiInline(heading[2]) + "</h" + heading[1] + ">")
-		case strings.HasPrefix(trimmed, "bq. "):
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-			out.WriteString("<blockquote><p>" + wikiInline(strings.TrimPrefix(trimmed, "bq. ")) + "</p></blockquote>")
-		case strings.HasPrefix(trimmed, "|"):
-			flushPara()
-			lists = wikiCloseLists(&out, lists, 0)
-			out.WriteString("<table>")
-			for ; i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "|"); i++ {
-				out.WriteString(wikiRow(strings.TrimSpace(lines[i])))
-			}
-			i--
-			out.WriteString("</table>")
-		case item != nil:
-			flushPara()
-			lists = wikiListItem(&out, lists, item)
-		default:
-			lists = wikiCloseLists(&out, lists, 0)
-			para = append(para, wikiInline(trimmed))
-		}
-	}
-	flushPara()
-	wikiCloseLists(&out, lists, 0)
-	return out.String()
+	w.endBlock()
+	return w.out.String()
 }
 
-// wikiBlockAt renders the {code}, {noformat} or {quote} block that line i
-// opens (trimmed is that line without its surrounding blanks), and returns
-// the index of the line that closes it. ok is false when line i opens no
-// block.
-func wikiBlockAt(lines []string, i int, trimmed string) (block string, next int, ok bool) {
-	m := wikiBlock.FindStringSubmatch(trimmed)
-	if m == nil {
-		return "", i, false
+// wikiWriter is the HTML renderWiki writes, with the paragraph and the lists
+// still open.
+type wikiWriter struct {
+	out   strings.Builder
+	para  []string // rendered lines of the open paragraph
+	lists []string // open list tags, outermost first
+}
+
+func (w *wikiWriter) flushPara() {
+	if len(w.para) > 0 {
+		w.out.WriteString("<p>" + strings.Join(w.para, "<br/>") + "</p>")
+		w.para = nil
 	}
-	// Gather the block up to its closing tag.
-	var body []string
-	rest := m[2]
-	closing := "{" + m[1] + "}"
-	for {
-		if before, _, cut := strings.Cut(rest, closing); cut {
-			body = append(body, before)
-			break
+}
+
+func (w *wikiWriter) closeLists(depth int) {
+	for len(w.lists) > depth {
+		w.out.WriteString("</li></" + w.lists[len(w.lists)-1] + ">")
+		w.lists = w.lists[:len(w.lists)-1]
+	}
+}
+
+// endBlock closes the open paragraph and lists before a block of its own.
+func (w *wikiWriter) endBlock() {
+	w.flushPara()
+	w.closeLists(0)
+}
+
+// listItem writes an item whose marks (*, # or -, one per level) give its
+// depth and, by the last one, its list type. An item at most one level
+// deeper than the open lists opens a list.
+func (w *wikiWriter) listItem(marks, text string) {
+	tag := "ul"
+	if marks[len(marks)-1] == '#' {
+		tag = "ol"
+	}
+	depth := min(len(marks), len(w.lists)+1)
+	if depth <= len(w.lists) {
+		w.closeLists(depth)
+		if w.lists[depth-1] == tag {
+			w.out.WriteString("</li><li>" + wikiInline(text))
+			return
 		}
-		body = append(body, rest)
+		w.closeLists(depth - 1)
+	}
+	w.out.WriteString("<" + tag + "><li>" + wikiInline(text))
+	w.lists = append(w.lists, tag)
+}
+
+// wikiBlockAt renders the {code}, {noformat} or {quote} block of the given
+// kind that opens on lines[i], rest being the text after its tag, up to its
+// closing tag or the end of the text. It returns the index of the line after
+// the block.
+func wikiBlockAt(lines []string, i int, kind, rest string) (string, int) {
+	closing := "{" + kind + "}"
+	var body []string
+	for {
+		before, _, closed := strings.Cut(rest, closing)
+		body = append(body, before)
 		i++
-		if i >= len(lines) {
+		if closed || i == len(lines) {
 			break
 		}
 		rest = lines[i]
 	}
 	text := strings.Trim(strings.Join(body, "\n"), "\n")
-	switch m[1] {
+	switch kind {
 	case "quote":
-		return "<blockquote>" + renderWiki(text) + "</blockquote>", i, true
+		return "<blockquote>" + renderWiki(text) + "</blockquote>", i
 	case "code":
-		return `<pre class="code">` + html.EscapeString(text) + "</pre>", i, true
+		return `<pre class="code">` + html.EscapeString(text) + "</pre>", i
 	default:
-		return "<pre>" + html.EscapeString(text) + "</pre>", i, true
+		return "<pre>" + html.EscapeString(text) + "</pre>", i
 	}
 }
 
-// wikiListItem writes one list item, m being the line's wikiList match:
-// it closes the deeper levels, opens or switches the list of its level,
-// then writes the item's text. It returns the stack of open list tags.
-func wikiListItem(out *strings.Builder, lists []string, m []string) []string {
-	depth := len(m[1])
-	tag := "ul"
-	if m[1][depth-1] == '#' {
-		tag = "ol"
-	}
-	if depth > len(lists)+1 {
-		depth = len(lists) + 1
-	}
-	switch {
-	case depth > len(lists):
-		out.WriteString("<" + tag + "><li>")
-		lists = append(lists, tag)
-	default:
-		lists = wikiCloseLists(out, lists, depth)
-		if lists[depth-1] != tag {
-			lists = wikiCloseLists(out, lists, depth-1)
-			out.WriteString("<" + tag + "><li>")
-			lists = append(lists, tag)
-		} else {
-			out.WriteString("</li><li>")
+// wikiTableAt renders the table whose rows start on lines[i], and returns
+// the index of the first line after it.
+func wikiTableAt(lines []string, i int) (string, int) {
+	var out strings.Builder
+	out.WriteString("<table>")
+	for ; i < len(lines); i++ {
+		row := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(row, "|") {
+			break
 		}
+		out.WriteString(wikiRow(row))
 	}
-	out.WriteString(wikiInline(m[2]))
-	return lists
-}
-
-// wikiCloseLists closes every list level deeper than depth: one "</li></tag>"
-// per level. It returns the stack of open list tags that is left.
-func wikiCloseLists(out *strings.Builder, lists []string, depth int) []string {
-	for len(lists) > depth {
-		out.WriteString("</li></" + lists[len(lists)-1] + ">")
-		lists = lists[:len(lists)-1]
-	}
-	return lists
+	out.WriteString("</table>")
+	return out.String(), i
 }
 
 // wikiRow renders a table row: ||heading||heading|| or |cell|cell|.
@@ -209,16 +204,25 @@ func wikiRow(line string) string {
 // are set aside first, so their content is not formatted.
 func wikiInline(text string) string {
 	text = strings.ReplaceAll(text, "\x00", "")
-	var kept []string
+	var kept, mono []string // mono: the source of each monospaced span, kept first
 	keep := func(s string) string {
 		kept = append(kept, s)
 		return "\x00" + strconv.Itoa(len(kept)-1) + "\x00"
 	}
-	text = wikiReplace(text, wikiMono, func(sub []string) string {
-		return keep("<code>" + html.EscapeString(sub[1]) + "</code>")
+	restore := func(s string, from []string) string {
+		return wikiKept.ReplaceAllStringFunc(s, func(m string) string {
+			i, _ := strconv.Atoi(m[1 : len(m)-1])
+			return from[i]
+		})
+	}
+	text = replaceSubmatch(wikiMono, text, func(m []string) string {
+		mono = append(mono, m[0])
+		return keep("<code>" + html.EscapeString(m[1]) + "</code>")
 	})
-	text = wikiReplace(text, wikiLink, func(sub []string) string {
-		label, target := sub[1], strings.TrimSpace(sub[2])
+	// A link holds the placeholders of its monospaced spans: its target gets
+	// their source back, the text it shows their HTML.
+	text = replaceSubmatch(wikiLink, text, func(m []string) string {
+		label, target := m[1], strings.TrimSpace(restore(m[2], mono))
 		if strings.HasPrefix(target, "~") {
 			return keep(`<span class="user-mention">@` + html.EscapeString(target[1:]) + "</span>")
 		}
@@ -226,9 +230,9 @@ func wikiInline(text string) string {
 			label = target
 		}
 		if !safeHref(target) {
-			return keep(html.EscapeString(sub[0]))
+			return keep(restore(html.EscapeString(m[0]), kept))
 		}
-		return keep(`<a href="` + html.EscapeString(target) + `">` + html.EscapeString(label) + "</a>")
+		return keep(`<a href="` + html.EscapeString(target) + `">` + restore(html.EscapeString(label), kept) + "</a>")
 	})
 	text = html.EscapeString(wikiColor.ReplaceAllString(text, ""))
 	text = strings.ReplaceAll(text, `\\`, "<br/>")
@@ -242,33 +246,26 @@ func wikiInline(text string) string {
 			text = e.re.ReplaceAllString(text, "$1<"+e.tag+">$2</"+e.tag+">$3")
 		}
 	}
-	return wikiKept.ReplaceAllStringFunc(text, func(m string) string {
-		i, _ := strconv.Atoi(m[1 : len(m)-1])
-		return kept[i]
-	})
+	return restore(text, kept)
 }
 
-// wikiReplace replaces every match of re in text with repl of its
-// submatches (sub[0] is the whole match), matching the text once.
-func wikiReplace(text string, re *regexp.Regexp, repl func(sub []string) string) string {
-	matches := re.FindAllStringSubmatchIndex(text, -1)
-	if len(matches) == 0 {
-		return text
-	}
+// replaceSubmatch is regexp's ReplaceAllStringFunc, with repl given the
+// submatches of each match rather than the match alone.
+func replaceSubmatch(re *regexp.Regexp, s string, repl func(m []string) string) string {
 	var out strings.Builder
 	last := 0
-	for _, loc := range matches {
-		out.WriteString(text[last:loc[0]])
-		sub := make([]string, len(loc)/2)
-		for g := range sub {
-			if loc[2*g] >= 0 {
-				sub[g] = text[loc[2*g]:loc[2*g+1]]
+	for _, loc := range re.FindAllStringSubmatchIndex(s, -1) {
+		m := make([]string, len(loc)/2)
+		for k := range m {
+			if loc[2*k] >= 0 {
+				m[k] = s[loc[2*k]:loc[2*k+1]]
 			}
 		}
-		out.WriteString(repl(sub))
+		out.WriteString(s[last:loc[0]])
+		out.WriteString(repl(m))
 		last = loc[1]
 	}
-	out.WriteString(text[last:])
+	out.WriteString(s[last:])
 	return out.String()
 }
 
