@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"errors"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -70,6 +72,52 @@ func TestOpenErrorsNeverContainThePassword(t *testing.T) {
 		}
 		if strings.Contains(err.Error(), "secret") || strings.Contains(err.Error(), "zz") {
 			t.Errorf("%s: error contains the password: %v", raw, err)
+		}
+	}
+}
+
+func TestCheckParams(t *testing.T) {
+	var applied []string
+	params := map[string]Param{
+		"a": {"only ok", func(v string) bool { applied = append(applied, "a"); return v == "ok" }},
+		"b": {"only ok", func(v string) bool { applied = append(applied, "b"); return v == "ok" }},
+	}
+	for _, c := range []struct {
+		query       string
+		unknown     []string // the names of an *UnknownParamsError
+		invalid     string   // the name of an *InvalidParamError
+		hint        string
+		wantApplied []string
+	}{
+		{query: "", wantApplied: nil},
+		{query: "b=ok&a=ok", wantApplied: []string{"a", "b"}},
+		{query: "z=1&a=ok&y=2", unknown: []string{"y", "z"}},
+		{query: "b=1&b=2&a=bad", invalid: "b", hint: "give it once"},
+		{query: "b=bad&a=bad", invalid: "a", hint: "only ok", wantApplied: []string{"a"}},
+	} {
+		applied = nil
+		q, err := url.ParseQuery(c.query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = CheckParams(q, params)
+		var unknown *UnknownParamsError
+		var invalid *InvalidParamError
+		switch {
+		case c.unknown != nil:
+			if !errors.As(err, &unknown) || !slices.Equal(unknown.Names, c.unknown) ||
+				!slices.Equal(unknown.Allowed, []string{"a", "b"}) {
+				t.Errorf("%q: %v, want unknown %v", c.query, err, c.unknown)
+			}
+		case c.invalid != "":
+			if !errors.As(err, &invalid) || invalid.Name != c.invalid || invalid.Hint != c.hint {
+				t.Errorf("%q: %v, want %s invalid (%s)", c.query, err, c.invalid, c.hint)
+			}
+		case err != nil:
+			t.Errorf("%q: %v", c.query, err)
+		}
+		if !slices.Equal(applied, c.wantApplied) {
+			t.Errorf("%q: applied %v, want %v", c.query, applied, c.wantApplied)
 		}
 	}
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,26 +67,29 @@ func quoteAll(names []string) []string {
 
 var charsetPattern = regexp.MustCompile(`^[A-Za-z0-9_]{1,32}$`)
 
-// ApplyMySQLParams checks the query of a mysql:// URL against the parameter
-// names in allow and applies the accepted ones to cfg through its typed
-// fields: nothing is ever copied as a raw driver parameter, and local file
-// loading stays disabled. A name that is not in allow, a repeated name or an
-// invalid value is an error (*UnknownParamsError, *InvalidParamError).
-func ApplyMySQLParams(cfg *mysql.Config, q url.Values, allow ...string) error {
-	cfg.AllowAllFiles = false
-	allowed := map[string]bool{}
-	for _, name := range allow {
-		allowed[name] = true
-	}
+// Param is an accepted URL parameter: Apply checks a value and records it,
+// and returns false when the value is not accepted.
+type Param struct {
+	Hint  string // what is accepted, for the error
+	Apply func(v string) bool
+}
+
+// CheckParams checks the query of a database URL against params, by name in
+// sorted order: a name that is not in params is an *UnknownParamsError, a
+// repeated name or a value that Apply refuses an *InvalidParamError.
+func CheckParams(q url.Values, params map[string]Param) error {
 	var unknown []string
 	for name := range q {
-		if !allowed[name] {
+		if _, ok := params[name]; !ok {
 			unknown = append(unknown, name)
 		}
 	}
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
-		accepted := append([]string(nil), allow...)
+		accepted := make([]string, 0, len(params))
+		for name := range params {
+			accepted = append(accepted, name)
+		}
 		sort.Strings(accepted)
 		return &UnknownParamsError{Names: unknown, Allowed: accepted}
 	}
@@ -94,44 +99,101 @@ func ApplyMySQLParams(cfg *mysql.Config, q url.Values, allow ...string) error {
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		values := q[name]
-		if len(values) != 1 {
+		if len(q[name]) != 1 {
 			return &InvalidParamError{Name: name, Hint: "give it once"}
 		}
-		v := values[0]
-		switch name {
-		case ParamTLS:
-			switch strings.ToLower(v) {
+	}
+	for _, name := range names {
+		if p := params[name]; !p.Apply(q.Get(name)) {
+			return &InvalidParamError{Name: name, Hint: p.Hint}
+		}
+	}
+	return nil
+}
+
+// ApplyMySQLParams checks the query of a mysql:// URL against the parameter
+// names in allow and applies the accepted ones to cfg through its typed
+// fields: nothing is ever copied as a raw driver parameter, and local file
+// loading stays disabled. A name that is not in allow, a repeated name or an
+// invalid value is an error (*UnknownParamsError, *InvalidParamError).
+func ApplyMySQLParams(cfg *mysql.Config, q url.Values, allow ...string) error {
+	cfg.AllowAllFiles = false
+	all := map[string]Param{
+		ParamTLS: {"true, false, skip-verify or preferred", func(v string) bool {
+			switch v = strings.ToLower(v); v {
 			case "true", "skip-verify", "preferred":
-				cfg.TLSConfig = strings.ToLower(v)
+				cfg.TLSConfig = v
 			case "false":
 				cfg.TLSConfig = ""
 			default:
-				return &InvalidParamError{Name: name, Hint: "true, false, skip-verify or preferred"}
+				return false
 			}
-		case ParamCharset:
+			return true
+		}},
+		ParamCharset: {"letters, digits and underscores", func(v string) bool {
 			if !charsetPattern.MatchString(v) {
-				return &InvalidParamError{Name: name, Hint: "letters, digits and underscores"}
+				return false
 			}
 			if cfg.Params == nil {
 				cfg.Params = map[string]string{}
 			}
 			cfg.Params["charset"] = v
-		case ParamTimeout:
+			return true
+		}},
+		ParamTimeout: {"a duration between 1s and 30m, e.g. 10s", func(v string) bool {
 			d, err := parseDuration(v, 30*time.Minute)
 			if err != nil {
-				return &InvalidParamError{Name: name, Hint: "a duration between 1s and 30m, e.g. 10s"}
+				return false
 			}
 			cfg.Timeout = d
-		case ParamReadTimeout:
+			return true
+		}},
+		ParamReadTimeout: {"a duration between 1s and 6h, e.g. 5m", func(v string) bool {
 			d, err := parseDuration(v, 6*time.Hour)
 			if err != nil {
-				return &InvalidParamError{Name: name, Hint: "a duration between 1s and 6h, e.g. 5m"}
+				return false
 			}
 			cfg.ReadTimeout = d
-		}
+			return true
+		}},
 	}
-	return nil
+	params := map[string]Param{}
+	for _, name := range allow {
+		params[name] = all[name]
+	}
+	return CheckParams(q, params)
+}
+
+// The query parameters of a postgres:// URL that Solstice can accept: the
+// others (sslkey, passfile, service, options, ...) read local files or change
+// the session.
+const (
+	// ParamSSLMode selects the encryption of the link, as libpq names it.
+	ParamSSLMode = "sslmode"
+	// ParamConnectTimeout is the time allowed to connect, in seconds.
+	ParamConnectTimeout = "connect_timeout"
+)
+
+var postgresParams = map[string]Param{
+	ParamSSLMode: {"disable, allow, prefer, require, verify-ca or verify-full", func(v string) bool {
+		return slices.Contains([]string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}, v)
+	}},
+	ParamConnectTimeout: {"a number of seconds between 1 and 600", func(v string) bool {
+		n, err := strconv.Atoi(v)
+		return err == nil && n >= 1 && n <= 600
+	}},
+}
+
+// CheckPostgresParams checks the query of a postgres:// URL against the
+// parameter names in allow; the values are left in q. A name that is not in
+// allow, a repeated name or an invalid value is an error
+// (*UnknownParamsError, *InvalidParamError).
+func CheckPostgresParams(q url.Values, allow ...string) error {
+	params := map[string]Param{}
+	for _, name := range allow {
+		params[name] = postgresParams[name]
+	}
+	return CheckParams(q, params)
 }
 
 func parseDuration(s string, max time.Duration) (time.Duration, error) {
