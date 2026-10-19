@@ -14,6 +14,8 @@
     SORT_FIELDS,
     type Completion,
   } from '../../core/jql.js';
+  import { CATEGORY_JQL } from '../../core/filters.js';
+  import { STATUS_CATEGORIES } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { catalog, fold, kindOf, listFieldOf, loadOptions } from './sources.svelte.js';
 
@@ -182,7 +184,7 @@
     if (c.keywords.includes('(') && !p) out.push({ label: '(', insert: '(', detail: '' });
     const kind = kindOf(c.field);
     if (kind === 'category') {
-      for (const v of ['To Do', 'In Progress', 'Done']) {
+      for (const v of STATUS_CATEGORIES.map((c) => CATEGORY_JQL[c])) {
         if (startsWith(v, p)) out.push({ label: v, insert: quote(v) + end, detail: '' });
       }
     } else if (kind === 'date') {

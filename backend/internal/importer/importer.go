@@ -385,15 +385,6 @@ func (r *run) projectIDs() []int64 {
 	return ids
 }
 
-// quote protects a Jira column named after a reserved word (e.g. "lead",
-// reserved since MySQL 8).
-func (r *run) quote(column string) string {
-	if r.engine == jiradb.MySQL {
-		return "`" + column + "`"
-	}
-	return `"` + column + `"`
-}
-
 func firstLine(s string) string {
 	s = strings.TrimSpace(s)
 	if i := strings.IndexByte(s, '\n'); i >= 0 {

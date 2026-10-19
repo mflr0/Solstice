@@ -33,7 +33,6 @@ type Service struct {
 	perms  *perm.Store
 	outbox *mail.Outbox
 	log    *slog.Logger
-	tz     *time.Location
 	config func(context.Context) (mail.Config, error)
 	search Searcher
 
@@ -44,9 +43,6 @@ type Service struct {
 	// e-mails to people who chose none (by default English).
 	Zone          func() *time.Location
 	DefaultLocale func() string
-	// Window is how long changes to an issue wait for more before being
-	// mailed; MaxWait bounds the wait when changes keep coming.
-	Window, MaxWait time.Duration
 	// Now is the clock (tests move it).
 	Now func() time.Time
 	// Paused, when set and true, makes FlushDue and RunSchedules do nothing:
@@ -58,12 +54,19 @@ type Service struct {
 	enabledAt time.Time
 }
 
+// Window is how long changes to an issue wait for more before being mailed;
+// MaxWait bounds the wait when changes keep coming.
+const (
+	Window  = 2 * time.Minute
+	MaxWait = 10 * time.Minute
+)
+
 // New makes the service. config reads the SMTP settings; search runs saved
 // filters for subscriptions.
 func New(db *sql.DB, perms *perm.Store, outbox *mail.Outbox, tz *time.Location, log *slog.Logger,
 	config func(context.Context) (mail.Config, error), search Searcher) *Service {
-	return &Service{db: db, perms: perms, outbox: outbox, log: log, tz: tz, config: config, search: search,
-		BaseURL: func() string { return "" }, Window: 2 * time.Minute, MaxWait: 10 * time.Minute, Now: time.Now,
+	return &Service{db: db, perms: perms, outbox: outbox, log: log, config: config, search: search,
+		BaseURL: func() string { return "" }, Now: time.Now,
 		Zone: func() *time.Location { return tz }, DefaultLocale: func() string { return "" }}
 }
 
@@ -340,7 +343,7 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	}
 	for _, id := range ids {
 		u, p := users[id], prefs[id]
-		if u == nil || !u.Active || !mail.ValidAddress(u.Email) || p.Delivery == None {
+		if !eligible(u) || p.Delivery == None {
 			continue
 		}
 		if id == e.ActorID && !p.OwnChanges {
@@ -389,7 +392,7 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	now := s.Now().UTC()
 	digest := p.Delivery == Digest
 	batchIssue := issueID
-	sendAt := now.Add(s.Window)
+	sendAt := now.Add(Window)
 	if digest {
 		batchIssue = 0
 		sendAt = nextAt(now, s.zone(), p.DigestHour, nil)
@@ -402,7 +405,7 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_batches (user_id, digest, issue_id, first_at, send_at)
 		VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
 		send_at = IF(digest, send_at, LEAST(VALUES(send_at), first_at + INTERVAL ? MICROSECOND))`,
-		userID, digest, batchIssue, now, sendAt, s.MaxWait.Microseconds()); err != nil {
+		userID, digest, batchIssue, now, sendAt, MaxWait.Microseconds()); err != nil {
 		return err
 	}
 	var batch int64

@@ -215,7 +215,7 @@ type filterInput struct {
 func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterInput) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
-		if n == "" || utf8.RuneCountInString(n) > 255 {
+		if n == "" || utf8.RuneCountInString(n) > varcharWidth {
 			return fail(http.StatusBadRequest, i18n.FilterNameRequired)
 		}
 	}
@@ -304,8 +304,8 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	var desc any
-	if in.Description != nil && strings.TrimSpace(*in.Description) != "" {
-		desc = *in.Description
+	if in.Description != nil {
+		desc = sqlq.NullIfBlank(*in.Description)
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, description, query, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)`, sub.UserID, strings.TrimSpace(*in.Name), desc, *in.Query, now, now)
@@ -362,11 +362,7 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "name = ?"), append(args, strings.TrimSpace(*in.Name))
 	}
 	if in.Description != nil {
-		var d any
-		if strings.TrimSpace(*in.Description) != "" {
-			d = *in.Description
-		}
-		sets, args = append(sets, "description = ?"), append(args, d)
+		sets, args = append(sets, "description = ?"), append(args, sqlq.NullIfBlank(*in.Description))
 	}
 	if in.Query != nil {
 		sets, args = append(sets, "query = ?"), append(args, *in.Query)

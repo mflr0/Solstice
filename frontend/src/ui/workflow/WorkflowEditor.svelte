@@ -13,6 +13,7 @@
     removeStatus,
     strandedDefaultOf,
     strandedOf,
+    suggestDefaultRemap,
     suggestRemap,
     toDraft,
     toInput,
@@ -98,6 +99,45 @@
     error = '';
   }
 
+  /** Sends the draft and returns the project's workflows as saved. */
+  async function send(
+    withRemap?: Record<string, string>,
+    withRemapDefault?: Record<string, string>,
+  ): Promise<ProjectWorkflows> {
+    return api.saveWorkflow(base.id, toInput(draft, base.default, withRemap, withRemapDefault));
+  }
+
+  /** Adopts the workflows the server saved and tells the panel. */
+  function adopt(d: ProjectWorkflows) {
+    const updated = d.workflows.find((w) => w.id === base.id);
+    stranded = null;
+    strandedDefault = null;
+    if (updated) {
+      base = updated;
+      draft = toDraft(updated);
+    }
+    onsaved(d);
+    notify(t.workflows.saved);
+  }
+
+  /** Offers the remap a 409 asks for, with its suggested moves; shows the error otherwise. */
+  function offerRemap(e: unknown) {
+    const conflict = e instanceof ApiError && e.status === 409;
+    const list = conflict ? strandedOf(e.data) : null;
+    const toDefault = conflict ? strandedDefaultOf(e.data) : null;
+    if ((list || toDefault) && e instanceof Error) {
+      stranded = list ?? [];
+      strandedDefault = toDefault;
+      strandedMessage = e.message;
+      remap = suggestRemap(stranded, draft.statuses, draft.initial);
+      remapDefault = toDefault ? suggestDefaultRemap(toDefault) : {};
+    } else {
+      stranded = null;
+      strandedDefault = null;
+      error = errorMessage(e);
+    }
+  }
+
   async function save(
     withRemap?: Record<string, string>,
     withRemapDefault?: Record<string, string>,
@@ -105,40 +145,9 @@
     saving = true;
     error = '';
     try {
-      const d = await api.saveWorkflow(
-        base.id,
-        toInput(draft, base.default, withRemap, withRemapDefault),
-      );
-      const updated = d.workflows.find((w) => w.id === base.id);
-      stranded = null;
-      strandedDefault = null;
-      if (updated) {
-        base = updated;
-        draft = toDraft(updated);
-      }
-      onsaved(d);
-      notify(t.workflows.saved);
+      adopt(await send(withRemap, withRemapDefault));
     } catch (e) {
-      const conflict = e instanceof ApiError && e.status === 409;
-      const list = conflict ? strandedOf(e.data) : null;
-      const toDefault = conflict ? strandedDefaultOf(e.data) : null;
-      if ((list || toDefault) && e instanceof Error) {
-        stranded = list ?? [];
-        strandedDefault = toDefault;
-        strandedMessage = e.message;
-        remap = suggestRemap(stranded, draft.statuses, draft.initial);
-        remapDefault = toDefault
-          ? suggestRemap(
-              toDefault.stranded,
-              toDefault.workflow.statuses,
-              toDefault.workflow.statuses[0]?.id ?? '',
-            )
-          : {};
-      } else {
-        stranded = null;
-        strandedDefault = null;
-        error = errorMessage(e);
-      }
+      offerRemap(e);
     } finally {
       saving = false;
     }

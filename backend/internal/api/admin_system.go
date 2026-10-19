@@ -166,9 +166,7 @@ func (s *Server) failingWebhooks(ctx context.Context) (map[string]any, error) {
 		if err := rows.Scan(&f.ID, &f.Name, &f.Failed, &last, &lastErr); err != nil {
 			return err
 		}
-		if last.Valid {
-			f.LastAttempt = &last.Time
-		}
+		f.LastAttempt = sqlq.Time(last)
 		f.LastError = sqlq.String(lastErr)
 		list = append(list, f)
 		return nil

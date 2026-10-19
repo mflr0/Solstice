@@ -5,6 +5,9 @@
 
 export type StatusCategory = 'todo' | 'doing' | 'done';
 
+/** The status categories, in the order of an issue's life. */
+export const STATUS_CATEGORIES: readonly StatusCategory[] = ['todo', 'doing', 'done'];
+
 export interface Me {
   id: number;
   username: string;

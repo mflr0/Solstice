@@ -13,16 +13,18 @@ import {
   fieldInfo,
   formatOrder,
   formatValue,
+  FUNCTIONS,
   JqlError,
   parse,
   quote,
   quoteField,
   quoteString,
   type Clause,
+  type FunctionInfo,
   type SortTerm,
   type Value,
 } from './jql.js';
-import type { StatusCategory } from './types.js';
+import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
 
 /** Fields chosen from a list of values. */
 export const LIST_FIELDS = [
@@ -73,47 +75,24 @@ export const JQL_FIELD: Record<ListField, string> = {
 export const ME = 'currentUser()';
 export const EMPTY = 'EMPTY';
 
+const lowerNames = (fits: (f: FunctionInfo) => boolean) =>
+  FUNCTIONS.filter(fits).map((f) => f.name.toLowerCase());
+
 /** Functions a field's filter may hold (lower-case names). */
-const LIST_FUNCTIONS: Partial<Record<ListField, string[]>> = {
-  people: ['currentuser', 'membersof'],
-  assignee: ['currentuser', 'membersof'],
-  reporter: ['currentuser', 'membersof'],
-  type: ['standardissuetypes', 'subtaskissuetypes'],
-  sprint: ['opensprints', 'closedsprints', 'futuresprints'],
-  fixVersion: [
-    'unreleasedversions',
-    'releasedversions',
-    'earliestunreleasedversion',
-    'latestreleasedversion',
-  ],
-};
+const LIST_FUNCTIONS = Object.fromEntries(
+  LIST_FIELDS.map((field) => [
+    field,
+    lowerNames((f) => f.kind === fieldInfo(JQL_FIELD[field])?.kind),
+  ]),
+) as Record<ListField, string[]>;
 
 /** Functions that stand for a list: written "field in f()", not "field = f()". */
-const LIST_VALUED = new Set([
-  'membersof',
-  'standardissuetypes',
-  'subtaskissuetypes',
-  'opensprints',
-  'closedsprints',
-  'futuresprints',
-  'unreleasedversions',
-  'releasedversions',
-]);
+const LIST_VALUED = new Set(lowerNames((f) => f.list));
 
 /** Fields that always have a value: "is EMPTY" means nothing there. */
 const NEVER_EMPTY: ListField[] = ['project', 'type', 'status'];
 
-const DATE_FUNCTIONS = new Set([
-  'now',
-  'startofday',
-  'endofday',
-  'startofweek',
-  'endofweek',
-  'startofmonth',
-  'endofmonth',
-  'startofyear',
-  'endofyear',
-]);
+const DATE_FUNCTIONS = new Set(lowerNames((f) => f.kind === 'date'));
 
 export interface DateBound {
   op: '>' | '>=' | '<' | '<=';
@@ -186,20 +165,21 @@ export function listClause(field: string, values: string[]): string {
   return `${f} in (${values.join(', ')})`;
 }
 
-const CATEGORY_ORDER: StatusCategory[] = ['todo', 'doing', 'done'];
-const CATEGORY_JQL: Record<StatusCategory, string> = {
-  todo: '"To Do"',
-  doing: '"In Progress"',
+/** The names JQL gives the status categories. */
+export const CATEGORY_JQL: Record<StatusCategory, string> = {
+  todo: 'To Do',
+  doing: 'In Progress',
   done: 'Done',
 };
 
 /** The statusCategory clause, or '' when every or no category is chosen. */
 export function categoryClause(categories: StatusCategory[]): string {
-  const set = CATEGORY_ORDER.filter((c) => categories.includes(c));
-  if (set.length === 0 || set.length === 3) return '';
+  const set = STATUS_CATEGORIES.filter((c) => categories.includes(c));
+  if (set.length === 0 || set.length === STATUS_CATEGORIES.length) return '';
   if (set.length === 2 && !set.includes('done')) return 'statusCategory != Done';
-  if (set.length === 1) return `statusCategory = ${CATEGORY_JQL[set[0] as StatusCategory]}`;
-  return `statusCategory in (${set.map((c) => CATEGORY_JQL[c]).join(', ')})`;
+  const names = set.map((c) => quote(CATEGORY_JQL[c]));
+  if (names.length === 1) return `statusCategory = ${names[0]}`;
+  return `statusCategory in (${names.join(', ')})`;
 }
 
 function dateClauses(field: DateField, r: DateRange | undefined): string[] {
@@ -322,7 +302,7 @@ function readList(field: ListField, c: Clause, role?: PeopleRole): string[] | nu
       if (field === 'people' && role !== 'watcher' && role !== 'commenter') return null;
       s = EMPTY;
     } else if (v.kind === 'func') {
-      if (!LIST_FUNCTIONS[field]?.includes(v.name.toLowerCase())) return null;
+      if (!LIST_FUNCTIONS[field].includes(v.name.toLowerCase())) return null;
       s = formatValue(v);
     } else if (field === 'resolution' && v.text.toLowerCase() === 'unresolved') {
       s = EMPTY;
@@ -344,7 +324,7 @@ function readCategories(c: Clause): StatusCategory[] | null {
     set.add(cat);
   }
   const negate = c.op === '!=' || c.op === 'not in';
-  return CATEGORY_ORDER.filter((cat) => set.has(cat) !== negate);
+  return STATUS_CATEGORIES.filter((cat) => set.has(cat) !== negate);
 }
 
 function readDateValue(v: Value | undefined): string | null {

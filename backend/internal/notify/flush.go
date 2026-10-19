@@ -110,6 +110,12 @@ type recipient struct {
 	sub    *perm.Subject
 }
 
+// eligible tells whether an e-mail may be written to u: an active user with
+// a usable address.
+func eligible(u *events.User) bool {
+	return u != nil && u.Active && mail.ValidAddress(u.Email)
+}
+
 // recipientOf loads an active user with an address, or nil.
 func (s *Service) recipientOf(ctx context.Context, userID int64) (*recipient, error) {
 	users, err := events.LoadUsers(ctx, s.db, userID)
@@ -117,21 +123,14 @@ func (s *Service) recipientOf(ctx context.Context, userID int64) (*recipient, er
 		return nil, err
 	}
 	u := users[userID]
-	if u == nil || !u.Active || !mail.ValidAddress(u.Email) {
+	if !eligible(u) {
 		return nil, nil
 	}
 	sub, err := s.perms.Subject(ctx, userID, false)
 	if err != nil {
 		return nil, err
 	}
-	locale := u.Locale
-	if !i18n.Supported(locale) {
-		locale = s.DefaultLocale()
-	}
-	if !i18n.Supported(locale) {
-		locale = i18n.Default
-	}
-	return &recipient{user: u, locale: locale, sub: sub}, nil
+	return &recipient{user: u, locale: i18n.Pick(u.Locale, s.DefaultLocale()), sub: sub}, nil
 }
 
 func (s *Service) url(path string) string {
@@ -346,9 +345,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		s.footer(p, why(loc, strongest(reasons), project))
 	}
 	p.Title = msg.Subject
-	if msg.HTML, err = p.html(); err != nil {
-		return nil, err
-	}
+	msg.HTML = p.html()
 	msg.Text = p.text()
 	return msg, nil
 }
@@ -443,15 +440,12 @@ func headline(loc string, it storedItem, actor string, cur *events.Issue, me int
 
 // TestMessage is the administrator's test e-mail.
 func TestMessage(cfg mail.Config, to, locale string) mail.Message {
-	if !i18n.Supported(locale) {
-		locale = i18n.Default
-	}
+	locale = i18n.Pick(locale)
 	p := &page{Lang: locale, Title: i18n.M(i18n.MailTestSubject).In(locale)}
 	p.Heading = p.Title
 	p.Intro = []string{i18n.M(i18n.MailTestBody).In(locale),
 		i18n.M(i18n.MailTestSettings, cfg.Host, cfg.From).In(locale)}
 	p.Why = i18n.M(i18n.MailTestWhy).In(locale)
-	html, _ := p.html()
-	return mail.Message{Kind: "test", To: to, Subject: p.Title, Text: p.text(), HTML: html,
+	return mail.Message{Kind: "test", To: to, Subject: p.Title, Text: p.text(), HTML: p.html(),
 		MessageID: mail.NewMessageID(cfg.Domain())}
 }

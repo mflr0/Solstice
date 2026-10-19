@@ -364,3 +364,40 @@ describe('operatorsFor', () => {
     expect(customKind('something-else')).toBeUndefined();
   });
 });
+
+describe('functionsFor', () => {
+  it.each([
+    ['user', ['currentUser()', 'membersOf("")']],
+    ['type', ['standardIssueTypes()', 'subTaskIssueTypes()']],
+    ['sprint', ['openSprints()', 'futureSprints()', 'closedSprints()']],
+    [
+      'version',
+      [
+        'unreleasedVersions()',
+        'releasedVersions()',
+        'earliestUnreleasedVersion()',
+        'latestReleasedVersion()',
+      ],
+    ],
+    [
+      'date',
+      [
+        'now()',
+        'startOfDay()',
+        'endOfDay()',
+        'startOfWeek()',
+        'endOfWeek()',
+        'startOfMonth()',
+        'endOfMonth()',
+        'startOfYear()',
+        'endOfYear()',
+      ],
+    ],
+  ] as const)('offers the %s functions of the one table', (kind, expected) => {
+    expect(functionsFor('field', kind)).toEqual(expected);
+  });
+
+  it('offers nothing for a kind no function fits', () => {
+    expect(functionsFor('summary')).toEqual([]);
+  });
+});

@@ -484,17 +484,10 @@ func (s *Server) loadSprints(ctx context.Context, _ *perm.Subject, set *issueSet
 			return err
 		}
 		sp.Goal = sqlq.String(goal)
-		sp.Start, sp.End, sp.Completed = nullTime(start), nullTime(end), nullTime(done)
+		sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
 		set.byID[id].sprints = append(set.byID[id].sprints, sp)
 		return nil
 	})
-}
-
-func nullTime(t sql.NullTime) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-	return &t.Time
 }
 
 // loadCounter counts watchers or votes, and whether the user is among them.

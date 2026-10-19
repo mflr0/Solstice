@@ -453,7 +453,7 @@ func (s *Server) restGroupPicker(w http.ResponseWriter, r *http.Request) error {
 	_, limit := paging(r, 20, 1000)
 	query := strings.TrimSpace(q.Get("query"))
 
-	where, args := `WHERE g.name LIKE ?`, []any{"%" + escapeLike(strings.ToLower(query)) + "%"}
+	where, args := `WHERE g.name LIKE ?`, []any{"%" + sqlq.EscapeLike(strings.ToLower(query)) + "%"}
 	if exclude := q["exclude"]; len(exclude) > 0 {
 		if len(exclude) > 100 {
 			return invalidValue("exclude")

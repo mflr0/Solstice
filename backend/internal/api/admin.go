@@ -63,9 +63,7 @@ func scanAdminUser(sc interface{ Scan(...any) error }) (adminUser, error) {
 	var u adminUser
 	var last sql.NullTime
 	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Created, &last)
-	if last.Valid {
-		u.LastLogin = &last.Time
-	}
+	u.LastLogin = sqlq.Time(last)
 	u.Groups = []idName{}
 	return u, err
 }
@@ -98,7 +96,7 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	like := "%" + escapeLike(q) + "%"
+	like := "%" + sqlq.EscapeLike(q) + "%"
 	out := []adminUser{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT `+adminUserColumns+` FROM users
 		WHERE username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?

@@ -144,12 +144,12 @@ var htmlPage = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
 </body></html>
 `))
 
-func (p *page) html() (string, error) {
+// html renders the page as HTML. The template only reads the page's fields,
+// so it cannot fail (TestPageHTML runs it over every one of them).
+func (p *page) html() string {
 	var b bytes.Buffer
-	if err := htmlPage.Execute(&b, p); err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	_ = htmlPage.Execute(&b, p)
+	return b.String()
 }
 
 // text renders the page as plain text.

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { StatusCategory, StatusRef } from '../../core/types.js';
-  import { CATEGORIES, searchStatuses, statusNamed } from '../../core/workflow.js';
+  import { STATUS_CATEGORIES, type StatusCategory, type StatusRef } from '../../core/types.js';
+  import { searchStatuses, statusNamed } from '../../core/workflow.js';
   import { categoryLabels, t } from '../../i18n/t.js';
   import { autofocus, outside } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
@@ -113,7 +113,7 @@
         <fieldset class="create" disabled={busy}>
           <legend>{t.workflows.createStatus(q.trim())}</legend>
           <div class="cats" role="group" aria-label={t.workflows.createAs}>
-            {#each CATEGORIES as c (c)}
+            {#each STATUS_CATEGORIES as c (c)}
               <button type="button" class="btn btn-small" onclick={() => void create(c)}
                 >{categoryLabels[c]}</button
               >

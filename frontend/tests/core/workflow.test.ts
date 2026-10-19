@@ -15,6 +15,7 @@ import {
   searchStatuses,
   statusNamed,
   strandedOf,
+  suggestDefaultRemap,
   suggestRemap,
   toDraft,
   toggleCell,
@@ -334,6 +335,17 @@ describe('issue types going back to the default workflow', () => {
     expect(strandedDefaultOf({ stranded: [] })).toBeNull();
     expect(strandedDefaultOf({ strandedDefault: [], defaultWorkflow: {} })).toBeNull();
     expect(strandedDefaultOf(null)).toBeNull();
+  });
+
+  it('suggests their moves from the default workflow statuses', () => {
+    const d = {
+      stranded: [{ status: blocked, count: 2 }],
+      workflow: { id: 4, name: 'Logiciel', statuses: [todo, doing] },
+    };
+    expect(suggestDefaultRemap(d)).toEqual({ '20': '3' });
+    expect(suggestDefaultRemap({ ...d, workflow: { ...d.workflow, statuses: [todo] } })).toEqual({
+      '20': '1',
+    });
   });
 
   it('sends their moves as remapDefault, only when there are some', () => {

@@ -16,6 +16,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 const maxExportRows = 10000
@@ -154,12 +155,12 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	}
 	query = strings.TrimSpace(query)
 	s.log.Info("search exported as CSV", "query", query, "rows", total)
-	details := map[string]any{"query": truncateRunes(query, 255), "rows": len(set.list)}
+	details := map[string]any{"query": sqlq.Truncate(query, varcharWidth), "rows": len(set.list)}
 	if p := params.Get("project"); p != "" {
 		// Only a project that exists: what else was typed is not worth keeping.
 		var key string
 		if s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE pkey = ?`, strings.ToUpper(p)).Scan(&key) == nil {
-			details["project"] = truncateRunes(key, 255)
+			details["project"] = sqlq.Truncate(key, varcharWidth)
 		}
 	}
 	s.auditLog(r, audit.IssueExport, audit.Target{}, details)

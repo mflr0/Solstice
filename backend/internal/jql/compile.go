@@ -647,10 +647,6 @@ func (c *compiler) parent(cl Clause) (string, error) {
 	return match, nil
 }
 
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
-}
-
 func (c *compiler) like(cl Clause, col string) (string, error) {
 	if cl.Op == "is" || cl.Op == "is not" {
 		cond := "(" + col + " IS NULL OR " + col + " = '')"
@@ -666,7 +662,7 @@ func (c *compiler) like(cl Clause, col string) (string, error) {
 	if err != nil || len(texts) == 0 {
 		return "FALSE", err
 	}
-	c.arg("%" + escapeLike(strings.Trim(texts[0], "*")) + "%")
+	c.arg("%" + sqlq.EscapeLike(strings.Trim(texts[0], "*")) + "%")
 	if cl.Op == "!~" {
 		return "NOT COALESCE(" + col + " LIKE ?, FALSE)", nil
 	}
@@ -716,7 +712,7 @@ func (c *compiler) comment(cl Clause) (string, error) {
 	if err != nil || len(texts) == 0 {
 		return "FALSE", err
 	}
-	c.arg("%" + escapeLike(strings.Trim(texts[0], "*")) + "%")
+	c.arg("%" + sqlq.EscapeLike(strings.Trim(texts[0], "*")) + "%")
 	cond := "EXISTS (SELECT 1 FROM comments cm WHERE cm.issue_id = i.id AND cm.visibility_group IS NULL " +
 		"AND cm.visibility_role_id IS NULL AND cm.body LIKE ?)"
 	if cl.Op == "!~" {
@@ -756,7 +752,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 			return "FALSE", err
 		}
 		cond := exists() + " AND (v.string_value LIKE ? OR v.text_value LIKE ?))"
-		like := "%" + escapeLike(texts[0]) + "%"
+		like := "%" + sqlq.EscapeLike(texts[0]) + "%"
 		c.arg(like, like)
 		if cl.Op == "!~" {
 			return "NOT " + cond, nil

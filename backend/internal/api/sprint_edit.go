@@ -16,6 +16,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 // sprintInput is a request to change a sprint; keys that are absent leave
@@ -52,8 +53,8 @@ func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now ti
 			return nil, fail(http.StatusBadRequest, i18n.SprintNameRequired)
 		}
 		name := strings.TrimSpace(*in.Name)
-		if utf8.RuneCountInString(name) > 255 {
-			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, 255)
+		if utf8.RuneCountInString(name) > varcharWidth {
+			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, varcharWidth)
 		}
 		if name != sp.Name {
 			set("name", "name", name)
@@ -61,8 +62,8 @@ func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now ti
 	}
 	if given["goal"] {
 		var goal any
-		if in.Goal != nil && strings.TrimSpace(*in.Goal) != "" {
-			goal = *in.Goal
+		if in.Goal != nil {
+			goal = sqlq.NullIfBlank(*in.Goal)
 		}
 		if goal != derefString(sp.Goal) {
 			set("goal", "goal", goal)

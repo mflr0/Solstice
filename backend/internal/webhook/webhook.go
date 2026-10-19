@@ -23,6 +23,7 @@ import (
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/secret"
+	"solstice/internal/sqlq"
 )
 
 // Event names, as Jira calls them.
@@ -48,49 +49,51 @@ const (
 	TestEvent = "solstice:test"
 )
 
-// Events lists the events Solstice sends, in display order.
-var Events = []string{IssueCreated, IssueUpdated, IssueDeleted, CommentCreated, CommentUpdated, CommentDeleted,
-	WorklogCreated, WorklogUpdated, WorklogDeleted, SprintCreated, SprintStarted, SprintUpdated, SprintClosed,
-	SprintDeleted, BoardCreated, BoardUpdated, BoardDeleted}
+// table lists the webhook events in display order, each with the internal
+// event that fires it. A comment or a work log is also an issue update, as
+// in Jira: alsoIssueUpdated sends jira:issue_updated after the event's own.
+var table = []struct {
+	kind             events.Kind
+	name             string
+	alsoIssueUpdated bool
+}{
+	{events.IssueCreated, IssueCreated, false},
+	{events.IssueUpdated, IssueUpdated, false},
+	{events.IssueDeleted, IssueDeleted, false},
+	{events.CommentCreated, CommentCreated, true},
+	{events.CommentUpdated, CommentUpdated, true},
+	{events.CommentDeleted, CommentDeleted, true},
+	{events.WorklogCreated, WorklogCreated, true},
+	{events.WorklogUpdated, WorklogUpdated, true},
+	{events.WorklogDeleted, WorklogDeleted, true},
+	{events.SprintCreated, SprintCreated, false},
+	{events.SprintStarted, SprintStarted, false},
+	{events.SprintUpdated, SprintUpdated, false},
+	{events.SprintClosed, SprintClosed, false},
+	{events.SprintDeleted, SprintDeleted, false},
+	{events.BoardCreated, BoardCreated, false},
+	{events.BoardUpdated, BoardUpdated, false},
+	{events.BoardDeleted, BoardDeleted, false},
+}
 
-// namesOf gives the webhook events an internal event fires. Comments and
-// work logs also count as issue updates, as in Jira.
+// Events lists the events Solstice sends, in display order.
+var Events = func() []string {
+	out := make([]string, len(table))
+	for i, row := range table {
+		out[i] = row.name
+	}
+	return out
+}()
+
+// namesOf gives the webhook events an internal event fires.
 func namesOf(k events.Kind) []string {
-	switch k {
-	case events.IssueCreated:
-		return []string{IssueCreated}
-	case events.IssueUpdated:
-		return []string{IssueUpdated}
-	case events.IssueDeleted:
-		return []string{IssueDeleted}
-	case events.CommentCreated:
-		return []string{CommentCreated, IssueUpdated}
-	case events.CommentUpdated:
-		return []string{CommentUpdated, IssueUpdated}
-	case events.CommentDeleted:
-		return []string{CommentDeleted, IssueUpdated}
-	case events.WorklogCreated:
-		return []string{WorklogCreated, IssueUpdated}
-	case events.WorklogUpdated:
-		return []string{WorklogUpdated, IssueUpdated}
-	case events.WorklogDeleted:
-		return []string{WorklogDeleted, IssueUpdated}
-	case events.SprintCreated:
-		return []string{SprintCreated}
-	case events.SprintStarted:
-		return []string{SprintStarted}
-	case events.SprintUpdated:
-		return []string{SprintUpdated}
-	case events.SprintClosed:
-		return []string{SprintClosed}
-	case events.SprintDeleted:
-		return []string{SprintDeleted}
-	case events.BoardCreated:
-		return []string{BoardCreated}
-	case events.BoardUpdated:
-		return []string{BoardUpdated}
-	case events.BoardDeleted:
-		return []string{BoardDeleted}
+	for _, row := range table {
+		if row.kind == k {
+			if row.alsoIssueUpdated {
+				return []string{row.name, IssueUpdated}
+			}
+			return []string{row.name}
+		}
 	}
 	return nil
 }
@@ -228,17 +231,11 @@ func (s *Service) Save(ctx context.Context, w *Webhook, secretText *string, by i
 		}
 		sealed = v
 	}
-	var jql any
-	if strings.TrimSpace(w.JQL) != "" {
-		jql = strings.TrimSpace(w.JQL)
-	}
+	jql := sqlq.NullIfBlank(strings.TrimSpace(w.JQL))
 	now := s.Now().UTC()
 	evs := strings.Join(w.Events, ",")
 	if w.ID == 0 {
-		var creator any
-		if by != 0 {
-			creator = by
-		}
+		creator := sqlq.NullIf(by)
 		res, err := s.db.ExecContext(ctx, `INSERT INTO webhooks (name, url, events, jql, secret, enabled, exclude_body,
 			created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			w.Name, w.URL, evs, jql, sealed, w.Enabled, w.ExcludeBody, creator, now, now)
@@ -345,12 +342,8 @@ func (s *Service) Deliveries(ctx context.Context, webhookID int64, limit int) ([
 			v := int(dur.Int64)
 			d.DurationMs = &v
 		}
-		if errText.Valid {
-			d.Error = &errText.String
-		}
-		if attempted.Valid {
-			d.Attempted = &attempted.Time
-		}
+		d.Error = sqlq.String(errText)
+		d.Attempted = sqlq.Time(attempted)
 		if d.Status == "pending" {
 			d.NextAttempt = &next
 		}

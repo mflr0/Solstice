@@ -115,7 +115,7 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) error {
 	}
 	if v := strings.TrimSpace(params.Get("action")); v != "" {
 		where = append(where, "(a.action = ? OR a.action LIKE ?)")
-		args = append(args, v, escapeLike(v)+".%")
+		args = append(args, v, sqlq.EscapeLike(v)+".%")
 	}
 	for _, bound := range []struct {
 		param, op string
@@ -133,7 +133,7 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, t)
 	}
 	if v := strings.TrimSpace(params.Get("q")); v != "" {
-		like := "%" + escapeLike(strings.ToLower(v)) + "%"
+		like := "%" + sqlq.EscapeLike(strings.ToLower(v)) + "%"
 		where = append(where, `(LOWER(a.target_label) LIKE ? OR LOWER(a.target_id) LIKE ? OR LOWER(a.username) LIKE ?
 			OR a.ip LIKE ? OR LOWER(a.details) LIKE ?)`)
 		args = append(args, like, like, like, like, like)

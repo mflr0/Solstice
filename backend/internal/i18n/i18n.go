@@ -29,6 +29,18 @@ var catalogues = map[string]map[Key]string{"en": en, "fr": fr, "de": de, "it": i
 // Supported tells whether locale is one of Locales.
 func Supported(locale string) bool { return slices.Contains(Locales, locale) }
 
+// Pick returns the first supported language among candidates, in order, and
+// Default when none of them is supported: the language of an e-mail, from
+// the user's choice to the instance's default to English.
+func Pick(candidates ...string) string {
+	for _, c := range candidates {
+		if Supported(c) {
+			return c
+		}
+	}
+	return Default
+}
+
 // Negotiate picks the supported language an Accept-Language header prefers:
 // highest q-value first, earlier on a tie, regional variants counting as
 // their language (de-CH is de). It returns "" when the header names no

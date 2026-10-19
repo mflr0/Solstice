@@ -396,15 +396,7 @@ func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([
 			return err
 		}
 		sp.Goal = sqlq.String(goal)
-		if start.Valid {
-			sp.Start = &start.Time
-		}
-		if end.Valid {
-			sp.End = &end.Time
-		}
-		if done.Valid {
-			sp.Completed = &done.Time
-		}
+		sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
 		out = append(out, sp)
 		return nil
 	}, board)
@@ -1143,26 +1135,15 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = b.Name + " Sprint " + strconv.FormatInt(count+1, 10)
 	}
-	var goal any
-	if strings.TrimSpace(in.Goal) != "" {
-		goal = in.Goal
-	}
+	goal := sqlq.NullIfBlank(in.Goal)
 	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, 'future', ?)`,
-		b.ID, truncateRunes(name, 255), goal, position+1)
+		b.ID, sqlq.Truncate(name, varcharWidth), goal, position+1)
 	if err != nil {
 		return err
 	}
 	id, _ := res.LastInsertId()
 	s.emitSprint(ctx, events.SprintCreated, sub.UserID, b.ID, id)
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
-}
-
-func truncateRunes(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
-	}
-	return s
 }
 
 func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
@@ -1202,14 +1183,10 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 	sets := []string{"state = 'active'", "start_at = ?", "end_at = ?"}
 	args := []any{start, end}
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
-		sets, args = append(sets, "name = ?"), append(args, truncateRunes(strings.TrimSpace(*in.Name), 255))
+		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), varcharWidth))
 	}
 	if in.Goal != nil {
-		var g any
-		if strings.TrimSpace(*in.Goal) != "" {
-			g = *in.Goal
-		}
-		sets, args = append(sets, "goal = ?"), append(args, g)
+		sets, args = append(sets, "goal = ?"), append(args, sqlq.NullIfBlank(*in.Goal))
 	}
 	if _, err := s.db.ExecContext(ctx, `UPDATE sprints SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
 		append(args, sp.ID)...); err != nil {
@@ -1346,7 +1323,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	res, err = tx.ExecContext(ctx, `INSERT INTO boards (name, kind, filter_id, owner_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, truncateRunes(name, 255), in.Kind, filterID, sub.UserID, now, now)
+		VALUES (?, ?, ?, ?, ?, ?)`, sqlq.Truncate(name, varcharWidth), in.Kind, filterID, sub.UserID, now, now)
 	if err != nil {
 		return err
 	}
@@ -1376,7 +1353,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(events.Event{Kind: events.BoardCreated, ActorID: sub.UserID,
-		Board: &events.Board{ID: boardID, Name: truncateRunes(name, 255), Kind: in.Kind}})
-	s.auditBoard(r, audit.BoardCreate, boardID, truncateRunes(name, 255), map[string]any{"kind": in.Kind, "project": key})
+		Board: &events.Board{ID: boardID, Name: sqlq.Truncate(name, varcharWidth), Kind: in.Kind}})
+	s.auditBoard(r, audit.BoardCreate, boardID, sqlq.Truncate(name, varcharWidth), map[string]any{"kind": in.Kind, "project": key})
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": boardID})
 }

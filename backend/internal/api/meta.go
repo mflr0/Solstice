@@ -26,7 +26,7 @@ func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
 // searchUsers backs user pickers: active users matching a name.
 func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	like := "%" + escapeLike(q) + "%"
+	like := "%" + sqlq.EscapeLike(q) + "%"
 	out := []userRef{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
 		WHERE active AND (username LIKE ? OR LOWER(display_name) LIKE ?) ORDER BY display_name LIMIT 20`,
@@ -42,10 +42,6 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, out)
-}
-
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 // person is someone's page: who they are and what they are working on.

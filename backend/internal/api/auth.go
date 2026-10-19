@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -26,6 +27,14 @@ func meOf(u *auth.User) meResponse {
 		me.Locale = &u.Locale
 	}
 	return me
+}
+
+// userByID loads an account for its id, with the fields meOf answers with.
+func (s *Server) userByID(ctx context.Context, id int64) (auth.User, error) {
+	var u auth.User
+	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
+		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale)
+	return u, err
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
@@ -202,10 +211,8 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	s.auditUserChange(r, u.ID, before, in.NewPassword != nil)
-	var me auth.User
-	if err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
-		FROM users WHERE id = ?`, u.ID).Scan(&me.ID, &me.Username, &me.DisplayName, &me.Email, &me.Admin,
-		&me.Locale); err != nil {
+	me, err := s.userByID(ctx, u.ID)
+	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, meOf(&me))

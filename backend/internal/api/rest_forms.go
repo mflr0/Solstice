@@ -526,7 +526,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		exact = "(CONCAT(p.pkey, '-', i.num) = '" + strings.ToUpper(query) + "') DESC, "
 	}
 	if query != "" {
-		like := "%" + escapeLike(strings.ToLower(query)) + "%"
+		like := "%" + sqlq.EscapeLike(strings.ToLower(query)) + "%"
 		cond := "LOWER(i.summary) LIKE ? OR CONCAT(p.pkey, '-', i.num) LIKE ?"
 		more := []any{like, strings.ToUpper(like)}
 		if num, err := strconv.ParseInt(query, 10, 64); err == nil {

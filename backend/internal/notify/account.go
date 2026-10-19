@@ -37,9 +37,7 @@ type linkTexts struct {
 }
 
 func linkMessage(cfg mail.Config, kind string, userID int64, to, toName, locale, link string, x linkTexts) mail.Message {
-	if !i18n.Supported(locale) {
-		locale = i18n.Default
-	}
+	locale = i18n.Pick(locale)
 	p := &page{Lang: locale, Title: x.subject.In(locale)}
 	p.Heading = p.Title
 	p.Intro = []string{x.intro.In(locale)}
@@ -48,7 +46,6 @@ func linkMessage(cfg mail.Config, kind string, userID int64, to, toName, locale,
 		p.Outro = append(p.Outro, m.In(locale))
 	}
 	p.Why = x.why.In(locale)
-	html, _ := p.html()
-	return mail.Message{Kind: kind, UserID: userID, To: to, ToName: toName, Subject: p.Title, Text: p.text(), HTML: html,
-		MessageID: mail.NewMessageID(cfg.Domain())}
+	return mail.Message{Kind: kind, UserID: userID, To: to, ToName: toName, Subject: p.Title, Text: p.text(),
+		HTML: p.html(), MessageID: mail.NewMessageID(cfg.Domain())}
 }

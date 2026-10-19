@@ -205,7 +205,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 	for _, pm := range perm.All {
 		can[pm] = sub.Can(pm, id, nil)
 	}
-	can["configure"] = can[perm.Admin] || sub.Admin
+	can["configure"] = s.administers(sub, id)
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"project": p, "issueTypes": types, "components": components, "versions": versions,
 		"securityLevels": levels, "defaultAssignee": defaultAssignee, "can": can,
@@ -230,7 +230,7 @@ func (s *Server) assignableUsers(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []userRef{}
 	err = sqlq.Each(ctx, s.db, `SELECT id, username, display_name, active FROM users
 		WHERE active AND id IN (`+holders+`) AND (username LIKE ? OR LOWER(display_name) LIKE ?)
@@ -265,6 +265,12 @@ type roleOut struct {
 	Groups []idName  `json:"groups"`
 }
 
+// administers is the one spelling of the rule for administering a project: a
+// global administrator, or a holder of the Admin permission on it.
+func (s *Server) administers(sub *perm.Subject, projectID int64) bool {
+	return sub.Admin || sub.Can(perm.Admin, projectID, nil)
+}
+
 // canConfigure checks that the user may change a project's settings. Someone
 // who cannot even see the project gets "not found", so project keys cannot
 // be probed.
@@ -276,19 +282,14 @@ func (s *Server) canConfigure(r *http.Request, projectID int64) (bool, error) {
 	if !sub.Admin && !sub.CanBrowseProject(projectID) {
 		return false, errNotFound
 	}
-	return sub.Admin || sub.Can(perm.Admin, projectID, nil), nil
+	return s.administers(sub, projectID), nil
 }
 
 func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	id, err := s.projectByKey(ctx, r.PathValue("key"))
+	id, err := s.configurableProject(r)
 	if err != nil {
 		return err
-	}
-	if ok, err := s.canConfigure(r, id); err != nil {
-		return err
-	} else if !ok {
-		return errForbidden
 	}
 	grants := []grantOut{}
 	if err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, g.role_id, 0),
@@ -307,43 +308,13 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	}, id); err != nil {
 		return err
 	}
-	roles := []roleOut{}
-	index := map[int64]int{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
-		var ro roleOut
-		if err := rows.Scan(&ro.ID, &ro.Name); err != nil {
-			return err
-		}
-		ro.Users, ro.Groups = []userRef{}, []idName{}
-		index[ro.ID] = len(roles)
-		roles = append(roles, ro)
-		return nil
-	}); err != nil {
+	out, err := s.projectRoles(ctx, id)
+	if err != nil {
 		return err
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
-		FROM project_role_members m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
-		WHERE m.project_id = ?`, func(rows *sql.Rows) error {
-		var role int64
-		var uid, gid sql.NullInt64
-		var username, name, gname sql.NullString
-		var active sql.NullBool
-		if err := rows.Scan(&role, &uid, &username, &name, &active, &gid, &gname); err != nil {
-			return err
-		}
-		i, ok := index[role]
-		if !ok {
-			return nil
-		}
-		if uid.Valid {
-			roles[i].Users = append(roles[i].Users, userRef{uid.Int64, username.String, name.String, active.Bool})
-		}
-		if gid.Valid {
-			roles[i].Groups = append(roles[i].Groups, idName{gid.Int64, gname.String})
-		}
-		return nil
-	}, id); err != nil {
-		return err
+	roles := make([]roleOut, len(out))
+	for i, ro := range out {
+		roles[i] = roleOut{ID: ro.ID, Name: ro.Name, Users: ro.Users, Groups: ro.Groups}
 	}
 	groups := []idName{}
 	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM user_groups ORDER BY name`, func(rows *sql.Rows) error {
@@ -363,14 +334,9 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 
 func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	id, err := s.projectByKey(ctx, r.PathValue("key"))
+	id, err := s.configurableProject(r)
 	if err != nil {
 		return err
-	}
-	if ok, err := s.canConfigure(r, id); err != nil {
-		return err
-	} else if !ok {
-		return errForbidden
 	}
 	var in struct {
 		Grants []grantOut `json:"grants"`

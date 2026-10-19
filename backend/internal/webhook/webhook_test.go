@@ -197,3 +197,47 @@ func TestSprintEvents(t *testing.T) {
 		}
 	}
 }
+
+// Every internal event fires the webhook events Jira sends for it, and the
+// list of events keeps its display order.
+func TestNamesOf(t *testing.T) {
+	want := map[events.Kind][]string{
+		events.IssueCreated:   {"jira:issue_created"},
+		events.IssueUpdated:   {"jira:issue_updated"},
+		events.IssueDeleted:   {"jira:issue_deleted"},
+		events.CommentCreated: {"comment_created", "jira:issue_updated"},
+		events.CommentUpdated: {"comment_updated", "jira:issue_updated"},
+		events.CommentDeleted: {"comment_deleted", "jira:issue_updated"},
+		events.WorklogCreated: {"worklog_created", "jira:issue_updated"},
+		events.WorklogUpdated: {"worklog_updated", "jira:issue_updated"},
+		events.WorklogDeleted: {"worklog_deleted", "jira:issue_updated"},
+		events.SprintCreated:  {"sprint_created"},
+		events.SprintStarted:  {"sprint_started"},
+		events.SprintUpdated:  {"sprint_updated"},
+		events.SprintClosed:   {"sprint_closed"},
+		events.SprintDeleted:  {"sprint_deleted"},
+		events.BoardCreated:   {"board_created"},
+		events.BoardUpdated:   {"board_updated"},
+		events.BoardDeleted:   {"board_deleted"},
+	}
+	for _, row := range table {
+		if _, ok := want[row.kind]; !ok {
+			t.Errorf("%s is in the table but not in this test", row.kind)
+		}
+	}
+	for kind, names := range want {
+		if got := namesOf(kind); !slices.Equal(got, names) {
+			t.Errorf("namesOf(%s) = %v, want %v", kind, got, names)
+		}
+	}
+	if got := namesOf(events.Kind("unknown")); got != nil {
+		t.Errorf("an unknown kind fires %v", got)
+	}
+	order := []string{"jira:issue_created", "jira:issue_updated", "jira:issue_deleted",
+		"comment_created", "comment_updated", "comment_deleted", "worklog_created", "worklog_updated", "worklog_deleted",
+		"sprint_created", "sprint_started", "sprint_updated", "sprint_closed", "sprint_deleted",
+		"board_created", "board_updated", "board_deleted"}
+	if !slices.Equal(Events, order) {
+		t.Errorf("Events = %v, want %v", Events, order)
+	}
+}
