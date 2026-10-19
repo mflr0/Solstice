@@ -677,9 +677,10 @@ func (s *Server) restWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	id, err := s.restWorklogOfIssue(r, iss)
+	// restRespondWorklog answers 404 for a work log of another issue.
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		return err
+		return errNotFound
 	}
 	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusOK)
 }
