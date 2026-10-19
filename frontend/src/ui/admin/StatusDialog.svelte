@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { StatusRow } from '../../core/admin-types.js';
   import { hasProblems } from '../../core/admin-forms.js';
-  import { STATUS_CATEGORIES, statusPayload, statusProblems } from '../../core/catalogs.js';
+  import { statusPayload, statusProblems } from '../../core/catalogs.js';
+  import { STATUS_CATEGORIES } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';

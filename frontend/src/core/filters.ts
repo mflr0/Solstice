@@ -24,7 +24,7 @@ import {
   type SortTerm,
   type Value,
 } from './jql.js';
-import type { StatusCategory } from './types.js';
+import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
 
 /** Fields chosen from a list of values. */
 export const LIST_FIELDS = [
@@ -165,20 +165,21 @@ export function listClause(field: string, values: string[]): string {
   return `${f} in (${values.join(', ')})`;
 }
 
-const CATEGORY_ORDER: StatusCategory[] = ['todo', 'doing', 'done'];
-const CATEGORY_JQL: Record<StatusCategory, string> = {
-  todo: '"To Do"',
-  doing: '"In Progress"',
+/** The names JQL gives the status categories. */
+export const CATEGORY_JQL: Record<StatusCategory, string> = {
+  todo: 'To Do',
+  doing: 'In Progress',
   done: 'Done',
 };
 
 /** The statusCategory clause, or '' when every or no category is chosen. */
 export function categoryClause(categories: StatusCategory[]): string {
-  const set = CATEGORY_ORDER.filter((c) => categories.includes(c));
-  if (set.length === 0 || set.length === 3) return '';
+  const set = STATUS_CATEGORIES.filter((c) => categories.includes(c));
+  if (set.length === 0 || set.length === STATUS_CATEGORIES.length) return '';
   if (set.length === 2 && !set.includes('done')) return 'statusCategory != Done';
-  if (set.length === 1) return `statusCategory = ${CATEGORY_JQL[set[0] as StatusCategory]}`;
-  return `statusCategory in (${set.map((c) => CATEGORY_JQL[c]).join(', ')})`;
+  const names = set.map((c) => quote(CATEGORY_JQL[c]));
+  if (names.length === 1) return `statusCategory = ${names[0]}`;
+  return `statusCategory in (${names.join(', ')})`;
 }
 
 function dateClauses(field: DateField, r: DateRange | undefined): string[] {
@@ -323,7 +324,7 @@ function readCategories(c: Clause): StatusCategory[] | null {
     set.add(cat);
   }
   const negate = c.op === '!=' || c.op === 'not in';
-  return CATEGORY_ORDER.filter((cat) => set.has(cat) !== negate);
+  return STATUS_CATEGORIES.filter((cat) => set.has(cat) !== negate);
 }
 
 function readDateValue(v: Value | undefined): string | null {

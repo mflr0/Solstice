@@ -14,12 +14,12 @@ import {
   type PeopleRole,
 } from '../../core/filters.js';
 import { customKind, fieldInfo, functionCall, FUNCTIONS, type FieldKind } from '../../core/jql.js';
-import type {
-  CustomFieldRef,
-  Project,
-  ProjectValue,
-  SprintSuggestion,
-  StatusCategory,
+import {
+  STATUS_CATEGORIES,
+  type CustomFieldRef,
+  type Project,
+  type ProjectValue,
+  type SprintSuggestion,
 } from '../../core/types.js';
 import { categoryLabels, t } from '../../i18n/t.js';
 import { api } from '../../lib/api.js';
@@ -50,8 +50,6 @@ export function matches(q: string, ...texts: (string | undefined)[]): boolean {
   const f = fold(q.trim());
   return !f || texts.some((x) => x !== undefined && fold(x).includes(f));
 }
-
-const CATEGORY_ORDER: StatusCategory[] = ['todo', 'doing', 'done'];
 
 class Catalog {
   projects = $state<Project[] | null>(null);
@@ -163,7 +161,7 @@ export async function loadOptions(
       return [...byName.values()];
     }
     case 'status':
-      return CATEGORY_ORDER.flatMap((cat) =>
+      return STATUS_CATEGORIES.flatMap((cat) =>
         (meta?.statuses ?? [])
           .filter((s) => s.category === cat && matches(q, s.name))
           .map((s) => ({

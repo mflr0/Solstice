@@ -196,9 +196,6 @@ export function statusProblems(
   return {};
 }
 
-/** The three categories a status belongs to, in the order of a ticket's life. */
-export const STATUS_CATEGORIES: readonly StatusRow['category'][] = ['todo', 'doing', 'done'];
-
 /** What to send to change a status: only what differs from `before`. */
 export function statusPayload(
   before: Pick<StatusRow, 'name' | 'category'>,

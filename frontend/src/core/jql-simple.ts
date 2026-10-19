@@ -6,7 +6,7 @@
 
 import { categoryClause, EMPTY, listClause, ME } from './filters.js';
 import { formatOrder, quote, quoteString, type SortTerm } from './jql.js';
-import type { StatusCategory } from './types.js';
+import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
 
 type Field =
   | 'assignee'
@@ -187,7 +187,7 @@ export function simpleToJql(q: string): string {
   for (const g of groups.values()) {
     if (g.field === 'category') {
       const cats = new Set(g.values.flatMap((v) => CATEGORIES[v.toLowerCase()] ?? []));
-      const chosen = (['todo', 'doing', 'done'] as const).filter((c) => cats.has(c) !== g.not);
+      const chosen = STATUS_CATEGORIES.filter((c) => cats.has(c) !== g.not);
       const clause = categoryClause(chosen);
       if (clause) parts.push(clause);
       continue;

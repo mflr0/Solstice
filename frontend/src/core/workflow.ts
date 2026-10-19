@@ -4,13 +4,14 @@
  * status"), change detection and the body sent to the server.
  */
 
-import type {
-  StatusCategory,
-  StatusRef,
-  StrandedDefault,
-  StrandedStatus,
-  Workflow,
-  WorkflowInput,
+import {
+  STATUS_CATEGORIES,
+  type StatusCategory,
+  type StatusRef,
+  type StrandedDefault,
+  type StrandedStatus,
+  type Workflow,
+  type WorkflowInput,
 } from './types.js';
 
 /** A transition being edited. `key` tells rows apart; id is null until saved. */
@@ -251,13 +252,11 @@ export function strandedDefaultOf(data: unknown): StrandedDefault | null {
   };
 }
 
-export const CATEGORIES: StatusCategory[] = ['todo', 'doing', 'done'];
-
 /** Statuses grouped by category, each group in the workflow's order. */
 export function byCategory(
   statuses: StatusRef[],
 ): { category: StatusCategory; statuses: StatusRef[] }[] {
-  return CATEGORIES.map((category) => ({
+  return STATUS_CATEGORIES.map((category) => ({
     category,
     statuses: statuses.filter((s) => s.category === category),
   })).filter((g) => g.statuses.length > 0);
