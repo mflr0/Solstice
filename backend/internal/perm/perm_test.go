@@ -612,6 +612,36 @@ func TestStoreCacheAndInvalidate(t *testing.T) {
 }
 
 // TestAccessors checks the small lookups on a subject.
+func TestAdministers(t *testing.T) {
+	r := testRules()
+	r.grant(7, Browse, Grant{Holder: Everyone})
+	r.grant(7, Admin, Grant{Holder: Role, RoleID: 5})
+	r.grant(9, Browse, Grant{Holder: Everyone})
+	r.grant(9, Admin, Grant{Holder: Role, RoleID: 5})
+	r.archived[9] = true
+	projectAdmin := subject(r, 42, false)
+	addRole(projectAdmin, 7, 5)
+	addRole(projectAdmin, 9, 5)
+	for _, c := range []struct {
+		name    string
+		sub     *Subject
+		project int64
+		want    bool
+	}{
+		{"global administrator", subject(r, 1, true), 8, true},
+		{"global administrator, archived project", subject(r, 1, true), 9, true},
+		{"holder of Admin", projectAdmin, 7, true},
+		{"holder of Admin, another project", projectAdmin, 8, false},
+		{"holder of Admin, archived project", projectAdmin, 9, false},
+		{"browser only", subject(r, 43, false), 7, false},
+		{"no user", subject(r, 0, false), 7, false},
+	} {
+		if got := c.sub.Administers(c.project); got != c.want {
+			t.Errorf("%s: Administers(%d) = %v, want %v", c.name, c.project, got, c.want)
+		}
+	}
+}
+
 func TestAccessors(t *testing.T) {
 	r := testRules()
 	r.archived[7] = true

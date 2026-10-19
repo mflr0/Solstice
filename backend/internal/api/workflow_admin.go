@@ -174,11 +174,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 }
 
 func (s *Server) listWorkflows(w http.ResponseWriter, r *http.Request) error {
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	projectID, err := s.browsableProject(r)
+	sub, projectID, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
@@ -201,7 +197,7 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"workflows": list, "issueTypes": types, "statuses": cat.Statuses,
-		"can": map[string]bool{"edit": s.administers(sub, projectID)},
+		"can": map[string]bool{"edit": sub.Administers(projectID)},
 	})
 }
 
@@ -218,7 +214,7 @@ func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projec
 	if err != nil {
 		return 0, 0, false, err
 	}
-	if !s.administers(sub, projectID) {
+	if !sub.Administers(projectID) {
 		return 0, 0, false, errForbidden
 	}
 	return id, projectID, isDefault, nil
@@ -678,15 +674,11 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 // becomes its default.
 func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	sub, err := s.subject(r)
+	sub, projectID, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
-	projectID, err := s.browsableProject(r)
-	if err != nil {
-		return err
-	}
-	if !s.administers(sub, projectID) {
+	if !sub.Administers(projectID) {
 		return errForbidden
 	}
 	var in struct {

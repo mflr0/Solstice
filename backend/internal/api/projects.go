@@ -205,7 +205,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 	for _, pm := range perm.All {
 		can[pm] = sub.Can(pm, id, nil)
 	}
-	can["configure"] = s.administers(sub, id)
+	can["configure"] = sub.Administers(id)
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"project": p, "issueTypes": types, "components": components, "versions": versions,
 		"securityLevels": levels, "defaultAssignee": defaultAssignee, "can": can,
@@ -265,24 +265,36 @@ type roleOut struct {
 	Groups []idName  `json:"groups"`
 }
 
-// administers is the one spelling of the rule for administering a project: a
-// global administrator, or a holder of the Admin permission on it.
-func (s *Server) administers(sub *perm.Subject, projectID int64) bool {
-	return sub.Admin || sub.Can(perm.Admin, projectID, nil)
-}
-
-// canConfigure checks that the user may change a project's settings. Someone
-// who cannot even see the project gets "not found", so project keys cannot
-// be probed.
-func (s *Server) canConfigure(r *http.Request, projectID int64) (bool, error) {
+// browsableProject loads the subject and the project of the path's key,
+// which the subject must see (a global administrator sees every project).
+// A project it cannot see is "not found", so project keys cannot be probed.
+func (s *Server) browsableProject(r *http.Request) (*perm.Subject, int64, error) {
 	sub, err := s.subject(r)
 	if err != nil {
-		return false, err
+		return nil, 0, err
 	}
-	if !sub.Admin && !sub.CanBrowseProject(projectID) {
-		return false, errNotFound
+	id, err := s.projectByKey(r.Context(), r.PathValue("key"))
+	if err != nil {
+		return nil, 0, err
 	}
-	return s.administers(sub, projectID), nil
+	if !sub.Admin && !sub.CanBrowseProject(id) {
+		return nil, 0, errNotFound
+	}
+	return sub, id, nil
+}
+
+// configurableProject loads the project of the path's key, whose settings
+// the subject may change: a project it sees but does not administer is
+// forbidden.
+func (s *Server) configurableProject(r *http.Request) (int64, error) {
+	sub, id, err := s.browsableProject(r)
+	if err != nil {
+		return 0, err
+	}
+	if !sub.Administers(id) {
+		return 0, errForbidden
+	}
+	return id, nil
 }
 
 func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {

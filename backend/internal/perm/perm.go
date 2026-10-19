@@ -418,6 +418,13 @@ func (s *Subject) scoped(alias, idCol string, b buckets) ([]string, []any) {
 	return cond, args
 }
 
+// Administers reports whether the subject may administer a project: a
+// global administrator, or a holder of the Admin permission there (which an
+// archived project never grants).
+func (s *Subject) Administers(project int64) bool {
+	return s.Admin || s.Can(Admin, project, nil)
+}
+
 // Archived reports whether a project is archived.
 func (s *Subject) Archived(project int64) bool { return s.rules.archived[project] }
 

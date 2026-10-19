@@ -65,7 +65,7 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if !sub.CanBrowseProject(projectID) || !s.administers(sub, projectID) {
+		if !sub.CanBrowseProject(projectID) || !sub.Administers(projectID) {
 			return errForbidden
 		}
 	}
