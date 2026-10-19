@@ -152,25 +152,25 @@ type Config struct {
 // named file that does not exist yet is not an error: it is where the setup
 // wizard will write. An empty value counts as unset.
 func Load(env []string) (*Config, error) {
-	vars := map[string]string{}
+	src := sources{env: map[string]string{}}
 	for _, kv := range env {
 		if k, v, ok := strings.Cut(kv, "="); ok {
-			vars[k] = v
+			src.env[k] = v
 		}
 	}
-	abs, err := locate(vars)
-	if err != nil {
+	var err error
+	if src.path, err = locate(src.env); err != nil {
 		return nil, err
 	}
-	values, exists, err := readValues(abs)
-	if err != nil {
+	var exists bool
+	if src.file, exists, err = readValues(src.path); err != nil {
 		return nil, err
 	}
-	c := &Config{Settings: Defaults(), Path: abs, Exists: exists}
-	if err := apply(c, vars, values); err != nil {
+	c := &Config{Settings: Defaults(), Path: src.path, Exists: exists}
+	if err := src.apply(&c.Settings); err != nil {
 		return nil, err
 	}
-	c.Unknown = unknownKeys(vars, values)
+	c.Unknown = src.unknown()
 	if err := c.check(); err != nil {
 		return nil, err
 	}
@@ -178,10 +178,10 @@ func Load(env []string) (*Config, error) {
 }
 
 // locate returns the absolute path of the file to read: the one
-// SOLSTICE_CONFIG names, else the first search path that exists, else the
-// first search path.
-func locate(vars map[string]string) (string, error) {
-	path := vars[KeyConfig]
+// SOLSTICE_CONFIG names in env, else the first search path that exists,
+// else the first search path.
+func locate(env map[string]string) (string, error) {
+	path := env[KeyConfig]
 	if path == "" {
 		path = searchPaths[0]
 		for _, p := range searchPaths {
@@ -194,40 +194,46 @@ func locate(vars map[string]string) (string, error) {
 	return filepath.Abs(path)
 }
 
-// readValues parses the file at abs and reports whether it exists. A file
+// readValues parses the file at path and reports whether it exists. A file
 // that does not exist yet holds no values and is not an error; a parse
 // error names the file.
-func readValues(abs string) (map[string]string, bool, error) {
-	f, err := os.Open(abs) // #nosec G304 -- path built by the server, not from user input
+func readValues(path string) (map[string]string, bool, error) {
+	f, err := os.Open(path) // #nosec G304 -- path built by the server, not from user input
 	if errors.Is(err, fs.ErrNotExist) {
-		return map[string]string{}, false, nil
+		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
+	defer f.Close()
 	values, err := Parse(f)
-	f.Close()
 	if err != nil {
-		return nil, false, fmt.Errorf("%s: %w", abs, err)
+		return nil, false, fmt.Errorf("%s: %w", path, err)
 	}
 	return values, true, nil
 }
 
-// apply sets the settings over c's defaults: the environment vars beat the
-// file's values, and an empty value counts as unset. An error on a file
-// value names the file.
-func apply(c *Config, vars, values map[string]string) error {
-	for _, f := range fields(&c.Settings) {
-		raw, inFile := vars[f.key], false
+// sources are where the settings come from: the environment, which wins,
+// and the file at path.
+type sources struct {
+	env, file map[string]string
+	path      string
+}
+
+// apply sets over s every setting src gives a value; an empty value counts
+// as unset. An error on a value of the file names the file.
+func (src sources) apply(s *Settings) error {
+	for _, f := range fields(s) {
+		raw, inFile := src.env[f.key], false
 		if raw == "" {
-			raw, inFile = values[f.key], true
+			raw, inFile = src.file[f.key], true
 		}
 		if raw == "" {
 			continue
 		}
 		if err := f.set(raw); err != nil {
 			if inFile {
-				return fmt.Errorf("%s in %s: %w", f.key, c.Path, err)
+				return fmt.Errorf("%s in %s: %w", f.key, src.path, err)
 			}
 			return fmt.Errorf("%s: %w", f.key, err)
 		}
@@ -235,23 +241,22 @@ func apply(c *Config, vars, values map[string]string) error {
 	return nil
 }
 
-// unknownKeys returns the keys of the file and the SOLSTICE_ variables
-// Solstice does not know, sorted.
-func unknownKeys(vars, values map[string]string) []string {
-	var unknown []string
-	for k := range values {
+// unknown returns, sorted and each once, the keys of the file and the
+// SOLSTICE_ variables that Solstice does not know.
+func (src sources) unknown() []string {
+	var out []string
+	for k := range src.file {
 		if !slices.Contains(Keys, k) {
-			unknown = append(unknown, k)
+			out = append(out, k)
 		}
 	}
-	for k := range vars {
-		if strings.HasPrefix(k, Prefix+"_") && !slices.Contains(Keys, k) && !slices.Contains(toolEnv, k) &&
-			!slices.Contains(unknown, k) {
-			unknown = append(unknown, k)
+	for k := range src.env {
+		if strings.HasPrefix(k, Prefix+"_") && !slices.Contains(Keys, k) && !slices.Contains(toolEnv, k) {
+			out = append(out, k)
 		}
 	}
-	slices.Sort(unknown)
-	return unknown
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // check rejects values that parse but cannot work.
