@@ -5,7 +5,7 @@
  * projectConfig).
  */
 
-import { matches } from './admin-forms.js';
+import { matches, tooLong } from './admin-forms.js';
 import type {
   AssigneeType,
   Category,
@@ -118,7 +118,7 @@ export function projectProblems(
   const out: Partial<Record<'name' | 'key' | 'access', ProjectProblem>> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const k = keyProblem(f.key);
   if (k) out.key = k;
   if ((f.access === 'group' || f.access === 'role') && !f.accessId) out.access = 'accessRequired';
@@ -208,7 +208,7 @@ export function categoryProblem(
 ): CategoryProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return categories.some((c) => c.id !== self && c.name.trim().toLowerCase() === lower)
     ? 'nameTaken'
@@ -352,7 +352,7 @@ export function generalProblems(
   const out: Partial<Record<'name' | 'types', GeneralProblem>> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const types = issueTypesProblem(f.issueTypes, allTypes);
   if (types) out.types = types;
   return out;
@@ -419,7 +419,7 @@ export function uniqueNameProblem(
 ): NameProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return others.some((o) => o.id !== self && o.name.trim().toLowerCase() === lower)
     ? 'nameTaken'

@@ -186,6 +186,14 @@ describe('field context editing', () => {
     expect(fieldProblems({ ...f, projects: ['WEB'], issueTypes: ['10'] }, [], null)).toEqual({});
   });
 
+  it('takes options of 255 characters and refuses a longer one', () => {
+    const f = { ...newFieldForm(), name: 'X', type: 'select' as const };
+    expect(fieldProblems({ ...f, options: `a\n${'b'.repeat(255)}` }, [], null)).toEqual({});
+    expect(fieldProblems({ ...f, options: `a\n${'b'.repeat(256)}` }, [], null)).toEqual({
+      options: 'optionTooLong',
+    });
+  });
+
   it('sends nothing for an untouched field, and only the context when only it changed', () => {
     const f = field({
       description: 'Who asked',

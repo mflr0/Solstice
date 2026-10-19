@@ -175,7 +175,7 @@ export function webhookProblems(
   const out: Problems<'name' | 'url' | 'events', WebhookProblem> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   if (!isHookUrl(f.url)) out.url = 'urlInvalid';
   if (f.events.length === 0) out.events = 'eventsRequired';
   return out;
@@ -224,7 +224,7 @@ export function tokenProblems(
   const out: Problems<'name' | 'expires', TokenProblem> = {};
   const n = name.trim();
   if (!n) out.name = 'nameRequired';
-  else if ([...n].length > 100) out.name = 'nameTooLong';
+  else if (tooLong(n, TOKEN_NAME_MAX)) out.name = 'nameTooLong';
   if (choice === 'date') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) out.expires = 'dateRequired';
     else if (date < isoDay(today)) out.expires = 'dateInPast';
@@ -384,11 +384,19 @@ export function matches(search: string, ...texts: (string | null | undefined)[])
   return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
 }
 
-/** Longest name of a group or a role, in characters, as the server takes it. */
+/** Longest name the server takes, in characters: a 255-character column. */
 export const NAME_MAX = 255;
+
+/** Longest API token name the server takes, in characters. */
+export const TOKEN_NAME_MAX = 100;
 
 /** Longest group description: the server stores it in a 255-character column. */
 export const GROUP_DESCRIPTION_MAX = 255;
+
+/** Whether s, trimmed, has more than max characters (code points, as the server counts them). */
+export function tooLong(s: string, max = NAME_MAX): boolean {
+  return [...s.trim()].length > max;
+}
 
 export interface NamedForm {
   name: string;
@@ -400,15 +408,14 @@ export type NamedProblem = 'nameRequired' | 'nameTooLong' | 'descriptionTooLong'
 function nameProblem(name: string): 'nameRequired' | 'nameTooLong' | undefined {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  return [...n].length > NAME_MAX ? 'nameTooLong' : undefined;
+  return tooLong(n) ? 'nameTooLong' : undefined;
 }
 
 export function groupProblems(f: NamedForm): Problems<'name' | 'description', NamedProblem> {
   const out: Problems<'name' | 'description', NamedProblem> = {};
   const name = nameProblem(f.name);
   if (name) out.name = name;
-  if ([...f.description.trim()].length > GROUP_DESCRIPTION_MAX)
-    out.description = 'descriptionTooLong';
+  if (tooLong(f.description, GROUP_DESCRIPTION_MAX)) out.description = 'descriptionTooLong';
   return out;
 }
 
@@ -466,7 +473,7 @@ export function securityLevelProblem(
 ): SecurityLevelProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return levels.some((l) => l.id !== self && l.name.trim().toLowerCase() === lower)
     ? 'nameTaken'

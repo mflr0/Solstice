@@ -5,7 +5,7 @@
  * the pages word them (src/i18n, block `account`).
  */
 
-import { isEmail, type Problems } from './admin-forms.js';
+import { isEmail, tooLong, type Problems } from './admin-forms.js';
 import type { Subscription, SubscriptionInput } from './admin-types.js';
 import type { Me } from './types.js';
 
@@ -58,7 +58,7 @@ export function profileProblems(
   const out: Problems<ProfileField, ProfileProblem> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const email = f.email.trim();
   if (email && !isEmail(email)) out.email = 'emailInvalid';
   // Changing the address, like the password, takes the current one.
