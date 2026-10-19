@@ -34,12 +34,6 @@ func (s *Store) Set(ctx context.Context, name, value string) error {
 	return err
 }
 
-// Delete removes a setting, back to its default.
-func (s *Store) Delete(ctx context.Context, name string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM settings WHERE name = ?`, name)
-	return err
-}
-
 // GetJSON decodes a JSON setting into v; ok is false (and v untouched) when
 // it was never set.
 func (s *Store) GetJSON(ctx context.Context, name string, v any) (bool, error) {

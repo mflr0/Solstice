@@ -6,19 +6,21 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"slices"
 	"testing"
 )
 
 type catalogueItem struct {
-	ID       json.RawMessage `json:"id"` // text, a number for link types
-	Name     string          `json:"name"`
-	Color    *string         `json:"color"`
-	Default  *bool           `json:"default"`
-	Subtask  *bool           `json:"subtask"`
-	Position int             `json:"position"`
-	Issues   *int            `json:"issues"`
-	Links    *int            `json:"links"`
+	ID          json.RawMessage `json:"id"` // text, a number for link types
+	Name        string          `json:"name"`
+	Color       *string         `json:"color"`
+	Default     *bool           `json:"default"`
+	Subtask     *bool           `json:"subtask"`
+	Description *string         `json:"description"`
+	Position    int             `json:"position"`
+	Issues      *int            `json:"issues"`
+	Links       *int            `json:"links"`
 }
 
 // id gives an item's id as text.
@@ -28,6 +30,28 @@ func (it catalogueItem) id() string {
 		return s
 	}
 	return string(it.ID)
+}
+
+// auditDetails gives the details of the newest audit entry of an action on
+// a target.
+func auditDetails(t *testing.T, action, target string) string {
+	t.Helper()
+	return pick(t, `SELECT COALESCE(details, '') FROM audit_log WHERE action = ? AND target_id = ?
+		ORDER BY id DESC LIMIT 1`, action, target)
+}
+
+// sameJSON fails unless got and want hold the same JSON value.
+func sameJSON(t *testing.T, what, got, want string) {
+	t.Helper()
+	var g, w any
+	if err := json.Unmarshal([]byte(got), &g); err != nil {
+		t.Errorf("%s: %q is not JSON: %v", what, got, err)
+		return
+	}
+	json.Unmarshal([]byte(want), &w)
+	if !reflect.DeepEqual(g, w) {
+		t.Errorf("%s: %s, want %s", what, got, want)
+	}
 }
 
 func catalogue(t *testing.T, admin *client, kind string) []catalogueItem {
@@ -58,6 +82,9 @@ func TestPriorities(t *testing.T) {
 		t.Fatalf("created priority: %+v", p)
 	}
 	path := "/api/admin/priorities/" + p.id()
+	if d := auditDetails(t, "priority.create", p.id()); d != "" {
+		t.Errorf("audit of the creation: %s, want no details", d)
+	}
 	for _, bad := range []struct {
 		in   map[string]any
 		want int
@@ -79,6 +106,16 @@ func TestPriorities(t *testing.T) {
 			admin.do("PATCH", "/api/admin/priorities/"+oldDefault, map[string]any{"default": true})
 		}
 	})
+	sameJSON(t, "audit of the default", auditDetails(t, "priority.update", p.id()), `{"is_default": true}`)
+
+	// The audit names the stored columns, the name as from and to.
+	renamed := unique("Bloquant ")
+	admin.call("PATCH", path, map[string]any{"name": renamed, "color": "", "description": " Tout de suite "}, 200, &p)
+	if p.Name != renamed || p.Color == nil || *p.Color != "" || p.Description == nil || *p.Description != "Tout de suite" {
+		t.Errorf("renamed priority: %+v", p)
+	}
+	sameJSON(t, "audit of the rename", auditDetails(t, "priority.update", p.id()),
+		fmt.Sprintf(`{"name": {"from": %q, "to": %q}, "color": null, "description": "Tout de suite"}`, name, renamed))
 	defaults := 0
 	for _, it := range catalogue(t, admin, "priorities") {
 		if it.Default != nil && *it.Default {
@@ -107,12 +144,21 @@ func TestPriorities(t *testing.T) {
 	if list[0].id() != reversed[0] || list[len(list)-1].id() != reversed[len(reversed)-1] {
 		t.Errorf("order: %+v", list)
 	}
+	_, details := latestAudit(t, "priority.order")
+	ids, _ := json.Marshal(reversed)
+	sameJSON(t, "audit of the order", details, `{"ids": `+string(ids)+`}`)
 	admin.call("POST", "/api/admin/priorities/order", map[string]any{"ids": append(order, p.id())}, 200, nil)
 
 	// In use: it goes only with its issues moved elsewhere.
 	target := oldDefault
 	if target == "" {
 		target = order[0]
+	}
+	var targetName string
+	for _, it := range before {
+		if it.id() == target {
+			targetName = it.Name
+		}
 	}
 	status, body := admin.do("DELETE", path, nil)
 	if status != 409 || num(obj(t, body), "usage", "issues") != 1 {
@@ -129,6 +175,8 @@ func TestPriorities(t *testing.T) {
 	if !historyHas(history, "priority") {
 		t.Errorf("no history of the move: %+v", history)
 	}
+	sameJSON(t, "audit of the deletion", auditDetails(t, "priority.delete", p.id()),
+		fmt.Sprintf(`{"moved": 1, "movedTo": %q}`, targetName))
 }
 
 func TestLinkTypes(t *testing.T) {
@@ -159,6 +207,8 @@ func TestLinkTypes(t *testing.T) {
 	if len(d.Links) != 1 {
 		t.Errorf("links after the type went: %+v", d.Links)
 	}
+	sameJSON(t, "audit of the deletion", auditDetails(t, "linktype.delete", fmt.Sprint(n)),
+		fmt.Sprintf(`{"moved": 1, "movedTo": %q}`, other.Name))
 }
 
 func TestIssueTypes(t *testing.T) {
@@ -181,11 +231,16 @@ func TestIssueTypes(t *testing.T) {
 	admin.call("PATCH", path, map[string]any{"subtask": false}, 200, nil)
 
 	key := newProject(t, admin, map[string]any{"issueTypes": []string{it.id(), standard, subtask}})
+	// Offers the type without the one its issues go to.
+	other := newProject(t, admin, map[string]any{"issueTypes": []string{subtask, it.id()}})
+	offered := `SELECT COALESCE(MAX(t.position), -1) FROM project_issue_types t JOIN projects p ON p.id = t.project_id
+		WHERE p.pkey = ? AND t.issue_type_id = ?`
+	position := pick(t, offered, other, it.id())
 	var c struct{ Key string }
 	paul.call("POST", "/api/issues", map[string]any{"project": key, "type": it.id(), "summary": "D'un type à supprimer"}, 201, &c)
 	admin.call("PATCH", path, map[string]any{"subtask": true}, 409, nil)
 	status, body := admin.do("DELETE", path, nil)
-	if status != 409 || num(obj(t, body), "usage", "issues") != 1 {
+	if status != 409 || num(obj(t, body), "usage", "issues") != 1 || num(obj(t, body), "usage", "projects") != 2 {
 		t.Fatalf("deleting a type in use: %d %s", status, body)
 	}
 	admin.call("DELETE", path, map[string]any{"moveTo": subtask}, 400, nil)
@@ -200,6 +255,65 @@ func TestIssueTypes(t *testing.T) {
 	if !historyHas(history, "issuetype") {
 		t.Errorf("no history of the move: %+v", history)
 	}
+	if got := pick(t, offered, other, standard); got != position {
+		t.Errorf("%s offers the replacement at %s, want %s (where the deleted type was)", other, got, position)
+	}
+	var standardName string
+	for _, it := range catalogue(t, admin, "issue-types") {
+		if it.id() == standard {
+			standardName = it.Name
+		}
+	}
+	sameJSON(t, "audit of the deletion", auditDetails(t, "issuetype.delete", it.id()),
+		fmt.Sprintf(`{"moved": 1, "movedTo": %q}`, standardName))
+}
+
+func TestResolutions(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", "motdepasse")
+	before := catalogue(t, admin, "resolutions")
+	target := before[0]
+
+	var res catalogueItem
+	admin.call("POST", "/api/admin/resolutions", map[string]any{"name": unique("Abandonné "), "description": "Pour les tests"}, 201, &res)
+	if res.Default == nil || *res.Default || res.Description == nil || *res.Description != "Pour les tests" {
+		t.Fatalf("created resolution: %+v", res)
+	}
+	path := "/api/admin/resolutions/" + res.id()
+	admin.call("POST", "/api/admin/resolutions", map[string]any{"name": res.Name}, 409, nil)
+	admin.call("POST", "/api/admin/resolutions", map[string]any{"name": "x", "color": "#000000"}, 400, nil)
+
+	key := scratchIssue(t, paul, "Résolu puis déplacé")
+	var d issueDetail
+	paul.get("/api/issues/"+key, &d)
+	var done string
+	for _, s := range d.Statuses {
+		if s.Category == "done" {
+			done = s.ID
+		}
+	}
+	paul.call("PATCH", "/api/issues/"+key, map[string]any{"status": done, "resolution": res.id()}, 200, &d)
+	if d.Resolution == nil || d.Resolution.ID != res.id() {
+		t.Fatalf("resolution of the done issue: %+v", d.Resolution)
+	}
+
+	status, body := admin.do("DELETE", path, nil)
+	if status != 409 || num(obj(t, body), "usage", "issues") != 1 {
+		t.Fatalf("deleting a resolution in use: %d %s", status, body)
+	}
+	admin.call("DELETE", path, map[string]any{"moveTo": "no-such-resolution"}, 400, nil)
+	admin.call("DELETE", path, map[string]any{"moveTo": target.id()}, 204, nil)
+	paul.get("/api/issues/"+key, &d)
+	if d.Resolution == nil || d.Resolution.ID != target.id() {
+		t.Errorf("resolution after the move: %+v, want %s", d.Resolution, target.id())
+	}
+	var history []historyEntry
+	paul.get("/api/issues/"+key+"/history", &history)
+	if !historyHas(history, "resolution") {
+		t.Errorf("no history of the move: %+v", history)
+	}
+	sameJSON(t, "audit of the deletion", auditDetails(t, "resolution.delete", res.id()),
+		fmt.Sprintf(`{"moved": 1, "movedTo": %q}`, target.Name))
 }
 
 func TestStatusOrder(t *testing.T) {

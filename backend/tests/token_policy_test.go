@@ -6,10 +6,15 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/api"
 )
 
 func TestTokenCreationPolicy(t *testing.T) {
@@ -136,6 +141,26 @@ func TestTokenCreationPolicy(t *testing.T) {
 	raw, _ := json.Marshal(page.Entries[0].Details)
 	if !strings.Contains(string(raw), group) {
 		t.Errorf("the group is not in the last entry: %s", raw)
+	}
+
+	// An unreadable policy means administrators only, even when it decodes
+	// "everyone" before failing, and the failed read is logged.
+	if _, err := testDB.Exec(`UPDATE settings SET value = '{"who": "everyone", "group": "x"}' WHERE name = 'tokens.creators'`); err != nil {
+		t.Fatal(err)
+	}
+	logs := &logBuffer{}
+	ts := httptest.NewServer(api.New(testDB, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(logs, nil))).
+		Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+	if status := loginAt(t, ts.URL, "admin", "admin").get("/api/admin/tokens/settings", &policy); status != 200 ||
+		policy.Who != "admins" {
+		t.Errorf("unreadable policy: %d %+v", status, policy)
+	}
+	if out := logs.String(); !strings.Contains(out, "level=WARN") || !strings.Contains(out, "reading the token policy failed") {
+		t.Errorf("failed read not logged at Warn:\n%s", out)
+	}
+	if status, _ := create(paul, "politique illisible"); status != 403 || canCreate(paul) {
+		t.Errorf("a user may create a token under an unreadable policy: %d", status)
 	}
 }
 

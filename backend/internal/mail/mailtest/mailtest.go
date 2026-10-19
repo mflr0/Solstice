@@ -13,7 +13,6 @@ import (
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -42,7 +41,6 @@ type Server struct {
 	msgs []Message
 	ln   net.Listener
 	wg   sync.WaitGroup
-	got  chan struct{}
 }
 
 // Start runs a server until the test ends.
@@ -52,7 +50,7 @@ func Start(t testing.TB) *Server {
 		t.Fatal(err)
 	}
 	addr := ln.Addr().(*net.TCPAddr)
-	s := &Server{Host: "127.0.0.1", Port: addr.Port, ln: ln, got: make(chan struct{}, 1024)}
+	s := &Server{Host: "127.0.0.1", Port: addr.Port, ln: ln}
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
@@ -101,21 +99,6 @@ func (s *Server) Reset() {
 	s.mu.Lock()
 	s.msgs = nil
 	s.mu.Unlock()
-}
-
-// Wait waits until at least n messages arrived, or the timeout passed.
-func (s *Server) Wait(n int, timeout time.Duration) []Message {
-	deadline := time.After(timeout)
-	for {
-		if m := s.Messages(); len(m) >= n {
-			return m
-		}
-		select {
-		case <-s.got:
-		case <-deadline:
-			return s.Messages()
-		}
-	}
 }
 
 func (s *Server) serve(c net.Conn) {
@@ -231,14 +214,7 @@ func (s *Server) store(from, to, raw string) {
 	s.mu.Lock()
 	s.msgs = append(s.msgs, m)
 	s.mu.Unlock()
-	select {
-	case s.got <- struct{}{}:
-	default:
-	}
 }
-
-// Addr is host:port.
-func (s *Server) Addr() string { return net.JoinHostPort(s.Host, strconv.Itoa(s.Port)) }
 
 // Lock serializes, across test binaries, the tests that use the outbox and
 // webhook tables of the shared test database (go test runs packages in
