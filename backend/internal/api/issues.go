@@ -1895,21 +1895,17 @@ func (s *Server) searchRows(ctx context.Context, where string, args []any, order
 	if limit <= 0 || offset >= total {
 		return nil, total, nil
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ? OFFSET ?`,
-		append(args, limit, offset)...)
+	var out []*issueRow
+	err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ? OFFSET ?`,
+		func(rows *sql.Rows) error {
+			iss, err := scanIssue(rows)
+			out = append(out, iss)
+			return err
+		}, append(args, limit, offset)...)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
-	var out []*issueRow
-	for rows.Next() {
-		iss, err := scanIssue(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		out = append(out, iss)
-	}
-	return out, total, rows.Err()
+	return out, total, nil
 }
 
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {
