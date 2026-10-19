@@ -129,6 +129,23 @@ func TestSendDueSkippedWhilePaused(t *testing.T) {
 	}
 }
 
+func TestWithDefaults(t *testing.T) {
+	for _, c := range []struct {
+		in, want Config
+	}{
+		{Config{}, Config{Security: SecurityStartTLS, Port: 587}},
+		{Config{Security: SecurityTLS}, Config{Security: SecurityTLS, Port: 465}},
+		{Config{Security: SecurityNone}, Config{Security: SecurityNone, Port: 25}},
+		{Config{Port: 2525}, Config{Security: SecurityStartTLS, Port: 2525}},
+		{Config{Security: SecurityTLS, Port: 2465, Host: "smtp.exemple.fr"},
+			Config{Security: SecurityTLS, Port: 2465, Host: "smtp.exemple.fr"}},
+	} {
+		if got := c.in.WithDefaults(); got != c.want {
+			t.Errorf("%+v.WithDefaults() = %+v, want %+v", c.in, got, c.want)
+		}
+	}
+}
+
 func TestLoopback(t *testing.T) {
 	for host, want := range map[string]bool{
 		"localhost": true, "LocalHost": true, "127.0.0.1": true, "127.12.0.9": true, "::1": true,

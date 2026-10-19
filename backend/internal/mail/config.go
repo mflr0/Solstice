@@ -54,6 +54,18 @@ func DefaultPort(security string) int {
 	return 25
 }
 
+// WithDefaults fills in what an unset configuration means: STARTTLS and the
+// usual port of the security mode.
+func (c Config) WithDefaults() Config {
+	if c.Security == "" {
+		c.Security = SecurityStartTLS
+	}
+	if c.Port == 0 {
+		c.Port = DefaultPort(c.Security)
+	}
+	return c
+}
+
 // Sender is the From address, with its display name.
 func (c Config) Sender() mail.Address {
 	name := strings.TrimSpace(c.FromName)
@@ -80,7 +92,7 @@ func LoadConfig(ctx context.Context, st *settings.Store, box func() (*secret.Box
 	var s stored
 	ok, err := st.GetJSON(ctx, settingName, &s)
 	if err != nil || !ok {
-		return Config{Security: SecurityStartTLS, Port: DefaultPort(SecurityStartTLS)}, err
+		return Config{}.WithDefaults(), err
 	}
 	if s.SealedPassword != "" {
 		b, err := box()
@@ -94,11 +106,12 @@ func LoadConfig(ctx context.Context, st *settings.Store, box func() (*secret.Box
 	return s.Config, nil
 }
 
-// HasPassword tells whether a password is stored, without opening it.
-func HasPassword(ctx context.Context, st *settings.Store) (bool, error) {
+// ReadStored reads the settings as stored, without defaults and without
+// opening the password, and tells whether a password is stored.
+func ReadStored(ctx context.Context, st *settings.Store) (c Config, passwordSet bool, err error) {
 	var s stored
-	_, err := st.GetJSON(ctx, settingName, &s)
-	return s.SealedPassword != "", err
+	_, err = st.GetJSON(ctx, settingName, &s)
+	return s.Config, s.SealedPassword != "", err
 }
 
 // SaveConfig writes the settings, sealing the password.
