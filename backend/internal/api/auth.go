@@ -195,7 +195,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		// The other sign-ins end; this one goes on.
 		current := ""
 		if c, err := r.Cookie(auth.CookieName); err == nil {
-			current = tokenKey(c.Value)
+			current = auth.TokenHash(c.Value)
 		}
 		if err := s.endSessions(ctx, u.ID, current); err != nil {
 			return err

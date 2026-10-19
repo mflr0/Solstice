@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -33,11 +34,24 @@ type User struct {
 // ErrNoSession means the token matches no valid session.
 var ErrNoSession = errors.New("no valid session")
 
-// The database only stores a hash of the token: a leaked sessions table
-// cannot be replayed.
-func tokenHash(token string) string {
+// TokenHash is what the database stores of a token (hex SHA-256): a leaked
+// table cannot be replayed.
+func TokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// tokenBytes is the size of a token before encoding: 256 bits.
+const tokenBytes = 32
+
+// RandomToken returns a fresh token: 32 bytes from the system's random
+// source, URL-safe.
+func RandomToken() (string, error) {
+	raw := make([]byte, tokenBytes)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
 // NewSession opens a session of the default lifetime and returns its token.
@@ -47,15 +61,14 @@ func NewSession(ctx context.Context, db *sql.DB, userID int64) (string, time.Tim
 
 // NewSessionFor opens a session lasting lifetime and returns its token.
 func NewSessionFor(ctx context.Context, db *sql.DB, userID int64, lifetime time.Duration) (string, time.Time, error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
+	token, err := RandomToken()
+	if err != nil {
 		return "", time.Time{}, err
 	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
 	now := time.Now().UTC()
 	expires := now.Add(lifetime)
-	_, err := db.ExecContext(ctx, `INSERT INTO sessions (token_hash, user_id, created_at, expires_at)
-		VALUES (?, ?, ?, ?)`, tokenHash(token), userID, now, expires)
+	_, err = db.ExecContext(ctx, `INSERT INTO sessions (token_hash, user_id, created_at, expires_at)
+		VALUES (?, ?, ?, ?)`, TokenHash(token), userID, now, expires)
 	return token, expires, err
 }
 
@@ -64,7 +77,7 @@ func Lookup(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	var u User
 	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, '')
 		FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.token_hash = ? AND s.expires_at > ? AND u.active`, tokenHash(token), time.Now().UTC()).
+		WHERE s.token_hash = ? AND s.expires_at > ? AND u.active`, TokenHash(token), time.Now().UTC()).
 		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoSession
@@ -77,7 +90,7 @@ func Lookup(ctx context.Context, db *sql.DB, token string) (*User, error) {
 
 // EndSession deletes a session.
 func EndSession(ctx context.Context, db *sql.DB, token string) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, tokenHash(token))
+	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, TokenHash(token))
 	return err
 }
 
@@ -101,14 +114,14 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Spend the same time as a real check so user names cannot be probed.
-		CheckPassword(dummyHash, password)
+		CheckPassword(dummyHash(), password)
 		return nil, ErrNoSession
 	}
 	if err != nil {
 		return nil, err
 	}
 	if !hash.Valid {
-		CheckPassword(dummyHash, password)
+		CheckPassword(dummyHash(), password)
 		return nil, ErrNoSession
 	}
 	ok, rehash := CheckPassword(hash.String, password)
@@ -117,7 +130,7 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 			// An imported Jira hash is refused quicker than Argon2id: spend
 			// that time too, so such accounts cannot be told from the others.
 			// Only failures are timed by an attacker.
-			CheckPassword(dummyHash, password)
+			CheckPassword(dummyHash(), password)
 		}
 		return nil, ErrNoSession
 	}
@@ -142,4 +155,13 @@ func SetPassword(ctx context.Context, db *sql.DB, userID int64, password string)
 	return RevokeAccountTokens(ctx, db, userID, time.Now())
 }
 
-var dummyHash, _ = HashPassword("solstice-timing-equaliser")
+// dummyHash is built on first use, not at init: every binary linking auth,
+// such as `solstice health`, would otherwise pay one Argon2id at start-up.
+var dummyHash = sync.OnceValue(func() string {
+	h, _ := HashPassword("solstice-timing-equaliser")
+	return h
+})
+
+// PrepareSignIn builds the hash that unknown accounts are checked against,
+// so that the first such sign-in takes no longer than the next ones.
+func PrepareSignIn() { dummyHash() }
