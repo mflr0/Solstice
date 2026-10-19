@@ -102,6 +102,7 @@ func optDescription(v *string) any {
 	return strings.TrimSpace(*v)
 }
 
+// pathID reads a numeric path value; a value that is not a number is 404.
 func pathID(r *http.Request, name string) (int64, error) {
 	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
 	if err != nil {
@@ -463,14 +464,6 @@ func (s *Server) roleByID(ctx context.Context, id int64) (roleAdminOut, error) {
 	return list[0], nil
 }
 
-// roleNameTaken tells whether another role has this name (any case).
-func (s *Server) roleNameTaken(ctx context.Context, name string, except int64) (bool, error) {
-	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_roles WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n)
-	return n > 0, err
-}
-
 func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -487,10 +480,8 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	if taken, err := s.roleNameTaken(ctx, name, 0); err != nil {
+	if err := s.nameTaken(ctx, "project_roles", name, 0, i18n.RoleExists); err != nil {
 		return err
-	} else if taken {
-		return failf(http.StatusConflict, i18n.RoleExists, name)
 	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO project_roles (name, description) VALUES (?, ?)`, name,
 		optDescription(in.Description))
@@ -537,10 +528,8 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if taken, err := s.roleNameTaken(ctx, name, id); err != nil {
+		if err := s.nameTaken(ctx, "project_roles", name, id, i18n.RoleExists); err != nil {
 			return err
-		} else if taken {
-			return failf(http.StatusConflict, i18n.RoleExists, name)
 		}
 		if name != ro.Name {
 			details["name"] = map[string]string{"from": ro.Name, "to": name}

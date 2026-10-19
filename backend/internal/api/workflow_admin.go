@@ -214,9 +214,8 @@ func (s *Server) administers(sub *perm.Subject, projectID int64) bool {
 
 // workflowForEdit loads a workflow the user administers.
 func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projectID int64, isDefault bool, err error) {
-	id, err = strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		return 0, 0, false, errNotFound
+	if id, err = pathID(r, "id"); err != nil {
+		return 0, 0, false, err
 	}
 	err = s.db.QueryRowContext(r.Context(), `SELECT project_id, is_default FROM workflows WHERE id = ?`, id).
 		Scan(&projectID, &isDefault)

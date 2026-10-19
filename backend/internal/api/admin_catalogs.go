@@ -215,13 +215,8 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 				if err != nil {
 					return err
 				}
-				var n int
-				if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+c.table+` WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-					name, id).Scan(&n); err != nil {
+				if err := s.nameTaken(ctx, c.table, name, id, i18n.CommonAlreadyExists); err != nil {
 					return err
-				}
-				if n > 0 {
-					return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
 				}
 				sets["name"] = name
 			case "description":
