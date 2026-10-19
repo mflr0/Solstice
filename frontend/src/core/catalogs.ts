@@ -14,7 +14,7 @@ import type {
   FieldType,
   StatusRow,
 } from './admin-types.js';
-import type { Problems } from './admin-forms.js';
+import { tooLong, type Problems } from './admin-forms.js';
 
 /** The four catalogues of the "Tickets" group, as the navigation names them. */
 export type CatalogSection = 'issueTypes' | 'priorities' | 'resolutions' | 'linkTypes';
@@ -92,8 +92,6 @@ export function catalogForm(item: CatalogItem | null): CatalogForm {
     inward: item?.inward ?? '',
   };
 }
-
-const tooLong = (s: string) => [...s.trim()].length > 255;
 
 /** Whether another item of the list already has this name (case does not count). */
 export function nameTaken(
@@ -298,7 +296,7 @@ export function fieldProblems(
   if (editing === null && hasOptions(f.type)) {
     const options = parseOptions(f.options);
     if (options.length === 0) out.options = 'optionsRequired';
-    else if (options.some(tooLong)) out.options = 'optionTooLong';
+    else if (options.some((o) => tooLong(o))) out.options = 'optionTooLong';
     else if (duplicateOption(options)) out.options = 'optionDuplicate';
   }
   if (!f.allProjects && f.projects.length === 0) out.projects = 'projectsRequired';
