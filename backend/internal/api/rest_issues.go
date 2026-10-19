@@ -413,7 +413,13 @@ func (s *Server) pathComment(r *http.Request, sub *perm.Subject, iss *issueRow) 
 	if err != nil {
 		return commentRow{}, errNotFound
 	}
-	rows, err := s.visibleComments(r.Context(), sub, iss)
+	return s.visibleComment(r.Context(), sub, iss, id)
+}
+
+// visibleComment finds a comment among those of the issue that the user may
+// read.
+func (s *Server) visibleComment(ctx context.Context, sub *perm.Subject, iss *issueRow, id int64) (commentRow, error) {
+	rows, err := s.visibleComments(ctx, sub, iss)
 	if err != nil {
 		return commentRow{}, err
 	}
@@ -425,13 +431,7 @@ func (s *Server) pathComment(r *http.Request, sub *perm.Subject, iss *issueRow) 
 	return commentRow{}, errNotFound
 }
 
-func (s *Server) writeJiraComment(w http.ResponseWriter, r *http.Request, sub *perm.Subject, iss *issueRow, id int64,
-	status int) error {
-	r.SetPathValue("id", strconv.FormatInt(id, 10))
-	c, err := s.pathComment(r, sub, iss)
-	if err != nil {
-		return err
-	}
+func (s *Server) writeJiraComment(w http.ResponseWriter, r *http.Request, iss *issueRow, c commentRow, status int) error {
 	o := s.restOut(r)
 	users, err := s.jiraUsers(r.Context(), o, c.author.Int64, c.updatedBy.Int64)
 	if err != nil {
@@ -449,7 +449,7 @@ func (s *Server) restComment(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, c.id, http.StatusOK)
+	return s.writeJiraComment(w, r, iss, c, http.StatusOK)
 }
 
 type jiraCommentInput struct {
@@ -475,7 +475,11 @@ func (s *Server) restAddComment(w http.ResponseWriter, r *http.Request) error {
 		map[string]string{"key": iss.Key()}, c, &out); err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, out.ID, http.StatusCreated)
+	added, err := s.visibleComment(r.Context(), sub, iss, out.ID)
+	if err != nil {
+		return err
+	}
+	return s.writeJiraComment(w, r, iss, added, http.StatusCreated)
 }
 
 func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
@@ -511,7 +515,10 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 		map[string]string{"body": in.Body}, nil); err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, c.id, http.StatusOK)
+	if c, err = s.visibleComment(r.Context(), sub, iss, c.id); err != nil {
+		return err
+	}
+	return s.writeJiraComment(w, r, iss, c, http.StatusOK)
 }
 
 func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error {
