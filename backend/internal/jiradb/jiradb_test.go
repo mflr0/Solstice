@@ -172,6 +172,47 @@ func TestPostgresURLReportsTheFirstBadOption(t *testing.T) {
 	}
 }
 
+// Quote keeps the case on both engines: Active Objects tables are upper-case
+// on PostgreSQL, and "lead" is a reserved word on MySQL.
+func TestQuote(t *testing.T) {
+	cases := []struct {
+		eng  Engine
+		name string
+		want string
+	}{
+		{MySQL, "AO_60DB71_SPRINT", "`AO_60DB71_SPRINT`"},
+		{Postgres, "AO_60DB71_SPRINT", `"AO_60DB71_SPRINT"`}, // AO tables stay upper-case on PostgreSQL
+		{MySQL, "lead", "`lead`"},
+		{Postgres, "lead", `"lead"`},
+	}
+	for _, c := range cases {
+		if got := c.eng.Quote(c.name); got != c.want {
+			t.Errorf("Quote(%s, %q) = %q, want %q", c.eng, c.name, got, c.want)
+		}
+	}
+}
+
+// QuoteFolded folds to lower case on PostgreSQL only, where Jira creates its
+// tables unquoted.
+func TestQuoteFolded(t *testing.T) {
+	cases := []struct {
+		eng  Engine
+		name string
+		want string
+	}{
+		{MySQL, "OS_CURRENTSTEP", "`OS_CURRENTSTEP`"}, // MySQL table names are case-sensitive
+		{Postgres, "OS_CURRENTSTEP", `"os_currentstep"`},
+		{MySQL, "local", "`local`"},
+		{Postgres, "local", `"local"`},
+		{Postgres, "pk_jiraissue", `"pk_jiraissue"`},
+	}
+	for _, c := range cases {
+		if got := c.eng.QuoteFolded(c.name); got != c.want {
+			t.Errorf("QuoteFolded(%s, %q) = %q, want %q", c.eng, c.name, got, c.want)
+		}
+	}
+}
+
 func TestOpenErrorsNeverContainThePassword(t *testing.T) {
 	for _, raw := range []string{
 		"mysql://u:pa%zzss-secret@localhost/db",

@@ -192,32 +192,13 @@ func LoadDistribution(dist string, eng jiradb.Engine) (*Model, map[string]string
 	return m, types, nil
 }
 
-// quoteTable quotes a table name the way Jira's tables end up named: folded
-// to lower case on PostgreSQL (Jira creates them unquoted), exact case on
-// MySQL, where table names are case-sensitive.
-func quoteTable(eng jiradb.Engine, name string) string {
-	if eng == jiradb.MySQL {
-		return "`" + name + "`"
-	}
-	return `"` + strings.ToLower(name) + `"`
-}
-
-// quoteColumn quotes a column name. Quoting matters because some Jira
-// columns are reserved words (cwd_group.local on MySQL).
-func quoteColumn(eng jiradb.Engine, name string) string {
-	if eng == jiradb.MySQL {
-		return "`" + name + "`"
-	}
-	return `"` + strings.ToLower(name) + `"`
-}
-
 // DDL returns the statements that drop and recreate every entity table.
 // Only primary keys are created: Jira's secondary indexes do not matter for
 // a fixture.
 func (m *Model) DDL(eng jiradb.Engine, types map[string]string) ([]string, error) {
 	stmts := make([]string, 0, 2*len(m.Entities))
 	for _, e := range m.Entities {
-		t := quoteTable(eng, e.Table)
+		t := eng.QuoteFolded(e.Table)
 		if eng == jiradb.MySQL {
 			stmts = append(stmts, "DROP TABLE IF EXISTS "+t)
 		} else {
@@ -238,7 +219,7 @@ func (m *Model) DDL(eng jiradb.Engine, types map[string]string) ([]string, error
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString(quoteColumn(eng, f.Column) + " " + sqlType)
+			b.WriteString(eng.QuoteFolded(f.Column) + " " + sqlType)
 			if pk[f.Column] {
 				b.WriteString(" NOT NULL")
 			}
@@ -246,12 +227,12 @@ func (m *Model) DDL(eng jiradb.Engine, types map[string]string) ([]string, error
 		if len(e.PK) > 0 {
 			cols := make([]string, len(e.PK))
 			for i, c := range e.PK {
-				cols[i] = quoteColumn(eng, c)
+				cols[i] = eng.QuoteFolded(c)
 			}
 			if eng == jiradb.MySQL {
 				b.WriteString(", PRIMARY KEY (" + strings.Join(cols, ", ") + ")")
 			} else {
-				name := quoteColumn(eng, "pk_"+strings.ToLower(e.Table))
+				name := eng.QuoteFolded("pk_" + strings.ToLower(e.Table))
 				b.WriteString(", CONSTRAINT " + name + " PRIMARY KEY (" + strings.Join(cols, ", ") + ")")
 			}
 		}

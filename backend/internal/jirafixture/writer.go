@@ -54,12 +54,12 @@ func (w *Writer) Table(table string, cols ...string) *Table {
 		if !ok {
 			panic(fmt.Sprintf("jirafixture: column %s.%s is not in the entity model", e.Table, c))
 		}
-		quoted[i] = quoteColumn(w.eng, f.Column)
+		quoted[i] = w.eng.QuoteFolded(f.Column)
 	}
 	t := &Table{
 		w:     w,
 		name:  strings.ToLower(e.Table),
-		head:  "INSERT INTO " + quoteTable(w.eng, e.Table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
+		head:  "INSERT INTO " + w.eng.QuoteFolded(e.Table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
 		ncols: len(cols),
 		// Both engines accept up to 65535 bind parameters per statement.
 		max: min(500, 60000/len(cols)),
@@ -77,12 +77,12 @@ func (w *Writer) AOTable(table string, cols ...string) *Table {
 		if !spec.has(c) {
 			panic(fmt.Sprintf("jirafixture: column %s.%s is not an AO column", table, c))
 		}
-		quoted[i] = quoteAO(w.eng, c)
+		quoted[i] = w.eng.Quote(c)
 	}
 	t := &Table{
 		w:     w,
 		name:  strings.ToLower(table),
-		head:  "INSERT INTO " + quoteAO(w.eng, table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
+		head:  "INSERT INTO " + w.eng.Quote(table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
 		ncols: len(cols),
 		max:   min(500, 60000/len(cols)),
 	}
@@ -137,7 +137,7 @@ func (t *Table) flush() {
 // list of column name, value pairs.
 func updateSQL(eng jiradb.Engine, e *Entity, id int64, set []any) (string, []any) {
 	var b strings.Builder
-	b.WriteString("UPDATE " + quoteTable(eng, e.Table) + " SET ")
+	b.WriteString("UPDATE " + eng.QuoteFolded(e.Table) + " SET ")
 	args := make([]any, 0, len(set)/2+1)
 	for i := 0; i < len(set); i += 2 {
 		f, ok := e.Column(set[i].(string))
@@ -148,14 +148,14 @@ func updateSQL(eng jiradb.Engine, e *Entity, id int64, set []any) (string, []any
 			b.WriteString(", ")
 		}
 		args = append(args, set[i+1])
-		b.WriteString(quoteColumn(eng, f.Column) + " = " + eng.Placeholder(len(args)))
+		b.WriteString(eng.QuoteFolded(f.Column) + " = " + eng.Placeholder(len(args)))
 	}
 	f, ok := e.Column("id")
 	if !ok {
 		panic(fmt.Sprintf("jirafixture: table %s has no id column", e.Table))
 	}
 	args = append(args, id)
-	b.WriteString(" WHERE " + quoteColumn(eng, f.Column) + " = " + eng.Placeholder(len(args)))
+	b.WriteString(" WHERE " + eng.QuoteFolded(f.Column) + " = " + eng.Placeholder(len(args)))
 	return b.String(), args
 }
 
