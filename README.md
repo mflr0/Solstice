@@ -247,7 +247,7 @@ notification settings).
 
 ## Development
 
-Requirements: Go 1.27+, Node 22+ with pnpm, Docker (or OrbStack).
+Requirements: Go 1.27+, Node 24+ with pnpm, Docker (or OrbStack).
 
 ```bash
 docker compose up -d          # MariaDB for Solstice, plus test PostgreSQL and MySQL Jira databases
@@ -311,8 +311,10 @@ backend/
   cmd/solstice/         the binary: serve, migrate, import, user, version, health
   cmd/jira-fixture/     generator of synthetic Jira databases (tests)
   internal/api/         JSON HTTP API used by the interface, REST compatibility layer
+  internal/issue/       domain types of issues, shared by the API, events and the import
   internal/importer/    import from Jira
   internal/jiradb/      connection to Jira databases (PostgreSQL, MySQL)
+  internal/jirafixture/ synthetic Jira databases, behind cmd/jira-fixture
   internal/perm/        who sees and does what
   internal/search/      the simple search
   internal/jql/         JQL
@@ -320,6 +322,7 @@ backend/
   internal/events/      event bus: real time, e-mail, webhooks
   internal/notify/      e-mail notifications, digests, subscriptions, reminders
   internal/mail/        SMTP settings, sending, e-mail queue
+  internal/mail/mailtest/  SMTP server for tests
   internal/webhook/     webhooks, SSRF guard
   internal/secret/      encryption of stored secrets
   internal/settings/    instance settings stored in the database
@@ -328,6 +331,8 @@ backend/
   internal/i18n/        server messages in five languages
   internal/auth/        passwords and sessions
   internal/db/          MariaDB connection and migrations
+  internal/sqlq/        small helpers around database/sql
+  internal/worker/      background work that survives a panic
   internal/web/         serves the built interface
 frontend/
   src/core/             pure, tested logic (wiki markup rendering, JQL…)

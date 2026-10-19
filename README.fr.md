@@ -268,7 +268,7 @@ ses propres réglages de notifications).
 
 ## Développement
 
-Prérequis : Go 1.27+, Node 22+ avec pnpm, Docker (ou OrbStack).
+Prérequis : Go 1.27+, Node 24+ avec pnpm, Docker (ou OrbStack).
 
 ```bash
 docker compose up -d          # MariaDB pour Solstice, plus un PostgreSQL et un MySQL « Jira » de test
@@ -334,8 +334,10 @@ backend/
   cmd/solstice/         le binaire : serve, migrate, import, user, version, health
   cmd/jira-fixture/     générateur de bases Jira synthétiques (tests)
   internal/api/         API HTTP JSON de l'interface, couche de compatibilité REST
+  internal/issue/       types métier des tickets, partagés par l'API, les événements et l'import
   internal/importer/    import depuis Jira
   internal/jiradb/      connexion aux bases Jira (PostgreSQL, MySQL)
+  internal/jirafixture/ bases Jira synthétiques, derrière cmd/jira-fixture
   internal/perm/        qui voit et fait quoi
   internal/search/      la recherche simple
   internal/jql/         le JQL
@@ -343,6 +345,7 @@ backend/
   internal/events/      bus d'événements : temps réel, e-mails, webhooks
   internal/notify/      notifications par e-mail, résumés, abonnements, rappels
   internal/mail/        réglages SMTP, envoi, file d'attente des e-mails
+  internal/mail/mailtest/  serveur SMTP pour les tests
   internal/webhook/     webhooks, garde contre les SSRF
   internal/secret/      chiffrement des secrets enregistrés
   internal/settings/    réglages de l'instance en base
@@ -351,6 +354,8 @@ backend/
   internal/i18n/        messages du serveur en cinq langues
   internal/auth/        mots de passe et sessions
   internal/db/          connexion MariaDB et migrations
+  internal/sqlq/        petits outils autour de database/sql
+  internal/worker/      tâches de fond qui survivent à un panic
   internal/web/         sert l'interface compilée
 frontend/
   src/core/             logique pure et testée (rendu du balisage wiki, JQL…)

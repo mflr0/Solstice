@@ -1,6 +1,6 @@
-# Bases de développement :
-# - mariadb  : la base de Solstice
-# - jira-pg / jira-mysql : bases Jira synthétiques (remplies par jira-fixture) servant de source d'import
+# Development databases:
+# - mariadb: the Solstice database
+# - jira-pg / jira-mysql: synthetic Jira databases (filled by jira-fixture), the sources of the import
 services:
   mariadb:
     image: mariadb:11.4

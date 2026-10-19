@@ -8,8 +8,9 @@
 
 FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS ui
 WORKDIR /src/frontend
-RUN npm install --global pnpm@12.11.2
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+# The packageManager field of package.json owns the pnpm version.
+RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 # Type-checks, then writes ../backend/internal/web/dist.
