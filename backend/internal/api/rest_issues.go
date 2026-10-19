@@ -1013,36 +1013,6 @@ func (s *Server) restLinkTypes(w http.ResponseWriter, r *http.Request) error {
 
 // Search -----------------------------------------------------------------------
 
-// searchRows runs a search condition (aliases i, p and pr) and returns a page
-// of issues with the total.
-func (s *Server) searchRows(ctx context.Context, where string, args []any, order string, offset, limit int) (
-	[]*issueRow, int, error) {
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
-	var total int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	if limit <= 0 || offset >= total {
-		return nil, total, nil
-	}
-	rows, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ? OFFSET ?`,
-		append(args, limit, offset)...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-	var out []*issueRow
-	for rows.Next() {
-		iss, err := scanIssue(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		out = append(out, iss)
-	}
-	return out, total, rows.Err()
-}
-
 // restSearch runs a JQL search: GET with parameters, or POST with a JSON
 // body, as Jira.
 func (s *Server) restSearch(w http.ResponseWriter, r *http.Request) error {
