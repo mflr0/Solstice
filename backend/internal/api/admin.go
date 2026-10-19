@@ -10,6 +10,8 @@ import (
 	netmail "net/mail"
 	"regexp"
 
+	"github.com/go-sql-driver/mysql"
+
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
@@ -142,9 +144,9 @@ func (s *Server) adminGetUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	u, err := s.adminUserByID(r.Context(), id)
 	if err != nil {
@@ -254,9 +256,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Name     *string `json:"name"`
@@ -365,9 +367,9 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Method string `json:"method"`
@@ -410,9 +412,9 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Groups []int64 `json:"groups"`
@@ -461,5 +463,23 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, u)
 }
 
-// isDuplicate tells a unique key violation.
-func isDuplicate(err error) bool { return err != nil && strings.Contains(err.Error(), "Duplicate") }
+// isDuplicate tells a unique key violation (MySQL error 1062).
+func isDuplicate(err error) bool {
+	var me *mysql.MySQLError
+	return errors.As(err, &me) && me.Number == 1062
+}
+
+// nameTaken refuses with 409 and key when a row of table other than except
+// has this name in any case. except is the id of the row being renamed, of
+// the type of the table's id.
+func (s *Server) nameTaken(ctx context.Context, table, name string, except any, key i18n.Key) error {
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE LOWER(name) = LOWER(?) AND id <> ?`,
+		name, except).Scan(&n); err != nil {
+		return err
+	}
+	if n > 0 {
+		return failf(http.StatusConflict, key, name)
+	}
+	return nil
+}
