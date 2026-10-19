@@ -176,14 +176,13 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 }
 
 func (s *Server) listWorkflows(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
 	}
-	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
-		return errNotFound
+	projectID, err := s.browsableProject(r)
+	if err != nil {
+		return err
 	}
 	return s.writeWorkflows(w, r, sub, projectID)
 }
@@ -206,10 +205,6 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 		"workflows": list, "issueTypes": types, "statuses": cat.Statuses,
 		"can": map[string]bool{"edit": s.administers(sub, projectID)},
 	})
-}
-
-func (s *Server) administers(sub *perm.Subject, projectID int64) bool {
-	return sub.Admin || sub.Can(perm.Admin, projectID, nil)
 }
 
 // workflowForEdit loads a workflow the user administers.
@@ -598,9 +593,9 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
-		return errNotFound
+	projectID, err := s.browsableProject(r)
+	if err != nil {
+		return err
 	}
 	if !s.administers(sub, projectID) {
 		return errForbidden
@@ -761,7 +756,13 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	if !sub.Admin {
 		projectID, err := s.projectByKey(ctx, in.Project)
-		if err != nil || !sub.CanBrowseProject(projectID) || !s.administers(sub, projectID) {
+		if errors.Is(err, errNotFound) {
+			return errForbidden
+		}
+		if err != nil {
+			return err
+		}
+		if !sub.CanBrowseProject(projectID) || !s.administers(sub, projectID) {
 			return errForbidden
 		}
 	}
