@@ -475,6 +475,50 @@ func TestVisibleSQL(t *testing.T) {
 		}
 	})
 
+	// The exact SQL and arguments for one project: grants of every kind of
+	// holder, a level granted through a project role, and another alias.
+	for _, c := range []struct {
+		name   string
+		grants []Grant // Browse grants on project 7
+		level  []Grant // members of level 30 of project 7
+		alias  string
+		want   string
+		args   []any
+	}{
+		{"reporter and assignee", []Grant{{Holder: Reporter}, {Holder: Assignee}}, nil, "i",
+			"((i.project_id IN (?) AND i.reporter_id = ?) OR (i.project_id IN (?) AND i.assignee_id = ?)) AND " +
+				"(i.security_level_id IS NULL)",
+			[]any{int64(7), int64(42), int64(7), int64(42)}},
+		{"full access wins over reporter", []Grant{{Holder: Reporter}, {Holder: Everyone}}, nil, "i",
+			"(i.project_id IN (?)) AND (i.security_level_id IS NULL)", []any{int64(7)}},
+		{"level through a role of the project", []Grant{{Holder: Everyone}}, []Grant{{Holder: Role, RoleID: 5}}, "i",
+			"(i.project_id IN (?)) AND (i.security_level_id IS NULL OR i.security_level_id IN (?))",
+			[]any{int64(7), int64(30)}},
+		{"project by reporter, level by assignee", []Grant{{Holder: Reporter}}, []Grant{{Holder: Assignee}}, "i",
+			"((i.project_id IN (?) AND i.reporter_id = ?)) AND " +
+				"(i.security_level_id IS NULL OR (i.security_level_id IN (?) AND i.assignee_id = ?))",
+			[]any{int64(7), int64(42), int64(30), int64(42)}},
+		{"alias", []Grant{{Holder: Reporter}}, []Grant{{Holder: Everyone}}, "x",
+			"((x.project_id IN (?) AND x.reporter_id = ?)) AND (x.security_level_id IS NULL OR x.security_level_id IN (?))",
+			[]any{int64(7), int64(42), int64(30)}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := testRules()
+			for _, g := range c.grants {
+				r.grant(7, Browse, g)
+			}
+			if c.level != nil {
+				r.levels[30] = level{project: 7, members: c.level}
+			}
+			sub := subject(r, 42, false)
+			addRole(sub, 7, 5)
+			where, args := sub.VisibleSQL(c.alias)
+			if where != c.want || !reflect.DeepEqual(args, c.args) {
+				t.Errorf("VisibleSQL(%q)\n got %q %v\nwant %q %v", c.alias, where, args, c.want, c.args)
+			}
+		})
+	}
+
 	t.Run("full and reporter grants combine", func(t *testing.T) {
 		r := testRules()
 		r.grant(7, Browse, Grant{Holder: Everyone})
