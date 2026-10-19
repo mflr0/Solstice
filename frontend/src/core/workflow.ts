@@ -230,6 +230,14 @@ export function suggestRemap(
   return out;
 }
 
+/**
+ * Where the issues going back to the default workflow go: the first status
+ * of the same category, else the default workflow's first status.
+ */
+export function suggestDefaultRemap(d: StrandedDefault): Record<string, string> {
+  return suggestRemap(d.stranded, d.workflow.statuses, d.workflow.statuses[0]?.id ?? '');
+}
+
 /** Reads the stranded statuses out of a 409 body. */
 export function strandedOf(data: unknown): StrandedStatus[] | null {
   if (!data || typeof data !== 'object' || !('stranded' in data)) return null;

@@ -968,10 +968,11 @@ export interface Completion {
   phrase: { prefix: string; from: number; inList: boolean } | null;
 }
 
-/** What may be typed at the caret, and the text a suggestion would replace. */
-export function completionAt(src: string, caret: number): Completion {
-  const toks = lex(src);
-  // The word being typed: a word, string or operator that touches the caret.
+/**
+ * The word being typed: a word, string or operator that touches the caret,
+ * and how many tokens sit before it.
+ */
+function locateWord(toks: Token[], caret: number): { cur: Token | undefined; upto: number } {
   let cur: Token | undefined;
   let upto = toks.length;
   for (let i = 0; i < toks.length; i++) {
@@ -990,11 +991,28 @@ export function completionAt(src: string, caret: number): Completion {
     }
     upto = i + 1;
   }
-  const m = start();
+  return { cur, upto };
+}
+
+/** Feeds the tokens before the caret; returns the role of the last one. */
+function replay(m: Machine, toks: Token[], upto: number): Role | undefined {
   let lastRole: Role | undefined;
   for (let i = 0; i < upto; i++) lastRole = step(m, toks[i] as Token, toks[i + 1]);
-  const last = upto > 0 ? toks[upto - 1] : undefined;
-  let phrase: Completion['phrase'] = null;
+  return lastRole;
+}
+
+/**
+ * The bare value the caret is in, when the last token is a value that may go
+ * on over several words ("status = En c" for « En cours »); null otherwise.
+ */
+function phraseAt(
+  src: string,
+  caret: number,
+  last: Token | undefined,
+  lastRole: Role | undefined,
+  m: Machine,
+  cur: Token | undefined,
+): Completion['phrase'] {
   if (
     last?.kind === 'word' &&
     lastRole === 'value' &&
@@ -1002,17 +1020,13 @@ export function completionAt(src: string, caret: number): Completion {
     (!cur || cur.kind === 'word') &&
     caret > last.end
   ) {
-    phrase = { prefix: src.slice(last.start, caret), from: last.start, inList: m.state === 'sep' };
+    return { prefix: src.slice(last.start, caret), from: last.start, inList: m.state === 'sep' };
   }
-  const from = cur ? cur.start : caret;
-  const to = cur ? cur.end : caret;
-  let prefix = '';
-  if (cur?.kind === 'string') {
-    prefix = src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
-  } else if (cur) {
-    prefix = src.slice(cur.start, caret);
-  }
-  const base = { field: m.field, prefix, from, to, inList: false, phrase };
+  return null;
+}
+
+/** What may be typed in the state the machine ended in. */
+function kindOf(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
   switch (m.state) {
     case 'field':
       return { ...base, kind: 'field', keywords: ['NOT', 'ORDER BY'] };
@@ -1045,4 +1059,23 @@ export function completionAt(src: string, caret: number): Completion {
     default:
       return { ...base, kind: 'none', keywords: [] };
   }
+}
+
+/** What may be typed at the caret, and the text a suggestion would replace. */
+export function completionAt(src: string, caret: number): Completion {
+  const toks = lex(src);
+  const { cur, upto } = locateWord(toks, caret);
+  const m = start();
+  const lastRole = replay(m, toks, upto);
+  const last = upto > 0 ? toks[upto - 1] : undefined;
+  const phrase = phraseAt(src, caret, last, lastRole, m, cur);
+  const from = cur ? cur.start : caret;
+  const to = cur ? cur.end : caret;
+  let prefix = '';
+  if (cur?.kind === 'string') {
+    prefix = src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
+  } else if (cur) {
+    prefix = src.slice(cur.start, caret);
+  }
+  return kindOf(m, { field: m.field, prefix, from, to, inList: false, phrase });
 }
