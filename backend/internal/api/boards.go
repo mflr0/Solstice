@@ -99,11 +99,11 @@ func (s *Server) boardByID(ctx context.Context, sub *perm.Subject, id int64) (*b
 	if err != nil {
 		return nil, err
 	}
-	visible, err := s.visibleFilterIDs(ctx, sub)
+	filters, err := s.loadFilters(ctx, sub, b.FilterID)
 	if err != nil {
 		return nil, err
 	}
-	if !visible[b.FilterID] {
+	if len(filters) == 0 {
 		return nil, errNotFound
 	}
 	return b, nil
