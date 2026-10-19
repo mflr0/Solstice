@@ -95,6 +95,10 @@ func TestSend(t *testing.T) {
 	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageNoTLS {
 		t.Errorf("STARTTLS required but not offered: %v", err)
 	}
+	cfg.Security = ""
+	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageNoTLS {
+		t.Errorf("unset security means STARTTLS, as the settings page shows: %v", err)
+	}
 	cfg.Security, cfg.Port = SecurityNone, 1
 	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageConnect {
 		t.Errorf("unreachable server: %v", err)
@@ -126,6 +130,23 @@ func TestSendDueSkippedWhilePaused(t *testing.T) {
 	o.SendDue(context.Background())
 	if read != 1 {
 		t.Errorf("not paused: settings read %d times, want 1", read)
+	}
+}
+
+func TestWithDefaults(t *testing.T) {
+	for _, c := range []struct {
+		in, want Config
+	}{
+		{Config{}, Config{Security: SecurityStartTLS, Port: 587}},
+		{Config{Security: SecurityTLS}, Config{Security: SecurityTLS, Port: 465}},
+		{Config{Security: SecurityNone}, Config{Security: SecurityNone, Port: 25}},
+		{Config{Port: 2525}, Config{Security: SecurityStartTLS, Port: 2525}},
+		{Config{Security: SecurityTLS, Port: 2465, Host: "smtp.exemple.fr"},
+			Config{Security: SecurityTLS, Port: 2465, Host: "smtp.exemple.fr"}},
+	} {
+		if got := c.in.WithDefaults(); got != c.want {
+			t.Errorf("%+v.WithDefaults() = %+v, want %+v", c.in, got, c.want)
+		}
 	}
 }
 

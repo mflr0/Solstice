@@ -61,12 +61,8 @@ func (s *session) close() {
 }
 
 func (s *session) dial(ctx context.Context) error {
-	cfg := s.cfg
-	port := cfg.Port
-	if port == 0 {
-		port = DefaultPort(cfg.Security)
-	}
-	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(port))
+	cfg := s.cfg.WithDefaults()
+	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	dialer := &net.Dialer{Timeout: 15 * time.Second}
 	tlsConf := &tls.Config{ServerName: cfg.Host, MinVersion: tls.VersionTLS12}
 	var conn net.Conn

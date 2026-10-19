@@ -386,17 +386,11 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx := r.Context()
 	// The password is never opened here: a lost key must not lock the page.
-	var cfg mail.Config
-	if _, err := s.out.settings.GetJSON(ctx, "mail", &cfg); err != nil {
-		return err
-	}
-	if cfg.Security == "" {
-		cfg.Security, cfg.Port = mail.SecurityStartTLS, mail.DefaultPort(mail.SecurityStartTLS)
-	}
-	set, err := mail.HasPassword(ctx, s.out.settings)
+	cfg, set, err := mail.ReadStored(ctx, s.out.settings)
 	if err != nil {
 		return err
 	}
+	cfg = cfg.WithDefaults()
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
 	if credentialsInClear(cfg) {
 		out.Problem = mailProblemCredentialsNeedTLS
@@ -407,111 +401,51 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+// mailSettingsIn is the body of PUT /api/admin/mail. A field left out keeps
+// its stored value.
+type mailSettingsIn struct {
+	Enabled  *bool           `json:"enabled"`
+	Host     *string         `json:"host"`
+	Port     *int            `json:"port"`
+	Security *string         `json:"security"`
+	Username *string         `json:"username"`
+	Password json.RawMessage `json:"password"`
+	From     *string         `json:"from"`
+	FromName *string         `json:"fromName"`
+	// Read-only fields sent back as received are accepted.
+	PasswordSet *bool   `json:"passwordSet"`
+	BaseURL     *string `json:"baseUrl"`
+}
+
 // putMailSettings saves the SMTP settings. The password is kept when left
 // out, removed when null or empty.
 func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	var in struct {
-		Enabled  *bool           `json:"enabled"`
-		Host     *string         `json:"host"`
-		Port     *int            `json:"port"`
-		Security *string         `json:"security"`
-		Username *string         `json:"username"`
-		Password json.RawMessage `json:"password"`
-		From     *string         `json:"from"`
-		FromName *string         `json:"fromName"`
-		// Read-only fields sent back as received are accepted.
-		PasswordSet *bool   `json:"passwordSet"`
-		BaseURL     *string `json:"baseUrl"`
-	}
+	var in mailSettingsIn
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
 	ctx := r.Context()
-	var cfg mail.Config
-	if _, err := s.out.settings.GetJSON(ctx, "mail", &cfg); err != nil {
-		return err
-	}
-	before := cfg
-	hadPassword, err := mail.HasPassword(ctx, s.out.settings)
+	before, hadPassword, err := mail.ReadStored(ctx, s.out.settings)
 	if err != nil {
 		return err
 	}
 	keepPassword := in.Password == nil
-	if keepPassword {
-		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
-		if err != nil {
-			s.log.Error("stored mail password not readable", "err", err)
-			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
-		}
-		cfg.Password = old.Password
-	} else {
-		var p *string
-		if err := json.Unmarshal(in.Password, &p); err != nil {
-			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "password")
-		}
-		cfg.Password = ""
-		if p != nil {
-			cfg.Password = *p
-		}
+	password, err := s.mailPassword(ctx, in.Password)
+	if err != nil {
+		return err
 	}
-	trim := func(p *string, to *string) {
-		if p != nil {
-			*to = strings.TrimSpace(*p)
-		}
+	cfg := in.merge(before)
+	cfg.Password = password
+	if err := validateMailSettings(cfg); err != nil {
+		return err
 	}
-	trim(in.Host, &cfg.Host)
-	trim(in.Username, &cfg.Username)
-	trim(in.From, &cfg.From)
-	trim(in.FromName, &cfg.FromName)
-	if in.Enabled != nil {
-		cfg.Enabled = *in.Enabled
+	if err := mailCredentialsRule(before, cfg, keepPassword, hadPassword); err != nil {
+		return err
 	}
-	if in.Security != nil {
-		cfg.Security = *in.Security
-	}
-	if cfg.Security == "" {
-		cfg.Security = mail.SecurityStartTLS
-	}
-	if !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, cfg.Security) {
-		return fail(http.StatusBadRequest, i18n.MailSecurityUnknown)
-	}
-	if in.Port != nil {
-		cfg.Port = *in.Port
-	}
-	if cfg.Port == 0 {
-		cfg.Port = mail.DefaultPort(cfg.Security)
-	}
-	if cfg.Port < 1 || cfg.Port > 65535 {
-		return fail(http.StatusBadRequest, i18n.MailPortInvalid)
-	}
-	if strings.ContainsAny(cfg.Host+cfg.Username+cfg.FromName, "\r\n") {
-		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "host")
-	}
-	if cfg.Enabled && cfg.Host == "" {
-		return fail(http.StatusBadRequest, i18n.MailServerRequired)
-	}
-	if (cfg.Enabled || cfg.From != "") && !mail.ValidAddress(cfg.From) {
-		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
-	}
-	// The stored password must not follow a change of destination: whoever
-	// can change the server could otherwise read it back by pointing the
-	// settings at a server of their own and sending a test e-mail.
-	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
-		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
-	}
-	if credentialsInClear(cfg) {
-		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
-	}
-	if cfg.Password != "" {
-		if _, err := s.secrets(); err != nil {
-			s.log.Error("mail password not encryptable", "err", err)
-			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
-		}
-	}
-	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {
+	if err := s.saveMailSettings(ctx, cfg); err != nil {
 		return err
 	}
 	if changes := mailChanges(before, cfg, !keepPassword, hadPassword); len(changes) > 0 {
@@ -523,22 +457,103 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	return s.getMailSettings(w, r)
 }
 
-// mailDefaults fills in what an unset configuration means: STARTTLS and the
-// usual port of the security mode.
-func mailDefaults(c mail.Config) mail.Config {
-	if c.Security == "" {
-		c.Security = mail.SecurityStartTLS
+// mailPassword is the password to save: the stored one when raw is nil (left
+// out), none when raw is null or empty.
+func (s *Server) mailPassword(ctx context.Context, raw json.RawMessage) (string, error) {
+	if raw == nil {
+		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+		if err != nil {
+			s.log.Error("stored mail password not readable", "err", err)
+			return "", failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
+		}
+		return old.Password, nil
 	}
-	if c.Port == 0 {
-		c.Port = mail.DefaultPort(c.Security)
+	var p *string
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return "", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "password")
 	}
-	return c
+	if p == nil {
+		return "", nil
+	}
+	return *p, nil
+}
+
+// merge lays the fields the request gives over the stored settings c, the
+// password aside, and fills in the defaults.
+func (in mailSettingsIn) merge(c mail.Config) mail.Config {
+	trim := func(p *string, to *string) {
+		if p != nil {
+			*to = strings.TrimSpace(*p)
+		}
+	}
+	trim(in.Host, &c.Host)
+	trim(in.Username, &c.Username)
+	trim(in.From, &c.From)
+	trim(in.FromName, &c.FromName)
+	if in.Enabled != nil {
+		c.Enabled = *in.Enabled
+	}
+	if in.Security != nil {
+		c.Security = *in.Security
+	}
+	if in.Port != nil {
+		c.Port = *in.Port
+	}
+	return c.WithDefaults()
+}
+
+// validateMailSettings checks merged settings on their own, before the rules
+// on credentials.
+func validateMailSettings(c mail.Config) error {
+	if !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, c.Security) {
+		return fail(http.StatusBadRequest, i18n.MailSecurityUnknown)
+	}
+	if c.Port < 1 || c.Port > 65535 {
+		return fail(http.StatusBadRequest, i18n.MailPortInvalid)
+	}
+	if strings.ContainsAny(c.Host+c.Username+c.FromName, "\r\n") {
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "host")
+	}
+	if c.Enabled && c.Host == "" {
+		return fail(http.StatusBadRequest, i18n.MailServerRequired)
+	}
+	if (c.Enabled || c.From != "") && !mail.ValidAddress(c.From) {
+		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
+	}
+	return nil
+}
+
+// mailCredentialsRule refuses settings that would send credentials where
+// they must not go.
+func mailCredentialsRule(before, after mail.Config, keepPassword, hadPassword bool) error {
+	// The stored password must not follow a change of destination: whoever
+	// can change the server could otherwise read it back by pointing the
+	// settings at a server of their own and sending a test e-mail.
+	if keepPassword && hadPassword && mailDestinationChanged(before, after) {
+		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
+	}
+	if credentialsInClear(after) {
+		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
+	}
+	return nil
+}
+
+// saveMailSettings stores c, refusing before any write when a password
+// cannot be sealed.
+func (s *Server) saveMailSettings(ctx context.Context, c mail.Config) error {
+	if c.Password != "" {
+		if _, err := s.secrets(); err != nil {
+			s.log.Error("mail password not encryptable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
+		}
+	}
+	return mail.SaveConfig(ctx, s.out.settings, s.secrets, c)
 }
 
 // mailDestinationChanged tells whether the settings send the password
 // somewhere else: another server, port, security mode or user name.
 func mailDestinationChanged(before, after mail.Config) bool {
-	before, after = mailDefaults(before), mailDefaults(after)
+	before, after = before.WithDefaults(), after.WithDefaults()
 	return !strings.EqualFold(before.Host, after.Host) || before.Port != after.Port ||
 		before.Security != after.Security || before.Username != after.Username
 }
@@ -547,7 +562,7 @@ func mailDestinationChanged(before, after mail.Config) bool {
 // for the audit log. The password is never written, only that it changed or
 // was removed.
 func mailChanges(before, after mail.Config, passwordGiven, hadPassword bool) map[string]any {
-	before, after = mailDefaults(before), mailDefaults(after)
+	before, after = before.WithDefaults(), after.WithDefaults()
 	out := map[string]any{}
 	pair := func(name string, from, to any) {
 		if from != to {
