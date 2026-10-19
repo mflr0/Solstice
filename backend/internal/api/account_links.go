@@ -139,10 +139,7 @@ func (s *Server) queueAccountLink(ctx context.Context, tx *sql.Tx, cfg mail.Conf
 		AND status = 'pending' AND claim IS NULL`, to.ID, mail.KindReset, mail.KindInvitation); err != nil {
 		return err
 	}
-	loc := to.UserLocale
-	if !i18n.Supported(loc) {
-		loc = s.defaultLanguage()
-	}
+	loc := i18n.Pick(to.UserLocale, s.defaultLanguage())
 	link := s.accountLink(token)
 	var msg mail.Message
 	if purpose == auth.PurposeInvite {
