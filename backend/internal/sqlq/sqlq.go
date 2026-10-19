@@ -101,17 +101,20 @@ func NullIfBlank(s string) any {
 	return s
 }
 
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
 // EscapeLike escapes the backslash, percent sign and underscore of a LIKE
 // pattern so they match as characters; the caller adds the % wildcards.
-func EscapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
-}
+func EscapeLike(s string) string { return likeEscaper.Replace(s) }
 
-// Truncate cuts s to at most n runes; a shorter string is returned as it is.
+// Truncate cuts s after n characters (code points, as MySQL counts them); a
+// shorter string is returned as it is, and n <= 0 gives "".
 func Truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
+	for i := range s {
+		if n <= 0 {
+			return s[:i]
+		}
+		n--
 	}
 	return s
 }

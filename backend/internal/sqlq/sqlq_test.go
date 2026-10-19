@@ -79,6 +79,7 @@ func TestEscapeLike(t *testing.T) {
 		"plain":      "plain",
 		`back\slash`: `back\\slash`,
 		"50%_off":    `50\%\_off`,
+		"%%":         `\%\%`,
 		`a\%_`:       `a\\\%\_`,
 	} {
 		if got := EscapeLike(in); got != want {
@@ -98,6 +99,11 @@ func TestTruncate(t *testing.T) {
 		{"héllo", 4, "héll"},
 		{"日本語", 2, "日本"},
 		{"", 0, ""},
+		{"abc", 3, "abc"},
+		{"abc", 0, ""},
+		{"abc", -1, ""},
+		{"éx", 1, "é"},
+		{"a\xffbc", 2, "a\xff"}, // an invalid byte counts as one and is kept
 	} {
 		if got := Truncate(tc.in, tc.n); got != tc.want {
 			t.Errorf("Truncate(%q, %d) = %q, want %q", tc.in, tc.n, got, tc.want)
