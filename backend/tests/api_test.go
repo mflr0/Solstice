@@ -661,6 +661,42 @@ func TestBoardVisibility(t *testing.T) {
 	if status := login(t, "paul.martin", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 404 {
 		t.Errorf("paul.martin GET RH board: %d", status)
 	}
+	// The RH board's filter is shared with a role of the RH project.
+	if status := login(t, "chloe.simon", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 200 {
+		t.Errorf("chloe.simon GET RH board: %d", status)
+	}
+}
+
+func TestBoardCardsOfSprint(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	id := boardID(t, "DEMO — Scrum")
+	var cards struct {
+		Cards  []boardCard
+		Sprint *struct{ ID int64 }
+	}
+	closed := pick(t, `SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? AND state = 'closed' ORDER BY id LIMIT 1`, id)
+	if status := marie.get("/api/boards/"+id+"/cards?sprint="+closed, &cards); status != 200 || cards.Sprint == nil ||
+		strconv.FormatInt(cards.Sprint.ID, 10) != closed || len(cards.Cards) == 0 {
+		t.Errorf("cards of closed sprint %s: %d %+v", closed, status, cards)
+	}
+	// A sprint of another board shows nothing.
+	other := pick(t, `SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? LIMIT 1`, boardID(t, "RH"))
+	cards.Cards, cards.Sprint = nil, nil
+	if status := marie.get("/api/boards/"+id+"/cards?sprint="+other, &cards); status != 200 || cards.Sprint != nil ||
+		len(cards.Cards) != 0 {
+		t.Errorf("cards of another board's sprint %s: %d %+v", other, status, cards)
+	}
+	// A sprint that is not a number falls back to the active one.
+	active := pickOptional(`SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? AND state = 'active'`, id)
+	cards.Cards, cards.Sprint = nil, nil
+	marie.get("/api/boards/"+id+"/cards?sprint=x", &cards)
+	got := ""
+	if cards.Sprint != nil {
+		got = strconv.FormatInt(cards.Sprint.ID, 10)
+	}
+	if got != active {
+		t.Errorf("cards?sprint=x shows sprint %q, want the active one %q", got, active)
+	}
 }
 
 func TestScrumBoard(t *testing.T) {

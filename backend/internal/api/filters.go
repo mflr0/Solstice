@@ -94,13 +94,19 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
+	shares := `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
 		g.name, p.pkey, r.name, u.display_name
 		FROM filter_shares sh
 		LEFT JOIN user_groups g ON g.id = sh.group_id
 		LEFT JOIN projects p ON p.id = sh.project_id
 		LEFT JOIN project_roles r ON r.id = sh.role_id
-		LEFT JOIN users u ON u.id = sh.user_id`, func(rows *sql.Rows) error {
+		LEFT JOIN users u ON u.id = sh.user_id`
+	var shareArgs []any
+	if only != 0 {
+		shares += ` WHERE sh.filter_id = ?`
+		shareArgs = append(shareArgs, only)
+	}
+	if err := sqlq.Each(ctx, s.db, shares, func(rows *sql.Rows) error {
 		var id int64
 		var sh shareRow
 		if err := rows.Scan(&id, &sh.kind, &sh.group, &sh.project, &sh.role, &sh.user, &sh.groupName, &sh.projectKey,
@@ -111,7 +117,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 			f.shares = append(f.shares, sh)
 		}
 		return nil
-	}); err != nil {
+	}, shareArgs...); err != nil {
 		return nil, err
 	}
 

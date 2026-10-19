@@ -790,6 +790,31 @@ func TestAgileREST(t *testing.T) {
 		func(a, b string) int { return strings.Compare(a, b) }) {
 		t.Errorf("sprint states: %v", states)
 	}
+	// No state, or none that is known, lists them all: closed, then active, then future.
+	order := map[string]int{"closed": 0, "active": 1, "future": 2}
+	total := pick(t, `SELECT CAST(COUNT(*) AS CHAR) FROM sprints WHERE board_id = 1`)
+	for _, q := range []string{"", "?state=bogus"} {
+		states = nil
+		for _, v := range at(get("/rest/agile/1.0/board/1/sprint"+q), "values").([]any) {
+			states = append(states, str(v, "state"))
+		}
+		if strconv.Itoa(len(states)) != total || !slices.Contains(states, "closed") || !slices.Contains(states, "future") ||
+			!slices.IsSortedFunc(states, func(a, b string) int { return order[a] - order[b] }) {
+			t.Errorf("sprints%s: %v, want %s", q, states, total)
+		}
+	}
+	closedOnly := at(get("/rest/agile/1.0/board/1/sprint?state=closed"), "values").([]any)
+	if len(closedOnly) == 0 {
+		t.Error("board 1 has no closed sprint")
+	}
+	for _, v := range closedOnly {
+		if str(v, "state") != "closed" {
+			t.Errorf("state=closed lists a sprint in state %s", str(v, "state"))
+		}
+	}
+	if status, _, _ := call(t, marie, testURL, "GET", "/rest/agile/1.0/sprint/999999999", nil, nil); status != 404 {
+		t.Errorf("unknown sprint: %d", status)
+	}
 	if status, _, _ := call(t, marie, testURL, "GET", "/rest/agile/1.0/board/2/sprint", nil, nil); status != 400 {
 		t.Errorf("sprints of a Kanban board: %d", status)
 	}
