@@ -43,6 +43,9 @@ type tokenPolicyOut struct {
 func (s *Server) tokenPolicy(ctx context.Context) tokenPolicy {
 	p := tokenPolicy{Who: creatorsAdmins}
 	if _, err := s.out.settings.GetJSON(ctx, tokenCreatorsSetting, &p); err != nil {
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			s.log.Warn("reading the token policy failed, administrators only", "err", err)
+		}
 		return tokenPolicy{Who: creatorsAdmins}
 	}
 	switch p.Who {
