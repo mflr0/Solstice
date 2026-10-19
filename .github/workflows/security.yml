@@ -38,7 +38,8 @@ jobs:
         with:
           node-version: 24
       - name: Install pnpm
-        run: npm install --global pnpm@12.11.2
+        # The packageManager field of package.json owns the pnpm version.
+        run: npm install --global "$(node -p 'require("./package.json").packageManager')"
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Audit
