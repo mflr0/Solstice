@@ -294,10 +294,8 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 		MoveTo *int64 `json:"moveTo"`
 		Clear  bool   `json:"clear"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	level, err := s.securityLevel(ctx, projectID, id)

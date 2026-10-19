@@ -256,10 +256,8 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		MoveTo *int64 `json:"moveTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	list, err := s.components(ctx, projectID, "c.id = ?", id)
@@ -745,10 +743,8 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 		ReleaseDate      *string `json:"releaseDate"`
 		MoveUnresolvedTo *int64  `json:"moveUnresolvedTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	v, err := s.version(ctx, projectID, id)
@@ -847,10 +843,8 @@ func (s *Server) deleteVersion(w http.ResponseWriter, r *http.Request) error {
 		FixTo     *int64 `json:"fixTo"`
 		AffectsTo *int64 `json:"affectsTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	v, err := s.version(ctx, projectID, id)

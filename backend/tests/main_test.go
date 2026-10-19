@@ -147,6 +147,19 @@ func (c *client) request(lang, method, path string, body any) (int, []byte) {
 		b, _ := json.Marshal(body)
 		r = bytes.NewReader(b)
 	}
+	return c.send(lang, method, path, r)
+}
+
+// doChunked sends body without a Content-Length, so the client streams it
+// chunked: http.NewRequest sets the length only for the readers it knows.
+func (c *client) doChunked(method, path string, body any) (int, []byte) {
+	c.t.Helper()
+	b, _ := json.Marshal(body)
+	return c.send("", method, path, io.MultiReader(bytes.NewReader(b)))
+}
+
+func (c *client) send(lang, method, path string, r io.Reader) (int, []byte) {
+	c.t.Helper()
 	req, _ := http.NewRequest(method, c.base+path, r)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(csrfHeader, "1")

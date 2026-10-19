@@ -412,10 +412,8 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 		var in struct {
 			MoveTo *json.RawMessage `json:"moveTo"`
 		}
-		if r.ContentLength != 0 {
-			if err := readJSON(r, &in); err != nil {
-				return err
-			}
+		if err := readOptionalJSON(r, &in); err != nil {
+			return err
 		}
 		ctx := r.Context()
 		id := r.PathValue("id")

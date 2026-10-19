@@ -58,9 +58,9 @@ func (s *Server) adminWebhook(r *http.Request) (*webhook.Webhook, error) {
 	if err := requireAdmin(r); err != nil {
 		return nil, err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return nil, errNotFound
+		return nil, err
 	}
 	wh, err := s.out.hooks.Get(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {

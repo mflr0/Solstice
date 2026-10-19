@@ -474,10 +474,8 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Confirm string `json:"confirm"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	f, err := s.fieldDetail(ctx, id)
@@ -662,10 +660,8 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		MoveTo *int64 `json:"moveTo"`
 		Clear  bool   `json:"clear"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	var value string

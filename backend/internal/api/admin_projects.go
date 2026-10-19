@@ -872,10 +872,8 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Confirm string `json:"confirm"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	var issues int

@@ -6,10 +6,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
@@ -467,6 +469,25 @@ func badBody(err error) error {
 // readJSON decodes a request body, rejecting unknown fields so typos surface.
 func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return badBody(err)
+	}
+	return nil
+}
+
+// readOptionalJSON decodes a request body like readJSON, leaving v as it is
+// when the body is empty or blank. It reads the body rather than trusting
+// Content-Length, which is -1 for a chunked body.
+func readOptionalJSON(r *http.Request, v any) error {
+	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
+	if err != nil {
+		return badBody(err)
+	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		return badBody(err)
