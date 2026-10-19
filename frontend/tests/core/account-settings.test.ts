@@ -7,7 +7,6 @@ import {
   isWorkingWeek,
   newSubscription,
   ownSubscriptions,
-  profileApplied,
   profileForm,
   profilePatch,
   profileProblems,
@@ -164,16 +163,6 @@ describe('profilePatch', () => {
     [{ ...profileForm(me), currentPassword: 'old' }, {}],
   ])('%j gives %j', (form, want) => {
     expect(profilePatch(form, me)).toEqual(want);
-  });
-});
-
-describe('profileApplied', () => {
-  it.each<[ProfilePatch, boolean]>([
-    [{}, true],
-    [{ name: 'Marie Durand' }, true],
-    [{ name: 'Other' }, false],
-  ])('%j is %s', (patch, want) => {
-    expect(profileApplied(patch, me)).toBe(want);
   });
 });
 

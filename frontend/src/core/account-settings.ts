@@ -96,17 +96,6 @@ export function profilePatch(f: ProfileForm, me: Me): ProfilePatch {
   return out;
 }
 
-/**
- * Whether the server took the profile change: an older server answers
- * without changing the name or e-mail it does not know.
- */
-export function profileApplied(patch: ProfilePatch, me: Me): boolean {
-  return (
-    (patch.name === undefined || patch.name === me.name) &&
-    (patch.email === undefined || patch.email === me.email)
-  );
-}
-
 /* Subscriptions ---------------------------------------------------------------- */
 
 /** One's own subscriptions: to oneself, or made by oneself (a group's). */
