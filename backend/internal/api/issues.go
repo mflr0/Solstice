@@ -186,32 +186,13 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
-
-	var total int
-	if err := s.db.QueryRowContext(r.Context(), `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
-		return err
-	}
-	rows, err := s.db.QueryContext(r.Context(), `SELECT `+issueColumns+from+` ORDER BY `+sort+`, i.id DESC
-		LIMIT ? OFFSET ?`, append(args, size, (page-1)*size)...)
+	list, total, err := s.searchRows(r.Context(), where, args, sort, (page-1)*size, size)
 	if err != nil {
 		return err
 	}
-	var list []*issueRow
 	var ids []int64
-	for rows.Next() {
-		iss, err := scanIssue(rows)
-		if err != nil {
-			rows.Close()
-			return err
-		}
-		list = append(list, iss)
+	for _, iss := range list {
 		ids = append(ids, iss.AssigneeID.Int64, iss.ReporterID.Int64)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
 	}
 	users, err := s.users(r.Context(), ids...)
 	if err != nil {
@@ -1899,6 +1880,32 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
 	}
 	return where, args, sort, mode, nil
+}
+
+// searchRows runs a search condition (aliases i, p and pr) and returns a page
+// of issues with the total.
+func (s *Server) searchRows(ctx context.Context, where string, args []any, order string, offset, limit int) (
+	[]*issueRow, int, error) {
+	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
+		WHERE ` + where
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if limit <= 0 || offset >= total {
+		return nil, total, nil
+	}
+	var out []*issueRow
+	err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ? OFFSET ?`,
+		func(rows *sql.Rows) error {
+			iss, err := scanIssue(rows)
+			out = append(out, iss)
+			return err
+		}, append(args, limit, offset)...)
+	if err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }
 
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {

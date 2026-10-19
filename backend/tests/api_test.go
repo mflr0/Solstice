@@ -409,6 +409,21 @@ func TestNegatedFilterKeepsUnassigned(t *testing.T) {
 	}
 }
 
+func TestIssueListPastTheEnd(t *testing.T) {
+	c := login(t, "admin", "admin")
+	var all struct{ Total int }
+	c.get("/api/issues?q=projet:DEMO", &all)
+	status, raw := c.do("GET", "/api/issues?q=projet:DEMO&page=10000&size=200", nil)
+	var past struct {
+		Total, Page, Size int
+		Issues            json.RawMessage
+	}
+	if status != 200 || json.Unmarshal(raw, &past) != nil || past.Total != all.Total || all.Total == 0 ||
+		past.Page != 10000 || past.Size != 200 || string(past.Issues) != "[]" {
+		t.Fatalf("page past the end: %d %s, total %d", status, raw, all.Total)
+	}
+}
+
 func TestLoginThrottling(t *testing.T) {
 	// Its own server, so the lock does not affect the other tests.
 	base := ownServer(t)
