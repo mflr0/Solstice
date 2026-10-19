@@ -1,6 +1,9 @@
 package api
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // The exact HTML of renderWiki for the edge cases of its grammar.
 func TestRenderWikiExact(t *testing.T) {
@@ -46,9 +49,17 @@ func TestRenderWikiExact(t *testing.T) {
 		{"unsafe link", "[a|javascript:x] [b|//h] [c|ftp://h]", "<p>[a|javascript:x] [b|//h] [c|ftp://h]</p>"},
 		{"relative and mailto", "[a|/p] [b|mailto:x@y.org] [c|HTTPS://X.ORG]", "<p><a href=\"/p\">a</a> <a href=\"mailto:x@y.org\">b</a> <a href=\"HTTPS://X.ORG\">c</a></p>"},
 		{"escape", "<b>\"x\" & 'y'</b>", "<p>&lt;b&gt;&#34;x&#34; &amp; &#39;y&#39;&lt;/b&gt;</p>"},
+		{"mono in a label", "[{{m}} <x>|https://x.org]", "<p><a href=\"https://x.org\"><code>m</code> &lt;x&gt;</a></p>"},
+		{"mono in a refused link", "[{{m}}|javascript:x] [{{n}}]", "<p>[<code>m</code>|javascript:x] [<code>n</code>]</p>"},
+		{"mono in a mention", "[~{{bob}}]", "<p><span class=\"user-mention\">@{{bob}}</span></p>"},
+		{"mono in a target", "[x|https://x.org/{{a}}] [{{b}}|javascript:{{c}}]", "<p><a href=\"https://x.org/{{a}}\">x</a> [<code>b</code>|javascript:<code>c</code>]</p>"},
 	} {
-		if got := renderWiki(c.in); got != c.want {
+		got := renderWiki(c.in)
+		if got != c.want {
 			t.Errorf("%s: renderWiki(%q)\n got %q\nwant %q", c.name, c.in, got, c.want)
+		}
+		if strings.Contains(got, "\x00") {
+			t.Errorf("%s: renderWiki(%q) holds a NUL: %q", c.name, c.in, got)
 		}
 	}
 }

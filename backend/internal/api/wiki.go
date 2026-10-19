@@ -204,16 +204,25 @@ func wikiRow(line string) string {
 // are set aside first, so their content is not formatted.
 func wikiInline(text string) string {
 	text = strings.ReplaceAll(text, "\x00", "")
-	var kept []string
+	var kept, mono []string // mono: the source of each monospaced span, kept first
 	keep := func(s string) string {
 		kept = append(kept, s)
 		return "\x00" + strconv.Itoa(len(kept)-1) + "\x00"
 	}
+	restore := func(s string, from []string) string {
+		return wikiKept.ReplaceAllStringFunc(s, func(m string) string {
+			i, _ := strconv.Atoi(m[1 : len(m)-1])
+			return from[i]
+		})
+	}
 	text = replaceSubmatch(wikiMono, text, func(m []string) string {
+		mono = append(mono, m[0])
 		return keep("<code>" + html.EscapeString(m[1]) + "</code>")
 	})
+	// A link holds the placeholders of its monospaced spans: its target gets
+	// their source back, the text it shows their HTML.
 	text = replaceSubmatch(wikiLink, text, func(m []string) string {
-		label, target := m[1], strings.TrimSpace(m[2])
+		label, target := m[1], strings.TrimSpace(restore(m[2], mono))
 		if strings.HasPrefix(target, "~") {
 			return keep(`<span class="user-mention">@` + html.EscapeString(target[1:]) + "</span>")
 		}
@@ -221,9 +230,9 @@ func wikiInline(text string) string {
 			label = target
 		}
 		if !safeHref(target) {
-			return keep(html.EscapeString(m[0]))
+			return keep(restore(html.EscapeString(m[0]), kept))
 		}
-		return keep(`<a href="` + html.EscapeString(target) + `">` + html.EscapeString(label) + "</a>")
+		return keep(`<a href="` + html.EscapeString(target) + `">` + restore(html.EscapeString(label), kept) + "</a>")
 	})
 	text = html.EscapeString(wikiColor.ReplaceAllString(text, ""))
 	text = strings.ReplaceAll(text, `\\`, "<br/>")
@@ -237,10 +246,7 @@ func wikiInline(text string) string {
 			text = e.re.ReplaceAllString(text, "$1<"+e.tag+">$2</"+e.tag+">$3")
 		}
 	}
-	return wikiKept.ReplaceAllStringFunc(text, func(m string) string {
-		i, _ := strconv.Atoi(m[1 : len(m)-1])
-		return kept[i]
-	})
+	return restore(text, kept)
 }
 
 // replaceSubmatch is regexp's ReplaceAllStringFunc, with repl given the
