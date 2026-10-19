@@ -659,7 +659,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		}
 		if _, err := w.db.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 			VALUES (?, ?, ?, ?, TRUE)`, username, name, email, hash); err != nil {
-			if strings.Contains(err.Error(), "Duplicate") {
+			if isDuplicate(err) {
 				return fail(http.StatusConflict, i18n.AccountUsernameTaken)
 			}
 			return err

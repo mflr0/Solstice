@@ -696,10 +696,8 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		RemapDefault map[string]string `json:"remapDefault"`
 	}
-	if r.ContentLength > 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {

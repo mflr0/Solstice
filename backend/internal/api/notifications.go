@@ -820,9 +820,9 @@ func (s *Server) editableSubscription(r *http.Request, sub *perm.Subject) (*noti
 	if err != nil {
 		return nil, err
 	}
-	id, err := strconv.ParseInt(r.PathValue("sid"), 10, 64)
+	id, err := pathID(r, "sid")
 	if err != nil {
-		return nil, errNotFound
+		return nil, err
 	}
 	x, err := s.out.notify.Subscription(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && x.FilterID != f.out.ID {

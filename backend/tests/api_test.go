@@ -1314,6 +1314,16 @@ func TestWorkflowTypesLeaving(t *testing.T) {
 		t.Errorf("%s is in %s after its workflow was deleted", key, st)
 	}
 
+	// A chunked body, with no Content-Length, is read like a sized one.
+	id = setup()
+	if status, body := marie.doChunked("DELETE", fmt.Sprintf("/api/workflows/%d", id),
+		map[string]any{"remapDefault": map[string]string{blocked.ID: "10000"}}); status != 204 {
+		t.Fatalf("delete with a chunked remap: %d %s", status, body)
+	}
+	if st := statusOf(); st != "10000" {
+		t.Errorf("%s is in %s after its workflow was deleted with a chunked body", key, st)
+	}
+
 	// The catalogue: global administrators rename and delete unused statuses.
 	paul := login(t, "paul.martin", "motdepasse")
 	if status, _ := paul.do("PATCH", "/api/statuses/"+blocked.ID, map[string]any{"name": "x"}); status != 403 {

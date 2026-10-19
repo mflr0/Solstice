@@ -20,12 +20,9 @@ package api
 //     audit log, and the outbox wipes the message once it is sent.
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -402,9 +399,9 @@ func (s *Server) adminInviteUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	ctx := r.Context()
 	to, err := s.linkTargetOf(ctx, id)
@@ -464,21 +461,4 @@ func (s *Server) adminResetLink(w http.ResponseWriter, r *http.Request, id int64
 	s.auditLog(r, audit.PasswordResetRequest, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username},
 		map[string]any{"method": "link", "by": "administrator"})
 	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
-}
-
-// readOptionalJSON decodes a request body that may be empty.
-func readOptionalJSON(r *http.Request, v any) error {
-	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 1<<20))
-	if err != nil {
-		return badBody(err)
-	}
-	if len(bytes.TrimSpace(body)) == 0 {
-		return nil
-	}
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
-	}
-	return nil
 }

@@ -236,9 +236,9 @@ func (s *Server) adminRevokeToken(w http.ResponseWriter, r *http.Request) error 
 // revokeToken deletes a token: one of the user's own (owner ≠ 0), or anyone's.
 func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request, owner int64) error {
 	ctx := r.Context()
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var name, username string
 	var userID int64
