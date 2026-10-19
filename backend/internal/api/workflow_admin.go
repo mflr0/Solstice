@@ -61,11 +61,9 @@ func (s *Server) projectTypes(ctx context.Context, cat *catalog, projectID int64
 
 // typeWorkflows maps the project's issue types explicitly given another
 // workflow than the default.
-func (s *Server) typeWorkflows(ctx context.Context, q interface {
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}, projectID int64) (map[string]int64, error) {
+func (s *Server) typeWorkflows(ctx context.Context, projectID int64) (map[string]int64, error) {
 	out := map[string]int64{}
-	rows, err := q.QueryContext(ctx, `SELECT issue_type_id, workflow_id FROM workflow_issue_types WHERE project_id = ?`, projectID)
+	rows, err := s.db.QueryContext(ctx, `SELECT issue_type_id, workflow_id FROM workflow_issue_types WHERE project_id = ?`, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +131,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 		return nil, err
 	}
 
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
+	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +440,7 @@ func (s *Server) planIssueTypes(ctx context.Context, cat *catalog, projectID, id
 			}
 		}
 	}
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
+	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return err
 	}
@@ -787,7 +785,7 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
+	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return err
 	}

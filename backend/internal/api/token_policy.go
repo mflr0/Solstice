@@ -40,16 +40,16 @@ type tokenPolicyOut struct {
 
 // tokenPolicy reads the policy; a missing or unreadable one means
 // administrators only.
-func (s *Server) tokenPolicy(ctx context.Context) (tokenPolicy, error) {
+func (s *Server) tokenPolicy(ctx context.Context) tokenPolicy {
 	p := tokenPolicy{Who: creatorsAdmins}
 	if _, err := s.out.settings.GetJSON(ctx, tokenCreatorsSetting, &p); err != nil {
-		return tokenPolicy{Who: creatorsAdmins}, nil
+		return tokenPolicy{Who: creatorsAdmins}
 	}
 	switch p.Who {
 	case creatorsEveryone, creatorsAdmins, creatorsGroup:
-		return p, nil
+		return p
 	}
-	return tokenPolicy{Who: creatorsAdmins}, nil
+	return tokenPolicy{Who: creatorsAdmins}
 }
 
 // mayCreateTokens tells whether a user may create a personal access token.
@@ -58,11 +58,7 @@ func (s *Server) mayCreateTokens(ctx context.Context, u *auth.User) (bool, error
 	if u.Admin {
 		return true, nil
 	}
-	p, err := s.tokenPolicy(ctx)
-	if err != nil {
-		return false, err
-	}
-	switch p.Who {
+	switch p := s.tokenPolicy(ctx); p.Who {
 	case creatorsEveryone:
 		return true, nil
 	case creatorsGroup:
@@ -112,11 +108,7 @@ func (s *Server) adminTokenSettings(w http.ResponseWriter, r *http.Request) erro
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	p, err := s.tokenPolicy(r.Context())
-	if err != nil {
-		return err
-	}
-	out, err := s.policyOut(r.Context(), p)
+	out, err := s.policyOut(r.Context(), s.tokenPolicy(r.Context()))
 	if err != nil {
 		return err
 	}
@@ -147,10 +139,7 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	default:
 		return fail(http.StatusBadRequest, i18n.TokenPolicyInvalid)
 	}
-	before, err := s.tokenPolicy(ctx)
-	if err != nil {
-		return err
-	}
+	before := s.tokenPolicy(ctx)
 	if err := s.out.settings.SetJSON(ctx, tokenCreatorsSetting, in); err != nil {
 		return err
 	}
