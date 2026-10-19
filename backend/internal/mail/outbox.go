@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"solstice/internal/sqlq"
 	"solstice/internal/worker"
 )
 
@@ -61,7 +62,7 @@ func (o *Outbox) Enqueue(ctx context.Context, ex Execer, m Message) error {
 	}
 	_, err := ex.ExecContext(ctx, `INSERT INTO mail_outbox (kind, user_id, to_addr, subject, text_body, html_body,
 		message_id, in_reply_to, next_attempt_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.Kind, user, m.To, truncate(headerValue(m.Subject), 900), m.Text, m.HTML, m.MessageID, inReplyTo, now, now)
+		m.Kind, user, m.To, sqlq.Truncate(headerValue(m.Subject), 900), m.Text, m.HTML, m.MessageID, inReplyTo, now, now)
 	return err
 }
 
@@ -169,7 +170,7 @@ func (o *Outbox) SendDue(ctx context.Context) (int, error) {
 func (o *Outbox) finish(ctx context.Context, id int64, status string, attempts int, errText string, next time.Time) {
 	var lastErr, sentAt any
 	if errText != "" {
-		lastErr = truncate(errText, 2000)
+		lastErr = sqlq.Truncate(errText, 2000)
 	}
 	now := o.Now().UTC()
 	if status == "sent" {
@@ -308,12 +309,4 @@ func (o *Outbox) Retry(ctx context.Context) (int64, error) {
 	}
 	o.Wake()
 	return res.RowsAffected()
-}
-
-func truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
-	}
-	return s
 }

@@ -511,7 +511,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET name = ?, initial_status_id = ?, is_default = ? WHERE id = ?`,
-		truncateRunes(name, 255), in.Initial, becomesDefault, id); err != nil {
+		sqlq.Truncate(name, varcharWidth), in.Initial, becomesDefault, id); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_statuses WHERE workflow_id = ?`, id); err != nil {
@@ -549,7 +549,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 		if t.From != nil {
 			from = *t.From
 		}
-		tname := truncateRunes(strings.TrimSpace(t.Name), 255)
+		tname := sqlq.Truncate(strings.TrimSpace(t.Name), varcharWidth)
 		if t.ID != 0 {
 			_, err = tx.ExecContext(ctx, `UPDATE workflow_transitions SET name = ?, from_status_id = ?, to_status_id = ?,
 				position = ? WHERE id = ?`, tname, from, t.To, pos, t.ID)
@@ -642,7 +642,7 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, ?, ?)`,
-		projectID, truncateRunes(name, 255), defaults == 0, initial)
+		projectID, sqlq.Truncate(name, varcharWidth), defaults == 0, initial)
 	if err != nil {
 		return err
 	}
@@ -793,7 +793,7 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 		Scan(&next, &position); err != nil {
 		return err
 	}
-	st := statusRef{ID: strconv.FormatInt(next, 10), Name: truncateRunes(name, 255), Category: in.Category}
+	st := statusRef{ID: strconv.FormatInt(next, 10), Name: sqlq.Truncate(name, varcharWidth), Category: in.Category}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO statuses (id, name, category, position) VALUES (?, ?, ?, ?)`,
 		st.ID, st.Name, st.Category, position); err != nil {
 		return err
@@ -857,7 +857,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 				return failf(http.StatusConflict, i18n.StatusNameTaken, other.Name)
 			}
 		}
-		st.Name = truncateRunes(name, 255)
+		st.Name = sqlq.Truncate(name, varcharWidth)
 	}
 	if in.Category != nil {
 		if !in.Category.Valid() {

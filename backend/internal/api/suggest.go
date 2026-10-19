@@ -36,7 +36,7 @@ func (s *Server) labels(w http.ResponseWriter, r *http.Request) error {
 	if q != "" {
 		// Labels are case-sensitive (binary collation): match case-insensitively.
 		where += " AND LOWER(l.label) LIKE ?"
-		args = append(args, "%"+escapeLike(strings.ToLower(q))+"%")
+		args = append(args, "%"+sqlq.EscapeLike(strings.ToLower(q))+"%")
 	}
 	out := []string{}
 	err = sqlq.Each(ctx, s.db, `SELECT l.label FROM labels l JOIN issues i ON i.id = l.issue_id
@@ -86,7 +86,7 @@ func (s *Server) sprints(w http.ResponseWriter, r *http.Request) error {
 				out = append(out, sp)
 			}
 			return nil
-		}, "%"+escapeLike(q)+"%")
+		}, "%"+sqlq.EscapeLike(q)+"%")
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 	}
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
 		where += " AND (CONCAT(p.pkey, '-', i.num) LIKE ? OR LOWER(i.summary) LIKE ?)"
-		like := "%" + escapeLike(strings.ToLower(q)) + "%"
+		like := "%" + sqlq.EscapeLike(strings.ToLower(q)) + "%"
 		args = append(args, strings.ToUpper(like), like)
 	}
 	err = sqlq.Each(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.status_id FROM issues i JOIN projects p ON p.id = i.project_id
@@ -205,7 +205,7 @@ func (s *Server) projectParts(table string) handler {
 			cols, order = "x.archived, x.released", "x.released, COALESCE(x.release_date, '9999-12-31') DESC, x.name"
 		}
 		// Archived projects stay out of pickers.
-		where, args := "LOWER(x.name) LIKE ? AND NOT p.archived", []any{"%" + escapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
+		where, args := "LOWER(x.name) LIKE ? AND NOT p.archived", []any{"%" + sqlq.EscapeLike(strings.ToLower(r.URL.Query().Get("q"))) + "%"}
 		if key := r.URL.Query().Get("project"); key != "" {
 			where += " AND " + sqlq.ProjectKey("p", "?")
 			args = append(args, strings.ToUpper(key), strings.ToUpper(key))

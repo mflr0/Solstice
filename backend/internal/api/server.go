@@ -218,6 +218,11 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
+// varcharWidth is the length, in characters, that names and descriptions are
+// cut to: the width of the VARCHAR(255) columns that hold them. The board
+// event and the export's audit details are cut to the same length.
+const varcharWidth = 255
+
 // How long a client gets to send its request body; uploads travel as slow
 // files. The http.Server has no ReadTimeout, which would also cut the
 // live-event streams: these deadlines only concern bodies (see wrap).

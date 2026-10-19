@@ -558,7 +558,7 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 	if job == nil || job.view("").State != "done" {
 		return fail(http.StatusConflict, i18n.ImportNotFinished)
 	}
-	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []setupAccount{}
 	err := sqlq.Each(r.Context(), conn, `SELECT username, display_name, email, is_admin FROM users
 		WHERE active AND password_hash IS NOT NULL

@@ -136,7 +136,7 @@ func userMatch(r *http.Request, q string) (string, []any) {
 	where := "((u.active AND ?) OR (NOT u.active AND ?))"
 	args := []any{active, inactive}
 	if q = strings.ToLower(strings.TrimSpace(q)); q != "" && q != "." {
-		like := "%" + escapeLike(q) + "%"
+		like := "%" + sqlq.EscapeLike(q) + "%"
 		where += " AND (u.username LIKE ? OR LOWER(u.display_name) LIKE ? OR LOWER(u.email) LIKE ?)"
 		args = append(args, like, like, like)
 	}

@@ -71,3 +71,18 @@ func Value[T sql.NullString | sql.NullInt64](n T) any {
 	}
 	return nil
 }
+
+// EscapeLike escapes the backslash, percent sign and underscore of a LIKE
+// pattern so they match as characters; the caller adds the % wildcards.
+func EscapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+// Truncate cuts s to at most n runes; a shorter string is returned as it is.
+func Truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) > n {
+		return string(r[:n])
+	}
+	return s
+}

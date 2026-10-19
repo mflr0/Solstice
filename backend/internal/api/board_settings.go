@@ -85,7 +85,7 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		if n == "" {
 			return fail(http.StatusBadRequest, i18n.BoardNameRequired)
 		}
-		sets, args = append(sets, "name = ?"), append(args, truncateRunes(n, 255))
+		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(n, varcharWidth))
 	}
 	if in.SubQuery != nil {
 		var v any
@@ -213,12 +213,12 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 					return fail(http.StatusBadRequest, i18n.BoardColumnUnknown)
 				}
 				if _, err := tx.ExecContext(ctx, `UPDATE board_columns SET name = ?, position = ?, min_issues = ?,
-					max_issues = ? WHERE id = ?`, truncateRunes(strings.TrimSpace(c.Name), 255), pos, c.Min, c.Max, id); err != nil {
+					max_issues = ? WHERE id = ?`, sqlq.Truncate(strings.TrimSpace(c.Name), varcharWidth), pos, c.Min, c.Max, id); err != nil {
 					return err
 				}
 			} else {
 				res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position, min_issues, max_issues)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(strings.TrimSpace(c.Name), 255), pos, c.Min, c.Max)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(strings.TrimSpace(c.Name), varcharWidth), pos, c.Min, c.Max)
 				if err != nil {
 					return err
 				}
@@ -248,14 +248,14 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		for pos, q := range *in.QuickFilters {
 			var desc any
 			if q.Description != nil && strings.TrimSpace(*q.Description) != "" {
-				desc = truncateRunes(*q.Description, 255)
+				desc = sqlq.Truncate(*q.Description, varcharWidth)
 			}
 			if q.ID != 0 {
 				_, err = tx.ExecContext(ctx, `UPDATE board_quick_filters SET name = ?, query = ?, description = ?, position = ?
-					WHERE id = ? AND board_id = ?`, truncateRunes(q.Name, 255), q.Query, desc, pos, q.ID, b.ID)
+					WHERE id = ? AND board_id = ?`, sqlq.Truncate(q.Name, varcharWidth), q.Query, desc, pos, q.ID, b.ID)
 			} else {
 				_, err = tx.ExecContext(ctx, `INSERT INTO board_quick_filters (board_id, name, query, description, position)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(q.Name, 255), q.Query, desc, pos)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(q.Name, varcharWidth), q.Query, desc, pos)
 			}
 			if err != nil {
 				return err
@@ -279,10 +279,10 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 			}
 			if l.ID != 0 {
 				_, err = tx.ExecContext(ctx, `UPDATE board_swimlanes SET name = ?, query = ?, position = ?, is_default = ?
-					WHERE id = ? AND board_id = ?`, truncateRunes(l.Name, 255), q, pos, l.Default, l.ID, b.ID)
+					WHERE id = ? AND board_id = ?`, sqlq.Truncate(l.Name, varcharWidth), q, pos, l.Default, l.ID, b.ID)
 			} else {
 				_, err = tx.ExecContext(ctx, `INSERT INTO board_swimlanes (board_id, name, query, position, is_default)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(l.Name, 255), q, pos, l.Default)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(l.Name, varcharWidth), q, pos, l.Default)
 			}
 			if err != nil {
 				return err

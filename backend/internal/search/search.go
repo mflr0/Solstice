@@ -250,7 +250,7 @@ func userSQL(column, v string, me int64) (string, []any) {
 	case "personne", "none", "aucun", "nobody":
 		return column + " IS NULL", nil
 	}
-	like := escapeLike(strings.ToLower(v))
+	like := sqlq.EscapeLike(strings.ToLower(v))
 	return column + ` IN (SELECT id FROM users WHERE username LIKE ? OR LOWER(display_name) LIKE ?
 		OR LOWER(display_name) LIKE ?)`, []any{like + "%", like + "%", "% " + like + "%"}
 }
@@ -322,7 +322,7 @@ func textSQL(words []string) (string, []any) {
 				c = "NOT " + c
 			}
 			conds = append(conds, c)
-			like := "%" + escapeLike(strings.Join(parts, " ")) + "%"
+			like := "%" + sqlq.EscapeLike(strings.Join(parts, " ")) + "%"
 			args = append(args, like, like)
 			continue
 		}
@@ -341,10 +341,6 @@ func textSQL(words []string) (string, []any) {
 		args = append([]any{strings.Join(boolean, " ")}, args...)
 	}
 	return strings.Join(conds, " AND "), args
-}
-
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func anys[T any](xs []T) []any {

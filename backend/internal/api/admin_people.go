@@ -117,7 +117,7 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []groupOut{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT g.id, g.name, g.description,
 		(SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id)

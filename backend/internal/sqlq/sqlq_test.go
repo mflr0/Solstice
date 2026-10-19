@@ -25,6 +25,37 @@ func TestValue(t *testing.T) {
 	}
 }
 
+func TestEscapeLike(t *testing.T) {
+	for in, want := range map[string]string{
+		"plain":      "plain",
+		`back\slash`: `back\\slash`,
+		"50%_off":    `50\%\_off`,
+		`a\%_`:       `a\\\%\_`,
+	} {
+		if got := EscapeLike(in); got != want {
+			t.Errorf("EscapeLike(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		n    int
+		want string
+	}{
+		{"abc", 5, "abc"},
+		{"abcdef", 3, "abc"},
+		{"héllo", 4, "héll"},
+		{"日本語", 2, "日本"},
+		{"", 0, ""},
+	} {
+		if got := Truncate(tc.in, tc.n); got != tc.want {
+			t.Errorf("Truncate(%q, %d) = %q, want %q", tc.in, tc.n, got, tc.want)
+		}
+	}
+}
+
 func TestProjectKey(t *testing.T) {
 	want := "(p.pkey IN (?, ?) OR p.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?, ?)))"
 	if got := ProjectKey("p", Marks(2)); got != want {
