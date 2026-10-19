@@ -94,14 +94,14 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 		}
-		sets, args = append(sets, "sub_query = ?"), append(args, sqlq.NullIfBlank(q))
+		sets, args = append(sets, "sub_query = ?"), append(args, sqlq.NullIf(q))
 	}
 	if in.DoneCutoff != nil {
 		c := strings.TrimSpace(*in.DoneCutoff)
 		if c != "" && !cutoffPattern.MatchString(c) {
 			return fail(http.StatusBadRequest, i18n.BoardPeriodInvalid)
 		}
-		sets, args = append(sets, "done_cutoff = ?"), append(args, sqlq.NullIfBlank(c))
+		sets, args = append(sets, "done_cutoff = ?"), append(args, sqlq.NullIf(c))
 	}
 	if in.Swimlanes != nil {
 		if !laneStrategies[*in.Swimlanes] {

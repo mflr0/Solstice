@@ -231,7 +231,7 @@ func (s *Service) Save(ctx context.Context, w *Webhook, secretText *string, by i
 		}
 		sealed = v
 	}
-	jql := sqlq.NullIfBlank(strings.TrimSpace(w.JQL))
+	jql := sqlq.NullIf(strings.TrimSpace(w.JQL))
 	now := s.Now().UTC()
 	evs := strings.Join(w.Events, ",")
 	if w.ID == 0 {
