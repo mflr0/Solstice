@@ -100,7 +100,7 @@
   }
 
   /** Sends the draft and returns the project's workflows as saved. */
-  async function send(
+  function send(
     withRemap?: Record<string, string>,
     withRemapDefault?: Record<string, string>,
   ): Promise<ProjectWorkflows> {
@@ -122,20 +122,21 @@
 
   /** Offers the remap a 409 asks for, with its suggested moves; shows the error otherwise. */
   function offerRemap(e: unknown) {
-    const conflict = e instanceof ApiError && e.status === 409;
-    const list = conflict ? strandedOf(e.data) : null;
-    const toDefault = conflict ? strandedDefaultOf(e.data) : null;
-    if ((list || toDefault) && e instanceof Error) {
-      stranded = list ?? [];
-      strandedDefault = toDefault;
-      strandedMessage = e.message;
-      remap = suggestRemap(stranded, draft.statuses, draft.initial);
-      remapDefault = toDefault ? suggestDefaultRemap(toDefault) : {};
-    } else {
-      stranded = null;
-      strandedDefault = null;
-      error = errorMessage(e);
+    if (e instanceof ApiError && e.status === 409) {
+      const list = strandedOf(e.data);
+      const toDefault = strandedDefaultOf(e.data);
+      if (list || toDefault) {
+        stranded = list ?? [];
+        strandedDefault = toDefault;
+        strandedMessage = e.message;
+        remap = suggestRemap(stranded, draft.statuses, draft.initial);
+        remapDefault = toDefault ? suggestDefaultRemap(toDefault) : {};
+        return;
+      }
     }
+    stranded = null;
+    strandedDefault = null;
+    error = errorMessage(e);
   }
 
   async function save(
