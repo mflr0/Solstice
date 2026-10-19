@@ -3,6 +3,7 @@ package jiradb
 import (
 	"errors"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -150,6 +151,23 @@ func TestPostgresURLKeepsAcceptedOptions(t *testing.T) {
 		var invalid *soldb.InvalidParamError
 		if !errors.As(err, &invalid) {
 			t.Errorf("%s: error %v, want an invalid value error", q, err)
+		}
+	}
+}
+
+// With several bad options, the error names the first in sorted order, on
+// every run (the query is a map, walked in random order).
+func TestPostgresURLReportsTheFirstBadOption(t *testing.T) {
+	for range 50 {
+		_, err := postgresURL(mustParse(t, "postgres://u:secret@h/d?sslmode=bad&connect_timeout=0"))
+		var invalid *soldb.InvalidParamError
+		if !errors.As(err, &invalid) || invalid.Name != "connect_timeout" {
+			t.Fatalf("error %v, want connect_timeout invalid", err)
+		}
+		_, err = postgresURL(mustParse(t, "postgres://u:secret@h/d?sslkey=/x&passfile=/y&service=z"))
+		var unknown *soldb.UnknownParamsError
+		if !errors.As(err, &unknown) || !slices.Equal(unknown.Names, []string{"passfile", "service", "sslkey"}) {
+			t.Fatalf("error %v, want passfile, service and sslkey unknown", err)
 		}
 	}
 }
