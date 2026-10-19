@@ -49,50 +49,49 @@ const (
 	TestEvent = "solstice:test"
 )
 
-// table lists the webhook events in display order, each with the internal
-// event that fires it. A comment or a work log is also an issue update, as
-// in Jira: alsoIssueUpdated sends jira:issue_updated after the event's own.
-var table = []struct {
-	kind             events.Kind
-	name             string
-	alsoIssueUpdated bool
+// webhookEvents lists the webhook events in display order, each with the
+// internal event that fires it and the event it also sends: a comment or a
+// work log is also an issue update, as in Jira.
+var webhookEvents = []struct {
+	kind       events.Kind
+	name, also string
 }{
-	{events.IssueCreated, IssueCreated, false},
-	{events.IssueUpdated, IssueUpdated, false},
-	{events.IssueDeleted, IssueDeleted, false},
-	{events.CommentCreated, CommentCreated, true},
-	{events.CommentUpdated, CommentUpdated, true},
-	{events.CommentDeleted, CommentDeleted, true},
-	{events.WorklogCreated, WorklogCreated, true},
-	{events.WorklogUpdated, WorklogUpdated, true},
-	{events.WorklogDeleted, WorklogDeleted, true},
-	{events.SprintCreated, SprintCreated, false},
-	{events.SprintStarted, SprintStarted, false},
-	{events.SprintUpdated, SprintUpdated, false},
-	{events.SprintClosed, SprintClosed, false},
-	{events.SprintDeleted, SprintDeleted, false},
-	{events.BoardCreated, BoardCreated, false},
-	{events.BoardUpdated, BoardUpdated, false},
-	{events.BoardDeleted, BoardDeleted, false},
+	{events.IssueCreated, IssueCreated, ""},
+	{events.IssueUpdated, IssueUpdated, ""},
+	{events.IssueDeleted, IssueDeleted, ""},
+	{events.CommentCreated, CommentCreated, IssueUpdated},
+	{events.CommentUpdated, CommentUpdated, IssueUpdated},
+	{events.CommentDeleted, CommentDeleted, IssueUpdated},
+	{events.WorklogCreated, WorklogCreated, IssueUpdated},
+	{events.WorklogUpdated, WorklogUpdated, IssueUpdated},
+	{events.WorklogDeleted, WorklogDeleted, IssueUpdated},
+	{events.SprintCreated, SprintCreated, ""},
+	{events.SprintStarted, SprintStarted, ""},
+	{events.SprintUpdated, SprintUpdated, ""},
+	{events.SprintClosed, SprintClosed, ""},
+	{events.SprintDeleted, SprintDeleted, ""},
+	{events.BoardCreated, BoardCreated, ""},
+	{events.BoardUpdated, BoardUpdated, ""},
+	{events.BoardDeleted, BoardDeleted, ""},
 }
 
 // Events lists the events Solstice sends, in display order.
 var Events = func() []string {
-	out := make([]string, len(table))
-	for i, row := range table {
-		out[i] = row.name
+	out := make([]string, len(webhookEvents))
+	for i, e := range webhookEvents {
+		out[i] = e.name
 	}
 	return out
 }()
 
 // namesOf gives the webhook events an internal event fires.
 func namesOf(k events.Kind) []string {
-	for _, row := range table {
-		if row.kind == k {
-			if row.alsoIssueUpdated {
-				return []string{row.name, IssueUpdated}
+	for _, e := range webhookEvents {
+		if e.kind == k {
+			if e.also != "" {
+				return []string{e.name, e.also}
 			}
-			return []string{row.name}
+			return []string{e.name}
 		}
 	}
 	return nil
