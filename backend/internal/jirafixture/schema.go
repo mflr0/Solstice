@@ -232,7 +232,7 @@ func (m *Model) DDL(eng jiradb.Engine, types map[string]string) ([]string, error
 			if eng == jiradb.MySQL {
 				b.WriteString(", PRIMARY KEY (" + strings.Join(cols, ", ") + ")")
 			} else {
-				name := eng.QuoteFolded("pk_" + strings.ToLower(e.Table))
+				name := eng.QuoteFolded("pk_" + e.Table)
 				b.WriteString(", CONSTRAINT " + name + " PRIMARY KEY (" + strings.Join(cols, ", ") + ")")
 			}
 		}

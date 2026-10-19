@@ -45,11 +45,11 @@ func (e Engine) Placeholder(n int) string {
 	return "$" + strconv.Itoa(n)
 }
 
-// Quote quotes a Jira database identifier, keeping its case: back quotes
-// on MySQL, double quotes on PostgreSQL. Jira Software's Active Objects
-// tables are created upper-case and quoted on PostgreSQL, so they must
-// always be referred to quoted there. Quoting also protects columns named
-// after reserved words ("lead" since MySQL 8).
+// Quote quotes a Jira database identifier in its exact case: back quotes on
+// MySQL, double quotes on PostgreSQL. It is for Jira Software's Active
+// Objects tables, which are created upper-case and quoted, so they must
+// always be referred to quoted; some of their columns are reserved words
+// on MySQL (RANK, KEY). Jira's core tables take QuoteFolded.
 func (e Engine) Quote(name string) string {
 	if e == MySQL {
 		return "`" + name + "`"
@@ -57,16 +57,16 @@ func (e Engine) Quote(name string) string {
 	return `"` + name + `"`
 }
 
-// QuoteFolded quotes a Jira database identifier folded to lower case on
-// PostgreSQL, where Jira creates its tables unquoted (so they end up
-// lower-case); on MySQL it keeps the exact case, where table names are
-// case-sensitive. Quoting matters because some Jira columns are reserved
-// words (cwd_group.local on MySQL).
+// QuoteFolded quotes an identifier of Jira's core tables, which Jira creates
+// unquoted: folded to lower case on PostgreSQL, as the database folded it,
+// and in its exact case on MySQL, where table names are case-sensitive.
+// Quoting matters because some of their columns are reserved words
+// (cwd_group.local, project.lead on MySQL).
 func (e Engine) QuoteFolded(name string) string {
-	if e == MySQL {
-		return "`" + name + "`"
+	if e == Postgres {
+		name = strings.ToLower(name)
 	}
-	return `"` + strings.ToLower(name) + `"`
+	return e.Quote(name)
 }
 
 // The URL options accepted for the Jira database. The URL is typed in a form
