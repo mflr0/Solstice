@@ -86,24 +86,24 @@ func (c Config) Domain() string {
 	return "solstice.invalid"
 }
 
-// LoadConfig reads the settings, opening the password with box (which may
-// be nil when no password was stored).
+// LoadConfig reads the settings with their defaults, opening the password
+// with box (which may be nil when no password was stored).
 func LoadConfig(ctx context.Context, st *settings.Store, box func() (*secret.Box, error)) (Config, error) {
 	var s stored
-	ok, err := st.GetJSON(ctx, settingName, &s)
-	if err != nil || !ok {
+	if _, err := st.GetJSON(ctx, settingName, &s); err != nil {
 		return Config{}.WithDefaults(), err
 	}
+	c := s.Config.WithDefaults()
 	if s.SealedPassword != "" {
 		b, err := box()
 		if err != nil {
-			return s.Config, err
+			return c, err
 		}
-		if s.Config.Password, err = b.OpenString(passwordLabel, s.SealedPassword); err != nil {
-			return s.Config, err
+		if c.Password, err = b.OpenString(passwordLabel, s.SealedPassword); err != nil {
+			return c, err
 		}
 	}
-	return s.Config, nil
+	return c, nil
 }
 
 // ReadStored reads the settings as stored, without defaults and without

@@ -527,6 +527,30 @@ func TestMailSettings(t *testing.T) {
 	}
 }
 
+// A stored row without a security mode sends as the settings page shows it:
+// with STARTTLS, which the fake server does not offer.
+func TestMailSettingsUnsetSecurityMeansStartTLS(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	if _, err := testDB.Exec(`UPDATE settings SET value = JSON_REMOVE(value, '$.security') WHERE name = 'mail'`); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Security string `json:"security"`
+		Port     int    `json:"port"`
+	}
+	admin.call("GET", "/api/admin/mail", nil, 200, &got)
+	if got.Security != "starttls" || got.Port != env.smtp.Port {
+		t.Errorf("settings page: security %q, port %d; want starttls, %d", got.Security, got.Port, env.smtp.Port)
+	}
+	if status, _ := admin.do("POST", "/api/admin/mail/test", map[string]any{"to": "admin@exemple.fr"}); status != 502 {
+		t.Errorf("test e-mail without STARTTLS offered: status %d, want 502", status)
+	}
+	if msgs := env.smtp.Messages(); len(msgs) != 0 {
+		t.Errorf("sent in plain text: %+v", msgs)
+	}
+}
+
 // A stored password that cannot be opened is logged, not sent to the client.
 func TestMailTestHidesUnreadablePassword(t *testing.T) {
 	env := newNotifyEnv(t)

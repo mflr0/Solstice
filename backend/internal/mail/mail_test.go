@@ -95,6 +95,10 @@ func TestSend(t *testing.T) {
 	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageNoTLS {
 		t.Errorf("STARTTLS required but not offered: %v", err)
 	}
+	cfg.Security = ""
+	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageNoTLS {
+		t.Errorf("unset security means STARTTLS, as the settings page shows: %v", err)
+	}
 	cfg.Security, cfg.Port = SecurityNone, 1
 	if err := Send(ctx, cfg, Message{To: "paul@exemple.fr"}); !asError(err, &me) || me.Stage != StageConnect {
 		t.Errorf("unreachable server: %v", err)
