@@ -1009,11 +1009,19 @@ function locateWord(toks: Token[], caret: number): { cur: Token | undefined; upt
   return { cur, upto };
 }
 
-/** Feeds the tokens before the caret; returns the role of the last one. */
-function replay(m: Machine, toks: Token[], upto: number): Role | undefined {
+/** The machine after the tokens before the caret, with the last of them and its role. */
+interface Replay {
+  m: Machine;
+  last: Token | undefined;
+  lastRole: Role | undefined;
+}
+
+/** Feeds the first upto tokens to a new machine. */
+function replay(toks: Token[], upto: number): Replay {
+  const m = start();
   let lastRole: Role | undefined;
   for (let i = 0; i < upto; i++) lastRole = step(m, toks[i] as Token, toks[i + 1]);
-  return lastRole;
+  return { m, last: upto > 0 ? toks[upto - 1] : undefined, lastRole };
 }
 
 /**
@@ -1023,10 +1031,8 @@ function replay(m: Machine, toks: Token[], upto: number): Role | undefined {
 function phraseAt(
   src: string,
   caret: number,
-  last: Token | undefined,
-  lastRole: Role | undefined,
-  m: Machine,
   cur: Token | undefined,
+  { m, last, lastRole }: Replay,
 ): Completion['phrase'] {
   if (
     last?.kind === 'word' &&
@@ -1040,8 +1046,17 @@ function phraseAt(
   return null;
 }
 
+/** The part of the word being typed before the caret, a string without its quote. */
+function prefixOf(src: string, caret: number, cur: Token | undefined): string {
+  if (!cur) return '';
+  if (cur.kind === 'string') {
+    return src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
+  }
+  return src.slice(cur.start, caret);
+}
+
 /** What may be typed in the state the machine ended in. */
-function kindOf(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
+function completionIn(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
   switch (m.state) {
     case 'field':
       return { ...base, kind: 'field', keywords: ['NOT', 'ORDER BY'] };
@@ -1080,17 +1095,13 @@ function kindOf(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Comple
 export function completionAt(src: string, caret: number): Completion {
   const toks = lex(src);
   const { cur, upto } = locateWord(toks, caret);
-  const m = start();
-  const lastRole = replay(m, toks, upto);
-  const last = upto > 0 ? toks[upto - 1] : undefined;
-  const phrase = phraseAt(src, caret, last, lastRole, m, cur);
-  const from = cur ? cur.start : caret;
-  const to = cur ? cur.end : caret;
-  let prefix = '';
-  if (cur?.kind === 'string') {
-    prefix = src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
-  } else if (cur) {
-    prefix = src.slice(cur.start, caret);
-  }
-  return kindOf(m, { field: m.field, prefix, from, to, inList: false, phrase });
+  const r = replay(toks, upto);
+  return completionIn(r.m, {
+    field: r.m.field,
+    prefix: prefixOf(src, caret, cur),
+    from: cur?.start ?? caret,
+    to: cur?.end ?? caret,
+    inList: false,
+    phrase: phraseAt(src, caret, cur, r),
+  });
 }
