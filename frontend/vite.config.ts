@@ -9,6 +9,8 @@ const backend = process.env.SOLSTICE_BACKEND ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [svelte()],
+  // Component tests mount the browser build of Svelte, not its server one.
+  ...(process.env.VITEST ? { resolve: { conditions: ['browser'] } } : {}),
   server: {
     proxy: {
       '/api': { target: backend },
