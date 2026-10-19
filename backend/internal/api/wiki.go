@@ -20,6 +20,7 @@ var (
 	wikiLink    = regexp.MustCompile(`\[([^\[\]|]*?)\|?([^\[\]|]+)\]`)
 	wikiMono    = regexp.MustCompile(`\{\{(.+?)\}\}`)
 	wikiColor   = regexp.MustCompile(`\{color(?::[^}]*)?\}`)
+	wikiKept    = regexp.MustCompile("\x00[0-9]+\x00")
 	wikiEffects = []struct {
 		re  *regexp.Regexp
 		tag string
@@ -52,105 +53,130 @@ func renderWiki(src string) string {
 			para = nil
 		}
 	}
-	closeLists := func(depth int) {
-		for len(lists) > depth {
-			out.WriteString("</li></" + lists[len(lists)-1] + ">")
-			lists = lists[:len(lists)-1]
-		}
-	}
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimRight(lines[i], " \t")
 		trimmed := strings.TrimSpace(line)
-		if m := wikiBlock.FindStringSubmatch(trimmed); m != nil {
+		if block, next, ok := wikiBlockAt(lines, i, trimmed); ok {
 			flushPara()
-			closeLists(0)
-			// Gather the block up to its closing tag.
-			var body []string
-			rest := m[2]
-			closing := "{" + m[1] + "}"
-			for {
-				if before, _, ok := strings.Cut(rest, closing); ok {
-					body = append(body, before)
-					break
-				}
-				body = append(body, rest)
-				i++
-				if i >= len(lines) {
-					break
-				}
-				rest = lines[i]
-			}
-			text := strings.Trim(strings.Join(body, "\n"), "\n")
-			switch m[1] {
-			case "quote":
-				out.WriteString("<blockquote>" + renderWiki(text) + "</blockquote>")
-			case "code":
-				out.WriteString(`<pre class="code">` + html.EscapeString(text) + "</pre>")
-			default:
-				out.WriteString("<pre>" + html.EscapeString(text) + "</pre>")
-			}
+			lists = wikiCloseLists(&out, lists, 0)
+			out.WriteString(block)
+			i = next
 			continue
 		}
+		heading := wikiHeading.FindStringSubmatch(trimmed)
+		item := wikiList.FindStringSubmatch(trimmed)
 		switch {
 		case trimmed == "":
 			flushPara()
-			closeLists(0)
+			lists = wikiCloseLists(&out, lists, 0)
 		case trimmed == "----":
 			flushPara()
-			closeLists(0)
+			lists = wikiCloseLists(&out, lists, 0)
 			out.WriteString("<hr/>")
-		case wikiHeading.MatchString(trimmed):
+		case heading != nil:
 			flushPara()
-			closeLists(0)
-			m := wikiHeading.FindStringSubmatch(trimmed)
-			out.WriteString("<h" + m[1] + ">" + wikiInline(m[2]) + "</h" + m[1] + ">")
+			lists = wikiCloseLists(&out, lists, 0)
+			out.WriteString("<h" + heading[1] + ">" + wikiInline(heading[2]) + "</h" + heading[1] + ">")
 		case strings.HasPrefix(trimmed, "bq. "):
 			flushPara()
-			closeLists(0)
+			lists = wikiCloseLists(&out, lists, 0)
 			out.WriteString("<blockquote><p>" + wikiInline(strings.TrimPrefix(trimmed, "bq. ")) + "</p></blockquote>")
 		case strings.HasPrefix(trimmed, "|"):
 			flushPara()
-			closeLists(0)
+			lists = wikiCloseLists(&out, lists, 0)
 			out.WriteString("<table>")
 			for ; i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), "|"); i++ {
 				out.WriteString(wikiRow(strings.TrimSpace(lines[i])))
 			}
 			i--
 			out.WriteString("</table>")
-		case wikiList.MatchString(trimmed):
+		case item != nil:
 			flushPara()
-			m := wikiList.FindStringSubmatch(trimmed)
-			depth := len(m[1])
-			tag := "ul"
-			if m[1][depth-1] == '#' {
-				tag = "ol"
-			}
-			if depth > len(lists)+1 {
-				depth = len(lists) + 1
-			}
-			switch {
-			case depth > len(lists):
-				out.WriteString("<" + tag + "><li>")
-				lists = append(lists, tag)
-			default:
-				closeLists(depth)
-				if lists[depth-1] != tag {
-					closeLists(depth - 1)
-					out.WriteString("<" + tag + "><li>")
-					lists = append(lists, tag)
-				} else {
-					out.WriteString("</li><li>")
-				}
-			}
-			out.WriteString(wikiInline(m[2]))
+			lists = wikiListItem(&out, lists, item)
 		default:
-			closeLists(0)
+			lists = wikiCloseLists(&out, lists, 0)
 			para = append(para, wikiInline(trimmed))
 		}
 	}
 	flushPara()
-	closeLists(0)
+	wikiCloseLists(&out, lists, 0)
 	return out.String()
+}
+
+// wikiBlockAt renders the {code}, {noformat} or {quote} block that line i
+// opens (trimmed is that line without its surrounding blanks), and returns
+// the index of the line that closes it. ok is false when line i opens no
+// block.
+func wikiBlockAt(lines []string, i int, trimmed string) (block string, next int, ok bool) {
+	m := wikiBlock.FindStringSubmatch(trimmed)
+	if m == nil {
+		return "", i, false
+	}
+	// Gather the block up to its closing tag.
+	var body []string
+	rest := m[2]
+	closing := "{" + m[1] + "}"
+	for {
+		if before, _, cut := strings.Cut(rest, closing); cut {
+			body = append(body, before)
+			break
+		}
+		body = append(body, rest)
+		i++
+		if i >= len(lines) {
+			break
+		}
+		rest = lines[i]
+	}
+	text := strings.Trim(strings.Join(body, "\n"), "\n")
+	switch m[1] {
+	case "quote":
+		return "<blockquote>" + renderWiki(text) + "</blockquote>", i, true
+	case "code":
+		return `<pre class="code">` + html.EscapeString(text) + "</pre>", i, true
+	default:
+		return "<pre>" + html.EscapeString(text) + "</pre>", i, true
+	}
+}
+
+// wikiListItem writes one list item, m being the line's wikiList match:
+// it closes the deeper levels, opens or switches the list of its level,
+// then writes the item's text. It returns the stack of open list tags.
+func wikiListItem(out *strings.Builder, lists []string, m []string) []string {
+	depth := len(m[1])
+	tag := "ul"
+	if m[1][depth-1] == '#' {
+		tag = "ol"
+	}
+	if depth > len(lists)+1 {
+		depth = len(lists) + 1
+	}
+	switch {
+	case depth > len(lists):
+		out.WriteString("<" + tag + "><li>")
+		lists = append(lists, tag)
+	default:
+		lists = wikiCloseLists(out, lists, depth)
+		if lists[depth-1] != tag {
+			lists = wikiCloseLists(out, lists, depth-1)
+			out.WriteString("<" + tag + "><li>")
+			lists = append(lists, tag)
+		} else {
+			out.WriteString("</li><li>")
+		}
+	}
+	out.WriteString(wikiInline(m[2]))
+	return lists
+}
+
+// wikiCloseLists closes every list level deeper than depth: one "</li></tag>"
+// per level. It returns the stack of open list tags that is left.
+func wikiCloseLists(out *strings.Builder, lists []string, depth int) []string {
+	for len(lists) > depth {
+		out.WriteString("</li></" + lists[len(lists)-1] + ">")
+		lists = lists[:len(lists)-1]
+	}
+	return lists
 }
 
 // wikiRow renders a table row: ||heading||heading|| or |cell|cell|.
@@ -188,12 +214,11 @@ func wikiInline(text string) string {
 		kept = append(kept, s)
 		return "\x00" + strconv.Itoa(len(kept)-1) + "\x00"
 	}
-	text = wikiMono.ReplaceAllStringFunc(text, func(m string) string {
-		return keep("<code>" + html.EscapeString(wikiMono.FindStringSubmatch(m)[1]) + "</code>")
+	text = wikiReplace(text, wikiMono, func(sub []string) string {
+		return keep("<code>" + html.EscapeString(sub[1]) + "</code>")
 	})
-	text = wikiLink.ReplaceAllStringFunc(text, func(m string) string {
-		parts := wikiLink.FindStringSubmatch(m)
-		label, target := parts[1], strings.TrimSpace(parts[2])
+	text = wikiReplace(text, wikiLink, func(sub []string) string {
+		label, target := sub[1], strings.TrimSpace(sub[2])
 		if strings.HasPrefix(target, "~") {
 			return keep(`<span class="user-mention">@` + html.EscapeString(target[1:]) + "</span>")
 		}
@@ -201,7 +226,7 @@ func wikiInline(text string) string {
 			label = target
 		}
 		if !safeHref(target) {
-			return keep(html.EscapeString(m))
+			return keep(html.EscapeString(sub[0]))
 		}
 		return keep(`<a href="` + html.EscapeString(target) + `">` + html.EscapeString(label) + "</a>")
 	})
@@ -223,7 +248,29 @@ func wikiInline(text string) string {
 	})
 }
 
-var wikiKept = regexp.MustCompile("\x00[0-9]+\x00")
+// wikiReplace replaces every match of re in text with repl of its
+// submatches (sub[0] is the whole match), matching the text once.
+func wikiReplace(text string, re *regexp.Regexp, repl func(sub []string) string) string {
+	matches := re.FindAllStringSubmatchIndex(text, -1)
+	if len(matches) == 0 {
+		return text
+	}
+	var out strings.Builder
+	last := 0
+	for _, loc := range matches {
+		out.WriteString(text[last:loc[0]])
+		sub := make([]string, len(loc)/2)
+		for g := range sub {
+			if loc[2*g] >= 0 {
+				sub[g] = text[loc[2*g]:loc[2*g+1]]
+			}
+		}
+		out.WriteString(repl(sub))
+		last = loc[1]
+	}
+	out.WriteString(text[last:])
+	return out.String()
+}
 
 func safeHref(u string) bool {
 	if strings.ContainsAny(u, "\\\x00") {
