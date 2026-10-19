@@ -116,6 +116,11 @@ type Webhook struct {
 
 func (w *Webhook) listens(name string) bool { return w.Enabled && slices.Contains(w.Events, name) }
 
+// heard returns, in order, the events of names the webhook listens to.
+func (w *Webhook) heard(names []string) []string {
+	return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return !w.listens(n) })
+}
+
 // Matcher tells whether an issue matches a JQL query.
 type Matcher func(ctx context.Context, jql string, issueID int64) (bool, error)
 

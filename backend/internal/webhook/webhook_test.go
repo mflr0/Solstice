@@ -238,3 +238,27 @@ func TestNamesOf(t *testing.T) {
 		t.Errorf("an unknown kind fires %v", got)
 	}
 }
+
+// A webhook hears the events of an internal event it listens to, and none
+// while it is disabled.
+func TestHeard(t *testing.T) {
+	names := namesOf(events.CommentCreated)
+	for _, c := range []struct {
+		name string
+		w    Webhook
+		want []string
+	}{
+		{"both", Webhook{Enabled: true, Events: []string{CommentCreated, IssueUpdated}}, names},
+		{"the issue update only", Webhook{Enabled: true, Events: []string{IssueUpdated, SprintCreated}},
+			[]string{IssueUpdated}},
+		{"neither", Webhook{Enabled: true, Events: []string{SprintCreated}}, []string{}},
+		{"disabled", Webhook{Events: []string{CommentCreated, IssueUpdated}}, []string{}},
+	} {
+		if got := c.w.heard(names); !slices.Equal(got, c.want) {
+			t.Errorf("%s: heard = %v, want %v", c.name, got, c.want)
+		}
+	}
+	if names[0] != CommentCreated || len(names) != 2 {
+		t.Fatalf("namesOf(CommentCreated) = %v", names)
+	}
+}
