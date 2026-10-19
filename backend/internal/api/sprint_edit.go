@@ -158,11 +158,11 @@ func (s *Server) editSprint(w http.ResponseWriter, r *http.Request) error {
 		s.emitSprint(ctx, events.SprintUpdated, sub.UserID, b.ID, sp.ID)
 		s.auditSprint(r, audit.SprintUpdate, sp.ID, sp.Name, map[string]any{"board": b.ID, "changed": p.changed})
 	}
-	list, err := s.boardSprints(ctx, b.ID, "id = "+strconv.FormatInt(sp.ID, 10))
-	if err != nil || len(list) == 0 {
-		return errNotFound
+	sp, err = s.sprintByID(ctx, b.ID, sp.ID)
+	if err != nil {
+		return err
 	}
-	return writeJSON(w, http.StatusOK, list[0])
+	return writeJSON(w, http.StatusOK, sp)
 }
 
 // deleteSprint deletes a sprint that has not started. Its issues go back to

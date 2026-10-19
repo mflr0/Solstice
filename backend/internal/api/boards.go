@@ -336,7 +336,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}, b.ID); err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "state <> 'closed'")
+	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
 	if err != nil {
 		return err
 	}
@@ -385,22 +385,58 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([]sprintOut, error) {
+// backlogCond narrows a board's issues to its backlog: sub-tasks travel with
+// their parent, done issues have left it.
+const backlogCond = ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')`
+
+const sprintColumns = `id, name, state, goal, start_at, end_at, completed_at`
+
+func scanSprint(sc scanner) (sprintOut, error) {
+	var sp sprintOut
+	var goal sql.NullString
+	var start, end, done sql.NullTime
+	if err := sc.Scan(&sp.ID, &sp.Name, &sp.State, &goal, &start, &end, &done); err != nil {
+		return sp, err
+	}
+	sp.Goal = sqlq.String(goal)
+	sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
+	return sp, nil
+}
+
+// boardSprints lists the sprints of a board in the given states, or in any
+// state for none, the active one first.
+func (s *Server) boardSprints(ctx context.Context, board int64, states ...string) ([]sprintOut, error) {
+	q := `SELECT ` + sprintColumns + ` FROM sprints WHERE board_id = ?`
+	args := []any{board}
+	if len(states) > 0 {
+		q += ` AND state IN (` + sqlq.Marks(len(states)) + `)`
+		for _, st := range states {
+			args = append(args, st)
+		}
+	}
 	out := []sprintOut{}
-	err := sqlq.Each(ctx, s.db, `SELECT id, name, state, goal, start_at, end_at, completed_at FROM sprints
-		WHERE board_id = ? AND `+where+` ORDER BY state = 'active' DESC, position, id`, func(rows *sql.Rows) error {
-		var sp sprintOut
-		var goal sql.NullString
-		var start, end, done sql.NullTime
-		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &goal, &start, &end, &done); err != nil {
+	err := sqlq.Each(ctx, s.db, q+` ORDER BY state = 'active' DESC, position, id`, func(rows *sql.Rows) error {
+		sp, err := scanSprint(rows)
+		if err != nil {
 			return err
 		}
-		sp.Goal = sqlq.String(goal)
-		sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
 		out = append(out, sp)
 		return nil
-	}, board)
+	}, args...)
 	return out, err
+}
+
+// sprintByID loads a sprint of the board.
+func (s *Server) sprintByID(ctx context.Context, board, id int64) (*sprintOut, error) {
+	sp, err := scanSprint(s.db.QueryRowContext(ctx, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND id = ?`,
+		board, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &sp, nil
 }
 
 // queryCondition compiles a saved query (JQL or the simple syntax) into a
@@ -732,20 +768,22 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 	}
 	var sprint *sprintOut
 	if b.Kind == "scrum" {
-		sprints, err := s.boardSprints(ctx, b.ID, "state = 'active'")
-		if err != nil {
-			return err
-		}
 		if id, err := strconv.ParseInt(r.URL.Query().Get("sprint"), 10, 64); err == nil {
-			sprints, err = s.boardSprints(ctx, b.ID, "id = "+strconv.FormatInt(id, 10))
+			if sprint, err = s.sprintByID(ctx, b.ID, id); err != nil && !errors.Is(err, errNotFound) {
+				return err
+			}
+		} else {
+			active, err := s.boardSprints(ctx, b.ID, "active")
 			if err != nil {
 				return err
 			}
+			if len(active) > 0 {
+				sprint = &active[0]
+			}
 		}
-		if len(sprints) == 0 {
+		if sprint == nil {
 			return writeJSON(w, http.StatusOK, map[string]any{"cards": []*card{}, "sprint": nil, "truncated": false})
 		}
-		sprint = &sprints[0]
 		where += " AND EXISTS (SELECT 1 FROM sprint_issues si WHERE si.issue_id = i.id AND si.sprint_id = ?)"
 		args = append(args, sprint.ID)
 	}
@@ -782,13 +820,12 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// Sub-tasks travel with their parent; done issues have left the backlog.
-	where += ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')`
+	where += backlogCond
 	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
 	if err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "state <> 'closed'")
+	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
 	if err != nil {
 		return err
 	}
@@ -1096,11 +1133,11 @@ func (s *Server) sprintForManage(r *http.Request, sub *perm.Subject) (*boardRow,
 	} else if !ok {
 		return nil, nil, errForbidden
 	}
-	sprints, err := s.boardSprints(r.Context(), b.ID, "id = "+strconv.FormatInt(id, 10))
-	if err != nil || len(sprints) == 0 {
-		return nil, nil, errNotFound
+	sp, err := s.sprintByID(r.Context(), b.ID, id)
+	if err != nil {
+		return nil, nil, err
 	}
-	return b, &sprints[0], nil
+	return b, sp, nil
 }
 
 func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {

@@ -196,14 +196,10 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 	var states []string
 	for v := range strings.SplitSeq(r.URL.Query().Get("state"), ",") {
 		if v = strings.ToLower(strings.TrimSpace(v)); v == "active" || v == "future" || v == "closed" {
-			states = append(states, "'"+v+"'")
+			states = append(states, v)
 		}
 	}
-	where := "TRUE"
-	if len(states) > 0 {
-		where = "state IN (" + strings.Join(states, ", ") + ")"
-	}
-	sprints, err := s.boardSprints(r.Context(), b.ID, where)
+	sprints, err := s.boardSprints(r.Context(), b.ID, states...)
 	if err != nil {
 		return err
 	}
@@ -278,7 +274,7 @@ func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where += ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')
+	where += backlogCond + `
 		AND NOT EXISTS (SELECT 1 FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
 			WHERE si.issue_id = i.id AND sp.board_id = ? AND sp.state <> 'closed')`
 	return s.agileIssues(w, r, sub, where, append(args, b.ID))
@@ -301,11 +297,11 @@ func (s *Server) pathSprint(r *http.Request, sub *perm.Subject) (sprintOut, int6
 	if _, err := s.boardByID(r.Context(), sub, board.Int64); err != nil {
 		return sprintOut{}, 0, err
 	}
-	sprints, err := s.boardSprints(r.Context(), board.Int64, "id = "+strconv.FormatInt(id, 10))
-	if err != nil || len(sprints) == 0 {
-		return sprintOut{}, 0, errNotFound
+	sp, err := s.sprintByID(r.Context(), board.Int64, id)
+	if err != nil {
+		return sprintOut{}, 0, err
 	}
-	return sprints[0], board.Int64, nil
+	return *sp, board.Int64, nil
 }
 
 func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {

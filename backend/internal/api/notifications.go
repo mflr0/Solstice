@@ -26,7 +26,6 @@ import (
 	"solstice/internal/settings"
 	"solstice/internal/sqlq"
 	"solstice/internal/webhook"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -175,12 +174,12 @@ func sprintEvent(sp *sprintOut, board int64) *events.Sprint {
 
 // emitSprint announces a sprint as it is now.
 func (s *Server) emitSprint(ctx context.Context, kind events.Kind, by, board, sprint int64) {
-	list, err := s.boardSprints(ctx, board, "id = "+strconv.FormatInt(sprint, 10))
-	if err != nil || len(list) == 0 {
+	sp, err := s.sprintByID(ctx, board, sprint)
+	if err != nil {
 		s.log.Warn("sprint event lost", "sprint", sprint, "err", err)
 		return
 	}
-	s.emit(events.Event{Kind: kind, ActorID: by, Sprint: sprintEvent(&list[0], board)})
+	s.emit(events.Event{Kind: kind, ActorID: by, Sprint: sprintEvent(sp, board)})
 }
 
 // Preferences ---------------------------------------------------------------
