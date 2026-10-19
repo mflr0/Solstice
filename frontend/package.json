@@ -1,7 +1,6 @@
 {
   "name": "solstice",
-  "version": "0.1.0",
-  "description": "Solstice — suivi de tickets, interface web",
+  "description": "Solstice issue tracker, web interface",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.11.2",
