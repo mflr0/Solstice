@@ -2,9 +2,7 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"strings"
 	"time"
@@ -22,17 +20,17 @@ const tokenTouchEvery = time.Minute
 // the only time the token exists in clear: the database keeps its hash.
 // expires may be nil for a token that never expires.
 func NewToken(ctx context.Context, db *sql.DB, userID int64, name string, expires *time.Time) (token string, id int64, err error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
+	raw, err := RandomToken()
+	if err != nil {
 		return "", 0, err
 	}
-	token = TokenPrefix + base64.RawURLEncoding.EncodeToString(raw)
+	token = TokenPrefix + raw
 	var exp any
 	if expires != nil {
 		exp = expires.UTC()
 	}
 	res, err := db.ExecContext(ctx, `INSERT INTO api_tokens (user_id, name, token_hash, created_at, expires_at)
-		VALUES (?, ?, ?, ?, ?)`, userID, name, tokenHash(token), time.Now().UTC(), exp)
+		VALUES (?, ?, ?, ?, ?)`, userID, name, TokenHash(token), time.Now().UTC(), exp)
 	if err != nil {
 		return "", 0, err
 	}
@@ -58,7 +56,7 @@ func LookupToken(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, ''),
 		t.id, t.last_used_at
 		FROM api_tokens t JOIN users u ON u.id = t.user_id
-		WHERE t.token_hash = ? AND (t.expires_at IS NULL OR t.expires_at > ?) AND u.active`, tokenHash(token), now).
+		WHERE t.token_hash = ? AND (t.expires_at IS NULL OR t.expires_at > ?) AND u.active`, TokenHash(token), now).
 		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.TokenID, &lastUsed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoSession
@@ -98,7 +96,7 @@ func LookupRefused(ctx context.Context, db *sql.DB, token string) *RefusedToken 
 	var active bool
 	now := time.Now().UTC()
 	err := db.QueryRowContext(ctx, `SELECT t.id, t.name, t.user_id, u.username, u.active, t.expires_at
-		FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?`, tokenHash(token)).
+		FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?`, TokenHash(token)).
 		Scan(&t.ID, &t.Name, &t.UserID, &t.Username, &active, &expires)
 	if err != nil {
 		return nil

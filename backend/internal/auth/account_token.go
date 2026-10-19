@@ -2,9 +2,7 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"time"
 )
@@ -24,9 +22,6 @@ const (
 	ResetLifetime  = time.Hour
 	InviteLifetime = 7 * 24 * time.Hour
 )
-
-// accountTokenBytes is the size of a token before encoding: 256 bits.
-const accountTokenBytes = 32
 
 // usedKeep is how long used tokens stay in the table before the purge.
 const usedKeep = 24 * time.Hour
@@ -49,18 +44,11 @@ type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-// NewAccountTokenValue returns a fresh token: 32 bytes from the system's
-// random source, URL-safe.
-func NewAccountTokenValue() (string, error) {
-	raw := make([]byte, accountTokenBytes)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(raw), nil
-}
+// NewAccountTokenValue returns a fresh token for a link sent by e-mail.
+func NewAccountTokenValue() (string, error) { return RandomToken() }
 
 // AccountTokenHash is what the database stores of a token.
-func AccountTokenHash(token string) string { return tokenHash(token) }
+func AccountTokenHash(token string) string { return TokenHash(token) }
 
 // Lifetime is how long a token of a purpose works; 0 for an unknown purpose.
 func Lifetime(purpose string) time.Duration {
@@ -100,7 +88,7 @@ func IssueAccountToken(ctx context.Context, tx *sql.Tx, userID int64, purpose st
 		return "", err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO account_tokens (user_id, token_hash, purpose, created_at, expires_at)
-		VALUES (?, ?, ?, ?, ?)`, userID, tokenHash(token), purpose, now, now.Add(life))
+		VALUES (?, ?, ?, ?, ?)`, userID, TokenHash(token), purpose, now, now.Add(life))
 	return token, err
 }
 
@@ -111,7 +99,7 @@ func LookupAccountToken(ctx context.Context, db *sql.DB, token string, now time.
 	err := db.QueryRowContext(ctx, `SELECT t.id, t.user_id, t.purpose, t.expires_at
 		FROM account_tokens t JOIN users u ON u.id = t.user_id
 		WHERE t.token_hash = ? AND t.used_at IS NULL AND t.expires_at > ? AND u.active`,
-		tokenHash(token), now.UTC()).Scan(&t.ID, &t.UserID, &t.Purpose, &t.Expires)
+		TokenHash(token), now.UTC()).Scan(&t.ID, &t.UserID, &t.Purpose, &t.Expires)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrBadToken
 	}
@@ -126,7 +114,7 @@ func LookupAccountToken(ctx context.Context, db *sql.DB, token string, now time.
 // when two arrive together, because the update that marks it succeeds once.
 func UseAccountToken(ctx context.Context, tx *sql.Tx, token string, now time.Time) (*AccountToken, error) {
 	now = now.UTC()
-	hash := tokenHash(token)
+	hash := TokenHash(token)
 	res, err := tx.ExecContext(ctx, `UPDATE account_tokens t JOIN users u ON u.id = t.user_id SET t.used_at = ?
 		WHERE t.token_hash = ? AND t.used_at IS NULL AND t.expires_at > ? AND u.active`, now, hash, now)
 	if err != nil {

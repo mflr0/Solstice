@@ -40,10 +40,10 @@ func (s *Server) currentImport() *adminImport {
 func credentialKeys(r *http.Request) []string {
 	var out []string
 	if c, err := r.Cookie(auth.CookieName); err == nil && c.Value != "" {
-		out = append(out, tokenKey(c.Value))
+		out = append(out, auth.TokenHash(c.Value))
 	}
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
-		out = append(out, tokenKey(strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))))
+		out = append(out, auth.TokenHash(strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))))
 	}
 	return out
 }

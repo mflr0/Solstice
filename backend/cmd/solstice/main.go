@@ -142,6 +142,7 @@ func runServe(ctx context.Context, args []string) error {
 	}
 	log := slog.Default()
 	log.Info("Solstice is starting", "version", version, "config", cfg.Path, "config_found", cfg.Exists, "data", dataDir)
+	go auth.PrepareSignIn()
 
 	// Without a database, or on one without any account, the setup wizard
 	// runs first; the application takes over when it is done.
