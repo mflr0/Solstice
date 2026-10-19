@@ -173,7 +173,7 @@ class Parser {
 
   keyword(...words: string[]): boolean {
     const t = this.peek();
-    if (this.atEnd() || t.kind !== 'word') return false;
+    if (t.kind !== 'word') return false;
     const w = t.text.toLowerCase();
     return words.includes(w);
   }
@@ -190,15 +190,12 @@ class Parser {
       if (!this.keyword('by')) this.fail('orderBy');
       this.next();
       for (;;) {
-        const atEnd = this.atEnd();
         const t = this.next();
-        if (atEnd || (t.kind !== 'word' && t.kind !== 'string')) {
-          this.fail('sortFieldExpected');
-        }
+        if (t.kind !== 'word' && t.kind !== 'string') this.fail('sortFieldExpected');
         const s: SortTerm = { field: t.text, desc: false };
         if (this.keyword('asc', 'desc')) s.desc = this.next().text.toLowerCase() === 'desc';
         q.order.push(s);
-        if (this.peek().kind !== 'comma' || this.atEnd()) break;
+        if (this.peek().kind !== 'comma') break;
         this.next();
       }
     }
@@ -229,23 +226,21 @@ class Parser {
       this.next();
       return { type: 'not', inner: this.not() };
     }
-    if (!this.atEnd() && this.peek().kind === 'lparen') {
+    if (this.peek().kind === 'lparen') {
       this.next();
       const inner = this.or();
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
+      if (this.next().kind !== 'rparen') this.fail('parenExpected');
       return inner;
     }
     return this.clause();
   }
 
   clause(): Node {
-    const atEnd = this.atEnd();
     const f = this.next();
-    if (atEnd || (f.kind !== 'word' && f.kind !== 'string')) this.fail('fieldExpected');
-    if (f.kind === 'string' && !f.closed) throw new JqlError('unclosedQuote', f.start);
+    if (f.kind !== 'word' && f.kind !== 'string') this.fail('fieldExpected');
     const c: Clause = { type: 'clause', field: f.text, op: '', values: [], preds: [] };
     const t = this.peek();
-    if (!this.atEnd() && t.kind === 'op') {
+    if (t.kind === 'op') {
       c.op = this.next().text;
     } else if (this.keyword('in')) {
       this.next();
@@ -298,16 +293,16 @@ class Parser {
   }
 
   list(): Value[] {
-    if (this.atEnd() || this.peek().kind !== 'lparen') return [this.value()];
+    if (this.peek().kind !== 'lparen') return [this.value()];
     this.next();
     const vals: Value[] = [];
     for (;;) {
       vals.push(this.value());
-      if (!this.atEnd() && this.peek().kind === 'comma') {
+      if (this.peek().kind === 'comma') {
         this.next();
         continue;
       }
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
+      if (this.next().kind !== 'rparen') this.fail('parenExpected');
       return vals;
     }
   }
@@ -320,12 +315,12 @@ class Parser {
       }
       let values: Value[];
       if (kind === 'during') {
-        if (this.atEnd() || this.peek().kind !== 'lparen') {
+        if (this.peek().kind !== 'lparen') {
           this.fail('duringDates');
         }
         values = this.list();
         if (values.length !== 2) this.fail('duringDates');
-      } else if (kind === 'by' && !this.atEnd() && this.peek().kind === 'lparen') {
+      } else if (kind === 'by' && this.peek().kind === 'lparen') {
         values = this.list();
       } else {
         values = [this.value()];
@@ -336,20 +331,15 @@ class Parser {
   }
 
   value(): Value {
-    const atEnd = this.atEnd();
     const t = this.next();
-    if (!atEnd && t.kind === 'string') {
-      if (!t.closed) throw new JqlError('unclosedQuote', t.start);
-      return { kind: 'text', text: t.text };
-    }
-    if (!atEnd && t.kind === 'word') {
+    if (t.kind === 'string') return { kind: 'text', text: t.text };
+    if (t.kind === 'word') {
       const w = t.text.toLowerCase();
       if (w === 'empty' || w === 'null') return { kind: 'empty' };
-      if (!this.atEnd() && this.peek().kind === 'lparen') {
+      if (this.peek().kind === 'lparen') {
         this.next();
         const v: Value = { kind: 'func', name: t.text, args: [] };
         for (;;) {
-          if (this.atEnd()) this.fail('argumentInvalid', t.text);
           if (this.peek().kind === 'rparen') break;
           const a = this.next();
           if (a.kind !== 'word' && a.kind !== 'string') {
@@ -429,35 +419,56 @@ export function quoteField(name: string): string {
   return quote(name);
 }
 
-/** The functions the server knows, with their usual spelling. */
-export const FUNCTIONS = [
-  'currentUser',
-  'membersOf',
-  'now',
-  'startOfDay',
-  'endOfDay',
-  'startOfWeek',
-  'endOfWeek',
-  'startOfMonth',
-  'endOfMonth',
-  'startOfYear',
-  'endOfYear',
-  'unreleasedVersions',
-  'releasedVersions',
-  'earliestUnreleasedVersion',
-  'latestReleasedVersion',
-  'standardIssueTypes',
-  'subTaskIssueTypes',
-  'openSprints',
-  'closedSprints',
-  'futureSprints',
-] as const;
+/** A function the server knows, as the table below lists it. */
+export interface FunctionInfo {
+  /** The usual spelling. */
+  name: string;
+  /** The kind of field it is a value of. */
+  kind: FieldKind;
+  /** Stands for a whole list: "sprint in openSprints()", not "sprint = openSprints()". */
+  list: boolean;
+  /** What a suggestion puts between the parentheses, for the caret to fill in. */
+  args?: string;
+}
 
-const FUNCTION_NAMES = new Map(FUNCTIONS.map((f) => [f.toLowerCase(), f as string]));
+/**
+ * The functions the server knows, with their usual spelling: the one table
+ * every other list of them comes from (the suggestions, what the filters
+ * accept, the special values).
+ */
+export const FUNCTIONS: readonly FunctionInfo[] = [
+  { name: 'currentUser', kind: 'user', list: false },
+  { name: 'membersOf', kind: 'user', list: true, args: '""' },
+  { name: 'now', kind: 'date', list: false },
+  { name: 'startOfDay', kind: 'date', list: false },
+  { name: 'endOfDay', kind: 'date', list: false },
+  { name: 'startOfWeek', kind: 'date', list: false },
+  { name: 'endOfWeek', kind: 'date', list: false },
+  { name: 'startOfMonth', kind: 'date', list: false },
+  { name: 'endOfMonth', kind: 'date', list: false },
+  { name: 'startOfYear', kind: 'date', list: false },
+  { name: 'endOfYear', kind: 'date', list: false },
+  { name: 'unreleasedVersions', kind: 'version', list: true },
+  { name: 'releasedVersions', kind: 'version', list: true },
+  { name: 'earliestUnreleasedVersion', kind: 'version', list: false },
+  { name: 'latestReleasedVersion', kind: 'version', list: false },
+  { name: 'standardIssueTypes', kind: 'type', list: true },
+  { name: 'subTaskIssueTypes', kind: 'type', list: true },
+  { name: 'openSprints', kind: 'sprint', list: true },
+  { name: 'futureSprints', kind: 'sprint', list: true },
+  { name: 'closedSprints', kind: 'sprint', list: true },
+];
+
+const FUNCTION_NAMES = new Map(FUNCTIONS.map((f) => [f.name.toLowerCase(), f.name]));
 
 /** A function's usual spelling ("CURRENTUSER" → "currentUser"). */
 export function functionName(name: string): string {
   return FUNCTION_NAMES.get(name.toLowerCase()) ?? name;
+}
+
+/** A function as a suggestion offers it: "openSprints()", 'membersOf("")'. */
+export function functionCall(f: FunctionInfo): string {
+  return `${f.name}(${f.args ?? ''})`;
 }
 
 /** A value as JQL, in its canonical spelling. */
@@ -707,35 +718,7 @@ export function operatorsFor(field: string, kind = fieldInfo(field)?.kind): stri
 
 /** Functions that make sense as a value of a kind of field. */
 export function functionsFor(field: string, kind = fieldInfo(field)?.kind): string[] {
-  switch (kind) {
-    case 'user':
-      return ['currentUser()', 'membersOf("")'];
-    case 'type':
-      return ['standardIssueTypes()', 'subTaskIssueTypes()'];
-    case 'sprint':
-      return ['openSprints()', 'futureSprints()', 'closedSprints()'];
-    case 'version':
-      return [
-        'unreleasedVersions()',
-        'releasedVersions()',
-        'earliestUnreleasedVersion()',
-        'latestReleasedVersion()',
-      ];
-    case 'date':
-      return [
-        'now()',
-        'startOfDay()',
-        'endOfDay()',
-        'startOfWeek()',
-        'endOfWeek()',
-        'startOfMonth()',
-        'endOfMonth()',
-        'startOfYear()',
-        'endOfYear()',
-      ];
-    default:
-      return [];
-  }
+  return FUNCTIONS.filter((f) => f.kind === kind).map(functionCall);
 }
 
 /* Reading as one types: roles and completion ---------------------------------- */

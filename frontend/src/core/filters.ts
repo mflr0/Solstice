@@ -13,12 +13,14 @@ import {
   fieldInfo,
   formatOrder,
   formatValue,
+  FUNCTIONS,
   JqlError,
   parse,
   quote,
   quoteField,
   quoteString,
   type Clause,
+  type FunctionInfo,
   type SortTerm,
   type Value,
 } from './jql.js';
@@ -73,47 +75,24 @@ export const JQL_FIELD: Record<ListField, string> = {
 export const ME = 'currentUser()';
 export const EMPTY = 'EMPTY';
 
+const lowerNames = (fits: (f: FunctionInfo) => boolean) =>
+  FUNCTIONS.filter(fits).map((f) => f.name.toLowerCase());
+
 /** Functions a field's filter may hold (lower-case names). */
-const LIST_FUNCTIONS: Partial<Record<ListField, string[]>> = {
-  people: ['currentuser', 'membersof'],
-  assignee: ['currentuser', 'membersof'],
-  reporter: ['currentuser', 'membersof'],
-  type: ['standardissuetypes', 'subtaskissuetypes'],
-  sprint: ['opensprints', 'closedsprints', 'futuresprints'],
-  fixVersion: [
-    'unreleasedversions',
-    'releasedversions',
-    'earliestunreleasedversion',
-    'latestreleasedversion',
-  ],
-};
+const LIST_FUNCTIONS = Object.fromEntries(
+  LIST_FIELDS.map((field) => [
+    field,
+    lowerNames((f) => f.kind === fieldInfo(JQL_FIELD[field])?.kind),
+  ]),
+) as Record<ListField, string[]>;
 
 /** Functions that stand for a list: written "field in f()", not "field = f()". */
-const LIST_VALUED = new Set([
-  'membersof',
-  'standardissuetypes',
-  'subtaskissuetypes',
-  'opensprints',
-  'closedsprints',
-  'futuresprints',
-  'unreleasedversions',
-  'releasedversions',
-]);
+const LIST_VALUED = new Set(lowerNames((f) => f.list));
 
 /** Fields that always have a value: "is EMPTY" means nothing there. */
 const NEVER_EMPTY: ListField[] = ['project', 'type', 'status'];
 
-const DATE_FUNCTIONS = new Set([
-  'now',
-  'startofday',
-  'endofday',
-  'startofweek',
-  'endofweek',
-  'startofmonth',
-  'endofmonth',
-  'startofyear',
-  'endofyear',
-]);
+const DATE_FUNCTIONS = new Set(lowerNames((f) => f.kind === 'date'));
 
 export interface DateBound {
   op: '>' | '>=' | '<' | '<=';
@@ -322,7 +301,7 @@ function readList(field: ListField, c: Clause, role?: PeopleRole): string[] | nu
       if (field === 'people' && role !== 'watcher' && role !== 'commenter') return null;
       s = EMPTY;
     } else if (v.kind === 'func') {
-      if (!LIST_FUNCTIONS[field]?.includes(v.name.toLowerCase())) return null;
+      if (!LIST_FUNCTIONS[field].includes(v.name.toLowerCase())) return null;
       s = formatValue(v);
     } else if (field === 'resolution' && v.text.toLowerCase() === 'unresolved') {
       s = EMPTY;

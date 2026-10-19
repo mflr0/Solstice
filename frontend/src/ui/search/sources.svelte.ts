@@ -13,7 +13,7 @@ import {
   type ListField,
   type PeopleRole,
 } from '../../core/filters.js';
-import { customKind, fieldInfo, type FieldKind } from '../../core/jql.js';
+import { customKind, fieldInfo, functionCall, FUNCTIONS, type FieldKind } from '../../core/jql.js';
 import type {
   CustomFieldRef,
   Project,
@@ -241,20 +241,11 @@ export function specialValues(field: ListField, role: PeopleRole = 'participant'
     case 'resolution':
       return [{ value: EMPTY, label: s.unresolved, facets: [''] }];
     case 'sprint':
-      return [
-        { value: 'openSprints()', label: s.openSprints },
-        { value: 'futureSprints()', label: s.futureSprints },
-        { value: 'closedSprints()', label: s.closedSprints },
-        { value: EMPTY, label: s.noSprint },
-      ];
+      return [...listFunctions('sprint'), { value: EMPTY, label: s.noSprint }];
     case 'epic':
       return [{ value: EMPTY, label: s.noEpic }];
     case 'fixVersion':
-      return [
-        { value: 'unreleasedVersions()', label: s.unreleased },
-        { value: 'releasedVersions()', label: s.released },
-        { value: EMPTY, label: s.noVersion },
-      ];
+      return [...listFunctions('version'), { value: EMPTY, label: s.noVersion }];
     case 'component':
       return [{ value: EMPTY, label: s.noComponent }];
     case 'labels':
@@ -276,6 +267,14 @@ const FUNCTION_LABELS: Record<string, () => string> = {
   standardissuetypes: () => t.search.special.standardTypes,
   subtaskissuetypes: () => t.search.special.subtaskTypes,
 };
+
+/** The list functions of a kind of field, as options: "openSprints()" with its label. */
+function listFunctions(kind: FieldKind): Option[] {
+  return FUNCTIONS.filter((f) => f.kind === kind && f.list).map((f) => {
+    const value = functionCall(f);
+    return { value, label: FUNCTION_LABELS[f.name.toLowerCase()]?.() ?? value };
+  });
+}
 
 /** How a chosen value reads on its button: a name rather than an id or username. */
 export function labelOf(field: ListField, value: string, role?: PeopleRole): string {
