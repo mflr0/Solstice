@@ -117,12 +117,18 @@ type linkTarget struct {
 	LastLogin                         sql.NullTime
 }
 
+// linkTargetColumns are the columns of users that scanLinkTarget reads.
+const linkTargetColumns = `id, username, display_name, email, active, last_login_at, COALESCE(locale, '')`
+
+func scanLinkTarget(sc interface{ Scan(...any) error }) (linkTarget, error) {
+	var t linkTarget
+	err := sc.Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.Active, &t.LastLogin, &t.UserLocale)
+	return t, err
+}
+
 // linkTargetOf loads the account a link leads to, for its id.
 func (s *Server) linkTargetOf(ctx context.Context, id int64) (*linkTarget, error) {
-	var t linkTarget
-	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, active, last_login_at,
-		COALESCE(locale, '') FROM users WHERE id = ?`, id).
-		Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.Active, &t.LastLogin, &t.UserLocale)
+	t, err := scanLinkTarget(s.db.QueryRowContext(ctx, `SELECT `+linkTargetColumns+` FROM users WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
 	}
@@ -227,11 +233,11 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 		return nil
 	}
 	var targets []linkTarget
-	err := sqlq.Each(ctx, s.db, `SELECT id, username, display_name, email, COALESCE(locale, '') FROM users
+	err := sqlq.Each(ctx, s.db, `SELECT `+linkTargetColumns+` FROM users
 		WHERE active AND email <> '' AND (username = ? OR LOWER(email) = ?) ORDER BY id LIMIT ?`,
 		func(rows *sql.Rows) error {
-			var t linkTarget
-			if err := rows.Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.UserLocale); err != nil {
+			t, err := scanLinkTarget(rows)
+			if err != nil {
 				return err
 			}
 			targets = append(targets, t)
@@ -402,44 +408,63 @@ func (s *Server) adminInviteUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return s.adminSendLink(w, r, id, auth.PurposeInvite)
+	return s.adminSendLink(w, r, id, inviteLink)
 }
 
 // adminResetLink sends an account a link to choose its new password, instead
 // of giving it one: nothing changes until the person uses the link.
 func (s *Server) adminResetLink(w http.ResponseWriter, r *http.Request, id int64) error {
-	return s.adminSendLink(w, r, id, auth.PurposeReset)
+	return s.adminSendLink(w, r, id, resetLink)
 }
 
-// adminSendLink sends an account a link of purpose on an administrator's
-// ask: it refuses an inactive account, an invitation to an account that
-// already signed in, an account with no valid address and a mail setup that
-// cannot send, then mails the link, audits the ask and answers {"sent": true}.
-func (s *Server) adminSendLink(w http.ResponseWriter, r *http.Request, id int64, purpose string) error {
+// adminLink is a link an administrator sends to an account.
+type adminLink struct {
+	purpose string // of the token, auth.Purpose...
+	action  string // audited, audit....
+	details func() map[string]any
+	// neverSignedIn: only for an account that never signed in.
+	neverSignedIn bool
+}
+
+var (
+	inviteLink = adminLink{purpose: auth.PurposeInvite, action: audit.UserInvite, neverSignedIn: true,
+		details: func() map[string]any { return map[string]any{"resent": true} }}
+	resetLink = adminLink{purpose: auth.PurposeReset, action: audit.PasswordResetRequest,
+		details: func() map[string]any { return map[string]any{"method": "link", "by": "administrator"} }}
+)
+
+// refusal is why the link cannot go to t, or nil.
+func (l adminLink) refusal(t *linkTarget) error {
+	switch {
+	case !t.Active:
+		return fail(http.StatusConflict, i18n.AccountInactive)
+	case l.neverSignedIn && t.LastLogin.Valid:
+		return fail(http.StatusConflict, i18n.AccountAlreadySignedIn)
+	case !mail.ValidAddress(strings.TrimSpace(t.Email)):
+		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
+	}
+	return nil
+}
+
+// adminSendLink sends an account the link l on an administrator's ask,
+// unless l refuses the account or the mail setup cannot send, audits the ask
+// and answers {"sent": true}.
+func (s *Server) adminSendLink(w http.ResponseWriter, r *http.Request, id int64, l adminLink) error {
 	ctx := r.Context()
 	to, err := s.linkTargetOf(ctx, id)
 	if err != nil {
 		return err
 	}
-	switch {
-	case !to.Active:
-		return fail(http.StatusConflict, i18n.AccountInactive)
-	case purpose == auth.PurposeInvite && to.LastLogin.Valid:
-		return fail(http.StatusConflict, i18n.AccountAlreadySignedIn)
-	case !mail.ValidAddress(strings.TrimSpace(to.Email)):
-		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
+	if err := l.refusal(to); err != nil {
+		return err
 	}
 	cfg, ok := s.linkConfig(ctx)
 	if !ok {
 		return fail(http.StatusConflict, i18n.AccountMailUnavailable)
 	}
-	if err := s.sendAccountLink(ctx, cfg, to, purpose); err != nil {
+	if err := s.sendAccountLink(ctx, cfg, to, l.purpose); err != nil {
 		return err
 	}
-	action, details := audit.PasswordResetRequest, map[string]any{"method": "link", "by": "administrator"}
-	if purpose == auth.PurposeInvite {
-		action, details = audit.UserInvite, map[string]any{"resent": true}
-	}
-	s.auditLog(r, action, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username}, details)
+	s.auditLog(r, l.action, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username}, l.details())
 	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
 }
