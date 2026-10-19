@@ -275,18 +275,45 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	if len(lines) == 0 {
 		return nil
 	}
-	var groups []string
-	for _, l := range lines {
-		if !slices.Contains(groups, l.Group) {
-			groups = append(groups, l.Group)
-		}
-	}
 	mentioned, err := s.mentioned(ctx, e)
 	if err != nil {
 		return err
 	}
+	reasons, ids, err := s.candidates(ctx, iss, ps.Extra, lines, mentioned)
+	if err != nil || len(ids) == 0 {
+		return err
+	}
+	users, prefs, err := s.recipientData(ctx, ids)
+	if err != nil {
+		return err
+	}
+	d := &draft{e: e, lines: lines, mentioned: mentioned, access: iss.Access}
+	if e.Kind == events.IssueDeleted {
+		d.access = e.Access
+	}
+	if e.Comment != nil {
+		d.comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
+			Edited: e.Kind == events.CommentUpdated}
+	}
+	for _, id := range ids {
+		it, ok, err := s.wantsItem(ctx, d, id, users[id], prefs[id], reasons[id])
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		if err := s.enqueue(ctx, id, prefs[id], iss.ID, it); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	// Candidates and why they would hear about it.
+// candidates lists who would hear about an event, in id order, and the
+// strongest reason of each.
+func (s *Service) candidates(ctx context.Context, iss *events.Issue, extra []ExtraRecipient, lines []line,
+	mentioned map[int64]bool) (map[int64]string, []int64, error) {
 	reasons := map[int64]string{}
 	add := func(id int64, reason string) {
 		if id == 0 {
@@ -308,77 +335,85 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	for id := range mentioned {
 		add(id, reasonMentioned)
 	}
-	extra, err := s.extraMembers(ctx, iss.ProjectID, ps.Extra, groups)
+	var groups []string
+	for _, l := range lines {
+		if !slices.Contains(groups, l.Group) {
+			groups = append(groups, l.Group)
+		}
+	}
+	members, err := s.extraMembers(ctx, iss.ProjectID, extra, groups)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	for id := range extra {
+	for id := range members {
 		add(id, reasonProject)
-	}
-	if len(reasons) == 0 {
-		return nil
 	}
 	ids := make([]int64, 0, len(reasons))
 	for id := range reasons {
 		ids = append(ids, id)
 	}
 	slices.Sort(ids)
+	return reasons, ids, nil
+}
+
+// recipientData loads the candidates' accounts and preferences.
+func (s *Service) recipientData(ctx context.Context, ids []int64) (map[int64]*events.User, map[int64]Prefs, error) {
 	users, err := events.LoadUsers(ctx, s.db, ids...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	prefs, err := s.prefsOf(ctx, ids...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	return users, prefs, nil
+}
 
-	access := iss.Access
-	if e.Kind == events.IssueDeleted {
-		access = e.Access
+// draft is an event as every recipient's item starts from.
+type draft struct {
+	e         *events.Event
+	lines     []line
+	mentioned map[int64]bool
+	access    perm.Issue // who may see the issue (as it was, for a deletion)
+	comment   *itemComment
+}
+
+// wantsItem cuts the event to what one candidate asked for and may see. It
+// reports false when nothing is left for them.
+func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.User, p Prefs, reason string) (item, bool, error) {
+	e, iss := d.e, d.e.Issue
+	if !eligible(u) || p.Delivery == None {
+		return item{}, false, nil
 	}
-	var comment *itemComment
-	if e.Comment != nil {
-		comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
-			Edited: e.Kind == events.CommentUpdated}
+	if id == e.ActorID && !p.OwnChanges {
+		return item{}, false, nil
 	}
-	for _, id := range ids {
-		u, p := users[id], prefs[id]
-		if !eligible(u) || p.Delivery == None {
-			continue
-		}
-		if id == e.ActorID && !p.OwnChanges {
-			continue
-		}
-		sub, err := s.perms.Subject(ctx, id, false)
-		if err != nil {
-			return err
-		}
-		if !sub.CanSee(access) {
-			continue
-		}
-		if comment != nil && !sub.SeesRestricted(iss.ProjectID, comment.Group, comment.RoleID) {
-			continue
-		}
-		var keep []line
-		for _, l := range lines {
-			if p.wants(l.Group) {
-				keep = append(keep, l)
-			}
-		}
-		isMentioned := mentioned[id] && p.wants(GroupMentioned)
-		if len(keep) == 0 && !isMentioned {
-			continue
-		}
-		it := item{Kind: e.Kind, At: e.At, ActorID: e.ActorID, Lines: keep, Mentioned: isMentioned, Reason: reasons[id],
-			Project: iss.ProjectKey, Key: iss.Key, Summary: iss.Summary, Access: access}
-		if comment != nil && (slices.ContainsFunc(keep, func(l line) bool { return l.Group == GroupCommented }) || isMentioned) {
-			it.Comment = comment
-		}
-		if err := s.enqueue(ctx, id, p, iss.ID, it); err != nil {
-			return err
+	sub, err := s.perms.Subject(ctx, id, false)
+	if err != nil {
+		return item{}, false, err
+	}
+	if !sub.CanSee(d.access) {
+		return item{}, false, nil
+	}
+	if d.comment != nil && !sub.SeesRestricted(iss.ProjectID, d.comment.Group, d.comment.RoleID) {
+		return item{}, false, nil
+	}
+	var keep []line
+	for _, l := range d.lines {
+		if p.wants(l.Group) {
+			keep = append(keep, l)
 		}
 	}
-	return nil
+	isMentioned := d.mentioned[id] && p.wants(GroupMentioned)
+	if len(keep) == 0 && !isMentioned {
+		return item{}, false, nil
+	}
+	it := item{Kind: e.Kind, At: e.At, ActorID: e.ActorID, Lines: keep, Mentioned: isMentioned, Reason: reason,
+		Project: iss.ProjectKey, Key: iss.Key, Summary: iss.Summary, Access: d.access}
+	if d.comment != nil && (slices.ContainsFunc(keep, func(l line) bool { return l.Group == GroupCommented }) || isMentioned) {
+		it.Comment = d.comment
+	}
+	return it, true, nil
 }
 
 // enqueue files an item in the user's open batch for the issue (or their
