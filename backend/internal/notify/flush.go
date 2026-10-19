@@ -160,6 +160,44 @@ var keyInText = regexp.MustCompile(`\b[A-Z][A-Z0-9_]+-\d+\b`)
 // sees every issue they name.
 var relationFields = map[string]bool{"link": true, "parent": true, "epic link": true, "epic child": true}
 
+// keyAccess tells whether a recipient sees the issue a key names, asking the
+// database once per key.
+type keyAccess struct {
+	db   *sql.DB
+	sub  *perm.Subject
+	seen map[string]bool
+}
+
+func (k *keyAccess) canSee(ctx context.Context, key string) bool {
+	if v, ok := k.seen[key]; ok {
+		return v
+	}
+	var access perm.Issue
+	var level sql.NullInt64
+	var reporter, assignee sql.NullInt64
+	project, num, _ := strings.Cut(key, "-")
+	const columns = `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id FROM issues i `
+	err := k.db.QueryRowContext(ctx, columns+`JOIN projects p ON p.id = i.project_id WHERE `+sqlq.ProjectKey("p", "?")+` AND i.num = ?`,
+		project, project, num).Scan(&access.ProjectID, &reporter, &assignee, &level)
+	if errors.Is(err, sql.ErrNoRows) {
+		// The key of an issue moved to another project still names it.
+		err = k.db.QueryRowContext(ctx, columns+`JOIN moved_issue_keys k ON k.issue_id = i.id WHERE k.old_key = ?`, key).
+			Scan(&access.ProjectID, &reporter, &assignee, &level)
+	}
+	access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
+	v := err == nil && k.sub.CanSee(access)
+	k.seen[key] = v
+	return v
+}
+
+// batchFacts is what an e-mail's subject, thread and footer depend on.
+type batchFacts struct {
+	reasons     []string // why, for each entry shown
+	project     string   // the project of the last entry shown
+	created     bool     // an issue's creation is among the items
+	threadIssue int64    // the last issue shown
+}
+
 // renderBatch writes a batch for its recipient, checking again what they may
 // see now. It returns nil when nothing is left to say.
 func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, items []storedItem) (*mail.Message, error) {
@@ -171,10 +209,34 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 	if err != nil {
 		return nil, err
 	}
-	loc := rc.locale
-	p := &page{Lang: loc}
+	p := &page{Lang: rc.locale}
+	keys := &keyAccess{db: s.db, sub: rc.sub, seen: map[string]bool{}}
+	var facts batchFacts
+	order, byIssue := groupByIssue(items)
+	for _, id := range order {
+		sec, f, err := s.sectionFor(ctx, rc, keys, id, byIssue[id])
+		if err != nil {
+			return nil, err
+		}
+		facts.reasons = append(facts.reasons, f.reasons...)
+		if len(f.reasons) > 0 {
+			facts.project = f.project
+		}
+		facts.created = facts.created || f.created
+		if len(sec.Entries) == 0 {
+			continue
+		}
+		p.Sections = append(p.Sections, sec)
+		facts.threadIssue = id
+	}
+	if len(p.Sections) == 0 {
+		return nil, nil
+	}
+	return s.compose(cfg, rc, digest, p, facts), nil
+}
 
-	// Issues in order of first appearance.
+// groupByIssue groups items by issue, the issues in order of first appearance.
+func groupByIssue(items []storedItem) ([]int64, map[int64][]storedItem) {
 	var order []int64
 	byIssue := map[int64][]storedItem{}
 	for _, it := range items {
@@ -183,150 +245,137 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		}
 		byIssue[it.issueID] = append(byIssue[it.issueID], it)
 	}
-	seen := map[string]bool{}
-	canSeeKey := func(key string) bool {
-		if v, ok := seen[key]; ok {
-			return v
-		}
-		var access perm.Issue
-		var level sql.NullInt64
-		var reporter, assignee sql.NullInt64
-		project, num, _ := strings.Cut(key, "-")
-		const columns = `SELECT i.project_id, i.reporter_id, i.assignee_id, i.security_level_id FROM issues i `
-		err := s.db.QueryRowContext(ctx, columns+`JOIN projects p ON p.id = i.project_id WHERE `+sqlq.ProjectKey("p", "?")+` AND i.num = ?`,
-			project, project, num).Scan(&access.ProjectID, &reporter, &assignee, &level)
-		if errors.Is(err, sql.ErrNoRows) {
-			// The key of an issue moved to another project still names it.
-			err = s.db.QueryRowContext(ctx, columns+`JOIN moved_issue_keys k ON k.issue_id = i.id WHERE k.old_key = ?`, key).
-				Scan(&access.ProjectID, &reporter, &assignee, &level)
-		}
-		access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
-		v := err == nil && rc.sub.CanSee(access)
-		seen[key] = v
-		return v
-	}
+	return order, byIssue
+}
 
-	var reasons []string
-	var project string
-	var threadIssue int64
-	created := false
-	actors := map[int64]*events.User{}
-	for _, id := range order {
-		group := byIssue[id]
-		cur, err := events.LoadIssue(ctx, s.db, id)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
+// sectionFor writes what happened to one issue, with the facts of the entries
+// it shows. The section has no entries when the recipient may see none.
+func (s *Service) sectionFor(ctx context.Context, rc *recipient, keys *keyAccess, id int64, group []storedItem) (section, batchFacts, error) {
+	var facts batchFacts
+	cur, err := events.LoadIssue(ctx, s.db, id)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return section{}, facts, err
+	}
+	kept, err := s.visibleItems(ctx, rc.sub, cur, group)
+	if err != nil || len(kept) == 0 {
+		return section{}, facts, err
+	}
+	var actorIDs []int64
+	for _, it := range kept {
+		actorIDs = append(actorIDs, it.ActorID)
+	}
+	actors, err := events.LoadUsers(ctx, s.db, actorIDs...)
+	if err != nil {
+		return section{}, facts, err
+	}
+	loc := rc.locale
+	sec := section{Key: kept[0].Key, Summary: kept[0].Summary}
+	if cur != nil {
+		sec.Key, sec.Summary = cur.Key, cur.Summary
+		sec.URL = s.issueURL(cur.Key)
+		sec.Link = i18n.M(i18n.NotifyOpenIssue).In(loc)
+		sec.Meta = issueMeta(loc, cur)
+	}
+	for _, it := range kept {
+		if it.Kind == events.IssueCreated {
+			facts.created = true
 		}
-		var kept []storedItem
-		for _, it := range group {
-			// Still allowed to see the issue? A deleted issue is judged as it
-			// was; the comment, by its restriction.
-			access := it.Access
-			if cur != nil {
-				access = cur.Access
+		en, ok := s.entryFor(ctx, rc, keys, it, actors[it.ActorID], cur)
+		if !ok {
+			continue
+		}
+		sec.Entries = append(sec.Entries, en)
+		facts.reasons = append(facts.reasons, it.Reason)
+		facts.project = it.Project
+	}
+	return sec, facts, nil
+}
+
+// visibleItems keeps the items the recipient may still see. A deleted issue
+// (cur nil) is judged as it was; a comment, by its restriction as it is now.
+func (s *Service) visibleItems(ctx context.Context, sub *perm.Subject, cur *events.Issue, items []storedItem) ([]storedItem, error) {
+	var kept []storedItem
+	for _, it := range items {
+		access := it.Access
+		if cur != nil {
+			access = cur.Access
+		}
+		if !sub.CanSee(access) {
+			continue
+		}
+		if it.Comment != nil {
+			// A move gives a comment restricted to a role another restriction.
+			group, role, project := it.Comment.Group, it.Comment.RoleID, it.Access.ProjectID
+			var g sql.NullString
+			var r sql.NullInt64
+			err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM comments WHERE id = ?`,
+				it.Comment.ID).Scan(&g, &r)
+			switch {
+			case err == nil:
+				group, role, project = g.String, r.Int64, access.ProjectID
+			case !errors.Is(err, sql.ErrNoRows):
+				return nil, err
 			}
-			if !rc.sub.CanSee(access) {
+			if !sub.SeesRestricted(project, group, role) {
 				continue
 			}
-			if it.Comment != nil {
-				// A move gives a comment restricted to a role another restriction.
-				group, role, project := it.Comment.Group, it.Comment.RoleID, it.Access.ProjectID
-				var g sql.NullString
-				var r sql.NullInt64
-				err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM comments WHERE id = ?`,
-					it.Comment.ID).Scan(&g, &r)
-				switch {
-				case err == nil:
-					group, role, project = g.String, r.Int64, access.ProjectID
-				case !errors.Is(err, sql.ErrNoRows):
-					return nil, err
-				}
-				if !rc.sub.SeesRestricted(project, group, role) {
-					continue
-				}
-			}
-			kept = append(kept, it)
 		}
-		if len(kept) == 0 {
-			continue
-		}
-		var actorIDs []int64
-		for _, it := range kept {
-			actorIDs = append(actorIDs, it.ActorID)
-		}
-		users, err := events.LoadUsers(ctx, s.db, actorIDs...)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range users {
-			actors[k] = v
-		}
-		sec := section{Key: kept[0].Key, Summary: kept[0].Summary}
-		if cur != nil {
-			sec.Key, sec.Summary = cur.Key, cur.Summary
-			sec.URL = s.issueURL(cur.Key)
-			sec.Link = i18n.M(i18n.NotifyOpenIssue).In(loc)
-			sec.Meta = issueMeta(loc, cur)
-		}
-		for _, it := range kept {
-			if it.Kind == events.IssueCreated {
-				created = true
-			}
-			en := entry{Headline: headline(loc, it, actorName(loc, actors[it.ActorID]), cur, userID),
-				When: formatTime(loc, it.At.In(s.zone()))}
-			for _, l := range it.Lines {
-				if l.Field == "" {
-					continue
-				}
-				f := strings.ToLower(l.Field)
-				if relationFields[f] {
-					ok := true
-					for _, k := range keyInText.FindAllString(l.From+" "+l.To, -1) {
-						ok = ok && canSeeKey(k)
-					}
-					if !ok {
-						continue
-					}
-				}
-				row := changeRow{Field: fieldLabel(loc, l.Field), From: l.From, To: l.To}
-				switch f {
-				case "description", "environment":
-					row.From, row.To = "", excerpt(l.To, 600)
-				case "duedate":
-					row.From, row.To = formatDay(loc, l.From), formatDay(loc, l.To)
-				}
-				if row.To == "" {
-					row.To = i18n.M(i18n.NotifyEmptyValue).In(loc)
-				}
-				en.Changes = append(en.Changes, row)
-			}
-			if it.Comment != nil {
-				en.Text = excerpt(it.Comment.Body, 4000)
-				if it.Comment.Group != "" || it.Comment.RoleID != 0 {
-					en.Note = i18n.M(i18n.NotifyRestrictedComment).In(loc)
-				}
-			}
-			if it.Kind == events.IssueCreated && cur != nil && cur.Description != nil {
-				en.Text = excerpt(*cur.Description, 1500)
-			}
-			if it.Kind == events.IssueUpdated && len(en.Changes) == 0 && !it.Mentioned {
-				continue // only lines this recipient may not see
-			}
-			sec.Entries = append(sec.Entries, en)
-			reasons = append(reasons, it.Reason)
-			project = it.Project
-		}
-		if len(sec.Entries) == 0 {
-			continue
-		}
-		p.Sections = append(p.Sections, sec)
-		threadIssue = id
+		kept = append(kept, it)
 	}
-	if len(p.Sections) == 0 {
-		return nil, nil
-	}
+	return kept, nil
+}
 
-	msg := &mail.Message{UserID: userID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
+// entryFor writes one item for the recipient. It reports false when nothing
+// of an update is left once the lines they may not see are dropped.
+func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, it storedItem, actor *events.User, cur *events.Issue) (entry, bool) {
+	loc := rc.locale
+	en := entry{Headline: headline(loc, it, actorName(loc, actor), cur, rc.user.ID),
+		When: formatTime(loc, it.At.In(s.zone()))}
+	for _, l := range it.Lines {
+		if l.Field == "" {
+			continue
+		}
+		f := strings.ToLower(l.Field)
+		if relationFields[f] {
+			ok := true
+			for _, k := range keyInText.FindAllString(l.From+" "+l.To, -1) {
+				ok = ok && keys.canSee(ctx, k)
+			}
+			if !ok {
+				continue
+			}
+		}
+		row := changeRow{Field: fieldLabel(loc, l.Field), From: l.From, To: l.To}
+		switch f {
+		case "description", "environment":
+			row.From, row.To = "", excerpt(l.To, 600)
+		case "duedate":
+			row.From, row.To = formatDay(loc, l.From), formatDay(loc, l.To)
+		}
+		if row.To == "" {
+			row.To = i18n.M(i18n.NotifyEmptyValue).In(loc)
+		}
+		en.Changes = append(en.Changes, row)
+	}
+	if it.Comment != nil {
+		en.Text = excerpt(it.Comment.Body, 4000)
+		if it.Comment.Group != "" || it.Comment.RoleID != 0 {
+			en.Note = i18n.M(i18n.NotifyRestrictedComment).In(loc)
+		}
+	}
+	if it.Kind == events.IssueCreated && cur != nil && cur.Description != nil {
+		en.Text = excerpt(*cur.Description, 1500)
+	}
+	if it.Kind == events.IssueUpdated && len(en.Changes) == 0 && !it.Mentioned {
+		return entry{}, false // only lines this recipient may not see
+	}
+	return en, true
+}
+
+// compose turns the page into the e-mail: subject, thread and footer.
+func (s *Service) compose(cfg mail.Config, rc *recipient, digest bool, p *page, facts batchFacts) *mail.Message {
+	loc := rc.locale
+	msg := &mail.Message{UserID: rc.user.ID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
 	if digest {
 		msg.Kind = "digest"
 		p.Heading = i18n.M(i18n.NotifyDigestSubject, formatDate(loc, s.Now().In(s.zone()))).In(loc)
@@ -337,17 +386,17 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		msg.Subject = "[" + p.Sections[0].Key + "] " + p.Sections[0].Summary
 		// One thread per issue: the creation e-mail starts it, the others
 		// answer it.
-		root := "<issue." + strconv.FormatInt(threadIssue, 10) + "@" + cfg.Domain() + ">"
+		root := "<issue." + strconv.FormatInt(facts.threadIssue, 10) + "@" + cfg.Domain() + ">"
 		msg.InReplyTo = root
-		if created {
+		if facts.created {
 			msg.MessageID, msg.InReplyTo = root, ""
 		}
-		s.footer(p, why(loc, strongest(reasons), project))
+		s.footer(p, why(loc, strongest(facts.reasons), facts.project))
 	}
 	p.Title = msg.Subject
 	msg.HTML = p.html()
 	msg.Text = p.text()
-	return msg, nil
+	return msg
 }
 
 func strongest(reasons []string) string {
