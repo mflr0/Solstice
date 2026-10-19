@@ -152,13 +152,14 @@ func (s *Server) queueAccountLink(ctx context.Context, tx *sql.Tx, cfg mail.Conf
 		AND status = 'pending' AND claim IS NULL`, to.ID, mail.KindReset, mail.KindInvitation); err != nil {
 		return err
 	}
-	loc := i18n.Pick(to.UserLocale, s.defaultLanguage())
+	acct := notify.Account{UserID: to.ID, Email: to.Email, Name: to.Name, Username: to.Username,
+		Locale: i18n.Pick(to.UserLocale, s.defaultLanguage())}
 	link := s.accountLink(token)
 	var msg mail.Message
 	if purpose == auth.PurposeInvite {
-		msg = notify.InvitationMessage(cfg, to.ID, to.Email, to.Name, to.Username, loc, link)
+		msg = notify.InvitationMessage(cfg, acct, link)
 	} else {
-		msg = notify.ResetMessage(cfg, to.ID, to.Email, to.Name, to.Username, loc, link)
+		msg = notify.ResetMessage(cfg, acct, link)
 	}
 	return s.out.outbox.Enqueue(ctx, tx, msg)
 }
