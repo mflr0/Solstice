@@ -13,14 +13,13 @@ import {
   fieldInfo,
   formatOrder,
   formatValue,
-  FUNCTIONS,
+  functionInfo,
   JqlError,
   parse,
   quote,
   quoteField,
   quoteString,
   type Clause,
-  type FunctionInfo,
   type SortTerm,
   type Value,
 } from './jql.js';
@@ -75,24 +74,8 @@ export const JQL_FIELD: Record<ListField, string> = {
 export const ME = 'currentUser()';
 export const EMPTY = 'EMPTY';
 
-const lowerNames = (fits: (f: FunctionInfo) => boolean) =>
-  FUNCTIONS.filter(fits).map((f) => f.name.toLowerCase());
-
-/** Functions a field's filter may hold (lower-case names). */
-const LIST_FUNCTIONS = Object.fromEntries(
-  LIST_FIELDS.map((field) => [
-    field,
-    lowerNames((f) => f.kind === fieldInfo(JQL_FIELD[field])?.kind),
-  ]),
-) as Record<ListField, string[]>;
-
-/** Functions that stand for a list: written "field in f()", not "field = f()". */
-const LIST_VALUED = new Set(lowerNames((f) => f.list));
-
 /** Fields that always have a value: "is EMPTY" means nothing there. */
 const NEVER_EMPTY: ListField[] = ['project', 'type', 'status'];
-
-const DATE_FUNCTIONS = new Set(lowerNames((f) => f.kind === 'date'));
 
 export interface DateBound {
   op: '>' | '>=' | '<' | '<=';
@@ -159,8 +142,8 @@ export function listClause(field: string, values: string[]): string {
   if (values.length > 0 && values.every((v) => v === EMPTY)) return `${f} is EMPTY`;
   if (values.length === 1) {
     const v = values[0] as string;
-    const fn = /^([A-Za-z]+)\(/.exec(v)?.[1]?.toLowerCase();
-    return fn && LIST_VALUED.has(fn) ? `${f} in ${v}` : `${f} = ${v}`;
+    const fn = /^([A-Za-z]+)\(/.exec(v)?.[1];
+    return fn && functionInfo(fn)?.list ? `${f} in ${v}` : `${f} = ${v}`;
   }
   return `${f} in (${values.join(', ')})`;
 }
@@ -176,7 +159,8 @@ export const CATEGORY_JQL: Record<StatusCategory, string> = {
 export function categoryClause(categories: StatusCategory[]): string {
   const set = STATUS_CATEGORIES.filter((c) => categories.includes(c));
   if (set.length === 0 || set.length === STATUS_CATEGORIES.length) return '';
-  if (set.length === 2 && !set.includes('done')) return 'statusCategory != Done';
+  if (set.length === 2 && !set.includes('done'))
+    return `statusCategory != ${quote(CATEGORY_JQL.done)}`;
   const names = set.map((c) => quote(CATEGORY_JQL[c]));
   if (names.length === 1) return `statusCategory = ${names[0]}`;
   return `statusCategory in (${names.join(', ')})`;
@@ -302,7 +286,8 @@ function readList(field: ListField, c: Clause, role?: PeopleRole): string[] | nu
       if (field === 'people' && role !== 'watcher' && role !== 'commenter') return null;
       s = EMPTY;
     } else if (v.kind === 'func') {
-      if (!LIST_FUNCTIONS[field].includes(v.name.toLowerCase())) return null;
+      const fn = functionInfo(v.name);
+      if (!fn || fn.kind !== fieldInfo(JQL_FIELD[field])?.kind) return null;
       s = formatValue(v);
     } else if (field === 'resolution' && v.text.toLowerCase() === 'unresolved') {
       s = EMPTY;
@@ -329,7 +314,7 @@ function readCategories(c: Clause): StatusCategory[] | null {
 
 function readDateValue(v: Value | undefined): string | null {
   if (!v || v.kind === 'empty') return null;
-  if (v.kind === 'func') return DATE_FUNCTIONS.has(v.name.toLowerCase()) ? formatValue(v) : null;
+  if (v.kind === 'func') return functionInfo(v.name)?.kind === 'date' ? formatValue(v) : null;
   return quote(v.text);
 }
 

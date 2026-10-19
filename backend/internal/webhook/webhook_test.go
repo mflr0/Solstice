@@ -201,43 +201,64 @@ func TestSprintEvents(t *testing.T) {
 // Every internal event fires the webhook events Jira sends for it, and the
 // list of events keeps its display order.
 func TestNamesOf(t *testing.T) {
-	want := map[events.Kind][]string{
-		events.IssueCreated:   {"jira:issue_created"},
-		events.IssueUpdated:   {"jira:issue_updated"},
-		events.IssueDeleted:   {"jira:issue_deleted"},
-		events.CommentCreated: {"comment_created", "jira:issue_updated"},
-		events.CommentUpdated: {"comment_updated", "jira:issue_updated"},
-		events.CommentDeleted: {"comment_deleted", "jira:issue_updated"},
-		events.WorklogCreated: {"worklog_created", "jira:issue_updated"},
-		events.WorklogUpdated: {"worklog_updated", "jira:issue_updated"},
-		events.WorklogDeleted: {"worklog_deleted", "jira:issue_updated"},
-		events.SprintCreated:  {"sprint_created"},
-		events.SprintStarted:  {"sprint_started"},
-		events.SprintUpdated:  {"sprint_updated"},
-		events.SprintClosed:   {"sprint_closed"},
-		events.SprintDeleted:  {"sprint_deleted"},
-		events.BoardCreated:   {"board_created"},
-		events.BoardUpdated:   {"board_updated"},
-		events.BoardDeleted:   {"board_deleted"},
+	want := []struct {
+		kind  events.Kind
+		names []string
+	}{
+		{events.IssueCreated, []string{"jira:issue_created"}},
+		{events.IssueUpdated, []string{"jira:issue_updated"}},
+		{events.IssueDeleted, []string{"jira:issue_deleted"}},
+		{events.CommentCreated, []string{"comment_created", "jira:issue_updated"}},
+		{events.CommentUpdated, []string{"comment_updated", "jira:issue_updated"}},
+		{events.CommentDeleted, []string{"comment_deleted", "jira:issue_updated"}},
+		{events.WorklogCreated, []string{"worklog_created", "jira:issue_updated"}},
+		{events.WorklogUpdated, []string{"worklog_updated", "jira:issue_updated"}},
+		{events.WorklogDeleted, []string{"worklog_deleted", "jira:issue_updated"}},
+		{events.SprintCreated, []string{"sprint_created"}},
+		{events.SprintStarted, []string{"sprint_started"}},
+		{events.SprintUpdated, []string{"sprint_updated"}},
+		{events.SprintClosed, []string{"sprint_closed"}},
+		{events.SprintDeleted, []string{"sprint_deleted"}},
+		{events.BoardCreated, []string{"board_created"}},
+		{events.BoardUpdated, []string{"board_updated"}},
+		{events.BoardDeleted, []string{"board_deleted"}},
 	}
-	for _, row := range table {
-		if _, ok := want[row.kind]; !ok {
-			t.Errorf("%s is in the table but not in this test", row.kind)
+	if len(Events) != len(want) {
+		t.Fatalf("Events has %d events, want %d", len(Events), len(want))
+	}
+	for i, w := range want {
+		if got := namesOf(w.kind); !slices.Equal(got, w.names) {
+			t.Errorf("namesOf(%s) = %v, want %v", w.kind, got, w.names)
 		}
-	}
-	for kind, names := range want {
-		if got := namesOf(kind); !slices.Equal(got, names) {
-			t.Errorf("namesOf(%s) = %v, want %v", kind, got, names)
+		if Events[i] != w.names[0] {
+			t.Errorf("Events[%d] = %s, want %s", i, Events[i], w.names[0])
 		}
 	}
 	if got := namesOf(events.Kind("unknown")); got != nil {
 		t.Errorf("an unknown kind fires %v", got)
 	}
-	order := []string{"jira:issue_created", "jira:issue_updated", "jira:issue_deleted",
-		"comment_created", "comment_updated", "comment_deleted", "worklog_created", "worklog_updated", "worklog_deleted",
-		"sprint_created", "sprint_started", "sprint_updated", "sprint_closed", "sprint_deleted",
-		"board_created", "board_updated", "board_deleted"}
-	if !slices.Equal(Events, order) {
-		t.Errorf("Events = %v, want %v", Events, order)
+}
+
+// A webhook hears the events of an internal event it listens to, and none
+// while it is disabled.
+func TestHeard(t *testing.T) {
+	names := namesOf(events.CommentCreated)
+	for _, c := range []struct {
+		name string
+		w    Webhook
+		want []string
+	}{
+		{"both", Webhook{Enabled: true, Events: []string{CommentCreated, IssueUpdated}}, names},
+		{"the issue update only", Webhook{Enabled: true, Events: []string{IssueUpdated, SprintCreated}},
+			[]string{IssueUpdated}},
+		{"neither", Webhook{Enabled: true, Events: []string{SprintCreated}}, []string{}},
+		{"disabled", Webhook{Events: []string{CommentCreated, IssueUpdated}}, []string{}},
+	} {
+		if got := c.w.heard(names); !slices.Equal(got, c.want) {
+			t.Errorf("%s: heard = %v, want %v", c.name, got, c.want)
+		}
+	}
+	if names[0] != CommentCreated || len(names) != 2 {
+		t.Fatalf("namesOf(CommentCreated) = %v", names)
 	}
 }

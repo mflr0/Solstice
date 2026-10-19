@@ -284,19 +284,6 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 var projectEvents = []string{notify.GroupCreated, notify.GroupAssigned, notify.GroupCommented, notify.GroupStatus,
 	notify.GroupUpdated, notify.GroupAttachments, notify.GroupDeleted}
 
-func (s *Server) configurableProject(r *http.Request) (int64, error) {
-	id, err := s.projectByKey(r.Context(), r.PathValue("key"))
-	if err != nil {
-		return 0, err
-	}
-	if ok, err := s.canConfigure(r, id); err != nil {
-		return 0, err
-	} else if !ok {
-		return 0, errForbidden
-	}
-	return id, nil
-}
-
 func (s *Server) getProjectNotifications(w http.ResponseWriter, r *http.Request) error {
 	id, err := s.configurableProject(r)
 	if err != nil {

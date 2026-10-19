@@ -112,6 +112,14 @@ describe('parse', () => {
       ['a = 1 AND', 'fieldExpected', [], 9],
       ['status = Open FROM x', 'unexpected', ['FROM'], 14],
       ['status was Open from x', 'changedOnly', ['FROM'], 21],
+      // At the end of the input.
+      ['NOT', 'fieldExpected', [], 3],
+      ['(a = b', 'parenExpected', [], 6],
+      ['a = 1 ORDER BY', 'sortFieldExpected', [], 14],
+      ['a = b ORDER BY c,', 'sortFieldExpected', [], 17],
+      ['assignee in membersOf(x', 'argumentInvalid', ['membersOf'], 23],
+      ['a = f(', 'argumentInvalid', ['f'], 6],
+      ['status changed during (a', 'parenExpected', [], 24],
     ];
     for (const [src, code, args, pos] of cases) {
       let err: unknown;
@@ -254,6 +262,66 @@ describe('highlight', () => {
 
 describe('completionAt', () => {
   const at = (src: string, caret = src.length) => completionAt(src, caret);
+
+  it('answers exactly, strings, operators, phrases and the sort included', () => {
+    const none = { inList: false, phrase: null };
+    expect(at('status = "In Pr')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: 'In Pr',
+      from: 9,
+      to: 15,
+      kind: 'value',
+      keywords: ['EMPTY'],
+    });
+    expect(at('status = "In" ')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: '',
+      from: 14,
+      to: 14,
+      kind: 'keyword',
+      keywords: ['AND', 'OR', 'ORDER BY'],
+    });
+    expect(at('status !')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: '!',
+      from: 7,
+      to: 8,
+      kind: 'operator',
+      keywords: [],
+    });
+    expect(at('status in (In P')).toEqual({
+      field: 'status',
+      prefix: 'P',
+      from: 14,
+      to: 15,
+      inList: false,
+      phrase: { prefix: 'In P', from: 11, inList: true },
+      kind: 'none',
+      keywords: [],
+    });
+    expect(at('status = En c')).toEqual({
+      field: 'status',
+      prefix: 'c',
+      from: 12,
+      to: 13,
+      inList: false,
+      phrase: { prefix: 'En c', from: 9, inList: false },
+      kind: 'keyword',
+      keywords: ['AND', 'OR', 'ORDER BY'],
+    });
+    expect(at('a = 1 ORDER BY priority ')).toEqual({
+      ...none,
+      field: 'a',
+      prefix: '',
+      from: 24,
+      to: 24,
+      kind: 'keyword',
+      keywords: ['ASC', 'DESC'],
+    });
+  });
 
   it('offers fields at the start and after AND', () => {
     expect(at('')).toMatchObject({ kind: 'field', prefix: '', from: 0, to: 0 });

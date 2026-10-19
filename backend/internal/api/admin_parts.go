@@ -20,23 +20,6 @@ import (
 	"time"
 )
 
-// browsableProject loads a project the user sees (or, for a global
-// administrator, any project).
-func (s *Server) browsableProject(r *http.Request) (int64, error) {
-	sub, err := s.subject(r)
-	if err != nil {
-		return 0, err
-	}
-	id, err := s.projectByKey(r.Context(), r.PathValue("key"))
-	if err != nil {
-		return 0, err
-	}
-	if !sub.Admin && !sub.CanBrowseProject(id) {
-		return 0, errNotFound
-	}
-	return id, nil
-}
-
 func (s *Server) projectKeyOf(ctx context.Context, id int64) string {
 	var key string
 	s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key)
@@ -90,7 +73,7 @@ func (s *Server) components(ctx context.Context, projectID int64, where string, 
 }
 
 func (s *Server) listComponents(w http.ResponseWriter, r *http.Request) error {
-	id, err := s.browsableProject(r)
+	_, id, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
@@ -444,7 +427,7 @@ func (s *Server) version(ctx context.Context, projectID, id int64) (versionAdmin
 }
 
 func (s *Server) listVersions(w http.ResponseWriter, r *http.Request) error {
-	id, err := s.browsableProject(r)
+	_, id, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}

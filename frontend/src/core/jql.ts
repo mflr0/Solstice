@@ -144,6 +144,11 @@ export interface Query {
   order: SortTerm[];
 }
 
+/**
+ * The token past the end of the input. Its kind, 'error', matches none of the
+ * parser's tests, since parse has already refused every real error token: a
+ * test of the next token's kind also covers the end of the input.
+ */
 const EOF: Token = { kind: 'error', raw: '', text: '', start: 0, end: 0, closed: true };
 
 class Parser {
@@ -173,9 +178,7 @@ class Parser {
 
   keyword(...words: string[]): boolean {
     const t = this.peek();
-    if (t.kind !== 'word') return false;
-    const w = t.text.toLowerCase();
-    return words.includes(w);
+    return t.kind === 'word' && words.includes(t.text.toLowerCase());
   }
 
   fail<C extends JqlCode>(code: C, ...args: JqlArgs[C]): never {
@@ -426,44 +429,56 @@ export interface FunctionInfo {
   /** The kind of field it is a value of. */
   kind: FieldKind;
   /** Stands for a whole list: "sprint in openSprints()", not "sprint = openSprints()". */
-  list: boolean;
+  list?: true;
   /** What a suggestion puts between the parentheses, for the caret to fill in. */
   args?: string;
 }
 
 /**
- * The functions the server knows, with their usual spelling: the one table
- * every other list of them comes from (the suggestions, what the filters
- * accept, the special values).
+ * The functions the server knows: the one table every other list of them
+ * comes from (the suggestions, what the filters accept, the special values).
  */
-export const FUNCTIONS: readonly FunctionInfo[] = [
-  { name: 'currentUser', kind: 'user', list: false },
+export const FUNCTIONS = [
+  { name: 'currentUser', kind: 'user' },
   { name: 'membersOf', kind: 'user', list: true, args: '""' },
-  { name: 'now', kind: 'date', list: false },
-  { name: 'startOfDay', kind: 'date', list: false },
-  { name: 'endOfDay', kind: 'date', list: false },
-  { name: 'startOfWeek', kind: 'date', list: false },
-  { name: 'endOfWeek', kind: 'date', list: false },
-  { name: 'startOfMonth', kind: 'date', list: false },
-  { name: 'endOfMonth', kind: 'date', list: false },
-  { name: 'startOfYear', kind: 'date', list: false },
-  { name: 'endOfYear', kind: 'date', list: false },
+  { name: 'now', kind: 'date' },
+  { name: 'startOfDay', kind: 'date' },
+  { name: 'endOfDay', kind: 'date' },
+  { name: 'startOfWeek', kind: 'date' },
+  { name: 'endOfWeek', kind: 'date' },
+  { name: 'startOfMonth', kind: 'date' },
+  { name: 'endOfMonth', kind: 'date' },
+  { name: 'startOfYear', kind: 'date' },
+  { name: 'endOfYear', kind: 'date' },
   { name: 'unreleasedVersions', kind: 'version', list: true },
   { name: 'releasedVersions', kind: 'version', list: true },
-  { name: 'earliestUnreleasedVersion', kind: 'version', list: false },
-  { name: 'latestReleasedVersion', kind: 'version', list: false },
+  { name: 'earliestUnreleasedVersion', kind: 'version' },
+  { name: 'latestReleasedVersion', kind: 'version' },
   { name: 'standardIssueTypes', kind: 'type', list: true },
   { name: 'subTaskIssueTypes', kind: 'type', list: true },
   { name: 'openSprints', kind: 'sprint', list: true },
   { name: 'futureSprints', kind: 'sprint', list: true },
   { name: 'closedSprints', kind: 'sprint', list: true },
-];
+] as const satisfies readonly FunctionInfo[];
 
-const FUNCTION_NAMES = new Map(FUNCTIONS.map((f) => [f.name.toLowerCase(), f.name]));
+/** A function's usual spelling. */
+export type FunctionName = (typeof FUNCTIONS)[number]['name'];
+
+const BY_NAME = new Map<string, FunctionInfo>(FUNCTIONS.map((f) => [f.name.toLowerCase(), f]));
+
+/** The function of a name in any case ("CURRENTUSER"), or undefined. */
+export function functionInfo(name: string): FunctionInfo | undefined {
+  return BY_NAME.get(name.toLowerCase());
+}
 
 /** A function's usual spelling ("CURRENTUSER" → "currentUser"). */
 export function functionName(name: string): string {
-  return FUNCTION_NAMES.get(name.toLowerCase()) ?? name;
+  return functionInfo(name)?.name ?? name;
+}
+
+/** The functions that are values of a kind of field, in the table's order. */
+export function functionsOfKind(kind: FieldKind | undefined): FunctionInfo[] {
+  return FUNCTIONS.filter((f) => f.kind === kind);
 }
 
 /** A function as a suggestion offers it: "openSprints()", 'membersOf("")'. */
@@ -718,7 +733,7 @@ export function operatorsFor(field: string, kind = fieldInfo(field)?.kind): stri
 
 /** Functions that make sense as a value of a kind of field. */
 export function functionsFor(field: string, kind = fieldInfo(field)?.kind): string[] {
-  return FUNCTIONS.filter((f) => f.kind === kind).map(functionCall);
+  return functionsOfKind(kind).map(functionCall);
 }
 
 /* Reading as one types: roles and completion ---------------------------------- */
@@ -994,11 +1009,19 @@ function locateWord(toks: Token[], caret: number): { cur: Token | undefined; upt
   return { cur, upto };
 }
 
-/** Feeds the tokens before the caret; returns the role of the last one. */
-function replay(m: Machine, toks: Token[], upto: number): Role | undefined {
+/** The machine after the tokens before the caret, with the last of them and its role. */
+interface Replay {
+  m: Machine;
+  last: Token | undefined;
+  lastRole: Role | undefined;
+}
+
+/** Feeds the first upto tokens to a new machine. */
+function replay(toks: Token[], upto: number): Replay {
+  const m = start();
   let lastRole: Role | undefined;
   for (let i = 0; i < upto; i++) lastRole = step(m, toks[i] as Token, toks[i + 1]);
-  return lastRole;
+  return { m, last: upto > 0 ? toks[upto - 1] : undefined, lastRole };
 }
 
 /**
@@ -1008,10 +1031,8 @@ function replay(m: Machine, toks: Token[], upto: number): Role | undefined {
 function phraseAt(
   src: string,
   caret: number,
-  last: Token | undefined,
-  lastRole: Role | undefined,
-  m: Machine,
   cur: Token | undefined,
+  { m, last, lastRole }: Replay,
 ): Completion['phrase'] {
   if (
     last?.kind === 'word' &&
@@ -1025,8 +1046,17 @@ function phraseAt(
   return null;
 }
 
+/** The part of the word being typed before the caret, a string without its quote. */
+function prefixOf(src: string, caret: number, cur: Token | undefined): string {
+  if (!cur) return '';
+  if (cur.kind === 'string') {
+    return src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
+  }
+  return src.slice(cur.start, caret);
+}
+
 /** What may be typed in the state the machine ended in. */
-function kindOf(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
+function completionIn(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
   switch (m.state) {
     case 'field':
       return { ...base, kind: 'field', keywords: ['NOT', 'ORDER BY'] };
@@ -1065,17 +1095,13 @@ function kindOf(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Comple
 export function completionAt(src: string, caret: number): Completion {
   const toks = lex(src);
   const { cur, upto } = locateWord(toks, caret);
-  const m = start();
-  const lastRole = replay(m, toks, upto);
-  const last = upto > 0 ? toks[upto - 1] : undefined;
-  const phrase = phraseAt(src, caret, last, lastRole, m, cur);
-  const from = cur ? cur.start : caret;
-  const to = cur ? cur.end : caret;
-  let prefix = '';
-  if (cur?.kind === 'string') {
-    prefix = src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
-  } else if (cur) {
-    prefix = src.slice(cur.start, caret);
-  }
-  return kindOf(m, { field: m.field, prefix, from, to, inList: false, phrase });
+  const r = replay(toks, upto);
+  return completionIn(r.m, {
+    field: r.m.field,
+    prefix: prefixOf(src, caret, cur),
+    from: cur?.start ?? caret,
+    to: cur?.end ?? caret,
+    inList: false,
+    phrase: phraseAt(src, caret, cur, r),
+  });
 }

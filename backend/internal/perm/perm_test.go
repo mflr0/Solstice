@@ -475,17 +475,67 @@ func TestVisibleSQL(t *testing.T) {
 		}
 	})
 
-	t.Run("full and reporter grants combine", func(t *testing.T) {
+	// The exact SQL and arguments for one project: grants of every kind of
+	// holder, a level granted through a project role, and another alias.
+	for _, c := range []struct {
+		name   string
+		grants []Grant // Browse grants on project 7
+		level  []Grant // members of level 30 of project 7
+		alias  string
+		want   string
+		args   []any
+	}{
+		{"reporter and assignee", []Grant{{Holder: Reporter}, {Holder: Assignee}}, nil, "i",
+			"((i.project_id IN (?) AND i.reporter_id = ?) OR (i.project_id IN (?) AND i.assignee_id = ?)) AND " +
+				"(i.security_level_id IS NULL)",
+			[]any{int64(7), int64(42), int64(7), int64(42)}},
+		{"full access wins over reporter", []Grant{{Holder: Reporter}, {Holder: Everyone}}, nil, "i",
+			"(i.project_id IN (?)) AND (i.security_level_id IS NULL)", []any{int64(7)}},
+		{"level through a role of the project", []Grant{{Holder: Everyone}}, []Grant{{Holder: Role, RoleID: 5}}, "i",
+			"(i.project_id IN (?)) AND (i.security_level_id IS NULL OR i.security_level_id IN (?))",
+			[]any{int64(7), int64(30)}},
+		{"project by reporter, level by assignee", []Grant{{Holder: Reporter}}, []Grant{{Holder: Assignee}}, "i",
+			"((i.project_id IN (?) AND i.reporter_id = ?)) AND " +
+				"(i.security_level_id IS NULL OR (i.security_level_id IN (?) AND i.assignee_id = ?))",
+			[]any{int64(7), int64(42), int64(30), int64(42)}},
+		{"alias", []Grant{{Holder: Reporter}}, []Grant{{Holder: Everyone}}, "x",
+			"((x.project_id IN (?) AND x.reporter_id = ?)) AND (x.security_level_id IS NULL OR x.security_level_id IN (?))",
+			[]any{int64(7), int64(42), int64(30)}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := testRules()
+			for _, g := range c.grants {
+				r.grant(7, Browse, g)
+			}
+			if c.level != nil {
+				r.levels[30] = level{project: 7, members: c.level}
+			}
+			sub := subject(r, 42, false)
+			addRole(sub, 7, 5)
+			where, args := sub.VisibleSQL(c.alias)
+			if where != c.want || !reflect.DeepEqual(args, c.args) {
+				t.Errorf("VisibleSQL(%q)\n got %q %v\nwant %q %v", c.alias, where, args, c.want, c.args)
+			}
+		})
+	}
+
+	t.Run("several projects and levels, in id order", func(t *testing.T) {
 		r := testRules()
-		r.grant(7, Browse, Grant{Holder: Everyone})
-		r.grant(8, Browse, Grant{Holder: Reporter})
-		where, args := subject(r, 42, false).VisibleSQL("i")
-		if !strings.Contains(where, "i.project_id IN (?)") ||
-			!strings.Contains(where, "i.reporter_id = ?") {
-			t.Errorf("VisibleSQL = %q: missing a clause", where)
+		for _, p := range []int64{9, 7, 8} {
+			r.grant(p, Browse, Grant{Holder: Everyone})
 		}
-		if !reflect.DeepEqual(args, []any{int64(7), int64(8), int64(42)}) {
-			t.Errorf("VisibleSQL args = %v, want [7 8 42]", args)
+		r.grant(12, Browse, Grant{Holder: Reporter})
+		r.grant(11, Browse, Grant{Holder: Reporter})
+		r.levels[31] = level{project: 7, members: []Grant{{Holder: Everyone}}}
+		r.levels[30] = level{project: 8, members: []Grant{{Holder: Everyone}}}
+		want := "(i.project_id IN (?, ?, ?) OR (i.project_id IN (?, ?) AND i.reporter_id = ?)) AND " +
+			"(i.security_level_id IS NULL OR i.security_level_id IN (?, ?))"
+		wantArgs := []any{int64(7), int64(8), int64(9), int64(11), int64(12), int64(42), int64(30), int64(31)}
+		for range 20 { // map order differs from run to run
+			where, args := subject(r, 42, false).VisibleSQL("i")
+			if where != want || !reflect.DeepEqual(args, wantArgs) {
+				t.Fatalf("VisibleSQL\n got %q %v\nwant %q %v", where, args, want, wantArgs)
+			}
 		}
 	})
 }
@@ -612,6 +662,36 @@ func TestStoreCacheAndInvalidate(t *testing.T) {
 }
 
 // TestAccessors checks the small lookups on a subject.
+func TestAdministers(t *testing.T) {
+	r := testRules()
+	r.grant(7, Browse, Grant{Holder: Everyone})
+	r.grant(7, Admin, Grant{Holder: Role, RoleID: 5})
+	r.grant(9, Browse, Grant{Holder: Everyone})
+	r.grant(9, Admin, Grant{Holder: Role, RoleID: 5})
+	r.archived[9] = true
+	projectAdmin := subject(r, 42, false)
+	addRole(projectAdmin, 7, 5)
+	addRole(projectAdmin, 9, 5)
+	for _, c := range []struct {
+		name    string
+		sub     *Subject
+		project int64
+		want    bool
+	}{
+		{"global administrator", subject(r, 1, true), 8, true},
+		{"global administrator, archived project", subject(r, 1, true), 9, true},
+		{"holder of Admin", projectAdmin, 7, true},
+		{"holder of Admin, another project", projectAdmin, 8, false},
+		{"holder of Admin, archived project", projectAdmin, 9, false},
+		{"browser only", subject(r, 43, false), 7, false},
+		{"no user", subject(r, 0, false), 7, false},
+	} {
+		if got := c.sub.Administers(c.project); got != c.want {
+			t.Errorf("%s: Administers(%d) = %v, want %v", c.name, c.project, got, c.want)
+		}
+	}
+}
+
 func TestAccessors(t *testing.T) {
 	r := testRules()
 	r.archived[7] = true

@@ -3,10 +3,10 @@
  * RFC 3339 strings in UTC; calendar days (due dates) are "YYYY-MM-DD".
  */
 
-export type StatusCategory = 'todo' | 'doing' | 'done';
-
 /** The status categories, in the order of an issue's life. */
-export const STATUS_CATEGORIES: readonly StatusCategory[] = ['todo', 'doing', 'done'];
+export const STATUS_CATEGORIES = ['todo', 'doing', 'done'] as const;
+
+export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
 
 export interface Me {
   id: number;

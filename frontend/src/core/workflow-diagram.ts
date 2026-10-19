@@ -162,7 +162,9 @@ function portsOf(
   const sides = new Map<string, Port[]>();
   const meet = (id: string, side: 'top' | 'bottom', p: Port) => {
     const k = `${id}|${side}`;
-    sides.set(k, [...(sides.get(k) ?? []), p]);
+    const ports = sides.get(k);
+    if (ports) ports.push(p);
+    else sides.set(k, [p]);
   };
   for (const e of edges) {
     const to = order.indexOf(e.to);
@@ -175,14 +177,13 @@ function portsOf(
     meet(e.from, side, { edge: e, group: to > from ? 1 : 0, partner: to });
     meet(e.to, side, { edge: e, group: from > to ? 1 : 0, partner: from });
   }
+  for (const ports of sides.values())
+    ports.sort((a, b) => a.group - b.group || b.partner - a.partner);
   return (id, side, e) => {
     const box = boxes[id] as Box;
-    const ports = [...(sides.get(`${id}|${side}`) ?? [])].sort(
-      (a, b) => a.group - b.group || b.partner - a.partner,
-    );
+    const ports = sides.get(`${id}|${side}`) ?? [];
     const i = ports.findIndex((p) => p.edge === e);
-    const k = ports.length;
-    return box.x + box.w * (0.12 + (0.76 * (i + 0.5)) / k);
+    return box.x + box.w * (0.12 + (0.76 * (i + 0.5)) / ports.length);
   };
 }
 
@@ -237,15 +238,10 @@ function backwardArc(key: string, e: DiagramEdge, { from, to, x1, x2, h }: ArcEn
 }
 
 /** The line "any status" transitions drop from, or null when none of them do. */
-function busLine(
-  order: string[],
-  boxes: Record<string, Box>,
-  y: number,
-  end: number,
-): Layout['bus'] {
-  if (end === -Infinity) return null;
-  const xs = order.filter((id) => boxes[id]).map((id) => (boxes[id] as Box).x);
-  return { y, x1: Math.min(...xs), x2: Math.max(end, Math.min(...xs)) };
+function busLine(y: number, lefts: number[], drops: number[]): Layout['bus'] {
+  if (drops.length === 0) return null;
+  const x1 = Math.min(...lefts);
+  return { y, x1, x2: Math.max(x1, ...drops) };
 }
 
 /** The start marker before the initial status: a dot and a short arrow. */
@@ -276,8 +272,8 @@ export function layout(
   );
   const ports = portsOf(order, boxes, shown);
   const level = levels(order, shown);
-  const tops = order.filter((id) => boxes[id]).map((id) => (boxes[id] as Box).y);
-  const rowTop = tops.length ? Math.min(...tops) : 0;
+  const placed = order.flatMap((id) => boxes[id] ?? []);
+  const rowTop = placed.length ? Math.min(...placed.map((b) => b.y)) : 0;
   let up = 0;
   for (const e of shown) {
     if (span(order, e) > 0) up = Math.max(up, peak(arcHeight(level.get(e) ?? 1)));
@@ -285,18 +281,18 @@ export function layout(
   const busY = rowTop - up - BUS_GAP;
 
   const arcs: Arc[] = [];
-  let busEnd = -Infinity;
+  const drops: number[] = [];
   for (const e of shown) {
     const to = boxes[e.to] as Box;
     const key = `${e.from ?? '*'}>${e.to}`;
-    const s = span(order, e);
     if (e.from === null) {
       const x = ports(e.to, 'top', e);
-      busEnd = Math.max(busEnd, x);
+      drops.push(x);
       arcs.push(anyArc(key, e, x, busY, to));
       continue;
     }
-    const side = s > 0 ? 'top' : 'bottom';
+    const forward = span(order, e) > 0;
+    const side = forward ? 'top' : 'bottom';
     const ends: ArcEnds = {
       from: boxes[e.from] as Box,
       to,
@@ -304,10 +300,14 @@ export function layout(
       x2: ports(e.to, side, e),
       h: arcHeight(level.get(e) ?? 1),
     };
-    arcs.push(s > 0 ? forwardArc(key, e, ends) : backwardArc(key, e, ends));
+    arcs.push(forward ? forwardArc(key, e, ends) : backwardArc(key, e, ends));
   }
 
-  const bus = busLine(order, boxes, busY, busEnd);
+  const bus = busLine(
+    busY,
+    placed.map((b) => b.x),
+    drops,
+  );
 
   const first = initial ? boxes[initial] : undefined;
   const start = first ? startMarker(first) : null;

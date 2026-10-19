@@ -218,10 +218,9 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
-// varcharWidth is the length, in characters, that names and descriptions are
-// cut to and that a name or a summary is refused above: the width of the
-// VARCHAR(255) columns that hold them. The board event and the export's
-// audit details are cut to the same length.
+// varcharWidth is the width, in characters, of the VARCHAR(255) columns
+// that hold names, summaries and descriptions. The messages that state the
+// limit write 255 themselves.
 const varcharWidth = 255
 
 // How long a client gets to send its request body; uploads travel as slow

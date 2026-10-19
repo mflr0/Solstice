@@ -384,3 +384,49 @@ func TestLoadTrustedProxies(t *testing.T) {
 		t.Errorf("file: %v, want an error naming %s", err, key)
 	}
 }
+
+// The exact result of Load where the environment and the file meet.
+func TestLoadExact(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "solstice.conf")
+
+	// An empty variable falls through to the file, whose error names the file.
+	write(t, path, "SOLSTICE_TZ=Mars/Olympus\n")
+	_, err := Load(env(map[string]string{KeyConfig: path, KeyTZ: ""}))
+	if want := KeyTZ + ` in ` + path + `: unknown time zone "Mars/Olympus"`; err == nil || err.Error() != want {
+		t.Errorf("empty variable over a bad file value: %v, want %q", err, want)
+	}
+
+	// The environment wins over the file, even with a bad file value.
+	c, err := Load(env(map[string]string{KeyConfig: path, KeyTZ: "UTC"}))
+	if err != nil || c.TZ.String() != "UTC" {
+		t.Errorf("variable over the file: %v, %v", c, err)
+	}
+
+	// Unknown keys: every key of the file, the SOLSTICE_ variables only, each
+	// once, sorted.
+	write(t, path, "SOLSTICE_TYPO=1\nEMPTY=\nSOLSTICE_ALSO=2\n")
+	c, err = Load(env(map[string]string{KeyConfig: path, "SOLSTICE_TYPO": "1", "SOLSTICE_ZETA": "", "OTHER": "1",
+		"SOLSTICE_TEST_DB": "x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"EMPTY", "SOLSTICE_ALSO", "SOLSTICE_TYPO", "SOLSTICE_ZETA"}; !slices.Equal(c.Unknown, want) ||
+		c.Path != path || !c.Exists {
+		t.Errorf("unknown keys %q, path %q, exists %v; want %q, %q, true", c.Unknown, c.Path, c.Exists, want, path)
+	}
+
+	// A named file that does not exist yet.
+	absent := filepath.Join(dir, "absent.conf")
+	c, err = Load(env(map[string]string{KeyConfig: absent}))
+	if err != nil || c.Path != absent || c.Exists || c.Unknown != nil {
+		t.Errorf("absent file: %+v, %v", c, err)
+	}
+
+	// A malformed file.
+	write(t, path, "nonsense\n")
+	_, err = Load(env(map[string]string{KeyConfig: path}))
+	if want := path + ": line 1: expected KEY=value"; err == nil || err.Error() != want {
+		t.Errorf("malformed file: %v, want %q", err, want)
+	}
+}

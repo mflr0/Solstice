@@ -29,9 +29,8 @@ var catalogues = map[string]map[Key]string{"en": en, "fr": fr, "de": de, "it": i
 // Supported tells whether locale is one of Locales.
 func Supported(locale string) bool { return slices.Contains(Locales, locale) }
 
-// Pick returns the first supported language among candidates, in order, and
-// Default when none of them is supported: the language of an e-mail, from
-// the user's choice to the instance's default to English.
+// Pick returns the first supported language among candidates, in order, or
+// Default when none of them is supported.
 func Pick(candidates ...string) string {
 	for _, c := range candidates {
 		if Supported(c) {

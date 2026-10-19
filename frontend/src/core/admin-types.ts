@@ -4,7 +4,7 @@
  * Dates are RFC 3339 strings in UTC.
  */
 
-import type { IdName, UserRef } from './types.js';
+import type { IdName, StatusCategory, UserRef } from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
 
@@ -447,7 +447,7 @@ export interface StatusUsage {
 export interface StatusRow {
   id: string;
   name: string;
-  category: 'todo' | 'doing' | 'done';
+  category: StatusCategory;
   position: number;
   usage: { issues: number; workflows: number; boardColumns: number };
 }

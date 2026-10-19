@@ -98,11 +98,13 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	bodies := map[string][]byte{}
 	queued := false
 	now := s.Now().UTC()
+	names := namesOf(e.Kind)
 	for _, w := range s.hooks(ctx) {
-		for _, name := range namesOf(e.Kind) {
-			if !w.listens(name) || !s.matches(ctx, w, e) {
-				continue
-			}
+		heard := w.heard(names)
+		if len(heard) == 0 || !s.matches(ctx, w, e) {
+			continue
+		}
+		for _, name := range heard {
 			body, ok := bodies[name]
 			if !ok {
 				p, err := s.payload(ctx, e, name)

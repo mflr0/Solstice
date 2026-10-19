@@ -172,11 +172,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 }
 
 func (s *Server) listWorkflows(w http.ResponseWriter, r *http.Request) error {
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	projectID, err := s.browsableProject(r)
+	sub, projectID, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
@@ -199,7 +195,7 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"workflows": list, "issueTypes": types, "statuses": cat.Statuses,
-		"can": map[string]bool{"edit": s.administers(sub, projectID)},
+		"can": map[string]bool{"edit": sub.Administers(projectID)},
 	})
 }
 
@@ -216,7 +212,7 @@ func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projec
 	if err != nil {
 		return 0, 0, false, err
 	}
-	if !s.administers(sub, projectID) {
+	if !sub.Administers(projectID) {
 		return 0, 0, false, errForbidden
 	}
 	return id, projectID, isDefault, nil
@@ -358,12 +354,14 @@ func (s *Server) toDefault(ctx context.Context, cat *catalog, projectID int64, t
 	return lost, cond, conflict, nil
 }
 
-// workflowPlan is what an update of a workflow does, worked out before
-// anything is written.
-type workflowPlan struct {
-	name           string
-	keep           map[string]bool // the statuses the workflow keeps
-	becomesDefault bool
+// workflowUpdate is an update of a workflow, and what it does, worked out
+// before anything is written.
+type workflowUpdate struct {
+	id, projectID int64
+	isDefault     bool // whether the workflow is the project's default before the update
+	in            workflowInput
+	name          string          // trimmed
+	keep          map[string]bool // the statuses the workflow keeps
 	// The issues that follow the workflow once saved.
 	followCond string
 	followArgs []any
@@ -375,42 +373,47 @@ type workflowPlan struct {
 	lost, lostDefault []strandedStatus
 }
 
-// checkWorkflowInput checks the name, statuses, initial status and
-// transitions of an update, and returns the trimmed name and the statuses
-// the workflow keeps.
-func checkWorkflowInput(cat *catalog, in workflowInput) (string, map[string]bool, error) {
+// becomesDefault tells whether the workflow is the project's default once
+// saved.
+func (u *workflowUpdate) becomesDefault() bool { return u.isDefault || u.in.Default }
+
+// check checks the name, statuses, initial status and transitions of the
+// update, and records the trimmed name and the statuses the workflow keeps.
+func (u *workflowUpdate) check(cat *catalog) error {
+	in := u.in
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return "", nil, fail(http.StatusBadRequest, i18n.WorkflowNameRequired)
+		return fail(http.StatusBadRequest, i18n.WorkflowNameRequired)
 	}
 	if len(in.Statuses) == 0 {
-		return "", nil, fail(http.StatusBadRequest, i18n.WorkflowStatusRequired)
+		return fail(http.StatusBadRequest, i18n.WorkflowStatusRequired)
 	}
 	keep := map[string]bool{}
 	for _, st := range in.Statuses {
 		if _, ok := cat.status[st]; !ok {
-			return "", nil, failf(http.StatusBadRequest, i18n.StatusNameUnknown, st)
+			return failf(http.StatusBadRequest, i18n.StatusNameUnknown, st)
 		}
 		if keep[st] {
-			return "", nil, failf(http.StatusBadRequest, i18n.WorkflowStatusTwice, cat.statusOf(st).Name)
+			return failf(http.StatusBadRequest, i18n.WorkflowStatusTwice, cat.statusOf(st).Name)
 		}
 		keep[st] = true
 	}
 	if !keep[in.Initial] {
-		return "", nil, fail(http.StatusBadRequest, i18n.WorkflowInitialStatus)
+		return fail(http.StatusBadRequest, i18n.WorkflowInitialStatus)
 	}
 	for _, t := range in.Transitions {
 		if strings.TrimSpace(t.Name) == "" {
-			return "", nil, fail(http.StatusBadRequest, i18n.WorkflowTransitionNameRequired)
+			return fail(http.StatusBadRequest, i18n.WorkflowTransitionNameRequired)
 		}
 		if !keep[t.To] || (t.From != nil && !keep[*t.From]) {
-			return "", nil, failf(http.StatusBadRequest, i18n.WorkflowTransitionStatus, t.Name)
+			return failf(http.StatusBadRequest, i18n.WorkflowTransitionStatus, t.Name)
 		}
 		if t.From != nil && *t.From == t.To {
-			return "", nil, failf(http.StatusBadRequest, i18n.WorkflowTransitionNoTarget, t.Name)
+			return failf(http.StatusBadRequest, i18n.WorkflowTransitionNoTarget, t.Name)
 		}
 	}
-	return name, keep, nil
+	u.name, u.keep = name, keep
+	return nil
 }
 
 // typesOn returns the issue types explicitly given workflow id.
@@ -424,76 +427,70 @@ func typesOn(explicit map[string]int64, id int64) []string {
 	return out
 }
 
-// planIssueTypes checks the issue types of an update and records in p the
-// issues that follow the workflow once saved and the types that leave it
-// for the default.
-func (s *Server) planIssueTypes(ctx context.Context, cat *catalog, projectID, id int64, in workflowInput,
-	p *workflowPlan) error {
-	types, err := s.projectTypes(ctx, cat, projectID)
-	if err != nil {
-		return err
-	}
-	if !p.becomesDefault {
-		for _, typ := range in.IssueTypes {
-			if !slices.ContainsFunc(types, func(t typeRef) bool { return t.ID == typ }) {
-				return failf(http.StatusBadRequest, i18n.IssueTypeNotInProject, typ)
-			}
+// checkIssueTypes refuses an issue type the project does not use. Only a
+// workflow that is not the default has issue types of its own.
+func (u *workflowUpdate) checkIssueTypes(types []typeRef) error {
+	for _, typ := range u.in.IssueTypes {
+		if !slices.ContainsFunc(types, func(t typeRef) bool { return t.ID == typ }) {
+			return failf(http.StatusBadRequest, i18n.IssueTypeNotInProject, typ)
 		}
-	}
-	explicit, err := s.typeWorkflows(ctx, projectID)
-	if err != nil {
-		return err
-	}
-	for _, typ := range typesOn(explicit, id) {
-		delete(explicit, typ)
-		if !p.becomesDefault && !slices.Contains(in.IssueTypes, typ) {
-			p.leaving = append(p.leaving, typ)
-		}
-	}
-	if !p.becomesDefault {
-		for _, typ := range in.IssueTypes {
-			explicit[typ] = id
-		}
-	}
-	// For the default, the issues of any type not given another workflow:
-	// types the project does not list included, as issues moved in from
-	// other projects keep theirs.
-	p.followCond, p.followArgs = "FALSE", []any{}
-	if p.becomesDefault {
-		p.followCond = "TRUE"
-		var others []any
-		for typ, wf := range explicit {
-			if wf != id {
-				others = append(others, typ)
-			}
-		}
-		if len(others) > 0 {
-			p.followCond, p.followArgs = `issue_type_id NOT IN (`+sqlq.Marks(len(others))+`)`, others
-		}
-	} else if len(in.IssueTypes) > 0 {
-		for _, typ := range in.IssueTypes {
-			p.followArgs = append(p.followArgs, typ)
-		}
-		p.followCond = `issue_type_id IN (` + sqlq.Marks(len(p.followArgs)) + `)`
 	}
 	return nil
 }
 
-// strandedConflict records in p the issues left in a status the workflow
+// plan records which issues follow the workflow once saved and which issue
+// types leave it for the default, given the types explicitly mapped to a
+// workflow of the project. The default takes the issues of every type not
+// given another workflow, types the project does not list included, as
+// issues moved in from other projects keep theirs.
+func (u *workflowUpdate) plan(explicit map[string]int64) {
+	if u.becomesDefault() {
+		var others []string
+		for typ, wf := range explicit {
+			if wf != u.id {
+				others = append(others, typ)
+			}
+		}
+		u.followCond, u.followArgs = "TRUE", nil
+		if len(others) > 0 {
+			slices.Sort(others)
+			u.followCond = `issue_type_id NOT IN (` + sqlq.Marks(len(others)) + `)`
+			for _, typ := range others {
+				u.followArgs = append(u.followArgs, typ)
+			}
+		}
+		return
+	}
+	on := typesOn(explicit, u.id)
+	slices.Sort(on)
+	for _, typ := range on {
+		if !slices.Contains(u.in.IssueTypes, typ) {
+			u.leaving = append(u.leaving, typ)
+		}
+	}
+	u.followCond, u.followArgs = "FALSE", nil
+	if len(u.in.IssueTypes) > 0 {
+		u.followCond = `issue_type_id IN (` + sqlq.Marks(len(u.in.IssueTypes)) + `)`
+		for _, typ := range u.in.IssueTypes {
+			u.followArgs = append(u.followArgs, typ)
+		}
+	}
+}
+
+// strandedConflict records in u the issues left in a status the workflow
 // drops, or that the default workflow lacks for the types going back to it,
 // and refuses the update (409) while the remaps leave some of them out.
-func (s *Server) strandedConflict(ctx context.Context, cat *catalog, projectID int64, in workflowInput,
-	p *workflowPlan) error {
+func (s *Server) strandedConflict(ctx context.Context, cat *catalog, u *workflowUpdate) error {
 	var err error
-	if p.lost, err = s.stranded(ctx, cat, projectID, p.followCond, p.followArgs, p.keep); err != nil {
+	if u.lost, err = s.stranded(ctx, cat, u.projectID, u.followCond, u.followArgs, u.keep); err != nil {
 		return err
 	}
 	var conflict map[string]any
-	p.lostDefault, p.leavingCond, conflict, err = s.toDefault(ctx, cat, projectID, p.leaving, in.RemapDefault)
+	u.lostDefault, u.leavingCond, conflict, err = s.toDefault(ctx, cat, u.projectID, u.leaving, u.in.RemapDefault)
 	if err != nil {
 		return err
 	}
-	missing := unmapped(p.lost, in.Remap, p.keep)
+	missing := unmapped(u.lost, u.in.Remap, u.keep)
 	if len(missing) == 0 && conflict == nil {
 		return nil
 	}
@@ -507,35 +504,35 @@ func (s *Server) strandedConflict(ctx context.Context, cat *catalog, projectID i
 	return &httpError{status: http.StatusConflict, extra: conflict, msg: i18n.M(i18n.WorkflowStatusesRemoved)}
 }
 
-// saveWorkflow writes the workflow of an update: whether it is the default,
-// its name and initial status, its statuses, transitions and issue types.
-func saveWorkflow(ctx context.Context, tx *sql.Tx, id, projectID int64, isDefault bool, in workflowInput,
-	p *workflowPlan) error {
-	if in.Default && !isDefault {
-		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE project_id = ?`, projectID); err != nil {
+// save writes the workflow: whether it is the default, its name and initial
+// status, its statuses, transitions and issue types.
+func (u *workflowUpdate) save(ctx context.Context, tx *sql.Tx) error {
+	if u.in.Default && !u.isDefault {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE project_id = ?`,
+			u.projectID); err != nil {
 			return err
 		}
 	}
-	if p.becomesDefault {
+	if u.becomesDefault() {
 		// The default takes every type not explicitly mapped elsewhere.
-		if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, u.id); err != nil {
 			return err
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET name = ?, initial_status_id = ?, is_default = ? WHERE id = ?`,
-		sqlq.Truncate(p.name, varcharWidth), in.Initial, p.becomesDefault, id); err != nil {
+		sqlq.Truncate(u.name, varcharWidth), u.in.Initial, u.becomesDefault(), u.id); err != nil {
 		return err
 	}
-	if err := writeWorkflowStatuses(ctx, tx, id, in.Statuses); err != nil {
+	if err := writeWorkflowStatuses(ctx, tx, u.id, u.in.Statuses); err != nil {
 		return err
 	}
-	if err := writeWorkflowTransitions(ctx, tx, id, in.Transitions); err != nil {
+	if err := writeWorkflowTransitions(ctx, tx, u.id, u.in.Transitions); err != nil {
 		return err
 	}
-	if p.becomesDefault {
+	if u.becomesDefault() {
 		return nil
 	}
-	return writeWorkflowIssueTypes(ctx, tx, id, projectID, in.IssueTypes)
+	return writeWorkflowIssueTypes(ctx, tx, u.id, u.projectID, u.in.IssueTypes)
 }
 
 // writeWorkflowStatuses replaces the statuses of workflow id, in order.
@@ -622,26 +619,35 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	id, projectID, isDefault, err := s.workflowForEdit(r, sub)
-	if err != nil {
+	u := &workflowUpdate{}
+	if u.id, u.projectID, u.isDefault, err = s.workflowForEdit(r, sub); err != nil {
 		return err
 	}
-	var in workflowInput
-	if err := readJSON(r, &in); err != nil {
+	if err := readJSON(r, &u.in); err != nil {
 		return err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
 		return err
 	}
-	p := &workflowPlan{becomesDefault: isDefault || in.Default}
-	if p.name, p.keep, err = checkWorkflowInput(cat, in); err != nil {
+	if err := u.check(cat); err != nil {
 		return err
 	}
-	if err := s.planIssueTypes(ctx, cat, projectID, id, in, p); err != nil {
+	if !u.becomesDefault() {
+		types, err := s.projectTypes(ctx, cat, u.projectID)
+		if err != nil {
+			return err
+		}
+		if err := u.checkIssueTypes(types); err != nil {
+			return err
+		}
+	}
+	explicit, err := s.typeWorkflows(ctx, u.projectID)
+	if err != nil {
 		return err
 	}
-	if err := s.strandedConflict(ctx, cat, projectID, in, p); err != nil {
+	u.plan(explicit)
+	if err := s.strandedConflict(ctx, cat, u); err != nil {
 		return err
 	}
 
@@ -651,24 +657,25 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	if err := saveWorkflow(ctx, tx, id, projectID, isDefault, in, p); err != nil {
+	if err := u.save(ctx, tx); err != nil {
 		return err
 	}
 	// Move the stranded issues, each with its history entry.
-	if err := moveStranded(ctx, tx, cat, projectID, sub.UserID, p.followCond, p.followArgs, p.lost, in.Remap,
+	if err := moveStranded(ctx, tx, cat, u.projectID, sub.UserID, u.followCond, u.followArgs, u.lost, u.in.Remap,
 		now); err != nil {
 		return err
 	}
-	if err := moveStranded(ctx, tx, cat, projectID, sub.UserID, p.leavingCond, p.leaving, p.lostDefault,
-		in.RemapDefault, now); err != nil {
+	if err := moveStranded(ctx, tx, cat, u.projectID, sub.UserID, u.leavingCond, u.leaving, u.lostDefault,
+		u.in.RemapDefault, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditWorkflow(r, audit.WorkflowUpdate, id, projectID, p.name, map[string]any{"statuses": in.Statuses,
+	in := u.in
+	s.auditWorkflow(r, audit.WorkflowUpdate, u.id, u.projectID, u.name, map[string]any{"statuses": in.Statuses,
 		"transitions": len(in.Transitions), "issueTypes": in.IssueTypes, "default": in.Default, "remap": in.Remap})
-	return s.writeWorkflows(w, r, sub, projectID)
+	return s.writeWorkflows(w, r, sub, u.projectID)
 }
 
 // createWorkflow adds a workflow to a project, a copy of another of its
@@ -676,15 +683,11 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 // becomes its default.
 func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	sub, err := s.subject(r)
+	sub, projectID, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
-	projectID, err := s.browsableProject(r)
-	if err != nil {
-		return err
-	}
-	if !s.administers(sub, projectID) {
+	if !sub.Administers(projectID) {
 		return errForbidden
 	}
 	var in struct {
