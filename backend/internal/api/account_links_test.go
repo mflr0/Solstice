@@ -30,7 +30,8 @@ func TestAdminLinkRefusal(t *testing.T) {
 			http.StatusConflict, i18n.AccountAlreadySignedIn},
 		{"no address", resetLink, linkTarget{Active: true}, http.StatusBadRequest, i18n.AccountEmailMissing},
 		{"not an address", inviteLink, linkTarget{Active: true, Email: "Ana"}, http.StatusBadRequest, i18n.AccountEmailMissing},
-		{"address with spaces", resetLink, linkTarget{Active: true, Email: " ana@example.org "}, 0, ""},
+		{"address with spaces", resetLink, linkTarget{Active: true, Email: " ana@example.org "},
+			http.StatusBadRequest, i18n.AccountEmailMissing}, // scanLinkTarget trims it first
 	} {
 		err := c.link.refusal(&c.to)
 		var he *httpError

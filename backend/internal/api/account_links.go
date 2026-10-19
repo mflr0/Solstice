@@ -120,9 +120,12 @@ type linkTarget struct {
 // linkTargetColumns are the columns of users that scanLinkTarget reads.
 const linkTargetColumns = `id, username, display_name, email, active, last_login_at, COALESCE(locale, '')`
 
+// scanLinkTarget reads a linkTarget, its address trimmed: an import keeps
+// the spaces a Jira address may have, and the link goes to the address.
 func scanLinkTarget(sc interface{ Scan(...any) error }) (linkTarget, error) {
 	var t linkTarget
 	err := sc.Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.Active, &t.LastLogin, &t.UserLocale)
+	t.Email = strings.TrimSpace(t.Email)
 	return t, err
 }
 
@@ -440,7 +443,7 @@ func (l adminLink) refusal(t *linkTarget) error {
 		return fail(http.StatusConflict, i18n.AccountInactive)
 	case l.neverSignedIn && t.LastLogin.Valid:
 		return fail(http.StatusConflict, i18n.AccountAlreadySignedIn)
-	case !mail.ValidAddress(strings.TrimSpace(t.Email)):
+	case !mail.ValidAddress(t.Email):
 		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
 	}
 	return nil
