@@ -519,17 +519,23 @@ func TestVisibleSQL(t *testing.T) {
 		})
 	}
 
-	t.Run("full and reporter grants combine", func(t *testing.T) {
+	t.Run("several projects and levels, in id order", func(t *testing.T) {
 		r := testRules()
-		r.grant(7, Browse, Grant{Holder: Everyone})
-		r.grant(8, Browse, Grant{Holder: Reporter})
-		where, args := subject(r, 42, false).VisibleSQL("i")
-		if !strings.Contains(where, "i.project_id IN (?)") ||
-			!strings.Contains(where, "i.reporter_id = ?") {
-			t.Errorf("VisibleSQL = %q: missing a clause", where)
+		for _, p := range []int64{9, 7, 8} {
+			r.grant(p, Browse, Grant{Holder: Everyone})
 		}
-		if !reflect.DeepEqual(args, []any{int64(7), int64(8), int64(42)}) {
-			t.Errorf("VisibleSQL args = %v, want [7 8 42]", args)
+		r.grant(12, Browse, Grant{Holder: Reporter})
+		r.grant(11, Browse, Grant{Holder: Reporter})
+		r.levels[31] = level{project: 7, members: []Grant{{Holder: Everyone}}}
+		r.levels[30] = level{project: 8, members: []Grant{{Holder: Everyone}}}
+		want := "(i.project_id IN (?, ?, ?) OR (i.project_id IN (?, ?) AND i.reporter_id = ?)) AND " +
+			"(i.security_level_id IS NULL OR i.security_level_id IN (?, ?))"
+		wantArgs := []any{int64(7), int64(8), int64(9), int64(11), int64(12), int64(42), int64(30), int64(31)}
+		for range 20 { // map order differs from run to run
+			where, args := subject(r, 42, false).VisibleSQL("i")
+			if where != want || !reflect.DeepEqual(args, wantArgs) {
+				t.Fatalf("VisibleSQL\n got %q %v\nwant %q %v", where, args, want, wantArgs)
+			}
 		}
 	})
 }

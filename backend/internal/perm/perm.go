@@ -12,6 +12,7 @@ package perm
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -340,81 +341,72 @@ func (s *Subject) SeesRestricted(project int64, group string, role int64) bool {
 }
 
 // VisibleSQL returns a SQL condition on the issues table (under alias) that
-// keeps only the issues the subject may see, with its bind arguments.
+// keeps only the issues the subject may see, with its bind arguments, or
+// "FALSE" and no arguments when it sees no project. Ids come in ascending
+// order, so a subject gets the same SQL every time.
 func (s *Subject) VisibleSQL(alias string) (string, []any) {
-	var projects buckets
+	var projects visible
 	for project, perms := range s.rules.grants {
-		s.classify(&projects, project, perms[Browse], project)
+		projects.add(project, perms[Browse], func(g Grant) bool { return s.holds(g, project, nil) })
 	}
-	cond, args := s.scoped(alias, "project_id", projects)
+	cond, args := projects.where(alias, "project_id", s.UserID)
 	if len(cond) == 0 {
 		return "FALSE", nil
 	}
-	where := "(" + strings.Join(cond, " OR ") + ")"
-
-	var levels buckets
+	var levels visible
 	for id, lv := range s.rules.levels {
-		s.classify(&levels, id, lv.members, lv.project)
+		levels.add(id, lv.members, func(g Grant) bool { return s.holds(g, lv.project, nil) })
 	}
-	levelCond, levelArgs := s.scoped(alias, "security_level_id", levels)
+	levelCond, levelArgs := levels.where(alias, "security_level_id", s.UserID)
 	sec := append([]string{alias + ".security_level_id IS NULL"}, levelCond...)
-	return where + " AND (" + strings.Join(sec, " OR ") + ")", append(args, levelArgs...)
+	return "(" + strings.Join(cond, " OR ") + ") AND (" + strings.Join(sec, " OR ") + ")", append(args, levelArgs...)
 }
 
-// buckets sorts project or security level ids by what a subject sees of
+// visible groups project or security level ids by what a subject sees of
 // their issues: all of them, or only those it reports or is assigned.
-type buckets struct {
-	all, byReporter, byAssignee []any
+type visible struct {
+	all, byReporter, byAssignee []int64
 }
 
-// classify puts id in b by the grants gs of project: in all when the
-// subject holds one of them outright, else in byReporter and byAssignee
-// when one goes to the issue's reporter or assignee, which only a row's
-// reporter_id or assignee_id can tell.
-func (s *Subject) classify(b *buckets, id int64, gs []Grant, project int64) {
-	all, rep, asg := false, false, false
-	for _, g := range gs {
-		switch g.Holder {
-		case Reporter:
-			rep = true
-		case Assignee:
-			asg = true
-		default:
-			all = all || s.holds(g, project, nil)
-		}
+// add puts id in v by its grants gs: in all when the subject holds one of
+// them outright, else in byReporter or byAssignee when one goes to the
+// issue's reporter or assignee, which only a row can tell.
+func (v *visible) add(id int64, gs []Grant, holds func(Grant) bool) {
+	if slices.ContainsFunc(gs, holds) {
+		v.all = append(v.all, id)
+		return
 	}
-	switch {
-	case all:
-		b.all = append(b.all, id)
-	default:
-		if rep {
-			b.byReporter = append(b.byReporter, id)
-		}
-		if asg {
-			b.byAssignee = append(b.byAssignee, id)
-		}
+	if slices.ContainsFunc(gs, func(g Grant) bool { return g.Holder == Reporter }) {
+		v.byReporter = append(v.byReporter, id)
+	}
+	if slices.ContainsFunc(gs, func(g Grant) bool { return g.Holder == Assignee }) {
+		v.byAssignee = append(v.byAssignee, id)
 	}
 }
 
-// scoped returns the conditions, to be joined with OR, that keep the rows
-// of alias whose idCol is in b: any row for b.all, the subject's reported
-// or assigned rows for the others. The arguments come in the same order.
-func (s *Subject) scoped(alias, idCol string, b buckets) ([]string, []any) {
-	col := func(c string) string { return alias + "." + c }
+// where returns the conditions, to be joined with OR, that keep the rows of
+// alias whose col is in v (the reported or assigned ones of user for
+// byReporter and byAssignee), and their arguments.
+func (v visible) where(alias, col string, user int64) ([]string, []any) {
 	var cond []string
 	var args []any
-	if len(b.all) > 0 {
-		cond = append(cond, col(idCol)+" IN ("+sqlq.Marks(len(b.all))+")")
-		args = append(args, b.all...)
+	in := func(ids []int64, owner string) {
+		if len(ids) == 0 {
+			return
+		}
+		c := alias + "." + col + " IN (" + sqlq.Marks(len(ids)) + ")"
+		for _, id := range slices.Sorted(slices.Values(ids)) {
+			args = append(args, id)
+		}
+		if owner != "" {
+			c = "(" + c + " AND " + alias + "." + owner + " = ?)"
+			args = append(args, user)
+		}
+		cond = append(cond, c)
 	}
-	if len(b.byReporter) > 0 {
-		cond = append(cond, "("+col(idCol)+" IN ("+sqlq.Marks(len(b.byReporter))+") AND "+col("reporter_id")+" = ?)")
-		args = append(append(args, b.byReporter...), s.UserID)
-	}
-	if len(b.byAssignee) > 0 {
-		cond = append(cond, "("+col(idCol)+" IN ("+sqlq.Marks(len(b.byAssignee))+") AND "+col("assignee_id")+" = ?)")
-		args = append(append(args, b.byAssignee...), s.UserID)
-	}
+	in(v.all, "")
+	in(v.byReporter, "reporter_id")
+	in(v.byAssignee, "assignee_id")
 	return cond, args
 }
 
