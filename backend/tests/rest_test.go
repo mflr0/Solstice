@@ -520,8 +520,31 @@ func TestRESTIssueRoundTrip(t *testing.T) {
 		t.Fatalf("comment: %d %v", status, c)
 	}
 	cid := str(c, "id")
-	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.2."}); status != 200 ||
-		str(c, "body") != "Corrigé en 2.4.2." {
+	if status, c := do("GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil); status != 200 || str(c, "id") != cid ||
+		str(c, "body") != "Corrigé en 2.4.1." {
+		t.Errorf("get comment: %d %v", status, c)
+	}
+	elsewhere := newTestIssue(t, paul, "Autre ticket", nil)
+	if status, _ := do("GET", "/rest/api/2/issue/"+elsewhere+"/comment/"+cid, nil); status != 404 {
+		t.Errorf("comment through another issue: %d", status)
+	}
+	if status, _ := do("GET", "/rest/api/2/issue/"+key+"/comment/premier", nil); status != 404 {
+		t.Errorf("comment with a non-numeric id: %d", status)
+	}
+	if status, e := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Ouvert à tous.",
+		"visibility": map[string]string{"type": "group", "value": "testeurs"}}); status != 400 || str(e, "errors", "visibility") == "" {
+		t.Errorf("edit of a comment's visibility: %d %v", status, e)
+	}
+	if _, c := do("GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil); str(c, "body") != "Corrigé en 2.4.1." {
+		t.Errorf("a refused edit changed the comment: %v", c)
+	}
+	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.2.",
+		"visibility": map[string]string{"type": "group", "value": "Developpeurs"}}); status != 200 ||
+		str(c, "body") != "Corrigé en 2.4.2." || str(c, "visibility", "value") != "developpeurs" {
+		t.Errorf("edit with the same visibility: %d %v", status, c)
+	}
+	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.3."}); status != 200 ||
+		str(c, "body") != "Corrigé en 2.4.3." {
 		t.Errorf("edit comment: %d %v", status, c)
 	}
 	if status, _, _ := call(t, login(t, "chloe.simon", "motdepasse"), testURL, "GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil, nil); status != 404 {

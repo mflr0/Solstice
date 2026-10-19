@@ -137,6 +137,12 @@ func TestWorklogEditAndDelete(t *testing.T) {
 	if status, _ := rest(paul, "DELETE", "/rest/api/2/issue/"+other+"/worklog/"+id, nil); status != 404 {
 		t.Errorf("work log through another issue: %d", status)
 	}
+	if status, _ := rest(paul, "GET", "/rest/api/2/issue/"+other+"/worklog/"+id, nil); status != 404 {
+		t.Errorf("reading a work log through another issue: %d", status)
+	}
+	if status, _ := rest(paul, "GET", "/rest/api/2/issue/"+key+"/worklog/premier", nil); status != 404 {
+		t.Errorf("work log with a non-numeric id: %d", status)
+	}
 	if status, _ := rest(paul, "DELETE", rpath, nil); status != 204 {
 		t.Errorf("REST delete: %d", status)
 	}
