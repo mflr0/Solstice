@@ -363,9 +363,7 @@ func (s *Server) issueDetail(ctx context.Context, sub *perm.Subject, iss *issueR
 		Attachments: []attachmentOut{}, CustomFields: []customValue{}, SecurityLevels: []idName{},
 		Can: map[string]bool{},
 	}
-	if iss.Resolved.Valid {
-		d.Resolved = &iss.Resolved.Time
-	}
+	d.Resolved = sqlq.Time(iss.Resolved)
 	for _, p := range perm.All {
 		d.Can[p] = sub.Can(p, iss.ProjectID, &pi)
 	}
@@ -934,7 +932,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	summary = strings.TrimSpace(summary)
-	if summary == "" || utf8.RuneCountInString(summary) > 255 {
+	if summary == "" || utf8.RuneCountInString(summary) > varcharWidth {
 		return fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 	}
 	var projectID, leadID int64
@@ -1028,8 +1026,8 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		if err := f.get("description", &v); err != nil {
 			return err
 		}
-		if v != nil && strings.TrimSpace(*v) != "" {
-			description = *v
+		if v != nil {
+			description = sqlq.NullIfBlank(*v)
 		}
 	}
 	if f.has("environment") {
@@ -1037,8 +1035,8 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		if err := f.get("environment", &v); err != nil {
 			return err
 		}
-		if v != nil && strings.TrimSpace(*v) != "" {
-			environment = *v
+		if v != nil {
+			environment = sqlq.NullIfBlank(*v)
 		}
 	}
 	if f.has("priority") && !f.isNull("priority") {
@@ -1274,7 +1272,7 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		clean := map[string]bool{}
 		for _, l := range labels {
 			l = strings.Join(strings.Fields(l), "_")
-			if l != "" && utf8.RuneCountInString(l) <= 255 {
+			if l != "" && utf8.RuneCountInString(l) <= varcharWidth {
 				clean[l] = true
 			}
 		}
@@ -1446,11 +1444,12 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			return err
 		}
 		var newVal any
-		if v != nil && strings.TrimSpace(*v) != "" {
-			newVal = *v
+		if v != nil {
+			value := *v
 			if key == "summary" {
-				newVal = strings.TrimSpace(*v)
+				value = strings.TrimSpace(value)
 			}
+			newVal = sqlq.NullIfBlank(value)
 		}
 		if required && newVal == nil {
 			return fail(http.StatusBadRequest, i18n.IssueSummaryEmpty)
@@ -1473,7 +1472,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 		return nil
 	}
-	if err := text("summary", "summary", true, 255); err != nil {
+	if err := text("summary", "summary", true, varcharWidth); err != nil {
 		return err
 	}
 	if err := text("description", "description", false, 0); err != nil {

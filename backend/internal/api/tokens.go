@@ -126,13 +126,11 @@ func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]t
 			&owner.Active); err != nil {
 			return err
 		}
-		if expires.Valid {
-			t.Expires = &expires.Time
-			t.Expired = !expires.Time.After(now)
+		if e := sqlq.Time(expires); e != nil {
+			t.Expires = e
+			t.Expired = !e.After(now)
 		}
-		if used.Valid {
-			t.LastUsed = &used.Time
-		}
+		t.LastUsed = sqlq.Time(used)
 		if userID == 0 {
 			t.User = &owner
 		}

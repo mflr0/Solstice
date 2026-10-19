@@ -396,15 +396,7 @@ func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([
 			return err
 		}
 		sp.Goal = sqlq.String(goal)
-		if start.Valid {
-			sp.Start = &start.Time
-		}
-		if end.Valid {
-			sp.End = &end.Time
-		}
-		if done.Valid {
-			sp.Completed = &done.Time
-		}
+		sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
 		out = append(out, sp)
 		return nil
 	}, board)
@@ -1143,10 +1135,7 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = b.Name + " Sprint " + strconv.FormatInt(count+1, 10)
 	}
-	var goal any
-	if strings.TrimSpace(in.Goal) != "" {
-		goal = in.Goal
-	}
+	goal := sqlq.NullIfBlank(in.Goal)
 	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, 'future', ?)`,
 		b.ID, sqlq.Truncate(name, varcharWidth), goal, position+1)
 	if err != nil {
@@ -1197,11 +1186,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), varcharWidth))
 	}
 	if in.Goal != nil {
-		var g any
-		if strings.TrimSpace(*in.Goal) != "" {
-			g = *in.Goal
-		}
-		sets, args = append(sets, "goal = ?"), append(args, g)
+		sets, args = append(sets, "goal = ?"), append(args, sqlq.NullIfBlank(*in.Goal))
 	}
 	if _, err := s.db.ExecContext(ctx, `UPDATE sprints SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
 		append(args, sp.ID)...); err != nil {

@@ -23,6 +23,7 @@ import (
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/secret"
+	"solstice/internal/sqlq"
 )
 
 // Event names, as Jira calls them.
@@ -230,17 +231,11 @@ func (s *Service) Save(ctx context.Context, w *Webhook, secretText *string, by i
 		}
 		sealed = v
 	}
-	var jql any
-	if strings.TrimSpace(w.JQL) != "" {
-		jql = strings.TrimSpace(w.JQL)
-	}
+	jql := sqlq.NullIfBlank(strings.TrimSpace(w.JQL))
 	now := s.Now().UTC()
 	evs := strings.Join(w.Events, ",")
 	if w.ID == 0 {
-		var creator any
-		if by != 0 {
-			creator = by
-		}
+		creator := sqlq.NullIf(by)
 		res, err := s.db.ExecContext(ctx, `INSERT INTO webhooks (name, url, events, jql, secret, enabled, exclude_body,
 			created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			w.Name, w.URL, evs, jql, sealed, w.Enabled, w.ExcludeBody, creator, now, now)
@@ -347,12 +342,8 @@ func (s *Service) Deliveries(ctx context.Context, webhookID int64, limit int) ([
 			v := int(dur.Int64)
 			d.DurationMs = &v
 		}
-		if errText.Valid {
-			d.Error = &errText.String
-		}
-		if attempted.Valid {
-			d.Attempted = &attempted.Time
-		}
+		d.Error = sqlq.String(errText)
+		d.Attempted = sqlq.Time(attempted)
 		if d.Status == "pending" {
 			d.NextAttempt = &next
 		}

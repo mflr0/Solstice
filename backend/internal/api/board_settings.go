@@ -88,24 +88,20 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(n, varcharWidth))
 	}
 	if in.SubQuery != nil {
-		var v any
-		if q := strings.TrimSpace(*in.SubQuery); q != "" {
+		q := strings.TrimSpace(*in.SubQuery)
+		if q != "" {
 			if err := checkQuery(i18n.M(i18n.BoardSubFilter), q); err != nil {
 				return err
 			}
-			v = q
 		}
-		sets, args = append(sets, "sub_query = ?"), append(args, v)
+		sets, args = append(sets, "sub_query = ?"), append(args, sqlq.NullIfBlank(q))
 	}
 	if in.DoneCutoff != nil {
-		var v any
-		if c := strings.TrimSpace(*in.DoneCutoff); c != "" {
-			if !cutoffPattern.MatchString(c) {
-				return fail(http.StatusBadRequest, i18n.BoardPeriodInvalid)
-			}
-			v = c
+		c := strings.TrimSpace(*in.DoneCutoff)
+		if c != "" && !cutoffPattern.MatchString(c) {
+			return fail(http.StatusBadRequest, i18n.BoardPeriodInvalid)
 		}
-		sets, args = append(sets, "done_cutoff = ?"), append(args, v)
+		sets, args = append(sets, "done_cutoff = ?"), append(args, sqlq.NullIfBlank(c))
 	}
 	if in.Swimlanes != nil {
 		if !laneStrategies[*in.Swimlanes] {
@@ -114,14 +110,11 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "swimlanes = ?"), append(args, *in.Swimlanes)
 	}
 	if in.Estimate != nil {
-		var v any
-		if e := *in.Estimate; e != "" {
-			if e != "timeoriginalestimate" && !customFieldRef.MatchString(e) {
-				return fail(http.StatusBadRequest, i18n.BoardEstimationUnknown)
-			}
-			v = e
+		e := *in.Estimate
+		if e != "" && e != "timeoriginalestimate" && !customFieldRef.MatchString(e) {
+			return fail(http.StatusBadRequest, i18n.BoardEstimationUnknown)
 		}
-		sets, args = append(sets, "estimate = ?"), append(args, v)
+		sets, args = append(sets, "estimate = ?"), append(args, sqlq.NullIf(e))
 	}
 	if in.Columns != nil {
 		if len(*in.Columns) == 0 {
@@ -274,8 +267,8 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		}
 		for pos, l := range *in.Lanes {
 			var q any
-			if l.Query != nil && strings.TrimSpace(*l.Query) != "" {
-				q = *l.Query
+			if l.Query != nil {
+				q = sqlq.NullIfBlank(*l.Query)
 			}
 			if l.ID != 0 {
 				_, err = tx.ExecContext(ctx, `UPDATE board_swimlanes SET name = ?, query = ?, position = ?, is_default = ?

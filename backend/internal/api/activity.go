@@ -547,10 +547,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	if in.Started != nil {
 		started = in.Started.UTC()
 	}
-	var body any
-	if strings.TrimSpace(in.Body) != "" {
-		body = in.Body
-	}
+	body := sqlq.NullIfBlank(in.Body)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

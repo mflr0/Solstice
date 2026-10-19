@@ -78,9 +78,7 @@ func scanSubscription(sc interface{ Scan(...any) error }) (*Subscription, error)
 			sub.Days = append(sub.Days, n)
 		}
 	}
-	if last.Valid {
-		sub.LastRun = &last.Time
-	}
+	sub.LastRun = sqlq.Time(last)
 	return &sub, nil
 }
 

@@ -63,9 +63,7 @@ func scanAdminUser(sc interface{ Scan(...any) error }) (adminUser, error) {
 	var u adminUser
 	var last sql.NullTime
 	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Created, &last)
-	if last.Valid {
-		u.LastLogin = &last.Time
-	}
+	u.LastLogin = sqlq.Time(last)
 	u.Groups = []idName{}
 	return u, err
 }

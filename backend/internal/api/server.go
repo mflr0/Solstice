@@ -219,8 +219,9 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 const csrfHeader = "X-Solstice"
 
 // varcharWidth is the length, in characters, that names and descriptions are
-// cut to: the width of the VARCHAR(255) columns that hold them. The board
-// event and the export's audit details are cut to the same length.
+// cut to and that a name or a summary is refused above: the width of the
+// VARCHAR(255) columns that hold them. The board event and the export's
+// audit details are cut to the same length.
 const varcharWidth = 255
 
 // How long a client gets to send its request body; uploads travel as slow

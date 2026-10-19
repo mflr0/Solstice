@@ -165,7 +165,7 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 	put("status", func() any { return o.status(cat.statusOf(row.StatusID)) })
 	put("priority", func() any { return o.priority(cat.priorityOf(row.PriorityID)) })
 	put("resolution", func() any { return o.resolution(cat.resolutionOf(row.ResolutionID)) })
-	put("resolutiondate", func() any { return o.timePtr(nullTime(row.Resolved)) })
+	put("resolutiondate", func() any { return o.timePtr(sqlq.Time(row.Resolved)) })
 	put("assignee", func() any { return userOf(users, row.AssigneeID.Int64) })
 	put("reporter", func() any { return userOf(users, row.ReporterID.Int64) })
 	put("creator", func() any { return userOf(users, row.CreatorID.Int64) })
