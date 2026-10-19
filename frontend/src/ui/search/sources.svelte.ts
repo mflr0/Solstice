@@ -13,7 +13,14 @@ import {
   type ListField,
   type PeopleRole,
 } from '../../core/filters.js';
-import { customKind, fieldInfo, functionCall, FUNCTIONS, type FieldKind } from '../../core/jql.js';
+import {
+  customKind,
+  fieldInfo,
+  functionCall,
+  functionsOfKind,
+  type FieldKind,
+  type FunctionName,
+} from '../../core/jql.js';
 import {
   STATUS_CATEGORIES,
   type CustomFieldRef,
@@ -253,7 +260,7 @@ export function specialValues(field: ListField, role: PeopleRole = 'participant'
   }
 }
 
-const FUNCTION_LABELS: Record<string, () => string> = {
+const FUNCTION_LABELS: Partial<Record<string, () => string>> = {
   currentuser: () => t.search.special.me,
   opensprints: () => t.search.special.openSprints,
   futuresprints: () => t.search.special.futureSprints,
@@ -264,14 +271,16 @@ const FUNCTION_LABELS: Record<string, () => string> = {
   latestreleasedversion: () => t.search.special.latestReleased,
   standardissuetypes: () => t.search.special.standardTypes,
   subtaskissuetypes: () => t.search.special.subtaskTypes,
-};
+} satisfies Partial<Record<Lowercase<FunctionName>, () => string>>;
 
 /** The list functions of a kind of field, as options: "openSprints()" with its label. */
 function listFunctions(kind: FieldKind): Option[] {
-  return FUNCTIONS.filter((f) => f.kind === kind && f.list).map((f) => {
-    const value = functionCall(f);
-    return { value, label: FUNCTION_LABELS[f.name.toLowerCase()]?.() ?? value };
-  });
+  return functionsOfKind(kind)
+    .filter((f) => f.list)
+    .map((f) => {
+      const value = functionCall(f);
+      return { value, label: FUNCTION_LABELS[f.name.toLowerCase()]?.() ?? value };
+    });
 }
 
 /** How a chosen value reads on its button: a name rather than an id or username. */

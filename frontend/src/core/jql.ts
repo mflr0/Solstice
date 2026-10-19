@@ -144,6 +144,11 @@ export interface Query {
   order: SortTerm[];
 }
 
+/**
+ * The token past the end of the input. Its kind, 'error', matches none of the
+ * parser's tests, since parse has already refused every real error token: a
+ * test of the next token's kind also covers the end of the input.
+ */
 const EOF: Token = { kind: 'error', raw: '', text: '', start: 0, end: 0, closed: true };
 
 class Parser {
@@ -173,9 +178,7 @@ class Parser {
 
   keyword(...words: string[]): boolean {
     const t = this.peek();
-    if (t.kind !== 'word') return false;
-    const w = t.text.toLowerCase();
-    return words.includes(w);
+    return t.kind === 'word' && words.includes(t.text.toLowerCase());
   }
 
   fail<C extends JqlCode>(code: C, ...args: JqlArgs[C]): never {
@@ -426,44 +429,56 @@ export interface FunctionInfo {
   /** The kind of field it is a value of. */
   kind: FieldKind;
   /** Stands for a whole list: "sprint in openSprints()", not "sprint = openSprints()". */
-  list: boolean;
+  list?: true;
   /** What a suggestion puts between the parentheses, for the caret to fill in. */
   args?: string;
 }
 
 /**
- * The functions the server knows, with their usual spelling: the one table
- * every other list of them comes from (the suggestions, what the filters
- * accept, the special values).
+ * The functions the server knows: the one table every other list of them
+ * comes from (the suggestions, what the filters accept, the special values).
  */
-export const FUNCTIONS: readonly FunctionInfo[] = [
-  { name: 'currentUser', kind: 'user', list: false },
+export const FUNCTIONS = [
+  { name: 'currentUser', kind: 'user' },
   { name: 'membersOf', kind: 'user', list: true, args: '""' },
-  { name: 'now', kind: 'date', list: false },
-  { name: 'startOfDay', kind: 'date', list: false },
-  { name: 'endOfDay', kind: 'date', list: false },
-  { name: 'startOfWeek', kind: 'date', list: false },
-  { name: 'endOfWeek', kind: 'date', list: false },
-  { name: 'startOfMonth', kind: 'date', list: false },
-  { name: 'endOfMonth', kind: 'date', list: false },
-  { name: 'startOfYear', kind: 'date', list: false },
-  { name: 'endOfYear', kind: 'date', list: false },
+  { name: 'now', kind: 'date' },
+  { name: 'startOfDay', kind: 'date' },
+  { name: 'endOfDay', kind: 'date' },
+  { name: 'startOfWeek', kind: 'date' },
+  { name: 'endOfWeek', kind: 'date' },
+  { name: 'startOfMonth', kind: 'date' },
+  { name: 'endOfMonth', kind: 'date' },
+  { name: 'startOfYear', kind: 'date' },
+  { name: 'endOfYear', kind: 'date' },
   { name: 'unreleasedVersions', kind: 'version', list: true },
   { name: 'releasedVersions', kind: 'version', list: true },
-  { name: 'earliestUnreleasedVersion', kind: 'version', list: false },
-  { name: 'latestReleasedVersion', kind: 'version', list: false },
+  { name: 'earliestUnreleasedVersion', kind: 'version' },
+  { name: 'latestReleasedVersion', kind: 'version' },
   { name: 'standardIssueTypes', kind: 'type', list: true },
   { name: 'subTaskIssueTypes', kind: 'type', list: true },
   { name: 'openSprints', kind: 'sprint', list: true },
   { name: 'futureSprints', kind: 'sprint', list: true },
   { name: 'closedSprints', kind: 'sprint', list: true },
-];
+] as const satisfies readonly FunctionInfo[];
 
-const FUNCTION_NAMES = new Map(FUNCTIONS.map((f) => [f.name.toLowerCase(), f.name]));
+/** A function's usual spelling. */
+export type FunctionName = (typeof FUNCTIONS)[number]['name'];
+
+const BY_NAME = new Map<string, FunctionInfo>(FUNCTIONS.map((f) => [f.name.toLowerCase(), f]));
+
+/** The function of a name in any case ("CURRENTUSER"), or undefined. */
+export function functionInfo(name: string): FunctionInfo | undefined {
+  return BY_NAME.get(name.toLowerCase());
+}
 
 /** A function's usual spelling ("CURRENTUSER" → "currentUser"). */
 export function functionName(name: string): string {
-  return FUNCTION_NAMES.get(name.toLowerCase()) ?? name;
+  return functionInfo(name)?.name ?? name;
+}
+
+/** The functions that are values of a kind of field, in the table's order. */
+export function functionsOfKind(kind: FieldKind | undefined): FunctionInfo[] {
+  return FUNCTIONS.filter((f) => f.kind === kind);
 }
 
 /** A function as a suggestion offers it: "openSprints()", 'membersOf("")'. */
@@ -718,7 +733,7 @@ export function operatorsFor(field: string, kind = fieldInfo(field)?.kind): stri
 
 /** Functions that make sense as a value of a kind of field. */
 export function functionsFor(field: string, kind = fieldInfo(field)?.kind): string[] {
-  return FUNCTIONS.filter((f) => f.kind === kind).map(functionCall);
+  return functionsOfKind(kind).map(functionCall);
 }
 
 /* Reading as one types: roles and completion ---------------------------------- */
