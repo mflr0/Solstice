@@ -30,16 +30,6 @@ const statusUseWorkflows = `SELECT workflow_id, status_id FROM workflow_statuses
 	UNION ALL SELECT workflow_id, to_status_id FROM workflow_transitions
 	UNION ALL SELECT id, initial_status_id FROM workflows`
 
-// statusUseBoardColumns is the FROM clause of the board columns holding a
-// status: their column and board joined in, filtered on expr, the SQL
-// expression of the status id ("?" standing for one argument). Foreign keys
-// give every row one column and one board, so counting rows counts columns.
-func statusUseBoardColumns(expr string) string {
-	return `board_column_statuses bs
-		JOIN board_columns c ON c.id = bs.column_id
-		JOIN boards b ON b.id = c.board_id WHERE bs.status_id = ` + expr
-}
-
 // createStatus adds a status to the shared catalogue, or returns the one of
 // the same name if there is one. Administrators of the project it is made
 // for may, since they build that project's workflows.
@@ -192,7 +182,7 @@ func (s *Server) deleteStatus(w http.ResponseWriter, r *http.Request) error {
 	if err := s.db.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM issues WHERE status_id = ?),
 		(SELECT COUNT(DISTINCT u.workflow_id) FROM (`+statusUseWorkflows+`) u WHERE u.status_id = ?),
-		(SELECT COUNT(*) FROM `+statusUseBoardColumns("?")+`)`,
+		(SELECT COUNT(*) FROM board_column_statuses WHERE status_id = ?)`,
 		st.ID, st.ID, st.ID).Scan(&issues, &workflows, &columns); err != nil {
 		return err
 	}
@@ -222,7 +212,7 @@ func (s *Server) statusList(ctx context.Context) ([]statusAdminOut, error) {
 	err := sqlq.Each(ctx, s.db, `SELECT s.id, s.name, s.category, s.position,
 		(SELECT COUNT(*) FROM issues i WHERE i.status_id = s.id),
 		(SELECT COUNT(DISTINCT u.workflow_id) FROM (`+statusUseWorkflows+`) u WHERE u.status_id = s.id),
-		(SELECT COUNT(*) FROM `+statusUseBoardColumns("s.id")+`)
+		(SELECT COUNT(*) FROM board_column_statuses b WHERE b.status_id = s.id)
 		FROM statuses s ORDER BY s.position, s.name`, func(rows *sql.Rows) error {
 		var st statusAdminOut
 		var issues, workflows, columns int
@@ -300,7 +290,8 @@ func (s *Server) adminStatusUsage(w http.ResponseWriter, r *http.Request) error 
 	}, id); err != nil {
 		return err
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT b.id, b.name, c.name FROM `+statusUseBoardColumns("?")+`
+	if err := sqlq.Each(ctx, s.db, `SELECT b.id, b.name, c.name FROM board_column_statuses bs
+		JOIN board_columns c ON c.id = bs.column_id JOIN boards b ON b.id = c.board_id WHERE bs.status_id = ?
 		ORDER BY b.name, c.position`, func(rows *sql.Rows) error {
 		var b statusBoard
 		if err := rows.Scan(&b.ID, &b.Name, &b.Column); err != nil {
