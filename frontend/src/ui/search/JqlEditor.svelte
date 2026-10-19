@@ -184,7 +184,7 @@
     if (c.keywords.includes('(') && !p) out.push({ label: '(', insert: '(', detail: '' });
     const kind = kindOf(c.field);
     if (kind === 'category') {
-      for (const v of STATUS_CATEGORIES.map((c) => CATEGORY_JQL[c])) {
+      for (const v of STATUS_CATEGORIES.map((cat) => CATEGORY_JQL[cat])) {
         if (startsWith(v, p)) out.push({ label: v, insert: quote(v) + end, detail: '' });
       }
     } else if (kind === 'date') {

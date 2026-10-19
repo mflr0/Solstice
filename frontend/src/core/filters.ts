@@ -159,7 +159,8 @@ export const CATEGORY_JQL: Record<StatusCategory, string> = {
 export function categoryClause(categories: StatusCategory[]): string {
   const set = STATUS_CATEGORIES.filter((c) => categories.includes(c));
   if (set.length === 0 || set.length === STATUS_CATEGORIES.length) return '';
-  if (set.length === 2 && !set.includes('done')) return 'statusCategory != Done';
+  if (set.length === 2 && !set.includes('done'))
+    return `statusCategory != ${quote(CATEGORY_JQL.done)}`;
   const names = set.map((c) => quote(CATEGORY_JQL[c]));
   if (names.length === 1) return `statusCategory = ${names[0]}`;
   return `statusCategory in (${names.join(', ')})`;
