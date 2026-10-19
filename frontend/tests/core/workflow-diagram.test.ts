@@ -9,6 +9,7 @@ import {
   levels,
   margins,
   type Box,
+  type DiagramEdge,
 } from '../../src/core/workflow-diagram.js';
 
 const A: StatusRef = { id: 'a', name: 'Open', category: 'todo' };
@@ -203,5 +204,51 @@ describe('layout', () => {
   it('skips statuses it has no box for', () => {
     const { arcs } = layout(order, row(['a', 'b']), [{ from: 'a', to: 'c', names: ['x'] }], null);
     expect(arcs).toEqual([]);
+  });
+});
+
+describe('layout, exactly', () => {
+  it('draws forward, backward, nested and "any status" arcs, the bus and the start', () => {
+    const edges: DiagramEdge[] = [
+      { from: 'a', to: 'b', names: ['Start'] },
+      { from: 'b', to: 'a', names: ['Back'] },
+      { from: 'a', to: 'c', names: ['Skip'] },
+      { from: null, to: 'c', names: ['Close'] },
+    ];
+    const [ab, ba, ac, close] = edges as [DiagramEdge, DiagramEdge, DiagramEdge, DiagramEdge];
+    expect(layout(['a', 'b', 'c'], row(['a', 'b', 'c']), edges, 'a')).toEqual({
+      arcs: [
+        {
+          key: 'a>b',
+          edge: ab,
+          kind: 'forward',
+          d: 'M55.2,100C55.2,76 160,76 160,93',
+          head: '160,99 156,92 164,92',
+        },
+        {
+          key: 'b>a',
+          edge: ba,
+          kind: 'backward',
+          d: 'M160,120C160,144 40,144 40,127',
+          head: '40,121 36,128 44,128',
+        },
+        {
+          key: 'a>c',
+          edge: ac,
+          kind: 'forward',
+          d: 'M24.8,100C24.8,62 264.8,62 264.8,93',
+          head: '264.8,99 260.8,92 268.8,92',
+        },
+        {
+          key: '*>c',
+          edge: close,
+          kind: 'any',
+          d: 'M295.2,57V93',
+          head: '295.2,99 291.2,92 299.2,92',
+        },
+      ],
+      bus: { y: 57, x1: 0, x2: 295.2 },
+      start: { cx: -24, cy: 110, d: 'M-24,110H-8', head: '-2,110 -9,106 -9,114' },
+    });
   });
 });
