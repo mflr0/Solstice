@@ -62,7 +62,9 @@ export class JqlError<C extends JqlCode = JqlCode> extends Error {
   }
 }
 
-const isSpace = (c: string) => /\s/.test(c);
+// Go's unicode.IsSpace, as the server's lexer: JavaScript's \s adds U+FEFF and leaves out U+0085.
+const isSpace = (c: string) =>
+  /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/.test(c);
 const WORD_STOP = '()",\'=!~<>';
 
 /** Splits a query into tokens; never fails (a lone "!" becomes an error token). */
@@ -564,8 +566,9 @@ export function conjunction(where: Node | null): Clause[] | null {
 
 /* Telling JQL from the simple syntax ------------------------------------------ */
 
+// Go's regexp \s is ASCII only ([\t\n\f\r ]), unlike JavaScript's.
 const LOOKS_LIKE =
-  /(^|[\s(])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|commenter|participants?|involves|cf\[\d+\]|"[^"]+")\s*(=|!=|~|!~|>=?|<=?|\s+in\s*\(|\s+not\s+in\s|\s+is\s|\s+was\s|\s+changed\b)|\border\s+by\b/i;
+  /(^|[\t\n\f\r (])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|commenter|participants?|involves|cf\[\d+\]|"[^"]+")[\t\n\f\r ]*(=|!=|~|!~|>=?|<=?|[\t\n\f\r ]+in[\t\n\f\r ]*\(|[\t\n\f\r ]+not[\t\n\f\r ]+in[\t\n\f\r ]|[\t\n\f\r ]+is[\t\n\f\r ]|[\t\n\f\r ]+was[\t\n\f\r ]|[\t\n\f\r ]+changed\b)|\border[\t\n\f\r ]+by\b/i;
 
 /** Whether the server will read a search string as JQL (same rule as jql.LooksLike). */
 export function looksLikeJql(s: string): boolean {
