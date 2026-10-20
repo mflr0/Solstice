@@ -172,7 +172,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordRequired)
 		}
 		if in.NewPassword != nil {
-			if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
+			if err := s.checkNewPassword(ctx, *in.NewPassword, u.Username); err != nil {
 				return err
 			}
 		}
