@@ -77,7 +77,7 @@
                   <span class="dash" aria-hidden="true">·</span>
                 {:else if readonly}
                   {#if c.transitions.length}
-                    <span class="sr-only">{label(row.from, c.to)} :</span>
+                    <span class="sr-only">{label(row.from, c.to)}{t.common.labelSep}</span>
                     {#each c.transitions as tr (tr.key)}
                       <span class="tname static">{shown(tr, c.to)}</span>
                     {/each}

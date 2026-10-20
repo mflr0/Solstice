@@ -63,6 +63,9 @@
       });
   });
 
+  // Not in the effect above: load reads q, so that one reruns on every keystroke.
+  $effect(() => () => clearTimeout(timer));
+
   function typed() {
     clearTimeout(timer);
     timer = setTimeout(() => {
