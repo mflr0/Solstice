@@ -1,6 +1,6 @@
 <script lang="ts">
   import { USERNAME_PATTERN } from '../../core/admin-forms.js';
-  import { checkPassword } from '../../core/setup.js';
+  import { checkPassword, MIN_PASSWORD } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import { setupApi, setupErrorMessage, type SetupFinished } from '../../lib/setup-api.js';
 
@@ -89,7 +89,7 @@
         type="password"
         bind:value={form.password}
         required
-        minlength="12"
+        minlength={MIN_PASSWORD}
         autocomplete="new-password"
         aria-describedby="admin-strength admin-rules"
       />

@@ -2,7 +2,7 @@
   import { deliveryTone, toneClass } from '../../core/admin-integrations.js';
   import type { WebhookDelivery } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { formatDateTime, labelOf, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
 
@@ -35,8 +35,7 @@
     };
   });
 
-  const eventName = (event: string) =>
-    (t.hooksAdmin.eventNames as Record<string, string>)[event] ?? event;
+  const eventName = (event: string) => labelOf(t.hooksAdmin.eventNames, event);
 </script>
 
 <h2 class="section-title">{t.hookDeliveries.title}</h2>

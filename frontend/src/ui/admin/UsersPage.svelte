@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { canResendInvitation } from '../../core/account-links.js';
+  import { filterUsers, USER_SHOWS, type UserShow } from '../../core/admin-lists.js';
   import { adminPath } from '../../core/areas.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
@@ -16,28 +17,18 @@
   import UserDialog from './UserDialog.svelte';
 
   /** Accounts: who exists, who may sign in, who administers, in which groups. */
-  type Show = 'all' | 'active' | 'inactive' | 'admins';
-  const SHOWS: Show[] = ['all', 'active', 'inactive', 'admins'];
-
   let users = $state<UserRow[] | null>(null);
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
-  let show = $state<Show>('all');
+  let show = $state<UserShow>('all');
   let dialog = $state<{ user: UserRow | null } | null>(null);
   let password = $state<UserRow | null>(null);
   let deactivating = $state<UserRow | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
 
-  const list = $derived(
-    (users ?? []).filter((u) => {
-      if (show === 'active' && !u.active) return false;
-      if (show === 'inactive' && u.active) return false;
-      if (show === 'admins' && !u.admin) return false;
-      return true;
-    }),
-  );
+  const list = $derived(filterUsers(users ?? [], show));
 
   async function load() {
     const mine = ++seq;
@@ -130,7 +121,7 @@
     aria-label={t.usersAdmin.search}
   />
   <select class="select" bind:value={show} aria-label={t.usersAdmin.showLabel}>
-    {#each SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
+    {#each USER_SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
   </select>
 </div>
 

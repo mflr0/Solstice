@@ -2,6 +2,7 @@
   import { matches } from '../../core/admin-forms.js';
   import type { CatalogItem } from '../../core/admin-types.js';
   import {
+    arrowAfterMove,
     CATALOG_KINDS,
     moveItem,
     moveTargets,
@@ -100,9 +101,7 @@
     const from = items.findIndex((i) => i.id === item.id);
     const to = from + by;
     if (to < 0 || to >= items.length) return;
-    const atEdge = to === 0 || to === items.length - 1;
-    // Keep the keyboard on the item: on the same arrow, or the other one at an end.
-    const dir = atEdge ? (by < 0 ? 'down' : 'up') : by < 0 ? 'up' : 'down';
+    const dir = arrowAfterMove(by, to, items.length);
     void reorder(moveItem(items, from, to), `order-${dir}-${item.id}`);
   }
 
