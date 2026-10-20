@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"slices"
 
 	"solstice/internal/sqlq"
@@ -17,24 +18,23 @@ type transitionOut struct {
 }
 
 // workflowOf returns the workflow an issue type follows in a project, and the
-// status new issues start in. ok is false for a project without workflows.
-func (s *Server) workflowOf(ctx context.Context, projectID int64, typeID string) (id int64, initial string, ok bool, err error) {
+// status new issues start in. Every project has a default workflow: creation
+// and import make one, and it cannot be deleted.
+func (s *Server) workflowOf(ctx context.Context, projectID int64, typeID string) (id int64, initial string, err error) {
 	err = s.db.QueryRowContext(ctx, `SELECT w.id, w.initial_status_id FROM workflows w
 		WHERE w.id = COALESCE(
 			(SELECT workflow_id FROM workflow_issue_types WHERE project_id = ? AND issue_type_id = ?),
 			(SELECT id FROM workflows WHERE project_id = ? AND is_default LIMIT 1))`,
 		projectID, typeID, projectID).Scan(&id, &initial)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, "", false, nil
+		return 0, "", fmt.Errorf("project %d has no default workflow", projectID)
 	}
-	return id, initial, err == nil, err
+	return id, initial, err
 }
 
 func (s *Server) initialStatusFor(ctx context.Context, projectID int64, typeID string) (string, error) {
-	if _, initial, ok, err := s.workflowOf(ctx, projectID, typeID); err != nil || ok {
-		return initial, err
-	}
-	return s.initialStatus(ctx, projectID)
+	_, initial, err := s.workflowOf(ctx, projectID, typeID)
+	return initial, err
 }
 
 // issueTransitions lists the moves available from the issue's status, and the
@@ -48,26 +48,11 @@ func (s *Server) issueTransitions(ctx context.Context, cat *catalog, iss *issueR
 			statuses = append(statuses, st)
 		}
 	}
-	wf, _, ok, err := s.workflowOf(ctx, iss.ProjectID, iss.TypeID)
+	wf, _, err := s.workflowOf(ctx, iss.ProjectID, iss.TypeID)
 	if err != nil {
 		return nil, nil, err
 	}
 	out := []transitionOut{}
-	if !ok {
-		// No workflow (a project created before workflows existed): any status
-		// already used in the project is allowed.
-		used, err := s.projectStatuses(ctx, cat, iss.ProjectID, iss.StatusID)
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, st := range used {
-			if st.ID != iss.StatusID {
-				out = append(out, transitionOut{Name: st.Name, To: st})
-				add(st)
-			}
-		}
-		return out, statuses, nil
-	}
 
 	var inWorkflow int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workflow_statuses WHERE workflow_id = ? AND status_id = ?`,

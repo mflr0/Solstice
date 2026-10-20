@@ -287,7 +287,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "अमान्य समय अनुमान (उदाहरण: 1w 2d 3h 30m)।",
 	IssueSecurityLevelUnknown:  "इस प्रोजेक्ट में अज्ञात सुरक्षा स्तर।",
 	IssueReporterFixed:         "रिपोर्टर बदला नहीं जा सकता।",
-	IssueNoTodoStatus:          "“करना है” श्रेणी का कोई स्टेटस परिभाषित नहीं है।",
 	IssueTransitionNotAllowed:  "प्रोजेक्ट का वर्कफ़्लो स्टेटस के इस बदलाव की अनुमति नहीं देता।",
 	IssueTransitionUnavailable: "टिकट के मौजूदा स्टेटस से यह ट्रांज़िशन संभव नहीं है।",
 	IssueParentNotFound:        "पैरेंट टिकट नहीं मिला।",

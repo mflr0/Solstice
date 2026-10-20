@@ -284,7 +284,6 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Invalid time estimate (for example 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unknown security level in this project.",
 	IssueReporterFixed:         "The reporter cannot be changed.",
-	IssueNoTodoStatus:          "No “to do” status is defined.",
 	IssueTransitionNotAllowed:  "The project's workflow does not allow this status change.",
 	IssueTransitionUnavailable: "This transition is not available from the issue's current status.",
 	IssueParentNotFound:        "Parent issue not found.",

@@ -285,7 +285,6 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Estimation invalide (par exemple 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Niveau de confidentialité inconnu dans ce projet.",
 	IssueReporterFixed:         "Le rapporteur ne peut pas être changé.",
-	IssueNoTodoStatus:          "Aucun statut « à faire » n'est défini.",
 	IssueTransitionNotAllowed:  "Le workflow du projet ne prévoit pas ce changement de statut.",
 	IssueTransitionUnavailable: "Cette transition n'est pas possible depuis le statut actuel du ticket.",
 	IssueParentNotFound:        "Ticket parent introuvable.",
