@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/i18n"
 )
 
 func TestParse(t *testing.T) {
@@ -213,6 +215,23 @@ func TestCompileEqualsEmpty(t *testing.T) {
 		if strings.TrimSpace(where) == "" || strings.Contains(where, "()") {
 			t.Errorf("%s compiled to %q", q, where)
 		}
+	}
+}
+
+func TestCompileKeyRangeNeedsKey(t *testing.T) {
+	for _, q := range []string{`key > EMPTY`, `issuekey <= null`, `key < 12`, `id >= "DEMO"`} {
+		parsed, err := Parse(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var je *Error
+		if _, _, _, err := Compile(parsed, fuzzEnv()); !errors.As(err, &je) || je.Key != i18n.JQLIssueKeyInvalid {
+			t.Errorf("Compile(%q) = %v, want JQLIssueKeyInvalid", q, err)
+		}
+	}
+	where, args, _ := compile(t, `key > demo-5`)
+	if !strings.Contains(where, "i.num > ?") || len(args) != 3 || args[2] != int64(5) {
+		t.Errorf("where %s args %v", where, args)
 	}
 }
 
