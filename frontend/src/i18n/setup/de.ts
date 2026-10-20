@@ -14,7 +14,6 @@ export const de: SetupMessages = {
     done: 'Fertig',
   },
   stepDone: 'erledigt',
-  stepCurrent: 'aktueller Schritt',
   stepOf: (n: number, total: number) => `Schritt ${n} von ${total}`,
   back: 'Zurück',
   next: 'Weiter',

@@ -112,7 +112,6 @@ export const fr: Messages = {
     create: 'Nouveau ticket',
     account: 'Compte',
     myPage: 'Ma page',
-    admin: 'Utilisateurs',
     skin: 'Thème',
     skins: {
       carnet: 'Carnet',
@@ -231,19 +230,15 @@ export const fr: Messages = {
     none: 'Aucun',
     noneF: 'Aucune',
     unassigned: 'Non assigné',
-    me: 'Moi',
     seeAll: 'Tout voir',
-    retry: 'Réessayer',
     inactive: 'compte désactivé',
     confidential: 'Confidentiel',
     previous: 'Précédents',
     next: 'Suivants',
     yes: 'oui',
     no: 'non',
-    search: 'Chercher',
     filter: 'Filtrer…',
     ctrlEnter: 'Ctrl + Entrée pour envoyer',
-    of: 'sur',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: '\u00a0: ',
     range: (first: string, last: string, total: string) => `${first}–${last} sur ${total}`,
@@ -342,7 +337,6 @@ export const fr: Messages = {
     intro:
       'Ces règles ne valent que pour ce projet : il n’y a pas de schéma partagé, modifier ici ne touche aucun autre projet.',
     permissions: 'Qui peut faire quoi',
-    holders: 'Bénéficiaires',
     addHolder: 'Ajouter',
     nobody: 'Personne',
     chooseKind: 'Type de bénéficiaire',
@@ -350,12 +344,10 @@ export const fr: Messages = {
     chooseRole: 'Rôle',
     chooseUser: 'Utilisateur',
     roles: 'Rôles dans ce projet',
-    roleMembers: 'Membres',
     noMembers: 'Aucun membre',
     saved: 'Réglages enregistrés.',
     unsaved: 'Modifications non enregistrées',
     discard: 'Annuler les modifications',
-    forbidden: 'Seuls les administrateurs du projet peuvent voir cette page.',
     backToProject: 'Retour au projet',
   },
 
@@ -437,7 +429,6 @@ export const fr: Messages = {
     shortcuts: 'Raccourcis',
     categoryOnly: (name: string) => `catégorie ${name}`,
     released: 'livrée',
-    noProject: 'Choisissez un projet pour voir ses valeurs.',
     datePresets: {
       today: 'Aujourd’hui',
       week: 'Cette semaine',
@@ -599,7 +590,6 @@ export const fr: Messages = {
     assignee: 'Assigné',
     updated: 'Modifié',
     due: 'Échéance',
-    overdue: 'en retard',
   },
 
   issue: {
@@ -641,7 +631,6 @@ export const fr: Messages = {
     created: 'Créé',
     updated: 'Modifié',
     resolved: 'Résolu',
-    resolution: 'Résolution',
     time: 'Temps',
     estimate: 'Estimé',
     remaining: 'Restant',
@@ -653,14 +642,10 @@ export const fr: Messages = {
     customFields: 'Autres champs',
     watch: 'Observer',
     watching: 'Observé',
-    watchers: (n: number) => plural(n, 'observateur', 'observateurs'),
     vote: 'Voter',
     voted: 'Voté',
-    votes: (n: number) => plural(n, 'vote', 'votes'),
-    by: 'par',
     createdBy: (when: string, who: string) => `créé ${when} par ${who}`,
     createdOn: (when: string) => `créé ${when}`,
-    parent: 'Sous-tâche de',
     changeStatus: 'Changer le statut',
     chooseResolution: 'Résolution',
     leaveUnresolved: 'Laisser non résolu',
@@ -725,7 +710,6 @@ export const fr: Messages = {
     send: 'Commenter',
     edited: 'modifié',
     visibleTo: (who: string) => `visible : ${who}`,
-    confirmDelete: 'Supprimer ce commentaire ?',
   },
 
   editor: {
@@ -1029,29 +1013,6 @@ export const fr: Messages = {
     deleted: (name: string) => `Tableau « ${name} » supprimé.`,
   },
 
-  admin: {
-    title: 'Utilisateurs',
-    newUser: 'Nouvel utilisateur',
-    username: 'Identifiant',
-    name: 'Nom affiché',
-    email: 'Adresse e-mail',
-    password: 'Mot de passe',
-    passwordHint: '10 caractères au moins',
-    admin: 'Administrateur',
-    active: 'Actif',
-    state: 'État',
-    noPassword: 'sans mot de passe',
-    resetPassword: 'Nouveau mot de passe',
-    deactivate: 'Désactiver',
-    activate: 'Réactiver',
-    makeAdmin: 'Rendre administrateur',
-    removeAdmin: 'Retirer l’administration',
-    created: 'Compte créé.',
-    updated: 'Compte mis à jour.',
-    forbidden: 'Cette page est réservée aux administrateurs.',
-    since: 'Depuis',
-  },
-
   notFound: {
     title: 'Introuvable',
     back: 'Revenir à mon travail',
@@ -1216,7 +1177,6 @@ export const fr: Messages = {
     intro:
       'Les réglages de tout ce Solstice : comptes, projets, catalogues des tickets, e-mails et intégrations. Seuls les administrateurs voient ces pages.',
     forbidden: 'Cette page est réservée aux administrateurs de Solstice.',
-    nav: 'Sections de l’administration',
     groups: {
       general: 'Général',
       people: 'Utilisateurs et groupes',
@@ -1282,12 +1242,8 @@ export const fr: Messages = {
     copy: 'Copier',
     copied: 'Copié',
     refresh: 'Actualiser',
-    saved: 'Modifications enregistrées.',
-    search: 'Rechercher',
     noMatch: 'Rien ne correspond à cette recherche.',
     clearSearch: 'Effacer la recherche',
-    unavailable:
-      'Ce serveur ne propose pas encore ce réglage : mettez Solstice à jour pour l’utiliser.',
     hideBanner: 'Masquer',
     restricted: {
       comments: (n: number) => plural(n, 'commentaire', 'commentaires'),
@@ -1350,7 +1306,6 @@ export const fr: Messages = {
   },
 
   auditAdmin: {
-    title: 'Journal d’audit',
     intro:
       'Qui s’est connecté, et qui a modifié les comptes, les droits d’accès et les réglages, d’où et quand. Le journal est en lecture seule.',
     count: (n: number) => plural(n, 'entrée', 'entrées'),
@@ -1583,7 +1538,6 @@ export const fr: Messages = {
   },
 
   systemAdmin: {
-    title: 'Informations système',
     intro:
       'Ce qui tourne, où sont les données et ce qui demande de l’attention. Aucun secret n’est affiché ici.',
     solstice: 'Solstice',
@@ -1620,7 +1574,6 @@ export const fr: Messages = {
     projectsArchived: 'Projets archivés',
     issues: 'Tickets',
     comments: 'Commentaires',
-    attachments: 'Pièces jointes',
     mail: 'E-mail',
     mailOn: 'envoi activé',
     mailOff: 'envoi désactivé',
@@ -1668,8 +1621,6 @@ export const fr: Messages = {
     reload: 'Recharger Solstice',
     again: 'Importer de nouveau',
     lastTitle: 'Dernier import',
-    unavailable:
-      'Ce serveur ne sait pas encore importer depuis l’administration : mettez Solstice à jour.',
   },
 
   tokensAdmin: {
@@ -1914,7 +1865,6 @@ export const fr: Messages = {
   account: {
     title: 'Mes réglages',
     menu: 'Mes réglages',
-    nav: 'Sections de mes réglages',
     sections: {
       profile: 'Profil',
       appearance: 'Langue et apparence',
@@ -1941,8 +1891,6 @@ export const fr: Messages = {
     passwordShort: (n: number) => `${n} caractères au moins.`,
     passwordChanged: 'Mot de passe changé.',
     saved: 'Réglages enregistrés.',
-    profileUnsupported:
-      'Ce serveur ne sait pas encore modifier le nom ni l’adresse e-mail : mettez Solstice à jour.',
     picture: 'Image',
     pictureHint:
       'Affichée à côté de votre nom. L’image est recadrée en carré et réduite dans votre navigateur avant l’envoi.',
@@ -2054,7 +2002,6 @@ export const fr: Messages = {
     editTitle: (name: string) => `Modifier le compte de ${name}`,
     created: (name: string) => `Compte de ${name} créé.`,
     updated: (name: string) => `Compte de ${name} enregistré.`,
-    edit: 'Modifier',
     deactivate: 'Désactiver',
     activate: 'Réactiver',
     deactivateTitle: (name: string) => `Désactiver le compte de ${name} ?`,
@@ -2275,7 +2222,6 @@ export const fr: Messages = {
     noCategory: 'Sans catégorie',
     category: 'Catégorie',
     issues: 'Tickets',
-    state: 'État',
     archive: 'Archiver',
     unarchive: 'Désarchiver',
     empty: 'Aucun projet pour l’instant',
@@ -2344,7 +2290,6 @@ export const fr: Messages = {
     categoryTitle: (name: string) => `Modifier « ${name} »`,
     categoryName: 'Nom',
     categoryDescription: 'Description',
-    categoryProjects: (n: number) => plural(n, 'projet', 'projets'),
     categoriesEmpty: 'Aucune catégorie pour l’instant.',
     categoryCreated: (name: string) => `Catégorie « ${name} » créée.`,
     categorySaved: (name: string) => `Catégorie « ${name} » enregistrée.`,

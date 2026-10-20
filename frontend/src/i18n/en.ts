@@ -110,7 +110,6 @@ export const en = {
     create: 'New issue',
     account: 'Account',
     myPage: 'My page',
-    admin: 'Users',
     skin: 'Theme',
     skins: {
       carnet: 'Notebook',
@@ -229,19 +228,15 @@ export const en = {
     none: 'None',
     noneF: 'None',
     unassigned: 'Unassigned',
-    me: 'Me',
     seeAll: 'See all',
-    retry: 'Try again',
     inactive: 'deactivated',
     confidential: 'Restricted',
     previous: 'Previous',
     next: 'Next',
     yes: 'yes',
     no: 'no',
-    search: 'Search',
     filter: 'Filter…',
     ctrlEnter: 'Ctrl + Enter to send',
-    of: 'of',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${first}–${last} of ${total}`,
@@ -338,7 +333,6 @@ export const en = {
     intro:
       'These rules apply to this project only: nothing is shared through schemes, so a change here touches no other project.',
     permissions: 'Who can do what',
-    holders: 'Granted to',
     addHolder: 'Add',
     nobody: 'Nobody',
     chooseKind: 'Grant to',
@@ -346,12 +340,10 @@ export const en = {
     chooseRole: 'Role',
     chooseUser: 'User',
     roles: 'Roles in this project',
-    roleMembers: 'Members',
     noMembers: 'No members',
     saved: 'Settings saved.',
     unsaved: 'Unsaved changes',
     discard: 'Discard changes',
-    forbidden: 'Only the project’s administrators can see this page.',
     backToProject: 'Back to the project',
   },
 
@@ -434,7 +426,6 @@ export const en = {
     shortcuts: 'Shortcuts',
     categoryOnly: (name: string) => `category: ${name}`,
     released: 'released',
-    noProject: 'Choose a project to see its values.',
     datePresets: {
       today: 'Today',
       week: 'This week',
@@ -595,7 +586,6 @@ export const en = {
     assignee: 'Assignee',
     updated: 'Updated',
     due: 'Due',
-    overdue: 'overdue',
   },
 
   issue: {
@@ -637,7 +627,6 @@ export const en = {
     created: 'Created',
     updated: 'Updated',
     resolved: 'Resolved',
-    resolution: 'Resolution',
     time: 'Time tracking',
     estimate: 'Estimated',
     remaining: 'Remaining',
@@ -649,14 +638,10 @@ export const en = {
     customFields: 'Other fields',
     watch: 'Watch',
     watching: 'Watching',
-    watchers: (n: number) => plural(n, 'watcher', 'watchers'),
     vote: 'Vote',
     voted: 'Voted',
-    votes: (n: number) => plural(n, 'vote', 'votes'),
-    by: 'by',
     createdBy: (when: string, who: string) => `created ${when} by ${who}`,
     createdOn: (when: string) => `created ${when}`,
-    parent: 'Sub-task of',
     changeStatus: 'Change status',
     chooseResolution: 'Resolution',
     leaveUnresolved: 'Leave unresolved',
@@ -721,7 +706,6 @@ export const en = {
     send: 'Comment',
     edited: 'edited',
     visibleTo: (who: string) => `visible to ${who}`,
-    confirmDelete: 'Delete this comment?',
   },
 
   editor: {
@@ -1025,29 +1009,6 @@ export const en = {
     deleted: (name: string) => `Board “${name}” deleted.`,
   },
 
-  admin: {
-    title: 'Users',
-    newUser: 'New user',
-    username: 'Username',
-    name: 'Display name',
-    email: 'Email address',
-    password: 'Password',
-    passwordHint: 'At least 10 characters',
-    admin: 'Administrator',
-    active: 'Active',
-    state: 'Status',
-    noPassword: 'no password',
-    resetPassword: 'New password',
-    deactivate: 'Deactivate',
-    activate: 'Reactivate',
-    makeAdmin: 'Make administrator',
-    removeAdmin: 'Revoke administrator',
-    created: 'Account created.',
-    updated: 'Account updated.',
-    forbidden: 'This page is for administrators only.',
-    since: 'Since',
-  },
-
   notFound: {
     title: 'Not found',
     back: 'Back to my work',
@@ -1211,7 +1172,6 @@ export const en = {
     intro:
       'Settings for the whole of Solstice: accounts, projects, issue catalogs, email and integrations. Only administrators see these pages.',
     forbidden: 'This page is for Solstice administrators only.',
-    nav: 'Administration sections',
     groups: {
       general: 'General',
       people: 'Users and groups',
@@ -1277,11 +1237,8 @@ export const en = {
     copy: 'Copy',
     copied: 'Copied',
     refresh: 'Refresh',
-    saved: 'Changes saved.',
-    search: 'Search',
     noMatch: 'Nothing matches this search.',
     clearSearch: 'Clear search',
-    unavailable: 'This server does not offer this setting yet: update Solstice to use it.',
     hideBanner: 'Hide',
     restricted: {
       comments: (n: number) => plural(n, 'comment', 'comments'),
@@ -1343,7 +1300,6 @@ export const en = {
   },
 
   auditAdmin: {
-    title: 'Audit log',
     intro:
       'Who signed in, and who changed accounts, access rights and settings, from where and when. The log is read-only.',
     count: (n: number) => plural(n, 'entry', 'entries'),
@@ -1576,7 +1532,6 @@ export const en = {
   },
 
   systemAdmin: {
-    title: 'System information',
     intro: 'What runs, where the data lives and what needs attention. No secret is shown here.',
     solstice: 'Solstice',
     version: 'Version',
@@ -1612,7 +1567,6 @@ export const en = {
     projectsArchived: 'Archived projects',
     issues: 'Issues',
     comments: 'Comments',
-    attachments: 'Attachments',
     mail: 'Email',
     mailOn: 'sending on',
     mailOff: 'sending off',
@@ -1659,7 +1613,6 @@ export const en = {
     reload: 'Reload Solstice',
     again: 'Import again',
     lastTitle: 'Last import',
-    unavailable: 'This server cannot import from the administration yet: update Solstice.',
   },
 
   tokensAdmin: {
@@ -1900,7 +1853,6 @@ export const en = {
   account: {
     title: 'My settings',
     menu: 'My settings',
-    nav: 'My settings sections',
     sections: {
       profile: 'Profile',
       appearance: 'Language and appearance',
@@ -1927,8 +1879,6 @@ export const en = {
     passwordShort: (n: number) => `${n} characters at least.`,
     passwordChanged: 'Password changed.',
     saved: 'Settings saved.',
-    profileUnsupported:
-      'This server cannot change the name or the email address yet: update Solstice.',
     picture: 'Picture',
     pictureHint:
       'Shown next to your name. The image is cut to a square and scaled down in your browser before it is sent.',
@@ -2041,7 +1991,6 @@ export const en = {
     editTitle: (name: string) => `Edit ${name}’s account`,
     created: (name: string) => `${name}’s account created.`,
     updated: (name: string) => `${name}’s account saved.`,
-    edit: 'Edit',
     deactivate: 'Deactivate',
     activate: 'Reactivate',
     deactivateTitle: (name: string) => `Deactivate ${name}’s account?`,
@@ -2260,7 +2209,6 @@ export const en = {
     noCategory: 'No category',
     category: 'Category',
     issues: 'Issues',
-    state: 'State',
     archive: 'Archive',
     unarchive: 'Unarchive',
     empty: 'No project yet',
@@ -2329,7 +2277,6 @@ export const en = {
     categoryTitle: (name: string) => `Edit ${name}`,
     categoryName: 'Name',
     categoryDescription: 'Description',
-    categoryProjects: (n: number) => plural(n, 'project', 'projects'),
     categoriesEmpty: 'No category yet.',
     categoryCreated: (name: string) => `Category ${name} created.`,
     categorySaved: (name: string) => `Category ${name} saved.`,

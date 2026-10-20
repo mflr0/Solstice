@@ -116,7 +116,6 @@ export const hi: Messages = {
     create: 'नया टिकट',
     account: 'खाता',
     myPage: 'मेरा पेज',
-    admin: 'उपयोगकर्ता',
     skin: 'थीम',
     skins: {
       carnet: 'नोटबुक',
@@ -235,19 +234,15 @@ export const hi: Messages = {
     none: 'कोई नहीं',
     noneF: 'कोई नहीं',
     unassigned: 'असाइन नहीं',
-    me: 'मैं',
     seeAll: 'सभी देखें',
-    retry: 'फिर से कोशिश करें',
     inactive: 'खाता निष्क्रिय',
     confidential: 'गोपनीय',
     previous: 'पिछले',
     next: 'अगले',
     yes: 'हाँ',
     no: 'नहीं',
-    search: 'खोजें',
     filter: 'फ़िल्टर करें…',
     ctrlEnter: 'भेजने के लिए Ctrl + Enter',
-    of: '/',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${total} में से ${first}–${last}`,
@@ -341,7 +336,6 @@ export const hi: Messages = {
     intro:
       'ये नियम सिर्फ़ इसी प्रोजेक्ट पर लागू होते हैं: कोई साझा स्कीम नहीं है, इसलिए यहाँ किया गया बदलाव किसी और प्रोजेक्ट पर असर नहीं डालता।',
     permissions: 'कौन क्या कर सकता है',
-    holders: 'किसे मिली है',
     addHolder: 'जोड़ें',
     nobody: 'कोई नहीं',
     chooseKind: 'किसे दें',
@@ -349,12 +343,10 @@ export const hi: Messages = {
     chooseRole: 'भूमिका',
     chooseUser: 'व्यक्ति',
     roles: 'इस प्रोजेक्ट की भूमिकाएँ',
-    roleMembers: 'सदस्य',
     noMembers: 'कोई सदस्य नहीं',
     saved: 'सेटिंग्स सहेजी गईं।',
     unsaved: 'बिना सहेजे बदलाव',
     discard: 'बदलाव छोड़ें',
-    forbidden: 'यह पेज सिर्फ़ प्रोजेक्ट के एडमिन देख सकते हैं।',
     backToProject: 'प्रोजेक्ट पर वापस',
   },
 
@@ -436,7 +428,6 @@ export const hi: Messages = {
     shortcuts: 'शॉर्टकट',
     categoryOnly: (name: string) => `श्रेणी: ${name}`,
     released: 'रिलीज़ हुआ',
-    noProject: 'इसके मान देखने के लिए कोई प्रोजेक्ट चुनें।',
     datePresets: {
       today: 'आज',
       week: 'इस हफ़्ते',
@@ -598,7 +589,6 @@ export const hi: Messages = {
     assignee: 'असाइनी',
     updated: 'अपडेट',
     due: 'अंतिम तारीख़',
-    overdue: 'समय-सीमा पार',
   },
 
   issue: {
@@ -640,7 +630,6 @@ export const hi: Messages = {
     created: 'बनाया गया',
     updated: 'अपडेट किया गया',
     resolved: 'रिज़ॉल्व किया गया',
-    resolution: 'रिज़ॉल्यूशन',
     time: 'समय',
     estimate: 'अनुमान',
     remaining: 'बाकी',
@@ -652,14 +641,10 @@ export const hi: Messages = {
     customFields: 'अन्य फ़ील्ड',
     watch: 'वॉच करें',
     watching: 'वॉच कर रहे हैं',
-    watchers: (n: number) => plural(n, 'वॉचर', 'वॉचर'),
     vote: 'वोट करें',
     voted: 'वोट दिया',
-    votes: (n: number) => plural(n, 'वोट', 'वोट'),
-    by: 'द्वारा',
     createdBy: (when: string, who: string) => `${who} द्वारा ${when} बनाया गया`,
     createdOn: (when: string) => `${when} बनाया गया`,
-    parent: 'पैरेंट टिकट',
     changeStatus: 'स्टेटस बदलें',
     chooseResolution: 'रिज़ॉल्यूशन',
     leaveUnresolved: 'बिना रिज़ॉल्यूशन छोड़ें',
@@ -725,7 +710,6 @@ export const hi: Messages = {
     send: 'टिप्पणी करें',
     edited: 'संपादित',
     visibleTo: (who: string) => `${who} को दिखती है`,
-    confirmDelete: 'यह टिप्पणी मिटाएँ?',
   },
 
   editor: {
@@ -1026,29 +1010,6 @@ export const hi: Messages = {
     deleted: (name: string) => `बोर्ड “${name}” मिटाया गया।`,
   },
 
-  admin: {
-    title: 'उपयोगकर्ता',
-    newUser: 'नया उपयोगकर्ता',
-    username: 'यूज़रनेम',
-    name: 'दिखने वाला नाम',
-    email: 'ईमेल पता',
-    password: 'पासवर्ड',
-    passwordHint: 'कम से कम 10 अक्षर',
-    admin: 'एडमिन',
-    active: 'सक्रिय',
-    state: 'स्थिति',
-    noPassword: 'पासवर्ड नहीं',
-    resetPassword: 'नया पासवर्ड',
-    deactivate: 'निष्क्रिय करें',
-    activate: 'फिर से सक्रिय करें',
-    makeAdmin: 'एडमिन बनाएँ',
-    removeAdmin: 'एडमिन अधिकार हटाएँ',
-    created: 'खाता बनाया गया।',
-    updated: 'खाता अपडेट किया गया।',
-    forbidden: 'यह पेज सिर्फ़ एडमिन के लिए है।',
-    since: 'कब से',
-  },
-
   notFound: {
     title: 'नहीं मिला',
     back: 'मेरे काम पर वापस',
@@ -1211,7 +1172,6 @@ export const hi: Messages = {
     intro:
       'पूरे Solstice की सेटिंग्स: खाते, प्रोजेक्ट, टिकट कैटेलॉग, ईमेल और इंटीग्रेशन। ये पेज सिर्फ़ एडमिन देख सकते हैं।',
     forbidden: 'यह पेज सिर्फ़ Solstice के एडमिन के लिए है।',
-    nav: 'एडमिनिस्ट्रेशन के भाग',
     groups: {
       general: 'सामान्य',
       people: 'उपयोगकर्ता और समूह',
@@ -1277,11 +1237,8 @@ export const hi: Messages = {
     copy: 'कॉपी करें',
     copied: 'कॉपी हो गया',
     refresh: 'रिफ़्रेश करें',
-    saved: 'बदलाव सहेजे गए।',
-    search: 'खोजें',
     noMatch: 'इस खोज से कुछ मेल नहीं खाता।',
     clearSearch: 'खोज साफ़ करें',
-    unavailable: 'यह सर्वर यह सेटिंग अभी नहीं देता: इसे इस्तेमाल करने के लिए Solstice अपडेट करें।',
     hideBanner: 'छिपाएँ',
     restricted: {
       comments: (n: number) => plural(n, 'टिप्पणी', 'टिप्पणियाँ'),
@@ -1344,7 +1301,6 @@ export const hi: Messages = {
   },
 
   auditAdmin: {
-    title: 'ऑडिट लॉग',
     intro:
       'कौन साइन इन हुआ, और किसने खातों, एक्सेस अधिकारों और सेटिंग्स में क्या बदला, कहाँ से और कब। लॉग केवल पढ़ने के लिए है।',
     count: (n: number) => plural(n, 'प्रविष्टि', 'प्रविष्टियाँ'),
@@ -1577,7 +1533,6 @@ export const hi: Messages = {
   },
 
   systemAdmin: {
-    title: 'सिस्टम जानकारी',
     intro:
       'क्या चल रहा है, डेटा कहाँ है और किस पर ध्यान चाहिए। यहाँ कोई गोपनीय जानकारी नहीं दिखती।',
     solstice: 'Solstice',
@@ -1614,7 +1569,6 @@ export const hi: Messages = {
     projectsArchived: 'आर्काइव किए गए प्रोजेक्ट',
     issues: 'टिकट',
     comments: 'टिप्पणियाँ',
-    attachments: 'अटैचमेंट',
     mail: 'ईमेल',
     mailOn: 'भेजना चालू',
     mailOff: 'भेजना बंद',
@@ -1660,7 +1614,6 @@ export const hi: Messages = {
     reload: 'Solstice फिर से लोड करें',
     again: 'फिर से आयात करें',
     lastTitle: 'पिछला आयात',
-    unavailable: 'यह सर्वर अभी एडमिन से आयात नहीं कर सकता: Solstice अपडेट करें।',
   },
 
   tokensAdmin: {
@@ -1902,7 +1855,6 @@ export const hi: Messages = {
   account: {
     title: 'मेरी सेटिंग्स',
     menu: 'मेरी सेटिंग्स',
-    nav: 'मेरी सेटिंग्स के भाग',
     sections: {
       profile: 'प्रोफ़ाइल',
       appearance: 'भाषा और रूप-रंग',
@@ -1929,7 +1881,6 @@ export const hi: Messages = {
     passwordShort: (n: number) => `कम से कम ${n} अक्षर।`,
     passwordChanged: 'पासवर्ड बदल दिया गया।',
     saved: 'सेटिंग्स सहेजी गईं।',
-    profileUnsupported: 'यह सर्वर अभी नाम या ईमेल पता बदलना नहीं जानता: Solstice अपडेट करें।',
     picture: 'चित्र',
     pictureHint:
       'आपके नाम के पास दिखता है। भेजने से पहले आपके ब्राउज़र में चित्र को वर्गाकार काटा और छोटा किया जाता है।',
@@ -2042,7 +1993,6 @@ export const hi: Messages = {
     editTitle: (name: string) => `${name} का खाता संपादित करें`,
     created: (name: string) => `${name} का खाता बनाया गया।`,
     updated: (name: string) => `${name} का खाता सहेजा गया।`,
-    edit: 'संपादित करें',
     deactivate: 'निष्क्रिय करें',
     activate: 'फिर से सक्रिय करें',
     deactivateTitle: (name: string) => `${name} का खाता निष्क्रिय करें?`,
@@ -2258,7 +2208,6 @@ export const hi: Messages = {
     noCategory: 'बिना श्रेणी',
     category: 'श्रेणी',
     issues: 'टिकट',
-    state: 'स्थिति',
     archive: 'संग्रहीत करें',
     unarchive: 'संग्रह से निकालें',
     empty: 'अभी कोई प्रोजेक्ट नहीं',
@@ -2327,7 +2276,6 @@ export const hi: Messages = {
     categoryTitle: (name: string) => `“${name}” बदलें`,
     categoryName: 'नाम',
     categoryDescription: 'विवरण',
-    categoryProjects: (n: number) => plural(n, 'प्रोजेक्ट', 'प्रोजेक्ट'),
     categoriesEmpty: 'अभी कोई श्रेणी नहीं।',
     categoryCreated: (name: string) => `श्रेणी “${name}” बन गई।`,
     categorySaved: (name: string) => `श्रेणी “${name}” सहेजी गई।`,
