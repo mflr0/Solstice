@@ -1,7 +1,6 @@
 <script lang="ts">
   import {
     changesEmail,
-    changesPassword,
     profileForm,
     profilePatch,
     profileProblems,
@@ -38,7 +37,7 @@
     session.me !== null &&
       (form.name.trim() !== session.me.name ||
         form.email.trim() !== session.me.email ||
-        changesPassword(form)),
+        form.newPassword !== ''),
   );
 
   function shown(f: ProfileField): string {
