@@ -19,7 +19,6 @@ export const en = {
     done: 'Done',
   },
   stepDone: 'done',
-  stepCurrent: 'current step',
   stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
   back: 'Back',
   next: 'Continue',

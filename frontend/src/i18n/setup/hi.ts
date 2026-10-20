@@ -14,7 +14,6 @@ export const hi: SetupMessages = {
     done: 'पूरा',
   },
   stepDone: 'पूरा हुआ',
-  stepCurrent: 'मौजूदा चरण',
   stepOf: (n: number, total: number) => `चरण ${n} / ${total}`,
   back: 'वापस',
   next: 'आगे बढ़ें',
