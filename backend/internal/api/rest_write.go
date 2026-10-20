@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -205,9 +206,10 @@ func (s *Server) translateEdit(ctx context.Context, sub *perm.Subject, cat *cata
 	}
 	// Update operations: set replaces, add and remove change a list, and
 	// comment.add adds a comment.
-	for field, ops := range in.Update {
-		for _, op := range ops {
-			for verb, arg := range op {
+	for _, field := range slices.Sorted(maps.Keys(in.Update)) {
+		for _, op := range in.Update[field] {
+			for _, verb := range slices.Sorted(maps.Keys(op)) {
+				arg := op[verb]
 				switch {
 				case field == "comment" && verb == "add":
 					var c struct {
@@ -237,8 +239,8 @@ func (s *Server) translateEdit(ctx context.Context, sub *perm.Subject, cat *cata
 		}
 	}
 
-	for field, raw := range values {
-		if err := s.translateField(ctx, sub, cat, p, cur, edit, field, raw); err != nil {
+	for _, field := range slices.Sorted(maps.Keys(values)) {
+		if err := s.translateField(ctx, sub, cat, p, cur, edit, field, values[field]); err != nil {
 			return nil, err
 		}
 	}
@@ -384,7 +386,8 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		if json.Unmarshal(raw, &v) != nil {
 			return invalidValue(field)
 		}
-		for key, text := range v {
+		for _, key := range slices.Sorted(maps.Keys(v)) {
+			text := v[key]
 			if key != "originalEstimate" && key != "remainingEstimate" {
 				return invalidValue(field)
 			}

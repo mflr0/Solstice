@@ -4,6 +4,7 @@ package api
 // filters and permissions.
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -615,18 +616,19 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	q := r.URL.Query()
+	issue, project := cmp.Or(q.Get("issueKey"), q.Get("issueId")), cmp.Or(q.Get("projectKey"), q.Get("projectId"))
 	var has func(p string) bool
 	switch {
-	case q.Get("issueKey") != "" || q.Get("issueId") != "":
-		r.SetPathValue("key", q.Get("issueKey")+q.Get("issueId"))
+	case issue != "":
+		r.SetPathValue("key", issue)
 		iss, err := s.restIssue(r, sub)
 		if err != nil {
 			return err
 		}
 		pi := iss.perm()
 		has = func(p string) bool { return sub.Can(p, iss.ProjectID, &pi) }
-	case q.Get("projectKey") != "" || q.Get("projectId") != "":
-		id, err := s.restProjectID(ctx, q.Get("projectKey")+q.Get("projectId"))
+	case project != "":
+		id, err := s.restProjectID(ctx, project)
 		if err != nil || !sub.CanBrowseProject(id) {
 			return errNotFound
 		}
