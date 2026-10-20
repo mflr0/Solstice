@@ -35,6 +35,7 @@ const (
 	AccountEmailInvalid              Key = "AccountEmailInvalid"
 	AccountOwnAdminRights            Key = "AccountOwnAdminRights"
 	AccountOwnPasswordInProfile      Key = "AccountOwnPasswordInProfile"
+	AccountOwnEmailInProfile         Key = "AccountOwnEmailInProfile"
 	AccountPasswordTooShort          Key = "AccountPasswordTooShort"
 	AccountPasswordIsUsername        Key = "AccountPasswordIsUsername"
 	AccountCurrentPasswordRequired   Key = "AccountCurrentPasswordRequired"
