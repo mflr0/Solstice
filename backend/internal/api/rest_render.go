@@ -14,6 +14,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -25,44 +26,54 @@ type sysField struct {
 	typ       string // schema type: string, user, datetime, array…
 	items     string // for arrays: the type of the items
 	navigable bool   // part of "*navigable", the default of searches
-	orderable bool   // can be set when creating or editing
 	clauses   []string
 }
 
+// orderable reports whether ORDER BY accepts the field, as Jira's
+// "orderable" means.
+func (f sysField) orderable() bool {
+	for _, c := range f.clauses {
+		if jql.Sortable(c) {
+			return true
+		}
+	}
+	return false
+}
+
 var systemFields = []sysField{
-	{"issuekey", i18n.M(i18n.FieldNameKey), "", "", true, false, []string{"id", "issue", "issuekey", "key"}},
-	{"summary", i18n.M(i18n.FieldNameSummary), "string", "", true, true, []string{"summary"}},
-	{"issuetype", i18n.M(i18n.FieldNameIssueType), "issuetype", "", true, true, []string{"issuetype", "type"}},
-	{"project", i18n.M(i18n.FieldNameProject), "project", "", true, true, []string{"project"}},
-	{"status", i18n.M(i18n.FieldNameStatus), "status", "", true, false, []string{"status"}},
-	{"priority", i18n.M(i18n.FieldNamePriority), "priority", "", true, true, []string{"priority"}},
-	{"resolution", i18n.M(i18n.FieldNameResolution), "resolution", "", true, true, []string{"resolution"}},
-	{"resolutiondate", i18n.M(i18n.FieldNameResolved), "datetime", "", true, false, []string{"resolutiondate", "resolved"}},
-	{"assignee", i18n.M(i18n.FieldNameAssignee), "user", "", true, true, []string{"assignee"}},
-	{"reporter", i18n.M(i18n.FieldNameReporter), "user", "", true, true, []string{"reporter"}},
-	{"creator", i18n.M(i18n.FieldNameCreator), "user", "", true, false, []string{"creator"}},
-	{"created", i18n.M(i18n.FieldNameCreated), "datetime", "", true, false, []string{"created", "createdDate"}},
-	{"updated", i18n.M(i18n.FieldNameUpdated), "datetime", "", true, false, []string{"updated", "updatedDate"}},
-	{"duedate", i18n.M(i18n.FieldNameDueDate), "date", "", true, true, []string{"due", "duedate"}},
-	{"description", i18n.M(i18n.FieldNameDescription), "string", "", true, true, []string{"description"}},
-	{"environment", i18n.M(i18n.FieldNameEnvironment), "string", "", true, true, []string{"environment"}},
-	{"labels", i18n.M(i18n.FieldNameLabels), "array", "string", true, true, []string{"labels"}},
-	{"components", i18n.M(i18n.FieldNameComponents), "array", "component", true, true, []string{"component"}},
-	{"fixVersions", i18n.M(i18n.FieldNameFixVersions), "array", "version", true, true, []string{"fixVersion"}},
-	{"versions", i18n.M(i18n.FieldNameAffectsVersions), "array", "version", true, true, []string{"affectedVersion"}},
-	{"issuelinks", i18n.M(i18n.FieldNameLinkedIssues), "array", "issuelinks", true, true, []string{"issueLink"}},
-	{"subtasks", i18n.M(i18n.FieldNameSubtasks), "array", "issuelinks", true, false, []string{"subtasks"}},
-	{"parent", i18n.M(i18n.FieldNameParent), "issuelink", "", true, true, []string{"parent"}},
-	{"security", i18n.M(i18n.FieldNameSecurityLevel), "securitylevel", "", true, true, []string{"level"}},
-	{"watches", i18n.M(i18n.FieldNameWatchers), "watches", "", true, false, []string{"watchers"}},
-	{"votes", i18n.M(i18n.FieldNameVotes), "votes", "", true, false, []string{"votes"}},
-	{"timeoriginalestimate", i18n.M(i18n.FieldNameOriginalEstimate), "number", "", true, false, []string{"originalEstimate"}},
-	{"timeestimate", i18n.M(i18n.FieldNameRemainingEstimate), "number", "", true, false, []string{"remainingEstimate"}},
-	{"timespent", i18n.M(i18n.FieldNameTimeSpent), "number", "", true, false, []string{"timeSpent"}},
-	{"timetracking", i18n.M(i18n.FieldNameTimeTracking), "timetracking", "", false, false, nil},
-	{"attachment", i18n.M(i18n.FieldNameAttachments), "array", "attachment", false, false, []string{"attachments"}},
-	{"comment", i18n.M(i18n.FieldNameComments), "comments-page", "", false, true, []string{"comment"}},
-	{"worklog", i18n.M(i18n.FieldNameWorkLog), "array", "worklog", false, false, nil},
+	{"issuekey", i18n.M(i18n.FieldNameKey), "", "", true, []string{"id", "issue", "issuekey", "key"}},
+	{"summary", i18n.M(i18n.FieldNameSummary), "string", "", true, []string{"summary"}},
+	{"issuetype", i18n.M(i18n.FieldNameIssueType), "issuetype", "", true, []string{"issuetype", "type"}},
+	{"project", i18n.M(i18n.FieldNameProject), "project", "", true, []string{"project"}},
+	{"status", i18n.M(i18n.FieldNameStatus), "status", "", true, []string{"status"}},
+	{"priority", i18n.M(i18n.FieldNamePriority), "priority", "", true, []string{"priority"}},
+	{"resolution", i18n.M(i18n.FieldNameResolution), "resolution", "", true, []string{"resolution"}},
+	{"resolutiondate", i18n.M(i18n.FieldNameResolved), "datetime", "", true, []string{"resolutiondate", "resolved"}},
+	{"assignee", i18n.M(i18n.FieldNameAssignee), "user", "", true, []string{"assignee"}},
+	{"reporter", i18n.M(i18n.FieldNameReporter), "user", "", true, []string{"reporter"}},
+	{"creator", i18n.M(i18n.FieldNameCreator), "user", "", true, []string{"creator"}},
+	{"created", i18n.M(i18n.FieldNameCreated), "datetime", "", true, []string{"created", "createdDate"}},
+	{"updated", i18n.M(i18n.FieldNameUpdated), "datetime", "", true, []string{"updated", "updatedDate"}},
+	{"duedate", i18n.M(i18n.FieldNameDueDate), "date", "", true, []string{"due", "duedate"}},
+	{"description", i18n.M(i18n.FieldNameDescription), "string", "", true, []string{"description"}},
+	{"environment", i18n.M(i18n.FieldNameEnvironment), "string", "", true, []string{"environment"}},
+	{"labels", i18n.M(i18n.FieldNameLabels), "array", "string", true, []string{"labels"}},
+	{"components", i18n.M(i18n.FieldNameComponents), "array", "component", true, []string{"component"}},
+	{"fixVersions", i18n.M(i18n.FieldNameFixVersions), "array", "version", true, []string{"fixVersion"}},
+	{"versions", i18n.M(i18n.FieldNameAffectsVersions), "array", "version", true, []string{"affectedVersion"}},
+	{"issuelinks", i18n.M(i18n.FieldNameLinkedIssues), "array", "issuelinks", true, []string{"issueLink"}},
+	{"subtasks", i18n.M(i18n.FieldNameSubtasks), "array", "issuelinks", true, []string{"subtasks"}},
+	{"parent", i18n.M(i18n.FieldNameParent), "issuelink", "", true, []string{"parent"}},
+	{"security", i18n.M(i18n.FieldNameSecurityLevel), "securitylevel", "", true, []string{"level"}},
+	{"watches", i18n.M(i18n.FieldNameWatchers), "watches", "", true, []string{"watchers"}},
+	{"votes", i18n.M(i18n.FieldNameVotes), "votes", "", true, []string{"votes"}},
+	{"timeoriginalestimate", i18n.M(i18n.FieldNameOriginalEstimate), "number", "", true, []string{"originalEstimate"}},
+	{"timeestimate", i18n.M(i18n.FieldNameRemainingEstimate), "number", "", true, []string{"remainingEstimate"}},
+	{"timespent", i18n.M(i18n.FieldNameTimeSpent), "number", "", true, []string{"timeSpent"}},
+	{"timetracking", i18n.M(i18n.FieldNameTimeTracking), "timetracking", "", false, nil},
+	{"attachment", i18n.M(i18n.FieldNameAttachments), "array", "attachment", false, []string{"attachments"}},
+	{"comment", i18n.M(i18n.FieldNameComments), "comments-page", "", false, []string{"comment"}},
+	{"worklog", i18n.M(i18n.FieldNameWorkLog), "array", "worklog", false, nil},
 }
 
 func systemField(id string) (sysField, bool) {

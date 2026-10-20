@@ -411,7 +411,7 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 	o := s.restOut(r)
 	out := []any{}
 	for _, f := range systemFields {
-		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable,
+		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable(),
 			"navigable": f.navigable, "searchable": len(f.clauses) > 0, "clauseNames": f.clauses}
 		if f.typ != "" {
 			jf["schema"] = systemSchema(f)
