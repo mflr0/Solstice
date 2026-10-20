@@ -396,6 +396,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "एक बार में 1 से 50 टिकट।",
 	BoardRankTargetRequired:      "rankBeforeIssue या rankAfterIssue बताएँ।",
 	BoardRankItself:              "किसी टिकट को उसी के सापेक्ष रैंक नहीं किया जा सकता।",
+	BoardFilterName:              "%s बोर्ड",
 
 	// Sprints.
 	SprintKanban:          "Kanban बोर्ड में स्प्रिंट नहीं होते।",

@@ -394,6 +394,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Entre 1 et 50 tickets à la fois.",
 	BoardRankTargetRequired:      "Indiquez rankBeforeIssue ou rankAfterIssue.",
 	BoardRankItself:              "Un ticket ne peut pas être classé par rapport à lui-même.",
+	BoardFilterName:              "Tableau %s",
 
 	// Sprints.
 	SprintKanban:          "Un tableau Kanban n'a pas de sprints.",

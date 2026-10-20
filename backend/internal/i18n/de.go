@@ -395,6 +395,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Zwischen 1 und 50 Vorgänge auf einmal.",
 	BoardRankTargetRequired:      "Geben Sie rankBeforeIssue oder rankAfterIssue an.",
 	BoardRankItself:              "Ein Vorgang kann nicht relativ zu sich selbst eingeordnet werden.",
+	BoardFilterName:              "Board %s",
 
 	// Sprints.
 	SprintKanban:          "Ein Kanban-Board hat keine Sprints.",

@@ -1351,7 +1351,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, query, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		sub.UserID, "Tableau "+name, `project = "`+key+`" ORDER BY Rank ASC`, now, now)
+		sub.UserID, i18n.Sprintf(locale(r), i18n.BoardFilterName, name), `project = "`+key+`" ORDER BY Rank ASC`, now, now)
 	if err != nil {
 		return err
 	}

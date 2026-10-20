@@ -446,6 +446,7 @@ const (
 	BoardIssueCount              Key = "BoardIssueCount"
 	BoardRankTargetRequired      Key = "BoardRankTargetRequired"
 	BoardRankItself              Key = "BoardRankItself"
+	BoardFilterName              Key = "BoardFilterName"
 )
 
 // Sprints.
