@@ -136,6 +136,7 @@ func (s *Server) general(ctx context.Context) *generalSettings {
 		if s.adm.gen != nil {
 			return s.adm.gen
 		}
+		return g
 	}
 	s.adm.gen, s.adm.genAt = g, time.Now()
 	return g
