@@ -815,12 +815,7 @@ func (s *Server) applyCustom(ctx context.Context, sub *perm.Subject, o *restOut,
 	if len(writes) == 0 {
 		return nil
 	}
-	// The values before, as text, for the history.
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadCustom })
-	if err != nil {
-		return err
-	}
-	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	before, err := s.customBefore(ctx, sub, o, iss, writes)
 	if err != nil {
 		return err
 	}
@@ -829,55 +824,13 @@ func (s *Server) applyCustom(ctx context.Context, sub *perm.Subject, o *restOut,
 		return err
 	}
 	defer tx.Rollback()
+	changes, err := writeCustom(ctx, tx, iss.ID, writes, before)
+	if err != nil || len(changes) == 0 {
+		return err
+	}
 	now := time.Now().UTC()
-	var changes []change
-	for _, w := range writes {
-		before := o.customText(set, users, w.field, set.list[0])
-		if before == w.display {
-			continue
-		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE issue_id = ? AND field_id = ?`,
-			iss.ID, w.field.ID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM labels WHERE issue_id = ? AND field_id = ?`, iss.ID,
-			w.field.ID); err != nil {
-			return err
-		}
-		for _, v := range w.rows {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO custom_field_values (issue_id, field_id, parent_key,
-				string_value, number_value, text_value, date_value) VALUES (?, ?, ?, ?, ?, ?, ?)`, iss.ID, w.field.ID,
-				v.parentKey, v.str, v.num, v.text, v.date); err != nil {
-				return err
-			}
-		}
-		for _, l := range w.labels {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO labels (issue_id, field_id, label) VALUES (?, ?, ?)`,
-				iss.ID, w.field.ID, l); err != nil {
-				return err
-			}
-		}
-		changes = append(changes, change{field: w.field.Name, oldString: nullIfEmpty(before),
-			newString: nullIfEmpty(w.display)})
-	}
-	if len(changes) == 0 {
-		return nil
-	}
-	// Jira files these history lines as custom fields.
-	res, err := tx.ExecContext(ctx, `INSERT INTO change_groups (issue_id, author_id, created_at) VALUES (?, ?, ?)`,
-		iss.ID, sub.UserID, now)
-	if err != nil {
+	if err := recordHistory(ctx, tx, iss.ID, sub.UserID, now, nil, changes); err != nil {
 		return err
-	}
-	group, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-	for _, c := range changes {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO change_items (group_id, field_type, field, old_string, new_string)
-			VALUES (?, 'custom', ?, ?, ?)`, group, c.field, c.oldString, c.newString); err != nil {
-			return err
-		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE issues SET updated_at = ? WHERE id = ?`, now, iss.ID); err != nil {
 		return err
@@ -887,6 +840,66 @@ func (s *Server) applyCustom(ctx context.Context, sub *perm.Subject, o *restOut,
 	}
 	s.changed(iss, sub.UserID, "issue", changes) // notifications and webhooks too
 	return nil
+}
+
+// customBefore returns, for each write, the value it replaces as the history
+// shows it.
+func (s *Server) customBefore(ctx context.Context, sub *perm.Subject, o *restOut, iss *issueRow, writes []customWrite) ([]string, error) {
+	if len(writes) == 0 {
+		return nil, nil
+	}
+	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadCustom })
+	if err != nil {
+		return nil, err
+	}
+	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	if err != nil {
+		return nil, err
+	}
+	before := make([]string, len(writes))
+	for i, w := range writes {
+		before[i] = o.customText(set, users, w.field, set.list[0])
+	}
+	return before, nil
+}
+
+// writeCustom stores custom field values in tx and returns the history lines
+// of those that differ from before (nil: a new issue, which has none).
+func writeCustom(ctx context.Context, tx *sql.Tx, issueID int64, writes []customWrite, before []string) ([]change, error) {
+	var changes []change
+	for i, w := range writes {
+		var was string
+		if before != nil {
+			was = before[i]
+		}
+		if was == w.display {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE issue_id = ? AND field_id = ?`,
+			issueID, w.field.ID); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM labels WHERE issue_id = ? AND field_id = ?`, issueID,
+			w.field.ID); err != nil {
+			return nil, err
+		}
+		for _, v := range w.rows {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO custom_field_values (issue_id, field_id, parent_key,
+				string_value, number_value, text_value, date_value) VALUES (?, ?, ?, ?, ?, ?, ?)`, issueID, w.field.ID,
+				v.parentKey, v.str, v.num, v.text, v.date); err != nil {
+				return nil, err
+			}
+		}
+		for _, l := range w.labels {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO labels (issue_id, field_id, label) VALUES (?, ?, ?)`,
+				issueID, w.field.ID, l); err != nil {
+				return nil, err
+			}
+		}
+		changes = append(changes, change{field: w.field.Name, oldString: nullIfEmpty(was),
+			newString: nullIfEmpty(w.display)})
+	}
+	return changes, nil
 }
 
 func nullIfEmpty(s string) any {
