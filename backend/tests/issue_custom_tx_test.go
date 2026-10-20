@@ -65,7 +65,7 @@ func deleteAfter(t *testing.T, key string) {
 func TestCreateWritesCustomFieldsWithTheIssue(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := login(t, "paul.martin", "motdepasse")
-	field, name := txField(t, admin, "select", "Bas", "Haut")
+	field, _ := txField(t, admin, "select", "Bas", "Haut")
 	demo := `(SELECT id FROM projects WHERE pkey = 'DEMO')`
 	component := dbInt(t, `SELECT id FROM components WHERE project_id = `+demo+` ORDER BY id LIMIT 1`)
 	version := dbInt(t, `SELECT id FROM versions WHERE project_id = `+demo+` ORDER BY id LIMIT 1`)
@@ -99,8 +99,8 @@ func TestCreateWritesCustomFieldsWithTheIssue(t *testing.T) {
 	}) {
 		t.Errorf("custom values: %+v", d.CustomFields)
 	}
-	if got, want := historyGroups(t, c.Key), [][]string{{"custom:" + name}}; !slices.EqualFunc(got, want, slices.Equal) {
-		t.Errorf("history: %v, want %v", got, want)
+	if got := historyGroups(t, c.Key); len(got) != 0 {
+		t.Errorf("history: %v, want none: as in Jira, a creation records none", got)
 	}
 }
 

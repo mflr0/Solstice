@@ -223,8 +223,8 @@ func TestRESTWriteCustomFields(t *testing.T) {
 		t.Errorf("after the edit: %v", f)
 	}
 
-	// The history names the field and shows the values as text, from the
-	// creation on; setting the same values again records nothing.
+	// The history names the field and shows the values as text. A creation
+	// records none, as in Jira; setting the same values again records nothing.
 	history := func() map[string][]string {
 		t.Helper()
 		_, issue := rest("GET", path+"?fields=summary&expand=changelog", nil)
@@ -238,11 +238,11 @@ func TestRESTWriteCustomFields(t *testing.T) {
 	}
 	before := history()
 	for field, want := range map[string][]string{
-		"Environnement client": {" → Recette", "Recette → Production"},
-		"Équipes concernées":   {" → Front, Data", "Front, Data → Back"},
-		"Lieu":                 {" → France › Lyon", "France › Lyon → Belgique"},
-		"Référent métier":      {" → Chloé Simon", "Chloé Simon → Hugo Robert"},
-		"Thèmes":               {" → a_b, z"},
+		"Environnement client": {"Recette → Production"},
+		"Équipes concernées":   {"Front, Data → Back"},
+		"Lieu":                 {"France › Lyon → Belgique"},
+		"Référent métier":      {"Chloé Simon → Hugo Robert"},
+		"Thèmes":               nil,
 	} {
 		got := slices.Sorted(slices.Values(before[field]))
 		slices.Sort(want)

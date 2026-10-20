@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -183,6 +184,26 @@ func TestIssueMovedEventType(t *testing.T) {
 	edited := &events.Event{Kind: events.IssueUpdated, Changes: []events.Change{{Field: "summary"}}}
 	if got := issueEventType(edited); got != "issue_updated" {
 		t.Errorf("an edit: %s", got)
+	}
+}
+
+// An issue's custom fields go in its fields, set or not, as GET /issue
+// renders them.
+func TestIssueCustomFields(t *testing.T) {
+	b := &builder{base: "https://solstice.example"}
+	f := b.issue(&events.Issue{ID: 4, Key: "DEMO-4", Custom: []events.CustomValue{
+		{ID: 10010, Name: "Stage", Value: json.RawMessage(`{"value":"Recette","id":"3"}`), Text: "Recette"},
+		{ID: 10011, Name: "Reviewer", Value: json.RawMessage(`null`)},
+	}})["fields"].(map[string]any)
+	got, err := json.Marshal(map[string]any{"a": f["customfield_10010"], "b": f["customfield_10011"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"a":{"value":"Recette","id":"3"},"b":null}`; string(got) != want {
+		t.Errorf("custom fields: %s, want %s", got, want)
+	}
+	if _, ok := f["customfield_10011"]; !ok {
+		t.Error("a custom field without a value is left out; Jira sends it as null")
 	}
 }
 

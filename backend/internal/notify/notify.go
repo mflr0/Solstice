@@ -183,7 +183,7 @@ func deref(s *string) string {
 func linesOf(e *events.Event) []line {
 	switch e.Kind {
 	case events.IssueCreated:
-		return []line{{Group: GroupCreated}}
+		return append([]line{{Group: GroupCreated}}, createdLines(e.Issue)...)
 	case events.IssueDeleted:
 		return []line{{Group: GroupDeleted}}
 	case events.CommentCreated, events.CommentUpdated:
@@ -202,6 +202,41 @@ func linesOf(e *events.Event) []line {
 			to = deref(c.To)
 		}
 		out = append(out, line{Group: groupOf(c.Field), Field: c.Field, From: from, To: to})
+	}
+	return out
+}
+
+// createdLines lists the values a new issue was created with, but for those
+// the e-mail's meta line shows (type, status, priority, assignee) and the
+// description, shown as the entry's text. Fields are named as in history.
+func createdLines(iss *events.Issue) []line {
+	if iss == nil {
+		return nil
+	}
+	var out []line
+	add := func(field, value string) {
+		if value != "" && !hiddenFields[strings.ToLower(field)] {
+			out = append(out, line{Group: GroupCreated, Field: field, To: value})
+		}
+	}
+	names := func(list []events.Named) string {
+		var out []string
+		for _, n := range list {
+			out = append(out, n.Name)
+		}
+		return strings.Join(out, ", ")
+	}
+	add("Component", names(iss.Components))
+	add("Fix Version", names(iss.FixVersions))
+	add("Version", names(iss.Versions))
+	add("labels", strings.Join(iss.Labels, ", "))
+	add("duedate", deref(iss.Due))
+	add("environment", deref(iss.Environment))
+	if iss.Parent != nil {
+		add("parent", iss.Parent.Key)
+	}
+	for _, c := range iss.Custom {
+		add(c.Name, c.Text)
 	}
 	return out
 }
