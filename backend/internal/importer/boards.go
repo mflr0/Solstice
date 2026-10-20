@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/jiradb"
 	"solstice/internal/jql"
 	"solstice/internal/sqlq"
@@ -373,7 +374,7 @@ func (r *run) importRanks() error {
 	}
 	var rankField int64
 	for id, typeKey := range r.fields {
-		if fieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
+		if issue.FieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
 			rankField = id
 		}
 	}

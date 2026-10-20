@@ -18,6 +18,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -44,7 +45,7 @@ var fieldTypes = []struct{ name, kind, searcher string }{
 // fieldTypeName gives Solstice's name of a Jira type key, "" for a type
 // Solstice only displays.
 func fieldTypeName(typeKey string) string {
-	kind := fieldKind(typeKey)
+	kind := issue.FieldKind(typeKey)
 	for _, t := range fieldTypes {
 		if t.kind == kind {
 			return t.name
@@ -485,7 +486,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if protectedKind(fieldKind(f.TypeKey)) {
+	if protectedKind(issue.FieldKind(f.TypeKey)) {
 		return fail(http.StatusConflict, i18n.CustomFieldUsedByBoards)
 	}
 	estimate := "customfield_" + strconv.FormatInt(id, 10)
@@ -532,7 +533,7 @@ func (s *Server) optionField(r *http.Request) (*fieldAdminOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !optionKind(fieldKind(f.TypeKey)) {
+	if !optionKind(issue.FieldKind(f.TypeKey)) {
 		return nil, fail(http.StatusBadRequest, i18n.CustomFieldNoOptions)
 	}
 	return f, nil

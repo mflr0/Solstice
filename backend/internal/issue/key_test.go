@@ -1,4 +1,4 @@
-package jql
+package issue
 
 import (
 	"slices"

@@ -385,10 +385,16 @@ func jiraDuration(secs int64) string {
 	return strings.Join(parts, " ")
 }
 
-// Internal fields of Jira Software that Solstice does not keep up to date.
-var staleKinds = map[string]bool{
-	"gh-global-rank": true, "greenhopper-releasedmultiversionhistory": true, "devsummary": true, "importid": true,
-	"jqlFunctionsCustomFieldType": true,
+// staleKind tells whether REST renders a field of this kind as null: one of
+// hiddenKinds, which Solstice does not keep up to date. REST shows the others
+// the way Jira does: gh-lexo-rank and gh-sprint from Solstice's own data,
+// gh-epic-color as imported.
+func staleKind(kind string) bool {
+	switch kind {
+	case "gh-lexo-rank", "gh-sprint", "gh-epic-color":
+		return false
+	}
+	return hiddenKinds[kind]
 }
 
 // customValue renders a custom field's value the way Jira does for its type.
@@ -417,7 +423,7 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 		return nil
 	}
 	values := d.custom[f.ID]
-	if len(values) == 0 || staleKinds[f.Kind] {
+	if len(values) == 0 || staleKind(f.Kind) {
 		return nil
 	}
 	switch f.Kind {

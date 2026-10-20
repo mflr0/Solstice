@@ -10,7 +10,7 @@ import (
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
-	"solstice/internal/jql"
+	"solstice/internal/issue"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -336,7 +336,7 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 		f := strings.ToLower(l.Field)
 		if relationFields[f] {
 			ok := true
-			for _, k := range jql.KeysIn(l.From + " " + l.To) {
+			for _, k := range issue.KeysIn(l.From + " " + l.To) {
 				ok = ok && keys.canSee(ctx, k)
 			}
 			if !ok {

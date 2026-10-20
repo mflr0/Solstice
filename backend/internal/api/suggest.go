@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -172,7 +173,7 @@ func (s *Server) fields(w http.ResponseWriter, r *http.Request) error {
 		if err := rows.Scan(&f.ID, &f.Name, &typeKey); err != nil {
 			return err
 		}
-		f.Kind = typeKey[strings.LastIndexByte(typeKey, ':')+1:]
+		f.Kind = issue.FieldKind(typeKey)
 		f.JQL = `"` + strings.ReplaceAll(f.Name, `"`, `\"`) + `"`
 		out = append(out, f)
 		return nil
