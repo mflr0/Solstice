@@ -12,7 +12,7 @@
   /**
    * Search across every project, with the saved filters beside it. The
    * search lives in the address (?jql=…); ?filter=12 opens a saved filter,
-   * and a change made to it shows as « modifié » until it is saved.
+   * and a change made to it shows as "modified" until it is saved.
    */
   let filters = $state<SavedFilter[] | null>(null);
   const loc = $derived(readLocation(router.search).loc);

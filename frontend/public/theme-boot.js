@@ -48,7 +48,7 @@
   if (mode !== 'system') root.setAttribute('data-theme', mode);
   root.setAttribute('data-scheme', dark ? 'dark' : 'light');
   if (skin !== 'carnet') {
-    // The page stays blank until the skin's stylesheet is in (src/lib/skins.ts);
+    // The page stays blank until the skin's stylesheet is in (src/lib/skins.svelte.ts);
     // this only guards against the application never starting.
     root.setAttribute('data-skin-loading', '');
     setTimeout(function () {

@@ -2,7 +2,7 @@
   import { formatNumber } from '../i18n/format.js';
   import { t } from '../i18n/t.js';
 
-  /** "51–100 sur 158", with previous / next. */
+  /** "51–100 of 158", with previous / next. */
   interface Props {
     page: number;
     size: number;
