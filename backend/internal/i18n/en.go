@@ -32,6 +32,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Invalid email address.",
 	AccountOwnAdminRights:            "You cannot remove your own administrator rights.",
 	AccountOwnPasswordInProfile:      "Change your own password from your profile.",
+	AccountOwnEmailInProfile:         "Change your own email address from your profile.",
 	AccountPasswordTooShort:          "The password must be at least %d characters long.",
 	AccountPasswordIsUsername:        "The password cannot be the username.",
 	AccountCurrentPasswordRequired:   "Enter your current password.",

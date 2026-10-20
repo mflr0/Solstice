@@ -268,7 +268,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if id == currentUser(r).ID && ((in.Active != nil && !*in.Active) || (in.Admin != nil && !*in.Admin)) {
+	me := currentUser(r)
+	self := id == me.ID
+	if self && ((in.Active != nil && !*in.Active) || (in.Admin != nil && !*in.Admin)) {
 		return fail(http.StatusBadRequest, i18n.AccountOwnAdminRights)
 	}
 	ctx := r.Context()
@@ -279,6 +281,23 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if exists == 0 {
 		return errNotFound
 	}
+	before, err := s.userSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	emailChanged := in.Email != nil && strings.TrimSpace(*in.Email) != before.Email
+	// The profile asks for the current password before changing either, and
+	// refuses a token: this path must not get around that.
+	switch {
+	case self && in.Password != nil:
+		return fail(http.StatusBadRequest, i18n.AccountOwnPasswordInProfile)
+	case self && emailChanged:
+		return fail(http.StatusBadRequest, i18n.AccountOwnEmailInProfile)
+	case me.TokenID != 0 && in.Password != nil:
+		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
+	case me.TokenID != 0 && emailChanged:
+		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
+	}
 	if in.Email != nil {
 		if email := strings.TrimSpace(*in.Email); email != "" && !validEmail(email) {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
@@ -288,10 +307,6 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		if err := s.checkNewPassword(ctx, *in.Password); err != nil {
 			return err
 		}
-	}
-	before, err := s.userSnapshot(ctx, id)
-	if err != nil {
-		return err
 	}
 	var hash string
 	if in.Password != nil {
@@ -314,7 +329,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		// Links mailed to the old address must not work once it is not theirs.
-		if strings.TrimSpace(*in.Email) != before.Email {
+		if emailChanged {
 			if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
 				return err
 			}
@@ -343,10 +358,8 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		// A new password signs out every session opened with the old one.
-		if id != currentUser(r).ID {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
-				return err
-			}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+			return err
 		}
 	}
 	if err := tx.Commit(); err != nil {
