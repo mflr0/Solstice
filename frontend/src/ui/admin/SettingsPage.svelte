@@ -10,7 +10,7 @@
     type GeneralForm,
   } from '../../core/admin-general.js';
   import type { GeneralField, GeneralSettings } from '../../core/admin-types.js';
-  import { guessBaseURL } from '../../core/setup.js';
+  import { guessBaseURL, timeZones } from '../../core/setup.js';
   import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, LOCALES } from '../../i18n/index.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -26,13 +26,7 @@
 
   type Field = keyof GeneralForm;
 
-  const zones: string[] = (() => {
-    try {
-      return Intl.supportedValuesOf('timeZone');
-    } catch {
-      return [];
-    }
-  })();
+  const zones = timeZones();
 
   let settings = $state<GeneralSettings | null>(null);
   let form = $state<GeneralForm | null>(null);

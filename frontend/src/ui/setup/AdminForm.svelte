@@ -42,7 +42,7 @@
     try {
       ondone(await setupApi.finish({ ...form, username }));
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       pending = false;
     }
