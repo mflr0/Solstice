@@ -897,6 +897,10 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 		return errNotFound
 	}
 	pi := iss.perm()
+	// Refuse before the column change commits, not halfway through the move.
+	if (in.After != nil || in.Before != nil || in.Sprint != nil) && !sub.Can(perm.Edit, iss.ProjectID, &pi) {
+		return errForbidden
+	}
 
 	if in.Column != nil {
 		target, err := s.columnTarget(ctx, b, iss, *in.Column)
@@ -912,9 +916,6 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if in.After != nil || in.Before != nil {
-		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
-			return errForbidden
-		}
 		var lower, upper string
 		if in.After != nil {
 			if a, err := s.findIssue(ctx, *in.After); err == nil {
@@ -941,9 +942,6 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if in.Sprint != nil {
-		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
-			return errForbidden
-		}
 		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint, false); err != nil {
 			return err
 		}
