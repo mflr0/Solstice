@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/jql"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -153,9 +153,6 @@ func (s *Service) footer(p *page, why string) {
 	}
 }
 
-// keyInText finds issue keys in history text ("This issue blocks WEB-12").
-var keyInText = regexp.MustCompile(`\b[A-Z][A-Z0-9_]+-\d+\b`)
-
 // relationFields name other issues; they are shown only when the recipient
 // sees every issue they name.
 var relationFields = map[string]bool{"link": true, "parent": true, "epic link": true, "epic child": true}
@@ -185,7 +182,8 @@ func (k *keyAccess) canSee(ctx context.Context, key string) bool {
 			Scan(&access.ProjectID, &reporter, &assignee, &level)
 	}
 	access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
-	v := err == nil && k.sub.CanSee(access)
+	// Text that only looks like a key names no issue to hide.
+	v := errors.Is(err, sql.ErrNoRows) || err == nil && k.sub.CanSee(access)
 	k.seen[key] = v
 	return v
 }
@@ -338,7 +336,7 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 		f := strings.ToLower(l.Field)
 		if relationFields[f] {
 			ok := true
-			for _, k := range keyInText.FindAllString(l.From+" "+l.To, -1) {
+			for _, k := range jql.KeysIn(l.From + " " + l.To) {
 				ok = ok && keys.canSee(ctx, k)
 			}
 			if !ok {

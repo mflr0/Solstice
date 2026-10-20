@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"regexp"
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 	"strconv"
@@ -394,8 +394,6 @@ var relationFields = map[string]bool{
 // Work log lines identify individual work logs, which may be restricted.
 var worklogFields = map[string]bool{"worklogid": true, "worklogtimespent": true}
 
-var keyInText = regexp.MustCompile(`\b[A-Z][A-Z0-9_]+-\d+\b`)
-
 // hideRestrictedHistory drops history lines that would reveal an issue the
 // user may not see, or an individual (possibly restricted) work log.
 func (s *Server) hideRestrictedHistory(ctx context.Context, sub *perm.Subject, entries []historyEntry) []historyEntry {
@@ -405,7 +403,8 @@ func (s *Server) hideRestrictedHistory(ctx context.Context, sub *perm.Subject, e
 			return v
 		}
 		iss, err := s.findIssue(ctx, key)
-		v := err == nil && sub.CanSee(iss.perm())
+		// Text that only looks like a key names no issue to hide.
+		v := errors.Is(err, errNotFound) || err == nil && sub.CanSee(iss.perm())
 		visible[key] = v
 		return v
 	}
@@ -423,7 +422,7 @@ func (s *Server) hideRestrictedHistory(ctx context.Context, sub *perm.Subject, e
 					if text == nil {
 						continue
 					}
-					for _, key := range keyInText.FindAllString(*text, -1) {
+					for _, key := range jql.KeysIn(*text) {
 						ok = ok && canSee(key)
 					}
 				}
