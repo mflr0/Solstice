@@ -30,7 +30,6 @@ func (s *Server) attachmentPath(id int64) string {
 }
 
 func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
@@ -39,30 +38,42 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if _, err := s.storeAttachments(w, r, sub, iss); err != nil {
+		return err
+	}
+	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
+}
+
+// storeAttachments stores the files of a multipart request on an issue and
+// returns the ids of the attachments it created.
+func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *perm.Subject,
+	iss *issueRow) ([]int64, error) {
+	ctx := r.Context()
 	pi := iss.perm()
 	if !sub.Can(perm.Attach, iss.ProjectID, &pi) {
-		return errForbidden
+		return nil, errForbidden
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, s.maxUpload)
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return fail(http.StatusBadRequest, i18n.AttachmentUploadInvalid)
+		return nil, fail(http.StatusBadRequest, i18n.AttachmentUploadInvalid)
 	}
 	if err := os.MkdirAll(filepath.Join(s.dataDir, "attachments"), 0o750); err != nil {
-		return err
+		return nil, err
 	}
 	var names []string
+	var ids []int64
 	now := time.Now().UTC()
 	// The quota is what the database stores, not what the disk holds.
 	var stored int64
 	if s.maxStorage > 0 {
 		if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(size), 0) FROM attachments`).Scan(&stored); err != nil {
-			return err
+			return nil, err
 		}
 		// A body is at least as long as its parts, so one over the quota is
 		// refused whole before any file is written.
 		if r.ContentLength > 0 && stored+r.ContentLength > s.maxStorage {
-			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+			return nil, fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 		}
 	}
 	for {
@@ -71,14 +82,14 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 			break
 		}
 		if err != nil {
-			return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
+			return nil, fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 		}
 		name := cleanFilename(part.FileName())
 		if name == "" {
 			continue
 		}
 		if s.maxStorage > 0 && stored >= s.maxStorage {
-			return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+			return nil, fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 		}
 		mimeType := part.Header.Get("Content-Type")
 		if mimeType == "" {
@@ -87,7 +98,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		res, err := s.db.ExecContext(ctx, `INSERT INTO attachments (issue_id, author_id, filename, mime_type, size,
 			created_at) VALUES (?, ?, ?, ?, 0, ?)`, iss.ID, sub.UserID, name, mimeType, now)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		id, _ := res.LastInsertId()
 		var src io.Reader = part
@@ -98,42 +109,48 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
-				return fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
+				return nil, fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 			}
 			if errors.Is(err, errStorageQuota) {
-				return fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
+				return nil, fail(http.StatusInsufficientStorage, i18n.AttachmentStorageQuota)
 			}
-			return err
+			return nil, err
 		}
 		if _, err := s.db.ExecContext(ctx, `UPDATE attachments SET size = ? WHERE id = ?`, size, id); err != nil {
-			return err
+			return nil, err
 		}
 		stored += size
 		names = append(names, name)
+		ids = append(ids, id)
 	}
 	if len(names) == 0 {
-		return fail(http.StatusBadRequest, i18n.AttachmentNoFile)
+		return nil, fail(http.StatusBadRequest, i18n.AttachmentNoFile)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
+	// Lock the issue before the history insert, whose foreign key check would
+	// take a shared lock that two requests then deadlock upgrading.
+	if _, err := tx.ExecContext(ctx, `SELECT id FROM issues WHERE id = ? FOR UPDATE`, iss.ID); err != nil {
+		return nil, err
+	}
 	var changes []change
 	for _, n := range names {
 		changes = append(changes, change{field: "Attachment", newString: n})
 	}
 	if err := recordChanges(ctx, tx, iss.ID, sub.UserID, now, changes); err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE issues SET updated_at = ? WHERE id = ?`, now, iss.ID); err != nil {
-		return err
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return nil, err
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
-	return s.respondIssue(w, r, http.StatusCreated, sub, iss.ID)
+	return ids, nil
 }
 
 var errStorageQuota = errors.New("attachment storage quota reached")

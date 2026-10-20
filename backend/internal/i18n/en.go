@@ -206,6 +206,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Unknown field type (choose from: %s).",
 	CustomFieldNoOptions:     "This field type has no options.",
 	CustomFieldOptionTooLong: "An option's text is 255 characters at most.",
+	CustomFieldOptionEmpty:   "An option's text cannot be empty.",
 	CustomFieldUsedByBoards:  "This field is used by the boards: it cannot be deleted.",
 	CustomFieldDeleteConfirm: "Some issues have a value in this field: type its name to confirm the deletion.",
 	CustomFieldOptionInUse:   "Some issues have this option chosen: choose another option to move them to, or clear their value.",
@@ -332,9 +333,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "A work log cannot be restricted to a group or a role.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Unknown link type.",
-	LinkTargetNotFound: "Target issue not found.",
-	LinkToItself:       "An issue cannot be linked to itself.",
+	LinkTypeUnknown:      "Unknown link type.",
+	LinkTargetNotFound:   "Target issue not found.",
+	LinkToItself:         "An issue cannot be linked to itself.",
+	LinkDirectionUnknown: "Unknown link direction.",
 
 	// Group picker.
 	GroupPickerHeader: "Showing %d of %d matching groups",
@@ -393,6 +395,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Between 1 and 50 issues at a time.",
 	BoardRankTargetRequired:      "Give rankBeforeIssue or rankAfterIssue.",
 	BoardRankItself:              "An issue cannot be ranked relative to itself.",
+	BoardFilterName:              "Board %s",
 
 	// Sprints.
 	SprintKanban:          "A Kanban board has no sprints.",

@@ -1096,78 +1096,93 @@ func (c *compiler) order(sorts []Sort) (string, error) {
 		if s.Desc {
 			dir = " DESC"
 		}
-		var expr string
-		switch strings.ToLower(s.Field) {
-		case "key", "issuekey", "issue", "id":
-			parts = append(parts, "p.pkey"+dir, "i.num"+dir)
+		if sys, ok := systemSort(s.Field, dir); ok {
+			parts = append(parts, sys...)
 			continue
-		case "created", "createddate":
-			expr = "i.created_at"
-		case "updated", "updateddate", "lastviewed":
-			expr = "i.updated_at"
-		case "resolved", "resolutiondate":
-			expr = "i.resolved_at"
-		case "due", "duedate":
-			expr = "i.due_date"
-		case "priority":
-			// "priority DESC" puts the highest first; the highest priority has
-			// the smallest position, so the direction is reversed.
-			expr = "(SELECT position FROM priorities WHERE id = i.priority_id)"
-			dir = map[string]string{" ASC": " DESC", " DESC": " ASC"}[dir]
-		case "status":
-			expr = "(SELECT position FROM statuses WHERE id = i.status_id)"
-		case "summary":
-			expr = "i.summary"
-		case "assignee":
-			expr = "(SELECT display_name FROM users WHERE id = i.assignee_id)"
-		case "reporter":
-			expr = "(SELECT display_name FROM users WHERE id = i.reporter_id)"
-		case "project":
-			expr = "p.pkey"
-		case "type", "issuetype":
-			expr = "(SELECT position FROM issue_types WHERE id = i.issue_type_id)"
-		case "rank":
-			expr = "i.rank_key"
-		case "fixversion", "affectedversion":
-			kind := "fix"
-			if strings.EqualFold(s.Field, "affectedversion") {
-				kind = "affects"
-			}
-			expr = "(SELECT MIN(v.position) FROM issue_versions iv JOIN versions v ON v.id = iv.version_id " +
-				"WHERE iv.issue_id = i.id AND iv.kind = '" + kind + "')"
-		case "component":
-			expr = "(SELECT MIN(co.name) FROM issue_components ic JOIN components co ON co.id = ic.component_id WHERE ic.issue_id = i.id)"
-		case "resolution":
-			expr = "(SELECT position FROM resolutions WHERE id = i.resolution_id)"
-		case "originalestimate", "timeoriginalestimate":
-			expr = "i.original_estimate"
-		case "remainingestimate", "timeestimate":
-			expr = "i.remaining_estimate"
-		case "timespent":
-			expr = "i.time_spent"
-		case "epic link", "epiclink":
-			expr = "i.epic_id"
-		case "sprint":
-			expr = "(SELECT MAX(s.position) FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = i.id)"
-		default:
-			if f, ok := c.customField(s.Field); ok {
-				// Numbers, then options in their set order, then text.
-				for _, e := range []string{
-					fmt.Sprintf("(SELECT MIN(v.number_value) FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
-					fmt.Sprintf("(SELECT MIN(o.position) FROM custom_field_values v JOIN custom_field_options o "+
-						"ON CAST(o.id AS CHAR) = v.string_value WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
-					fmt.Sprintf("(SELECT MIN(COALESCE(v.string_value, v.text_value)) FROM custom_field_values v "+
-						"WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
-				} {
-					parts = append(parts, e+" IS NULL", e+dir)
-				}
-				continue
-			}
-			return "", fail(i18n.JQLSortUnsupported, s.Field)
 		}
-		parts = append(parts, expr+" IS NULL", expr+dir)
+		if f, ok := c.customField(s.Field); ok {
+			// Numbers, then options in their set order, then text.
+			for _, e := range []string{
+				fmt.Sprintf("(SELECT MIN(v.number_value) FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+				fmt.Sprintf("(SELECT MIN(o.position) FROM custom_field_values v JOIN custom_field_options o "+
+					"ON CAST(o.id AS CHAR) = v.string_value WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+				fmt.Sprintf("(SELECT MIN(COALESCE(v.string_value, v.text_value)) FROM custom_field_values v "+
+					"WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+			} {
+				parts = append(parts, e+" IS NULL", e+dir)
+			}
+			continue
+		}
+		return "", fail(i18n.JQLSortUnsupported, s.Field)
 	}
 	return strings.Join(parts, ", "), nil
+}
+
+// Sortable reports whether ORDER BY accepts a system field clause.
+func Sortable(clause string) bool {
+	_, ok := systemSort(clause, " ASC")
+	return ok
+}
+
+// systemSort compiles the ORDER BY terms of a system field clause, in
+// direction dir (" ASC" or " DESC").
+func systemSort(field, dir string) ([]string, bool) {
+	var expr string
+	switch strings.ToLower(field) {
+	case "key", "issuekey", "issue", "id":
+		return []string{"p.pkey" + dir, "i.num" + dir}, true
+	case "created", "createddate":
+		expr = "i.created_at"
+	case "updated", "updateddate", "lastviewed":
+		expr = "i.updated_at"
+	case "resolved", "resolutiondate":
+		expr = "i.resolved_at"
+	case "due", "duedate":
+		expr = "i.due_date"
+	case "priority":
+		// "priority DESC" puts the highest first; the highest priority has
+		// the smallest position, so the direction is reversed.
+		expr = "(SELECT position FROM priorities WHERE id = i.priority_id)"
+		dir = map[string]string{" ASC": " DESC", " DESC": " ASC"}[dir]
+	case "status":
+		expr = "(SELECT position FROM statuses WHERE id = i.status_id)"
+	case "summary":
+		expr = "i.summary"
+	case "assignee":
+		expr = "(SELECT display_name FROM users WHERE id = i.assignee_id)"
+	case "reporter":
+		expr = "(SELECT display_name FROM users WHERE id = i.reporter_id)"
+	case "project":
+		expr = "p.pkey"
+	case "type", "issuetype":
+		expr = "(SELECT position FROM issue_types WHERE id = i.issue_type_id)"
+	case "rank":
+		expr = "i.rank_key"
+	case "fixversion", "affectedversion":
+		kind := "fix"
+		if strings.EqualFold(field, "affectedversion") {
+			kind = "affects"
+		}
+		expr = "(SELECT MIN(v.position) FROM issue_versions iv JOIN versions v ON v.id = iv.version_id " +
+			"WHERE iv.issue_id = i.id AND iv.kind = '" + kind + "')"
+	case "component":
+		expr = "(SELECT MIN(co.name) FROM issue_components ic JOIN components co ON co.id = ic.component_id WHERE ic.issue_id = i.id)"
+	case "resolution":
+		expr = "(SELECT position FROM resolutions WHERE id = i.resolution_id)"
+	case "originalestimate", "timeoriginalestimate":
+		expr = "i.original_estimate"
+	case "remainingestimate", "timeestimate":
+		expr = "i.remaining_estimate"
+	case "timespent":
+		expr = "i.time_spent"
+	case "epic link", "epiclink":
+		expr = "i.epic_id"
+	case "sprint":
+		expr = "(SELECT MAX(s.position) FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id WHERE si.issue_id = i.id)"
+	default:
+		return nil, false
+	}
+	return []string{expr + " IS NULL", expr + dir}, true
 }
 
 // participant matches the issues a user takes part in, in any role:

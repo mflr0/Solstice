@@ -897,7 +897,13 @@ type change struct {
 }
 
 func recordChanges(ctx context.Context, tx *sql.Tx, issueID, author int64, at time.Time, changes []change) error {
-	if len(changes) == 0 {
+	return recordHistory(ctx, tx, issueID, author, at, changes, nil)
+}
+
+// recordHistory records one group of history lines: changes to the issue's
+// own fields, then to its custom fields (which Jira files apart).
+func recordHistory(ctx context.Context, tx *sql.Tx, issueID, author int64, at time.Time, changes, custom []change) error {
+	if len(changes)+len(custom) == 0 {
 		return nil
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO change_groups (issue_id, author_id, created_at) VALUES (?, ?, ?)`,
@@ -909,11 +915,16 @@ func recordChanges(ctx context.Context, tx *sql.Tx, issueID, author int64, at ti
 	if err != nil {
 		return err
 	}
-	for _, c := range changes {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO change_items (group_id, field_type, field, old_value, old_string,
-			new_value, new_string) VALUES (?, 'jira', ?, ?, ?, ?, ?)`,
-			group, c.field, c.oldValue, c.oldString, c.newValue, c.newString); err != nil {
-			return err
+	for _, part := range []struct {
+		fieldType string
+		changes   []change
+	}{{"jira", changes}, {"custom", custom}} {
+		for _, c := range part.changes {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO change_items (group_id, field_type, field, old_value,
+				old_string, new_value, new_string) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				group, part.fieldType, c.field, c.oldValue, c.oldString, c.newValue, c.newString); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1203,10 +1214,9 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 			return nil, err
 		}
 	}
-	for _, cw := range custom {
-		if err := writeCustom(ctx, tx, issueID, cw); err != nil {
-			return nil, err
-		}
+	// As in Jira, a creation records no history, custom fields included.
+	if _, err := writeCustom(ctx, tx, issueID, custom, nil); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -1454,10 +1464,7 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	if pi := iss.perm(); len(custom) > 0 && !sub.Can(perm.Edit, iss.ProjectID, &pi) {
 		return errForbidden
 	}
-	if err := s.applyUpdate(ctx, sub, iss, f); err != nil {
-		return err
-	}
-	if err := s.applyCustom(ctx, sub, s.restOut(r), iss, custom); err != nil {
+	if err := s.applyEdit(ctx, sub, s.restOut(r), iss, f, custom); err != nil {
 		return err
 	}
 	return s.respondIssue(w, r, http.StatusOK, sub, iss.ID)
@@ -1467,6 +1474,13 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 // recording history and announcing the change. The board reuses it to move
 // cards between columns.
 func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueRow, f fields) error {
+	return s.applyEdit(ctx, sub, nil, iss, f, nil)
+}
+
+// applyEdit is applyUpdate that also writes custom field values, in the same
+// transaction and history group. Callers check the permission of those.
+func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, iss *issueRow, f fields,
+	custom []customWrite) error {
 	if f.has("project") {
 		return fail(http.StatusBadRequest, i18n.IssueMoveUseAction)
 	}
@@ -1773,6 +1787,10 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		}
 	}
 
+	oldCustom, err := s.customBefore(ctx, sub, o, iss, custom)
+	if err != nil {
+		return err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -1783,7 +1801,11 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 		return err
 	}
 	changes = append(changes, setChanges...)
-	if len(changes) == 0 {
+	customChanges, err := writeCustom(ctx, tx, iss.ID, custom, oldCustom)
+	if err != nil {
+		return err
+	}
+	if len(changes)+len(customChanges) == 0 {
 		return nil
 	}
 	now := time.Now().UTC()
@@ -1809,7 +1831,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 			return err
 		}
 	}
-	if err := recordChanges(ctx, tx, iss.ID, sub.UserID, now, changes); err != nil {
+	if err := recordHistory(ctx, tx, iss.ID, sub.UserID, now, changes, customChanges); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1822,7 +1844,7 @@ func (s *Server) applyUpdate(ctx context.Context, sub *perm.Subject, iss *issueR
 	// Announce with the old visibility too: someone who just lost access
 	// must learn the issue changed.
 	e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
-	e.Changes = eventChanges(changes)
+	e.Changes = eventChanges(append(changes, customChanges...))
 	if before := iss.perm(); before != updated.perm() {
 		e.Before = &before
 	}

@@ -280,7 +280,10 @@ func writeContext(ctx context.Context, tx *sql.Tx, field int64, projects []int64
 // cleanOption checks an option's text.
 func cleanOption(v string) (string, error) {
 	v = strings.TrimSpace(v)
-	if v == "" || len([]rune(v)) > 255 {
+	if v == "" {
+		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionEmpty)
+	}
+	if len([]rune(v)) > 255 {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionTooLong)
 	}
 	return v, nil

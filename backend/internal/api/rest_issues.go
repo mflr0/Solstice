@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"solstice/internal/i18n"
 	"solstice/internal/jql"
@@ -606,7 +607,6 @@ func (in restWorklogInput) uiBody() (map[string]any, error) {
 }
 
 func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
 		return err
@@ -619,16 +619,14 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	var created struct {
+		ID int64 `json:"id"`
+	}
 	if err := s.uiCall(r, s.addWorklog, http.MethodPost, "/api/issues/"+iss.Key()+"/worklogs",
-		map[string]string{"key": iss.Key()}, body, nil); err != nil {
+		map[string]string{"key": iss.Key()}, body, &created); err != nil {
 		return err
 	}
-	var id int64
-	if err := s.db.QueryRowContext(ctx, `SELECT MAX(id) FROM worklogs WHERE issue_id = ? AND author_id = ?`,
-		iss.ID, sub.UserID).Scan(&id); err != nil {
-		return err
-	}
-	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusCreated)
+	return s.restRespondWorklog(w, r, sub, iss, created.ID, http.StatusCreated)
 }
 
 // restRespondWorklog answers with a work log of an issue, as Jira renders it.
@@ -879,13 +877,8 @@ func (s *Server) restAttach(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var before int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM attachments WHERE issue_id = ?`, iss.ID).
-		Scan(&before); err != nil {
-		return err
-	}
-	r.SetPathValue("key", iss.Key())
-	if err := s.upload(&recorder{header: http.Header{}}, r); err != nil {
+	ids, err := s.storeAttachments(&recorder{header: http.Header{}}, r, sub, iss)
+	if err != nil {
 		return err
 	}
 	o := s.restOut(r)
@@ -899,7 +892,7 @@ func (s *Server) restAttach(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := []any{}
 	for _, a := range set.list[0].attachments {
-		if a.id > before && a.author.Int64 == sub.UserID {
+		if slices.Contains(ids, a.id) {
 			out = append(out, o.attachment(a, users))
 		}
 	}

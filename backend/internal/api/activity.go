@@ -552,6 +552,12 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
+	// Lock the issue before the insert: the foreign key check would take a
+	// shared lock first, and two requests upgrading it deadlock.
+	cur, err := lockTimeTracking(ctx, tx, iss.ID)
+	if err != nil {
+		return err
+	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO worklogs (issue_id, author_id, body, started_at, seconds, created_at,
 		updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, iss.ID, sub.UserID, body, started, in.Seconds, now, now)
 	if err != nil {
@@ -559,10 +565,6 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 	}
 	worklogID, _ := res.LastInsertId()
 	// Logged time is spent time; the remaining estimate shrinks accordingly.
-	cur, err := lockTimeTracking(ctx, tx, iss.ID)
-	if err != nil {
-		return err
-	}
 	changes, err := storeTimeTracking(ctx, tx, iss.ID, sub.UserID, now, cur, cur.withLogged(in.Seconds))
 	if err != nil {
 		return err
@@ -575,8 +577,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 		Seconds: in.Seconds, Created: now}
 	e.Changes = eventChanges(changes)
 	s.emit(e)
-	w.WriteHeader(http.StatusCreated)
-	return nil
+	return writeJSON(w, http.StatusCreated, map[string]int64{"id": worklogID})
 }
 
 // Watching and voting --------------------------------------------------------
@@ -641,6 +642,9 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
+	}
+	if in.Direction != "outward" && in.Direction != "inward" {
+		return fail(http.StatusBadRequest, i18n.LinkDirectionUnknown)
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
