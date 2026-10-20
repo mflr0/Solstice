@@ -577,8 +577,7 @@ func (s *Server) addWorklog(w http.ResponseWriter, r *http.Request) error {
 		Seconds: in.Seconds, Created: now}
 	e.Changes = eventChanges(changes)
 	s.emit(e)
-	w.WriteHeader(http.StatusCreated)
-	return nil
+	return writeJSON(w, http.StatusCreated, map[string]int64{"id": worklogID})
 }
 
 // Watching and voting --------------------------------------------------------
