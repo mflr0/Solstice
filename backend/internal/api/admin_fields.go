@@ -76,9 +76,16 @@ type fieldAdminOut struct {
 	Description *string      `json:"description"`
 	Type        *string      `json:"type"`
 	TypeKey     string       `json:"typeKey"`
-	Options     any          `json:"options"` // a count in lists, the options in the detail
+	Options     int          `json:"options"` // top-level options
 	Issues      int          `json:"issues"`
 	Context     fieldContext `json:"context"`
+}
+
+// fieldDetailOut is a field with its top-level options in place of their
+// count.
+type fieldDetailOut struct {
+	fieldAdminOut
+	Options []optionOut `json:"options"`
 }
 
 func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fieldAdminOut, error) {
@@ -91,15 +98,13 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 		FROM custom_fields f WHERE `+where+` ORDER BY f.name, f.id`, func(rows *sql.Rows) error {
 		var f fieldAdminOut
 		var desc sql.NullString
-		var options int
-		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &options, &f.Issues); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &f.Options, &f.Issues); err != nil {
 			return err
 		}
 		f.Description = sqlq.String(desc)
 		if t := fieldTypeName(f.TypeKey); t != "" {
 			f.Type = &t
 		}
-		f.Options = options
 		f.Context = fieldContext{Projects: []projectBrief{}, IssueTypes: []typeRef{}}
 		index[f.ID] = len(out)
 		out = append(out, f)
@@ -140,7 +145,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 	return out, err
 }
 
-func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, error) {
+func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldDetailOut, error) {
 	list, err := s.fieldList(ctx, "f.id = ?", id)
 	if err != nil {
 		return nil, err
@@ -148,8 +153,7 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 	if len(list) == 0 {
 		return nil, errNotFound
 	}
-	f := list[0]
-	options := []optionOut{}
+	f := &fieldDetailOut{fieldAdminOut: list[0], Options: []optionOut{}}
 	if err := sqlq.Each(ctx, s.db, `SELECT o.id, o.value, o.disabled, o.position,
 		(SELECT COUNT(DISTINCT v.issue_id) FROM custom_field_values v WHERE v.field_id = o.field_id
 			AND v.string_value IN (SELECT CAST(c.id AS CHAR) FROM custom_field_options c
@@ -161,13 +165,12 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 			if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position, &o.Issues, &o.Children); err != nil {
 				return err
 			}
-			options = append(options, o)
+			f.Options = append(f.Options, o)
 			return nil
 		}, id); err != nil {
 		return nil, err
 	}
-	f.Options = options
-	return &f, nil
+	return f, nil
 }
 
 func (s *Server) adminFields(w http.ResponseWriter, r *http.Request) error {
@@ -520,7 +523,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 }
 
 // optionField loads a field whose options can be edited.
-func (s *Server) optionField(r *http.Request) (*fieldAdminOut, error) {
+func (s *Server) optionField(r *http.Request) (*fieldDetailOut, error) {
 	if err := requireAdmin(r); err != nil {
 		return nil, err
 	}
@@ -761,8 +764,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	options := f.Options.([]optionOut)
-	if err := sameIDs(options, ids, func(o optionOut) string { return strconv.FormatInt(o.ID, 10) }); err != nil {
+	if err := sameIDs(f.Options, ids, func(o optionOut) string { return strconv.FormatInt(o.ID, 10) }); err != nil {
 		return err
 	}
 	ctx := r.Context()
@@ -788,7 +790,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 // Contexts at work ------------------------------------------------------------------
 
 // fieldsOutside lists, of the fields given, those whose context excludes a
-// project and issue type.
+// project and issue type. Without a type, only the project counts.
 func (s *Server) fieldsOutside(ctx context.Context, projectID int64, typeID string, ids []int64) ([]int64, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -797,13 +799,18 @@ func (s *Server) fieldsOutside(ctx context.Context, projectID int64, typeID stri
 	for _, id := range ids {
 		args = append(args, id)
 	}
-	args = append(args, projectID, typeID)
+	args = append(args, projectID)
+	types := ""
+	if typeID != "" {
+		types = `
+		AND (NOT EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id)
+			OR EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id AND c.issue_type_id = ?))`
+		args = append(args, typeID)
+	}
 	var out []int64
 	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`) AND NOT (
 		(NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
-			OR EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?))
-		AND (NOT EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id)
-			OR EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id AND c.issue_type_id = ?)))`,
+			OR EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?))`+types+`)`,
 		func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
@@ -872,13 +879,6 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if typeID == "" {
-		// Without a type, only the project counts.
-		outside, err = s.fieldsOutsideProject(ctx, projectID, ids)
-		if err != nil {
-			return err
-		}
-	}
 	out := []fieldBrief{}
 	index := map[int64]int{}
 	for _, f := range all {
@@ -905,30 +905,6 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, out)
-}
-
-func (s *Server) fieldsOutsideProject(ctx context.Context, projectID int64, ids []int64) ([]int64, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	args := make([]any, 0, len(ids)+1)
-	for _, id := range ids {
-		args = append(args, id)
-	}
-	args = append(args, projectID)
-	var out []int64
-	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`)
-		AND EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
-		AND NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?)`,
-		func(rows *sql.Rows) error {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			out = append(out, id)
-			return nil
-		}, args...)
-	return out, err
 }
 
 // readCustomFields translates the "customFields" of an interface request

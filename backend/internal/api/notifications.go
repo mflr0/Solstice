@@ -953,8 +953,7 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 		}
 		return nil, false, err
 	}
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
+	from := searchFrom + ` WHERE ` + where
 	res := &notify.FilterResult{Name: f.Name, Query: f.Query}
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&res.Total); err != nil {
 		return nil, false, err

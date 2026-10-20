@@ -29,8 +29,7 @@ func (s *Server) matchJQL(ctx context.Context, src string, issueID int64) (bool,
 		return false, err
 	}
 	var n int
-	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id
-		LEFT JOIN priorities pr ON pr.id = i.priority_id WHERE i.id = ? AND (`+cond+`)`,
+	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+searchFrom+` WHERE i.id = ? AND (`+cond+`)`,
 		append([]any{issueID}, args...)...).Scan(&n)
 	return n > 0, err
 }
