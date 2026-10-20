@@ -336,17 +336,6 @@ export interface Refs {
   issues: Record<string, boolean>;
 }
 
-export interface AdminUser {
-  id: number;
-  username: string;
-  name: string;
-  email: string;
-  active: boolean;
-  admin: boolean;
-  hasPassword: boolean;
-  created: string;
-}
-
 /** A live notification: an issue changed. */
 export interface ChangeEvent {
   key: string;

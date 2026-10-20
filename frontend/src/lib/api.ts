@@ -6,7 +6,6 @@
 
 import { avatarUrl } from '../core/avatar.js';
 import type {
-  AdminUser,
   Comment,
   Grant,
   HiddenIssue,
@@ -218,8 +217,6 @@ export const api = {
   useLink: (token: string, password: string) =>
     request<Me>('POST', '/api/auth/reset', { token, password }),
   me: () => request<Me>('GET', '/api/me'),
-  /** The account's own settings: the interface language, or null for none. */
-  updateMe: (patch: { locale: string | null }) => request<Me>('PATCH', '/api/me', patch),
   meta: () => request<Meta>('GET', '/api/meta'),
 
   projects: () => request<Project[]>('GET', '/api/projects'),
@@ -350,19 +347,6 @@ export const api = {
     request<void>('DELETE', `/api/workflows/${id}`, remapDefault ? { remapDefault } : undefined),
   createStatus: (s: { name: string; category: StatusCategory; project: string }) =>
     request<StatusRef>('POST', '/api/statuses', s),
-
-  adminUsers: (q: string) => request<AdminUser[]>('GET', `/api/admin/users${query({ q })}`),
-  adminCreateUser: (u: {
-    username: string;
-    name: string;
-    email: string;
-    password: string;
-    admin: boolean;
-  }) => request<{ id: number }>('POST', '/api/admin/users', u),
-  adminUpdateUser: (
-    id: number,
-    patch: { name?: string; email?: string; active?: boolean; admin?: boolean; password?: string },
-  ) => request<void>('PATCH', `/api/admin/users/${id}`, patch),
 
   // Search: saved filters and values to pick from.
   filters: () => request<SavedFilter[]>('GET', '/api/filters'),
