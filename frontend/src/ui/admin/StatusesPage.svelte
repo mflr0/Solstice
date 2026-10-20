@@ -1,7 +1,7 @@
 <script lang="ts">
   import { matches } from '../../core/admin-forms.js';
   import type { StatusRow, StatusUsage } from '../../core/admin-types.js';
-  import { moveItem, statusUnused } from '../../core/catalogs.js';
+  import { arrowAfterMove, moveItem, statusUnused } from '../../core/catalogs.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
@@ -84,9 +84,7 @@
     const from = items.findIndex((s) => s.id === item.id);
     const to = from + by;
     if (to < 0 || to >= items.length) return;
-    const atEdge = to === 0 || to === items.length - 1;
-    // Keep the keyboard on the status: on the same arrow, or the other one at an end.
-    const dir = atEdge ? (by < 0 ? 'down' : 'up') : by < 0 ? 'up' : 'down';
+    const dir = arrowAfterMove(by, to, items.length);
     void reorder(moveItem(items, from, to), `order-${dir}-${item.id}`);
   }
 

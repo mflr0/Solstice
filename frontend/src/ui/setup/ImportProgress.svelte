@@ -2,6 +2,7 @@
   import { IMPORT_PHASES } from '../../core/setup.js';
   import type { ImportView } from '../../core/admin-types.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
+  import { labelOf } from '../../i18n/t.js';
 
   /**
    * An import running: the progress bar, the rows copied and the phases
@@ -15,7 +16,7 @@
   }
   const { m, num, job }: Props = $props();
 
-  const phaseName = (p: string) => (m.import.phases as Record<string, string>)[p] ?? p;
+  const phaseName = (p: string) => labelOf(m.import.phases, p);
 </script>
 
 <div class="progress">

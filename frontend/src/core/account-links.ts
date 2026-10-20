@@ -5,6 +5,11 @@
  * (src/i18n).
  */
 
+/** Whether a password is shorter than `min`, counted in characters as the server does. */
+export function passwordTooShort(password: string, min: number): boolean {
+  return [...password].length < min;
+}
+
 /** What the form to choose a password can get wrong. */
 export type ChoosePasswordProblem = 'tooShort' | 'mismatch';
 
@@ -19,7 +24,7 @@ export function choosePasswordProblem(
   confirm: string,
   min: number,
 ): ChoosePasswordProblem | null {
-  if ([...password].length < min) return 'tooShort';
+  if (passwordTooShort(password, min)) return 'tooShort';
   if (password !== confirm) return 'mismatch';
   return null;
 }

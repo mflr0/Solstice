@@ -80,6 +80,11 @@ export function fieldLabel(field: string): string {
   return (t.historyFields as Record<string, string>)[field.toLowerCase()] ?? field;
 }
 
+/** A key's label in a table of labels, or the key itself when the table has none. */
+export function labelOf<T extends { [K in keyof T]: string }>(table: T, key: string): string {
+  return (table as Record<string, string>)[key] ?? key;
+}
+
 /** A JQL syntax error, in the language in use. */
 export function renderJqlError<C extends JqlCode>(e: JqlError<C>): string {
   const messages: JqlMessages = t.jql;

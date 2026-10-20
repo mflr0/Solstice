@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { passwordModes, type PasswordMode } from '../../core/account-links.js';
+  import { passwordModes, passwordTooShort, type PasswordMode } from '../../core/account-links.js';
   import type { UserRow } from '../../core/admin-types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -28,7 +28,7 @@
 
   const min = $derived(publicSettings.value.passwordMinLength);
   const modes = $derived(user ? passwordModes(user, publicSettings.value.emailLinks) : []);
-  const short = $derived(mode === 'type' && [...typed].length < min);
+  const short = $derived(mode === 'type' && passwordTooShort(typed, min));
 
   $effect(() => {
     if (!user) return;

@@ -8,7 +8,7 @@
   } from '../../core/admin-integrations.js';
   import { auditActor, AUDIT_MIN_RETENTION, retentionProblem } from '../../core/admin-ops.js';
   import type { AuditPage as AuditList, AuditQuery } from '../../core/admin-types.js';
-  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { formatDateTime, labelOf, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -53,16 +53,16 @@
   const dirty = $derived(stored !== null && days.trim() !== String(stored));
 
   function actionLabel(action: string): string {
-    return (t.auditAdmin.actions as Record<string, string>)[action] ?? action;
+    return labelOf(t.auditAdmin.actions, action);
   }
 
   function targetLabel(type: string): string {
-    return (t.auditAdmin.targets as Record<string, string>)[type] ?? type;
+    return labelOf(t.auditAdmin.targets, type);
   }
 
   function detailKey(key: string): string {
     if (!key) return '';
-    return (t.auditAdmin.detailKeys as Record<string, string>)[key] ?? key;
+    return labelOf(t.auditAdmin.detailKeys, key);
   }
 
   function value(v: unknown): string {

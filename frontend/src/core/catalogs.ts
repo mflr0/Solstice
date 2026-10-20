@@ -39,6 +39,17 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
   return out;
 }
 
+/**
+ * The order arrow to focus after a one-step move (`by`) to `to` in a list of
+ * `length`: the same arrow, or the other one once the item reaches an end, so
+ * the keyboard stays on the item.
+ */
+export function arrowAfterMove(by: -1 | 1, to: number, length: number): 'up' | 'down' {
+  const atEdge = to === 0 || to === length - 1;
+  if (atEdge) return by < 0 ? 'down' : 'up';
+  return by < 0 ? 'up' : 'down';
+}
+
 /** Whether two lists hold the same ids in the same order. */
 export function sameOrder(
   a: readonly { id: string | number }[],

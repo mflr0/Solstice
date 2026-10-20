@@ -10,8 +10,8 @@
     type GeneralForm,
   } from '../../core/admin-general.js';
   import type { GeneralField, GeneralSettings } from '../../core/admin-types.js';
+  import { labelOf, t } from '../../i18n/t.js';
   import { guessBaseURL, timeZones } from '../../core/setup.js';
-  import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, LOCALES } from '../../i18n/index.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
@@ -193,7 +193,7 @@
         <label class="field-label" for="set-lang">{t.settingsAdmin.defaultLanguage}</label>
         <select id="set-lang" class="select" bind:value={form.defaultLanguage}>
           {#each settings.languages.length ? settings.languages : LOCALES as l (l)}
-            <option value={l} lang={l}>{(LOCALE_NAMES as Record<string, string>)[l] ?? l}</option>
+            <option value={l} lang={l}>{labelOf(LOCALE_NAMES, l)}</option>
           {/each}
         </select>
         <span class="hint">{t.settingsAdmin.defaultLanguageHint}</span>
