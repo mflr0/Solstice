@@ -5,7 +5,7 @@
   import { session } from '../../lib/session.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
 
-  /** "Mon travail": what is on my plate, what I am waiting for, what moved. */
+  /** "My work": what is on my plate, what I am waiting for, what moved. */
   const sections = [
     { q: '@moi est:ouvert tri:priorité', title: t.home.assigned, empty: t.home.emptyAssigned },
     { q: 'par:@moi est:ouvert', title: t.home.reported, empty: t.home.emptyReported },
