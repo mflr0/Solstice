@@ -541,9 +541,12 @@ func detailCustom(d *issueDetail, custom []customRow, users map[int64]userRef) {
 func (s *Server) detailAccess(ctx context.Context, sub *perm.Subject, cat *catalog, iss *issueRow, d *issueDetail) error {
 	if iss.LevelID.Valid {
 		var name string
-		if err := s.db.QueryRowContext(ctx, `SELECT name FROM security_levels WHERE id = ?`, iss.LevelID.Int64).
-			Scan(&name); err == nil {
+		err := s.db.QueryRowContext(ctx, `SELECT name FROM security_levels WHERE id = ?`, iss.LevelID.Int64).Scan(&name)
+		switch {
+		case err == nil:
 			d.SecurityLevel = &idName{ID: iss.LevelID.Int64, Name: name}
+		case !errors.Is(err, sql.ErrNoRows):
+			return err
 		}
 	}
 	if d.Can[perm.Security] {
@@ -570,13 +573,25 @@ func (s *Server) detailAccess(ctx context.Context, sub *perm.Subject, cat *catal
 	}
 	d.CommentCount = len(comments)
 
-	if iss.EpicID.Valid {
-		if epic, err := s.findIssueByID(ctx, iss.EpicID.Int64); err == nil && sub.CanSee(epic.perm()) {
-			eu, _ := s.users(ctx, epic.AssigneeID.Int64)
-			d.Epic = &issueBrief{Key: epic.Key(), Summary: epic.Summary, Type: cat.typeOf(epic.TypeID),
-				Status: cat.statusOf(epic.StatusID), Assignee: refOf(eu, epic.AssigneeID)}
-		}
+	if !iss.EpicID.Valid {
+		return nil
 	}
+	epic, err := s.findIssueByID(ctx, iss.EpicID.Int64)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !sub.CanSee(epic.perm()) {
+		return nil
+	}
+	eu, err := s.users(ctx, epic.AssigneeID.Int64)
+	if err != nil {
+		return err
+	}
+	d.Epic = &issueBrief{Key: epic.Key(), Summary: epic.Summary, Type: cat.typeOf(epic.TypeID),
+		Status: cat.statusOf(epic.StatusID), Assignee: refOf(eu, epic.AssigneeID)}
 	return nil
 }
 
@@ -845,7 +860,13 @@ func (s *Server) epicLinkValues(ctx context.Context, sub *perm.Subject, rows *cu
 			continue
 		}
 		iss, err := s.findIssueByID(ctx, int64(v.num.Float64))
-		if err != nil || !sub.CanSee(iss.perm()) {
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !sub.CanSee(iss.perm()) {
 			continue
 		}
 		row := rows.get(v.field, v.name, "issue")
