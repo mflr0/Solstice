@@ -49,13 +49,6 @@ func validEmail(s string) bool {
 	return err == nil && a.Address == s && a.Name == ""
 }
 
-// endSessions signs a user out everywhere, except the session whose token
-// hash is keep ("" for none).
-func (s *Server) endSessions(ctx context.Context, userID int64, keep string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep)
-	return err
-}
-
 const adminUserColumns = `id, username, display_name, email, active, is_admin, password_hash IS NOT NULL, created_at,
 	last_login_at`
 
@@ -355,12 +348,15 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
+	var revoked int64
 	if in.Active != nil {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET active = ? WHERE id = ?`, *in.Active, id); err != nil {
 			return err
 		}
-		if !*in.Active {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+		// A reactivated account starts clean too: an import deactivates
+		// accounts without ending anything.
+		if *in.Active != before.Active {
+			if revoked, err = auth.EndCredentials(ctx, tx, id, ""); err != nil {
 				return err
 			}
 		}
@@ -371,22 +367,17 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if in.Password != nil {
-		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
+		n, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+		if err != nil {
 			return err
 		}
-		if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
-			return err
-		}
-		// A new password signs out every session opened with the old one.
-		if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
-			return err
-		}
+		revoked += n
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditUserChange(r, id, before, in.Password != nil)
+	s.auditUserChange(r, id, before, in.Password != nil, revoked)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -428,13 +419,24 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	password := base64.RawURLEncoding.EncodeToString(raw)[:n]
-	if err := auth.SetPassword(ctx, s.db, id, password); err != nil {
+	hash, err := auth.HashPassword(password)
+	if err != nil {
 		return err
 	}
-	if err := s.endSessions(ctx, id, ""); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
 		return err
 	}
-	s.auditLog(r, audit.PasswordReset, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username}, nil)
+	defer tx.Rollback()
+	revoked, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.auditLog(r, audit.PasswordReset, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username},
+		map[string]any{"revokedAccessTokens": revoked})
 	return writeJSON(w, http.StatusOK, map[string]string{"password": password})
 }
 

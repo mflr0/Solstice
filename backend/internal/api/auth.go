@@ -186,31 +186,43 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	var hash string
+	if in.NewPassword != nil {
+		if hash, err = auth.HashPassword(*in.NewPassword); err != nil {
+			return err
+		}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	for column, v := range sets {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
 			return err
 		}
 	}
 	// Links mailed to the old address must not work once it is not theirs.
 	if email, ok := sets["email"]; ok && email != before.Email {
-		if err := auth.RevokeAccountTokens(ctx, s.db, u.ID, time.Now()); err != nil {
+		if err := auth.RevokeAccountTokens(ctx, tx, u.ID, time.Now()); err != nil {
 			return err
 		}
 	}
+	var revoked int64
 	if in.NewPassword != nil {
-		if err := auth.SetPassword(ctx, s.db, u.ID, *in.NewPassword); err != nil {
-			return err
-		}
 		// The other sign-ins end; this one goes on.
 		current := ""
 		if c, err := r.Cookie(auth.CookieName); err == nil {
 			current = auth.TokenHash(c.Value)
 		}
-		if err := s.endSessions(ctx, u.ID, current); err != nil {
+		if revoked, err = auth.SetPasswordHash(ctx, tx, u.ID, hash, current); err != nil {
 			return err
 		}
 	}
-	s.auditUserChange(r, u.ID, before, in.NewPassword != nil)
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.auditUserChange(r, u.ID, before, in.NewPassword != nil, revoked)
 	me, err := s.userByID(ctx, u.ID)
 	if err != nil {
 		return err

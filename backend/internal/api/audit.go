@@ -268,8 +268,8 @@ func (s *Server) auditUserCreated(r *http.Request, id int64) {
 
 // auditUserChange records what an administrator changed in an account:
 // name and e-mail, activation, administrator rights, password (never its
-// value).
-func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot, password bool) {
+// value), and how many access tokens the change deleted.
+func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot, password bool, revoked int64) {
 	after, err := s.userSnapshot(r.Context(), id)
 	if err != nil {
 		s.log.Error("audit log: account not found", "id", id, "err", err)
@@ -286,11 +286,12 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 	if len(changes) > 0 {
 		s.auditLog(r, audit.UserUpdate, target, changes)
 	}
+	ended := map[string]any{"revokedAccessTokens": revoked}
 	switch {
 	case before.Active && !after.Active:
-		s.auditLog(r, audit.UserDeactivate, target, nil)
+		s.auditLog(r, audit.UserDeactivate, target, ended)
 	case !before.Active && after.Active:
-		s.auditLog(r, audit.UserActivate, target, nil)
+		s.auditLog(r, audit.UserActivate, target, ended)
 	}
 	switch {
 	case !before.Admin && after.Admin:
@@ -299,7 +300,7 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 		s.auditLog(r, audit.AdminRevoke, target, nil)
 	}
 	if password {
-		s.auditLog(r, audit.PasswordChange, target, nil)
+		s.auditLog(r, audit.PasswordChange, target, ended)
 	}
 }
 

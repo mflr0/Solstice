@@ -1871,7 +1871,8 @@ export const en = {
     emailHint: 'Also used to notify you and to reach you.',
     emailChangeHint: 'Changing the address asks for your current password.',
     passwordTitle: 'Password',
-    passwordIntro: 'Leave the fields empty to keep the current password.',
+    passwordIntro:
+      'Leave the fields empty to keep the current password. A new password closes your other sessions, and your access tokens stop working.',
     currentPassword: 'Current password',
     newPassword: 'New password',
     confirmPassword: 'Confirm the password',
@@ -1995,7 +1996,7 @@ export const en = {
     activate: 'Reactivate',
     deactivateTitle: (name: string) => `Deactivate ${name}’s account?`,
     deactivateBody:
-      'This person can no longer sign in and their sessions close right away. Their issues, comments and history remain; you can reactivate the account later.',
+      'This person can no longer sign in, their sessions close right away and their access tokens are deleted. Their issues, comments and history remain; you can reactivate the account later.',
     deactivated: (name: string) => `${name}’s account deactivated.`,
     reactivated: (name: string) => `${name}’s account reactivated.`,
     passwordTitle: (name: string) => `New password for ${name}`,
@@ -2003,7 +2004,7 @@ export const en = {
     generateButton: 'Generate',
     typePassword: 'Enter the password',
     newPassword: 'New password',
-    sessionsEnd: 'This person’s open sessions close.',
+    sessionsEnd: 'This person’s open sessions close and their access tokens stop working.',
     generatedOnce:
       'Pass this password on now: it will not be shown again. The person can change it in their settings.',
     done: 'Got it',

@@ -142,17 +142,32 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 	return &u, nil
 }
 
-// SetPassword stores a new password for a user. The links sent by e-mail
-// before (reset, invitation) stop working.
-func SetPassword(ctx context.Context, db *sql.DB, userID int64, password string) error {
-	hash, err := HashPassword(password)
+// SetPasswordHash stores a new password hash for a user and ends every other
+// way into the account: EndCredentials. Call it in the transaction that makes
+// the change.
+func SetPasswordHash(ctx context.Context, ex execer, userID int64, hash, keep string) (revoked int64, err error) {
+	if _, err := ex.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID); err != nil {
+		return 0, err
+	}
+	return EndCredentials(ctx, ex, userID, keep)
+}
+
+// EndCredentials ends the sessions of an account, except the one whose token
+// hash is keep ("" for none), deletes its personal access tokens and revokes
+// the links mailed to it, after a password change, a deactivation or a
+// reactivation. It returns how many access tokens it deleted.
+func EndCredentials(ctx context.Context, ex execer, userID int64, keep string) (revoked int64, err error) {
+	if _, err := ex.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep); err != nil {
+		return 0, err
+	}
+	res, err := ex.ExecContext(ctx, `DELETE FROM api_tokens WHERE user_id = ?`, userID)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if _, err = db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID); err != nil {
-		return err
+	if revoked, err = res.RowsAffected(); err != nil {
+		return 0, err
 	}
-	return RevokeAccountTokens(ctx, db, userID, time.Now())
+	return revoked, RevokeAccountTokens(ctx, ex, userID, time.Now())
 }
 
 // dummyHash is built on first use, not at init: every binary linking auth,
