@@ -152,6 +152,9 @@ picture already turned the right way. Both answer 204; `DELETE` also answers
   address that never signed in. (`user.invite`)
 - `PATCH /api/admin/users/{id}` `{name?, email?, active?, admin?,
   password?}` → 204. (`user.update`, `user.deactivate`, `admin.grant`, …)
+  As in the profile, the password and a new address are refused for the
+  administrator's own account (400: the profile changes them) and through a
+  personal access token (403).
 - `PUT /api/admin/users/{id}/groups` `{groups: [groupId]}` → `adminUser`.
   Replaces the memberships. (`group.members`)
 - `PUT /api/admin/users/{id}/avatar` (multipart, as `PUT /api/me/avatar`) and
