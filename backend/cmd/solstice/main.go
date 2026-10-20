@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -334,11 +335,13 @@ func runUser(ctx context.Context, args []string) error {
 	defer conn.Close()
 	login := strings.ToLower(*username)
 	// record writes an audit entry for a change made from the command line.
-	record := func(what string, id int64) error {
+	record := func(what string, id int64, details map[string]any) error {
+		d := map[string]any{"via": "command line"}
+		maps.Copy(d, details)
 		return audit.Record(ctx, conn, audit.Entry{
 			Action:  what,
 			Target:  audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: login},
-			Details: map[string]any{"via": "command line"},
+			Details: d,
 		})
 	}
 	switch action {
@@ -360,11 +363,11 @@ func runUser(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := record(audit.UserCreate, id); err != nil {
+		if err := record(audit.UserCreate, id, nil); err != nil {
 			return err
 		}
 		if *admin {
-			if err := record(audit.AdminGrant, id); err != nil {
+			if err := record(audit.AdminGrant, id, nil); err != nil {
 				return err
 			}
 		}
@@ -374,21 +377,30 @@ func runUser(ctx context.Context, args []string) error {
 		if err := conn.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, login).Scan(&id); err != nil {
 			return fmt.Errorf("unknown user %q", login)
 		}
-		if err := auth.SetPassword(ctx, conn, id, *password); err != nil {
+		hash, err := auth.HashPassword(*password)
+		if err != nil {
 			return err
 		}
-		// Sessions opened with the old password end now.
-		if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+		tx, err := conn.BeginTx(ctx, nil)
+		if err != nil {
 			return err
 		}
-		if err := record(audit.PasswordChange, id); err != nil {
+		defer tx.Rollback()
+		revoked, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+		if err != nil {
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		if err := record(audit.PasswordChange, id, map[string]any{"revokedAccessTokens": revoked}); err != nil {
 			return err
 		}
 		if *admin {
 			if _, err := conn.ExecContext(ctx, `UPDATE users SET is_admin = TRUE WHERE id = ?`, id); err != nil {
 				return err
 			}
-			if err := record(audit.AdminGrant, id); err != nil {
+			if err := record(audit.AdminGrant, id, nil); err != nil {
 				return err
 			}
 		}

@@ -364,18 +364,8 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, used.UserID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, used.UserID); err != nil {
-		return err
-	}
-	res, err := tx.ExecContext(ctx, `DELETE FROM api_tokens WHERE user_id = ?`, used.UserID)
+	revoked, err := auth.SetPasswordHash(ctx, tx, used.UserID, hash, "")
 	if err != nil {
-		return err
-	}
-	revoked, _ := res.RowsAffected()
-	if err := auth.RevokeAccountTokens(ctx, tx, used.UserID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
