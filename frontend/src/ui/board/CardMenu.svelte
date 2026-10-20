@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export interface MenuItem {
+  interface MenuItem {
     label: string;
     run: () => void;
     disabled?: boolean;

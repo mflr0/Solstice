@@ -85,15 +85,11 @@ export interface IssueSummary {
   confidential: boolean;
 }
 
-export type SearchMode = 'simple' | 'jql';
-
 export interface IssuePage {
   total: number;
   page: number;
   size: number;
   issues: IssueSummary[];
-  /** How the server read the query: the simple syntax, or JQL. */
-  mode?: SearchMode;
 }
 
 export interface IssueBrief {

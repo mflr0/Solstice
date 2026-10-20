@@ -54,11 +54,10 @@
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
 
-  function loadDetail(id: number) {
+  function loadDetail() {
     api
-      .board(id)
+      .board(boardId)
       .then((d) => {
-        if (id !== boardId) return;
         detail = d;
         document.title = `${t.boards.backlog} — ${d.board.name} — ${t.appName}`;
       })
@@ -66,11 +65,7 @@
   }
 
   $effect(() => {
-    const id = boardId;
-    detail = null;
-    error = '';
-    cards = null;
-    loadDetail(id);
+    loadDetail();
   });
 
   let pending = 0;
@@ -285,7 +280,7 @@
       await api.createSprint(boardId);
       notify(t.boards.sprintCreated);
       reload();
-      loadDetail(boardId);
+      loadDetail();
     } catch (e) {
       notify(errorMessage(e), 'error');
     } finally {
@@ -304,7 +299,7 @@
     completing = null;
     editing = null;
     reload();
-    loadDetail(boardId);
+    loadDetail();
   }
 </script>
 

@@ -169,7 +169,6 @@ export const en = {
     schemes: { light: 'light', dark: 'dark' },
     lightOnly: 'Light mode only.',
     preparing: 'Preparing the preview…',
-    unfinished: 'This theme is still being drawn.',
     mock: {
       work: 'My work',
       projects: 'Projects',

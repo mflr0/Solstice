@@ -175,7 +175,6 @@ export const hi: Messages = {
     schemes: { light: 'लाइट', dark: 'डार्क' },
     lightOnly: 'सिर्फ़ लाइट मोड में उपलब्ध।',
     preparing: 'प्रीव्यू तैयार हो रहा है…',
-    unfinished: 'यह थीम अभी बन रही है।',
     mock: {
       work: 'मेरा काम',
       projects: 'प्रोजेक्ट',

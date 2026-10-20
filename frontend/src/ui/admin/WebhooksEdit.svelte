@@ -92,7 +92,6 @@
     if (wanted === null) {
       form = newWebhookForm();
       saved = JSON.stringify(form);
-      document.getElementById('hook-name')?.focus();
     } else {
       adminApi
         .webhook(wanted)
