@@ -75,6 +75,19 @@ func TestCustomFields(t *testing.T) {
 			t.Errorf("create %v: %d %s, want %d", bad.in, status, body, bad.want)
 		}
 	}
+	for _, bad := range []struct {
+		options []string
+		want    string
+	}{
+		{[]string{""}, "An option's text cannot be empty."},
+		{[]string{"  "}, "An option's text cannot be empty."},
+		{[]string{strings.Repeat("a", 256)}, "An option's text is 255 characters at most."},
+	} {
+		in := map[string]any{"name": name, "type": "select", "options": bad.options}
+		if status, msg, _ := admin.errorIn("en", "POST", "/api/admin/fields", in); status != 400 || msg != bad.want {
+			t.Errorf("create with options %q: %d %q, want %q", bad.options, status, msg, bad.want)
+		}
+	}
 
 	var f fieldDetail
 	admin.call("POST", "/api/admin/fields", map[string]any{"name": name, "type": "select", "options": []string{"Bas", "Haut"},
@@ -121,6 +134,10 @@ func TestCustomFields(t *testing.T) {
 	// Options: added, disabled (no longer offered), reordered.
 	admin.call("POST", path+"/options", map[string]any{"value": "Moyen"}, 201, &f)
 	admin.call("POST", path+"/options", map[string]any{"value": "moyen"}, 409, nil)
+	if status, msg, _ := admin.errorIn("en", "POST", path+"/options", map[string]any{"value": "  "}); status != 400 ||
+		msg != "An option's text cannot be empty." {
+		t.Errorf("blank option: %d %q", status, msg)
+	}
 	middle := f.Options[2].ID
 	admin.call("PATCH", fmt.Sprintf("%s/options/%d", path, low), map[string]any{"disabled": true}, 200, nil)
 	if o := offered(t, paul, key, f.ID); o == nil || len(o.Options) != 2 || slices.ContainsFunc(o.Options, func(x fieldOption) bool { return x.ID == low }) {

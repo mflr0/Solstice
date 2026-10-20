@@ -207,6 +207,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Type de champ inconnu (au choix : %s).",
 	CustomFieldNoOptions:     "Ce type de champ n'a pas d'options.",
 	CustomFieldOptionTooLong: "Une option a un texte de 255 caractères au plus.",
+	CustomFieldOptionEmpty:   "Le texte d'une option ne peut pas être vide.",
 	CustomFieldUsedByBoards:  "Ce champ sert au fonctionnement des tableaux : il ne peut pas être supprimé.",
 	CustomFieldDeleteConfirm: "Des tickets ont une valeur dans ce champ : tapez son nom pour confirmer la suppression.",
 	CustomFieldOptionInUse:   "Des tickets ont cette option : choisissez une autre option vers laquelle les déplacer, ou effacez leur valeur.",
@@ -333,9 +334,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "Un temps saisi ne peut pas être restreint à un groupe ou un rôle.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Type de lien inconnu.",
-	LinkTargetNotFound: "Ticket cible introuvable.",
-	LinkToItself:       "Un ticket ne peut pas être lié à lui-même.",
+	LinkTypeUnknown:      "Type de lien inconnu.",
+	LinkTargetNotFound:   "Ticket cible introuvable.",
+	LinkToItself:         "Un ticket ne peut pas être lié à lui-même.",
+	LinkDirectionUnknown: "Sens de lien inconnu.",
 
 	// Group picker.
 	GroupPickerHeader: "%d groupes affichés sur %d correspondants",

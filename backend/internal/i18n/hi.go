@@ -209,6 +209,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "अज्ञात फ़ील्ड प्रकार (इनमें से चुनें: %s)।",
 	CustomFieldNoOptions:     "इस फ़ील्ड प्रकार के कोई विकल्प नहीं होते।",
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
+	CustomFieldOptionEmpty:   "किसी विकल्प का टेक्स्ट खाली नहीं हो सकता।",
 	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे मिटाया नहीं जा सकता।",
 	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: मिटाने की पुष्टि के लिए इसका नाम टाइप करें।",
 	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
@@ -335,9 +336,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "दर्ज समय को किसी ग्रुप या भूमिका तक सीमित नहीं किया जा सकता।",
 
 	// Issue links.
-	LinkTypeUnknown:    "अज्ञात लिंक प्रकार।",
-	LinkTargetNotFound: "लक्ष्य टिकट नहीं मिला।",
-	LinkToItself:       "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
+	LinkTypeUnknown:      "अज्ञात लिंक प्रकार।",
+	LinkTargetNotFound:   "लक्ष्य टिकट नहीं मिला।",
+	LinkToItself:         "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
+	LinkDirectionUnknown: "अज्ञात लिंक दिशा।",
 
 	// Group picker.
 	GroupPickerHeader: "मेल खाने वाले %[2]d ग्रुप में से %[1]d दिखाए गए",

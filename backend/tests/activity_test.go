@@ -130,6 +130,12 @@ func TestLinkDeletion(t *testing.T) {
 			t.Errorf("link %v: %d %s", bad, status, body)
 		}
 	}
+	for _, dir := range []string{"sideways", ""} {
+		in := map[string]any{"type": json.Number(linkType), "direction": dir, "target": b}
+		if status, msg, _ := paul.errorIn("en", "POST", "/api/issues/"+a+"/links", in); status != 400 || msg != "Unknown link direction." {
+			t.Errorf("link with direction %q: %d %q", dir, status, msg)
+		}
+	}
 	var d issueDetail
 	paul.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
 		"target": b}, 201, &d)
