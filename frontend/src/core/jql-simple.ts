@@ -1,7 +1,8 @@
 /**
- * The former search syntax (@moi, est:ouvert, projet:DEMO, #label…), read
- * as JQL. The server still understands it (backend/internal/search); links
- * and bookmarks that use it open on the search page as filters.
+ * The simple search syntax (@moi, est:ouvert, projet:DEMO, #label…), read
+ * as JQL. The server also understands it (backend/internal/search). The home
+ * page and the projects list still link with it; those links and bookmarks
+ * open on the search page as filters.
  */
 
 import { categoryClause, EMPTY, listClause, ME } from './filters.js';
@@ -129,7 +130,7 @@ function userValue(v: string): string {
   return quote(v);
 }
 
-/** The former search syntax as an equivalent JQL query. */
+/** The simple search syntax as an equivalent JQL query. */
 export function simpleToJql(q: string): string {
   const words: string[] = [];
   const excluded: string[] = [];

@@ -6,7 +6,7 @@
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { api, ApiError, errorMessage } from '../../lib/api.js';
+  import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -23,7 +23,6 @@
 
   let items = $state<StatusRow[] | null>(null);
   let error = $state('');
-  let unavailable = $state(false);
   let q = $state('');
   let dialog = $state<{ item: StatusRow | null } | null>(null);
   let removing = $state<StatusRow | null>(null);
@@ -42,8 +41,7 @@
       items = await adminApi.statuses();
       error = '';
     } catch (e) {
-      if (e instanceof ApiError && e.status === 404) unavailable = true;
-      else error = errorMessage(e);
+      error = errorMessage(e);
     }
   }
 
@@ -142,17 +140,13 @@
       {#if items}<span class="count muted">{formatNumber(items.length)}</span>{/if}
     </h1>
   </div>
-  {#if !unavailable}
-    <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
-      >{t.statusesAdmin.newItem}</button
-    >
-  {/if}
+  <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
+    >{t.statusesAdmin.newItem}</button
+  >
 </header>
 <p class="lead-text">{t.statusesAdmin.intro}</p>
 
-{#if unavailable}
-  <p class="empty">{t.adminArea.unavailable}</p>
-{:else if error}
+{#if error}
   <p class="error-text" role="alert">{error}</p>
 {:else if !items}
   <p class="muted loading">{t.common.loading}</p>

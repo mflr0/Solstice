@@ -6,6 +6,7 @@
  */
 
 import { sortedDays } from './account-settings.js';
+import { typedMatches } from './admin-forms.js';
 import { tokenState, type TokenState } from './admin-integrations.js';
 import type { AccessToken, AuditEntry, TokenSettings } from './admin-types.js';
 
@@ -203,7 +204,7 @@ export function importReady(c: {
   typed: string;
   database: string;
 }): boolean {
-  return c.tested && c.backup && c.database !== '' && c.typed.trim() === c.database;
+  return c.tested && c.backup && typedMatches(c.typed, c.database);
 }
 
 /* Subscriptions ------------------------------------------------------------- */

@@ -11,7 +11,7 @@
  *                      (Carnet's is the main one, so never for Carnet).
  *
  * Carnet is drawn by src/app.css; every other skin by src/themes/<id>.css,
- * fetched when chosen (src/lib/skins.ts). public/theme-boot.js applies the
+ * fetched when chosen (src/lib/skins.svelte.ts). public/theme-boot.js applies the
  * same rules before the first paint; keep the two in step.
  */
 

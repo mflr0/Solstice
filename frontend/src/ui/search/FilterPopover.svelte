@@ -6,7 +6,7 @@
   /**
    * A filter's button and the panel it opens: a popover under the button,
    * a sheet at the bottom of the screen on a phone. The button reads
-   * « Statut : En cours, À faire »; a × next to it clears the filter.
+   * "Status: In progress, To do"; a × next to it clears the filter.
    */
   interface Props {
     label: string;

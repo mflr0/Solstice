@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { matches } from '../../core/admin-forms.js';
+  import { matches, typedMatches } from '../../core/admin-forms.js';
   import type { CatalogItem, FieldRow, FieldTypeInfo } from '../../core/admin-types.js';
   import { optionsEditable } from '../../core/catalogs.js';
   import type { AdminProjectRow } from '../../core/project-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
@@ -25,7 +25,6 @@
 
   let items = $state<FieldRow[] | null>(null);
   let error = $state('');
-  let unavailable = $state(false);
   let q = $state('');
   let dialog = $state<{ item: FieldRow | null } | null>(null);
   let optionsOf = $state<FieldRow | null>(null);
@@ -46,8 +45,7 @@
       items = await adminApi.fields();
       error = '';
     } catch (e) {
-      if (e instanceof ApiError && e.status === 404) unavailable = true;
-      else error = errorMessage(e);
+      error = errorMessage(e);
     }
   }
 
@@ -81,7 +79,7 @@
   async function remove() {
     const f = removing;
     if (!f) return;
-    if (f.issues > 0 && typed.trim() !== f.name) throw new Error(t.fieldsAdmin.nameMismatch);
+    if (f.issues > 0 && !typedMatches(typed, f.name)) throw new Error(t.fieldsAdmin.nameMismatch);
     await adminApi.deleteField(f.id, f.issues > 0 ? typed.trim() : undefined);
     notify(t.catalogAdmin.deleted(f.name));
     await load();
@@ -111,17 +109,13 @@
       {#if items}<span class="count muted">{formatNumber(items.length)}</span>{/if}
     </h1>
   </div>
-  {#if !unavailable}
-    <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
-      >{t.fieldsAdmin.newItem}</button
-    >
-  {/if}
+  <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
+    >{t.fieldsAdmin.newItem}</button
+  >
 </header>
 <p class="lead-text">{t.fieldsAdmin.intro}</p>
 
-{#if unavailable}
-  <p class="empty">{t.adminArea.unavailable}</p>
-{:else if error}
+{#if error}
   <p class="error-text" role="alert">{error}</p>
 {:else if !items}
   <p class="muted loading">{t.common.loading}</p>

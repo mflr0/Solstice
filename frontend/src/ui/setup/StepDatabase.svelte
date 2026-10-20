@@ -43,7 +43,7 @@
       const p = await setupApi.testDatabase({ ...form, port: Number(form.port) || 3306 });
       probe = p;
     } catch (e) {
-      error = setupErrorMessage(e, m.errors.generic);
+      error = setupErrorMessage(e);
     } finally {
       testing = false;
     }
@@ -58,7 +58,7 @@
       if (res.config.written) await onsaved(res.config, res.existing);
       else unsaved = { config: res.config, existing: res.existing };
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       saving = false;
     }

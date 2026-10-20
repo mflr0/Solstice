@@ -218,6 +218,53 @@ func TestCompileEqualsEmpty(t *testing.T) {
 	}
 }
 
+func TestCompileEmptyOperands(t *testing.T) {
+	for _, q := range []string{`timespent > EMPTY`, `originalEstimate <= null`, `remainingEstimate < EMPTY`, `timeestimate >= EMPTY`} {
+		parsed, err := Parse(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var je *Error
+		if _, _, _, err := Compile(parsed, fuzzEnv()); !errors.As(err, &je) || je.Key != i18n.JQLDurationInvalid {
+			t.Errorf("Compile(%q) = %v, want JQLDurationInvalid", q, err)
+		}
+	}
+
+	env := fuzzEnv()
+	fields := map[string]Field{
+		"Points":   {ID: 1, Name: "Points", TypeKey: "x:float"},
+		"Team":     {ID: 2, Name: "Team", TypeKey: "x:select"},
+		"Reviewer": {ID: 3, Name: "Reviewer", TypeKey: "x:userpicker"},
+		"Epic":     {ID: 4, Name: "Epic", TypeKey: "x:gh-epic-link"},
+	}
+	env.CustomField = func(name string) (Field, bool) {
+		f, ok := fields[name]
+		return f, ok
+	}
+	for q, want := range map[string]string{
+		`statusCategory = EMPTY`:       "FALSE",
+		`statusCategory in (EMPTY)`:    "FALSE",
+		`statusCategory != EMPTY`:      "NOT FALSE",
+		`statusCategory not in (null)`: "NOT FALSE",
+		`Points = EMPTY`:               `Points is EMPTY`,
+		`Team in (EMPTY)`:              `Team is EMPTY`,
+		`Reviewer = null`:              `Reviewer is EMPTY`,
+		`Epic = EMPTY`:                 `Epic is EMPTY`,
+		`Points != EMPTY`:              `Points is not EMPTY`,
+		`Team not in (EMPTY)`:          `Team is not EMPTY`,
+		`Reviewer != EMPTY`:            `Reviewer is not EMPTY`,
+		`Epic != null`:                 `Epic is not EMPTY`,
+	} {
+		where, args, _ := compileIn(t, q, env)
+		if strings.Contains(want, " is ") {
+			want, _, _ = compileIn(t, want, env)
+		}
+		if where != want || len(args) != 0 {
+			t.Errorf("%s compiled to %q %v, want %q", q, where, args, want)
+		}
+	}
+}
+
 func TestCompileKeyRangeNeedsKey(t *testing.T) {
 	for _, q := range []string{`key > EMPTY`, `issuekey <= null`, `key < 12`, `id >= "DEMO"`} {
 		parsed, err := Parse(q)

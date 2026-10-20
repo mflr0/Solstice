@@ -131,8 +131,6 @@
     return `${n} · ${sum}`;
   }
 
-  // Moving issues --------------------------------------------------------------
-
   async function move(m: CardMove, message: string, refocus = false) {
     if (!cards) return;
     const before = cards;
@@ -208,8 +206,6 @@
       ];
     };
   }
-
-  // Dragging -------------------------------------------------------------------
 
   let drag = $state<{ key: string; section: number } | null>(null);
   let over = $state<{ section: number; index: number } | null>(null);

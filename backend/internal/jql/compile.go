@@ -298,6 +298,10 @@ func (c *compiler) statusCategory(cl Clause) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(texts) == 0 {
+		// Every issue has a status: none is in an empty category.
+		return membership(cl.Op, "", "FALSE"), nil
+	}
 	var cats []any
 	for _, t := range texts {
 		cat, ok := categories[strings.ToLower(t)]
@@ -742,6 +746,14 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 	base := fmt.Sprintf("SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = %d", f.ID)
 	exists := func() string { return "EXISTS (" + base }
 
+	if len(cl.Values) == 1 && cl.Values[0].Empty {
+		switch cl.Op {
+		case "=", "in":
+			cl.Op = "is"
+		case "!=", "not in":
+			cl.Op = "is not"
+		}
+	}
 	switch cl.Op {
 	case "is", "is not":
 		cond := exists() + ")"
@@ -1059,6 +1071,9 @@ func (c *compiler) duration(cl Clause, col string) (string, error) {
 	}
 	v := cl.Values[0]
 	if v.Empty {
+		if cl.Op != "=" && cl.Op != "!=" {
+			return "", fail(i18n.JQLDurationInvalid, "EMPTY")
+		}
 		return membership(map[string]string{"=": "is", "!=": "is not"}[cl.Op], "", col+" IS NULL"), nil
 	}
 	secs, ok := seconds(v.Text)

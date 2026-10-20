@@ -31,8 +31,6 @@
     (boards ?? []).filter((b) => !project || b.projects.some((p) => p.key === project)),
   );
 
-  // Creating a board -----------------------------------------------------------
-
   let creating = $state(false);
   let projects = $state<Project[] | null>(null);
   let form = $state<{ name: string; kind: BoardKind; project: string }>({
