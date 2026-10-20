@@ -1883,7 +1883,8 @@ export const fr: Messages = {
     emailHint: 'Sert aussi à vous prévenir et à vous joindre.',
     emailChangeHint: 'Changer l’adresse demande votre mot de passe actuel.',
     passwordTitle: 'Mot de passe',
-    passwordIntro: 'Laissez les champs vides pour garder le mot de passe actuel.',
+    passwordIntro:
+      'Laissez les champs vides pour garder le mot de passe actuel. Un nouveau mot de passe ferme vos autres sessions, et vos jetons d’accès cessent de fonctionner.',
     currentPassword: 'Mot de passe actuel',
     newPassword: 'Nouveau mot de passe',
     confirmPassword: 'Confirmez le mot de passe',
@@ -2006,7 +2007,7 @@ export const fr: Messages = {
     activate: 'Réactiver',
     deactivateTitle: (name: string) => `Désactiver le compte de ${name} ?`,
     deactivateBody:
-      'Cette personne ne pourra plus se connecter et ses sessions se ferment tout de suite. Ses tickets, commentaires et historique restent ; vous pourrez réactiver le compte plus tard.',
+      'Cette personne ne pourra plus se connecter, ses sessions se ferment tout de suite et ses jetons d’accès sont supprimés. Ses tickets, commentaires et historique restent ; vous pourrez réactiver le compte plus tard.',
     deactivated: (name: string) => `Compte de ${name} désactivé.`,
     reactivated: (name: string) => `Compte de ${name} réactivé.`,
     passwordTitle: (name: string) => `Nouveau mot de passe pour ${name}`,
@@ -2014,7 +2015,8 @@ export const fr: Messages = {
     generateButton: 'Générer',
     typePassword: 'Saisir le mot de passe',
     newPassword: 'Nouveau mot de passe',
-    sessionsEnd: 'Les sessions ouvertes de cette personne se ferment.',
+    sessionsEnd:
+      'Les sessions ouvertes de cette personne se ferment et ses jetons d’accès cessent de fonctionner.',
     generatedOnce:
       'Transmettez ce mot de passe maintenant : il ne sera plus affiché. La personne pourra le changer dans ses réglages.',
     done: 'C’est noté',

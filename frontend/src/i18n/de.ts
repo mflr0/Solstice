@@ -1897,7 +1897,8 @@ export const de: Messages = {
     emailHint: 'Dient auch dazu, Sie zu benachrichtigen und zu erreichen.',
     emailChangeHint: 'Zum Ändern der Adresse wird Ihr aktuelles Passwort benötigt.',
     passwordTitle: 'Passwort',
-    passwordIntro: 'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten.',
+    passwordIntro:
+      'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten. Ein neues Passwort beendet Ihre anderen Sitzungen, und Ihre Zugriffstoken funktionieren nicht mehr.',
     currentPassword: 'Aktuelles Passwort',
     newPassword: 'Neues Passwort',
     confirmPassword: 'Passwort bestätigen',
@@ -2024,7 +2025,7 @@ export const de: Messages = {
     activate: 'Reaktivieren',
     deactivateTitle: (name: string) => `Konto von ${name} deaktivieren?`,
     deactivateBody:
-      'Diese Person kann sich nicht mehr anmelden, und ihre Sitzungen werden sofort beendet. Ihre Vorgänge, Kommentare und der Verlauf bleiben erhalten; Sie können das Konto später wieder aktivieren.',
+      'Diese Person kann sich nicht mehr anmelden, ihre Sitzungen werden sofort beendet und ihre Zugriffstoken gelöscht. Ihre Vorgänge, Kommentare und der Verlauf bleiben erhalten; Sie können das Konto später wieder aktivieren.',
     deactivated: (name: string) => `Konto von ${name} deaktiviert.`,
     reactivated: (name: string) => `Konto von ${name} reaktiviert.`,
     passwordTitle: (name: string) => `Neues Passwort für ${name}`,
@@ -2032,7 +2033,8 @@ export const de: Messages = {
     generateButton: 'Erzeugen',
     typePassword: 'Passwort eingeben',
     newPassword: 'Neues Passwort',
-    sessionsEnd: 'Die offenen Sitzungen dieser Person werden beendet.',
+    sessionsEnd:
+      'Die offenen Sitzungen dieser Person werden beendet, und ihre Zugriffstoken funktionieren nicht mehr.',
     generatedOnce:
       'Geben Sie dieses Passwort jetzt weiter: Es wird danach nicht mehr angezeigt. Die Person kann es in ihren Einstellungen ändern.',
     done: 'Verstanden',

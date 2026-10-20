@@ -1886,7 +1886,8 @@ export const it: Messages = {
     emailHint: 'Serve anche per avvisarti e contattarti.',
     emailChangeHint: 'Per cambiare l’indirizzo serve la tua password attuale.',
     passwordTitle: 'Password',
-    passwordIntro: 'Lascia i campi vuoti per mantenere la password attuale.',
+    passwordIntro:
+      'Lascia i campi vuoti per mantenere la password attuale. Una nuova password chiude le tue altre sessioni e i tuoi token di accesso smettono di funzionare.',
     currentPassword: 'Password attuale',
     newPassword: 'Nuova password',
     confirmPassword: 'Conferma la password',
@@ -2012,7 +2013,7 @@ export const it: Messages = {
     activate: 'Riattiva',
     deactivateTitle: (name: string) => `Disattivare l’account di ${name}?`,
     deactivateBody:
-      'Questa persona non potrà più accedere e le sue sessioni si chiuderanno subito. I suoi ticket, commenti e cronologia restano; potrai riattivare l’account più tardi.',
+      'Questa persona non potrà più accedere, le sue sessioni si chiuderanno subito e i suoi token di accesso verranno eliminati. I suoi ticket, commenti e cronologia restano; potrai riattivare l’account più tardi.',
     deactivated: (name: string) => `Account di ${name} disattivato.`,
     reactivated: (name: string) => `Account di ${name} riattivato.`,
     passwordTitle: (name: string) => `Nuova password per ${name}`,
@@ -2020,7 +2021,8 @@ export const it: Messages = {
     generateButton: 'Genera',
     typePassword: 'Inserisci la password',
     newPassword: 'Nuova password',
-    sessionsEnd: 'Le sessioni aperte di questa persona si chiudono.',
+    sessionsEnd:
+      'Le sessioni aperte di questa persona si chiudono e i suoi token di accesso smettono di funzionare.',
     generatedOnce:
       'Comunica questa password ora: non verrà più mostrata. La persona potrà cambiarla nelle sue impostazioni.',
     done: 'Fatto',
