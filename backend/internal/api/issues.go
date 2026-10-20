@@ -1947,11 +1947,14 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// compileJQL turns a JQL query into SQL. Syntax and field errors come back
-// to the user as they are (in the user's language).
+// searchFrom is the FROM clause a search condition runs against: the SQL of
+// compileJQL and searchCondition, conditions and ORDER BY, names its aliases
+// i (issues), p (projects) and pr (priorities).
+const searchFrom = ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id`
+
 // searchCondition turns a search's parameters (jql, or q in either syntax,
-// and project) into a condition on the issues the user sees (aliases i and
-// p), with its ORDER BY.
+// and project) into a condition on the issues the user sees, with its ORDER
+// BY, both to run against searchFrom.
 func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
 	sort string, err error) {
 	// The search bar takes both syntaxes: JQL is recognised by its shape.
@@ -1979,12 +1982,11 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 	return where, args, sort, nil
 }
 
-// searchRows runs a search condition (aliases i, p and pr) and returns a page
-// of issues with the total.
+// searchRows runs a search condition and returns a page of issues with the
+// total.
 func (s *Server) searchRows(ctx context.Context, where string, args []any, order string, offset, limit int) (
 	[]*issueRow, int, error) {
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
+	from := searchFrom + ` WHERE ` + where
 	var total int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -2005,6 +2007,8 @@ func (s *Server) searchRows(ctx context.Context, where string, args []any, order
 	return out, total, nil
 }
 
+// compileJQL turns a JQL query into SQL to run against searchFrom. Syntax and
+// field errors come back to the user as they are (in the user's language).
 func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) (string, []any, string, error) {
 	q, err := jql.Parse(src)
 	if err != nil {
