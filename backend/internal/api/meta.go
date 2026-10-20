@@ -88,6 +88,9 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 		ids = append(ids, iss.ReporterID.Int64)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 	users, err := s.users(r.Context(), ids...)
 	if err != nil {
 		return err

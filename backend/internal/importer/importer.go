@@ -325,6 +325,9 @@ func (r *run) prepareTarget() (*kept, error) {
 		}
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	for _, t := range tables {
 		if _, err := r.dst.ExecContext(r.ctx, "TRUNCATE TABLE `"+t+"`"); err != nil {
 			return nil, err
