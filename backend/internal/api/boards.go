@@ -598,14 +598,7 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 // parents share their project, so no further check is needed for display.
 func (s *Server) briefs(ctx context.Context, cat *catalog, ids []int64) (map[int64]*issueBrief, error) {
 	out := map[int64]*issueBrief{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	for chunk := range slices.Chunk(args, 500) {
 		err := sqlq.Each(ctx, s.db, `SELECT i.id, p.pkey, i.num, i.summary, i.issue_type_id, i.status_id FROM issues i
 			JOIN projects p ON p.id = i.project_id WHERE i.id IN (`+sqlq.Marks(len(chunk))+`)`, func(rows *sql.Rows) error {

@@ -29,6 +29,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -518,17 +519,8 @@ func (o *restOut) avatars(kind, owner string) map[string]string {
 // shown as on people's pages, to every signed-in user.
 func (s *Server) jiraUsers(ctx context.Context, o *restOut, ids ...int64) (map[int64]*jiraUser, error) {
 	out := map[int64]*jiraUser{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
-	for len(args) > 0 {
-		chunk := args[:min(len(args), 500)]
-		args = args[len(chunk):]
+	args := sqlq.IDs(ids...)
+	for chunk := range slices.Chunk(args, 500) {
 		err := sqlq.Each(ctx, s.db, `SELECT id, username, COALESCE(user_key, username), display_name, email, active
 			FROM users WHERE id IN (`+sqlq.Marks(len(chunk))+`)`, func(rows *sql.Rows) error {
 			var id int64
