@@ -198,7 +198,7 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusConflict, i18n.AccountMailUnavailable)
 		}
 	} else {
-		if err := s.checkNewPassword(ctx, in.Password); err != nil {
+		if err := s.checkNewPassword(ctx, in.Password, in.Username); err != nil {
 			return err
 		}
 		h, err := auth.HashPassword(in.Password)
@@ -304,7 +304,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if in.Password != nil {
-		if err := s.checkNewPassword(ctx, *in.Password); err != nil {
+		if err := s.checkNewPassword(ctx, *in.Password, before.Username); err != nil {
 			return err
 		}
 	}

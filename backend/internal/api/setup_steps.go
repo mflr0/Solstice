@@ -582,9 +582,6 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 // auditSetupComplete is the audit log's entry for the end of setup.
 const auditSetupComplete = "setup.complete"
 
-// minAdminPassword is the shortest password the wizard accepts.
-const minAdminPassword = 12
-
 // createAdmin creates the first administrator, or makes an imported account
 // one, and ends setup.
 func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
@@ -647,11 +644,8 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		if a, err := mail.ParseAddress(email); err != nil || a.Address != email || a.Name != "" {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
 		}
-		if utf8Len(in.Password) < minAdminPassword {
-			return failf(http.StatusBadRequest, i18n.AccountPasswordTooShort, minAdminPassword)
-		}
-		if strings.EqualFold(strings.TrimSpace(in.Password), username) {
-			return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
+		if err := passwordRules(in.Password, username, storedPasswordMin(ctx, w.db)); err != nil {
+			return err
 		}
 		hash, err := auth.HashPassword(in.Password)
 		if err != nil {
@@ -685,5 +679,3 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 	w.finish(username)
 	return writeJSON(rw, http.StatusOK, out)
 }
-
-func utf8Len(s string) int { return len([]rune(s)) }

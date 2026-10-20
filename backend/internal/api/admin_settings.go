@@ -241,12 +241,35 @@ func (s *Server) sessionLifetime(ctx context.Context) time.Duration {
 	return time.Duration(s.general(ctx).SessionDays) * 24 * time.Hour
 }
 
-// checkNewPassword applies the minimum length to a new password.
-func (s *Server) checkNewPassword(ctx context.Context, password string) error {
-	if n := s.passwordMin(ctx); utf8.RuneCountInString(password) < n {
-		return failf(http.StatusBadRequest, i18n.AccountPasswordTooShort, n)
+// checkNewPassword applies the password rules to a new password of the
+// account username.
+func (s *Server) checkNewPassword(ctx context.Context, password, username string) error {
+	return passwordRules(password, username, s.passwordMin(ctx))
+}
+
+// passwordRules is the one password policy, for every way of setting a
+// password: at least minLen characters, and not the username.
+func passwordRules(password, username string, minLen int) error {
+	if utf8.RuneCountInString(password) < minLen {
+		return failf(http.StatusBadRequest, i18n.AccountPasswordTooShort, minLen)
+	}
+	if strings.EqualFold(strings.TrimSpace(password), username) {
+		return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
 	}
 	return nil
+}
+
+// storedPasswordMin reads the minimum length from the settings table, for
+// the setup wizard, which runs without a Server.
+func storedPasswordMin(ctx context.Context, db *sql.DB) int {
+	n := defaultPasswordMin
+	var raw string
+	if db.QueryRowContext(ctx, `SELECT value FROM settings WHERE name = 'general.password_min_length'`).Scan(&raw) == nil {
+		if json.Unmarshal([]byte(raw), &n) != nil {
+			n = defaultPasswordMin
+		}
+	}
+	return n
 }
 
 // publicSettings is what anyone may know, signed in or not.

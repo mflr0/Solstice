@@ -338,11 +338,8 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.checkNewPassword(ctx, in.Password); err != nil {
+	if err := s.checkNewPassword(ctx, in.Password, target.Username); err != nil {
 		return err
-	}
-	if strings.EqualFold(strings.TrimSpace(in.Password), target.Username) {
-		return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
 	}
 	release, err := s.limiter.Acquire(ctx)
 	if err != nil {
