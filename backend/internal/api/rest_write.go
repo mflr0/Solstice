@@ -836,26 +836,8 @@ func (s *Server) applyCustom(ctx context.Context, sub *perm.Subject, o *restOut,
 		if before == w.display {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE issue_id = ? AND field_id = ?`,
-			iss.ID, w.field.ID); err != nil {
+		if err := writeCustom(ctx, tx, iss.ID, w); err != nil {
 			return err
-		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM labels WHERE issue_id = ? AND field_id = ?`, iss.ID,
-			w.field.ID); err != nil {
-			return err
-		}
-		for _, v := range w.rows {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO custom_field_values (issue_id, field_id, parent_key,
-				string_value, number_value, text_value, date_value) VALUES (?, ?, ?, ?, ?, ?, ?)`, iss.ID, w.field.ID,
-				v.parentKey, v.str, v.num, v.text, v.date); err != nil {
-				return err
-			}
-		}
-		for _, l := range w.labels {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO labels (issue_id, field_id, label) VALUES (?, ?, ?)`,
-				iss.ID, w.field.ID, l); err != nil {
-				return err
-			}
 		}
 		changes = append(changes, change{field: w.field.Name, oldString: nullIfEmpty(before),
 			newString: nullIfEmpty(w.display)})
@@ -886,6 +868,32 @@ func (s *Server) applyCustom(ctx context.Context, sub *perm.Subject, o *restOut,
 		return err
 	}
 	s.changed(iss, sub.UserID, "issue", changes) // notifications and webhooks too
+	return nil
+}
+
+// writeCustom replaces an issue's values of a custom field.
+func writeCustom(ctx context.Context, tx *sql.Tx, issueID int64, w customWrite) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE issue_id = ? AND field_id = ?`,
+		issueID, w.field.ID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM labels WHERE issue_id = ? AND field_id = ?`, issueID,
+		w.field.ID); err != nil {
+		return err
+	}
+	for _, v := range w.rows {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO custom_field_values (issue_id, field_id, parent_key,
+			string_value, number_value, text_value, date_value) VALUES (?, ?, ?, ?, ?, ?, ?)`, issueID, w.field.ID,
+			v.parentKey, v.str, v.num, v.text, v.date); err != nil {
+			return err
+		}
+	}
+	for _, l := range w.labels {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO labels (issue_id, field_id, label) VALUES (?, ?, ?)`,
+			issueID, w.field.ID, l); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

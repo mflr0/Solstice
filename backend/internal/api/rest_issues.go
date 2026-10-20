@@ -128,18 +128,11 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkCustomContext(ctx, projectID, typeID, edit.custom); err != nil {
 		return err
 	}
-	var created struct{ Key string }
-	if err := s.uiCall(r, s.createIssue, http.MethodPost, "/api/issues", nil, edit.ui, &created); err != nil {
-		return err
-	}
-	iss, err := s.findIssue(ctx, created.Key)
+	iss, err := s.newIssue(ctx, sub, edit.ui, edit.custom)
 	if err != nil {
 		return err
 	}
 	o := s.restOut(r)
-	if err := s.applyCustom(ctx, sub, o, iss, edit.custom); err != nil {
-		return err
-	}
 	if edit.sprint != nil && *edit.sprint != 0 {
 		if err := s.applySprint(ctx, sub, iss, *edit.sprint); err != nil {
 			return err
