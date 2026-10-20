@@ -16,7 +16,7 @@ import (
 
 // Message is an e-mail to one recipient, in text and HTML.
 type Message struct {
-	Kind      string // notification, digest, subscription, reminder, test
+	Kind      string // notification, digest, subscription, reminder, test, reset, invitation
 	UserID    int64  // the recipient's account, 0 if none
 	To        string
 	ToName    string

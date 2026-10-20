@@ -63,7 +63,6 @@ func (s *Server) configInfo() ConfigInfo {
 	return s.adm.info
 }
 
-// Setting sources.
 const (
 	sourceDefault  = "default"
 	sourceFile     = "file"
@@ -103,7 +102,6 @@ var generalFields = []struct{ field, name string }{
 	{"passwordMinLength", "general.password_min_length"},
 }
 
-// Defaults and bounds.
 const (
 	defaultInstanceName = "Solstice"
 	defaultSessionDays  = 30
@@ -233,7 +231,6 @@ func (s *Server) base() string { return s.general(context.Background()).BaseURL 
 // defaultLanguage is the language of people who chose none.
 func (s *Server) defaultLanguage() string { return s.general(context.Background()).DefaultLanguage }
 
-// passwordMin is the shortest password accepted.
 func (s *Server) passwordMin(ctx context.Context) int { return s.general(ctx).PasswordMinLength }
 
 // sessionLifetime is how long a new sign-in lasts.

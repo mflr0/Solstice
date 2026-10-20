@@ -61,7 +61,6 @@ func scanAdminUser(sc interface{ Scan(...any) error }) (adminUser, error) {
 	return u, err
 }
 
-// withGroups fills the groups of the users listed.
 func (s *Server) withGroups(ctx context.Context, users []adminUser) error {
 	if len(users) == 0 {
 		return nil

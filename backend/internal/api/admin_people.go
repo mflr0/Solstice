@@ -111,8 +111,6 @@ func pathID(r *http.Request, name string) (int64, error) {
 	return id, nil
 }
 
-// Groups ----------------------------------------------------------------------
-
 func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -413,8 +411,6 @@ func (s *Server) removeGroupMember(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
-// Roles -------------------------------------------------------------------------
-
 type roleAdminOut struct {
 	ID          int64   `json:"id"`
 	Name        string  `json:"name"`
@@ -590,8 +586,6 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-
-// Role members per project ---------------------------------------------------------
 
 type projectRoleOut struct {
 	ID          int64     `json:"id"`
