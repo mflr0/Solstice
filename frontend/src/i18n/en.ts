@@ -743,6 +743,8 @@ export const en = {
     mention: 'Mention someone',
     undo: 'Undo',
     redo: 'Redo',
+    /** Modifier key names in shortcut hints, as printed on this language's keyboards. */
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift' },
     source: 'Source',
     sourceLabel: 'Wiki markup',
     tableTools: 'Table',

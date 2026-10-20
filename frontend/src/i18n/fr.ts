@@ -747,6 +747,7 @@ export const fr: Messages = {
     mention: 'Mentionner quelqu’un',
     undo: 'Annuler la frappe',
     redo: 'Rétablir',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maj' },
     source: 'Source',
     sourceLabel: 'Balisage wiki',
     tableTools: 'Tableau',

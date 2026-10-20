@@ -754,6 +754,7 @@ export const de: Messages = {
     mention: 'Jemanden erwähnen',
     undo: 'Rückgängig',
     redo: 'Wiederholen',
+    keys: { ctrl: 'Strg', alt: 'Alt', shift: 'Umschalt' },
     source: 'Quelltext',
     sourceLabel: 'Wiki-Markup',
     tableTools: 'Tabelle',
