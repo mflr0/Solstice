@@ -342,9 +342,12 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 		return nil, sourceError(err, u)
 	}
 	p := &sourceProbe{Engine: engine.String()}
-	for table, n := range map[string]*int{"project": &p.Projects, "jiraissue": &p.Issues, "cwd_user": &p.Users} {
-		if err := src.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(n); err != nil {
-			return nil, failf(http.StatusBadRequest, i18n.ImportNotJira, table)
+	for _, c := range []struct {
+		table string
+		n     *int
+	}{{"project", &p.Projects}, {"jiraissue", &p.Issues}, {"cwd_user", &p.Users}} {
+		if err := src.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+c.table).Scan(c.n); err != nil {
+			return nil, failf(http.StatusBadRequest, i18n.ImportNotJira, c.table)
 		}
 	}
 	if f.JiraHome != "" {
@@ -611,7 +614,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusConflict, i18n.ImportRunning)
 	}
 	ctx := r.Context()
-	var username string
+	var username, how string
 	if existing := strings.ToLower(strings.TrimSpace(in.Existing)); existing != "" {
 		if !w.imported {
 			return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
@@ -631,7 +634,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 				return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
 			}
 		}
-		username = existing
+		username, how = existing, "imported account"
 	} else {
 		username = strings.ToLower(strings.TrimSpace(in.Username))
 		name, email := strings.TrimSpace(in.Name), strings.TrimSpace(in.Email)
@@ -658,14 +661,11 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 			}
 			return err
 		}
+		how = "created"
 	}
 	var id int64
 	if err := w.db.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, username).Scan(&id); err != nil {
 		return err
-	}
-	how := "created"
-	if in.Existing != "" {
-		how = "imported account"
 	}
 	if err := audit.Record(ctx, w.db, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
 		Action: auditSetupComplete, Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username},

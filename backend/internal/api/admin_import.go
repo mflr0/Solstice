@@ -42,8 +42,8 @@ func credentialKeys(r *http.Request) []string {
 	if c, err := r.Cookie(auth.CookieName); err == nil && c.Value != "" {
 		out = append(out, auth.TokenHash(c.Value))
 	}
-	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
-		out = append(out, auth.TokenHash(strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))))
+	if scheme, value, ok := strings.Cut(r.Header.Get("Authorization"), " "); ok && strings.EqualFold(scheme, "Bearer") {
+		out = append(out, auth.TokenHash(strings.TrimSpace(value)))
 	}
 	return out
 }
