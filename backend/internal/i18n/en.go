@@ -393,6 +393,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Between 1 and 50 issues at a time.",
 	BoardRankTargetRequired:      "Give rankBeforeIssue or rankAfterIssue.",
 	BoardRankItself:              "An issue cannot be ranked relative to itself.",
+	BoardFilterName:              "Board %s",
 
 	// Sprints.
 	SprintKanban:          "A Kanban board has no sprints.",

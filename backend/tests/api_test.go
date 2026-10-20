@@ -928,12 +928,15 @@ func TestBoardSettings(t *testing.T) {
 
 func TestCreateAndDeleteBoard(t *testing.T) {
 	marie := login(t, "marie.durand", "motdepasse")
-	status, body := marie.do("POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"})
+	status, body := marie.request("en", "POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"})
 	if status != 201 {
 		t.Fatalf("create: %d %s", status, body)
 	}
 	var created struct{ ID int64 }
 	json.Unmarshal(body, &created)
+	if name := pick(t, `SELECT f.name FROM filters f JOIN boards b ON b.filter_id = f.id WHERE b.id = ?`, created.ID); name != "Board OPS — Kanban" {
+		t.Errorf("filter of a board created in English: %q", name)
+	}
 	path := fmt.Sprintf("/api/boards/%d", created.ID)
 	var b boardDetail
 	marie.get(path, &b)
