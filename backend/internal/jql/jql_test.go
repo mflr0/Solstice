@@ -176,15 +176,25 @@ func TestCompileNeverInlinesUserText(t *testing.T) {
 
 func TestLooksLike(t *testing.T) {
 	for s, want := range map[string]bool{
-		`project = DEMO`:                  true,
-		`assignee in (a, b)`:              true,
-		`status != Done order by created`: true,
-		`ORDER BY created`:                true,
-		`"Epic Link" = DEMO-1`:            true,
-		`panier vide @marie`:              false,
-		`statut:"en cours"`:               false,
-		`DEMO-12`:                         false,
-		`est:ouvert tri:priorité`:         false,
+		`project = DEMO`:                                        true,
+		`assignee in (a, b)`:                                    true,
+		`status != Done order by created`:                       true,
+		`ORDER BY created`:                                      true,
+		`"Epic Link" = DEMO-1`:                                  true,
+		`assignee = currentUser()`:                              true,
+		`labels = backend`:                                      true,
+		`participant = paul.martin`:                             true,
+		`key in (DEMO-1)`:                                       true,
+		`key >= DEMO-1 AND project = WEB`:                       true,
+		`project in (OLD, DEMO) AND key = DEMO-1`:               true,
+		`fixVersion in releasedVersions(OLD) AND project = NEW`: true,
+		`panier vide @marie`:                                    false,
+		`projet:DEMO @personne`:                                 false,
+		`@moi`:                                                  false,
+		`#backend`:                                              false,
+		`statut:"en cours"`:                                     false,
+		`DEMO-12`:                                               false,
+		`est:ouvert tri:priorité`:                               false,
 	} {
 		if got := LooksLike(s); got != want {
 			t.Errorf("LooksLike(%q) = %v", s, got)

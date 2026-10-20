@@ -103,11 +103,11 @@ func TestProjectRename(t *testing.T) {
 		"key = " + issue, "key in (" + issue + ")", "key = " + newIssue, "key >= " + old + "-1 AND project = " + fresh,
 		"key >= " + issue + " AND key <= " + issue,
 	} {
-		if status, total, mode := runSearch(t, admin, q); status != 200 || mode != "jql" || total != 1 {
-			t.Errorf("%s: %d, %d issues (%s), want 1", q, status, total, mode)
+		if status, total := runSearch(t, admin, q); status != 200 || total != 1 {
+			t.Errorf("%s: %d, %d issues, want 1", q, status, total)
 		}
 	}
-	if _, total, _ := runSearch(t, admin, "project != "+old+" AND key = "+issue); total != 0 {
+	if _, total := runSearch(t, admin, "project != "+old+" AND key = "+issue); total != 0 {
 		t.Errorf("project != OLD finds %d issues of the project", total)
 	}
 
@@ -310,7 +310,7 @@ func TestProjectRenameBack(t *testing.T) {
 		}
 	}
 	for _, q := range []string{"project = " + first, "project = " + second, "key = " + second + "-" + num} {
-		if status, total, _ := runSearch(t, admin, q); status != 200 || total != 1 {
+		if status, total := runSearch(t, admin, q); status != 200 || total != 1 {
 			t.Errorf("%s: %d, %d issues, want 1", q, status, total)
 		}
 	}
@@ -360,9 +360,9 @@ func TestProjectOldKeyInVersionFunctions(t *testing.T) {
 	} {
 		for _, key := range []string{old, fresh} {
 			q := "fixVersion in " + c.fn + "(" + key + ") AND project = " + fresh
-			status, total, mode := runSearch(t, admin, q)
-			if status != 200 || mode != "jql" || total != 1 {
-				t.Errorf("%s: %d, %d issues (%s), want 1", q, status, total, mode)
+			status, total := runSearch(t, admin, q)
+			if status != 200 || total != 1 {
+				t.Errorf("%s: %d, %d issues, want 1", q, status, total)
 				continue
 			}
 			var res struct{ Issues []struct{ Key string } }

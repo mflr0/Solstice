@@ -182,7 +182,7 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
-	where, args, sort, mode, err := s.searchCondition(r.Context(), sub, params)
+	where, args, sort, err := s.searchCondition(r.Context(), sub, params)
 	if err != nil {
 		return err
 	}
@@ -202,8 +202,7 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	for _, iss := range list {
 		out = append(out, summarize(iss, cat, users))
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "page": page, "size": size, "mode": mode,
-		"issues": out})
+	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "page": page, "size": size, "issues": out})
 }
 
 func atoi(s string, def int) int {
@@ -1950,20 +1949,18 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 // to the user as they are (in the user's language).
 // searchCondition turns a search's parameters (jql, or q in either syntax,
 // and project) into a condition on the issues the user sees (aliases i and
-// p), with its ORDER BY and the syntax used.
+// p), with its ORDER BY.
 func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
-	sort, mode string, err error) {
+	sort string, err error) {
 	// The search bar takes both syntaxes: JQL is recognised by its shape.
-	mode = "simple"
 	var cond string
 	var cargs []any
 	if src := params.Get("jql"); src != "" || jql.LooksLike(params.Get("q")) {
 		if src == "" {
 			src = params.Get("q")
 		}
-		mode = "jql"
 		if cond, cargs, sort, err = s.compileJQL(ctx, sub, src); err != nil {
-			return "", nil, "", "", err
+			return "", nil, "", err
 		}
 	} else {
 		q := search.Parse(params.Get("q"))
@@ -1977,7 +1974,7 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 		where += " AND " + sqlq.ProjectKey("p", "?")
 		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
 	}
-	return where, args, sort, mode, nil
+	return where, args, sort, nil
 }
 
 // searchRows runs a search condition (aliases i, p and pr) and returns a page

@@ -450,14 +450,11 @@ func TestLoginThrottling(t *testing.T) {
 
 // JQL -----------------------------------------------------------------------
 
-func runSearch(t *testing.T, c *client, q string) (int, int, string) {
+func runSearch(t *testing.T, c *client, q string) (int, int) {
 	t.Helper()
-	var res struct {
-		Total int
-		Mode  string
-	}
+	var res struct{ Total int }
 	status := c.get("/api/issues?q="+url.QueryEscape(q), &res)
-	return status, res.Total, res.Mode
+	return status, res.Total
 }
 
 func TestJQLMatchesSimpleSearch(t *testing.T) {
@@ -469,13 +466,13 @@ func TestJQLMatchesSimpleSearch(t *testing.T) {
 		{`reporter = currentUser() AND resolution = Unresolved`, `par:@moi est:ouvert`},
 		{`labels = backend`, `#backend`},
 	} {
-		_, jqlTotal, mode := runSearch(t, c, pair[0])
-		_, simpleTotal, _ := runSearch(t, c, pair[1])
-		if mode != "jql" || jqlTotal != simpleTotal {
-			t.Errorf("%q (%s) = %d, %q = %d", pair[0], mode, jqlTotal, pair[1], simpleTotal)
+		_, jqlTotal := runSearch(t, c, pair[0])
+		_, simpleTotal := runSearch(t, c, pair[1])
+		if jqlTotal == 0 || jqlTotal != simpleTotal {
+			t.Errorf("%q = %d, %q = %d", pair[0], jqlTotal, pair[1], simpleTotal)
 		}
 	}
-	if _, n, _ := runSearch(t, c, `project = RH`); n != 0 {
+	if _, n := runSearch(t, c, `project = RH`); n != 0 {
 		t.Errorf("JQL lets paul.martin see %d RH issues", n)
 	}
 }
@@ -1435,7 +1432,7 @@ func TestSearchHelpers(t *testing.T) {
 	if status := paul.get("/api/issues/facets?jql="+q+"&fields=status,assignee,labels,nope", &facets); status != 200 {
 		t.Fatalf("facets: %d", status)
 	}
-	_, total, _ := runSearch(t, paul, "project = DEMO")
+	_, total := runSearch(t, paul, "project = DEMO")
 	sum := 0
 	for _, n := range facets.Facets["status"] {
 		sum += n
@@ -1456,14 +1453,14 @@ func TestSearchHelpers(t *testing.T) {
 
 func TestJQLParticipant(t *testing.T) {
 	c := login(t, "marie.durand", "motdepasse")
-	_, roles, _ := runSearch(t, c, `assignee = paul.martin OR reporter = paul.martin OR creator = paul.martin OR `+
+	_, roles := runSearch(t, c, `assignee = paul.martin OR reporter = paul.martin OR creator = paul.martin OR `+
 		`watcher = paul.martin OR commenter = paul.martin`)
-	status, all, mode := runSearch(t, c, `participant = paul.martin`)
-	if status != 200 || mode != "jql" || roles == 0 || all < roles {
-		t.Errorf("participant = paul.martin: %d (%s) %d issues, roles alone %d", status, mode, all, roles)
+	status, all := runSearch(t, c, `participant = paul.martin`)
+	if status != 200 || roles == 0 || all < roles {
+		t.Errorf("participant = paul.martin: %d, %d issues, roles alone %d", status, all, roles)
 	}
-	_, none, _ := runSearch(t, c, `participant != paul.martin`)
-	_, total, _ := runSearch(t, c, `created is not EMPTY`)
+	_, none := runSearch(t, c, `participant != paul.martin`)
+	_, total := runSearch(t, c, `created is not EMPTY`)
 	if all+none != total {
 		t.Errorf("participant = and != paul.martin: %d + %d, want %d", all, none, total)
 	}
