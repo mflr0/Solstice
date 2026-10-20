@@ -1050,7 +1050,7 @@ func (s *Server) restSearch(w http.ResponseWriter, r *http.Request) error {
 		q := r.URL.Query()
 		query, fieldList, expandList = q.Get("jql"), q["fields"], q["expand"]
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
+	where, args, order, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
 	if err != nil {
 		return err
 	}

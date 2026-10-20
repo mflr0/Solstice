@@ -563,7 +563,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	current, order := where, "i.updated_at DESC"
 	currentArgs := slices.Clone(args)
 	if jqlText := strings.TrimSpace(q.Get("currentJQL")); jqlText != "" {
-		jqlWhere, jqlArgs, jqlOrder, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {jqlText}})
+		jqlWhere, jqlArgs, jqlOrder, err := s.searchCondition(ctx, sub, url.Values{"jql": {jqlText}})
 		if err != nil {
 			return err
 		}

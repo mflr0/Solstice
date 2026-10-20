@@ -55,14 +55,14 @@
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     tried = true;
-    if (problems.days || problems.hour || missingFilter) return;
+    const filter = subscription?.filterId ?? filterId;
+    if (problems.days || problems.hour || filter === null) return;
     busy = true;
     error = '';
     try {
       const payload = subscriptionPayload(input);
-      if (subscription)
-        await accountApi.saveSubscription(subscription.filterId, subscription.id, payload);
-      else if (filterId !== null) await accountApi.subscribe(filterId, payload);
+      if (subscription) await accountApi.saveSubscription(filter, subscription.id, payload);
+      else await accountApi.subscribe(filter, payload);
       onsaved(subscription === null);
       onclose();
     } catch (err) {

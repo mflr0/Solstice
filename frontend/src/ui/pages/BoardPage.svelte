@@ -61,11 +61,10 @@
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
 
-  function loadDetail(id: number) {
+  function loadDetail() {
     api
-      .board(id)
+      .board(boardId)
       .then((d) => {
-        if (id !== boardId) return;
         detail = d;
         document.title = `${d.board.name} — ${t.appName}`;
       })
@@ -73,12 +72,7 @@
   }
 
   $effect(() => {
-    const id = boardId;
-    detail = null;
-    error = '';
-    cards = null;
-    collapsed = {};
-    loadDetail(id);
+    loadDetail();
   });
 
   // Moves in flight: a reload meanwhile would show the card back where it was.
@@ -425,7 +419,7 @@
     onclose={() => (editing = null)}
     onsaved={() => {
       editing = null;
-      loadDetail(boardId);
+      loadDetail();
       reload();
     }}
   />
@@ -436,7 +430,7 @@
     onclose={() => (completing = null)}
     oncompleted={() => {
       completing = null;
-      loadDetail(boardId);
+      loadDetail();
       reload();
     }}
   />

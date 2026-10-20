@@ -49,11 +49,6 @@ export function sameOrder(
 
 /* Colours ------------------------------------------------------------------- */
 
-/** "#rrggbb" (any case). */
-export function isHexColor(s: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(s.trim());
-}
-
 /**
  * A colour as typed, made "#rrggbb" lower case: accepts a missing "#" and
  * the short "#rgb" form. Returns null when it is not a colour.

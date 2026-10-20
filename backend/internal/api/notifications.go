@@ -907,7 +907,7 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 	if err != nil {
 		return nil, false, err
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, url.Values{"q": {f.Query}})
+	where, args, order, err := s.searchCondition(ctx, sub, url.Values{"q": {f.Query}})
 	if err != nil {
 		var he *httpError
 		if errors.As(err, &he) {

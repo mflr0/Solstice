@@ -94,14 +94,9 @@
   }
 
   $effect(() => {
-    const id = boardId;
-    detail = null;
-    draft = null;
-    error = '';
     api
-      .board(id)
+      .board(boardId)
       .then((d) => {
-        if (id !== boardId) return;
         detail = d;
         draft = fromDetail(d);
         document.title = `${t.boardSettings.title} — ${d.board.name} — ${t.appName}`;

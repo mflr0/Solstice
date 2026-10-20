@@ -58,7 +58,7 @@
               >
             {/each}
           </div>
-        {:else if skinSheets[skin]?.drawn}
+        {:else if skinSheets[skin]}
           <p class="muted small">{t.themes.lightOnly}</p>
         {/if}
       </div>
@@ -71,10 +71,8 @@
             aria-label={t.themes.apply(t.nav.skins[skin], t.themes.schemes[scheme])}
             onclick={() => choose(skin, scheme)}
           >
-            {#if skinSheets[skin]?.drawn}
+            {#if skinSheets[skin]}
               <SkinMock {skin} {scheme} />
-            {:else if skinSheets[skin]}
-              <span class="placeholder muted">{t.themes.unfinished}</span>
             {:else}
               <span class="placeholder muted loading">{t.themes.preparing}</span>
             {/if}

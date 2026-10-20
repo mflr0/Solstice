@@ -254,7 +254,7 @@ func (s *Server) facets(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	params := r.URL.Query()
-	where, args, _, _, err := s.searchCondition(ctx, sub, params)
+	where, args, _, err := s.searchCondition(ctx, sub, params)
 	if err != nil {
 		return err
 	}

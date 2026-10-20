@@ -178,7 +178,6 @@ export const de: Messages = {
     schemes: { light: 'hell', dark: 'dunkel' },
     lightOnly: 'Nur im hellen Modus verfügbar.',
     preparing: 'Vorschau wird vorbereitet…',
-    unfinished: 'Dieses Design wird noch gezeichnet.',
     mock: {
       work: 'Meine Arbeit',
       projects: 'Projekte',
