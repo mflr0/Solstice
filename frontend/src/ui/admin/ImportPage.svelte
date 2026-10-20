@@ -1,7 +1,7 @@
 <script lang="ts">
   import { importReady } from '../../core/admin-ops.js';
   import type { ImportCheck, ImportSource, ImportView } from '../../core/admin-types.js';
-  import { sourceEngine } from '../../core/setup.js';
+  import { browserTimeZone, engineName, sourceEngine } from '../../core/setup.js';
   import { formatNumber } from '../../i18n/format.js';
   import { locale } from '../../i18n/index.js';
   import { setupCatalogues } from '../../i18n/setup/index.js';
@@ -21,10 +21,8 @@
   const m = setupCatalogues[locale];
   const num = (n: number) => formatNumber(n);
   const duration = (s: number) => m.duration(Math.floor(s / 60), s % 60);
-  const engineName = (e: string) => (e === 'mysql' ? 'MySQL' : 'PostgreSQL');
 
-  const browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  let form = $state<ImportSource>({ url: '', jiraHome: '', tz: browserTZ });
+  let form = $state<ImportSource>({ url: '', jiraHome: '', tz: browserTimeZone() });
   let database = $state('');
   let job = $state<ImportView | null>(null);
   let loaded = $state(false);

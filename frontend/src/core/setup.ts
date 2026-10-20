@@ -112,6 +112,30 @@ export function sourceEngine(url: string): 'postgres' | 'mysql' | null {
   return null;
 }
 
+/** The name shown for a Jira database engine. */
+export function engineName(engine: string): string {
+  return engine === 'mysql' ? 'MySQL' : 'PostgreSQL';
+}
+
+/** The browser's IANA time zone. */
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** The zone the wizard proposes: the server's, unless it only knows 'Local'. */
+export function wizardTimeZone(serverZone: string | undefined): string {
+  return serverZone && serverZone !== 'Local' ? serverZone : browserTimeZone();
+}
+
+/** The IANA zones the browser knows, or none when it cannot list them. */
+export function timeZones(): string[] {
+  try {
+    return Intl.supportedValuesOf('timeZone');
+  } catch {
+    return [];
+  }
+}
+
 /** A public address guessed from the page's own: scheme and host, no path. */
 export function guessBaseURL(origin: string): string {
   try {

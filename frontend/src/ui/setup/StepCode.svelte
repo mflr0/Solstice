@@ -23,7 +23,7 @@
       await setupApi.unlock(code);
       await onunlocked();
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       pending = false;
     }

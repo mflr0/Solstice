@@ -554,13 +554,19 @@ export interface SystemInfo {
   import: ImportView | null;
 }
 
+export interface ImportStep {
+  name: string;
+  imported: number;
+  skipped: number;
+}
+
 export interface ImportView {
   state: 'running' | 'done' | 'failed';
   phase: string;
   done: number;
   total: number;
   rows: number;
-  steps: { name: string; imported: number; skipped: number }[];
+  steps: ImportStep[];
   warnings: string[];
   error?: string;
   seconds: number;
@@ -573,10 +579,11 @@ export interface ImportSource {
 }
 
 export interface ImportCheck {
-  engine: string;
+  engine: 'postgres' | 'mysql';
   projects: number;
   issues: number;
   users: number;
-  attachments: number;
+  /** Whether the Jira home holds attachment files. */
+  attachments: boolean;
   warning?: string;
 }
