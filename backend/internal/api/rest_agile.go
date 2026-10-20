@@ -526,14 +526,21 @@ func (s *Server) agileMoveToSprint(w http.ResponseWriter, r *http.Request) error
 			return err
 		}
 	}
+	ranking := in.RankBeforeIssue != "" || in.RankAfterIssue != ""
 	for _, iss := range moving {
 		if err := s.setSprint(ctx, sub, b, iss, sp.ID, true); err != nil {
 			return err
 		}
-		s.publish(iss, "issue", sub.UserID)
+		if !ranking {
+			s.publish(iss, "issue", sub.UserID)
+		}
 	}
-	if in.RankBeforeIssue != "" || in.RankAfterIssue != "" {
+	if ranking {
 		if err := s.rankIssues(ctx, sub, issues, in.RankBeforeIssue, in.RankAfterIssue); err != nil {
+			// The sprint moves stand: announce them anyway.
+			for _, iss := range moving {
+				s.publish(iss, "issue", sub.UserID)
+			}
 			return err
 		}
 	}
