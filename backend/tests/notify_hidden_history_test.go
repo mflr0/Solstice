@@ -123,3 +123,36 @@ func oneLetterKey(t *testing.T, key string) string {
 	t.Cleanup(func() { testDB.Exec(`UPDATE projects SET pkey = ? WHERE pkey = ?`, key, letter) })
 	return letter
 }
+
+// A key that names no issue, here a deleted one, hides nothing: its line
+// stays in the e-mail and on the page.
+func TestHistoryKeepsLinesNamingNoIssue(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	lea := env.login("lea.richard", "motdepasse")
+	paul := env.login("paul.martin", "motdepasse")
+	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
+
+	visible := createIssue(t, lea, "WEB", "Page carrières", "")
+	gone := createIssue(t, lea, "WEB", "Doublon", "")
+	paul.call("PUT", "/api/issues/"+visible+"/watch", nil, 200, nil)
+	env.deliver()
+	lea.call("POST", "/api/issues/"+visible+"/links", map[string]any{"type": json.Number(linkType),
+		"direction": "outward", "target": gone}, 201, nil)
+	if status, body := admin.do("DELETE", "/api/issues/"+gone, nil); status/100 != 2 {
+		t.Fatalf("delete %s: %d %s", gone, status, body)
+	}
+
+	var mail []string
+	for _, m := range to(env.deliver(), "paul.martin@exemple.fr") {
+		if strings.Contains(m.Subject, "["+visible+"]") {
+			mail = append(mail, m.Text+m.HTML)
+		}
+	}
+	if len(mail) != 1 || !strings.Contains(mail[0], gone) {
+		t.Errorf("paul.martin's e-mails about %s lack the link to %s:\n%s", visible, gone, strings.Join(mail, "\n"))
+	}
+	if _, raw := paul.do("GET", "/api/issues/"+visible+"/history", nil); !strings.Contains(string(raw), gone) {
+		t.Errorf("paul.martin's history of %s lacks the link to %s", visible, gone)
+	}
+}

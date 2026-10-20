@@ -403,7 +403,8 @@ func (s *Server) hideRestrictedHistory(ctx context.Context, sub *perm.Subject, e
 			return v
 		}
 		iss, err := s.findIssue(ctx, key)
-		v := err == nil && sub.CanSee(iss.perm())
+		// Text that only looks like a key names no issue to hide.
+		v := errors.Is(err, errNotFound) || err == nil && sub.CanSee(iss.perm())
 		visible[key] = v
 		return v
 	}

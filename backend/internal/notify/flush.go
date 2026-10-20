@@ -182,7 +182,8 @@ func (k *keyAccess) canSee(ctx context.Context, key string) bool {
 			Scan(&access.ProjectID, &reporter, &assignee, &level)
 	}
 	access.ReporterID, access.AssigneeID, access.SecurityLevel = reporter.Int64, assignee.Int64, level.Int64
-	v := err == nil && k.sub.CanSee(access)
+	// Text that only looks like a key names no issue to hide.
+	v := errors.Is(err, sql.ErrNoRows) || err == nil && k.sub.CanSee(access)
 	k.seen[key] = v
 	return v
 }
