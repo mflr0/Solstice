@@ -4,7 +4,7 @@
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
 
@@ -18,7 +18,6 @@
   let stored = $state<BannerSettings | null>(null);
   let form = $state<BannerSettings>({ enabled: false, text: '', level: 'info' });
   let loadError = $state('');
-  let unavailable = $state(false);
   let saveError = $state('');
   let saving = $state(false);
   let tried = $state(false);
@@ -41,8 +40,7 @@
       .settings()
       .then((s) => adopt(s.banner))
       .catch((e: unknown) => {
-        if (e instanceof ApiError && e.status === 404) unavailable = true;
-        else loadError = errorMessage(e);
+        loadError = errorMessage(e);
       });
   });
 
@@ -82,9 +80,7 @@
 </header>
 <p class="lead-text">{t.bannerAdmin.intro}</p>
 
-{#if unavailable}
-  <p class="empty">{t.adminArea.unavailable}</p>
-{:else if loadError}
+{#if loadError}
   <p class="error-text" role="alert">{loadError}</p>
 {:else if !stored}
   <p class="muted loading">{t.common.loading}</p>
