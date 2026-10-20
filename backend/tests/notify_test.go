@@ -762,7 +762,7 @@ func TestCreationAnnouncesItsValues(t *testing.T) {
 	}
 	line := func(field, value string) bool {
 		for l := range strings.SplitSeq(im[0].Text, "\n") {
-			if strings.Contains(l, field) && strings.HasSuffix(l, value) {
+			if strings.Contains(l, field) && strings.HasSuffix(strings.TrimSpace(l), value) {
 				return true
 			}
 		}
