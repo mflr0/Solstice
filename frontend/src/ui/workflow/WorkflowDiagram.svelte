@@ -74,7 +74,7 @@
   function tip(from: string | null, to: string, names: string[]): string {
     const target = nameOf.get(to) ?? to;
     const source = from === null ? t.workflows.anyStatus : (nameOf.get(from) ?? from);
-    return `${names.join(' · ')} : ${source} → ${target}`;
+    return `${names.join(' · ')}${t.common.labelSep}${source} → ${target}`;
   }
 </script>
 

@@ -20,7 +20,7 @@
     <h1 class="page-title">{b.name}</h1>
     {#if detail.projects.length}
       <p class="projects">
-        <span class="sr-only">{t.boards.projects} :</span>
+        <span class="sr-only">{t.boards.projects}{t.common.labelSep}</span>
         {#each detail.projects as p (p.id)}
           <a class="chip" href={paths.project(p.key)} title={p.name}>{p.key}</a>
         {/each}

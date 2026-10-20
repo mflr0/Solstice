@@ -42,7 +42,7 @@
 <h2 class="section-title">{t.hookDeliveries.title}</h2>
 <p class="muted">{t.hookDeliveries.intro}</p>
 {#if loadError}
-  <p class="error" role="alert">{loadError}</p>
+  <p class="error-text" role="alert">{loadError}</p>
 {:else if deliveries === null}
   <p class="muted">{t.common.loading}</p>
 {:else if deliveries.length === 0}
@@ -96,7 +96,7 @@
     display: block;
   }
 
-  .error-text {
+  .c-answer .error-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
