@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -1254,8 +1255,13 @@ func (s *Server) isAssignable(ctx context.Context, projectID, userID int64) (boo
 }
 
 // replaceSet makes the components (kind "") or the versions of a kind of an
-// issue be want, and returns the history lines for what differs from have.
+// issue be want, and returns the history lines for what differs from have,
+// removals then additions, each in id order.
 func replaceSet(ctx context.Context, tx *sql.Tx, issueID int64, field, kind string, have, want []idName) ([]change, error) {
+	byID := func(a, b idName) int { return cmp.Compare(a.ID, b.ID) }
+	have, want = slices.Clone(have), slices.Clone(want)
+	slices.SortFunc(have, byID)
+	slices.SortFunc(want, byID)
 	var changes []change
 	has := func(list []idName, v idName) bool {
 		return slices.ContainsFunc(list, func(o idName) bool { return o.ID == v.ID })
