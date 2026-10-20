@@ -5,7 +5,7 @@
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
@@ -57,10 +57,7 @@
     adminApi
       .groups()
       .then((g) => (groups = g))
-      .catch((e: unknown) => {
-        // An older server lists no groups: the dialog leaves them out.
-        if (!(e instanceof ApiError && e.status === 404)) notify(errorMessage(e), 'error');
-      });
+      .catch((e: unknown) => notify(errorMessage(e), 'error'));
   });
 
   // Not in the effect above: load reads q, so that one reruns on every keystroke.
@@ -189,7 +186,7 @@
               class="num muted c-login"
               title={u.lastLogin ? formatDateTime(u.lastLogin) : undefined}
             >
-              {u.lastLogin ? relative(u.lastLogin) : u.lastLogin === null ? t.usersAdmin.never : ''}
+              {u.lastLogin ? relative(u.lastLogin) : t.usersAdmin.never}
             </td>
             <td class="row-actions">
               <button class="link-btn" onclick={() => (dialog = { user: u })}

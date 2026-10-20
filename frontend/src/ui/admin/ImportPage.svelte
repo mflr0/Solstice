@@ -7,7 +7,7 @@
   import { setupCatalogues } from '../../i18n/setup/index.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import ImportFields from '../setup/ImportFields.svelte';
   import ImportProgress from '../setup/ImportProgress.svelte';
   import ImportReport from '../setup/ImportReport.svelte';
@@ -28,7 +28,6 @@
   let database = $state('');
   let job = $state<ImportView | null>(null);
   let loaded = $state(false);
-  let unavailable = $state(false);
   let loadError = $state('');
   let editing = $state(false);
   let probe = $state<ImportCheck | null>(null);
@@ -47,8 +46,7 @@
       job = s.job;
       loadError = '';
     } catch (e) {
-      if (e instanceof ApiError && e.status === 404) unavailable = true;
-      else loadError = errorMessage(e);
+      loadError = errorMessage(e);
     } finally {
       loaded = true;
     }
@@ -121,9 +119,7 @@
 </header>
 <p class="lead-text">{t.importAdmin.intro}</p>
 
-{#if unavailable}
-  <p class="empty">{t.importAdmin.unavailable}</p>
-{:else if loadError}
+{#if loadError}
   <p class="error-text" role="alert">{loadError}</p>
 {:else if !loaded}
   <p class="muted loading">{t.common.loading}</p>
