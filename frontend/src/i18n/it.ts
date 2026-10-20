@@ -954,7 +954,7 @@ export const it: Messages = {
     filter: 'Filtro della board',
     filterHint: 'La board mostra i ticket di questo filtro, nell’ordine della loro posizione.',
     seeIssues: 'Vedi questi ticket',
-    subQuery: 'Sotto-filtro',
+    subQuery: 'Sottofiltro',
     subQueryHint: 'Query JQL facoltativa, applicata in aggiunta al filtro.',
     doneCutoff: 'Nascondi i ticket completati dopo',
     doneCutoffHint:
