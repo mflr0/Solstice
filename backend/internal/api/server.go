@@ -641,14 +641,7 @@ type userRef struct {
 // users loads the users with the given ids (zero ids are ignored).
 func (s *Server) users(ctx context.Context, ids ...int64) (map[int64]userRef, error) {
 	out := map[int64]userRef{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	if len(args) == 0 {
 		return out, nil
 	}

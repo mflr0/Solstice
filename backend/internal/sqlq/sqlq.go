@@ -13,6 +13,20 @@ import (
 // VALUES tuples.
 func Marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
 
+// IDs returns the ids as bind arguments, once each and without the zeros, in
+// the order they first appear.
+func IDs(ids ...int64) []any {
+	var args []any
+	seen := map[int64]bool{}
+	for _, id := range ids {
+		if id != 0 && !seen[id] {
+			seen[id] = true
+			args = append(args, id)
+		}
+	}
+	return args
+}
+
 // ProjectKey is a condition on a project (alias pa) named by its key or by a
 // key it had before it was renamed. marks is the bind markers of the keys, "?"
 // for one key or Marks(n) for n; the upper-case keys are bound twice, first

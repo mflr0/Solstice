@@ -2,6 +2,7 @@ package sqlq
 
 import (
 	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -10,6 +11,21 @@ func TestMarks(t *testing.T) {
 	for n, want := range map[int]string{0: "", 1: "?", 3: "?, ?, ?"} {
 		if got := Marks(n); got != want {
 			t.Errorf("Marks(%d) = %q, want %q", n, got, want)
+		}
+	}
+}
+
+func TestIDs(t *testing.T) {
+	for _, tc := range []struct {
+		in   []int64
+		want []any
+	}{
+		{nil, nil},
+		{[]int64{0, 0}, nil},
+		{[]int64{3, 0, 1, 3, 1, 2}, []any{int64(3), int64(1), int64(2)}},
+	} {
+		if got := IDs(tc.in...); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("IDs(%v) = %#v, want %#v", tc.in, got, tc.want)
 		}
 	}
 }

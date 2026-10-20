@@ -205,14 +205,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 // LoadUsers reads people by id (zero ids are ignored).
 func LoadUsers(ctx context.Context, db *sql.DB, ids ...int64) (map[int64]*User, error) {
 	out := map[int64]*User{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	if len(args) == 0 {
 		return out, nil
 	}
