@@ -55,6 +55,11 @@ describe('lex', () => {
     expect(lex('summary ~ "abc')[2]).toMatchObject({ kind: 'string', closed: false, text: 'abc' });
     expect(lex('a ! b')[1]?.kind).toBe('error');
   });
+
+  it("separates words on the server's spaces (unicode.IsSpace)", () => {
+    expect(lex('a\u0085b\u00a0c\u3000d').map((t) => t.text)).toEqual(['a', 'b', 'c', 'd']);
+    expect(lex('a\ufeffb').map((t) => t.text)).toEqual(['a\ufeffb']);
+  });
 });
 
 describe('parse', () => {
@@ -218,6 +223,15 @@ describe('looksLikeJql', () => {
     expect(looksLikeJql('project\u0085= DEMO')).toBe(false);
     expect(looksLikeJql('\u0085project = DEMO')).toBe(false);
     expect(looksLikeJql('ORDER\u0085BY created')).toBe(false);
+  });
+
+  it('does not read U+00A0, U+FEFF or U+000B as a space', () => {
+    for (const c of ['\u00a0', '\ufeff', '\v']) {
+      expect(looksLikeJql(`project${c}= DEMO`)).toBe(false);
+      expect(looksLikeJql(`${c}project = DEMO`)).toBe(false);
+      expect(looksLikeJql(`ORDER${c}BY created`)).toBe(false);
+      expect(looksLikeJql(`status${c}in (Open)`)).toBe(false);
+    }
   });
 });
 
