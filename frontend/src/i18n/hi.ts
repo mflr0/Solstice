@@ -747,6 +747,7 @@ export const hi: Messages = {
     mention: 'किसी को मेंशन करें',
     undo: 'पहले जैसा करें',
     redo: 'फिर से करें',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift' },
     source: 'सोर्स',
     sourceLabel: 'विकी मार्कअप',
     tableTools: 'तालिका',

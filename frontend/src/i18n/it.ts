@@ -746,6 +746,7 @@ export const it: Messages = {
     mention: 'Menziona qualcuno',
     undo: 'Annulla digitazione',
     redo: 'Ripristina',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maiusc' },
     source: 'Sorgente',
     sourceLabel: 'Markup wiki',
     tableTools: 'Tabella',
