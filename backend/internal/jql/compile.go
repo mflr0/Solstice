@@ -568,19 +568,16 @@ func (c *compiler) date(cl Clause, col string, dateOnly bool) (string, error) {
 	return col + " " + op + " ?", nil
 }
 
-var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
-
 // keysSQL is a condition matching the given issue keys or numeric ids on
 // the issue under alias a (projects under pa).
 func (c *compiler) keysSQL(texts []string, a, pa string) (string, error) {
 	var conds []string
 	for _, t := range texts {
-		if m := keyPattern.FindStringSubmatch(t); m != nil {
-			num, _ := strconv.ParseInt(m[2], 10, 64)
+		if pkey, n, ok := issue.ParseKey(t); ok {
+			num, _ := strconv.ParseInt(n, 10, 64)
 			// The key of an issue moved to another project still finds it.
 			conds = append(conds, "(("+sqlq.ProjectKey(pa, "?")+" AND "+a+".num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
 				"WHERE mk.issue_id = "+a+".id AND mk.old_key = ?))")
-			pkey := strings.ToUpper(m[1])
 			c.arg(pkey, pkey, num, pkey+"-"+strconv.FormatInt(num, 10))
 			continue
 		}
@@ -618,12 +615,12 @@ func (c *compiler) key(cl Clause) (string, error) {
 		if len(texts) == 0 {
 			return "", fail(i18n.JQLIssueKeyInvalid, "EMPTY")
 		}
-		m := keyPattern.FindStringSubmatch(texts[0])
-		if m == nil {
+		pkey, n, ok := issue.ParseKey(texts[0])
+		if !ok {
 			return "", fail(i18n.JQLIssueKeyInvalid, texts[0])
 		}
-		num, _ := strconv.ParseInt(m[2], 10, 64)
-		c.arg(strings.ToUpper(m[1]), strings.ToUpper(m[1]), num)
+		num, _ := strconv.ParseInt(n, 10, 64)
+		c.arg(pkey, pkey, num)
 		return "(" + sqlq.ProjectKey("p", "?") + " AND i.num " + cl.Op + " ?)", nil
 	}
 	return "", requireOp(cl, "=")
@@ -728,16 +725,9 @@ func (c *compiler) comment(cl Clause) (string, error) {
 	return cond, nil
 }
 
-func fieldKind(typeKey string) string {
-	if i := strings.LastIndexByte(typeKey, ':'); i >= 0 {
-		return typeKey[i+1:]
-	}
-	return typeKey
-}
-
 // custom filters on a custom field's values.
 func (c *compiler) custom(cl Clause, f Field) (string, error) {
-	kind := fieldKind(f.TypeKey)
+	kind := issue.FieldKind(f.TypeKey)
 	// The field id is an integer from the database: inlined, not bound.
 	if kind == "labels" {
 		return c.multi(cl, fmt.Sprintf("SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = %d", f.ID),

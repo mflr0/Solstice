@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -130,7 +131,7 @@ func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
 		}
-		f.Kind = fieldKind(f.TypeKey)
+		f.Kind = issue.FieldKind(f.TypeKey)
 		out = append(out, f)
 		return nil
 	})

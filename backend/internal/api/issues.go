@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -27,8 +26,6 @@ import (
 	"solstice/internal/search"
 	"solstice/internal/sqlq"
 )
-
-var keyPattern = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
 
 // issueRow is an issue as stored.
 type issueRow struct {
@@ -75,11 +72,10 @@ func (i *issueRow) perm() perm.Issue {
 // findIssue loads an issue by key. Keys from before a project was renamed
 // and keys of issues moved to another project still resolve.
 func (s *Server) findIssue(ctx context.Context, key string) (*issueRow, error) {
-	m := keyPattern.FindStringSubmatch(strings.TrimSpace(key))
-	if m == nil {
+	projectKey, num, ok := issue.ParseKey(strings.TrimSpace(key))
+	if !ok {
 		return nil, errNotFound
 	}
-	projectKey, num := strings.ToUpper(m[1]), m[2]
 	from := `SELECT ` + issueColumns + ` FROM issues i JOIN projects p ON p.id = i.project_id `
 	for _, q := range []struct {
 		sql  string
@@ -735,7 +731,7 @@ func (s *Server) loadCustomRows(ctx context.Context, issueID int64) ([]storedCus
 		if err := rows.Scan(&v.field, &v.name, &v.typeKey, &v.parentKey, &v.str, &v.num, &v.text, &v.date); err != nil {
 			return err
 		}
-		if id, err := strconv.ParseInt(v.str.String, 10, 64); err == nil && optionKind(fieldKind(v.typeKey)) {
+		if id, err := strconv.ParseInt(v.str.String, 10, 64); err == nil && optionKind(issue.FieldKind(v.typeKey)) {
 			optionIDs[id] = true
 		}
 		vals = append(vals, v)
@@ -769,7 +765,7 @@ func (s *Server) loadCustomRows(ctx context.Context, issueID int64) ([]storedCus
 // renderCustomKind adds one stored value to rows, rendered by its field's kind.
 // Epic links are left to epicLinkValues.
 func renderCustomKind(rows *customRows, v storedCustom, options map[int64]string) {
-	kind := fieldKind(v.typeKey)
+	kind := issue.FieldKind(v.typeKey)
 	if hiddenKinds[kind] {
 		return
 	}
@@ -829,7 +825,7 @@ func renderCustomKind(rows *customRows, v storedCustom, options map[int64]string
 // epicLinkValues shows the key of the issue an epic link points at, if the user may see it.
 func (s *Server) epicLinkValues(ctx context.Context, sub *perm.Subject, rows *customRows, vals []storedCustom) error {
 	for _, v := range vals {
-		if fieldKind(v.typeKey) != "gh-epic-link" || !v.num.Valid {
+		if issue.FieldKind(v.typeKey) != "gh-epic-link" || !v.num.Valid {
 			continue
 		}
 		iss, err := s.findIssueByID(ctx, int64(v.num.Float64))
@@ -863,13 +859,6 @@ func (s *Server) labelFieldValues(ctx context.Context, rows *customRows, issueID
 	}, issueID)
 }
 
-func fieldKind(typeKey string) string {
-	if i := strings.LastIndexByte(typeKey, ':'); i >= 0 {
-		return typeKey[i+1:]
-	}
-	return typeKey
-}
-
 func optionKind(kind string) bool {
 	switch kind {
 	case "select", "multiselect", "radiobuttons", "multicheckboxes", "cascadingselect", "gh-epic-status":
@@ -878,8 +867,9 @@ func optionKind(kind string) bool {
 	return false
 }
 
-// hiddenKinds are Jira Software's internal fields: ranking, colours, version
-// bookkeeping, development panel. Sprints wait for boards to be imported.
+// hiddenKinds are the custom field kinds the interface does not show: Jira
+// Software's internal fields (ranking, colours, version bookkeeping,
+// development panel) and the sprint field, as an issue shows its sprints.
 var hiddenKinds = map[string]bool{
 	"gh-lexo-rank": true, "gh-global-rank": true, "gh-epic-color": true, "gh-sprint": true,
 	"greenhopper-releasedmultiversionhistory": true, "devsummary": true, "importid": true,

@@ -8,7 +8,7 @@ import (
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
-	"solstice/internal/jql"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 	"strconv"
@@ -422,7 +422,7 @@ func (s *Server) hideRestrictedHistory(ctx context.Context, sub *perm.Subject, e
 					if text == nil {
 						continue
 					}
-					for _, key := range jql.KeysIn(*text) {
+					for _, key := range issue.KeysIn(*text) {
 						ok = ok && canSee(key)
 					}
 				}
