@@ -539,6 +539,9 @@ export const it: Messages = {
     duringDates: () => 'DURING richiede due date tra parentesi.',
     argumentInvalid: (name: string) => `Argomento di ${name}() non valido.`,
     valueExpected: () => 'Atteso un valore.',
+    tooLong: (max: number) => `La query è troppo lunga (al massimo ${max} caratteri).`,
+    tooDeep: (max: number) =>
+      `La query è annidata troppo in profondità (al massimo ${max} livelli).`,
   },
   quick: {
     label: 'Ricerca rapida',

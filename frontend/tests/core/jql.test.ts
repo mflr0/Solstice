@@ -18,6 +18,7 @@ import {
   quote,
   quoteField,
 } from '../../src/core/jql.js';
+import { jqlToFilters } from '../../src/core/filters.js';
 import { renderJqlError } from '../../src/i18n/t.js';
 
 describe('lex', () => {
@@ -155,6 +156,33 @@ describe('parse', () => {
   it('accepts an empty query and a query that only sorts', () => {
     expect(parse('')).toEqual({ where: null, order: [] });
     expect(parse('ORDER BY created DESC').order).toEqual([{ field: 'created', desc: true }]);
+  });
+
+  it('refuses a query over the server limits', () => {
+    const err = (src: string) => {
+      try {
+        parse(src);
+      } catch (e) {
+        const j = e as JqlError;
+        return [j.code, j.args, j.pos];
+      }
+      return null;
+    };
+    const nested = (n: number) => '('.repeat(n) + 'a = 1' + ')'.repeat(n);
+    expect(err(nested(63))).toBeNull();
+    expect(err(nested(64))).toEqual(['tooDeep', [64], 64]);
+    expect(err('NOT '.repeat(63) + 'a = 1')).toBeNull();
+    expect(err('NOT '.repeat(64) + 'a = 1')).toEqual(['tooDeep', [64], 256]);
+    expect(err('('.repeat(20000))).toEqual(['tooDeep', [64], 64]);
+
+    // The server counts UTF-8 bytes.
+    const text = (n: number, ch = 'x') => `a ~ "${ch.repeat(n)}"`;
+    expect(err(text(20000 - 6))).toBeNull();
+    expect(err(text(20000 - 5))).toEqual(['tooLong', [20000], 0]);
+    expect(err(text(9998, 'é'))).toEqual(['tooLong', [20000], 0]);
+    expect(err('('.repeat(100000))).toEqual(['tooLong', [20000], 0]);
+
+    expect(jqlToFilters('('.repeat(20000))).toMatchObject({ ok: false, reason: 'syntax' });
   });
 
   it('conjunction refuses OR and NOT', () => {

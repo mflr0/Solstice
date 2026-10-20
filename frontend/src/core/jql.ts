@@ -41,6 +41,8 @@ export interface JqlArgs {
   duringDates: [];
   argumentInvalid: [name: string];
   valueExpected: [];
+  tooLong: [max: number];
+  tooDeep: [max: number];
 }
 
 export type JqlCode = keyof JqlArgs;
@@ -153,8 +155,14 @@ export interface Query {
  */
 const EOF: Token = { kind: 'error', raw: '', text: '', start: 0, end: 0, closed: true };
 
+// The server's limits (backend/internal/jql/jql.go), which keep a hostile
+// query from overflowing the recursive parser's stack.
+const MAX_QUERY_LEN = 20000; // in UTF-8 bytes, as the server counts
+const MAX_DEPTH = 64; // nesting of parentheses and NOT
+
 class Parser {
   private i = 0;
+  private depth = 0;
   private readonly eof: Token;
 
   constructor(
@@ -227,17 +235,23 @@ class Parser {
   }
 
   not(): Node {
-    if (this.keyword('not')) {
-      this.next();
-      return { type: 'not', inner: this.not() };
+    if (this.depth >= MAX_DEPTH) this.fail('tooDeep', MAX_DEPTH);
+    this.depth++;
+    try {
+      if (this.keyword('not')) {
+        this.next();
+        return { type: 'not', inner: this.not() };
+      }
+      if (this.peek().kind === 'lparen') {
+        this.next();
+        const inner = this.or();
+        if (this.next().kind !== 'rparen') this.fail('parenExpected');
+        return inner;
+      }
+      return this.clause();
+    } finally {
+      this.depth--;
     }
-    if (this.peek().kind === 'lparen') {
-      this.next();
-      const inner = this.or();
-      if (this.next().kind !== 'rparen') this.fail('parenExpected');
-      return inner;
-    }
-    return this.clause();
   }
 
   clause(): Node {
@@ -364,6 +378,9 @@ class Parser {
 
 /** Reads a query; throws JqlError, with the server's error codes, on a syntax error. */
 export function parse(src: string): Query {
+  if (new TextEncoder().encode(src).length > MAX_QUERY_LEN) {
+    throw new JqlError('tooLong', 0, MAX_QUERY_LEN);
+  }
   const toks = lex(src);
   const bad = toks.find((t) => t.kind === 'error' || (t.kind === 'string' && !t.closed));
   if (bad?.kind === 'error') throw new JqlError('incompleteBang', bad.start);
