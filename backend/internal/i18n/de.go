@@ -208,6 +208,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Unbekannter Feldtyp (zur Auswahl: %s).",
 	CustomFieldNoOptions:     "Dieser Feldtyp hat keine Optionen.",
 	CustomFieldOptionTooLong: "Eine Option darf höchstens 255 Zeichen lang sein.",
+	CustomFieldOptionEmpty:   "Der Text einer Option darf nicht leer sein.",
 	CustomFieldUsedByBoards:  "Dieses Feld wird für die Funktion der Boards benötigt und kann nicht gelöscht werden.",
 	CustomFieldDeleteConfirm: "Einige Vorgänge haben einen Wert in diesem Feld: Geben Sie seinen Namen ein, um die Löschung zu bestätigen.",
 	CustomFieldOptionInUse:   "Bei einigen Vorgängen ist diese Option gewählt: Wählen Sie eine andere Option, auf die sie verschoben werden, oder löschen Sie ihren Wert.",
@@ -334,9 +335,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "Ein Zeiteintrag kann nicht auf eine Gruppe oder Rolle beschränkt werden.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Unbekannter Verknüpfungstyp.",
-	LinkTargetNotFound: "Zielvorgang nicht gefunden.",
-	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
+	LinkTypeUnknown:      "Unbekannter Verknüpfungstyp.",
+	LinkTargetNotFound:   "Zielvorgang nicht gefunden.",
+	LinkToItself:         "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
+	LinkDirectionUnknown: "Unbekannte Verknüpfungsrichtung.",
 
 	// Group picker.
 	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",

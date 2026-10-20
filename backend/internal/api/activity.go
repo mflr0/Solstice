@@ -642,6 +642,9 @@ func (s *Server) addLink(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
+	if in.Direction != "outward" && in.Direction != "inward" {
+		return fail(http.StatusBadRequest, i18n.LinkDirectionUnknown)
+	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
 		return err

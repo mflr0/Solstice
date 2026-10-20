@@ -235,6 +235,7 @@ const (
 	CustomFieldTypeUnknown   Key = "CustomFieldTypeUnknown"
 	CustomFieldNoOptions     Key = "CustomFieldNoOptions"
 	CustomFieldOptionTooLong Key = "CustomFieldOptionTooLong"
+	CustomFieldOptionEmpty   Key = "CustomFieldOptionEmpty"
 	CustomFieldUsedByBoards  Key = "CustomFieldUsedByBoards"
 	CustomFieldDeleteConfirm Key = "CustomFieldDeleteConfirm"
 	CustomFieldOptionInUse   Key = "CustomFieldOptionInUse"
@@ -377,9 +378,10 @@ const (
 
 // Issue links.
 const (
-	LinkTypeUnknown    Key = "LinkTypeUnknown"
-	LinkTargetNotFound Key = "LinkTargetNotFound"
-	LinkToItself       Key = "LinkToItself"
+	LinkTypeUnknown      Key = "LinkTypeUnknown"
+	LinkTargetNotFound   Key = "LinkTargetNotFound"
+	LinkToItself         Key = "LinkToItself"
+	LinkDirectionUnknown Key = "LinkDirectionUnknown"
 )
 
 // Group picker.
