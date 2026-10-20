@@ -40,9 +40,12 @@ export function profileForm(me: Me): ProfileForm {
   };
 }
 
-/** Whether the form asks for a new password (any of its three fields typed). */
+/**
+ * Whether the form asks for a new password: the new one or its confirmation
+ * typed. The current one alone does not count, as password managers fill it.
+ */
 export function changesPassword(f: ProfileForm): boolean {
-  return f.currentPassword !== '' || f.newPassword !== '' || f.confirmPassword !== '';
+  return f.newPassword !== '' || f.confirmPassword !== '';
 }
 
 /** Whether the typed address differs from the stored one. */
@@ -67,8 +70,8 @@ export function profileProblems(
     if (!f.currentPassword) out.currentPassword = 'currentRequired';
   }
   if (changesPassword(f)) {
-    // A current password typed on its own means a new one is wanted, unless
-    // it only confirms the address change.
+    // A confirmation typed on its own means a new password is wanted, unless
+    // the address change is what is saved.
     if (!f.newPassword && !mailChanged) out.newPassword = 'newRequired';
     else if (f.newPassword && [...f.newPassword].length < minPassword) out.newPassword = 'newShort';
     if (f.newPassword && f.confirmPassword !== f.newPassword)
