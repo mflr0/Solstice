@@ -316,14 +316,6 @@ func runUser(ctx context.Context, args []string) error {
 		fs.Usage()
 		return errors.New("-username is required")
 	}
-	generated := *password == ""
-	if generated {
-		raw := make([]byte, 12)
-		if _, err := rand.Read(raw); err != nil {
-			return err
-		}
-		*password = base64.RawURLEncoding.EncodeToString(raw)
-	}
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -333,7 +325,21 @@ func runUser(ctx context.Context, args []string) error {
 		return err
 	}
 	defer conn.Close()
-	login := strings.ToLower(*username)
+	minPassword := api.StoredPasswordMin(ctx, conn)
+	generated := *password == ""
+	if generated {
+		n := max(minPassword, 16)
+		raw := make([]byte, n)
+		if _, err := rand.Read(raw); err != nil {
+			return err
+		}
+		*password = base64.RawURLEncoding.EncodeToString(raw)[:n]
+	}
+	acc, err := checkAccount(action, account{login: *username, name: *name, email: *email, password: *password}, minPassword)
+	if err != nil {
+		return err
+	}
+	login := acc.login
 	// record writes an audit entry for a change made from the command line.
 	record := func(what string, id int64, details map[string]any) error {
 		d := map[string]any{"via": "command line"}
@@ -346,16 +352,15 @@ func runUser(ctx context.Context, args []string) error {
 	}
 	switch action {
 	case "add":
-		hash, err := auth.HashPassword(*password)
+		hash, err := auth.HashPassword(acc.password)
 		if err != nil {
 			return err
 		}
-		display := *name
-		if display == "" {
-			display = login
-		}
 		res, err := conn.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
-			VALUES (?, ?, ?, ?, ?)`, login, display, *email, hash, *admin)
+			VALUES (?, ?, ?, ?, ?)`, login, acc.name, acc.email, hash, *admin)
+		if api.IsDuplicate(err) {
+			return fmt.Errorf("an account named %q already exists", login)
+		}
 		if err != nil {
 			return err
 		}
@@ -377,7 +382,7 @@ func runUser(ctx context.Context, args []string) error {
 		if err := conn.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, login).Scan(&id); err != nil {
 			return fmt.Errorf("unknown user %q", login)
 		}
-		hash, err := auth.HashPassword(*password)
+		hash, err := auth.HashPassword(acc.password)
 		if err != nil {
 			return err
 		}
@@ -407,9 +412,37 @@ func runUser(ctx context.Context, args []string) error {
 		fmt.Printf("Password for \"%s\" changed.\n", login)
 	}
 	if generated {
-		fmt.Printf("Password: %s\n", *password)
+		fmt.Printf("Password: %s\n", acc.password)
 	}
 	return nil
+}
+
+// account is what solstice user stores.
+type account struct {
+	login, name, email, password string
+}
+
+// checkAccount applies the API's account rules to the command's input: to
+// the login, name and e-mail of a new account (add), and to the password
+// against minPassword, the instance's minimum length. It returns the input
+// as stored.
+func checkAccount(action string, in account, minPassword int) (account, error) {
+	in.login = strings.ToLower(strings.TrimSpace(in.login))
+	if action == "add" {
+		if !api.ValidUsername(in.login) {
+			return account{}, fmt.Errorf("invalid -username %q: use at most 100 lowercase letters, digits and . _ @ -, starting with a letter or digit", in.login)
+		}
+		if in.name = strings.TrimSpace(in.name); in.name == "" {
+			in.name = in.login
+		}
+		if in.email = strings.TrimSpace(in.email); in.email != "" && !api.ValidEmail(in.email) {
+			return account{}, fmt.Errorf("invalid -email %q: give a bare address, such as marie@example.org", in.email)
+		}
+	}
+	if err := api.PasswordRules(in.password, in.login, minPassword); err != nil {
+		return account{}, err
+	}
+	return in, nil
 }
 
 func runImport(ctx context.Context, args []string) error {

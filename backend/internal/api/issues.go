@@ -976,7 +976,6 @@ func readFields(r *http.Request) (fields, error) {
 }
 
 func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
@@ -985,39 +984,49 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	created, err := s.newIssue(r.Context(), sub, f, nil)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusCreated, map[string]string{"key": created.Key()})
+}
+
+// newIssue creates an issue from the interface's fields, with the custom
+// field values of f and extra, and announces it once it is stored.
+func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extra []customWrite) (*issueRow, error) {
 	var projectKey, typeID, summary string
 	for k, v := range map[string]*string{"project": &projectKey, "type": &typeID, "summary": &summary} {
 		if !f.has(k) {
-			return failf(http.StatusBadRequest, i18n.FieldRequired, k)
+			return nil, failf(http.StatusBadRequest, i18n.FieldRequired, k)
 		}
 		if err := f.get(k, v); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	summary = strings.TrimSpace(summary)
 	if summary == "" || utf8.RuneCountInString(summary) > varcharWidth {
-		return fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
+		return nil, fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 	}
 	var projectID, leadID int64
 	var defaultAssignee string
 	var lead sql.NullInt64
 	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.lead_id, p.default_assignee FROM projects p WHERE `+sqlq.ProjectKey("p", "?"),
 		strings.ToUpper(projectKey), strings.ToUpper(projectKey)).Scan(&projectID, &lead, &defaultAssignee); errors.Is(err, sql.ErrNoRows) {
-		return errNotFound
+		return nil, errNotFound
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 	leadID = lead.Int64
 	if !sub.Can(perm.Create, projectID, nil) || !sub.CanBrowseProject(projectID) {
-		return errForbidden
+		return nil, errForbidden
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	it, ok := cat.issueType[typeID]
 	if !ok || !s.projectHasType(ctx, projectID, typeID) {
-		return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
+		return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 
 	var parentID any
@@ -1025,69 +1034,70 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if f.has("parent") && !f.isNull("parent") {
 		var parentKey string
 		if err := f.get("parent", &parentKey); err != nil {
-			return err
+			return nil, err
 		}
 		parent, err := s.findIssue(ctx, parentKey)
 		if err != nil || !sub.CanSee(parent.perm()) {
-			return fail(http.StatusBadRequest, i18n.IssueParentNotFound)
+			return nil, fail(http.StatusBadRequest, i18n.IssueParentNotFound)
 		}
 		if parent.ProjectID != projectID || parent.ParentID.Valid {
-			return fail(http.StatusBadRequest, i18n.IssueParentInvalid)
+			return nil, fail(http.StatusBadRequest, i18n.IssueParentInvalid)
 		}
 		parentID = parent.ID
 		parentLevel = parent.LevelID
 	}
 	if it.Subtask != (parentID != nil) {
 		if it.Subtask {
-			return fail(http.StatusBadRequest, i18n.IssueSubtaskParentRequired)
+			return nil, fail(http.StatusBadRequest, i18n.IssueSubtaskParentRequired)
 		}
-		return fail(http.StatusBadRequest, i18n.IssueParentNotSubtask)
+		return nil, fail(http.StatusBadRequest, i18n.IssueParentNotSubtask)
 	}
 
 	var assignee any
 	if f.has("assignee") && !f.isNull("assignee") {
 		var id int64
 		if err := f.get("assignee", &id); err != nil {
-			return err
+			return nil, err
 		}
 		if !sub.Can(perm.Assign, projectID, nil) && id != sub.UserID {
-			return fail(http.StatusForbidden, i18n.IssueAssignOthersForbidden)
+			return nil, fail(http.StatusForbidden, i18n.IssueAssignOthersForbidden)
 		}
 		if ok, err := s.isAssignable(ctx, projectID, id); err != nil {
-			return err
+			return nil, err
 		} else if !ok {
-			return fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
+			return nil, fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
 		assignee = id
 	} else {
 		var components []int64
 		if f.has("components") && !f.isNull("components") {
 			if err := f.get("components", &components); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		if assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	custom, err := s.readCustomFields(ctx, f, projectID, typeID)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	custom = append(custom, extra...)
 	// Custom fields take the permission to edit the issue, as its reporter.
 	if len(custom) > 0 && !sub.Can(perm.Edit, projectID, &perm.Issue{ProjectID: projectID, ReporterID: sub.UserID}) {
-		return errForbidden
+		return nil, errForbidden
 	}
 
 	status, err := s.initialStatusFor(ctx, projectID, typeID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var description, environment, priority, due any
 	if f.has("description") {
 		var v *string
 		if err := f.get("description", &v); err != nil {
-			return err
+			return nil, err
 		}
 		if v != nil {
 			description = sqlq.NullIfBlank(*v)
@@ -1096,7 +1106,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if f.has("environment") {
 		var v *string
 		if err := f.get("environment", &v); err != nil {
-			return err
+			return nil, err
 		}
 		if v != nil {
 			environment = sqlq.NullIfBlank(*v)
@@ -1105,10 +1115,10 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if f.has("priority") && !f.isNull("priority") {
 		var v string
 		if err := f.get("priority", &v); err != nil {
-			return err
+			return nil, err
 		}
 		if _, ok := cat.priority[v]; !ok {
-			return fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
+			return nil, fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 		}
 		priority = v
 	} else if len(cat.Priorities) > 0 {
@@ -1123,29 +1133,29 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 	if f.has("due") && !f.isNull("due") {
 		var v string
 		if err := f.get("due", &v); err != nil {
-			return err
+			return nil, err
 		}
 		if _, err := time.Parse(time.DateOnly, v); err != nil {
-			return fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
+			return nil, fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 		}
 		due = v
 	}
 	estimates, err := readEstimateEdit(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	times := timeEstimates{}.withEstimateEdit(estimates)
 	var level any
 	if f.has("securityLevel") && !f.isNull("securityLevel") {
 		if !sub.Can(perm.Security, projectID, nil) {
-			return errForbidden
+			return nil, errForbidden
 		}
 		var id int64
 		if err := f.get("securityLevel", &id); err != nil {
-			return err
+			return nil, err
 		}
 		if !s.projectHasLevel(ctx, projectID, id) {
-			return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
+			return nil, fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 		}
 		level = id
 	}
@@ -1156,22 +1166,22 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 	var num int64
 	if err := tx.QueryRowContext(ctx, `SELECT issue_counter + 1 FROM projects WHERE id = ? FOR UPDATE`, projectID).
 		Scan(&num); err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE projects SET issue_counter = ? WHERE id = ?`, num, projectID); err != nil {
-		return err
+		return nil, err
 	}
 	now := time.Now().UTC()
 	// A new issue goes to the bottom of the board order.
 	var lastRank string
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(rank_key), '') FROM issues`).Scan(&lastRank); err != nil {
-		return err
+		return nil, err
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO issues (project_id, num, issue_type_id, parent_id, summary,
 		description, environment, status_id, priority_id, reporter_id, assignee_id, creator_id, security_level_id,
@@ -1181,45 +1191,42 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 		sub.UserID, level, now, now, due, sqlq.Value(times.Original), sqlq.Value(times.Remaining),
 		rankBetween(lastRank, ""))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	issueID, err := res.LastInsertId()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO watchers (issue_id, user_id, created_at) VALUES (?, ?, ?)`,
 		issueID, sub.UserID, now); err != nil {
-		return err
+		return nil, err
 	}
 	iss := &issueRow{ID: issueID, ProjectID: projectID}
 	if _, err := s.applySets(ctx, tx, f, iss); err != nil {
-		return err
+		return nil, err
 	}
 	if f.has("epic") {
 		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, ParentID: nullInt64(parentID)}, f)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE issues SET epic_id = ? WHERE id = ?`, epicID, issueID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	customChanges, err := writeCustom(ctx, tx, issueID, custom, nil)
-	if err != nil {
-		return err
-	}
-	if err := recordHistory(ctx, tx, issueID, sub.UserID, now, nil, customChanges); err != nil {
-		return err
+	// As in Jira, a creation records no history, custom fields included.
+	if _, err := writeCustom(ctx, tx, issueID, custom, nil); err != nil {
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return nil, err
 	}
 	created, err := s.findIssueByID(ctx, issueID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
-	return writeJSON(w, http.StatusCreated, map[string]string{"key": created.Key()})
+	return created, nil
 }
 
 func (s *Server) findIssueByID(ctx context.Context, id int64) (*issueRow, error) {
@@ -1904,6 +1911,9 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	for _, d := range gone {
 		e := issueEvent(events.IssueDeleted, d, sub.UserID, "")
 		if e.Issue, err = events.LoadIssue(ctx, s.db, d.ID); err != nil {
+			return err
+		}
+		if e.Issue.Custom, err = s.eventCustom(ctx, d.ID); err != nil {
 			return err
 		}
 		e.HookMatches = s.out.hooks.MatchBeforeDelete(ctx, d.ID)

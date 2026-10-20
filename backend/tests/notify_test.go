@@ -716,6 +716,73 @@ func TestWebhooks(t *testing.T) {
 	admin.call("GET", path, nil, 404, nil)
 }
 
+// A creation is announced once, with its values: the webhook's issue carries
+// the custom fields, the e-mail lists the values set, and, as in Jira, the
+// history records none of them.
+func TestCreationAnnouncesItsValues(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	paul := env.login("paul.martin", "motdepasse")
+	rc := newHookReceiver(t)
+	admin.call("POST", "/api/admin/webhooks", map[string]any{"name": "Création", "url": rc.srv.URL + "/hook",
+		"events": []string{"jira:issue_created", "jira:issue_updated"}, "jql": "project = WEB"}, 201, nil)
+
+	var created struct{ Key string }
+	paul.call("POST", "/api/issues", map[string]any{"project": "WEB", "type": standardType(t, paul, "WEB"),
+		"summary": "Créé avec ses valeurs", "description": "Pour [~ines.david].", "labels": []string{"recette"},
+		"customFields": map[string]any{"customfield_10101": map[string]string{"value": "Recette"}}}, 201, &created)
+	msgs := env.deliver()
+	if err := env.hooks.DeliverWebhooks(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	got := rc.take()
+	if len(got) != 1 {
+		t.Fatalf("%d deliveries, want 1: the creation alone", len(got))
+	}
+	var p struct {
+		WebhookEvent string `json:"webhookEvent"`
+		Issue        struct{ Fields map[string]json.RawMessage }
+	}
+	if err := json.Unmarshal(got[0].body, &p); err != nil {
+		t.Fatal(err)
+	}
+	var stage struct{ Value string }
+	json.Unmarshal(p.Issue.Fields["customfield_10101"], &stage)
+	if p.WebhookEvent != "jira:issue_created" || stage.Value != "Recette" {
+		t.Errorf("payload: %s", got[0].body)
+	}
+	if v, ok := p.Issue.Fields["customfield_10105"]; !ok || string(v) != "null" {
+		t.Errorf("a custom field without a value: %s, want null", v)
+	}
+
+	im := to(msgs, "ines.david@exemple.fr")
+	if len(im) != 1 {
+		t.Fatalf("ines.david got %d e-mails, want 1", len(im))
+	}
+	line := func(field, value string) bool {
+		for l := range strings.SplitSeq(im[0].Text, "\n") {
+			if strings.Contains(l, field) && strings.HasSuffix(strings.TrimSpace(l), value) {
+				return true
+			}
+		}
+		return false
+	}
+	if !line("Environnement client", "Recette") || !line("Labels", "recette") {
+		t.Errorf("the creation e-mail does not list the values set:\n%s", im[0].Text)
+	}
+
+	token := newToken(t, "paul.martin", nil)
+	_, _, raw := call(t, nil, env.base, "GET", "/rest/api/2/issue/"+created.Key+"?fields=summary&expand=changelog", nil,
+		bearer(token))
+	var issue struct {
+		Changelog struct{ Histories []any }
+	}
+	if err := json.Unmarshal(raw, &issue); err != nil || len(issue.Changelog.Histories) != 0 {
+		t.Errorf("a new issue has history: %s", raw)
+	}
+}
+
 func TestMailSettingsRefuseCredentialsInClear(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
