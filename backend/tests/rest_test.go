@@ -3,10 +3,13 @@ package tests
 // The Jira-compatible REST API and personal access tokens.
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -862,6 +865,63 @@ func TestAgileREST(t *testing.T) {
 	}
 	if !(rankOf(moved) < rankOf(first)) {
 		t.Errorf("rank(%s) = %s, not before rank(%s) = %s", moved, rankOf(moved), first, rankOf(first))
+	}
+	// A move to a sprint tells open pages once, with or without a rank anchor.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", testURL+"/api/events", nil)
+	resp, err := marie.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	events := make(chan string, 64)
+	go func() {
+		sc := bufio.NewScanner(resp.Body)
+		for sc.Scan() {
+			if line, ok := strings.CutPrefix(sc.Text(), "data: "); ok {
+				select {
+				case events <- line:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+	time.Sleep(200 * time.Millisecond) // let the subscription register
+	eventsOf := func(key string) int {
+		n := 0
+		for timeout := time.After(500 * time.Millisecond); ; {
+			select {
+			case line := <-events:
+				var e struct{ Key string }
+				if json.Unmarshal([]byte(line), &e) == nil && e.Key == key {
+					n++
+				}
+				continue
+			case <-timeout:
+			}
+			return n
+		}
+	}
+	for _, anchor := range []map[string]any{{"rankAfterIssue": first}, {}} {
+		if status, _, body := call(t, marie, testURL, "POST", "/rest/agile/1.0/backlog/issue",
+			map[string]any{"issues": []string{moved}}, header("X-Atlassian-Token", "no-check")); status != 204 {
+			t.Fatalf("move to backlog: %d %s", status, body)
+		}
+		eventsOf(moved)
+		in := map[string]any{"issues": []string{moved}}
+		maps.Copy(in, anchor)
+		if status, _, body := call(t, marie, testURL, "POST", fmt.Sprintf("/rest/agile/1.0/sprint/%d/issue", future),
+			in, header("X-Atlassian-Token", "no-check")); status != 204 {
+			t.Fatalf("move to sprint %v: %d %s", anchor, status, body)
+		}
+		if n := eventsOf(moved); n != 1 {
+			t.Errorf("move to sprint %v: %d events for %s, want 1", anchor, n, moved)
+		}
+	}
+	if !(rankOf(moved) > rankOf(first)) {
+		t.Errorf("rank(%s) = %s, not after rank(%s) = %s", moved, rankOf(moved), first, rankOf(first))
 	}
 	// One only ranks issues one sees (and may edit).
 	rh := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
