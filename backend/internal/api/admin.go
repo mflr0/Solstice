@@ -155,6 +155,26 @@ func (s *Server) adminGetUser(w http.ResponseWriter, r *http.Request) error {
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._@-]{0,99}$`)
 
+// The account rules, for the command line, which creates accounts without the API.
+
+// ValidUsername tells whether a lowercased login may name a new account.
+func ValidUsername(login string) bool { return usernamePattern.MatchString(login) }
+
+// ValidEmail tells whether s is a bare address an account may have.
+func ValidEmail(s string) bool { return validEmail(s) }
+
+// PasswordRules applies the password policy, minLen being the instance's minimum.
+func PasswordRules(password, username string, minLen int) error {
+	return passwordRules(password, username, minLen)
+}
+
+// StoredPasswordMin is the instance's minimum password length, the default
+// when the setting is absent or unreadable.
+func StoredPasswordMin(ctx context.Context, db *sql.DB) int { return storedPasswordMin(ctx, db) }
+
+// IsDuplicate tells a unique key violation.
+func IsDuplicate(err error) bool { return isDuplicate(err) }
+
 func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err

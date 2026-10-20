@@ -36,6 +36,49 @@ func TestRunUserRefusals(t *testing.T) {
 	}
 }
 
+func TestCheckAccount(t *testing.T) {
+	const pw = "long enough pw"
+	for _, tc := range []struct {
+		name   string
+		action string
+		in     account
+		min    int
+		want   account
+		err    string
+	}{
+		{"documented add", "add", account{login: "me", name: "Me", password: pw}, 12,
+			account{login: "me", name: "Me", password: pw}, ""},
+		{"login lowercased and trimmed, name defaults to it", "add", account{login: " Marie.D@ox ", name: "  ", password: pw}, 12,
+			account{login: "marie.d@ox", name: "marie.d@ox", password: pw}, ""},
+		{"name and e-mail trimmed", "add", account{login: "me", name: " Me ", email: " me@example.org ", password: pw}, 12,
+			account{login: "me", name: "Me", email: "me@example.org", password: pw}, ""},
+		{"login with a space", "add", account{login: "bob smith", password: pw}, 12, account{}, "invalid -username"},
+		{"login starting with a dot", "add", account{login: ".me", password: pw}, 12, account{}, "invalid -username"},
+		{"login of 101 characters", "add", account{login: strings.Repeat("a", 101), password: pw}, 12, account{}, "invalid -username"},
+		{"empty login", "add", account{login: " ", password: pw}, 12, account{}, "invalid -username"},
+		{"e-mail with a name", "add", account{login: "me", email: `"Me" <me@example.org>`, password: pw}, 12, account{}, "invalid -email"},
+		{"not an e-mail", "add", account{login: "me", email: "me", password: pw}, 12, account{}, "invalid -email"},
+		{"password below the minimum", "add", account{login: "me", password: "short"}, 12, account{}, "at least 12 characters"},
+		{"password below a raised minimum", "add", account{login: "me", password: pw}, 20, account{}, "at least 20 characters"},
+		{"password is the login", "add", account{login: "longusername1", password: "LongUsername1"}, 12, account{}, "cannot be the username"},
+		{"passwd keeps a login the add rule refuses", "passwd", account{login: "Old Login", password: pw}, 12,
+			account{login: "old login", password: pw}, ""},
+		{"passwd password below the minimum", "passwd", account{login: "me", password: "short"}, 12, account{}, "at least 12 characters"},
+		{"passwd password is the login", "passwd", account{login: "longusername1", password: "longusername1"}, 12, account{}, "cannot be the username"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := checkAccount(tc.action, tc.in, tc.min)
+			if tc.err == "" {
+				if err != nil || got != tc.want {
+					t.Errorf("got %+v, %v; want %+v", got, err, tc.want)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.err) {
+				t.Errorf("got %+v, %v; want an error containing %q", got, err, tc.err)
+			}
+		})
+	}
+}
+
 // The usage text lists every setting, and each default it states is the one the loader applies.
 func TestUsageMatchesConfig(t *testing.T) {
 	keyLine := regexp.MustCompile(`^  (SOLSTICE_[A-Z_]+)\s+(\S.*)$`)
