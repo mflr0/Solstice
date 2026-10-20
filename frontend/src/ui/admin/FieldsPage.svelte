@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { matches } from '../../core/admin-forms.js';
+  import { matches, typedMatches } from '../../core/admin-forms.js';
   import type { CatalogItem, FieldRow, FieldTypeInfo } from '../../core/admin-types.js';
   import { optionsEditable } from '../../core/catalogs.js';
   import type { AdminProjectRow } from '../../core/project-admin.js';
@@ -81,7 +81,7 @@
   async function remove() {
     const f = removing;
     if (!f) return;
-    if (f.issues > 0 && typed.trim() !== f.name) throw new Error(t.fieldsAdmin.nameMismatch);
+    if (f.issues > 0 && !typedMatches(typed, f.name)) throw new Error(t.fieldsAdmin.nameMismatch);
     await adminApi.deleteField(f.id, f.issues > 0 ? typed.trim() : undefined);
     notify(t.catalogAdmin.deleted(f.name));
     await load();
