@@ -44,7 +44,7 @@ type exportColumn struct {
 
 // exportColumns reads the columns parameter: system field ids (or aliases),
 // customfield_<id>, epic and sprint.
-func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]exportColumn, error) {
+func (s *Server) exportColumns(r *http.Request, custom []customFieldDef) ([]exportColumn, error) {
 	loc := locale(r)
 	ids := defaultExportColumns
 	if v := strings.TrimSpace(r.URL.Query().Get("columns")); v != "" {
@@ -67,9 +67,9 @@ func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]expo
 			out = append(out, exportColumn{id: id, header: i18n.M(i18n.FieldNameSprint).In(loc), special: id})
 		case strings.HasPrefix(id, "customfield_"):
 			found := false
-			for i, f := range fields {
+			for i, f := range custom {
 				if customID(f.ID) == id {
-					out = append(out, exportColumn{id: id, header: f.Name, custom: &fields[i], number: f.Kind == "float"})
+					out = append(out, exportColumn{id: id, header: f.Name, custom: &custom[i], number: f.Kind == "float"})
 					found = true
 				}
 			}
@@ -97,11 +97,11 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	fields, err := s.customFields(ctx)
+	custom, err := s.customFields(ctx)
 	if err != nil {
 		return err
 	}
-	columns, err := s.exportColumns(r, fields)
+	columns, err := s.exportColumns(r, custom)
 	if err != nil {
 		return err
 	}
@@ -128,12 +128,12 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	for _, c := range columns {
 		sel.include[c.id] = true
 		if c.special == "sprint" {
-			if f, ok := fieldOfKind(fields, "gh-sprint"); ok {
+			if f, ok := fieldOfKind(custom, "gh-sprint"); ok {
 				sel.include[customID(f.ID)] = true
 			}
 		}
 	}
-	want := sel.loads(fields)
+	want := sel.loads(custom)
 	set, err := s.loadIssues(ctx, sub, rows, func(k string) bool {
 		return want(k) || (k == loadEpic && sel.include["epic"]) || (k == loadSprints && sel.include["sprint"])
 	})

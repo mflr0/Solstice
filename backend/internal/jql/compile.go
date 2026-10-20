@@ -408,12 +408,12 @@ func (c *compiler) multi(cl Clause, exists, cond string, norm func(string) strin
 	if err != nil {
 		return "", err
 	}
-	any := "EXISTS (" + exists + ")"
+	hasAny := "EXISTS (" + exists + ")"
 	if len(texts) == 0 || cl.Op == "is" || cl.Op == "is not" {
 		if cl.Op == "is" || ((cl.Op == "=" || cl.Op == "in") && empty) {
-			return "NOT " + any, nil
+			return "NOT " + hasAny, nil
 		}
-		return any, nil
+		return hasAny, nil
 	}
 	m := sqlq.Marks(len(texts))
 	n := strings.Count(cond, "%")
@@ -432,10 +432,10 @@ func (c *compiler) multi(cl Clause, exists, cond string, norm func(string) strin
 	switch cl.Op {
 	case "!=", "not in":
 		// As in Jira, an issue without any value does not match either.
-		return "(" + any + " AND NOT " + match + ")", nil
+		return "(" + hasAny + " AND NOT " + match + ")", nil
 	}
 	if empty {
-		return "(" + match + " OR NOT " + any + ")", nil
+		return "(" + match + " OR NOT " + hasAny + ")", nil
 	}
 	return match, nil
 }

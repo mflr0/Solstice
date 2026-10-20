@@ -189,7 +189,7 @@ func runServe(ctx context.Context, args []string) error {
 		appDB.Store(conn)
 		app.Store(srv)
 		current.Store(&h)
-		go cleanSessions(ctx, conn, log)
+		go purgeExpired(ctx, conn, log)
 		workers.Go(func() { srv.Run(ctx) })
 	}
 	if setup {
@@ -274,10 +274,10 @@ func runServe(ctx context.Context, args []string) error {
 	}
 }
 
-// cleanSessions deletes expired sessions hourly: they are useless. Audit
+// purgeExpired deletes expired sessions hourly: they are useless. Audit
 // log entries past their retention period, and expired or used reset and
 // invitation links, go at the same time.
-func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
+func purgeExpired(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {

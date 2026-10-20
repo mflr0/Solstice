@@ -139,8 +139,8 @@ func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 }
 
 // fieldOfKind returns the first custom field of a kind (gh-sprint…), if any.
-func fieldOfKind(fields []customFieldDef, kind string) (customFieldDef, bool) {
-	for _, f := range fields {
+func fieldOfKind(custom []customFieldDef, kind string) (customFieldDef, bool) {
+	for _, f := range custom {
 		if f.Kind == kind {
 			return f, true
 		}

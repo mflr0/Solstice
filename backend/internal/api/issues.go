@@ -179,11 +179,11 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	params := r.URL.Query()
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
-	where, args, sort, err := s.searchCondition(r.Context(), sub, params)
+	where, args, order, err := s.searchCondition(r.Context(), sub, params)
 	if err != nil {
 		return err
 	}
-	list, total, err := s.searchRows(r.Context(), where, args, sort, (page-1)*size, size)
+	list, total, err := s.searchRows(r.Context(), where, args, order, (page-1)*size, size)
 	if err != nil {
 		return err
 	}
@@ -1946,7 +1946,7 @@ const searchFrom = ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT J
 // and project) into a condition on the issues the user sees, with its ORDER
 // BY, both to run against searchFrom.
 func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params url.Values) (where string, args []any,
-	sort string, err error) {
+	order string, err error) {
 	// The search bar takes both syntaxes: JQL is recognised by its shape.
 	var cond string
 	var cargs []any
@@ -1954,13 +1954,13 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 		if src == "" {
 			src = params.Get("q")
 		}
-		if cond, cargs, sort, err = s.compileJQL(ctx, sub, src); err != nil {
+		if cond, cargs, order, err = s.compileJQL(ctx, sub, src); err != nil {
 			return "", nil, "", err
 		}
 	} else {
 		q := search.Parse(params.Get("q"))
 		cond, cargs = q.SQL(sub.UserID)
-		sort = q.Sort
+		order = q.Sort
 	}
 	vis, args := sub.VisibleSQL("i")
 	where = vis + " AND " + cond
@@ -1969,7 +1969,7 @@ func (s *Server) searchCondition(ctx context.Context, sub *perm.Subject, params 
 		where += " AND " + sqlq.ProjectKey("p", "?")
 		args = append(args, strings.ToUpper(p), strings.ToUpper(p))
 	}
-	return where, args, sort, nil
+	return where, args, order, nil
 }
 
 // searchRows runs a search condition and returns a page of issues with the
@@ -2004,14 +2004,14 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 	if err != nil {
 		return "", nil, "", jqlError(err)
 	}
-	fields := map[string]jql.Field{}
+	byName := map[string]jql.Field{}
 	if err := sqlq.Each(ctx, s.db, `SELECT id, name, type_key FROM custom_fields`, func(rows *sql.Rows) error {
 		var f jql.Field
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
 		}
-		fields[foldName(f.Name)] = f
-		fields[strconv.FormatInt(f.ID, 10)] = f
+		byName[foldName(f.Name)] = f
+		byName[strconv.FormatInt(f.ID, 10)] = f
 		return nil
 	}); err != nil {
 		return "", nil, "", err
@@ -2021,7 +2021,7 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 		Now: time.Now(),
 		Loc: s.zone(),
 		CustomField: func(name string) (jql.Field, bool) {
-			f, ok := fields[foldName(name)]
+			f, ok := byName[foldName(name)]
 			return f, ok
 		},
 		Query: func(q string, args []any) ([]string, error) {

@@ -153,10 +153,10 @@ func (s *Server) epics(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// fields lists the custom fields, for query autocompletion: how JQL names
+// jqlFields lists the custom fields, for query autocompletion: how JQL names
 // each one, and its kind (the last part of its type: float, select,
 // datepicker, userpicker…).
-func (s *Server) fields(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) jqlFields(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.subject(r); err != nil {
 		return err
 	}

@@ -451,7 +451,7 @@ func (u *updater) lastAttempt() *updateAttempt {
 	var status *updateAttempt
 	if raw, err := readSmall(filepath.Join(u.helper(), "status"), 1<<20); err == nil {
 		var a updateAttempt
-		if json.Unmarshal(raw, &a) == nil && validAttempt(&a) {
+		if json.Unmarshal(raw, &a) == nil && cleanAttempt(&a) {
 			status = &a
 		}
 	}
@@ -469,7 +469,7 @@ func (u *updater) lastAttempt() *updateAttempt {
 
 var versionLike = regexp.MustCompile(`^[0-9A-Za-z.+-]{1,64}$`)
 
-func validAttempt(a *updateAttempt) bool {
+func cleanAttempt(a *updateAttempt) bool {
 	switch a.Status {
 	case attemptRunning, attemptOK, attemptRolledBack, attemptFailed:
 	default:

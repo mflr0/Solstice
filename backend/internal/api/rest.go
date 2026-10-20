@@ -200,7 +200,7 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 			return
 		}
 		if u != nil {
-			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
+			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
 			w.Header().Set("X-AUSERNAME", u.Username)
 		}
 		if err := h(w, r); err != nil {

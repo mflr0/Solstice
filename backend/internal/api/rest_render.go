@@ -134,9 +134,9 @@ func (sel *fieldSelection) hasSystem(id string) bool {
 func customID(id int64) string { return "customfield_" + strconv.FormatInt(id, 10) }
 
 // loads tells loadIssues what the selected fields need.
-func (sel *fieldSelection) loads(fields []customFieldDef) func(string) bool {
+func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 	custom, epic, sprint := false, false, false
-	for _, f := range fields {
+	for _, f := range defs {
 		if sel.has(customID(f.ID), true) {
 			custom = true
 			epic = epic || f.Kind == "gh-epic-link"
@@ -523,8 +523,8 @@ func nullIDText(id int64) string {
 	return strconv.FormatInt(id, 10)
 }
 
-// agileSprint is a sprint as Jira's Agile API shows one.
-func (o *restOut) agileSprint(sp sprintOut, board int64) map[string]any {
+// sprintJSON is a sprint as Jira's Agile API shows one.
+func (o *restOut) sprintJSON(sp sprintOut, board int64) map[string]any {
 	out := map[string]any{"id": sp.ID, "self": o.base + "/rest/agile/1.0/sprint/" + o.id(sp.ID), "state": sp.State,
 		"name": sp.Name}
 	date := func(t *time.Time) string { return t.In(o.tz).Format("2006-01-02T15:04:05.000Z07:00") }
@@ -660,11 +660,11 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 	if err != nil {
 		return nil, nil, err
 	}
-	fields, err := s.customFields(ctx)
+	custom, err := s.customFields(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	want := sel.loads(fields)
+	want := sel.loads(custom)
 	inner := want
 	want = func(k string) bool {
 		return inner(k) || (k == loadComments && expand["renderedFields"] && sel.hasSystem("comment")) ||
@@ -680,25 +680,25 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 	}
 	out := make([]map[string]any, 0, len(set.list))
 	for _, d := range set.list {
-		issue := s.jiraIssue(o, cat, set, users, d, sel)
+		item := s.jiraIssue(o, cat, set, users, d, sel)
 		if agile {
-			o.agileFields(cat, issue["fields"].(map[string]any), d, sel)
+			o.agileFields(cat, item["fields"].(map[string]any), d, sel)
 		}
 		if expand["changelog"] {
-			if issue["changelog"], err = s.jiraChangelog(ctx, o, sub, d.row); err != nil {
+			if item["changelog"], err = s.jiraChangelog(ctx, o, sub, d.row); err != nil {
 				return nil, nil, err
 			}
 		}
 		if expand["renderedFields"] {
-			issue["renderedFields"] = o.renderedFields(d, sel)
+			item["renderedFields"] = o.renderedFields(d, sel)
 		}
 		if expand["transitions"] {
-			if issue["transitions"], err = s.jiraTransitions(ctx, o, sub, cat, d.row,
+			if item["transitions"], err = s.jiraTransitions(ctx, o, sub, cat, d.row,
 				expand["transitions.fields"]); err != nil {
 				return nil, nil, err
 			}
 		}
-		out = append(out, issue)
+		out = append(out, item)
 	}
 	var names map[string]string
 	if expand["names"] {
@@ -751,9 +751,9 @@ func (o *restOut) agileFields(cat *catalog, f map[string]any, d *issueData, sel 
 		closed := []any{}
 		for _, sp := range d.sprints {
 			if sp.State == "closed" {
-				closed = append(closed, o.agileSprint(sp.sprintOut, sp.board.Int64))
+				closed = append(closed, o.sprintJSON(sp.sprintOut, sp.board.Int64))
 			} else {
-				open = o.agileSprint(sp.sprintOut, sp.board.Int64)
+				open = o.sprintJSON(sp.sprintOut, sp.board.Int64)
 			}
 		}
 		f["sprint"], f["closedSprints"] = open, closed
@@ -761,14 +761,14 @@ func (o *restOut) agileFields(cat *catalog, f map[string]any, d *issueData, sel 
 	if sel.has("epic", true) {
 		f["epic"] = nil
 		if d.epic != nil {
-			f["epic"] = o.agileEpic(cat, d.epic, "")
+			f["epic"] = o.epicJSON(cat, d.epic, "")
 		}
 	}
 	f["flagged"] = false
 }
 
-// agileEpic is an epic as Jira's Agile API shows one.
-func (o *restOut) agileEpic(cat *catalog, epic *issueRow, name string) map[string]any {
+// epicJSON is an epic as Jira's Agile API shows one.
+func (o *restOut) epicJSON(cat *catalog, epic *issueRow, name string) map[string]any {
 	if name == "" {
 		name = epic.Summary
 	}
