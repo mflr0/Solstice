@@ -546,6 +546,8 @@ export const de: Messages = {
     duringDates: () => 'DURING erwartet zwei Datumsangaben in Klammern.',
     argumentInvalid: (name: string) => `Ungültiges Argument für ${name}().`,
     valueExpected: () => 'Wert erwartet.',
+    tooLong: (max: number) => `Die Abfrage ist zu lang (höchstens ${max} Zeichen).`,
+    tooDeep: (max: number) => `Die Abfrage ist zu tief verschachtelt (höchstens ${max} Ebenen).`,
   },
   quick: {
     label: 'Schnellsuche',

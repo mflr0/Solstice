@@ -540,6 +540,8 @@ export const hi: Messages = {
     duringDates: () => 'DURING के लिए कोष्ठक में दो तारीखें अपेक्षित हैं।',
     argumentInvalid: (name: string) => `${name}() का आर्ग्युमेंट अमान्य है।`,
     valueExpected: () => 'मान अपेक्षित है।',
+    tooLong: (max: number) => `क्वेरी बहुत लंबी है (अधिकतम ${max} अक्षर)।`,
+    tooDeep: (max: number) => `क्वेरी बहुत गहराई तक नेस्टेड है (अधिकतम ${max} स्तर)।`,
   },
   quick: {
     label: 'क्विक खोज',

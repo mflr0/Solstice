@@ -541,6 +541,8 @@ export const fr: Messages = {
     duringDates: () => 'DURING attend deux dates entre parenthèses.',
     argumentInvalid: (name: string) => `Argument de ${name}() invalide.`,
     valueExpected: () => 'Valeur attendue.',
+    tooLong: (max: number) => `La requête est trop longue (au plus ${max} caractères).`,
+    tooDeep: (max: number) => `La requête est trop imbriquée (au plus ${max} niveaux).`,
   },
   quick: {
     label: 'Recherche rapide',

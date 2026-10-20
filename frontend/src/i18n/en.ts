@@ -537,6 +537,8 @@ export const en = {
     duringDates: () => 'DURING expects two dates in parentheses.',
     argumentInvalid: (name: string) => `Invalid argument for ${name}().`,
     valueExpected: () => 'Value expected.',
+    tooLong: (max: number) => `The query is too long (at most ${max} characters).`,
+    tooDeep: (max: number) => `The query is nested too deeply (at most ${max} levels).`,
   },
   quick: {
     label: 'Quick search',
