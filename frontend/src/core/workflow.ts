@@ -13,6 +13,7 @@ import {
   type Workflow,
   type WorkflowInput,
 } from './types.js';
+import { fold } from './text.js';
 
 /** A transition being edited. `key` tells rows apart; id is null until saved. */
 export interface DraftTransition {
@@ -282,12 +283,4 @@ export function searchStatuses(catalogue: StatusRef[], taken: StatusRef[], q: st
 export function statusNamed(catalogue: StatusRef[], name: string): StatusRef | undefined {
   const n = name.trim().toLowerCase();
   return catalogue.find((s) => s.name.toLowerCase() === n);
-}
-
-function fold(s: string): string {
-  // Only Latin accents go: other scripts' marks are letters (Devanagari vowel signs).
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
 }
