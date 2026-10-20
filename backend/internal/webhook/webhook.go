@@ -297,6 +297,10 @@ func (s *Service) hooks(ctx context.Context) []*Webhook {
 		}
 		list = append(list, w)
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("reading webhooks failed", "err", err)
+		return nil
+	}
 	s.cache, s.cacheAt = list, time.Now()
 	if s.cache == nil {
 		s.cache = []*Webhook{}
