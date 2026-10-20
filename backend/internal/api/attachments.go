@@ -119,6 +119,11 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
+	// Lock the issue before the history insert, whose foreign key check would
+	// take a shared lock that two requests then deadlock upgrading.
+	if _, err := tx.ExecContext(ctx, `SELECT id FROM issues WHERE id = ? FOR UPDATE`, iss.ID); err != nil {
+		return err
+	}
 	var changes []change
 	for _, n := range names {
 		changes = append(changes, change{field: "Attachment", newString: n})
