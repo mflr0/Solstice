@@ -727,6 +727,9 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 			}
 		}
 		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
 	}
 	for _, c := range cards {
 		if c.Lane == nil {
