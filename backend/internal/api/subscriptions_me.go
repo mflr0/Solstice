@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-// mySubscriptionOut is a subscription with the filter it is on.
 type mySubscriptionOut struct {
 	subscriptionOut
 	FilterName string `json:"filterName"`

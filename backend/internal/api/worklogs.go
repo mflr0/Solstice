@@ -22,7 +22,6 @@ import (
 // maxWorklog is the longest time one work log may hold: a week.
 const maxWorklog = 7 * 24 * 3600
 
-// editableWorklog is a work log the current user may edit or delete.
 type editableWorklog struct {
 	issue   *issueRow
 	id      int64

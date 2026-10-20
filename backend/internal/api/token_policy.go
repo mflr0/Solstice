@@ -1,9 +1,9 @@
 package api
 
-// Who may create personal access tokens: everyone (the default, as before
-// the setting existed), the administrators only, or the members of one
-// group. Administrators always may. Tokens already created keep working
-// whatever the setting says; they can be revoked from the administration.
+// Who may create personal access tokens: the administrators only (the
+// default), everyone, or the members of one group. Administrators always
+// may. Tokens already created keep working whatever the setting says; they
+// can be revoked from the administration.
 
 import (
 	"context"
@@ -16,10 +16,8 @@ import (
 	"solstice/internal/i18n"
 )
 
-// tokenCreatorsSetting is the name of the setting that holds the policy.
 const tokenCreatorsSetting = "tokens.creators"
 
-// Who may create tokens.
 const (
 	creatorsEveryone = "everyone"
 	creatorsAdmins   = "admins"
@@ -156,7 +154,6 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// nonZero lists the ids that are set.
 func nonZero(ids ...int64) []int64 {
 	var out []int64
 	for _, id := range ids {
