@@ -155,6 +155,7 @@ type Bus struct {
 	done      chan struct{}
 	live      []func(Event)
 	consumers []Consumer
+	custom    func(context.Context, int64) ([]CustomValue, error)
 }
 
 // NewBus starts a bus. db is used to load issues for consumers.
@@ -170,6 +171,14 @@ func NewBus(db *sql.DB, log *slog.Logger) *Bus {
 func (b *Bus) OnPublish(f func(Event)) {
 	b.mu.Lock()
 	b.live = append(b.live, f)
+	b.mu.Unlock()
+}
+
+// LoadCustom sets how the bus reads an issue's custom fields for consumers:
+// only the API knows how to render them.
+func (b *Bus) LoadCustom(f func(ctx context.Context, issueID int64) ([]CustomValue, error)) {
+	b.mu.Lock()
+	b.custom = f
 	b.mu.Unlock()
 }
 
@@ -243,10 +252,10 @@ func (b *Bus) loop() {
 		e := b.queue[0]
 		b.queue = b.queue[1:]
 		b.busy = true
-		consumers := b.consumers
+		consumers, custom := b.consumers, b.custom
 		b.mu.Unlock()
 
-		b.dispatch(&e, consumers)
+		b.dispatch(&e, consumers, custom)
 
 		b.mu.Lock()
 		b.busy = false
@@ -255,7 +264,7 @@ func (b *Bus) loop() {
 	}
 }
 
-func (b *Bus) dispatch(e *Event, consumers []Consumer) {
+func (b *Bus) dispatch(e *Event, consumers []Consumer, custom func(context.Context, int64) ([]CustomValue, error)) {
 	defer func() {
 		if r := recover(); r != nil {
 			b.log.Error("event consumer panicked", "kind", e.Kind, "key", e.Key, "panic", r)
@@ -282,6 +291,12 @@ func (b *Bus) dispatch(e *Event, consumers []Consumer) {
 			return
 		default:
 			e.Issue = iss
+		}
+		if e.Issue != nil && custom != nil {
+			if e.Issue.Custom, err = custom(ctx, e.IssueID); err != nil {
+				b.log.Error("event: loading the custom fields failed", "key", e.Key, "err", err)
+				return
+			}
 		}
 	}
 	for _, c := range wanted {

@@ -1879,6 +1879,9 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 		if e.Issue, err = events.LoadIssue(ctx, s.db, d.ID); err != nil {
 			return err
 		}
+		if e.Issue.Custom, err = s.eventCustom(ctx, d.ID); err != nil {
+			return err
+		}
 		e.HookMatches = s.out.hooks.MatchBeforeDelete(ctx, d.ID)
 		deleted = append(deleted, e)
 	}

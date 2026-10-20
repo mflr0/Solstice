@@ -51,6 +51,7 @@ func (s *Server) startOutgoing() {
 	s.out = o
 	o.bus = events.NewBus(s.db, s.log)
 	o.bus.OnPublish(s.toLive)
+	o.bus.LoadCustom(s.eventCustom)
 	config := func(ctx context.Context) (mail.Config, error) { return mail.LoadConfig(ctx, o.settings, s.secrets) }
 	o.outbox = mail.NewOutbox(s.db, s.log, config)
 	o.notify = notify.New(s.db, s.perms, o.outbox, s.tz, s.log, config, filterRunner{s})
@@ -107,6 +108,43 @@ func (s *Server) Close(ctx context.Context) error { return s.out.bus.Close(ctx) 
 
 // emit publishes an event. It never waits for e-mail or webhooks.
 func (s *Server) emit(e events.Event) { s.out.bus.Publish(e) }
+
+// eventCustom renders an issue's custom fields for e-mails and webhooks, as
+// GET /issue does. Like the rest of a webhook's issue, the epic is not
+// filtered by permission: e-mails filter it per recipient.
+func (s *Server) eventCustom(ctx context.Context, issueID int64) ([]events.CustomValue, error) {
+	iss, err := s.findIssueByID(ctx, issueID)
+	if err != nil {
+		return nil, err
+	}
+	set, err := s.loadIssues(ctx, nil, []*issueRow{iss}, func(k string) bool {
+		return k == loadCustom || k == loadSprints
+	})
+	if err != nil {
+		return nil, err
+	}
+	d := set.list[0]
+	if iss.EpicID.Valid {
+		if d.epic, err = s.findIssueByID(ctx, iss.EpicID.Int64); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	}
+	base := s.base()
+	o := &restOut{base: base, api: base + "/rest/api/2", locale: s.defaultLanguage(), tz: s.zone()}
+	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]events.CustomValue, 0, len(set.fields))
+	for _, f := range set.fields {
+		v, err := json.Marshal(o.customValue(set, users, f, d))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, events.CustomValue{ID: f.ID, Name: f.Name, Value: v, Text: o.customText(set, users, f, d)})
+	}
+	return out, nil
+}
 
 // toLive passes events on to open pages.
 func (s *Server) toLive(e events.Event) {
