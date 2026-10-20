@@ -96,7 +96,7 @@
     display: block;
   }
 
-  .error-text {
+  .c-answer .error-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
