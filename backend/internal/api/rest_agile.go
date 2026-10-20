@@ -30,7 +30,7 @@ func agilePage[T any](list []T, startAt, maxResults int) map[string]any {
 		"isLast": startAt+len(page) >= len(list), "values": values}
 }
 
-func (o *restOut) agileBoard(b *boardSummary) map[string]any {
+func (o *restOut) boardJSON(b *boardSummary) map[string]any {
 	out := map[string]any{"id": b.ID, "self": o.base + "/rest/agile/1.0/board/" + o.id(b.ID), "name": b.Name,
 		"type": b.Kind}
 	if len(b.Projects) > 0 {
@@ -71,7 +71,7 @@ func (s *Server) writeAgilePage(w http.ResponseWriter, r *http.Request, list []*
 	o := s.restOut(r)
 	out := make([]map[string]any, 0, len(list))
 	for _, b := range list {
-		out = append(out, o.agileBoard(b))
+		out = append(out, o.boardJSON(b))
 	}
 	startAt, maxResults := paging(r, 50, 50)
 	return writeJSON(w, http.StatusOK, agilePage(out, startAt, maxResults))
@@ -106,7 +106,7 @@ func (s *Server) agileBoard(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileBoard(sum))
+	return writeJSON(w, http.StatusOK, s.restOut(r).boardJSON(sum))
 }
 
 // agileBoardConfiguration describes a board's columns, filter and
@@ -148,7 +148,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		}
 		columns = append(columns, col)
 	}
-	out := o.agileBoard(sum)
+	out := o.boardJSON(sum)
 	out["filter"] = map[string]any{"id": o.id(view.Board.FilterID), "self": o.api + "/filter/" + o.id(view.Board.FilterID)}
 	out["columnConfig"] = map[string]any{"columns": columns, "constraintType": "issueCount"}
 	out["estimation"] = map[string]any{"type": "none"}
@@ -164,11 +164,11 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		}
 		out["estimation"] = map[string]any{"type": "field", "field": map[string]any{"fieldId": *f, "displayName": name}}
 	}
-	fields, err := s.customFields(r.Context())
+	custom, err := s.customFields(r.Context())
 	if err != nil {
 		return err
 	}
-	if rank, ok := fieldOfKind(fields, "gh-lexo-rank"); ok {
+	if rank, ok := fieldOfKind(custom, "gh-lexo-rank"); ok {
 		out["ranking"] = map[string]any{"rankCustomFieldId": rank.ID}
 	}
 	return writeJSON(w, http.StatusOK, out)
@@ -209,7 +209,7 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 	o := s.restOut(r)
 	out := make([]map[string]any, 0, len(sprints))
 	for _, sp := range sprints {
-		out = append(out, o.agileSprint(sp, b.ID))
+		out = append(out, o.sprintJSON(sp, b.ID))
 	}
 	startAt, maxResults := paging(r, 50, 50)
 	return writeJSON(w, http.StatusOK, agilePage(out, startAt, maxResults))
@@ -313,7 +313,7 @@ func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileSprint(sp, board))
+	return writeJSON(w, http.StatusOK, s.restOut(r).sprintJSON(sp, board))
 }
 
 // agileEditSprint changes a sprint as Jira's update does: name, goal, start
@@ -669,15 +669,15 @@ func (s *Server) agileEpic(w http.ResponseWriter, r *http.Request) error {
 	}
 	// The epic's name is its "Epic Name" field, if it has one.
 	name := ""
-	fields, err := s.customFields(r.Context())
+	custom, err := s.customFields(r.Context())
 	if err != nil {
 		return err
 	}
-	if f, ok := fieldOfKind(fields, "gh-epic-label"); ok {
+	if f, ok := fieldOfKind(custom, "gh-epic-label"); ok {
 		s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
 			WHERE issue_id = ? AND field_id = ? LIMIT 1`, epic.ID, f.ID).Scan(&name)
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileEpic(cat, epic, name))
+	return writeJSON(w, http.StatusOK, s.restOut(r).epicJSON(cat, epic, name))
 }
 
 // agileEpicIssues lists the issues of an epic that the user sees.

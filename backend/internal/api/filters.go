@@ -193,7 +193,7 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-func (s *Server) filterForEdit(r *http.Request, sub *perm.Subject) (*filterRow, error) {
+func (s *Server) visibleFilter(r *http.Request, sub *perm.Subject) (*filterRow, error) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	// loadFilters reads id 0 as "every filter", so 0 must not get that far.
 	if err != nil || id <= 0 {
@@ -343,7 +343,7 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -406,7 +406,7 @@ func (s *Server) deleteFilter(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func (s *Server) setFavourite(on bool) handler {
 		if err != nil {
 			return err
 		}
-		f, err := s.filterForEdit(r, sub)
+		f, err := s.visibleFilter(r, sub)
 		if err != nil {
 			return err
 		}

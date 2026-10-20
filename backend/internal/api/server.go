@@ -116,7 +116,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/labels", s.labels, true)
 	route("GET /api/sprints", s.sprints, true)
 	route("GET /api/epics", s.epics, true)
-	route("GET /api/fields", s.fields, true)
+	route("GET /api/fields", s.jqlFields, true)
 	route("GET /api/versions", s.projectParts("versions"), true)
 	route("GET /api/components", s.projectParts("components"), true)
 	route("GET /api/issues/facets", s.facets, true)
@@ -258,7 +258,7 @@ type handler func(http.ResponseWriter, *http.Request) error
 type ctxKey int
 
 const (
-	userKey ctxKey = iota
+	userCtxKey ctxKey = iota
 	subjectKey
 )
 
@@ -317,7 +317,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 				s.writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
-			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
+			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
 		}
 		if err := h(w, r); err != nil {
 			var he *httpError
@@ -395,7 +395,7 @@ func (s *Server) throttleKeys(r *http.Request, username string) (userKey, ipKey 
 }
 
 func currentUser(r *http.Request) *auth.User {
-	u, _ := r.Context().Value(userKey).(*auth.User)
+	u, _ := r.Context().Value(userCtxKey).(*auth.User)
 	return u
 }
 

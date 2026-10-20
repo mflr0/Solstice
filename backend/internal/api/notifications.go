@@ -754,7 +754,7 @@ func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -825,7 +825,7 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -855,7 +855,7 @@ func (s *Server) respondSubscription(w http.ResponseWriter, r *http.Request, sub
 // filter the user sees, if they may change it: theirs, or any for
 // administrators.
 func (s *Server) editableSubscription(r *http.Request, sub *perm.Subject) (*notify.Subscription, error) {
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return nil, err
 	}
