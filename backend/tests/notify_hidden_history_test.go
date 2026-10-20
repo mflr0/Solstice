@@ -18,14 +18,14 @@ func TestNotifyHidesInvisibleIssues(t *testing.T) {
 	chloe := env.login("chloe.simon", "motdepasse") // rh
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 
-	for _, rename := range []bool{false, true} {
-		name := "current key"
-		if rename {
-			name = "former key"
-		}
+	for _, name := range []string{"current key", "former key", "one-letter key"} {
+		rename := name == "former key"
 		t.Run(name, func(t *testing.T) {
 			// A project only rh sees, with an epic and a task.
 			hidden := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "group", "id": groupID(t, "rh")}})
+			if name == "one-letter key" {
+				hidden = oneLetterKey(t, hidden)
+			}
 			var p struct {
 				IssueTypes []typeRef `json:"issueTypes"`
 			}
@@ -101,4 +101,25 @@ func TestNotifyHidesInvisibleIssues(t *testing.T) {
 			}
 		})
 	}
+}
+
+// oneLetterKey gives the project a free one-letter key, as an imported Jira
+// project may have (Solstice itself asks for two), until the test ends.
+func oneLetterKey(t *testing.T, key string) string {
+	t.Helper()
+	letter := ""
+	for c := 'A'; c <= 'Z' && letter == ""; c++ {
+		if pickOptional(`SELECT pkey FROM projects WHERE pkey = ? UNION SELECT pkey FROM project_keys WHERE pkey = ?`,
+			string(c), string(c)) == "" {
+			letter = string(c)
+		}
+	}
+	if letter == "" {
+		t.Fatal("no free one-letter project key")
+	}
+	if _, err := testDB.Exec(`UPDATE projects SET pkey = ? WHERE pkey = ?`, letter, key); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { testDB.Exec(`UPDATE projects SET pkey = ? WHERE pkey = ?`, key, letter) })
+	return letter
 }

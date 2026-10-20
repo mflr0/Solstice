@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/jql"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -152,9 +152,6 @@ func (s *Service) footer(p *page, why string) {
 		p.Prefs = i18n.M(i18n.NotifyChangeInPreferences).In(p.Lang)
 	}
 }
-
-// keyInText finds issue keys in history text ("This issue blocks WEB-12").
-var keyInText = regexp.MustCompile(`\b[A-Z][A-Z0-9_]+-\d+\b`)
 
 // relationFields name other issues; they are shown only when the recipient
 // sees every issue they name.
@@ -338,7 +335,7 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 		f := strings.ToLower(l.Field)
 		if relationFields[f] {
 			ok := true
-			for _, k := range keyInText.FindAllString(l.From+" "+l.To, -1) {
+			for _, k := range jql.KeysIn(l.From + " " + l.To) {
 				ok = ok && keys.canSee(ctx, k)
 			}
 			if !ok {
