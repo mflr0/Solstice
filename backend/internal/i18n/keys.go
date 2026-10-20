@@ -323,7 +323,6 @@ const (
 	IssueEstimateInvalid       Key = "IssueEstimateInvalid"
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
-	IssueNoTodoStatus          Key = "IssueNoTodoStatus"
 	IssueTransitionNotAllowed  Key = "IssueTransitionNotAllowed"
 	IssueTransitionUnavailable Key = "IssueTransitionUnavailable"
 	IssueParentNotFound        Key = "IssueParentNotFound"

@@ -286,7 +286,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Stima del tempo non valida (ad esempio 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Livello di sicurezza sconosciuto in questo progetto.",
 	IssueReporterFixed:         "Il segnalatore non può essere cambiato.",
-	IssueNoTodoStatus:          "Non è definito alcuno stato «da fare».",
 	IssueTransitionNotAllowed:  "Il workflow del progetto non prevede questo cambio di stato.",
 	IssueTransitionUnavailable: "Questa transizione non è possibile dallo stato attuale del ticket.",
 	IssueParentNotFound:        "Ticket padre non trovato.",

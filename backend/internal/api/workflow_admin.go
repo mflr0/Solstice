@@ -679,8 +679,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 }
 
 // createWorkflow adds a workflow to a project, a copy of another of its
-// workflows (by default the default one). A project's first workflow
-// becomes its default.
+// workflows (by default the default one).
 func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, projectID, err := s.browsableProject(r)
@@ -705,15 +704,10 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	var initial string
 	err = s.db.QueryRowContext(ctx, `SELECT id, initial_status_id FROM workflows WHERE project_id = ?
 		AND (id = ? OR (? = 0 AND is_default)) LIMIT 1`, projectID, in.CopyFrom, in.CopyFrom).Scan(&source, &initial)
-	switch {
-	case errors.Is(err, sql.ErrNoRows) && in.CopyFrom != 0:
+	if errors.Is(err, sql.ErrNoRows) {
 		return fail(http.StatusBadRequest, i18n.WorkflowCopyNotFound)
-	case errors.Is(err, sql.ErrNoRows):
-		// A project without workflows: start from the statuses its issues use.
-		if initial, err = s.initialStatus(ctx, projectID); err != nil {
-			return err
-		}
-	case err != nil:
+	}
+	if err != nil {
 		return err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -721,37 +715,20 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	var defaults int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM workflows WHERE project_id = ? AND is_default`, projectID).
-		Scan(&defaults); err != nil {
-		return err
-	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, ?, ?)`,
-		projectID, sqlq.Truncate(name, varcharWidth), defaults == 0, initial)
+	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, FALSE, ?)`,
+		projectID, sqlq.Truncate(name, varcharWidth), initial)
 	if err != nil {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	if source != 0 {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
-			SELECT ?, status_id, position FROM workflow_statuses WHERE workflow_id = ?`, id, source); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-			position) SELECT ?, name, from_status_id, to_status_id, position FROM workflow_transitions WHERE workflow_id = ?`,
-			id, source); err != nil {
-			return err
-		}
-	} else {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
-			SELECT ?, s.id, s.position FROM statuses s WHERE s.id IN (SELECT status_id FROM issues WHERE project_id = ?)`,
-			id, projectID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO workflow_statuses (workflow_id, status_id, position)
-			VALUES (?, ?, 0)`, id, initial); err != nil {
-			return err
-		}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
+		SELECT ?, status_id, position FROM workflow_statuses WHERE workflow_id = ?`, id, source); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
+		position) SELECT ?, name, from_status_id, to_status_id, position FROM workflow_transitions WHERE workflow_id = ?`,
+		id, source); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err

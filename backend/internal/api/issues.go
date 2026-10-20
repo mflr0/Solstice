@@ -641,38 +641,11 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 	return out, rows.Err()
 }
 
-// projectStatuses lists the statuses an issue can be moved to: those already
-// in use in its project. (Per-project workflows come with the workflow editor.)
-func (s *Server) projectStatuses(ctx context.Context, cat *catalog, projectID int64, current string) ([]statusRef, error) {
-	used := map[string]bool{current: true}
-	if err := sqlq.Each(ctx, s.db, `SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return err
-		}
-		used[id] = true
-		return nil
-	}, projectID); err != nil {
-		return nil, err
-	}
-	var out []statusRef
-	for _, st := range cat.Statuses {
-		if used[st.ID] {
-			out = append(out, st)
-		}
-	}
-	sort.SliceStable(out, func(a, b int) bool { return out[a].Category.Rank() < out[b].Category.Rank() })
-	return out, nil
-}
-
 // typeStatuses are the statuses an issue of a type can have in a project.
 func (s *Server) typeStatuses(ctx context.Context, cat *catalog, projectID int64, typeID string) ([]statusRef, error) {
-	wf, _, ok, err := s.workflowOf(ctx, projectID, typeID)
+	wf, _, err := s.workflowOf(ctx, projectID, typeID)
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return s.projectStatuses(ctx, cat, projectID, "")
 	}
 	var out []statusRef
 	err = sqlq.Each(ctx, s.db, `SELECT status_id FROM workflow_statuses WHERE workflow_id = ? ORDER BY position`,
@@ -1278,20 +1251,6 @@ func (s *Server) isAssignable(ctx context.Context, projectID, userID int64) (boo
 	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE active AND id = ? AND id IN (`+holders+`)`,
 		append([]any{userID}, args...)...).Scan(&n)
 	return n > 0, err
-}
-
-// initialStatus picks the status of a new issue: the "to do" status most used
-// in the project. (Per-project workflows will define it explicitly.)
-func (s *Server) initialStatus(ctx context.Context, projectID int64) (string, error) {
-	var id string
-	err := s.db.QueryRowContext(ctx, `SELECT s.id FROM statuses s
-		LEFT JOIN (SELECT status_id, COUNT(*) AS n FROM issues WHERE project_id = ? GROUP BY status_id) u
-			ON u.status_id = s.id
-		WHERE s.category = 'todo' ORDER BY u.n IS NULL, u.n DESC, s.position LIMIT 1`, projectID).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", fail(http.StatusConflict, i18n.IssueNoTodoStatus)
-	}
-	return id, err
 }
 
 // replaceSet makes the components (kind "") or the versions of a kind of an
