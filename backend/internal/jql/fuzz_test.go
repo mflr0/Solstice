@@ -59,6 +59,7 @@ func FuzzParse(f *testing.F) {
 		`NOT (priority = High OR priority = Highest)`,
 		`fixVersion = earliestUnreleasedVersion(DEMO)`,
 		`sprint in openSprints() AND issuetype = Bug`,
+		`key > EMPTY`,
 		`project = "DEMO`,
 		`(((`,
 		`ORDER BY`,

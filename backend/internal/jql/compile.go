@@ -611,6 +611,9 @@ func (c *compiler) key(cl Clause) (string, error) {
 		cond, err := c.keysSQL(texts, "i", "p")
 		return "NOT " + cond, err
 	case ">", ">=", "<", "<=":
+		if len(texts) == 0 {
+			return "", fail(i18n.JQLIssueKeyInvalid, "EMPTY")
+		}
 		m := keyPattern.FindStringSubmatch(texts[0])
 		if m == nil {
 			return "", fail(i18n.JQLIssueKeyInvalid, texts[0])
