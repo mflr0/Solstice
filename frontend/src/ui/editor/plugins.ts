@@ -27,7 +27,7 @@ import {
 } from 'prosemirror-state';
 import { goToNextCell, tableEditing } from 'prosemirror-tables';
 import { Decoration, DecorationSet, type EditorView, type NodeView } from 'prosemirror-view';
-import { renderWiki, type WikiResolver } from '../../core/wiki.js';
+import { KEY_IN_TEXT, renderWiki, type WikiResolver } from '../../core/wiki.js';
 import { schema } from '../../core/wiki-doc.js';
 import {
   insertRule,
@@ -98,7 +98,7 @@ function mentionPlugin(onKey: (event: KeyboardEvent) => boolean): Plugin<Mention
 
 /* ---------- decorations ---------- */
 
-const KEY_RE = /[A-Z][A-Z0-9_]+-\d+/g;
+const KEY_RE = new RegExp(KEY_IN_TEXT, 'g');
 const WORD_RE = /[\p{L}\p{N}]/u;
 
 /** Issue keys that exist look like links, as in displayed text. */

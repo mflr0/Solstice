@@ -62,10 +62,15 @@ export function parseDay(s: string): Day | null {
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
 
+/** The local calendar day of a date as "YYYY-MM-DD". */
+export function isoDay(date: Date): string {
+  const d = dayOf(date);
+  return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+}
+
 /** Today as "YYYY-MM-DD" in local time. */
 export function todayISO(now: Date = new Date()): string {
-  const d = dayOf(now);
-  return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+  return isoDay(now);
 }
 
 /** Whether a due day is already past. */

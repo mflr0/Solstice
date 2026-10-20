@@ -6,6 +6,7 @@
 
 import { categoryClause, EMPTY, listClause, ME } from './filters.js';
 import { formatOrder, quote, quoteString, type SortTerm } from './jql.js';
+import { KEY_TYPED } from './marks.js';
 import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
 
 type Field =
@@ -84,7 +85,6 @@ const SORTS: Record<string, SortTerm> = {
 
 const ME_WORDS = ['moi', 'me', 'moi-même'];
 const NOBODY_WORDS = ['personne', 'none', 'aucun', 'nobody'];
-const KEY = /^([A-Za-z][A-Za-z0-9_]*)-(\d+)$/;
 
 interface Tok {
   text: string;
@@ -156,7 +156,7 @@ export function simpleToJql(q: string): string {
     } else if (raw.startsWith('#') && raw.length > 1) {
       field = 'labels';
       value = raw.slice(1);
-    } else if (KEY.test(raw) && !not) {
+    } else if (KEY_TYPED.test(raw) && !not) {
       keys.push(raw.toUpperCase());
       continue;
     } else {

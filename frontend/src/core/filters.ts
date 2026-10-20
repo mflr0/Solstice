@@ -24,6 +24,7 @@ import {
   type Value,
 } from './jql.js';
 import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
+import { parseDay } from './dates.js';
 
 /** Fields chosen from a list of values. */
 export const LIST_FIELDS = [
@@ -497,8 +498,6 @@ export function matchPreset(field: DateField, range: DateRange): string | null {
   return p?.id ?? null;
 }
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-
 /** "2026-10-01" plus n days. */
 export function addDays(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number);
@@ -509,17 +508,17 @@ export function addDays(day: string, n: number): string {
 /** A range between two calendar days, both included (either may be missing). */
 export function dayRange(from: string, to: string): DateRange {
   return {
-    from: DAY.test(from) ? { op: '>=', value: from } : null,
-    to: DAY.test(to) ? { op: '<', value: addDays(to, 1) } : null,
+    from: parseDay(from) !== null ? { op: '>=', value: from } : null,
+    to: parseDay(to) !== null ? { op: '<', value: addDays(to, 1) } : null,
     empty: false,
   };
 }
 
 /** The calendar days a range spans, for date inputs; '' where it is open or not a day. */
 export function rangeDays(range: DateRange): { from: string; to: string } {
-  const from = range.from && DAY.test(range.from.value) ? range.from.value : '';
+  const from = range.from && parseDay(range.from.value) !== null ? range.from.value : '';
   let to = '';
-  if (range.to && DAY.test(range.to.value)) {
+  if (range.to && parseDay(range.to.value) !== null) {
     to = range.to.op === '<' ? addDays(range.to.value, -1) : range.to.value;
   }
   return { from, to };

@@ -40,6 +40,7 @@ import {
   isWord,
   ISSUE_KEY_RE,
   KEY_AT_RE,
+  KEY_IN_TEXT,
   LIST_RE,
   MACRO_OPEN_RE,
   normalize,
@@ -1617,7 +1618,7 @@ function escapeEverything(list: Unit[]): Flags {
     .map((u) => (u.kind === 'c' && !M.link.isInSet(u.marks) ? u.ch : '\uFFFF'))
     .join('');
   const keepAsIs = new Set<number>();
-  for (const m of plain.matchAll(/[A-Z][A-Z0-9_]+-\d+/g)) {
+  for (const m of plain.matchAll(new RegExp(KEY_IN_TEXT, 'g'))) {
     const prev = plain.charAt(m.index - 1);
     if (
       !isWord(prev) &&

@@ -4,7 +4,7 @@
  * tests/core/estimates.test.ts.
  */
 
-import { jiraDuration, parseDuration, todayISO } from './dates.js';
+import { isoDay, jiraDuration, parseDuration } from './dates.js';
 import type { TimeTracking, Worklog, WorklogPatch } from './types.js';
 
 /** A typed estimate: nothing (it is cleared), a duration in seconds, or not understood. */
@@ -88,7 +88,7 @@ export function worklogEdit(
   if (seconds === null || !form.day) return { ok: false };
   const patch: WorklogPatch = {};
   if (seconds !== log.seconds) patch.seconds = seconds;
-  if (form.day !== todayISO(new Date(log.started))) patch.started = worklogStart(form.day);
+  if (form.day !== isoDay(new Date(log.started))) patch.started = worklogStart(form.day);
   if (form.body.trim() !== (log.body ?? '').trim()) patch.body = form.body;
   return { ok: true, patch };
 }
