@@ -20,12 +20,6 @@ import (
 	"time"
 )
 
-func (s *Server) projectKeyOf(ctx context.Context, id int64) string {
-	var key string
-	s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key)
-	return key
-}
-
 // Components --------------------------------------------------------------------
 
 var assigneeTypes = []string{"project_default", "component_lead", "project_lead", "unassigned"}

@@ -63,7 +63,7 @@ type Server struct {
 
 	streamsDone  chan struct{} // closed by CloseStreams
 	closeStreams sync.Once
-	streams      streamSlots // open live-event streams, capped (meta.go)
+	streams      streamSlots // open live-event streams, capped (notifications.go)
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time

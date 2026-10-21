@@ -6,11 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
-	"strings"
 )
 
 type projectOut struct {
@@ -408,4 +408,10 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 	s.perms.Invalidate()
 	s.auditGrants(r, id, before)
 	return s.getPermissions(w, r)
+}
+
+func (s *Server) projectKeyOf(ctx context.Context, id int64) string {
+	var key string
+	s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key)
+	return key
 }
