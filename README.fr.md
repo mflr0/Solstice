@@ -111,6 +111,7 @@ fichier ou l'environnement, est signalée dans le journal au démarrage.
 | `SOLSTICE_HTTP_MAXSTORAGE` | `0` | taille totale de toutes les pièces jointes ; `0` signifie sans limite |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
+| `SOLSTICE_LDAP_*` | aucune | connexion LDAP ou Active Directory, voir [l'installation](docs/fr/install.md) et [l'administration](docs/fr/administration.md#ldap-et-active-directory) |
 
 Les durées s'écrivent `30s`, `5m`, `1h30m`.
 

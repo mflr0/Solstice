@@ -173,7 +173,8 @@ Rules to know:
   Software boards, sprints, ranking and epics are read.
 - Passwords of accounts in an external directory (LDAP and similar), or stored
   in an old format. Those accounts are imported without a password. The
-  report counts the active ones. Set one
+  report counts the active ones. Turn on LDAP sign-in (see
+  [administration](administration.md#ldap-and-active-directory)), set one
   with `solstice user passwd -username NAME`, or send a reset link from the
   administration.
 - Attachment files, when `-jira-home` is not given. The report says so. Run

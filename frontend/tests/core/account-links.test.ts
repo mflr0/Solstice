@@ -69,6 +69,7 @@ describe('what the administration offers', () => {
     expect(canSendResetLink({ ...seen, active: false }, true)).toBe(false);
     expect(canSendResetLink({ ...seen, email: '' }, true)).toBe(false);
     expect(canSendResetLink({ ...seen, email: '  ' }, true)).toBe(false);
+    expect(canSendResetLink({ ...seen, directory: 'ldap' }, true)).toBe(false);
   });
 
   it('resends an invitation only to accounts that never signed in', () => {
@@ -77,6 +78,7 @@ describe('what the administration offers', () => {
     expect(canResendInvitation(never, false)).toBe(false);
     expect(canResendInvitation({ ...never, active: false }, true)).toBe(false);
     expect(canResendInvitation({ ...never, email: '' }, true)).toBe(false);
+    expect(canResendInvitation({ ...never, directory: 'ldap' }, true)).toBe(false);
     // An older server does not say: no guessing.
     expect(canResendInvitation({ active: true, email: 'a@example.org' }, true)).toBe(false);
   });

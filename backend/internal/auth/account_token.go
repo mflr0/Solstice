@@ -42,6 +42,7 @@ type AccountToken struct {
 // execer is the database or a transaction.
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 // NewAccountTokenValue returns a fresh token for a link sent by e-mail.
@@ -68,7 +69,8 @@ func Usable(expires time.Time, used sql.NullTime, now time.Time) bool {
 
 // IssueAccountToken creates a token of a purpose for an account and returns
 // it; it exists in clear nowhere else. Every unused token the account had is
-// replaced: only the newest link works. The account row is locked meanwhile,
+// replaced: only the newest link works. An account of a directory gets none:
+// ErrDirectoryAccount. The account row is locked meanwhile,
 // so two requests at once cannot both leave a working link.
 func IssueAccountToken(ctx context.Context, tx *sql.Tx, userID int64, purpose string, now time.Time) (string, error) {
 	life := Lifetime(purpose)
@@ -80,9 +82,12 @@ func IssueAccountToken(ctx context.Context, tx *sql.Tx, userID int64, purpose st
 		return "", err
 	}
 	now = now.UTC()
-	var id int64
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE id = ? FOR UPDATE`, userID).Scan(&id); err != nil {
+	var directory string
+	if err := tx.QueryRowContext(ctx, `SELECT directory FROM users WHERE id = ? FOR UPDATE`, userID).Scan(&directory); err != nil {
 		return "", err
+	}
+	if directory != "" {
+		return "", ErrDirectoryAccount
 	}
 	if err := RevokeAccountTokens(ctx, tx, userID, now); err != nil {
 		return "", err

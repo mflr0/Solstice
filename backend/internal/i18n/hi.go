@@ -35,6 +35,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "ईमेल पता अमान्य है।",
 	AccountOwnAdminRights:            "आप अपने ही एडमिन अधिकार नहीं हटा सकते।",
 	AccountOwnPasswordInProfile:      "अपना पासवर्ड अपने प्रोफ़ाइल से बदलें।",
+	AccountDirectoryPassword:         "यह खाता डायरेक्टरी (LDAP) से साइन इन करता है: इसका पासवर्ड वहीं बदला जाता है।",
 	AccountOwnEmailInProfile:         "अपना ईमेल पता अपने प्रोफ़ाइल से बदलें।",
 	AccountPasswordTooShort:          "पासवर्ड कम से कम %d वर्णों का होना चाहिए।",
 	AccountPasswordIsUsername:        "पासवर्ड यूज़रनेम नहीं हो सकता।",

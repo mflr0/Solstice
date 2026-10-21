@@ -28,6 +28,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/db"
+	"solstice/internal/directory"
 	"solstice/internal/importer"
 	"solstice/internal/web"
 	"solstice/internal/worker"
@@ -67,6 +68,23 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
   SOLSTICE_HTTP_MAXSTORAGE       total size of all attachments, 0 for no limit, e.g. 10GiB (default 0)
   SOLSTICE_LOG_LEVEL             debug, info, warn or error (default info)
   SOLSTICE_LOG_FORMAT            text or json (default text)
+  SOLSTICE_LDAP_URL              LDAP or Active Directory sign-in, off when empty: ldaps://host,
+                                 or ldap://host with STARTTLS (default none)
+  SOLSTICE_LDAP_STARTTLS         switch ldap:// to TLS first (default false)
+  SOLSTICE_LDAP_INSECURE         allow ldap:// without TLS, passwords in clear (default false)
+  SOLSTICE_LDAP_CAFILE           PEM file of certificate authorities to trust as well
+  SOLSTICE_LDAP_BINDDN           service account that searches, anonymous when empty
+  SOLSTICE_LDAP_BINDPASSWORD     its password
+  SOLSTICE_LDAP_USERBASE         where people are searched, e.g. ou=people,dc=example,dc=org
+  SOLSTICE_LDAP_USERFILTER       how; {username} is the name typed; defaults to (uid={username})
+  SOLSTICE_LDAP_NAMEATTR         attribute of the account's name (default displayName)
+  SOLSTICE_LDAP_EMAILATTR        attribute of its e-mail address (default mail)
+  SOLSTICE_LDAP_GROUPBASE        where groups are searched (default <the user base>)
+  SOLSTICE_LDAP_GROUPFILTER      how; {dn} is the person's DN; defaults to (member={dn})
+  SOLSTICE_LDAP_GROUPNAMEATTR    attribute naming a group (default cn)
+  SOLSTICE_LDAP_REQUIREGROUP     only its members sign in through LDAP (default none)
+  SOLSTICE_LDAP_ADMINGROUP       its members are administrators, and only they (default none)
+  SOLSTICE_LDAP_TIMEOUT          time a sign-in waits for the server (default 10s)
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -144,6 +162,13 @@ func runServe(ctx context.Context, args []string) error {
 	log := slog.Default()
 	log.Info("Solstice is starting", "version", version, "config", cfg.Path, "config_found", cfg.Exists, "data", dataDir)
 	go auth.PrepareSignIn()
+	dir, err := directory.New(cfg.LDAP)
+	if err != nil {
+		return err
+	}
+	if dir != nil {
+		log.Info("LDAP sign-in is on", "url", cfg.LDAP.URL)
+	}
 
 	// Without a database, or on one without any account, the setup wizard
 	// runs first; the application takes over when it is done.
@@ -182,6 +207,9 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetSecretKey(cfg.SecretKey)
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
 		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
+		if dir != nil {
+			srv.SetDirectory(dir)
+		}
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
 		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})

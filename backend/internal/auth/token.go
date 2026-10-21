@@ -54,10 +54,10 @@ func LookupToken(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	var lastUsed sql.NullTime
 	now := time.Now().UTC()
 	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, ''),
-		t.id, t.last_used_at
+		u.directory, t.id, t.last_used_at
 		FROM api_tokens t JOIN users u ON u.id = t.user_id
 		WHERE t.token_hash = ? AND (t.expires_at IS NULL OR t.expires_at > ?) AND u.active`, TokenHash(token), now).
-		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.TokenID, &lastUsed)
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory, &u.TokenID, &lastUsed)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoSession
 	}

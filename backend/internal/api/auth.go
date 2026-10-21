@@ -19,10 +19,13 @@ type meResponse struct {
 	Email    string  `json:"email"`
 	Admin    bool    `json:"admin"`
 	Locale   *string `json:"locale"` // null: none chosen
+	// Directory is "ldap" for an account whose password is the directory's.
+	Directory string `json:"directory"`
 }
 
 func meOf(u *auth.User) meResponse {
-	me := meResponse{ID: u.ID, Username: u.Username, Name: u.DisplayName, Email: u.Email, Admin: u.Admin}
+	me := meResponse{ID: u.ID, Username: u.Username, Name: u.DisplayName, Email: u.Email, Admin: u.Admin,
+		Directory: u.Directory}
 	if u.Locale != "" {
 		me.Locale = &u.Locale
 	}
@@ -32,8 +35,8 @@ func meOf(u *auth.User) meResponse {
 // userByID loads an account for its id, with the fields meOf answers with.
 func (s *Server) userByID(ctx context.Context, id int64) (auth.User, error) {
 	var u auth.User
-	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
-		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale)
+	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory
+		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory)
 	return u, err
 }
 

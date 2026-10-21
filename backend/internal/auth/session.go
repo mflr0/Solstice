@@ -28,6 +28,7 @@ type User struct {
 	Email       string
 	Admin       bool
 	Locale      string // interface language chosen by the user, "" to follow the browser
+	Directory   string // the directory the account signs in with ("ldap"), "" for a local account
 	TokenID     int64  // the personal access token the request signed in with, 0 for none
 }
 
@@ -75,10 +76,11 @@ func NewSessionFor(ctx context.Context, db *sql.DB, userID int64, lifetime time.
 // Lookup returns the active user behind a session token.
 func Lookup(ctx context.Context, db *sql.DB, token string) (*User, error) {
 	var u User
-	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, '')
+	err := db.QueryRowContext(ctx, `SELECT u.id, u.username, u.display_name, u.email, u.is_admin, COALESCE(u.locale, ''),
+		u.directory
 		FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.token_hash = ? AND s.expires_at > ? AND u.active`, TokenHash(token), time.Now().UTC()).
-		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale)
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoSession
 	}
@@ -104,23 +106,31 @@ func CanonicalUsername(typed string) string {
 }
 
 // Authenticate checks a user name and password. Jira hashes are upgraded to
-// Argon2id on the first successful sign-in.
-func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*User, error) {
+// Argon2id on the first successful sign-in. With a directory (nil for none),
+// its accounts are checked there, and so is a name no account has, or one
+// without a password: see directorySignIn.
+func Authenticate(ctx context.Context, db *sql.DB, dir Directory, username, password string) (*User, error) {
 	username = CanonicalUsername(username)
 	var u User
 	var hash sql.NullString
-	err := db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), password_hash
-		FROM users WHERE username = LOWER(?) AND active`, username).
-		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &hash)
-	if errors.Is(err, sql.ErrNoRows) {
+	var active bool
+	err := db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory,
+		password_hash, active
+		FROM users WHERE username = LOWER(?)`, username).
+		Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory, &hash, &active)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		if dir != nil {
+			return directorySignIn(ctx, db, dir, 0, username, password)
+		}
 		// Spend the same time as a real check so user names cannot be probed.
 		CheckPassword(dummyHash(), password)
 		return nil, ErrNoSession
-	}
-	if err != nil {
+	case err != nil:
 		return nil, err
-	}
-	if !hash.Valid {
+	case active && dir != nil && (u.Directory == dir.Name() || (u.Directory == "" && !hash.Valid)):
+		return directorySignIn(ctx, db, dir, u.ID, username, password)
+	case !active || u.Directory != "" || !hash.Valid:
 		CheckPassword(dummyHash(), password)
 		return nil, ErrNoSession
 	}
@@ -143,9 +153,13 @@ func Authenticate(ctx context.Context, db *sql.DB, username, password string) (*
 }
 
 // SetPasswordHash stores a new password hash for a user and ends every other
-// way into the account: EndCredentials. Call it in the transaction that makes
+// way into the account: EndCredentials. An account of a directory has no
+// password here: ErrDirectoryAccount. Call it in the transaction that makes
 // the change.
 func SetPasswordHash(ctx context.Context, ex execer, userID int64, hash, keep string) (revoked int64, err error) {
+	if err := refuseDirectory(ctx, ex, userID); err != nil {
+		return 0, err
+	}
 	if _, err := ex.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID); err != nil {
 		return 0, err
 	}

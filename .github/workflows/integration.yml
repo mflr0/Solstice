@@ -50,6 +50,22 @@ jobs:
           GRANT ALL ON solstice_t.* TO 'solstice'@'%';
           GRANT ALL ON solstice_t_setup.* TO 'solstice'@'%';
           SQL
+      # The directory of tests/ldap_test.go: synthetic people and groups.
+      - name: Start the LDAP server
+        run: |
+          docker run -d --name ldap -p 1389:389 --ulimit nofile=1024:1024 \
+            -e LDAP_ORGANISATION=Example -e LDAP_DOMAIN=example.org -e LDAP_ADMIN_PASSWORD=admin -e LDAP_TLS=false \
+            -v "$PWD/tests/testdata/ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom" \
+            osixia/openldap:1.5.0 --copy-service
+          for _ in $(seq 60); do
+            if docker exec ldap ldapsearch -x -H ldap://localhost -b dc=example,dc=org \
+              -D cn=admin,dc=example,dc=org -w admin uid=ldap.ada uid 2>/dev/null | grep -q '^uid: ldap.ada'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs ldap
+          exit 1
       - name: Load the seed
         run: mariadb --protocol=tcp -h 127.0.0.1 -uroot -proot solstice_t < tests/testdata/seed.sql
       # The seed may be older than the migrations of this branch.
@@ -64,3 +80,4 @@ jobs:
           SOLSTICE_TEST_REQUIRE_DB: "1"
           SOLSTICE_TEST_DB: mysql://solstice:solstice@127.0.0.1:3306/solstice_t
           SOLSTICE_TEST_EMPTY_DB: mysql://solstice:solstice@127.0.0.1:3306/solstice_t_setup
+          SOLSTICE_TEST_LDAP: ldap://127.0.0.1:1389

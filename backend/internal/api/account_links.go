@@ -224,8 +224,8 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// mailResetLinks mails a link to each active account that has an address and
-// is named by id, as a user name or an address.
+// mailResetLinks mails a link to each active local account that has an
+// address and is named by id, as a user name or an address.
 func (s *Server) mailResetLinks(r *http.Request, id string) error {
 	ctx := r.Context()
 	cfg, ok := s.linkConfig(ctx)
@@ -234,7 +234,7 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 	}
 	var targets []linkTarget
 	err := sqlq.Each(ctx, s.db, `SELECT `+linkTargetColumns+` FROM users
-		WHERE active AND email <> '' AND (username = ? OR LOWER(email) = ?) ORDER BY id LIMIT ?`,
+		WHERE active AND directory = '' AND email <> '' AND (username = ? OR LOWER(email) = ?) ORDER BY id LIMIT ?`,
 		func(rows *sql.Rows) error {
 			t, err := scanLinkTarget(rows)
 			if err != nil {

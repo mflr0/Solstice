@@ -44,6 +44,7 @@ type Server struct {
 	maxUpload  int64          // bytes in one upload request; see SetMaxUpload
 	maxStorage int64          // bytes in all attachments, 0 for no limit; see SetMaxStorage
 	out        *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	dir        auth.Directory // LDAP, nil when off; see SetDirectory
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -74,7 +75,7 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
 		tokenAud: map[int64]time.Time{}}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
-		return auth.Authenticate(ctx, s.db, username, password)
+		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
 	s.sleep = func(ctx context.Context, d time.Duration) {
 		t := time.NewTimer(d)
@@ -88,6 +89,10 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 	s.startOutgoing()
 	return s
 }
+
+// SetDirectory signs accounts in through an external directory (LDAP). Call
+// it before the server takes requests.
+func (s *Server) SetDirectory(d auth.Directory) { s.dir = d }
 
 // CloseStreams ends the live-update streams. Called when the HTTP server shuts
 // down, which does not cancel requests and would wait for them forever.
@@ -340,6 +345,9 @@ func boundary(log *slog.Logger, msg string, r *http.Request, err error) error {
 	}
 	if errors.Is(err, context.Canceled) {
 		return nil
+	}
+	if errors.Is(err, auth.ErrDirectoryAccount) {
+		return fail(http.StatusConflict, i18n.AccountDirectoryPassword)
 	}
 	log.Error(msg, "method", r.Method, "route", r.Pattern, "err", err)
 	return fail(http.StatusInternalServerError, i18n.RequestInternalError)

@@ -1903,6 +1903,8 @@ export const de: Messages = {
     emailHint: 'Dient auch dazu, Sie zu benachrichtigen und zu erreichen.',
     emailChangeHint: 'Zum Ändern der Adresse wird Ihr aktuelles Passwort benötigt.',
     passwordTitle: 'Passwort',
+    directoryPasswordIntro:
+      'Ihr Passwort wird im Verzeichnis (LDAP) verwaltet: Ändern Sie es dort. Geben Sie es hier nur ein, um Ihre E-Mail-Adresse zu ändern.',
     passwordIntro:
       'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten. Ein neues Passwort beendet Ihre anderen Sitzungen, und Ihre Zugriffstoken funktionieren nicht mehr.',
     currentPassword: 'Aktuelles Passwort',
@@ -2011,6 +2013,8 @@ export const de: Messages = {
     admin: 'Administrator',
     inactive: 'deaktiviert',
     noPassword: 'ohne Passwort',
+    directory: 'LDAP',
+    directoryHint: 'Meldet sich über das Verzeichnis (LDAP) an: Das Passwort wird dort verwaltet.',
     more: (n: number) => `+${n}`,
     rights: 'Berechtigungen',
     adminLabel: 'Solstice-Administrator (Zugriff auf die gesamte Administration)',

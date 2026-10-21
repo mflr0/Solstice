@@ -170,7 +170,11 @@
               <span class="tag-list">
                 {#if u.admin}<span class="stamp done">{t.usersAdmin.admin}</span>{/if}
                 {#if !u.active}<span class="stamp">{t.usersAdmin.inactive}</span>{/if}
-                {#if !u.hasPassword}<span class="muted small">{t.usersAdmin.noPassword}</span>{/if}
+                {#if u.directory}<span class="stamp" title={t.usersAdmin.directoryHint}
+                    >{t.usersAdmin.directory}</span
+                  >{:else if !u.hasPassword}<span class="muted small"
+                    >{t.usersAdmin.noPassword}</span
+                  >{/if}
               </span>
             </td>
             <td
@@ -184,9 +188,11 @@
                 >{t.common.edit}</button
               >
               {#if u.id !== session.me?.id}
-                <button class="link-btn" onclick={() => (password = u)}
-                  >{t.usersAdmin.password}</button
-                >
+                {#if !u.directory}
+                  <button class="link-btn" onclick={() => (password = u)}
+                    >{t.usersAdmin.password}</button
+                  >
+                {/if}
                 {#if canResendInvitation(u, publicSettings.value.emailLinks)}
                   <button class="link-btn" onclick={() => void resendInvitation(u)}
                     >{t.usersAdmin.resendInvite}</button

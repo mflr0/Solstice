@@ -47,14 +47,17 @@ export interface LinkAccount {
   email: string;
   /** null: never signed in; undefined: an older server that does not say. */
   lastLogin?: string | null;
+  /** "ldap": the directory holds the password, Solstice never sets it. */
+  directory?: string;
 }
 
 /**
  * Whether an administrator may send a link to choose a password: e-mail links
- * work on this instance, the account may sign in and has an address.
+ * work on this instance, the account may sign in, has an address, and its
+ * password is Solstice's (not a directory's).
  */
 export function canSendResetLink(a: LinkAccount, emailLinks: boolean): boolean {
-  return emailLinks && a.active && a.email.trim() !== '';
+  return emailLinks && a.active && a.email.trim() !== '' && !a.directory;
 }
 
 /**

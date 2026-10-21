@@ -1889,6 +1889,8 @@ export const fr: Messages = {
     emailHint: 'Sert aussi à vous prévenir et à vous joindre.',
     emailChangeHint: 'Changer l’adresse demande votre mot de passe actuel.',
     passwordTitle: 'Mot de passe',
+    directoryPasswordIntro:
+      'Votre mot de passe est géré par l’annuaire (LDAP) : changez-le là-bas. Tapez-le ici seulement pour changer votre adresse e-mail.',
     passwordIntro:
       'Laissez les champs vides pour garder le mot de passe actuel. Un nouveau mot de passe ferme vos autres sessions, et vos jetons d’accès cessent de fonctionner.',
     currentPassword: 'Mot de passe actuel',
@@ -1993,6 +1995,8 @@ export const fr: Messages = {
     admin: 'Administrateur',
     inactive: 'désactivé',
     noPassword: 'sans mot de passe',
+    directory: 'LDAP',
+    directoryHint: 'Se connecte avec l’annuaire (LDAP) : son mot de passe se gère là-bas.',
     more: (n: number) => `+${n}`,
     rights: 'Droits',
     adminLabel: 'Administrateur de Solstice (accès à toute l’administration)',

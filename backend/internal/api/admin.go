@@ -29,6 +29,7 @@ type adminUser struct {
 	Active      bool       `json:"active"`
 	Admin       bool       `json:"admin"`
 	HasPassword bool       `json:"hasPassword"`
+	Directory   string     `json:"directory"` // "ldap", "" for a local account
 	Created     time.Time  `json:"created"`
 	LastLogin   *time.Time `json:"lastLogin"`
 	Groups      []idName   `json:"groups"`
@@ -48,13 +49,13 @@ func validEmail(s string) bool {
 	return err == nil && a.Address == s && a.Name == ""
 }
 
-const adminUserColumns = `id, username, display_name, email, active, is_admin, password_hash IS NOT NULL, created_at,
-	last_login_at`
+const adminUserColumns = `id, username, display_name, email, active, is_admin, password_hash IS NOT NULL, directory,
+	created_at, last_login_at`
 
 func scanAdminUser(sc interface{ Scan(...any) error }) (adminUser, error) {
 	var u adminUser
 	var last sql.NullTime
-	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Created, &last)
+	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Directory, &u.Created, &last)
 	u.LastLogin = sqlq.Time(last)
 	u.Groups = []idName{}
 	return u, err
