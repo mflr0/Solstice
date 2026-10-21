@@ -123,6 +123,10 @@ func TestCustomFields(t *testing.T) {
 	paul.call("PATCH", "/api/issues/"+c.Key, map[string]any{"customFields": map[string]any{field: "Inconnue"}}, 400, nil)
 	demo := scratchIssue(t, paul, "Hors contexte")
 	paul.call("PATCH", "/api/issues/"+demo, map[string]any{"customFields": map[string]any{field: "Haut"}}, 400, nil)
+	// A malformed type is refused as such, not by checking the custom fields against the old type.
+	if status, msg, _ := paul.errorIn("en", "PATCH", "/api/issues/"+demo, map[string]any{"type": 5, "customFields": map[string]any{field: "Haut"}}); status != 400 || msg != "Invalid value for field type." {
+		t.Errorf("malformed type: %d %q", status, msg)
+	}
 	for _, q := range []string{`"` + name + `" = Bas`, `cf[` + field + `] = Bas`} {
 		var res struct{ Total int }
 		paul.call("GET", "/api/issues?jql="+url.QueryEscape("project = "+key+" AND "+q), nil, 200, &res)

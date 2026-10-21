@@ -1447,7 +1447,9 @@ func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	typeID := iss.TypeID
 	if f.has("type") {
-		f.get("type", &typeID)
+		if err := f.get("type", &typeID); err != nil {
+			return err
+		}
 	}
 	custom, err := s.readCustomFields(ctx, f, iss.ProjectID, typeID)
 	if err != nil {
