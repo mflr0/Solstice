@@ -25,7 +25,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -185,11 +184,8 @@ func (s *Server) sendAccountLink(ctx context.Context, cfg mail.Config, to *linkT
 // auditAccount records an action on an account that its own person does
 // without being signed in (a reset asked for or done, an invitation accepted).
 func (s *Server) auditAccount(r *http.Request, action string, id int64, username string, details map[string]any) {
-	e := audit.Entry{UserID: id, Username: username, IP: clientIP(r, s.proxies), Action: action,
-		Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username}, Details: details}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, s.proxies),
+		Action: action, Target: target("user", id, username), Details: details})
 }
 
 // hold waits until d has passed since start (or the request ends).
@@ -456,6 +452,6 @@ func (s *Server) adminSendLink(w http.ResponseWriter, r *http.Request, id int64,
 	if err := s.sendAccountLink(ctx, cfg, to, l.purpose); err != nil {
 		return err
 	}
-	s.auditLog(r, l.action, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username}, l.details())
+	s.auditLog(r, l.action, target("user", id, to.Username), l.details())
 	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
 }

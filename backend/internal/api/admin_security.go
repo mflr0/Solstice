@@ -12,7 +12,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -170,8 +169,7 @@ func (s *Server) auditLevel(r *http.Request, action string, projectID int64, lev
 		details[k] = v
 	}
 	key := s.projectKeyOf(r.Context(), projectID)
-	s.auditLog(r, action, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
-		details)
+	s.auditLog(r, action, target("project", projectID, key), details)
 }
 
 // saveSecurityLevel creates a level (no id in the path) or changes one.
@@ -245,14 +243,10 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 		s.auditLevel(r, audit.SecurityLevelCreate, projectID, level.Name, nil)
 		return writeJSON(w, http.StatusCreated, level)
 	}
-	if level.Name != before.Name || derefStr(level.Description) != derefStr(before.Description) {
-		more := map[string]any{}
-		if level.Name != before.Name {
-			more["name"] = map[string]any{"from": before.Name, "to": level.Name}
-		}
-		if derefStr(level.Description) != derefStr(before.Description) {
-			more["description"] = map[string]any{"from": derefStr(before.Description), "to": derefStr(level.Description)}
-		}
+	more := map[string]any{}
+	diff(more, "name", before.Name, level.Name)
+	diff(more, "description", derefStr(before.Description), derefStr(level.Description))
+	if len(more) > 0 {
 		s.auditLevel(r, audit.SecurityLevelUpdate, projectID, level.Name, more)
 	}
 	return writeJSON(w, http.StatusOK, level)

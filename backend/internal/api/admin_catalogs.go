@@ -244,9 +244,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		for k, v := range sets {
 			changes[k] = v
 		}
-		if before.Name != it.Name {
-			changes["name"] = map[string]string{"from": before.Name, "to": it.Name}
-		}
+		diff(changes, "name", before.Name, it.Name)
 		s.auditLog(r, c.audit+".update", target, changes)
 		return writeJSON(w, http.StatusOK, it)
 	}

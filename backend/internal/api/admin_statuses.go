@@ -162,7 +162,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.forgetCatalogue()
-	if st != before {
+	if changed(before, st) {
 		s.auditLog(r, audit.StatusUpdate, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, map[string]any{
 			"from": map[string]any{"name": before.Name, "category": before.Category},
 			"to":   map[string]any{"name": st.Name, "category": st.Category}})

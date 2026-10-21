@@ -640,13 +640,11 @@ func (s *Server) auditUpdateResult(ctx context.Context, a *updateAttempt) {
 		s.log.Error("update result not recorded", "err", err)
 		return
 	}
-	if err := audit.Record(ctx, s.db, audit.Entry{
+	record(ctx, s.db, s.log, audit.Entry{
 		Action:  auditUpdateResult,
 		Target:  audit.Target{Type: "version", ID: a.To, Label: "Solstice " + a.To},
 		Details: map[string]any{"from": a.From, "to": a.To, "status": a.Status},
-	}); err != nil {
-		s.log.Error("audit log write failed", "action", auditUpdateResult, "err", err)
-	}
+	})
 }
 
 func (s *Server) updateRoutes(route func(string, handler, bool)) {
