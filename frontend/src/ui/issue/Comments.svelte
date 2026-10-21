@@ -27,7 +27,10 @@
   async function load(key: string) {
     try {
       const list = await api.comments(key);
-      if (key === issue.key) comments = list;
+      if (key === issue.key) {
+        comments = list;
+        error = '';
+      }
     } catch (e) {
       error = errorMessage(e);
     }

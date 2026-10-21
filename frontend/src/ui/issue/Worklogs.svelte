@@ -38,7 +38,10 @@
     api
       .worklogs(key)
       .then((l) => {
-        if (key === issue.key) logs = l;
+        if (key === issue.key) {
+          logs = l;
+          error = '';
+        }
       })
       .catch((e: unknown) => (error = errorMessage(e)));
   });

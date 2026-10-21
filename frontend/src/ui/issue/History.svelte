@@ -21,7 +21,10 @@
     api
       .history(key)
       .then((h) => {
-        if (key === issueKey) entries = [...h].reverse();
+        if (key === issueKey) {
+          entries = [...h].reverse();
+          error = '';
+        }
       })
       .catch((e: unknown) => (error = errorMessage(e)));
   });
