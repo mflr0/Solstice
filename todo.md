@@ -13,23 +13,17 @@ current README, code of conduct and license, and it does not compile. Merging
 - Commits: plain messages, no `Co-Authored-By` line.
 - Every change goes on a `v1.0/<topic>` branch and a pull request to
   `feat/v1.0`; the maintainer merges by hand.
-- Data: tests and agents use only the synthetic data of
-  `backend/cmd/jira-fixture`, never real data (rule 6 of CODE_OF_CONDUCT.md).
+- Data: tests use only the synthetic data of `backend/cmd/jira-fixture`,
+  never real data (rule 6 of CODE_OF_CONDUCT.md).
 - Integration tests live in `backend/tests`.
 - Legal: no code, assets, fonts or styles from Atlassian or Microsoft, and no
   brand names in themes. Jira is named only for migration, API compatibility
   and the trademark note.
-- Design: no generic "AI" look (no purple gradients, glassmorphism, Inter
-  font, emojis).
+- Design: no purple gradients, glassmorphism, Inter font or emojis.
 - Languages: English is the source (`frontend/src/i18n/en.ts`, Go string
   literals); French, German, Italian and Hindi are translations. A new text
-  needs all five. Translations from cheap models need a meaning review: about
-  3% of the server messages they translated had lost their meaning.
+  needs all five, each reviewed for its meaning, not only its words.
 - Large changes start with an issue (rule 7 of CODE_OF_CONDUCT.md).
-- Delegating to opencode worked well with: one git worktree per task on an
-  `oc/*` branch, a prompt with fixed rules, a starting check, exact commands
-  and expected outputs, a report file that is not committed, and a review of
-  every branch before cherry-picking it.
 
 ## Remaining for 1.0, in order
 
