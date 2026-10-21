@@ -496,9 +496,9 @@
 
 /* Each page is a window -------------------------------------------------------------- */
 
+/* No wider than the base max-width, which boards raise. */
 [data-skin='retro'] .page {
   width: calc(100% - 32px);
-  max-width: 1280px;
   margin: 16px auto 28px;
   padding: 3px 16px 22px;
   background: var(--paper);
