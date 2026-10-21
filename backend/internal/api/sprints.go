@@ -427,30 +427,8 @@ func (s *Server) deleteSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	var issueIDs []int64
-	if err := sqlq.Each(ctx, tx, `SELECT issue_id FROM sprint_issues WHERE sprint_id = ? ORDER BY issue_id`,
-		func(rows *sql.Rows) error {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			issueIDs = append(issueIDs, id)
-			return nil
-		}, sp.ID); err != nil {
-		return err
-	}
-	now := time.Now().UTC()
-	line := change{field: "Sprint", oldValue: strconv.FormatInt(sp.ID, 10), oldString: sp.Name}
-	for _, id := range issueIDs {
-		if err := recordChanges(ctx, tx, id, sub.UserID, now, []change{line}); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE issues SET updated_at = ? WHERE id = ?`, now, id); err != nil {
-			return err
-		}
-	}
-	// The sprint's issues leave with it (sprint_issues cascades).
-	if _, err := tx.ExecContext(ctx, `DELETE FROM sprints WHERE id = ?`, sp.ID); err != nil {
+	issueIDs, line, err := dropSprint(ctx, tx, sub.UserID, sp, time.Now().UTC())
+	if err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -465,6 +443,38 @@ func (s *Server) deleteSprint(w http.ResponseWriter, r *http.Request) error {
 
 // announceBackToBacklog tells the pages and the webhooks that issues left a
 // sprint, with their new history line.
+// dropSprint deletes a future sprint in tx and records, on each of its
+// issues, that it went back to the backlog. It returns those issues and the
+// history line, for announceBackToBacklog once tx commits.
+func dropSprint(ctx context.Context, tx *sql.Tx, by int64, sp *sprintOut, now time.Time) ([]int64, change, error) {
+	line := change{field: "Sprint", oldValue: strconv.FormatInt(sp.ID, 10), oldString: sp.Name}
+	var issueIDs []int64
+	if err := sqlq.Each(ctx, tx, `SELECT issue_id FROM sprint_issues WHERE sprint_id = ? ORDER BY issue_id`,
+		func(rows *sql.Rows) error {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			issueIDs = append(issueIDs, id)
+			return nil
+		}, sp.ID); err != nil {
+		return nil, line, err
+	}
+	for _, id := range issueIDs {
+		if err := recordChanges(ctx, tx, id, by, now, []change{line}); err != nil {
+			return nil, line, err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE issues SET updated_at = ? WHERE id = ?`, now, id); err != nil {
+			return nil, line, err
+		}
+	}
+	// The sprint's issues leave with it (sprint_issues cascades).
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sprints WHERE id = ?`, sp.ID); err != nil {
+		return nil, line, err
+	}
+	return issueIDs, line, nil
+}
+
 func (s *Server) announceBackToBacklog(ctx context.Context, by int64, issueIDs []int64, line change) {
 	for _, id := range issueIDs {
 		iss, err := s.findIssueByID(ctx, id)

@@ -289,6 +289,8 @@ placeholder `release_pubkey` in `deploy/linux/update.sh` and commit it. Until
 then the update helper refuses every update. Then
 `SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
 `deploy/linux/test-update-signature.sh` tests the check with a throwaway key.
+`deploy/linux/test-update-systemd.sh` runs the helper under systemd in a Docker
+container: an update, a bad checksum refused, an unhealthy version rolled back.
 
 ### Tests
 
