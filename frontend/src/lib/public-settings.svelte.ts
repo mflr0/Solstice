@@ -20,12 +20,13 @@ export interface PublicSettings {
   emailLinks: boolean;
 }
 
-/** What an older server, without the endpoint, amounts to. */
+/** Used when the call fails: the endpoint exists in every server build. */
 const FALLBACK: PublicSettings = {
   instanceName: '',
   defaultLanguage: 'en',
   banner: null,
-  passwordMinLength: 10,
+  // The server's defaultPasswordMin owns this value.
+  passwordMinLength: 12,
   emailLinks: false,
 };
 
@@ -40,7 +41,7 @@ class PublicSettingsStore {
         ...(await request<PublicSettings>('GET', '/api/settings/public')),
       };
     } catch {
-      // An older server, or offline: no banner, the built-in name.
+      // Failed call (offline, proxy error): keep the fallback.
     } finally {
       this.loaded = true;
     }
