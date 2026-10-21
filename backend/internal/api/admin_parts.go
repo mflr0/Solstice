@@ -85,15 +85,8 @@ func (s *Server) listComponents(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) componentNameTaken(ctx context.Context, projectID int64, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM components WHERE project_id = ? AND LOWER(name) = LOWER(?)
-		AND id <> ?`, projectID, name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.valueTaken(ctx, "components", "name", "project_id = ?", []any{projectID}, name, except,
+		i18n.CommonAlreadyExists)
 }
 
 // saveComponent creates a component (no id in the path) or changes one.
@@ -439,15 +432,8 @@ func (s *Server) listVersions(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) versionNameTaken(ctx context.Context, projectID int64, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM versions WHERE project_id = ? AND LOWER(name) = LOWER(?)
-		AND id <> ?`, projectID, name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.valueTaken(ctx, "versions", "name", "project_id = ?", []any{projectID}, name, except,
+		i18n.CommonAlreadyExists)
 }
 
 // optDate reads an optional day: null or "" clears it.

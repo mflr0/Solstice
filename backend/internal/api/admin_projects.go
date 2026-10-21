@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -133,15 +134,7 @@ func (s *Server) checkCategory(ctx context.Context, id *int64) error {
 
 // projectNameTaken tells whether another project has this name (any case).
 func (s *Server) projectNameTaken(ctx context.Context, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.ProjectNameTaken, name)
-	}
-	return nil
+	return s.nameTaken(ctx, "projects", name, except, i18n.ProjectNameTaken)
 }
 
 // checkIssueTypes validates the issue types offered in a project: known,
@@ -165,82 +158,102 @@ func checkIssueTypes(cat *catalog, ids []string) ([]string, error) {
 	return out, nil
 }
 
-func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
+// checkAssigneeType refuses a default assignee other than unassigned or lead.
+func checkAssigneeType(t string) error {
+	if t != "unassigned" && t != "lead" {
+		return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
 	}
-	var in struct {
-		Key             string       `json:"key"`
-		Name            string       `json:"name"`
-		Description     *string      `json:"description"`
-		Lead            *int64       `json:"lead"`
-		Category        *int64       `json:"category"`
-		Template        string       `json:"template"`
-		Access          *accessInput `json:"access"`
-		IssueTypes      []string     `json:"issueTypes"`
-		DefaultAssignee *string      `json:"defaultAssignee"`
+	return nil
+}
+
+type newProjectInput struct {
+	Key             string       `json:"key"`
+	Name            string       `json:"name"`
+	Description     *string      `json:"description"`
+	Lead            *int64       `json:"lead"`
+	Category        *int64       `json:"category"`
+	Template        string       `json:"template"`
+	Access          *accessInput `json:"access"`
+	IssueTypes      []string     `json:"issueTypes"`
+	DefaultAssignee *string      `json:"defaultAssignee"`
+}
+
+// newProject is a project to create, checked.
+type newProject struct {
+	key, name   string
+	description *string
+	lead        int64
+	category    *int64
+	template    string
+	kind        string
+	statuses    []templateStatus
+	assignTo    string
+	access      *accessInput
+	types       []string
+}
+
+// checkNewProject checks a project to create, led by lead unless it names
+// another. A fresh instance gets its catalogues first, so that the default
+// issue types exist.
+func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead int64) (*newProject, error) {
+	p := &newProject{key: strings.ToUpper(strings.TrimSpace(in.Key)), description: in.Description, lead: lead,
+		category: in.Category, template: in.Template, assignTo: "unassigned", access: in.Access}
+	if err := s.checkProjectKey(ctx, s.db, p.key, 0); err != nil {
+		return nil, err
 	}
-	if err := readJSON(r, &in); err != nil {
-		return err
+	var err error
+	if p.name, err = cleanName(in.Name, 255); err != nil {
+		return nil, err
 	}
-	ctx := r.Context()
-	me := currentUser(r)
-	key := strings.ToUpper(strings.TrimSpace(in.Key))
-	if err := s.checkProjectKey(ctx, s.db, key, 0); err != nil {
-		return err
+	if err := s.projectNameTaken(ctx, p.name, 0); err != nil {
+		return nil, err
 	}
-	name, err := cleanName(in.Name, 255)
-	if err != nil {
-		return err
-	}
-	if err := s.projectNameTaken(ctx, name, 0); err != nil {
-		return err
-	}
-	lead := me.ID
 	if in.Lead != nil {
-		lead = *in.Lead
+		p.lead = *in.Lead
 	}
-	if err := s.activeUser(ctx, lead); err != nil {
-		return err
+	if err := s.activeUser(ctx, p.lead); err != nil {
+		return nil, err
 	}
-	if err := s.checkCategory(ctx, in.Category); err != nil {
-		return err
+	if err := s.checkCategory(ctx, p.category); err != nil {
+		return nil, err
 	}
-	if in.Template == "" {
-		in.Template = "software"
+	if p.template == "" {
+		p.template = "software"
 	}
-	tmpl, ok := projectTemplates[in.Template]
+	tmpl, ok := projectTemplates[p.template]
 	if !ok {
-		return fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
+		return nil, fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
 	}
-	assignTo := "unassigned"
+	p.kind, p.statuses = tmpl.kind, tmpl.statuses
 	if in.DefaultAssignee != nil {
-		if *in.DefaultAssignee != "unassigned" && *in.DefaultAssignee != "lead" {
-			return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
+		if err := checkAssigneeType(*in.DefaultAssignee); err != nil {
+			return nil, err
 		}
-		assignTo = *in.DefaultAssignee
+		p.assignTo = *in.DefaultAssignee
 	}
-	if a := in.Access; a != nil {
+	if a := p.access; a != nil {
 		switch a.Holder {
 		case perm.Everyone:
 		case perm.Group:
 			if err := s.checkGroups(ctx, []int64{a.ID}); err != nil {
-				return err
+				return nil, err
 			}
 		case perm.Role:
-			if _, err := s.roleByID(ctx, a.ID); err != nil {
-				return fail(http.StatusBadRequest, i18n.RoleNotFound)
+			if _, err := s.roleByID(ctx, a.ID); errors.Is(err, errNotFound) {
+				return nil, fail(http.StatusBadRequest, i18n.RoleNotFound)
+			} else if err != nil {
+				return nil, err
 			}
 		default:
-			return failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, a.Holder)
+			return nil, failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, a.Holder)
 		}
 	}
 	if err := s.seedCatalogues(ctx); err != nil {
-		return err
+		return nil, err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	types := in.IssueTypes
 	if types == nil {
@@ -248,7 +261,23 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 			types = append(types, t.ID)
 		}
 	}
-	if types, err = checkIssueTypes(cat, types); err != nil {
+	if p.types, err = checkIssueTypes(cat, types); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
+	if err := requireAdmin(r); err != nil {
+		return err
+	}
+	var in newProjectInput
+	if err := readJSON(r, &in); err != nil {
+		return err
+	}
+	ctx := r.Context()
+	p, err := s.checkNewProject(ctx, &in, currentUser(r).ID)
+	if err != nil {
 		return err
 	}
 
@@ -264,35 +293,68 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	if err := s.checkProjectKey(ctx, tx, key, 0); err != nil {
+	if err := s.checkProjectKey(ctx, tx, p.key, 0); err != nil {
 		return err
 	}
-	var statuses []string
-	for _, st := range tmpl.statuses {
-		id, err := ensureStatus(ctx, tx, st.name, st.category)
-		if err != nil {
-			return err
-		}
-		statuses = append(statuses, id)
-	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO projects (pkey, name, description, lead_id, category_id, kind,
-		default_assignee) VALUES (?, ?, ?, ?, ?, ?, ?)`, key, name, optDescription(in.Description), lead, in.Category,
-		tmpl.kind, assignTo)
-	if isDuplicate(err) {
-		return failf(http.StatusConflict, i18n.ProjectKeyTaken, key)
-	}
+	id, err := insertProject(ctx, tx, p)
 	if err != nil {
 		return err
 	}
+	if err := insertWorkflow(ctx, tx, id, p); err != nil {
+		return err
+	}
+	if err := grantAccess(ctx, tx, id, p); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	release()
+	s.perms.Invalidate()
+	s.forgetCatalogue()
+	details := map[string]any{"name": p.name, "template": p.template, "lead": s.userNames(ctx, []int64{p.lead}),
+		"issueTypes": p.types}
+	if a := p.access; a != nil {
+		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
+	}
+	s.auditLog(r, audit.ProjectCreate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: p.key}, details)
+	return writeJSON(w, http.StatusCreated, map[string]any{"id": id, "key": p.key})
+}
+
+// insertProject writes the project and the issue types it offers.
+func insertProject(ctx context.Context, tx *sql.Tx, p *newProject) (int64, error) {
+	res, err := tx.ExecContext(ctx, `INSERT INTO projects (pkey, name, description, lead_id, category_id, kind,
+		default_assignee) VALUES (?, ?, ?, ?, ?, ?, ?)`, p.key, p.name, optDescription(p.description), p.lead, p.category,
+		p.kind, p.assignTo)
+	if isDuplicate(err) {
+		return 0, failf(http.StatusConflict, i18n.ProjectKeyTaken, p.key)
+	}
+	if err != nil {
+		return 0, err
+	}
 	id, _ := res.LastInsertId()
-	for i, t := range types {
+	for i, t := range p.types {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO project_issue_types (project_id, issue_type_id, position)
 			VALUES (?, ?, ?)`, id, t, i); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	res, err = tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id)
-		VALUES (?, ?, TRUE, ?)`, id, "Workflow "+key, statuses[0])
+	return id, nil
+}
+
+// insertWorkflow gives the project the default workflow of its template,
+// creating the statuses it lacks.
+func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
+	var statuses []string
+	for _, st := range p.statuses {
+		sid, err := ensureStatus(ctx, tx, st.name, st.category)
+		if err != nil {
+			return err
+		}
+		statuses = append(statuses, sid)
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id)
+		VALUES (?, ?, TRUE, ?)`, id, "Workflow "+p.key, statuses[0])
 	if err != nil {
 		return err
 	}
@@ -303,53 +365,47 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-			position) VALUES (?, ?, NULL, ?, ?)`, wf, tmpl.statuses[i].name, st, i); err != nil {
+			position) VALUES (?, ?, NULL, ?, ?)`, wf, p.statuses[i].name, st, i); err != nil {
 			return err
 		}
 	}
-	// Grants, stored as the import stores them: the lead may do everything,
-	// the people given access work on issues.
-	grant := func(p, holder string, user, group, role any) error {
+	return nil
+}
+
+// grantAccess writes the project's grants, as the import stores them: the
+// lead may do everything, the people given access work on issues.
+func grantAccess(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
+	grant := func(permission, holder string, user, group, role any) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,
-			group_id, role_id) VALUES (?, ?, ?, ?, ?, ?)`, id, p, holder, user, group, role)
+			group_id, role_id) VALUES (?, ?, ?, ?, ?, ?)`, id, permission, holder, user, group, role)
 		return err
 	}
-	for _, p := range perm.All {
-		if err := grant(p, perm.Lead, nil, nil, nil); err != nil {
+	for _, pm := range perm.All {
+		if err := grant(pm, perm.Lead, nil, nil, nil); err != nil {
 			return err
 		}
 	}
-	if a := in.Access; a != nil {
-		var group, role any
-		switch a.Holder {
-		case perm.Group:
-			group = a.ID
-		case perm.Role:
-			role = a.ID
-			if _, err := tx.ExecContext(ctx, `INSERT INTO project_role_members (project_id, role_id, user_id)
-				VALUES (?, ?, ?)`, id, a.ID, lead); err != nil {
-				return err
-			}
-		}
-		for _, p := range memberPermissions {
-			if err := grant(p, a.Holder, nil, group, role); err != nil {
-				return err
-			}
+	a := p.access
+	if a == nil {
+		return nil
+	}
+	var group, role any
+	switch a.Holder {
+	case perm.Group:
+		group = a.ID
+	case perm.Role:
+		role = a.ID
+		if _, err := tx.ExecContext(ctx, `INSERT INTO project_role_members (project_id, role_id, user_id)
+			VALUES (?, ?, ?)`, id, a.ID, p.lead); err != nil {
+			return err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return err
+	for _, pm := range memberPermissions {
+		if err := grant(pm, a.Holder, nil, group, role); err != nil {
+			return err
+		}
 	}
-	release()
-	s.perms.Invalidate()
-	s.forgetCatalogue()
-	details := map[string]any{"name": name, "template": in.Template, "lead": s.userNames(ctx, []int64{lead}),
-		"issueTypes": types}
-	if a := in.Access; a != nil {
-		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
-	}
-	s.auditLog(r, audit.ProjectCreate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: key}, details)
-	return writeJSON(w, http.StatusCreated, map[string]any{"id": id, "key": key})
+	return nil
 }
 
 // ensureStatus returns the status of that name (any case), created in the
@@ -536,14 +592,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var in struct {
-		Name            *string  `json:"name"`
-		Description     *string  `json:"description"`
-		Lead            *int64   `json:"lead"`
-		Category        *int64   `json:"category"`
-		DefaultAssignee *string  `json:"defaultAssignee"`
-		IssueTypes      []string `json:"issueTypes"`
-	}
+	var in projectChangesInput
 	raw, err := readJSONFields(r, &in) // null clears description and category
 	if err != nil {
 		return err
@@ -553,14 +602,47 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	sets, types, err := s.checkProjectChanges(ctx, id, &in, raw)
+	if err != nil {
+		return err
+	}
+	if err := s.writeProjectChanges(ctx, id, sets, types); err != nil {
+		return err
+	}
+	s.perms.Invalidate()
+	after, err := s.projectSettings(ctx, id)
+	if err != nil {
+		return err
+	}
+	if changes := projectChanges(before, after); len(changes) > 0 {
+		s.auditLog(r, audit.ProjectUpdate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: after.Key},
+			changes)
+	}
+	return writeJSON(w, http.StatusOK, after)
+}
+
+type projectChangesInput struct {
+	Name            *string  `json:"name"`
+	Description     *string  `json:"description"`
+	Lead            *int64   `json:"lead"`
+	Category        *int64   `json:"category"`
+	DefaultAssignee *string  `json:"defaultAssignee"`
+	IssueTypes      []string `json:"issueTypes"`
+}
+
+// checkProjectChanges checks a change to project id's settings, raw telling
+// which fields were sent. It returns the columns to set and, when they
+// change, the issue types to offer.
+func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectChangesInput,
+	raw map[string]json.RawMessage) (map[string]any, []string, error) {
 	sets := map[string]any{}
 	if in.Name != nil {
 		name, err := cleanName(*in.Name, 255)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		if err := s.projectNameTaken(ctx, name, id); err != nil {
-			return err
+			return nil, nil, err
 		}
 		sets["name"] = name
 	}
@@ -569,52 +651,68 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.Lead != nil {
 		if err := s.activeUser(ctx, *in.Lead); err != nil {
-			return err
+			return nil, nil, err
 		}
 		sets["lead_id"] = *in.Lead
 	}
 	if _, ok := raw["category"]; ok {
 		if err := s.checkCategory(ctx, in.Category); err != nil {
-			return err
+			return nil, nil, err
 		}
 		sets["category_id"] = in.Category
 	}
 	if in.DefaultAssignee != nil {
-		if *in.DefaultAssignee != "unassigned" && *in.DefaultAssignee != "lead" {
-			return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
+		if err := checkAssigneeType(*in.DefaultAssignee); err != nil {
+			return nil, nil, err
 		}
 		sets["default_assignee"] = *in.DefaultAssignee
 	}
-	var types []string
-	if in.IssueTypes != nil {
-		cat, err := s.catalogue(ctx)
-		if err != nil {
-			return err
-		}
-		if types, err = checkIssueTypes(cat, in.IssueTypes); err != nil {
-			return err
-		}
-		inUse := []map[string]any{}
-		err = sqlq.Each(ctx, s.db, `SELECT issue_type_id, COUNT(*) FROM issues WHERE project_id = ? GROUP BY issue_type_id`,
-			func(rows *sql.Rows) error {
-				var t string
-				var n int
-				if err := rows.Scan(&t, &n); err != nil {
-					return err
-				}
-				if !slices.Contains(types, t) {
-					inUse = append(inUse, map[string]any{"type": cat.typeOf(t), "issues": n})
-				}
-				return nil
-			}, id)
-		if err != nil {
-			return err
-		}
-		if len(inUse) > 0 {
-			return &httpError{status: http.StatusConflict, extra: map[string]any{"inUse": inUse},
-				msg: i18n.M(i18n.ProjectRemovedTypesInUse)}
-		}
+	if in.IssueTypes == nil {
+		return sets, nil, nil
 	}
+	cat, err := s.catalogue(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	types, err := checkIssueTypes(cat, in.IssueTypes)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := s.checkTypesNotInUse(ctx, id, cat, types); err != nil {
+		return nil, nil, err
+	}
+	return sets, types, nil
+}
+
+// checkTypesNotInUse refuses, listing them, to stop offering issue types
+// that issues of project id still have.
+func (s *Server) checkTypesNotInUse(ctx context.Context, id int64, cat *catalog, types []string) error {
+	inUse := []map[string]any{}
+	err := sqlq.Each(ctx, s.db, `SELECT issue_type_id, COUNT(*) FROM issues WHERE project_id = ? GROUP BY issue_type_id`,
+		func(rows *sql.Rows) error {
+			var t string
+			var n int
+			if err := rows.Scan(&t, &n); err != nil {
+				return err
+			}
+			if !slices.Contains(types, t) {
+				inUse = append(inUse, map[string]any{"type": cat.typeOf(t), "issues": n})
+			}
+			return nil
+		}, id)
+	if err != nil {
+		return err
+	}
+	if len(inUse) > 0 {
+		return &httpError{status: http.StatusConflict, extra: map[string]any{"inUse": inUse},
+			msg: i18n.M(i18n.ProjectRemovedTypesInUse)}
+	}
+	return nil
+}
+
+// writeProjectChanges sets the columns of project id and, unless types is
+// nil, replaces the issue types it offers.
+func (s *Server) writeProjectChanges(ctx context.Context, id int64, sets map[string]any, types []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -641,19 +739,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.perms.Invalidate()
-	after, err := s.projectSettings(ctx, id)
-	if err != nil {
-		return err
-	}
-	if changes := projectChanges(before, after); len(changes) > 0 {
-		s.auditLog(r, audit.ProjectUpdate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: after.Key},
-			changes)
-	}
-	return writeJSON(w, http.StatusOK, after)
+	return tx.Commit()
 }
 
 // projectChanges lists what a change to a project's settings touched.
@@ -1010,15 +1096,7 @@ func (s *Server) listCategories(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) categoryNameTaken(ctx context.Context, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_categories WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.nameTaken(ctx, "project_categories", name, except, i18n.CommonAlreadyExists)
 }
 
 func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
