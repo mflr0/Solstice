@@ -16,22 +16,22 @@ import (
 // An error that is not meant for the user never reaches the client: the
 // answer is the generic message, in the request's language.
 func TestWriteErrorHidesInternalErrors(t *testing.T) {
-	secret := errors.New("dial tcp 10.0.0.5:3306: connection refused")
-	r := httptest.NewRequest("GET", "/api/anything", nil)
-	r.Header.Set("Accept-Language", "fr")
-
-	w := httptest.NewRecorder()
-	writeError(w, r, secret)
-	if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "10.0.0.5") ||
-		!strings.Contains(w.Body.String(), "Erreur interne") {
-		t.Errorf("interface error: %d %s", w.Code, w.Body)
+	secret := func(http.ResponseWriter, *http.Request) error {
+		return errors.New("dial tcp 10.0.0.5:3306: connection refused")
 	}
-
-	w = httptest.NewRecorder()
-	(&Server{}).writeRESTError(w, r, secret)
-	if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "10.0.0.5") ||
-		!strings.Contains(w.Body.String(), "Erreur interne") {
-		t.Errorf("REST error: %d %s", w.Code, w.Body)
+	s := &Server{log: slog.New(slog.DiscardHandler)}
+	for name, h := range map[string]http.Handler{
+		"interface": s.wrap(secret, false), "REST": s.rest(secret, false),
+		"setup wizard": (&Setup{log: s.log}).wrap(secret, false),
+	} {
+		r := httptest.NewRequest("GET", "/api/anything", nil)
+		r.Header.Set("Accept-Language", "fr")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "10.0.0.5") ||
+			!strings.Contains(w.Body.String(), "Erreur interne") {
+			t.Errorf("%s: %d %s", name, w.Code, w.Body)
+		}
 	}
 }
 

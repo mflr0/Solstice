@@ -406,7 +406,7 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 		}
 		for i, row := range rows {
 			args := row
-			if table != "link_types" && table != "project_roles" {
+			if table != "link_types" {
 				id, err := nextCatalogID(ctx, tx, table)
 				if err != nil {
 					return err

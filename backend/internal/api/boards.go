@@ -513,7 +513,6 @@ func (s *Server) boardWhere(ctx context.Context, sub *perm.Subject, b *boardRow,
 type card struct {
 	issueSummary
 	ID       int64       `json:"-"`
-	Rank     string      `json:"-"`
 	Epic     *issueBrief `json:"epic"`
 	Parent   *issueBrief `json:"parent"`
 	Estimate *float64    `json:"estimate"`
@@ -540,7 +539,7 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 			rows.Close()
 			return nil, false, err
 		}
-		list = append(list, &card{ID: iss.ID, Rank: iss.Rank.String, row: iss})
+		list = append(list, &card{ID: iss.ID, row: iss})
 		userIDs = append(userIDs, iss.AssigneeID.Int64, iss.ReporterID.Int64)
 		related = append(related, iss.EpicID.Int64, iss.ParentID.Int64)
 	}

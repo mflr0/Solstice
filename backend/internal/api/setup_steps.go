@@ -240,7 +240,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 		w.log.Error("creating the tables failed", "err", err)
 		return failf(http.StatusInternalServerError, i18n.SetupTablesFailed, i18n.M(i18n.RequestInternalError))
 	}
-	if w.db != nil && w.db != conn {
+	if w.db != nil {
 		w.db.Close()
 	}
 	w.db, w.server = conn, p.Server
