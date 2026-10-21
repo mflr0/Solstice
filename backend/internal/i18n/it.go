@@ -289,6 +289,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueSecurityLevelUnknown:  "Livello di sicurezza sconosciuto in questo progetto.",
 	IssueReporterFixed:         "Il segnalatore non può essere cambiato.",
 	IssueTransitionNotAllowed:  "Il workflow del progetto non prevede questo cambio di stato.",
+	IssueEditChanged:           "Il ticket è cambiato durante il salvataggio. Ricaricalo e riprova.",
 	IssueTransitionUnavailable: "Questa transizione non è possibile dallo stato attuale del ticket.",
 	IssueParentNotFound:        "Ticket padre non trovato.",
 	IssueParentInvalid:         "Il padre deve essere un ticket dello stesso progetto e non avere a sua volta un padre.",

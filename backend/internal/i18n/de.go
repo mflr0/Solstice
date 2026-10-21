@@ -289,6 +289,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueSecurityLevelUnknown:  "Unbekannte Sicherheitsstufe in diesem Projekt.",
 	IssueReporterFixed:         "Der Melder kann nicht geändert werden.",
 	IssueTransitionNotAllowed:  "Der Workflow des Projekts sieht diesen Statuswechsel nicht vor.",
+	IssueEditChanged:           "Der Vorgang wurde während des Speicherns geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
 	IssueTransitionUnavailable: "Dieser Übergang ist aus dem aktuellen Status des Vorgangs nicht möglich.",
 	IssueParentNotFound:        "Übergeordneter Vorgang nicht gefunden.",
 	IssueParentInvalid:         "Der übergeordnete Vorgang muss zum selben Projekt gehören und darf selbst keinen übergeordneten Vorgang haben.",

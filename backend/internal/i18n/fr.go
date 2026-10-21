@@ -288,6 +288,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueSecurityLevelUnknown:  "Niveau de confidentialité inconnu dans ce projet.",
 	IssueReporterFixed:         "Le rapporteur ne peut pas être changé.",
 	IssueTransitionNotAllowed:  "Le workflow du projet ne prévoit pas ce changement de statut.",
+	IssueEditChanged:           "Le ticket a changé pendant son enregistrement. Rechargez-le et réessayez.",
 	IssueTransitionUnavailable: "Cette transition n'est pas possible depuis le statut actuel du ticket.",
 	IssueParentNotFound:        "Ticket parent introuvable.",
 	IssueParentInvalid:         "Le parent doit être un ticket du même projet, sans parent lui-même.",

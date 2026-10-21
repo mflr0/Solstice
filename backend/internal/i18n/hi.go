@@ -290,6 +290,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueSecurityLevelUnknown:  "इस प्रोजेक्ट में अज्ञात सुरक्षा स्तर।",
 	IssueReporterFixed:         "रिपोर्टर बदला नहीं जा सकता।",
 	IssueTransitionNotAllowed:  "प्रोजेक्ट का वर्कफ़्लो स्टेटस के इस बदलाव की अनुमति नहीं देता।",
+	IssueEditChanged:           "सहेजते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
 	IssueTransitionUnavailable: "टिकट के मौजूदा स्टेटस से यह ट्रांज़िशन संभव नहीं है।",
 	IssueParentNotFound:        "पैरेंट टिकट नहीं मिला।",
 	IssueParentInvalid:         "पैरेंट उसी प्रोजेक्ट का टिकट होना चाहिए, और उसका अपना कोई पैरेंट नहीं होना चाहिए।",
