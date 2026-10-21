@@ -391,3 +391,57 @@ func TestParseHostileNesting(t *testing.T) {
 		t.Errorf("nesting within the limit refused: %v", err)
 	}
 }
+
+// pinEnv knows one custom field of each kind the compiler tells apart.
+func pinEnv() Env {
+	env := fuzzEnv()
+	fields := map[string]Field{
+		"Team":     {ID: 2, Name: "Team", TypeKey: "x:select"},
+		"Reviewer": {ID: 3, Name: "Reviewer", TypeKey: "x:userpicker"},
+		"Epic":     {ID: 4, Name: "Epic", TypeKey: "x:gh-epic-link"},
+		"Notes":    {ID: 5, Name: "Notes", TypeKey: "x:textarea"},
+		"At":       {ID: 7, Name: "At", TypeKey: "x:datetime"},
+		"Tags":     {ID: 8, Name: "Tags", TypeKey: "x:labels"},
+	}
+	env.CustomField = func(name string) (Field, bool) {
+		f, ok := fields[name]
+		return f, ok
+	}
+	return env
+}
+
+// TestCompilePinned pins the SQL and arguments of custom fields, user sets
+// and lookups, so that a refactoring of the compiler shows any change.
+func TestCompilePinned(t *testing.T) {
+	for _, tc := range []struct {
+		q, where string
+		args     []any
+	}{
+		{`Team = a`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2 AND (v.string_value IN (?) OR CAST(v.number_value AS CHAR) IN (?) OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = 2 AND o.value IN (?))))`, []any{"a", "a", "a"}},
+		{`Team not in (a, b)`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2 AND (v.string_value IN (?, ?) OR CAST(v.number_value AS CHAR) IN (?, ?) OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = 2 AND o.value IN (?, ?)))))`, []any{"a", "b", "a", "b", "a", "b"}},
+		{`Team is EMPTY`, `NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2)`, nil},
+		{`Team is not EMPTY`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2)`, nil},
+		{`Reviewer = bob`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3 AND v.string_value IN (SELECT CAST(id AS CHAR) FROM users WHERE id IN (SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?))))`, []any{"bob", "bob", "bob"}},
+		{`Reviewer != currentUser()`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3 AND v.string_value IN (SELECT CAST(id AS CHAR) FROM users WHERE id IN (SELECT ?))))`, []any{int64(7)}},
+		{`Epic = DEMO-1`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4 AND v.number_value IN (SELECT i2.id FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE ((((p2.pkey IN (?) OR p2.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?))) AND i2.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk WHERE mk.issue_id = i2.id AND mk.old_key = ?)))))`, []any{"DEMO", "DEMO", int64(1), "DEMO-1"}},
+		{`Epic != 12`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4 AND v.number_value IN (SELECT i2.id FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE (i2.id = ?))))`, []any{int64(12)}},
+		{`Notes ~ abc`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 5 AND (v.string_value LIKE ? OR v.text_value LIKE ?))`, []any{"%abc%", "%abc%"}},
+		{`Notes !~ abc`, `NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 5 AND (v.string_value LIKE ? OR v.text_value LIKE ?))`, []any{"%abc%", "%abc%"}},
+		{`At <= "2026-01-01"`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 7 AND v.date_value <= ?)`, []any{time.Date(2025, 12, 31, 23, 0, 0, 0, time.UTC)}},
+		{`Tags in (A, b)`, `EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8 AND LOWER(l.label) IN (?, ?))`, []any{"a", "b"}},
+		{`Tags not in (a)`, `(EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8) AND NOT EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8 AND LOWER(l.label) IN (?)))`, []any{"a"}},
+		{`watcher = bob`, `EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id AND w.user_id IN (SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?)))`, []any{"bob", "bob", "bob"}},
+		{`watcher not in (bob, currentUser())`, `(EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id) AND NOT EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id AND w.user_id IN (SELECT ? UNION SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?))))`, []any{int64(7), "bob", "bob", "bob"}},
+		{`voter is EMPTY`, `NOT EXISTS (SELECT 1 FROM votes vo WHERE vo.issue_id = i.id)`, nil},
+		{`voter is not EMPTY`, `EXISTS (SELECT 1 FROM votes vo WHERE vo.issue_id = i.id)`, nil},
+		{`commenter = EMPTY`, `FALSE`, nil},
+		{`status in (a, b)`, `i.status_id IN (SELECT id FROM statuses WHERE id IN (?, ?) OR name IN (?, ?))`, []any{"a", "b", "a", "b"}},
+		{`project = a`, `i.project_id IN (SELECT pk.id FROM projects pk WHERE (pk.pkey IN (?) OR pk.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?))) OR pk.name IN (?) OR pk.id IN (?))`, []any{"A", "A", "A", "A"}},
+		{`priority in (EMPTY, a)`, `(i.priority_id IN (SELECT id FROM priorities WHERE id IN (?) OR name IN (?)) OR i.priority_id IS NULL)`, []any{"a", "a"}},
+	} {
+		where, args, _ := compileIn(t, tc.q, pinEnv())
+		if where != tc.where || !reflect.DeepEqual(args, tc.args) {
+			t.Errorf("%s\n got %s %#v\nwant %s %#v", tc.q, where, args, tc.where, tc.args)
+		}
+	}
+}
