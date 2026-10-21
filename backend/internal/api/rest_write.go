@@ -417,7 +417,11 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		}
 		names := map[string]string{}
 		for _, t := range cat.IssueTypes {
-			if s.projectHasType(ctx, p.id, t.ID) {
+			ok, err := s.projectHasType(ctx, p.id, t.ID)
+			if err != nil {
+				return err
+			}
+			if ok {
 				names[t.ID] = t.Name
 			}
 		}
@@ -744,7 +748,10 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 			if !found {
 				return unknownValue(field, r.text())
 			}
-			_, name := s.userName(ctx, id)
+			_, name, err := s.userName(ctx, id)
+			if err != nil {
+				return err
+			}
 			w.rows = append(w.rows, customRaw{str: sql.NullString{String: strconv.FormatInt(id, 10), Valid: true}})
 			display = append(display, name)
 		}

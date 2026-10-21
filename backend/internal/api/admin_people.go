@@ -738,8 +738,7 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 	}
 	from, to := names(old), names(entry)
 	if !slices.Equal(from["users"], to["users"]) || !slices.Equal(from["groups"], to["groups"]) {
-		var key string
-		s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
+		key := s.auditProjectKey(ctx, projectID)
 		s.auditLog(r, audit.ProjectRoles, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
 			map[string]any{"role": role.Name, "from": from, "to": to})
 	}

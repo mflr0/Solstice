@@ -348,16 +348,14 @@ func (s *Server) auditGrants(r *http.Request, projectID int64, before map[string
 	}
 	slices.Sort(added)
 	slices.Sort(removed)
-	var key string
-	s.db.QueryRowContext(r.Context(), `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
+	key := s.auditProjectKey(r.Context(), projectID)
 	s.auditLog(r, audit.ProjectPerms, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
 		map[string]any{"added": added, "removed": removed})
 }
 
 // auditWorkflow records a change to a project's workflow.
 func (s *Server) auditWorkflow(r *http.Request, action string, id, projectID int64, name string, details map[string]any) {
-	var key string
-	s.db.QueryRowContext(r.Context(), `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
+	key := s.auditProjectKey(r.Context(), projectID)
 	if details == nil {
 		details = map[string]any{}
 	}
@@ -365,11 +363,21 @@ func (s *Server) auditWorkflow(r *http.Request, action string, id, projectID int
 	s.auditLog(r, action, audit.Target{Type: "workflow", ID: strconv.FormatInt(id, 10), Label: name}, details)
 }
 
+// auditProjectKey returns a project's key, for labelling an audit entry. The
+// action already succeeded: a failed read is logged and leaves the label empty.
+func (s *Server) auditProjectKey(ctx context.Context, projectID int64) string {
+	var key string
+	if err := s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key); err != nil {
+		s.log.Error("audit log: project key not readable", "project", projectID, "err", err)
+	}
+	return key
+}
+
 // workflowName returns a workflow's name, for the audit log.
-func (s *Server) workflowName(ctx context.Context, id int64) string {
+func (s *Server) workflowName(ctx context.Context, id int64) (string, error) {
 	var name string
-	s.db.QueryRowContext(ctx, `SELECT name FROM workflows WHERE id = ?`, id).Scan(&name)
-	return name
+	err := s.db.QueryRowContext(ctx, `SELECT name FROM workflows WHERE id = ?`, id).Scan(&name)
+	return name, err
 }
 
 // auditBoard records a change to a board.

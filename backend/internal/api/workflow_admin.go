@@ -754,7 +754,10 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if isDefault {
 		return fail(http.StatusConflict, i18n.WorkflowDefaultDelete)
 	}
-	name := s.workflowName(ctx, id)
+	name, err := s.workflowName(ctx, id)
+	if err != nil {
+		return err
+	}
 	var in struct {
 		RemapDefault map[string]string `json:"remapDefault"`
 	}

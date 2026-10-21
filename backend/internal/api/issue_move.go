@@ -901,11 +901,16 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 	}
 	if sqlq.Value(row.AssigneeID) != it.assignee {
 		c := change{field: "assignee"}
+		var err error
 		if row.AssigneeID.Valid {
-			c.oldValue, c.oldString = s.userName(ctx, row.AssigneeID.Int64)
+			if c.oldValue, c.oldString, err = s.userName(ctx, row.AssigneeID.Int64); err != nil {
+				return nil, err
+			}
 		}
 		if who, ok := it.assignee.(int64); ok {
-			c.newValue, c.newString = s.userName(ctx, who)
+			if c.newValue, c.newString, err = s.userName(ctx, who); err != nil {
+				return nil, err
+			}
 		}
 		changes = append(changes, c)
 	}

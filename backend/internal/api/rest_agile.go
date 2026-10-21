@@ -674,8 +674,11 @@ func (s *Server) agileEpic(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if f, ok := fieldOfKind(custom, "gh-epic-label"); ok {
-		s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
+		err := s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
 			WHERE issue_id = ? AND field_id = ? LIMIT 1`, epic.ID, f.ID).Scan(&name)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 	}
 	return writeJSON(w, http.StatusOK, s.restOut(r).epicJSON(cat, epic, name))
 }
