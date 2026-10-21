@@ -9,20 +9,23 @@
     user: UserRef | null;
     initialsBox?: boolean | undefined;
     empty?: string | undefined;
+    /** False inside a link or a button, where a link is not valid. */
+    link?: boolean | undefined;
   }
-  const { user, initialsBox = true, empty = t.common.unassigned }: Props = $props();
+  const { user, initialsBox = true, empty = t.common.unassigned, link = true }: Props = $props();
 </script>
 
 {#if user}
-  <a
+  <svelte:element
+    this={link ? 'a' : 'span'}
     class="who"
     class:inactive={!user.active}
-    href={paths.person(user.username)}
+    href={link ? paths.person(user.username) : undefined}
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
     {#if initialsBox}<span class="initials avatar" aria-hidden="true"><Picture {user} /></span>{/if}
     <span class="name">{user.name}</span>
-  </a>
+  </svelte:element>
 {:else}
   <span class="nobody">{empty}</span>
 {/if}
@@ -37,7 +40,7 @@
     min-width: 0;
   }
 
-  .who:hover .name {
+  .who[href]:hover .name {
     text-decoration: underline;
   }
 

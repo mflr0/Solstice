@@ -100,7 +100,7 @@
     onclick={toggle}
   >
     {#if value}
-      <span class="who-static"><Who user={value} /></span>
+      <Who user={value} link={false} />
     {:else}
       <span class="nobody">{noneLabel}</span>
     {/if}
@@ -193,12 +193,6 @@
 
   .current[disabled] {
     cursor: default;
-  }
-
-  /* The name inside is a link elsewhere; here the whole button picks. */
-  .who-static {
-    pointer-events: none;
-    min-width: 0;
   }
 
   .caret {
