@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"bytes"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -325,5 +328,66 @@ func TestLockoutLogLineKeepsTypedNameOut(t *testing.T) {
 	unknown := lockLine("203.0.113.22")
 	if strings.Contains(unknown, "user=") || strings.Contains(strings.ToLower(unknown), "tap") {
 		t.Errorf("lockout of an unknown name: %s", unknown)
+	}
+}
+
+// One entry per file, through both routes, and a refused upload records none.
+func TestAttachmentChangesAreAudited(t *testing.T) {
+	paul := login(t, "paul.martin", "motdepasse")
+	key := createIssue(t, paul, "DEMO", "Pièces jointes auditées", "")
+	uploads, _ := latestAudit(t, "attachment.upload")
+
+	if status, raw := uploadTexts(t, paul, key, [2]string{"un.txt", "1"}, [2]string{"deux.txt", "22"}); status != 201 {
+		t.Fatalf("upload: %d %s", status, raw)
+	}
+	n, details := latestAudit(t, "attachment.upload")
+	if n != uploads+2 || !strings.Contains(details, `"issue":"`+key+`"`) || !strings.Contains(details, `"size":2`) {
+		t.Fatalf("after two files: %d entries (was %d), details %s", n, uploads, details)
+	}
+	row := `SELECT CONCAT(COALESCE(username, ''), ' ', target_type, ' ', target_label) FROM audit_log
+		WHERE action = ? ORDER BY id DESC LIMIT 1`
+	if got := pick(t, row, "attachment.upload"); got != "paul.martin attachment deux.txt" {
+		t.Errorf("upload entry %q", got)
+	}
+
+	if status, raw := postFiles(t, paul, key, false); status != 400 {
+		t.Fatalf("upload without file: %d %s", status, raw)
+	}
+	if n2, _ := latestAudit(t, "attachment.upload"); n2 != n {
+		t.Errorf("a refused upload was recorded")
+	}
+
+	// The REST API goes through the same code: one entry, once.
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, _ := mw.CreateFormFile("file", "rest.txt")
+	fw.Write([]byte("par l'API"))
+	mw.Close()
+	status, _, raw := call(t, nil, testURL, "POST", "/rest/api/2/issue/"+key+"/attachments", nil, func(r *http.Request) {
+		basic("paul.martin", "motdepasse")(r)
+		r.Body = io.NopCloser(bytes.NewReader(buf.Bytes()))
+		r.ContentLength = int64(buf.Len())
+		r.Header.Set("Content-Type", mw.FormDataContentType())
+		r.Header.Set("X-Atlassian-Token", "no-check")
+	})
+	if status != 200 {
+		t.Fatalf("REST upload: %d %s", status, raw)
+	}
+	if n3, _ := latestAudit(t, "attachment.upload"); n3 != n+1 {
+		t.Errorf("REST upload: %d entries (was %d)", n3, n)
+	}
+
+	deletes, _ := latestAudit(t, "attachment.delete")
+	id := pick(t, `SELECT id FROM attachments WHERE filename = 'un.txt' ORDER BY id DESC LIMIT 1`)
+	paul.call("DELETE", "/api/attachments/"+id, nil, 204, nil)
+	n, details = latestAudit(t, "attachment.delete")
+	if n != deletes+1 || !strings.Contains(details, key) {
+		t.Fatalf("after a deletion: %d entries (was %d), details %s", n, deletes, details)
+	}
+	if got := pick(t, row, "attachment.delete"); got != "paul.martin attachment un.txt" {
+		t.Errorf("deletion entry %q", got)
+	}
+	if got := pick(t, `SELECT target_id FROM audit_log WHERE action = 'attachment.delete' ORDER BY id DESC LIMIT 1`); got != id {
+		t.Errorf("deletion target %s, want %s", got, id)
 	}
 }

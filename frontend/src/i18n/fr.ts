@@ -1357,6 +1357,7 @@ export const fr: Messages = {
       priority: 'Priorités',
       resolution: 'Résolutions',
       linktype: 'Types de liens',
+      attachment: 'Pièces jointes',
       field: 'Champs personnalisés',
       settings: 'Réglages',
       import: 'Import Jira',
@@ -1468,6 +1469,8 @@ export const fr: Messages = {
       'update.result': 'Mise à jour terminée',
       'setup.complete': 'Installation terminée',
       'issue.move': 'Ticket déplacé',
+      'attachment.upload': 'Pièce jointe ajoutée',
+      'attachment.delete': 'Pièce jointe supprimée',
     },
     targets: {
       user: 'Compte',
@@ -1492,6 +1495,7 @@ export const fr: Messages = {
       priority: 'Priorité',
       resolution: 'Résolution',
       linktype: 'Type de lien',
+      attachment: 'Pièce jointe',
     },
     detailKeys: {
       name: 'Nom',
@@ -1516,6 +1520,8 @@ export const fr: Messages = {
       owner: 'Propriétaire',
       version: 'Version',
       status: 'Statut',
+      issue: 'Ticket',
+      size: 'Taille (octets)',
     },
     retention: {
       title: 'Conservation',

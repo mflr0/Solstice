@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"solstice/internal/audit"
 	"solstice/internal/perm"
 )
 
@@ -64,7 +65,7 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 		return nil, err
 	}
 	var names []string
-	var ids []int64
+	var ids, sizes []int64
 	defer func() {
 		if err != nil {
 			s.removeStored(context.WithoutCancel(ctx), ids)
@@ -128,6 +129,7 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 		}
 		stored += size
 		names = append(names, name)
+		sizes = append(sizes, size)
 	}
 	if len(names) == 0 {
 		return nil, fail(http.StatusBadRequest, i18n.AttachmentNoFile)
@@ -156,6 +158,10 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 		return nil, err
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
+	for i, id := range ids {
+		s.auditLog(r, audit.AttachmentUpload, target("attachment", id, names[i]),
+			map[string]any{"issue": iss.Key(), "size": sizes[i]})
+	}
 	return ids, nil
 }
 
@@ -345,6 +351,7 @@ func (s *Server) deleteAttachment(w http.ResponseWriter, r *http.Request) error 
 	}
 	os.Remove(s.attachmentPath(a.id))
 	s.changed(a.issue, sub.UserID, "attachment", removed)
+	s.auditLog(r, audit.AttachmentDelete, target("attachment", a.id, a.name), map[string]any{"issue": a.issue.Key()})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
