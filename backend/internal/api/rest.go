@@ -313,10 +313,10 @@ func fieldError(field string, err error) error {
 }
 
 // uiCall runs a handler of the interface's API on a request rewritten in its
-// format: method, target (path and query), path values and JSON body. The
-// handler applies its usual checks; its error is returned as is, its JSON
-// answer decoded into out (when not nil).
-func (s *Server) uiCall(r *http.Request, h handler, method, target string, values map[string]string, body, out any) error {
+// format: method, query, path values and JSON body. The handler applies its
+// usual checks; its error is returned as is, its JSON answer decoded into out
+// (when not nil).
+func (s *Server) uiCall(r *http.Request, h handler, method string, query url.Values, values map[string]string, body, out any) error {
 	var raw []byte
 	if body != nil {
 		var err error
@@ -324,12 +324,9 @@ func (s *Server) uiCall(r *http.Request, h handler, method, target string, value
 			return err
 		}
 	}
-	u, err := url.Parse(target)
-	if err != nil {
-		return err
-	}
 	req := r.Clone(r.Context())
-	req.Method, req.URL, req.RequestURI = method, u, u.RequestURI()
+	req.Method, req.URL = method, &url.URL{RawQuery: query.Encode()}
+	req.RequestURI = req.URL.RequestURI()
 	req.Body, req.ContentLength = io.NopCloser(bytes.NewReader(raw)), int64(len(raw))
 	req.Header = r.Header.Clone()
 	req.Header.Set("Content-Type", "application/json")

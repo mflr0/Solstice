@@ -154,7 +154,7 @@ func (s *Server) restSaveVersion(w http.ResponseWriter, r *http.Request) error {
 		if projectID, err = s.projectByKey(r.Context(), key); err != nil {
 			return err
 		}
-		err = s.uiCall(r, s.saveVersion, http.MethodPost, "/api/projects/"+key+"/versions",
+		err = s.uiCall(r, s.saveVersion, http.MethodPost, nil,
 			map[string]string{"key": key}, ui, &out)
 		if err != nil {
 			return err
@@ -166,7 +166,7 @@ func (s *Server) restSaveVersion(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	sid := strconv.FormatInt(id, 10)
-	err = s.uiCall(r, s.saveVersion, http.MethodPatch, "/api/projects/"+key+"/versions/"+sid,
+	err = s.uiCall(r, s.saveVersion, http.MethodPatch, nil,
 		map[string]string{"key": key, "id": sid}, ui, &out)
 	if err != nil {
 		return err
@@ -195,7 +195,7 @@ func (s *Server) restDeleteVersion(w http.ResponseWriter, r *http.Request) error
 		ui["affectsTo"] = *affectsTo
 	}
 	sid := strconv.FormatInt(id, 10)
-	if err := s.uiCall(r, s.deleteVersion, http.MethodDelete, "/api/projects/"+key+"/versions/"+sid,
+	if err := s.uiCall(r, s.deleteVersion, http.MethodDelete, nil,
 		map[string]string{"key": key, "id": sid}, ui, nil); err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (s *Server) restSaveComponent(w http.ResponseWriter, r *http.Request) error
 		if projectID, err = s.projectByKey(ctx, key); err != nil {
 			return err
 		}
-		err = s.uiCall(r, s.saveComponent, http.MethodPost, "/api/projects/"+key+"/components",
+		err = s.uiCall(r, s.saveComponent, http.MethodPost, nil,
 			map[string]string{"key": key}, ui, &out)
 	} else {
 		var id int64
@@ -291,7 +291,7 @@ func (s *Server) restSaveComponent(w http.ResponseWriter, r *http.Request) error
 			return err
 		}
 		sid := strconv.FormatInt(id, 10)
-		err = s.uiCall(r, s.saveComponent, http.MethodPatch, "/api/projects/"+key+"/components/"+sid,
+		err = s.uiCall(r, s.saveComponent, http.MethodPatch, nil,
 			map[string]string{"key": key, "id": sid}, ui, &out)
 	}
 	if err != nil {
@@ -322,7 +322,7 @@ func (s *Server) restDeleteComponent(w http.ResponseWriter, r *http.Request) err
 		ui["moveTo"] = *moveTo
 	}
 	sid := strconv.FormatInt(id, 10)
-	if err := s.uiCall(r, s.deleteComponent, http.MethodDelete, "/api/projects/"+key+"/components/"+sid,
+	if err := s.uiCall(r, s.deleteComponent, http.MethodDelete, nil,
 		map[string]string{"key": key, "id": sid}, ui, nil); err != nil {
 		return err
 	}
@@ -451,11 +451,11 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	id := r.PathValue("id")
 	switch {
 	case creating:
-		err = s.uiCall(r, s.createFilter, http.MethodPost, "/api/filters", nil, ui, &saved)
+		err = s.uiCall(r, s.createFilter, http.MethodPost, nil, nil, ui, &saved)
 	case favouriteOnly:
 		saved.ID, _ = strconv.ParseInt(id, 10, 64)
 	default:
-		err = s.uiCall(r, s.updateFilter, http.MethodPatch, "/api/filters/"+id, map[string]string{"id": id}, ui, &saved)
+		err = s.uiCall(r, s.updateFilter, http.MethodPatch, nil, map[string]string{"id": id}, ui, &saved)
 		if err == nil && saved.ID == 0 {
 			saved.ID, _ = strconv.ParseInt(id, 10, 64)
 		}
@@ -471,7 +471,7 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 		// The save and the favourite are two steps, not one transaction. When
 		// the save went through, a failing favourite is logged, not answered
 		// with an error: the client would take the saved change for a failed one.
-		if err := s.uiCall(r, s.setFavourite(*favourite), method, "/api/filters/"+id+"/favourite",
+		if err := s.uiCall(r, s.setFavourite(*favourite), method, nil,
 			map[string]string{"id": id}, nil, nil); err != nil {
 			if favouriteOnly {
 				return err
