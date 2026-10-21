@@ -327,9 +327,19 @@
   letter-spacing: 0;
 }
 
+/*
+ * The nav scrolls sideways, so it clips what spills out of it: each link is
+ * padded to hold its scribble, and the nav reaches as far into the bar's gaps,
+ * so no word moves.
+ */
+[data-skin='crayon'] .topbar-nav {
+  gap: 8px;
+  margin: 0 -5px;
+}
+
 [data-skin='crayon'] .nav-link {
   position: relative;
-  padding: 15px 2px 14px;
+  padding: 15px 7px 14px;
   border-bottom: 0;
   font: 400 17px/1.2 var(--font-title);
   white-space: nowrap;
@@ -344,8 +354,8 @@
 [data-skin='crayon'] .nav-link:hover::after {
   content: '';
   position: absolute;
-  left: -5px;
-  right: -5px;
+  left: 0;
+  right: 0;
   bottom: 8px;
   height: 7px;
   background: var(--accent);
@@ -1625,7 +1635,7 @@
   }
 
   [data-skin='crayon'] .topbar-nav {
-    gap: 12px;
+    gap: 2px;
   }
 
   [data-skin='crayon'] .nav-link {
