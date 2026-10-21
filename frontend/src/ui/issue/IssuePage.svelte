@@ -148,13 +148,15 @@
     }
   }
 
-  async function update(fields: IssueFields): Promise<void> {
-    if (!issue) return;
+  /** Saves fields; false when the server refused, after the note says why. */
+  async function update(fields: IssueFields): Promise<boolean> {
+    if (!issue) return false;
     try {
       accept(await api.updateIssue(issue.key, fields));
+      return true;
     } catch (e) {
       notify(errorMessage(e), 'error');
-      throw e;
+      return false;
     }
   }
 
@@ -162,20 +164,15 @@
     if (!issue) return;
     const v = summaryDraft.trim();
     editingSummary = false;
-    if (v && v !== issue.summary) await update({ summary: v }).catch(() => {});
+    if (v && v !== issue.summary) await update({ summary: v });
   }
 
   async function saveDescription() {
     if (!issue) return;
     savingDescription = true;
-    try {
-      await update({ description: descriptionDraft.trim() ? descriptionDraft : null });
+    if (await update({ description: descriptionDraft.trim() ? descriptionDraft : null }))
       editingDescription = false;
-    } catch {
-      // The note already says why.
-    } finally {
-      savingDescription = false;
-    }
+    savingDescription = false;
   }
 
   async function toggle(kind: 'watch' | 'vote') {
