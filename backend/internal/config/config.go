@@ -355,9 +355,9 @@ func CheckValue(v string) error {
 	return nil
 }
 
-const header = `# Configuration de Solstice : des lignes CLÉ=valeur, lues par « solstice serve ».
-# Le même fichier sert d'EnvironmentFile à systemd et de fichier env à Docker.
-# Les variables d'environnement l'emportent sur ce qui est écrit ici.
+const header = `# Solstice configuration: KEY=value lines, read by "solstice serve".
+# The same file serves as the systemd EnvironmentFile and the Docker env file.
+# Environment variables take precedence over what is written here.
 `
 
 // Lines renders settings as file lines, in Keys order, for an administrator
