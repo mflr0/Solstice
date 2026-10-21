@@ -1062,7 +1062,7 @@ const MARK_ORDER = ['sup', 'sub', ...Object.keys(marks).filter((n) => n !== 'sup
  * write them), mono text that cannot be delimited loses its mono, links lose
  * the characters a label cannot hold. The result is what the markup will mean.
  */
-function prepare(input: Unit[], ctx: InlineContext, monoBars = false): Unit[] {
+function prepare(input: Unit[], ctx: InlineContext, monoBars = false, monoBrackets = true): Unit[] {
   let list = input
     .filter((u) => u.kind !== 'c' || (u.ch !== '\r' && u.ch !== PH_OPEN && u.ch !== PH_CLOSE))
     .map((u): Unit => {
@@ -1125,7 +1125,8 @@ function prepare(input: Unit[], ctx: InlineContext, monoBars = false): Unit[] {
       !text.includes('}}') &&
       !text.endsWith('}') &&
       !BLOCK_MACRO_RE.test(text) &&
-      (ctx !== 'cell' || monoBars || !text.includes('|'));
+      (ctx !== 'cell' || monoBars || !text.includes('|')) &&
+      (monoBrackets || !text.includes('['));
     if (!ok) for (let j = k; j <= end; j++) setMarks(j, M.code.removeFromSet(list[j]!.marks));
     k = end + 1;
   }
@@ -1671,6 +1672,11 @@ function serializeInline(content: Fragment, ctx: InlineContext, last = true): st
   if (list.length === 0) return '';
   const text = writeUnits(list, ctx, false, last);
   if (text !== null) return text;
+  // A "[" in mono cannot be escaped: left open, it takes the rest of the row.
+  if (ctx === 'cell' && !last) {
+    const plain = writeUnits(prepare(input, ctx, false, false), ctx, false, last);
+    if (plain !== null) return plain;
+  }
   // Last resort: everything escaped; lines still checked.
   const flags = escapeEverything(list);
   for (let round = 0; round < 60; round++) {

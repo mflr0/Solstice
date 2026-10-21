@@ -389,6 +389,19 @@ describe('round trip of shapes found by fuzzing', () => {
     expect(canon(out)).toBe(out);
   });
 
+  it('drops the mono of a "[" left open in a cell before the last', () => {
+    const cell = (...c: PMNode[]): PMNode => n.table_cell.create(null, p(...c));
+    const row = (...c: PMNode[]): PMNode => n.table.create(null, n.table_row.create(null, c));
+    const out = write(row(cell(text('a[', 'code')), cell(text('x'))));
+    expect(out).toBe('|a\\[|x|');
+    expect(renderWiki(out, NONE_EXIST)).toBe(
+      '<table class="wiki-table"><tbody><tr><td>a[</td><td>x</td></tr></tbody></table>',
+    );
+    // Closed in the mono, or in the last cell, the mono stays.
+    expect(write(row(cell(text('a[b]', 'code')), cell(text('x'))))).toBe('|{{a[b]}}|x|');
+    expect(write(row(cell(text('x')), cell(text('a[', 'code'))))).toBe('|x|{{a[}}');
+  });
+
   it('keeps formatting inside a typed link stuck to a word', () => {
     const strong = m.strong.create();
     const href = m.link.create({ href: 'https://x.fr' });
