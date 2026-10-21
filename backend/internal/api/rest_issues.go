@@ -205,7 +205,7 @@ func (s *Server) translateForIssue(ctx context.Context, sub *perm.Subject, iss *
 		return nil, err
 	}
 	p.issueType = iss.TypeID
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool {
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool {
 		return k == loadLabels || k == loadComponents || k == loadVersions
 	})
 	if err != nil {
@@ -539,7 +539,7 @@ func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error
 // their authors.
 func (s *Server) issueWorklogs(ctx context.Context, o *restOut, sub *perm.Subject, iss *issueRow) ([]worklogData,
 	map[int64]*jiraUser, error) {
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadWorklogs })
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool { return k == loadWorklogs })
 	if err != nil {
 		return nil, nil, err
 	}
@@ -882,7 +882,7 @@ func (s *Server) restAttach(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	o := s.restOut(r)
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadAttachments })
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool { return k == loadAttachments })
 	if err != nil {
 		return err
 	}

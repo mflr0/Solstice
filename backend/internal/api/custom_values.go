@@ -361,7 +361,7 @@ func (s *Server) customBefore(ctx context.Context, sub *perm.Subject, o *restOut
 	if len(writes) == 0 {
 		return nil, nil
 	}
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadCustom })
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool { return k == loadCustom })
 	if err != nil {
 		return nil, err
 	}

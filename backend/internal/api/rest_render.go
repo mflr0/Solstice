@@ -144,6 +144,7 @@ func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 		}
 	}
 	need := map[string]bool{
+		loadProjectKinds: sel.hasSystem("project"), loadLevels: sel.hasSystem("security"),
 		loadLabels: sel.hasSystem("labels"), loadComponents: sel.hasSystem("components"),
 		loadVersions: sel.hasSystem("fixVersions") || sel.hasSystem("versions"),
 		loadLinks:    sel.hasSystem("issuelinks"), loadSubtasks: sel.hasSystem("subtasks"),
@@ -670,7 +671,7 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 		return inner(k) || (k == loadComments && expand["renderedFields"] && sel.hasSystem("comment")) ||
 			(agile && (k == loadSprints || k == loadEpic))
 	}
-	set, err := s.loadIssues(ctx, sub, rows, want)
+	set, err := s.loadIssues(ctx, sub, custom, rows, want)
 	if err != nil {
 		return nil, nil, err
 	}
