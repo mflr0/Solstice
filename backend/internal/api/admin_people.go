@@ -340,15 +340,23 @@ func (s *Server) addGroupMembers(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkUsers(ctx, in.Users); err != nil {
 		return err
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var added []int64
 	for _, u := range in.Users {
-		res, err := s.db.ExecContext(ctx, `INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, id, u)
+		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, id, u)
 		if err != nil {
 			return err
 		}
 		if n, _ := res.RowsAffected(); n > 0 {
 			added = append(added, u)
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	s.perms.Invalidate()
 	if len(added) > 0 {
