@@ -1196,7 +1196,7 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		return nil, err
 	}
 	if f.has("epic") {
-		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, ParentID: nullInt64(parentID)}, f)
+		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, TypeID: typeID, ParentID: nullInt64(parentID)}, f)
 		if err != nil {
 			return nil, err
 		}
