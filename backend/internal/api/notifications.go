@@ -117,7 +117,7 @@ func (s *Server) eventCustom(ctx context.Context, issueID int64) ([]events.Custo
 	if err != nil {
 		return nil, err
 	}
-	set, err := s.loadIssues(ctx, nil, []*issueRow{iss}, func(k string) bool {
+	set, err := s.loadIssues(ctx, nil, nil, []*issueRow{iss}, func(k string) bool {
 		return k == loadCustom || k == loadSprints
 	})
 	if err != nil {

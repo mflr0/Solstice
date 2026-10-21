@@ -134,7 +134,7 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	want := sel.loads(custom)
-	set, err := s.loadIssues(ctx, sub, rows, func(k string) bool {
+	set, err := s.loadIssues(ctx, sub, custom, rows, func(k string) bool {
 		return want(k) || (k == loadEpic && sel.include["epic"]) || (k == loadSprints && sel.include["sprint"])
 	})
 	if err != nil {
