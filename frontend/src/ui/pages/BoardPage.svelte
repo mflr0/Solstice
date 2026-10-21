@@ -21,6 +21,7 @@
   import { paths } from '../../core/route.js';
   import type { IssueBrief } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import { hiddenSides } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -57,6 +58,9 @@
   let collapsed = $state<Record<string, boolean>>({});
   let completing = $state<Sprint | null>(null);
   let editing = $state<Sprint | null>(null);
+  // Columns out of sight on either side of the board, each shown by a shade.
+  let moreLeft = $state(false);
+  let moreRight = $state(false);
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
@@ -318,6 +322,12 @@
       {/if}
       <div
         class="board"
+        class:more-left={moreLeft}
+        class:more-right={moreRight}
+        use:hiddenSides={(left, right) => {
+          moreLeft = left;
+          moreRight = right;
+        }}
         style:grid-template-columns="repeat({d.columns.length}, minmax(min(250px, 78vw), 1fr))"
         style:grid-template-rows="repeat({rows}, auto)"
         style:row-gap="0"
@@ -451,6 +461,41 @@
     align-items: stretch;
   }
 
+  /*
+   * A shade on each edge past which columns are out of sight: grid items over
+   * the whole grid, stuck to the board's edges while it scrolls.
+   */
+  .board::before,
+  .board::after {
+    --shade: color-mix(in srgb, var(--ink) 16%, transparent);
+    content: '';
+    position: sticky;
+    z-index: 2;
+    grid-row: 1 / -1;
+    grid-column: 1 / -1;
+    width: 28px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .board::before {
+    left: 0;
+    justify-self: start;
+    background: linear-gradient(to right, var(--shade), transparent);
+  }
+
+  .board::after {
+    right: 0;
+    justify-self: end;
+    background: linear-gradient(to left, var(--shade), transparent);
+  }
+
+  .more-left::before,
+  .more-right::after {
+    opacity: 1;
+  }
+
   .board-column-title {
     margin: 0;
   }
@@ -508,7 +553,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .chevron {
+    .chevron,
+    .board::before,
+    .board::after {
       transition: none;
     }
   }

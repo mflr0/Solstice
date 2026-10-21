@@ -327,7 +327,10 @@ showing where a dragged card lands (`.before` / `.after` a card, or alone at
 the top of an empty list). The board is a grid: columns span every row
 (`grid-template-rows: subgrid`), and with swimlanes a `.board-lane` band
 crosses them above each lane's cells (`button.board-lane-toggle` with
-`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`). The backlog
+`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`). Wider than the
+page, the board scrolls sideways: `.more-left` / `.more-right` while columns
+are out of sight on that side, each shown by a shade on that edge, the
+board's `::before` / `::after` (drawn with `--ink`). The backlog
 reuses the hooks: each section is a `.sprint-head` then a
 `.board-column.backlog-list` > `.board-cards` of `article.board-card.backlog-row`
 (one line each).
