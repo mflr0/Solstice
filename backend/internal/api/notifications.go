@@ -14,6 +14,9 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
+	"sync"
+	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/events"
@@ -26,9 +29,6 @@ import (
 	"solstice/internal/settings"
 	"solstice/internal/sqlq"
 	"solstice/internal/webhook"
-	"strings"
-	"sync"
-	"time"
 )
 
 // outgoing holds the event bus and what it feeds.
@@ -1008,4 +1008,109 @@ func (s *Server) notificationRoutes(route func(string, handler, bool)) {
 	route("DELETE /api/admin/webhooks/{id}", s.deleteWebhook, true)
 	route("GET /api/admin/webhooks/{id}/deliveries", s.webhookDeliveries, true)
 	route("POST /api/admin/webhooks/{id}/test", s.testWebhook, true)
+}
+
+const (
+	maxStreamsPerUser = 10
+	maxStreamsTotal   = 1000
+)
+
+type streamSlots struct {
+	mu      sync.Mutex
+	perUser map[int64]int
+	total   int
+}
+
+func (c *streamSlots) acquire(user int64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.perUser == nil {
+		c.perUser = map[int64]int{}
+	}
+	if c.total >= maxStreamsTotal || c.perUser[user] >= maxStreamsPerUser {
+		return false
+	}
+	c.total++
+	c.perUser[user]++
+	return true
+}
+
+func (c *streamSlots) release(user int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.total--
+	if c.perUser[user]--; c.perUser[user] == 0 {
+		delete(c.perUser, user)
+	}
+}
+
+// events streams change notifications (Server-Sent Events). Permissions are
+// re-read every minute so a revoked access stops the flow.
+func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		return fail(http.StatusInternalServerError, i18n.RequestStreamingUnsupported)
+	}
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	return s.streamEvents(w, r, flusher, sub)
+}
+
+// streamEvents ends when the client goes away, the server shuts down or the
+// session behind the stream ends, so its slot is always given back.
+func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, flusher http.Flusher, sub *perm.Subject) error {
+	if !s.streams.acquire(sub.UserID) {
+		return fail(http.StatusTooManyRequests, i18n.RequestTooManyStreams)
+	}
+	defer s.streams.release(sub.UserID)
+	current := make(chan *perm.Subject, 1)
+	current <- sub
+	can := func(e live.Event) bool {
+		s := <-current
+		current <- s
+		return s.CanSee(e.Issue) && s.SeesRestricted(e.Issue.ProjectID, e.Group, e.Role)
+	}
+	ch, unsubscribe := s.hub.Subscribe(can)
+	defer unsubscribe()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "retry: 3000\n\n")
+	flusher.Flush()
+
+	ping := time.NewTicker(25 * time.Second)
+	defer ping.Stop()
+	refresh := time.NewTicker(time.Minute)
+	defer refresh.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return nil
+		case <-s.streamsDone:
+			return nil
+		case e := <-ch:
+			data, _ := json.Marshal(e)
+			fmt.Fprintf(w, "event: change\ndata: %s\n\n", data)
+			flusher.Flush()
+		case <-ping.C:
+			fmt.Fprint(w, ": ping\n\n")
+			flusher.Flush()
+		case <-refresh.C:
+			// End the stream once the session is over or the account disabled.
+			u, err := s.authenticate(r)
+			if err != nil || u.ID != sub.UserID {
+				return nil
+			}
+			fresh, err := s.perms.Subject(r.Context(), u.ID, u.Admin)
+			if err != nil {
+				return nil
+			}
+			<-current
+			current <- fresh
+		}
+	}
 }
