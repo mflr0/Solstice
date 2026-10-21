@@ -22,7 +22,7 @@
    */
   interface Props {
     issue: IssueDetail;
-    onchange: (fields: IssueFields) => Promise<void>;
+    onchange: (fields: IssueFields) => Promise<boolean>;
   }
   const { issue, onchange }: Props = $props();
 
@@ -62,13 +62,21 @@
     );
     estimateError = invalid !== null;
     if (invalid !== null || Object.keys(fields).length === 0) return;
-    try {
-      await onchange(fields);
-    } catch {
+    if (!(await onchange(fields))) {
       // The note already says why; the fields show the issue's own values again.
       originalText = estimateText(issue.time.original);
       remainingText = estimateText(issue.time.remaining);
     }
+  }
+
+  // A refusal leaves the issue as it was, so Svelte has nothing to redraw and
+  // the control would keep the refused value.
+  async function save(
+    el: HTMLSelectElement | HTMLInputElement,
+    fields: IssueFields,
+    stored: () => string,
+  ) {
+    if (!(await onchange(fields))) el.value = stored();
   }
 
   const spentRatio = $derived.by(() => {
@@ -113,7 +121,12 @@
             <select
               aria-label={t.issue.priority}
               value={issue.priority?.id ?? ''}
-              onchange={(e) => void onchange({ priority: e.currentTarget.value || null })}
+              onchange={(e) =>
+                void save(
+                  e.currentTarget,
+                  { priority: e.currentTarget.value || null },
+                  () => issue.priority?.id ?? '',
+                )}
             >
               {#each session.meta?.priorities ?? [] as p (p.id)}
                 <option value={p.id}>{p.name}</option>
@@ -134,7 +147,8 @@
             <select
               aria-label={t.issue.type}
               value={issue.type.id}
-              onchange={(e) => void onchange({ type: e.currentTarget.value })}
+              onchange={(e) =>
+                void save(e.currentTarget, { type: e.currentTarget.value }, () => issue.type.id)}
             >
               {#each types as ty (ty.id)}
                 <option value={ty.id}>{ty.name}</option>
@@ -234,7 +248,12 @@
             type="date"
             aria-label={t.issue.due}
             value={issue.due ?? ''}
-            onchange={(e) => void onchange({ due: e.currentTarget.value || null })}
+            onchange={(e) =>
+              void save(
+                e.currentTarget,
+                { due: e.currentTarget.value || null },
+                () => issue.due ?? '',
+              )}
           />
         {:else}
           {issue.due ? formatDay(issue.due) : '—'}
@@ -252,9 +271,13 @@
                 aria-label={t.issue.security}
                 value={issue.securityLevel ? String(issue.securityLevel.id) : ''}
                 onchange={(e) =>
-                  void onchange({
-                    securityLevel: e.currentTarget.value ? Number(e.currentTarget.value) : null,
-                  })}
+                  void save(
+                    e.currentTarget,
+                    {
+                      securityLevel: e.currentTarget.value ? Number(e.currentTarget.value) : null,
+                    },
+                    () => (issue.securityLevel ? String(issue.securityLevel.id) : ''),
+                  )}
               >
                 <option value="">{t.issue.public}</option>
                 {#each issue.securityLevels as l (l.id)}

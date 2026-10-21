@@ -13,7 +13,7 @@
    */
   interface Props {
     issue: IssueDetail;
-    onchange: (fields: IssueFields) => Promise<void>;
+    onchange: (fields: IssueFields) => Promise<boolean>;
   }
   const { issue, onchange }: Props = $props();
 
@@ -38,14 +38,10 @@
       return;
     }
     busy = true;
-    try {
-      const fields: IssueFields = { status: tr.to.id };
-      if (tr.to.category === 'done' && resolution) fields.resolution = resolution;
-      await onchange(fields);
-      close();
-    } finally {
-      busy = false;
-    }
+    const fields: IssueFields = { status: tr.to.id };
+    if (tr.to.category === 'done' && resolution) fields.resolution = resolution;
+    if (await onchange(fields)) close();
+    busy = false;
   }
 </script>
 
