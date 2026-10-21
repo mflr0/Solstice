@@ -9,6 +9,7 @@
   import { publicSettings } from '../lib/public-settings.svelte.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
+  import { updateNotice } from '../lib/updates.svelte.js';
   import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
   import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
@@ -47,6 +48,11 @@
         return '';
     }
   });
+
+  $effect(() => {
+    if (session.me?.admin) void updateNotice.load();
+  });
+  const update = $derived(session.me?.admin ? updateNotice.latest : null);
 
   // On a narrow bar the links scroll sideways: bring the current one into view.
   $effect(() => {
@@ -125,10 +131,11 @@
           class="account-button"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label={t.nav.account}
+          aria-label={update ? `${t.nav.account} (${t.updates.badge})` : t.nav.account}
           onclick={() => (menuOpen = !menuOpen)}
         >
           <span class="avatar"><Picture user={session.me} /></span>
+          {#if update}<span class="update-dot" aria-hidden="true"></span>{/if}
         </button>
         {#if menuOpen}
           <div class="popover account-menu" role="menu">
@@ -156,6 +163,18 @@
                 href={paths.admin('overview')}
                 onclick={() => (menuOpen = false)}>{t.adminArea.title}</a
               >
+            {/if}
+            {#if update}
+              <a
+                class="item update-item"
+                role="menuitem"
+                href={paths.admin('updates')}
+                onclick={() => (menuOpen = false)}
+              >
+                <span class="update-dot" aria-hidden="true"></span>
+                <span>{t.updates.badge}</span>
+                <span class="hint">{update}</span>
+              </a>
             {/if}
             <div class="sep"></div>
             <div class="group-label">{t.nav.skin}</div>
@@ -284,6 +303,25 @@
     height: 5px;
     border-radius: 50%;
     background: var(--sw-accent);
+  }
+
+  .account-button {
+    position: relative;
+  }
+
+  .update-dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .account-button .update-dot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    box-shadow: 0 0 0 2px var(--bar);
   }
 
   .account-menu .hint {
