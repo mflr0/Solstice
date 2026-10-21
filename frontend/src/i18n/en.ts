@@ -1847,7 +1847,7 @@ export const en = {
       reset: 'password reset',
       invitation: 'invitation',
     },
-    attempts: (n: number) => plural(n, `${n} attempt`, `${n} attempts`),
+    attempts: (n: number) => plural(n, 'attempt', 'attempts'),
   },
 
   account: {
