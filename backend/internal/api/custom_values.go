@@ -75,10 +75,10 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	if !found {
 		return fieldError(field, failf(http.StatusBadRequest, i18n.FieldNotSettable, field))
 	}
-	isNull := len(raw) == 0 || string(raw) == "null"
-	if !isNull && !settableKind(f.Kind) {
+	if !settableKind(f.Kind) {
 		return fieldError(field, failf(http.StatusBadRequest, i18n.FieldNotSettable, field))
 	}
+	isNull := len(raw) == 0 || string(raw) == "null"
 	switch f.Kind {
 	case "gh-epic-link":
 		var key *string
