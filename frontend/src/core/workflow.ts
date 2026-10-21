@@ -53,17 +53,12 @@ export function toDraft(w: Workflow): Draft {
   };
 }
 
-/** A new transition is named after the status it leads to. */
-export function defaultName(to: StatusRef): string {
-  return to.name;
-}
-
 /** The name saved for a transition: its own, or its target's when left blank. */
 export function effectiveName(t: DraftTransition, statuses: StatusRef[]): string {
   const name = t.name.trim();
   if (name) return name;
   const to = statuses.find((s) => s.id === t.to);
-  return to ? defaultName(to) : t.to;
+  return to ? to.name : t.to;
 }
 
 /** The transitions of one matrix cell (usually zero or one). */
@@ -115,7 +110,7 @@ export function toggleCell(
   const restored = cell(saved, from, to.id);
   if (restored.length === 0) {
     const key = `new:${from ?? '*'}>${to.id}`;
-    return [...list, { key, id: null, name: defaultName(to), from, to: to.id }];
+    return [...list, { key, id: null, name: to.name, from, to: to.id }];
   }
   // Put them back where they were, so saving keeps the order of the buttons.
   const rank = (t: DraftTransition) => {

@@ -31,7 +31,8 @@
 
   let button: HTMLButtonElement | undefined = $state();
   let wrap: HTMLDivElement | undefined = $state();
-  const id = `fp-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `fp-${uid}`;
 
   function close(refocus: boolean) {
     if (!open) return;

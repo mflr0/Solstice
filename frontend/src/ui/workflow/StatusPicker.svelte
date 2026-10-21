@@ -23,7 +23,8 @@
   let active = $state(0);
   let busy = $state(false);
   let error = $state('');
-  const listId = `statuses-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const listId = `statuses-${uid}`;
 
   const found = $derived(searchStatuses(catalogue, taken, q));
   const canCreate = $derived(q.trim() !== '' && !statusNamed(catalogue, q));

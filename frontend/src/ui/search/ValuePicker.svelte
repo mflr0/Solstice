@@ -65,7 +65,8 @@
   let active = $state(0);
   let seq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const listId = `vp-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const listId = `vp-${uid}`;
 
   const isChosen = (v: string) => selected.some((s) => sameValue(s, v));
   const pick = (v: string) => onchange(toggle(selected, v));

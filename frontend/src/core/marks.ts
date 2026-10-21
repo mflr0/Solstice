@@ -75,8 +75,13 @@ export function isImage(mimeType: string): boolean {
  */
 export const KEY_TYPED = /^([A-Za-z][A-Za-z0-9_]*)-(\d+)$/;
 
+/** Whether the text is an issue key as people type it ("demo-12"). */
+export function isIssueKey(text: string): boolean {
+  return KEY_TYPED.test(text.trim());
+}
+
 /** "DEMO-12" → "DEMO"; null when the text is not an issue key. */
-export function projectOfKey(key: string): string | null {
+export function projectOfIssueKey(key: string): string | null {
   const m = KEY_TYPED.exec(key.trim());
   return m?.[1] ? m[1].toUpperCase() : null;
 }

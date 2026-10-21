@@ -67,7 +67,8 @@
   let ctx: Completion | null = null;
   let at = $state({ left: 0, top: 0 });
   let seq = 0;
-  const id = `jql-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `jql-${uid}`;
 
   $effect(() => {
     const v = value;

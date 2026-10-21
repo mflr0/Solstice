@@ -29,7 +29,8 @@
 
   let open = $state(false);
   const current = $derived(groups.flatMap((g) => g.links).find((l) => l.current));
-  const navId = `side-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const navId = `side-${uid}`;
 
   // Another section opened: fold the navigation again (narrow screens).
   $effect(() => {

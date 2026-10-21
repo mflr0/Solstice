@@ -22,7 +22,8 @@
   const presets = $derived(datePresets(field));
   const current = $derived(range ? matchPreset(field, range) : null);
   const days = $derived(range ? rangeDays(range) : { from: '', to: '' });
-  const name = `dr-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const name = `dr-${uid}`;
 
   function setDay(which: 'from' | 'to', value: string) {
     const next = { ...days, [which]: value };
