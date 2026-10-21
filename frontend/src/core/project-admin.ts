@@ -17,6 +17,7 @@ import type {
   VersionInput,
   VersionRow,
 } from './admin-types.js';
+import { fold } from './text.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -55,13 +56,9 @@ export interface ProjectSettings {
 /** A project key: an upper-case letter, then 1 to 9 upper-case letters or digits. */
 export const KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}$/;
 
-function plain(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
 /** What may be typed in the key field: upper case, letters and digits, 10 at most. */
 export function normalizeKey(s: string): string {
-  return plain(s)
+  return fold(s)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
     .slice(0, 10);
@@ -72,7 +69,7 @@ export function normalizeKey(s: string): string {
  * ("Site web" → "SW"), the start of a single one ("Marketing" → "MARK").
  */
 export function suggestKey(name: string): string {
-  const words = plain(name)
+  const words = fold(name)
     .toUpperCase()
     .split(/[^A-Z0-9]+/)
     .filter(Boolean);
