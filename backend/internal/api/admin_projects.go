@@ -85,15 +85,31 @@ var projectTemplates = map[string]struct {
 	kind     string
 	statuses []templateStatus
 }{
-	"software": {"software", []templateStatus{{"To Do", issue.Todo}, {"In Progress", issue.Doing},
-		{"In Review", issue.Doing}, {"Done", issue.Done}}},
-	"simple": {"business", []templateStatus{{"To do", issue.Todo}, {"In progress", issue.Doing},
-		{"Done", issue.Done}}},
+	"software": {"software", []templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
+		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusInReview), issue.Doing},
+		{i18n.M(i18n.DefaultStatusDone), issue.Done}}},
+	"simple": {"business", []templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
+		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusDone), issue.Done}}},
 }
 
 type templateStatus struct {
+	name     i18n.Message
+	category issue.StatusCategory
+}
+
+// projectStatus is a status of a new project, named in the instance's language.
+type projectStatus struct {
 	name     string
 	category issue.StatusCategory
+}
+
+// templateStatuses names the statuses of a template in lang.
+func templateStatuses(statuses []templateStatus, lang string) []projectStatus {
+	out := make([]projectStatus, len(statuses))
+	for i, st := range statuses {
+		out[i] = projectStatus{st.name.In(lang), st.category}
+	}
+	return out
 }
 
 // memberPermissions are what the people given access to a new project may
@@ -186,7 +202,7 @@ type newProject struct {
 	category    *int64
 	template    string
 	kind        string
-	statuses    []templateStatus
+	statuses    []projectStatus
 	assignTo    string
 	access      *accessInput
 	types       []string
@@ -224,7 +240,7 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 	if !ok {
 		return nil, fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
 	}
-	p.kind, p.statuses = tmpl.kind, tmpl.statuses
+	p.kind, p.statuses = tmpl.kind, templateStatuses(tmpl.statuses, s.defaultLanguage())
 	if in.DefaultAssignee != nil {
 		if err := checkAssigneeType(*in.DefaultAssignee); err != nil {
 			return nil, err
