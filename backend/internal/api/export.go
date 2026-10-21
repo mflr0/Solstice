@@ -335,8 +335,6 @@ func (o *restOut) exportCell(cat *catalog, set *issueSet, users map[int64]*jiraU
 			logs = append(logs, fmt.Sprintf("%s; %s; %s", when(wl.started), who(wl.author.Int64), jiraDuration(wl.seconds)))
 		}
 		return strings.Join(logs, "\n")
-	case "timetracking":
-		return ""
 	case "epic":
 		if d.epic != nil {
 			return d.epic.Key()

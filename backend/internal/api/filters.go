@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 
 	"solstice/internal/i18n"
@@ -436,9 +435,6 @@ func (s *Server) setFavourite(on bool) handler {
 		} else {
 			_, err = s.db.ExecContext(r.Context(), `DELETE FROM filter_favourites WHERE filter_id = ? AND user_id = ?`,
 				f.out.ID, sub.UserID)
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			err = nil
 		}
 		if err != nil {
 			return err

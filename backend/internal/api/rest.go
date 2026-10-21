@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -214,11 +213,7 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 // either is anonymous (u is nil, err too).
 func (s *Server) restCredentials(r *http.Request) (u *auth.User, via string, err error) {
 	if r.Header.Get("Authorization") != "" {
-		u, method, err := s.credentials(r)
-		if method == "token" {
-			return u, viaToken, err
-		}
-		return u, viaBasic, err
+		return s.credentials(r)
 	}
 	if c, err := r.Cookie(auth.CookieName); err == nil {
 		u, err := auth.Lookup(r.Context(), s.db, c.Value)
@@ -269,15 +264,9 @@ func formEncoded(r *http.Request) bool {
 
 // writeRESTFailure answers an error, logging those not meant for the user.
 func (s *Server) writeRESTFailure(w http.ResponseWriter, r *http.Request, err error) {
-	var he *httpError
-	if !errors.As(err, &he) {
-		if errors.Is(err, context.Canceled) {
-			return
-		}
-		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-		err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
+	if err := boundary(s.log, "request failed", r, err); err != nil {
+		s.writeRESTError(w, r, err)
 	}
-	s.writeRESTError(w, r, err)
 }
 
 // restError is Jira's error body: general messages, and messages per field
@@ -290,10 +279,7 @@ type restError struct {
 
 func (s *Server) writeRESTError(w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
-	if !errors.As(err, &he) {
-		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
-	}
+	errors.As(err, &he)
 	// Refused: leave a trace at Warn, capped per address (refused.go).
 	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
 		refused.logRefused(r, he.status, s.proxies)
@@ -350,7 +336,7 @@ func (s *Server) uiCall(r *http.Request, h handler, method, target string, value
 	for k, v := range values {
 		req.SetPathValue(k, v)
 	}
-	rec := &recorder{header: http.Header{}, status: http.StatusOK}
+	rec := &recorder{header: http.Header{}}
 	if err := h(rec, req); err != nil {
 		return err
 	}
@@ -363,23 +349,14 @@ func (s *Server) uiCall(r *http.Request, h handler, method, target string, value
 // recorder keeps what a handler answers, for uiCall.
 type recorder struct {
 	header http.Header
-	status int
-	wrote  bool
 	body   bytes.Buffer
 }
 
 func (r *recorder) Header() http.Header { return r.header }
 
-func (r *recorder) WriteHeader(status int) {
-	if !r.wrote {
-		r.status, r.wrote = status, true
-	}
-}
+func (r *recorder) WriteHeader(int) {}
 
-func (r *recorder) Write(b []byte) (int, error) {
-	r.wrote = true
-	return r.body.Write(b)
-}
+func (r *recorder) Write(b []byte) (int, error) { return r.body.Write(b) }
 
 // readRESTJSON decodes a REST request body. Unlike the interface's API,
 // unknown fields are ignored: Jira clients send many that Solstice has no

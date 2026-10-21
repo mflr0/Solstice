@@ -228,7 +228,7 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 // code where needed, and errors written in the request's language.
 func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
+		if !csrfOK(r) {
 			writeError(rw, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
@@ -236,15 +236,7 @@ func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 			writeError(rw, r, fail(http.StatusUnauthorized, i18n.SetupCodeRequired))
 			return
 		}
-		if err := h(rw, r); err != nil {
-			var he *httpError
-			if !errors.As(err, &he) {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				w.log.Error("setup request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
-			}
+		if err := boundary(w.log, "setup request failed", r, h(rw, r)); err != nil {
 			writeError(rw, r, err)
 		}
 	})

@@ -259,7 +259,6 @@ type ctxKey int
 
 const (
 	userCtxKey ctxKey = iota
-	subjectKey
 )
 
 // httpError is an error meant for the user. Its message keeps its key and
@@ -307,7 +306,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			setBodyReadDeadline(w, time.Now().Add(timeout))
 			defer setBodyReadDeadline(w, time.Time{})
 		}
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
+		if !csrfOK(r) {
 			s.writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
@@ -319,18 +318,31 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			}
 			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
 		}
-		if err := h(w, r); err != nil {
-			var he *httpError
-			if !errors.As(err, &he) {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
-			}
+		if err := boundary(s.log, "request failed", r, h(w, r)); err != nil {
 			s.writeError(w, r, err)
 		}
 	})
+}
+
+// csrfOK tells whether a request of the interface's API cannot have been
+// forged by another site: it only reads, or carries the CSRF header.
+func csrfOK(r *http.Request) bool {
+	return r.Method == http.MethodGet || r.Method == http.MethodHead || r.Header.Get(csrfHeader) != ""
+}
+
+// boundary is what a handler's error becomes in the answer: nil when there
+// is nothing to answer (the client went away), the error itself when it is
+// meant for the user, else a generic 500, the error being logged as msg.
+func boundary(log *slog.Logger, msg string, r *http.Request, err error) error {
+	var he *httpError
+	if err == nil || errors.As(err, &he) {
+		return err
+	}
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	log.Error(msg, "method", r.Method, "route", r.Pattern, "err", err)
+	return fail(http.StatusInternalServerError, i18n.RequestInternalError)
 }
 
 // authenticate reads the session cookie, or the credentials of scripts and
@@ -442,10 +454,7 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 
 func writeErrorVia(proxies []netip.Prefix, w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
-	if !errors.As(err, &he) {
-		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
-	}
+	errors.As(err, &he)
 	// Refused: leave a trace at Warn, capped per address (refused.go).
 	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
 		refused.logRefused(r, he.status, proxies)
