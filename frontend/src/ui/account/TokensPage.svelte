@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { isoDay, tokenExpiry, tokenProblems, type ExpiryChoice } from '../../core/admin-forms.js';
+  import { tokenExpiry, tokenProblems, type ExpiryChoice } from '../../core/admin-forms.js';
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
   import type { AccessToken } from '../../core/admin-types.js';
+  import { isoDay } from '../../core/dates.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';

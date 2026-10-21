@@ -317,7 +317,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	if a := p.access; a != nil {
 		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
 	}
-	s.auditLog(r, audit.ProjectCreate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: p.key}, details)
+	s.auditLog(r, audit.ProjectCreate, target("project", id, p.key), details)
 	return writeJSON(w, http.StatusCreated, map[string]any{"id": id, "key": p.key})
 }
 
@@ -615,8 +615,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if changes := projectChanges(before, after); len(changes) > 0 {
-		s.auditLog(r, audit.ProjectUpdate, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: after.Key},
-			changes)
+		s.auditLog(r, audit.ProjectUpdate, target("project", id, after.Key), changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }
@@ -745,11 +744,6 @@ func (s *Server) writeProjectChanges(ctx context.Context, id int64, sets map[str
 // projectChanges lists what a change to a project's settings touched.
 func projectChanges(a, b *projectSettingsOut) map[string]any {
 	out := map[string]any{}
-	pair := func(name string, from, to any) {
-		if from != to {
-			out[name] = map[string]any{"from": from, "to": to}
-		}
-	}
 	str := func(p *string) string {
 		if p == nil {
 			return ""
@@ -775,12 +769,12 @@ func projectChanges(a, b *projectSettingsOut) map[string]any {
 		}
 		return strings.Join(ids, ",")
 	}
-	pair("name", a.Name, b.Name)
-	pair("description", str(a.Description), str(b.Description))
-	pair("lead", who(a.Lead), who(b.Lead))
-	pair("category", cat(a.Category), cat(b.Category))
-	pair("defaultAssignee", a.DefaultAssignee, b.DefaultAssignee)
-	pair("issueTypes", types(a.IssueTypes), types(b.IssueTypes))
+	diff(out, "name", a.Name, b.Name)
+	diff(out, "description", str(a.Description), str(b.Description))
+	diff(out, "lead", who(a.Lead), who(b.Lead))
+	diff(out, "category", cat(a.Category), cat(b.Category))
+	diff(out, "defaultAssignee", a.DefaultAssignee, b.DefaultAssignee)
+	diff(out, "issueTypes", types(a.IssueTypes), types(b.IssueTypes))
 	return out
 }
 
@@ -816,7 +810,7 @@ func (s *Server) archiveProject(archived bool) handler {
 			if !archived {
 				action = audit.ProjectUnarchive
 			}
-			s.auditLog(r, action, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: key}, nil)
+			s.auditLog(r, action, target("project", id, key), nil)
 		}
 		p, err := s.projectSettings(r.Context(), id)
 		if err != nil {
@@ -939,7 +933,7 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	release()
 	s.perms.Invalidate()
-	s.auditLog(r, audit.ProjectRename, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: newKey},
+	s.auditLog(r, audit.ProjectRename, target("project", id, newKey),
 		map[string]any{"oldKey": key, "newKey": newKey})
 	p, err := s.projectSettings(ctx, id)
 	if err != nil {
@@ -1007,7 +1001,7 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.ProjectDelete, audit.Target{Type: "project", ID: strconv.FormatInt(id, 10), Label: key},
+	s.auditLog(r, audit.ProjectDelete, target("project", id, key),
 		map[string]any{"issues": issues, "attachments": len(files)})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -1159,7 +1153,7 @@ func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
 	if creating {
 		action, status = audit.CategoryCreate, http.StatusCreated
 	}
-	s.auditLog(r, action, audit.Target{Type: "category", ID: strconv.FormatInt(id, 10), Label: list[0].Name},
+	s.auditLog(r, action, target("category", id, list[0].Name),
 		map[string]any{"description": list[0].Description})
 	return writeJSON(w, status, list[0])
 }
@@ -1183,7 +1177,7 @@ func (s *Server) deleteCategory(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM project_categories WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.CategoryDelete, audit.Target{Type: "category", ID: strconv.FormatInt(id, 10), Label: list[0].Name},
+	s.auditLog(r, audit.CategoryDelete, target("category", id, list[0].Name),
 		map[string]any{"projects": list[0].Projects})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

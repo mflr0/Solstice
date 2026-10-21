@@ -162,7 +162,7 @@ func (s *Server) adminAvatarTarget(r *http.Request) (int64, audit.Target, error)
 	if err != nil {
 		return 0, audit.Target{}, err
 	}
-	return id, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username}, nil
+	return id, target("user", id, u.Username), nil
 }
 
 // The audit log records a change of picture as an update of the account.

@@ -1943,7 +1943,7 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 		s.emit(e)
 	}
 	s.log.Info("issue deleted", "key", iss.Key())
-	s.auditLog(r, audit.IssueDelete, audit.Target{Type: "issue", ID: strconv.FormatInt(iss.ID, 10), Label: iss.Key()}, nil)
+	s.auditLog(r, audit.IssueDelete, target("issue", iss.ID, iss.Key()), nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

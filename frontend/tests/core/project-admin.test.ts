@@ -72,6 +72,11 @@ describe('project keys', () => {
     expect(normalizeKey('abcdefghijklm')).toBe('ABCDEFGHIJ');
   });
 
+  it('spells a capital sharp s as SS, like a small one', () => {
+    expect(normalizeKey('GROẞ')).toBe('GROSS');
+    expect(normalizeKey('Groß')).toBe('GROSS');
+  });
+
   it('checks the pattern', () => {
     expect(keyProblem('')).toBe('keyRequired');
     expect(keyProblem('W')).toBe('keyPattern');

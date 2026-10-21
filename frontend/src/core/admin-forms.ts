@@ -4,6 +4,7 @@
  * to send. Problems are keys; the pages word them (src/i18n).
  */
 
+import { passwordTooShort } from './account-links.js';
 import type {
   AuditQuery,
   MailSecurity,
@@ -13,6 +14,8 @@ import type {
   SubscriptionInput,
   WebhookInput,
 } from './admin-types.js';
+import { isoDay } from './dates.js';
+import { fold } from './text.js';
 
 /** Problems found in a form, by field. */
 export type Problems<F extends string, P extends string = string> = Partial<Record<F, P>>;
@@ -201,12 +204,6 @@ export type ExpiryChoice = '30' | '90' | '365' | 'date' | 'never';
 
 export type TokenProblem = 'nameRequired' | 'nameTooLong' | 'dateRequired' | 'dateInPast';
 
-/** "YYYY-MM-DD" of a local date. */
-export function isoDay(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 /** The last day a token works, or null for never. */
 export function tokenExpiry(choice: ExpiryChoice, date: string, today: Date): string | null {
   if (choice === 'never') return null;
@@ -356,7 +353,7 @@ export function userProblems(
     else if (!USERNAME_PATTERN.test(u)) out.username = 'usernameInvalid';
     if (f.invite) {
       if (!f.email.trim()) out.email = 'emailRequired';
-    } else if ([...f.password].length < minPassword) {
+    } else if (passwordTooShort(f.password, minPassword)) {
       out.password = 'passwordShort';
     }
   }
@@ -366,10 +363,7 @@ export function userProblems(
 
 /** A user name suggested from a display name: "Marie Durand" → "marie.durand". */
 export function suggestUsername(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
+  return fold(name)
     .trim()
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '')
@@ -378,10 +372,10 @@ export function suggestUsername(name: string): string {
 
 /** Whether a list matches a typed search: every word in one of the texts. */
 export function matches(search: string, ...texts: (string | null | undefined)[]): boolean {
-  const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = fold(search).split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const hay = texts.filter(Boolean).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
+  const hay = fold(texts.filter(Boolean).join(' '));
+  return words.every((w) => hay.includes(w));
 }
 
 /** Longest name the server takes, in characters: a 255-character column. */
