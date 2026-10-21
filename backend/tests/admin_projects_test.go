@@ -5,14 +5,38 @@ package tests
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
+var (
+	projectKeyBase = uint64(time.Now().UnixMicro())
+	projectKeySeq  atomic.Uint64
+)
+
 // newProjectKey is a project key no run of the tests used before.
-func newProjectKey() string { return fmt.Sprintf("T%X", time.Now().UnixNano()%0xFFFFFFF) }
+func newProjectKey() string {
+	// The counter keeps the keys of one run apart; the start time, those of
+	// former runs. Nine hex digits keep "T" + key within the ten-character rule.
+	return fmt.Sprintf("T%X", (projectKeyBase+projectKeySeq.Add(1))%(1<<36))
+}
+
+// Two keys taken in a row differ, and each is a valid project key.
+func TestNewProjectKeyUnique(t *testing.T) {
+	valid := regexp.MustCompile(`^[A-Z][A-Z0-9]{1,9}$`)
+	seen := map[string]bool{}
+	for range 1000 {
+		key := newProjectKey()
+		if seen[key] || !valid.MatchString(key) {
+			t.Fatalf("newProjectKey() = %q, seen before or not a valid key", key)
+		}
+		seen[key] = true
+	}
+}
 
 // newProject creates a project led by admin, open to the developpeurs group,
 // and deletes it when the test ends.
