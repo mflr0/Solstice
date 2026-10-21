@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
@@ -308,13 +309,65 @@ func (s *Server) deleteBoard(w http.ResponseWriter, r *http.Request) error {
 	} else if !ok {
 		return errForbidden
 	}
-	// The board's saved filter stays: it may be used on its own.
-	if _, err := s.db.ExecContext(r.Context(), `DELETE FROM boards WHERE id = ?`, b.ID); err != nil {
+	ctx := r.Context()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+	// Its future sprints go, as if deleted one by one; its active sprint is
+	// completed. Closed sprints stay, with no board, as the issues' history.
+	var future, active []*sprintOut
+	if err := sqlq.Each(ctx, tx, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND state <> 'closed'
+		ORDER BY position, id FOR UPDATE`, func(rows *sql.Rows) error {
+		sp, err := scanSprint(rows)
+		if err != nil {
+			return err
+		}
+		if sp.State == "future" {
+			future = append(future, &sp)
+		} else {
+			active = append(active, &sp)
+		}
+		return nil
+	}, b.ID); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	type dropped struct {
+		issueIDs []int64
+		line     change
+	}
+	drops := make([]dropped, len(future))
+	for i, sp := range future {
+		if drops[i].issueIDs, drops[i].line, err = dropSprint(ctx, tx, sub.UserID, sp, now); err != nil {
+			return err
+		}
+	}
+	for _, sp := range active {
+		if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = 'closed', completed_at = ? WHERE id = ?`, now, sp.ID); err != nil {
+			return err
+		}
+		sp.State, sp.Completed = "closed", &now
+	}
+	// The board's saved filter stays: it may be used on its own.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM boards WHERE id = ?`, b.ID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	for i, sp := range future {
+		s.announceBackToBacklog(ctx, sub.UserID, drops[i].issueIDs, drops[i].line)
+		s.emit(events.Event{Kind: events.SprintDeleted, ActorID: sub.UserID, Sprint: sprintEvent(sp, b.ID)})
+	}
+	for _, sp := range active {
+		s.emit(events.Event{Kind: events.SprintClosed, ActorID: sub.UserID, Sprint: sprintEvent(sp, b.ID)})
 	}
 	s.emit(events.Event{Kind: events.BoardDeleted, ActorID: sub.UserID,
 		Board: &events.Board{ID: b.ID, Name: b.Name, Kind: b.Kind}})
-	s.auditBoard(r, audit.BoardDelete, b.ID, b.Name, map[string]any{"kind": b.Kind})
+	s.auditBoard(r, audit.BoardDelete, b.ID, b.Name,
+		map[string]any{"kind": b.Kind, "deletedSprints": len(future), "completedSprints": len(active)})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
