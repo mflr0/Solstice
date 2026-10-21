@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { BoardDetail, BoardPatch, SwimlaneStrategy } from '../../core/board-types.js';
+  import { searchHref } from '../../core/filters-url.js';
   import { paths } from '../../core/route.js';
   import type { StatusRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
@@ -297,7 +298,7 @@
           <code class="query">{d.board.query}</code>
           <span class="hint"
             >{t.boardSettings.filterHint}
-            <a href={paths.search(d.board.query)}>{t.boardSettings.seeIssues}</a></span
+            <a href={searchHref(d.board.query)}>{t.boardSettings.seeIssues}</a></span
           >
         </div>
         {#if kanban}
