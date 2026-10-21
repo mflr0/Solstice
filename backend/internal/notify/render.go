@@ -52,6 +52,11 @@ type changeRow struct {
 	Field, From, To string
 }
 
+// Multiline reports whether the row's value spans several lines.
+func (c changeRow) Multiline() bool {
+	return strings.Contains(c.From, "\n") || strings.Contains(c.To, "\n")
+}
+
 // table is a list of issues (filter results, due dates).
 type table struct {
 	Title   string
@@ -100,7 +105,7 @@ var htmlPage = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
 {{- if .Changes}}
 <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
 {{- range .Changes}}
-<tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">{{.Field}}</td><td style="padding:2px 0;vertical-align:top;">
+<tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">{{.Field}}</td><td style="padding:2px 0;vertical-align:top;{{if .Multiline}}white-space:pre-wrap;word-wrap:break-word;{{end}}">
 {{- if .From}}<span style="color:#6c685e;text-decoration:line-through;">{{.From}}</span> → {{end}}{{.To}}</td></tr>
 {{- end}}
 </table>
@@ -184,11 +189,11 @@ func (p *page) text() string {
 			}
 			b.WriteString("\n")
 			for _, c := range e.Changes {
-				b.WriteString("  " + c.Field + colon)
+				v := c.To
 				if c.From != "" {
-					b.WriteString(c.From + " → ")
+					v = c.From + " → " + v
 				}
-				b.WriteString(c.To + "\n")
+				b.WriteString("  " + c.Field + colon + strings.ReplaceAll(v, "\n", "\n    ") + "\n")
 			}
 			if e.Text != "" {
 				for l := range strings.SplitSeq(e.Text, "\n") {

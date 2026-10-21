@@ -53,7 +53,7 @@ Story · To Do · Medium · Assigned to Paul Martin
 
 Paul Martin updated the issue. (<when>)
   Description: Nouvelle description
-sur deux lignes.
+    sur deux lignes.
   Environment: Firefox 140
   Due date: 2031-03-15
 
@@ -80,7 +80,7 @@ Manage my notifications: https://tickets.exemple.fr/settings/notifications
 <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
 <p style="margin:0 0 6px;">Paul Martin updated the issue. <span style="color:#6c685e;font-size:12px;"><when></span></p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
-<tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">Description</td><td style="padding:2px 0;vertical-align:top;">Nouvelle description
+<tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">Description</td><td style="padding:2px 0;vertical-align:top;white-space:pre-wrap;word-wrap:break-word;">Nouvelle description
 sur deux lignes.</td></tr>
 <tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">Environment</td><td style="padding:2px 0;vertical-align:top;">Firefox 140</td></tr>
 <tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">Due date</td><td style="padding:2px 0;vertical-align:top;">2031-03-15</td></tr>
