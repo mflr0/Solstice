@@ -310,7 +310,9 @@ validez-la. Tant qu'elle n'y est pas, l'assistant de mise à jour refuse toute
 mise à jour. Ensuite
 `SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
 `deploy/linux/test-update-signature.sh` teste la vérification avec une clé
-jetable.
+jetable. `deploy/linux/test-update-systemd.sh` lance l'assistant sous systemd
+dans un conteneur Docker : une mise à jour, une somme de contrôle fausse
+refusée, une version qui ne démarre pas annulée.
 
 ### Tests
 
