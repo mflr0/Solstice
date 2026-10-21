@@ -90,17 +90,30 @@
     queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
   }
 
+  // The guard above bounces back to the same project: that must not reload
+  // the page and drop the unsaved tab.
+  let loadedKey = '';
   $effect(() => {
     const key = projectKey;
+    if (key === loadedKey) return;
+    loadedKey = key;
     document.title = `${t.settings.title} ${key} — ${t.appName}`;
+    data = null;
+    grants = [];
+    saved = '';
+    error = '';
+    forbidden = false;
+    adding = null;
     api
       .permissions(key)
       .then((d) => {
+        if (key !== projectKey) return;
         data = d;
         grants = d.grants;
         saved = signature(d.grants);
       })
       .catch((e: unknown) => {
+        if (key !== projectKey) return;
         if (e instanceof ApiError && e.status === 403) forbidden = true;
         else error = errorMessage(e);
       });
@@ -135,17 +148,20 @@
   }
 
   async function save() {
+    const key = projectKey;
     saving = true;
     try {
       const d = await api.savePermissions(
-        projectKey,
+        key,
         grants.map(({ permission, holder, id }) =>
           id ? { permission, holder, id } : { permission, holder },
         ),
       );
-      data = d;
-      grants = d.grants;
-      saved = signature(d.grants);
+      if (key === projectKey) {
+        data = d;
+        grants = d.grants;
+        saved = signature(d.grants);
+      }
       notify(t.settings.saved);
     } catch (e) {
       notify(errorMessage(e), 'error');
