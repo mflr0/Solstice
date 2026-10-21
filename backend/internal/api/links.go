@@ -116,18 +116,34 @@ func (s *Server) deleteLink(w http.ResponseWriter, r *http.Request) error {
 	if !sub.Can(perm.Link, source.ProjectID, &sp) && !sub.Can(perm.Link, target.ProjectID, &tp) {
 		return errForbidden
 	}
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM issue_links WHERE id = ?`, id); err != nil {
+	cat, err := s.catalogue(ctx)
+	if err != nil {
 		return err
 	}
-	// Announced like the history lines of a new link, the other way round.
-	var lt linkTypeRef
-	if cat, err := s.catalogue(ctx); err == nil {
-		lt = cat.linkType[typeID]
+	lt := cat.linkType[typeID]
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
 	}
-	s.changed(source, sub.UserID, "link", []change{{field: "Link", oldValue: target.Key(),
-		oldString: "This issue " + lt.Outward + " " + target.Key()}})
-	s.changed(target, sub.UserID, "link", []change{{field: "Link", oldValue: source.Key(),
-		oldString: "This issue " + lt.Inward + " " + source.Key()}})
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM issue_links WHERE id = ?`, id); err != nil {
+		return err
+	}
+	// The history lines of a new link, the other way round.
+	sourceChange := []change{{field: "Link", oldValue: target.Key(), oldString: "This issue " + lt.Outward + " " + target.Key()}}
+	targetChange := []change{{field: "Link", oldValue: source.Key(), oldString: "This issue " + lt.Inward + " " + source.Key()}}
+	if err := recordChanges(ctx, tx, source.ID, sub.UserID, now, sourceChange); err != nil {
+		return err
+	}
+	if err := recordChanges(ctx, tx, target.ID, sub.UserID, now, targetChange); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.changed(source, sub.UserID, "link", sourceChange)
+	s.changed(target, sub.UserID, "link", targetChange)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
