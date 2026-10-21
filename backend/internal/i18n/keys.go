@@ -326,6 +326,7 @@ const (
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
 	IssueTransitionNotAllowed  Key = "IssueTransitionNotAllowed"
+	IssueEditChanged           Key = "IssueEditChanged"
 	IssueTransitionUnavailable Key = "IssueTransitionUnavailable"
 	IssueParentNotFound        Key = "IssueParentNotFound"
 	IssueParentInvalid         Key = "IssueParentInvalid"

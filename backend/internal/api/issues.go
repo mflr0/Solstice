@@ -1801,6 +1801,16 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 		return err
 	}
 	defer tx.Rollback()
+	// The checks above and the history's old values come from iss: a
+	// concurrent edit since it was read would make both wrong.
+	var lastUpdate time.Time
+	if err := tx.QueryRowContext(ctx, `SELECT updated_at FROM issues WHERE id = ? FOR UPDATE`, iss.ID).
+		Scan(&lastUpdate); err != nil {
+		return err
+	}
+	if !lastUpdate.Equal(iss.Updated) {
+		return fail(http.StatusConflict, i18n.IssueEditChanged)
+	}
 	setChanges, err := s.applySets(ctx, tx, f, iss)
 	if err != nil {
 		return err

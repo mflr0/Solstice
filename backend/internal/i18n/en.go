@@ -287,6 +287,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueSecurityLevelUnknown:  "Unknown security level in this project.",
 	IssueReporterFixed:         "The reporter cannot be changed.",
 	IssueTransitionNotAllowed:  "The project's workflow does not allow this status change.",
+	IssueEditChanged:           "The issue changed while it was being saved. Reload it and try again.",
 	IssueTransitionUnavailable: "This transition is not available from the issue's current status.",
 	IssueParentNotFound:        "Parent issue not found.",
 	IssueParentInvalid:         "The parent must be an issue of the same project, without a parent of its own.",
