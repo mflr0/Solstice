@@ -68,7 +68,7 @@
     onclick={() => (open ? close(false) : (open = true))}
   >
     <span class="filter-name"
-      >{label}{#if summary}<span class="sep">&nbsp;:</span>{/if}</span
+      >{label}{#if summary}<span class="sep">{t.common.labelSep}</span>{/if}</span
     >
     {#if summary}<span class="filter-value">{summary}</span>{/if}
     <span class="caret" aria-hidden="true">▾</span>
