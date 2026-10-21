@@ -505,13 +505,21 @@ func isDuplicate(err error) bool {
 // has this name in any case. except is the id of the row being renamed, of
 // the type of the table's id.
 func (s *Server) nameTaken(ctx context.Context, table, name string, except any, key i18n.Key) error {
+	return s.valueTaken(ctx, table, "name", "TRUE", nil, name, except, key)
+}
+
+// valueTaken is nameTaken on any column, among the rows of table that match
+// scope, a condition on scopeArgs.
+func (s *Server) valueTaken(ctx context.Context, table, column, scope string, scopeArgs []any, value string, except any,
+	key i18n.Key) error {
 	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n); err != nil {
+	args := append(append([]any{}, scopeArgs...), value, except)
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE `+scope+` AND LOWER(`+column+`) = LOWER(?)
+		AND id <> ?`, args...).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
-		return failf(http.StatusConflict, key, name)
+		return failf(http.StatusConflict, key, value)
 	}
 	return nil
 }

@@ -249,15 +249,7 @@ func (s *Server) checkContext(ctx context.Context, in *contextInput) ([]int64, [
 }
 
 func (s *Server) fieldNameTaken(ctx context.Context, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_fields WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.nameTaken(ctx, "custom_fields", name, except, i18n.CommonAlreadyExists)
 }
 
 func writeContext(ctx context.Context, tx *sql.Tx, field int64, projects []int64, types []string) error {
@@ -543,15 +535,8 @@ func (s *Server) optionField(r *http.Request) (*fieldDetailOut, error) {
 }
 
 func (s *Server) optionTaken(ctx context.Context, field int64, value string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_field_options WHERE field_id = ? AND parent_id IS NULL
-		AND LOWER(value) = LOWER(?) AND id <> ?`, field, value, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, value)
-	}
-	return nil
+	return s.valueTaken(ctx, "custom_field_options", "value", "field_id = ? AND parent_id IS NULL", []any{field}, value,
+		except, i18n.CommonAlreadyExists)
 }
 
 func (s *Server) writeField(w http.ResponseWriter, r *http.Request, status int, id int64) error {
