@@ -7,25 +7,30 @@ argument-hint: "[number] [label...]"
 
 Work one issue of mflr0/Solstice from pick to merge. This skill holds the whole workflow, including what CLAUDE.md and memory also say. `pick.sh` sits next to this file.
 
+Every call re-reads the whole context, so make few of them: send independent calls in the same turn, and chain dependent shell steps with `&&` in one Bash call.
+
 ## 1. Pick
 
-Run `pick.sh $ARGUMENTS`.
+Run `pick.sh $ARGUMENTS` and `ListAgents` in the same turn.
 - With a number, it checks that ticket only, whatever its assignee.
 - Without one, it lists open, unassigned tickets. It leaves out `enhancement` unless that is a filter, and other label words narrow the list.
 - Order: position in the ticket's "Tracked in #N" issue, then issue number.
 - It flags as blocked: tickets with a "Waits for #n" (in the body or on the tracker line) whose #n is an open issue or an unmerged PR, and tickets other than bugs that share an "In scope" file with an open bug. It lists tickets claimed by another session apart.
 - If nothing is free, it prints one line (`Nothing free: …`). Relay that line and stop: no per-ticket table.
+- It then prints the first free candidate in full, body and comments. Don't fetch it again.
 
-Read only the first free candidate, body and comments, for dependencies the script can't see:
+Read it for dependencies the script can't see:
 - Prose ("do the small-fixes ticket first", "after the typed-confirmation ticket", "Parked: needs … first"). Find the ticket they name.
 - Its "Out of scope" and "Stop and say so" lines, for tickets that go first.
 
-If one names an open ticket or an unmerged PR, add it to the ticket's "Waits for #n" line (or add that line before "Tracked in") with `gh issue edit`, so `pick.sh` catches it next time. A ticket with any open dependency is out, even if only part of it depends on it. Don't scope it down: take the next free candidate. If none is left, say so in one line and stop.
+If one names an open ticket or an unmerged PR, add it to the ticket's "Waits for #n" line (or add that line before "Tracked in") with `gh issue edit`, so `pick.sh` catches it next time. A ticket with any open dependency is out, even if only part of it depends on it. Don't scope it down: take the next free candidate (`pick.sh <number>` prints it in full). If none is left, say so in one line and stop.
 
 ## 2. Claim
 
-1. Get this session's short ref from `ListAgents`: the bracketed id after its name (e.g. `0dd017`). Session names can contain spaces, which the claim comment can't hold.
-2. Run `pick.sh --claim N <session>`. Exit 3 means another session holds or just won the ticket: go back to step 1 with the next candidate. The label is the lock: don't message the other sessions.
+1. Take this session's short ref from the `ListAgents` output: the bracketed id after its name (e.g. `0dd017`). Session names can contain spaces, which the claim comment can't hold.
+2. Choose a short `<topic>` for the branch, then run `pick.sh --start N <session> <topic>`. It checks the main checkout has a local git identity, fetches, claims the ticket and creates the worktree `../Solstice-<topic>` on a new branch `v1.0/<topic>` from `origin/feat/v1.0`.
+   - Exit 3: another session holds or just won the ticket. Go back to step 1 with the next candidate. The label is the lock: don't message the other sessions.
+   - No local identity: ask me, the global one is not for this repo.
 
 If the work is dropped at any point, run `pick.sh --release N`.
 
@@ -39,10 +44,8 @@ If the work is dropped at any point, run `pick.sh --release N`.
 
 ## 4. Implement
 
-1. Check `git config --local user.email` in the main checkout (the first line of `git worktree list`; worktrees share its local config). If it is empty, ask me: the global identity is not the one for this repo.
-2. `git fetch origin`, then create the worktree next to the repo, on a new branch from `feat/v1.0` (not `main`):
-   `git worktree add -b v1.0/<topic> ../Solstice-<topic> origin/feat/v1.0`
-   Work only in that worktree, never in the main checkout: other sessions use it.
+1. Work only in the worktree `--start` created, never in the main checkout: other sessions use it.
+2. Read with `grep -n` and line ranges, several files per call, rather than one file per call.
 3. Make the change. Comments: a one-line doc comment on exported identifiers; otherwise only when the why isn't obvious.
 4. Run the proof the ticket names ("Proof that nothing moved", "Pins"). By default:
    - Server: `(cd backend && test -z "$(gofmt -l .)" && go vet ./... && go run honnef.co/go/tools/cmd/staticcheck@latest ./... && go test ./...)`
@@ -50,7 +53,7 @@ If the work is dropped at any point, run `pick.sh --release N`.
 5. Integration tests: run them myself, against a separate database pointed to by `SOLSTICE_TEST_DB`, never the dev `solstice` database. If auto mode blocks that (or `make e2e`), don't work around it: for a backend-only change, rely on the CI integration job and say so; otherwise ask me to run `! make e2e`.
 6. For a new test, see it fail with the code it covers broken, then restore the code.
 7. If a "Stop and say so in the ticket if" condition is met while editing, stop editing. Grill me with the `grilling` skill on what triggered it, with your recommendation. Then comment the outcome on the ticket with `gh issue comment`.
-8. If the change needs a UI check (see step 5.4), do it yourself first; see "UI check" below.
+8. If the change needs a UI check (see step 5.1), do it yourself first; see "UI check" below.
 
 ### UI check
 
@@ -78,19 +81,19 @@ The `playwright` MCP server is pinned (`@playwright/mcp@0.0.83 --browser chromiu
 
 ## 5. Deliver
 
-1. Commit once the work is done and verified. Split it into several commits only for several meaningful steps. Subject line only, no body, in the conventional-commit style of `git log` (e.g. `test(jirafixture): …`).
-2. Push the branch to `origin` and open the pull request against `feat/v1.0`. Title: the commit subject (several commits: a one-line summary in the same style). Empty description (`--body ""`). Draft or ready: step 4 decides.
-3. Comment `Closes #N.` on the pull request, adding any file changed outside the ticket's scope and why. The stale-claim check finds the pull request through this comment. The issue doesn't close by itself: step 6 closes it.
-4. Choose the path:
-   - **Needs a UI check** (it touches the frontend, or changes something the user sees that no test pins): open it as a draft (`--draft`). Report what the UI check (step 4.8) verified, check by check, and what it found. Then ask me to test only what the browser couldn't judge (how it looks in a theme, a real screen reader), or say there is nothing left. Wait for my answer.
-   - **Nothing to check in the UI** (backend-only, covered by unit tests and CI integration tests): open it ready for review and go to step 5 without asking.
-5. Merge, once it is ready or once I approve the draft ("good", "all good", "continue"; don't ask whether to merge):
-   - Mark a draft ready (`gh pr ready`).
-   - Wait for every CI check (`gh pr checks <PR> --watch`). If one fails, fix it with a new commit, or stop and tell me.
-   - `gh pr merge <PR> --merge --delete-branch`.
-6. Run `pick.sh --done N <PR>`. It removes the label, deletes the "Claimed by session …" comments, closes the issue and ticks it in its tracker.
-7. Clean up: stop any server of the UI check still running, remove the worktree (`git worktree remove ../Solstice-<topic>`), the local branch and the remote branch, whichever are still there. Check with `git worktree list`, `git branch` and `git ls-remote --heads origin <branch>`.
-8. In the main checkout: `git checkout feat/v1.0 && git pull`.
-9. Report in a few lines: the ticket, the PR, what the change does, what was verified, and anything left open. On a "continue", go back to step 1 for the next ticket.
+1. Choose the path:
+   - **Needs a UI check** (it touches the frontend, or changes something the user sees that no test pins): `draft`.
+   - **Nothing to check in the UI** (backend-only, covered by unit tests and CI integration tests): `ready`.
+2. Commit and ship in one Bash call: `git -C <worktree> add -A && git -C <worktree> commit -q -m "<subject>" && pick.sh --ship N <topic> draft|ready`.
+   - Commit once the work is done and verified. Split it into several commits only for several meaningful steps, and then pass `--title "<one-line summary>"`. Subject line only, no body, in the conventional-commit style of `git log` (e.g. `test(jirafixture): …`).
+   - `--ship` pushes the branch, opens the pull request against `feat/v1.0` with the commit subject as title and an empty description, and comments `Closes #N.` on it. The stale-claim check finds the pull request through this comment.
+   - Pass `--note "<text>"` to add to that comment any file changed outside the ticket's scope, and why.
+3. Then:
+   - **Draft**: report what the UI check (step 4.8) verified, check by check, and what it found. Then ask me to test only what the browser couldn't judge (how it looks in a theme, a real screen reader), or say there is nothing left. Wait for my answer.
+   - **Ready**: go to step 4 without asking.
+4. Merge, once it is ready or once I approve the draft ("good", "all good", "continue"; don't ask whether to merge). Stop any server of the UI check still running, then run `pick.sh --finish N <PR> <topic>` with the Bash timeout at 600000. It marks a draft ready, waits for every CI check, merges the commit they ran on, closes the issue and ticks it in its tracker (`--done`), removes the worktree and the local and remote branch, and pulls `feat/v1.0` in the main checkout.
+   - Exit 4: a check failed, or was still pending. Fix it with a new commit, push it (`git -C <worktree> push`), and run `--finish` again; or stop and tell me.
+   - If it stops on anything else, fix the cause and run it again: it resumes after what is already done.
+5. Report in a few lines: the ticket, the PR, what the change does, what was verified, and anything left open. On a "continue", go back to step 1 for the next ticket.
 
 Once a branch is pushed, never `commit --amend` + force-push: append commits.
