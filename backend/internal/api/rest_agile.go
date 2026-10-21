@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ func (o *restOut) boardJSON(b *boardSummary) map[string]any {
 
 func (s *Server) agileBoards(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
-	target := "/api/boards"
+	var query url.Values
 	if v := q.Get("projectKeyOrId"); v != "" {
 		id, err := s.restProjectID(r.Context(), v)
 		if err != nil {
@@ -54,10 +55,10 @@ func (s *Server) agileBoards(w http.ResponseWriter, r *http.Request) error {
 		if err := s.db.QueryRowContext(r.Context(), `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key); err != nil {
 			return err
 		}
-		target += "?project=" + key
+		query = url.Values{"project": {key}}
 	}
 	var list []*boardSummary
-	if err := s.uiCall(r, s.listBoards, http.MethodGet, target, nil, nil, &list); err != nil {
+	if err := s.uiCall(r, s.listBoards, http.MethodGet, query, nil, nil, &list); err != nil {
 		return err
 	}
 	kind, name := strings.ToLower(q.Get("type")), strings.ToLower(q.Get("name"))
@@ -129,7 +130,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		EstimateFields []namedRef  `json:"estimateFields"`
 	}
 	id := strconv.FormatInt(b.ID, 10)
-	if err := s.uiCall(r, s.getBoard, http.MethodGet, "/api/boards/"+id, map[string]string{"id": id}, nil, &view); err != nil {
+	if err := s.uiCall(r, s.getBoard, http.MethodGet, nil, map[string]string{"id": id}, nil, &view); err != nil {
 		return err
 	}
 	o := s.restOut(r)
@@ -384,7 +385,7 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 	id := strconv.FormatInt(sp.ID, 10)
 	values := map[string]string{"id": id}
 	if len(body) > 0 {
-		if err := s.uiCall(r, s.editSprint, http.MethodPatch, "/api/sprints/"+id, values, body, nil); err != nil {
+		if err := s.uiCall(r, s.editSprint, http.MethodPatch, nil, values, body, nil); err != nil {
 			return err
 		}
 	}
@@ -395,11 +396,11 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 		if end != nil {
 			start["end"] = end
 		}
-		if err := s.uiCall(r, s.startSprint, http.MethodPost, "/api/sprints/"+id+"/start", values, start, nil); err != nil {
+		if err := s.uiCall(r, s.startSprint, http.MethodPost, nil, values, start, nil); err != nil {
 			return err
 		}
 	case *state == "closed" && sp.State == "active":
-		if err := s.uiCall(r, s.completeSprint, http.MethodPost, "/api/sprints/"+id+"/complete", values,
+		if err := s.uiCall(r, s.completeSprint, http.MethodPost, nil, values,
 			map[string]any{}, nil); err != nil {
 			return err
 		}
@@ -421,7 +422,7 @@ func (s *Server) agileDeleteSprint(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	id := strconv.FormatInt(sp.ID, 10)
-	if err := s.uiCall(r, s.deleteSprint, http.MethodDelete, "/api/sprints/"+id, map[string]string{"id": id}, nil,
+	if err := s.uiCall(r, s.deleteSprint, http.MethodDelete, nil, map[string]string{"id": id}, nil,
 		nil); err != nil {
 		return err
 	}

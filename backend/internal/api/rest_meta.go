@@ -199,7 +199,7 @@ func (s *Server) restProjectID(ctx context.Context, v string) (int64, error) {
 
 func (s *Server) restProjects(w http.ResponseWriter, r *http.Request) error {
 	var list []projectOut
-	if err := s.uiCall(r, s.listProjects, http.MethodGet, "/api/projects", nil, nil, &list); err != nil {
+	if err := s.uiCall(r, s.listProjects, http.MethodGet, nil, nil, nil, &list); err != nil {
 		return err
 	}
 	o := s.restOut(r)
@@ -236,7 +236,7 @@ func (s *Server) pathProject(r *http.Request) (*projectDetail, error) {
 		return nil, err
 	}
 	var p projectDetail
-	err = s.uiCall(r, s.getProject, http.MethodGet, "/api/projects/"+key, map[string]string{"key": key}, nil, &p)
+	err = s.uiCall(r, s.getProject, http.MethodGet, nil, map[string]string{"key": key}, nil, &p)
 	return &p, err
 }
 

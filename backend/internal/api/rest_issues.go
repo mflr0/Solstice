@@ -140,7 +140,7 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	for _, c := range edit.comments {
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": iss.Key()}, c, nil); err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ func (s *Server) restEdit(r *http.Request, sub *perm.Subject, iss *issueRow, edi
 		}
 	}
 	for _, c := range edit.comments {
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": iss.Key()}, c, nil); err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (s *Server) restDeleteIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.IssueDeleteSubtasks)
 		}
 	}
-	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, "/api/issues/"+iss.Key(),
+	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, nil,
 		map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 		return err
 	}
@@ -465,7 +465,7 @@ func (s *Server) restAddComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var out commentOut
-	if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+	if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 		map[string]string{"key": iss.Key()}, c, &out); err != nil {
 		return err
 	}
@@ -505,7 +505,7 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	id := strconv.FormatInt(c.id, 10)
-	if err := s.uiCall(r, s.editComment, http.MethodPatch, "/api/comments/"+id, map[string]string{"id": id},
+	if err := s.uiCall(r, s.editComment, http.MethodPatch, nil, map[string]string{"id": id},
 		map[string]string{"body": in.Body}, nil); err != nil {
 		return err
 	}
@@ -525,7 +525,7 @@ func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	id := strconv.FormatInt(c.id, 10)
-	if err := s.uiCall(r, s.deleteComment, http.MethodDelete, "/api/comments/"+id, map[string]string{"id": id},
+	if err := s.uiCall(r, s.deleteComment, http.MethodDelete, nil, map[string]string{"id": id},
 		nil, nil); err != nil {
 		return err
 	}
@@ -622,7 +622,7 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	var created struct {
 		ID int64 `json:"id"`
 	}
-	if err := s.uiCall(r, s.addWorklog, http.MethodPost, "/api/issues/"+iss.Key()+"/worklogs",
+	if err := s.uiCall(r, s.addWorklog, http.MethodPost, nil,
 		map[string]string{"key": iss.Key()}, body, &created); err != nil {
 		return err
 	}
@@ -693,7 +693,7 @@ func (s *Server) restEditWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.uiCall(r, s.editWorklog, http.MethodPut, "/api/worklogs/"+strconv.FormatInt(id, 10),
+	if err := s.uiCall(r, s.editWorklog, http.MethodPut, nil,
 		map[string]string{"id": strconv.FormatInt(id, 10)}, body, nil); err != nil {
 		return err
 	}
@@ -709,7 +709,7 @@ func (s *Server) restDeleteWorklog(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if err := s.uiCall(r, s.deleteWorklog, http.MethodDelete, "/api/worklogs/"+strconv.FormatInt(id, 10),
+	if err := s.uiCall(r, s.deleteWorklog, http.MethodDelete, nil,
 		map[string]string{"id": strconv.FormatInt(id, 10)}, nil, nil); err != nil {
 		return err
 	}
@@ -797,7 +797,7 @@ func (s *Server) restWatch(on bool) handler {
 			method = http.MethodDelete
 		}
 		if userID == sub.UserID {
-			if err := s.uiCall(r, s.setWatch(on), method, "/api/issues/"+iss.Key()+"/watch",
+			if err := s.uiCall(r, s.setWatch(on), method, nil,
 				map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 				return err
 			}
@@ -858,7 +858,7 @@ func (s *Server) restVote(on bool) handler {
 		if !on {
 			method = http.MethodDelete
 		}
-		if err := s.uiCall(r, s.setVote(on), method, "/api/issues/"+iss.Key()+"/vote",
+		if err := s.uiCall(r, s.setVote(on), method, nil,
 			map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 			return err
 		}
@@ -965,7 +965,7 @@ func (s *Server) restLink(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	source, target := issues[0], issues[1]
-	if err := s.uiCall(r, s.addLink, http.MethodPost, "/api/issues/"+source.Key()+"/links",
+	if err := s.uiCall(r, s.addLink, http.MethodPost, nil,
 		map[string]string{"key": source.Key()},
 		map[string]any{"type": linkType.ID, "direction": "outward", "target": target.Key()}, nil); err != nil {
 		return err
@@ -975,7 +975,7 @@ func (s *Server) restLink(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+source.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": source.Key()}, c, nil); err != nil {
 			return err
 		}
