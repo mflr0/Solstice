@@ -80,7 +80,7 @@ claim() {
   # break a race: the first claim comment since the label was set does.
   at=$(labeled_at "$n")
   winner=$(gh api "repos/$R/issues/$n/comments?per_page=100" --jq \
-    "[.[] | select(.created_at >= \"$at\") | .body | capture(\"^Claimed by session (?<s>\\\\S+)\\\\.\$\") | .s] | first // empty")
+    "[.[] | select(.created_at >= \"$at\") | .body | capture(\"^Claimed by session (?<s>.+)\\\\.\$\") | .s] | first // empty")
   if [ "$winner" != "$session" ]; then
     gh api -X DELETE "repos/$R/issues/comments/$id" >/dev/null
     echo "#$n: claimed first by $winner"; exit 3
@@ -193,7 +193,7 @@ done_() {
   local n=$1 pr=$2 tracker body new id
   gh issue edit "$n" -R "$R" --remove-label "$LABEL" >/dev/null 2>&1 || true
   for id in $(gh api "repos/$R/issues/$n/comments?per_page=100" --jq \
-    '.[] | select(.body | test("^Claimed by session \\S+\\.$")) | .id'); do
+    '.[] | select(.body | test("^Claimed by session .+\\.$")) | .id'); do
     gh api -X DELETE "repos/$R/issues/comments/$id" >/dev/null
   done
   echo "#$n: claim comments deleted"
@@ -317,7 +317,7 @@ list() {
   echo
   gh issue view "$first" -R "$R" --json number,title,body,comments --jq '
     "=== #\(.number) \(.title)\n\n\(.body)"
-    + (.comments | map(select(.body | test("^Claimed by session \\S+\\.$") | not)
+    + (.comments | map(select(.body | test("^Claimed by session .+\\.$") | not)
         | "\n\n--- \(.author.login), \(.createdAt[:10]):\n\(.body)") | join(""))'
 }
 
