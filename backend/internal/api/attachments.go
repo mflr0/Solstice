@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"io"
@@ -45,9 +46,10 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) error {
 }
 
 // storeAttachments stores the files of a multipart request on an issue and
-// returns the ids of the attachments it created.
+// returns the ids of the attachments it created. On failure it removes what
+// it stored.
 func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *perm.Subject,
-	iss *issueRow) ([]int64, error) {
+	iss *issueRow) (_ []int64, err error) {
 	ctx := r.Context()
 	pi := iss.perm()
 	if !sub.Can(perm.Attach, iss.ProjectID, &pi) {
@@ -63,6 +65,11 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 	}
 	var names []string
 	var ids []int64
+	defer func() {
+		if err != nil {
+			s.removeStored(context.WithoutCancel(ctx), ids)
+		}
+	}()
 	now := time.Now().UTC()
 	// The quota is what the database stores, not what the disk holds.
 	var stored int64
@@ -101,13 +108,13 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 			return nil, err
 		}
 		id, _ := res.LastInsertId()
+		ids = append(ids, id)
 		var src io.Reader = part
 		if s.maxStorage > 0 {
 			src = &quotaReader{r: part, left: s.maxStorage - stored}
 		}
 		size, err := writeFile(s.attachmentPath(id), src)
 		if err != nil {
-			s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 			if errors.As(err, new(*http.MaxBytesError)) {
 				return nil, fail(http.StatusRequestEntityTooLarge, i18n.AttachmentTooLarge)
 			}
@@ -121,7 +128,6 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 		}
 		stored += size
 		names = append(names, name)
-		ids = append(ids, id)
 	}
 	if len(names) == 0 {
 		return nil, fail(http.StatusBadRequest, i18n.AttachmentNoFile)
@@ -151,6 +157,20 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
 	return ids, nil
+}
+
+// removeStored deletes the rows and files of attachments that a failed upload
+// stored.
+func (s *Server) removeStored(ctx context.Context, ids []int64) {
+	for _, id := range ids {
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id); err != nil {
+			s.log.Error("attachment of a failed upload not removed", "id", id, "err", err)
+			continue
+		}
+		if err := os.Remove(s.attachmentPath(id)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			s.log.Warn("attachment file not removed", "id", id, "err", err)
+		}
+	}
 }
 
 var errStorageQuota = errors.New("attachment storage quota reached")
