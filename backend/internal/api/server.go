@@ -325,7 +325,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 				if errors.Is(err, context.Canceled) {
 					return
 				}
-				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+				s.log.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
 				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 			}
 			s.writeError(w, r, err)

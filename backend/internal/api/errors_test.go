@@ -39,18 +39,17 @@ func TestWriteErrorHidesInternalErrors(t *testing.T) {
 // hold a secret (a reset token).
 func TestWriteErrorLogsRouteNotPath(t *testing.T) {
 	var logged bytes.Buffer
-	old := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
-	t.Cleanup(func() { slog.SetDefault(old) })
-
-	r := httptest.NewRequest("POST", "/api/auth/reset/s3cret-token", nil)
-	r.Pattern = "POST /api/auth/reset/{token}"
-	for name, write := range map[string]func(http.ResponseWriter, *http.Request, error){
-		"interface": writeError, "REST": (&Server{}).writeRESTError,
+	log := slog.New(slog.NewTextHandler(&logged, nil))
+	s := &Server{log: log}
+	boom := func(http.ResponseWriter, *http.Request) error { return errors.New("boom") }
+	for name, h := range map[string]http.Handler{
+		"interface": s.wrap(boom, false), "REST": s.rest(boom, false), "setup wizard": (&Setup{log: log}).wrap(boom, false),
 	} {
 		logged.Reset()
+		r := httptest.NewRequest("GET", "/api/auth/reset/s3cret-token", nil)
+		r.Pattern = "GET /api/auth/reset/{token}"
 		w := httptest.NewRecorder()
-		write(w, r, errors.New("boom"))
+		h.ServeHTTP(w, r)
 		if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "boom") {
 			t.Errorf("%s: %d %s", name, w.Code, w.Body)
 		}

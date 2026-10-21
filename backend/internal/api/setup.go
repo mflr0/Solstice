@@ -242,7 +242,7 @@ func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 				if errors.Is(err, context.Canceled) {
 					return
 				}
-				w.log.Error("setup request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+				w.log.Error("setup request failed", "method", r.Method, "route", r.Pattern, "err", err)
 				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
 			}
 			writeError(rw, r, err)
