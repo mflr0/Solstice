@@ -434,21 +434,20 @@ func checkSetting(field string, raw json.RawMessage) (any, error) {
 // settingChanges lists what differs between two states, for the audit log.
 func settingChanges(before, after *generalSettings) map[string]any {
 	out := map[string]any{}
-	pair := func(name string, from, to any) {
-		if from != to {
-			out[name] = map[string]any{"from": from, "to": to}
-		}
-	}
-	pair("instanceName", before.InstanceName, after.InstanceName)
-	pair("baseURL", before.BaseURL, after.BaseURL)
-	pair("timeZone", before.TimeZone, after.TimeZone)
-	pair("defaultLanguage", before.DefaultLanguage, after.DefaultLanguage)
-	pair("banner", before.Banner, after.Banner)
-	pair("sessionDays", before.SessionDays, after.SessionDays)
-	pair("passwordMinLength", before.PasswordMinLength, after.PasswordMinLength)
+	diff(out, "instanceName", before.InstanceName, after.InstanceName)
+	diff(out, "baseURL", before.BaseURL, after.BaseURL)
+	diff(out, "timeZone", before.TimeZone, after.TimeZone)
+	diff(out, "defaultLanguage", before.DefaultLanguage, after.DefaultLanguage)
+	diff(out, "banner", before.Banner, after.Banner)
+	diff(out, "sessionDays", before.SessionDays, after.SessionDays)
+	diff(out, "passwordMinLength", before.PasswordMinLength, after.PasswordMinLength)
 	for k, v := range after.Sources {
-		if before.Sources[k] != v && out[k] == nil {
-			out[k] = map[string]any{"source": map[string]string{"from": before.Sources[k], "to": v}}
+		if out[k] != nil {
+			continue
+		}
+		source := map[string]any{}
+		if diff(source, "source", before.Sources[k], v) {
+			out[k] = source
 		}
 	}
 	return out

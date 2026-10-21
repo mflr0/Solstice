@@ -209,10 +209,8 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 		// The operator's account id changed with the import.
 		var uid int64
 		s.db.QueryRow(`SELECT id FROM users WHERE username = ?`, u.Username).Scan(&uid)
-		if err := audit.Record(context.Background(), s.db, audit.Entry{UserID: uid, Username: u.Username, IP: imp.ip,
-			Action: action, Target: audit.Target{Type: "import", Label: source}, Details: details}); err != nil {
-			s.log.Error("audit log write failed", "action", action, "err", err)
-		}
+		record(context.Background(), s.db, s.log, audit.Entry{UserID: uid, Username: u.Username, IP: imp.ip,
+			Action: action, Target: audit.Target{Type: "import", Label: source}, Details: details})
 	}()
 	return writeJSON(w, http.StatusAccepted, job.view(locale(r)))
 }

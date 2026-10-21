@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"slices"
 
@@ -18,6 +19,19 @@ import (
 	"strings"
 	"time"
 )
+
+// record writes e to the audit log. A failure is logged, not returned: the
+// action it records has already happened.
+func record(ctx context.Context, db *sql.DB, log *slog.Logger, e audit.Entry) {
+	if err := audit.Record(ctx, db, e); err != nil {
+		log.Error("audit log write failed", "action", e.Action, "err", err)
+	}
+}
+
+// target names the record an entry is about by its numeric id.
+func target(kind string, id int64, label string) audit.Target {
+	return audit.Target{Type: kind, ID: strconv.FormatInt(id, 10), Label: label}
+}
 
 // auditLog records an action of the current user. Handlers call it once the
 // action succeeded; failing to write the entry is logged but does not undo
@@ -34,9 +48,7 @@ func (s *Server) auditLog(r *http.Request, action string, target audit.Target, d
 			e.Details["pat"] = u.TokenID
 		}
 	}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, e)
 }
 
 // auditLogin records a sign-in attempt, without its password: a success when
@@ -50,9 +62,7 @@ func (s *Server) auditLogin(r *http.Request, username string, u *auth.User, meth
 	} else if e.Username != "" {
 		s.db.QueryRowContext(r.Context(), `SELECT id FROM users WHERE username = ?`, e.Username).Scan(&e.UserID)
 	}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", e.Action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, e)
 }
 
 // auditLockout is called once, when a lock starts; what was typed is never
@@ -72,9 +82,7 @@ func (s *Server) auditLockout(r *http.Request, username string, d time.Duration)
 	if s.db == nil {
 		return
 	}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", e.Action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, e)
 }
 
 type auditEntryOut struct {
@@ -259,7 +267,7 @@ func (s *Server) auditUserCreated(r *http.Request, id int64) {
 		s.log.Error("audit log: account not found", "id", id, "err", err)
 		return
 	}
-	target := audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username}
+	target := target("user", id, u.Username)
 	s.auditLog(r, audit.UserCreate, target, map[string]any{"name": u.Name, "email": u.Email, "admin": u.Admin})
 	if u.Admin {
 		s.auditLog(r, audit.AdminGrant, target, nil)
@@ -275,14 +283,10 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 		s.log.Error("audit log: account not found", "id", id, "err", err)
 		return
 	}
-	target := audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: after.Username}
+	target := target("user", id, after.Username)
 	changes := map[string]any{}
-	if before.Name != after.Name {
-		changes["name"] = map[string]any{"from": before.Name, "to": after.Name}
-	}
-	if before.Email != after.Email {
-		changes["email"] = map[string]any{"from": before.Email, "to": after.Email}
-	}
+	diff(changes, "name", before.Name, after.Name)
+	diff(changes, "email", before.Email, after.Email)
 	if len(changes) > 0 {
 		s.auditLog(r, audit.UserUpdate, target, changes)
 	}
@@ -350,7 +354,7 @@ func (s *Server) auditGrants(r *http.Request, projectID int64, before map[string
 	slices.Sort(removed)
 	var key string
 	s.db.QueryRowContext(r.Context(), `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
-	s.auditLog(r, audit.ProjectPerms, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
+	s.auditLog(r, audit.ProjectPerms, target("project", projectID, key),
 		map[string]any{"added": added, "removed": removed})
 }
 
@@ -362,7 +366,7 @@ func (s *Server) auditWorkflow(r *http.Request, action string, id, projectID int
 		details = map[string]any{}
 	}
 	details["project"] = key
-	s.auditLog(r, action, audit.Target{Type: "workflow", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, action, target("workflow", id, name), details)
 }
 
 // workflowName returns a workflow's name, for the audit log.
@@ -374,12 +378,12 @@ func (s *Server) workflowName(ctx context.Context, id int64) string {
 
 // auditBoard records a change to a board.
 func (s *Server) auditBoard(r *http.Request, action string, id int64, name string, details map[string]any) {
-	s.auditLog(r, action, audit.Target{Type: "board", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, action, target("board", id, name), details)
 }
 
 // auditSprint records a change to a sprint.
 func (s *Server) auditSprint(r *http.Request, action string, id int64, name string, details map[string]any) {
-	s.auditLog(r, action, audit.Target{Type: "sprint", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, action, target("sprint", id, name), details)
 }
 
 // boardChanges names what a change to a board's settings touched.
@@ -431,9 +435,9 @@ func (s *Server) shareNames(ctx context.Context, shares []filterShare) []string 
 // auditFilterShares records a change to whom a saved filter is shared with.
 func (s *Server) auditFilterShares(r *http.Request, id int64, filter string, before, after []filterShare) {
 	from, to := s.shareNames(r.Context(), before), s.shareNames(r.Context(), after)
-	if slices.Equal(from, to) {
+	if !changed(from, to) {
 		return
 	}
-	s.auditLog(r, audit.FilterShare, audit.Target{Type: "filter", ID: strconv.FormatInt(id, 10), Label: filter},
+	s.auditLog(r, audit.FilterShare, target("filter", id, filter),
 		map[string]any{"from": from, "to": to})
 }

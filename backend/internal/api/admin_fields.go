@@ -372,7 +372,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldCreate, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: name},
+	s.auditLog(r, audit.FieldCreate, target("field", id, name),
 		map[string]any{"type": ft.name, "options": options, "context": contextNames(f.Context)})
 	return writeJSON(w, http.StatusCreated, f)
 }
@@ -454,18 +454,11 @@ func (s *Server) updateField(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	changes := map[string]any{}
-	if before.Name != after.Name {
-		changes["name"] = map[string]string{"from": before.Name, "to": after.Name}
-	}
-	if derefStr(before.Description) != derefStr(after.Description) {
-		changes["description"] = map[string]string{"from": derefStr(before.Description), "to": derefStr(after.Description)}
-	}
-	from, to := contextNames(before.Context), contextNames(after.Context)
-	if !slices.Equal(from["projects"], to["projects"]) || !slices.Equal(from["issueTypes"], to["issueTypes"]) {
-		changes["context"] = map[string]any{"from": from, "to": to}
-	}
+	diff(changes, "name", before.Name, after.Name)
+	diff(changes, "description", derefStr(before.Description), derefStr(after.Description))
+	diff(changes, "context", contextNames(before.Context), contextNames(after.Context))
 	if len(changes) > 0 {
-		s.auditLog(r, audit.FieldUpdate, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: after.Name}, changes)
+		s.auditLog(r, audit.FieldUpdate, target("field", id, after.Name), changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }
@@ -517,7 +510,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldDelete, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldDelete, target("field", id, f.Name),
 		map[string]any{"issues": f.Issues, "boards": boards})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -585,7 +578,7 @@ func (s *Server) addFieldOption(w http.ResponseWriter, r *http.Request) error {
 		SELECT ?, COALESCE(MAX(position), 0) + 1, ? FROM custom_field_options WHERE field_id = ?`, f.ID, v, f.ID); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 		map[string]any{"added": v})
 	return s.writeField(w, r, http.StatusCreated, f.ID)
 }
@@ -629,9 +622,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		if _, err := s.db.ExecContext(ctx, `UPDATE custom_field_options SET value = ? WHERE id = ?`, v, option); err != nil {
 			return err
 		}
-		if v != old {
-			details["value"] = map[string]string{"from": old, "to": v}
-		}
+		diff(details, "value", old, v)
 	}
 	if in.Disabled != nil {
 		if _, err := s.db.ExecContext(ctx, `UPDATE custom_field_options SET disabled = ? WHERE id = ?`,
@@ -643,7 +634,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 	if len(details) > 1 {
-		s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+		s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 			details)
 	}
 	return s.writeField(w, r, http.StatusOK, f.ID)
@@ -704,7 +695,7 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		WHERE field_id = ? AND string_value IN (`+marks+`)`, args...).Scan(&issues); err != nil {
 		return err
 	}
-	var target string
+	var moveTo string
 	if in.MoveTo != nil {
 		var n int
 		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_field_options WHERE id = ? AND field_id = ?
@@ -714,9 +705,9 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		if n == 0 {
 			return fail(http.StatusBadRequest, i18n.CustomFieldOptionMoveTo)
 		}
-		target = strconv.FormatInt(*in.MoveTo, 10)
+		moveTo = strconv.FormatInt(*in.MoveTo, 10)
 	}
-	if issues > 0 && target == "" && !in.Clear {
+	if issues > 0 && moveTo == "" && !in.Clear {
 		return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": map[string]int{"issues": issues}},
 			msg: i18n.M(i18n.CustomFieldOptionInUse)}
 	}
@@ -725,15 +716,15 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	defer tx.Rollback()
-	if target != "" && issues > 0 {
+	if moveTo != "" && issues > 0 {
 		// An issue already holding the target (a multiple choice) keeps one value.
 		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ? AND string_value = ?
 			AND issue_id IN (SELECT issue_id FROM (SELECT issue_id FROM custom_field_values
-				WHERE field_id = ? AND string_value = ?) t)`, f.ID, strconv.FormatInt(option, 10), f.ID, target); err != nil {
+				WHERE field_id = ? AND string_value = ?) t)`, f.ID, strconv.FormatInt(option, 10), f.ID, moveTo); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE custom_field_values SET string_value = ?
-			WHERE field_id = ? AND string_value = ?`, target, f.ID, strconv.FormatInt(option, 10)); err != nil {
+			WHERE field_id = ? AND string_value = ?`, moveTo, f.ID, strconv.FormatInt(option, 10)); err != nil {
 			return err
 		}
 	}
@@ -749,10 +740,10 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	details := map[string]any{"removed": value, "issues": issues}
-	if target != "" {
-		details["movedTo"] = target
+	if moveTo != "" {
+		details["movedTo"] = moveTo
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name}, details)
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name), details)
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
@@ -783,7 +774,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 		map[string]any{"order": ids})
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }

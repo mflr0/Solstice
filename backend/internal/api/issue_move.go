@@ -843,7 +843,7 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 	if plan.check.Restricted != nil {
 		details["restricted"] = in.Restricted
 	}
-	s.auditLog(r, audit.IssueMove, audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: newKey}, details)
+	s.auditLog(r, audit.IssueMove, target("issue", orig.ID, newKey), details)
 
 	// Announced like an edit; pages open on the old key refresh through the
 	// second event, which only those who could see the issue there hear.

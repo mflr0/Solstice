@@ -13,7 +13,6 @@ import (
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -66,11 +65,8 @@ func (s *Server) rejectToken(r *http.Request, token string) {
 	if !s.noteRefusedToken(ref.ID) {
 		return
 	}
-	e := audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies), Action: audit.TokenReject,
-		Target: audit.Target{Type: "token", ID: strconv.FormatInt(ref.ID, 10), Label: ref.Name}}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", e.Action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies),
+		Action: audit.TokenReject, Target: target("token", ref.ID, ref.Name)})
 }
 
 func (s *Server) noteRefusedToken(id int64) bool {
@@ -189,7 +185,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	if expires != nil {
 		details["expires"] = expires.UTC().Format(time.RFC3339)
 	}
-	s.auditLog(r, audit.TokenCreate, audit.Target{Type: "token", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, audit.TokenCreate, target("token", id, name), details)
 	out := tokenOut{ID: id, Name: name, Created: time.Now().UTC(), Expires: expires, Token: token}
 	return writeJSON(w, http.StatusCreated, out)
 }
@@ -251,7 +247,7 @@ func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request, owner int64
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM api_tokens WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.TokenRevoke, audit.Target{Type: "token", ID: strconv.FormatInt(id, 10), Label: name},
+	s.auditLog(r, audit.TokenRevoke, target("token", id, name),
 		map[string]any{"owner": username})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

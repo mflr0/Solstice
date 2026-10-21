@@ -667,11 +667,9 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 	if err := w.db.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, username).Scan(&id); err != nil {
 		return err
 	}
-	if err := audit.Record(ctx, w.db, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
-		Action: auditSetupComplete, Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username},
-		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}}); err != nil {
-		w.log.Error("audit log write failed", "action", auditSetupComplete, "err", err)
-	}
+	record(ctx, w.db, w.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
+		Action: auditSetupComplete, Target: target("user", id, username),
+		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}})
 	out := map[string]any{"username": username, "baseURL": w.baseURL, "tz": w.tz, "imported": w.imported,
 		"server": w.server, "config": w.lastSave}
 	locked = false

@@ -588,18 +588,13 @@ func mailDestinationChanged(before, after mail.Config) bool {
 func mailChanges(before, after mail.Config, passwordGiven, hadPassword bool) map[string]any {
 	before, after = before.WithDefaults(), after.WithDefaults()
 	out := map[string]any{}
-	pair := func(name string, from, to any) {
-		if from != to {
-			out[name] = map[string]any{"from": from, "to": to}
-		}
-	}
-	pair("enabled", before.Enabled, after.Enabled)
-	pair("host", before.Host, after.Host)
-	pair("port", before.Port, after.Port)
-	pair("security", before.Security, after.Security)
-	pair("username", before.Username, after.Username)
-	pair("from", before.From, after.From)
-	pair("fromName", before.FromName, after.FromName)
+	diff(out, "enabled", before.Enabled, after.Enabled)
+	diff(out, "host", before.Host, after.Host)
+	diff(out, "port", before.Port, after.Port)
+	diff(out, "security", before.Security, after.Security)
+	diff(out, "username", before.Username, after.Username)
+	diff(out, "from", before.From, after.From)
+	diff(out, "fromName", before.FromName, after.FromName)
 	switch {
 	case passwordGiven && after.Password != "":
 		out["passwordChanged"] = true
