@@ -144,7 +144,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Type the current key of the project to confirm the change.",
 	ProjectKeysBusy:            "Another change of a project key is in progress. Try again in a moment.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 	DefaultTypeTask:                  "Task",
 	DefaultTypeBug:                   "Bug",
 	DefaultTypeStory:                 "Story",
@@ -173,6 +173,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultRoleAdministrators:        "Administrators",
 	DefaultRoleDevelopers:            "Developers",
 	DefaultRoleUsers:                 "Users",
+	DefaultStatusToDo:                "To Do",
+	DefaultStatusInProgress:          "In Progress",
+	DefaultStatusInReview:            "In Review",
+	DefaultStatusDone:                "Done",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Browse",

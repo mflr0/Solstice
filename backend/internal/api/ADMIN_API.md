@@ -257,9 +257,9 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 - `name` required, unique (409); `lead` an active user (default: the
   creator); `category` a category id or null.
 - `template`: `software` (statuses To Do / In Progress / In Review / Done) or
-  `simple` (To do / In progress / Done). Statuses are reused by name or
-  created; the project gets one workflow where any status can be reached
-  from any other.
+  `simple` (To Do / In Progress / Done), named in the instance's default
+  language. Statuses are reused by name (any case) or created; the project
+  gets one workflow where any status can be reached from any other.
 - `access`: who else works in the project — `{"holder": "group", "id"}`,
   `{"holder": "role", "id"}` (the lead is added to the role in this
   project), `{"holder": "everyone"}`, or `null`/absent (only the lead).

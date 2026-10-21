@@ -166,7 +166,7 @@ const (
 	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )
 
-// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 const (
 	DefaultTypeTask                  Key = "DefaultTypeTask"
 	DefaultTypeBug                   Key = "DefaultTypeBug"
@@ -196,6 +196,10 @@ const (
 	DefaultRoleAdministrators        Key = "DefaultRoleAdministrators"
 	DefaultRoleDevelopers            Key = "DefaultRoleDevelopers"
 	DefaultRoleUsers                 Key = "DefaultRoleUsers"
+	DefaultStatusToDo                Key = "DefaultStatusToDo"
+	DefaultStatusInProgress          Key = "DefaultStatusInProgress"
+	DefaultStatusInReview            Key = "DefaultStatusInReview"
+	DefaultStatusDone                Key = "DefaultStatusDone"
 )
 
 // Permission names, as the REST API lists them.
