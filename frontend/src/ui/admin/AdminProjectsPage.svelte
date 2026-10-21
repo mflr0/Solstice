@@ -71,6 +71,8 @@
     void loadCategories();
   });
 
+  $effect(() => () => clearTimeout(timer));
+
   /** /admin/projects?new=1 (the overview's link) opens the creation dialog. */
   $effect(() => {
     if (router.param('new') === '1') creating = true;
