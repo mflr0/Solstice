@@ -5,6 +5,7 @@
  * the pages word them (src/i18n, block `account`).
  */
 
+import { passwordTooShort } from './account-links.js';
 import { isEmail, tooLong, type Problems } from './admin-forms.js';
 import type { Subscription, SubscriptionInput } from './admin-types.js';
 import type { Me } from './types.js';
@@ -73,7 +74,8 @@ export function profileProblems(
     // A confirmation typed on its own means a new password is wanted, unless
     // the address change is what is saved.
     if (!f.newPassword && !mailChanged) out.newPassword = 'newRequired';
-    else if (f.newPassword && [...f.newPassword].length < minPassword) out.newPassword = 'newShort';
+    else if (f.newPassword && passwordTooShort(f.newPassword, minPassword))
+      out.newPassword = 'newShort';
     if (f.newPassword && f.confirmPassword !== f.newPassword)
       out.confirmPassword = 'confirmMismatch';
   }
