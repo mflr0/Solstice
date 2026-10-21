@@ -91,15 +91,35 @@ type generalSettings struct {
 	loc *time.Location
 }
 
-// generalFields maps each setting to its row in the settings table.
-var generalFields = []struct{ field, name string }{
-	{"instanceName", "general.instance_name"},
-	{"baseURL", "general.base_url"},
-	{"timeZone", "general.time_zone"},
-	{"defaultLanguage", "general.default_language"},
-	{"banner", "general.banner"},
-	{"sessionDays", "general.session_days"},
-	{"passwordMinLength", "general.password_min_length"},
+// generalField is one setting: its JSON field, its row in the settings
+// table, where it lives in generalSettings and how a new value is checked.
+type generalField struct {
+	field, name string
+	load        func(g *generalSettings, raw []byte) error
+	value       func(g *generalSettings) any
+	// check validates a new value and returns it as stored; invalid is the
+	// error for a value of the wrong type.
+	check func(raw json.RawMessage, invalid error) (any, error)
+}
+
+func setting[T any](field, name string, at func(*generalSettings) *T, check func(json.RawMessage, error) (any, error)) generalField {
+	return generalField{
+		field: field, name: name,
+		load:  func(g *generalSettings, raw []byte) error { return json.Unmarshal(raw, at(g)) },
+		value: func(g *generalSettings) any { return *at(g) },
+		check: check,
+	}
+}
+
+// generalFields is the list of settings, in the order a change checks them.
+var generalFields = []generalField{
+	setting("instanceName", "general.instance_name", func(g *generalSettings) *string { return &g.InstanceName }, checkInstanceName),
+	setting("baseURL", "general.base_url", func(g *generalSettings) *string { return &g.BaseURL }, checkBaseURL),
+	setting("timeZone", "general.time_zone", func(g *generalSettings) *string { return &g.TimeZone }, checkTimeZone),
+	setting("defaultLanguage", "general.default_language", func(g *generalSettings) *string { return &g.DefaultLanguage }, checkDefaultLanguage),
+	setting("banner", "general.banner", func(g *generalSettings) *bannerSetting { return &g.Banner }, checkBanner),
+	setting("sessionDays", "general.session_days", func(g *generalSettings) *int { return &g.SessionDays }, checkSessionDays),
+	setting("passwordMinLength", "general.password_min_length", func(g *generalSettings) *int { return &g.PasswordMinLength }, checkPasswordMinLength),
 }
 
 const (
@@ -185,24 +205,7 @@ func (s *Server) loadGeneral(ctx context.Context) (*generalSettings, error) {
 			if f.name != name {
 				continue
 			}
-			var err error
-			switch f.field {
-			case "instanceName":
-				err = json.Unmarshal([]byte(raw), &g.InstanceName)
-			case "baseURL":
-				err = json.Unmarshal([]byte(raw), &g.BaseURL)
-			case "timeZone":
-				err = json.Unmarshal([]byte(raw), &g.TimeZone)
-			case "defaultLanguage":
-				err = json.Unmarshal([]byte(raw), &g.DefaultLanguage)
-			case "banner":
-				err = json.Unmarshal([]byte(raw), &g.Banner)
-			case "sessionDays":
-				err = json.Unmarshal([]byte(raw), &g.SessionDays)
-			case "passwordMinLength":
-				err = json.Unmarshal([]byte(raw), &g.PasswordMinLength)
-			}
-			if err != nil {
+			if err := f.load(g, []byte(raw)); err != nil {
 				loadErr = err
 				continue
 			}
@@ -320,7 +323,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) error {
 			values[f.name] = nil
 			continue
 		}
-		v, err := checkSetting(f.field, raw)
+		v, err := f.check(raw, failf(http.StatusBadRequest, i18n.FieldValueInvalid, f.field))
 		if err != nil {
 			return err
 		}
@@ -357,90 +360,92 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, after)
 }
 
-// checkSetting validates a new value and returns it as stored.
-func checkSetting(field string, raw json.RawMessage) (any, error) {
-	invalid := failf(http.StatusBadRequest, i18n.FieldValueInvalid, field)
-	switch field {
-	case "instanceName":
-		var v string
-		if json.Unmarshal(raw, &v) != nil {
-			return nil, invalid
-		}
-		v = strings.TrimSpace(v)
-		if v == "" || utf8.RuneCountInString(v) > maxInstanceName {
-			return nil, failf(http.StatusBadRequest, i18n.SettingsNameRequired, maxInstanceName)
-		}
-		return v, nil
-	case "baseURL":
-		var v string
-		if json.Unmarshal(raw, &v) != nil {
-			return nil, invalid
-		}
-		if strings.TrimSpace(v) == "" {
-			return "", nil
-		}
-		return normalizeBaseURL(v)
-	case "timeZone":
-		var v string
-		if json.Unmarshal(raw, &v) != nil {
-			return nil, invalid
-		}
-		v = strings.TrimSpace(v)
-		if v == "" {
-			return "", nil
-		}
-		if err := checkTZ(v); err != nil {
-			return nil, err
-		}
-		return v, nil
-	case "defaultLanguage":
-		var v string
-		if json.Unmarshal(raw, &v) != nil || !i18n.Supported(v) {
-			return nil, failf(http.StatusBadRequest, i18n.AccountLanguageUnsupported, strings.Join(i18n.Locales, ", "))
-		}
-		return v, nil
-	case "banner":
-		var v bannerSetting
-		if json.Unmarshal(raw, &v) != nil {
-			return nil, invalid
-		}
-		v.Text = strings.TrimSpace(v.Text)
-		if v.Level == "" {
-			v.Level = "info"
-		}
-		if v.Level != "info" && v.Level != "warning" {
-			return nil, fail(http.StatusBadRequest, i18n.SettingsBannerLevelUnknown)
-		}
-		if utf8.RuneCountInString(v.Text) > maxBannerText {
-			return nil, failf(http.StatusBadRequest, i18n.SettingsBannerTooLong, maxBannerText)
-		}
-		return v, nil
-	case "sessionDays":
-		var v int
-		if json.Unmarshal(raw, &v) != nil || v < 1 || v > 365 {
-			return nil, fail(http.StatusBadRequest, i18n.SettingsSessionLengthInvalid)
-		}
-		return v, nil
-	case "passwordMinLength":
-		var v int
-		if json.Unmarshal(raw, &v) != nil || v < 8 || v > 128 {
-			return nil, fail(http.StatusBadRequest, i18n.SettingsPasswordLengthInvalid)
-		}
-		return v, nil
+func checkInstanceName(raw json.RawMessage, invalid error) (any, error) {
+	var v string
+	if json.Unmarshal(raw, &v) != nil {
+		return nil, invalid
 	}
-	return nil, invalid
+	v = strings.TrimSpace(v)
+	if v == "" || utf8.RuneCountInString(v) > maxInstanceName {
+		return nil, failf(http.StatusBadRequest, i18n.SettingsNameRequired, maxInstanceName)
+	}
+	return v, nil
+}
+
+func checkBaseURL(raw json.RawMessage, invalid error) (any, error) {
+	var v string
+	if json.Unmarshal(raw, &v) != nil {
+		return nil, invalid
+	}
+	if strings.TrimSpace(v) == "" {
+		return "", nil
+	}
+	return normalizeBaseURL(v)
+}
+
+func checkTimeZone(raw json.RawMessage, invalid error) (any, error) {
+	var v string
+	if json.Unmarshal(raw, &v) != nil {
+		return nil, invalid
+	}
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "", nil
+	}
+	if err := checkTZ(v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func checkDefaultLanguage(raw json.RawMessage, _ error) (any, error) {
+	var v string
+	if json.Unmarshal(raw, &v) != nil || !i18n.Supported(v) {
+		return nil, failf(http.StatusBadRequest, i18n.AccountLanguageUnsupported, strings.Join(i18n.Locales, ", "))
+	}
+	return v, nil
+}
+
+func checkBanner(raw json.RawMessage, invalid error) (any, error) {
+	var v bannerSetting
+	if json.Unmarshal(raw, &v) != nil {
+		return nil, invalid
+	}
+	v.Text = strings.TrimSpace(v.Text)
+	if v.Level == "" {
+		v.Level = "info"
+	}
+	if v.Level != "info" && v.Level != "warning" {
+		return nil, fail(http.StatusBadRequest, i18n.SettingsBannerLevelUnknown)
+	}
+	if utf8.RuneCountInString(v.Text) > maxBannerText {
+		return nil, failf(http.StatusBadRequest, i18n.SettingsBannerTooLong, maxBannerText)
+	}
+	return v, nil
+}
+
+func checkSessionDays(raw json.RawMessage, _ error) (any, error) {
+	var v int
+	if json.Unmarshal(raw, &v) != nil || v < 1 || v > 365 {
+		return nil, fail(http.StatusBadRequest, i18n.SettingsSessionLengthInvalid)
+	}
+	return v, nil
+}
+
+func checkPasswordMinLength(raw json.RawMessage, _ error) (any, error) {
+	var v int
+	if json.Unmarshal(raw, &v) != nil || v < 8 || v > 128 {
+		return nil, fail(http.StatusBadRequest, i18n.SettingsPasswordLengthInvalid)
+	}
+	return v, nil
 }
 
 // settingChanges lists what differs between two states, for the audit log.
 func settingChanges(before, after *generalSettings) map[string]any {
 	out := map[string]any{}
-	diff(out, "instanceName", before.InstanceName, after.InstanceName)
-	diff(out, "baseURL", before.BaseURL, after.BaseURL)
-	diff(out, "timeZone", before.TimeZone, after.TimeZone)
-	diff(out, "defaultLanguage", before.DefaultLanguage, after.DefaultLanguage)
-	diff(out, "banner", before.Banner, after.Banner)
-	diff(out, "sessionDays", before.SessionDays, after.SessionDays)
-	diff(out, "passwordMinLength", before.PasswordMinLength, after.PasswordMinLength)
+	for _, f := range generalFields {
+		diff(out, f.field, f.value(before), f.value(after))
+	}
 	for k, v := range after.Sources {
 		if out[k] != nil {
 			continue
