@@ -7,6 +7,10 @@
     message?: string | undefined;
   }
   const { message = t.errors.notFound }: Props = $props();
+
+  $effect(() => {
+    document.title = `${t.notFound.title} — ${t.appName}`;
+  });
 </script>
 
 <div class="page" data-title={t.notFound.title}>
