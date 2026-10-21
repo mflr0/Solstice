@@ -12,13 +12,13 @@
     rangeSet,
     sameValue,
     toggle,
-    valueOf,
     type DateField,
     type DateRange,
     type FilterState,
     type ListField,
     type PeopleRole,
   } from '../../core/filters.js';
+  import { quote } from '../../core/jql.js';
   import type { StatusCategory } from '../../core/types.js';
   import { categoryLabels, t } from '../../i18n/t.js';
   import { formatList } from '../../i18n/format.js';
@@ -303,7 +303,7 @@
   const FREE: ListField[] = ['labels', 'fixVersion', 'component', 'epic'];
 
   function scope(): string[] {
-    return project ? [valueOf(project)] : (filters.values.project ?? []);
+    return project ? [quote(project)] : (filters.values.project ?? []);
   }
 
   function typed() {
@@ -353,7 +353,7 @@
       shortcuts={shortcutsFor(field)}
       labelOf={(v) => labelOf(field, v)}
       free={FREE.includes(field)
-        ? (s) => (field === 'epic' ? s.toUpperCase() : valueOf(s))
+        ? (s) => (field === 'epic' ? s.toUpperCase() : quote(s))
         : undefined}
       onreset={() => clearField(field)}
       counts={countsFor(field)}

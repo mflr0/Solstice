@@ -284,12 +284,6 @@
     }
   }
 
-  async function deleteSprint(target: { sprint: Sprint }) {
-    await api.deleteSprint(target.sprint.id);
-    notify(t.boards.sprintDeleted(target.sprint.name));
-    afterSprintChange();
-  }
-
   function afterSprintChange() {
     starting = null;
     completing = null;
@@ -406,7 +400,13 @@
     open={deleting !== null}
     title={t.boards.deleteTitle(deleting?.sprint.name ?? '')}
     confirm={t.boards.deleteSprint}
-    onconfirm={() => (deleting ? deleteSprint(deleting) : Promise.resolve())}
+    onconfirm={async () => {
+      if (!deleting) return;
+      const { sprint } = deleting;
+      await api.deleteSprint(sprint.id);
+      notify(t.boards.sprintDeleted(sprint.name));
+      afterSprintChange();
+    }}
     onclose={() => (deleting = null)}
   >
     <p>{t.boards.deleteBody(deleting?.issues ?? 0)}</p>

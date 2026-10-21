@@ -36,7 +36,8 @@
   let active = $state(0);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
-  const listId = `users-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const listId = `users-${uid}`;
 
   /** The rows of the list: an optional "nobody" entry, then people. */
   const rows = $derived<(UserRef | null)[]>(allowNone ? [null, ...results] : results);

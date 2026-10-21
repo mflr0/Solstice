@@ -538,11 +538,6 @@ export function literal(value: string): string | null {
   }
 }
 
-/** The JQL value for a name picked in a list. */
-export function valueOf(name: string): string {
-  return quote(name);
-}
-
 /** Whether two JQL values name the same thing (case aside). */
 export function sameValue(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();

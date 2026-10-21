@@ -17,7 +17,8 @@
   const { open, title, onclose, children, footer }: Props = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
-  const titleId = `dlg-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const titleId = `dlg-${uid}`;
 
   $effect(() => {
     if (!dialog) return;

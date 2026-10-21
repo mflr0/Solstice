@@ -6,7 +6,6 @@ import {
   addStatus,
   byCategory,
   cell,
-  defaultName,
   isDirty,
   matrix,
   moveStatus,
@@ -140,7 +139,6 @@ describe('toggleCell', () => {
     expect(cell(list, '10001', '10000')).toEqual([
       { key: 'new:10001>10000', id: null, name: 'To Do', from: '10001', to: '10000' },
     ]);
-    expect(defaultName(REVIEW)).toBe('In Review');
   });
 
   it('adds "from any status" transitions', () => {

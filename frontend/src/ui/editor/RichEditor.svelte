@@ -120,7 +120,8 @@
   /** Where uploads in progress will insert their references, kept in step with edits. */
   let pending: { pos: number }[] = [];
 
-  const id = `editor-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `editor-${uid}`;
   const files = $derived(new Map([...attachments, ...added].map((a) => [a.filename, a.url])));
   const resolver = $derived(refs.resolver(files));
   const live = new Set<Live>();
@@ -134,7 +135,7 @@
           submit: onsubmit ? () => onsubmit?.() : null,
           cancel: oncancel ? () => oncancel?.() : null,
         },
-        onMentionKey: mentionKey_,
+        onMentionKey: onMentionKeydown,
         placeholder: () => placeholder,
         issueExists: (key) => resolver.issueExists(key),
       }),
@@ -407,7 +408,7 @@
     view.focus();
   }
 
-  function mentionKey_(e: KeyboardEvent): boolean {
+  function onMentionKeydown(e: KeyboardEvent): boolean {
     if (!view) return false;
     if (e.key === 'Escape') {
       view.dispatch(view.state.tr.setMeta(mentionKey, 'dismiss'));
