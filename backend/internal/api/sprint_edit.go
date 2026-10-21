@@ -186,23 +186,17 @@ func (s *Server) deleteSprint(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	var issueIDs []int64
-	rows, err := tx.QueryContext(ctx, `SELECT issue_id FROM sprint_issues WHERE sprint_id = ? ORDER BY issue_id`, sp.ID)
-	if err != nil {
+	if err := sqlq.Each(ctx, tx, `SELECT issue_id FROM sprint_issues WHERE sprint_id = ? ORDER BY issue_id`,
+		func(rows *sql.Rows) error {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			issueIDs = append(issueIDs, id)
+			return nil
+		}, sp.ID); err != nil {
 		return err
 	}
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return err
-		}
-		issueIDs = append(issueIDs, id)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return err
-	}
-	rows.Close()
 	now := time.Now().UTC()
 	line := change{field: "Sprint", oldValue: strconv.FormatInt(sp.ID, 10), oldString: sp.Name}
 	for _, id := range issueIDs {

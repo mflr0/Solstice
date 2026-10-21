@@ -526,25 +526,20 @@ const maxCards = 1000
 
 // loadCards returns the issues matching where, in board order.
 func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args []any, cat *catalog) ([]*card, bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
-		WHERE `+where+` ORDER BY i.rank_key IS NULL, i.rank_key, i.id LIMIT ?`, append(args, maxCards+1)...)
-	if err != nil {
-		return nil, false, err
-	}
 	var list []*card
 	var userIDs, related []int64
-	for rows.Next() {
+	err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE `+where+` ORDER BY i.rank_key IS NULL, i.rank_key, i.id LIMIT ?`, func(rows *sql.Rows) error {
 		iss, err := scanIssue(rows)
 		if err != nil {
-			rows.Close()
-			return nil, false, err
+			return err
 		}
 		list = append(list, &card{ID: iss.ID, row: iss})
 		userIDs = append(userIDs, iss.AssigneeID.Int64, iss.ReporterID.Int64)
 		related = append(related, iss.EpicID.Int64, iss.ParentID.Int64)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+		return nil
+	}, append(args, maxCards+1)...)
+	if err != nil {
 		return nil, false, err
 	}
 	truncated := len(list) > maxCards
@@ -702,24 +697,19 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		if err != nil {
 			continue // a lane whose query no longer compiles keeps no card
 		}
-		rows, err := s.db.QueryContext(ctx, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
-			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, append(slices.Clone(ids), args...)...)
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
+		err = sqlq.Each(ctx, s.db, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
+			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
-				rows.Close()
 				return err
 			}
 			if c := byID[id]; c != nil && c.Lane == nil {
 				lid := l.id
 				c.Lane = &lid
 			}
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
+			return nil
+		}, append(slices.Clone(ids), args...)...)
+		if err != nil {
 			return err
 		}
 	}
@@ -1047,8 +1037,11 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	var oldID sql.NullInt64
 	var oldName sql.NullString
-	s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
+	err := s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
 		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope+` LIMIT 1`, append([]any{iss.ID}, scopeArgs...)...).Scan(&oldID, &oldName)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
 	var newName any
 	if sprint != 0 {
 		var name, state string

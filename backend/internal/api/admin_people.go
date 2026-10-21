@@ -734,9 +734,7 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 	}
 	from, to := names(old), names(entry)
 	if changed(from, to) {
-		var key string
-		s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
-		s.auditLog(r, audit.ProjectRoles, target("project", projectID, key),
+		s.auditLog(r, audit.ProjectRoles, target("project", projectID, s.auditProjectKey(ctx, projectID)),
 			map[string]any{"role": role.Name, "from": from, "to": to})
 	}
 	return writeJSON(w, http.StatusOK, entry)

@@ -69,26 +69,21 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	vis, args := sub.VisibleSQL("i")
-	rows, err := s.db.QueryContext(r.Context(), `SELECT `+issueColumns+` FROM issues i
-		JOIN projects p ON p.id = i.project_id JOIN statuses st ON st.id = i.status_id
-		WHERE `+vis+` AND i.assignee_id = ? AND st.category <> 'done' ORDER BY i.updated_at DESC LIMIT 50`,
-		append(args, u.ID)...)
-	if err != nil {
-		return err
-	}
 	var list []*issueRow
 	ids := []int64{u.ID}
-	for rows.Next() {
-		iss, err := scanIssue(rows)
-		if err != nil {
-			rows.Close()
-			return err
-		}
-		list = append(list, iss)
-		ids = append(ids, iss.ReporterID.Int64)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	err = sqlq.Each(r.Context(), s.db, `SELECT `+issueColumns+` FROM issues i
+		JOIN projects p ON p.id = i.project_id JOIN statuses st ON st.id = i.status_id
+		WHERE `+vis+` AND i.assignee_id = ? AND st.category <> 'done' ORDER BY i.updated_at DESC LIMIT 50`,
+		func(rows *sql.Rows) error {
+			iss, err := scanIssue(rows)
+			if err != nil {
+				return err
+			}
+			list = append(list, iss)
+			ids = append(ids, iss.ReporterID.Int64)
+			return nil
+		}, append(args, u.ID)...)
+	if err != nil {
 		return err
 	}
 	users, err := s.users(r.Context(), ids...)

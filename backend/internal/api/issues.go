@@ -53,12 +53,13 @@ const issueColumns = `i.id, i.project_id, i.num, p.pkey, p.name, i.summary, i.de
 
 type scanner interface{ Scan(...any) error }
 
-func scanIssue(sc scanner) (*issueRow, error) {
+// scanIssue scans the issueColumns, then the columns after them into extra.
+func scanIssue(sc scanner, extra ...any) (*issueRow, error) {
 	var i issueRow
-	err := sc.Scan(&i.ID, &i.ProjectID, &i.Num, &i.ProjectKey, &i.ProjectName, &i.Summary, &i.Description,
+	err := sc.Scan(append([]any{&i.ID, &i.ProjectID, &i.Num, &i.ProjectKey, &i.ProjectName, &i.Summary, &i.Description,
 		&i.Environment, &i.TypeID, &i.StatusID, &i.PriorityID, &i.ResolutionID, &i.ReporterID, &i.AssigneeID,
 		&i.CreatorID, &i.LevelID, &i.ParentID, &i.Created, &i.Updated, &i.Resolved, &i.Due,
-		&i.Original, &i.Remaining, &i.Spent, &i.EpicID, &i.Rank)
+		&i.Original, &i.Remaining, &i.Spent, &i.EpicID, &i.Rank}, extra...)...)
 	return &i, err
 }
 
@@ -606,28 +607,21 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 			JOIN issues i ON i.id = l.target_id JOIN projects p ON p.id = i.project_id WHERE l.source_id = ?
 		UNION ALL SELECT ` + issueColumns + `, 'inward', l.id, l.type_id FROM issue_links l
 			JOIN issues i ON i.id = l.source_id JOIN projects p ON p.id = i.project_id WHERE l.target_id = ?`
-	rows, err := s.db.QueryContext(ctx, q, "parent", iss.ParentID.Int64, "subtask", iss.ID, iss.ID, iss.ID)
+	var out []relatedIssue
+	err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
+		var rel relatedIssue
+		row, err := scanIssue(rows, &rel.kind, &rel.linkID, &rel.linkType)
+		if err != nil {
+			return err
+		}
+		if sub.CanSee(row.perm()) {
+			rel.row = row
+			out = append(out, rel)
+		}
+		return nil
+	}, "parent", iss.ParentID.Int64, "subtask", iss.ID, iss.ID, iss.ID)
 	if err != nil {
 		return nil, err
-	}
-	defer rows.Close()
-	var out []relatedIssue
-	for rows.Next() {
-		var rel relatedIssue
-		var row issueRow
-		err := rows.Scan(&row.ID, &row.ProjectID, &row.Num, &row.ProjectKey, &row.ProjectName, &row.Summary,
-			&row.Description, &row.Environment, &row.TypeID, &row.StatusID, &row.PriorityID, &row.ResolutionID,
-			&row.ReporterID, &row.AssigneeID, &row.CreatorID, &row.LevelID, &row.ParentID, &row.Created,
-			&row.Updated, &row.Resolved, &row.Due, &row.Original, &row.Remaining, &row.Spent, &row.EpicID, &row.Rank,
-			&rel.kind, &rel.linkID, &rel.linkType)
-		if err != nil {
-			return nil, err
-		}
-		if !sub.CanSee(row.perm()) {
-			continue
-		}
-		rel.row = &row
-		out = append(out, rel)
 	}
 	sort.SliceStable(out, func(a, b int) bool {
 		if out[a].kind == "subtask" && out[b].kind == "subtask" {
@@ -635,7 +629,7 @@ func (s *Server) relatedIssues(ctx context.Context, sub *perm.Subject, iss *issu
 		}
 		return false
 	})
-	return out, rows.Err()
+	return out, nil
 }
 
 // typeStatuses are the statuses an issue of a type can have in a project.
@@ -1015,7 +1009,12 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		return nil, err
 	}
 	it, ok := cat.issueType[typeID]
-	if !ok || !s.projectHasType(ctx, projectID, typeID) {
+	if ok {
+		if ok, err = s.projectHasType(ctx, projectID, typeID); err != nil {
+			return nil, err
+		}
+	}
+	if !ok {
 		return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 
@@ -1144,7 +1143,11 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		if err := f.get("securityLevel", &id); err != nil {
 			return nil, err
 		}
-		if !s.projectHasLevel(ctx, projectID, id) {
+		ok, err := s.projectHasLevel(ctx, projectID, id)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
 			return nil, fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 		}
 		level = id
@@ -1224,18 +1227,20 @@ func (s *Server) findIssueByID(ctx context.Context, id int64) (*issueRow, error)
 		JOIN projects p ON p.id = i.project_id WHERE i.id = ?`, id))
 }
 
-func (s *Server) projectHasType(ctx context.Context, projectID int64, typeID string) bool {
-	var n int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_issue_types WHERE project_id = ? AND issue_type_id = ?`,
-		projectID, typeID).Scan(&n)
-	return n > 0
+// exists reports whether the query returns a row.
+func (s *Server) exists(ctx context.Context, query string, args ...any) (bool, error) {
+	var ok bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(`+query+`)`, args...).Scan(&ok)
+	return ok, err
 }
 
-func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) bool {
-	var n int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_levels WHERE project_id = ? AND id = ?`,
-		projectID, levelID).Scan(&n)
-	return n > 0
+func (s *Server) projectHasType(ctx context.Context, projectID int64, typeID string) (bool, error) {
+	return s.exists(ctx, `SELECT 1 FROM project_issue_types WHERE project_id = ? AND issue_type_id = ?`,
+		projectID, typeID)
+}
+
+func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) (bool, error) {
+	return s.exists(ctx, `SELECT 1 FROM security_levels WHERE project_id = ? AND id = ?`, projectID, levelID)
 }
 
 // newIssueAssignee is who a new issue with these components is assigned to
@@ -1422,11 +1427,11 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 	return changes, nil
 }
 
-func (s *Server) userName(ctx context.Context, id int64) (string, string) {
+func (s *Server) userName(ctx context.Context, id int64) (string, string, error) {
 	var username, name string
-	s.db.QueryRowContext(ctx, `SELECT COALESCE(user_key, username), display_name FROM users WHERE id = ?`, id).
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(user_key, username), display_name FROM users WHERE id = ?`, id).
 		Scan(&username, &name)
-	return username, name
+	return username, name, err
 }
 
 func (s *Server) updateIssue(w http.ResponseWriter, r *http.Request) error {
@@ -1550,7 +1555,12 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 			return err
 		}
 		it, ok := cat.issueType[v]
-		if !ok || !s.projectHasType(ctx, iss.ProjectID, v) {
+		if ok {
+			if ok, err = s.projectHasType(ctx, iss.ProjectID, v); err != nil {
+				return err
+			}
+		}
+		if !ok {
 			return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 		}
 		if it.Subtask != iss.ParentID.Valid {
@@ -1611,10 +1621,14 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 		if sqlq.Value(iss.AssigneeID) != newVal {
 			c := change{field: "assignee"}
 			if iss.AssigneeID.Valid {
-				c.oldValue, c.oldString = s.userName(ctx, iss.AssigneeID.Int64)
+				if c.oldValue, c.oldString, err = s.userName(ctx, iss.AssigneeID.Int64); err != nil {
+					return err
+				}
 			}
 			if v != nil {
-				c.newValue, c.newString = s.userName(ctx, *v)
+				if c.newValue, c.newString, err = s.userName(ctx, *v); err != nil {
+					return err
+				}
 			}
 			sets["assignee_id"] = newVal
 			changes = append(changes, c)
@@ -1698,7 +1712,11 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 		}
 		var newVal any
 		if v != nil {
-			if !s.projectHasLevel(ctx, iss.ProjectID, *v) {
+			ok, err := s.projectHasLevel(ctx, iss.ProjectID, *v)
+			if err != nil {
+				return err
+			}
+			if !ok {
 				return fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 			}
 			newVal = *v
@@ -1872,27 +1890,20 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 		return errForbidden
 	}
 	// Deleting an issue deletes its sub-tasks: each must be deletable too.
-	children, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+` FROM issues i
-		JOIN projects p ON p.id = i.project_id WHERE i.parent_id = ?`, iss.ID)
-	if err != nil {
-		return err
-	}
 	gone := []*issueRow{iss}
-	for children.Next() {
-		child, err := scanIssue(children)
+	if err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+` FROM issues i
+		JOIN projects p ON p.id = i.project_id WHERE i.parent_id = ?`, func(rows *sql.Rows) error {
+		child, err := scanIssue(rows)
 		if err != nil {
-			children.Close()
 			return err
 		}
 		cp := child.perm()
 		if !sub.Can(perm.Delete, child.ProjectID, &cp) {
-			children.Close()
 			return fail(http.StatusConflict, i18n.IssueSubtasksNotDeletable)
 		}
 		gone = append(gone, child)
-	}
-	children.Close()
-	if err := children.Err(); err != nil {
+		return nil
+	}, iss.ID); err != nil {
 		return err
 	}
 	// Deletions are announced with the issues as they were: e-mails and

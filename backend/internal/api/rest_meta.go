@@ -494,12 +494,18 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 			p = map[string]any{"type": "group", "group": map[string]any{"name": sh.Name}}
 		case "project":
 			var key, name string
-			s.db.QueryRowContext(ctx, `SELECT pkey, name FROM projects WHERE id = ?`, sh.ID).Scan(&key, &name)
+			if err := s.db.QueryRowContext(ctx, `SELECT pkey, name FROM projects WHERE id = ?`, sh.ID).
+				Scan(&key, &name); err != nil {
+				return nil, err
+			}
 			proj := map[string]any{"id": o.id(sh.ID), "key": key, "name": name, "self": o.api + "/project/" + o.id(sh.ID)}
 			p = map[string]any{"type": "project", "project": proj}
 			if sh.Role != 0 {
 				var role string
-				s.db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, sh.Role).Scan(&role)
+				if err := s.db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, sh.Role).
+					Scan(&role); err != nil {
+					return nil, err
+				}
 				p = map[string]any{"type": "projectRole", "project": proj, "role": map[string]any{"id": sh.Role, "name": role}}
 			}
 		case "user":

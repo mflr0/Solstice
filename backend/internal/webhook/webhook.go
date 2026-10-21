@@ -213,7 +213,11 @@ func (s *Service) Get(ctx context.Context, id int64) (*Webhook, error) {
 	if err != nil {
 		return nil, err
 	}
-	if d, err := s.Deliveries(ctx, id, 1); err == nil && len(d) > 0 {
+	d, err := s.Deliveries(ctx, id, 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(d) > 0 {
 		w.LastDelivery = &d[0]
 	}
 	return w, nil

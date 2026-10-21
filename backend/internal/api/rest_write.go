@@ -381,7 +381,11 @@ func (s *Server) translateField(ctx context.Context, sub *perm.Subject, cat *cat
 		}
 		names := map[string]string{}
 		for _, t := range cat.IssueTypes {
-			if s.projectHasType(ctx, p.id, t.ID) {
+			ok, err := s.projectHasType(ctx, p.id, t.ID)
+			if err != nil {
+				return err
+			}
+			if ok {
 				names[t.ID] = t.Name
 			}
 		}
