@@ -336,9 +336,8 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 		}
 		switch f.Kind {
 		case "gh-epic-link":
-			// Sub-tasks follow their parent's epic, and an epic is in none;
-			// creating, which has no type to check yet, allows it.
-			if subtask || (!creating && isEpicType(typ)) || !canEdit {
+			// Sub-tasks follow their parent's epic, and an epic is in none.
+			if subtask || isEpicType(typ) || !canEdit {
 				continue
 			}
 		case "gh-sprint":
