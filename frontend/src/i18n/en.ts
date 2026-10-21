@@ -1351,6 +1351,7 @@ export const en = {
       priority: 'Priorities',
       resolution: 'Resolutions',
       linktype: 'Link types',
+      attachment: 'Attachments',
       field: 'Custom fields',
       settings: 'Settings',
       import: 'Jira import',
@@ -1462,6 +1463,8 @@ export const en = {
       'update.result': 'Update finished',
       'setup.complete': 'Setup completed',
       'issue.move': 'Issue moved',
+      'attachment.upload': 'Attachment uploaded',
+      'attachment.delete': 'Attachment deleted',
     },
     targets: {
       user: 'Account',
@@ -1486,6 +1489,7 @@ export const en = {
       priority: 'Priority',
       resolution: 'Resolution',
       linktype: 'Link type',
+      attachment: 'Attachment',
     },
     detailKeys: {
       name: 'Name',
@@ -1510,6 +1514,8 @@ export const en = {
       owner: 'Owner',
       version: 'Version',
       status: 'Status',
+      issue: 'Issue',
+      size: 'Size (bytes)',
     },
     retention: {
       title: 'Retention',

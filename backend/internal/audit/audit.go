@@ -51,6 +51,9 @@ const (
 	IssueDelete    = "issue.delete"
 	IssueExport    = "issue.export"
 	IssueMove      = "issue.move"
+	// One entry per file, whichever route (interface or REST) it went through.
+	AttachmentUpload = "attachment.upload"
+	AttachmentDelete = "attachment.delete"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"

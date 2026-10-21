@@ -1367,6 +1367,7 @@ export const de: Messages = {
       priority: 'Prioritäten',
       resolution: 'Lösungen',
       linktype: 'Verknüpfungstypen',
+      attachment: 'Anhänge',
       field: 'Benutzerdefinierte Felder',
       settings: 'Einstellungen',
       import: 'Jira-Import',
@@ -1478,6 +1479,8 @@ export const de: Messages = {
       'update.result': 'Update abgeschlossen',
       'setup.complete': 'Einrichtung abgeschlossen',
       'issue.move': 'Vorgang verschoben',
+      'attachment.upload': 'Anhang hochgeladen',
+      'attachment.delete': 'Anhang gelöscht',
     },
     targets: {
       user: 'Konto',
@@ -1502,6 +1505,7 @@ export const de: Messages = {
       priority: 'Priorität',
       resolution: 'Lösung',
       linktype: 'Verknüpfungstyp',
+      attachment: 'Anhang',
     },
     detailKeys: {
       name: 'Name',
@@ -1526,6 +1530,8 @@ export const de: Messages = {
       owner: 'Eigentümer',
       version: 'Version',
       status: 'Status',
+      issue: 'Vorgang',
+      size: 'Größe (Bytes)',
     },
     retention: {
       title: 'Aufbewahrung',

@@ -1358,6 +1358,7 @@ export const it: Messages = {
       priority: 'Priorità',
       resolution: 'Risoluzioni',
       linktype: 'Tipi di collegamento',
+      attachment: 'Allegati',
       field: 'Campi personalizzati',
       settings: 'Impostazioni',
       import: 'Importazione da Jira',
@@ -1469,6 +1470,8 @@ export const it: Messages = {
       'update.result': 'Aggiornamento concluso',
       'setup.complete': 'Installazione completata',
       'issue.move': 'Ticket spostato',
+      'attachment.upload': 'Allegato caricato',
+      'attachment.delete': 'Allegato eliminato',
     },
     targets: {
       user: 'Account',
@@ -1493,6 +1496,7 @@ export const it: Messages = {
       priority: 'Priorità',
       resolution: 'Risoluzione',
       linktype: 'Tipo di collegamento',
+      attachment: 'Allegato',
     },
     detailKeys: {
       name: 'Nome',
@@ -1517,6 +1521,8 @@ export const it: Messages = {
       owner: 'Proprietario',
       version: 'Versione',
       status: 'Stato',
+      issue: 'Ticket',
+      size: 'Dimensione (byte)',
     },
     retention: {
       title: 'Conservazione',

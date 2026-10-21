@@ -85,6 +85,8 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'issue.delete',
   'issue.export',
   'issue.move',
+  'attachment.upload',
+  'attachment.delete',
   ...CATALOGUE_KINDS.flatMap((k) =>
     ['create', 'update', 'delete', 'order'].map((v) => `${k}.${v}`),
   ),

@@ -1352,6 +1352,7 @@ export const hi: Messages = {
       priority: 'प्राथमिकताएँ',
       resolution: 'रिज़ॉल्यूशन',
       linktype: 'लिंक के प्रकार',
+      attachment: 'अटैचमेंट',
       field: 'कस्टम फ़ील्ड',
       settings: 'सेटिंग्स',
       import: 'Jira से आयात',
@@ -1463,6 +1464,8 @@ export const hi: Messages = {
       'update.result': 'अपडेट पूरा हुआ',
       'setup.complete': 'सेटअप पूरा हुआ',
       'issue.move': 'टिकट दूसरे प्रोजेक्ट में ले जाया गया',
+      'attachment.upload': 'अटैचमेंट अपलोड किया',
+      'attachment.delete': 'अटैचमेंट हटाया',
     },
     targets: {
       user: 'खाता',
@@ -1487,6 +1490,7 @@ export const hi: Messages = {
       priority: 'प्राथमिकता',
       resolution: 'रिज़ॉल्यूशन',
       linktype: 'लिंक का प्रकार',
+      attachment: 'अटैचमेंट',
     },
     detailKeys: {
       name: 'नाम',
@@ -1511,6 +1515,8 @@ export const hi: Messages = {
       owner: 'स्वामी',
       version: 'वर्ज़न',
       status: 'स्टेटस',
+      issue: 'टिकट',
+      size: 'आकार (बाइट)',
     },
     retention: {
       title: 'संरक्षण अवधि',
