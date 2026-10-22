@@ -1088,6 +1088,9 @@ dialog.modal::backdrop {
 }
 
 .board {
+  /* The column counts kept for screen readers scroll with the board instead
+     of widening the page. */
+  position: relative;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(250px, 1fr);
