@@ -489,6 +489,25 @@ const (
 	ExportColumnUnknown Key = "ExportColumnUnknown"
 )
 
+// Imports from a CSV file.
+const (
+	CSVImportFileMissing         Key = "CSVImportFileMissing"
+	CSVImportFileTooLarge        Key = "CSVImportFileTooLarge"
+	CSVImportFileInvalid         Key = "CSVImportFileInvalid"
+	CSVImportFileEmpty           Key = "CSVImportFileEmpty"
+	CSVImportTooManyRows         Key = "CSVImportTooManyRows"
+	CSVImportMappingInvalid      Key = "CSVImportMappingInvalid"
+	CSVImportColumnTwice         Key = "CSVImportColumnTwice"
+	CSVImportRowsInvalid         Key = "CSVImportRowsInvalid"
+	CSVImportValueUnknown        Key = "CSVImportValueUnknown"
+	CSVImportValueInvalid        Key = "CSVImportValueInvalid"
+	CSVImportUserAmbiguous       Key = "CSVImportUserAmbiguous"
+	CSVImportKeyTwice            Key = "CSVImportKeyTwice"
+	CSVImportReferenceFailed     Key = "CSVImportReferenceFailed"
+	CSVImportReferenceCycle      Key = "CSVImportReferenceCycle"
+	CSVImportStatusNotInWorkflow Key = "CSVImportStatusNotInWorkflow"
+)
+
 // JQL: syntax and query errors.
 const (
 	JQLError                 Key = "JQLError"

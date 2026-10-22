@@ -432,6 +432,23 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Exports.
 	ExportColumnUnknown: "अज्ञात कॉलम: %s।",
 
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "कोई फ़ाइल नहीं भेजी गई।",
+	CSVImportFileTooLarge:        "फ़ाइल %d MiB से बड़ी है।",
+	CSVImportFileInvalid:         "फ़ाइल मान्य CSV नहीं है (पंक्ति %d)।",
+	CSVImportFileEmpty:           "फ़ाइल में हेडर पंक्ति नहीं है।",
+	CSVImportTooManyRows:         "फ़ाइल में %d से अधिक पंक्तियाँ हैं।",
+	CSVImportMappingInvalid:      "कॉलम मैपिंग फ़ाइल से मेल नहीं खाती।",
+	CSVImportColumnTwice:         "दो कॉलम एक ही फ़ील्ड में जाते हैं: %s।",
+	CSVImportRowsInvalid:         "कुछ भी इम्पोर्ट नहीं हुआ: कुछ पंक्तियों में त्रुटियाँ हैं (%d)।",
+	CSVImportValueUnknown:        "%s: अज्ञात मान “%s”।",
+	CSVImportValueInvalid:        "%s: अमान्य मान “%s”।",
+	CSVImportUserAmbiguous:       "%s: “%s” से कई लोग मेल खाते हैं।",
+	CSVImportKeyTwice:            "टिकट कुंजी %s एक से अधिक पंक्तियों में है।",
+	CSVImportReferenceFailed:     "%s: उस पंक्ति में त्रुटियाँ हैं।",
+	CSVImportReferenceCycle:      "%s: पंक्तियाँ एक-दूसरे को संदर्भित करती हैं।",
+	CSVImportStatusNotInWorkflow: "स्टेटस %s इस टिकट प्रकार के वर्कफ़्लो में नहीं है।",
+
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",
 	JQLInvalid:               "अमान्य क्वेरी।",
