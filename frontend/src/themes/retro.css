@@ -508,6 +508,7 @@
 /*
  * The page head becomes the window's title bar: the title in the pixel face,
  * white on the navy-to-blue band, the rest of the head on the same line.
+ * Only the page's own head: a settings area's head sits on the window's grey.
  */
 [data-skin='retro'] .page > .page-head {
   align-items: center;
@@ -529,14 +530,14 @@
   min-width: 0;
 }
 
-[data-skin='retro'] .page-head .page-title {
+[data-skin='retro'] .page-head:where(.page > *) .page-title {
   order: -1;
   font: 500 16px/1.25 var(--rt-pixel);
   color: var(--rt-title-ink);
   letter-spacing: 0.01em;
 }
 
-[data-skin='retro'] .page-head .eyebrow {
+[data-skin='retro'] .page-head:where(.page > *) .eyebrow {
   margin: 0;
   color: var(--rt-title-soft);
   font: 400 11px/1.3 var(--font-body);
@@ -544,7 +545,7 @@
   text-transform: none;
 }
 
-[data-skin='retro'] .page-head .page-title .pkey {
+[data-skin='retro'] .page-head:where(.page > *) .page-title .pkey {
   color: var(--rt-title-soft);
   font: 400 12px/1 var(--font-mono);
   vertical-align: 1px;
@@ -555,30 +556,30 @@
   color: var(--rt-title-soft);
 }
 
-[data-skin='retro'] .page-head .lead {
+[data-skin='retro'] .page-head:where(.page > *) .lead {
   margin: 0;
   gap: 5px;
   color: var(--rt-title-soft);
   font-size: 11px;
 }
 
-[data-skin='retro'] .page-head .lead .who {
+[data-skin='retro'] .page-head:where(.page > *) .lead .who {
   color: var(--rt-title-ink);
 }
 
-[data-skin='retro'] .page-head > .count,
-[data-skin='retro'] .page-head .count.muted {
+[data-skin='retro'] .page-head:where(.page > *) > .count,
+[data-skin='retro'] .page-head:where(.page > *) .count.muted {
   color: var(--rt-title-soft);
   font: 400 11px var(--font-body);
 }
 
-[data-skin='retro'] .page-head a:focus-visible,
+[data-skin='retro'] .page-head:where(.page > *) a:focus-visible,
 [data-skin='retro'] .page-crumbs a:focus-visible,
 [data-skin='retro'] .card-head a:focus-visible {
   outline-color: var(--rt-title-ink);
 }
 
-[data-skin='retro'] .page-head .btn {
+[data-skin='retro'] .page-head:where(.page > *) .btn {
   height: 20px;
   min-width: 0;
   padding: 0 8px;
@@ -592,6 +593,21 @@
   height: 22px;
   margin: 0 -13px 14px;
   background: var(--rt-title);
+}
+
+/* The settings areas keep their head beside the navigation: their title bar
+   names the section instead. */
+[data-skin='retro']
+  .page[data-title]:not(:has(> .page-head, > .page-crumbs, > .page-title))::before {
+  content: attr(data-title);
+  height: auto;
+  padding: 3px 4px 3px 7px;
+  overflow: hidden;
+  font: 500 16px/1.25 var(--rt-pixel);
+  letter-spacing: 0.01em;
+  color: var(--rt-title-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Sections are labelled with an etched rule. */
