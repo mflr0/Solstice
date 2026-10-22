@@ -549,8 +549,9 @@
   }
 
   .estimates {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    /* Side by side when there is room, each wide enough for the longest placeholder. */
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
     gap: 4px 14px;
   }
 
@@ -566,7 +567,7 @@
     padding: 1px 4px;
     margin-left: -5px;
     font: 12.5px var(--font-mono);
-    width: 9em;
+    width: 100%;
   }
 
   .est:hover,
