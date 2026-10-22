@@ -360,6 +360,13 @@ export const de: Messages = {
     title: 'Suche',
     results: (n: number) => plural(n, 'Vorgang', 'Vorgänge'),
     empty: 'Keine passenden Vorgänge.',
+    columns: {
+      button: 'Spalten',
+      shown: 'Angezeigte Spalten',
+      more: 'Weitere Spalten',
+      reset: 'Standardspalten',
+    },
+    exportCsv: 'Als CSV exportieren',
     filters: 'Filter',
     text: 'Suchtext',
     textPlaceholder: 'In Vorgängen suchen…',

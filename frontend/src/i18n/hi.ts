@@ -354,6 +354,13 @@ export const hi: Messages = {
     title: 'खोज',
     results: (n: number) => plural(n, 'टिकट', 'टिकट'),
     empty: 'कोई टिकट मेल नहीं खाता।',
+    columns: {
+      button: 'कॉलम',
+      shown: 'दिखाए गए कॉलम',
+      more: 'और कॉलम',
+      reset: 'डिफ़ॉल्ट कॉलम',
+    },
+    exportCsv: 'CSV में निर्यात करें',
     filters: 'फ़िल्टर',
     text: 'खोज टेक्स्ट',
     textPlaceholder: 'टिकटों में खोजें…',

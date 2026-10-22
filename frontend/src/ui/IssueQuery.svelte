@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { serverColumns } from '../core/search-columns.js';
   import type { IssuePage } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { api, ApiError, errorMessage } from '../lib/api.js';
@@ -24,6 +25,9 @@
     /** Takes over showing a query the server could not read (null once it can). */
     onerror?: ((message: string | null, pos?: number) => void) | undefined;
     showAssignee?: boolean | undefined;
+    /** The chosen columns (IssueTable's), the usual set when absent. */
+    columns?: readonly string[] | undefined;
+    names?: Record<string, string> | undefined;
   }
   const {
     q = '',
@@ -36,7 +40,12 @@
     onpage,
     onerror,
     showAssignee = true,
+    columns,
+    names,
   }: Props = $props();
+
+  /** The columns the server sends values for, as the request names them. */
+  const extra = $derived(columns ? serverColumns(columns).join(',') : '');
 
   let result = $state<IssuePage | null>(null);
   let error = $state('');
@@ -49,8 +58,13 @@
   async function load() {
     const mine = ++seq;
     try {
+      const more = extra
+        ? { columns: extra, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }
+        : {};
       const r = await api.issues(
-        jql === undefined ? { q, project, page, size } : { jql, project, page, size },
+        jql === undefined
+          ? { q, project, page, size, ...more }
+          : { jql, project, page, size, ...more },
       );
       if (mine !== seq) return;
       result = r;
@@ -84,7 +98,7 @@
 
   $effect(() => {
     // Read the inputs so the effect reruns when any changes.
-    void [q, jql, project, page, size];
+    void [q, jql, project, page, size, extra];
     void load();
   });
 
@@ -101,7 +115,7 @@
   <Illustration kind="search" />
   <p class="empty">{empty}</p>
 {:else}
-  <IssueTable issues={result.issues} {showAssignee} />
+  <IssueTable issues={result.issues} {showAssignee} {columns} {names} />
   {#if onpage}
     <Pager page={result.page} size={result.size} total={result.total} {onpage} />
   {/if}

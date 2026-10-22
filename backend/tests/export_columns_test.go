@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"maps"
 	"net/url"
 	"slices"
 	"strings"
@@ -157,5 +158,55 @@ func TestCSVExportEveryColumn(t *testing.T) {
 	}
 	if got := subRow[slices.Index(columns, "parent")]; got != key {
 		t.Errorf("sub-task parent: %q, want %q", got, key)
+	}
+}
+
+// TestSearchColumns asks the search for a custom field's column, which comes
+// back as text next to the issue, and refuses an unknown column.
+func TestSearchColumns(t *testing.T) {
+	paul := login(t, "paul.martin", "motdepasse")
+	admin := login(t, "admin", "admin")
+	key := createIssue(t, paul, "DEMO", "Search columns", "")
+	t.Cleanup(func() { admin.do("DELETE", "/api/issues/"+key, nil) })
+	field := pick(t, `SELECT id FROM custom_fields WHERE name = 'Code client' ORDER BY id LIMIT 1`)
+	if _, err := testDB.Exec(`INSERT INTO custom_field_values (issue_id, field_id, string_value) VALUES (?, ?, 'C-42')`,
+		issueID(t, key), field); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := testDB.Exec(`UPDATE issues SET due_date = '2024-04-15' WHERE id = ?`, issueID(t, key)); err != nil {
+		t.Fatal(err)
+	}
+
+	var page struct {
+		Issues []struct {
+			Key    string
+			Values map[string]string
+		}
+	}
+	jql := "&jql=" + url.QueryEscape("key = "+key)
+	paul.call("GET", "/api/issues?columns=customfield_"+field+",due,labels"+jql, nil, 200, &page)
+	if len(page.Issues) != 1 {
+		t.Fatalf("%d issues, want 1", len(page.Issues))
+	}
+	want := map[string]string{"customfield_" + field: "C-42", "duedate": "2024-04-15", "labels": ""}
+	if got := page.Issues[0].Values; !maps.Equal(got, want) {
+		t.Errorf("values = %v, want %v", got, want)
+	}
+
+	// Without columns, the answer is as before: no values.
+	var plain struct{ Issues []map[string]any }
+	paul.call("GET", "/api/issues?"+jql[1:], nil, 200, &plain)
+	if _, ok := plain.Issues[0]["values"]; ok {
+		t.Errorf("values without columns: %v", plain.Issues[0])
+	}
+
+	paul.call("GET", "/api/issues?columns=nope"+jql, nil, 400, nil)
+
+	var choices []struct{ ID, Name string }
+	paul.call("GET", "/api/issues/columns", nil, 200, &choices)
+	if !slices.ContainsFunc(choices, func(c struct{ ID, Name string }) bool {
+		return c.ID == "customfield_"+field && c.Name == "Code client"
+	}) || !slices.ContainsFunc(choices, func(c struct{ ID, Name string }) bool { return c.ID == "epic" }) {
+		t.Errorf("columns: %v", choices)
 	}
 }

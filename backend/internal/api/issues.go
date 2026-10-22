@@ -120,6 +120,8 @@ type issueSummary struct {
 	Updated      time.Time    `json:"updated"`
 	Due          *string      `json:"due"`
 	Confidential bool         `json:"confidential"`
+	// Values holds the columns asked for, as text (as in the CSV export).
+	Values map[string]string `json:"values,omitempty"`
 }
 
 func (c *catalog) statusOf(id string) statusRef {
@@ -165,6 +167,9 @@ func summarize(i *issueRow, c *catalog, users map[int64]userRef) issueSummary {
 	}
 }
 
+// listIssues answers GET /api/issues: a page of a search. columns may name
+// more fields, as for the export, whose values come back as text in the time
+// zone tz.
 func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -175,6 +180,22 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	params := r.URL.Query()
+	var custom []customFieldDef
+	var columns []exportColumn
+	if v := strings.TrimSpace(params.Get("columns")); v != "" {
+		if custom, err = s.customFields(r.Context()); err != nil {
+			return err
+		}
+		if columns, err = parseColumns(v, locale(r), custom); err != nil {
+			return err
+		}
+	}
+	o := s.restOut(r)
+	if len(columns) > 0 {
+		if o.tz, err = s.columnZone(r); err != nil {
+			return err
+		}
+	}
 	page := min(10000, max(1, atoi(params.Get("page"), 1)))
 	size := min(200, max(1, atoi(params.Get("size"), 50)))
 	where, args, order, err := s.searchCondition(r.Context(), sub, params)
@@ -196,6 +217,18 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) error {
 	out := make([]issueSummary, 0, len(list))
 	for _, iss := range list {
 		out = append(out, summarize(iss, cat, users))
+	}
+	if len(columns) > 0 && len(list) > 0 {
+		set, jusers, err := s.loadColumns(r.Context(), sub, o, custom, list, columns)
+		if err != nil {
+			return err
+		}
+		for i, d := range set.list {
+			out[i].Values = make(map[string]string, len(columns))
+			for _, c := range columns {
+				out[i].Values[c.id] = o.exportCell(cat, set, jusers, d, c)
+			}
+		}
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "page": page, "size": size, "issues": out})
 }
