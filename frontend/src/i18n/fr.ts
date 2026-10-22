@@ -355,6 +355,13 @@ export const fr: Messages = {
     title: 'Recherche',
     results: (n: number) => plural(n, 'ticket', 'tickets'),
     empty: 'Aucun ticket ne correspond.',
+    columns: {
+      button: 'Colonnes',
+      shown: 'Colonnes affichées',
+      more: 'Autres colonnes',
+      reset: 'Colonnes par défaut',
+    },
+    exportCsv: 'Exporter en CSV',
     filters: 'Filtres',
     text: 'Texte recherché',
     textPlaceholder: 'Rechercher dans les tickets…',

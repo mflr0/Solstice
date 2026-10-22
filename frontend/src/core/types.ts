@@ -85,6 +85,8 @@ export interface IssueSummary {
   updated: string;
   due: string | null;
   confidential: boolean;
+  /** The extra columns asked for, as text. */
+  values?: Record<string, string>;
 }
 
 export interface IssuePage {

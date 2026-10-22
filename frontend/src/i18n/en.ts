@@ -351,6 +351,13 @@ export const en = {
     title: 'Search',
     results: (n: number) => plural(n, 'issue', 'issues'),
     empty: 'No issues match.',
+    columns: {
+      button: 'Columns',
+      shown: 'Shown columns',
+      more: 'More columns',
+      reset: 'Default columns',
+    },
+    exportCsv: 'Export CSV',
     filters: 'Filters',
     text: 'Search text',
     textPlaceholder: 'Search issues…',

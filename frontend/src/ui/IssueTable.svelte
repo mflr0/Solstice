@@ -16,9 +16,33 @@
     issues: IssueSummary[];
     /** Hidden when every row is assigned to the same person anyway. */
     showAssignee?: boolean | undefined;
+    /**
+     * The columns chosen after key and summary, in order (the type is drawn
+     * before the key); the usual set when absent.
+     */
+    columns?: readonly string[] | undefined;
+    /** Column names by id, for the columns the table has no name of its own for. */
+    names?: Record<string, string> | undefined;
   }
-  const { issues, showAssignee = true }: Props = $props();
+  const { issues, showAssignee = true, columns, names = {} }: Props = $props();
   const showDue = $derived(issues.some((i) => i.due));
+  const showType = $derived(!columns || columns.includes('issuetype'));
+  /** What follows the summary. */
+  const rest = $derived(
+    (
+      columns ?? ['status', 'priority', ...(showAssignee ? ['assignee'] : []), 'duedate', 'updated']
+    ).filter((c) => c !== 'issuetype' && (c !== 'duedate' || showDue)),
+  );
+  const headers: Record<string, string> = {
+    status: t.table.status,
+    priority: t.table.priority,
+    assignee: t.table.assignee,
+    duedate: t.table.due,
+    updated: t.table.updated,
+    reporter: t.search.fields.reporter,
+    created: t.search.fields.created,
+    resolution: t.search.fields.resolution,
+  };
 
   function open(e: MouseEvent, key: string) {
     if ((e.target as Element).closest('a, button')) return;
@@ -29,35 +53,61 @@
 <table class="ledger">
   <thead>
     <tr>
-      <th class="c-type"><span class="sr-only">{t.table.type}</span></th>
+      {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
       <th class="c-key">{t.table.key}</th>
       <th class="c-summary">{t.table.summary}</th>
-      <th class="c-status">{t.table.status}</th>
-      <th class="c-priority"><span class="sr-only">{t.table.priority}</span></th>
-      {#if showAssignee}<th class="c-assignee">{t.table.assignee}</th>{/if}
-      {#if showDue}<th class="c-due">{t.table.due}</th>{/if}
-      <th class="num c-updated">{t.table.updated}</th>
+      {#each rest as c (c)}
+        {@const name = headers[c] ?? names[c] ?? c}
+        {#if c === 'priority'}
+          <th class="c-priority"><span class="sr-only">{name}</span></th>
+        {:else if c === 'status'}
+          <th class="c-status">{name}</th>
+        {:else if c === 'assignee'}
+          <th class="c-assignee">{name}</th>
+        {:else if c === 'duedate'}
+          <th class="c-due">{name}</th>
+        {:else if c === 'updated'}
+          <th class="num c-updated">{name}</th>
+        {:else}
+          <th class="c-extra">{name}</th>
+        {/if}
+      {/each}
     </tr>
   </thead>
   <tbody>
     {#each issues as issue (issue.key)}
       <tr onclick={(e) => open(e, issue.key)}>
-        <td class="c-type"><TypeMark type={issue.type} /></td>
+        {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
         <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
         <td class="c-summary">
           <span class="summary">{issue.summary}</span>
           {#if issue.confidential}<Lock />{/if}
         </td>
-        <td class="c-status"><Stamp status={issue.status} /></td>
-        <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
-        {#if showAssignee}<td class="c-who c-assignee"><Who user={issue.assignee} /></td>{/if}
-        {#if showDue}
-          {@const late = !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
-          <td class="c-due" class:late class:is-overdue={late}>
-            {issue.due ? formatDay(issue.due) : ''}
-          </td>
-        {/if}
-        <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
+        {#each rest as c (c)}
+          {#if c === 'status'}
+            <td class="c-status"><Stamp status={issue.status} /></td>
+          {:else if c === 'priority'}
+            <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
+          {:else if c === 'assignee'}
+            <td class="c-who c-assignee"><Who user={issue.assignee} /></td>
+          {:else if c === 'reporter'}
+            <td class="c-who c-extra"><Who user={issue.reporter} /></td>
+          {:else if c === 'duedate'}
+            {@const late = !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
+            <td class="c-due" class:late class:is-overdue={late}>
+              {issue.due ? formatDay(issue.due) : ''}
+            </td>
+          {:else if c === 'updated'}
+            <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
+          {:else if c === 'created'}
+            <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
+          {:else if c === 'resolution'}
+            <td class="c-extra">{issue.resolution?.name ?? ''}</td>
+          {:else}
+            {@const text = issue.values?.[c] ?? ''}
+            <td class="c-extra"><span class="text" title={text || undefined}>{text}</span></td>
+          {/if}
+        {/each}
       </tr>
     {/each}
   </tbody>
@@ -105,9 +155,22 @@
     color: var(--accent-text);
   }
 
+  .c-extra {
+    white-space: nowrap;
+  }
+
+  .c-extra .text {
+    display: inline-block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
   @media (max-width: 760px) {
     .c-priority,
-    .c-assignee {
+    .c-assignee,
+    .c-extra {
       display: none;
     }
   }

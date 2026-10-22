@@ -144,6 +144,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("DELETE /api/statuses/{id}", s.deleteStatus, true)
 
 	route("GET /api/issues", s.listIssues, true)
+	route("GET /api/issues/columns", s.listColumns, true)
 	route("POST /api/issues", s.createIssue, true)
 	route("GET /api/issues/{key}", s.getIssue, true)
 	route("PATCH /api/issues/{key}", s.updateIssue, true)

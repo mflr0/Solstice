@@ -11,9 +11,19 @@
     type SortField,
   } from '../../core/filters.js';
   import { readLocation, writeLocation, type SearchLocation } from '../../core/filters-url.js';
+  import {
+    exportColumns,
+    parseColumns,
+    NATIVE_COLUMNS,
+    STORAGE_KEY,
+    type ColumnChoice,
+  } from '../../core/search-columns.js';
   import { renderJqlError, t } from '../../i18n/t.js';
+  import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
+  import { notify } from '../../lib/ui.svelte.js';
   import IssueQuery from '../IssueQuery.svelte';
+  import ColumnPicker from './ColumnPicker.svelte';
   import FilterBar from './FilterBar.svelte';
   import JqlEditor from './JqlEditor.svelte';
 
@@ -52,6 +62,70 @@
   let refused = $state('');
   let draft = $state('');
   let lastBurst: string | null = null;
+
+  /** The columns the server knows; null until known, [] if it could not say. */
+  let choices = $state<ColumnChoice[] | null>(null);
+  let chosen = $state<string[]>([]);
+  let exporting = $state(false);
+  const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
+
+  function readStored(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  $effect(() => {
+    api.issueColumns().then(
+      (list) => {
+        choices = list;
+        chosen = parseColumns(
+          readStored(),
+          list.map((c) => c.id),
+        );
+      },
+      () => {
+        // Without the list, only what the table draws by itself is safe to ask for.
+        choices = [];
+        chosen = parseColumns(readStored()).filter((c) => NATIVE_COLUMNS.has(c));
+      },
+    );
+  });
+
+  function setColumns(next: string[]) {
+    chosen = next;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Private browsing: the choice lasts for this page only.
+    }
+  }
+
+  async function exportCsv() {
+    if (jql === null || exporting) return;
+    exporting = true;
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const file = await api.exportIssues({
+        jql,
+        project,
+        columns: exportColumns(chosen).join(','),
+        tz,
+      });
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `solstice-${new Date().toLocaleDateString('sv', { timeZone: tz })}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    } finally {
+      exporting = false;
+    }
+  }
 
   // Former ?q= addresses become JQL ones, in place.
   $effect(() => {
@@ -142,6 +216,15 @@
         {/if}
       </div>
     {/if}
+    {#if choices?.length}
+      <ColumnPicker {choices} {chosen} onchange={setColumns} />
+    {/if}
+    <button
+      type="button"
+      class="btn btn-small"
+      disabled={jql === null || exporting}
+      onclick={() => void exportCsv()}>{t.search.exportCsv}</button
+    >
     <div class="mode-switch" role="group" aria-label={t.search.mode}>
       <button
         type="button"
@@ -168,11 +251,13 @@
     <p class="error-text" role="alert">{error}</p>
   {/if}
 
-  {#if jql !== null}
+  {#if jql !== null && choices !== null}
     <div class="results">
       <IssueQuery
         {jql}
         {project}
+        columns={chosen}
+        {names}
         page={loc.page}
         ontotal={(n) => (total = n)}
         onerror={(m, at) => {

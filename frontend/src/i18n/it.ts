@@ -355,6 +355,13 @@ export const it: Messages = {
     title: 'Ricerca',
     results: (n: number) => plural(n, 'ticket', 'ticket'),
     empty: 'Nessun ticket corrisponde.',
+    columns: {
+      button: 'Colonne',
+      shown: 'Colonne mostrate',
+      more: 'Altre colonne',
+      reset: 'Colonne predefinite',
+    },
+    exportCsv: 'Esporta in CSV',
     filters: 'Filtri',
     text: 'Testo da cercare',
     textPlaceholder: 'Cerca nei ticket…',
