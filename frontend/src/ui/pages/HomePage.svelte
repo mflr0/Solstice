@@ -64,7 +64,7 @@
     }
 
     section :global(th.c-status) {
-      min-width: 112px;
+      min-width: 128px;
     }
 
     section :global(th.c-priority) {
