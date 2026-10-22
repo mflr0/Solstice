@@ -975,6 +975,60 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) error {
 // newIssue creates an issue from the interface's fields, with the custom
 // field values of f and extra, and announces it once it is stored.
 func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extra []customWrite) (*issueRow, error) {
+	p, err := s.planIssue(ctx, sub, f, createOpts{extra: extra})
+	if err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if err := s.insertIssue(ctx, tx, sub, p); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	created, err := s.findIssueByID(ctx, p.id)
+	if err != nil {
+		return nil, err
+	}
+	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
+	return created, nil
+}
+
+// createOpts are what an import sets beyond the interface's fields.
+type createOpts struct {
+	extra []customWrite
+	// parent and epic are issues of the same import, inserted first;
+	// epicKey names the epic in messages.
+	parent, epic *issuePlan
+	epicKey      string
+	status       string // "": the workflow's initial status
+	resolution   string // with status; "": the one the status implies
+	reporter     int64  // 0: the creator
+}
+
+// issuePlan is an issue creation that passed every check, ready to insert.
+type issuePlan struct {
+	f                                       fields
+	projectID                               int64
+	typeID, summary, status                 string
+	typ                                     typeRef
+	parentID, epicID                        any
+	parent, epic                            *issuePlan
+	description, environment, priority, due any
+	assignee, level                         any
+	resolution                              sql.NullString
+	reporter                                int64
+	times                                   timeEstimates
+	custom                                  []customWrite
+	id, num                                 int64 // once inserted
+}
+
+// planIssue checks an issue creation without writing anything.
+func (s *Server) planIssue(ctx context.Context, sub *perm.Subject, f fields, o createOpts) (*issuePlan, error) {
 	var projectKey, typeID, summary string
 	for k, v := range map[string]*string{"project": &projectKey, "type": &typeID, "summary": &summary} {
 		if !f.has(k) {
@@ -1014,10 +1068,21 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 	if !ok {
 		return nil, fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
+	p := &issuePlan{f: f, projectID: projectID, typeID: typeID, summary: summary, typ: it, reporter: sub.UserID,
+		custom: o.extra}
+	if o.reporter != 0 {
+		p.reporter = o.reporter
+	}
 
-	var parentID any
 	var parentLevel sql.NullInt64
-	if f.has("parent") && !f.isNull("parent") {
+	switch {
+	case o.parent != nil:
+		if o.parent.parentID != nil || o.parent.parent != nil {
+			return nil, fail(http.StatusBadRequest, i18n.IssueParentInvalid)
+		}
+		p.parent = o.parent
+		parentLevel = nullInt64(o.parent.level)
+	case f.has("parent") && !f.isNull("parent"):
 		var parentKey string
 		if err := f.get("parent", &parentKey); err != nil {
 			return nil, err
@@ -1029,17 +1094,17 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		if parent.ProjectID != projectID || parent.ParentID.Valid {
 			return nil, fail(http.StatusBadRequest, i18n.IssueParentInvalid)
 		}
-		parentID = parent.ID
+		p.parentID = parent.ID
 		parentLevel = parent.LevelID
 	}
-	if it.Subtask != (parentID != nil) {
+	hasParent := p.parentID != nil || p.parent != nil
+	if it.Subtask != hasParent {
 		if it.Subtask {
 			return nil, fail(http.StatusBadRequest, i18n.IssueSubtaskParentRequired)
 		}
 		return nil, fail(http.StatusBadRequest, i18n.IssueParentNotSubtask)
 	}
 
-	var assignee any
 	if f.has("assignee") && !f.isNull("assignee") {
 		var id int64
 		if err := f.get("assignee", &id); err != nil {
@@ -1053,7 +1118,7 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		} else if !ok {
 			return nil, fail(http.StatusBadRequest, i18n.IssueAssigneeNotAssignable)
 		}
-		assignee = id
+		p.assignee = id
 	} else {
 		var components []int64
 		if f.has("components") && !f.isNull("components") {
@@ -1061,7 +1126,7 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 				return nil, err
 			}
 		}
-		if assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
+		if p.assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
 			return nil, err
 		}
 	}
@@ -1069,24 +1134,42 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 	if err != nil {
 		return nil, err
 	}
-	custom = append(custom, extra...)
+	p.custom = append(custom, p.custom...)
 	// Custom fields take the permission to edit the issue, as its reporter.
-	if len(custom) > 0 && !sub.Can(perm.Edit, projectID, &perm.Issue{ProjectID: projectID, ReporterID: sub.UserID}) {
+	if len(p.custom) > 0 && !sub.Can(perm.Edit, projectID, &perm.Issue{ProjectID: projectID, ReporterID: sub.UserID}) {
 		return nil, errForbidden
 	}
 
-	status, err := s.initialStatusFor(ctx, projectID, typeID)
-	if err != nil {
+	if p.status, err = s.initialStatusFor(ctx, projectID, typeID); err != nil {
 		return nil, err
 	}
-	var description, environment, priority, due any
+	if o.status != "" && o.status != p.status {
+		if !sub.Can(perm.Transition, projectID, &perm.Issue{ProjectID: projectID, ReporterID: p.reporter}) {
+			return nil, errForbidden
+		}
+		wf, _, err := s.workflowOf(ctx, projectID, typeID)
+		if err != nil {
+			return nil, err
+		}
+		if ok, err := s.exists(ctx, `SELECT 1 FROM workflow_statuses WHERE workflow_id = ? AND status_id = ?`,
+			wf, o.status); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, failf(http.StatusBadRequest, i18n.CSVImportStatusNotInWorkflow, cat.statusOf(o.status).Name)
+		}
+		p.status = o.status
+	}
+	if o.status != "" {
+		p.resolution = statusResolution(cat, sql.NullString{String: o.resolution, Valid: o.resolution != ""}, p.status)
+	}
+
 	if f.has("description") {
 		var v *string
 		if err := f.get("description", &v); err != nil {
 			return nil, err
 		}
 		if v != nil {
-			description = sqlq.NullIfBlank(*v)
+			p.description = sqlq.NullIfBlank(*v)
 		}
 	}
 	if f.has("environment") {
@@ -1095,7 +1178,7 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 			return nil, err
 		}
 		if v != nil {
-			environment = sqlq.NullIfBlank(*v)
+			p.environment = sqlq.NullIfBlank(*v)
 		}
 	}
 	if f.has("priority") && !f.isNull("priority") {
@@ -1106,13 +1189,13 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		if _, ok := cat.priority[v]; !ok {
 			return nil, fail(http.StatusBadRequest, i18n.IssuePriorityUnknown)
 		}
-		priority = v
+		p.priority = v
 	} else if len(cat.Priorities) > 0 {
 		// The default priority, else Jira's default: the middle one.
-		priority = cat.Priorities[len(cat.Priorities)/2].ID
-		for _, p := range cat.Priorities {
-			if p.Default {
-				priority = p.ID
+		p.priority = cat.Priorities[len(cat.Priorities)/2].ID
+		for _, pr := range cat.Priorities {
+			if pr.Default {
+				p.priority = pr.ID
 			}
 		}
 	}
@@ -1124,14 +1207,13 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		if _, err := time.Parse(time.DateOnly, v); err != nil {
 			return nil, fail(http.StatusBadRequest, i18n.IssueDueDateInvalid)
 		}
-		due = v
+		p.due = v
 	}
 	estimates, err := readEstimateEdit(f)
 	if err != nil {
 		return nil, err
 	}
-	times := timeEstimates{}.withEstimateEdit(estimates)
-	var level any
+	p.times = timeEstimates{}.withEstimateEdit(estimates)
 	if f.has("securityLevel") && !f.isNull("securityLevel") {
 		if !sub.Can(perm.Security, projectID, nil) {
 			return nil, errForbidden
@@ -1147,76 +1229,90 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 		if !ok {
 			return nil, fail(http.StatusBadRequest, i18n.IssueSecurityLevelUnknown)
 		}
-		level = id
+		p.level = id
 	}
 	// A sub-task is exactly as confidential as its parent, as in Jira.
-	if parentID != nil {
-		level = sqlq.Value(parentLevel)
+	if hasParent {
+		p.level = sqlq.Value(parentLevel)
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
+	switch {
+	case o.epic != nil:
+		switch {
+		case hasParent:
+			return nil, fail(http.StatusBadRequest, i18n.IssueSubtaskEpic)
+		case isEpicType(it):
+			return nil, fail(http.StatusBadRequest, i18n.IssueEpicInEpic)
+		case !isEpicType(o.epic.typ):
+			return nil, failf(http.StatusBadRequest, i18n.IssueNotAnEpic, o.epicKey)
+		}
+		p.epic = o.epic
+	case f.has("epic"):
+		if p.epicID, _, err = s.epicTarget(ctx, sub, cat, &issueRow{ProjectID: projectID, TypeID: typeID,
+			ParentID: nullInt64(p.parentID)}, f); err != nil {
+			return nil, err
+		}
 	}
-	defer tx.Rollback()
+	return p, nil
+}
+
+// insertIssue stores a planned issue in tx and sets p.id. Its parent and
+// epic of the same import must be inserted first.
+func (s *Server) insertIssue(ctx context.Context, tx *sql.Tx, sub *perm.Subject, p *issuePlan) error {
 	var num int64
-	if err := tx.QueryRowContext(ctx, `SELECT issue_counter + 1 FROM projects WHERE id = ? FOR UPDATE`, projectID).
+	if err := tx.QueryRowContext(ctx, `SELECT issue_counter + 1 FROM projects WHERE id = ? FOR UPDATE`, p.projectID).
 		Scan(&num); err != nil {
-		return nil, err
+		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE projects SET issue_counter = ? WHERE id = ?`, num, projectID); err != nil {
-		return nil, err
+	if _, err := tx.ExecContext(ctx, `UPDATE projects SET issue_counter = ? WHERE id = ?`, num, p.projectID); err != nil {
+		return err
 	}
 	now := time.Now().UTC()
 	// A new issue goes to the bottom of the board order.
 	var lastRank string
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(rank_key), '') FROM issues`).Scan(&lastRank); err != nil {
-		return nil, err
+		return err
 	}
+	parentID, epicID := p.parentID, p.epicID
+	if p.parent != nil {
+		parentID = p.parent.id
+	}
+	if p.epic != nil {
+		epicID = p.epic.id
+	}
+	var resolved any
+	if p.resolution.Valid {
+		resolved = now
+	}
+	p.num = num
 	res, err := tx.ExecContext(ctx, `INSERT INTO issues (project_id, num, issue_type_id, parent_id, summary,
-		description, environment, status_id, priority_id, reporter_id, assignee_id, creator_id, security_level_id,
-		created_at, updated_at, due_date, original_estimate, remaining_estimate, rank_key)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		projectID, num, typeID, parentID, summary, description, environment, status, priority, sub.UserID, assignee,
-		sub.UserID, level, now, now, due, sqlq.Value(times.Original), sqlq.Value(times.Remaining),
-		rankBetween(lastRank, ""))
+		description, environment, status_id, priority_id, resolution_id, resolved_at, reporter_id, assignee_id,
+		creator_id, security_level_id, created_at, updated_at, due_date, original_estimate, remaining_estimate, rank_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.projectID, num, p.typeID, parentID, p.summary, p.description, p.environment, p.status, p.priority,
+		sqlq.Value(p.resolution), resolved, p.reporter, p.assignee, sub.UserID, p.level, now, now, p.due,
+		sqlq.Value(p.times.Original), sqlq.Value(p.times.Remaining), rankBetween(lastRank, ""))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	issueID, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
+	if p.id, err = res.LastInsertId(); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO watchers (issue_id, user_id, created_at) VALUES (?, ?, ?)`,
-		issueID, sub.UserID, now); err != nil {
-		return nil, err
+		p.id, sub.UserID, now); err != nil {
+		return err
 	}
-	iss := &issueRow{ID: issueID, ProjectID: projectID}
-	if _, err := s.applySets(ctx, tx, f, iss); err != nil {
-		return nil, err
+	if _, err := s.applySets(ctx, tx, p.f, &issueRow{ID: p.id, ProjectID: p.projectID}); err != nil {
+		return err
 	}
-	if f.has("epic") {
-		epicID, _, err := s.epicTarget(ctx, sub, cat, &issueRow{ID: issueID, ProjectID: projectID, TypeID: typeID, ParentID: nullInt64(parentID)}, f)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE issues SET epic_id = ? WHERE id = ?`, epicID, issueID); err != nil {
-			return nil, err
+	if p.f.has("epic") || p.epic != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE issues SET epic_id = ? WHERE id = ?`, epicID, p.id); err != nil {
+			return err
 		}
 	}
 	// As in Jira, a creation records no history, custom fields included.
-	if _, err := writeCustom(ctx, tx, issueID, custom, nil); err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-	created, err := s.findIssueByID(ctx, issueID)
-	if err != nil {
-		return nil, err
-	}
-	s.emit(issueEvent(events.IssueCreated, created, sub.UserID, "issue"))
-	return created, nil
+	_, err = writeCustom(ctx, tx, p.id, p.custom, nil)
+	return err
 }
 
 func (s *Server) findIssueByID(ctx context.Context, id int64) (*issueRow, error) {

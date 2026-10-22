@@ -50,6 +50,7 @@ const (
 	AuditSettings  = "settings.audit"
 	IssueDelete    = "issue.delete"
 	IssueExport    = "issue.export"
+	IssueImport    = "issue.import"
 	IssueMove      = "issue.move"
 	// One entry per file, whichever route (interface or REST) it went through.
 	AttachmentUpload = "attachment.upload"

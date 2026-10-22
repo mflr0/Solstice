@@ -84,6 +84,7 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'filter.share',
   'issue.delete',
   'issue.export',
+  'issue.import',
   'issue.move',
   'attachment.upload',
   'attachment.delete',

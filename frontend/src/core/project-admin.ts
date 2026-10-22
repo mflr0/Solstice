@@ -221,6 +221,7 @@ export const PROJECT_TABS = [
   'rights',
   'workflows',
   'notifications',
+  'import',
 ] as const;
 
 export type ProjectTab = (typeof PROJECT_TABS)[number];
@@ -244,6 +245,23 @@ export function nextTab(
 ): ProjectTab {
   const i = tabs.indexOf(current);
   return tabs[(i + step + tabs.length) % tabs.length] ?? current;
+}
+
+/* CSV import ---------------------------------------------------------------- */
+
+/**
+ * The mapping after a column gets a field: a field goes to one column only,
+ * so the column that had it loses it ("" leaves the column out).
+ */
+export function assignColumn<C extends { field: string }>(
+  columns: C[],
+  index: number,
+  field: string,
+): C[] {
+  return columns.map((c, i) => {
+    if (i === index) return { ...c, field };
+    return field !== '' && c.field === field ? { ...c, field: '' } : c;
+  });
 }
 
 /* Versions and components --------------------------------------------------- */

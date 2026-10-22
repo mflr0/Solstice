@@ -430,6 +430,23 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Exports.
 	ExportColumnUnknown: "Colonne inconnue : %s.",
 
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "Aucun fichier n’a été envoyé.",
+	CSVImportFileTooLarge:        "Le fichier dépasse %d Mio.",
+	CSVImportFileInvalid:         "Le fichier n’est pas un CSV valide (ligne %d).",
+	CSVImportFileEmpty:           "Le fichier n’a pas de ligne d’en-tête.",
+	CSVImportTooManyRows:         "Le fichier a plus de %d lignes.",
+	CSVImportMappingInvalid:      "La correspondance des colonnes ne correspond pas au fichier.",
+	CSVImportColumnTwice:         "Deux colonnes vont dans le même champ : %s.",
+	CSVImportRowsInvalid:         "Rien n’a été importé : des lignes ont des erreurs (%d).",
+	CSVImportValueUnknown:        "%s : valeur inconnue « %s ».",
+	CSVImportValueInvalid:        "%s : valeur invalide « %s ».",
+	CSVImportUserAmbiguous:       "%s : plusieurs personnes correspondent à « %s ».",
+	CSVImportKeyTwice:            "La clé %s figure sur plusieurs lignes.",
+	CSVImportReferenceFailed:     "%s : cette ligne a des erreurs.",
+	CSVImportReferenceCycle:      "%s : les lignes se désignent l’une l’autre.",
+	CSVImportStatusNotInWorkflow: "Le statut %s ne fait pas partie du workflow de ce type de ticket.",
+
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL : %s",
 	JQLInvalid:               "Requête invalide.",

@@ -11,6 +11,7 @@
   import Modal from '../Modal.svelte';
   import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
+  import ImportPanel from '../project-settings/ImportPanel.svelte';
   import NotificationsPanel from '../project-settings/NotificationsPanel.svelte';
   import VersionsPanel from '../project-settings/VersionsPanel.svelte';
   import '../settings.css';
@@ -241,6 +242,10 @@
             roles={data.roles}
             ondirty={(d) => (panelDirty = d)}
           />
+        </div>
+      {:else if tab === 'import'}
+        <div class="panel" role="tabpanel" id="panel-import" aria-labelledby="tab-import">
+          <ImportPanel {projectKey} />
         </div>
       {:else}
         <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">

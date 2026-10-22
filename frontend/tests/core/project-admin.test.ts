@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ComponentRow, VersionRow } from '../../src/core/admin-types.js';
 
 import {
+  assignColumn,
   ASSIGNEE_TYPES,
   categoryProblem,
   componentForm,
@@ -135,9 +136,30 @@ describe('settings tabs', () => {
   });
 
   it('cycles with the arrow keys', () => {
-    expect(nextTab(PROJECT_TABS, 'notifications', 1)).toBe('general');
-    expect(nextTab(PROJECT_TABS, 'general', -1)).toBe('notifications');
+    expect(nextTab(PROJECT_TABS, 'import', 1)).toBe('general');
+    expect(nextTab(PROJECT_TABS, 'general', -1)).toBe('import');
     expect(nextTab(PROJECT_TABS, 'components', 1)).toBe('versions');
+  });
+});
+
+describe('the CSV import mapping', () => {
+  const cols = [
+    { header: 'Summary', field: 'summary' },
+    { header: 'Title', field: '' },
+    { header: 'Type', field: 'issuetype' },
+  ];
+
+  it('moves a field to the column that gets it', () => {
+    expect(assignColumn(cols, 1, 'summary').map((c) => c.field)).toEqual([
+      '',
+      'summary',
+      'issuetype',
+    ]);
+  });
+
+  it('leaves the others alone when a column is left out', () => {
+    expect(assignColumn(cols, 2, '').map((c) => c.field)).toEqual(['summary', '', '']);
+    expect(cols[2]!.field).toBe('issuetype');
   });
 });
 
