@@ -34,8 +34,8 @@ main_checkout() {
 
 worktree_of() { echo "$(dirname "$1")/$(basename "$1")-$2"; }
 
-# Epoch seconds of an ISO-8601 UTC time.
-epoch() { date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s; }
+# Epoch seconds of an ISO-8601 UTC time, with GNU date or else BSD date.
+epoch() { date -u -d "$1" +%s 2>/dev/null || date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s; }
 
 # Time the label was last added to issue $1, empty if never.
 labeled_at() {
