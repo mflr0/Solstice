@@ -429,6 +429,23 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Exports.
 	ExportColumnUnknown: "Unknown column: %s.",
 
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "No file was sent.",
+	CSVImportFileTooLarge:        "The file is larger than %d MiB.",
+	CSVImportFileInvalid:         "The file is not valid CSV (line %d).",
+	CSVImportFileEmpty:           "The file has no header row.",
+	CSVImportTooManyRows:         "The file has more than %d rows.",
+	CSVImportMappingInvalid:      "The column mapping does not match the file.",
+	CSVImportColumnTwice:         "Two columns go to the same field: %s.",
+	CSVImportRowsInvalid:         "Nothing was imported: some rows have errors (%d).",
+	CSVImportValueUnknown:        "%s: unknown value “%s”.",
+	CSVImportValueInvalid:        "%s: invalid value “%s”.",
+	CSVImportUserAmbiguous:       "%s: several people match “%s”.",
+	CSVImportKeyTwice:            "Issue key %s is on more than one row.",
+	CSVImportReferenceFailed:     "%s: that row has errors.",
+	CSVImportReferenceCycle:      "%s: the rows refer to each other.",
+	CSVImportStatusNotInWorkflow: "Status %s is not in the workflow of this issue type.",
+
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",
 	JQLInvalid:               "Invalid query.",

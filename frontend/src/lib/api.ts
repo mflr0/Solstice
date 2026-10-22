@@ -5,6 +5,7 @@
  */
 
 import { avatarUrl } from '../core/avatar.js';
+import type { ColumnChoice } from '../core/search-columns.js';
 import type {
   Comment,
   Grant,
@@ -115,9 +116,18 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+/** With blob, the answer is read as a file (a CSV export), not as JSON. */
+export async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  as: 'json' | 'blob' = 'json',
+): Promise<T> {
   // The server answers its messages in the interface's language.
-  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': locale };
+  const headers: Record<string, string> = {
+    Accept: as === 'blob' ? '*/*' : 'application/json',
+    'Accept-Language': locale,
+  };
   let payload: BodyInit | undefined;
   if (method !== 'GET') headers['X-Solstice'] = '1';
   if (body instanceof FormData) {
@@ -162,6 +172,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     throw new ApiError(message, res.status, data);
   }
   if (res.status === 204) return undefined as T;
+  if (as === 'blob') return (await res.blob()) as T;
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -200,6 +211,36 @@ export interface IssueFields {
   remainingEstimate?: string | null;
 }
 
+/** A column of a CSV file to import, and the field it goes to ("": not imported). */
+export interface ImportColumn {
+  header: string;
+  field: string;
+  /** Recognised from its header. */
+  known: boolean;
+  /** A field an import cannot set (created, comments…). */
+  readOnly?: boolean;
+}
+
+/** A row of the file: the issue it would create, or what is wrong with it. */
+export interface ImportRow {
+  line: number;
+  key?: string;
+  summary: string;
+  type?: string;
+  status?: string;
+  errors?: string[];
+}
+
+/** The answer of an import, checked or done. */
+export interface ImportReport {
+  columns: ImportColumn[];
+  /** The fields a column may go to. */
+  targets: { id: string; name: string }[];
+  rows: ImportRow[];
+  /** The new keys, once imported. */
+  created?: string[];
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<Me>('POST', '/api/login', { username, password }),
@@ -235,7 +276,20 @@ export const api = {
     project?: string | undefined;
     page?: number | undefined;
     size?: number | undefined;
+    /** More columns, comma-separated: their values come back as text in each issue's values. */
+    columns?: string | undefined;
+    /** The time zone the values' dates are written in. */
+    tz?: string | undefined;
   }) => request<IssuePage>('GET', `/api/issues${query(params)}`),
+  /** Every column the search and the export can show, named in the interface's language. */
+  issueColumns: () => request<ColumnChoice[]>('GET', '/api/issues/columns'),
+  /** A search as a CSV file, in the given columns (comma-separated). */
+  exportIssues: (params: {
+    jql: string;
+    project?: string | undefined;
+    columns: string;
+    tz: string;
+  }) => request<Blob>('GET', `/api/issues/export.csv${query(params)}`, undefined, 'blob'),
   issue: (key: string) => request<IssueDetail>('GET', `/api/issues/${enc(key)}`),
   createIssue: (fields: IssueFields) => request<{ key: string }>('POST', '/api/issues', fields),
   updateIssue: (key: string, fields: IssueFields) =>
@@ -294,6 +348,23 @@ export const api = {
     return request<IssueDetail | HiddenIssue>('POST', `/api/issues/${enc(key)}/attachments`, form);
   },
   deleteAttachment: (id: number) => request<void>('DELETE', `/api/attachments/${id}`),
+  /**
+   * Imports issues from a CSV file into a project: with check, only reports.
+   * The mapping gives each column's field ("" skips it); without it, the
+   * server guesses from the headers. A refused import answers 400 with the
+   * report in the error's data.
+   */
+  importIssues: (key: string, file: File, mapping: string[] | null, check: boolean) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (mapping) form.append('mapping', JSON.stringify(mapping));
+    form.append('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    return request<ImportReport>(
+      'POST',
+      `/api/projects/${enc(key)}/import.csv${check ? '?check=1' : ''}`,
+      form,
+    );
+  },
 
   setMyAvatar: (picture: Blob) => {
     const form = new FormData();

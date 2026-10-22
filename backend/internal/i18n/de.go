@@ -431,6 +431,23 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Exports.
 	ExportColumnUnknown: "Unbekannte Spalte: %s.",
 
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "Es wurde keine Datei gesendet.",
+	CSVImportFileTooLarge:        "Die Datei ist größer als %d MiB.",
+	CSVImportFileInvalid:         "Die Datei ist kein gültiges CSV (Zeile %d).",
+	CSVImportFileEmpty:           "Die Datei hat keine Kopfzeile.",
+	CSVImportTooManyRows:         "Die Datei hat mehr als %d Zeilen.",
+	CSVImportMappingInvalid:      "Die Spaltenzuordnung passt nicht zur Datei.",
+	CSVImportColumnTwice:         "Zwei Spalten gehen in dasselbe Feld: %s.",
+	CSVImportRowsInvalid:         "Nichts wurde importiert: Einige Zeilen haben Fehler (%d).",
+	CSVImportValueUnknown:        "%s: unbekannter Wert „%s“.",
+	CSVImportValueInvalid:        "%s: ungültiger Wert „%s“.",
+	CSVImportUserAmbiguous:       "%s: mehrere Personen passen zu „%s“.",
+	CSVImportKeyTwice:            "Der Schlüssel %s steht in mehr als einer Zeile.",
+	CSVImportReferenceFailed:     "%s: diese Zeile hat Fehler.",
+	CSVImportReferenceCycle:      "%s: die Zeilen verweisen aufeinander.",
+	CSVImportStatusNotInWorkflow: "Der Status %s gehört nicht zum Workflow dieses Vorgangstyps.",
+
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",
 	JQLInvalid:               "Ungültige Abfrage.",

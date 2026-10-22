@@ -136,6 +136,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("PUT /api/projects/{key}/permissions", s.putPermissions, true)
 	route("GET /api/projects/{key}/workflows", s.listWorkflows, true)
 	route("POST /api/projects/{key}/workflows", s.createWorkflow, true)
+	route("POST /api/projects/{key}/import.csv", s.importIssues, true)
 	route("PUT /api/workflows/{id}", s.updateWorkflow, true)
 	route("DELETE /api/workflows/{id}", s.deleteWorkflow, true)
 	route("POST /api/statuses", s.createStatus, true)
@@ -143,6 +144,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("DELETE /api/statuses/{id}", s.deleteStatus, true)
 
 	route("GET /api/issues", s.listIssues, true)
+	route("GET /api/issues/columns", s.listColumns, true)
 	route("POST /api/issues", s.createIssue, true)
 	route("GET /api/issues/{key}", s.getIssue, true)
 	route("PATCH /api/issues/{key}", s.updateIssue, true)
