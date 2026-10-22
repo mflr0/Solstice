@@ -557,9 +557,10 @@
 
 /* Page sheet ---------------------------------------------------------------- */
 
-/* The page is a white sheet framed on the grey desk. */
+/* The page is a white sheet framed on the grey desk, no wider than the base
+   max-width (which boards raise). */
 [data-skin='classique'] .page {
-  width: min(1280px, calc(100% - 40px));
+  width: calc(100% - 40px);
   margin: 20px auto 48px;
   padding: 22px 28px 40px;
   background: var(--paper);
