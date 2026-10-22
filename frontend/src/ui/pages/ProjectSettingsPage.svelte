@@ -189,20 +189,22 @@
     <p class="intro">{t.settings.intro}</p>
 
     {#if !forbidden}
-      <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
-        {#each PROJECT_TABS as k (k)}
-          <button
-            type="button"
-            class="tab"
-            role="tab"
-            id="tab-{k}"
-            aria-controls="panel-{k}"
-            aria-selected={tab === k}
-            tabindex={tab === k ? 0 : -1}
-            onclick={() => showTab(k)}
-            onkeydown={tabKey}>{tabLabels[k]}</button
-          >
-        {/each}
+      <div class="tabs-scroll">
+        <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
+          {#each PROJECT_TABS as k (k)}
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              id="tab-{k}"
+              aria-controls="panel-{k}"
+              aria-selected={tab === k}
+              tabindex={tab === k ? 0 : -1}
+              onclick={() => showTab(k)}
+              onkeydown={tabKey}>{tabLabels[k]}</button
+            >
+          {/each}
+        </div>
       </div>
     {/if}
 
@@ -510,8 +512,27 @@
     gap: 4px;
   }
 
-  .tabs {
+  /* On a phone the tabs scroll sideways rather than widen the page. The box
+     that scrolls is around the tab list, so the skins' tabs can still reach
+     over their rule; its padding keeps the tabs that hang lower (Retro), and
+     the panel's margin gives that padding back. */
+  .tabs-scroll {
     margin: 18px 0 4px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+
+  .tabs-scroll + .panel {
+    margin-top: -2px;
+  }
+
+  .tabs {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .tab:focus-visible {
+    outline-offset: -2px;
   }
 
   .leave {
