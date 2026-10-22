@@ -840,8 +840,14 @@
   border-color: var(--luna-status-edge) #343c51 #343c51 var(--luna-status-edge);
 }
 
+/* "Ready" takes the spare room; only the connection message gives way when
+   there is none. */
 [data-skin='luna'] .app-statusbar .statusbar-cell:first-child {
-  flex: 1;
+  flex: 1 0 auto;
+}
+
+[data-skin='luna'] .app-statusbar .statusbar-cell:last-child {
+  flex-shrink: 0;
 }
 
 /* Buttons -------------------------------------------------------------------- */
