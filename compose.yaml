@@ -20,7 +20,7 @@ services:
     ports: ["127.0.0.1:15432:5432"]
 
   jira-mysql:
-    image: mysql:8.4
+    image: mysql:9.6
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: jira
