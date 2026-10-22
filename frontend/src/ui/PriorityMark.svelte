@@ -44,4 +44,18 @@
     letter-spacing: -1px;
     line-height: 1;
   }
+
+  /*
+   * A colour too pale for a light paper (too deep for a dark one) is taken to
+   * the lightness that keeps 3:1 against the papers; hue and chroma stay.
+   */
+  @supports (color: oklch(from red l c h)) {
+    .glyph {
+      color: oklch(from var(--priority-color, var(--ink-soft)) min(l, 0.62) c h);
+    }
+
+    :global([data-scheme='dark']) .glyph {
+      color: oklch(from var(--priority-color, var(--ink-soft)) max(l, 0.62) c h);
+    }
+  }
 </style>

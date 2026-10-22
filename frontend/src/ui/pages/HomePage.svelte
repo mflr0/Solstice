@@ -48,3 +48,47 @@
     </section>
   {/each}
 </div>
+
+<style>
+  /*
+   * The three lists stack, so they share their column widths and line up; a
+   * list without the assignee or due column keeps the room it would take.
+   * Each width holds the column's usual widest content (a nine-character key,
+   * « IN PROGRESS », two triangles, avatar and name, the longest date). They
+   * are minimums: the summary claims the whole row, and a plain width gives
+   * way to it. Narrower screens need that room for the summary.
+   */
+  @media (min-width: 1000px) {
+    section :global(th.c-key) {
+      min-width: 90px;
+    }
+
+    section :global(th.c-status) {
+      min-width: 128px;
+    }
+
+    section :global(th.c-priority) {
+      min-width: 40px;
+    }
+
+    section :global(th.c-assignee) {
+      min-width: 160px;
+    }
+
+    section :global(th.c-due) {
+      min-width: 140px;
+    }
+
+    section :global(th.c-updated) {
+      min-width: 156px;
+    }
+
+    section :global(.ledger:not(:has(.c-assignee)) th.c-priority) {
+      min-width: calc(40px + 160px);
+    }
+
+    section :global(.ledger:not(:has(.c-due)) th.c-updated) {
+      min-width: calc(156px + 140px);
+    }
+  }
+</style>

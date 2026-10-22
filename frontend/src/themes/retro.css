@@ -1036,6 +1036,17 @@
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
 }
 
+/* On the grey face, glyphs need more lightness distance than the base gives for 3:1. */
+@supports (color: oklch(from red l c h)) {
+  [data-skin='retro'] .priority-mark .glyph {
+    color: oklch(from var(--priority-color, var(--ink-soft)) min(l, 0.52) c h);
+  }
+
+  [data-skin='retro'][data-scheme='dark'] .priority-mark .glyph {
+    color: oklch(from var(--priority-color, var(--ink-soft)) max(l, 0.65) c h);
+  }
+}
+
 /* Lists: white wells with column-header buttons ------------------------------------------ */
 
 [data-skin='retro'] table.ledger {
