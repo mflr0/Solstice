@@ -1892,6 +1892,8 @@ export const it: Messages = {
     emailHint: 'Serve anche per avvisarti e contattarti.',
     emailChangeHint: 'Per cambiare l’indirizzo serve la tua password attuale.',
     passwordTitle: 'Password',
+    directoryPasswordIntro:
+      'La tua password è gestita dalla directory (LDAP): cambiala lì. Digitala qui solo per cambiare il tuo indirizzo e-mail.',
     passwordIntro:
       'Lascia i campi vuoti per mantenere la password attuale. Una nuova password chiude le tue altre sessioni e i tuoi token di accesso smettono di funzionare.',
     currentPassword: 'Password attuale',
@@ -1999,6 +2001,8 @@ export const it: Messages = {
     admin: 'Amministratore',
     inactive: 'disattivato',
     noPassword: 'senza password',
+    directory: 'LDAP',
+    directoryHint: 'Accede tramite la directory (LDAP): la password si gestisce lì.',
     more: (n: number) => `+${n}`,
     rights: 'Permessi',
     adminLabel: 'Amministratore di Solstice (accesso a tutta l’amministrazione)',

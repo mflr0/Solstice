@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -54,6 +55,7 @@ type Settings struct {
 	DB   DBSettings
 	Log  LogSettings
 	HTTP HTTPSettings
+	LDAP LDAPSettings
 }
 
 // DBSettings are Solstice's database and its connection pool.
@@ -93,6 +95,43 @@ type HTTPSettings struct {
 	MaxStorage ByteSize
 }
 
+// LDAPSettings are the LDAP or Active Directory server accounts may sign in
+// with. An empty URL turns LDAP sign-in off.
+type LDAPSettings struct {
+	// URL is ldaps://host:636, or ldap://host:389 with StartTLS.
+	URL string
+	// StartTLS upgrades an ldap:// connection to TLS before anything is sent.
+	StartTLS bool
+	// Insecure allows ldap:// without StartTLS: passwords then travel in clear.
+	Insecure bool
+	// CAFile is a PEM file of the certificate authorities to trust, added to
+	// the system's.
+	CAFile string
+	// BindDN and BindPassword are the service account that searches the
+	// directory; empty for an anonymous search.
+	BindDN       string
+	BindPassword string
+	// UserBase is where accounts are searched, UserFilter how: {username}
+	// stands for the name typed at sign-in.
+	UserBase   string
+	UserFilter string
+	// NameAttr and EmailAttr are the attributes copied to the account.
+	NameAttr  string
+	EmailAttr string
+	// GroupBase is where groups are searched (UserBase when empty),
+	// GroupFilter how: {dn} stands for the account's DN, {username} for its
+	// name. GroupNameAttr is the attribute naming a group in Solstice.
+	GroupBase     string
+	GroupFilter   string
+	GroupNameAttr string
+	// RequireGroup, when set, is the group an account must be in to sign in.
+	RequireGroup string
+	// AdminGroup, when set, makes its members administrators, and only them.
+	AdminGroup string
+	// Timeout bounds each sign-in's exchange with the server.
+	Timeout time.Duration
+}
+
 // Defaults returns the settings nothing sets. There is deliberately no
 // default database.
 func Defaults() Settings {
@@ -112,6 +151,14 @@ func Defaults() Settings {
 			ShutdownTimeout: 10 * time.Second,
 			MaxUpload:       100 << 20,
 		},
+		LDAP: LDAPSettings{
+			UserFilter:    "(uid={username})",
+			NameAttr:      "displayName",
+			EmailAttr:     "mail",
+			GroupFilter:   "(member={dn})",
+			GroupNameAttr: "cn",
+			Timeout:       10 * time.Second,
+		},
 	}
 }
 
@@ -126,7 +173,7 @@ var Keys = func() []string {
 
 // toolEnv are SOLSTICE_ variables of the scripts and tests, not settings:
 // they are not reported as unknown.
-var toolEnv = []string{KeyConfig, "SOLSTICE_TEST_DB", "SOLSTICE_TEST_EMPTY_DB", "SOLSTICE_BACKEND",
+var toolEnv = []string{KeyConfig, "SOLSTICE_TEST_DB", "SOLSTICE_TEST_EMPTY_DB", "SOLSTICE_TEST_LDAP", "SOLSTICE_BACKEND",
 	"SOLSTICE_VERSION", "SOLSTICE_PORT", "SOLSTICE_RELEASE_KEY"}
 
 // searchPaths are tried in order when no file is named. The first is also
@@ -273,6 +320,41 @@ func (s *Settings) check() error {
 		{s.HTTP.ShutdownTimeout <= 0, &s.HTTP.ShutdownTimeout, "a positive duration"},
 		{s.HTTP.MaxUpload <= 0, &s.HTTP.MaxUpload, "a positive size"},
 		{s.HTTP.MaxStorage < 0, &s.HTTP.MaxStorage, "a size, or 0 for no limit"},
+	} {
+		if r.bad {
+			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
+		}
+	}
+	return s.checkLDAP()
+}
+
+// checkLDAP rejects an LDAP setup that would send passwords in clear by
+// mistake, or that cannot find anyone.
+func (s *Settings) checkLDAP() error {
+	l := &s.LDAP
+	if l.URL == "" {
+		return nil
+	}
+	u, err := url.Parse(l.URL)
+	if err != nil || (u.Scheme != "ldap" && u.Scheme != "ldaps") || u.Host == "" {
+		return fmt.Errorf("%s: must be ldaps://host or ldap://host", keyOf(s, &l.URL))
+	}
+	for _, r := range []struct {
+		bad  bool
+		p    any
+		want string
+	}{
+		{u.Scheme == "ldaps" && l.StartTLS, &l.StartTLS, "false with ldaps://, which is TLS already"},
+		{u.Scheme == "ldap" && !l.StartTLS && !l.Insecure, &l.StartTLS,
+			"true with ldap:// (or use ldaps://), unless " + keyOf(s, &l.Insecure) + "=true allows passwords in clear"},
+		{l.UserBase == "", &l.UserBase, "set with " + keyOf(s, &l.URL)},
+		{!strings.Contains(l.UserFilter, "{username}"), &l.UserFilter, "a filter containing {username}"},
+		{l.NameAttr == "", &l.NameAttr, "an attribute name"},
+		{l.EmailAttr == "", &l.EmailAttr, "an attribute name"},
+		{l.GroupFilter == "", &l.GroupFilter, "a filter, e.g. (member={dn})"},
+		{l.GroupNameAttr == "", &l.GroupNameAttr, "an attribute name"},
+		{l.BindPassword != "" && l.BindDN == "", &l.BindDN, "set with " + keyOf(s, &l.BindPassword)},
+		{l.Timeout <= 0, &l.Timeout, "a positive duration"},
 	} {
 		if r.bad {
 			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)

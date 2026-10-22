@@ -102,6 +102,7 @@ and 503 otherwise.
 | `SOLSTICE_HTTP_MAXSTORAGE` | `0` | total size of all attachments; `0` means no limit |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
+| `SOLSTICE_LDAP_*` | none | LDAP or Active Directory sign-in, see [installation](docs/en/install.md) and [administration](docs/en/administration.md#ldap-and-active-directory) |
 
 Durations are written `30s`, `5m`, `1h30m`.
 

@@ -34,6 +34,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Ungültige E-Mail-Adresse.",
 	AccountOwnAdminRights:            "Sie können sich nicht selbst die Administratorrechte entziehen.",
 	AccountOwnPasswordInProfile:      "Ändern Sie Ihr eigenes Passwort in Ihrem Profil.",
+	AccountDirectoryPassword:         "Dieses Konto meldet sich über das Verzeichnis (LDAP) an: Das Passwort wird dort geändert.",
 	AccountOwnEmailInProfile:         "Ändern Sie Ihre eigene E-Mail-Adresse in Ihrem Profil.",
 	AccountPasswordTooShort:          "Das Passwort muss mindestens %d Zeichen lang sein.",
 	AccountPasswordIsUsername:        "Das Passwort darf nicht der Benutzername sein.",

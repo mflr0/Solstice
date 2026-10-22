@@ -17,6 +17,8 @@
 // Without SOLSTICE_TEST_DB, every test skips itself, unless
 // SOLSTICE_TEST_REQUIRE_DB is set: then a missing SOLSTICE_TEST_DB or
 // SOLSTICE_TEST_EMPTY_DB fails the run (the integration workflow sets it).
+// The LDAP sign-in test also needs SOLSTICE_TEST_LDAP, the address of
+// compose.yaml's ldap service (ldap://127.0.0.1:1389).
 // The tests change the database: give them a copy made for them, never a real
 // instance.
 package tests

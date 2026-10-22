@@ -34,6 +34,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Indirizzo email non valido.",
 	AccountOwnAdminRights:            "Non puoi rimuovere i tuoi diritti di amministratore.",
 	AccountOwnPasswordInProfile:      "Cambia la tua password dal tuo profilo.",
+	AccountDirectoryPassword:         "Questo account accede tramite la directory (LDAP): la password si cambia lì.",
 	AccountOwnEmailInProfile:         "Cambia il tuo indirizzo email dal tuo profilo.",
 	AccountPasswordTooShort:          "La password deve contenere almeno %d caratteri.",
 	AccountPasswordIsUsername:        "La password non può essere il nome utente.",

@@ -212,6 +212,22 @@ Durations are written `30s`, `5m`, `1h30m`.
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | Size of one upload. `KB`, `MB`, `GB` count in 1000s, `KiB`, `MiB`, `GiB` in 1024s. Raise the proxy's limit too. |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image). |
+| `SOLSTICE_LDAP_URL` | none | LDAP or Active Directory server, `ldaps://host:636` or `ldap://host:389`. Empty: LDAP sign-in is off. See [administration](administration.md#ldap-and-active-directory). |
+| `SOLSTICE_LDAP_STARTTLS` | `false` | Switch an `ldap://` connection to TLS first. Required with `ldap://`, refused with `ldaps://`. |
+| `SOLSTICE_LDAP_INSECURE` | `false` | Allow `ldap://` without StartTLS. Passwords then travel in clear: for tests only. |
+| `SOLSTICE_LDAP_CAFILE` | none | PEM file of certificate authorities to trust, on top of the system's. |
+| `SOLSTICE_LDAP_BINDDN` | none | Service account that searches the directory. Empty: anonymous search. |
+| `SOLSTICE_LDAP_BINDPASSWORD` | none | Its password. |
+| `SOLSTICE_LDAP_USERBASE` | none | Where people are searched, for example `ou=people,dc=example,dc=org`. Required with `SOLSTICE_LDAP_URL`. |
+| `SOLSTICE_LDAP_USERFILTER` | `(uid={username})` | How a person is found. `{username}` is the name typed at sign-in. Active Directory: `(sAMAccountName={username})`. |
+| `SOLSTICE_LDAP_NAMEATTR` | `displayName` | Attribute copied to the account's name. |
+| `SOLSTICE_LDAP_EMAILATTR` | `mail` | Attribute copied to the account's e-mail address. |
+| `SOLSTICE_LDAP_GROUPBASE` | the user base | Where groups are searched. |
+| `SOLSTICE_LDAP_GROUPFILTER` | `(member={dn})` | How a person's groups are found. `{dn}` is the person's DN, `{username}` their name. |
+| `SOLSTICE_LDAP_GROUPNAMEATTR` | `cn` | Attribute that names a group in Solstice. |
+| `SOLSTICE_LDAP_REQUIREGROUP` | none | Only members of this group may sign in through LDAP. |
+| `SOLSTICE_LDAP_ADMINGROUP` | none | Members of this group are administrators, and only they, among LDAP accounts. |
+| `SOLSTICE_LDAP_TIMEOUT` | `10s` | Time a sign-in may wait for the server. Must be positive. |
 
 `SOLSTICE_CONFIG` itself is read only from the environment. There is no
 default database: without `SOLSTICE_DB_URL`, the wizard asks for one.

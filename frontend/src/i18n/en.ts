@@ -1877,6 +1877,8 @@ export const en = {
     emailHint: 'Also used to notify you and to reach you.',
     emailChangeHint: 'Changing the address asks for your current password.',
     passwordTitle: 'Password',
+    directoryPasswordIntro:
+      'Your password is managed by the directory (LDAP): change it there. Type it here only to change your e-mail address.',
     passwordIntro:
       'Leave the fields empty to keep the current password. A new password closes your other sessions, and your access tokens stop working.',
     currentPassword: 'Current password',
@@ -1982,6 +1984,8 @@ export const en = {
     admin: 'Administrator',
     inactive: 'deactivated',
     noPassword: 'no password',
+    directory: 'LDAP',
+    directoryHint: 'Signs in with the directory (LDAP): its password is managed there.',
     more: (n: number) => `+${n}`,
     rights: 'Permissions',
     adminLabel: 'Solstice administrator (access to all of the administration)',

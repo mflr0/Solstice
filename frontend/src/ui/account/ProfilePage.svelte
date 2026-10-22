@@ -259,7 +259,9 @@
     </div>
 
     <h2 class="section-title">{t.account.passwordTitle}</h2>
-    <p class="form-hint">{t.account.passwordIntro}</p>
+    <p class="form-hint">
+      {session.me.directory ? t.account.directoryPasswordIntro : t.account.passwordIntro}
+    </p>
     <!-- Lets password managers match the account. -->
     <input
       class="sr-only"
@@ -286,38 +288,40 @@
         <span class="field-error">{shown('currentPassword')}</span>
       {/if}
     </label>
-    <div class="form-grid">
-      <label class="field">
-        <span>{t.account.newPassword}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={form.newPassword}
-          autocomplete="new-password"
-          aria-invalid={!!shown('newPassword')}
-          onblur={() => (touched.newPassword = true)}
-        />
-        {#if shown('newPassword')}
-          <span class="field-error">{shown('newPassword')}</span>
-        {:else}
-          <span class="hint">{t.account.passwordHint(min)}</span>
-        {/if}
-      </label>
-      <label class="field">
-        <span>{t.account.confirmPassword}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={form.confirmPassword}
-          autocomplete="new-password"
-          aria-invalid={!!shown('confirmPassword')}
-          onblur={() => (touched.confirmPassword = true)}
-        />
-        {#if shown('confirmPassword')}
-          <span class="field-error">{shown('confirmPassword')}</span>
-        {/if}
-      </label>
-    </div>
+    {#if !session.me.directory}
+      <div class="form-grid">
+        <label class="field">
+          <span>{t.account.newPassword}</span>
+          <input
+            class="input"
+            type="password"
+            bind:value={form.newPassword}
+            autocomplete="new-password"
+            aria-invalid={!!shown('newPassword')}
+            onblur={() => (touched.newPassword = true)}
+          />
+          {#if shown('newPassword')}
+            <span class="field-error">{shown('newPassword')}</span>
+          {:else}
+            <span class="hint">{t.account.passwordHint(min)}</span>
+          {/if}
+        </label>
+        <label class="field">
+          <span>{t.account.confirmPassword}</span>
+          <input
+            class="input"
+            type="password"
+            bind:value={form.confirmPassword}
+            autocomplete="new-password"
+            aria-invalid={!!shown('confirmPassword')}
+            onblur={() => (touched.confirmPassword = true)}
+          />
+          {#if shown('confirmPassword')}
+            <span class="field-error">{shown('confirmPassword')}</span>
+          {/if}
+        </label>
+      </div>
+    {/if}
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
     {#if dirty}

@@ -12,8 +12,9 @@ Installation, the reverse proxy, backups and upgrades are in
 What lives where:
 
 - The configuration file and environment variables only bootstrap the
-  server: database URL, data directory, listen address. See `solstice -h`.
-- Everything described below is stored in the database and applies at once,
+  server: database URL, data directory, listen address, and LDAP sign-in. See
+  `solstice -h`.
+- Everything else described below is stored in the database and applies at once,
   without a restart.
 - Every change made in the administration is written to the audit log.
 
@@ -76,7 +77,8 @@ matches: narrow the search to find the others.
 - People can also ask for a reset link themselves from the sign-in page, when
   e-mail links are available.
 - Accounts imported from a Jira external directory (LDAP and similar) have no
-  password. Send them a link, or set one.
+  password. With LDAP sign-in on, they use their directory password (see
+  below). Otherwise send them a link, or set one.
 
 If every administrator is locked out, create or repair an account from the
 server's command line. The commands run against the configured database and
@@ -116,6 +118,56 @@ Watch for:
   group, because deleting it would hide them from everyone. The dialog then says
   how many comments and work logs still depend on the group.
 - Renaming a group keeps the comments and work logs restricted to it.
+
+### LDAP and Active Directory
+
+People can sign in with their LDAP or Active Directory password. It is set in
+the configuration file, not in the administration: see the `SOLSTICE_LDAP_*`
+keys in [installation](install.md). Restart Solstice after a change. Example
+for Active Directory:
+
+```sh
+SOLSTICE_LDAP_URL=ldaps://dc1.example.org
+SOLSTICE_LDAP_BINDDN=CN=solstice,OU=Services,DC=example,DC=org
+SOLSTICE_LDAP_BINDPASSWORD=service-account-password
+SOLSTICE_LDAP_USERBASE=OU=People,DC=example,DC=org
+SOLSTICE_LDAP_USERFILTER=(sAMAccountName={username})
+SOLSTICE_LDAP_GROUPFILTER=(member:1.2.840.113556.1.4.1941:={dn})
+SOLSTICE_LDAP_REQUIREGROUP=solstice-users
+```
+
+The group filter above includes nested groups (Active Directory only). For
+OpenLDAP, the default `(member={dn})` reads groups of type `groupOfNames`.
+
+At each sign-in, Solstice searches the person with the service account, checks
+the password by signing in to the directory as them, then reads their groups.
+
+- **Which accounts.** An account marked "LDAP" in Users signs in through the
+  directory only. A local account with a password keeps it, even if the
+  directory knows the same name: administrators created in Solstice still get
+  in when the directory is down. An existing account without a password, such
+  as one imported from Jira's external directory, becomes an LDAP account at
+  its first LDAP sign-in. A name no account has gets a new LDAP account.
+- **Name and address** are copied from the directory at each sign-in, when it
+  has them.
+- **Groups.** The person is put in the Solstice groups named like their
+  directory groups (in lower case); missing groups are created. Those groups
+  are then the directory's: each sign-in removes the person from the ones
+  they left. Groups that do not come from the directory are never changed.
+- **Administrators.** With `SOLSTICE_LDAP_ADMINGROUP`, each sign-in grants or
+  removes the administrator right of LDAP accounts. Without it, the right is
+  set in Solstice only.
+- **Passwords.** Solstice neither sets nor resets the password of an LDAP
+  account: the password actions are hidden, and the reset link is not sent.
+
+Watch for:
+
+- Removing someone from the directory, or from the required group, refuses
+  their next sign-in. Sessions and access tokens already open keep working
+  until they expire: deactivate the account to end them at once.
+- Without `SOLSTICE_LDAP_URL`, LDAP accounts cannot sign in.
+- Groups and the administrator right set by hand on an LDAP account are
+  replaced at the next sign-in when the directory decides them.
 
 ### Roles
 

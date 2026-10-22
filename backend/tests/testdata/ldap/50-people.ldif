@@ -1,0 +1,42 @@
+# Synthetic directory of the LDAP integration test (tests/ldap_test.go),
+# loaded by the osixia/openldap container of compose.yaml and of CI.
+dn: ou=people,dc=example,dc=org
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=ldap.ada,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+uid: ldap.ada
+cn: Ada Lovelace
+sn: Lovelace
+displayName: Ada Lovelace
+mail: ada@ldap.example
+userPassword: ada-ldap-password
+
+dn: uid=ldap.bob,ou=people,dc=example,dc=org
+objectClass: inetOrgPerson
+uid: ldap.bob
+cn: Bob Outsider
+sn: Outsider
+mail: bob@ldap.example
+userPassword: bob-ldap-password
+
+dn: cn=solstice-users,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: solstice-users
+member: uid=ldap.ada,ou=people,dc=example,dc=org
+
+dn: cn=solstice-admins,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: solstice-admins
+member: uid=ldap.ada,ou=people,dc=example,dc=org
+
+dn: cn=ldap-developers,ou=groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: ldap-developers
+member: uid=ldap.ada,ou=people,dc=example,dc=org
+member: uid=ldap.bob,ou=people,dc=example,dc=org
