@@ -840,8 +840,14 @@
   border-color: var(--luna-status-edge) #343c51 #343c51 var(--luna-status-edge);
 }
 
+/* "Ready" takes the spare room; only the connection message gives way when
+   there is none. */
 [data-skin='luna'] .app-statusbar .statusbar-cell:first-child {
-  flex: 1;
+  flex: 1 0 auto;
+}
+
+[data-skin='luna'] .app-statusbar .statusbar-cell:last-child {
+  flex-shrink: 0;
 }
 
 /* Buttons -------------------------------------------------------------------- */
@@ -1519,7 +1525,9 @@
   color: var(--ink);
 }
 
-[data-skin='luna'] .tabs:not(.tabs-folder) + [role='tabpanel'] {
+[data-skin='luna']
+  :is(.tabs:not(.tabs-folder), :has(> .tabs:not(.tabs-folder)))
+  + [role='tabpanel'] {
   padding: 8px 12px 12px;
   border: 1px solid var(--luna-tab-edge);
   border-top: 0;

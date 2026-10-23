@@ -75,95 +75,102 @@
   }
 </script>
 
-<table class="ledger">
-  <thead>
-    <tr>
-      {#if onselect}
-        <th class="c-pick">
-          <label class="pick">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              indeterminate={someSelected}
-              onchange={(e) => toggleAll(e.currentTarget.checked)}
-            />
-            <span class="sr-only">{t.search.bulk.selectPage}</span>
-          </label>
-        </th>
-      {/if}
-      {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
-      <th class="c-key">{t.table.key}</th>
-      <th class="c-summary">{t.table.summary}</th>
-      {#each rest as c (c)}
-        {@const name = headers[c] ?? names[c] ?? c}
-        {#if c === 'priority'}
-          <th class="c-priority"><span class="sr-only">{name}</span></th>
-        {:else if c === 'status'}
-          <th class="c-status">{name}</th>
-        {:else if c === 'assignee'}
-          <th class="c-assignee">{name}</th>
-        {:else if c === 'duedate'}
-          <th class="c-due">{name}</th>
-        {:else if c === 'updated'}
-          <th class="num c-updated">{name}</th>
-        {:else}
-          <th class="c-extra">{name}</th>
-        {/if}
-      {/each}
-    </tr>
-  </thead>
-  <tbody>
-    {#each issues as issue (issue.key)}
-      <tr onclick={(e) => open(e, issue.key)} class:picked={selected.includes(issue.key)}>
+<div class="issue-table">
+  <table class="ledger">
+    <thead>
+      <tr>
         {#if onselect}
-          <td class="c-pick">
+          <th class="c-pick">
             <label class="pick">
               <input
                 type="checkbox"
-                checked={selected.includes(issue.key)}
-                onchange={(e) => toggle(issue.key, e.currentTarget.checked)}
+                checked={allSelected}
+                indeterminate={someSelected}
+                onchange={(e) => toggleAll(e.currentTarget.checked)}
               />
-              <span class="sr-only">{t.search.bulk.select(issue.key)}</span>
+              <span class="sr-only">{t.search.bulk.selectPage}</span>
             </label>
-          </td>
+          </th>
         {/if}
-        {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
-        <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
-        <td class="c-summary">
-          <span class="summary">{issue.summary}</span>
-          {#if issue.confidential}<Lock />{/if}
-        </td>
+        {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
+        <th class="c-key">{t.table.key}</th>
+        <th class="c-summary">{t.table.summary}</th>
         {#each rest as c (c)}
-          {#if c === 'status'}
-            <td class="c-status"><Stamp status={issue.status} /></td>
-          {:else if c === 'priority'}
-            <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
+          {@const name = headers[c] ?? names[c] ?? c}
+          {#if c === 'priority'}
+            <th class="c-priority"><span class="sr-only">{name}</span></th>
+          {:else if c === 'status'}
+            <th class="c-status">{name}</th>
           {:else if c === 'assignee'}
-            <td class="c-who c-assignee"><Who user={issue.assignee} /></td>
-          {:else if c === 'reporter'}
-            <td class="c-who c-extra"><Who user={issue.reporter} /></td>
+            <th class="c-assignee">{name}</th>
           {:else if c === 'duedate'}
-            {@const late = !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
-            <td class="c-due" class:late class:is-overdue={late}>
-              {issue.due ? formatDay(issue.due) : ''}
-            </td>
+            <th class="c-due">{name}</th>
           {:else if c === 'updated'}
-            <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
-          {:else if c === 'created'}
-            <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
-          {:else if c === 'resolution'}
-            <td class="c-extra">{issue.resolution?.name ?? ''}</td>
+            <th class="num c-updated">{name}</th>
           {:else}
-            {@const text = issue.values?.[c] ?? ''}
-            <td class="c-extra"><span class="text" title={text || undefined}>{text}</span></td>
+            <th class="c-extra">{name}</th>
           {/if}
         {/each}
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each issues as issue (issue.key)}
+        <tr onclick={(e) => open(e, issue.key)} class:picked={selected.includes(issue.key)}>
+          {#if onselect}
+            <td class="c-pick">
+              <label class="pick">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(issue.key)}
+                  onchange={(e) => toggle(issue.key, e.currentTarget.checked)}
+                />
+                <span class="sr-only">{t.search.bulk.select(issue.key)}</span>
+              </label>
+            </td>
+          {/if}
+          {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
+          <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
+          <td class="c-summary">
+            <span class="summary">{issue.summary}</span>
+            {#if issue.confidential}<Lock />{/if}
+          </td>
+          {#each rest as c (c)}
+            {#if c === 'status'}
+              <td class="c-status"><Stamp status={issue.status} /></td>
+            {:else if c === 'priority'}
+              <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
+            {:else if c === 'assignee'}
+              <td class="c-who c-assignee"><Who user={issue.assignee} /></td>
+            {:else if c === 'reporter'}
+              <td class="c-who c-extra"><Who user={issue.reporter} /></td>
+            {:else if c === 'duedate'}
+              {@const late =
+                !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
+              <td class="c-due" class:late class:is-overdue={late}>
+                {issue.due ? formatDay(issue.due) : ''}
+              </td>
+            {:else if c === 'updated'}
+              <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
+            {:else if c === 'created'}
+              <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
+            {:else if c === 'resolution'}
+              <td class="c-extra">{issue.resolution?.name ?? ''}</td>
+            {:else}
+              {@const text = issue.values?.[c] ?? ''}
+              <td class="c-extra"><span class="text" title={text || undefined}>{text}</span></td>
+            {/if}
+          {/each}
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>
 
 <style>
+  .issue-table {
+    container: issue-table / inline-size;
+  }
+
   tbody tr {
     cursor: pointer;
   }
@@ -233,7 +240,9 @@
     vertical-align: bottom;
   }
 
-  @media (max-width: 760px) {
+  /* Columns give way by the list's own width, not the window's: beside the
+     saved filters, a 1024 px window leaves the list about 720 px. */
+  @container issue-table (width < 920px) {
     .c-priority,
     .c-assignee,
     .c-extra {
@@ -242,7 +251,7 @@
   }
 
   /* A phone: type, key, summary and status; the summary may take two lines. */
-  @media (max-width: 600px) {
+  @container issue-table (width < 570px) {
     .c-due,
     .c-updated {
       display: none;

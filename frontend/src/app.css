@@ -1084,6 +1084,7 @@ dialog.modal::backdrop {
 .sprint-actions {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 

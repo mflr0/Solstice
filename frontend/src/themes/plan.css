@@ -1473,6 +1473,13 @@
     white-space: nowrap;
   }
 
+  /* Only the connection message gives way when the bar runs out of room. */
+  [data-skin='plan'] .statusbar-cell:nth-child(2) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* Issue lists become two-line entries: marks and dates, then the summary. */
   [data-skin='plan'] table.ledger:has(td.c-summary) thead {
     display: none;
