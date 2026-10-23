@@ -2014,7 +2014,6 @@ func (s *Server) respondIssue(w http.ResponseWriter, r *http.Request, status int
 }
 
 func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
@@ -2023,6 +2022,17 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := s.removeIssue(r, sub, iss); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// removeIssue deletes an issue the user sees, and its sub-tasks.
+func (s *Server) removeIssue(r *http.Request, sub *perm.Subject, iss *issueRow) error {
+	ctx := r.Context()
+	var err error
 	pi := iss.perm()
 	if !sub.Can(perm.Delete, iss.ProjectID, &pi) {
 		return errForbidden
@@ -2082,7 +2092,6 @@ func (s *Server) deleteIssue(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.log.Info("issue deleted", "key", iss.Key())
 	s.auditLog(r, audit.IssueDelete, target("issue", iss.ID, iss.Key()), nil)
-	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 

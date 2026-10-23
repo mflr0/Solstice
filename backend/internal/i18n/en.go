@@ -327,6 +327,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Moving an issue that has a security level takes the Security level permission in the target project, and in this project to choose another level.",
 	IssueMoveNoSubtaskType:     "The issue has sub-tasks, and the target project has no sub-task type to give them. Add one to the project first.",
 	IssueMoveUseAction:         "An issue changes project with the Move action.",
+	BulkNoIssues:               "Select at least one issue.",
+	BulkTooMany:                "A bulk change takes at most %d issues.",
+	BulkNothingToChange:        "Choose a change to make.",
+	BulkOneProject:             "Components and fix versions can only be changed on issues of one project.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",

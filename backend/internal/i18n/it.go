@@ -329,6 +329,10 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Spostare un ticket che ha un livello di riservatezza richiede il permesso Riservatezza nel progetto di destinazione, e in questo progetto per sceglierne un altro.",
 	IssueMoveNoSubtaskType:     "Il ticket ha dei sotto-task, e il progetto di destinazione non ha alcun tipo di sotto-task da assegnare loro. Aggiungine prima uno al progetto.",
 	IssueMoveUseAction:         "Un ticket cambia progetto con l'azione Sposta.",
+	BulkNoIssues:               "Seleziona almeno un ticket.",
+	BulkTooMany:                "Una modifica in blocco riguarda al massimo %d ticket.",
+	BulkNothingToChange:        "Scegli una modifica da fare.",
+	BulkOneProject:             "Componenti e versioni di correzione si possono cambiare solo su ticket di un unico progetto.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",

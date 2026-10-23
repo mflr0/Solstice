@@ -328,6 +328,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Déplacer un ticket qui a un niveau de confidentialité demande la permission Confidentialité dans le projet cible, et dans ce projet pour en choisir un autre.",
 	IssueMoveNoSubtaskType:     "Le ticket a des sous-tâches, et le projet cible n'a aucun type de sous-tâche à leur donner. Ajoutez-en un au projet d'abord.",
 	IssueMoveUseAction:         "Un ticket change de projet avec l'action Déplacer.",
+	BulkNoIssues:               "Sélectionnez au moins un ticket.",
+	BulkTooMany:                "Une modification groupée porte sur %d tickets au plus.",
+	BulkNothingToChange:        "Choisissez une modification à faire.",
+	BulkOneProject:             "Les composants et les versions corrigées ne se modifient que sur des tickets d'un même projet.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",
