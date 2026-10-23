@@ -329,6 +329,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Das Verschieben eines Vorgangs mit Sicherheitsstufe erfordert die Berechtigung Sicherheitsstufe im Zielprojekt, und in diesem Projekt, um eine andere Stufe zu wählen.",
 	IssueMoveNoSubtaskType:     "Der Vorgang hat Unteraufgaben, und das Zielprojekt hat keinen Unteraufgabentyp für sie. Fügen Sie dem Projekt zuerst einen hinzu.",
 	IssueMoveUseAction:         "Ein Vorgang wechselt das Projekt über die Aktion „Verschieben“.",
+	BulkNoIssues:               "Wählen Sie mindestens einen Vorgang aus.",
+	BulkTooMany:                "Eine Sammeländerung umfasst höchstens %d Vorgänge.",
+	BulkNothingToChange:        "Wählen Sie eine Änderung aus.",
+	BulkOneProject:             "Komponenten und Lösungsversionen lassen sich nur bei Vorgängen eines einzigen Projekts ändern.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",

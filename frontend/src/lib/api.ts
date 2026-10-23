@@ -84,6 +84,32 @@ export interface MoveCheck {
   subtasks: { count: number; reset: number; lost: number; reassigned: number };
 }
 
+/** What became of one issue of a bulk change; withParent: moved or deleted with its selected parent. */
+export interface BulkResult {
+  key: string;
+  ok: boolean;
+  error?: string;
+  newKey?: string;
+  withParent?: boolean;
+}
+
+/** A change to a multi-valued field: add these, remove these, or keep exactly these. */
+export interface BulkSet<T> {
+  mode: 'add' | 'remove' | 'replace';
+  values: T[];
+}
+
+/** The change a bulk edit makes; an absent field is left as it is. */
+export interface BulkEdit {
+  assignee?: number | null;
+  priority?: string | null;
+  labels?: BulkSet<string>;
+  components?: BulkSet<number>;
+  fixVersions?: BulkSet<number>;
+  /** An open sprint, or 0 to take the issues out of theirs. */
+  sprint?: number;
+}
+
 /** The choices a move can be given; a list replaces the whole list the issue ends with. */
 export interface MoveChoices {
   type?: string;
@@ -316,6 +342,23 @@ export const api = {
   /** Moves the issue (and its sub-tasks) to another project; answers its new key. */
   moveIssue: (key: string, project: string, choices: MoveChoices) =>
     request<{ key: string }>('POST', `/api/issues/${enc(key)}/move`, { project, ...choices }),
+
+  /** One change to several issues, each through its own route's checks; one refused doesn't stop the others. */
+  bulk: (
+    keys: string[],
+    change:
+      | ({ op: 'edit' } & BulkEdit)
+      | { op: 'transition'; status: string; resolution?: string | null }
+      | { op: 'move'; move: MoveChoices & { project: string } }
+      | { op: 'delete' },
+  ) => request<{ results: BulkResult[] }>('POST', '/api/issues/bulk', { keys, ...change }),
+  /** The dry run of a bulk move: what the moves still need, merged, and the issues that can't move. */
+  checkBulkMove: (keys: string[], project: string, choices: MoveChoices) =>
+    request<{ check: MoveCheck | null; results: BulkResult[] }>('POST', '/api/issues/bulk', {
+      keys,
+      op: 'move',
+      move: { project, check: true, ...choices },
+    }),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>

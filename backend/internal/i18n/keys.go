@@ -366,6 +366,10 @@ const (
 	IssueMoveSecurityNeeded    Key = "IssueMoveSecurityNeeded"
 	IssueMoveNoSubtaskType     Key = "IssueMoveNoSubtaskType"
 	IssueMoveUseAction         Key = "IssueMoveUseAction"
+	BulkNoIssues               Key = "BulkNoIssues"
+	BulkTooMany                Key = "BulkTooMany"
+	BulkNothingToChange        Key = "BulkNothingToChange"
+	BulkOneProject             Key = "BulkOneProject"
 )
 
 // Comments and their visibility.

@@ -38,8 +38,10 @@
     /** The query when the address gives none; null while it is not known yet. */
     fallback: string | null;
     autofocus?: boolean | undefined;
+    /** Results can be selected and changed together. */
+    selectable?: boolean | undefined;
   }
-  const { project, fallback, autofocus = false }: Props = $props();
+  const { project, fallback, autofocus = false, selectable = false }: Props = $props();
 
   const read = $derived(readLocation(router.search));
   const loc = $derived(read.loc);
@@ -258,6 +260,7 @@
         {project}
         columns={chosen}
         {names}
+        {selectable}
         page={loc.page}
         ontotal={(n) => (total = n)}
         onerror={(m, at) => {
