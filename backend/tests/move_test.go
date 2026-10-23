@@ -550,13 +550,10 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 
 	// The search bar finds the issue under its old key as well as the new one.
 	for _, k := range []string{e.issue, newKey} {
-		var found struct {
-			Total int
-			Mode  string
-		}
+		var found struct{ Total int }
 		e.admin.call("GET", "/api/issues?q="+k, nil, 200, &found)
-		if found.Total != 1 || found.Mode != "simple" {
-			t.Errorf("search %s: %d issues in %s mode", k, found.Total, found.Mode)
+		if found.Total != 1 {
+			t.Errorf("search %s: %d issues", k, found.Total)
 		}
 	}
 

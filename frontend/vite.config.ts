@@ -9,18 +9,13 @@ const backend = process.env.SOLSTICE_BACKEND ?? 'http://localhost:8080';
 
 export default defineConfig({
   plugins: [svelte()],
-  resolve: {
-    alias: {
-      $core: r('./src/core'),
-      $i18n: r('./src/i18n'),
-      $lib: r('./src/lib'),
-      $ui: r('./src/ui'),
-    },
-  },
+  // Component tests mount the browser build of Svelte, not its server one.
+  ...(process.env.VITEST ? { resolve: { conditions: ['browser'] } } : {}),
   server: {
     proxy: {
-      '/api': { target: backend, changeOrigin: false },
-      '/rest': { target: backend, changeOrigin: false },
+      '/api': { target: backend },
+      '/rest': { target: backend },
+      '/healthz': { target: backend },
     },
   },
   build: {

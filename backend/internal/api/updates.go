@@ -451,7 +451,7 @@ func (u *updater) lastAttempt() *updateAttempt {
 	var status *updateAttempt
 	if raw, err := readSmall(filepath.Join(u.helper(), "status"), 1<<20); err == nil {
 		var a updateAttempt
-		if json.Unmarshal(raw, &a) == nil && validAttempt(&a) {
+		if json.Unmarshal(raw, &a) == nil && cleanAttempt(&a) {
 			status = &a
 		}
 	}
@@ -469,7 +469,7 @@ func (u *updater) lastAttempt() *updateAttempt {
 
 var versionLike = regexp.MustCompile(`^[0-9A-Za-z.+-]{1,64}$`)
 
-func validAttempt(a *updateAttempt) bool {
+func cleanAttempt(a *updateAttempt) bool {
 	switch a.Status {
 	case attemptRunning, attemptOK, attemptRolledBack, attemptFailed:
 	default:
@@ -640,13 +640,11 @@ func (s *Server) auditUpdateResult(ctx context.Context, a *updateAttempt) {
 		s.log.Error("update result not recorded", "err", err)
 		return
 	}
-	if err := audit.Record(ctx, s.db, audit.Entry{
+	record(ctx, s.db, s.log, audit.Entry{
 		Action:  auditUpdateResult,
 		Target:  audit.Target{Type: "version", ID: a.To, Label: "Solstice " + a.To},
 		Details: map[string]any{"from": a.From, "to": a.To, "status": a.Status},
-	}); err != nil {
-		s.log.Error("audit log write failed", "action", auditUpdateResult, "err", err)
-	}
+	})
 }
 
 func (s *Server) updateRoutes(route func(string, handler, bool)) {

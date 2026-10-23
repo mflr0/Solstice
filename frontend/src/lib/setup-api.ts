@@ -5,6 +5,7 @@
  * application.
  */
 
+import type { ImportCheck, ImportSource, ImportView } from '../core/admin-types.js';
 import type { Locale } from '../i18n/locales.js';
 
 export interface ConfigSave {
@@ -26,7 +27,7 @@ export interface SetupStatus {
   baseURL?: string;
   tz?: string;
   imported?: boolean;
-  import?: ImportState;
+  import?: ImportView;
   config?: ConfigSave;
 }
 
@@ -55,39 +56,6 @@ export interface InstanceSaved {
   baseURL: string;
   tz: string;
   config: ConfigSave;
-}
-
-export interface SourceForm {
-  url: string;
-  jiraHome: string;
-  tz: string;
-}
-
-export interface SourceProbe {
-  engine: 'postgres' | 'mysql';
-  projects: number;
-  issues: number;
-  users: number;
-  attachments: boolean;
-  warning?: string;
-}
-
-export interface ImportStep {
-  name: string;
-  imported: number;
-  skipped: number;
-}
-
-export interface ImportState {
-  state: 'running' | 'done' | 'failed';
-  phase: string;
-  done: number;
-  total: number;
-  rows: number;
-  steps: ImportStep[];
-  warnings: string[];
-  error?: string;
-  seconds: number;
 }
 
 export interface SetupAccount {
@@ -167,14 +135,15 @@ export const setupApi = {
   saveDatabase: (f: DatabaseForm) => call<DatabaseSaved>('POST', '/api/setup/database', f),
   saveInstance: (baseURL: string, tz: string) =>
     call<InstanceSaved>('POST', '/api/setup/instance', { baseURL, tz }),
-  testSource: (f: SourceForm) => call<SourceProbe>('POST', '/api/setup/source/test', f),
-  startImport: (f: SourceForm) => call<ImportState>('POST', '/api/setup/import', f),
-  importState: () => call<ImportState>('GET', '/api/setup/import'),
+  testSource: (f: ImportSource) => call<ImportCheck>('POST', '/api/setup/source/test', f),
+  startImport: (f: ImportSource) => call<ImportView>('POST', '/api/setup/import', f),
+  importState: () => call<ImportView>('GET', '/api/setup/import'),
   accounts: (q: string) =>
     call<SetupAccount[]>('GET', `/api/setup/accounts?q=${encodeURIComponent(q)}`),
   finish: (f: AdminForm) => call<SetupFinished>('POST', '/api/setup/admin', f),
 };
 
-export function setupErrorMessage(e: unknown, generic: string): string {
+/** The message of a failure, or the generic one configureSetupApi stored. */
+export function setupErrorMessage(e: unknown, generic = settings.generic): string {
   return e instanceof Error && e.message ? e.message : generic;
 }

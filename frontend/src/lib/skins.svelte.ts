@@ -13,12 +13,11 @@ const sources = import.meta.glob<string>('../themes/*.css', {
 });
 
 /**
- * What is known of each loaded skin: whether its file exists yet (skins are
- * being written) and whether it draws a dark variant. Carnet is the main
- * stylesheet.
+ * What is known of each loaded skin: whether it draws a dark variant.
+ * Carnet is the main stylesheet.
  */
-export const skinSheets = $state<Partial<Record<Skin, { drawn: boolean; dark: boolean }>>>({
-  carnet: { drawn: true, dark: true },
+export const skinSheets = $state<Partial<Record<Skin, { dark: boolean }>>>({
+  carnet: { dark: true },
 });
 
 const pending: Partial<Record<Skin, Promise<void>>> = {};
@@ -42,7 +41,7 @@ export function loadSkin(skin: Skin): Promise<void> {
           style.textContent = scopeSupported ? scopeSkinCss(css, skin) : css;
           document.head.append(style);
         }
-        skinSheets[skin] = { drawn: css !== '', dark: hasDarkVariant(css, skin) };
+        skinSheets[skin] = { dark: hasDarkVariant(css, skin) };
       })
       .catch(() => {
         // A failed chunk (network): try again next time.

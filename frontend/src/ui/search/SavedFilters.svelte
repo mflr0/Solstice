@@ -14,7 +14,8 @@
   const { filters, current, onstar }: Props = $props();
 
   let open = $state(false);
-  const id = `saved-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `saved-${uid}`;
 
   const groups = $derived.by(() => {
     const list = filters ?? [];

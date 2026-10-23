@@ -1,9 +1,9 @@
 package api
 
-// Who may create personal access tokens: everyone (the default, as before
-// the setting existed), the administrators only, or the members of one
-// group. Administrators always may. Tokens already created keep working
-// whatever the setting says; they can be revoked from the administration.
+// Who may create personal access tokens: the administrators only (the
+// default), everyone, or the members of one group. Administrators always
+// may. Tokens already created keep working whatever the setting says; they
+// can be revoked from the administration.
 
 import (
 	"context"
@@ -16,10 +16,8 @@ import (
 	"solstice/internal/i18n"
 )
 
-// tokenCreatorsSetting is the name of the setting that holds the policy.
 const tokenCreatorsSetting = "tokens.creators"
 
-// Who may create tokens.
 const (
 	creatorsEveryone = "everyone"
 	creatorsAdmins   = "admins"
@@ -40,16 +38,19 @@ type tokenPolicyOut struct {
 
 // tokenPolicy reads the policy; a missing or unreadable one means
 // administrators only.
-func (s *Server) tokenPolicy(ctx context.Context) (tokenPolicy, error) {
+func (s *Server) tokenPolicy(ctx context.Context) tokenPolicy {
 	p := tokenPolicy{Who: creatorsAdmins}
 	if _, err := s.out.settings.GetJSON(ctx, tokenCreatorsSetting, &p); err != nil {
-		return tokenPolicy{Who: creatorsAdmins}, nil
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			s.log.Warn("reading the token policy failed, administrators only", "err", err)
+		}
+		return tokenPolicy{Who: creatorsAdmins}
 	}
 	switch p.Who {
 	case creatorsEveryone, creatorsAdmins, creatorsGroup:
-		return p, nil
+		return p
 	}
-	return tokenPolicy{Who: creatorsAdmins}, nil
+	return tokenPolicy{Who: creatorsAdmins}
 }
 
 // mayCreateTokens tells whether a user may create a personal access token.
@@ -58,11 +59,7 @@ func (s *Server) mayCreateTokens(ctx context.Context, u *auth.User) (bool, error
 	if u.Admin {
 		return true, nil
 	}
-	p, err := s.tokenPolicy(ctx)
-	if err != nil {
-		return false, err
-	}
-	switch p.Who {
+	switch p := s.tokenPolicy(ctx); p.Who {
 	case creatorsEveryone:
 		return true, nil
 	case creatorsGroup:
@@ -112,11 +109,7 @@ func (s *Server) adminTokenSettings(w http.ResponseWriter, r *http.Request) erro
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	p, err := s.tokenPolicy(r.Context())
-	if err != nil {
-		return err
-	}
-	out, err := s.policyOut(r.Context(), p)
+	out, err := s.policyOut(r.Context(), s.tokenPolicy(r.Context()))
 	if err != nil {
 		return err
 	}
@@ -147,10 +140,7 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	default:
 		return fail(http.StatusBadRequest, i18n.TokenPolicyInvalid)
 	}
-	before, err := s.tokenPolicy(ctx)
-	if err != nil {
-		return err
-	}
+	before := s.tokenPolicy(ctx)
 	if err := s.out.settings.SetJSON(ctx, tokenCreatorsSetting, in); err != nil {
 		return err
 	}
@@ -164,7 +154,6 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// nonZero lists the ids that are set.
 func nonZero(ids ...int64) []int64 {
 	var out []int64
 	for _, id := range ids {

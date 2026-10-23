@@ -161,7 +161,15 @@ function anchor(url: string, inner: string, cls?: string): string {
   return `<a${classAttr} href="${esc(url.replace(/ /g, '%20'))}"${rel}>${inner}</a>`;
 }
 
-export const ISSUE_KEY_RE = /^[A-Z][A-Z0-9_]+-\d+$/;
+/**
+ * An issue key as it appears in text: "DEMO-12", capitals and a project of
+ * two characters or more, as the server writes keys. Strict because it finds
+ * keys inside prose, where "utf-8" or "a-1" stay plain words. What people
+ * type into a field is read leniently instead (KEY_TYPED in marks.ts).
+ */
+export const KEY_IN_TEXT = '[A-Z][A-Z0-9_]+-\\d+';
+
+export const ISSUE_KEY_RE = new RegExp(`^${KEY_IN_TEXT}$`);
 export const IMAGE_EXT_RE = /\.(?:png|jpe?g|gif|webp|bmp|svg|avif)$/i;
 
 /* ---------- pass 1: multi-line macros ---------- */
@@ -428,7 +436,7 @@ export const EMOTICONS: Record<string, [string, string]> = {
 
 export const INLINE_MACRO_RE = /\{([a-zA-Z]+)(?::([^}\n]*))?\}/y;
 export const URL_RE = /https?:\/\/[^\s<>"'[\]{}|\\^`]+/y;
-export const KEY_AT_RE = /[A-Z][A-Z0-9_]+-\d+/y;
+export const KEY_AT_RE = new RegExp(KEY_IN_TEXT, 'y');
 
 /**
  * Renders one block of text. `links` is false inside link labels, so a label

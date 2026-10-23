@@ -149,6 +149,115 @@ interface Port {
 }
 
 /**
+ * Which arcs meet each side of each status, and where along it: left
+ * partners first, then right ones, the farther right the partner the further
+ * left the port, so nested arcs never cross. Returns the x of the port an
+ * edge uses on a status side.
+ */
+function portsOf(
+  order: string[],
+  boxes: Record<string, Box>,
+  edges: DiagramEdge[],
+): (id: string, side: 'top' | 'bottom', e: DiagramEdge) => number {
+  const sides = new Map<string, Port[]>();
+  const meet = (id: string, side: 'top' | 'bottom', p: Port) => {
+    const k = `${id}|${side}`;
+    const ports = sides.get(k);
+    if (ports) ports.push(p);
+    else sides.set(k, [p]);
+  };
+  for (const e of edges) {
+    const to = order.indexOf(e.to);
+    if (e.from === null) {
+      meet(e.to, 'top', { edge: e, group: 0.5, partner: to });
+      continue;
+    }
+    const from = order.indexOf(e.from);
+    const side = to > from ? 'top' : 'bottom';
+    meet(e.from, side, { edge: e, group: to > from ? 1 : 0, partner: to });
+    meet(e.to, side, { edge: e, group: from > to ? 1 : 0, partner: from });
+  }
+  for (const ports of sides.values())
+    ports.sort((a, b) => a.group - b.group || b.partner - a.partner);
+  return (id, side, e) => {
+    const box = boxes[id] as Box;
+    const ports = sides.get(`${id}|${side}`) ?? [];
+    const i = ports.findIndex((p) => p.edge === e);
+    return box.x + box.w * (0.12 + (0.76 * (i + 0.5)) / ports.length);
+  };
+}
+
+/** A drop from the bus line to the top of the target status. */
+function anyArc(key: string, e: DiagramEdge, x: number, busY: number, to: Box): Arc {
+  const tip = to.y - 1;
+  return {
+    key,
+    edge: e,
+    kind: 'any',
+    d: `M${pt(x, busY)}V${n(tip - HEAD + 1)}`,
+    head: headAt(x, tip, 1),
+  };
+}
+
+/** Where an arc between two statuses starts and ends, and how high it rises. */
+interface ArcEnds {
+  from: Box;
+  to: Box;
+  /** The ports on `from` and on `to`. */
+  x1: number;
+  x2: number;
+  h: number;
+}
+
+/** An arc above the row, from the top of `from` to the top of `to`. */
+function forwardArc(key: string, e: DiagramEdge, { from, to, x1, x2, h }: ArcEnds): Arc {
+  const yc = Math.min(from.y, to.y) - h;
+  const tip = to.y - 1;
+  return {
+    key,
+    edge: e,
+    kind: 'forward',
+    d: `M${pt(x1, from.y)}C${pt(x1, yc)} ${pt(x2, yc)} ${pt(x2, tip - HEAD + 1)}`,
+    head: headAt(x2, tip, 1),
+  };
+}
+
+/** An arc below the row, from the bottom of `from` to the bottom of `to`. */
+function backwardArc(key: string, e: DiagramEdge, { from, to, x1, x2, h }: ArcEnds): Arc {
+  const fromBottom = from.y + from.h;
+  const toBottom = to.y + to.h;
+  const yc = Math.max(fromBottom, toBottom) + h;
+  const tip = toBottom + 1;
+  return {
+    key,
+    edge: e,
+    kind: 'backward',
+    d: `M${pt(x1, fromBottom)}C${pt(x1, yc)} ${pt(x2, yc)} ${pt(x2, tip + HEAD - 1)}`,
+    head: headAt(x2, tip, -1),
+  };
+}
+
+/** The line "any status" transitions drop from, or null when none of them do. */
+function busLine(y: number, lefts: number[], drops: number[]): Layout['bus'] {
+  if (drops.length === 0) return null;
+  const x1 = Math.min(...lefts);
+  return { y, x1, x2: Math.max(x1, ...drops) };
+}
+
+/** The start marker before the initial status: a dot and a short arrow. */
+function startMarker(first: Box): Layout['start'] {
+  const cy = first.y + first.h / 2;
+  const tip = first.x - 2;
+  const cx = tip - START;
+  return {
+    cx,
+    cy,
+    d: `M${pt(cx, cy)}H${n(tip - HEAD + 1)}`,
+    head: [pt(tip, cy), pt(tip - HEAD, cy - HEAD_HALF), pt(tip - HEAD, cy + HEAD_HALF)].join(' '),
+  };
+}
+
+/**
  * Lays the arrows out over measured boxes. `order` is the drawing order of
  * the statuses (see diagramOrder), `boxes` their positions by id.
  */
@@ -161,38 +270,10 @@ export function layout(
   const shown = edges.filter(
     (e) => boxes[e.to] && (e.from === null || boxes[e.from]) && order.includes(e.to),
   );
-  // Which arcs meet each side of each status, and where along it.
-  const sides = new Map<string, Port[]>();
-  const meet = (id: string, side: 'top' | 'bottom', p: Port) => {
-    const k = `${id}|${side}`;
-    sides.set(k, [...(sides.get(k) ?? []), p]);
-  };
-  for (const e of shown) {
-    const to = order.indexOf(e.to);
-    if (e.from === null) {
-      meet(e.to, 'top', { edge: e, group: 0.5, partner: to });
-      continue;
-    }
-    const from = order.indexOf(e.from);
-    const side = to > from ? 'top' : 'bottom';
-    meet(e.from, side, { edge: e, group: to > from ? 1 : 0, partner: to });
-    meet(e.to, side, { edge: e, group: from > to ? 1 : 0, partner: from });
-  }
-  // Left partners first, then right ones; within each, the farther right
-  // the partner, the further left the port. Nested arcs then never cross.
-  const portX = (id: string, side: 'top' | 'bottom', e: DiagramEdge): number => {
-    const box = boxes[id] as Box;
-    const ports = [...(sides.get(`${id}|${side}`) ?? [])].sort(
-      (a, b) => a.group - b.group || b.partner - a.partner,
-    );
-    const i = ports.findIndex((p) => p.edge === e);
-    const k = ports.length;
-    return box.x + box.w * (0.12 + (0.76 * (i + 0.5)) / k);
-  };
-
+  const ports = portsOf(order, boxes, shown);
   const level = levels(order, shown);
-  const tops = order.filter((id) => boxes[id]).map((id) => (boxes[id] as Box).y);
-  const rowTop = tops.length ? Math.min(...tops) : 0;
+  const placed = order.flatMap((id) => boxes[id] ?? []);
+  const rowTop = placed.length ? Math.min(...placed.map((b) => b.y)) : 0;
   let up = 0;
   for (const e of shown) {
     if (span(order, e) > 0) up = Math.max(up, peak(arcHeight(level.get(e) ?? 1)));
@@ -200,77 +281,36 @@ export function layout(
   const busY = rowTop - up - BUS_GAP;
 
   const arcs: Arc[] = [];
-  let busEnd = -Infinity;
+  const drops: number[] = [];
   for (const e of shown) {
     const to = boxes[e.to] as Box;
     const key = `${e.from ?? '*'}>${e.to}`;
     if (e.from === null) {
-      const x = portX(e.to, 'top', e);
-      const tip = to.y - 1;
-      busEnd = Math.max(busEnd, x);
-      arcs.push({
-        key,
-        edge: e,
-        kind: 'any',
-        d: `M${pt(x, busY)}V${n(tip - HEAD + 1)}`,
-        head: headAt(x, tip, 1),
-      });
+      const x = ports(e.to, 'top', e);
+      drops.push(x);
+      arcs.push(anyArc(key, e, x, busY, to));
       continue;
     }
-    const from = boxes[e.from] as Box;
-    const s = span(order, e);
-    const h = arcHeight(level.get(e) ?? 1);
-    if (s > 0) {
-      const x1 = portX(e.from, 'top', e);
-      const x2 = portX(e.to, 'top', e);
-      const yc = Math.min(from.y, to.y) - h;
-      const tip = to.y - 1;
-      arcs.push({
-        key,
-        edge: e,
-        kind: 'forward',
-        d: `M${pt(x1, from.y)}C${pt(x1, yc)} ${pt(x2, yc)} ${pt(x2, tip - HEAD + 1)}`,
-        head: headAt(x2, tip, 1),
-      });
-    } else {
-      const x1 = portX(e.from, 'bottom', e);
-      const x2 = portX(e.to, 'bottom', e);
-      const fromBottom = from.y + from.h;
-      const toBottom = to.y + to.h;
-      const yc = Math.max(fromBottom, toBottom) + h;
-      const tip = toBottom + 1;
-      arcs.push({
-        key,
-        edge: e,
-        kind: 'backward',
-        d: `M${pt(x1, fromBottom)}C${pt(x1, yc)} ${pt(x2, yc)} ${pt(x2, tip + HEAD - 1)}`,
-        head: headAt(x2, tip, -1),
-      });
-    }
+    const forward = span(order, e) > 0;
+    const side = forward ? 'top' : 'bottom';
+    const ends: ArcEnds = {
+      from: boxes[e.from] as Box,
+      to,
+      x1: ports(e.from, side, e),
+      x2: ports(e.to, side, e),
+      h: arcHeight(level.get(e) ?? 1),
+    };
+    arcs.push(forward ? forwardArc(key, e, ends) : backwardArc(key, e, ends));
   }
 
-  const xs = order.filter((id) => boxes[id]).map((id) => (boxes[id] as Box).x);
-  const bus =
-    busEnd > -Infinity
-      ? { y: busY, x1: Math.min(...xs), x2: Math.max(busEnd, Math.min(...xs)) }
-      : null;
+  const bus = busLine(
+    busY,
+    placed.map((b) => b.x),
+    drops,
+  );
 
   const first = initial ? boxes[initial] : undefined;
-  const start = first
-    ? (() => {
-        const cy = first.y + first.h / 2;
-        const tip = first.x - 2;
-        const cx = tip - START;
-        return {
-          cx,
-          cy,
-          d: `M${pt(cx, cy)}H${n(tip - HEAD + 1)}`,
-          head: [pt(tip, cy), pt(tip - HEAD, cy - HEAD_HALF), pt(tip - HEAD, cy + HEAD_HALF)].join(
-            ' ',
-          ),
-        };
-      })()
-    : null;
+  const start = first ? startMarker(first) : null;
 
   return { arcs, bus, start };
 }

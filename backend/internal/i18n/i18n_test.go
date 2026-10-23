@@ -40,6 +40,27 @@ func TestSupported(t *testing.T) {
 	}
 }
 
+// Pick owns the language rule: the first supported candidate wins, and
+// nothing supported means English.
+func TestPick(t *testing.T) {
+	for _, c := range []struct {
+		candidates []string
+		want       string
+	}{
+		{nil, "en"},                  // no candidate: English
+		{[]string{"fr"}, "fr"},       // the user's choice
+		{[]string{"xx", "de"}, "de"}, // an unknown language falls through
+		{[]string{"", "it"}, "it"},   // an empty choice too
+		{[]string{"fr", "de"}, "fr"}, // the first supported one wins
+		{[]string{"xx", "yy"}, "en"}, // none supported: English
+		{[]string{"xx", "es"}, "en"}, // an unsupported default counts as none
+	} {
+		if got := Pick(c.candidates...); got != c.want {
+			t.Errorf("Pick(%q) = %q, want %q", c.candidates, got, c.want)
+		}
+	}
+}
+
 func TestSprintf(t *testing.T) {
 	en["TestOnlyEnglish"] = "Only in English: %s."
 	en["TestNoValues"] = "No values, 100 % as is."

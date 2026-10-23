@@ -130,6 +130,12 @@ func TestLinkDeletion(t *testing.T) {
 			t.Errorf("link %v: %d %s", bad, status, body)
 		}
 	}
+	for _, dir := range []string{"sideways", ""} {
+		in := map[string]any{"type": json.Number(linkType), "direction": dir, "target": b}
+		if status, msg, _ := paul.errorIn("en", "POST", "/api/issues/"+a+"/links", in); status != 400 || msg != "Unknown link direction." {
+			t.Errorf("link with direction %q: %d %q", dir, status, msg)
+		}
+	}
 	var d issueDetail
 	paul.call("POST", "/api/issues/"+a+"/links", map[string]any{"type": json.Number(linkType), "direction": "outward",
 		"target": b}, 201, &d)
@@ -147,10 +153,24 @@ func TestLinkDeletion(t *testing.T) {
 		t.Errorf("links after deletion: %+v", d.Links)
 	}
 	paul.call("DELETE", path, nil, 404, nil)
-	var history []historyEntry
-	paul.get("/api/issues/"+b+"/history", &history)
-	if !historyHas(history, "Link") {
-		t.Errorf("%s's history lacks the link: %+v", b, history)
+	for _, key := range []string{a, b} {
+		var history []historyEntry
+		paul.get("/api/issues/"+key+"/history", &history)
+		var added, removed int
+		for _, h := range history {
+			for _, it := range h.Items {
+				switch {
+				case it.Field != "Link":
+				case it.From == nil && it.To != nil:
+					added++
+				case it.From != nil && it.To == nil:
+					removed++
+				}
+			}
+		}
+		if added != 1 || removed != 1 {
+			t.Errorf("%s's history: %d link added, %d removed, want 1 each: %+v", key, added, removed, history)
+		}
 	}
 }
 

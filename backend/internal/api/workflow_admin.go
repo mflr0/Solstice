@@ -11,13 +11,11 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
-	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -63,11 +61,9 @@ func (s *Server) projectTypes(ctx context.Context, cat *catalog, projectID int64
 
 // typeWorkflows maps the project's issue types explicitly given another
 // workflow than the default.
-func (s *Server) typeWorkflows(ctx context.Context, q interface {
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}, projectID int64) (map[string]int64, error) {
+func (s *Server) typeWorkflows(ctx context.Context, projectID int64) (map[string]int64, error) {
 	out := map[string]int64{}
-	rows, err := q.QueryContext(ctx, `SELECT issue_type_id, workflow_id FROM workflow_issue_types WHERE project_id = ?`, projectID)
+	rows, err := s.db.QueryContext(ctx, `SELECT issue_type_id, workflow_id FROM workflow_issue_types WHERE project_id = ?`, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +131,7 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 		return nil, err
 	}
 
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
+	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -176,14 +172,9 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 }
 
 func (s *Server) listWorkflows(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
+	sub, projectID, err := s.browsableProject(r)
 	if err != nil {
 		return err
-	}
-	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
-		return errNotFound
 	}
 	return s.writeWorkflows(w, r, sub, projectID)
 }
@@ -204,19 +195,14 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"workflows": list, "issueTypes": types, "statuses": cat.Statuses,
-		"can": map[string]bool{"edit": s.administers(sub, projectID)},
+		"can": map[string]bool{"edit": sub.Administers(projectID)},
 	})
-}
-
-func (s *Server) administers(sub *perm.Subject, projectID int64) bool {
-	return sub.Admin || sub.Can(perm.Admin, projectID, nil)
 }
 
 // workflowForEdit loads a workflow the user administers.
 func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projectID int64, isDefault bool, err error) {
-	id, err = strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		return 0, 0, false, errNotFound
+	if id, err = pathID(r, "id"); err != nil {
+		return 0, 0, false, err
 	}
 	err = s.db.QueryRowContext(r.Context(), `SELECT project_id, is_default FROM workflows WHERE id = ?`, id).
 		Scan(&projectID, &isDefault)
@@ -226,25 +212,29 @@ func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projec
 	if err != nil {
 		return 0, 0, false, err
 	}
-	if !s.administers(sub, projectID) {
+	if !sub.Administers(projectID) {
 		return 0, 0, false, errForbidden
 	}
 	return id, projectID, isDefault, nil
 }
 
+// transitionInput is a transition as an update sends it; ID is 0 for a new
+// one.
+type transitionInput struct {
+	ID   int64   `json:"id"`
+	Name string  `json:"name"`
+	From *string `json:"from"`
+	To   string  `json:"to"`
+}
+
 type workflowInput struct {
-	Name        string   `json:"name"`
-	Initial     string   `json:"initial"`
-	Statuses    []string `json:"statuses"`
-	Transitions []struct {
-		ID   int64   `json:"id"`
-		Name string  `json:"name"`
-		From *string `json:"from"`
-		To   string  `json:"to"`
-	} `json:"transitions"`
-	IssueTypes []string          `json:"issueTypes"` // ignored for the default workflow
-	Default    bool              `json:"default"`    // make this the project's default
-	Remap      map[string]string `json:"remap"`      // removed status → status its issues move to
+	Name        string            `json:"name"`
+	Initial     string            `json:"initial"`
+	Statuses    []string          `json:"statuses"`
+	Transitions []transitionInput `json:"transitions"`
+	IssueTypes  []string          `json:"issueTypes"` // ignored for the default workflow
+	Default     bool              `json:"default"`    // make this the project's default
+	Remap       map[string]string `json:"remap"`      // removed status → status its issues move to
 	// For issue types leaving this workflow (they go back to the default):
 	// their issues' statuses the default lacks → a status of the default.
 	RemapDefault map[string]string `json:"remapDefault"`
@@ -364,28 +354,33 @@ func (s *Server) toDefault(ctx context.Context, cat *catalog, projectID int64, t
 	return lost, cond, conflict, nil
 }
 
-// updateWorkflow replaces a workflow's statuses, transitions and issue
-// types. Issues sitting in a status the workflow no longer has must be moved:
-// without a remap for that status the request is refused (409) with the
-// counts, so the user can choose where they go.
-func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	id, projectID, isDefault, err := s.workflowForEdit(r, sub)
-	if err != nil {
-		return err
-	}
-	var in workflowInput
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	cat, err := s.catalogue(ctx)
-	if err != nil {
-		return err
-	}
+// workflowUpdate is an update of a workflow, and what it does, worked out
+// before anything is written.
+type workflowUpdate struct {
+	id, projectID int64
+	isDefault     bool // whether the workflow is the project's default before the update
+	in            workflowInput
+	name          string          // trimmed
+	keep          map[string]bool // the statuses the workflow keeps
+	// The issues that follow the workflow once saved.
+	followCond string
+	followArgs []any
+	// The issue types going back to the default workflow, and their issues.
+	leaving     []any
+	leavingCond string
+	// The statuses the issues following the workflow, or going back to the
+	// default, are in and lose.
+	lost, lostDefault []strandedStatus
+}
+
+// becomesDefault tells whether the workflow is the project's default once
+// saved.
+func (u *workflowUpdate) becomesDefault() bool { return u.isDefault || u.in.Default }
+
+// check checks the name, statuses, initial status and transitions of the
+// update, and records the trimmed name and the statuses the workflow keeps.
+func (u *workflowUpdate) check(cat *catalog) error {
+	in := u.in
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return fail(http.StatusBadRequest, i18n.WorkflowNameRequired)
@@ -417,115 +412,149 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 			return failf(http.StatusBadRequest, i18n.WorkflowTransitionNoTarget, t.Name)
 		}
 	}
-	types, err := s.projectTypes(ctx, cat, projectID)
-	if err != nil {
-		return err
-	}
-	becomesDefault := isDefault || in.Default
-	if !becomesDefault {
-		for _, typ := range in.IssueTypes {
-			if !slices.ContainsFunc(types, func(t typeRef) bool { return t.ID == typ }) {
-				return failf(http.StatusBadRequest, i18n.IssueTypeNotInProject, typ)
-			}
-		}
-	}
+	u.name, u.keep = name, keep
+	return nil
+}
 
-	// The issue types following this workflow once saved, and those leaving
-	// it for the default.
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
-	if err != nil {
-		return err
-	}
-	var leaving []any
+// typesOn returns the issue types explicitly given workflow id.
+func typesOn(explicit map[string]int64, id int64) []string {
+	var out []string
 	for typ, wf := range explicit {
 		if wf == id {
-			delete(explicit, typ)
-			if !becomesDefault && !slices.Contains(in.IssueTypes, typ) {
-				leaving = append(leaving, typ)
-			}
+			out = append(out, typ)
 		}
 	}
-	if !becomesDefault {
-		for _, typ := range in.IssueTypes {
-			explicit[typ] = id
+	return out
+}
+
+// checkIssueTypes refuses an issue type the project does not use. Only a
+// workflow that is not the default has issue types of its own.
+func (u *workflowUpdate) checkIssueTypes(types []typeRef) error {
+	for _, typ := range u.in.IssueTypes {
+		if !slices.ContainsFunc(types, func(t typeRef) bool { return t.ID == typ }) {
+			return failf(http.StatusBadRequest, i18n.IssueTypeNotInProject, typ)
 		}
 	}
-	// Which issues follow the workflow once saved: for the default, those of
-	// any type not given another workflow — types the project does not list
-	// included, as issues moved in from other projects keep theirs.
-	followCond, followArgs := "FALSE", []any{}
-	if becomesDefault {
-		followCond = "TRUE"
-		var others []any
+	return nil
+}
+
+// plan records which issues follow the workflow once saved and which issue
+// types leave it for the default, given the types explicitly mapped to a
+// workflow of the project. The default takes the issues of every type not
+// given another workflow, types the project does not list included, as
+// issues moved in from other projects keep theirs.
+func (u *workflowUpdate) plan(explicit map[string]int64) {
+	if u.becomesDefault() {
+		var others []string
 		for typ, wf := range explicit {
-			if wf != id {
+			if wf != u.id {
 				others = append(others, typ)
 			}
 		}
+		u.followCond, u.followArgs = "TRUE", nil
 		if len(others) > 0 {
-			followCond, followArgs = `issue_type_id NOT IN (`+sqlq.Marks(len(others))+`)`, others
+			slices.Sort(others)
+			u.followCond = `issue_type_id NOT IN (` + sqlq.Marks(len(others)) + `)`
+			for _, typ := range others {
+				u.followArgs = append(u.followArgs, typ)
+			}
 		}
-	} else if len(in.IssueTypes) > 0 {
-		for _, typ := range in.IssueTypes {
-			followArgs = append(followArgs, typ)
-		}
-		followCond = `issue_type_id IN (` + sqlq.Marks(len(followArgs)) + `)`
+		return
 	}
+	on := typesOn(explicit, u.id)
+	slices.Sort(on)
+	for _, typ := range on {
+		if !slices.Contains(u.in.IssueTypes, typ) {
+			u.leaving = append(u.leaving, typ)
+		}
+	}
+	u.followCond, u.followArgs = "FALSE", nil
+	if len(u.in.IssueTypes) > 0 {
+		u.followCond = `issue_type_id IN (` + sqlq.Marks(len(u.in.IssueTypes)) + `)`
+		for _, typ := range u.in.IssueTypes {
+			u.followArgs = append(u.followArgs, typ)
+		}
+	}
+}
 
-	// Issues left in a status the workflow drops, or that the default
-	// workflow lacks for the types going back to it.
-	lost, err := s.stranded(ctx, cat, projectID, followCond, followArgs, keep)
+// strandedConflict records in u the issues left in a status the workflow
+// drops, or that the default workflow lacks for the types going back to it,
+// and refuses the update (409) while the remaps leave some of them out.
+func (s *Server) strandedConflict(ctx context.Context, cat *catalog, u *workflowUpdate) error {
+	var err error
+	if u.lost, err = s.stranded(ctx, cat, u.projectID, u.followCond, u.followArgs, u.keep); err != nil {
+		return err
+	}
+	var conflict map[string]any
+	u.lostDefault, u.leavingCond, conflict, err = s.toDefault(ctx, cat, u.projectID, u.leaving, u.in.RemapDefault)
 	if err != nil {
 		return err
 	}
-	lostDefault, leavingCond, conflict, err := s.toDefault(ctx, cat, projectID, leaving, in.RemapDefault)
-	if err != nil {
-		return err
+	missing := unmapped(u.lost, u.in.Remap, u.keep)
+	if len(missing) == 0 && conflict == nil {
+		return nil
 	}
-	if missing := unmapped(lost, in.Remap, keep); len(missing) > 0 || conflict != nil {
-		if conflict == nil {
-			conflict = map[string]any{}
-		}
-		if missing == nil {
-			missing = []strandedStatus{}
-		}
-		conflict["stranded"] = missing
-		return &httpError{status: http.StatusConflict, extra: conflict,
-			msg: i18n.M(i18n.WorkflowStatusesRemoved)}
+	if conflict == nil {
+		conflict = map[string]any{}
 	}
+	if missing == nil {
+		missing = []strandedStatus{}
+	}
+	conflict["stranded"] = missing
+	return &httpError{status: http.StatusConflict, extra: conflict, msg: i18n.M(i18n.WorkflowStatusesRemoved)}
+}
 
-	now := time.Now().UTC()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if in.Default && !isDefault {
-		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE project_id = ?`, projectID); err != nil {
+// save writes the workflow: whether it is the default, its name and initial
+// status, its statuses, transitions and issue types.
+func (u *workflowUpdate) save(ctx context.Context, tx *sql.Tx) error {
+	if u.in.Default && !u.isDefault {
+		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE project_id = ?`,
+			u.projectID); err != nil {
 			return err
 		}
 	}
-	if becomesDefault {
+	if u.becomesDefault() {
 		// The default takes every type not explicitly mapped elsewhere.
-		if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, id); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, u.id); err != nil {
 			return err
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET name = ?, initial_status_id = ?, is_default = ? WHERE id = ?`,
-		truncateRunes(name, 255), in.Initial, becomesDefault, id); err != nil {
+		sqlq.Truncate(u.name, varcharWidth), u.in.Initial, u.becomesDefault(), u.id); err != nil {
 		return err
 	}
+	if err := writeWorkflowStatuses(ctx, tx, u.id, u.in.Statuses); err != nil {
+		return err
+	}
+	if err := writeWorkflowTransitions(ctx, tx, u.id, u.in.Transitions); err != nil {
+		return err
+	}
+	if u.becomesDefault() {
+		return nil
+	}
+	return writeWorkflowIssueTypes(ctx, tx, u.id, u.projectID, u.in.IssueTypes)
+}
+
+// writeWorkflowStatuses replaces the statuses of workflow id, in order.
+func writeWorkflowStatuses(ctx context.Context, tx *sql.Tx, id int64, statuses []string) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_statuses WHERE workflow_id = ?`, id); err != nil {
 		return err
 	}
-	for pos, st := range in.Statuses {
+	for pos, st := range statuses {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position) VALUES (?, ?, ?)`,
 			id, st, pos); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// writeWorkflowTransitions replaces the transitions of workflow id: those
+// with an id are kept and changed, which must be the workflow's own; the
+// others are added, and the rest deleted.
+func writeWorkflowTransitions(ctx context.Context, tx *sql.Tx, id int64, transitions []transitionInput) error {
 	var keepIDs []any
-	for _, t := range in.Transitions {
+	for _, t := range transitions {
 		if t.ID != 0 {
 			var exists int
 			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM workflow_transitions WHERE id = ? AND workflow_id = ?`,
@@ -545,65 +574,119 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if _, err := tx.ExecContext(ctx, q, append([]any{id}, keepIDs...)...); err != nil {
 		return err
 	}
-	for pos, t := range in.Transitions {
+	for pos, t := range transitions {
 		var from any
 		if t.From != nil {
 			from = *t.From
 		}
-		tname := truncateRunes(strings.TrimSpace(t.Name), 255)
+		name := sqlq.Truncate(strings.TrimSpace(t.Name), varcharWidth)
+		var err error
 		if t.ID != 0 {
 			_, err = tx.ExecContext(ctx, `UPDATE workflow_transitions SET name = ?, from_status_id = ?, to_status_id = ?,
-				position = ? WHERE id = ?`, tname, from, t.To, pos, t.ID)
+				position = ? WHERE id = ?`, name, from, t.To, pos, t.ID)
 		} else {
 			_, err = tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-				position) VALUES (?, ?, ?, ?, ?)`, id, tname, from, t.To, pos)
+				position) VALUES (?, ?, ?, ?, ?)`, id, name, from, t.To, pos)
 		}
 		if err != nil {
 			return err
 		}
 	}
-	if !becomesDefault {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, id); err != nil {
-			return err
-		}
-		for _, typ := range in.IssueTypes {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_issue_types (project_id, issue_type_id, workflow_id)
-				VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE workflow_id = VALUES(workflow_id)`, projectID, typ, id); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Move the stranded issues, each with its history entry.
-	if err := moveStranded(ctx, tx, cat, projectID, sub.UserID, followCond, followArgs, lost, in.Remap, now); err != nil {
-		return err
-	}
-	if err := moveStranded(ctx, tx, cat, projectID, sub.UserID, leavingCond, leaving, lostDefault, in.RemapDefault,
-		now); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.auditWorkflow(r, audit.WorkflowUpdate, id, projectID, name, map[string]any{"statuses": in.Statuses,
-		"transitions": len(in.Transitions), "issueTypes": in.IssueTypes, "default": in.Default, "remap": in.Remap})
-	return s.writeWorkflows(w, r, sub, projectID)
+	return nil
 }
 
-// createWorkflow adds a workflow to a project, a copy of another of its
-// workflows (by default the default one). A project's first workflow
-// becomes its default.
-func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
+// writeWorkflowIssueTypes gives workflow id exactly the issue types listed.
+func writeWorkflowIssueTypes(ctx context.Context, tx *sql.Tx, id, projectID int64, types []string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM workflow_issue_types WHERE workflow_id = ?`, id); err != nil {
+		return err
+	}
+	for _, typ := range types {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_issue_types (project_id, issue_type_id, workflow_id)
+			VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE workflow_id = VALUES(workflow_id)`, projectID, typ, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// updateWorkflow replaces a workflow's statuses, transitions and issue
+// types. Issues sitting in a status the workflow no longer has must be moved:
+// without a remap for that status the request is refused (409) with the
+// counts, so the user can choose where they go.
+func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
 		return err
 	}
-	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || (!sub.Admin && !sub.CanBrowseProject(projectID)) {
-		return errNotFound
+	u := &workflowUpdate{}
+	if u.id, u.projectID, u.isDefault, err = s.workflowForEdit(r, sub); err != nil {
+		return err
 	}
-	if !s.administers(sub, projectID) {
+	if err := readJSON(r, &u.in); err != nil {
+		return err
+	}
+	cat, err := s.catalogue(ctx)
+	if err != nil {
+		return err
+	}
+	if err := u.check(cat); err != nil {
+		return err
+	}
+	if !u.becomesDefault() {
+		types, err := s.projectTypes(ctx, cat, u.projectID)
+		if err != nil {
+			return err
+		}
+		if err := u.checkIssueTypes(types); err != nil {
+			return err
+		}
+	}
+	explicit, err := s.typeWorkflows(ctx, u.projectID)
+	if err != nil {
+		return err
+	}
+	u.plan(explicit)
+	if err := s.strandedConflict(ctx, cat, u); err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := u.save(ctx, tx); err != nil {
+		return err
+	}
+	// Move the stranded issues, each with its history entry.
+	if err := moveStranded(ctx, tx, cat, u.projectID, sub.UserID, u.followCond, u.followArgs, u.lost, u.in.Remap,
+		now); err != nil {
+		return err
+	}
+	if err := moveStranded(ctx, tx, cat, u.projectID, sub.UserID, u.leavingCond, u.leaving, u.lostDefault,
+		u.in.RemapDefault, now); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	in := u.in
+	s.auditWorkflow(r, audit.WorkflowUpdate, u.id, u.projectID, u.name, map[string]any{"statuses": in.Statuses,
+		"transitions": len(in.Transitions), "issueTypes": in.IssueTypes, "default": in.Default, "remap": in.Remap})
+	return s.writeWorkflows(w, r, sub, u.projectID)
+}
+
+// createWorkflow adds a workflow to a project, a copy of another of its
+// workflows (by default the default one).
+func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, projectID, err := s.browsableProject(r)
+	if err != nil {
+		return err
+	}
+	if !sub.Administers(projectID) {
 		return errForbidden
 	}
 	var in struct {
@@ -621,15 +704,10 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	var initial string
 	err = s.db.QueryRowContext(ctx, `SELECT id, initial_status_id FROM workflows WHERE project_id = ?
 		AND (id = ? OR (? = 0 AND is_default)) LIMIT 1`, projectID, in.CopyFrom, in.CopyFrom).Scan(&source, &initial)
-	switch {
-	case errors.Is(err, sql.ErrNoRows) && in.CopyFrom != 0:
+	if errors.Is(err, sql.ErrNoRows) {
 		return fail(http.StatusBadRequest, i18n.WorkflowCopyNotFound)
-	case errors.Is(err, sql.ErrNoRows):
-		// A project without workflows: start from the statuses its issues use.
-		if initial, err = s.initialStatus(ctx, projectID); err != nil {
-			return err
-		}
-	case err != nil:
+	}
+	if err != nil {
 		return err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -637,37 +715,20 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	var defaults int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM workflows WHERE project_id = ? AND is_default`, projectID).
-		Scan(&defaults); err != nil {
-		return err
-	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, ?, ?)`,
-		projectID, truncateRunes(name, 255), defaults == 0, initial)
+	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, FALSE, ?)`,
+		projectID, sqlq.Truncate(name, varcharWidth), initial)
 	if err != nil {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	if source != 0 {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
-			SELECT ?, status_id, position FROM workflow_statuses WHERE workflow_id = ?`, id, source); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-			position) SELECT ?, name, from_status_id, to_status_id, position FROM workflow_transitions WHERE workflow_id = ?`,
-			id, source); err != nil {
-			return err
-		}
-	} else {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
-			SELECT ?, s.id, s.position FROM statuses s WHERE s.id IN (SELECT status_id FROM issues WHERE project_id = ?)`,
-			id, projectID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO workflow_statuses (workflow_id, status_id, position)
-			VALUES (?, ?, 0)`, id, initial); err != nil {
-			return err
-		}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
+		SELECT ?, status_id, position FROM workflow_statuses WHERE workflow_id = ?`, id, source); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
+		position) SELECT ?, name, from_status_id, to_status_id, position FROM workflow_transitions WHERE workflow_id = ?`,
+		id, source); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
@@ -693,28 +754,27 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if isDefault {
 		return fail(http.StatusConflict, i18n.WorkflowDefaultDelete)
 	}
-	name := s.workflowName(ctx, id)
+	name, err := s.workflowName(ctx, id)
+	if err != nil {
+		return err
+	}
 	var in struct {
 		RemapDefault map[string]string `json:"remapDefault"`
 	}
-	if r.ContentLength > 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
 		return err
 	}
-	explicit, err := s.typeWorkflows(ctx, s.db, projectID)
+	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return err
 	}
 	var leaving []any
-	for typ, wf := range explicit {
-		if wf == id {
-			leaving = append(leaving, typ)
-		}
+	for _, typ := range typesOn(explicit, id) {
+		leaving = append(leaving, typ)
 	}
 	lost, cond, conflict, err := s.toDefault(ctx, cat, projectID, leaving, in.RemapDefault)
 	if err != nil {
@@ -741,175 +801,6 @@ func (s *Server) deleteWorkflow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.auditWorkflow(r, audit.WorkflowDelete, id, projectID, name, map[string]any{"remapDefault": in.RemapDefault})
-	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-
-// createStatus adds a status to the shared catalogue, or returns the one of
-// the same name if there is one. Administrators of the project it is made
-// for may, since they build that project's workflows.
-func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	var in struct {
-		Name     string               `json:"name"`
-		Category issue.StatusCategory `json:"category"`
-		Project  string               `json:"project"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	if !sub.Admin {
-		projectID, err := s.projectByKey(ctx, in.Project)
-		if err != nil || !sub.CanBrowseProject(projectID) || !s.administers(sub, projectID) {
-			return errForbidden
-		}
-	}
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		return fail(http.StatusBadRequest, i18n.StatusNameRequired)
-	}
-	if !in.Category.Valid() {
-		return fail(http.StatusBadRequest, i18n.StatusCategoryInvalid)
-	}
-	cat, err := s.catalogue(ctx)
-	if err != nil {
-		return err
-	}
-	for _, st := range cat.Statuses {
-		if strings.EqualFold(st.Name, name) {
-			return writeJSON(w, http.StatusOK, st)
-		}
-	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	// Numeric ids, continuing Jira's sequence for custom statuses.
-	var next, position int64
-	if err := tx.QueryRowContext(ctx, `SELECT GREATEST(COALESCE(MAX(CAST(id AS UNSIGNED)), 0) + 1, 10000),
-		(SELECT COALESCE(MAX(position), 0) + 1 FROM statuses) FROM statuses WHERE id REGEXP '^[0-9]+$'`).
-		Scan(&next, &position); err != nil {
-		return err
-	}
-	st := statusRef{ID: strconv.FormatInt(next, 10), Name: truncateRunes(name, 255), Category: in.Category}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO statuses (id, name, category, position) VALUES (?, ?, ?, ?)`,
-		st.ID, st.Name, st.Category, position); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusCreate, audit.Target{Type: "status", ID: st.ID, Label: st.Name},
-		map[string]any{"category": st.Category})
-	return writeJSON(w, http.StatusCreated, st)
-}
-
-// statusForAdmin loads a status of the catalogue for a global administrator:
-// statuses are shared by every project.
-func (s *Server) statusForAdmin(r *http.Request) (statusRef, error) {
-	sub, err := s.subject(r)
-	if err != nil {
-		return statusRef{}, err
-	}
-	if !sub.Admin {
-		return statusRef{}, errForbidden
-	}
-	cat, err := s.catalogue(r.Context())
-	if err != nil {
-		return statusRef{}, err
-	}
-	st, ok := cat.status[r.PathValue("id")]
-	if !ok {
-		return statusRef{}, errNotFound
-	}
-	return st, nil
-}
-
-// updateStatus renames a status or changes its category, for every project.
-func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	st, err := s.statusForAdmin(r)
-	if err != nil {
-		return err
-	}
-	before := st
-	var in struct {
-		Name     *string               `json:"name"`
-		Category *issue.StatusCategory `json:"category"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	if in.Name != nil {
-		name := strings.TrimSpace(*in.Name)
-		if name == "" {
-			return fail(http.StatusBadRequest, i18n.StatusNameRequired)
-		}
-		cat, err := s.catalogue(ctx)
-		if err != nil {
-			return err
-		}
-		for _, other := range cat.Statuses {
-			if other.ID != st.ID && strings.EqualFold(other.Name, name) {
-				return failf(http.StatusConflict, i18n.StatusNameTaken, other.Name)
-			}
-		}
-		st.Name = truncateRunes(name, 255)
-	}
-	if in.Category != nil {
-		if !in.Category.Valid() {
-			return fail(http.StatusBadRequest, i18n.StatusCategoryInvalid)
-		}
-		st.Category = *in.Category
-	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE statuses SET name = ?, category = ? WHERE id = ?`,
-		st.Name, st.Category, st.ID); err != nil {
-		return err
-	}
-	s.forgetCatalogue()
-	if st != before {
-		s.auditLog(r, audit.StatusUpdate, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, map[string]any{
-			"from": map[string]any{"name": before.Name, "category": before.Category},
-			"to":   map[string]any{"name": st.Name, "category": st.Category}})
-	}
-	return writeJSON(w, http.StatusOK, st)
-}
-
-// deleteStatus removes a status nothing uses any more: no issue, workflow or
-// board column. History keeps its name.
-func (s *Server) deleteStatus(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	st, err := s.statusForAdmin(r)
-	if err != nil {
-		return err
-	}
-	var issues, workflows, columns int
-	if err := s.db.QueryRowContext(ctx, `SELECT
-		(SELECT COUNT(*) FROM issues WHERE status_id = ?),
-		(SELECT COUNT(DISTINCT workflow_id) FROM (SELECT workflow_id FROM workflow_statuses WHERE status_id = ?
-			UNION ALL SELECT workflow_id FROM workflow_transitions WHERE from_status_id = ? OR to_status_id = ?
-			UNION ALL SELECT id FROM workflows WHERE initial_status_id = ?) u),
-		(SELECT COUNT(*) FROM board_column_statuses WHERE status_id = ?)`,
-		st.ID, st.ID, st.ID, st.ID, st.ID, st.ID).Scan(&issues, &workflows, &columns); err != nil {
-		return err
-	}
-	if issues+workflows+columns > 0 {
-		return &httpError{status: http.StatusConflict, extra: map[string]any{
-			"usage":  map[string]int{"issues": issues, "workflows": workflows, "boardColumns": columns},
-			"status": st,
-		}, msg: i18n.M(i18n.StatusInUse)}
-	}
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM statuses WHERE id = ?`, st.ID); err != nil {
-		return err
-	}
-	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusDelete, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

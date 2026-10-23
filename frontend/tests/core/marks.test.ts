@@ -4,8 +4,9 @@ import {
   fileExtension,
   initials,
   isImage,
+  isIssueKey,
   priorityLevel,
-  projectOfKey,
+  projectOfIssueKey,
   typeLetter,
   typeTone,
 } from '../../src/core/marks.js';
@@ -78,9 +79,16 @@ describe('files and keys', () => {
   });
 
   it('extracts the project of an issue key', () => {
-    expect(projectOfKey('demo-12')).toBe('DEMO');
-    expect(projectOfKey(' WEB_2-3 ')).toBe('WEB_2');
-    expect(projectOfKey('DEMO')).toBeNull();
-    expect(projectOfKey('12-DEMO')).toBeNull();
+    expect(projectOfIssueKey('demo-12')).toBe('DEMO');
+    expect(projectOfIssueKey(' WEB_2-3 ')).toBe('WEB_2');
+    expect(projectOfIssueKey('DEMO')).toBeNull();
+    expect(projectOfIssueKey('12-DEMO')).toBeNull();
+  });
+
+  it('tells an issue key from other text', () => {
+    expect(isIssueKey('demo-12')).toBe(true);
+    expect(isIssueKey(' WEB_2-3 ')).toBe(true);
+    expect(isIssueKey('DEMO')).toBe(false);
+    expect(isIssueKey('12-DEMO')).toBe(false);
   });
 });

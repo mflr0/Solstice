@@ -20,29 +20,6 @@ import (
 	"time"
 )
 
-// browsableProject loads a project the user sees (or, for a global
-// administrator, any project).
-func (s *Server) browsableProject(r *http.Request) (int64, error) {
-	sub, err := s.subject(r)
-	if err != nil {
-		return 0, err
-	}
-	id, err := s.projectByKey(r.Context(), r.PathValue("key"))
-	if err != nil {
-		return 0, err
-	}
-	if !sub.Admin && !sub.CanBrowseProject(id) {
-		return 0, errNotFound
-	}
-	return id, nil
-}
-
-func (s *Server) projectKeyOf(ctx context.Context, id int64) string {
-	var key string
-	s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key)
-	return key
-}
-
 // Components --------------------------------------------------------------------
 
 var assigneeTypes = []string{"project_default", "component_lead", "project_lead", "unassigned"}
@@ -90,7 +67,7 @@ func (s *Server) components(ctx context.Context, projectID int64, where string, 
 }
 
 func (s *Server) listComponents(w http.ResponseWriter, r *http.Request) error {
-	id, err := s.browsableProject(r)
+	_, id, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
@@ -102,15 +79,8 @@ func (s *Server) listComponents(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) componentNameTaken(ctx context.Context, projectID int64, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM components WHERE project_id = ? AND LOWER(name) = LOWER(?)
-		AND id <> ?`, projectID, name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.valueTaken(ctx, "components", "name", "project_id = ?", []any{projectID}, name, except,
+		i18n.CommonAlreadyExists)
 }
 
 // saveComponent creates a component (no id in the path) or changes one.
@@ -206,22 +176,18 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	c := list[0]
-	target := audit.Target{Type: "component", ID: strconv.FormatInt(id, 10), Label: c.Name}
+	target := target("component", id, c.Name)
 	project := s.projectKeyOf(ctx, projectID)
 	if creating {
 		s.auditLog(r, audit.ComponentCreate, target, map[string]any{"project": project})
 		return writeJSON(w, http.StatusCreated, c)
 	}
 	changes := map[string]any{}
-	for k, v := range map[string][2]any{
-		"name": {before.Name, c.Name}, "assigneeType": {before.AssigneeType, c.AssigneeType},
-		"archived": {before.Archived, c.Archived}, "lead": {leadName(before.Lead), leadName(c.Lead)},
-		"description": {derefStr(before.Description), derefStr(c.Description)},
-	} {
-		if v[0] != v[1] {
-			changes[k] = map[string]any{"from": v[0], "to": v[1]}
-		}
-	}
+	diff(changes, "name", before.Name, c.Name)
+	diff(changes, "assigneeType", before.AssigneeType, c.AssigneeType)
+	diff(changes, "archived", before.Archived, c.Archived)
+	diff(changes, "lead", leadName(before.Lead), leadName(c.Lead))
+	diff(changes, "description", derefStr(before.Description), derefStr(c.Description))
 	if len(changes) > 0 {
 		changes["project"] = project
 		s.auditLog(r, audit.ComponentUpdate, target, changes)
@@ -256,10 +222,8 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		MoveTo *int64 `json:"moveTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	list, err := s.components(ctx, projectID, "c.id = ?", id)
@@ -270,7 +234,7 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 		return errNotFound
 	}
 	c := list[0]
-	var target *componentAdminOut
+	var moveTo *componentAdminOut
 	if in.MoveTo != nil {
 		other, err := s.components(ctx, projectID, "c.id = ?", *in.MoveTo)
 		if err != nil {
@@ -279,7 +243,7 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 		if len(other) == 0 || *in.MoveTo == id {
 			return fail(http.StatusBadRequest, i18n.ComponentReplacementNotFound)
 		}
-		target = &other[0]
+		moveTo = &other[0]
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -293,15 +257,15 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 	}
 	for _, issue := range issues {
 		changes := []change{{field: "Component", oldValue: strconv.FormatInt(id, 10), oldString: c.Name}}
-		if target != nil {
+		if moveTo != nil {
 			res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO issue_components (issue_id, component_id) VALUES (?, ?)`,
-				issue, target.ID)
+				issue, moveTo.ID)
 			if err != nil {
 				return err
 			}
 			if n, _ := res.RowsAffected(); n > 0 {
-				changes = append(changes, change{field: "Component", newValue: strconv.FormatInt(target.ID, 10),
-					newString: target.Name})
+				changes = append(changes, change{field: "Component", newValue: strconv.FormatInt(moveTo.ID, 10),
+					newString: moveTo.Name})
 			}
 		}
 		if err := touchIssue(ctx, tx, issue, now); err != nil {
@@ -318,10 +282,10 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	details := map[string]any{"project": s.projectKeyOf(ctx, projectID), "issues": len(issues)}
-	if target != nil {
-		details["movedTo"] = target.Name
+	if moveTo != nil {
+		details["movedTo"] = moveTo.Name
 	}
-	s.auditLog(r, audit.ComponentDelete, audit.Target{Type: "component", ID: strconv.FormatInt(id, 10), Label: c.Name},
+	s.auditLog(r, audit.ComponentDelete, target("component", id, c.Name),
 		details)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -446,7 +410,7 @@ func (s *Server) version(ctx context.Context, projectID, id int64) (versionAdmin
 }
 
 func (s *Server) listVersions(w http.ResponseWriter, r *http.Request) error {
-	id, err := s.browsableProject(r)
+	_, id, err := s.browsableProject(r)
 	if err != nil {
 		return err
 	}
@@ -458,15 +422,8 @@ func (s *Server) listVersions(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) versionNameTaken(ctx context.Context, projectID int64, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM versions WHERE project_id = ? AND LOWER(name) = LOWER(?)
-		AND id <> ?`, projectID, name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.valueTaken(ctx, "versions", "name", "project_id = ?", []any{projectID}, name, except,
+		i18n.CommonAlreadyExists)
 }
 
 // optDate reads an optional day: null or "" clears it.
@@ -587,23 +544,19 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	target := audit.Target{Type: "version", ID: strconv.FormatInt(id, 10), Label: v.Name}
+	target := target("version", id, v.Name)
 	project := s.projectKeyOf(ctx, projectID)
 	if creating {
 		s.auditLog(r, audit.VersionCreate, target, map[string]any{"project": project})
 		return writeJSON(w, http.StatusCreated, v)
 	}
 	changes := map[string]any{}
-	for k, pair := range map[string][2]any{
-		"name": {before.Name, v.Name}, "description": {derefStr(before.Description), derefStr(v.Description)},
-		"startDate":   {derefStr(before.StartDate), derefStr(v.StartDate)},
-		"releaseDate": {derefStr(before.ReleaseDate), derefStr(v.ReleaseDate)},
-		"released":    {before.Released, v.Released}, "archived": {before.Archived, v.Archived},
-	} {
-		if pair[0] != pair[1] {
-			changes[k] = map[string]any{"from": pair[0], "to": pair[1]}
-		}
-	}
+	diff(changes, "name", before.Name, v.Name)
+	diff(changes, "description", derefStr(before.Description), derefStr(v.Description))
+	diff(changes, "startDate", derefStr(before.StartDate), derefStr(v.StartDate))
+	diff(changes, "releaseDate", derefStr(before.ReleaseDate), derefStr(v.ReleaseDate))
+	diff(changes, "released", before.Released, v.Released)
+	diff(changes, "archived", before.Archived, v.Archived)
 	if len(changes) > 0 {
 		changes["project"] = project
 		s.auditLog(r, audit.VersionUpdate, target, changes)
@@ -644,8 +597,8 @@ func (s *Server) orderVersions(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.VersionOrder, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10),
-		Label: s.projectKeyOf(ctx, projectID)}, map[string]any{"ids": in.IDs})
+	s.auditLog(r, audit.VersionOrder, target("project", projectID, s.projectKeyOf(ctx, projectID)),
+		map[string]any{"ids": in.IDs})
 	out, err := s.versions(ctx, projectID, "TRUE")
 	if err != nil {
 		return err
@@ -745,10 +698,8 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 		ReleaseDate      *string `json:"releaseDate"`
 		MoveUnresolvedTo *int64  `json:"moveUnresolvedTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	v, err := s.version(ctx, projectID, id)
@@ -793,7 +744,7 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 	if to != nil {
 		details["movedTo"] = to.Name
 	}
-	s.auditLog(r, audit.VersionRelease, audit.Target{Type: "version", ID: strconv.FormatInt(id, 10), Label: v.Name}, details)
+	s.auditLog(r, audit.VersionRelease, target("version", id, v.Name), details)
 	v, err = s.version(ctx, projectID, id)
 	if err != nil {
 		return err
@@ -847,10 +798,8 @@ func (s *Server) deleteVersion(w http.ResponseWriter, r *http.Request) error {
 		FixTo     *int64 `json:"fixTo"`
 		AffectsTo *int64 `json:"affectsTo"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	v, err := s.version(ctx, projectID, id)
@@ -898,7 +847,7 @@ func (s *Server) removeVersion(w http.ResponseWriter, r *http.Request, projectID
 	if affectsTo != nil {
 		details["affectsTo"] = affectsTo.Name
 	}
-	s.auditLog(r, action, audit.Target{Type: "version", ID: strconv.FormatInt(v.ID, 10), Label: v.Name}, details)
+	s.auditLog(r, action, target("version", v.ID, v.Name), details)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

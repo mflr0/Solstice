@@ -12,6 +12,7 @@ package perm
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -123,74 +124,62 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 		archived: map[int64]bool{},
 		levels:   map[int64]level{},
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT project_id, permission, holder,
-		COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0) FROM project_permissions`)
+	err := sqlq.Each(ctx, s.db, `SELECT project_id, permission, holder,
+		COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0) FROM project_permissions`,
+		func(rows *sql.Rows) error {
+			var project int64
+			var p string
+			var g Grant
+			if err := rows.Scan(&project, &p, &g.Holder, &g.UserID, &g.GroupID, &g.RoleID); err != nil {
+				return err
+			}
+			if r.grants[project] == nil {
+				r.grants[project] = map[string][]Grant{}
+			}
+			r.grants[project][p] = append(r.grants[project][p], g)
+			return nil
+		})
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var project int64
-		var p string
-		var g Grant
-		if err := rows.Scan(&project, &p, &g.Holder, &g.UserID, &g.GroupID, &g.RoleID); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		if r.grants[project] == nil {
-			r.grants[project] = map[string][]Grant{}
-		}
-		r.grants[project][p] = append(r.grants[project][p], g)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
 
-	rows, err = s.db.QueryContext(ctx, `SELECT id, COALESCE(lead_id, 0), archived FROM projects`)
+	err = sqlq.Each(ctx, s.db, `SELECT id, COALESCE(lead_id, 0), archived FROM projects`,
+		func(rows *sql.Rows) error {
+			var project, lead int64
+			var archived bool
+			if err := rows.Scan(&project, &lead, &archived); err != nil {
+				return err
+			}
+			r.leads[project] = lead
+			if archived {
+				r.archived[project] = true
+			}
+			return nil
+		})
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var project, lead int64
-		var archived bool
-		if err := rows.Scan(&project, &lead, &archived); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		r.leads[project] = lead
-		if archived {
-			r.archived[project] = true
-		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
 
-	rows, err = s.db.QueryContext(ctx, `SELECT l.id, l.project_id, m.holder,
+	err = sqlq.Each(ctx, s.db, `SELECT l.id, l.project_id, m.holder,
 		COALESCE(m.user_id, 0), COALESCE(m.group_id, 0), COALESCE(m.role_id, 0)
-		FROM security_levels l LEFT JOIN security_level_members m ON m.level_id = l.id`)
+		FROM security_levels l LEFT JOIN security_level_members m ON m.level_id = l.id`,
+		func(rows *sql.Rows) error {
+			var id, project int64
+			var holder sql.NullString
+			var g Grant
+			if err := rows.Scan(&id, &project, &holder, &g.UserID, &g.GroupID, &g.RoleID); err != nil {
+				return err
+			}
+			lv := r.levels[id]
+			lv.project = project
+			if holder.Valid {
+				g.Holder = holder.String
+				lv.members = append(lv.members, g)
+			}
+			r.levels[id] = lv
+			return nil
+		})
 	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var id, project int64
-		var holder sql.NullString
-		var g Grant
-		if err := rows.Scan(&id, &project, &holder, &g.UserID, &g.GroupID, &g.RoleID); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		lv := r.levels[id]
-		lv.project = project
-		if holder.Valid {
-			g.Holder = holder.String
-			lv.members = append(lv.members, g)
-		}
-		r.levels[id] = lv
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	s.rules, s.loadedAt = r, time.Now()
@@ -221,45 +210,40 @@ func (s *Store) Subject(ctx context.Context, userID int64, admin bool) (*Subject
 		groupNames: map[string]bool{},
 		roles:      map[int64]map[int64]bool{},
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT g.id, g.name FROM group_members m
-		JOIN user_groups g ON g.id = m.group_id WHERE m.user_id = ?`, userID)
+	err = sqlq.Each(ctx, s.db, `SELECT g.id, g.name FROM group_members m
+		JOIN user_groups g ON g.id = m.group_id WHERE m.user_id = ?`,
+		func(rows *sql.Rows) error {
+			var id int64
+			var name string
+			if err := rows.Scan(&id, &name); err != nil {
+				return err
+			}
+			sub.groups[id] = true
+			sub.groupNames[name] = true
+			return nil
+		}, userID)
 	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		sub.groups[id] = true
-		sub.groupNames[name] = true
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	rows, err = s.db.QueryContext(ctx, `SELECT DISTINCT r.project_id, r.role_id FROM project_role_members r
+	err = sqlq.Each(ctx, s.db, `SELECT DISTINCT r.project_id, r.role_id FROM project_role_members r
 		LEFT JOIN group_members m ON m.group_id = r.group_id
-		WHERE r.user_id = ? OR m.user_id = ?`, userID, userID)
+		WHERE r.user_id = ? OR m.user_id = ?`,
+		func(rows *sql.Rows) error {
+			var project, role int64
+			if err := rows.Scan(&project, &role); err != nil {
+				return err
+			}
+			if sub.roles[project] == nil {
+				sub.roles[project] = map[int64]bool{}
+			}
+			sub.roles[project][role] = true
+			return nil
+		}, userID, userID)
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var project, role int64
-		if err := rows.Scan(&project, &role); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		if sub.roles[project] == nil {
-			sub.roles[project] = map[int64]bool{}
-		}
-		sub.roles[project][role] = true
-	}
-	rows.Close()
-	return sub, rows.Err()
+	return sub, nil
 }
 
 // holds reports whether the subject matches a grant. Without an issue,
@@ -357,93 +341,80 @@ func (s *Subject) SeesRestricted(project int64, group string, role int64) bool {
 }
 
 // VisibleSQL returns a SQL condition on the issues table (under alias) that
-// keeps only the issues the subject may see, with its bind arguments.
+// keeps only the issues the subject may see, with its bind arguments, or
+// "FALSE" and no arguments when it sees no project. Ids come in ascending
+// order, so a subject gets the same SQL every time.
 func (s *Subject) VisibleSQL(alias string) (string, []any) {
-	col := func(c string) string { return alias + "." + c }
-	var full, byReporter, byAssignee []any
+	var projects visible
 	for project, perms := range s.rules.grants {
-		all, rep, asg := false, false, false
-		for _, g := range perms[Browse] {
-			switch g.Holder {
-			case Reporter:
-				rep = true
-			case Assignee:
-				asg = true
-			default:
-				all = all || s.holds(g, project, nil)
-			}
-		}
-		switch {
-		case all:
-			full = append(full, project)
-		default:
-			if rep {
-				byReporter = append(byReporter, project)
-			}
-			if asg {
-				byAssignee = append(byAssignee, project)
-			}
-		}
+		projects.add(project, perms[Browse], func(g Grant) bool { return s.holds(g, project, nil) })
 	}
-
-	var cond []string
-	var args []any
-	if len(full) > 0 {
-		cond = append(cond, col("project_id")+" IN ("+sqlq.Marks(len(full))+")")
-		args = append(args, full...)
-	}
-	if len(byReporter) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byReporter))+") AND "+col("reporter_id")+" = ?)")
-		args = append(append(args, byReporter...), s.UserID)
-	}
-	if len(byAssignee) > 0 {
-		cond = append(cond, "("+col("project_id")+" IN ("+sqlq.Marks(len(byAssignee))+") AND "+col("assignee_id")+" = ?)")
-		args = append(append(args, byAssignee...), s.UserID)
-	}
+	cond, args := projects.where(alias, "project_id", s.UserID)
 	if len(cond) == 0 {
 		return "FALSE", nil
 	}
-	where := "(" + strings.Join(cond, " OR ") + ")"
-
-	var open, levelByReporter, levelByAssignee []any
+	var levels visible
 	for id, lv := range s.rules.levels {
-		all, rep, asg := false, false, false
-		for _, g := range lv.members {
-			switch g.Holder {
-			case Reporter:
-				rep = true
-			case Assignee:
-				asg = true
-			default:
-				all = all || s.holds(g, lv.project, nil)
-			}
+		levels.add(id, lv.members, func(g Grant) bool { return s.holds(g, lv.project, nil) })
+	}
+	levelCond, levelArgs := levels.where(alias, "security_level_id", s.UserID)
+	sec := append([]string{alias + ".security_level_id IS NULL"}, levelCond...)
+	return "(" + strings.Join(cond, " OR ") + ") AND (" + strings.Join(sec, " OR ") + ")", append(args, levelArgs...)
+}
+
+// visible groups project or security level ids by what a subject sees of
+// their issues: all of them, or only those it reports or is assigned.
+type visible struct {
+	all, byReporter, byAssignee []int64
+}
+
+// add puts id in v by its grants gs: in all when the subject holds one of
+// them outright, else in byReporter or byAssignee when one goes to the
+// issue's reporter or assignee, which only a row can tell.
+func (v *visible) add(id int64, gs []Grant, holds func(Grant) bool) {
+	if slices.ContainsFunc(gs, holds) {
+		v.all = append(v.all, id)
+		return
+	}
+	if slices.ContainsFunc(gs, func(g Grant) bool { return g.Holder == Reporter }) {
+		v.byReporter = append(v.byReporter, id)
+	}
+	if slices.ContainsFunc(gs, func(g Grant) bool { return g.Holder == Assignee }) {
+		v.byAssignee = append(v.byAssignee, id)
+	}
+}
+
+// where returns the conditions, to be joined with OR, that keep the rows of
+// alias whose col is in v (the reported or assigned ones of user for
+// byReporter and byAssignee), and their arguments.
+func (v visible) where(alias, col string, user int64) ([]string, []any) {
+	var cond []string
+	var args []any
+	in := func(ids []int64, owner string) {
+		if len(ids) == 0 {
+			return
 		}
-		switch {
-		case all:
-			open = append(open, id)
-		default:
-			if rep {
-				levelByReporter = append(levelByReporter, id)
-			}
-			if asg {
-				levelByAssignee = append(levelByAssignee, id)
-			}
+		c := alias + "." + col + " IN (" + sqlq.Marks(len(ids)) + ")"
+		for _, id := range slices.Sorted(slices.Values(ids)) {
+			args = append(args, id)
 		}
+		if owner != "" {
+			c = "(" + c + " AND " + alias + "." + owner + " = ?)"
+			args = append(args, user)
+		}
+		cond = append(cond, c)
 	}
-	sec := []string{col("security_level_id") + " IS NULL"}
-	if len(open) > 0 {
-		sec = append(sec, col("security_level_id")+" IN ("+sqlq.Marks(len(open))+")")
-		args = append(args, open...)
-	}
-	if len(levelByReporter) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByReporter))+") AND "+col("reporter_id")+" = ?)")
-		args = append(append(args, levelByReporter...), s.UserID)
-	}
-	if len(levelByAssignee) > 0 {
-		sec = append(sec, "("+col("security_level_id")+" IN ("+sqlq.Marks(len(levelByAssignee))+") AND "+col("assignee_id")+" = ?)")
-		args = append(append(args, levelByAssignee...), s.UserID)
-	}
-	return where + " AND (" + strings.Join(sec, " OR ") + ")", args
+	in(v.all, "")
+	in(v.byReporter, "reporter_id")
+	in(v.byAssignee, "assignee_id")
+	return cond, args
+}
+
+// Administers reports whether the subject may administer a project: a
+// global administrator, or a holder of the Admin permission there (which an
+// archived project never grants).
+func (s *Subject) Administers(project int64) bool {
+	return s.Admin || s.Can(Admin, project, nil)
 }
 
 // Archived reports whether a project is archived.

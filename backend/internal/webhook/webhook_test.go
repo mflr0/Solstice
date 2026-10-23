@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -186,6 +187,26 @@ func TestIssueMovedEventType(t *testing.T) {
 	}
 }
 
+// An issue's custom fields go in its fields, set or not, as GET /issue
+// renders them.
+func TestIssueCustomFields(t *testing.T) {
+	b := &builder{base: "https://solstice.example"}
+	f := b.issue(&events.Issue{ID: 4, Key: "DEMO-4", Custom: []events.CustomValue{
+		{ID: 10010, Name: "Stage", Value: json.RawMessage(`{"value":"Recette","id":"3"}`), Text: "Recette"},
+		{ID: 10011, Name: "Reviewer", Value: json.RawMessage(`null`)},
+	}})["fields"].(map[string]any)
+	got, err := json.Marshal(map[string]any{"a": f["customfield_10010"], "b": f["customfield_10011"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"a":{"value":"Recette","id":"3"},"b":null}`; string(got) != want {
+		t.Errorf("custom fields: %s, want %s", got, want)
+	}
+	if _, ok := f["customfield_10011"]; !ok {
+		t.Error("a custom field without a value is left out; Jira sends it as null")
+	}
+}
+
 // A sprint that is changed or deleted fires its own event.
 func TestSprintEvents(t *testing.T) {
 	for kind, want := range map[events.Kind]string{events.SprintUpdated: SprintUpdated, events.SprintDeleted: SprintDeleted} {
@@ -195,5 +216,70 @@ func TestSprintEvents(t *testing.T) {
 		if !slices.Contains(Events, want) {
 			t.Errorf("%s is not in the list of events", want)
 		}
+	}
+}
+
+// Every internal event fires the webhook events Jira sends for it, and the
+// list of events keeps its display order.
+func TestNamesOf(t *testing.T) {
+	want := []struct {
+		kind  events.Kind
+		names []string
+	}{
+		{events.IssueCreated, []string{"jira:issue_created"}},
+		{events.IssueUpdated, []string{"jira:issue_updated"}},
+		{events.IssueDeleted, []string{"jira:issue_deleted"}},
+		{events.CommentCreated, []string{"comment_created", "jira:issue_updated"}},
+		{events.CommentUpdated, []string{"comment_updated", "jira:issue_updated"}},
+		{events.CommentDeleted, []string{"comment_deleted", "jira:issue_updated"}},
+		{events.WorklogCreated, []string{"worklog_created", "jira:issue_updated"}},
+		{events.WorklogUpdated, []string{"worklog_updated", "jira:issue_updated"}},
+		{events.WorklogDeleted, []string{"worklog_deleted", "jira:issue_updated"}},
+		{events.SprintCreated, []string{"sprint_created"}},
+		{events.SprintStarted, []string{"sprint_started"}},
+		{events.SprintUpdated, []string{"sprint_updated"}},
+		{events.SprintClosed, []string{"sprint_closed"}},
+		{events.SprintDeleted, []string{"sprint_deleted"}},
+		{events.BoardCreated, []string{"board_created"}},
+		{events.BoardUpdated, []string{"board_updated"}},
+		{events.BoardDeleted, []string{"board_deleted"}},
+	}
+	if len(Events) != len(want) {
+		t.Fatalf("Events has %d events, want %d", len(Events), len(want))
+	}
+	for i, w := range want {
+		if got := namesOf(w.kind); !slices.Equal(got, w.names) {
+			t.Errorf("namesOf(%s) = %v, want %v", w.kind, got, w.names)
+		}
+		if Events[i] != w.names[0] {
+			t.Errorf("Events[%d] = %s, want %s", i, Events[i], w.names[0])
+		}
+	}
+	if got := namesOf(events.Kind("unknown")); got != nil {
+		t.Errorf("an unknown kind fires %v", got)
+	}
+}
+
+// A webhook hears the events of an internal event it listens to, and none
+// while it is disabled.
+func TestHeard(t *testing.T) {
+	names := namesOf(events.CommentCreated)
+	for _, c := range []struct {
+		name string
+		w    Webhook
+		want []string
+	}{
+		{"both", Webhook{Enabled: true, Events: []string{CommentCreated, IssueUpdated}}, names},
+		{"the issue update only", Webhook{Enabled: true, Events: []string{IssueUpdated, SprintCreated}},
+			[]string{IssueUpdated}},
+		{"neither", Webhook{Enabled: true, Events: []string{SprintCreated}}, []string{}},
+		{"disabled", Webhook{Events: []string{CommentCreated, IssueUpdated}}, []string{}},
+	} {
+		if got := c.w.heard(names); !slices.Equal(got, c.want) {
+			t.Errorf("%s: heard = %v, want %v", c.name, got, c.want)
+		}
+	}
+	if names[0] != CommentCreated || len(names) != 2 {
+		t.Fatalf("namesOf(CommentCreated) = %v", names)
 	}
 }

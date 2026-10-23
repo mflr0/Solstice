@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -18,14 +19,25 @@ type meResponse struct {
 	Email    string  `json:"email"`
 	Admin    bool    `json:"admin"`
 	Locale   *string `json:"locale"` // null: none chosen
+	// Directory is "ldap" for an account whose password is the directory's.
+	Directory string `json:"directory"`
 }
 
 func meOf(u *auth.User) meResponse {
-	me := meResponse{ID: u.ID, Username: u.Username, Name: u.DisplayName, Email: u.Email, Admin: u.Admin}
+	me := meResponse{ID: u.ID, Username: u.Username, Name: u.DisplayName, Email: u.Email, Admin: u.Admin,
+		Directory: u.Directory}
 	if u.Locale != "" {
 		me.Locale = &u.Locale
 	}
 	return me
+}
+
+// userByID loads an account for its id, with the fields meOf answers with.
+func (s *Server) userByID(ctx context.Context, id int64) (auth.User, error) {
+	var u auth.User
+	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory
+		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory)
+	return u, err
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
@@ -163,7 +175,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.AccountCurrentPasswordRequired)
 		}
 		if in.NewPassword != nil {
-			if err := s.checkNewPassword(ctx, *in.NewPassword); err != nil {
+			if err := s.checkNewPassword(ctx, *in.NewPassword, u.Username); err != nil {
 				return err
 			}
 		}
@@ -177,35 +189,45 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	var hash string
+	if in.NewPassword != nil {
+		if hash, err = auth.HashPassword(*in.NewPassword); err != nil {
+			return err
+		}
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	for column, v := range sets {
-		if _, err := s.db.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
 			return err
 		}
 	}
 	// Links mailed to the old address must not work once it is not theirs.
 	if email, ok := sets["email"]; ok && email != before.Email {
-		if err := auth.RevokeAccountTokens(ctx, s.db, u.ID, time.Now()); err != nil {
+		if err := auth.RevokeAccountTokens(ctx, tx, u.ID, time.Now()); err != nil {
 			return err
 		}
 	}
+	var revoked int64
 	if in.NewPassword != nil {
-		if err := auth.SetPassword(ctx, s.db, u.ID, *in.NewPassword); err != nil {
-			return err
-		}
 		// The other sign-ins end; this one goes on.
 		current := ""
 		if c, err := r.Cookie(auth.CookieName); err == nil {
-			current = tokenKey(c.Value)
+			current = auth.TokenHash(c.Value)
 		}
-		if err := s.endSessions(ctx, u.ID, current); err != nil {
+		if revoked, err = auth.SetPasswordHash(ctx, tx, u.ID, hash, current); err != nil {
 			return err
 		}
 	}
-	s.auditUserChange(r, u.ID, before, in.NewPassword != nil)
-	var me auth.User
-	if err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
-		FROM users WHERE id = ?`, u.ID).Scan(&me.ID, &me.Username, &me.DisplayName, &me.Email, &me.Admin,
-		&me.Locale); err != nil {
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.auditUserChange(r, u.ID, before, in.NewPassword != nil, revoked)
+	me, err := s.userByID(ctx, u.ID)
+	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, meOf(&me))

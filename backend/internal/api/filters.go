@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 
 	"solstice/internal/i18n"
@@ -94,13 +93,19 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
+	shares := `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
 		g.name, p.pkey, r.name, u.display_name
 		FROM filter_shares sh
 		LEFT JOIN user_groups g ON g.id = sh.group_id
 		LEFT JOIN projects p ON p.id = sh.project_id
 		LEFT JOIN project_roles r ON r.id = sh.role_id
-		LEFT JOIN users u ON u.id = sh.user_id`, func(rows *sql.Rows) error {
+		LEFT JOIN users u ON u.id = sh.user_id`
+	var shareArgs []any
+	if only != 0 {
+		shares += ` WHERE sh.filter_id = ?`
+		shareArgs = append(shareArgs, only)
+	}
+	if err := sqlq.Each(ctx, s.db, shares, func(rows *sql.Rows) error {
 		var id int64
 		var sh shareRow
 		if err := rows.Scan(&id, &sh.kind, &sh.group, &sh.project, &sh.role, &sh.user, &sh.groupName, &sh.projectKey,
@@ -111,7 +116,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 			f.shares = append(f.shares, sh)
 		}
 		return nil
-	}); err != nil {
+	}, shareArgs...); err != nil {
 		return nil, err
 	}
 
@@ -187,7 +192,7 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-func (s *Server) filterForEdit(r *http.Request, sub *perm.Subject) (*filterRow, error) {
+func (s *Server) visibleFilter(r *http.Request, sub *perm.Subject) (*filterRow, error) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	// loadFilters reads id 0 as "every filter", so 0 must not get that far.
 	if err != nil || id <= 0 {
@@ -215,7 +220,7 @@ type filterInput struct {
 func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterInput) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
-		if n == "" || utf8.RuneCountInString(n) > 255 {
+		if n == "" || utf8.RuneCountInString(n) > varcharWidth {
 			return fail(http.StatusBadRequest, i18n.FilterNameRequired)
 		}
 	}
@@ -304,8 +309,8 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	var desc any
-	if in.Description != nil && strings.TrimSpace(*in.Description) != "" {
-		desc = *in.Description
+	if in.Description != nil {
+		desc = sqlq.NullIfBlank(*in.Description)
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, description, query, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)`, sub.UserID, strings.TrimSpace(*in.Name), desc, *in.Query, now, now)
@@ -337,7 +342,7 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -362,11 +367,7 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "name = ?"), append(args, strings.TrimSpace(*in.Name))
 	}
 	if in.Description != nil {
-		var d any
-		if strings.TrimSpace(*in.Description) != "" {
-			d = *in.Description
-		}
-		sets, args = append(sets, "description = ?"), append(args, d)
+		sets, args = append(sets, "description = ?"), append(args, sqlq.NullIfBlank(*in.Description))
 	}
 	if in.Query != nil {
 		sets, args = append(sets, "query = ?"), append(args, *in.Query)
@@ -404,7 +405,7 @@ func (s *Server) deleteFilter(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -424,7 +425,7 @@ func (s *Server) setFavourite(on bool) handler {
 		if err != nil {
 			return err
 		}
-		f, err := s.filterForEdit(r, sub)
+		f, err := s.visibleFilter(r, sub)
 		if err != nil {
 			return err
 		}
@@ -434,9 +435,6 @@ func (s *Server) setFavourite(on bool) handler {
 		} else {
 			_, err = s.db.ExecContext(r.Context(), `DELETE FROM filter_favourites WHERE filter_id = ? AND user_id = ?`,
 				f.out.ID, sub.UserID)
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			err = nil
 		}
 		if err != nil {
 			return err

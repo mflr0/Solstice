@@ -34,6 +34,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Ungültige E-Mail-Adresse.",
 	AccountOwnAdminRights:            "Sie können sich nicht selbst die Administratorrechte entziehen.",
 	AccountOwnPasswordInProfile:      "Ändern Sie Ihr eigenes Passwort in Ihrem Profil.",
+	AccountDirectoryPassword:         "Dieses Konto meldet sich über das Verzeichnis (LDAP) an: Das Passwort wird dort geändert.",
+	AccountOwnEmailInProfile:         "Ändern Sie Ihre eigene E-Mail-Adresse in Ihrem Profil.",
 	AccountPasswordTooShort:          "Das Passwort muss mindestens %d Zeichen lang sein.",
 	AccountPasswordIsUsername:        "Das Passwort darf nicht der Benutzername sein.",
 	AccountCurrentPasswordRequired:   "Geben Sie Ihr aktuelles Passwort ein.",
@@ -145,7 +147,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
 	ProjectKeysBusy:            "Eine andere Änderung eines Projektschlüssels läuft gerade. Versuchen Sie es gleich noch einmal.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 	DefaultTypeTask:                  "Aufgabe",
 	DefaultTypeBug:                   "Fehler",
 	DefaultTypeStory:                 "Story",
@@ -174,6 +176,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultRoleAdministrators:        "Administratoren",
 	DefaultRoleDevelopers:            "Entwickler",
 	DefaultRoleUsers:                 "Benutzer",
+	DefaultStatusToDo:                "Zu erledigen",
+	DefaultStatusInProgress:          "In Arbeit",
+	DefaultStatusInReview:            "In Prüfung",
+	DefaultStatusDone:                "Erledigt",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Ansehen",
@@ -207,6 +213,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Unbekannter Feldtyp (zur Auswahl: %s).",
 	CustomFieldNoOptions:     "Dieser Feldtyp hat keine Optionen.",
 	CustomFieldOptionTooLong: "Eine Option darf höchstens 255 Zeichen lang sein.",
+	CustomFieldOptionEmpty:   "Der Text einer Option darf nicht leer sein.",
 	CustomFieldUsedByBoards:  "Dieses Feld wird für die Funktion der Boards benötigt und kann nicht gelöscht werden.",
 	CustomFieldDeleteConfirm: "Einige Vorgänge haben einen Wert in diesem Feld: Geben Sie seinen Namen ein, um die Löschung zu bestätigen.",
 	CustomFieldOptionInUse:   "Bei einigen Vorgängen ist diese Option gewählt: Wählen Sie eine andere Option, auf die sie verschoben werden, oder löschen Sie ihren Wert.",
@@ -286,8 +293,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Ungültige Zeitschätzung (zum Beispiel 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unbekannte Sicherheitsstufe in diesem Projekt.",
 	IssueReporterFixed:         "Der Melder kann nicht geändert werden.",
-	IssueNoTodoStatus:          "Es ist kein Status der Kategorie „Zu erledigen“ definiert.",
 	IssueTransitionNotAllowed:  "Der Workflow des Projekts sieht diesen Statuswechsel nicht vor.",
+	IssueEditChanged:           "Der Vorgang wurde während des Speicherns geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
 	IssueTransitionUnavailable: "Dieser Übergang ist aus dem aktuellen Status des Vorgangs nicht möglich.",
 	IssueParentNotFound:        "Übergeordneter Vorgang nicht gefunden.",
 	IssueParentInvalid:         "Der übergeordnete Vorgang muss zum selben Projekt gehören und darf selbst keinen übergeordneten Vorgang haben.",
@@ -322,6 +329,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Das Verschieben eines Vorgangs mit Sicherheitsstufe erfordert die Berechtigung Sicherheitsstufe im Zielprojekt, und in diesem Projekt, um eine andere Stufe zu wählen.",
 	IssueMoveNoSubtaskType:     "Der Vorgang hat Unteraufgaben, und das Zielprojekt hat keinen Unteraufgabentyp für sie. Fügen Sie dem Projekt zuerst einen hinzu.",
 	IssueMoveUseAction:         "Ein Vorgang wechselt das Projekt über die Aktion „Verschieben“.",
+	BulkNoIssues:               "Wählen Sie mindestens einen Vorgang aus.",
+	BulkTooMany:                "Eine Sammeländerung umfasst höchstens %d Vorgänge.",
+	BulkNothingToChange:        "Wählen Sie eine Änderung aus.",
+	BulkOneProject:             "Komponenten und Lösungsversionen lassen sich nur bei Vorgängen eines einzigen Projekts ändern.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
@@ -334,9 +345,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "Ein Zeiteintrag kann nicht auf eine Gruppe oder Rolle beschränkt werden.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Unbekannter Verknüpfungstyp.",
-	LinkTargetNotFound: "Zielvorgang nicht gefunden.",
-	LinkToItself:       "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
+	LinkTypeUnknown:      "Unbekannter Verknüpfungstyp.",
+	LinkTargetNotFound:   "Zielvorgang nicht gefunden.",
+	LinkToItself:         "Ein Vorgang kann nicht mit sich selbst verknüpft werden.",
+	LinkDirectionUnknown: "Unbekannte Verknüpfungsrichtung.",
 
 	// Group picker.
 	GroupPickerHeader: "%d von %d passenden Gruppen angezeigt",
@@ -395,6 +407,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Zwischen 1 und 50 Vorgänge auf einmal.",
 	BoardRankTargetRequired:      "Geben Sie rankBeforeIssue oder rankAfterIssue an.",
 	BoardRankItself:              "Ein Vorgang kann nicht relativ zu sich selbst eingeordnet werden.",
+	BoardFilterName:              "Board %s",
 
 	// Sprints.
 	SprintKanban:          "Ein Kanban-Board hat keine Sprints.",
@@ -421,6 +434,23 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Exports.
 	ExportColumnUnknown: "Unbekannte Spalte: %s.",
+
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "Es wurde keine Datei gesendet.",
+	CSVImportFileTooLarge:        "Die Datei ist größer als %d MiB.",
+	CSVImportFileInvalid:         "Die Datei ist kein gültiges CSV (Zeile %d).",
+	CSVImportFileEmpty:           "Die Datei hat keine Kopfzeile.",
+	CSVImportTooManyRows:         "Die Datei hat mehr als %d Zeilen.",
+	CSVImportMappingInvalid:      "Die Spaltenzuordnung passt nicht zur Datei.",
+	CSVImportColumnTwice:         "Zwei Spalten gehen in dasselbe Feld: %s.",
+	CSVImportRowsInvalid:         "Nichts wurde importiert: Einige Zeilen haben Fehler (%d).",
+	CSVImportValueUnknown:        "%s: unbekannter Wert „%s“.",
+	CSVImportValueInvalid:        "%s: ungültiger Wert „%s“.",
+	CSVImportUserAmbiguous:       "%s: mehrere Personen passen zu „%s“.",
+	CSVImportKeyTwice:            "Der Schlüssel %s steht in mehr als einer Zeile.",
+	CSVImportReferenceFailed:     "%s: diese Zeile hat Fehler.",
+	CSVImportReferenceCycle:      "%s: die Zeilen verweisen aufeinander.",
+	CSVImportStatusNotInWorkflow: "Der Status %s gehört nicht zum Workflow dieses Vorgangstyps.",
 
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",

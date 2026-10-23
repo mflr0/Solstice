@@ -2,7 +2,7 @@ package api
 
 // The shared catalogues, for global administrators: issue types,
 // priorities, resolutions and link types (statuses have their own
-// endpoints, in workflow_admin.go). An item still in use is only deleted
+// endpoints, in admin_statuses.go). An item still in use is only deleted
 // when its issues (or links) are moved to another item, with history.
 
 import (
@@ -21,23 +21,45 @@ import (
 	"solstice/internal/sqlq"
 )
 
-// catalogueKind describes one catalogue.
+// catalogueKind describes one catalogue and what sets it apart.
 type catalogueKind struct {
-	table   string
-	audit   string   // audit action prefix
-	fields  []string // fields a request may set, besides name
-	history string   // history field of issues moved on delete ("" for link types)
-	column  string   // issues' column naming the item ("" for link types)
+	table     string
+	audit     string   // audit action prefix
+	fields    []string // fields a request may set, besides name
+	required  []string // fields a creation must set, besides name
+	numericID bool     // AUTO_INCREMENT ids, written as numbers
+	query     string   // SELECT of the items as t, without WHERE
+	scan      func(*sql.Rows) (catalogueItem, error)
+	move      catalogueMove
+	// checkDelete refuses deleting any item, before the replacement is read.
+	checkDelete func(ctx context.Context, db *sql.DB) error
+	// checkReplacement refuses moving what uses from to to.
+	checkReplacement func(from, to catalogueItem) error
 }
+
+// catalogueMove points what uses from at to instead, by the user by, and
+// counts what moved.
+type catalogueMove func(ctx context.Context, tx *sql.Tx, by int64, from, to catalogueItem) (int, error)
 
 var catalogueKinds = map[string]catalogueKind{
 	"issue-types": {table: "issue_types", audit: "issuetype", fields: []string{"description", "subtask"},
-		history: "issuetype", column: "issue_type_id"},
+		query: `SELECT t.id, t.name, t.description, t.position, t.subtask,
+			(SELECT COUNT(*) FROM issues i WHERE i.issue_type_id = t.id),
+			(SELECT COUNT(*) FROM project_issue_types p WHERE p.issue_type_id = t.id) FROM issue_types t`,
+		scan: scanIssueType, move: moveIssueType, checkDelete: keepLastIssueType, checkReplacement: sameSubtask},
 	"priorities": {table: "priorities", audit: "priority", fields: []string{"description", "color", "default"},
-		history: "priority", column: "priority_id"},
+		query: `SELECT t.id, t.name, t.description, t.position, t.color, t.is_default,
+			(SELECT COUNT(*) FROM issues i WHERE i.priority_id = t.id) FROM priorities t`,
+		scan: scanPriority, move: moveIssues("priority_id", "priority")},
 	"resolutions": {table: "resolutions", audit: "resolution", fields: []string{"description", "default"},
-		history: "resolution", column: "resolution_id"},
-	"link-types": {table: "link_types", audit: "linktype", fields: []string{"inward", "outward"}},
+		query: `SELECT t.id, t.name, t.description, t.position, t.is_default,
+			(SELECT COUNT(*) FROM issues i WHERE i.resolution_id = t.id) FROM resolutions t`,
+		scan: scanResolution, move: moveIssues("resolution_id", "resolution")},
+	"link-types": {table: "link_types", audit: "linktype", fields: []string{"inward", "outward"},
+		required: []string{"inward", "outward"}, numericID: true,
+		query: `SELECT t.id, t.name, t.inward, t.outward, t.position,
+			(SELECT COUNT(*) FROM issue_links l WHERE l.type_id = t.id) FROM link_types t`,
+		scan: scanLinkType, move: moveLinks},
 }
 
 type catalogueItem struct {
@@ -54,13 +76,15 @@ type catalogueItem struct {
 	Issues   *int    `json:"issues,omitempty"`
 	Projects *int    `json:"projects,omitempty"`
 	Links    *int    `json:"links,omitempty"`
+
+	numericID bool
 }
 
 // MarshalJSON writes the id as Jira does: text, but a number for link types.
 func (it catalogueItem) MarshalJSON() ([]byte, error) {
 	type plain catalogueItem
 	var id any = it.ID
-	if it.Links != nil {
+	if it.numericID {
 		n, _ := strconv.ParseInt(it.ID, 10, 64)
 		id = n
 	}
@@ -79,63 +103,53 @@ func (it catalogueItem) MarshalJSON() ([]byte, error) {
 	return append(append(head[:len(head)-1], ','), body[1:]...), nil
 }
 
+func scanIssueType(rows *sql.Rows) (catalogueItem, error) {
+	var it catalogueItem
+	var desc sql.NullString
+	var sub bool
+	var issues, projects int
+	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &sub, &issues, &projects)
+	it.Description, it.Subtask, it.Issues, it.Projects = &desc.String, &sub, &issues, &projects
+	return it, err
+}
+
+func scanPriority(rows *sql.Rows) (catalogueItem, error) {
+	var it catalogueItem
+	var desc, color sql.NullString
+	var def bool
+	var issues int
+	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &def, &issues)
+	it.Description, it.Color, it.Default, it.Issues = &desc.String, &color.String, &def, &issues
+	return it, err
+}
+
+func scanResolution(rows *sql.Rows) (catalogueItem, error) {
+	var it catalogueItem
+	var desc sql.NullString
+	var def bool
+	var issues int
+	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &def, &issues)
+	it.Description, it.Default, it.Issues = &desc.String, &def, &issues
+	return it, err
+}
+
+func scanLinkType(rows *sql.Rows) (catalogueItem, error) {
+	var it catalogueItem
+	var inward, outward string
+	var links int
+	err := rows.Scan(&it.ID, &it.Name, &inward, &outward, &it.Position, &links)
+	it.Inward, it.Outward, it.Links = &inward, &outward, &links
+	return it, err
+}
+
 func (s *Server) catalogueItems(ctx context.Context, c catalogueKind, where string, args ...any) ([]catalogueItem, error) {
-	var q string
-	switch c.table {
-	case "issue_types":
-		q = `SELECT t.id, t.name, t.description, t.position, t.subtask,
-			(SELECT COUNT(*) FROM issues i WHERE i.issue_type_id = t.id),
-			(SELECT COUNT(*) FROM project_issue_types p WHERE p.issue_type_id = t.id) FROM issue_types t`
-	case "priorities":
-		q = `SELECT t.id, t.name, t.description, t.position, t.color, t.is_default,
-			(SELECT COUNT(*) FROM issues i WHERE i.priority_id = t.id) FROM priorities t`
-	case "resolutions":
-		q = `SELECT t.id, t.name, t.description, t.position, t.is_default,
-			(SELECT COUNT(*) FROM issues i WHERE i.resolution_id = t.id) FROM resolutions t`
-	case "link_types":
-		q = `SELECT t.id, t.name, t.inward, t.outward, t.position,
-			(SELECT COUNT(*) FROM issue_links l WHERE l.type_id = t.id) FROM link_types t`
-	}
 	out := []catalogueItem{}
-	err := sqlq.Each(ctx, s.db, q+` WHERE `+where+` ORDER BY t.position, t.name, t.id`, func(rows *sql.Rows) error {
-		var it catalogueItem
-		var desc sql.NullString
-		var n int
-		var err error
-		switch c.table {
-		case "issue_types":
-			var sub bool
-			var projects int
-			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &sub, &n, &projects)
-			it.Subtask, it.Issues, it.Projects = &sub, &n, &projects
-		case "priorities":
-			var color sql.NullString
-			var def bool
-			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &def, &n)
-			it.Color, it.Default, it.Issues = sqlq.String(color), &def, &n
-			if it.Color == nil {
-				empty := ""
-				it.Color = &empty
-			}
-		case "resolutions":
-			var def bool
-			err = rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &def, &n)
-			it.Default, it.Issues = &def, &n
-		case "link_types":
-			var inward, outward string
-			err = rows.Scan(&it.ID, &it.Name, &inward, &outward, &it.Position, &n)
-			it.Inward, it.Outward, it.Links = &inward, &outward, &n
-		}
+	err := sqlq.Each(ctx, s.db, c.query+` WHERE `+where+` ORDER BY t.position, t.name, t.id`, func(rows *sql.Rows) error {
+		it, err := c.scan(rows)
 		if err != nil {
 			return err
 		}
-		if c.table != "link_types" {
-			it.Description = sqlq.String(desc)
-			if it.Description == nil {
-				empty := ""
-				it.Description = &empty
-			}
-		}
+		it.numericID = c.numericID
 		out = append(out, it)
 		return nil
 	}, args...)
@@ -186,91 +200,19 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		ctx := r.Context()
 		id := r.PathValue("id")
 		creating := id == ""
-		var before catalogueItem
+		var before *catalogueItem
 		if !creating {
-			var err error
-			if before, err = s.catalogueItem(ctx, c, id); err != nil {
+			it, err := s.catalogueItem(ctx, c, id)
+			if err != nil {
 				return err
 			}
+			before = &it
 		} else if _, ok := raw["name"]; !ok {
 			return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
 		}
-		str := func(k string) (string, error) {
-			var v string
-			if json.Unmarshal(raw[k], &v) != nil {
-				return "", failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
-			}
-			return strings.TrimSpace(v), nil
-		}
-		sets := map[string]any{}
-		makeDefault := false
-		for k := range raw {
-			switch k {
-			case "name":
-				v, err := str(k)
-				if err != nil {
-					return err
-				}
-				name, err := cleanName(v, 255)
-				if err != nil {
-					return err
-				}
-				var n int
-				if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+c.table+` WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-					name, id).Scan(&n); err != nil {
-					return err
-				}
-				if n > 0 {
-					return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-				}
-				sets["name"] = name
-			case "description":
-				var v *string
-				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
-				}
-				sets["description"] = optDescription(v)
-			case "inward", "outward":
-				v, err := str(k)
-				if err != nil {
-					return err
-				}
-				if v, err = cleanName(v, 255); err != nil {
-					return err
-				}
-				sets[k] = v
-			case "color":
-				v, err := str(k)
-				if err != nil {
-					return err
-				}
-				if v != "" && !colorPattern.MatchString(v) {
-					return fail(http.StatusBadRequest, i18n.CatalogColorInvalid)
-				}
-				sets["color"] = strings.ToLower(v)
-				if v == "" {
-					sets["color"] = nil
-				}
-			case "subtask":
-				var v bool
-				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
-				}
-				if !creating && v != *before.Subtask && *before.Issues > 0 {
-					return fail(http.StatusConflict, i18n.CatalogTypeSubtaskLocked)
-				}
-				sets["subtask"] = v
-			case "default":
-				var v bool
-				if json.Unmarshal(raw[k], &v) != nil {
-					return failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
-				}
-				makeDefault = v
-				sets["is_default"] = v
-			}
-		}
-		if creating && c.table == "link_types" && (sets["inward"] == nil || sets["outward"] == nil) {
-			return fail(http.StatusBadRequest, i18n.CatalogLinkTypeIncomplete)
+		sets, err := s.parseCatalogueFields(ctx, c, raw, id, before)
+		if err != nil {
+			return err
 		}
 		tx, err := s.db.BeginTx(ctx, nil)
 		if err != nil {
@@ -278,33 +220,12 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		}
 		defer tx.Rollback()
 		if creating {
-			if c.table == "link_types" {
-				res, err := tx.ExecContext(ctx, `INSERT INTO link_types (name, inward, outward, position)
-					SELECT ?, ?, ?, COALESCE(MAX(position), 0) + 1 FROM link_types`, sets["name"], sets["inward"], sets["outward"])
-				if err != nil {
-					return err
-				}
-				n, _ := res.LastInsertId()
-				id = strconv.FormatInt(n, 10)
-			} else {
-				if id, err = nextCatalogID(ctx, tx, c.table); err != nil {
-					return err
-				}
-				if _, err := tx.ExecContext(ctx, `INSERT INTO `+c.table+` (id, name, position)
-					SELECT ?, ?, COALESCE(MAX(position), 0) + 1 FROM `+c.table, id, sets["name"]); err != nil {
-					return err
-				}
-			}
-		}
-		if makeDefault {
-			if _, err := tx.ExecContext(ctx, `UPDATE `+c.table+` SET is_default = FALSE`); err != nil {
+			if id, err = insertCatalogueItem(ctx, tx, c, sets); err != nil {
 				return err
 			}
 		}
-		for column, v := range sets {
-			if _, err := tx.ExecContext(ctx, `UPDATE `+c.table+` SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
-				return err
-			}
+		if err := applyCatalogueSets(ctx, tx, c, id, sets); err != nil {
+			return err
 		}
 		if err := tx.Commit(); err != nil {
 			return err
@@ -323,12 +244,131 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		for k, v := range sets {
 			changes[k] = v
 		}
-		if before.Name != it.Name {
-			changes["name"] = map[string]string{"from": before.Name, "to": it.Name}
-		}
+		diff(changes, "name", before.Name, it.Name)
 		s.auditLog(r, c.audit+".update", target, changes)
 		return writeJSON(w, http.StatusOK, it)
 	}
+}
+
+// parseCatalogueFields checks the fields of a request and gives the columns
+// they set. before is the item changed, nil on creation.
+func (s *Server) parseCatalogueFields(ctx context.Context, c catalogueKind, raw map[string]json.RawMessage, id string,
+	before *catalogueItem) (map[string]any, error) {
+	str := func(k string) (string, error) {
+		var v string
+		if json.Unmarshal(raw[k], &v) != nil {
+			return "", failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
+		}
+		return strings.TrimSpace(v), nil
+	}
+	sets := map[string]any{}
+	for k := range raw {
+		switch k {
+		case "name":
+			v, err := str(k)
+			if err != nil {
+				return nil, err
+			}
+			name, err := cleanName(v, 255)
+			if err != nil {
+				return nil, err
+			}
+			if err := s.nameTaken(ctx, c.table, name, id, i18n.CommonAlreadyExists); err != nil {
+				return nil, err
+			}
+			sets["name"] = name
+		case "description":
+			var v *string
+			if json.Unmarshal(raw[k], &v) != nil {
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
+			}
+			sets["description"] = optDescription(v)
+		case "inward", "outward":
+			v, err := str(k)
+			if err != nil {
+				return nil, err
+			}
+			if v, err = cleanName(v, 255); err != nil {
+				return nil, err
+			}
+			sets[k] = v
+		case "color":
+			v, err := str(k)
+			if err != nil {
+				return nil, err
+			}
+			if v != "" && !colorPattern.MatchString(v) {
+				return nil, fail(http.StatusBadRequest, i18n.CatalogColorInvalid)
+			}
+			sets["color"] = strings.ToLower(v)
+			if v == "" {
+				sets["color"] = nil
+			}
+		case "subtask":
+			var v bool
+			if json.Unmarshal(raw[k], &v) != nil {
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
+			}
+			if before != nil && v != *before.Subtask && *before.Issues > 0 {
+				return nil, fail(http.StatusConflict, i18n.CatalogTypeSubtaskLocked)
+			}
+			sets["subtask"] = v
+		case "default":
+			var v bool
+			if json.Unmarshal(raw[k], &v) != nil {
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
+			}
+			sets["is_default"] = v
+		}
+	}
+	if before == nil {
+		for _, k := range c.required {
+			if sets[k] == nil {
+				return nil, fail(http.StatusBadRequest, i18n.CatalogLinkTypeIncomplete)
+			}
+		}
+	}
+	return sets, nil
+}
+
+// insertCatalogueItem adds an item, last, with its name and required
+// fields, and gives its id.
+func insertCatalogueItem(ctx context.Context, tx *sql.Tx, c catalogueKind, sets map[string]any) (string, error) {
+	var id string
+	columns, args := []string{"name"}, []any{sets["name"]}
+	for _, k := range c.required {
+		columns, args = append(columns, k), append(args, sets[k])
+	}
+	if !c.numericID {
+		var err error
+		if id, err = nextCatalogID(ctx, tx, c.table); err != nil {
+			return "", err
+		}
+		columns, args = append([]string{"id"}, columns...), append([]any{id}, args...)
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO `+c.table+` (`+strings.Join(columns, ", ")+`, position)
+		SELECT `+strings.Repeat("?, ", len(columns))+`COALESCE(MAX(position), 0) + 1 FROM `+c.table, args...)
+	if err != nil || !c.numericID {
+		return id, err
+	}
+	n, _ := res.LastInsertId()
+	return strconv.FormatInt(n, 10), nil
+}
+
+// applyCatalogueSets writes the columns of an item; a new default item
+// unsets the previous one.
+func applyCatalogueSets(ctx context.Context, tx *sql.Tx, c catalogueKind, id string, sets map[string]any) error {
+	if def, _ := sets["is_default"].(bool); def {
+		if _, err := tx.ExecContext(ctx, `UPDATE `+c.table+` SET is_default = FALSE`); err != nil {
+			return err
+		}
+	}
+	for column, v := range sets {
+		if _, err := tx.ExecContext(ctx, `UPDATE `+c.table+` SET `+column+` = ? WHERE id = ?`, v, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func containsStr(list []string, s string) bool {
@@ -417,10 +457,8 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 		var in struct {
 			MoveTo *json.RawMessage `json:"moveTo"`
 		}
-		if r.ContentLength != 0 {
-			if err := readJSON(r, &in); err != nil {
-				return err
-			}
+		if err := readOptionalJSON(r, &in); err != nil {
+			return err
 		}
 		ctx := r.Context()
 		id := r.PathValue("id")
@@ -428,49 +466,15 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 		if err != nil {
 			return err
 		}
-		used := 0
-		usage := map[string]int{}
-		switch {
-		case it.Issues != nil:
-			used, usage["issues"] = *it.Issues, *it.Issues
-			if it.Projects != nil {
-				// A type some project still offers is in use too.
-				used += *it.Projects
-				usage["projects"] = *it.Projects
-			}
-		case it.Links != nil:
-			used, usage["links"] = *it.Links, *it.Links
-		}
-		if c.table == "issue_types" {
-			var n int
-			if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issue_types`).Scan(&n); err != nil {
+		used, usage := catalogueUsage(it)
+		if c.checkDelete != nil {
+			if err := c.checkDelete(ctx, s.db); err != nil {
 				return err
 			}
-			if n <= 1 {
-				return fail(http.StatusConflict, i18n.CatalogLastIssueType)
-			}
 		}
-		var to *catalogueItem
-		if in.MoveTo != nil && string(*in.MoveTo) != "null" {
-			var target string
-			if json.Unmarshal(*in.MoveTo, &target) != nil {
-				var n json.Number
-				if json.Unmarshal(*in.MoveTo, &n) != nil {
-					return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "moveTo")
-				}
-				target = n.String()
-			}
-			t, err := s.catalogueItem(ctx, c, target)
-			if errors.Is(err, errNotFound) || (err == nil && t.ID == id) {
-				return fail(http.StatusBadRequest, i18n.CatalogReplacementNotFound)
-			}
-			if err != nil {
-				return err
-			}
-			if c.table == "issue_types" && *t.Subtask != *it.Subtask {
-				return fail(http.StatusBadRequest, i18n.CatalogReplacementKind)
-			}
-			to = &t
+		to, err := s.replacement(ctx, c, it, in.MoveTo)
+		if err != nil {
+			return err
 		}
 		if used > 0 && to == nil {
 			return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": usage},
@@ -481,40 +485,9 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 			return err
 		}
 		defer tx.Rollback()
-		moved := 0
-		if to != nil {
-			if c.table == "link_types" {
-				res, err := tx.ExecContext(ctx, `UPDATE issue_links SET type_id = ? WHERE type_id = ?`, to.ID, id)
-				if err != nil {
-					return err
-				}
-				n, _ := res.RowsAffected()
-				moved = int(n)
-			} else {
-				issues, err := idsOf(ctx, tx, `SELECT id FROM issues WHERE `+c.column+` = ?`, id)
-				if err != nil {
-					return err
-				}
-				now := time.Now().UTC()
-				for _, issue := range issues {
-					if _, err := tx.ExecContext(ctx, `UPDATE issues SET `+c.column+` = ?, updated_at = ? WHERE id = ?`,
-						to.ID, now, issue); err != nil {
-						return err
-					}
-					if err := recordChanges(ctx, tx, issue, currentUser(r).ID, now,
-						[]change{{c.history, id, it.Name, to.ID, to.Name}}); err != nil {
-						return err
-					}
-				}
-				moved = len(issues)
-			}
-			if c.table == "issue_types" {
-				// Projects offering the old type offer the new one.
-				if _, err := tx.ExecContext(ctx, `INSERT IGNORE INTO project_issue_types (project_id, issue_type_id, position)
-					SELECT project_id, ?, position FROM project_issue_types WHERE issue_type_id = ?`, to.ID, id); err != nil {
-					return err
-				}
-			}
+		moved, err := moveCatalogueItems(ctx, tx, c, currentUser(r).ID, it, to)
+		if err != nil {
+			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM `+c.table+` WHERE id = ?`, id); err != nil {
 			return err
@@ -533,153 +506,117 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 	}
 }
 
-// Statuses ----------------------------------------------------------------------
-
-type statusAdminOut struct {
-	statusRef
-	Position int            `json:"position"`
-	Usage    map[string]int `json:"usage"`
-}
-
-func (s *Server) statusList(ctx context.Context) ([]statusAdminOut, error) {
-	out := []statusAdminOut{}
-	err := sqlq.Each(ctx, s.db, `SELECT s.id, s.name, s.category, s.position,
-		(SELECT COUNT(*) FROM issues i WHERE i.status_id = s.id),
-		(SELECT COUNT(DISTINCT u.workflow_id) FROM (SELECT workflow_id, status_id FROM workflow_statuses
-			UNION ALL SELECT workflow_id, from_status_id FROM workflow_transitions
-			UNION ALL SELECT workflow_id, to_status_id FROM workflow_transitions
-			UNION ALL SELECT id, initial_status_id FROM workflows) u WHERE u.status_id = s.id),
-		(SELECT COUNT(*) FROM board_column_statuses b WHERE b.status_id = s.id)
-		FROM statuses s ORDER BY s.position, s.name`, func(rows *sql.Rows) error {
-		var st statusAdminOut
-		var issues, workflows, columns int
-		if err := rows.Scan(&st.ID, &st.Name, &st.Category, &st.Position, &issues, &workflows, &columns); err != nil {
-			return err
+// catalogueUsage counts what uses an item: issues, projects, links, as its
+// kind counts them.
+func catalogueUsage(it catalogueItem) (int, map[string]int) {
+	used, usage := 0, map[string]int{}
+	for k, n := range map[string]*int{"issues": it.Issues, "projects": it.Projects, "links": it.Links} {
+		if n != nil {
+			used += *n
+			usage[k] = *n
 		}
-		st.Usage = map[string]int{"issues": issues, "workflows": workflows, "boardColumns": columns}
-		out = append(out, st)
-		return nil
-	})
-	return out, err
-}
-
-func (s *Server) adminStatuses(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
 	}
-	out, err := s.statusList(r.Context())
-	if err != nil {
-		return err
+	return used, usage
+}
+
+// replacement reads moveTo, text or a number: another item of the
+// catalogue, or nil when none is given.
+func (s *Server) replacement(ctx context.Context, c catalogueKind, from catalogueItem, moveTo *json.RawMessage) (*catalogueItem, error) {
+	if moveTo == nil || string(*moveTo) == "null" {
+		return nil, nil
 	}
-	return writeJSON(w, http.StatusOK, out)
-}
-
-// statusUsageOut tells where a status is used: the workflows (with their
-// project), the board columns and, per project, the issues in it.
-type statusUsageOut struct {
-	Workflows []statusWorkflow `json:"workflows"`
-	Boards    []statusBoard    `json:"boards"`
-	Projects  []statusProject  `json:"projects"`
-}
-
-type statusWorkflow struct {
-	ID      int64        `json:"id"`
-	Name    string       `json:"name"`
-	Project projectBrief `json:"project"`
-}
-
-type statusBoard struct {
-	ID     int64  `json:"id"`
-	Name   string `json:"name"`
-	Column string `json:"column"`
-}
-
-type statusProject struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Issues int    `json:"issues"`
-}
-
-func (s *Server) adminStatusUsage(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
-	}
-	ctx := r.Context()
-	cat, err := s.catalogue(ctx)
-	if err != nil {
-		return err
-	}
-	id := r.PathValue("id")
-	if _, ok := cat.status[id]; !ok {
-		return errNotFound
-	}
-	out := statusUsageOut{Workflows: []statusWorkflow{}, Boards: []statusBoard{}, Projects: []statusProject{}}
-	if err := sqlq.Each(ctx, s.db, `SELECT w.id, w.name, p.id, p.pkey, p.name FROM workflows w
-		JOIN projects p ON p.id = w.project_id WHERE w.id IN (
-			SELECT workflow_id FROM workflow_statuses WHERE status_id = ?
-			UNION SELECT workflow_id FROM workflow_transitions WHERE from_status_id = ? OR to_status_id = ?
-			UNION SELECT id FROM workflows WHERE initial_status_id = ?)
-		ORDER BY p.pkey, w.name`, func(rows *sql.Rows) error {
-		var w statusWorkflow
-		if err := rows.Scan(&w.ID, &w.Name, &w.Project.ID, &w.Project.Key, &w.Project.Name); err != nil {
-			return err
+	var target string
+	if json.Unmarshal(*moveTo, &target) != nil {
+		var n json.Number
+		if json.Unmarshal(*moveTo, &n) != nil {
+			return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, "moveTo")
 		}
-		out.Workflows = append(out.Workflows, w)
-		return nil
-	}, id, id, id, id); err != nil {
-		return err
+		target = n.String()
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT b.id, b.name, c.name FROM board_column_statuses bs
-		JOIN board_columns c ON c.id = bs.column_id JOIN boards b ON b.id = c.board_id
-		WHERE bs.status_id = ? ORDER BY b.name, c.position`, func(rows *sql.Rows) error {
-		var b statusBoard
-		if err := rows.Scan(&b.ID, &b.Name, &b.Column); err != nil {
-			return err
+	to, err := s.catalogueItem(ctx, c, target)
+	if errors.Is(err, errNotFound) || (err == nil && to.ID == from.ID) {
+		return nil, fail(http.StatusBadRequest, i18n.CatalogReplacementNotFound)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if c.checkReplacement != nil {
+		if err := c.checkReplacement(from, to); err != nil {
+			return nil, err
 		}
-		out.Boards = append(out.Boards, b)
-		return nil
-	}, id); err != nil {
-		return err
 	}
-	if err := sqlq.Each(ctx, s.db, `SELECT p.pkey, p.name, COUNT(*) FROM issues i
-		JOIN projects p ON p.id = i.project_id WHERE i.status_id = ? GROUP BY p.id, p.pkey, p.name
-		ORDER BY p.pkey`, func(rows *sql.Rows) error {
-		var p statusProject
-		if err := rows.Scan(&p.Key, &p.Name, &p.Issues); err != nil {
-			return err
-		}
-		out.Projects = append(out.Projects, p)
-		return nil
-	}, id); err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusOK, out)
+	return &to, nil
 }
 
-func (s *Server) orderStatuses(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
+// moveCatalogueItems points what uses from at to, by the user by, and
+// counts what moved; nothing moves without to.
+func moveCatalogueItems(ctx context.Context, tx *sql.Tx, c catalogueKind, by int64, from catalogueItem,
+	to *catalogueItem) (int, error) {
+	if to == nil {
+		return 0, nil
 	}
-	ids, err := readOrder(r)
+	return c.move(ctx, tx, by, from, *to)
+}
+
+// moveIssues gives the move of a catalogue that issues name in column,
+// with a history line of field per issue.
+func moveIssues(column, field string) catalogueMove {
+	return func(ctx context.Context, tx *sql.Tx, by int64, from, to catalogueItem) (int, error) {
+		issues, err := idsOf(ctx, tx, `SELECT id FROM issues WHERE `+column+` = ?`, from.ID)
+		if err != nil {
+			return 0, err
+		}
+		now := time.Now().UTC()
+		for _, issue := range issues {
+			if _, err := tx.ExecContext(ctx, `UPDATE issues SET `+column+` = ?, updated_at = ? WHERE id = ?`,
+				to.ID, now, issue); err != nil {
+				return 0, err
+			}
+			if err := recordChanges(ctx, tx, issue, by, now,
+				[]change{{field, from.ID, from.Name, to.ID, to.Name}}); err != nil {
+				return 0, err
+			}
+		}
+		return len(issues), nil
+	}
+}
+
+// moveIssueType moves the issues, and projects offering from offer to.
+func moveIssueType(ctx context.Context, tx *sql.Tx, by int64, from, to catalogueItem) (int, error) {
+	moved, err := moveIssues("issue_type_id", "issuetype")(ctx, tx, by, from, to)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	ctx := r.Context()
-	list, err := s.statusList(ctx)
+	_, err = tx.ExecContext(ctx, `INSERT IGNORE INTO project_issue_types (project_id, issue_type_id, position)
+		SELECT project_id, ?, position FROM project_issue_types WHERE issue_type_id = ?`, to.ID, from.ID)
+	return moved, err
+}
+
+func moveLinks(ctx context.Context, tx *sql.Tx, _ int64, from, to catalogueItem) (int, error) {
+	res, err := tx.ExecContext(ctx, `UPDATE issue_links SET type_id = ? WHERE type_id = ?`, to.ID, from.ID)
 	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
+// keepLastIssueType refuses deleting the only issue type.
+func keepLastIssueType(ctx context.Context, db *sql.DB) error {
+	var n int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issue_types`).Scan(&n); err != nil {
 		return err
 	}
-	if err := sameIDs(list, ids, func(st statusAdminOut) string { return st.ID }); err != nil {
-		return err
+	if n <= 1 {
+		return fail(http.StatusConflict, i18n.CatalogLastIssueType)
 	}
-	if err := s.setPositions(ctx, "statuses", ids); err != nil {
-		return err
+	return nil
+}
+
+// sameSubtask keeps sub-tasks among sub-tasks.
+func sameSubtask(from, to catalogueItem) error {
+	if *to.Subtask != *from.Subtask {
+		return fail(http.StatusBadRequest, i18n.CatalogReplacementKind)
 	}
-	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusOrder, audit.Target{Type: "status"}, map[string]any{"ids": ids})
-	out, err := s.statusList(ctx)
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusOK, out)
+	return nil
 }

@@ -4,6 +4,7 @@
  * to send. Problems are keys; the pages word them (src/i18n).
  */
 
+import { passwordTooShort } from './account-links.js';
 import type {
   AuditQuery,
   MailSecurity,
@@ -13,6 +14,8 @@ import type {
   SubscriptionInput,
   WebhookInput,
 } from './admin-types.js';
+import { isoDay } from './dates.js';
+import { fold } from './text.js';
 
 /** Problems found in a form, by field. */
 export type Problems<F extends string, P extends string = string> = Partial<Record<F, P>>;
@@ -175,7 +178,7 @@ export function webhookProblems(
   const out: Problems<'name' | 'url' | 'events', WebhookProblem> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   if (!isHookUrl(f.url)) out.url = 'urlInvalid';
   if (f.events.length === 0) out.events = 'eventsRequired';
   return out;
@@ -201,12 +204,6 @@ export type ExpiryChoice = '30' | '90' | '365' | 'date' | 'never';
 
 export type TokenProblem = 'nameRequired' | 'nameTooLong' | 'dateRequired' | 'dateInPast';
 
-/** "YYYY-MM-DD" of a local date. */
-export function isoDay(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 /** The last day a token works, or null for never. */
 export function tokenExpiry(choice: ExpiryChoice, date: string, today: Date): string | null {
   if (choice === 'never') return null;
@@ -224,7 +221,7 @@ export function tokenProblems(
   const out: Problems<'name' | 'expires', TokenProblem> = {};
   const n = name.trim();
   if (!n) out.name = 'nameRequired';
-  else if ([...n].length > 100) out.name = 'nameTooLong';
+  else if (tooLong(n, TOKEN_NAME_MAX)) out.name = 'nameTooLong';
   if (choice === 'date') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) out.expires = 'dateRequired';
     else if (date < isoDay(today)) out.expires = 'dateInPast';
@@ -356,7 +353,7 @@ export function userProblems(
     else if (!USERNAME_PATTERN.test(u)) out.username = 'usernameInvalid';
     if (f.invite) {
       if (!f.email.trim()) out.email = 'emailRequired';
-    } else if ([...f.password].length < minPassword) {
+    } else if (passwordTooShort(f.password, minPassword)) {
       out.password = 'passwordShort';
     }
   }
@@ -366,10 +363,7 @@ export function userProblems(
 
 /** A user name suggested from a display name: "Marie Durand" → "marie.durand". */
 export function suggestUsername(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
+  return fold(name)
     .trim()
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '')
@@ -378,17 +372,25 @@ export function suggestUsername(name: string): string {
 
 /** Whether a list matches a typed search: every word in one of the texts. */
 export function matches(search: string, ...texts: (string | null | undefined)[]): boolean {
-  const words = search.toLowerCase().split(/\s+/).filter(Boolean);
+  const words = fold(search).split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const hay = texts.filter(Boolean).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return words.every((w) => hay.includes(w.normalize('NFD').replace(/[̀-ͯ]/g, '')));
+  const hay = fold(texts.filter(Boolean).join(' '));
+  return words.every((w) => hay.includes(w));
 }
 
-/** Longest name of a group or a role, in characters, as the server takes it. */
+/** Longest name the server takes, in characters: a 255-character column. */
 export const NAME_MAX = 255;
+
+/** Longest API token name the server takes, in characters. */
+export const TOKEN_NAME_MAX = 100;
 
 /** Longest group description: the server stores it in a 255-character column. */
 export const GROUP_DESCRIPTION_MAX = 255;
+
+/** Whether s, trimmed, has more than max characters (code points, as the server counts them). */
+export function tooLong(s: string, max = NAME_MAX): boolean {
+  return [...s.trim()].length > max;
+}
 
 export interface NamedForm {
   name: string;
@@ -400,15 +402,14 @@ export type NamedProblem = 'nameRequired' | 'nameTooLong' | 'descriptionTooLong'
 function nameProblem(name: string): 'nameRequired' | 'nameTooLong' | undefined {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  return [...n].length > NAME_MAX ? 'nameTooLong' : undefined;
+  return tooLong(n) ? 'nameTooLong' : undefined;
 }
 
 export function groupProblems(f: NamedForm): Problems<'name' | 'description', NamedProblem> {
   const out: Problems<'name' | 'description', NamedProblem> = {};
   const name = nameProblem(f.name);
   if (name) out.name = name;
-  if ([...f.description.trim()].length > GROUP_DESCRIPTION_MAX)
-    out.description = 'descriptionTooLong';
+  if (tooLong(f.description, GROUP_DESCRIPTION_MAX)) out.description = 'descriptionTooLong';
   return out;
 }
 
@@ -466,7 +467,7 @@ export function securityLevelProblem(
 ): SecurityLevelProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return levels.some((l) => l.id !== self && l.name.trim().toLowerCase() === lower)
     ? 'nameTaken'

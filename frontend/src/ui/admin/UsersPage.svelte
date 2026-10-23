@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { canResendInvitation } from '../../core/account-links.js';
+  import { filterUsers, USER_SHOWS, type UserShow } from '../../core/admin-lists.js';
   import { adminPath } from '../../core/areas.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
@@ -16,28 +17,18 @@
   import UserDialog from './UserDialog.svelte';
 
   /** Accounts: who exists, who may sign in, who administers, in which groups. */
-  type Show = 'all' | 'active' | 'inactive' | 'admins';
-  const SHOWS: Show[] = ['all', 'active', 'inactive', 'admins'];
-
   let users = $state<UserRow[] | null>(null);
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
-  let show = $state<Show>('all');
+  let show = $state<UserShow>('all');
   let dialog = $state<{ user: UserRow | null } | null>(null);
   let password = $state<UserRow | null>(null);
   let deactivating = $state<UserRow | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
 
-  const list = $derived(
-    (users ?? []).filter((u) => {
-      if (show === 'active' && !u.active) return false;
-      if (show === 'inactive' && u.active) return false;
-      if (show === 'admins' && !u.admin) return false;
-      return true;
-    }),
-  );
+  const list = $derived(filterUsers(users ?? [], show));
 
   async function load() {
     const mine = ++seq;
@@ -57,11 +48,11 @@
     adminApi
       .groups()
       .then((g) => (groups = g))
-      .catch((e: unknown) => {
-        // An older server lists no groups: the dialog leaves them out.
-        if (!(e instanceof ApiError && e.status === 404)) notify(errorMessage(e), 'error');
-      });
+      .catch((e: unknown) => notify(errorMessage(e), 'error'));
   });
+
+  // Not in the effect above: load reads q, so that one reruns on every keystroke.
+  $effect(() => () => clearTimeout(timer));
 
   function typed() {
     clearTimeout(timer);
@@ -127,7 +118,7 @@
     aria-label={t.usersAdmin.search}
   />
   <select class="select" bind:value={show} aria-label={t.usersAdmin.showLabel}>
-    {#each SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
+    {#each USER_SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
   </select>
 </div>
 
@@ -179,23 +170,29 @@
               <span class="tag-list">
                 {#if u.admin}<span class="stamp done">{t.usersAdmin.admin}</span>{/if}
                 {#if !u.active}<span class="stamp">{t.usersAdmin.inactive}</span>{/if}
-                {#if !u.hasPassword}<span class="muted small">{t.usersAdmin.noPassword}</span>{/if}
+                {#if u.directory}<span class="stamp" title={t.usersAdmin.directoryHint}
+                    >{t.usersAdmin.directory}</span
+                  >{:else if !u.hasPassword}<span class="muted small"
+                    >{t.usersAdmin.noPassword}</span
+                  >{/if}
               </span>
             </td>
             <td
               class="num muted c-login"
               title={u.lastLogin ? formatDateTime(u.lastLogin) : undefined}
             >
-              {u.lastLogin ? relative(u.lastLogin) : u.lastLogin === null ? t.usersAdmin.never : ''}
+              {u.lastLogin ? relative(u.lastLogin) : t.usersAdmin.never}
             </td>
             <td class="row-actions">
               <button class="link-btn" onclick={() => (dialog = { user: u })}
                 >{t.common.edit}</button
               >
               {#if u.id !== session.me?.id}
-                <button class="link-btn" onclick={() => (password = u)}
-                  >{t.usersAdmin.password}</button
-                >
+                {#if !u.directory}
+                  <button class="link-btn" onclick={() => (password = u)}
+                    >{t.usersAdmin.password}</button
+                  >
+                {/if}
                 {#if canResendInvitation(u, publicSettings.value.emailLinks)}
                   <button class="link-btn" onclick={() => void resendInvitation(u)}
                     >{t.usersAdmin.resendInvite}</button

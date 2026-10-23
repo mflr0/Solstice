@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"solstice/internal/i18n"
 	"solstice/internal/jql"
@@ -128,25 +129,18 @@ func (s *Server) restCreateIssue(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkCustomContext(ctx, projectID, typeID, edit.custom); err != nil {
 		return err
 	}
-	var created struct{ Key string }
-	if err := s.uiCall(r, s.createIssue, http.MethodPost, "/api/issues", nil, edit.ui, &created); err != nil {
-		return err
-	}
-	iss, err := s.findIssue(ctx, created.Key)
+	iss, err := s.newIssue(ctx, sub, edit.ui, edit.custom)
 	if err != nil {
 		return err
 	}
 	o := s.restOut(r)
-	if err := s.applyCustom(ctx, sub, o, iss, edit.custom); err != nil {
-		return err
-	}
 	if edit.sprint != nil && *edit.sprint != 0 {
 		if err := s.applySprint(ctx, sub, iss, *edit.sprint); err != nil {
 			return err
 		}
 	}
 	for _, c := range edit.comments {
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": iss.Key()}, c, nil); err != nil {
 			return err
 		}
@@ -192,7 +186,7 @@ func (s *Server) restEdit(r *http.Request, sub *perm.Subject, iss *issueRow, edi
 		}
 	}
 	for _, c := range edit.comments {
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": iss.Key()}, c, nil); err != nil {
 			return err
 		}
@@ -211,7 +205,7 @@ func (s *Server) translateForIssue(ctx context.Context, sub *perm.Subject, iss *
 		return nil, err
 	}
 	p.issueType = iss.TypeID
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool {
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool {
 		return k == loadLabels || k == loadComponents || k == loadVersions
 	})
 	if err != nil {
@@ -255,7 +249,7 @@ func (s *Server) restDeleteIssue(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.IssueDeleteSubtasks)
 		}
 	}
-	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, "/api/issues/"+iss.Key(),
+	if err := s.uiCall(r, s.deleteIssue, http.MethodDelete, nil,
 		map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 		return err
 	}
@@ -413,7 +407,13 @@ func (s *Server) pathComment(r *http.Request, sub *perm.Subject, iss *issueRow) 
 	if err != nil {
 		return commentRow{}, errNotFound
 	}
-	rows, err := s.visibleComments(r.Context(), sub, iss)
+	return s.visibleComment(r.Context(), sub, iss, id)
+}
+
+// visibleComment finds a comment among those of the issue that the user may
+// read.
+func (s *Server) visibleComment(ctx context.Context, sub *perm.Subject, iss *issueRow, id int64) (commentRow, error) {
+	rows, err := s.visibleComments(ctx, sub, iss)
 	if err != nil {
 		return commentRow{}, err
 	}
@@ -425,13 +425,7 @@ func (s *Server) pathComment(r *http.Request, sub *perm.Subject, iss *issueRow) 
 	return commentRow{}, errNotFound
 }
 
-func (s *Server) writeJiraComment(w http.ResponseWriter, r *http.Request, sub *perm.Subject, iss *issueRow, id int64,
-	status int) error {
-	r.SetPathValue("id", strconv.FormatInt(id, 10))
-	c, err := s.pathComment(r, sub, iss)
-	if err != nil {
-		return err
-	}
+func (s *Server) writeJiraComment(w http.ResponseWriter, r *http.Request, iss *issueRow, c commentRow, status int) error {
 	o := s.restOut(r)
 	users, err := s.jiraUsers(r.Context(), o, c.author.Int64, c.updatedBy.Int64)
 	if err != nil {
@@ -449,7 +443,7 @@ func (s *Server) restComment(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, c.id, http.StatusOK)
+	return s.writeJiraComment(w, r, iss, c, http.StatusOK)
 }
 
 type jiraCommentInput struct {
@@ -471,11 +465,15 @@ func (s *Server) restAddComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var out commentOut
-	if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+iss.Key()+"/comments",
+	if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 		map[string]string{"key": iss.Key()}, c, &out); err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, out.ID, http.StatusCreated)
+	added, err := s.visibleComment(r.Context(), sub, iss, out.ID)
+	if err != nil {
+		return err
+	}
+	return s.writeJiraComment(w, r, iss, added, http.StatusCreated)
 }
 
 func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
@@ -507,11 +505,14 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	id := strconv.FormatInt(c.id, 10)
-	if err := s.uiCall(r, s.editComment, http.MethodPatch, "/api/comments/"+id, map[string]string{"id": id},
+	if err := s.uiCall(r, s.editComment, http.MethodPatch, nil, map[string]string{"id": id},
 		map[string]string{"body": in.Body}, nil); err != nil {
 		return err
 	}
-	return s.writeJiraComment(w, r, sub, iss, c.id, http.StatusOK)
+	if c, err = s.visibleComment(r.Context(), sub, iss, c.id); err != nil {
+		return err
+	}
+	return s.writeJiraComment(w, r, iss, c, http.StatusOK)
 }
 
 func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error {
@@ -524,7 +525,7 @@ func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	id := strconv.FormatInt(c.id, 10)
-	if err := s.uiCall(r, s.deleteComment, http.MethodDelete, "/api/comments/"+id, map[string]string{"id": id},
+	if err := s.uiCall(r, s.deleteComment, http.MethodDelete, nil, map[string]string{"id": id},
 		nil, nil); err != nil {
 		return err
 	}
@@ -538,7 +539,7 @@ func (s *Server) restDeleteComment(w http.ResponseWriter, r *http.Request) error
 // their authors.
 func (s *Server) issueWorklogs(ctx context.Context, o *restOut, sub *perm.Subject, iss *issueRow) ([]worklogData,
 	map[int64]*jiraUser, error) {
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadWorklogs })
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool { return k == loadWorklogs })
 	if err != nil {
 		return nil, nil, err
 	}
@@ -606,7 +607,6 @@ func (in restWorklogInput) uiBody() (map[string]any, error) {
 }
 
 func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
 	sub, iss, err := s.restSubjectIssue(r)
 	if err != nil {
 		return err
@@ -619,16 +619,14 @@ func (s *Server) restAddWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.uiCall(r, s.addWorklog, http.MethodPost, "/api/issues/"+iss.Key()+"/worklogs",
-		map[string]string{"key": iss.Key()}, body, nil); err != nil {
+	var created struct {
+		ID int64 `json:"id"`
+	}
+	if err := s.uiCall(r, s.addWorklog, http.MethodPost, nil,
+		map[string]string{"key": iss.Key()}, body, &created); err != nil {
 		return err
 	}
-	var id int64
-	if err := s.db.QueryRowContext(ctx, `SELECT MAX(id) FROM worklogs WHERE issue_id = ? AND author_id = ?`,
-		iss.ID, sub.UserID).Scan(&id); err != nil {
-		return err
-	}
-	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusCreated)
+	return s.restRespondWorklog(w, r, sub, iss, created.ID, http.StatusCreated)
 }
 
 // restRespondWorklog answers with a work log of an issue, as Jira renders it.
@@ -670,9 +668,10 @@ func (s *Server) restWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	id, err := s.restWorklogOfIssue(r, iss)
+	// restRespondWorklog answers 404 for a work log of another issue.
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		return err
+		return errNotFound
 	}
 	return s.restRespondWorklog(w, r, sub, iss, id, http.StatusOK)
 }
@@ -694,7 +693,7 @@ func (s *Server) restEditWorklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.uiCall(r, s.editWorklog, http.MethodPut, "/api/worklogs/"+strconv.FormatInt(id, 10),
+	if err := s.uiCall(r, s.editWorklog, http.MethodPut, nil,
 		map[string]string{"id": strconv.FormatInt(id, 10)}, body, nil); err != nil {
 		return err
 	}
@@ -710,7 +709,7 @@ func (s *Server) restDeleteWorklog(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	if err := s.uiCall(r, s.deleteWorklog, http.MethodDelete, "/api/worklogs/"+strconv.FormatInt(id, 10),
+	if err := s.uiCall(r, s.deleteWorklog, http.MethodDelete, nil,
 		map[string]string{"id": strconv.FormatInt(id, 10)}, nil, nil); err != nil {
 		return err
 	}
@@ -798,7 +797,7 @@ func (s *Server) restWatch(on bool) handler {
 			method = http.MethodDelete
 		}
 		if userID == sub.UserID {
-			if err := s.uiCall(r, s.setWatch(on), method, "/api/issues/"+iss.Key()+"/watch",
+			if err := s.uiCall(r, s.setWatch(on), method, nil,
 				map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 				return err
 			}
@@ -859,7 +858,7 @@ func (s *Server) restVote(on bool) handler {
 		if !on {
 			method = http.MethodDelete
 		}
-		if err := s.uiCall(r, s.setVote(on), method, "/api/issues/"+iss.Key()+"/vote",
+		if err := s.uiCall(r, s.setVote(on), method, nil,
 			map[string]string{"key": iss.Key()}, nil, nil); err != nil {
 			return err
 		}
@@ -878,17 +877,12 @@ func (s *Server) restAttach(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var before int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM attachments WHERE issue_id = ?`, iss.ID).
-		Scan(&before); err != nil {
-		return err
-	}
-	r.SetPathValue("key", iss.Key())
-	if err := s.upload(&recorder{header: http.Header{}}, r); err != nil {
+	ids, err := s.storeAttachments(&recorder{header: http.Header{}}, r, sub, iss)
+	if err != nil {
 		return err
 	}
 	o := s.restOut(r)
-	set, err := s.loadIssues(ctx, sub, []*issueRow{iss}, func(k string) bool { return k == loadAttachments })
+	set, err := s.loadIssues(ctx, sub, nil, []*issueRow{iss}, func(k string) bool { return k == loadAttachments })
 	if err != nil {
 		return err
 	}
@@ -898,7 +892,7 @@ func (s *Server) restAttach(w http.ResponseWriter, r *http.Request) error {
 	}
 	out := []any{}
 	for _, a := range set.list[0].attachments {
-		if a.id > before && a.author.Int64 == sub.UserID {
+		if slices.Contains(ids, a.id) {
 			out = append(out, o.attachment(a, users))
 		}
 	}
@@ -971,7 +965,7 @@ func (s *Server) restLink(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	source, target := issues[0], issues[1]
-	if err := s.uiCall(r, s.addLink, http.MethodPost, "/api/issues/"+source.Key()+"/links",
+	if err := s.uiCall(r, s.addLink, http.MethodPost, nil,
 		map[string]string{"key": source.Key()},
 		map[string]any{"type": linkType.ID, "direction": "outward", "target": target.Key()}, nil); err != nil {
 		return err
@@ -981,7 +975,7 @@ func (s *Server) restLink(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if err := s.uiCall(r, s.addComment, http.MethodPost, "/api/issues/"+source.Key()+"/comments",
+		if err := s.uiCall(r, s.addComment, http.MethodPost, nil,
 			map[string]string{"key": source.Key()}, c, nil); err != nil {
 			return err
 		}
@@ -1004,36 +998,6 @@ func (s *Server) restLinkTypes(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Search -----------------------------------------------------------------------
-
-// searchRows runs a search condition (aliases i, p and pr) and returns a page
-// of issues with the total.
-func (s *Server) searchRows(ctx context.Context, where string, args []any, order string, offset, limit int) (
-	[]*issueRow, int, error) {
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
-	var total int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	if limit <= 0 || offset >= total {
-		return nil, total, nil
-	}
-	rows, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+from+` ORDER BY `+order+`, i.id DESC LIMIT ? OFFSET ?`,
-		append(args, limit, offset)...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-	var out []*issueRow
-	for rows.Next() {
-		iss, err := scanIssue(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		out = append(out, iss)
-	}
-	return out, total, rows.Err()
-}
 
 // restSearch runs a JQL search: GET with parameters, or POST with a JSON
 // body, as Jira.
@@ -1072,7 +1036,7 @@ func (s *Server) restSearch(w http.ResponseWriter, r *http.Request) error {
 		q := r.URL.Query()
 		query, fieldList, expandList = q.Get("jql"), q["fields"], q["expand"]
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
+	where, args, order, err := s.searchCondition(ctx, sub, url.Values{"jql": {query}})
 	if err != nil {
 		return err
 	}

@@ -118,7 +118,6 @@ export const de: Messages = {
     create: 'Neuer Vorgang',
     account: 'Konto',
     myPage: 'Meine Seite',
-    admin: 'Benutzer',
     skin: 'Design',
     skins: {
       carnet: 'Notizbuch',
@@ -178,7 +177,6 @@ export const de: Messages = {
     schemes: { light: 'hell', dark: 'dunkel' },
     lightOnly: 'Nur im hellen Modus verfügbar.',
     preparing: 'Vorschau wird vorbereitet…',
-    unfinished: 'Dieses Design wird noch gezeichnet.',
     mock: {
       work: 'Meine Arbeit',
       projects: 'Projekte',
@@ -239,19 +237,15 @@ export const de: Messages = {
     none: 'Keine',
     noneF: 'Keine',
     unassigned: 'Nicht zugewiesen',
-    me: 'Ich',
     seeAll: 'Alle anzeigen',
-    retry: 'Erneut versuchen',
     inactive: 'deaktiviert',
     confidential: 'Vertraulich',
     previous: 'Zurück',
     next: 'Weiter',
     yes: 'ja',
     no: 'nein',
-    search: 'Suchen',
     filter: 'Filtern…',
     ctrlEnter: 'Strg + Enter zum Senden',
-    of: 'von',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${first}–${last} von ${total}`,
@@ -348,7 +342,6 @@ export const de: Messages = {
     intro:
       'Diese Regeln gelten nur für dieses Projekt: Es gibt keine gemeinsamen Schemata, eine Änderung hier betrifft kein anderes Projekt.',
     permissions: 'Wer darf was',
-    holders: 'Berechtigte',
     addHolder: 'Hinzufügen',
     nobody: 'Niemand',
     chooseKind: 'Art der Berechtigung',
@@ -356,12 +349,10 @@ export const de: Messages = {
     chooseRole: 'Rolle',
     chooseUser: 'Benutzer',
     roles: 'Rollen in diesem Projekt',
-    roleMembers: 'Mitglieder',
     noMembers: 'Keine Mitglieder',
     saved: 'Einstellungen gespeichert.',
     unsaved: 'Ungespeicherte Änderungen',
     discard: 'Änderungen verwerfen',
-    forbidden: 'Nur die Administratoren des Projekts können diese Seite sehen.',
     backToProject: 'Zurück zum Projekt',
   },
 
@@ -369,6 +360,55 @@ export const de: Messages = {
     title: 'Suche',
     results: (n: number) => plural(n, 'Vorgang', 'Vorgänge'),
     empty: 'Keine passenden Vorgänge.',
+    columns: {
+      button: 'Spalten',
+      shown: 'Angezeigte Spalten',
+      more: 'Weitere Spalten',
+      reset: 'Standardspalten',
+    },
+    exportCsv: 'Als CSV exportieren',
+    bulk: {
+      select: (key: string) => `${key} auswählen`,
+      selectPage: 'Alle Vorgänge dieser Seite auswählen',
+      selected: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} ausgewählt`,
+      actions: 'Ausgewählte Vorgänge ändern',
+      clear: 'Auswahl aufheben',
+      edit: 'Bearbeiten',
+      transition: 'Status ändern',
+      move: 'Verschieben',
+      delete: 'Löschen',
+      editTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} bearbeiten`,
+      transitionTitle: (n: number) => `Status von ${plural(n, 'Vorgang', 'Vorgängen')} ändern`,
+      moveTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} verschieben`,
+      deleteTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} löschen?`,
+      deleteBody: (n: number) =>
+        `Damit werden ${plural(n, 'Vorgang', 'Vorgänge')} mit ihren Unteraufgaben, Kommentaren und Dateien endgültig gelöscht. Das lässt sich nicht rückgängig machen.`,
+      typeToConfirm: (n: number) => `Zur Bestätigung ${n} eingeben`,
+      deleteSubmit: 'Löschen',
+      editHint:
+        'Kreuzen Sie die zu ändernden Felder an; die übrigen bleiben bei jedem Vorgang, wie sie sind.',
+      change: (field: string) => `${field} ändern`,
+      modes: { add: 'Hinzufügen', remove: 'Entfernen', replace: 'Alle ersetzen durch' },
+      oneProject:
+        'Komponenten und Lösungsversionen lassen sich nur ändern, wenn alle ausgewählten Vorgänge im selben Projekt sind.',
+      noSprint: 'Kein Sprint (offenen Sprint verlassen)',
+      noPriority: 'Keine',
+      status: 'Neuer Status',
+      statusHint:
+        'Jeder Vorgang wechselt über seinen eigenen Workflow: Vorgänge ohne diesen Übergang bleiben, wie sie sind.',
+      defaultResolution: 'Wie vom Status vorgegeben',
+      apply: 'Anwenden',
+      done: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} geändert.`,
+      failed: (n: number) => `${plural(n, 'Vorgang wurde', 'Vorgänge wurden')} nicht geändert`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'Vorgang wird', 'Vorgänge werden')} mit ihren Unteraufgaben nach ${project} verschoben und erhalten neue Schlüssel. Die alten Schlüssel führen weiterhin dorthin.`,
+      cannotMove: (n: number) =>
+        `${plural(n, 'Vorgang kann', 'Vorgänge können')} nicht verschoben werden`,
+      moveHint:
+        'Die Vorgänge erhalten in diesem Projekt neue Schlüssel; die alten funktionieren weiter. Jeder Vorgang braucht die Berechtigung Bearbeiten in seinem Projekt und Erstellen im Zielprojekt.',
+      moveChoicesHint: (project: string) =>
+        `${project} fehlt einiges, was diese Vorgänge verwenden. Wählen Sie, was daraus wird; jeder Vorgang übernimmt nur die Auswahl, die er braucht.`,
+    },
     filters: 'Filter',
     text: 'Suchtext',
     textPlaceholder: 'In Vorgängen suchen…',
@@ -443,7 +483,6 @@ export const de: Messages = {
     shortcuts: 'Schnellauswahl',
     categoryOnly: (name: string) => `Kategorie: ${name}`,
     released: 'veröffentlicht',
-    noProject: 'Wählen Sie ein Projekt, um seine Werte zu sehen.',
     datePresets: {
       today: 'Heute',
       week: 'Diese Woche',
@@ -547,6 +586,8 @@ export const de: Messages = {
     duringDates: () => 'DURING erwartet zwei Datumsangaben in Klammern.',
     argumentInvalid: (name: string) => `Ungültiges Argument für ${name}().`,
     valueExpected: () => 'Wert erwartet.',
+    tooLong: (max: number) => `Die Abfrage ist zu lang (höchstens ${max} Zeichen).`,
+    tooDeep: (max: number) => `Die Abfrage ist zu tief verschachtelt (höchstens ${max} Ebenen).`,
   },
   quick: {
     label: 'Schnellsuche',
@@ -603,7 +644,6 @@ export const de: Messages = {
     assignee: 'Bearbeiter',
     updated: 'Geändert',
     due: 'Fällig',
-    overdue: 'überfällig',
   },
 
   issue: {
@@ -645,7 +685,6 @@ export const de: Messages = {
     created: 'Erstellt',
     updated: 'Geändert',
     resolved: 'Gelöst',
-    resolution: 'Lösung',
     time: 'Zeiterfassung',
     estimate: 'Geschätzt',
     remaining: 'Verbleibend',
@@ -657,14 +696,10 @@ export const de: Messages = {
     customFields: 'Weitere Felder',
     watch: 'Beobachten',
     watching: 'Beobachtet',
-    watchers: (n: number) => plural(n, 'Beobachter', 'Beobachter'),
     vote: 'Abstimmen',
     voted: 'Abgestimmt',
-    votes: (n: number) => plural(n, 'Stimme', 'Stimmen'),
-    by: 'von',
     createdBy: (when: string, who: string) => `erstellt ${when} von ${who}`,
     createdOn: (when: string) => `erstellt ${when}`,
-    parent: 'Unteraufgabe von',
     changeStatus: 'Status ändern',
     chooseResolution: 'Lösung',
     leaveUnresolved: 'Ohne Lösung lassen',
@@ -731,7 +766,6 @@ export const de: Messages = {
     send: 'Kommentieren',
     edited: 'bearbeitet',
     visibleTo: (who: string) => `sichtbar für ${who}`,
-    confirmDelete: 'Diesen Kommentar löschen?',
   },
 
   editor: {
@@ -755,6 +789,7 @@ export const de: Messages = {
     mention: 'Jemanden erwähnen',
     undo: 'Rückgängig',
     redo: 'Wiederholen',
+    keys: { ctrl: 'Strg', alt: 'Alt', shift: 'Umschalt' },
     source: 'Quelltext',
     sourceLabel: 'Wiki-Markup',
     tableTools: 'Tabelle',
@@ -1034,29 +1069,6 @@ export const de: Messages = {
     deleted: (name: string) => `Board „${name}“ gelöscht.`,
   },
 
-  admin: {
-    title: 'Benutzer',
-    newUser: 'Neuer Benutzer',
-    username: 'Benutzername',
-    name: 'Anzeigename',
-    email: 'E-Mail-Adresse',
-    password: 'Passwort',
-    passwordHint: 'Mindestens 10 Zeichen',
-    admin: 'Administrator',
-    active: 'Aktiv',
-    state: 'Status',
-    noPassword: 'ohne Passwort',
-    resetPassword: 'Neues Passwort',
-    deactivate: 'Deaktivieren',
-    activate: 'Reaktivieren',
-    makeAdmin: 'Zum Administrator machen',
-    removeAdmin: 'Administratorrechte entziehen',
-    created: 'Konto erstellt.',
-    updated: 'Konto aktualisiert.',
-    forbidden: 'Diese Seite ist Administratoren vorbehalten.',
-    since: 'Seit',
-  },
-
   notFound: {
     title: 'Nicht gefunden',
     back: 'Zurück zu meiner Arbeit',
@@ -1223,7 +1235,6 @@ export const de: Messages = {
     intro:
       'Die Einstellungen für das ganze Solstice: Konten, Projekte, Vorgangskataloge, E-Mails und Integrationen. Nur Administratoren sehen diese Seiten.',
     forbidden: 'Diese Seite ist den Solstice-Administratoren vorbehalten.',
-    nav: 'Bereiche der Administration',
     groups: {
       general: 'Allgemein',
       people: 'Benutzer und Gruppen',
@@ -1289,12 +1300,8 @@ export const de: Messages = {
     copy: 'Kopieren',
     copied: 'Kopiert',
     refresh: 'Aktualisieren',
-    saved: 'Änderungen gespeichert.',
-    search: 'Suchen',
     noMatch: 'Keine Treffer für diese Suche.',
     clearSearch: 'Suche zurücksetzen',
-    unavailable:
-      'Dieser Server bietet diese Einstellung noch nicht: Aktualisieren Sie Solstice, um sie zu nutzen.',
     hideBanner: 'Ausblenden',
     restricted: {
       comments: (n: number) => plural(n, 'Kommentar', 'Kommentare'),
@@ -1358,7 +1365,6 @@ export const de: Messages = {
   },
 
   auditAdmin: {
-    title: 'Audit-Protokoll',
     intro:
       'Wer sich angemeldet hat und wer Konten, Zugriffsrechte und Einstellungen geändert hat, von wo und wann. Das Protokoll ist schreibgeschützt.',
     count: (n: number) => plural(n, 'Eintrag', 'Einträge'),
@@ -1410,6 +1416,7 @@ export const de: Messages = {
       priority: 'Prioritäten',
       resolution: 'Lösungen',
       linktype: 'Verknüpfungstypen',
+      attachment: 'Anhänge',
       field: 'Benutzerdefinierte Felder',
       settings: 'Einstellungen',
       import: 'Jira-Import',
@@ -1479,6 +1486,7 @@ export const de: Messages = {
       'filter.share': 'Freigabe eines Filters geändert',
       'issue.delete': 'Vorgang gelöscht',
       'issue.export': 'Suche als CSV exportiert',
+      'issue.import': 'Vorgänge aus CSV importiert',
       'issuetype.create': 'Vorgangstyp erstellt',
       'issuetype.update': 'Vorgangstyp geändert',
       'issuetype.delete': 'Vorgangstyp gelöscht',
@@ -1521,6 +1529,8 @@ export const de: Messages = {
       'update.result': 'Update abgeschlossen',
       'setup.complete': 'Einrichtung abgeschlossen',
       'issue.move': 'Vorgang verschoben',
+      'attachment.upload': 'Anhang hochgeladen',
+      'attachment.delete': 'Anhang gelöscht',
     },
     targets: {
       user: 'Konto',
@@ -1545,6 +1555,7 @@ export const de: Messages = {
       priority: 'Priorität',
       resolution: 'Lösung',
       linktype: 'Verknüpfungstyp',
+      attachment: 'Anhang',
     },
     detailKeys: {
       name: 'Name',
@@ -1569,6 +1580,8 @@ export const de: Messages = {
       owner: 'Eigentümer',
       version: 'Version',
       status: 'Status',
+      issue: 'Vorgang',
+      size: 'Größe (Bytes)',
     },
     retention: {
       title: 'Aufbewahrung',
@@ -1591,7 +1604,6 @@ export const de: Messages = {
   },
 
   systemAdmin: {
-    title: 'Systeminformationen',
     intro:
       'Was läuft, wo die Daten liegen und was Aufmerksamkeit braucht. Geheimnisse werden hier nicht angezeigt.',
     solstice: 'Solstice',
@@ -1628,7 +1640,6 @@ export const de: Messages = {
     projectsArchived: 'Archivierte Projekte',
     issues: 'Vorgänge',
     comments: 'Kommentare',
-    attachments: 'Anhänge',
     mail: 'E-Mail',
     mailOn: 'Versand aktiv',
     mailOff: 'Versand aus',
@@ -1676,8 +1687,6 @@ export const de: Messages = {
     reload: 'Solstice neu laden',
     again: 'Erneut importieren',
     lastTitle: 'Letzter Import',
-    unavailable:
-      'Dieser Server kann noch nicht über die Administration importieren: Aktualisieren Sie Solstice.',
   },
 
   tokensAdmin: {
@@ -1926,7 +1935,6 @@ export const de: Messages = {
   account: {
     title: 'Meine Einstellungen',
     menu: 'Meine Einstellungen',
-    nav: 'Bereiche meiner Einstellungen',
     sections: {
       profile: 'Profil',
       appearance: 'Sprache und Darstellung',
@@ -1945,7 +1953,10 @@ export const de: Messages = {
     emailHint: 'Dient auch dazu, Sie zu benachrichtigen und zu erreichen.',
     emailChangeHint: 'Zum Ändern der Adresse wird Ihr aktuelles Passwort benötigt.',
     passwordTitle: 'Passwort',
-    passwordIntro: 'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten.',
+    directoryPasswordIntro:
+      'Ihr Passwort wird im Verzeichnis (LDAP) verwaltet: Ändern Sie es dort. Geben Sie es hier nur ein, um Ihre E-Mail-Adresse zu ändern.',
+    passwordIntro:
+      'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten. Ein neues Passwort beendet Ihre anderen Sitzungen, und Ihre Zugriffstoken funktionieren nicht mehr.',
     currentPassword: 'Aktuelles Passwort',
     newPassword: 'Neues Passwort',
     confirmPassword: 'Passwort bestätigen',
@@ -1953,8 +1964,6 @@ export const de: Messages = {
     passwordShort: (n: number) => `Mindestens ${n} Zeichen.`,
     passwordChanged: 'Passwort geändert.',
     saved: 'Einstellungen gespeichert.',
-    profileUnsupported:
-      'Dieser Server kann Name und E-Mail-Adresse noch nicht ändern: Aktualisieren Sie Solstice.',
     picture: 'Bild',
     pictureHint:
       'Wird neben Ihrem Namen angezeigt. Das Bild wird in Ihrem Browser quadratisch zugeschnitten und verkleinert, bevor es gesendet wird.',
@@ -2054,6 +2063,8 @@ export const de: Messages = {
     admin: 'Administrator',
     inactive: 'deaktiviert',
     noPassword: 'ohne Passwort',
+    directory: 'LDAP',
+    directoryHint: 'Meldet sich über das Verzeichnis (LDAP) an: Das Passwort wird dort verwaltet.',
     more: (n: number) => `+${n}`,
     rights: 'Berechtigungen',
     adminLabel: 'Solstice-Administrator (Zugriff auf die gesamte Administration)',
@@ -2070,12 +2081,11 @@ export const de: Messages = {
     editTitle: (name: string) => `Konto von ${name} bearbeiten`,
     created: (name: string) => `Konto von ${name} erstellt.`,
     updated: (name: string) => `Konto von ${name} gespeichert.`,
-    edit: 'Bearbeiten',
     deactivate: 'Deaktivieren',
     activate: 'Reaktivieren',
     deactivateTitle: (name: string) => `Konto von ${name} deaktivieren?`,
     deactivateBody:
-      'Diese Person kann sich nicht mehr anmelden, und ihre Sitzungen werden sofort beendet. Ihre Vorgänge, Kommentare und der Verlauf bleiben erhalten; Sie können das Konto später wieder aktivieren.',
+      'Diese Person kann sich nicht mehr anmelden, ihre Sitzungen werden sofort beendet und ihre Zugriffstoken gelöscht. Ihre Vorgänge, Kommentare und der Verlauf bleiben erhalten; Sie können das Konto später wieder aktivieren.',
     deactivated: (name: string) => `Konto von ${name} deaktiviert.`,
     reactivated: (name: string) => `Konto von ${name} reaktiviert.`,
     passwordTitle: (name: string) => `Neues Passwort für ${name}`,
@@ -2083,7 +2093,8 @@ export const de: Messages = {
     generateButton: 'Erzeugen',
     typePassword: 'Passwort eingeben',
     newPassword: 'Neues Passwort',
-    sessionsEnd: 'Die offenen Sitzungen dieser Person werden beendet.',
+    sessionsEnd:
+      'Die offenen Sitzungen dieser Person werden beendet, und ihre Zugriffstoken funktionieren nicht mehr.',
     generatedOnce:
       'Geben Sie dieses Passwort jetzt weiter: Es wird danach nicht mehr angezeigt. Die Person kann es in ihren Einstellungen ändern.',
     done: 'Verstanden',
@@ -2294,7 +2305,6 @@ export const de: Messages = {
     noCategory: 'Ohne Kategorie',
     category: 'Kategorie',
     issues: 'Vorgänge',
-    state: 'Status',
     archive: 'Archivieren',
     unarchive: 'Wiederherstellen',
     empty: 'Noch kein Projekt',
@@ -2365,7 +2375,6 @@ export const de: Messages = {
     categoryTitle: (name: string) => `„${name}“ bearbeiten`,
     categoryName: 'Name',
     categoryDescription: 'Beschreibung',
-    categoryProjects: (n: number) => plural(n, 'Projekt', 'Projekte'),
     categoriesEmpty: 'Noch keine Kategorie.',
     categoryCreated: (name: string) => `Kategorie „${name}“ angelegt.`,
     categorySaved: (name: string) => `Kategorie „${name}“ gespeichert.`,
@@ -2388,6 +2397,7 @@ export const de: Messages = {
       components: 'Komponenten',
       versions: 'Versionen',
       notifications: 'Benachrichtigungen',
+      import: 'Import',
     },
     leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
     general: {
@@ -2495,6 +2505,37 @@ export const de: Messages = {
       recipient: 'Gruppe oder Rolle',
       none: 'Es gibt noch keine Gruppe und keine Rolle zur Auswahl.',
       cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+    import: {
+      title: 'Vorgänge importieren',
+      intro:
+        'Legen Sie Vorgänge in diesem Projekt aus einer CSV-Datei an, etwa einer exportierten Suche. Spalten werden an ihrer Überschrift erkannt, in jeder Sprache. Vor dem Import wird nichts geschrieben; dann werden alle Zeilen angelegt oder keine. Der Import sendet weder E-Mails noch Webhooks.',
+      limits: (rows: number, mib: number) =>
+        `Höchstens ${formatNumber(rows)} Zeilen und ${mib} MiB.`,
+      file: 'CSV-Datei',
+      checking: 'Datei wird geprüft…',
+      columnsTitle: 'Spalten',
+      column: 'Spalte',
+      field: 'Feld',
+      skip: 'Nicht importiert',
+      readOnly: 'Von Solstice gesetzt: nicht importiert',
+      unknown: 'Unbekannte Spalte: Wählen Sie ein Feld oder lassen Sie sie weg.',
+      fieldFor: (header: string) => `Feld für die Spalte ${header}`,
+      rowsTitle: 'Zeilen',
+      line: 'Zeile',
+      key: 'Schlüssel in der Datei',
+      summary: 'Zusammenfassung',
+      type: 'Typ',
+      status: 'Status',
+      problems: 'Fehler',
+      noRows: 'Die Datei hat keine Zeilen.',
+      ready: (n: number) => `${plural(n, 'Zeile ist', 'Zeilen sind')} bereit.`,
+      failed: (n: number) =>
+        `${plural(n, 'Zeile hat', 'Zeilen haben')} Fehler: Korrigieren Sie die Datei oder die Spalten und wählen Sie die Datei erneut.`,
+      submit: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} importieren`,
+      importing: 'Wird importiert…',
+      done: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} angelegt.`,
+      again: 'Weitere Datei importieren',
     },
   },
 

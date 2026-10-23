@@ -27,23 +27,6 @@ import (
 	"time"
 )
 
-type sprintRef struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	State string `json:"state"` // future, active, closed
-	Board int64  `json:"board,omitempty"`
-}
-
-type sprintOut struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	State     string     `json:"state"`
-	Goal      *string    `json:"goal"`
-	Start     *time.Time `json:"start"`
-	End       *time.Time `json:"end"`
-	Completed *time.Time `json:"completed"`
-}
-
 type boardRow struct {
 	ID        int64
 	Name      string
@@ -99,11 +82,11 @@ func (s *Server) boardByID(ctx context.Context, sub *perm.Subject, id int64) (*b
 	if err != nil {
 		return nil, err
 	}
-	visible, err := s.visibleFilterIDs(ctx, sub)
+	filters, err := s.loadFilters(ctx, sub, b.FilterID)
 	if err != nil {
 		return nil, err
 	}
-	if !visible[b.FilterID] {
+	if len(filters) == 0 {
 		return nil, errNotFound
 	}
 	return b, nil
@@ -336,7 +319,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}, b.ID); err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "state <> 'closed'")
+	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
 	if err != nil {
 		return err
 	}
@@ -385,31 +368,9 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-func (s *Server) boardSprints(ctx context.Context, board int64, where string) ([]sprintOut, error) {
-	out := []sprintOut{}
-	err := sqlq.Each(ctx, s.db, `SELECT id, name, state, goal, start_at, end_at, completed_at FROM sprints
-		WHERE board_id = ? AND `+where+` ORDER BY state = 'active' DESC, position, id`, func(rows *sql.Rows) error {
-		var sp sprintOut
-		var goal sql.NullString
-		var start, end, done sql.NullTime
-		if err := rows.Scan(&sp.ID, &sp.Name, &sp.State, &goal, &start, &end, &done); err != nil {
-			return err
-		}
-		sp.Goal = sqlq.String(goal)
-		if start.Valid {
-			sp.Start = &start.Time
-		}
-		if end.Valid {
-			sp.End = &end.Time
-		}
-		if done.Valid {
-			sp.Completed = &done.Time
-		}
-		out = append(out, sp)
-		return nil
-	}, board)
-	return out, err
-}
+// backlogCond narrows a board's issues to its backlog: sub-tasks travel with
+// their parent, done issues have left it.
+const backlogCond = ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')`
 
 // queryCondition compiles a saved query (JQL or the simple syntax) into a
 // condition on issues, ignoring its ORDER BY: boards order by rank.
@@ -485,7 +446,6 @@ func (s *Server) boardWhere(ctx context.Context, sub *perm.Subject, b *boardRow,
 type card struct {
 	issueSummary
 	ID       int64       `json:"-"`
-	Rank     string      `json:"-"`
 	Epic     *issueBrief `json:"epic"`
 	Parent   *issueBrief `json:"parent"`
 	Estimate *float64    `json:"estimate"`
@@ -499,25 +459,20 @@ const maxCards = 1000
 
 // loadCards returns the issues matching where, in board order.
 func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args []any, cat *catalog) ([]*card, bool, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
-		WHERE `+where+` ORDER BY i.rank_key IS NULL, i.rank_key, i.id LIMIT ?`, append(args, maxCards+1)...)
-	if err != nil {
-		return nil, false, err
-	}
 	var list []*card
 	var userIDs, related []int64
-	for rows.Next() {
+	err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE `+where+` ORDER BY i.rank_key IS NULL, i.rank_key, i.id LIMIT ?`, func(rows *sql.Rows) error {
 		iss, err := scanIssue(rows)
 		if err != nil {
-			rows.Close()
-			return nil, false, err
+			return err
 		}
-		list = append(list, &card{ID: iss.ID, Rank: iss.Rank.String, row: iss})
+		list = append(list, &card{ID: iss.ID, row: iss})
 		userIDs = append(userIDs, iss.AssigneeID.Int64, iss.ReporterID.Int64)
 		related = append(related, iss.EpicID.Int64, iss.ParentID.Int64)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+		return nil
+	}, append(args, maxCards+1)...)
+	if err != nil {
 		return nil, false, err
 	}
 	truncated := len(list) > maxCards
@@ -570,14 +525,7 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 // parents share their project, so no further check is needed for display.
 func (s *Server) briefs(ctx context.Context, cat *catalog, ids []int64) (map[int64]*issueBrief, error) {
 	out := map[int64]*issueBrief{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	for chunk := range slices.Chunk(args, 500) {
 		err := sqlq.Each(ctx, s.db, `SELECT i.id, p.pkey, i.num, i.summary, i.issue_type_id, i.status_id FROM issues i
 			JOIN projects p ON p.id = i.project_id WHERE i.id IN (`+sqlq.Marks(len(chunk))+`)`, func(rows *sql.Rows) error {
@@ -682,23 +630,21 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		if err != nil {
 			continue // a lane whose query no longer compiles keeps no card
 		}
-		rows, err := s.db.QueryContext(ctx, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
-			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, append(slices.Clone(ids), args...)...)
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
+		err = sqlq.Each(ctx, s.db, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
+			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
-				rows.Close()
 				return err
 			}
 			if c := byID[id]; c != nil && c.Lane == nil {
 				lid := l.id
 				c.Lane = &lid
 			}
+			return nil
+		}, append(slices.Clone(ids), args...)...)
+		if err != nil {
+			return err
 		}
-		rows.Close()
 	}
 	for _, c := range cards {
 		if c.Lane == nil {
@@ -740,20 +686,22 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 	}
 	var sprint *sprintOut
 	if b.Kind == "scrum" {
-		sprints, err := s.boardSprints(ctx, b.ID, "state = 'active'")
-		if err != nil {
-			return err
-		}
 		if id, err := strconv.ParseInt(r.URL.Query().Get("sprint"), 10, 64); err == nil {
-			sprints, err = s.boardSprints(ctx, b.ID, "id = "+strconv.FormatInt(id, 10))
+			if sprint, err = s.sprintByID(ctx, b.ID, id); err != nil && !errors.Is(err, errNotFound) {
+				return err
+			}
+		} else {
+			active, err := s.boardSprints(ctx, b.ID, "active")
 			if err != nil {
 				return err
 			}
+			if len(active) > 0 {
+				sprint = &active[0]
+			}
 		}
-		if len(sprints) == 0 {
+		if sprint == nil {
 			return writeJSON(w, http.StatusOK, map[string]any{"cards": []*card{}, "sprint": nil, "truncated": false})
 		}
-		sprint = &sprints[0]
 		where += " AND EXISTS (SELECT 1 FROM sprint_issues si WHERE si.issue_id = i.id AND si.sprint_id = ?)"
 		args = append(args, sprint.ID)
 	}
@@ -790,13 +738,12 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// Sub-tasks travel with their parent; done issues have left the backlog.
-	where += ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')`
+	where += backlogCond
 	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
 	if err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "state <> 'closed'")
+	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
 	if err != nil {
 		return err
 	}
@@ -868,6 +815,10 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 		return errNotFound
 	}
 	pi := iss.perm()
+	// Refuse before the column change commits, not halfway through the move.
+	if (in.After != nil || in.Before != nil || in.Sprint != nil) && !sub.Can(perm.Edit, iss.ProjectID, &pi) {
+		return errForbidden
+	}
 
 	if in.Column != nil {
 		target, err := s.columnTarget(ctx, b, iss, *in.Column)
@@ -883,9 +834,6 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if in.After != nil || in.Before != nil {
-		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
-			return errForbidden
-		}
 		var lower, upper string
 		if in.After != nil {
 			if a, err := s.findIssue(ctx, *in.After); err == nil {
@@ -912,9 +860,6 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if in.Sprint != nil {
-		if !sub.Can(perm.Edit, iss.ProjectID, &pi) {
-			return errForbidden
-		}
 		if err := s.setSprint(ctx, sub, b, iss, *in.Sprint, false); err != nil {
 			return err
 		}
@@ -1025,8 +970,11 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	var oldID sql.NullInt64
 	var oldName sql.NullString
-	s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
+	err := s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
 		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope+` LIMIT 1`, append([]any{iss.ID}, scopeArgs...)...).Scan(&oldID, &oldName)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
 	var newName any
 	if sprint != 0 {
 		var name, state string
@@ -1082,197 +1030,6 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	s.changed(iss, sub.UserID, "", []change{c}) // the caller refreshes open pages
 	return nil
-}
-
-// Sprints ----------------------------------------------------------------------
-
-func (s *Server) sprintForManage(r *http.Request, sub *perm.Subject) (*boardRow, *sprintOut, error) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		return nil, nil, errNotFound
-	}
-	var board sql.NullInt64
-	if err := s.db.QueryRowContext(r.Context(), `SELECT board_id FROM sprints WHERE id = ?`, id).Scan(&board); err != nil {
-		return nil, nil, errNotFound
-	}
-	b, err := s.boardByID(r.Context(), sub, board.Int64)
-	if err != nil {
-		return nil, nil, err
-	}
-	if ok, err := s.canManage(r.Context(), sub, b); err != nil {
-		return nil, nil, err
-	} else if !ok {
-		return nil, nil, errForbidden
-	}
-	sprints, err := s.boardSprints(r.Context(), b.ID, "id = "+strconv.FormatInt(id, 10))
-	if err != nil || len(sprints) == 0 {
-		return nil, nil, errNotFound
-	}
-	return b, &sprints[0], nil
-}
-
-func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	b, err := s.board(r, sub)
-	if err != nil {
-		return err
-	}
-	if b.Kind != "scrum" {
-		return fail(http.StatusBadRequest, i18n.SprintKanban)
-	}
-	if ok, err := s.canManage(ctx, sub, b); err != nil {
-		return err
-	} else if !ok {
-		return errForbidden
-	}
-	var in struct {
-		Name string `json:"name"`
-		Goal string `json:"goal"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	var count, position int64
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(MAX(position), 0) FROM sprints WHERE board_id = ?`, b.ID).
-		Scan(&count, &position)
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		name = b.Name + " Sprint " + strconv.FormatInt(count+1, 10)
-	}
-	var goal any
-	if strings.TrimSpace(in.Goal) != "" {
-		goal = in.Goal
-	}
-	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, 'future', ?)`,
-		b.ID, truncateRunes(name, 255), goal, position+1)
-	if err != nil {
-		return err
-	}
-	id, _ := res.LastInsertId()
-	s.emitSprint(ctx, events.SprintCreated, sub.UserID, b.ID, id)
-	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
-}
-
-func truncateRunes(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
-	}
-	return s
-}
-
-func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	b, sp, err := s.sprintForManage(r, sub)
-	if err != nil {
-		return err
-	}
-	if sp.State != "future" {
-		return fail(http.StatusConflict, i18n.SprintStarted)
-	}
-	var in struct {
-		Name *string    `json:"name"`
-		Goal *string    `json:"goal"`
-		End  *time.Time `json:"end"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	var active int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sprints WHERE board_id = ? AND state = 'active'`, b.ID).Scan(&active)
-	if active > 0 {
-		return fail(http.StatusConflict, i18n.SprintAlreadyActive)
-	}
-	start := time.Now().UTC()
-	end := start.AddDate(0, 0, 14)
-	if in.End != nil {
-		if !in.End.After(start) {
-			return fail(http.StatusBadRequest, i18n.SprintEndPast)
-		}
-		end = in.End.UTC()
-	}
-	sets := []string{"state = 'active'", "start_at = ?", "end_at = ?"}
-	args := []any{start, end}
-	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
-		sets, args = append(sets, "name = ?"), append(args, truncateRunes(strings.TrimSpace(*in.Name), 255))
-	}
-	if in.Goal != nil {
-		var g any
-		if strings.TrimSpace(*in.Goal) != "" {
-			g = *in.Goal
-		}
-		sets, args = append(sets, "goal = ?"), append(args, g)
-	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE sprints SET `+strings.Join(sets, ", ")+` WHERE id = ?`,
-		append(args, sp.ID)...); err != nil {
-		return err
-	}
-	s.emitSprint(ctx, events.SprintStarted, sub.UserID, b.ID, sp.ID)
-	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-
-// completeSprint closes the sprint. Its unfinished issues go to another open
-// sprint of the board (moveTo) or back to the backlog; the closed sprint
-// stays in their history either way.
-func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	b, sp, err := s.sprintForManage(r, sub)
-	if err != nil {
-		return err
-	}
-	if sp.State != "active" {
-		return fail(http.StatusConflict, i18n.SprintNotActive)
-	}
-	var in struct {
-		MoveTo int64 `json:"moveTo"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	if in.MoveTo != 0 {
-		var state string
-		err := s.db.QueryRowContext(ctx, `SELECT state FROM sprints WHERE id = ? AND board_id = ?`, in.MoveTo, b.ID).Scan(&state)
-		if err != nil || state != "future" || in.MoveTo == sp.ID {
-			return fail(http.StatusBadRequest, i18n.SprintTargetInvalid)
-		}
-	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	now := time.Now().UTC()
-	if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = 'closed', completed_at = ? WHERE id = ?`, now, sp.ID); err != nil {
-		return err
-	}
-	moved := int64(0)
-	if in.MoveTo != 0 {
-		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO sprint_issues (sprint_id, issue_id)
-			SELECT ?, si.issue_id FROM sprint_issues si JOIN issues i ON i.id = si.issue_id
-			JOIN statuses st ON st.id = i.status_id WHERE si.sprint_id = ? AND st.category <> 'done'`, in.MoveTo, sp.ID)
-		if err != nil {
-			return err
-		}
-		moved, _ = res.RowsAffected()
-	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.emitSprint(ctx, events.SprintClosed, sub.UserID, b.ID, sp.ID)
-	return writeJSON(w, http.StatusOK, map[string]int64{"moved": moved})
 }
 
 // Creating a board ---------------------------------------------------------------
@@ -1336,7 +1093,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, query, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		sub.UserID, "Tableau "+name, `project = "`+key+`" ORDER BY Rank ASC`, now, now)
+		sub.UserID, i18n.Sprintf(locale(r), i18n.BoardFilterName, name), `project = "`+key+`" ORDER BY Rank ASC`, now, now)
 	if err != nil {
 		return err
 	}
@@ -1346,7 +1103,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	res, err = tx.ExecContext(ctx, `INSERT INTO boards (name, kind, filter_id, owner_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, truncateRunes(name, 255), in.Kind, filterID, sub.UserID, now, now)
+		VALUES (?, ?, ?, ?, ?, ?)`, sqlq.Truncate(name, varcharWidth), in.Kind, filterID, sub.UserID, now, now)
 	if err != nil {
 		return err
 	}
@@ -1376,7 +1133,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(events.Event{Kind: events.BoardCreated, ActorID: sub.UserID,
-		Board: &events.Board{ID: boardID, Name: truncateRunes(name, 255), Kind: in.Kind}})
-	s.auditBoard(r, audit.BoardCreate, boardID, truncateRunes(name, 255), map[string]any{"kind": in.Kind, "project": key})
+		Board: &events.Board{ID: boardID, Name: sqlq.Truncate(name, varcharWidth), Kind: in.Kind}})
+	s.auditBoard(r, audit.BoardCreate, boardID, sqlq.Truncate(name, varcharWidth), map[string]any{"kind": in.Kind, "project": key})
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": boardID})
 }

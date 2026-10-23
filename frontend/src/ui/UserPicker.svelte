@@ -36,7 +36,8 @@
   let active = $state(0);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
-  const listId = `users-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const listId = `users-${uid}`;
 
   /** The rows of the list: an optional "nobody" entry, then people. */
   const rows = $derived<(UserRef | null)[]>(allowNone ? [null, ...results] : results);
@@ -92,6 +93,7 @@
   <button
     type="button"
     class="current"
+    class:select={field}
     aria-haspopup="listbox"
     aria-expanded={open}
     aria-label={label}
@@ -99,11 +101,11 @@
     onclick={toggle}
   >
     {#if value}
-      <span class="who-static"><Who user={value} /></span>
+      <Who user={value} link={false} />
     {:else}
       <span class="nobody">{noneLabel}</span>
     {/if}
-    {#if !disabled}<span class="caret" aria-hidden="true">▾</span>{/if}
+    {#if !disabled && !field}<span class="caret" aria-hidden="true">▾</span>{/if}
   </button>
   {#if open}
     <div class="popover">
@@ -152,38 +154,42 @@
     align-items: center;
     gap: 6px;
     width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .current:not(.select) {
     min-height: 26px;
     border: 1px solid transparent;
     background: none;
     padding: 2px 4px;
     margin: -3px -5px;
-    text-align: left;
-    cursor: pointer;
   }
 
-  .current:hover:not([disabled]) {
+  .current:not(.select):hover:not([disabled]) {
     border-color: var(--rule-strong);
     background: var(--paper);
   }
 
-  .framed .current {
-    min-height: 32px;
-    border: var(--frame) solid var(--rule-strong);
-    border-radius: var(--radius-xs);
-    background: var(--paper-raised);
-    padding: 5px 8px;
-    margin: 0;
-    font-size: 14px;
+  /* Carnet's selects show the native arrow, which a button can't draw. As
+     specific as a skin's .select rules, which come later and win. */
+  :where(.framed) :global(.select.select) {
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8577' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
   }
 
-  .framed .current:hover:not([disabled]) {
-    background: var(--paper-raised);
+  /* The avatar never makes the box taller than the skin's select. */
+  .framed .current :global(.who) {
+    height: 1lh;
   }
 
-  .framed .current:focus-visible {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
+  .framed .current :global(.who .avatar.avatar) {
+    width: auto;
+    height: 100%;
+    max-height: 20px;
+    aspect-ratio: 1;
   }
 
   .framed .popover {
@@ -192,12 +198,6 @@
 
   .current[disabled] {
     cursor: default;
-  }
-
-  /* The name inside is a link elsewhere; here the whole button picks. */
-  .who-static {
-    pointer-events: none;
-    min-width: 0;
   }
 
   .caret {

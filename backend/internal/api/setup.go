@@ -13,11 +13,8 @@ package api
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -231,7 +228,7 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 // code where needed, and errors written in the request's language.
 func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
+		if !csrfOK(r) {
 			writeError(rw, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
@@ -239,23 +236,10 @@ func (w *Setup) wrap(h handler, needCode bool) http.Handler {
 			writeError(rw, r, fail(http.StatusUnauthorized, i18n.SetupCodeRequired))
 			return
 		}
-		if err := h(rw, r); err != nil {
-			var he *httpError
-			if !errors.As(err, &he) {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				w.log.Error("setup request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
-			}
+		if err := boundary(w.log, "setup request failed", r, h(rw, r)); err != nil {
 			writeError(rw, r, err)
 		}
 	})
-}
-
-func tokenKey(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
 }
 
 func (w *Setup) unlocked(r *http.Request) bool {
@@ -265,7 +249,7 @@ func (w *Setup) unlocked(r *http.Request) bool {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return !w.done && w.tokens[tokenKey(c.Value)]
+	return !w.done && w.tokens[auth.TokenHash(c.Value)]
 }
 
 var errInstalled = fail(http.StatusConflict, i18n.SetupDone)
@@ -295,17 +279,16 @@ func (w *Setup) unlock(rw http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusForbidden, i18n.SetupCodeIncorrect)
 	}
 	w.limiter.Success(key)
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
+	token, err := auth.RandomToken()
+	if err != nil {
 		return err
 	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
 	w.mu.Lock()
 	if w.done {
 		w.mu.Unlock()
 		return errInstalled
 	}
-	w.tokens[tokenKey(token)] = true
+	w.tokens[auth.TokenHash(token)] = true
 	w.mu.Unlock()
 	// Secure only when this request is: the wizard often runs over plain
 	// http before the HTTPS proxy of the public address exists.

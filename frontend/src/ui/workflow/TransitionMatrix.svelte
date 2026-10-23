@@ -1,12 +1,6 @@
 <script lang="ts">
   import type { StatusRef } from '../../core/types.js';
-  import {
-    defaultName,
-    matrix,
-    rename,
-    toggleCell,
-    type DraftTransition,
-  } from '../../core/workflow.js';
+  import { matrix, rename, toggleCell, type DraftTransition } from '../../core/workflow.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
   import Stamp from '../Stamp.svelte';
@@ -35,7 +29,7 @@
   }
 
   function shown(tr: DraftTransition, to: StatusRef): string {
-    return tr.name.trim() || defaultName(to);
+    return tr.name.trim() || to.name;
   }
 
   function nameKey(e: KeyboardEvent) {
@@ -77,7 +71,7 @@
                   <span class="dash" aria-hidden="true">·</span>
                 {:else if readonly}
                   {#if c.transitions.length}
-                    <span class="sr-only">{label(row.from, c.to)} :</span>
+                    <span class="sr-only">{label(row.from, c.to)}{t.common.labelSep}</span>
                     {#each c.transitions as tr (tr.key)}
                       <span class="tname static">{shown(tr, c.to)}</span>
                     {/each}
@@ -97,7 +91,7 @@
                         <input
                           class="input name"
                           value={tr.name}
-                          placeholder={defaultName(c.to)}
+                          placeholder={c.to.name}
                           aria-label={t.workflows.transitionName}
                           oninput={(e) =>
                             onchange(rename(transitions, tr.key, e.currentTarget.value))}

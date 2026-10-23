@@ -33,7 +33,6 @@ type Service struct {
 	perms  *perm.Store
 	outbox *mail.Outbox
 	log    *slog.Logger
-	tz     *time.Location
 	config func(context.Context) (mail.Config, error)
 	search Searcher
 
@@ -44,9 +43,6 @@ type Service struct {
 	// e-mails to people who chose none (by default English).
 	Zone          func() *time.Location
 	DefaultLocale func() string
-	// Window is how long changes to an issue wait for more before being
-	// mailed; MaxWait bounds the wait when changes keep coming.
-	Window, MaxWait time.Duration
 	// Now is the clock (tests move it).
 	Now func() time.Time
 	// Paused, when set and true, makes FlushDue and RunSchedules do nothing:
@@ -58,12 +54,19 @@ type Service struct {
 	enabledAt time.Time
 }
 
+// Window is how long changes to an issue wait for more before being mailed;
+// MaxWait bounds the wait when changes keep coming.
+const (
+	Window  = 2 * time.Minute
+	MaxWait = 10 * time.Minute
+)
+
 // New makes the service. config reads the SMTP settings; search runs saved
 // filters for subscriptions.
 func New(db *sql.DB, perms *perm.Store, outbox *mail.Outbox, tz *time.Location, log *slog.Logger,
 	config func(context.Context) (mail.Config, error), search Searcher) *Service {
-	return &Service{db: db, perms: perms, outbox: outbox, log: log, tz: tz, config: config, search: search,
-		BaseURL: func() string { return "" }, Window: 2 * time.Minute, MaxWait: 10 * time.Minute, Now: time.Now,
+	return &Service{db: db, perms: perms, outbox: outbox, log: log, config: config, search: search,
+		BaseURL: func() string { return "" }, Now: time.Now,
 		Zone: func() *time.Location { return tz }, DefaultLocale: func() string { return "" }}
 }
 
@@ -180,7 +183,7 @@ func deref(s *string) string {
 func linesOf(e *events.Event) []line {
 	switch e.Kind {
 	case events.IssueCreated:
-		return []line{{Group: GroupCreated}}
+		return append([]line{{Group: GroupCreated}}, createdLines(e.Issue)...)
 	case events.IssueDeleted:
 		return []line{{Group: GroupDeleted}}
 	case events.CommentCreated, events.CommentUpdated:
@@ -199,6 +202,41 @@ func linesOf(e *events.Event) []line {
 			to = deref(c.To)
 		}
 		out = append(out, line{Group: groupOf(c.Field), Field: c.Field, From: from, To: to})
+	}
+	return out
+}
+
+// createdLines lists the values a new issue was created with, but for those
+// the e-mail's meta line shows (type, status, priority, assignee) and the
+// description, shown as the entry's text. Fields are named as in history.
+func createdLines(iss *events.Issue) []line {
+	if iss == nil {
+		return nil
+	}
+	var out []line
+	add := func(field, value string) {
+		if value != "" && !hiddenFields[strings.ToLower(field)] {
+			out = append(out, line{Group: GroupCreated, Field: field, To: value})
+		}
+	}
+	names := func(list []events.Named) string {
+		var out []string
+		for _, n := range list {
+			out = append(out, n.Name)
+		}
+		return strings.Join(out, ", ")
+	}
+	add("Component", names(iss.Components))
+	add("Fix Version", names(iss.FixVersions))
+	add("Version", names(iss.Versions))
+	add("labels", strings.Join(iss.Labels, ", "))
+	add("duedate", deref(iss.Due))
+	add("environment", deref(iss.Environment))
+	if iss.Parent != nil {
+		add("parent", iss.Parent.Key)
+	}
+	for _, c := range iss.Custom {
+		add(c.Name, c.Text)
 	}
 	return out
 }
@@ -272,18 +310,45 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	if len(lines) == 0 {
 		return nil
 	}
-	var groups []string
-	for _, l := range lines {
-		if !slices.Contains(groups, l.Group) {
-			groups = append(groups, l.Group)
-		}
-	}
 	mentioned, err := s.mentioned(ctx, e)
 	if err != nil {
 		return err
 	}
+	reasons, ids, err := s.candidates(ctx, iss, ps.Extra, lines, mentioned)
+	if err != nil || len(ids) == 0 {
+		return err
+	}
+	users, prefs, err := s.recipientData(ctx, ids)
+	if err != nil {
+		return err
+	}
+	d := &draft{e: e, lines: lines, mentioned: mentioned, access: iss.Access}
+	if e.Kind == events.IssueDeleted {
+		d.access = e.Access
+	}
+	if e.Comment != nil {
+		d.comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
+			Edited: e.Kind == events.CommentUpdated}
+	}
+	for _, id := range ids {
+		it, ok, err := s.wantsItem(ctx, d, id, users[id], prefs[id], reasons[id])
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		if err := s.enqueue(ctx, id, prefs[id], iss.ID, it); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	// Candidates and why they would hear about it.
+// candidates lists who would hear about an event, in id order, and the
+// strongest reason of each.
+func (s *Service) candidates(ctx context.Context, iss *events.Issue, extra []ExtraRecipient, lines []line,
+	mentioned map[int64]bool) (map[int64]string, []int64, error) {
 	reasons := map[int64]string{}
 	add := func(id int64, reason string) {
 		if id == 0 {
@@ -305,77 +370,85 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	for id := range mentioned {
 		add(id, reasonMentioned)
 	}
-	extra, err := s.extraMembers(ctx, iss.ProjectID, ps.Extra, groups)
+	var groups []string
+	for _, l := range lines {
+		if !slices.Contains(groups, l.Group) {
+			groups = append(groups, l.Group)
+		}
+	}
+	members, err := s.extraMembers(ctx, iss.ProjectID, extra, groups)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	for id := range extra {
+	for id := range members {
 		add(id, reasonProject)
-	}
-	if len(reasons) == 0 {
-		return nil
 	}
 	ids := make([]int64, 0, len(reasons))
 	for id := range reasons {
 		ids = append(ids, id)
 	}
 	slices.Sort(ids)
+	return reasons, ids, nil
+}
+
+// recipientData loads the candidates' accounts and preferences.
+func (s *Service) recipientData(ctx context.Context, ids []int64) (map[int64]*events.User, map[int64]Prefs, error) {
 	users, err := events.LoadUsers(ctx, s.db, ids...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	prefs, err := s.prefsOf(ctx, ids...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	return users, prefs, nil
+}
 
-	access := iss.Access
-	if e.Kind == events.IssueDeleted {
-		access = e.Access
+// draft is an event as every recipient's item starts from.
+type draft struct {
+	e         *events.Event
+	lines     []line
+	mentioned map[int64]bool
+	access    perm.Issue // who may see the issue (as it was, for a deletion)
+	comment   *itemComment
+}
+
+// wantsItem cuts the event to what one candidate asked for and may see. It
+// reports false when nothing is left for them.
+func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.User, p Prefs, reason string) (item, bool, error) {
+	e, iss := d.e, d.e.Issue
+	if !eligible(u) || p.Delivery == None {
+		return item{}, false, nil
 	}
-	var comment *itemComment
-	if e.Comment != nil {
-		comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
-			Edited: e.Kind == events.CommentUpdated}
+	if id == e.ActorID && !p.OwnChanges {
+		return item{}, false, nil
 	}
-	for _, id := range ids {
-		u, p := users[id], prefs[id]
-		if u == nil || !u.Active || !mail.ValidAddress(u.Email) || p.Delivery == None {
-			continue
-		}
-		if id == e.ActorID && !p.OwnChanges {
-			continue
-		}
-		sub, err := s.perms.Subject(ctx, id, false)
-		if err != nil {
-			return err
-		}
-		if !sub.CanSee(access) {
-			continue
-		}
-		if comment != nil && !sub.SeesRestricted(iss.ProjectID, comment.Group, comment.RoleID) {
-			continue
-		}
-		var keep []line
-		for _, l := range lines {
-			if p.wants(l.Group) {
-				keep = append(keep, l)
-			}
-		}
-		isMentioned := mentioned[id] && p.wants(GroupMentioned)
-		if len(keep) == 0 && !isMentioned {
-			continue
-		}
-		it := item{Kind: e.Kind, At: e.At, ActorID: e.ActorID, Lines: keep, Mentioned: isMentioned, Reason: reasons[id],
-			Project: iss.ProjectKey, Key: iss.Key, Summary: iss.Summary, Access: access}
-		if comment != nil && (slices.ContainsFunc(keep, func(l line) bool { return l.Group == GroupCommented }) || isMentioned) {
-			it.Comment = comment
-		}
-		if err := s.enqueue(ctx, id, p, iss.ID, it); err != nil {
-			return err
+	sub, err := s.perms.Subject(ctx, id, false)
+	if err != nil {
+		return item{}, false, err
+	}
+	if !sub.CanSee(d.access) {
+		return item{}, false, nil
+	}
+	if d.comment != nil && !sub.SeesRestricted(iss.ProjectID, d.comment.Group, d.comment.RoleID) {
+		return item{}, false, nil
+	}
+	var keep []line
+	for _, l := range d.lines {
+		if p.wants(l.Group) {
+			keep = append(keep, l)
 		}
 	}
-	return nil
+	isMentioned := d.mentioned[id] && p.wants(GroupMentioned)
+	if len(keep) == 0 && !isMentioned {
+		return item{}, false, nil
+	}
+	it := item{Kind: e.Kind, At: e.At, ActorID: e.ActorID, Lines: keep, Mentioned: isMentioned, Reason: reason,
+		Project: iss.ProjectKey, Key: iss.Key, Summary: iss.Summary, Access: d.access}
+	if d.comment != nil && (slices.ContainsFunc(keep, func(l line) bool { return l.Group == GroupCommented }) || isMentioned) {
+		it.Comment = d.comment
+	}
+	return it, true, nil
 }
 
 // enqueue files an item in the user's open batch for the issue (or their
@@ -389,7 +462,7 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	now := s.Now().UTC()
 	digest := p.Delivery == Digest
 	batchIssue := issueID
-	sendAt := now.Add(s.Window)
+	sendAt := now.Add(Window)
 	if digest {
 		batchIssue = 0
 		sendAt = nextAt(now, s.zone(), p.DigestHour, nil)
@@ -402,7 +475,7 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_batches (user_id, digest, issue_id, first_at, send_at)
 		VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
 		send_at = IF(digest, send_at, LEAST(VALUES(send_at), first_at + INTERVAL ? MICROSECOND))`,
-		userID, digest, batchIssue, now, sendAt, s.MaxWait.Microseconds()); err != nil {
+		userID, digest, batchIssue, now, sendAt, MaxWait.Microseconds()); err != nil {
 		return err
 	}
 	var batch int64

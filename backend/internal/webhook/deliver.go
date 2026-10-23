@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/sqlq"
 	"solstice/internal/worker"
 )
 
@@ -97,11 +98,13 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 	bodies := map[string][]byte{}
 	queued := false
 	now := s.Now().UTC()
+	names := namesOf(e.Kind)
 	for _, w := range s.hooks(ctx) {
-		for _, name := range namesOf(e.Kind) {
-			if !w.listens(name) || !s.matches(ctx, w, e) {
-				continue
-			}
+		heard := w.heard(names)
+		if len(heard) == 0 || !s.matches(ctx, w, e) {
+			continue
+		}
+		for _, name := range heard {
 			body, ok := bodies[name]
 			if !ok {
 				p, err := s.payload(ctx, e, name)
@@ -282,7 +285,7 @@ func (s *Service) record(ctx context.Context, id int64, attempts int, r result) 
 	status, next := "sent", now
 	var errText, code any
 	if r.err != nil {
-		errText = truncate(r.err.Error(), 1000)
+		errText = sqlq.Truncate(r.err.Error(), 1000)
 		status = "failed"
 		if !r.permanent && attempts < MaxAttempts {
 			status, next = "pending", now.Add(backoff(attempts))
@@ -370,12 +373,4 @@ func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, e
 		return nil, err
 	}
 	return &list[0], nil
-}
-
-func truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
-	}
-	return s
 }

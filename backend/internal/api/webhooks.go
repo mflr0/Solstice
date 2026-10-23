@@ -6,10 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"reflect"
 	"slices"
 	"solstice/internal/i18n"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -29,8 +27,7 @@ func (s *Server) matchJQL(ctx context.Context, src string, issueID int64) (bool,
 		return false, err
 	}
 	var n int
-	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM issues i JOIN projects p ON p.id = i.project_id
-		LEFT JOIN priorities pr ON pr.id = i.priority_id WHERE i.id = ? AND (`+cond+`)`,
+	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+searchFrom+` WHERE i.id = ? AND (`+cond+`)`,
 		append([]any{issueID}, args...)...).Scan(&n)
 	return n > 0, err
 }
@@ -58,9 +55,9 @@ func (s *Server) adminWebhook(r *http.Request) (*webhook.Webhook, error) {
 	if err := requireAdmin(r); err != nil {
 		return nil, err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return nil, errNotFound
+		return nil, err
 	}
 	wh, err := s.out.hooks.Get(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -217,7 +214,7 @@ func (s *Server) deleteWebhook(w http.ResponseWriter, r *http.Request) error {
 
 // webhookTarget names a webhook in the audit log.
 func webhookTarget(wh *webhook.Webhook) audit.Target {
-	return audit.Target{Type: "webhook", ID: strconv.FormatInt(wh.ID, 10), Label: wh.Name}
+	return target("webhook", wh.ID, wh.Name)
 }
 
 // redactedHookURL is a webhook address without what may be a secret: the
@@ -241,24 +238,16 @@ func redactedHookURL(raw string) string {
 // path of the address are never written, only that they changed.
 func webhookChanges(before, after *webhook.Webhook, secret *string) map[string]any {
 	out := map[string]any{}
-	pair := func(name string, from, to any) {
-		if !reflect.DeepEqual(from, to) {
-			out[name] = map[string]any{"from": from, "to": to}
-		}
-	}
-	pair("name", before.Name, after.Name)
+	diff(out, "name", before.Name, after.Name)
 	if before.URL != after.URL {
-		from, to := redactedHookURL(before.URL), redactedHookURL(after.URL)
-		if from != to {
-			out["url"] = map[string]any{"from": from, "to": to}
-		} else {
+		if !diff(out, "url", redactedHookURL(before.URL), redactedHookURL(after.URL)) {
 			out["urlPathChanged"] = true
 		}
 	}
-	pair("events", nonNil(before.Events), nonNil(after.Events))
-	pair("jql", before.JQL, after.JQL)
-	pair("enabled", before.Enabled, after.Enabled)
-	pair("excludeBody", before.ExcludeBody, after.ExcludeBody)
+	diff(out, "events", nonNil(before.Events), nonNil(after.Events))
+	diff(out, "jql", before.JQL, after.JQL)
+	diff(out, "enabled", before.Enabled, after.Enabled)
+	diff(out, "excludeBody", before.ExcludeBody, after.ExcludeBody)
 	switch {
 	case secret != nil && *secret != "":
 		out["secretChanged"] = true

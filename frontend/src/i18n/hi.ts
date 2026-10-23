@@ -116,7 +116,6 @@ export const hi: Messages = {
     create: 'नया टिकट',
     account: 'खाता',
     myPage: 'मेरा पेज',
-    admin: 'उपयोगकर्ता',
     skin: 'थीम',
     skins: {
       carnet: 'नोटबुक',
@@ -175,7 +174,6 @@ export const hi: Messages = {
     schemes: { light: 'लाइट', dark: 'डार्क' },
     lightOnly: 'सिर्फ़ लाइट मोड में उपलब्ध।',
     preparing: 'प्रीव्यू तैयार हो रहा है…',
-    unfinished: 'यह थीम अभी बन रही है।',
     mock: {
       work: 'मेरा काम',
       projects: 'प्रोजेक्ट',
@@ -236,19 +234,15 @@ export const hi: Messages = {
     none: 'कोई नहीं',
     noneF: 'कोई नहीं',
     unassigned: 'असाइन नहीं',
-    me: 'मैं',
     seeAll: 'सभी देखें',
-    retry: 'फिर से कोशिश करें',
     inactive: 'खाता निष्क्रिय',
     confidential: 'गोपनीय',
     previous: 'पिछले',
     next: 'अगले',
     yes: 'हाँ',
     no: 'नहीं',
-    search: 'खोजें',
     filter: 'फ़िल्टर करें…',
     ctrlEnter: 'भेजने के लिए Ctrl + Enter',
-    of: '/',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${total} में से ${first}–${last}`,
@@ -342,7 +336,6 @@ export const hi: Messages = {
     intro:
       'ये नियम सिर्फ़ इसी प्रोजेक्ट पर लागू होते हैं: कोई साझा स्कीम नहीं है, इसलिए यहाँ किया गया बदलाव किसी और प्रोजेक्ट पर असर नहीं डालता।',
     permissions: 'कौन क्या कर सकता है',
-    holders: 'किसे मिली है',
     addHolder: 'जोड़ें',
     nobody: 'कोई नहीं',
     chooseKind: 'किसे दें',
@@ -350,12 +343,10 @@ export const hi: Messages = {
     chooseRole: 'भूमिका',
     chooseUser: 'व्यक्ति',
     roles: 'इस प्रोजेक्ट की भूमिकाएँ',
-    roleMembers: 'सदस्य',
     noMembers: 'कोई सदस्य नहीं',
     saved: 'सेटिंग्स सहेजी गईं।',
     unsaved: 'बिना सहेजे बदलाव',
     discard: 'बदलाव छोड़ें',
-    forbidden: 'यह पेज सिर्फ़ प्रोजेक्ट के एडमिन देख सकते हैं।',
     backToProject: 'प्रोजेक्ट पर वापस',
   },
 
@@ -363,6 +354,53 @@ export const hi: Messages = {
     title: 'खोज',
     results: (n: number) => plural(n, 'टिकट', 'टिकट'),
     empty: 'कोई टिकट मेल नहीं खाता।',
+    columns: {
+      button: 'कॉलम',
+      shown: 'दिखाए गए कॉलम',
+      more: 'और कॉलम',
+      reset: 'डिफ़ॉल्ट कॉलम',
+    },
+    exportCsv: 'CSV में निर्यात करें',
+    bulk: {
+      select: (key: string) => `${key} चुनें`,
+      selectPage: 'इस पेज के सभी टिकट चुनें',
+      selected: (n: number) => `${plural(n, 'टिकट', 'टिकट')} चुने गए`,
+      actions: 'चुने गए टिकट बदलें',
+      clear: 'चुनाव हटाएँ',
+      edit: 'संपादित करें',
+      transition: 'स्टेटस बदलें',
+      move: 'स्थानांतरित करें',
+      delete: 'हटाएँ',
+      editTitle: (n: number) => `${plural(n, 'टिकट', 'टिकट')} संपादित करें`,
+      transitionTitle: (n: number) => `${plural(n, 'टिकट', 'टिकट')} का स्टेटस बदलें`,
+      moveTitle: (n: number) => `${plural(n, 'टिकट', 'टिकट')} स्थानांतरित करें`,
+      deleteTitle: (n: number) => `${plural(n, 'टिकट', 'टिकट')} हटाएँ?`,
+      deleteBody: (n: number) =>
+        `इससे ${plural(n, 'टिकट', 'टिकट')} अपने सब-टास्क, टिप्पणियों और फ़ाइलों के साथ हमेशा के लिए हट जाएँगे। इसे पलटा नहीं जा सकता।`,
+      typeToConfirm: (n: number) => `पुष्टि के लिए ${n} लिखें`,
+      deleteSubmit: 'हटाएँ',
+      editHint: 'जिन फ़ील्ड को बदलना है उन्हें चुनें; बाकी हर टिकट पर जैसी हैं वैसी रहेंगी।',
+      change: (field: string) => `${field} बदलें`,
+      modes: { add: 'जोड़ें', remove: 'हटाएँ', replace: 'सबकी जगह रखें' },
+      oneProject:
+        'कंपोनेंट और फ़िक्स वर्ज़न तभी बदले जा सकते हैं जब सभी चुने गए टिकट एक ही प्रोजेक्ट में हों।',
+      noSprint: 'कोई स्प्रिंट नहीं (खुला स्प्रिंट छोड़ें)',
+      noPriority: 'कोई नहीं',
+      status: 'नया स्टेटस',
+      statusHint:
+        'हर टिकट अपने वर्कफ़्लो से वहाँ जाता है: जिनमें यह ट्रांज़िशन नहीं है वे जैसे हैं वैसे रहते हैं।',
+      defaultResolution: 'जैसा स्टेटस तय करे',
+      apply: 'लागू करें',
+      done: (n: number) => `${plural(n, 'टिकट', 'टिकट')} बदले गए।`,
+      failed: (n: number) => `${plural(n, 'टिकट', 'टिकट')} नहीं बदले गए`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'टिकट', 'टिकट')} अपने सब-टास्क के साथ ${project} में जाएँगे और उन्हें नई कुंजियाँ मिलेंगी। पुरानी कुंजियाँ फिर भी उन्हीं तक पहुँचाएँगी।`,
+      cannotMove: (n: number) => `${plural(n, 'टिकट', 'टिकट')} स्थानांतरित नहीं किए जा सकते`,
+      moveHint:
+        'टिकटों को उस प्रोजेक्ट में नई कुंजियाँ मिलती हैं; पुरानी कुंजियाँ भी काम करती रहती हैं। हर टिकट के लिए उसके प्रोजेक्ट में «संपादित करना» और लक्ष्य प्रोजेक्ट में «बनाना» की अनुमति चाहिए।',
+      moveChoicesHint: (project: string) =>
+        `${project} में वह सब नहीं है जो ये टिकट इस्तेमाल करते हैं। चुनें कि वहाँ वे क्या बनें; हर टिकट केवल वही चुनाव लेता है जिसकी उसे ज़रूरत है।`,
+    },
     filters: 'फ़िल्टर',
     text: 'खोज टेक्स्ट',
     textPlaceholder: 'टिकटों में खोजें…',
@@ -437,7 +475,6 @@ export const hi: Messages = {
     shortcuts: 'शॉर्टकट',
     categoryOnly: (name: string) => `श्रेणी: ${name}`,
     released: 'रिलीज़ हुआ',
-    noProject: 'इसके मान देखने के लिए कोई प्रोजेक्ट चुनें।',
     datePresets: {
       today: 'आज',
       week: 'इस हफ़्ते',
@@ -541,6 +578,8 @@ export const hi: Messages = {
     duringDates: () => 'DURING के लिए कोष्ठक में दो तारीखें अपेक्षित हैं।',
     argumentInvalid: (name: string) => `${name}() का आर्ग्युमेंट अमान्य है।`,
     valueExpected: () => 'मान अपेक्षित है।',
+    tooLong: (max: number) => `क्वेरी बहुत लंबी है (अधिकतम ${max} अक्षर)।`,
+    tooDeep: (max: number) => `क्वेरी बहुत गहराई तक नेस्टेड है (अधिकतम ${max} स्तर)।`,
   },
   quick: {
     label: 'क्विक खोज',
@@ -597,7 +636,6 @@ export const hi: Messages = {
     assignee: 'असाइनी',
     updated: 'अपडेट',
     due: 'अंतिम तारीख़',
-    overdue: 'समय-सीमा पार',
   },
 
   issue: {
@@ -639,7 +677,6 @@ export const hi: Messages = {
     created: 'बनाया गया',
     updated: 'अपडेट किया गया',
     resolved: 'रिज़ॉल्व किया गया',
-    resolution: 'रिज़ॉल्यूशन',
     time: 'समय',
     estimate: 'अनुमान',
     remaining: 'बाकी',
@@ -651,14 +688,10 @@ export const hi: Messages = {
     customFields: 'अन्य फ़ील्ड',
     watch: 'वॉच करें',
     watching: 'वॉच कर रहे हैं',
-    watchers: (n: number) => plural(n, 'वॉचर', 'वॉचर'),
     vote: 'वोट करें',
     voted: 'वोट दिया',
-    votes: (n: number) => plural(n, 'वोट', 'वोट'),
-    by: 'द्वारा',
     createdBy: (when: string, who: string) => `${who} द्वारा ${when} बनाया गया`,
     createdOn: (when: string) => `${when} बनाया गया`,
-    parent: 'पैरेंट टिकट',
     changeStatus: 'स्टेटस बदलें',
     chooseResolution: 'रिज़ॉल्यूशन',
     leaveUnresolved: 'बिना रिज़ॉल्यूशन छोड़ें',
@@ -724,7 +757,6 @@ export const hi: Messages = {
     send: 'टिप्पणी करें',
     edited: 'संपादित',
     visibleTo: (who: string) => `${who} को दिखती है`,
-    confirmDelete: 'यह टिप्पणी मिटाएँ?',
   },
 
   editor: {
@@ -748,6 +780,7 @@ export const hi: Messages = {
     mention: 'किसी को मेंशन करें',
     undo: 'पहले जैसा करें',
     redo: 'फिर से करें',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift' },
     source: 'सोर्स',
     sourceLabel: 'विकी मार्कअप',
     tableTools: 'तालिका',
@@ -1024,29 +1057,6 @@ export const hi: Messages = {
     deleted: (name: string) => `बोर्ड “${name}” मिटाया गया।`,
   },
 
-  admin: {
-    title: 'उपयोगकर्ता',
-    newUser: 'नया उपयोगकर्ता',
-    username: 'यूज़रनेम',
-    name: 'दिखने वाला नाम',
-    email: 'ईमेल पता',
-    password: 'पासवर्ड',
-    passwordHint: 'कम से कम 10 अक्षर',
-    admin: 'एडमिन',
-    active: 'सक्रिय',
-    state: 'स्थिति',
-    noPassword: 'पासवर्ड नहीं',
-    resetPassword: 'नया पासवर्ड',
-    deactivate: 'निष्क्रिय करें',
-    activate: 'फिर से सक्रिय करें',
-    makeAdmin: 'एडमिन बनाएँ',
-    removeAdmin: 'एडमिन अधिकार हटाएँ',
-    created: 'खाता बनाया गया।',
-    updated: 'खाता अपडेट किया गया।',
-    forbidden: 'यह पेज सिर्फ़ एडमिन के लिए है।',
-    since: 'कब से',
-  },
-
   notFound: {
     title: 'नहीं मिला',
     back: 'मेरे काम पर वापस',
@@ -1209,7 +1219,6 @@ export const hi: Messages = {
     intro:
       'पूरे Solstice की सेटिंग्स: खाते, प्रोजेक्ट, टिकट कैटेलॉग, ईमेल और इंटीग्रेशन। ये पेज सिर्फ़ एडमिन देख सकते हैं।',
     forbidden: 'यह पेज सिर्फ़ Solstice के एडमिन के लिए है।',
-    nav: 'एडमिनिस्ट्रेशन के भाग',
     groups: {
       general: 'सामान्य',
       people: 'उपयोगकर्ता और समूह',
@@ -1275,11 +1284,8 @@ export const hi: Messages = {
     copy: 'कॉपी करें',
     copied: 'कॉपी हो गया',
     refresh: 'रिफ़्रेश करें',
-    saved: 'बदलाव सहेजे गए।',
-    search: 'खोजें',
     noMatch: 'इस खोज से कुछ मेल नहीं खाता।',
     clearSearch: 'खोज साफ़ करें',
-    unavailable: 'यह सर्वर यह सेटिंग अभी नहीं देता: इसे इस्तेमाल करने के लिए Solstice अपडेट करें।',
     hideBanner: 'छिपाएँ',
     restricted: {
       comments: (n: number) => plural(n, 'टिप्पणी', 'टिप्पणियाँ'),
@@ -1342,7 +1348,6 @@ export const hi: Messages = {
   },
 
   auditAdmin: {
-    title: 'ऑडिट लॉग',
     intro:
       'कौन साइन इन हुआ, और किसने खातों, एक्सेस अधिकारों और सेटिंग्स में क्या बदला, कहाँ से और कब। लॉग केवल पढ़ने के लिए है।',
     count: (n: number) => plural(n, 'प्रविष्टि', 'प्रविष्टियाँ'),
@@ -1394,6 +1399,7 @@ export const hi: Messages = {
       priority: 'प्राथमिकताएँ',
       resolution: 'रिज़ॉल्यूशन',
       linktype: 'लिंक के प्रकार',
+      attachment: 'अटैचमेंट',
       field: 'कस्टम फ़ील्ड',
       settings: 'सेटिंग्स',
       import: 'Jira से आयात',
@@ -1463,6 +1469,7 @@ export const hi: Messages = {
       'filter.share': 'फ़िल्टर की साझेदारी बदली',
       'issue.delete': 'टिकट मिटाया गया',
       'issue.export': 'खोज CSV के रूप में निर्यात की',
+      'issue.import': 'CSV से टिकट आयात किए',
       'issuetype.create': 'टिकट का प्रकार बनाया',
       'issuetype.update': 'टिकट का प्रकार बदला',
       'issuetype.delete': 'टिकट का प्रकार मिटाया',
@@ -1505,6 +1512,8 @@ export const hi: Messages = {
       'update.result': 'अपडेट पूरा हुआ',
       'setup.complete': 'सेटअप पूरा हुआ',
       'issue.move': 'टिकट दूसरे प्रोजेक्ट में ले जाया गया',
+      'attachment.upload': 'अटैचमेंट अपलोड किया',
+      'attachment.delete': 'अटैचमेंट हटाया',
     },
     targets: {
       user: 'खाता',
@@ -1529,6 +1538,7 @@ export const hi: Messages = {
       priority: 'प्राथमिकता',
       resolution: 'रिज़ॉल्यूशन',
       linktype: 'लिंक का प्रकार',
+      attachment: 'अटैचमेंट',
     },
     detailKeys: {
       name: 'नाम',
@@ -1553,6 +1563,8 @@ export const hi: Messages = {
       owner: 'स्वामी',
       version: 'वर्ज़न',
       status: 'स्टेटस',
+      issue: 'टिकट',
+      size: 'आकार (बाइट)',
     },
     retention: {
       title: 'संरक्षण अवधि',
@@ -1575,7 +1587,6 @@ export const hi: Messages = {
   },
 
   systemAdmin: {
-    title: 'सिस्टम जानकारी',
     intro:
       'क्या चल रहा है, डेटा कहाँ है और किस पर ध्यान चाहिए। यहाँ कोई गोपनीय जानकारी नहीं दिखती।',
     solstice: 'Solstice',
@@ -1612,7 +1623,6 @@ export const hi: Messages = {
     projectsArchived: 'आर्काइव किए गए प्रोजेक्ट',
     issues: 'टिकट',
     comments: 'टिप्पणियाँ',
-    attachments: 'अटैचमेंट',
     mail: 'ईमेल',
     mailOn: 'भेजना चालू',
     mailOff: 'भेजना बंद',
@@ -1658,7 +1668,6 @@ export const hi: Messages = {
     reload: 'Solstice फिर से लोड करें',
     again: 'फिर से आयात करें',
     lastTitle: 'पिछला आयात',
-    unavailable: 'यह सर्वर अभी एडमिन से आयात नहीं कर सकता: Solstice अपडेट करें।',
   },
 
   tokensAdmin: {
@@ -1900,7 +1909,6 @@ export const hi: Messages = {
   account: {
     title: 'मेरी सेटिंग्स',
     menu: 'मेरी सेटिंग्स',
-    nav: 'मेरी सेटिंग्स के भाग',
     sections: {
       profile: 'प्रोफ़ाइल',
       appearance: 'भाषा और रूप-रंग',
@@ -1919,7 +1927,10 @@ export const hi: Messages = {
     emailHint: 'आपको सूचित करने और आपसे संपर्क करने के लिए भी काम आता है।',
     emailChangeHint: 'पता बदलने के लिए आपका मौजूदा पासवर्ड चाहिए।',
     passwordTitle: 'पासवर्ड',
-    passwordIntro: 'मौजूदा पासवर्ड रखने के लिए फ़ील्ड ख़ाली छोड़ दें।',
+    directoryPasswordIntro:
+      'आपका पासवर्ड डायरेक्टरी (LDAP) में प्रबंधित होता है: उसे वहीं बदलें। यहाँ इसे केवल अपना ई-मेल पता बदलने के लिए लिखें।',
+    passwordIntro:
+      'मौजूदा पासवर्ड रखने के लिए फ़ील्ड ख़ाली छोड़ दें। नया पासवर्ड आपके बाकी सत्र बंद कर देगा और आपके एक्सेस टोकन काम करना बंद कर देंगे।',
     currentPassword: 'मौजूदा पासवर्ड',
     newPassword: 'नया पासवर्ड',
     confirmPassword: 'पासवर्ड की पुष्टि करें',
@@ -1927,7 +1938,6 @@ export const hi: Messages = {
     passwordShort: (n: number) => `कम से कम ${n} अक्षर।`,
     passwordChanged: 'पासवर्ड बदल दिया गया।',
     saved: 'सेटिंग्स सहेजी गईं।',
-    profileUnsupported: 'यह सर्वर अभी नाम या ईमेल पता बदलना नहीं जानता: Solstice अपडेट करें।',
     picture: 'चित्र',
     pictureHint:
       'आपके नाम के पास दिखता है। भेजने से पहले आपके ब्राउज़र में चित्र को वर्गाकार काटा और छोटा किया जाता है।',
@@ -2024,6 +2034,8 @@ export const hi: Messages = {
     admin: 'एडमिन',
     inactive: 'निष्क्रिय',
     noPassword: 'पासवर्ड नहीं',
+    directory: 'LDAP',
+    directoryHint: 'डायरेक्टरी (LDAP) से साइन इन करता है: इसका पासवर्ड वहीं प्रबंधित होता है।',
     more: (n: number) => `+${n}`,
     rights: 'अनुमतियाँ',
     adminLabel: 'Solstice का एडमिन (पूरे एडमिनिस्ट्रेशन तक पहुँच)',
@@ -2040,12 +2052,11 @@ export const hi: Messages = {
     editTitle: (name: string) => `${name} का खाता संपादित करें`,
     created: (name: string) => `${name} का खाता बनाया गया।`,
     updated: (name: string) => `${name} का खाता सहेजा गया।`,
-    edit: 'संपादित करें',
     deactivate: 'निष्क्रिय करें',
     activate: 'फिर से सक्रिय करें',
     deactivateTitle: (name: string) => `${name} का खाता निष्क्रिय करें?`,
     deactivateBody:
-      'यह व्यक्ति फिर साइन इन नहीं कर पाएगा और उसके खुले सत्र तुरंत बंद हो जाएँगे। उसके टिकट, टिप्पणियाँ और इतिहास बने रहते हैं; बाद में आप खाता फिर सक्रिय कर सकते हैं।',
+      'यह व्यक्ति फिर साइन इन नहीं कर पाएगा, उसके खुले सत्र तुरंत बंद हो जाएँगे और उसके एक्सेस टोकन हटा दिए जाएँगे। उसके टिकट, टिप्पणियाँ और इतिहास बने रहते हैं; बाद में आप खाता फिर सक्रिय कर सकते हैं।',
     deactivated: (name: string) => `${name} का खाता निष्क्रिय किया गया।`,
     reactivated: (name: string) => `${name} का खाता फिर सक्रिय किया गया।`,
     passwordTitle: (name: string) => `${name} का नया पासवर्ड`,
@@ -2053,7 +2064,7 @@ export const hi: Messages = {
     generateButton: 'बनाएँ',
     typePassword: 'पासवर्ड डालें',
     newPassword: 'नया पासवर्ड',
-    sessionsEnd: 'इस व्यक्ति के खुले सत्र बंद हो जाएँगे।',
+    sessionsEnd: 'इस व्यक्ति के खुले सत्र बंद हो जाएँगे और उसके एक्सेस टोकन काम करना बंद कर देंगे।',
     generatedOnce:
       'यह पासवर्ड अभी इस व्यक्ति को दे दें: यह फिर नहीं दिखेगा। वह इसे अपनी सेटिंग्स में बदल सकता है।',
     done: 'ठीक है',
@@ -2256,7 +2267,6 @@ export const hi: Messages = {
     noCategory: 'बिना श्रेणी',
     category: 'श्रेणी',
     issues: 'टिकट',
-    state: 'स्थिति',
     archive: 'संग्रहीत करें',
     unarchive: 'संग्रह से निकालें',
     empty: 'अभी कोई प्रोजेक्ट नहीं',
@@ -2325,7 +2335,6 @@ export const hi: Messages = {
     categoryTitle: (name: string) => `“${name}” बदलें`,
     categoryName: 'नाम',
     categoryDescription: 'विवरण',
-    categoryProjects: (n: number) => plural(n, 'प्रोजेक्ट', 'प्रोजेक्ट'),
     categoriesEmpty: 'अभी कोई श्रेणी नहीं।',
     categoryCreated: (name: string) => `श्रेणी “${name}” बन गई।`,
     categorySaved: (name: string) => `श्रेणी “${name}” सहेजी गई।`,
@@ -2348,6 +2357,7 @@ export const hi: Messages = {
       components: 'कंपोनेंट',
       versions: 'वर्ज़न',
       notifications: 'सूचनाएँ',
+      import: 'आयात',
     },
     leaveBody: 'इस टैब में बिना सहेजे बदलाव हैं। उन्हें छोड़ दें?',
     general: {
@@ -2454,6 +2464,37 @@ export const hi: Messages = {
       recipient: 'समूह या भूमिका',
       none: 'चुनने के लिए अभी कोई समूह या भूमिका नहीं है।',
       cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+    import: {
+      title: 'टिकट आयात करें',
+      intro:
+        'किसी CSV फ़ाइल से, जैसे निर्यात की गई खोज से, इस प्रोजेक्ट में टिकट बनाएँ। कॉलम उनके हेडर से पहचाने जाते हैं, किसी भी भाषा में। आयात से पहले कुछ नहीं लिखा जाता; फिर सभी पंक्तियाँ बनती हैं, या कोई नहीं। आयात कोई ईमेल या वेबहुक नहीं भेजता।',
+      limits: (rows: number, mib: number) =>
+        `अधिकतम ${formatNumber(rows)} पंक्तियाँ और ${mib} MiB।`,
+      file: 'CSV फ़ाइल',
+      checking: 'फ़ाइल जाँची जा रही है…',
+      columnsTitle: 'कॉलम',
+      column: 'कॉलम',
+      field: 'फ़ील्ड',
+      skip: 'आयात नहीं होगा',
+      readOnly: 'Solstice सेट करता है: आयात नहीं होगा',
+      unknown: 'अज्ञात कॉलम: कोई फ़ील्ड चुनें, या इसे छोड़ दें।',
+      fieldFor: (header: string) => `कॉलम ${header} का फ़ील्ड`,
+      rowsTitle: 'पंक्तियाँ',
+      line: 'पंक्ति',
+      key: 'फ़ाइल में कुंजी',
+      summary: 'सारांश',
+      type: 'प्रकार',
+      status: 'स्टेटस',
+      problems: 'त्रुटियाँ',
+      noRows: 'फ़ाइल में कोई पंक्ति नहीं है।',
+      ready: (n: number) => `${plural(n, 'पंक्ति', 'पंक्तियाँ')} तैयार हैं।`,
+      failed: (n: number) =>
+        `${plural(n, 'पंक्ति', 'पंक्तियों')} में त्रुटियाँ हैं: फ़ाइल या कॉलम ठीक करें, फिर फ़ाइल दोबारा चुनें।`,
+      submit: (n: number) => `${plural(n, 'टिकट', 'टिकट')} आयात करें`,
+      importing: 'आयात हो रहा है…',
+      done: (n: number) => `${plural(n, 'टिकट', 'टिकट')} बनाए गए।`,
+      again: 'दूसरी फ़ाइल आयात करें',
     },
   },
 

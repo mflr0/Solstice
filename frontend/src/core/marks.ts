@@ -67,8 +67,21 @@ export function isImage(mimeType: string): boolean {
   return INLINE_IMAGES.has(mimeType.split(';')[0]?.trim().toLowerCase() ?? '');
 }
 
+/**
+ * An issue key as people type it: any case and a project of one character
+ * or more ("demo-12", "a-1"), captured as project and number. Lenient on
+ * purpose: input is read generously and the server says whether the issue
+ * exists. Keys in displayed text use the strict KEY_IN_TEXT (wiki.ts).
+ */
+export const KEY_TYPED = /^([A-Za-z][A-Za-z0-9_]*)-(\d+)$/;
+
+/** Whether the text is an issue key as people type it ("demo-12"). */
+export function isIssueKey(text: string): boolean {
+  return KEY_TYPED.test(text.trim());
+}
+
 /** "DEMO-12" → "DEMO"; null when the text is not an issue key. */
-export function projectOfKey(key: string): string | null {
-  const m = /^([A-Za-z][A-Za-z0-9_]*)-\d+$/.exec(key.trim());
+export function projectOfIssueKey(key: string): string | null {
+  const m = KEY_TYPED.exec(key.trim());
   return m?.[1] ? m[1].toUpperCase() : null;
 }

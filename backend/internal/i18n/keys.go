@@ -35,6 +35,8 @@ const (
 	AccountEmailInvalid              Key = "AccountEmailInvalid"
 	AccountOwnAdminRights            Key = "AccountOwnAdminRights"
 	AccountOwnPasswordInProfile      Key = "AccountOwnPasswordInProfile"
+	AccountDirectoryPassword         Key = "AccountDirectoryPassword"
+	AccountOwnEmailInProfile         Key = "AccountOwnEmailInProfile"
 	AccountPasswordTooShort          Key = "AccountPasswordTooShort"
 	AccountPasswordIsUsername        Key = "AccountPasswordIsUsername"
 	AccountCurrentPasswordRequired   Key = "AccountCurrentPasswordRequired"
@@ -165,7 +167,7 @@ const (
 	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )
 
-// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 const (
 	DefaultTypeTask                  Key = "DefaultTypeTask"
 	DefaultTypeBug                   Key = "DefaultTypeBug"
@@ -195,6 +197,10 @@ const (
 	DefaultRoleAdministrators        Key = "DefaultRoleAdministrators"
 	DefaultRoleDevelopers            Key = "DefaultRoleDevelopers"
 	DefaultRoleUsers                 Key = "DefaultRoleUsers"
+	DefaultStatusToDo                Key = "DefaultStatusToDo"
+	DefaultStatusInProgress          Key = "DefaultStatusInProgress"
+	DefaultStatusInReview            Key = "DefaultStatusInReview"
+	DefaultStatusDone                Key = "DefaultStatusDone"
 )
 
 // Permission names, as the REST API lists them.
@@ -234,6 +240,7 @@ const (
 	CustomFieldTypeUnknown   Key = "CustomFieldTypeUnknown"
 	CustomFieldNoOptions     Key = "CustomFieldNoOptions"
 	CustomFieldOptionTooLong Key = "CustomFieldOptionTooLong"
+	CustomFieldOptionEmpty   Key = "CustomFieldOptionEmpty"
 	CustomFieldUsedByBoards  Key = "CustomFieldUsedByBoards"
 	CustomFieldDeleteConfirm Key = "CustomFieldDeleteConfirm"
 	CustomFieldOptionInUse   Key = "CustomFieldOptionInUse"
@@ -323,8 +330,8 @@ const (
 	IssueEstimateInvalid       Key = "IssueEstimateInvalid"
 	IssueSecurityLevelUnknown  Key = "IssueSecurityLevelUnknown"
 	IssueReporterFixed         Key = "IssueReporterFixed"
-	IssueNoTodoStatus          Key = "IssueNoTodoStatus"
 	IssueTransitionNotAllowed  Key = "IssueTransitionNotAllowed"
+	IssueEditChanged           Key = "IssueEditChanged"
 	IssueTransitionUnavailable Key = "IssueTransitionUnavailable"
 	IssueParentNotFound        Key = "IssueParentNotFound"
 	IssueParentInvalid         Key = "IssueParentInvalid"
@@ -359,6 +366,10 @@ const (
 	IssueMoveSecurityNeeded    Key = "IssueMoveSecurityNeeded"
 	IssueMoveNoSubtaskType     Key = "IssueMoveNoSubtaskType"
 	IssueMoveUseAction         Key = "IssueMoveUseAction"
+	BulkNoIssues               Key = "BulkNoIssues"
+	BulkTooMany                Key = "BulkTooMany"
+	BulkNothingToChange        Key = "BulkNothingToChange"
+	BulkOneProject             Key = "BulkOneProject"
 )
 
 // Comments and their visibility.
@@ -377,9 +388,10 @@ const (
 
 // Issue links.
 const (
-	LinkTypeUnknown    Key = "LinkTypeUnknown"
-	LinkTargetNotFound Key = "LinkTargetNotFound"
-	LinkToItself       Key = "LinkToItself"
+	LinkTypeUnknown      Key = "LinkTypeUnknown"
+	LinkTargetNotFound   Key = "LinkTargetNotFound"
+	LinkToItself         Key = "LinkToItself"
+	LinkDirectionUnknown Key = "LinkDirectionUnknown"
 )
 
 // Group picker.
@@ -446,6 +458,7 @@ const (
 	BoardIssueCount              Key = "BoardIssueCount"
 	BoardRankTargetRequired      Key = "BoardRankTargetRequired"
 	BoardRankItself              Key = "BoardRankItself"
+	BoardFilterName              Key = "BoardFilterName"
 )
 
 // Sprints.
@@ -478,6 +491,25 @@ const (
 // Exports.
 const (
 	ExportColumnUnknown Key = "ExportColumnUnknown"
+)
+
+// Imports from a CSV file.
+const (
+	CSVImportFileMissing         Key = "CSVImportFileMissing"
+	CSVImportFileTooLarge        Key = "CSVImportFileTooLarge"
+	CSVImportFileInvalid         Key = "CSVImportFileInvalid"
+	CSVImportFileEmpty           Key = "CSVImportFileEmpty"
+	CSVImportTooManyRows         Key = "CSVImportTooManyRows"
+	CSVImportMappingInvalid      Key = "CSVImportMappingInvalid"
+	CSVImportColumnTwice         Key = "CSVImportColumnTwice"
+	CSVImportRowsInvalid         Key = "CSVImportRowsInvalid"
+	CSVImportValueUnknown        Key = "CSVImportValueUnknown"
+	CSVImportValueInvalid        Key = "CSVImportValueInvalid"
+	CSVImportUserAmbiguous       Key = "CSVImportUserAmbiguous"
+	CSVImportKeyTwice            Key = "CSVImportKeyTwice"
+	CSVImportReferenceFailed     Key = "CSVImportReferenceFailed"
+	CSVImportReferenceCycle      Key = "CSVImportReferenceCycle"
+	CSVImportStatusNotInWorkflow Key = "CSVImportStatusNotInWorkflow"
 )
 
 // JQL: syntax and query errors.

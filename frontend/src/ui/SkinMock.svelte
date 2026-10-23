@@ -171,19 +171,24 @@
     color: var(--muted);
   }
 
+  /* One label column for every line, as wide as the longest label. */
   dl {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     margin: 0;
   }
 
   .line {
-    display: flex;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     gap: 10px;
     align-items: center;
     padding: 8px 14px;
   }
 
   dt {
-    width: 80px;
+    min-width: 80px;
     font-size: 12px;
     color: var(--muted);
   }
@@ -193,6 +198,10 @@
     gap: 8px;
     align-items: center;
     margin: 0;
+  }
+
+  dd:only-child {
+    grid-column: 1 / -1;
   }
 
   dd .avatar {

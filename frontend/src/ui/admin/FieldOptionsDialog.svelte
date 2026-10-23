@@ -1,6 +1,12 @@
 <script lang="ts">
   import type { FieldOption, FieldRow } from '../../core/admin-types.js';
-  import { moveItem, optionProblem, optionTargets, typeKind } from '../../core/catalogs.js';
+  import {
+    arrowAfterMove,
+    moveItem,
+    optionProblem,
+    optionTargets,
+    typeKind,
+  } from '../../core/catalogs.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
@@ -109,9 +115,7 @@
     const from = options.findIndex((x) => x.id === o.id);
     const to = from + by;
     if (to < 0 || to >= options.length) return;
-    const atEdge = to === 0 || to === options.length - 1;
-    // Keep the keyboard on the option: on the same arrow, or the other one at an end.
-    const dir = atEdge ? (by < 0 ? 'down' : 'up') : by < 0 ? 'up' : 'down';
+    const dir = arrowAfterMove(by, to, options.length);
     const ids = moveItem(options, from, to).map((x) => x.id);
     void run(() => adminApi.orderOptions(field.id, ids), `order-${dir}-opt-${o.id}`);
   }

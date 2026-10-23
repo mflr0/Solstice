@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { timeZones } from '../../core/setup.js';
+
   /** A time zone, typed or picked among the browser's IANA names. */
   interface Props {
     label: string;
@@ -8,13 +10,7 @@
   }
   let { label, hint, value = $bindable(), id }: Props = $props();
 
-  const zones: string[] = (() => {
-    try {
-      return Intl.supportedValuesOf('timeZone');
-    } catch {
-      return [];
-    }
-  })();
+  const zones = timeZones();
 </script>
 
 <label class="field">

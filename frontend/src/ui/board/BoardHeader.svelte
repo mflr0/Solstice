@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
   import type { BoardDetail } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
@@ -8,9 +7,8 @@
   interface Props {
     detail: BoardDetail;
     view: 'board' | 'backlog' | 'settings';
-    children?: Snippet | undefined;
   }
-  const { detail, view, children }: Props = $props();
+  const { detail, view }: Props = $props();
   const b = $derived(detail.board);
 </script>
 
@@ -22,7 +20,7 @@
     <h1 class="page-title">{b.name}</h1>
     {#if detail.projects.length}
       <p class="projects">
-        <span class="sr-only">{t.boards.projects} :</span>
+        <span class="sr-only">{t.boards.projects}{t.common.labelSep}</span>
         {#each detail.projects as p (p.id)}
           <a class="chip" href={paths.project(p.key)} title={p.name}>{p.key}</a>
         {/each}
@@ -30,7 +28,6 @@
     {/if}
   </div>
   <div class="row">
-    {@render children?.()}
     {#if b.kind === 'scrum' && view !== 'settings'}
       <nav class="views" aria-label={t.boards.views}>
         <a

@@ -5,7 +5,7 @@
  * projectConfig).
  */
 
-import { matches } from './admin-forms.js';
+import { matches, tooLong } from './admin-forms.js';
 import type {
   AssigneeType,
   Category,
@@ -17,6 +17,7 @@ import type {
   VersionInput,
   VersionRow,
 } from './admin-types.js';
+import { fold } from './text.js';
 import type { IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
@@ -55,13 +56,9 @@ export interface ProjectSettings {
 /** A project key: an upper-case letter, then 1 to 9 upper-case letters or digits. */
 export const KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}$/;
 
-function plain(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
 /** What may be typed in the key field: upper case, letters and digits, 10 at most. */
 export function normalizeKey(s: string): string {
-  return plain(s)
+  return fold(s)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
     .slice(0, 10);
@@ -72,7 +69,7 @@ export function normalizeKey(s: string): string {
  * ("Site web" → "SW"), the start of a single one ("Marketing" → "MARK").
  */
 export function suggestKey(name: string): string {
-  const words = plain(name)
+  const words = fold(name)
     .toUpperCase()
     .split(/[^A-Z0-9]+/)
     .filter(Boolean);
@@ -118,7 +115,7 @@ export function projectProblems(
   const out: Partial<Record<'name' | 'key' | 'access', ProjectProblem>> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const k = keyProblem(f.key);
   if (k) out.key = k;
   if ((f.access === 'group' || f.access === 'role') && !f.accessId) out.access = 'accessRequired';
@@ -208,7 +205,7 @@ export function categoryProblem(
 ): CategoryProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return categories.some((c) => c.id !== self && c.name.trim().toLowerCase() === lower)
     ? 'nameTaken'
@@ -224,6 +221,7 @@ export const PROJECT_TABS = [
   'rights',
   'workflows',
   'notifications',
+  'import',
 ] as const;
 
 export type ProjectTab = (typeof PROJECT_TABS)[number];
@@ -247,6 +245,23 @@ export function nextTab(
 ): ProjectTab {
   const i = tabs.indexOf(current);
   return tabs[(i + step + tabs.length) % tabs.length] ?? current;
+}
+
+/* CSV import ---------------------------------------------------------------- */
+
+/**
+ * The mapping after a column gets a field: a field goes to one column only,
+ * so the column that had it loses it ("" leaves the column out).
+ */
+export function assignColumn<C extends { field: string }>(
+  columns: C[],
+  index: number,
+  field: string,
+): C[] {
+  return columns.map((c, i) => {
+    if (i === index) return { ...c, field };
+    return field !== '' && c.field === field ? { ...c, field: '' } : c;
+  });
 }
 
 /* Versions and components --------------------------------------------------- */
@@ -352,7 +367,7 @@ export function generalProblems(
   const out: Partial<Record<'name' | 'types', GeneralProblem>> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const types = issueTypesProblem(f.issueTypes, allTypes);
   if (types) out.types = types;
   return out;
@@ -419,7 +434,7 @@ export function uniqueNameProblem(
 ): NameProblem | null {
   const n = name.trim();
   if (!n) return 'nameRequired';
-  if ([...n].length > 255) return 'nameTooLong';
+  if (tooLong(n)) return 'nameTooLong';
   const lower = n.toLowerCase();
   return others.some((o) => o.id !== self && o.name.trim().toLowerCase() === lower)
     ? 'nameTaken'

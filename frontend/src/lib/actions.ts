@@ -29,3 +29,29 @@ export function outside(node: HTMLElement, handler: () => void) {
 export function autofocus(node: HTMLElement) {
   queueMicrotask(() => node.focus());
 }
+
+type SidesHandler = (left: boolean, right: boolean) => void;
+
+/**
+ * Calls handler with whether a sideways scroller hides content on its left
+ * and on its right: once mounted, then on each scroll and resize.
+ */
+export function hiddenSides(node: HTMLElement, handler: SidesHandler) {
+  let current = handler;
+  const measure = () => {
+    const rest = node.scrollWidth - node.clientWidth - node.scrollLeft;
+    current(node.scrollLeft >= 1, rest >= 1);
+  };
+  const watch = new ResizeObserver(measure);
+  watch.observe(node);
+  node.addEventListener('scroll', measure, { passive: true });
+  return {
+    update(next: SidesHandler) {
+      current = next;
+    },
+    destroy() {
+      watch.disconnect();
+      node.removeEventListener('scroll', measure);
+    },
+  };
+}

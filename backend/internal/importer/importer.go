@@ -325,6 +325,9 @@ func (r *run) prepareTarget() (*kept, error) {
 		}
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	for _, t := range tables {
 		if _, err := r.dst.ExecContext(r.ctx, "TRUNCATE TABLE `"+t+"`"); err != nil {
 			return nil, err
@@ -383,15 +386,6 @@ func (r *run) projectIDs() []int64 {
 	}
 	slices.Sort(ids)
 	return ids
-}
-
-// quote protects a Jira column named after a reserved word (e.g. "lead",
-// reserved since MySQL 8).
-func (r *run) quote(column string) string {
-	if r.engine == jiradb.MySQL {
-		return "`" + column + "`"
-	}
-	return `"` + column + `"`
 }
 
 func firstLine(s string) string {

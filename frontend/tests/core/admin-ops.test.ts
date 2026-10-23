@@ -196,3 +196,11 @@ describe('subscription schedules', () => {
     expect(toggleDay([], 7, false)).toEqual([]);
   });
 });
+
+describe('the mail queue’s attempt count', () => {
+  it('prints the number once in every language', () => {
+    for (const messages of [en, fr, de, italian, hi]) {
+      expect(messages.mailAdmin.attempts(3).match(/3/g)).toEqual(['3']);
+    }
+  });
+});

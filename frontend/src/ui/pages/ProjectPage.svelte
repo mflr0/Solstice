@@ -23,7 +23,7 @@
   let error = $state('');
 
   /** This page, its list filtered by a field's value (a version, a component). */
-  function filtered(key: string, field: string, value: string): string {
+  function filterHref(key: string, field: string, value: string): string {
     const jql = `${field} = ${quote(value)}`;
     return paths.project(key) + writeLocation({ jql, mode: null, filter: null, page: 1 });
   }
@@ -85,7 +85,7 @@
                 <a
                   class="chip"
                   class:released={v.released}
-                  href={filtered(p.key, 'fixVersion', v.name)}
+                  href={filterHref(p.key, 'fixVersion', v.name)}
                   title={v.releaseDate ? formatDay(v.releaseDate) : ''}
                   >{v.name}{#if v.released}<span class="sr-only">
                       ({t.projects.released})</span
@@ -100,7 +100,7 @@
             <dt>{t.projects.components}</dt>
             <dd>
               {#each detail.components.filter((c) => !c.archived) as c (c.id)}
-                <a class="chip" href={filtered(p.key, 'component', c.name)}>{c.name}</a>
+                <a class="chip" href={filterHref(p.key, 'component', c.name)}>{c.name}</a>
               {/each}
             </dd>
           </div>

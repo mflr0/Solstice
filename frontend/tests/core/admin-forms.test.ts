@@ -20,6 +20,7 @@ import {
   roleProblems,
   securityLevelProblem,
   suggestUsername,
+  tooLong,
   typedMatches,
   userProblems,
 } from '../../src/core/admin-forms.js';
@@ -137,6 +138,17 @@ describe('user form', () => {
     expect(matches('ren dur', 'René Durand', 'rene.durand')).toBe(true);
     expect(matches('paul', 'René Durand')).toBe(false);
     expect(matches('  ', 'anything')).toBe(true);
+  });
+});
+
+describe('name length', () => {
+  it('counts characters of the trimmed text, as the server does', () => {
+    expect(tooLong('a'.repeat(255))).toBe(false);
+    expect(tooLong('a'.repeat(256))).toBe(true);
+    expect(tooLong(`  ${'a'.repeat(255)}  `)).toBe(false);
+    expect(tooLong('😀'.repeat(255))).toBe(false);
+    expect(tooLong('😀'.repeat(256))).toBe(true);
+    expect(tooLong('a'.repeat(101), 100)).toBe(true);
   });
 });
 

@@ -3,7 +3,10 @@
  * RFC 3339 strings in UTC; calendar days (due dates) are "YYYY-MM-DD".
  */
 
-export type StatusCategory = 'todo' | 'doing' | 'done';
+/** The status categories, in the order of an issue's life. */
+export const STATUS_CATEGORIES = ['todo', 'doing', 'done'] as const;
+
+export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
 
 export interface Me {
   id: number;
@@ -13,6 +16,8 @@ export interface Me {
   admin: boolean;
   /** The interface language chosen on the account (src/i18n/locales.ts); absent on older servers. */
   locale?: string | null;
+  /** "ldap" for an account whose password is the directory's; absent on older servers. */
+  directory?: string;
 }
 
 export interface UserRef {
@@ -80,17 +85,15 @@ export interface IssueSummary {
   updated: string;
   due: string | null;
   confidential: boolean;
+  /** The extra columns asked for, as text. */
+  values?: Record<string, string>;
 }
-
-export type SearchMode = 'simple' | 'jql';
 
 export interface IssuePage {
   total: number;
   page: number;
   size: number;
   issues: IssueSummary[];
-  /** How the server read the query: the simple syntax, or JQL. */
-  mode?: SearchMode;
 }
 
 export interface IssueBrief {
@@ -331,17 +334,6 @@ export interface Person {
 export interface Refs {
   users: Record<string, string>;
   issues: Record<string, boolean>;
-}
-
-export interface AdminUser {
-  id: number;
-  username: string;
-  name: string;
-  email: string;
-  active: boolean;
-  admin: boolean;
-  hasPassword: boolean;
-  created: string;
 }
 
 /** A live notification: an issue changed. */

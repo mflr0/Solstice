@@ -18,7 +18,6 @@
 package search
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -95,7 +94,10 @@ type Query struct {
 	Sort    string // SQL ORDER BY
 }
 
-var issueKey = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_]*)-(\d+)$`)
+func isKey(s string) bool {
+	_, _, ok := issue.ParseKey(s)
+	return ok
+}
 
 // Parse reads a search string. It never fails: anything not understood is
 // searched as text.
@@ -118,7 +120,7 @@ func Parse(s string) Query {
 		case strings.HasPrefix(raw, "#") && len(raw) > 1:
 			q.Filters = append(q.Filters, Filter{Label, raw[1:], not})
 			continue
-		case issueKey.MatchString(raw) && !not:
+		case isKey(raw) && !not:
 			q.Keys = append(q.Keys, strings.ToUpper(raw))
 			continue
 		}
@@ -194,12 +196,12 @@ func (q Query) SQL(me int64) (string, []any) {
 	if len(q.Keys) > 0 {
 		var keys []string
 		for _, k := range q.Keys {
-			m := issueKey.FindStringSubmatch(k)
-			num, _ := strconv.ParseInt(m[2], 10, 64)
+			pkey, n, _ := issue.ParseKey(k)
+			num, _ := strconv.ParseInt(n, 10, 64)
 			// The key of an issue moved to another project still finds it.
 			keys = append(keys, "(("+sqlq.ProjectKey("p", "?")+" AND i.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk "+
 				"WHERE mk.issue_id = i.id AND mk.old_key = ?))")
-			args = append(args, m[1], m[1], num, m[1]+"-"+strconv.FormatInt(num, 10))
+			args = append(args, pkey, pkey, num, pkey+"-"+strconv.FormatInt(num, 10))
 		}
 		conds = append(conds, "("+strings.Join(keys, " OR ")+")")
 	}
@@ -250,7 +252,7 @@ func userSQL(column, v string, me int64) (string, []any) {
 	case "personne", "none", "aucun", "nobody":
 		return column + " IS NULL", nil
 	}
-	like := escapeLike(strings.ToLower(v))
+	like := sqlq.EscapeLike(strings.ToLower(v))
 	return column + ` IN (SELECT id FROM users WHERE username LIKE ? OR LOWER(display_name) LIKE ?
 		OR LOWER(display_name) LIKE ?)`, []any{like + "%", like + "%", "% " + like + "%"}
 }
@@ -322,7 +324,7 @@ func textSQL(words []string) (string, []any) {
 				c = "NOT " + c
 			}
 			conds = append(conds, c)
-			like := "%" + escapeLike(strings.Join(parts, " ")) + "%"
+			like := "%" + sqlq.EscapeLike(strings.Join(parts, " ")) + "%"
 			args = append(args, like, like)
 			continue
 		}
@@ -341,10 +343,6 @@ func textSQL(words []string) (string, []any) {
 		args = append([]any{strings.Join(boolean, " ")}, args...)
 	}
 	return strings.Join(conds, " AND "), args
-}
-
-func escapeLike(s string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func anys[T any](xs []T) []any {

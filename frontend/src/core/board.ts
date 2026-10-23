@@ -13,6 +13,7 @@ import type {
   SwimlaneStrategy,
 } from './board-types.js';
 import type { IssueBrief, UserRef } from './types.js';
+import { isoDay, parseDay } from './dates.js';
 import { formatLocale } from '../i18n/format.js';
 
 /** A horizontal band of the board. Wording is left to the interface. */
@@ -224,24 +225,15 @@ export function daysLeft(end: string, now: Date = new Date()): number {
  * that day, at the time it is now, as an ISO instant.
  */
 export function sprintEnd(day: string, now: Date = new Date()): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!m) return null;
-  const end = new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
-    now.getHours(),
-    now.getMinutes(),
-  );
+  const d = parseDay(day);
+  if (!d) return null;
+  const end = new Date(d.y, d.m - 1, d.d, now.getHours(), now.getMinutes());
   return Number.isNaN(end.getTime()) ? null : end.toISOString();
 }
 
 /** A local day ("YYYY-MM-DD") some days after now. */
 export function dayAfter(days: number, now: Date = new Date()): string {
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return isoDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + days));
 }
 
 /** The local day ("YYYY-MM-DD") of an instant; empty for none. */
@@ -249,7 +241,7 @@ export function localDay(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return dayAfter(0, d);
+  return isoDay(d);
 }
 
 /**
@@ -257,14 +249,14 @@ export function localDay(iso: string | null): string {
  * at hour:minute when there was none. Null for a day that is not one.
  */
 export function atDay(day: string, base: string | null, hour: number, minute = 0): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!m) return null;
+  const d = parseDay(day);
+  if (!d) return null;
   const was = base ? new Date(base) : null;
   const known = was && !Number.isNaN(was.getTime());
   const at = new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
+    d.y,
+    d.m - 1,
+    d.d,
     known ? was.getHours() : hour,
     known ? was.getMinutes() : minute,
   );

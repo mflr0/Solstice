@@ -35,6 +35,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "ईमेल पता अमान्य है।",
 	AccountOwnAdminRights:            "आप अपने ही एडमिन अधिकार नहीं हटा सकते।",
 	AccountOwnPasswordInProfile:      "अपना पासवर्ड अपने प्रोफ़ाइल से बदलें।",
+	AccountDirectoryPassword:         "यह खाता डायरेक्टरी (LDAP) से साइन इन करता है: इसका पासवर्ड वहीं बदला जाता है।",
+	AccountOwnEmailInProfile:         "अपना ईमेल पता अपने प्रोफ़ाइल से बदलें।",
 	AccountPasswordTooShort:          "पासवर्ड कम से कम %d वर्णों का होना चाहिए।",
 	AccountPasswordIsUsername:        "पासवर्ड यूज़रनेम नहीं हो सकता।",
 	AccountCurrentPasswordRequired:   "अपना मौजूदा पासवर्ड बताएँ।",
@@ -146,7 +148,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "बदलाव की पुष्टि के लिए प्रोजेक्ट की मौजूदा कुंजी टाइप करें।",
 	ProjectKeysBusy:            "प्रोजेक्ट कुंजी का एक और बदलाव चल रहा है। थोड़ी देर बाद फिर कोशिश करें।",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 	DefaultTypeTask:                  "टास्क",
 	DefaultTypeBug:                   "बग",
 	DefaultTypeStory:                 "स्टोरी",
@@ -175,6 +177,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultRoleAdministrators:        "एडमिन",
 	DefaultRoleDevelopers:            "डेवलपर",
 	DefaultRoleUsers:                 "यूज़र",
+	DefaultStatusToDo:                "करना है",
+	DefaultStatusInProgress:          "प्रगति में",
+	DefaultStatusInReview:            "समीक्षा में",
+	DefaultStatusDone:                "पूर्ण",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "देखना",
@@ -208,6 +214,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "अज्ञात फ़ील्ड प्रकार (इनमें से चुनें: %s)।",
 	CustomFieldNoOptions:     "इस फ़ील्ड प्रकार के कोई विकल्प नहीं होते।",
 	CustomFieldOptionTooLong: "किसी विकल्प का टेक्स्ट अधिकतम 255 वर्णों का होता है।",
+	CustomFieldOptionEmpty:   "किसी विकल्प का टेक्स्ट खाली नहीं हो सकता।",
 	CustomFieldUsedByBoards:  "यह फ़ील्ड बोर्ड के काम के लिए इस्तेमाल होता है: इसे मिटाया नहीं जा सकता।",
 	CustomFieldDeleteConfirm: "कुछ टिकटों में इस फ़ील्ड का मान है: मिटाने की पुष्टि के लिए इसका नाम टाइप करें।",
 	CustomFieldOptionInUse:   "कुछ टिकटों में यह विकल्प चुना गया है: उन्हें किसी दूसरे विकल्प पर ले जाएँ, या उनका मान साफ़ करें।",
@@ -287,8 +294,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "अमान्य समय अनुमान (उदाहरण: 1w 2d 3h 30m)।",
 	IssueSecurityLevelUnknown:  "इस प्रोजेक्ट में अज्ञात सुरक्षा स्तर।",
 	IssueReporterFixed:         "रिपोर्टर बदला नहीं जा सकता।",
-	IssueNoTodoStatus:          "“करना है” श्रेणी का कोई स्टेटस परिभाषित नहीं है।",
 	IssueTransitionNotAllowed:  "प्रोजेक्ट का वर्कफ़्लो स्टेटस के इस बदलाव की अनुमति नहीं देता।",
+	IssueEditChanged:           "सहेजते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
 	IssueTransitionUnavailable: "टिकट के मौजूदा स्टेटस से यह ट्रांज़िशन संभव नहीं है।",
 	IssueParentNotFound:        "पैरेंट टिकट नहीं मिला।",
 	IssueParentInvalid:         "पैरेंट उसी प्रोजेक्ट का टिकट होना चाहिए, और उसका अपना कोई पैरेंट नहीं होना चाहिए।",
@@ -323,6 +330,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "सुरक्षा स्तर वाले टिकट को स्थानांतरित करने के लिए लक्ष्य प्रोजेक्ट में सुरक्षा स्तर की अनुमति चाहिए, और दूसरा स्तर चुनने के लिए इस प्रोजेक्ट में भी।",
 	IssueMoveNoSubtaskType:     "टिकट में सब-टास्क हैं, और लक्ष्य प्रोजेक्ट में उन्हें देने के लिए कोई सब-टास्क प्रकार नहीं है। पहले प्रोजेक्ट में एक जोड़ें।",
 	IssueMoveUseAction:         "टिकट का प्रोजेक्ट ‘स्थानांतरित करें’ कार्रवाई से बदलता है।",
+	BulkNoIssues:               "कम से कम एक टिकट चुनें।",
+	BulkTooMany:                "एक सामूहिक बदलाव में अधिकतम %d टिकट हो सकते हैं।",
+	BulkNothingToChange:        "करने के लिए कोई बदलाव चुनें।",
+	BulkOneProject:             "कंपोनेंट और फ़िक्स वर्ज़न केवल एक ही प्रोजेक्ट के टिकटों पर बदले जा सकते हैं।",
 
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
@@ -335,9 +346,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "दर्ज समय को किसी ग्रुप या भूमिका तक सीमित नहीं किया जा सकता।",
 
 	// Issue links.
-	LinkTypeUnknown:    "अज्ञात लिंक प्रकार।",
-	LinkTargetNotFound: "लक्ष्य टिकट नहीं मिला।",
-	LinkToItself:       "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
+	LinkTypeUnknown:      "अज्ञात लिंक प्रकार।",
+	LinkTargetNotFound:   "लक्ष्य टिकट नहीं मिला।",
+	LinkToItself:         "किसी टिकट को उसी से लिंक नहीं किया जा सकता।",
+	LinkDirectionUnknown: "अज्ञात लिंक दिशा।",
 
 	// Group picker.
 	GroupPickerHeader: "मेल खाने वाले %[2]d ग्रुप में से %[1]d दिखाए गए",
@@ -396,6 +408,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "एक बार में 1 से 50 टिकट।",
 	BoardRankTargetRequired:      "rankBeforeIssue या rankAfterIssue बताएँ।",
 	BoardRankItself:              "किसी टिकट को उसी के सापेक्ष रैंक नहीं किया जा सकता।",
+	BoardFilterName:              "%s बोर्ड",
 
 	// Sprints.
 	SprintKanban:          "Kanban बोर्ड में स्प्रिंट नहीं होते।",
@@ -422,6 +435,23 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Exports.
 	ExportColumnUnknown: "अज्ञात कॉलम: %s।",
+
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "कोई फ़ाइल नहीं भेजी गई।",
+	CSVImportFileTooLarge:        "फ़ाइल %d MiB से बड़ी है।",
+	CSVImportFileInvalid:         "फ़ाइल मान्य CSV नहीं है (पंक्ति %d)।",
+	CSVImportFileEmpty:           "फ़ाइल में हेडर पंक्ति नहीं है।",
+	CSVImportTooManyRows:         "फ़ाइल में %d से अधिक पंक्तियाँ हैं।",
+	CSVImportMappingInvalid:      "कॉलम मैपिंग फ़ाइल से मेल नहीं खाती।",
+	CSVImportColumnTwice:         "दो कॉलम एक ही फ़ील्ड में जाते हैं: %s।",
+	CSVImportRowsInvalid:         "कुछ भी इम्पोर्ट नहीं हुआ: कुछ पंक्तियों में त्रुटियाँ हैं (%d)।",
+	CSVImportValueUnknown:        "%s: अज्ञात मान “%s”।",
+	CSVImportValueInvalid:        "%s: अमान्य मान “%s”।",
+	CSVImportUserAmbiguous:       "%s: “%s” से कई लोग मेल खाते हैं।",
+	CSVImportKeyTwice:            "टिकट कुंजी %s एक से अधिक पंक्तियों में है।",
+	CSVImportReferenceFailed:     "%s: उस पंक्ति में त्रुटियाँ हैं।",
+	CSVImportReferenceCycle:      "%s: पंक्तियाँ एक-दूसरे को संदर्भित करती हैं।",
+	CSVImportStatusNotInWorkflow: "स्टेटस %s इस टिकट प्रकार के वर्कफ़्लो में नहीं है।",
 
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",

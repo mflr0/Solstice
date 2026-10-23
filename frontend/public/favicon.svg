@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- The Solstice mark (src/ui/Logo.svelte): the sun on the horizon line, on a
+       paper badge so it stays legible in light and dark browser tabs. -->
+  <circle cx="8" cy="8" r="7.5" fill="#f4f1ea" />
+  <path d="M4.5 9.5a3.5 3.5 0 0 1 7 0Z" fill="#d9381e" />
+  <path d="M2 9.5h12" fill="none" stroke="#1c1b19" stroke-width="1" stroke-linecap="round" />
+  <path d="M5 11.5h6" fill="none" stroke="#1c1b19" stroke-width="1" stroke-linecap="round"
+    opacity="0.55" />
+</svg>

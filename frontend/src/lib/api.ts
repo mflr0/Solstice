@@ -5,8 +5,8 @@
  */
 
 import { avatarUrl } from '../core/avatar.js';
+import type { ColumnChoice } from '../core/search-columns.js';
 import type {
-  AdminUser,
   Comment,
   Grant,
   HiddenIssue,
@@ -84,6 +84,32 @@ export interface MoveCheck {
   subtasks: { count: number; reset: number; lost: number; reassigned: number };
 }
 
+/** What became of one issue of a bulk change; withParent: moved or deleted with its selected parent. */
+export interface BulkResult {
+  key: string;
+  ok: boolean;
+  error?: string;
+  newKey?: string;
+  withParent?: boolean;
+}
+
+/** A change to a multi-valued field: add these, remove these, or keep exactly these. */
+export interface BulkSet<T> {
+  mode: 'add' | 'remove' | 'replace';
+  values: T[];
+}
+
+/** The change a bulk edit makes; an absent field is left as it is. */
+export interface BulkEdit {
+  assignee?: number | null;
+  priority?: string | null;
+  labels?: BulkSet<string>;
+  components?: BulkSet<number>;
+  fixVersions?: BulkSet<number>;
+  /** An open sprint, or 0 to take the issues out of theirs. */
+  sprint?: number;
+}
+
 /** The choices a move can be given; a list replaces the whole list the issue ends with. */
 export interface MoveChoices {
   type?: string;
@@ -116,9 +142,18 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+/** With blob, the answer is read as a file (a CSV export), not as JSON. */
+export async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  as: 'json' | 'blob' = 'json',
+): Promise<T> {
   // The server answers its messages in the interface's language.
-  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': locale };
+  const headers: Record<string, string> = {
+    Accept: as === 'blob' ? '*/*' : 'application/json',
+    'Accept-Language': locale,
+  };
   let payload: BodyInit | undefined;
   if (method !== 'GET') headers['X-Solstice'] = '1';
   if (body instanceof FormData) {
@@ -163,6 +198,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     throw new ApiError(message, res.status, data);
   }
   if (res.status === 204) return undefined as T;
+  if (as === 'blob') return (await res.blob()) as T;
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -201,6 +237,36 @@ export interface IssueFields {
   remainingEstimate?: string | null;
 }
 
+/** A column of a CSV file to import, and the field it goes to ("": not imported). */
+export interface ImportColumn {
+  header: string;
+  field: string;
+  /** Recognised from its header. */
+  known: boolean;
+  /** A field an import cannot set (created, comments…). */
+  readOnly?: boolean;
+}
+
+/** A row of the file: the issue it would create, or what is wrong with it. */
+export interface ImportRow {
+  line: number;
+  key?: string;
+  summary: string;
+  type?: string;
+  status?: string;
+  errors?: string[];
+}
+
+/** The answer of an import, checked or done. */
+export interface ImportReport {
+  columns: ImportColumn[];
+  /** The fields a column may go to. */
+  targets: { id: string; name: string }[];
+  rows: ImportRow[];
+  /** The new keys, once imported. */
+  created?: string[];
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<Me>('POST', '/api/login', { username, password }),
@@ -218,8 +284,6 @@ export const api = {
   useLink: (token: string, password: string) =>
     request<Me>('POST', '/api/auth/reset', { token, password }),
   me: () => request<Me>('GET', '/api/me'),
-  /** The account's own settings: the interface language, or null for none. */
-  updateMe: (patch: { locale: string | null }) => request<Me>('PATCH', '/api/me', patch),
   meta: () => request<Meta>('GET', '/api/meta'),
 
   projects: () => request<Project[]>('GET', '/api/projects'),
@@ -238,7 +302,20 @@ export const api = {
     project?: string | undefined;
     page?: number | undefined;
     size?: number | undefined;
+    /** More columns, comma-separated: their values come back as text in each issue's values. */
+    columns?: string | undefined;
+    /** The time zone the values' dates are written in. */
+    tz?: string | undefined;
   }) => request<IssuePage>('GET', `/api/issues${query(params)}`),
+  /** Every column the search and the export can show, named in the interface's language. */
+  issueColumns: () => request<ColumnChoice[]>('GET', '/api/issues/columns'),
+  /** A search as a CSV file, in the given columns (comma-separated). */
+  exportIssues: (params: {
+    jql: string;
+    project?: string | undefined;
+    columns: string;
+    tz: string;
+  }) => request<Blob>('GET', `/api/issues/export.csv${query(params)}`, undefined, 'blob'),
   issue: (key: string) => request<IssueDetail>('GET', `/api/issues/${enc(key)}`),
   createIssue: (fields: IssueFields) => request<{ key: string }>('POST', '/api/issues', fields),
   updateIssue: (key: string, fields: IssueFields) =>
@@ -265,6 +342,23 @@ export const api = {
   /** Moves the issue (and its sub-tasks) to another project; answers its new key. */
   moveIssue: (key: string, project: string, choices: MoveChoices) =>
     request<{ key: string }>('POST', `/api/issues/${enc(key)}/move`, { project, ...choices }),
+
+  /** One change to several issues, each through its own route's checks; one refused doesn't stop the others. */
+  bulk: (
+    keys: string[],
+    change:
+      | ({ op: 'edit' } & BulkEdit)
+      | { op: 'transition'; status: string; resolution?: string | null }
+      | { op: 'move'; move: MoveChoices & { project: string } }
+      | { op: 'delete' },
+  ) => request<{ results: BulkResult[] }>('POST', '/api/issues/bulk', { keys, ...change }),
+  /** The dry run of a bulk move: what the moves still need, merged, and the issues that can't move. */
+  checkBulkMove: (keys: string[], project: string, choices: MoveChoices) =>
+    request<{ check: MoveCheck | null; results: BulkResult[] }>('POST', '/api/issues/bulk', {
+      keys,
+      op: 'move',
+      move: { project, check: true, ...choices },
+    }),
 
   comments: (key: string) => request<Comment[]>('GET', `/api/issues/${enc(key)}/comments`),
   addComment: (key: string, body: string) =>
@@ -297,6 +391,23 @@ export const api = {
     return request<IssueDetail | HiddenIssue>('POST', `/api/issues/${enc(key)}/attachments`, form);
   },
   deleteAttachment: (id: number) => request<void>('DELETE', `/api/attachments/${id}`),
+  /**
+   * Imports issues from a CSV file into a project: with check, only reports.
+   * The mapping gives each column's field ("" skips it); without it, the
+   * server guesses from the headers. A refused import answers 400 with the
+   * report in the error's data.
+   */
+  importIssues: (key: string, file: File, mapping: string[] | null, check: boolean) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    if (mapping) form.append('mapping', JSON.stringify(mapping));
+    form.append('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    return request<ImportReport>(
+      'POST',
+      `/api/projects/${enc(key)}/import.csv${check ? '?check=1' : ''}`,
+      form,
+    );
+  },
 
   setMyAvatar: (picture: Blob) => {
     const form = new FormData();
@@ -350,19 +461,6 @@ export const api = {
     request<void>('DELETE', `/api/workflows/${id}`, remapDefault ? { remapDefault } : undefined),
   createStatus: (s: { name: string; category: StatusCategory; project: string }) =>
     request<StatusRef>('POST', '/api/statuses', s),
-
-  adminUsers: (q: string) => request<AdminUser[]>('GET', `/api/admin/users${query({ q })}`),
-  adminCreateUser: (u: {
-    username: string;
-    name: string;
-    email: string;
-    password: string;
-    admin: boolean;
-  }) => request<{ id: number }>('POST', '/api/admin/users', u),
-  adminUpdateUser: (
-    id: number,
-    patch: { name?: string; email?: string; active?: boolean; admin?: boolean; password?: string },
-  ) => request<void>('PATCH', `/api/admin/users/${id}`, patch),
 
   // Search: saved filters and values to pick from.
   filters: () => request<SavedFilter[]>('GET', '/api/filters'),

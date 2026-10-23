@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
@@ -85,27 +86,23 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		if n == "" {
 			return fail(http.StatusBadRequest, i18n.BoardNameRequired)
 		}
-		sets, args = append(sets, "name = ?"), append(args, truncateRunes(n, 255))
+		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(n, varcharWidth))
 	}
 	if in.SubQuery != nil {
-		var v any
-		if q := strings.TrimSpace(*in.SubQuery); q != "" {
+		q := strings.TrimSpace(*in.SubQuery)
+		if q != "" {
 			if err := checkQuery(i18n.M(i18n.BoardSubFilter), q); err != nil {
 				return err
 			}
-			v = q
 		}
-		sets, args = append(sets, "sub_query = ?"), append(args, v)
+		sets, args = append(sets, "sub_query = ?"), append(args, sqlq.NullIf(q))
 	}
 	if in.DoneCutoff != nil {
-		var v any
-		if c := strings.TrimSpace(*in.DoneCutoff); c != "" {
-			if !cutoffPattern.MatchString(c) {
-				return fail(http.StatusBadRequest, i18n.BoardPeriodInvalid)
-			}
-			v = c
+		c := strings.TrimSpace(*in.DoneCutoff)
+		if c != "" && !cutoffPattern.MatchString(c) {
+			return fail(http.StatusBadRequest, i18n.BoardPeriodInvalid)
 		}
-		sets, args = append(sets, "done_cutoff = ?"), append(args, v)
+		sets, args = append(sets, "done_cutoff = ?"), append(args, sqlq.NullIf(c))
 	}
 	if in.Swimlanes != nil {
 		if !laneStrategies[*in.Swimlanes] {
@@ -114,14 +111,11 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		sets, args = append(sets, "swimlanes = ?"), append(args, *in.Swimlanes)
 	}
 	if in.Estimate != nil {
-		var v any
-		if e := *in.Estimate; e != "" {
-			if e != "timeoriginalestimate" && !customFieldRef.MatchString(e) {
-				return fail(http.StatusBadRequest, i18n.BoardEstimationUnknown)
-			}
-			v = e
+		e := *in.Estimate
+		if e != "" && e != "timeoriginalestimate" && !customFieldRef.MatchString(e) {
+			return fail(http.StatusBadRequest, i18n.BoardEstimationUnknown)
 		}
-		sets, args = append(sets, "estimate = ?"), append(args, v)
+		sets, args = append(sets, "estimate = ?"), append(args, sqlq.NullIf(e))
 	}
 	if in.Columns != nil {
 		if len(*in.Columns) == 0 {
@@ -213,12 +207,12 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 					return fail(http.StatusBadRequest, i18n.BoardColumnUnknown)
 				}
 				if _, err := tx.ExecContext(ctx, `UPDATE board_columns SET name = ?, position = ?, min_issues = ?,
-					max_issues = ? WHERE id = ?`, truncateRunes(strings.TrimSpace(c.Name), 255), pos, c.Min, c.Max, id); err != nil {
+					max_issues = ? WHERE id = ?`, sqlq.Truncate(strings.TrimSpace(c.Name), varcharWidth), pos, c.Min, c.Max, id); err != nil {
 					return err
 				}
 			} else {
 				res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position, min_issues, max_issues)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(strings.TrimSpace(c.Name), 255), pos, c.Min, c.Max)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(strings.TrimSpace(c.Name), varcharWidth), pos, c.Min, c.Max)
 				if err != nil {
 					return err
 				}
@@ -248,14 +242,14 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		for pos, q := range *in.QuickFilters {
 			var desc any
 			if q.Description != nil && strings.TrimSpace(*q.Description) != "" {
-				desc = truncateRunes(*q.Description, 255)
+				desc = sqlq.Truncate(*q.Description, varcharWidth)
 			}
 			if q.ID != 0 {
 				_, err = tx.ExecContext(ctx, `UPDATE board_quick_filters SET name = ?, query = ?, description = ?, position = ?
-					WHERE id = ? AND board_id = ?`, truncateRunes(q.Name, 255), q.Query, desc, pos, q.ID, b.ID)
+					WHERE id = ? AND board_id = ?`, sqlq.Truncate(q.Name, varcharWidth), q.Query, desc, pos, q.ID, b.ID)
 			} else {
 				_, err = tx.ExecContext(ctx, `INSERT INTO board_quick_filters (board_id, name, query, description, position)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(q.Name, 255), q.Query, desc, pos)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(q.Name, varcharWidth), q.Query, desc, pos)
 			}
 			if err != nil {
 				return err
@@ -274,15 +268,15 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		}
 		for pos, l := range *in.Lanes {
 			var q any
-			if l.Query != nil && strings.TrimSpace(*l.Query) != "" {
-				q = *l.Query
+			if l.Query != nil {
+				q = sqlq.NullIfBlank(*l.Query)
 			}
 			if l.ID != 0 {
 				_, err = tx.ExecContext(ctx, `UPDATE board_swimlanes SET name = ?, query = ?, position = ?, is_default = ?
-					WHERE id = ? AND board_id = ?`, truncateRunes(l.Name, 255), q, pos, l.Default, l.ID, b.ID)
+					WHERE id = ? AND board_id = ?`, sqlq.Truncate(l.Name, varcharWidth), q, pos, l.Default, l.ID, b.ID)
 			} else {
 				_, err = tx.ExecContext(ctx, `INSERT INTO board_swimlanes (board_id, name, query, position, is_default)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, truncateRunes(l.Name, 255), q, pos, l.Default)
+					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(l.Name, varcharWidth), q, pos, l.Default)
 			}
 			if err != nil {
 				return err
@@ -315,13 +309,65 @@ func (s *Server) deleteBoard(w http.ResponseWriter, r *http.Request) error {
 	} else if !ok {
 		return errForbidden
 	}
-	// The board's saved filter stays: it may be used on its own.
-	if _, err := s.db.ExecContext(r.Context(), `DELETE FROM boards WHERE id = ?`, b.ID); err != nil {
+	ctx := r.Context()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+	// Its future sprints go, as if deleted one by one; its active sprint is
+	// completed. Closed sprints stay, with no board, as the issues' history.
+	var future, active []*sprintOut
+	if err := sqlq.Each(ctx, tx, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND state <> 'closed'
+		ORDER BY position, id FOR UPDATE`, func(rows *sql.Rows) error {
+		sp, err := scanSprint(rows)
+		if err != nil {
+			return err
+		}
+		if sp.State == "future" {
+			future = append(future, &sp)
+		} else {
+			active = append(active, &sp)
+		}
+		return nil
+	}, b.ID); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	type dropped struct {
+		issueIDs []int64
+		line     change
+	}
+	drops := make([]dropped, len(future))
+	for i, sp := range future {
+		if drops[i].issueIDs, drops[i].line, err = dropSprint(ctx, tx, sub.UserID, sp, now); err != nil {
+			return err
+		}
+	}
+	for _, sp := range active {
+		if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = 'closed', completed_at = ? WHERE id = ?`, now, sp.ID); err != nil {
+			return err
+		}
+		sp.State, sp.Completed = "closed", &now
+	}
+	// The board's saved filter stays: it may be used on its own.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM boards WHERE id = ?`, b.ID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	for i, sp := range future {
+		s.announceBackToBacklog(ctx, sub.UserID, drops[i].issueIDs, drops[i].line)
+		s.emit(events.Event{Kind: events.SprintDeleted, ActorID: sub.UserID, Sprint: sprintEvent(sp, b.ID)})
+	}
+	for _, sp := range active {
+		s.emit(events.Event{Kind: events.SprintClosed, ActorID: sub.UserID, Sprint: sprintEvent(sp, b.ID)})
 	}
 	s.emit(events.Event{Kind: events.BoardDeleted, ActorID: sub.UserID,
 		Board: &events.Board{ID: b.ID, Name: b.Name, Kind: b.Kind}})
-	s.auditBoard(r, audit.BoardDelete, b.ID, b.Name, map[string]any{"kind": b.Kind})
+	s.auditBoard(r, audit.BoardDelete, b.ID, b.Name,
+		map[string]any{"kind": b.Kind, "deletedSprints": len(future), "completedSprints": len(active)})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

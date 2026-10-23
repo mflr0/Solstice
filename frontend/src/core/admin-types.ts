@@ -4,7 +4,7 @@
  * Dates are RFC 3339 strings in UTC.
  */
 
-import type { IdName, UserRef } from './types.js';
+import type { IdName, StatusCategory, UserRef } from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
 
@@ -267,6 +267,8 @@ export interface UserRow {
   active: boolean;
   admin: boolean;
   hasPassword: boolean;
+  /** "ldap" for an account whose password is the directory's; absent on older servers. */
+  directory?: string;
   created: string;
   /** Absent on older servers. */
   lastLogin?: string | null;
@@ -447,7 +449,7 @@ export interface StatusUsage {
 export interface StatusRow {
   id: string;
   name: string;
-  category: 'todo' | 'doing' | 'done';
+  category: StatusCategory;
   position: number;
   usage: { issues: number; workflows: number; boardColumns: number };
 }
@@ -554,13 +556,19 @@ export interface SystemInfo {
   import: ImportView | null;
 }
 
+export interface ImportStep {
+  name: string;
+  imported: number;
+  skipped: number;
+}
+
 export interface ImportView {
   state: 'running' | 'done' | 'failed';
   phase: string;
   done: number;
   total: number;
   rows: number;
-  steps: { name: string; imported: number; skipped: number }[];
+  steps: ImportStep[];
   warnings: string[];
   error?: string;
   seconds: number;
@@ -573,10 +581,11 @@ export interface ImportSource {
 }
 
 export interface ImportCheck {
-  engine: string;
+  engine: 'postgres' | 'mysql';
   projects: number;
   issues: number;
   users: number;
-  attachments: number;
+  /** Whether the Jira home holds attachment files. */
+  attachments: boolean;
   warning?: string;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CatalogItem, FieldOption, FieldRow, StatusRow } from '../../src/core/admin-types.js';
 import {
+  arrowAfterMove,
   catalogForm,
   catalogPayload,
   fieldChanges,
@@ -83,6 +84,15 @@ describe('reordering', () => {
     expect(sameOrder(rows, moveItem(rows, 1, 2))).toBe(false);
     expect(sameOrder([{ id: 1 }], [{ id: '1' }])).toBe(true);
     expect(sameOrder(rows, rows.slice(1))).toBe(false);
+  });
+
+  it('keeps the focus on the arrow pressed, or the other one at an end', () => {
+    expect(arrowAfterMove(-1, 2, 4)).toBe('up');
+    expect(arrowAfterMove(1, 2, 4)).toBe('down');
+    expect(arrowAfterMove(-1, 0, 4)).toBe('down');
+    expect(arrowAfterMove(1, 3, 4)).toBe('up');
+    expect(arrowAfterMove(1, 1, 2)).toBe('up');
+    expect(arrowAfterMove(-1, 0, 2)).toBe('down');
   });
 });
 
@@ -184,6 +194,14 @@ describe('field context editing', () => {
       issueTypes: 'typesRequired',
     });
     expect(fieldProblems({ ...f, projects: ['WEB'], issueTypes: ['10'] }, [], null)).toEqual({});
+  });
+
+  it('takes options of 255 characters and refuses a longer one', () => {
+    const f = { ...newFieldForm(), name: 'X', type: 'select' as const };
+    expect(fieldProblems({ ...f, options: `a\n${'b'.repeat(255)}` }, [], null)).toEqual({});
+    expect(fieldProblems({ ...f, options: `a\n${'b'.repeat(256)}` }, [], null)).toEqual({
+      options: 'optionTooLong',
+    });
   });
 
   it('sends nothing for an untouched field, and only the context when only it changed', () => {

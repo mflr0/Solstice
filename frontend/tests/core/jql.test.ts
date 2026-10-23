@@ -18,6 +18,7 @@ import {
   quote,
   quoteField,
 } from '../../src/core/jql.js';
+import { jqlToFilters } from '../../src/core/filters.js';
 import { renderJqlError } from '../../src/i18n/t.js';
 
 describe('lex', () => {
@@ -54,6 +55,11 @@ describe('lex', () => {
   it('marks unterminated strings and a lone "!"', () => {
     expect(lex('summary ~ "abc')[2]).toMatchObject({ kind: 'string', closed: false, text: 'abc' });
     expect(lex('a ! b')[1]?.kind).toBe('error');
+  });
+
+  it("separates words on the server's spaces (unicode.IsSpace)", () => {
+    expect(lex('a\u0085b\u00a0c\u3000d').map((t) => t.text)).toEqual(['a', 'b', 'c', 'd']);
+    expect(lex('a\ufeffb').map((t) => t.text)).toEqual(['a\ufeffb']);
   });
 });
 
@@ -112,6 +118,14 @@ describe('parse', () => {
       ['a = 1 AND', 'fieldExpected', [], 9],
       ['status = Open FROM x', 'unexpected', ['FROM'], 14],
       ['status was Open from x', 'changedOnly', ['FROM'], 21],
+      // At the end of the input.
+      ['NOT', 'fieldExpected', [], 3],
+      ['(a = b', 'parenExpected', [], 6],
+      ['a = 1 ORDER BY', 'sortFieldExpected', [], 14],
+      ['a = b ORDER BY c,', 'sortFieldExpected', [], 17],
+      ['assignee in membersOf(x', 'argumentInvalid', ['membersOf'], 23],
+      ['a = f(', 'argumentInvalid', ['f'], 6],
+      ['status changed during (a', 'parenExpected', [], 24],
     ];
     for (const [src, code, args, pos] of cases) {
       let err: unknown;
@@ -142,6 +156,33 @@ describe('parse', () => {
   it('accepts an empty query and a query that only sorts', () => {
     expect(parse('')).toEqual({ where: null, order: [] });
     expect(parse('ORDER BY created DESC').order).toEqual([{ field: 'created', desc: true }]);
+  });
+
+  it('refuses a query over the server limits', () => {
+    const err = (src: string) => {
+      try {
+        parse(src);
+      } catch (e) {
+        const j = e as JqlError;
+        return [j.code, j.args, j.pos];
+      }
+      return null;
+    };
+    const nested = (n: number) => '('.repeat(n) + 'a = 1' + ')'.repeat(n);
+    expect(err(nested(63))).toBeNull();
+    expect(err(nested(64))).toEqual(['tooDeep', [64], 64]);
+    expect(err('NOT '.repeat(63) + 'a = 1')).toBeNull();
+    expect(err('NOT '.repeat(64) + 'a = 1')).toEqual(['tooDeep', [64], 256]);
+    expect(err('('.repeat(20000))).toEqual(['tooDeep', [64], 64]);
+
+    // The server counts UTF-8 bytes.
+    const text = (n: number, ch = 'x') => `a ~ "${ch.repeat(n)}"`;
+    expect(err(text(20000 - 6))).toBeNull();
+    expect(err(text(20000 - 5))).toEqual(['tooLong', [20000], 0]);
+    expect(err(text(9998, 'é'))).toEqual(['tooLong', [20000], 0]);
+    expect(err('('.repeat(100000))).toEqual(['tooLong', [20000], 0]);
+
+    expect(jqlToFilters('('.repeat(20000))).toMatchObject({ ok: false, reason: 'syntax' });
   });
 
   it('conjunction refuses OR and NOT', () => {
@@ -211,6 +252,15 @@ describe('looksLikeJql', () => {
     expect(looksLikeJql('\u0085project = DEMO')).toBe(false);
     expect(looksLikeJql('ORDER\u0085BY created')).toBe(false);
   });
+
+  it('does not read U+00A0, U+FEFF or U+000B as a space', () => {
+    for (const c of ['\u00a0', '\ufeff', '\v']) {
+      expect(looksLikeJql(`project${c}= DEMO`)).toBe(false);
+      expect(looksLikeJql(`${c}project = DEMO`)).toBe(false);
+      expect(looksLikeJql(`ORDER${c}BY created`)).toBe(false);
+      expect(looksLikeJql(`status${c}in (Open)`)).toBe(false);
+    }
+  });
 });
 
 describe('highlight', () => {
@@ -254,6 +304,66 @@ describe('highlight', () => {
 
 describe('completionAt', () => {
   const at = (src: string, caret = src.length) => completionAt(src, caret);
+
+  it('answers exactly, strings, operators, phrases and the sort included', () => {
+    const none = { inList: false, phrase: null };
+    expect(at('status = "In Pr')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: 'In Pr',
+      from: 9,
+      to: 15,
+      kind: 'value',
+      keywords: ['EMPTY'],
+    });
+    expect(at('status = "In" ')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: '',
+      from: 14,
+      to: 14,
+      kind: 'keyword',
+      keywords: ['AND', 'OR', 'ORDER BY'],
+    });
+    expect(at('status !')).toEqual({
+      ...none,
+      field: 'status',
+      prefix: '!',
+      from: 7,
+      to: 8,
+      kind: 'operator',
+      keywords: [],
+    });
+    expect(at('status in (In P')).toEqual({
+      field: 'status',
+      prefix: 'P',
+      from: 14,
+      to: 15,
+      inList: false,
+      phrase: { prefix: 'In P', from: 11, inList: true },
+      kind: 'none',
+      keywords: [],
+    });
+    expect(at('status = En c')).toEqual({
+      field: 'status',
+      prefix: 'c',
+      from: 12,
+      to: 13,
+      inList: false,
+      phrase: { prefix: 'En c', from: 9, inList: false },
+      kind: 'keyword',
+      keywords: ['AND', 'OR', 'ORDER BY'],
+    });
+    expect(at('a = 1 ORDER BY priority ')).toEqual({
+      ...none,
+      field: 'a',
+      prefix: '',
+      from: 24,
+      to: 24,
+      kind: 'keyword',
+      keywords: ['ASC', 'DESC'],
+    });
+  });
 
   it('offers fields at the start and after AND', () => {
     expect(at('')).toMatchObject({ kind: 'field', prefix: '', from: 0, to: 0 });
@@ -362,5 +472,42 @@ describe('operatorsFor', () => {
     expect(functionsFor('Référent métier', customKind('userpicker'))).toContain('currentUser()');
     expect(customKind('datepicker')).toBe('date');
     expect(customKind('something-else')).toBeUndefined();
+  });
+});
+
+describe('functionsFor', () => {
+  it.each([
+    ['user', ['currentUser()', 'membersOf("")']],
+    ['type', ['standardIssueTypes()', 'subTaskIssueTypes()']],
+    ['sprint', ['openSprints()', 'futureSprints()', 'closedSprints()']],
+    [
+      'version',
+      [
+        'unreleasedVersions()',
+        'releasedVersions()',
+        'earliestUnreleasedVersion()',
+        'latestReleasedVersion()',
+      ],
+    ],
+    [
+      'date',
+      [
+        'now()',
+        'startOfDay()',
+        'endOfDay()',
+        'startOfWeek()',
+        'endOfWeek()',
+        'startOfMonth()',
+        'endOfMonth()',
+        'startOfYear()',
+        'endOfYear()',
+      ],
+    ],
+  ] as const)('offers the %s functions of the one table', (kind, expected) => {
+    expect(functionsFor('field', kind)).toEqual(expected);
+  });
+
+  it('offers nothing for a kind no function fits', () => {
+    expect(functionsFor('summary')).toEqual([]);
   });
 });

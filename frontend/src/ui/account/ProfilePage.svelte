@@ -1,8 +1,6 @@
 <script lang="ts">
   import {
     changesEmail,
-    changesPassword,
-    profileApplied,
     profileForm,
     profilePatch,
     profileProblems,
@@ -15,14 +13,7 @@
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
-  import {
-    ApiError,
-    api,
-    errorMessage,
-    hasPicture,
-    pictureChanged,
-    pictureUrl,
-  } from '../../lib/api.js';
+  import { api, errorMessage, hasPicture, pictureChanged, pictureUrl } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -38,8 +29,6 @@
   let touched = $state<Partial<Record<ProfileField, boolean>>>({});
   let saving = $state(false);
   let error = $state('');
-  /** The server is too old to change the name or e-mail. */
-  let unsupported = $state(false);
   let currentInput = $state<HTMLInputElement>();
 
   const min = $derived(publicSettings.value.passwordMinLength);
@@ -48,7 +37,7 @@
     session.me !== null &&
       (form.name.trim() !== session.me.name ||
         form.email.trim() !== session.me.email ||
-        changesPassword(form)),
+        form.newPassword !== ''),
   );
 
   function shown(f: ProfileField): string {
@@ -176,19 +165,10 @@
     try {
       const updated = await accountApi.updateProfile(patch);
       session.me = updated;
-      if (!profileApplied(patch, updated)) {
-        unsupported = true;
-        return;
-      }
       notify(patch.newPassword ? t.account.passwordChanged : t.account.saved);
       reset();
     } catch (err) {
-      // An older server only knows the language: it refuses the other fields.
-      if (err instanceof ApiError && err.status === 400 && err.message.includes('unknown field')) {
-        unsupported = true;
-      } else {
-        error = errorMessage(err);
-      }
+      error = errorMessage(err);
     } finally {
       saving = false;
     }
@@ -217,10 +197,6 @@
     </div>
   </dl>
   <p class="form-hint who-hint">{t.account.usernameHint}</p>
-
-  {#if unsupported}
-    <p class="result failed" role="alert">{t.account.profileUnsupported}</p>
-  {/if}
 
   <section class="settings-form">
     <h2 class="section-title">{t.account.picture}</h2>
@@ -283,7 +259,9 @@
     </div>
 
     <h2 class="section-title">{t.account.passwordTitle}</h2>
-    <p class="form-hint">{t.account.passwordIntro}</p>
+    <p class="form-hint">
+      {session.me.directory ? t.account.directoryPasswordIntro : t.account.passwordIntro}
+    </p>
     <!-- Lets password managers match the account. -->
     <input
       class="sr-only"
@@ -310,38 +288,40 @@
         <span class="field-error">{shown('currentPassword')}</span>
       {/if}
     </label>
-    <div class="form-grid">
-      <label class="field">
-        <span>{t.account.newPassword}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={form.newPassword}
-          autocomplete="new-password"
-          aria-invalid={!!shown('newPassword')}
-          onblur={() => (touched.newPassword = true)}
-        />
-        {#if shown('newPassword')}
-          <span class="field-error">{shown('newPassword')}</span>
-        {:else}
-          <span class="hint">{t.account.passwordHint(min)}</span>
-        {/if}
-      </label>
-      <label class="field">
-        <span>{t.account.confirmPassword}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={form.confirmPassword}
-          autocomplete="new-password"
-          aria-invalid={!!shown('confirmPassword')}
-          onblur={() => (touched.confirmPassword = true)}
-        />
-        {#if shown('confirmPassword')}
-          <span class="field-error">{shown('confirmPassword')}</span>
-        {/if}
-      </label>
-    </div>
+    {#if !session.me.directory}
+      <div class="form-grid">
+        <label class="field">
+          <span>{t.account.newPassword}</span>
+          <input
+            class="input"
+            type="password"
+            bind:value={form.newPassword}
+            autocomplete="new-password"
+            aria-invalid={!!shown('newPassword')}
+            onblur={() => (touched.newPassword = true)}
+          />
+          {#if shown('newPassword')}
+            <span class="field-error">{shown('newPassword')}</span>
+          {:else}
+            <span class="hint">{t.account.passwordHint(min)}</span>
+          {/if}
+        </label>
+        <label class="field">
+          <span>{t.account.confirmPassword}</span>
+          <input
+            class="input"
+            type="password"
+            bind:value={form.confirmPassword}
+            autocomplete="new-password"
+            aria-invalid={!!shown('confirmPassword')}
+            onblur={() => (touched.confirmPassword = true)}
+          />
+          {#if shown('confirmPassword')}
+            <span class="field-error">{shown('confirmPassword')}</span>
+          {/if}
+        </label>
+      </div>
+    {/if}
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
     {#if dirty}

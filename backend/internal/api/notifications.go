@@ -14,6 +14,9 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
+	"sync"
+	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/events"
@@ -26,10 +29,6 @@ import (
 	"solstice/internal/settings"
 	"solstice/internal/sqlq"
 	"solstice/internal/webhook"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 // outgoing holds the event bus and what it feeds.
@@ -52,6 +51,7 @@ func (s *Server) startOutgoing() {
 	s.out = o
 	o.bus = events.NewBus(s.db, s.log)
 	o.bus.OnPublish(s.toLive)
+	o.bus.LoadCustom(s.eventCustom)
 	config := func(ctx context.Context) (mail.Config, error) { return mail.LoadConfig(ctx, o.settings, s.secrets) }
 	o.outbox = mail.NewOutbox(s.db, s.log, config)
 	o.notify = notify.New(s.db, s.perms, o.outbox, s.tz, s.log, config, filterRunner{s})
@@ -108,6 +108,43 @@ func (s *Server) Close(ctx context.Context) error { return s.out.bus.Close(ctx) 
 
 // emit publishes an event. It never waits for e-mail or webhooks.
 func (s *Server) emit(e events.Event) { s.out.bus.Publish(e) }
+
+// eventCustom renders an issue's custom fields for e-mails and webhooks, as
+// GET /issue does. Like the rest of a webhook's issue, the epic is not
+// filtered by permission: e-mails filter it per recipient.
+func (s *Server) eventCustom(ctx context.Context, issueID int64) ([]events.CustomValue, error) {
+	iss, err := s.findIssueByID(ctx, issueID)
+	if err != nil {
+		return nil, err
+	}
+	set, err := s.loadIssues(ctx, nil, nil, []*issueRow{iss}, func(k string) bool {
+		return k == loadCustom || k == loadSprints
+	})
+	if err != nil {
+		return nil, err
+	}
+	d := set.list[0]
+	if iss.EpicID.Valid {
+		if d.epic, err = s.findIssueByID(ctx, iss.EpicID.Int64); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	}
+	base := s.base()
+	o := &restOut{base: base, api: base + "/rest/api/2", locale: s.defaultLanguage(), tz: s.zone()}
+	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]events.CustomValue, 0, len(set.fields))
+	for _, f := range set.fields {
+		v, err := json.Marshal(o.customValue(set, users, f, d))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, events.CustomValue{ID: f.ID, Name: f.Name, Value: v, Text: o.customText(set, users, f, d)})
+	}
+	return out, nil
+}
 
 // toLive passes events on to open pages.
 func (s *Server) toLive(e events.Event) {
@@ -175,12 +212,12 @@ func sprintEvent(sp *sprintOut, board int64) *events.Sprint {
 
 // emitSprint announces a sprint as it is now.
 func (s *Server) emitSprint(ctx context.Context, kind events.Kind, by, board, sprint int64) {
-	list, err := s.boardSprints(ctx, board, "id = "+strconv.FormatInt(sprint, 10))
-	if err != nil || len(list) == 0 {
+	sp, err := s.sprintByID(ctx, board, sprint)
+	if err != nil {
 		s.log.Warn("sprint event lost", "sprint", sprint, "err", err)
 		return
 	}
-	s.emit(events.Event{Kind: kind, ActorID: by, Sprint: sprintEvent(&list[0], board)})
+	s.emit(events.Event{Kind: kind, ActorID: by, Sprint: sprintEvent(sp, board)})
 }
 
 // Preferences ---------------------------------------------------------------
@@ -284,19 +321,6 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 var projectEvents = []string{notify.GroupCreated, notify.GroupAssigned, notify.GroupCommented, notify.GroupStatus,
 	notify.GroupUpdated, notify.GroupAttachments, notify.GroupDeleted}
 
-func (s *Server) configurableProject(r *http.Request) (int64, error) {
-	id, err := s.projectByKey(r.Context(), r.PathValue("key"))
-	if err != nil {
-		return 0, err
-	}
-	if ok, err := s.canConfigure(r, id); err != nil {
-		return 0, err
-	} else if !ok {
-		return 0, errForbidden
-	}
-	return id, nil
-}
-
 func (s *Server) getProjectNotifications(w http.ResponseWriter, r *http.Request) error {
 	id, err := s.configurableProject(r)
 	if err != nil {
@@ -386,17 +410,11 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx := r.Context()
 	// The password is never opened here: a lost key must not lock the page.
-	var cfg mail.Config
-	if _, err := s.out.settings.GetJSON(ctx, "mail", &cfg); err != nil {
-		return err
-	}
-	if cfg.Security == "" {
-		cfg.Security, cfg.Port = mail.SecurityStartTLS, mail.DefaultPort(mail.SecurityStartTLS)
-	}
-	set, err := mail.HasPassword(ctx, s.out.settings)
+	cfg, set, err := mail.ReadStored(ctx, s.out.settings)
 	if err != nil {
 		return err
 	}
+	cfg = cfg.WithDefaults()
 	out := mailSettingsOut{Config: cfg, PasswordSet: set}
 	if credentialsInClear(cfg) {
 		out.Problem = mailProblemCredentialsNeedTLS
@@ -407,111 +425,51 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+// mailSettingsIn is the body of PUT /api/admin/mail. A field left out keeps
+// its stored value.
+type mailSettingsIn struct {
+	Enabled  *bool           `json:"enabled"`
+	Host     *string         `json:"host"`
+	Port     *int            `json:"port"`
+	Security *string         `json:"security"`
+	Username *string         `json:"username"`
+	Password json.RawMessage `json:"password"`
+	From     *string         `json:"from"`
+	FromName *string         `json:"fromName"`
+	// Read-only fields sent back as received are accepted.
+	PasswordSet *bool   `json:"passwordSet"`
+	BaseURL     *string `json:"baseUrl"`
+}
+
 // putMailSettings saves the SMTP settings. The password is kept when left
 // out, removed when null or empty.
 func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	var in struct {
-		Enabled  *bool           `json:"enabled"`
-		Host     *string         `json:"host"`
-		Port     *int            `json:"port"`
-		Security *string         `json:"security"`
-		Username *string         `json:"username"`
-		Password json.RawMessage `json:"password"`
-		From     *string         `json:"from"`
-		FromName *string         `json:"fromName"`
-		// Read-only fields sent back as received are accepted.
-		PasswordSet *bool   `json:"passwordSet"`
-		BaseURL     *string `json:"baseUrl"`
-	}
+	var in mailSettingsIn
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
 	ctx := r.Context()
-	var cfg mail.Config
-	if _, err := s.out.settings.GetJSON(ctx, "mail", &cfg); err != nil {
-		return err
-	}
-	before := cfg
-	hadPassword, err := mail.HasPassword(ctx, s.out.settings)
+	before, hadPassword, err := mail.ReadStored(ctx, s.out.settings)
 	if err != nil {
 		return err
 	}
 	keepPassword := in.Password == nil
-	if keepPassword {
-		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
-		if err != nil {
-			s.log.Error("stored mail password not readable", "err", err)
-			return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
-		}
-		cfg.Password = old.Password
-	} else {
-		var p *string
-		if err := json.Unmarshal(in.Password, &p); err != nil {
-			return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "password")
-		}
-		cfg.Password = ""
-		if p != nil {
-			cfg.Password = *p
-		}
+	password, err := s.mailPassword(ctx, in.Password)
+	if err != nil {
+		return err
 	}
-	trim := func(p *string, to *string) {
-		if p != nil {
-			*to = strings.TrimSpace(*p)
-		}
+	cfg := in.merge(before)
+	cfg.Password = password
+	if err := validateMailSettings(cfg); err != nil {
+		return err
 	}
-	trim(in.Host, &cfg.Host)
-	trim(in.Username, &cfg.Username)
-	trim(in.From, &cfg.From)
-	trim(in.FromName, &cfg.FromName)
-	if in.Enabled != nil {
-		cfg.Enabled = *in.Enabled
+	if err := mailCredentialsRule(before, cfg, keepPassword, hadPassword); err != nil {
+		return err
 	}
-	if in.Security != nil {
-		cfg.Security = *in.Security
-	}
-	if cfg.Security == "" {
-		cfg.Security = mail.SecurityStartTLS
-	}
-	if !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, cfg.Security) {
-		return fail(http.StatusBadRequest, i18n.MailSecurityUnknown)
-	}
-	if in.Port != nil {
-		cfg.Port = *in.Port
-	}
-	if cfg.Port == 0 {
-		cfg.Port = mail.DefaultPort(cfg.Security)
-	}
-	if cfg.Port < 1 || cfg.Port > 65535 {
-		return fail(http.StatusBadRequest, i18n.MailPortInvalid)
-	}
-	if strings.ContainsAny(cfg.Host+cfg.Username+cfg.FromName, "\r\n") {
-		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "host")
-	}
-	if cfg.Enabled && cfg.Host == "" {
-		return fail(http.StatusBadRequest, i18n.MailServerRequired)
-	}
-	if (cfg.Enabled || cfg.From != "") && !mail.ValidAddress(cfg.From) {
-		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
-	}
-	// The stored password must not follow a change of destination: whoever
-	// can change the server could otherwise read it back by pointing the
-	// settings at a server of their own and sending a test e-mail.
-	if keepPassword && hadPassword && mailDestinationChanged(before, cfg) {
-		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
-	}
-	if credentialsInClear(cfg) {
-		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
-	}
-	if cfg.Password != "" {
-		if _, err := s.secrets(); err != nil {
-			s.log.Error("mail password not encryptable", "err", err)
-			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
-		}
-	}
-	if err := mail.SaveConfig(ctx, s.out.settings, s.secrets, cfg); err != nil {
+	if err := s.saveMailSettings(ctx, cfg); err != nil {
 		return err
 	}
 	if changes := mailChanges(before, cfg, !keepPassword, hadPassword); len(changes) > 0 {
@@ -523,22 +481,103 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	return s.getMailSettings(w, r)
 }
 
-// mailDefaults fills in what an unset configuration means: STARTTLS and the
-// usual port of the security mode.
-func mailDefaults(c mail.Config) mail.Config {
-	if c.Security == "" {
-		c.Security = mail.SecurityStartTLS
+// mailPassword is the password to save: the stored one when raw is nil (left
+// out), none when raw is null or empty.
+func (s *Server) mailPassword(ctx context.Context, raw json.RawMessage) (string, error) {
+	if raw == nil {
+		old, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+		if err != nil {
+			s.log.Error("stored mail password not readable", "err", err)
+			return "", failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
+		}
+		return old.Password, nil
 	}
-	if c.Port == 0 {
-		c.Port = mail.DefaultPort(c.Security)
+	var p *string
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return "", failf(http.StatusBadRequest, i18n.FieldValueInvalid, "password")
 	}
-	return c
+	if p == nil {
+		return "", nil
+	}
+	return *p, nil
+}
+
+// merge lays the fields the request gives over the stored settings c, the
+// password aside, and fills in the defaults.
+func (in mailSettingsIn) merge(c mail.Config) mail.Config {
+	trim := func(p *string, to *string) {
+		if p != nil {
+			*to = strings.TrimSpace(*p)
+		}
+	}
+	trim(in.Host, &c.Host)
+	trim(in.Username, &c.Username)
+	trim(in.From, &c.From)
+	trim(in.FromName, &c.FromName)
+	if in.Enabled != nil {
+		c.Enabled = *in.Enabled
+	}
+	if in.Security != nil {
+		c.Security = *in.Security
+	}
+	if in.Port != nil {
+		c.Port = *in.Port
+	}
+	return c.WithDefaults()
+}
+
+// validateMailSettings checks merged settings on their own, before the rules
+// on credentials.
+func validateMailSettings(c mail.Config) error {
+	if !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, c.Security) {
+		return fail(http.StatusBadRequest, i18n.MailSecurityUnknown)
+	}
+	if c.Port < 1 || c.Port > 65535 {
+		return fail(http.StatusBadRequest, i18n.MailPortInvalid)
+	}
+	if strings.ContainsAny(c.Host+c.Username+c.FromName, "\r\n") {
+		return failf(http.StatusBadRequest, i18n.FieldValueInvalid, "host")
+	}
+	if c.Enabled && c.Host == "" {
+		return fail(http.StatusBadRequest, i18n.MailServerRequired)
+	}
+	if (c.Enabled || c.From != "") && !mail.ValidAddress(c.From) {
+		return fail(http.StatusBadRequest, i18n.MailSenderInvalid)
+	}
+	return nil
+}
+
+// mailCredentialsRule refuses settings that would send credentials where
+// they must not go.
+func mailCredentialsRule(before, after mail.Config, keepPassword, hadPassword bool) error {
+	// The stored password must not follow a change of destination: whoever
+	// can change the server could otherwise read it back by pointing the
+	// settings at a server of their own and sending a test e-mail.
+	if keepPassword && hadPassword && mailDestinationChanged(before, after) {
+		return fail(http.StatusBadRequest, i18n.MailPasswordRequired)
+	}
+	if credentialsInClear(after) {
+		return fail(http.StatusBadRequest, i18n.MailCredentialsNeedTLS)
+	}
+	return nil
+}
+
+// saveMailSettings stores c, refusing before any write when a password
+// cannot be sealed.
+func (s *Server) saveMailSettings(ctx context.Context, c mail.Config) error {
+	if c.Password != "" {
+		if _, err := s.secrets(); err != nil {
+			s.log.Error("mail password not encryptable", "err", err)
+			return failf(http.StatusInternalServerError, i18n.MailPasswordEncryptFailed, i18n.M(i18n.RequestInternalError))
+		}
+	}
+	return mail.SaveConfig(ctx, s.out.settings, s.secrets, c)
 }
 
 // mailDestinationChanged tells whether the settings send the password
 // somewhere else: another server, port, security mode or user name.
 func mailDestinationChanged(before, after mail.Config) bool {
-	before, after = mailDefaults(before), mailDefaults(after)
+	before, after = before.WithDefaults(), after.WithDefaults()
 	return !strings.EqualFold(before.Host, after.Host) || before.Port != after.Port ||
 		before.Security != after.Security || before.Username != after.Username
 }
@@ -547,20 +586,15 @@ func mailDestinationChanged(before, after mail.Config) bool {
 // for the audit log. The password is never written, only that it changed or
 // was removed.
 func mailChanges(before, after mail.Config, passwordGiven, hadPassword bool) map[string]any {
-	before, after = mailDefaults(before), mailDefaults(after)
+	before, after = before.WithDefaults(), after.WithDefaults()
 	out := map[string]any{}
-	pair := func(name string, from, to any) {
-		if from != to {
-			out[name] = map[string]any{"from": from, "to": to}
-		}
-	}
-	pair("enabled", before.Enabled, after.Enabled)
-	pair("host", before.Host, after.Host)
-	pair("port", before.Port, after.Port)
-	pair("security", before.Security, after.Security)
-	pair("username", before.Username, after.Username)
-	pair("from", before.From, after.From)
-	pair("fromName", before.FromName, after.FromName)
+	diff(out, "enabled", before.Enabled, after.Enabled)
+	diff(out, "host", before.Host, after.Host)
+	diff(out, "port", before.Port, after.Port)
+	diff(out, "security", before.Security, after.Security)
+	diff(out, "username", before.Username, after.Username)
+	diff(out, "from", before.From, after.From)
+	diff(out, "fromName", before.FromName, after.FromName)
 	switch {
 	case passwordGiven && after.Password != "":
 		out["passwordChanged"] = true
@@ -715,7 +749,7 @@ func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -786,7 +820,7 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return err
 	}
@@ -816,13 +850,13 @@ func (s *Server) respondSubscription(w http.ResponseWriter, r *http.Request, sub
 // filter the user sees, if they may change it: theirs, or any for
 // administrators.
 func (s *Server) editableSubscription(r *http.Request, sub *perm.Subject) (*notify.Subscription, error) {
-	f, err := s.filterForEdit(r, sub)
+	f, err := s.visibleFilter(r, sub)
 	if err != nil {
 		return nil, err
 	}
-	id, err := strconv.ParseInt(r.PathValue("sid"), 10, 64)
+	id, err := pathID(r, "sid")
 	if err != nil {
-		return nil, errNotFound
+		return nil, err
 	}
 	x, err := s.out.notify.Subscription(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && x.FilterID != f.out.ID {
@@ -906,7 +940,7 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 	if err != nil {
 		return nil, false, err
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, url.Values{"q": {f.Query}})
+	where, args, order, err := s.searchCondition(ctx, sub, url.Values{"q": {f.Query}})
 	if err != nil {
 		var he *httpError
 		if errors.As(err, &he) {
@@ -914,8 +948,7 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 		}
 		return nil, false, err
 	}
-	from := ` FROM issues i JOIN projects p ON p.id = i.project_id LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE ` + where
+	from := searchFrom + ` WHERE ` + where
 	res := &notify.FilterResult{Name: f.Name, Query: f.Query}
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&res.Total); err != nil {
 		return nil, false, err
@@ -975,4 +1008,109 @@ func (s *Server) notificationRoutes(route func(string, handler, bool)) {
 	route("DELETE /api/admin/webhooks/{id}", s.deleteWebhook, true)
 	route("GET /api/admin/webhooks/{id}/deliveries", s.webhookDeliveries, true)
 	route("POST /api/admin/webhooks/{id}/test", s.testWebhook, true)
+}
+
+const (
+	maxStreamsPerUser = 10
+	maxStreamsTotal   = 1000
+)
+
+type streamSlots struct {
+	mu      sync.Mutex
+	perUser map[int64]int
+	total   int
+}
+
+func (c *streamSlots) acquire(user int64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.perUser == nil {
+		c.perUser = map[int64]int{}
+	}
+	if c.total >= maxStreamsTotal || c.perUser[user] >= maxStreamsPerUser {
+		return false
+	}
+	c.total++
+	c.perUser[user]++
+	return true
+}
+
+func (c *streamSlots) release(user int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.total--
+	if c.perUser[user]--; c.perUser[user] == 0 {
+		delete(c.perUser, user)
+	}
+}
+
+// events streams change notifications (Server-Sent Events). Permissions are
+// re-read every minute so a revoked access stops the flow.
+func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		return fail(http.StatusInternalServerError, i18n.RequestStreamingUnsupported)
+	}
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	return s.streamEvents(w, r, flusher, sub)
+}
+
+// streamEvents ends when the client goes away, the server shuts down or the
+// session behind the stream ends, so its slot is always given back.
+func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, flusher http.Flusher, sub *perm.Subject) error {
+	if !s.streams.acquire(sub.UserID) {
+		return fail(http.StatusTooManyRequests, i18n.RequestTooManyStreams)
+	}
+	defer s.streams.release(sub.UserID)
+	current := make(chan *perm.Subject, 1)
+	current <- sub
+	can := func(e live.Event) bool {
+		s := <-current
+		current <- s
+		return s.CanSee(e.Issue) && s.SeesRestricted(e.Issue.ProjectID, e.Group, e.Role)
+	}
+	ch, unsubscribe := s.hub.Subscribe(can)
+	defer unsubscribe()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "retry: 3000\n\n")
+	flusher.Flush()
+
+	ping := time.NewTicker(25 * time.Second)
+	defer ping.Stop()
+	refresh := time.NewTicker(time.Minute)
+	defer refresh.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return nil
+		case <-s.streamsDone:
+			return nil
+		case e := <-ch:
+			data, _ := json.Marshal(e)
+			fmt.Fprintf(w, "event: change\ndata: %s\n\n", data)
+			flusher.Flush()
+		case <-ping.C:
+			fmt.Fprint(w, ": ping\n\n")
+			flusher.Flush()
+		case <-refresh.C:
+			// End the stream once the session is over or the account disabled.
+			u, err := s.authenticate(r)
+			if err != nil || u.ID != sub.UserID {
+				return nil
+			}
+			fresh, err := s.perms.Subject(r.Context(), u.ID, u.Admin)
+			if err != nil {
+				return nil
+			}
+			<-current
+			current <- fresh
+		}
+	}
 }

@@ -5,21 +5,23 @@
  * once is kept for the session.
  */
 
+import { EMPTY, literal, ME, type ListField, type PeopleRole } from '../../core/filters.js';
+import { fold } from '../../core/text.js';
 import {
-  EMPTY,
-  literal,
-  ME,
-  valueOf,
-  type ListField,
-  type PeopleRole,
-} from '../../core/filters.js';
-import { customKind, fieldInfo, type FieldKind } from '../../core/jql.js';
-import type {
-  CustomFieldRef,
-  Project,
-  ProjectValue,
-  SprintSuggestion,
-  StatusCategory,
+  customKind,
+  fieldInfo,
+  functionCall,
+  functionsOfKind,
+  quote,
+  type FieldKind,
+  type FunctionName,
+} from '../../core/jql.js';
+import {
+  STATUS_CATEGORIES,
+  type CustomFieldRef,
+  type Project,
+  type ProjectValue,
+  type SprintSuggestion,
 } from '../../core/types.js';
 import { categoryLabels, t } from '../../i18n/t.js';
 import { api } from '../../lib/api.js';
@@ -37,21 +39,13 @@ export interface Option {
   facets?: string[] | undefined;
 }
 
-/** Lower case, accents removed: "Été" finds "ete". */
-export function fold(s: string): string {
-  // Only Latin accents go: other scripts' marks are letters (Devanagari vowel signs).
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
+/** Re-exported for the JQL editor's suggestions. */
+export { fold };
 
 export function matches(q: string, ...texts: (string | undefined)[]): boolean {
   const f = fold(q.trim());
   return !f || texts.some((x) => x !== undefined && fold(x).includes(f));
 }
-
-const CATEGORY_ORDER: StatusCategory[] = ['todo', 'doing', 'done'];
 
 class Catalog {
   projects = $state<Project[] | null>(null);
@@ -125,7 +119,7 @@ async function projectValues(
     const hint = v.released ? `${v.project.key} ${t.search.released}` : v.project.key;
     const prev = byName.get(v.name.toLowerCase());
     if (prev) prev.hint = `${prev.hint ?? ''}, ${hint}`;
-    else byName.set(v.name.toLowerCase(), { value: valueOf(v.name), label: v.name, hint });
+    else byName.set(v.name.toLowerCase(), { value: quote(v.name), label: v.name, hint });
   }
   return [...byName.values()];
 }
@@ -144,7 +138,7 @@ export async function loadOptions(
     case 'project':
       return (await catalog.loadProjects())
         .filter((p) => matches(q, p.key, p.name))
-        .map((p) => ({ value: valueOf(p.key), label: p.name, hint: p.key, facets: [p.key] }));
+        .map((p) => ({ value: quote(p.key), label: p.name, hint: p.key, facets: [p.key] }));
     case 'type': {
       // One entry per name; its counts add up every type of that name.
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a throwaway value, not state
@@ -155,7 +149,7 @@ export async function loadOptions(
         if (prev) prev.facets?.push(ty.id);
         else
           byName.set(ty.name.toLowerCase(), {
-            value: valueOf(ty.name),
+            value: quote(ty.name),
             label: ty.name,
             facets: [ty.id],
           });
@@ -163,11 +157,11 @@ export async function loadOptions(
       return [...byName.values()];
     }
     case 'status':
-      return CATEGORY_ORDER.flatMap((cat) =>
+      return STATUS_CATEGORIES.flatMap((cat) =>
         (meta?.statuses ?? [])
           .filter((s) => s.category === cat && matches(q, s.name))
           .map((s) => ({
-            value: valueOf(s.name),
+            value: quote(s.name),
             label: s.name,
             group: categoryLabels[cat],
             facets: [s.id],
@@ -176,18 +170,18 @@ export async function loadOptions(
     case 'priority':
       return (meta?.priorities ?? [])
         .filter((p) => matches(q, p.name))
-        .map((p) => ({ value: valueOf(p.name), label: p.name, facets: [p.id] }));
+        .map((p) => ({ value: quote(p.name), label: p.name, facets: [p.id] }));
     case 'resolution':
       return (meta?.resolutions ?? [])
         .filter((r) => matches(q, r.name))
-        .map((r) => ({ value: valueOf(r.name), label: r.name, facets: [r.id] }));
+        .map((r) => ({ value: quote(r.name), label: r.name, facets: [r.id] }));
     case 'people':
     case 'assignee':
     case 'reporter': {
       const users = await api.users(q.trim());
       for (const u of users) refs.users[u.username.toLowerCase()] = u.name;
       return users.map((u) => ({
-        value: valueOf(u.username),
+        value: quote(u.username),
         label: u.name,
         hint: u.username,
         facets: [String(u.id)],
@@ -196,7 +190,7 @@ export async function loadOptions(
     case 'labels': {
       const keys = projectKeys(projects);
       const labels = await api.labels(q.trim(), keys.length === 1 ? keys[0] : undefined);
-      return labels.map((l) => ({ value: valueOf(l), label: l, facets: [l] }));
+      return labels.map((l) => ({ value: quote(l), label: l, facets: [l] }));
     }
     case 'sprint':
       return (await catalog.sprintList(q.trim())).map((s) => ({
@@ -241,20 +235,11 @@ export function specialValues(field: ListField, role: PeopleRole = 'participant'
     case 'resolution':
       return [{ value: EMPTY, label: s.unresolved, facets: [''] }];
     case 'sprint':
-      return [
-        { value: 'openSprints()', label: s.openSprints },
-        { value: 'futureSprints()', label: s.futureSprints },
-        { value: 'closedSprints()', label: s.closedSprints },
-        { value: EMPTY, label: s.noSprint },
-      ];
+      return [...listFunctions('sprint'), { value: EMPTY, label: s.noSprint }];
     case 'epic':
       return [{ value: EMPTY, label: s.noEpic }];
     case 'fixVersion':
-      return [
-        { value: 'unreleasedVersions()', label: s.unreleased },
-        { value: 'releasedVersions()', label: s.released },
-        { value: EMPTY, label: s.noVersion },
-      ];
+      return [...listFunctions('version'), { value: EMPTY, label: s.noVersion }];
     case 'component':
       return [{ value: EMPTY, label: s.noComponent }];
     case 'labels':
@@ -264,7 +249,7 @@ export function specialValues(field: ListField, role: PeopleRole = 'participant'
   }
 }
 
-const FUNCTION_LABELS: Record<string, () => string> = {
+const FUNCTION_LABELS: Partial<Record<string, () => string>> = {
   currentuser: () => t.search.special.me,
   opensprints: () => t.search.special.openSprints,
   futuresprints: () => t.search.special.futureSprints,
@@ -275,7 +260,17 @@ const FUNCTION_LABELS: Record<string, () => string> = {
   latestreleasedversion: () => t.search.special.latestReleased,
   standardissuetypes: () => t.search.special.standardTypes,
   subtaskissuetypes: () => t.search.special.subtaskTypes,
-};
+} satisfies Partial<Record<Lowercase<FunctionName>, () => string>>;
+
+/** The list functions of a kind of field, as options: "openSprints()" with its label. */
+function listFunctions(kind: FieldKind): Option[] {
+  return functionsOfKind(kind)
+    .filter((f) => f.list)
+    .map((f) => {
+      const value = functionCall(f);
+      return { value, label: FUNCTION_LABELS[f.name.toLowerCase()]?.() ?? value };
+    });
+}
 
 /** How a chosen value reads on its button: a name rather than an id or username. */
 export function labelOf(field: ListField, value: string, role?: PeopleRole): string {

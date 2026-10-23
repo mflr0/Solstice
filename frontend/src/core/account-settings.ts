@@ -5,7 +5,8 @@
  * the pages word them (src/i18n, block `account`).
  */
 
-import { isEmail, type Problems } from './admin-forms.js';
+import { passwordTooShort } from './account-links.js';
+import { isEmail, tooLong, type Problems } from './admin-forms.js';
 import type { Subscription, SubscriptionInput } from './admin-types.js';
 import type { Me } from './types.js';
 
@@ -40,9 +41,12 @@ export function profileForm(me: Me): ProfileForm {
   };
 }
 
-/** Whether the form asks for a new password (any of its three fields typed). */
+/**
+ * Whether the form asks for a new password: the new one or its confirmation
+ * typed. The current one alone does not count, as password managers fill it.
+ */
 export function changesPassword(f: ProfileForm): boolean {
-  return f.currentPassword !== '' || f.newPassword !== '' || f.confirmPassword !== '';
+  return f.newPassword !== '' || f.confirmPassword !== '';
 }
 
 /** Whether the typed address differs from the stored one. */
@@ -58,7 +62,7 @@ export function profileProblems(
   const out: Problems<ProfileField, ProfileProblem> = {};
   const name = f.name.trim();
   if (!name) out.name = 'nameRequired';
-  else if ([...name].length > 255) out.name = 'nameTooLong';
+  else if (tooLong(name)) out.name = 'nameTooLong';
   const email = f.email.trim();
   if (email && !isEmail(email)) out.email = 'emailInvalid';
   // Changing the address, like the password, takes the current one.
@@ -67,10 +71,11 @@ export function profileProblems(
     if (!f.currentPassword) out.currentPassword = 'currentRequired';
   }
   if (changesPassword(f)) {
-    // A current password typed on its own means a new one is wanted, unless
-    // it only confirms the address change.
+    // A confirmation typed on its own means a new password is wanted, unless
+    // the address change is what is saved.
     if (!f.newPassword && !mailChanged) out.newPassword = 'newRequired';
-    else if (f.newPassword && [...f.newPassword].length < minPassword) out.newPassword = 'newShort';
+    else if (f.newPassword && passwordTooShort(f.newPassword, minPassword))
+      out.newPassword = 'newShort';
     if (f.newPassword && f.confirmPassword !== f.newPassword)
       out.confirmPassword = 'confirmMismatch';
   }
@@ -94,17 +99,6 @@ export function profilePatch(f: ProfileForm, me: Me): ProfilePatch {
   if (mailChanged || f.newPassword) out.currentPassword = f.currentPassword;
   if (f.newPassword) out.newPassword = f.newPassword;
   return out;
-}
-
-/**
- * Whether the server took the profile change: an older server answers
- * without changing the name or e-mail it does not know.
- */
-export function profileApplied(patch: ProfilePatch, me: Me): boolean {
-  return (
-    (patch.name === undefined || patch.name === me.name) &&
-    (patch.email === undefined || patch.email === me.email)
-  );
 }
 
 /* Subscriptions ---------------------------------------------------------------- */

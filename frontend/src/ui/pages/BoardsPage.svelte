@@ -31,8 +31,6 @@
     (boards ?? []).filter((b) => !project || b.projects.some((p) => p.key === project)),
   );
 
-  // Creating a board -----------------------------------------------------------
-
   let creating = $state(false);
   let projects = $state<Project[] | null>(null);
   let form = $state<{ name: string; kind: BoardKind; project: string }>({
@@ -98,7 +96,7 @@
   }
 </script>
 
-<div class="page">
+<div class="page" data-title={t.boards.title}>
   <header class="page-head">
     <h1 class="page-title">{t.boards.title}</h1>
     <button class="btn btn-primary" onclick={openCreate}>{t.boards.create}</button>

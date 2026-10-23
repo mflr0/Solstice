@@ -41,6 +41,8 @@ export interface JqlArgs {
   duringDates: [];
   argumentInvalid: [name: string];
   valueExpected: [];
+  tooLong: [max: number];
+  tooDeep: [max: number];
 }
 
 export type JqlCode = keyof JqlArgs;
@@ -62,7 +64,9 @@ export class JqlError<C extends JqlCode = JqlCode> extends Error {
   }
 }
 
-const isSpace = (c: string) => /\s/.test(c);
+// Go's unicode.IsSpace, as the server's lexer: JavaScript's \s adds U+FEFF and leaves out U+0085.
+const isSpace = (c: string) =>
+  /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/.test(c);
 const WORD_STOP = '()",\'=!~<>';
 
 /** Splits a query into tokens; never fails (a lone "!" becomes an error token). */
@@ -144,10 +148,21 @@ export interface Query {
   order: SortTerm[];
 }
 
+/**
+ * The token past the end of the input. Its kind, 'error', matches none of the
+ * parser's tests, since parse has already refused every real error token: a
+ * test of the next token's kind also covers the end of the input.
+ */
 const EOF: Token = { kind: 'error', raw: '', text: '', start: 0, end: 0, closed: true };
+
+// The server's limits (backend/internal/jql/jql.go), which keep a hostile
+// query from overflowing the recursive parser's stack.
+const MAX_QUERY_LEN = 20000; // in UTF-8 bytes, as the server counts
+const MAX_DEPTH = 64; // nesting of parentheses and NOT
 
 class Parser {
   private i = 0;
+  private depth = 0;
   private readonly eof: Token;
 
   constructor(
@@ -173,9 +188,7 @@ class Parser {
 
   keyword(...words: string[]): boolean {
     const t = this.peek();
-    if (this.atEnd() || t.kind !== 'word') return false;
-    const w = t.text.toLowerCase();
-    return words.includes(w);
+    return t.kind === 'word' && words.includes(t.text.toLowerCase());
   }
 
   fail<C extends JqlCode>(code: C, ...args: JqlArgs[C]): never {
@@ -190,15 +203,12 @@ class Parser {
       if (!this.keyword('by')) this.fail('orderBy');
       this.next();
       for (;;) {
-        const atEnd = this.atEnd();
         const t = this.next();
-        if (atEnd || (t.kind !== 'word' && t.kind !== 'string')) {
-          this.fail('sortFieldExpected');
-        }
+        if (t.kind !== 'word' && t.kind !== 'string') this.fail('sortFieldExpected');
         const s: SortTerm = { field: t.text, desc: false };
         if (this.keyword('asc', 'desc')) s.desc = this.next().text.toLowerCase() === 'desc';
         q.order.push(s);
-        if (this.peek().kind !== 'comma' || this.atEnd()) break;
+        if (this.peek().kind !== 'comma') break;
         this.next();
       }
     }
@@ -225,27 +235,31 @@ class Parser {
   }
 
   not(): Node {
-    if (this.keyword('not')) {
-      this.next();
-      return { type: 'not', inner: this.not() };
+    if (this.depth >= MAX_DEPTH) this.fail('tooDeep', MAX_DEPTH);
+    this.depth++;
+    try {
+      if (this.keyword('not')) {
+        this.next();
+        return { type: 'not', inner: this.not() };
+      }
+      if (this.peek().kind === 'lparen') {
+        this.next();
+        const inner = this.or();
+        if (this.next().kind !== 'rparen') this.fail('parenExpected');
+        return inner;
+      }
+      return this.clause();
+    } finally {
+      this.depth--;
     }
-    if (!this.atEnd() && this.peek().kind === 'lparen') {
-      this.next();
-      const inner = this.or();
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
-      return inner;
-    }
-    return this.clause();
   }
 
   clause(): Node {
-    const atEnd = this.atEnd();
     const f = this.next();
-    if (atEnd || (f.kind !== 'word' && f.kind !== 'string')) this.fail('fieldExpected');
-    if (f.kind === 'string' && !f.closed) throw new JqlError('unclosedQuote', f.start);
+    if (f.kind !== 'word' && f.kind !== 'string') this.fail('fieldExpected');
     const c: Clause = { type: 'clause', field: f.text, op: '', values: [], preds: [] };
     const t = this.peek();
-    if (!this.atEnd() && t.kind === 'op') {
+    if (t.kind === 'op') {
       c.op = this.next().text;
     } else if (this.keyword('in')) {
       this.next();
@@ -298,16 +312,16 @@ class Parser {
   }
 
   list(): Value[] {
-    if (this.atEnd() || this.peek().kind !== 'lparen') return [this.value()];
+    if (this.peek().kind !== 'lparen') return [this.value()];
     this.next();
     const vals: Value[] = [];
     for (;;) {
       vals.push(this.value());
-      if (!this.atEnd() && this.peek().kind === 'comma') {
+      if (this.peek().kind === 'comma') {
         this.next();
         continue;
       }
-      if (this.atEnd() || this.next().kind !== 'rparen') this.fail('parenExpected');
+      if (this.next().kind !== 'rparen') this.fail('parenExpected');
       return vals;
     }
   }
@@ -320,12 +334,12 @@ class Parser {
       }
       let values: Value[];
       if (kind === 'during') {
-        if (this.atEnd() || this.peek().kind !== 'lparen') {
+        if (this.peek().kind !== 'lparen') {
           this.fail('duringDates');
         }
         values = this.list();
         if (values.length !== 2) this.fail('duringDates');
-      } else if (kind === 'by' && !this.atEnd() && this.peek().kind === 'lparen') {
+      } else if (kind === 'by' && this.peek().kind === 'lparen') {
         values = this.list();
       } else {
         values = [this.value()];
@@ -336,20 +350,15 @@ class Parser {
   }
 
   value(): Value {
-    const atEnd = this.atEnd();
     const t = this.next();
-    if (!atEnd && t.kind === 'string') {
-      if (!t.closed) throw new JqlError('unclosedQuote', t.start);
-      return { kind: 'text', text: t.text };
-    }
-    if (!atEnd && t.kind === 'word') {
+    if (t.kind === 'string') return { kind: 'text', text: t.text };
+    if (t.kind === 'word') {
       const w = t.text.toLowerCase();
       if (w === 'empty' || w === 'null') return { kind: 'empty' };
-      if (!this.atEnd() && this.peek().kind === 'lparen') {
+      if (this.peek().kind === 'lparen') {
         this.next();
         const v: Value = { kind: 'func', name: t.text, args: [] };
         for (;;) {
-          if (this.atEnd()) this.fail('argumentInvalid', t.text);
           if (this.peek().kind === 'rparen') break;
           const a = this.next();
           if (a.kind !== 'word' && a.kind !== 'string') {
@@ -369,6 +378,9 @@ class Parser {
 
 /** Reads a query; throws JqlError, with the server's error codes, on a syntax error. */
 export function parse(src: string): Query {
+  if (new TextEncoder().encode(src).length > MAX_QUERY_LEN) {
+    throw new JqlError('tooLong', 0, MAX_QUERY_LEN);
+  }
   const toks = lex(src);
   const bad = toks.find((t) => t.kind === 'error' || (t.kind === 'string' && !t.closed));
   if (bad?.kind === 'error') throw new JqlError('incompleteBang', bad.start);
@@ -429,35 +441,68 @@ export function quoteField(name: string): string {
   return quote(name);
 }
 
-/** The functions the server knows, with their usual spelling. */
-export const FUNCTIONS = [
-  'currentUser',
-  'membersOf',
-  'now',
-  'startOfDay',
-  'endOfDay',
-  'startOfWeek',
-  'endOfWeek',
-  'startOfMonth',
-  'endOfMonth',
-  'startOfYear',
-  'endOfYear',
-  'unreleasedVersions',
-  'releasedVersions',
-  'earliestUnreleasedVersion',
-  'latestReleasedVersion',
-  'standardIssueTypes',
-  'subTaskIssueTypes',
-  'openSprints',
-  'closedSprints',
-  'futureSprints',
-] as const;
+/** A function the server knows, as the table below lists it. */
+export interface FunctionInfo {
+  /** The usual spelling. */
+  name: string;
+  /** The kind of field it is a value of. */
+  kind: FieldKind;
+  /** Stands for a whole list: "sprint in openSprints()", not "sprint = openSprints()". */
+  list?: true;
+  /** What a suggestion puts between the parentheses, for the caret to fill in. */
+  args?: string;
+}
 
-const FUNCTION_NAMES = new Map(FUNCTIONS.map((f) => [f.toLowerCase(), f as string]));
+/**
+ * The functions the server knows: the one table every other list of them
+ * comes from (the suggestions, what the filters accept, the special values).
+ */
+export const FUNCTIONS = [
+  { name: 'currentUser', kind: 'user' },
+  { name: 'membersOf', kind: 'user', list: true, args: '""' },
+  { name: 'now', kind: 'date' },
+  { name: 'startOfDay', kind: 'date' },
+  { name: 'endOfDay', kind: 'date' },
+  { name: 'startOfWeek', kind: 'date' },
+  { name: 'endOfWeek', kind: 'date' },
+  { name: 'startOfMonth', kind: 'date' },
+  { name: 'endOfMonth', kind: 'date' },
+  { name: 'startOfYear', kind: 'date' },
+  { name: 'endOfYear', kind: 'date' },
+  { name: 'unreleasedVersions', kind: 'version', list: true },
+  { name: 'releasedVersions', kind: 'version', list: true },
+  { name: 'earliestUnreleasedVersion', kind: 'version' },
+  { name: 'latestReleasedVersion', kind: 'version' },
+  { name: 'standardIssueTypes', kind: 'type', list: true },
+  { name: 'subTaskIssueTypes', kind: 'type', list: true },
+  { name: 'openSprints', kind: 'sprint', list: true },
+  { name: 'futureSprints', kind: 'sprint', list: true },
+  { name: 'closedSprints', kind: 'sprint', list: true },
+] as const satisfies readonly FunctionInfo[];
+
+/** A function's usual spelling. */
+export type FunctionName = (typeof FUNCTIONS)[number]['name'];
+
+const BY_NAME = new Map<string, FunctionInfo>(FUNCTIONS.map((f) => [f.name.toLowerCase(), f]));
+
+/** The function of a name in any case ("CURRENTUSER"), or undefined. */
+export function functionInfo(name: string): FunctionInfo | undefined {
+  return BY_NAME.get(name.toLowerCase());
+}
 
 /** A function's usual spelling ("CURRENTUSER" → "currentUser"). */
 export function functionName(name: string): string {
-  return FUNCTION_NAMES.get(name.toLowerCase()) ?? name;
+  return functionInfo(name)?.name ?? name;
+}
+
+/** The functions that are values of a kind of field, in the table's order. */
+export function functionsOfKind(kind: FieldKind | undefined): FunctionInfo[] {
+  return FUNCTIONS.filter((f) => f.kind === kind);
+}
+
+/** A function as a suggestion offers it: "openSprints()", 'membersOf("")'. */
+export function functionCall(f: FunctionInfo): string {
+  return `${f.name}(${f.args ?? ''})`;
 }
 
 /** A value as JQL, in its canonical spelling. */
@@ -538,8 +583,9 @@ export function conjunction(where: Node | null): Clause[] | null {
 
 /* Telling JQL from the simple syntax ------------------------------------------ */
 
+// Go's regexp \s is ASCII only ([\t\n\f\r ]), unlike JavaScript's.
 const LOOKS_LIKE =
-  /(^|[\s(])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|commenter|participants?|involves|cf\[\d+\]|"[^"]+")\s*(=|!=|~|!~|>=?|<=?|\s+in\s*\(|\s+not\s+in\s|\s+is\s|\s+was\s|\s+changed\b)|\border\s+by\b/i;
+  /(^|[\t\n\f\r (])(project|status|statuscategory|assignee|reporter|creator|type|issuetype|priority|resolution|labels?|component|fixversion|affectedversion|created|updated|resolved|due|duedate|text|summary|description|comment|key|issue|issuekey|parent|watcher|voter|commenter|participants?|involves|cf\[\d+\]|"[^"]+")[\t\n\f\r ]*(=|!=|~|!~|>=?|<=?|[\t\n\f\r ]+in[\t\n\f\r ]*\(|[\t\n\f\r ]+not[\t\n\f\r ]+in[\t\n\f\r ]|[\t\n\f\r ]+is[\t\n\f\r ]|[\t\n\f\r ]+was[\t\n\f\r ]|[\t\n\f\r ]+changed\b)|\border[\t\n\f\r ]+by\b/i;
 
 /** Whether the server will read a search string as JQL (same rule as jql.LooksLike). */
 export function looksLikeJql(s: string): boolean {
@@ -707,35 +753,7 @@ export function operatorsFor(field: string, kind = fieldInfo(field)?.kind): stri
 
 /** Functions that make sense as a value of a kind of field. */
 export function functionsFor(field: string, kind = fieldInfo(field)?.kind): string[] {
-  switch (kind) {
-    case 'user':
-      return ['currentUser()', 'membersOf("")'];
-    case 'type':
-      return ['standardIssueTypes()', 'subTaskIssueTypes()'];
-    case 'sprint':
-      return ['openSprints()', 'futureSprints()', 'closedSprints()'];
-    case 'version':
-      return [
-        'unreleasedVersions()',
-        'releasedVersions()',
-        'earliestUnreleasedVersion()',
-        'latestReleasedVersion()',
-      ];
-    case 'date':
-      return [
-        'now()',
-        'startOfDay()',
-        'endOfDay()',
-        'startOfWeek()',
-        'endOfWeek()',
-        'startOfMonth()',
-        'endOfMonth()',
-        'startOfYear()',
-        'endOfYear()',
-      ];
-    default:
-      return [];
-  }
+  return functionsOfKind(kind).map(functionCall);
 }
 
 /* Reading as one types: roles and completion ---------------------------------- */
@@ -985,10 +1003,11 @@ export interface Completion {
   phrase: { prefix: string; from: number; inList: boolean } | null;
 }
 
-/** What may be typed at the caret, and the text a suggestion would replace. */
-export function completionAt(src: string, caret: number): Completion {
-  const toks = lex(src);
-  // The word being typed: a word, string or operator that touches the caret.
+/**
+ * The word being typed: a word, string or operator that touches the caret,
+ * and how many tokens sit before it.
+ */
+function locateWord(toks: Token[], caret: number): { cur: Token | undefined; upto: number } {
   let cur: Token | undefined;
   let upto = toks.length;
   for (let i = 0; i < toks.length; i++) {
@@ -1007,11 +1026,34 @@ export function completionAt(src: string, caret: number): Completion {
     }
     upto = i + 1;
   }
+  return { cur, upto };
+}
+
+/** The machine after the tokens before the caret, with the last of them and its role. */
+interface Replay {
+  m: Machine;
+  last: Token | undefined;
+  lastRole: Role | undefined;
+}
+
+/** Feeds the first upto tokens to a new machine. */
+function replay(toks: Token[], upto: number): Replay {
   const m = start();
   let lastRole: Role | undefined;
   for (let i = 0; i < upto; i++) lastRole = step(m, toks[i] as Token, toks[i + 1]);
-  const last = upto > 0 ? toks[upto - 1] : undefined;
-  let phrase: Completion['phrase'] = null;
+  return { m, last: upto > 0 ? toks[upto - 1] : undefined, lastRole };
+}
+
+/**
+ * The bare value the caret is in, when the last token is a value that may go
+ * on over several words ("status = En c" for « En cours »); null otherwise.
+ */
+function phraseAt(
+  src: string,
+  caret: number,
+  cur: Token | undefined,
+  { m, last, lastRole }: Replay,
+): Completion['phrase'] {
   if (
     last?.kind === 'word' &&
     lastRole === 'value' &&
@@ -1019,17 +1061,22 @@ export function completionAt(src: string, caret: number): Completion {
     (!cur || cur.kind === 'word') &&
     caret > last.end
   ) {
-    phrase = { prefix: src.slice(last.start, caret), from: last.start, inList: m.state === 'sep' };
+    return { prefix: src.slice(last.start, caret), from: last.start, inList: m.state === 'sep' };
   }
-  const from = cur ? cur.start : caret;
-  const to = cur ? cur.end : caret;
-  let prefix = '';
-  if (cur?.kind === 'string') {
-    prefix = src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
-  } else if (cur) {
-    prefix = src.slice(cur.start, caret);
+  return null;
+}
+
+/** The part of the word being typed before the caret, a string without its quote. */
+function prefixOf(src: string, caret: number, cur: Token | undefined): string {
+  if (!cur) return '';
+  if (cur.kind === 'string') {
+    return src.slice(cur.start + 1, Math.min(caret, cur.closed ? cur.end - 1 : cur.end));
   }
-  const base = { field: m.field, prefix, from, to, inList: false, phrase };
+  return src.slice(cur.start, caret);
+}
+
+/** What may be typed in the state the machine ended in. */
+function completionIn(m: Machine, base: Omit<Completion, 'kind' | 'keywords'>): Completion {
   switch (m.state) {
     case 'field':
       return { ...base, kind: 'field', keywords: ['NOT', 'ORDER BY'] };
@@ -1062,4 +1109,19 @@ export function completionAt(src: string, caret: number): Completion {
     default:
       return { ...base, kind: 'none', keywords: [] };
   }
+}
+
+/** What may be typed at the caret, and the text a suggestion would replace. */
+export function completionAt(src: string, caret: number): Completion {
+  const toks = lex(src);
+  const { cur, upto } = locateWord(toks, caret);
+  const r = replay(toks, upto);
+  return completionIn(r.m, {
+    field: r.m.field,
+    prefix: prefixOf(src, caret, cur),
+    from: cur?.start ?? caret,
+    to: cur?.end ?? caret,
+    inList: false,
+    phrase: phraseAt(src, caret, cur, r),
+  });
 }

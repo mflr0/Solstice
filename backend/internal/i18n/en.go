@@ -32,6 +32,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Invalid email address.",
 	AccountOwnAdminRights:            "You cannot remove your own administrator rights.",
 	AccountOwnPasswordInProfile:      "Change your own password from your profile.",
+	AccountDirectoryPassword:         "This account signs in with the directory (LDAP): its password is changed there.",
+	AccountOwnEmailInProfile:         "Change your own email address from your profile.",
 	AccountPasswordTooShort:          "The password must be at least %d characters long.",
 	AccountPasswordIsUsername:        "The password cannot be the username.",
 	AccountCurrentPasswordRequired:   "Enter your current password.",
@@ -143,7 +145,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Type the current key of the project to confirm the change.",
 	ProjectKeysBusy:            "Another change of a project key is in progress. Try again in a moment.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 	DefaultTypeTask:                  "Task",
 	DefaultTypeBug:                   "Bug",
 	DefaultTypeStory:                 "Story",
@@ -172,6 +174,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultRoleAdministrators:        "Administrators",
 	DefaultRoleDevelopers:            "Developers",
 	DefaultRoleUsers:                 "Users",
+	DefaultStatusToDo:                "To Do",
+	DefaultStatusInProgress:          "In Progress",
+	DefaultStatusInReview:            "In Review",
+	DefaultStatusDone:                "Done",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Browse",
@@ -205,6 +211,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Unknown field type (choose from: %s).",
 	CustomFieldNoOptions:     "This field type has no options.",
 	CustomFieldOptionTooLong: "An option's text is 255 characters at most.",
+	CustomFieldOptionEmpty:   "An option's text cannot be empty.",
 	CustomFieldUsedByBoards:  "This field is used by the boards: it cannot be deleted.",
 	CustomFieldDeleteConfirm: "Some issues have a value in this field: type its name to confirm the deletion.",
 	CustomFieldOptionInUse:   "Some issues have this option chosen: choose another option to move them to, or clear their value.",
@@ -284,8 +291,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Invalid time estimate (for example 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Unknown security level in this project.",
 	IssueReporterFixed:         "The reporter cannot be changed.",
-	IssueNoTodoStatus:          "No “to do” status is defined.",
 	IssueTransitionNotAllowed:  "The project's workflow does not allow this status change.",
+	IssueEditChanged:           "The issue changed while it was being saved. Reload it and try again.",
 	IssueTransitionUnavailable: "This transition is not available from the issue's current status.",
 	IssueParentNotFound:        "Parent issue not found.",
 	IssueParentInvalid:         "The parent must be an issue of the same project, without a parent of its own.",
@@ -320,6 +327,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Moving an issue that has a security level takes the Security level permission in the target project, and in this project to choose another level.",
 	IssueMoveNoSubtaskType:     "The issue has sub-tasks, and the target project has no sub-task type to give them. Add one to the project first.",
 	IssueMoveUseAction:         "An issue changes project with the Move action.",
+	BulkNoIssues:               "Select at least one issue.",
+	BulkTooMany:                "A bulk change takes at most %d issues.",
+	BulkNothingToChange:        "Choose a change to make.",
+	BulkOneProject:             "Components and fix versions can only be changed on issues of one project.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",
@@ -332,9 +343,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "A work log cannot be restricted to a group or a role.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Unknown link type.",
-	LinkTargetNotFound: "Target issue not found.",
-	LinkToItself:       "An issue cannot be linked to itself.",
+	LinkTypeUnknown:      "Unknown link type.",
+	LinkTargetNotFound:   "Target issue not found.",
+	LinkToItself:         "An issue cannot be linked to itself.",
+	LinkDirectionUnknown: "Unknown link direction.",
 
 	// Group picker.
 	GroupPickerHeader: "Showing %d of %d matching groups",
@@ -393,6 +405,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Between 1 and 50 issues at a time.",
 	BoardRankTargetRequired:      "Give rankBeforeIssue or rankAfterIssue.",
 	BoardRankItself:              "An issue cannot be ranked relative to itself.",
+	BoardFilterName:              "Board %s",
 
 	// Sprints.
 	SprintKanban:          "A Kanban board has no sprints.",
@@ -419,6 +432,23 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Exports.
 	ExportColumnUnknown: "Unknown column: %s.",
+
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "No file was sent.",
+	CSVImportFileTooLarge:        "The file is larger than %d MiB.",
+	CSVImportFileInvalid:         "The file is not valid CSV (line %d).",
+	CSVImportFileEmpty:           "The file has no header row.",
+	CSVImportTooManyRows:         "The file has more than %d rows.",
+	CSVImportMappingInvalid:      "The column mapping does not match the file.",
+	CSVImportColumnTwice:         "Two columns go to the same field: %s.",
+	CSVImportRowsInvalid:         "Nothing was imported: some rows have errors (%d).",
+	CSVImportValueUnknown:        "%s: unknown value “%s”.",
+	CSVImportValueInvalid:        "%s: invalid value “%s”.",
+	CSVImportUserAmbiguous:       "%s: several people match “%s”.",
+	CSVImportKeyTwice:            "Issue key %s is on more than one row.",
+	CSVImportReferenceFailed:     "%s: that row has errors.",
+	CSVImportReferenceCycle:      "%s: the rows refer to each other.",
+	CSVImportStatusNotInWorkflow: "Status %s is not in the workflow of this issue type.",
 
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL: %s",

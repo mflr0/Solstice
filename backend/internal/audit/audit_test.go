@@ -19,10 +19,13 @@ func TestMaskHidesSecrets(t *testing.T) {
 	}
 }
 
-// A boolean flag can say that a secret changed; its value is not one.
+// A boolean flag can say that a secret changed, and a count how many ended;
+// their values are not secrets. A number from JSON may be one.
 func TestMaskKeepsFlags(t *testing.T) {
-	got := mask(map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "hunter2"})
-	want := map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "***"}
+	got := mask(map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "hunter2",
+		"revokedAccessTokens": int64(2), "tokens": 3, "pin": map[string]any{"password": float64(1234)}})
+	want := map[string]any{"passwordChanged": true, "secretRemoved": false, "password": "***",
+		"revokedAccessTokens": int64(2), "tokens": 3, "pin": map[string]any{"password": "***"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("mask:\n got %v\nwant %v", got, want)
 	}

@@ -33,6 +33,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountEmailInvalid:              "Adresse e-mail invalide.",
 	AccountOwnAdminRights:            "Vous ne pouvez pas retirer vos propres droits d'administration.",
 	AccountOwnPasswordInProfile:      "Changez votre propre mot de passe depuis votre profil.",
+	AccountDirectoryPassword:         "Ce compte se connecte avec l’annuaire (LDAP) : son mot de passe se change là-bas.",
+	AccountOwnEmailInProfile:         "Changez votre propre adresse électronique depuis votre profil.",
 	AccountPasswordTooShort:          "Le mot de passe doit faire au moins %d caractères.",
 	AccountPasswordIsUsername:        "Le mot de passe ne peut pas être l'identifiant.",
 	AccountCurrentPasswordRequired:   "Indiquez votre mot de passe actuel.",
@@ -144,7 +146,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
 	ProjectKeysBusy:            "Un autre changement de clé de projet est en cours. Réessayez dans un instant.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
 	DefaultTypeTask:                  "Tâche",
 	DefaultTypeBug:                   "Bug",
 	DefaultTypeStory:                 "Story",
@@ -173,6 +175,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultRoleAdministrators:        "Administrateurs",
 	DefaultRoleDevelopers:            "Développeurs",
 	DefaultRoleUsers:                 "Utilisateurs",
+	DefaultStatusToDo:                "À faire",
+	DefaultStatusInProgress:          "En cours",
+	DefaultStatusInReview:            "En revue",
+	DefaultStatusDone:                "Terminé",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Voir",
@@ -206,6 +212,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	CustomFieldTypeUnknown:   "Type de champ inconnu (au choix : %s).",
 	CustomFieldNoOptions:     "Ce type de champ n'a pas d'options.",
 	CustomFieldOptionTooLong: "Une option a un texte de 255 caractères au plus.",
+	CustomFieldOptionEmpty:   "Le texte d'une option ne peut pas être vide.",
 	CustomFieldUsedByBoards:  "Ce champ sert au fonctionnement des tableaux : il ne peut pas être supprimé.",
 	CustomFieldDeleteConfirm: "Des tickets ont une valeur dans ce champ : tapez son nom pour confirmer la suppression.",
 	CustomFieldOptionInUse:   "Des tickets ont cette option : choisissez une autre option vers laquelle les déplacer, ou effacez leur valeur.",
@@ -285,8 +292,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueEstimateInvalid:       "Estimation invalide (par exemple 1w 2d 3h 30m).",
 	IssueSecurityLevelUnknown:  "Niveau de confidentialité inconnu dans ce projet.",
 	IssueReporterFixed:         "Le rapporteur ne peut pas être changé.",
-	IssueNoTodoStatus:          "Aucun statut « à faire » n'est défini.",
 	IssueTransitionNotAllowed:  "Le workflow du projet ne prévoit pas ce changement de statut.",
+	IssueEditChanged:           "Le ticket a changé pendant son enregistrement. Rechargez-le et réessayez.",
 	IssueTransitionUnavailable: "Cette transition n'est pas possible depuis le statut actuel du ticket.",
 	IssueParentNotFound:        "Ticket parent introuvable.",
 	IssueParentInvalid:         "Le parent doit être un ticket du même projet, sans parent lui-même.",
@@ -321,6 +328,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSecurityNeeded:    "Déplacer un ticket qui a un niveau de confidentialité demande la permission Confidentialité dans le projet cible, et dans ce projet pour en choisir un autre.",
 	IssueMoveNoSubtaskType:     "Le ticket a des sous-tâches, et le projet cible n'a aucun type de sous-tâche à leur donner. Ajoutez-en un au projet d'abord.",
 	IssueMoveUseAction:         "Un ticket change de projet avec l'action Déplacer.",
+	BulkNoIssues:               "Sélectionnez au moins un ticket.",
+	BulkTooMany:                "Une modification groupée porte sur %d tickets au plus.",
+	BulkNothingToChange:        "Choisissez une modification à faire.",
+	BulkOneProject:             "Les composants et les versions corrigées ne se modifient que sur des tickets d'un même projet.",
 
 	// Comments and their visibility.
 	CommentEmpty:           "Le commentaire est vide.",
@@ -333,9 +344,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkLogRestricted:      "Un temps saisi ne peut pas être restreint à un groupe ou un rôle.",
 
 	// Issue links.
-	LinkTypeUnknown:    "Type de lien inconnu.",
-	LinkTargetNotFound: "Ticket cible introuvable.",
-	LinkToItself:       "Un ticket ne peut pas être lié à lui-même.",
+	LinkTypeUnknown:      "Type de lien inconnu.",
+	LinkTargetNotFound:   "Ticket cible introuvable.",
+	LinkToItself:         "Un ticket ne peut pas être lié à lui-même.",
+	LinkDirectionUnknown: "Sens de lien inconnu.",
 
 	// Group picker.
 	GroupPickerHeader: "%d groupes affichés sur %d correspondants",
@@ -394,6 +406,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardIssueCount:              "Entre 1 et 50 tickets à la fois.",
 	BoardRankTargetRequired:      "Indiquez rankBeforeIssue ou rankAfterIssue.",
 	BoardRankItself:              "Un ticket ne peut pas être classé par rapport à lui-même.",
+	BoardFilterName:              "Tableau %s",
 
 	// Sprints.
 	SprintKanban:          "Un tableau Kanban n'a pas de sprints.",
@@ -420,6 +433,23 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Exports.
 	ExportColumnUnknown: "Colonne inconnue : %s.",
+
+	// Imports from a CSV file.
+	CSVImportFileMissing:         "Aucun fichier n’a été envoyé.",
+	CSVImportFileTooLarge:        "Le fichier dépasse %d Mio.",
+	CSVImportFileInvalid:         "Le fichier n’est pas un CSV valide (ligne %d).",
+	CSVImportFileEmpty:           "Le fichier n’a pas de ligne d’en-tête.",
+	CSVImportTooManyRows:         "Le fichier a plus de %d lignes.",
+	CSVImportMappingInvalid:      "La correspondance des colonnes ne correspond pas au fichier.",
+	CSVImportColumnTwice:         "Deux colonnes vont dans le même champ : %s.",
+	CSVImportRowsInvalid:         "Rien n’a été importé : des lignes ont des erreurs (%d).",
+	CSVImportValueUnknown:        "%s : valeur inconnue « %s ».",
+	CSVImportValueInvalid:        "%s : valeur invalide « %s ».",
+	CSVImportUserAmbiguous:       "%s : plusieurs personnes correspondent à « %s ».",
+	CSVImportKeyTwice:            "La clé %s figure sur plusieurs lignes.",
+	CSVImportReferenceFailed:     "%s : cette ligne a des erreurs.",
+	CSVImportReferenceCycle:      "%s : les lignes se désignent l’une l’autre.",
+	CSVImportStatusNotInWorkflow: "Le statut %s ne fait pas partie du workflow de ce type de ticket.",
 
 	// JQL: syntax and query errors.
 	JQLError:                 "JQL : %s",

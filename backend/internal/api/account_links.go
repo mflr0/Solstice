@@ -20,15 +20,11 @@ package api
 //     audit log, and the outbox wipes the message once it is sent.
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -116,12 +112,25 @@ func (s *Server) accountLink(token string) string {
 type linkTarget struct {
 	ID                                int64
 	Username, Name, Email, UserLocale string
+	Active                            bool
+	LastLogin                         sql.NullTime
 }
 
-func (s *Server) linkTargetOf(ctx context.Context, id int64) (*linkTarget, error) {
+// linkTargetColumns are the columns of users that scanLinkTarget reads.
+const linkTargetColumns = `id, username, display_name, email, active, last_login_at, COALESCE(locale, '')`
+
+// scanLinkTarget reads a linkTarget, its address trimmed: an import keeps
+// the spaces a Jira address may have, and the link goes to the address.
+func scanLinkTarget(sc interface{ Scan(...any) error }) (linkTarget, error) {
 	var t linkTarget
-	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, COALESCE(locale, '') FROM users
-		WHERE id = ?`, id).Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.UserLocale)
+	err := sc.Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.Active, &t.LastLogin, &t.UserLocale)
+	t.Email = strings.TrimSpace(t.Email)
+	return t, err
+}
+
+// linkTargetOf loads the account a link leads to, for its id.
+func (s *Server) linkTargetOf(ctx context.Context, id int64) (*linkTarget, error) {
+	t, err := scanLinkTarget(s.db.QueryRowContext(ctx, `SELECT `+linkTargetColumns+` FROM users WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
 	}
@@ -142,16 +151,14 @@ func (s *Server) queueAccountLink(ctx context.Context, tx *sql.Tx, cfg mail.Conf
 		AND status = 'pending' AND claim IS NULL`, to.ID, mail.KindReset, mail.KindInvitation); err != nil {
 		return err
 	}
-	loc := to.UserLocale
-	if !i18n.Supported(loc) {
-		loc = s.defaultLanguage()
-	}
+	acct := notify.Account{UserID: to.ID, Email: to.Email, Name: to.Name, Username: to.Username,
+		Locale: i18n.Pick(to.UserLocale, s.defaultLanguage())}
 	link := s.accountLink(token)
 	var msg mail.Message
 	if purpose == auth.PurposeInvite {
-		msg = notify.InvitationMessage(cfg, to.ID, to.Email, to.Name, to.Username, loc, link)
+		msg = notify.InvitationMessage(cfg, acct, link)
 	} else {
-		msg = notify.ResetMessage(cfg, to.ID, to.Email, to.Name, to.Username, loc, link)
+		msg = notify.ResetMessage(cfg, acct, link)
 	}
 	return s.out.outbox.Enqueue(ctx, tx, msg)
 }
@@ -177,11 +184,8 @@ func (s *Server) sendAccountLink(ctx context.Context, cfg mail.Config, to *linkT
 // auditAccount records an action on an account that its own person does
 // without being signed in (a reset asked for or done, an invitation accepted).
 func (s *Server) auditAccount(r *http.Request, action string, id int64, username string, details map[string]any) {
-	e := audit.Entry{UserID: id, Username: username, IP: clientIP(r, s.proxies), Action: action,
-		Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username}, Details: details}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, s.proxies),
+		Action: action, Target: target("user", id, username), Details: details})
 }
 
 // hold waits until d has passed since start (or the request ends).
@@ -220,8 +224,8 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// mailResetLinks mails a link to each active account that has an address and
-// is named by id, as a user name or an address.
+// mailResetLinks mails a link to each active local account that has an
+// address and is named by id, as a user name or an address.
 func (s *Server) mailResetLinks(r *http.Request, id string) error {
 	ctx := r.Context()
 	cfg, ok := s.linkConfig(ctx)
@@ -229,11 +233,11 @@ func (s *Server) mailResetLinks(r *http.Request, id string) error {
 		return nil
 	}
 	var targets []linkTarget
-	err := sqlq.Each(ctx, s.db, `SELECT id, username, display_name, email, COALESCE(locale, '') FROM users
-		WHERE active AND email <> '' AND (username = ? OR LOWER(email) = ?) ORDER BY id LIMIT ?`,
+	err := sqlq.Each(ctx, s.db, `SELECT `+linkTargetColumns+` FROM users
+		WHERE active AND directory = '' AND email <> '' AND (username = ? OR LOWER(email) = ?) ORDER BY id LIMIT ?`,
 		func(rows *sql.Rows) error {
-			var t linkTarget
-			if err := rows.Scan(&t.ID, &t.Username, &t.Name, &t.Email, &t.UserLocale); err != nil {
+			t, err := scanLinkTarget(rows)
+			if err != nil {
 				return err
 			}
 			targets = append(targets, t)
@@ -330,11 +334,8 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.checkNewPassword(ctx, in.Password); err != nil {
+	if err := s.checkNewPassword(ctx, in.Password, target.Username); err != nil {
 		return err
-	}
-	if strings.EqualFold(strings.TrimSpace(in.Password), target.Username) {
-		return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
 	}
 	release, err := s.limiter.Acquire(ctx)
 	if err != nil {
@@ -359,18 +360,8 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, used.UserID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, used.UserID); err != nil {
-		return err
-	}
-	res, err := tx.ExecContext(ctx, `DELETE FROM api_tokens WHERE user_id = ?`, used.UserID)
+	revoked, err := auth.SetPasswordHash(ctx, tx, used.UserID, hash, "")
 	if err != nil {
-		return err
-	}
-	revoked, _ := res.RowsAffected()
-	if err := auth.RevokeAccountTokens(ctx, tx, used.UserID, now); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -382,10 +373,8 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.auditAccount(r, action, used.UserID, target.Username, map[string]any{"revokedAccessTokens": revoked})
 
-	var u auth.User
-	if err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, '')
-		FROM users WHERE id = ?`, used.UserID).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin,
-		&u.Locale); err != nil {
+	u, err := s.userByID(ctx, used.UserID)
+	if err != nil {
 		return err
 	}
 	if err := s.startSession(w, r, &u); err != nil {
@@ -402,83 +391,67 @@ func (s *Server) adminInviteUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		return errNotFound
-	}
-	ctx := r.Context()
-	to, err := s.linkTargetOf(ctx, id)
+	id, err := pathID(r, "id")
 	if err != nil {
 		return err
 	}
-	var active bool
-	var last sql.NullTime
-	if err := s.db.QueryRowContext(ctx, `SELECT active, last_login_at FROM users WHERE id = ?`, id).Scan(&active, &last); err != nil {
-		return err
-	}
-	switch {
-	case !active:
-		return fail(http.StatusConflict, i18n.AccountInactive)
-	case last.Valid:
-		return fail(http.StatusConflict, i18n.AccountAlreadySignedIn)
-	case !mail.ValidAddress(strings.TrimSpace(to.Email)):
-		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
-	}
-	cfg, ok := s.linkConfig(ctx)
-	if !ok {
-		return fail(http.StatusConflict, i18n.AccountMailUnavailable)
-	}
-	if err := s.sendAccountLink(ctx, cfg, to, auth.PurposeInvite); err != nil {
-		return err
-	}
-	s.auditLog(r, audit.UserInvite, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username},
-		map[string]any{"resent": true})
-	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
+	return s.adminSendLink(w, r, id, inviteLink)
 }
 
 // adminResetLink sends an account a link to choose its new password, instead
 // of giving it one: nothing changes until the person uses the link.
 func (s *Server) adminResetLink(w http.ResponseWriter, r *http.Request, id int64) error {
+	return s.adminSendLink(w, r, id, resetLink)
+}
+
+// adminLink is a link an administrator sends to an account.
+type adminLink struct {
+	purpose string // of the token, auth.Purpose...
+	action  string // audited, audit....
+	details func() map[string]any
+	// neverSignedIn: only for an account that never signed in.
+	neverSignedIn bool
+}
+
+var (
+	inviteLink = adminLink{purpose: auth.PurposeInvite, action: audit.UserInvite, neverSignedIn: true,
+		details: func() map[string]any { return map[string]any{"resent": true} }}
+	resetLink = adminLink{purpose: auth.PurposeReset, action: audit.PasswordResetRequest,
+		details: func() map[string]any { return map[string]any{"method": "link", "by": "administrator"} }}
+)
+
+// refusal is why the link cannot go to t, or nil.
+func (l adminLink) refusal(t *linkTarget) error {
+	switch {
+	case !t.Active:
+		return fail(http.StatusConflict, i18n.AccountInactive)
+	case l.neverSignedIn && t.LastLogin.Valid:
+		return fail(http.StatusConflict, i18n.AccountAlreadySignedIn)
+	case !mail.ValidAddress(t.Email):
+		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
+	}
+	return nil
+}
+
+// adminSendLink sends an account the link l on an administrator's ask,
+// unless l refuses the account or the mail setup cannot send, audits the ask
+// and answers {"sent": true}.
+func (s *Server) adminSendLink(w http.ResponseWriter, r *http.Request, id int64, l adminLink) error {
 	ctx := r.Context()
 	to, err := s.linkTargetOf(ctx, id)
 	if err != nil {
 		return err
 	}
-	var active bool
-	if err := s.db.QueryRowContext(ctx, `SELECT active FROM users WHERE id = ?`, id).Scan(&active); err != nil {
+	if err := l.refusal(to); err != nil {
 		return err
-	}
-	if !active {
-		return fail(http.StatusConflict, i18n.AccountInactive)
-	}
-	if !mail.ValidAddress(strings.TrimSpace(to.Email)) {
-		return fail(http.StatusBadRequest, i18n.AccountEmailMissing)
 	}
 	cfg, ok := s.linkConfig(ctx)
 	if !ok {
 		return fail(http.StatusConflict, i18n.AccountMailUnavailable)
 	}
-	if err := s.sendAccountLink(ctx, cfg, to, auth.PurposeReset); err != nil {
+	if err := s.sendAccountLink(ctx, cfg, to, l.purpose); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.PasswordResetRequest, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: to.Username},
-		map[string]any{"method": "link", "by": "administrator"})
+	s.auditLog(r, l.action, target("user", id, to.Username), l.details())
 	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
-}
-
-// readOptionalJSON decodes a request body that may be empty.
-func readOptionalJSON(r *http.Request, v any) error {
-	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 1<<20))
-	if err != nil {
-		return badBody(err)
-	}
-	if len(bytes.TrimSpace(body)) == 0 {
-		return nil
-	}
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		return failf(http.StatusBadRequest, i18n.RequestInvalid, err.Error())
-	}
-	return nil
 }

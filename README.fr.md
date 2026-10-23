@@ -111,6 +111,7 @@ fichier ou l'environnement, est signalée dans le journal au démarrage.
 | `SOLSTICE_HTTP_MAXSTORAGE` | `0` | taille totale de toutes les pièces jointes ; `0` signifie sans limite |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
+| `SOLSTICE_LDAP_*` | aucune | connexion LDAP ou Active Directory, voir [l'installation](docs/fr/install.md) et [l'administration](docs/fr/administration.md#ldap-et-active-directory) |
 
 Les durées s'écrivent `30s`, `5m`, `1h30m`.
 
@@ -268,7 +269,7 @@ ses propres réglages de notifications).
 
 ## Développement
 
-Prérequis : Go 1.27+, Node 22+ avec pnpm, Docker (ou OrbStack).
+Prérequis : Go 1.27+, Node 24+ avec pnpm, Docker (ou OrbStack).
 
 ```bash
 docker compose up -d          # MariaDB pour Solstice, plus un PostgreSQL et un MySQL « Jira » de test
@@ -310,7 +311,9 @@ validez-la. Tant qu'elle n'y est pas, l'assistant de mise à jour refuse toute
 mise à jour. Ensuite
 `SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
 `deploy/linux/test-update-signature.sh` teste la vérification avec une clé
-jetable.
+jetable. `deploy/linux/test-update-systemd.sh` lance l'assistant sous systemd
+dans un conteneur Docker : une mise à jour, une somme de contrôle fausse
+refusée, une version qui ne démarre pas annulée.
 
 ### Tests
 
@@ -334,8 +337,10 @@ backend/
   cmd/solstice/         le binaire : serve, migrate, import, user, version, health
   cmd/jira-fixture/     générateur de bases Jira synthétiques (tests)
   internal/api/         API HTTP JSON de l'interface, couche de compatibilité REST
+  internal/issue/       types métier des tickets, partagés par l'API, les événements et l'import
   internal/importer/    import depuis Jira
   internal/jiradb/      connexion aux bases Jira (PostgreSQL, MySQL)
+  internal/jirafixture/ bases Jira synthétiques, derrière cmd/jira-fixture
   internal/perm/        qui voit et fait quoi
   internal/search/      la recherche simple
   internal/jql/         le JQL
@@ -343,6 +348,7 @@ backend/
   internal/events/      bus d'événements : temps réel, e-mails, webhooks
   internal/notify/      notifications par e-mail, résumés, abonnements, rappels
   internal/mail/        réglages SMTP, envoi, file d'attente des e-mails
+  internal/mail/mailtest/  serveur SMTP pour les tests
   internal/webhook/     webhooks, garde contre les SSRF
   internal/secret/      chiffrement des secrets enregistrés
   internal/settings/    réglages de l'instance en base
@@ -351,6 +357,8 @@ backend/
   internal/i18n/        messages du serveur en cinq langues
   internal/auth/        mots de passe et sessions
   internal/db/          connexion MariaDB et migrations
+  internal/sqlq/        petits outils autour de database/sql
+  internal/worker/      tâches de fond qui survivent à un panic
   internal/web/         sert l'interface compilée
 frontend/
   src/core/             logique pure et testée (rendu du balisage wiki, JQL…)

@@ -220,7 +220,7 @@ func (r *run) importProjects() error {
 	r.projects = map[int64]*project{}
 	ins = r.inserter("projects", "id", "pkey", "name", "description", "lead_id", "category_id",
 		"url", "kind", "default_assignee", "issue_counter")
-	if err := r.each(`SELECT id, pkey, pname, description, `+r.quote("lead")+`, url, pcounter, assigneetype, `+
+	if err := r.each(`SELECT id, pkey, pname, description, `+r.engine.QuoteFolded("lead")+`, url, pcounter, assigneetype, `+
 		projectType+`, `+originalKey+` FROM project`, func(rows *sql.Rows) error {
 		var id int64
 		var key, name, desc, lead, url, kind, orig sql.NullString
@@ -744,7 +744,7 @@ func (r *run) importComponentsAndVersions() error {
 	r.components = map[int64]bool{}
 	ins := r.inserter("components", "id", "project_id", "name", "description", "lead_id", "archived")
 	skipped := 0
-	if err := r.each(`SELECT id, project, cname, description, `+r.quote("lead")+`, `+archived+`, `+deleted+`
+	if err := r.each(`SELECT id, project, cname, description, `+r.engine.QuoteFolded("lead")+`, `+archived+`, `+deleted+`
 		FROM component`, func(rows *sql.Rows) error {
 		var id int64
 		var pid sql.NullInt64

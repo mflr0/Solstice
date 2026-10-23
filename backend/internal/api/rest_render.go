@@ -14,6 +14,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -25,44 +26,54 @@ type sysField struct {
 	typ       string // schema type: string, user, datetime, array…
 	items     string // for arrays: the type of the items
 	navigable bool   // part of "*navigable", the default of searches
-	orderable bool   // can be set when creating or editing
 	clauses   []string
 }
 
+// orderable reports whether ORDER BY accepts the field, as Jira's
+// "orderable" means.
+func (f sysField) orderable() bool {
+	for _, c := range f.clauses {
+		if jql.Sortable(c) {
+			return true
+		}
+	}
+	return false
+}
+
 var systemFields = []sysField{
-	{"issuekey", i18n.M(i18n.FieldNameKey), "", "", true, false, []string{"id", "issue", "issuekey", "key"}},
-	{"summary", i18n.M(i18n.FieldNameSummary), "string", "", true, true, []string{"summary"}},
-	{"issuetype", i18n.M(i18n.FieldNameIssueType), "issuetype", "", true, true, []string{"issuetype", "type"}},
-	{"project", i18n.M(i18n.FieldNameProject), "project", "", true, true, []string{"project"}},
-	{"status", i18n.M(i18n.FieldNameStatus), "status", "", true, false, []string{"status"}},
-	{"priority", i18n.M(i18n.FieldNamePriority), "priority", "", true, true, []string{"priority"}},
-	{"resolution", i18n.M(i18n.FieldNameResolution), "resolution", "", true, true, []string{"resolution"}},
-	{"resolutiondate", i18n.M(i18n.FieldNameResolved), "datetime", "", true, false, []string{"resolutiondate", "resolved"}},
-	{"assignee", i18n.M(i18n.FieldNameAssignee), "user", "", true, true, []string{"assignee"}},
-	{"reporter", i18n.M(i18n.FieldNameReporter), "user", "", true, true, []string{"reporter"}},
-	{"creator", i18n.M(i18n.FieldNameCreator), "user", "", true, false, []string{"creator"}},
-	{"created", i18n.M(i18n.FieldNameCreated), "datetime", "", true, false, []string{"created", "createdDate"}},
-	{"updated", i18n.M(i18n.FieldNameUpdated), "datetime", "", true, false, []string{"updated", "updatedDate"}},
-	{"duedate", i18n.M(i18n.FieldNameDueDate), "date", "", true, true, []string{"due", "duedate"}},
-	{"description", i18n.M(i18n.FieldNameDescription), "string", "", true, true, []string{"description"}},
-	{"environment", i18n.M(i18n.FieldNameEnvironment), "string", "", true, true, []string{"environment"}},
-	{"labels", i18n.M(i18n.FieldNameLabels), "array", "string", true, true, []string{"labels"}},
-	{"components", i18n.M(i18n.FieldNameComponents), "array", "component", true, true, []string{"component"}},
-	{"fixVersions", i18n.M(i18n.FieldNameFixVersions), "array", "version", true, true, []string{"fixVersion"}},
-	{"versions", i18n.M(i18n.FieldNameAffectsVersions), "array", "version", true, true, []string{"affectedVersion"}},
-	{"issuelinks", i18n.M(i18n.FieldNameLinkedIssues), "array", "issuelinks", true, true, []string{"issueLink"}},
-	{"subtasks", i18n.M(i18n.FieldNameSubtasks), "array", "issuelinks", true, false, []string{"subtasks"}},
-	{"parent", i18n.M(i18n.FieldNameParent), "issuelink", "", true, true, []string{"parent"}},
-	{"security", i18n.M(i18n.FieldNameSecurityLevel), "securitylevel", "", true, true, []string{"level"}},
-	{"watches", i18n.M(i18n.FieldNameWatchers), "watches", "", true, false, []string{"watchers"}},
-	{"votes", i18n.M(i18n.FieldNameVotes), "votes", "", true, false, []string{"votes"}},
-	{"timeoriginalestimate", i18n.M(i18n.FieldNameOriginalEstimate), "number", "", true, false, []string{"originalEstimate"}},
-	{"timeestimate", i18n.M(i18n.FieldNameRemainingEstimate), "number", "", true, false, []string{"remainingEstimate"}},
-	{"timespent", i18n.M(i18n.FieldNameTimeSpent), "number", "", true, false, []string{"timeSpent"}},
-	{"timetracking", i18n.M(i18n.FieldNameTimeTracking), "timetracking", "", false, false, nil},
-	{"attachment", i18n.M(i18n.FieldNameAttachments), "array", "attachment", false, false, []string{"attachments"}},
-	{"comment", i18n.M(i18n.FieldNameComments), "comments-page", "", false, true, []string{"comment"}},
-	{"worklog", i18n.M(i18n.FieldNameWorkLog), "array", "worklog", false, false, nil},
+	{"issuekey", i18n.M(i18n.FieldNameKey), "", "", true, []string{"id", "issue", "issuekey", "key"}},
+	{"summary", i18n.M(i18n.FieldNameSummary), "string", "", true, []string{"summary"}},
+	{"issuetype", i18n.M(i18n.FieldNameIssueType), "issuetype", "", true, []string{"issuetype", "type"}},
+	{"project", i18n.M(i18n.FieldNameProject), "project", "", true, []string{"project"}},
+	{"status", i18n.M(i18n.FieldNameStatus), "status", "", true, []string{"status"}},
+	{"priority", i18n.M(i18n.FieldNamePriority), "priority", "", true, []string{"priority"}},
+	{"resolution", i18n.M(i18n.FieldNameResolution), "resolution", "", true, []string{"resolution"}},
+	{"resolutiondate", i18n.M(i18n.FieldNameResolved), "datetime", "", true, []string{"resolutiondate", "resolved"}},
+	{"assignee", i18n.M(i18n.FieldNameAssignee), "user", "", true, []string{"assignee"}},
+	{"reporter", i18n.M(i18n.FieldNameReporter), "user", "", true, []string{"reporter"}},
+	{"creator", i18n.M(i18n.FieldNameCreator), "user", "", true, []string{"creator"}},
+	{"created", i18n.M(i18n.FieldNameCreated), "datetime", "", true, []string{"created", "createdDate"}},
+	{"updated", i18n.M(i18n.FieldNameUpdated), "datetime", "", true, []string{"updated", "updatedDate"}},
+	{"duedate", i18n.M(i18n.FieldNameDueDate), "date", "", true, []string{"due", "duedate"}},
+	{"description", i18n.M(i18n.FieldNameDescription), "string", "", true, []string{"description"}},
+	{"environment", i18n.M(i18n.FieldNameEnvironment), "string", "", true, []string{"environment"}},
+	{"labels", i18n.M(i18n.FieldNameLabels), "array", "string", true, []string{"labels"}},
+	{"components", i18n.M(i18n.FieldNameComponents), "array", "component", true, []string{"component"}},
+	{"fixVersions", i18n.M(i18n.FieldNameFixVersions), "array", "version", true, []string{"fixVersion"}},
+	{"versions", i18n.M(i18n.FieldNameAffectsVersions), "array", "version", true, []string{"affectedVersion"}},
+	{"issuelinks", i18n.M(i18n.FieldNameLinkedIssues), "array", "issuelinks", true, []string{"issueLink"}},
+	{"subtasks", i18n.M(i18n.FieldNameSubtasks), "array", "issuelinks", true, []string{"subtasks"}},
+	{"parent", i18n.M(i18n.FieldNameParent), "issuelink", "", true, []string{"parent"}},
+	{"security", i18n.M(i18n.FieldNameSecurityLevel), "securitylevel", "", true, []string{"level"}},
+	{"watches", i18n.M(i18n.FieldNameWatchers), "watches", "", true, []string{"watchers"}},
+	{"votes", i18n.M(i18n.FieldNameVotes), "votes", "", true, []string{"votes"}},
+	{"timeoriginalestimate", i18n.M(i18n.FieldNameOriginalEstimate), "number", "", true, []string{"originalEstimate"}},
+	{"timeestimate", i18n.M(i18n.FieldNameRemainingEstimate), "number", "", true, []string{"remainingEstimate"}},
+	{"timespent", i18n.M(i18n.FieldNameTimeSpent), "number", "", true, []string{"timeSpent"}},
+	{"timetracking", i18n.M(i18n.FieldNameTimeTracking), "timetracking", "", false, nil},
+	{"attachment", i18n.M(i18n.FieldNameAttachments), "array", "attachment", false, []string{"attachments"}},
+	{"comment", i18n.M(i18n.FieldNameComments), "comments-page", "", false, []string{"comment"}},
+	{"worklog", i18n.M(i18n.FieldNameWorkLog), "array", "worklog", false, nil},
 }
 
 func systemField(id string) (sysField, bool) {
@@ -123,9 +134,9 @@ func (sel *fieldSelection) hasSystem(id string) bool {
 func customID(id int64) string { return "customfield_" + strconv.FormatInt(id, 10) }
 
 // loads tells loadIssues what the selected fields need.
-func (sel *fieldSelection) loads(fields []customFieldDef) func(string) bool {
+func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 	custom, epic, sprint := false, false, false
-	for _, f := range fields {
+	for _, f := range defs {
 		if sel.has(customID(f.ID), true) {
 			custom = true
 			epic = epic || f.Kind == "gh-epic-link"
@@ -133,6 +144,7 @@ func (sel *fieldSelection) loads(fields []customFieldDef) func(string) bool {
 		}
 	}
 	need := map[string]bool{
+		loadProjectKinds: sel.hasSystem("project"), loadLevels: sel.hasSystem("security"),
 		loadLabels: sel.hasSystem("labels"), loadComponents: sel.hasSystem("components"),
 		loadVersions: sel.hasSystem("fixVersions") || sel.hasSystem("versions"),
 		loadLinks:    sel.hasSystem("issuelinks"), loadSubtasks: sel.hasSystem("subtasks"),
@@ -165,7 +177,7 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 	put("status", func() any { return o.status(cat.statusOf(row.StatusID)) })
 	put("priority", func() any { return o.priority(cat.priorityOf(row.PriorityID)) })
 	put("resolution", func() any { return o.resolution(cat.resolutionOf(row.ResolutionID)) })
-	put("resolutiondate", func() any { return o.timePtr(nullTime(row.Resolved)) })
+	put("resolutiondate", func() any { return o.timePtr(sqlq.Time(row.Resolved)) })
 	put("assignee", func() any { return userOf(users, row.AssigneeID.Int64) })
 	put("reporter", func() any { return userOf(users, row.ReporterID.Int64) })
 	put("creator", func() any { return userOf(users, row.CreatorID.Int64) })
@@ -374,10 +386,16 @@ func jiraDuration(secs int64) string {
 	return strings.Join(parts, " ")
 }
 
-// Internal fields of Jira Software that Solstice does not keep up to date.
-var staleKinds = map[string]bool{
-	"gh-global-rank": true, "greenhopper-releasedmultiversionhistory": true, "devsummary": true, "importid": true,
-	"jqlFunctionsCustomFieldType": true,
+// staleKind tells whether REST renders a field of this kind as null: one of
+// hiddenKinds, which Solstice does not keep up to date. REST shows the others
+// the way Jira does: gh-lexo-rank and gh-sprint from Solstice's own data,
+// gh-epic-color as imported.
+func staleKind(kind string) bool {
+	switch kind {
+	case "gh-lexo-rank", "gh-sprint", "gh-epic-color":
+		return false
+	}
+	return hiddenKinds[kind]
 }
 
 // customValue renders a custom field's value the way Jira does for its type.
@@ -406,7 +424,7 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 		return nil
 	}
 	values := d.custom[f.ID]
-	if len(values) == 0 || staleKinds[f.Kind] {
+	if len(values) == 0 || staleKind(f.Kind) {
 		return nil
 	}
 	switch f.Kind {
@@ -506,8 +524,8 @@ func nullIDText(id int64) string {
 	return strconv.FormatInt(id, 10)
 }
 
-// agileSprint is a sprint as Jira's Agile API shows one.
-func (o *restOut) agileSprint(sp sprintOut, board int64) map[string]any {
+// sprintJSON is a sprint as Jira's Agile API shows one.
+func (o *restOut) sprintJSON(sp sprintOut, board int64) map[string]any {
 	out := map[string]any{"id": sp.ID, "self": o.base + "/rest/agile/1.0/sprint/" + o.id(sp.ID), "state": sp.State,
 		"name": sp.Name}
 	date := func(t *time.Time) string { return t.In(o.tz).Format("2006-01-02T15:04:05.000Z07:00") }
@@ -643,17 +661,17 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 	if err != nil {
 		return nil, nil, err
 	}
-	fields, err := s.customFields(ctx)
+	custom, err := s.customFields(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	want := sel.loads(fields)
+	want := sel.loads(custom)
 	inner := want
 	want = func(k string) bool {
 		return inner(k) || (k == loadComments && expand["renderedFields"] && sel.hasSystem("comment")) ||
 			(agile && (k == loadSprints || k == loadEpic))
 	}
-	set, err := s.loadIssues(ctx, sub, rows, want)
+	set, err := s.loadIssues(ctx, sub, custom, rows, want)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -663,25 +681,25 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 	}
 	out := make([]map[string]any, 0, len(set.list))
 	for _, d := range set.list {
-		issue := s.jiraIssue(o, cat, set, users, d, sel)
+		item := s.jiraIssue(o, cat, set, users, d, sel)
 		if agile {
-			o.agileFields(cat, issue["fields"].(map[string]any), d, sel)
+			o.agileFields(cat, item["fields"].(map[string]any), d, sel)
 		}
 		if expand["changelog"] {
-			if issue["changelog"], err = s.jiraChangelog(ctx, o, sub, d.row); err != nil {
+			if item["changelog"], err = s.jiraChangelog(ctx, o, sub, d.row); err != nil {
 				return nil, nil, err
 			}
 		}
 		if expand["renderedFields"] {
-			issue["renderedFields"] = o.renderedFields(d, sel)
+			item["renderedFields"] = o.renderedFields(d, sel)
 		}
 		if expand["transitions"] {
-			if issue["transitions"], err = s.jiraTransitions(ctx, o, sub, cat, d.row,
+			if item["transitions"], err = s.jiraTransitions(ctx, o, sub, cat, d.row,
 				expand["transitions.fields"]); err != nil {
 				return nil, nil, err
 			}
 		}
-		out = append(out, issue)
+		out = append(out, item)
 	}
 	var names map[string]string
 	if expand["names"] {
@@ -734,9 +752,9 @@ func (o *restOut) agileFields(cat *catalog, f map[string]any, d *issueData, sel 
 		closed := []any{}
 		for _, sp := range d.sprints {
 			if sp.State == "closed" {
-				closed = append(closed, o.agileSprint(sp.sprintOut, sp.board.Int64))
+				closed = append(closed, o.sprintJSON(sp.sprintOut, sp.board.Int64))
 			} else {
-				open = o.agileSprint(sp.sprintOut, sp.board.Int64)
+				open = o.sprintJSON(sp.sprintOut, sp.board.Int64)
 			}
 		}
 		f["sprint"], f["closedSprints"] = open, closed
@@ -744,14 +762,14 @@ func (o *restOut) agileFields(cat *catalog, f map[string]any, d *issueData, sel 
 	if sel.has("epic", true) {
 		f["epic"] = nil
 		if d.epic != nil {
-			f["epic"] = o.agileEpic(cat, d.epic, "")
+			f["epic"] = o.epicJSON(cat, d.epic, "")
 		}
 	}
 	f["flagged"] = false
 }
 
-// agileEpic is an epic as Jira's Agile API shows one.
-func (o *restOut) agileEpic(cat *catalog, epic *issueRow, name string) map[string]any {
+// epicJSON is an epic as Jira's Agile API shows one.
+func (o *restOut) epicJSON(cat *catalog, epic *issueRow, name string) map[string]any {
 	if name == "" {
 		name = epic.Summary
 	}

@@ -34,9 +34,9 @@ describe('JQL error messages', () => {
       for (const code of Object.keys(jql) as JqlCode[]) {
         const template = server.get(code);
         expect(template, `${lang} ${code}`).toBeDefined();
-        const args = (template!.match(/%s/g) ?? []).map((_, i) => `arg${i}`);
+        const args = (template!.match(/%[sd]/g) ?? []).map((_, i) => `arg${i}`);
         let i = 0;
-        const expected = template!.replace(/%s/g, () => args[i++]!);
+        const expected = template!.replace(/%[sd]/g, () => args[i++]!);
         const render = jql[code] as (...a: string[]) => string;
         expect(render(...args), `${lang} ${code}`).toBe(expected);
       }

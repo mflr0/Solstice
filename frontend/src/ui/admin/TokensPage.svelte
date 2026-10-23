@@ -11,7 +11,7 @@
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
@@ -30,7 +30,6 @@
   let revoking = $state<AccessToken | null>(null);
 
   let policy = $state<TokenSettings | null>(null);
-  let policyOff = $state(false);
   let groups = $state<Group[]>([]);
   let who = $state<TokenSettings['who']>('admins');
   let group = $state<number | null>(null);
@@ -62,11 +61,7 @@
     adminApi
       .tokenSettings()
       .then(adopt)
-      .catch((e: unknown) => {
-        // An older server has no policy: the list still works.
-        if (e instanceof ApiError && e.status === 404) policyOff = true;
-        else policyError = errorMessage(e);
-      });
+      .catch((e: unknown) => (policyError = errorMessage(e)));
     adminApi
       .groups()
       .then((g) => (groups = g))
@@ -107,55 +102,53 @@
 </header>
 <p class="lead-text">{t.tokensAdmin.intro}</p>
 
-{#if !policyOff}
-  <section class="card policy" aria-labelledby="token-policy">
-    <h2 class="card-head" id="token-policy">{t.tokensAdmin.policyTitle}</h2>
-    <div class="card-body">
-      <p class="muted small">{t.tokensAdmin.policyIntro}</p>
-      {#if policyError}<p class="error-text" role="alert">{policyError}</p>{/if}
-      {#if policy}
-        <form class="policy-form" onsubmit={save} novalidate>
-          <fieldset class="choices">
-            <legend class="sr-only">{t.tokensAdmin.policyTitle}</legend>
-            {#each WHO as w (w)}
-              <label class="check">
-                <input type="radio" name="token-who" value={w} bind:group={who} />
-                <span>{t.tokensAdmin.who[w]}</span>
-              </label>
-            {/each}
-          </fieldset>
-          {#if who === 'group'}
-            <label class="field">
-              <span>{t.tokensAdmin.group}</span>
-              <select class="select" bind:value={group} aria-invalid={!!groupProblem}>
-                <option value={null}>{t.tokensAdmin.groupPlaceholder}</option>
-                {#each groups as g (g.id)}<option value={g.id}>{g.name}</option>{/each}
-              </select>
-              {#if groups.length === 0}
-                <span class="hint">{t.tokensAdmin.noGroups}</span>
-              {:else if policy.who === 'group' && !policy.group}
-                <span class="field-error">{t.tokensAdmin.groupGone}</span>
-              {/if}
+<section class="card policy" aria-labelledby="token-policy">
+  <h2 class="card-head" id="token-policy">{t.tokensAdmin.policyTitle}</h2>
+  <div class="card-body">
+    <p class="muted small">{t.tokensAdmin.policyIntro}</p>
+    {#if policyError}<p class="error-text" role="alert">{policyError}</p>{/if}
+    {#if policy}
+      <form class="policy-form" onsubmit={save} novalidate>
+        <fieldset class="choices">
+          <legend class="sr-only">{t.tokensAdmin.policyTitle}</legend>
+          {#each WHO as w (w)}
+            <label class="check">
+              <input type="radio" name="token-who" value={w} bind:group={who} />
+              <span>{t.tokensAdmin.who[w]}</span>
             </label>
-            {#if groupProblem && dirty}
-              <p class="field-error">{t.tokensAdmin.problems[groupProblem]}</p>
+          {/each}
+        </fieldset>
+        {#if who === 'group'}
+          <label class="field">
+            <span>{t.tokensAdmin.group}</span>
+            <select class="select" bind:value={group} aria-invalid={!!groupProblem}>
+              <option value={null}>{t.tokensAdmin.groupPlaceholder}</option>
+              {#each groups as g (g.id)}<option value={g.id}>{g.name}</option>{/each}
+            </select>
+            {#if groups.length === 0}
+              <span class="hint">{t.tokensAdmin.noGroups}</span>
+            {:else if policy.who === 'group' && !policy.group}
+              <span class="field-error">{t.tokensAdmin.groupGone}</span>
             {/if}
+          </label>
+          {#if groupProblem && dirty}
+            <p class="field-error">{t.tokensAdmin.problems[groupProblem]}</p>
           {/if}
-          <div>
-            <button
-              class="btn btn-primary"
-              type="submit"
-              disabled={saving || !dirty || !!groupProblem}
-              >{saving ? t.common.saving : t.common.save}</button
-            >
-          </div>
-        </form>
-      {:else if !policyError}
-        <p class="muted loading">{t.common.loading}</p>
-      {/if}
-    </div>
-  </section>
-{/if}
+        {/if}
+        <div>
+          <button
+            class="btn btn-primary"
+            type="submit"
+            disabled={saving || !dirty || !!groupProblem}
+            >{saving ? t.common.saving : t.common.save}</button
+          >
+        </div>
+      </form>
+    {:else if !policyError}
+      <p class="muted loading">{t.common.loading}</p>
+    {/if}
+  </div>
+</section>
 
 <div class="list-tools">
   <input

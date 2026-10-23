@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -54,6 +55,7 @@ type Settings struct {
 	DB   DBSettings
 	Log  LogSettings
 	HTTP HTTPSettings
+	LDAP LDAPSettings
 }
 
 // DBSettings are Solstice's database and its connection pool.
@@ -93,6 +95,43 @@ type HTTPSettings struct {
 	MaxStorage ByteSize
 }
 
+// LDAPSettings are the LDAP or Active Directory server accounts may sign in
+// with. An empty URL turns LDAP sign-in off.
+type LDAPSettings struct {
+	// URL is ldaps://host:636, or ldap://host:389 with StartTLS.
+	URL string
+	// StartTLS upgrades an ldap:// connection to TLS before anything is sent.
+	StartTLS bool
+	// Insecure allows ldap:// without StartTLS: passwords then travel in clear.
+	Insecure bool
+	// CAFile is a PEM file of the certificate authorities to trust, added to
+	// the system's.
+	CAFile string
+	// BindDN and BindPassword are the service account that searches the
+	// directory; empty for an anonymous search.
+	BindDN       string
+	BindPassword string
+	// UserBase is where accounts are searched, UserFilter how: {username}
+	// stands for the name typed at sign-in.
+	UserBase   string
+	UserFilter string
+	// NameAttr and EmailAttr are the attributes copied to the account.
+	NameAttr  string
+	EmailAttr string
+	// GroupBase is where groups are searched (UserBase when empty),
+	// GroupFilter how: {dn} stands for the account's DN, {username} for its
+	// name. GroupNameAttr is the attribute naming a group in Solstice.
+	GroupBase     string
+	GroupFilter   string
+	GroupNameAttr string
+	// RequireGroup, when set, is the group an account must be in to sign in.
+	RequireGroup string
+	// AdminGroup, when set, makes its members administrators, and only them.
+	AdminGroup string
+	// Timeout bounds each sign-in's exchange with the server.
+	Timeout time.Duration
+}
+
 // Defaults returns the settings nothing sets. There is deliberately no
 // default database.
 func Defaults() Settings {
@@ -112,6 +151,14 @@ func Defaults() Settings {
 			ShutdownTimeout: 10 * time.Second,
 			MaxUpload:       100 << 20,
 		},
+		LDAP: LDAPSettings{
+			UserFilter:    "(uid={username})",
+			NameAttr:      "displayName",
+			EmailAttr:     "mail",
+			GroupFilter:   "(member={dn})",
+			GroupNameAttr: "cn",
+			Timeout:       10 * time.Second,
+		},
 	}
 }
 
@@ -126,7 +173,7 @@ var Keys = func() []string {
 
 // toolEnv are SOLSTICE_ variables of the scripts and tests, not settings:
 // they are not reported as unknown.
-var toolEnv = []string{KeyConfig, "SOLSTICE_TEST_DB", "SOLSTICE_TEST_EMPTY_DB", "SOLSTICE_BACKEND",
+var toolEnv = []string{KeyConfig, "SOLSTICE_TEST_DB", "SOLSTICE_TEST_EMPTY_DB", "SOLSTICE_TEST_LDAP", "SOLSTICE_BACKEND",
 	"SOLSTICE_VERSION", "SOLSTICE_PORT", "SOLSTICE_RELEASE_KEY"}
 
 // searchPaths are tried in order when no file is named. The first is also
@@ -152,13 +199,36 @@ type Config struct {
 // named file that does not exist yet is not an error: it is where the setup
 // wizard will write. An empty value counts as unset.
 func Load(env []string) (*Config, error) {
-	vars := map[string]string{}
+	src := sources{env: map[string]string{}}
 	for _, kv := range env {
 		if k, v, ok := strings.Cut(kv, "="); ok {
-			vars[k] = v
+			src.env[k] = v
 		}
 	}
-	path := vars[KeyConfig]
+	var err error
+	if src.path, err = locate(src.env); err != nil {
+		return nil, err
+	}
+	var exists bool
+	if src.file, exists, err = readValues(src.path); err != nil {
+		return nil, err
+	}
+	c := &Config{Settings: Defaults(), Path: src.path, Exists: exists}
+	if err := src.apply(&c.Settings); err != nil {
+		return nil, err
+	}
+	c.Unknown = src.unknown()
+	if err := c.check(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// locate returns the absolute path of the file to read: the one
+// SOLSTICE_CONFIG names in env, else the first search path that exists,
+// else the first search path.
+func locate(env map[string]string) (string, error) {
+	path := env[KeyConfig]
 	if path == "" {
 		path = searchPaths[0]
 		for _, p := range searchPaths {
@@ -168,57 +238,72 @@ func Load(env []string) (*Config, error) {
 			}
 		}
 	}
-	abs, err := filepath.Abs(path)
+	return filepath.Abs(path)
+}
+
+// readValues parses the file at path and reports whether it exists. A file
+// that does not exist yet holds no values and is not an error; a parse
+// error names the file.
+func readValues(path string) (map[string]string, bool, error) {
+	f, err := os.Open(path) // #nosec G304 -- path built by the server, not from user input
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, nil
+	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	c := &Config{Settings: Defaults(), Path: abs}
-
-	values := map[string]string{}
-	f, err := os.Open(abs) // #nosec G304 -- path built by the server, not from user input
-	switch {
-	case err == nil:
-		values, err = Parse(f)
-		f.Close()
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", abs, err)
-		}
-		c.Exists = true
-	case !errors.Is(err, fs.ErrNotExist):
-		return nil, err
+	defer f.Close()
+	values, err := Parse(f)
+	if err != nil {
+		return nil, false, fmt.Errorf("%s: %w", path, err)
 	}
+	return values, true, nil
+}
 
-	for _, f := range fields(&c.Settings) {
-		raw, inFile := vars[f.key], false
+// sources are where the settings come from: the environment, which wins,
+// and the file at path.
+type sources struct {
+	env, file map[string]string
+	path      string
+}
+
+// apply sets over s every setting src gives a value; an empty value counts
+// as unset. An error on a value of the file names the file.
+func (src sources) apply(s *Settings) error {
+	for _, f := range fields(s) {
+		raw, inFile := src.env[f.key], false
 		if raw == "" {
-			raw, inFile = values[f.key], true
+			raw, inFile = src.file[f.key], true
 		}
 		if raw == "" {
 			continue
 		}
 		if err := f.set(raw); err != nil {
 			if inFile {
-				return nil, fmt.Errorf("%s in %s: %w", f.key, abs, err)
+				return fmt.Errorf("%s in %s: %w", f.key, src.path, err)
 			}
-			return nil, fmt.Errorf("%s: %w", f.key, err)
+			return fmt.Errorf("%s: %w", f.key, err)
 		}
 	}
-	for k := range values {
+	return nil
+}
+
+// unknown returns, sorted and each once, the keys of the file and the
+// SOLSTICE_ variables that Solstice does not know.
+func (src sources) unknown() []string {
+	var out []string
+	for k := range src.file {
 		if !slices.Contains(Keys, k) {
-			c.Unknown = append(c.Unknown, k)
+			out = append(out, k)
 		}
 	}
-	for k := range vars {
-		if strings.HasPrefix(k, Prefix+"_") && !slices.Contains(Keys, k) && !slices.Contains(toolEnv, k) &&
-			!slices.Contains(c.Unknown, k) {
-			c.Unknown = append(c.Unknown, k)
+	for k := range src.env {
+		if strings.HasPrefix(k, Prefix+"_") && !slices.Contains(Keys, k) && !slices.Contains(toolEnv, k) {
+			out = append(out, k)
 		}
 	}
-	slices.Sort(c.Unknown)
-	if err := c.check(); err != nil {
-		return nil, err
-	}
-	return c, nil
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // check rejects values that parse but cannot work.
@@ -235,6 +320,41 @@ func (s *Settings) check() error {
 		{s.HTTP.ShutdownTimeout <= 0, &s.HTTP.ShutdownTimeout, "a positive duration"},
 		{s.HTTP.MaxUpload <= 0, &s.HTTP.MaxUpload, "a positive size"},
 		{s.HTTP.MaxStorage < 0, &s.HTTP.MaxStorage, "a size, or 0 for no limit"},
+	} {
+		if r.bad {
+			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
+		}
+	}
+	return s.checkLDAP()
+}
+
+// checkLDAP rejects an LDAP setup that would send passwords in clear by
+// mistake, or that cannot find anyone.
+func (s *Settings) checkLDAP() error {
+	l := &s.LDAP
+	if l.URL == "" {
+		return nil
+	}
+	u, err := url.Parse(l.URL)
+	if err != nil || (u.Scheme != "ldap" && u.Scheme != "ldaps") || u.Host == "" {
+		return fmt.Errorf("%s: must be ldaps://host or ldap://host", keyOf(s, &l.URL))
+	}
+	for _, r := range []struct {
+		bad  bool
+		p    any
+		want string
+	}{
+		{u.Scheme == "ldaps" && l.StartTLS, &l.StartTLS, "false with ldaps://, which is TLS already"},
+		{u.Scheme == "ldap" && !l.StartTLS && !l.Insecure, &l.StartTLS,
+			"true with ldap:// (or use ldaps://), unless " + keyOf(s, &l.Insecure) + "=true allows passwords in clear"},
+		{l.UserBase == "", &l.UserBase, "set with " + keyOf(s, &l.URL)},
+		{!strings.Contains(l.UserFilter, "{username}"), &l.UserFilter, "a filter containing {username}"},
+		{l.NameAttr == "", &l.NameAttr, "an attribute name"},
+		{l.EmailAttr == "", &l.EmailAttr, "an attribute name"},
+		{l.GroupFilter == "", &l.GroupFilter, "a filter, e.g. (member={dn})"},
+		{l.GroupNameAttr == "", &l.GroupNameAttr, "an attribute name"},
+		{l.BindPassword != "" && l.BindDN == "", &l.BindDN, "set with " + keyOf(s, &l.BindPassword)},
+		{l.Timeout <= 0, &l.Timeout, "a positive duration"},
 	} {
 		if r.bad {
 			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
@@ -317,9 +437,9 @@ func CheckValue(v string) error {
 	return nil
 }
 
-const header = `# Configuration de Solstice : des lignes CLÉ=valeur, lues par « solstice serve ».
-# Le même fichier sert d'EnvironmentFile à systemd et de fichier env à Docker.
-# Les variables d'environnement l'emportent sur ce qui est écrit ici.
+const header = `# Solstice configuration: KEY=value lines, read by "solstice serve".
+# The same file serves as the systemd EnvironmentFile and the Docker env file.
+# Environment variables take precedence over what is written here.
 `
 
 // Lines renders settings as file lines, in Keys order, for an administrator

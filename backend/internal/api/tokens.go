@@ -13,7 +13,6 @@ import (
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -66,11 +65,8 @@ func (s *Server) rejectToken(r *http.Request, token string) {
 	if !s.noteRefusedToken(ref.ID) {
 		return
 	}
-	e := audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies), Action: audit.TokenReject,
-		Target: audit.Target{Type: "token", ID: strconv.FormatInt(ref.ID, 10), Label: ref.Name}}
-	if err := audit.Record(r.Context(), s.db, e); err != nil {
-		s.log.Error("audit log write failed", "action", e.Action, "err", err)
-	}
+	record(r.Context(), s.db, s.log, audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies),
+		Action: audit.TokenReject, Target: target("token", ref.ID, ref.Name)})
 }
 
 func (s *Server) noteRefusedToken(id int64) bool {
@@ -126,13 +122,11 @@ func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]t
 			&owner.Active); err != nil {
 			return err
 		}
-		if expires.Valid {
-			t.Expires = &expires.Time
-			t.Expired = !expires.Time.After(now)
+		if e := sqlq.Time(expires); e != nil {
+			t.Expires = e
+			t.Expired = !e.After(now)
 		}
-		if used.Valid {
-			t.LastUsed = &used.Time
-		}
+		t.LastUsed = sqlq.Time(used)
 		if userID == 0 {
 			t.User = &owner
 		}
@@ -191,7 +185,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	if expires != nil {
 		details["expires"] = expires.UTC().Format(time.RFC3339)
 	}
-	s.auditLog(r, audit.TokenCreate, audit.Target{Type: "token", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, audit.TokenCreate, target("token", id, name), details)
 	out := tokenOut{ID: id, Name: name, Created: time.Now().UTC(), Expires: expires, Token: token}
 	return writeJSON(w, http.StatusCreated, out)
 }
@@ -236,9 +230,9 @@ func (s *Server) adminRevokeToken(w http.ResponseWriter, r *http.Request) error 
 // revokeToken deletes a token: one of the user's own (owner ≠ 0), or anyone's.
 func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request, owner int64) error {
 	ctx := r.Context()
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var name, username string
 	var userID int64
@@ -253,7 +247,7 @@ func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request, owner int64
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM api_tokens WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.TokenRevoke, audit.Target{Type: "token", ID: strconv.FormatInt(id, 10), Label: name},
+	s.auditLog(r, audit.TokenRevoke, target("token", id, name),
 		map[string]any{"owner": username})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

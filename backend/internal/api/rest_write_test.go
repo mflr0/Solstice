@@ -31,3 +31,16 @@ func TestTranslateCustomTakesSettableKinds(t *testing.T) {
 		}
 	}
 }
+
+func TestTranslateCustomRefusesNullForUnsettableKind(t *testing.T) {
+	p := &editProject{customs: []customFieldDef{{ID: 1, Name: "Rang", Kind: "gh-lexo-rank"}}}
+	edit := &jiraEdit{ui: fields{}}
+	err := (&Server{}).translateCustom(context.Background(), p, edit, "customfield_1", json.RawMessage(`null`))
+	var he *httpError
+	if !errors.As(err, &he) || he.msg.Key != i18n.FieldNotSettable {
+		t.Errorf("err = %v, want %s", err, i18n.FieldNotSettable)
+	}
+	if len(edit.custom) != 0 {
+		t.Errorf("custom writes = %d, want 0", len(edit.custom))
+	}
+}

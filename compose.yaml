@@ -1,6 +1,7 @@
-# Bases de développement :
-# - mariadb  : la base de Solstice
-# - jira-pg / jira-mysql : bases Jira synthétiques (remplies par jira-fixture) servant de source d'import
+# Development databases:
+# - mariadb: the Solstice database
+# - jira-pg / jira-mysql: synthetic Jira databases (filled by jira-fixture), the sources of the import
+# - ldap: synthetic directory of the LDAP sign-in test (SOLSTICE_TEST_LDAP=ldap://127.0.0.1:1389)
 services:
   mariadb:
     image: mariadb:11.4
@@ -28,3 +29,17 @@ services:
       MYSQL_PASSWORD: jira
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin"]
     ports: ["127.0.0.1:23306:3306"]
+
+  ldap:
+    image: osixia/openldap:1.5.0
+    command: ["--copy-service"]
+    environment:
+      LDAP_ORGANISATION: Example
+      LDAP_DOMAIN: example.org
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_TLS: "false"
+    ulimits:
+      nofile: 1024
+    volumes:
+      - ./backend/tests/testdata/ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    ports: ["127.0.0.1:1389:389"]

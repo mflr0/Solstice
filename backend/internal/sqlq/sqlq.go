@@ -6,11 +6,26 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 )
 
 // Marks returns n comma-separated bind markers, "?, ?, ?", for IN lists and
 // VALUES tuples.
 func Marks(n int) string { return strings.TrimSuffix(strings.Repeat("?, ", n), ", ") }
+
+// IDs returns the ids as bind arguments, once each and without the zeros, in
+// the order they first appear.
+func IDs(ids ...int64) []any {
+	var args []any
+	seen := map[int64]bool{}
+	for _, id := range ids {
+		if id != 0 && !seen[id] {
+			seen[id] = true
+			args = append(args, id)
+		}
+	}
+	return args
+}
 
 // ProjectKey is a condition on a project (alias pa) named by its key or by a
 // key it had before it was renamed. marks is the bind markers of the keys, "?"
@@ -56,6 +71,14 @@ func Int(n sql.NullInt64) *int64 {
 	return &n.Int64
 }
 
+// Time returns the time, or nil when it is NULL.
+func Time(t sql.NullTime) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
 // Value returns the plain value, or an untyped nil when it is NULL, so it
 // compares with == against other values.
 func Value[T sql.NullString | sql.NullInt64](n T) any {
@@ -70,4 +93,42 @@ func Value[T sql.NullString | sql.NullInt64](n T) any {
 		}
 	}
 	return nil
+}
+
+// NullIf returns v, or nil when it is the zero value: the argument a column
+// takes when there is nothing to store.
+func NullIf[T comparable](v T) any {
+	var zero T
+	if v == zero {
+		return nil
+	}
+	return v
+}
+
+// NullIfBlank returns s, or nil when s is empty or holds only spaces: the
+// argument a column takes when the text given is blank. s is returned as it
+// is, untrimmed, so the caller passes the text it stores.
+func NullIfBlank(s string) any {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return s
+}
+
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// EscapeLike escapes the backslash, percent sign and underscore of a LIKE
+// pattern so they match as characters; the caller adds the % wildcards.
+func EscapeLike(s string) string { return likeEscaper.Replace(s) }
+
+// Truncate cuts s after n characters (code points, as MySQL counts them); a
+// shorter string is returned as it is, and n <= 0 gives "".
+func Truncate(s string, n int) string {
+	for i := range s {
+		if n <= 0 {
+			return s[:i]
+		}
+		n--
+	}
+	return s
 }

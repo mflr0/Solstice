@@ -6,6 +6,7 @@ package api
 // most.
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"fmt"
@@ -16,6 +17,8 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 const maxExportRows = 10000
@@ -41,21 +44,14 @@ type exportColumn struct {
 	special string // epic, sprint
 }
 
-// exportColumns reads the columns parameter: system field ids (or aliases),
-// customfield_<id>, epic and sprint.
-func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]exportColumn, error) {
-	loc := locale(r)
-	ids := defaultExportColumns
-	if v := strings.TrimSpace(r.URL.Query().Get("columns")); v != "" {
-		ids = nil
-		for part := range strings.SplitSeq(v, ",") {
-			if part = strings.TrimSpace(part); part != "" {
-				ids = append(ids, part)
-			}
-		}
-	}
+// parseColumns reads a columns parameter: system field ids (or aliases),
+// customfield_<id>, epic and sprint, comma-separated. An unknown one is a 400.
+func parseColumns(v, loc string, custom []customFieldDef) ([]exportColumn, error) {
 	var out []exportColumn
-	for _, id := range ids {
+	for id := range strings.SplitSeq(v, ",") {
+		if id = strings.TrimSpace(id); id == "" {
+			continue
+		}
 		if alias, ok := exportAliases[id]; ok {
 			id = alias
 		}
@@ -66,9 +62,9 @@ func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]expo
 			out = append(out, exportColumn{id: id, header: i18n.M(i18n.FieldNameSprint).In(loc), special: id})
 		case strings.HasPrefix(id, "customfield_"):
 			found := false
-			for i, f := range fields {
+			for i, f := range custom {
 				if customID(f.ID) == id {
-					out = append(out, exportColumn{id: id, header: f.Name, custom: &fields[i], number: f.Kind == "float"})
+					out = append(out, exportColumn{id: id, header: f.Name, custom: &custom[i], number: f.Kind == "float"})
 					found = true
 				}
 			}
@@ -87,6 +83,85 @@ func (s *Server) exportColumns(r *http.Request, fields []customFieldDef) ([]expo
 	return out, nil
 }
 
+// exportColumns reads the export's columns parameter, the default ones when
+// it names none.
+func exportColumns(r *http.Request, custom []customFieldDef) ([]exportColumn, error) {
+	v := strings.TrimSpace(r.URL.Query().Get("columns"))
+	if v == "" {
+		v = strings.Join(defaultExportColumns, ",")
+	}
+	return parseColumns(v, locale(r), custom)
+}
+
+// columnChoice is a column the search can show.
+type columnChoice struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// listColumns answers GET /api/issues/columns: every column the search and
+// the export take, named in the user's language.
+func (s *Server) listColumns(w http.ResponseWriter, r *http.Request) error {
+	custom, err := s.customFields(r.Context())
+	if err != nil {
+		return err
+	}
+	loc := locale(r)
+	var out []columnChoice
+	for _, f := range systemFields {
+		if f.id != "timetracking" { // never has a value of its own
+			out = append(out, columnChoice{ID: f.id, Name: f.name.In(loc)})
+		}
+	}
+	out = append(out, columnChoice{ID: "epic", Name: i18n.M(i18n.FieldNameEpic).In(loc)},
+		columnChoice{ID: "sprint", Name: i18n.M(i18n.FieldNameSprint).In(loc)})
+	for _, f := range custom {
+		out = append(out, columnChoice{ID: customID(f.ID), Name: f.Name})
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// columnZone reads the tz parameter: the time zone dates are written in
+// (default: the server's).
+func (s *Server) columnZone(r *http.Request) (*time.Location, error) {
+	name := r.URL.Query().Get("tz")
+	if name == "" {
+		return s.zone(), nil
+	}
+	tz, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, failf(http.StatusBadRequest, i18n.CommonTimeZoneUnknown, name)
+	}
+	return tz, nil
+}
+
+// loadColumns loads, for a page of issues, what the columns need to be
+// written: one query per kind of data, never one per issue.
+func (s *Server) loadColumns(ctx context.Context, sub *perm.Subject, o *restOut, custom []customFieldDef,
+	rows []*issueRow, columns []exportColumn) (*issueSet, map[int64]*jiraUser, error) {
+	sel := &fieldSelection{include: map[string]bool{}, exclude: map[string]bool{}}
+	for _, c := range columns {
+		sel.include[c.id] = true
+		if c.special == "sprint" {
+			if f, ok := fieldOfKind(custom, "gh-sprint"); ok {
+				sel.include[customID(f.ID)] = true
+			}
+		}
+	}
+	want := sel.loads(custom)
+	set, err := s.loadIssues(ctx, sub, custom, rows, func(k string) bool {
+		return want(k) || (k == loadEpic && sel.include["epic"]) || (k == loadSprints && sel.include["sprint"])
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return set, users, nil
+}
+
 // exportCSV answers GET /api/issues/export.csv: the search given as for
 // /api/issues (jql, or q in either syntax, and project), in the columns
 // asked for. tz may name the user's time zone (default: the server's).
@@ -96,21 +171,19 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	fields, err := s.customFields(ctx)
+	custom, err := s.customFields(ctx)
 	if err != nil {
 		return err
 	}
-	columns, err := s.exportColumns(r, fields)
+	columns, err := exportColumns(r, custom)
 	if err != nil {
 		return err
 	}
-	tz := s.zone()
-	if name := r.URL.Query().Get("tz"); name != "" {
-		if tz, err = time.LoadLocation(name); err != nil {
-			return failf(http.StatusBadRequest, i18n.CommonTimeZoneUnknown, name)
-		}
+	tz, err := s.columnZone(r)
+	if err != nil {
+		return err
 	}
-	where, args, order, _, err := s.searchCondition(ctx, sub, r.URL.Query())
+	where, args, order, err := s.searchCondition(ctx, sub, r.URL.Query())
 	if err != nil {
 		return err
 	}
@@ -122,26 +195,9 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// Load what the columns need.
-	sel := &fieldSelection{include: map[string]bool{}, exclude: map[string]bool{}}
-	for _, c := range columns {
-		sel.include[c.id] = true
-		if c.special == "sprint" {
-			if f, ok := fieldOfKind(fields, "gh-sprint"); ok {
-				sel.include[customID(f.ID)] = true
-			}
-		}
-	}
-	want := sel.loads(fields)
-	set, err := s.loadIssues(ctx, sub, rows, func(k string) bool {
-		return want(k) || (k == loadEpic && sel.include["epic"]) || (k == loadSprints && sel.include["sprint"])
-	})
-	if err != nil {
-		return err
-	}
 	o := s.restOut(r)
 	o.tz = tz
-	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
+	set, users, err := s.loadColumns(ctx, sub, o, custom, rows, columns)
 	if err != nil {
 		return err
 	}
@@ -154,12 +210,12 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) error {
 	}
 	query = strings.TrimSpace(query)
 	s.log.Info("search exported as CSV", "query", query, "rows", total)
-	details := map[string]any{"query": truncateRunes(query, 255), "rows": len(set.list)}
+	details := map[string]any{"query": sqlq.Truncate(query, varcharWidth), "rows": len(set.list)}
 	if p := params.Get("project"); p != "" {
 		// Only a project that exists: what else was typed is not worth keeping.
 		var key string
 		if s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE pkey = ?`, strings.ToUpper(p)).Scan(&key) == nil {
-			details["project"] = truncateRunes(key, 255)
+			details["project"] = sqlq.Truncate(key, varcharWidth)
 		}
 	}
 	s.auditLog(r, audit.IssueExport, audit.Target{}, details)
@@ -334,8 +390,6 @@ func (o *restOut) exportCell(cat *catalog, set *issueSet, users map[int64]*jiraU
 			logs = append(logs, fmt.Sprintf("%s; %s; %s", when(wl.started), who(wl.author.Int64), jiraDuration(wl.seconds)))
 		}
 		return strings.Join(logs, "\n")
-	case "timetracking":
-		return ""
 	case "epic":
 		if d.epic != nil {
 			return d.epic.Key()

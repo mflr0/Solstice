@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { legacyBoardPath } from '../core/board.js';
-  import { projectOfKey } from '../core/marks.js';
+  import { projectOfIssueKey } from '../core/marks.js';
   import { isPublicRoute, paths, safeNext } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
@@ -31,7 +31,7 @@
       case 'projectSettings':
         return route.key;
       case 'issue':
-        return projectOfKey(route.key) ?? undefined;
+        return projectOfIssueKey(route.key) ?? undefined;
       default:
         return undefined;
     }
@@ -142,6 +142,14 @@
           {@render pending()}
         {:then { default: AdminArea }}
           <AdminArea section={route.section} item={route.item} />
+        {:catch}
+          {@render failed()}
+        {/await}
+      {:else if route.name === 'updates'}
+        {#await import('./admin/UpdatesPage.svelte')}
+          {@render pending()}
+        {:then { default: UpdatesPage }}
+          <UpdatesPage />
         {:catch}
           {@render failed()}
         {/await}

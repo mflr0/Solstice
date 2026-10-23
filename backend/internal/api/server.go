@@ -6,10 +6,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
@@ -42,6 +44,7 @@ type Server struct {
 	maxUpload  int64          // bytes in one upload request; see SetMaxUpload
 	maxStorage int64          // bytes in all attachments, 0 for no limit; see SetMaxStorage
 	out        *outgoing      // event bus, e-mail and webhooks (notifications.go)
+	dir        auth.Directory // LDAP, nil when off; see SetDirectory
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -61,7 +64,7 @@ type Server struct {
 
 	streamsDone  chan struct{} // closed by CloseStreams
 	closeStreams sync.Once
-	streams      streamSlots // open live-event streams, capped (meta.go)
+	streams      streamSlots // open live-event streams, capped (notifications.go)
 }
 
 // New builds the API server. dataDir holds attachment files; tz is the time
@@ -72,7 +75,7 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
 		tokenAud: map[int64]time.Time{}}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
-		return auth.Authenticate(ctx, s.db, username, password)
+		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
 	s.sleep = func(ctx context.Context, d time.Duration) {
 		t := time.NewTimer(d)
@@ -86,6 +89,10 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 	s.startOutgoing()
 	return s
 }
+
+// SetDirectory signs accounts in through an external directory (LDAP). Call
+// it before the server takes requests.
+func (s *Server) SetDirectory(d auth.Directory) { s.dir = d }
 
 // CloseStreams ends the live-update streams. Called when the HTTP server shuts
 // down, which does not cancel requests and would wait for them forever.
@@ -114,7 +121,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/labels", s.labels, true)
 	route("GET /api/sprints", s.sprints, true)
 	route("GET /api/epics", s.epics, true)
-	route("GET /api/fields", s.fields, true)
+	route("GET /api/fields", s.jqlFields, true)
 	route("GET /api/versions", s.projectParts("versions"), true)
 	route("GET /api/components", s.projectParts("components"), true)
 	route("GET /api/issues/facets", s.facets, true)
@@ -129,6 +136,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("PUT /api/projects/{key}/permissions", s.putPermissions, true)
 	route("GET /api/projects/{key}/workflows", s.listWorkflows, true)
 	route("POST /api/projects/{key}/workflows", s.createWorkflow, true)
+	route("POST /api/projects/{key}/import.csv", s.importIssues, true)
 	route("PUT /api/workflows/{id}", s.updateWorkflow, true)
 	route("DELETE /api/workflows/{id}", s.deleteWorkflow, true)
 	route("POST /api/statuses", s.createStatus, true)
@@ -136,7 +144,9 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("DELETE /api/statuses/{id}", s.deleteStatus, true)
 
 	route("GET /api/issues", s.listIssues, true)
+	route("GET /api/issues/columns", s.listColumns, true)
 	route("POST /api/issues", s.createIssue, true)
+	route("POST /api/issues/bulk", s.bulkIssues, true)
 	route("GET /api/issues/{key}", s.getIssue, true)
 	route("PATCH /api/issues/{key}", s.updateIssue, true)
 	route("DELETE /api/issues/{key}", s.deleteIssue, true)
@@ -216,6 +226,11 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
+// varcharWidth is the width, in characters, of the VARCHAR(255) columns
+// that hold names, summaries and descriptions. The messages that state the
+// limit write 255 themselves.
+const varcharWidth = 255
+
 // How long a client gets to send its request body; uploads travel as slow
 // files. The http.Server has no ReadTimeout, which would also cut the
 // live-event streams: these deadlines only concern bodies (see wrap).
@@ -251,8 +266,7 @@ type handler func(http.ResponseWriter, *http.Request) error
 type ctxKey int
 
 const (
-	userKey ctxKey = iota
-	subjectKey
+	userCtxKey ctxKey = iota
 )
 
 // httpError is an error meant for the user. Its message keeps its key and
@@ -300,7 +314,7 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			setBodyReadDeadline(w, time.Now().Add(timeout))
 			defer setBodyReadDeadline(w, time.Time{})
 		}
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Header.Get(csrfHeader) == "" {
+		if !csrfOK(r) {
 			s.writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
@@ -310,20 +324,36 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 				s.writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
 				return
 			}
-			r = r.WithContext(context.WithValue(r.Context(), userKey, u))
+			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
 		}
-		if err := h(w, r); err != nil {
-			var he *httpError
-			if !errors.As(err, &he) {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-				err = fail(http.StatusInternalServerError, i18n.RequestInternalError)
-			}
+		if err := boundary(s.log, "request failed", r, h(w, r)); err != nil {
 			s.writeError(w, r, err)
 		}
 	})
+}
+
+// csrfOK tells whether a request of the interface's API cannot have been
+// forged by another site: it only reads, or carries the CSRF header.
+func csrfOK(r *http.Request) bool {
+	return r.Method == http.MethodGet || r.Method == http.MethodHead || r.Header.Get(csrfHeader) != ""
+}
+
+// boundary is what a handler's error becomes in the answer: nil when there
+// is nothing to answer (the client went away), the error itself when it is
+// meant for the user, else a generic 500, the error being logged as msg.
+func boundary(log *slog.Logger, msg string, r *http.Request, err error) error {
+	var he *httpError
+	if err == nil || errors.As(err, &he) {
+		return err
+	}
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	if errors.Is(err, auth.ErrDirectoryAccount) {
+		return fail(http.StatusConflict, i18n.AccountDirectoryPassword)
+	}
+	log.Error(msg, "method", r.Method, "route", r.Pattern, "err", err)
+	return fail(http.StatusInternalServerError, i18n.RequestInternalError)
 }
 
 // authenticate reads the session cookie, or the credentials of scripts and
@@ -388,7 +418,7 @@ func (s *Server) throttleKeys(r *http.Request, username string) (userKey, ipKey 
 }
 
 func currentUser(r *http.Request) *auth.User {
-	u, _ := r.Context().Value(userKey).(*auth.User)
+	u, _ := r.Context().Value(userCtxKey).(*auth.User)
 	return u
 }
 
@@ -435,10 +465,7 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 
 func writeErrorVia(proxies []netip.Prefix, w http.ResponseWriter, r *http.Request, err error) {
 	var he *httpError
-	if !errors.As(err, &he) {
-		slog.Error("request failed", "method", r.Method, "route", r.Pattern, "err", err)
-		he = &httpError{status: http.StatusInternalServerError, msg: i18n.M(i18n.RequestInternalError)}
-	}
+	errors.As(err, &he)
 	// Refused: leave a trace at Warn, capped per address (refused.go).
 	if he.status == http.StatusUnauthorized || he.status == http.StatusForbidden {
 		refused.logRefused(r, he.status, proxies)
@@ -467,6 +494,25 @@ func badBody(err error) error {
 // readJSON decodes a request body, rejecting unknown fields so typos surface.
 func readJSON(r *http.Request, v any) error {
 	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return badBody(err)
+	}
+	return nil
+}
+
+// readOptionalJSON decodes a request body like readJSON, leaving v as it is
+// when the body is empty or blank. It reads the body rather than trusting
+// Content-Length, which is -1 for a chunked body.
+func readOptionalJSON(r *http.Request, v any) error {
+	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
+	if err != nil {
+		return badBody(err)
+	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		return badBody(err)
@@ -615,14 +661,7 @@ type userRef struct {
 // users loads the users with the given ids (zero ids are ignored).
 func (s *Server) users(ctx context.Context, ids ...int64) (map[int64]userRef, error) {
 	out := map[int64]userRef{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	if len(args) == 0 {
 		return out, nil
 	}

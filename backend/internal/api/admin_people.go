@@ -12,9 +12,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
@@ -85,15 +83,6 @@ func (s *Server) namesOf(ctx context.Context, q string, ids []int64) []string {
 	return slices.Compact(out)
 }
 
-// cleanName trims a name and checks its length.
-func cleanName(name string, max int) (string, error) {
-	name = strings.TrimSpace(name)
-	if name == "" || utf8.RuneCountInString(name) > max {
-		return "", failf(http.StatusBadRequest, i18n.CommonNameRequired, max)
-	}
-	return name, nil
-}
-
 // optDescription reads an optional description: empty stores NULL.
 func optDescription(v *string) any {
 	if v == nil || strings.TrimSpace(*v) == "" {
@@ -102,21 +91,11 @@ func optDescription(v *string) any {
 	return strings.TrimSpace(*v)
 }
 
-func pathID(r *http.Request, name string) (int64, error) {
-	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
-	if err != nil {
-		return 0, errNotFound
-	}
-	return id, nil
-}
-
-// Groups ----------------------------------------------------------------------
-
 func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []groupOut{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT g.id, g.name, g.description,
 		(SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id)
@@ -229,7 +208,7 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	s.auditLog(r, audit.GroupCreate, audit.Target{Type: "group", ID: strconv.FormatInt(id, 10), Label: name}, nil)
+	s.auditLog(r, audit.GroupCreate, target("group", id, name), nil)
 	g, err := s.groupByID(ctx, id)
 	if err != nil {
 		return err
@@ -295,13 +274,11 @@ func (s *Server) updateGroup(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.perms.Invalidate()
 	details := map[string]any{}
-	if name != g.Name {
-		details["name"] = map[string]string{"from": g.Name, "to": name}
-	}
+	diff(details, "name", g.Name, name)
 	if in.Description != nil {
 		details["description"] = desc
 	}
-	s.auditLog(r, audit.GroupUpdate, audit.Target{Type: "group", ID: strconv.FormatInt(id, 10), Label: name}, details)
+	s.auditLog(r, audit.GroupUpdate, target("group", id, name), details)
 	g, err = s.groupByID(ctx, id)
 	if err != nil {
 		return err
@@ -334,7 +311,7 @@ func (s *Server) deleteGroup(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.GroupDelete, audit.Target{Type: "group", ID: strconv.FormatInt(id, 10), Label: g.Name},
+	s.auditLog(r, audit.GroupDelete, target("group", id, g.Name),
 		map[string]any{"members": g.Members, "grants": usage.Grants, "roles": usage.Roles,
 			"securityLevels": usage.SecurityLevels})
 	w.WriteHeader(http.StatusNoContent)
@@ -363,9 +340,14 @@ func (s *Server) addGroupMembers(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkUsers(ctx, in.Users); err != nil {
 		return err
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	var added []int64
 	for _, u := range in.Users {
-		res, err := s.db.ExecContext(ctx, `INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, id, u)
+		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, id, u)
 		if err != nil {
 			return err
 		}
@@ -373,9 +355,12 @@ func (s *Server) addGroupMembers(w http.ResponseWriter, r *http.Request) error {
 			added = append(added, u)
 		}
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 	s.perms.Invalidate()
 	if len(added) > 0 {
-		s.auditLog(r, audit.GroupMembers, audit.Target{Type: "group", ID: strconv.FormatInt(id, 10), Label: g.Name},
+		s.auditLog(r, audit.GroupMembers, target("group", id, g.Name),
 			map[string]any{"added": s.userNames(ctx, added)})
 	}
 	return s.writeGroup(w, r, id, http.StatusOK)
@@ -406,13 +391,11 @@ func (s *Server) removeGroupMember(w http.ResponseWriter, r *http.Request) error
 		return errNotFound
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.GroupMembers, audit.Target{Type: "group", ID: strconv.FormatInt(id, 10), Label: g.Name},
+	s.auditLog(r, audit.GroupMembers, target("group", id, g.Name),
 		map[string]any{"removed": s.userNames(ctx, []int64{user})})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-
-// Roles -------------------------------------------------------------------------
 
 type roleAdminOut struct {
 	ID          int64   `json:"id"`
@@ -463,14 +446,6 @@ func (s *Server) roleByID(ctx context.Context, id int64) (roleAdminOut, error) {
 	return list[0], nil
 }
 
-// roleNameTaken tells whether another role has this name (any case).
-func (s *Server) roleNameTaken(ctx context.Context, name string, except int64) (bool, error) {
-	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_roles WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n)
-	return n > 0, err
-}
-
 func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -487,10 +462,8 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	if taken, err := s.roleNameTaken(ctx, name, 0); err != nil {
+	if err := s.nameTaken(ctx, "project_roles", name, 0, i18n.RoleExists); err != nil {
 		return err
-	} else if taken {
-		return failf(http.StatusConflict, i18n.RoleExists, name)
 	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO project_roles (name, description) VALUES (?, ?)`, name,
 		optDescription(in.Description))
@@ -498,7 +471,7 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	s.auditLog(r, audit.RoleCreate, audit.Target{Type: "role", ID: strconv.FormatInt(id, 10), Label: name}, nil)
+	s.auditLog(r, audit.RoleCreate, target("role", id, name), nil)
 	ro, err := s.roleByID(ctx, id)
 	if err != nil {
 		return err
@@ -537,14 +510,10 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if taken, err := s.roleNameTaken(ctx, name, id); err != nil {
+		if err := s.nameTaken(ctx, "project_roles", name, id, i18n.RoleExists); err != nil {
 			return err
-		} else if taken {
-			return failf(http.StatusConflict, i18n.RoleExists, name)
 		}
-		if name != ro.Name {
-			details["name"] = map[string]string{"from": ro.Name, "to": name}
-		}
+		diff(details, "name", ro.Name, name)
 		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
 			return err
 		}
@@ -564,7 +533,7 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if len(details) > 0 {
-		s.auditLog(r, audit.RoleUpdate, audit.Target{Type: "role", ID: strconv.FormatInt(id, 10), Label: ro.Name}, details)
+		s.auditLog(r, audit.RoleUpdate, target("role", id, ro.Name), details)
 	}
 	return writeJSON(w, http.StatusOK, ro)
 }
@@ -596,13 +565,11 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.RoleDelete, audit.Target{Type: "role", ID: strconv.FormatInt(id, 10), Label: ro.Name},
+	s.auditLog(r, audit.RoleDelete, target("role", id, ro.Name),
 		map[string]any{"projects": ro.Projects, "grants": ro.Grants})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-
-// Role members per project ---------------------------------------------------------
 
 type projectRoleOut struct {
 	ID          int64     `json:"id"`
@@ -754,10 +721,8 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 		return out
 	}
 	from, to := names(old), names(entry)
-	if !slices.Equal(from["users"], to["users"]) || !slices.Equal(from["groups"], to["groups"]) {
-		var key string
-		s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key)
-		s.auditLog(r, audit.ProjectRoles, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
+	if changed(from, to) {
+		s.auditLog(r, audit.ProjectRoles, target("project", projectID, s.auditProjectKey(ctx, projectID)),
 			map[string]any{"role": role.Name, "from": from, "to": to})
 	}
 	return writeJSON(w, http.StatusOK, entry)

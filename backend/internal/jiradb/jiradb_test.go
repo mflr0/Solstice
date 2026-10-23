@@ -3,6 +3,7 @@ package jiradb
 import (
 	"errors"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -150,6 +151,64 @@ func TestPostgresURLKeepsAcceptedOptions(t *testing.T) {
 		var invalid *soldb.InvalidParamError
 		if !errors.As(err, &invalid) {
 			t.Errorf("%s: error %v, want an invalid value error", q, err)
+		}
+	}
+}
+
+// With several bad options, the error names the first in sorted order, on
+// every run (the query is a map, walked in random order).
+func TestPostgresURLReportsTheFirstBadOption(t *testing.T) {
+	for range 50 {
+		_, err := postgresURL(mustParse(t, "postgres://u:secret@h/d?sslmode=bad&connect_timeout=0"))
+		var invalid *soldb.InvalidParamError
+		if !errors.As(err, &invalid) || invalid.Name != "connect_timeout" {
+			t.Fatalf("error %v, want connect_timeout invalid", err)
+		}
+		_, err = postgresURL(mustParse(t, "postgres://u:secret@h/d?sslkey=/x&passfile=/y&service=z"))
+		var unknown *soldb.UnknownParamsError
+		if !errors.As(err, &unknown) || !slices.Equal(unknown.Names, []string{"passfile", "service", "sslkey"}) {
+			t.Fatalf("error %v, want passfile, service and sslkey unknown", err)
+		}
+	}
+}
+
+// Quote keeps the case on both engines: Active Objects tables are upper-case
+// on PostgreSQL, and "lead" is a reserved word on MySQL.
+func TestQuote(t *testing.T) {
+	cases := []struct {
+		eng  Engine
+		name string
+		want string
+	}{
+		{MySQL, "AO_60DB71_SPRINT", "`AO_60DB71_SPRINT`"},
+		{Postgres, "AO_60DB71_SPRINT", `"AO_60DB71_SPRINT"`}, // AO tables stay upper-case on PostgreSQL
+		{MySQL, "lead", "`lead`"},
+		{Postgres, "lead", `"lead"`},
+	}
+	for _, c := range cases {
+		if got := c.eng.Quote(c.name); got != c.want {
+			t.Errorf("Quote(%s, %q) = %q, want %q", c.eng, c.name, got, c.want)
+		}
+	}
+}
+
+// QuoteFolded folds to lower case on PostgreSQL only, where Jira creates its
+// tables unquoted.
+func TestQuoteFolded(t *testing.T) {
+	cases := []struct {
+		eng  Engine
+		name string
+		want string
+	}{
+		{MySQL, "OS_CURRENTSTEP", "`OS_CURRENTSTEP`"}, // MySQL table names are case-sensitive
+		{Postgres, "OS_CURRENTSTEP", `"os_currentstep"`},
+		{MySQL, "local", "`local`"},
+		{Postgres, "local", `"local"`},
+		{Postgres, "pk_jiraissue", `"pk_jiraissue"`},
+	}
+	for _, c := range cases {
+		if got := c.eng.QuoteFolded(c.name); got != c.want {
+			t.Errorf("QuoteFolded(%s, %q) = %q, want %q", c.eng, c.name, got, c.want)
 		}
 	}
 }

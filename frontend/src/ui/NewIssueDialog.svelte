@@ -1,6 +1,6 @@
 <script lang="ts">
   import { estimateText, readEstimate } from '../core/estimates.js';
-  import { projectOfKey } from '../core/marks.js';
+  import { projectOfIssueKey } from '../core/marks.js';
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
@@ -61,7 +61,9 @@
     const prios = session.meta?.priorities ?? [];
     priorityId = prios[Math.floor(prios.length / 2)]?.id ?? '';
     const wanted =
-      dialogs.createDefaults.project ?? (parent ? projectOfKey(parent) : null) ?? lastProject();
+      dialogs.createDefaults.project ??
+      (parent ? projectOfIssueKey(parent) : null) ??
+      lastProject();
     void api.projects().then((list) => {
       projects = list;
       projectKey = list.some((p) => p.key === wanted) ? wanted : (list[0]?.key ?? '');

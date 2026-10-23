@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"solstice/internal/sqlq"
 	"solstice/internal/worker"
 )
 
@@ -51,17 +52,11 @@ func NewOutbox(db *sql.DB, log *slog.Logger, config func(context.Context) (Confi
 // Wake once committed.
 func (o *Outbox) Enqueue(ctx context.Context, ex Execer, m Message) error {
 	now := o.Now().UTC()
-	var inReplyTo any
-	if m.InReplyTo != "" {
-		inReplyTo = m.InReplyTo
-	}
-	var user any
-	if m.UserID != 0 {
-		user = m.UserID
-	}
+	inReplyTo := sqlq.NullIf(m.InReplyTo)
+	user := sqlq.NullIf(m.UserID)
 	_, err := ex.ExecContext(ctx, `INSERT INTO mail_outbox (kind, user_id, to_addr, subject, text_body, html_body,
 		message_id, in_reply_to, next_attempt_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		m.Kind, user, m.To, truncate(headerValue(m.Subject), 900), m.Text, m.HTML, m.MessageID, inReplyTo, now, now)
+		m.Kind, user, m.To, sqlq.Truncate(headerValue(m.Subject), 900), m.Text, m.HTML, m.MessageID, inReplyTo, now, now)
 	return err
 }
 
@@ -169,7 +164,7 @@ func (o *Outbox) SendDue(ctx context.Context) (int, error) {
 func (o *Outbox) finish(ctx context.Context, id int64, status string, attempts int, errText string, next time.Time) {
 	var lastErr, sentAt any
 	if errText != "" {
-		lastErr = truncate(errText, 2000)
+		lastErr = sqlq.Truncate(errText, 2000)
 	}
 	now := o.Now().UTC()
 	if status == "sent" {
@@ -259,9 +254,7 @@ func (o *Outbox) Stats(ctx context.Context) (*Stats, error) {
 	if err != nil {
 		return nil, err
 	}
-	if oldest.Valid {
-		st.OldestPending = &oldest.Time
-	}
+	st.OldestPending = sqlq.Time(oldest)
 	for _, q := range []struct {
 		where string
 		out   *[]Entry
@@ -280,15 +273,11 @@ func (o *Outbox) Stats(ctx context.Context) (*Stats, error) {
 				rows.Close()
 				return nil, err
 			}
-			if lastErr.Valid {
-				e.LastError = &lastErr.String
+			e.LastError = sqlq.String(lastErr)
+			if e.Status == "pending" {
+				e.NextAttempt = sqlq.Time(next)
 			}
-			if e.Status == "pending" && next.Valid {
-				e.NextAttempt = &next.Time
-			}
-			if sent.Valid {
-				e.Sent = &sent.Time
-			}
+			e.Sent = sqlq.Time(sent)
 			*q.out = append(*q.out, e)
 		}
 		rows.Close()
@@ -308,12 +297,4 @@ func (o *Outbox) Retry(ctx context.Context) (int64, error) {
 	}
 	o.Wake()
 	return res.RowsAffected()
-}
-
-func truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) > n {
-		return string(r[:n])
-	}
-	return s
 }

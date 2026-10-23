@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { matches } from '../../core/admin-forms.js';
   import { deliveryTone, toneClass } from '../../core/admin-integrations.js';
+  import { filterWebhooks, WEBHOOK_SHOWS, type WebhookShow } from '../../core/admin-lists.js';
   import type { Webhook } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
@@ -10,24 +10,12 @@
   import EmptyState from '../EmptyState.svelte';
 
   /** Every webhook: where it calls, what for, and how its last call went. */
-  type Show = 'all' | 'enabled' | 'disabled' | 'failing';
-  const SHOWS: Show[] = ['all', 'enabled', 'disabled', 'failing'];
-
   let hooks = $state<Webhook[] | null>(null);
   let error = $state('');
   let q = $state('');
-  let show = $state<Show>('all');
+  let show = $state<WebhookShow>('all');
 
-  const failing = (w: Webhook) => !!w.lastDelivery && deliveryTone(w.lastDelivery) === 'failed';
-
-  const list = $derived(
-    (hooks ?? []).filter((w) => {
-      if (show === 'enabled' && !w.enabled) return false;
-      if (show === 'disabled' && w.enabled) return false;
-      if (show === 'failing' && !failing(w)) return false;
-      return matches(q, w.name, w.url);
-    }),
-  );
+  const list = $derived(filterWebhooks(hooks ?? [], q, show));
 
   $effect(() => {
     adminApi
@@ -72,7 +60,7 @@
       aria-label={t.hooksAdmin.search}
     />
     <select class="select" bind:value={show} aria-label={t.hooksAdmin.showLabel}>
-      {#each SHOWS as s (s)}<option value={s}>{t.hooksAdmin.show[s]}</option>{/each}
+      {#each WEBHOOK_SHOWS as s (s)}<option value={s}>{t.hooksAdmin.show[s]}</option>{/each}
     </select>
   </div>
 

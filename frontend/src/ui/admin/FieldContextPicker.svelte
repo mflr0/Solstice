@@ -17,8 +17,6 @@
     issueTypes: CatalogItem[] | null;
     projectsProblem?: string | undefined;
     typesProblem?: string | undefined;
-    /** Makes the radio names unique when two pickers could coexist. */
-    prefix?: string | undefined;
   }
   let {
     form = $bindable(),
@@ -26,7 +24,6 @@
     issueTypes,
     projectsProblem = '',
     typesProblem = '',
-    prefix = 'ctx',
   }: Props = $props();
 
   let search = $state('');
@@ -44,7 +41,7 @@
       <label class="check">
         <input
           type="radio"
-          name="{prefix}-projects"
+          name="ctx-projects"
           checked={form.allProjects}
           onchange={() => (form.allProjects = true)}
         />
@@ -53,7 +50,7 @@
       <label class="check">
         <input
           type="radio"
-          name="{prefix}-projects"
+          name="ctx-projects"
           checked={!form.allProjects}
           onchange={() => (form.allProjects = false)}
         />
@@ -98,7 +95,7 @@
       <label class="check">
         <input
           type="radio"
-          name="{prefix}-types"
+          name="ctx-types"
           checked={form.allTypes}
           onchange={() => (form.allTypes = true)}
         />
@@ -107,7 +104,7 @@
       <label class="check">
         <input
           type="radio"
-          name="{prefix}-types"
+          name="ctx-types"
           checked={!form.allTypes}
           onchange={() => (form.allTypes = false)}
         />

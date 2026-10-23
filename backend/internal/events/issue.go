@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -78,6 +79,15 @@ type Issue struct {
 	Parent      *Ref
 	Watchers    []int64
 	Access      perm.Issue
+	Custom      []CustomValue // every custom field, set or not; filled by the bus
+}
+
+// CustomValue is a custom field's value on an issue.
+type CustomValue struct {
+	ID    int64
+	Name  string
+	Value json.RawMessage // as Jira's REST API renders it; null when not set
+	Text  string          // as the issue history shows it; empty when not set
 }
 
 // LoadIssue reads an issue's current state; sql.ErrNoRows if it is gone.
@@ -195,14 +205,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 // LoadUsers reads people by id (zero ids are ignored).
 func LoadUsers(ctx context.Context, db *sql.DB, ids ...int64) (map[int64]*User, error) {
 	out := map[int64]*User{}
-	var args []any
-	seen := map[int64]bool{}
-	for _, id := range ids {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			args = append(args, id)
-		}
-	}
+	args := sqlq.IDs(ids...)
 	if len(args) == 0 {
 		return out, nil
 	}

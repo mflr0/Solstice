@@ -25,6 +25,7 @@ export type Route =
   | { name: 'issue'; key: string }
   | { name: 'person'; username: string }
   | { name: 'admin'; section: AdminSection; item: string | null }
+  | { name: 'updates' }
   | { name: 'account'; section: AccountSection }
   | { name: 'themes' }
   | { name: 'boards' }
@@ -77,6 +78,7 @@ export function matchRoute(pathname: string): Route {
       if (a === 'reset' && b) return { name: 'reset', token: b };
       if (a === 'projects' && b) return { name: 'project', key: b.toUpperCase() };
       if (a === 'people' && b) return { name: 'person', username: b };
+      if (a === 'admin' && b === 'updates') return { name: 'updates' };
       if (a === 'admin' && b) {
         const section = adminSectionOf(b);
         if (section) return { name: 'admin', section, item: null };

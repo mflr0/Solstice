@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export interface MenuItem {
+  interface MenuItem {
     label: string;
     run: () => void;
     disabled?: boolean;
@@ -29,7 +29,8 @@
   let menu: HTMLDivElement | undefined = $state();
   let open = $state(false);
   let shown = $state<MenuGroup[]>([]);
-  const id = `card-menu-${Math.random().toString(36).slice(2, 9)}`;
+  const uid = $props.id();
+  const id = `card-menu-${uid}`;
 
   /** Builds the entries and places the menu before the browser shows it. */
   function beforeToggle(e: ToggleEvent) {

@@ -111,7 +111,13 @@
         if (Object.keys(patch).length) await adminApi.updateUser(user.id, patch);
         const before = (user.groups ?? []).map((g) => g.id).sort();
         if (groups && before.join() !== [...form.groups].sort().join()) {
-          await adminApi.setUserGroups(user.id, form.groups);
+          try {
+            await adminApi.setUserGroups(user.id, form.groups);
+          } catch (err) {
+            if (Object.keys(patch).length)
+              onsaved(t.usersAdmin.updated(form.name.trim() || user.username));
+            throw err;
+          }
         }
         onsaved(t.usersAdmin.updated(form.name.trim() || user.username));
       }

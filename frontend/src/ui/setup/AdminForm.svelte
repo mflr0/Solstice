@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { checkPassword } from '../../core/setup.js';
+  import { USERNAME_PATTERN } from '../../core/admin-forms.js';
+  import { checkPassword, MIN_PASSWORD } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import { setupApi, setupErrorMessage, type SetupFinished } from '../../lib/setup-api.js';
 
@@ -19,12 +20,14 @@
   let pending = $state(false);
   let error = $state('');
 
+  const username = $derived(form.username.trim().toLowerCase());
+  const usernameBad = $derived(username !== '' && !USERNAME_PATTERN.test(username));
   const check = $derived(checkPassword(form.password, form.username));
   const mismatch = $derived(confirm !== '' && confirm !== form.password);
   const ready = $derived(
     check.acceptable &&
       confirm === form.password &&
-      form.username.trim() !== '' &&
+      USERNAME_PATTERN.test(username) &&
       form.email.trim() !== '',
   );
   const level = $derived(
@@ -37,16 +40,16 @@
     pending = true;
     error = '';
     try {
-      ondone(await setupApi.finish({ ...form, username: form.username.trim().toLowerCase() }));
+      ondone(await setupApi.finish({ ...form, username }));
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       pending = false;
     }
   }
 </script>
 
-<form onsubmit={submit}>
+<form onsubmit={submit} novalidate>
   <div>
     <h1 class="page-title" id="setup-step-title" tabindex="-1">{m.admin.title}</h1>
     <p class="lead">{afterImport ? m.admin.leadAfterImport : m.admin.lead}</p>
@@ -62,10 +65,12 @@
         autocomplete="username"
         autocapitalize="none"
         spellcheck="false"
-        pattern="[A-Za-z0-9][A-Za-z0-9._@\-]*"
+        aria-invalid={usernameBad ? 'true' : undefined}
         aria-describedby="admin-username-hint"
       />
-      <span class="hint" id="admin-username-hint">{m.admin.usernameHint}</span>
+      <span class="hint" class:error-text={usernameBad} id="admin-username-hint"
+        >{m.admin.usernameHint}</span
+      >
     </label>
     <label class="field">
       <span>{m.admin.name}</span>
@@ -84,7 +89,7 @@
         type="password"
         bind:value={form.password}
         required
-        minlength="12"
+        minlength={MIN_PASSWORD}
         autocomplete="new-password"
         aria-describedby="admin-strength admin-rules"
       />
@@ -142,6 +147,10 @@
 </form>
 
 <style>
+  .field .hint.error-text {
+    color: var(--accent-text);
+  }
+
   .strength {
     display: flex;
     align-items: center;

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/i18n"
 )
 
 func TestParse(t *testing.T) {
@@ -176,15 +178,25 @@ func TestCompileNeverInlinesUserText(t *testing.T) {
 
 func TestLooksLike(t *testing.T) {
 	for s, want := range map[string]bool{
-		`project = DEMO`:                  true,
-		`assignee in (a, b)`:              true,
-		`status != Done order by created`: true,
-		`ORDER BY created`:                true,
-		`"Epic Link" = DEMO-1`:            true,
-		`panier vide @marie`:              false,
-		`statut:"en cours"`:               false,
-		`DEMO-12`:                         false,
-		`est:ouvert tri:priorité`:         false,
+		`project = DEMO`:                                        true,
+		`assignee in (a, b)`:                                    true,
+		`status != Done order by created`:                       true,
+		`ORDER BY created`:                                      true,
+		`"Epic Link" = DEMO-1`:                                  true,
+		`assignee = currentUser()`:                              true,
+		`labels = backend`:                                      true,
+		`participant = paul.martin`:                             true,
+		`key in (DEMO-1)`:                                       true,
+		`key >= DEMO-1 AND project = WEB`:                       true,
+		`project in (OLD, DEMO) AND key = DEMO-1`:               true,
+		`fixVersion in releasedVersions(OLD) AND project = NEW`: true,
+		`panier vide @marie`:                                    false,
+		`projet:DEMO @personne`:                                 false,
+		`@moi`:                                                  false,
+		`#backend`:                                              false,
+		`statut:"en cours"`:                                     false,
+		`DEMO-12`:                                               false,
+		`est:ouvert tri:priorité`:                               false,
 	} {
 		if got := LooksLike(s); got != want {
 			t.Errorf("LooksLike(%q) = %v", s, got)
@@ -203,6 +215,70 @@ func TestCompileEqualsEmpty(t *testing.T) {
 		if strings.TrimSpace(where) == "" || strings.Contains(where, "()") {
 			t.Errorf("%s compiled to %q", q, where)
 		}
+	}
+}
+
+func TestCompileEmptyOperands(t *testing.T) {
+	for _, q := range []string{`timespent > EMPTY`, `originalEstimate <= null`, `remainingEstimate < EMPTY`, `timeestimate >= EMPTY`} {
+		parsed, err := Parse(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var je *Error
+		if _, _, _, err := Compile(parsed, fuzzEnv()); !errors.As(err, &je) || je.Key != i18n.JQLDurationInvalid {
+			t.Errorf("Compile(%q) = %v, want JQLDurationInvalid", q, err)
+		}
+	}
+
+	env := fuzzEnv()
+	fields := map[string]Field{
+		"Points":   {ID: 1, Name: "Points", TypeKey: "x:float"},
+		"Team":     {ID: 2, Name: "Team", TypeKey: "x:select"},
+		"Reviewer": {ID: 3, Name: "Reviewer", TypeKey: "x:userpicker"},
+		"Epic":     {ID: 4, Name: "Epic", TypeKey: "x:gh-epic-link"},
+	}
+	env.CustomField = func(name string) (Field, bool) {
+		f, ok := fields[name]
+		return f, ok
+	}
+	for q, want := range map[string]string{
+		`statusCategory = EMPTY`:       "FALSE",
+		`statusCategory in (EMPTY)`:    "FALSE",
+		`statusCategory != EMPTY`:      "NOT FALSE",
+		`statusCategory not in (null)`: "NOT FALSE",
+		`Points = EMPTY`:               `Points is EMPTY`,
+		`Team in (EMPTY)`:              `Team is EMPTY`,
+		`Reviewer = null`:              `Reviewer is EMPTY`,
+		`Epic = EMPTY`:                 `Epic is EMPTY`,
+		`Points != EMPTY`:              `Points is not EMPTY`,
+		`Team not in (EMPTY)`:          `Team is not EMPTY`,
+		`Reviewer != EMPTY`:            `Reviewer is not EMPTY`,
+		`Epic != null`:                 `Epic is not EMPTY`,
+	} {
+		where, args, _ := compileIn(t, q, env)
+		if strings.Contains(want, " is ") {
+			want, _, _ = compileIn(t, want, env)
+		}
+		if where != want || len(args) != 0 {
+			t.Errorf("%s compiled to %q %v, want %q", q, where, args, want)
+		}
+	}
+}
+
+func TestCompileKeyRangeNeedsKey(t *testing.T) {
+	for _, q := range []string{`key > EMPTY`, `issuekey <= null`, `key < 12`, `id >= "DEMO"`} {
+		parsed, err := Parse(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var je *Error
+		if _, _, _, err := Compile(parsed, fuzzEnv()); !errors.As(err, &je) || je.Key != i18n.JQLIssueKeyInvalid {
+			t.Errorf("Compile(%q) = %v, want JQLIssueKeyInvalid", q, err)
+		}
+	}
+	where, args, _ := compile(t, `key > demo-5`)
+	if !strings.Contains(where, "i.num > ?") || len(args) != 3 || args[2] != int64(5) {
+		t.Errorf("where %s args %v", where, args)
 	}
 }
 
@@ -313,5 +389,59 @@ func TestParseHostileNesting(t *testing.T) {
 	}
 	if _, err := Parse(strings.Repeat("(", maxDepth-1) + "x = 1" + strings.Repeat(")", maxDepth-1)); err != nil {
 		t.Errorf("nesting within the limit refused: %v", err)
+	}
+}
+
+// pinEnv knows one custom field of each kind the compiler tells apart.
+func pinEnv() Env {
+	env := fuzzEnv()
+	fields := map[string]Field{
+		"Team":     {ID: 2, Name: "Team", TypeKey: "x:select"},
+		"Reviewer": {ID: 3, Name: "Reviewer", TypeKey: "x:userpicker"},
+		"Epic":     {ID: 4, Name: "Epic", TypeKey: "x:gh-epic-link"},
+		"Notes":    {ID: 5, Name: "Notes", TypeKey: "x:textarea"},
+		"At":       {ID: 7, Name: "At", TypeKey: "x:datetime"},
+		"Tags":     {ID: 8, Name: "Tags", TypeKey: "x:labels"},
+	}
+	env.CustomField = func(name string) (Field, bool) {
+		f, ok := fields[name]
+		return f, ok
+	}
+	return env
+}
+
+// TestCompilePinned pins the SQL and arguments of custom fields, user sets
+// and lookups, so that a refactoring of the compiler shows any change.
+func TestCompilePinned(t *testing.T) {
+	for _, tc := range []struct {
+		q, where string
+		args     []any
+	}{
+		{`Team = a`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2 AND (v.string_value IN (?) OR CAST(v.number_value AS CHAR) IN (?) OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = 2 AND o.value IN (?))))`, []any{"a", "a", "a"}},
+		{`Team not in (a, b)`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2 AND (v.string_value IN (?, ?) OR CAST(v.number_value AS CHAR) IN (?, ?) OR v.string_value IN (SELECT CAST(o.id AS CHAR) FROM custom_field_options o WHERE o.field_id = 2 AND o.value IN (?, ?)))))`, []any{"a", "b", "a", "b", "a", "b"}},
+		{`Team is EMPTY`, `NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2)`, nil},
+		{`Team is not EMPTY`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 2)`, nil},
+		{`Reviewer = bob`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3 AND v.string_value IN (SELECT CAST(id AS CHAR) FROM users WHERE id IN (SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?))))`, []any{"bob", "bob", "bob"}},
+		{`Reviewer != currentUser()`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 3 AND v.string_value IN (SELECT CAST(id AS CHAR) FROM users WHERE id IN (SELECT ?))))`, []any{int64(7)}},
+		{`Epic = DEMO-1`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4 AND v.number_value IN (SELECT i2.id FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE ((((p2.pkey IN (?) OR p2.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?))) AND i2.num = ?) OR EXISTS (SELECT 1 FROM moved_issue_keys mk WHERE mk.issue_id = i2.id AND mk.old_key = ?)))))`, []any{"DEMO", "DEMO", int64(1), "DEMO-1"}},
+		{`Epic != 12`, `(EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4) AND NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 4 AND v.number_value IN (SELECT i2.id FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE (i2.id = ?))))`, []any{int64(12)}},
+		{`Notes ~ abc`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 5 AND (v.string_value LIKE ? OR v.text_value LIKE ?))`, []any{"%abc%", "%abc%"}},
+		{`Notes !~ abc`, `NOT EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 5 AND (v.string_value LIKE ? OR v.text_value LIKE ?))`, []any{"%abc%", "%abc%"}},
+		{`At <= "2026-01-01"`, `EXISTS (SELECT 1 FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = 7 AND v.date_value <= ?)`, []any{time.Date(2025, 12, 31, 23, 0, 0, 0, time.UTC)}},
+		{`Tags in (A, b)`, `EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8 AND LOWER(l.label) IN (?, ?))`, []any{"a", "b"}},
+		{`Tags not in (a)`, `(EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8) AND NOT EXISTS (SELECT 1 FROM labels l WHERE l.issue_id = i.id AND l.field_id = 8 AND LOWER(l.label) IN (?)))`, []any{"a"}},
+		{`watcher = bob`, `EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id AND w.user_id IN (SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?)))`, []any{"bob", "bob", "bob"}},
+		{`watcher not in (bob, currentUser())`, `(EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id) AND NOT EXISTS (SELECT 1 FROM watchers w WHERE w.issue_id = i.id AND w.user_id IN (SELECT ? UNION SELECT id FROM users WHERE username IN (?) OR user_key IN (?) OR display_name IN (?))))`, []any{int64(7), "bob", "bob", "bob"}},
+		{`voter is EMPTY`, `NOT EXISTS (SELECT 1 FROM votes vo WHERE vo.issue_id = i.id)`, nil},
+		{`voter is not EMPTY`, `EXISTS (SELECT 1 FROM votes vo WHERE vo.issue_id = i.id)`, nil},
+		{`commenter = EMPTY`, `FALSE`, nil},
+		{`status in (a, b)`, `i.status_id IN (SELECT id FROM statuses WHERE id IN (?, ?) OR name IN (?, ?))`, []any{"a", "b", "a", "b"}},
+		{`project = a`, `i.project_id IN (SELECT pk.id FROM projects pk WHERE (pk.pkey IN (?) OR pk.id IN (SELECT project_id FROM project_keys WHERE pkey IN (?))) OR pk.name IN (?) OR pk.id IN (?))`, []any{"A", "A", "A", "A"}},
+		{`priority in (EMPTY, a)`, `(i.priority_id IN (SELECT id FROM priorities WHERE id IN (?) OR name IN (?)) OR i.priority_id IS NULL)`, []any{"a", "a"}},
+	} {
+		where, args, _ := compileIn(t, tc.q, pinEnv())
+		if where != tc.where || !reflect.DeepEqual(args, tc.args) {
+			t.Errorf("%s\n got %s %#v\nwant %s %#v", tc.q, where, args, tc.where, tc.args)
+		}
 	}
 }

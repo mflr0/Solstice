@@ -8,14 +8,15 @@
 
 FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS ui
 WORKDIR /src/frontend
-RUN npm install --global pnpm@12.11.2
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+# The packageManager field of package.json owns the pnpm version.
+RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 # Type-checks, then writes ../backend/internal/web/dist.
 RUN pnpm build
 
-FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS server
+FROM golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd AS server
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download

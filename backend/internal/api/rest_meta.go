@@ -4,6 +4,7 @@ package api
 // filters and permissions.
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -136,7 +137,7 @@ func userMatch(r *http.Request, q string) (string, []any) {
 	where := "((u.active AND ?) OR (NOT u.active AND ?))"
 	args := []any{active, inactive}
 	if q = strings.ToLower(strings.TrimSpace(q)); q != "" && q != "." {
-		like := "%" + escapeLike(q) + "%"
+		like := "%" + sqlq.EscapeLike(q) + "%"
 		where += " AND (u.username LIKE ? OR LOWER(u.display_name) LIKE ? OR LOWER(u.email) LIKE ?)"
 		args = append(args, like, like, like)
 	}
@@ -198,7 +199,7 @@ func (s *Server) restProjectID(ctx context.Context, v string) (int64, error) {
 
 func (s *Server) restProjects(w http.ResponseWriter, r *http.Request) error {
 	var list []projectOut
-	if err := s.uiCall(r, s.listProjects, http.MethodGet, "/api/projects", nil, nil, &list); err != nil {
+	if err := s.uiCall(r, s.listProjects, http.MethodGet, nil, nil, nil, &list); err != nil {
 		return err
 	}
 	o := s.restOut(r)
@@ -235,7 +236,7 @@ func (s *Server) pathProject(r *http.Request) (*projectDetail, error) {
 		return nil, err
 	}
 	var p projectDetail
-	err = s.uiCall(r, s.getProject, http.MethodGet, "/api/projects/"+key, map[string]string{"key": key}, nil, &p)
+	err = s.uiCall(r, s.getProject, http.MethodGet, nil, map[string]string{"key": key}, nil, &p)
 	return &p, err
 }
 
@@ -411,7 +412,7 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 	o := s.restOut(r)
 	out := []any{}
 	for _, f := range systemFields {
-		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable,
+		jf := map[string]any{"id": f.id, "name": o.msg(f.name), "custom": false, "orderable": f.orderable(),
 			"navigable": f.navigable, "searchable": len(f.clauses) > 0, "clauseNames": f.clauses}
 		if f.typ != "" {
 			jf["schema"] = systemSchema(f)
@@ -493,12 +494,18 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 			p = map[string]any{"type": "group", "group": map[string]any{"name": sh.Name}}
 		case "project":
 			var key, name string
-			s.db.QueryRowContext(ctx, `SELECT pkey, name FROM projects WHERE id = ?`, sh.ID).Scan(&key, &name)
+			if err := s.db.QueryRowContext(ctx, `SELECT pkey, name FROM projects WHERE id = ?`, sh.ID).
+				Scan(&key, &name); err != nil {
+				return nil, err
+			}
 			proj := map[string]any{"id": o.id(sh.ID), "key": key, "name": name, "self": o.api + "/project/" + o.id(sh.ID)}
 			p = map[string]any{"type": "project", "project": proj}
 			if sh.Role != 0 {
 				var role string
-				s.db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, sh.Role).Scan(&role)
+				if err := s.db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, sh.Role).
+					Scan(&role); err != nil {
+					return nil, err
+				}
 				p = map[string]any{"type": "projectRole", "project": proj, "role": map[string]any{"id": sh.Role, "name": role}}
 			}
 		case "user":
@@ -615,18 +622,19 @@ func (s *Server) restMyPermissions(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	q := r.URL.Query()
+	issue, project := cmp.Or(q.Get("issueKey"), q.Get("issueId")), cmp.Or(q.Get("projectKey"), q.Get("projectId"))
 	var has func(p string) bool
 	switch {
-	case q.Get("issueKey") != "" || q.Get("issueId") != "":
-		r.SetPathValue("key", q.Get("issueKey")+q.Get("issueId"))
+	case issue != "":
+		r.SetPathValue("key", issue)
 		iss, err := s.restIssue(r, sub)
 		if err != nil {
 			return err
 		}
 		pi := iss.perm()
 		has = func(p string) bool { return sub.Can(p, iss.ProjectID, &pi) }
-	case q.Get("projectKey") != "" || q.Get("projectId") != "":
-		id, err := s.restProjectID(ctx, q.Get("projectKey")+q.Get("projectId"))
+	case project != "":
+		id, err := s.restProjectID(ctx, project)
 		if err != nil || !sub.CanBrowseProject(id) {
 			return errNotFound
 		}

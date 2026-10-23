@@ -90,15 +90,6 @@ func aoTable(name string) aoSpec {
 	panic("jirafixture: unknown AO table " + name)
 }
 
-// quoteAO quotes an AO table or column name. Jira creates them quoted and
-// upper-case on PostgreSQL, so they must always be referred to quoted there.
-func quoteAO(eng jiradb.Engine, name string) string {
-	if eng == jiradb.MySQL {
-		return "`" + name + "`"
-	}
-	return `"` + name + `"`
-}
-
 func aoType(eng jiradb.Engine, kind string) string {
 	mysql := map[string]string{"bigint": "BIGINT", "int": "INT", "bool": "TINYINT(1)", "double": "DOUBLE",
 		"varchar": "VARCHAR(255)", "text": "LONGTEXT"}
@@ -114,7 +105,7 @@ func aoType(eng jiradb.Engine, kind string) string {
 func AODDL(eng jiradb.Engine) []string {
 	var stmts []string
 	for _, t := range aoTables {
-		name := quoteAO(eng, t.name)
+		name := eng.Quote(t.name)
 		if eng == jiradb.MySQL {
 			stmts = append(stmts, "DROP TABLE IF EXISTS "+name)
 		} else {
@@ -122,12 +113,12 @@ func AODDL(eng jiradb.Engine) []string {
 		}
 		cols := make([]string, len(t.cols))
 		for i, c := range t.cols {
-			cols[i] = quoteAO(eng, c.name) + " " + aoType(eng, c.kind)
+			cols[i] = eng.Quote(c.name) + " " + aoType(eng, c.kind)
 			if c.notNull {
 				cols[i] += " NOT NULL"
 			}
 		}
-		stmt := "CREATE TABLE " + name + " (" + strings.Join(cols, ", ") + ", PRIMARY KEY (" + quoteAO(eng, "ID") + "))"
+		stmt := "CREATE TABLE " + name + " (" + strings.Join(cols, ", ") + ", PRIMARY KEY (" + eng.Quote("ID") + "))"
 		if eng == jiradb.MySQL {
 			stmt += " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
 		}

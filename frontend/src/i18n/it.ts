@@ -115,7 +115,6 @@ export const it: Messages = {
     create: 'Nuovo ticket',
     account: 'Account',
     myPage: 'La mia pagina',
-    admin: 'Utenti',
     skin: 'Tema',
     skins: {
       carnet: 'Taccuino',
@@ -174,7 +173,6 @@ export const it: Messages = {
     schemes: { light: 'chiaro', dark: 'scuro' },
     lightOnly: 'Disponibile solo in chiaro.',
     preparing: 'Anteprima in preparazione…',
-    unfinished: 'Questo tema è ancora in fase di disegno.',
     mock: {
       work: 'Il mio lavoro',
       projects: 'Progetti',
@@ -235,19 +233,15 @@ export const it: Messages = {
     none: 'Nessuno',
     noneF: 'Nessuna',
     unassigned: 'Non assegnato',
-    me: 'Io',
     seeAll: 'Vedi tutto',
-    retry: 'Riprova',
     inactive: 'account disattivato',
     confidential: 'Riservato',
     previous: 'Precedenti',
     next: 'Successivi',
     yes: 'sì',
     no: 'no',
-    search: 'Cerca',
     filter: 'Filtra…',
     ctrlEnter: 'Ctrl + Invio per inviare',
-    of: 'di',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${first}–${last} di ${total}`,
@@ -343,7 +337,6 @@ export const it: Messages = {
     intro:
       'Queste regole valgono solo per questo progetto: non ci sono schemi condivisi, quindi una modifica qui non tocca nessun altro progetto.',
     permissions: 'Chi può fare cosa',
-    holders: 'Beneficiari',
     addHolder: 'Aggiungi',
     nobody: 'Nessuno',
     chooseKind: 'Tipo di beneficiario',
@@ -351,12 +344,10 @@ export const it: Messages = {
     chooseRole: 'Ruolo',
     chooseUser: 'Persona',
     roles: 'Ruoli in questo progetto',
-    roleMembers: 'Membri',
     noMembers: 'Nessun membro',
     saved: 'Impostazioni salvate.',
     unsaved: 'Modifiche non salvate',
     discard: 'Annulla le modifiche',
-    forbidden: 'Solo gli amministratori del progetto possono vedere questa pagina.',
     backToProject: 'Torna al progetto',
   },
 
@@ -364,6 +355,54 @@ export const it: Messages = {
     title: 'Ricerca',
     results: (n: number) => plural(n, 'ticket', 'ticket'),
     empty: 'Nessun ticket corrisponde.',
+    columns: {
+      button: 'Colonne',
+      shown: 'Colonne mostrate',
+      more: 'Altre colonne',
+      reset: 'Colonne predefinite',
+    },
+    exportCsv: 'Esporta in CSV',
+    bulk: {
+      select: (key: string) => `Seleziona ${key}`,
+      selectPage: 'Seleziona tutti i ticket di questa pagina',
+      selected: (n: number) => `${plural(n, 'ticket selezionato', 'ticket selezionati')}`,
+      actions: 'Modifica i ticket selezionati',
+      clear: 'Deseleziona',
+      edit: 'Modifica',
+      transition: 'Cambia stato',
+      move: 'Sposta',
+      delete: 'Elimina',
+      editTitle: (n: number) => `Modifica ${plural(n, 'ticket', 'ticket')}`,
+      transitionTitle: (n: number) => `Cambia lo stato di ${plural(n, 'ticket', 'ticket')}`,
+      moveTitle: (n: number) => `Sposta ${plural(n, 'ticket', 'ticket')}`,
+      deleteTitle: (n: number) => `Eliminare ${plural(n, 'ticket', 'ticket')}?`,
+      deleteBody: (n: number) =>
+        `Questo elimina per sempre ${plural(n, 'ticket', 'ticket')}, con sotto-task, commenti e file. Non si può annullare.`,
+      typeToConfirm: (n: number) => `Digita ${n} per confermare`,
+      deleteSubmit: 'Elimina',
+      editHint: 'Spunta i campi da cambiare; gli altri restano come sono su ogni ticket.',
+      change: (field: string) => `Cambia ${field}`,
+      modes: { add: 'Aggiungi', remove: 'Rimuovi', replace: 'Sostituisci tutto con' },
+      oneProject:
+        'Componenti e versioni di correzione si possono cambiare solo se tutti i ticket selezionati sono nello stesso progetto.',
+      noSprint: 'Nessuno sprint (lascia quello aperto)',
+      noPriority: 'Nessuna',
+      status: 'Nuovo stato',
+      statusHint:
+        'Ogni ticket ci arriva con il proprio workflow: quelli senza questa transizione restano come sono.',
+      defaultResolution: 'Quella fissata dallo stato',
+      apply: 'Applica',
+      done: (n: number) => `${plural(n, 'ticket modificato', 'ticket modificati')}.`,
+      failed: (n: number) => `${plural(n, 'ticket non modificato', 'ticket non modificati')}`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'ticket passerà', 'ticket passeranno')} a ${project} con i loro sotto-task e riceveranno nuove chiavi. Le vecchie chiavi continueranno a portarci.`,
+      cannotMove: (n: number) =>
+        `${plural(n, 'ticket non può', 'ticket non possono')} essere spostati`,
+      moveHint:
+        'I ticket ricevono nuove chiavi in quel progetto; le vecchie continuano a funzionare. Ogni ticket richiede il permesso «Modificare» nel suo progetto e «Creare» in quello di destinazione.',
+      moveChoicesHint: (project: string) =>
+        `A ${project} manca qualcosa che questi ticket usano. Scegli cosa diventano lì; ogni ticket prende solo le scelte che gli servono.`,
+    },
     filters: 'Filtri',
     text: 'Testo da cercare',
     textPlaceholder: 'Cerca nei ticket…',
@@ -438,7 +477,6 @@ export const it: Messages = {
     shortcuts: 'Scorciatoie',
     categoryOnly: (name: string) => `categoria ${name}`,
     released: 'rilasciata',
-    noProject: 'Scegli un progetto per vederne i valori.',
     datePresets: {
       today: 'Oggi',
       week: 'Questa settimana',
@@ -540,6 +578,9 @@ export const it: Messages = {
     duringDates: () => 'DURING richiede due date tra parentesi.',
     argumentInvalid: (name: string) => `Argomento di ${name}() non valido.`,
     valueExpected: () => 'Atteso un valore.',
+    tooLong: (max: number) => `La query è troppo lunga (al massimo ${max} caratteri).`,
+    tooDeep: (max: number) =>
+      `La query è annidata troppo in profondità (al massimo ${max} livelli).`,
   },
   quick: {
     label: 'Ricerca rapida',
@@ -596,7 +637,6 @@ export const it: Messages = {
     assignee: 'Assegnatario',
     updated: 'Aggiornato',
     due: 'Scadenza',
-    overdue: 'in ritardo',
   },
 
   issue: {
@@ -638,7 +678,6 @@ export const it: Messages = {
     created: 'Creato',
     updated: 'Aggiornato',
     resolved: 'Risolto',
-    resolution: 'Risoluzione',
     time: 'Tempo',
     estimate: 'Stimato',
     remaining: 'Rimanente',
@@ -650,14 +689,10 @@ export const it: Messages = {
     customFields: 'Altri campi',
     watch: 'Osserva',
     watching: 'Osservato',
-    watchers: (n: number) => plural(n, 'osservatore', 'osservatori'),
     vote: 'Vota',
     voted: 'Votato',
-    votes: (n: number) => plural(n, 'voto', 'voti'),
-    by: 'da',
     createdBy: (when: string, who: string) => `creato ${when} da ${who}`,
     createdOn: (when: string) => `creato ${when}`,
-    parent: 'Sotto-task di',
     changeStatus: 'Cambia stato',
     chooseResolution: 'Risoluzione',
     leaveUnresolved: 'Lascia senza risoluzione',
@@ -723,7 +758,6 @@ export const it: Messages = {
     send: 'Commenta',
     edited: 'modificato',
     visibleTo: (who: string) => `visibile a ${who}`,
-    confirmDelete: 'Eliminare questo commento?',
   },
 
   editor: {
@@ -747,6 +781,7 @@ export const it: Messages = {
     mention: 'Menziona qualcuno',
     undo: 'Annulla digitazione',
     redo: 'Ripristina',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maiusc' },
     source: 'Sorgente',
     sourceLabel: 'Markup wiki',
     tableTools: 'Tabella',
@@ -955,7 +990,7 @@ export const it: Messages = {
     filter: 'Filtro della board',
     filterHint: 'La board mostra i ticket di questo filtro, nell’ordine della loro posizione.',
     seeIssues: 'Vedi questi ticket',
-    subQuery: 'Sotto-filtro',
+    subQuery: 'Sottofiltro',
     subQueryHint: 'Query JQL facoltativa, applicata in aggiunta al filtro.',
     doneCutoff: 'Nascondi i ticket completati dopo',
     doneCutoffHint:
@@ -1024,29 +1059,6 @@ export const it: Messages = {
     deleteConfirm: (name: string) =>
       `Eliminare «${name}», con colonne, filtri rapidi e sprint? I ticket non vengono toccati.`,
     deleted: (name: string) => `Board «${name}» eliminata.`,
-  },
-
-  admin: {
-    title: 'Utenti',
-    newUser: 'Nuovo utente',
-    username: 'Nome utente',
-    name: 'Nome visualizzato',
-    email: 'Indirizzo email',
-    password: 'Password',
-    passwordHint: 'Almeno 10 caratteri',
-    admin: 'Amministratore',
-    active: 'Attivo',
-    state: 'Stato',
-    noPassword: 'senza password',
-    resetPassword: 'Nuova password',
-    deactivate: 'Disattiva',
-    activate: 'Riattiva',
-    makeAdmin: 'Rendi amministratore',
-    removeAdmin: 'Revoca amministratore',
-    created: 'Account creato.',
-    updated: 'Account aggiornato.',
-    forbidden: 'Questa pagina è riservata agli amministratori.',
-    since: 'Dal',
   },
 
   notFound: {
@@ -1214,7 +1226,6 @@ export const it: Messages = {
     intro:
       'Le impostazioni di tutto questo Solstice: account, progetti, cataloghi dei ticket, e-mail e integrazioni. Solo gli amministratori vedono queste pagine.',
     forbidden: 'Questa pagina è riservata agli amministratori di Solstice.',
-    nav: 'Sezioni dell’amministrazione',
     groups: {
       general: 'Generale',
       people: 'Utenti e gruppi',
@@ -1280,12 +1291,8 @@ export const it: Messages = {
     copy: 'Copia',
     copied: 'Copiato',
     refresh: 'Aggiorna',
-    saved: 'Modifiche salvate.',
-    search: 'Cerca',
     noMatch: 'Nessun risultato corrisponde a questa ricerca.',
     clearSearch: 'Cancella la ricerca',
-    unavailable:
-      'Questo server non offre ancora questa impostazione: aggiorna Solstice per usarla.',
     hideBanner: 'Nascondi',
     restricted: {
       comments: (n: number) => plural(n, 'commento', 'commenti'),
@@ -1348,7 +1355,6 @@ export const it: Messages = {
   },
 
   auditAdmin: {
-    title: 'Registro audit',
     intro:
       'Chi si è connesso e chi ha cambiato account, diritti di accesso e impostazioni, da dove e quando. Il registro è di sola lettura.',
     count: (n: number) => plural(n, 'voce', 'voci'),
@@ -1400,6 +1406,7 @@ export const it: Messages = {
       priority: 'Priorità',
       resolution: 'Risoluzioni',
       linktype: 'Tipi di collegamento',
+      attachment: 'Allegati',
       field: 'Campi personalizzati',
       settings: 'Impostazioni',
       import: 'Importazione da Jira',
@@ -1469,6 +1476,7 @@ export const it: Messages = {
       'filter.share': 'Condivisione di un filtro modificata',
       'issue.delete': 'Ticket eliminato',
       'issue.export': 'Ricerca esportata in CSV',
+      'issue.import': 'Ticket importati da CSV',
       'issuetype.create': 'Tipo di ticket creato',
       'issuetype.update': 'Tipo di ticket modificato',
       'issuetype.delete': 'Tipo di ticket eliminato',
@@ -1511,6 +1519,8 @@ export const it: Messages = {
       'update.result': 'Aggiornamento concluso',
       'setup.complete': 'Installazione completata',
       'issue.move': 'Ticket spostato',
+      'attachment.upload': 'Allegato caricato',
+      'attachment.delete': 'Allegato eliminato',
     },
     targets: {
       user: 'Account',
@@ -1535,6 +1545,7 @@ export const it: Messages = {
       priority: 'Priorità',
       resolution: 'Risoluzione',
       linktype: 'Tipo di collegamento',
+      attachment: 'Allegato',
     },
     detailKeys: {
       name: 'Nome',
@@ -1559,6 +1570,8 @@ export const it: Messages = {
       owner: 'Proprietario',
       version: 'Versione',
       status: 'Stato',
+      issue: 'Ticket',
+      size: 'Dimensione (byte)',
     },
     retention: {
       title: 'Conservazione',
@@ -1581,7 +1594,6 @@ export const it: Messages = {
   },
 
   systemAdmin: {
-    title: 'Informazioni di sistema',
     intro:
       'Cosa è in esecuzione, dove sono i dati e cosa richiede attenzione. Qui non viene mostrato nessun segreto.',
     solstice: 'Solstice',
@@ -1618,7 +1630,6 @@ export const it: Messages = {
     projectsArchived: 'Progetti archiviati',
     issues: 'Ticket',
     comments: 'Commenti',
-    attachments: 'Allegati',
     mail: 'E-mail',
     mailOn: 'invio attivo',
     mailOff: 'invio disattivato',
@@ -1666,7 +1677,6 @@ export const it: Messages = {
     reload: 'Ricarica Solstice',
     again: 'Importa di nuovo',
     lastTitle: 'Ultima importazione',
-    unavailable: 'Questo server non sa ancora importare dall’amministrazione: aggiorna Solstice.',
   },
 
   tokensAdmin: {
@@ -1913,7 +1923,6 @@ export const it: Messages = {
   account: {
     title: 'Le mie impostazioni',
     menu: 'Le mie impostazioni',
-    nav: 'Sezioni delle mie impostazioni',
     sections: {
       profile: 'Profilo',
       appearance: 'Lingua e aspetto',
@@ -1932,7 +1941,10 @@ export const it: Messages = {
     emailHint: 'Serve anche per avvisarti e contattarti.',
     emailChangeHint: 'Per cambiare l’indirizzo serve la tua password attuale.',
     passwordTitle: 'Password',
-    passwordIntro: 'Lascia i campi vuoti per mantenere la password attuale.',
+    directoryPasswordIntro:
+      'La tua password è gestita dalla directory (LDAP): cambiala lì. Digitala qui solo per cambiare il tuo indirizzo e-mail.',
+    passwordIntro:
+      'Lascia i campi vuoti per mantenere la password attuale. Una nuova password chiude le tue altre sessioni e i tuoi token di accesso smettono di funzionare.',
     currentPassword: 'Password attuale',
     newPassword: 'Nuova password',
     confirmPassword: 'Conferma la password',
@@ -1940,8 +1952,6 @@ export const it: Messages = {
     passwordShort: (n: number) => `${n} caratteri almeno.`,
     passwordChanged: 'Password aggiornata.',
     saved: 'Impostazioni salvate.',
-    profileUnsupported:
-      'Questo server non sa ancora modificare nome e indirizzo e-mail: aggiorna Solstice.',
     picture: 'Immagine',
     pictureHint:
       'Mostrata accanto al tuo nome. L’immagine viene ritagliata in un quadrato e ridotta nel browser prima dell’invio.',
@@ -2040,6 +2050,8 @@ export const it: Messages = {
     admin: 'Amministratore',
     inactive: 'disattivato',
     noPassword: 'senza password',
+    directory: 'LDAP',
+    directoryHint: 'Accede tramite la directory (LDAP): la password si gestisce lì.',
     more: (n: number) => `+${n}`,
     rights: 'Permessi',
     adminLabel: 'Amministratore di Solstice (accesso a tutta l’amministrazione)',
@@ -2056,12 +2068,11 @@ export const it: Messages = {
     editTitle: (name: string) => `Modifica l’account di ${name}`,
     created: (name: string) => `Account di ${name} creato.`,
     updated: (name: string) => `Account di ${name} salvato.`,
-    edit: 'Modifica',
     deactivate: 'Disattiva',
     activate: 'Riattiva',
     deactivateTitle: (name: string) => `Disattivare l’account di ${name}?`,
     deactivateBody:
-      'Questa persona non potrà più accedere e le sue sessioni si chiuderanno subito. I suoi ticket, commenti e cronologia restano; potrai riattivare l’account più tardi.',
+      'Questa persona non potrà più accedere, le sue sessioni si chiuderanno subito e i suoi token di accesso verranno eliminati. I suoi ticket, commenti e cronologia restano; potrai riattivare l’account più tardi.',
     deactivated: (name: string) => `Account di ${name} disattivato.`,
     reactivated: (name: string) => `Account di ${name} riattivato.`,
     passwordTitle: (name: string) => `Nuova password per ${name}`,
@@ -2069,7 +2080,8 @@ export const it: Messages = {
     generateButton: 'Genera',
     typePassword: 'Inserisci la password',
     newPassword: 'Nuova password',
-    sessionsEnd: 'Le sessioni aperte di questa persona si chiudono.',
+    sessionsEnd:
+      'Le sessioni aperte di questa persona si chiudono e i suoi token di accesso smettono di funzionare.',
     generatedOnce:
       'Comunica questa password ora: non verrà più mostrata. La persona potrà cambiarla nelle sue impostazioni.',
     done: 'Fatto',
@@ -2275,7 +2287,6 @@ export const it: Messages = {
     noCategory: 'Senza categoria',
     category: 'Categoria',
     issues: 'Ticket',
-    state: 'Stato',
     archive: 'Archivia',
     unarchive: 'Ripristina',
     empty: 'Ancora nessun progetto',
@@ -2344,7 +2355,6 @@ export const it: Messages = {
     categoryTitle: (name: string) => `Modifica «${name}»`,
     categoryName: 'Nome',
     categoryDescription: 'Descrizione',
-    categoryProjects: (n: number) => plural(n, 'progetto', 'progetti'),
     categoriesEmpty: 'Ancora nessuna categoria.',
     categoryCreated: (name: string) => `Categoria «${name}» creata.`,
     categorySaved: (name: string) => `Categoria «${name}» salvata.`,
@@ -2367,6 +2377,7 @@ export const it: Messages = {
       components: 'Componenti',
       versions: 'Versioni',
       notifications: 'Notifiche',
+      import: 'Importazione',
     },
     leaveBody: 'Questa scheda ha modifiche non salvate. Vuoi scartarle?',
     general: {
@@ -2474,6 +2485,36 @@ export const it: Messages = {
       recipient: 'Gruppo o ruolo',
       none: 'Non c’è ancora nessun gruppo o ruolo da scegliere.',
       cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+    import: {
+      title: 'Importa ticket',
+      intro:
+        'Crea ticket in questo progetto da un file CSV, ad esempio una ricerca esportata. Le colonne sono riconosciute dall’intestazione, in qualsiasi lingua. Nulla viene scritto prima dell’importazione; poi vengono create tutte le righe, o nessuna. L’importazione non invia email né webhook.',
+      limits: (rows: number, mib: number) => `Al massimo ${formatNumber(rows)} righe e ${mib} MiB.`,
+      file: 'File CSV',
+      checking: 'Verifica del file…',
+      columnsTitle: 'Colonne',
+      column: 'Colonna',
+      field: 'Campo',
+      skip: 'Non importata',
+      readOnly: 'Impostata da Solstice: non importata',
+      unknown: 'Colonna sconosciuta: scegli un campo o lasciala fuori.',
+      fieldFor: (header: string) => `Campo per la colonna ${header}`,
+      rowsTitle: 'Righe',
+      line: 'Riga',
+      key: 'Chiave nel file',
+      summary: 'Riepilogo',
+      type: 'Tipo',
+      status: 'Stato',
+      problems: 'Errori',
+      noRows: 'Il file non ha righe.',
+      ready: (n: number) => `${plural(n, 'riga è pronta', 'righe sono pronte')}.`,
+      failed: (n: number) =>
+        `${plural(n, 'riga ha', 'righe hanno')} errori: correggi il file o le colonne, poi scegli di nuovo il file.`,
+      submit: (n: number) => `Importa ${plural(n, 'ticket', 'ticket')}`,
+      importing: 'Importazione in corso…',
+      done: (n: number) => `${plural(n, 'ticket creato', 'ticket creati')}.`,
+      again: 'Importa un altro file',
     },
   },
 

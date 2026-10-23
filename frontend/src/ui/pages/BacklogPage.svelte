@@ -54,11 +54,10 @@
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
 
-  function loadDetail(id: number) {
+  function loadDetail() {
     api
-      .board(id)
+      .board(boardId)
       .then((d) => {
-        if (id !== boardId) return;
         detail = d;
         document.title = `${t.boards.backlog} — ${d.board.name} — ${t.appName}`;
       })
@@ -66,11 +65,7 @@
   }
 
   $effect(() => {
-    const id = boardId;
-    detail = null;
-    error = '';
-    cards = null;
-    loadDetail(id);
+    loadDetail();
   });
 
   let pending = 0;
@@ -135,8 +130,6 @@
         : t.boards.points(total);
     return `${n} · ${sum}`;
   }
-
-  // Moving issues --------------------------------------------------------------
 
   async function move(m: CardMove, message: string, refocus = false) {
     if (!cards) return;
@@ -214,8 +207,6 @@
     };
   }
 
-  // Dragging -------------------------------------------------------------------
-
   let drag = $state<{ key: string; section: number } | null>(null);
   let over = $state<{ section: number; index: number } | null>(null);
 
@@ -285,7 +276,7 @@
       await api.createSprint(boardId);
       notify(t.boards.sprintCreated);
       reload();
-      loadDetail(boardId);
+      loadDetail();
     } catch (e) {
       notify(errorMessage(e), 'error');
     } finally {
@@ -293,18 +284,12 @@
     }
   }
 
-  async function deleteSprint(target: { sprint: Sprint }) {
-    await api.deleteSprint(target.sprint.id);
-    notify(t.boards.sprintDeleted(target.sprint.name));
-    afterSprintChange();
-  }
-
   function afterSprintChange() {
     starting = null;
     completing = null;
     editing = null;
     reload();
-    loadDetail(boardId);
+    loadDetail();
   }
 </script>
 
@@ -415,7 +400,13 @@
     open={deleting !== null}
     title={t.boards.deleteTitle(deleting?.sprint.name ?? '')}
     confirm={t.boards.deleteSprint}
-    onconfirm={() => (deleting ? deleteSprint(deleting) : Promise.resolve())}
+    onconfirm={async () => {
+      if (!deleting) return;
+      const { sprint } = deleting;
+      await api.deleteSprint(sprint.id);
+      notify(t.boards.sprintDeleted(sprint.name));
+      afterSprintChange();
+    }}
     onclose={() => (deleting = null)}
   >
     <p>{t.boards.deleteBody(deleting?.issues ?? 0)}</p>

@@ -18,6 +18,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -44,7 +45,7 @@ var fieldTypes = []struct{ name, kind, searcher string }{
 // fieldTypeName gives Solstice's name of a Jira type key, "" for a type
 // Solstice only displays.
 func fieldTypeName(typeKey string) string {
-	kind := fieldKind(typeKey)
+	kind := issue.FieldKind(typeKey)
 	for _, t := range fieldTypes {
 		if t.kind == kind {
 			return t.name
@@ -76,9 +77,16 @@ type fieldAdminOut struct {
 	Description *string      `json:"description"`
 	Type        *string      `json:"type"`
 	TypeKey     string       `json:"typeKey"`
-	Options     any          `json:"options"` // a count in lists, the options in the detail
+	Options     int          `json:"options"` // top-level options
 	Issues      int          `json:"issues"`
 	Context     fieldContext `json:"context"`
+}
+
+// fieldDetailOut is a field with its top-level options in place of their
+// count.
+type fieldDetailOut struct {
+	fieldAdminOut
+	Options []optionOut `json:"options"`
 }
 
 func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fieldAdminOut, error) {
@@ -91,15 +99,13 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 		FROM custom_fields f WHERE `+where+` ORDER BY f.name, f.id`, func(rows *sql.Rows) error {
 		var f fieldAdminOut
 		var desc sql.NullString
-		var options int
-		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &options, &f.Issues); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &desc, &f.TypeKey, &f.Options, &f.Issues); err != nil {
 			return err
 		}
 		f.Description = sqlq.String(desc)
 		if t := fieldTypeName(f.TypeKey); t != "" {
 			f.Type = &t
 		}
-		f.Options = options
 		f.Context = fieldContext{Projects: []projectBrief{}, IssueTypes: []typeRef{}}
 		index[f.ID] = len(out)
 		out = append(out, f)
@@ -140,7 +146,7 @@ func (s *Server) fieldList(ctx context.Context, where string, args ...any) ([]fi
 	return out, err
 }
 
-func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, error) {
+func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldDetailOut, error) {
 	list, err := s.fieldList(ctx, "f.id = ?", id)
 	if err != nil {
 		return nil, err
@@ -148,8 +154,7 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 	if len(list) == 0 {
 		return nil, errNotFound
 	}
-	f := list[0]
-	options := []optionOut{}
+	f := &fieldDetailOut{fieldAdminOut: list[0], Options: []optionOut{}}
 	if err := sqlq.Each(ctx, s.db, `SELECT o.id, o.value, o.disabled, o.position,
 		(SELECT COUNT(DISTINCT v.issue_id) FROM custom_field_values v WHERE v.field_id = o.field_id
 			AND v.string_value IN (SELECT CAST(c.id AS CHAR) FROM custom_field_options c
@@ -161,13 +166,12 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldAdminOut, err
 			if err := rows.Scan(&o.ID, &o.Value, &o.Disabled, &o.Position, &o.Issues, &o.Children); err != nil {
 				return err
 			}
-			options = append(options, o)
+			f.Options = append(f.Options, o)
 			return nil
 		}, id); err != nil {
 		return nil, err
 	}
-	f.Options = options
-	return &f, nil
+	return f, nil
 }
 
 func (s *Server) adminFields(w http.ResponseWriter, r *http.Request) error {
@@ -245,15 +249,7 @@ func (s *Server) checkContext(ctx context.Context, in *contextInput) ([]int64, [
 }
 
 func (s *Server) fieldNameTaken(ctx context.Context, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_fields WHERE LOWER(name) = LOWER(?) AND id <> ?`,
-		name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.nameTaken(ctx, "custom_fields", name, except, i18n.CommonAlreadyExists)
 }
 
 func writeContext(ctx context.Context, tx *sql.Tx, field int64, projects []int64, types []string) error {
@@ -280,7 +276,10 @@ func writeContext(ctx context.Context, tx *sql.Tx, field int64, projects []int64
 // cleanOption checks an option's text.
 func cleanOption(v string) (string, error) {
 	v = strings.TrimSpace(v)
-	if v == "" || len([]rune(v)) > 255 {
+	if v == "" {
+		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionEmpty)
+	}
+	if len([]rune(v)) > 255 {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionTooLong)
 	}
 	return v, nil
@@ -365,7 +364,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldCreate, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: name},
+	s.auditLog(r, audit.FieldCreate, target("field", id, name),
 		map[string]any{"type": ft.name, "options": options, "context": contextNames(f.Context)})
 	return writeJSON(w, http.StatusCreated, f)
 }
@@ -447,18 +446,11 @@ func (s *Server) updateField(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	changes := map[string]any{}
-	if before.Name != after.Name {
-		changes["name"] = map[string]string{"from": before.Name, "to": after.Name}
-	}
-	if derefStr(before.Description) != derefStr(after.Description) {
-		changes["description"] = map[string]string{"from": derefStr(before.Description), "to": derefStr(after.Description)}
-	}
-	from, to := contextNames(before.Context), contextNames(after.Context)
-	if !slices.Equal(from["projects"], to["projects"]) || !slices.Equal(from["issueTypes"], to["issueTypes"]) {
-		changes["context"] = map[string]any{"from": from, "to": to}
-	}
+	diff(changes, "name", before.Name, after.Name)
+	diff(changes, "description", derefStr(before.Description), derefStr(after.Description))
+	diff(changes, "context", contextNames(before.Context), contextNames(after.Context))
 	if len(changes) > 0 {
-		s.auditLog(r, audit.FieldUpdate, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: after.Name}, changes)
+		s.auditLog(r, audit.FieldUpdate, target("field", id, after.Name), changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }
@@ -474,17 +466,15 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Confirm string `json:"confirm"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	f, err := s.fieldDetail(ctx, id)
 	if err != nil {
 		return err
 	}
-	if protectedKind(fieldKind(f.TypeKey)) {
+	if protectedKind(issue.FieldKind(f.TypeKey)) {
 		return fail(http.StatusConflict, i18n.CustomFieldUsedByBoards)
 	}
 	estimate := "customfield_" + strconv.FormatInt(id, 10)
@@ -512,14 +502,14 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldDelete, audit.Target{Type: "field", ID: strconv.FormatInt(id, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldDelete, target("field", id, f.Name),
 		map[string]any{"issues": f.Issues, "boards": boards})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
 // optionField loads a field whose options can be edited.
-func (s *Server) optionField(r *http.Request) (*fieldAdminOut, error) {
+func (s *Server) optionField(r *http.Request) (*fieldDetailOut, error) {
 	if err := requireAdmin(r); err != nil {
 		return nil, err
 	}
@@ -531,22 +521,15 @@ func (s *Server) optionField(r *http.Request) (*fieldAdminOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !optionKind(fieldKind(f.TypeKey)) {
+	if !optionKind(issue.FieldKind(f.TypeKey)) {
 		return nil, fail(http.StatusBadRequest, i18n.CustomFieldNoOptions)
 	}
 	return f, nil
 }
 
 func (s *Server) optionTaken(ctx context.Context, field int64, value string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_field_options WHERE field_id = ? AND parent_id IS NULL
-		AND LOWER(value) = LOWER(?) AND id <> ?`, field, value, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, value)
-	}
-	return nil
+	return s.valueTaken(ctx, "custom_field_options", "value", "field_id = ? AND parent_id IS NULL", []any{field}, value,
+		except, i18n.CommonAlreadyExists)
 }
 
 func (s *Server) writeField(w http.ResponseWriter, r *http.Request, status int, id int64) error {
@@ -580,7 +563,7 @@ func (s *Server) addFieldOption(w http.ResponseWriter, r *http.Request) error {
 		SELECT ?, COALESCE(MAX(position), 0) + 1, ? FROM custom_field_options WHERE field_id = ?`, f.ID, v, f.ID); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 		map[string]any{"added": v})
 	return s.writeField(w, r, http.StatusCreated, f.ID)
 }
@@ -624,9 +607,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		if _, err := s.db.ExecContext(ctx, `UPDATE custom_field_options SET value = ? WHERE id = ?`, v, option); err != nil {
 			return err
 		}
-		if v != old {
-			details["value"] = map[string]string{"from": old, "to": v}
-		}
+		diff(details, "value", old, v)
 	}
 	if in.Disabled != nil {
 		if _, err := s.db.ExecContext(ctx, `UPDATE custom_field_options SET disabled = ? WHERE id = ?`,
@@ -638,7 +619,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 	if len(details) > 1 {
-		s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+		s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 			details)
 	}
 	return s.writeField(w, r, http.StatusOK, f.ID)
@@ -662,10 +643,8 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		MoveTo *int64 `json:"moveTo"`
 		Clear  bool   `json:"clear"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	var value string
@@ -701,7 +680,7 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		WHERE field_id = ? AND string_value IN (`+marks+`)`, args...).Scan(&issues); err != nil {
 		return err
 	}
-	var target string
+	var moveTo string
 	if in.MoveTo != nil {
 		var n int
 		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM custom_field_options WHERE id = ? AND field_id = ?
@@ -711,9 +690,9 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		if n == 0 {
 			return fail(http.StatusBadRequest, i18n.CustomFieldOptionMoveTo)
 		}
-		target = strconv.FormatInt(*in.MoveTo, 10)
+		moveTo = strconv.FormatInt(*in.MoveTo, 10)
 	}
-	if issues > 0 && target == "" && !in.Clear {
+	if issues > 0 && moveTo == "" && !in.Clear {
 		return &httpError{status: http.StatusConflict, extra: map[string]any{"usage": map[string]int{"issues": issues}},
 			msg: i18n.M(i18n.CustomFieldOptionInUse)}
 	}
@@ -722,15 +701,15 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	defer tx.Rollback()
-	if target != "" && issues > 0 {
+	if moveTo != "" && issues > 0 {
 		// An issue already holding the target (a multiple choice) keeps one value.
 		if _, err := tx.ExecContext(ctx, `DELETE FROM custom_field_values WHERE field_id = ? AND string_value = ?
 			AND issue_id IN (SELECT issue_id FROM (SELECT issue_id FROM custom_field_values
-				WHERE field_id = ? AND string_value = ?) t)`, f.ID, strconv.FormatInt(option, 10), f.ID, target); err != nil {
+				WHERE field_id = ? AND string_value = ?) t)`, f.ID, strconv.FormatInt(option, 10), f.ID, moveTo); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE custom_field_values SET string_value = ?
-			WHERE field_id = ? AND string_value = ?`, target, f.ID, strconv.FormatInt(option, 10)); err != nil {
+			WHERE field_id = ? AND string_value = ?`, moveTo, f.ID, strconv.FormatInt(option, 10)); err != nil {
 			return err
 		}
 	}
@@ -746,10 +725,10 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	details := map[string]any{"removed": value, "issues": issues}
-	if target != "" {
-		details["movedTo"] = target
+	if moveTo != "" {
+		details["movedTo"] = moveTo
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name}, details)
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name), details)
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
@@ -762,8 +741,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	options := f.Options.([]optionOut)
-	if err := sameIDs(options, ids, func(o optionOut) string { return strconv.FormatInt(o.ID, 10) }); err != nil {
+	if err := sameIDs(f.Options, ids, func(o optionOut) string { return strconv.FormatInt(o.ID, 10) }); err != nil {
 		return err
 	}
 	ctx := r.Context()
@@ -781,7 +759,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, audit.Target{Type: "field", ID: strconv.FormatInt(f.ID, 10), Label: f.Name},
+	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
 		map[string]any{"order": ids})
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }
@@ -789,7 +767,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 // Contexts at work ------------------------------------------------------------------
 
 // fieldsOutside lists, of the fields given, those whose context excludes a
-// project and issue type.
+// project and issue type. Without a type, only the project counts.
 func (s *Server) fieldsOutside(ctx context.Context, projectID int64, typeID string, ids []int64) ([]int64, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -798,13 +776,18 @@ func (s *Server) fieldsOutside(ctx context.Context, projectID int64, typeID stri
 	for _, id := range ids {
 		args = append(args, id)
 	}
-	args = append(args, projectID, typeID)
+	args = append(args, projectID)
+	types := ""
+	if typeID != "" {
+		types = `
+		AND (NOT EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id)
+			OR EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id AND c.issue_type_id = ?))`
+		args = append(args, typeID)
+	}
 	var out []int64
 	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`) AND NOT (
 		(NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
-			OR EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?))
-		AND (NOT EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id)
-			OR EXISTS (SELECT 1 FROM custom_field_issue_types c WHERE c.field_id = f.id AND c.issue_type_id = ?)))`,
+			OR EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?))`+types+`)`,
 		func(rows *sql.Rows) error {
 			var id int64
 			if err := rows.Scan(&id); err != nil {
@@ -873,13 +856,6 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if typeID == "" {
-		// Without a type, only the project counts.
-		outside, err = s.fieldsOutsideProject(ctx, projectID, ids)
-		if err != nil {
-			return err
-		}
-	}
 	out := []fieldBrief{}
 	index := map[int64]int{}
 	for _, f := range all {
@@ -906,30 +882,6 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, out)
-}
-
-func (s *Server) fieldsOutsideProject(ctx context.Context, projectID int64, ids []int64) ([]int64, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	args := make([]any, 0, len(ids)+1)
-	for _, id := range ids {
-		args = append(args, id)
-	}
-	args = append(args, projectID)
-	var out []int64
-	err := sqlq.Each(ctx, s.db, `SELECT f.id FROM custom_fields f WHERE f.id IN (`+sqlq.Marks(len(ids))+`)
-		AND EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id)
-		AND NOT EXISTS (SELECT 1 FROM custom_field_projects c WHERE c.field_id = f.id AND c.project_id = ?)`,
-		func(rows *sql.Rows) error {
-			var id int64
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			out = append(out, id)
-			return nil
-		}, args...)
-	return out, err
 }
 
 // readCustomFields translates the "customFields" of an interface request

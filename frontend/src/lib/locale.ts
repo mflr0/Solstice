@@ -5,15 +5,15 @@
 
 import { locale, saveLocale } from '../i18n/index.js';
 import { parseLocale, type Locale } from '../i18n/locales.js';
-import { api } from './api.js';
+import { accountApi } from './admin-api.js';
 
 export async function chooseLocale(next: Locale): Promise<void> {
   if (next === locale) return;
   saveLocale(next);
   try {
-    await api.updateMe({ locale: next });
+    await accountApi.updateProfile({ locale: next });
   } catch {
-    // A server without the setting yet (404/405), or offline: this browser remembers it.
+    // Offline, or the server refused it: this browser still remembers it.
   }
   location.reload();
 }

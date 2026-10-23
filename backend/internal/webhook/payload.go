@@ -129,6 +129,9 @@ func (b *builder) issue(iss *events.Issue) map[string]any {
 		"timespent":            intPtr(iss.Spent),
 		"watches":              map[string]any{"watchCount": len(iss.Watchers), "isWatching": false},
 	}
+	for _, c := range iss.Custom {
+		f["customfield_"+strconv.FormatInt(c.ID, 10)] = c.Value
+	}
 	if iss.Parent != nil {
 		f["parent"] = map[string]any{"id": strconv.FormatInt(iss.Parent.ID, 10), "key": iss.Parent.Key}
 	}

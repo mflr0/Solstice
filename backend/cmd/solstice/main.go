@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,6 +28,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/db"
+	"solstice/internal/directory"
 	"solstice/internal/importer"
 	"solstice/internal/web"
 	"solstice/internal/worker"
@@ -66,6 +68,23 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
   SOLSTICE_HTTP_MAXSTORAGE       total size of all attachments, 0 for no limit, e.g. 10GiB (default 0)
   SOLSTICE_LOG_LEVEL             debug, info, warn or error (default info)
   SOLSTICE_LOG_FORMAT            text or json (default text)
+  SOLSTICE_LDAP_URL              LDAP or Active Directory sign-in, off when empty: ldaps://host,
+                                 or ldap://host with STARTTLS (default none)
+  SOLSTICE_LDAP_STARTTLS         switch ldap:// to TLS first (default false)
+  SOLSTICE_LDAP_INSECURE         allow ldap:// without TLS, passwords in clear (default false)
+  SOLSTICE_LDAP_CAFILE           PEM file of certificate authorities to trust as well
+  SOLSTICE_LDAP_BINDDN           service account that searches, anonymous when empty
+  SOLSTICE_LDAP_BINDPASSWORD     its password
+  SOLSTICE_LDAP_USERBASE         where people are searched, e.g. ou=people,dc=example,dc=org
+  SOLSTICE_LDAP_USERFILTER       how; {username} is the name typed; defaults to (uid={username})
+  SOLSTICE_LDAP_NAMEATTR         attribute of the account's name (default displayName)
+  SOLSTICE_LDAP_EMAILATTR        attribute of its e-mail address (default mail)
+  SOLSTICE_LDAP_GROUPBASE        where groups are searched (default <the user base>)
+  SOLSTICE_LDAP_GROUPFILTER      how; {dn} is the person's DN; defaults to (member={dn})
+  SOLSTICE_LDAP_GROUPNAMEATTR    attribute naming a group (default cn)
+  SOLSTICE_LDAP_REQUIREGROUP     only its members sign in through LDAP (default none)
+  SOLSTICE_LDAP_ADMINGROUP       its members are administrators, and only they (default none)
+  SOLSTICE_LDAP_TIMEOUT          time a sign-in waits for the server (default 10s)
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -142,6 +161,14 @@ func runServe(ctx context.Context, args []string) error {
 	}
 	log := slog.Default()
 	log.Info("Solstice is starting", "version", version, "config", cfg.Path, "config_found", cfg.Exists, "data", dataDir)
+	go auth.PrepareSignIn()
+	dir, err := directory.New(cfg.LDAP)
+	if err != nil {
+		return err
+	}
+	if dir != nil {
+		log.Info("LDAP sign-in is on", "url", cfg.LDAP.URL)
+	}
 
 	// Without a database, or on one without any account, the setup wizard
 	// runs first; the application takes over when it is done.
@@ -180,6 +207,9 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetSecretKey(cfg.SecretKey)
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
 		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
+		if dir != nil {
+			srv.SetDirectory(dir)
+		}
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
 		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})
@@ -187,7 +217,7 @@ func runServe(ctx context.Context, args []string) error {
 		appDB.Store(conn)
 		app.Store(srv)
 		current.Store(&h)
-		go cleanSessions(ctx, conn, log)
+		go purgeExpired(ctx, conn, log)
 		workers.Go(func() { srv.Run(ctx) })
 	}
 	if setup {
@@ -272,10 +302,10 @@ func runServe(ctx context.Context, args []string) error {
 	}
 }
 
-// cleanSessions deletes expired sessions hourly: they are useless. Audit
+// purgeExpired deletes expired sessions hourly: they are useless. Audit
 // log entries past their retention period, and expired or used reset and
 // invitation links, go at the same time.
-func cleanSessions(ctx context.Context, conn *sql.DB, log *slog.Logger) {
+func purgeExpired(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {
@@ -314,14 +344,6 @@ func runUser(ctx context.Context, args []string) error {
 		fs.Usage()
 		return errors.New("-username is required")
 	}
-	generated := *password == ""
-	if generated {
-		raw := make([]byte, 12)
-		if _, err := rand.Read(raw); err != nil {
-			return err
-		}
-		*password = base64.RawURLEncoding.EncodeToString(raw)
-	}
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -331,27 +353,42 @@ func runUser(ctx context.Context, args []string) error {
 		return err
 	}
 	defer conn.Close()
-	login := strings.ToLower(*username)
+	minPassword := api.StoredPasswordMin(ctx, conn)
+	generated := *password == ""
+	if generated {
+		n := max(minPassword, 16)
+		raw := make([]byte, n)
+		if _, err := rand.Read(raw); err != nil {
+			return err
+		}
+		*password = base64.RawURLEncoding.EncodeToString(raw)[:n]
+	}
+	acc, err := checkAccount(action, account{login: *username, name: *name, email: *email, password: *password}, minPassword)
+	if err != nil {
+		return err
+	}
+	login := acc.login
 	// record writes an audit entry for a change made from the command line.
-	record := func(what string, id int64) error {
+	record := func(what string, id int64, details map[string]any) error {
+		d := map[string]any{"via": "command line"}
+		maps.Copy(d, details)
 		return audit.Record(ctx, conn, audit.Entry{
 			Action:  what,
 			Target:  audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: login},
-			Details: map[string]any{"via": "command line"},
+			Details: d,
 		})
 	}
 	switch action {
 	case "add":
-		hash, err := auth.HashPassword(*password)
+		hash, err := auth.HashPassword(acc.password)
 		if err != nil {
 			return err
 		}
-		display := *name
-		if display == "" {
-			display = login
-		}
 		res, err := conn.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
-			VALUES (?, ?, ?, ?, ?)`, login, display, *email, hash, *admin)
+			VALUES (?, ?, ?, ?, ?)`, login, acc.name, acc.email, hash, *admin)
+		if api.IsDuplicate(err) {
+			return fmt.Errorf("an account named %q already exists", login)
+		}
 		if err != nil {
 			return err
 		}
@@ -359,11 +396,11 @@ func runUser(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := record(audit.UserCreate, id); err != nil {
+		if err := record(audit.UserCreate, id, nil); err != nil {
 			return err
 		}
 		if *admin {
-			if err := record(audit.AdminGrant, id); err != nil {
+			if err := record(audit.AdminGrant, id, nil); err != nil {
 				return err
 			}
 		}
@@ -373,30 +410,67 @@ func runUser(ctx context.Context, args []string) error {
 		if err := conn.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, login).Scan(&id); err != nil {
 			return fmt.Errorf("unknown user %q", login)
 		}
-		if err := auth.SetPassword(ctx, conn, id, *password); err != nil {
+		hash, err := auth.HashPassword(acc.password)
+		if err != nil {
 			return err
 		}
-		// Sessions opened with the old password end now.
-		if _, err := conn.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+		tx, err := conn.BeginTx(ctx, nil)
+		if err != nil {
 			return err
 		}
-		if err := record(audit.PasswordChange, id); err != nil {
+		defer tx.Rollback()
+		revoked, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+		if err != nil {
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		if err := record(audit.PasswordChange, id, map[string]any{"revokedAccessTokens": revoked}); err != nil {
 			return err
 		}
 		if *admin {
 			if _, err := conn.ExecContext(ctx, `UPDATE users SET is_admin = TRUE WHERE id = ?`, id); err != nil {
 				return err
 			}
-			if err := record(audit.AdminGrant, id); err != nil {
+			if err := record(audit.AdminGrant, id, nil); err != nil {
 				return err
 			}
 		}
 		fmt.Printf("Password for \"%s\" changed.\n", login)
 	}
 	if generated {
-		fmt.Printf("Password: %s\n", *password)
+		fmt.Printf("Password: %s\n", acc.password)
 	}
 	return nil
+}
+
+// account is what solstice user stores.
+type account struct {
+	login, name, email, password string
+}
+
+// checkAccount applies the API's account rules to the command's input: to
+// the login, name and e-mail of a new account (add), and to the password
+// against minPassword, the instance's minimum length. It returns the input
+// as stored.
+func checkAccount(action string, in account, minPassword int) (account, error) {
+	in.login = strings.ToLower(strings.TrimSpace(in.login))
+	if action == "add" {
+		if !api.ValidUsername(in.login) {
+			return account{}, fmt.Errorf("invalid -username %q: use at most 100 lowercase letters, digits and . _ @ -, starting with a letter or digit", in.login)
+		}
+		if in.name = strings.TrimSpace(in.name); in.name == "" {
+			in.name = in.login
+		}
+		if in.email = strings.TrimSpace(in.email); in.email != "" && !api.ValidEmail(in.email) {
+			return account{}, fmt.Errorf("invalid -email %q: give a bare address, such as marie@example.org", in.email)
+		}
+	}
+	if err := api.PasswordRules(in.password, in.login, minPassword); err != nil {
+		return account{}, err
+	}
+	return in, nil
 }
 
 func runImport(ctx context.Context, args []string) error {

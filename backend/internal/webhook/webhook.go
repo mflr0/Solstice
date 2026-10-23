@@ -23,6 +23,7 @@ import (
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/secret"
+	"solstice/internal/sqlq"
 )
 
 // Event names, as Jira calls them.
@@ -48,49 +49,50 @@ const (
 	TestEvent = "solstice:test"
 )
 
-// Events lists the events Solstice sends, in display order.
-var Events = []string{IssueCreated, IssueUpdated, IssueDeleted, CommentCreated, CommentUpdated, CommentDeleted,
-	WorklogCreated, WorklogUpdated, WorklogDeleted, SprintCreated, SprintStarted, SprintUpdated, SprintClosed,
-	SprintDeleted, BoardCreated, BoardUpdated, BoardDeleted}
+// webhookEvents lists the webhook events in display order, each with the
+// internal event that fires it and the event it also sends: a comment or a
+// work log is also an issue update, as in Jira.
+var webhookEvents = []struct {
+	kind       events.Kind
+	name, also string
+}{
+	{events.IssueCreated, IssueCreated, ""},
+	{events.IssueUpdated, IssueUpdated, ""},
+	{events.IssueDeleted, IssueDeleted, ""},
+	{events.CommentCreated, CommentCreated, IssueUpdated},
+	{events.CommentUpdated, CommentUpdated, IssueUpdated},
+	{events.CommentDeleted, CommentDeleted, IssueUpdated},
+	{events.WorklogCreated, WorklogCreated, IssueUpdated},
+	{events.WorklogUpdated, WorklogUpdated, IssueUpdated},
+	{events.WorklogDeleted, WorklogDeleted, IssueUpdated},
+	{events.SprintCreated, SprintCreated, ""},
+	{events.SprintStarted, SprintStarted, ""},
+	{events.SprintUpdated, SprintUpdated, ""},
+	{events.SprintClosed, SprintClosed, ""},
+	{events.SprintDeleted, SprintDeleted, ""},
+	{events.BoardCreated, BoardCreated, ""},
+	{events.BoardUpdated, BoardUpdated, ""},
+	{events.BoardDeleted, BoardDeleted, ""},
+}
 
-// namesOf gives the webhook events an internal event fires. Comments and
-// work logs also count as issue updates, as in Jira.
+// Events lists the events Solstice sends, in display order.
+var Events = func() []string {
+	out := make([]string, len(webhookEvents))
+	for i, e := range webhookEvents {
+		out[i] = e.name
+	}
+	return out
+}()
+
+// namesOf gives the webhook events an internal event fires.
 func namesOf(k events.Kind) []string {
-	switch k {
-	case events.IssueCreated:
-		return []string{IssueCreated}
-	case events.IssueUpdated:
-		return []string{IssueUpdated}
-	case events.IssueDeleted:
-		return []string{IssueDeleted}
-	case events.CommentCreated:
-		return []string{CommentCreated, IssueUpdated}
-	case events.CommentUpdated:
-		return []string{CommentUpdated, IssueUpdated}
-	case events.CommentDeleted:
-		return []string{CommentDeleted, IssueUpdated}
-	case events.WorklogCreated:
-		return []string{WorklogCreated, IssueUpdated}
-	case events.WorklogUpdated:
-		return []string{WorklogUpdated, IssueUpdated}
-	case events.WorklogDeleted:
-		return []string{WorklogDeleted, IssueUpdated}
-	case events.SprintCreated:
-		return []string{SprintCreated}
-	case events.SprintStarted:
-		return []string{SprintStarted}
-	case events.SprintUpdated:
-		return []string{SprintUpdated}
-	case events.SprintClosed:
-		return []string{SprintClosed}
-	case events.SprintDeleted:
-		return []string{SprintDeleted}
-	case events.BoardCreated:
-		return []string{BoardCreated}
-	case events.BoardUpdated:
-		return []string{BoardUpdated}
-	case events.BoardDeleted:
-		return []string{BoardDeleted}
+	for _, e := range webhookEvents {
+		if e.kind == k {
+			if e.also != "" {
+				return []string{e.name, e.also}
+			}
+			return []string{e.name}
+		}
 	}
 	return nil
 }
@@ -113,6 +115,11 @@ type Webhook struct {
 }
 
 func (w *Webhook) listens(name string) bool { return w.Enabled && slices.Contains(w.Events, name) }
+
+// heard returns, in order, the events of names the webhook listens to.
+func (w *Webhook) heard(names []string) []string {
+	return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return !w.listens(n) })
+}
 
 // Matcher tells whether an issue matches a JQL query.
 type Matcher func(ctx context.Context, jql string, issueID int64) (bool, error)
@@ -206,7 +213,11 @@ func (s *Service) Get(ctx context.Context, id int64) (*Webhook, error) {
 	if err != nil {
 		return nil, err
 	}
-	if d, err := s.Deliveries(ctx, id, 1); err == nil && len(d) > 0 {
+	d, err := s.Deliveries(ctx, id, 1)
+	if err != nil {
+		return nil, err
+	}
+	if len(d) > 0 {
 		w.LastDelivery = &d[0]
 	}
 	return w, nil
@@ -228,17 +239,11 @@ func (s *Service) Save(ctx context.Context, w *Webhook, secretText *string, by i
 		}
 		sealed = v
 	}
-	var jql any
-	if strings.TrimSpace(w.JQL) != "" {
-		jql = strings.TrimSpace(w.JQL)
-	}
+	jql := sqlq.NullIf(strings.TrimSpace(w.JQL))
 	now := s.Now().UTC()
 	evs := strings.Join(w.Events, ",")
 	if w.ID == 0 {
-		var creator any
-		if by != 0 {
-			creator = by
-		}
+		creator := sqlq.NullIf(by)
 		res, err := s.db.ExecContext(ctx, `INSERT INTO webhooks (name, url, events, jql, secret, enabled, exclude_body,
 			created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			w.Name, w.URL, evs, jql, sealed, w.Enabled, w.ExcludeBody, creator, now, now)
@@ -296,6 +301,10 @@ func (s *Service) hooks(ctx context.Context) []*Webhook {
 		}
 		list = append(list, w)
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("reading webhooks failed", "err", err)
+		return nil
+	}
 	s.cache, s.cacheAt = list, time.Now()
 	if s.cache == nil {
 		s.cache = []*Webhook{}
@@ -345,12 +354,8 @@ func (s *Service) Deliveries(ctx context.Context, webhookID int64, limit int) ([
 			v := int(dur.Int64)
 			d.DurationMs = &v
 		}
-		if errText.Valid {
-			d.Error = &errText.String
-		}
-		if attempted.Valid {
-			d.Attempted = &attempted.Time
-		}
+		d.Error = sqlq.String(errText)
+		d.Attempted = sqlq.Time(attempted)
 		if d.Status == "pending" {
 			d.NextAttempt = &next
 		}

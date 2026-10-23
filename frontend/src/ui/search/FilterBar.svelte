@@ -12,13 +12,13 @@
     rangeSet,
     sameValue,
     toggle,
-    valueOf,
     type DateField,
     type DateRange,
     type FilterState,
     type ListField,
     type PeopleRole,
   } from '../../core/filters.js';
+  import { quote } from '../../core/jql.js';
   import type { StatusCategory } from '../../core/types.js';
   import { categoryLabels, t } from '../../i18n/t.js';
   import { formatList } from '../../i18n/format.js';
@@ -46,7 +46,7 @@
 
   type Extra = Exclude<ListField, (typeof MAIN)[number]> | DateField;
   const MAIN = ['people', 'project', 'type', 'status', 'assignee', 'priority', 'labels'] as const;
-  /** The roles offered for « Personnes »; the assignee and the reporter hand over to their own filters. */
+  /** The roles offered for "People"; the assignee and the reporter hand over to their own filters. */
   const ROLES = ['participant', 'assignee', 'reporter', 'creator', 'watcher', 'commenter'] as const;
   const EXTRAS: Extra[] = [
     'reporter',
@@ -66,7 +66,7 @@
   const DONE: StatusCategory[] = ['done'];
 
   const main = $derived(MAIN.filter((f) => !(project && f === 'project')));
-  /** Extra criteria added through « Plus », shown even without a value. */
+  /** Extra criteria added through "More", shown even without a value. */
   let added = $state<Extra[]>([]);
   let openId = $state<string | null>(null);
   let opened = 0;
@@ -148,7 +148,7 @@
   }
 
   /**
-   * The role of « Personnes ». Chosen before anyone is picked, it changes no
+   * The role of "People". Chosen before anyone is picked, it changes no
    * query yet, so it is kept here until then.
    */
   let roleDraft = $state<PeopleRole | null>(null);
@@ -173,7 +173,7 @@
     }
     roleDraft = role;
     if (!filters.values.people?.length) return;
-    // Nobody takes part in everything: « Sans … » only fits watchers and commenters.
+    // Nobody takes part in everything: "No watchers" and "No comments" only fit those roles.
     const keep = role === 'watcher' || role === 'commenter' ? filters.values.people : people;
     const values: FilterState['values'] = { ...filters.values, people: keep };
     if (!keep.length) delete values.people;
@@ -187,7 +187,7 @@
     return summarize(names) + role;
   }
 
-  /** « Tickets que j'observe » is « Personnes », as observer, with Moi. */
+  /** "Issues I’m watching" is "People", as watcher, with Me. */
   const watchingMe = $derived(
     filters.peopleRole === 'watcher' && (filters.values.people ?? []).includes(ME),
   );
@@ -215,7 +215,7 @@
     return t.search.categoryOnly(formatList(cats.map((c) => categoryLabels[c])));
   }
 
-  /** « En cours, À faire », « En cours +2 ». */
+  /** "In progress, To do", "In progress, To do +1". */
   function summarize(names: string[]): string {
     if (names.length <= 2) return names.join(', ');
     return `${names.slice(0, 2).join(', ')} ${t.search.andMore(names.length - 2)}`;
@@ -303,7 +303,7 @@
   const FREE: ListField[] = ['labels', 'fixVersion', 'component', 'epic'];
 
   function scope(): string[] {
-    return project ? [valueOf(project)] : (filters.values.project ?? []);
+    return project ? [quote(project)] : (filters.values.project ?? []);
   }
 
   function typed() {
@@ -353,7 +353,7 @@
       shortcuts={shortcutsFor(field)}
       labelOf={(v) => labelOf(field, v)}
       free={FREE.includes(field)
-        ? (s) => (field === 'epic' ? s.toUpperCase() : valueOf(s))
+        ? (s) => (field === 'epic' ? s.toUpperCase() : quote(s))
         : undefined}
       onreset={() => clearField(field)}
       counts={countsFor(field)}

@@ -17,6 +17,8 @@
 // Without SOLSTICE_TEST_DB, every test skips itself, unless
 // SOLSTICE_TEST_REQUIRE_DB is set: then a missing SOLSTICE_TEST_DB or
 // SOLSTICE_TEST_EMPTY_DB fails the run (the integration workflow sets it).
+// The LDAP sign-in test also needs SOLSTICE_TEST_LDAP, the address of
+// compose.yaml's ldap service (ldap://127.0.0.1:1389).
 // The tests change the database: give them a copy made for them, never a real
 // instance.
 package tests
@@ -147,6 +149,19 @@ func (c *client) request(lang, method, path string, body any) (int, []byte) {
 		b, _ := json.Marshal(body)
 		r = bytes.NewReader(b)
 	}
+	return c.send(lang, method, path, r)
+}
+
+// doChunked sends body without a Content-Length, so the client streams it
+// chunked: http.NewRequest sets the length only for the readers it knows.
+func (c *client) doChunked(method, path string, body any) (int, []byte) {
+	c.t.Helper()
+	b, _ := json.Marshal(body)
+	return c.send("", method, path, io.MultiReader(bytes.NewReader(b)))
+}
+
+func (c *client) send(lang, method, path string, r io.Reader) (int, []byte) {
+	c.t.Helper()
 	req, _ := http.NewRequest(method, c.base+path, r)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(csrfHeader, "1")

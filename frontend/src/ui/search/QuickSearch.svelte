@@ -2,7 +2,7 @@
   import { emptyFilters, filtersToJql } from '../../core/filters.js';
   import { searchHref } from '../../core/filters-url.js';
   import { quote, quoteString } from '../../core/jql.js';
-  import { projectOfKey } from '../../core/marks.js';
+  import { isIssueKey } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
   import type { IssueSummary, Project, UserRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
@@ -41,7 +41,7 @@
   let seq = 0;
   const listId = 'quick-search-list';
 
-  const typedKey = $derived(projectOfKey(q) ? q.trim().toUpperCase() : null);
+  const typedKey = $derived(isIssueKey(q) ? q.trim().toUpperCase() : null);
   const projects = $derived(
     q.trim() ? (catalog.projects ?? []).filter((p) => matches(q, p.key, p.name)).slice(0, 3) : [],
   );
@@ -80,7 +80,7 @@
       people = [];
       return;
     }
-    const key = projectOfKey(words) ? words.toUpperCase() : null;
+    const key = isIssueKey(words) ? words.toUpperCase() : null;
     const [byKey, byText, users] = await Promise.all([
       key ? api.issues({ jql: `key = ${quote(key)}`, size: 1 }).catch(() => null) : null,
       api

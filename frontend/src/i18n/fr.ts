@@ -112,7 +112,6 @@ export const fr: Messages = {
     create: 'Nouveau ticket',
     account: 'Compte',
     myPage: 'Ma page',
-    admin: 'Utilisateurs',
     skin: 'Thème',
     skins: {
       carnet: 'Carnet',
@@ -171,7 +170,6 @@ export const fr: Messages = {
     schemes: { light: 'clair', dark: 'sombre' },
     lightOnly: 'Existe en clair seulement.',
     preparing: 'Aperçu en préparation…',
-    unfinished: 'Ce thème est encore en cours de dessin.',
     mock: {
       work: 'Mon travail',
       projects: 'Projets',
@@ -232,19 +230,15 @@ export const fr: Messages = {
     none: 'Aucun',
     noneF: 'Aucune',
     unassigned: 'Non assigné',
-    me: 'Moi',
     seeAll: 'Tout voir',
-    retry: 'Réessayer',
     inactive: 'compte désactivé',
     confidential: 'Confidentiel',
     previous: 'Précédents',
     next: 'Suivants',
     yes: 'oui',
     no: 'non',
-    search: 'Chercher',
     filter: 'Filtrer…',
     ctrlEnter: 'Ctrl + Entrée pour envoyer',
-    of: 'sur',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: '\u00a0: ',
     range: (first: string, last: string, total: string) => `${first}–${last} sur ${total}`,
@@ -343,7 +337,6 @@ export const fr: Messages = {
     intro:
       'Ces règles ne valent que pour ce projet : il n’y a pas de schéma partagé, modifier ici ne touche aucun autre projet.',
     permissions: 'Qui peut faire quoi',
-    holders: 'Bénéficiaires',
     addHolder: 'Ajouter',
     nobody: 'Personne',
     chooseKind: 'Type de bénéficiaire',
@@ -351,12 +344,10 @@ export const fr: Messages = {
     chooseRole: 'Rôle',
     chooseUser: 'Utilisateur',
     roles: 'Rôles dans ce projet',
-    roleMembers: 'Membres',
     noMembers: 'Aucun membre',
     saved: 'Réglages enregistrés.',
     unsaved: 'Modifications non enregistrées',
     discard: 'Annuler les modifications',
-    forbidden: 'Seuls les administrateurs du projet peuvent voir cette page.',
     backToProject: 'Retour au projet',
   },
 
@@ -364,6 +355,54 @@ export const fr: Messages = {
     title: 'Recherche',
     results: (n: number) => plural(n, 'ticket', 'tickets'),
     empty: 'Aucun ticket ne correspond.',
+    columns: {
+      button: 'Colonnes',
+      shown: 'Colonnes affichées',
+      more: 'Autres colonnes',
+      reset: 'Colonnes par défaut',
+    },
+    exportCsv: 'Exporter en CSV',
+    bulk: {
+      select: (key: string) => `Sélectionner ${key}`,
+      selectPage: 'Sélectionner tous les tickets de cette page',
+      selected: (n: number) => `${plural(n, 'ticket sélectionné', 'tickets sélectionnés')}`,
+      actions: 'Modifier les tickets sélectionnés',
+      clear: 'Désélectionner',
+      edit: 'Modifier',
+      transition: 'Changer le statut',
+      move: 'Déplacer',
+      delete: 'Supprimer',
+      editTitle: (n: number) => `Modifier ${plural(n, 'ticket', 'tickets')}`,
+      transitionTitle: (n: number) => `Changer le statut de ${plural(n, 'ticket', 'tickets')}`,
+      moveTitle: (n: number) => `Déplacer ${plural(n, 'ticket', 'tickets')}`,
+      deleteTitle: (n: number) => `Supprimer ${plural(n, 'ticket', 'tickets')} ?`,
+      deleteBody: (n: number) =>
+        `Cela supprime définitivement ${plural(n, 'ticket', 'tickets')}, avec leurs sous-tâches, commentaires et fichiers. C’est irréversible.`,
+      typeToConfirm: (n: number) => `Saisissez ${n} pour confirmer`,
+      deleteSubmit: 'Supprimer',
+      editHint: 'Cochez les champs à modifier ; les autres restent tels quels sur chaque ticket.',
+      change: (field: string) => `Modifier : ${field}`,
+      modes: { add: 'Ajouter', remove: 'Retirer', replace: 'Remplacer tout par' },
+      oneProject:
+        'Les composants et les versions corrigées ne se modifient que si tous les tickets sélectionnés sont dans le même projet.',
+      noSprint: 'Aucun sprint (quitter le sprint ouvert)',
+      noPriority: 'Aucune',
+      status: 'Nouveau statut',
+      statusHint:
+        'Chaque ticket y passe par son propre workflow : ceux qui n’ont pas cette transition restent tels quels.',
+      defaultResolution: 'Celle que fixe le statut',
+      apply: 'Appliquer',
+      done: (n: number) => `${plural(n, 'ticket modifié', 'tickets modifiés')}.`,
+      failed: (n: number) => `${plural(n, 'ticket non modifié', 'tickets non modifiés')}`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'ticket va', 'tickets vont')} passer dans ${project} avec leurs sous-tâches et recevoir une nouvelle clé. Les anciennes clés y mèneront toujours.`,
+      cannotMove: (n: number) =>
+        `${plural(n, 'ticket ne peut', 'tickets ne peuvent')} pas être déplacés`,
+      moveHint:
+        'Les tickets reçoivent une nouvelle clé dans ce projet ; les anciennes clés continuent de fonctionner. Chaque ticket demande la permission Modifier dans son projet et Créer dans le projet cible.',
+      moveChoicesHint: (project: string) =>
+        `${project} n’a pas tout ce qu’utilisent ces tickets. Choisissez ce qu’ils y deviennent ; chaque ticket ne prend que les choix dont il a besoin.`,
+    },
     filters: 'Filtres',
     text: 'Texte recherché',
     textPlaceholder: 'Rechercher dans les tickets…',
@@ -438,7 +477,6 @@ export const fr: Messages = {
     shortcuts: 'Raccourcis',
     categoryOnly: (name: string) => `catégorie ${name}`,
     released: 'livrée',
-    noProject: 'Choisissez un projet pour voir ses valeurs.',
     datePresets: {
       today: 'Aujourd’hui',
       week: 'Cette semaine',
@@ -542,6 +580,8 @@ export const fr: Messages = {
     duringDates: () => 'DURING attend deux dates entre parenthèses.',
     argumentInvalid: (name: string) => `Argument de ${name}() invalide.`,
     valueExpected: () => 'Valeur attendue.',
+    tooLong: (max: number) => `La requête est trop longue (au plus ${max} caractères).`,
+    tooDeep: (max: number) => `La requête est trop imbriquée (au plus ${max} niveaux).`,
   },
   quick: {
     label: 'Recherche rapide',
@@ -598,7 +638,6 @@ export const fr: Messages = {
     assignee: 'Assigné',
     updated: 'Modifié',
     due: 'Échéance',
-    overdue: 'en retard',
   },
 
   issue: {
@@ -640,7 +679,6 @@ export const fr: Messages = {
     created: 'Créé',
     updated: 'Modifié',
     resolved: 'Résolu',
-    resolution: 'Résolution',
     time: 'Temps',
     estimate: 'Estimé',
     remaining: 'Restant',
@@ -652,14 +690,10 @@ export const fr: Messages = {
     customFields: 'Autres champs',
     watch: 'Observer',
     watching: 'Observé',
-    watchers: (n: number) => plural(n, 'observateur', 'observateurs'),
     vote: 'Voter',
     voted: 'Voté',
-    votes: (n: number) => plural(n, 'vote', 'votes'),
-    by: 'par',
     createdBy: (when: string, who: string) => `créé ${when} par ${who}`,
     createdOn: (when: string) => `créé ${when}`,
-    parent: 'Sous-tâche de',
     changeStatus: 'Changer le statut',
     chooseResolution: 'Résolution',
     leaveUnresolved: 'Laisser non résolu',
@@ -724,7 +758,6 @@ export const fr: Messages = {
     send: 'Commenter',
     edited: 'modifié',
     visibleTo: (who: string) => `visible : ${who}`,
-    confirmDelete: 'Supprimer ce commentaire ?',
   },
 
   editor: {
@@ -748,6 +781,7 @@ export const fr: Messages = {
     mention: 'Mentionner quelqu’un',
     undo: 'Annuler la frappe',
     redo: 'Rétablir',
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maj' },
     source: 'Source',
     sourceLabel: 'Balisage wiki',
     tableTools: 'Tableau',
@@ -1027,29 +1061,6 @@ export const fr: Messages = {
     deleted: (name: string) => `Tableau « ${name} » supprimé.`,
   },
 
-  admin: {
-    title: 'Utilisateurs',
-    newUser: 'Nouvel utilisateur',
-    username: 'Identifiant',
-    name: 'Nom affiché',
-    email: 'Adresse e-mail',
-    password: 'Mot de passe',
-    passwordHint: '10 caractères au moins',
-    admin: 'Administrateur',
-    active: 'Actif',
-    state: 'État',
-    noPassword: 'sans mot de passe',
-    resetPassword: 'Nouveau mot de passe',
-    deactivate: 'Désactiver',
-    activate: 'Réactiver',
-    makeAdmin: 'Rendre administrateur',
-    removeAdmin: 'Retirer l’administration',
-    created: 'Compte créé.',
-    updated: 'Compte mis à jour.',
-    forbidden: 'Cette page est réservée aux administrateurs.',
-    since: 'Depuis',
-  },
-
   notFound: {
     title: 'Introuvable',
     back: 'Revenir à mon travail',
@@ -1214,7 +1225,6 @@ export const fr: Messages = {
     intro:
       'Les réglages de tout ce Solstice : comptes, projets, catalogues des tickets, e-mails et intégrations. Seuls les administrateurs voient ces pages.',
     forbidden: 'Cette page est réservée aux administrateurs de Solstice.',
-    nav: 'Sections de l’administration',
     groups: {
       general: 'Général',
       people: 'Utilisateurs et groupes',
@@ -1280,12 +1290,8 @@ export const fr: Messages = {
     copy: 'Copier',
     copied: 'Copié',
     refresh: 'Actualiser',
-    saved: 'Modifications enregistrées.',
-    search: 'Rechercher',
     noMatch: 'Rien ne correspond à cette recherche.',
     clearSearch: 'Effacer la recherche',
-    unavailable:
-      'Ce serveur ne propose pas encore ce réglage : mettez Solstice à jour pour l’utiliser.',
     hideBanner: 'Masquer',
     restricted: {
       comments: (n: number) => plural(n, 'commentaire', 'commentaires'),
@@ -1348,7 +1354,6 @@ export const fr: Messages = {
   },
 
   auditAdmin: {
-    title: 'Journal d’audit',
     intro:
       'Qui s’est connecté, et qui a modifié les comptes, les droits d’accès et les réglages, d’où et quand. Le journal est en lecture seule.',
     count: (n: number) => plural(n, 'entrée', 'entrées'),
@@ -1400,6 +1405,7 @@ export const fr: Messages = {
       priority: 'Priorités',
       resolution: 'Résolutions',
       linktype: 'Types de liens',
+      attachment: 'Pièces jointes',
       field: 'Champs personnalisés',
       settings: 'Réglages',
       import: 'Import Jira',
@@ -1469,6 +1475,7 @@ export const fr: Messages = {
       'filter.share': 'Partage de filtre modifié',
       'issue.delete': 'Ticket supprimé',
       'issue.export': 'Recherche exportée en CSV',
+      'issue.import': 'Tickets importés depuis un CSV',
       'issuetype.create': 'Type de ticket créé',
       'issuetype.update': 'Type de ticket modifié',
       'issuetype.delete': 'Type de ticket supprimé',
@@ -1511,6 +1518,8 @@ export const fr: Messages = {
       'update.result': 'Mise à jour terminée',
       'setup.complete': 'Installation terminée',
       'issue.move': 'Ticket déplacé',
+      'attachment.upload': 'Pièce jointe ajoutée',
+      'attachment.delete': 'Pièce jointe supprimée',
     },
     targets: {
       user: 'Compte',
@@ -1535,6 +1544,7 @@ export const fr: Messages = {
       priority: 'Priorité',
       resolution: 'Résolution',
       linktype: 'Type de lien',
+      attachment: 'Pièce jointe',
     },
     detailKeys: {
       name: 'Nom',
@@ -1559,6 +1569,8 @@ export const fr: Messages = {
       owner: 'Propriétaire',
       version: 'Version',
       status: 'Statut',
+      issue: 'Ticket',
+      size: 'Taille (octets)',
     },
     retention: {
       title: 'Conservation',
@@ -1581,7 +1593,6 @@ export const fr: Messages = {
   },
 
   systemAdmin: {
-    title: 'Informations système',
     intro:
       'Ce qui tourne, où sont les données et ce qui demande de l’attention. Aucun secret n’est affiché ici.',
     solstice: 'Solstice',
@@ -1618,7 +1629,6 @@ export const fr: Messages = {
     projectsArchived: 'Projets archivés',
     issues: 'Tickets',
     comments: 'Commentaires',
-    attachments: 'Pièces jointes',
     mail: 'E-mail',
     mailOn: 'envoi activé',
     mailOff: 'envoi désactivé',
@@ -1666,8 +1676,6 @@ export const fr: Messages = {
     reload: 'Recharger Solstice',
     again: 'Importer de nouveau',
     lastTitle: 'Dernier import',
-    unavailable:
-      'Ce serveur ne sait pas encore importer depuis l’administration : mettez Solstice à jour.',
   },
 
   tokensAdmin: {
@@ -1912,7 +1920,6 @@ export const fr: Messages = {
   account: {
     title: 'Mes réglages',
     menu: 'Mes réglages',
-    nav: 'Sections de mes réglages',
     sections: {
       profile: 'Profil',
       appearance: 'Langue et apparence',
@@ -1931,7 +1938,10 @@ export const fr: Messages = {
     emailHint: 'Sert aussi à vous prévenir et à vous joindre.',
     emailChangeHint: 'Changer l’adresse demande votre mot de passe actuel.',
     passwordTitle: 'Mot de passe',
-    passwordIntro: 'Laissez les champs vides pour garder le mot de passe actuel.',
+    directoryPasswordIntro:
+      'Votre mot de passe est géré par l’annuaire (LDAP) : changez-le là-bas. Tapez-le ici seulement pour changer votre adresse e-mail.',
+    passwordIntro:
+      'Laissez les champs vides pour garder le mot de passe actuel. Un nouveau mot de passe ferme vos autres sessions, et vos jetons d’accès cessent de fonctionner.',
     currentPassword: 'Mot de passe actuel',
     newPassword: 'Nouveau mot de passe',
     confirmPassword: 'Confirmez le mot de passe',
@@ -1939,8 +1949,6 @@ export const fr: Messages = {
     passwordShort: (n: number) => `${n} caractères au moins.`,
     passwordChanged: 'Mot de passe changé.',
     saved: 'Réglages enregistrés.',
-    profileUnsupported:
-      'Ce serveur ne sait pas encore modifier le nom ni l’adresse e-mail : mettez Solstice à jour.',
     picture: 'Image',
     pictureHint:
       'Affichée à côté de votre nom. L’image est recadrée en carré et réduite dans votre navigateur avant l’envoi.',
@@ -2036,6 +2044,8 @@ export const fr: Messages = {
     admin: 'Administrateur',
     inactive: 'désactivé',
     noPassword: 'sans mot de passe',
+    directory: 'LDAP',
+    directoryHint: 'Se connecte avec l’annuaire (LDAP) : son mot de passe se gère là-bas.',
     more: (n: number) => `+${n}`,
     rights: 'Droits',
     adminLabel: 'Administrateur de Solstice (accès à toute l’administration)',
@@ -2052,12 +2062,11 @@ export const fr: Messages = {
     editTitle: (name: string) => `Modifier le compte de ${name}`,
     created: (name: string) => `Compte de ${name} créé.`,
     updated: (name: string) => `Compte de ${name} enregistré.`,
-    edit: 'Modifier',
     deactivate: 'Désactiver',
     activate: 'Réactiver',
     deactivateTitle: (name: string) => `Désactiver le compte de ${name} ?`,
     deactivateBody:
-      'Cette personne ne pourra plus se connecter et ses sessions se ferment tout de suite. Ses tickets, commentaires et historique restent ; vous pourrez réactiver le compte plus tard.',
+      'Cette personne ne pourra plus se connecter, ses sessions se ferment tout de suite et ses jetons d’accès sont supprimés. Ses tickets, commentaires et historique restent ; vous pourrez réactiver le compte plus tard.',
     deactivated: (name: string) => `Compte de ${name} désactivé.`,
     reactivated: (name: string) => `Compte de ${name} réactivé.`,
     passwordTitle: (name: string) => `Nouveau mot de passe pour ${name}`,
@@ -2065,7 +2074,8 @@ export const fr: Messages = {
     generateButton: 'Générer',
     typePassword: 'Saisir le mot de passe',
     newPassword: 'Nouveau mot de passe',
-    sessionsEnd: 'Les sessions ouvertes de cette personne se ferment.',
+    sessionsEnd:
+      'Les sessions ouvertes de cette personne se ferment et ses jetons d’accès cessent de fonctionner.',
     generatedOnce:
       'Transmettez ce mot de passe maintenant : il ne sera plus affiché. La personne pourra le changer dans ses réglages.',
     done: 'C’est noté',
@@ -2273,7 +2283,6 @@ export const fr: Messages = {
     noCategory: 'Sans catégorie',
     category: 'Catégorie',
     issues: 'Tickets',
-    state: 'État',
     archive: 'Archiver',
     unarchive: 'Désarchiver',
     empty: 'Aucun projet pour l’instant',
@@ -2342,7 +2351,6 @@ export const fr: Messages = {
     categoryTitle: (name: string) => `Modifier « ${name} »`,
     categoryName: 'Nom',
     categoryDescription: 'Description',
-    categoryProjects: (n: number) => plural(n, 'projet', 'projets'),
     categoriesEmpty: 'Aucune catégorie pour l’instant.',
     categoryCreated: (name: string) => `Catégorie « ${name} » créée.`,
     categorySaved: (name: string) => `Catégorie « ${name} » enregistrée.`,
@@ -2365,6 +2373,7 @@ export const fr: Messages = {
       components: 'Composants',
       versions: 'Versions',
       notifications: 'Notifications',
+      import: 'Import',
     },
     leaveBody: 'Cet onglet a des modifications non enregistrées. Les abandonner ?',
     general: {
@@ -2473,6 +2482,36 @@ export const fr: Messages = {
       recipient: 'Groupe ou rôle',
       none: 'Il n’y a pas encore de groupe ni de rôle à choisir.',
       cell: (who: string, event: string) => `${who} : ${event}`,
+    },
+    import: {
+      title: 'Importer des tickets',
+      intro:
+        'Créez des tickets dans ce projet à partir d’un fichier CSV, par exemple une recherche exportée. Les colonnes sont reconnues à leur en-tête, dans n’importe quelle langue. Rien n’est écrit avant l’import ; alors toutes les lignes sont créées, ou aucune. L’import n’envoie ni e-mail ni webhook.',
+      limits: (rows: number, mib: number) => `${formatNumber(rows)} lignes et ${mib} Mio au plus.`,
+      file: 'Fichier CSV',
+      checking: 'Vérification du fichier…',
+      columnsTitle: 'Colonnes',
+      column: 'Colonne',
+      field: 'Champ',
+      skip: 'Non importée',
+      readOnly: 'Renseignée par Solstice : non importée',
+      unknown: 'Colonne inconnue : choisissez un champ, ou laissez-la de côté.',
+      fieldFor: (header: string) => `Champ de la colonne ${header}`,
+      rowsTitle: 'Lignes',
+      line: 'Ligne',
+      key: 'Clé dans le fichier',
+      summary: 'Résumé',
+      type: 'Type',
+      status: 'Statut',
+      problems: 'Erreurs',
+      noRows: 'Le fichier n’a aucune ligne.',
+      ready: (n: number) => `${plural(n, 'ligne est prête', 'lignes sont prêtes')}.`,
+      failed: (n: number) =>
+        `${plural(n, 'ligne a', 'lignes ont')} des erreurs : corrigez le fichier ou les colonnes, puis choisissez à nouveau le fichier.`,
+      submit: (n: number) => `Importer ${plural(n, 'ticket', 'tickets')}`,
+      importing: 'Import en cours…',
+      done: (n: number) => `${plural(n, 'ticket créé', 'tickets créés')}.`,
+      again: 'Importer un autre fichier',
     },
   },
 

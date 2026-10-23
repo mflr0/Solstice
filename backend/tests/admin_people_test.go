@@ -199,6 +199,29 @@ func TestGroups(t *testing.T) {
 	admin.call("GET", path, nil, 404, nil)
 }
 
+func TestGroupMembersFailureAddsNone(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	var g struct{ ID int64 }
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": unique("Atomique-")}, 201, &g)
+	path := fmt.Sprintf("/api/admin/groups/%d", g.ID)
+	t.Cleanup(func() { admin.do("DELETE", path, nil) })
+	// The database refuses the second member, after the first was written.
+	trigger := unique("refuse_member_")
+	if _, err := testDB.Exec(fmt.Sprintf(`CREATE TRIGGER %s BEFORE INSERT ON group_members FOR EACH ROW
+		BEGIN IF NEW.group_id = %d AND NEW.user_id = %d THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'refused by the test'; END IF; END`,
+		trigger, g.ID, userID(t, "paul.martin"))); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { testDB.Exec(`DROP TRIGGER IF EXISTS ` + trigger) })
+
+	if status, body := admin.do("POST", path+"/members", map[string]any{"users": []int64{userID(t, "hugo.robert"), userID(t, "paul.martin")}}); status != 500 {
+		t.Errorf("add members: %d %s, want 500", status, body)
+	}
+	if n := dbInt(t, `SELECT COUNT(*) FROM group_members WHERE group_id = ?`, g.ID); n != 0 {
+		t.Errorf("%d members added by a failed request", n)
+	}
+}
+
 func TestRoles(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := login(t, "paul.martin", "motdepasse")

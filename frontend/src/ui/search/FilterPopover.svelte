@@ -6,7 +6,7 @@
   /**
    * A filter's button and the panel it opens: a popover under the button,
    * a sheet at the bottom of the screen on a phone. The button reads
-   * « Statut : En cours, À faire »; a × next to it clears the filter.
+   * "Status: In progress, To do"; a × next to it clears the filter.
    */
   interface Props {
     label: string;
@@ -31,7 +31,8 @@
 
   let button: HTMLButtonElement | undefined = $state();
   let wrap: HTMLDivElement | undefined = $state();
-  const id = `fp-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `fp-${uid}`;
 
   function close(refocus: boolean) {
     if (!open) return;
@@ -67,7 +68,7 @@
     onclick={() => (open ? close(false) : (open = true))}
   >
     <span class="filter-name"
-      >{label}{#if summary}<span class="sep">&nbsp;:</span>{/if}</span
+      >{label}{#if summary}<span class="sep">{t.common.labelSep}</span>{/if}</span
     >
     {#if summary}<span class="filter-value">{summary}</span>{/if}
     <span class="caret" aria-hidden="true">▾</span>

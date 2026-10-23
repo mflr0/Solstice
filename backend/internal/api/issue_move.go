@@ -780,11 +780,21 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 			msg:   i18n.M(i18n.IssueMoveChoiceNeeded, strings.Join(plan.check.Missing, ", ")),
 			extra: map[string]any{"missing": plan.check.Missing}}
 	}
+	newKey, err := s.applyMovePlan(r, sub, orig, plan, &in)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]string{"key": newKey})
+}
 
+// applyMovePlan carries out a ready move plan and returns the issue's new key.
+func (s *Server) applyMovePlan(r *http.Request, sub *perm.Subject, orig *issueRow, plan *movePlan,
+	in *moveInput) (string, error) {
+	ctx := r.Context()
 	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer tx.Rollback()
 	// Someone else may have changed the issue or its sub-tasks since the plan
@@ -793,10 +803,10 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 	var updated time.Time
 	if err := tx.QueryRowContext(ctx, `SELECT project_id, updated_at FROM issues WHERE id = ? FOR UPDATE`, orig.ID).
 		Scan(&project, &updated); err != nil {
-		return err
+		return "", err
 	}
 	if project != orig.ProjectID || !updated.Equal(orig.Updated) {
-		return fail(http.StatusConflict, i18n.IssueMoveChanged)
+		return "", fail(http.StatusConflict, i18n.IssueMoveChanged)
 	}
 	n, changed := 0, false
 	if err := sqlq.Each(ctx, tx, `SELECT id, updated_at FROM issues WHERE parent_id = ? ORDER BY num FOR UPDATE`,
@@ -808,30 +818,30 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 			changed = changed || n >= len(plan.items) || plan.items[n].row.ID != id || !plan.items[n].row.Updated.Equal(at)
 			return err
 		}, orig.ID); err != nil {
-		return err
+		return "", err
 	}
 	if changed || n != len(plan.items)-1 {
-		return fail(http.StatusConflict, i18n.IssueMoveChanged)
+		return "", fail(http.StatusConflict, i18n.IssueMoveChanged)
 	}
 
 	var next int64
 	if err := tx.QueryRowContext(ctx, `SELECT issue_counter + 1 FROM projects WHERE id = ? FOR UPDATE`, plan.dest.id).
 		Scan(&next); err != nil {
-		return err
+		return "", err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE projects SET issue_counter = ? WHERE id = ?`,
 		next+int64(len(plan.items))-1, plan.dest.id); err != nil {
-		return err
+		return "", err
 	}
 	changes := make([][]change, len(plan.items))
 	for i, it := range plan.items {
 		it.num = next + int64(i)
 		if changes[i], err = s.applyMove(ctx, tx, plan, it, sub.UserID, now); err != nil {
-			return err
+			return "", err
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return "", err
 	}
 
 	newKey := plan.dest.key + "-" + strconv.FormatInt(plan.items[0].num, 10)
@@ -843,21 +853,21 @@ func (s *Server) moveIssue(w http.ResponseWriter, r *http.Request) error {
 	if plan.check.Restricted != nil {
 		details["restricted"] = in.Restricted
 	}
-	s.auditLog(r, audit.IssueMove, audit.Target{Type: "issue", ID: strconv.FormatInt(orig.ID, 10), Label: newKey}, details)
+	s.auditLog(r, audit.IssueMove, target("issue", orig.ID, newKey), details)
 
 	// Announced like an edit; pages open on the old key refresh through the
 	// second event, which only those who could see the issue there hear.
 	for i, it := range plan.items {
 		updated, err := s.findIssueByID(ctx, it.row.ID)
 		if err != nil {
-			return err
+			return "", err
 		}
 		e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
 		e.Changes = eventChanges(changes[i])
 		s.emit(e)
 		s.publish(it.row, "issue", sub.UserID)
 	}
-	return writeJSON(w, http.StatusOK, map[string]string{"key": newKey})
+	return newKey, nil
 }
 
 // applyMove writes one issue's move and returns its history lines.
@@ -901,11 +911,16 @@ func (s *Server) applyMove(ctx context.Context, tx *sql.Tx, plan *movePlan, it *
 	}
 	if sqlq.Value(row.AssigneeID) != it.assignee {
 		c := change{field: "assignee"}
+		var err error
 		if row.AssigneeID.Valid {
-			c.oldValue, c.oldString = s.userName(ctx, row.AssigneeID.Int64)
+			if c.oldValue, c.oldString, err = s.userName(ctx, row.AssigneeID.Int64); err != nil {
+				return nil, err
+			}
 		}
 		if who, ok := it.assignee.(int64); ok {
-			c.newValue, c.newString = s.userName(ctx, who)
+			if c.newValue, c.newString, err = s.userName(ctx, who); err != nil {
+				return nil, err
+			}
 		}
 		changes = append(changes, c)
 	}

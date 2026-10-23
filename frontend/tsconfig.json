@@ -20,14 +20,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-
-    "paths": {
-      "$core/*": ["./src/core/*"],
-      "$i18n/*": ["./src/i18n/*"],
-      "$lib/*": ["./src/lib/*"],
-      "$ui/*": ["./src/ui/*"]
-    }
+    "noEmit": true
   },
   "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts", "*.config.ts"],
   "exclude": ["node_modules"]

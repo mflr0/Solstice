@@ -78,9 +78,7 @@ func scanSubscription(sc interface{ Scan(...any) error }) (*Subscription, error)
 			sub.Days = append(sub.Days, n)
 		}
 	}
-	if last.Valid {
-		sub.LastRun = &last.Time
-	}
+	sub.LastRun = sqlq.Time(last)
 	return &sub, nil
 }
 
@@ -299,12 +297,8 @@ func (s *Service) issueTable(loc string, issues []IssueLine, wide bool) table {
 
 // write renders a page into the outbox.
 func (s *Service) write(ctx context.Context, cfg mail.Config, kind string, rc *recipient, p *page) error {
-	html, err := p.html()
-	if err != nil {
-		return err
-	}
 	return s.outbox.Enqueue(ctx, s.db, mail.Message{Kind: kind, UserID: rc.user.ID, To: rc.user.Email,
-		ToName: rc.user.Name, Subject: p.Title, Text: p.text(), HTML: html, MessageID: mail.NewMessageID(cfg.Domain())})
+		ToName: rc.user.Name, Subject: p.Title, Text: p.text(), HTML: p.html(), MessageID: mail.NewMessageID(cfg.Domain())})
 }
 
 // runReminders sends, once a day from the chosen hour, the list of their

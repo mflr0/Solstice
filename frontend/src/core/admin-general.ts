@@ -3,7 +3,7 @@
  * sending, and the change to send (only what differs from what is stored).
  */
 
-import type { Problems } from './admin-forms.js';
+import { tooLong, type Problems } from './admin-forms.js';
 import type {
   BannerSettings,
   GeneralSettings,
@@ -11,7 +11,7 @@ import type {
   SettingSource,
 } from './admin-types.js';
 
-export const NAME_MAX = 100;
+export const INSTANCE_NAME_MAX = 100;
 export const BANNER_MAX = 500;
 export const SESSION_DAYS = { min: 1, max: 365 } as const;
 export const PASSWORD_LENGTH = { min: 8, max: 128 } as const;
@@ -77,7 +77,7 @@ export function generalProblems(
   const out: Problems<keyof GeneralForm, GeneralProblem> = {};
   const name = f.instanceName.trim();
   if (!name) out.instanceName = 'nameRequired';
-  else if ([...name].length > NAME_MAX) out.instanceName = 'nameTooLong';
+  else if (tooLong(name, INSTANCE_NAME_MAX)) out.instanceName = 'nameTooLong';
   if (f.baseURL.trim() && !isBaseURL(f.baseURL)) out.baseURL = 'baseUrlInvalid';
   const tz = f.timeZone.trim();
   if (tz && zones && zones.length > 0 && !zones.includes(tz) && tz !== 'UTC') {

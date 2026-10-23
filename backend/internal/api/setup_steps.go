@@ -240,7 +240,7 @@ func (w *Setup) saveDatabase(rw http.ResponseWriter, r *http.Request) error {
 		w.log.Error("creating the tables failed", "err", err)
 		return failf(http.StatusInternalServerError, i18n.SetupTablesFailed, i18n.M(i18n.RequestInternalError))
 	}
-	if w.db != nil && w.db != conn {
+	if w.db != nil {
 		w.db.Close()
 	}
 	w.db, w.server = conn, p.Server
@@ -342,9 +342,12 @@ func probeSource(ctx context.Context, f *sourceForm, lang string) (*sourceProbe,
 		return nil, sourceError(err, u)
 	}
 	p := &sourceProbe{Engine: engine.String()}
-	for table, n := range map[string]*int{"project": &p.Projects, "jiraissue": &p.Issues, "cwd_user": &p.Users} {
-		if err := src.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table).Scan(n); err != nil {
-			return nil, failf(http.StatusBadRequest, i18n.ImportNotJira, table)
+	for _, c := range []struct {
+		table string
+		n     *int
+	}{{"project", &p.Projects}, {"jiraissue", &p.Issues}, {"cwd_user", &p.Users}} {
+		if err := src.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+c.table).Scan(c.n); err != nil {
+			return nil, failf(http.StatusBadRequest, i18n.ImportNotJira, c.table)
 		}
 	}
 	if f.JiraHome != "" {
@@ -558,7 +561,7 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 	if job == nil || job.view("").State != "done" {
 		return fail(http.StatusConflict, i18n.ImportNotFinished)
 	}
-	like := "%" + escapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
 	out := []setupAccount{}
 	err := sqlq.Each(r.Context(), conn, `SELECT username, display_name, email, is_admin FROM users
 		WHERE active AND password_hash IS NOT NULL
@@ -581,9 +584,6 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 
 // auditSetupComplete is the audit log's entry for the end of setup.
 const auditSetupComplete = "setup.complete"
-
-// minAdminPassword is the shortest password the wizard accepts.
-const minAdminPassword = 12
 
 // createAdmin creates the first administrator, or makes an imported account
 // one, and ends setup.
@@ -614,7 +614,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusConflict, i18n.ImportRunning)
 	}
 	ctx := r.Context()
-	var username string
+	var username, how string
 	if existing := strings.ToLower(strings.TrimSpace(in.Existing)); existing != "" {
 		if !w.imported {
 			return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
@@ -634,7 +634,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 				return fail(http.StatusBadRequest, i18n.SetupAccountNotImported)
 			}
 		}
-		username = existing
+		username, how = existing, "imported account"
 	} else {
 		username = strings.ToLower(strings.TrimSpace(in.Username))
 		name, email := strings.TrimSpace(in.Name), strings.TrimSpace(in.Email)
@@ -647,11 +647,8 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		if a, err := mail.ParseAddress(email); err != nil || a.Address != email || a.Name != "" {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
 		}
-		if utf8Len(in.Password) < minAdminPassword {
-			return failf(http.StatusBadRequest, i18n.AccountPasswordTooShort, minAdminPassword)
-		}
-		if strings.EqualFold(strings.TrimSpace(in.Password), username) {
-			return fail(http.StatusBadRequest, i18n.AccountPasswordIsUsername)
+		if err := passwordRules(in.Password, username, storedPasswordMin(ctx, w.db)); err != nil {
+			return err
 		}
 		hash, err := auth.HashPassword(in.Password)
 		if err != nil {
@@ -659,25 +656,20 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		}
 		if _, err := w.db.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 			VALUES (?, ?, ?, ?, TRUE)`, username, name, email, hash); err != nil {
-			if strings.Contains(err.Error(), "Duplicate") {
+			if isDuplicate(err) {
 				return fail(http.StatusConflict, i18n.AccountUsernameTaken)
 			}
 			return err
 		}
+		how = "created"
 	}
 	var id int64
 	if err := w.db.QueryRowContext(ctx, `SELECT id FROM users WHERE username = ?`, username).Scan(&id); err != nil {
 		return err
 	}
-	how := "created"
-	if in.Existing != "" {
-		how = "imported account"
-	}
-	if err := audit.Record(ctx, w.db, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
-		Action: auditSetupComplete, Target: audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: username},
-		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}}); err != nil {
-		w.log.Error("audit log write failed", "action", auditSetupComplete, "err", err)
-	}
+	record(ctx, w.db, w.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
+		Action: auditSetupComplete, Target: target("user", id, username),
+		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}})
 	out := map[string]any{"username": username, "baseURL": w.baseURL, "tz": w.tz, "imported": w.imported,
 		"server": w.server, "config": w.lastSave}
 	locked = false
@@ -685,5 +677,3 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 	w.finish(username)
 	return writeJSON(rw, http.StatusOK, out)
 }
-
-func utf8Len(s string) int { return len([]rune(s)) }

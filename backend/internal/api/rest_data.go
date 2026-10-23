@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -106,20 +107,22 @@ type issueSet struct {
 
 // Kinds of data loadIssues can fetch.
 const (
-	loadLabels      = "labels"
-	loadComponents  = "components"
-	loadVersions    = "versions"
-	loadLinks       = "links"
-	loadSubtasks    = "subtasks"
-	loadParent      = "parent"
-	loadEpic        = "epic"
-	loadAttachments = "attachments"
-	loadCustom      = "custom"
-	loadSprints     = "sprints"
-	loadWatches     = "watches"
-	loadVotes       = "votes"
-	loadComments    = "comments"
-	loadWorklogs    = "worklogs"
+	loadProjectKinds = "projectKinds"
+	loadLevels       = "levels"
+	loadLabels       = "labels"
+	loadComponents   = "components"
+	loadVersions     = "versions"
+	loadLinks        = "links"
+	loadSubtasks     = "subtasks"
+	loadParent       = "parent"
+	loadEpic         = "epic"
+	loadAttachments  = "attachments"
+	loadCustom       = "custom"
+	loadSprints      = "sprints"
+	loadWatches      = "watches"
+	loadVotes        = "votes"
+	loadComments     = "comments"
+	loadWorklogs     = "worklogs"
 )
 
 // customFields lists the custom fields, by name.
@@ -130,7 +133,7 @@ func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 		if err := rows.Scan(&f.ID, &f.Name, &f.TypeKey); err != nil {
 			return err
 		}
-		f.Kind = fieldKind(f.TypeKey)
+		f.Kind = issue.FieldKind(f.TypeKey)
 		out = append(out, f)
 		return nil
 	})
@@ -138,8 +141,8 @@ func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 }
 
 // fieldOfKind returns the first custom field of a kind (gh-sprint…), if any.
-func fieldOfKind(fields []customFieldDef, kind string) (customFieldDef, bool) {
-	for _, f := range fields {
+func fieldOfKind(custom []customFieldDef, kind string) (customFieldDef, bool) {
+	for _, f := range custom {
 		if f.Kind == kind {
 			return f, true
 		}
@@ -193,10 +196,15 @@ func (s *Server) issuesByID(ctx context.Context, ids []int64) (map[int64]*issueR
 	return out, err
 }
 
+// loader loads one kind of data for a page of issues.
+type loader func(context.Context, *perm.Subject, *issueSet, []int64) error
+
 // loadIssues loads, for issues the user sees, the kinds of data want asks for.
-func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, rows []*issueRow, want func(string) bool) (*issueSet, error) {
-	set := &issueSet{byID: map[int64]*issueData{}, options: map[int64]optionDef{}, levels: map[int64]string{},
-		projectKinds: map[int64]string{}}
+// fields are the custom fields; nil loads them if custom values are asked for.
+func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, fields []customFieldDef, rows []*issueRow,
+	want func(string) bool) (*issueSet, error) {
+	set := &issueSet{byID: map[int64]*issueData{}, fields: fields, options: map[int64]optionDef{},
+		levels: map[int64]string{}, projectKinds: map[int64]string{}}
 	var ids []int64
 	for _, r := range rows {
 		d := &issueData{row: r, labels: []string{}, custom: map[int64][]customRaw{}, customLabels: map[int64][]string{}}
@@ -204,43 +212,27 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, rows []*issu
 		set.byID[r.ID] = d
 		ids = append(ids, r.ID)
 	}
-	var err error
-	if set.fields, err = s.customFields(ctx); err != nil {
-		return nil, err
-	}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, kind FROM projects`, func(rows *sql.Rows) error {
-		var id int64
-		var kind string
-		if err := rows.Scan(&id, &kind); err != nil {
-			return err
+	if set.fields == nil && want(loadCustom) {
+		var err error
+		if set.fields, err = s.customFields(ctx); err != nil {
+			return nil, err
 		}
-		set.projectKinds[id] = kind
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels`, func(rows *sql.Rows) error {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return err
-		}
-		set.levels[id] = name
-		return nil
-	}); err != nil {
-		return nil, err
 	}
 	if len(ids) == 0 {
 		return set, nil
 	}
 	for _, step := range []struct {
 		kind string
-		load func(context.Context, *perm.Subject, *issueSet, []int64) error
+		load loader
 	}{
+		{loadProjectKinds, s.loadProjectKinds}, {loadLevels, s.loadLevels},
 		{loadLabels, s.loadLabels}, {loadComponents, s.loadComponents}, {loadVersions, s.loadVersions},
-		{loadLinks, s.loadLinks}, {loadSubtasks, s.loadSubtasks}, {loadParent, s.loadParents},
-		{loadEpic, s.loadEpics}, {loadAttachments, s.loadAttachments}, {loadCustom, s.loadCustom},
-		{loadSprints, s.loadSprints}, {loadWatches, s.loadCounter("watchers")}, {loadVotes, s.loadCounter("votes")},
+		{loadLinks, s.loadLinks}, {loadSubtasks, s.loadSubtasks},
+		{loadParent, s.loadIssueRef(func(d *issueData) (sql.NullInt64, **issueRow) { return d.row.ParentID, &d.parent })},
+		{loadEpic, s.loadIssueRef(func(d *issueData) (sql.NullInt64, **issueRow) { return d.row.EpicID, &d.epic })},
+		{loadAttachments, s.loadAttachments}, {loadCustom, s.loadCustom}, {loadSprints, s.loadSprints},
+		{loadWatches, s.loadCounter("watchers", func(d *issueData) *counter { return &d.watches })},
+		{loadVotes, s.loadCounter("votes", func(d *issueData) *counter { return &d.votes })},
 		{loadComments, s.loadComments}, {loadWorklogs, s.loadWorklogs},
 	} {
 		if want(step.kind) {
@@ -250,6 +242,30 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, rows []*issu
 		}
 	}
 	return set, nil
+}
+
+func (s *Server) loadProjectKinds(ctx context.Context, _ *perm.Subject, set *issueSet, _ []int64) error {
+	return sqlq.Each(ctx, s.db, `SELECT id, kind FROM projects`, func(rows *sql.Rows) error {
+		var id int64
+		var kind string
+		if err := rows.Scan(&id, &kind); err != nil {
+			return err
+		}
+		set.projectKinds[id] = kind
+		return nil
+	})
+}
+
+func (s *Server) loadLevels(ctx context.Context, _ *perm.Subject, set *issueSet, _ []int64) error {
+	return sqlq.Each(ctx, s.db, `SELECT id, name FROM security_levels`, func(rows *sql.Rows) error {
+		var id int64
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return err
+		}
+		set.levels[id] = name
+		return nil
+	})
 }
 
 func (s *Server) loadLabels(ctx context.Context, _ *perm.Subject, set *issueSet, ids []int64) error {
@@ -367,38 +383,27 @@ func (s *Server) loadSubtasks(ctx context.Context, sub *perm.Subject, set *issue
 	})
 }
 
-func (s *Server) loadParents(ctx context.Context, sub *perm.Subject, set *issueSet, _ []int64) error {
-	var ids []int64
-	for _, d := range set.list {
-		ids = append(ids, d.row.ParentID.Int64)
-	}
-	rows, err := s.issuesByID(ctx, ids)
-	if err != nil {
-		return err
-	}
-	for _, d := range set.list {
-		if p, ok := rows[d.row.ParentID.Int64]; ok && d.row.ParentID.Valid && sub.CanSee(p.perm()) {
-			d.parent = p
+// loadIssueRef loads the issue each issue refers to (ref: the id and where to
+// put it), if the user sees it.
+func (s *Server) loadIssueRef(ref func(*issueData) (sql.NullInt64, **issueRow)) loader {
+	return func(ctx context.Context, sub *perm.Subject, set *issueSet, _ []int64) error {
+		var ids []int64
+		for _, d := range set.list {
+			id, _ := ref(d)
+			ids = append(ids, id.Int64)
 		}
-	}
-	return nil
-}
-
-func (s *Server) loadEpics(ctx context.Context, sub *perm.Subject, set *issueSet, _ []int64) error {
-	var ids []int64
-	for _, d := range set.list {
-		ids = append(ids, d.row.EpicID.Int64)
-	}
-	rows, err := s.issuesByID(ctx, ids)
-	if err != nil {
-		return err
-	}
-	for _, d := range set.list {
-		if e, ok := rows[d.row.EpicID.Int64]; ok && d.row.EpicID.Valid && sub.CanSee(e.perm()) {
-			d.epic = e
+		rows, err := s.issuesByID(ctx, ids)
+		if err != nil {
+			return err
 		}
+		for _, d := range set.list {
+			id, dst := ref(d)
+			if r, ok := rows[id.Int64]; ok && id.Valid && sub.CanSee(r.perm()) {
+				*dst = r
+			}
+		}
+		return nil
 	}
-	return nil
 }
 
 func (s *Server) loadAttachments(ctx context.Context, _ *perm.Subject, set *issueSet, ids []int64) error {
@@ -419,6 +424,10 @@ func (s *Server) loadAttachments(ctx context.Context, _ *perm.Subject, set *issu
 // loadCustom loads custom field values, the options they name, and the
 // labels of labels-type fields.
 func (s *Server) loadCustom(ctx context.Context, _ *perm.Subject, set *issueSet, ids []int64) error {
+	kinds := map[int64]string{}
+	for _, f := range set.fields {
+		kinds[f.ID] = f.Kind
+	}
 	optionIDs := map[int64]bool{}
 	if err := s.scanIn(ctx, ids, func(in string) string {
 		return `SELECT issue_id, field_id, parent_key, string_value, number_value, text_value, date_value
@@ -430,7 +439,7 @@ func (s *Server) loadCustom(ctx context.Context, _ *perm.Subject, set *issueSet,
 			return err
 		}
 		set.byID[id].custom[field] = append(set.byID[id].custom[field], v)
-		if n, err := strconv.ParseInt(v.str.String, 10, 64); err == nil {
+		if n, err := strconv.ParseInt(v.str.String, 10, 64); err == nil && optionKind(kinds[field]) {
 			optionIDs[n] = true
 		}
 		return nil
@@ -484,21 +493,15 @@ func (s *Server) loadSprints(ctx context.Context, _ *perm.Subject, set *issueSet
 			return err
 		}
 		sp.Goal = sqlq.String(goal)
-		sp.Start, sp.End, sp.Completed = nullTime(start), nullTime(end), nullTime(done)
+		sp.Start, sp.End, sp.Completed = sqlq.Time(start), sqlq.Time(end), sqlq.Time(done)
 		set.byID[id].sprints = append(set.byID[id].sprints, sp)
 		return nil
 	})
 }
 
-func nullTime(t sql.NullTime) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-	return &t.Time
-}
-
-// loadCounter counts watchers or votes, and whether the user is among them.
-func (s *Server) loadCounter(table string) func(context.Context, *perm.Subject, *issueSet, []int64) error {
+// loadCounter counts watchers or votes (table), and whether the user is among
+// them, into the counter dst picks.
+func (s *Server) loadCounter(table string, dst func(*issueData) *counter) loader {
 	return func(ctx context.Context, sub *perm.Subject, set *issueSet, ids []int64) error {
 		return s.scanIn(ctx, ids, func(in string) string {
 			return `SELECT issue_id, COUNT(*), COALESCE(SUM(user_id = ?), 0) FROM ` + table + `
@@ -509,11 +512,7 @@ func (s *Server) loadCounter(table string) func(context.Context, *perm.Subject, 
 			if err := rows.Scan(&id, &c.Count, &c.Me); err != nil {
 				return err
 			}
-			if table == "watchers" {
-				set.byID[id].watches = c
-			} else {
-				set.byID[id].votes = c
-			}
+			*dst(set.byID[id]) = c
 			return nil
 		}, sub.UserID)
 	}

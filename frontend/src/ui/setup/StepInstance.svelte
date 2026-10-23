@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { guessBaseURL } from '../../core/setup.js';
+  import { guessBaseURL, wizardTimeZone } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import {
     setupApi,
@@ -18,12 +18,11 @@
   }
   const { m, status, onsaved, onback }: Props = $props();
 
-  const browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
   // Prefilled once, from the server's settings or the browser's.
   // svelte-ignore state_referenced_locally
   let baseURL = $state(status.baseURL || guessBaseURL(location.origin));
   // svelte-ignore state_referenced_locally
-  let tz = $state(status.tz && status.tz !== 'Local' ? status.tz : browserTZ);
+  let tz = $state(wizardTimeZone(status.tz));
   let saving = $state(false);
   let error = $state('');
   let unsaved = $state<ConfigSave | null>(null);
@@ -37,7 +36,7 @@
       if (res.config.written) onsaved(res.config);
       else unsaved = res.config;
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       saving = false;
     }

@@ -100,7 +100,11 @@ func TestKeys(t *testing.T) {
 		"SOLSTICE_DB_URL", "SOLSTICE_DB_MAXOPENCONNS", "SOLSTICE_DB_MAXIDLECONNS", "SOLSTICE_DB_CONNMAXLIFETIME",
 		"SOLSTICE_LOG_LEVEL", "SOLSTICE_LOG_FORMAT",
 		"SOLSTICE_HTTP_ADDR", "SOLSTICE_HTTP_BASEURL", "SOLSTICE_HTTP_TRUSTEDPROXIES", "SOLSTICE_HTTP_SHUTDOWNTIMEOUT",
-		"SOLSTICE_HTTP_MAXUPLOAD", "SOLSTICE_HTTP_MAXSTORAGE"}
+		"SOLSTICE_HTTP_MAXUPLOAD", "SOLSTICE_HTTP_MAXSTORAGE",
+		"SOLSTICE_LDAP_URL", "SOLSTICE_LDAP_STARTTLS", "SOLSTICE_LDAP_INSECURE", "SOLSTICE_LDAP_CAFILE",
+		"SOLSTICE_LDAP_BINDDN", "SOLSTICE_LDAP_BINDPASSWORD", "SOLSTICE_LDAP_USERBASE", "SOLSTICE_LDAP_USERFILTER",
+		"SOLSTICE_LDAP_NAMEATTR", "SOLSTICE_LDAP_EMAILATTR", "SOLSTICE_LDAP_GROUPBASE", "SOLSTICE_LDAP_GROUPFILTER",
+		"SOLSTICE_LDAP_GROUPNAMEATTR", "SOLSTICE_LDAP_REQUIREGROUP", "SOLSTICE_LDAP_ADMINGROUP", "SOLSTICE_LDAP_TIMEOUT"}
 	if !reflect.DeepEqual(Keys, want) {
 		t.Errorf("got %v\nwant %v", Keys, want)
 	}
@@ -130,6 +134,22 @@ func TestLoadEverySetting(t *testing.T) {
 		"SOLSTICE_HTTP_SHUTDOWNTIMEOUT": "30s",
 		"SOLSTICE_HTTP_MAXUPLOAD":       "1GiB",
 		"SOLSTICE_HTTP_MAXSTORAGE":      "10GiB",
+		"SOLSTICE_LDAP_URL":             "ldap://ldap.example:389",
+		"SOLSTICE_LDAP_STARTTLS":        "true",
+		"SOLSTICE_LDAP_INSECURE":        "false",
+		"SOLSTICE_LDAP_CAFILE":          "/etc/ssl/ldap.pem",
+		"SOLSTICE_LDAP_BINDDN":          "cn=solstice,dc=example",
+		"SOLSTICE_LDAP_BINDPASSWORD":    "pw",
+		"SOLSTICE_LDAP_USERBASE":        "ou=people,dc=example",
+		"SOLSTICE_LDAP_USERFILTER":      "(sAMAccountName={username})",
+		"SOLSTICE_LDAP_NAMEATTR":        "cn",
+		"SOLSTICE_LDAP_EMAILATTR":       "userPrincipalName",
+		"SOLSTICE_LDAP_GROUPBASE":       "ou=groups,dc=example",
+		"SOLSTICE_LDAP_GROUPFILTER":     "(memberUid={username})",
+		"SOLSTICE_LDAP_GROUPNAMEATTR":   "sAMAccountName",
+		"SOLSTICE_LDAP_REQUIREGROUP":    "staff",
+		"SOLSTICE_LDAP_ADMINGROUP":      "it",
+		"SOLSTICE_LDAP_TIMEOUT":         "3s",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -142,6 +162,11 @@ func TestLoadEverySetting(t *testing.T) {
 		HTTP: HTTPSettings{Addr: "127.0.0.1:9000", BaseURL: "https://t.example",
 			TrustedProxies: Proxies{netip.MustParsePrefix("10.0.0.0/8")}, ShutdownTimeout: 30 * time.Second,
 			MaxUpload: 1 << 30, MaxStorage: 10 << 30},
+		LDAP: LDAPSettings{URL: "ldap://ldap.example:389", StartTLS: true, CAFile: "/etc/ssl/ldap.pem",
+			BindDN: "cn=solstice,dc=example", BindPassword: "pw", UserBase: "ou=people,dc=example",
+			UserFilter: "(sAMAccountName={username})", NameAttr: "cn", EmailAttr: "userPrincipalName",
+			GroupBase: "ou=groups,dc=example", GroupFilter: "(memberUid={username})", GroupNameAttr: "sAMAccountName",
+			RequireGroup: "staff", AdminGroup: "it", Timeout: 3 * time.Second},
 	}
 	if !reflect.DeepEqual(c.Settings, want) {
 		t.Errorf("got %+v\nwant %+v", c.Settings, want)
@@ -194,6 +219,48 @@ func TestCheckRefusesNegativeSizes(t *testing.T) {
 	s.HTTP.MaxStorage = 0
 	if err := s.check(); err != nil {
 		t.Errorf("no storage limit: %v", err)
+	}
+}
+
+func TestCheckLDAP(t *testing.T) {
+	base := func() Settings {
+		s := Defaults()
+		s.LDAP.URL, s.LDAP.UserBase = "ldaps://ldap.example", "dc=example"
+		return s
+	}
+	for _, ok := range []func(*LDAPSettings){
+		func(l *LDAPSettings) { l.URL = "" },
+		func(*LDAPSettings) {},
+		func(l *LDAPSettings) { l.URL, l.StartTLS = "ldap://ldap.example", true },
+		func(l *LDAPSettings) { l.URL, l.Insecure = "ldap://ldap.example", true },
+	} {
+		s := base()
+		ok(&s.LDAP)
+		if err := s.check(); err != nil {
+			t.Errorf("%+v: %v", s.LDAP, err)
+		}
+	}
+	for key, bad := range map[string]func(*LDAPSettings){
+		"SOLSTICE_LDAP_URL":           func(l *LDAPSettings) { l.URL = "https://ldap.example" },
+		"SOLSTICE_LDAP_STARTTLS":      func(l *LDAPSettings) { l.URL = "ldap://ldap.example" },
+		"SOLSTICE_LDAP_USERBASE":      func(l *LDAPSettings) { l.UserBase = "" },
+		"SOLSTICE_LDAP_USERFILTER":    func(l *LDAPSettings) { l.UserFilter = "(uid=*)" },
+		"SOLSTICE_LDAP_GROUPFILTER":   func(l *LDAPSettings) { l.GroupFilter = "" },
+		"SOLSTICE_LDAP_GROUPNAMEATTR": func(l *LDAPSettings) { l.GroupNameAttr = "" },
+		"SOLSTICE_LDAP_BINDDN":        func(l *LDAPSettings) { l.BindPassword = "pw" },
+		"SOLSTICE_LDAP_TIMEOUT":       func(l *LDAPSettings) { l.Timeout = 0 },
+	} {
+		s := base()
+		bad(&s.LDAP)
+		if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), key+":") {
+			t.Errorf("%s: %v, want an error naming the key", key, err)
+		}
+	}
+	// ldaps:// is TLS already: StartTLS on top of it is a mistake.
+	s := base()
+	s.LDAP.StartTLS = true
+	if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), "SOLSTICE_LDAP_STARTTLS:") {
+		t.Errorf("ldaps + StartTLS: %v", err)
 	}
 }
 
@@ -382,5 +449,51 @@ func TestLoadTrustedProxies(t *testing.T) {
 	write(t, path, key+"=not-an-address\n")
 	if _, err = Load(env(map[string]string{KeyConfig: path})); err == nil || !strings.Contains(err.Error(), key) {
 		t.Errorf("file: %v, want an error naming %s", err, key)
+	}
+}
+
+// The exact result of Load where the environment and the file meet.
+func TestLoadExact(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "solstice.conf")
+
+	// An empty variable falls through to the file, whose error names the file.
+	write(t, path, "SOLSTICE_TZ=Mars/Olympus\n")
+	_, err := Load(env(map[string]string{KeyConfig: path, KeyTZ: ""}))
+	if want := KeyTZ + ` in ` + path + `: unknown time zone "Mars/Olympus"`; err == nil || err.Error() != want {
+		t.Errorf("empty variable over a bad file value: %v, want %q", err, want)
+	}
+
+	// The environment wins over the file, even with a bad file value.
+	c, err := Load(env(map[string]string{KeyConfig: path, KeyTZ: "UTC"}))
+	if err != nil || c.TZ.String() != "UTC" {
+		t.Errorf("variable over the file: %v, %v", c, err)
+	}
+
+	// Unknown keys: every key of the file, the SOLSTICE_ variables only, each
+	// once, sorted.
+	write(t, path, "SOLSTICE_TYPO=1\nEMPTY=\nSOLSTICE_ALSO=2\n")
+	c, err = Load(env(map[string]string{KeyConfig: path, "SOLSTICE_TYPO": "1", "SOLSTICE_ZETA": "", "OTHER": "1",
+		"SOLSTICE_TEST_DB": "x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"EMPTY", "SOLSTICE_ALSO", "SOLSTICE_TYPO", "SOLSTICE_ZETA"}; !slices.Equal(c.Unknown, want) ||
+		c.Path != path || !c.Exists {
+		t.Errorf("unknown keys %q, path %q, exists %v; want %q, %q, true", c.Unknown, c.Path, c.Exists, want, path)
+	}
+
+	// A named file that does not exist yet.
+	absent := filepath.Join(dir, "absent.conf")
+	c, err = Load(env(map[string]string{KeyConfig: absent}))
+	if err != nil || c.Path != absent || c.Exists || c.Unknown != nil {
+		t.Errorf("absent file: %+v, %v", c, err)
+	}
+
+	// A malformed file.
+	write(t, path, "nonsense\n")
+	_, err = Load(env(map[string]string{KeyConfig: path}))
+	if want := path + ": line 1: expected KEY=value"; err == nil || err.Error() != want {
+		t.Errorf("malformed file: %v, want %q", err, want)
 	}
 }

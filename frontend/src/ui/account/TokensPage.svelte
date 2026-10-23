@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { isoDay, tokenExpiry, tokenProblems, type ExpiryChoice } from '../../core/admin-forms.js';
+  import { tokenExpiry, tokenProblems, type ExpiryChoice } from '../../core/admin-forms.js';
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
   import type { AccessToken } from '../../core/admin-types.js';
+  import { isoDay } from '../../core/dates.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
-  import { ApiError, errorMessage } from '../../lib/api.js';
+  import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import CopyField from '../CopyField.svelte';
@@ -49,11 +50,7 @@
     accountApi
       .tokenPolicy()
       .then((p) => (canCreate = p.canCreate))
-      .catch((e: unknown) => {
-        // An older server has no policy: creating is offered, the server decides.
-        if (e instanceof ApiError && e.status === 404) canCreate = true;
-        else canCreate = null;
-      });
+      .catch(() => (canCreate = null));
   });
 
   async function create(e: SubmitEvent) {

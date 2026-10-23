@@ -185,9 +185,10 @@ relancé.
   Software sont lus.
 - Les mots de passe des comptes d'un annuaire externe (LDAP et similaires), ou
   stockés dans un ancien format. Ces comptes sont importés sans mot de passe.
-  Le rapport compte les comptes actifs concernés. Définissez-en un avec
-  `solstice user passwd -username NOM`, ou envoyez un lien de réinitialisation
-  depuis l'administration.
+  Le rapport compte les comptes actifs concernés. Activez la connexion LDAP
+  (voir [l'administration](administration.md#ldap-et-active-directory)),
+  définissez-en un avec `solstice user passwd -username NOM`, ou envoyez un
+  lien de réinitialisation depuis l'administration.
 - Les fichiers des pièces jointes, quand `-jira-home` n'est pas donné. Le
   rapport le dit. Relancez l'import avec `-jira-home`, ou acceptez que ces
   fichiers manquent : leurs entrées répondent 404 au téléchargement.

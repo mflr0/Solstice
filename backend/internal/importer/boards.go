@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/jiradb"
 	"solstice/internal/jql"
 	"solstice/internal/sqlq"
@@ -21,9 +22,9 @@ import (
 func (r *run) aoSelect(table string, cols ...string) string {
 	quoted := make([]string, len(cols))
 	for i, c := range cols {
-		quoted[i] = r.quote(c)
+		quoted[i] = r.engine.Quote(c)
 	}
-	return "SELECT " + strings.Join(quoted, ", ") + " FROM " + r.quote(table)
+	return "SELECT " + strings.Join(quoted, ", ") + " FROM " + r.engine.Quote(table)
 }
 
 // hasTable tells whether the Jira database has a table (case-insensitive).
@@ -44,7 +45,7 @@ func (r *run) hasTable(table string) bool {
 // optional returns the column quoted if the table has it, NULL otherwise.
 func (r *run) optional(table, column string) string {
 	if r.hasColumn(table, column) {
-		return r.quote(column)
+		return r.engine.Quote(column)
 	}
 	return "NULL"
 }
@@ -373,7 +374,7 @@ func (r *run) importRanks() error {
 	}
 	var rankField int64
 	for id, typeKey := range r.fields {
-		if fieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
+		if issue.FieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
 			rankField = id
 		}
 	}

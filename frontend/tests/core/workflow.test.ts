@@ -6,7 +6,6 @@ import {
   addStatus,
   byCategory,
   cell,
-  defaultName,
   isDirty,
   matrix,
   moveStatus,
@@ -15,6 +14,7 @@ import {
   searchStatuses,
   statusNamed,
   strandedOf,
+  suggestDefaultRemap,
   suggestRemap,
   toDraft,
   toggleCell,
@@ -139,7 +139,6 @@ describe('toggleCell', () => {
     expect(cell(list, '10001', '10000')).toEqual([
       { key: 'new:10001>10000', id: null, name: 'To Do', from: '10001', to: '10000' },
     ]);
-    expect(defaultName(REVIEW)).toBe('In Review');
   });
 
   it('adds "from any status" transitions', () => {
@@ -334,6 +333,17 @@ describe('issue types going back to the default workflow', () => {
     expect(strandedDefaultOf({ stranded: [] })).toBeNull();
     expect(strandedDefaultOf({ strandedDefault: [], defaultWorkflow: {} })).toBeNull();
     expect(strandedDefaultOf(null)).toBeNull();
+  });
+
+  it('suggests their moves from the default workflow statuses', () => {
+    const d = {
+      stranded: [{ status: blocked, count: 2 }],
+      workflow: { id: 4, name: 'Logiciel', statuses: [todo, doing] },
+    };
+    expect(suggestDefaultRemap(d)).toEqual({ '20': '3' });
+    expect(suggestDefaultRemap({ ...d, workflow: { ...d.workflow, statuses: [todo] } })).toEqual({
+      '20': '1',
+    });
   });
 
   it('sends their moves as remapDefault, only when there are some', () => {

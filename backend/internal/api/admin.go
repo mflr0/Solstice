@@ -10,12 +10,13 @@ import (
 	netmail "net/mail"
 	"regexp"
 
+	"github.com/go-sql-driver/mysql"
+
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/mail"
 	"solstice/internal/sqlq"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -28,6 +29,7 @@ type adminUser struct {
 	Active      bool       `json:"active"`
 	Admin       bool       `json:"admin"`
 	HasPassword bool       `json:"hasPassword"`
+	Directory   string     `json:"directory"` // "ldap", "" for a local account
 	Created     time.Time  `json:"created"`
 	LastLogin   *time.Time `json:"lastLogin"`
 	Groups      []idName   `json:"groups"`
@@ -47,28 +49,18 @@ func validEmail(s string) bool {
 	return err == nil && a.Address == s && a.Name == ""
 }
 
-// endSessions signs a user out everywhere, except the session whose token
-// hash is keep ("" for none).
-func (s *Server) endSessions(ctx context.Context, userID int64, keep string) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep)
-	return err
-}
-
-const adminUserColumns = `id, username, display_name, email, active, is_admin, password_hash IS NOT NULL, created_at,
-	last_login_at`
+const adminUserColumns = `id, username, display_name, email, active, is_admin, password_hash IS NOT NULL, directory,
+	created_at, last_login_at`
 
 func scanAdminUser(sc interface{ Scan(...any) error }) (adminUser, error) {
 	var u adminUser
 	var last sql.NullTime
-	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Created, &last)
-	if last.Valid {
-		u.LastLogin = &last.Time
-	}
+	err := sc.Scan(&u.ID, &u.Username, &u.Name, &u.Email, &u.Active, &u.Admin, &u.HasPassword, &u.Directory, &u.Created, &last)
+	u.LastLogin = sqlq.Time(last)
 	u.Groups = []idName{}
 	return u, err
 }
 
-// withGroups fills the groups of the users listed.
 func (s *Server) withGroups(ctx context.Context, users []adminUser) error {
 	if len(users) == 0 {
 		return nil
@@ -96,7 +88,7 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	like := "%" + escapeLike(q) + "%"
+	like := "%" + sqlq.EscapeLike(q) + "%"
 	out := []adminUser{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT `+adminUserColumns+` FROM users
 		WHERE username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?
@@ -142,9 +134,9 @@ func (s *Server) adminGetUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	u, err := s.adminUserByID(r.Context(), id)
 	if err != nil {
@@ -154,6 +146,26 @@ func (s *Server) adminGetUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._@-]{0,99}$`)
+
+// The account rules, for the command line, which creates accounts without the API.
+
+// ValidUsername tells whether a lowercased login may name a new account.
+func ValidUsername(login string) bool { return usernamePattern.MatchString(login) }
+
+// ValidEmail tells whether s is a bare address an account may have.
+func ValidEmail(s string) bool { return validEmail(s) }
+
+// PasswordRules applies the password policy, minLen being the instance's minimum.
+func PasswordRules(password, username string, minLen int) error {
+	return passwordRules(password, username, minLen)
+}
+
+// StoredPasswordMin is the instance's minimum password length, the default
+// when the setting is absent or unreadable.
+func StoredPasswordMin(ctx context.Context, db *sql.DB) int { return storedPasswordMin(ctx, db) }
+
+// IsDuplicate tells a unique key violation.
+func IsDuplicate(err error) bool { return isDuplicate(err) }
 
 func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
@@ -198,7 +210,7 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusConflict, i18n.AccountMailUnavailable)
 		}
 	} else {
-		if err := s.checkNewPassword(ctx, in.Password); err != nil {
+		if err := s.checkNewPassword(ctx, in.Password, in.Username); err != nil {
 			return err
 		}
 		h, err := auth.HashPassword(in.Password)
@@ -241,10 +253,10 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	s.auditUserCreated(r, id)
 	if in.Invite {
 		s.out.outbox.Wake()
-		s.auditLog(r, audit.UserInvite, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: in.Username}, nil)
+		s.auditLog(r, audit.UserInvite, target("user", id, in.Username), nil)
 	}
 	if len(in.Groups) > 0 {
-		s.auditLog(r, audit.GroupMembers, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: in.Username},
+		s.auditLog(r, audit.GroupMembers, target("user", id, in.Username),
 			map[string]any{"groups": s.groupNames(ctx, in.Groups)})
 	}
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
@@ -254,9 +266,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Name     *string `json:"name"`
@@ -268,7 +280,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if id == currentUser(r).ID && ((in.Active != nil && !*in.Active) || (in.Admin != nil && !*in.Admin)) {
+	me := currentUser(r)
+	self := id == me.ID
+	if self && ((in.Active != nil && !*in.Active) || (in.Admin != nil && !*in.Admin)) {
 		return fail(http.StatusBadRequest, i18n.AccountOwnAdminRights)
 	}
 	ctx := r.Context()
@@ -279,19 +293,32 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	if exists == 0 {
 		return errNotFound
 	}
+	before, err := s.userSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	emailChanged := in.Email != nil && strings.TrimSpace(*in.Email) != before.Email
+	// The profile asks for the current password before changing either, and
+	// refuses a token: this path must not get around that.
+	switch {
+	case self && in.Password != nil:
+		return fail(http.StatusBadRequest, i18n.AccountOwnPasswordInProfile)
+	case self && emailChanged:
+		return fail(http.StatusBadRequest, i18n.AccountOwnEmailInProfile)
+	case me.TokenID != 0 && in.Password != nil:
+		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
+	case me.TokenID != 0 && emailChanged:
+		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
+	}
 	if in.Email != nil {
 		if email := strings.TrimSpace(*in.Email); email != "" && !validEmail(email) {
 			return fail(http.StatusBadRequest, i18n.AccountEmailInvalid)
 		}
 	}
 	if in.Password != nil {
-		if err := s.checkNewPassword(ctx, *in.Password); err != nil {
+		if err := s.checkNewPassword(ctx, *in.Password, before.Username); err != nil {
 			return err
 		}
-	}
-	before, err := s.userSnapshot(ctx, id)
-	if err != nil {
-		return err
 	}
 	var hash string
 	if in.Password != nil {
@@ -314,18 +341,21 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		// Links mailed to the old address must not work once it is not theirs.
-		if strings.TrimSpace(*in.Email) != before.Email {
+		if emailChanged {
 			if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
 				return err
 			}
 		}
 	}
+	var revoked int64
 	if in.Active != nil {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET active = ? WHERE id = ?`, *in.Active, id); err != nil {
 			return err
 		}
-		if !*in.Active {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
+		// A reactivated account starts clean too: an import deactivates
+		// accounts without ending anything.
+		if *in.Active != before.Active {
+			if revoked, err = auth.EndCredentials(ctx, tx, id, ""); err != nil {
 				return err
 			}
 		}
@@ -336,24 +366,17 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if in.Password != nil {
-		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, id); err != nil {
+		n, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+		if err != nil {
 			return err
 		}
-		if err := auth.RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
-			return err
-		}
-		// A new password signs out every session opened with the old one.
-		if id != currentUser(r).ID {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, id); err != nil {
-				return err
-			}
-		}
+		revoked += n
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditUserChange(r, id, before, in.Password != nil)
+	s.auditUserChange(r, id, before, in.Password != nil, revoked)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -365,9 +388,9 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Method string `json:"method"`
@@ -395,13 +418,24 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	password := base64.RawURLEncoding.EncodeToString(raw)[:n]
-	if err := auth.SetPassword(ctx, s.db, id, password); err != nil {
+	hash, err := auth.HashPassword(password)
+	if err != nil {
 		return err
 	}
-	if err := s.endSessions(ctx, id, ""); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
 		return err
 	}
-	s.auditLog(r, audit.PasswordReset, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username}, nil)
+	defer tx.Rollback()
+	revoked, err := auth.SetPasswordHash(ctx, tx, id, hash, "")
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.auditLog(r, audit.PasswordReset, target("user", id, u.Username),
+		map[string]any{"revokedAccessTokens": revoked})
 	return writeJSON(w, http.StatusOK, map[string]string{"password": password})
 }
 
@@ -410,9 +444,9 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := pathID(r, "id")
 	if err != nil {
-		return errNotFound
+		return err
 	}
 	var in struct {
 		Groups []int64 `json:"groups"`
@@ -450,8 +484,8 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.perms.Invalidate()
 	from, to := s.groupNames(ctx, before), s.groupNames(ctx, in.Groups)
-	if strings.Join(from, ",") != strings.Join(to, ",") {
-		s.auditLog(r, audit.GroupMembers, audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: u.Username},
+	if changed(from, to) {
+		s.auditLog(r, audit.GroupMembers, target("user", id, u.Username),
 			map[string]any{"from": from, "to": to})
 	}
 	u, err = s.adminUserByID(ctx, id)
@@ -461,5 +495,31 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, u)
 }
 
-// isDuplicate tells a unique key violation.
-func isDuplicate(err error) bool { return err != nil && strings.Contains(err.Error(), "Duplicate") }
+// isDuplicate tells a unique key violation (MySQL error 1062).
+func isDuplicate(err error) bool {
+	var me *mysql.MySQLError
+	return errors.As(err, &me) && me.Number == 1062
+}
+
+// nameTaken refuses with 409 and key when a row of table other than except
+// has this name in any case. except is the id of the row being renamed, of
+// the type of the table's id.
+func (s *Server) nameTaken(ctx context.Context, table, name string, except any, key i18n.Key) error {
+	return s.valueTaken(ctx, table, "name", "TRUE", nil, name, except, key)
+}
+
+// valueTaken is nameTaken on any column, among the rows of table that match
+// scope, a condition on scopeArgs.
+func (s *Server) valueTaken(ctx context.Context, table, column, scope string, scopeArgs []any, value string, except any,
+	key i18n.Key) error {
+	var n int
+	args := append(append([]any{}, scopeArgs...), value, except)
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE `+scope+` AND LOWER(`+column+`) = LOWER(?)
+		AND id <> ?`, args...).Scan(&n); err != nil {
+		return err
+	}
+	if n > 0 {
+		return failf(http.StatusConflict, key, value)
+	}
+	return nil
+}

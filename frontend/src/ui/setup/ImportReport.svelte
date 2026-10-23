@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ImportView } from '../../core/admin-types.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
+  import { labelOf } from '../../i18n/t.js';
 
   /**
    * What a finished import copied, step by step, and what to check
@@ -14,7 +15,7 @@
   }
   const { m, num, job }: Props = $props();
 
-  const stepName = (s: string) => (m.import.report as Record<string, string>)[s] ?? s;
+  const stepName = (s: string) => labelOf(m.import.report, s);
   const anySkipped = $derived(job.steps.some((s) => s.skipped > 0));
 </script>
 

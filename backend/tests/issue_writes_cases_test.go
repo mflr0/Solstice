@@ -368,8 +368,12 @@ func TestIssueCreatedInEpic(t *testing.T) {
 		JOIN issue_types t ON t.id = i.issue_type_id WHERE p.pkey = 'DEMO' AND t.name = 'Story' AND i.parent_id IS NULL
 		ORDER BY i.id LIMIT 1`)
 	storyType := pick(t, `SELECT id FROM issue_types WHERE name = 'Story'`)
+	epicType := pick(t, `SELECT id FROM issue_types WHERE name = 'Epic'`)
 	create := func(in map[string]any) (int, []byte) {
-		in["project"], in["type"], in["summary"] = "DEMO", storyType, "Créé dans un chantier"
+		if in["type"] == nil {
+			in["type"] = storyType
+		}
+		in["project"], in["summary"] = "DEMO", "Créé dans un chantier"
 		return marie.do("POST", "/api/issues", in)
 	}
 	total := func() int {
@@ -404,6 +408,7 @@ func TestIssueCreatedInEpic(t *testing.T) {
 		"a story":         {"epic": story},
 		"a number":        {"epic": 12},
 		"a sub-task":      {"epic": epic, "parent": story, "type": subtaskType},
+		"an epic":         {"epic": epic, "type": epicType},
 	} {
 		if status, body := create(in); status != 400 {
 			t.Errorf("create with %s as epic: %d %s, want 400", name, status, body)

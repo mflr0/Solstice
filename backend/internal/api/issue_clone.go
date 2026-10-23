@@ -212,7 +212,9 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 	if !sub.Can(perm.Create, orig.ProjectID, nil) || !sub.CanBrowseProject(orig.ProjectID) {
 		return errForbidden
 	}
-	if !s.projectHasType(ctx, orig.ProjectID, orig.TypeID) {
+	if ok, err := s.projectHasType(ctx, orig.ProjectID, orig.TypeID); err != nil {
+		return err
+	} else if !ok {
 		return fail(http.StatusBadRequest, i18n.IssueTypeUnavailable)
 	}
 	lang := locale(r)
@@ -265,8 +267,13 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 		}
 		for _, child := range children {
 			// The sub-task is created in its own project, which may not be the original's.
-			if !sub.Can(perm.Create, child.ProjectID, nil) || !sub.CanBrowseProject(child.ProjectID) ||
-				!s.projectHasType(ctx, child.ProjectID, child.TypeID) {
+			ok := sub.Can(perm.Create, child.ProjectID, nil) && sub.CanBrowseProject(child.ProjectID)
+			if ok {
+				if ok, err = s.projectHasType(ctx, child.ProjectID, child.TypeID); err != nil {
+					return err
+				}
+			}
+			if !ok {
 				warnings = append(warnings, i18n.M(i18n.IssueCloneSubtaskSkipped, child.Key()).In(lang))
 				continue
 			}

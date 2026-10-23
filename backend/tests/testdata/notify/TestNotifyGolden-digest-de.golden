@@ -1,0 +1,71 @@
+=== digest (1 e-mails)
+To: chloe.simon@exemple.fr
+Subject: Ihre Benachrichtigungen vom <day>
+Message-ID: <random@exemple.fr>
+In-Reply-To: 
+
+--- text
+Ihre Benachrichtigungen vom <day>
+
+KEY-2 Zweiter Eintrag (neu)
+Story · To Do · Medium · Zugewiesen an Paul Martin
+
+Paul Martin hat kommentiert. (<when>)
+  > Für die Zusammenfassung
+
+Paul Martin hat den Vorgang geändert. (<when>)
+  Zusammenfassung: Zweiter Eintrag → Zweiter Eintrag (neu)
+
+https://tickets.exemple.fr/browse/KEY-2
+
+————————————————————
+
+KEY-1 Erster Eintrag
+Story · To Do · Medium · Zugewiesen an Paul Martin
+
+Paul Martin hat kommentiert. (<when>)
+  > Für die Zusammenfassung
+
+https://tickets.exemple.fr/browse/KEY-1
+
+————————————————————
+
+--
+Sie erhalten diese tägliche Zusammenfassung gemäß Ihren Benachrichtigungseinstellungen.
+Meine Benachrichtigungen verwalten: https://tickets.exemple.fr/settings/notifications
+
+--- html
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ihre Benachrichtigungen vom <day></title></head>
+<body style="margin:0;padding:0;background:#f4f1ea;">
+<div style="max-width:640px;margin:0 auto;padding:24px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#1c1b19;">
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:20px;">Ihre Benachrichtigungen vom <day></p>
+<div style="background:#faf8f3;border:1px solid #e6e0d4;border-top:2px solid #d9381e;padding:16px;margin:0 0 16px;">
+<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:600;line-height:1.3;"><a href="https://tickets.exemple.fr/browse/KEY-2" style="color:#1c1b19;text-decoration:none;"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:400;color:#c2321b;">KEY-2</span> Zweiter Eintrag (neu)</a></p>
+<p style="margin:4px 0 0;color:#6c685e;font-size:13px;">Story · To Do · Medium · Zugewiesen an Paul Martin</p>
+<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
+<p style="margin:0 0 6px;">Paul Martin hat kommentiert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
+<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;white-space:pre-wrap;word-wrap:break-word;">Für die Zusammenfassung</div>
+</div>
+<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
+<p style="margin:0 0 6px;">Paul Martin hat den Vorgang geändert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+<tr><td style="padding:2px 12px 2px 0;color:#6c685e;vertical-align:top;white-space:nowrap;">Zusammenfassung</td><td style="padding:2px 0;vertical-align:top;"><span style="color:#6c685e;text-decoration:line-through;">Zweiter Eintrag</span> → Zweiter Eintrag (neu)</td></tr>
+</table>
+</div>
+<p style="margin:14px 0 0;"><a href="https://tickets.exemple.fr/browse/KEY-2" style="color:#c2321b;">Vorgang öffnen</a></p>
+</div>
+<div style="background:#faf8f3;border:1px solid #e6e0d4;border-top:2px solid #d9381e;padding:16px;margin:0 0 16px;">
+<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:600;line-height:1.3;"><a href="https://tickets.exemple.fr/browse/KEY-1" style="color:#1c1b19;text-decoration:none;"><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:400;color:#c2321b;">KEY-1</span> Erster Eintrag</a></p>
+<p style="margin:4px 0 0;color:#6c685e;font-size:13px;">Story · To Do · Medium · Zugewiesen an Paul Martin</p>
+<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
+<p style="margin:0 0 6px;">Paul Martin hat kommentiert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
+<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;white-space:pre-wrap;word-wrap:break-word;">Für die Zusammenfassung</div>
+</div>
+<p style="margin:14px 0 0;"><a href="https://tickets.exemple.fr/browse/KEY-1" style="color:#c2321b;">Vorgang öffnen</a></p>
+</div>
+<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #e6e0d4;color:#6c685e;font-size:12px;">Sie erhalten diese tägliche Zusammenfassung gemäß Ihren Benachrichtigungseinstellungen.<br><a href="https://tickets.exemple.fr/settings/notifications" style="color:#6c685e;">Meine Benachrichtigungen verwalten</a></p>
+</div>
+</body></html>
+

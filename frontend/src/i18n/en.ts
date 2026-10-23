@@ -110,7 +110,6 @@ export const en = {
     create: 'New issue',
     account: 'Account',
     myPage: 'My page',
-    admin: 'Users',
     skin: 'Theme',
     skins: {
       carnet: 'Notebook',
@@ -139,7 +138,7 @@ export const en = {
     language: 'Language',
     logout: 'Sign out',
     sourceCode: 'Source code',
-    licenses: 'Licences',
+    licenses: 'Licenses',
     live: 'Live updates',
     offline: 'Offline: pages no longer update by themselves',
   },
@@ -169,7 +168,6 @@ export const en = {
     schemes: { light: 'light', dark: 'dark' },
     lightOnly: 'Light mode only.',
     preparing: 'Preparing the preview…',
-    unfinished: 'This theme is still being drawn.',
     mock: {
       work: 'My work',
       projects: 'Projects',
@@ -230,19 +228,15 @@ export const en = {
     none: 'None',
     noneF: 'None',
     unassigned: 'Unassigned',
-    me: 'Me',
     seeAll: 'See all',
-    retry: 'Try again',
     inactive: 'deactivated',
     confidential: 'Restricted',
     previous: 'Previous',
     next: 'Next',
     yes: 'yes',
     no: 'no',
-    search: 'Search',
     filter: 'Filter…',
     ctrlEnter: 'Ctrl + Enter to send',
-    of: 'of',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
     range: (first: string, last: string, total: string) => `${first}–${last} of ${total}`,
@@ -339,7 +333,6 @@ export const en = {
     intro:
       'These rules apply to this project only: nothing is shared through schemes, so a change here touches no other project.',
     permissions: 'Who can do what',
-    holders: 'Granted to',
     addHolder: 'Add',
     nobody: 'Nobody',
     chooseKind: 'Grant to',
@@ -347,12 +340,10 @@ export const en = {
     chooseRole: 'Role',
     chooseUser: 'User',
     roles: 'Roles in this project',
-    roleMembers: 'Members',
     noMembers: 'No members',
     saved: 'Settings saved.',
     unsaved: 'Unsaved changes',
     discard: 'Discard changes',
-    forbidden: 'Only the project’s administrators can see this page.',
     backToProject: 'Back to the project',
   },
 
@@ -360,6 +351,53 @@ export const en = {
     title: 'Search',
     results: (n: number) => plural(n, 'issue', 'issues'),
     empty: 'No issues match.',
+    columns: {
+      button: 'Columns',
+      shown: 'Shown columns',
+      more: 'More columns',
+      reset: 'Default columns',
+    },
+    exportCsv: 'Export CSV',
+    bulk: {
+      select: (key: string) => `Select ${key}`,
+      selectPage: 'Select all issues on this page',
+      selected: (n: number) => `${plural(n, 'issue', 'issues')} selected`,
+      actions: 'Change the selected issues',
+      clear: 'Clear selection',
+      edit: 'Edit',
+      transition: 'Change status',
+      move: 'Move',
+      delete: 'Delete',
+      editTitle: (n: number) => `Edit ${plural(n, 'issue', 'issues')}`,
+      transitionTitle: (n: number) => `Change the status of ${plural(n, 'issue', 'issues')}`,
+      moveTitle: (n: number) => `Move ${plural(n, 'issue', 'issues')}`,
+      deleteTitle: (n: number) => `Delete ${plural(n, 'issue', 'issues')}?`,
+      deleteBody: (n: number) =>
+        `This permanently deletes ${plural(n, 'issue', 'issues')}, with their sub-tasks, comments and files. This cannot be undone.`,
+      typeToConfirm: (n: number) => `Type ${n} to confirm`,
+      deleteSubmit: 'Delete',
+      editHint: 'Tick the fields to change; the others stay as they are on each issue.',
+      change: (field: string) => `Change ${field}`,
+      modes: { add: 'Add', remove: 'Remove', replace: 'Replace all with' },
+      oneProject:
+        'Components and fix versions can be changed only when every selected issue is in the same project.',
+      noSprint: 'No sprint (leave the open one)',
+      noPriority: 'None',
+      status: 'New status',
+      statusHint:
+        'Each issue takes it through its own workflow: those that have no such transition stay as they are.',
+      defaultResolution: 'As the status sets it',
+      apply: 'Apply',
+      done: (n: number) => `${plural(n, 'issue', 'issues')} changed.`,
+      failed: (n: number) => `${plural(n, 'issue was', 'issues were')} not changed`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'issue', 'issues')} will move to ${project} with their sub-tasks and get new keys. The old keys will still lead to them.`,
+      cannotMove: (n: number) => `${plural(n, 'issue', 'issues')} can’t be moved`,
+      moveHint:
+        'The issues get new keys in that project; the old keys keep working. Each issue needs the Edit permission in its project, and Create in the target.',
+      moveChoicesHint: (project: string) =>
+        `${project} lacks some of what these issues use. Choose what they become there; each issue takes only the choices it needs.`,
+    },
     filters: 'Filters',
     text: 'Search text',
     textPlaceholder: 'Search issues…',
@@ -435,7 +473,6 @@ export const en = {
     shortcuts: 'Shortcuts',
     categoryOnly: (name: string) => `category: ${name}`,
     released: 'released',
-    noProject: 'Choose a project to see its values.',
     datePresets: {
       today: 'Today',
       week: 'This week',
@@ -538,6 +575,8 @@ export const en = {
     duringDates: () => 'DURING expects two dates in parentheses.',
     argumentInvalid: (name: string) => `Invalid argument for ${name}().`,
     valueExpected: () => 'Value expected.',
+    tooLong: (max: number) => `The query is too long (at most ${max} characters).`,
+    tooDeep: (max: number) => `The query is nested too deeply (at most ${max} levels).`,
   },
   quick: {
     label: 'Quick search',
@@ -594,7 +633,6 @@ export const en = {
     assignee: 'Assignee',
     updated: 'Updated',
     due: 'Due',
-    overdue: 'overdue',
   },
 
   issue: {
@@ -636,7 +674,6 @@ export const en = {
     created: 'Created',
     updated: 'Updated',
     resolved: 'Resolved',
-    resolution: 'Resolution',
     time: 'Time tracking',
     estimate: 'Estimated',
     remaining: 'Remaining',
@@ -648,14 +685,10 @@ export const en = {
     customFields: 'Other fields',
     watch: 'Watch',
     watching: 'Watching',
-    watchers: (n: number) => plural(n, 'watcher', 'watchers'),
     vote: 'Vote',
     voted: 'Voted',
-    votes: (n: number) => plural(n, 'vote', 'votes'),
-    by: 'by',
     createdBy: (when: string, who: string) => `created ${when} by ${who}`,
     createdOn: (when: string) => `created ${when}`,
-    parent: 'Sub-task of',
     changeStatus: 'Change status',
     chooseResolution: 'Resolution',
     leaveUnresolved: 'Leave unresolved',
@@ -720,7 +753,6 @@ export const en = {
     send: 'Comment',
     edited: 'edited',
     visibleTo: (who: string) => `visible to ${who}`,
-    confirmDelete: 'Delete this comment?',
   },
 
   editor: {
@@ -744,6 +776,8 @@ export const en = {
     mention: 'Mention someone',
     undo: 'Undo',
     redo: 'Redo',
+    /** Modifier key names in shortcut hints, as printed on this language's keyboards. */
+    keys: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift' },
     source: 'Source',
     sourceLabel: 'Wiki markup',
     tableTools: 'Table',
@@ -1022,29 +1056,6 @@ export const en = {
     deleted: (name: string) => `Board “${name}” deleted.`,
   },
 
-  admin: {
-    title: 'Users',
-    newUser: 'New user',
-    username: 'Username',
-    name: 'Display name',
-    email: 'Email address',
-    password: 'Password',
-    passwordHint: 'At least 10 characters',
-    admin: 'Administrator',
-    active: 'Active',
-    state: 'Status',
-    noPassword: 'no password',
-    resetPassword: 'New password',
-    deactivate: 'Deactivate',
-    activate: 'Reactivate',
-    makeAdmin: 'Make administrator',
-    removeAdmin: 'Revoke administrator',
-    created: 'Account created.',
-    updated: 'Account updated.',
-    forbidden: 'This page is for administrators only.',
-    since: 'Since',
-  },
-
   notFound: {
     title: 'Not found',
     back: 'Back to my work',
@@ -1208,7 +1219,6 @@ export const en = {
     intro:
       'Settings for the whole of Solstice: accounts, projects, issue catalogs, email and integrations. Only administrators see these pages.',
     forbidden: 'This page is for Solstice administrators only.',
-    nav: 'Administration sections',
     groups: {
       general: 'General',
       people: 'Users and groups',
@@ -1274,11 +1284,8 @@ export const en = {
     copy: 'Copy',
     copied: 'Copied',
     refresh: 'Refresh',
-    saved: 'Changes saved.',
-    search: 'Search',
     noMatch: 'Nothing matches this search.',
     clearSearch: 'Clear search',
-    unavailable: 'This server does not offer this setting yet: update Solstice to use it.',
     hideBanner: 'Hide',
     restricted: {
       comments: (n: number) => plural(n, 'comment', 'comments'),
@@ -1340,7 +1347,6 @@ export const en = {
   },
 
   auditAdmin: {
-    title: 'Audit log',
     intro:
       'Who signed in, and who changed accounts, access rights and settings, from where and when. The log is read-only.',
     count: (n: number) => plural(n, 'entry', 'entries'),
@@ -1392,6 +1398,7 @@ export const en = {
       priority: 'Priorities',
       resolution: 'Resolutions',
       linktype: 'Link types',
+      attachment: 'Attachments',
       field: 'Custom fields',
       settings: 'Settings',
       import: 'Jira import',
@@ -1461,6 +1468,7 @@ export const en = {
       'filter.share': 'Filter sharing changed',
       'issue.delete': 'Issue deleted',
       'issue.export': 'Search exported as CSV',
+      'issue.import': 'Issues imported from CSV',
       'issuetype.create': 'Issue type created',
       'issuetype.update': 'Issue type changed',
       'issuetype.delete': 'Issue type deleted',
@@ -1503,6 +1511,8 @@ export const en = {
       'update.result': 'Update finished',
       'setup.complete': 'Setup completed',
       'issue.move': 'Issue moved',
+      'attachment.upload': 'Attachment uploaded',
+      'attachment.delete': 'Attachment deleted',
     },
     targets: {
       user: 'Account',
@@ -1527,6 +1537,7 @@ export const en = {
       priority: 'Priority',
       resolution: 'Resolution',
       linktype: 'Link type',
+      attachment: 'Attachment',
     },
     detailKeys: {
       name: 'Name',
@@ -1551,6 +1562,8 @@ export const en = {
       owner: 'Owner',
       version: 'Version',
       status: 'Status',
+      issue: 'Issue',
+      size: 'Size (bytes)',
     },
     retention: {
       title: 'Retention',
@@ -1573,7 +1586,6 @@ export const en = {
   },
 
   systemAdmin: {
-    title: 'System information',
     intro: 'What runs, where the data lives and what needs attention. No secret is shown here.',
     solstice: 'Solstice',
     version: 'Version',
@@ -1609,7 +1621,6 @@ export const en = {
     projectsArchived: 'Archived projects',
     issues: 'Issues',
     comments: 'Comments',
-    attachments: 'Attachments',
     mail: 'Email',
     mailOn: 'sending on',
     mailOff: 'sending off',
@@ -1656,7 +1667,6 @@ export const en = {
     reload: 'Reload Solstice',
     again: 'Import again',
     lastTitle: 'Last import',
-    unavailable: 'This server cannot import from the administration yet: update Solstice.',
   },
 
   tokensAdmin: {
@@ -1891,13 +1901,12 @@ export const en = {
       reset: 'password reset',
       invitation: 'invitation',
     },
-    attempts: (n: number) => plural(n, `${n} attempt`, `${n} attempts`),
+    attempts: (n: number) => plural(n, 'attempt', 'attempts'),
   },
 
   account: {
     title: 'My settings',
     menu: 'My settings',
-    nav: 'My settings sections',
     sections: {
       profile: 'Profile',
       appearance: 'Language and appearance',
@@ -1916,7 +1925,10 @@ export const en = {
     emailHint: 'Also used to notify you and to reach you.',
     emailChangeHint: 'Changing the address asks for your current password.',
     passwordTitle: 'Password',
-    passwordIntro: 'Leave the fields empty to keep the current password.',
+    directoryPasswordIntro:
+      'Your password is managed by the directory (LDAP): change it there. Type it here only to change your e-mail address.',
+    passwordIntro:
+      'Leave the fields empty to keep the current password. A new password closes your other sessions, and your access tokens stop working.',
     currentPassword: 'Current password',
     newPassword: 'New password',
     confirmPassword: 'Confirm the password',
@@ -1924,8 +1936,6 @@ export const en = {
     passwordShort: (n: number) => `${n} characters at least.`,
     passwordChanged: 'Password changed.',
     saved: 'Settings saved.',
-    profileUnsupported:
-      'This server cannot change the name or the email address yet: update Solstice.',
     picture: 'Picture',
     pictureHint:
       'Shown next to your name. The image is cut to a square and scaled down in your browser before it is sent.',
@@ -2022,6 +2032,8 @@ export const en = {
     admin: 'Administrator',
     inactive: 'deactivated',
     noPassword: 'no password',
+    directory: 'LDAP',
+    directoryHint: 'Signs in with the directory (LDAP): its password is managed there.',
     more: (n: number) => `+${n}`,
     rights: 'Permissions',
     adminLabel: 'Solstice administrator (access to all of the administration)',
@@ -2038,12 +2050,11 @@ export const en = {
     editTitle: (name: string) => `Edit ${name}’s account`,
     created: (name: string) => `${name}’s account created.`,
     updated: (name: string) => `${name}’s account saved.`,
-    edit: 'Edit',
     deactivate: 'Deactivate',
     activate: 'Reactivate',
     deactivateTitle: (name: string) => `Deactivate ${name}’s account?`,
     deactivateBody:
-      'This person can no longer sign in and their sessions close right away. Their issues, comments and history remain; you can reactivate the account later.',
+      'This person can no longer sign in, their sessions close right away and their access tokens are deleted. Their issues, comments and history remain; you can reactivate the account later.',
     deactivated: (name: string) => `${name}’s account deactivated.`,
     reactivated: (name: string) => `${name}’s account reactivated.`,
     passwordTitle: (name: string) => `New password for ${name}`,
@@ -2051,7 +2062,7 @@ export const en = {
     generateButton: 'Generate',
     typePassword: 'Enter the password',
     newPassword: 'New password',
-    sessionsEnd: 'This person’s open sessions close.',
+    sessionsEnd: 'This person’s open sessions close and their access tokens stop working.',
     generatedOnce:
       'Pass this password on now: it will not be shown again. The person can change it in their settings.',
     done: 'Got it',
@@ -2257,7 +2268,6 @@ export const en = {
     noCategory: 'No category',
     category: 'Category',
     issues: 'Issues',
-    state: 'State',
     archive: 'Archive',
     unarchive: 'Unarchive',
     empty: 'No project yet',
@@ -2326,7 +2336,6 @@ export const en = {
     categoryTitle: (name: string) => `Edit ${name}`,
     categoryName: 'Name',
     categoryDescription: 'Description',
-    categoryProjects: (n: number) => plural(n, 'project', 'projects'),
     categoriesEmpty: 'No category yet.',
     categoryCreated: (name: string) => `Category ${name} created.`,
     categorySaved: (name: string) => `Category ${name} saved.`,
@@ -2349,6 +2358,7 @@ export const en = {
       components: 'Components',
       versions: 'Versions',
       notifications: 'Notifications',
+      import: 'Import',
     },
     leaveBody: 'This tab has unsaved changes. Discard them?',
     general: {
@@ -2455,6 +2465,36 @@ export const en = {
       recipient: 'Group or role',
       none: 'There is no group or role to choose from yet.',
       cell: (who: string, event: string) => `${who}: ${event}`,
+    },
+    import: {
+      title: 'Import issues',
+      intro:
+        'Create issues in this project from a CSV file, such as an exported search. Columns are matched by their header, in any language. Nothing is written until you import, and then every row is created, or none. The import sends no emails and no webhooks.',
+      limits: (rows: number, mib: number) => `${formatNumber(rows)} rows and ${mib} MiB at most.`,
+      file: 'CSV file',
+      checking: 'Checking the file…',
+      columnsTitle: 'Columns',
+      column: 'Column',
+      field: 'Field',
+      skip: 'Not imported',
+      readOnly: 'Set by Solstice: not imported',
+      unknown: 'Unknown column: choose a field, or leave it out.',
+      fieldFor: (header: string) => `Field for the column ${header}`,
+      rowsTitle: 'Rows',
+      line: 'Line',
+      key: 'Key in the file',
+      summary: 'Summary',
+      type: 'Type',
+      status: 'Status',
+      problems: 'Errors',
+      noRows: 'The file has no rows.',
+      ready: (n: number) => `${plural(n, 'row is', 'rows are')} ready.`,
+      failed: (n: number) =>
+        `${plural(n, 'row has', 'rows have')} errors: fix the file or the columns, then choose the file again.`,
+      submit: (n: number) => `Import ${plural(n, 'issue', 'issues')}`,
+      importing: 'Importing…',
+      done: (n: number) => `${plural(n, 'issue', 'issues')} created.`,
+      again: 'Import another file',
     },
   },
 

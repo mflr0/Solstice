@@ -50,7 +50,11 @@ const (
 	AuditSettings  = "settings.audit"
 	IssueDelete    = "issue.delete"
 	IssueExport    = "issue.export"
+	IssueImport    = "issue.import"
 	IssueMove      = "issue.move"
+	// One entry per file, whichever route (interface or REST) it went through.
+	AttachmentUpload = "attachment.upload"
+	AttachmentDelete = "attachment.delete"
 
 	// Administration from the interface.
 	SettingsGeneral = "settings.general"
@@ -214,7 +218,9 @@ var secretKeys = []string{"password", "passwd", "secret", "token", "apikey", "ap
 
 // mask copies details, hiding the values of keys that name a secret. A
 // boolean holds no secret: "passwordChanged": true says that a password
-// changed without showing it.
+// changed without showing it. Nor does a count the server made, such as
+// "revokedAccessTokens": 2; a number decoded from JSON is a float64 and
+// stays hidden.
 func mask(details map[string]any) map[string]any {
 	out := make(map[string]any, len(details))
 	for k, v := range details {
@@ -225,7 +231,11 @@ func mask(details map[string]any) map[string]any {
 				secret = true
 			}
 		}
-		_, flag := v.(bool)
+		flag := false
+		switch v.(type) {
+		case bool, int, int64:
+			flag = true
+		}
 		switch {
 		case secret && !flag:
 			out[k] = "***"

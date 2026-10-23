@@ -14,9 +14,10 @@ func TestLinkMessages(t *testing.T) {
 	cfg := mail.Config{From: "solstice@exemple.fr"}
 	const link = "https://tickets.exemple.fr/reset/abc_DEF-123"
 	for _, lang := range i18n.Locales {
+		marie := Account{UserID: 7, Email: "marie@exemple.fr", Name: "Marie <b>", Username: `marie"<i>`, Locale: lang}
 		for name, m := range map[string]mail.Message{
-			"reset":      ResetMessage(cfg, 7, "marie@exemple.fr", "Marie <b>", `marie"<i>`, lang, link),
-			"invitation": InvitationMessage(cfg, 7, "marie@exemple.fr", "Marie", "marie", lang, link),
+			"reset":      ResetMessage(cfg, marie, link),
+			"invitation": InvitationMessage(cfg, marie, link),
 		} {
 			if !strings.Contains(m.Text, link) || !strings.Contains(m.HTML, `href="`+link+`"`) {
 				t.Errorf("%s/%s: the link is missing from the text or the HTML part", lang, name)
@@ -35,15 +36,17 @@ func TestLinkMessages(t *testing.T) {
 			}
 		}
 	}
-	en := ResetMessage(cfg, 1, "a@exemple.fr", "A", "a", "en", link)
-	fr := ResetMessage(cfg, 1, "a@exemple.fr", "A", "a", "fr", link)
-	if en.Subject == fr.Subject {
+	in := func(locale string) Account {
+		return Account{UserID: 1, Email: "a@exemple.fr", Name: "A", Username: "a", Locale: locale}
+	}
+	en := ResetMessage(cfg, in("en"), link)
+	if fr := ResetMessage(cfg, in("fr"), link); en.Subject == fr.Subject {
 		t.Error("English and French share a subject")
 	}
-	if got := ResetMessage(cfg, 1, "a@exemple.fr", "A", "a", "xx", link); got.Subject != en.Subject {
+	if got := ResetMessage(cfg, in("xx"), link); got.Subject != en.Subject {
 		t.Error("an unknown language does not fall back to English")
 	}
-	if inv := InvitationMessage(cfg, 1, "a@exemple.fr", "A", "a", "en", link); inv.Kind != mail.KindInvitation ||
+	if inv := InvitationMessage(cfg, in("en"), link); inv.Kind != mail.KindInvitation ||
 		!strings.Contains(inv.Text, "7 days") {
 		t.Errorf("invitation: %q", inv.Text)
 	}

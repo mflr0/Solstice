@@ -4,14 +4,16 @@
  * status"), change detection and the body sent to the server.
  */
 
-import type {
-  StatusCategory,
-  StatusRef,
-  StrandedDefault,
-  StrandedStatus,
-  Workflow,
-  WorkflowInput,
+import {
+  STATUS_CATEGORIES,
+  type StatusCategory,
+  type StatusRef,
+  type StrandedDefault,
+  type StrandedStatus,
+  type Workflow,
+  type WorkflowInput,
 } from './types.js';
+import { fold } from './text.js';
 
 /** A transition being edited. `key` tells rows apart; id is null until saved. */
 export interface DraftTransition {
@@ -51,17 +53,12 @@ export function toDraft(w: Workflow): Draft {
   };
 }
 
-/** A new transition is named after the status it leads to. */
-export function defaultName(to: StatusRef): string {
-  return to.name;
-}
-
 /** The name saved for a transition: its own, or its target's when left blank. */
 export function effectiveName(t: DraftTransition, statuses: StatusRef[]): string {
   const name = t.name.trim();
   if (name) return name;
   const to = statuses.find((s) => s.id === t.to);
-  return to ? defaultName(to) : t.to;
+  return to ? to.name : t.to;
 }
 
 /** The transitions of one matrix cell (usually zero or one). */
@@ -113,7 +110,7 @@ export function toggleCell(
   const restored = cell(saved, from, to.id);
   if (restored.length === 0) {
     const key = `new:${from ?? '*'}>${to.id}`;
-    return [...list, { key, id: null, name: defaultName(to), from, to: to.id }];
+    return [...list, { key, id: null, name: to.name, from, to: to.id }];
   }
   // Put them back where they were, so saving keeps the order of the buttons.
   const rank = (t: DraftTransition) => {
@@ -229,6 +226,14 @@ export function suggestRemap(
   return out;
 }
 
+/**
+ * Where the issues going back to the default workflow go: the first status
+ * of the same category, else the default workflow's first status.
+ */
+export function suggestDefaultRemap(d: StrandedDefault): Record<string, string> {
+  return suggestRemap(d.stranded, d.workflow.statuses, d.workflow.statuses[0]?.id ?? '');
+}
+
 /** Reads the stranded statuses out of a 409 body. */
 export function strandedOf(data: unknown): StrandedStatus[] | null {
   if (!data || typeof data !== 'object' || !('stranded' in data)) return null;
@@ -251,13 +256,11 @@ export function strandedDefaultOf(data: unknown): StrandedDefault | null {
   };
 }
 
-export const CATEGORIES: StatusCategory[] = ['todo', 'doing', 'done'];
-
 /** Statuses grouped by category, each group in the workflow's order. */
 export function byCategory(
   statuses: StatusRef[],
 ): { category: StatusCategory; statuses: StatusRef[] }[] {
-  return CATEGORIES.map((category) => ({
+  return STATUS_CATEGORIES.map((category) => ({
     category,
     statuses: statuses.filter((s) => s.category === category),
   })).filter((g) => g.statuses.length > 0);
@@ -275,12 +278,4 @@ export function searchStatuses(catalogue: StatusRef[], taken: StatusRef[], q: st
 export function statusNamed(catalogue: StatusRef[], name: string): StatusRef | undefined {
   const n = name.trim().toLowerCase();
   return catalogue.find((s) => s.name.toLowerCase() === n);
-}
-
-function fold(s: string): string {
-  // Only Latin accents go: other scripts' marks are letters (Devanagari vowel signs).
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
 }

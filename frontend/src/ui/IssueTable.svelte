@@ -16,56 +16,179 @@
     issues: IssueSummary[];
     /** Hidden when every row is assigned to the same person anyway. */
     showAssignee?: boolean | undefined;
+    /**
+     * The columns chosen after key and summary, in order (the type is drawn
+     * before the key); the usual set when absent.
+     */
+    columns?: readonly string[] | undefined;
+    /** Column names by id, for the columns the table has no name of its own for. */
+    names?: Record<string, string> | undefined;
+    /** With onselect, a checkbox per row and one for the whole page. */
+    selected?: readonly string[] | undefined;
+    onselect?: ((keys: string[]) => void) | undefined;
   }
-  const { issues, showAssignee = true }: Props = $props();
+  const {
+    issues,
+    showAssignee = true,
+    columns,
+    names = {},
+    selected = [],
+    onselect,
+  }: Props = $props();
+  const allSelected = $derived(issues.length > 0 && issues.every((i) => selected.includes(i.key)));
+  const someSelected = $derived(!allSelected && issues.some((i) => selected.includes(i.key)));
+
+  function toggle(key: string, on: boolean) {
+    onselect?.(on ? [...selected, key] : selected.filter((k) => k !== key));
+  }
+
+  function toggleAll(on: boolean) {
+    const page = issues.map((i) => i.key);
+    onselect?.(
+      on
+        ? [...selected, ...page.filter((k) => !selected.includes(k))]
+        : selected.filter((k) => !page.includes(k)),
+    );
+  }
   const showDue = $derived(issues.some((i) => i.due));
+  const showType = $derived(!columns || columns.includes('issuetype'));
+  /** What follows the summary. */
+  const rest = $derived(
+    (
+      columns ?? ['status', 'priority', ...(showAssignee ? ['assignee'] : []), 'duedate', 'updated']
+    ).filter((c) => c !== 'issuetype' && (c !== 'duedate' || showDue)),
+  );
+  const headers: Record<string, string> = {
+    status: t.table.status,
+    priority: t.table.priority,
+    assignee: t.table.assignee,
+    duedate: t.table.due,
+    updated: t.table.updated,
+    reporter: t.search.fields.reporter,
+    created: t.search.fields.created,
+    resolution: t.search.fields.resolution,
+  };
 
   function open(e: MouseEvent, key: string) {
-    if ((e.target as Element).closest('a, button')) return;
+    if ((e.target as Element).closest('a, button, label, input')) return;
     router.navigate(paths.issue(key));
   }
 </script>
 
-<table class="ledger">
-  <thead>
-    <tr>
-      <th class="c-type"><span class="sr-only">{t.table.type}</span></th>
-      <th class="c-key">{t.table.key}</th>
-      <th class="c-summary">{t.table.summary}</th>
-      <th class="c-status">{t.table.status}</th>
-      <th class="c-priority"><span class="sr-only">{t.table.priority}</span></th>
-      {#if showAssignee}<th class="c-assignee">{t.table.assignee}</th>{/if}
-      {#if showDue}<th class="c-due">{t.table.due}</th>{/if}
-      <th class="num c-updated">{t.table.updated}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each issues as issue (issue.key)}
-      <tr onclick={(e) => open(e, issue.key)}>
-        <td class="c-type"><TypeMark type={issue.type} /></td>
-        <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
-        <td class="c-summary">
-          <span class="summary">{issue.summary}</span>
-          {#if issue.confidential}<Lock />{/if}
-        </td>
-        <td class="c-status"><Stamp status={issue.status} /></td>
-        <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
-        {#if showAssignee}<td class="c-who c-assignee"><Who user={issue.assignee} /></td>{/if}
-        {#if showDue}
-          {@const late = !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
-          <td class="c-due" class:late class:is-overdue={late}>
-            {issue.due ? formatDay(issue.due) : ''}
-          </td>
+<div class="issue-table">
+  <table class="ledger">
+    <thead>
+      <tr>
+        {#if onselect}
+          <th class="c-pick">
+            <label class="pick">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                indeterminate={someSelected}
+                onchange={(e) => toggleAll(e.currentTarget.checked)}
+              />
+              <span class="sr-only">{t.search.bulk.selectPage}</span>
+            </label>
+          </th>
         {/if}
-        <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
+        {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
+        <th class="c-key">{t.table.key}</th>
+        <th class="c-summary">{t.table.summary}</th>
+        {#each rest as c (c)}
+          {@const name = headers[c] ?? names[c] ?? c}
+          {#if c === 'priority'}
+            <th class="c-priority"><span class="sr-only">{name}</span></th>
+          {:else if c === 'status'}
+            <th class="c-status">{name}</th>
+          {:else if c === 'assignee'}
+            <th class="c-assignee">{name}</th>
+          {:else if c === 'duedate'}
+            <th class="c-due">{name}</th>
+          {:else if c === 'updated'}
+            <th class="num c-updated">{name}</th>
+          {:else}
+            <th class="c-extra">{name}</th>
+          {/if}
+        {/each}
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each issues as issue (issue.key)}
+        <tr onclick={(e) => open(e, issue.key)} class:picked={selected.includes(issue.key)}>
+          {#if onselect}
+            <td class="c-pick">
+              <label class="pick">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(issue.key)}
+                  onchange={(e) => toggle(issue.key, e.currentTarget.checked)}
+                />
+                <span class="sr-only">{t.search.bulk.select(issue.key)}</span>
+              </label>
+            </td>
+          {/if}
+          {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
+          <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
+          <td class="c-summary">
+            <span class="summary">{issue.summary}</span>
+            {#if issue.confidential}<Lock />{/if}
+          </td>
+          {#each rest as c (c)}
+            {#if c === 'status'}
+              <td class="c-status"><Stamp status={issue.status} /></td>
+            {:else if c === 'priority'}
+              <td class="c-priority"><PriorityMark priority={issue.priority} /></td>
+            {:else if c === 'assignee'}
+              <td class="c-who c-assignee"><Who user={issue.assignee} /></td>
+            {:else if c === 'reporter'}
+              <td class="c-who c-extra"><Who user={issue.reporter} /></td>
+            {:else if c === 'duedate'}
+              {@const late =
+                !!issue.due && issue.status.category !== 'done' && isOverdue(issue.due)}
+              <td class="c-due" class:late class:is-overdue={late}>
+                {issue.due ? formatDay(issue.due) : ''}
+              </td>
+            {:else if c === 'updated'}
+              <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
+            {:else if c === 'created'}
+              <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
+            {:else if c === 'resolution'}
+              <td class="c-extra">{issue.resolution?.name ?? ''}</td>
+            {:else}
+              {@const text = issue.values?.[c] ?? ''}
+              <td class="c-extra"><span class="text" title={text || undefined}>{text}</span></td>
+            {/if}
+          {/each}
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>
 
 <style>
+  .issue-table {
+    container: issue-table / inline-size;
+  }
+
   tbody tr {
     cursor: pointer;
+  }
+
+  .c-pick {
+    width: 28px;
+    padding-right: 0;
+  }
+
+  .pick {
+    display: inline-flex;
+    padding: 4px;
+    margin: -4px;
+    cursor: pointer;
+  }
+
+  .picked {
+    background: var(--accent-wash);
   }
 
   .c-type {
@@ -105,15 +228,30 @@
     color: var(--accent-text);
   }
 
-  @media (max-width: 760px) {
+  .c-extra {
+    white-space: nowrap;
+  }
+
+  .c-extra .text {
+    display: inline-block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
+  /* Columns give way by the list's own width, not the window's: beside the
+     saved filters, a 1024 px window leaves the list about 720 px. */
+  @container issue-table (width < 920px) {
     .c-priority,
-    .c-assignee {
+    .c-assignee,
+    .c-extra {
       display: none;
     }
   }
 
   /* A phone: type, key, summary and status; the summary may take two lines. */
-  @media (max-width: 600px) {
+  @container issue-table (width < 570px) {
     .c-due,
     .c-updated {
       display: none;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { jiraDuration, parseDuration, todayISO } from '../../core/dates.js';
+  import { isoDay, jiraDuration, parseDuration, todayISO } from '../../core/dates.js';
   import { worklogEdit, worklogStart } from '../../core/estimates.js';
   import type { IssueDetail, Worklog } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
@@ -38,7 +38,10 @@
     api
       .worklogs(key)
       .then((l) => {
-        if (key === issue.key) logs = l;
+        if (key === issue.key) {
+          logs = l;
+          error = '';
+        }
       })
       .catch((e: unknown) => (error = errorMessage(e)));
   });
@@ -66,7 +69,7 @@
   function startEdit(w: Worklog) {
     editing = w.id;
     editDuration = jiraDuration(w.seconds);
-    editDay = todayISO(new Date(w.started));
+    editDay = isoDay(new Date(w.started));
     editBody = w.body ?? '';
     editInvalid = false;
     armed = null;
@@ -159,7 +162,7 @@
           {:else}
             <tr>
               <td class="c-day" title={formatDateTime(w.started)}
-                >{formatDay(todayISO(new Date(w.started)))}</td
+                >{formatDay(isoDay(new Date(w.started)))}</td
               >
               <td class="c-who"><Who user={w.author} empty="—" /></td>
               <td class="c-body"

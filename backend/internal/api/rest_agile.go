@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ func agilePage[T any](list []T, startAt, maxResults int) map[string]any {
 		"isLast": startAt+len(page) >= len(list), "values": values}
 }
 
-func (o *restOut) agileBoard(b *boardSummary) map[string]any {
+func (o *restOut) boardJSON(b *boardSummary) map[string]any {
 	out := map[string]any{"id": b.ID, "self": o.base + "/rest/agile/1.0/board/" + o.id(b.ID), "name": b.Name,
 		"type": b.Kind}
 	if len(b.Projects) > 0 {
@@ -44,7 +45,7 @@ func (o *restOut) agileBoard(b *boardSummary) map[string]any {
 
 func (s *Server) agileBoards(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
-	target := "/api/boards"
+	var query url.Values
 	if v := q.Get("projectKeyOrId"); v != "" {
 		id, err := s.restProjectID(r.Context(), v)
 		if err != nil {
@@ -54,10 +55,10 @@ func (s *Server) agileBoards(w http.ResponseWriter, r *http.Request) error {
 		if err := s.db.QueryRowContext(r.Context(), `SELECT pkey FROM projects WHERE id = ?`, id).Scan(&key); err != nil {
 			return err
 		}
-		target += "?project=" + key
+		query = url.Values{"project": {key}}
 	}
 	var list []*boardSummary
-	if err := s.uiCall(r, s.listBoards, http.MethodGet, target, nil, nil, &list); err != nil {
+	if err := s.uiCall(r, s.listBoards, http.MethodGet, query, nil, nil, &list); err != nil {
 		return err
 	}
 	kind, name := strings.ToLower(q.Get("type")), strings.ToLower(q.Get("name"))
@@ -71,7 +72,7 @@ func (s *Server) writeAgilePage(w http.ResponseWriter, r *http.Request, list []*
 	o := s.restOut(r)
 	out := make([]map[string]any, 0, len(list))
 	for _, b := range list {
-		out = append(out, o.agileBoard(b))
+		out = append(out, o.boardJSON(b))
 	}
 	startAt, maxResults := paging(r, 50, 50)
 	return writeJSON(w, http.StatusOK, agilePage(out, startAt, maxResults))
@@ -106,7 +107,7 @@ func (s *Server) agileBoard(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileBoard(sum))
+	return writeJSON(w, http.StatusOK, s.restOut(r).boardJSON(sum))
 }
 
 // agileBoardConfiguration describes a board's columns, filter and
@@ -129,7 +130,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		EstimateFields []namedRef  `json:"estimateFields"`
 	}
 	id := strconv.FormatInt(b.ID, 10)
-	if err := s.uiCall(r, s.getBoard, http.MethodGet, "/api/boards/"+id, map[string]string{"id": id}, nil, &view); err != nil {
+	if err := s.uiCall(r, s.getBoard, http.MethodGet, nil, map[string]string{"id": id}, nil, &view); err != nil {
 		return err
 	}
 	o := s.restOut(r)
@@ -148,7 +149,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		}
 		columns = append(columns, col)
 	}
-	out := o.agileBoard(sum)
+	out := o.boardJSON(sum)
 	out["filter"] = map[string]any{"id": o.id(view.Board.FilterID), "self": o.api + "/filter/" + o.id(view.Board.FilterID)}
 	out["columnConfig"] = map[string]any{"columns": columns, "constraintType": "issueCount"}
 	out["estimation"] = map[string]any{"type": "none"}
@@ -164,11 +165,11 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		}
 		out["estimation"] = map[string]any{"type": "field", "field": map[string]any{"fieldId": *f, "displayName": name}}
 	}
-	fields, err := s.customFields(r.Context())
+	custom, err := s.customFields(r.Context())
 	if err != nil {
 		return err
 	}
-	if rank, ok := fieldOfKind(fields, "gh-lexo-rank"); ok {
+	if rank, ok := fieldOfKind(custom, "gh-lexo-rank"); ok {
 		out["ranking"] = map[string]any{"rankCustomFieldId": rank.ID}
 	}
 	return writeJSON(w, http.StatusOK, out)
@@ -196,14 +197,10 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 	var states []string
 	for v := range strings.SplitSeq(r.URL.Query().Get("state"), ",") {
 		if v = strings.ToLower(strings.TrimSpace(v)); v == "active" || v == "future" || v == "closed" {
-			states = append(states, "'"+v+"'")
+			states = append(states, v)
 		}
 	}
-	where := "TRUE"
-	if len(states) > 0 {
-		where = "state IN (" + strings.Join(states, ", ") + ")"
-	}
-	sprints, err := s.boardSprints(r.Context(), b.ID, where)
+	sprints, err := s.boardSprints(r.Context(), b.ID, states...)
 	if err != nil {
 		return err
 	}
@@ -213,7 +210,7 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 	o := s.restOut(r)
 	out := make([]map[string]any, 0, len(sprints))
 	for _, sp := range sprints {
-		out = append(out, o.agileSprint(sp, b.ID))
+		out = append(out, o.sprintJSON(sp, b.ID))
 	}
 	startAt, maxResults := paging(r, 50, 50)
 	return writeJSON(w, http.StatusOK, agilePage(out, startAt, maxResults))
@@ -278,7 +275,7 @@ func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where += ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')
+	where += backlogCond + `
 		AND NOT EXISTS (SELECT 1 FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
 			WHERE si.issue_id = i.id AND sp.board_id = ? AND sp.state <> 'closed')`
 	return s.agileIssues(w, r, sub, where, append(args, b.ID))
@@ -301,11 +298,11 @@ func (s *Server) pathSprint(r *http.Request, sub *perm.Subject) (sprintOut, int6
 	if _, err := s.boardByID(r.Context(), sub, board.Int64); err != nil {
 		return sprintOut{}, 0, err
 	}
-	sprints, err := s.boardSprints(r.Context(), board.Int64, "id = "+strconv.FormatInt(id, 10))
-	if err != nil || len(sprints) == 0 {
-		return sprintOut{}, 0, errNotFound
+	sp, err := s.sprintByID(r.Context(), board.Int64, id)
+	if err != nil {
+		return sprintOut{}, 0, err
 	}
-	return sprints[0], board.Int64, nil
+	return *sp, board.Int64, nil
 }
 
 func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {
@@ -317,7 +314,7 @@ func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileSprint(sp, board))
+	return writeJSON(w, http.StatusOK, s.restOut(r).sprintJSON(sp, board))
 }
 
 // agileEditSprint changes a sprint as Jira's update does: name, goal, start
@@ -388,7 +385,7 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 	id := strconv.FormatInt(sp.ID, 10)
 	values := map[string]string{"id": id}
 	if len(body) > 0 {
-		if err := s.uiCall(r, s.editSprint, http.MethodPatch, "/api/sprints/"+id, values, body, nil); err != nil {
+		if err := s.uiCall(r, s.editSprint, http.MethodPatch, nil, values, body, nil); err != nil {
 			return err
 		}
 	}
@@ -399,11 +396,11 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 		if end != nil {
 			start["end"] = end
 		}
-		if err := s.uiCall(r, s.startSprint, http.MethodPost, "/api/sprints/"+id+"/start", values, start, nil); err != nil {
+		if err := s.uiCall(r, s.startSprint, http.MethodPost, nil, values, start, nil); err != nil {
 			return err
 		}
 	case *state == "closed" && sp.State == "active":
-		if err := s.uiCall(r, s.completeSprint, http.MethodPost, "/api/sprints/"+id+"/complete", values,
+		if err := s.uiCall(r, s.completeSprint, http.MethodPost, nil, values,
 			map[string]any{}, nil); err != nil {
 			return err
 		}
@@ -425,7 +422,7 @@ func (s *Server) agileDeleteSprint(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	id := strconv.FormatInt(sp.ID, 10)
-	if err := s.uiCall(r, s.deleteSprint, http.MethodDelete, "/api/sprints/"+id, map[string]string{"id": id}, nil,
+	if err := s.uiCall(r, s.deleteSprint, http.MethodDelete, nil, map[string]string{"id": id}, nil,
 		nil); err != nil {
 		return err
 	}
@@ -530,14 +527,21 @@ func (s *Server) agileMoveToSprint(w http.ResponseWriter, r *http.Request) error
 			return err
 		}
 	}
+	ranking := in.RankBeforeIssue != "" || in.RankAfterIssue != ""
 	for _, iss := range moving {
 		if err := s.setSprint(ctx, sub, b, iss, sp.ID, true); err != nil {
 			return err
 		}
-		s.publish(iss, "issue", sub.UserID)
+		if !ranking {
+			s.publish(iss, "issue", sub.UserID)
+		}
 	}
-	if in.RankBeforeIssue != "" || in.RankAfterIssue != "" {
+	if ranking {
 		if err := s.rankIssues(ctx, sub, issues, in.RankBeforeIssue, in.RankAfterIssue); err != nil {
+			// The sprint moves stand: announce them anyway.
+			for _, iss := range moving {
+				s.publish(iss, "issue", sub.UserID)
+			}
 			return err
 		}
 	}
@@ -666,15 +670,18 @@ func (s *Server) agileEpic(w http.ResponseWriter, r *http.Request) error {
 	}
 	// The epic's name is its "Epic Name" field, if it has one.
 	name := ""
-	fields, err := s.customFields(r.Context())
+	custom, err := s.customFields(r.Context())
 	if err != nil {
 		return err
 	}
-	if f, ok := fieldOfKind(fields, "gh-epic-label"); ok {
-		s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
+	if f, ok := fieldOfKind(custom, "gh-epic-label"); ok {
+		err := s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
 			WHERE issue_id = ? AND field_id = ? LIMIT 1`, epic.ID, f.ID).Scan(&name)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 	}
-	return writeJSON(w, http.StatusOK, s.restOut(r).agileEpic(cat, epic, name))
+	return writeJSON(w, http.StatusOK, s.restOut(r).epicJSON(cat, epic, name))
 }
 
 // agileEpicIssues lists the issues of an epic that the user sees.

@@ -409,6 +409,21 @@ func TestNegatedFilterKeepsUnassigned(t *testing.T) {
 	}
 }
 
+func TestIssueListPastTheEnd(t *testing.T) {
+	c := login(t, "admin", "admin")
+	var all struct{ Total int }
+	c.get("/api/issues?q=projet:DEMO", &all)
+	status, raw := c.do("GET", "/api/issues?q=projet:DEMO&page=10000&size=200", nil)
+	var past struct {
+		Total, Page, Size int
+		Issues            json.RawMessage
+	}
+	if status != 200 || json.Unmarshal(raw, &past) != nil || past.Total != all.Total || all.Total == 0 ||
+		past.Page != 10000 || past.Size != 200 || string(past.Issues) != "[]" {
+		t.Fatalf("page past the end: %d %s, total %d", status, raw, all.Total)
+	}
+}
+
 func TestLoginThrottling(t *testing.T) {
 	// Its own server, so the lock does not affect the other tests.
 	base := ownServer(t)
@@ -435,14 +450,11 @@ func TestLoginThrottling(t *testing.T) {
 
 // JQL -----------------------------------------------------------------------
 
-func runSearch(t *testing.T, c *client, q string) (int, int, string) {
+func runSearch(t *testing.T, c *client, q string) (int, int) {
 	t.Helper()
-	var res struct {
-		Total int
-		Mode  string
-	}
+	var res struct{ Total int }
 	status := c.get("/api/issues?q="+url.QueryEscape(q), &res)
-	return status, res.Total, res.Mode
+	return status, res.Total
 }
 
 func TestJQLMatchesSimpleSearch(t *testing.T) {
@@ -454,13 +466,13 @@ func TestJQLMatchesSimpleSearch(t *testing.T) {
 		{`reporter = currentUser() AND resolution = Unresolved`, `par:@moi est:ouvert`},
 		{`labels = backend`, `#backend`},
 	} {
-		_, jqlTotal, mode := runSearch(t, c, pair[0])
-		_, simpleTotal, _ := runSearch(t, c, pair[1])
-		if mode != "jql" || jqlTotal != simpleTotal {
-			t.Errorf("%q (%s) = %d, %q = %d", pair[0], mode, jqlTotal, pair[1], simpleTotal)
+		_, jqlTotal := runSearch(t, c, pair[0])
+		_, simpleTotal := runSearch(t, c, pair[1])
+		if jqlTotal == 0 || jqlTotal != simpleTotal {
+			t.Errorf("%q = %d, %q = %d", pair[0], jqlTotal, pair[1], simpleTotal)
 		}
 	}
-	if _, n, _ := runSearch(t, c, `project = RH`); n != 0 {
+	if _, n := runSearch(t, c, `project = RH`); n != 0 {
 		t.Errorf("JQL lets paul.martin see %d RH issues", n)
 	}
 }
@@ -645,6 +657,42 @@ func TestBoardVisibility(t *testing.T) {
 	}
 	if status := login(t, "paul.martin", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 404 {
 		t.Errorf("paul.martin GET RH board: %d", status)
+	}
+	// The RH board's filter is shared with a role of the RH project.
+	if status := login(t, "chloe.simon", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 200 {
+		t.Errorf("chloe.simon GET RH board: %d", status)
+	}
+}
+
+func TestBoardCardsOfSprint(t *testing.T) {
+	marie := login(t, "marie.durand", "motdepasse")
+	id := boardID(t, "DEMO — Scrum")
+	var cards struct {
+		Cards  []boardCard
+		Sprint *struct{ ID int64 }
+	}
+	closed := pick(t, `SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? AND state = 'closed' ORDER BY id LIMIT 1`, id)
+	if status := marie.get("/api/boards/"+id+"/cards?sprint="+closed, &cards); status != 200 || cards.Sprint == nil ||
+		strconv.FormatInt(cards.Sprint.ID, 10) != closed || len(cards.Cards) == 0 {
+		t.Errorf("cards of closed sprint %s: %d %+v", closed, status, cards)
+	}
+	// A sprint of another board shows nothing.
+	other := pick(t, `SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? LIMIT 1`, boardID(t, "RH"))
+	cards.Cards, cards.Sprint = nil, nil
+	if status := marie.get("/api/boards/"+id+"/cards?sprint="+other, &cards); status != 200 || cards.Sprint != nil ||
+		len(cards.Cards) != 0 {
+		t.Errorf("cards of another board's sprint %s: %d %+v", other, status, cards)
+	}
+	// A sprint that is not a number falls back to the active one.
+	active := pickOptional(`SELECT CAST(id AS CHAR) FROM sprints WHERE board_id = ? AND state = 'active'`, id)
+	cards.Cards, cards.Sprint = nil, nil
+	marie.get("/api/boards/"+id+"/cards?sprint=x", &cards)
+	got := ""
+	if cards.Sprint != nil {
+		got = strconv.FormatInt(cards.Sprint.ID, 10)
+	}
+	if got != active {
+		t.Errorf("cards?sprint=x shows sprint %q, want the active one %q", got, active)
 	}
 }
 
@@ -880,12 +928,15 @@ func TestBoardSettings(t *testing.T) {
 
 func TestCreateAndDeleteBoard(t *testing.T) {
 	marie := login(t, "marie.durand", "motdepasse")
-	status, body := marie.do("POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"})
+	status, body := marie.request("en", "POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"})
 	if status != 201 {
 		t.Fatalf("create: %d %s", status, body)
 	}
 	var created struct{ ID int64 }
 	json.Unmarshal(body, &created)
+	if name := pick(t, `SELECT f.name FROM filters f JOIN boards b ON b.filter_id = f.id WHERE b.id = ?`, created.ID); name != "Board OPS — Kanban" {
+		t.Errorf("filter of a board created in English: %q", name)
+	}
 	path := fmt.Sprintf("/api/boards/%d", created.ID)
 	var b boardDetail
 	marie.get(path, &b)
@@ -1314,6 +1365,16 @@ func TestWorkflowTypesLeaving(t *testing.T) {
 		t.Errorf("%s is in %s after its workflow was deleted", key, st)
 	}
 
+	// A chunked body, with no Content-Length, is read like a sized one.
+	id = setup()
+	if status, body := marie.doChunked("DELETE", fmt.Sprintf("/api/workflows/%d", id),
+		map[string]any{"remapDefault": map[string]string{blocked.ID: "10000"}}); status != 204 {
+		t.Fatalf("delete with a chunked remap: %d %s", status, body)
+	}
+	if st := statusOf(); st != "10000" {
+		t.Errorf("%s is in %s after its workflow was deleted with a chunked body", key, st)
+	}
+
 	// The catalogue: global administrators rename and delete unused statuses.
 	paul := login(t, "paul.martin", "motdepasse")
 	if status, _ := paul.do("PATCH", "/api/statuses/"+blocked.ID, map[string]any{"name": "x"}); status != 403 {
@@ -1374,7 +1435,7 @@ func TestSearchHelpers(t *testing.T) {
 	if status := paul.get("/api/issues/facets?jql="+q+"&fields=status,assignee,labels,nope", &facets); status != 200 {
 		t.Fatalf("facets: %d", status)
 	}
-	_, total, _ := runSearch(t, paul, "project = DEMO")
+	_, total := runSearch(t, paul, "project = DEMO")
 	sum := 0
 	for _, n := range facets.Facets["status"] {
 		sum += n
@@ -1395,14 +1456,14 @@ func TestSearchHelpers(t *testing.T) {
 
 func TestJQLParticipant(t *testing.T) {
 	c := login(t, "marie.durand", "motdepasse")
-	_, roles, _ := runSearch(t, c, `assignee = paul.martin OR reporter = paul.martin OR creator = paul.martin OR `+
+	_, roles := runSearch(t, c, `assignee = paul.martin OR reporter = paul.martin OR creator = paul.martin OR `+
 		`watcher = paul.martin OR commenter = paul.martin`)
-	status, all, mode := runSearch(t, c, `participant = paul.martin`)
-	if status != 200 || mode != "jql" || roles == 0 || all < roles {
-		t.Errorf("participant = paul.martin: %d (%s) %d issues, roles alone %d", status, mode, all, roles)
+	status, all := runSearch(t, c, `participant = paul.martin`)
+	if status != 200 || roles == 0 || all < roles {
+		t.Errorf("participant = paul.martin: %d, %d issues, roles alone %d", status, all, roles)
 	}
-	_, none, _ := runSearch(t, c, `participant != paul.martin`)
-	_, total, _ := runSearch(t, c, `created is not EMPTY`)
+	_, none := runSearch(t, c, `participant != paul.martin`)
+	_, total := runSearch(t, c, `created is not EMPTY`)
 	if all+none != total {
 		t.Errorf("participant = and != paul.martin: %d + %d, want %d", all, none, total)
 	}

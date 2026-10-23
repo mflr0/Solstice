@@ -14,6 +14,8 @@
     SORT_FIELDS,
     type Completion,
   } from '../../core/jql.js';
+  import { CATEGORY_JQL } from '../../core/filters.js';
+  import { STATUS_CATEGORIES } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { catalog, fold, kindOf, listFieldOf, loadOptions } from './sources.svelte.js';
 
@@ -65,7 +67,8 @@
   let ctx: Completion | null = null;
   let at = $state({ left: 0, top: 0 });
   let seq = 0;
-  const id = `jql-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `jql-${uid}`;
 
   $effect(() => {
     const v = value;
@@ -182,7 +185,7 @@
     if (c.keywords.includes('(') && !p) out.push({ label: '(', insert: '(', detail: '' });
     const kind = kindOf(c.field);
     if (kind === 'category') {
-      for (const v of ['To Do', 'In Progress', 'Done']) {
+      for (const v of STATUS_CATEGORIES.map((cat) => CATEGORY_JQL[cat])) {
         if (startsWith(v, p)) out.push({ label: v, insert: quote(v) + end, detail: '' });
       }
     } else if (kind === 'date') {

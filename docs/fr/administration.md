@@ -13,8 +13,8 @@ Ce qui se règle où :
 
 - Le fichier de configuration et les variables d'environnement ne servent qu'à
   démarrer le serveur : URL de la base, répertoire de données, adresse
-  d'écoute. Voir `solstice -h`.
-- Tout ce qui suit est stocké dans la base de données et s'applique tout de
+  d'écoute, et connexion LDAP. Voir `solstice -h`.
+- Tout le reste de ce qui suit est stocké dans la base de données et s'applique tout de
   suite, sans redémarrage.
 - Chaque changement fait dans l'administration est écrit dans le journal
   d'audit.
@@ -82,7 +82,9 @@ premiers résultats : affinez la recherche pour trouver les autres.
 - Chacun peut aussi demander un lien de réinitialisation depuis la page de
   connexion, quand les liens par e-mail sont disponibles.
 - Les comptes importés d'un annuaire externe de Jira (LDAP et autres) n'ont
-  pas de mot de passe. Envoyez-leur un lien, ou définissez-en un.
+  pas de mot de passe. Avec la connexion LDAP activée, ils utilisent le mot de
+  passe de l'annuaire (voir plus bas). Sinon, envoyez-leur un lien, ou
+  définissez-en un.
 
 Si tous les administrateurs sont bloqués, créez ou réparez un compte depuis la
 ligne de commande du serveur. Les commandes s'exécutent sur la base configurée
@@ -127,6 +129,62 @@ membres.
   et de saisies de temps dépendent encore du groupe.
 - Renommer un groupe conserve les commentaires et les saisies de temps qui lui
   sont restreints.
+
+### LDAP et Active Directory
+
+Les personnes peuvent se connecter avec leur mot de passe LDAP ou Active
+Directory. Cela se règle dans le fichier de configuration, pas dans
+l'administration : voir les clés `SOLSTICE_LDAP_*` dans
+[l'installation](install.md). Redémarrez Solstice après un changement.
+Exemple pour Active Directory :
+
+```sh
+SOLSTICE_LDAP_URL=ldaps://dc1.example.org
+SOLSTICE_LDAP_BINDDN=CN=solstice,OU=Services,DC=example,DC=org
+SOLSTICE_LDAP_BINDPASSWORD=mot-de-passe-du-compte-de-service
+SOLSTICE_LDAP_USERBASE=OU=People,DC=example,DC=org
+SOLSTICE_LDAP_USERFILTER=(sAMAccountName={username})
+SOLSTICE_LDAP_GROUPFILTER=(member:1.2.840.113556.1.4.1941:={dn})
+SOLSTICE_LDAP_REQUIREGROUP=solstice-users
+```
+
+Le filtre de groupes ci-dessus inclut les groupes imbriqués (Active Directory
+seulement). Pour OpenLDAP, le filtre par défaut `(member={dn})` lit les
+groupes de type `groupOfNames`.
+
+À chaque connexion, Solstice cherche la personne avec le compte de service,
+vérifie le mot de passe en se connectant à l'annuaire en son nom, puis lit ses
+groupes.
+
+- **Quels comptes.** Un compte marqué « LDAP » dans Utilisateurs se connecte
+  uniquement par l'annuaire. Un compte local avec un mot de passe le garde,
+  même si l'annuaire connaît le même nom : les administrateurs créés dans
+  Solstice entrent encore quand l'annuaire est en panne. Un compte existant
+  sans mot de passe, comme ceux importés de l'annuaire externe de Jira, devient
+  un compte LDAP à sa première connexion LDAP. Un nom qu'aucun compte ne porte
+  reçoit un nouveau compte LDAP.
+- **Nom et adresse** sont copiés depuis l'annuaire à chaque connexion, quand il
+  les connaît.
+- **Groupes.** La personne est mise dans les groupes Solstice nommés comme ses
+  groupes de l'annuaire (en minuscules) ; les groupes absents sont créés. Ces
+  groupes appartiennent ensuite à l'annuaire : chaque connexion en retire la
+  personne s'il l'en a retirée. Les groupes qui ne viennent pas de l'annuaire
+  ne changent jamais.
+- **Administrateurs.** Avec `SOLSTICE_LDAP_ADMINGROUP`, chaque connexion donne
+  ou retire le droit d'administrateur des comptes LDAP. Sans cette clé, le
+  droit se règle seulement dans Solstice.
+- **Mots de passe.** Solstice ne définit ni ne réinitialise le mot de passe
+  d'un compte LDAP : les actions sur le mot de passe sont masquées, et le lien
+  de réinitialisation n'est pas envoyé.
+
+Attention :
+
+- Retirer quelqu'un de l'annuaire, ou du groupe exigé, refuse sa prochaine
+  connexion. Les sessions et jetons d'accès déjà ouverts fonctionnent jusqu'à
+  leur expiration : désactivez le compte pour les fermer tout de suite.
+- Sans `SOLSTICE_LDAP_URL`, les comptes LDAP ne peuvent pas se connecter.
+- Les groupes et le droit d'administrateur réglés à la main sur un compte LDAP
+  sont remplacés à la connexion suivante quand l'annuaire en décide.
 
 ### Rôles
 

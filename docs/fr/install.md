@@ -222,6 +222,22 @@ Les durées s'écrivent `30s`, `5m`, `1h30m`.
 | `SOLSTICE_HTTP_MAXUPLOAD` | `100MiB` | Taille d'un envoi de fichiers. `KB`, `MB`, `GB` comptent par 1000, `KiB`, `MiB`, `GiB` par 1024. Montez aussi la limite du proxy. |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error`. |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker). |
+| `SOLSTICE_LDAP_URL` | aucune | Serveur LDAP ou Active Directory, `ldaps://hôte:636` ou `ldap://hôte:389`. Vide : la connexion LDAP est désactivée. Voir [administration](administration.md#ldap-et-active-directory). |
+| `SOLSTICE_LDAP_STARTTLS` | `false` | Passe d'abord une connexion `ldap://` en TLS. Obligatoire avec `ldap://`, refusé avec `ldaps://`. |
+| `SOLSTICE_LDAP_INSECURE` | `false` | Autorise `ldap://` sans StartTLS. Les mots de passe circulent alors en clair : pour les tests seulement. |
+| `SOLSTICE_LDAP_CAFILE` | aucun | Fichier PEM d'autorités de certification à accepter, en plus de celles du système. |
+| `SOLSTICE_LDAP_BINDDN` | aucun | Compte de service qui cherche dans l'annuaire. Vide : recherche anonyme. |
+| `SOLSTICE_LDAP_BINDPASSWORD` | aucun | Son mot de passe. |
+| `SOLSTICE_LDAP_USERBASE` | aucune | Où chercher les personnes, par exemple `ou=people,dc=example,dc=org`. Obligatoire avec `SOLSTICE_LDAP_URL`. |
+| `SOLSTICE_LDAP_USERFILTER` | `(uid={username})` | Comment trouver une personne. `{username}` est le nom tapé à la connexion. Active Directory : `(sAMAccountName={username})`. |
+| `SOLSTICE_LDAP_NAMEATTR` | `displayName` | Attribut copié dans le nom du compte. |
+| `SOLSTICE_LDAP_EMAILATTR` | `mail` | Attribut copié dans l'adresse e-mail du compte. |
+| `SOLSTICE_LDAP_GROUPBASE` | la base des personnes | Où chercher les groupes. |
+| `SOLSTICE_LDAP_GROUPFILTER` | `(member={dn})` | Comment trouver les groupes d'une personne. `{dn}` est son DN, `{username}` son nom. |
+| `SOLSTICE_LDAP_GROUPNAMEATTR` | `cn` | Attribut qui nomme un groupe dans Solstice. |
+| `SOLSTICE_LDAP_REQUIREGROUP` | aucun | Seuls les membres de ce groupe peuvent se connecter par LDAP. |
+| `SOLSTICE_LDAP_ADMINGROUP` | aucun | Les membres de ce groupe sont administrateurs, et eux seuls, parmi les comptes LDAP. |
+| `SOLSTICE_LDAP_TIMEOUT` | `10s` | Temps qu'une connexion peut attendre le serveur. Doit être positif. |
 
 `SOLSTICE_CONFIG` n'est lue que dans l'environnement. Il n'y a pas de base par
 défaut : sans `SOLSTICE_DB_URL`, l'assistant en demande une.

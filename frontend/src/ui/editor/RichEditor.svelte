@@ -13,6 +13,7 @@
     deleteTable,
     toggleHeaderRow,
   } from 'prosemirror-tables';
+  import { formatShortcut, isMac } from '../../core/shortcuts.js';
   import type { Attachment, UserRef } from '../../core/types.js';
   import { IMAGE_EXT_RE, wikiReferences } from '../../core/wiki.js';
   import {
@@ -119,7 +120,8 @@
   /** Where uploads in progress will insert their references, kept in step with edits. */
   let pending: { pos: number }[] = [];
 
-  const id = `editor-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = $props.id();
+  const id = `editor-${uid}`;
   const files = $derived(new Map([...attachments, ...added].map((a) => [a.filename, a.url])));
   const resolver = $derived(refs.resolver(files));
   const live = new Set<Live>();
@@ -133,7 +135,7 @@
           submit: onsubmit ? () => onsubmit?.() : null,
           cancel: oncancel ? () => oncancel?.() : null,
         },
-        onMentionKey: mentionKey_,
+        onMentionKey: onMentionKeydown,
         placeholder: () => placeholder,
         issueExists: (key) => resolver.issueExists(key),
       }),
@@ -406,7 +408,7 @@
     view.focus();
   }
 
-  function mentionKey_(e: KeyboardEvent): boolean {
+  function onMentionKeydown(e: KeyboardEvent): boolean {
     if (!view) return false;
     if (e.key === 'Escape') {
       view.dispatch(view.state.tr.setMeta(mentionKey, 'dismiss'));
@@ -510,11 +512,14 @@
     }
   }
 
+  const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform : '');
+  const shortcut = (binding: string) => formatShortcut(binding, mac, t.editor.keys);
+
   const MARKS: { name: MarkName; label: string; glyph: string; keys: string }[] = [
-    { name: 'strong', label: t.editor.bold, glyph: 'B', keys: 'Ctrl+B' },
-    { name: 'em', label: t.editor.italic, glyph: 'I', keys: 'Ctrl+I' },
-    { name: 'underline', label: t.editor.underline, glyph: 'U', keys: 'Ctrl+U' },
-    { name: 'strike', label: t.editor.strike, glyph: 'S', keys: 'Ctrl+Maj+X' },
+    { name: 'strong', label: t.editor.bold, glyph: 'B', keys: 'Mod-b' },
+    { name: 'em', label: t.editor.italic, glyph: 'I', keys: 'Mod-i' },
+    { name: 'underline', label: t.editor.underline, glyph: 'U', keys: 'Mod-u' },
+    { name: 'strike', label: t.editor.strike, glyph: 'S', keys: 'Mod-Shift-x' },
   ];
 </script>
 
@@ -536,7 +541,7 @@
     class="editor-button"
     aria-label={title}
     aria-pressed={pressed === null ? undefined : pressed}
-    title={keys ? `${title} (${keys})` : title}
+    title={keys ? `${title} (${shortcut(keys)})` : title}
     disabled={source || !can(cmd)}
     onmousedown={(e) => e.preventDefault()}
     onclick={() => run(cmd)}>{@render icon(name)}</button
@@ -578,20 +583,20 @@
           data-mark={m.name}
           aria-label={m.label}
           aria-pressed={at?.marks[m.name] ?? false}
-          title={`${m.label} (${m.keys})`}
+          title={`${m.label} (${shortcut(m.keys)})`}
           disabled={source || !can(toggle(m.name))}
           onmousedown={(e) => e.preventDefault()}
           onclick={() => run(toggle(m.name))}><span aria-hidden="true">{m.glyph}</span></button
         >
       {/each}
-      {@render button('code', t.editor.code, toggle('code'), at?.marks.code ?? false, 'Ctrl+E')}
+      {@render button('code', t.editor.code, toggle('code'), at?.marks.code ?? false, 'Mod-e')}
       <button
         type="button"
         class="editor-button"
         aria-label={t.editor.link}
         aria-pressed={at?.link ?? false}
         aria-haspopup="dialog"
-        title={`${t.editor.link} (Ctrl+K)`}
+        title={`${t.editor.link} (${shortcut('Mod-k')})`}
         disabled={source || !at || at.code}
         onmousedown={(e) => e.preventDefault()}
         onclick={openLink}>{@render icon('link')}</button
@@ -604,22 +609,22 @@
         t.editor.bulletList,
         toggleList('bullet'),
         at?.list === 'bullet',
-        'Ctrl+Maj+8',
+        'Mod-Shift-8',
       )}
       {@render button(
         'orderedList',
         t.editor.orderedList,
         toggleList('ordered'),
         at?.list === 'ordered',
-        'Ctrl+Maj+7',
+        'Mod-Shift-7',
       )}
-      {@render button('quote', t.editor.quote, toggleQuote, at?.quote ?? false, 'Ctrl+Maj+9')}
+      {@render button('quote', t.editor.quote, toggleQuote, at?.quote ?? false, 'Mod-Shift-9')}
       {@render button(
         'codeBlock',
         t.editor.codeBlock,
         toggleCodeBlock,
         at?.code ?? false,
-        'Ctrl+Alt+C',
+        'Mod-Alt-c',
       )}
       {@render button('table', t.editor.table, insertTable)}
       {@render button('rule', t.editor.rule, insertRule)}
@@ -640,8 +645,8 @@
     </div>
 
     <div class="editor-group editor-end">
-      {@render button('undo', t.editor.undo, undo, null, 'Ctrl+Z')}
-      {@render button('redo', t.editor.redo, redo, null, 'Ctrl+Maj+Z')}
+      {@render button('undo', t.editor.undo, undo, null, 'Mod-z')}
+      {@render button('redo', t.editor.redo, redo, null, 'Shift-Mod-z')}
       <button
         type="button"
         class="editor-button editor-source-toggle"

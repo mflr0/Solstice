@@ -11,6 +11,7 @@
   import Modal from '../Modal.svelte';
   import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
+  import ImportPanel from '../project-settings/ImportPanel.svelte';
   import NotificationsPanel from '../project-settings/NotificationsPanel.svelte';
   import VersionsPanel from '../project-settings/VersionsPanel.svelte';
   import '../settings.css';
@@ -90,17 +91,30 @@
     queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
   }
 
+  // The guard above bounces back to the same project: that must not reload
+  // the page and drop the unsaved tab.
+  let loadedKey = '';
   $effect(() => {
     const key = projectKey;
+    if (key === loadedKey) return;
+    loadedKey = key;
     document.title = `${t.settings.title} ${key} — ${t.appName}`;
+    data = null;
+    grants = [];
+    saved = '';
+    error = '';
+    forbidden = false;
+    adding = null;
     api
       .permissions(key)
       .then((d) => {
+        if (key !== projectKey) return;
         data = d;
         grants = d.grants;
         saved = signature(d.grants);
       })
       .catch((e: unknown) => {
+        if (key !== projectKey) return;
         if (e instanceof ApiError && e.status === 403) forbidden = true;
         else error = errorMessage(e);
       });
@@ -135,17 +149,20 @@
   }
 
   async function save() {
+    const key = projectKey;
     saving = true;
     try {
       const d = await api.savePermissions(
-        projectKey,
+        key,
         grants.map(({ permission, holder, id }) =>
           id ? { permission, holder, id } : { permission, holder },
         ),
       );
-      data = d;
-      grants = d.grants;
-      saved = signature(d.grants);
+      if (key === projectKey) {
+        data = d;
+        grants = d.grants;
+        saved = signature(d.grants);
+      }
       notify(t.settings.saved);
     } catch (e) {
       notify(errorMessage(e), 'error');
@@ -173,20 +190,22 @@
     <p class="intro">{t.settings.intro}</p>
 
     {#if !forbidden}
-      <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
-        {#each PROJECT_TABS as k (k)}
-          <button
-            type="button"
-            class="tab"
-            role="tab"
-            id="tab-{k}"
-            aria-controls="panel-{k}"
-            aria-selected={tab === k}
-            tabindex={tab === k ? 0 : -1}
-            onclick={() => showTab(k)}
-            onkeydown={tabKey}>{tabLabels[k]}</button
-          >
-        {/each}
+      <div class="tabs-scroll">
+        <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
+          {#each PROJECT_TABS as k (k)}
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              id="tab-{k}"
+              aria-controls="panel-{k}"
+              aria-selected={tab === k}
+              tabindex={tab === k ? 0 : -1}
+              onclick={() => showTab(k)}
+              onkeydown={tabKey}>{tabLabels[k]}</button
+            >
+          {/each}
+        </div>
       </div>
     {/if}
 
@@ -225,6 +244,10 @@
             roles={data.roles}
             ondirty={(d) => (panelDirty = d)}
           />
+        </div>
+      {:else if tab === 'import'}
+        <div class="panel" role="tabpanel" id="panel-import" aria-labelledby="tab-import">
+          <ImportPanel {projectKey} />
         </div>
       {:else}
         <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
@@ -494,8 +517,27 @@
     gap: 4px;
   }
 
-  .tabs {
+  /* On a phone the tabs scroll sideways rather than widen the page. The box
+     that scrolls is around the tab list, so the skins' tabs can still reach
+     over their rule; its padding keeps the tabs that hang lower (Retro), and
+     the panel's margin gives that padding back. */
+  .tabs-scroll {
     margin: 18px 0 4px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+
+  .tabs-scroll + .panel {
+    margin-top: -2px;
+  }
+
+  .tabs {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .tab:focus-visible {
+    outline-offset: -2px;
   }
 
   .leave {

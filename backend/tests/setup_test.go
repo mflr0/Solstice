@@ -293,7 +293,7 @@ func TestSetupNewInstance(t *testing.T) {
 		done[0].BaseURL != "https://tickets.example.org" {
 		t.Fatalf("Done: %+v", done)
 	}
-	u, err := auth.Authenticate(context.Background(), conn, "chef", "une phrase de passe longue")
+	u, err := auth.Authenticate(context.Background(), conn, nil, "chef", "une phrase de passe longue")
 	if err != nil || !u.Admin || u.DisplayName != "La cheffe" || u.Email != "chef@example.org" {
 		t.Fatalf("the administrator cannot sign in: %+v %v", u, err)
 	}

@@ -5,9 +5,9 @@
   import { clock } from '../lib/ui.svelte.js';
 
   /**
-   * An instant said relatively ("il y a 3 h"); the exact date on hover.
+   * An instant said relatively ("3 hours ago"); the exact date on hover.
    * Inside a sentence, an older instant takes the language's date preposition
-   * ("le 12 mars", "am 12. März").
+   * ("on 12 March").
    */
   interface Props {
     iso: string;

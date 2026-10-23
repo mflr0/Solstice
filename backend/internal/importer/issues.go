@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -680,15 +681,6 @@ func copyFile(src, dst string) (bool, error) {
 	return true, os.Rename(tmp, dst)
 }
 
-// fieldKind returns the last part of a Jira custom field type key,
-// e.g. "userpicker" for com.atlassian.jira.plugin.system.customfieldtypes:userpicker.
-func fieldKind(typeKey string) string {
-	if i := strings.LastIndexByte(typeKey, ':'); i >= 0 {
-		return typeKey[i+1:]
-	}
-	return typeKey
-}
-
 func (r *run) importCustomFieldValues() error {
 	ins := r.inserter("custom_field_values", "id", "issue_id", "field_id", "parent_key", "string_value",
 		"number_value", "text_value", "date_value")
@@ -697,15 +689,15 @@ func (r *run) importCustomFieldValues() error {
 	if err := r.each(`SELECT id, issue, customfield, parentkey, stringvalue, numbervalue, textvalue, datevalue
 		FROM customfieldvalue`, func(rows *sql.Rows) error {
 		var id int64
-		var issue, field sql.NullInt64
+		var issueID, field sql.NullInt64
 		var parentKey, str, text sql.NullString
 		var num sql.NullFloat64
 		var date sql.NullTime
-		if err := rows.Scan(&id, &issue, &field, &parentKey, &str, &num, &text, &date); err != nil {
+		if err := rows.Scan(&id, &issueID, &field, &parentKey, &str, &num, &text, &date); err != nil {
 			return err
 		}
 		typeKey, ok := r.fields[field.Int64]
-		if !ok || !r.hasIssue(issue) {
+		if !ok || !r.hasIssue(issueID) {
 			skipped++
 			orphans++
 			return nil
@@ -719,14 +711,14 @@ func (r *run) importCustomFieldValues() error {
 		if num.Valid {
 			numVal = num.Float64
 		}
-		switch fieldKind(typeKey) {
+		switch issue.FieldKind(typeKey) {
 		case "gh-epic-link":
 			// Older Jira Software kept the epic in this field rather than a link.
 			if num.Valid && r.hasIssue(sql.NullInt64{Int64: int64(num.Float64), Valid: true}) {
-				r.epicOf[issue.Int64] = int64(num.Float64)
+				r.epicOf[issueID.Int64] = int64(num.Float64)
 			}
 		case "gh-sprint":
-			r.check.sprintMember(issue.Int64, str, num)
+			r.check.sprintMember(issueID.Int64, str, num)
 		case "userpicker", "multiuserpicker":
 			uid, ok := r.users[str.String]
 			if !ok {
@@ -744,7 +736,7 @@ func (r *run) importCustomFieldValues() error {
 		if s, ok := strVal.(string); ok {
 			strVal = truncate(s, 255)
 		}
-		return ins.add(id, issue.Int64, field.Int64, sqlq.Value(parentKey), strVal, numVal, sqlq.Value(text), dateVal)
+		return ins.add(id, issueID.Int64, field.Int64, sqlq.Value(parentKey), strVal, numVal, sqlq.Value(text), dateVal)
 	}); err != nil {
 		return err
 	}
@@ -775,7 +767,7 @@ func fitsType(typeKey string, str, text sql.NullString, num sql.NullFloat64, dat
 	if !str.Valid && !text.Valid && !num.Valid && !date.Valid {
 		return true
 	}
-	switch fieldKind(typeKey) {
+	switch issue.FieldKind(typeKey) {
 	case "float":
 		return num.Valid
 	case "datepicker", "datetime":

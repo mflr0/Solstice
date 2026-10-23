@@ -12,7 +12,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -159,15 +158,8 @@ func (s *Server) listSecurityLevels(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (s *Server) securityLevelNameTaken(ctx context.Context, projectID int64, name string, except int64) error {
-	var n int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_levels WHERE project_id = ?
-		AND LOWER(name) = LOWER(?) AND id <> ?`, projectID, name, except).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return failf(http.StatusConflict, i18n.CommonAlreadyExists, name)
-	}
-	return nil
+	return s.valueTaken(ctx, "security_levels", "name", "project_id = ?", []any{projectID}, name, except,
+		i18n.CommonAlreadyExists)
 }
 
 // auditLevel writes a change to a level, on the project it belongs to.
@@ -177,8 +169,7 @@ func (s *Server) auditLevel(r *http.Request, action string, projectID int64, lev
 		details[k] = v
 	}
 	key := s.projectKeyOf(r.Context(), projectID)
-	s.auditLog(r, action, audit.Target{Type: "project", ID: strconv.FormatInt(projectID, 10), Label: key},
-		details)
+	s.auditLog(r, action, target("project", projectID, key), details)
 }
 
 // saveSecurityLevel creates a level (no id in the path) or changes one.
@@ -252,14 +243,10 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 		s.auditLevel(r, audit.SecurityLevelCreate, projectID, level.Name, nil)
 		return writeJSON(w, http.StatusCreated, level)
 	}
-	if level.Name != before.Name || derefStr(level.Description) != derefStr(before.Description) {
-		more := map[string]any{}
-		if level.Name != before.Name {
-			more["name"] = map[string]any{"from": before.Name, "to": level.Name}
-		}
-		if derefStr(level.Description) != derefStr(before.Description) {
-			more["description"] = map[string]any{"from": derefStr(before.Description), "to": derefStr(level.Description)}
-		}
+	more := map[string]any{}
+	diff(more, "name", before.Name, level.Name)
+	diff(more, "description", derefStr(before.Description), derefStr(level.Description))
+	if len(more) > 0 {
 		s.auditLevel(r, audit.SecurityLevelUpdate, projectID, level.Name, more)
 	}
 	return writeJSON(w, http.StatusOK, level)
@@ -294,10 +281,8 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 		MoveTo *int64 `json:"moveTo"`
 		Clear  bool   `json:"clear"`
 	}
-	if r.ContentLength != 0 {
-		if err := readJSON(r, &in); err != nil {
-			return err
-		}
+	if err := readOptionalJSON(r, &in); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	level, err := s.securityLevel(ctx, projectID, id)

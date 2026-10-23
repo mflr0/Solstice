@@ -3,10 +3,13 @@ package tests
 // The Jira-compatible REST API and personal access tokens.
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -520,8 +523,31 @@ func TestRESTIssueRoundTrip(t *testing.T) {
 		t.Fatalf("comment: %d %v", status, c)
 	}
 	cid := str(c, "id")
-	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.2."}); status != 200 ||
-		str(c, "body") != "Corrigé en 2.4.2." {
+	if status, c := do("GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil); status != 200 || str(c, "id") != cid ||
+		str(c, "body") != "Corrigé en 2.4.1." {
+		t.Errorf("get comment: %d %v", status, c)
+	}
+	elsewhere := newTestIssue(t, paul, "Autre ticket", nil)
+	if status, _ := do("GET", "/rest/api/2/issue/"+elsewhere+"/comment/"+cid, nil); status != 404 {
+		t.Errorf("comment through another issue: %d", status)
+	}
+	if status, _ := do("GET", "/rest/api/2/issue/"+key+"/comment/premier", nil); status != 404 {
+		t.Errorf("comment with a non-numeric id: %d", status)
+	}
+	if status, e := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Ouvert à tous.",
+		"visibility": map[string]string{"type": "group", "value": "testeurs"}}); status != 400 || str(e, "errors", "visibility") == "" {
+		t.Errorf("edit of a comment's visibility: %d %v", status, e)
+	}
+	if _, c := do("GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil); str(c, "body") != "Corrigé en 2.4.1." {
+		t.Errorf("a refused edit changed the comment: %v", c)
+	}
+	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.2.",
+		"visibility": map[string]string{"type": "group", "value": "Developpeurs"}}); status != 200 ||
+		str(c, "body") != "Corrigé en 2.4.2." || str(c, "visibility", "value") != "developpeurs" {
+		t.Errorf("edit with the same visibility: %d %v", status, c)
+	}
+	if status, c := do("PUT", "/rest/api/2/issue/"+key+"/comment/"+cid, map[string]any{"body": "Corrigé en 2.4.3."}); status != 200 ||
+		str(c, "body") != "Corrigé en 2.4.3." {
 		t.Errorf("edit comment: %d %v", status, c)
 	}
 	if status, _, _ := call(t, login(t, "chloe.simon", "motdepasse"), testURL, "GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil, nil); status != 404 {
@@ -767,6 +793,31 @@ func TestAgileREST(t *testing.T) {
 		func(a, b string) int { return strings.Compare(a, b) }) {
 		t.Errorf("sprint states: %v", states)
 	}
+	// No state, or none that is known, lists them all: closed, then active, then future.
+	order := map[string]int{"closed": 0, "active": 1, "future": 2}
+	total := pick(t, `SELECT CAST(COUNT(*) AS CHAR) FROM sprints WHERE board_id = 1`)
+	for _, q := range []string{"", "?state=bogus"} {
+		states = nil
+		for _, v := range at(get("/rest/agile/1.0/board/1/sprint"+q), "values").([]any) {
+			states = append(states, str(v, "state"))
+		}
+		if strconv.Itoa(len(states)) != total || !slices.Contains(states, "closed") || !slices.Contains(states, "future") ||
+			!slices.IsSortedFunc(states, func(a, b string) int { return order[a] - order[b] }) {
+			t.Errorf("sprints%s: %v, want %s", q, states, total)
+		}
+	}
+	closedOnly := at(get("/rest/agile/1.0/board/1/sprint?state=closed"), "values").([]any)
+	if len(closedOnly) == 0 {
+		t.Error("board 1 has no closed sprint")
+	}
+	for _, v := range closedOnly {
+		if str(v, "state") != "closed" {
+			t.Errorf("state=closed lists a sprint in state %s", str(v, "state"))
+		}
+	}
+	if status, _, _ := call(t, marie, testURL, "GET", "/rest/agile/1.0/sprint/999999999", nil, nil); status != 404 {
+		t.Errorf("unknown sprint: %d", status)
+	}
 	if status, _, _ := call(t, marie, testURL, "GET", "/rest/agile/1.0/board/2/sprint", nil, nil); status != 400 {
 		t.Errorf("sprints of a Kanban board: %d", status)
 	}
@@ -814,6 +865,63 @@ func TestAgileREST(t *testing.T) {
 	}
 	if !(rankOf(moved) < rankOf(first)) {
 		t.Errorf("rank(%s) = %s, not before rank(%s) = %s", moved, rankOf(moved), first, rankOf(first))
+	}
+	// A move to a sprint tells open pages once, with or without a rank anchor.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", testURL+"/api/events", nil)
+	resp, err := marie.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	events := make(chan string, 64)
+	go func() {
+		sc := bufio.NewScanner(resp.Body)
+		for sc.Scan() {
+			if line, ok := strings.CutPrefix(sc.Text(), "data: "); ok {
+				select {
+				case events <- line:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+	time.Sleep(200 * time.Millisecond) // let the subscription register
+	eventsOf := func(key string) int {
+		n := 0
+		for timeout := time.After(500 * time.Millisecond); ; {
+			select {
+			case line := <-events:
+				var e struct{ Key string }
+				if json.Unmarshal([]byte(line), &e) == nil && e.Key == key {
+					n++
+				}
+				continue
+			case <-timeout:
+			}
+			return n
+		}
+	}
+	for _, anchor := range []map[string]any{{"rankAfterIssue": first}, {}} {
+		if status, _, body := call(t, marie, testURL, "POST", "/rest/agile/1.0/backlog/issue",
+			map[string]any{"issues": []string{moved}}, header("X-Atlassian-Token", "no-check")); status != 204 {
+			t.Fatalf("move to backlog: %d %s", status, body)
+		}
+		eventsOf(moved)
+		in := map[string]any{"issues": []string{moved}}
+		maps.Copy(in, anchor)
+		if status, _, body := call(t, marie, testURL, "POST", fmt.Sprintf("/rest/agile/1.0/sprint/%d/issue", future),
+			in, header("X-Atlassian-Token", "no-check")); status != 204 {
+			t.Fatalf("move to sprint %v: %d %s", anchor, status, body)
+		}
+		if n := eventsOf(moved); n != 1 {
+			t.Errorf("move to sprint %v: %d events for %s, want 1", anchor, n, moved)
+		}
+	}
+	if !(rankOf(moved) > rankOf(first)) {
+		t.Errorf("rank(%s) = %s, not after rank(%s) = %s", moved, rankOf(moved), first, rankOf(first))
 	}
 	// One only ranks issues one sees (and may edit).
 	rh := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id

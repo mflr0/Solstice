@@ -14,7 +14,7 @@ import type {
   FieldType,
   StatusRow,
 } from './admin-types.js';
-import type { Problems } from './admin-forms.js';
+import { tooLong, type Problems } from './admin-forms.js';
 
 /** The four catalogues of the "Tickets" group, as the navigation names them. */
 export type CatalogSection = 'issueTypes' | 'priorities' | 'resolutions' | 'linkTypes';
@@ -39,6 +39,17 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
   return out;
 }
 
+/**
+ * The order arrow to focus after a one-step move (`by`) to `to` in a list of
+ * `length`: the same arrow, or the other one once the item reaches an end, so
+ * the keyboard stays on the item.
+ */
+export function arrowAfterMove(by: -1 | 1, to: number, length: number): 'up' | 'down' {
+  const atEdge = to === 0 || to === length - 1;
+  if (atEdge) return by < 0 ? 'down' : 'up';
+  return by < 0 ? 'up' : 'down';
+}
+
 /** Whether two lists hold the same ids in the same order. */
 export function sameOrder(
   a: readonly { id: string | number }[],
@@ -48,11 +59,6 @@ export function sameOrder(
 }
 
 /* Colours ------------------------------------------------------------------- */
-
-/** "#rrggbb" (any case). */
-export function isHexColor(s: string): boolean {
-  return /^#[0-9a-fA-F]{6}$/.test(s.trim());
-}
 
 /**
  * A colour as typed, made "#rrggbb" lower case: accepts a missing "#" and
@@ -92,8 +98,6 @@ export function catalogForm(item: CatalogItem | null): CatalogForm {
     inward: item?.inward ?? '',
   };
 }
-
-const tooLong = (s: string) => [...s.trim()].length > 255;
 
 /** Whether another item of the list already has this name (case does not count). */
 export function nameTaken(
@@ -195,9 +199,6 @@ export function statusProblems(
   if (nameTaken(name, statuses, editing)) return { name: 'nameTaken' };
   return {};
 }
-
-/** The three categories a status belongs to, in the order of a ticket's life. */
-export const STATUS_CATEGORIES: readonly StatusRow['category'][] = ['todo', 'doing', 'done'];
 
 /** What to send to change a status: only what differs from `before`. */
 export function statusPayload(
@@ -301,7 +302,7 @@ export function fieldProblems(
   if (editing === null && hasOptions(f.type)) {
     const options = parseOptions(f.options);
     if (options.length === 0) out.options = 'optionsRequired';
-    else if (options.some(tooLong)) out.options = 'optionTooLong';
+    else if (options.some((o) => tooLong(o))) out.options = 'optionTooLong';
     else if (duplicateOption(options)) out.options = 'optionDuplicate';
   }
   if (!f.allProjects && f.projects.length === 0) out.projects = 'projectsRequired';

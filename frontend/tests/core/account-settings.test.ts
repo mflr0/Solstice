@@ -7,7 +7,6 @@ import {
   isWorkingWeek,
   newSubscription,
   ownSubscriptions,
-  profileApplied,
   profileForm,
   profilePatch,
   profileProblems,
@@ -72,8 +71,8 @@ describe('changesPassword', () => {
     expect(changesPassword(profileForm(me))).toBe(false);
   });
 
-  it('is true when the current password is typed', () => {
-    expect(changesPassword({ ...profileForm(me), currentPassword: 'old' })).toBe(true);
+  it('is false when only the current password is typed', () => {
+    expect(changesPassword({ ...profileForm(me), currentPassword: 'old' })).toBe(false);
   });
 
   it('is true when the new password is typed', () => {
@@ -133,7 +132,8 @@ describe('profileProblems', () => {
       },
       { newPassword: 'newShort' },
     ],
-    [{ ...profileForm(me), currentPassword: 'old' }, { newPassword: 'newRequired' }],
+    [{ ...profileForm(me), currentPassword: 'old' }, {}],
+    [{ ...profileForm(me), name: 'Marie D.', currentPassword: 'old' }, {}],
     [
       {
         ...profileForm(me),
@@ -162,18 +162,9 @@ describe('profilePatch', () => {
       { currentPassword: 'old', newPassword: 'abcdefgh' },
     ],
     [{ ...profileForm(me), currentPassword: 'old' }, {}],
+    [{ ...profileForm(me), name: 'Marie D.', currentPassword: 'old' }, { name: 'Marie D.' }],
   ])('%j gives %j', (form, want) => {
     expect(profilePatch(form, me)).toEqual(want);
-  });
-});
-
-describe('profileApplied', () => {
-  it.each<[ProfilePatch, boolean]>([
-    [{}, true],
-    [{ name: 'Marie Durand' }, true],
-    [{ name: 'Other' }, false],
-  ])('%j is %s', (patch, want) => {
-    expect(profileApplied(patch, me)).toBe(want);
   });
 });
 

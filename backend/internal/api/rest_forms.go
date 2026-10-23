@@ -336,9 +336,8 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 		}
 		switch f.Kind {
 		case "gh-epic-link":
-			// Sub-tasks follow their parent's epic, and an epic is in none;
-			// creating, which has no type to check yet, allows it.
-			if subtask || (!creating && isEpicType(typ)) || !canEdit {
+			// Sub-tasks follow their parent's epic, and an epic is in none.
+			if subtask || isEpicType(typ) || !canEdit {
 				continue
 			}
 		case "gh-sprint":
@@ -526,7 +525,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 		exact = "(CONCAT(p.pkey, '-', i.num) = '" + strings.ToUpper(query) + "') DESC, "
 	}
 	if query != "" {
-		like := "%" + escapeLike(strings.ToLower(query)) + "%"
+		like := "%" + sqlq.EscapeLike(strings.ToLower(query)) + "%"
 		cond := "LOWER(i.summary) LIKE ? OR CONCAT(p.pkey, '-', i.num) LIKE ?"
 		more := []any{like, strings.ToUpper(like)}
 		if num, err := strconv.ParseInt(query, 10, 64); err == nil {
@@ -563,7 +562,7 @@ func (s *Server) restIssuePicker(w http.ResponseWriter, r *http.Request) error {
 	current, order := where, "i.updated_at DESC"
 	currentArgs := slices.Clone(args)
 	if jqlText := strings.TrimSpace(q.Get("currentJQL")); jqlText != "" {
-		jqlWhere, jqlArgs, jqlOrder, _, err := s.searchCondition(ctx, sub, url.Values{"jql": {jqlText}})
+		jqlWhere, jqlArgs, jqlOrder, err := s.searchCondition(ctx, sub, url.Values{"jql": {jqlText}})
 		if err != nil {
 			return err
 		}

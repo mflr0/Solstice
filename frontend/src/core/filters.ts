@@ -13,6 +13,7 @@ import {
   fieldInfo,
   formatOrder,
   formatValue,
+  functionInfo,
   JqlError,
   parse,
   quote,
@@ -22,7 +23,8 @@ import {
   type SortTerm,
   type Value,
 } from './jql.js';
-import type { StatusCategory } from './types.js';
+import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
+import { parseDay } from './dates.js';
 
 /** Fields chosen from a list of values. */
 export const LIST_FIELDS = [
@@ -73,47 +75,8 @@ export const JQL_FIELD: Record<ListField, string> = {
 export const ME = 'currentUser()';
 export const EMPTY = 'EMPTY';
 
-/** Functions a field's filter may hold (lower-case names). */
-const LIST_FUNCTIONS: Partial<Record<ListField, string[]>> = {
-  people: ['currentuser', 'membersof'],
-  assignee: ['currentuser', 'membersof'],
-  reporter: ['currentuser', 'membersof'],
-  type: ['standardissuetypes', 'subtaskissuetypes'],
-  sprint: ['opensprints', 'closedsprints', 'futuresprints'],
-  fixVersion: [
-    'unreleasedversions',
-    'releasedversions',
-    'earliestunreleasedversion',
-    'latestreleasedversion',
-  ],
-};
-
-/** Functions that stand for a list: written "field in f()", not "field = f()". */
-const LIST_VALUED = new Set([
-  'membersof',
-  'standardissuetypes',
-  'subtaskissuetypes',
-  'opensprints',
-  'closedsprints',
-  'futuresprints',
-  'unreleasedversions',
-  'releasedversions',
-]);
-
 /** Fields that always have a value: "is EMPTY" means nothing there. */
 const NEVER_EMPTY: ListField[] = ['project', 'type', 'status'];
-
-const DATE_FUNCTIONS = new Set([
-  'now',
-  'startofday',
-  'endofday',
-  'startofweek',
-  'endofweek',
-  'startofmonth',
-  'endofmonth',
-  'startofyear',
-  'endofyear',
-]);
 
 export interface DateBound {
   op: '>' | '>=' | '<' | '<=';
@@ -180,26 +143,28 @@ export function listClause(field: string, values: string[]): string {
   if (values.length > 0 && values.every((v) => v === EMPTY)) return `${f} is EMPTY`;
   if (values.length === 1) {
     const v = values[0] as string;
-    const fn = /^([A-Za-z]+)\(/.exec(v)?.[1]?.toLowerCase();
-    return fn && LIST_VALUED.has(fn) ? `${f} in ${v}` : `${f} = ${v}`;
+    const fn = /^([A-Za-z]+)\(/.exec(v)?.[1];
+    return fn && functionInfo(fn)?.list ? `${f} in ${v}` : `${f} = ${v}`;
   }
   return `${f} in (${values.join(', ')})`;
 }
 
-const CATEGORY_ORDER: StatusCategory[] = ['todo', 'doing', 'done'];
-const CATEGORY_JQL: Record<StatusCategory, string> = {
-  todo: '"To Do"',
-  doing: '"In Progress"',
+/** The names JQL gives the status categories. */
+export const CATEGORY_JQL: Record<StatusCategory, string> = {
+  todo: 'To Do',
+  doing: 'In Progress',
   done: 'Done',
 };
 
 /** The statusCategory clause, or '' when every or no category is chosen. */
 export function categoryClause(categories: StatusCategory[]): string {
-  const set = CATEGORY_ORDER.filter((c) => categories.includes(c));
-  if (set.length === 0 || set.length === 3) return '';
-  if (set.length === 2 && !set.includes('done')) return 'statusCategory != Done';
-  if (set.length === 1) return `statusCategory = ${CATEGORY_JQL[set[0] as StatusCategory]}`;
-  return `statusCategory in (${set.map((c) => CATEGORY_JQL[c]).join(', ')})`;
+  const set = STATUS_CATEGORIES.filter((c) => categories.includes(c));
+  if (set.length === 0 || set.length === STATUS_CATEGORIES.length) return '';
+  if (set.length === 2 && !set.includes('done'))
+    return `statusCategory != ${quote(CATEGORY_JQL.done)}`;
+  const names = set.map((c) => quote(CATEGORY_JQL[c]));
+  if (names.length === 1) return `statusCategory = ${names[0]}`;
+  return `statusCategory in (${names.join(', ')})`;
 }
 
 function dateClauses(field: DateField, r: DateRange | undefined): string[] {
@@ -322,7 +287,8 @@ function readList(field: ListField, c: Clause, role?: PeopleRole): string[] | nu
       if (field === 'people' && role !== 'watcher' && role !== 'commenter') return null;
       s = EMPTY;
     } else if (v.kind === 'func') {
-      if (!LIST_FUNCTIONS[field]?.includes(v.name.toLowerCase())) return null;
+      const fn = functionInfo(v.name);
+      if (!fn || fn.kind !== fieldInfo(JQL_FIELD[field])?.kind) return null;
       s = formatValue(v);
     } else if (field === 'resolution' && v.text.toLowerCase() === 'unresolved') {
       s = EMPTY;
@@ -344,12 +310,12 @@ function readCategories(c: Clause): StatusCategory[] | null {
     set.add(cat);
   }
   const negate = c.op === '!=' || c.op === 'not in';
-  return CATEGORY_ORDER.filter((cat) => set.has(cat) !== negate);
+  return STATUS_CATEGORIES.filter((cat) => set.has(cat) !== negate);
 }
 
 function readDateValue(v: Value | undefined): string | null {
   if (!v || v.kind === 'empty') return null;
-  if (v.kind === 'func') return DATE_FUNCTIONS.has(v.name.toLowerCase()) ? formatValue(v) : null;
+  if (v.kind === 'func') return functionInfo(v.name)?.kind === 'date' ? formatValue(v) : null;
   return quote(v.text);
 }
 
@@ -532,8 +498,6 @@ export function matchPreset(field: DateField, range: DateRange): string | null {
   return p?.id ?? null;
 }
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-
 /** "2026-10-01" plus n days. */
 export function addDays(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number);
@@ -544,17 +508,17 @@ export function addDays(day: string, n: number): string {
 /** A range between two calendar days, both included (either may be missing). */
 export function dayRange(from: string, to: string): DateRange {
   return {
-    from: DAY.test(from) ? { op: '>=', value: from } : null,
-    to: DAY.test(to) ? { op: '<', value: addDays(to, 1) } : null,
+    from: parseDay(from) !== null ? { op: '>=', value: from } : null,
+    to: parseDay(to) !== null ? { op: '<', value: addDays(to, 1) } : null,
     empty: false,
   };
 }
 
 /** The calendar days a range spans, for date inputs; '' where it is open or not a day. */
 export function rangeDays(range: DateRange): { from: string; to: string } {
-  const from = range.from && DAY.test(range.from.value) ? range.from.value : '';
+  const from = range.from && parseDay(range.from.value) !== null ? range.from.value : '';
   let to = '';
-  if (range.to && DAY.test(range.to.value)) {
+  if (range.to && parseDay(range.to.value) !== null) {
     to = range.to.op === '<' ? addDays(range.to.value, -1) : range.to.value;
   }
   return { from, to };
@@ -572,11 +536,6 @@ export function literal(value: string): string | null {
   } catch {
     return value;
   }
-}
-
-/** The JQL value for a name picked in a list. */
-export function valueOf(name: string): string {
-  return quote(name);
 }
 
 /** Whether two JQL values name the same thing (case aside). */

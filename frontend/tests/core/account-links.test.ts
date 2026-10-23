@@ -7,6 +7,7 @@ import {
   choosePasswordProblem,
   isLinkPurpose,
   passwordModes,
+  passwordTooShort,
   type LinkAccount,
 } from '../../src/core/account-links.js';
 
@@ -28,6 +29,17 @@ describe('choosing a password through a link', () => {
 
   it('reports the length before the mismatch', () => {
     expect(choosePasswordProblem('abc', 'abd', 10)).toBe('tooShort');
+  });
+});
+
+describe('a password shorter than the minimum', () => {
+  it('counts characters, not bytes or UTF-16 units', () => {
+    expect(passwordTooShort('', 10)).toBe(true);
+    expect(passwordTooShort('123456789', 10)).toBe(true);
+    expect(passwordTooShort('1234567890', 10)).toBe(false);
+    expect(passwordTooShort('éééééééééé', 10)).toBe(false);
+    expect(passwordTooShort('😀'.repeat(9), 10)).toBe(true);
+    expect(passwordTooShort('😀'.repeat(10), 10)).toBe(false);
   });
 });
 
@@ -57,6 +69,7 @@ describe('what the administration offers', () => {
     expect(canSendResetLink({ ...seen, active: false }, true)).toBe(false);
     expect(canSendResetLink({ ...seen, email: '' }, true)).toBe(false);
     expect(canSendResetLink({ ...seen, email: '  ' }, true)).toBe(false);
+    expect(canSendResetLink({ ...seen, directory: 'ldap' }, true)).toBe(false);
   });
 
   it('resends an invitation only to accounts that never signed in', () => {
@@ -65,6 +78,7 @@ describe('what the administration offers', () => {
     expect(canResendInvitation(never, false)).toBe(false);
     expect(canResendInvitation({ ...never, active: false }, true)).toBe(false);
     expect(canResendInvitation({ ...never, email: '' }, true)).toBe(false);
+    expect(canResendInvitation({ ...never, directory: 'ldap' }, true)).toBe(false);
     // An older server does not say: no guessing.
     expect(canResendInvitation({ active: true, email: 'a@example.org' }, true)).toBe(false);
   });

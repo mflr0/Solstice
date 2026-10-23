@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { sourceEngine } from '../../core/setup.js';
+  import type { ImportCheck, ImportView } from '../../core/admin-types.js';
+  import { engineName, sourceEngine, wizardTimeZone } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import {
     setupApi,
     setupErrorMessage,
-    type ImportState,
     type SetupAccount,
     type SetupFinished,
     type SetupStatus,
-    type SourceProbe,
   } from '../../lib/setup-api.js';
   import AdminForm from './AdminForm.svelte';
   import ImportFields from './ImportFields.svelte';
@@ -28,16 +27,15 @@
   }
   const { m, num, status, ondone, onback }: Props = $props();
 
-  const browserTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
   // svelte-ignore state_referenced_locally
   let form = $state({
     url: '',
     jiraHome: '',
-    tz: status.tz && status.tz !== 'Local' ? status.tz : browserTZ,
+    tz: wizardTimeZone(status.tz),
   });
-  let probe = $state<SourceProbe | null>(null);
+  let probe = $state<ImportCheck | null>(null);
   // svelte-ignore state_referenced_locally
-  let job = $state<ImportState | null>(status.import ?? null);
+  let job = $state<ImportView | null>(status.import ?? null);
   // svelte-ignore state_referenced_locally
   let editing = $state(!status.import);
   let testing = $state(false);
@@ -51,7 +49,6 @@
   let chooseError = $state('');
   let creating = $state(false);
 
-  const engineName = (e: string) => (e === 'mysql' ? 'MySQL' : 'PostgreSQL');
   const duration = (s: number) => m.duration(Math.floor(s / 60), s % 60);
 
   // A changed field voids the last test.
@@ -82,7 +79,7 @@
         accounts = await setupApi.accounts(search);
         if (!chosen && accounts[0]?.admin) chosen = accounts[0].username;
       } catch (e) {
-        chooseError = setupErrorMessage(e, m.errors.generic);
+        chooseError = setupErrorMessage(e);
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -94,7 +91,7 @@
     try {
       probe = await setupApi.testSource({ ...form });
     } catch (e) {
-      error = setupErrorMessage(e, m.errors.generic);
+      error = setupErrorMessage(e);
     } finally {
       testing = false;
     }
@@ -108,7 +105,7 @@
       job = await setupApi.startImport({ ...form });
       editing = false;
     } catch (err) {
-      error = setupErrorMessage(err, m.errors.generic);
+      error = setupErrorMessage(err);
     } finally {
       starting = false;
     }
@@ -122,7 +119,7 @@
     try {
       ondone(await setupApi.finish({ existing: chosen }));
     } catch (err) {
-      chooseError = setupErrorMessage(err, m.errors.generic);
+      chooseError = setupErrorMessage(err);
     } finally {
       choosing = false;
     }

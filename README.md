@@ -102,6 +102,7 @@ and 503 otherwise.
 | `SOLSTICE_HTTP_MAXSTORAGE` | `0` | total size of all attachments; `0` means no limit |
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
+| `SOLSTICE_LDAP_*` | none | LDAP or Active Directory sign-in, see [installation](docs/en/install.md) and [administration](docs/en/administration.md#ldap-and-active-directory) |
 
 Durations are written `30s`, `5m`, `1h30m`.
 
@@ -247,7 +248,7 @@ notification settings).
 
 ## Development
 
-Requirements: Go 1.27+, Node 22+ with pnpm, Docker (or OrbStack).
+Requirements: Go 1.27+, Node 24+ with pnpm, Docker (or OrbStack).
 
 ```bash
 docker compose up -d          # MariaDB for Solstice, plus test PostgreSQL and MySQL Jira databases
@@ -288,6 +289,8 @@ placeholder `release_pubkey` in `deploy/linux/update.sh` and commit it. Until
 then the update helper refuses every update. Then
 `SOLSTICE_RELEASE_KEY=~/solstice-release-key.pem make release VERSION=x.y.z`.
 `deploy/linux/test-update-signature.sh` tests the check with a throwaway key.
+`deploy/linux/test-update-systemd.sh` runs the helper under systemd in a Docker
+container: an update, a bad checksum refused, an unhealthy version rolled back.
 
 ### Tests
 
@@ -311,8 +314,10 @@ backend/
   cmd/solstice/         the binary: serve, migrate, import, user, version, health
   cmd/jira-fixture/     generator of synthetic Jira databases (tests)
   internal/api/         JSON HTTP API used by the interface, REST compatibility layer
+  internal/issue/       domain types of issues, shared by the API, events and the import
   internal/importer/    import from Jira
   internal/jiradb/      connection to Jira databases (PostgreSQL, MySQL)
+  internal/jirafixture/ synthetic Jira databases, behind cmd/jira-fixture
   internal/perm/        who sees and does what
   internal/search/      the simple search
   internal/jql/         JQL
@@ -320,6 +325,7 @@ backend/
   internal/events/      event bus: real time, e-mail, webhooks
   internal/notify/      e-mail notifications, digests, subscriptions, reminders
   internal/mail/        SMTP settings, sending, e-mail queue
+  internal/mail/mailtest/  SMTP server for tests
   internal/webhook/     webhooks, SSRF guard
   internal/secret/      encryption of stored secrets
   internal/settings/    instance settings stored in the database
@@ -328,6 +334,8 @@ backend/
   internal/i18n/        server messages in five languages
   internal/auth/        passwords and sessions
   internal/db/          MariaDB connection and migrations
+  internal/sqlq/        small helpers around database/sql
+  internal/worker/      background work that survives a panic
   internal/web/         serves the built interface
 frontend/
   src/core/             pure, tested logic (wiki markup rendering, JQL…)

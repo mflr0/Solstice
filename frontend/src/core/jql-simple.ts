@@ -1,12 +1,14 @@
 /**
- * The former search syntax (@moi, est:ouvert, projet:DEMO, #label…), read
- * as JQL. The server still understands it (backend/internal/search); links
- * and bookmarks that use it open on the search page as filters.
+ * The simple search syntax (@moi, est:ouvert, projet:DEMO, #label…), read
+ * as JQL. The server also understands it (backend/internal/search). The home
+ * page and the projects list still link with it; those links and bookmarks
+ * open on the search page as filters.
  */
 
 import { categoryClause, EMPTY, listClause, ME } from './filters.js';
 import { formatOrder, quote, quoteString, type SortTerm } from './jql.js';
-import type { StatusCategory } from './types.js';
+import { KEY_TYPED } from './marks.js';
+import { STATUS_CATEGORIES, type StatusCategory } from './types.js';
 
 type Field =
   | 'assignee'
@@ -84,7 +86,6 @@ const SORTS: Record<string, SortTerm> = {
 
 const ME_WORDS = ['moi', 'me', 'moi-même'];
 const NOBODY_WORDS = ['personne', 'none', 'aucun', 'nobody'];
-const KEY = /^([A-Za-z][A-Za-z0-9_]*)-(\d+)$/;
 
 interface Tok {
   text: string;
@@ -129,7 +130,7 @@ function userValue(v: string): string {
   return quote(v);
 }
 
-/** The former search syntax as an equivalent JQL query. */
+/** The simple search syntax as an equivalent JQL query. */
 export function simpleToJql(q: string): string {
   const words: string[] = [];
   const excluded: string[] = [];
@@ -156,7 +157,7 @@ export function simpleToJql(q: string): string {
     } else if (raw.startsWith('#') && raw.length > 1) {
       field = 'labels';
       value = raw.slice(1);
-    } else if (KEY.test(raw) && !not) {
+    } else if (KEY_TYPED.test(raw) && !not) {
       keys.push(raw.toUpperCase());
       continue;
     } else {
@@ -187,7 +188,7 @@ export function simpleToJql(q: string): string {
   for (const g of groups.values()) {
     if (g.field === 'category') {
       const cats = new Set(g.values.flatMap((v) => CATEGORIES[v.toLowerCase()] ?? []));
-      const chosen = (['todo', 'doing', 'done'] as const).filter((c) => cats.has(c) !== g.not);
+      const chosen = STATUS_CATEGORIES.filter((c) => cats.has(c) !== g.not);
       const clause = categoryClause(chosen);
       if (clause) parts.push(clause);
       continue;

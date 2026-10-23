@@ -1,0 +1,518 @@
+{
+  "tables": {
+    "account_tokens": {
+      "count": 0,
+      "sha256": "0101d57a62ac749e142c65d70a84d3b9e6ae95d003708673b7c24e7b1cf3671f"
+    },
+    "api_tokens": {
+      "count": 0,
+      "sha256": "29807364c81faad3945d988ba0644931ec131b71a36dc1ac76bbff4f6a1c5dec"
+    },
+    "attachments": {
+      "count": 100,
+      "sha256": "ab2dc8576440d4d62dbc610e7b125c9c3044cd6eb9901101ab839ee0e39b0e3b"
+    },
+    "board_column_statuses": {
+      "count": 18,
+      "sha256": "80c7b757bcef2ac4f7ceccfce0fcdfee3535e4c16a39bcea82c546911760643f"
+    },
+    "board_columns": {
+      "count": 14,
+      "sha256": "25ba60f81d240abab3da71c8c20cfadc9b733abe40de025fe822dc0f9210ef9b"
+    },
+    "board_projects": {
+      "count": 4,
+      "sha256": "dc2d4f3a9324704203152dc7683a8fbd5adc0a92ef33a66fff0e22c5d3646b50"
+    },
+    "board_quick_filters": {
+      "count": 12,
+      "sha256": "c86519fc35fa4643c4cbd7fcc0a13d9e9cae27be8ad089fcb5707aab10edc2c6"
+    },
+    "board_swimlanes": {
+      "count": 2,
+      "sha256": "af26be447207e5e5314656459b6a44acafbb87eb7ca479781ef98662b4be98f1"
+    },
+    "boards": {
+      "count": 4,
+      "sha256": "59f2ea6eb725de239a472e39155417aa82998b36bd714dc901990f8bd38c355f"
+    },
+    "change_groups": {
+      "count": 858,
+      "sha256": "2f39d260b37ff78330272216e1322d502eff6449cda300b540ef8b35649b62c8"
+    },
+    "change_items": {
+      "count": 993,
+      "sha256": "45a2522be5dd163feaeea0c11dc17754874c2010455b363436b4cdf2ab4e4c64"
+    },
+    "comments": {
+      "count": 607,
+      "sha256": "636717c250f4093df5d90d9de6b5cd683e03ca7e17201caf4fc8fc5f50c61f7a"
+    },
+    "components": {
+      "count": 10,
+      "sha256": "fc1409bfcc23bea73543969d0b08127f5fddc8c1a6797329778f724cde395eec"
+    },
+    "custom_field_issue_types": {
+      "count": 0,
+      "sha256": "7dbc10cbd8e270c1466976d3b3ea6fadc7928b9fc4d91e7294ba3f63f3743216"
+    },
+    "custom_field_options": {
+      "count": 13,
+      "sha256": "5a4ab1caba6c2ab0473947337d78059103faaf474490638b7bc73d3b31689c57"
+    },
+    "custom_field_projects": {
+      "count": 0,
+      "sha256": "5d10427074c1ba8ca3271c2834295fee31f900e53a09fcaff9b52bc2eb1923f9"
+    },
+    "custom_field_values": {
+      "count": 508,
+      "sha256": "436872dd9450141575ca6fbee132c872476a5b19c2598b92a9aefb1a943f2b11"
+    },
+    "custom_fields": {
+      "count": 14,
+      "sha256": "d3011e0a5d5e5b37478c78f9d93f461193c418fe52359412406059735888e24b"
+    },
+    "filter_favourites": {
+      "count": 7,
+      "sha256": "05140f26e3c4b760357a2cb96d9e16b03ce875e41d046b3ac120a4100ff8237c"
+    },
+    "filter_shares": {
+      "count": 8,
+      "sha256": "e770a0813215e336eba627021495d62afec114751e7e6eaeb11c5310fb1fcb89"
+    },
+    "filter_subscriptions": {
+      "count": 0,
+      "sha256": "9cd8a9f4811cdd5052e64ee6e547ded960ebd44faf9eabae0a88f9d48d8e257a"
+    },
+    "filters": {
+      "count": 8,
+      "sha256": "89ccc6d584acc9ab2309ac858d860c4b6161d4aa9d31aa105388f3fc5f5f2377"
+    },
+    "group_members": {
+      "count": 45,
+      "sha256": "64e8ebb3ed50818e3be41cab3384bf030f0fe47c6da21c1f7fbf75af8979735f"
+    },
+    "issue_components": {
+      "count": 175,
+      "sha256": "50368557e681767de2c19d2fe6c16afee0ecc3b18d5f926a94d82c7ff4484bee"
+    },
+    "issue_links": {
+      "count": 60,
+      "sha256": "23701606ae61e34e3ecd0eb92b1a351a793a165f5740ee0f8a11fcf16e728a13"
+    },
+    "issue_types": {
+      "count": 6,
+      "sha256": "651392ce1b608fc1889325f10755b8eea54e470337c1e28b1b9b6e5d09c4544c"
+    },
+    "issue_versions": {
+      "count": 122,
+      "sha256": "d1ad6224eef97febf42e7bff93e6d3fb653241f54c027c8a5c378b2bb3624f61"
+    },
+    "issues": {
+      "count": 300,
+      "sha256": "76d667190856bed881107deebd8b7930ca03edbc1786a11bd99cb11e5f23d696"
+    },
+    "labels": {
+      "count": 442,
+      "sha256": "6a94286b0b329bad9d966493ba97a35672532f9701a2cd0d76def9c89a370bd6"
+    },
+    "link_types": {
+      "count": 4,
+      "sha256": "d51c3a2d7eae12fb38c9c516cfb8d3260246776fbebe2870fbf0618404567124"
+    },
+    "mail_outbox": {
+      "count": 0,
+      "sha256": "01b6b01b336865d451afbe9256a18546276a864fdb09b5ce7e072b63d0740317"
+    },
+    "moved_issue_keys": {
+      "count": 1,
+      "sha256": "88262a12acb5428e364765849889f7d9f8398bda9415ce3f5f15d8ffbcbc52be"
+    },
+    "notification_batches": {
+      "count": 0,
+      "sha256": "aa1cb02411279cf26bd9ded9cea572d5fda21aea5699330d445947ecfffffac1"
+    },
+    "notification_items": {
+      "count": 0,
+      "sha256": "7201dadcae76c5bbd114d3fcb4c46d8d0dd90cea70c460c9f8cdda6948f7b24e"
+    },
+    "notification_prefs": {
+      "count": 0,
+      "sha256": "f9719348ebf70d05b028a2bad3451963e86f03985325bd9950e89b138c3e1cf5"
+    },
+    "priorities": {
+      "count": 5,
+      "sha256": "f79b331d7700f2f540f98df44b1ea3bf5434eedaa7a168b3032b51334cbf1b41"
+    },
+    "project_categories": {
+      "count": 2,
+      "sha256": "167f473d7f55709d4953c81444b96883091b1f85ae926836cb5f90618cff2365"
+    },
+    "project_issue_types": {
+      "count": 22,
+      "sha256": "4ab770e427db6695bbc4039ac6a2588c17abeba5691a02e23797905d2333f06e"
+    },
+    "project_keys": {
+      "count": 1,
+      "sha256": "66714b363cdea26ae1bf84fdf22e5efdb3a332d5958507983d3b9b90f5155c5f"
+    },
+    "project_notification_recipients": {
+      "count": 0,
+      "sha256": "b9003b77bca5fee1c3f26e2d98473b7fe59647762d6091b4a3ec3ebbaa186432"
+    },
+    "project_notifications": {
+      "count": 0,
+      "sha256": "9f05d201d6c3d6fe070b0d0d18743493ef68bd206bf5c548701290933f513d10"
+    },
+    "project_permissions": {
+      "count": 71,
+      "sha256": "4fe8419e4e2c3df8e7418872263891948d200a7a07f4eede87a1be35fd3c3950"
+    },
+    "project_role_members": {
+      "count": 13,
+      "sha256": "b74e433fd283404faf4f5e605358669ee79dcd02b55f3fe505d8c78ae6347de0"
+    },
+    "project_roles": {
+      "count": 3,
+      "sha256": "76404dbcc7a9e9a0e54544a32c1003290796f61da897dc7d4107ac0a925c0217"
+    },
+    "projects": {
+      "count": 4,
+      "sha256": "16c07137aa9b1f59a68679cb1a2917cc055743d63d563007e208dbfa879101ef"
+    },
+    "remote_links": {
+      "count": 11,
+      "sha256": "0881a63bdae3dbdffa5cf1ce6030b74fa24c0cdd9dbb2548fa311d4cbfb8352e"
+    },
+    "resolutions": {
+      "count": 6,
+      "sha256": "3860def5f2bb819032ffda0d4dd4b65ada5c5260d0252c3f20ac59a58ca77035"
+    },
+    "security_level_members": {
+      "count": 4,
+      "sha256": "b1d90e618c683f5849911e5876b145dfb7f3121a33116dd3ee81678ed8a470d3"
+    },
+    "security_levels": {
+      "count": 2,
+      "sha256": "64316848c9f6293642bd51cde1a94c179dccaf201361e3101fcbc439ebcce82d"
+    },
+    "sprint_issues": {
+      "count": 51,
+      "sha256": "e65b6bd920118385a55a2a04e786adbd404dc5a61fac558e8ae4fe3464f9b3a1"
+    },
+    "sprints": {
+      "count": 7,
+      "sha256": "e7eb12e26ab325b446c85646103c73588247ab67b0411fce36a32dd912e6578d"
+    },
+    "statuses": {
+      "count": 8,
+      "sha256": "a0375fe85acacda511addebdcfc2e52f76ca642ee7122e1f4f95a9e97b36813f"
+    },
+    "user_groups": {
+      "count": 7,
+      "sha256": "33c217d8e79f61c3bce7d16dd0624c94203d1fe2d18f2dd7ce9d30d0b188912d"
+    },
+    "users": {
+      "count": 24,
+      "sha256": "163570a5e7ded242ef55697e42598347b39a515d4bea745964515f3b96b76751"
+    },
+    "versions": {
+      "count": 7,
+      "sha256": "427e231dd70e48030fbbd867d3351398861b4b32e699a17318eb6dc305fb73b4"
+    },
+    "votes": {
+      "count": 60,
+      "sha256": "262a763745158b522c5ee531a5c368a66d791d5c6adc71a99862234829357589"
+    },
+    "watchers": {
+      "count": 828,
+      "sha256": "fab18f419b04ab0284815b615205adde597127327e5e0eda4936878bdfc15366"
+    },
+    "webhook_deliveries": {
+      "count": 0,
+      "sha256": "c520e12f469cec6ee1dd8a662f360279d4b56d9f8e5071ce999aea66aacc42a6"
+    },
+    "workflow_issue_types": {
+      "count": 0,
+      "sha256": "8382a56894fc0fc9dfc018771a45d6d04e57db3db1d540c0f625f5b98c6ca6ef"
+    },
+    "workflow_statuses": {
+      "count": 18,
+      "sha256": "8e6751af4159a5caa308ffb64cfdcb1dc0ee4236ad043c7006fe60fa59e1ad62"
+    },
+    "workflow_transitions": {
+      "count": 38,
+      "sha256": "a209e0dd219b825d161a97739ce49c3be3e6d97d5ba5fc04ea6037948bd1a916"
+    },
+    "workflows": {
+      "count": 4,
+      "sha256": "3d4442eaffeff4f9ff841b1366cbb60bcdc8232777669d7d635d5c0c00b25047"
+    },
+    "worklogs": {
+      "count": 158,
+      "sha256": "f397764a734615a9dce5349af98ef883647048a6790767415b5bbc0f5db15088"
+    }
+  },
+  "files": {
+    "count": 99,
+    "sha256": "21d917a3a98e0c41a7afd86ca3412569f038be68aa5fcb191a94256af07dcd4d"
+  },
+  "steps": [
+    {
+      "name": "users",
+      "imported": 24,
+      "skipped": 0
+    },
+    {
+      "name": "groups",
+      "imported": 7,
+      "skipped": 0
+    },
+    {
+      "name": "group memberships",
+      "imported": 45,
+      "skipped": 0
+    },
+    {
+      "name": "administrators",
+      "imported": 2,
+      "skipped": 0
+    },
+    {
+      "name": "issue types",
+      "imported": 6,
+      "skipped": 0
+    },
+    {
+      "name": "statuses",
+      "imported": 8,
+      "skipped": 0
+    },
+    {
+      "name": "priorities",
+      "imported": 5,
+      "skipped": 0
+    },
+    {
+      "name": "resolutions",
+      "imported": 6,
+      "skipped": 0
+    },
+    {
+      "name": "link types",
+      "imported": 4,
+      "skipped": 0
+    },
+    {
+      "name": "projects",
+      "imported": 4,
+      "skipped": 0
+    },
+    {
+      "name": "old project keys",
+      "imported": 1,
+      "skipped": 0
+    },
+    {
+      "name": "roles",
+      "imported": 3,
+      "skipped": 0
+    },
+    {
+      "name": "role members",
+      "imported": 13,
+      "skipped": 0
+    },
+    {
+      "name": "issue types per project",
+      "imported": 22,
+      "skipped": 0
+    },
+    {
+      "name": "workflows (per project)",
+      "imported": 4,
+      "skipped": 0
+    },
+    {
+      "name": "transitions",
+      "imported": 38,
+      "skipped": 0
+    },
+    {
+      "name": "project permissions",
+      "imported": 71,
+      "skipped": 0
+    },
+    {
+      "name": "security levels",
+      "imported": 2,
+      "skipped": 0
+    },
+    {
+      "name": "level members",
+      "imported": 4,
+      "skipped": 0
+    },
+    {
+      "name": "components",
+      "imported": 10,
+      "skipped": 0
+    },
+    {
+      "name": "versions",
+      "imported": 7,
+      "skipped": 0
+    },
+    {
+      "name": "custom fields",
+      "imported": 14,
+      "skipped": 0
+    },
+    {
+      "name": "field options",
+      "imported": 13,
+      "skipped": 0
+    },
+    {
+      "name": "issues",
+      "imported": 300,
+      "skipped": 0
+    },
+    {
+      "name": "old keys of moved issues",
+      "imported": 1,
+      "skipped": 0
+    },
+    {
+      "name": "labels",
+      "imported": 442,
+      "skipped": 0
+    },
+    {
+      "name": "issue components",
+      "imported": 175,
+      "skipped": 0
+    },
+    {
+      "name": "issue versions",
+      "imported": 122,
+      "skipped": 0
+    },
+    {
+      "name": "issue links",
+      "imported": 60,
+      "skipped": 0
+    },
+    {
+      "name": "remote links",
+      "imported": 11,
+      "skipped": 0
+    },
+    {
+      "name": "watchers",
+      "imported": 828,
+      "skipped": 0
+    },
+    {
+      "name": "votes",
+      "imported": 60,
+      "skipped": 0
+    },
+    {
+      "name": "comments",
+      "imported": 607,
+      "skipped": 0
+    },
+    {
+      "name": "of which restricted comments",
+      "imported": 57,
+      "skipped": 0
+    },
+    {
+      "name": "worklogs",
+      "imported": 158,
+      "skipped": 0
+    },
+    {
+      "name": "attachments",
+      "imported": 100,
+      "skipped": 0
+    },
+    {
+      "name": "custom field values",
+      "imported": 508,
+      "skipped": 0
+    },
+    {
+      "name": "changes (history)",
+      "imported": 858,
+      "skipped": 0
+    },
+    {
+      "name": "change details",
+      "imported": 993,
+      "skipped": 0
+    },
+    {
+      "name": "saved filters",
+      "imported": 8,
+      "skipped": 0
+    },
+    {
+      "name": "filter shares",
+      "imported": 8,
+      "skipped": 0
+    },
+    {
+      "name": "favorite filters",
+      "imported": 7,
+      "skipped": 0
+    },
+    {
+      "name": "issues attached to an epic",
+      "imported": 63,
+      "skipped": 0
+    },
+    {
+      "name": "boards",
+      "imported": 4,
+      "skipped": 0
+    },
+    {
+      "name": "board columns",
+      "imported": 14,
+      "skipped": 0
+    },
+    {
+      "name": "quick filters",
+      "imported": 12,
+      "skipped": 0
+    },
+    {
+      "name": "swimlanes",
+      "imported": 2,
+      "skipped": 0
+    },
+    {
+      "name": "sprints",
+      "imported": 7,
+      "skipped": 0
+    },
+    {
+      "name": "issues in sprints",
+      "imported": 51,
+      "skipped": 0
+    },
+    {
+      "name": "issues ranked",
+      "imported": 300,
+      "skipped": 0
+    }
+  ],
+  "warnings": [
+    "3 active accounts without a usable password (external directory or old format): set one with \"solstice user passwd\"",
+    "1 user deleted from Jira kept as an inactive account (authors of old issues)",
+    "3 accounts without application access in Jira (outside license groups): imported inactive",
+    "1 attachment without a file in the Jira home (already missing on Jira's side?)"
+  ]
+}

@@ -11,9 +11,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"slices"
-	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -46,6 +45,30 @@ func (e Engine) Placeholder(n int) string {
 	return "$" + strconv.Itoa(n)
 }
 
+// Quote quotes a Jira database identifier in its exact case: back quotes on
+// MySQL, double quotes on PostgreSQL. It is for Jira Software's Active
+// Objects tables, which are created upper-case and quoted, so they must
+// always be referred to quoted; some of their columns are reserved words
+// on MySQL (RANK, KEY). Jira's core tables take QuoteFolded.
+func (e Engine) Quote(name string) string {
+	if e == MySQL {
+		return "`" + name + "`"
+	}
+	return `"` + name + `"`
+}
+
+// QuoteFolded quotes an identifier of Jira's core tables, which Jira creates
+// unquoted: folded to lower case on PostgreSQL, as the database folded it,
+// and in its exact case on MySQL, where table names are case-sensitive.
+// Quoting matters because some of their columns are reserved words
+// (cwd_group.local, project.lead on MySQL).
+func (e Engine) QuoteFolded(name string) string {
+	if e == Postgres {
+		name = strings.ToLower(name)
+	}
+	return e.Quote(name)
+}
+
 // The URL options accepted for the Jira database. The URL is typed in a form
 // by an administrator and the connection is made by the Solstice process, so
 // only options that are checked and mapped to typed driver settings get
@@ -60,11 +83,8 @@ func (e Engine) Placeholder(n int) string {
 // PostgreSQL: sslmode (encryption of the link) and connect_timeout.
 var (
 	mysqlParams    = []string{soldb.ParamTLS, soldb.ParamCharset, soldb.ParamTimeout, soldb.ParamReadTimeout}
-	postgresParams = []string{"sslmode", "connect_timeout"}
+	postgresParams = []string{soldb.ParamSSLMode, soldb.ParamConnectTimeout}
 )
-
-var sslModes = map[string]bool{"disable": true, "allow": true, "prefer": true, "require": true,
-	"verify-ca": true, "verify-full": true}
 
 // Open connects to postgres://… or mysql://user:pass@host:port/db. Options in
 // the query of the URL are limited to a short list (see above); an error
@@ -110,37 +130,10 @@ func postgresURL(u *url.URL) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var unknown []string
-	for name := range q {
-		if !slices.Contains(postgresParams, name) {
-			unknown = append(unknown, name)
-		}
+	if err := soldb.CheckPostgresParams(q, postgresParams...); err != nil {
+		return "", err
 	}
-	if len(unknown) > 0 {
-		sort.Strings(unknown)
-		accepted := append([]string(nil), postgresParams...)
-		sort.Strings(accepted)
-		return "", &soldb.UnknownParamsError{Names: unknown, Allowed: accepted}
-	}
-	keep := url.Values{}
-	for name, values := range q {
-		if len(values) != 1 {
-			return "", &soldb.InvalidParamError{Name: name, Hint: "give it once"}
-		}
-		switch v := values[0]; name {
-		case "sslmode":
-			if !sslModes[v] {
-				return "", &soldb.InvalidParamError{Name: name,
-					Hint: "disable, allow, prefer, require, verify-ca or verify-full"}
-			}
-		case "connect_timeout":
-			if n, err := strconv.Atoi(v); err != nil || n < 1 || n > 600 {
-				return "", &soldb.InvalidParamError{Name: name, Hint: "a number of seconds between 1 and 600"}
-			}
-		}
-		keep.Set(name, values[0])
-	}
-	clean := url.URL{Scheme: "postgres", User: u.User, Host: u.Host, Path: u.Path, RawQuery: keep.Encode()}
+	clean := url.URL{Scheme: "postgres", User: u.User, Host: u.Host, Path: u.Path, RawQuery: q.Encode()}
 	return clean.String(), nil
 }
 

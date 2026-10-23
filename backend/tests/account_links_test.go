@@ -608,6 +608,24 @@ func TestAdminSendsAResetLink(t *testing.T) {
 	}
 }
 
+// An address stored with spaces around it, as an import may leave it, still
+// gets the link an administrator sends.
+func TestAdminLinkToAnAddressWithSpaces(t *testing.T) {
+	e := newLinkEnv(t)
+	id := e.account("wp7-spaced", "spaced@exemple.fr")
+	if _, err := testDB.Exec(`UPDATE users SET email = ' spaced@exemple.fr ' WHERE id = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	e.admin.call("POST", "/api/admin/users/"+jsonInt(id)+"/reset-password", map[string]string{"method": "link"}, 200, nil)
+	var to []string
+	for _, m := range e.sent() {
+		to = append(to, m.To)
+	}
+	if len(to) != 1 || to[0] != "spaced@exemple.fr" {
+		t.Fatalf("e-mails received for %q, want one for spaced@exemple.fr", to)
+	}
+}
+
 func TestForgotIsRateLimited(t *testing.T) {
 	e := newLinkEnv(t)
 	e.account("wp7-limit", "limit@exemple.fr")
