@@ -362,6 +362,47 @@ export const fr: Messages = {
       reset: 'Colonnes par défaut',
     },
     exportCsv: 'Exporter en CSV',
+    bulk: {
+      select: (key: string) => `Sélectionner ${key}`,
+      selectPage: 'Sélectionner tous les tickets de cette page',
+      selected: (n: number) => `${plural(n, 'ticket sélectionné', 'tickets sélectionnés')}`,
+      actions: 'Modifier les tickets sélectionnés',
+      clear: 'Désélectionner',
+      edit: 'Modifier',
+      transition: 'Changer le statut',
+      move: 'Déplacer',
+      delete: 'Supprimer',
+      editTitle: (n: number) => `Modifier ${plural(n, 'ticket', 'tickets')}`,
+      transitionTitle: (n: number) => `Changer le statut de ${plural(n, 'ticket', 'tickets')}`,
+      moveTitle: (n: number) => `Déplacer ${plural(n, 'ticket', 'tickets')}`,
+      deleteTitle: (n: number) => `Supprimer ${plural(n, 'ticket', 'tickets')} ?`,
+      deleteBody: (n: number) =>
+        `Cela supprime définitivement ${plural(n, 'ticket', 'tickets')}, avec leurs sous-tâches, commentaires et fichiers. C’est irréversible.`,
+      typeToConfirm: (n: number) => `Saisissez ${n} pour confirmer`,
+      deleteSubmit: 'Supprimer',
+      editHint: 'Cochez les champs à modifier ; les autres restent tels quels sur chaque ticket.',
+      change: (field: string) => `Modifier : ${field}`,
+      modes: { add: 'Ajouter', remove: 'Retirer', replace: 'Remplacer tout par' },
+      oneProject:
+        'Les composants et les versions corrigées ne se modifient que si tous les tickets sélectionnés sont dans le même projet.',
+      noSprint: 'Aucun sprint (quitter le sprint ouvert)',
+      noPriority: 'Aucune',
+      status: 'Nouveau statut',
+      statusHint:
+        'Chaque ticket y passe par son propre workflow : ceux qui n’ont pas cette transition restent tels quels.',
+      defaultResolution: 'Celle que fixe le statut',
+      apply: 'Appliquer',
+      done: (n: number) => `${plural(n, 'ticket modifié', 'tickets modifiés')}.`,
+      failed: (n: number) => `${plural(n, 'ticket non modifié', 'tickets non modifiés')}`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'ticket va', 'tickets vont')} passer dans ${project} avec leurs sous-tâches et recevoir une nouvelle clé. Les anciennes clés y mèneront toujours.`,
+      cannotMove: (n: number) =>
+        `${plural(n, 'ticket ne peut', 'tickets ne peuvent')} pas être déplacés`,
+      moveHint:
+        'Les tickets reçoivent une nouvelle clé dans ce projet ; les anciennes clés continuent de fonctionner. Chaque ticket demande la permission Modifier dans son projet et Créer dans le projet cible.',
+      moveChoicesHint: (project: string) =>
+        `${project} n’a pas tout ce qu’utilisent ces tickets. Choisissez ce qu’ils y deviennent ; chaque ticket ne prend que les choix dont il a besoin.`,
+    },
     filters: 'Filtres',
     text: 'Texte recherché',
     textPlaceholder: 'Rechercher dans les tickets…',

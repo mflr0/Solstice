@@ -367,6 +367,48 @@ export const de: Messages = {
       reset: 'Standardspalten',
     },
     exportCsv: 'Als CSV exportieren',
+    bulk: {
+      select: (key: string) => `${key} auswählen`,
+      selectPage: 'Alle Vorgänge dieser Seite auswählen',
+      selected: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} ausgewählt`,
+      actions: 'Ausgewählte Vorgänge ändern',
+      clear: 'Auswahl aufheben',
+      edit: 'Bearbeiten',
+      transition: 'Status ändern',
+      move: 'Verschieben',
+      delete: 'Löschen',
+      editTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} bearbeiten`,
+      transitionTitle: (n: number) => `Status von ${plural(n, 'Vorgang', 'Vorgängen')} ändern`,
+      moveTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} verschieben`,
+      deleteTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} löschen?`,
+      deleteBody: (n: number) =>
+        `Damit werden ${plural(n, 'Vorgang', 'Vorgänge')} mit ihren Unteraufgaben, Kommentaren und Dateien endgültig gelöscht. Das lässt sich nicht rückgängig machen.`,
+      typeToConfirm: (n: number) => `Zur Bestätigung ${n} eingeben`,
+      deleteSubmit: 'Löschen',
+      editHint:
+        'Kreuzen Sie die zu ändernden Felder an; die übrigen bleiben bei jedem Vorgang, wie sie sind.',
+      change: (field: string) => `${field} ändern`,
+      modes: { add: 'Hinzufügen', remove: 'Entfernen', replace: 'Alle ersetzen durch' },
+      oneProject:
+        'Komponenten und Lösungsversionen lassen sich nur ändern, wenn alle ausgewählten Vorgänge im selben Projekt sind.',
+      noSprint: 'Kein Sprint (offenen Sprint verlassen)',
+      noPriority: 'Keine',
+      status: 'Neuer Status',
+      statusHint:
+        'Jeder Vorgang wechselt über seinen eigenen Workflow: Vorgänge ohne diesen Übergang bleiben, wie sie sind.',
+      defaultResolution: 'Wie vom Status vorgegeben',
+      apply: 'Anwenden',
+      done: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} geändert.`,
+      failed: (n: number) => `${plural(n, 'Vorgang wurde', 'Vorgänge wurden')} nicht geändert`,
+      moveSummary: (n: number, project: string) =>
+        `${plural(n, 'Vorgang wird', 'Vorgänge werden')} mit ihren Unteraufgaben nach ${project} verschoben und erhalten neue Schlüssel. Die alten Schlüssel führen weiterhin dorthin.`,
+      cannotMove: (n: number) =>
+        `${plural(n, 'Vorgang kann', 'Vorgänge können')} nicht verschoben werden`,
+      moveHint:
+        'Die Vorgänge erhalten in diesem Projekt neue Schlüssel; die alten funktionieren weiter. Jeder Vorgang braucht die Berechtigung Bearbeiten in seinem Projekt und Erstellen im Zielprojekt.',
+      moveChoicesHint: (project: string) =>
+        `${project} fehlt einiges, was diese Vorgänge verwenden. Wählen Sie, was daraus wird; jeder Vorgang übernimmt nur die Auswahl, die er braucht.`,
+    },
     filters: 'Filter',
     text: 'Suchtext',
     textPlaceholder: 'In Vorgängen suchen…',

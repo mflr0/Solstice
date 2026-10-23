@@ -6,7 +6,9 @@
   import { debounce, live } from '../lib/live.svelte.js';
   import Illustration from './Illustration.svelte';
   import IssueTable from './IssueTable.svelte';
+  import MoveDialog from './issue/MoveDialog.svelte';
   import Pager from './Pager.svelte';
+  import BulkDialog from './search/BulkDialog.svelte';
 
   /**
    * A search shown as a ledger. It refetches by itself, a moment after
@@ -28,6 +30,8 @@
     /** The chosen columns (IssueTable's), the usual set when absent. */
     columns?: readonly string[] | undefined;
     names?: Record<string, string> | undefined;
+    /** Rows can be selected and changed together (edit, status, move, delete). */
+    selectable?: boolean | undefined;
   }
   const {
     q = '',
@@ -42,7 +46,11 @@
     showAssignee = true,
     columns,
     names,
+    selectable = false,
   }: Props = $props();
+
+  let selected = $state<string[]>([]);
+  let bulk = $state<'edit' | 'transition' | 'move' | 'delete' | null>(null);
 
   /** The columns the server sends values for, as the request names them. */
   const extra = $derived(columns ? serverColumns(columns).join(',') : '');
@@ -99,6 +107,7 @@
   $effect(() => {
     // Read the inputs so the effect reruns when any changes.
     void [q, jql, project, page, size, extra];
+    selected = [];
     void load();
   });
 
@@ -115,13 +124,77 @@
   <Illustration kind="search" />
   <p class="empty">{empty}</p>
 {:else}
-  <IssueTable issues={result.issues} {showAssignee} {columns} {names} />
+  {#if selectable && selected.length}
+    <div class="bulk-bar" role="toolbar" aria-label={t.search.bulk.actions}>
+      <span class="bulk-count" aria-live="polite">{t.search.bulk.selected(selected.length)}</span>
+      <button type="button" class="btn btn-small" onclick={() => (bulk = 'edit')}
+        >{t.search.bulk.edit}</button
+      >
+      <button type="button" class="btn btn-small" onclick={() => (bulk = 'transition')}
+        >{t.search.bulk.transition}</button
+      >
+      <button type="button" class="btn btn-small" onclick={() => (bulk = 'move')}
+        >{t.search.bulk.move}</button
+      >
+      <button type="button" class="btn btn-small btn-danger" onclick={() => (bulk = 'delete')}
+        >{t.search.bulk.delete}</button
+      >
+      <button type="button" class="btn btn-small btn-quiet" onclick={() => (selected = [])}
+        >{t.search.bulk.clear}</button
+      >
+    </div>
+  {/if}
+  <IssueTable
+    issues={result.issues}
+    {showAssignee}
+    {columns}
+    {names}
+    {selected}
+    onselect={selectable ? (keys) => (selected = keys) : undefined}
+  />
   {#if onpage}
     <Pager page={result.page} size={result.size} total={result.total} {onpage} />
   {/if}
 {/if}
 
+{#if selectable}
+  <BulkDialog
+    op={bulk === 'move' ? null : bulk}
+    keys={selected}
+    onclose={() => (bulk = null)}
+    ondone={(refused) => {
+      selected = refused;
+      void load();
+    }}
+  />
+  <MoveDialog
+    open={bulk === 'move'}
+    keys={selected}
+    onclose={() => (bulk = null)}
+    ondone={(refused) => {
+      selected = refused;
+      void load();
+    }}
+  />
+{/if}
+
 <style>
+  .bulk-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-wash);
+  }
+
+  .bulk-count {
+    font: 12.5px var(--font-mono);
+    margin-right: auto;
+  }
+
   .syntax {
     font: 13px/1.5 var(--font-mono);
     padding: 8px 12px;

@@ -172,7 +172,7 @@
     <SavedFilters {filters} current={loc.filter} onstar={star} />
     <div class="search-main">
       {#if gone}<p class="error-text gone" role="alert">{t.saved.gone}</p>{/if}
-      <IssueSearch {fallback} autofocus={loc.filter === null && loc.jql === null} />
+      <IssueSearch {fallback} autofocus={loc.filter === null && loc.jql === null} selectable />
     </div>
   </div>
 </div>

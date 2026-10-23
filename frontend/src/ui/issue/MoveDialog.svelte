@@ -7,6 +7,7 @@
   import {
     api,
     errorMessage,
+    type BulkResult,
     type MoveCheck,
     type MoveChoices,
     type MoveParts,
@@ -16,18 +17,27 @@
   import { notify } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';
   import MultiPick from '../MultiPick.svelte';
+  import BulkReport from '../search/BulkReport.svelte';
 
   /**
    * "Move": to another project, in steps. First the project, then what the
    * new project asks the user to choose (the server's dry run says what), then
-   * a last look at what the move changes before it is done.
+   * a last look at what the move changes before it is done. Given keys
+   * instead of an issue, it moves them all with one set of choices.
    */
   interface Props {
     open: boolean;
-    issue: IssueDetail;
+    issue?: IssueDetail | undefined;
+    keys?: string[] | undefined;
+    /** After a bulk move: the keys that were refused. */
+    ondone?: ((refused: string[]) => void) | undefined;
     onclose: () => void;
   }
-  const { open, issue, onclose }: Props = $props();
+  const { open, issue, keys = [], ondone, onclose }: Props = $props();
+  const bulk = $derived(!issue);
+  /** The issues of a bulk move that cannot move, as the last dry run said. */
+  let refused = $state<BulkResult[]>([]);
+  let report = $state<BulkResult[] | null>(null);
 
   type Step = 'project' | 'choices' | 'confirm';
   let step = $state<Step>('project');
@@ -105,6 +115,7 @@
       check = null;
       error = '';
       busy = false;
+      refused = [];
       forget();
       void loadProjects();
     });
@@ -112,7 +123,7 @@
 
   async function loadProjects() {
     try {
-      projects = (await api.projects()).filter((p) => p.key !== issue.project.key);
+      projects = (await api.projects()).filter((p) => p.key !== issue?.project.key);
       target = projects[0]?.key ?? '';
     } catch (e) {
       error = errorMessage(e);
@@ -120,7 +131,8 @@
   }
 
   /** The options with the name of one of the issue's own, as the server matches them. */
-  function sameNames(own: IdName[], options: IdName[]): number[] {
+  function sameNames(own: IdName[] | undefined, options: IdName[]): number[] {
+    if (!own) return [];
     const names = new Set(own.map((o) => o.name.toLowerCase()));
     return options.filter((o) => names.has(o.name.toLowerCase())).map((o) => o.id);
   }
@@ -145,17 +157,17 @@
     }
     if (c.components && !components) {
       components = c.components;
-      componentIds = sameNames(issue.components, c.components.options);
+      componentIds = sameNames(issue?.components, c.components.options);
       news = true;
     }
     if (c.affectsVersions && !affectsVersions) {
       affectsVersions = c.affectsVersions;
-      affectsIds = sameNames(issue.affectsVersions, c.affectsVersions.options);
+      affectsIds = sameNames(issue?.affectsVersions, c.affectsVersions.options);
       news = true;
     }
     if (c.fixVersions && !fixVersions) {
       fixVersions = c.fixVersions;
-      fixIds = sameNames(issue.fixVersions, c.fixVersions.options);
+      fixIds = sameNames(issue?.fixVersions, c.fixVersions.options);
       news = true;
     }
     if (c.securityLevel && !securityLevel) {
@@ -203,10 +215,22 @@
     }
   }
 
+  /** The dry run; for a bulk move, null when no issue can move (refused says why). */
+  async function dryRun(c: MoveChoices): Promise<MoveCheck | null> {
+    if (issue) return api.checkMove(issue.key, target, c);
+    const r = await api.checkBulkMove(keys, target, c);
+    refused = r.results.filter((x) => !x.ok);
+    return r.check;
+  }
+
   function toChoices() {
     void run(async () => {
       forget();
-      const c = await api.checkMove(issue.key, target, {});
+      const c = await dryRun({});
+      if (!c) {
+        error = refused[0]?.error || t.errors.generic;
+        return;
+      }
       absorb(c);
       check = c;
       step = c.ready ? 'confirm' : 'choices';
@@ -215,7 +239,11 @@
 
   function toConfirm() {
     void run(async () => {
-      const c = await api.checkMove(issue.key, target, choices());
+      const c = await dryRun(choices());
+      if (!c) {
+        error = refused[0]?.error || t.errors.generic;
+        return;
+      }
       const news = absorb(c);
       check = c;
       if (c.ready) step = 'confirm';
@@ -225,6 +253,19 @@
 
   function move() {
     void run(async () => {
+      if (!issue) {
+        const { results } = await api.bulk(keys, {
+          op: 'move',
+          move: { project: target, ...choices() },
+        });
+        const failed = results.filter((r) => !r.ok);
+        if (results.length > failed.length)
+          notify(t.search.bulk.done(results.length - failed.length));
+        report = failed.length ? failed : null;
+        ondone?.(failed.map((r) => r.key));
+        onclose();
+        return;
+      }
       const { key } = await api.moveIssue(issue.key, target, choices());
       notify(t.issue.moved(issue.key, key));
       onclose();
@@ -249,7 +290,11 @@
   </div>
 {/snippet}
 
-<Modal {open} title={t.issue.moveTitle(issue.key)} {onclose}>
+<Modal
+  {open}
+  title={issue ? t.issue.moveTitle(issue.key) : t.search.bulk.moveTitle(keys.length)}
+  {onclose}
+>
   <div class="form">
     {#if step === 'project'}
       {#if projects.length === 0 && !error}
@@ -262,11 +307,13 @@
               <option value={p.key}>{p.name} — {p.key}</option>
             {/each}
           </select>
-          <span class="hint">{t.issue.moveProjectHint}</span>
+          <span class="hint">{bulk ? t.search.bulk.moveHint : t.issue.moveProjectHint}</span>
         </label>
       {/if}
     {:else if step === 'choices'}
-      <p>{t.issue.moveChoicesHint(targetLabel)}</p>
+      <p>
+        {bulk ? t.search.bulk.moveChoicesHint(targetLabel) : t.issue.moveChoicesHint(targetLabel)}
+      </p>
       {#if types.length}
         <label class="field">
           <span>{t.create.type}</span>
@@ -367,7 +414,11 @@
         </fieldset>
       {/if}
     {:else if check}
-      <p>{t.issue.moveSummary(issue.key, targetLabel)}</p>
+      <p>
+        {issue
+          ? t.issue.moveSummary(issue.key, targetLabel)
+          : t.search.bulk.moveSummary(keys.length - refused.length, targetLabel)}
+      </p>
       <ul class="notes">
         {#if check.droppedFields.length}
           <li>{t.issue.moveDropped(formatList(check.droppedFields))}</li>
@@ -390,6 +441,16 @@
           <li>{t.issue.moveSubtasksReassigned(check.subtasks.reassigned)}</li>
         {/if}
       </ul>
+    {/if}
+    {#if refused.length && step !== 'project'}
+      <div class="cannot">
+        <p>{t.search.bulk.cannotMove(refused.length)}</p>
+        <ul class="notes">
+          {#each refused as r (r.key)}
+            <li><span class="key">{r.key}</span> {r.error || t.errors.generic}</li>
+          {/each}
+        </ul>
+      </div>
     {/if}
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </div>
@@ -415,6 +476,8 @@
     {/if}
   {/snippet}
 </Modal>
+
+<BulkReport results={report} onclose={() => (report = null)} />
 
 <style>
   .form {
@@ -452,6 +515,11 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+
+  .cannot {
+    display: grid;
+    gap: 6px;
   }
 
   .notes {

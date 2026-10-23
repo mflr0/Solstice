@@ -23,8 +23,33 @@
     columns?: readonly string[] | undefined;
     /** Column names by id, for the columns the table has no name of its own for. */
     names?: Record<string, string> | undefined;
+    /** With onselect, a checkbox per row and one for the whole page. */
+    selected?: readonly string[] | undefined;
+    onselect?: ((keys: string[]) => void) | undefined;
   }
-  const { issues, showAssignee = true, columns, names = {} }: Props = $props();
+  const {
+    issues,
+    showAssignee = true,
+    columns,
+    names = {},
+    selected = [],
+    onselect,
+  }: Props = $props();
+  const allSelected = $derived(issues.length > 0 && issues.every((i) => selected.includes(i.key)));
+  const someSelected = $derived(!allSelected && issues.some((i) => selected.includes(i.key)));
+
+  function toggle(key: string, on: boolean) {
+    onselect?.(on ? [...selected, key] : selected.filter((k) => k !== key));
+  }
+
+  function toggleAll(on: boolean) {
+    const page = issues.map((i) => i.key);
+    onselect?.(
+      on
+        ? [...selected, ...page.filter((k) => !selected.includes(k))]
+        : selected.filter((k) => !page.includes(k)),
+    );
+  }
   const showDue = $derived(issues.some((i) => i.due));
   const showType = $derived(!columns || columns.includes('issuetype'));
   /** What follows the summary. */
@@ -45,7 +70,7 @@
   };
 
   function open(e: MouseEvent, key: string) {
-    if ((e.target as Element).closest('a, button')) return;
+    if ((e.target as Element).closest('a, button, label, input')) return;
     router.navigate(paths.issue(key));
   }
 </script>
@@ -53,6 +78,19 @@
 <table class="ledger">
   <thead>
     <tr>
+      {#if onselect}
+        <th class="c-pick">
+          <label class="pick">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              indeterminate={someSelected}
+              onchange={(e) => toggleAll(e.currentTarget.checked)}
+            />
+            <span class="sr-only">{t.search.bulk.selectPage}</span>
+          </label>
+        </th>
+      {/if}
       {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
       <th class="c-key">{t.table.key}</th>
       <th class="c-summary">{t.table.summary}</th>
@@ -76,7 +114,19 @@
   </thead>
   <tbody>
     {#each issues as issue (issue.key)}
-      <tr onclick={(e) => open(e, issue.key)}>
+      <tr onclick={(e) => open(e, issue.key)} class:picked={selected.includes(issue.key)}>
+        {#if onselect}
+          <td class="c-pick">
+            <label class="pick">
+              <input
+                type="checkbox"
+                checked={selected.includes(issue.key)}
+                onchange={(e) => toggle(issue.key, e.currentTarget.checked)}
+              />
+              <span class="sr-only">{t.search.bulk.select(issue.key)}</span>
+            </label>
+          </td>
+        {/if}
         {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
         <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
         <td class="c-summary">
@@ -116,6 +166,22 @@
 <style>
   tbody tr {
     cursor: pointer;
+  }
+
+  .c-pick {
+    width: 28px;
+    padding-right: 0;
+  }
+
+  .pick {
+    display: inline-flex;
+    padding: 4px;
+    margin: -4px;
+    cursor: pointer;
+  }
+
+  .picked {
+    background: var(--accent-wash);
   }
 
   .c-type {
