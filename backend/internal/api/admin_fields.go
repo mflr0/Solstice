@@ -279,7 +279,7 @@ func cleanOption(v string) (string, error) {
 	if v == "" {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionEmpty)
 	}
-	if len([]rune(v)) > 255 {
+	if len([]rune(v)) > sqlq.VarcharWidth {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionTooLong)
 	}
 	return v, nil
@@ -300,7 +300,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	name, err := cleanName(in.Name, 255)
+	name, err := cleanName(in.Name, sqlq.VarcharWidth)
 	if err != nil {
 		return err
 	}
@@ -408,7 +408,7 @@ func (s *Server) updateField(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

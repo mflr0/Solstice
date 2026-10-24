@@ -113,7 +113,7 @@ func (r *run) importUsers() error {
 		} else if u.active {
 			noPassword++
 		}
-		return ins.add(id, lower, key, truncate(u.display, 255), truncate(u.email, 255), hash, u.active)
+		return ins.add(id, lower, key, truncate(u.display, sqlq.VarcharWidth), truncate(u.email, sqlq.VarcharWidth), hash, u.active)
 	}
 	for _, a := range appUsers {
 		if _, dup := byName[a.lower]; dup {
@@ -191,7 +191,7 @@ func (r *run) importGroups() error {
 		r.groups[lower.String] = gid
 		var d any
 		if desc.Valid {
-			d = truncate(desc.String, 255)
+			d = truncate(desc.String, sqlq.VarcharWidth)
 		}
 		return gins.add(gid, lower.String, d)
 	}); err != nil {

@@ -32,7 +32,7 @@ func (r *run) importFilters() error {
 		}
 		filters[id] = true
 		r.filters[id] = query.String
-		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), 255), sqlq.Value(desc),
+		return ins.add(id, ownerID, truncate(orDefault(name, "Filter "+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), sqlq.Value(desc),
 			query.String, now, now)
 	}); err != nil {
 		return err

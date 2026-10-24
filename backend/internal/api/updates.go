@@ -263,6 +263,9 @@ type releaseCheck struct {
 
 const maxNotes = 64 << 10
 
+// maxLog is how much of an update log is kept: its end.
+const maxLog = 64 << 10
+
 // assetPattern names the files a release may carry.
 var assetPattern = regexp.MustCompile(`^(solstice-[0-9A-Za-z.-]+-[a-z0-9]+-[a-z0-9]+\.(tar\.gz|zip)|SHA256SUMS)$`)
 
@@ -481,8 +484,8 @@ func cleanAttempt(a *updateAttempt) bool {
 	if !versionLike.MatchString(a.To) {
 		a.To = "?"
 	}
-	if len(a.Log) > 64<<10 {
-		a.Log = strings.ToValidUTF8(a.Log[len(a.Log)-64<<10:], "")
+	if len(a.Log) > maxLog {
+		a.Log = strings.ToValidUTF8(a.Log[len(a.Log)-maxLog:], "")
 	}
 	a.At = a.At.UTC()
 	return true

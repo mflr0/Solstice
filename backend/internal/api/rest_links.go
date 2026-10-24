@@ -49,12 +49,12 @@ func (in *remoteLinkIn) clean() error {
 		return fieldError("object.url", failf(http.StatusBadRequest, i18n.FieldTooLong, 2000))
 	case in.Object.Title == "":
 		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldRequired, "object.title"))
-	case len([]rune(in.Object.Title)) > 255:
-		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
-	case len([]rune(in.Relationship)) > 255:
-		return fieldError("relationship", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
-	case len([]rune(in.GlobalID)) > 255:
-		return fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
+	case len([]rune(in.Object.Title)) > sqlq.VarcharWidth:
+		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
+	case len([]rune(in.Relationship)) > sqlq.VarcharWidth:
+		return fieldError("relationship", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
+	case len([]rune(in.GlobalID)) > sqlq.VarcharWidth:
+		return fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
 	}
 	return nil
 }

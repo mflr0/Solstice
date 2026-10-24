@@ -138,7 +138,7 @@ func groupNames(names []string) []string {
 	var out []string
 	for _, n := range names {
 		n = strings.ToLower(strings.TrimSpace(n))
-		if n != "" && utf8.RuneCountInString(n) <= 255 {
+		if n != "" && utf8.RuneCountInString(n) <= sqlq.VarcharWidth {
 			out = append(out, n)
 		}
 	}

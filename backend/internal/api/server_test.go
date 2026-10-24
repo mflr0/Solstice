@@ -27,7 +27,7 @@ func TestReadOptionalJSON(t *testing.T) {
 		"blank":         {body: " \n"},
 		"unknown field": {body: `{"moveTo": 7, "x": 1}`, chunked: true, status: http.StatusBadRequest},
 		"malformed":     {body: `{"moveTo":`, chunked: true, status: http.StatusBadRequest},
-		"too big":       {body: `{"moveTo": 7}` + strings.Repeat(" ", 4<<20), chunked: true, status: http.StatusRequestEntityTooLarge},
+		"too big":       {body: `{"moveTo": 7}` + strings.Repeat(" ", maxJSONBody), chunked: true, status: http.StatusRequestEntityTooLarge},
 	} {
 		r := httptest.NewRequest("DELETE", "/x", strings.NewReader(c.body))
 		if c.chunked {

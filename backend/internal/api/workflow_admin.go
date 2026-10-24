@@ -520,7 +520,7 @@ func (u *workflowUpdate) save(ctx context.Context, tx *sql.Tx) error {
 		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE workflows SET name = ?, initial_status_id = ?, is_default = ? WHERE id = ?`,
-		sqlq.Truncate(u.name, varcharWidth), u.in.Initial, u.becomesDefault(), u.id); err != nil {
+		sqlq.Truncate(u.name, sqlq.VarcharWidth), u.in.Initial, u.becomesDefault(), u.id); err != nil {
 		return err
 	}
 	if err := writeWorkflowStatuses(ctx, tx, u.id, u.in.Statuses); err != nil {
@@ -579,7 +579,7 @@ func writeWorkflowTransitions(ctx context.Context, tx *sql.Tx, id int64, transit
 		if t.From != nil {
 			from = *t.From
 		}
-		name := sqlq.Truncate(strings.TrimSpace(t.Name), varcharWidth)
+		name := sqlq.Truncate(strings.TrimSpace(t.Name), sqlq.VarcharWidth)
 		var err error
 		if t.ID != 0 {
 			_, err = tx.ExecContext(ctx, `UPDATE workflow_transitions SET name = ?, from_status_id = ?, to_status_id = ?,
@@ -716,7 +716,7 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, FALSE, ?)`,
-		projectID, sqlq.Truncate(name, varcharWidth), initial)
+		projectID, sqlq.Truncate(name, sqlq.VarcharWidth), initial)
 	if err != nil {
 		return err
 	}

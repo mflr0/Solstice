@@ -977,7 +977,7 @@ var issueFields = map[string]bool{
 
 func readFields(r *http.Request) (fields, error) {
 	var f fields
-	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
+	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxJSONBody))
 	if err := dec.Decode(&f); err != nil {
 		return nil, badBody(err)
 	}
@@ -1072,7 +1072,7 @@ func (s *Server) planIssue(ctx context.Context, sub *perm.Subject, f fields, o c
 		}
 	}
 	summary = strings.TrimSpace(summary)
-	if summary == "" || utf8.RuneCountInString(summary) > varcharWidth {
+	if summary == "" || utf8.RuneCountInString(summary) > sqlq.VarcharWidth {
 		return nil, fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 	}
 	var projectID, leadID int64
@@ -1458,7 +1458,7 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 		clean := map[string]bool{}
 		for _, l := range labels {
 			l = strings.Join(strings.Fields(l), "_")
-			if l != "" && utf8.RuneCountInString(l) <= varcharWidth {
+			if l != "" && utf8.RuneCountInString(l) <= sqlq.VarcharWidth {
 				clean[l] = true
 			}
 		}
@@ -1664,7 +1664,7 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 		}
 		return nil
 	}
-	if err := text("summary", "summary", true, varcharWidth); err != nil {
+	if err := text("summary", "summary", true, sqlq.VarcharWidth); err != nil {
 		return err
 	}
 	if err := text("description", "description", false, 0); err != nil {

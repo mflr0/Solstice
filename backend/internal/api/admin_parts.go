@@ -117,11 +117,11 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 		}
 		before = list[0]
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -475,11 +475,11 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

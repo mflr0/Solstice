@@ -220,7 +220,7 @@ type filterInput struct {
 func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterInput) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
-		if n == "" || utf8.RuneCountInString(n) > varcharWidth {
+		if n == "" || utf8.RuneCountInString(n) > sqlq.VarcharWidth {
 			return fail(http.StatusBadRequest, i18n.FilterNameRequired)
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
@@ -228,13 +229,13 @@ func cleanFilename(name string) string {
 	if name == "." || name == "/" {
 		return ""
 	}
-	if utf8.RuneCountInString(name) > 255 {
+	if utf8.RuneCountInString(name) > sqlq.VarcharWidth {
 		ext := []rune(filepath.Ext(name))
 		if len(ext) > 20 {
 			ext = nil
 		}
 		base := []rune(strings.TrimSuffix(name, string(ext)))
-		name = string(base[:255-len(ext)]) + string(ext)
+		name = string(base[:sqlq.VarcharWidth-len(ext)]) + string(ext)
 	}
 	return name
 }

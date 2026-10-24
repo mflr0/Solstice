@@ -143,7 +143,7 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 	}
 	goal := sqlq.NullIfBlank(in.Goal)
 	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, 'future', ?)`,
-		b.ID, sqlq.Truncate(name, varcharWidth), goal, position+1)
+		b.ID, sqlq.Truncate(name, sqlq.VarcharWidth), goal, position+1)
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 	sets := []string{"state = 'active'", "start_at = ?", "end_at = ?"}
 	args := []any{start, end}
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
-		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), varcharWidth))
+		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), sqlq.VarcharWidth))
 	}
 	if in.Goal != nil {
 		sets, args = append(sets, "goal = ?"), append(args, sqlq.NullIfBlank(*in.Goal))
@@ -295,8 +295,8 @@ func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now ti
 			return nil, fail(http.StatusBadRequest, i18n.SprintNameRequired)
 		}
 		name := strings.TrimSpace(*in.Name)
-		if utf8.RuneCountInString(name) > varcharWidth {
-			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, varcharWidth)
+		if utf8.RuneCountInString(name) > sqlq.VarcharWidth {
+			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth)
 		}
 		if name != sp.Name {
 			set("name", "name", name)

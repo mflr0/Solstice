@@ -359,7 +359,7 @@ func (r *recorder) Write(b []byte) (int, error) { return r.body.Write(b) }
 // unknown fields are ignored: Jira clients send many that Solstice has no
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
-	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxJSONBody)).Decode(v); err != nil {
 		return badBody(err)
 	}
 	return nil

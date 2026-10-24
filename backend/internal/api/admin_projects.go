@@ -218,7 +218,7 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 		return nil, err
 	}
 	var err error
-	if p.name, err = cleanName(in.Name, 255); err != nil {
+	if p.name, err = cleanName(in.Name, sqlq.VarcharWidth); err != nil {
 		return nil, err
 	}
 	if err := s.projectNameTaken(ctx, p.name, 0); err != nil {
@@ -652,7 +652,7 @@ func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectC
 	raw map[string]json.RawMessage) (map[string]any, []string, error) {
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1134,10 +1134,10 @@ func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
 			return errNotFound
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

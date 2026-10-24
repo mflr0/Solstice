@@ -129,7 +129,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	switch f.Kind {
 	case "url":
 		var v string
-		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > 255 {
+		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
 			return invalidValue(field)
 		}
 		if strings.TrimSpace(v) != "" {
@@ -140,7 +140,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 	case "textfield", "gh-epic-label":
 		var v string
-		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > 255 {
+		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
 			return invalidValue(field)
 		}
 		if strings.TrimSpace(v) != "" {
@@ -266,7 +266,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		seen := map[string]bool{}
 		for _, l := range v {
 			l = strings.Join(strings.Fields(l), "_")
-			if l != "" && utf8.RuneCountInString(l) <= 255 && !seen[l] {
+			if l != "" && utf8.RuneCountInString(l) <= sqlq.VarcharWidth && !seen[l] {
 				seen[l] = true
 				w.labels = append(w.labels, l)
 			}

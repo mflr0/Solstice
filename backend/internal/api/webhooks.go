@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 	"strings"
 	"unicode/utf8"
 
@@ -99,7 +100,7 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 	if in.Name != nil {
 		wh.Name = strings.TrimSpace(*in.Name)
 	}
-	if wh.Name == "" || utf8.RuneCountInString(wh.Name) > 255 {
+	if wh.Name == "" || utf8.RuneCountInString(wh.Name) > sqlq.VarcharWidth {
 		return nil, fail(http.StatusBadRequest, i18n.WebhookNameRequired)
 	}
 	if in.URL != nil {
@@ -145,7 +146,7 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 		wh.ExcludeBody = *in.ExcludeBody
 	}
 	if in.Secret != nil {
-		if utf8.RuneCountInString(*in.Secret) > 255 {
+		if utf8.RuneCountInString(*in.Secret) > sqlq.VarcharWidth {
 			return nil, fail(http.StatusBadRequest, i18n.WebhookSecretTooLong)
 		}
 		if *in.Secret != "" {

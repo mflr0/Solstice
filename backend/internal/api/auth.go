@@ -10,6 +10,7 @@ import (
 
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/sqlq"
 )
 
 type meResponse struct {
@@ -137,7 +138,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	u := currentUser(r)
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

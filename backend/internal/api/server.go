@@ -226,10 +226,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 // this blocks cross-site request forgery even for multipart uploads.
 const csrfHeader = "X-Solstice"
 
-// varcharWidth is the width, in characters, of the VARCHAR(255) columns
-// that hold names, summaries and descriptions. The messages that state the
-// limit write 255 themselves.
-const varcharWidth = 255
+// maxJSONBody caps the size of a JSON request body.
+const maxJSONBody = 4 << 20
 
 // How long a client gets to send its request body; uploads travel as slow
 // files. The http.Server has no ReadTimeout, which would also cut the
@@ -493,7 +491,7 @@ func badBody(err error) error {
 
 // readJSON decodes a request body, rejecting unknown fields so typos surface.
 func readJSON(r *http.Request, v any) error {
-	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20))
+	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxJSONBody))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		return badBody(err)
@@ -505,7 +503,7 @@ func readJSON(r *http.Request, v any) error {
 // when the body is empty or blank. It reads the body rather than trusting
 // Content-Length, which is -1 for a chunked body.
 func readOptionalJSON(r *http.Request, v any) error {
-	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
+	body, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxJSONBody))
 	if err != nil {
 		return badBody(err)
 	}

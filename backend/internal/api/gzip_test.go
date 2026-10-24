@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"solstice/internal/web"
 	"strconv"
 	"strings"
 	"testing"
@@ -75,7 +76,7 @@ func TestGzipNotWhenNotAsked(t *testing.T) {
 }
 
 func TestGzipNotForSmallAnswers(t *testing.T) {
-	body := strings.Repeat("a", gzipMinSize-1)
+	body := strings.Repeat("a", web.GzipMinSize-1)
 	w := serveGzip(t, "/api/me", "gzip", "application/json", body)
 	if got := w.Header().Get("Content-Encoding"); got != "" {
 		t.Errorf("Content-Encoding = %q", got)

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"solstice/internal/settings"
+	"solstice/internal/sqlq"
 )
 
 // Actions recorded by Solstice itself. Other features use the same dotted
@@ -168,8 +169,8 @@ func Record(ctx context.Context, db *sql.DB, e Entry) error {
 	now := time.Now().UTC()
 	if _, err := db.ExecContext(ctx, `INSERT INTO audit_log (created_at, user_id, username, ip, action, target_type,
 		target_id, target_label, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		now, nullID(e.UserID), nullText(e.Username, 255), nullText(e.IP, 64), cut(e.Action, 100),
-		nullText(e.Target.Type, 50), nullText(e.Target.ID, 100), nullText(e.Target.Label, 255), details); err != nil {
+		now, nullID(e.UserID), nullText(e.Username, sqlq.VarcharWidth), nullText(e.IP, 64), cut(e.Action, 100),
+		nullText(e.Target.Type, 50), nullText(e.Target.ID, 100), nullText(e.Target.Label, sqlq.VarcharWidth), details); err != nil {
 		return err
 	}
 	if last := lastPurge.Load(); now.Sub(time.Unix(0, last)) > purgeEvery && lastPurge.CompareAndSwap(last, now.UnixNano()) {

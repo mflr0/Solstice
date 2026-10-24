@@ -85,7 +85,7 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	st := statusRef{ID: id, Name: sqlq.Truncate(name, varcharWidth), Category: in.Category}
+	st := statusRef{ID: id, Name: sqlq.Truncate(name, sqlq.VarcharWidth), Category: in.Category}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO statuses (id, name, category, position)
 		SELECT ?, ?, ?, COALESCE(MAX(position), 0) + 1 FROM statuses`, st.ID, st.Name, st.Category); err != nil {
 		return err
@@ -149,7 +149,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 				return failf(http.StatusConflict, i18n.StatusNameTaken, other.Name)
 			}
 		}
-		st.Name = sqlq.Truncate(name, varcharWidth)
+		st.Name = sqlq.Truncate(name, sqlq.VarcharWidth)
 	}
 	if in.Category != nil {
 		if !in.Category.Valid() {

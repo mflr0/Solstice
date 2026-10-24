@@ -2,6 +2,7 @@ package importer
 
 import (
 	"database/sql"
+	"solstice/internal/sqlq"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ type globalKey struct {
 }
 
 func (g globalIDs) take(issue int64, id sql.NullString) any {
-	value := strings.TrimSpace(truncate(id.String, 255))
+	value := strings.TrimSpace(truncate(id.String, sqlq.VarcharWidth))
 	if !id.Valid || value == "" || g[globalKey{issue, value}] {
 		return nil
 	}

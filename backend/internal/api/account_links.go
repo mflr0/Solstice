@@ -51,7 +51,7 @@ const (
 	// may share an address).
 	forgotMatches = 5
 	// maxIdentifier is the longest user name or address accepted.
-	maxIdentifier = 255
+	maxIdentifier = sqlq.VarcharWidth
 )
 
 // accountMail caches whether links can be sent.

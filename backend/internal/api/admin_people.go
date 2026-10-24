@@ -179,7 +179,7 @@ func (s *Server) getGroup(w http.ResponseWriter, r *http.Request) error {
 
 // groupName checks a group name: stored lower-case, as Jira does.
 func groupName(name string) (string, error) {
-	name, err := cleanName(name, 255)
+	name, err := cleanName(name, sqlq.VarcharWidth)
 	return strings.ToLower(name), err
 }
 
@@ -457,7 +457,7 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	name, err := cleanName(in.Name, 255)
+	name, err := cleanName(in.Name, sqlq.VarcharWidth)
 	if err != nil {
 		return err
 	}
@@ -506,7 +506,7 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

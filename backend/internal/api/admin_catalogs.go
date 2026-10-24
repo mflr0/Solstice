@@ -208,7 +208,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 			}
 			before = &it
 		} else if _, ok := raw["name"]; !ok {
-			return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+			return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 		}
 		sets, err := s.parseCatalogueFields(ctx, c, raw, id, before)
 		if err != nil {
@@ -269,7 +269,7 @@ func (s *Server) parseCatalogueFields(ctx context.Context, c catalogueKind, raw 
 			if err != nil {
 				return nil, err
 			}
-			name, err := cleanName(v, 255)
+			name, err := cleanName(v, sqlq.VarcharWidth)
 			if err != nil {
 				return nil, err
 			}
@@ -288,7 +288,7 @@ func (s *Server) parseCatalogueFields(ctx context.Context, c catalogueKind, raw 
 			if err != nil {
 				return nil, err
 			}
-			if v, err = cleanName(v, 255); err != nil {
+			if v, err = cleanName(v, sqlq.VarcharWidth); err != nil {
 				return nil, err
 			}
 			sets[k] = v

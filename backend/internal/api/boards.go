@@ -1103,7 +1103,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	res, err = tx.ExecContext(ctx, `INSERT INTO boards (name, kind, filter_id, owner_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, sqlq.Truncate(name, varcharWidth), in.Kind, filterID, sub.UserID, now, now)
+		VALUES (?, ?, ?, ?, ?, ?)`, sqlq.Truncate(name, sqlq.VarcharWidth), in.Kind, filterID, sub.UserID, now, now)
 	if err != nil {
 		return err
 	}
@@ -1133,7 +1133,7 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(events.Event{Kind: events.BoardCreated, ActorID: sub.UserID,
-		Board: &events.Board{ID: boardID, Name: sqlq.Truncate(name, varcharWidth), Kind: in.Kind}})
-	s.auditBoard(r, audit.BoardCreate, boardID, sqlq.Truncate(name, varcharWidth), map[string]any{"kind": in.Kind, "project": key})
+		Board: &events.Board{ID: boardID, Name: sqlq.Truncate(name, sqlq.VarcharWidth), Kind: in.Kind}})
+	s.auditBoard(r, audit.BoardCreate, boardID, sqlq.Truncate(name, sqlq.VarcharWidth), map[string]any{"kind": in.Kind, "project": key})
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": boardID})
 }
