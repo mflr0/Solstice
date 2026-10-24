@@ -194,6 +194,7 @@ type batchFacts struct {
 	project     string   // the project of the last entry shown
 	created     bool     // an issue's creation is among the items
 	threadIssue int64    // the last issue shown
+	actor       string   // who made the last entry shown
 }
 
 // renderBatch writes a batch for its recipient, checking again what they may
@@ -224,6 +225,7 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 		if len(sec.Entries) == 0 {
 			continue
 		}
+		facts.actor = f.actor
 		p.Sections = append(p.Sections, sec)
 		facts.threadIssue = id
 	}
@@ -285,6 +287,7 @@ func (s *Service) sectionFor(ctx context.Context, rc *recipient, keys *keyAccess
 		sec.Entries = append(sec.Entries, en)
 		facts.reasons = append(facts.reasons, it.Reason)
 		facts.project = it.Project
+		facts.actor = actorName(loc, actors[it.ActorID])
 	}
 	return sec, facts, nil
 }
@@ -381,13 +384,20 @@ func (s *Service) compose(cfg mail.Config, rc *recipient, digest bool, p *page, 
 		s.footer(p, i18n.M(i18n.NotifyWhyDigest).In(loc))
 	} else {
 		msg.Kind = mail.KindNotification
-		msg.Subject = "[" + p.Sections[0].Key + "] " + p.Sections[0].Summary
-		// One thread per issue: the creation e-mail starts it, the others
-		// answer it.
-		root := "<issue." + strconv.FormatInt(facts.threadIssue, 10) + "@" + cfg.Domain() + ">"
-		msg.InReplyTo = root
-		if facts.created {
-			msg.MessageID, msg.InReplyTo = root, ""
+		if len(p.Sections) > 1 {
+			// A bulk change: one e-mail for several issues, in no issue's
+			// thread.
+			p.Heading = i18n.M(i18n.NotifyBulkSubject, facts.actor, len(p.Sections)).In(loc)
+			msg.Subject = p.Heading
+		} else {
+			msg.Subject = "[" + p.Sections[0].Key + "] " + p.Sections[0].Summary
+			// One thread per issue: the creation e-mail starts it, the
+			// others answer it.
+			root := "<issue." + strconv.FormatInt(facts.threadIssue, 10) + "@" + cfg.Domain() + ">"
+			msg.InReplyTo = root
+			if facts.created {
+				msg.MessageID, msg.InReplyTo = root, ""
+			}
 		}
 		s.footer(p, why(loc, strongest(facts.reasons), facts.project))
 	}

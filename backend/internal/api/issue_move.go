@@ -865,6 +865,7 @@ func (s *Server) applyMovePlan(r *http.Request, sub *perm.Subject, orig *issueRo
 		}
 		e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
 		e.Changes = eventChanges(changes[i])
+		e.Bulk = events.BulkOf(ctx)
 		s.emit(e)
 		s.publish(it.row, "issue", sub.UserID)
 	}

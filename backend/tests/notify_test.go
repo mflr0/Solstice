@@ -217,6 +217,48 @@ func TestNotificationRecipientsAndVisibility(t *testing.T) {
 	}
 }
 
+// A bulk change makes one e-mail per recipient, naming every issue they
+// watch; one that leaves a single issue to them is mailed in its thread.
+func TestBulkChangeNotifiesOnce(t *testing.T) {
+	env := newNotifyEnv(t)
+	paul := env.login("paul.martin", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)
+	hugo.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
+	var keys []string
+	for _, summary := range []string{"Groupé A", "Groupé B", "Groupé C"} {
+		key := createIssue(t, paul, "WEB", summary, "")
+		hugo.call("PUT", "/api/issues/"+key+"/watch", nil, 200, nil)
+		keys = append(keys, key)
+	}
+	unwatched := createIssue(t, paul, "WEB", "Pas suivi", "")
+	env.deliver()
+
+	addLabel := func(label string, keys ...string) {
+		bulk(t, paul, map[string]any{"op": "edit", "keys": keys,
+			"labels": map[string]any{"mode": "add", "values": []string{label}}})
+	}
+	addLabel("lot", keys...)
+	hm := to(env.deliver(), "hugo.robert@exemple.fr")
+	if len(hm) != 1 {
+		t.Fatalf("hugo.robert got %d e-mails for one bulk edit of three issues, want 1", len(hm))
+	}
+	if hm[0].Subject != "Paul Martin changed 3 issues" || hm[0].Header.Get("In-Reply-To") != "" {
+		t.Errorf("subject %q, In-Reply-To %q", hm[0].Subject, hm[0].Header.Get("In-Reply-To"))
+	}
+	for _, key := range keys {
+		if !strings.Contains(hm[0].Text, key) || !strings.Contains(hm[0].HTML, key) {
+			t.Errorf("the e-mail does not name %s:\n%s", key, hm[0].Text)
+		}
+	}
+
+	addLabel("seul", keys[0], unwatched)
+	hm = to(env.deliver(), "hugo.robert@exemple.fr")
+	if len(hm) != 1 || hm[0].Subject != "["+keys[0]+"] Groupé A" ||
+		hm[0].Header.Get("In-Reply-To") != "<issue."+issueID(t, keys[0])+"@exemple.fr>" {
+		t.Fatalf("one issue left to the recipient should be mailed as usual: %+v", hm)
+	}
+}
+
 func TestNotificationPreferences(t *testing.T) {
 	env := newNotifyEnv(t)
 	paul := env.login("paul.martin", jirafixture.Password)

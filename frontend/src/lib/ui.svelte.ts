@@ -15,6 +15,7 @@ import {
   type Scheme,
   type Skin,
 } from '../core/appearance.js';
+import { parseShortcutsSetting } from '../core/shortcuts.js';
 import { isSkinLoaded, loadSkin } from './skins.svelte.js';
 
 export interface CreateDefaults {
@@ -22,9 +23,14 @@ export interface CreateDefaults {
   parent?: string;
 }
 
-export const dialogs = $state<{ create: boolean; createDefaults: CreateDefaults }>({
+export const dialogs = $state<{
+  create: boolean;
+  createDefaults: CreateDefaults;
+  shortcuts: boolean;
+}>({
   create: false,
   createDefaults: {},
+  shortcuts: false,
 });
 
 export function openCreate(defaults: CreateDefaults = {}): void {
@@ -77,11 +83,12 @@ function store(key: string, value: string): void {
 const darkQuery =
   typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
-/** The skin (art direction) and colour mode in use. */
-export const appearance = $state<{ skin: Skin; mode: Mode; scheme: Scheme }>({
+/** The skin (art direction) and colour mode in use, and whether single-key shortcuts work. */
+export const appearance = $state<{ skin: Skin; mode: Mode; scheme: Scheme; shortcuts: boolean }>({
   skin: parseSkin(readStored(STORAGE_KEYS.skin)),
   mode: parseMode(readStored(STORAGE_KEYS.mode)),
   scheme: 'light',
+  shortcuts: parseShortcutsSetting(readStored(STORAGE_KEYS.shortcuts)),
 });
 
 function reveal(): void {
@@ -120,6 +127,11 @@ export function applyMode(mode: Mode): void {
   render();
 }
 
+export function applyShortcuts(on: boolean): void {
+  appearance.shortcuts = on;
+  store(STORAGE_KEYS.shortcuts, on ? 'on' : 'off');
+}
+
 /** Applies the stored appearance and follows the system's light/dark changes. */
 export function initAppearance(): () => void {
   render();
@@ -142,13 +154,30 @@ export function skinInEffect(): () => Skin {
   return getContext<(() => Skin) | undefined>(PREVIEW_SKIN) ?? (() => appearance.skin);
 }
 
+/** Inputs a letter does nothing in, so shortcuts still work from them. */
+const UNTYPED_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset']);
+
 /** Whether a keyboard shortcut should be ignored because the user is typing. */
 export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement) return !UNTYPED_INPUTS.has(target.type);
+  return target.isContentEditable || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+}
+
+/**
+ * Whether a key press is not for the page's shortcuts: with a modifier, while
+ * typing, or while a dialog is open.
+ */
+export function ignoreShortcut(e: KeyboardEvent): boolean {
   return (
-    target.isContentEditable ||
-    target.tagName === 'INPUT' ||
-    target.tagName === 'TEXTAREA' ||
-    target.tagName === 'SELECT'
+    e.defaultPrevented ||
+    e.isComposing ||
+    e.ctrlKey ||
+    e.metaKey ||
+    e.altKey ||
+    dialogs.create ||
+    dialogs.shortcuts ||
+    isTyping(e.target) ||
+    document.querySelector('dialog[open]') !== null
   );
 }

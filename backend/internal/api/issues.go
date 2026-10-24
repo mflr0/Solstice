@@ -1991,6 +1991,7 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 	// must learn the issue changed.
 	e := issueEvent(events.IssueUpdated, updated, sub.UserID, "issue")
 	e.Changes = eventChanges(append(changes, customChanges...))
+	e.Bulk = events.BulkOf(ctx)
 	if before := iss.perm(); before != updated.perm() {
 		e.Before = &before
 	}
@@ -2066,6 +2067,7 @@ func (s *Server) removeIssue(r *http.Request, sub *perm.Subject, iss *issueRow) 
 			return err
 		}
 		e.HookMatches = s.out.hooks.MatchBeforeDelete(ctx, d.ID)
+		e.Bulk = events.BulkOf(ctx)
 		deleted = append(deleted, e)
 	}
 	deleted[0].Live = "deleted"

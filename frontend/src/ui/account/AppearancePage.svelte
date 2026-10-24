@@ -8,11 +8,18 @@
   import { errorMessage } from '../../lib/api.js';
   import { chooseLocale } from '../../lib/locale.js';
   import { session } from '../../lib/session.svelte.js';
-  import { appearance, applyMode, applySkin, notify } from '../../lib/ui.svelte.js';
+  import {
+    appearance,
+    applyMode,
+    applyShortcuts,
+    applySkin,
+    dialogs,
+    notify,
+  } from '../../lib/ui.svelte.js';
 
   /**
    * The interface language (kept on the account) and the look (kept on this
-   * browser): skin and light or dark mode.
+   * browser): skin, light or dark mode, and the single-key shortcuts.
    */
 
   /** The account follows the browser's language when it chose none. */
@@ -141,6 +148,24 @@
       <p><a class="btn btn-primary" href={paths.themes()}>{t.account.gallery}</a></p>
     </div>
   </div>
+</section>
+
+<section class="settings-form look" aria-labelledby="keys-title">
+  <h2 class="section-title" id="keys-title">{t.keyboard.title}</h2>
+  <label class="check">
+    <input
+      type="checkbox"
+      checked={appearance.shortcuts}
+      onchange={(e) => applyShortcuts(e.currentTarget.checked)}
+    />
+    <span>{t.keyboard.toggle}</span>
+  </label>
+  <p class="form-hint">{t.keyboard.toggleHint}</p>
+  <p>
+    <button type="button" class="btn" onclick={() => (dialogs.shortcuts = true)}
+      >{t.keyboard.list}</button
+    >
+  </p>
 </section>
 
 <style>

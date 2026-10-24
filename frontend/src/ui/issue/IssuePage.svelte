@@ -9,8 +9,9 @@
 </script>
 
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick as settled, untrack } from 'svelte';
   import { paths } from '../../core/route.js';
+  import { shortcutFor } from '../../core/shortcuts.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
@@ -18,7 +19,7 @@
   import { live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
-  import { notify, openCreate } from '../../lib/ui.svelte.js';
+  import { appearance, ignoreShortcut, notify, openCreate } from '../../lib/ui.svelte.js';
   import PriorityMark from '../PriorityMark.svelte';
   import RelTime from '../RelTime.svelte';
   import Stamp from '../Stamp.svelte';
@@ -189,6 +190,55 @@
     }
   }
 
+  let statusControl: StatusControl | undefined = $state();
+
+  function editSummary() {
+    summaryDraft = issue?.summary ?? '';
+    editingSummary = true;
+  }
+
+  /** Waits for the comment box (the tab, then its editor, load first) and focuses it. */
+  async function focusComment() {
+    tab = 'comments';
+    for (let i = 0; i < 40; i++) {
+      await settled();
+      const box = document.querySelector<HTMLElement>(
+        '.issue-activity .compose [contenteditable="true"], .issue-activity .compose textarea',
+      );
+      if (box) return box.focus();
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+
+  function keys(e: KeyboardEvent) {
+    if (!issue || ignoreShortcut(e)) return;
+    const me = session.me;
+    switch (shortcutFor(e.key, 'issue', appearance.shortcuts)) {
+      case 'editSummary':
+        if (!issue.can.edit || editingSummary) return;
+        editSummary();
+        break;
+      case 'assignToMe':
+        if (!me || issue.assignee?.id === me.id) return;
+        if (!issue.can.assign && !issue.can.assignable) return;
+        void update({ assignee: me.id });
+        break;
+      case 'comment':
+        if (!issue.can.comment) return;
+        void focusComment();
+        break;
+      case 'status':
+        if (!statusControl?.openMenu()) return;
+        break;
+      case 'watch':
+        void toggle('watch');
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
   async function remove() {
     if (!issue) return;
     if (!deleteArmed) {
@@ -205,6 +255,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={keys} />
 
 {#if missing}
   <NotFoundPage message={missing} />
@@ -240,13 +292,8 @@
         />
       {:else if issue.can.edit}
         <h1 class="page-title">
-          <button
-            class="summary-btn"
-            title={t.issue.editSummary}
-            onclick={() => {
-              summaryDraft = issue?.summary ?? '';
-              editingSummary = true;
-            }}>{issue.summary}</button
+          <button class="summary-btn" title={t.issue.editSummary} onclick={editSummary}
+            >{issue.summary}</button
           >
         </h1>
       {:else}
@@ -254,7 +301,9 @@
       {/if}
 
       <div class="meta issue-meta">
-        <div class="meta-cell"><StatusControl {issue} onchange={update} /></div>
+        <div class="meta-cell">
+          <StatusControl bind:this={statusControl} {issue} onchange={update} />
+        </div>
         {#if issue.resolution}<span class="meta-cell resolution">{issue.resolution.name}</span>{/if}
         <span class="dot meta-sep" aria-hidden="true">·</span>
         <span class="meta-cell"><TypeMark type={issue.type} withName /></span>

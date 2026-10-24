@@ -563,6 +563,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyCommentEdited:       "%s ha modificato un commento.",
 	NotifyMentionComment:      "%s ti ha menzionato in un commento.",
 	NotifyMentionDescription:  "%s ti ha menzionato nella descrizione.",
+	NotifyBulkSubject:         "%s ha modificato %d ticket",
 
 	// Filter subscriptions and their e-mails.
 	SubscriptionDayRequired:      "Scegli almeno un giorno.",

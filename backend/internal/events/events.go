@@ -126,6 +126,23 @@ type Event struct {
 	// HookMatches, for a deleted issue, are the webhooks whose JQL filter
 	// matched it just before it was deleted.
 	HookMatches map[int64]bool
+
+	// Bulk names the bulk change the event is part of (see WithBulk), 0 for
+	// none: e-mails gather its events.
+	Bulk int64
+}
+
+type bulkKey struct{}
+
+// WithBulk marks ctx as the context of one bulk change, named by id.
+func WithBulk(ctx context.Context, id int64) context.Context {
+	return context.WithValue(ctx, bulkKey{}, id)
+}
+
+// BulkOf is the bulk change ctx belongs to, 0 for none.
+func BulkOf(ctx context.Context) int64 {
+	id, _ := ctx.Value(bulkKey{}).(int64)
+	return id
 }
 
 // Str is a helper for optional strings in changes.

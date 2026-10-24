@@ -122,7 +122,8 @@
       onclick={() => openCreate(project ? { project } : {})}
     >
       <span class="plus" aria-hidden="true">+</span>
-      <span class="label">{t.nav.create}</span> <kbd>c</kbd>
+      <span class="label">{t.nav.create}</span>
+      {#if appearance.shortcuts}<kbd>c</kbd>{/if}
     </button>
 
     {#if session.me}

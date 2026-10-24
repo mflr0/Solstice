@@ -3,11 +3,19 @@
   import { legacyBoardPath } from '../core/board.js';
   import { projectOfIssueKey } from '../core/marks.js';
   import { isPublicRoute, paths, safeNext } from '../core/route.js';
+  import { shortcutFor } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
   import { interceptLinks, router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
-  import { dialogs, initAppearance, isTyping, notify, openCreate } from '../lib/ui.svelte.js';
+  import {
+    appearance,
+    dialogs,
+    ignoreShortcut,
+    initAppearance,
+    notify,
+    openCreate,
+  } from '../lib/ui.svelte.js';
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
   import Notes from './Notes.svelte';
@@ -20,6 +28,7 @@
   import ResetPage from './pages/ResetPage.svelte';
   import SearchPage from './pages/SearchPage.svelte';
   import ShellBanner from './ShellBanner.svelte';
+  import ShortcutsHelp from './ShortcutsHelp.svelte';
   import TopBar from './TopBar.svelte';
 
   const route = $derived(router.route);
@@ -77,15 +86,17 @@
   });
 
   function shortcuts(e: KeyboardEvent) {
-    if (!session.me || dialogs.create || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) {
-      return;
-    }
-    if (e.key === '/') {
+    if (!session.me || ignoreShortcut(e)) return;
+    const action = shortcutFor(e.key, 'global', appearance.shortcuts);
+    if (action === 'search') {
       e.preventDefault();
       document.getElementById('quick-search')?.focus();
-    } else if (e.key === 'c') {
+    } else if (action === 'create') {
       e.preventDefault();
       openCreate(project ? { project } : {});
+    } else if (action === 'help') {
+      e.preventDefault();
+      dialogs.shortcuts = true;
     }
   }
 </script>
@@ -216,6 +227,7 @@
     </footer>
   </div>
   <NewIssueDialog />
+  <ShortcutsHelp />
 {/if}
 <Notes />
 
