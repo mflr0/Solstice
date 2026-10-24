@@ -760,6 +760,31 @@ export const de: Messages = {
       `${plural(n, 'Unteraufgabe hat einen Bearbeiter, der im neuen Projekt nicht zugewiesen werden kann: Er wird ersetzt', 'Unteraufgaben haben Bearbeiter, die im neuen Projekt nicht zugewiesen werden können: Sie werden ersetzt')}.`,
   },
 
+  keyboard: {
+    title: 'Tastenkürzel',
+    scopes: { global: 'Überall', results: 'Suchergebnisse', issue: 'Vorgangsseite' },
+    actions: {
+      search: 'Suchen',
+      create: 'Vorgang erstellen',
+      help: 'Tastenkürzel anzeigen',
+      next: 'Nächstes Ergebnis',
+      previous: 'Vorheriges Ergebnis',
+      open: 'Ergebnis öffnen',
+      select: 'Ergebnis auswählen',
+      editSummary: 'Zusammenfassung bearbeiten',
+      assignToMe: 'Mir zuweisen',
+      comment: 'Kommentar schreiben',
+      status: 'Status ändern',
+      watch: 'Beobachten oder nicht mehr beobachten',
+    },
+    or: 'oder',
+    off: 'Einzeltasten-Kürzel sind ausgeschaltet; Eingabe öffnet weiterhin ein Ergebnis.',
+    settings: 'Darstellungseinstellungen',
+    toggle: 'Einzeltasten-Kürzel',
+    toggleHint:
+      'Tasten wie c oder / wirken ohne Strg oder Alt. Schalten Sie sie aus, wenn sie einen Screenreader oder die Sprachsteuerung stören. Gilt für diesen Browser.',
+    list: 'Alle Tastenkürzel anzeigen',
+  },
   comments: {
     empty: 'Noch keine Kommentare.',
     placeholder: 'Ihr Kommentar…',

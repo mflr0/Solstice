@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatShortcut, isMac } from '../../src/core/shortcuts.js';
+import {
+  formatShortcut,
+  isMac,
+  parseShortcutsSetting,
+  SHORTCUTS,
+  shortcutFor,
+} from '../../src/core/shortcuts.js';
 
 const fr = { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maj' };
 const de = { ctrl: 'Strg', alt: 'Alt', shift: 'Umschalt' };
@@ -35,5 +41,54 @@ describe('formatShortcut', () => {
   it('keeps a hyphen key and named keys as they are', () => {
     expect(formatShortcut('Mod--', false, fr)).toBe('Ctrl+-');
     expect(formatShortcut('Mod-Enter', false, fr)).toBe('Ctrl+Enter');
+  });
+});
+
+describe('shortcutFor', () => {
+  it('finds each key in its own scope only', () => {
+    expect(shortcutFor('/', 'global', true)).toBe('search');
+    expect(shortcutFor('c', 'global', true)).toBe('create');
+    expect(shortcutFor('?', 'global', true)).toBe('help');
+    expect(shortcutFor('j', 'results', true)).toBe('next');
+    expect(shortcutFor('k', 'results', true)).toBe('previous');
+    expect(shortcutFor('o', 'results', true)).toBe('open');
+    expect(shortcutFor('Enter', 'results', true)).toBe('open');
+    expect(shortcutFor('x', 'results', true)).toBe('select');
+    expect(shortcutFor('e', 'issue', true)).toBe('editSummary');
+    expect(shortcutFor('a', 'issue', true)).toBe('assignToMe');
+    expect(shortcutFor('m', 'issue', true)).toBe('comment');
+    expect(shortcutFor('t', 'issue', true)).toBe('status');
+    expect(shortcutFor('w', 'issue', true)).toBe('watch');
+    expect(shortcutFor('j', 'issue', true)).toBeNull();
+    expect(shortcutFor('e', 'results', true)).toBeNull();
+    expect(shortcutFor('Enter', 'global', true)).toBeNull();
+  });
+
+  it('is case-sensitive: Shift+J is not j', () => {
+    expect(shortcutFor('J', 'results', true)).toBeNull();
+  });
+
+  it('leaves only the non-character keys when turned off', () => {
+    for (const s of SHORTCUTS) {
+      for (const key of s.keys) {
+        expect(shortcutFor(key, s.scope, false)).toBe(key === 'Enter' ? s.action : null);
+      }
+    }
+  });
+
+  it('gives each key one action per scope', () => {
+    for (const scope of ['global', 'results', 'issue'] as const) {
+      const keys = SHORTCUTS.filter((s) => s.scope === scope).flatMap((s) => s.keys);
+      expect(new Set(keys).size).toBe(keys.length);
+    }
+  });
+});
+
+describe('parseShortcutsSetting', () => {
+  it('is on unless stored as off', () => {
+    expect(parseShortcutsSetting(null)).toBe(true);
+    expect(parseShortcutsSetting('on')).toBe(true);
+    expect(parseShortcutsSetting('junk')).toBe(true);
+    expect(parseShortcutsSetting('off')).toBe(false);
   });
 });

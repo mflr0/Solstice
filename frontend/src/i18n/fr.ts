@@ -752,6 +752,31 @@ export const fr: Messages = {
       `${plural(n, 'sous-tâche a un responsable qui ne peut pas l’être dans le nouveau projet : il est remplacé', 'sous-tâches ont des responsables qui ne peuvent pas l’être dans le nouveau projet : ils sont remplacés')}.`,
   },
 
+  keyboard: {
+    title: 'Raccourcis clavier',
+    scopes: { global: 'Partout', results: 'Résultats de recherche', issue: 'Page d’un ticket' },
+    actions: {
+      search: 'Rechercher',
+      create: 'Créer un ticket',
+      help: 'Afficher les raccourcis',
+      next: 'Résultat suivant',
+      previous: 'Résultat précédent',
+      open: 'Ouvrir le résultat',
+      select: 'Sélectionner le résultat',
+      editSummary: 'Modifier le résumé',
+      assignToMe: 'M’assigner',
+      comment: 'Écrire un commentaire',
+      status: 'Changer le statut',
+      watch: 'Observer ou ne plus observer',
+    },
+    or: 'ou',
+    off: 'Les raccourcis à une touche sont désactivés ; Entrée ouvre toujours un résultat.',
+    settings: 'Réglages d’apparence',
+    toggle: 'Raccourcis à une touche',
+    toggleHint:
+      'Des touches comme c ou / agissent sans Ctrl ni Alt. Désactivez-les si elles gênent un lecteur d’écran ou la commande vocale. S’applique à ce navigateur.',
+    list: 'Voir tous les raccourcis',
+  },
   comments: {
     empty: 'Pas encore de commentaire.',
     placeholder: 'Votre commentaire…',
