@@ -66,7 +66,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	route("GET /api/issues/export.csv", s.exportCSV, true)
 
 	rest := func(pattern string, h handler, needUser bool) { mux.Handle(pattern, s.rest(h, needUser)) }
-	for _, p := range []string{"/rest/api/2", "/rest/api/latest"} {
+	for _, p := range []string{issue.RESTAPIPath, "/rest/api/latest"} {
 		rest("GET "+p+"/serverInfo", s.restServerInfo, false)
 		rest("GET "+p+"/myself", s.restMyself, true)
 		rest("GET "+p+"/user", s.restUser, true)
@@ -146,7 +146,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	mux.Handle("GET /rest/auth/1/session", s.rest(s.restSession, true))
 	mux.Handle("POST /rest/auth/1/session", s.restSessionRoute(s.restSignIn, false))
 	mux.Handle("DELETE /rest/auth/1/session", s.restSessionRoute(s.restSignOut, true))
-	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
+	for _, p := range []string{issue.AgileAPIPath, "/rest/agile/latest"} {
 		rest("GET "+p+"/board", s.agileBoards, true)
 		rest("GET "+p+"/board/{id}", s.agileBoard, true)
 		rest("GET "+p+"/board/{id}/configuration", s.agileBoardConfiguration, true)
@@ -407,7 +407,7 @@ func (s *Server) restOut(r *http.Request) *restOut {
 		}
 		base = scheme + "://" + r.Host
 	}
-	return &restOut{base: base, api: base + "/rest/api/2", locale: locale(r), tz: s.zone()}
+	return &restOut{base: base, api: base + issue.RESTAPIPath, locale: locale(r), tz: s.zone()}
 }
 
 // zone is the time zone of dates typed or shown without one: the

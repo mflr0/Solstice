@@ -246,7 +246,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 	if in.MoveTo != 0 {
 		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO sprint_issues (sprint_id, issue_id)
 			SELECT ?, si.issue_id FROM sprint_issues si JOIN issues i ON i.id = si.issue_id
-			JOIN statuses st ON st.id = i.status_id WHERE si.sprint_id = ? AND st.category <> 'done'`, in.MoveTo, sp.ID)
+			JOIN statuses st ON st.id = i.status_id WHERE si.sprint_id = ? AND st.category <> ?`, in.MoveTo, sp.ID, issue.Done)
 		if err != nil {
 			return err
 		}

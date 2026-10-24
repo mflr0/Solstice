@@ -33,7 +33,7 @@ func agilePage[T any](list []T, startAt, maxResults int) map[string]any {
 }
 
 func (o *restOut) boardJSON(b *boardSummary) map[string]any {
-	out := map[string]any{"id": b.ID, "self": o.base + "/rest/agile/1.0/board/" + o.id(b.ID), "name": b.Name,
+	out := map[string]any{"id": b.ID, "self": o.base + issue.AgileAPIPath + "/board/" + o.id(b.ID), "name": b.Name,
 		"type": b.Kind}
 	if len(b.Projects) > 0 {
 		p := b.Projects[0]

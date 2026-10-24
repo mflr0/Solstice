@@ -141,10 +141,12 @@ func (r *run) importIssues() error {
 		sort.Strings(ids)
 		for _, id := range ids {
 			q := "INSERT INTO " + table + " (id, name) VALUES (?, ?)"
+			args := []any{id, "Unknown (" + id + ")"}
 			if table == "statuses" {
-				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, 'todo')"
+				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, ?)"
+				args = append(args, issue.Todo)
 			}
-			if _, err := r.dst.ExecContext(r.ctx, q, id, "Unknown ("+id+")"); err != nil {
+			if _, err := r.dst.ExecContext(r.ctx, q, args...); err != nil {
 				return err
 			}
 		}

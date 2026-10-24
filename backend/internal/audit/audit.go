@@ -101,6 +101,7 @@ const (
 	ImportStart          = "import.start"
 	ImportDone           = "import.done"
 	ImportFailed         = "import.failed"
+	SetupComplete        = "setup.complete"
 	SettingsMail         = "settings.mail"
 	WebhookCreate        = "webhook.create"
 	WebhookUpdate        = "webhook.update"

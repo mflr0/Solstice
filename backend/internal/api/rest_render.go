@@ -526,7 +526,7 @@ func nullIDText(id int64) string {
 
 // sprintJSON is a sprint as Jira's Agile API shows one.
 func (o *restOut) sprintJSON(sp sprintOut, board int64) map[string]any {
-	out := map[string]any{"id": sp.ID, "self": o.base + "/rest/agile/1.0/sprint/" + o.id(sp.ID), "state": sp.State,
+	out := map[string]any{"id": sp.ID, "self": o.base + issue.AgileAPIPath + "/sprint/" + o.id(sp.ID), "state": sp.State,
 		"name": sp.Name}
 	date := func(t *time.Time) string { return t.In(o.tz).Format("2006-01-02T15:04:05.000Z07:00") }
 	if sp.Start != nil {
@@ -773,7 +773,7 @@ func (o *restOut) epicJSON(cat *catalog, epic *issueRow, name string) map[string
 	if name == "" {
 		name = epic.Summary
 	}
-	return map[string]any{"id": epic.ID, "key": epic.Key(), "self": o.base + "/rest/agile/1.0/epic/" + o.id(epic.ID),
+	return map[string]any{"id": epic.ID, "key": epic.Key(), "self": o.base + issue.AgileAPIPath + "/epic/" + o.id(epic.ID),
 		"name": name, "summary": epic.Summary, "color": map[string]string{"key": "color_1"},
 		"done": cat.statusOf(epic.StatusID).Category == issue.Done}
 }
