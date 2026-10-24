@@ -171,15 +171,6 @@
     background: var(--paper);
   }
 
-  /* Carnet's selects show the native arrow, which a button can't draw. As
-     specific as a skin's .select rules, which come later and win. */
-  :where(.framed) :global(.select.select) {
-    padding-right: 28px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8577' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-  }
-
   /* The avatar never makes the box taller than the skin's select. */
   .framed .current :global(.who) {
     height: 1lh;
