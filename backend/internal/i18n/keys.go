@@ -628,6 +628,7 @@ const (
 	NotifyCommentEdited       Key = "NotifyCommentEdited"
 	NotifyMentionComment      Key = "NotifyMentionComment"
 	NotifyMentionDescription  Key = "NotifyMentionDescription"
+	NotifyBulkSubject         Key = "NotifyBulkSubject"
 )
 
 // Filter subscriptions and their e-mails.

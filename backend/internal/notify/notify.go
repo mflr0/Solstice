@@ -5,8 +5,8 @@
 // Who gets what is decided twice: when the change happens, and again when
 // the e-mail is written, so nobody receives an issue or a restricted comment
 // they can no longer see. Changes are batched: those made to one issue
-// within a couple of minutes go out as one e-mail (or once a day, for those
-// who chose a digest).
+// within a couple of minutes, or by one bulk change, go out as one e-mail (or
+// once a day, for those who chose a digest).
 package notify
 
 import (
@@ -338,7 +338,7 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 		if !ok {
 			continue
 		}
-		if err := s.enqueue(ctx, id, prefs[id], iss.ID, it); err != nil {
+		if err := s.enqueue(ctx, id, prefs[id], iss.ID, e.Bulk, it); err != nil {
 			return err
 		}
 	}
@@ -451,10 +451,10 @@ func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.U
 	return it, true, nil
 }
 
-// enqueue files an item in the user's open batch for the issue (or their
-// digest), creating it if needed. A batch is sent Window after its last
-// change, but no later than MaxWait after its first.
-func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID int64, it item) error {
+// enqueue files an item in the user's open batch for the issue, the bulk
+// change (bulk not 0) or their digest, creating it if needed. A batch is sent
+// Window after its last change, but no later than MaxWait after its first.
+func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID, bulk int64, it item) error {
 	data, err := json.Marshal(it)
 	if err != nil {
 		return err
@@ -463,24 +463,28 @@ func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID in
 	digest := p.Delivery == Digest
 	batchIssue := issueID
 	sendAt := now.Add(Window)
-	if digest {
-		batchIssue = 0
+	switch {
+	case digest:
+		batchIssue, bulk = 0, 0
 		sendAt = nextAt(now, s.zone(), p.DigestHour, nil)
+	case bulk != 0:
+		batchIssue = 0
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_batches (user_id, digest, issue_id, first_at, send_at)
-		VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_batches (user_id, digest, issue_id, bulk_id, first_at, send_at)
+		VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
 		send_at = IF(digest, send_at, LEAST(VALUES(send_at), first_at + INTERVAL ? MICROSECOND))`,
-		userID, digest, batchIssue, now, sendAt, MaxWait.Microseconds()); err != nil {
+		userID, digest, batchIssue, bulk, now, sendAt, MaxWait.Microseconds()); err != nil {
 		return err
 	}
 	var batch int64
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM notification_batches WHERE user_id = ? AND digest = ? AND issue_id = ?`,
-		userID, digest, batchIssue).Scan(&batch); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM notification_batches
+		WHERE user_id = ? AND digest = ? AND issue_id = ? AND bulk_id = ?`,
+		userID, digest, batchIssue, bulk).Scan(&batch); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_items (batch_id, issue_id, data, created_at) VALUES (?, ?, ?, ?)`,
