@@ -45,7 +45,7 @@ const (
 	loginReasonHeader = "X-Seraph-LoginReason"
 	loginDenied       = "AUTHENTICATION_DENIED" // too many attempts
 	loginFailed       = "AUTHENTICATED_FAILED"  // wrong credentials
-	atlassianToken    = "X-Atlassian-Token"
+	atlassianXSRF     = "X-Atlassian-Token"
 	noCheck           = "no-check"
 )
 
@@ -249,7 +249,7 @@ func forgeryProof(r *http.Request, via string) bool {
 	if r.Header.Get(csrfHeader) != "" {
 		return true
 	}
-	if v := strings.ToLower(r.Header.Get(atlassianToken)); v == noCheck || v == "nocheck" {
+	if v := strings.ToLower(r.Header.Get(atlassianXSRF)); v == noCheck || v == "nocheck" {
 		return true
 	}
 	switch via {

@@ -345,7 +345,7 @@ func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete || (r.Method == http.MethodPost && !formEncoded(r)) {
 			r = r.Clone(r.Context())
-			r.Header.Set(atlassianToken, noCheck)
+			r.Header.Set(atlassianXSRF, noCheck)
 		}
 		inner.ServeHTTP(w, r)
 	})

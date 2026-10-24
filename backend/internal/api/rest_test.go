@@ -13,7 +13,7 @@ func TestForgeryProof(t *testing.T) {
 	}{
 		{"GET", viaCookie, "", "", true},
 		{"POST", viaCookie, "application/json", "", false},
-		{"POST", viaCookie, "application/json", atlassianToken, true},
+		{"POST", viaCookie, "application/json", atlassianXSRF, true},
 		{"DELETE", viaCookie, "", "", false},
 		{"POST", viaToken, "multipart/form-data; boundary=x", "", true},
 		{"POST", viaBasic, "application/json", "", true},
@@ -28,7 +28,7 @@ func TestForgeryProof(t *testing.T) {
 			r.Header.Set("Content-Type", c.ctype)
 		}
 		switch c.header {
-		case atlassianToken:
+		case atlassianXSRF:
 			r.Header.Set(c.header, noCheck)
 		case csrfHeader:
 			r.Header.Set(c.header, "1")
