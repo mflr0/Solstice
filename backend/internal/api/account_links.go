@@ -51,7 +51,7 @@ const (
 	// may share an address).
 	forgotMatches = 5
 	// maxIdentifier is the longest user name or address accepted.
-	maxIdentifier = 255
+	maxIdentifier = sqlq.VarcharWidth
 )
 
 // accountMail caches whether links can be sent.
@@ -185,7 +185,7 @@ func (s *Server) sendAccountLink(ctx context.Context, cfg mail.Config, to *linkT
 // without being signed in (a reset asked for or done, an invitation accepted).
 func (s *Server) auditAccount(r *http.Request, action string, id int64, username string, details map[string]any) {
 	record(r.Context(), s.db, s.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, s.proxies),
-		Action: action, Target: target("user", id, username), Details: details})
+		Action: action, Target: target(audit.TargetUser, id, username), Details: details})
 }
 
 // hold waits until d has passed since start (or the request ends).
@@ -452,6 +452,6 @@ func (s *Server) adminSendLink(w http.ResponseWriter, r *http.Request, id int64,
 	if err := s.sendAccountLink(ctx, cfg, to, l.purpose); err != nil {
 		return err
 	}
-	s.auditLog(r, l.action, target("user", id, to.Username), l.details())
+	s.auditLog(r, l.action, target(audit.TargetUser, id, to.Username), l.details())
 	return writeJSON(w, http.StatusOK, map[string]bool{"sent": true})
 }

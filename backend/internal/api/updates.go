@@ -263,6 +263,9 @@ type releaseCheck struct {
 
 const maxNotes = 64 << 10
 
+// maxLog is how much of an update log is kept: its end.
+const maxLog = 64 << 10
+
 // assetPattern names the files a release may carry.
 var assetPattern = regexp.MustCompile(`^(solstice-[0-9A-Za-z.-]+-[a-z0-9]+-[a-z0-9]+\.(tar\.gz|zip)|SHA256SUMS)$`)
 
@@ -481,8 +484,8 @@ func cleanAttempt(a *updateAttempt) bool {
 	if !versionLike.MatchString(a.To) {
 		a.To = "?"
 	}
-	if len(a.Log) > 64<<10 {
-		a.Log = strings.ToValidUTF8(a.Log[len(a.Log)-64<<10:], "")
+	if len(a.Log) > maxLog {
+		a.Log = strings.ToValidUTF8(a.Log[len(a.Log)-maxLog:], "")
 	}
 	a.At = a.At.UTC()
 	return true
@@ -642,7 +645,7 @@ func (s *Server) auditUpdateResult(ctx context.Context, a *updateAttempt) {
 	}
 	record(ctx, s.db, s.log, audit.Entry{
 		Action:  auditUpdateResult,
-		Target:  audit.Target{Type: "version", ID: a.To, Label: "Solstice " + a.To},
+		Target:  audit.Target{Type: audit.TargetVersion, ID: a.To, Label: "Solstice " + a.To},
 		Details: map[string]any{"from": a.From, "to": a.To, "status": a.Status},
 	})
 }
@@ -677,7 +680,7 @@ func (s *Server) checkUpdates(w http.ResponseWriter, r *http.Request) error {
 	if out.CheckError != nil {
 		details["error"] = *out.CheckError
 	}
-	s.auditLog(r, auditUpdateCheck, audit.Target{Type: "settings", ID: "updates"}, details)
+	s.auditLog(r, auditUpdateCheck, audit.Target{Type: audit.TargetSettings, ID: "updates"}, details)
 	return writeJSON(w, http.StatusOK, out)
 }
 
@@ -701,7 +704,7 @@ func (s *Server) updateSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := settings.New(s.db).Set(r.Context(), settingUpdateChecks, value); err != nil {
 		return err
 	}
-	s.auditLog(r, auditUpdateSettings, audit.Target{Type: "settings", ID: "updates"},
+	s.auditLog(r, auditUpdateSettings, audit.Target{Type: audit.TargetSettings, ID: "updates"},
 		map[string]any{"checksEnabled": *in.ChecksEnabled})
 	out, err := s.updateState(r.Context(), false)
 	if err != nil {
@@ -727,7 +730,7 @@ func (s *Server) applyRelease(w http.ResponseWriter, r *http.Request) error {
 	me := currentUser(r)
 	who, err := s.checkPassword(r, me.Username, in.Password)
 	if errors.Is(err, auth.ErrNoSession) || (err == nil && who.ID != me.ID) {
-		s.auditLog(r, auditUpdateDenied, audit.Target{Type: "version", ID: in.Version}, map[string]any{"reason": "password"})
+		s.auditLog(r, auditUpdateDenied, audit.Target{Type: audit.TargetVersion, ID: in.Version}, map[string]any{"reason": "password"})
 		return fail(http.StatusForbidden, i18n.UpdatePasswordIncorrect)
 	}
 	if err != nil {
@@ -754,7 +757,7 @@ func (s *Server) applyRelease(w http.ResponseWriter, r *http.Request) error {
 	if err := u.writeRequest(updateRequest{Version: rel.Version, RequestedBy: me.Username, At: u.clock()}); err != nil {
 		return err
 	}
-	s.auditLog(r, auditUpdateRequest, audit.Target{Type: "version", ID: rel.Version, Label: "Solstice " + rel.Version},
+	s.auditLog(r, auditUpdateRequest, audit.Target{Type: audit.TargetVersion, ID: rel.Version, Label: "Solstice " + rel.Version},
 		map[string]any{"from": u.current(), "to": rel.Version})
 	out, err := s.updateState(r.Context(), false)
 	if err != nil {

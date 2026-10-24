@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -357,7 +358,7 @@ func (s *Service) sendReminder(ctx context.Context, userID int64, today string) 
 	err = sqlq.Each(ctx, s.db, `SELECT p.pkey, i.num, i.summary, i.due_date, st.name, COALESCE(pr.name, '')
 		FROM issues i JOIN projects p ON p.id = i.project_id JOIN statuses st ON st.id = i.status_id
 		LEFT JOIN priorities pr ON pr.id = i.priority_id
-		WHERE i.assignee_id = ? AND i.resolution_id IS NULL AND st.category <> 'done'
+		WHERE i.assignee_id = ? AND i.resolution_id IS NULL AND st.category <> ?
 		AND i.due_date IS NOT NULL AND i.due_date <= ? AND `+vis+`
 		ORDER BY i.due_date, p.pkey, i.num LIMIT 200`, func(rows *sql.Rows) error {
 		var key string
@@ -376,7 +377,7 @@ func (s *Service) sendReminder(ctx context.Context, userID int64, today string) 
 			due = append(due, l)
 		}
 		return nil
-	}, append([]any{userID, today}, args...)...)
+	}, append([]any{userID, issue.Done, today}, args...)...)
 	if err != nil || len(overdue)+len(due) == 0 {
 		return false, err
 	}

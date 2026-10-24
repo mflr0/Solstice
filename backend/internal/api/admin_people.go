@@ -179,7 +179,7 @@ func (s *Server) getGroup(w http.ResponseWriter, r *http.Request) error {
 
 // groupName checks a group name: stored lower-case, as Jira does.
 func groupName(name string) (string, error) {
-	name, err := cleanName(name, 255)
+	name, err := cleanName(name, sqlq.VarcharWidth)
 	return strings.ToLower(name), err
 }
 
@@ -208,7 +208,7 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	s.auditLog(r, audit.GroupCreate, target("group", id, name), nil)
+	s.auditLog(r, audit.GroupCreate, target(audit.TargetGroup, id, name), nil)
 	g, err := s.groupByID(ctx, id)
 	if err != nil {
 		return err
@@ -278,7 +278,7 @@ func (s *Server) updateGroup(w http.ResponseWriter, r *http.Request) error {
 	if in.Description != nil {
 		details["description"] = desc
 	}
-	s.auditLog(r, audit.GroupUpdate, target("group", id, name), details)
+	s.auditLog(r, audit.GroupUpdate, target(audit.TargetGroup, id, name), details)
 	g, err = s.groupByID(ctx, id)
 	if err != nil {
 		return err
@@ -311,7 +311,7 @@ func (s *Server) deleteGroup(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.GroupDelete, target("group", id, g.Name),
+	s.auditLog(r, audit.GroupDelete, target(audit.TargetGroup, id, g.Name),
 		map[string]any{"members": g.Members, "grants": usage.Grants, "roles": usage.Roles,
 			"securityLevels": usage.SecurityLevels})
 	w.WriteHeader(http.StatusNoContent)
@@ -360,7 +360,7 @@ func (s *Server) addGroupMembers(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.perms.Invalidate()
 	if len(added) > 0 {
-		s.auditLog(r, audit.GroupMembers, target("group", id, g.Name),
+		s.auditLog(r, audit.GroupMembers, target(audit.TargetGroup, id, g.Name),
 			map[string]any{"added": s.userNames(ctx, added)})
 	}
 	return s.writeGroup(w, r, id, http.StatusOK)
@@ -391,7 +391,7 @@ func (s *Server) removeGroupMember(w http.ResponseWriter, r *http.Request) error
 		return errNotFound
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.GroupMembers, target("group", id, g.Name),
+	s.auditLog(r, audit.GroupMembers, target(audit.TargetGroup, id, g.Name),
 		map[string]any{"removed": s.userNames(ctx, []int64{user})})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -457,7 +457,7 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	name, err := cleanName(in.Name, 255)
+	name, err := cleanName(in.Name, sqlq.VarcharWidth)
 	if err != nil {
 		return err
 	}
@@ -471,7 +471,7 @@ func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
-	s.auditLog(r, audit.RoleCreate, target("role", id, name), nil)
+	s.auditLog(r, audit.RoleCreate, target(audit.TargetRole, id, name), nil)
 	ro, err := s.roleByID(ctx, id)
 	if err != nil {
 		return err
@@ -506,7 +506,7 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -533,7 +533,7 @@ func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if len(details) > 0 {
-		s.auditLog(r, audit.RoleUpdate, target("role", id, ro.Name), details)
+		s.auditLog(r, audit.RoleUpdate, target(audit.TargetRole, id, ro.Name), details)
 	}
 	return writeJSON(w, http.StatusOK, ro)
 }
@@ -565,7 +565,7 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.RoleDelete, target("role", id, ro.Name),
+	s.auditLog(r, audit.RoleDelete, target(audit.TargetRole, id, ro.Name),
 		map[string]any{"projects": ro.Projects, "grants": ro.Grants})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -722,7 +722,7 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 	}
 	from, to := names(old), names(entry)
 	if changed(from, to) {
-		s.auditLog(r, audit.ProjectRoles, target("project", projectID, s.auditProjectKey(ctx, projectID)),
+		s.auditLog(r, audit.ProjectRoles, target(audit.TargetProject, projectID, s.auditProjectKey(ctx, projectID)),
 			map[string]any{"role": role.Name, "from": from, "to": to})
 	}
 	return writeJSON(w, http.StatusOK, entry)

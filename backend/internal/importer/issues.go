@@ -120,7 +120,7 @@ func (r *run) importIssues() error {
 		r.issues[id] = issueRef{project: pid.Int64, num: num.Int64}
 		p.maxNum = max(p.maxNum, num.Int64)
 		return ins.add(id, pid.Int64, num.Int64, ref("issue_types", issueType), parent,
-			truncate(summary.String, 255), sqlq.Value(desc), sqlq.Value(env), ref("statuses", status),
+			truncate(summary.String, sqlq.VarcharWidth), sqlq.Value(desc), sqlq.Value(env), ref("statuses", status),
 			ref("priorities", priority), ref("resolutions", resolution), reporterID, assigneeID, creatorID,
 			level, createdAt, updatedAt, ntime(resolved), r.ndate(due), sqlq.Value(estimate), sqlq.Value(remaining),
 			sqlq.Value(spent), truthy(arch))
@@ -141,10 +141,12 @@ func (r *run) importIssues() error {
 		sort.Strings(ids)
 		for _, id := range ids {
 			q := "INSERT INTO " + table + " (id, name) VALUES (?, ?)"
+			args := []any{id, "Unknown (" + id + ")"}
 			if table == "statuses" {
-				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, 'todo')"
+				q = "INSERT INTO statuses (id, name, category) VALUES (?, ?, ?)"
+				args = append(args, issue.Todo)
 			}
-			if _, err := r.dst.ExecContext(r.ctx, q, id, "Unknown ("+id+")"); err != nil {
+			if _, err := r.dst.ExecContext(r.ctx, q, args...); err != nil {
 				return err
 			}
 		}
@@ -239,7 +241,7 @@ func (r *run) importIssueDetails() error {
 				return nil
 			}
 		}
-		return ins.add(issue.Int64, sqlq.Value(field), truncate(label.String, 255))
+		return ins.add(issue.Int64, sqlq.Value(field), truncate(label.String, sqlq.VarcharWidth))
 	}); err != nil {
 		return err
 	}
@@ -254,12 +256,12 @@ func (r *run) importIssueDetails() error {
 	if err := r.each(`SELECT source_node_id, sink_node_id, association_type FROM nodeassociation
 		WHERE source_node_entity = 'Issue' AND association_type IN ('IssueComponent', 'IssueVersion', 'IssueFixVersion')`,
 		func(rows *sql.Rows) error {
-			var issue, sink sql.NullInt64
+			var iss, sink sql.NullInt64
 			var kind sql.NullString
-			if err := rows.Scan(&issue, &sink, &kind); err != nil {
+			if err := rows.Scan(&iss, &sink, &kind); err != nil {
 				return err
 			}
-			if !r.hasIssue(issue) {
+			if !r.hasIssue(iss) {
 				skipped++
 				noIssue++
 				return nil
@@ -267,17 +269,17 @@ func (r *run) importIssueDetails() error {
 			switch kind.String {
 			case "IssueComponent":
 				if r.components[sink.Int64] {
-					return comps.add(issue.Int64, sink.Int64)
+					return comps.add(iss.Int64, sink.Int64)
 				}
 				noComponent++
 				return nil
 			case "IssueVersion":
 				if r.versions[sink.Int64] {
-					return vers.add(issue.Int64, sink.Int64, "affects")
+					return vers.add(iss.Int64, sink.Int64, issue.VersionAffects)
 				}
 			case "IssueFixVersion":
 				if r.versions[sink.Int64] {
-					return vers.add(issue.Int64, sink.Int64, "fix")
+					return vers.add(iss.Int64, sink.Int64, issue.VersionFix)
 				}
 			}
 			skipped++
@@ -347,7 +349,7 @@ func (r *run) importIssueDetails() error {
 			noURL++
 			return nil
 		}
-		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), 255), sqlq.Value(rel),
+		return remote.add(id, issue.Int64, url.String, truncate(orDefault(title, url.String), sqlq.VarcharWidth), sqlq.Value(rel),
 			globals.take(issue.Int64, global))
 	}); err != nil {
 		return err
@@ -555,7 +557,7 @@ func (r *run) importAttachments() error {
 		if created.Valid {
 			at = created.Time.UTC()
 		}
-		return ins.add(id, issue.Int64, authorID, truncate(orDefault(name, "file"), 255),
+		return ins.add(id, issue.Int64, authorID, truncate(orDefault(name, "file"), sqlq.VarcharWidth),
 			orDefault(mime, "application/octet-stream"), size.Int64, at, !found)
 	}); err != nil {
 		return err
@@ -712,14 +714,14 @@ func (r *run) importCustomFieldValues() error {
 			numVal = num.Float64
 		}
 		switch issue.FieldKind(typeKey) {
-		case "gh-epic-link":
+		case issue.KindEpicLink:
 			// Older Jira Software kept the epic in this field rather than a link.
 			if num.Valid && r.hasIssue(sql.NullInt64{Int64: int64(num.Float64), Valid: true}) {
 				r.epicOf[issueID.Int64] = int64(num.Float64)
 			}
-		case "gh-sprint":
+		case issue.KindSprint:
 			r.check.sprintMember(issueID.Int64, str, num)
-		case "userpicker", "multiuserpicker":
+		case issue.KindUserPicker, issue.KindMultiUserPicker:
 			uid, ok := r.users[str.String]
 			if !ok {
 				skipped++
@@ -727,14 +729,14 @@ func (r *run) importCustomFieldValues() error {
 				return nil
 			}
 			strVal = strconv.FormatInt(uid, 10)
-		case "datepicker":
+		case issue.KindDatePicker:
 			if date.Valid {
 				y, m, d := date.Time.In(r.tz).Date()
 				dateVal = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 			}
 		}
 		if s, ok := strVal.(string); ok {
-			strVal = truncate(s, 255)
+			strVal = truncate(s, sqlq.VarcharWidth)
 		}
 		return ins.add(id, issueID.Int64, field.Int64, sqlq.Value(parentKey), strVal, numVal, sqlq.Value(text), dateVal)
 	}); err != nil {
@@ -768,11 +770,11 @@ func fitsType(typeKey string, str, text sql.NullString, num sql.NullFloat64, dat
 		return true
 	}
 	switch issue.FieldKind(typeKey) {
-	case "float":
+	case issue.KindFloat:
 		return num.Valid
-	case "datepicker", "datetime":
+	case issue.KindDatePicker, issue.KindDateTime:
 		return date.Valid
-	case "textfield", "url", "textarea":
+	case issue.KindTextField, issue.KindURL, issue.KindTextArea:
 		return str.Valid || text.Valid
 	}
 	return true
@@ -824,7 +826,7 @@ func (r *run) importHistory() error {
 			return err
 		}
 		r.check.changeItem(group.Int64)
-		return items.add(id, group.Int64, truncate(orDefault(fieldType, "jira"), 255), truncate(field.String, 255),
+		return items.add(id, group.Int64, truncate(orDefault(fieldType, "jira"), sqlq.VarcharWidth), truncate(field.String, sqlq.VarcharWidth),
 			sqlq.Value(oldValue), sqlq.Value(oldString), sqlq.Value(newValue), sqlq.Value(newString))
 	}); err != nil {
 		return err

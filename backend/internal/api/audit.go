@@ -10,14 +10,15 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
+	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // record writes e to the audit log. A failure is logged, not returned: the
@@ -29,7 +30,7 @@ func record(ctx context.Context, db *sql.DB, log *slog.Logger, e audit.Entry) {
 }
 
 // target names the record an entry is about by its numeric id.
-func target(kind string, id int64, label string) audit.Target {
+func target(kind audit.TargetType, id int64, label string) audit.Target {
 	return audit.Target{Type: kind, ID: strconv.FormatInt(id, 10), Label: label}
 }
 
@@ -224,7 +225,7 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > 36500 {
+	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > audit.MaxRetentionDays {
 		return fail(http.StatusBadRequest, i18n.AuditRetentionInvalid)
 	}
 	if days := *in.RetentionDays; days != 0 && days < audit.MinRetentionDays {
@@ -241,7 +242,7 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 	if _, err := audit.Purge(ctx, s.db); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.AuditSettings, audit.Target{Type: "settings", ID: audit.RetentionSetting},
+	s.auditLog(r, audit.AuditSettings, audit.Target{Type: audit.TargetSettings, ID: audit.RetentionSetting},
 		map[string]any{"retentionDays": map[string]int{"from": before, "to": *in.RetentionDays}})
 	return writeJSON(w, http.StatusOK, map[string]int{"retentionDays": *in.RetentionDays})
 }
@@ -267,7 +268,7 @@ func (s *Server) auditUserCreated(r *http.Request, id int64) {
 		s.log.Error("audit log: account not found", "id", id, "err", err)
 		return
 	}
-	target := target("user", id, u.Username)
+	target := target(audit.TargetUser, id, u.Username)
 	s.auditLog(r, audit.UserCreate, target, map[string]any{"name": u.Name, "email": u.Email, "admin": u.Admin})
 	if u.Admin {
 		s.auditLog(r, audit.AdminGrant, target, nil)
@@ -283,7 +284,7 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 		s.log.Error("audit log: account not found", "id", id, "err", err)
 		return
 	}
-	target := target("user", id, after.Username)
+	target := target(audit.TargetUser, id, after.Username)
 	changes := map[string]any{}
 	diff(changes, "name", before.Name, after.Name)
 	diff(changes, "email", before.Email, after.Email)
@@ -352,7 +353,7 @@ func (s *Server) auditGrants(r *http.Request, projectID int64, before map[string
 	}
 	slices.Sort(added)
 	slices.Sort(removed)
-	s.auditLog(r, audit.ProjectPerms, target("project", projectID, s.auditProjectKey(r.Context(), projectID)),
+	s.auditLog(r, audit.ProjectPerms, target(audit.TargetProject, projectID, s.auditProjectKey(r.Context(), projectID)),
 		map[string]any{"added": added, "removed": removed})
 }
 
@@ -363,7 +364,7 @@ func (s *Server) auditWorkflow(r *http.Request, action string, id, projectID int
 		details = map[string]any{}
 	}
 	details["project"] = key
-	s.auditLog(r, action, target("workflow", id, name), details)
+	s.auditLog(r, action, target(audit.TargetWorkflow, id, name), details)
 }
 
 // auditProjectKey returns a project's key, for labelling an audit entry. The
@@ -385,12 +386,12 @@ func (s *Server) workflowName(ctx context.Context, id int64) (string, error) {
 
 // auditBoard records a change to a board.
 func (s *Server) auditBoard(r *http.Request, action string, id int64, name string, details map[string]any) {
-	s.auditLog(r, action, target("board", id, name), details)
+	s.auditLog(r, action, target(audit.TargetBoard, id, name), details)
 }
 
 // auditSprint records a change to a sprint.
 func (s *Server) auditSprint(r *http.Request, action string, id int64, name string, details map[string]any) {
-	s.auditLog(r, action, target("sprint", id, name), details)
+	s.auditLog(r, action, target(audit.TargetSprint, id, name), details)
 }
 
 // boardChanges names what a change to a board's settings touched.
@@ -421,17 +422,17 @@ func (s *Server) shareNames(ctx context.Context, shares []filterShare) []string 
 	}
 	for _, sh := range shares {
 		switch sh.Kind {
-		case "everyone":
+		case issue.ShareEveryone:
 			out = append(out, "everyone")
-		case "group":
+		case issue.ShareGroup:
 			out = append(out, "group "+name(`SELECT name FROM user_groups WHERE id = ?`, sh.ID))
-		case "project":
+		case issue.ShareProject:
 			v := "project " + name(`SELECT pkey FROM projects WHERE id = ?`, sh.ID)
 			if sh.Role != 0 {
 				v += ", role " + name(`SELECT name FROM project_roles WHERE id = ?`, sh.Role)
 			}
 			out = append(out, v)
-		case "user":
+		case issue.ShareUser:
 			out = append(out, "user "+name(`SELECT username FROM users WHERE id = ?`, sh.ID))
 		}
 	}
@@ -445,6 +446,6 @@ func (s *Server) auditFilterShares(r *http.Request, id int64, filter string, bef
 	if !changed(from, to) {
 		return
 	}
-	s.auditLog(r, audit.FilterShare, target("filter", id, filter),
+	s.auditLog(r, audit.FilterShare, target(audit.TargetFilter, id, filter),
 		map[string]any{"from": from, "to": to})
 }

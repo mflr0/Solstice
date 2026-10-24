@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 type securityMember struct {
@@ -29,8 +31,8 @@ type securityLevelAdmin struct {
 
 func TestSecurityLevelsAdmin(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")  // developpeurs, sees the project
-	chloe := login(t, "chloe.simon", "motdepasse") // not a developer
+	paul := login(t, "paul.martin", jirafixture.Password)  // developpeurs, sees the project
+	chloe := login(t, "chloe.simon", jirafixture.Password) // not a developer
 	key, other := newProject(t, admin, nil), newProject(t, admin, nil)
 	base := "/api/projects/" + key + "/security-levels"
 
@@ -170,7 +172,7 @@ func TestSecurityLevelsAdmin(t *testing.T) {
 // must keep the level: 409, not a foreign key error.
 func TestSecurityLevelDeleteRace(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	var level securityLevelAdmin
 	admin.call("POST", "/api/projects/"+key+"/security-levels", map[string]any{"name": "Course"}, 201, &level)
@@ -213,7 +215,7 @@ func TestSecurityLevelDeleteRace(t *testing.T) {
 // history entry.
 func TestSecurityLevelDeleteMovesIssues(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	base := "/api/projects/" + key + "/security-levels"
 	var from, to securityLevelAdmin
@@ -293,7 +295,7 @@ func TestSecurityLevelMemberDoubleSubmit(t *testing.T) {
 // themselves to a confidential level, or delete it and expose its issues.
 func TestSecurityLevelsProjectAdmin(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	mine := newProject(t, admin, nil)
 
 	// paul.martin administers mine, and is not a global administrator.

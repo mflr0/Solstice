@@ -137,9 +137,9 @@ func (c *compiler) clause(cl Clause) (string, error) {
 		return c.multi(cl, "SELECT 1 FROM issue_components ic JOIN components co ON co.id = ic.component_id WHERE ic.issue_id = i.id",
 			"(co.name IN (%[1]s) OR co.id IN (%[1]s))", 2, nil)
 	case "fixversion":
-		return c.versions(cl, "fix")
+		return c.versions(cl, issue.VersionFix)
 	case "affectedversion":
-		return c.versions(cl, "affects")
+		return c.versions(cl, issue.VersionAffects)
 	case "watcher":
 		return c.userSet(cl, "SELECT 1 FROM watchers w WHERE w.issue_id = i.id", "w.user_id")
 	case "commenter":
@@ -745,13 +745,13 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 	case ">", ">=", "<", "<=":
 		v := cl.Values[0]
 		switch kind {
-		case "datepicker", "datetime":
+		case issue.KindDatePicker, issue.KindDateTime:
 			t, err := c.instant(v)
 			if err != nil {
 				return "", err
 			}
 			cond := having("v.date_value " + cl.Op + " ?")
-			if kind == "datepicker" {
+			if kind == issue.KindDatePicker {
 				y, m, d := t.In(c.env.Loc).Date()
 				t = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 			}
@@ -770,13 +770,13 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 	// =, !=, in, not in
 	var cond string
 	switch kind {
-	case "userpicker", "multiuserpicker":
+	case issue.KindUserPicker, issue.KindMultiUserPicker:
 		sub, _, err := c.users(cl.Values)
 		if err != nil || sub == "" {
 			return "FALSE", err
 		}
 		cond = having("v.string_value IN (SELECT CAST(id AS CHAR) FROM users WHERE id IN (" + sub + "))")
-	case "gh-epic-link":
+	case issue.KindEpicLink:
 		texts, _, err := split(cl.Values)
 		if err != nil {
 			return "", err
@@ -984,7 +984,7 @@ func seconds(s string) (float64, bool) {
 	if len(parts) == 0 {
 		return 0, false
 	}
-	unit := map[string]float64{"w": 5 * 8 * 3600, "d": 8 * 3600, "h": 3600, "m": 60, "": 60}
+	unit := map[string]float64{"w": issue.WorkWeekSeconds, "d": issue.WorkDaySeconds, "h": 3600, "m": 60, "": 60}
 	total := 0.0
 	for _, p := range parts {
 		n, err := strconv.ParseFloat(strings.Replace(p[1], ",", ".", 1), 64)
@@ -1100,9 +1100,9 @@ func systemSort(field, dir string) ([]string, bool) {
 	case "rank":
 		expr = "i.rank_key"
 	case "fixversion", "affectedversion":
-		kind := "fix"
+		kind := issue.VersionFix
 		if strings.EqualFold(field, "affectedversion") {
-			kind = "affects"
+			kind = issue.VersionAffects
 		}
 		expr = "(SELECT MIN(v.position) FROM issue_versions iv JOIN versions v ON v.id = iv.version_id " +
 			"WHERE iv.issue_id = i.id AND iv.kind = '" + kind + "')"

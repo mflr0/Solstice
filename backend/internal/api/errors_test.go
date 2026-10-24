@@ -116,7 +116,7 @@ func TestTooManyAttemptsRetryAfter(t *testing.T) {
 // language, not with 400.
 func TestOversizedJSONBody(t *testing.T) {
 	srv := quietServer()
-	big := `{"username":"` + strings.Repeat("a", 4<<20) + `"}`
+	big := `{"username":"` + strings.Repeat("a", maxJSONBody) + `"}`
 
 	post := func(h http.Handler) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("POST", "/x", strings.NewReader(big))

@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func levelID(t *testing.T, name string) int64 {
@@ -47,8 +49,8 @@ func demoSubtask(t *testing.T, c *client, summary, parent string) string {
 }
 
 func TestSecurityLevelOnCreateAndUpdate(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
-	chloe := login(t, "chloe.simon", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	team, restricted := levelID(t, "Équipe"), levelID(t, "Restreint")
 	newIssue := func(c *client, level any) (int, []byte) {
 		return c.do("POST", "/api/issues", map[string]any{"project": "DEMO", "type": standardType(t, c, "DEMO"),
@@ -130,8 +132,8 @@ func TestSecurityLevelOnCreateAndUpdate(t *testing.T) {
 }
 
 func TestSubtaskSecurityLevel(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
-	chloe := login(t, "chloe.simon", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	team, restricted := levelID(t, "Équipe"), levelID(t, "Restreint")
 
 	open := newTestIssue(t, paul, "Parent ouvert", nil)
@@ -191,7 +193,7 @@ func wantNames(t *testing.T, what string, list []idName, want ...string) {
 
 func TestIssueSets(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key, other := newProject(t, admin, nil), newProject(t, admin, nil)
 
 	add := func(project, kind, name string) int64 {
@@ -313,7 +315,7 @@ func TestIssueSets(t *testing.T) {
 
 func TestIssueLabels(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	k := createIssue(t, paul, key, "Étiquettes", "")
 	labels := func() []string {
@@ -361,7 +363,7 @@ func TestIssueLabels(t *testing.T) {
 }
 
 func TestIssueCreatedInEpic(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	epic := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		JOIN issue_types t ON t.id = i.issue_type_id WHERE p.pkey = 'DEMO' AND t.name = 'Epic' ORDER BY i.id LIMIT 1`)
 	story := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -447,9 +449,9 @@ func uploadTo(t *testing.T, c *client, key, name, content string) int64 {
 
 func TestAttachmentDeletion(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
-	jeanne := login(t, "jeanne.dupont", "motdepasse")
-	hugo := login(t, "hugo.robert", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	jeanne := login(t, "jeanne.dupont", jirafixture.Password)
+	hugo := login(t, "hugo.robert", jirafixture.Password)
 	key := newProject(t, admin, nil)
 
 	var perms struct {

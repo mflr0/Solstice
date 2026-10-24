@@ -378,12 +378,12 @@ func (s *Service) compose(cfg mail.Config, rc *recipient, digest bool, p *page, 
 	loc := rc.locale
 	msg := &mail.Message{UserID: rc.user.ID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
 	if digest {
-		msg.Kind = "digest"
+		msg.Kind = mail.KindDigest
 		p.Heading = i18n.M(i18n.NotifyDigestSubject, formatDate(loc, s.Now().In(s.zone()))).In(loc)
 		msg.Subject = p.Heading
 		s.footer(p, i18n.M(i18n.NotifyWhyDigest).In(loc))
 	} else {
-		msg.Kind = "notification"
+		msg.Kind = mail.KindNotification
 		if len(p.Sections) > 1 {
 			// A bulk change: one e-mail for several issues, in no issue's
 			// thread.
@@ -503,6 +503,6 @@ func TestMessage(cfg mail.Config, to, locale string) mail.Message {
 	p.Intro = []string{i18n.M(i18n.MailTestBody).In(locale),
 		i18n.M(i18n.MailTestSettings, cfg.Host, cfg.From).In(locale)}
 	p.Why = i18n.M(i18n.MailTestWhy).In(locale)
-	return mail.Message{Kind: "test", To: to, Subject: p.Title, Text: p.text(), HTML: p.html(),
+	return mail.Message{Kind: mail.KindTest, To: to, Subject: p.Title, Text: p.text(), HTML: p.html(),
 		MessageID: mail.NewMessageID(cfg.Domain())}
 }

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // readerDiffs are the custom field kinds the two readers show differently on
@@ -70,7 +72,7 @@ type parityField struct {
 }
 
 func TestIssueReadParity(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var fields []parityField
 	for _, row := range column(t, `SELECT CONCAT(id, ' ', type_key) FROM custom_fields ORDER BY id`) {
 		id, typeKey, _ := strings.Cut(row, " ")

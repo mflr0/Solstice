@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type boardSettings struct {
@@ -61,7 +63,7 @@ func rowCount(t *testing.T, query string, args ...any) string {
 }
 
 func TestBoardColumnRemovalAndStatusMove(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
 	b := readBoard(t, marie, path)
 	all := []string{}
@@ -128,7 +130,7 @@ func TestBoardColumnRemovalAndStatusMove(t *testing.T) {
 }
 
 func TestBoardColumnUnknownID(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
 	before := readBoard(t, marie, path)
 	var other boardDetail
@@ -161,7 +163,7 @@ func TestBoardColumnUnknownID(t *testing.T) {
 }
 
 func TestBoardQuickFilterUpdateByID(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
 	marie.call("PUT", path, map[string]any{"quickFilters": []map[string]any{
 		{"name": "Les miens", "query": "assignee = currentUser()", "description": "À moi"},
@@ -210,7 +212,7 @@ func TestBoardQuickFilterUpdateByID(t *testing.T) {
 }
 
 func TestBoardLaneDefault(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
 	createIssue(t, marie, "OPS", "Une carte pour les couloirs", "")
 	marie.call("PUT", path, map[string]any{"swimlanes": "custom", "lanes": []map[string]any{
@@ -285,7 +287,7 @@ func statusChanges(t *testing.T, key string) string {
 }
 
 func TestBoardMoveColumnAndRank(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
 	keys := []string{}
 	for i := range 5 {

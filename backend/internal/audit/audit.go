@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"solstice/internal/settings"
+	"solstice/internal/sqlq"
 )
 
 // Actions recorded by Solstice itself. Other features use the same dotted
@@ -100,6 +101,7 @@ const (
 	ImportStart          = "import.start"
 	ImportDone           = "import.done"
 	ImportFailed         = "import.failed"
+	SetupComplete        = "setup.complete"
 	SettingsMail         = "settings.mail"
 	WebhookCreate        = "webhook.create"
 	WebhookUpdate        = "webhook.update"
@@ -115,9 +117,37 @@ const (
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )
 
+// TargetType is the kind of record an action was done to, as
+// audit_log.target_type stores it.
+type TargetType string
+
+// Target types. Catalogue items use their catalogue's name (issuetype,
+// priority, resolution, linktype).
+const (
+	TargetUser       TargetType = "user"
+	TargetGroup      TargetType = "group"
+	TargetRole       TargetType = "role"
+	TargetToken      TargetType = "token"
+	TargetProject    TargetType = "project"
+	TargetCategory   TargetType = "category"
+	TargetComponent  TargetType = "component"
+	TargetVersion    TargetType = "version"
+	TargetField      TargetType = "field"
+	TargetStatus     TargetType = "status"
+	TargetWorkflow   TargetType = "workflow"
+	TargetBoard      TargetType = "board"
+	TargetSprint     TargetType = "sprint"
+	TargetFilter     TargetType = "filter"
+	TargetIssue      TargetType = "issue"
+	TargetAttachment TargetType = "attachment"
+	TargetWebhook    TargetType = "webhook"
+	TargetSettings   TargetType = "settings"
+	TargetImport     TargetType = "import"
+)
+
 // Target is what an action was done to: a user, a project, a token…
 type Target struct {
-	Type  string // user, project, token, workflow, status, board, filter, settings…
+	Type  TargetType
 	ID    string
 	Label string // a readable name, kept as it was at the time
 }
@@ -146,6 +176,10 @@ const DefaultRetentionDays = 365
 // who changed what last month.
 const MinRetentionDays = 30
 
+// MaxRetentionDays is the longest retention an administrator may set, about a
+// century. The interface states it as AUDIT_MAX_RETENTION.
+const MaxRetentionDays = 36500
+
 // purgeEvery spaces the purges that Record runs as it goes.
 const purgeEvery = time.Hour
 
@@ -168,8 +202,8 @@ func Record(ctx context.Context, db *sql.DB, e Entry) error {
 	now := time.Now().UTC()
 	if _, err := db.ExecContext(ctx, `INSERT INTO audit_log (created_at, user_id, username, ip, action, target_type,
 		target_id, target_label, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		now, nullID(e.UserID), nullText(e.Username, 255), nullText(e.IP, 64), cut(e.Action, 100),
-		nullText(e.Target.Type, 50), nullText(e.Target.ID, 100), nullText(e.Target.Label, 255), details); err != nil {
+		now, nullID(e.UserID), nullText(e.Username, sqlq.VarcharWidth), nullText(e.IP, 64), cut(e.Action, 100),
+		nullText(string(e.Target.Type), 50), nullText(e.Target.ID, 100), nullText(e.Target.Label, sqlq.VarcharWidth), details); err != nil {
 		return err
 	}
 	if last := lastPurge.Load(); now.Sub(time.Unix(0, last)) > purgeEvery && lastPurge.CompareAndSwap(last, now.UnixNano()) {

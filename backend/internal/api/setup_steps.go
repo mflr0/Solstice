@@ -582,9 +582,6 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 
 // The administrator -------------------------------------------------------------
 
-// auditSetupComplete is the audit log's entry for the end of setup.
-const auditSetupComplete = "setup.complete"
-
 // createAdmin creates the first administrator, or makes an imported account
 // one, and ends setup.
 func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
@@ -668,7 +665,7 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	record(ctx, w.db, w.log, audit.Entry{UserID: id, Username: username, IP: clientIP(r, w.proxies),
-		Action: auditSetupComplete, Target: target("user", id, username),
+		Action: audit.SetupComplete, Target: target(audit.TargetUser, id, username),
 		Details: map[string]any{"administrator": how, "imported": w.imported, "version": w.opt.Version}})
 	out := map[string]any{"username": username, "baseURL": w.baseURL, "tz": w.tz, "imported": w.imported,
 		"server": w.server, "config": w.lastSave}

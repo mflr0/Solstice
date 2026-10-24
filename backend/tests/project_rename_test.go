@@ -18,11 +18,12 @@ import (
 
 	"solstice/internal/api"
 	"solstice/internal/db"
+	"solstice/internal/jirafixture"
 )
 
 func TestProjectRename(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse") // not an administrator
+	paul := login(t, "paul.martin", jirafixture.Password) // not an administrator
 
 	old := newProject(t, admin, nil)
 	issue := createIssue(t, admin, old, "Avant le changement", "")
@@ -234,7 +235,7 @@ func TestProjectOldKeyWorks(t *testing.T) {
 func TestProjectOldKeyInDigest(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	old := newProject(t, admin, nil)
 	a, b := createIssue(t, admin, old, "Source du lien", ""), createIssue(t, admin, old, "Cible du lien", "")
 	paul.call("PUT", "/api/me/notifications", map[string]any{"delivery": "digest", "digestHour": 7}, 200, nil)

@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type adminUser struct {
@@ -36,7 +38,7 @@ func newAccount(t *testing.T, admin *client, password string) (int64, string) {
 
 func TestAdminUsers(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	username := unique("nouveau.")
 	for _, bad := range []struct {
 		in   map[string]any
@@ -136,8 +138,8 @@ type groupDetail struct {
 
 func TestGroups(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	hugo := login(t, "hugo.robert", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	hugo := login(t, "hugo.robert", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	name := unique("Equipe-")
 	var g struct {
 		ID          int64
@@ -224,8 +226,8 @@ func TestGroupMembersFailureAddsNone(t *testing.T) {
 
 func TestRoles(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
-	chloe := login(t, "chloe.simon", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	type role struct {
 		ID          int64
 		Name        string
@@ -357,7 +359,7 @@ func TestPersonPageHidesTheAddress(t *testing.T) {
 	if page.Email != address {
 		t.Errorf("the person sees %q, want %q", page.Email, address)
 	}
-	login(t, "paul.martin", "motdepasse").call("GET", "/api/people/"+username, nil, 200, &page)
+	login(t, "paul.martin", jirafixture.Password).call("GET", "/api/people/"+username, nil, 200, &page)
 	if page.Email != "" {
 		t.Errorf("another user sees the address %q", page.Email)
 	}

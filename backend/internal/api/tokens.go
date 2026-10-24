@@ -18,6 +18,10 @@ import (
 	"unicode/utf8"
 )
 
+// maxTokenName is the longest token name, in characters; the interface states
+// it as TOKEN_NAME_MAX.
+const maxTokenName = 100
+
 // credentials reads what scripts and API clients send: "Authorization:
 // Bearer <personal access token>", or HTTP basic with a user name and either
 // the password (throttled like the sign-in form) or a personal access token.
@@ -66,7 +70,7 @@ func (s *Server) rejectToken(r *http.Request, token string) {
 		return
 	}
 	record(r.Context(), s.db, s.log, audit.Entry{UserID: ref.UserID, Username: ref.Username, IP: clientIP(r, s.proxies),
-		Action: audit.TokenReject, Target: target("token", ref.ID, ref.Name)})
+		Action: audit.TokenReject, Target: target(audit.TargetToken, ref.ID, ref.Name)})
 }
 
 func (s *Server) noteRefusedToken(id int64) bool {
@@ -166,7 +170,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	name := strings.TrimSpace(in.Name)
-	if name == "" || utf8.RuneCountInString(name) > 100 {
+	if name == "" || utf8.RuneCountInString(name) > maxTokenName {
 		return fail(http.StatusBadRequest, i18n.TokenNameRequired)
 	}
 	var expires *time.Time
@@ -185,7 +189,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	if expires != nil {
 		details["expires"] = expires.UTC().Format(time.RFC3339)
 	}
-	s.auditLog(r, audit.TokenCreate, target("token", id, name), details)
+	s.auditLog(r, audit.TokenCreate, target(audit.TargetToken, id, name), details)
 	out := tokenOut{ID: id, Name: name, Created: time.Now().UTC(), Expires: expires, Token: token}
 	return writeJSON(w, http.StatusCreated, out)
 }
@@ -247,7 +251,7 @@ func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request, owner int64
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM api_tokens WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.TokenRevoke, target("token", id, name),
+	s.auditLog(r, audit.TokenRevoke, target(audit.TargetToken, id, name),
 		map[string]any{"owner": username})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

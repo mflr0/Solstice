@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // rhKey is an RH issue paul.martin may not see.
@@ -27,8 +29,8 @@ func scratchIssue(t *testing.T, paul *client, summary string) string {
 }
 
 func TestVotesAndWatchers(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
-	hugo := login(t, "hugo.robert", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	hugo := login(t, "hugo.robert", jirafixture.Password)
 	key := scratchIssue(t, paul, "Votes et observateurs")
 
 	var c counter
@@ -68,7 +70,7 @@ func TestVotesAndWatchers(t *testing.T) {
 }
 
 func TestWorklogs(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := scratchIssue(t, paul, "Temps passé")
 	for _, bad := range []map[string]any{{"seconds": 0}, {"seconds": -60}, {"seconds": 8 * 24 * 3600}} {
 		if status, _ := paul.do("POST", "/api/issues/"+key+"/worklogs", bad); status != 400 {
@@ -100,12 +102,12 @@ func TestWorklogs(t *testing.T) {
 }
 
 func TestCommentDeletion(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := scratchIssue(t, paul, "Commentaire supprimé")
 	var c commentOut
 	paul.call("POST", "/api/issues/"+key+"/comments", map[string]any{"body": "À supprimer"}, 201, &c)
 	path := fmt.Sprintf("/api/comments/%d", c.ID)
-	login(t, "hugo.robert", "motdepasse").call("DELETE", path, nil, 403, nil)
+	login(t, "hugo.robert", jirafixture.Password).call("DELETE", path, nil, 403, nil)
 	paul.call("DELETE", path, nil, 204, nil)
 	var list []commentOut
 	paul.call("GET", "/api/issues/"+key+"/comments", nil, 200, &list)
@@ -117,7 +119,7 @@ func TestCommentDeletion(t *testing.T) {
 }
 
 func TestLinkDeletion(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	a, b := scratchIssue(t, paul, "Lien source"), scratchIssue(t, paul, "Lien cible")
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 	for _, bad := range []map[string]any{
@@ -175,7 +177,7 @@ func TestLinkDeletion(t *testing.T) {
 }
 
 func TestPeopleAndRefs(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var users []userRef
 	paul.call("GET", "/api/users?q=MARIE", nil, 200, &users)
 	if !slices.ContainsFunc(users, func(u userRef) bool { return u.Username == "marie.durand" }) {
@@ -224,7 +226,7 @@ func TestPeopleAndRefs(t *testing.T) {
 }
 
 func TestAssignable(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var users []userRef
 	paul.call("GET", "/api/projects/DEMO/assignable?q=paul", nil, 200, &users)
 	if !slices.ContainsFunc(users, func(u userRef) bool { return u.Username == "paul.martin" }) {
@@ -234,7 +236,7 @@ func TestAssignable(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	c := login(t, "hugo.robert", "motdepasse")
+	c := login(t, "hugo.robert", jirafixture.Password)
 	c.call("POST", "/api/logout", nil, 204, nil)
 	if status := c.get("/api/me", nil); status != 401 {
 		t.Errorf("after signing out: %d", status)
@@ -243,7 +245,7 @@ func TestLogout(t *testing.T) {
 }
 
 func TestSubscriptionEdit(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var f filterOut
 	paul.call("POST", "/api/filters", map[string]any{"name": unique("Abonnement modifié "), "query": "project = DEMO"}, 201, &f)
 	t.Cleanup(func() { paul.do("DELETE", fmt.Sprintf("/api/filters/%d", f.ID), nil) })
@@ -265,7 +267,7 @@ func TestSubscriptionEdit(t *testing.T) {
 	if len(list) != 1 || list[0].Hour != 9 {
 		t.Errorf("subscriptions: %+v", list)
 	}
-	login(t, "chloe.simon", "motdepasse").call("PUT", path, map[string]any{"schedule": "daily", "hour": 7}, 404, nil)
+	login(t, "chloe.simon", jirafixture.Password).call("PUT", path, map[string]any{"schedule": "daily", "hour": 7}, 404, nil)
 	paul.call("DELETE", path, nil, 204, nil)
 	paul.call("PUT", path, map[string]any{"schedule": "daily", "hour": 7}, 404, nil)
 }

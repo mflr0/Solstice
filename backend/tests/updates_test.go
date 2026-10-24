@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"solstice/internal/api"
+	"solstice/internal/jirafixture"
 )
 
 // githubRelease is GitHub's answer for the latest release, trimmed.
@@ -107,14 +108,14 @@ func newUpdatesFixture(t *testing.T) *updatesFixture {
 func TestUpdatesAdminOnly(t *testing.T) {
 	f := newUpdatesFixture(t)
 	anon := anonymousAt(t, f.url)
-	user := f.login("chloe.simon", "motdepasse")
+	user := f.login("chloe.simon", jirafixture.Password)
 	for _, c := range []struct{ method, path string }{
 		{"GET", "/api/admin/updates"},
 		{"POST", "/api/admin/updates/check"},
 		{"PUT", "/api/admin/updates/settings"},
 		{"POST", "/api/admin/updates/apply"},
 	} {
-		body := map[string]any{"checksEnabled": false, "version": "1.2.0", "password": "motdepasse"}
+		body := map[string]any{"checksEnabled": false, "version": "1.2.0", "password": jirafixture.Password}
 		if c.method == "GET" {
 			body = nil
 		}

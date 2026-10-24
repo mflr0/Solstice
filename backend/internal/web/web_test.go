@@ -80,7 +80,7 @@ func TestHandlerGzip(t *testing.T) {
 	}
 	var script string
 	for _, e := range entries {
-		if info, err := e.Info(); err == nil && strings.HasSuffix(e.Name(), ".js") && info.Size() >= gzipMinSize {
+		if info, err := e.Info(); err == nil && strings.HasSuffix(e.Name(), ".js") && info.Size() >= GzipMinSize {
 			script = "/assets/" + e.Name()
 		}
 	}

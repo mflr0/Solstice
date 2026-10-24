@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"solstice/internal/api"
+	"solstice/internal/jirafixture"
 	"solstice/internal/mail/mailtest"
 )
 
@@ -108,9 +109,9 @@ func recipients(msgs []mailtest.Message) []string {
 
 func TestNotificationRecipientsAndVisibility(t *testing.T) {
 	env := newNotifyEnv(t)
-	paul := env.login("paul.martin", "motdepasse")
-	hugo := env.login("hugo.robert", "motdepasse")  // developer
-	chloe := env.login("chloe.simon", "motdepasse") // rh, not a developer
+	paul := env.login("paul.martin", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)  // developer
+	chloe := env.login("chloe.simon", jirafixture.Password) // rh, not a developer
 	hugo.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
 
 	// Creation: the person mentioned in the description hears of it; the
@@ -220,8 +221,8 @@ func TestNotificationRecipientsAndVisibility(t *testing.T) {
 // watch; one that leaves a single issue to them is mailed in its thread.
 func TestBulkChangeNotifiesOnce(t *testing.T) {
 	env := newNotifyEnv(t)
-	paul := env.login("paul.martin", "motdepasse")
-	hugo := env.login("hugo.robert", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)
 	hugo.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
 	var keys []string
 	for _, summary := range []string{"Groupé A", "Groupé B", "Groupé C"} {
@@ -260,9 +261,9 @@ func TestBulkChangeNotifiesOnce(t *testing.T) {
 
 func TestNotificationPreferences(t *testing.T) {
 	env := newNotifyEnv(t)
-	paul := env.login("paul.martin", "motdepasse")
-	hugo := env.login("hugo.robert", "motdepasse")
-	chloe := env.login("chloe.simon", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)
+	chloe := env.login("chloe.simon", jirafixture.Password)
 
 	var p prefsOut
 	hugo.call("GET", "/api/me/notifications", nil, 200, &p)
@@ -330,9 +331,9 @@ func TestNotificationPreferences(t *testing.T) {
 
 func TestProjectNotificationSettings(t *testing.T) {
 	env := newNotifyEnv(t)
-	marie := env.login("marie.durand", "motdepasse") // administers WEB
-	paul := env.login("paul.martin", "motdepasse")
-	hugo := env.login("hugo.robert", "motdepasse")
+	marie := env.login("marie.durand", jirafixture.Password) // administers WEB
+	paul := env.login("paul.martin", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)
 	if status, _ := hugo.do("GET", "/api/projects/WEB/notifications", nil); status != 403 {
 		t.Errorf("a non-administrator read the project's notifications: %d", status)
 	}
@@ -373,10 +374,10 @@ func TestProjectNotificationSettings(t *testing.T) {
 
 func TestFilterSubscriptions(t *testing.T) {
 	env := newNotifyEnv(t)
-	marie := env.login("marie.durand", "motdepasse")
-	paul := env.login("paul.martin", "motdepasse")
+	marie := env.login("marie.durand", jirafixture.Password)
+	paul := env.login("paul.martin", jirafixture.Password)
 	admin := env.login("admin", "admin")
-	chloe := env.login("chloe.simon", "motdepasse")
+	chloe := env.login("chloe.simon", jirafixture.Password)
 
 	var f filterOut
 	marie.call("POST", "/api/filters", map[string]any{"name": "Abonnement RH et WEB", "query": "project in (RH, WEB) ORDER BY key ASC",
@@ -470,9 +471,9 @@ func TestFilterSubscriptions(t *testing.T) {
 
 func TestDueDateReminders(t *testing.T) {
 	env := newNotifyEnv(t)
-	paul := env.login("paul.martin", "motdepasse")
-	chloe := env.login("chloe.simon", "motdepasse")
-	hugo := env.login("hugo.robert", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
+	chloe := env.login("chloe.simon", jirafixture.Password)
+	hugo := env.login("hugo.robert", jirafixture.Password)
 	hugo.call("PUT", "/api/me/notifications", map[string]any{"dueReminder": true, "reminderHour": 0}, 200, nil)
 	today := time.Now().UTC()
 	late := createIssue(t, paul, "WEB", "Échéance dépassée", "")
@@ -512,7 +513,7 @@ func TestDueDateReminders(t *testing.T) {
 func TestMailSettings(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	if status, _ := env.login("paul.martin", "motdepasse").do("GET", "/api/admin/mail", nil); status != 403 {
+	if status, _ := env.login("paul.martin", jirafixture.Password).do("GET", "/api/admin/mail", nil); status != 403 {
 		t.Errorf("a non-administrator read the mail settings: %d", status)
 	}
 	for _, bad := range []map[string]any{{"security": "ssl"}, {"enabled": true, "host": ""}, {"from": "pas une adresse"},
@@ -644,7 +645,7 @@ func (h *hookReceiver) take() []hookRequest {
 func TestWebhooks(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	rc := newHookReceiver(t)
 	ctx := context.Background()
 	deliver := func() []hookRequest {
@@ -764,7 +765,7 @@ func TestWebhooks(t *testing.T) {
 func TestCreationAnnouncesItsValues(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	rc := newHookReceiver(t)
 	admin.call("POST", "/api/admin/webhooks", map[string]any{"name": "Création", "url": rc.srv.URL + "/hook",
 		"events": []string{"jira:issue_created", "jira:issue_updated"}, "jql": "project = WEB"}, 201, nil)

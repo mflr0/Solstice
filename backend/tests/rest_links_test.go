@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestRESTRemoteLinks(t *testing.T) {
@@ -17,7 +19,7 @@ func TestRESTRemoteLinks(t *testing.T) {
 	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	path := "/rest/api/2/issue/" + key + "/remotelink"
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	do := func(who *client, method, p string, body any) (int, []byte) {
 		status, _, raw := call(t, who, testURL, method, p, body, header("X-Atlassian-Token", "no-check"))
 		return status, raw
@@ -305,7 +307,7 @@ func TestRESTRemoteLinksSameGlobalID(t *testing.T) {
 	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	path := "/rest/api/2/issue/" + key + "/remotelink"
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	post := func(globalID, title string) (int, []byte) {
 		status, _, raw := call(t, paul, testURL, "POST", path, map[string]any{"globalId": globalID,
 			"object": map[string]any{"url": "https://example.com/race", "title": title}}, header("X-Atlassian-Token", "no-check"))
@@ -371,7 +373,7 @@ func TestRESTRemoteLinksPermission(t *testing.T) {
 	key := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	path := "/rest/api/2/issue/" + key + "/remotelink"
-	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", "motdepasse")
+	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", jirafixture.Password)
 	const password = "linker passphrase 2026"
 	account := func(name string) (*client, int64) {
 		admin.call("POST", "/api/admin/users", map[string]any{"username": name, "name": name,
@@ -474,12 +476,12 @@ func TestRESTSession(t *testing.T) {
 	}
 
 	// A browser could send a form-like body cross-site: that needs the header.
-	if status, _, _ := signIn(base, "paul.martin", "motdepasse", header("Content-Type", "text/plain")); status != 403 {
+	if status, _, _ := signIn(base, "paul.martin", jirafixture.Password, header("Content-Type", "text/plain")); status != 403 {
 		t.Errorf("form-like sign-in without header: %d", status)
 	}
 
 	// Signing in sets the cookie, as /api/login does, and answers Jira's session.
-	status, h, raw = signIn(base, "paul.martin", "motdepasse", nil)
+	status, h, raw = signIn(base, "paul.martin", jirafixture.Password, nil)
 	out := obj(t, raw)
 	value := str(out, "session", "value")
 	if status != 200 || str(out, "session", "name") != "solstice_session" || value == "" || at(out, "loginInfo", "loginCount") == nil ||
@@ -527,19 +529,19 @@ func TestRESTSession(t *testing.T) {
 			t.Fatalf("attempt %d: %d, want 401", i+1, status)
 		}
 	}
-	if status, h, _ := signIn(base, "lucas.bernard", "motdepasse", nil); status != http.StatusTooManyRequests ||
+	if status, h, _ := signIn(base, "lucas.bernard", jirafixture.Password, nil); status != http.StatusTooManyRequests ||
 		h.Get("X-Seraph-LoginReason") != "AUTHENTICATION_DENIED" {
 		t.Errorf("right password after 5 failures: %d %v", status, h)
 	}
 	if status, _ := anonymousAt(t, base).do("POST", "/api/login",
-		map[string]string{"username": "lucas.bernard", "password": "motdepasse"}); status != http.StatusTooManyRequests {
+		map[string]string{"username": "lucas.bernard", "password": jirafixture.Password}); status != http.StatusTooManyRequests {
 		t.Errorf("the form is not locked as well: %d", status)
 	}
 }
 
 func TestRESTGroups(t *testing.T) {
 	needDB(t)
-	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", "motdepasse")
+	admin, paul := login(t, "admin", "admin"), login(t, "paul.martin", jirafixture.Password)
 	get := func(who *client, path string) (int, map[string]any) {
 		status, _, raw := call(t, who, testURL, "GET", path, nil, nil)
 		if status != 200 {

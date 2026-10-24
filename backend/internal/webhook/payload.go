@@ -53,7 +53,7 @@ func (b *builder) user(u *events.User) any {
 	}
 	m := map[string]any{"name": u.Username, "key": u.Key, "displayName": u.Name, "emailAddress": u.Email,
 		"active": u.Active}
-	b.put(m, "self", "/rest/api/2/user?username="+url.QueryEscape(u.Username))
+	b.put(m, "self", issue.RESTAPIPath+"/user?username="+url.QueryEscape(u.Username))
 	return m
 }
 
@@ -97,7 +97,7 @@ func strPtr(s *string) any {
 func (b *builder) issue(iss *events.Issue) map[string]any {
 	id := strconv.FormatInt(iss.ID, 10)
 	project := map[string]any{"id": strconv.FormatInt(iss.ProjectID, 10), "key": iss.ProjectKey, "name": iss.ProjectName}
-	b.put(project, "self", "/rest/api/2/project/"+strconv.FormatInt(iss.ProjectID, 10))
+	b.put(project, "self", issue.RESTAPIPath+"/project/"+strconv.FormatInt(iss.ProjectID, 10))
 	labels := iss.Labels
 	if labels == nil {
 		labels = []string{}
@@ -136,7 +136,7 @@ func (b *builder) issue(iss *events.Issue) map[string]any {
 		f["parent"] = map[string]any{"id": strconv.FormatInt(iss.Parent.ID, 10), "key": iss.Parent.Key}
 	}
 	out := map[string]any{"id": id, "key": iss.Key, "fields": f}
-	b.put(out, "self", "/rest/api/2/issue/"+id)
+	b.put(out, "self", issue.RESTAPIPath+"/issue/"+id)
 	return out
 }
 
@@ -149,7 +149,7 @@ func (b *builder) comment(ctx context.Context, db *sql.DB, issueID int64, c *eve
 	} else {
 		out["updateAuthor"] = b.userID(c.AuthorID)
 	}
-	b.put(out, "self", "/rest/api/2/issue/"+strconv.FormatInt(issueID, 10)+"/comment/"+id)
+	b.put(out, "self", issue.RESTAPIPath+"/issue/"+strconv.FormatInt(issueID, 10)+"/comment/"+id)
 	switch {
 	case c.Group != "":
 		out["visibility"] = map[string]any{"type": "group", "value": c.Group}
@@ -167,7 +167,7 @@ func jiraDuration(seconds int64) string {
 	for _, u := range []struct {
 		n    int64
 		unit string
-	}{{8 * 3600 * 5, "w"}, {8 * 3600, "d"}, {3600, "h"}, {60, "m"}} {
+	}{{issue.WorkWeekSeconds, "w"}, {issue.WorkDaySeconds, "d"}, {3600, "h"}, {60, "m"}} {
 		if seconds >= u.n {
 			parts = append(parts, fmt.Sprintf("%d%s", seconds/u.n, u.unit))
 			seconds %= u.n
@@ -189,7 +189,7 @@ func (b *builder) worklog(issueID int64, w *events.Worklog) map[string]any {
 		"updateAuthor": b.userID(updatedBy), "comment": w.Body, "created": jtime(w.Created),
 		"updated": jtime(updated), "started": jtime(w.Started), "timeSpent": jiraDuration(w.Seconds),
 		"timeSpentSeconds": w.Seconds}
-	b.put(out, "self", "/rest/api/2/issue/"+strconv.FormatInt(issueID, 10)+"/worklog/"+id)
+	b.put(out, "self", issue.RESTAPIPath+"/issue/"+strconv.FormatInt(issueID, 10)+"/worklog/"+id)
 	return out
 }
 
@@ -197,13 +197,13 @@ func (b *builder) sprint(sp *events.Sprint) map[string]any {
 	out := map[string]any{"id": sp.ID, "state": sp.State, "name": sp.Name, "originBoardId": sp.BoardID,
 		"goal": strPtr(sp.Goal), "startDate": jtimePtr(sp.Start), "endDate": jtimePtr(sp.End),
 		"completeDate": jtimePtr(sp.Completed)}
-	b.put(out, "self", "/rest/agile/1.0/sprint/"+strconv.FormatInt(sp.ID, 10))
+	b.put(out, "self", issue.AgileAPIPath+"/sprint/"+strconv.FormatInt(sp.ID, 10))
 	return out
 }
 
 func (b *builder) board(bd *events.Board) map[string]any {
 	out := map[string]any{"id": bd.ID, "name": bd.Name, "type": bd.Kind}
-	b.put(out, "self", "/rest/agile/1.0/board/"+strconv.FormatInt(bd.ID, 10))
+	b.put(out, "self", issue.AgileAPIPath+"/board/"+strconv.FormatInt(bd.ID, 10))
 	return out
 }
 

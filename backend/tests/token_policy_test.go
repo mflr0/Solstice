@@ -15,12 +15,13 @@ import (
 	"time"
 
 	"solstice/internal/api"
+	"solstice/internal/jirafixture"
 )
 
 func TestTokenCreationPolicy(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
-	hugo := login(t, "hugo.robert", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	hugo := login(t, "hugo.robert", jirafixture.Password)
 	t.Cleanup(func() {
 		admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins"})
 	})

@@ -25,16 +25,17 @@ import (
 	"time"
 
 	"solstice/internal/api"
+	"solstice/internal/jirafixture"
 )
 
 func TestLogin(t *testing.T) {
-	login(t, "admin", "admin")             // Jira hash, admin's own password
-	login(t, "marie.durand", "motdepasse") // Jira hash
+	login(t, "admin", "admin")                     // Jira hash, admin's own password
+	login(t, "marie.durand", jirafixture.Password) // Jira hash
 	for _, bad := range [][2]string{
-		{"admin", "Admin"},                // wrong password
-		{"karim.benali", ""},              // LDAP user: no password, no application access
-		{"emma.morel", "motdepasse"},      // deactivated in Jira
-		{"ancien.collegue", "motdepasse"}, // deleted from Jira
+		{"admin", "Admin"},                        // wrong password
+		{"karim.benali", ""},                      // LDAP user: no password, no application access
+		{"emma.morel", jirafixture.Password},      // deactivated in Jira
+		{"ancien.collegue", jirafixture.Password}, // deleted from Jira
 	} {
 		if status, _ := anonymous(t).do("POST", "/api/login", map[string]string{"username": bad[0], "password": bad[1]}); status != 401 {
 			t.Errorf("login %s accepted (%d)", bad[0], status)
@@ -46,7 +47,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestCSRFHeaderRequired(t *testing.T) {
-	c := login(t, "paul.martin", "motdepasse")
+	c := login(t, "paul.martin", jirafixture.Password)
 	req, _ := http.NewRequest("POST", testURL+"/api/issues", strings.NewReader(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
@@ -62,8 +63,8 @@ func TestCSRFHeaderRequired(t *testing.T) {
 func TestRestrictedProject(t *testing.T) {
 	rhKey := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
-	outsider := login(t, "paul.martin", "motdepasse") // developer, not in "rh"
-	insider := login(t, "chloe.simon", "motdepasse")  // in "rh"
+	outsider := login(t, "paul.martin", jirafixture.Password) // developer, not in "rh"
+	insider := login(t, "chloe.simon", jirafixture.Password)  // in "rh"
 
 	var projects []projectOut
 	outsider.get("/api/projects", &projects)
@@ -95,12 +96,12 @@ func TestSecurityLevels(t *testing.T) {
 		JOIN users u ON u.id = i.reporter_id WHERE `+keyExpr+` = ?`, restricted)
 
 	for user, want := range map[string]int{"paul.martin": 404, "marie.durand": 200, reporter: 200} {
-		if status := login(t, user, "motdepasse").get("/api/issues/"+restricted, nil); status != want {
+		if status := login(t, user, jirafixture.Password).get("/api/issues/"+restricted, nil); status != want {
 			t.Errorf("%s GET %s: %d, want %d", user, restricted, status, want)
 		}
 	}
 	var list struct{ Total int }
-	login(t, "paul.martin", "motdepasse").get("/api/issues?q="+restricted, &list)
+	login(t, "paul.martin", jirafixture.Password).get("/api/issues?q="+restricted, &list)
 	if list.Total != 0 {
 		t.Errorf("paul.martin finds %s by key", restricted)
 	}
@@ -108,10 +109,10 @@ func TestSecurityLevels(t *testing.T) {
 	// "Équipe": the developpeurs group only — not even the reporter otherwise.
 	team := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		JOIN security_levels l ON l.id = i.security_level_id WHERE l.name = 'Équipe' ORDER BY i.num LIMIT 1`)
-	if status := login(t, "paul.martin", "motdepasse").get("/api/issues/"+team, nil); status != 200 {
+	if status := login(t, "paul.martin", jirafixture.Password).get("/api/issues/"+team, nil); status != 200 {
 		t.Errorf("developer GET %s: %d", team, status)
 	}
-	if status := login(t, "chloe.simon", "motdepasse").get("/api/issues/"+team, nil); status != 404 {
+	if status := login(t, "chloe.simon", jirafixture.Password).get("/api/issues/"+team, nil); status != 404 {
 		t.Errorf("non-developer GET %s: %d, want 404", team, status)
 	}
 }
@@ -122,8 +123,8 @@ func TestRestrictedComments(t *testing.T) {
 		WHERE c.visibility_group = 'developpeurs' AND i.security_level_id IS NULL AND p.pkey <> 'RH'
 		ORDER BY c.id LIMIT 1`)
 	var dev, other []commentOut
-	login(t, "paul.martin", "motdepasse").get("/api/issues/"+key+"/comments", &dev)
-	login(t, "chloe.simon", "motdepasse").get("/api/issues/"+key+"/comments", &other)
+	login(t, "paul.martin", jirafixture.Password).get("/api/issues/"+key+"/comments", &dev)
+	login(t, "chloe.simon", jirafixture.Password).get("/api/issues/"+key+"/comments", &other)
 	restricted := 0
 	for _, c := range dev {
 		if c.Visibility != nil && c.Visibility.Group == "developpeurs" {
@@ -158,7 +159,7 @@ func TestOldKeysResolve(t *testing.T) {
 }
 
 func TestIssueLifecycle(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var meta catalog
 	paul.get("/api/meta", &meta)
 	var project struct {
@@ -225,7 +226,7 @@ func TestIssueLifecycle(t *testing.T) {
 	}
 	var comment commentOut
 	json.Unmarshal(body, &comment)
-	if status, _ := login(t, "hugo.robert", "motdepasse").do("PATCH", fmt.Sprintf("/api/comments/%d", comment.ID),
+	if status, _ := login(t, "hugo.robert", jirafixture.Password).do("PATCH", fmt.Sprintf("/api/comments/%d", comment.ID),
 		map[string]string{"body": "réécrit"}); status != 403 {
 		t.Errorf("another user edited the comment: %d", status)
 	}
@@ -259,13 +260,13 @@ func TestIssueLifecycle(t *testing.T) {
 	if status != 200 || string(content) != "panic: panier vide" {
 		t.Errorf("download: %d %q", status, content)
 	}
-	if status, _ := login(t, "chloe.simon", "motdepasse").do("DELETE", fmt.Sprintf("/api/attachments/%d", d.Attachments[0].ID), nil); status != 403 {
+	if status, _ := login(t, "chloe.simon", jirafixture.Password).do("DELETE", fmt.Sprintf("/api/attachments/%d", d.Attachments[0].ID), nil); status != 403 {
 		t.Errorf("another user deleted the attachment: %d", status)
 	}
 }
 
 func TestLiveEventsRespectPermissions(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	req, _ := http.NewRequest("GET", testURL+"/api/events", nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -287,7 +288,7 @@ func TestLiveEventsRespectPermissions(t *testing.T) {
 
 	// Global administrators have no implicit access to content: someone from
 	// the rh group makes both changes.
-	actor := login(t, "chloe.simon", "motdepasse")
+	actor := login(t, "chloe.simon", jirafixture.Password)
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL LIMIT 1`)
 	visible := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -322,7 +323,7 @@ func TestShutdownEndsLiveStreams(t *testing.T) {
 	// returned to the pool would sit unused, and Shutdown waits 5 s for
 	// connections that never sent a request.
 	hc := &http.Client{Jar: jar, Transport: &http.Transport{MaxConnsPerHost: 1}}
-	body, _ := json.Marshal(map[string]string{"username": "paul.martin", "password": "motdepasse"})
+	body, _ := json.Marshal(map[string]string{"username": "paul.martin", "password": jirafixture.Password})
 	req, _ := http.NewRequest("POST", ts.URL+"/api/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(csrfHeader, "1")
@@ -361,7 +362,7 @@ func TestSubtaskInheritsConfidentiality(t *testing.T) {
 		WHERE l.name = 'Restreint' AND i.parent_id IS NULL ORDER BY i.num LIMIT 1`)
 	subtaskType := pick(t, `SELECT t.issue_type_id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
 		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND it.subtask LIMIT 1`)
-	marie := login(t, "marie.durand", "motdepasse") // member of the level
+	marie := login(t, "marie.durand", jirafixture.Password) // member of the level
 	status, body := marie.do("POST", "/api/issues", map[string]any{
 		"project": "DEMO", "type": subtaskType, "summary": "Sous-tâche confidentielle", "parent": parent,
 	})
@@ -370,7 +371,7 @@ func TestSubtaskInheritsConfidentiality(t *testing.T) {
 	}
 	var created struct{ Key string }
 	json.Unmarshal(body, &created)
-	if status := login(t, "paul.martin", "motdepasse").get("/api/issues/"+created.Key, nil); status != 404 {
+	if status := login(t, "paul.martin", jirafixture.Password).get("/api/issues/"+created.Key, nil); status != 404 {
 		t.Fatalf("paul.martin sees a sub-task of a confidential issue (%d)", status)
 	}
 }
@@ -382,15 +383,15 @@ func TestHistoryHidesInvisibleIssues(t *testing.T) {
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num DESC LIMIT 1`)
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
-	if status, body := login(t, "chloe.simon", "motdepasse").do("POST", "/api/issues/"+visible+"/links",
+	if status, body := login(t, "chloe.simon", jirafixture.Password).do("POST", "/api/issues/"+visible+"/links",
 		map[string]any{"type": json.Number(linkType), "direction": "outward", "target": hidden}); status != 201 {
 		t.Fatalf("link: %d %s", status, body)
 	}
-	_, raw := login(t, "paul.martin", "motdepasse").do("GET", "/api/issues/"+visible+"/history", nil)
+	_, raw := login(t, "paul.martin", jirafixture.Password).do("GET", "/api/issues/"+visible+"/history", nil)
 	if strings.Contains(string(raw), hidden) {
 		t.Fatalf("paul.martin's history of %s mentions %s", visible, hidden)
 	}
-	_, raw = login(t, "chloe.simon", "motdepasse").do("GET", "/api/issues/"+visible+"/history", nil)
+	_, raw = login(t, "chloe.simon", jirafixture.Password).do("GET", "/api/issues/"+visible+"/history", nil)
 	if !strings.Contains(string(raw), hidden) {
 		t.Fatalf("chloe.simon's history of %s lacks the link to %s", visible, hidden)
 	}
@@ -443,7 +444,7 @@ func TestLoginThrottling(t *testing.T) {
 			t.Fatalf("attempt %d: %d, want 401", i+1, status)
 		}
 	}
-	if status := try("motdepasse"); status != http.StatusTooManyRequests {
+	if status := try(jirafixture.Password); status != http.StatusTooManyRequests {
 		t.Fatalf("right password after 5 failures: %d, want 429", status)
 	}
 }
@@ -458,7 +459,7 @@ func runSearch(t *testing.T, c *client, q string) (int, int) {
 }
 
 func TestJQLMatchesSimpleSearch(t *testing.T) {
-	c := login(t, "paul.martin", "motdepasse")
+	c := login(t, "paul.martin", jirafixture.Password)
 	for _, pair := range [][2]string{
 		{`project = DEMO AND assignee is EMPTY`, `projet:DEMO @personne`},
 		{`project = WEB AND statusCategory != Done`, `projet:WEB est:ouvert`},
@@ -544,8 +545,8 @@ func filterNames(t *testing.T, c *client) map[string]filterOut {
 }
 
 func TestFilterVisibility(t *testing.T) {
-	dev := filterNames(t, login(t, "paul.martin", "motdepasse")) // developpeurs, not rh
-	hr := filterNames(t, login(t, "lea.richard", "motdepasse"))  // rh, owner of the RH filter
+	dev := filterNames(t, login(t, "paul.martin", jirafixture.Password)) // developpeurs, not rh
+	hr := filterNames(t, login(t, "lea.richard", jirafixture.Password))  // rh, owner of the RH filter
 	if _, ok := dev["RH — à traiter"]; ok {
 		t.Error("paul.martin sees the RH filter")
 	}
@@ -564,7 +565,7 @@ func TestFilterVisibility(t *testing.T) {
 }
 
 func TestFilterLifecycle(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	status, body := paul.do("POST", "/api/filters", map[string]any{
 		"name": "Mes bugs", "query": "assignee = currentUser() AND type = Bug",
 	})
@@ -582,7 +583,7 @@ func TestFilterLifecycle(t *testing.T) {
 	}); status != 400 {
 		t.Errorf("sharing with a group one is not in: %d", status)
 	}
-	if status, _ := login(t, "hugo.robert", "motdepasse").do("DELETE", "/api/filters/"+strconv.FormatInt(f.ID, 10), nil); status != 404 {
+	if status, _ := login(t, "hugo.robert", jirafixture.Password).do("DELETE", "/api/filters/"+strconv.FormatInt(f.ID, 10), nil); status != 404 {
 		t.Errorf("someone else deleted a private filter: %d", status)
 	}
 	if status, _ := paul.do("PUT", "/api/filters/"+strconv.FormatInt(f.ID, 10)+"/favourite", nil); status != 204 {
@@ -647,25 +648,25 @@ func TestBoardVisibility(t *testing.T) {
 		}
 		return out
 	}
-	dev := names(login(t, "paul.martin", "motdepasse"))
-	hr := names(login(t, "chloe.simon", "motdepasse"))
+	dev := names(login(t, "paul.martin", jirafixture.Password))
+	hr := names(login(t, "chloe.simon", jirafixture.Password))
 	if !dev["DEMO — Scrum"] || !dev["WEB — Kanban"] || dev["RH"] {
 		t.Errorf("paul.martin's boards: %v", dev)
 	}
 	if !hr["RH"] {
 		t.Errorf("chloe.simon does not see the RH board: %v", hr)
 	}
-	if status := login(t, "paul.martin", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 404 {
+	if status := login(t, "paul.martin", jirafixture.Password).get("/api/boards/"+boardID(t, "RH"), nil); status != 404 {
 		t.Errorf("paul.martin GET RH board: %d", status)
 	}
 	// The RH board's filter is shared with a role of the RH project.
-	if status := login(t, "chloe.simon", "motdepasse").get("/api/boards/"+boardID(t, "RH"), nil); status != 200 {
+	if status := login(t, "chloe.simon", jirafixture.Password).get("/api/boards/"+boardID(t, "RH"), nil); status != 200 {
 		t.Errorf("chloe.simon GET RH board: %d", status)
 	}
 }
 
 func TestBoardCardsOfSprint(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	id := boardID(t, "DEMO — Scrum")
 	var cards struct {
 		Cards  []boardCard
@@ -697,7 +698,7 @@ func TestBoardCardsOfSprint(t *testing.T) {
 }
 
 func TestScrumBoard(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	id := boardID(t, "DEMO — Scrum")
 	var b boardDetail
 	if status := marie.get("/api/boards/"+id, &b); status != 200 {
@@ -778,7 +779,7 @@ func TestScrumBoard(t *testing.T) {
 	if status, _ := marie.do("POST", fmt.Sprintf("/api/sprints/%d/start", future), map[string]any{}); status != 409 {
 		t.Errorf("second active sprint: %d, want 409", status)
 	}
-	if status, _ := login(t, "paul.martin", "motdepasse").do("POST", fmt.Sprintf("/api/sprints/%d/complete", active),
+	if status, _ := login(t, "paul.martin", jirafixture.Password).do("POST", fmt.Sprintf("/api/sprints/%d/complete", active),
 		map[string]any{"moveTo": future}); status != 403 {
 		t.Errorf("a developer completed the sprint: %d", status)
 	}
@@ -795,7 +796,7 @@ func TestScrumBoard(t *testing.T) {
 }
 
 func TestKanbanMoveFollowsWorkflow(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	id := boardID(t, "WEB — Kanban")
 	var b boardDetail
 	marie.get("/api/boards/"+id, &b)
@@ -844,7 +845,7 @@ func TestKanbanMoveFollowsWorkflow(t *testing.T) {
 }
 
 func TestEpicField(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	epic := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		JOIN issue_types t ON t.id = i.issue_type_id WHERE p.pkey = 'DEMO' AND t.name = 'Epic' ORDER BY i.id LIMIT 1`)
 	story := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -872,7 +873,7 @@ func TestEpicField(t *testing.T) {
 }
 
 func TestBoardSettings(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	id := boardID(t, "WEB — Kanban")
 	var b boardDetail
 	marie.get("/api/boards/"+id, &b)
@@ -921,13 +922,13 @@ func TestBoardSettings(t *testing.T) {
 		}
 	}
 	// paul.martin leads WEB and owns its board; jeanne.dupont is a developer there.
-	if status, _ := login(t, "jeanne.dupont", "motdepasse").do("PUT", "/api/boards/"+id, map[string]any{"name": "x"}); status != 403 {
+	if status, _ := login(t, "jeanne.dupont", jirafixture.Password).do("PUT", "/api/boards/"+id, map[string]any{"name": "x"}); status != 403 {
 		t.Errorf("a developer changed the board: %d", status)
 	}
 }
 
 func TestCreateAndDeleteBoard(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	status, body := marie.request("en", "POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"})
 	if status != 201 {
 		t.Fatalf("create: %d %s", status, body)
@@ -949,7 +950,7 @@ func TestCreateAndDeleteBoard(t *testing.T) {
 	if strconv.Itoa(len(cards.Cards)) != want {
 		t.Errorf("new board shows %d cards, want %s", len(cards.Cards), want)
 	}
-	if status, _ := login(t, "paul.martin", "motdepasse").do("POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"}); status != 403 {
+	if status, _ := login(t, "paul.martin", jirafixture.Password).do("POST", "/api/boards", map[string]any{"kind": "kanban", "project": "OPS"}); status != 403 {
 		t.Errorf("a developer created a board: %d", status)
 	}
 	if status, _ := marie.do("DELETE", path, nil); status != 204 {
@@ -980,7 +981,7 @@ type workflowList struct {
 }
 
 func TestWorkflowEditor(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	var wl workflowList
 	if status := marie.get("/api/projects/OPS/workflows", &wl); status != 200 || !wl.Can.Edit || len(wl.Workflows) != 1 {
 		t.Fatalf("GET workflows: %d %+v", status, wl)
@@ -1079,7 +1080,7 @@ func TestWorkflowEditor(t *testing.T) {
 	}
 
 	// Only administrators edit.
-	jeanne := login(t, "jeanne.dupont", "motdepasse")
+	jeanne := login(t, "jeanne.dupont", jirafixture.Password)
 	if status, _ := jeanne.do("PUT", fmt.Sprintf("/api/workflows/%d", wf.ID), put); status != 403 && status != 404 {
 		t.Errorf("a developer edited a workflow: %d", status)
 	}
@@ -1275,7 +1276,7 @@ func TestJQLHistory(t *testing.T) {
 }
 
 func TestSuggestions(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var labels []string
 	if status := paul.get("/api/labels?q=BACK", &labels); status != 200 || !slices.Contains(labels, "backend") {
 		t.Errorf("labels matching BACK: %d %v", status, labels)
@@ -1302,7 +1303,7 @@ func TestSuggestions(t *testing.T) {
 // a status the default lacks must be placed (409, then remapDefault).
 func TestWorkflowTypesLeaving(t *testing.T) {
 	ctx := context.Background()
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	var blocked struct{ ID string }
 	_, body := marie.do("POST", "/api/statuses", map[string]any{"name": "Bloqué", "category": "doing", "project": "WEB"})
 	json.Unmarshal(body, &blocked)
@@ -1376,7 +1377,7 @@ func TestWorkflowTypesLeaving(t *testing.T) {
 	}
 
 	// The catalogue: global administrators rename and delete unused statuses.
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	if status, _ := paul.do("PATCH", "/api/statuses/"+blocked.ID, map[string]any{"name": "x"}); status != 403 {
 		t.Errorf("a project lead renamed a shared status: %d", status)
 	}
@@ -1396,7 +1397,7 @@ func TestWorkflowTypesLeaving(t *testing.T) {
 }
 
 func TestSearchHelpers(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var epics []struct{ Key, Project string }
 	if status := paul.get("/api/epics?project=DEMO", &epics); status != 200 || len(epics) == 0 {
 		t.Fatalf("epics: %d %v", status, epics)
@@ -1455,7 +1456,7 @@ func TestSearchHelpers(t *testing.T) {
 }
 
 func TestJQLParticipant(t *testing.T) {
-	c := login(t, "marie.durand", "motdepasse")
+	c := login(t, "marie.durand", jirafixture.Password)
 	_, roles := runSearch(t, c, `assignee = paul.martin OR reporter = paul.martin OR creator = paul.martin OR `+
 		`watcher = paul.martin OR commenter = paul.martin`)
 	status, all := runSearch(t, c, `participant = paul.martin`)

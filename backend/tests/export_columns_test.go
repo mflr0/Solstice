@@ -6,12 +6,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // TestCSVExportEveryColumn exports an issue in every system field of the
 // REST field list, plus epic and sprint, and checks each cell.
 func TestCSVExportEveryColumn(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	admin := login(t, "admin", "admin")
 	key := createIssue(t, paul, "DEMO", "Every column", "Line 1\nLine 2")
 	sub := createIssue(t, paul, "DEMO", "Every column, sub-task", "")
@@ -164,7 +166,7 @@ func TestCSVExportEveryColumn(t *testing.T) {
 // TestSearchColumns asks the search for a custom field's column, which comes
 // back as text next to the issue, and refuses an unknown column.
 func TestSearchColumns(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	admin := login(t, "admin", "admin")
 	key := createIssue(t, paul, "DEMO", "Search columns", "")
 	t.Cleanup(func() { admin.do("DELETE", "/api/issues/"+key, nil) })

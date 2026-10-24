@@ -39,6 +39,16 @@ import (
 	"solstice/internal/sqlq"
 )
 
+// Jira's headers. Its clients read the login reason to tell a refused login
+// from a lockout, and send the token header to pass the XSRF check.
+const (
+	loginReasonHeader = "X-Seraph-LoginReason"
+	loginDenied       = "AUTHENTICATION_DENIED" // too many attempts
+	loginFailed       = "AUTHENTICATED_FAILED"  // wrong credentials
+	atlassianXSRF     = "X-Atlassian-Token"
+	noCheck           = "no-check"
+)
+
 // integrationRoutes registers the routes of tokens, the audit log, the CSV
 // export and the REST API.
 func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handler, bool)) {
@@ -56,7 +66,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	route("GET /api/issues/export.csv", s.exportCSV, true)
 
 	rest := func(pattern string, h handler, needUser bool) { mux.Handle(pattern, s.rest(h, needUser)) }
-	for _, p := range []string{"/rest/api/2", "/rest/api/latest"} {
+	for _, p := range []string{issue.RESTAPIPath, "/rest/api/latest"} {
 		rest("GET "+p+"/serverInfo", s.restServerInfo, false)
 		rest("GET "+p+"/myself", s.restMyself, true)
 		rest("GET "+p+"/user", s.restUser, true)
@@ -136,7 +146,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handle
 	mux.Handle("GET /rest/auth/1/session", s.rest(s.restSession, true))
 	mux.Handle("POST /rest/auth/1/session", s.restSessionRoute(s.restSignIn, false))
 	mux.Handle("DELETE /rest/auth/1/session", s.restSessionRoute(s.restSignOut, true))
-	for _, p := range []string{"/rest/agile/1.0", "/rest/agile/latest"} {
+	for _, p := range []string{issue.AgileAPIPath, "/rest/agile/latest"} {
 		rest("GET "+p+"/board", s.agileBoards, true)
 		rest("GET "+p+"/board/{id}", s.agileBoard, true)
 		rest("GET "+p+"/board/{id}/configuration", s.agileBoardConfiguration, true)
@@ -179,9 +189,9 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if err != nil {
 			var he *httpError
 			if errors.As(err, &he) && he.status == http.StatusTooManyRequests {
-				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
+				w.Header().Set(loginReasonHeader, loginDenied)
 			} else if errors.Is(err, auth.ErrNoSession) {
-				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
+				w.Header().Set(loginReasonHeader, loginFailed)
 				err = fail(http.StatusUnauthorized, i18n.RequestCredentialsRefused)
 			}
 			s.writeRESTFailure(w, r, err)
@@ -239,7 +249,7 @@ func forgeryProof(r *http.Request, via string) bool {
 	if r.Header.Get(csrfHeader) != "" {
 		return true
 	}
-	if v := strings.ToLower(r.Header.Get("X-Atlassian-Token")); v == "no-check" || v == "nocheck" {
+	if v := strings.ToLower(r.Header.Get(atlassianXSRF)); v == noCheck || v == "nocheck" {
 		return true
 	}
 	switch via {
@@ -359,7 +369,7 @@ func (r *recorder) Write(b []byte) (int, error) { return r.body.Write(b) }
 // unknown fields are ignored: Jira clients send many that Solstice has no
 // use for.
 func readRESTJSON(r *http.Request, v any) error {
-	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 4<<20)).Decode(v); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxJSONBody)).Decode(v); err != nil {
 		return badBody(err)
 	}
 	return nil
@@ -397,7 +407,7 @@ func (s *Server) restOut(r *http.Request) *restOut {
 		}
 		base = scheme + "://" + r.Host
 	}
-	return &restOut{base: base, api: base + "/rest/api/2", locale: locale(r), tz: s.zone()}
+	return &restOut{base: base, api: base + issue.RESTAPIPath, locale: locale(r), tz: s.zone()}
 }
 
 // zone is the time zone of dates typed or shown without one: the

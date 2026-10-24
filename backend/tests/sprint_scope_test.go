@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // scopeSprint makes an upcoming sprint on a board; it is removed with the test.
@@ -40,8 +42,8 @@ func sprintMembers(t *testing.T, sprint int64, key string) string {
 
 // An issue only enters a sprint of a board that includes its project.
 func TestSprintMoveStaysWithinBoardProjects(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	webBoard, webSprint := scopeBoard(t, marie, "WEB")
 	demoBoard := boardID(t, "DEMO — Scrum")
 	demoSprint := scopeSprint(t, marie, demoBoard)
@@ -98,8 +100,8 @@ func TestSprintMoveStaysWithinBoardProjects(t *testing.T) {
 // Moving an issue to the backlog leaves the open sprints of boards the user
 // does not see as they are.
 func TestBacklogMoveKeepsSprintsOfHiddenBoards(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	// Nobody can create a board on RH (only the rh group browses it, and no
 	// one there administers it), so marie makes a WEB board and keeps its
 	// filter to herself: paul, who edits issues of DEMO and WEB, cannot see it.
@@ -173,8 +175,8 @@ func TestBacklogMoveKeepsSprintsOfHiddenBoards(t *testing.T) {
 // A board lists what its filter says today: after the filter is edited to
 // include a second project, that project's issues can enter the board's sprints.
 func TestSprintMoveFollowsTheBoardFilter(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	board, sprint := scopeBoard(t, marie, "WEB")
 	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
 	foreign := newTestIssue(t, paul, "Ajouté par le filtre", nil)
@@ -200,7 +202,7 @@ func TestSprintMoveFollowsTheBoardFilter(t *testing.T) {
 }
 
 func TestSprintMoveWithoutChangeIgnoresTheFilter(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	board, sprint := scopeBoard(t, marie, "WEB")
 	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
 	key := createIssue(t, marie, "WEB", "Déjà dans le sprint", "")
@@ -216,8 +218,8 @@ func TestSprintMoveWithoutChangeIgnoresTheFilter(t *testing.T) {
 // A REST move of several issues is refused as a whole: none moves when one of
 // them is not on the sprint's board.
 func TestSprintMoveOfSeveralIssuesIsAllOrNothing(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	_, sprint := scopeBoard(t, marie, "WEB")
 	first := createIssue(t, marie, "WEB", "Premier du lot", "")
 	foreign := newTestIssue(t, paul, "Dernier du lot", nil)
@@ -245,8 +247,8 @@ func TestSprintMoveOfSeveralIssuesIsAllOrNothing(t *testing.T) {
 }
 
 func TestSprintMoveOfSeveralIssuesSkipsThoseAlreadyInTheSprint(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
 	board, sprint := scopeBoard(t, marie, "WEB")
 	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
 	inside := createIssue(t, marie, "WEB", "Déjà dans le lot", "")

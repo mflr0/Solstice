@@ -13,25 +13,26 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
 
 type sprintRef struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	State string `json:"state"` // future, active, closed
-	Board int64  `json:"board,omitempty"`
+	ID    int64             `json:"id"`
+	Name  string            `json:"name"`
+	State issue.SprintState `json:"state"`
+	Board int64             `json:"board,omitempty"`
 }
 
 type sprintOut struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	State     string     `json:"state"`
-	Goal      *string    `json:"goal"`
-	Start     *time.Time `json:"start"`
-	End       *time.Time `json:"end"`
-	Completed *time.Time `json:"completed"`
+	ID        int64             `json:"id"`
+	Name      string            `json:"name"`
+	State     issue.SprintState `json:"state"`
+	Goal      *string           `json:"goal"`
+	Start     *time.Time        `json:"start"`
+	End       *time.Time        `json:"end"`
+	Completed *time.Time        `json:"completed"`
 }
 
 const sprintColumns = `id, name, state, goal, start_at, end_at, completed_at`
@@ -50,7 +51,7 @@ func scanSprint(sc scanner) (sprintOut, error) {
 
 // boardSprints lists the sprints of a board in the given states, or in any
 // state for none, the active one first.
-func (s *Server) boardSprints(ctx context.Context, board int64, states ...string) ([]sprintOut, error) {
+func (s *Server) boardSprints(ctx context.Context, board int64, states ...issue.SprintState) ([]sprintOut, error) {
 	q := `SELECT ` + sprintColumns + ` FROM sprints WHERE board_id = ?`
 	args := []any{board}
 	if len(states) > 0 {
@@ -60,14 +61,14 @@ func (s *Server) boardSprints(ctx context.Context, board int64, states ...string
 		}
 	}
 	out := []sprintOut{}
-	err := sqlq.Each(ctx, s.db, q+` ORDER BY state = 'active' DESC, position, id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, q+` ORDER BY state = ? DESC, position, id`, func(rows *sql.Rows) error {
 		sp, err := scanSprint(rows)
 		if err != nil {
 			return err
 		}
 		out = append(out, sp)
 		return nil
-	}, args...)
+	}, append(args, issue.SprintActive)...)
 	return out, err
 }
 
@@ -142,8 +143,8 @@ func (s *Server) createSprint(w http.ResponseWriter, r *http.Request) error {
 		name = b.Name + " Sprint " + strconv.FormatInt(count+1, 10)
 	}
 	goal := sqlq.NullIfBlank(in.Goal)
-	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, 'future', ?)`,
-		b.ID, sqlq.Truncate(name, varcharWidth), goal, position+1)
+	res, err := s.db.ExecContext(ctx, `INSERT INTO sprints (board_id, name, goal, state, position) VALUES (?, ?, ?, ?, ?)`,
+		b.ID, sqlq.Truncate(name, sqlq.VarcharWidth), goal, issue.SprintFuture, position+1)
 	if err != nil {
 		return err
 	}
@@ -162,7 +163,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if sp.State != "future" {
+	if sp.State != issue.SprintFuture {
 		return fail(http.StatusConflict, i18n.SprintStarted)
 	}
 	var in struct {
@@ -174,7 +175,7 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var active int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sprints WHERE board_id = ? AND state = 'active'`, b.ID).Scan(&active)
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sprints WHERE board_id = ? AND state = ?`, b.ID, issue.SprintActive).Scan(&active)
 	if active > 0 {
 		return fail(http.StatusConflict, i18n.SprintAlreadyActive)
 	}
@@ -186,10 +187,10 @@ func (s *Server) startSprint(w http.ResponseWriter, r *http.Request) error {
 		}
 		end = in.End.UTC()
 	}
-	sets := []string{"state = 'active'", "start_at = ?", "end_at = ?"}
-	args := []any{start, end}
+	sets := []string{"state = ?", "start_at = ?", "end_at = ?"}
+	args := []any{issue.SprintActive, start, end}
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
-		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), varcharWidth))
+		sets, args = append(sets, "name = ?"), append(args, sqlq.Truncate(strings.TrimSpace(*in.Name), sqlq.VarcharWidth))
 	}
 	if in.Goal != nil {
 		sets, args = append(sets, "goal = ?"), append(args, sqlq.NullIfBlank(*in.Goal))
@@ -216,7 +217,7 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if sp.State != "active" {
+	if sp.State != issue.SprintActive {
 		return fail(http.StatusConflict, i18n.SprintNotActive)
 	}
 	var in struct {
@@ -226,9 +227,9 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if in.MoveTo != 0 {
-		var state string
+		var state issue.SprintState
 		err := s.db.QueryRowContext(ctx, `SELECT state FROM sprints WHERE id = ? AND board_id = ?`, in.MoveTo, b.ID).Scan(&state)
-		if err != nil || state != "future" || in.MoveTo == sp.ID {
+		if err != nil || state != issue.SprintFuture || in.MoveTo == sp.ID {
 			return fail(http.StatusBadRequest, i18n.SprintTargetInvalid)
 		}
 	}
@@ -238,14 +239,14 @@ func (s *Server) completeSprint(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	now := time.Now().UTC()
-	if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = 'closed', completed_at = ? WHERE id = ?`, now, sp.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = ?, completed_at = ? WHERE id = ?`, issue.SprintClosed, now, sp.ID); err != nil {
 		return err
 	}
 	moved := int64(0)
 	if in.MoveTo != 0 {
 		res, err := tx.ExecContext(ctx, `INSERT IGNORE INTO sprint_issues (sprint_id, issue_id)
 			SELECT ?, si.issue_id FROM sprint_issues si JOIN issues i ON i.id = si.issue_id
-			JOIN statuses st ON st.id = i.status_id WHERE si.sprint_id = ? AND st.category <> 'done'`, in.MoveTo, sp.ID)
+			JOIN statuses st ON st.id = i.status_id WHERE si.sprint_id = ? AND st.category <> ?`, in.MoveTo, sp.ID, issue.Done)
 		if err != nil {
 			return err
 		}
@@ -282,7 +283,7 @@ type sprintPatch struct {
 // sprint takes any planned dates; an active one has begun, so it always keeps
 // a start (not in the future) and an end. A completed sprint is history.
 func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now time.Time) (*sprintPatch, error) {
-	if sp.State == "closed" {
+	if sp.State == issue.SprintClosed {
 		return nil, fail(http.StatusConflict, i18n.SprintClosedLocked)
 	}
 	p := &sprintPatch{changed: map[string]any{}}
@@ -295,8 +296,8 @@ func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now ti
 			return nil, fail(http.StatusBadRequest, i18n.SprintNameRequired)
 		}
 		name := strings.TrimSpace(*in.Name)
-		if utf8.RuneCountInString(name) > varcharWidth {
-			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, varcharWidth)
+		if utf8.RuneCountInString(name) > sqlq.VarcharWidth {
+			return nil, failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth)
 		}
 		if name != sp.Name {
 			set("name", "name", name)
@@ -318,7 +319,7 @@ func planSprintEdit(sp *sprintOut, in sprintInput, given map[string]bool, now ti
 	if given["end"] {
 		end = utcPtr(in.End)
 	}
-	if sp.State == "active" {
+	if sp.State == issue.SprintActive {
 		if start == nil || end == nil {
 			return nil, fail(http.StatusBadRequest, i18n.SprintDatesOrder)
 		}
@@ -419,7 +420,7 @@ func (s *Server) deleteSprint(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if sp.State != "future" {
+	if sp.State != issue.SprintFuture {
 		return fail(http.StatusConflict, i18n.SprintDeleteNotFuture)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)

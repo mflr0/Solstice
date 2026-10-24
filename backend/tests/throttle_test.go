@@ -9,6 +9,7 @@ import (
 
 	"solstice/internal/api"
 	"solstice/internal/config"
+	"solstice/internal/jirafixture"
 )
 
 // Someone guessing a password locks their own address out, not the
@@ -41,10 +42,10 @@ func TestLoginOwnerSignsInWhileAnotherAddressGuesses(t *testing.T) {
 			t.Fatalf("guess %d: %d, want 401", i+1, status)
 		}
 	}
-	if status := try("203.0.113.9", "motdepasse"); status != http.StatusTooManyRequests {
+	if status := try("203.0.113.9", jirafixture.Password); status != http.StatusTooManyRequests {
 		t.Fatalf("guessing address with the right password: %d, want 429", status)
 	}
-	if status := try("198.51.100.20", "motdepasse"); status != http.StatusOK {
+	if status := try("198.51.100.20", jirafixture.Password); status != http.StatusOK {
 		t.Fatalf("owner from another address: %d, want 200", status)
 	}
 }

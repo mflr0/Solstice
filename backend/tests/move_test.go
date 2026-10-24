@@ -17,6 +17,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 type moveOptionsOut struct {
@@ -577,8 +579,8 @@ func TestMoveMovesTheIssueAndItsSubtasks(t *testing.T) {
 
 func TestMovePermissions(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")  // developpeurs
-	chloe := login(t, "chloe.simon", "motdepasse") // not a developer
+	paul := login(t, "paul.martin", jirafixture.Password)  // developpeurs
+	chloe := login(t, "chloe.simon", jirafixture.Password) // not a developer
 	types := []string{pick(t, `SELECT id FROM issue_types WHERE NOT subtask ORDER BY position, id LIMIT 1`)}
 	src := newProject(t, admin, map[string]any{"issueTypes": types})
 	dst := newProject(t, admin, map[string]any{"issueTypes": types})
@@ -655,7 +657,7 @@ func TestMovePermissions(t *testing.T) {
 func TestMoveTakesTheEditRightOnEachSubtask(t *testing.T) {
 	e := newMoveEnv(t)
 	paulID := userID(t, "paul.martin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	// Edit only through being the reporter: paul.martin may change the parent, and the sub-task if he reported it.
 	moveInsert(t, `UPDATE issues SET reporter_id = ? WHERE id IN (?, ?)`, paulID, e.issueID, e.childID)
@@ -723,7 +725,7 @@ func TestMoveRefusesWhatCannotMove(t *testing.T) {
 
 func TestMoveOfAnIssueWithALevelTakesTheSecurityRight(t *testing.T) {
 	e := newMoveEnv(t)
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	// paul.martin sees the level of the issue, which gives him Edit here and
 	// Create in the target, but not the right to set a level.
 	moveInsert(t, `INSERT INTO security_level_members (level_id, holder, user_id) VALUES (?, 'user', ?)`,
@@ -787,7 +789,7 @@ func TestMoveOfAnIssueWithALevelTakesTheSecurityRight(t *testing.T) {
 
 func TestMoveChoosingOrRemovingTheLevelTakesTheSecurityRightInBothProjects(t *testing.T) {
 	paulID := userID(t, "paul.martin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	for _, c := range []struct {
 		name          string
 		level         func(*moveEnv) any
@@ -1066,7 +1068,7 @@ func (e *restrictedMove) moverWithoutTheRole() (*client, map[string]any) {
 			body[k] = v
 		}
 	}
-	return login(e.t, "paul.martin", "motdepasse"), body
+	return login(e.t, "paul.martin", jirafixture.Password), body
 }
 
 func TestMoveRefusesRoleRestrictedItemsTheMoverCannotRead(t *testing.T) {
@@ -1254,7 +1256,7 @@ func TestMoveSaysWhenTheTargetHasNoSubtaskType(t *testing.T) {
 
 func TestMoveDoesNotAnnounceTheNewKeyToWhoCannotSeeIt(t *testing.T) {
 	e := newMoveEnv(t)
-	chloe := login(t, "chloe.simon", "motdepasse")
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, "GET", testURL+"/api/events", nil)
@@ -1309,7 +1311,7 @@ func TestMoveDoesNotAnnounceTheNewKeyToWhoCannotSeeIt(t *testing.T) {
 
 func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) {
 	e := newRestrictedMove(t)
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
 		userID(t, "paul.martin"))
@@ -1345,7 +1347,7 @@ func TestMoveRestrictsAPendingNotificationByTheCommentsNewRestriction(t *testing
 	env := newNotifyEnv(t)
 	e := newRestrictedMove(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	// paul.martin holds the role in both projects, so the old restriction would let him read.
 	for _, project := range []int64{e.srcID, e.dstID} {
@@ -1556,8 +1558,8 @@ func TestMoveIsAnnouncedToWatchersWhoSeeTheTargetAndToWebhooks(t *testing.T) {
 	env := newNotifyEnv(t)
 	e := newMoveEnv(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
-	chloe := env.login("chloe.simon", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
+	chloe := env.login("chloe.simon", jirafixture.Password)
 	admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	paul.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
 	chloe.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
@@ -1605,7 +1607,7 @@ func TestMoveDigestNamesAMovedIssueByItsOldKeyToWhoSeesItNow(t *testing.T) {
 	admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	peer := createIssue(t, admin, e.src, "Voisin du ticket déplacé", "")
 	for _, name := range []string{"paul.martin", "chloe.simon"} {
-		who := env.login(name, "motdepasse")
+		who := env.login(name, jirafixture.Password)
 		who.call("PUT", "/api/me/notifications", map[string]any{"delivery": "digest", "digestHour": 7}, 200, nil)
 		who.call("PUT", "/api/issues/"+peer+"/watch", nil, 200, nil)
 	}
@@ -1628,7 +1630,7 @@ func TestMoveDigestNamesAMovedIssueByItsOldKeyToWhoSeesItNow(t *testing.T) {
 
 func TestMoveOffersAndAcceptsOnlyTheGroupsOfWhoMoves(t *testing.T) {
 	e := newRestrictedMove(t)
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
 		userID(t, "paul.martin"))

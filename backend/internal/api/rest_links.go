@@ -49,12 +49,12 @@ func (in *remoteLinkIn) clean() error {
 		return fieldError("object.url", failf(http.StatusBadRequest, i18n.FieldTooLong, 2000))
 	case in.Object.Title == "":
 		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldRequired, "object.title"))
-	case len([]rune(in.Object.Title)) > 255:
-		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
-	case len([]rune(in.Relationship)) > 255:
-		return fieldError("relationship", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
-	case len([]rune(in.GlobalID)) > 255:
-		return fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldTooLong, 255))
+	case len([]rune(in.Object.Title)) > sqlq.VarcharWidth:
+		return fieldError("object.title", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
+	case len([]rune(in.Relationship)) > sqlq.VarcharWidth:
+		return fieldError("relationship", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
+	case len([]rune(in.GlobalID)) > sqlq.VarcharWidth:
+		return fieldError("globalId", failf(http.StatusBadRequest, i18n.FieldTooLong, sqlq.VarcharWidth))
 	}
 	return nil
 }
@@ -345,7 +345,7 @@ func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete || (r.Method == http.MethodPost && !formEncoded(r)) {
 			r = r.Clone(r.Context())
-			r.Header.Set("X-Atlassian-Token", "no-check")
+			r.Header.Set(atlassianXSRF, noCheck)
 		}
 		inner.ServeHTTP(w, r)
 	})
@@ -416,9 +416,9 @@ func (s *Server) restSignIn(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		var he *httpError
 		if errors.As(err, &he) && he.status == http.StatusUnauthorized {
-			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
+			w.Header().Set(loginReasonHeader, loginFailed)
 		} else if he != nil && he.status == http.StatusTooManyRequests {
-			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
+			w.Header().Set(loginReasonHeader, loginDenied)
 		}
 		return err
 	}

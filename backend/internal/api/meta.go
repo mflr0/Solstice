@@ -3,9 +3,10 @@ package api
 import (
 	"database/sql"
 	"net/http"
-
-	"solstice/internal/sqlq"
 	"strings"
+
+	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
@@ -66,7 +67,7 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 	ids := []int64{u.ID}
 	err = sqlq.Each(r.Context(), s.db, `SELECT `+issueColumns+` FROM issues i
 		JOIN projects p ON p.id = i.project_id JOIN statuses st ON st.id = i.status_id
-		WHERE `+vis+` AND i.assignee_id = ? AND st.category <> 'done' ORDER BY i.updated_at DESC LIMIT 50`,
+		WHERE `+vis+` AND i.assignee_id = ? AND st.category <> ? ORDER BY i.updated_at DESC LIMIT 50`,
 		func(rows *sql.Rows) error {
 			iss, err := scanIssue(rows)
 			if err != nil {
@@ -75,7 +76,7 @@ func (s *Server) person(w http.ResponseWriter, r *http.Request) error {
 			list = append(list, iss)
 			ids = append(ids, iss.ReporterID.Int64)
 			return nil
-		}, append(args, u.ID)...)
+		}, append(args, u.ID, issue.Done)...)
 	if err != nil {
 		return err
 	}

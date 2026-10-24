@@ -253,10 +253,10 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	s.auditUserCreated(r, id)
 	if in.Invite {
 		s.out.outbox.Wake()
-		s.auditLog(r, audit.UserInvite, target("user", id, in.Username), nil)
+		s.auditLog(r, audit.UserInvite, target(audit.TargetUser, id, in.Username), nil)
 	}
 	if len(in.Groups) > 0 {
-		s.auditLog(r, audit.GroupMembers, target("user", id, in.Username),
+		s.auditLog(r, audit.GroupMembers, target(audit.TargetUser, id, in.Username),
 			map[string]any{"groups": s.groupNames(ctx, in.Groups)})
 	}
 	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
@@ -434,7 +434,7 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) erro
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.PasswordReset, target("user", id, u.Username),
+	s.auditLog(r, audit.PasswordReset, target(audit.TargetUser, id, u.Username),
 		map[string]any{"revokedAccessTokens": revoked})
 	return writeJSON(w, http.StatusOK, map[string]string{"password": password})
 }
@@ -485,7 +485,7 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 	s.perms.Invalidate()
 	from, to := s.groupNames(ctx, before), s.groupNames(ctx, in.Groups)
 	if changed(from, to) {
-		s.auditLog(r, audit.GroupMembers, target("user", id, u.Username),
+		s.auditLog(r, audit.GroupMembers, target(audit.TargetUser, id, u.Username),
 			map[string]any{"from": from, "to": to})
 	}
 	u, err = s.adminUserByID(ctx, id)

@@ -21,6 +21,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/live"
 	"solstice/internal/mail"
 	"solstice/internal/notify"
@@ -130,7 +131,7 @@ func (s *Server) eventCustom(ctx context.Context, issueID int64) ([]events.Custo
 		}
 	}
 	base := s.base()
-	o := &restOut{base: base, api: base + "/rest/api/2", locale: s.defaultLanguage(), tz: s.zone()}
+	o := &restOut{base: base, api: base + issue.RESTAPIPath, locale: s.defaultLanguage(), tz: s.zone()}
 	users, err := s.jiraUsers(ctx, o, set.userIDs()...)
 	if err != nil {
 		return nil, err
@@ -473,7 +474,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if changes := mailChanges(before, cfg, !keepPassword, hadPassword); len(changes) > 0 {
-		s.auditLog(r, audit.SettingsMail, audit.Target{Type: "settings", ID: "mail"}, changes)
+		s.auditLog(r, audit.SettingsMail, audit.Target{Type: audit.TargetSettings, ID: "mail"}, changes)
 	}
 	s.out.notify.Invalidate()
 	s.forgetEmailLinks()

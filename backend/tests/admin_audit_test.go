@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // latestAudit returns how many entries of an action exist and the details of
@@ -123,7 +125,7 @@ func TestWebhooksAreAudited(t *testing.T) {
 		}
 	}
 	// Only administrators change webhooks, and a refused change leaves no entry.
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	paul.call("POST", "/api/admin/webhooks", map[string]any{"name": "x", "url": rc.srv.URL, "events": []string{"jira:issue_created"}}, 403, nil)
 	if n, _ := latestAudit(t, "webhook.create"); n != created+1 {
 		t.Error("a refused creation was recorded")

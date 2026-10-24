@@ -220,12 +220,12 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 	lang := locale(r)
 	warnings := []string{}
 	summary := i18n.M(i18n.IssueCloneSummary, orig.Summary).In(lang)
-	if utf8.RuneCountInString(summary) > 255 {
-		summary = string([]rune(summary)[:255])
+	if utf8.RuneCountInString(summary) > sqlq.VarcharWidth {
+		summary = string([]rune(summary)[:sqlq.VarcharWidth])
 	}
 	if in.Summary != nil {
 		summary = strings.TrimSpace(*in.Summary)
-		if summary == "" || utf8.RuneCountInString(summary) > 255 {
+		if summary == "" || utf8.RuneCountInString(summary) > sqlq.VarcharWidth {
 			return fail(http.StatusBadRequest, i18n.IssueSummaryRequired)
 		}
 	}

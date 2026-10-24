@@ -20,6 +20,13 @@ const (
 	KindInvitation = "invitation"
 )
 
+// Other kinds of messages.
+const (
+	KindDigest       = "digest"
+	KindNotification = "notification"
+	KindTest         = "test"
+)
+
 // MaxAttempts is how many times a message is tried before giving up (about
 // two hours with the delays of backoff).
 const MaxAttempts = 8

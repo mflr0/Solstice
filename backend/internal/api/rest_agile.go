@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -32,7 +33,7 @@ func agilePage[T any](list []T, startAt, maxResults int) map[string]any {
 }
 
 func (o *restOut) boardJSON(b *boardSummary) map[string]any {
-	out := map[string]any{"id": b.ID, "self": o.base + "/rest/agile/1.0/board/" + o.id(b.ID), "name": b.Name,
+	out := map[string]any{"id": b.ID, "self": o.base + issue.AgileAPIPath + "/board/" + o.id(b.ID), "name": b.Name,
 		"type": b.Kind}
 	if len(b.Projects) > 0 {
 		p := b.Projects[0]
@@ -169,7 +170,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return err
 	}
-	if rank, ok := fieldOfKind(custom, "gh-lexo-rank"); ok {
+	if rank, ok := fieldOfKind(custom, issue.KindLexoRank); ok {
 		out["ranking"] = map[string]any{"rankCustomFieldId": rank.ID}
 	}
 	return writeJSON(w, http.StatusOK, out)
@@ -194,10 +195,10 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 	if b.Kind != "scrum" {
 		return fail(http.StatusBadRequest, i18n.SprintKanban)
 	}
-	var states []string
+	var states []issue.SprintState
 	for v := range strings.SplitSeq(r.URL.Query().Get("state"), ",") {
-		if v = strings.ToLower(strings.TrimSpace(v)); v == "active" || v == "future" || v == "closed" {
-			states = append(states, v)
+		if st := issue.SprintState(strings.ToLower(strings.TrimSpace(v))); st == issue.SprintActive || st == issue.SprintFuture || st == issue.SprintClosed {
+			states = append(states, st)
 		}
 	}
 	sprints, err := s.boardSprints(r.Context(), b.ID, states...)
@@ -205,7 +206,7 @@ func (s *Server) agileBoardSprints(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	// Oldest first, as Jira: closed, then active, then future.
-	order := map[string]int{"closed": 0, "active": 1, "future": 2}
+	order := map[issue.SprintState]int{issue.SprintClosed: 0, issue.SprintActive: 1, issue.SprintFuture: 2}
 	slices.SortStableFunc(sprints, func(a, b sprintOut) int { return order[a.State] - order[b.State] })
 	o := s.restOut(r)
 	out := make([]map[string]any, 0, len(sprints))
@@ -277,8 +278,8 @@ func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	}
 	where += backlogCond + `
 		AND NOT EXISTS (SELECT 1 FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
-			WHERE si.issue_id = i.id AND sp.board_id = ? AND sp.state <> 'closed')`
-	return s.agileIssues(w, r, sub, where, append(args, b.ID))
+			WHERE si.issue_id = i.id AND sp.board_id = ? AND sp.state <> ?)`
+	return s.agileIssues(w, r, sub, where, append(args, b.ID, issue.SprintClosed))
 }
 
 // pathSprint loads the sprint of the path, if the user sees its board.
@@ -390,8 +391,8 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	switch {
-	case state == nil || *state == sp.State:
-	case *state == "active" && sp.State == "future":
+	case state == nil || issue.SprintState(*state) == sp.State:
+	case issue.SprintState(*state) == issue.SprintActive && sp.State == issue.SprintFuture:
 		start := map[string]any{}
 		if end != nil {
 			start["end"] = end
@@ -399,7 +400,7 @@ func (s *Server) agileEditSprint(w http.ResponseWriter, r *http.Request) error {
 		if err := s.uiCall(r, s.startSprint, http.MethodPost, nil, values, start, nil); err != nil {
 			return err
 		}
-	case *state == "closed" && sp.State == "active":
+	case issue.SprintState(*state) == issue.SprintClosed && sp.State == issue.SprintActive:
 		if err := s.uiCall(r, s.completeSprint, http.MethodPost, nil, values,
 			map[string]any{}, nil); err != nil {
 			return err
@@ -674,7 +675,7 @@ func (s *Server) agileEpic(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if f, ok := fieldOfKind(custom, "gh-epic-label"); ok {
+	if f, ok := fieldOfKind(custom, issue.KindEpicLabel); ok {
 		err := s.db.QueryRowContext(r.Context(), `SELECT COALESCE(string_value, '') FROM custom_field_values
 			WHERE issue_id = ? AND field_id = ? LIMIT 1`, epic.ID, f.ID).Scan(&name)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {

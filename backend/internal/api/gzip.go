@@ -11,10 +11,6 @@ import (
 	"solstice/internal/web"
 )
 
-// gzipMinSize is the size under which an answer goes out as it is: the
-// header and the CPU would cost more than the bytes saved.
-const gzipMinSize = 1024
-
 // gzipPool keeps the writers: one allocates about 800 KB of tables.
 var gzipPool = sync.Pool{New: func() any {
 	zw, _ := gzip.NewWriterLevel(nil, 5)
@@ -30,7 +26,7 @@ func gzipSkip(path string) bool {
 }
 
 // gzipHandler compresses the answers of next for clients that accept gzip:
-// text types of at least gzipMinSize bytes, without a Content-Encoding of
+// text types of at least web.GzipMinSize bytes, without a Content-Encoding of
 // their own.
 func gzipHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +58,7 @@ func compressible(contentType string) bool {
 	return strings.HasPrefix(mediaType, "text/") || strings.HasSuffix(mediaType, "+json") || strings.HasSuffix(mediaType, "+xml")
 }
 
-// gzipWriter holds the first gzipMinSize bytes of an answer back until it
+// gzipWriter holds the first web.GzipMinSize bytes of an answer back until it
 // knows whether to compress it.
 type gzipWriter struct {
 	http.ResponseWriter
@@ -90,12 +86,12 @@ func (g *gzipWriter) Write(p []byte) (int, error) {
 		return g.ResponseWriter.Write(p)
 	}
 	h := g.Header()
-	if n, err := strconv.Atoi(h.Get("Content-Length")); err == nil && n < gzipMinSize {
+	if n, err := strconv.Atoi(h.Get("Content-Length")); err == nil && n < web.GzipMinSize {
 		g.passThrough()
 		return g.ResponseWriter.Write(p)
 	}
 	g.pending = append(g.pending, p...)
-	if len(g.pending) < gzipMinSize {
+	if len(g.pending) < web.GzipMinSize {
 		return len(p), nil
 	}
 	g.start()
@@ -155,7 +151,7 @@ func (g *gzipWriter) flushPending() error {
 // Flush sends what is held, as it is when it is too short to compress.
 func (g *gzipWriter) Flush() {
 	if !g.decided {
-		if len(g.pending) >= gzipMinSize {
+		if len(g.pending) >= web.GzipMinSize {
 			g.start()
 		} else {
 			g.passThrough()

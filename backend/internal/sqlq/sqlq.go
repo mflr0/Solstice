@@ -121,6 +121,10 @@ var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 // pattern so they match as characters; the caller adds the % wildcards.
 func EscapeLike(s string) string { return likeEscaper.Replace(s) }
 
+// VarcharWidth is the width, in characters, of the VARCHAR(255) columns that
+// hold names, summaries and descriptions.
+const VarcharWidth = 255
+
 // Truncate cuts s after n characters (code points, as MySQL counts them); a
 // shorter string is returned as it is, and n <= 0 gives "".
 func Truncate(s string, n int) string {

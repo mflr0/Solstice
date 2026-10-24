@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func uploadText(t *testing.T, c *client, key, name, content string) (int, []byte) {
@@ -75,7 +77,7 @@ func TestAttachmentStorageQuota(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
 	srv.SetMaxStorage(storedBytes(t) + 1000)
-	paul := loginAt(t, base, "paul.martin", "motdepasse")
+	paul := loginAt(t, base, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", unique("quota"), "")
 
 	if status, body := uploadText(t, paul, key, "first.txt", strings.Repeat("a", 600)); status != 201 {
@@ -89,7 +91,7 @@ func TestAttachmentStorageQuota(t *testing.T) {
 		t.Errorf("second upload: %q", msg)
 	}
 
-	free := loginAt(t, ownServer(t), "paul.martin", "motdepasse")
+	free := loginAt(t, ownServer(t), "paul.martin", jirafixture.Password)
 	other := createIssue(t, free, "DEMO", unique("quota"), "")
 	for _, name := range []string{"one.txt", "two.txt"} {
 		if status, body := uploadText(t, free, other, name, "sans limite"); status != 201 {
@@ -102,7 +104,7 @@ func TestAttachmentQuotaRefusesWholeRequest(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
 	srv.SetMaxStorage(storedBytes(t) + 1000)
-	paul := loginAt(t, base, "paul.martin", "motdepasse")
+	paul := loginAt(t, base, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", unique("quota"), "")
 
 	status, body := uploadTexts(t, paul, key,
@@ -125,7 +127,7 @@ func TestAttachmentQuotaStopsAnOversizedPart(t *testing.T) {
 	needDB(t)
 	srv, base := newServer(t)
 	srv.SetMaxStorage(storedBytes(t) + 1000)
-	paul := loginAt(t, base, "paul.martin", "motdepasse")
+	paul := loginAt(t, base, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", unique("quota"), "")
 
 	status, body := postFiles(t, paul, key, true, [2]string{"big.txt", strings.Repeat("a", 1500)})

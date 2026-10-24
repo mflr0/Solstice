@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 type auditPage struct {
@@ -35,7 +37,7 @@ func TestAuditLog(t *testing.T) {
 	for _, c := range []struct {
 		user, pass string
 		want       int
-	}{{"hugo.robert", "pas-le-bon-mot-de-passe", 401}, {"personne.inconnue", "x", 401}, {"hugo.robert", "motdepasse", 200}} {
+	}{{"hugo.robert", "pas-le-bon-mot-de-passe", 401}, {"personne.inconnue", "x", 401}, {"hugo.robert", jirafixture.Password, 200}} {
 		if status, _, _ := call(t, nil, base, "POST", "/api/login", map[string]string{"username": c.user, "password": c.pass},
 			header(csrfHeader, "1")); status != c.want {
 			t.Fatalf("login %s: %d, want %d", c.user, status, c.want)
@@ -60,7 +62,7 @@ func TestAuditLog(t *testing.T) {
 	}
 
 	allowTokensForEveryone(t)
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	status, body = paul.do("POST", "/api/me/tokens", map[string]any{"name": "jeton audité"})
 	if status != 201 {
 		t.Fatalf("token: %d %s", status, body)
@@ -79,7 +81,7 @@ func TestAuditLog(t *testing.T) {
 	var perms struct {
 		Grants []grantOut `json:"grants"`
 	}
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	marie.get("/api/projects/OPS/permissions", &perms)
 	hugo, _ := strconv.ParseInt(pick(t, `SELECT id FROM users WHERE username = 'hugo.robert'`), 10, 64)
 	added := append(slices.Clone(perms.Grants), grantOut{Permission: "link", Holder: "user", ID: hugo})
@@ -240,7 +242,7 @@ func readCSV(t *testing.T, raw []byte) [][]string {
 }
 
 func TestCSVExport(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	task := pick(t, `SELECT t.issue_type_id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
 		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND NOT it.subtask ORDER BY t.position LIMIT 1`)
 	summary := `=HYPERLINK("http://exemple.org"), "devis" urgent`
@@ -291,7 +293,7 @@ func TestCSVExport(t *testing.T) {
 	if records = readCSV(t, raw); len(records) != 1 {
 		t.Errorf("paul.martin exports %d RH rows", len(records)-1)
 	}
-	chloe := login(t, "chloe.simon", "motdepasse")
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	var ui struct{ Total int }
 	chloe.get("/api/issues?jql="+url.QueryEscape("project = RH"), &ui)
 	_, h, raw = exportCSVFor(t, chloe, "jql="+url.QueryEscape("project = RH"), "")

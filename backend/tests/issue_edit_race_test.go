@@ -4,10 +4,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestEditRefusesWhenTheIssueChangedMeanwhile(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", unique("Édition concurrente "), "")
 	id := issueIDOf(t, key)
 	tx, err := testDB.Begin()

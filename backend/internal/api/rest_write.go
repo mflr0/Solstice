@@ -13,12 +13,13 @@ import (
 	"maps"
 	"net/http"
 	"slices"
-
-	"solstice/internal/i18n"
-	"solstice/internal/perm"
-	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
+
+	"solstice/internal/i18n"
+	"solstice/internal/issue"
+	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // jiraEditInput is the body of Jira's create and edit requests.
@@ -518,9 +519,9 @@ func (s *Server) refIssue(ctx context.Context, sub *perm.Subject, r ref) (*issue
 // sprintBoard returns the board of an open sprint, if the user sees it.
 func (s *Server) sprintBoard(ctx context.Context, sub *perm.Subject, sprint int64) (*boardRow, error) {
 	var board sql.NullInt64
-	var state string
+	var state issue.SprintState
 	err := s.db.QueryRowContext(ctx, `SELECT board_id, state FROM sprints WHERE id = ?`, sprint).Scan(&board, &state)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && (!board.Valid || state == "closed")) {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && (!board.Valid || state == issue.SprintClosed)) {
 		return nil, fail(http.StatusBadRequest, i18n.SprintUnknown)
 	}
 	if err != nil {

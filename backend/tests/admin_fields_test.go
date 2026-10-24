@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type fieldDetail struct {
@@ -52,7 +54,7 @@ func offered(t *testing.T, c *client, project string, id int64) *formField {
 
 func TestCustomFields(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	paul.call("GET", "/api/admin/fields", nil, 403, nil)
 	var types []struct{ Type string }
 	admin.call("GET", "/api/admin/fields/types", nil, 200, &types)

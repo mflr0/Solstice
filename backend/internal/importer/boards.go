@@ -178,7 +178,7 @@ func (r *run) importBoards() error {
 				}
 			}
 		}
-		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), 255), kind, filter.Int64,
+		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), kind, filter.Int64,
 			sub, ownerID, lanes, estimate, sqlq.Value(cutoff), now, now)
 	}); err != nil {
 		return err
@@ -216,7 +216,7 @@ func (r *run) importBoards() error {
 		if maximum.Valid && maximum.Float64 >= 0 {
 			hi = int(maximum.Float64)
 		}
-		return cins.add(id, board.Int64, truncate(name.String, 255), pos.Int64, lo, hi)
+		return cins.add(id, board.Int64, truncate(name.String, sqlq.VarcharWidth), pos.Int64, lo, hi)
 	}); err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (r *run) importBoards() error {
 			if !boards[board.Int64] {
 				return nil
 			}
-			return qins.add(id, board.Int64, truncate(name.String, 255), orDefault(long, short.String),
+			return qins.add(id, board.Int64, truncate(name.String, sqlq.VarcharWidth), orDefault(long, short.String),
 				sqlq.Value(desc), pos.Int64)
 		}); err != nil {
 			return err
@@ -285,7 +285,7 @@ func (r *run) importBoards() error {
 			if s := orDefault(long, short.String); s != "" {
 				query = s
 			}
-			return sins.add(id, board.Int64, truncate(name.String, 255), query, pos.Int64, isDefault.Bool)
+			return sins.add(id, board.Int64, truncate(name.String, sqlq.VarcharWidth), query, pos.Int64, isDefault.Bool)
 		}); err != nil {
 			return err
 		}
@@ -317,12 +317,12 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		if err := rows.Scan(&id, &name, &board, &started, &closed, &start, &end, &complete, &sequence, &goal); err != nil {
 			return err
 		}
-		state := "future"
+		state := issue.SprintFuture
 		switch {
 		case closed.Bool:
-			state = "closed"
+			state = issue.SprintClosed
 		case started.Bool:
-			state = "active"
+			state = issue.SprintActive
 		}
 		var boardID any
 		if boards[board.Int64] {
@@ -337,7 +337,7 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		if strings.TrimSpace(goal.String) != "" {
 			g = goal.String
 		}
-		return ins.add(id, boardID, truncate(orDefault(name, "Sprint "+strconv.FormatInt(id, 10)), 255), g, state,
+		return ins.add(id, boardID, truncate(orDefault(name, "Sprint "+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), g, state,
 			millis(start), millis(end), millis(complete), position)
 	}); err != nil {
 		return err
@@ -374,7 +374,7 @@ func (r *run) importRanks() error {
 	}
 	var rankField int64
 	for id, typeKey := range r.fields {
-		if issue.FieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
+		if issue.FieldKind(typeKey) == issue.KindLexoRank && (rankField == 0 || id < rankField) {
 			rankField = id
 		}
 	}
@@ -396,7 +396,7 @@ func (r *run) importRanks() error {
 			return nil
 		}
 		seen[issue.Int64] = true
-		return ins.add(issue.Int64, truncate(rank.String, 255))
+		return ins.add(issue.Int64, truncate(rank.String, sqlq.VarcharWidth))
 	}); err != nil {
 		return err
 	}

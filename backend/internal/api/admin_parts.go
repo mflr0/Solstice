@@ -11,13 +11,14 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-
-	"solstice/internal/audit"
-	"solstice/internal/i18n"
-	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
+
+	"solstice/internal/audit"
+	"solstice/internal/i18n"
+	"solstice/internal/issue"
+	"solstice/internal/sqlq"
 )
 
 // Components --------------------------------------------------------------------
@@ -117,11 +118,11 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 		}
 		before = list[0]
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -176,7 +177,7 @@ func (s *Server) saveComponent(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	c := list[0]
-	target := target("component", id, c.Name)
+	target := target(audit.TargetComponent, id, c.Name)
 	project := s.projectKeyOf(ctx, projectID)
 	if creating {
 		s.auditLog(r, audit.ComponentCreate, target, map[string]any{"project": project})
@@ -285,7 +286,7 @@ func (s *Server) deleteComponent(w http.ResponseWriter, r *http.Request) error {
 	if moveTo != nil {
 		details["movedTo"] = moveTo.Name
 	}
-	s.auditLog(r, audit.ComponentDelete, target("component", id, c.Name),
+	s.auditLog(r, audit.ComponentDelete, target(audit.TargetComponent, id, c.Name),
 		details)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -382,7 +383,7 @@ func (s *Server) versions(ctx context.Context, projectID int64, where string, ar
 		v.position,
 		(SELECT COUNT(DISTINCT iv.issue_id) FROM issue_versions iv WHERE iv.version_id = v.id),
 		(SELECT COUNT(DISTINCT iv.issue_id) FROM issue_versions iv JOIN issues i ON i.id = iv.issue_id
-			WHERE iv.version_id = v.id AND iv.kind = 'fix' AND i.resolution_id IS NULL)
+			WHERE iv.version_id = v.id AND iv.kind = ? AND i.resolution_id IS NULL)
 		FROM versions v WHERE v.project_id = ? AND `+where+` ORDER BY v.position, v.id`, func(rows *sql.Rows) error {
 		var v versionAdminOut
 		var desc sql.NullString
@@ -394,7 +395,7 @@ func (s *Server) versions(ctx context.Context, projectID int64, where string, ar
 		v.Description, v.StartDate, v.ReleaseDate = sqlq.String(desc), dateOnly(start), dateOnly(release)
 		out = append(out, v)
 		return nil
-	}, append([]any{projectID}, args...)...)
+	}, append([]any{issue.VersionFix, projectID}, args...)...)
 	return out, err
 }
 
@@ -475,11 +476,11 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -544,7 +545,7 @@ func (s *Server) saveVersion(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	target := target("version", id, v.Name)
+	target := target(audit.TargetVersion, id, v.Name)
 	project := s.projectKeyOf(ctx, projectID)
 	if creating {
 		s.auditLog(r, audit.VersionCreate, target, map[string]any{"project": project})
@@ -597,7 +598,7 @@ func (s *Server) orderVersions(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.VersionOrder, target("project", projectID, s.projectKeyOf(ctx, projectID)),
+	s.auditLog(r, audit.VersionOrder, target(audit.TargetProject, projectID, s.projectKeyOf(ctx, projectID)),
 		map[string]any{"ids": in.IDs})
 	out, err := s.versions(ctx, projectID, "TRUE")
 	if err != nil {
@@ -639,7 +640,7 @@ func moveVersion(ctx context.Context, tx *sql.Tx, from versionAdminOut, to *vers
 		return 0, err
 	}
 	field := "Fix Version"
-	if kind == "affects" {
+	if kind == issue.VersionAffects {
 		field = "Version"
 	}
 	for _, issue := range issues {
@@ -730,7 +731,7 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 	defer tx.Rollback()
 	moved := 0
 	if to != nil {
-		if moved, err = moveVersion(ctx, tx, v, to, "fix", true, currentUser(r).ID, time.Now().UTC()); err != nil {
+		if moved, err = moveVersion(ctx, tx, v, to, issue.VersionFix, true, currentUser(r).ID, time.Now().UTC()); err != nil {
 			return err
 		}
 	}
@@ -744,7 +745,7 @@ func (s *Server) releaseVersion(w http.ResponseWriter, r *http.Request) error {
 	if to != nil {
 		details["movedTo"] = to.Name
 	}
-	s.auditLog(r, audit.VersionRelease, target("version", id, v.Name), details)
+	s.auditLog(r, audit.VersionRelease, target(audit.TargetVersion, id, v.Name), details)
 	v, err = s.version(ctx, projectID, id)
 	if err != nil {
 		return err
@@ -826,11 +827,11 @@ func (s *Server) removeVersion(w http.ResponseWriter, r *http.Request, projectID
 	}
 	defer tx.Rollback()
 	now, author := time.Now().UTC(), currentUser(r).ID
-	fixed, err := moveVersion(ctx, tx, v, fixTo, "fix", false, author, now)
+	fixed, err := moveVersion(ctx, tx, v, fixTo, issue.VersionFix, false, author, now)
 	if err != nil {
 		return err
 	}
-	affected, err := moveVersion(ctx, tx, v, affectsTo, "affects", false, author, now)
+	affected, err := moveVersion(ctx, tx, v, affectsTo, issue.VersionAffects, false, author, now)
 	if err != nil {
 		return err
 	}
@@ -847,7 +848,7 @@ func (s *Server) removeVersion(w http.ResponseWriter, r *http.Request, projectID
 	if affectsTo != nil {
 		details["affectsTo"] = affectsTo.Name
 	}
-	s.auditLog(r, action, target("version", v.ID, v.Name), details)
+	s.auditLog(r, action, target(audit.TargetVersion, v.ID, v.Name), details)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

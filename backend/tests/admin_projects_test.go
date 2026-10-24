@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 var (
@@ -64,8 +66,8 @@ func groupID(t *testing.T, name string) int64 {
 
 func TestProjectLifecycle(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")  // developpeurs
-	chloe := login(t, "chloe.simon", "motdepasse") // not a developer
+	paul := login(t, "paul.martin", jirafixture.Password)  // developpeurs
+	chloe := login(t, "chloe.simon", jirafixture.Password) // not a developer
 
 	// The key as one types it.
 	var check struct {
@@ -281,7 +283,7 @@ type componentAdmin struct {
 
 func TestComponents(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	base := "/api/projects/" + key + "/components"
 
@@ -372,7 +374,7 @@ type versionAdmin struct {
 
 func TestVersions(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	base := "/api/projects/" + key + "/versions"
 

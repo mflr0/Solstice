@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // workflow is a Jira workflow reduced to what Solstice keeps: statuses and the
@@ -238,7 +240,7 @@ func (r *run) importWorkflows() error {
 			if !r.statuses[w.initial] {
 				return 0, fmt.Errorf("workflow %q starts in unknown status %s", name, w.initial)
 			}
-			if err := wins.add(id, pid, truncate(name, 255), isDefault, w.initial); err != nil {
+			if err := wins.add(id, pid, truncate(name, sqlq.VarcharWidth), isDefault, w.initial); err != nil {
 				return 0, err
 			}
 			for i, st := range w.statuses {
@@ -257,7 +259,7 @@ func (r *run) importWorkflows() error {
 				if t.from != "" {
 					from = t.from
 				}
-				if err := tins.add(nextTransition, id, truncate(t.name, 255), from, t.to, i); err != nil {
+				if err := tins.add(nextTransition, id, truncate(t.name, sqlq.VarcharWidth), from, t.to, i); err != nil {
 					return 0, err
 				}
 			}

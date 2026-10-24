@@ -104,7 +104,7 @@ func (s *Server) adminRoutes(route func(string, handler, bool)) {
 // readJSONFields decodes a body like readJSON, and also tells which keys it
 // holds: for the fields where absent (keep) and null (clear) differ.
 func readJSONFields(r *http.Request, v any) (map[string]json.RawMessage, error) {
-	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, 4<<20))
+	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxJSONBody))
 	if err != nil {
 		return nil, badBody(err)
 	}

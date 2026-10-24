@@ -310,7 +310,7 @@ func (s *Server) loadVersions(ctx context.Context, _ *perm.Subject, set *issueSe
 			return err
 		}
 		d := set.byID[id]
-		if kind == "fix" {
+		if kind == issue.VersionFix {
 			d.fixVersions = append(d.fixVersions, v)
 		} else {
 			d.versions = append(d.versions, v)
@@ -557,7 +557,7 @@ func (s *Server) loadWorklogs(ctx context.Context, sub *perm.Subject, set *issue
 // userIDs lists the users the loaded data mentions.
 func (set *issueSet) userIDs() []int64 {
 	var ids []int64
-	users := map[string]bool{"userpicker": true, "multiuserpicker": true}
+	users := map[string]bool{issue.KindUserPicker: true, issue.KindMultiUserPicker: true}
 	kinds := map[int64]string{}
 	for _, f := range set.fields {
 		kinds[f.ID] = f.Kind

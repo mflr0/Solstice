@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // importCSV sends a file to a project's import, as the interface does.
@@ -71,7 +73,7 @@ func exportRows(t *testing.T, c *client, project, columns string) (header []stri
 // writes nothing; and a file with one bad row creates nothing.
 func TestCSVImportRoundTrip(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	src, dst := newProject(t, admin, nil), newProject(t, admin, nil)
 	exec := func(query string, args ...any) {
 		t.Helper()

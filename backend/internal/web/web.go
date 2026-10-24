@@ -31,8 +31,9 @@ func IsAsset(urlPath string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// gzipMinSize is the size under which a file is not worth compressing.
-const gzipMinSize = 1024
+// GzipMinSize is the size under which a file or an answer is not worth
+// compressing: the header and the CPU would cost more than the bytes saved.
+const GzipMinSize = 1024
 
 // packed is a file compressed once, on its first request.
 type packed struct {
@@ -60,7 +61,7 @@ func gzipped(cache *sync.Map, root fs.FS, name string) []byte {
 			return
 		}
 		raw, err := fs.ReadFile(root, name)
-		if err != nil || len(raw) < gzipMinSize {
+		if err != nil || len(raw) < GzipMinSize {
 			return
 		}
 		var buf bytes.Buffer

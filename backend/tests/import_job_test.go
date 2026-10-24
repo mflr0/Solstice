@@ -154,7 +154,7 @@ func TestImportJob(t *testing.T) {
 		ts := httptest.NewServer(api.New(conn, t.TempDir(), time.UTC, quiet()).Handler(http.NotFoundHandler()))
 		t.Cleanup(ts.Close)
 		admin := signIn(t, ts.URL, "admin", "admin")
-		other := signIn(t, ts.URL, "paul.martin", "motdepasse")
+		other := signIn(t, ts.URL, "paul.martin", jirafixture.Password)
 		var state struct {
 			Confirm string          `json:"confirm"`
 			Job     json.RawMessage `json:"job"`

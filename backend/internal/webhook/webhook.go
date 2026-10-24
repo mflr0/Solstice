@@ -281,6 +281,7 @@ func (s *Service) invalidate() {
 // hooks returns the webhooks from a short-lived cache: they are looked at
 // for every event.
 func (s *Service) hooks(ctx context.Context) []*Webhook {
+	const readFailed = "reading webhooks failed"
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cache != nil && time.Since(s.cacheAt) < 30*time.Second {
@@ -289,20 +290,20 @@ func (s *Service) hooks(ctx context.Context) []*Webhook {
 	var list []*Webhook
 	rows, err := s.db.QueryContext(ctx, `SELECT `+columns+` FROM webhooks WHERE enabled`)
 	if err != nil {
-		s.log.Error("reading webhooks failed", "err", err)
+		s.log.Error(readFailed, "err", err)
 		return nil
 	}
 	defer rows.Close()
 	for rows.Next() {
 		w, err := scanWebhook(rows)
 		if err != nil {
-			s.log.Error("reading webhooks failed", "err", err)
+			s.log.Error(readFailed, "err", err)
 			return nil
 		}
 		list = append(list, w)
 	}
 	if err := rows.Err(); err != nil {
-		s.log.Error("reading webhooks failed", "err", err)
+		s.log.Error(readFailed, "err", err)
 		return nil
 	}
 	s.cache, s.cacheAt = list, time.Now()

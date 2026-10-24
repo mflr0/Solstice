@@ -27,19 +27,19 @@ const jiraFieldPrefix = "com.atlassian.jira.plugin.system.customfieldtypes:"
 // fieldTypes are the types a field can be created with: Solstice's name,
 // Jira's kind (the end of its type key) and searcher.
 var fieldTypes = []struct{ name, kind, searcher string }{
-	{"text", "textfield", "textsearcher"},
-	{"textarea", "textarea", "textsearcher"},
-	{"number", "float", "exactnumber"},
-	{"date", "datepicker", "daterange"},
-	{"datetime", "datetime", "datetimerange"},
-	{"select", "select", "multiselectsearcher"},
-	{"multiselect", "multiselect", "multiselectsearcher"},
-	{"checkboxes", "multicheckboxes", "checkboxsearcher"},
-	{"radio", "radiobuttons", "radiosearcher"},
-	{"user", "userpicker", "userpickergroupsearcher"},
-	{"multiuser", "multiuserpicker", "userpickergroupsearcher"},
-	{"labels", "labels", "labelsearcher"},
-	{"url", "url", "exacttextsearcher"},
+	{"text", issue.KindTextField, "textsearcher"},
+	{"textarea", issue.KindTextArea, "textsearcher"},
+	{"number", issue.KindFloat, "exactnumber"},
+	{"date", issue.KindDatePicker, "daterange"},
+	{"datetime", issue.KindDateTime, "datetimerange"},
+	{"select", issue.KindSelect, "multiselectsearcher"},
+	{"multiselect", issue.KindMultiSelect, "multiselectsearcher"},
+	{"checkboxes", issue.KindMultiCheckboxes, "checkboxsearcher"},
+	{"radio", issue.KindRadioButtons, "radiosearcher"},
+	{"user", issue.KindUserPicker, "userpickergroupsearcher"},
+	{"multiuser", issue.KindMultiUserPicker, "userpickergroupsearcher"},
+	{"labels", issue.KindLabels, "labelsearcher"},
+	{"url", issue.KindURL, "exacttextsearcher"},
 }
 
 // fieldTypeName gives Solstice's name of a Jira type key, "" for a type
@@ -55,7 +55,7 @@ func fieldTypeName(typeKey string) string {
 }
 
 // protectedKinds are Jira Software's fields that boards rely on.
-func protectedKind(kind string) bool { return hiddenKinds[kind] || kind == "gh-epic-link" }
+func protectedKind(kind string) bool { return hiddenKinds[kind] || kind == issue.KindEpicLink }
 
 type optionOut struct {
 	ID       int64  `json:"id"`
@@ -279,7 +279,7 @@ func cleanOption(v string) (string, error) {
 	if v == "" {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionEmpty)
 	}
-	if len([]rune(v)) > 255 {
+	if len([]rune(v)) > sqlq.VarcharWidth {
 		return "", fail(http.StatusBadRequest, i18n.CustomFieldOptionTooLong)
 	}
 	return v, nil
@@ -300,7 +300,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	name, err := cleanName(in.Name, 255)
+	name, err := cleanName(in.Name, sqlq.VarcharWidth)
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func (s *Server) createField(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldCreate, target("field", id, name),
+	s.auditLog(r, audit.FieldCreate, target(audit.TargetField, id, name),
 		map[string]any{"type": ft.name, "options": options, "context": contextNames(f.Context)})
 	return writeJSON(w, http.StatusCreated, f)
 }
@@ -408,7 +408,7 @@ func (s *Server) updateField(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -450,7 +450,7 @@ func (s *Server) updateField(w http.ResponseWriter, r *http.Request) error {
 	diff(changes, "description", derefStr(before.Description), derefStr(after.Description))
 	diff(changes, "context", contextNames(before.Context), contextNames(after.Context))
 	if len(changes) > 0 {
-		s.auditLog(r, audit.FieldUpdate, target("field", id, after.Name), changes)
+		s.auditLog(r, audit.FieldUpdate, target(audit.TargetField, id, after.Name), changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }
@@ -502,7 +502,7 @@ func (s *Server) deleteField(w http.ResponseWriter, r *http.Request) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldDelete, target("field", id, f.Name),
+	s.auditLog(r, audit.FieldDelete, target(audit.TargetField, id, f.Name),
 		map[string]any{"issues": f.Issues, "boards": boards})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -563,7 +563,7 @@ func (s *Server) addFieldOption(w http.ResponseWriter, r *http.Request) error {
 		SELECT ?, COALESCE(MAX(position), 0) + 1, ? FROM custom_field_options WHERE field_id = ?`, f.ID, v, f.ID); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
+	s.auditLog(r, audit.FieldOptions, target(audit.TargetField, f.ID, f.Name),
 		map[string]any{"added": v})
 	return s.writeField(w, r, http.StatusCreated, f.ID)
 }
@@ -619,7 +619,7 @@ func (s *Server) updateFieldOption(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 	if len(details) > 1 {
-		s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
+		s.auditLog(r, audit.FieldOptions, target(audit.TargetField, f.ID, f.Name),
 			details)
 	}
 	return s.writeField(w, r, http.StatusOK, f.ID)
@@ -728,7 +728,7 @@ func (s *Server) deleteFieldOption(w http.ResponseWriter, r *http.Request) error
 	if moveTo != "" {
 		details["movedTo"] = moveTo
 	}
-	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name), details)
+	s.auditLog(r, audit.FieldOptions, target(audit.TargetField, f.ID, f.Name), details)
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }
 
@@ -759,7 +759,7 @@ func (s *Server) orderFieldOptions(w http.ResponseWriter, r *http.Request) error
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.FieldOptions, target("field", f.ID, f.Name),
+	s.auditLog(r, audit.FieldOptions, target(audit.TargetField, f.ID, f.Name),
 		map[string]any{"order": ids})
 	return s.writeField(w, r, http.StatusOK, f.ID)
 }

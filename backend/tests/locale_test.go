@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"net/url"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestJQLErrorLanguage(t *testing.T) {
@@ -25,7 +27,7 @@ func TestJQLErrorLanguage(t *testing.T) {
 
 // The account's language applies when the request names none.
 func TestUserLocale(t *testing.T) {
-	c := login(t, "lea.richard", "motdepasse")
+	c := login(t, "lea.richard", jirafixture.Password)
 	t.Cleanup(func() { c.do("PATCH", "/api/me", map[string]any{"locale": nil}) })
 	locale := func() any {
 		t.Helper()
@@ -57,7 +59,7 @@ func TestUserLocale(t *testing.T) {
 	if _, msg, _ := c.errorIn("en", "GET", missing, nil); msg != "Not found, or you do not have access to it." {
 		t.Errorf("with Accept-Language en: %q, want English", msg)
 	}
-	if _, body := anonymous(t).do("POST", "/api/login", map[string]string{"username": "lea.richard", "password": "motdepasse"}); !bytes.Contains(body, []byte(`"locale":"de"`)) {
+	if _, body := anonymous(t).do("POST", "/api/login", map[string]string{"username": "lea.richard", "password": jirafixture.Password}); !bytes.Contains(body, []byte(`"locale":"de"`)) {
 		t.Errorf("login answer without the locale: %s", body)
 	}
 

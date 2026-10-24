@@ -76,7 +76,7 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.issueTypes[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), style.String == "jira_subtask", seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), sqlq.VarcharWidth), sqlq.Value(desc), style.String == "jira_subtask", seq.Int64)
 	}); err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.statuses[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), string(issue.FromJiraStatusCategory(cat.Int64)),
+		return ins.add(id, truncate(orDefault(name, id), sqlq.VarcharWidth), sqlq.Value(desc), string(issue.FromJiraStatusCategory(cat.Int64)),
 			seq.Int64)
 	}); err != nil {
 		return err
@@ -120,7 +120,7 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.priorities[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), sqlq.Value(color), seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), sqlq.VarcharWidth), sqlq.Value(desc), sqlq.Value(color), seq.Int64)
 	}); err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (r *run) importCatalogues() error {
 			return err
 		}
 		r.resolutions[id] = true
-		return ins.add(id, truncate(orDefault(name, id), 255), sqlq.Value(desc), seq.Int64)
+		return ins.add(id, truncate(orDefault(name, id), sqlq.VarcharWidth), sqlq.Value(desc), seq.Int64)
 	}); err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (r *run) importCatalogues() error {
 		}
 		r.linkTypes[id] = true
 		pos++
-		return ins.add(id, truncate(name.String, 255), truncate(inward.String, 255), truncate(outward.String, 255), pos)
+		return ins.add(id, truncate(name.String, sqlq.VarcharWidth), truncate(inward.String, sqlq.VarcharWidth), truncate(outward.String, sqlq.VarcharWidth), pos)
 	}); err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (r *run) importProjects() error {
 			return err
 		}
 		cats[id] = true
-		return ins.add(id, truncate(name.String, 255), sqlq.Value(desc))
+		return ins.add(id, truncate(name.String, sqlq.VarcharWidth), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (r *run) importProjects() error {
 		if assigneeType.Int64 == 2 {
 			defaultAssignee = "lead"
 		}
-		return ins.add(id, key.String, truncate(orDefault(name, key.String), 255), sqlq.Value(desc), leadID, category,
+		return ins.add(id, key.String, truncate(orDefault(name, key.String), sqlq.VarcharWidth), sqlq.Value(desc), leadID, category,
 			sqlq.Value(url), orDefault(kind, "software"), defaultAssignee, counter.Int64)
 	}); err != nil {
 		return err
@@ -306,7 +306,7 @@ func (r *run) importRoles() error {
 			return err
 		}
 		r.roles[id] = true
-		return ins.add(id, truncate(name.String, 255), sqlq.Value(desc))
+		return ins.add(id, truncate(name.String, sqlq.VarcharWidth), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
@@ -674,7 +674,7 @@ func (r *run) importSecurityLevels() error {
 		for _, l := range levelsOf[scheme] {
 			next++
 			r.levels[[2]int64{l.id, pid}] = next
-			if err := lins.add(next, pid, truncate(orDefault(l.name, "Level "+strconv.FormatInt(l.id, 10)), 255), sqlq.Value(l.desc)); err != nil {
+			if err := lins.add(next, pid, truncate(orDefault(l.name, "Level "+strconv.FormatInt(l.id, 10)), sqlq.VarcharWidth), sqlq.Value(l.desc)); err != nil {
 				return err
 			}
 			for _, m := range membersOf[l.id] {
@@ -761,7 +761,7 @@ func (r *run) importComponentsAndVersions() error {
 			return err
 		}
 		r.components[id] = true
-		return ins.add(id, pid.Int64, truncate(name.String, 255), sqlq.Value(desc), leadID, truthy(arch) || truthy(del))
+		return ins.add(id, pid.Int64, truncate(name.String, sqlq.VarcharWidth), sqlq.Value(desc), leadID, truthy(arch) || truthy(del))
 	}); err != nil {
 		return err
 	}
@@ -792,7 +792,7 @@ func (r *run) importComponentsAndVersions() error {
 			return nil
 		}
 		r.versions[id] = true
-		return ins.add(id, pid.Int64, truncate(name.String, 255), sqlq.Value(desc), seq.Int64, truthy(released), truthy(arch),
+		return ins.add(id, pid.Int64, truncate(name.String, sqlq.VarcharWidth), sqlq.Value(desc), seq.Int64, truthy(released), truthy(arch),
 			r.ndate(start), r.ndate(release))
 	}); err != nil {
 		return err
@@ -814,7 +814,7 @@ func (r *run) importCustomFields() error {
 			return err
 		}
 		r.fields[id] = typeKey.String
-		return ins.add(id, truncate(typeKey.String, 255), sqlq.Value(searcher), truncate(orDefault(name, "customfield_"+strconv.FormatInt(id, 10)), 255), sqlq.Value(desc))
+		return ins.add(id, truncate(typeKey.String, sqlq.VarcharWidth), sqlq.Value(searcher), truncate(orDefault(name, "customfield_"+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), sqlq.Value(desc))
 	}); err != nil {
 		return err
 	}
@@ -855,7 +855,7 @@ func (r *run) importCustomFields() error {
 		if o.parent != 0 && r.options[o.parent] {
 			parent = o.parent
 		}
-		if err := ins.add(o.id, o.field, parent, o.seq, truncate(o.value, 255), o.disabled); err != nil {
+		if err := ins.add(o.id, o.field, parent, o.seq, truncate(o.value, sqlq.VarcharWidth), o.disabled); err != nil {
 			return err
 		}
 	}

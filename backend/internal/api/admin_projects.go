@@ -218,7 +218,7 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 		return nil, err
 	}
 	var err error
-	if p.name, err = cleanName(in.Name, 255); err != nil {
+	if p.name, err = cleanName(in.Name, sqlq.VarcharWidth); err != nil {
 		return nil, err
 	}
 	if err := s.projectNameTaken(ctx, p.name, 0); err != nil {
@@ -333,7 +333,7 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	if a := p.access; a != nil {
 		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
 	}
-	s.auditLog(r, audit.ProjectCreate, target("project", id, p.key), details)
+	s.auditLog(r, audit.ProjectCreate, target(audit.TargetProject, id, p.key), details)
 	return writeJSON(w, http.StatusCreated, map[string]any{"id": id, "key": p.key})
 }
 
@@ -631,7 +631,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if changes := projectChanges(before, after); len(changes) > 0 {
-		s.auditLog(r, audit.ProjectUpdate, target("project", id, after.Key), changes)
+		s.auditLog(r, audit.ProjectUpdate, target(audit.TargetProject, id, after.Key), changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }
@@ -652,7 +652,7 @@ func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectC
 	raw map[string]json.RawMessage) (map[string]any, []string, error) {
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -826,7 +826,7 @@ func (s *Server) archiveProject(archived bool) handler {
 			if !archived {
 				action = audit.ProjectUnarchive
 			}
-			s.auditLog(r, action, target("project", id, key), nil)
+			s.auditLog(r, action, target(audit.TargetProject, id, key), nil)
 		}
 		p, err := s.projectSettings(r.Context(), id)
 		if err != nil {
@@ -949,7 +949,7 @@ func (s *Server) renameProject(w http.ResponseWriter, r *http.Request) error {
 	}
 	release()
 	s.perms.Invalidate()
-	s.auditLog(r, audit.ProjectRename, target("project", id, newKey),
+	s.auditLog(r, audit.ProjectRename, target(audit.TargetProject, id, newKey),
 		map[string]any{"oldKey": key, "newKey": newKey})
 	p, err := s.projectSettings(ctx, id)
 	if err != nil {
@@ -1017,7 +1017,7 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	s.perms.Invalidate()
-	s.auditLog(r, audit.ProjectDelete, target("project", id, key),
+	s.auditLog(r, audit.ProjectDelete, target(audit.TargetProject, id, key),
 		map[string]any{"issues": issues, "attachments": len(files)})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -1134,10 +1134,10 @@ func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
 			return errNotFound
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}
@@ -1169,7 +1169,7 @@ func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request) error {
 	if creating {
 		action, status = audit.CategoryCreate, http.StatusCreated
 	}
-	s.auditLog(r, action, target("category", id, list[0].Name),
+	s.auditLog(r, action, target(audit.TargetCategory, id, list[0].Name),
 		map[string]any{"description": list[0].Description})
 	return writeJSON(w, status, list[0])
 }
@@ -1193,7 +1193,7 @@ func (s *Server) deleteCategory(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM project_categories WHERE id = ?`, id); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.CategoryDelete, target("category", id, list[0].Name),
+	s.auditLog(r, audit.CategoryDelete, target(audit.TargetCategory, id, list[0].Name),
 		map[string]any{"projects": list[0].Projects})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

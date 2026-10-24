@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"solstice/internal/config"
+	"solstice/internal/jirafixture"
 )
 
 // parseProxies reads a trusted proxy list as the configuration would.
@@ -124,7 +125,7 @@ func TestLoginThrottlingBehindTrustedProxy(t *testing.T) {
 	}
 	// The guessing address is locked out, right password or not...
 	var he *httpError
-	if _, err := srv.checkPassword(guess, "hugo.robert", "motdepasse"); !errors.As(err, &he) ||
+	if _, err := srv.checkPassword(guess, "hugo.robert", jirafixture.Password); !errors.As(err, &he) ||
 		he.status != http.StatusTooManyRequests {
 		t.Fatalf("guessing client behind the proxy: %v, want 429", err)
 	}

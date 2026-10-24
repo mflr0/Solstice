@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -46,7 +47,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 	open := map[int64]int{}
 	vis, args := sub.VisibleSQL("i")
 	if err := sqlq.Each(ctx, s.db, `SELECT i.project_id, COUNT(*) FROM issues i JOIN statuses st ON st.id = i.status_id
-		WHERE `+vis+` AND st.category <> 'done' GROUP BY i.project_id`, func(rows *sql.Rows) error {
+		WHERE `+vis+` AND st.category <> ? GROUP BY i.project_id`, func(rows *sql.Rows) error {
 		var id int64
 		var n int
 		if err := rows.Scan(&id, &n); err != nil {
@@ -54,7 +55,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 		}
 		open[id] = n
 		return nil
-	}, args...); err != nil {
+	}, append(args, issue.Done)...); err != nil {
 		return err
 	}
 	var list []projectOut

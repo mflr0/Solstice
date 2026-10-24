@@ -169,7 +169,7 @@ func (s *Server) auditLevel(r *http.Request, action string, projectID int64, lev
 		details[k] = v
 	}
 	key := s.projectKeyOf(r.Context(), projectID)
-	s.auditLog(r, action, target("project", projectID, key), details)
+	s.auditLog(r, action, target(audit.TargetProject, projectID, key), details)
 }
 
 // saveSecurityLevel creates a level (no id in the path) or changes one.
@@ -198,11 +198,11 @@ func (s *Server) saveSecurityLevel(w http.ResponseWriter, r *http.Request) error
 			return err
 		}
 	} else if in.Name == nil {
-		return failf(http.StatusBadRequest, i18n.CommonNameRequired, 255)
+		return failf(http.StatusBadRequest, i18n.CommonNameRequired, sqlq.VarcharWidth)
 	}
 	sets := map[string]any{}
 	if in.Name != nil {
-		name, err := cleanName(*in.Name, 255)
+		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
 		if err != nil {
 			return err
 		}

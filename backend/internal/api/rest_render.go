@@ -139,8 +139,8 @@ func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 	for _, f := range defs {
 		if sel.has(customID(f.ID), true) {
 			custom = true
-			epic = epic || f.Kind == "gh-epic-link"
-			sprint = sprint || f.Kind == "gh-sprint"
+			epic = epic || f.Kind == issue.KindEpicLink
+			sprint = sprint || f.Kind == issue.KindSprint
 		}
 	}
 	need := map[string]bool{
@@ -374,7 +374,7 @@ func jiraDuration(secs int64) string {
 	for _, u := range []struct {
 		n    int64
 		unit string
-	}{{5 * 8 * 3600, "w"}, {8 * 3600, "d"}, {3600, "h"}, {60, "m"}} {
+	}{{issue.WorkWeekSeconds, "w"}, {issue.WorkDaySeconds, "d"}, {3600, "h"}, {60, "m"}} {
 		if secs >= u.n {
 			parts = append(parts, strconv.FormatInt(secs/u.n, 10)+u.unit)
 			secs %= u.n
@@ -392,7 +392,7 @@ func jiraDuration(secs int64) string {
 // gh-epic-color as imported.
 func staleKind(kind string) bool {
 	switch kind {
-	case "gh-lexo-rank", "gh-sprint", "gh-epic-color":
+	case issue.KindLexoRank, issue.KindSprint, issue.KindEpicColor:
 		return false
 	}
 	return hiddenKinds[kind]
@@ -401,12 +401,12 @@ func staleKind(kind string) bool {
 // customValue renders a custom field's value the way Jira does for its type.
 func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f customFieldDef, d *issueData) any {
 	switch f.Kind {
-	case "gh-epic-link":
+	case issue.KindEpicLink:
 		if d.epic != nil {
 			return d.epic.Key()
 		}
 		return nil
-	case "gh-sprint":
+	case issue.KindSprint:
 		if len(d.sprints) == 0 {
 			return nil
 		}
@@ -415,9 +415,9 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 			out = append(out, o.legacySprint(sp))
 		}
 		return out
-	case "gh-lexo-rank":
+	case issue.KindLexoRank:
 		return sqlq.Value(d.row.Rank)
-	case "labels":
+	case issue.KindLabels:
 		if l := d.customLabels[f.ID]; len(l) > 0 {
 			return l
 		}
@@ -428,15 +428,15 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 		return nil
 	}
 	switch f.Kind {
-	case "select", "radiobuttons", "gh-epic-status":
+	case issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus:
 		return o.option(set, values[0])
-	case "multiselect", "multicheckboxes":
+	case issue.KindMultiSelect, issue.KindMultiCheckboxes:
 		out := []any{}
 		for _, v := range values {
 			out = append(out, o.option(set, v))
 		}
 		return out
-	case "cascadingselect":
+	case issue.KindCascadingSelect:
 		var parent map[string]any
 		for _, v := range values {
 			if !v.parentKey.Valid {
@@ -449,10 +449,10 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 			return nil
 		}
 		return parent
-	case "userpicker":
+	case issue.KindUserPicker:
 		id, _ := strconv.ParseInt(values[0].str.String, 10, 64)
 		return userOf(users, id)
-	case "multiuserpicker":
+	case issue.KindMultiUserPicker:
 		out := []any{}
 		for _, v := range values {
 			id, _ := strconv.ParseInt(v.str.String, 10, 64)
@@ -461,15 +461,15 @@ func (o *restOut) customValue(set *issueSet, users map[int64]*jiraUser, f custom
 			}
 		}
 		return out
-	case "datepicker":
+	case issue.KindDatePicker:
 		if values[0].date.Valid {
 			return values[0].date.Time.UTC().Format(time.DateOnly)
 		}
-	case "datetime":
+	case issue.KindDateTime:
 		if values[0].date.Valid {
 			return o.time(values[0].date.Time)
 		}
-	case "float":
+	case issue.KindFloat:
 		if values[0].num.Valid {
 			return values[0].num.Float64
 		}
@@ -513,7 +513,7 @@ func (o *restOut) legacySprint(sp sprintData) string {
 	}
 	return fmt.Sprintf("com.atlassian.greenhopper.service.sprint.Sprint@%x[id=%d,rapidViewId=%s,state=%s,name=%s,"+
 		"startDate=%s,endDate=%s,completeDate=%s,activatedDate=%s,sequence=%d,goal=%s,autoStartStop=false,synced=false]",
-		sp.ID, sp.ID, nullIDText(sp.board.Int64), strings.ToUpper(sp.State), sp.Name, date(sp.Start), date(sp.End),
+		sp.ID, sp.ID, nullIDText(sp.board.Int64), strings.ToUpper(string(sp.State)), sp.Name, date(sp.Start), date(sp.End),
 		date(sp.Completed), date(sp.Start), sp.position, goal)
 }
 
@@ -526,7 +526,7 @@ func nullIDText(id int64) string {
 
 // sprintJSON is a sprint as Jira's Agile API shows one.
 func (o *restOut) sprintJSON(sp sprintOut, board int64) map[string]any {
-	out := map[string]any{"id": sp.ID, "self": o.base + "/rest/agile/1.0/sprint/" + o.id(sp.ID), "state": sp.State,
+	out := map[string]any{"id": sp.ID, "self": o.base + issue.AgileAPIPath + "/sprint/" + o.id(sp.ID), "state": sp.State,
 		"name": sp.Name}
 	date := func(t *time.Time) string { return t.In(o.tz).Format("2006-01-02T15:04:05.000Z07:00") }
 	if sp.Start != nil {
@@ -751,7 +751,7 @@ func (o *restOut) agileFields(cat *catalog, f map[string]any, d *issueData, sel 
 		var open any
 		closed := []any{}
 		for _, sp := range d.sprints {
-			if sp.State == "closed" {
+			if sp.State == issue.SprintClosed {
 				closed = append(closed, o.sprintJSON(sp.sprintOut, sp.board.Int64))
 			} else {
 				open = o.sprintJSON(sp.sprintOut, sp.board.Int64)
@@ -773,7 +773,7 @@ func (o *restOut) epicJSON(cat *catalog, epic *issueRow, name string) map[string
 	if name == "" {
 		name = epic.Summary
 	}
-	return map[string]any{"id": epic.ID, "key": epic.Key(), "self": o.base + "/rest/agile/1.0/epic/" + o.id(epic.ID),
+	return map[string]any{"id": epic.ID, "key": epic.Key(), "self": o.base + issue.AgileAPIPath + "/epic/" + o.id(epic.ID),
 		"name": name, "summary": epic.Summary, "color": map[string]string{"key": "color_1"},
 		"done": cat.statusOf(epic.StatusID).Category == issue.Done}
 }

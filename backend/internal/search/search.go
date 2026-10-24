@@ -285,7 +285,7 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 			WHERE ic.issue_id = i.id AND c.name = ?)`, []any{v}
 	case Version:
 		return `EXISTS (SELECT 1 FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
-			WHERE iv.issue_id = i.id AND iv.kind = 'fix' AND v.name = ?)`, []any{v}
+			WHERE iv.issue_id = i.id AND iv.kind = ? AND v.name = ?)`, []any{issue.VersionFix, v}
 	}
 	return "FALSE", nil
 }
