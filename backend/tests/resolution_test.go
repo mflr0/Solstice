@@ -3,6 +3,8 @@ package tests
 import (
 	"encoding/json"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type resolutionItem struct {
@@ -13,7 +15,7 @@ type resolutionItem struct {
 
 func TestDefaultResolution(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 
 	list := func() (items []resolutionItem, def string) {
 		t.Helper()

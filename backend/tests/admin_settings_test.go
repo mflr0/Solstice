@@ -6,6 +6,8 @@ package tests
 import (
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type generalSettings struct {
@@ -45,7 +47,7 @@ func TestInstanceSettings(t *testing.T) {
 	if len(before.Languages) != 5 || before.SessionDays < 1 {
 		t.Errorf("settings: %+v", before)
 	}
-	login(t, "paul.martin", "motdepasse").call("GET", "/api/admin/settings", nil, 403, nil)
+	login(t, "paul.martin", jirafixture.Password).call("GET", "/api/admin/settings", nil, 403, nil)
 
 	for _, bad := range []map[string]any{
 		{"instanceName": ""}, {"instanceName": strings.Repeat("x", 101)}, {"baseURL": "ftp://tickets.exemple.fr"},

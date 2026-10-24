@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type catalogueItem struct {
@@ -63,7 +65,7 @@ func catalogue(t *testing.T, admin *client, kind string) []catalogueItem {
 
 func TestPriorities(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	paul.call("GET", "/api/admin/priorities", nil, 403, nil)
 	before := catalogue(t, admin, "priorities")
 	var oldDefault string
@@ -181,7 +183,7 @@ func TestPriorities(t *testing.T) {
 
 func TestLinkTypes(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newProject(t, admin, nil)
 	a, b := createIssue(t, paul, key, "Suit", ""), createIssue(t, paul, key, "Est suivi", "")
 
@@ -213,7 +215,7 @@ func TestLinkTypes(t *testing.T) {
 
 func TestIssueTypes(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	var standard, subtask string
 	for _, it := range catalogue(t, admin, "issue-types") {
 		switch {
@@ -270,7 +272,7 @@ func TestIssueTypes(t *testing.T) {
 
 func TestResolutions(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	before := catalogue(t, admin, "resolutions")
 	target := before[0]
 
@@ -318,7 +320,7 @@ func TestResolutions(t *testing.T) {
 
 func TestStatusOrder(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	login(t, "paul.martin", "motdepasse").call("GET", "/api/admin/statuses", nil, 403, nil)
+	login(t, "paul.martin", jirafixture.Password).call("GET", "/api/admin/statuses", nil, 403, nil)
 	var list []struct {
 		ID    string
 		Usage map[string]int

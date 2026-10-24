@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // sprintsOf lists the open sprints of a board, by state.
@@ -27,7 +29,7 @@ func sprintsOf(t *testing.T, c *client, board string) (active, future []int64) {
 }
 
 func TestSprintEditAndDelete(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	board := boardID(t, "DEMO — Scrum")
 	status, body := marie.do("POST", "/api/boards/"+board+"/sprints", map[string]any{"name": "À renommer"})
 	if status != 201 {
@@ -64,7 +66,7 @@ func TestSprintEditAndDelete(t *testing.T) {
 		}
 	}
 	// Board managers only.
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	if status, _ := paul.do("PATCH", path, map[string]any{"name": "Piraté"}); status != 403 {
 		t.Errorf("a developer edited the sprint: %d", status)
 	}
@@ -161,7 +163,7 @@ func TestSprintEditAndDelete(t *testing.T) {
 	if status, _ := rest("POST", rpath, map[string]any{"state": "closed"}); status != 400 {
 		t.Errorf("REST: completing a future sprint: %d", status)
 	}
-	if status, _, _ := call(t, login(t, "paul.martin", "motdepasse"), testURL, "DELETE", rpath, nil,
+	if status, _, _ := call(t, login(t, "paul.martin", jirafixture.Password), testURL, "DELETE", rpath, nil,
 		func(r *http.Request) { r.Header.Set(csrfHeader, "1") }); status != 403 {
 		t.Errorf("REST delete by a developer: %d", status)
 	}

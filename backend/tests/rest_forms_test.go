@@ -14,13 +14,15 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // formUsers see different things: developers, a user with fewer rights, an
 // administrator.
 var formUsers = map[string]string{
-	"paul.martin": "motdepasse", "chloe.simon": "motdepasse", "hugo.robert": "motdepasse",
-	"lucas.bernard": "motdepasse", "admin": "admin",
+	"paul.martin": jirafixture.Password, "chloe.simon": jirafixture.Password, "hugo.robert": jirafixture.Password,
+	"lucas.bernard": jirafixture.Password, "admin": "admin",
 }
 
 type restCall func(method, path string, body any) (int, any)

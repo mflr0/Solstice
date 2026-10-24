@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type bulkResultOut struct {
@@ -42,7 +44,7 @@ func lastHistory(t *testing.T, c *client, key string) historyEntry {
 // history a single edit would have written.
 func TestBulkEdit(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	open, archived := newProject(t, admin, nil), newProject(t, admin, nil)
 	a := createIssue(t, paul, open, "Groupé A", "")
 	b := createIssue(t, paul, open, "Groupé B", "")
@@ -117,7 +119,7 @@ func historyLines(h historyEntry) []string {
 // A transition one issue's workflow lacks is refused for it alone.
 func TestBulkTransition(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	project := newProject(t, admin, nil)
 
 	// A straight line: first, then second, then third.

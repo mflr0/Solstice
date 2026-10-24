@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"solstice/internal/jirafixture"
 	"solstice/internal/mail/mailtest"
 )
 
@@ -23,8 +24,8 @@ var updateGolden = flag.Bool("update", false, "rewrite the golden files of the t
 func TestNotifyGolden(t *testing.T) {
 	t.Run("created-updated", func(t *testing.T) {
 		env := newNotifyEnv(t)
-		paul := env.login("paul.martin", "motdepasse")
-		hugo := env.login("hugo.robert", "motdepasse")
+		paul := env.login("paul.martin", jirafixture.Password)
+		hugo := env.login("hugo.robert", jirafixture.Password)
 		hugo.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
 		a := createIssue(t, paul, "WEB", "Export CSV <tronqué>", "À voir avec [~hugo.robert].\nDeuxième ligne.")
 		g := newGolden(t, a)
@@ -40,9 +41,9 @@ func TestNotifyGolden(t *testing.T) {
 
 	t.Run("relations", func(t *testing.T) {
 		env := newNotifyEnv(t)
-		paul := env.login("paul.martin", "motdepasse")
-		hugo := env.login("hugo.robert", "motdepasse")
-		chloe := env.login("chloe.simon", "motdepasse") // sees RH, which paul.martin does not
+		paul := env.login("paul.martin", jirafixture.Password)
+		hugo := env.login("hugo.robert", jirafixture.Password)
+		chloe := env.login("chloe.simon", jirafixture.Password) // sees RH, which paul.martin does not
 		paul.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
 		a := createIssue(t, paul, "WEB", "Lien source", "")
 		b := createIssue(t, paul, "WEB", "Lien cible", "")
@@ -59,9 +60,9 @@ func TestNotifyGolden(t *testing.T) {
 
 	t.Run("restricted-comment-fr", func(t *testing.T) {
 		env := newNotifyEnv(t)
-		paul := env.login("paul.martin", "motdepasse")
-		hugo := env.login("hugo.robert", "motdepasse")  // developpeurs
-		chloe := env.login("chloe.simon", "motdepasse") // not a developer
+		paul := env.login("paul.martin", jirafixture.Password)
+		hugo := env.login("hugo.robert", jirafixture.Password)  // developpeurs
+		chloe := env.login("chloe.simon", jirafixture.Password) // not a developer
 		hugo.call("PATCH", "/api/me", map[string]any{"locale": "fr"}, 200, nil)
 		a := createIssue(t, paul, "WEB", "Commentaire réservé", "")
 		env.deliver()
@@ -80,8 +81,8 @@ func TestNotifyGolden(t *testing.T) {
 
 	t.Run("digest-de", func(t *testing.T) {
 		env := newNotifyEnv(t)
-		paul := env.login("paul.martin", "motdepasse")
-		chloe := env.login("chloe.simon", "motdepasse")
+		paul := env.login("paul.martin", jirafixture.Password)
+		chloe := env.login("chloe.simon", jirafixture.Password)
 		a := createIssue(t, paul, "WEB", "Erster Eintrag", "")
 		b := createIssue(t, paul, "WEB", "Zweiter Eintrag", "")
 		env.deliver()

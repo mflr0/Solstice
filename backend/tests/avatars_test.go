@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func picturePNG(t *testing.T, w, h int) []byte {
@@ -59,7 +61,7 @@ func TestAvatarLifecycle(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	id, username := newAccount(t, admin, "une phrase assez longue")
 	me := login(t, username, "une phrase assez longue")
-	other := login(t, "paul.martin", "motdepasse")
+	other := login(t, "paul.martin", jirafixture.Password)
 
 	// Without a picture: the initials.
 	status, h, body := getPicture(t, other, id, nil)
@@ -143,7 +145,7 @@ func TestAvatarLifecycle(t *testing.T) {
 
 func TestAdminAvatar(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	id, username := newAccount(t, admin, "une phrase assez longue")
 	path := fmt.Sprintf("/api/admin/users/%d/avatar", id)
 
@@ -181,7 +183,7 @@ func TestJiraUserAvatar(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	id, username := newAccount(t, admin, "une phrase assez longue")
 	me := login(t, username, "une phrase assez longue")
-	other := login(t, "paul.martin", "motdepasse")
+	other := login(t, "paul.martin", jirafixture.Password)
 	jira := func() (int, http.Header, []byte) {
 		return call(t, other, other.base, "GET", "/secure/useravatar?ownerId="+username, nil, nil)
 	}

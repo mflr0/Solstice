@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"solstice/internal/api"
+	"solstice/internal/jirafixture"
 )
 
 // A later file over the upload limit takes the earlier ones of the request
@@ -21,7 +22,7 @@ func TestAttachmentUploadFailureRemovesEarlierFiles(t *testing.T) {
 	srv.SetMaxUpload(64 << 10)
 	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
 	t.Cleanup(ts.Close)
-	paul := loginAt(t, ts.URL, "paul.martin", "motdepasse")
+	paul := loginAt(t, ts.URL, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", unique("upload"), "")
 
 	status, body := uploadTexts(t, paul, key,

@@ -15,6 +15,7 @@ import (
 
 	"solstice/internal/api"
 	"solstice/internal/config"
+	"solstice/internal/jirafixture"
 )
 
 func TestIssueDeletionIsAudited(t *testing.T) {
@@ -45,7 +46,7 @@ func TestIssueDeletionIsAudited(t *testing.T) {
 
 // The exported rows never reach the audit log.
 func TestCSVExportIsAudited(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", "Export audité", "")
 	before, _ := latestAudit(t, "issue.export")
 	query := "jql=" + url.QueryEscape("key = "+key)
@@ -133,7 +134,7 @@ func TestSignInLockoutIsAudited(t *testing.T) {
 		t.Errorf("lockout address %q, want 203.0.113.7", addr)
 	}
 	// While locked, even the right password is refused, and nothing more is recorded.
-	if status := try("motdepasse"); status != http.StatusTooManyRequests {
+	if status := try(jirafixture.Password); status != http.StatusTooManyRequests {
 		t.Fatalf("locked address with the right password: %d, want 429", status)
 	}
 	if n2, _ := latestAudit(t, "login.lockout"); n2 != n {
@@ -333,7 +334,7 @@ func TestLockoutLogLineKeepsTypedNameOut(t *testing.T) {
 
 // One entry per file, through both routes, and a refused upload records none.
 func TestAttachmentChangesAreAudited(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := createIssue(t, paul, "DEMO", "Pièces jointes auditées", "")
 	uploads, _ := latestAudit(t, "attachment.upload")
 
@@ -364,7 +365,7 @@ func TestAttachmentChangesAreAudited(t *testing.T) {
 	fw.Write([]byte("par l'API"))
 	mw.Close()
 	status, _, raw := call(t, nil, testURL, "POST", "/rest/api/2/issue/"+key+"/attachments", nil, func(r *http.Request) {
-		basic("paul.martin", "motdepasse")(r)
+		basic("paul.martin", jirafixture.Password)(r)
 		r.Body = io.NopCloser(bytes.NewReader(buf.Bytes()))
 		r.ContentLength = int64(buf.Len())
 		r.Header.Set("Content-Type", mw.FormDataContentType())

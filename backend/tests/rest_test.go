@@ -19,13 +19,15 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/jirafixture"
 )
 
 // Sign-in ----------------------------------------------------------------------
 
 func TestTokenLifecycle(t *testing.T) {
 	allowTokensForEveryone(t)
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "CI nocturne", "expires": "2099-12-31"})
 	if status != 201 {
 		t.Fatalf("create token: %d %s", status, body)
@@ -43,7 +45,7 @@ func TestTokenLifecycle(t *testing.T) {
 	for name, setup := range map[string]func(*http.Request){
 		"bearer":           bearer(token),
 		"basic + token":    basic("paul.martin", token),
-		"basic + password": basic("paul.martin", "motdepasse"),
+		"basic + password": basic("paul.martin", jirafixture.Password),
 	} {
 		status, _, body := call(t, nil, testURL, "GET", "/rest/api/2/myself", nil, setup)
 		if status != 200 || str(obj(t, body), "name") != "paul.martin" {
@@ -68,7 +70,7 @@ func TestTokenLifecycle(t *testing.T) {
 		t.Fatalf("token list: %+v", list)
 	}
 	// Someone else cannot revoke it; its owner can.
-	if status, _ := login(t, "hugo.robert", "motdepasse").do("DELETE", fmt.Sprintf("/api/me/tokens/%d", list[i].ID), nil); status != 404 {
+	if status, _ := login(t, "hugo.robert", jirafixture.Password).do("DELETE", fmt.Sprintf("/api/me/tokens/%d", list[i].ID), nil); status != 404 {
 		t.Errorf("another user revoked the token: %d", status)
 	}
 	if status, _ := paul.do("DELETE", fmt.Sprintf("/api/me/tokens/%d", list[i].ID), nil); status != 204 {
@@ -118,7 +120,7 @@ func TestRESTBasicAuthThrottled(t *testing.T) {
 			t.Fatalf("attempt %d: %d, want 401", i+1, status)
 		}
 	}
-	status, h, _ := call(t, nil, base, "GET", "/rest/api/2/myself", nil, basic("lucas.bernard", "motdepasse"))
+	status, h, _ := call(t, nil, base, "GET", "/rest/api/2/myself", nil, basic("lucas.bernard", jirafixture.Password))
 	if status != http.StatusTooManyRequests || h.Get("X-Seraph-LoginReason") != "AUTHENTICATION_DENIED" {
 		t.Fatalf("right password after 5 failures: %d %v", status, h)
 	}
@@ -140,7 +142,7 @@ func TestRESTForgeryProtection(t *testing.T) {
 		WHERE p.pkey = 'DEMO' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	path := "/rest/api/2/issue/" + key + "/comment"
 	comment := map[string]string{"body": "Vérifié."}
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	token := newToken(t, "paul.martin", nil)
 	textPlain := func(r *http.Request) { r.Header.Set("Content-Type", "text/plain") }
 	for _, c := range []struct {
@@ -153,10 +155,10 @@ func TestRESTForgeryProtection(t *testing.T) {
 		{"cookie with X-Atlassian-Token", paul, header("X-Atlassian-Token", "no-check"), 201},
 		{"cookie with X-Solstice", paul, header(csrfHeader, "1"), 201},
 		{"bearer", nil, bearer(token), 201},
-		{"basic, JSON", nil, basic("paul.martin", "motdepasse"), 201},
-		{"basic, form-like body", nil, func(r *http.Request) { basic("paul.martin", "motdepasse")(r); textPlain(r) }, 403},
+		{"basic, JSON", nil, basic("paul.martin", jirafixture.Password), 201},
+		{"basic, form-like body", nil, func(r *http.Request) { basic("paul.martin", jirafixture.Password)(r); textPlain(r) }, 403},
 		{"basic, form-like body with header", nil, func(r *http.Request) {
-			basic("paul.martin", "motdepasse")(r)
+			basic("paul.martin", jirafixture.Password)(r)
 			textPlain(r)
 			r.Header.Set("X-Atlassian-Token", "no-check")
 		}, 201},
@@ -180,7 +182,7 @@ func TestRESTForgeryProtection(t *testing.T) {
 // Who sees what -----------------------------------------------------------------
 
 func TestRESTPermissionParity(t *testing.T) {
-	paul, chloe := login(t, "paul.martin", "motdepasse"), login(t, "chloe.simon", "motdepasse")
+	paul, chloe := login(t, "paul.martin", jirafixture.Password), login(t, "chloe.simon", jirafixture.Password)
 	rhKey := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
 	restricted := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -285,7 +287,7 @@ func TestRESTPermissionParity(t *testing.T) {
 var jiraTime = regexp.MustCompile(`^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}[+-]\d{4}$`)
 
 func TestRESTShapes(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	get := func(path string) any {
 		t.Helper()
 		status, _, body := call(t, paul, testURL, "GET", path, nil, nil)
@@ -427,7 +429,7 @@ func TestRESTShapes(t *testing.T) {
 // Round trips --------------------------------------------------------------------
 
 func TestRESTIssueRoundTrip(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	token := newToken(t, "paul.martin", nil)
 	do := func(method, path string, body any) (int, map[string]any) {
 		t.Helper()
@@ -550,7 +552,7 @@ func TestRESTIssueRoundTrip(t *testing.T) {
 		str(c, "body") != "Corrigé en 2.4.3." {
 		t.Errorf("edit comment: %d %v", status, c)
 	}
-	if status, _, _ := call(t, login(t, "chloe.simon", "motdepasse"), testURL, "GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil, nil); status != 404 {
+	if status, _, _ := call(t, login(t, "chloe.simon", jirafixture.Password), testURL, "GET", "/rest/api/2/issue/"+key+"/comment/"+cid, nil, nil); status != 404 {
 		t.Errorf("chloe.simon reads a comment restricted to developpeurs: %d", status)
 	}
 	if status, _ := do("DELETE", "/rest/api/2/issue/"+key+"/comment/"+cid, nil); status != 204 {
@@ -582,7 +584,7 @@ func TestRESTIssueRoundTrip(t *testing.T) {
 	if _, w := do("GET", "/rest/api/2/issue/"+key+"/watchers", nil); num(w, "watchCount") != 1 || str(w, "watchers", 0, "name") != "hugo.robert" {
 		t.Errorf("watchers seen by a developer: %v", w)
 	}
-	chloe := login(t, "chloe.simon", "motdepasse")
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	if status, _, _ := call(t, chloe, testURL, "POST", "/rest/api/2/issue/"+key+"/watchers", "lucas.bernard",
 		header("X-Atlassian-Token", "no-check")); status != 403 {
 		t.Errorf("chloe.simon added a watcher without the permission: %d", status)
@@ -752,7 +754,7 @@ func TestRESTSubtaskAndEpic(t *testing.T) {
 }
 
 func TestAgileREST(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	get := func(path string) map[string]any {
 		t.Helper()
 		status, _, body := call(t, marie, testURL, "GET", path, nil, nil)
@@ -926,7 +928,7 @@ func TestAgileREST(t *testing.T) {
 	// One only ranks issues one sees (and may edit).
 	rh := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL ORDER BY i.num LIMIT 1`)
-	if status, _, _ := call(t, login(t, "paul.martin", "motdepasse"), testURL, "PUT", "/rest/agile/1.0/issue/rank",
+	if status, _, _ := call(t, login(t, "paul.martin", jirafixture.Password), testURL, "PUT", "/rest/agile/1.0/issue/rank",
 		map[string]any{"issues": []string{rh}, "rankAfterIssue": first}, header("X-Atlassian-Token", "no-check")); status != 404 {
 		t.Errorf("paul.martin ranked an RH issue: %d", status)
 	}

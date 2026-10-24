@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // restNames lists the names of a REST list of components or versions.
@@ -22,7 +24,7 @@ func restNames(v any) []string {
 // remove, and refuses another project's values.
 func TestRESTWriteProjectParts(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	rest := restAs(t, "paul.martin")
 	key, other := newProject(t, admin, nil), newProject(t, admin, nil)
 	add := func(project, kind, name string) string {

@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestLoggedWorkAdjustsEstimate(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	const day = 8 * 3600
 	key := newTestIssue(t, paul, "Le temps saisi réduit le reste à faire", map[string]any{"originalEstimate": "2d"})
 	paul.do("PATCH", "/api/issues/"+key, map[string]any{"remainingEstimate": "2h"})
@@ -27,7 +29,7 @@ func TestLoggedWorkAdjustsEstimate(t *testing.T) {
 }
 
 func TestWorklogEditAndDelete(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	key := newTestIssue(t, paul, "Corriger le temps saisi", map[string]any{"originalEstimate": "4h"})
 	paul.do("POST", "/api/issues/"+key+"/worklogs", map[string]any{"seconds": 3600, "body": "Analyse"})
 	var logs []worklogOut
@@ -70,7 +72,7 @@ func TestWorklogEditAndDelete(t *testing.T) {
 	}
 
 	// Someone else may not, unless they moderate the project.
-	hugo := login(t, "hugo.robert", "motdepasse")
+	hugo := login(t, "hugo.robert", jirafixture.Password)
 	if status, _ := hugo.do("PUT", path, map[string]any{"seconds": 60}); status != 403 {
 		t.Errorf("another user edited the work log: %d", status)
 	}
@@ -82,7 +84,7 @@ func TestWorklogEditAndDelete(t *testing.T) {
 	if len(hugoLogs) != 1 || hugoLogs[0].CanEdit {
 		t.Errorf("what another user may edit: %+v", hugoLogs)
 	}
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	var d issueDetail
 	marie.get("/api/issues/"+key, &d)
 	if d.Can["moderate"] {

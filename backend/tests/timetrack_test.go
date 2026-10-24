@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // newTestIssue creates a task in DEMO as the user and returns its key.
@@ -74,7 +76,7 @@ func historyFields(t *testing.T, c *client, key string) map[string]int {
 }
 
 func TestEstimatesOnIssues(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	const day = 8 * 3600
 
 	// Created with an original estimate: the remaining one starts equal.
@@ -154,7 +156,7 @@ func TestEstimatesOnIssues(t *testing.T) {
 		t.Errorf("REST edit with a bad estimate: %d %v", status, e)
 	}
 	// Someone who cannot edit the issue cannot change its estimates.
-	chloe := login(t, "chloe.simon", "motdepasse")
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 	var d issueDetail
 	if chloe.get("/api/issues/"+rkey, &d) == 200 && !d.Can["edit"] {
 		if status, _ := chloe.do("PATCH", "/api/issues/"+rkey, map[string]any{"originalEstimate": "1h"}); status != 403 {

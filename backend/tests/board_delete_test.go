@@ -3,12 +3,14 @@ package tests
 import (
 	"fmt"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // Deleting a board deletes its future sprints, completes its active one and
 // keeps its closed ones as history.
 func TestBoardDeleteSettlesItsSprints(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
 	board, future := scopeBoard(t, marie, "WEB")
 	active, closed := scopeSprint(t, marie, board), scopeSprint(t, marie, board)
 	t.Cleanup(func() { testDB.Exec(`DELETE FROM sprints WHERE id IN (?, ?)`, active, closed) })

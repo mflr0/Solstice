@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // TestRESTConcurrentCreations sends simultaneous work logs and attachments by
 // one user to one issue: each answer must name the record of its own request.
 func TestRESTConcurrentCreations(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	token := newToken(t, "paul.martin", nil)
 	key := createIssue(t, paul, "DEMO", unique("Simultaneous creations "), "")
 	send := func(req *http.Request) (int, []byte, error) {

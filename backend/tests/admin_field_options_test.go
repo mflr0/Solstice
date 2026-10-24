@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type fieldOptionOut struct {
@@ -24,7 +26,7 @@ type fieldDetailOut struct {
 // option or are cleared, and a text field has no options to remove.
 func TestDeleteFieldOption(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 
 	var field fieldDetailOut
 	status, body := admin.do("POST", "/api/admin/fields", map[string]any{

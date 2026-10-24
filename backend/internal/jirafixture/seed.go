@@ -386,6 +386,10 @@ const (
 	deletedUserKey = "JIRAUSER10099"
 )
 
+// Password is the password of every internal user but admin, whose password
+// is "admin".
+const Password = "motdepasse"
+
 // Legacy keys predate Jira 6 user keys; jdoe is a user renamed since.
 var specialKeys = map[string]string{"admin": "admin", "paul.martin": "paul.martin", "jeanne.dupont": "jdoe"}
 
@@ -454,7 +458,7 @@ func (g *generator) seedDirectory() {
 	for _, d := range internalUsers {
 		u := newUser(d.name, d.first, d.last)
 		u.active = d.name != inactiveUser
-		password := "motdepasse"
+		password := Password
 		if d.name == "admin" {
 			password = "admin"
 		}

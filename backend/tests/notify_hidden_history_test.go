@@ -8,14 +8,16 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestNotifyHidesInvisibleIssues(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	lea := env.login("lea.richard", "motdepasse")   // rh: makes the changes
-	paul := env.login("paul.martin", "motdepasse")  // not rh
-	chloe := env.login("chloe.simon", "motdepasse") // rh
+	lea := env.login("lea.richard", jirafixture.Password)   // rh: makes the changes
+	paul := env.login("paul.martin", jirafixture.Password)  // not rh
+	chloe := env.login("chloe.simon", jirafixture.Password) // rh
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 
 	for _, name := range []string{"current key", "former key", "one-letter key"} {
@@ -129,8 +131,8 @@ func oneLetterKey(t *testing.T, key string) string {
 func TestHistoryKeepsLinesNamingNoIssue(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	lea := env.login("lea.richard", "motdepasse")
-	paul := env.login("paul.martin", "motdepasse")
+	lea := env.login("lea.richard", jirafixture.Password)
+	paul := env.login("paul.martin", jirafixture.Password)
 	linkType := pick(t, `SELECT id FROM link_types ORDER BY position LIMIT 1`)
 
 	visible := createIssue(t, lea, "WEB", "Page carrières", "")

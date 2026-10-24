@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // txField creates a custom field of DEMO, deleted when the test ends.
@@ -64,7 +66,7 @@ func deleteAfter(t *testing.T, key string) {
 
 func TestCreateWritesCustomFieldsWithTheIssue(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	field, _ := txField(t, admin, "select", "Bas", "Haut")
 	demo := `(SELECT id FROM projects WHERE pkey = 'DEMO')`
 	component := dbInt(t, `SELECT id FROM components WHERE project_id = `+demo+` ORDER BY id LIMIT 1`)
@@ -106,7 +108,7 @@ func TestCreateWritesCustomFieldsWithTheIssue(t *testing.T) {
 
 func TestEditWritesCustomFieldsInOneHistoryGroup(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	field, name := txField(t, admin, "select", "Bas", "Haut")
 	key := scratchIssue(t, paul, "Édition mêlée")
 
@@ -122,7 +124,7 @@ func TestEditWritesCustomFieldsInOneHistoryGroup(t *testing.T) {
 
 func TestCustomFieldFailureWritesNothing(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	field, _ := txField(t, admin, "text")
 	// The database refuses this field's values: the write fails after
 	// everything else was checked and written.
@@ -162,7 +164,7 @@ func TestCustomFieldFailureWritesNothing(t *testing.T) {
 func TestCreationEventSeesCustomFields(t *testing.T) {
 	env := newNotifyEnv(t)
 	admin := env.login("admin", "admin")
-	paul := env.login("paul.martin", "motdepasse")
+	paul := env.login("paul.martin", jirafixture.Password)
 	field, _ := txField(t, admin, "select", "Bas", "Haut")
 	rc := newHookReceiver(t)
 	admin.call("POST", "/api/admin/webhooks", map[string]any{"name": unique("Champs "), "url": rc.srv.URL + "/hook",

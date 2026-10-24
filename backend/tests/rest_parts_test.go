@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func restAs(t *testing.T, username string) func(method, path string, body any) (int, map[string]any) {
@@ -294,7 +296,7 @@ func TestRESTFilters(t *testing.T) {
 		Query     string
 		Favourite bool
 	}
-	login(t, "paul.martin", "motdepasse").get("/api/filters", &ui)
+	login(t, "paul.martin", jirafixture.Password).get("/api/filters", &ui)
 	found := false
 	for _, v := range ui {
 		found = found || (strconv.FormatInt(v.ID, 10) == id && v.Query == "project = DEMO ORDER BY key" && v.Favourite)

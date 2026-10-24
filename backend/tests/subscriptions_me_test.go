@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestMySubscriptions(t *testing.T) {
-	marie := login(t, "marie.durand", "motdepasse")
-	paul := login(t, "paul.martin", "motdepasse")
-	hugo := login(t, "hugo.robert", "motdepasse")
+	marie := login(t, "marie.durand", jirafixture.Password)
+	paul := login(t, "paul.martin", jirafixture.Password)
+	hugo := login(t, "hugo.robert", jirafixture.Password)
 
 	status, body := marie.do("POST", "/api/filters", map[string]any{"name": "Abonnements de la liste", "query": "project = DEMO",
 		"shares": []map[string]any{{"kind": "everyone"}}})

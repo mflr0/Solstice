@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 var pathParam = regexp.MustCompile(`\{[a-z]+\}`)
@@ -119,7 +121,7 @@ func TestAdminRoutesRequireAdmin(t *testing.T) {
 		want   int
 	}{
 		{"anonymous", anonymous(t), 401},
-		{"user", login(t, "paul.martin", "motdepasse"), 403},
+		{"user", login(t, "paul.martin", jirafixture.Password), 403},
 	}
 	for _, route := range adminRoutes(t) {
 		method, pattern, _ := strings.Cut(route, " ")

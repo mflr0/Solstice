@@ -3,13 +3,15 @@ package tests
 import (
 	"encoding/json"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 // TestStatusUsage checks where the administration says a status is used, and
 // that it agrees with the counts of the list and with what deletion refuses.
 func TestStatusUsage(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 
 	var list []struct {
 		ID    string         `json:"id"`

@@ -6,11 +6,13 @@ package tests
 import (
 	"fmt"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 func TestBoardMoveChecksEveryPermissionFirst(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse") // developpeurs
+	paul := login(t, "paul.martin", jirafixture.Password) // developpeurs
 	key := newProject(t, admin, nil)
 
 	// The developers may change a status but not edit.

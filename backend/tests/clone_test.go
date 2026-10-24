@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"solstice/internal/jirafixture"
 )
 
 type cloneAnswer struct {
@@ -77,8 +79,8 @@ func assigneeName(u *userRef) string {
 
 func TestCloneCopiesTheIssue(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
-	chloe := login(t, "chloe.simon", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	chloe := login(t, "chloe.simon", jirafixture.Password)
 
 	component := dbInt(t, `SELECT c.id FROM components c JOIN projects p ON p.id = c.project_id
 		WHERE p.pkey = 'DEMO' ORDER BY c.id LIMIT 1`)
@@ -241,8 +243,8 @@ func TestCloneCopiesTheIssue(t *testing.T) {
 }
 
 func TestCloneOptionsAndLanguage(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
-	chloe := login(t, "chloe.simon", "motdepasse") // not a developer: does not see "Équipe" issues
+	paul := login(t, "paul.martin", jirafixture.Password)
+	chloe := login(t, "chloe.simon", jirafixture.Password) // not a developer: does not see "Équipe" issues
 	team := dbInt(t, `SELECT l.id FROM security_levels l JOIN projects p ON p.id = l.project_id
 		WHERE p.pkey = 'DEMO' AND l.name = 'Équipe'`)
 	subtaskType := pick(t, `SELECT t.issue_type_id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
@@ -307,7 +309,7 @@ func TestCloneOptionsAndLanguage(t *testing.T) {
 
 func TestCloneRefusals(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	demo := createIssue(t, paul, "DEMO", "À cloner", "")
 
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -338,7 +340,7 @@ func TestCloneRefusals(t *testing.T) {
 }
 
 func TestCloneReportsAFileItCannotCopy(t *testing.T) {
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	orig := createIssue(t, paul, "DEMO", "Avec des pièces jointes", "")
 	origID := issueIDOf(t, orig)
 	// One row whose file is not in the data folder, one that was never imported.
@@ -372,7 +374,7 @@ func TestCloneReportsAFileItCannotCopy(t *testing.T) {
 
 func TestCloneLinksTheOriginalOnlyWithTheLinkPermission(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 
 	// With the permission (DEMO): the link is made and nothing is reported.
 	allowed := createIssue(t, paul, "DEMO", "Liens permis", "")
@@ -420,7 +422,7 @@ func TestCloneLinksTheOriginalOnlyWithTheLinkPermission(t *testing.T) {
 
 func TestCloneSubtasksNeedCreateInTheirOwnProject(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	paul := login(t, "paul.martin", "motdepasse")
+	paul := login(t, "paul.martin", jirafixture.Password)
 	subtaskType := pick(t, `SELECT t.issue_type_id FROM project_issue_types t JOIN issue_types it ON it.id = t.issue_type_id
 		JOIN projects p ON p.id = t.project_id WHERE p.pkey = 'DEMO' AND it.subtask LIMIT 1`)
 

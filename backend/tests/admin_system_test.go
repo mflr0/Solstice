@@ -9,12 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"solstice/internal/jirafixture"
 	"solstice/internal/mail/mailtest"
 )
 
 func TestSystemInfo(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	login(t, "paul.martin", "motdepasse").call("GET", "/api/admin/system", nil, 403, nil)
+	login(t, "paul.martin", jirafixture.Password).call("GET", "/api/admin/system", nil, 403, nil)
 	raw := admin.call("GET", "/api/admin/system", nil, 200, nil)
 	info := obj(t, raw)
 	if !strings.HasPrefix(str(info, "database", "server"), "MariaDB") ||
@@ -40,7 +41,7 @@ func TestSystemInfo(t *testing.T) {
 
 func TestImportGuards(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	login(t, "paul.martin", "motdepasse").call("GET", "/api/admin/import", nil, 403, nil)
+	login(t, "paul.martin", jirafixture.Password).call("GET", "/api/admin/import", nil, 403, nil)
 	var state struct {
 		Confirm string
 		Job     any
@@ -73,7 +74,7 @@ func TestImportGuards(t *testing.T) {
 
 func TestMailQueueRetry(t *testing.T) {
 	admin := login(t, "admin", "admin")
-	login(t, "paul.martin", "motdepasse").call("POST", "/api/admin/mail/queue/retry", nil, 403, nil)
+	login(t, "paul.martin", jirafixture.Password).call("POST", "/api/admin/mail/queue/retry", nil, 403, nil)
 	mailtest.Lock(t, testDB)
 	if _, err := testDB.Exec(`INSERT INTO mail_outbox (kind, to_addr, subject, text_body, html_body, message_id, status,
 		attempts, next_attempt_at, created_at) VALUES ('retry-test', 'x@exemple.fr', 's', 't', 'h', '<retry@exemple.fr>',
