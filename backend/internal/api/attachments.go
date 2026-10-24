@@ -9,15 +9,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"solstice/internal/i18n"
-	"solstice/internal/sqlq"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"solstice/internal/audit"
+	"solstice/internal/i18n"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 )
 
 // SetMaxUpload caps a single upload request, in bytes. Call it before the

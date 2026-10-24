@@ -2,8 +2,9 @@ package importer
 
 import (
 	"database/sql"
-	"solstice/internal/sqlq"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // globalIDs hands out the globalIds of remote links. Solstice keeps one per

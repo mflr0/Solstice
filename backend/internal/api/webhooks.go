@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"solstice/internal/i18n"
-	"solstice/internal/sqlq"
 	"strings"
 	"unicode/utf8"
 
 	"solstice/internal/audit"
+	"solstice/internal/i18n"
 	"solstice/internal/perm"
+	"solstice/internal/sqlq"
 	"solstice/internal/webhook"
 )
 

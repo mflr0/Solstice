@@ -175,6 +175,10 @@ const DefaultRetentionDays = 365
 // who changed what last month.
 const MinRetentionDays = 30
 
+// MaxRetentionDays is the longest retention an administrator may set, about a
+// century. The interface states it as AUDIT_MAX_RETENTION.
+const MaxRetentionDays = 36500
+
 // purgeEvery spaces the purges that Record runs as it goes.
 const purgeEvery = time.Hour
 

@@ -6,10 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"solstice/internal/web"
 	"strconv"
 	"strings"
 	"testing"
+
+	"solstice/internal/web"
 )
 
 func serveGzip(t *testing.T, path, acceptEncoding, contentType, body string) *httptest.ResponseRecorder {

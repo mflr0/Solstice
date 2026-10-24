@@ -13,13 +13,13 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
-	"strconv"
-	"strings"
 )
 
 // jiraEditInput is the body of Jira's create and edit requests.

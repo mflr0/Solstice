@@ -10,15 +10,15 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
+	"time"
 
 	"solstice/internal/audit"
 	"solstice/internal/auth"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/sqlq"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // record writes e to the audit log. A failure is logged, not returned: the
@@ -225,7 +225,7 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 	if err := readJSON(r, &in); err != nil {
 		return err
 	}
-	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > 36500 {
+	if in.RetentionDays == nil || *in.RetentionDays < 0 || *in.RetentionDays > audit.MaxRetentionDays {
 		return fail(http.StatusBadRequest, i18n.AuditRetentionInvalid)
 	}
 	if days := *in.RetentionDays; days != 0 && days < audit.MinRetentionDays {

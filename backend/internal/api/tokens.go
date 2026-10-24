@@ -18,6 +18,10 @@ import (
 	"unicode/utf8"
 )
 
+// maxTokenName is the longest token name, in characters; the interface states
+// it as TOKEN_NAME_MAX.
+const maxTokenName = 100
+
 // credentials reads what scripts and API clients send: "Authorization:
 // Bearer <personal access token>", or HTTP basic with a user name and either
 // the password (throttled like the sign-in form) or a personal access token.
@@ -166,7 +170,7 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	name := strings.TrimSpace(in.Name)
-	if name == "" || utf8.RuneCountInString(name) > 100 {
+	if name == "" || utf8.RuneCountInString(name) > maxTokenName {
 		return fail(http.StatusBadRequest, i18n.TokenNameRequired)
 	}
 	var expires *time.Time

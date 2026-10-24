@@ -130,6 +130,14 @@ const (
 	maxBannerText       = 500
 )
 
+// The ranges the interface states as SESSION_DAYS and PASSWORD_LENGTH.
+const (
+	minSessionDays    = 1
+	maxSessionDays    = 365
+	minPasswordLength = 8
+	maxPasswordLength = 128
+)
+
 // bootSource tells where a value given at start comes from: the
 // configuration file (or the environment, which overrides it) when set.
 func bootSource(value string) string {
@@ -426,7 +434,7 @@ func checkBanner(raw json.RawMessage, invalid error) (any, error) {
 
 func checkSessionDays(raw json.RawMessage, _ error) (any, error) {
 	var v int
-	if json.Unmarshal(raw, &v) != nil || v < 1 || v > 365 {
+	if json.Unmarshal(raw, &v) != nil || v < minSessionDays || v > maxSessionDays {
 		return nil, fail(http.StatusBadRequest, i18n.SettingsSessionLengthInvalid)
 	}
 	return v, nil
@@ -434,7 +442,7 @@ func checkSessionDays(raw json.RawMessage, _ error) (any, error) {
 
 func checkPasswordMinLength(raw json.RawMessage, _ error) (any, error) {
 	var v int
-	if json.Unmarshal(raw, &v) != nil || v < 8 || v > 128 {
+	if json.Unmarshal(raw, &v) != nil || v < minPasswordLength || v > maxPasswordLength {
 		return nil, fail(http.StatusBadRequest, i18n.SettingsPasswordLengthInvalid)
 	}
 	return v, nil

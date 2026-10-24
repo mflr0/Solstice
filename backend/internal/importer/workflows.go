@@ -5,8 +5,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"slices"
-	"solstice/internal/sqlq"
 	"strings"
+
+	"solstice/internal/sqlq"
 )
 
 // workflow is a Jira workflow reduced to what Solstice keeps: statuses and the

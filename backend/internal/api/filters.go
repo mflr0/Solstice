@@ -4,17 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	"unicode/utf8"
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
-	"unicode/utf8"
 )
 
 // Saved filters: a name on a query (JQL or simple syntax), private to their
