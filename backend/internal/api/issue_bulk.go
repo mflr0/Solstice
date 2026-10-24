@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
+	"math/rand/v2"
 	"net/http"
 	"slices"
 	"strings"
 
+	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -78,8 +81,10 @@ type bulkResult struct {
 
 // bulkIssues applies one change to each of the issues given, one by one,
 // through the code of the single-issue routes. An issue refused does not
-// stop the others.
+// stop the others. Its events carry one bulk id, so each recipient gets one
+// e-mail for them all.
 func (s *Server) bulkIssues(w http.ResponseWriter, r *http.Request) error {
+	r = r.WithContext(events.WithBulk(r.Context(), rand.Int64N(math.MaxInt64)+1))
 	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {

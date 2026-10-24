@@ -564,6 +564,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyCommentEdited:       "%s ने एक टिप्पणी बदली।",
 	NotifyMentionComment:      "%s ने एक टिप्पणी में आपका उल्लेख किया।",
 	NotifyMentionDescription:  "%s ने वर्णन में आपका उल्लेख किया।",
+	NotifyBulkSubject:         "%s ने %d टिकट बदले",
 
 	// Filter subscriptions and their e-mails.
 	SubscriptionDayRequired:      "कम से कम एक दिन चुनें।",
