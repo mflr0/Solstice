@@ -1,9 +1,11 @@
 <script lang="ts">
   import { isOverdue } from '../core/dates.js';
   import { paths } from '../core/route.js';
+  import { shortcutFor } from '../core/shortcuts.js';
   import type { IssueSummary } from '../core/types.js';
   import { formatDay, t } from '../i18n/t.js';
   import { router } from '../lib/router.svelte.js';
+  import { appearance, ignoreShortcut } from '../lib/ui.svelte.js';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';
   import RelTime from './RelTime.svelte';
@@ -23,7 +25,10 @@
     columns?: readonly string[] | undefined;
     /** Column names by id, for the columns the table has no name of its own for. */
     names?: Record<string, string> | undefined;
-    /** With onselect, a checkbox per row and one for the whole page. */
+    /**
+     * With onselect, a checkbox per row and one for the whole page, and the
+     * search results' keys: j and k move between rows, o or Enter opens, x selects.
+     */
     selected?: readonly string[] | undefined;
     onselect?: ((keys: string[]) => void) | undefined;
   }
@@ -73,7 +78,34 @@
     if ((e.target as Element).closest('a, button, label, input')) return;
     router.navigate(paths.issue(key));
   }
+
+  let body: HTMLTableSectionElement | undefined = $state();
+
+  function keys(e: KeyboardEvent) {
+    if (!onselect || !body || ignoreShortcut(e)) return;
+    const action = shortcutFor(e.key, 'results', appearance.shortcuts);
+    if (!action) return;
+    const rows = [...body.rows];
+    const current = rows.findIndex((r) => r.contains(document.activeElement));
+    if (action === 'next' || action === 'previous') {
+      if (!rows.length) return;
+      e.preventDefault();
+      const step = action === 'next' ? 1 : -1;
+      const to = current < 0 ? 0 : Math.min(Math.max(current + step, 0), rows.length - 1);
+      rows[to]?.focus();
+      return;
+    }
+    // Enter on a link or a checkbox in the row keeps its own meaning.
+    if (current < 0 || (e.key === 'Enter' && document.activeElement !== rows[current])) return;
+    const issue = issues[current];
+    if (!issue) return;
+    e.preventDefault();
+    if (action === 'open') router.navigate(paths.issue(issue.key));
+    else if (action === 'select') toggle(issue.key, !selected.includes(issue.key));
+  }
 </script>
+
+<svelte:window onkeydown={keys} />
 
 <div class="issue-table">
   <table class="ledger">
@@ -113,9 +145,13 @@
         {/each}
       </tr>
     </thead>
-    <tbody>
+    <tbody bind:this={body}>
       {#each issues as issue (issue.key)}
-        <tr onclick={(e) => open(e, issue.key)} class:picked={selected.includes(issue.key)}>
+        <tr
+          onclick={(e) => open(e, issue.key)}
+          class:picked={selected.includes(issue.key)}
+          tabindex={onselect ? -1 : undefined}
+        >
           {#if onselect}
             <td class="c-pick">
               <label class="pick">
@@ -173,6 +209,11 @@
 
   tbody tr {
     cursor: pointer;
+  }
+
+  tbody tr:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 
   .c-pick {

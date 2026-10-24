@@ -31,6 +31,16 @@
     pending = null;
   }
 
+  let menu: HTMLDivElement | undefined = $state();
+
+  /** Opens the list of moves with the first one focused (the "t" key); false when there are none. */
+  export function openMenu(): boolean {
+    if (!movable) return false;
+    open = true;
+    queueMicrotask(() => menu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+    return true;
+  }
+
   async function apply(tr: Transition) {
     if (tr.to.category === 'done' && !pending) {
       pending = tr;
@@ -62,7 +72,7 @@
   {/if}
 
   {#if open}
-    <div class="popover" role="menu" aria-label={t.issue.changeStatus}>
+    <div class="popover" role="menu" aria-label={t.issue.changeStatus} bind:this={menu}>
       {#if pending}
         <form
           class="resolve"

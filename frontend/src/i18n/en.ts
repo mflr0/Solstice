@@ -747,6 +747,31 @@ export const en = {
       `${plural(n, 'sub-task has an assignee who can’t be assigned in the new project: the assignee is changed', 'sub-tasks have assignees who can’t be assigned in the new project: the assignees are changed')}.`,
   },
 
+  keyboard: {
+    title: 'Keyboard shortcuts',
+    scopes: { global: 'Everywhere', results: 'Search results', issue: 'Issue page' },
+    actions: {
+      search: 'Search',
+      create: 'Create an issue',
+      help: 'Show the shortcuts',
+      next: 'Next result',
+      previous: 'Previous result',
+      open: 'Open the result',
+      select: 'Select the result',
+      editSummary: 'Edit the summary',
+      assignToMe: 'Assign to me',
+      comment: 'Write a comment',
+      status: 'Change the status',
+      watch: 'Watch or stop watching',
+    },
+    or: 'or',
+    off: 'Single-key shortcuts are turned off; Enter still opens a result.',
+    settings: 'Appearance settings',
+    toggle: 'Single-key shortcuts',
+    toggleHint:
+      'Keys such as c or / act without Ctrl or Alt. Turn them off if they get in the way of a screen reader or voice control. Applies to this browser.',
+    list: 'See every shortcut',
+  },
   comments: {
     empty: 'No comments yet.',
     placeholder: 'Write a comment…',

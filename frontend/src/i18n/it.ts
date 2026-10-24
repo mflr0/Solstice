@@ -752,6 +752,31 @@ export const it: Messages = {
       `${plural(n, 'sotto-task ha un assegnatario che non può esserlo nel nuovo progetto: viene sostituito', 'sotto-task hanno assegnatari che non possono esserlo nel nuovo progetto: vengono sostituiti')}.`,
   },
 
+  keyboard: {
+    title: 'Scorciatoie da tastiera',
+    scopes: { global: 'Ovunque', results: 'Risultati della ricerca', issue: 'Pagina del ticket' },
+    actions: {
+      search: 'Cerca',
+      create: 'Crea un ticket',
+      help: 'Mostra le scorciatoie',
+      next: 'Risultato successivo',
+      previous: 'Risultato precedente',
+      open: 'Apri il risultato',
+      select: 'Seleziona il risultato',
+      editSummary: 'Modifica il riepilogo',
+      assignToMe: 'Assegna a me',
+      comment: 'Scrivi un commento',
+      status: 'Cambia stato',
+      watch: 'Osserva o smetti di osservare',
+    },
+    or: 'o',
+    off: 'Le scorciatoie a un tasto sono disattivate; Invio apre comunque un risultato.',
+    settings: 'Impostazioni di aspetto',
+    toggle: 'Scorciatoie a un tasto',
+    toggleHint:
+      'Tasti come c o / agiscono senza Ctrl né Alt. Disattivale se disturbano uno screen reader o il controllo vocale. Vale per questo browser.',
+    list: 'Vedi tutte le scorciatoie',
+  },
   comments: {
     empty: 'Ancora nessun commento.',
     placeholder: 'Il tuo commento…',
