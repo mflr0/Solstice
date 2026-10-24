@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"math"
-	"math/rand/v2"
 	"net/http"
 	"slices"
 	"strings"
@@ -84,7 +84,7 @@ type bulkResult struct {
 // stop the others. Its events carry one bulk id, so each recipient gets one
 // e-mail for them all.
 func (s *Server) bulkIssues(w http.ResponseWriter, r *http.Request) error {
-	r = r.WithContext(events.WithBulk(r.Context(), rand.Int64N(math.MaxInt64)+1))
+	r = r.WithContext(events.WithBulk(r.Context(), newBulkID()))
 	ctx := r.Context()
 	sub, err := s.subject(r)
 	if err != nil {
@@ -173,6 +173,14 @@ func (s *Server) bulkIssues(w http.ResponseWriter, r *http.Request) error {
 		done[ids[i]] = true
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// newBulkID names a bulk change: positive, and unique across servers and
+// restarts, since its e-mail batches outlive the request.
+func newBulkID() int64 {
+	var raw [8]byte
+	rand.Read(raw[:])
+	return int64(binary.BigEndian.Uint64(raw[:])>>1) | 1
 }
 
 // checkBulk refuses a request that no issue could take, before any change.
