@@ -19,6 +19,7 @@ import (
 	"unicode"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -447,27 +448,27 @@ func customFieldSchema(f customFieldDef) map[string]any {
 // customSchema gives the schema type of a custom field kind.
 func customSchema(kind string) (typ, items string) {
 	switch kind {
-	case "float":
+	case issue.KindFloat:
 		return "number", ""
-	case "datepicker":
+	case issue.KindDatePicker:
 		return "date", ""
-	case "datetime":
+	case issue.KindDateTime:
 		return "datetime", ""
-	case "select", "radiobuttons", "gh-epic-status":
+	case issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus:
 		return "option", ""
-	case "cascadingselect":
+	case issue.KindCascadingSelect:
 		return "option-with-child", ""
-	case "multiselect", "multicheckboxes":
+	case issue.KindMultiSelect, issue.KindMultiCheckboxes:
 		return "array", "option"
-	case "userpicker":
+	case issue.KindUserPicker:
 		return "user", ""
-	case "multiuserpicker":
+	case issue.KindMultiUserPicker:
 		return "array", "user"
-	case "labels":
+	case issue.KindLabels:
 		return "array", "string"
-	case "gh-sprint":
+	case issue.KindSprint:
 		return "array", "string"
-	case "gh-epic-link":
+	case issue.KindEpicLink:
 		return "any", ""
 	}
 	return "string", ""
@@ -488,11 +489,11 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 	for _, sh := range f.Shares {
 		var p map[string]any
 		switch sh.Kind {
-		case "everyone":
+		case issue.ShareEveryone:
 			p = map[string]any{"type": "global"}
-		case "group":
+		case issue.ShareGroup:
 			p = map[string]any{"type": "group", "group": map[string]any{"name": sh.Name}}
-		case "project":
+		case issue.ShareProject:
 			var key, name string
 			if err := s.db.QueryRowContext(ctx, `SELECT pkey, name FROM projects WHERE id = ?`, sh.ID).
 				Scan(&key, &name); err != nil {
@@ -508,7 +509,7 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 				}
 				p = map[string]any{"type": "projectRole", "project": proj, "role": map[string]any{"id": sh.Role, "name": role}}
 			}
-		case "user":
+		case issue.ShareUser:
 			users, err := s.jiraUsers(ctx, o, sh.ID)
 			if err != nil {
 				return nil, err

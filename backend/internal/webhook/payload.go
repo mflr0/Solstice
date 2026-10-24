@@ -167,7 +167,7 @@ func jiraDuration(seconds int64) string {
 	for _, u := range []struct {
 		n    int64
 		unit string
-	}{{8 * 3600 * 5, "w"}, {8 * 3600, "d"}, {3600, "h"}, {60, "m"}} {
+	}{{issue.WorkWeekSeconds, "w"}, {issue.WorkDaySeconds, "d"}, {3600, "h"}, {60, "m"}} {
 		if seconds >= u.n {
 			parts = append(parts, fmt.Sprintf("%d%s", seconds/u.n, u.unit))
 			seconds %= u.n

@@ -473,7 +473,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if changes := mailChanges(before, cfg, !keepPassword, hadPassword); len(changes) > 0 {
-		s.auditLog(r, audit.SettingsMail, audit.Target{Type: "settings", ID: "mail"}, changes)
+		s.auditLog(r, audit.SettingsMail, audit.Target{Type: audit.TargetSettings, ID: "mail"}, changes)
 	}
 	s.out.notify.Invalidate()
 	s.forgetEmailLinks()

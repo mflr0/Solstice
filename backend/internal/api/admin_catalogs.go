@@ -235,7 +235,7 @@ func (s *Server) saveCatalogueItem(c catalogueKind) handler {
 		if err != nil {
 			return err
 		}
-		target := audit.Target{Type: c.audit, ID: id, Label: it.Name}
+		target := audit.Target{Type: audit.TargetType(c.audit), ID: id, Label: it.Name}
 		if creating {
 			s.auditLog(r, c.audit+".create", target, nil)
 			return writeJSON(w, http.StatusCreated, it)
@@ -424,7 +424,7 @@ func (s *Server) orderCatalogue(c catalogueKind) handler {
 			return err
 		}
 		s.forgetCatalogue()
-		s.auditLog(r, c.audit+".order", audit.Target{Type: c.audit}, map[string]any{"ids": ids})
+		s.auditLog(r, c.audit+".order", audit.Target{Type: audit.TargetType(c.audit)}, map[string]any{"ids": ids})
 		out, err := s.catalogueItems(ctx, c, "TRUE")
 		if err != nil {
 			return err
@@ -500,7 +500,7 @@ func (s *Server) deleteCatalogueItem(c catalogueKind) handler {
 		if to != nil {
 			details["movedTo"] = to.Name
 		}
-		s.auditLog(r, c.audit+".delete", audit.Target{Type: c.audit, ID: id, Label: it.Name}, details)
+		s.auditLog(r, c.audit+".delete", audit.Target{Type: audit.TargetType(c.audit), ID: id, Label: it.Name}, details)
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}

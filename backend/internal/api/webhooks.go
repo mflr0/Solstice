@@ -215,7 +215,7 @@ func (s *Server) deleteWebhook(w http.ResponseWriter, r *http.Request) error {
 
 // webhookTarget names a webhook in the audit log.
 func webhookTarget(wh *webhook.Webhook) audit.Target {
-	return target("webhook", wh.ID, wh.Name)
+	return target(audit.TargetWebhook, wh.ID, wh.Name)
 }
 
 // redactedHookURL is a webhook address without what may be a secret: the

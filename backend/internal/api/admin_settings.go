@@ -355,7 +355,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) error {
 	s.forgetGeneral()
 	after := s.general(ctx)
 	if changes := settingChanges(before, after); len(changes) > 0 {
-		s.auditLog(r, audit.SettingsGeneral, audit.Target{Type: "settings", ID: "general"}, changes)
+		s.auditLog(r, audit.SettingsGeneral, audit.Target{Type: audit.TargetSettings, ID: "general"}, changes)
 	}
 	return writeJSON(w, http.StatusOK, after)
 }

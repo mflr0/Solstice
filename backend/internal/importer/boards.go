@@ -317,12 +317,12 @@ func (r *run) importSprints(boards map[int64]bool) error {
 		if err := rows.Scan(&id, &name, &board, &started, &closed, &start, &end, &complete, &sequence, &goal); err != nil {
 			return err
 		}
-		state := "future"
+		state := issue.SprintFuture
 		switch {
 		case closed.Bool:
-			state = "closed"
+			state = issue.SprintClosed
 		case started.Bool:
-			state = "active"
+			state = issue.SprintActive
 		}
 		var boardID any
 		if boards[board.Int64] {
@@ -374,7 +374,7 @@ func (r *run) importRanks() error {
 	}
 	var rankField int64
 	for id, typeKey := range r.fields {
-		if issue.FieldKind(typeKey) == "gh-lexo-rank" && (rankField == 0 || id < rankField) {
+		if issue.FieldKind(typeKey) == issue.KindLexoRank && (rankField == 0 || id < rankField) {
 			rankField = id
 		}
 	}

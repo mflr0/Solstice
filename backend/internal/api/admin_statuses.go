@@ -94,7 +94,7 @@ func (s *Server) createStatus(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusCreate, audit.Target{Type: "status", ID: st.ID, Label: st.Name},
+	s.auditLog(r, audit.StatusCreate, audit.Target{Type: audit.TargetStatus, ID: st.ID, Label: st.Name},
 		map[string]any{"category": st.Category})
 	return writeJSON(w, http.StatusCreated, st)
 }
@@ -163,7 +163,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.forgetCatalogue()
 	if changed(before, st) {
-		s.auditLog(r, audit.StatusUpdate, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, map[string]any{
+		s.auditLog(r, audit.StatusUpdate, audit.Target{Type: audit.TargetStatus, ID: st.ID, Label: st.Name}, map[string]any{
 			"from": map[string]any{"name": before.Name, "category": before.Category},
 			"to":   map[string]any{"name": st.Name, "category": st.Category}})
 	}
@@ -196,7 +196,7 @@ func (s *Server) deleteStatus(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusDelete, audit.Target{Type: "status", ID: st.ID, Label: st.Name}, nil)
+	s.auditLog(r, audit.StatusDelete, audit.Target{Type: audit.TargetStatus, ID: st.ID, Label: st.Name}, nil)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -337,7 +337,7 @@ func (s *Server) orderStatuses(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.forgetCatalogue()
-	s.auditLog(r, audit.StatusOrder, audit.Target{Type: "status"}, map[string]any{"ids": ids})
+	s.auditLog(r, audit.StatusOrder, audit.Target{Type: audit.TargetStatus}, map[string]any{"ids": ids})
 	out, err := s.statusList(ctx)
 	if err != nil {
 		return err

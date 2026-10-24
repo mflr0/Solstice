@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -21,10 +22,10 @@ import (
 // or a person.
 
 type filterShare struct {
-	Kind string `json:"kind"` // everyone, group, project, user
-	ID   int64  `json:"id,omitempty"`
-	Role int64  `json:"role,omitempty"` // with kind project: only this role
-	Name string `json:"name,omitempty"`
+	Kind issue.ShareKind `json:"kind"`
+	ID   int64           `json:"id,omitempty"`
+	Role int64           `json:"role,omitempty"` // with kind project: only this role
+	Name string          `json:"name,omitempty"`
 }
 
 type filterOut struct {
@@ -46,7 +47,7 @@ type filterRow struct {
 }
 
 type shareRow struct {
-	kind                            string
+	kind                            issue.ShareKind
 	group, project, role, user      sql.NullInt64
 	groupName, projectKey, userName sql.NullString
 	roleName                        sql.NullString
@@ -55,16 +56,16 @@ type shareRow struct {
 // visible reports whether a share lets the subject see the filter.
 func (sh shareRow) visible(sub *perm.Subject) bool {
 	switch sh.kind {
-	case "everyone":
+	case issue.ShareEveryone:
 		return true
-	case "group":
+	case issue.ShareGroup:
 		return sub.InGroup(sh.group.Int64)
-	case "project":
+	case issue.ShareProject:
 		if !sub.CanBrowseProject(sh.project.Int64) {
 			return false
 		}
 		return !sh.role.Valid || sub.HasRole(sh.project.Int64, sh.role.Int64)
-	case "user":
+	case issue.ShareUser:
 		return sh.user.Int64 == sub.UserID
 	}
 	return false
@@ -138,14 +139,14 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 		for _, sh := range f.shares {
 			fs := filterShare{Kind: sh.kind}
 			switch sh.kind {
-			case "group":
+			case issue.ShareGroup:
 				fs.ID, fs.Name = sh.group.Int64, sh.groupName.String
-			case "project":
+			case issue.ShareProject:
 				fs.ID, fs.Name, fs.Role = sh.project.Int64, sh.projectKey.String, sh.role.Int64
 				if sh.role.Valid {
 					fs.Name += " · " + sh.roleName.String
 				}
-			case "user":
+			case issue.ShareUser:
 				fs.ID, fs.Name = sh.user.Int64, sh.userName.String
 			}
 			f.out.Shares = append(f.out.Shares, fs)
@@ -234,19 +235,19 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 	}
 	for _, sh := range *in.Shares {
 		switch sh.Kind {
-		case "everyone":
-		case "group":
+		case issue.ShareEveryone:
+		case issue.ShareGroup:
 			if !sub.InGroup(sh.ID) && !sub.Admin {
 				return fail(http.StatusBadRequest, i18n.FilterShareGroupNotMember)
 			}
-		case "project":
+		case issue.ShareProject:
 			if !sub.CanBrowseProject(sh.ID) {
 				return fail(http.StatusBadRequest, i18n.ProjectNotFound)
 			}
 			if sh.Role != 0 && !sub.HasRole(sh.ID, sh.Role) && !sub.Admin {
 				return fail(http.StatusBadRequest, i18n.FilterShareRoleNotHeld)
 			}
-		case "user":
+		case issue.ShareUser:
 			var n int
 			if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE id = ? AND active`, sh.ID).Scan(&n); err != nil {
 				return err
@@ -268,14 +269,14 @@ func writeShares(ctx context.Context, tx *sql.Tx, filter int64, shares []filterS
 	for _, sh := range shares {
 		var group, project, role, user any
 		switch sh.Kind {
-		case "group":
+		case issue.ShareGroup:
 			group = sh.ID
-		case "project":
+		case issue.ShareProject:
 			project = sh.ID
 			if sh.Role != 0 {
 				role = sh.Role
 			}
-		case "user":
+		case issue.ShareUser:
 			user = sh.ID
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO filter_shares (filter_id, kind, group_id, project_id, role_id, user_id)

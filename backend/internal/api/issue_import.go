@@ -24,6 +24,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -45,7 +46,7 @@ var importReadOnly = []string{"project", "resolutiondate", "creator", "created",
 	"subtasks", "watches", "votes", "timespent", "attachment", "comment", "worklog", "sprint"}
 
 func importableCustom(f customFieldDef) bool {
-	return settableKind(f.Kind) && f.Kind != "gh-sprint" && f.Kind != "gh-epic-link"
+	return settableKind(f.Kind) && f.Kind != issue.KindSprint && f.Kind != issue.KindEpicLink
 }
 
 // importReport answers both the check and the import.
@@ -177,7 +178,7 @@ func (s *Server) importIssues(w http.ResponseWriter, r *http.Request) error {
 	}
 	report.Created = keys
 	s.log.Info("issues imported from CSV", "project", im.projectKey, "rows", len(keys))
-	s.auditLog(r, audit.IssueImport, target("project", projectID, im.projectKey), map[string]any{"rows": len(keys)})
+	s.auditLog(r, audit.IssueImport, target(audit.TargetProject, projectID, im.projectKey), map[string]any{"rows": len(keys)})
 	return writeJSON(w, http.StatusOK, report)
 }
 
@@ -378,9 +379,9 @@ func (im *csvImport) headerIndex() map[string]string {
 	for _, f := range im.custom {
 		id := customID(f.ID)
 		switch f.Kind {
-		case "gh-epic-link":
+		case issue.KindEpicLink:
 			id = "epic"
-		case "gh-sprint":
+		case issue.KindSprint:
 			id = "sprint"
 		}
 		add(customID(f.ID), id)
@@ -680,24 +681,24 @@ func (im *csvImport) customValue(id, v string) (any, bool, error) {
 		return map[string]string{"name": u.username}, true, nil
 	}
 	switch f.Kind {
-	case "select", "radiobuttons", "gh-epic-status":
+	case issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus:
 		return map[string]string{"value": v}, true, nil
-	case "multiselect", "multicheckboxes":
+	case issue.KindMultiSelect, issue.KindMultiCheckboxes:
 		var out []map[string]string
 		for _, item := range list() {
 			out = append(out, map[string]string{"value": item})
 		}
 		return out, true, nil
-	case "cascadingselect":
+	case issue.KindCascadingSelect:
 		parent, child, ok := strings.Cut(v, "›")
 		out := map[string]any{"value": strings.TrimSpace(parent)}
 		if ok {
 			out["child"] = map[string]string{"value": strings.TrimSpace(child)}
 		}
 		return out, true, nil
-	case "userpicker":
+	case issue.KindUserPicker:
 		return user(v)
-	case "multiuserpicker":
+	case issue.KindMultiUserPicker:
 		var out []any
 		for _, name := range list() {
 			u, ok, err := user(name)
@@ -707,9 +708,9 @@ func (im *csvImport) customValue(id, v string) (any, bool, error) {
 			out = append(out, u)
 		}
 		return out, true, nil
-	case "labels":
+	case issue.KindLabels:
 		return strings.FieldsFunc(v, func(r rune) bool { return r == ',' || unicode.IsSpace(r) }), true, nil
-	case "datetime":
+	case issue.KindDateTime:
 		t, err := time.ParseInLocation("2006-01-02 15:04", v, im.tz)
 		if err != nil {
 			var ok bool

@@ -15,13 +15,14 @@ import (
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/sqlq"
 )
 
 // maxEstimate caps an estimate (ten thousand weeks) so that sums never
 // overflow and typos like "99999999w" are refused.
-const maxEstimate = 10000 * 5 * 8 * 3600
+const maxEstimate = 10000 * issue.WorkWeekSeconds
 
 var (
 	// A bare number is minutes, as in Jira; it is only read alone.

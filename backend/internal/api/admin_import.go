@@ -169,7 +169,7 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 	s.adm.impMu.Unlock()
 
 	source := sourceLabel(f.URL)
-	s.auditLog(r, audit.ImportStart, audit.Target{Type: "import", Label: source},
+	s.auditLog(r, audit.ImportStart, audit.Target{Type: audit.TargetImport, Label: source},
 		map[string]any{"source": source, "jiraHome": f.JiraHome, "tz": f.TZ})
 	s.log.Info("import from Jira started from the administration", "by", u.Username, "source", source)
 	job := imp.job
@@ -210,7 +210,7 @@ func (s *Server) adminImportStart(w http.ResponseWriter, r *http.Request) error 
 		var uid int64
 		s.db.QueryRow(`SELECT id FROM users WHERE username = ?`, u.Username).Scan(&uid)
 		record(context.Background(), s.db, s.log, audit.Entry{UserID: uid, Username: u.Username, IP: imp.ip,
-			Action: action, Target: audit.Target{Type: "import", Label: source}, Details: details})
+			Action: action, Target: audit.Target{Type: audit.TargetImport, Label: source}, Details: details})
 	}()
 	return writeJSON(w, http.StatusAccepted, job.view(locale(r)))
 }

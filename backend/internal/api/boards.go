@@ -319,7 +319,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}, b.ID); err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
+	sprints, err := s.boardSprints(ctx, b.ID, issue.SprintActive, issue.SprintFuture)
 	if err != nil {
 		return err
 	}
@@ -691,7 +691,7 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 		} else {
-			active, err := s.boardSprints(ctx, b.ID, "active")
+			active, err := s.boardSprints(ctx, b.ID, issue.SprintActive)
 			if err != nil {
 				return err
 			}
@@ -743,7 +743,7 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	sprints, err := s.boardSprints(ctx, b.ID, "active", "future")
+	sprints, err := s.boardSprints(ctx, b.ID, issue.SprintActive, issue.SprintFuture)
 	if err != nil {
 		return err
 	}
@@ -754,14 +754,14 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 			ids = append(ids, c.ID)
 		}
 		if err := sqlq.Each(ctx, s.db, `SELECT si.issue_id, si.sprint_id FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-			WHERE s.board_id = ? AND s.state <> 'closed' AND si.issue_id IN (`+sqlq.Marks(len(ids))+`)`, func(rows *sql.Rows) error {
+			WHERE s.board_id = ? AND s.state <> ? AND si.issue_id IN (`+sqlq.Marks(len(ids))+`)`, func(rows *sql.Rows) error {
 			var issue, sprint int64
 			if err := rows.Scan(&issue, &sprint); err != nil {
 				return err
 			}
 			inSprint[issue] = sprint
 			return nil
-		}, append([]any{b.ID}, ids...)...); err != nil {
+		}, append([]any{b.ID, issue.SprintClosed}, ids...)...); err != nil {
 			return err
 		}
 	}
@@ -971,16 +971,17 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	var oldID sql.NullInt64
 	var oldName sql.NullString
 	err := s.db.QueryRowContext(ctx, `SELECT s.id, s.name FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope+` LIMIT 1`, append([]any{iss.ID}, scopeArgs...)...).Scan(&oldID, &oldName)
+		WHERE si.issue_id = ? AND s.state <> ?`+scope+` LIMIT 1`, append([]any{iss.ID, issue.SprintClosed}, scopeArgs...)...).Scan(&oldID, &oldName)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 	var newName any
 	if sprint != 0 {
-		var name, state string
+		var name string
+		var state issue.SprintState
 		err := s.db.QueryRowContext(ctx, `SELECT name, state FROM sprints WHERE id = ? AND board_id = ?`, sprint, b.ID).
 			Scan(&name, &state)
-		if errors.Is(err, sql.ErrNoRows) || state == "closed" {
+		if errors.Is(err, sql.ErrNoRows) || state == issue.SprintClosed {
 			return fail(http.StatusBadRequest, i18n.SprintUnknown)
 		}
 		if err != nil {
@@ -1002,7 +1003,7 @@ func (s *Server) setSprint(ctx context.Context, sub *perm.Subject, b *boardRow, 
 	}
 	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `DELETE si FROM sprint_issues si JOIN sprints s ON s.id = si.sprint_id
-		WHERE si.issue_id = ? AND s.state <> 'closed'`+scope, append([]any{iss.ID}, scopeArgs...)...); err != nil {
+		WHERE si.issue_id = ? AND s.state <> ?`+scope, append([]any{iss.ID, issue.SprintClosed}, scopeArgs...)...); err != nil {
 		return err
 	}
 	if sprint != 0 {

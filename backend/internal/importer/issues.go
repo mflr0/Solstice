@@ -254,12 +254,12 @@ func (r *run) importIssueDetails() error {
 	if err := r.each(`SELECT source_node_id, sink_node_id, association_type FROM nodeassociation
 		WHERE source_node_entity = 'Issue' AND association_type IN ('IssueComponent', 'IssueVersion', 'IssueFixVersion')`,
 		func(rows *sql.Rows) error {
-			var issue, sink sql.NullInt64
+			var iss, sink sql.NullInt64
 			var kind sql.NullString
-			if err := rows.Scan(&issue, &sink, &kind); err != nil {
+			if err := rows.Scan(&iss, &sink, &kind); err != nil {
 				return err
 			}
-			if !r.hasIssue(issue) {
+			if !r.hasIssue(iss) {
 				skipped++
 				noIssue++
 				return nil
@@ -267,17 +267,17 @@ func (r *run) importIssueDetails() error {
 			switch kind.String {
 			case "IssueComponent":
 				if r.components[sink.Int64] {
-					return comps.add(issue.Int64, sink.Int64)
+					return comps.add(iss.Int64, sink.Int64)
 				}
 				noComponent++
 				return nil
 			case "IssueVersion":
 				if r.versions[sink.Int64] {
-					return vers.add(issue.Int64, sink.Int64, "affects")
+					return vers.add(iss.Int64, sink.Int64, issue.VersionAffects)
 				}
 			case "IssueFixVersion":
 				if r.versions[sink.Int64] {
-					return vers.add(issue.Int64, sink.Int64, "fix")
+					return vers.add(iss.Int64, sink.Int64, issue.VersionFix)
 				}
 			}
 			skipped++
@@ -712,14 +712,14 @@ func (r *run) importCustomFieldValues() error {
 			numVal = num.Float64
 		}
 		switch issue.FieldKind(typeKey) {
-		case "gh-epic-link":
+		case issue.KindEpicLink:
 			// Older Jira Software kept the epic in this field rather than a link.
 			if num.Valid && r.hasIssue(sql.NullInt64{Int64: int64(num.Float64), Valid: true}) {
 				r.epicOf[issueID.Int64] = int64(num.Float64)
 			}
-		case "gh-sprint":
+		case issue.KindSprint:
 			r.check.sprintMember(issueID.Int64, str, num)
-		case "userpicker", "multiuserpicker":
+		case issue.KindUserPicker, issue.KindMultiUserPicker:
 			uid, ok := r.users[str.String]
 			if !ok {
 				skipped++
@@ -727,7 +727,7 @@ func (r *run) importCustomFieldValues() error {
 				return nil
 			}
 			strVal = strconv.FormatInt(uid, 10)
-		case "datepicker":
+		case issue.KindDatePicker:
 			if date.Valid {
 				y, m, d := date.Time.In(r.tz).Date()
 				dateVal = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
@@ -768,11 +768,11 @@ func fitsType(typeKey string, str, text sql.NullString, num sql.NullFloat64, dat
 		return true
 	}
 	switch issue.FieldKind(typeKey) {
-	case "float":
+	case issue.KindFloat:
 		return num.Valid
-	case "datepicker", "datetime":
+	case issue.KindDatePicker, issue.KindDateTime:
 		return date.Valid
-	case "textfield", "url", "textarea":
+	case issue.KindTextField, issue.KindURL, issue.KindTextArea:
 		return str.Valid || text.Valid
 	}
 	return true

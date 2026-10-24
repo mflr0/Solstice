@@ -13,14 +13,14 @@ func TestForgeryProof(t *testing.T) {
 	}{
 		{"GET", viaCookie, "", "", true},
 		{"POST", viaCookie, "application/json", "", false},
-		{"POST", viaCookie, "application/json", "X-Atlassian-Token", true},
+		{"POST", viaCookie, "application/json", atlassianToken, true},
 		{"DELETE", viaCookie, "", "", false},
 		{"POST", viaToken, "multipart/form-data; boundary=x", "", true},
 		{"POST", viaBasic, "application/json", "", true},
 		{"PUT", viaBasic, "text/plain", "", true},
 		{"POST", viaBasic, "multipart/form-data; boundary=x", "", false},
 		{"POST", viaBasic, "", "", false},
-		{"POST", viaBasic, "text/plain;charset=utf-8", "X-Solstice", true},
+		{"POST", viaBasic, "text/plain;charset=utf-8", csrfHeader, true},
 		{"POST", "", "application/json", "", false},
 	} {
 		r := httptest.NewRequest(c.method, "/rest/api/2/issue", nil)
@@ -28,9 +28,9 @@ func TestForgeryProof(t *testing.T) {
 			r.Header.Set("Content-Type", c.ctype)
 		}
 		switch c.header {
-		case "X-Atlassian-Token":
-			r.Header.Set(c.header, "no-check")
-		case "X-Solstice":
+		case atlassianToken:
+			r.Header.Set(c.header, noCheck)
+		case csrfHeader:
 			r.Header.Set(c.header, "1")
 		}
 		if got := forgeryProof(r, c.via); got != c.want {

@@ -345,7 +345,7 @@ func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete || (r.Method == http.MethodPost && !formEncoded(r)) {
 			r = r.Clone(r.Context())
-			r.Header.Set("X-Atlassian-Token", "no-check")
+			r.Header.Set(atlassianToken, noCheck)
 		}
 		inner.ServeHTTP(w, r)
 	})
@@ -416,9 +416,9 @@ func (s *Server) restSignIn(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		var he *httpError
 		if errors.As(err, &he) && he.status == http.StatusUnauthorized {
-			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
+			w.Header().Set(loginReasonHeader, loginFailed)
 		} else if he != nil && he.status == http.StatusTooManyRequests {
-			w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
+			w.Header().Set(loginReasonHeader, loginDenied)
 		}
 		return err
 	}

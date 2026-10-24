@@ -182,7 +182,7 @@ func LoadIssue(ctx context.Context, db *sql.DB, id int64) (*Issue, error) {
 			return err
 		}
 		v := Named{strconv.FormatInt(vid, 10), name}
-		if kind == "fix" {
+		if kind == issue.VersionFix {
 			iss.FixVersions = append(iss.FixVersions, v)
 		} else {
 			iss.Versions = append(iss.Versions, v)

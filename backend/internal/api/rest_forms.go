@@ -216,7 +216,7 @@ func (b *formBuilder) optionValues(f customFieldDef) ([]any, error) {
 			continue
 		}
 		v := value(o)
-		if f.Kind == "cascadingselect" {
+		if f.Kind == issue.KindCascadingSelect {
 			children := []any{}
 			for _, c := range options {
 				if c.parent == o.id && !c.disabled {
@@ -335,12 +335,12 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 			continue
 		}
 		switch f.Kind {
-		case "gh-epic-link":
+		case issue.KindEpicLink:
 			// Sub-tasks follow their parent's epic, and an epic is in none.
 			if subtask || isEpicType(typ) || !canEdit {
 				continue
 			}
-		case "gh-sprint":
+		case issue.KindSprint:
 			if !canEditCustom {
 				continue
 			}
@@ -359,11 +359,11 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 		field := map[string]any{"required": false, "schema": customFieldSchema(f), "name": f.Name, "key": customID(f.ID),
 			"hasDefaultValue": false, "operations": []string{"set"}}
 		switch f.Kind {
-		case "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect":
+		case issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus, issue.KindMultiSelect, issue.KindMultiCheckboxes, issue.KindCascadingSelect:
 			if field["allowedValues"], err = b.optionValues(f); err != nil {
 				return nil, err
 			}
-		case "userpicker", "multiuserpicker":
+		case issue.KindUserPicker, issue.KindMultiUserPicker:
 			field["autoCompleteUrl"] = b.o.api + "/user/search?username="
 		}
 		out[customID(f.ID)] = field

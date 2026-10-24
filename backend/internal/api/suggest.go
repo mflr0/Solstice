@@ -76,7 +76,7 @@ func (s *Server) sprints(w http.ResponseWriter, r *http.Request) error {
 	out := []sprintSuggestion{}
 	err = sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state, b.id, b.name, b.filter_id FROM sprints sp
 		JOIN boards b ON b.id = sp.board_id WHERE LOWER(sp.name) LIKE ?
-		ORDER BY sp.state = 'closed', sp.state <> 'active', COALESCE(sp.completed_at, sp.start_at) DESC, sp.id DESC`,
+		ORDER BY sp.state = ?, sp.state <> ?, COALESCE(sp.completed_at, sp.start_at) DESC, sp.id DESC`,
 		func(rows *sql.Rows) error {
 			var sp sprintSuggestion
 			var filter int64
@@ -87,7 +87,7 @@ func (s *Server) sprints(w http.ResponseWriter, r *http.Request) error {
 				out = append(out, sp)
 			}
 			return nil
-		}, "%"+sqlq.EscapeLike(q)+"%")
+		}, "%"+sqlq.EscapeLike(q)+"%", issue.SprintClosed, issue.SprintActive)
 	if err != nil {
 		return err
 	}

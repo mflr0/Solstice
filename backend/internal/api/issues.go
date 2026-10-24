@@ -457,7 +457,7 @@ func (s *Server) detailLists(ctx context.Context, sub *perm.Subject, iss *issueR
 		if err := rows.Scan(&v.ID, &v.Name, &kind); err != nil {
 			return err
 		}
-		if kind == "fix" {
+		if kind == issue.VersionFix {
 			d.FixVersions = append(d.FixVersions, v)
 		} else {
 			d.AffectsVersions = append(d.AffectsVersions, v)
@@ -801,37 +801,37 @@ func renderCustomKind(rows *customRows, v storedCustom, options map[int64]string
 			label = v.str.String
 		}
 		row := rows.get(v.field, v.name, "option")
-		if kind == "cascadingselect" && v.parentKey.Valid && len(row.out.Values) > 0 {
+		if kind == issue.KindCascadingSelect && v.parentKey.Valid && len(row.out.Values) > 0 {
 			row.out.Values[len(row.out.Values)-1] += " › " + label
 		} else {
 			row.out.Values = append(row.out.Values, label)
 		}
-	case kind == "userpicker" || kind == "multiuserpicker":
+	case kind == issue.KindUserPicker || kind == issue.KindMultiUserPicker:
 		if id, err := strconv.ParseInt(v.str.String, 10, 64); err == nil {
 			row := rows.get(v.field, v.name, "user")
 			row.userIDs = append(row.userIDs, id)
 			rows.userIDs = append(rows.userIDs, id)
 		}
-	case kind == "datepicker":
+	case kind == issue.KindDatePicker:
 		if v.date.Valid {
 			row := rows.get(v.field, v.name, "date")
 			row.out.Values = append(row.out.Values, v.date.Time.Format(time.DateOnly))
 		}
-	case kind == "datetime":
+	case kind == issue.KindDateTime:
 		if v.date.Valid {
 			row := rows.get(v.field, v.name, "datetime")
 			row.out.Values = append(row.out.Values, v.date.Time.UTC().Format(time.RFC3339))
 		}
-	case kind == "float" || v.num.Valid && !v.str.Valid && !v.text.Valid:
-		if kind == "gh-epic-link" {
+	case kind == issue.KindFloat || v.num.Valid && !v.str.Valid && !v.text.Valid:
+		if kind == issue.KindEpicLink {
 			return
 		}
 		row := rows.get(v.field, v.name, "number")
 		row.out.Values = append(row.out.Values, strconv.FormatFloat(v.num.Float64, 'f', -1, 64))
-	case kind == "textarea":
+	case kind == issue.KindTextArea:
 		row := rows.get(v.field, v.name, "wiki")
 		row.out.Values = append(row.out.Values, v.text.String)
-	case kind == "url":
+	case kind == issue.KindURL:
 		row := rows.get(v.field, v.name, "url")
 		row.out.Values = append(row.out.Values, v.str.String)
 	default:
@@ -849,7 +849,7 @@ func renderCustomKind(rows *customRows, v storedCustom, options map[int64]string
 // epicLinkValues shows the key of the issue an epic link points at, if the user may see it.
 func (s *Server) epicLinkValues(ctx context.Context, sub *perm.Subject, rows *customRows, vals []storedCustom) error {
 	for _, v := range vals {
-		if issue.FieldKind(v.typeKey) != "gh-epic-link" || !v.num.Valid {
+		if issue.FieldKind(v.typeKey) != issue.KindEpicLink || !v.num.Valid {
 			continue
 		}
 		iss, err := s.findIssueByID(ctx, int64(v.num.Float64))
@@ -885,7 +885,7 @@ func (s *Server) labelFieldValues(ctx context.Context, rows *customRows, issueID
 
 func optionKind(kind string) bool {
 	switch kind {
-	case "select", "multiselect", "radiobuttons", "multicheckboxes", "cascadingselect", "gh-epic-status":
+	case issue.KindSelect, issue.KindMultiSelect, issue.KindRadioButtons, issue.KindMultiCheckboxes, issue.KindCascadingSelect, issue.KindEpicStatus:
 		return true
 	}
 	return false
@@ -895,7 +895,7 @@ func optionKind(kind string) bool {
 // Software's internal fields (ranking, colours, version bookkeeping,
 // development panel) and the sprint field, as an issue shows its sprints.
 var hiddenKinds = map[string]bool{
-	"gh-lexo-rank": true, "gh-global-rank": true, "gh-epic-color": true, "gh-sprint": true,
+	issue.KindLexoRank: true, issue.KindGlobalRank: true, issue.KindEpicColor: true, issue.KindSprint: true,
 	"greenhopper-releasedmultiversionhistory": true, "devsummary": true, "importid": true,
 	"jqlFunctionsCustomFieldType": true,
 }
@@ -1496,8 +1496,8 @@ func (s *Server) applySets(ctx context.Context, tx *sql.Tx, f fields, iss *issue
 	}
 	for _, st := range []set{
 		{"components", "Component", "components", "component_id", ""},
-		{"affectsVersions", "Version", "versions", "version_id", "affects"},
-		{"fixVersions", "Fix Version", "versions", "version_id", "fix"},
+		{"affectsVersions", "Version", "versions", "version_id", issue.VersionAffects},
+		{"fixVersions", "Fix Version", "versions", "version_id", issue.VersionFix},
 	} {
 		if !f.has(st.key) {
 			continue
@@ -2091,7 +2091,7 @@ func (s *Server) removeIssue(r *http.Request, sub *perm.Subject, iss *issueRow) 
 		s.emit(e)
 	}
 	s.log.Info("issue deleted", "key", iss.Key())
-	s.auditLog(r, audit.IssueDelete, target("issue", iss.ID, iss.Key()), nil)
+	s.auditLog(r, audit.IssueDelete, target(audit.TargetIssue, iss.ID, iss.Key()), nil)
 	return nil
 }
 

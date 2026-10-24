@@ -14,6 +14,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -100,10 +101,10 @@ var moveKinds = []struct {
 	{"components", "Component", "", `SELECT c.id, c.name FROM issue_components ic JOIN components c ON c.id = ic.component_id
 		WHERE ic.issue_id = ? ORDER BY c.name, c.id`,
 		`SELECT id, name FROM components WHERE project_id = ? AND NOT archived ORDER BY name, id`},
-	{"affectsVersions", "Version", "affects", `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+	{"affectsVersions", "Version", issue.VersionAffects, `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
 		WHERE iv.issue_id = ? AND iv.kind = ? ORDER BY v.position, v.id`,
 		`SELECT id, name FROM versions WHERE project_id = ? AND NOT archived ORDER BY position, id`},
-	{"fixVersions", "Fix Version", "fix", `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
+	{"fixVersions", "Fix Version", issue.VersionFix, `SELECT v.id, v.name FROM issue_versions iv JOIN versions v ON v.id = iv.version_id
 		WHERE iv.issue_id = ? AND iv.kind = ? ORDER BY v.position, v.id`,
 		`SELECT id, name FROM versions WHERE project_id = ? AND NOT archived ORDER BY position, id`},
 }
@@ -279,7 +280,7 @@ func (s *Server) leavingSprints(ctx context.Context, dest *moveDest, issueID int
 	var out []sprintRef
 	err := sqlq.Each(ctx, s.db, `SELECT sp.id, sp.name, sp.state, f.query FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
 		LEFT JOIN boards b ON b.id = sp.board_id LEFT JOIN filters f ON f.id = b.filter_id
-		WHERE si.issue_id = ? AND sp.state <> 'closed' ORDER BY sp.id`,
+		WHERE si.issue_id = ? AND sp.state <> ? ORDER BY sp.id`,
 		func(rows *sql.Rows) error {
 			var sp sprintRef
 			var query sql.NullString
@@ -290,7 +291,7 @@ func (s *Server) leavingSprints(ctx context.Context, dest *moveDest, issueID int
 				out = append(out, sp)
 			}
 			return nil
-		}, issueID)
+		}, issueID, issue.SprintClosed)
 	return out, err
 }
 
@@ -853,7 +854,7 @@ func (s *Server) applyMovePlan(r *http.Request, sub *perm.Subject, orig *issueRo
 	if plan.check.Restricted != nil {
 		details["restricted"] = in.Restricted
 	}
-	s.auditLog(r, audit.IssueMove, target("issue", orig.ID, newKey), details)
+	s.auditLog(r, audit.IssueMove, target(audit.TargetIssue, orig.ID, newKey), details)
 
 	// Announced like an edit; pages open on the old key refresh through the
 	// second event, which only those who could see the issue there hear.

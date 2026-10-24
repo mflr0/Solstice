@@ -169,7 +169,7 @@ func (s *Server) auditLevel(r *http.Request, action string, projectID int64, lev
 		details[k] = v
 	}
 	key := s.projectKeyOf(r.Context(), projectID)
-	s.auditLog(r, action, target("project", projectID, key), details)
+	s.auditLog(r, action, target(audit.TargetProject, projectID, key), details)
 }
 
 // saveSecurityLevel creates a level (no id in the path) or changes one.

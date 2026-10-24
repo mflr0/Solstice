@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -55,9 +56,9 @@ func safeURL(v string) bool {
 }
 
 // The kinds translateCustom takes values for; a test checks the list.
-var settableKinds = []string{"gh-epic-link", "gh-sprint", "url", "textfield", "gh-epic-label", "textarea", "float",
-	"datepicker", "datetime", "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect",
-	"userpicker", "multiuserpicker", "labels"}
+var settableKinds = []string{issue.KindEpicLink, issue.KindSprint, issue.KindURL, issue.KindTextField, issue.KindEpicLabel, issue.KindTextArea, issue.KindFloat,
+	issue.KindDatePicker, issue.KindDateTime, issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus, issue.KindMultiSelect, issue.KindMultiCheckboxes, issue.KindCascadingSelect,
+	issue.KindUserPicker, issue.KindMultiUserPicker, issue.KindLabels}
 
 func settableKind(kind string) bool { return slices.Contains(settableKinds, kind) }
 
@@ -80,7 +81,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	}
 	isNull := len(raw) == 0 || string(raw) == "null"
 	switch f.Kind {
-	case "gh-epic-link":
+	case issue.KindEpicLink:
 		var key *string
 		if json.Unmarshal(raw, &key) != nil {
 			return invalidValue(field)
@@ -88,7 +89,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		b, _ := json.Marshal(key)
 		edit.ui["epic"] = b
 		return nil
-	case "gh-sprint":
+	case issue.KindSprint:
 		var id int64
 		if !isNull {
 			var n json.Number
@@ -127,7 +128,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		display = append(display, v)
 	}
 	switch f.Kind {
-	case "url":
+	case issue.KindURL:
 		var v string
 		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
 			return invalidValue(field)
@@ -138,7 +139,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 			}
 			addText("string", v)
 		}
-	case "textfield", "gh-epic-label":
+	case issue.KindTextField, issue.KindEpicLabel:
 		var v string
 		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
 			return invalidValue(field)
@@ -146,7 +147,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		if strings.TrimSpace(v) != "" {
 			addText("string", v)
 		}
-	case "textarea":
+	case issue.KindTextArea:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
 			return invalidValue(field)
@@ -154,7 +155,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		if strings.TrimSpace(v) != "" {
 			addText("text", v)
 		}
-	case "float":
+	case issue.KindFloat:
 		var n json.Number
 		var str string
 		if json.Unmarshal(raw, &str) == nil {
@@ -168,7 +169,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 		w.rows = append(w.rows, customRaw{num: sql.NullFloat64{Float64: v, Valid: true}})
 		display = append(display, strconv.FormatFloat(v, 'f', -1, 64))
-	case "datepicker":
+	case issue.KindDatePicker:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
 			return invalidValue(field)
@@ -179,7 +180,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 		w.rows = append(w.rows, customRaw{date: sql.NullTime{Time: d, Valid: true}})
 		display = append(display, v)
-	case "datetime":
+	case issue.KindDateTime:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
 			return invalidValue(field)
@@ -190,13 +191,13 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		}
 		w.rows = append(w.rows, customRaw{date: sql.NullTime{Time: t.UTC(), Valid: true}})
 		display = append(display, t.UTC().Format(time.RFC3339))
-	case "select", "radiobuttons", "gh-epic-status", "multiselect", "multicheckboxes", "cascadingselect":
+	case issue.KindSelect, issue.KindRadioButtons, issue.KindEpicStatus, issue.KindMultiSelect, issue.KindMultiCheckboxes, issue.KindCascadingSelect:
 		options, err := s.fieldOptions(ctx, f.ID)
 		if err != nil {
 			return err
 		}
 		var refs []ref
-		if f.Kind == "multiselect" || f.Kind == "multicheckboxes" {
+		if f.Kind == issue.KindMultiSelect || f.Kind == issue.KindMultiCheckboxes {
 			var ok bool
 			if refs, ok = parseRefs(raw); !ok {
 				return invalidValue(field)
@@ -216,7 +217,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 			w.rows = append(w.rows, customRaw{str: sql.NullString{String: strconv.FormatInt(opt.id, 10), Valid: true}})
 			display = append(display, opt.value)
 		}
-		if f.Kind == "cascadingselect" {
+		if f.Kind == issue.KindCascadingSelect {
 			var m struct {
 				Child json.RawMessage `json:"child"`
 			}
@@ -232,9 +233,9 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 				display[0] += " › " + opt.value
 			}
 		}
-	case "userpicker", "multiuserpicker":
+	case issue.KindUserPicker, issue.KindMultiUserPicker:
 		var refs []ref
-		if f.Kind == "multiuserpicker" {
+		if f.Kind == issue.KindMultiUserPicker {
 			var ok bool
 			if refs, ok = parseRefs(raw); !ok {
 				return invalidValue(field)

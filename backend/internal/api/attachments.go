@@ -160,7 +160,7 @@ func (s *Server) storeAttachments(w http.ResponseWriter, r *http.Request, sub *p
 	}
 	s.changed(iss, sub.UserID, "attachment", changes)
 	for i, id := range ids {
-		s.auditLog(r, audit.AttachmentUpload, target("attachment", id, names[i]),
+		s.auditLog(r, audit.AttachmentUpload, target(audit.TargetAttachment, id, names[i]),
 			map[string]any{"issue": iss.Key(), "size": sizes[i]})
 	}
 	return ids, nil
@@ -352,7 +352,7 @@ func (s *Server) deleteAttachment(w http.ResponseWriter, r *http.Request) error 
 	}
 	os.Remove(s.attachmentPath(a.id))
 	s.changed(a.issue, sub.UserID, "attachment", removed)
-	s.auditLog(r, audit.AttachmentDelete, target("attachment", a.id, a.name), map[string]any{"issue": a.issue.Key()})
+	s.auditLog(r, audit.AttachmentDelete, target(audit.TargetAttachment, a.id, a.name), map[string]any{"issue": a.issue.Key()})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

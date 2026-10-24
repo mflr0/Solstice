@@ -10,6 +10,7 @@ import (
 	"solstice/internal/audit"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -318,19 +319,19 @@ func (s *Server) deleteBoard(w http.ResponseWriter, r *http.Request) error {
 	// Its future sprints go, as if deleted one by one; its active sprint is
 	// completed. Closed sprints stay, with no board, as the issues' history.
 	var future, active []*sprintOut
-	if err := sqlq.Each(ctx, tx, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND state <> 'closed'
+	if err := sqlq.Each(ctx, tx, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND state <> ?
 		ORDER BY position, id FOR UPDATE`, func(rows *sql.Rows) error {
 		sp, err := scanSprint(rows)
 		if err != nil {
 			return err
 		}
-		if sp.State == "future" {
+		if sp.State == issue.SprintFuture {
 			future = append(future, &sp)
 		} else {
 			active = append(active, &sp)
 		}
 		return nil
-	}, b.ID); err != nil {
+	}, b.ID, issue.SprintClosed); err != nil {
 		return err
 	}
 	now := time.Now().UTC()
@@ -345,10 +346,10 @@ func (s *Server) deleteBoard(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	for _, sp := range active {
-		if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = 'closed', completed_at = ? WHERE id = ?`, now, sp.ID); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE sprints SET state = ?, completed_at = ? WHERE id = ?`, issue.SprintClosed, now, sp.ID); err != nil {
 			return err
 		}
-		sp.State, sp.Completed = "closed", &now
+		sp.State, sp.Completed = issue.SprintClosed, &now
 	}
 	// The board's saved filter stays: it may be used on its own.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM boards WHERE id = ?`, b.ID); err != nil {

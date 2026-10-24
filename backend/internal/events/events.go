@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 )
 
@@ -81,7 +82,7 @@ type Sprint struct {
 	ID        int64
 	BoardID   int64
 	Name      string
-	State     string // future, active, closed
+	State     issue.SprintState
 	Goal      *string
 	Start     *time.Time
 	End       *time.Time

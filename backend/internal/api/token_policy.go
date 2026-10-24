@@ -144,7 +144,7 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	if err := s.out.settings.SetJSON(ctx, tokenCreatorsSetting, in); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.SettingsTokens, audit.Target{Type: "settings", ID: tokenCreatorsSetting},
+	s.auditLog(r, audit.SettingsTokens, audit.Target{Type: audit.TargetSettings, ID: tokenCreatorsSetting},
 		map[string]any{"who": map[string]any{"from": before.Who, "to": in.Who},
 			"group": s.groupNames(ctx, nonZero(in.Group))})
 	out, err := s.policyOut(ctx, in)

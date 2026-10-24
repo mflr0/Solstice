@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
 
@@ -57,10 +58,10 @@ func (r *run) importFilters() error {
 		}
 		switch kind.String {
 		case "global", "loggedin":
-			return shares.add(filter.Int64, "everyone", nil, nil, nil, nil)
+			return shares.add(filter.Int64, issue.ShareEveryone, nil, nil, nil, nil)
 		case "group":
 			if gid, ok := r.groups[strings.ToLower(p1.String)]; ok {
-				return shares.add(filter.Int64, "group", gid, nil, nil, nil)
+				return shares.add(filter.Int64, issue.ShareGroup, gid, nil, nil, nil)
 			}
 		case "project":
 			pid, err := strconv.ParseInt(p1.String, 10, 64)
@@ -74,11 +75,11 @@ func (r *run) importFilters() error {
 					}
 					role = rid
 				}
-				return shares.add(filter.Int64, "project", nil, pid, role, nil)
+				return shares.add(filter.Int64, issue.ShareProject, nil, pid, role, nil)
 			}
 		case "user":
 			if uid, ok := r.users[p1.String]; ok {
-				return shares.add(filter.Int64, "user", nil, nil, nil, uid)
+				return shares.add(filter.Int64, issue.ShareUser, nil, nil, nil, uid)
 			}
 		}
 		skipped++

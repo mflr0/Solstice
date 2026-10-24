@@ -374,7 +374,7 @@ func runUser(ctx context.Context, args []string) error {
 		maps.Copy(d, details)
 		return audit.Record(ctx, conn, audit.Entry{
 			Action:  what,
-			Target:  audit.Target{Type: "user", ID: strconv.FormatInt(id, 10), Label: login},
+			Target:  audit.Target{Type: audit.TargetUser, ID: strconv.FormatInt(id, 10), Label: login},
 			Details: d,
 		})
 	}

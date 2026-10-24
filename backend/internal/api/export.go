@@ -17,6 +17,7 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -64,7 +65,7 @@ func parseColumns(v, loc string, custom []customFieldDef) ([]exportColumn, error
 			found := false
 			for i, f := range custom {
 				if customID(f.ID) == id {
-					out = append(out, exportColumn{id: id, header: f.Name, custom: &custom[i], number: f.Kind == "float"})
+					out = append(out, exportColumn{id: id, header: f.Name, custom: &custom[i], number: f.Kind == issue.KindFloat})
 					found = true
 				}
 			}
@@ -143,7 +144,7 @@ func (s *Server) loadColumns(ctx context.Context, sub *perm.Subject, o *restOut,
 	for _, c := range columns {
 		sel.include[c.id] = true
 		if c.special == "sprint" {
-			if f, ok := fieldOfKind(custom, "gh-sprint"); ok {
+			if f, ok := fieldOfKind(custom, issue.KindSprint); ok {
 				sel.include[customID(f.ID)] = true
 			}
 		}
@@ -434,14 +435,14 @@ func (o *restOut) customText(set *issueSet, users map[int64]*jiraUser, f customF
 		}
 		return fmt.Sprint(v)
 	}
-	if f.Kind == "gh-sprint" {
+	if f.Kind == issue.KindSprint {
 		var names []string
 		for _, sp := range d.sprints {
 			names = append(names, sp.Name)
 		}
 		return strings.Join(names, ", ")
 	}
-	if f.Kind == "datetime" {
+	if f.Kind == issue.KindDateTime {
 		if values := d.custom[f.ID]; len(values) > 0 && values[0].date.Valid {
 			return values[0].date.Time.In(o.tz).Format("2006-01-02 15:04")
 		}

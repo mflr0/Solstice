@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 )
 
 // Unknown keys are refused, as unknown fields are in an issue's "fields".
@@ -359,7 +360,7 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 	for _, in := range list {
 		switch in.Type {
 		case "global":
-			shares = append(shares, filterShare{Kind: "everyone"})
+			shares = append(shares, filterShare{Kind: issue.ShareEveryone})
 		case "group":
 			if in.Group == nil {
 				return nil, invalidValue("sharePermissions")
@@ -371,7 +372,7 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 				}
 				return nil, err
 			}
-			shares = append(shares, filterShare{Kind: "group", ID: id})
+			shares = append(shares, filterShare{Kind: issue.ShareGroup, ID: id})
 		case "project", "projectRole":
 			if in.Project == nil {
 				return nil, invalidValue("sharePermissions")
@@ -386,7 +387,7 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 			} else if err != nil {
 				return nil, err
 			}
-			share := filterShare{Kind: "project", ID: id}
+			share := filterShare{Kind: issue.ShareProject, ID: id}
 			if in.Type == "projectRole" {
 				if in.Role == nil {
 					return nil, invalidValue("sharePermissions")
@@ -405,7 +406,7 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 			if !found {
 				return nil, unknownValue("sharePermissions", name)
 			}
-			shares = append(shares, filterShare{Kind: "user", ID: id})
+			shares = append(shares, filterShare{Kind: issue.ShareUser, ID: id})
 		default:
 			return nil, fieldError("sharePermissions", failf(http.StatusBadRequest, i18n.FilterShareKindUnknown, in.Type))
 		}

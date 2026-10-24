@@ -39,6 +39,16 @@ import (
 	"solstice/internal/sqlq"
 )
 
+// Jira's headers. Its clients read the login reason to tell a refused login
+// from a lockout, and send the token header to pass the XSRF check.
+const (
+	loginReasonHeader = "X-Seraph-LoginReason"
+	loginDenied       = "AUTHENTICATION_DENIED" // too many attempts
+	loginFailed       = "AUTHENTICATED_FAILED"  // wrong credentials
+	atlassianToken    = "X-Atlassian-Token"
+	noCheck           = "no-check"
+)
+
 // integrationRoutes registers the routes of tokens, the audit log, the CSV
 // export and the REST API.
 func (s *Server) integrationRoutes(mux *http.ServeMux, route func(string, handler, bool)) {
@@ -179,9 +189,9 @@ func (s *Server) rest(h handler, needUser bool) http.Handler {
 		if err != nil {
 			var he *httpError
 			if errors.As(err, &he) && he.status == http.StatusTooManyRequests {
-				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATION_DENIED")
+				w.Header().Set(loginReasonHeader, loginDenied)
 			} else if errors.Is(err, auth.ErrNoSession) {
-				w.Header().Set("X-Seraph-LoginReason", "AUTHENTICATED_FAILED")
+				w.Header().Set(loginReasonHeader, loginFailed)
 				err = fail(http.StatusUnauthorized, i18n.RequestCredentialsRefused)
 			}
 			s.writeRESTFailure(w, r, err)
@@ -239,7 +249,7 @@ func forgeryProof(r *http.Request, via string) bool {
 	if r.Header.Get(csrfHeader) != "" {
 		return true
 	}
-	if v := strings.ToLower(r.Header.Get("X-Atlassian-Token")); v == "no-check" || v == "nocheck" {
+	if v := strings.ToLower(r.Header.Get(atlassianToken)); v == noCheck || v == "nocheck" {
 		return true
 	}
 	switch via {
