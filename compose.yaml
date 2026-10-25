@@ -51,14 +51,14 @@ services:
       - /app/node_modules
     ports:
       - "5173:5173"
-    command: sh -c "corepack enable && pnpm install && pnpm dev --host 0.0.0.0"
+    command: sh -c "npm install -g pnpm && pnpm install && pnpm dev --host 0.0.0.0"
   backend:
     image: golang:latest
     working_dir: /app
     volumes:
       - ./backend:/app
     environment:
-      SOLSTICE_DB_URL: "solstice:solstice@mariadb:3306/solstice"
+      SOLSTICE_DB_URL: "mysql://solstice:solstice@mariadb:3306/solstice"
     ports:
       - "8080:8080"
     command: go run ./cmd/solstice serve
