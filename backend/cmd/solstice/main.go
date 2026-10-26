@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -169,6 +170,12 @@ func runServe(ctx context.Context, args []string) error {
 	if dir != nil {
 		log.Info("LDAP sign-in is on", "url", cfg.LDAP.URL)
 	}
+	// Bound first: a taken port fails here, before a setup code is printed.
+	ln, err := net.Listen("tcp", cfg.HTTP.Addr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
 
 	// Without a database, or on one without any account, the setup wizard
 	// runs first; the application takes over when it is done.
@@ -278,7 +285,7 @@ func runServe(ctx context.Context, args []string) error {
 		}
 	})
 	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
+	go func() { errc <- srv.Serve(ln) }()
 	log.Info("Solstice is listening", "addr", cfg.HTTP.Addr, "setup", setup)
 	select {
 	case err := <-errc:

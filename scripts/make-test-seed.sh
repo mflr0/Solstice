@@ -15,7 +15,7 @@
 # the migrations. The seed may lag behind the migrations: CI migrates it after
 # loading it. Commit the new file with the change that required it.
 #
-# What it needs: the containers of compose.yaml (docker compose up -d) and the
+# What it needs: the containers of compose.yaml (docker compose --profile import up -d) and the
 # Jira distribution (JIRA_DIST, see e2e-import.sh).
 #
 #   JIRA_DIST=/path/to/atlassian-jira-software-X-standalone ./scripts/make-test-seed.sh

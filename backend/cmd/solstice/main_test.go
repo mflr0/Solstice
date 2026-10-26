@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"io"
+	"net"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -126,5 +129,40 @@ func TestUsageMatchesConfig(t *testing.T) {
 		if got := load(env...); !reflect.DeepEqual(got, def) {
 			t.Errorf("%s: the usage text says %q, which does not load as the default", k, stated[k])
 		}
+	}
+}
+
+// A taken port stops serve before the setup code is drawn and printed.
+func TestServeOnTakenPort(t *testing.T) {
+	taken, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer taken.Close()
+	data := t.TempDir()
+	t.Setenv(config.KeyConfig, filepath.Join(t.TempDir(), "absent.conf"))
+	t.Setenv(config.KeyDBURL, "")
+	t.Setenv(config.KeyData, data)
+	t.Setenv("SOLSTICE_HTTP_ADDR", taken.Addr().String())
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr := os.Stderr
+	os.Stderr = w
+	err = runServe(context.Background(), nil)
+	os.Stderr = stderr
+	w.Close()
+	printed, _ := io.ReadAll(r)
+
+	if err == nil || !strings.Contains(err.Error(), "address already in use") {
+		t.Errorf("runServe on a taken port: %v", err)
+	}
+	if strings.Contains(string(printed), "Setup code") {
+		t.Errorf("the setup code was printed before the port failed:\n%s", printed)
+	}
+	if _, err := os.Stat(filepath.Join(data, "setup-code")); err == nil {
+		t.Error("a setup code file was written")
 	}
 }
