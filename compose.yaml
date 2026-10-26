@@ -1,7 +1,28 @@
-# Development databases:
+# Development stack. `docker compose up -d` runs Solstice on a seeded database:
 # - mariadb: the Solstice database
+# - mailpit: catches every e-mail (http://localhost:8025)
+# - seed: fills the database once (backend/cmd/devseed), then exits
+# - backend: the API (go run), on http://localhost:8080
+# - frontend: the interface (Vite), on http://localhost:5173
+# For the import and LDAP tests, `docker compose --profile import up -d` adds:
 # - jira-pg / jira-mysql: synthetic Jira databases (filled by jira-fixture), the sources of the import
 # - ldap: synthetic directory of the LDAP sign-in test (SOLSTICE_TEST_LDAP=ldap://127.0.0.1:1389)
+
+# The Go services: same image and caches as the release build (Dockerfile).
+x-go: &go
+  image: golang:1.27-alpine@sha256:f2c872bcee949b7be9c490efd02b48a8a2fbf947cdf533f1c58525ec9d8170fd
+  working_dir: /app
+  volumes:
+    - ./backend:/app
+    - go-mod:/go/pkg/mod
+    - go-build:/root/.cache/go-build
+  environment: &go-env
+    CGO_ENABLED: "0"
+    SOLSTICE_DB_URL: mysql://solstice:solstice@mariadb:3306/solstice
+    # In a volume, not in the host's backend/: container paths stay in the container.
+    SOLSTICE_DATA: /var/lib/solstice
+    SOLSTICE_CONFIG: /var/lib/solstice/solstice.conf
+
 services:
   mariadb:
     image: mariadb:11.4
@@ -10,10 +31,59 @@ services:
       MARIADB_DATABASE: solstice
       MARIADB_USER: solstice
       MARIADB_PASSWORD: solstice
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
     ports: ["127.0.0.1:13306:3306"]
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+
+  seed:
+    <<: *go
+    command: go run ./cmd/devseed -smtp mailpit:1025
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  backend:
+    <<: *go
+    environment:
+      <<: *go-env
+      # Where people open Solstice: the interface, for links in e-mails.
+      SOLSTICE_HTTP_BASEURL: http://localhost:5173
+    volumes:
+      - ./backend:/app
+      - go-mod:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+      - data:/var/lib/solstice
+    command: go run ./cmd/solstice serve
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    ports: ["127.0.0.1:8080:8080"]
+
+  frontend:
+    image: node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # Vite's proxy target: localhost would be this container.
+      SOLSTICE_BACKEND: http://backend:8080
+    # The packageManager field of package.json owns the pnpm version.
+    command: sh -c 'npm install --global "$$(node -p "require(\"./package.json\").packageManager")" && pnpm install --frozen-lockfile && pnpm dev --host 0.0.0.0'
+    ports: ["127.0.0.1:5173:5173"]
 
   jira-pg:
     image: postgres:16
+    profiles: [import]
     environment:
       POSTGRES_USER: jira
       POSTGRES_PASSWORD: jira
@@ -22,6 +92,7 @@ services:
 
   jira-mysql:
     image: mysql:8.4
+    profiles: [import]
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: jira
@@ -32,6 +103,7 @@ services:
 
   ldap:
     image: osixia/openldap:1.5.0
+    profiles: [import]
     command: ["--copy-service"]
     environment:
       LDAP_ORGANISATION: Example
@@ -43,22 +115,9 @@ services:
     volumes:
       - ./backend/tests/testdata/ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
     ports: ["127.0.0.1:1389:389"]
-  frontend:
-    image: node:latest
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    command: sh -c "npm install -g pnpm && pnpm install && pnpm dev --host 0.0.0.0"
-  backend:
-    image: golang:latest
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    environment:
-      SOLSTICE_DB_URL: "mysql://solstice:solstice@mariadb:3306/solstice"
-    ports:
-      - "8080:8080"
-    command: go run ./cmd/solstice serve
+
+volumes:
+  db:
+  data:
+  go-mod:
+  go-build:

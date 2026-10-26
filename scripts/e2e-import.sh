@@ -12,7 +12,7 @@
 # change. The inactive accounts the importer creates for deleted users are
 # added to the expected count.
 #
-# Needs the containers of compose.yaml (docker compose up -d) and the Jira
+# Needs the containers of compose.yaml (docker compose --profile import up -d) and the Jira
 # distribution next to the repository (its entitymodel.xml describes the schema).
 #
 # With --import-only, it stops once both imports are done (make-test-seed.sh

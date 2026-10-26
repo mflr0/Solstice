@@ -5,7 +5,8 @@
 #   scripts/import-dump.sh <dump.sql[.gz]> <name> [time zone]
 #
 # The dump (MySQL or PostgreSQL, plain SQL, optionally gzipped) is loaded
-# into the matching container of compose.yaml as database <name>, then
+# into the matching container of compose.yaml (docker compose --profile import
+# up -d) as database <name>, then
 # imported into the Solstice database solstice_<name>. Serve it with:
 #
 #   SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice_<name> \

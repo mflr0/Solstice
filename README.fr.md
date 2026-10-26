@@ -269,28 +269,65 @@ ses propres réglages de notifications).
 
 ## Développement
 
-Prérequis : Go 1.27+, Node 24+ avec pnpm, Docker (ou OrbStack).
+Prérequis : Docker (ou OrbStack). Pour le mode natif ci-dessous, aussi Go
+1.27+ et Node 24+ avec pnpm.
+
+### Tout dans Docker
 
 ```bash
-docker compose up -d          # MariaDB pour Solstice, plus un PostgreSQL et un MySQL « Jira » de test
-corepack enable pnpm
-(cd frontend && pnpm install)
+docker compose up -d
 ```
 
-Puis, dans deux terminaux (Solstice n'a pas de base par défaut : celle de
-développement de `compose.yaml` se donne explicitement, ou dans un
-`backend/solstice.conf`) :
+Cela démarre MariaDB, Mailpit, l'API (`go run`) et l'interface (Vite), et
+remplit la base au premier démarrage : pas d'assistant d'installation. Le
+premier démarrage télécharge les modules Go et les paquets npm, comptez une
+minute (`docker compose logs -f backend frontend`). Ensuite :
+
+- interface : http://localhost:5173 (une modification de `frontend/` la
+  recharge ; après une modification du Go, redémarrez `backend` :
+  `docker compose restart backend`)
+- API : http://localhost:8080
+- e-mails : http://localhost:8025 (Mailpit)
+
+### Natif
+
+Les bases dans Docker, le serveur et l'interface sur votre machine :
 
 ```bash
-export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice
-cd backend && go run ./cmd/solstice serve      # API sur http://localhost:8080
-cd frontend && pnpm dev                       # interface sur http://localhost:5173
+docker compose up -d mariadb mailpit
+cd backend
+export SOLSTICE_DB_URL=mysql://solstice:solstice@localhost:13306/solstice   # ou dans backend/solstice.conf
+go run ./cmd/devseed                            # une fois ; il n'ajoute que ce qui manque
+go run ./cmd/solstice serve                     # API sur http://localhost:8080
+cd frontend && pnpm install && pnpm dev         # dans un second terminal : interface sur http://localhost:5173
 ```
 
-Sur une base sans compte, le serveur ouvre l'assistant d'installation
-(`/setup`, code dans son journal). Sinon, créez un premier compte :
-`go run ./cmd/solstice user add -username moi -name "Moi" -admin` (le mot de
-passe généré s'affiche).
+### Comptes
+
+Le remplissage (`backend/cmd/devseed`) crée, pour la base de développement
+seulement :
+
+| Identifiant | Mot de passe | Langue |
+| --- | --- | --- |
+| `seed` (administrateur) | `seed-dev-only` | celle du navigateur |
+| `alice`, `marie`, `hans`, `giulia`, `priya` | `dev-password` | en, fr, de, it, hi |
+| `tom` | `dev-password` | celle du navigateur |
+
+et un projet `DEMO` d'une douzaine de tickets. Il refuse une base qui a des
+comptes mais pas d'administrateur `seed` : il ne touche jamais une vraie
+instance.
+
+### Autres ports
+
+Si 8080, 5173, 13306, 1025 ou 8025 est pris, le conteneur qui en a besoin ne
+démarre pas. En natif, choisissez d'autres ports : `SOLSTICE_HTTP_ADDR=:18080`
+pour le serveur, puis `SOLSTICE_BACKEND=http://localhost:18080 pnpm dev --port
+5174` pour l'interface, dont les `/api` passent au serveur par Vite.
+
+### Tests d'import et LDAP
+
+`docker compose --profile import up -d` ajoute les bases Jira PostgreSQL et
+MySQL et l'annuaire LDAP dont ces tests ont besoin (`make e2e`).
 
 `make build` produit le binaire unique avec l'interface embarquée,
 `make docker` l'image, et `make release VERSION=x.y.z` les archives pour
@@ -320,7 +357,7 @@ refusée, une version qui ne démarre pas annulée.
 ```bash
 (cd backend && go test ./...)          # tests unitaires
 (cd frontend && pnpm test && pnpm lint)
-./scripts/e2e-import.sh                # bout en bout, avec les conteneurs de compose.yaml
+./scripts/e2e-import.sh                # bout en bout : docker compose --profile import up -d avant
 ```
 
 `scripts/e2e-import.sh` génère la même base Jira synthétique sur PostgreSQL et
