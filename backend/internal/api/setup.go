@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"math/big"
+	"net"
 	"net/http"
 	"net/netip"
 	"os"
@@ -139,13 +140,7 @@ func (w *Setup) DB() *sql.DB {
 // Banner is the framed message telling the administrator where to go and
 // which code to type, for the server log.
 func (w *Setup) Banner(addr string) string {
-	where := "http://localhost" + addr + "/setup"
-	if strings.HasPrefix(addr, ":") {
-		where += " (or this server's address)"
-	}
-	if w.baseURL != "" {
-		where = w.baseURL + "/setup"
-	}
+	where := setupAddress(addr, w.baseURL)
 	lines := []string{
 		"Solstice is not installed yet.",
 		"Open " + where,
@@ -168,6 +163,23 @@ func (w *Setup) Banner(addr string) string {
 	}
 	sb.WriteString(rule)
 	return sb.String()
+}
+
+// setupAddress is where the banner sends people: the public address when
+// set, else the listen address, as localhost when it listens on every
+// interface.
+func setupAddress(addr, baseURL string) string {
+	if baseURL != "" {
+		return baseURL + "/setup"
+	}
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "http://" + addr + "/setup"
+	}
+	if ip, err := netip.ParseAddr(host); host == "" || (err == nil && ip.IsUnspecified()) {
+		return "http://" + net.JoinHostPort("localhost", port) + "/setup (or this server's address)"
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/setup"
 }
 
 // writeSecretFile writes a file only its owner can read.

@@ -264,3 +264,20 @@ func TestImportJobCrashedKeepsAFinishedJob(t *testing.T) {
 	}
 	func() { defer job.crashed(log) }() // no panic: nothing changes
 }
+
+func TestSetupAddress(t *testing.T) {
+	for _, tc := range []struct{ addr, baseURL, want string }{
+		{":8080", "", "http://localhost:8080/setup (or this server's address)"},
+		{"0.0.0.0:8080", "", "http://localhost:8080/setup (or this server's address)"},
+		{"[::]:8080", "", "http://localhost:8080/setup (or this server's address)"},
+		{"127.0.0.1:18099", "", "http://127.0.0.1:18099/setup"},
+		{"[::1]:18099", "", "http://[::1]:18099/setup"},
+		{"tickets.example.org:8080", "", "http://tickets.example.org:8080/setup"},
+		{":8080", "http://localhost:5173", "http://localhost:5173/setup"},
+		{"127.0.0.1:8080", "https://tickets.example.org", "https://tickets.example.org/setup"},
+	} {
+		if got := setupAddress(tc.addr, tc.baseURL); got != tc.want {
+			t.Errorf("setupAddress(%q, %q) = %q, want %q", tc.addr, tc.baseURL, got, tc.want)
+		}
+	}
+}
