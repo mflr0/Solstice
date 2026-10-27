@@ -4,13 +4,18 @@
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
+  import { projectAdminApi } from '../lib/admin-api.js';
   import { api, errorMessage, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { dialogs, notify } from '../lib/ui.svelte.js';
+  import Dropdown from './Dropdown.svelte';
   import LabelEditor from './LabelEditor.svelte';
   import Modal from './Modal.svelte';
+  import Lock from './Lock.svelte';
   import MultiPick from './MultiPick.svelte';
+  import PriorityMark from './PriorityMark.svelte';
+  import TypeMark from './TypeMark.svelte';
   import UserPicker from './UserPicker.svelte';
   import WikiEditor from './WikiEditor.svelte';
 
@@ -36,6 +41,21 @@
   const parent = $derived(dialogs.createDefaults.parent ?? '');
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
   const canCreate = $derived(detail?.can.create === true);
+  const configure = $derived(detail?.can.configure === true);
+
+  async function createComponent(name: string): Promise<number> {
+    const key = projectKey;
+    const c = await projectAdminApi.createComponent(key, { name });
+    if (detail && key === projectKey) detail.components = [...detail.components, c];
+    return c.id;
+  }
+
+  async function createVersion(name: string): Promise<number> {
+    const key = projectKey;
+    const v = await projectAdminApi.createVersion(key, { name });
+    if (detail && key === projectKey) detail.versions = [...detail.versions, v];
+    return v.id;
+  }
 
   function lastProject(): string {
     try {
@@ -138,22 +158,31 @@
 >
   <form id="new-issue" class="form" onsubmit={submit}>
     <div class="two">
-      <label class="field">
-        <span>{t.create.project}</span>
-        <select class="select" bind:value={projectKey} disabled={parent !== ''}>
-          {#each projects as p (p.key)}
-            <option value={p.key}>{p.name} — {p.key}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="field">
-        <span>{t.create.type}</span>
-        <select class="select" bind:value={typeId} disabled={!detail}>
-          {#each types as ty (ty.id)}
-            <option value={ty.id}>{ty.name}</option>
-          {/each}
-        </select>
-      </label>
+      <div class="field">
+        <span class="field-label">{t.create.project}</span>
+        <Dropdown
+          label={t.create.project}
+          value={projectKey}
+          options={projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` }))}
+          disabled={parent !== ''}
+          onchange={(v) => (projectKey = v)}
+        />
+      </div>
+      <div class="field">
+        <span class="field-label">{t.create.type}</span>
+        <Dropdown
+          label={t.create.type}
+          value={typeId}
+          options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+          disabled={!detail}
+          onchange={(v) => (typeId = v)}
+        >
+          {#snippet icon(id)}
+            {@const ty = types.find((x) => x.id === id)}
+            {#if ty}<TypeMark type={ty} />{/if}
+          {/snippet}
+        </Dropdown>
+      </div>
     </div>
 
     {#if detail && !canCreate}
@@ -173,14 +202,19 @@
     </div>
 
     <div class="three">
-      <label class="field">
-        <span>{t.create.priority}</span>
-        <select class="select" bind:value={priorityId}>
-          {#each session.meta?.priorities ?? [] as p (p.id)}
-            <option value={p.id}>{p.name}</option>
-          {/each}
-        </select>
-      </label>
+      <div class="field">
+        <span class="field-label">{t.create.priority}</span>
+        <Dropdown
+          label={t.create.priority}
+          value={priorityId}
+          options={(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name }))}
+          onchange={(v) => (priorityId = v)}
+        >
+          {#snippet icon(id)}
+            <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
+          {/snippet}
+        </Dropdown>
+      </div>
       <div class="field">
         <span class="field-label">{t.create.assignee}</span>
         <div class="boxed field-box">
@@ -210,7 +244,7 @@
 
     {#if detail}
       <div class="three">
-        {#if detail.components.length}
+        {#if detail.components.length || configure}
           <div class="field">
             <span class="field-label">{t.create.components}</span>
             <div class="boxed field-box">
@@ -218,12 +252,13 @@
                 options={detail.components.filter((c) => !c.archived)}
                 selected={components}
                 label={t.create.components}
+                oncreate={configure ? createComponent : undefined}
                 onchange={(ids) => (components = ids)}
               />
             </div>
           </div>
         {/if}
-        {#if detail.versions.length}
+        {#if detail.versions.length || configure}
           <div class="field">
             <span class="field-label">{t.create.fixVersions}</span>
             <div class="boxed field-box">
@@ -231,21 +266,29 @@
                 options={detail.versions.filter((v) => !v.archived && !v.released)}
                 selected={fixVersions}
                 label={t.create.fixVersions}
+                oncreate={configure ? createVersion : undefined}
                 onchange={(ids) => (fixVersions = ids)}
               />
             </div>
           </div>
         {/if}
         {#if detail.securityLevels.length}
-          <label class="field">
-            <span>{t.create.security}</span>
-            <select class="select" bind:value={level}>
-              <option value="">{t.issue.public}</option>
-              {#each detail.securityLevels as l (l.id)}
-                <option value={String(l.id)}>{l.name}</option>
-              {/each}
-            </select>
-          </label>
+          <div class="field">
+            <span class="field-label">{t.create.security}</span>
+            <Dropdown
+              label={t.create.security}
+              value={level}
+              options={[
+                { value: '', label: t.issue.public },
+                ...detail.securityLevels.map((l) => ({ value: String(l.id), label: l.name })),
+              ]}
+              onchange={(v) => (level = v)}
+            >
+              {#snippet icon(id)}
+                {#if id}<Lock />{/if}
+              {/snippet}
+            </Dropdown>
+          </div>
         {/if}
       </div>
     {/if}

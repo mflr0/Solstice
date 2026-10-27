@@ -125,7 +125,7 @@ scrolled into view). Narrow screens, in the base: ≤ 860 px the search field
 and the `kbd` go and `.live-dot` takes `margin-left: auto`; ≤ 600 px `.wordmark` and `.topbar-create .label` are
 visually hidden (still read) and `.plus` shows, sized `1.55em` — a skin that
 sets the button's `font-size: 0` to draw its own « + » hides it too; ≤ 420 px
-`.topbar-themes` goes (the gallery stays in the account menu).
+`.topbar-themes` goes (the gallery stays on Account → Appearance).
 
 **Logo** — `svg.logo` > `.logo-sun`, `.logo-line`, `.logo-faint` (Carnet);
 Orbite: `.logo-orbit`, `.logo-planet`; Crayonné: `.logo-sketch`, `.logo-ray`.
@@ -198,6 +198,14 @@ the page. Users list: `td.tags > .tag-list` (the flex row of marks).
 **Menus** — `.popover` (`[role=menu]` or `[role=listbox]`) > `.item`
 (`.active`, `[aria-checked='true']`, `[aria-selected='true']`, `.danger`),
 `.sep`, `.group-label`.
+
+**Dropdowns** — one value from a list, instead of a native select:
+`button.dropdown[role=combobox]` (`.select` in a form, `.quiet` in the issue
+sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name`. The list is
+`ul.popover.dropdown-list[role=listbox]` in the top layer > `li.item[role=option]`
+(`.active` = highlighted, `[aria-selected='true']` = the value, ✓ after it)
+
+> `.icon` + `.name`.
 
 **Dialogs** — `dialog.modal` (`::backdrop`) > `header.modal-head` (title bar) >
 `h2.modal-title` + `button.modal-close` (label « Fermer Échap »; restyle it,

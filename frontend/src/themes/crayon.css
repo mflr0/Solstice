@@ -1087,7 +1087,7 @@
   color: var(--ink-soft);
 }
 
-[data-skin='crayon'] .card .inline-select select {
+[data-skin='crayon'] .card .dropdown.quiet {
   background-image: var(--cr-chevron);
   background-position: right 3px center;
   background-size: 10px 7px;

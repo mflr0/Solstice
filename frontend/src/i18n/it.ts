@@ -115,7 +115,6 @@ export const it: Messages = {
     create: 'Nuovo ticket',
     account: 'Account',
     myPage: 'La mia pagina',
-    skin: 'Tema',
     skins: {
       carnet: 'Taccuino',
       orbite: 'Orbita',
@@ -137,10 +136,8 @@ export const it: Messages = {
       plan: 'lucido e cartigli',
     },
     themes: 'Temi',
-    allThemes: 'Tutti i temi…',
     mode: 'Modalità',
     modes: { system: 'sistema', light: 'chiaro', dark: 'scuro' },
-    language: 'Lingua',
     logout: 'Esci',
     sourceCode: 'Codice sorgente',
     licenses: 'Licenze',
@@ -241,6 +238,7 @@ export const it: Messages = {
     yes: 'sì',
     no: 'no',
     filter: 'Filtra…',
+    createNamed: (name: string) => `Crea «${name}»`,
     ctrlEnter: 'Ctrl + Invio per inviare',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',

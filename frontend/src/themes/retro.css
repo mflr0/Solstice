@@ -1227,11 +1227,6 @@
   padding: 5px 8px 4px 22px;
 }
 
-[data-skin='retro'] .popover .swatch {
-  border-radius: 0;
-  border-color: var(--rt-dark);
-}
-
 /* Dialogs ---------------------------------------------------------------------------------- */
 
 [data-skin='retro'] dialog.modal {
@@ -1686,7 +1681,8 @@
 
 /* Pickers inside wells: a field look when pointed at. */
 [data-skin='retro'] :is(.picker, .multi) > .current:hover:not([disabled]),
-[data-skin='retro'] .inline-select select:hover {
+[data-skin='retro'] .dropdown.quiet:hover:not([disabled]),
+[data-skin='retro'] .dropdown.quiet[aria-expanded='true'] {
   border-color: transparent;
   background-color: var(--rt-well);
   box-shadow: var(--rt-sunken);

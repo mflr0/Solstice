@@ -4,6 +4,7 @@
   import type { IssueFields } from '../../lib/api.js';
   import { outside } from '../../lib/actions.js';
   import { session } from '../../lib/session.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Stamp from '../Stamp.svelte';
 
   /**
@@ -82,15 +83,18 @@
           }}
         >
           <p class="what">{pending.name}</p>
-          <label class="field">
-            <span>{t.issue.chooseResolution}</span>
-            <select class="select" bind:value={resolution}>
-              {#if !defaultResolution}<option value="">{t.issue.leaveUnresolved}</option>{/if}
-              {#each session.meta?.resolutions ?? [] as r (r.id)}
-                <option value={r.id}>{r.name}</option>
-              {/each}
-            </select>
-          </label>
+          <div class="field">
+            <span class="field-label">{t.issue.chooseResolution}</span>
+            <Dropdown
+              label={t.issue.chooseResolution}
+              value={resolution}
+              options={[
+                ...(defaultResolution ? [] : [{ value: '', label: t.issue.leaveUnresolved }]),
+                ...(session.meta?.resolutions ?? []).map((r) => ({ value: r.id, label: r.name })),
+              ]}
+              onchange={(v) => (resolution = v)}
+            />
+          </div>
           <div class="row">
             <button type="button" class="btn btn-quiet btn-small" onclick={() => (pending = null)}
               >{t.common.cancel}</button

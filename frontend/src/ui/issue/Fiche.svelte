@@ -3,8 +3,10 @@
   import { paths } from '../../core/route.js';
   import type { IssueDetail, ProjectDetail } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
+  import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, type IssueFields } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import LabelEditor from '../LabelEditor.svelte';
   import Lock from '../Lock.svelte';
   import MultiPick from '../MultiPick.svelte';
@@ -42,6 +44,19 @@
     (project?.issueTypes ?? []).filter((ty) => ty.subtask === issue.type.subtask),
   );
   const ids = (list: { id: number }[]) => list.map((x) => x.id);
+  const configure = $derived(project?.can.configure === true);
+
+  async function createComponent(name: string): Promise<number> {
+    const c = await projectAdminApi.createComponent(issue.project.key, { name });
+    if (project) project.components = [...project.components, c];
+    return c.id;
+  }
+
+  async function createVersion(name: string): Promise<number> {
+    const v = await projectAdminApi.createVersion(issue.project.key, { name });
+    if (project) project.versions = [...project.versions, v];
+    return v.id;
+  }
   const meIsAssignee = $derived(issue.assignee?.id === session.me?.id);
 
   // The estimates as typed, kept in step with the issue.
@@ -71,11 +86,7 @@
 
   // A refusal leaves the issue as it was, so Svelte has nothing to redraw and
   // the control would keep the refused value.
-  async function save(
-    el: HTMLSelectElement | HTMLInputElement,
-    fields: IssueFields,
-    stored: () => string,
-  ) {
+  async function save(el: HTMLInputElement, fields: IssueFields, stored: () => string) {
     if (!(await onchange(fields))) el.value = stored();
   }
 
@@ -87,7 +98,7 @@
 </script>
 
 <aside class="fiche card" aria-label={t.issue.fiche}>
-  <div class="head card-head">{t.issue.fiche} <span class="key">{issue.key}</span></div>
+  <h2 class="head card-head title">{issue.key}</h2>
   <dl>
     <div class="line card-row">
       <dt>{t.issue.assignee}</dt>
@@ -116,23 +127,17 @@
       <dt>{t.issue.priority}</dt>
       <dd>
         {#if edit}
-          <span class="inline-select">
-            <PriorityMark priority={issue.priority} />
-            <select
-              aria-label={t.issue.priority}
-              value={issue.priority?.id ?? ''}
-              onchange={(e) =>
-                void save(
-                  e.currentTarget,
-                  { priority: e.currentTarget.value || null },
-                  () => issue.priority?.id ?? '',
-                )}
-            >
-              {#each session.meta?.priorities ?? [] as p (p.id)}
-                <option value={p.id}>{p.name}</option>
-              {/each}
-            </select>
-          </span>
+          <Dropdown
+            quiet
+            label={t.issue.priority}
+            value={issue.priority?.id ?? ''}
+            options={(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            onchange={(v) => void onchange({ priority: v || null })}
+          >
+            {#snippet icon(id)}
+              <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
+            {/snippet}
+          </Dropdown>
         {:else}
           <PriorityMark priority={issue.priority} withName />
         {/if}
@@ -142,19 +147,17 @@
       <dt>{t.issue.type}</dt>
       <dd>
         {#if edit && types.length > 1}
-          <span class="inline-select">
-            <TypeMark type={issue.type} />
-            <select
-              aria-label={t.issue.type}
-              value={issue.type.id}
-              onchange={(e) =>
-                void save(e.currentTarget, { type: e.currentTarget.value }, () => issue.type.id)}
-            >
-              {#each types as ty (ty.id)}
-                <option value={ty.id}>{ty.name}</option>
-              {/each}
-            </select>
-          </span>
+          <Dropdown
+            quiet
+            label={t.issue.type}
+            value={issue.type.id}
+            options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+            onchange={(v) => void onchange({ type: v })}
+          >
+            {#snippet icon(id)}
+              <TypeMark type={types.find((ty) => ty.id === id) ?? issue.type} />
+            {/snippet}
+          </Dropdown>
         {:else}
           <TypeMark type={issue.type} withName />
         {/if}
@@ -168,6 +171,7 @@
           selected={ids(issue.components)}
           label={t.issue.components}
           disabled={!edit || !project}
+          oncreate={configure ? createComponent : undefined}
           onchange={(v) => void onchange({ components: v })}
         />
       </dd>
@@ -184,6 +188,7 @@
           selected={ids(issue.fixVersions)}
           label={t.issue.fixVersions}
           disabled={!edit || !project}
+          oncreate={configure ? createVersion : undefined}
           onchange={(v) => void onchange({ fixVersions: v })}
         />
       </dd>
@@ -199,6 +204,7 @@
           selected={ids(issue.affectsVersions)}
           label={t.issue.affectsVersions}
           disabled={!edit || !project}
+          oncreate={configure ? createVersion : undefined}
           onchange={(v) => void onchange({ affectsVersions: v })}
         />
       </dd>
@@ -265,26 +271,20 @@
         <dt>{t.issue.security}</dt>
         <dd>
           {#if issue.can.security && issue.securityLevels.length}
-            <span class="inline-select">
-              {#if issue.securityLevel}<Lock />{/if}
-              <select
-                aria-label={t.issue.security}
-                value={issue.securityLevel ? String(issue.securityLevel.id) : ''}
-                onchange={(e) =>
-                  void save(
-                    e.currentTarget,
-                    {
-                      securityLevel: e.currentTarget.value ? Number(e.currentTarget.value) : null,
-                    },
-                    () => (issue.securityLevel ? String(issue.securityLevel.id) : ''),
-                  )}
-              >
-                <option value="">{t.issue.public}</option>
-                {#each issue.securityLevels as l (l.id)}
-                  <option value={String(l.id)}>{l.name}</option>
-                {/each}
-              </select>
-            </span>
+            <Dropdown
+              quiet
+              label={t.issue.security}
+              value={issue.securityLevel ? String(issue.securityLevel.id) : ''}
+              options={[
+                { value: '', label: t.issue.public },
+                ...issue.securityLevels.map((l) => ({ value: String(l.id), label: l.name })),
+              ]}
+              onchange={(v) => void onchange({ securityLevel: v ? Number(v) : null })}
+            >
+              {#snippet icon(id)}
+                {#if id}<Lock />{/if}
+              {/snippet}
+            </Dropdown>
           {:else if issue.securityLevel}
             <span class="conf"><Lock /> {issue.securityLevel.name}</span>
           {:else}
@@ -419,10 +419,18 @@
     font-size: 13.5px;
   }
 
-  .head .key {
+  h2.title {
+    margin: 0;
+  }
+
+  /* Specific enough to beat every skin's own title-bar type; skins keep their margins. */
+  aside.fiche.card > h2.title {
+    justify-content: flex-start;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: 0;
-    font-size: 11.5px;
-    color: var(--muted);
+    overflow-wrap: anywhere;
   }
 
   .head.sub {
@@ -473,35 +481,6 @@
 
   .small {
     font-size: 12px;
-  }
-
-  .inline-select {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .inline-select select {
-    appearance: none;
-    border: 1px solid transparent;
-    background: transparent;
-    padding: 1px 18px 1px 4px;
-    margin-left: -4px;
-    cursor: pointer;
-    background-image:
-      linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-      linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-    background-position:
-      right 7px center,
-      right 3px center;
-    background-size: 4px 4px;
-    background-repeat: no-repeat;
-  }
-
-  .inline-select select:hover {
-    border-color: var(--rule-strong);
-    background-color: var(--paper);
   }
 
   .date {

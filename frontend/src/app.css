@@ -457,7 +457,7 @@ kbd,
   }
 }
 
-/* The theme gallery stays in the account menu. */
+/* The theme gallery stays one click away, on Account → Appearance. */
 @media (max-width: 420px) {
   .topbar-themes {
     display: none;
@@ -926,6 +926,13 @@ table.ledger {
 .popover .item[aria-checked='true']::after {
   content: '✓';
   margin-left: auto;
+  color: var(--accent-text);
+}
+
+.dropdown-list .item[aria-selected='true']::after {
+  content: '✓';
+  margin-left: auto;
+  padding-left: 12px;
   color: var(--accent-text);
 }
 

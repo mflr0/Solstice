@@ -2275,7 +2275,7 @@
     font-size: 12px;
   }
 
-  /* The gallery is also in the account menu ("Tous les thèmes…"). */
+  /* The gallery is also on Account → Appearance. */
   [data-skin='luna'] .topbar .topbar-themes {
     display: none;
   }
