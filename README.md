@@ -103,6 +103,7 @@ and 503 otherwise.
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` or `json` (`json` in the Docker image) |
 | `SOLSTICE_LDAP_*` | none | LDAP or Active Directory sign-in, see [installation](docs/en/install.md) and [administration](docs/en/administration.md#ldap-and-active-directory) |
+| `SOLSTICE_OIDC_*` | none | single sign-on with OpenID Connect, see [installation](docs/en/install.md) and [administration](docs/en/administration.md#single-sign-on-openid-connect) |
 
 Durations are written `30s`, `5m`, `1h30m`.
 

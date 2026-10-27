@@ -47,7 +47,7 @@ export interface LinkAccount {
   email: string;
   /** null: never signed in; undefined: an older server that does not say. */
   lastLogin?: string | null;
-  /** "ldap": the directory holds the password, Solstice never sets it. */
+  /** "ldap", "oidc": the directory or the provider signs it in, Solstice sets no password. */
   directory?: string;
 }
 

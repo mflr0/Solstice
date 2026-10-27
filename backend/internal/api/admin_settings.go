@@ -287,9 +287,13 @@ func (s *Server) publicSettings(w http.ResponseWriter, r *http.Request) error {
 	if g.Banner.Enabled && strings.TrimSpace(g.Banner.Text) != "" {
 		banner = map[string]string{"text": g.Banner.Text, "level": g.Banner.Level}
 	}
+	var sso any
+	if s.ssoReady() {
+		sso = map[string]string{"name": s.sso.Name()}
+	}
 	return writeJSON(w, http.StatusOK, map[string]any{"instanceName": g.InstanceName,
 		"defaultLanguage": g.DefaultLanguage, "banner": banner, "passwordMinLength": g.PasswordMinLength,
-		"emailLinks": s.emailLinksReady(r.Context())})
+		"emailLinks": s.emailLinksReady(r.Context()), "sso": sso})
 }
 
 func (s *Server) getSettings(w http.ResponseWriter, r *http.Request) error {

@@ -1,6 +1,6 @@
 // Package directory signs accounts in through an LDAP or Active Directory
-// server: search the person with a service account, bind as them with the
-// password typed, then read their groups.
+// server (search the person with a service account, bind as them with the
+// password typed, then read their groups) or an OpenID Connect provider.
 package directory
 
 import (
@@ -106,27 +106,7 @@ func (d *LDAP) Authenticate(ctx context.Context, username, password string) (*au
 		Email:  user.GetAttributeValue(d.cfg.EmailAttr),
 		Groups: groups,
 	}
-	return e, d.apply(e)
-}
-
-// apply enforces RequireGroup and AdminGroup on an entry.
-func (d *LDAP) apply(e *auth.DirectoryEntry) error {
-	in := func(group string) bool {
-		for _, g := range e.Groups {
-			if strings.EqualFold(strings.TrimSpace(g), strings.TrimSpace(group)) {
-				return true
-			}
-		}
-		return false
-	}
-	if d.cfg.RequireGroup != "" && !in(d.cfg.RequireGroup) {
-		return auth.ErrNoSession
-	}
-	if d.cfg.AdminGroup != "" {
-		admin := in(d.cfg.AdminGroup)
-		e.Admin = &admin
-	}
-	return nil
+	return e, auth.ApplyGroups(e, d.cfg.RequireGroup, d.cfg.AdminGroup)
 }
 
 func (d *LDAP) dial(ctx context.Context) (*ldap.Conn, error) {

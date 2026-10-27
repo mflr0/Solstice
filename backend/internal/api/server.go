@@ -39,12 +39,13 @@ type Server struct {
 	log        *slog.Logger
 	tz         *time.Location // for dates typed without a time zone (JQL)
 	limiter    *auth.Limiter
-	baseURL    string         // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
-	proxies    []netip.Prefix // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
-	maxUpload  int64          // bytes in one upload request; see SetMaxUpload
-	maxStorage int64          // bytes in all attachments, 0 for no limit; see SetMaxStorage
-	out        *outgoing      // event bus, e-mail and webhooks (notifications.go)
-	dir        auth.Directory // LDAP, nil when off; see SetDirectory
+	baseURL    string            // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
+	proxies    []netip.Prefix    // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
+	maxUpload  int64             // bytes in one upload request; see SetMaxUpload
+	maxStorage int64             // bytes in all attachments, 0 for no limit; see SetMaxStorage
+	out        *outgoing         // event bus, e-mail and webhooks (notifications.go)
+	dir        auth.Directory    // LDAP, nil when off; see SetDirectory
+	sso        auth.SingleSignOn // OpenID Connect, nil when off; see SetSingleSignOn
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -108,6 +109,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 
 	route("POST /api/login", s.login, false)
 	route("POST /api/logout", s.logout, false)
+	route("GET /api/auth/oidc/start", s.oidcStart, false)
+	route("GET /api/auth/oidc/callback", s.oidcCallback, false)
 
 	// Forgotten passwords and invitations: links sent by e-mail.
 	s.accountLinkRoutes(route)

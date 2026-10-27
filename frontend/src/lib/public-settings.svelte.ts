@@ -1,7 +1,7 @@
 /**
  * The instance's public settings (GET /api/settings/public, no sign-in
  * needed): its name, the announcement banner, the shortest password
- * allowed. Loaded once; the administration reloads them after a change.
+ * allowed, the single sign-on button. Loaded once; the administration reloads them after a change.
  */
 
 import { request } from './api.js';
@@ -18,6 +18,8 @@ export interface PublicSettings {
   passwordMinLength: number;
   /** Whether links can be sent by e-mail: reset ("forgot your password") and invitations. */
   emailLinks: boolean;
+  /** Single sign-on (OpenID Connect), null when off; absent on older servers. */
+  sso?: { name: string } | null;
 }
 
 /** Used when the call fails: the endpoint exists in every server build. */

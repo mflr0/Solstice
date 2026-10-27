@@ -32,6 +32,8 @@
   let currentInput = $state<HTMLInputElement>();
 
   const min = $derived(publicSettings.value.passwordMinLength);
+  // Single sign-on owns the address, and there is no password to type.
+  const sso = $derived(session.me?.directory === 'oidc');
   const problems = $derived(profileProblems(form, min, session.me));
   const dirty = $derived(
     session.me !== null &&
@@ -244,11 +246,14 @@
           class="input"
           type="email"
           bind:value={form.email}
+          readonly={sso}
           autocomplete="email"
           aria-invalid={!!shown('email')}
           onblur={() => (touched.email = true)}
         />
-        {#if shown('email')}
+        {#if sso}
+          <span class="hint">{t.account.ssoEmailHint}</span>
+        {:else if shown('email')}
           <span class="field-error">{shown('email')}</span>
         {:else if changesEmail(form, session.me)}
           <span class="hint">{t.account.emailChangeHint}</span>
@@ -259,68 +264,72 @@
     </div>
 
     <h2 class="section-title">{t.account.passwordTitle}</h2>
-    <p class="form-hint">
-      {session.me.directory ? t.account.directoryPasswordIntro : t.account.passwordIntro}
-    </p>
-    <!-- Lets password managers match the account. -->
-    <input
-      class="sr-only"
-      type="text"
-      name="username"
-      value={session.me.username}
-      autocomplete="username"
-      readonly
-      tabindex="-1"
-      aria-hidden="true"
-    />
-    <label class="field half">
-      <span>{t.account.currentPassword}</span>
+    {#if sso}
+      <p class="form-hint">{t.account.ssoPasswordIntro}</p>
+    {:else}
+      <p class="form-hint">
+        {session.me.directory ? t.account.directoryPasswordIntro : t.account.passwordIntro}
+      </p>
+      <!-- Lets password managers match the account. -->
       <input
-        class="input"
-        type="password"
-        bind:this={currentInput}
-        bind:value={form.currentPassword}
-        autocomplete="current-password"
-        aria-invalid={!!shown('currentPassword')}
-        onblur={() => (touched.currentPassword = true)}
+        class="sr-only"
+        type="text"
+        name="username"
+        value={session.me.username}
+        autocomplete="username"
+        readonly
+        tabindex="-1"
+        aria-hidden="true"
       />
-      {#if shown('currentPassword')}
-        <span class="field-error">{shown('currentPassword')}</span>
+      <label class="field half">
+        <span>{t.account.currentPassword}</span>
+        <input
+          class="input"
+          type="password"
+          bind:this={currentInput}
+          bind:value={form.currentPassword}
+          autocomplete="current-password"
+          aria-invalid={!!shown('currentPassword')}
+          onblur={() => (touched.currentPassword = true)}
+        />
+        {#if shown('currentPassword')}
+          <span class="field-error">{shown('currentPassword')}</span>
+        {/if}
+      </label>
+      {#if !session.me.directory}
+        <div class="form-grid">
+          <label class="field">
+            <span>{t.account.newPassword}</span>
+            <input
+              class="input"
+              type="password"
+              bind:value={form.newPassword}
+              autocomplete="new-password"
+              aria-invalid={!!shown('newPassword')}
+              onblur={() => (touched.newPassword = true)}
+            />
+            {#if shown('newPassword')}
+              <span class="field-error">{shown('newPassword')}</span>
+            {:else}
+              <span class="hint">{t.account.passwordHint(min)}</span>
+            {/if}
+          </label>
+          <label class="field">
+            <span>{t.account.confirmPassword}</span>
+            <input
+              class="input"
+              type="password"
+              bind:value={form.confirmPassword}
+              autocomplete="new-password"
+              aria-invalid={!!shown('confirmPassword')}
+              onblur={() => (touched.confirmPassword = true)}
+            />
+            {#if shown('confirmPassword')}
+              <span class="field-error">{shown('confirmPassword')}</span>
+            {/if}
+          </label>
+        </div>
       {/if}
-    </label>
-    {#if !session.me.directory}
-      <div class="form-grid">
-        <label class="field">
-          <span>{t.account.newPassword}</span>
-          <input
-            class="input"
-            type="password"
-            bind:value={form.newPassword}
-            autocomplete="new-password"
-            aria-invalid={!!shown('newPassword')}
-            onblur={() => (touched.newPassword = true)}
-          />
-          {#if shown('newPassword')}
-            <span class="field-error">{shown('newPassword')}</span>
-          {:else}
-            <span class="hint">{t.account.passwordHint(min)}</span>
-          {/if}
-        </label>
-        <label class="field">
-          <span>{t.account.confirmPassword}</span>
-          <input
-            class="input"
-            type="password"
-            bind:value={form.confirmPassword}
-            autocomplete="new-password"
-            aria-invalid={!!shown('confirmPassword')}
-            onblur={() => (touched.confirmPassword = true)}
-          />
-          {#if shown('confirmPassword')}
-            <span class="field-error">{shown('confirmPassword')}</span>
-          {/if}
-        </label>
-      </div>
     {/if}
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}

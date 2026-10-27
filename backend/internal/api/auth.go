@@ -20,7 +20,8 @@ type meResponse struct {
 	Email    string  `json:"email"`
 	Admin    bool    `json:"admin"`
 	Locale   *string `json:"locale"` // null: none chosen
-	// Directory is "ldap" for an account whose password is the directory's.
+	// Directory is "ldap" or "oidc" for an account that signs in through a
+	// directory or a provider, with no password of its own.
 	Directory string `json:"directory"`
 }
 

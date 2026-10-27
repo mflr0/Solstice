@@ -269,6 +269,14 @@ export const it: Messages = {
     note: 'Gli account importati da Jira mantengono la loro password.',
     forgot: 'Password dimenticata?',
     forgotAdmin: 'Password dimenticata? Chiedi a un amministratore.',
+    sso: (name: string) => `Accedi con ${name}`,
+    or: 'oppure',
+    ssoErrors: {
+      'sso-failed': 'L’accesso unico non è riuscito. Riprova, o chiedi a un amministratore.',
+      'sso-denied': 'Il tuo account non è autorizzato ad accedere a Solstice.',
+      'sso-account':
+        'Un account con questo nome utente accede qui con una password: usala, o chiedi a un amministratore.',
+    },
   },
 
   accountLinks: {
@@ -1966,6 +1974,9 @@ export const it: Messages = {
     passwordTitle: 'Password',
     directoryPasswordIntro:
       'La tua password è gestita dalla directory (LDAP): cambiala lì. Digitala qui solo per cambiare il tuo indirizzo e-mail.',
+    ssoPasswordIntro:
+      'Accedi con l’accesso unico (single sign-on): questo account non ha una password in Solstice.',
+    ssoEmailHint: 'Impostato dall’accesso unico.',
     passwordIntro:
       'Lascia i campi vuoti per mantenere la password attuale. Una nuova password chiude le tue altre sessioni e i tuoi token di accesso smettono di funzionare.',
     currentPassword: 'Password attuale',
@@ -2075,6 +2086,8 @@ export const it: Messages = {
     noPassword: 'senza password',
     directory: 'LDAP',
     directoryHint: 'Accede tramite la directory (LDAP): la password si gestisce lì.',
+    sso: 'SSO',
+    ssoHint: 'Accede con l’accesso unico (OpenID Connect): nessuna password in Solstice.',
     more: (n: number) => `+${n}`,
     rights: 'Permessi',
     adminLabel: 'Amministratore di Solstice (accesso a tutta l’amministrazione)',

@@ -266,6 +266,15 @@ export const fr: Messages = {
     note: 'Les comptes repris de Jira gardent leur mot de passe.',
     forgot: 'Mot de passe oublié ?',
     forgotAdmin: 'Mot de passe oublié ? Demandez à un administrateur.',
+    sso: (name: string) => `Se connecter avec ${name}`,
+    or: 'ou',
+    ssoErrors: {
+      'sso-failed':
+        'La connexion unique n’a pas abouti. Réessayez, ou demandez à un administrateur.',
+      'sso-denied': 'Votre compte n’est pas autorisé à se connecter à Solstice.',
+      'sso-account':
+        'Un compte de ce nom d’utilisateur se connecte ici avec un mot de passe : utilisez-le, ou demandez à un administrateur.',
+    },
   },
 
   accountLinks: {
@@ -1963,6 +1972,9 @@ export const fr: Messages = {
     passwordTitle: 'Mot de passe',
     directoryPasswordIntro:
       'Votre mot de passe est géré par l’annuaire (LDAP) : changez-le là-bas. Tapez-le ici seulement pour changer votre adresse e-mail.',
+    ssoPasswordIntro:
+      'Vous vous connectez par connexion unique : ce compte n’a pas de mot de passe dans Solstice.',
+    ssoEmailHint: 'Fournie par la connexion unique.',
     passwordIntro:
       'Laissez les champs vides pour garder le mot de passe actuel. Un nouveau mot de passe ferme vos autres sessions, et vos jetons d’accès cessent de fonctionner.',
     currentPassword: 'Mot de passe actuel',
@@ -2069,6 +2081,9 @@ export const fr: Messages = {
     noPassword: 'sans mot de passe',
     directory: 'LDAP',
     directoryHint: 'Se connecte avec l’annuaire (LDAP) : son mot de passe se gère là-bas.',
+    sso: 'SSO',
+    ssoHint:
+      'Se connecte par connexion unique (OpenID Connect) : pas de mot de passe dans Solstice.',
     more: (n: number) => `+${n}`,
     rights: 'Droits',
     adminLabel: 'Administrateur de Solstice (accès à toute l’administration)',

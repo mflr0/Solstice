@@ -267,7 +267,7 @@ export interface UserRow {
   active: boolean;
   admin: boolean;
   hasPassword: boolean;
-  /** "ldap" for an account whose password is the directory's; absent on older servers. */
+  /** "ldap" or "oidc" for an account with no password of its own; absent on older servers. */
   directory?: string;
   created: string;
   /** Absent on older servers. */

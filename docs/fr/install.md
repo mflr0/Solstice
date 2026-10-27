@@ -238,6 +238,16 @@ Les durées s'écrivent `30s`, `5m`, `1h30m`.
 | `SOLSTICE_LDAP_REQUIREGROUP` | aucun | Seuls les membres de ce groupe peuvent se connecter par LDAP. |
 | `SOLSTICE_LDAP_ADMINGROUP` | aucun | Les membres de ce groupe sont administrateurs, et eux seuls, parmi les comptes LDAP. |
 | `SOLSTICE_LDAP_TIMEOUT` | `10s` | Temps qu'une connexion peut attendre le serveur. Doit être positif. |
+| `SOLSTICE_OIDC_ISSUER` | aucun | Fournisseur OpenID Connect, par exemple `https://id.example.org/realms/staff` (`http://` seulement sur cette machine). Vide : la connexion unique est désactivée. Voir [administration](administration.md#connexion-unique-openid-connect). |
+| `SOLSTICE_OIDC_CLIENTID` | aucun | Identifiant de client de Solstice chez le fournisseur. Obligatoire avec `SOLSTICE_OIDC_ISSUER`. |
+| `SOLSTICE_OIDC_CLIENTSECRET` | aucun | Son secret. |
+| `SOLSTICE_OIDC_NAME` | `single sign-on` | Le fournisseur sur le bouton de connexion : « Se connecter avec … ». |
+| `SOLSTICE_OIDC_SCOPES` | `openid profile email` | Portées demandées, séparées par des espaces. Doit contenir `openid`. |
+| `SOLSTICE_OIDC_USERNAMECLAIM` | `preferred_username` | Revendication qui donne le nom d'utilisateur à la première connexion. |
+| `SOLSTICE_OIDC_GROUPSCLAIM` | `groups` | Revendication qui liste les groupes de la personne. |
+| `SOLSTICE_OIDC_REQUIREGROUP` | aucun | Seuls les membres de ce groupe peuvent se connecter par le fournisseur. |
+| `SOLSTICE_OIDC_ADMINGROUP` | aucun | Les membres de ce groupe sont administrateurs, et eux seuls, parmi les comptes qui se connectent par le fournisseur. |
+| `SOLSTICE_OIDC_TIMEOUT` | `10s` | Temps qu'une connexion peut attendre le fournisseur. Doit être positif. |
 
 `SOLSTICE_CONFIG` n'est lue que dans l'environnement. Il n'y a pas de base par
 défaut : sans `SOLSTICE_DB_URL`, l'assistant en demande une.

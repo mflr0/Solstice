@@ -228,6 +228,16 @@ Durations are written `30s`, `5m`, `1h30m`.
 | `SOLSTICE_LDAP_REQUIREGROUP` | none | Only members of this group may sign in through LDAP. |
 | `SOLSTICE_LDAP_ADMINGROUP` | none | Members of this group are administrators, and only they, among LDAP accounts. |
 | `SOLSTICE_LDAP_TIMEOUT` | `10s` | Time a sign-in may wait for the server. Must be positive. |
+| `SOLSTICE_OIDC_ISSUER` | none | OpenID Connect provider, for example `https://id.example.org/realms/staff` (`http://` only on this machine). Empty: single sign-on is off. See [administration](administration.md#single-sign-on-openid-connect). |
+| `SOLSTICE_OIDC_CLIENTID` | none | Solstice's client ID at the provider. Required with `SOLSTICE_OIDC_ISSUER`. |
+| `SOLSTICE_OIDC_CLIENTSECRET` | none | Its secret. |
+| `SOLSTICE_OIDC_NAME` | `single sign-on` | The provider on the sign-in button: "Sign in with …". |
+| `SOLSTICE_OIDC_SCOPES` | `openid profile email` | Scopes asked for, separated by spaces. Must contain `openid`. |
+| `SOLSTICE_OIDC_USERNAMECLAIM` | `preferred_username` | Claim that gives the user name at the first sign-in. |
+| `SOLSTICE_OIDC_GROUPSCLAIM` | `groups` | Claim that lists the person's groups. |
+| `SOLSTICE_OIDC_REQUIREGROUP` | none | Only members of this group may sign in with the provider. |
+| `SOLSTICE_OIDC_ADMINGROUP` | none | Members of this group are administrators, and only they, among accounts signing in with the provider. |
+| `SOLSTICE_OIDC_TIMEOUT` | `10s` | Time a sign-in may wait for the provider. Must be positive. |
 
 `SOLSTICE_CONFIG` itself is read only from the environment. There is no
 default database: without `SOLSTICE_DB_URL`, the wizard asks for one.

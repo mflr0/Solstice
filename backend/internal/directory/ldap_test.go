@@ -28,27 +28,6 @@ func TestFiltersEscapeWhatIsTyped(t *testing.T) {
 	}
 }
 
-func TestApplyGroups(t *testing.T) {
-	d := &LDAP{cfg: config.LDAPSettings{RequireGroup: "Staff", AdminGroup: "it"}}
-	e := &auth.DirectoryEntry{Groups: []string{"staff", "IT"}}
-	if err := d.apply(e); err != nil || e.Admin == nil || !*e.Admin {
-		t.Errorf("in both groups: %v, admin %v", err, e.Admin)
-	}
-	e = &auth.DirectoryEntry{Groups: []string{"staff"}}
-	if err := d.apply(e); err != nil || e.Admin == nil || *e.Admin {
-		t.Errorf("staff only: %v, admin %v", err, e.Admin)
-	}
-	if err := d.apply(&auth.DirectoryEntry{Groups: []string{"it"}}); !errors.Is(err, auth.ErrNoSession) {
-		t.Errorf("outside the required group: %v", err)
-	}
-	// Without AdminGroup, LDAP leaves the administrator right to Solstice.
-	d = &LDAP{}
-	e = &auth.DirectoryEntry{}
-	if err := d.apply(e); err != nil || e.Admin != nil {
-		t.Errorf("no groups set: %v, admin %v", err, e.Admin)
-	}
-}
-
 func TestNew(t *testing.T) {
 	if d, err := New(config.LDAPSettings{}); d != nil || err != nil {
 		t.Errorf("off: %v, %v", d, err)
