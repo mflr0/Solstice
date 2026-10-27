@@ -236,6 +236,7 @@ export const en = {
     yes: 'yes',
     no: 'no',
     filter: 'Filter…',
+    createNamed: (name: string) => `Create “${name}”`,
     ctrlEnter: 'Ctrl + Enter to send',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
