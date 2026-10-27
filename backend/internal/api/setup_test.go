@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"solstice/internal/config"
+	"solstice/internal/i18n"
 )
 
 // wizard drives the setup handler directly, as one browser.
@@ -263,6 +264,22 @@ func TestImportJobCrashedKeepsAFinishedJob(t *testing.T) {
 		t.Errorf("state = %q, want done", v.State)
 	}
 	func() { defer job.crashed(log) }() // no panic: nothing changes
+}
+
+func TestImportJobWarningsInTheReadersLanguage(t *testing.T) {
+	job := &importJob{state: "done", started: time.Now(),
+		warnings: []i18n.Message{i18n.N(2, i18n.ImportLeftOutCommentOne, i18n.ImportLeftOutCommentMany)}}
+	for lang, want := range map[string]string{
+		"en": "2 comments of a missing issue, not imported",
+		"de": "2 Kommentare fehlender Vorgänge, nicht importiert",
+	} {
+		if got := job.view(lang).Warnings; len(got) != 1 || got[0] != want {
+			t.Errorf("warnings in %s = %q, want %q", lang, got, want)
+		}
+	}
+	if got := (&importJob{}).view("en").Warnings; got == nil || len(got) != 0 {
+		t.Errorf("no warnings = %#v, want an empty list", got)
+	}
 }
 
 func TestSetupAddress(t *testing.T) {

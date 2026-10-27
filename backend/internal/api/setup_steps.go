@@ -420,7 +420,7 @@ type importJob struct {
 	mu       sync.Mutex
 	state    string // running, done, failed
 	progress importer.Progress
-	warnings []string
+	warnings []i18n.Message
 	err      error
 	started  time.Time
 	finished time.Time
@@ -442,12 +442,12 @@ func (j *importJob) view(lang string) importView {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	v := importView{State: j.state, Phase: j.progress.Phase, Done: j.progress.Done, Total: j.progress.Total,
-		Rows: j.progress.Rows, Steps: j.progress.Steps, Warnings: j.warnings}
+		Rows: j.progress.Rows, Steps: j.progress.Steps, Warnings: make([]string, len(j.warnings))}
 	if v.Steps == nil {
 		v.Steps = []importer.Step{}
 	}
-	if v.Warnings == nil {
-		v.Warnings = []string{}
+	for i, w := range j.warnings {
+		v.Warnings[i] = w.In(lang)
 	}
 	end := j.finished
 	if end.IsZero() {

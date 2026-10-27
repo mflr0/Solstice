@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/sqlq"
 )
@@ -151,8 +152,7 @@ func (r *run) importIssues() error {
 			}
 		}
 		if len(ids) > 0 {
-			r.rep.warn("%s from Jira in %s, recreated under the name \"Unknown (id)\"",
-				plural(len(ids), "unknown value", "unknown values"), table)
+			r.rep.warn(i18n.N(len(ids), i18n.ImportWarnUnknownValuesOne, i18n.ImportWarnUnknownValuesMany, table))
 		}
 	}
 
@@ -173,8 +173,7 @@ func (r *run) importIssues() error {
 		}
 	}
 	if n > 0 {
-		r.rep.warn("%s whose parent was not imported, now standalone",
-			plural(int(n), "sub-task", "sub-tasks"))
+		r.rep.warn(i18n.N(int(n), i18n.ImportWarnOrphanSubtasksOne, i18n.ImportWarnOrphanSubtasksMany))
 	}
 	for pid, p := range r.projects {
 		if _, err := r.dst.ExecContext(r.ctx, `UPDATE projects SET issue_counter = GREATEST(issue_counter, ?)
@@ -211,8 +210,8 @@ func (r *run) importIssues() error {
 		return err
 	}
 	r.rep.step("old keys of moved issues", moved.total, skipped)
-	r.leftOut(gone, "old issue key", "old issue keys", "of a missing issue")
-	r.leftOut(reused, "old issue key", "old issue keys", "already given to another issue (it keeps the first)")
+	r.leftOut(gone, i18n.ImportLeftOutOldKeyGoneOne, i18n.ImportLeftOutOldKeyGoneMany)
+	r.leftOut(reused, i18n.ImportLeftOutOldKeyReusedOne, i18n.ImportLeftOutOldKeyReusedMany)
 	return nil
 }
 
@@ -295,8 +294,8 @@ func (r *run) importIssueDetails() error {
 	}
 	r.rep.step("issue components", comps.total, noComponent)
 	r.rep.step("issue versions", vers.total, skipped)
-	r.leftOut(noComponent, "component link", "component links", "to a missing component")
-	r.leftOut(noIssue, "component or version link", "component or version links", "of a missing issue")
+	r.leftOut(noComponent, i18n.ImportLeftOutComponentGoneOne, i18n.ImportLeftOutComponentGoneMany)
+	r.leftOut(noIssue, i18n.ImportLeftOutComponentVersionIssueGoneOne, i18n.ImportLeftOutComponentVersionIssueGoneMany)
 
 	r.epicOf = map[int64]int64{}
 	links := r.inserter("issue_links", "id", "type_id", "source_id", "target_id")
@@ -328,7 +327,7 @@ func (r *run) importIssueDetails() error {
 		return err
 	}
 	r.rep.step("issue links", links.total, skipped)
-	r.leftOut(skipped, "issue link", "issue links", "of a missing issue or link type")
+	r.leftOut(skipped, i18n.ImportLeftOutIssueLinkOne, i18n.ImportLeftOutIssueLinkMany)
 
 	remote := r.inserter("remote_links", "id", "issue_id", "url", "title", "relationship", "global_id")
 	globals := globalIDs{}
@@ -358,7 +357,7 @@ func (r *run) importIssueDetails() error {
 		return err
 	}
 	r.rep.step("remote links", remote.total, skipped)
-	r.leftOut(noURL, "remote link", "remote links", "without a URL")
+	r.leftOut(noURL, i18n.ImportLeftOutRemoteLinkNoURLOne, i18n.ImportLeftOutRemoteLinkNoURLMany)
 
 	watch := r.inserter("watchers", "issue_id", "user_id", "created_at")
 	vote := r.inserter("votes", "issue_id", "user_id", "created_at")
@@ -391,7 +390,7 @@ func (r *run) importIssueDetails() error {
 	}
 	r.rep.step("watchers", watch.total, 0)
 	r.rep.step("votes", vote.total, skipped)
-	r.leftOut(skipped, "watch or vote", "watches or votes", "of an unknown user or a missing issue")
+	r.leftOut(skipped, i18n.ImportLeftOutWatchVoteOne, i18n.ImportLeftOutWatchVoteMany)
 	return nil
 }
 
@@ -481,7 +480,7 @@ func (r *run) importCommentsAndWorklogs() error {
 		return err
 	}
 	r.rep.step("comments", ins.total, skipped)
-	r.leftOut(skipped, "comment", "comments", "of a missing issue")
+	r.leftOut(skipped, i18n.ImportLeftOutCommentOne, i18n.ImportLeftOutCommentMany)
 	r.rep.step("of which restricted comments", restricted, 0)
 
 	ins = r.inserter("worklogs", "id", "issue_id", "author_id", "body", "started_at", "seconds", "created_at",
@@ -514,7 +513,7 @@ func (r *run) importCommentsAndWorklogs() error {
 		return err
 	}
 	r.rep.step("worklogs", ins.total, skipped)
-	r.leftOut(skipped, "work log", "work logs", "of a missing issue")
+	r.leftOut(skipped, i18n.ImportLeftOutWorklogOne, i18n.ImportLeftOutWorklogMany)
 	return nil
 }
 
@@ -568,10 +567,9 @@ func (r *run) importAttachments() error {
 	r.rep.step("attachments", ins.total, skipped)
 	switch {
 	case r.opt.JiraHome == "" && ins.total > 0:
-		r.rep.warn("attachments: only the metadata is imported; run again with -jira-home to copy the files")
+		r.rep.warn(i18n.M(i18n.ImportWarnAttachmentsMetadataOnly))
 	case missingFiles > 0:
-		r.rep.warn("%s in the Jira home (already missing on Jira's side?)",
-			plural(missingFiles, "attachment without a file", "attachments without a file"))
+		r.rep.warn(i18n.N(missingFiles, i18n.ImportWarnMissingFilesOne, i18n.ImportWarnMissingFilesMany))
 	}
 	return nil
 }
@@ -596,7 +594,7 @@ func (r *run) copyAttachment(id int64, issue issueRef, dir string) (bool, error)
 					r.unsafeKeys = map[string]bool{}
 				}
 				r.unsafeKeys[k] = true
-				r.rep.warn("attachments: the project key %q cannot be used in a file path, its attachment files are not copied", k)
+				r.rep.warn(i18n.M(i18n.ImportWarnUnsafeProjectKey, k))
 			}
 			return false, nil
 		}
@@ -746,8 +744,8 @@ func (r *run) importCustomFieldValues() error {
 		return err
 	}
 	r.rep.step("custom field values", ins.total, skipped)
-	r.leftOut(orphans, "custom field value", "custom field values", "of a missing issue or field")
-	r.leftOut(unknownUsers, "custom field value", "custom field values", "naming an unknown user")
+	r.leftOut(orphans, i18n.ImportLeftOutFieldValueOrphanOne, i18n.ImportLeftOutFieldValueOrphanMany)
+	r.leftOut(unknownUsers, i18n.ImportLeftOutFieldValueUnknownUserOne, i18n.ImportLeftOutFieldValueUnknownUserMany)
 	if len(misfit) > 0 {
 		n := 0
 		for _, c := range misfit {
@@ -757,8 +755,7 @@ func (r *run) importCustomFieldValues() error {
 		for _, id := range slices.Sorted(maps.Keys(misfit)) {
 			ids = append(ids, strconv.FormatInt(id, 10))
 		}
-		r.rep.warn("%s stored for a former type of their custom field, not imported (fields %s)",
-			plural(n, "value", "values"), strings.Join(ids, ", "))
+		r.rep.warn(i18n.N(n, i18n.ImportWarnFormerFieldTypeOne, i18n.ImportWarnFormerFieldTypeMany, strings.Join(ids, ", ")))
 	}
 	return nil
 }
@@ -813,7 +810,7 @@ func (r *run) importHistory() error {
 		return err
 	}
 	r.rep.step("changes (history)", groups.total, skipped)
-	r.leftOut(skipped, "change", "changes", "of a missing issue")
+	r.leftOut(skipped, i18n.ImportLeftOutChangeOne, i18n.ImportLeftOutChangeMany)
 
 	items := r.inserter("change_items", "id", "group_id", "field_type", "field", "old_value", "old_string",
 		"new_value", "new_string")
@@ -846,6 +843,6 @@ func (r *run) importHistory() error {
 		orphans = r.check.orphanItems
 	}
 	r.rep.step("change details", items.total-int(orphans), int(orphans))
-	r.leftOut(int(orphans), "change detail", "change details", "of a missing change")
+	r.leftOut(int(orphans), i18n.ImportLeftOutChangeDetailOne, i18n.ImportLeftOutChangeDetailMany)
 	return nil
 }

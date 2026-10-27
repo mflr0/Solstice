@@ -1,6 +1,9 @@
 package i18n
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestNegotiate(t *testing.T) {
 	for header, want := range map[string]string{
@@ -104,5 +107,25 @@ func TestReorderedValues(t *testing.T) {
 	defer delete(fr, "TestBefore")
 	if got := Sprintf("fr", "TestBefore", "a", "b"); got != "b après a." {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestN(t *testing.T) {
+	for n, want := range map[int]string{
+		1: "1 comment of a missing issue, not imported",
+		0: "0 comments of a missing issue, not imported",
+		2: "2 comments of a missing issue, not imported",
+	} {
+		if got := N(n, ImportLeftOutCommentOne, ImportLeftOutCommentMany).String(); got != want {
+			t.Errorf("N(%d) = %q, want %q", n, got, want)
+		}
+	}
+	m := N(2, ImportWarnUnknownValuesOne, ImportWarnUnknownValuesMany, "issuestatus")
+	if got, want := m.In("hi"), "issuestatus में Jira के 2 अज्ञात मान \"Unknown (id)\" नाम से फिर बनाए गए"; got != want {
+		t.Errorf("reordered values: %q, want %q", got, want)
+	}
+	b, err := json.Marshal([]Message{m})
+	if want := `["2 unknown values from Jira in issuestatus, recreated under the name \"Unknown (id)\""]`; err != nil || string(b) != want {
+		t.Errorf("JSON = %s (%v), want %s", b, err, want)
 	}
 }

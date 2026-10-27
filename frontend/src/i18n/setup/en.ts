@@ -177,7 +177,6 @@ export const en = {
     reportSkipped: 'Skipped',
     skippedHint: 'Skipped: references left dangling in Jira, or data Solstice does not take over.',
     warnings: 'To check',
-    warningsNote: '',
     chooseTitle: 'Who administers Solstice?',
     chooseLead:
       'Choose an imported account: it keeps its Jira password. Jira administrators are already Solstice administrators.',

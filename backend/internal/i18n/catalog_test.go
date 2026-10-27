@@ -24,7 +24,7 @@ var messageFuncs = map[string]map[string]int{
 
 // forwards are the key arguments that are not constants: the helpers passing
 // on their own parameter, and messages already built elsewhere.
-var forwards = []string{"key", "je.Key", "e.Key"}
+var forwards = []string{"key", "je.Key", "e.Key", "one", "many"}
 
 // declaredKeys reads keys.go for the Key constants, each valued its own name.
 func declaredKeys(t *testing.T) map[Key]bool {
@@ -87,24 +87,15 @@ func usedKeys(t *testing.T, keys map[Key]bool) map[Key]string {
 					if x, isIdent := f.X.(*ast.Ident); isIdent && x.Name == "i18n" && f.Sel.Name == "M" {
 						fn, i, ok = "i18n.M", 0, true
 					}
+					if x, isIdent := f.X.(*ast.Ident); isIdent && x.Name == "i18n" && f.Sel.Name == "N" {
+						checkCount(t, fset, keys, n)
+						return true
+					}
 				}
 				if !ok || len(n.Args) <= i {
 					return true
 				}
-				at := fset.Position(n.Pos()).String()
-				sel, ok := n.Args[i].(*ast.SelectorExpr)
-				if !ok || !keys[Key(sel.Sel.Name)] {
-					if expr := types.ExprString(n.Args[i]); !slices.Contains(forwards, expr) {
-						t.Errorf("%s: %s takes a message that is not a key (%s)", at, fn, expr)
-					}
-					return true
-				}
-				if n.Ellipsis == token.NoPos {
-					key := Key(sel.Sel.Name)
-					if want, got := len(verbs(en[key])), len(n.Args)-i-1; want != got {
-						t.Errorf("%s: %s expects %d values, given %d", at, key, want, got)
-					}
-				}
+				checkKey(t, fset.Position(n.Pos()).String(), fn, keys, n.Args[i], n.Ellipsis == token.NoPos, len(n.Args)-i-1)
 			}
 			return true
 		})
@@ -117,6 +108,39 @@ func usedKeys(t *testing.T, keys map[Key]bool) map[Key]string {
 		t.Fatalf("only %d keys used: is the scan still looking in the right places?", len(out))
 	}
 	return out
+}
+
+// checkKey checks that a message function gets a key and, when values is
+// known, as many values as the English template has placeholders.
+func checkKey(t *testing.T, at, fn string, keys map[Key]bool, arg ast.Expr, counted bool, values int) {
+	t.Helper()
+	sel, ok := arg.(*ast.SelectorExpr)
+	if !ok || !keys[Key(sel.Sel.Name)] {
+		if expr := types.ExprString(arg); !slices.Contains(forwards, expr) {
+			t.Errorf("%s: %s takes a message that is not a key (%s)", at, fn, expr)
+		}
+		return
+	}
+	if counted {
+		key := Key(sel.Sel.Name)
+		if want := len(verbs(en[key])); want != values {
+			t.Errorf("%s: %s expects %d values, given %d", at, key, want, values)
+		}
+	}
+}
+
+// checkCount checks a call of i18n.N: both keys, each given the count and
+// the other values.
+func checkCount(t *testing.T, fset *token.FileSet, keys map[Key]bool, n *ast.CallExpr) {
+	t.Helper()
+	at := fset.Position(n.Pos()).String()
+	if len(n.Args) < 3 {
+		t.Errorf("%s: i18n.N without its two keys", at)
+		return
+	}
+	for _, arg := range n.Args[1:3] {
+		checkKey(t, at, "i18n.N", keys, arg, n.Ellipsis == token.NoPos, len(n.Args)-2)
+	}
 }
 
 // verbs lists the placeholders of a template as "argument index:verb", in

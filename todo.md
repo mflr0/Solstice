@@ -122,7 +122,6 @@ boards, then projects), starting with an issue. The structural tickets of the
 - Terminal theme in Hindi: monospaced spaces look wide.
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
-- The import report and warnings are in English only (not translated).
 - `internal/api/issues.go:1395` ignores the error of reading the `type` field.
 - Boards: no backlog column on Kanban boards; drag and drop does not work by
   touch (the card menu is used on phones); swimlane collapse buttons come late

@@ -79,6 +79,16 @@ type Message struct {
 // M builds a Message.
 func M(key Key, args ...any) Message { return Message{Key: key, Args: args} }
 
+// N builds a Message counting n: key one when n is 1, many otherwise, with n
+// as its first value.
+func N(n int, one, many Key, args ...any) Message {
+	key := many
+	if n == 1 {
+		key = one
+	}
+	return Message{Key: key, Args: append([]any{n}, args...)}
+}
+
 // Raw builds a Message that is not translated: the text shows as is in
 // every language.
 func Raw(text string) Message { return Message{raw: text} }
@@ -93,6 +103,9 @@ func (m Message) In(locale string) string {
 
 // String renders the message in the default language (English).
 func (m Message) String() string { return m.In(Default) }
+
+// MarshalText renders the message in English, as JSON does.
+func (m Message) MarshalText() ([]byte, error) { return []byte(m.String()), nil }
 
 // Sprintf renders a message in a language: its template (the English one
 // when the language has none) with the values inserted. Without values the

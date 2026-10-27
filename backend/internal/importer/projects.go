@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
@@ -563,8 +564,7 @@ func (r *run) importPermissions() error {
 		}
 		grants, ok := byScheme[scheme]
 		if !ok {
-			r.rep.warn("project %s: no permission scheme in Jira, nobody has access "+
-				"until an administrator configures it", p.key)
+			r.rep.warn(i18n.M(i18n.ImportWarnNoPermissionScheme, p.key))
 			continue
 		}
 		seen := map[string]bool{}
@@ -616,8 +616,7 @@ func (r *run) importPermissions() error {
 	skipped := 0
 	for kind, n := range unsupported {
 		skipped += n
-		r.rep.warn("%s of type \"%s\" not imported (access removed, to be reconfigured if needed)",
-			plural(n, "Jira permission", "Jira permissions"), kind)
+		r.rep.warn(i18n.N(n, i18n.ImportWarnPermissionTypeOne, i18n.ImportWarnPermissionTypeMany, kind))
 	}
 	r.rep.step("project permissions", ins.total, skipped)
 	return nil
@@ -702,8 +701,7 @@ func (r *run) importSecurityLevels() error {
 	r.rep.step("security levels", lins.total, 0)
 	r.rep.step("level members", mins.total, skipped)
 	if skipped > 0 {
-		r.rep.warn("%s of security levels not imported (unsupported type): these issues are "+
-			"visible by fewer people than before, never by more", plural(skipped, "member", "members"))
+		r.rep.warn(i18n.N(skipped, i18n.ImportWarnLevelMembersOne, i18n.ImportWarnLevelMembersMany))
 	}
 	return nil
 }
@@ -727,8 +725,7 @@ func (r *run) securityLevel(jiraLevel sql.NullInt64, pid int64) (any, error) {
 		return nil, err
 	}
 	r.levels[k] = id
-	r.rep.warn("project %s: a security level not found in Jira was replaced by \"Restricted (import)\", with no member",
-		r.projects[pid].key)
+	r.rep.warn(i18n.M(i18n.ImportWarnLevelReplaced, r.projects[pid].key))
 	return id, nil
 }
 

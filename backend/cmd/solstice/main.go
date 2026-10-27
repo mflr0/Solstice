@@ -583,7 +583,7 @@ func runImport(ctx context.Context, args []string) error {
 	if len(rep.Warnings) > 0 {
 		fmt.Println("\nCheck:")
 		for _, w := range rep.Warnings {
-			fmt.Println("  - " + w)
+			fmt.Println("  - " + w.String())
 		}
 	}
 	return nil

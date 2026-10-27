@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 	"solstice/internal/jiradb"
 	"solstice/internal/jql"
@@ -191,8 +192,7 @@ func (r *run) importBoards() error {
 	}
 	r.rep.step("boards", bins.total, skipped)
 	if skipped > 0 {
-		r.rep.warn("%s", plural(skipped, "board not imported: its filter no longer exists in Jira",
-			"boards not imported: their filter no longer exists in Jira"))
+		r.rep.warn(i18n.N(skipped, i18n.ImportWarnBoardsNoFilterOne, i18n.ImportWarnBoardsNoFilterMany))
 	}
 
 	columns := map[int64]bool{}
