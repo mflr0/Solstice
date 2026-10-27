@@ -116,7 +116,6 @@ export const hi: Messages = {
     create: 'नया टिकट',
     account: 'खाता',
     myPage: 'मेरा पेज',
-    skin: 'थीम',
     skins: {
       carnet: 'नोटबुक',
       orbite: 'ऑर्बिट',
@@ -138,10 +137,8 @@ export const hi: Messages = {
       plan: 'ट्रेसिंग पेपर, टाइटल ब्लॉक',
     },
     themes: 'थीम',
-    allThemes: 'सभी थीम…',
     mode: 'मोड',
     modes: { system: 'सिस्टम', light: 'लाइट', dark: 'डार्क' },
-    language: 'भाषा',
     logout: 'साइन आउट करें',
     sourceCode: 'सोर्स कोड',
     licenses: 'लाइसेंस',

@@ -1218,11 +1218,6 @@
   padding: 5px 8px 4px 22px;
 }
 
-[data-skin='retro'] .popover .swatch {
-  border-radius: 0;
-  border-color: var(--rt-dark);
-}
-
 /* Dialogs ---------------------------------------------------------------------------------- */
 
 [data-skin='retro'] dialog.modal {
