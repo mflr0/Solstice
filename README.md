@@ -335,9 +335,10 @@ container: an update, a bad checksum refused, an unhealthy version rolled back.
 ```
 
 `scripts/e2e-import.sh` generates the same synthetic Jira database on
-PostgreSQL and on MySQL (`backend/cmd/jira-fixture`, from the
-`entitymodel.xml` of a Jira distribution placed next to the repository),
-imports both, checks that the results are identical table by table and match
+PostgreSQL and on MySQL (`backend/cmd/jira-fixture`), once per Jira version
+from 7.13 to 11.3, each from that version's `entitymodel.xml`
+(`scripts/jira-entitydefs.sh` downloads them next to the repository), imports
+both, checks that the results are identical table by table and match
 what was generated, then runs the API tests (permissions, confidentiality,
 real time…) against the imported database.
 

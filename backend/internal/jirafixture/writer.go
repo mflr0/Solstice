@@ -34,35 +34,63 @@ type Table struct {
 	w     *Writer
 	name  string // lower-case table name, for Rows
 	head  string // INSERT INTO t (c1, c2) VALUES
-	ncols int
-	max   int // rows per statement
+	ncols int    // values per Add
+	keep  []int  // indexes of the values written, when the model lacks some columns
+	width int    // columns written
+	max   int    // rows per statement
 	vals  []any
 	n     int
 }
 
+// newerColumns are the columns the generator writes that older Jira versions
+// do not have; Table leaves them out when the entity model lacks them.
+var newerColumns = map[string]bool{
+	"component.archived":          true, // not in 7.13
+	"component.deleted":           true, // not in 7.13
+	"customfield.issueswithvalue": true, // not in 7.13
+	"customfield.lastvalueupdate": true, // not in 7.13
+	"cwd_group.external_id":       true, // not in 7.13
+	"jiraissue.archived":          true, // not in 7.13
+	"project.created":             true, // not in 9.12
+	"project.createdby":           true, // not in 9.12
+	"project.updated":             true, // not in 9.12
+	"project.updatedby":           true, // not in 9.12
+	"issuelinktype.position":      true, // not in 10.3
+}
+
 // Table prepares inserts into table with the given columns. Unknown tables
 // or columns are programming errors and panic: the fixture must stay in
-// sync with the real schema.
+// sync with the real schema. Only newerColumns may be missing.
 func (w *Writer) Table(table string, cols ...string) *Table {
 	e := w.model.Entity(table)
 	if e == nil {
 		panic(fmt.Sprintf("jirafixture: table %s is not in the entity model", table))
 	}
-	quoted := make([]string, len(cols))
+	quoted := make([]string, 0, len(cols))
+	keep := make([]int, 0, len(cols))
 	for i, c := range cols {
 		f, ok := e.Column(c)
 		if !ok {
+			if newerColumns[strings.ToLower(e.Table+"."+c)] {
+				continue
+			}
 			panic(fmt.Sprintf("jirafixture: column %s.%s is not in the entity model", e.Table, c))
 		}
-		quoted[i] = w.eng.QuoteFolded(f.Column)
+		quoted = append(quoted, w.eng.QuoteFolded(f.Column))
+		keep = append(keep, i)
+	}
+	if len(keep) == len(cols) {
+		keep = nil
 	}
 	t := &Table{
 		w:     w,
 		name:  strings.ToLower(e.Table),
 		head:  "INSERT INTO " + w.eng.QuoteFolded(e.Table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
 		ncols: len(cols),
+		keep:  keep,
+		width: len(quoted),
 		// Both engines accept up to 65535 bind parameters per statement.
-		max: min(500, 60000/len(cols)),
+		max: min(500, 60000/len(quoted)),
 	}
 	w.tables = append(w.tables, t)
 	return t
@@ -84,6 +112,7 @@ func (w *Writer) AOTable(table string, cols ...string) *Table {
 		name:  strings.ToLower(table),
 		head:  "INSERT INTO " + w.eng.Quote(table) + " (" + strings.Join(quoted, ", ") + ") VALUES ",
 		ncols: len(cols),
+		width: len(cols),
 		max:   min(500, 60000/len(cols)),
 	}
 	w.tables = append(w.tables, t)
@@ -95,7 +124,13 @@ func (t *Table) Add(vals ...any) {
 	if len(vals) != t.ncols {
 		panic(fmt.Sprintf("jirafixture: %s: %d values for %d columns", t.name, len(vals), t.ncols))
 	}
-	t.vals = append(t.vals, vals...)
+	if t.keep == nil {
+		t.vals = append(t.vals, vals...)
+	} else {
+		for _, i := range t.keep {
+			t.vals = append(t.vals, vals[i])
+		}
+	}
 	t.n++
 	if t.n == t.max {
 		t.flush()
@@ -116,7 +151,7 @@ func (t *Table) flush() {
 			b.WriteString(", ")
 		}
 		b.WriteByte('(')
-		for c := range t.ncols {
+		for c := range t.width {
 			if c > 0 {
 				b.WriteString(", ")
 			}

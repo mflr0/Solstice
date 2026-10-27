@@ -361,8 +361,9 @@ refusée, une version qui ne démarre pas annulée.
 ```
 
 `scripts/e2e-import.sh` génère la même base Jira synthétique sur PostgreSQL et
-sur MySQL (`backend/cmd/jira-fixture`, à partir du `entitymodel.xml` d'une
-distribution Jira posée à côté du dépôt), importe les deux, vérifie que les
+sur MySQL (`backend/cmd/jira-fixture`), une fois par version de Jira de 7.13
+à 11.3, chacune à partir de son `entitymodel.xml` (`scripts/jira-entitydefs.sh`
+les télécharge à côté du dépôt), importe les deux, vérifie que les
 résultats sont identiques table par table et conformes à ce qui a été généré,
 puis lance les tests d'API (droits, confidentialité, temps réel…) sur la base
 importée.

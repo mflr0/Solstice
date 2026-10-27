@@ -16,7 +16,8 @@
 # loading it. Commit the new file with the change that required it.
 #
 # What it needs: the containers of compose.yaml (docker compose --profile import up -d) and the
-# Jira distribution (JIRA_DIST, see e2e-import.sh).
+# entity model of the newest Jira version (scripts/jira-entitydefs.sh, or
+# JIRA_DIST; see e2e-import.sh).
 #
 #   JIRA_DIST=/path/to/atlassian-jira-software-X-standalone ./scripts/make-test-seed.sh
 #   ./scripts/make-test-seed.sh --check    # only check the committed seed (no containers)
