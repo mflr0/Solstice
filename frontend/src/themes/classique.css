@@ -342,9 +342,9 @@
 
 [data-skin='classique'] .topbar-inner {
   max-width: none;
-  height: 52px;
+  --bar-height: 52px;
   padding: 0 20px;
-  gap: 8px;
+  column-gap: 8px;
 }
 
 [data-skin='classique'] .topbar :focus-visible {
@@ -430,6 +430,12 @@
 
 [data-skin='classique'] .topbar .nav-link:focus-visible {
   outline-offset: -4px;
+}
+
+/* The cells grow to share the row; the padding is only their least. */
+[data-skin='classique'] .topbar.is-stacked .nav-link {
+  height: 40px;
+  padding: 0 4px;
 }
 
 [data-skin='classique'] .topbar-search {
@@ -2001,7 +2007,7 @@
 @media (max-width: 860px) {
   [data-skin='classique'] .topbar-inner {
     padding: 0 12px;
-    gap: 4px;
+    column-gap: 4px;
   }
 
   [data-skin='classique'] .topbar .brand {
@@ -2041,6 +2047,11 @@
 
   [data-skin='classique'] .topbar .nav-link {
     padding: 0 8px;
+  }
+
+  /* Without the live dot, the mark pushes the tools to the right. */
+  [data-skin='classique'] .topbar.is-stacked .brand {
+    margin-right: auto;
   }
 
   /* The create button shrinks to a square "+"; its label stays for screen readers. */

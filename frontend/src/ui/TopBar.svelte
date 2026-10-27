@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
-  import { outside } from '../lib/actions.js';
+  import { outside, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
@@ -62,7 +62,7 @@
   });
 </script>
 
-<header class="topbar">
+<header class="topbar" use:stackWhenCrowded>
   <div class="topbar-inner">
     <a class="brand" href={paths.home()}>
       <Logo />
