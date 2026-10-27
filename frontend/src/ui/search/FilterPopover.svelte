@@ -45,6 +45,15 @@
     e.stopPropagation();
     close(true);
   }
+
+  /** Shifts the panel left when it would pass the right edge of the window. */
+  function fit(el: HTMLElement) {
+    // The phone's sheet is fixed and already spans the screen.
+    if (getComputedStyle(el).position === 'fixed') return;
+    const r = el.getBoundingClientRect();
+    const edge = document.documentElement.clientWidth - 8;
+    if (r.right > edge) el.style.left = `${Math.max(8 - r.left, edge - r.right)}px`;
+  }
 </script>
 
 <div
@@ -94,6 +103,7 @@
       aria-label={label}
       tabindex="-1"
       onkeydown={keydown}
+      use:fit
     >
       <div class="sheet-head">
         <strong>{label}</strong>
