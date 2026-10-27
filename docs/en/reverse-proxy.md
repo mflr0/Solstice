@@ -20,6 +20,8 @@ renews the certificate by itself.
   keep using HTTPS. Never send it on the plain HTTP redirect.
 - Keep `GET /api/events` open, without buffering and without closing it after
   60 seconds. This is the stream of live updates.
+- Speak HTTP/2 to browsers (both examples do). Over HTTP/1.1 a browser opens
+  at most 6 connections per host, for all its tabs together.
 - Accept request bodies up to the size of an upload, 100 MiB by default (see
   `SOLSTICE_HTTP_MAXUPLOAD`).
 
