@@ -38,15 +38,16 @@ type boardRow struct {
 	Swimlanes string
 	Estimate  sql.NullString
 	Cutoff    sql.NullString
+	Backlog   bool // Kanban: the first column's issues are on the backlog page, not on the board
 }
 
 const boardColumns = `b.id, b.name, b.kind, b.filter_id, f.query, b.sub_query, b.owner_id, b.swimlanes, b.estimate,
-	b.done_cutoff`
+	b.done_cutoff, b.kanban_backlog`
 
 func scanBoard(sc scanner) (*boardRow, error) {
 	var b boardRow
 	err := sc.Scan(&b.ID, &b.Name, &b.Kind, &b.FilterID, &b.Query, &b.SubQuery, &b.OwnerID, &b.Swimlanes, &b.Estimate,
-		&b.Cutoff)
+		&b.Cutoff, &b.Backlog)
 	return &b, err
 }
 
@@ -361,6 +362,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "query": b.Query,
 			"subQuery": sqlq.String(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
 			"estimateField": sqlq.String(b.Estimate), "doneCutoff": sqlq.String(b.Cutoff),
+			"kanbanBacklog": b.Backlog,
 		},
 		"estimateFields": estimateFields,
 		"projects":       projects, "columns": columns, "quickFilters": quick, "swimlanes": lanes, "sprints": sprints,
@@ -371,6 +373,11 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 // backlogCond narrows a board's issues to its backlog: sub-tasks travel with
 // their parent, done issues have left it.
 const backlogCond = ` AND i.parent_id IS NULL AND i.status_id NOT IN (SELECT id FROM statuses WHERE category = 'done')`
+
+// firstColumnCond selects the issues in the board's first column (one
+// argument: the board id), a Kanban backlog's.
+const firstColumnCond = `i.status_id IN (SELECT cs.status_id FROM board_column_statuses cs
+	WHERE cs.column_id = (SELECT id FROM board_columns WHERE board_id = ? ORDER BY position, id LIMIT 1))`
 
 // queryCondition compiles a saved query (JQL or the simple syntax) into a
 // condition on issues, ignoring its ORDER BY: boards order by rank.
@@ -704,6 +711,9 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 		}
 		where += " AND EXISTS (SELECT 1 FROM sprint_issues si WHERE si.issue_id = i.id AND si.sprint_id = ?)"
 		args = append(args, sprint.ID)
+	} else if b.Backlog {
+		where += " AND NOT " + firstColumnCond
+		args = append(args, b.ID)
 	}
 	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
 	if err != nil {
@@ -719,7 +729,8 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 }
 
 // backlog lists, for a Scrum board, the open sprints with their issues and
-// then the backlog: issues not yet in an open sprint and not done.
+// then the backlog: issues not yet in an open sprint and not done. A Kanban
+// board's backlog is its first column, when it has one.
 func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, err := s.subject(r)
@@ -738,7 +749,15 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where += backlogCond
+	if b.Kind == "kanban" {
+		if !b.Backlog {
+			return errNotFound
+		}
+		where += " AND i.parent_id IS NULL AND " + firstColumnCond
+		args = append(args, b.ID)
+	} else {
+		where += backlogCond
+	}
 	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
 	if err != nil {
 		return err

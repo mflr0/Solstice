@@ -84,6 +84,8 @@ export interface BoardSettings {
   estimateField: string | null;
   /** '2w', '14d', '1m'. */
   doneCutoff: string | null;
+  /** Kanban: the first column's issues are on the backlog page, not on the board. */
+  kanbanBacklog: boolean;
 }
 
 export interface BoardDetail {
@@ -138,6 +140,7 @@ export interface BoardPatch {
   doneCutoff?: string;
   swimlanes?: SwimlaneStrategy;
   estimate?: string;
+  kanbanBacklog?: boolean;
   columns?: {
     id?: number;
     name: string;

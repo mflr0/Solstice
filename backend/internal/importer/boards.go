@@ -126,18 +126,19 @@ func (r *run) importBoards() error {
 	boards := map[int64]bool{}
 	now := time.Now().UTC()
 	bins := r.inserter("boards", "id", "name", "kind", "filter_id", "sub_query", "owner_id", "swimlanes", "estimate",
-		"done_cutoff", "created_at", "updated_at")
+		"done_cutoff", "kanban_backlog", "created_at", "updated_at")
 	pins := r.inserter("board_projects", "board_id", "project_id")
 	skipped := 0
 	view := "AO_60DB71_RAPIDVIEW"
 	q := r.aoSelect(view, "ID", "NAME", "OWNER_USER_NAME", "SAVED_FILTER_ID", "SPRINTS_ENABLED", "SWIMLANE_STRATEGY")
-	q = strings.Replace(q, " FROM ", ", "+r.optional(view, "OLD_DONE_ISSUES_CUTOFF")+" FROM ", 1)
+	q = strings.Replace(q, " FROM ", ", "+r.optional(view, "OLD_DONE_ISSUES_CUTOFF")+", "+
+		r.optional(view, "KAN_PLAN_ENABLED")+" FROM ", 1)
 	if err := r.each(q, func(rows *sql.Rows) error {
 		var id int64
 		var name, owner, swimlanes, cutoff sql.NullString
 		var filter sql.NullInt64
-		var sprints sql.NullBool
-		if err := rows.Scan(&id, &name, &owner, &filter, &sprints, &swimlanes, &cutoff); err != nil {
+		var sprints, kanPlan sql.NullBool
+		if err := rows.Scan(&id, &name, &owner, &filter, &sprints, &swimlanes, &cutoff, &kanPlan); err != nil {
 			return err
 		}
 		query, ok := r.filters[filter.Int64]
@@ -179,7 +180,7 @@ func (r *run) importBoards() error {
 			}
 		}
 		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), kind, filter.Int64,
-			sub, ownerID, lanes, estimate, sqlq.Value(cutoff), now, now)
+			sub, ownerID, lanes, estimate, sqlq.Value(cutoff), kind == "kanban" && kanPlan.Bool, now, now)
 	}); err != nil {
 		return err
 	}

@@ -262,7 +262,8 @@ func (s *Server) agileBoardIssues(w http.ResponseWriter, r *http.Request) error 
 }
 
 // agileBacklog lists a board's backlog as the interface shows it: issues
-// that are neither done, sub-tasks, nor in an open sprint of the board.
+// that are neither done, sub-tasks, nor in an open sprint of the board; on a
+// Kanban board with a backlog, the first column's issues but sub-tasks.
 func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -275,6 +276,9 @@ func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	where, args, err := s.boardWhere(r.Context(), sub, b, nil)
 	if err != nil {
 		return err
+	}
+	if b.Kind == "kanban" && b.Backlog {
+		return s.agileIssues(w, r, sub, where+" AND i.parent_id IS NULL AND "+firstColumnCond, append(args, b.ID))
 	}
 	where += backlogCond + `
 		AND NOT EXISTS (SELECT 1 FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id

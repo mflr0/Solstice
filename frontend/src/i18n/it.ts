@@ -1008,6 +1008,7 @@ export const it: Messages = {
     toNewSprint: 'Un nuovo sprint',
     backlog: 'Backlog',
     backlogEmpty: 'Il backlog è vuoto.',
+    toBoardHint: 'Sulla board',
     sectionCount: (n: number) => plural(n, 'ticket', 'ticket'),
   },
 
@@ -1043,6 +1044,10 @@ export const it: Messages = {
     remove: (name: string) => `Rimuovi «${name}»`,
     unmapped: 'Stati senza colonna',
     unmappedHint: 'I ticket in questi stati non compaiono sulla board.',
+    kanbanBacklog: 'Backlog Kanban',
+    kanbanBacklogHint:
+      'I ticket della prima colonna vanno in una pagina di backlog, fuori dalla board.',
+    kanbanBacklogNeeds: 'Richiede almeno due colonne, la prima con uno stato.',
     allMapped: 'Ogni stato dei progetti della board ha la sua colonna.',
     putIn: (name: string) => `Metti «${name}» in`,
     chooseColumn: 'Scegli una colonna…',

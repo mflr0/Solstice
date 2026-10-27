@@ -143,6 +143,7 @@ type boardDef struct {
 	share         [3]any // sharepermissions (sharetype, param1, param2) of the board's filter
 	columns       []boardColumn
 	estimate      [2]any // AO_60DB71_ESTIMATESTATISTIC (FIELD_ID, TYPE_ID)
+	kanPlan       bool   // kanban: the first column is a backlog
 }
 
 func (g *generator) seedAgile() {
@@ -184,14 +185,14 @@ func (g *generator) seedAgile() {
 	}
 	boards := []boardDef{
 		{"DEMO — Scrum", "DEMO", true, "none", "", [3]any{"project", "10000", nil}, software,
-			[2]any{fmt.Sprintf("customfield_%d", cfStoryPoints), "field"}},
+			[2]any{fmt.Sprintf("customfield_%d", cfStoryPoints), "field"}, false},
 		{"WEB — Kanban", "WEB", false, "custom", "2w", [3]any{"project", "10001", nil}, web,
-			[2]any{nil, "issueCount"}},
+			[2]any{nil, "issueCount"}, false},
 		{"OPS — Exploitation", "OPS", false, "assignee", "", [3]any{"project", "10003", nil}, business,
-			[2]any{nil, "issueCount"}},
+			[2]any{nil, "issueCount"}, true},
 		// Shared with the Users role of RH only: invisible outside HR.
 		{"RH", "RH", true, "none", "", [3]any{"project", "10002", "10000"}, business,
-			[2]any{"timeoriginalestimate", "field"}},
+			[2]any{"timeoriginalestimate", "field"}, false},
 	}
 
 	boardOf := map[string]int64{}
@@ -207,7 +208,7 @@ func (g *generator) seedAgile() {
 
 		id := aoID("rapidview")
 		boardOf[b.project] = id
-		rapid.Add(id, b.name, p.lead.key, filterID, b.scrum, b.swimlanes, "issuetype", true, true, false, false,
+		rapid.Add(id, b.name, p.lead.key, filterID, b.scrum, b.swimlanes, "issuetype", true, true, b.kanPlan, false,
 			nullable(b.cutoff))
 		g.sum.Boards++
 

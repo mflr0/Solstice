@@ -28,7 +28,7 @@
     {/if}
   </div>
   <div class="row">
-    {#if b.kind === 'scrum' && view !== 'settings'}
+    {#if (b.kind === 'scrum' || b.kanbanBacklog) && view !== 'settings'}
       <nav class="views" aria-label={t.boards.views}>
         <a
           class="btn btn-small"

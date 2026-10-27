@@ -1009,6 +1009,7 @@ export const fr: Messages = {
     toNewSprint: 'Un nouveau sprint',
     backlog: 'Backlog',
     backlogEmpty: 'Le backlog est vide.',
+    toBoardHint: 'Sur le tableau',
     sectionCount: (n: number) => plural(n, 'ticket', 'tickets'),
   },
 
@@ -1044,6 +1045,10 @@ export const fr: Messages = {
     remove: (name: string) => `Retirer « ${name} »`,
     unmapped: 'Statuts sans colonne',
     unmappedHint: 'Les tickets dans ces statuts n’apparaissent pas sur le tableau.',
+    kanbanBacklog: 'Backlog Kanban',
+    kanbanBacklogHint:
+      'Les tickets de la première colonne passent sur une page de backlog, hors du tableau.',
+    kanbanBacklogNeeds: 'Demande au moins deux colonnes, dont la première a un statut.',
     allMapped: 'Chaque statut des projets du tableau a sa colonne.',
     putIn: (name: string) => `Placer « ${name} » dans`,
     chooseColumn: 'Choisir une colonne…',

@@ -1016,6 +1016,7 @@ export const de: Messages = {
     toNewSprint: 'Ein neuer Sprint',
     backlog: 'Backlog',
     backlogEmpty: 'Das Backlog ist leer.',
+    toBoardHint: 'Auf dem Board',
     sectionCount: (n: number) => plural(n, 'Vorgang', 'Vorgänge'),
   },
 
@@ -1051,6 +1052,10 @@ export const de: Messages = {
     remove: (name: string) => `„${name}“ entfernen`,
     unmapped: 'Status ohne Spalte',
     unmappedHint: 'Vorgänge in diesen Status erscheinen nicht auf dem Board.',
+    kanbanBacklog: 'Kanban-Backlog',
+    kanbanBacklogHint:
+      'Die Vorgänge der ersten Spalte kommen auf eine Backlog-Seite statt aufs Board.',
+    kanbanBacklogNeeds: 'Braucht mindestens zwei Spalten, die erste mit einem Status.',
     allMapped: 'Jeder Status der Board-Projekte hat eine Spalte.',
     putIn: (name: string) => `„${name}“ einordnen in`,
     chooseColumn: 'Spalte wählen…',

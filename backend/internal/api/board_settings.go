@@ -20,6 +20,7 @@ type boardInput struct {
 	DoneCutoff *string `json:"doneCutoff"`
 	Swimlanes  *string `json:"swimlanes"`
 	Estimate   *string `json:"estimate"` // "", "timeoriginalestimate" or "customfield_<id>"
+	Backlog    *bool   `json:"kanbanBacklog"`
 	Columns    *[]struct {
 		ID       int64    `json:"id"`
 		Name     string   `json:"name"`
@@ -117,6 +118,9 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 			return fail(http.StatusBadRequest, i18n.BoardEstimationUnknown)
 		}
 		sets, args = append(sets, "estimate = ?"), append(args, sqlq.NullIf(e))
+	}
+	if in.Backlog != nil && *in.Backlog && b.Kind != "kanban" {
+		return fail(http.StatusBadRequest, i18n.BoardBacklogColumns)
 	}
 	if in.Columns != nil {
 		if len(*in.Columns) == 0 {
@@ -228,6 +232,31 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 					return err
 				}
 			}
+		}
+	}
+	if in.Backlog != nil || (b.Backlog && in.Columns != nil) {
+		on := b.Backlog
+		if in.Backlog != nil {
+			on = *in.Backlog
+		}
+		if on {
+			// The first column goes to the backlog page: the board keeps the others.
+			var columns, firstStatuses int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(c.id = (SELECT id FROM board_columns
+				WHERE board_id = ? ORDER BY position, id LIMIT 1) AND EXISTS (SELECT 1 FROM board_column_statuses cs
+				WHERE cs.column_id = c.id)), 0) FROM board_columns c WHERE c.board_id = ?`, b.ID, b.ID).
+				Scan(&columns, &firstStatuses); err != nil {
+				return err
+			}
+			if columns < 2 || firstStatuses == 0 {
+				if in.Backlog != nil {
+					return fail(http.StatusBadRequest, i18n.BoardBacklogColumns)
+				}
+				on = false // the columns no longer allow it
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE boards SET kanban_backlog = ? WHERE id = ?`, on, b.ID); err != nil {
+			return err
 		}
 	}
 	if in.QuickFilters != nil {

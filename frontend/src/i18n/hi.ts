@@ -1004,6 +1004,7 @@ export const hi: Messages = {
     toNewSprint: 'एक नया स्प्रिंट',
     backlog: 'बैकलॉग',
     backlogEmpty: 'बैकलॉग ख़ाली है।',
+    toBoardHint: 'बोर्ड पर',
     sectionCount: (n: number) => plural(n, 'टिकट', 'टिकट'),
   },
 
@@ -1038,6 +1039,9 @@ export const hi: Messages = {
     remove: (name: string) => `“${name}” हटाएँ`,
     unmapped: 'बिना कॉलम वाले स्टेटस',
     unmappedHint: 'इन स्टेटस वाले टिकट बोर्ड पर नहीं दिखते।',
+    kanbanBacklog: 'कानबान बैकलॉग',
+    kanbanBacklogHint: 'पहले कॉलम के टिकट बोर्ड से हटकर बैकलॉग पेज पर जाते हैं।',
+    kanbanBacklogNeeds: 'कम से कम दो कॉलम चाहिए, पहले में कोई स्टेटस हो।',
     allMapped: 'बोर्ड के प्रोजेक्ट के हर स्टेटस का अपना कॉलम है।',
     putIn: (name: string) => `“${name}” को इसमें रखें`,
     chooseColumn: 'कॉलम चुनें…',
