@@ -110,7 +110,6 @@ export const en = {
     create: 'New issue',
     account: 'Account',
     myPage: 'My page',
-    skin: 'Theme',
     skins: {
       carnet: 'Notebook',
       orbite: 'Orbit',
@@ -132,10 +131,8 @@ export const en = {
       plan: 'tracing paper, title blocks',
     },
     themes: 'Themes',
-    allThemes: 'All themes…',
     mode: 'Mode',
     modes: { system: 'system', light: 'light', dark: 'dark' },
-    language: 'Language',
     logout: 'Sign out',
     sourceCode: 'Source code',
     licenses: 'Licenses',

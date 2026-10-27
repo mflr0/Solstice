@@ -112,7 +112,6 @@ export const fr: Messages = {
     create: 'Nouveau ticket',
     account: 'Compte',
     myPage: 'Ma page',
-    skin: 'Thème',
     skins: {
       carnet: 'Carnet',
       orbite: 'Orbite',
@@ -134,10 +133,8 @@ export const fr: Messages = {
       plan: 'calque et cartouches',
     },
     themes: 'Thèmes',
-    allThemes: 'Tous les thèmes…',
     mode: 'Mode',
     modes: { system: 'système', light: 'clair', dark: 'sombre' },
-    language: 'Langue',
     logout: 'Se déconnecter',
     sourceCode: 'Code source',
     licenses: 'Licences',

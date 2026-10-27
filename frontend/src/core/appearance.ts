@@ -67,8 +67,8 @@ export function htmlAttributes(
 }
 
 /**
- * Colours of each skin's light mode, for the little swatches in the account
- * menu (drawn before the other skins' stylesheets are loaded).
+ * Colours of each skin's light mode, for the little swatches on the Appearance
+ * page (drawn before the other skins' stylesheets are loaded).
  */
 export const SWATCHES: Record<Skin, { paper: string; ink: string; accent: string }> = {
   carnet: { paper: '#f4f1ea', ink: '#1c1b19', accent: '#d9381e' },

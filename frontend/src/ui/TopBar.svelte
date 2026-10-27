@@ -1,17 +1,14 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
-  import { locale, LOCALE_NAMES, LOCALES } from '../i18n/index.js';
   import { outside } from '../lib/actions.js';
-  import { chooseLocale } from '../lib/locale.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
-  import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
-  import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
+  import { appearance, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
   import QuickSearch from './search/QuickSearch.svelte';
@@ -178,51 +175,6 @@
               </a>
             {/if}
             <div class="sep"></div>
-            <div class="group-label">{t.nav.skin}</div>
-            {#each SKINS as skin (skin)}
-              <button
-                class="item"
-                role="menuitemradio"
-                aria-checked={appearance.skin === skin}
-                onclick={() => applySkin(skin)}
-              >
-                <span
-                  class="swatch"
-                  aria-hidden="true"
-                  style:--sw-paper={SWATCHES[skin].paper}
-                  style:--sw-ink={SWATCHES[skin].ink}
-                  style:--sw-accent={SWATCHES[skin].accent}
-                ></span>
-                <span>{t.nav.skins[skin]}</span>
-                <span class="hint">{t.nav.skinHints[skin]}</span>
-              </button>
-            {/each}
-            <a class="item" role="menuitem" href={paths.themes()} onclick={() => (menuOpen = false)}
-              >{t.nav.allThemes}</a
-            >
-            <div class="sep"></div>
-            <div class="group-label">{t.nav.mode}</div>
-            {#each MODES as mode (mode)}
-              <button
-                class="item"
-                role="menuitemradio"
-                aria-checked={appearance.mode === mode}
-                onclick={() => applyMode(mode)}>{t.nav.modes[mode]}</button
-              >
-            {/each}
-            <div class="sep"></div>
-            <div class="group-label">{t.nav.language}</div>
-            <!-- Each language in its own name and tongue, whatever the interface's. -->
-            {#each LOCALES as l (l)}
-              <button
-                class="item"
-                role="menuitemradio"
-                lang={l}
-                aria-checked={locale === l}
-                onclick={() => void chooseLocale(l)}>{LOCALE_NAMES[l]}</button
-              >
-            {/each}
-            <div class="sep"></div>
             <a
               class="item"
               role="menuitem"
@@ -271,39 +223,6 @@
     display: grid;
     gap: 2px;
     padding: 8px 12px 6px;
-  }
-
-  /* A thumbnail of each skin: its paper, two lines of ink, its accent. */
-  .swatch {
-    position: relative;
-    width: 24px;
-    height: 17px;
-    flex: none;
-    border: 1px solid var(--rule-strong);
-    border-radius: 3px;
-    background: var(--sw-paper);
-  }
-
-  .swatch::before {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 5px;
-    width: 9px;
-    height: 1.5px;
-    background: var(--sw-ink);
-    box-shadow: 0 4px 0 var(--sw-ink);
-  }
-
-  .swatch::after {
-    content: '';
-    position: absolute;
-    right: 4px;
-    top: 5px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--sw-accent);
   }
 
   .account-button {

@@ -212,7 +212,7 @@
     font-weight: 600;
   }
 
-  /* A thumbnail of each skin, as in the account menu. */
+  /* A thumbnail of each skin: its paper, two lines of ink, its accent. */
   .swatch {
     position: relative;
     width: 30px;

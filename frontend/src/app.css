@@ -456,7 +456,7 @@ kbd,
   }
 }
 
-/* The theme gallery stays in the account menu. */
+/* The theme gallery stays one click away, on Account → Appearance. */
 @media (max-width: 420px) {
   .topbar-themes {
     display: none;

@@ -1560,7 +1560,7 @@
 }
 
 @media (max-width: 420px) {
-  /* Every skin is also listed in the account menu. */
+  /* Every skin is also listed on Account → Appearance. */
   [data-skin='plan'] .topbar-themes {
     display: none;
   }
