@@ -333,7 +333,7 @@ kbd,
   color: var(--ink);
 }
 
-.topbar-search kbd {
+.topbar-search > kbd {
   position: absolute;
   right: 8px;
   top: 50%;
@@ -869,6 +869,7 @@ table.ledger {
   max-height: 340px;
   overflow: auto;
   background: var(--paper-raised);
+  color: var(--ink);
   border: var(--frame) solid var(--rule-strong);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-pop);

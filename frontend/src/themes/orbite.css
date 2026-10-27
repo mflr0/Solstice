@@ -453,7 +453,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 25%, transparent);
 }
 
-[data-skin='orbite'] .topbar-search kbd {
+[data-skin='orbite'] .topbar-search > kbd {
   right: 10px;
   color: var(--bar-ink-soft);
 }
@@ -507,7 +507,6 @@
 
 [data-skin='orbite'] .account-menu {
   top: calc(100% + 12px);
-  color: var(--ink);
 }
 
 /* Page heads, sections, dividers ------------------------------------------ */

@@ -393,7 +393,7 @@
   background: var(--rt-well);
 }
 
-[data-skin='retro'] .topbar-search kbd {
+[data-skin='retro'] .topbar-search > kbd {
   right: 5px;
 }
 

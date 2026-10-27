@@ -524,7 +524,7 @@
     0 0 0 2px var(--luna-focus-bar);
 }
 
-[data-skin='luna'] .topbar .topbar-search kbd {
+[data-skin='luna'] .topbar .topbar-search > kbd {
   color: var(--ink-soft);
 }
 

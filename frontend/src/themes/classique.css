@@ -472,7 +472,7 @@
   color: var(--muted);
 }
 
-[data-skin='classique'] .topbar-search kbd {
+[data-skin='classique'] .topbar-search > kbd {
   right: 8px;
   color: var(--bar-ink-soft);
   border-color: currentColor;
@@ -552,7 +552,6 @@
 
 [data-skin='classique'] .topbar .account-menu {
   top: calc(100% + 6px);
-  color: var(--ink);
 }
 
 /* Page sheet ---------------------------------------------------------------- */
