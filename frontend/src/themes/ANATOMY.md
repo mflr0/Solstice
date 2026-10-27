@@ -194,6 +194,14 @@ the page. Users list: `td.tags > .tag-list` (the flex row of marks).
 (`.active`, `[aria-checked='true']`, `[aria-selected='true']`, `.danger`),
 `.sep`, `.group-label`.
 
+**Dropdowns** — one value from a list, instead of a native select:
+`button.dropdown[role=combobox]` (`.select` in a form, `.quiet` in the issue
+sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name`. The list is
+`ul.popover.dropdown-list[role=listbox]` in the top layer > `li.item[role=option]`
+(`.active` = highlighted, `[aria-selected='true']` = the value, ✓ after it)
+
+> `.icon` + `.name`.
+
 **Dialogs** — `dialog.modal` (`::backdrop`) > `header.modal-head` (title bar) >
 `h2.modal-title` + `button.modal-close` (label « Fermer Échap »; restyle it,
 e.g. as a ✕ box with `font-size: 0` and a `::before`), `.modal-body`,
