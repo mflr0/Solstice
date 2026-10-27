@@ -340,7 +340,9 @@ showing where a dragged card lands (`.before` / `.after` a card, or alone at
 the top of an empty list). The board is a grid: columns span every row
 (`grid-template-rows: subgrid`), and with swimlanes a `.board-lane` band
 crosses them above each lane's cells (`button.board-lane-toggle` with
-`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`). Wider than the
+`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`); the bands come
+before the columns in the markup. A card dragged by touch is copied into a
+`.board-card.touch-ghost` on `body` that follows the finger. Wider than the
 page, the board scrolls sideways: `.more-left` / `.more-right` while columns
 are out of sight on that side, each shown by a shade on that edge, the
 board's `::before` / `::after` (drawn with `--ink`). The backlog

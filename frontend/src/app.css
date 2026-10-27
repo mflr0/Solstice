@@ -1221,6 +1221,24 @@ dialog.modal::backdrop {
   cursor: grabbing;
 }
 
+/* A hold by touch drags the card: no text selection or link menu on the way. */
+.board .board-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The copy of a card that follows the finger while it is dragged by touch. */
+.touch-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 70;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: var(--shadow-pop);
+}
+
 .board-column.under-limit .wip-limit {
   color: var(--ink);
   font-weight: 600;

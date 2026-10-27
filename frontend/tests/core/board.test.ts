@@ -5,6 +5,7 @@ import {
   dayAfter,
   daysLeft,
   dropIndex,
+  edgeScroll,
   groupLanes,
   legacyBoardPath,
   neighbours,
@@ -148,6 +149,19 @@ describe('dropping', () => {
     expect(dropIndex([10, 30, 50], 31)).toBe(2);
     expect(dropIndex([10, 30, 50], 90)).toBe(3);
     expect(dropIndex([], 90)).toBe(0);
+  });
+
+  it('scrolls faster the closer a held card is to an edge', () => {
+    expect(edgeScroll(500, 0, 1000)).toBe(0);
+    expect(edgeScroll(48, 0, 1000)).toBe(0);
+    expect(edgeScroll(24, 0, 1000)).toBe(-7);
+    expect(edgeScroll(0, 0, 1000)).toBe(-14);
+    expect(edgeScroll(-30, 0, 1000)).toBe(-14);
+    expect(edgeScroll(976, 0, 1000)).toBe(7);
+    expect(edgeScroll(1200, 0, 1000)).toBe(14);
+    // Narrower than both zones: the nearer edge wins.
+    expect(edgeScroll(10, 0, 60)).toBeLessThan(0);
+    expect(edgeScroll(50, 0, 60)).toBeGreaterThan(0);
   });
 
   it('names the new neighbours', () => {
