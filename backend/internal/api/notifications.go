@@ -320,7 +320,7 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 
 // projectEvents are the event groups a project may send to extra people.
 var projectEvents = []string{notify.GroupCreated, notify.GroupAssigned, notify.GroupCommented, notify.GroupStatus,
-	notify.GroupUpdated, notify.GroupAttachments, notify.GroupDeleted}
+	notify.GroupUpdated, notify.GroupAttachments, notify.GroupWorklogs, notify.GroupDeleted}
 
 func (s *Server) getProjectNotifications(w http.ResponseWriter, r *http.Request) error {
 	id, err := s.configurableProject(r)

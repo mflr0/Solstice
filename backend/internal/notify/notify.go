@@ -104,7 +104,8 @@ func (s *Service) Invalidate() {
 // Wants: issue events, when e-mail is on.
 func (s *Service) Wants(e *events.Event) bool {
 	switch e.Kind {
-	case events.IssueCreated, events.IssueUpdated, events.IssueDeleted, events.CommentCreated, events.CommentUpdated:
+	case events.IssueCreated, events.IssueUpdated, events.IssueDeleted, events.CommentCreated, events.CommentUpdated,
+		events.CommentDeleted, events.WorklogCreated, events.WorklogUpdated, events.WorklogDeleted:
 		return s.mailEnabled(context.Background())
 	}
 	return false
@@ -137,6 +138,15 @@ type itemComment struct {
 	Edited bool   `json:"edited,omitempty"`
 }
 
+type itemWorklog struct {
+	ID      int64     `json:"id"`
+	Seconds int64     `json:"seconds"`
+	Started time.Time `json:"started"`
+	Body    string    `json:"body,omitempty"`
+	Group   string    `json:"group,omitempty"`
+	RoleID  int64     `json:"role,omitempty"`
+}
+
 // item is one event waiting in a batch, as one recipient will see it.
 type item struct {
 	Kind      events.Kind  `json:"kind"`
@@ -144,6 +154,7 @@ type item struct {
 	ActorID   int64        `json:"actor"`
 	Lines     []line       `json:"lines,omitempty"`
 	Comment   *itemComment `json:"comment,omitempty"`
+	Worklog   *itemWorklog `json:"worklog,omitempty"`
 	Mentioned bool         `json:"mentioned,omitempty"`
 	Reason    string       `json:"reason"`
 	Project   string       `json:"project,omitempty"` // the project's key, for reasonProject
@@ -186,8 +197,11 @@ func linesOf(e *events.Event) []line {
 		return append([]line{{Group: GroupCreated}}, createdLines(e.Issue)...)
 	case events.IssueDeleted:
 		return []line{{Group: GroupDeleted}}
-	case events.CommentCreated, events.CommentUpdated:
+	case events.CommentCreated, events.CommentUpdated, events.CommentDeleted:
 		return []line{{Group: GroupCommented}}
+	case events.WorklogCreated, events.WorklogUpdated, events.WorklogDeleted:
+		// Their time tracking changes are hidden fields: the work log says it.
+		return []line{{Group: GroupWorklogs}}
 	}
 	var out []line
 	for _, c := range e.Changes {
@@ -330,6 +344,10 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 		d.comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
 			Edited: e.Kind == events.CommentUpdated}
 	}
+	if w := e.Worklog; w != nil {
+		d.worklog = &itemWorklog{ID: w.ID, Seconds: w.Seconds, Started: w.Started, Body: w.Body, Group: w.Group,
+			RoleID: w.RoleID}
+	}
 	for _, id := range ids {
 		it, ok, err := s.wantsItem(ctx, d, id, users[id], prefs[id], reasons[id])
 		if err != nil {
@@ -411,6 +429,7 @@ type draft struct {
 	mentioned map[int64]bool
 	access    perm.Issue // who may see the issue (as it was, for a deletion)
 	comment   *itemComment
+	worklog   *itemWorklog
 }
 
 // wantsItem cuts the event to what one candidate asked for and may see. It
@@ -433,6 +452,9 @@ func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.U
 	if d.comment != nil && !sub.SeesRestricted(iss.ProjectID, d.comment.Group, d.comment.RoleID) {
 		return item{}, false, nil
 	}
+	if d.worklog != nil && !sub.SeesRestricted(iss.ProjectID, d.worklog.Group, d.worklog.RoleID) {
+		return item{}, false, nil
+	}
 	var keep []line
 	for _, l := range d.lines {
 		if p.wants(l.Group) {
@@ -447,6 +469,9 @@ func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.U
 		Project: iss.ProjectKey, Key: iss.Key, Summary: iss.Summary, Access: d.access}
 	if d.comment != nil && (slices.ContainsFunc(keep, func(l line) bool { return l.Group == GroupCommented }) || isMentioned) {
 		it.Comment = d.comment
+	}
+	if d.worklog != nil && len(keep) > 0 {
+		it.Worklog = d.worklog
 	}
 	return it, true, nil
 }

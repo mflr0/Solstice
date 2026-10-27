@@ -305,25 +305,48 @@ func (s *Service) visibleItems(ctx context.Context, sub *perm.Subject, cur *even
 			continue
 		}
 		if it.Comment != nil {
-			// A move gives a comment restricted to a role another restriction.
-			group, role, project := it.Comment.Group, it.Comment.RoleID, it.Access.ProjectID
-			var g sql.NullString
-			var r sql.NullInt64
-			err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM comments WHERE id = ?`,
-				it.Comment.ID).Scan(&g, &r)
-			switch {
-			case err == nil:
-				group, role, project = g.String, r.Int64, access.ProjectID
-			case !errors.Is(err, sql.ErrNoRows):
+			ok, err := s.seesRestricted(ctx, sub, "comments", it.Comment.ID, it.Comment.Group, it.Comment.RoleID,
+				it.Access.ProjectID, access.ProjectID)
+			if err != nil {
 				return nil, err
 			}
-			if !sub.SeesRestricted(project, group, role) {
+			if !ok {
+				continue
+			}
+		}
+		if it.Worklog != nil {
+			ok, err := s.seesRestricted(ctx, sub, "worklogs", it.Worklog.ID, it.Worklog.Group, it.Worklog.RoleID,
+				it.Access.ProjectID, access.ProjectID)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
 				continue
 			}
 		}
 		kept = append(kept, it)
 	}
 	return kept, nil
+}
+
+// seesRestricted tells whether sub may read a comment or work log (table
+// names which): by its restriction as it is now, or as it was (group, role
+// in project then) when it is gone. A move gives one restricted to a role
+// another restriction.
+func (s *Service) seesRestricted(ctx context.Context, sub *perm.Subject, table string, id int64, group string, role int64,
+	projectThen, projectNow int64) (bool, error) {
+	var g sql.NullString
+	var r sql.NullInt64
+	project := projectThen
+	err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM `+table+` WHERE id = ?`, id).
+		Scan(&g, &r)
+	switch {
+	case err == nil:
+		group, role, project = g.String, r.Int64, projectNow
+	case !errors.Is(err, sql.ErrNoRows):
+		return false, err
+	}
+	return sub.SeesRestricted(project, group, role), nil
 }
 
 // entryFor writes one item for the recipient. It reports false when nothing
@@ -362,6 +385,14 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 		en.Text = excerpt(it.Comment.Body, 4000)
 		if it.Comment.Group != "" || it.Comment.RoleID != 0 {
 			en.Note = i18n.M(i18n.NotifyRestrictedComment).In(loc)
+		}
+	}
+	if w := it.Worklog; w != nil {
+		en.Changes = append(en.Changes, changeRow{Field: fieldLabel(loc, "timespent"), To: issue.Duration(w.Seconds)},
+			changeRow{Field: i18n.M(i18n.NotifyWorklogStarted).In(loc), To: formatTime(loc, w.Started.In(s.zone()))})
+		en.Text = excerpt(w.Body, 4000)
+		if w.Group != "" || w.RoleID != 0 {
+			en.Note = i18n.M(i18n.NotifyRestrictedWorklog).In(loc)
 		}
 	}
 	if it.Kind == events.IssueCreated && cur != nil && cur.Description != nil {
@@ -464,6 +495,14 @@ func headline(loc string, it storedItem, actor string, cur *events.Issue, me int
 		return i18n.M(i18n.NotifyCreated, actor).In(loc)
 	case events.IssueDeleted:
 		return i18n.M(i18n.NotifyDeleted, actor).In(loc)
+	case events.CommentDeleted:
+		return i18n.M(i18n.NotifyCommentDeleted, actor).In(loc)
+	case events.WorklogCreated:
+		return i18n.M(i18n.NotifyWorkLogged, actor).In(loc)
+	case events.WorklogUpdated:
+		return i18n.M(i18n.NotifyWorklogEdited, actor).In(loc)
+	case events.WorklogDeleted:
+		return i18n.M(i18n.NotifyWorklogDeleted, actor).In(loc)
 	case events.CommentCreated, events.CommentUpdated:
 		if it.Mentioned {
 			return i18n.M(i18n.NotifyMentionComment, actor).In(loc)
