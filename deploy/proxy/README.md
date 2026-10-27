@@ -10,6 +10,7 @@ Each example is explained in [docs/en/reverse-proxy.md](../../docs/en/reverse-pr
 - Pass the original `Host` header, and send `X-Forwarded-Proto` (https) and `X-Forwarded-For`, so Solstice marks its session cookie `Secure`.
 - Send `Strict-Transport-Security` (HSTS) so browsers keep using HTTPS; both examples do, only on the HTTPS site (never on the plain HTTP redirect).
 - Keep `GET /api/events` open without buffering and without closing it after 60 seconds.
+- Speak HTTP/2 to browsers (both examples do): over HTTP/1.1 a browser opens at most 6 connections per host, for all its tabs together.
 - Accept request bodies up to 100 MB for attachments.
 - Use `https://solstice.example.com` as the public address in `SOLSTICE_HTTP_BASEURL`.
 

@@ -22,6 +22,8 @@ car il obtient et renouvelle lui-même le certificat.
   redirection HTTP simple.
 - Garder `GET /api/events` ouvert, sans mise en mémoire tampon et sans le
   fermer au bout de 60 secondes. C'est le flux des mises à jour en direct.
+- Parler HTTP/2 aux navigateurs (les deux exemples le font). En HTTP/1.1, un
+  navigateur ouvre au plus 6 connexions par hôte, pour tous ses onglets.
 - Accepter des corps de requête jusqu'à la taille d'un envoi, 100 MiB par
   défaut (voir `SOLSTICE_HTTP_MAXUPLOAD`).
 
