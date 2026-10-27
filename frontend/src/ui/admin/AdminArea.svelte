@@ -19,6 +19,7 @@
   import StatusesPage from './StatusesPage.svelte';
   import SystemPage from './SystemPage.svelte';
   import TokensPage from './TokensPage.svelte';
+  import UpdatesPage from './UpdatesPage.svelte';
   import UsersPage from './UsersPage.svelte';
   import WebhooksPage from './WebhooksPage.svelte';
 
@@ -90,6 +91,8 @@
         <AuditPage />
       {:else if section === 'import'}
         <ImportPage />
+      {:else if section === 'updates'}
+        <UpdatesPage />
       {:else}
         <SystemPage />
       {/if}

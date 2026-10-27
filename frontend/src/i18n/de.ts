@@ -1101,8 +1101,6 @@ export const de: Messages = {
 
   updates: {
     title: 'Updates',
-    eyebrow: 'Administration',
-    forbidden: 'Diese Seite ist Administratoren vorbehalten.',
     current: 'Installierte Version',
     latest: 'Neueste Version',
     install: 'Installation',

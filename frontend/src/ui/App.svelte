@@ -156,14 +156,6 @@
         {:catch}
           {@render failed()}
         {/await}
-      {:else if route.name === 'updates'}
-        {#await import('./admin/UpdatesPage.svelte')}
-          {@render pending()}
-        {:then { default: UpdatesPage }}
-          <UpdatesPage />
-        {:catch}
-          {@render failed()}
-        {/await}
       {:else if route.name === 'account'}
         {#await import('./account/AccountArea.svelte')}
           {@render pending()}

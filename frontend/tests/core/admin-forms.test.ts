@@ -52,7 +52,7 @@ const mail: MailSettings = {
 
 describe('areas', () => {
   it('lists every section once in the navigation, and finds it back from its address', () => {
-    const listed = ADMIN_NAV.flatMap((g) => g.items).filter((i) => i !== 'updates');
+    const listed = ADMIN_NAV.flatMap((g) => g.items);
     expect([...listed].sort()).toEqual([...ADMIN_SECTIONS].sort());
     for (const s of ADMIN_SECTIONS) {
       if (s === 'overview') continue;
