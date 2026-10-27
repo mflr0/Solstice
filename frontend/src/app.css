@@ -901,6 +901,13 @@ table.ledger {
   color: var(--accent-text);
 }
 
+.dropdown-list .item[aria-selected='true']::after {
+  content: '✓';
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--accent-text);
+}
+
 .popover .sep {
   border-top: 1px solid var(--rule);
   margin: 4px 0;
