@@ -238,6 +238,7 @@ export const it: Messages = {
     yes: 'sì',
     no: 'no',
     filter: 'Filtra…',
+    createNamed: (name: string) => `Crea «${name}»`,
     ctrlEnter: 'Ctrl + Invio per inviare',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',

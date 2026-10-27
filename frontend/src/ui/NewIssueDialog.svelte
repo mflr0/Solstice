@@ -4,6 +4,7 @@
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
+  import { projectAdminApi } from '../lib/admin-api.js';
   import { api, errorMessage, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
@@ -36,6 +37,21 @@
   const parent = $derived(dialogs.createDefaults.parent ?? '');
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
   const canCreate = $derived(detail?.can.create === true);
+  const configure = $derived(detail?.can.configure === true);
+
+  async function createComponent(name: string): Promise<number> {
+    const key = projectKey;
+    const c = await projectAdminApi.createComponent(key, { name });
+    if (detail && key === projectKey) detail.components = [...detail.components, c];
+    return c.id;
+  }
+
+  async function createVersion(name: string): Promise<number> {
+    const key = projectKey;
+    const v = await projectAdminApi.createVersion(key, { name });
+    if (detail && key === projectKey) detail.versions = [...detail.versions, v];
+    return v.id;
+  }
 
   function lastProject(): string {
     try {
@@ -210,7 +226,7 @@
 
     {#if detail}
       <div class="three">
-        {#if detail.components.length}
+        {#if detail.components.length || configure}
           <div class="field">
             <span class="field-label">{t.create.components}</span>
             <div class="boxed field-box">
@@ -218,12 +234,13 @@
                 options={detail.components.filter((c) => !c.archived)}
                 selected={components}
                 label={t.create.components}
+                oncreate={configure ? createComponent : undefined}
                 onchange={(ids) => (components = ids)}
               />
             </div>
           </div>
         {/if}
-        {#if detail.versions.length}
+        {#if detail.versions.length || configure}
           <div class="field">
             <span class="field-label">{t.create.fixVersions}</span>
             <div class="boxed field-box">
@@ -231,6 +248,7 @@
                 options={detail.versions.filter((v) => !v.archived && !v.released)}
                 selected={fixVersions}
                 label={t.create.fixVersions}
+                oncreate={configure ? createVersion : undefined}
                 onchange={(ids) => (fixVersions = ids)}
               />
             </div>

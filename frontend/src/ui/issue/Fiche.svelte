@@ -3,6 +3,7 @@
   import { paths } from '../../core/route.js';
   import type { IssueDetail, ProjectDetail } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
+  import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, type IssueFields } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import LabelEditor from '../LabelEditor.svelte';
@@ -42,6 +43,19 @@
     (project?.issueTypes ?? []).filter((ty) => ty.subtask === issue.type.subtask),
   );
   const ids = (list: { id: number }[]) => list.map((x) => x.id);
+  const configure = $derived(project?.can.configure === true);
+
+  async function createComponent(name: string): Promise<number> {
+    const c = await projectAdminApi.createComponent(issue.project.key, { name });
+    if (project) project.components = [...project.components, c];
+    return c.id;
+  }
+
+  async function createVersion(name: string): Promise<number> {
+    const v = await projectAdminApi.createVersion(issue.project.key, { name });
+    if (project) project.versions = [...project.versions, v];
+    return v.id;
+  }
   const meIsAssignee = $derived(issue.assignee?.id === session.me?.id);
 
   // The estimates as typed, kept in step with the issue.
@@ -168,6 +182,7 @@
           selected={ids(issue.components)}
           label={t.issue.components}
           disabled={!edit || !project}
+          oncreate={configure ? createComponent : undefined}
           onchange={(v) => void onchange({ components: v })}
         />
       </dd>
@@ -184,6 +199,7 @@
           selected={ids(issue.fixVersions)}
           label={t.issue.fixVersions}
           disabled={!edit || !project}
+          oncreate={configure ? createVersion : undefined}
           onchange={(v) => void onchange({ fixVersions: v })}
         />
       </dd>
@@ -199,6 +215,7 @@
           selected={ids(issue.affectsVersions)}
           label={t.issue.affectsVersions}
           disabled={!edit || !project}
+          oncreate={configure ? createVersion : undefined}
           onchange={(v) => void onchange({ affectsVersions: v })}
         />
       </dd>

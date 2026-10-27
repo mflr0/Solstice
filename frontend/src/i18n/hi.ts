@@ -239,6 +239,7 @@ export const hi: Messages = {
     yes: 'हाँ',
     no: 'नहीं',
     filter: 'फ़िल्टर करें…',
+    createNamed: (name: string) => `“${name}” बनाएँ`,
     ctrlEnter: 'भेजने के लिए Ctrl + Enter',
     /** Between a label and its value (French puts a space before the colon). */
     labelSep: ': ',
