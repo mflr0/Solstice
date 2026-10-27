@@ -72,6 +72,14 @@
       "count": 14,
       "sha256": "d3011e0a5d5e5b37478c78f9d93f461193c418fe52359412406059735888e24b"
     },
+    "dashboard_gadgets": {
+      "count": 0,
+      "sha256": "15bec5a73c561563e8d292e02636260abd9be9c166365f4b1da20b5d5d149430"
+    },
+    "dashboards": {
+      "count": 0,
+      "sha256": "df2909dd207975128507145ab92544c84e0011e03b58e5a5a7dc7cb64066170a"
+    },
     "filter_favourites": {
       "count": 7,
       "sha256": "05140f26e3c4b760357a2cb96d9e16b03ce875e41d046b3ac120a4100ff8237c"

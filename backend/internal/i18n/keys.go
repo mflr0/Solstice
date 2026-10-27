@@ -488,6 +488,16 @@ const (
 	FilterSharePersonNotFound Key = "FilterSharePersonNotFound"
 )
 
+// The personal dashboard.
+const (
+	DashboardTooManyGadgets    Key = "DashboardTooManyGadgets"
+	DashboardGadgetKindUnknown Key = "DashboardGadgetKindUnknown"
+	DashboardFilterRequired    Key = "DashboardFilterRequired"
+	DashboardCountFieldUnknown Key = "DashboardCountFieldUnknown"
+	DashboardSizeInvalid       Key = "DashboardSizeInvalid"
+	DashboardColumnsTooMany    Key = "DashboardColumnsTooMany"
+)
+
 // Exports.
 const (
 	ExportColumnUnknown Key = "ExportColumnUnknown"

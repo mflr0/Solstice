@@ -432,6 +432,14 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	FilterShareRoleNotHeld:    "Puoi condividere solo con un ruolo che hai nel progetto.",
 	FilterSharePersonNotFound: "Utente non trovato.",
 
+	// The personal dashboard.
+	DashboardTooManyGadgets:    "Una dashboard contiene al massimo %d gadget.",
+	DashboardGadgetKindUnknown: "Gadget sconosciuto: %s.",
+	DashboardFilterRequired:    "Scegli un filtro che puoi vedere.",
+	DashboardCountFieldUnknown: "Un conteggio non può raggruppare per %s.",
+	DashboardSizeInvalid:       "Un elenco mostra da 1 a %d ticket.",
+	DashboardColumnsTooMany:    "Un elenco mostra al massimo %d colonne.",
+
 	// Exports.
 	ExportColumnUnknown: "Colonna sconosciuta: %s.",
 
