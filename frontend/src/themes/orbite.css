@@ -507,6 +507,7 @@
 
 [data-skin='orbite'] .account-menu {
   top: calc(100% + 12px);
+  color: var(--ink);
 }
 
 /* Page heads, sections, dividers ------------------------------------------ */
