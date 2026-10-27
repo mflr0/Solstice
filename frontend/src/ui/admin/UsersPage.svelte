@@ -12,6 +12,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import PasswordDialog from './PasswordDialog.svelte';
   import UserDialog from './UserDialog.svelte';
@@ -117,9 +118,12 @@
     placeholder={t.usersAdmin.search}
     aria-label={t.usersAdmin.search}
   />
-  <select class="select" bind:value={show} aria-label={t.usersAdmin.showLabel}>
-    {#each USER_SHOWS as s (s)}<option value={s}>{t.usersAdmin.show[s]}</option>{/each}
-  </select>
+  <Dropdown
+    label={t.usersAdmin.showLabel}
+    value={show}
+    options={USER_SHOWS.map((s) => ({ value: s, label: t.usersAdmin.show[s] }))}
+    onchange={(v) => (show = v as (typeof USER_SHOWS)[number])}
+  />
 </div>
 
 {#if error}

@@ -13,6 +13,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import OrderArrows from '../admin/OrderArrows.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import VersionDialog from './VersionDialog.svelte';
 
@@ -306,13 +307,18 @@
   </label>
   {#if releasing && releasing.issues.unresolved > 0}
     <p>{t.projectConfig.versions.releaseUnresolved(releasing.issues.unresolved)}</p>
-    <label class="field">
+    <div class="field">
       <span>{t.projectConfig.versions.releaseMove}</span>
-      <select class="select" bind:value={moveTo}>
-        <option value="">{t.projectConfig.versions.releaseKeep}</option>
-        {#each releaseChoices as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectConfig.versions.releaseMove}
+        value={moveTo}
+        options={[
+          { value: '', label: t.projectConfig.versions.releaseKeep },
+          ...releaseChoices.map((x) => ({ value: String(x.id), label: x.name })),
+        ]}
+        onchange={(v) => (moveTo = v)}
+      />
+    </div>
   {:else}
     <p class="muted">{t.projectConfig.versions.releaseNoUnresolved}</p>
   {/if}
@@ -331,13 +337,16 @@
     {#if mergeChoices.length === 0}
       <p class="error-text">{t.projectConfig.versions.mergeNoOther}</p>
     {:else}
-      <label class="field">
+      <div class="field">
         <span>{t.projectConfig.versions.mergeInto}</span>
-        <select class="select" bind:value={into}>
-          <option value="" disabled>{t.catalogAdmin.choose}</option>
-          {#each mergeChoices as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.projectConfig.versions.mergeInto}
+          value={into}
+          options={mergeChoices.map((x) => ({ value: String(x.id), label: x.name }))}
+          placeholder={t.catalogAdmin.choose}
+          onchange={(v) => (into = v)}
+        />
+      </div>
     {/if}
   {/if}
 </ConfirmDialog>
@@ -351,20 +360,30 @@
 >
   {#if removing && removing.issues.total > 0}
     <p>{t.projectConfig.versions.deleteUsed(removing.issues.total)}</p>
-    <label class="field">
+    <div class="field">
       <span>{t.projectConfig.versions.deleteFix}</span>
-      <select class="select" bind:value={fixTo}>
-        <option value="">{t.projectConfig.versions.deleteNone}</option>
-        {#each removeChoices as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-      </select>
-    </label>
-    <label class="field">
+      <Dropdown
+        label={t.projectConfig.versions.deleteFix}
+        value={fixTo}
+        options={[
+          { value: '', label: t.projectConfig.versions.deleteNone },
+          ...removeChoices.map((x) => ({ value: String(x.id), label: x.name })),
+        ]}
+        onchange={(v) => (fixTo = v)}
+      />
+    </div>
+    <div class="field">
       <span>{t.projectConfig.versions.deleteAffects}</span>
-      <select class="select" bind:value={affectsTo}>
-        <option value="">{t.projectConfig.versions.deleteNone}</option>
-        {#each removeChoices as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectConfig.versions.deleteAffects}
+        value={affectsTo}
+        options={[
+          { value: '', label: t.projectConfig.versions.deleteNone },
+          ...removeChoices.map((x) => ({ value: String(x.id), label: x.name })),
+        ]}
+        onchange={(v) => (affectsTo = v)}
+      />
+    </div>
   {:else}
     <p>{t.projectConfig.versions.deleteUnused}</p>
   {/if}

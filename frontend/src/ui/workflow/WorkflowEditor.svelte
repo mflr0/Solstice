@@ -21,6 +21,7 @@
   import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
   import RemapDialog from './RemapDialog.svelte';
@@ -198,13 +199,16 @@
               autocomplete="off"
             />
           </label>
-          <label class="field">
+          <div class="field">
             <span>{t.workflows.initial}</span>
-            <select class="select" bind:value={draft.initial}>
-              {#each draft.statuses as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-            </select>
+            <Dropdown
+              label={t.workflows.initial}
+              value={draft.initial}
+              options={draft.statuses.map((s) => ({ value: s.id, label: s.name }))}
+              onchange={(v) => (draft.initial = v)}
+            />
             <span class="hint">{t.workflows.initialHint}</span>
-          </label>
+          </div>
           {#if base.default}
             <div class="field">
               <span class="field-label">{t.workflows.servedTypes}</span>

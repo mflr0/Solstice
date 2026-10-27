@@ -17,6 +17,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
 
   /**
    * The instance as a whole: its name, public address, time zone, default
@@ -191,11 +192,17 @@
       </div>
       <div class="field">
         <label class="field-label" for="set-lang">{t.settingsAdmin.defaultLanguage}</label>
-        <select id="set-lang" class="select" bind:value={form.defaultLanguage}>
-          {#each settings.languages.length ? settings.languages : LOCALES as l (l)}
-            <option value={l} lang={l}>{labelOf(LOCALE_NAMES, l)}</option>
-          {/each}
-        </select>
+        <Dropdown
+          id="set-lang"
+          label={t.settingsAdmin.defaultLanguage}
+          value={form.defaultLanguage}
+          options={(settings.languages.length ? settings.languages : LOCALES).map((l) => ({
+            value: l,
+            label: labelOf(LOCALE_NAMES, l),
+            lang: l,
+          }))}
+          onchange={(v) => form && (form.defaultLanguage = v)}
+        />
         <span class="hint">{t.settingsAdmin.defaultLanguageHint}</span>
         {@render origin('defaultLanguage')}
       </div>

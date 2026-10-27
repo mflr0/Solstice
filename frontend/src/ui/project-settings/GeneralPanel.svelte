@@ -19,6 +19,7 @@
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import UserPicker from '../UserPicker.svelte';
 
   /**
@@ -161,22 +162,32 @@
         />
         <span class="hint">{t.projectConfig.general.leadHint}</span>
       </div>
-      <label class="field">
+      <div class="field">
         <span>{t.projectsAdmin.category}</span>
-        <select class="select" bind:value={form.category}>
-          <option value={null}>{t.projectsAdmin.noCategory}</option>
-          {#each categories as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.projectsAdmin.category}
+          value={form.category === null ? '' : String(form.category)}
+          options={[
+            { value: '', label: t.projectsAdmin.noCategory },
+            ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+          onchange={(v) => form && (form.category = v ? Number(v) : null)}
+        />
+      </div>
     </div>
 
-    <label class="field">
+    <div class="field">
       <span>{t.projectsAdmin.assignee}</span>
-      <select class="select" bind:value={form.defaultAssignee}>
-        <option value="unassigned">{t.projectsAdmin.assignees.unassigned}</option>
-        <option value="lead">{t.projectsAdmin.assignees.lead}</option>
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectsAdmin.assignee}
+        value={form.defaultAssignee}
+        options={[
+          { value: 'unassigned', label: t.projectsAdmin.assignees.unassigned },
+          { value: 'lead', label: t.projectsAdmin.assignees.lead },
+        ]}
+        onchange={(v) => form && (form.defaultAssignee = v as 'unassigned' | 'lead')}
+      />
+    </div>
 
     {#if allTypes.length > 0}
       <fieldset class="choices">

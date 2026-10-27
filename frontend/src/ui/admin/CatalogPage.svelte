@@ -16,6 +16,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import PriorityMark from '../PriorityMark.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -308,13 +309,16 @@
     {#if targets.length === 0}
       <p class="error-text">{m.noTarget}</p>
     {:else}
-      <label class="field">
+      <div class="field">
         <span>{m.moveLabel}</span>
-        <select class="select" bind:value={moveTo}>
-          <option value="" disabled>{t.catalogAdmin.choose}</option>
-          {#each targets as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={m.moveLabel}
+          value={moveTo}
+          options={targets.map((x) => ({ value: String(x.id), label: x.name }))}
+          placeholder={t.catalogAdmin.choose}
+          onchange={(v) => (moveTo = v)}
+        />
+      </div>
     {/if}
   {:else}
     <p>{m.deleteUnused}</p>

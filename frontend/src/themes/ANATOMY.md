@@ -170,7 +170,7 @@ form, `.note`. Wiki `{panel}`: `.wiki .panel`, `.wiki .panel-title`.
 `.btn-danger`, `.btn-small`; pressed: `:active`, `.on` / `[aria-pressed='true']`;
 `[disabled]`. `.link-btn` (text button). `kbd` inside buttons.
 
-**Fields** — `.field` > `.field-label` (or first `span`), `.input`, `.select`,
+**Fields** — `.field` > `.field-label` (or first `span`), `.input`, `.select` (a dropdown's button),
 `.textarea`, `input.checkbox`, `.hint`; `.field-box` (also `.boxed`) frames a
 picker like an input in the create dialog (assignee, components, versions,
 labels). `.chip` (labels, values). `.key` (issue keys, mono).
@@ -194,13 +194,13 @@ the page. Users list: `td.tags > .tag-list` (the flex row of marks).
 (`.active`, `[aria-checked='true']`, `[aria-selected='true']`, `.danger`),
 `.sep`, `.group-label`.
 
-**Dropdowns** — one value from a list, instead of a native select:
+**Dropdowns** — one value from a list; the app has no native select:
 `button.dropdown[role=combobox]` (`.select` in a form, `.quiet` in the issue
-sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name`. The list is
-`ul.popover.dropdown-list[role=listbox]` in the top layer > `li.item[role=option]`
-(`.active` = highlighted, `[aria-selected='true']` = the value, ✓ after it)
-
-> `.icon` + `.name`.
+sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name` (`.name.none`
+= the placeholder). The list is `ul.popover.dropdown-list[role=listbox]` in the
+top layer > `li.item[role=option]` (`.active` = highlighted,
+`[aria-selected='true']` = the value, ✓ after it) > `.icon` + `.name`. Grouped
+options sit in `li[role=group]` > `.group-label` + `ul.group` > `li.item`.
 
 **Dialogs** — `dialog.modal` (`::backdrop`) > `header.modal-head` (title bar) >
 `h2.modal-title` + `button.modal-close` (label « Fermer Échap »; restyle it,
@@ -251,7 +251,7 @@ back / forward.
   for dates and « Plus »). « Plus » lists further criteria in
   `ul.more-list > li > label.item` (checkboxes; `.busy` when disabled, with
   `p.busy-note`). `.link-btn.clear-all`. The first button, « Personnes », opens
-  with `.role` > `label.role-field` (`select.select`: the role) + `p.role-hint`
+  with `.role` > `.role-field` (`button.dropdown.select`: the role) + `p.role-hint`
   above its list.
   The base sets only `background-color` on these buttons, so a skin can paint
   `background-image` fills (Plan does).
@@ -266,7 +266,7 @@ back / forward.
 - ≤ 600 px a popover is a sheet along the bottom of the screen
   (`position: fixed`), over `.filter-veil` (painted with `--backdrop`), with
   `.sheet-head` (name + close button) shown; the bar wraps.
-- Under the bar: `.search-tools` > `.count`, `.sort` (`select.select`,
+- Under the bar: `.search-tools` > `.count`, `.sort` (`button.dropdown.select`,
   `button.sort-dir`), `.mode-switch[role=group]` (two `.btn.btn-small`,
   `[aria-pressed='true']` on the current mode); `p.refused` (« Requête trop
   complexe pour les filtres »); `.results` (the `.ledger`).
@@ -308,7 +308,7 @@ tools, with `.editor-context-label`) > `button.editor-button`
 (`[aria-pressed='true']` when the format applies, `[disabled]`;
 `.editor-mark[data-mark='strong|em|underline|strike']` hold a letter, the
 others an SVG drawn with `stroke: currentColor`; `.editor-source-toggle`),
-`select.select.editor-style`, `input.input.editor-language`. Then the
+`button.dropdown.select.editor-style`, `input.input.editor-language`. Then the
 editable area `.editor-content`, **which is also a `.wiki`**: your `.wiki`
 rules style it, so text looks the same while edited. Inside it:
 `a.editor-mention` (also `.mention`), `a.issue-key` (no `href`),

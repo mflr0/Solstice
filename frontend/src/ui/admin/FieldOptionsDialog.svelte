@@ -11,6 +11,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import OrderArrows from './OrderArrows.svelte';
 
@@ -180,13 +181,16 @@
         {#if targets.length === 0}
           <p class="form-hint">{t.fieldsAdmin.noTarget}</p>
         {:else if how === 'move'}
-          <label class="field">
+          <div class="field">
             <span>{t.fieldsAdmin.moveLabel}</span>
-            <select class="select" bind:value={moveTo}>
-              <option value="" disabled>{t.catalogAdmin.choose}</option>
-              {#each targets as x (x.id)}<option value={String(x.id)}>{x.value}</option>{/each}
-            </select>
-          </label>
+            <Dropdown
+              label={t.fieldsAdmin.moveLabel}
+              value={moveTo}
+              options={targets.map((x) => ({ value: String(x.id), label: x.value }))}
+              placeholder={t.catalogAdmin.choose}
+              onchange={(v) => (moveTo = v)}
+            />
+          </div>
         {/if}
       {/if}
       {#if removing.children > 0}

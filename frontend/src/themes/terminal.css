@@ -875,11 +875,6 @@
   background-repeat: no-repeat;
 }
 
-[data-skin='terminal'] .select option {
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-
 [data-skin='terminal'] .field > span:first-child,
 [data-skin='terminal'] .field-label {
   font: 500 13px/1.25 var(--font-mono);

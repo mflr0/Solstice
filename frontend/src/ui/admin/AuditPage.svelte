@@ -14,6 +14,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Pager from '../Pager.svelte';
 
@@ -166,15 +167,18 @@
   onsubmit={(e) => e.preventDefault()}
   aria-label={t.auditAdmin.filters}
 >
-  <label class="field">
+  <div class="field">
     <span>{t.auditAdmin.family}</span>
-    <select class="select" value={family} onchange={(e) => filterAction(e.currentTarget.value)}>
-      <option value="">{t.auditAdmin.allFamilies}</option>
-      {#each AUDIT_FAMILIES as f (f)}
-        <option value={f}>{t.auditAdmin.families[f]}</option>
-      {/each}
-    </select>
-  </label>
+    <Dropdown
+      label={t.auditAdmin.family}
+      value={family}
+      options={[
+        { value: '', label: t.auditAdmin.allFamilies },
+        ...AUDIT_FAMILIES.map((f) => ({ value: f, label: t.auditAdmin.families[f] })),
+      ]}
+      onchange={filterAction}
+    />
+  </div>
   <label class="field">
     <span>{t.auditAdmin.actor}</span>
     <input

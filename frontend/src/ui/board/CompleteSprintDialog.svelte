@@ -3,6 +3,7 @@
   import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
 
   /**
@@ -74,16 +75,19 @@
       <p class="muted loading">{t.common.loading}</p>
     {/if}
     {#if !counts || counts.open > 0}
-      <label class="field target">
+      <div class="field target">
         <span>{t.boards.completeMoveTo}</span>
-        <select class="select" bind:value={target}>
-          <option value={0}>{t.boards.toBacklog}</option>
-          <option value={NEW_SPRINT}>{t.boards.toNewSprint}</option>
-          {#each future as f (f.id)}
-            <option value={f.id}>{f.name}</option>
-          {/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.boards.completeMoveTo}
+          value={String(target)}
+          options={[
+            { value: '0', label: t.boards.toBacklog },
+            { value: String(NEW_SPRINT), label: t.boards.toNewSprint },
+            ...future.map((f) => ({ value: String(f.id), label: f.name })),
+          ]}
+          onchange={(v) => (target = Number(v))}
+        />
+      </div>
     {/if}
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>

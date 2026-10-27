@@ -11,9 +11,11 @@
   } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import LabelEditor from '../LabelEditor.svelte';
   import Modal from '../Modal.svelte';
   import MultiPick from '../MultiPick.svelte';
+  import PriorityMark from '../PriorityMark.svelte';
   import TypedConfirmDialog from '../TypedConfirmDialog.svelte';
   import UserPicker from '../UserPicker.svelte';
   import BulkReport from './BulkReport.svelte';
@@ -155,16 +157,14 @@
 {/snippet}
 
 {#snippet modes(label: string, value: Mode, set: (m: Mode) => void)}
-  <select
-    class="select mode"
-    aria-label={label}
-    {value}
-    onchange={(e) => set(e.currentTarget.value as Mode)}
-  >
-    {#each MODES as m (m)}
-      <option value={m}>{t.search.bulk.modes[m]}</option>
-    {/each}
-  </select>
+  <span class="mode">
+    <Dropdown
+      {label}
+      {value}
+      options={MODES.map((m) => ({ value: m, label: t.search.bulk.modes[m] }))}
+      onchange={(v) => set(v as Mode)}
+    />
+  </span>
 {/snippet}
 
 <Modal
@@ -199,12 +199,23 @@
       <div class="item">
         {@render toggle(t.issue.priority, usePriority, (v) => (usePriority = v))}
         {#if usePriority}
-          <select class="select" aria-label={t.issue.priority} bind:value={priority}>
-            {#each session.meta?.priorities ?? [] as p (p.id)}
-              <option value={p.id}>{p.name}</option>
-            {/each}
-            <option value="">{t.search.bulk.noPriority}</option>
-          </select>
+          <Dropdown
+            label={t.issue.priority}
+            value={priority}
+            options={[
+              ...(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name })),
+              { value: '', label: t.search.bulk.noPriority },
+            ]}
+            onchange={(v) => (priority = v)}
+          >
+            {#snippet icon(id)}
+              {#if id}
+                <PriorityMark
+                  priority={session.meta?.priorities.find((p) => p.id === id) ?? null}
+                />
+              {/if}
+            {/snippet}
+          </Dropdown>
         {/if}
       </div>
       <div class="item">
@@ -254,33 +265,43 @@
       <div class="item">
         {@render toggle(t.boards.sprint, useSprint, (v) => (useSprint = v))}
         {#if useSprint}
-          <select class="select" aria-label={t.boards.sprint} bind:value={sprint}>
-            <option value="0">{t.search.bulk.noSprint}</option>
-            {#each sprints as sp (sp.id)}
-              <option value={String(sp.id)}>{sp.name} — {sp.boardName}</option>
-            {/each}
-          </select>
+          <Dropdown
+            label={t.boards.sprint}
+            value={sprint}
+            options={[
+              { value: '0', label: t.search.bulk.noSprint },
+              ...sprints.map((sp) => ({
+                value: String(sp.id),
+                label: `${sp.name} — ${sp.boardName}`,
+              })),
+            ]}
+            onchange={(v) => (sprint = v)}
+          />
         {/if}
       </div>
     {:else if op === 'transition'}
-      <label class="field">
+      <div class="field">
         <span>{t.search.bulk.status}</span>
-        <select class="select" bind:value={status}>
-          {#each session.meta?.statuses ?? [] as st (st.id)}
-            <option value={st.id}>{st.name}</option>
-          {/each}
-        </select>
+        <Dropdown
+          label={t.search.bulk.status}
+          value={status}
+          options={(session.meta?.statuses ?? []).map((st) => ({ value: st.id, label: st.name }))}
+          onchange={(v) => (status = v)}
+        />
         <span class="hint">{t.search.bulk.statusHint}</span>
-      </label>
-      <label class="field">
+      </div>
+      <div class="field">
         <span>{t.issue.chooseResolution}</span>
-        <select class="select" bind:value={resolution}>
-          <option value="">{t.search.bulk.defaultResolution}</option>
-          {#each session.meta?.resolutions ?? [] as r (r.id)}
-            <option value={r.id}>{r.name}</option>
-          {/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.issue.chooseResolution}
+          value={resolution}
+          options={[
+            { value: '', label: t.search.bulk.defaultResolution },
+            ...(session.meta?.resolutions ?? []).map((x) => ({ value: x.id, label: x.name })),
+          ]}
+          onchange={(v) => (resolution = v)}
+        />
+      </div>
     {/if}
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
@@ -339,7 +360,7 @@
   }
 
   .mode {
-    width: auto;
+    flex: none;
   }
 
   .boxed {

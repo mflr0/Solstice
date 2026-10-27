@@ -12,6 +12,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import SecurityLevelDialog from './SecurityLevelDialog.svelte';
   import SecurityMemberDialog from './SecurityMemberDialog.svelte';
@@ -118,18 +119,18 @@
   <p class="empty">{t.securityAdmin.noProjects}</p>
 {:else if projects}
   <div class="list-tools">
-    <label class="field project-pick">
-      <span class="sr-only">{t.securityAdmin.project}</span>
-      <select
-        class="select"
-        aria-label={t.securityAdmin.project}
-        bind:value={project}
-        onchange={choose}
-      >
-        <option value="" disabled>{t.securityAdmin.chooseProject}</option>
-        {#each projects as p (p.id)}<option value={p.key}>{p.key} — {p.name}</option>{/each}
-      </select>
-    </label>
+    <div class="field project-pick">
+      <Dropdown
+        label={t.securityAdmin.project}
+        value={project}
+        options={projects.map((p) => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
+        placeholder={t.securityAdmin.chooseProject}
+        onchange={(v) => {
+          project = v;
+          choose();
+        }}
+      />
+    </div>
   </div>
 {/if}
 
@@ -242,13 +243,16 @@
     {#if targets.length === 0}
       <p class="muted small">{t.securityAdmin.noTarget}</p>
     {:else if how === 'move'}
-      <label class="field">
+      <div class="field">
         <span>{t.securityAdmin.moveLabel}</span>
-        <select class="select" bind:value={moveTo}>
-          <option value="" disabled>{t.securityAdmin.choose}</option>
-          {#each targets as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.securityAdmin.moveLabel}
+          value={moveTo}
+          options={targets.map((x) => ({ value: String(x.id), label: x.name }))}
+          placeholder={t.securityAdmin.choose}
+          onchange={(v) => (moveTo = v)}
+        />
+      </div>
     {/if}
   {:else}
     <p>{t.securityAdmin.deleteUnused}</p>

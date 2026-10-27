@@ -14,6 +14,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
 
   /**
@@ -119,18 +120,24 @@
           {/each}
         </fieldset>
         {#if who === 'group'}
-          <label class="field">
+          <div class="field">
             <span>{t.tokensAdmin.group}</span>
-            <select class="select" bind:value={group} aria-invalid={!!groupProblem}>
-              <option value={null}>{t.tokensAdmin.groupPlaceholder}</option>
-              {#each groups as g (g.id)}<option value={g.id}>{g.name}</option>{/each}
-            </select>
+            <Dropdown
+              label={t.tokensAdmin.group}
+              value={group === null ? '' : String(group)}
+              options={[
+                { value: '', label: t.tokensAdmin.groupPlaceholder },
+                ...groups.map((g) => ({ value: String(g.id), label: g.name })),
+              ]}
+              invalid={!!groupProblem}
+              onchange={(v) => (group = v ? Number(v) : null)}
+            />
             {#if groups.length === 0}
               <span class="hint">{t.tokensAdmin.noGroups}</span>
             {:else if policy.who === 'group' && !policy.group}
               <span class="field-error">{t.tokensAdmin.groupGone}</span>
             {/if}
-          </label>
+          </div>
           {#if groupProblem && dirty}
             <p class="field-error">{t.tokensAdmin.problems[groupProblem]}</p>
           {/if}
@@ -158,9 +165,12 @@
     placeholder={t.tokensAdmin.search}
     aria-label={t.tokensAdmin.search}
   />
-  <select class="select" bind:value={show} aria-label={t.tokensAdmin.show}>
-    {#each TOKEN_SHOWS as s (s)}<option value={s}>{t.tokensAdmin.shows[s]}</option>{/each}
-  </select>
+  <Dropdown
+    label={t.tokensAdmin.show}
+    value={show}
+    options={TOKEN_SHOWS.map((s) => ({ value: s, label: t.tokensAdmin.shows[s] }))}
+    onchange={(v) => (show = v as (typeof TOKEN_SHOWS)[number])}
+  />
 </div>
 
 {#if error}
