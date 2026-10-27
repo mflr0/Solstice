@@ -26,7 +26,7 @@ Without credentials the answer is 401.
 | Personal access token | `Authorization: Bearer sol_example` |
 | Basic, with a token | `Authorization: Basic …` where the user name is the account's and the password is the token |
 | Basic, with a password | The account's user name and password. Failed attempts are throttled like the sign-in form, and answer 429 when the limit is hit. |
-| Session cookie | The cookie the interface sets at sign-in. |
+| Session cookie | The cookie the interface sets at sign-in, or the one `POST /rest/auth/1/session` answers (see below). |
 
 If a request has an `Authorization` header, it is used, and the cookie is
 ignored. Prefer tokens to passwords: a token can be revoked on its own, and
@@ -74,10 +74,26 @@ curl -u alice:sol_example \
   https://solstice.example.org/rest/api/2/issue/DEMO-1/attachments
 ```
 
+### Jira's cookie sign-in
+
+For scripts written for Jira's cookie sign-in:
+
+| Request | Notes |
+|---|---|
+| `POST /rest/auth/1/session` | `{"username": "alice", "password": "…"}`. Answers `session`, the cookie's `name` and `value`, and `loginInfo`. Failed attempts are throttled like the sign-in form. |
+| `GET /rest/auth/1/session` | The signed-in user's `name` and `loginInfo`. |
+| `DELETE /rest/auth/1/session` | Signs out. 204. |
+
+A POST with a JSON body and a DELETE need no forgery header here: a browser
+cannot send either to another site without asking it first, and Solstice never
+agrees. A POST with a body type an HTML form can send still needs one.
+
 ## Conventions
 
 - Bodies are JSON. Unknown fields in a request body are ignored, because Jira
-  clients send many that Solstice has no use for.
+  clients send many that Solstice has no use for. Versions, components and
+  filters are stricter: a field that cannot be set answers 400, except the
+  read-only ones Jira itself returns (`self`, `id`, …), which are ignored.
 - Errors use Jira's format:
   `{"errorMessages": ["…"], "errors": {"field": "…"}}`. Messages are in the
   request's language (`Accept-Language`), else the user's, else the
@@ -109,6 +125,9 @@ curl -u alice:sol_example \
 | `POST /rest/api/2/issueLink` | Link two issues. `inwardIssue` is the source: `{"type": {"name": "Blocks"}, "inwardIssue": {"key": "A-1"}, "outwardIssue": {"key": "A-2"}}` means "A-1 blocks A-2". An optional `comment` is added to the source issue. 201. |
 | `DELETE /rest/api/2/issueLink/{id}` | Remove a link. |
 | `GET /rest/api/2/issueLinkType` | The link types. |
+| `GET /rest/api/2/issue/createmeta` | The projects and issue types the user can create issues in. `projectKeys`, `projectIds`, `issuetypeIds` and `issuetypeNames` narrow the list. `expand=projects.issuetypes.fields` adds each type's fields, with their allowed values. |
+| `GET /rest/api/2/issue/{key}/editmeta` | The fields that can be set on the issue, with their allowed values and operations. |
+| `GET /rest/api/2/issue/picker` | Issues matching `query` by key or summary, in two sections: `hs`, the issues the user last changed or commented on (Solstice keeps no record of the issues people viewed), and `cs`, the current search, narrowed by `currentJQL`. `currentIssueKey`, `showSubTasks=false` and `showSubTaskParent=false` leave issues out. |
 
 `expand` on an issue accepts `changelog`, `renderedFields`, `names` and
 `transitions` (with `transitions.fields`).
@@ -236,6 +255,24 @@ always adjusts by itself. A `visibility` on a work log is refused.
 The size of one upload is capped by `SOLSTICE_HTTP_MAXUPLOAD` (100 MiB by
 default). An attachment imported without its file answers 404 on download.
 
+## Remote links
+
+Links from an issue to an address outside Solstice.
+
+| Request | Notes |
+|---|---|
+| `GET /rest/api/2/issue/{key}/remotelink` | The issue's links. With `?globalId=`, that one link. |
+| `POST /rest/api/2/issue/{key}/remotelink` | `{"globalId": "…", "relationship": "…", "object": {"url": "https://…", "title": "…"}}`. Only `object.url` and `object.title` are required. A `globalId` the issue already has updates that link and answers 200; otherwise 201. |
+| `GET /rest/api/2/issue/{key}/remotelink/{linkId}` | |
+| `PUT /rest/api/2/issue/{key}/remotelink/{linkId}` | Replaces the URL, title and relationship. The `globalId` cannot change. 204. |
+| `DELETE /rest/api/2/issue/{key}/remotelink/{linkId}` | 204. |
+| `DELETE /rest/api/2/issue/{key}/remotelink?globalId=` | 204. |
+
+Adding, changing and removing a link needs the "Link" permission, and is
+recorded in the issue's history. Only `http`, `https` and `mailto` addresses
+are accepted. `application`, `icon`, and the object's `summary` and `status`
+are ignored.
+
 ## Projects, versions and components
 
 | Request | Notes |
@@ -245,8 +282,18 @@ default). An attachment imported without its file answers 404 on download.
 | `GET /rest/api/2/project/{key}/statuses` | The statuses of each issue type's workflow. |
 | `GET /rest/api/2/project/{key}/versions` | |
 | `GET /rest/api/2/project/{key}/components` | |
+| `GET /rest/api/2/version/{id}` | |
+| `POST /rest/api/2/version` | `project` (a key) or `projectId`, `name`, `description`, `startDate`, `releaseDate`, `released`, `archived`. 201. |
+| `PUT /rest/api/2/version/{id}` | The same fields, except the project. Only the fields given change. |
+| `DELETE /rest/api/2/version/{id}` | `moveFixIssuesTo` and `moveAffectedIssuesTo` name another version of the project to move its issues to; otherwise the issues lose it. 204. |
+| `GET /rest/api/2/component/{id}` | |
+| `POST /rest/api/2/component` | `project` (a key) or `projectId`, `name`, `description`, `leadUserName`, `assigneeType` (`PROJECT_DEFAULT`, `COMPONENT_LEAD`, `PROJECT_LEAD` or `UNASSIGNED`), `archived`. 201. |
+| `PUT /rest/api/2/component/{id}` | The same fields, except the project. Only the fields given change. |
+| `DELETE /rest/api/2/component/{id}` | `moveIssuesTo` names another component of the project to move its issues to; otherwise the issues lose it. 204. |
 
-Projects, versions and components are read only through the REST API.
+Creating, changing and deleting versions and components needs the project's
+administrator, as in the interface. Projects are read only through the REST
+API.
 
 ## Users
 
@@ -258,10 +305,12 @@ Projects, versions and components are read only through the REST API.
 | `GET /rest/api/2/user/assignable/search?project=` | Or `?issueKey=`. Active users who can be assigned issues. |
 | `GET /rest/api/2/mypermissions` | With `projectKey`, `projectId`, `issueKey` or `issueId`; otherwise in at least one project. |
 | `GET /secure/useravatar`, `GET /secure/projectavatar` | Avatars are generated: initials on a color. |
+| `GET /rest/api/2/groups/picker?query=` | Groups whose name contains `query`. `exclude` (repeatable) and `maxResults`. Administrators see every group, others only the groups they belong to. |
+| `GET /rest/api/2/group/member?groupname=` | A group's members, for administrators only. `includeInactiveUsers`, `startAt`, `maxResults` (at most 50). |
 
-Users cannot be created, changed or deleted through the API, and there are no
-group endpoints. `mypermissions` maps Jira's permission names to Solstice's,
-which are fewer and broader.
+Users and groups cannot be created, changed or deleted through the API.
+`mypermissions` maps Jira's permission names to Solstice's, which are fewer
+and broader.
 
 ## Metadata
 
@@ -274,17 +323,20 @@ which are fewer and broader.
 | `GET /rest/api/2/issuetype` | |
 | `GET /rest/api/2/resolution` | |
 
-There is no `createmeta` or `editmeta` endpoint.
-
 ## Filters
 
 | Request | Notes |
 |---|---|
 | `GET /rest/api/2/filter/{id}` | A saved filter the user may see. |
 | `GET /rest/api/2/filter/favourite` | The user's favourite filters. |
+| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `favourite`, `sharePermissions`. `name` and `jql` are required. |
+| `PUT /rest/api/2/filter/{id}` | The same fields. Only the fields given change. The filter's owner or an administrator. |
+| `DELETE /rest/api/2/filter/{id}` | The filter's owner or an administrator. 204. |
 
-Filters are read only through the REST API. Run a filter by searching with its
-`jql`.
+`sharePermissions` takes Jira's types: `global`, `group`, `project`,
+`projectRole` and `user`. `favourite` is the requesting user's own. An
+administrator who unshares someone else's filter can no longer see it, and
+gets 204 instead of the filter. Run a filter by searching with its `jql`.
 
 ## Agile: boards and sprints
 
@@ -316,9 +368,8 @@ the API.
 Anything not listed above is not registered and answers 404. Notably:
 
 - Version 3 of the Jira API, and Jira Cloud's APIs.
-- Creating or changing users, groups, projects, versions, components,
-  filters, boards, and custom fields.
-- Moving an issue to another project, bulk operations, `createmeta` and
-  `editmeta`, the changelog as its own endpoint, remote links, issue
-  properties, dashboards, and Jira Service Management APIs.
+- Creating or changing users, groups, projects, boards, and custom fields.
+- Moving an issue to another project, bulk operations, the changelog as its
+  own endpoint, issue properties, dashboards, and Jira Service Management
+  APIs.
 - Plugin APIs.

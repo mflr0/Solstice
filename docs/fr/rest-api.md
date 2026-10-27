@@ -27,7 +27,7 @@ connecté. Sans identifiants, la réponse est 401.
 | Jeton d'accès personnel | `Authorization: Bearer sol_example` |
 | Basic, avec un jeton | `Authorization: Basic …` avec l'identifiant du compte et le jeton comme mot de passe |
 | Basic, avec un mot de passe | L'identifiant et le mot de passe du compte. Les échecs sont limités comme sur la page de connexion, et la réponse est 429 quand la limite est atteinte. |
-| Cookie de session | Le cookie que l'interface pose à la connexion. |
+| Cookie de session | Le cookie que l'interface pose à la connexion, ou celui que répond `POST /rest/auth/1/session` (voir plus bas). |
 
 Si une requête porte un en-tête `Authorization`, il est utilisé et le cookie
 est ignoré. Préférez les jetons aux mots de passe : un jeton se révoque
@@ -80,11 +80,29 @@ curl -u alice:sol_example \
   https://solstice.example.org/rest/api/2/issue/DEMO-1/attachments
 ```
 
+### La connexion par cookie de Jira
+
+Pour les scripts écrits pour la connexion par cookie de Jira :
+
+| Requête | Remarques |
+|---|---|
+| `POST /rest/auth/1/session` | `{"username": "alice", "password": "…"}`. Répond `session`, le `name` et la `value` du cookie, et `loginInfo`. Les échecs sont limités comme sur la page de connexion. |
+| `GET /rest/auth/1/session` | Le `name` de l'utilisateur connecté et `loginInfo`. |
+| `DELETE /rest/auth/1/session` | Déconnecte. 204. |
+
+Un POST avec un corps JSON et un DELETE n'ont pas besoin ici d'en-tête
+anti-falsification : un navigateur ne peut envoyer ni l'un ni l'autre à un
+autre site sans le lui demander d'abord, et Solstice n'accepte jamais. Un POST
+dont le corps est d'un type qu'un formulaire HTML peut envoyer en a toujours
+besoin.
+
 ## Conventions
 
 - Les corps sont en JSON. Les champs inconnus d'un corps de requête sont
   ignorés, car les clients Jira en envoient beaucoup dont Solstice n'a pas
-  l'usage.
+  l'usage. Les versions, composants et filtres sont plus stricts : un champ
+  qui ne peut pas être renseigné répond 400, sauf ceux en lecture seule que
+  Jira renvoie lui-même (`self`, `id`, …), qui sont ignorés.
 - Les erreurs suivent le format de Jira :
   `{"errorMessages": ["…"], "errors": {"champ": "…"}}`. Les messages sont dans
   la langue de la requête (`Accept-Language`), sinon celle de l'utilisateur,
@@ -118,6 +136,9 @@ curl -u alice:sol_example \
 | `POST /rest/api/2/issueLink` | Lie deux tickets. `inwardIssue` est la source : `{"type": {"name": "Blocks"}, "inwardIssue": {"key": "A-1"}, "outwardIssue": {"key": "A-2"}}` signifie « A-1 bloque A-2 ». Un `comment` facultatif est ajouté au ticket source. 201. |
 | `DELETE /rest/api/2/issueLink/{id}` | Retire un lien. |
 | `GET /rest/api/2/issueLinkType` | Les types de lien. |
+| `GET /rest/api/2/issue/createmeta` | Les projets et types de ticket où l'utilisateur peut créer des tickets. `projectKeys`, `projectIds`, `issuetypeIds` et `issuetypeNames` restreignent la liste. `expand=projects.issuetypes.fields` ajoute les champs de chaque type, avec leurs valeurs permises. |
+| `GET /rest/api/2/issue/{key}/editmeta` | Les champs qui peuvent être renseignés sur le ticket, avec leurs valeurs permises et leurs opérations. |
+| `GET /rest/api/2/issue/picker` | Les tickets dont la clé ou le résumé correspond à `query`, en deux sections : `hs`, les tickets que l'utilisateur a modifiés ou commentés en dernier (Solstice n'enregistre pas les tickets que les gens ont consultés), et `cs`, la recherche en cours, restreinte par `currentJQL`. `currentIssueKey`, `showSubTasks=false` et `showSubTaskParent=false` écartent des tickets. |
 
 `expand` sur un ticket accepte `changelog`, `renderedFields`, `names` et
 `transitions` (avec `transitions.fields`).
@@ -255,6 +276,24 @@ La taille d'un envoi est plafonnée par `SOLSTICE_HTTP_MAXUPLOAD` (100 MiB par
 défaut). Une pièce jointe importée sans son fichier répond 404 au
 téléchargement.
 
+## Liens distants
+
+Des liens d'un ticket vers une adresse hors de Solstice.
+
+| Requête | Remarques |
+|---|---|
+| `GET /rest/api/2/issue/{key}/remotelink` | Les liens du ticket. Avec `?globalId=`, ce seul lien. |
+| `POST /rest/api/2/issue/{key}/remotelink` | `{"globalId": "…", "relationship": "…", "object": {"url": "https://…", "title": "…"}}`. Seuls `object.url` et `object.title` sont obligatoires. Un `globalId` que le ticket a déjà met à jour ce lien et répond 200 ; sinon 201. |
+| `GET /rest/api/2/issue/{key}/remotelink/{linkId}` | |
+| `PUT /rest/api/2/issue/{key}/remotelink/{linkId}` | Remplace l'URL, le titre et la relation. Le `globalId` ne peut pas changer. 204. |
+| `DELETE /rest/api/2/issue/{key}/remotelink/{linkId}` | 204. |
+| `DELETE /rest/api/2/issue/{key}/remotelink?globalId=` | 204. |
+
+Ajouter, modifier et retirer un lien demande la permission « Lier », et
+s'inscrit dans l'historique du ticket. Seules les adresses `http`, `https` et
+`mailto` sont acceptées. `application`, `icon`, et le `summary` et le `status`
+de l'objet sont ignorés.
+
 ## Projets, versions et composants
 
 | Requête | Remarques |
@@ -264,8 +303,18 @@ téléchargement.
 | `GET /rest/api/2/project/{key}/statuses` | Les statuts du workflow de chaque type de ticket. |
 | `GET /rest/api/2/project/{key}/versions` | |
 | `GET /rest/api/2/project/{key}/components` | |
+| `GET /rest/api/2/version/{id}` | |
+| `POST /rest/api/2/version` | `project` (une clé) ou `projectId`, `name`, `description`, `startDate`, `releaseDate`, `released`, `archived`. 201. |
+| `PUT /rest/api/2/version/{id}` | Les mêmes champs, sauf le projet. Seuls les champs donnés changent. |
+| `DELETE /rest/api/2/version/{id}` | `moveFixIssuesTo` et `moveAffectedIssuesTo` désignent une autre version du projet vers laquelle déplacer ses tickets ; sinon les tickets la perdent. 204. |
+| `GET /rest/api/2/component/{id}` | |
+| `POST /rest/api/2/component` | `project` (une clé) ou `projectId`, `name`, `description`, `leadUserName`, `assigneeType` (`PROJECT_DEFAULT`, `COMPONENT_LEAD`, `PROJECT_LEAD` ou `UNASSIGNED`), `archived`. 201. |
+| `PUT /rest/api/2/component/{id}` | Les mêmes champs, sauf le projet. Seuls les champs donnés changent. |
+| `DELETE /rest/api/2/component/{id}` | `moveIssuesTo` désigne un autre composant du projet vers lequel déplacer ses tickets ; sinon les tickets le perdent. 204. |
 
-Les projets, versions et composants sont en lecture seule dans l'API REST.
+Créer, modifier et supprimer des versions et des composants demande
+l'administrateur du projet, comme dans l'interface. Les projets sont en
+lecture seule dans l'API REST.
 
 ## Utilisateurs
 
@@ -277,10 +326,12 @@ Les projets, versions et composants sont en lecture seule dans l'API REST.
 | `GET /rest/api/2/user/assignable/search?project=` | Ou `?issueKey=`. Les utilisateurs actifs à qui l'on peut assigner des tickets. |
 | `GET /rest/api/2/mypermissions` | Avec `projectKey`, `projectId`, `issueKey` ou `issueId` ; sinon, dans au moins un projet. |
 | `GET /secure/useravatar`, `GET /secure/projectavatar` | Les avatars sont générés : des initiales sur une couleur. |
+| `GET /rest/api/2/groups/picker?query=` | Les groupes dont le nom contient `query`. `exclude` (répétable) et `maxResults`. Les administrateurs voient tous les groupes, les autres seulement ceux dont ils font partie. |
+| `GET /rest/api/2/group/member?groupname=` | Les membres d'un groupe, pour les administrateurs seulement. `includeInactiveUsers`, `startAt`, `maxResults` (50 au plus). |
 
-On ne peut pas créer, modifier ni supprimer d'utilisateurs par l'API, et il n'y
-a pas de points d'accès pour les groupes. `mypermissions` associe les noms de
-permissions de Jira à ceux de Solstice, qui sont moins nombreux et plus larges.
+On ne peut pas créer, modifier ni supprimer d'utilisateurs ni de groupes par
+l'API. `mypermissions` associe les noms de permissions de Jira à ceux de
+Solstice, qui sont moins nombreux et plus larges.
 
 ## Métadonnées
 
@@ -293,17 +344,21 @@ permissions de Jira à ceux de Solstice, qui sont moins nombreux et plus larges.
 | `GET /rest/api/2/issuetype` | |
 | `GET /rest/api/2/resolution` | |
 
-Il n'y a pas de point d'accès `createmeta` ni `editmeta`.
-
 ## Filtres
 
 | Requête | Remarques |
 |---|---|
 | `GET /rest/api/2/filter/{id}` | Un filtre enregistré que l'utilisateur peut voir. |
 | `GET /rest/api/2/filter/favourite` | Les filtres favoris de l'utilisateur. |
+| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `favourite`, `sharePermissions`. `name` et `jql` sont obligatoires. |
+| `PUT /rest/api/2/filter/{id}` | Les mêmes champs. Seuls les champs donnés changent. Le propriétaire du filtre ou un administrateur. |
+| `DELETE /rest/api/2/filter/{id}` | Le propriétaire du filtre ou un administrateur. 204. |
 
-Les filtres sont en lecture seule dans l'API REST. Pour exécuter un filtre,
-cherchez avec son `jql`.
+`sharePermissions` prend les types de Jira : `global`, `group`, `project`,
+`projectRole` et `user`. `favourite` est propre à l'utilisateur de la requête.
+Un administrateur qui retire le partage du filtre de quelqu'un d'autre ne le
+voit plus, et reçoit 204 au lieu du filtre. Pour exécuter un filtre, cherchez
+avec son `jql`.
 
 ## Agile : tableaux et sprints
 
@@ -337,9 +392,8 @@ Notamment :
 
 - La version 3 de l'API de Jira, et les API de Jira Cloud.
 - La création ou la modification d'utilisateurs, de groupes, de projets, de
-  versions, de composants, de filtres, de tableaux et de champs personnalisés.
+  tableaux et de champs personnalisés.
 - Le déplacement d'un ticket vers un autre projet, les opérations en masse,
-  `createmeta` et `editmeta`, l'historique comme point d'accès à part, les
-  liens distants, les propriétés de ticket, les tableaux de bord et les API de
-  Jira Service Management.
+  l'historique comme point d'accès à part, les propriétés de ticket, les
+  tableaux de bord et les API de Jira Service Management.
 - Les API des modules complémentaires.
