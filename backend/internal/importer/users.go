@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
 )
 
@@ -151,13 +151,10 @@ func (r *run) importUsers() error {
 
 	r.rep.step("users", ins.total, 0)
 	if noPassword > 0 {
-		r.rep.warn("%s without a usable password (external directory or old format): "+
-			"set one with \"solstice user passwd\"", plural(noPassword, "active account", "active accounts"))
+		r.rep.warn(i18n.N(noPassword, i18n.ImportWarnNoPasswordOne, i18n.ImportWarnNoPasswordMany))
 	}
 	if placeholders > 0 {
-		r.rep.warn("%s (authors of old issues)", plural(placeholders,
-			"user deleted from Jira kept as an inactive account",
-			"users deleted from Jira kept as inactive accounts"))
+		r.rep.warn(i18n.N(placeholders, i18n.ImportWarnDeletedUsersOne, i18n.ImportWarnDeletedUsersMany))
 	}
 	return nil
 }
@@ -333,16 +330,7 @@ func (r *run) applyApplicationAccess(adminGroups map[int64]bool) error {
 		}
 	}
 	if len(noAccess) > 0 {
-		r.rep.warn("%s without application access in Jira (outside license groups): imported inactive",
-			plural(len(noAccess), "account", "accounts"))
+		r.rep.warn(i18n.N(len(noAccess), i18n.ImportWarnNoAppAccessOne, i18n.ImportWarnNoAppAccessMany))
 	}
 	return nil
-}
-
-// plural writes "1 account" or "3 accounts".
-func plural(n int, one, many string) string {
-	if n == 1 {
-		return "1 " + one
-	}
-	return strconv.Itoa(n) + " " + many
 }

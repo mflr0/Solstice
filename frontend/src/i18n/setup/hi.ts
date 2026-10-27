@@ -172,7 +172,6 @@ export const hi: SetupMessages = {
     reportSkipped: 'छोड़े गए',
     skippedHint: 'छोड़े गए: Jira में अनाथ रेफ़रेंस, या ऐसा डेटा जिसे Solstice नहीं लेता।',
     warnings: 'जाँचने लायक',
-    warningsNote: 'इम्पोर्टर ये टिप्पणियाँ अंग्रेज़ी में लिखता है।',
     chooseTitle: 'Solstice का प्रबंधन कौन करेगा?',
     chooseLead:
       'इम्पोर्ट किया गया कोई खाता चुनें: उसका Jira पासवर्ड बना रहता है। Jira के एडमिनिस्ट्रेटर पहले से Solstice के एडमिनिस्ट्रेटर हैं।',

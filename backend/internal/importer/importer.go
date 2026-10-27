@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jiradb"
 	"solstice/internal/sqlq"
 )
@@ -60,8 +61,8 @@ type Progress struct {
 
 // Report summarises what an import did.
 type Report struct {
-	Steps    []Step   `json:"steps"`
-	Warnings []string `json:"warnings"`
+	Steps    []Step         `json:"steps"`
+	Warnings []i18n.Message `json:"warnings"` // English in JSON
 }
 
 // Step is one kind of record and how many were copied or left out.
@@ -85,8 +86,8 @@ func (r *Report) step(name string, imported, skipped int) {
 	r.Steps = append(r.Steps, Step{Name: name, Imported: imported, Skipped: skipped})
 }
 
-func (r *Report) warn(format string, args ...any) {
-	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
+func (r *Report) warn(m i18n.Message) {
+	r.Warnings = append(r.Warnings, m)
 }
 
 // ErrBusy means another import into the same database is running.
@@ -207,8 +208,7 @@ func (r *run) runSteps() error {
 		r.opt.Log.Info("import step done", "step", s.name, "duration", time.Since(start).Round(time.Millisecond))
 	}
 	if r.strangers > 0 {
-		r.rep.warn("%s named by issues, comments or history but unknown to Jira, kept as inactive accounts",
-			plural(r.strangers, "user", "users"))
+		r.rep.warn(i18n.N(r.strangers, i18n.ImportWarnStrangersOne, i18n.ImportWarnStrangersMany))
 	}
 	return nil
 }
@@ -337,9 +337,9 @@ func (r *run) prepareTarget() (*kept, error) {
 }
 
 // leftOut warns about rows that point to something Jira no longer has.
-func (r *run) leftOut(n int, one, many, why string) {
+func (r *run) leftOut(n int, one, many i18n.Key) {
 	if n > 0 {
-		r.rep.warn("%s %s, not imported", plural(n, one, many), why)
+		r.rep.warn(i18n.N(n, one, many))
 	}
 }
 

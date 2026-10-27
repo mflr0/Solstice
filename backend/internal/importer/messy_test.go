@@ -3,21 +3,30 @@ package importer
 import (
 	"database/sql"
 	"reflect"
+	"solstice/internal/i18n"
 	"testing"
 	"time"
 )
 
 func TestLeftOut(t *testing.T) {
 	r := &run{rep: &Report{}}
-	r.leftOut(0, "comment", "comments", "of a missing issue")
+	r.leftOut(0, i18n.ImportLeftOutCommentOne, i18n.ImportLeftOutCommentMany)
 	if len(r.rep.Warnings) != 0 {
 		t.Fatalf("a warning for nothing: %v", r.rep.Warnings)
 	}
-	r.leftOut(1, "comment", "comments", "of a missing issue")
-	r.leftOut(3, "work log", "work logs", "of a missing issue")
-	want := []string{"1 comment of a missing issue, not imported", "3 work logs of a missing issue, not imported"}
-	if !reflect.DeepEqual(r.rep.Warnings, want) {
-		t.Errorf("warnings = %q, want %q", r.rep.Warnings, want)
+	r.leftOut(1, i18n.ImportLeftOutCommentOne, i18n.ImportLeftOutCommentMany)
+	r.leftOut(3, i18n.ImportLeftOutWorklogOne, i18n.ImportLeftOutWorklogMany)
+	for lang, want := range map[string][]string{
+		"en": {"1 comment of a missing issue, not imported", "3 work logs of a missing issue, not imported"},
+		"fr": {"1 commentaire d'un ticket absent, non repris", "3 temps saisis de tickets absents, non repris"},
+	} {
+		var got []string
+		for _, w := range r.rep.Warnings {
+			got = append(got, w.In(lang))
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("warnings in %s = %q, want %q", lang, got, want)
+		}
 	}
 }
 

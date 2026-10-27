@@ -4,9 +4,8 @@
   import { labelOf } from '../../i18n/t.js';
 
   /**
-   * What a finished import copied, step by step, and what to check
-   * (Jira's own warnings, in English as the importer wrote them). Shared by
-   * the setup wizard and the administration's import page.
+   * What a finished import copied, step by step, and what to check. Shared
+   * by the setup wizard and the administration's import page.
    */
   interface Props {
     m: SetupMessages;
@@ -47,8 +46,7 @@
 {#if job.warnings.length > 0}
   <section class="warnings" aria-labelledby="import-warnings">
     <h2 class="section-title" id="import-warnings">{m.import.warnings}</h2>
-    {#if m.import.warningsNote}<p class="muted">{m.import.warningsNote}</p>{/if}
-    <ul lang="en">
+    <ul>
       {#each job.warnings as w, i (i)}<li>{w}</li>{/each}
     </ul>
   </section>

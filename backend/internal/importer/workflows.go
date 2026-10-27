@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
 )
 
@@ -297,7 +298,7 @@ func (r *run) importWorkflows() error {
 	r.rep.step("workflows (per project)", wins.total, broken)
 	r.rep.step("transitions", tins.total, 0)
 	for name := range missing {
-		r.rep.warn("workflow \"%s\" not found in Jira: replaced by the standard workflow", name)
+		r.rep.warn(i18n.M(i18n.ImportWarnWorkflowMissing, name))
 	}
 	return nil
 }
