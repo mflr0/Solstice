@@ -203,8 +203,10 @@
 </div>
 
 <style>
+  /* Too many chosen columns scroll sideways here rather than squeeze the summary. */
   .issue-table {
     container: issue-table / inline-size;
+    overflow-x: auto;
   }
 
   tbody tr {
@@ -279,6 +281,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
+  }
+
+  @container issue-table (width >= 570px) {
+    .c-summary {
+      min-width: 10em;
+    }
+  }
+
+  @container issue-table (width >= 920px) {
+    .c-summary {
+      min-width: 16em;
+    }
   }
 
   /* Columns give way by the list's own width, not the window's: beside the
