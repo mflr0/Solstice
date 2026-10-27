@@ -2,7 +2,7 @@
 // synthetic Jira Data Center instance, for testing Solstice's importer.
 //
 //	go run ./cmd/jira-fixture -url postgres://jira:jira@localhost:15432/jira \
-//	    -jira-dist ../atlassian-jira-software-11.3.12-standalone -jira-home /tmp/jira-home
+//	    -jira-dist ../../jira-entitydefs/atlassian-jira-software-11.3.12-standalone -jira-home /tmp/jira-home
 //
 // It prints a JSON summary of what it generated on stdout.
 package main

@@ -28,7 +28,7 @@ current README, code of conduct and license, and it does not compile. Merging
 ## Remaining for 1.0, in order
 
 The goal of 1.0 is to be the safest way to leave Jira, not to match its
-features (see `ROADMAP.md`). The release waits for items 5 and 6.
+features (see `ROADMAP.md`). The release waits for item 5.
 
 1. Check the administration end to end in the interface against
    `backend/internal/api/ADMIN_API.md` (checked against the code in pull
@@ -49,17 +49,12 @@ features (see `ROADMAP.md`). The release waits for items 5 and 6.
 5. Anonymous Jira audit: `solstice import -check` writes the report; a
    `-anonymous` option should make it hold no content at all (counts,
    schema shapes, errors only), so anyone can attach it to an issue.
-6. Jira versions: `jira-fixture` generates the quirks of old instances
-   (`Options.Messy`), but from one entity model only. Generate databases for
-   every major Jira version whose distribution can be downloaded (7.x to the
-   latest), each read from its own entity model, and run
-   `scripts/e2e-import.sh` against each.
-7. Every admin object reachable from the menus: the Updates page exists
+6. Every admin object reachable from the menus: the Updates page exists
    (`frontend/src/ui/admin/UpdatesPage.svelte`) and is linked from the
    system page, but `AdminArea.svelte` has no route for `/admin/updates`.
    Then a pass over the whole interface for other pages with no menu entry
    or link.
-8. Release: the maintainer generates the Ed25519 key pair and puts the
+7. Release: the maintainer generates the Ed25519 key pair and puts the
    public key in `deploy/linux/update.sh` (see `scripts/release.sh`; until
    then the update helper refuses every update), privacy audit of the whole
    history, pull request from `feat/v1.0` to `main`, tag `v1.0.0`, GitHub

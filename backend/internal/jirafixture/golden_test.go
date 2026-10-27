@@ -18,22 +18,36 @@ import (
 	"solstice/internal/jiradb"
 )
 
-// goldenRows is the hash of the rows generated with the seed, size and time
-// zone of scripts/e2e-import.sh. Change it only for an intended change of
-// the generated data.
-const goldenRows = "b7d88c03be0ec4bd80b23fc2b0d140212e1d5a72d339b58877b4745bbc4acc28"
+// goldenRows is, per Jira version, the hash of the rows generated with the
+// seed, size and time zone of scripts/e2e-import.sh. Change it only for an
+// intended change of the generated data.
+var goldenRows = map[string]string{
+	"7.13.18": "3afca79c7e5cc77d5e304bdb2019cf5c4581b868138afa1b30e2d227c4e81d6c",
+	"8.20.30": "4a1093e5bb3393bca44ef13daffc5ada468ff20eeb209b05bc7b6bb8433065f0",
+	"9.12.25": "4a1093e5bb3393bca44ef13daffc5ada468ff20eeb209b05bc7b6bb8433065f0",
+	"10.3.12": "cd5bdc85e6d4836e22ab9a40179182e8f4e4352771529aec4de7821334182477",
+	"11.3.12": "b7d88c03be0ec4bd80b23fc2b0d140212e1d5a72d339b58877b4745bbc4acc28",
+}
 
 // TestGoldenRows runs the generator against a connection that records every
 // insert and hashes the rows in write order: the same seed must give the
-// same rows, on either engine, from one run to the next.
+// same rows, on either engine, from one run to the next. It runs for each
+// distribution found, as scripts/e2e-import.sh finds them.
 func TestGoldenRows(t *testing.T) {
-	dist := os.Getenv("JIRA_DIST")
-	if dist == "" {
-		found, _ := filepath.Glob("../../../atlassian-jira-software-*-standalone")
-		if len(found) == 0 {
-			t.Skip("no Jira distribution: set JIRA_DIST, as for scripts/e2e-import.sh")
+	var dists []string
+	if dist := os.Getenv("JIRA_DIST"); dist != "" {
+		dists = []string{dist}
+	} else {
+		cache := os.Getenv("JIRA_ENTITYDEFS")
+		if cache == "" {
+			cache = "../../../../jira-entitydefs"
 		}
-		dist = found[0]
+		dists, _ = filepath.Glob(filepath.Join(cache, distGlob))
+		next, _ := filepath.Glob(filepath.Join("../../..", distGlob))
+		dists = append(dists, next...)
+	}
+	if len(dists) == 0 {
+		t.Skip("no Jira distribution: run scripts/jira-entitydefs.sh, or set JIRA_DIST")
 	}
 	tz, err := time.LoadLocation("Europe/Paris")
 	if err != nil {
@@ -41,17 +55,28 @@ func TestGoldenRows(t *testing.T) {
 	}
 	opt := Options{Issues: 300, Seed: 42, TZ: tz}
 
-	pg := generateHash(t, dist, jiradb.Postgres, opt)
-	if again := generateHash(t, dist, jiradb.Postgres, opt); again != pg {
-		t.Fatalf("two runs give different rows: %s, then %s", pg, again)
-	}
-	if my := generateHash(t, dist, jiradb.MySQL, opt); my != pg {
-		t.Errorf("MySQL rows hash to %s, PostgreSQL rows to %s", my, pg)
-	}
-	if pg != goldenRows {
-		t.Errorf("rows hash to %s, want %s", pg, goldenRows)
+	for _, dist := range dists {
+		version := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(dist), "atlassian-jira-software-"), "-standalone")
+		t.Run(version, func(t *testing.T) {
+			want, ok := goldenRows[version]
+			if !ok {
+				t.Fatalf("no golden hash for Jira %s (%s)", version, dist)
+			}
+			pg := generateHash(t, dist, jiradb.Postgres, opt)
+			if again := generateHash(t, dist, jiradb.Postgres, opt); again != pg {
+				t.Fatalf("two runs give different rows: %s, then %s", pg, again)
+			}
+			if my := generateHash(t, dist, jiradb.MySQL, opt); my != pg {
+				t.Errorf("MySQL rows hash to %s, PostgreSQL rows to %s", my, pg)
+			}
+			if pg != want {
+				t.Errorf("rows hash to %s, want %s", pg, want)
+			}
+		})
 	}
 }
+
+const distGlob = "atlassian-jira-software-*-standalone"
 
 func generateHash(t *testing.T, dist string, eng jiradb.Engine, opt Options) string {
 	t.Helper()
