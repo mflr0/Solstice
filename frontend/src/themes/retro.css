@@ -291,9 +291,9 @@
 
 [data-skin='retro'] .topbar-inner {
   max-width: none;
-  height: 36px;
+  --bar-height: 36px;
   padding: 0 8px 0 6px;
-  gap: 6px;
+  column-gap: 6px;
 }
 
 /* A grip at the start of the toolbar, as on a movable band. */
@@ -365,6 +365,15 @@
   color: var(--bar-ink);
   font-weight: 400;
   line-height: 1.2;
+}
+
+/* On a band of its own, no groove before the pages. */
+[data-skin='retro'] .topbar.is-stacked .topbar-nav {
+  padding-bottom: 4px;
+}
+
+[data-skin='retro'] .topbar.is-stacked .topbar-nav::before {
+  display: none;
 }
 
 [data-skin='retro'] .topbar-nav .nav-link:hover {
@@ -2173,7 +2182,7 @@
 
 @media (max-width: 860px) {
   [data-skin='retro'] .topbar-inner {
-    gap: 4px;
+    column-gap: 4px;
     padding: 0 4px;
   }
 

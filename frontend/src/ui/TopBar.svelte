@@ -2,7 +2,7 @@
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { locale, LOCALE_NAMES, LOCALES } from '../i18n/index.js';
-  import { outside } from '../lib/actions.js';
+  import { outside, stackWhenCrowded } from '../lib/actions.js';
   import { chooseLocale } from '../lib/locale.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
@@ -65,7 +65,7 @@
   });
 </script>
 
-<header class="topbar">
+<header class="topbar" use:stackWhenCrowded>
   <div class="topbar-inner">
     <a class="brand" href={paths.home()}>
       <Logo />

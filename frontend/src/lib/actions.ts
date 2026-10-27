@@ -55,3 +55,36 @@ export function hiddenSides(node: HTMLElement, handler: SidesHandler) {
     },
   };
 }
+
+/**
+ * Keeps is-stacked on a top bar while its .topbar-nav does not fit on one row,
+ * so the stylesheet can give the nav a row of its own.
+ */
+export function stackWhenCrowded(node: HTMLElement) {
+  const nav = node.querySelector<HTMLElement>('.topbar-nav');
+  if (!nav) return {};
+  let frame = 0;
+  // Always measured on one row: a stacked nav has room by definition.
+  const measure = () => {
+    frame = 0;
+    node.classList.remove('is-stacked');
+    node.classList.toggle('is-stacked', nav.scrollWidth - nav.clientWidth >= 1);
+  };
+  // In the next frame: toggling the class inside the observer's callback would
+  // resize what it observes and make the browser report a loop.
+  const schedule = () => {
+    frame ||= requestAnimationFrame(measure);
+  };
+  measure();
+  const watch = new ResizeObserver(schedule);
+  watch.observe(node);
+  watch.observe(nav);
+  for (const link of nav.children) watch.observe(link);
+  return {
+    destroy() {
+      watch.disconnect();
+      cancelAnimationFrame(frame);
+      node.classList.remove('is-stacked');
+    },
+  };
+}

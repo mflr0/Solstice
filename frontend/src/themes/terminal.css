@@ -443,7 +443,7 @@
 }
 
 [data-skin='terminal'] .topbar .topbar-inner {
-  gap: 18px;
+  column-gap: 18px;
 }
 
 [data-skin='terminal'] .brand {
@@ -1962,7 +1962,7 @@
 @media (max-width: 520px) {
   /* A compact top bar: the mark alone (its name kept for screen readers), [ + ]. */
   [data-skin='terminal'] .topbar .topbar-inner {
-    gap: 8px;
+    column-gap: 8px;
   }
 
   [data-skin='terminal'] .topbar .brand .wordmark {

@@ -1729,7 +1729,7 @@
   }
 
   [data-skin='orbite'] .topbar-inner {
-    gap: 10px;
+    column-gap: 10px;
   }
 
   [data-skin='orbite'] .topbar-nav {

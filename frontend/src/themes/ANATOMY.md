@@ -113,7 +113,12 @@ connection, `.is-live` while connected). `.app-booting` (first load).
 `.plus` (hidden on wide screens) + `.label` + `kbd`, `.account` >
 `button.account-button` > `.avatar`, `.popover.account-menu`. The nav has
 four links (and may gain more): do not count on `:nth-child`. Short of room,
-`.topbar-search` shrinks first, then the nav scrolls sideways inside the bar
+`.topbar-search` shrinks first; when the nav still does not fit beside the
+tools, TopBar sets `.is-stacked` on `.topbar` and the nav takes a full-width
+second row (`order: 1`, links grow to share it, centred), at any width. The
+first row keeps `--bar-height`: set it, not `height`, on `.topbar-inner`, and
+space its items with `column-gap`, not `gap`. Style the stacked row under
+`.topbar.is-stacked`. Last resort, the nav scrolls sideways inside the bar
 (`overflow-x: auto` at every width, links never wrap: a `.nav-link`
 decoration drawn outside the nav box is clipped; the current link is
 scrolled into view). Narrow screens, in the base: ≤ 860 px the search field
