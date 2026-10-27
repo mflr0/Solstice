@@ -101,7 +101,7 @@
 </script>
 
 <aside class="fiche card" aria-label={t.issue.fiche}>
-  <div class="head card-head">{t.issue.fiche} <span class="key">{issue.key}</span></div>
+  <h2 class="head card-head title">{issue.key}</h2>
   <dl>
     <div class="line card-row">
       <dt>{t.issue.assignee}</dt>
@@ -436,10 +436,18 @@
     font-size: 13.5px;
   }
 
-  .head .key {
+  h2.title {
+    margin: 0;
+  }
+
+  /* Specific enough to beat every skin's own title-bar type; skins keep their margins. */
+  aside.fiche.card > h2.title {
+    justify-content: flex-start;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: 0;
-    font-size: 11.5px;
-    color: var(--muted);
+    overflow-wrap: anywhere;
   }
 
   .head.sub {
