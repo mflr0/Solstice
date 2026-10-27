@@ -1280,7 +1280,7 @@
   pointer-events: none;
 }
 
-[data-skin='crayon'] .board-column:nth-child(even)::before {
+[data-skin='crayon'] .board-column:nth-child(even of .board-column)::before {
   filter: var(--cr-rough-alt);
 }
 

@@ -22,6 +22,7 @@
   import type { IssueBrief } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { hiddenSides } from '../../lib/actions.js';
+  import { touchDrag, type TouchDragHandlers } from '../../lib/touch-drag.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -41,7 +42,8 @@
   /**
    * A board: its columns side by side, optionally cut into swimlanes.
    * Cards are dragged between columns (a workflow transition) and within
-   * one (their rank); each card's menu does the same from the keyboard.
+   * one (their rank), with the mouse or by holding a card by touch; each
+   * card's menu does the same from the keyboard.
    */
   interface Props {
     boardId: number;
@@ -246,7 +248,11 @@
     if (!drag || drag.lane !== lane.id) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    const index = indexAt(e.currentTarget as HTMLElement, e.clientY);
+    hover(e.currentTarget as HTMLElement, lane, column, e.clientY);
+  }
+
+  function hover(el: HTMLElement, lane: Lane, column: BoardColumn, y: number) {
+    const index = indexAt(el, y);
     if (over?.lane !== lane.id || over.column !== column.id || over.index !== index) {
       over = { lane: lane.id, column: column.id, index };
     }
@@ -261,8 +267,13 @@
   function drop(e: DragEvent, lane: Lane, column: BoardColumn) {
     if (!drag || drag.lane !== lane.id) return;
     e.preventDefault();
+    land(e.currentTarget as HTMLElement, lane, column, e.clientY);
+  }
+
+  function land(el: HTMLElement, lane: Lane, column: BoardColumn, y: number) {
+    if (!drag) return;
     const { key, column: from } = drag;
-    const index = indexAt(e.currentTarget as HTMLElement, e.clientY);
+    const index = indexAt(el, y);
     const keys = cell(lane, column).map((c) => c.key);
     endDrag();
     if (from === column.id && staysInPlace(keys, key, index)) return;
@@ -270,6 +281,36 @@
     if (from !== column.id) m.column = column.id;
     void move(m, from !== column.id ? t.boards.moved(key, column.name) : t.boards.ranked(key));
   }
+
+  /** The cell of the dragged card's lane under a finger, with its lane and column. */
+  function cellAt(x: number, y: number) {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('.board-cards');
+    const lane = lanes.find((l) => l.id === el?.dataset.lane);
+    const column = detail?.columns.find((c) => String(c.id) === el?.dataset.column);
+    if (!el || !lane || !column || lane.id !== drag?.lane) return null;
+    return { el, lane, column };
+  }
+
+  const touch: TouchDragHandlers = {
+    start(el) {
+      const card = cards?.find((c) => c.key === el.dataset.key);
+      const lane = el.closest<HTMLElement>('.board-cards')?.dataset.lane;
+      if (!card || !lane) return false;
+      drag = { key: card.key, lane, column: card.column };
+      return true;
+    },
+    move(x, y) {
+      const at = cellAt(x, y);
+      if (at) hover(at.el, at.lane, at.column, y);
+      else over = null;
+    },
+    drop(x, y) {
+      const at = cellAt(x, y);
+      if (at) land(at.el, at.lane, at.column, y);
+      else endDrag();
+    },
+    cancel: endDrag,
+  };
 
   /** The drop line: on the card the dragged one would land above, or below the last. */
   function markerOf(lane: Lane, column: BoardColumn, list: Card[], card: Card) {
@@ -328,10 +369,36 @@
           moreLeft = left;
           moreRight = right;
         }}
+        use:touchDrag={touch}
         style:grid-template-columns="repeat({d.columns.length}, minmax(min(250px, 78vw), 1fr))"
         style:grid-template-rows="repeat({rows}, auto)"
         style:row-gap="0"
       >
+        <!-- Before the columns, so the toggles don't come after every card in the tab order. -->
+        {#if banded}
+          {#each lanes as lane, k (lane.id)}
+            {@const issue = laneIssue(lane)}
+            <div class="board-lane" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
+              <button
+                type="button"
+                class="board-lane-toggle"
+                aria-expanded={!collapsed[lane.id]}
+                onclick={() => (collapsed[lane.id] = !collapsed[lane.id])}
+              >
+                <span class="chevron" aria-hidden="true"></span>
+                {#if issue}
+                  <TypeMark type={issue.type} />
+                  <span class="key">{issue.key}</span>
+                  <span class="board-lane-title">{issue.summary}</span>
+                {:else}
+                  <span class="board-lane-title">{laneName(lane)}</span>
+                {/if}
+                <span class="board-lane-count">{t.boards.cards(lane.cards.length)}</span>
+              </button>
+              {#if lane.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
+            </div>
+          {/each}
+        {/if}
         {#each d.columns as column, i (column.id)}
           {@const count = counts[column.id] ?? 0}
           {@const wip = wipState(count, column.min, column.max)}
@@ -370,6 +437,8 @@
                   class="board-cards"
                   style:grid-row={cellRow(k)}
                   role="list"
+                  data-lane={lane.id}
+                  data-column={column.id}
                   aria-label={banded ? `${column.name} — ${laneName(lane)}` : column.name}
                   ondragover={(e) => dragOver(e, lane, column)}
                   ondragleave={(e) => dragLeave(e, lane, column)}
@@ -395,30 +464,6 @@
             {/each}
           </section>
         {/each}
-        {#if banded}
-          {#each lanes as lane, k (lane.id)}
-            {@const issue = laneIssue(lane)}
-            <div class="board-lane" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
-              <button
-                type="button"
-                class="board-lane-toggle"
-                aria-expanded={!collapsed[lane.id]}
-                onclick={() => (collapsed[lane.id] = !collapsed[lane.id])}
-              >
-                <span class="chevron" aria-hidden="true"></span>
-                {#if issue}
-                  <TypeMark type={issue.type} />
-                  <span class="key">{issue.key}</span>
-                  <span class="board-lane-title">{issue.summary}</span>
-                {:else}
-                  <span class="board-lane-title">{laneName(lane)}</span>
-                {/if}
-                <span class="board-lane-count">{t.boards.cards(lane.cards.length)}</span>
-              </button>
-              {#if lane.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
-            </div>
-          {/each}
-        {/if}
       </div>
     {/if}
     <p class="sr-only" aria-live="polite">{announcement}</p>
