@@ -581,7 +581,6 @@
 
 [data-skin='luna'] .topbar .account-menu {
   top: calc(100% + 7px);
-  max-height: min(80vh, 560px);
   padding-top: 0;
 }
 

@@ -407,11 +407,11 @@ kbd,
   color: var(--ink);
 }
 
-.account-menu {
+.popover.account-menu {
   right: 0;
   top: calc(100% + 8px);
   min-width: 280px;
-  max-height: min(82vh, 700px);
+  max-height: calc(100dvh - 72px);
 }
 
 @media (max-width: 860px) {
