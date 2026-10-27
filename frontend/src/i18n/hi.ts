@@ -1089,8 +1089,6 @@ export const hi: Messages = {
 
   updates: {
     title: 'अपडेट',
-    eyebrow: 'एडमिनिस्ट्रेशन',
-    forbidden: 'यह पेज केवल एडमिनिस्ट्रेटरों के लिए है।',
     current: 'इंस्टॉल किया गया वर्ज़न',
     latest: 'नवीनतम प्रकाशित वर्ज़न',
     install: 'इंस्टॉलेशन',

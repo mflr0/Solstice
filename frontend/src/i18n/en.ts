@@ -1088,8 +1088,6 @@ export const en = {
 
   updates: {
     title: 'Updates',
-    eyebrow: 'Administration',
-    forbidden: 'This page is for administrators only.',
     current: 'Installed version',
     latest: 'Latest release',
     install: 'Installation',

@@ -18,7 +18,7 @@ describe('matchRoute', () => {
     ['/admin/issue-types', { name: 'admin', section: 'issueTypes', item: null }],
     ['/admin/webhooks/12', { name: 'admin', section: 'webhooks', item: '12' }],
     ['/admin/webhooks/new', { name: 'admin', section: 'webhooks', item: 'new' }],
-    ['/admin/updates', { name: 'updates' }],
+    ['/admin/updates', { name: 'admin', section: 'updates', item: null }],
     ['/admin/updates/1', { name: 'notFound' }],
     ['/admin/mail/3', { name: 'notFound' }],
     ['/admin/nope', { name: 'notFound' }],
@@ -43,7 +43,11 @@ describe('matchRoute', () => {
     expect(paths.admin('overview')).toBe('/admin');
     expect(paths.admin('linkTypes')).toBe('/admin/link-types');
     expect(paths.admin('updates')).toBe('/admin/updates');
-    expect(matchRoute(paths.admin('updates'))).toEqual({ name: 'updates' });
+    expect(matchRoute(paths.admin('updates'))).toEqual({
+      name: 'admin',
+      section: 'updates',
+      item: null,
+    });
     expect(matchRoute(paths.admin('webhooks', 7))).toEqual({
       name: 'admin',
       section: 'webhooks',

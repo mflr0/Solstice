@@ -1,8 +1,7 @@
 /**
  * The administration area (/admin) and the personal settings (/settings):
  * their sections, the address of each, and how the side navigation groups
- * them. The updates page (/admin/updates) has its own route; the navigation
- * only links to it.
+ * them.
  */
 
 export const ADMIN_SECTIONS = [
@@ -26,12 +25,10 @@ export const ADMIN_SECTIONS = [
   'audit',
   'import',
   'system',
+  'updates',
 ] as const;
 
 export type AdminSection = (typeof ADMIN_SECTIONS)[number];
-
-/** An entry of the administration's navigation: a section, or the updates page. */
-export type AdminNavItem = AdminSection | 'updates';
 
 const ADMIN_SLUGS: Record<AdminSection, string> = {
   overview: '',
@@ -54,12 +51,13 @@ const ADMIN_SLUGS: Record<AdminSection, string> = {
   audit: 'audit',
   import: 'import',
   system: 'system',
+  updates: 'updates',
 };
 
 export type AdminGroup = 'general' | 'people' | 'projects' | 'issues' | 'integrations' | 'system';
 
 /** The side navigation of the administration, in order. */
-export const ADMIN_NAV: readonly { group: AdminGroup; items: readonly AdminNavItem[] }[] = [
+export const ADMIN_NAV: readonly { group: AdminGroup; items: readonly AdminSection[] }[] = [
   { group: 'general', items: ['overview', 'settings', 'banner'] },
   { group: 'people', items: ['users', 'groups', 'roles'] },
   { group: 'projects', items: ['projects', 'securityLevels'] },
@@ -80,8 +78,7 @@ export function adminSectionOf(slug: string): AdminSection | null {
 }
 
 /** /admin, /admin/mail, /admin/webhooks/12… */
-export function adminPath(item: AdminNavItem, sub?: string | number): string {
-  if (item === 'updates') return '/admin/updates';
+export function adminPath(item: AdminSection, sub?: string | number): string {
   const slug = ADMIN_SLUGS[item];
   const base = slug ? `/admin/${slug}` : '/admin';
   return sub === undefined ? base : `${base}/${encodeURIComponent(String(sub))}`;

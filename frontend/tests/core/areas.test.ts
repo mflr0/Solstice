@@ -9,10 +9,10 @@ import {
   adminPath,
   adminSectionOf,
 } from '../../src/core/areas.js';
-import type { AccountSection, AdminNavItem } from '../../src/core/areas.js';
+import type { AccountSection, AdminSection } from '../../src/core/areas.js';
 
 describe('adminPath', () => {
-  it.each<[AdminNavItem, string]>([
+  it.each<[AdminSection, string]>([
     ['overview', '/admin'],
     ['mail', '/admin/mail'],
     ['issueTypes', '/admin/issue-types'],
@@ -57,10 +57,6 @@ describe('ADMIN_NAV', () => {
 
   it.each(ADMIN_SECTIONS)('links %s exactly once', (section) => {
     expect(items.filter((item) => item === section).length).toBe(1);
-  });
-
-  it('links updates exactly once', () => {
-    expect(items.filter((item) => item === 'updates').length).toBe(1);
   });
 });
 

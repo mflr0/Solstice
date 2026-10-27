@@ -1093,8 +1093,6 @@ export const it: Messages = {
 
   updates: {
     title: 'Aggiornamenti',
-    eyebrow: 'Amministrazione',
-    forbidden: 'Questa pagina è riservata agli amministratori.',
     current: 'Versione installata',
     latest: 'Ultima versione pubblicata',
     install: 'Installazione',
