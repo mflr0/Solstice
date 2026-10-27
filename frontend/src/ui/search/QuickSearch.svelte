@@ -317,8 +317,6 @@
   }
 
   .quick-search-results .kbd {
-    position: static;
-    transform: none;
     flex: none;
   }
 

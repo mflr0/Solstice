@@ -548,11 +548,11 @@
   background: var(--paper-sunk);
 }
 
-[data-skin='terminal'] .topbar-search kbd {
+[data-skin='terminal'] .topbar-search > kbd {
   color: var(--muted);
 }
 
-[data-skin='terminal'] .topbar-search:focus-within kbd {
+[data-skin='terminal'] .topbar-search:focus-within > kbd {
   visibility: hidden;
 }
 

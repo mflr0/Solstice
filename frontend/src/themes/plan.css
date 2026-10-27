@@ -296,7 +296,7 @@
   color: var(--bar-ink);
 }
 
-[data-skin='plan'] .topbar-search kbd {
+[data-skin='plan'] .topbar-search > kbd {
   color: var(--bar-ink-soft);
 }
 
