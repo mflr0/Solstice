@@ -292,5 +292,22 @@ func (s *Server) facets(w http.ResponseWriter, r *http.Request) error {
 		}
 		out[field] = counts
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "facets": out})
+	// The people counted, so their counts can be shown by name.
+	var ids []int64
+	for _, field := range []string{"assignee", "reporter"} {
+		for v := range out[field] {
+			if id, err := strconv.ParseInt(v, 10, 64); err == nil {
+				ids = append(ids, id)
+			}
+		}
+	}
+	found, err := s.users(ctx, ids...)
+	if err != nil {
+		return err
+	}
+	users := make(map[string]userRef, len(found))
+	for id, u := range found {
+		users[strconv.FormatInt(id, 10)] = u
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "facets": out, "users": users})
 }
