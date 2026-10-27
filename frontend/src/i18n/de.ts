@@ -274,6 +274,15 @@ export const de: Messages = {
     note: 'Aus Jira übernommene Konten behalten ihr Passwort.',
     forgot: 'Passwort vergessen?',
     forgotAdmin: 'Passwort vergessen? Fragen Sie einen Administrator.',
+    sso: (name: string) => `Mit ${name} anmelden`,
+    or: 'oder',
+    ssoErrors: {
+      'sso-failed':
+        'Die einmalige Anmeldung hat nicht geklappt. Versuchen Sie es erneut oder fragen Sie einen Administrator.',
+      'sso-denied': 'Ihr Konto darf sich nicht bei Solstice anmelden.',
+      'sso-account':
+        'Ein Konto mit diesem Benutzernamen meldet sich hier mit einem Passwort an: Verwenden Sie es oder fragen Sie einen Administrator.',
+    },
   },
 
   accountLinks: {
@@ -1978,6 +1987,9 @@ export const de: Messages = {
     passwordTitle: 'Passwort',
     directoryPasswordIntro:
       'Ihr Passwort wird im Verzeichnis (LDAP) verwaltet: Ändern Sie es dort. Geben Sie es hier nur ein, um Ihre E-Mail-Adresse zu ändern.',
+    ssoPasswordIntro:
+      'Sie melden sich per Single Sign-on an: Dieses Konto hat kein Passwort in Solstice.',
+    ssoEmailHint: 'Vom Single Sign-on vorgegeben.',
     passwordIntro:
       'Lassen Sie die Felder leer, um das aktuelle Passwort zu behalten. Ein neues Passwort beendet Ihre anderen Sitzungen, und Ihre Zugriffstoken funktionieren nicht mehr.',
     currentPassword: 'Aktuelles Passwort',
@@ -2088,6 +2100,8 @@ export const de: Messages = {
     noPassword: 'ohne Passwort',
     directory: 'LDAP',
     directoryHint: 'Meldet sich über das Verzeichnis (LDAP) an: Das Passwort wird dort verwaltet.',
+    sso: 'SSO',
+    ssoHint: 'Meldet sich per Single Sign-on (OpenID Connect) an: kein Passwort in Solstice.',
     more: (n: number) => `+${n}`,
     rights: 'Berechtigungen',
     adminLabel: 'Solstice-Administrator (Zugriff auf die gesamte Administration)',

@@ -26,6 +26,7 @@ const DYNAMIC: Record<string, string> = {
   'auditAdmin.actions': 'the audit actions the server writes (admin-ops.test.ts pins them)',
   'auditAdmin.detailKeys': 'the keys of the server’s audit details',
   'projects.kinds': 'the project types the server stores',
+  'login.ssoErrors': 'the codes the server’s single sign-on sends back to /login?error=',
 };
 
 const SETUP_DYNAMIC: Record<string, string> = {

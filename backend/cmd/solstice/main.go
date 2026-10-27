@@ -86,6 +86,18 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
   SOLSTICE_LDAP_REQUIREGROUP     only its members sign in through LDAP (default none)
   SOLSTICE_LDAP_ADMINGROUP       its members are administrators, and only they (default none)
   SOLSTICE_LDAP_TIMEOUT          time a sign-in waits for the server (default 10s)
+  SOLSTICE_OIDC_ISSUER           OpenID Connect sign-in, off when empty: the provider's
+                                 https:// address; it sends people back to
+                                 <public address>/api/auth/oidc/callback (default none)
+  SOLSTICE_OIDC_CLIENTID         Solstice's client ID at the provider
+  SOLSTICE_OIDC_CLIENTSECRET     its secret
+  SOLSTICE_OIDC_NAME             the provider on the sign-in button (default single sign-on)
+  SOLSTICE_OIDC_SCOPES           scopes asked for (default openid profile email)
+  SOLSTICE_OIDC_USERNAMECLAIM    claim of the user name (default preferred_username)
+  SOLSTICE_OIDC_GROUPSCLAIM      claim of the groups (default groups)
+  SOLSTICE_OIDC_REQUIREGROUP     only its members sign in this way (default none)
+  SOLSTICE_OIDC_ADMINGROUP       its members are administrators, and only they (default none)
+  SOLSTICE_OIDC_TIMEOUT          time a sign-in waits for the provider (default 10s)
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -170,6 +182,10 @@ func runServe(ctx context.Context, args []string) error {
 	if dir != nil {
 		log.Info("LDAP sign-in is on", "url", cfg.LDAP.URL)
 	}
+	sso := directory.NewOIDC(cfg.OIDC)
+	if sso != nil {
+		log.Info("OpenID Connect sign-in is on", "issuer", cfg.OIDC.Issuer)
+	}
 	// Bound first: a taken port fails here, before a setup code is printed.
 	ln, err := net.Listen("tcp", cfg.HTTP.Addr)
 	if err != nil {
@@ -216,6 +232,9 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
 		if dir != nil {
 			srv.SetDirectory(dir)
+		}
+		if sso != nil {
+			srv.SetSingleSignOn(sso)
 		}
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)

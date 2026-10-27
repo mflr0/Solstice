@@ -16,7 +16,7 @@ export interface Me {
   admin: boolean;
   /** The interface language chosen on the account (src/i18n/locales.ts); absent on older servers. */
   locale?: string | null;
-  /** "ldap" for an account whose password is the directory's; absent on older servers. */
+  /** "ldap" or "oidc" for an account with no password of its own; absent on older servers. */
   directory?: string;
 }
 

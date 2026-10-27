@@ -13,7 +13,7 @@ Ce qui se règle où :
 
 - Le fichier de configuration et les variables d'environnement ne servent qu'à
   démarrer le serveur : URL de la base, répertoire de données, adresse
-  d'écoute, et connexion LDAP. Voir `solstice -h`.
+  d'écoute, et connexion LDAP et OpenID Connect. Voir `solstice -h`.
 - Tout le reste de ce qui suit est stocké dans la base de données et s'applique tout de
   suite, sans redémarrage.
 - Chaque changement fait dans l'administration est écrit dans le journal
@@ -185,6 +185,69 @@ Attention :
 - Sans `SOLSTICE_LDAP_URL`, les comptes LDAP ne peuvent pas se connecter.
 - Les groupes et le droit d'administrateur réglés à la main sur un compte LDAP
   sont remplacés à la connexion suivante quand l'annuaire en décide.
+
+### Connexion unique (OpenID Connect)
+
+Les personnes peuvent se connecter avec un fournisseur OpenID Connect
+(Keycloak, Microsoft Entra ID, Authentik, Dex, Google…) : la page de connexion
+montre alors un bouton « Se connecter avec … » au-dessus du formulaire de mot
+de passe. Cela se règle dans le fichier de configuration : voir les clés
+`SOLSTICE_OIDC_*` dans [installation](install.md). Redémarrez Solstice après
+un changement.
+
+Chez le fournisseur, déclarez Solstice comme client confidentiel, avec le flux
+« authorization code » et l'URI de redirection
+`<adresse publique>/api/auth/oidc/callback`, par exemple
+`https://solstice.example.org/api/auth/oidc/callback`. L'adresse publique doit
+être réglée (Administration → Général) : sans elle, le bouton est masqué.
+Exemple pour Keycloak :
+
+```sh
+SOLSTICE_OIDC_ISSUER=https://id.example.org/realms/staff
+SOLSTICE_OIDC_CLIENTID=solstice
+SOLSTICE_OIDC_CLIENTSECRET=secret-du-client
+SOLSTICE_OIDC_NAME=Example ID
+SOLSTICE_OIDC_REQUIREGROUP=solstice-users
+```
+
+Les groupes viennent de la revendication `SOLSTICE_OIDC_GROUPSCLAIM`
+(`groups` par défaut), que la plupart des fournisseurs n'envoient que sur
+demande : ajoutez la portée ou le mapper qu'il faut (Keycloak : un mapper
+« Group Membership » ; Entra ID : « groups claim » dans la configuration du
+jeton ; certains fournisseurs : la portée `groups`, dans
+`SOLSTICE_OIDC_SCOPES`).
+
+- **Quels comptes.** La première connexion trouve le compte dont le nom
+  d'utilisateur est la revendication `SOLSTICE_OIDC_USERNAMECLAIM`
+  (`preferred_username` par défaut ; Entra ID : `upn` ou `email`), puis le lie
+  à l'identifiant de la personne chez le fournisseur : les connexions suivantes
+  le retrouvent par cet identifiant, même si le nom change chez le
+  fournisseur. Un compte LDAP, ou un compte sans mot de passe (comme ceux
+  importés de l'annuaire externe de Jira), est lié ; un nom qu'aucun compte ne
+  porte reçoit un nouveau compte, marqué « SSO » dans Utilisateurs. Un compte
+  local avec un mot de passe n'est jamais lié : la personne est invitée à se
+  connecter avec son mot de passe. Un compte LDAP lié ainsi se connecte des
+  deux façons.
+- **Nom et adresse** sont copiés depuis le fournisseur à chaque connexion,
+  quand il les envoie. Une adresse que le fournisseur dit non vérifiée n'est
+  pas reprise.
+- **Groupes et administrateurs** fonctionnent comme pour LDAP (voir plus haut),
+  avec `SOLSTICE_OIDC_REQUIREGROUP` et `SOLSTICE_OIDC_ADMINGROUP`.
+- **Mots de passe.** Un compte SSO n'a pas de mot de passe dans Solstice : son
+  adresse e-mail vient du fournisseur, et les actions sur le mot de passe sont
+  masquées.
+
+Attention :
+
+- Se déconnecter de Solstice ne déconnecte pas du fournisseur : le prochain
+  « Se connecter avec … » peut passer sans rien demander.
+- Retirer quelqu'un chez le fournisseur, ou du groupe exigé, refuse seulement
+  sa prochaine connexion, comme pour LDAP : désactivez le compte pour fermer
+  ses sessions tout de suite.
+- Changer `SOLSTICE_OIDC_ISSUER` délie tous les comptes : chacun est lié de
+  nouveau par son nom d'utilisateur à sa connexion suivante.
+- Les connexions refusées sont dans le journal d'audit (méthode `oidc`), et le
+  journal du serveur en donne la raison.
 
 ### Rôles
 

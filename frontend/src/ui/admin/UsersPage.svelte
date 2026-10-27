@@ -170,7 +170,9 @@
               <span class="tag-list">
                 {#if u.admin}<span class="stamp done">{t.usersAdmin.admin}</span>{/if}
                 {#if !u.active}<span class="stamp">{t.usersAdmin.inactive}</span>{/if}
-                {#if u.directory}<span class="stamp" title={t.usersAdmin.directoryHint}
+                {#if u.directory === 'oidc'}<span class="stamp" title={t.usersAdmin.ssoHint}
+                    >{t.usersAdmin.sso}</span
+                  >{:else if u.directory}<span class="stamp" title={t.usersAdmin.directoryHint}
                     >{t.usersAdmin.directory}</span
                   >{:else if !u.hasPassword}<span class="muted small"
                     >{t.usersAdmin.noPassword}</span

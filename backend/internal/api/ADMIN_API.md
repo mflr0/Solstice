@@ -47,7 +47,8 @@ Status: every endpoint below is live.
   "defaultLanguage": "fr",
   "banner": {"text": "Maintenance ce soir à 20 h", "level": "warning"},
   "passwordMinLength": 12,
-  "emailLinks": true
+  "emailLinks": true,
+  "sso": {"name": "Example ID"}
 }
 ```
 
@@ -55,6 +56,12 @@ Status: every endpoint below is live.
 `emailLinks` is true when e-mail is on and complete and the public address is
 set: only then can reset links and invitations be sent (the sign-in page shows
 "forgot your password" accordingly, the user dialog the invitation option).
+`sso` is `null` unless OpenID Connect is set up (`SOLSTICE_OIDC_*`) and the
+public address is set: then the sign-in page shows a button "Sign in with
+<name>", a link to `GET /api/auth/oidc/start?next=<path>`. That route sends the
+browser to the provider, which sends it back to
+`GET /api/auth/oidc/callback`: on success the session cookie is set and the
+browser lands on `next`, else on `/login?error=sso-failed|sso-denied|sso-account`.
 
 ### `GET /api/admin/settings` — global admin
 

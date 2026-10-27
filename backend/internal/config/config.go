@@ -56,6 +56,7 @@ type Settings struct {
 	Log  LogSettings
 	HTTP HTTPSettings
 	LDAP LDAPSettings
+	OIDC OIDCSettings
 }
 
 // DBSettings are Solstice's database and its connection pool.
@@ -132,6 +133,31 @@ type LDAPSettings struct {
 	Timeout time.Duration
 }
 
+// OIDCSettings are the OpenID Connect provider accounts may sign in with
+// (single sign-on). An empty Issuer turns it off.
+type OIDCSettings struct {
+	// Issuer is the provider's address, e.g. https://id.example.org/realms/staff:
+	// its discovery document is <Issuer>/.well-known/openid-configuration.
+	Issuer string
+	// ClientID and ClientSecret are Solstice's registration at the provider,
+	// whose redirect URI is <public address>/api/auth/oidc/callback.
+	ClientID     string
+	ClientSecret string
+	// Name is the provider as the sign-in button names it.
+	Name string
+	// Scopes are asked for, separated by spaces; openid is required.
+	Scopes string
+	// UsernameClaim gives the account's user name, GroupsClaim its groups.
+	UsernameClaim string
+	GroupsClaim   string
+	// RequireGroup, when set, is the group an account must be in to sign in.
+	RequireGroup string
+	// AdminGroup, when set, makes its members administrators, and only them.
+	AdminGroup string
+	// Timeout bounds each exchange with the provider.
+	Timeout time.Duration
+}
+
 // Defaults returns the settings nothing sets. There is deliberately no
 // default database.
 func Defaults() Settings {
@@ -157,6 +183,13 @@ func Defaults() Settings {
 			EmailAttr:     "mail",
 			GroupFilter:   "(member={dn})",
 			GroupNameAttr: "cn",
+			Timeout:       10 * time.Second,
+		},
+		OIDC: OIDCSettings{
+			Name:          "single sign-on",
+			Scopes:        "openid profile email",
+			UsernameClaim: "preferred_username",
+			GroupsClaim:   "groups",
 			Timeout:       10 * time.Second,
 		},
 	}
@@ -325,7 +358,10 @@ func (s *Settings) check() error {
 			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
 		}
 	}
-	return s.checkLDAP()
+	if err := s.checkLDAP(); err != nil {
+		return err
+	}
+	return s.checkOIDC()
 }
 
 // checkLDAP rejects an LDAP setup that would send passwords in clear by
@@ -361,6 +397,45 @@ func (s *Settings) checkLDAP() error {
 		}
 	}
 	return nil
+}
+
+// checkOIDC rejects an OpenID Connect setup that cannot sign anyone in, or
+// that would talk to the provider in clear.
+func (s *Settings) checkOIDC() error {
+	o := &s.OIDC
+	if o.Issuer == "" {
+		return nil
+	}
+	u, err := url.Parse(o.Issuer)
+	if err != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && loopback(u.Hostname()))) {
+		return fmt.Errorf("%s: must be https://host (http:// only on this machine)", keyOf(s, &o.Issuer))
+	}
+	for _, r := range []struct {
+		bad  bool
+		p    any
+		want string
+	}{
+		{o.ClientID == "", &o.ClientID, "set with " + keyOf(s, &o.Issuer)},
+		{strings.TrimSpace(o.Name) == "", &o.Name, "a name for the sign-in button"},
+		{!slices.Contains(strings.Fields(o.Scopes), "openid"), &o.Scopes, "a list of scopes containing openid"},
+		{o.UsernameClaim == "", &o.UsernameClaim, "a claim name"},
+		{o.GroupsClaim == "", &o.GroupsClaim, "a claim name"},
+		{o.Timeout <= 0, &o.Timeout, "a positive duration"},
+	} {
+		if r.bad {
+			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
+		}
+	}
+	return nil
+}
+
+// loopback tells whether host names this machine.
+func loopback(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	a, err := netip.ParseAddr(host)
+	return err == nil && a.IsLoopback()
 }
 
 // ParseTrustedProxies reads the trusted proxy list: IP addresses and CIDR

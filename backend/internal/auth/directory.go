@@ -45,10 +45,10 @@ func refuseDirectory(ctx context.Context, ex execer, userID int64) error {
 }
 
 // directorySignIn signs in through dir. id is the account of that name: one
-// of the directory, or a local one without a password (an account imported
+// of a directory, or a local one without a password (an account imported
 // from Jira's external directory), which becomes the directory's; 0 when
 // there is none, and the account is created. Name, address, administrator
-// right and groups are then copied from the directory (syncGroups).
+// right and groups are then copied from the directory (saveEntry).
 func directorySignIn(ctx context.Context, db *sql.DB, dir Directory, id int64, username, password string) (*User, error) {
 	e, err := dir.Authenticate(ctx, username, password)
 	if err != nil {
@@ -59,6 +59,17 @@ func directorySignIn(ctx context.Context, db *sql.DB, dir Directory, id int64, u
 		return nil, err
 	}
 	defer tx.Rollback()
+	if id, err = saveEntry(ctx, tx, id, dir.Name(), username, e); err != nil {
+		return nil, err
+	}
+	return commitUser(ctx, tx, id)
+}
+
+// saveEntry copies what a directory says of a person to the account id, or
+// to a new account of that user name when id is 0, and returns the
+// account's id. An account takes source as its directory unless it has one
+// already: an account may sign in through LDAP and OpenID Connect both.
+func saveEntry(ctx context.Context, tx *sql.Tx, id int64, source, username string, e *DirectoryEntry) (int64, error) {
 	admin := sql.NullBool{Valid: e.Admin != nil}
 	if e.Admin != nil {
 		admin.Bool = *e.Admin
@@ -69,36 +80,60 @@ func directorySignIn(ctx context.Context, db *sql.DB, dir Directory, id int64, u
 			name = username
 		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO users (username, display_name, email, directory, is_admin)
-			VALUES (?, ?, ?, ?, ?)`, username, name, strings.TrimSpace(e.Email), dir.Name(), admin.Bool)
+			VALUES (?, ?, ?, ?, ?)`, username, name, strings.TrimSpace(e.Email), source, admin.Bool)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		if id, err = res.LastInsertId(); err != nil {
-			return nil, err
+			return 0, err
 		}
 	} else {
-		if _, err := tx.ExecContext(ctx, `UPDATE users SET directory = ?,
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET directory = IF(directory = '', ?, directory),
 			display_name = COALESCE(NULLIF(?, ''), display_name), email = COALESCE(NULLIF(?, ''), email),
 			is_admin = COALESCE(?, is_admin) WHERE id = ?`,
-			dir.Name(), strings.TrimSpace(e.Name), strings.TrimSpace(e.Email), admin, id); err != nil {
-			return nil, err
+			source, strings.TrimSpace(e.Name), strings.TrimSpace(e.Email), admin, id); err != nil {
+			return 0, err
 		}
 		// An imported account may have been sent an invitation: its link
 		// would set a password the account no longer uses.
 		if err := RevokeAccountTokens(ctx, tx, id, time.Now()); err != nil {
-			return nil, err
+			return 0, err
 		}
 	}
-	if err := syncGroups(ctx, tx, id, e.Groups); err != nil {
-		return nil, err
-	}
+	return id, syncGroups(ctx, tx, id, e.Groups)
+}
+
+// commitUser reads the account id and commits tx.
+func commitUser(ctx context.Context, tx *sql.Tx, id int64) (*User, error) {
 	var u User
-	err = tx.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory
+	err := tx.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory
 		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory)
 	if err != nil {
 		return nil, err
 	}
 	return &u, tx.Commit()
+}
+
+// ApplyGroups enforces a directory's required group and administrators'
+// group on an entry (empty names for none): ErrNoSession when the person is
+// not in require; with admin, Admin tells whether they are in it.
+func ApplyGroups(e *DirectoryEntry, require, admin string) error {
+	in := func(group string) bool {
+		for _, g := range e.Groups {
+			if strings.EqualFold(strings.TrimSpace(g), strings.TrimSpace(group)) {
+				return true
+			}
+		}
+		return false
+	}
+	if require != "" && !in(require) {
+		return ErrNoSession
+	}
+	if admin != "" {
+		yes := in(admin)
+		e.Admin = &yes
+	}
+	return nil
 }
 
 // syncGroups makes the account a member of exactly the directory groups

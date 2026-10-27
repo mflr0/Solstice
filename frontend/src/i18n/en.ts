@@ -264,6 +264,14 @@ export const en = {
     note: 'Accounts migrated from Jira keep their passwords.',
     forgot: 'Forgot your password?',
     forgotAdmin: 'Forgot your password? Ask an administrator.',
+    sso: (name: string) => `Sign in with ${name}`,
+    or: 'or',
+    ssoErrors: {
+      'sso-failed': 'Single sign-on did not work. Try again, or ask an administrator.',
+      'sso-denied': 'Your account is not allowed to sign in to Solstice.',
+      'sso-account':
+        'An account with this username signs in with a password here: sign in with it, or ask an administrator.',
+    },
   },
 
   accountLinks: {
@@ -1950,6 +1958,8 @@ export const en = {
     passwordTitle: 'Password',
     directoryPasswordIntro:
       'Your password is managed by the directory (LDAP): change it there. Type it here only to change your e-mail address.',
+    ssoPasswordIntro: 'You sign in with single sign-on: this account has no password in Solstice.',
+    ssoEmailHint: 'Set by single sign-on.',
     passwordIntro:
       'Leave the fields empty to keep the current password. A new password closes your other sessions, and your access tokens stop working.',
     currentPassword: 'Current password',
@@ -2057,6 +2067,8 @@ export const en = {
     noPassword: 'no password',
     directory: 'LDAP',
     directoryHint: 'Signs in with the directory (LDAP): its password is managed there.',
+    sso: 'SSO',
+    ssoHint: 'Signs in with single sign-on (OpenID Connect): no password in Solstice.',
     more: (n: number) => `+${n}`,
     rights: 'Permissions',
     adminLabel: 'Solstice administrator (access to all of the administration)',

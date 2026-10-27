@@ -112,6 +112,7 @@ fichier ou l'environnement, est signalée dans le journal au démarrage.
 | `SOLSTICE_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |
 | `SOLSTICE_LOG_FORMAT` | `text` | `text` ou `json` (`json` dans l'image Docker) |
 | `SOLSTICE_LDAP_*` | aucune | connexion LDAP ou Active Directory, voir [l'installation](docs/fr/install.md) et [l'administration](docs/fr/administration.md#ldap-et-active-directory) |
+| `SOLSTICE_OIDC_*` | aucune | connexion unique OpenID Connect, voir [l'installation](docs/fr/install.md) et [l'administration](docs/fr/administration.md#connexion-unique-openid-connect) |
 
 Les durées s'écrivent `30s`, `5m`, `1h30m`.
 

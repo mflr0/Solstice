@@ -12,7 +12,8 @@ Installation, the reverse proxy, backups and upgrades are in
 What lives where:
 
 - The configuration file and environment variables only bootstrap the
-  server: database URL, data directory, listen address, and LDAP sign-in. See
+  server: database URL, data directory, listen address, and LDAP and OpenID
+  Connect sign-in. See
   `solstice -h`.
 - Everything else described below is stored in the database and applies at once,
   without a restart.
@@ -168,6 +169,63 @@ Watch for:
 - Without `SOLSTICE_LDAP_URL`, LDAP accounts cannot sign in.
 - Groups and the administrator right set by hand on an LDAP account are
   replaced at the next sign-in when the directory decides them.
+
+### Single sign-on (OpenID Connect)
+
+People can sign in with an OpenID Connect provider (Keycloak, Microsoft Entra
+ID, Authentik, Dex, Google…): the sign-in page then shows a "Sign in with …"
+button above the password form. It is set in the configuration file: see the
+`SOLSTICE_OIDC_*` keys in [installation](install.md). Restart Solstice after a
+change.
+
+At the provider, register Solstice as a confidential client using the
+authorization code flow, with the redirect URI
+`<public address>/api/auth/oidc/callback`, for example
+`https://solstice.example.org/api/auth/oidc/callback`. The public address must
+be set (Administration → General): without it, the button is hidden. Example
+for Keycloak:
+
+```sh
+SOLSTICE_OIDC_ISSUER=https://id.example.org/realms/staff
+SOLSTICE_OIDC_CLIENTID=solstice
+SOLSTICE_OIDC_CLIENTSECRET=client-secret
+SOLSTICE_OIDC_NAME=Example ID
+SOLSTICE_OIDC_REQUIREGROUP=solstice-users
+```
+
+Groups come from the claim `SOLSTICE_OIDC_GROUPSCLAIM` (`groups` by default),
+which most providers send only when asked: add the scope or the mapper your
+provider needs (Keycloak: a "Group Membership" mapper; Entra ID: "groups claim"
+in the token configuration; some providers: the `groups` scope, in
+`SOLSTICE_OIDC_SCOPES`).
+
+- **Which accounts.** The first sign-in finds the account whose user name is
+  the claim `SOLSTICE_OIDC_USERNAMECLAIM` (`preferred_username` by default;
+  Entra ID: `upn` or `email`), then links it to the person's identifier at the
+  provider: later sign-ins find it by that identifier, even if the user name
+  changes at the provider. An LDAP account, or one without a password (such as
+  one imported from Jira's external directory), is linked; a name no account
+  has gets a new account, marked "SSO" in Users. A local account with a
+  password is never linked: the person is told to sign in with the password.
+  An LDAP account linked this way signs in either way.
+- **Name and address** are copied from the provider at each sign-in, when it
+  sends them. An address the provider marks as not verified is not taken.
+- **Groups and administrators** work as for LDAP (see above), with
+  `SOLSTICE_OIDC_REQUIREGROUP` and `SOLSTICE_OIDC_ADMINGROUP`.
+- **Passwords.** An SSO account has no password in Solstice: its e-mail
+  address is set by the provider, and the password actions are hidden.
+
+Watch for:
+
+- Signing out of Solstice does not sign out of the provider: the next "Sign in
+  with …" may go through without asking.
+- Removing someone at the provider, or from the required group, refuses their
+  next sign-in only, as with LDAP: deactivate the account to end its sessions
+  at once.
+- Changing `SOLSTICE_OIDC_ISSUER` unlinks every account: each is linked again
+  by user name at its next sign-in.
+- Failed sign-ins are in the audit log (method `oidc`), and the server log says
+  why.
 
 ### Roles
 

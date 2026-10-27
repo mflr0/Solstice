@@ -28,7 +28,7 @@ type User struct {
 	Email       string
 	Admin       bool
 	Locale      string // interface language chosen by the user, "" to follow the browser
-	Directory   string // the directory the account signs in with ("ldap"), "" for a local account
+	Directory   string // the directory that made the account its own ("ldap", "oidc"), "" for a local account
 	TokenID     int64  // the personal access token the request signed in with, 0 for none
 }
 
@@ -107,8 +107,9 @@ func CanonicalUsername(typed string) string {
 
 // Authenticate checks a user name and password. Jira hashes are upgraded to
 // Argon2id on the first successful sign-in. With a directory (nil for none),
-// its accounts are checked there, and so is a name no account has, or one
-// without a password: see directorySignIn.
+// the accounts of any directory (LDAP or OpenID Connect) are checked there,
+// and so is a name no account has, or one without a password: see
+// directorySignIn.
 func Authenticate(ctx context.Context, db *sql.DB, dir Directory, username, password string) (*User, error) {
 	username = CanonicalUsername(username)
 	var u User
@@ -128,7 +129,7 @@ func Authenticate(ctx context.Context, db *sql.DB, dir Directory, username, pass
 		return nil, ErrNoSession
 	case err != nil:
 		return nil, err
-	case active && dir != nil && (u.Directory == dir.Name() || (u.Directory == "" && !hash.Valid)):
+	case active && dir != nil && (u.Directory != "" || !hash.Valid):
 		return directorySignIn(ctx, db, dir, u.ID, username, password)
 	case !active || u.Directory != "" || !hash.Valid:
 		CheckPassword(dummyHash(), password)

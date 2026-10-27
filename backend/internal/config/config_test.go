@@ -104,7 +104,10 @@ func TestKeys(t *testing.T) {
 		"SOLSTICE_LDAP_URL", "SOLSTICE_LDAP_STARTTLS", "SOLSTICE_LDAP_INSECURE", "SOLSTICE_LDAP_CAFILE",
 		"SOLSTICE_LDAP_BINDDN", "SOLSTICE_LDAP_BINDPASSWORD", "SOLSTICE_LDAP_USERBASE", "SOLSTICE_LDAP_USERFILTER",
 		"SOLSTICE_LDAP_NAMEATTR", "SOLSTICE_LDAP_EMAILATTR", "SOLSTICE_LDAP_GROUPBASE", "SOLSTICE_LDAP_GROUPFILTER",
-		"SOLSTICE_LDAP_GROUPNAMEATTR", "SOLSTICE_LDAP_REQUIREGROUP", "SOLSTICE_LDAP_ADMINGROUP", "SOLSTICE_LDAP_TIMEOUT"}
+		"SOLSTICE_LDAP_GROUPNAMEATTR", "SOLSTICE_LDAP_REQUIREGROUP", "SOLSTICE_LDAP_ADMINGROUP", "SOLSTICE_LDAP_TIMEOUT",
+		"SOLSTICE_OIDC_ISSUER", "SOLSTICE_OIDC_CLIENTID", "SOLSTICE_OIDC_CLIENTSECRET", "SOLSTICE_OIDC_NAME",
+		"SOLSTICE_OIDC_SCOPES", "SOLSTICE_OIDC_USERNAMECLAIM", "SOLSTICE_OIDC_GROUPSCLAIM",
+		"SOLSTICE_OIDC_REQUIREGROUP", "SOLSTICE_OIDC_ADMINGROUP", "SOLSTICE_OIDC_TIMEOUT"}
 	if !reflect.DeepEqual(Keys, want) {
 		t.Errorf("got %v\nwant %v", Keys, want)
 	}
@@ -150,6 +153,16 @@ func TestLoadEverySetting(t *testing.T) {
 		"SOLSTICE_LDAP_REQUIREGROUP":    "staff",
 		"SOLSTICE_LDAP_ADMINGROUP":      "it",
 		"SOLSTICE_LDAP_TIMEOUT":         "3s",
+		"SOLSTICE_OIDC_ISSUER":          "https://id.example/realms/staff",
+		"SOLSTICE_OIDC_CLIENTID":        "solstice",
+		"SOLSTICE_OIDC_CLIENTSECRET":    "s",
+		"SOLSTICE_OIDC_NAME":            "Example ID",
+		"SOLSTICE_OIDC_SCOPES":          "openid email groups",
+		"SOLSTICE_OIDC_USERNAMECLAIM":   "upn",
+		"SOLSTICE_OIDC_GROUPSCLAIM":     "roles",
+		"SOLSTICE_OIDC_REQUIREGROUP":    "staff",
+		"SOLSTICE_OIDC_ADMINGROUP":      "it",
+		"SOLSTICE_OIDC_TIMEOUT":         "4s",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -167,6 +180,9 @@ func TestLoadEverySetting(t *testing.T) {
 			UserFilter: "(sAMAccountName={username})", NameAttr: "cn", EmailAttr: "userPrincipalName",
 			GroupBase: "ou=groups,dc=example", GroupFilter: "(memberUid={username})", GroupNameAttr: "sAMAccountName",
 			RequireGroup: "staff", AdminGroup: "it", Timeout: 3 * time.Second},
+		OIDC: OIDCSettings{Issuer: "https://id.example/realms/staff", ClientID: "solstice", ClientSecret: "s",
+			Name: "Example ID", Scopes: "openid email groups", UsernameClaim: "upn", GroupsClaim: "roles",
+			RequireGroup: "staff", AdminGroup: "it", Timeout: 4 * time.Second},
 	}
 	if !reflect.DeepEqual(c.Settings, want) {
 		t.Errorf("got %+v\nwant %+v", c.Settings, want)
@@ -261,6 +277,41 @@ func TestCheckLDAP(t *testing.T) {
 	s.LDAP.StartTLS = true
 	if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), "SOLSTICE_LDAP_STARTTLS:") {
 		t.Errorf("ldaps + StartTLS: %v", err)
+	}
+}
+
+func TestCheckOIDC(t *testing.T) {
+	base := func() Settings {
+		s := Defaults()
+		s.OIDC.Issuer, s.OIDC.ClientID = "https://id.example", "solstice"
+		return s
+	}
+	for _, ok := range []func(*OIDCSettings){
+		func(o *OIDCSettings) { o.Issuer = "" },
+		func(*OIDCSettings) {},
+		func(o *OIDCSettings) { o.Issuer = "http://127.0.0.1:5556/dex" },
+		func(o *OIDCSettings) { o.Issuer = "http://localhost:8180/realms/x" },
+	} {
+		s := base()
+		ok(&s.OIDC)
+		if err := s.check(); err != nil {
+			t.Errorf("%+v: %v", s.OIDC, err)
+		}
+	}
+	for key, bad := range map[string]func(*OIDCSettings){
+		"SOLSTICE_OIDC_ISSUER":        func(o *OIDCSettings) { o.Issuer = "http://id.example" },
+		"SOLSTICE_OIDC_CLIENTID":      func(o *OIDCSettings) { o.ClientID = "" },
+		"SOLSTICE_OIDC_NAME":          func(o *OIDCSettings) { o.Name = " " },
+		"SOLSTICE_OIDC_SCOPES":        func(o *OIDCSettings) { o.Scopes = "profile email" },
+		"SOLSTICE_OIDC_USERNAMECLAIM": func(o *OIDCSettings) { o.UsernameClaim = "" },
+		"SOLSTICE_OIDC_GROUPSCLAIM":   func(o *OIDCSettings) { o.GroupsClaim = "" },
+		"SOLSTICE_OIDC_TIMEOUT":       func(o *OIDCSettings) { o.Timeout = 0 },
+	} {
+		s := base()
+		bad(&s.OIDC)
+		if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), key+":") {
+			t.Errorf("%s: %v, want an error naming the key", key, err)
+		}
 	}
 }
 
