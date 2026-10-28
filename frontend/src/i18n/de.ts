@@ -1052,7 +1052,6 @@ export const de: Messages = {
   },
 
   reports: {
-    title: 'Sprint-Bericht',
     none: 'Auf diesem Board hat noch kein Sprint begonnen.',
     noneHint: 'Der Bericht eines Sprints beginnt mit seinem Start.',
     counted: 'Dieses Board hat keine Schätzung: Der Bericht zählt Vorgänge.',
@@ -1075,6 +1074,15 @@ export const de: Messages = {
     addedMark: 'nach dem Start hinzugefügt',
     unestimated: 'nicht geschätzt',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    kinds: { sprint: 'Sprint-Bericht', flow: 'Kumulativer Fluss' },
+    report: 'Bericht',
+    period: 'Zeitraum',
+    lastDays: (n: number) => `Letzte ${n} Tage`,
+    flowNote:
+      'Vorgänge, die heute zum Filter des Boards passen, in seinen Spalten, wie sie jetzt sind.',
+    flowLabel: (board: string) =>
+      `Kumulativer Fluss von ${board}: Vorgänge pro Spalte, Tag für Tag`,
+    day: 'Tag',
   },
 
   boardSettings: {

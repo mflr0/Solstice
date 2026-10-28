@@ -4,7 +4,9 @@ import {
   burndownLine,
   byOutcome,
   dayTicks,
+  flowBands,
   guideline,
+  localDay,
   scale,
   timeDomain,
   valueTicks,
@@ -117,5 +119,30 @@ describe('byOutcome', () => {
     expect(g.completed.map((i) => i.key)).toEqual(['A-1', 'A-3']);
     expect(g.removed.map((i) => i.key)).toEqual(['A-2']);
     expect(g.notCompleted).toEqual([]);
+  });
+});
+
+describe('cumulative flow', () => {
+  it('stacks the columns with the last one at the bottom', () => {
+    const bands = flowBands({
+      columns: [
+        { id: 1, name: 'To do' },
+        { id: 2, name: 'Doing' },
+        { id: 3, name: 'Done' },
+      ],
+      days: [
+        { date: '2026-10-01', counts: [3, 1, 0] },
+        { date: '2026-10-02', counts: [2, 1, 2] },
+      ],
+    });
+    expect(bands).toEqual([
+      { lo: [1, 3], hi: [4, 5] },
+      { lo: [0, 2], hi: [1, 3] },
+      { lo: [0, 0], hi: [0, 2] },
+    ]);
+  });
+
+  it('places a day at its local midnight', () => {
+    expect(localDay('2026-03-29')).toBe(new Date(2026, 2, 29).getTime());
   });
 });

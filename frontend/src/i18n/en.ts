@@ -1039,7 +1039,6 @@ export const en = {
   },
 
   reports: {
-    title: 'Sprint report',
     none: 'No sprint has started on this board yet.',
     noneHint: 'A sprint’s report begins when it starts.',
     counted: 'This board has no estimate: the report counts issues.',
@@ -1062,6 +1061,13 @@ export const en = {
     addedMark: 'added after the start',
     unestimated: 'not estimated',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    kinds: { sprint: 'Sprint report', flow: 'Cumulative flow' },
+    report: 'Report',
+    period: 'Period',
+    lastDays: (n: number) => `Last ${n} days`,
+    flowNote: 'Issues that match the board’s filter today, in its columns as they are now.',
+    flowLabel: (board: string) => `Cumulative flow of ${board}: issues per column, day by day`,
+    day: 'Day',
   },
 
   boardSettings: {

@@ -117,3 +117,41 @@ export function scale(
   const k = d1 === d0 ? 0 : (r1 - r0) / (d1 - d0);
   return (x) => r0 + (x - d0) * k;
 }
+
+/** A board's cumulative flow (backend/internal/api/flow_report.go). */
+export interface FlowReport {
+  /** The board's columns, in order. */
+  columns: { id: number; name: string }[];
+  /** Each day of the period, oldest first: its issues per column at the day's end. */
+  days: { date: string; counts: number[] }[];
+}
+
+/** The periods offered, in days. */
+export const flowPeriods = [7, 14, 30, 90] as const;
+
+/** Local midnight of a YYYY-MM-DD day. */
+export function localDay(ymd: string): number {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y!, m! - 1, d!).getTime();
+}
+
+/** A column's band: its lower and upper edge on each day. */
+export interface Band {
+  lo: number[];
+  hi: number[];
+}
+
+/** The stacked bands, one per column in column order; the last column lies at the bottom. */
+export function flowBands(r: FlowReport): Band[] {
+  const bands: Band[] = r.columns.map(() => ({ lo: [], hi: [] }));
+  for (const day of r.days) {
+    let base = 0;
+    for (let c = r.columns.length - 1; c >= 0; c--) {
+      const n = day.counts[c] ?? 0;
+      bands[c]!.lo.push(base);
+      bands[c]!.hi.push(base + n);
+      base += n;
+    }
+  }
+  return bands;
+}

@@ -186,6 +186,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("POST /api/boards/{id}/move", s.moveCard, true)
 	route("POST /api/boards/{id}/sprints", s.createSprint, true)
 	route("GET /api/boards/{id}/reports/sprints", s.reportSprints, true)
+	route("GET /api/boards/{id}/reports/flow", s.flowReport, true)
 	route("GET /api/boards/{id}/sprints/{sprint}/report", s.sprintReport, true)
 	route("PATCH /api/sprints/{id}", s.editSprint, true)
 	route("DELETE /api/sprints/{id}", s.deleteSprint, true)

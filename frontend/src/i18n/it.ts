@@ -1043,7 +1043,6 @@ export const it: Messages = {
   },
 
   reports: {
-    title: 'Report dello sprint',
     none: 'Su questa board non è ancora iniziato nessuno sprint.',
     noneHint: 'Il report di uno sprint parte dal suo avvio.',
     counted: 'Questa board non ha una stima: il report conta i ticket.',
@@ -1066,6 +1065,15 @@ export const it: Messages = {
     addedMark: 'aggiunto dopo l’avvio',
     unestimated: 'non stimato',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    kinds: { sprint: 'Report dello sprint', flow: 'Flusso cumulativo' },
+    report: 'Report',
+    period: 'Periodo',
+    lastDays: (n: number) => `Ultimi ${n} giorni`,
+    flowNote:
+      'I ticket che oggi corrispondono al filtro della board, nelle sue colonne come sono ora.',
+    flowLabel: (board: string) =>
+      `Flusso cumulativo di ${board}: ticket per colonna, giorno per giorno`,
+    day: 'Giorno',
   },
 
   boardSettings: {
