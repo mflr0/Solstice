@@ -163,15 +163,19 @@ func (s *Server) getDashboard(w http.ResponseWriter, r *http.Request) error {
 }
 
 // checkGadget validates a gadget's kind and settings. A filter gadget needs
-// a filter the user sees, unless it keeps the one it already had: a gadget
-// whose filter went away can still be moved or reconfigured.
+// a filter the user sees, unless it keeps the one it already had (no filter
+// given for an existing filter gadget): a gadget whose filter went away can
+// still be moved or reconfigured, and the user never learns its filter.
 func checkGadget(g *gadgetIn, before map[int64]gadgetRow, visible map[int64]*filterOut, custom []customFieldDef) error {
 	switch g.Kind {
 	case gadgetResults, gadgetCount:
-		old, kept := before[g.ID]
-		kept = kept && onFilter(old.kind) &&
-			(g.Filter == nil && !old.filter.Valid || g.Filter != nil && old.filter.Valid && *g.Filter == old.filter.Int64)
-		if !kept && (g.Filter == nil || visible[*g.Filter] == nil) {
+		old, existed := before[g.ID]
+		if existed && onFilter(old.kind) && (g.Filter == nil || old.filter.Valid && *g.Filter == old.filter.Int64) {
+			g.Filter = nil
+			if old.filter.Valid {
+				g.Filter = &old.filter.Int64
+			}
+		} else if g.Filter == nil || visible[*g.Filter] == nil {
 			return fail(http.StatusBadRequest, i18n.DashboardFilterRequired)
 		}
 	case gadgetAssigned, gadgetReported, gadgetRecent:

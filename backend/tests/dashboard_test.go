@@ -151,9 +151,9 @@ func TestDashboardFilterGadgets(t *testing.T) {
 		t.Errorf("the unshared filter's query leaks: %s", raw)
 	}
 
-	// Moved, the gadget keeps its filter, though unavailable.
+	// Moved without naming a filter, the gadget keeps its own, though unavailable.
 	d = dashboard(paul, "PUT", map[string]any{"gadgets": []map[string]any{
-		{"id": res.ID, "kind": "results", "filter": f.ID, "config": map[string]any{"size": 20}},
+		{"id": res.ID, "kind": "results", "config": map[string]any{"size": 20}},
 		{"id": d.Gadgets[0].ID, "kind": "assigned"},
 	}})
 	if len(d.Gadgets) != 2 || d.Gadgets[0].ID != res.ID || !d.Gadgets[0].Unavailable || d.Gadgets[0].Config.Size != 20 {
@@ -161,10 +161,16 @@ func TestDashboardFilterGadgets(t *testing.T) {
 	}
 	// A new gadget on it is refused.
 	if status, body := paul.do("PUT", "/api/dashboard", map[string]any{"gadgets": []map[string]any{
-		{"id": res.ID, "kind": "results", "filter": f.ID},
+		{"id": res.ID, "kind": "results"},
 		{"kind": "count", "filter": f.ID, "config": map[string]any{"field": "status"}},
 	}}); status != 400 {
 		t.Errorf("new gadget on an unshared filter: %d %s", status, body)
+	}
+	// So is pointing the built-in gadget at it.
+	if status, body := paul.do("PUT", "/api/dashboard", map[string]any{"gadgets": []map[string]any{
+		{"id": d.Gadgets[1].ID, "kind": "results", "filter": f.ID},
+	}}); status != 400 {
+		t.Errorf("built-in gadget turned to an unshared filter: %d %s", status, body)
 	}
 
 	// Shared again, it shows again.
