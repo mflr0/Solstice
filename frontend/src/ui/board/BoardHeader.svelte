@@ -3,10 +3,10 @@
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
 
-  /** A board's title block, with the switch between its board and backlog. */
+  /** A board's title block, with the switch between its board, backlog and reports. */
   interface Props {
     detail: BoardDetail;
-    view: 'board' | 'backlog' | 'settings';
+    view: 'board' | 'backlog' | 'reports' | 'settings';
   }
   const { detail, view }: Props = $props();
   const b = $derived(detail.board);
@@ -41,6 +41,12 @@
           class:on={view === 'backlog'}
           href={paths.backlog(b.id)}
           aria-current={view === 'backlog' ? 'page' : undefined}>{t.boards.viewBacklog}</a
+        >
+        <a
+          class="btn btn-small"
+          class:on={view === 'reports'}
+          href={paths.boardReports(b.id)}
+          aria-current={view === 'reports' ? 'page' : undefined}>{t.boards.viewReports}</a
         >
       </nav>
     {/if}

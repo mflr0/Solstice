@@ -30,6 +30,7 @@ export type Route =
   | { name: 'boards' }
   | { name: 'board'; id: number }
   | { name: 'backlog'; id: number }
+  | { name: 'boardReports'; id: number }
   | { name: 'boardSettings'; id: number }
   | { name: 'legacyBoard' }
   | { name: 'notFound' };
@@ -97,6 +98,9 @@ export function matchRoute(pathname: string): Route {
       if (a === 'boards' && boardId(b) && c === 'backlog') {
         return { name: 'backlog', id: Number(b) };
       }
+      if (a === 'boards' && boardId(b) && c === 'reports') {
+        return { name: 'boardReports', id: Number(b) };
+      }
       if (a === 'boards' && boardId(b) && c === 'settings') {
         return { name: 'boardSettings', id: Number(b) };
       }
@@ -130,6 +134,8 @@ export const paths = {
     project ? `/boards?project=${encodeURIComponent(project)}` : '/boards',
   board: (id: number) => `/boards/${id}`,
   backlog: (id: number) => `/boards/${id}/backlog`,
+  boardReports: (id: number, sprint?: number) =>
+    `/boards/${id}/reports${sprint ? `?sprint=${sprint}` : ''}`,
   boardSettings: (id: number) => `/boards/${id}/settings`,
 };
 

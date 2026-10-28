@@ -196,6 +196,14 @@
           {:catch}
             {@render failed()}
           {/await}{/key}
+      {:else if route.name === 'boardReports'}
+        {#key route.id}{#await import('./pages/BoardReportsPage.svelte')}
+            {@render pending()}
+          {:then { default: BoardReportsPage }}
+            <BoardReportsPage boardId={route.id} />
+          {:catch}
+            {@render failed()}
+          {/await}{/key}
       {:else if route.name === 'boardSettings'}
         {#key route.id}{#await import('./pages/BoardSettingsPage.svelte')}
             {@render pending()}
