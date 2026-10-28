@@ -137,6 +137,7 @@ export const paths = {
   boardReports: (id: number, sprint?: number) =>
     `/boards/${id}/reports${sprint ? `?sprint=${sprint}` : ''}`,
   boardVelocity: (id: number) => `/boards/${id}/reports?report=velocity`,
+  boardFlow: (id: number) => `/boards/${id}/reports?report=flow`,
   boardSettings: (id: number) => `/boards/${id}/settings`,
 };
 

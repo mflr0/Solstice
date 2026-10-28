@@ -1072,6 +1072,12 @@ export const en = {
       n === 1 ? 'over the last sprint' : `over the last ${formatNumber(n)} sprints`,
     barTitle: (sprint: string, committed: string, completed: string) =>
       `${sprint}: ${committed} committed, ${completed} completed`,
+    flow: 'Cumulative flow',
+    period: 'Period',
+    lastDays: (n: number) => `Last ${n} days`,
+    flowNote: 'Issues that match the board’s filter today, in its columns as they are now.',
+    flowLabel: (board: string) => `Cumulative flow of ${board}: issues per column, day by day`,
+    day: 'Day',
   },
 
   boardSettings: {

@@ -1085,6 +1085,14 @@ export const de: Messages = {
       n === 1 ? 'über den letzten Sprint' : `über die letzten ${formatNumber(n)} Sprints`,
     barTitle: (sprint: string, committed: string, completed: string) =>
       `${sprint}: ${committed} zugesagt, ${completed} erledigt`,
+    flow: 'Kumulativer Fluss',
+    period: 'Zeitraum',
+    lastDays: (n: number) => `Letzte ${n} Tage`,
+    flowNote:
+      'Vorgänge, die heute zum Filter des Boards passen, in seinen Spalten, wie sie jetzt sind.',
+    flowLabel: (board: string) =>
+      `Kumulativer Fluss von ${board}: Vorgänge pro Spalte, Tag für Tag`,
+    day: 'Tag',
   },
 
   boardSettings: {

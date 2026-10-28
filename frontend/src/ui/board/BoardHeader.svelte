@@ -28,7 +28,7 @@
     {/if}
   </div>
   <div class="row">
-    {#if (b.kind === 'scrum' || b.kanbanBacklog) && view !== 'settings'}
+    {#if view !== 'settings'}
       <nav class="views" aria-label={t.boards.views}>
         <a
           class="btn btn-small"
@@ -36,12 +36,14 @@
           href={paths.board(b.id)}
           aria-current={view === 'board' ? 'page' : undefined}>{t.boards.viewBoard}</a
         >
-        <a
-          class="btn btn-small"
-          class:on={view === 'backlog'}
-          href={paths.backlog(b.id)}
-          aria-current={view === 'backlog' ? 'page' : undefined}>{t.boards.viewBacklog}</a
-        >
+        {#if b.kind === 'scrum' || b.kanbanBacklog}
+          <a
+            class="btn btn-small"
+            class:on={view === 'backlog'}
+            href={paths.backlog(b.id)}
+            aria-current={view === 'backlog' ? 'page' : undefined}>{t.boards.viewBacklog}</a
+          >
+        {/if}
         <a
           class="btn btn-small"
           class:on={view === 'reports'}

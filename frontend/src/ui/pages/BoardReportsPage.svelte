@@ -2,6 +2,8 @@
   import {
     averageCompleted,
     byOutcome,
+    flowPeriods,
+    type FlowReport,
     type Outcome,
     type SprintReport,
     type VelocityReport,
@@ -14,6 +16,7 @@
   import BoardHeader from '../board/BoardHeader.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import BurndownChart from '../charts/BurndownChart.svelte';
+  import FlowChart from '../charts/FlowChart.svelte';
   import VelocityChart from '../charts/VelocityChart.svelte';
   import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
@@ -25,7 +28,9 @@
    * A Scrum board's reports. The sprint report: one started sprint
    * (?sprint=id, else the active or the last one), its burndown, and its
    * issues by where they ended up. The velocity (?report=velocity): the
-   * last closed sprints' committed and completed work.
+   * last closed sprints' committed and completed work. Any board's
+   * cumulative flow (?report=flow, the only one of a Kanban board) over the
+   * last ?days= days.
    */
   interface Props {
     boardId: number;
@@ -40,7 +45,11 @@
   let velocity = $state<VelocityReport | null>(null);
   let velocityError = $state('');
 
-  const kind = $derived(router.param('report') === 'velocity' ? 'velocity' : 'sprint');
+  const kind = $derived.by(() => {
+    if (detail && detail.board.kind !== 'scrum') return 'flow';
+    const k = router.param('report');
+    return k === 'velocity' || k === 'flow' ? k : 'sprint';
+  });
 
   $effect(() => {
     Promise.all([api.board(boardId), api.reportSprints(boardId)])
@@ -53,7 +62,9 @@
 
   $effect(() => {
     if (!detail) return;
-    const title = kind === 'velocity' ? t.reports.velocity : t.reports.title;
+    const title = { sprint: t.reports.title, velocity: t.reports.velocity, flow: t.reports.flow }[
+      kind
+    ];
     document.title = `${title} — ${detail.board.name} — ${t.appName}`;
   });
 
@@ -64,6 +75,30 @@
       .then((v) => (velocity = v))
       .catch((e: unknown) => (velocityError = errorMessage(e)));
   });
+
+  const period = $derived.by(() => {
+    const n = Number(router.param('days'));
+    return flowPeriods.find((p) => p === n) ?? 30;
+  });
+
+  let flow = $state<{ days: number; report: FlowReport } | null>(null);
+  let flowError = $state('');
+  let flowSeq = 0;
+  $effect(() => {
+    if (!detail || kind !== 'flow') return;
+    const mine = ++flowSeq;
+    const days = period;
+    flowError = '';
+    api
+      .flowReport(boardId, days)
+      .then((r) => {
+        if (mine === flowSeq) flow = { days, report: r };
+      })
+      .catch((e: unknown) => {
+        if (mine === flowSeq) flowError = errorMessage(e);
+      });
+  });
+  const shownFlow = $derived(flow && flow.days === period ? flow.report : null);
 
   const chosen = $derived.by(() => {
     if (!sprints?.length) return null;
@@ -128,10 +163,33 @@
           href={paths.boardVelocity(d.board.id)}
           aria-current={kind === 'velocity' ? 'page' : undefined}>{t.reports.velocity}</a
         >
+        <a
+          class="btn btn-small"
+          class:on={kind === 'flow'}
+          href={paths.boardFlow(d.board.id)}
+          aria-current={kind === 'flow' ? 'page' : undefined}>{t.reports.flow}</a
+        >
       </nav>
     {/if}
 
-    {#if d.board.kind === 'scrum' && kind === 'velocity'}
+    {#if kind === 'flow'}
+      <div class="picker">
+        <Dropdown
+          label={t.reports.period}
+          value={String(period)}
+          options={flowPeriods.map((n) => ({ value: String(n), label: t.reports.lastDays(n) }))}
+          onchange={(v) => router.setParams({ days: v === '30' ? null : v })}
+        />
+      </div>
+      {#if flowError}
+        <p class="error-text" role="alert">{flowError}</p>
+      {:else if !shownFlow}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else}
+        <p class="notice">{t.reports.flowNote}</p>
+        <FlowChart report={shownFlow} board={d.board.name} />
+      {/if}
+    {:else if d.board.kind === 'scrum' && kind === 'velocity'}
       {#if velocityError}
         <p class="error-text" role="alert">{velocityError}</p>
       {:else if !velocity}
@@ -257,6 +315,7 @@
 
   .kinds {
     display: flex;
+    flex-wrap: wrap;
     gap: 2px;
     margin: 0 0 16px;
   }

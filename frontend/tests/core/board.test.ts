@@ -307,6 +307,7 @@ describe('board addresses', () => {
     expect(matchRoute(paths.boardReports(4))).toEqual({ name: 'boardReports', id: 4 });
     expect(paths.boardReports(4, 9)).toBe('/boards/4/reports?sprint=9');
     expect(paths.boardVelocity(4)).toBe('/boards/4/reports?report=velocity');
+    expect(paths.boardFlow(4)).toBe('/boards/4/reports?report=flow');
     expect(matchRoute(paths.boardSettings(4))).toEqual({ name: 'boardSettings', id: 4 });
     expect(paths.boards('WEB')).toBe('/boards?project=WEB');
   });

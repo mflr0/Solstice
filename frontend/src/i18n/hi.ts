@@ -1071,6 +1071,12 @@ export const hi: Messages = {
       n === 1 ? 'पिछले स्प्रिंट में' : `पिछले ${formatNumber(n)} स्प्रिंटों में`,
     barTitle: (sprint: string, committed: string, completed: string) =>
       `${sprint}: ${committed} तय, ${completed} पूरा`,
+    flow: 'संचयी प्रवाह',
+    period: 'अवधि',
+    lastDays: (n: number) => `पिछले ${n} दिन`,
+    flowNote: 'वे टिकट जो आज बोर्ड के फ़िल्टर से मेल खाते हैं, उसके कॉलमों में जैसे वे अभी हैं।',
+    flowLabel: (board: string) => `${board} का संचयी प्रवाह: हर कॉलम में टिकट, दिन-ब-दिन`,
+    day: 'दिन',
   },
 
   boardSettings: {

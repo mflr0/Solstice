@@ -1077,6 +1077,13 @@ export const fr: Messages = {
       n === 1 ? 'sur le dernier sprint' : `sur les ${formatNumber(n)} derniers sprints`,
     barTitle: (sprint: string, committed: string, completed: string) =>
       `${sprint} : ${committed} engagé, ${completed} terminé`,
+    flow: 'Flux cumulé',
+    period: 'Période',
+    lastDays: (n: number) => `${n} derniers jours`,
+    flowNote:
+      'Les tickets que le filtre du tableau retient aujourd’hui, dans ses colonnes telles qu’elles sont.',
+    flowLabel: (board: string) => `Flux cumulé de ${board} : tickets par colonne, jour après jour`,
+    day: 'Jour',
   },
 
   boardSettings: {
