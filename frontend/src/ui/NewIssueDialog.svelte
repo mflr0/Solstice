@@ -43,6 +43,7 @@
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
   const canCreate = $derived(detail?.can.create === true);
   const configure = $derived(detail?.can.configure === true);
+  const problem = $derived(error || (detail && !canCreate ? t.create.cannotCreate : ''));
 
   async function createComponent(name: string): Promise<number> {
     const key = projectKey;
@@ -158,7 +159,7 @@
   onclose={close}
 >
   <form id="new-issue" class="form" onsubmit={submit}>
-    <div class="two">
+    <div class="three">
       <div class="field">
         <span class="field-label">{t.create.project}</span>
         <Dropdown
@@ -184,25 +185,6 @@
           {/snippet}
         </Dropdown>
       </div>
-    </div>
-
-    {#if detail && !canCreate}
-      <p class="error-text">{t.create.cannotCreate}</p>
-    {/if}
-
-    <label class="field">
-      <span>{t.create.summary}</span>
-      <!-- The dialog opens on the summary, the one field always needed. -->
-      <!-- svelte-ignore a11y_autofocus -->
-      <input class="input summary" bind:value={summary} maxlength="255" required autofocus />
-    </label>
-
-    <div class="field">
-      <span class="field-label">{t.create.description}</span>
-      <WikiEditor bind:value={description} label={t.create.description} rows={7} />
-    </div>
-
-    <div class="three">
       <div class="field">
         <span class="field-label">{t.create.priority}</span>
         <Dropdown
@@ -219,6 +201,21 @@
           {/snippet}
         </Dropdown>
       </div>
+    </div>
+
+    <label class="field">
+      <span>{t.create.summary}</span>
+      <!-- The dialog opens on the summary, the one field always needed. -->
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="input summary" bind:value={summary} maxlength="255" required autofocus />
+    </label>
+
+    <div class="field">
+      <span class="field-label">{t.create.description}</span>
+      <WikiEditor bind:value={description} label={t.create.description} rows={4} />
+    </div>
+
+    <div class="three">
       <div class="field">
         <span class="field-label">{t.create.assignee}</span>
         <div class="boxed field-box">
@@ -237,9 +234,6 @@
         <span>{t.create.due}</span>
         <input class="input" type="date" bind:value={due} />
       </label>
-    </div>
-
-    <div class="three">
       <label class="field">
         <span>{t.create.estimate}</span>
         <input class="input" bind:value={estimate} placeholder={t.issue.estimateHint} />
@@ -301,11 +295,11 @@
       <span class="field-label">{t.create.labels}</span>
       <div class="boxed field-box"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
     </div>
-
-    {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
 
   {#snippet footer()}
+    <!-- In the footer, the reason a ticket can't be created stays in sight. -->
+    <p class="status" class:error-text={problem} role="alert">{problem}</p>
     <button type="button" class="btn btn-quiet" onclick={close}>{t.common.cancel}</button>
     <button
       type="submit"
@@ -320,19 +314,35 @@
 <style>
   .form {
     display: grid;
-    gap: 14px;
-  }
-
-  .two {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
 
   .three {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  /* The body takes the height the head and foot leave, not the shared 72vh,
+     so the whole form fits from 720px tall. */
+  :global(dialog.modal[open]:has(#new-issue)) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(dialog.modal:has(#new-issue) > .modal-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .form :global(.editor-content) {
+    max-height: 12em;
+  }
+
+  .status {
+    flex: 1;
+    margin: 0;
   }
 
   .summary {
@@ -350,7 +360,6 @@
   }
 
   @media (max-width: 640px) {
-    .two,
     .three {
       grid-template-columns: 1fr;
     }
