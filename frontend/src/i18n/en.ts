@@ -1062,6 +1062,16 @@ export const en = {
     addedMark: 'added after the start',
     unestimated: 'not estimated',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    views: 'Reports',
+    velocity: 'Velocity',
+    velocityNone: 'No sprint has been completed on this board yet.',
+    velocityNoneHint: 'Velocity compares the last closed sprints.',
+    velocityLabel: 'Velocity: work committed at start and completed, per closed sprint',
+    average: 'Average completed',
+    averageOver: (n: number) =>
+      n === 1 ? 'over the last sprint' : `over the last ${formatNumber(n)} sprints`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint}: ${committed} committed, ${completed} completed`,
   },
 
   boardSettings: {

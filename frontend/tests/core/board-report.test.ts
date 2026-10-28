@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  averageCompleted,
+  bands,
   burndownLine,
   byOutcome,
   dayTicks,
   guideline,
   scale,
+  shortLabels,
   timeDomain,
   valueTicks,
   type ReportIssue,
   type SprintReport,
+  type VelocityReport,
 } from '../../src/core/board-report.js';
 
 function report(extra: Partial<SprintReport> = {}): SprintReport {
@@ -117,5 +121,59 @@ describe('byOutcome', () => {
     expect(g.completed.map((i) => i.key)).toEqual(['A-1', 'A-3']);
     expect(g.removed.map((i) => i.key)).toEqual(['A-2']);
     expect(g.notCompleted).toEqual([]);
+  });
+});
+
+describe('averageCompleted', () => {
+  const velocity = (...completed: number[]): VelocityReport => ({
+    estimate: 'points',
+    sprints: completed.map((c, i) => ({
+      sprint: { ...report().sprint, id: i + 1 },
+      committed: 10,
+      completed: c,
+    })),
+  });
+
+  it('averages the completed work, not the committed', () => {
+    expect(averageCompleted(velocity(3, 5, 8))).toBe(5.33);
+    expect(averageCompleted(velocity(4))).toBe(4);
+  });
+
+  it('has none without a sprint', () => {
+    expect(averageCompleted(velocity())).toBeNull();
+  });
+});
+
+describe('bands', () => {
+  it('splits the range into equal bands with a gap around each', () => {
+    expect(bands(2, [0, 100], 0.2)).toEqual([
+      { x: 5, w: 40 },
+      { x: 55, w: 40 },
+    ]);
+    expect(bands(0, [0, 100])).toEqual([]);
+  });
+
+  it('caps the band width, centred', () => {
+    expect(bands(1, [0, 100], 0.2, 50)).toEqual([{ x: 30, w: 40 }]);
+  });
+});
+
+describe('shortLabels', () => {
+  it('leaves out the words every name shares', () => {
+    expect(shortLabels(['Web Sprint 9', 'Web Sprint 10'], 20)).toEqual(['9', '10']);
+    expect(shortLabels(['S 4 — train', 'S 5 — train'], 20)).toEqual(['4', '5']);
+  });
+
+  it('keeps whole words: names sharing letters differ at the word', () => {
+    expect(shortLabels(['Sprint 10', 'Sprint 11'], 20)).toEqual(['10', '11']);
+  });
+
+  it('keeps at least one word, and a lone name whole', () => {
+    expect(shortLabels(['Sprint', 'Sprint 2'], 20)).toEqual(['Sprint', 'Sprint 2']);
+    expect(shortLabels(['Web Sprint 4'], 20)).toEqual(['Web Sprint 4']);
+  });
+
+  it('cuts what is left to max characters', () => {
+    expect(shortLabels(['Autumn release', 'Winter release'], 4)).toEqual(['Aut…', 'Win…']);
   });
 });

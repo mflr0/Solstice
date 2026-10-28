@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/perm"
 	"solstice/internal/report"
 	"solstice/internal/sqlq"
 )
@@ -81,19 +83,153 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) error {
 	if sp.State == issue.SprintFuture || sp.Start == nil {
 		return errNotFound
 	}
-	end := time.Now().UTC()
-	if sp.State == issue.SprintClosed {
-		if sp.Completed != nil {
-			end = *sp.Completed
-		} else if sp.End != nil {
-			end = *sp.End
+	cat, err := s.catalogue(ctx)
+	if err != nil {
+		return err
+	}
+	done, err := s.doneStatuses(ctx, b.ID)
+	if err != nil {
+		return err
+	}
+	end := sprintReportEnd(sp)
+	rep, cards, err := s.replaySprint(ctx, sub, b, sp, end, cat, done)
+	if err != nil {
+		return err
+	}
+
+	byID := map[int64]report.Entry{}
+	for _, e := range rep.Entries {
+		byID[e.ID] = e
+	}
+	keys := map[int64]*card{}
+	out := []reportIssue{}
+	for _, c := range cards { // board order
+		keys[c.ID] = c
+		if e, ok := byID[c.ID]; ok {
+			out = append(out, reportIssue{issueSummary: c.issueSummary, Committed: e.Committed, Outcome: e.Outcome,
+				StartEstimate: e.StartEstimate, EndEstimate: e.EndEstimate})
 		}
+	}
+	steps := make([]reportStep, len(rep.Steps))
+	for i, st := range rep.Steps {
+		steps[i] = reportStep{At: st.At, Issue: keys[st.Issue].Key, Remaining: st.Remaining}
+	}
+	t := rep.Totals
+	return writeJSON(w, http.StatusOK, map[string]any{
+		"sprint": sp, "end": end, "estimate": reportEstimate(b),
+		"totals": map[string]float64{"committed": t.Committed, "added": t.Added, "removed": t.Removed,
+			"completed": t.Completed, "notCompleted": t.NotCompleted},
+		"startRemaining": rep.StartRemaining, "steps": steps, "issues": out,
+	})
+}
+
+type velocitySprint struct {
+	Sprint    sprintOut `json:"sprint"`
+	Committed float64   `json:"committed"`
+	Completed float64   `json:"completed"`
+}
+
+// velocityReport gives, for the board's last closed sprints (?count, 7 by
+// default), the work committed at start and the work completed, oldest
+// first. Issues the viewer can't browse are left out.
+func (s *Server) velocityReport(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	b, err := s.board(r, sub)
+	if err != nil {
+		return err
+	}
+	count := 7
+	if v := r.URL.Query().Get("count"); v != "" {
+		if count, err = strconv.Atoi(v); err != nil || count < 1 || count > 20 {
+			return failf(http.StatusBadRequest, i18n.RequestInvalid, "count must be 1 to 20")
+		}
+	}
+	var sprints []sprintOut
+	err = sqlq.Each(ctx, s.db, `SELECT `+sprintColumns+` FROM sprints WHERE board_id = ? AND state = ?
+		AND start_at IS NOT NULL ORDER BY COALESCE(completed_at, end_at) DESC, id DESC LIMIT ?`,
+		func(rows *sql.Rows) error {
+			sp, err := scanSprint(rows)
+			if err != nil {
+				return err
+			}
+			sprints = append(sprints, sp)
+			return nil
+		}, b.ID, issue.SprintClosed, count)
+	if err != nil {
+		return err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {
 		return err
 	}
+	done, err := s.doneStatuses(ctx, b.ID)
+	if err != nil {
+		return err
+	}
+	out := make([]velocitySprint, len(sprints))
+	for i, sp := range sprints {
+		rep, _, err := s.replaySprint(ctx, sub, b, &sp, sprintReportEnd(&sp), cat, done)
+		if err != nil {
+			return err
+		}
+		out[len(sprints)-1-i] = velocitySprint{Sprint: sp, Committed: rep.Totals.Committed, Completed: rep.Totals.Completed}
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"estimate": reportEstimate(b), "sprints": out})
+}
 
+// sprintReportEnd is when a started sprint's report stops: its completion
+// (else its planned end) once closed, now while active.
+func sprintReportEnd(sp *sprintOut) time.Time {
+	if sp.State == issue.SprintClosed {
+		if sp.Completed != nil {
+			return *sp.Completed
+		}
+		if sp.End != nil {
+			return *sp.End
+		}
+	}
+	return time.Now().UTC()
+}
+
+// reportEstimate is how the board's reports measure work: "points", "time",
+// or "" when they count issues.
+func reportEstimate(b *boardRow) string {
+	if !b.Estimate.Valid {
+		return ""
+	}
+	if b.Estimate.String == "timeoriginalestimate" {
+		return "time"
+	}
+	return "points"
+}
+
+// doneStatuses are the statuses of the board's last column: an issue there
+// counts as done in its reports.
+func (s *Server) doneStatuses(ctx context.Context, board int64) (map[string]bool, error) {
+	done := map[string]bool{}
+	err := sqlq.Each(ctx, s.db, `SELECT cs.status_id FROM board_column_statuses cs
+		JOIN board_columns c ON c.id = cs.column_id
+		WHERE c.board_id = ? AND c.position = (SELECT MAX(position) FROM board_columns WHERE board_id = ?)`,
+		func(rows *sql.Rows) error {
+			var st string
+			if err := rows.Scan(&st); err != nil {
+				return err
+			}
+			done[st] = true
+			return nil
+		}, board, board)
+	return done, err
+}
+
+// replaySprint replays a started sprint up to end over the issues the viewer
+// can browse that were in it at some point, and returns those issues' cards
+// in board order.
+func (s *Server) replaySprint(ctx context.Context, sub *perm.Subject, b *boardRow, sp *sprintOut, end time.Time,
+	cat *catalog, done map[string]bool) (report.Report, []*card, error) {
 	// Issues in the sprint now, or that joined or left it since it started.
 	candidates := map[int64]*report.Issue{}
 	candidate := func(id int64) *report.Issue {
@@ -112,7 +248,7 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) error {
 		candidate(id).InSprint = true
 		return nil
 	}, sp.ID); err != nil {
-		return err
+		return report.Report{}, nil, err
 	}
 	like := "%" + strconv.FormatInt(sp.ID, 10) + "%"
 	if err := sqlq.Each(ctx, s.db, `SELECT g.issue_id, g.created_at, ci.id, ci.old_value, ci.new_value
@@ -130,7 +266,7 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) error {
 			is.Changes = append(is.Changes, c)
 			return nil
 		}, *sp.Start, like, like); err != nil {
-		return err
+		return report.Report{}, nil, err
 	}
 
 	ids := make([]any, 0, len(candidates))
@@ -140,69 +276,25 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) error {
 	var cards []*card
 	if len(ids) > 0 {
 		vis, args := sub.VisibleSQL("i")
+		var err error
 		cards, _, err = s.loadCards(ctx, b, vis+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, append(args, ids...), cat)
 		if err != nil {
-			return err
+			return report.Report{}, nil, err
 		}
 	}
 	if err := s.reportHistory(ctx, b, *sp.Start, cards, candidates); err != nil {
-		return err
-	}
-	doneStatuses := map[string]bool{}
-	if err := sqlq.Each(ctx, s.db, `SELECT cs.status_id FROM board_column_statuses cs
-		JOIN board_columns c ON c.id = cs.column_id
-		WHERE c.board_id = ? AND c.position = (SELECT MAX(position) FROM board_columns WHERE board_id = ?)`,
-		func(rows *sql.Rows) error {
-			var st string
-			if err := rows.Scan(&st); err != nil {
-				return err
-			}
-			doneStatuses[st] = true
-			return nil
-		}, b.ID, b.ID); err != nil {
-		return err
+		return report.Report{}, nil, err
 	}
 
 	issues := make([]report.Issue, 0, len(cards))
-	keys := map[int64]*card{}
 	for _, c := range cards {
 		is := candidates[c.ID]
 		is.Status, is.Estimate = c.row.StatusID, c.Estimate
 		issues = append(issues, *is)
-		keys[c.ID] = c
 	}
 	rep := report.Build(report.Sprint{ID: sp.ID, Start: *sp.Start, End: end}, issues,
-		func(st string) bool { return doneStatuses[st] }, !b.Estimate.Valid)
-
-	byID := map[int64]report.Entry{}
-	for _, e := range rep.Entries {
-		byID[e.ID] = e
-	}
-	out := []reportIssue{}
-	for _, c := range cards { // board order
-		if e, ok := byID[c.ID]; ok {
-			out = append(out, reportIssue{issueSummary: c.issueSummary, Committed: e.Committed, Outcome: e.Outcome,
-				StartEstimate: e.StartEstimate, EndEstimate: e.EndEstimate})
-		}
-	}
-	steps := make([]reportStep, len(rep.Steps))
-	for i, st := range rep.Steps {
-		steps[i] = reportStep{At: st.At, Issue: keys[st.Issue].Key, Remaining: st.Remaining}
-	}
-	estimate := ""
-	if b.Estimate.Valid {
-		estimate = "points"
-		if b.Estimate.String == "timeoriginalestimate" {
-			estimate = "time"
-		}
-	}
-	t := rep.Totals
-	return writeJSON(w, http.StatusOK, map[string]any{
-		"sprint": sp, "end": end, "estimate": estimate,
-		"totals": map[string]float64{"committed": t.Committed, "added": t.Added, "removed": t.Removed,
-			"completed": t.Completed, "notCompleted": t.NotCompleted},
-		"startRemaining": rep.StartRemaining, "steps": steps, "issues": out,
-	})
+		func(st string) bool { return done[st] }, !b.Estimate.Valid)
+	return rep, cards, nil
 }
 
 // reportHistory adds to the candidates the status and estimate changes of the
