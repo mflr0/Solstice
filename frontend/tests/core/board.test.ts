@@ -290,6 +290,7 @@ describe('board addresses', () => {
     ['/boards', { name: 'boards' }],
     ['/boards/12', { name: 'board', id: 12 }],
     ['/boards/12/backlog', { name: 'backlog', id: 12 }],
+    ['/boards/12/reports', { name: 'boardReports', id: 12 }],
     ['/boards/12/settings', { name: 'boardSettings', id: 12 }],
     ['/boards/0', { name: 'notFound' }],
     ['/boards/abc', { name: 'notFound' }],
@@ -303,6 +304,8 @@ describe('board addresses', () => {
   it('round-trips the addresses it builds', () => {
     expect(matchRoute(paths.board(4))).toEqual({ name: 'board', id: 4 });
     expect(matchRoute(paths.backlog(4))).toEqual({ name: 'backlog', id: 4 });
+    expect(matchRoute(paths.boardReports(4))).toEqual({ name: 'boardReports', id: 4 });
+    expect(paths.boardReports(4, 9)).toBe('/boards/4/reports?sprint=9');
     expect(matchRoute(paths.boardSettings(4))).toEqual({ name: 'boardSettings', id: 4 });
     expect(paths.boards('WEB')).toBe('/boards?project=WEB');
   });

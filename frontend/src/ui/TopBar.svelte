@@ -37,6 +37,7 @@
       case 'boards':
       case 'board':
       case 'backlog':
+      case 'boardReports':
       case 'boardSettings':
         return 'boards';
       case 'search':
