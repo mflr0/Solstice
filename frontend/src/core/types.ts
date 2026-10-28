@@ -442,6 +442,8 @@ export interface Facets {
   total: number;
   /** field → value → count; values are ids (users, statuses…), project keys, label text; "" counts the empty ones. */
   facets: Record<string, Record<string, number>>;
+  /** The people counted (assignee, reporter), by id. */
+  users: Record<string, UserRef>;
 }
 
 /** An epic offered as a search value (GET /api/epics). */

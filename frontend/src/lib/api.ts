@@ -5,6 +5,7 @@
  */
 
 import { avatarUrl } from '../core/avatar.js';
+import type { Dashboard, GadgetInput } from '../core/dashboard.js';
 import type { ColumnChoice } from '../core/search-columns.js';
 import type {
   Comment,
@@ -475,9 +476,18 @@ export const api = {
     request<string[]>('GET', `/api/labels${query({ q, project })}`),
   sprintSuggestions: (q: string) =>
     request<SprintSuggestion[]>('GET', `/api/sprints${query({ q })}`),
-  /** Counts per value of the given fields (comma-separated) for a JQL search. */
-  facets: (params: { jql: string; project?: string | undefined; fields: string }) =>
-    request<Facets>('GET', `/api/issues/facets${query(params)}`),
+  /** Counts per value of the given fields (comma-separated) for a search, JQL or either syntax (q). */
+  facets: (params: {
+    jql?: string | undefined;
+    q?: string | undefined;
+    project?: string | undefined;
+    fields: string;
+  }) => request<Facets>('GET', `/api/issues/facets${query(params)}`),
+
+  // The home page's dashboard.
+  dashboard: () => request<Dashboard>('GET', '/api/dashboard'),
+  saveDashboard: (gadgets: GadgetInput[]) =>
+    request<Dashboard>('PUT', '/api/dashboard', { gadgets }),
   epics: (q: string, project?: string) =>
     request<EpicRef[]>('GET', `/api/epics${query({ q, project })}`),
   customFields: () => request<CustomFieldRef[]>('GET', '/api/fields'),
