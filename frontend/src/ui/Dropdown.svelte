@@ -3,6 +3,10 @@
   export interface DropdownOption {
     value: string;
     label: string;
+    /** The heading this option sits under; consecutive options share one. */
+    group?: string | undefined;
+    /** The language of the label, when it differs from the page's. */
+    lang?: string | undefined;
   }
 </script>
 
@@ -26,6 +30,13 @@
     quiet?: boolean | undefined;
     /** The icon drawn before an option's name, given its value. */
     icon?: Snippet<[string]> | undefined;
+    /** Shown when the value matches no option; it can't be chosen. */
+    placeholder?: string | undefined;
+    id?: string | undefined;
+    /** Extra classes on the button, for global styles (a skin, app.css). */
+    class?: string | undefined;
+    invalid?: boolean | undefined;
+    onblur?: (() => void) | undefined;
   }
   const {
     options,
@@ -35,6 +46,11 @@
     disabled = false,
     quiet = false,
     icon,
+    placeholder,
+    id,
+    class: className = '',
+    invalid = false,
+    onblur,
   }: Props = $props();
 
   const uid = $props.id();
@@ -48,6 +64,17 @@
 
   const selected = $derived(options.findIndex((o) => o.value === value));
   const current = $derived(options[selected]);
+
+  /** Runs of consecutive options under the same heading, keeping their indexes. */
+  const sections = $derived.by(() => {
+    const out: { group: string | undefined; items: { o: DropdownOption; i: number }[] }[] = [];
+    options.forEach((o, i) => {
+      const last = out[out.length - 1];
+      if (last && last.group === o.group) last.items.push({ o, i });
+      else out.push({ group: o.group, items: [{ o, i }] });
+    });
+    return out;
+  });
 
   let typed = '';
   let typedAt = 0;
@@ -205,29 +232,34 @@
 
 <button
   bind:this={button}
+  {id}
   type="button"
-  class="dropdown"
+  class="dropdown {className}"
   class:select={!quiet}
   class:quiet
   role="combobox"
   aria-label={label}
   aria-haspopup="listbox"
+  aria-invalid={invalid || undefined}
   aria-expanded={open}
   aria-controls={open ? listId : undefined}
   aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
   {disabled}
   onclick={() => (open ? hide() : show())}
+  onblur={() => {
+    hide();
+    onblur?.();
+  }}
 >
   {#if current}
     {#if icon}<span class="icon" aria-hidden="true">{@render icon(current.value)}</span>{/if}
-    <span class="name">{current.label}</span>
+    <span class="name" lang={current.lang}>{current.label}</span>
   {:else}
-    <span class="name none">{t.common.none}</span>
+    <span class="name none">{placeholder ?? t.common.none}</span>
   {/if}
 </button>
 {#if open}
   <!-- The button keeps the focus and handles the keys; a press here only must not take it. -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <ul
     bind:this={list}
     id={listId}
@@ -238,22 +270,40 @@
     use:layer
     onmousedown={(e) => e.preventDefault()}
   >
-    {#each options as o, i (o.value)}
-      <li
-        id={optionId(i)}
-        class="item"
-        class:active={i === active}
-        role="option"
-        aria-selected={i === selected}
-        onpointermove={() => (active = i)}
-        onclick={() => choose(i)}
-      >
-        {#if icon}<span class="icon" aria-hidden="true">{@render icon(o.value)}</span>{/if}
-        <span class="name">{o.label}</span>
-      </li>
+    {#each sections as sec, k (sec.items[0]!.o.value)}
+      {#if sec.group === undefined}
+        {#each sec.items as { o, i } (o.value)}
+          {@render item(o, i)}
+        {/each}
+      {:else}
+        <li role="group" aria-labelledby="{listId}-g{k}">
+          <span id="{listId}-g{k}" class="group-label" role="presentation">{sec.group}</span>
+          <ul class="group" role="none">
+            {#each sec.items as { o, i } (o.value)}
+              {@render item(o, i)}
+            {/each}
+          </ul>
+        </li>
+      {/if}
     {/each}
   </ul>
 {/if}
+
+{#snippet item(o: DropdownOption, i: number)}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <li
+    id={optionId(i)}
+    class="item"
+    class:active={i === active}
+    role="option"
+    aria-selected={i === selected}
+    onpointermove={() => (active = i)}
+    onclick={() => choose(i)}
+  >
+    {#if icon}<span class="icon" aria-hidden="true">{@render icon(o.value)}</span>{/if}
+    <span class="name" lang={o.lang}>{o.label}</span>
+  </li>
+{/snippet}
 
 <style>
   .dropdown {
@@ -324,6 +374,16 @@
 
   .dropdown-list .item {
     white-space: nowrap;
+  }
+
+  .dropdown-list .group {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dropdown-list .group-label {
+    display: block;
   }
 
   .dropdown-list .item .name {

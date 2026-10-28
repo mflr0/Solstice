@@ -9,6 +9,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
 
   /**
    * What Solstice sends by e-mail: when (each change, a daily digest, never),
@@ -112,12 +113,15 @@
       {/each}
     </fieldset>
     {#if prefs.delivery === 'digest'}
-      <label class="field hour">
+      <div class="field hour">
         <span>{t.account.digestHour}</span>
-        <select class="select" bind:value={prefs.digestHour}>
-          {#each HOURS as h (h)}<option value={h}>{hour(h)}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.account.digestHour}
+          value={String(prefs.digestHour)}
+          options={HOURS.map((h) => ({ value: String(h), label: hour(h) }))}
+          onchange={(v) => prefs && (prefs.digestHour = Number(v))}
+        />
+      </div>
     {/if}
     {#if prefs.delivery !== 'none'}
       <p class="form-hint">{t.account.timeZone(prefs.timeZone)}</p>
@@ -160,12 +164,15 @@
       </span>
     </label>
     {#if prefs.dueReminder}
-      <label class="field hour">
+      <div class="field hour">
         <span>{t.account.reminderHour}</span>
-        <select class="select" bind:value={prefs.reminderHour}>
-          {#each HOURS as h (h)}<option value={h}>{hour(h)}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.account.reminderHour}
+          value={String(prefs.reminderHour)}
+          options={HOURS.map((h) => ({ value: String(h), label: hour(h) }))}
+          onchange={(v) => prefs && (prefs.reminderHour = Number(v))}
+        />
+      </div>
       <p class="form-hint">{t.account.timeZone(prefs.timeZone)}</p>
     {/if}
 

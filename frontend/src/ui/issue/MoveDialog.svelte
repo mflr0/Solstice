@@ -15,8 +15,11 @@
   } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
+  import Lock from '../Lock.svelte';
   import Modal from '../Modal.svelte';
   import MultiPick from '../MultiPick.svelte';
+  import TypeMark from '../TypeMark.svelte';
   import BulkReport from '../search/BulkReport.svelte';
 
   /**
@@ -300,49 +303,66 @@
       {#if projects.length === 0 && !error}
         <p class="muted">{t.issue.moveNoProject}</p>
       {:else}
-        <label class="field">
+        <div class="field">
           <span>{t.create.project}</span>
-          <select class="select" bind:value={target}>
-            {#each projects as p (p.key)}
-              <option value={p.key}>{p.name} — {p.key}</option>
-            {/each}
-          </select>
+          <Dropdown
+            label={t.create.project}
+            value={target}
+            options={projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` }))}
+            onchange={(v) => (target = v)}
+          />
           <span class="hint">{bulk ? t.search.bulk.moveHint : t.issue.moveProjectHint}</span>
-        </label>
+        </div>
       {/if}
     {:else if step === 'choices'}
       <p>
         {bulk ? t.search.bulk.moveChoicesHint(targetLabel) : t.issue.moveChoicesHint(targetLabel)}
       </p>
       {#if types.length}
-        <label class="field">
+        <div class="field">
           <span>{t.create.type}</span>
-          <select class="select" bind:value={typeId} onchange={() => (statuses = [])}>
-            {#each types as ty (ty.id)}
-              <option value={ty.id}>{ty.name}</option>
-            {/each}
-          </select>
-        </label>
+          <Dropdown
+            label={t.create.type}
+            value={typeId}
+            options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+            onchange={(v) => {
+              typeId = v;
+              statuses = [];
+            }}
+          >
+            {#snippet icon(id)}
+              {@const ty = types.find((x) => x.id === id)}
+              {#if ty}<TypeMark type={ty} />{/if}
+            {/snippet}
+          </Dropdown>
+        </div>
       {/if}
       {#if subtaskTypes.length}
-        <label class="field">
+        <div class="field">
           <span>{t.issue.moveSubtaskType}</span>
-          <select class="select" bind:value={subtaskTypeId}>
-            {#each subtaskTypes as ty (ty.id)}
-              <option value={ty.id}>{ty.name}</option>
-            {/each}
-          </select>
-        </label>
+          <Dropdown
+            label={t.issue.moveSubtaskType}
+            value={subtaskTypeId}
+            options={subtaskTypes.map((ty) => ({ value: ty.id, label: ty.name }))}
+            onchange={(v) => (subtaskTypeId = v)}
+          >
+            {#snippet icon(id)}
+              {@const ty = subtaskTypes.find((x) => x.id === id)}
+              {#if ty}<TypeMark type={ty} />{/if}
+            {/snippet}
+          </Dropdown>
+        </div>
       {/if}
       {#if statuses.length}
-        <label class="field">
+        <div class="field">
           <span>{t.issue.moveStatus}</span>
-          <select class="select" bind:value={statusId}>
-            {#each statuses as st (st.id)}
-              <option value={st.id}>{st.name}</option>
-            {/each}
-          </select>
-        </label>
+          <Dropdown
+            label={t.issue.moveStatus}
+            value={statusId}
+            options={statuses.map((st) => ({ value: st.id, label: st.name }))}
+            onchange={(v) => (statusId = v)}
+          />
+        </div>
       {/if}
       {#if components}
         {@render pick(t.create.components, components, componentIds, (ids) => (componentIds = ids))}
@@ -359,18 +379,25 @@
         {@render pick(t.create.fixVersions, fixVersions, fixIds, (ids) => (fixIds = ids))}
       {/if}
       {#if securityLevel}
-        <label class="field">
+        <div class="field">
           <span>{t.create.security}</span>
-          <select class="select" bind:value={levelId}>
-            <option value="">{t.issue.public}</option>
-            {#each securityLevel.options as l (l.id)}
-              <option value={String(l.id)}>{l.name}</option>
-            {/each}
-          </select>
+          <Dropdown
+            label={t.create.security}
+            value={levelId}
+            options={[
+              { value: '', label: t.issue.public },
+              ...securityLevel.options.map((l) => ({ value: String(l.id), label: l.name })),
+            ]}
+            onchange={(v) => (levelId = v)}
+          >
+            {#snippet icon(id)}
+              {#if id}<Lock />{/if}
+            {/snippet}
+          </Dropdown>
           <span class="hint"
             >{t.issue.moveUnmatched(formatList(securityLevel.unmatched.map((u) => u.name)))}</span
           >
-        </label>
+        </div>
       {/if}
       {#if restricted}
         <fieldset class="restricted">
@@ -383,32 +410,26 @@
                 <input type="radio" name="move-restrict" value="role" bind:group={restrictTo} />
                 <span>{t.issue.moveRestrictedRole}</span>
               </label>
-              <select
-                class="select"
-                bind:value={roleId}
+              <Dropdown
+                label={t.issue.moveRestrictedRole}
+                value={roleId}
+                options={restricted.roles.map((r) => ({ value: String(r.id), label: r.name }))}
                 disabled={restrictTo !== 'role'}
-                aria-label={t.issue.moveRestrictedRole}
-              >
-                {#each restricted.roles as r (r.id)}
-                  <option value={String(r.id)}>{r.name}</option>
-                {/each}
-              </select>
+                onchange={(v) => (roleId = v)}
+              />
             {/if}
             {#if restricted.groups.length}
               <label class="check">
                 <input type="radio" name="move-restrict" value="group" bind:group={restrictTo} />
                 <span>{t.issue.moveRestrictedGroup}</span>
               </label>
-              <select
-                class="select"
-                bind:value={groupId}
+              <Dropdown
+                label={t.issue.moveRestrictedGroup}
+                value={groupId}
+                options={restricted.groups.map((g) => ({ value: String(g.id), label: g.name }))}
                 disabled={restrictTo !== 'group'}
-                aria-label={t.issue.moveRestrictedGroup}
-              >
-                {#each restricted.groups as g (g.id)}
-                  <option value={String(g.id)}>{g.name}</option>
-                {/each}
-              </select>
+                onchange={(v) => (groupId = v)}
+              />
             {/if}
           {/if}
         </fieldset>

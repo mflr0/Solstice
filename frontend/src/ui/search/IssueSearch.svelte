@@ -22,6 +22,7 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import IssueQuery from '../IssueQuery.svelte';
   import ColumnPicker from './ColumnPicker.svelte';
   import FilterBar from './FilterBar.svelte';
@@ -190,22 +191,19 @@
     <span class="count" aria-live="polite">{total === null ? '' : t.search.results(total)}</span>
     {#if visual && jql !== null}
       <div class="sort">
-        <label class="sort-field">
+        <div class="sort-field">
           <span>{t.search.sortBy}</span>
-          <select
-            class="select"
+          <Dropdown
+            label={t.search.sortBy}
             value={sort?.field ?? ''}
-            onchange={(e) => {
-              const f = e.currentTarget.value as SortField;
+            options={SORTS.map((s) => ({ value: s.field, label: t.search.sorts[s.field] }))}
+            placeholder={t.search.customSort}
+            onchange={(v) => {
+              const f = v as SortField;
               setSort(f, naturalDesc(f));
             }}
-          >
-            {#if !sort}<option value="" disabled>{t.search.customSort}</option>{/if}
-            {#each SORTS as s (s.field)}
-              <option value={s.field}>{t.search.sorts[s.field]}</option>
-            {/each}
-          </select>
-        </label>
+          />
+        </div>
         {#if sort}
           <button
             type="button"
@@ -305,10 +303,11 @@
     white-space: nowrap;
   }
 
-  .sort-field .select {
+  .sort-field :global(.select) {
     width: auto;
     height: 28px;
-    padding: 2px 6px;
+    padding-block: 2px;
+    padding-left: 6px;
     font-size: 13px;
   }
 

@@ -14,6 +14,7 @@
   import { t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
 
   /**
@@ -87,21 +88,23 @@
     {:else if filters && filters.length === 0}
       <p class="muted">{t.subscriptionsPage.noFilters}</p>
     {:else}
-      <label class="field">
+      <div class="field">
         <span>{t.subscriptionsPage.filter}</span>
-        <select
-          class="select"
-          bind:value={filterId}
-          aria-invalid={tried && missingFilter}
+        <Dropdown
+          label={t.subscriptionsPage.filter}
+          value={filterId === null ? '' : String(filterId)}
+          options={[
+            { value: '', label: t.subscriptionsPage.filterPlaceholder },
+            ...(filters ?? []).map((f) => ({ value: String(f.id), label: f.name })),
+          ]}
+          invalid={tried && missingFilter}
           disabled={!filters}
-        >
-          <option value={null}>{t.subscriptionsPage.filterPlaceholder}</option>
-          {#each filters ?? [] as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
-        </select>
+          onchange={(v) => (filterId = v ? Number(v) : null)}
+        />
         {#if tried && missingFilter}
           <span class="field-error">{t.subscriptionsPage.problems.filterRequired}</span>
         {/if}
-      </label>
+      </div>
     {/if}
 
     <fieldset class="choices">
@@ -133,15 +136,18 @@
       {/if}
     {/if}
 
-    <label class="field hour">
+    <div class="field hour">
       <span>{t.subscriptionsPage.hour}</span>
-      <select class="select" bind:value={input.hour}>
-        {#each HOURS as h (h)}<option value={h}>{hourLabel(h, locale)}</option>{/each}
-      </select>
+      <Dropdown
+        label={t.subscriptionsPage.hour}
+        value={String(input.hour)}
+        options={HOURS.map((h) => ({ value: String(h), label: hourLabel(h, locale) }))}
+        onchange={(v) => (input.hour = Number(v))}
+      />
       {#if tried && problems.hour}
         <span class="field-error">{t.subscriptionsPage.problems[problems.hour]}</span>
       {/if}
-    </label>
+    </div>
 
     <label class="check">
       <input class="checkbox" type="checkbox" bind:checked={input.emptyToo} />

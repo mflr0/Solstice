@@ -6,6 +6,7 @@
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
   import Modal from '../Modal.svelte';
   import Who from '../Who.svelte';
@@ -108,22 +109,21 @@
     <p class="muted loading">{t.common.loading}</p>
   {:else}
     {#if projectKeys.length > 1 || project}
-      <label class="field filter">
+      <div class="field filter">
         <span>{t.boards.project}</span>
-        <select
-          class="select"
+        <Dropdown
+          label={t.boards.project}
           value={project}
-          onchange={(e) => router.setParams({ project: e.currentTarget.value || null })}
-        >
-          <option value="">{t.boards.allProjects}</option>
-          {#each projectKeys as key (key)}
-            <option value={key}>{key}</option>
-          {/each}
-          {#if project && !projectKeys.includes(project)}
-            <option value={project}>{project}</option>
-          {/if}
-        </select>
-      </label>
+          options={[
+            { value: '', label: t.boards.allProjects },
+            ...projectKeys.map((key) => ({ value: key, label: key })),
+            ...(project && !projectKeys.includes(project)
+              ? [{ value: project, label: project }]
+              : []),
+          ]}
+          onchange={(v) => router.setParams({ project: v || null })}
+        />
+      </div>
     {/if}
 
     {#if shown.length === 0}
@@ -173,18 +173,19 @@
 <Modal open={creating} title={t.boards.createTitle} onclose={() => (creating = false)}>
   <form id="new-board" class="form" onsubmit={create}>
     <p class="help">{t.boards.createHelp}</p>
-    <label class="field">
+    <div class="field">
       <span>{t.boards.project}</span>
       {#if projects && projects.length === 0}
         <span class="muted">{t.boards.noProject}</span>
       {:else}
-        <select class="select" bind:value={form.project} required>
-          {#each projects ?? [] as p (p.id)}
-            <option value={p.key}>{p.key} — {p.name}</option>
-          {/each}
-        </select>
+        <Dropdown
+          label={t.boards.project}
+          value={form.project}
+          options={(projects ?? []).map((p) => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
+          onchange={(v) => (form.project = v)}
+        />
       {/if}
-    </label>
+    </div>
     <fieldset class="kinds">
       <legend class="field-label">{t.boards.kind}</legend>
       {#each ['kanban', 'scrum'] as const as kind (kind)}

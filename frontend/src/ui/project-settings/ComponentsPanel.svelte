@@ -6,6 +6,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Who from '../Who.svelte';
   import ComponentDialog from './ComponentDialog.svelte';
@@ -148,13 +149,18 @@
 >
   {#if removing && removing.issues > 0}
     <p>{t.projectConfig.components.deleteUsed(removing.issues)}</p>
-    <label class="field">
+    <div class="field">
       <span>{t.projectConfig.components.moveLabel}</span>
-      <select class="select" bind:value={moveTo}>
-        <option value="">{t.projectConfig.components.moveNone}</option>
-        {#each targets as x (x.id)}<option value={String(x.id)}>{x.name}</option>{/each}
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectConfig.components.moveLabel}
+        value={moveTo}
+        options={[
+          { value: '', label: t.projectConfig.components.moveNone },
+          ...targets.map((x) => ({ value: String(x.id), label: x.name })),
+        ]}
+        onchange={(v) => (moveTo = v)}
+      />
+    </div>
   {:else}
     <p>{t.projectConfig.components.deleteUnused}</p>
   {/if}

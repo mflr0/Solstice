@@ -11,6 +11,7 @@
   import { t } from '../../i18n/t.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import UserPicker from '../UserPicker.svelte';
 
@@ -110,15 +111,19 @@
       />
     </div>
 
-    <label class="field">
+    <div class="field">
       <span>{t.projectConfig.components.assignee}</span>
-      <select class="select" bind:value={form.assigneeType}>
-        {#each ASSIGNEE_TYPES as a (a)}
-          <option value={a}>{t.projectConfig.components.assignees[a]}</option>
-        {/each}
-      </select>
+      <Dropdown
+        label={t.projectConfig.components.assignee}
+        value={form.assigneeType}
+        options={ASSIGNEE_TYPES.map((a) => ({
+          value: a,
+          label: t.projectConfig.components.assignees[a],
+        }))}
+        onchange={(v) => (form.assigneeType = v as (typeof ASSIGNEE_TYPES)[number])}
+      />
       <span class="hint">{t.projectConfig.components.assigneeHint}</span>
-    </label>
+    </div>
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>

@@ -27,6 +27,7 @@
   import { api, errorMessage, isVisible } from '../../lib/api.js';
   import { refs } from '../../lib/refs.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import {
     applyLink,
     insertMention,
@@ -288,7 +289,7 @@
 
   function controls(): HTMLElement[] {
     if (!toolbar) return [];
-    return [...toolbar.querySelectorAll<HTMLElement>('button, select, input')].filter(
+    return [...toolbar.querySelectorAll<HTMLElement>('button, input')].filter(
       (el) => !(el as HTMLButtonElement).disabled,
     );
   }
@@ -306,6 +307,8 @@
   });
 
   function toolbarKeys(e: KeyboardEvent): void {
+    // The style dropdown already used the key (Home, End).
+    if (e.defaultPrevented) return;
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT') return;
     const list = controls();
@@ -560,19 +563,21 @@
     onfocusin={toolbarFocus}
   >
     <div class="editor-group">
-      <select
-        class="select editor-style"
-        aria-label={t.editor.style}
+      <Dropdown
+        class="editor-style"
+        label={t.editor.style}
         disabled={source || !at || at.heading < 0}
-        value={at?.heading ?? 0}
-        onchange={(e) => run(setHeading(Number(e.currentTarget.value)))}
-      >
-        <option value={-1} hidden>—</option>
-        <option value={0}>{t.editor.paragraph}</option>
-        {#each [1, 2, 3, 4, 5, 6] as level (level)}
-          <option value={level}>{t.editor.heading(level)}</option>
-        {/each}
-      </select>
+        value={String(at?.heading ?? 0)}
+        options={[
+          { value: '0', label: t.editor.paragraph },
+          ...[1, 2, 3, 4, 5, 6].map((level) => ({
+            value: String(level),
+            label: t.editor.heading(level),
+          })),
+        ]}
+        placeholder="—"
+        onchange={(v) => run(setHeading(Number(v)))}
+      />
     </div>
 
     <div class="editor-group">

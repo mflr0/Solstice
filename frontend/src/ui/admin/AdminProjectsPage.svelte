@@ -17,6 +17,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
   import TypedConfirmDialog from '../TypedConfirmDialog.svelte';
   import Who from '../Who.svelte';
@@ -197,24 +198,25 @@
       placeholder={t.projectsAdmin.search}
       aria-label={t.projectsAdmin.search}
     />
-    <select
-      class="select"
-      bind:value={show}
-      onchange={keepFilters}
-      aria-label={t.projectsAdmin.showLabel}
-    >
-      {#each PROJECT_SHOWS as s (s)}<option value={s}>{t.projectsAdmin.show[s]}</option>{/each}
-    </select>
-    <select
-      class="select"
+    <Dropdown
+      label={t.projectsAdmin.showLabel}
+      value={show}
+      options={PROJECT_SHOWS.map((s) => ({ value: s, label: t.projectsAdmin.show[s] }))}
+      onchange={(v) => {
+        show = v as (typeof PROJECT_SHOWS)[number];
+        keepFilters();
+      }}
+    />
+    <Dropdown
+      label={t.projectsAdmin.categoryFilter}
       value={String(category)}
-      onchange={(e) => categoryChosen(e.currentTarget.value)}
-      aria-label={t.projectsAdmin.categoryFilter}
-    >
-      <option value="all">{t.projectsAdmin.allCategories}</option>
-      <option value="none">{t.projectsAdmin.noCategory}</option>
-      {#each categories ?? [] as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
-    </select>
+      options={[
+        { value: 'all', label: t.projectsAdmin.allCategories },
+        { value: 'none', label: t.projectsAdmin.noCategory },
+        ...(categories ?? []).map((c) => ({ value: String(c.id), label: c.name })),
+      ]}
+      onchange={categoryChosen}
+    />
   </div>
 
   {#if list.length === 0}

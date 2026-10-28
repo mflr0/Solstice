@@ -9,6 +9,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import Stamp from '../Stamp.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
@@ -422,20 +423,17 @@
             {#each unmapped as s (s.id)}
               <li>
                 <Stamp status={s} />
-                <select
-                  class="select put"
-                  aria-label={t.boardSettings.putIn(s.name)}
+                <Dropdown
+                  class="put"
+                  label={t.boardSettings.putIn(s.name)}
                   value=""
-                  onchange={(e) => {
-                    const target = f.columns[Number(e.currentTarget.value)];
+                  options={f.columns.map((c, i) => ({ value: String(i), label: c.name }))}
+                  placeholder={t.boardSettings.chooseColumn}
+                  onchange={(v) => {
+                    const target = f.columns[Number(v)];
                     if (target) target.statuses.push(s);
                   }}
-                >
-                  <option value="" disabled>{t.boardSettings.chooseColumn}</option>
-                  {#each f.columns as c, i (c.id ?? `new-${i}`)}
-                    <option value={String(i)}>{c.name}</option>
-                  {/each}
-                </select>
+                />
               </li>
             {/each}
           </ul>
@@ -577,17 +575,14 @@
           <span class="field-choice">
             <label for="estimate-field"><strong>{t.boardSettings.estimateField}</strong></label>
             {#if d.estimateFields.length}
-              <select
-                class="select"
-                aria-label={t.boardSettings.estimateField}
+              <Dropdown
+                id="estimate-field"
+                label={t.boardSettings.estimateField}
                 value={f.estimate.startsWith('customfield_') ? f.estimate : ''}
-                onchange={(e) => (f.estimate = e.currentTarget.value)}
-              >
-                <option value="" disabled>{t.boardSettings.chooseField}</option>
-                {#each d.estimateFields as field (field.id)}
-                  <option value={field.id}>{field.name}</option>
-                {/each}
-              </select>
+                options={d.estimateFields.map((field) => ({ value: field.id, label: field.name }))}
+                placeholder={t.boardSettings.chooseField}
+                onchange={(v) => (f.estimate = v)}
+              />
             {:else}
               <span class="hint">{t.boardSettings.noFields}</span>
             {/if}
@@ -801,9 +796,11 @@
     gap: 6px;
   }
 
-  .put {
+  .statuses :global(.dropdown.put) {
+    display: inline-flex;
     width: auto;
-    padding: 2px 6px;
+    padding-block: 2px;
+    padding-left: 6px;
     font-size: 12.5px;
   }
 
@@ -869,7 +866,7 @@
     align-items: baseline;
   }
 
-  .field-choice .select {
+  .field-choice :global(.select) {
     width: auto;
     min-width: 200px;
   }

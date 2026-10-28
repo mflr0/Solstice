@@ -4,6 +4,7 @@
   import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage, type ImportReport } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
 
   /**
    * The Import tab: issues from a CSV file. Choosing the file checks it
@@ -155,16 +156,16 @@
               {#if c.readOnly}
                 <span class="muted">{t.projectConfig.import.readOnly}</span>
               {:else}
-                <select
-                  class="select"
+                <Dropdown
+                  label={t.projectConfig.import.fieldFor(c.header)}
                   value={c.field}
+                  options={[
+                    { value: '', label: t.projectConfig.import.skip },
+                    ...report.targets.map((f) => ({ value: f.id, label: f.name })),
+                  ]}
                   disabled={!!busy}
-                  aria-label={t.projectConfig.import.fieldFor(c.header)}
-                  onchange={(e) => remap(i, e.currentTarget.value)}
-                >
-                  <option value="">{t.projectConfig.import.skip}</option>
-                  {#each report.targets as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
-                </select>
+                  onchange={(v) => remap(i, v)}
+                />
                 {#if !c.known && !c.field}
                   <span class="hint">{t.projectConfig.import.unknown}</span>
                 {/if}

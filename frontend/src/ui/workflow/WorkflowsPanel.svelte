@@ -6,6 +6,7 @@
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -195,16 +196,18 @@
       <!-- svelte-ignore a11y_autofocus -->
       <input class="input" bind:value={newName} required maxlength="255" autofocus />
     </label>
-    <label class="field">
+    <div class="field">
       <span>{t.workflows.copyFrom}</span>
-      <select class="select" bind:value={copyFrom}>
-        {#each data?.workflows ?? [] as w (w.id)}
-          <option value={String(w.id)}
-            >{w.name}{w.default ? ` (${t.workflows.defaultBadge})` : ''}</option
-          >
-        {/each}
-      </select>
-    </label>
+      <Dropdown
+        label={t.workflows.copyFrom}
+        value={copyFrom}
+        options={(data?.workflows ?? []).map((w) => ({
+          value: String(w.id),
+          label: `${w.name}${w.default ? ` (${t.workflows.defaultBadge})` : ''}`,
+        }))}
+        onchange={(v) => (copyFrom = v)}
+      />
+    </div>
     {#if formError}<p class="error-text" role="alert">{formError}</p>{/if}
   </form>
   {#snippet footer()}

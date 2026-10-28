@@ -17,6 +17,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import UserPicker from '../UserPicker.svelte';
 
@@ -234,22 +235,32 @@
         />
         <span class="hint">{t.projectsAdmin.leadHint}</span>
       </div>
-      <label class="field">
+      <div class="field">
         <span>{t.projectsAdmin.category}</span>
-        <select class="select" bind:value={form.category}>
-          <option value={null}>{t.projectsAdmin.noCategory}</option>
-          {#each categories as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.projectsAdmin.category}
+          value={form.category === null ? '' : String(form.category)}
+          options={[
+            { value: '', label: t.projectsAdmin.noCategory },
+            ...categories.map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+          onchange={(v) => (form.category = v ? Number(v) : null)}
+        />
+      </div>
     </div>
 
-    <label class="field">
+    <div class="field">
       <span>{t.projectsAdmin.template}</span>
-      <select class="select" bind:value={form.template}>
-        <option value="software">{t.projectsAdmin.templates.software}</option>
-        <option value="simple">{t.projectsAdmin.templates.simple}</option>
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectsAdmin.template}
+        value={form.template}
+        options={[
+          { value: 'software', label: t.projectsAdmin.templates.software },
+          { value: 'simple', label: t.projectsAdmin.templates.simple },
+        ]}
+        onchange={(v) => (form.template = v as 'software' | 'simple')}
+      />
+    </div>
 
     <label class="field">
       <span>{t.projectsAdmin.description}</span>
@@ -257,29 +268,35 @@
     </label>
 
     <div class="grid">
-      <label class="field">
+      <div class="field">
         <span>{t.projectsAdmin.access}</span>
-        <select class="select" bind:value={form.access} onchange={accessChanged}>
-          {#each ACCESS as a (a)}<option value={a}>{t.projectsAdmin.accessKinds[a]}</option>{/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.projectsAdmin.access}
+          value={form.access}
+          options={ACCESS.map((a) => ({ value: a, label: t.projectsAdmin.accessKinds[a] }))}
+          onchange={(v) => {
+            form.access = v as AccessKind;
+            accessChanged();
+          }}
+        />
+      </div>
       {#if form.access === 'group' || form.access === 'role'}
-        <label class="field grid-end">
-          <span class="sr-only">{t.projectsAdmin.accessKinds[form.access]}</span>
-          <select
-            class="select"
-            bind:value={form.accessId}
-            aria-invalid={!!shown('access')}
+        <div class="field grid-end">
+          <Dropdown
+            label={t.projectsAdmin.accessKinds[form.access]}
+            value={form.accessId === null ? '' : String(form.accessId)}
+            options={(form.access === 'group' ? groups : roles).map((x) => ({
+              value: String(x.id),
+              label: x.name,
+            }))}
+            placeholder={form.access === 'group'
+              ? t.projectsAdmin.chooseGroup
+              : t.projectsAdmin.chooseRole}
+            invalid={!!shown('access')}
             onblur={() => (touched.access = true)}
-          >
-            <option value={null} disabled>
-              {form.access === 'group' ? t.projectsAdmin.chooseGroup : t.projectsAdmin.chooseRole}
-            </option>
-            {#each form.access === 'group' ? groups : roles as x (x.id)}
-              <option value={x.id}>{x.name}</option>
-            {/each}
-          </select>
-        </label>
+            onchange={(v) => (form.accessId = Number(v))}
+          />
+        </div>
       {/if}
     </div>
     {#if shown('access')}
@@ -312,13 +329,18 @@
       </fieldset>
     {/if}
 
-    <label class="field">
+    <div class="field">
       <span>{t.projectsAdmin.assignee}</span>
-      <select class="select" bind:value={form.defaultAssignee}>
-        <option value="unassigned">{t.projectsAdmin.assignees.unassigned}</option>
-        <option value="lead">{t.projectsAdmin.assignees.lead}</option>
-      </select>
-    </label>
+      <Dropdown
+        label={t.projectsAdmin.assignee}
+        value={form.defaultAssignee ?? 'unassigned'}
+        options={[
+          { value: 'unassigned', label: t.projectsAdmin.assignees.unassigned },
+          { value: 'lead', label: t.projectsAdmin.assignees.lead },
+        ]}
+        onchange={(v) => (form.defaultAssignee = v as 'unassigned' | 'lead')}
+      />
+    </div>
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
@@ -372,7 +394,7 @@
   }
 
   .input[aria-invalid='true'],
-  .select[aria-invalid='true'] {
+  .field :global(.select[aria-invalid='true']) {
     border-color: var(--accent);
   }
 

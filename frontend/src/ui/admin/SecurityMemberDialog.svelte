@@ -10,6 +10,7 @@
   import { holderLabels, t } from '../../i18n/t.js';
   import { adminApi, securityApi, type SecurityLevel } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import UserPicker from '../UserPicker.svelte';
 
@@ -77,29 +78,34 @@
   onclose={() => !busy && onclose()}
 >
   <form id="security-member-form" class="member-form" onsubmit={submit} novalidate>
-    <label class="field">
+    <div class="field">
       <span>{t.securityAdmin.kind}</span>
-      <select
-        class="select"
-        bind:value={holder}
-        onchange={() => {
+      <Dropdown
+        label={t.securityAdmin.kind}
+        value={holder}
+        options={LEVEL_HOLDERS.map((h) => ({ value: h, label: holderLabels[h] }))}
+        onchange={(v) => {
+          holder = v as LevelHolder;
           pick = '';
           user = null;
         }}
-      >
-        {#each LEVEL_HOLDERS as h (h)}<option value={h}>{holderLabels[h]}</option>{/each}
-      </select>
-    </label>
+      />
+    </div>
     {#if holder === 'group' || holder === 'role'}
-      <label class="field">
+      <div class="field">
         <span>{holder === 'group' ? t.securityAdmin.chooseGroup : t.securityAdmin.chooseRole}</span>
-        <select class="select" bind:value={pick} aria-invalid={tried && !payload}>
-          <option value="" disabled>{t.securityAdmin.choose}</option>
-          {#each holder === 'group' ? groups : roles as x (x.id)}
-            <option value={String(x.id)}>{x.name}</option>
-          {/each}
-        </select>
-      </label>
+        <Dropdown
+          label={holder === 'group' ? t.securityAdmin.chooseGroup : t.securityAdmin.chooseRole}
+          value={pick}
+          options={(holder === 'group' ? groups : roles).map((x) => ({
+            value: String(x.id),
+            label: x.name,
+          }))}
+          placeholder={t.securityAdmin.choose}
+          invalid={tried && !payload}
+          onchange={(v) => (pick = v)}
+        />
+      </div>
     {:else if holder === 'user'}
       <div class="field">
         <span>{t.securityAdmin.chooseUser}</span>

@@ -5,6 +5,7 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
   import { isSafeUrl } from '../../core/wiki.js';
@@ -86,12 +87,14 @@
 
   {#if adding}
     <form class="add row" onsubmit={add}>
-      <label class="sr-only" for="link-kind">{t.issue.linkKind}</label>
-      <select id="link-kind" class="select kind" bind:value={relation}>
-        {#each relations as r (r.value)}
-          <option value={r.value}>{r.label}</option>
-        {/each}
-      </select>
+      <span class="kind">
+        <Dropdown
+          label={t.issue.linkKind}
+          value={relation}
+          options={relations}
+          onchange={(v) => (relation = v)}
+        />
+      </span>
       <label class="sr-only" for="link-target">{t.issue.linkTarget}</label>
       <input
         id="link-target"
@@ -165,7 +168,6 @@
   }
 
   .kind {
-    width: auto;
     min-width: 180px;
   }
 

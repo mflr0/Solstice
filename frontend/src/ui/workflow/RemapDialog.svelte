@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { StatusRef, StrandedDefault, StrandedStatus } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import Stamp from '../Stamp.svelte';
 
@@ -60,14 +61,12 @@
           <th scope="row"><Stamp status={s.status} /></th>
           <td class="num">{t.workflows.issues(s.count)}</td>
           <td>
-            <select
-              class="select"
-              aria-label={`${t.workflows.moveTo} (${s.status.name})`}
-              value={chosen[s.status.id]}
-              onchange={(e) => pick(s.status.id, e.currentTarget.value)}
-            >
-              {#each targets as st (st.id)}<option value={st.id}>{st.name}</option>{/each}
-            </select>
+            <Dropdown
+              label={`${t.workflows.moveTo} (${s.status.name})`}
+              value={chosen[s.status.id] ?? ''}
+              options={targets.map((st) => ({ value: st.id, label: st.name }))}
+              onchange={(v) => pick(s.status.id, v)}
+            />
           </td>
         </tr>
       {/each}
@@ -123,7 +122,7 @@
     background: none;
   }
 
-  .moves .select {
+  .moves :global(.select) {
     min-width: 160px;
   }
 

@@ -16,6 +16,7 @@
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import FieldContextPicker from './FieldContextPicker.svelte';
 
@@ -135,18 +136,21 @@
         <span class="hint">{t.fieldsAdmin.typeFixed}</span>
       </div>
     {:else}
-      <label class="field">
+      <div class="field">
         <span>{t.fieldsAdmin.typeLabel}</span>
-        <select class="select" bind:value={form.type}>
-          {#each groups as g (g.group)}
-            <optgroup label={t.fieldsAdmin.groups[g.group]}>
-              {#each g.types as x (x)}
-                <option value={x}>{t.fieldsAdmin.types[x]}</option>
-              {/each}
-            </optgroup>
-          {/each}
-        </select>
-      </label>
+        <Dropdown
+          label={t.fieldsAdmin.typeLabel}
+          value={form.type ?? ''}
+          options={groups.flatMap((g) =>
+            g.types.map((x) => ({
+              value: x,
+              label: t.fieldsAdmin.types[x],
+              group: t.fieldsAdmin.groups[g.group],
+            })),
+          )}
+          onchange={(v) => (form.type = v as FieldType)}
+        />
+      </div>
       {#if hasOptions(form.type)}
         <label class="field">
           <span>{t.fieldsAdmin.optionsLabel}</span>

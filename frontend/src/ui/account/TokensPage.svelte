@@ -9,6 +9,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import CopyField from '../CopyField.svelte';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
 
   /**
@@ -114,12 +115,15 @@
             <span class="hint" id="token-name-hint">{t.tokensPage.nameHint}</span>
           {/if}
         </label>
-        <label class="field">
+        <div class="field">
           <span>{t.tokensPage.expires}</span>
-          <select class="select" bind:value={choice}>
-            {#each EXPIRIES as c (c)}<option value={c}>{t.tokensPage.expiry[c]}</option>{/each}
-          </select>
-        </label>
+          <Dropdown
+            label={t.tokensPage.expires}
+            value={choice}
+            options={EXPIRIES.map((c) => ({ value: c, label: t.tokensPage.expiry[c] }))}
+            onchange={(v) => (choice = v as ExpiryChoice)}
+          />
+        </div>
       </div>
       {#if choice === 'date'}
         <label class="field date">

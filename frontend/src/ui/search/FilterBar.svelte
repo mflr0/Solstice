@@ -24,6 +24,7 @@
   import { formatList } from '../../i18n/format.js';
   import { api } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import DateRangePicker from './DateRangePicker.svelte';
   import FilterPopover from './FilterPopover.svelte';
   import { labelOf, loadOptions, specialValues } from './sources.svelte.js';
@@ -371,18 +372,15 @@
     onclear={() => clearField('people')}
   >
     <div class="role">
-      <label class="role-field">
+      <div class="role-field">
         <span>{t.search.role}</span>
-        <select
-          class="select"
+        <Dropdown
+          label={t.search.role}
           value={peopleRole}
-          onchange={(e) => setRole(e.currentTarget.value as (typeof ROLES)[number])}
-        >
-          {#each ROLES as r (r)}
-            <option value={r}>{t.search.roles[r]}</option>
-          {/each}
-        </select>
-      </label>
+          options={ROLES.map((r) => ({ value: r, label: t.search.roles[r] ?? r }))}
+          onchange={(v) => setRole(v as (typeof ROLES)[number])}
+        />
+      </div>
       <p class="role-hint">{t.search.roleHint}</p>
     </div>
     <ValuePicker
@@ -541,10 +539,11 @@
     color: var(--ink-soft);
   }
 
-  .role-field .select {
+  .role-field :global(.select) {
     flex: 1;
     height: 28px;
-    padding: 2px 6px;
+    padding-block: 2px;
+    padding-left: 6px;
     font-size: 13px;
   }
 

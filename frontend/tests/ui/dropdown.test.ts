@@ -18,11 +18,11 @@ afterEach(() => {
   component = undefined;
 });
 
-function dropdown(value = 'm') {
+function dropdown(value = 'm', extra: Record<string, unknown> = {}) {
   const chosen: string[] = [];
   component = mount(Dropdown, {
     target: document.body,
-    props: { options, value, label: 'Priority', onchange: (v: string) => chosen.push(v) },
+    props: { options, value, label: 'Priority', onchange: (v: string) => chosen.push(v), ...extra },
   });
   flushSync();
   const button = document.querySelector('button.dropdown') as HTMLButtonElement;
@@ -118,5 +118,44 @@ describe('Dropdown', () => {
     press(button, 'Escape');
     expect(outer).toBe(1);
     document.body.removeEventListener('keydown', count);
+  });
+
+  it('lists grouped options under their heading, which the keys skip', () => {
+    const grouped = [
+      { value: 'a', label: 'Alpha', group: 'Letters' },
+      { value: 'b', label: 'Beta', group: 'Letters' },
+      { value: '1', label: 'One', group: 'Numbers' },
+    ];
+    const { button, chosen } = dropdown('b', { options: grouped });
+    press(button, 'ArrowDown');
+    const groups = [...document.querySelectorAll('[role="group"]')];
+    expect(
+      groups.map((g) => document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent),
+    ).toEqual(['Letters', 'Numbers']);
+    expect(groups[1]!.querySelectorAll('[role="option"]')).toHaveLength(1);
+    press(button, 'ArrowDown');
+    expect(highlighted(button)).toBe('One');
+    press(button, 'Enter');
+    expect(chosen).toEqual(['1']);
+  });
+
+  it('shows the placeholder when no option matches, without listing it', () => {
+    const { button } = dropdown('', { placeholder: 'Choose…' });
+    expect(button.textContent?.trim()).toBe('Choose…');
+    press(button, 'ArrowDown');
+    expect(highlighted(button)).toBe('Highest');
+    expect(document.querySelectorAll('[role="option"]')).toHaveLength(options.length);
+    expect(list()?.textContent).not.toContain('Choose…');
+  });
+
+  it('closes when the focus leaves it', () => {
+    let blurred = 0;
+    const { button } = dropdown('m', { onblur: () => blurred++ });
+    press(button, 'ArrowDown');
+    expect(list()).not.toBeNull();
+    button.blur();
+    flushSync();
+    expect(list()).toBeNull();
+    expect(blurred).toBe(1);
   });
 });

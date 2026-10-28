@@ -601,11 +601,6 @@
   cursor: pointer;
 }
 
-[data-skin='plan'] .select option {
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-
 [data-skin='plan'] .input:hover:not(:focus):not([disabled]),
 [data-skin='plan'] .select:hover:not(:focus):not([disabled]) {
   border-bottom-color: var(--ink-soft);

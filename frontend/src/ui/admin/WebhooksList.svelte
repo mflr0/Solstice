@@ -7,6 +7,7 @@
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
 
   /** Every webhook: where it calls, what for, and how its last call went. */
@@ -59,9 +60,12 @@
       placeholder={t.hooksAdmin.search}
       aria-label={t.hooksAdmin.search}
     />
-    <select class="select" bind:value={show} aria-label={t.hooksAdmin.showLabel}>
-      {#each WEBHOOK_SHOWS as s (s)}<option value={s}>{t.hooksAdmin.show[s]}</option>{/each}
-    </select>
+    <Dropdown
+      label={t.hooksAdmin.showLabel}
+      value={show}
+      options={WEBHOOK_SHOWS.map((s) => ({ value: s, label: t.hooksAdmin.show[s] }))}
+      onchange={(v) => (show = v as (typeof WEBHOOK_SHOWS)[number])}
+    />
   </div>
 
   {#if list.length === 0}

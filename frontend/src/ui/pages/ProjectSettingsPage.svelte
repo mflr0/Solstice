@@ -8,6 +8,7 @@
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
@@ -291,27 +292,30 @@
                           >
                           {#if adding === p}
                             <div class="popover add">
-                              <label class="field">
+                              <div class="field">
                                 <span>{t.settings.chooseKind}</span>
-                                <select class="select" bind:value={kind}>
-                                  {#each kinds as k (k)}<option value={k}>{holderLabels[k]}</option
-                                    >{/each}
-                                </select>
-                              </label>
+                                <Dropdown
+                                  label={t.settings.chooseKind}
+                                  value={kind}
+                                  options={kinds.map((k) => ({ value: k, label: holderLabels[k] }))}
+                                  onchange={(v) => (kind = v as Holder)}
+                                />
+                              </div>
                               {#if kind === 'group' || kind === 'role'}
-                                <label class="field">
-                                  <span
-                                    >{kind === 'group'
-                                      ? t.settings.chooseGroup
-                                      : t.settings.chooseRole}</span
-                                  >
-                                  <select class="select" bind:value={pick}>
-                                    <option value="" disabled></option>
-                                    {#each kind === 'group' ? data.groups : data.roles as x (x.id)}
-                                      <option value={String(x.id)}>{x.name}</option>
-                                    {/each}
-                                  </select>
-                                </label>
+                                {@const pickLabel =
+                                  kind === 'group' ? t.settings.chooseGroup : t.settings.chooseRole}
+                                <div class="field">
+                                  <span>{pickLabel}</span>
+                                  <Dropdown
+                                    label={pickLabel}
+                                    value={pick}
+                                    options={(kind === 'group' ? data.groups : data.roles).map(
+                                      (x) => ({ value: String(x.id), label: x.name }),
+                                    )}
+                                    placeholder="…"
+                                    onchange={(v) => (pick = v)}
+                                  />
+                                </div>
                               {:else if kind === 'user'}
                                 <div class="field">
                                   <span class="field-label">{t.settings.chooseUser}</span>
