@@ -44,7 +44,8 @@ type entry struct {
 	Headline string
 	When     string
 	Changes  []changeRow
-	Text     string // a comment or description, shown as written
+	Text     string        // a comment or description, as written
+	HTML     template.HTML // Text rendered from its wiki markup, for the HTML part
 	Note     string
 }
 
@@ -111,7 +112,8 @@ var htmlPage = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
 </table>
 {{- end}}
 {{- if .Text}}
-<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;white-space:pre-wrap;word-wrap:break-word;">{{.Text}}</div>
+<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;{{if not .HTML}}white-space:pre-wrap;{{end}}word-wrap:break-word;">
+{{- if .HTML}}{{.HTML}}{{else}}{{.Text}}{{end}}</div>
 {{- end}}
 {{- if .Note}}
 <p style="margin:4px 0 0;color:#6c685e;font-size:12px;">{{.Note}}</p>
@@ -148,6 +150,33 @@ var htmlPage = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
 </div>
 </body></html>
 `))
+
+const preStyled = `<pre style="margin:6px 0;padding:8px;background:#efebe2;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-wrap:break-word;">`
+
+// wikiStyles gives the tags of wiki.HTML the inline styles e-mail clients
+// need, as they read no style sheet. The text the tags hold is escaped, so
+// only the renderer's own tags match.
+var wikiStyles = strings.NewReplacer(
+	"<p>", `<p style="margin:0 0 6px;">`,
+	`<pre class="code">`, preStyled,
+	"<pre>", preStyled,
+	"<code>", `<code style="padding:0 3px;background:#efebe2;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;">`,
+	"<blockquote>", `<blockquote style="margin:6px 0;padding:0 0 0 10px;border-left:2px solid #cfc7b7;color:#6c685e;">`,
+	"<ul>", `<ul style="margin:0 0 6px;padding-left:20px;">`,
+	"<ol>", `<ol style="margin:0 0 6px;padding-left:20px;">`,
+	"<table>", `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 6px;font-size:13px;">`,
+	"<th>", `<th style="padding:4px 8px;border:1px solid #cfc7b7;background:#efebe2;text-align:left;vertical-align:top;">`,
+	"<td>", `<td style="padding:4px 8px;border:1px solid #cfc7b7;vertical-align:top;">`,
+	"<h1>", `<h1 style="margin:8px 0 4px;font-size:18px;">`,
+	"<h2>", `<h2 style="margin:8px 0 4px;font-size:17px;">`,
+	"<h3>", `<h3 style="margin:8px 0 4px;font-size:16px;">`,
+	"<h4>", `<h4 style="margin:8px 0 4px;font-size:15px;">`,
+	"<h5>", `<h5 style="margin:8px 0 4px;font-size:14px;">`,
+	"<h6>", `<h6 style="margin:8px 0 4px;font-size:14px;">`,
+	"<hr/>", `<hr style="border:0;border-top:1px solid #e6e0d4;margin:8px 0;"/>`,
+	`<span class="user-mention">`, `<span style="color:#c2321b;">`,
+	`<a href=`, `<a style="color:#c2321b;" href=`,
+)
 
 // html renders the page as HTML. The template only reads the page's fields,
 // so it cannot fail (TestPageHTML runs it over every one of them).

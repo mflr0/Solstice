@@ -20,6 +20,7 @@ import (
 	"solstice/internal/i18n"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
+	"solstice/internal/wiki"
 )
 
 // remoteLinkIn is Jira's link as clients write it; the rest (application,
@@ -35,7 +36,7 @@ type remoteLinkIn struct {
 
 // remoteLinkOK tells whether an address may become a link: absolute, and
 // only the http, https and mailto schemes.
-func remoteLinkOK(v string) bool { return safeHref(v) && safeURL(v) }
+func remoteLinkOK(v string) bool { return wiki.SafeHref(v) && safeURL(v) }
 
 func (in *remoteLinkIn) clean() error {
 	in.Object.URL, in.Object.Title = strings.TrimSpace(in.Object.URL), strings.TrimSpace(in.Object.Title)
