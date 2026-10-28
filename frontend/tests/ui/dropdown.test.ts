@@ -159,3 +159,15 @@ describe('Dropdown', () => {
     expect(blurred).toBe(1);
   });
 });
+
+describe('Dropdown required', () => {
+  it('tells assistive technology the choice is required', () => {
+    const { button } = dropdown('m', { required: true });
+    expect(button.getAttribute('aria-required')).toBe('true');
+  });
+
+  it('says nothing when it is optional', () => {
+    const { button } = dropdown();
+    expect(button.hasAttribute('aria-required')).toBe(false);
+  });
+});

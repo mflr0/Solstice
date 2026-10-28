@@ -36,6 +36,7 @@
     /** Extra classes on the button, for global styles (a skin, app.css). */
     class?: string | undefined;
     invalid?: boolean | undefined;
+    required?: boolean | undefined;
     onblur?: (() => void) | undefined;
   }
   const {
@@ -50,6 +51,7 @@
     id,
     class: className = '',
     invalid = false,
+    required = false,
     onblur,
   }: Props = $props();
 
@@ -241,6 +243,7 @@
   aria-label={label}
   aria-haspopup="listbox"
   aria-invalid={invalid || undefined}
+  aria-required={required || undefined}
   aria-expanded={open}
   aria-controls={open ? listId : undefined}
   aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}

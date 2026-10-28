@@ -920,6 +920,13 @@ export const de: Messages = {
     cannotCreate: 'Sie können in diesem Projekt keine Vorgänge erstellen.',
     created: (key: string) => `${key} erstellt.`,
     defaultAssignee: 'Standard',
+    required: 'Pflichtfeld',
+    checkFields: 'Bitte prüfen Sie die markierten Felder.',
+    missing: {
+      project: 'Wählen Sie ein Projekt.',
+      type: 'Wählen Sie einen Typ.',
+      summary: 'Geben Sie eine Zusammenfassung ein.',
+    },
   },
 
   person: {
