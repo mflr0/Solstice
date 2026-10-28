@@ -1,10 +1,12 @@
 <script lang="ts">
   import {
+    averageCompleted,
     byOutcome,
     flowPeriods,
     type FlowReport,
     type Outcome,
     type SprintReport,
+    type VelocityReport,
   } from '../../core/board-report.js';
   import type { BoardDetail, Sprint } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
@@ -15,6 +17,7 @@
   import SprintHead from '../board/SprintHead.svelte';
   import BurndownChart from '../charts/BurndownChart.svelte';
   import FlowChart from '../charts/FlowChart.svelte';
+  import VelocityChart from '../charts/VelocityChart.svelte';
   import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
   import Stamp from '../Stamp.svelte';
@@ -22,9 +25,11 @@
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A board's reports (?report=). A Scrum board's sprint report: one started
-   * sprint (?sprint=id, else the active or the last one), its burndown, and
-   * its issues by where they ended up. Any board's cumulative flow over the
+   * A Scrum board's reports. The sprint report: one started sprint
+   * (?sprint=id, else the active or the last one), its burndown, and its
+   * issues by where they ended up. The velocity (?report=velocity): the
+   * last closed sprints' committed and completed work. Any board's
+   * cumulative flow (?report=flow, the only one of a Kanban board) over the
    * last ?days= days.
    */
   interface Props {
@@ -37,6 +42,14 @@
   let error = $state('');
   let report = $state<SprintReport | null>(null);
   let reportError = $state('');
+  let velocity = $state<VelocityReport | null>(null);
+  let velocityError = $state('');
+
+  const kind = $derived.by(() => {
+    if (detail && detail.board.kind !== 'scrum') return 'flow';
+    const k = router.param('report');
+    return k === 'velocity' || k === 'flow' ? k : 'sprint';
+  });
 
   $effect(() => {
     Promise.all([api.board(boardId), api.reportSprints(boardId)])
@@ -47,12 +60,20 @@
       .catch((e: unknown) => (error = errorMessage(e)));
   });
 
-  const kind = $derived<'sprint' | 'flow'>(
-    detail?.board.kind === 'scrum' && router.param('report') !== 'flow' ? 'sprint' : 'flow',
-  );
+  $effect(() => {
+    if (!detail) return;
+    const title = { sprint: t.reports.title, velocity: t.reports.velocity, flow: t.reports.flow }[
+      kind
+    ];
+    document.title = `${title} — ${detail.board.name} — ${t.appName}`;
+  });
 
   $effect(() => {
-    if (detail) document.title = `${t.reports.kinds[kind]} — ${detail.board.name} — ${t.appName}`;
+    if (kind !== 'velocity' || detail?.board.kind !== 'scrum' || velocity) return;
+    api
+      .velocityReport(boardId)
+      .then((v) => (velocity = v))
+      .catch((e: unknown) => (velocityError = errorMessage(e)));
   });
 
   const period = $derived.by(() => {
@@ -87,7 +108,7 @@
 
   let seq = 0;
   $effect(() => {
-    if (!chosen || kind !== 'sprint') return;
+    if (kind !== 'sprint' || !chosen) return;
     const mine = ++seq;
     reportError = '';
     api
@@ -128,45 +149,38 @@
   <div class="page reports-page" data-title={d.board.name}>
     <BoardHeader detail={d} view="reports" />
 
-    <div class="pickers">
-      {#if d.board.kind === 'scrum'}
-        <div class="picker">
-          <Dropdown
-            label={t.reports.report}
-            value={kind}
-            options={(['sprint', 'flow'] as const).map((k) => ({
-              value: k,
-              label: t.reports.kinds[k],
-            }))}
-            onchange={(v) => router.setParams({ report: v === 'flow' ? v : null })}
-          />
-        </div>
-      {/if}
-      {#if kind === 'flow'}
-        <div class="picker">
-          <Dropdown
-            label={t.reports.period}
-            value={String(period)}
-            options={flowPeriods.map((n) => ({ value: String(n), label: t.reports.lastDays(n) }))}
-            onchange={(v) => router.setParams({ days: v === '30' ? null : v })}
-          />
-        </div>
-      {:else if chosen}
-        <div class="picker">
-          <Dropdown
-            label={t.boards.sprint}
-            value={String(chosen.id)}
-            options={sprints.map((s) => ({
-              value: String(s.id),
-              label: `${s.name} (${t.boards.sprintStates[s.state]})`,
-            }))}
-            onchange={(v) => router.setParams({ sprint: v })}
-          />
-        </div>
-      {/if}
-    </div>
+    {#if d.board.kind === 'scrum'}
+      <nav class="kinds" aria-label={t.reports.views}>
+        <a
+          class="btn btn-small"
+          class:on={kind === 'sprint'}
+          href={paths.boardReports(d.board.id)}
+          aria-current={kind === 'sprint' ? 'page' : undefined}>{t.reports.title}</a
+        >
+        <a
+          class="btn btn-small"
+          class:on={kind === 'velocity'}
+          href={paths.boardVelocity(d.board.id)}
+          aria-current={kind === 'velocity' ? 'page' : undefined}>{t.reports.velocity}</a
+        >
+        <a
+          class="btn btn-small"
+          class:on={kind === 'flow'}
+          href={paths.boardFlow(d.board.id)}
+          aria-current={kind === 'flow' ? 'page' : undefined}>{t.reports.flow}</a
+        >
+      </nav>
+    {/if}
 
     {#if kind === 'flow'}
+      <div class="picker">
+        <Dropdown
+          label={t.reports.period}
+          value={String(period)}
+          options={flowPeriods.map((n) => ({ value: String(n), label: t.reports.lastDays(n) }))}
+          onchange={(v) => router.setParams({ days: v === '30' ? null : v })}
+        />
+      </div>
       {#if flowError}
         <p class="error-text" role="alert">{flowError}</p>
       {:else if !shownFlow}
@@ -175,78 +189,121 @@
         <p class="notice">{t.reports.flowNote}</p>
         <FlowChart report={shownFlow} board={d.board.name} />
       {/if}
-    {:else if !chosen}
+    {:else if d.board.kind === 'scrum' && kind === 'velocity'}
+      {#if velocityError}
+        <p class="error-text" role="alert">{velocityError}</p>
+      {:else if !velocity}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else if velocity.sprints.length === 0}
+        <Illustration kind="empty" />
+        <p class="empty">{t.reports.velocityNone} {t.reports.velocityNoneHint}</p>
+      {:else}
+        {@const v = velocity}
+        {#if v.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
+        <dl class="totals average">
+          <div class="total">
+            <dt>{t.reports.average}</dt>
+            <dd>
+              {v.estimate === ''
+                ? t.boards.cards(averageCompleted(v) ?? 0)
+                : t.boards.estimateValue(averageCompleted(v) ?? 0, v.estimate)}
+              <span class="over">{t.reports.averageOver(v.sprints.length)}</span>
+            </dd>
+          </div>
+        </dl>
+        <section class="report-section" aria-labelledby="velocity-title">
+          <h2 class="section-title" id="velocity-title">{t.reports.velocity}</h2>
+          <VelocityChart report={v} />
+        </section>
+      {/if}
+    {:else if d.board.kind !== 'scrum' || !chosen}
       <Illustration kind="empty" />
       <p class="empty">{t.reports.none} {t.reports.noneHint}</p>
-      <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
-    {:else if reportError}
-      <p class="error-text" role="alert">{reportError}</p>
-    {:else if !shown || !groups}
-      <p class="muted loading">{t.common.loading}</p>
+      {#if d.board.kind === 'scrum'}
+        <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
+      {/if}
     {:else}
-      {@const r = shown}
-      <SprintHead
-        title={r.sprint.name}
-        sprint={r.sprint}
-        meta={r.sprint.state === 'active'
-          ? t.reports.untilNow
-          : t.boards.dates(t.boards.day(r.sprint.start ?? r.end), t.boards.day(r.end))}
-      />
-      {#if r.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
+      <div class="picker">
+        <Dropdown
+          label={t.boards.sprint}
+          value={String(chosen.id)}
+          options={sprints.map((s) => ({
+            value: String(s.id),
+            label: `${s.name} (${t.boards.sprintStates[s.state]})`,
+          }))}
+          onchange={(v) => router.setParams({ sprint: v })}
+        />
+      </div>
 
-      <dl class="totals">
-        {#each ['committed', 'added', 'removed', 'completed', 'notCompleted'] as const as k (k)}
-          <div class="total">
-            <dt>
-              {k === 'committed'
-                ? t.reports.committed
-                : k === 'added'
-                  ? t.reports.added
-                  : groupTitle(k, r)}
-            </dt>
-            <dd>{work(r.totals[k], r)}</dd>
-          </div>
-        {/each}
-      </dl>
+      {#if reportError}
+        <p class="error-text" role="alert">{reportError}</p>
+      {:else if !shown || !groups}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else}
+        {@const r = shown}
+        <SprintHead
+          title={r.sprint.name}
+          sprint={r.sprint}
+          meta={r.sprint.state === 'active'
+            ? t.reports.untilNow
+            : t.boards.dates(t.boards.day(r.sprint.start ?? r.end), t.boards.day(r.end))}
+        />
+        {#if r.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
 
-      <section class="report-section" aria-labelledby="burndown-title">
-        <h2 class="section-title" id="burndown-title">{t.reports.burndown}</h2>
-        <BurndownChart report={r} />
-      </section>
+        <dl class="totals">
+          {#each ['committed', 'added', 'removed', 'completed', 'notCompleted'] as const as k (k)}
+            <div class="total">
+              <dt>
+                {k === 'committed'
+                  ? t.reports.committed
+                  : k === 'added'
+                    ? t.reports.added
+                    : groupTitle(k, r)}
+              </dt>
+              <dd>{work(r.totals[k], r)}</dd>
+            </div>
+          {/each}
+        </dl>
 
-      {#each order as o (o)}
-        {@const list = groups[o]}
-        <section class="report-section" aria-labelledby="group-{o}">
-          <h2 class="section-title" id="group-{o}">
-            {groupTitle(o, r)} <span class="count">{t.boards.sectionCount(list.length)}</span>
-          </h2>
-          {#if list.length === 0}
-            <p class="muted">{t.reports.emptyGroup}</p>
-          {:else}
-            <ul class="report-issues">
-              {#each list as is (is.key)}
-                <li class="report-issue">
-                  <TypeMark type={is.type} />
-                  <a class="key" href={paths.issue(is.key)}>{is.key}</a>
-                  <span class="summary">{is.summary}</span>
-                  {#if !is.committed}<span class="added">{t.reports.addedMark}</span>{/if}
-                  <Stamp status={is.status} />
-                  <span class="estimate">
-                    {#if is.startEstimate !== is.endEstimate}
-                      {t.reports.changed(
-                        estimate(is.startEstimate, r),
-                        estimate(is.endEstimate, r),
-                      )}
-                    {:else}
-                      {estimate(is.endEstimate, r)}
-                    {/if}
-                  </span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
+        <section class="report-section" aria-labelledby="burndown-title">
+          <h2 class="section-title" id="burndown-title">{t.reports.burndown}</h2>
+          <BurndownChart report={r} />
         </section>
-      {/each}
+
+        {#each order as o (o)}
+          {@const list = groups[o]}
+          <section class="report-section" aria-labelledby="group-{o}">
+            <h2 class="section-title" id="group-{o}">
+              {groupTitle(o, r)} <span class="count">{t.boards.sectionCount(list.length)}</span>
+            </h2>
+            {#if list.length === 0}
+              <p class="muted">{t.reports.emptyGroup}</p>
+            {:else}
+              <ul class="report-issues">
+                {#each list as is (is.key)}
+                  <li class="report-issue">
+                    <TypeMark type={is.type} />
+                    <a class="key" href={paths.issue(is.key)}>{is.key}</a>
+                    <span class="summary">{is.summary}</span>
+                    {#if !is.committed}<span class="added">{t.reports.addedMark}</span>{/if}
+                    <Stamp status={is.status} />
+                    <span class="estimate">
+                      {#if is.startEstimate !== is.endEstimate}
+                        {t.reports.changed(
+                          estimate(is.startEstimate, r),
+                          estimate(is.endEstimate, r),
+                        )}
+                      {:else}
+                        {estimate(is.endEstimate, r)}
+                      {/if}
+                    </span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
+        {/each}
+      {/if}
     {/if}
   </div>
 {/if}
@@ -256,16 +313,26 @@
     max-width: 1100px;
   }
 
-  .pickers {
+  .kinds {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: 2px;
     margin: 0 0 16px;
   }
 
+  .average {
+    max-width: 320px;
+  }
+
+  .over {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
   .picker {
-    flex: 1 1 200px;
     max-width: 360px;
+    margin: 0 0 16px;
   }
 
   .notice {

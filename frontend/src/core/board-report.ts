@@ -1,6 +1,7 @@
 /**
- * The sprint report (backend/internal/api/sprint_report.go) and the geometry
- * of its burndown: pure functions, tested in tests/core/board-report.test.ts.
+ * The sprint and velocity reports (backend/internal/api/sprint_report.go)
+ * and the geometry of their charts: pure functions, tested in
+ * tests/core/board-report.test.ts.
  */
 
 import type { Sprint } from './board-types.js';
@@ -37,6 +38,70 @@ export interface SprintReport {
   steps: { at: string; issue: string; remaining: number }[];
   /** In board order. */
   issues: ReportIssue[];
+}
+
+/** A closed sprint of the velocity report. */
+export interface VelocitySprint {
+  sprint: Sprint;
+  /** Work in the sprint when it started. */
+  committed: number;
+  /** Work done when it completed, added issues included. */
+  completed: number;
+}
+
+export interface VelocityReport {
+  /** '' when the board has no estimate: issues are counted. */
+  estimate: '' | 'points' | 'time';
+  /** The last closed sprints, oldest first. */
+  sprints: VelocitySprint[];
+}
+
+/** The work completed per sprint on average; null without a sprint. */
+export function averageCompleted(r: VelocityReport): number | null {
+  if (r.sprints.length === 0) return null;
+  const sum = r.sprints.reduce((n, s) => n + s.completed, 0);
+  return Math.round((sum / r.sprints.length) * 100) / 100;
+}
+
+/**
+ * Labels for names under a chart's bars: the words every name shares at the
+ * start and at the end left out ("Web Sprint 4", "Web Sprint 5" give "4", "5"),
+ * then cut to max characters.
+ */
+export function shortLabels(names: string[], max: number): string[] {
+  let words = names.map((n) => n.split(/\s+/).filter(Boolean));
+  if (words.length > 1) {
+    const shortest = Math.min(...words.map((w) => w.length));
+    const same = (pick: (w: string[]) => string) => words.every((w) => pick(w) === pick(words[0]!));
+    let head = 0;
+    while (head < shortest - 1 && same((w) => w[head]!)) head++;
+    let tail = 0;
+    while (head + tail < shortest - 1 && same((w) => w[w.length - 1 - tail]!)) tail++;
+    words = words.map((w) => w.slice(head, w.length - tail));
+  }
+  return words.map((w) => {
+    const label = w.join(' ');
+    return label.length <= max ? label : `${label.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+  });
+}
+
+/**
+ * Splits a range into count equal bands, gap being the share of each left
+ * empty around it. Bands wider than maxStep shrink to it, centred.
+ */
+export function bands(
+  count: number,
+  [r0, r1]: [number, number],
+  gap = 0.3,
+  maxStep = Infinity,
+): { x: number; w: number }[] {
+  if (count <= 0) return [];
+  const step = Math.min((r1 - r0) / count, maxStep);
+  const from = (r0 + r1 - step * count) / 2;
+  return Array.from({ length: count }, (_, i) => ({
+    x: from + i * step + (step * gap) / 2,
+    w: step * (1 - gap),
+  }));
 }
 
 /** A point of a chart: a time (ms) and a value. */
@@ -136,14 +201,14 @@ export function localDay(ymd: string): number {
 }
 
 /** A column's band: its lower and upper edge on each day. */
-export interface Band {
+export interface FlowBand {
   lo: number[];
   hi: number[];
 }
 
 /** The stacked bands, one per column in column order; the last column lies at the bottom. */
-export function flowBands(r: FlowReport): Band[] {
-  const bands: Band[] = r.columns.map(() => ({ lo: [], hi: [] }));
+export function flowBands(r: FlowReport): FlowBand[] {
+  const bands: FlowBand[] = r.columns.map(() => ({ lo: [], hi: [] }));
   for (const day of r.days) {
     let base = 0;
     for (let c = r.columns.length - 1; c >= 0; c--) {

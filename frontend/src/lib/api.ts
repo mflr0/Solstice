@@ -49,7 +49,7 @@ import type {
   Sprint,
   SprintPatch,
 } from '../core/board-types.js';
-import type { FlowReport, SprintReport } from '../core/board-report.js';
+import type { FlowReport, SprintReport, VelocityReport } from '../core/board-report.js';
 import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
 
@@ -438,6 +438,8 @@ export const api = {
   reportSprints: (id: number) => request<Sprint[]>('GET', `/api/boards/${id}/reports/sprints`),
   sprintReport: (id: number, sprint: number) =>
     request<SprintReport>('GET', `/api/boards/${id}/sprints/${sprint}/report`),
+  velocityReport: (id: number) =>
+    request<VelocityReport>('GET', `/api/boards/${id}/reports/velocity`),
   flowReport: (id: number, days: number) =>
     request<FlowReport>(
       'GET',

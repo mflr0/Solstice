@@ -1052,6 +1052,7 @@ export const de: Messages = {
   },
 
   reports: {
+    title: 'Sprint-Bericht',
     none: 'Auf diesem Board hat noch kein Sprint begonnen.',
     noneHint: 'Der Bericht eines Sprints beginnt mit seinem Start.',
     counted: 'Dieses Board hat keine Schätzung: Der Bericht zählt Vorgänge.',
@@ -1074,8 +1075,17 @@ export const de: Messages = {
     addedMark: 'nach dem Start hinzugefügt',
     unestimated: 'nicht geschätzt',
     changed: (from: string, to: string) => `${from} → ${to}`,
-    kinds: { sprint: 'Sprint-Bericht', flow: 'Kumulativer Fluss' },
-    report: 'Bericht',
+    views: 'Berichte',
+    velocity: 'Velocity',
+    velocityNone: 'Auf diesem Board wurde noch kein Sprint abgeschlossen.',
+    velocityNoneHint: 'Die Velocity vergleicht die letzten abgeschlossenen Sprints.',
+    velocityLabel: 'Velocity: zum Start zugesagte und erledigte Arbeit je abgeschlossenem Sprint',
+    average: 'Durchschnittlich erledigt',
+    averageOver: (n: number) =>
+      n === 1 ? 'über den letzten Sprint' : `über die letzten ${formatNumber(n)} Sprints`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint}: ${committed} zugesagt, ${completed} erledigt`,
+    flow: 'Kumulativer Fluss',
     period: 'Zeitraum',
     lastDays: (n: number) => `Letzte ${n} Tage`,
     flowNote:

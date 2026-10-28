@@ -1039,6 +1039,7 @@ export const en = {
   },
 
   reports: {
+    title: 'Sprint report',
     none: 'No sprint has started on this board yet.',
     noneHint: 'A sprint’s report begins when it starts.',
     counted: 'This board has no estimate: the report counts issues.',
@@ -1061,8 +1062,17 @@ export const en = {
     addedMark: 'added after the start',
     unestimated: 'not estimated',
     changed: (from: string, to: string) => `${from} → ${to}`,
-    kinds: { sprint: 'Sprint report', flow: 'Cumulative flow' },
-    report: 'Report',
+    views: 'Reports',
+    velocity: 'Velocity',
+    velocityNone: 'No sprint has been completed on this board yet.',
+    velocityNoneHint: 'Velocity compares the last closed sprints.',
+    velocityLabel: 'Velocity: work committed at start and completed, per closed sprint',
+    average: 'Average completed',
+    averageOver: (n: number) =>
+      n === 1 ? 'over the last sprint' : `over the last ${formatNumber(n)} sprints`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint}: ${committed} committed, ${completed} completed`,
+    flow: 'Cumulative flow',
     period: 'Period',
     lastDays: (n: number) => `Last ${n} days`,
     flowNote: 'Issues that match the board’s filter today, in its columns as they are now.',

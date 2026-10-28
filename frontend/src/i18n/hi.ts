@@ -1039,6 +1039,7 @@ export const hi: Messages = {
   },
 
   reports: {
+    title: 'स्प्रिंट रिपोर्ट',
     none: 'इस बोर्ड पर अभी तक कोई स्प्रिंट शुरू नहीं हुआ है।',
     noneHint: 'किसी स्प्रिंट की रिपोर्ट उसके शुरू होने से बनती है।',
     counted: 'इस बोर्ड पर कोई अनुमान नहीं है: रिपोर्ट टिकट गिनती है।',
@@ -1060,8 +1061,17 @@ export const hi: Messages = {
     addedMark: 'शुरू होने के बाद जोड़ा गया',
     unestimated: 'अनुमान नहीं',
     changed: (from: string, to: string) => `${from} → ${to}`,
-    kinds: { sprint: 'स्प्रिंट रिपोर्ट', flow: 'संचयी प्रवाह' },
-    report: 'रिपोर्ट',
+    views: 'रिपोर्टें',
+    velocity: 'वेलोसिटी',
+    velocityNone: 'इस बोर्ड पर अभी तक कोई स्प्रिंट पूरा नहीं हुआ है।',
+    velocityNoneHint: 'वेलोसिटी पिछले बंद स्प्रिंटों की तुलना करती है।',
+    velocityLabel: 'वेलोसिटी: हर बंद स्प्रिंट में शुरुआत में तय और पूरा हुआ काम',
+    average: 'औसतन पूरा',
+    averageOver: (n: number) =>
+      n === 1 ? 'पिछले स्प्रिंट में' : `पिछले ${formatNumber(n)} स्प्रिंटों में`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint}: ${committed} तय, ${completed} पूरा`,
+    flow: 'संचयी प्रवाह',
     period: 'अवधि',
     lastDays: (n: number) => `पिछले ${n} दिन`,
     flowNote: 'वे टिकट जो आज बोर्ड के फ़िल्टर से मेल खाते हैं, उसके कॉलमों में जैसे वे अभी हैं।',
