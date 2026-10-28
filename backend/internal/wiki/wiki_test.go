@@ -1,8 +1,9 @@
-package api
+package wiki
 
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // The exact HTML of renderWiki for the edge cases of its grammar.
@@ -54,12 +55,73 @@ func TestRenderWikiExact(t *testing.T) {
 		{"mono in a mention", "[~{{bob}}]", "<p><span class=\"user-mention\">@{{bob}}</span></p>"},
 		{"mono in a target", "[x|https://x.org/{{a}}] [{{b}}|javascript:{{c}}]", "<p><a href=\"https://x.org/{{a}}\">x</a> [<code>b</code>|javascript:<code>c</code>]</p>"},
 	} {
-		got := renderWiki(c.in)
+		got := HTML(c.in, Options{})
 		if got != c.want {
 			t.Errorf("%s: renderWiki(%q)\n got %q\nwant %q", c.name, c.in, got, c.want)
 		}
 		if strings.Contains(got, "\x00") {
 			t.Errorf("%s: renderWiki(%q) holds a NUL: %q", c.name, c.in, got)
+		}
+	}
+}
+
+func TestRenderWiki(t *testing.T) {
+	out := HTML("h2. Étapes\n# ouvrir le *panier*\n# recharger\n\nVoir _la_ page {{/panier}} et [la doc|https://exemple.org/doc?a=1&b=2].\n"+
+		"* un\n** deux\n----\n{code:go}\nif a < b { panic(\"<x>\") }\n{code}\n||A||B||\n|1|2|\nbq. cité\n[~marie.durand] \\\\ fin", Options{})
+	for _, want := range []string{"<h2>Étapes</h2>", "<ol><li>ouvrir le <b>panier</b></li><li>recharger</li></ol>",
+		"<em>la</em>", "<code>/panier</code>", `<a href="https://exemple.org/doc?a=1&amp;b=2">la doc</a>`,
+		"<ul><li>un<ul><li>deux</li></ul></li></ul>", "<hr/>", `<pre class="code">if a &lt; b { panic(&#34;&lt;x&gt;&#34;) }</pre>`,
+		"<tr><th>A</th><th>B</th></tr>", "<tr><td>1</td><td>2</td></tr>", "<blockquote><p>cité</p></blockquote>",
+		`<span class="user-mention">@marie.durand</span>`, "<br/>"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %s in\n%s", want, out)
+		}
+	}
+	// Nothing from the text runs or links where it should not.
+	for _, src := range []string{`<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, `[clic|javascript:alert(1)]`,
+		`[x|//evil.example]`, `[x|/\evil.example]`, "{noformat}<b>\"'{noformat}", `[a|https://x.org" onmouseover="alert(1)]`} {
+		out := HTML(src, Options{})
+		if strings.Contains(out, "<script") || strings.Contains(out, "<img") || strings.Contains(out, `href="javascript`) ||
+			strings.Contains(out, `href="//`) || strings.Contains(out, `href="/\`) || strings.Contains(out, "<b>") ||
+			strings.Contains(out, `" onmouseover`) {
+			t.Errorf("renderWiki(%q) = %q", src, out)
+		}
+	}
+}
+
+// Rendering stays linear: many links or monospaced spans must not take
+// quadratic time, and very long text is not parsed at all.
+func TestRenderWikiLargeInput(t *testing.T) {
+	start := time.Now()
+	out := HTML(strings.Repeat("{{a}} [b|https://x.org] ", 8000), Options{})
+	if d := time.Since(start); d > 2*time.Second || strings.Count(out, "<code>") != 8000 {
+		t.Errorf("200 KB of markup: %s, %d spans", d, strings.Count(out, "<code>"))
+	}
+	if out := HTML(strings.Repeat("*x* ", maxWiki), Options{}); !strings.HasPrefix(out, "<pre>") {
+		t.Error("text over the limit is parsed")
+	}
+}
+
+func TestOptions(t *testing.T) {
+	o := Options{
+		Mention: func(u string) string { return map[string]string{"bob": "Bob <B>"}[u] },
+		Local: func(p string) string {
+			if p == "/hidden" {
+				return ""
+			}
+			return "https://s.example" + p
+		},
+	}
+	for in, want := range map[string]string{
+		"[~bob] [~ann]":                     `<p><span class="user-mention">@Bob &lt;B&gt;</span> <span class="user-mention">@ann</span></p>`,
+		"[a|/browse/X-1] [b|https://x.org]": `<p><a href="https://s.example/browse/X-1">a</a> <a href="https://x.org">b</a></p>`,
+		"[*a* & {{c}}|/hidden]":             "<p>*a* &amp; <code>c</code></p>",
+		"{quote}[~bob]{quote}":              `<blockquote><p><span class="user-mention">@Bob &lt;B&gt;</span></p></blockquote>`,
+		"|[/t]|":                            `<table><tr><td><a href="https://s.example/t">/t</a></td></tr></table>`,
+		"* [~bob]":                          `<ul><li><span class="user-mention">@Bob &lt;B&gt;</span></li></ul>`,
+	} {
+		if got := HTML(in, o); got != want {
+			t.Errorf("HTML(%q)\n got %q\nwant %q", in, got, want)
 		}
 	}
 }

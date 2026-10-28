@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"solstice/internal/mail"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
+	"solstice/internal/wiki"
 )
 
 // FlushDue writes the batches whose time has come into the outbox.
@@ -131,6 +133,48 @@ func (s *Service) recipientOf(ctx context.Context, userID int64) (*recipient, er
 		return nil, err
 	}
 	return &recipient{user: u, locale: i18n.Pick(u.Locale, s.DefaultLocale()), sub: sub}, nil
+}
+
+// wikiHTML renders wiki text for an e-mail: mentions by display name, links
+// to the site absolute (or left out with no BaseURL), tags styled inline.
+func (s *Service) wikiHTML(ctx context.Context, src string) template.HTML {
+	names, err := s.displayNames(ctx, mentionNames(src, ""))
+	if err != nil {
+		s.log.Warn("reading the names of mentioned users failed", "err", err)
+	}
+	h := wiki.HTML(src, wiki.Options{Mention: func(u string) string { return names[u] }, Local: s.url})
+	return template.HTML(wikiStyles.Replace(h)) // #nosec G203 -- wiki.HTML escapes the text
+}
+
+// displayNames maps mentioned names (usernames in any case, or user keys)
+// to the display names of their users.
+func (s *Service) displayNames(ctx context.Context, mentions []string) (map[string]string, error) {
+	out := map[string]string{}
+	if len(mentions) == 0 {
+		return out, nil
+	}
+	var args []any
+	for _, n := range mentions {
+		args = append(args, strings.ToLower(n))
+	}
+	for _, n := range mentions {
+		args = append(args, n)
+	}
+	err := sqlq.Each(ctx, s.db, `SELECT username, user_key, display_name FROM users WHERE username IN (`+
+		sqlq.Marks(len(mentions))+`) OR user_key IN (`+sqlq.Marks(len(mentions))+`)`, func(rows *sql.Rows) error {
+		var username, name string
+		var key sql.NullString
+		if err := rows.Scan(&username, &key, &name); err != nil {
+			return err
+		}
+		for _, n := range mentions {
+			if strings.ToLower(n) == username || key.Valid && n == key.String {
+				out[n] = name
+			}
+		}
+		return nil
+	}, args...)
+	return out, err
 }
 
 func (s *Service) url(path string) string {
@@ -397,6 +441,9 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 	}
 	if it.Kind == events.IssueCreated && cur != nil && cur.Description != nil {
 		en.Text = excerpt(*cur.Description, 1500)
+	}
+	if en.Text != "" {
+		en.HTML = s.wikiHTML(ctx, en.Text)
 	}
 	if it.Kind == events.IssueUpdated && len(en.Changes) == 0 && !it.Mentioned {
 		return entry{}, false // only lines this recipient may not see

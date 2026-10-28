@@ -1,10 +1,10 @@
-package api
-
-// A small renderer of Jira's wiki markup into HTML, for the REST API's
-// renderedFields: headings, lists, quotes, code and preformatted blocks,
-// tables, rules, links, mentions and the usual text effects. Everything is
-// escaped first; only the tags written here come out, and links only to
-// http(s), mailto or the same site. (The interface renders wiki text itself.)
+// Package wiki renders Jira's wiki markup into HTML, for the REST API's
+// renderedFields and for e-mails: headings, lists, quotes, code and
+// preformatted blocks, tables, rules, links, mentions and the usual text
+// effects. Everything is escaped first; only the tags written here come out,
+// and links only to http(s), mailto or the same site. (The interface renders
+// wiki text itself.)
+package wiki
 
 import (
 	"html"
@@ -35,15 +35,29 @@ var (
 	}
 )
 
+// Options adapt the HTML to where it is shown. The zero value suits a page
+// of the site.
+type Options struct {
+	// Mention names a mentioned user; nil, or an empty name, shows the
+	// username.
+	Mention func(username string) string
+	// Local gives the href of a same-site link (a path); nil keeps the path,
+	// an empty href shows the link's text without a link.
+	Local func(path string) string
+}
+
+// HTML renders wiki text as HTML.
+func HTML(src string, o Options) string { return o.render(src) }
+
 // maxWiki bounds the text rendered as markup; longer text comes out as
 // preformatted plain text.
 const maxWiki = 256 << 10
 
-func renderWiki(src string) string {
+func (o Options) render(src string) string {
 	if len(src) > maxWiki {
 		return "<pre>" + html.EscapeString(src) + "</pre>"
 	}
-	var w wikiWriter
+	w := wikiWriter{o: o}
 	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	for i := 0; i < len(lines); {
 		trimmed := strings.TrimSpace(lines[i])
@@ -51,7 +65,7 @@ func renderWiki(src string) string {
 		if m := wikiBlock.FindStringSubmatch(trimmed); m != nil {
 			w.endBlock()
 			var block string
-			block, next = wikiBlockAt(lines, i, m[1], m[2])
+			block, next = o.blockAt(lines, i, m[1], m[2])
 			w.out.WriteString(block)
 		} else if trimmed == "" {
 			w.endBlock()
@@ -60,21 +74,21 @@ func renderWiki(src string) string {
 			w.out.WriteString("<hr/>")
 		} else if m := wikiHeading.FindStringSubmatch(trimmed); m != nil {
 			w.endBlock()
-			w.out.WriteString("<h" + m[1] + ">" + wikiInline(m[2]) + "</h" + m[1] + ">")
+			w.out.WriteString("<h" + m[1] + ">" + o.inline(m[2]) + "</h" + m[1] + ">")
 		} else if text, ok := strings.CutPrefix(trimmed, "bq. "); ok {
 			w.endBlock()
-			w.out.WriteString("<blockquote><p>" + wikiInline(text) + "</p></blockquote>")
+			w.out.WriteString("<blockquote><p>" + o.inline(text) + "</p></blockquote>")
 		} else if strings.HasPrefix(trimmed, "|") {
 			w.endBlock()
 			var table string
-			table, next = wikiTableAt(lines, i)
+			table, next = o.tableAt(lines, i)
 			w.out.WriteString(table)
 		} else if m := wikiList.FindStringSubmatch(trimmed); m != nil {
 			w.flushPara()
 			w.listItem(m[1], m[2])
 		} else {
 			w.closeLists(0)
-			w.para = append(w.para, wikiInline(trimmed))
+			w.para = append(w.para, o.inline(trimmed))
 		}
 		i = next
 	}
@@ -82,9 +96,10 @@ func renderWiki(src string) string {
 	return w.out.String()
 }
 
-// wikiWriter is the HTML renderWiki writes, with the paragraph and the lists
+// wikiWriter is the HTML render writes, with the paragraph and the lists
 // still open.
 type wikiWriter struct {
+	o     Options
 	out   strings.Builder
 	para  []string // rendered lines of the open paragraph
 	lists []string // open list tags, outermost first
@@ -122,20 +137,20 @@ func (w *wikiWriter) listItem(marks, text string) {
 	if depth <= len(w.lists) {
 		w.closeLists(depth)
 		if w.lists[depth-1] == tag {
-			w.out.WriteString("</li><li>" + wikiInline(text))
+			w.out.WriteString("</li><li>" + w.o.inline(text))
 			return
 		}
 		w.closeLists(depth - 1)
 	}
-	w.out.WriteString("<" + tag + "><li>" + wikiInline(text))
+	w.out.WriteString("<" + tag + "><li>" + w.o.inline(text))
 	w.lists = append(w.lists, tag)
 }
 
-// wikiBlockAt renders the {code}, {noformat} or {quote} block of the given
+// blockAt renders the {code}, {noformat} or {quote} block of the given
 // kind that opens on lines[i], rest being the text after its tag, up to its
 // closing tag or the end of the text. It returns the index of the line after
 // the block.
-func wikiBlockAt(lines []string, i int, kind, rest string) (string, int) {
+func (o Options) blockAt(lines []string, i int, kind, rest string) (string, int) {
 	closing := "{" + kind + "}"
 	var body []string
 	for {
@@ -150,7 +165,7 @@ func wikiBlockAt(lines []string, i int, kind, rest string) (string, int) {
 	text := strings.Trim(strings.Join(body, "\n"), "\n")
 	switch kind {
 	case "quote":
-		return "<blockquote>" + renderWiki(text) + "</blockquote>", i
+		return "<blockquote>" + o.render(text) + "</blockquote>", i
 	case "code":
 		return `<pre class="code">` + html.EscapeString(text) + "</pre>", i
 	default:
@@ -158,9 +173,9 @@ func wikiBlockAt(lines []string, i int, kind, rest string) (string, int) {
 	}
 }
 
-// wikiTableAt renders the table whose rows start on lines[i], and returns
+// tableAt renders the table whose rows start on lines[i], and returns
 // the index of the first line after it.
-func wikiTableAt(lines []string, i int) (string, int) {
+func (o Options) tableAt(lines []string, i int) (string, int) {
 	var out strings.Builder
 	out.WriteString("<table>")
 	for ; i < len(lines); i++ {
@@ -168,14 +183,14 @@ func wikiTableAt(lines []string, i int) (string, int) {
 		if !strings.HasPrefix(row, "|") {
 			break
 		}
-		out.WriteString(wikiRow(row))
+		out.WriteString(o.row(row))
 	}
 	out.WriteString("</table>")
 	return out.String(), i
 }
 
-// wikiRow renders a table row: ||heading||heading|| or |cell|cell|.
-func wikiRow(line string) string {
+// row renders a table row: ||heading||heading|| or |cell|cell|.
+func (o Options) row(line string) string {
 	var out strings.Builder
 	out.WriteString("<tr>")
 	for len(line) > 0 {
@@ -193,16 +208,16 @@ func wikiRow(line string) string {
 		if end < 0 {
 			end = len(line)
 		}
-		out.WriteString("<" + tag + ">" + wikiInline(strings.TrimSpace(line[:end])) + "</" + tag + ">")
+		out.WriteString("<" + tag + ">" + o.inline(strings.TrimSpace(line[:end])) + "</" + tag + ">")
 		line = line[end:]
 	}
 	out.WriteString("</tr>")
 	return out.String()
 }
 
-// wikiInline renders the text effects of a line. Links and monospaced text
+// inline renders the text effects of a line. Links and monospaced text
 // are set aside first, so their content is not formatted.
-func wikiInline(text string) string {
+func (o Options) inline(text string) string {
 	text = strings.ReplaceAll(text, "\x00", "")
 	var kept, mono []string // mono: the source of each monospaced span, kept first
 	keep := func(s string) string {
@@ -223,16 +238,30 @@ func wikiInline(text string) string {
 	// their source back, the text it shows their HTML.
 	text = replaceSubmatch(wikiLink, text, func(m []string) string {
 		label, target := m[1], strings.TrimSpace(restore(m[2], mono))
-		if strings.HasPrefix(target, "~") {
-			return keep(`<span class="user-mention">@` + html.EscapeString(target[1:]) + "</span>")
+		if user, ok := strings.CutPrefix(target, "~"); ok {
+			name := ""
+			if o.Mention != nil {
+				name = o.Mention(user)
+			}
+			if name == "" {
+				name = user
+			}
+			return keep(`<span class="user-mention">@` + html.EscapeString(name) + "</span>")
 		}
 		if label == "" {
 			label = target
 		}
-		if !safeHref(target) {
+		if !SafeHref(target) {
 			return keep(restore(html.EscapeString(m[0]), kept))
 		}
-		return keep(`<a href="` + html.EscapeString(target) + `">` + restore(html.EscapeString(label), kept) + "</a>")
+		shown := restore(html.EscapeString(label), kept)
+		href := target
+		if strings.HasPrefix(target, "/") && o.Local != nil {
+			if href = o.Local(target); href == "" {
+				return keep(shown)
+			}
+		}
+		return keep(`<a href="` + html.EscapeString(href) + `">` + shown + "</a>")
 	})
 	text = html.EscapeString(wikiColor.ReplaceAllString(text, ""))
 	text = strings.ReplaceAll(text, `\\`, "<br/>")
@@ -269,7 +298,9 @@ func replaceSubmatch(re *regexp.Regexp, s string, repl func(m []string) string) 
 	return out.String()
 }
 
-func safeHref(u string) bool {
+// SafeHref reports whether a link may point to u: http(s), mailto or a path
+// of the site.
+func SafeHref(u string) bool {
 	if strings.ContainsAny(u, "\\\x00") {
 		return false
 	}

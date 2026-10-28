@@ -17,6 +17,7 @@ import (
 	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
+	"solstice/internal/wiki"
 )
 
 // sysField is one of Jira's system fields, as Solstice keeps them.
@@ -694,15 +695,15 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 func (o *restOut) renderedFields(d *issueData, sel *fieldSelection) map[string]any {
 	out := map[string]any{}
 	if sel.hasSystem("description") {
-		out["description"] = renderWikiPtr(d.row.Description)
+		out["description"] = wikiHTMLPtr(d.row.Description)
 	}
 	if sel.hasSystem("environment") {
-		out["environment"] = renderWikiPtr(d.row.Environment)
+		out["environment"] = wikiHTMLPtr(d.row.Environment)
 	}
 	if sel.hasSystem("comment") {
 		list := []any{}
 		for _, c := range d.comments {
-			list = append(list, map[string]any{"id": o.id(c.id), "body": renderWiki(c.body),
+			list = append(list, map[string]any{"id": o.id(c.id), "body": wiki.HTML(c.body, wiki.Options{}),
 				"created": o.time(c.created), "updated": o.time(c.updated)})
 		}
 		out["comment"] = map[string]any{"comments": list, "maxResults": len(list), "total": len(list), "startAt": 0}
@@ -710,11 +711,11 @@ func (o *restOut) renderedFields(d *issueData, sel *fieldSelection) map[string]a
 	return out
 }
 
-func renderWikiPtr(s sql.NullString) any {
+func wikiHTMLPtr(s sql.NullString) any {
 	if !s.Valid {
 		return nil
 	}
-	return renderWiki(s.String)
+	return wiki.HTML(s.String, wiki.Options{})
 }
 
 // sortComments orders comments for the comment endpoint's orderBy

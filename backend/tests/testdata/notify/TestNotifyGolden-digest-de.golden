@@ -46,7 +46,7 @@ Meine Benachrichtigungen verwalten: https://tickets.exemple.fr/settings/notifica
 <p style="margin:4px 0 0;color:#6c685e;font-size:13px;">Story · To Do · Medium · Zugewiesen an Paul Martin</p>
 <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
 <p style="margin:0 0 6px;">Paul Martin hat kommentiert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
-<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;white-space:pre-wrap;word-wrap:break-word;">Für die Zusammenfassung</div>
+<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;word-wrap:break-word;"><p style="margin:0 0 6px;">Für die Zusammenfassung</p></div>
 </div>
 <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
 <p style="margin:0 0 6px;">Paul Martin hat den Vorgang geändert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
@@ -61,7 +61,7 @@ Meine Benachrichtigungen verwalten: https://tickets.exemple.fr/settings/notifica
 <p style="margin:4px 0 0;color:#6c685e;font-size:13px;">Story · To Do · Medium · Zugewiesen an Paul Martin</p>
 <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e6e0d4;">
 <p style="margin:0 0 6px;">Paul Martin hat kommentiert. <span style="color:#6c685e;font-size:12px;"><when></span></p>
-<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;white-space:pre-wrap;word-wrap:break-word;">Für die Zusammenfassung</div>
+<div style="margin-top:6px;padding:2px 0 2px 12px;border-left:2px solid #cfc7b7;word-wrap:break-word;"><p style="margin:0 0 6px;">Für die Zusammenfassung</p></div>
 </div>
 <p style="margin:14px 0 0;"><a href="https://tickets.exemple.fr/browse/KEY-1" style="color:#c2321b;">Vorgang öffnen</a></p>
 </div>
