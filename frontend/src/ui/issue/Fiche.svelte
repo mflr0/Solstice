@@ -131,7 +131,10 @@
             quiet
             label={t.issue.priority}
             value={issue.priority?.id ?? ''}
-            options={(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            options={(session.meta?.priorities ?? []).map((p) => ({
+              value: p.id,
+              label: session.priorityName(p),
+            }))}
             onchange={(v) => void onchange({ priority: v || null })}
           >
             {#snippet icon(id)}
@@ -151,7 +154,7 @@
             quiet
             label={t.issue.type}
             value={issue.type.id}
-            options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+            options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
             onchange={(v) => void onchange({ type: v })}
           >
             {#snippet icon(id)}
@@ -309,7 +312,9 @@
         <dt>{t.issue.resolved}</dt>
         <dd>
           <span title={formatDateTime(issue.resolved)}><RelTime iso={issue.resolved} /></span>
-          {#if issue.resolution}<span class="muted">· {issue.resolution.name}</span>{/if}
+          {#if issue.resolution}<span class="muted"
+              >· {session.resolutionName(issue.resolution)}</span
+            >{/if}
         </dd>
       </div>
     {/if}

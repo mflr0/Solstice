@@ -536,21 +536,24 @@ type statusRef struct {
 }
 
 type priorityRef struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Color   string `json:"color,omitempty"`
-	Default bool   `json:"default,omitempty"` // of issues created without one
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Color   string   `json:"color,omitempty"`
+	Default bool     `json:"default,omitempty"` // of issues created without one
+	Seed    i18n.Key `json:"seed,omitempty"`
 }
 
 type namedRef struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string   `json:"id"`
+	Name string   `json:"name"`
+	Seed i18n.Key `json:"seed,omitempty"`
 }
 
 type typeRef struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Subtask bool   `json:"subtask"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Subtask bool     `json:"subtask"`
+	Seed    i18n.Key `json:"seed,omitempty"`
 }
 
 type linkTypeRef struct {
@@ -558,7 +561,23 @@ type linkTypeRef struct {
 	Name    string `json:"name"`
 	Inward  string `json:"inward"`
 	Outward string `json:"outward"`
+	// The keys of the seeded defaults each text still is, if any.
+	Seed        i18n.Key `json:"seed,omitempty"`
+	InwardSeed  i18n.Key `json:"inwardSeed,omitempty"`
+	OutwardSeed i18n.Key `json:"outwardSeed,omitempty"`
 }
+
+// The defaults seedCatalogues writes, by catalogue. Catalogue rows whose
+// text is still one of them carry its key, so that the interface can show
+// it in each viewer's language.
+var (
+	seededPriorities  = []i18n.Key{i18n.DefaultPriorityVeryHigh, i18n.DefaultPriorityHigh, i18n.DefaultPriorityMedium, i18n.DefaultPriorityLow, i18n.DefaultPriorityVeryLow}
+	seededResolutions = []i18n.Key{i18n.DefaultResolutionDone, i18n.DefaultResolutionWontDo, i18n.DefaultResolutionDuplicate, i18n.DefaultResolutionCannotReproduce}
+	seededIssueTypes  = []i18n.Key{i18n.DefaultTypeTask, i18n.DefaultTypeBug, i18n.DefaultTypeStory, i18n.DefaultTypeEpic, i18n.DefaultTypeSubtask}
+	seededLinkNames   = []i18n.Key{i18n.DefaultLinkBlocksName, i18n.DefaultLinkRelatesName, i18n.DefaultLinkDuplicatesName, i18n.DefaultLinkClonesName}
+	seededLinkVerbs   = []i18n.Key{i18n.DefaultLinkBlocksInward, i18n.DefaultLinkBlocksOutward, i18n.DefaultLinkRelatesDirection,
+		i18n.DefaultLinkDuplicatesInward, i18n.DefaultLinkDuplicatesOutward, i18n.DefaultLinkClonesInward, i18n.DefaultLinkClonesOutward}
+)
 
 type catalog struct {
 	Statuses    []statusRef   `json:"statuses"`
@@ -605,6 +624,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		if err := rows.Scan(&v.ID, &v.Name, &v.Color, &v.Default); err != nil {
 			return err
 		}
+		v.Seed = i18n.Match(v.Name, seededPriorities...)
 		c.Priorities = append(c.Priorities, v)
 		c.priority[v.ID] = v
 		return nil
@@ -618,6 +638,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		if err := rows.Scan(&v.ID, &v.Name, &def); err != nil {
 			return err
 		}
+		v.Seed = i18n.Match(v.Name, seededResolutions...)
 		c.Resolutions = append(c.Resolutions, v)
 		c.resolution[v.ID] = v
 		if def {
@@ -633,6 +654,7 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		if err := rows.Scan(&v.ID, &v.Name, &v.Subtask); err != nil {
 			return err
 		}
+		v.Seed = i18n.Match(v.Name, seededIssueTypes...)
 		c.IssueTypes = append(c.IssueTypes, v)
 		c.issueType[v.ID] = v
 		return nil
@@ -645,6 +667,8 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 		if err := rows.Scan(&v.ID, &v.Name, &v.Inward, &v.Outward); err != nil {
 			return err
 		}
+		v.Seed = i18n.Match(v.Name, seededLinkNames...)
+		v.InwardSeed, v.OutwardSeed = i18n.Match(v.Inward, seededLinkVerbs...), i18n.Match(v.Outward, seededLinkVerbs...)
 		c.LinkTypes = append(c.LinkTypes, v)
 		c.linkType[v.ID] = v
 		return nil

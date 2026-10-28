@@ -173,7 +173,7 @@
         <Dropdown
           label={t.create.type}
           value={typeId}
-          options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+          options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
           disabled={!detail}
           onchange={(v) => (typeId = v)}
         >
@@ -207,7 +207,10 @@
         <Dropdown
           label={t.create.priority}
           value={priorityId}
-          options={(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name }))}
+          options={(session.meta?.priorities ?? []).map((p) => ({
+            value: p.id,
+            label: session.priorityName(p),
+          }))}
           onchange={(v) => (priorityId = v)}
         >
           {#snippet icon(id)}

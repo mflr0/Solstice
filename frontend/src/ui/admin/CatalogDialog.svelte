@@ -162,6 +162,7 @@
           <TypeMark
             type={{ id: '', name: form.name.trim() || m.namePlaceholder, subtask: form.subtask }}
             withName
+            asStored
           />
         </p>
       </div>
@@ -209,6 +210,7 @@
               ...(color ? { color } : {}),
             }}
             withName
+            asStored
           />
         </p>
       </div>

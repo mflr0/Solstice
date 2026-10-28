@@ -7,23 +7,25 @@
   interface Props {
     priority: PriorityRef | null;
     withName?: boolean | undefined;
+    /** Shows the name as stored, not as a seeded default in the viewer's language. */
+    asStored?: boolean | undefined;
   }
-  const { priority, withName = false }: Props = $props();
+  const { priority, withName = false, asStored = false }: Props = $props();
+  const name = $derived(priority && !asStored ? session.priorityName(priority) : priority?.name);
 
   const index = $derived(priority ? session.priorityIndex(priority) : -1);
   const level = $derived(priorityLevel(index, session.meta?.priorities.length ?? 0));
 </script>
 
 {#if priority}
-  <span class="prio priority-mark" title={priority.name}>
+  <span class="prio priority-mark" title={name}>
     <span
       class="glyph"
       data-level={index < 0 ? 'other' : level}
       style:--priority-color={priority.color || null}
       aria-hidden="true">{PRIORITY_GLYPHS[level]}</span
     >
-    {#if withName}<span>{priority.name}</span>{:else}<span class="sr-only">{priority.name}</span
-      >{/if}
+    {#if withName}<span>{name}</span>{:else}<span class="sr-only">{name}</span>{/if}
   </span>
 {/if}
 

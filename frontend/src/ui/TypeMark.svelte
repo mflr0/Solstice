@@ -1,21 +1,25 @@
 <script lang="ts">
   import { typeLetter, typeTone } from '../core/marks.js';
   import type { TypeRef } from '../core/types.js';
+  import { session } from '../lib/session.svelte.js';
 
   /** An issue type as a small lettered box, optionally followed by its name. */
   interface Props {
     type: TypeRef;
     withName?: boolean | undefined;
+    /** Shows the name as stored, not as a seeded default in the viewer's language. */
+    asStored?: boolean | undefined;
   }
-  const { type, withName = false }: Props = $props();
+  const { type, withName = false, asStored = false }: Props = $props();
   const tone = $derived(typeTone(type.name, type.subtask));
+  const name = $derived(asStored ? type.name : session.typeName(type));
 </script>
 
-<span class="type" title={type.name}>
+<span class="type" title={name}>
   <span class="box type-mark {tone}" data-type={tone} aria-hidden={withName}
-    >{typeLetter(type.name)}</span
+    >{typeLetter(name)}</span
   >
-  {#if withName}<span>{type.name}</span>{:else}<span class="sr-only">{type.name}</span>{/if}
+  {#if withName}<span>{name}</span>{:else}<span class="sr-only">{name}</span>{/if}
 </span>
 
 <style>

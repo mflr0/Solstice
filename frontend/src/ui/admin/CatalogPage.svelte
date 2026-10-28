@@ -239,6 +239,7 @@
                     <TypeMark
                       type={{ id: String(item.id), name: item.name, subtask: !!item.subtask }}
                       withName
+                      asStored
                     />
                     {#if item.subtask}<span class="chip">{t.catalogAdmin.subtask}</span>{/if}
                   {:else if kind === 'priorities'}
@@ -249,6 +250,7 @@
                         ...(item.color ? { color: item.color } : {}),
                       }}
                       withName
+                      asStored
                     />
                     {#if item.color}<span class="muted mono">{item.color}</span>{/if}
                     {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span
