@@ -398,7 +398,7 @@ func (s *Server) auditSprint(r *http.Request, action string, id int64, name stri
 func boardChanges(in boardInput) []string {
 	var out []string
 	for name, set := range map[string]bool{"name": in.Name != nil, "subQuery": in.SubQuery != nil,
-		"doneCutoff": in.DoneCutoff != nil, "swimlanes": in.Swimlanes != nil, "estimate": in.Estimate != nil,
+		"doneCutoff": in.DoneCutoff != nil, "swimlanes": in.Swimlanes != nil, "estimate": in.Estimate != nil, "kanbanBacklog": in.Backlog != nil,
 		"columns": in.Columns != nil, "quickFilters": in.QuickFilters != nil, "lanes": in.Lanes != nil} {
 		if set {
 			out = append(out, name)

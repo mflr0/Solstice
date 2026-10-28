@@ -48,6 +48,7 @@
   interface Drafts {
     general: { name: string; subQuery: string; doneCutoff: string };
     columns: ColumnDraft[];
+    kanbanBacklog: boolean;
     quick: QuickDraft[];
     lanes: { strategy: SwimlaneStrategy; list: LaneDraft[] };
     estimate: string;
@@ -76,6 +77,7 @@
         max: c.max === null ? '' : String(c.max),
         statuses: [...c.statuses],
       })),
+      kanbanBacklog: d.board.kanbanBacklog,
       quick: d.quickFilters.map((q) => ({
         id: q.id,
         name: q.name,
@@ -128,8 +130,14 @@
     for (const part of ['general', 'columns', 'quick', 'lanes', 'estimate'] as const) {
       out[part] = JSON.stringify(draft[part]) !== JSON.stringify(saved[part]);
     }
+    out.columns ||= backlogAllowed && draft.kanbanBacklog !== saved.kanbanBacklog;
     return out;
   });
+
+  /** A Kanban backlog takes the first column: the board keeps the others. */
+  const backlogAllowed = $derived(
+    !!draft && draft.columns.length >= 2 && (draft.columns[0]?.statuses.length ?? 0) > 0,
+  );
 
   const mapped = $derived(new Set(draft?.columns.flatMap((c) => c.statuses.map((s) => s.id))));
   const unmapped = $derived(pool.filter((s) => !mapped.has(s.id)));
@@ -148,6 +156,7 @@
         };
       case 'columns':
         return {
+          ...(kanban ? { kanbanBacklog: backlogAllowed && d.kanbanBacklog } : {}),
           columns: d.columns.map((c) => ({
             ...(c.id ? { id: c.id } : {}),
             name: c.name,
@@ -198,8 +207,10 @@
       // Only this section takes the server's version: the others keep their edits.
       const fresh = fromDetail(next);
       if (part === 'general') draft.general = fresh.general;
-      else if (part === 'columns') draft.columns = fresh.columns;
-      else if (part === 'quick') draft.quick = fresh.quick;
+      else if (part === 'columns') {
+        draft.columns = fresh.columns;
+        draft.kanbanBacklog = fresh.kanbanBacklog;
+      } else if (part === 'quick') draft.quick = fresh.quick;
       else if (part === 'lanes') draft.lanes = fresh.lanes;
       else draft.estimate = fresh.estimate;
       notify(t.boardSettings.saved);
@@ -214,8 +225,10 @@
     if (!draft || !saved) return;
     errors[part] = '';
     if (part === 'general') draft.general = saved.general;
-    else if (part === 'columns') draft.columns = saved.columns;
-    else if (part === 'quick') draft.quick = saved.quick;
+    else if (part === 'columns') {
+      draft.columns = saved.columns;
+      draft.kanbanBacklog = saved.kanbanBacklog;
+    } else if (part === 'quick') draft.quick = saved.quick;
     else if (part === 'lanes') draft.lanes = saved.lanes;
     else draft.estimate = saved.estimate;
   }
@@ -329,6 +342,25 @@
         {t.boardSettings.columns} <span class="count">{f.columns.length}</span>
       </h2>
       <p class="hint intro">{t.boardSettings.columnsHint}</p>
+      {#if kanban}
+        <label class="check">
+          <input
+            class="checkbox"
+            type="checkbox"
+            checked={f.kanbanBacklog && backlogAllowed}
+            disabled={!backlogAllowed}
+            onchange={(e) => (f.kanbanBacklog = e.currentTarget.checked)}
+          />
+          <span>
+            {t.boardSettings.kanbanBacklog}
+            <span class="hint"
+              >{backlogAllowed
+                ? t.boardSettings.kanbanBacklogHint
+                : t.boardSettings.kanbanBacklogNeeds}</span
+            >
+          </span>
+        </label>
+      {/if}
       <ol class="columns">
         {#each f.columns as column, i (column.id ?? `new-${i}`)}
           <li class="card column-edit">
@@ -341,6 +373,9 @@
                 maxlength="255"
                 aria-label={t.boardSettings.columnName}
               />
+              {#if kanban && i === 0 && f.kanbanBacklog && backlogAllowed}
+                <span class="chip">{t.boards.backlog}</span>
+              {/if}
             </div>
             <div class="column-body">
               <div class="limits">
@@ -685,6 +720,18 @@
 
   .intro {
     margin: -2px 0 12px;
+  }
+
+  .check {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin: 0 0 14px;
+    line-height: 1.4;
+  }
+
+  .check .hint {
+    display: block;
   }
 
   .sub {

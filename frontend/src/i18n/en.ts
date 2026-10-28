@@ -1003,6 +1003,7 @@ export const en = {
     toNewSprint: 'A new sprint',
     backlog: 'Backlog',
     backlogEmpty: 'The backlog is empty.',
+    toBoardHint: 'On the board',
     sectionCount: (n: number) => plural(n, 'issue', 'issues'),
   },
 
@@ -1038,6 +1039,9 @@ export const en = {
     remove: (name: string) => `Remove “${name}”`,
     unmapped: 'Statuses without a column',
     unmappedHint: 'Issues in these statuses don’t appear on the board.',
+    kanbanBacklog: 'Kanban backlog',
+    kanbanBacklogHint: 'The first column’s issues go to a backlog page, out of the board.',
+    kanbanBacklogNeeds: 'Needs at least two columns, the first with a status.',
     allMapped: 'Every status of the board’s projects has a column.',
     putIn: (name: string) => `Put “${name}” in`,
     chooseColumn: 'Choose a column…',

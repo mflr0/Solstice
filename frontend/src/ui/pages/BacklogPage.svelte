@@ -28,8 +28,9 @@
 
   /**
    * A Scrum board's backlog: its open sprints (the active one first), then
-   * the issues not planned yet. Issues are dragged (or moved from their
-   * menu) between sections and up and down.
+   * the issues not planned yet. A Kanban board's: a drop zone for its second
+   * column, then the issues of its first. Issues are dragged (or moved from
+   * their menu) between sections and up and down.
    */
   interface Props {
     boardId: number;
@@ -100,15 +101,21 @@
   $effect(() => live.onChange(debounce(reload, 400)));
 
   interface Section {
-    /** The sprint's id; 0 for the backlog. */
+    /** The sprint's id; 0 for the backlog, BOARD for a Kanban board's drop zone. */
     id: number;
     sprint: Sprint | null;
     cards: Card[];
   }
 
+  const BOARD = -1;
+  const kanban = $derived(detail?.board.kind === 'kanban');
+  /** Where an issue leaving a Kanban backlog goes: the board's second column. */
+  const boardColumn = $derived(kanban ? detail?.columns[1] : undefined);
+
   const sections = $derived.by((): Section[] => {
     const all = cards ?? [];
     return [
+      ...(boardColumn ? [{ id: BOARD, sprint: null, cards: [] }] : []),
       ...sprints.map((s) => ({ id: s.id, sprint: s, cards: all.filter((c) => c.sprint === s.id) })),
       { id: 0, sprint: null, cards: all.filter((c) => c.sprint === undefined) },
     ];
@@ -117,6 +124,7 @@
   const future = $derived(sprints.filter((s) => s.state === 'future'));
 
   function sectionName(id: number): string {
+    if (id === BOARD) return boardColumn?.name ?? '';
     return id === 0 ? t.boards.backlog : (sprints.find((s) => s.id === id)?.name ?? '');
   }
 
@@ -135,6 +143,8 @@
     if (!cards) return;
     const before = cards;
     cards = applyMove(cards, m);
+    // To the board: the issue leaves the backlog page.
+    if (m.column !== undefined) cards = cards.filter((c) => c.key !== m.issue);
     pending++;
     if (refocus) {
       await tick();
@@ -168,9 +178,17 @@
         {
           label: t.boards.moveTo,
           items: sections.map((s) => ({
-            label: s.sprint ? s.sprint.name : t.boards.backlog,
+            label: sectionName(s.id),
             disabled: s.id === section.id,
             run: () => {
+              if (s.id === BOARD) {
+                if (boardColumn)
+                  void move(
+                    { issue: card.key, column: boardColumn.id },
+                    t.boards.moved(card.key, boardColumn.name),
+                  );
+                return;
+              }
               // To the bottom of a sprint, to the top of the backlog.
               const first = s.cards[0]?.key;
               const last = s.cards[s.cards.length - 1]?.key;
@@ -252,6 +270,11 @@
     const index = indexAt(e.currentTarget as HTMLElement, e.clientY);
     const keys = section.cards.map((c) => c.key);
     endDrag();
+    if (section.id === BOARD) {
+      if (boardColumn)
+        void move({ issue: key, column: boardColumn.id }, t.boards.moved(key, boardColumn.name));
+      return;
+    }
     if (from === section.id && staysInPlace(keys, key, index)) return;
     const m: CardMove = { issue: key, ...neighbours(keys, key, index) };
     if (from !== section.id) m.sprint = section.id;
@@ -314,9 +337,9 @@
         <section class="backlog-section" aria-labelledby="section-{section.id}">
           <SprintHead
             id="section-{section.id}"
-            title={s ? s.name : t.boards.backlog}
+            title={sectionName(section.id)}
             sprint={s}
-            meta={meta(section.cards)}
+            meta={section.id === BOARD ? t.boards.toBoardHint : meta(section.cards)}
           >
             {#snippet actions()}
               {#if d.can.manage && s?.state === 'future'}
@@ -341,7 +364,7 @@
                 <button class="btn btn-small" onclick={() => (completing = s)}
                   >{t.boards.completeSprint}</button
                 >
-              {:else if d.can.manage && !s}
+              {:else if d.can.manage && section.id === 0 && !kanban}
                 <button class="btn btn-small" disabled={creatingSprint} onclick={createSprint}
                   >{t.boards.createSprint}</button
                 >
@@ -370,7 +393,7 @@
                 />
               {:else}
                 <p class="drop-empty">
-                  {s ? t.boards.dropHere : t.boards.backlogEmpty}
+                  {section.id === 0 ? t.boards.backlogEmpty : t.boards.dropHere}
                   {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
                     ></span>{/if}
                 </p>

@@ -457,6 +457,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardColumnLimits:            "Colonne « %s » : le minimum dépasse le maximum.",
 	BoardColumnUnknown:           "Colonne inconnue sur ce tableau.",
 	BoardStatusInTwoColumns:      "Le statut « %s » est dans deux colonnes.",
+	BoardBacklogColumns:          "Un backlog Kanban demande au moins deux colonnes, dont la première a un statut.",
 	BoardQuickFilterNameRequired: "Chaque filtre rapide a un nom.",
 	BoardQuickFilterNamed:        "Filtre rapide « %s »",
 	BoardSwimlaneNameRequired:    "Chaque couloir a un nom.",

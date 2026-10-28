@@ -123,9 +123,9 @@ boards, then projects), starting with an issue. The structural tickets of the
 - E-mails show comments as escaped text; wiki markup is not rendered.
 - No e-mail for work logs or deleted comments (webhooks do send them).
 - `internal/api/issues.go:1395` ignores the error of reading the `type` field.
-- Boards: no backlog column on Kanban boards; drag and drop does not work by
-  touch (the card menu is used on phones); swimlane collapse buttons come late
-  in the tab order; deleting a board leaves its sprints with no board.
+- Boards: drag and drop does not work by touch (the card menu is used on
+  phones); swimlane collapse buttons come late in the tab order; deleting a
+  board leaves its sprints with no board.
 - Editor: a `[` inside monospace text, in a table cell that is not the last of
   its row, cannot be typed.
 - REST API not implemented: createmeta and editmeta, issue picker, remote

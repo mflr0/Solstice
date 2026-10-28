@@ -459,6 +459,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardColumnLimits:            "कॉलम “%s”: न्यूनतम मान अधिकतम से ज़्यादा है।",
 	BoardColumnUnknown:           "इस बोर्ड पर अज्ञात कॉलम।",
 	BoardStatusInTwoColumns:      "स्टेटस “%s” दो कॉलम में है।",
+	BoardBacklogColumns:          "कानबान बैकलॉग के लिए कम से कम दो कॉलम चाहिए, पहले में कोई स्टेटस हो।",
 	BoardQuickFilterNameRequired: "हर क्विक फ़िल्टर का नाम होना चाहिए।",
 	BoardQuickFilterNamed:        "क्विक फ़िल्टर “%s”",
 	BoardSwimlaneNameRequired:    "हर स्विमलेन का नाम होना चाहिए।",

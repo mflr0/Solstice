@@ -458,6 +458,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardColumnLimits:            "Spalte „%s“: Das Minimum ist größer als das Maximum.",
 	BoardColumnUnknown:           "Unbekannte Spalte auf diesem Board.",
 	BoardStatusInTwoColumns:      "Der Status „%s“ ist in zwei Spalten.",
+	BoardBacklogColumns:          "Ein Kanban-Backlog braucht mindestens zwei Spalten, die erste mit einem Status.",
 	BoardQuickFilterNameRequired: "Jeder Schnellfilter braucht einen Namen.",
 	BoardQuickFilterNamed:        "Schnellfilter „%s“",
 	BoardSwimlaneNameRequired:    "Jede Swimlane braucht einen Namen.",

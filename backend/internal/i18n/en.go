@@ -456,6 +456,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardColumnLimits:            "Column “%s”: the minimum is greater than the maximum.",
 	BoardColumnUnknown:           "Unknown column on this board.",
 	BoardStatusInTwoColumns:      "Status “%s” is in two columns.",
+	BoardBacklogColumns:          "A Kanban backlog needs at least two columns, the first with a status.",
 	BoardQuickFilterNameRequired: "Every quick filter needs a name.",
 	BoardQuickFilterNamed:        "Quick filter “%s”",
 	BoardSwimlaneNameRequired:    "Every swimlane needs a name.",

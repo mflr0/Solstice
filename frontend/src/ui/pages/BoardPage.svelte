@@ -110,6 +110,10 @@
 
   $effect(() => live.onChange(debounce(reload, 400)));
 
+  /** A Kanban backlog's column: its issues are on the backlog page, not here. */
+  const backlogColumn = $derived(detail?.board.kanbanBacklog ? detail.columns[0] : undefined);
+  const columns = $derived(detail ? detail.columns.filter((c) => c.id !== backlogColumn?.id) : []);
+
   const lanes = $derived(
     detail && cards ? groupLanes(cards, detail.board.swimlanes, detail.swimlanes) : [],
   );
@@ -157,7 +161,7 @@
   async function move(m: CardMove, message: string, refocus = false) {
     if (!cards) return;
     const before = cards;
-    cards = applyMove(cards, m);
+    cards = applyMove(cards, m).filter((c) => c.column !== backlogColumn?.id);
     pending++;
     if (refocus) {
       await tick();
@@ -184,12 +188,31 @@
       return [
         {
           label: t.boards.moveTo,
-          items: (detail?.columns ?? []).map((c) => ({
-            label: c.name,
-            disabled: c.id === card.column,
-            run: () =>
-              void move({ issue: card.key, column: c.id }, t.boards.moved(card.key, c.name), true),
-          })),
+          items: [
+            ...columns.map((c) => ({
+              label: c.name,
+              disabled: c.id === card.column,
+              run: () =>
+                void move(
+                  { issue: card.key, column: c.id },
+                  t.boards.moved(card.key, c.name),
+                  true,
+                ),
+            })),
+            ...(backlogColumn
+              ? [
+                  {
+                    label: t.boards.backlog,
+                    run: () =>
+                      backlogColumn &&
+                      void move(
+                        { issue: card.key, column: backlogColumn.id },
+                        t.boards.moved(card.key, t.boards.backlog),
+                      ),
+                  },
+                ]
+              : []),
+          ],
         },
         {
           label: t.boards.order,
@@ -370,7 +393,7 @@
           moreRight = right;
         }}
         use:touchDrag={touch}
-        style:grid-template-columns="repeat({d.columns.length}, minmax(min(250px, 78vw), 1fr))"
+        style:grid-template-columns="repeat({columns.length}, minmax(min(250px, 78vw), 1fr))"
         style:grid-template-rows="repeat({rows}, auto)"
         style:row-gap="0"
       >
@@ -399,7 +422,7 @@
             </div>
           {/each}
         {/if}
-        {#each d.columns as column, i (column.id)}
+        {#each columns as column, i (column.id)}
           {@const count = counts[column.id] ?? 0}
           {@const wip = wipState(count, column.min, column.max)}
           <section

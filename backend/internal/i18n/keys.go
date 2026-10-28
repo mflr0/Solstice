@@ -511,6 +511,7 @@ const (
 	BoardColumnLimits            Key = "BoardColumnLimits"
 	BoardColumnUnknown           Key = "BoardColumnUnknown"
 	BoardStatusInTwoColumns      Key = "BoardStatusInTwoColumns"
+	BoardBacklogColumns          Key = "BoardBacklogColumns"
 	BoardQuickFilterNameRequired Key = "BoardQuickFilterNameRequired"
 	BoardQuickFilterNamed        Key = "BoardQuickFilterNamed"
 	BoardSwimlaneNameRequired    Key = "BoardSwimlaneNameRequired"

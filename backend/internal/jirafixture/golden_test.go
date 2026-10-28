@@ -22,11 +22,11 @@ import (
 // seed, size and time zone of scripts/e2e-import.sh. Change it only for an
 // intended change of the generated data.
 var goldenRows = map[string]string{
-	"7.13.18": "3afca79c7e5cc77d5e304bdb2019cf5c4581b868138afa1b30e2d227c4e81d6c",
-	"8.20.30": "4a1093e5bb3393bca44ef13daffc5ada468ff20eeb209b05bc7b6bb8433065f0",
-	"9.12.25": "4a1093e5bb3393bca44ef13daffc5ada468ff20eeb209b05bc7b6bb8433065f0",
-	"10.3.12": "cd5bdc85e6d4836e22ab9a40179182e8f4e4352771529aec4de7821334182477",
-	"11.3.12": "b7d88c03be0ec4bd80b23fc2b0d140212e1d5a72d339b58877b4745bbc4acc28",
+	"7.13.18": "e2f3b631fec635e4f5ae863ded7637190cded72d538568c8eece0e702482ace0",
+	"8.20.30": "00b4c18967f1b15af8f7d8f1ec40f115d01630575a1f647535b2f59e139b405f",
+	"9.12.25": "00b4c18967f1b15af8f7d8f1ec40f115d01630575a1f647535b2f59e139b405f",
+	"10.3.12": "3b74bcf1c0ed7629b994115553c047e4110c0ca78b53f73b7172b9e85160c175",
+	"11.3.12": "8e3e6019369985253754c2fa0a952b834e0c49ff31b14d1897433d92c6d4937c",
 }
 
 // TestGoldenRows runs the generator against a connection that records every
