@@ -136,6 +136,7 @@ export const paths = {
   backlog: (id: number) => `/boards/${id}/backlog`,
   boardReports: (id: number, sprint?: number) =>
     `/boards/${id}/reports${sprint ? `?sprint=${sprint}` : ''}`,
+  boardVelocity: (id: number) => `/boards/${id}/reports?report=velocity`,
   boardSettings: (id: number) => `/boards/${id}/settings`,
 };
 

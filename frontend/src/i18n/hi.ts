@@ -1061,6 +1061,16 @@ export const hi: Messages = {
     addedMark: 'शुरू होने के बाद जोड़ा गया',
     unestimated: 'अनुमान नहीं',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    views: 'रिपोर्टें',
+    velocity: 'वेलोसिटी',
+    velocityNone: 'इस बोर्ड पर अभी तक कोई स्प्रिंट पूरा नहीं हुआ है।',
+    velocityNoneHint: 'वेलोसिटी पिछले बंद स्प्रिंटों की तुलना करती है।',
+    velocityLabel: 'वेलोसिटी: हर बंद स्प्रिंट में शुरुआत में तय और पूरा हुआ काम',
+    average: 'औसतन पूरा',
+    averageOver: (n: number) =>
+      n === 1 ? 'पिछले स्प्रिंट में' : `पिछले ${formatNumber(n)} स्प्रिंटों में`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint}: ${committed} तय, ${completed} पूरा`,
   },
 
   boardSettings: {

@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { byOutcome, type Outcome, type SprintReport } from '../../core/board-report.js';
+  import {
+    averageCompleted,
+    byOutcome,
+    type Outcome,
+    type SprintReport,
+    type VelocityReport,
+  } from '../../core/board-report.js';
   import type { BoardDetail, Sprint } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
@@ -8,6 +14,7 @@
   import BoardHeader from '../board/BoardHeader.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import BurndownChart from '../charts/BurndownChart.svelte';
+  import VelocityChart from '../charts/VelocityChart.svelte';
   import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
   import Stamp from '../Stamp.svelte';
@@ -15,9 +22,10 @@
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A Scrum board's sprint report: one started sprint (?sprint=id, else the
-   * active or the last one), its burndown, and its issues by where they
-   * ended up.
+   * A Scrum board's reports. The sprint report: one started sprint
+   * (?sprint=id, else the active or the last one), its burndown, and its
+   * issues by where they ended up. The velocity (?report=velocity): the
+   * last closed sprints' committed and completed work.
    */
   interface Props {
     boardId: number;
@@ -29,15 +37,32 @@
   let error = $state('');
   let report = $state<SprintReport | null>(null);
   let reportError = $state('');
+  let velocity = $state<VelocityReport | null>(null);
+  let velocityError = $state('');
+
+  const kind = $derived(router.param('report') === 'velocity' ? 'velocity' : 'sprint');
 
   $effect(() => {
     Promise.all([api.board(boardId), api.reportSprints(boardId)])
       .then(([d, s]) => {
         detail = d;
         sprints = s;
-        document.title = `${t.reports.title} — ${d.board.name} — ${t.appName}`;
       })
       .catch((e: unknown) => (error = errorMessage(e)));
+  });
+
+  $effect(() => {
+    if (!detail) return;
+    const title = kind === 'velocity' ? t.reports.velocity : t.reports.title;
+    document.title = `${title} — ${detail.board.name} — ${t.appName}`;
+  });
+
+  $effect(() => {
+    if (kind !== 'velocity' || detail?.board.kind !== 'scrum' || velocity) return;
+    api
+      .velocityReport(boardId)
+      .then((v) => (velocity = v))
+      .catch((e: unknown) => (velocityError = errorMessage(e)));
   });
 
   const chosen = $derived.by(() => {
@@ -48,7 +73,7 @@
 
   let seq = 0;
   $effect(() => {
-    if (!chosen) return;
+    if (kind !== 'sprint' || !chosen) return;
     const mine = ++seq;
     reportError = '';
     api
@@ -89,7 +114,51 @@
   <div class="page reports-page" data-title={d.board.name}>
     <BoardHeader detail={d} view="reports" />
 
-    {#if d.board.kind !== 'scrum' || !chosen}
+    {#if d.board.kind === 'scrum'}
+      <nav class="kinds" aria-label={t.reports.views}>
+        <a
+          class="btn btn-small"
+          class:on={kind === 'sprint'}
+          href={paths.boardReports(d.board.id)}
+          aria-current={kind === 'sprint' ? 'page' : undefined}>{t.reports.title}</a
+        >
+        <a
+          class="btn btn-small"
+          class:on={kind === 'velocity'}
+          href={paths.boardVelocity(d.board.id)}
+          aria-current={kind === 'velocity' ? 'page' : undefined}>{t.reports.velocity}</a
+        >
+      </nav>
+    {/if}
+
+    {#if d.board.kind === 'scrum' && kind === 'velocity'}
+      {#if velocityError}
+        <p class="error-text" role="alert">{velocityError}</p>
+      {:else if !velocity}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else if velocity.sprints.length === 0}
+        <Illustration kind="empty" />
+        <p class="empty">{t.reports.velocityNone} {t.reports.velocityNoneHint}</p>
+      {:else}
+        {@const v = velocity}
+        {#if v.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
+        <dl class="totals average">
+          <div class="total">
+            <dt>{t.reports.average}</dt>
+            <dd>
+              {v.estimate === ''
+                ? t.boards.cards(averageCompleted(v) ?? 0)
+                : t.boards.estimateValue(averageCompleted(v) ?? 0, v.estimate)}
+              <span class="over">{t.reports.averageOver(v.sprints.length)}</span>
+            </dd>
+          </div>
+        </dl>
+        <section class="report-section" aria-labelledby="velocity-title">
+          <h2 class="section-title" id="velocity-title">{t.reports.velocity}</h2>
+          <VelocityChart report={v} />
+        </section>
+      {/if}
+    {:else if d.board.kind !== 'scrum' || !chosen}
       <Illustration kind="empty" />
       <p class="empty">{t.reports.none} {t.reports.noneHint}</p>
       {#if d.board.kind === 'scrum'}
@@ -184,6 +253,22 @@
 <style>
   .reports-page {
     max-width: 1100px;
+  }
+
+  .kinds {
+    display: flex;
+    gap: 2px;
+    margin: 0 0 16px;
+  }
+
+  .average {
+    max-width: 320px;
+  }
+
+  .over {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .picker {

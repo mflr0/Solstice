@@ -1067,6 +1067,16 @@ export const fr: Messages = {
     addedMark: 'ajouté après le départ',
     unestimated: 'non estimé',
     changed: (from: string, to: string) => `${from} → ${to}`,
+    views: 'Rapports',
+    velocity: 'Vélocité',
+    velocityNone: 'Aucun sprint n’a encore été terminé sur ce tableau.',
+    velocityNoneHint: 'La vélocité compare les derniers sprints fermés.',
+    velocityLabel: 'Vélocité : travail engagé au départ et terminé, par sprint fermé',
+    average: 'Moyenne terminée',
+    averageOver: (n: number) =>
+      n === 1 ? 'sur le dernier sprint' : `sur les ${formatNumber(n)} derniers sprints`,
+    barTitle: (sprint: string, committed: string, completed: string) =>
+      `${sprint} : ${committed} engagé, ${completed} terminé`,
   },
 
   boardSettings: {
