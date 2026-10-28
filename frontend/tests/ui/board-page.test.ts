@@ -41,6 +41,7 @@ const detail: BoardDetail = {
     estimate: '',
     estimateField: null,
     doneCutoff: null,
+    kanbanBacklog: false,
   },
   projects: [],
   columns: [
