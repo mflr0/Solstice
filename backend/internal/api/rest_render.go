@@ -257,7 +257,7 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 			v    sql.NullInt64
 		}{{"originalEstimate", row.Original}, {"remainingEstimate", row.Remaining}, {"timeSpent", row.Spent}} {
 			if t.v.Valid {
-				out[t.name] = jiraDuration(t.v.Int64)
+				out[t.name] = issue.Duration(t.v.Int64)
 				out[t.name+"Seconds"] = t.v.Int64
 			}
 		}
@@ -357,7 +357,7 @@ func (o *restOut) worklog(iss *issueRow, w worklogData, users map[int64]*jiraUse
 	out := map[string]any{"self": o.api + "/issue/" + o.id(iss.ID) + "/worklog/" + o.id(w.id), "id": o.id(w.id),
 		"issueId": o.id(iss.ID), "author": userOf(users, w.author.Int64), "updateAuthor": userOf(users, updatedBy.Int64),
 		"comment": w.body.String, "created": o.time(w.created), "updated": o.time(w.updated),
-		"started": o.time(w.started), "timeSpent": jiraDuration(w.seconds), "timeSpentSeconds": w.seconds}
+		"started": o.time(w.started), "timeSpent": issue.Duration(w.seconds), "timeSpentSeconds": w.seconds}
 	switch {
 	case w.group.Valid:
 		out["visibility"] = map[string]any{"type": "group", "value": w.group.String}
@@ -365,25 +365,6 @@ func (o *restOut) worklog(iss *issueRow, w worklogData, users map[int64]*jiraUse
 		out["visibility"] = map[string]any{"type": "role", "value": w.roleName.String}
 	}
 	return out
-}
-
-// jiraDuration writes seconds as Jira does: "1w 2d 3h 20m" (a day is 8
-// hours, a week 5 days).
-func jiraDuration(secs int64) string {
-	var parts []string
-	for _, u := range []struct {
-		n    int64
-		unit string
-	}{{issue.WorkWeekSeconds, "w"}, {issue.WorkDaySeconds, "d"}, {3600, "h"}, {60, "m"}} {
-		if secs >= u.n {
-			parts = append(parts, strconv.FormatInt(secs/u.n, 10)+u.unit)
-			secs %= u.n
-		}
-	}
-	if len(parts) == 0 {
-		return "0m"
-	}
-	return strings.Join(parts, " ")
 }
 
 // staleKind tells whether REST renders a field of this kind as null: one of

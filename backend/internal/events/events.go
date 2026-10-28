@@ -71,6 +71,8 @@ type Worklog struct {
 	AuthorID  int64
 	UpdatedBy int64 // who last changed it, 0 when never
 	Body      string
+	Group     string // restricted to this group (lower-case name)…
+	RoleID    int64  // …and/or this project role
 	Started   time.Time
 	Seconds   int64
 	Created   time.Time

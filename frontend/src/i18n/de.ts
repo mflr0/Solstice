@@ -2049,7 +2049,10 @@ export const de: Messages = {
     eventLabels: {
       created: { label: 'Neuer Vorgang', hint: 'Wenn ein Vorgang erstellt wird.' },
       assigned: { label: 'Zuweisung', hint: 'Wenn Ihnen ein Vorgang zugewiesen wird.' },
-      commented: { label: 'Kommentar', hint: 'Wenn ein Kommentar hinzugefügt oder geändert wird.' },
+      commented: {
+        label: 'Kommentar',
+        hint: 'Wenn ein Kommentar hinzugefügt, geändert oder gelöscht wird.',
+      },
       mentioned: { label: 'Erwähnung', hint: 'Wenn Sie erwähnt werden.' },
       status: { label: 'Status', hint: 'Wenn sich der Status eines Vorgangs ändert.' },
       updated: { label: 'Andere Felder', hint: 'Wenn sich ein anderes Feld des Vorgangs ändert.' },
@@ -2057,6 +2060,7 @@ export const de: Messages = {
         label: 'Anhänge',
         hint: 'Wenn ein Anhang hinzugefügt oder entfernt wird.',
       },
+      worklogs: { label: 'Zeiterfassung', hint: 'Wenn Zeit erfasst, geändert oder gelöscht wird.' },
       deleted: { label: 'Vorgang gelöscht', hint: 'Wenn ein Vorgang gelöscht wird.' },
     },
     ownChanges: 'Mich über eigene Änderungen benachrichtigen',

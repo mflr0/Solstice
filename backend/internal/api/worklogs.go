@@ -31,6 +31,8 @@ type editableWorklog struct {
 	started time.Time
 	created time.Time
 	body    sql.NullString
+	group   string
+	role    int64
 }
 
 // worklogForEdit loads the work log of the path, if the user may read and
@@ -53,11 +55,12 @@ func (s *Server) worklogForEdit(r *http.Request, sub *perm.Subject) (*editableWo
 	if err != nil {
 		return nil, err
 	}
+	w.group, w.role = group.String, role.Int64
 	if w.issue, err = s.findIssueByID(r.Context(), issueID); err != nil {
 		return nil, err
 	}
 	pi := w.issue.perm()
-	if !sub.CanSee(pi) || !sub.SeesRestricted(w.issue.ProjectID, group.String, role.Int64) {
+	if !sub.CanSee(pi) || !sub.SeesRestricted(w.issue.ProjectID, w.group, w.role) {
 		return nil, errNotFound
 	}
 	own := w.author.Valid && w.author.Int64 == sub.UserID && sub.Can(perm.Worklog, w.issue.ProjectID, &pi)
@@ -69,8 +72,8 @@ func (s *Server) worklogForEdit(r *http.Request, sub *perm.Subject) (*editableWo
 
 // event describes the work log as it is in an announcement.
 func (w *editableWorklog) event() *events.Worklog {
-	return &events.Worklog{ID: w.id, AuthorID: w.author.Int64, Body: w.body.String, Started: w.started,
-		Seconds: w.seconds, Created: w.created}
+	return &events.Worklog{ID: w.id, AuthorID: w.author.Int64, Body: w.body.String, Group: w.group, RoleID: w.role,
+		Started: w.started, Seconds: w.seconds, Created: w.created}
 }
 
 // editWorklog changes a work log's day, time or text; what the request

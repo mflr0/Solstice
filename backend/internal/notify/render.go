@@ -317,6 +317,8 @@ func fieldLabel(locale, field string) string {
 		m = i18n.M(i18n.FieldNameEpic)
 	case "sprint":
 		m = i18n.M(i18n.FieldNameSprint)
+	case "timespent":
+		m = i18n.M(i18n.FieldNameTimeSpent)
 	default:
 		return field
 	}

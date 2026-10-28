@@ -388,7 +388,7 @@ func (o *restOut) exportCell(cat *catalog, set *issueSet, users map[int64]*jiraU
 	case "worklog":
 		var logs []string
 		for _, wl := range d.worklogs {
-			logs = append(logs, fmt.Sprintf("%s; %s; %s", when(wl.started), who(wl.author.Int64), jiraDuration(wl.seconds)))
+			logs = append(logs, fmt.Sprintf("%s; %s; %s", when(wl.started), who(wl.author.Int64), issue.Duration(wl.seconds)))
 		}
 		return strings.Join(logs, "\n")
 	case "epic":

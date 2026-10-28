@@ -3,7 +3,6 @@ package webhook
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/url"
 	"slices"
 	"strconv"
@@ -161,24 +160,6 @@ func (b *builder) comment(ctx context.Context, db *sql.DB, issueID int64, c *eve
 	return out
 }
 
-// jiraDuration writes seconds as Jira does: "1d 2h 30m" (8-hour days).
-func jiraDuration(seconds int64) string {
-	var parts []string
-	for _, u := range []struct {
-		n    int64
-		unit string
-	}{{issue.WorkWeekSeconds, "w"}, {issue.WorkDaySeconds, "d"}, {3600, "h"}, {60, "m"}} {
-		if seconds >= u.n {
-			parts = append(parts, fmt.Sprintf("%d%s", seconds/u.n, u.unit))
-			seconds %= u.n
-		}
-	}
-	if len(parts) == 0 {
-		return "0m"
-	}
-	return strings.Join(parts, " ")
-}
-
 func (b *builder) worklog(issueID int64, w *events.Worklog) map[string]any {
 	id := strconv.FormatInt(w.ID, 10)
 	updatedBy, updated := w.AuthorID, w.Created
@@ -187,7 +168,7 @@ func (b *builder) worklog(issueID int64, w *events.Worklog) map[string]any {
 	}
 	out := map[string]any{"id": id, "issueId": strconv.FormatInt(issueID, 10), "author": b.userID(w.AuthorID),
 		"updateAuthor": b.userID(updatedBy), "comment": w.Body, "created": jtime(w.Created),
-		"updated": jtime(updated), "started": jtime(w.Started), "timeSpent": jiraDuration(w.Seconds),
+		"updated": jtime(updated), "started": jtime(w.Started), "timeSpent": issue.Duration(w.Seconds),
 		"timeSpentSeconds": w.Seconds}
 	b.put(out, "self", issue.RESTAPIPath+"/issue/"+strconv.FormatInt(issueID, 10)+"/worklog/"+id)
 	return out
