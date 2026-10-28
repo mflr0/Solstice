@@ -25,6 +25,54 @@ export function outside(node: HTMLElement, handler: () => void) {
   };
 }
 
+/**
+ * Keyboard for a menu opened by the [aria-haspopup] button beside it: focus
+ * starts on the checked item, else the first; arrows, Home and End move
+ * between items; Escape goes back to the button (outside closes the menu);
+ * Tab leaves the menu and closes it.
+ */
+export function menu(node: HTMLElement, close: () => void) {
+  let current = close;
+  const trigger = node.parentElement?.querySelector<HTMLElement>('[aria-haspopup]');
+  const items = () => [...node.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
+  // Tab goes past the menu, not from item to item.
+  for (const item of items()) item.tabIndex = -1;
+  queueMicrotask(() =>
+    (node.querySelector<HTMLElement>('[aria-checked="true"]') ?? items()[0])?.focus(),
+  );
+
+  const onKey = (e: KeyboardEvent) => {
+    const list = items();
+    const at = list.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (e.key === 'ArrowDown') next = (at + 1) % list.length;
+    else if (e.key === 'ArrowUp') next = (at - 1 + list.length) % list.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = list.length - 1;
+    else if (e.key === 'Escape') trigger?.focus();
+    if (next >= 0) {
+      e.preventDefault();
+      list[next]?.focus();
+    }
+  };
+  // Not on the button: pressing it moves focus there first, and then toggles.
+  const onFocusOut = (e: FocusEvent) => {
+    const to = e.relatedTarget as Node | null;
+    if (to && !node.contains(to) && to !== trigger) current();
+  };
+  node.addEventListener('keydown', onKey);
+  node.addEventListener('focusout', onFocusOut);
+  return {
+    update(next: () => void) {
+      current = next;
+    },
+    destroy() {
+      node.removeEventListener('keydown', onKey);
+      node.removeEventListener('focusout', onFocusOut);
+    },
+  };
+}
+
 /** Focuses the node once mounted. */
 export function autofocus(node: HTMLElement) {
   queueMicrotask(() => node.focus());

@@ -2,7 +2,7 @@
   import { paths } from '../core/route.js';
   import type { Project } from '../core/types.js';
   import { t } from '../i18n/t.js';
-  import { outside } from '../lib/actions.js';
+  import { menu, outside } from '../lib/actions.js';
   import { api, errorMessage } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
@@ -53,7 +53,7 @@
     <span class="caret" aria-hidden="true">▾</span>
   </button>
   {#if open && projects}
-    <div class="popover scope-menu" role="menu">
+    <div class="popover scope-menu" role="menu" use:menu={() => (open = false)}>
       <button
         class="item"
         role="menuitemradio"
