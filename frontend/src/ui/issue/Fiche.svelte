@@ -65,8 +65,8 @@
   let estimateError = $state(false);
 
   $effect(() => {
-    originalText = estimateText(issue.time.original);
-    remainingText = estimateText(issue.time.remaining);
+    originalText = estimateText(issue.time.original, t.units.duration);
+    remainingText = estimateText(issue.time.remaining, t.units.duration);
     estimateError = false;
   });
 
@@ -74,13 +74,14 @@
     const { fields, invalid } = estimateChanges(
       { original: originalText, remaining: remainingText },
       issue.time,
+      t.units.duration,
     );
     estimateError = invalid !== null;
     if (invalid !== null || Object.keys(fields).length === 0) return;
     if (!(await onchange(fields))) {
       // The note already says why; the fields show the issue's own values again.
-      originalText = estimateText(issue.time.original);
-      remainingText = estimateText(issue.time.remaining);
+      originalText = estimateText(issue.time.original, t.units.duration);
+      remainingText = estimateText(issue.time.remaining, t.units.duration);
     }
   }
 
@@ -131,7 +132,10 @@
             quiet
             label={t.issue.priority}
             value={issue.priority?.id ?? ''}
-            options={(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            options={(session.meta?.priorities ?? []).map((p) => ({
+              value: p.id,
+              label: session.priorityName(p),
+            }))}
             onchange={(v) => void onchange({ priority: v || null })}
           >
             {#snippet icon(id)}
@@ -151,7 +155,7 @@
             quiet
             label={t.issue.type}
             value={issue.type.id}
-            options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+            options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
             onchange={(v) => void onchange({ type: v })}
           >
             {#snippet icon(id)}
@@ -309,7 +313,9 @@
         <dt>{t.issue.resolved}</dt>
         <dd>
           <span title={formatDateTime(issue.resolved)}><RelTime iso={issue.resolved} /></span>
-          {#if issue.resolution}<span class="muted">· {issue.resolution.name}</span>{/if}
+          {#if issue.resolution}<span class="muted"
+              >· {session.resolutionName(issue.resolution)}</span
+            >{/if}
         </dd>
       </div>
     {/if}

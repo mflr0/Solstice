@@ -14,6 +14,7 @@
     type MoveRestricted,
   } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import Lock from '../Lock.svelte';
@@ -324,7 +325,7 @@
           <Dropdown
             label={t.create.type}
             value={typeId}
-            options={types.map((ty) => ({ value: ty.id, label: ty.name }))}
+            options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
             onchange={(v) => {
               typeId = v;
               statuses = [];
@@ -343,7 +344,7 @@
           <Dropdown
             label={t.issue.moveSubtaskType}
             value={subtaskTypeId}
-            options={subtaskTypes.map((ty) => ({ value: ty.id, label: ty.name }))}
+            options={subtaskTypes.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
             onchange={(v) => (subtaskTypeId = v)}
           >
             {#snippet icon(id)}

@@ -4,26 +4,33 @@
  * tests/core/estimates.test.ts.
  */
 
-import { isoDay, jiraDuration, parseDuration } from './dates.js';
+import {
+  type DurationUnits,
+  isZeroDuration,
+  isoDay,
+  jiraDuration,
+  parseDuration,
+  typedDuration,
+} from './dates.js';
 import type { TimeTracking, Worklog, WorklogPatch } from './types.js';
 
 /** A typed estimate: nothing (it is cleared), a duration in seconds, or not understood. */
 export type EstimateRead = { ok: true; seconds: number | null } | { ok: false };
 
-/** An estimate of no time at all: "0", "0h", "0m"… */
-const ZERO = /^\s*0+(?:[.,]0*)?\s*(?:min|mn|m|h|j|d|w)?\s*$/i;
-
-/** Reads an estimate: empty clears it, "0m" is nothing left to do, else a duration. */
-export function readEstimate(text: string): EstimateRead {
+/**
+ * Reads an estimate, in Jira's units or units': empty clears it, "0m" is
+ * nothing left to do, else a duration.
+ */
+export function readEstimate(text: string, units?: DurationUnits): EstimateRead {
   if (text.trim() === '') return { ok: true, seconds: null };
-  if (ZERO.test(text)) return { ok: true, seconds: 0 };
-  const seconds = parseDuration(text);
+  if (isZeroDuration(text, units)) return { ok: true, seconds: 0 };
+  const seconds = parseDuration(text, units);
   return seconds === null ? { ok: false } : { ok: true, seconds };
 }
 
-/** An estimate as it is written in a field: "1d 2h", or nothing. */
-export function estimateText(seconds: number | null): string {
-  return seconds === null ? '' : jiraDuration(seconds);
+/** An estimate as it is written in a field, in units: "1j 2h", or nothing. */
+export function estimateText(seconds: number | null, units?: DurationUnits): string {
+  return seconds === null ? '' : typedDuration(seconds, units);
 }
 
 /** The fields of an issue that hold its estimates. */
@@ -46,14 +53,15 @@ export interface EstimateChanges {
 export function estimateChanges(
   form: { original: string; remaining: string },
   current: Pick<TimeTracking, 'original' | 'remaining'>,
+  units?: DurationUnits,
 ): EstimateChanges {
   const out: EstimateChanges = { fields: {}, invalid: null };
   for (const [name, typed, now, key] of [
     ['original', form.original, current.original, 'originalEstimate'],
     ['remaining', form.remaining, current.remaining, 'remainingEstimate'],
   ] as const) {
-    if (typed.trim() === estimateText(now)) continue;
-    const read = readEstimate(typed);
+    if (typed.trim() === estimateText(now, units)) continue;
+    const read = readEstimate(typed, units);
     if (!read.ok) {
       out.invalid ??= name;
       continue;
@@ -83,8 +91,9 @@ export function worklogStart(day: string): string {
 export function worklogEdit(
   log: Pick<Worklog, 'started' | 'seconds' | 'body'>,
   form: WorklogForm,
+  units?: DurationUnits,
 ): WorklogEdit {
-  const seconds = parseDuration(form.duration);
+  const seconds = parseDuration(form.duration, units);
   if (seconds === null || !form.day) return { ok: false };
   const patch: WorklogPatch = {};
   if (seconds !== log.seconds) patch.seconds = seconds;

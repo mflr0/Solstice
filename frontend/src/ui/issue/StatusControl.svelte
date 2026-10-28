@@ -90,7 +90,10 @@
               value={resolution}
               options={[
                 ...(defaultResolution ? [] : [{ value: '', label: t.issue.leaveUnresolved }]),
-                ...(session.meta?.resolutions ?? []).map((r) => ({ value: r.id, label: r.name })),
+                ...(session.meta?.resolutions ?? []).map((r) => ({
+                  value: r.id,
+                  label: session.resolutionName(r),
+                })),
               ]}
               onchange={(v) => (resolution = v)}
             />

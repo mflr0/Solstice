@@ -127,3 +127,17 @@ func Sprintf(locale string, key Key, args ...any) string {
 	}
 	return fmt.Sprintf(template, values...)
 }
+
+// Match returns the key among keys whose text, in any language, is text, or
+// "" when none is. It tells a name Solstice wrote (a seeded default) from one
+// someone typed.
+func Match(text string, keys ...Key) Key {
+	for _, k := range keys {
+		for _, c := range catalogues {
+			if template, ok := c[k]; ok && template == text {
+				return k
+			}
+		}
+	}
+	return ""
+}

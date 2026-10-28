@@ -26,9 +26,10 @@
   const groups = $derived.by(() => {
     const out: [string, IssueLink[]][] = [];
     for (const l of issue.links) {
-      const group = out.find(([label]) => label === l.label);
+      const label = session.linkVerb(l.type, l.direction);
+      const group = out.find(([g]) => g === label);
       if (group) group[1].push(l);
-      else out.push([l.label, [l]]);
+      else out.push([label, [l]]);
     }
     return out;
   });
@@ -37,8 +38,9 @@
   const relations = $derived.by(() => {
     const out: { value: string; label: string }[] = [];
     for (const lt of session.meta?.linkTypes ?? []) {
-      out.push({ value: `${lt.id}:outward`, label: lt.outward });
-      if (lt.inward !== lt.outward) out.push({ value: `${lt.id}:inward`, label: lt.inward });
+      out.push({ value: `${lt.id}:outward`, label: session.linkVerb(lt, 'outward') });
+      if (lt.inward !== lt.outward)
+        out.push({ value: `${lt.id}:inward`, label: session.linkVerb(lt, 'inward') });
     }
     return out;
   });

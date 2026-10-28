@@ -35,21 +35,27 @@ export interface StatusRef {
   category: StatusCategory;
 }
 
+/** The key of a seeded default the name still is (see src/core/seeded.ts). */
+export type SeedKey = string;
+
 export interface PriorityRef {
   id: string;
   name: string;
   color?: string;
+  seed?: SeedKey;
 }
 
 export interface NamedRef {
   id: string;
   name: string;
+  seed?: SeedKey;
 }
 
 export interface TypeRef {
   id: string;
   name: string;
   subtask: boolean;
+  seed?: SeedKey;
 }
 
 export interface LinkTypeRef {
@@ -57,6 +63,9 @@ export interface LinkTypeRef {
   name: string;
   inward: string;
   outward: string;
+  seed?: SeedKey;
+  inwardSeed?: SeedKey;
+  outwardSeed?: SeedKey;
 }
 
 export interface Meta {

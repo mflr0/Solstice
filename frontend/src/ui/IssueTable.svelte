@@ -5,6 +5,7 @@
   import type { IssueSummary } from '../core/types.js';
   import { formatDay, t } from '../i18n/t.js';
   import { router } from '../lib/router.svelte.js';
+  import { session } from '../lib/session.svelte.js';
   import { appearance, ignoreShortcut } from '../lib/ui.svelte.js';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';
@@ -190,7 +191,9 @@
             {:else if c === 'created'}
               <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
             {:else if c === 'resolution'}
-              <td class="c-extra">{issue.resolution?.name ?? ''}</td>
+              <td class="c-extra"
+                >{issue.resolution ? session.resolutionName(issue.resolution) : ''}</td
+              >
             {:else}
               {@const text = issue.values?.[c] ?? ''}
               <td class="c-extra"><span class="text" title={text || undefined}>{text}</span></td>

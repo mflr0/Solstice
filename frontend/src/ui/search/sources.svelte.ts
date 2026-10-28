@@ -144,13 +144,14 @@ export async function loadOptions(
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a throwaway value, not state
       const byName = new Map<string, Option>();
       for (const ty of meta?.issueTypes ?? []) {
-        if (!matches(q, ty.name)) continue;
+        const label = session.typeName(ty);
+        if (!matches(q, label, ty.name)) continue;
         const prev = byName.get(ty.name.toLowerCase());
         if (prev) prev.facets?.push(ty.id);
         else
           byName.set(ty.name.toLowerCase(), {
             value: quote(ty.name),
-            label: ty.name,
+            label,
             facets: [ty.id],
           });
       }
@@ -169,12 +170,12 @@ export async function loadOptions(
       );
     case 'priority':
       return (meta?.priorities ?? [])
-        .filter((p) => matches(q, p.name))
-        .map((p) => ({ value: quote(p.name), label: p.name, facets: [p.id] }));
+        .filter((p) => matches(q, session.priorityName(p), p.name))
+        .map((p) => ({ value: quote(p.name), label: session.priorityName(p), facets: [p.id] }));
     case 'resolution':
       return (meta?.resolutions ?? [])
-        .filter((r) => matches(q, r.name))
-        .map((r) => ({ value: quote(r.name), label: r.name, facets: [r.id] }));
+        .filter((r) => matches(q, session.resolutionName(r), r.name))
+        .map((r) => ({ value: quote(r.name), label: session.resolutionName(r), facets: [r.id] }));
     case 'people':
     case 'assignee':
     case 'reporter': {

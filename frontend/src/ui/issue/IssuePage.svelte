@@ -304,7 +304,9 @@
         <div class="meta-cell">
           <StatusControl bind:this={statusControl} {issue} onchange={update} />
         </div>
-        {#if issue.resolution}<span class="meta-cell resolution">{issue.resolution.name}</span>{/if}
+        {#if issue.resolution}<span class="meta-cell resolution"
+            >{session.resolutionName(issue.resolution)}</span
+          >{/if}
         <span class="dot meta-sep" aria-hidden="true">·</span>
         <span class="meta-cell"><TypeMark type={issue.type} withName /></span>
         {#if issue.priority}

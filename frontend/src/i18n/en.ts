@@ -21,7 +21,13 @@ export const en = {
     /** "2h 30m", "2h", "45m": the way people type it in a work log. */
     duration: (h: number, m: number) => (h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`),
   },
-  units: { bytes: 'B', kilobytes: 'KB', megabytes: 'MB' },
+  units: {
+    bytes: 'B',
+    kilobytes: 'KB',
+    megabytes: 'MB',
+    /** How estimates and work logs write a duration's units ("1w 2d 3h 30m"). */
+    duration: { week: 'w', day: 'd', hour: 'h', minute: 'm' },
+  },
 
   categories: {
     todo: 'To do',
@@ -2907,5 +2913,33 @@ export const en = {
       nameTooLong: '255 characters at most.',
       nameTaken: 'This name is already used in the project.',
     },
+  },
+  /** The defaults a new instance's catalogues start with, by the server's key. */
+  seeded: {
+    DefaultTypeTask: 'Task',
+    DefaultTypeBug: 'Bug',
+    DefaultTypeStory: 'Story',
+    DefaultTypeEpic: 'Epic',
+    DefaultTypeSubtask: 'Sub-task',
+    DefaultPriorityVeryHigh: 'Very high',
+    DefaultPriorityHigh: 'High',
+    DefaultPriorityMedium: 'Medium',
+    DefaultPriorityLow: 'Low',
+    DefaultPriorityVeryLow: 'Very low',
+    DefaultResolutionDone: 'Done',
+    DefaultResolutionWontDo: 'Will not be done',
+    DefaultResolutionDuplicate: 'Duplicate',
+    DefaultResolutionCannotReproduce: 'Cannot Reproduce',
+    DefaultLinkBlocksName: 'Blocks',
+    DefaultLinkBlocksInward: 'is blocked by',
+    DefaultLinkBlocksOutward: 'blocks',
+    DefaultLinkRelatesName: 'Link',
+    DefaultLinkRelatesDirection: 'is linked to',
+    DefaultLinkDuplicatesName: 'Duplicate',
+    DefaultLinkDuplicatesInward: 'is duplicated by',
+    DefaultLinkDuplicatesOutward: 'duplicates',
+    DefaultLinkClonesName: 'Clone',
+    DefaultLinkClonesInward: 'is cloned by',
+    DefaultLinkClonesOutward: 'clones',
   },
 } as const;

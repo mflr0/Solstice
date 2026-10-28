@@ -203,7 +203,10 @@
             label={t.issue.priority}
             value={priority}
             options={[
-              ...(session.meta?.priorities ?? []).map((p) => ({ value: p.id, label: p.name })),
+              ...(session.meta?.priorities ?? []).map((p) => ({
+                value: p.id,
+                label: session.priorityName(p),
+              })),
               { value: '', label: t.search.bulk.noPriority },
             ]}
             onchange={(v) => (priority = v)}
@@ -297,7 +300,10 @@
           value={resolution}
           options={[
             { value: '', label: t.search.bulk.defaultResolution },
-            ...(session.meta?.resolutions ?? []).map((x) => ({ value: x.id, label: x.name })),
+            ...(session.meta?.resolutions ?? []).map((x) => ({
+              value: x.id,
+              label: session.resolutionName(x),
+            })),
           ]}
           onchange={(v) => (resolution = v)}
         />

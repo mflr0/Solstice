@@ -129,3 +129,21 @@ func TestN(t *testing.T) {
 		t.Errorf("JSON = %s (%v), want %s", b, err, want)
 	}
 }
+
+func TestMatch(t *testing.T) {
+	keys := []Key{DefaultPriorityHigh, DefaultPriorityLow}
+	for text, want := range map[string]Key{
+		"High":      DefaultPriorityHigh,
+		"Haute":     DefaultPriorityHigh,
+		"Hoch":      DefaultPriorityHigh,
+		"निम्न":     DefaultPriorityLow,
+		"high":      "", // as written, not folded
+		"Haute ":    "",
+		"Very high": "", // not among keys
+		"Urgent":    "",
+	} {
+		if got := Match(text, keys...); got != want {
+			t.Errorf("Match(%q) = %q, want %q", text, got, want)
+		}
+	}
+}

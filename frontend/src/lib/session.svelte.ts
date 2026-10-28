@@ -3,7 +3,9 @@
  * needs. Loaded once, after sign-in.
  */
 
-import type { Me, Meta, PriorityRef } from '../core/types.js';
+import { seededName, seededVerb } from '../core/seeded.js';
+import type { LinkTypeRef, Me, Meta, NamedRef, PriorityRef, TypeRef } from '../core/types.js';
+import { t } from '../i18n/t.js';
 import { accountApi } from './admin-api.js';
 import { api, ApiError, setUnauthorizedHandler } from './api.js';
 import { adoptAccountLocale } from './locale.js';
@@ -67,6 +69,26 @@ class Session {
   /** Index of a priority in the ordered list (most urgent first). */
   priorityIndex(p: PriorityRef): number {
     return this.meta?.priorities.findIndex((x) => x.id === p.id) ?? -1;
+  }
+
+  /** A priority's name in the viewer's language when it is a seeded default. */
+  priorityName(p: PriorityRef): string {
+    return seededName(p, this.meta?.priorities, t.seeded);
+  }
+
+  /** An issue type's name in the viewer's language when it is a seeded default. */
+  typeName(ty: TypeRef): string {
+    return seededName(ty, this.meta?.issueTypes, t.seeded);
+  }
+
+  /** A resolution's name in the viewer's language when it is a seeded default. */
+  resolutionName(r: NamedRef): string {
+    return seededName(r, this.meta?.resolutions, t.seeded);
+  }
+
+  /** How a link type reads one way, in the viewer's language when seeded. */
+  linkVerb(lt: LinkTypeRef, direction: 'inward' | 'outward'): string {
+    return seededVerb(lt, direction, this.meta?.linkTypes, t.seeded);
   }
 }
 

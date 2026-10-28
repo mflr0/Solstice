@@ -48,32 +48,36 @@
       return { label, value: jqlValue('') };
     }
     const meta = session.meta;
-    const named = (list: { id: string; name: string }[] | undefined) =>
-      list?.find((x) => x.id === id)?.name;
-    let label: string | undefined;
+    // Shown in the viewer's language; JQL keeps the stored name.
+    const named = <T extends { id: string; name: string }>(
+      list: T[] | undefined,
+      shown: (x: T) => string = (x) => x.name,
+    ) => {
+      const x = list?.find((y) => y.id === id);
+      return x ? { label: shown(x), value: jqlValue(x.name) } : undefined;
+    };
+    let found: { label: string; value: string } | undefined;
     switch (field) {
       case 'status':
-        label = named(meta?.statuses);
+        found = named(meta?.statuses);
         break;
       case 'type':
-        label = named(meta?.issueTypes);
+        found = named(meta?.issueTypes, (x) => session.typeName(x));
         break;
       case 'priority':
-        label = named(meta?.priorities);
+        found = named(meta?.priorities, (x) => session.priorityName(x));
         break;
       case 'resolution':
-        label = named(meta?.resolutions);
+        found = named(meta?.resolutions, (x) => session.resolutionName(x));
         break;
       case 'assignee':
       case 'reporter': {
         const u = users[id];
-        if (u) return { label: u.name, value: jqlValue(u.username) };
+        if (u) found = { label: u.name, value: jqlValue(u.username) };
         break;
       }
-      default:
-        label = id;
     }
-    return { label: label ?? id, value: jqlValue(label ?? id) };
+    return found ?? { label: id, value: jqlValue(id) };
   }
 
   const rows = $derived.by(() => {
