@@ -33,16 +33,16 @@
 
   const route = $derived(router.route);
 
-  /** The project the page is about, offered first when creating an issue. */
+  /** The project offered first when creating an issue: the page's, else the scoped one. */
   const project = $derived.by(() => {
     switch (route.name) {
       case 'project':
       case 'projectSettings':
         return route.key;
       case 'issue':
-        return projectOfIssueKey(route.key) ?? undefined;
+        return projectOfIssueKey(route.key) ?? session.scope ?? undefined;
       default:
-        return undefined;
+        return session.scope ?? undefined;
     }
   });
 

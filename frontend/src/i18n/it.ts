@@ -115,6 +115,9 @@ export const it: Messages = {
     create: 'Nuovo ticket',
     account: 'Account',
     myPage: 'La mia pagina',
+    scopeAll: 'Tutti',
+    scopeAllProjects: 'Tutti i progetti',
+    scopeLabel: (name: string) => `Progetti mostrati: ${name}`,
     skins: {
       carnet: 'Taccuino',
       orbite: 'Orbita',

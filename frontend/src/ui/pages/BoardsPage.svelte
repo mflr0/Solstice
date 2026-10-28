@@ -1,10 +1,12 @@
 <script lang="ts">
   import type { BoardKind, BoardSummary } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
+  import { boardsLanding, scopeBoards } from '../../core/scope.js';
   import type { Project } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
@@ -28,9 +30,19 @@
   const projectKeys = $derived(
     [...new Set((boards ?? []).flatMap((b) => b.projects.map((p) => p.key)))].sort(),
   );
-  const shown = $derived(
-    (boards ?? []).filter((b) => !project || b.projects.some((p) => p.key === project)),
-  );
+  const shown = $derived(scopeBoards(boards ?? [], project || null));
+
+  // The bare list opens on the scoped project once per scope: picking "All
+  // projects" in the filter afterwards stays on every board.
+  let landedFor: string | null | undefined;
+  $effect(() => {
+    const scope = session.scope;
+    if (!boards || landedFor === scope) return;
+    landedFor = scope;
+    if (project) return;
+    const to = boardsLanding(boards, scope);
+    if (to) router.navigate(to, { replace: true });
+  });
 
   let creating = $state(false);
   let projects = $state<Project[] | null>(null);

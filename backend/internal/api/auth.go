@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -23,6 +24,8 @@ type meResponse struct {
 	// Directory is "ldap" or "oidc" for an account that signs in through a
 	// directory or a provider, with no password of its own.
 	Directory string `json:"directory"`
+	// Project scopes Work, Boards and Search; null covers every project.
+	Project *projectBrief `json:"project"`
 }
 
 func meOf(u *auth.User) meResponse {
@@ -34,12 +37,66 @@ func meOf(u *auth.User) meResponse {
 	return me
 }
 
+// meFor is meOf with the project the user scoped their pages to. A project
+// they can no longer browse is forgotten.
+func (s *Server) meFor(ctx context.Context, u *auth.User) (meResponse, error) {
+	me := meOf(u)
+	var p projectBrief
+	err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name FROM users u JOIN projects p ON p.id = u.scope_project_id
+		WHERE u.id = ?`, u.ID).Scan(&p.ID, &p.Key, &p.Name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return me, nil
+	}
+	if err != nil {
+		return me, err
+	}
+	sub, err := s.perms.Subject(ctx, u.ID, u.Admin)
+	if err != nil {
+		return me, err
+	}
+	if !sub.Admin && !sub.CanBrowseProject(p.ID) {
+		_, err := s.db.ExecContext(ctx, `UPDATE users SET scope_project_id = NULL WHERE id = ? AND scope_project_id = ?`, u.ID, p.ID)
+		return me, err
+	}
+	me.Project = &p
+	return me, nil
+}
+
+// writeMe answers with the user's own account.
+func (s *Server) writeMe(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	me, err := s.meFor(r.Context(), u)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, me)
+}
+
 // userByID loads an account for its id, with the fields meOf answers with.
 func (s *Server) userByID(ctx context.Context, id int64) (auth.User, error) {
 	var u auth.User
 	err := s.db.QueryRowContext(ctx, `SELECT id, username, display_name, email, is_admin, COALESCE(locale, ''), directory
 		FROM users WHERE id = ?`, id).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Email, &u.Admin, &u.Locale, &u.Directory)
 	return u, err
+}
+
+// scopeProject is the id of a project the user may scope their pages to:
+// one they browse. Another is unknown, so keys cannot be probed.
+func (s *Server) scopeProject(r *http.Request, key string) (int64, error) {
+	id, err := s.projectByKey(r.Context(), key)
+	if errors.Is(err, errNotFound) {
+		return 0, failf(http.StatusBadRequest, i18n.ProjectUnknown, key)
+	}
+	if err != nil {
+		return 0, err
+	}
+	sub, err := s.subject(r)
+	if err != nil {
+		return 0, err
+	}
+	if !sub.Admin && !sub.CanBrowseProject(id) {
+		return 0, failf(http.StatusBadRequest, i18n.ProjectUnknown, key)
+	}
+	return id, nil
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
@@ -54,7 +111,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, meOf(u))
+	return s.writeMe(w, r, u)
 }
 
 // signIn throttles and audits every way of signing in with a password;
@@ -118,17 +175,20 @@ func (s *Server) signOut(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) error {
-	return writeJSON(w, http.StatusOK, meOf(currentUser(r)))
+	return s.writeMe(w, r, currentUser(r))
 }
 
 // updateMe changes the user's own profile: name, e-mail address,
-// interface language (one of i18n.Locales, or null to have none) and
-// password, which takes the current one. Fields left out keep their value.
+// interface language (one of i18n.Locales, or null to have none), the
+// project that scopes their pages (a key they may browse, or null for every
+// project) and password, which takes the current one. Fields left out keep
+// their value.
 func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Name            *string         `json:"name"`
 		Email           *string         `json:"email"`
 		Locale          json.RawMessage `json:"locale"`
+		Project         json.RawMessage `json:"project"`
 		CurrentPassword *string         `json:"currentPassword"`
 		NewPassword     *string         `json:"newPassword"`
 	}
@@ -168,6 +228,21 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 			return failf(http.StatusBadRequest, i18n.AccountLanguageUnsupported, strings.Join(i18n.Locales, ", "))
 		}
 		sets["locale"] = l
+	}
+	if in.Project != nil {
+		var key *string
+		if err := json.Unmarshal(in.Project, &key); err != nil {
+			return failf(http.StatusBadRequest, i18n.ProjectUnknown, string(in.Project))
+		}
+		if key == nil {
+			sets["scope_project_id"] = nil
+		} else {
+			id, err := s.scopeProject(r, *key)
+			if err != nil {
+				return err
+			}
+			sets["scope_project_id"] = id
+		}
 	}
 	if in.NewPassword != nil || emailChanged {
 		if u.TokenID != 0 {
@@ -232,5 +307,5 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, meOf(&me))
+	return s.writeMe(w, r, &me)
 }

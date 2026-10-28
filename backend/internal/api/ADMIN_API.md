@@ -120,6 +120,10 @@ banner text over 500 characters or unknown level; numbers out of range.
 ```
 
 All fields optional. `locale`: a language or `null` (follow the browser).
+`project`: the key of a project the user browses, which scopes Work, Boards
+and Search, or `null` for every project (400 "Unknown project" otherwise).
+`GET /api/me` answers it as `{"id", "key", "name"}` or `null`, and forgets a
+project the user can no longer browse.
 Changing the password or the e-mail address needs `currentPassword` (400
 "Mot de passe actuel incorrect.", throttled like sign-ins); `newPassword`
 must be at least `passwordMinLength` characters and changing the password

@@ -116,6 +116,9 @@ export const hi: Messages = {
     create: 'नया टिकट',
     account: 'खाता',
     myPage: 'मेरा पेज',
+    scopeAll: 'सभी',
+    scopeAllProjects: 'सभी प्रोजेक्ट',
+    scopeLabel: (name: string) => `दिखाए गए प्रोजेक्ट: ${name}`,
     skins: {
       carnet: 'नोटबुक',
       orbite: 'ऑर्बिट',
