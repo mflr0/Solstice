@@ -1431,6 +1431,7 @@ func TestSearchHelpers(t *testing.T) {
 	var facets struct {
 		Total  int
 		Facets map[string]map[string]int
+		Users  map[string]struct{ Username string }
 	}
 	q := url.QueryEscape("project = DEMO")
 	if status := paul.get("/api/issues/facets?jql="+q+"&fields=status,assignee,labels,nope", &facets); status != 200 {
@@ -1443,6 +1444,11 @@ func TestSearchHelpers(t *testing.T) {
 	}
 	if facets.Total != total || sum != total || facets.Facets["assignee"] == nil || facets.Facets["labels"] == nil {
 		t.Errorf("facets: total %d (search %d), status sum %d, %+v", facets.Total, total, sum, facets.Facets)
+	}
+	for id := range facets.Facets["assignee"] {
+		if id != "" && facets.Users[id].Username == "" {
+			t.Errorf("assignee %s counted without a name: %+v", id, facets.Users)
+		}
 	}
 	if _, ok := facets.Facets["nope"]; ok {
 		t.Error("an unknown facet was answered")

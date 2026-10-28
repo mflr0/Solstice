@@ -115,6 +115,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// Forgotten passwords and invitations: links sent by e-mail.
 	s.accountLinkRoutes(route)
 	route("GET /api/me", s.me, true)
+	route("GET /api/dashboard", s.getDashboard, true)
+	route("PUT /api/dashboard", s.putDashboard, true)
 	route("PATCH /api/me", s.updateMe, true)
 	route("PUT /api/me/avatar", s.putMyAvatar, true)
 	route("DELETE /api/me/avatar", s.deleteMyAvatar, true)
