@@ -911,6 +911,13 @@ export const fr: Messages = {
     cannotCreate: 'Vous ne pouvez pas créer de ticket dans ce projet.',
     created: (key: string) => `${key} créé.`,
     defaultAssignee: 'Par défaut',
+    required: 'Obligatoire',
+    checkFields: 'Vérifiez les champs signalés.',
+    missing: {
+      project: 'Choisissez un projet.',
+      type: 'Choisissez un type.',
+      summary: 'Saisissez un résumé.',
+    },
   },
 
   person: {

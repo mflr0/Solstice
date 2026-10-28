@@ -909,6 +909,13 @@ export const hi: Messages = {
     cannotCreate: 'आप इस प्रोजेक्ट में टिकट नहीं बना सकते।',
     created: (key: string) => `${key} बनाया गया।`,
     defaultAssignee: 'डिफ़ॉल्ट',
+    required: 'ज़रूरी',
+    checkFields: 'कुछ फ़ील्ड पर ध्यान देना ज़रूरी है।',
+    missing: {
+      project: 'कोई प्रोजेक्ट चुनें।',
+      type: 'कोई प्रकार चुनें।',
+      summary: 'सारांश लिखें।',
+    },
   },
 
   person: {

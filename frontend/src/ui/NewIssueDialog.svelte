@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { hasProblems } from '../core/admin-forms.js';
   import { jiraDuration } from '../core/dates.js';
   import { readEstimate } from '../core/estimates.js';
   import { projectOfIssueKey } from '../core/marks.js';
+  import { newIssueProblems } from '../core/new-issue.js';
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
@@ -38,12 +40,22 @@
   let level = $state('');
   let pending = $state(false);
   let error = $state('');
+  // Fields show their problems once a submit has been tried.
+  let tried = $state(false);
 
   const parent = $derived(dialogs.createDefaults.parent ?? '');
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
   const canCreate = $derived(detail?.can.create === true);
   const configure = $derived(detail?.can.configure === true);
-  const problem = $derived(error || (detail && !canCreate ? t.create.cannotCreate : ''));
+  const problems = $derived(
+    newIssueProblems({ project: projectKey, type: typeId, summary, estimate }, t.units.duration),
+  );
+  const shown = $derived(tried ? problems : {});
+  const problem = $derived(
+    error ||
+      (detail && !canCreate ? t.create.cannotCreate : '') ||
+      (hasProblems(shown) ? t.create.checkFields : ''),
+  );
 
   async function createComponent(name: string): Promise<number> {
     const key = projectKey;
@@ -80,6 +92,7 @@
     estimate = '';
     level = '';
     error = '';
+    tried = false;
     const prios = session.meta?.priorities ?? [];
     priorityId = prios[Math.floor(prios.length / 2)]?.id ?? '';
     const wanted =
@@ -112,12 +125,10 @@
 
   async function submit(e?: SubmitEvent) {
     e?.preventDefault();
-    if (!detail || !summary.trim() || pending) return;
+    if (!detail || pending) return;
+    tried = true;
     const typed = readEstimate(estimate, t.units.duration);
-    if (!typed.ok) {
-      error = t.issue.estimateInvalid;
-      return;
-    }
+    if (hasProblems(problems) || !typed.ok) return;
     pending = true;
     error = '';
     const fields: IssueFields = {
@@ -153,30 +164,37 @@
   }
 </script>
 
+{#snippet req()}<span class="req" aria-hidden="true">*</span>{/snippet}
+
 <Modal
   open={dialogs.create}
   title={parent ? t.create.subtaskTitle(parent) : t.create.title}
   onclose={close}
 >
-  <form id="new-issue" class="form" onsubmit={submit}>
+  <form id="new-issue" class="form" onsubmit={submit} novalidate>
     <div class="three">
       <div class="field">
-        <span class="field-label">{t.create.project}</span>
+        <span class="field-label">{t.create.project}{@render req()}</span>
         <Dropdown
           label={t.create.project}
           value={projectKey}
           options={projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` }))}
           disabled={parent !== ''}
+          required
+          invalid={!!shown.project}
           onchange={(v) => (projectKey = v)}
         />
+        {#if shown.project}<span class="field-error">{t.create.missing.project}</span>{/if}
       </div>
       <div class="field">
-        <span class="field-label">{t.create.type}</span>
+        <span class="field-label">{t.create.type}{@render req()}</span>
         <Dropdown
           label={t.create.type}
           value={typeId}
           options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
           disabled={!detail}
+          required
+          invalid={!!shown.type}
           onchange={(v) => (typeId = v)}
         >
           {#snippet icon(id)}
@@ -184,6 +202,7 @@
             {#if ty}<TypeMark type={ty} />{/if}
           {/snippet}
         </Dropdown>
+        {#if shown.type}<span class="field-error">{t.create.missing.type}</span>{/if}
       </div>
       <div class="field">
         <span class="field-label">{t.create.priority}</span>
@@ -204,13 +223,24 @@
     </div>
 
     <label class="field">
-      <span>{t.create.summary}</span>
+      <span>{t.create.summary}{@render req()}</span>
       <!-- The dialog opens on the summary, the one field always needed. -->
       <!-- svelte-ignore a11y_autofocus -->
-      <input class="input summary" bind:value={summary} maxlength="255" required autofocus />
+      <input
+        class="input summary"
+        bind:value={summary}
+        maxlength="255"
+        required
+        autofocus
+        aria-invalid={!!shown.summary}
+        aria-describedby={shown.summary ? 'new-issue-summary-error' : undefined}
+      />
+      {#if shown.summary}
+        <span class="field-error" id="new-issue-summary-error">{t.create.missing.summary}</span>
+      {/if}
     </label>
 
-    <div class="field">
+    <div class="field description">
       <span class="field-label">{t.create.description}</span>
       <WikiEditor bind:value={description} label={t.create.description} rows={4} />
     </div>
@@ -236,7 +266,16 @@
       </label>
       <label class="field">
         <span>{t.create.estimate}</span>
-        <input class="input" bind:value={estimate} placeholder={t.issue.estimateHint} />
+        <input
+          class="input"
+          bind:value={estimate}
+          placeholder={t.issue.estimateHint}
+          aria-invalid={!!shown.estimate}
+          aria-describedby={shown.estimate ? 'new-issue-estimate-error' : undefined}
+        />
+        {#if shown.estimate}
+          <span class="field-error" id="new-issue-estimate-error">{t.issue.estimateInvalid}</span>
+        {/if}
       </label>
     </div>
 
@@ -299,13 +338,10 @@
 
   {#snippet footer()}
     <!-- In the footer, the reason a ticket can't be created stays in sight. -->
+    {#if !problem}<p class="legend" aria-hidden="true">{@render req()}{t.create.required}</p>{/if}
     <p class="status" class:error-text={problem} role="alert">{problem}</p>
     <button type="button" class="btn btn-quiet" onclick={close}>{t.common.cancel}</button>
-    <button
-      type="submit"
-      form="new-issue"
-      class="btn btn-primary"
-      disabled={pending || !canCreate || !summary.trim() || !typeId}
+    <button type="submit" form="new-issue" class="btn btn-primary" disabled={pending || !canCreate}
       >{pending ? t.create.pending : t.create.submit}</button
     >
   {/snippet}
@@ -313,14 +349,22 @@
 
 <style>
   .form {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .form > * {
+    flex-shrink: 0;
   }
 
   .three {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+    align-items: start;
   }
 
   /* The body takes the height the head and foot leave, not the shared 72vh,
@@ -331,18 +375,64 @@
   }
 
   :global(dialog.modal:has(#new-issue) > .modal-body) {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
     max-height: none;
   }
 
-  .form :global(.editor-content) {
-    max-height: 12em;
+  /* When field errors need the room, the description gives it up, down to
+     two lines, so the form still fits without scrolling. */
+  .form > .description {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 1;
+    min-height: 0;
+  }
+
+  .description :global(.editor),
+  .description :global(.editor-host) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .description :global(.editor-content) {
+    flex: 1 1 calc(var(--editor-rows) * 1.6em + 20px);
+    min-height: calc(2 * 1.6em + 20px);
+    max-height: none;
   }
 
   .status {
     flex: 1;
     margin: 0;
+  }
+
+  .status:empty {
+    flex: 0;
+  }
+
+  .req {
+    margin-left: 2px;
+    color: var(--accent-text);
+  }
+
+  .legend {
+    flex: 1;
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: var(--accent-text);
+  }
+
+  .form :global([aria-invalid='true']) {
+    border-color: var(--accent);
   }
 
   .summary {

@@ -908,6 +908,13 @@ export const en = {
     cannotCreate: 'You can’t create issues in this project.',
     created: (key: string) => `${key} created.`,
     defaultAssignee: 'Default',
+    required: 'Required',
+    checkFields: 'Some fields need your attention.',
+    missing: {
+      project: 'Choose a project.',
+      type: 'Choose a type.',
+      summary: 'Enter a summary.',
+    },
   },
 
   person: {
