@@ -2041,13 +2041,20 @@ export const it: Messages = {
     eventLabels: {
       created: { label: 'Nuovo ticket', hint: 'Quando viene creato un ticket.' },
       assigned: { label: 'Assegnazione', hint: 'Quando un ticket ti viene assegnato.' },
-      commented: { label: 'Commento', hint: 'Quando un commento viene aggiunto o modificato.' },
+      commented: {
+        label: 'Commento',
+        hint: 'Quando un commento viene aggiunto, modificato o eliminato.',
+      },
       mentioned: { label: 'Menzione', hint: 'Quando vieni menzionato.' },
       status: { label: 'Stato', hint: 'Quando cambia lo stato di un ticket.' },
       updated: { label: 'Altri campi', hint: 'Quando cambia un altro campo del ticket.' },
       attachments: {
         label: 'Allegati',
         hint: 'Quando un allegato viene aggiunto o rimosso.',
+      },
+      worklogs: {
+        label: 'Tempo registrato',
+        hint: 'Quando viene registrato, modificato o eliminato del tempo.',
       },
       deleted: { label: 'Ticket eliminato', hint: 'Quando un ticket viene eliminato.' },
     },

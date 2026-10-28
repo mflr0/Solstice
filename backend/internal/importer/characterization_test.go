@@ -144,7 +144,10 @@ func characterize(t *testing.T, source, targetURL, dist string) *characterizatio
 		t.Fatalf("import: %v", err)
 	}
 
-	c := &characterization{Tables: map[string]digest{}, Steps: rep.Steps, Warnings: rep.Warnings}
+	c := &characterization{Tables: map[string]digest{}, Steps: rep.Steps}
+	for _, w := range rep.Warnings {
+		c.Warnings = append(c.Warnings, w.String())
+	}
 	tables, err := baseTables(ctx, target)
 	if err != nil {
 		t.Fatal(err)

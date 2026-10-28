@@ -2036,7 +2036,10 @@ export const fr: Messages = {
     eventLabels: {
       created: { label: 'Nouveau ticket', hint: 'Quand un ticket est créé.' },
       assigned: { label: 'Attribution', hint: 'Quand un ticket vous est attribué.' },
-      commented: { label: 'Commentaire', hint: 'Quand un commentaire est ajouté ou modifié.' },
+      commented: {
+        label: 'Commentaire',
+        hint: 'Quand un commentaire est ajouté, modifié ou supprimé.',
+      },
       mentioned: { label: 'Mention', hint: 'Quand on vous mentionne.' },
       status: { label: 'Statut', hint: 'Quand le statut d’un ticket change.' },
       updated: { label: 'Autres champs', hint: 'Quand un autre champ du ticket change.' },
@@ -2044,6 +2047,7 @@ export const fr: Messages = {
         label: 'Pièces jointes',
         hint: 'Quand une pièce jointe est ajoutée ou retirée.',
       },
+      worklogs: { label: 'Temps saisi', hint: 'Quand du temps est saisi, modifié ou supprimé.' },
       deleted: { label: 'Ticket supprimé', hint: 'Quand un ticket est supprimé.' },
     },
     ownChanges: 'Me prévenir de mes propres changements',

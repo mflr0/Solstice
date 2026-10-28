@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jiradb"
 )
 
@@ -417,11 +418,14 @@ func (r *run) summarise(rep *CheckReport) {
 		rep.Counts.CustomFieldTypes[typeKey]++
 	}
 	if c.unreadableFiles > 0 {
-		r.rep.warn("%s in the Jira home could not be read, so the attachments are counted without a file (first: %v)",
-			plural(c.unreadableFiles, "path", "paths"), c.unreadableFirst)
+		r.rep.warn(i18n.N(c.unreadableFiles, i18n.ImportWarnUnreadablePathsOne, i18n.ImportWarnUnreadablePathsMany,
+			c.unreadableFirst))
 	}
 	rep.Steps = r.rep.Steps
-	rep.Warnings = r.rep.Warnings
+	rep.Warnings = make([]string, len(r.rep.Warnings))
+	for i, w := range r.rep.Warnings {
+		rep.Warnings[i] = w.String()
+	}
 	rep.LeftOut = []LeftOut{}
 	for _, s := range r.rep.Steps {
 		if s.Skipped > 0 {

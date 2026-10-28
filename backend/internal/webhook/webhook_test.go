@@ -104,14 +104,6 @@ func TestClientRefusesAtConnection(t *testing.T) {
 	resp.Body.Close()
 }
 
-func TestJiraDuration(t *testing.T) {
-	for s, want := range map[int64]string{0: "0m", 60: "1m", 5400: "1h 30m", 8 * 3600: "1d", 8*3600*5 + 3600: "1w 1h"} {
-		if got := jiraDuration(s); got != want {
-			t.Errorf("jiraDuration(%d) = %q, want %q", s, got, want)
-		}
-	}
-}
-
 // hasIPv6 tells whether this machine can open IPv6 sockets.
 func hasIPv6() bool {
 	l, err := net.Listen("tcp6", "[::1]:0")

@@ -15,17 +15,18 @@ import (
 const (
 	GroupCreated     = "created"     // an issue was created
 	GroupAssigned    = "assigned"    // an issue was (re)assigned
-	GroupCommented   = "commented"   // a comment was added or edited
+	GroupCommented   = "commented"   // a comment was added, edited or deleted
 	GroupMentioned   = "mentioned"   // you were mentioned
 	GroupStatus      = "status"      // status changed, resolved, reopened
 	GroupUpdated     = "updated"     // other fields changed
 	GroupAttachments = "attachments" // attachments added or removed
+	GroupWorklogs    = "worklogs"    // work logged, a work log edited or deleted
 	GroupDeleted     = "deleted"     // an issue was deleted
 )
 
 // Groups lists the event groups in display order.
 var Groups = []string{GroupCreated, GroupAssigned, GroupCommented, GroupMentioned, GroupStatus, GroupUpdated,
-	GroupAttachments, GroupDeleted}
+	GroupAttachments, GroupWorklogs, GroupDeleted}
 
 // Delivery modes.
 const (

@@ -177,7 +177,6 @@ export const fr: SetupMessages = {
     skippedHint:
       'Ignorées : références orphelines dans Jira, ou données que Solstice ne reprend pas.',
     warnings: 'À vérifier',
-    warningsNote: "L'import écrit ces notes en anglais.",
     chooseTitle: 'Qui administre Solstice ?',
     chooseLead:
       'Choisissez un compte importé : il garde son mot de passe Jira. Les administrateurs de Jira sont déjà administrateurs de Solstice.',

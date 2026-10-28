@@ -125,6 +125,16 @@ export function dropIndex(middles: number[], y: number): number {
 }
 
 /**
+ * How far to scroll, per frame, while a dragged card is held at pos between
+ * the edges start and end of a scroller: more the deeper into the zone along
+ * an edge, negative towards start, 0 away from both.
+ */
+export function edgeScroll(pos: number, start: number, end: number, zone = 48, max = 14): number {
+  const depth = (d: number) => Math.min(1, Math.max(0, (zone - d) / zone));
+  return Math.round(max * (depth(end - pos) - depth(pos - start)));
+}
+
+/**
  * The neighbours a card gets when inserted at index among keys (the list it
  * lands in, which may still hold the card itself): the card just above
  * (after) and just below (before).

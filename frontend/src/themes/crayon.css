@@ -1280,7 +1280,7 @@
   pointer-events: none;
 }
 
-[data-skin='crayon'] .board-column:nth-child(even)::before {
+[data-skin='crayon'] .board-column:nth-child(even of .board-column)::before {
   filter: var(--cr-rough-alt);
 }
 
@@ -1630,7 +1630,7 @@
 /* Narrow phones: the mark alone leads home; its name stays for screen readers. */
 @media (max-width: 480px) {
   [data-skin='crayon'] .topbar-inner {
-    gap: 8px;
+    column-gap: 8px;
     padding: 0 12px;
   }
 

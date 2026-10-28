@@ -261,13 +261,14 @@ kbd,
 }
 
 .topbar-inner {
+  --bar-height: 54px;
   max-width: 1280px;
   margin: 0 auto;
-  height: 54px;
+  height: var(--bar-height);
   padding: 0 32px;
   display: flex;
   align-items: center;
-  gap: 22px;
+  column-gap: 22px;
 }
 
 .brand {
@@ -417,7 +418,7 @@ kbd,
 @media (max-width: 860px) {
   .topbar-inner {
     padding: 0 16px;
-    gap: 12px;
+    column-gap: 12px;
   }
 
   .topbar-search,
@@ -461,6 +462,33 @@ kbd,
   .topbar-themes {
     display: none;
   }
+}
+
+/* Pages that do not fit beside the tools take a row of their own, in equal
+   cells (TopBar sets is-stacked). */
+.topbar.is-stacked .topbar-inner {
+  flex-wrap: wrap;
+  height: auto;
+}
+
+.topbar.is-stacked .brand {
+  min-height: var(--bar-height);
+}
+
+.topbar.is-stacked .topbar-nav {
+  order: 1;
+  flex-basis: 100%;
+}
+
+/* Below a skin's own gap, which wins. */
+.is-stacked .topbar-nav {
+  gap: 8px;
+}
+
+.topbar.is-stacked .topbar-nav .nav-link {
+  flex: 1 0 auto;
+  justify-content: center;
+  text-align: center;
 }
 
 /* Page frame ---------------------------------------------------------------- */
@@ -1191,6 +1219,24 @@ dialog.modal::backdrop {
 .board-card.is-dragging {
   opacity: 0.5;
   cursor: grabbing;
+}
+
+/* A hold by touch drags the card: no text selection or link menu on the way. */
+.board .board-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The copy of a card that follows the finger while it is dragged by touch. */
+.touch-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 70;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: var(--shadow-pop);
 }
 
 .board-column.under-limit .wip-limit {

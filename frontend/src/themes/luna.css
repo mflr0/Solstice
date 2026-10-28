@@ -449,8 +449,8 @@
 }
 
 [data-skin='luna'] .topbar .topbar-inner {
-  height: 42px;
-  gap: 10px;
+  --bar-height: 42px;
+  column-gap: 10px;
 }
 
 [data-skin='luna'] .topbar .brand {
@@ -489,6 +489,13 @@
   font: 400 12.5px/1 var(--font-body);
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+/* On a row of its own, no groove divides the pages from the mark. */
+[data-skin='luna'] .topbar.is-stacked .topbar-nav {
+  padding: 0 0 6px;
+  border-left: 0;
+  box-shadow: none;
 }
 
 [data-skin='luna'] .topbar .topbar-nav .nav-link:hover {
@@ -2205,7 +2212,7 @@
 
 @media (max-width: 860px) {
   [data-skin='luna'] .topbar .topbar-inner {
-    gap: 6px;
+    column-gap: 6px;
   }
 
   [data-skin='luna'] .topbar .topbar-nav {
@@ -2241,7 +2248,7 @@
 @media (max-width: 480px) {
   [data-skin='luna'] .topbar .topbar-inner {
     padding: 0 8px;
-    gap: 5px;
+    column-gap: 5px;
   }
 
   /* The name stays for screen readers; the sun alone marks the home link. */

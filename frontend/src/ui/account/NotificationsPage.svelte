@@ -25,6 +25,7 @@
     'status',
     'updated',
     'attachments',
+    'worklogs',
     'deleted',
   ] as const;
   const HOURS = Array.from({ length: 24 }, (_, h) => h);

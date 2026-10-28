@@ -113,7 +113,12 @@ connection, `.is-live` while connected). `.app-booting` (first load).
 `.plus` (hidden on wide screens) + `.label` + `kbd`, `.account` >
 `button.account-button` > `.avatar`, `.popover.account-menu`. The nav has
 four links (and may gain more): do not count on `:nth-child`. Short of room,
-`.topbar-search` shrinks first, then the nav scrolls sideways inside the bar
+`.topbar-search` shrinks first; when the nav still does not fit beside the
+tools, TopBar sets `.is-stacked` on `.topbar` and the nav takes a full-width
+second row (`order: 1`, links grow to share it, centred), at any width. The
+first row keeps `--bar-height`: set it, not `height`, on `.topbar-inner`, and
+space its items with `column-gap`, not `gap`. Style the stacked row under
+`.topbar.is-stacked`. Last resort, the nav scrolls sideways inside the bar
 (`overflow-x: auto` at every width, links never wrap: a `.nav-link`
 decoration drawn outside the nav box is clipped; the current link is
 scrolled into view). Narrow screens, in the base: ≤ 860 px the search field
@@ -335,7 +340,9 @@ showing where a dragged card lands (`.before` / `.after` a card, or alone at
 the top of an empty list). The board is a grid: columns span every row
 (`grid-template-rows: subgrid`), and with swimlanes a `.board-lane` band
 crosses them above each lane's cells (`button.board-lane-toggle` with
-`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`). Wider than the
+`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`); the bands come
+before the columns in the markup. A card dragged by touch is copied into a
+`.board-card.touch-ghost` on `body` that follows the finger. Wider than the
 page, the board scrolls sideways: `.more-left` / `.more-right` while columns
 are out of sight on that side, each shown by a shade on that edge, the
 board's `::before` / `::after` (drawn with `--ink`). The backlog

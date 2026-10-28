@@ -2020,13 +2020,17 @@ export const en = {
     eventLabels: {
       created: { label: 'New issue', hint: 'When an issue is created.' },
       assigned: { label: 'Assignment', hint: 'When an issue is assigned to you.' },
-      commented: { label: 'Comment', hint: 'When a comment is added or changed.' },
+      commented: { label: 'Comment', hint: 'When a comment is added, changed or deleted.' },
       mentioned: { label: 'Mention', hint: 'When someone mentions you.' },
       status: { label: 'Status', hint: 'When an issue’s status changes.' },
       updated: { label: 'Other fields', hint: 'When another issue field changes.' },
       attachments: {
         label: 'Attachments',
         hint: 'When an attachment is added or removed.',
+      },
+      worklogs: {
+        label: 'Time logged',
+        hint: 'When time is logged, or a time log changed or deleted.',
       },
       deleted: { label: 'Issue deleted', hint: 'When an issue is deleted.' },
     },

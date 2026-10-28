@@ -217,6 +217,96 @@ func TestNotificationRecipientsAndVisibility(t *testing.T) {
 	}
 }
 
+// Work logs and deleted comments are mailed too, with the restriction of a
+// work log kept, and a switch of their own for work logs.
+func TestWorklogAndDeletedCommentNotifications(t *testing.T) {
+	env := newNotifyEnv(t)
+	paul := env.login("paul.martin", jirafixture.Password)  // developpeurs
+	hugo := env.login("hugo.robert", jirafixture.Password)  // developpeurs
+	chloe := env.login("chloe.simon", jirafixture.Password) // not a developer
+	hugo.call("PATCH", "/api/me", map[string]any{"locale": "en"}, 200, nil)
+	key := createIssue(t, paul, "WEB", "Temps et commentaires", "")
+	env.deliver()
+	hugo.call("PUT", "/api/issues/"+key+"/watch", nil, 200, nil)
+	chloe.call("PUT", "/api/issues/"+key+"/watch", nil, 200, nil)
+
+	paul.call("POST", "/api/issues/"+key+"/worklogs", map[string]any{"seconds": 5400, "body": "Analyse du <b>bug</b>",
+		"started": "2031-03-14T09:00:00Z"}, 201, nil)
+	msgs := env.deliver()
+	hm := to(msgs, "hugo.robert@exemple.fr")
+	if len(hm) != 1 || !strings.Contains(hm[0].Text, "Paul Martin logged time.") || !strings.Contains(hm[0].Text, "1h 30m") ||
+		!strings.Contains(hm[0].Text, "2031-03-14 09:00") || !strings.Contains(hm[0].Text, "Analyse du <b>bug</b>") {
+		t.Fatalf("logged time, hugo.robert: %+v", hm)
+	}
+	if strings.Contains(hm[0].HTML, "<b>bug") {
+		t.Error("a work log is not escaped in the HTML part")
+	}
+	if got := to(msgs, "chloe.simon@exemple.fr"); len(got) != 1 {
+		t.Errorf("logged time, chloe.simon: %d e-mails", len(got))
+	}
+
+	// A work log restricted to developpeurs, edited then deleted: only
+	// developers hear of it.
+	res, err := testDB.Exec(`INSERT INTO worklogs (issue_id, author_id, body, started_at, seconds, created_at, updated_at,
+		visibility_group) VALUES (?, ?, 'Temps interne', NOW(), 3600, NOW(), NOW(), 'developpeurs')`,
+		issueID(t, key), userID(t, "paul.martin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wl, _ := res.LastInsertId()
+	path := fmt.Sprintf("/api/worklogs/%d", wl)
+	paul.call("PUT", path, map[string]any{"seconds": 7200}, 200, nil)
+	msgs = env.deliver()
+	hm = to(msgs, "hugo.robert@exemple.fr")
+	if len(hm) != 1 || !strings.Contains(hm[0].Text, "edited a time log.") || !strings.Contains(hm[0].Text, "2h") ||
+		!strings.Contains(hm[0].Text, "Temps interne") || !strings.Contains(hm[0].Text, "restricted visibility") {
+		t.Fatalf("edited time log, hugo.robert: %+v", hm)
+	}
+	if got := to(msgs, "chloe.simon@exemple.fr"); len(got) != 0 {
+		t.Fatal("a work log restricted to developpeurs reached chloe.simon")
+	}
+	paul.call("DELETE", path, nil, 204, nil)
+	msgs = env.deliver()
+	if hm = to(msgs, "hugo.robert@exemple.fr"); len(hm) != 1 || !strings.Contains(hm[0].Text, "deleted a time log.") ||
+		!strings.Contains(hm[0].Text, "Temps interne") {
+		t.Fatalf("deleted time log, hugo.robert: %+v", hm)
+	}
+	if got := to(msgs, "chloe.simon@exemple.fr"); len(got) != 0 {
+		t.Fatal("a deleted work log restricted to developpeurs reached chloe.simon")
+	}
+
+	// A deleted comment, with the text it had; a restricted one stays
+	// with those who could read it.
+	var c struct{ ID int64 }
+	paul.call("POST", "/api/issues/"+key+"/comments", map[string]any{"body": "Commentaire à retirer"}, 201, &c)
+	var r struct{ ID int64 }
+	paul.call("POST", "/api/issues/"+key+"/comments", map[string]any{"body": "Trace réservée",
+		"visibility": map[string]string{"group": "developpeurs"}}, 201, &r)
+	env.deliver()
+	paul.call("DELETE", fmt.Sprintf("/api/comments/%d", c.ID), nil, 204, nil)
+	paul.call("DELETE", fmt.Sprintf("/api/comments/%d", r.ID), nil, 204, nil)
+	msgs = env.deliver()
+	hm = to(msgs, "hugo.robert@exemple.fr")
+	if len(hm) != 1 || strings.Count(hm[0].Text, "deleted a comment.") != 2 ||
+		!strings.Contains(hm[0].Text, "Commentaire à retirer") || !strings.Contains(hm[0].Text, "Trace réservée") {
+		t.Fatalf("deleted comments, hugo.robert: %+v", hm)
+	}
+	cm := to(msgs, "chloe.simon@exemple.fr")
+	if len(cm) != 1 || !strings.Contains(cm[0].Text, "Commentaire à retirer") {
+		t.Fatalf("deleted comment, chloe.simon: %d e-mails", len(cm))
+	}
+	if strings.Contains(cm[0].Raw, "Trace réservée") {
+		t.Fatal("a deleted comment restricted to developpeurs reached chloe.simon")
+	}
+
+	// Work logs have their own switch.
+	hugo.call("PUT", "/api/me/notifications", map[string]any{"events": map[string]bool{"worklogs": false}}, 200, nil)
+	paul.call("POST", "/api/issues/"+key+"/worklogs", map[string]any{"seconds": 600}, 201, nil)
+	if got := to(env.deliver(), "hugo.robert@exemple.fr"); len(got) != 0 {
+		t.Error("hugo.robert switched work logs off but got one")
+	}
+}
+
 // A bulk change makes one e-mail per recipient, naming every issue they
 // watch; one that leaves a single issue to them is mailed in its thread.
 func TestBulkChangeNotifiesOnce(t *testing.T) {
@@ -267,7 +357,7 @@ func TestNotificationPreferences(t *testing.T) {
 
 	var p prefsOut
 	hugo.call("GET", "/api/me/notifications", nil, 200, &p)
-	if p.Delivery != "immediate" || p.OwnChanges || p.DueReminder || !p.MailEnabled || len(p.Events) != 8 {
+	if p.Delivery != "immediate" || p.OwnChanges || p.DueReminder || !p.MailEnabled || len(p.Events) != 9 {
 		t.Fatalf("defaults: %+v", p)
 	}
 	for _, e := range p.Events {
