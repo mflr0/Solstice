@@ -18,6 +18,8 @@ export interface Me {
   locale?: string | null;
   /** "ldap" or "oidc" for an account with no password of its own; absent on older servers. */
   directory?: string;
+  /** The project Work, Boards and Search are scoped to; null or absent: every project. */
+  project?: { id: number; key: string; name: string } | null;
 }
 
 export interface UserRef {

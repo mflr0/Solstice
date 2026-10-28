@@ -112,6 +112,9 @@ export const fr: Messages = {
     create: 'Nouveau ticket',
     account: 'Compte',
     myPage: 'Ma page',
+    scopeAll: 'Tous',
+    scopeAllProjects: 'Tous les projets',
+    scopeLabel: (name: string) => `Projets affichés : ${name}`,
     skins: {
       carnet: 'Carnet',
       orbite: 'Orbite',

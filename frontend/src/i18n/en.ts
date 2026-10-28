@@ -110,6 +110,10 @@ export const en = {
     create: 'New issue',
     account: 'Account',
     myPage: 'My page',
+    /** The project switcher: which project Work, Boards and Search cover. */
+    scopeAll: 'All',
+    scopeAllProjects: 'All projects',
+    scopeLabel: (name: string) => `Projects shown: ${name}`,
     skins: {
       carnet: 'Notebook',
       orbite: 'Orbit',

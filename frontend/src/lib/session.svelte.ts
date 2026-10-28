@@ -4,6 +4,7 @@
  */
 
 import type { Me, Meta, PriorityRef } from '../core/types.js';
+import { accountApi } from './admin-api.js';
 import { api, ApiError, setUnauthorizedHandler } from './api.js';
 import { adoptAccountLocale } from './locale.js';
 import { router } from './router.svelte.js';
@@ -51,6 +52,16 @@ class Session {
     if (!isPublicRoute(router.route)) {
       router.navigate(paths.login(router.here), { replace: true });
     }
+  }
+
+  /** The key of the project the pages are scoped to, null for every project. */
+  get scope(): string | null {
+    return this.me?.project?.key ?? null;
+  }
+
+  /** Scopes the pages to a project (its key), or to every project (null). */
+  async setScope(key: string | null): Promise<void> {
+    this.me = await accountApi.updateProfile({ project: key });
   }
 
   /** Index of a priority in the ordered list (most urgent first). */

@@ -213,8 +213,9 @@ func (r *run) keep() (*kept, error) {
 // the operator must still be able to sign in and try again).
 func (r *run) putBack(k *kept) error {
 	var errs []error
-	// Accounts created in Solstice whose name Jira does not use.
-	if n, err := r.restore(k.local, "id"); err != nil {
+	// Accounts created in Solstice whose name Jira does not use. Project ids
+	// change with the import: a chosen project scope would name another one.
+	if n, err := r.restore(k.local, "id", "scope_project_id"); err != nil {
 		errs = append(errs, err)
 	} else if n > 0 {
 		r.rep.warn(i18n.N(n, i18n.ImportWarnLocalAccountsOne, i18n.ImportWarnLocalAccountsMany))
@@ -223,7 +224,7 @@ func (r *run) putBack(k *kept) error {
 	if k.operator != nil && len(k.operator.rows) == 1 {
 		// Re-created as a Solstice account when Jira has no such user name
 		// (its old Jira key may belong to someone else now).
-		if _, err := r.restore(k.operator, "id", "user_key"); err != nil {
+		if _, err := r.restore(k.operator, "id", "user_key", "scope_project_id"); err != nil {
 			errs = append(errs, err)
 		}
 		hash := k.operator.rows[0][slices.Index(k.operator.columns, "password_hash")]

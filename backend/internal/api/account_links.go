@@ -382,7 +382,7 @@ func (s *Server) useResetLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.auditLogin(r, u.Username, &u, "link")
 	w.Header().Set("Cache-Control", "no-store")
-	return writeJSON(w, http.StatusOK, meOf(&u))
+	return s.writeMe(w, r, &u)
 }
 
 // adminInviteUser sends an invitation again to an account that never signed

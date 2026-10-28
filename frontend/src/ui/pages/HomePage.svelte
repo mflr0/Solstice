@@ -9,6 +9,7 @@
   } from '../../core/dashboard.js';
   import { localParts } from '../../core/dates.js';
   import { paths } from '../../core/route.js';
+  import { scopeGadgetQuery } from '../../core/scope.js';
   import { NATIVE_COLUMNS, type ColumnChoice } from '../../core/search-columns.js';
   import { renderDay, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
@@ -183,7 +184,7 @@
   {:else}
     {#if editing}<p class="muted small order-hint">{t.home.orderHint}</p>{/if}
     {#each gadgets as g, i (keyOf(g, i))}
-      {@const q = gadgetQuery(g)}
+      {@const q = scopeGadgetQuery(gadgetQuery(g), g.kind, session.scope)}
       <section
         class="gadget"
         class:editing

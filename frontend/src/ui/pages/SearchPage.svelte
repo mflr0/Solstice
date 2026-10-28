@@ -1,9 +1,11 @@
 <script lang="ts">
   import { readLocation, toJql, writeLocation } from '../../core/filters-url.js';
+  import { scopeSearch } from '../../core/scope.js';
   import type { SavedFilter } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';
   import IssueSearch from '../search/IssueSearch.svelte';
@@ -30,6 +32,14 @@
   const modified = $derived(
     current !== null && loc.jql !== null && loc.jql.trim() !== toJql(current.query).trim(),
   );
+
+  // A new search starts in the scoped project, in the address like any other.
+  $effect(() => {
+    const scoped = scopeSearch(loc, session.scope);
+    if (scoped !== null) {
+      router.navigate(`${router.path}${writeLocation({ ...loc, jql: scoped })}`, { replace: true });
+    }
+  });
 
   let dialog = $state<'save' | 'rename' | 'delete' | null>(null);
   let name = $state('');

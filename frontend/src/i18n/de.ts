@@ -118,6 +118,9 @@ export const de: Messages = {
     create: 'Neuer Vorgang',
     account: 'Konto',
     myPage: 'Meine Seite',
+    scopeAll: 'Alle',
+    scopeAllProjects: 'Alle Projekte',
+    scopeLabel: (name: string) => `Angezeigte Projekte: ${name}`,
     skins: {
       carnet: 'Notizbuch',
       orbite: 'Orbit',

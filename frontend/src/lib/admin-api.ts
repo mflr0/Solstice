@@ -295,11 +295,12 @@ export const securityApi = {
 };
 
 export const accountApi = {
-  /** One's profile: name, e-mail, language, password (with the current one). */
+  /** One's profile: name, e-mail, language, project scope, password (with the current one). */
   updateProfile: (patch: {
     name?: string;
     email?: string;
     locale?: string | null;
+    project?: string | null;
     currentPassword?: string;
     newPassword?: string;
   }) => request<Me>('PATCH', '/api/me', patch),

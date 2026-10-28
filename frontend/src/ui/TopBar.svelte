@@ -11,10 +11,11 @@
   import { appearance, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
+  import ProjectScope from './ProjectScope.svelte';
   import QuickSearch from './search/QuickSearch.svelte';
 
   interface Props {
-    /** The project the current page is about, to preselect it on creation. */
+    /** The project to preselect on creation: the page's, else the scoped one. */
     project: string | undefined;
   }
   const { project }: Props = $props();
@@ -70,6 +71,8 @@
       <span class="wordmark">{t.appName}</span>
       {#if instanceName}<span class="instance-name">{instanceName}</span>{/if}
     </a>
+
+    {#if session.me}<ProjectScope />{/if}
 
     <nav class="topbar-nav" bind:this={nav} aria-label={t.common.mainNav}>
       <a class="nav-link" href={paths.home()} aria-current={section === 'home' ? 'page' : undefined}
