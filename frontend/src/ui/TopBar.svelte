@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
-  import { outside, stackWhenCrowded } from '../lib/actions.js';
+  import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
@@ -140,7 +140,7 @@
           {#if update}<span class="update-dot" aria-hidden="true"></span>{/if}
         </button>
         {#if menuOpen}
-          <div class="popover account-menu" role="menu">
+          <div class="popover account-menu" role="menu" use:menu={() => (menuOpen = false)}>
             <div class="who">
               <strong>{session.me.name}</strong>
               <span class="key muted">{session.me.username}</span>
