@@ -23,7 +23,12 @@ export const de: Messages = {
     duration: (h: number, m: number) =>
       h === 0 ? `${m} min` : m === 0 ? `${h} h` : `${h} h ${m} min`,
   },
-  units: { bytes: 'B', kilobytes: 'KB', megabytes: 'MB' },
+  units: {
+    bytes: 'B',
+    kilobytes: 'KB',
+    megabytes: 'MB',
+    duration: { week: 'W', day: 'T', hour: 'Std', minute: 'Min' },
+  },
 
   categories: {
     todo: 'Zu erledigen',
@@ -728,8 +733,8 @@ export const de: Messages = {
     spent: 'Erfasst',
     originalEstimate: 'Ursprüngliche Schätzung',
     remainingEstimate: 'Verbleibende Schätzung',
-    estimateHint: 'z. B. 1w 2d 3h 30m',
-    estimateInvalid: 'Diese Zeit ließ sich nicht lesen: Versuchen Sie „1d 4h“ oder „90m“.',
+    estimateHint: 'z. B. 1W 2T 3Std 30Min',
+    estimateInvalid: 'Diese Zeit ließ sich nicht lesen: Versuchen Sie „1T 4Std“ oder „90Min“.',
     customFields: 'Weitere Felder',
     watch: 'Beobachten',
     watching: 'Beobachtet',

@@ -21,7 +21,12 @@ export const fr: Messages = {
     duration: (h: number, m: number) =>
       h === 0 ? `${m} min` : m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`,
   },
-  units: { bytes: 'o', kilobytes: 'Ko', megabytes: 'Mo' },
+  units: {
+    bytes: 'o',
+    kilobytes: 'Ko',
+    megabytes: 'Mo',
+    duration: { week: 'sem', day: 'j', hour: 'h', minute: 'min' },
+  },
 
   categories: {
     todo: 'À faire',
@@ -721,8 +726,8 @@ export const fr: Messages = {
     spent: 'Passé',
     originalEstimate: 'Estimation initiale',
     remainingEstimate: 'Temps restant estimé',
-    estimateHint: 'ex. : 1w 2d 3h 30m',
-    estimateInvalid: 'Durée illisible : essayez « 1d 4h » ou « 90m ».',
+    estimateHint: 'ex. : 1sem 2j 3h 30min',
+    estimateInvalid: 'Durée illisible : essayez « 1j 4h » ou « 90min ».',
     customFields: 'Autres champs',
     watch: 'Observer',
     watching: 'Observé',

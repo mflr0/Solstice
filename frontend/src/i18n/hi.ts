@@ -24,7 +24,12 @@ export const hi: Messages = {
     duration: (h: number, m: number) =>
       h === 0 ? `${m} मि` : m === 0 ? `${h} घं` : `${h} घं ${m} मि`,
   },
-  units: { bytes: 'बाइट', kilobytes: 'KB', megabytes: 'MB' },
+  units: {
+    bytes: 'बाइट',
+    kilobytes: 'KB',
+    megabytes: 'MB',
+    duration: { week: 'w', day: 'd', hour: 'h', minute: 'm' },
+  },
 
   categories: {
     todo: 'करना है',

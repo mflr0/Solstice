@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isoDay, jiraDuration, parseDuration, todayISO } from '../../core/dates.js';
+  import { isoDay, parseDuration, todayISO, typedDuration } from '../../core/dates.js';
   import { worklogEdit, worklogStart } from '../../core/estimates.js';
   import type { IssueDetail, Worklog } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
@@ -48,7 +48,7 @@
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
-    const seconds = parseDuration(duration);
+    const seconds = parseDuration(duration, t.units.duration);
     invalid = seconds === null;
     if (seconds === null) return;
     sending = true;
@@ -68,7 +68,7 @@
 
   function startEdit(w: Worklog) {
     editing = w.id;
-    editDuration = jiraDuration(w.seconds);
+    editDuration = typedDuration(w.seconds, t.units.duration);
     editDay = isoDay(new Date(w.started));
     editBody = w.body ?? '';
     editInvalid = false;
@@ -76,7 +76,11 @@
   }
 
   async function saveEdit(w: Worklog) {
-    const edit = worklogEdit(w, { duration: editDuration, day: editDay, body: editBody });
+    const edit = worklogEdit(
+      w,
+      { duration: editDuration, day: editDay, body: editBody },
+      t.units.duration,
+    );
     editInvalid = !edit.ok;
     if (!edit.ok) return;
     if (Object.keys(edit.patch).length === 0) {

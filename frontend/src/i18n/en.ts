@@ -21,7 +21,13 @@ export const en = {
     /** "2h 30m", "2h", "45m": the way people type it in a work log. */
     duration: (h: number, m: number) => (h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`),
   },
-  units: { bytes: 'B', kilobytes: 'KB', megabytes: 'MB' },
+  units: {
+    bytes: 'B',
+    kilobytes: 'KB',
+    megabytes: 'MB',
+    /** How estimates and work logs write a duration's units ("1w 2d 3h 30m"). */
+    duration: { week: 'w', day: 'd', hour: 'h', minute: 'm' },
+  },
 
   categories: {
     todo: 'To do',

@@ -65,8 +65,8 @@
   let estimateError = $state(false);
 
   $effect(() => {
-    originalText = estimateText(issue.time.original);
-    remainingText = estimateText(issue.time.remaining);
+    originalText = estimateText(issue.time.original, t.units.duration);
+    remainingText = estimateText(issue.time.remaining, t.units.duration);
     estimateError = false;
   });
 
@@ -74,13 +74,14 @@
     const { fields, invalid } = estimateChanges(
       { original: originalText, remaining: remainingText },
       issue.time,
+      t.units.duration,
     );
     estimateError = invalid !== null;
     if (invalid !== null || Object.keys(fields).length === 0) return;
     if (!(await onchange(fields))) {
       // The note already says why; the fields show the issue's own values again.
-      originalText = estimateText(issue.time.original);
-      remainingText = estimateText(issue.time.remaining);
+      originalText = estimateText(issue.time.original, t.units.duration);
+      remainingText = estimateText(issue.time.remaining, t.units.duration);
     }
   }
 

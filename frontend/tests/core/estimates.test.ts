@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { jiraDuration, parseDuration } from '../../src/core/dates.js';
+import { jiraDuration, parseDuration, typedDuration } from '../../src/core/dates.js';
 import {
   estimateChanges,
   estimateText,
@@ -8,6 +8,11 @@ import {
   worklogEdit,
   worklogStart,
 } from '../../src/core/estimates.js';
+import { de } from '../../src/i18n/de.js';
+import { en } from '../../src/i18n/en.js';
+import { fr } from '../../src/i18n/fr.js';
+import { hi } from '../../src/i18n/hi.js';
+import { it as italian } from '../../src/i18n/it.js';
 
 const DAY = 8 * 3600;
 const WEEK = 5 * DAY;
@@ -166,5 +171,56 @@ describe('worklogEdit', () => {
   it('puts a work log at noon of its day', () => {
     const d = new Date(worklogStart('2026-10-14'));
     expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 9, 14, 12]);
+  });
+});
+
+describe('units of a language', () => {
+  const FULL = WEEK + 2 * DAY + 3 * 3600 + 1800;
+
+  it.each([
+    ['fr', fr.units.duration, '1sem 2j 3h 30min'],
+    ['de', de.units.duration, '1W 2T 3Std 30Min'],
+    ['it', italian.units.duration, '1sett 2g 3h 30min'],
+    ['hi', hi.units.duration, '1w 2d 3h 30m'],
+    ['en', en.units.duration, '1w 2d 3h 30m'],
+  ])('%s writes and reads its own', (_, units, text) => {
+    expect(typedDuration(FULL, units)).toBe(text);
+    expect(parseDuration(text, units)).toBe(FULL);
+    expect(parseDuration(text.toUpperCase(), units)).toBe(FULL);
+    expect(estimateText(FULL, units)).toBe(text);
+  });
+
+  it.each([fr, de, italian, hi, en])('still reads the shared units', (c) => {
+    expect(parseDuration('1w 2d 3h 30m', c.units.duration)).toBe(FULL);
+    expect(parseDuration('1j 45mn', c.units.duration)).toBe(DAY + 45 * 60);
+  });
+
+  it('reads a language’s units only for that language', () => {
+    expect(parseDuration('1sem')).toBeNull();
+    expect(parseDuration('3Std', fr.units.duration)).toBeNull();
+    expect(parseDuration('3Std 30', de.units.duration)).toBe(3 * 3600 + 1800);
+  });
+
+  it('reads none left in a language’s units', () => {
+    expect(readEstimate('0Min', de.units.duration)).toEqual({ ok: true, seconds: 0 });
+    expect(readEstimate('0 sem', fr.units.duration)).toEqual({ ok: true, seconds: 0 });
+    expect(typedDuration(0, de.units.duration)).toBe('0Min');
+  });
+
+  it('sends Jira’s units whatever the language typed', () => {
+    expect(
+      estimateChanges(
+        { original: '1sem 2j', remaining: '' },
+        { original: null, remaining: null },
+        fr.units.duration,
+      ).fields,
+    ).toEqual({ originalEstimate: '1w 2d' });
+    expect(
+      estimateChanges(
+        { original: '1T', remaining: '4Std' },
+        { original: DAY, remaining: 4 * 3600 },
+        de.units.duration,
+      ).fields,
+    ).toEqual({});
   });
 });
