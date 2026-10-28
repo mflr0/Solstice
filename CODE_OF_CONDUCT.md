@@ -65,7 +65,9 @@ Being responsible does not mean being punished for every mistake:
 ## Reporting
 
 Report a problem privately to a maintainer, at
-[mflr0@proton.me](mailto:mflr0@proton.me), rather than in a public thread.
+[mflr0@proton.me](mailto:mflr0@proton.me) or
+[suolumi.dev@gmail.com](mailto:suolumi.dev@gmail.com), rather than in a public
+thread.
 Reports are kept confidential.
 
 ## Enforcement
