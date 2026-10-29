@@ -144,6 +144,7 @@ export const it: Messages = {
       plan: 'lucido e cartigli',
     },
     themes: 'Temi',
+    allThemes: 'Tutti i temi',
     mode: 'Modalità',
     modes: { system: 'sistema', light: 'chiaro', dark: 'scuro' },
     logout: 'Esci',

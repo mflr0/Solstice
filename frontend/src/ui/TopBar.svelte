@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
@@ -8,7 +9,7 @@
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
-  import { appearance, openCreate } from '../lib/ui.svelte.js';
+  import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
   import ProjectScope from './ProjectScope.svelte';
@@ -21,6 +22,7 @@
   const { project }: Props = $props();
 
   let menuOpen = $state(false);
+  let themesOpen = $state(false);
   /** The instance's own name, when the administrators gave it one. */
   const instanceName = $derived.by(() => {
     const n = publicSettings.value.instanceName.trim();
@@ -105,18 +107,63 @@
       aria-label={live.connected ? t.nav.live : t.nav.offline}
     ></span>
 
-    <a
-      class="topbar-themes"
-      href={paths.themes()}
-      title={t.nav.themes}
-      aria-label={t.nav.themes}
-      aria-current={router.route.name === 'themes' ? 'page' : undefined}
-    >
-      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-        <circle cx="10" cy="10" r="7.25" />
-        <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" />
-      </svg>
-    </a>
+    <div class="theme-picker" use:outside={() => (themesOpen = false)}>
+      <button
+        class="topbar-themes"
+        title={t.nav.themes}
+        aria-label={t.nav.themes}
+        aria-haspopup="menu"
+        aria-expanded={themesOpen}
+        aria-current={router.route.name === 'themes' ? 'page' : undefined}
+        onclick={() => (themesOpen = !themesOpen)}
+      >
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+          <circle cx="10" cy="10" r="7.25" />
+          <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" />
+        </svg>
+      </button>
+      {#if themesOpen}
+        <div class="popover theme-menu" role="menu" use:menu={() => (themesOpen = false)}>
+          <div class="group-label" id="theme-menu-skins">{t.nav.themes}</div>
+          <div role="group" aria-labelledby="theme-menu-skins">
+            {#each SKINS as skin (skin)}
+              <button
+                class="item"
+                role="menuitemradio"
+                aria-checked={appearance.skin === skin}
+                onclick={() => applySkin(skin)}
+              >
+                <span
+                  class="swatch"
+                  aria-hidden="true"
+                  style:--sw-paper={SWATCHES[skin].paper}
+                  style:--sw-ink={SWATCHES[skin].ink}
+                  style:--sw-accent={SWATCHES[skin].accent}
+                ></span>
+                <span>{t.nav.skins[skin]}</span>
+              </button>
+            {/each}
+          </div>
+          <div class="sep"></div>
+          <div class="group-label" id="theme-menu-modes">{t.nav.mode}</div>
+          <div role="group" aria-labelledby="theme-menu-modes">
+            {#each MODES as mode (mode)}
+              <button
+                class="item"
+                role="menuitemradio"
+                aria-checked={appearance.mode === mode}
+                onclick={() => applyMode(mode)}
+                ><span class="mode">{t.nav.modes[mode]}</span></button
+              >
+            {/each}
+          </div>
+          <div class="sep"></div>
+          <a class="item" role="menuitem" href={paths.themes()} onclick={() => (themesOpen = false)}
+            >{t.nav.allThemes}</a
+          >
+        </div>
+      {/if}
+    </div>
 
     <button
       class="btn btn-primary topbar-create"
@@ -246,6 +293,48 @@
     top: 0;
     right: 0;
     box-shadow: 0 0 0 2px var(--bar);
+  }
+
+  /* A thumbnail of each skin: its paper, two lines of ink, its accent. */
+  .theme-menu .swatch {
+    position: relative;
+    width: 26px;
+    height: 18px;
+    flex: none;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    background: var(--sw-paper);
+  }
+
+  .theme-menu .swatch::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 5px;
+    width: 10px;
+    height: 1.5px;
+    background: var(--sw-ink);
+    box-shadow: 0 5px 0 var(--sw-ink);
+  }
+
+  .theme-menu .swatch::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    top: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sw-accent);
+  }
+
+  /* Some languages write the mode names in lower case. */
+  .theme-menu .mode {
+    display: block;
+  }
+
+  .theme-menu .mode::first-letter {
+    text-transform: uppercase;
   }
 
   .account-menu .hint {

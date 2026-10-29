@@ -476,7 +476,8 @@
 }
 
 [data-skin='orbite'] .topbar-themes:hover,
-[data-skin='orbite'] .topbar-themes[aria-current='page'] {
+[data-skin='orbite'] .topbar-themes[aria-current='page'],
+[data-skin='orbite'] .topbar-themes[aria-expanded='true'] {
   color: var(--bar-ink);
   background: color-mix(in srgb, var(--bar-ink) 9%, transparent);
 }

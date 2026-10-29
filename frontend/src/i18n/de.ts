@@ -147,6 +147,7 @@ export const de: Messages = {
       plan: 'Pauspapier, Schriftfelder',
     },
     themes: 'Designs',
+    allThemes: 'Alle Designs',
     mode: 'Modus',
     modes: { system: 'System', light: 'Hell', dark: 'Dunkel' },
     logout: 'Abmelden',

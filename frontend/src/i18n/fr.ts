@@ -141,6 +141,7 @@ export const fr: Messages = {
       plan: 'calque et cartouches',
     },
     themes: 'Thèmes',
+    allThemes: 'Tous les thèmes',
     mode: 'Mode',
     modes: { system: 'système', light: 'clair', dark: 'sombre' },
     logout: 'Se déconnecter',

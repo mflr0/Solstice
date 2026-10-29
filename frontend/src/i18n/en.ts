@@ -141,6 +141,7 @@ export const en = {
       plan: 'tracing paper, title blocks',
     },
     themes: 'Themes',
+    allThemes: 'All themes',
     mode: 'Mode',
     modes: { system: 'system', light: 'light', dark: 'dark' },
     logout: 'Sign out',

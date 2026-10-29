@@ -435,7 +435,8 @@
 }
 
 [data-skin='retro'] .topbar .topbar-themes:active,
-[data-skin='retro'] .topbar .topbar-themes[aria-current='page'] {
+[data-skin='retro'] .topbar .topbar-themes[aria-current='page'],
+[data-skin='retro'] .topbar .topbar-themes[aria-expanded='true'] {
   box-shadow: var(--rt-thin-down);
   background: var(--rt-dither);
 }
@@ -2209,7 +2210,7 @@
     padding: 0 8px;
   }
 
-  [data-skin='retro'] .topbar .topbar-themes {
+  [data-skin='retro'] .topbar .theme-picker {
     display: none;
   }
 }

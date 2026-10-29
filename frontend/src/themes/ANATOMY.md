@@ -109,7 +109,11 @@ connection, `.is-live` while connected). `.app-booting` (first load).
 **Top bar** — `header.topbar` > `.topbar-inner` > `a.brand` (`.logo` +
 `.wordmark`), `nav.topbar-nav` > `a.nav-link` (`[aria-current='page']`),
 `form.topbar-search.quick-search` > `input.input` (see **Search**), `.live-dot` (`.on` when connected),
-`a.topbar-themes` (gallery link, icon), `.btn.btn-primary.topbar-create` >
+`.theme-picker` > `button.topbar-themes` (icon; `[aria-current='page']` on
+the gallery, `[aria-expanded='true']` while open: give both the same look),
+`.popover.theme-menu` (`.group-label`s, skins as `.item[role=menuitemradio]` >
+`.swatch` + name, modes as `.item[role=menuitemradio]` > `.mode`, then
+`a.item` to the gallery), `.btn.btn-primary.topbar-create` >
 `.plus` (hidden on wide screens) + `.label` + `kbd`, `.account` >
 `button.account-button` > `.avatar`, `.popover.account-menu`. The nav has
 four links (and may gain more): do not count on `:nth-child`. Short of room,
@@ -125,7 +129,7 @@ scrolled into view). Narrow screens, in the base: ≤ 860 px the search field
 and the `kbd` go and `.live-dot` takes `margin-left: auto`; ≤ 600 px `.wordmark` and `.topbar-create .label` are
 visually hidden (still read) and `.plus` shows, sized `1.55em` — a skin that
 sets the button's `font-size: 0` to draw its own « + » hides it too; ≤ 420 px
-`.topbar-themes` goes (the gallery stays on Account → Appearance).
+`.theme-picker` goes (the gallery stays on Account → Appearance).
 
 **Logo** — `svg.logo` > `.logo-sun`, `.logo-line`, `.logo-faint` (Carnet);
 Orbite: `.logo-orbit`, `.logo-planet`; Crayonné: `.logo-sketch`, `.logo-ray`.

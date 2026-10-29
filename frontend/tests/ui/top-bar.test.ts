@@ -2,10 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
+import { MODES, SKINS } from '../../src/core/appearance.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
-import { dialogs } from '../../src/lib/ui.svelte.js';
+import { appearance, applyMode, dialogs } from '../../src/lib/ui.svelte.js';
 import TopBar from '../../src/ui/TopBar.svelte';
 
 vi.mock('../../src/lib/api.js', () => ({
@@ -50,6 +51,7 @@ afterEach(() => {
   component = undefined;
   session.me = null;
   dialogs.create = false;
+  applyMode('system');
 });
 
 /** What Tab reaches, in order: what has no tabindex of -1 and is not disabled. */
@@ -110,7 +112,6 @@ describe('TopBar keyboard', () => {
     );
     expect(hrefs).toEqual([paths.home(), paths.projects(), paths.boards(), paths.search()]);
     expect(document.querySelector('.brand')?.getAttribute('href')).toBe(paths.home());
-    expect(document.querySelector('.topbar-themes')?.getAttribute('href')).toBe(paths.themes());
   });
 
   it('opens the creation dialog', () => {
@@ -156,6 +157,44 @@ describe('TopBar keyboard', () => {
     key(focused(), 'Escape');
     expect(document.querySelector('.account-menu')).toBeNull();
     expect(focused()).toBe(account);
+  });
+
+  it('switches the mode from the theme menu and links to the gallery', async () => {
+    const themes = button(t.nav.themes);
+    themes.click();
+    await settle();
+    expect(themes.getAttribute('aria-expanded')).toBe('true');
+    const radios = [
+      ...document.querySelectorAll<HTMLElement>('.theme-menu [role="menuitemradio"]'),
+    ];
+    expect(radios.map((i) => i.textContent?.trim())).toEqual([
+      ...SKINS.map((s) => t.nav.skins[s]),
+      ...MODES.map((m) => t.nav.modes[m]),
+    ]);
+    const checked = () =>
+      radios
+        .filter((i) => i.getAttribute('aria-checked') === 'true')
+        .map((i) => i.textContent?.trim());
+    expect(checked()).toEqual([t.nav.skins[appearance.skin], t.nav.modes.system]);
+    expect(focused()).toBe(radios[SKINS.indexOf(appearance.skin)]);
+
+    const dark = radios[SKINS.length + MODES.indexOf('dark')]!;
+    dark.click();
+    flushSync();
+    expect(appearance.mode).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    // The menu stays open and shows the new choice.
+    expect(checked()).toEqual([t.nav.skins[appearance.skin], t.nav.modes.dark]);
+
+    key(focused(), 'End');
+    const gallery = document.querySelector<HTMLAnchorElement>('.theme-menu [role="menuitem"]')!;
+    expect(focused()).toBe(gallery);
+    expect(gallery.getAttribute('href')).toBe(paths.themes());
+    expect(gallery.textContent?.trim()).toBe(t.nav.allThemes);
+
+    key(focused(), 'Escape');
+    expect(document.querySelector('.theme-menu')).toBeNull();
+    expect(focused()).toBe(themes);
   });
 
   it('starts the scope menu on the current project and closes it when focus moves on', async () => {
