@@ -80,3 +80,50 @@ export const SWATCHES: Record<Skin, { paper: string; ink: string; accent: string
   terminal: { paper: '#0a0f0a', ink: '#5cf08a', accent: '#5cf08a' },
   plan: { paper: '#1b4b82', ink: '#ffffff', accent: '#ffd166' },
 };
+
+/** The colours a theme-menu rectangle draws: top bar, paper, ink and accent. */
+export interface SchemeSwatch {
+  bar: string;
+  paper: string;
+  ink: string;
+  accent: string;
+}
+
+/**
+ * Each skin's own colours in light and in dark, from its stylesheet's tokens,
+ * for the top bar's theme menu (drawn before the skin's stylesheet is loaded).
+ */
+export const SCHEME_SWATCHES: Record<Skin, Record<Scheme, SchemeSwatch>> = {
+  carnet: {
+    light: { bar: '#faf8f3', paper: '#f4f1ea', ink: '#1c1b19', accent: '#d9381e' },
+    dark: { bar: '#22211d', paper: '#1a1916', ink: '#ebe6da', accent: '#ec5a3d' },
+  },
+  orbite: {
+    light: { bar: '#0f1a33', paper: '#f3f6fb', ink: '#0e1830', accent: '#c9580c' },
+    dark: { bar: '#070c19', paper: '#0b1122', ink: '#e6eaf3', accent: '#ff8a3d' },
+  },
+  crayon: {
+    light: { bar: '#f7f5ee', paper: '#f7f5ee', ink: '#262522', accent: '#2c5daa' },
+    dark: { bar: '#1f2b27', paper: '#1f2b27', ink: '#ecebe4', accent: '#9cc0f0' },
+  },
+  luna: {
+    light: { bar: '#2253bd', paper: '#efebde', ink: '#1a1f2b', accent: '#2350b5' },
+    dark: { bar: '#1a3a83', paper: '#1d2333', ink: '#e7ebf4', accent: '#7ea6ff' },
+  },
+  retro: {
+    light: { bar: '#c6c5bf', paper: '#1a7a77', ink: '#111111', accent: '#0b2a84' },
+    dark: { bar: '#3c3d40', paper: '#0f3735', ink: '#ecebe6', accent: '#91b3ff' },
+  },
+  classique: {
+    light: { bar: '#163463', paper: '#ffffff', ink: '#1d2533', accent: '#1d5bd0' },
+    dark: { bar: '#142540', paper: '#1a1f27', ink: '#e3e8ef', accent: '#5b9bf3' },
+  },
+  terminal: {
+    light: { bar: '#fbfcf7', paper: '#fbfcf7', ink: '#232723', accent: '#1d6b38' },
+    dark: { bar: '#0f1912', paper: '#0b120d', ink: '#7ef29d', accent: '#9dffb5' },
+  },
+  plan: {
+    light: { bar: '#ffffff', paper: '#f5f8fa', ink: '#0f2e57', accent: '#c42b1c' },
+    dark: { bar: '#0a2645', paper: '#0d2e52', ink: '#f2f6fb', accent: '#ff9a84' },
+  },
+};

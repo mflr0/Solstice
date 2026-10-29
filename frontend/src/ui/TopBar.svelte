@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MODES, SKINS, SWATCHES } from '../core/appearance.js';
+  import { SCHEME_SWATCHES, SKINS, type Scheme, type Skin } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
@@ -23,6 +23,13 @@
 
   let menuOpen = $state(false);
   let themesOpen = $state(false);
+  const SCHEMES: readonly Scheme[] = ['light', 'dark'];
+
+  /** Following the system stays on Account → Appearance: a pick here is explicit. */
+  function pickLook(skin: Skin, scheme: Scheme) {
+    applyMode(scheme);
+    applySkin(skin);
+  }
   /** The instance's own name, when the administrators gave it one. */
   const instanceName = $derived.by(() => {
     const n = publicSettings.value.instanceName.trim();
@@ -124,37 +131,32 @@
       </button>
       {#if themesOpen}
         <div class="popover theme-menu" role="menu" use:menu={() => (themesOpen = false)}>
-          <div class="group-label" id="theme-menu-skins">{t.nav.themes}</div>
-          <div role="group" aria-labelledby="theme-menu-skins">
-            {#each SKINS as skin (skin)}
-              <button
-                class="item"
-                role="menuitemradio"
-                aria-checked={appearance.skin === skin}
-                onclick={() => applySkin(skin)}
-              >
-                <span
-                  class="swatch"
-                  aria-hidden="true"
-                  style:--sw-paper={SWATCHES[skin].paper}
-                  style:--sw-ink={SWATCHES[skin].ink}
-                  style:--sw-accent={SWATCHES[skin].accent}
-                ></span>
-                <span>{t.nav.skins[skin]}</span>
-              </button>
-            {/each}
+          <div class="theme-head" aria-hidden="true">
+            <span>{t.nav.themes}</span>
+            {#each SCHEMES as scheme (scheme)}<span class="scheme-name">{t.nav.modes[scheme]}</span
+              >{/each}
           </div>
-          <div class="sep"></div>
-          <div class="group-label" id="theme-menu-modes">{t.nav.mode}</div>
-          <div role="group" aria-labelledby="theme-menu-modes">
-            {#each MODES as mode (mode)}
-              <button
-                class="item"
-                role="menuitemradio"
-                aria-checked={appearance.mode === mode}
-                onclick={() => applyMode(mode)}
-                ><span class="mode">{t.nav.modes[mode]}</span></button
-              >
+          <div role="group" aria-label={t.nav.themes}>
+            {#each SKINS as skin (skin)}
+              <div class="theme-row">
+                <span class="skin-name" aria-hidden="true">{t.nav.skins[skin]}</span>
+                {#each SCHEMES as scheme (scheme)}
+                  {@const sw = SCHEME_SWATCHES[skin][scheme]}
+                  {@const label = t.nav.skinMode(t.nav.skins[skin], t.nav.modes[scheme])}
+                  <button
+                    class="scheme"
+                    role="menuitemradio"
+                    aria-checked={appearance.skin === skin && appearance.scheme === scheme}
+                    aria-label={label}
+                    title={label}
+                    style:--sw-bar={sw.bar}
+                    style:--sw-paper={sw.paper}
+                    style:--sw-ink={sw.ink}
+                    style:--sw-accent={sw.accent}
+                    onclick={() => pickLook(skin, scheme)}
+                  ></button>
+                {/each}
+              </div>
             {/each}
           </div>
           <div class="sep"></div>
@@ -295,46 +297,85 @@
     box-shadow: 0 0 0 2px var(--bar);
   }
 
-  /* A thumbnail of each skin: its paper, two lines of ink, its accent. */
-  .theme-menu .swatch {
+  .theme-head,
+  .theme-row {
+    display: grid;
+    grid-template-columns: 1fr repeat(2, 44px);
+    gap: 8px;
+    align-items: center;
+    padding: 3px 12px;
+  }
+
+  .theme-head {
+    padding-top: 6px;
+    font: 500 11.5px/1 var(--font-body);
+    color: var(--muted);
+  }
+
+  .scheme-name {
+    text-align: center;
+  }
+
+  /* Some languages write the mode names in lower case. */
+  .scheme-name::first-letter {
+    text-transform: uppercase;
+  }
+
+  .skin-name {
+    overflow: hidden;
+    font-size: 13.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* A thumbnail of the skin in one mode: its top bar, paper, two lines of ink, its accent. */
+  .scheme {
     position: relative;
-    width: 26px;
-    height: 18px;
-    flex: none;
+    width: 44px;
+    height: 30px;
+    padding: 0;
     border: 1px solid var(--rule-strong);
-    border-radius: 3px;
-    background: var(--sw-paper);
+    border-radius: 4px;
+    background:
+      linear-gradient(var(--sw-bar), var(--sw-bar)) top / 100% 7px no-repeat,
+      var(--sw-paper);
+    cursor: pointer;
   }
 
-  .theme-menu .swatch::before {
+  .scheme::before {
     content: '';
     position: absolute;
-    left: 4px;
-    top: 5px;
-    width: 10px;
-    height: 1.5px;
+    left: 6px;
+    top: 13px;
+    width: 16px;
+    height: 2px;
     background: var(--sw-ink);
-    box-shadow: 0 5px 0 var(--sw-ink);
+    box-shadow: 0 6px 0 var(--sw-ink);
   }
 
-  .theme-menu .swatch::after {
+  .scheme::after {
     content: '';
     position: absolute;
-    right: 4px;
-    top: 5px;
-    width: 6px;
-    height: 6px;
+    right: 6px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--sw-accent);
   }
 
-  /* Some languages write the mode names in lower case. */
-  .theme-menu .mode {
-    display: block;
+  .scheme:hover {
+    border-color: var(--ink-soft);
   }
 
-  .theme-menu .mode::first-letter {
-    text-transform: uppercase;
+  .scheme[aria-checked='true'] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  .scheme:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
   }
 
   .account-menu .hint {

@@ -145,6 +145,8 @@ export const it: Messages = {
     },
     themes: 'Temi',
     allThemes: 'Tutti i temi',
+    /** A theme-menu rectangle: a skin in one mode. */
+    skinMode: (skin: string, mode: string) => `${skin}, ${mode}`,
     mode: 'Modalità',
     modes: { system: 'sistema', light: 'chiaro', dark: 'scuro' },
     logout: 'Esci',

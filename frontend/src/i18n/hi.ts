@@ -146,6 +146,8 @@ export const hi: Messages = {
     },
     themes: 'थीम',
     allThemes: 'सभी थीम',
+    /** A theme-menu rectangle: a skin in one mode. */
+    skinMode: (skin: string, mode: string) => `${skin}, ${mode}`,
     mode: 'मोड',
     modes: { system: 'सिस्टम', light: 'लाइट', dark: 'डार्क' },
     logout: 'साइन आउट करें',

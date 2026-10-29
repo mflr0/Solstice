@@ -111,9 +111,10 @@ connection, `.is-live` while connected). `.app-booting` (first load).
 `form.topbar-search.quick-search` > `input.input` (see **Search**), `.live-dot` (`.on` when connected),
 `.theme-picker` > `button.topbar-themes` (icon; `[aria-current='page']` on
 the gallery, `[aria-expanded='true']` while open: give both the same look),
-`.popover.theme-menu` (`.group-label`s, skins as `.item[role=menuitemradio]` >
-`.swatch` + name, modes as `.item[role=menuitemradio]` > `.mode`, then
-`a.item` to the gallery), `.btn.btn-primary.topbar-create` >
+`.popover.theme-menu` (`.theme-head` > `.scheme-name`s, then a `.theme-row`
+per skin > `.skin-name` + two `button.scheme[role=menuitemradio]`, light and
+dark, each a thumbnail drawn from `--sw-*`, not an `.item`; then `a.item` to
+the gallery), `.btn.btn-primary.topbar-create` >
 `.plus` (hidden on wide screens) + `.label` + `kbd`, `.account` >
 `button.account-button` > `.avatar`, `.popover.account-menu`. The nav has
 four links (and may gain more): do not count on `:nth-child`. Short of room,

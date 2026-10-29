@@ -142,6 +142,8 @@ export const en = {
     },
     themes: 'Themes',
     allThemes: 'All themes',
+    /** A theme-menu rectangle: a skin in one mode. */
+    skinMode: (skin: string, mode: string) => `${skin}, ${mode}`,
     mode: 'Mode',
     modes: { system: 'system', light: 'light', dark: 'dark' },
     logout: 'Sign out',

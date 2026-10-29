@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
-import { MODES, SKINS } from '../../src/core/appearance.js';
+import { SKINS } from '../../src/core/appearance.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
@@ -159,7 +159,8 @@ describe('TopBar keyboard', () => {
     expect(focused()).toBe(account);
   });
 
-  it('switches the mode from the theme menu and links to the gallery', async () => {
+  it('picks a theme in light or dark from the theme menu and links to the gallery', async () => {
+    applyMode('light');
     const themes = button(t.nav.themes);
     themes.click();
     await settle();
@@ -167,24 +168,27 @@ describe('TopBar keyboard', () => {
     const radios = [
       ...document.querySelectorAll<HTMLElement>('.theme-menu [role="menuitemradio"]'),
     ];
-    expect(radios.map((i) => i.textContent?.trim())).toEqual([
-      ...SKINS.map((s) => t.nav.skins[s]),
-      ...MODES.map((m) => t.nav.modes[m]),
-    ]);
+    expect(radios.map((i) => i.getAttribute('aria-label'))).toEqual(
+      SKINS.flatMap((s) => [
+        t.nav.skinMode(t.nav.skins[s], t.nav.modes.light),
+        t.nav.skinMode(t.nav.skins[s], t.nav.modes.dark),
+      ]),
+    );
     const checked = () =>
       radios
         .filter((i) => i.getAttribute('aria-checked') === 'true')
-        .map((i) => i.textContent?.trim());
-    expect(checked()).toEqual([t.nav.skins[appearance.skin], t.nav.modes.system]);
-    expect(focused()).toBe(radios[SKINS.indexOf(appearance.skin)]);
+        .map((i) => i.getAttribute('aria-label'));
+    const carnetLight = t.nav.skinMode(t.nav.skins.carnet, t.nav.modes.light);
+    const carnetDark = t.nav.skinMode(t.nav.skins.carnet, t.nav.modes.dark);
+    expect(checked()).toEqual([carnetLight]);
+    expect(focused()).toBe(radios[0]);
 
-    const dark = radios[SKINS.length + MODES.indexOf('dark')]!;
-    dark.click();
+    radios[1]!.click();
     flushSync();
     expect(appearance.mode).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
     // The menu stays open and shows the new choice.
-    expect(checked()).toEqual([t.nav.skins[appearance.skin], t.nav.modes.dark]);
+    expect(checked()).toEqual([carnetDark]);
 
     key(focused(), 'End');
     const gallery = document.querySelector<HTMLAnchorElement>('.theme-menu [role="menuitem"]')!;
