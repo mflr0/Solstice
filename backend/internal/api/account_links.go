@@ -61,11 +61,11 @@ type accountMail struct {
 	at    time.Time
 }
 
-func (s *Server) accountLinkRoutes(route func(string, handler, bool)) {
-	route("POST /api/auth/forgot", s.forgotPassword, false)
-	route("GET /api/auth/reset/{token}", s.checkResetLink, false)
-	route("POST /api/auth/reset", s.useResetLink, false)
-	route("POST /api/admin/users/{id}/invite", s.adminInviteUser, true)
+func (s *Server) accountLinkRoutes(route routeFunc) {
+	route("POST /api/auth/forgot", s.forgotPassword, scopePublic)
+	route("GET /api/auth/reset/{token}", s.checkResetLink, scopePublic)
+	route("POST /api/auth/reset", s.useResetLink, scopePublic)
+	route("POST /api/admin/users/{id}/invite", s.adminInviteUser, auth.ScopeAdmin)
 }
 
 // linkConfig returns the mail settings, and whether links can be sent: e-mail

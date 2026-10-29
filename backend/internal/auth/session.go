@@ -27,9 +27,10 @@ type User struct {
 	DisplayName string
 	Email       string
 	Admin       bool
-	Locale      string // interface language chosen by the user, "" to follow the browser
-	Directory   string // the directory that made the account its own ("ldap", "oidc"), "" for a local account
-	TokenID     int64  // the personal access token the request signed in with, 0 for none
+	Locale      string  // interface language chosen by the user, "" to follow the browser
+	Directory   string  // the directory that made the account its own ("ldap", "oidc"), "" for a local account
+	TokenID     int64   // the personal access token the request signed in with, 0 for none
+	Scopes      []Scope // the token's scopes, when TokenID is set
 }
 
 // ErrNoSession means the token matches no valid session.

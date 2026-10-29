@@ -57,6 +57,10 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenExpiryPast:         "La date d'expiration doit être dans le futur.",
 	TokenCreationRestricted: "La création de jetons d'accès n'est pas autorisée pour votre compte : demandez à un administrateur.",
 	TokenPolicyInvalid:      "Choisissez qui peut créer des jetons d'accès : les administrateurs, un groupe ou tout le monde.",
+	TokenScopesRequired:     "Le jeton a besoin d'au moins une portée parmi : %s.",
+	TokenScopeUnknown:       "Portée inconnue %s : choisissez parmi %s.",
+	TokenScopeAdminOnly:     "Seul un administrateur peut donner la portée admin à un jeton.",
+	TokenScopeMissing:       "Ce jeton d'accès n'a pas la portée %s.",
 
 	// Groups.
 	GroupNotFound:   "Groupe introuvable.",

@@ -43,7 +43,7 @@ func TestTokenCreationPolicy(t *testing.T) {
 	}
 	create := func(c *client, name string) (int, []byte) {
 		t.Helper()
-		status, body := c.do("POST", "/api/me/tokens", map[string]any{"name": name})
+		status, body := c.do("POST", "/api/me/tokens", map[string]any{"name": name, "scopes": []string{"read"}})
 		if status == 201 {
 			id := int64(obj(t, body)["id"].(float64))
 			c.do("DELETE", fmt.Sprintf("/api/me/tokens/%d", id), nil)

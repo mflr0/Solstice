@@ -28,7 +28,7 @@ import (
 func TestTokenLifecycle(t *testing.T) {
 	allowTokensForEveryone(t)
 	paul := login(t, "paul.martin", jirafixture.Password)
-	status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "CI nocturne", "expires": "2099-12-31"})
+	status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "CI nocturne", "scopes": []string{"read"}, "expires": "2099-12-31"})
 	if status != 201 {
 		t.Fatalf("create token: %d %s", status, body)
 	}
@@ -89,7 +89,7 @@ func TestTokenLifecycle(t *testing.T) {
 	if status, _, _ := call(t, nil, testURL, "GET", "/rest/api/2/myself", nil, bearer(newToken(t, "emma.morel", nil))); status != 401 {
 		t.Errorf("deactivated user's token: %d", status)
 	}
-	if status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "x", "expires": "2001-01-01"}); status != 400 {
+	if status, body := paul.do("POST", "/api/me/tokens", map[string]any{"name": "x", "scopes": []string{"read"}, "expires": "2001-01-01"}); status != 400 {
 		t.Errorf("token expiring in the past: %d %s", status, body)
 	}
 

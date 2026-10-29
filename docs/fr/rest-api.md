@@ -40,6 +40,28 @@ l'administrateur peuvent créer des jetons (voir
 [administration.md](administration.md)), et une requête connectée avec un jeton
 ne peut pas en créer un autre.
 
+Chaque jeton a des portées, choisies à sa création. Une requête connectée avec
+un jeton ne peut utiliser que les routes que ses portées couvrent ; sinon elle
+répond 403 avec
+`WWW-Authenticate: Bearer error="insufficient_scope", scope="<portée requise>"`.
+Les mots de passe et les cookies de session ont toutes les portées.
+
+| Portée | Couvre |
+|---|---|
+| `read` | Tous les `GET`, et `POST /rest/api/2/search`. Toute autre portée l'implique. |
+| `issues:write` | Créer, modifier, supprimer, déplacer, cloner, faire avancer et assigner des tickets ; liens, liens distants, pièces jointes, votes, observateurs. |
+| `comments:write` | Les commentaires. |
+| `worklogs:write` | Le temps passé. |
+| `agile:write` | Tableaux, sprints, rang (`/rest/agile/1.0`). |
+| `filters:write` | Filtres et favoris. |
+| `projects:write` | Versions et composants. |
+| `profile:write` | Le profil, l'avatar et les réglages de l'utilisateur. |
+| `admin` | L'administration. Seul un administrateur peut créer un jeton qui l'a. |
+
+Une portée n'élargit jamais les permissions de l'utilisateur : un jeton
+`issues:write` ne peut pas modifier un ticket que son utilisateur ne peut pas
+modifier.
+
 ```sh
 curl -H "Authorization: Bearer sol_example" \
   https://solstice.example.org/rest/api/2/myself

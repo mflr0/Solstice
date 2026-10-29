@@ -650,11 +650,11 @@ func (s *Server) auditUpdateResult(ctx context.Context, a *updateAttempt) {
 	})
 }
 
-func (s *Server) updateRoutes(route func(string, handler, bool)) {
-	route("GET /api/admin/updates", s.getUpdates, true)
-	route("POST /api/admin/updates/check", s.checkUpdates, true)
-	route("PUT /api/admin/updates/settings", s.updateSettings, true)
-	route("POST /api/admin/updates/apply", s.applyRelease, true)
+func (s *Server) updateRoutes(route routeFunc) {
+	route("GET /api/admin/updates", s.getUpdates, auth.ScopeAdmin)
+	route("POST /api/admin/updates/check", s.checkUpdates, auth.ScopeAdmin)
+	route("PUT /api/admin/updates/settings", s.updateSettings, auth.ScopeAdmin)
+	route("POST /api/admin/updates/apply", s.applyRelease, auth.ScopeAdmin)
 }
 
 func (s *Server) getUpdates(w http.ResponseWriter, r *http.Request) error {

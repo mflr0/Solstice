@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"solstice/internal/audit"
+	"solstice/internal/auth"
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
@@ -985,30 +986,30 @@ func (fr filterRunner) RunFilter(ctx context.Context, sub *perm.Subject, filterI
 }
 
 // notificationRoutes registers the routes of e-mail and webhook settings.
-func (s *Server) notificationRoutes(route func(string, handler, bool)) {
-	route("GET /api/me/notifications", s.getMyNotifications, true)
-	route("PUT /api/me/notifications", s.putMyNotifications, true)
-	route("GET /api/projects/{key}/notifications", s.getProjectNotifications, true)
-	route("PUT /api/projects/{key}/notifications", s.putProjectNotifications, true)
-	route("GET /api/me/subscriptions", s.mySubscriptions, true)
-	route("GET /api/filters/{id}/subscriptions", s.listSubscriptions, true)
-	route("POST /api/filters/{id}/subscriptions", s.createSubscription, true)
-	route("PUT /api/filters/{id}/subscriptions/{sid}", s.updateSubscription, true)
-	route("DELETE /api/filters/{id}/subscriptions/{sid}", s.deleteSubscription, true)
-	route("POST /api/filters/{id}/subscriptions/{sid}/run", s.runSubscription, true)
-	route("GET /api/admin/mail", s.getMailSettings, true)
-	route("PUT /api/admin/mail", s.putMailSettings, true)
-	route("POST /api/admin/mail/test", s.testMail, true)
-	route("GET /api/admin/mail/queue", s.mailQueue, true)
-	route("POST /api/admin/mail/queue/retry", s.retryMailQueue, true)
-	route("GET /api/admin/webhooks", s.listWebhooks, true)
-	route("POST /api/admin/webhooks", s.createWebhook, true)
-	route("GET /api/admin/webhooks/events", s.webhookEvents, true)
-	route("GET /api/admin/webhooks/{id}", s.getWebhook, true)
-	route("PUT /api/admin/webhooks/{id}", s.updateWebhook, true)
-	route("DELETE /api/admin/webhooks/{id}", s.deleteWebhook, true)
-	route("GET /api/admin/webhooks/{id}/deliveries", s.webhookDeliveries, true)
-	route("POST /api/admin/webhooks/{id}/test", s.testWebhook, true)
+func (s *Server) notificationRoutes(route routeFunc) {
+	route("GET /api/me/notifications", s.getMyNotifications, auth.ScopeRead)
+	route("PUT /api/me/notifications", s.putMyNotifications, auth.ScopeProfile)
+	route("GET /api/projects/{key}/notifications", s.getProjectNotifications, auth.ScopeRead)
+	route("PUT /api/projects/{key}/notifications", s.putProjectNotifications, auth.ScopeProjects)
+	route("GET /api/me/subscriptions", s.mySubscriptions, auth.ScopeRead)
+	route("GET /api/filters/{id}/subscriptions", s.listSubscriptions, auth.ScopeRead)
+	route("POST /api/filters/{id}/subscriptions", s.createSubscription, auth.ScopeFilters)
+	route("PUT /api/filters/{id}/subscriptions/{sid}", s.updateSubscription, auth.ScopeFilters)
+	route("DELETE /api/filters/{id}/subscriptions/{sid}", s.deleteSubscription, auth.ScopeFilters)
+	route("POST /api/filters/{id}/subscriptions/{sid}/run", s.runSubscription, auth.ScopeFilters)
+	route("GET /api/admin/mail", s.getMailSettings, auth.ScopeAdmin)
+	route("PUT /api/admin/mail", s.putMailSettings, auth.ScopeAdmin)
+	route("POST /api/admin/mail/test", s.testMail, auth.ScopeAdmin)
+	route("GET /api/admin/mail/queue", s.mailQueue, auth.ScopeAdmin)
+	route("POST /api/admin/mail/queue/retry", s.retryMailQueue, auth.ScopeAdmin)
+	route("GET /api/admin/webhooks", s.listWebhooks, auth.ScopeAdmin)
+	route("POST /api/admin/webhooks", s.createWebhook, auth.ScopeAdmin)
+	route("GET /api/admin/webhooks/events", s.webhookEvents, auth.ScopeAdmin)
+	route("GET /api/admin/webhooks/{id}", s.getWebhook, auth.ScopeAdmin)
+	route("PUT /api/admin/webhooks/{id}", s.updateWebhook, auth.ScopeAdmin)
+	route("DELETE /api/admin/webhooks/{id}", s.deleteWebhook, auth.ScopeAdmin)
+	route("GET /api/admin/webhooks/{id}/deliveries", s.webhookDeliveries, auth.ScopeAdmin)
+	route("POST /api/admin/webhooks/{id}/test", s.testWebhook, auth.ScopeAdmin)
 }
 
 const (

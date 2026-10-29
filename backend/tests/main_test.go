@@ -319,10 +319,10 @@ func issueID(t *testing.T, key string) string {
 	return pick(t, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id WHERE `+keyExpr+` = ?`, key)
 }
 
-// newToken creates a token for a user straight in the database.
+// newToken creates a token with every scope for a user straight in the database.
 func newToken(t *testing.T, username string, expires *time.Time) string {
 	t.Helper()
-	token, _, err := auth.NewToken(context.Background(), testDB, userID(t, username), "test "+username, expires)
+	token, _, err := auth.NewToken(context.Background(), testDB, userID(t, username), "test "+username, auth.Scopes, expires)
 	if err != nil {
 		t.Fatal(err)
 	}

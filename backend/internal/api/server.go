@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"math"
@@ -63,6 +64,8 @@ type Server struct {
 	adm adminState // instance settings, system page, imports (admin_*.go)
 	upd updater    // release checks and the update helper (updates.go)
 
+	routeScopes map[string]auth.Scope // the scope each route pattern requires, filled by Handler
+
 	streamsDone  chan struct{} // closed by CloseStreams
 	closeStreams sync.Once
 	streams      streamSlots // open live-event streams, capped (notifications.go)
@@ -99,111 +102,126 @@ func (s *Server) SetDirectory(d auth.Directory) { s.dir = d }
 // down, which does not cancel requests and would wait for them forever.
 func (s *Server) CloseStreams() { s.closeStreams.Do(func() { close(s.streamsDone) }) }
 
+// routeFunc registers a route of the interface's API with the scope it
+// requires.
+type routeFunc func(pattern string, h handler, scope auth.Scope)
+
+// scopePublic marks a route anyone may call, signed in or not. It is no
+// token scope: auth.Scope.Known refuses it.
+const scopePublic auth.Scope = "public"
+
+// handle registers a route, noting its scope (see TestRouteScopes).
+func (s *Server) handle(mux *http.ServeMux, pattern string, scope auth.Scope, h http.Handler) {
+	s.routeScopes[pattern] = scope
+	mux.Handle(pattern, h)
+}
+
 // Handler returns the API routes, with static serving of the interface for
 // everything outside /api.
 func (s *Server) Handler(static http.Handler) http.Handler {
 	mux := http.NewServeMux()
-	route := func(pattern string, h handler, needUser bool) {
-		mux.Handle(pattern, s.wrap(h, needUser))
+	s.routeScopes = map[string]auth.Scope{}
+	route := func(pattern string, h handler, scope auth.Scope) {
+		s.handle(mux, pattern, scope, s.wrap(h, scope))
 	}
 
-	route("POST /api/login", s.login, false)
-	route("POST /api/logout", s.logout, false)
-	route("GET /api/auth/oidc/start", s.oidcStart, false)
-	route("GET /api/auth/oidc/callback", s.oidcCallback, false)
+	route("POST /api/login", s.login, scopePublic)
+	route("POST /api/logout", s.logout, scopePublic)
+	route("GET /api/auth/oidc/start", s.oidcStart, scopePublic)
+	route("GET /api/auth/oidc/callback", s.oidcCallback, scopePublic)
 
 	// Forgotten passwords and invitations: links sent by e-mail.
 	s.accountLinkRoutes(route)
-	route("GET /api/me", s.me, true)
-	route("GET /api/dashboard", s.getDashboard, true)
-	route("PUT /api/dashboard", s.putDashboard, true)
-	route("PATCH /api/me", s.updateMe, true)
-	route("PUT /api/me/avatar", s.putMyAvatar, true)
-	route("DELETE /api/me/avatar", s.deleteMyAvatar, true)
-	route("GET /api/avatars/{userId}", s.getAvatar, true)
-	route("GET /api/meta", s.meta, true)
-	route("GET /api/users", s.searchUsers, true)
-	route("GET /api/labels", s.labels, true)
-	route("GET /api/sprints", s.sprints, true)
-	route("GET /api/epics", s.epics, true)
-	route("GET /api/fields", s.jqlFields, true)
-	route("GET /api/versions", s.projectParts("versions"), true)
-	route("GET /api/components", s.projectParts("components"), true)
-	route("GET /api/issues/facets", s.facets, true)
-	route("GET /api/people/{username}", s.person, true)
-	route("POST /api/refs", s.refs, true)
-	route("GET /api/events", s.events, true)
+	route("GET /api/me", s.me, auth.ScopeRead)
+	route("GET /api/dashboard", s.getDashboard, auth.ScopeRead)
+	route("PUT /api/dashboard", s.putDashboard, auth.ScopeProfile)
+	route("PATCH /api/me", s.updateMe, auth.ScopeProfile)
+	route("PUT /api/me/avatar", s.putMyAvatar, auth.ScopeProfile)
+	route("DELETE /api/me/avatar", s.deleteMyAvatar, auth.ScopeProfile)
+	route("GET /api/avatars/{userId}", s.getAvatar, auth.ScopeRead)
+	route("GET /api/meta", s.meta, auth.ScopeRead)
+	route("GET /api/users", s.searchUsers, auth.ScopeRead)
+	route("GET /api/labels", s.labels, auth.ScopeRead)
+	route("GET /api/sprints", s.sprints, auth.ScopeRead)
+	route("GET /api/epics", s.epics, auth.ScopeRead)
+	route("GET /api/fields", s.jqlFields, auth.ScopeRead)
+	route("GET /api/versions", s.projectParts("versions"), auth.ScopeRead)
+	route("GET /api/components", s.projectParts("components"), auth.ScopeRead)
+	route("GET /api/issues/facets", s.facets, auth.ScopeRead)
+	route("GET /api/people/{username}", s.person, auth.ScopeRead)
+	route("POST /api/refs", s.refs, auth.ScopeRead)
+	route("GET /api/events", s.events, auth.ScopeRead)
 
-	route("GET /api/projects", s.listProjects, true)
-	route("GET /api/projects/{key}", s.getProject, true)
-	route("GET /api/projects/{key}/assignable", s.assignableUsers, true)
-	route("GET /api/projects/{key}/permissions", s.getPermissions, true)
-	route("PUT /api/projects/{key}/permissions", s.putPermissions, true)
-	route("GET /api/projects/{key}/workflows", s.listWorkflows, true)
-	route("POST /api/projects/{key}/workflows", s.createWorkflow, true)
-	route("POST /api/projects/{key}/import.csv", s.importIssues, true)
-	route("PUT /api/workflows/{id}", s.updateWorkflow, true)
-	route("DELETE /api/workflows/{id}", s.deleteWorkflow, true)
-	route("POST /api/statuses", s.createStatus, true)
-	route("PATCH /api/statuses/{id}", s.updateStatus, true)
-	route("DELETE /api/statuses/{id}", s.deleteStatus, true)
+	route("GET /api/projects", s.listProjects, auth.ScopeRead)
+	route("GET /api/projects/{key}", s.getProject, auth.ScopeRead)
+	route("GET /api/projects/{key}/assignable", s.assignableUsers, auth.ScopeRead)
+	route("GET /api/projects/{key}/permissions", s.getPermissions, auth.ScopeRead)
+	route("PUT /api/projects/{key}/permissions", s.putPermissions, auth.ScopeProjects)
+	route("GET /api/projects/{key}/workflows", s.listWorkflows, auth.ScopeRead)
+	route("POST /api/projects/{key}/workflows", s.createWorkflow, auth.ScopeProjects)
+	route("POST /api/projects/{key}/import.csv", s.importIssues, auth.ScopeIssues)
+	route("PUT /api/workflows/{id}", s.updateWorkflow, auth.ScopeProjects)
+	route("DELETE /api/workflows/{id}", s.deleteWorkflow, auth.ScopeProjects)
+	route("POST /api/statuses", s.createStatus, auth.ScopeProjects)
+	route("PATCH /api/statuses/{id}", s.updateStatus, auth.ScopeProjects)
+	route("DELETE /api/statuses/{id}", s.deleteStatus, auth.ScopeProjects)
 
-	route("GET /api/issues", s.listIssues, true)
-	route("GET /api/issues/columns", s.listColumns, true)
-	route("POST /api/issues", s.createIssue, true)
-	route("POST /api/issues/bulk", s.bulkIssues, true)
-	route("GET /api/issues/{key}", s.getIssue, true)
-	route("PATCH /api/issues/{key}", s.updateIssue, true)
-	route("DELETE /api/issues/{key}", s.deleteIssue, true)
-	route("POST /api/issues/{key}/clone", s.cloneIssue, true)
-	route("POST /api/issues/{key}/move", s.moveIssue, true)
-	route("GET /api/issues/{key}/comments", s.listComments, true)
-	route("POST /api/issues/{key}/comments", s.addComment, true)
-	route("PATCH /api/comments/{id}", s.editComment, true)
-	route("DELETE /api/comments/{id}", s.deleteComment, true)
-	route("GET /api/issues/{key}/history", s.history, true)
-	route("GET /api/issues/{key}/worklogs", s.listWorklogs, true)
-	route("POST /api/issues/{key}/worklogs", s.addWorklog, true)
-	route("PUT /api/worklogs/{id}", s.editWorklog, true)
-	route("DELETE /api/worklogs/{id}", s.deleteWorklog, true)
-	route("PUT /api/issues/{key}/watch", s.setWatch(true), true)
-	route("DELETE /api/issues/{key}/watch", s.setWatch(false), true)
-	route("PUT /api/issues/{key}/vote", s.setVote(true), true)
-	route("DELETE /api/issues/{key}/vote", s.setVote(false), true)
-	route("POST /api/issues/{key}/links", s.addLink, true)
-	route("DELETE /api/links/{id}", s.deleteLink, true)
-	route("POST /api/issues/{key}/attachments", s.upload, true)
-	route("GET /api/attachments/{id}", s.download, true)
-	route("DELETE /api/attachments/{id}", s.deleteAttachment, true)
+	route("GET /api/issues", s.listIssues, auth.ScopeRead)
+	route("GET /api/issues/columns", s.listColumns, auth.ScopeRead)
+	route("POST /api/issues", s.createIssue, auth.ScopeIssues)
+	route("POST /api/issues/bulk", s.bulkIssues, auth.ScopeIssues)
+	route("GET /api/issues/{key}", s.getIssue, auth.ScopeRead)
+	route("PATCH /api/issues/{key}", s.updateIssue, auth.ScopeIssues)
+	route("DELETE /api/issues/{key}", s.deleteIssue, auth.ScopeIssues)
+	route("POST /api/issues/{key}/clone", s.cloneIssue, auth.ScopeIssues)
+	route("POST /api/issues/{key}/move", s.moveIssue, auth.ScopeIssues)
+	route("GET /api/issues/{key}/comments", s.listComments, auth.ScopeRead)
+	route("POST /api/issues/{key}/comments", s.addComment, auth.ScopeComments)
+	route("PATCH /api/comments/{id}", s.editComment, auth.ScopeComments)
+	route("DELETE /api/comments/{id}", s.deleteComment, auth.ScopeComments)
+	route("GET /api/issues/{key}/history", s.history, auth.ScopeRead)
+	route("GET /api/issues/{key}/worklogs", s.listWorklogs, auth.ScopeRead)
+	route("POST /api/issues/{key}/worklogs", s.addWorklog, auth.ScopeWorklogs)
+	route("PUT /api/worklogs/{id}", s.editWorklog, auth.ScopeWorklogs)
+	route("DELETE /api/worklogs/{id}", s.deleteWorklog, auth.ScopeWorklogs)
+	route("PUT /api/issues/{key}/watch", s.setWatch(true), auth.ScopeIssues)
+	route("DELETE /api/issues/{key}/watch", s.setWatch(false), auth.ScopeIssues)
+	route("PUT /api/issues/{key}/vote", s.setVote(true), auth.ScopeIssues)
+	route("DELETE /api/issues/{key}/vote", s.setVote(false), auth.ScopeIssues)
+	route("POST /api/issues/{key}/links", s.addLink, auth.ScopeIssues)
+	route("DELETE /api/links/{id}", s.deleteLink, auth.ScopeIssues)
+	route("POST /api/issues/{key}/attachments", s.upload, auth.ScopeIssues)
+	route("GET /api/attachments/{id}", s.download, auth.ScopeRead)
+	route("DELETE /api/attachments/{id}", s.deleteAttachment, auth.ScopeIssues)
 
-	route("GET /api/boards", s.listBoards, true)
-	route("POST /api/boards", s.createBoard, true)
-	route("GET /api/boards/{id}", s.getBoard, true)
-	route("PUT /api/boards/{id}", s.updateBoard, true)
-	route("DELETE /api/boards/{id}", s.deleteBoard, true)
-	route("GET /api/boards/{id}/cards", s.boardCards, true)
-	route("GET /api/boards/{id}/backlog", s.backlog, true)
-	route("POST /api/boards/{id}/move", s.moveCard, true)
-	route("POST /api/boards/{id}/sprints", s.createSprint, true)
-	route("GET /api/boards/{id}/reports/sprints", s.reportSprints, true)
-	route("GET /api/boards/{id}/reports/flow", s.flowReport, true)
-	route("GET /api/boards/{id}/sprints/{sprint}/report", s.sprintReport, true)
-	route("GET /api/boards/{id}/reports/velocity", s.velocityReport, true)
-	route("PATCH /api/sprints/{id}", s.editSprint, true)
-	route("DELETE /api/sprints/{id}", s.deleteSprint, true)
-	route("POST /api/sprints/{id}/start", s.startSprint, true)
-	route("POST /api/sprints/{id}/complete", s.completeSprint, true)
+	route("GET /api/boards", s.listBoards, auth.ScopeRead)
+	route("POST /api/boards", s.createBoard, auth.ScopeAgile)
+	route("GET /api/boards/{id}", s.getBoard, auth.ScopeRead)
+	route("PUT /api/boards/{id}", s.updateBoard, auth.ScopeAgile)
+	route("DELETE /api/boards/{id}", s.deleteBoard, auth.ScopeAgile)
+	route("GET /api/boards/{id}/cards", s.boardCards, auth.ScopeRead)
+	route("GET /api/boards/{id}/backlog", s.backlog, auth.ScopeRead)
+	route("POST /api/boards/{id}/move", s.moveCard, auth.ScopeAgile)
+	route("POST /api/boards/{id}/sprints", s.createSprint, auth.ScopeAgile)
+	route("GET /api/boards/{id}/reports/sprints", s.reportSprints, auth.ScopeRead)
+	route("GET /api/boards/{id}/reports/flow", s.flowReport, auth.ScopeRead)
+	route("GET /api/boards/{id}/sprints/{sprint}/report", s.sprintReport, auth.ScopeRead)
+	route("GET /api/boards/{id}/reports/velocity", s.velocityReport, auth.ScopeRead)
+	route("PATCH /api/sprints/{id}", s.editSprint, auth.ScopeAgile)
+	route("DELETE /api/sprints/{id}", s.deleteSprint, auth.ScopeAgile)
+	route("POST /api/sprints/{id}/start", s.startSprint, auth.ScopeAgile)
+	route("POST /api/sprints/{id}/complete", s.completeSprint, auth.ScopeAgile)
 
-	route("GET /api/filters", s.listFilters, true)
-	route("POST /api/filters", s.createFilter, true)
-	route("PATCH /api/filters/{id}", s.updateFilter, true)
-	route("DELETE /api/filters/{id}", s.deleteFilter, true)
-	route("PUT /api/filters/{id}/favourite", s.setFavourite(true), true)
-	route("DELETE /api/filters/{id}/favourite", s.setFavourite(false), true)
+	route("GET /api/filters", s.listFilters, auth.ScopeRead)
+	route("POST /api/filters", s.createFilter, auth.ScopeFilters)
+	route("PATCH /api/filters/{id}", s.updateFilter, auth.ScopeFilters)
+	route("DELETE /api/filters/{id}", s.deleteFilter, auth.ScopeFilters)
+	route("PUT /api/filters/{id}/favourite", s.setFavourite(true), auth.ScopeFilters)
+	route("DELETE /api/filters/{id}/favourite", s.setFavourite(false), auth.ScopeFilters)
 
-	route("GET /api/admin/users", s.adminUsers, true)
-	route("POST /api/admin/users", s.adminCreateUser, true)
-	route("PATCH /api/admin/users/{id}", s.adminUpdateUser, true)
+	route("GET /api/admin/users", s.adminUsers, auth.ScopeAdmin)
+	route("POST /api/admin/users", s.adminCreateUser, auth.ScopeAdmin)
+	route("PATCH /api/admin/users/{id}", s.adminUpdateUser, auth.ScopeAdmin)
 
 	// Personal access tokens, audit log, CSV export, and the Jira-compatible
 	// REST API (/rest/…) for scripts and tools.
@@ -220,12 +238,12 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	s.updateRoutes(route)
 
 	// The setup wizard is over: it only learns so.
-	route("GET /api/setup/status", s.setupDone, false)
-	mux.Handle("/api/setup/", s.wrap(func(http.ResponseWriter, *http.Request) error { return errInstalled }, false))
+	route("GET /api/setup/status", s.setupDone, scopePublic)
+	mux.Handle("/api/setup/", s.wrap(func(http.ResponseWriter, *http.Request) error { return errInstalled }, scopePublic))
 
 	mux.Handle("/api/", s.wrap(func(http.ResponseWriter, *http.Request) error {
 		return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
-	}, false))
+	}, scopePublic))
 	mux.Handle("/", static)
 	return securityHeaders(gzipHandler(s.instanceMiddleware(mux)))
 }
@@ -307,7 +325,9 @@ var (
 	errForbidden = fail(http.StatusForbidden, i18n.RequestForbidden)
 )
 
-func (s *Server) wrap(h handler, needUser bool) http.Handler {
+// wrap serves a route of the interface's API that requires scope:
+// scopePublic for one that needs no sign-in.
+func (s *Server) wrap(h handler, scope auth.Scope) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// A request with a body gets a read deadline, so a client trickling
 		// one cannot hold a connection open; upload routes get more time.
@@ -325,10 +345,14 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			s.writeError(w, r, failf(http.StatusForbidden, i18n.RequestMissingHeader, csrfHeader))
 			return
 		}
-		if needUser {
+		if scope != scopePublic {
 			u, err := s.authenticate(r)
 			if err != nil {
 				s.writeError(w, r, fail(http.StatusUnauthorized, i18n.RequestSignIn))
+				return
+			}
+			if !u.Allows(scope) {
+				s.writeError(w, r, insufficientScope(w, scope))
 				return
 			}
 			r = r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
@@ -337,6 +361,13 @@ func (s *Server) wrap(h handler, needUser bool) http.Handler {
 			s.writeError(w, r, err)
 		}
 	})
+}
+
+// insufficientScope is the answer to a token without the scope a route
+// requires (RFC 6750 §3.1).
+func insufficientScope(w http.ResponseWriter, scope auth.Scope) error {
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer error="insufficient_scope", scope=%q`, scope))
+	return failf(http.StatusForbidden, i18n.TokenScopeMissing, scope)
 }
 
 // csrfOK tells whether a request of the interface's API cannot have been

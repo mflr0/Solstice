@@ -58,6 +58,10 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenExpiryPast:         "La data di scadenza deve essere nel futuro.",
 	TokenCreationRestricted: "La creazione di token di accesso non è consentita al tuo account: chiedi a un amministratore.",
 	TokenPolicyInvalid:      "Scegli chi può creare token di accesso: gli amministratori, un gruppo o tutti.",
+	TokenScopesRequired:     "Il token ha bisogno di almeno un ambito tra: %s.",
+	TokenScopeUnknown:       "Ambito sconosciuto %s: scegli tra %s.",
+	TokenScopeAdminOnly:     "Solo un amministratore può dare a un token l'ambito admin.",
+	TokenScopeMissing:       "Questo token di accesso non ha l'ambito %s.",
 
 	// Groups.
 	GroupNotFound:   "Gruppo non trovato.",

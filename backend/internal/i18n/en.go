@@ -56,6 +56,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenExpiryPast:         "The expiry date must be in the future.",
 	TokenCreationRestricted: "Creating access tokens is not allowed for your account: ask an administrator.",
 	TokenPolicyInvalid:      "Choose who may create access tokens: administrators, a group or everyone.",
+	TokenScopesRequired:     "The token needs at least one scope among: %s.",
+	TokenScopeUnknown:       "Unknown scope %s: choose among %s.",
+	TokenScopeAdminOnly:     "Only an administrator may give a token the admin scope.",
+	TokenScopeMissing:       "This access token does not have the scope %s.",
 
 	// Groups.
 	GroupNotFound:   "Group not found.",

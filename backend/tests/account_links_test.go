@@ -217,7 +217,7 @@ func TestResetFlowEndToEnd(t *testing.T) {
 	var pat struct {
 		Token string `json:"token"`
 	}
-	old.call("POST", "/api/me/tokens", map[string]any{"name": "script"}, 201, &pat)
+	old.call("POST", "/api/me/tokens", map[string]any{"name": "script", "scopes": []string{"read"}}, 201, &pat)
 	bearer := func() int {
 		req, _ := http.NewRequest("GET", e.base+"/api/me", nil)
 		req.Header.Set("Authorization", "Bearer "+pat.Token)

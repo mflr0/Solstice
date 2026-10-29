@@ -597,9 +597,17 @@ Solstice's own configuration survives it, from the administration and from
 Personal access tokens (`Authorization: Bearer sol_…`):
 
 - `GET /api/me/tokens` → the user's own tokens `[{id, name, created, expires,
-  lastUsed, expired}]`; `POST /api/me/tokens` `{name, expires?}` → 201 with the
-  same plus `token`, the secret, readable this once; `DELETE
-  /api/me/tokens/{id}`. (`token.create`, `token.revoke`)
+  lastUsed, expired, scopes}]`; `POST /api/me/tokens` `{name, scopes,
+  expires?}` → 201 with the same plus `token`, the secret, readable this once;
+  `DELETE /api/me/tokens/{id}`. (`token.create`, with `scopes`; `token.revoke`)
+- `scopes`: required, at least one of `read`, `issues:write`,
+  `comments:write`, `worklogs:write`, `agile:write`, `filters:write`,
+  `projects:write`, `profile:write`, `admin` (400 otherwise); answered in that
+  order. Only a global admin may ask for `admin` (403). Every route requires
+  one scope (declared where it is registered, `route` in `server.go`); every
+  scope implies `read`. A token without the route's scope gets 403 with
+  `WWW-Authenticate: Bearer error="insufficient_scope", scope="<needed>"`. A
+  session cookie or a password has every scope.
 - `GET /api/me/tokens/policy` → `{canCreate}`: whether the current user may
   create a token now (false for a request signed in with a token, and for
   users the policy below leaves out).

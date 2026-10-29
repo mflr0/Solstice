@@ -63,7 +63,7 @@ func TestAuditLog(t *testing.T) {
 
 	allowTokensForEveryone(t)
 	paul := login(t, "paul.martin", jirafixture.Password)
-	status, body = paul.do("POST", "/api/me/tokens", map[string]any{"name": "jeton audité"})
+	status, body = paul.do("POST", "/api/me/tokens", map[string]any{"name": "jeton audité", "scopes": []string{"read"}})
 	if status != 201 {
 		t.Fatalf("token: %d %s", status, body)
 	}
