@@ -436,7 +436,7 @@
   height: 1.25rem;
   padding: 0 5px;
   border: 1px solid var(--plan-line);
-  border-radius: 10px;
+  border-radius: 999px;
   font: 500 0.65625rem/1 var(--font-mono);
   color: var(--ink-soft);
 }
