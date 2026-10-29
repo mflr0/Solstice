@@ -21,6 +21,10 @@ Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `pl
 - **Motion**: wrap animations in `@media (prefers-reduced-motion: no-preference)`.
 - **SVG filters** (roughness…) on frames only, never on text: draw the frame on a
   pseudo-element and filter that.
+- **Sizes in rem**: `--font-size`, every font size and the layout sizes
+  (`--bar-height`, page and column widths, control heights) in rem, at 16 px
+  to the rem (14px → `0.875rem`), so they follow the browser's font size.
+  Paddings, gaps, borders, radii, shadows and `@media` widths stay px.
 - No `!important` unless a Svelte inline `style=` forces it.
 
 ### How the file is loaded (you do not need to do anything)

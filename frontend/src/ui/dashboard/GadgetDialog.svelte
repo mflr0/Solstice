@@ -166,6 +166,6 @@
   }
 
   .size {
-    width: 7rem;
+    width: calc(7 * var(--font-size));
   }
 </style>

@@ -58,12 +58,12 @@
   --font-title: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-size: 14px;
+  --font-size: 0.875rem;
   --title-weight: 600;
   --h1-weight: 550;
   --title-tracking: -0.005em;
   --title-italic: italic;
-  --empty-font: italic 400 15px/1.45 var(--font-title);
+  --empty-font: italic 400 0.9375rem/1.45 var(--font-title);
 
   /* Shapes. */
   --frame: 1px;
@@ -75,7 +75,7 @@
   --card-top: 2px solid var(--accent);
 
   /* Statuses. */
-  --stamp-font: 500 10.5px/1.25 var(--font-body);
+  --stamp-font: 500 0.65625rem/1.25 var(--font-body);
   --stamp-case: uppercase;
   --stamp-tracking: 0.07em;
   --stamp-border: 1px;
@@ -83,7 +83,7 @@
   --stamp-padding: 2px 6px 1px;
   --stamp-fill: 0%;
   --stamp-dot: none;
-  --stamp-large-size: 12px;
+  --stamp-large-size: 0.75rem;
   --stamp-large-padding: 4px 10px 3px;
   --stamp-large-border: 1.5px;
   --stamp-large-tracking: 0.1em;
@@ -135,6 +135,11 @@
   box-sizing: border-box;
 }
 
+/* The browser's font size sets 1rem, so a user's preference scales every size. */
+:root {
+  font-size: 100%;
+}
+
 /* The skin root: <html>, or a preview in the theme gallery. */
 :root,
 .skin-preview {
@@ -143,10 +148,14 @@
   background-size: var(--page-texture-size);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: var(--font-size);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body,
+.skin-preview {
+  font-size: var(--font-size);
 }
 
 body {
@@ -183,12 +192,12 @@ h4 {
 }
 
 h1 {
-  font-size: 26px;
+  font-size: 1.625rem;
   font-weight: var(--h1-weight);
 }
 
 h2 {
-  font-size: 19px;
+  font-size: 1.1875rem;
 }
 
 a {
@@ -260,8 +269,8 @@ kbd,
 }
 
 .topbar-inner {
-  --bar-height: 54px;
-  max-width: 1280px;
+  --bar-height: 3.375rem;
+  max-width: 80rem;
   margin: 0 auto;
   height: var(--bar-height);
   padding: 0 32px;
@@ -278,7 +287,7 @@ kbd,
 }
 
 .wordmark {
-  font: var(--title-weight) 21px/1 var(--font-title);
+  font: var(--title-weight) 1.3125rem/1 var(--font-title);
   letter-spacing: -0.01em;
 }
 
@@ -320,15 +329,15 @@ kbd,
 .topbar-search {
   position: relative;
   margin-left: auto;
-  width: min(300px, 28vw);
+  width: min(18.75rem, 28vw);
   /* It gives way long before the pages do. */
   flex-shrink: 1000;
 }
 
 .topbar-search .input {
-  height: 30px;
+  height: 1.875rem;
   padding-right: 28px;
-  font: 13px var(--font-mono);
+  font: 0.8125rem var(--font-mono);
   background: var(--paper);
   color: var(--ink);
 }
@@ -363,8 +372,8 @@ kbd,
 .topbar-themes {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   flex: none;
   padding: 0;
   border: none;
@@ -408,11 +417,11 @@ kbd,
 .account-button .avatar {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   border: var(--frame) solid var(--ink-soft);
   border-radius: var(--avatar-radius);
-  font: 500 11px/1 var(--font-mono);
+  font: 500 0.6875rem/1 var(--font-mono);
   background: var(--paper);
   color: var(--ink);
 }
@@ -420,15 +429,15 @@ kbd,
 .popover.theme-menu {
   right: 0;
   top: calc(100% + 8px);
-  min-width: 220px;
-  max-height: calc(100dvh - 72px);
+  min-width: 13.75rem;
+  max-height: calc(100dvh - 4.5rem);
 }
 
 .popover.account-menu {
   right: 0;
   top: calc(100% + 8px);
-  min-width: 280px;
-  max-height: calc(100dvh - 72px);
+  min-width: 17.5rem;
+  max-height: calc(100dvh - 4.5rem);
 }
 
 @media (max-width: 860px) {
@@ -510,7 +519,7 @@ kbd,
 /* Page frame ---------------------------------------------------------------- */
 
 .page {
-  max-width: 1280px;
+  max-width: 80rem;
   margin: 0 auto;
   padding: 28px 32px 96px;
   /* Plain behind the content, so a page texture only shows in the margins. */
@@ -528,7 +537,7 @@ kbd,
 }
 
 .eyebrow {
-  font: 500 11px/1.2 var(--font-body);
+  font: 500 0.6875rem/1.2 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--muted);
@@ -540,7 +549,7 @@ kbd,
   align-items: baseline;
   gap: 10px;
   margin: 30px 0 10px;
-  font: 600 13px/1.2 var(--font-body);
+  font: 600 0.8125rem/1.2 var(--font-body);
   color: var(--ink);
 }
 
@@ -553,7 +562,7 @@ kbd,
 }
 
 .section-title .count {
-  font: 500 11px/1 var(--font-mono);
+  font: 500 0.6875rem/1 var(--font-mono);
   letter-spacing: 0;
   color: var(--muted);
 }
@@ -613,12 +622,12 @@ kbd,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 1.875rem;
   padding: 0 12px;
   border: var(--frame) solid var(--rule-strong);
   border-radius: var(--radius-s);
   background: var(--paper-raised);
-  font: 500 13px/1 var(--font-body);
+  font: 500 0.8125rem/1 var(--font-body);
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
@@ -651,9 +660,9 @@ kbd,
 }
 
 .btn-small {
-  height: 24px;
+  height: 1.5rem;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .btn[disabled] {
@@ -677,7 +686,7 @@ kbd,
 
 .btn kbd,
 .kbd {
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   padding: 2px 4px 1px;
   border: 1px solid currentColor;
   border-bottom-width: 2px;
@@ -709,7 +718,7 @@ kbd,
   border-radius: var(--radius-xs);
   background: var(--paper-raised);
   padding: 6px 8px;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.35;
 }
 
@@ -739,7 +748,7 @@ kbd,
 }
 
 .textarea {
-  font: 13px/1.55 var(--font-mono);
+  font: 0.8125rem/1.55 var(--font-mono);
   resize: vertical;
   min-height: 90px;
 }
@@ -751,12 +760,12 @@ kbd,
 
 .field > span:first-child,
 .field-label {
-  font: 500 12px/1.2 var(--font-body);
+  font: 500 0.75rem/1.2 var(--font-body);
   color: var(--ink-soft);
 }
 
 .field .hint {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -826,7 +835,7 @@ kbd,
   border: var(--frame) solid var(--rule);
   border-radius: var(--radius-s);
   background: var(--paper);
-  font: 12px/1.5 var(--font-mono);
+  font: 0.75rem/1.5 var(--font-mono);
   white-space: nowrap;
 }
 
@@ -836,7 +845,7 @@ kbd,
   padding: 0 0 0 2px;
   color: var(--muted);
   cursor: pointer;
-  font: 13px/1 var(--font-body);
+  font: 0.8125rem/1 var(--font-body);
 }
 
 .chip button:hover {
@@ -844,7 +853,7 @@ kbd,
 }
 
 .key {
-  font: 500 12.5px/1 var(--font-mono);
+  font: 500 0.78125rem/1 var(--font-mono);
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -863,12 +872,12 @@ a.key:hover {
 table.ledger {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .ledger th {
   text-align: left;
-  font: 500 12px/1 var(--font-body);
+  font: 500 0.75rem/1 var(--font-body);
   color: var(--muted);
   padding: 0 10px 8px;
   border-bottom: 1px solid var(--rule-strong);
@@ -888,13 +897,13 @@ table.ledger {
 .ledger .num {
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .ledger th.num {
-  font: 500 12px/1 var(--font-body);
+  font: 500 0.75rem/1 var(--font-body);
 }
 
 /* A table wider than the screen scrolls inside this box, not the page. */
@@ -909,8 +918,8 @@ table.ledger {
 .popover {
   position: absolute;
   z-index: 40;
-  min-width: 220px;
-  max-height: 340px;
+  min-width: 13.75rem;
+  max-height: 21.25rem;
   overflow: auto;
   background: var(--paper-raised);
   color: var(--ink);
@@ -929,7 +938,7 @@ table.ledger {
   border: none;
   background: none;
   text-align: left;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   cursor: pointer;
   text-decoration: none;
 }
@@ -959,7 +968,7 @@ table.ledger {
 
 .popover .group-label {
   padding: 6px 12px 2px;
-  font: 500 11.5px/1 var(--font-body);
+  font: 500 0.71875rem/1 var(--font-body);
   color: var(--muted);
 }
 
@@ -969,7 +978,7 @@ dialog.modal {
   background: var(--paper);
   color: var(--ink);
   padding: 0;
-  width: min(720px, 94vw);
+  width: min(45rem, 94vw);
   box-shadow: var(--shadow-pop);
 }
 
@@ -1019,7 +1028,7 @@ dialog.modal::backdrop {
   align-items: baseline;
   padding: 10px 14px 8px;
   border-bottom: 1px solid var(--rule);
-  font: 600 13px/1 var(--font-body);
+  font: 600 0.8125rem/1 var(--font-body);
   color: var(--ink);
 }
 
@@ -1035,7 +1044,7 @@ dialog.modal::backdrop {
   background: none;
   padding: 8px 14px 7px;
   margin-bottom: -1px;
-  font: 500 13px var(--font-body);
+  font: 500 0.8125rem var(--font-body);
   color: var(--ink-soft);
   cursor: pointer;
 }
@@ -1058,7 +1067,7 @@ dialog.modal::backdrop {
   margin-bottom: 0;
   padding: 4px 10px;
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1075,7 +1084,7 @@ dialog.modal::backdrop {
   z-index: 60;
   display: grid;
   gap: 8px;
-  max-width: min(440px, calc(100vw - 40px));
+  max-width: min(27.5rem, calc(100vw - 40px));
 }
 
 .toast {
@@ -1090,7 +1099,7 @@ dialog.modal::backdrop {
   border-left: 3px solid var(--ink-soft);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-pop);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .toast.error {
@@ -1138,11 +1147,11 @@ dialog.modal::backdrop {
 }
 
 .sprint-name {
-  font: var(--title-weight) 17px/1.2 var(--font-title);
+  font: var(--title-weight) 1.0625rem/1.2 var(--font-title);
 }
 
 .sprint-dates {
-  font: 12px var(--font-mono);
+  font: 0.75rem var(--font-mono);
   color: var(--muted);
 }
 
@@ -1159,7 +1168,7 @@ dialog.modal::backdrop {
   position: relative;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(250px, 1fr);
+  grid-auto-columns: minmax(15.625rem, 1fr);
   gap: 12px;
   align-items: start;
   overflow-x: auto;
@@ -1189,13 +1198,13 @@ dialog.modal::backdrop {
 }
 
 .board-column-title {
-  font: 600 12.5px/1.2 var(--font-body);
+  font: 600 0.78125rem/1.2 var(--font-body);
   color: var(--ink);
 }
 
 .board-column-count,
 .wip-limit {
-  font: 500 11px/1 var(--font-mono);
+  font: 500 0.6875rem/1 var(--font-mono);
   color: var(--muted);
 }
 
@@ -1224,7 +1233,7 @@ dialog.modal::backdrop {
   background: var(--paper-raised);
   border: var(--frame) solid var(--rule);
   border-radius: var(--radius-s);
-  font-size: 13px;
+  font-size: 0.8125rem;
   cursor: grab;
 }
 
@@ -1261,14 +1270,14 @@ dialog.modal::backdrop {
 }
 
 .sprint-meta {
-  font: 12px var(--font-mono);
+  font: 0.75rem var(--font-mono);
   color: var(--muted);
 }
 
 .sprint-goal {
   flex-basis: 100%;
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-soft);
 }
 
@@ -1300,7 +1309,7 @@ dialog.modal::backdrop {
   background: var(--paper);
   border-top: 1px solid var(--rule-strong);
   border-bottom: 1px solid var(--rule);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .board-lane-title {
@@ -1308,7 +1317,7 @@ dialog.modal::backdrop {
 }
 
 .board-lane-count {
-  font: 11px var(--font-mono);
+  font: 0.6875rem var(--font-mono);
   color: var(--muted);
 }
 
@@ -1330,7 +1339,7 @@ dialog.modal::backdrop {
 /* Wiki text ----------------------------------------------------------------- */
 
 .wiki {
-  font-size: 14.5px;
+  font-size: 0.90625rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -1353,21 +1362,21 @@ dialog.modal::backdrop {
 }
 
 .wiki h1 {
-  font-size: 22px;
+  font-size: 1.375rem;
 }
 
 .wiki h2 {
-  font-size: 19px;
+  font-size: 1.1875rem;
 }
 
 .wiki h3 {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 
 .wiki h4,
 .wiki h5,
 .wiki h6 {
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .wiki ul,
@@ -1390,7 +1399,7 @@ dialog.modal::backdrop {
 }
 
 .wiki pre {
-  font: 12.5px/1.55 var(--font-mono);
+  font: 0.78125rem/1.55 var(--font-mono);
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
   padding: 10px 12px;
@@ -1399,7 +1408,7 @@ dialog.modal::backdrop {
 }
 
 .wiki .code-title {
-  font: 500 11.5px/1 var(--font-mono);
+  font: 500 0.71875rem/1 var(--font-mono);
   color: var(--ink-soft);
   border: 1px solid var(--rule);
   border-bottom: none;
@@ -1450,7 +1459,7 @@ dialog.modal::backdrop {
   overflow-x: auto;
   border-collapse: collapse;
   margin: 0 0 0.85em;
-  font-size: 13.5px;
+  font-size: 0.84375rem;
 }
 
 .wiki .wiki-table th,
@@ -1570,21 +1579,21 @@ dialog.modal::backdrop {
 
 .editor-context-label {
   margin-right: 6px;
-  font: 500 11.5px/1 var(--font-body);
+  font: 500 0.71875rem/1 var(--font-body);
   color: var(--muted);
 }
 
 .editor-button {
   display: inline-grid;
   place-items: center;
-  min-width: 28px;
-  height: 28px;
+  min-width: 1.75rem;
+  height: 1.75rem;
   padding: 0 5px;
   border: 1px solid transparent;
   border-radius: var(--radius-xs);
   background: none;
   color: var(--ink-soft);
-  font: 600 14px/1 var(--font-title);
+  font: 600 0.875rem/1 var(--font-title);
   cursor: pointer;
 }
 
@@ -1615,8 +1624,8 @@ dialog.modal::backdrop {
 /* Fingers need bigger targets than a mouse. */
 @media (pointer: coarse) {
   .editor-button {
-    min-width: 34px;
-    height: 34px;
+    min-width: 2.125rem;
+    height: 2.125rem;
   }
 }
 
@@ -1640,21 +1649,21 @@ dialog.modal::backdrop {
 
 .editor-source-toggle {
   padding: 0 8px;
-  font: 500 12px/1 var(--font-mono);
+  font: 500 0.75rem/1 var(--font-mono);
 }
 
 .editor-style.select {
   width: auto;
-  height: 28px;
+  height: 1.75rem;
   padding-block: 2px;
   padding-left: 4px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .editor-language.input {
   width: 9em;
   padding: 3px 6px;
-  font: 12.5px var(--font-mono);
+  font: 0.78125rem var(--font-mono);
 }
 
 .editor-content {
@@ -1767,17 +1776,17 @@ div.editor-raw {
 
 .editor-menu .item .muted {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .editor-menu-empty {
   margin: 0;
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .editor-link {
-  width: 300px;
+  width: 18.75rem;
   padding: 10px 12px;
 }
 
@@ -1798,7 +1807,7 @@ div.editor-raw {
   justify-content: flex-end;
   gap: 14px;
   margin: 4px 0 0;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   color: var(--muted);
 }
 
@@ -1811,7 +1820,7 @@ div.editor-raw {
   margin: 0;
   padding: 4px 12px 6px;
   border-top: 1px dashed var(--rule);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 @media (max-width: 760px) {
@@ -1820,7 +1829,7 @@ div.editor-raw {
   }
 
   h1 {
-    font-size: 23px;
+    font-size: 1.4375rem;
   }
 }
 

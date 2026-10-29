@@ -10,7 +10,7 @@
   max-width: 72ch;
   margin: -6px 0 18px;
   color: var(--ink-soft);
-  font-size: 13.5px;
+  font-size: 0.84375rem;
   line-height: 1.5;
 }
 
@@ -18,7 +18,7 @@
 .settings-area .settings-form {
   display: grid;
   gap: 14px;
-  max-width: 720px;
+  max-width: 45rem;
 }
 
 .settings-area .settings-form > .section-title:first-child {
@@ -72,13 +72,13 @@
 
 .settings-area .form-hint {
   margin: -8px 0 0;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--muted);
   line-height: 1.45;
 }
 
 .settings-area .field-error {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--accent-text);
 }
 
@@ -89,12 +89,12 @@
 }
 
 .settings-area .small {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 .settings-area .mono {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   overflow-wrap: anywhere;
 }
 
@@ -113,8 +113,8 @@
 }
 
 .settings-area .list-tools .search {
-  flex: 1 1 220px;
-  max-width: 340px;
+  flex: 1 1 13.75rem;
+  max-width: 21.25rem;
 }
 
 .settings-area .list-tools .end {
@@ -156,7 +156,7 @@
 
 .settings-area .result .detail {
   margin: 4px 0 0;
-  font: 12.5px/1.5 var(--font-mono);
+  font: 0.78125rem/1.5 var(--font-mono);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -170,13 +170,13 @@
 }
 
 .settings-area .stats dt {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
 .settings-area .stats dd {
   margin: 2px 0 0;
-  font: 600 20px/1.1 var(--font-mono);
+  font: 600 1.25rem/1.1 var(--font-mono);
 }
 
 .settings-area .stats .is-alert dd {
@@ -185,7 +185,7 @@
 
 .settings-area .sub-title {
   margin: 18px 0 6px;
-  font: 600 12.5px/1.2 var(--font-body);
+  font: 600 0.78125rem/1.2 var(--font-body);
   color: var(--ink-soft);
 }
 
