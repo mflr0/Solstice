@@ -157,6 +157,14 @@
   </div>
 </section>
 
+{#snippet scopeList(tok: AccessToken)}
+  <span class="scope-list">
+    {#each tok.scopes as sc (sc)}
+      <span class="chip key" title={t.tokensPage.scopeHints[sc]}>{sc}</span>
+    {/each}
+  </span>
+{/snippet}
+
 <div class="list-tools">
   <input
     class="input search"
@@ -190,6 +198,7 @@
         <tr>
           <th>{t.tokensAdmin.colOwner}</th>
           <th>{t.tokensAdmin.colName}</th>
+          <th class="c-scopes">{t.tokensAdmin.colScopes}</th>
           <th class="c-created">{t.tokensAdmin.colCreated}</th>
           <th class="c-used">{t.tokensAdmin.colUsed}</th>
           <th>{t.tokensAdmin.colExpires}</th>
@@ -207,7 +216,11 @@
                 {#if !tok.user.active}<span class="stamp">{t.tokensAdmin.inactiveOwner}</span>{/if}
               {/if}
             </td>
-            <td>{tok.name}</td>
+            <td>
+              {tok.name}
+              <span class="scopes-below">{@render scopeList(tok)}</span>
+            </td>
+            <td class="c-scopes">{@render scopeList(tok)}</td>
             <td class="c-created muted" title={formatDateTime(tok.created)}
               >{relative(tok.created)}</td
             >
@@ -264,6 +277,12 @@
     margin-bottom: 26px;
   }
 
+  .scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
   .policy-form {
     display: grid;
     gap: 12px;
@@ -275,9 +294,20 @@
     }
   }
 
+  .scopes-below {
+    display: none;
+  }
+
   @media (max-width: 600px) {
-    .c-used {
+    .c-used,
+    .c-scopes {
       display: none;
+    }
+
+    /* Below the name, so that the row still fits a phone. */
+    .scopes-below {
+      display: block;
+      margin-top: 4px;
     }
   }
 </style>

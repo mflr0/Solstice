@@ -16,10 +16,15 @@ import {
   namedPatch,
   namedPayload,
   newUserForm,
+  offeredScopes,
+  readLocked,
   restrictionUsage,
   roleProblems,
   securityLevelProblem,
   suggestUsername,
+  TOKEN_SCOPES,
+  tokenProblems,
+  toggleScope,
   tooLong,
   typedMatches,
   userProblems,
@@ -378,5 +383,43 @@ describe('security levels', () => {
     expect(memberPayload('role', null)).toBeNull();
     expect(memberPayload('lead', null)).toEqual({ holder: 'lead' });
     expect(memberPayload('everyone', 7)).toEqual({ holder: 'everyone' });
+  });
+});
+
+describe('token scopes', () => {
+  const today = new Date(2026, 9, 29);
+
+  it('ticks and locks read with any other scope', () => {
+    const s = toggleScope([], 'comments:write', true);
+    expect(s).toEqual(['read', 'comments:write']);
+    expect(readLocked(s)).toBe(true);
+    expect(toggleScope(s, 'read', false)).toEqual(['read', 'comments:write']);
+    expect(toggleScope(['read'], 'admin', true)).toEqual(['read', 'admin']);
+  });
+
+  it('frees read once no other scope is left', () => {
+    const s = toggleScope(['read', 'comments:write'], 'comments:write', false);
+    expect(s).toEqual(['read']);
+    expect(readLocked(s)).toBe(false);
+    expect(toggleScope(s, 'read', false)).toEqual([]);
+  });
+
+  it("keeps the server's order", () => {
+    expect(toggleScope(['read', 'profile:write'], 'issues:write', true)).toEqual([
+      'read',
+      'issues:write',
+      'profile:write',
+    ]);
+  });
+
+  it('cannot be sent without a scope', () => {
+    expect(tokenProblems('ci', [], '90', '', today).scopes).toBe('scopesRequired');
+    expect(tokenProblems('ci', ['read'], '90', '', today)).toEqual({});
+  });
+
+  it('offers admin to administrators only', () => {
+    expect(offeredScopes(true)).toEqual(TOKEN_SCOPES);
+    expect(offeredScopes(false)).not.toContain('admin');
+    expect(offeredScopes(false)).toHaveLength(TOKEN_SCOPES.length - 1);
   });
 });

@@ -1,11 +1,19 @@
 <script lang="ts">
-  import { tokenExpiry, tokenProblems, type ExpiryChoice } from '../../core/admin-forms.js';
+  import {
+    offeredScopes,
+    readLocked,
+    tokenExpiry,
+    tokenProblems,
+    toggleScope,
+    type ExpiryChoice,
+  } from '../../core/admin-forms.js';
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
-  import type { AccessToken } from '../../core/admin-types.js';
+  import type { AccessToken, TokenScope } from '../../core/admin-types.js';
   import { isoDay } from '../../core/dates.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import CopyField from '../CopyField.svelte';
@@ -13,7 +21,7 @@
   import EmptyState from '../EmptyState.svelte';
 
   /**
-   * One's personal access tokens: create one (a name and an expiry), copy
+   * One's personal access tokens: create one (a name, scopes and an expiry), copy
    * its secret, which is shown this once, and revoke the ones no longer
    * needed. The instance may limit who creates tokens (administration).
    */
@@ -24,6 +32,7 @@
   let canCreate = $state<boolean | null>(null);
   let loadError = $state('');
   let name = $state('');
+  let scopes = $state<TokenScope[]>(['read']);
   let choice = $state<ExpiryChoice>('90');
   let date = $state('');
   let tried = $state(false);
@@ -34,7 +43,9 @@
 
   const now = $derived(new Date());
   const today = $derived(isoDay(now));
-  const problems = $derived(tokenProblems(name, choice, date, now));
+  const offered = $derived(offeredScopes(!!session.me?.admin));
+  const locked = $derived(readLocked(scopes));
+  const problems = $derived(tokenProblems(name, scopes, choice, date, now));
   const shown = $derived(tried ? problems : {});
 
   async function load() {
@@ -58,11 +69,12 @@
     e.preventDefault();
     tried = true;
     createError = '';
-    if (problems.name || problems.expires) return;
+    if (problems.name || problems.scopes || problems.expires) return;
     creating = true;
     try {
-      created = await accountApi.createToken(name.trim(), tokenExpiry(choice, date, now));
+      created = await accountApi.createToken(name.trim(), scopes, tokenExpiry(choice, date, now));
       name = '';
+      scopes = ['read'];
       date = '';
       tried = false;
       await load();
@@ -140,9 +152,35 @@
           {/if}
         </label>
       {/if}
+      <fieldset
+        class="choices scopes"
+        aria-describedby={problems.scopes ? 'token-scopes-error' : undefined}
+      >
+        <legend class="field-label">{t.tokensPage.scopes}</legend>
+        {#each offered as sc (sc)}
+          <label class="check">
+            <input
+              class="checkbox"
+              type="checkbox"
+              checked={scopes.includes(sc)}
+              disabled={sc === 'read' && locked}
+              onchange={(e) => (scopes = toggleScope(scopes, sc, e.currentTarget.checked))}
+            />
+            <span>
+              <span class="key">{sc}</span>
+              <span class="muted small">{t.tokensPage.scopeHints[sc]}</span>
+            </span>
+          </label>
+        {/each}
+        {#if problems.scopes}
+          <span class="field-error" id="token-scopes-error"
+            >{t.tokensPage.problems[problems.scopes]}</span
+          >
+        {/if}
+      </fieldset>
       {#if createError}<p class="error-text" role="alert">{createError}</p>{/if}
       <div>
-        <button class="btn btn-primary" type="submit" disabled={creating}
+        <button class="btn btn-primary" type="submit" disabled={creating || !!problems.scopes}
           >{creating ? t.tokensPage.creating : t.tokensPage.create}</button
         >
       </div>
@@ -166,6 +204,7 @@
       <thead>
         <tr>
           <th>{t.tokensPage.colName}</th>
+          <th>{t.tokensPage.colScopes}</th>
           <th class="c-created">{t.tokensPage.colCreated}</th>
           <th class="c-used">{t.tokensPage.colUsed}</th>
           <th>{t.tokensPage.colExpires}</th>
@@ -177,6 +216,13 @@
           {@const state = tokenState(tok, now)}
           <tr class:is-off={state === 'expired'}>
             <td>{tok.name}</td>
+            <td>
+              <span class="scope-list">
+                {#each tok.scopes as sc (sc)}
+                  <span class="chip key" title={t.tokensPage.scopeHints[sc]}>{sc}</span>
+                {/each}
+              </span>
+            </td>
             <td class="c-created muted" title={formatDateTime(tok.created)}
               >{relative(tok.created)}</td
             >
@@ -241,6 +287,16 @@
 
   .date {
     max-width: 13.75rem;
+  }
+
+  .scopes .key {
+    margin-right: 6px;
+  }
+
+  .scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
   @media (max-width: 760px) {

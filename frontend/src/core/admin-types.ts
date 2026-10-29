@@ -104,6 +104,18 @@ export interface WebhookInput {
 
 /* Access tokens ------------------------------------------------------------- */
 
+/** What a personal access token may do; every scope implies read. */
+export type TokenScope =
+  | 'read'
+  | 'issues:write'
+  | 'comments:write'
+  | 'worklogs:write'
+  | 'agile:write'
+  | 'filters:write'
+  | 'projects:write'
+  | 'profile:write'
+  | 'admin';
+
 export interface AccessToken {
   id: number;
   name: string;
@@ -111,6 +123,7 @@ export interface AccessToken {
   expires: string | null;
   lastUsed: string | null;
   expired: boolean;
+  scopes: TokenScope[];
   /** The owner, in the administrators' list. */
   user?: UserRef;
   /** The secret, only in the answer that created it. */

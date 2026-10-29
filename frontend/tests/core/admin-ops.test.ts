@@ -124,6 +124,7 @@ function token(over: Partial<AccessToken>): AccessToken {
     expires: null,
     lastUsed: null,
     expired: false,
+    scopes: ['read'],
     user: { id: 1, username: 'paul.martin', name: 'Paul Martin', active: true },
     ...over,
   };
