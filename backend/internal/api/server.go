@@ -226,6 +226,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// Personal access tokens, audit log, CSV export, and the Jira-compatible
 	// REST API (/rest/…) for scripts and tools.
 	s.integrationRoutes(mux, route)
+	s.mcpRoutes(mux)
 
 	// E-mail notifications, filter subscriptions, webhooks.
 	s.notificationRoutes(route)

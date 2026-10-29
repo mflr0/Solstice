@@ -27,8 +27,9 @@ TypeScript). Data lives in MariaDB 10.6+ or MySQL 8.0+.
 - Notifications by e-mail, sent immediately (changes to one issue are grouped)
   or as a daily digest, with mentions and due-date reminders. Webhooks.
 - Integrations: a REST API compatible with Jira's `/rest/api/2` and
-  `/rest/agile/1.0`, so existing scripts and tools keep working; personal
-  access tokens; an audit log.
+  `/rest/agile/1.0`, so existing scripts and tools keep working; an
+  [MCP endpoint](docs/en/mcp.md) for AI agents; personal access tokens with
+  scopes; an audit log.
 - Interface: eight themes with light and dark modes, in French, English,
   German, Italian and Hindi, usable on a phone.
 
