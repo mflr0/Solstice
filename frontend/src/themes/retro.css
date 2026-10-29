@@ -74,12 +74,12 @@
   --font-title: Tahoma, Verdana, Arial, 'IBM Plex Sans', sans-serif;
   --font-body: Tahoma, Verdana, Arial, 'IBM Plex Sans', sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
-  --font-size: 12px;
+  --font-size: 0.75rem;
   --title-weight: 700;
   --h1-weight: 700;
   --title-tracking: 0;
   --title-italic: normal;
-  --empty-font: 400 12px/1.45 var(--font-body);
+  --empty-font: 400 0.75rem/1.45 var(--font-body);
 
   --frame: 1px;
   --radius-xs: 0;
@@ -89,7 +89,7 @@
   --avatar-radius: 0;
   --card-top: 0 solid transparent;
 
-  --stamp-font: 400 11px/1.3 var(--font-body);
+  --stamp-font: 400 0.6875rem/1.3 var(--font-body);
   --stamp-case: none;
   --stamp-tracking: 0;
   --stamp-border: 0;
@@ -97,7 +97,7 @@
   --stamp-padding: 1px 6px 1px 4px;
   --stamp-fill: 0%;
   --stamp-dot: inline-block;
-  --stamp-large-size: 12px;
+  --stamp-large-size: 0.75rem;
   --stamp-large-padding: 3px 9px 3px 6px;
   --stamp-large-border: 0;
   --stamp-large-tracking: 0;
@@ -291,7 +291,7 @@
 
 [data-skin='retro'] .topbar-inner {
   max-width: none;
-  --bar-height: 36px;
+  --bar-height: 2.25rem;
   padding: 0 8px 0 6px;
   column-gap: 6px;
 }
@@ -312,7 +312,7 @@
 }
 
 [data-skin='retro'] .topbar .wordmark {
-  font: 600 16px/1 var(--rt-pixel);
+  font: 600 1rem/1 var(--rt-pixel);
   letter-spacing: 0.01em;
 }
 
@@ -392,13 +392,13 @@
 }
 
 [data-skin='retro'] .topbar-search {
-  width: min(240px, 24vw);
+  width: min(15rem, 24vw);
 }
 
 [data-skin='retro'] .topbar-search .input {
-  height: 22px;
+  height: 1.375rem;
   padding: 2px 26px 2px 5px;
-  font: 12px var(--font-body);
+  font: 0.75rem var(--font-body);
   background: var(--rt-well);
 }
 
@@ -424,8 +424,8 @@
 }
 
 [data-skin='retro'] .topbar .topbar-themes {
-  width: 26px;
-  height: 24px;
+  width: 1.625rem;
+  height: 1.5rem;
   border-radius: 0;
   color: var(--bar-ink);
 }
@@ -446,7 +446,7 @@
 }
 
 [data-skin='retro'] .topbar .topbar-create.btn {
-  height: 24px;
+  height: 1.5rem;
 }
 
 [data-skin='retro'] .account .account-button {
@@ -457,13 +457,13 @@
 }
 
 [data-skin='retro'] .account .account-button .avatar {
-  width: 28px;
-  height: 24px;
+  width: 1.75rem;
+  height: 1.5rem;
   border: 0;
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--rt-raised);
-  font: 700 10px/1 var(--font-body);
+  font: 700 0.625rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .account .account-button[aria-expanded='true'] .avatar,
@@ -489,7 +489,7 @@
   box-shadow:
     0 -1px 0 var(--rt-light),
     inset 0 1px 0 var(--rt-hilite);
-  font: 11px/1.2 var(--font-body);
+  font: 0.6875rem/1.2 var(--font-body);
 }
 
 [data-skin='retro'] .app-statusbar .statusbar-cell {
@@ -524,7 +524,7 @@
   align-items: center;
   gap: 6px 12px;
   flex-wrap: wrap;
-  min-height: 24px;
+  min-height: 1.5rem;
   margin: 0 -13px 14px;
   padding: 3px 4px 3px 7px;
   border: 0;
@@ -542,7 +542,7 @@
 
 [data-skin='retro'] .page-head:where(.page > *) .page-title {
   order: -1;
-  font: 500 16px/1.25 var(--rt-pixel);
+  font: 500 1rem/1.25 var(--rt-pixel);
   color: var(--rt-title-ink);
   letter-spacing: 0.01em;
 }
@@ -550,14 +550,14 @@
 [data-skin='retro'] .page-head:where(.page > *) .eyebrow {
   margin: 0;
   color: var(--rt-title-soft);
-  font: 400 11px/1.3 var(--font-body);
+  font: 400 0.6875rem/1.3 var(--font-body);
   letter-spacing: 0.02em;
   text-transform: none;
 }
 
 [data-skin='retro'] .page-head:where(.page > *) .page-title .pkey {
   color: var(--rt-title-soft);
-  font: 400 12px/1 var(--font-mono);
+  font: 400 0.75rem/1 var(--font-mono);
   vertical-align: 1px;
 }
 
@@ -570,7 +570,7 @@
   margin: 0;
   gap: 5px;
   color: var(--rt-title-soft);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 [data-skin='retro'] .page-head:where(.page > *) .lead .who {
@@ -580,7 +580,7 @@
 [data-skin='retro'] .page-head:where(.page > *) > .count,
 [data-skin='retro'] .page-head:where(.page > *) .count.muted {
   color: var(--rt-title-soft);
-  font: 400 11px var(--font-body);
+  font: 400 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .page-head:where(.page > *) a:focus-visible,
@@ -590,17 +590,17 @@
 }
 
 [data-skin='retro'] .page-head:where(.page > *) .btn {
-  height: 20px;
+  height: 1.25rem;
   min-width: 0;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 /* A page with no head of its own (still loading) gets an empty title bar. */
 [data-skin='retro'] .page:not(:has(> .page-head, > .page-crumbs, > .page-title))::before {
   content: '';
   display: block;
-  height: 22px;
+  height: 1.375rem;
   margin: 0 -13px 14px;
   background: var(--rt-title);
 }
@@ -613,7 +613,7 @@
   height: auto;
   padding: 3px 4px 3px 7px;
   overflow: hidden;
-  font: 500 16px/1.25 var(--rt-pixel);
+  font: 500 1rem/1.25 var(--rt-pixel);
   letter-spacing: 0.01em;
   color: var(--rt-title-ink);
   white-space: nowrap;
@@ -624,7 +624,7 @@
 [data-skin='retro'] .section-title {
   margin: 20px 0 6px;
   gap: 8px;
-  font: 700 12px/1.2 var(--font-body);
+  font: 700 0.75rem/1.2 var(--font-body);
   color: var(--ink);
 }
 
@@ -633,7 +633,7 @@
 }
 
 [data-skin='retro'] .section-title .count {
-  font: 400 11px/1 var(--font-body);
+  font: 400 0.6875rem/1 var(--font-body);
   color: var(--muted);
 }
 
@@ -656,7 +656,7 @@
 }
 
 [data-skin='retro'] .eyebrow {
-  font: 400 11px/1.3 var(--font-body);
+  font: 400 0.6875rem/1.3 var(--font-body);
   letter-spacing: 0.02em;
   text-transform: none;
 }
@@ -665,7 +665,7 @@
 
 [data-skin='retro'] .empty {
   color: var(--ink-soft);
-  font: 400 12px/1.45 var(--font-body);
+  font: 400 0.75rem/1.45 var(--font-body);
   padding: 6px 0;
 }
 
@@ -722,8 +722,8 @@
 /* Buttons ------------------------------------------------------------------------------ */
 
 [data-skin='retro'] .btn.btn {
-  height: 23px;
-  min-width: 72px;
+  height: 1.4375rem;
+  min-width: 4.5rem;
   justify-content: center;
   padding: 0 12px;
   border: 0;
@@ -731,7 +731,7 @@
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--rt-raised);
-  font: 400 12px/1 var(--font-body);
+  font: 400 0.75rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .btn.btn:hover:not([disabled]) {
@@ -799,7 +799,7 @@
 /* In a dialog's footer and in form rows, Cancel is an ordinary button. */
 [data-skin='retro'] .modal-foot .btn.btn-quiet,
 [data-skin='retro'] .row .btn.btn-quiet {
-  min-width: 72px;
+  min-width: 4.5rem;
   background: var(--paper);
   box-shadow: var(--rt-raised);
 }
@@ -814,10 +814,10 @@
 }
 
 [data-skin='retro'] .btn.btn-small {
-  height: 20px;
+  height: 1.25rem;
   min-width: 0;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 [data-skin='retro'] .btn.btn-small:active:not([disabled]),
@@ -841,7 +841,7 @@
 /* Key caps. */
 [data-skin='retro'] .btn kbd,
 [data-skin='retro'] .kbd {
-  min-width: 13px;
+  min-width: 0.8125rem;
   padding: 2px 3px 1px;
   border: 0;
   border-radius: 0;
@@ -850,7 +850,7 @@
   box-shadow:
     var(--rt-thin-up),
     0 0 0 1px var(--rt-shadow);
-  font: 400 10px/1 var(--font-mono);
+  font: 400 0.625rem/1 var(--font-mono);
   text-align: center;
   opacity: 1;
 }
@@ -870,14 +870,14 @@
   color: var(--ink);
   box-shadow: var(--rt-sunken);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='retro'] .input.input,
 [data-skin='retro'] .select.select {
-  height: 22px;
+  height: 1.375rem;
   padding: 2px 5px;
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 [data-skin='retro'] .input.input::placeholder,
@@ -897,7 +897,7 @@
 
 [data-skin='retro'] .textarea.textarea {
   padding: 4px 6px;
-  font: 12px/1.5 var(--font-mono);
+  font: 0.75rem/1.5 var(--font-mono);
 }
 
 [data-skin='retro'] .input.input:focus,
@@ -943,12 +943,12 @@
 
 [data-skin='retro'] .field > span:first-child,
 [data-skin='retro'] .field-label {
-  font: 400 12px/1.2 var(--font-body);
+  font: 400 0.75rem/1.2 var(--font-body);
   color: var(--ink);
 }
 
 [data-skin='retro'] .field .hint {
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 /* Chips: small raised tiles. */
@@ -961,7 +961,7 @@
   box-shadow:
     var(--rt-thin-up),
     1px 1px 0 var(--rt-dark);
-  font: 11px/1.4 var(--font-mono);
+  font: 0.6875rem/1.4 var(--font-mono);
 }
 
 [data-skin='retro'] .chip button {
@@ -969,7 +969,7 @@
 }
 
 [data-skin='retro'] .key {
-  font: 500 11.5px/1 var(--font-mono);
+  font: 500 0.71875rem/1 var(--font-mono);
 }
 
 /* Statuses, types, people ------------------------------------------------------------- */
@@ -1006,8 +1006,8 @@
 }
 
 [data-skin='retro'] .type-mark.type-mark {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
   border: 1px solid var(--rt-dark);
   border-radius: 0;
   background: var(--tone);
@@ -1015,7 +1015,7 @@
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.4),
     inset -1px -1px 0 rgba(0, 0, 0, 0.3);
-  font: 700 10px/1 var(--font-body);
+  font: 700 0.625rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .type-mark[data-type='bug'] {
@@ -1044,8 +1044,8 @@
 }
 
 [data-skin='retro'] .avatar.avatar {
-  width: 18px;
-  height: 18px;
+  width: 1.125rem;
+  height: 1.125rem;
   border: 0;
   border-radius: 0;
   background: var(--paper);
@@ -1053,7 +1053,7 @@
   box-shadow:
     var(--rt-thin-up),
     1px 1px 0 var(--rt-dark);
-  font: 700 8.5px/1 var(--font-body);
+  font: 700 0.53125rem/1 var(--font-body);
   letter-spacing: 0;
 }
 
@@ -1081,7 +1081,7 @@
   padding: 2px;
   background: var(--rt-well);
   box-shadow: var(--rt-sunken);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='retro'] .ledger th,
@@ -1093,7 +1093,7 @@
   box-shadow:
     var(--rt-thin-up),
     inset -1px -1px 0 var(--rt-dark);
-  font: 400 12px/1.2 var(--font-body);
+  font: 400 0.75rem/1.2 var(--font-body);
 }
 
 [data-skin='retro'] .ledger td {
@@ -1102,7 +1102,7 @@
 }
 
 [data-skin='retro'] .ledger .num {
-  font: 400 11.5px var(--font-body);
+  font: 400 0.71875rem var(--font-body);
 }
 
 [data-skin='retro'] .ledger tbody tr:hover td {
@@ -1142,7 +1142,7 @@
   padding: 4px 18px 4px 22px;
   border-radius: 0;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -1211,7 +1211,7 @@
 [data-skin='retro'] .popover .group-label {
   padding: 5px 8px 2px;
   color: var(--muted);
-  font: 400 11px/1.2 var(--font-body);
+  font: 400 0.6875rem/1.2 var(--font-body);
 }
 
 [data-skin='retro'] .popover .input.input {
@@ -1221,7 +1221,7 @@
 
 /* Menus here do not scroll: the account menu opens to its full height. */
 [data-skin='retro'] .popover.account-menu {
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 2.25rem - 12px);
 }
 
 [data-skin='retro'] .account-menu .who {
@@ -1247,7 +1247,7 @@
 }
 
 [data-skin='retro'] .modal-head {
-  min-height: 22px;
+  min-height: 1.375rem;
   padding: 2px 3px 2px 7px;
   border: 0;
   background: var(--rt-title);
@@ -1256,7 +1256,7 @@
 
 [data-skin='retro'] .modal-head .modal-title,
 [data-skin='retro'] .modal-head h2 {
-  font: 500 16px/1.25 var(--rt-pixel);
+  font: 500 1rem/1.25 var(--rt-pixel);
   color: var(--rt-title-ink);
   letter-spacing: 0.01em;
 }
@@ -1307,7 +1307,7 @@
 
 /* Boxes in the new-issue form that hold pickers look like fields. */
 [data-skin='retro'] .modal .boxed.boxed {
-  min-height: 22px;
+  min-height: 1.375rem;
   padding: 2px 5px;
   border: 0;
   background: var(--rt-well);
@@ -1318,7 +1318,7 @@
   margin: -2px -5px;
   padding: 2px 0 2px 5px;
   width: calc(100% + 10px);
-  min-height: 22px;
+  min-height: 1.375rem;
 }
 
 [data-skin='retro'] .modal .boxed :is(.picker, .multi) > .current:hover:not([disabled]) {
@@ -1336,11 +1336,11 @@
 
 [data-skin='retro'] .labels .add {
   border-bottom: 0;
-  font: 12px var(--font-body);
+  font: 0.75rem var(--font-body);
 }
 
 [data-skin='retro'] .modal .input.summary {
-  font: 700 12px var(--font-body);
+  font: 700 0.75rem var(--font-body);
 }
 
 /* Panels: a window with a title bar ------------------------------------------------------- */
@@ -1355,18 +1355,18 @@
 
 [data-skin='retro'] .card > .card-head {
   align-items: center;
-  min-height: 20px;
+  min-height: 1.25rem;
   margin: 0 0 4px;
   padding: 3px 6px 2px 7px;
   border: 0;
   background: var(--rt-title);
   color: var(--rt-title-ink);
-  font: 700 12px/1.2 var(--font-body);
+  font: 700 0.75rem/1.2 var(--font-body);
 }
 
 [data-skin='retro'] .card > .card-head .key {
   color: var(--rt-title-soft);
-  font: 400 11px/1 var(--font-mono);
+  font: 400 0.6875rem/1 var(--font-mono);
 }
 
 /* A second head inside a panel is a plain etched label, not another title bar. */
@@ -1379,7 +1379,7 @@
   box-shadow:
     inset 0 -1px 0 var(--rt-hilite),
     inset 0 -2px 0 var(--rt-shadow);
-  font: 700 12px/1.2 var(--font-body);
+  font: 700 0.75rem/1.2 var(--font-body);
 }
 
 /* Tabs: raised notebook tabs over a raised page ---------------------------------------- */
@@ -1406,7 +1406,7 @@
     inset -1px 0 0 var(--rt-dark),
     inset -2px 0 0 var(--rt-shadow),
     inset 2px 2px 0 var(--rt-light);
-  font: 400 12px/1.3 var(--font-body);
+  font: 400 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='retro'] .tabs[role='tablist'] > .tab[aria-selected='true'] {
@@ -1421,7 +1421,7 @@
 
 [data-skin='retro'] .tabs[role='tablist'] > .tab .n {
   color: var(--muted);
-  font: 400 11px var(--font-body);
+  font: 400 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .issue-activity > [role='tabpanel'] {
@@ -1433,7 +1433,7 @@
 /* Folder tabs over an editor sit on the field instead of a page. */
 [data-skin='retro'] .tabs-folder[role='tablist'] > .tab {
   padding: 2px 9px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 [data-skin='retro'] .tabs-folder[role='tablist'] > .tab[aria-selected='true'] {
@@ -1462,7 +1462,7 @@
   background: var(--rt-tip);
   color: var(--rt-tip-ink);
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.32);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* A round sign before the text: "i" for information, "!" for errors. */
@@ -1470,15 +1470,15 @@
   content: 'i' / '';
   position: absolute;
   left: 8px;
-  top: calc(50% - 8px);
-  width: 16px;
-  height: 16px;
+  top: calc(50% - 0.5rem);
+  width: 1rem;
+  height: 1rem;
   border-radius: 50%;
   background: #14318f;
   color: #ffffff;
   box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.35);
   font:
-    700 11px/16px Georgia,
+    700 0.6875rem/1rem Georgia,
     'Times New Roman',
     serif;
   text-align: center;
@@ -1487,7 +1487,7 @@
 [data-skin='retro'] .toast.error::before {
   content: '!' / '';
   background: #b3180e;
-  font: 700 11px/16px var(--font-body);
+  font: 700 0.6875rem/1rem var(--font-body);
 }
 
 [data-skin='retro'] .toast.error {
@@ -1503,12 +1503,12 @@
 /* The breadcrumbs are the window's title. */
 [data-skin='retro'] .page > .page-crumbs {
   align-items: center;
-  min-height: 24px;
+  min-height: 1.5rem;
   margin: 0 -13px 12px;
   padding: 3px 7px;
   background: var(--rt-title);
   color: var(--rt-title-soft);
-  font: 700 12px/1.3 var(--font-body);
+  font: 700 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='retro'] .page > .page-crumbs a,
@@ -1517,7 +1517,7 @@
 }
 
 [data-skin='retro'] .page > .page-crumbs .key {
-  font: 400 12px/1 var(--font-mono);
+  font: 400 0.75rem/1 var(--font-mono);
 }
 
 [data-skin='retro'] .page > .issue-head {
@@ -1530,7 +1530,7 @@
 }
 
 [data-skin='retro'] .issue-head .page-title {
-  font: 500 22px/1.25 var(--rt-pixel);
+  font: 500 1.375rem/1.25 var(--rt-pixel);
   letter-spacing: 0.01em;
 }
 
@@ -1544,17 +1544,17 @@
   border: 0;
   background: var(--rt-well);
   box-shadow: var(--rt-sunken);
-  font: 500 20px/1.25 var(--rt-pixel);
+  font: 500 1.25rem/1.25 var(--rt-pixel);
 }
 
 [data-skin='retro'] .issue-meta {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='retro'] .issue-meta .resolution,
 [data-skin='retro'] .issue-head .note {
-  font: 400 12px var(--font-body);
+  font: 400 0.75rem var(--font-body);
 }
 
 [data-skin='retro'] .issue-meta .dot {
@@ -1621,12 +1621,12 @@
   border: 1px solid var(--rt-dark);
   background: var(--paper);
   box-shadow: var(--rt-thin-up);
-  font: 700 11px/1 var(--font-body);
+  font: 700 0.6875rem/1 var(--font-body);
 }
 
 /* The record: a window whose fields sit in white wells. */
 [data-skin='retro'] .fiche.card {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='retro'] .fiche.card > dl {
@@ -1641,8 +1641,8 @@
 }
 
 [data-skin='retro'] .fiche.card .line {
-  grid-template-columns: 104px minmax(0, 1fr);
-  min-height: 26px;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  min-height: 1.625rem;
   padding: 4px 6px 3px;
   border-bottom: 1px solid var(--rule);
 }
@@ -1656,7 +1656,7 @@
 }
 
 [data-skin='retro'] .fiche.card dt {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--muted);
 }
 
@@ -1673,11 +1673,11 @@
 }
 
 [data-skin='retro'] .fiche.card .nums {
-  font: 11px var(--font-body);
+  font: 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .fiche.card .date {
-  font: 12px var(--font-body);
+  font: 0.75rem var(--font-body);
 }
 
 /* Pickers inside wells: a field look when pointed at. */
@@ -1710,19 +1710,19 @@
 [data-skin='retro'] .thread .comment .restricted {
   border-color: var(--accent-text);
   color: var(--accent-text);
-  font: 11px var(--font-body);
+  font: 0.6875rem var(--font-body);
 }
 
 /* Login: the sign-in sheet is a small window -------------------------------------------- */
 
 [data-skin='retro'] .login-card.login-card {
-  width: min(340px, 100%);
+  width: min(21.25rem, 100%);
   padding: 3px 3px 14px;
 }
 
 [data-skin='retro'] .login-card > .brand {
   gap: 7px;
-  min-height: 26px;
+  min-height: 1.625rem;
   padding: 3px 7px;
   background: var(--rt-title);
   color: var(--rt-title-ink);
@@ -1738,14 +1738,14 @@
 }
 
 [data-skin='retro'] .login-card > .brand .wordmark {
-  font: 600 16px/1 var(--rt-pixel);
+  font: 600 1rem/1 var(--rt-pixel);
   letter-spacing: 0.01em;
 }
 
 [data-skin='retro'] .login-card .tagline {
   margin: 12px 14px 14px;
   color: var(--ink-soft);
-  font: 400 12px/1.4 var(--font-body);
+  font: 400 0.75rem/1.4 var(--font-body);
 }
 
 [data-skin='retro'] .login-card form {
@@ -1755,7 +1755,7 @@
 
 [data-skin='retro'] .login-card .submit.btn {
   justify-self: end;
-  height: 25px;
+  height: 1.5625rem;
   margin-top: 4px;
 }
 
@@ -1767,7 +1767,7 @@
     inset 0 1px 0 var(--rt-shadow),
     inset 0 2px 0 var(--rt-hilite);
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 /* Not found: a message box -------------------------------------------------------------- */
@@ -1776,7 +1776,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  max-width: 420px;
+  max-width: 26.25rem;
   margin-top: 12vh;
   padding: 3px 3px 14px;
 }
@@ -1788,7 +1788,7 @@
   padding: 3px 7px;
   background: var(--rt-title);
   color: var(--rt-title-ink);
-  font: 500 16px/1.25 var(--rt-pixel);
+  font: 500 1rem/1.25 var(--rt-pixel);
 }
 
 [data-skin='retro'] .page:has(> .illustration[data-kind='lost']) > .illustration {
@@ -1826,19 +1826,19 @@
 }
 
 [data-skin='retro'] .page-head .id .mark {
-  width: 34px;
-  height: 34px;
+  width: 2.125rem;
+  height: 2.125rem;
   border: 0;
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--rt-raised);
-  font: 700 13px/1 var(--font-body);
+  font: 700 0.8125rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .page-head .id .meta {
   margin: 2px 0 0;
   gap: 10px;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 [data-skin='retro'] .page-head .id .meta a {
@@ -1847,7 +1847,7 @@
 
 /* Project settings: plain text, and a save bar drawn as a toolbar. */
 [data-skin='retro'] .page > .intro {
-  font: 400 12px/1.5 var(--font-body);
+  font: 400 0.75rem/1.5 var(--font-body);
   color: var(--ink-soft);
 }
 
@@ -1860,17 +1860,17 @@
 }
 
 [data-skin='retro'] .page .savebar span {
-  font: 400 12px var(--font-body);
+  font: 400 0.75rem var(--font-body);
 }
 
 [data-skin='retro'] .attachments .drop {
-  font: 700 13px var(--font-body);
+  font: 700 0.8125rem var(--font-body);
 }
 
 /* Project and search pages ------------------------------------------------------------ */
 
 [data-skin='retro'] .page .facts dt {
-  font: 400 11px var(--font-body);
+  font: 400 0.6875rem var(--font-body);
   color: var(--muted);
 }
 
@@ -1880,9 +1880,9 @@
 }
 
 [data-skin='retro'] .page .search .input.input {
-  height: 24px;
+  height: 1.5rem;
   padding-left: 24px;
-  font: 12px var(--font-body);
+  font: 0.75rem var(--font-body);
 }
 
 [data-skin='retro'] .page .search .input::-webkit-search-cancel-button {
@@ -1898,7 +1898,7 @@
 [data-skin='retro'] .page .search .mode {
   border-color: var(--stamp-doing);
   background: var(--paper);
-  font: 700 10px/1 var(--font-body);
+  font: 700 0.625rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .page .tools .quick {
@@ -1906,21 +1906,21 @@
 }
 
 [data-skin='retro'] .page .count.muted {
-  font: 11px var(--font-body);
+  font: 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .pager .range {
-  font: 11px var(--font-body);
+  font: 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .ledger a.name {
-  font: 700 12px/1.3 var(--font-body);
+  font: 700 0.75rem/1.3 var(--font-body);
 }
 
 /* Wiki text ------------------------------------------------------------------------------- */
 
 [data-skin='retro'] .wiki {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   line-height: 1.55;
 }
 
@@ -1930,19 +1930,19 @@
 }
 
 [data-skin='retro'] .wiki h1 {
-  font: 500 18px/1.3 var(--rt-pixel);
+  font: 500 1.125rem/1.3 var(--rt-pixel);
 }
 
 [data-skin='retro'] .wiki h2 {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='retro'] .wiki h3 {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 [data-skin='retro'] .wiki :is(h4, h5, h6) {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='retro'] .wiki a {
@@ -1963,14 +1963,14 @@
   border: 0;
   background: var(--paper-sunk);
   box-shadow: var(--rt-thin-down);
-  font: 11.5px/1.5 var(--font-mono);
+  font: 0.71875rem/1.5 var(--font-mono);
 }
 
 [data-skin='retro'] .wiki .code-title {
   border: 0;
   background: var(--paper);
   box-shadow: var(--rt-thin-up);
-  font: 700 11px/1 var(--font-body);
+  font: 700 0.6875rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .wiki code {
@@ -2029,11 +2029,11 @@
 }
 
 [data-skin='retro'] .sprint-name {
-  font: 500 16px/1.2 var(--rt-pixel);
+  font: 500 1rem/1.2 var(--rt-pixel);
 }
 
 [data-skin='retro'] .sprint-dates {
-  font: 11px var(--font-body);
+  font: 0.6875rem var(--font-body);
 }
 
 [data-skin='retro'] .board {
@@ -2055,12 +2055,12 @@
 }
 
 [data-skin='retro'] .board-column-title {
-  font: 700 12px/1.2 var(--font-body);
+  font: 700 0.75rem/1.2 var(--font-body);
 }
 
 [data-skin='retro'] .board-column-count,
 [data-skin='retro'] .wip-limit {
-  font: 400 11px/1 var(--font-body);
+  font: 400 0.6875rem/1 var(--font-body);
 }
 
 [data-skin='retro'] .board-cards {
@@ -2078,7 +2078,7 @@
   border-radius: 0;
   background: var(--paper);
   box-shadow: var(--rt-raised);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='retro'] .board-card:hover {
