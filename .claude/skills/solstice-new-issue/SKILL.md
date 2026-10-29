@@ -23,6 +23,7 @@ If the problem leaves real choices open (what the expected behaviour is, how far
 Then choose the shape:
 - **One ticket** when one pull request of reasonable size solves it.
 - **An epic** when it needs several pull requests, or holds independent changes: one tracker issue and one small ticket per change. Each ticket is one pull request a session can finish alone. Order them so the foundations land first, and give a ticket a `Waits for #n` line only when it truly can't start before #n is merged.
+  - A ticket also waits for one whose change it relies on to come out right, even with no file in common. For each ticket, ask what its result depends on that another ticket changes, and read that code on `origin/feat/v1.0`. Example: converting px to rem renders the same only once the shared-styles ticket sets `:root` to `font-size: 100%`. Until then, 1rem is the skin's `--font-size`, so the component and skin tickets wait for it.
 
 ## 3. Draft
 
