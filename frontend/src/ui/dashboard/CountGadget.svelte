@@ -125,7 +125,7 @@
 
   li {
     display: grid;
-    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, calc(14 * var(--font-size))) minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     padding: 5px 0;
@@ -162,7 +162,7 @@
 
   @media (max-width: 600px) {
     li {
-      grid-template-columns: minmax(0, 1fr) 4rem auto;
+      grid-template-columns: minmax(0, 1fr) calc(4 * var(--font-size)) auto;
     }
   }
 </style>

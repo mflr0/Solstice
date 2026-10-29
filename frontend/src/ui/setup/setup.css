@@ -34,13 +34,13 @@
 /* Fields side by side on wide screens: host and port, user and password. */
 .setup .setup-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11.25rem, 1fr));
   align-items: start;
   gap: 14px;
 }
 
 .setup .setup-row.narrow-last {
-  grid-template-columns: minmax(0, 3fr) minmax(90px, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(5.625rem, 1fr);
 }
 
 .setup .field .hint {
@@ -92,7 +92,7 @@
   background: var(--paper-sunk);
   border: var(--frame) solid var(--rule);
   border-radius: var(--radius-s);
-  font: 12.5px/1.5 var(--font-mono);
+  font: 0.78125rem/1.5 var(--font-mono);
   white-space: pre;
 }
 
@@ -139,7 +139,7 @@
 
 .setup .mono {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 600px) {
