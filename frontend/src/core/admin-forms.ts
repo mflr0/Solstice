@@ -12,6 +12,7 @@ import type {
   MailSettingsInput,
   NotificationPrefs,
   SubscriptionInput,
+  TokenScope,
   WebhookInput,
 } from './admin-types.js';
 import { isoDay } from './dates.js';
@@ -202,7 +203,40 @@ export function webhookPayload(f: WebhookForm): WebhookInput {
 
 export type ExpiryChoice = '30' | '90' | '365' | 'date' | 'never';
 
-export type TokenProblem = 'nameRequired' | 'nameTooLong' | 'dateRequired' | 'dateInPast';
+export type TokenProblem =
+  'nameRequired' | 'nameTooLong' | 'dateRequired' | 'dateInPast' | 'scopesRequired';
+
+/** Every scope, in the server's order. */
+export const TOKEN_SCOPES: TokenScope[] = [
+  'read',
+  'issues:write',
+  'comments:write',
+  'worklogs:write',
+  'agile:write',
+  'filters:write',
+  'projects:write',
+  'profile:write',
+  'admin',
+];
+
+/** The scopes a user may give a token: admin only for an administrator. */
+export function offeredScopes(admin: boolean): TokenScope[] {
+  return admin ? TOKEN_SCOPES : TOKEN_SCOPES.filter((s) => s !== 'admin');
+}
+
+/** Whether read is forced on: every other scope implies it. */
+export function readLocked(scopes: TokenScope[]): boolean {
+  return scopes.some((s) => s !== 'read');
+}
+
+/** The scopes once one is ticked or unticked; any other scope brings read. */
+export function toggleScope(scopes: TokenScope[], scope: TokenScope, on: boolean): TokenScope[] {
+  const next = new Set(scopes);
+  if (on) next.add(scope);
+  else next.delete(scope);
+  if (readLocked([...next])) next.add('read');
+  return TOKEN_SCOPES.filter((s) => next.has(s));
+}
 
 /** The last day a token works, or null for never. */
 export function tokenExpiry(choice: ExpiryChoice, date: string, today: Date): string | null {
@@ -214,14 +248,16 @@ export function tokenExpiry(choice: ExpiryChoice, date: string, today: Date): st
 
 export function tokenProblems(
   name: string,
+  scopes: TokenScope[],
   choice: ExpiryChoice,
   date: string,
   today: Date,
-): Problems<'name' | 'expires', TokenProblem> {
-  const out: Problems<'name' | 'expires', TokenProblem> = {};
+): Problems<'name' | 'scopes' | 'expires', TokenProblem> {
+  const out: Problems<'name' | 'scopes' | 'expires', TokenProblem> = {};
   const n = name.trim();
   if (!n) out.name = 'nameRequired';
   else if (tooLong(n, TOKEN_NAME_MAX)) out.name = 'nameTooLong';
+  if (scopes.length === 0) out.scopes = 'scopesRequired';
   if (choice === 'date') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) out.expires = 'dateRequired';
     else if (date < isoDay(today)) out.expires = 'dateInPast';

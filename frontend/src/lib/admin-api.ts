@@ -43,6 +43,7 @@ import type {
   MySubscription,
   Subscription,
   SubscriptionInput,
+  TokenScope,
   TokenSettings,
   Webhook,
   WebhookDelivery,
@@ -307,8 +308,8 @@ export const accountApi = {
 
   // Access tokens, one's own.
   tokens: () => request<AccessToken[]>('GET', '/api/me/tokens'),
-  createToken: (name: string, expires: string | null) =>
-    request<AccessToken>('POST', '/api/me/tokens', { name, expires }),
+  createToken: (name: string, scopes: TokenScope[], expires: string | null) =>
+    request<AccessToken>('POST', '/api/me/tokens', { name, scopes, expires }),
   revokeToken: (id: number) => request<void>('DELETE', `/api/me/tokens/${id}`),
   /** Whether the instance lets this user create a token now. */
   tokenPolicy: () => request<{ canCreate: boolean }>('GET', '/api/me/tokens/policy'),
