@@ -8,6 +8,7 @@ import {
   scopeGadgetQuery,
   scopeQuery,
   scopeSearch,
+  scopeSwitch,
 } from '../../src/core/scope.js';
 
 const board = (id: number, ...keys: string[]): BoardSummary => ({
@@ -60,5 +61,33 @@ describe('one project', () => {
     expect(scopeSearch({ ...bare, jql: 'type = Bug' }, 'DEMO')).toBeNull();
     expect(scopeSearch({ ...bare, jql: '' }, 'DEMO')).toBeNull();
     expect(scopeSearch({ ...bare, filter: 12 }, 'DEMO')).toBeNull();
+  });
+});
+
+describe('switching the scope', () => {
+  const on = (name: 'board' | 'backlog' | 'boardReports' | 'boardSettings', id: number) =>
+    ({ name, id }) as const;
+
+  it('sends the board list to the new project landing', () => {
+    expect(scopeSwitch({ name: 'boards' }, boards, 'DEMO')).toBe('/boards?project=DEMO');
+    expect(scopeSwitch({ name: 'boards' }, boards, 'OPS')).toBe('/boards/4');
+    expect(scopeSwitch({ name: 'boards' }, boards, null)).toBe('/boards');
+  });
+
+  it('stays on a board of the new project', () => {
+    expect(scopeSwitch(on('board', 3), boards, 'WEB')).toBeNull();
+    expect(scopeSwitch(on('backlog', 1), boards, 'DEMO')).toBeNull();
+  });
+
+  it('leaves a board of another project for the new project landing', () => {
+    expect(scopeSwitch(on('board', 1), boards, 'OPS')).toBe('/boards/4');
+    expect(scopeSwitch(on('backlog', 4), boards, 'WEB')).toBe('/boards?project=WEB');
+    expect(scopeSwitch(on('boardReports', 2), boards, 'DEMO')).toBe('/boards?project=DEMO');
+    expect(scopeSwitch(on('boardSettings', 99), boards, 'OPS')).toBe('/boards/4');
+  });
+
+  it('stays on any board for every project, and off the boards', () => {
+    expect(scopeSwitch(on('board', 4), boards, null)).toBeNull();
+    expect(scopeSwitch({ name: 'search' }, boards, 'OPS')).toBeNull();
   });
 });

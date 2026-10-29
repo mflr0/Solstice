@@ -6,7 +6,7 @@
 import type { BoardSummary } from './board-types.js';
 import { onFilter, type GadgetKind } from './dashboard.js';
 import type { SearchLocation } from './filters-url.js';
-import { paths } from './route.js';
+import { paths, type Route } from './route.js';
 
 /** A simple-syntax query (@moi est:ouvert…) limited to the project. */
 export function scopeQuery(q: string, key: string | null): string {
@@ -38,6 +38,29 @@ export function boardsLanding(boards: BoardSummary[], key: string | null): strin
   if (!key) return null;
   const mine = scopeBoards(boards, key);
   return mine.length === 1 ? paths.board(mine[0]!.id) : paths.boards(key);
+}
+
+/**
+ * Where a page goes when the scope changes to the project: the board list,
+ * and a board of another project, go to the project's landing. null: it stays.
+ */
+export function scopeSwitch(
+  route: Route,
+  boards: BoardSummary[],
+  key: string | null,
+): string | null {
+  if (route.name === 'boards') return boardsLanding(boards, key) ?? paths.boards();
+  if (!onBoard(route) || !key) return null;
+  const board = boards.find((b) => b.id === route.id);
+  if (board?.projects.some((p) => p.key === key)) return null;
+  return boardsLanding(boards, key);
+}
+
+type BoardRoute = Extract<Route, { name: 'board' | 'backlog' | 'boardReports' | 'boardSettings' }>;
+
+/** Whether the route is one board's page: the board, its backlog, reports or settings. */
+export function onBoard(route: Route): route is BoardRoute {
+  return ['board', 'backlog', 'boardReports', 'boardSettings'].includes(route.name);
 }
 
 /**
