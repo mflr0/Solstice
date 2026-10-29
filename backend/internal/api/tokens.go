@@ -92,20 +92,21 @@ func (s *Server) noteRefusedToken(id int64) bool {
 }
 
 type tokenOut struct {
-	ID       int64      `json:"id"`
-	Name     string     `json:"name"`
-	Created  time.Time  `json:"created"`
-	Expires  *time.Time `json:"expires"`
-	LastUsed *time.Time `json:"lastUsed"`
-	Expired  bool       `json:"expired"`
-	User     *userRef   `json:"user,omitempty"`  // in the administrators' list
-	Token    string     `json:"token,omitempty"` // only when just created
+	ID       int64        `json:"id"`
+	Name     string       `json:"name"`
+	Created  time.Time    `json:"created"`
+	Expires  *time.Time   `json:"expires"`
+	LastUsed *time.Time   `json:"lastUsed"`
+	Expired  bool         `json:"expired"`
+	Scopes   []auth.Scope `json:"scopes"`
+	User     *userRef     `json:"user,omitempty"`  // in the administrators' list
+	Token    string       `json:"token,omitempty"` // only when just created
 }
 
 // listTokens returns tokens, newest first: a user's (userID ≠ 0), or
 // everyone's with their owner.
 func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]tokenOut, error) {
-	q := `SELECT t.id, t.name, t.created_at, t.expires_at, t.last_used_at, u.id, u.username, u.display_name, u.active
+	q := `SELECT t.id, t.name, t.scopes, t.created_at, t.expires_at, t.last_used_at, u.id, u.username, u.display_name, u.active
 		FROM api_tokens t JOIN users u ON u.id = t.user_id`
 	var args []any
 	switch {
@@ -122,7 +123,8 @@ func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]t
 		var t tokenOut
 		var expires, used sql.NullTime
 		var owner userRef
-		if err := rows.Scan(&t.ID, &t.Name, &t.Created, &expires, &used, &owner.ID, &owner.Username, &owner.Name,
+		var scopes string
+		if err := rows.Scan(&t.ID, &t.Name, &scopes, &t.Created, &expires, &used, &owner.ID, &owner.Username, &owner.Name,
 			&owner.Active); err != nil {
 			return err
 		}
@@ -131,6 +133,7 @@ func (s *Server) listTokens(r *http.Request, userID int64, username string) ([]t
 			t.Expired = !e.After(now)
 		}
 		t.LastUsed = sqlq.Time(used)
+		t.Scopes = auth.ParseScopes(scopes)
 		if userID == 0 {
 			t.User = &owner
 		}
@@ -163,8 +166,9 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusForbidden, i18n.TokenCreationRestricted)
 	}
 	var in struct {
-		Name    string  `json:"name"`
-		Expires *string `json:"expires"` // YYYY-MM-DD (through that day) or an RFC 3339 instant; null: never
+		Name    string       `json:"name"`
+		Scopes  []auth.Scope `json:"scopes"`
+		Expires *string      `json:"expires"` // YYYY-MM-DD (through that day) or an RFC 3339 instant; null: never
 	}
 	if err := readJSON(r, &in); err != nil {
 		return err
@@ -172,6 +176,10 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	name := strings.TrimSpace(in.Name)
 	if name == "" || utf8.RuneCountInString(name) > maxTokenName {
 		return fail(http.StatusBadRequest, i18n.TokenNameRequired)
+	}
+	scopes, err := tokenScopes(u, in.Scopes)
+	if err != nil {
+		return err
 	}
 	var expires *time.Time
 	if in.Expires != nil && strings.TrimSpace(*in.Expires) != "" {
@@ -181,17 +189,39 @@ func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 		}
 		expires = &t
 	}
-	token, id, err := auth.NewToken(r.Context(), s.db, u.ID, name, expires)
+	token, id, err := auth.NewToken(r.Context(), s.db, u.ID, name, scopes, expires)
 	if err != nil {
 		return err
 	}
-	details := map[string]any{"expires": nil}
+	details := map[string]any{"expires": nil, "scopes": scopes}
 	if expires != nil {
 		details["expires"] = expires.UTC().Format(time.RFC3339)
 	}
 	s.auditLog(r, audit.TokenCreate, target(audit.TargetToken, id, name), details)
-	out := tokenOut{ID: id, Name: name, Created: time.Now().UTC(), Expires: expires, Token: token}
+	out := tokenOut{ID: id, Name: name, Created: time.Now().UTC(), Expires: expires, Scopes: scopes, Token: token}
 	return writeJSON(w, http.StatusCreated, out)
+}
+
+// tokenScopes checks the scopes asked for a new token: at least one, all
+// known, and admin only for an administrator.
+func tokenScopes(u *auth.User, in []auth.Scope) ([]auth.Scope, error) {
+	names := make([]string, len(auth.Scopes))
+	for i, sc := range auth.Scopes {
+		names[i] = string(sc)
+	}
+	all := strings.Join(names, ", ")
+	if len(in) == 0 {
+		return nil, failf(http.StatusBadRequest, i18n.TokenScopesRequired, all)
+	}
+	for _, sc := range in {
+		if !sc.Known() {
+			return nil, failf(http.StatusBadRequest, i18n.TokenScopeUnknown, sc, all)
+		}
+		if sc == auth.ScopeAdmin && !u.Admin {
+			return nil, fail(http.StatusForbidden, i18n.TokenScopeAdminOnly)
+		}
+	}
+	return auth.NormalizeScopes(in), nil
 }
 
 // parseExpiry reads a token's expiry: a date (the token works through that

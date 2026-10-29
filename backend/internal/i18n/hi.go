@@ -59,6 +59,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenExpiryPast:         "समाप्ति तारीख भविष्य में होनी चाहिए।",
 	TokenCreationRestricted: "आपके खाते को एक्सेस टोकन बनाने की अनुमति नहीं है: किसी एडमिनिस्ट्रेटर से पूछें।",
 	TokenPolicyInvalid:      "चुनें कि एक्सेस टोकन कौन बना सकता है: एडमिनिस्ट्रेटर, कोई समूह या सभी।",
+	TokenScopesRequired:     "टोकन को इनमें से कम से कम एक स्कोप चाहिए: %s।",
+	TokenScopeUnknown:       "अज्ञात स्कोप %s: इनमें से चुनें: %s।",
+	TokenScopeAdminOnly:     "केवल एडमिनिस्ट्रेटर ही किसी टोकन को admin स्कोप दे सकता है।",
+	TokenScopeMissing:       "इस एक्सेस टोकन के पास स्कोप %s नहीं है।",
 
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",

@@ -341,8 +341,8 @@ func (s *Server) restDeleteRemoteLink(w http.ResponseWriter, r *http.Request) er
 // X-Atlassian-Token header. A browser cannot send either cross-site without a
 // CORS preflight, which Solstice never grants; form-like POSTs still need the
 // header.
-func (s *Server) restSessionRoute(h handler, needUser bool) http.Handler {
-	inner := s.rest(h, needUser)
+func (s *Server) restSessionRoute(h handler, scope auth.Scope) http.Handler {
+	inner := s.rest(h, scope)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete || (r.Method == http.MethodPost && !formEncoded(r)) {
 			r = r.Clone(r.Context())

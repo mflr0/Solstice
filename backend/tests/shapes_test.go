@@ -132,6 +132,7 @@ type tokenOut struct {
 	Name     string     `json:"name"`
 	LastUsed *time.Time `json:"lastUsed"`
 	Expired  bool       `json:"expired"`
+	Scopes   []string   `json:"scopes"`
 	User     *userRef   `json:"user"`
 	Token    string     `json:"token"`
 }

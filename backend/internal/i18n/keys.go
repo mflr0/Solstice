@@ -61,6 +61,10 @@ const (
 	TokenExpiryPast         Key = "TokenExpiryPast"    // #nosec G101 -- message key, not a credential
 	TokenCreationRestricted Key = "TokenCreationRestricted"
 	TokenPolicyInvalid      Key = "TokenPolicyInvalid"
+	TokenScopesRequired     Key = "TokenScopesRequired" // #nosec G101 -- message key, not a credential
+	TokenScopeUnknown       Key = "TokenScopeUnknown"
+	TokenScopeAdminOnly     Key = "TokenScopeAdminOnly"
+	TokenScopeMissing       Key = "TokenScopeMissing"
 )
 
 // Groups.

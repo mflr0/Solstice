@@ -58,6 +58,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenExpiryPast:         "Das Ablaufdatum muss in der Zukunft liegen.",
 	TokenCreationRestricted: "Das Erstellen von Zugriffstoken ist für Ihr Konto nicht erlaubt: Wenden Sie sich an einen Administrator.",
 	TokenPolicyInvalid:      "Wählen Sie, wer Zugriffstoken erstellen darf: Administratoren, eine Gruppe oder alle.",
+	TokenScopesRequired:     "Das Token braucht mindestens einen Bereich aus: %s.",
+	TokenScopeUnknown:       "Unbekannter Bereich %s: Wählen Sie aus %s.",
+	TokenScopeAdminOnly:     "Nur ein Administrator kann einem Token den Bereich admin geben.",
+	TokenScopeMissing:       "Dieses Zugriffstoken hat den Bereich %s nicht.",
 
 	// Groups.
 	GroupNotFound:   "Gruppe nicht gefunden.",

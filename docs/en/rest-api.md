@@ -37,6 +37,26 @@ Only people allowed by the administrator's policy can create tokens (see
 [administration.md](administration.md)), and a request signed in with a token
 cannot create another one.
 
+Each token has scopes, chosen when it is created. A request signed in with a
+token can only use the routes its scopes cover; otherwise it answers 403 with
+`WWW-Authenticate: Bearer error="insufficient_scope", scope="<needed>"`.
+Passwords and session cookies have every scope.
+
+| Scope | Covers |
+|---|---|
+| `read` | Every `GET`, and `POST /rest/api/2/search`. Every other scope implies it. |
+| `issues:write` | Create, edit, delete, move, clone, transition and assign issues; links, remote links, attachments, votes, watchers. |
+| `comments:write` | Comments. |
+| `worklogs:write` | Work logs. |
+| `agile:write` | Boards, sprints, rank (`/rest/agile/1.0`). |
+| `filters:write` | Filters and favourites. |
+| `projects:write` | Versions and components. |
+| `profile:write` | The user's own profile, avatar and settings. |
+| `admin` | The administration. Only an administrator may create a token with it. |
+
+A scope never widens the user's permissions: an `issues:write` token cannot
+edit an issue its user may not edit.
+
 ```sh
 curl -H "Authorization: Bearer sol_example" \
   https://solstice.example.org/rest/api/2/myself

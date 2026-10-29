@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"solstice/internal/auth"
 	"strconv"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func TestWriteErrorHidesInternalErrors(t *testing.T) {
 	}
 	s := &Server{log: slog.New(slog.DiscardHandler)}
 	for name, h := range map[string]http.Handler{
-		"interface": s.wrap(secret, false), "REST": s.rest(secret, false),
+		"interface": s.wrap(secret, scopePublic), "REST": s.rest(secret, scopePublic),
 		"setup wizard": (&Setup{log: s.log}).wrap(secret, false),
 	} {
 		r := httptest.NewRequest("GET", "/api/anything", nil)
@@ -43,7 +44,7 @@ func TestWriteErrorLogsRouteNotPath(t *testing.T) {
 	s := &Server{log: log}
 	boom := func(http.ResponseWriter, *http.Request) error { return errors.New("boom") }
 	for name, h := range map[string]http.Handler{
-		"interface": s.wrap(boom, false), "REST": s.rest(boom, false), "setup wizard": (&Setup{log: log}).wrap(boom, false),
+		"interface": s.wrap(boom, scopePublic), "REST": s.rest(boom, scopePublic), "setup wizard": (&Setup{log: log}).wrap(boom, false),
 	} {
 		logged.Reset()
 		r := httptest.NewRequest("GET", "/api/auth/reset/s3cret-token", nil)
@@ -80,7 +81,7 @@ func TestTooManyAttemptsRetryAfter(t *testing.T) {
 	login.RemoteAddr = r.RemoteAddr
 	login.Header.Set(csrfHeader, "1")
 	w := httptest.NewRecorder()
-	srv.wrap(srv.login, false).ServeHTTP(w, login)
+	srv.wrap(srv.login, scopePublic).ServeHTTP(w, login)
 	var body struct {
 		Error      string `json:"error"`
 		RetryAfter int    `json:"retryAfter"`
@@ -100,7 +101,7 @@ func TestTooManyAttemptsRetryAfter(t *testing.T) {
 	get.RemoteAddr = r.RemoteAddr
 	get.SetBasicAuth("hugo.robert", "x")
 	w = httptest.NewRecorder()
-	srv.rest(func(http.ResponseWriter, *http.Request) error { return nil }, true).ServeHTTP(w, get)
+	srv.rest(func(http.ResponseWriter, *http.Request) error { return nil }, auth.ScopeRead).ServeHTTP(w, get)
 	var rest struct {
 		RetryAfter int `json:"retryAfter"`
 	}
@@ -127,7 +128,7 @@ func TestOversizedJSONBody(t *testing.T) {
 		return w
 	}
 	// An interface route (readJSON).
-	if w := post(srv.wrap(srv.login, false)); w.Code != http.StatusRequestEntityTooLarge ||
+	if w := post(srv.wrap(srv.login, scopePublic)); w.Code != http.StatusRequestEntityTooLarge ||
 		!strings.Contains(w.Body.String(), "trop volumineuse (4096 Kio au maximum)") {
 		t.Errorf("interface: %d %s", w.Code, w.Body)
 	}
@@ -136,7 +137,7 @@ func TestOversizedJSONBody(t *testing.T) {
 		var v map[string]any
 		return readRESTJSON(r, &v)
 	}
-	if w := post(srv.rest(read, false)); w.Code != http.StatusRequestEntityTooLarge ||
+	if w := post(srv.rest(read, scopePublic)); w.Code != http.StatusRequestEntityTooLarge ||
 		!strings.Contains(w.Body.String(), "trop volumineuse (4096 Kio au maximum)") {
 		t.Errorf("REST: %d %s", w.Code, w.Body)
 	}
@@ -151,7 +152,7 @@ func TestOversizedJSONBody(t *testing.T) {
 	r := httptest.NewRequest("POST", "/x", strings.NewReader("{"))
 	r.Header.Set(csrfHeader, "1")
 	w := httptest.NewRecorder()
-	srv.wrap(srv.login, false).ServeHTTP(w, r)
+	srv.wrap(srv.login, scopePublic).ServeHTTP(w, r)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("malformed: %d %s", w.Code, w.Body)
 	}
