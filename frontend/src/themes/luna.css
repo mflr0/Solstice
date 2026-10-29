@@ -65,12 +65,12 @@
   --font-title: Tahoma, Verdana, 'IBM Plex Sans', sans-serif;
   --font-body: Tahoma, Verdana, 'IBM Plex Sans', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-size: 13px;
+  --font-size: 0.8125rem;
   --title-weight: 700;
   --h1-weight: 700;
   --title-tracking: 0;
   --title-italic: normal;
-  --empty-font: 400 12.5px/1.5 var(--font-body);
+  --empty-font: 400 0.78125rem/1.5 var(--font-body);
 
   --frame: 1px;
   --radius-xs: 2px;
@@ -80,7 +80,7 @@
   --avatar-radius: 3px;
   --card-top: 1px solid var(--rule-strong);
 
-  --stamp-font: 700 11px/1.3 var(--font-body);
+  --stamp-font: 700 0.6875rem/1.3 var(--font-body);
   --stamp-case: none;
   --stamp-tracking: 0;
   --stamp-border: 1px;
@@ -88,7 +88,7 @@
   --stamp-padding: 1px 8px 1px 6px;
   --stamp-fill: 16%;
   --stamp-dot: inline-block;
-  --stamp-large-size: 12px;
+  --stamp-large-size: 0.75rem;
   --stamp-large-padding: 3px 11px 3px 8px;
   --stamp-large-border: 1px;
   --stamp-large-tracking: 0;
@@ -362,11 +362,11 @@
 /* Base: type, selection, focus, scrollbars --------------------------------- */
 
 [data-skin='luna'] h1 {
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 [data-skin='luna'] h2 {
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 [data-skin='luna'] ::selection {
@@ -449,7 +449,7 @@
 }
 
 [data-skin='luna'] .topbar .topbar-inner {
-  --bar-height: 42px;
+  --bar-height: 2.625rem;
   column-gap: 10px;
 }
 
@@ -460,7 +460,7 @@
 }
 
 [data-skin='luna'] .topbar .wordmark {
-  font: 700 15px/1 var(--font-title);
+  font: 700 0.9375rem/1 var(--font-title);
   letter-spacing: 0.01em;
   color: var(--bar-ink);
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.45);
@@ -477,7 +477,7 @@
 [data-skin='luna'] .topbar .topbar-nav .nav-link {
   display: inline-flex;
   align-items: center;
-  height: 30px;
+  height: 1.875rem;
   padding: 0 14px;
   border: 1px solid var(--luna-task-edge);
   border-radius: 3px;
@@ -486,7 +486,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset 1px 0 0 rgba(255, 255, 255, 0.12);
   color: var(--bar-ink);
-  font: 400 12.5px/1 var(--font-body);
+  font: 400 0.78125rem/1 var(--font-body);
   white-space: nowrap;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
@@ -515,13 +515,13 @@
 }
 
 [data-skin='luna'] .topbar .topbar-search .input {
-  height: 26px;
+  height: 1.625rem;
   border: 1px solid var(--luna-frame-edge);
   border-radius: 3px;
   background: var(--luna-field);
   box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.18);
   color: var(--ink);
-  font: 12px var(--font-body);
+  font: 0.75rem var(--font-body);
 }
 
 [data-skin='luna'] .topbar .topbar-search .input:focus {
@@ -553,8 +553,8 @@
 }
 
 [data-skin='luna'] .topbar .topbar-themes {
-  width: 28px;
-  height: 28px;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 1px solid transparent;
   border-radius: 3px;
   color: var(--bar-ink);
@@ -575,8 +575,8 @@
 
 /* The user picture: a framed tile. */
 [data-skin='luna'] .topbar .account-button .avatar {
-  width: 28px;
-  height: 28px;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 2px solid #ffffff;
   border-radius: 4px;
   background: var(--luna-avatar);
@@ -584,7 +584,7 @@
     0 0 0 1px var(--luna-frame-edge),
     0 1px 3px rgba(0, 0, 0, 0.35);
   color: var(--luna-avatar-ink);
-  font: 700 10.5px/1 var(--font-body);
+  font: 700 0.65625rem/1 var(--font-body);
 }
 
 [data-skin='luna'] .topbar .account-menu {
@@ -692,7 +692,7 @@
   flex: 1 0 100%;
   margin: 0 calc(-1 * var(--luna-pad));
   padding: 6px 12px;
-  font: 700 13.5px/1.3 var(--font-title);
+  font: 700 0.84375rem/1.3 var(--font-title);
   border-radius: 6px 6px 0 0;
 }
 
@@ -703,7 +703,7 @@
 
 [data-skin='luna'] .page > .page-head .eyebrow {
   margin-block: 6px;
-  font: 400 12px/1.3 var(--font-body);
+  font: 400 0.75rem/1.3 var(--font-body);
   text-transform: none;
   letter-spacing: 0;
   color: var(--ink-soft);
@@ -727,7 +727,7 @@
   padding: 6px 12px;
   border-radius: 6px 6px 0 0;
   color: var(--luna-title-ink-soft);
-  font: 700 13px/1.3 var(--font-title);
+  font: 700 0.8125rem/1.3 var(--font-title);
 }
 
 [data-skin='luna'] .page.issue > .page-crumbs a,
@@ -736,7 +736,7 @@
 }
 
 [data-skin='luna'] .page.issue > .page-crumbs .key {
-  font: 500 12.5px/1 var(--font-mono);
+  font: 500 0.78125rem/1 var(--font-mono);
 }
 
 /* A page with only a title (not found): the message sits beside a drawing. */
@@ -771,7 +771,7 @@
   align-self: end;
   padding: 0 0 10px;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 [data-skin='luna'] .page:has(> .page-title) > .btn {
@@ -784,7 +784,7 @@
   align-items: center;
   row-gap: 4px;
   margin: 24px 0 8px;
-  font: 700 12.5px/1.3 var(--font-title);
+  font: 700 0.78125rem/1.3 var(--font-title);
   color: var(--luna-heading);
 }
 
@@ -795,7 +795,7 @@
 }
 
 [data-skin='luna'] .section-title .count {
-  font: 400 11.5px/1 var(--font-body);
+  font: 400 0.71875rem/1 var(--font-body);
   color: var(--muted);
 }
 
@@ -819,7 +819,7 @@
   z-index: 20;
   display: flex;
   gap: 3px;
-  max-width: 1280px;
+  max-width: 80rem;
   margin: 0 auto 26px;
   padding: 3px 4px 4px;
   background: var(--luna-status);
@@ -830,7 +830,7 @@
     0 0 0 1px var(--luna-frame-edge),
     0 8px 20px rgba(6, 24, 72, 0.25);
   color: var(--luna-status-ink);
-  font: 400 11.5px/1.4 var(--font-body);
+  font: 400 0.71875rem/1.4 var(--font-body);
 }
 
 [data-skin='luna'] .app-statusbar .statusbar-cell {
@@ -860,14 +860,14 @@
 /* Buttons -------------------------------------------------------------------- */
 
 [data-skin='luna'] .btn {
-  height: 26px;
+  height: 1.625rem;
   padding: 0 12px;
   border: 1px solid var(--luna-btn-edge);
   border-radius: 3px;
   background: var(--luna-btn);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   color: var(--ink);
-  font: 400 12px/1 var(--font-body);
+  font: 400 0.75rem/1 var(--font-body);
 }
 
 [data-skin='luna'] .btn:hover:not([disabled]) {
@@ -893,9 +893,9 @@
 }
 
 [data-skin='luna'] .btn.btn-small {
-  height: 22px;
+  height: 1.375rem;
   padding: 0 8px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 [data-skin='luna'] .btn.btn-quiet {
@@ -993,7 +993,7 @@
   border-radius: 3px;
   background: linear-gradient(180deg, #ffffff, #e9edf4);
   color: #3a4256;
-  font: 500 10px/1 var(--font-mono);
+  font: 500 0.625rem/1 var(--font-mono);
   text-shadow: none;
   opacity: 1;
 }
@@ -1032,7 +1032,7 @@
   background-color: var(--luna-field);
   color: var(--ink);
   padding: 4px 6px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .input:hover,
@@ -1083,17 +1083,17 @@
 }
 
 [data-skin='luna'] .textarea {
-  font: 12.5px/1.55 var(--font-mono);
+  font: 0.78125rem/1.55 var(--font-mono);
 }
 
 [data-skin='luna'] .field > span:first-child,
 [data-skin='luna'] .field-label {
-  font: 400 12px/1.2 var(--font-body);
+  font: 400 0.75rem/1.2 var(--font-body);
   color: var(--ink-soft);
 }
 
 [data-skin='luna'] .field .hint {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 /* A drawn check box: white well, green tick. */
@@ -1179,8 +1179,8 @@
 /* Issue types: glossy lettered tiles. */
 [data-skin='luna'] .type-mark[data-type] {
   --tone: var(--tone-task);
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
   border: 1px solid color-mix(in srgb, var(--tone) 70%, black);
   border-radius: 3px;
   background: linear-gradient(
@@ -1191,7 +1191,7 @@
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: var(--luna-on-tone);
-  font: 700 9.5px/1 var(--font-body);
+  font: 700 0.59375rem/1 var(--font-body);
 }
 
 [data-skin='luna'][data-scheme='dark'] .type-mark[data-type] {
@@ -1231,7 +1231,7 @@
   background: var(--luna-avatar);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
   color: var(--luna-avatar-ink);
-  font: 700 9px/1 var(--font-body);
+  font: 700 0.5625rem/1 var(--font-body);
   letter-spacing: 0;
 }
 
@@ -1246,7 +1246,7 @@
   border-radius: 3px;
   background: var(--luna-chip);
   color: var(--luna-chip-ink);
-  font: 400 11.5px/1.6 var(--font-body);
+  font: 400 0.71875rem/1.6 var(--font-body);
 }
 
 [data-skin='luna'] .chip.chip:hover {
@@ -1262,7 +1262,7 @@
 }
 
 [data-skin='luna'] .key {
-  font: 500 12px/1 var(--font-mono);
+  font: 500 0.75rem/1 var(--font-mono);
 }
 
 [data-skin='luna'] a.key {
@@ -1276,7 +1276,7 @@
   border-spacing: 0;
   border: 1px solid var(--luna-edge);
   background: var(--paper-raised);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] table.ledger th {
@@ -1286,7 +1286,7 @@
   background: var(--luna-th);
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.8);
   color: var(--ink-soft);
-  font: 400 12px/1.2 var(--font-body);
+  font: 400 0.75rem/1.2 var(--font-body);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1326,11 +1326,11 @@
 }
 
 [data-skin='luna'] table.ledger .num {
-  font: 400 12px var(--font-body);
+  font: 400 0.75rem var(--font-body);
 }
 
 [data-skin='luna'] table.ledger th.num {
-  font: 400 12px/1.2 var(--font-body);
+  font: 400 0.75rem/1.2 var(--font-body);
 }
 
 [data-skin='luna'] table.ledger tfoot td {
@@ -1345,7 +1345,7 @@
 }
 
 [data-skin='luna'] table.ledger td > a.name {
-  font: 700 12.5px/1.3 var(--font-title);
+  font: 700 0.78125rem/1.3 var(--font-title);
   color: var(--accent-text);
 }
 
@@ -1363,7 +1363,7 @@
   padding: 5px 10px;
   border-bottom: 0;
   border-radius: 5px 5px 0 0;
-  font: 700 12.5px/1.2 var(--font-title);
+  font: 700 0.78125rem/1.2 var(--font-title);
 }
 
 [data-skin='luna'] .card > .card-head .key {
@@ -1376,7 +1376,7 @@
   border-radius: 5px;
   background: var(--luna-pane);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .issue-layout > aside.card > .card-head {
@@ -1388,12 +1388,12 @@
   box-shadow: none;
   color: var(--luna-pane-head-ink);
   text-shadow: none;
-  font: 700 12px/1.2 var(--font-title);
+  font: 700 0.75rem/1.2 var(--font-title);
 }
 
 [data-skin='luna'] .issue-layout > aside.card > .card-head .key {
   color: var(--luna-pane-head-ink);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 [data-skin='luna'] .issue-layout > aside.card > .card-head.sub {
@@ -1420,8 +1420,8 @@
 }
 
 [data-skin='luna'] .issue-layout > aside.card .line {
-  grid-template-columns: 100px minmax(0, 1fr);
-  min-height: 30px;
+  grid-template-columns: 6.25rem minmax(0, 1fr);
+  min-height: 1.875rem;
   padding: 6px 10px 5px;
   border-bottom: 1px solid var(--luna-pane-rule);
 }
@@ -1432,11 +1432,11 @@
 
 [data-skin='luna'] .issue-layout > aside.card dt {
   color: var(--ink-soft);
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 [data-skin='luna'] .issue-layout > aside.card dd {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* Time spent: a segmented green progress bar. */
@@ -1477,23 +1477,23 @@
 }
 
 [data-skin='luna'] .login .login-card > .brand .wordmark {
-  font: 700 13.5px/1.3 var(--font-title);
+  font: 700 0.84375rem/1.3 var(--font-title);
   letter-spacing: 0;
   color: var(--luna-title-ink);
 }
 
 [data-skin='luna'] .login .login-card .tagline {
   margin: 0 0 16px;
-  font: 400 12.5px/1.45 var(--font-body);
+  font: 400 0.78125rem/1.45 var(--font-body);
   color: var(--ink-soft);
 }
 
 [data-skin='luna'] .login .login-card .submit {
-  height: 28px;
+  height: 1.75rem;
 }
 
 [data-skin='luna'] .login .login-card .note {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   border-top-color: var(--rule);
 }
 
@@ -1514,7 +1514,7 @@
   border-radius: 4px 4px 0 0;
   background: var(--luna-tab);
   color: var(--ink-soft);
-  font: 400 12px/1.3 var(--font-body);
+  font: 400 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='luna'] .tabs[role='tablist'] > .tab[role='tab']:hover {
@@ -1549,7 +1549,7 @@
 [data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'] {
   margin-top: 2px;
   padding: 3px 10px 2px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 [data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'][aria-selected='true'] {
@@ -1567,13 +1567,13 @@
   border-radius: 0;
   background: var(--paper-raised);
   box-shadow: var(--shadow-pop);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .popover .item {
   padding: 4px 10px;
   color: var(--ink);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .popover .item:hover,
@@ -1619,7 +1619,7 @@
 [data-skin='luna'] .popover .group-label {
   padding: 6px 10px 3px;
   color: var(--muted);
-  font: 700 11px/1 var(--font-body);
+  font: 700 0.6875rem/1 var(--font-body);
 }
 
 /* Dialogs -------------------------------------------------------------------- */
@@ -1644,7 +1644,7 @@
 }
 
 [data-skin='luna'] dialog.modal .modal-title {
-  font: 700 13.5px/1.3 var(--font-title);
+  font: 700 0.84375rem/1.3 var(--font-title);
   color: var(--luna-title-ink);
 }
 
@@ -1653,8 +1653,8 @@
 [data-skin='luna'] dialog.modal .btn.modal-close {
   position: relative;
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.85);
   border-radius: 4px;
@@ -1736,7 +1736,7 @@
   background: var(--luna-balloon);
   box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.28);
   color: var(--luna-balloon-ink);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .toasts .toast::before {
@@ -1836,27 +1836,27 @@
 }
 
 [data-skin='luna'] .page.issue .issue-head .page-title {
-  font: 700 20px/1.25 var(--font-title);
+  font: 700 1.25rem/1.25 var(--font-title);
   color: var(--luna-heading);
 }
 
 [data-skin='luna'] .page.issue .issue-head .summary-input {
-  font: 700 20px/1.25 var(--font-title);
+  font: 700 1.25rem/1.25 var(--font-title);
   color: var(--luna-heading);
   border-bottom-color: var(--focus);
 }
 
 [data-skin='luna'] .page.issue .issue-meta {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .page.issue .issue-meta .resolution {
-  font: 700 12.5px var(--font-body);
+  font: 700 0.78125rem var(--font-body);
 }
 
 [data-skin='luna'] .page.issue .issue-meta .n {
   color: inherit;
-  font: 400 11px var(--font-mono);
+  font: 400 0.6875rem var(--font-mono);
 }
 
 [data-skin='luna'] .page.issue .issue-layout {
@@ -1864,14 +1864,14 @@
 }
 
 [data-skin='luna'] .page.issue .note {
-  font: 400 12.5px var(--font-body);
+  font: 400 0.78125rem var(--font-body);
 }
 
 [data-skin='luna'] .issue-sheet .subtasks li,
 [data-skin='luna'] .issue-sheet .list li {
   padding: 4px 6px;
   border-bottom: 1px solid var(--luna-row-rule);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .issue-sheet .subtasks li:hover,
@@ -1881,7 +1881,7 @@
 
 [data-skin='luna'] .issue-sheet .relation {
   color: var(--ink-soft);
-  font: 700 11.5px/1.4 var(--font-body);
+  font: 700 0.71875rem/1.4 var(--font-body);
 }
 
 /* Comments read as small framed messages. */
@@ -1899,7 +1899,7 @@
   border-bottom: 1px solid var(--luna-edge-soft);
   border-radius: 3px 3px 0 0;
   background: var(--luna-comment-head);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .thread > .comment > .wiki {
@@ -1914,7 +1914,7 @@
   border-color: var(--margin-line);
   border-radius: 2px;
   color: var(--accent-text);
-  font: 400 11px var(--font-body);
+  font: 400 0.6875rem var(--font-body);
 }
 
 [data-skin='luna'] .thread > .comment .tools .armed {
@@ -1927,11 +1927,11 @@
 }
 
 [data-skin='luna'] .history .items {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .history .items .field {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 [data-skin='luna'] .history pre {
@@ -1965,7 +1965,7 @@
   background: linear-gradient(180deg, #ffffff 0%, #e7edf8 100%);
   box-shadow: 1px 1px 2px rgba(6, 24, 72, 0.18);
   color: var(--luna-heading);
-  font: 700 11px/1 var(--font-body);
+  font: 700 0.6875rem/1 var(--font-body);
 }
 
 [data-skin='luna'][data-scheme='dark'] .attachments .ext {
@@ -1973,7 +1973,7 @@
 }
 
 [data-skin='luna'] .attachments .name {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .attachments.dragging {
@@ -1982,14 +1982,14 @@
 
 [data-skin='luna'] .attachments .drop {
   color: var(--luna-heading);
-  font: 700 14px var(--font-body);
+  font: 700 0.875rem var(--font-body);
 }
 
 /* Search box and pager. */
 [data-skin='luna'] .search .input {
-  height: 28px;
+  height: 1.75rem;
   padding-left: 26px;
-  font: 12.5px var(--font-mono);
+  font: 0.78125rem var(--font-mono);
 }
 
 [data-skin='luna'] .search .input.jql {
@@ -2006,18 +2006,18 @@
 }
 
 [data-skin='luna'] .pager .range {
-  font: 400 11.5px var(--font-body);
+  font: 400 0.71875rem var(--font-body);
 }
 
 [data-skin='luna'] .page .tools .count,
 [data-skin='luna'] .page-head > .count {
-  font: 400 12px var(--font-body);
+  font: 400 0.75rem var(--font-body);
 }
 
 /* Wiki text ------------------------------------------------------------------ */
 
 [data-skin='luna'] .wiki {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.55;
 }
 
@@ -2026,26 +2026,26 @@
 }
 
 [data-skin='luna'] .wiki h1 {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 
 [data-skin='luna'] .wiki h2 {
-  font-size: 15.5px;
+  font-size: 0.96875rem;
 }
 
 [data-skin='luna'] .wiki h3 {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='luna'] .wiki :is(h4, h5, h6) {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 [data-skin='luna'] .wiki pre {
   border: 1px solid var(--luna-edge-soft);
   border-radius: 2px;
   background: var(--luna-field);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .wiki .code-title {
@@ -2072,7 +2072,7 @@
 }
 
 [data-skin='luna'] .wiki .wiki-table {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 [data-skin='luna'] .wiki .wiki-table :is(th, td) {
@@ -2100,12 +2100,12 @@
 }
 
 [data-skin='luna'] .sprint-name {
-  font: 700 14px/1.2 var(--font-title);
+  font: 700 0.875rem/1.2 var(--font-title);
   color: var(--luna-heading);
 }
 
 [data-skin='luna'] .sprint-dates {
-  font: 400 11.5px var(--font-body);
+  font: 400 0.71875rem var(--font-body);
 }
 
 [data-skin='luna'] .board-column {
@@ -2123,7 +2123,7 @@
 
 [data-skin='luna'] .board-column-title {
   color: var(--luna-pane-head-ink);
-  font: 700 12px/1.2 var(--font-title);
+  font: 700 0.75rem/1.2 var(--font-title);
 }
 
 [data-skin='luna'] .board-column-count {
@@ -2132,12 +2132,12 @@
   border-radius: 7px;
   background: var(--luna-field);
   color: var(--luna-pane-head-ink);
-  font: 700 10.5px/1.2 var(--font-body);
+  font: 700 0.65625rem/1.2 var(--font-body);
 }
 
 [data-skin='luna'] .wip-limit {
   color: var(--luna-pane-head-ink);
-  font: 400 11px/1.2 var(--font-body);
+  font: 400 0.6875rem/1.2 var(--font-body);
 }
 
 [data-skin='luna'] .board-cards {
@@ -2151,7 +2151,7 @@
   border-radius: 3px;
   background: var(--paper-raised);
   box-shadow: 0 1px 2px rgba(6, 24, 72, 0.14);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 [data-skin='luna'] .board-card:hover {
@@ -2273,7 +2273,7 @@
 
   [data-skin='luna'] .topbar .topbar-nav .nav-link {
     padding: 0 7px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   /* The gallery is also on Account → Appearance. */
