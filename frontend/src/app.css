@@ -355,18 +355,28 @@ kbd,
   background: var(--stamp-done);
 }
 
+.theme-picker {
+  position: relative;
+  flex: none;
+}
+
 .topbar-themes {
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
   flex: none;
+  padding: 0;
+  border: none;
   border-radius: var(--radius-s);
+  background: none;
   color: var(--bar-ink-soft);
+  cursor: pointer;
 }
 
 .topbar-themes:hover,
-.topbar-themes[aria-current='page'] {
+.topbar-themes[aria-current='page'],
+.topbar-themes[aria-expanded='true'] {
   color: var(--bar-ink);
 }
 
@@ -405,6 +415,13 @@ kbd,
   font: 500 11px/1 var(--font-mono);
   background: var(--paper);
   color: var(--ink);
+}
+
+.popover.theme-menu {
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  max-height: calc(100dvh - 72px);
 }
 
 .popover.account-menu {
@@ -458,7 +475,7 @@ kbd,
 
 /* The theme gallery stays one click away, on Account → Appearance. */
 @media (max-width: 420px) {
-  .topbar-themes {
+  .theme-picker {
     display: none;
   }
 }

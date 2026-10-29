@@ -9,6 +9,7 @@ import {
   parseSkin,
   resolveScheme,
   SKINS,
+  SCHEME_SWATCHES,
   SWATCHES,
   type Mode,
   type Skin,
@@ -58,6 +59,12 @@ describe('the scheme in effect', () => {
 
   it('has a picker swatch for every skin', () => {
     expect(Object.keys(SWATCHES).sort()).toEqual([...SKINS].sort());
+  });
+
+  it('has a light and a dark theme-menu swatch for every skin', () => {
+    expect(Object.keys(SCHEME_SWATCHES).sort()).toEqual([...SKINS].sort());
+    for (const s of SKINS)
+      expect(Object.keys(SCHEME_SWATCHES[s]).sort()).toEqual(['dark', 'light']);
   });
 });
 

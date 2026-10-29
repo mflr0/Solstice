@@ -147,6 +147,9 @@ export const de: Messages = {
       plan: 'Pauspapier, Schriftfelder',
     },
     themes: 'Designs',
+    allThemes: 'Alle Designs',
+    /** A theme-menu rectangle: a skin in one mode. */
+    skinMode: (skin: string, mode: string) => `${skin}, ${mode}`,
     mode: 'Modus',
     modes: { system: 'System', light: 'Hell', dark: 'Dunkel' },
     logout: 'Abmelden',

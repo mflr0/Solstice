@@ -141,6 +141,9 @@ export const fr: Messages = {
       plan: 'calque et cartouches',
     },
     themes: 'Thèmes',
+    allThemes: 'Tous les thèmes',
+    /** A theme-menu rectangle: a skin in one mode. */
+    skinMode: (skin: string, mode: string) => `${skin}, ${mode}`,
     mode: 'Mode',
     modes: { system: 'système', light: 'clair', dark: 'sombre' },
     logout: 'Se déconnecter',

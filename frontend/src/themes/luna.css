@@ -561,7 +561,8 @@
 }
 
 [data-skin='luna'] .topbar .topbar-themes:hover,
-[data-skin='luna'] .topbar .topbar-themes[aria-current='page'] {
+[data-skin='luna'] .topbar .topbar-themes[aria-current='page'],
+[data-skin='luna'] .topbar .topbar-themes[aria-expanded='true'] {
   border-color: var(--luna-task-edge);
   background: var(--luna-task);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
@@ -2276,7 +2277,7 @@
   }
 
   /* The gallery is also on Account → Appearance. */
-  [data-skin='luna'] .topbar .topbar-themes {
+  [data-skin='luna'] .topbar .theme-picker {
     display: none;
   }
 

@@ -575,7 +575,8 @@
 }
 
 [data-skin='terminal'] .topbar-themes:hover,
-[data-skin='terminal'] .topbar-themes[aria-current='page'] {
+[data-skin='terminal'] .topbar-themes[aria-current='page'],
+[data-skin='terminal'] .topbar-themes[aria-expanded='true'] {
   background: var(--bar-ink);
   color: var(--bar);
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SCHEME_SWATCHES, SKINS, type Scheme, type Skin } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
   import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
@@ -8,7 +9,8 @@
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
-  import { appearance, openCreate } from '../lib/ui.svelte.js';
+  import { isSkinLoaded, loadSkin } from '../lib/skins.svelte.js';
+  import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
   import ProjectScope from './ProjectScope.svelte';
@@ -21,6 +23,21 @@
   const { project }: Props = $props();
 
   let menuOpen = $state(false);
+  let themesOpen = $state(false);
+  const SCHEMES: readonly Scheme[] = ['light', 'dark'];
+
+  /** Following the system stays on Account → Appearance: a pick here is explicit. */
+  function pickLook(skin: Skin, scheme: Scheme, item: HTMLElement) {
+    applyMode(scheme);
+    applySkin(skin);
+    // The page is hidden while a skin's stylesheet loads, which drops focus;
+    // a skin that hides the theme button on this screen hides the menu too.
+    if (!isSkinLoaded(skin))
+      void loadSkin(skin).then(() => {
+        if (item.getClientRects().length) item.focus();
+        else themesOpen = false;
+      });
+  }
   /** The instance's own name, when the administrators gave it one. */
   const instanceName = $derived.by(() => {
     const n = publicSettings.value.instanceName.trim();
@@ -105,18 +122,58 @@
       aria-label={live.connected ? t.nav.live : t.nav.offline}
     ></span>
 
-    <a
-      class="topbar-themes"
-      href={paths.themes()}
-      title={t.nav.themes}
-      aria-label={t.nav.themes}
-      aria-current={router.route.name === 'themes' ? 'page' : undefined}
-    >
-      <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-        <circle cx="10" cy="10" r="7.25" />
-        <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" />
-      </svg>
-    </a>
+    <div class="theme-picker" use:outside={() => (themesOpen = false)}>
+      <button
+        class="topbar-themes"
+        title={t.nav.themes}
+        aria-label={t.nav.themes}
+        aria-haspopup="menu"
+        aria-expanded={themesOpen}
+        aria-current={router.route.name === 'themes' ? 'page' : undefined}
+        onclick={() => (themesOpen = !themesOpen)}
+      >
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+          <circle cx="10" cy="10" r="7.25" />
+          <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" />
+        </svg>
+      </button>
+      {#if themesOpen}
+        <div class="popover theme-menu" role="menu" use:menu={() => (themesOpen = false)}>
+          <div class="theme-head" aria-hidden="true">
+            <span>{t.nav.themes}</span>
+            {#each SCHEMES as scheme (scheme)}<span class="scheme-name">{t.nav.modes[scheme]}</span
+              >{/each}
+          </div>
+          <div role="group" aria-label={t.nav.themes}>
+            {#each SKINS as skin (skin)}
+              <div class="theme-row">
+                <span class="skin-name" aria-hidden="true">{t.nav.skins[skin]}</span>
+                {#each SCHEMES as scheme (scheme)}
+                  {@const sw = SCHEME_SWATCHES[skin][scheme]}
+                  {@const label = t.nav.skinMode(t.nav.skins[skin], t.nav.modes[scheme])}
+                  <button
+                    class="scheme"
+                    role="menuitemradio"
+                    aria-checked={appearance.skin === skin && appearance.scheme === scheme}
+                    aria-label={label}
+                    title={label}
+                    style:--sw-bar={sw.bar}
+                    style:--sw-paper={sw.paper}
+                    style:--sw-ink={sw.ink}
+                    style:--sw-accent={sw.accent}
+                    onclick={(e) => pickLook(skin, scheme, e.currentTarget)}
+                  ></button>
+                {/each}
+              </div>
+            {/each}
+          </div>
+          <div class="sep"></div>
+          <a class="item" role="menuitem" href={paths.themes()} onclick={() => (themesOpen = false)}
+            >{t.nav.allThemes}</a
+          >
+        </div>
+      {/if}
+    </div>
 
     <button
       class="btn btn-primary topbar-create"
@@ -246,6 +303,87 @@
     top: 0;
     right: 0;
     box-shadow: 0 0 0 2px var(--bar);
+  }
+
+  .theme-head,
+  .theme-row {
+    display: grid;
+    grid-template-columns: 1fr repeat(2, 44px);
+    gap: 8px;
+    align-items: center;
+    padding: 3px 12px;
+  }
+
+  .theme-head {
+    padding-top: 6px;
+    font: 500 11.5px/1 var(--font-body);
+    color: var(--muted);
+  }
+
+  .scheme-name {
+    text-align: center;
+  }
+
+  /* Some languages write the mode names in lower case. */
+  .scheme-name::first-letter {
+    text-transform: uppercase;
+  }
+
+  .skin-name {
+    overflow: hidden;
+    font-size: 13.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* A thumbnail of the skin in one mode: its top bar, paper, two lines of ink, its accent. */
+  .scheme {
+    position: relative;
+    width: 44px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background:
+      linear-gradient(var(--sw-bar), var(--sw-bar)) top / 100% 7px no-repeat,
+      var(--sw-paper);
+    cursor: pointer;
+  }
+
+  .scheme::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 13px;
+    width: 16px;
+    height: 2px;
+    background: var(--sw-ink);
+    box-shadow: 0 6px 0 var(--sw-ink);
+  }
+
+  .scheme::after {
+    content: '';
+    position: absolute;
+    right: 6px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--sw-accent);
+  }
+
+  .scheme:hover {
+    border-color: var(--ink-soft);
+  }
+
+  .scheme[aria-checked='true'] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  .scheme:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
   }
 
   .account-menu .hint {

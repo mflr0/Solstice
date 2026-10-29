@@ -513,7 +513,8 @@
 }
 
 [data-skin='classique'] .topbar .topbar-themes:hover,
-[data-skin='classique'] .topbar .topbar-themes[aria-current='page'] {
+[data-skin='classique'] .topbar .topbar-themes[aria-current='page'],
+[data-skin='classique'] .topbar .topbar-themes[aria-expanded='true'] {
   color: var(--bar-ink);
   background: var(--cl-bar-hover);
 }
@@ -2072,7 +2073,7 @@
       linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat;
   }
 
-  [data-skin='classique'] .topbar .topbar-themes {
+  [data-skin='classique'] .topbar .theme-picker {
     display: none;
   }
 

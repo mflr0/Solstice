@@ -1556,7 +1556,7 @@
 
 @media (max-width: 420px) {
   /* Every skin is also listed on Account → Appearance. */
-  [data-skin='plan'] .topbar-themes {
+  [data-skin='plan'] .theme-picker {
     display: none;
   }
 }
