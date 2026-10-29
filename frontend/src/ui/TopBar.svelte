@@ -9,6 +9,7 @@
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
+  import { isSkinLoaded, loadSkin } from '../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
@@ -26,9 +27,16 @@
   const SCHEMES: readonly Scheme[] = ['light', 'dark'];
 
   /** Following the system stays on Account → Appearance: a pick here is explicit. */
-  function pickLook(skin: Skin, scheme: Scheme) {
+  function pickLook(skin: Skin, scheme: Scheme, item: HTMLElement) {
     applyMode(scheme);
     applySkin(skin);
+    // The page is hidden while a skin's stylesheet loads, which drops focus;
+    // a skin that hides the theme button on this screen hides the menu too.
+    if (!isSkinLoaded(skin))
+      void loadSkin(skin).then(() => {
+        if (item.getClientRects().length) item.focus();
+        else themesOpen = false;
+      });
   }
   /** The instance's own name, when the administrators gave it one. */
   const instanceName = $derived.by(() => {
@@ -153,7 +161,7 @@
                     style:--sw-paper={sw.paper}
                     style:--sw-ink={sw.ink}
                     style:--sw-accent={sw.accent}
-                    onclick={() => pickLook(skin, scheme)}
+                    onclick={(e) => pickLook(skin, scheme, e.currentTarget)}
                   ></button>
                 {/each}
               </div>
