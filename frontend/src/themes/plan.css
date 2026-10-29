@@ -76,12 +76,12 @@
   --font-title: 'Architects Daughter', cursive;
   --font-body: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-size: 14.5px;
+  --font-size: 0.90625rem;
   --title-weight: 400;
   --h1-weight: 400;
   --title-tracking: 0.01em;
   --title-italic: normal;
-  --empty-font: 400 15px/1.45 var(--font-title);
+  --empty-font: 400 0.9375rem/1.45 var(--font-title);
 
   --frame: 1px;
   --radius-xs: 0;
@@ -92,7 +92,7 @@
   --card-top: 1px solid var(--plan-line);
 
   /* Statuses: the frame is drawn by .stamp below, with stencil bridges. */
-  --stamp-font: 400 11px/1 'Saira Stencil One', var(--font-mono);
+  --stamp-font: 400 0.6875rem/1 'Saira Stencil One', var(--font-mono);
   --stamp-case: uppercase;
   --stamp-tracking: 0.08em;
   --stamp-border: 0px;
@@ -100,7 +100,7 @@
   --stamp-padding: 4px 7px 4px 6px;
   --stamp-fill: 0%;
   --stamp-dot: inline-block;
-  --stamp-large-size: 12px;
+  --stamp-large-size: 0.75rem;
   --stamp-large-padding: 7px 12px 7px 10px;
   --stamp-large-border: 0px;
   --stamp-large-tracking: 0.12em;
@@ -219,7 +219,7 @@
 
 [data-skin='plan'] h1,
 [data-skin='plan'] .page-title {
-  font-size: 30px;
+  font-size: 1.875rem;
   line-height: 1.15;
 }
 
@@ -259,14 +259,14 @@
 }
 
 [data-skin='plan'] .topbar .wordmark {
-  font: 400 23px/1 var(--font-title);
+  font: 400 1.4375rem/1 var(--font-title);
   letter-spacing: 0.02em;
 }
 
 [data-skin='plan'] .topbar-nav .nav-link {
   padding: 18px 2px 14px;
   border-bottom: 0;
-  font: 500 12.5px/1 var(--font-body);
+  font: 500 0.78125rem/1 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.09em;
   white-space: nowrap;
@@ -291,7 +291,7 @@
 }
 
 [data-skin='plan'] .topbar-search .input {
-  height: 30px;
+  height: 1.875rem;
   background: transparent;
   color: var(--bar-ink);
 }
@@ -320,12 +320,12 @@
 }
 
 [data-skin='plan'] .account-button .avatar {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   border-color: var(--plan-line);
   background: var(--bar);
   color: var(--bar-ink);
-  font: 500 11px/1 var(--font-mono);
+  font: 500 0.6875rem/1 var(--font-mono);
 }
 
 /* The mark: a sun-path diagram (./plan/logo.svg), the sun in its own colour. */
@@ -399,7 +399,7 @@
   padding: 6px 14px 5px 18px;
   border-right: 1px solid var(--plan-line);
   border-bottom: 1px solid var(--plan-line);
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 0.6875rem/1.2 var(--font-mono);
   letter-spacing: 0.1em;
   color: var(--ink-soft);
 }
@@ -410,7 +410,7 @@
 }
 
 [data-skin='plan'] .page-head .count {
-  font: 500 12px/1 var(--font-mono);
+  font: 500 0.75rem/1 var(--font-mono);
   letter-spacing: 0.04em;
 }
 
@@ -419,7 +419,7 @@
 [data-skin='plan'] .section-title {
   align-items: center;
   margin: 34px 0 12px;
-  font: 600 12px/1.2 var(--font-body);
+  font: 600 0.75rem/1.2 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.11em;
   color: var(--ink);
@@ -432,12 +432,12 @@
 [data-skin='plan'] .section-title .count {
   display: inline-grid;
   place-items: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: 1.25rem;
+  height: 1.25rem;
   padding: 0 5px;
   border: 1px solid var(--plan-line);
-  border-radius: 10px;
-  font: 500 10.5px/1 var(--font-mono);
+  border-radius: 999px;
+  font: 500 0.65625rem/1 var(--font-mono);
   color: var(--ink-soft);
 }
 
@@ -449,7 +449,7 @@
 /* Buttons: outlined boxes that fill with ink -------------------------------- */
 
 [data-skin='plan'] .btn {
-  height: 30px;
+  height: 1.875rem;
   padding: 0 12px;
   border: 1px solid var(--plan-line);
   border-radius: 0;
@@ -459,7 +459,7 @@
   background-position: left center;
   background-size: 0% 100%;
   color: var(--ink);
-  font: 500 12px/1 var(--font-body);
+  font: 500 0.75rem/1 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -477,9 +477,9 @@
 }
 
 [data-skin='plan'] .btn.btn-small {
-  height: 24px;
+  height: 1.5rem;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.07em;
 }
 
@@ -559,7 +559,7 @@
   border: 1px solid currentColor;
   border-radius: 0;
   padding: 2px 4px;
-  font: 500 10px/1 var(--font-mono);
+  font: 500 0.625rem/1 var(--font-mono);
   text-transform: none;
   letter-spacing: 0;
 }
@@ -643,7 +643,7 @@
 
 [data-skin='plan'] .field > span:first-child,
 [data-skin='plan'] .field-label {
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 0.6875rem/1.2 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -740,7 +740,7 @@
   border: 1px solid var(--rule-strong);
   border-radius: 0;
   background: var(--paper-raised);
-  font: 11.5px/1.5 var(--font-mono);
+  font: 0.71875rem/1.5 var(--font-mono);
 }
 
 /* Issue types as drafting symbols: a delta for bugs, a bubble for stories, a
@@ -752,7 +752,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--tone);
-  font: 600 9.5px/1 var(--font-mono);
+  font: 600 0.59375rem/1 var(--font-mono);
 }
 
 [data-skin='plan'] .type-mark[data-type]::before {
@@ -795,7 +795,7 @@
 }
 
 [data-skin='plan'] .priority-mark .glyph {
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 /* People: grid bubbles, like the axis labels of a plan. */
@@ -813,7 +813,7 @@
 [data-skin='plan'] table.ledger thead th {
   padding-bottom: 9px;
   border-bottom: 3px double var(--plan-line);
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--muted);
@@ -856,7 +856,7 @@
 [data-skin='plan'] .tabs .tab {
   position: relative;
   border-bottom: 2px solid transparent;
-  font: 500 12px var(--font-body);
+  font: 500 0.75rem var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--ink-soft);
@@ -891,7 +891,7 @@
 [data-skin='plan'] .tabs.tabs-folder .tab {
   border: 1px solid transparent;
   border-bottom: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 [data-skin='plan'] .tabs.tabs-folder .tab[aria-selected='true'] {
@@ -914,7 +914,7 @@
 }
 
 [data-skin='plan'] .popover .item {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='plan'] .popover .item:hover,
@@ -938,7 +938,7 @@
 
 [data-skin='plan'] .popover .group-label {
   padding-top: 8px;
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -969,7 +969,7 @@
 }
 
 [data-skin='plan'] .modal-title {
-  font: 400 23px/1.15 var(--font-title);
+  font: 400 1.4375rem/1.15 var(--font-title);
   letter-spacing: 0.015em;
 }
 
@@ -999,7 +999,7 @@
 [data-skin='plan'] .card .card-head {
   padding: 10px 14px 9px;
   border-bottom: 1px solid var(--plan-line);
-  font: 600 11.5px/1 var(--font-body);
+  font: 600 0.71875rem/1 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--ink);
@@ -1013,7 +1013,7 @@
 
 /* The record's labels are the small captions of a title block. */
 [data-skin='plan'] .card dt {
-  font: 500 10.5px/1.5 var(--font-mono);
+  font: 500 0.65625rem/1.5 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -1024,12 +1024,12 @@
 }
 
 [data-skin='plan'] .login-card .wordmark {
-  font: 400 36px/1 var(--font-title);
+  font: 400 2.25rem/1 var(--font-title);
   letter-spacing: 0.02em;
 }
 
 [data-skin='plan'] .login-card .tagline {
-  font: 400 15px/1.4 var(--font-title);
+  font: 400 0.9375rem/1.4 var(--font-title);
 }
 
 /* Toasts ----------------------------------------------------------------------- */
@@ -1122,7 +1122,7 @@
 /* Issue page: the head is a title block too --------------------------------- */
 
 [data-skin='plan'] .page-crumbs {
-  font: 500 12px/1.2 var(--font-mono);
+  font: 500 0.75rem/1.2 var(--font-mono);
   letter-spacing: 0.03em;
 }
 
@@ -1137,7 +1137,7 @@
 }
 
 [data-skin='plan'] .page .issue-head .page-title {
-  font-size: 30px;
+  font-size: 1.875rem;
   letter-spacing: 0.015em;
 }
 
@@ -1153,7 +1153,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
+  min-height: 2.75rem;
   padding: 6px 14px;
   border-right: 1px solid var(--rule-strong);
 }
@@ -1175,7 +1175,7 @@
 }
 
 [data-skin='plan'] .issue-head .resolution {
-  font: 400 15px var(--font-title);
+  font: 400 0.9375rem var(--font-title);
 }
 
 /* Boards ------------------------------------------------------------------------- */
@@ -1191,7 +1191,7 @@
 }
 
 [data-skin='plan'] .board-column-title {
-  font: 600 11.5px/1.2 var(--font-body);
+  font: 600 0.71875rem/1.2 var(--font-body);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -1230,7 +1230,7 @@
 }
 
 [data-skin='plan'] .sprint-name {
-  font: 400 19px/1.2 var(--font-title);
+  font: 400 1.1875rem/1.2 var(--font-title);
 }
 
 /* Status bar: the title block in the bottom right corner of the sheet -------- */
@@ -1250,12 +1250,12 @@
   display: flex;
   width: max-content;
   max-width: calc(100% - 32px);
-  margin: -64px max(36px, calc((100% - 1280px) / 2 + 36px)) 36px auto;
+  margin: -64px max(36px, calc((100% - 80rem) / 2 + 36px)) 36px auto;
   border: 1.5px solid var(--plan-line);
   outline: 1px solid var(--plan-line);
   outline-offset: 3px;
   background: var(--paper-raised);
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -1335,7 +1335,7 @@
 
 [data-skin='plan'] .wiki .wiki-table th {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* Motion: only for those who have not asked for less -------------------------- */
@@ -1425,7 +1425,7 @@
   [data-skin='plan'] h1,
   [data-skin='plan'] .page-title,
   [data-skin='plan'] .page .issue-head .page-title {
-    font-size: 24px;
+    font-size: 1.5rem;
   }
 
   [data-skin='plan'] .page-head {
@@ -1450,7 +1450,7 @@
   }
 
   [data-skin='plan'] .page .issue-head .issue-meta > * {
-    min-height: 40px;
+    min-height: 2.5rem;
     padding: 6px 10px;
   }
 
@@ -1542,14 +1542,14 @@
   }
 
   [data-skin='plan'] .topbar-nav .nav-link {
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     letter-spacing: 0.04em;
     white-space: nowrap;
   }
 
   [data-skin='plan'] .topbar .btn.topbar-create {
     padding: 0 8px;
-    font-size: 11px;
+    font-size: 0.6875rem;
     letter-spacing: 0.04em;
   }
 }
