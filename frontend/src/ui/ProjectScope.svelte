@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { paths } from '../core/route.js';
+  import { onBoard, scopeSwitch } from '../core/scope.js';
   import type { Project } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { menu, outside } from '../lib/actions.js';
@@ -35,8 +35,18 @@
       notify(errorMessage(e), 'error');
       return;
     }
-    // The board list shows the new scope's boards; a search already made stays.
-    if (router.route.name === 'boards') router.navigate(paths.boards(), { replace: true });
+    // The board pages follow the new scope; a search already made stays.
+    const route = router.route;
+    if (route.name !== 'boards' && !onBoard(route)) return;
+    let to: string | null;
+    try {
+      to = scopeSwitch(route, await api.boards(), key);
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+      return;
+    }
+    // Stay put if the user went elsewhere while the boards loaded.
+    if (to && router.route === route) router.navigate(to, { replace: true });
   }
 </script>
 
