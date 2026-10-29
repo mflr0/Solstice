@@ -82,7 +82,7 @@
     list-style: none;
     margin: 0;
     padding: 0;
-    columns: 2 220px;
+    columns: 2 13.75rem;
     column-gap: 24px;
   }
 

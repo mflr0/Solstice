@@ -101,7 +101,7 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    font-size: 13px;
+    font-size: 0.8125rem;
     margin-bottom: 4px;
   }
 
@@ -111,14 +111,14 @@
     padding: 0 0 0 27px;
     display: grid;
     gap: 3px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .field {
     display: inline-block;
-    min-width: 130px;
+    min-width: 8.125rem;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .old {
@@ -144,12 +144,12 @@
 
   pre {
     white-space: pre-wrap;
-    font: 12px/1.5 var(--font-mono);
+    font: 0.75rem/1.5 var(--font-mono);
     background: var(--paper-sunk);
     border: 1px solid var(--rule);
     padding: 6px 8px;
     margin: 6px 0;
-    max-height: 220px;
+    max-height: 13.75rem;
     overflow: auto;
   }
 

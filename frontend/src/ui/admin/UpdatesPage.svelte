@@ -359,13 +359,13 @@
 <style>
   .versions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
     gap: 12px 28px;
     margin: 4px 0 8px;
   }
 
   .versions dt {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 
@@ -376,7 +376,7 @@
 
   .check-line {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .lead {
@@ -401,7 +401,7 @@
 
   .hint-text {
     max-width: 70ch;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .apply {
@@ -422,12 +422,12 @@
     border-radius: var(--radius-s);
     background: var(--paper-sunk);
     color: var(--ink);
-    font: 12.5px/1.5 var(--font-mono);
+    font: 0.78125rem/1.5 var(--font-mono);
     white-space: pre;
   }
 
   pre.log {
-    max-height: 320px;
+    max-height: 20rem;
     overflow-y: auto;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -451,7 +451,7 @@
   .checks .hint {
     margin: 6px 0 0;
     max-width: 70ch;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .form {

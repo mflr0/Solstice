@@ -106,6 +106,6 @@
 
   .mono {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 </style>

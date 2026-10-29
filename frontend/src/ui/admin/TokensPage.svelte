@@ -256,11 +256,11 @@
 <style>
   .count {
     margin-left: 6px;
-    font: 500 14px/1 var(--font-mono);
+    font: 500 0.875rem/1 var(--font-mono);
   }
 
   .policy {
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 26px;
   }
 

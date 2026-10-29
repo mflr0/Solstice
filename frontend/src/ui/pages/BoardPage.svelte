@@ -516,13 +516,13 @@
 
 <style>
   .board-page {
-    max-width: 1640px;
+    max-width: 102.5rem;
   }
 
   .notice {
     margin: 0 0 12px;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .board {

@@ -358,7 +358,7 @@
   }
 
   .who dt {
-    font: 500 12px/1.2 var(--font-body);
+    font: 500 0.75rem/1.2 var(--font-body);
     color: var(--ink-soft);
   }
 
@@ -374,7 +374,7 @@
   }
 
   .result {
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 16px;
   }
 
@@ -395,7 +395,7 @@
     border-radius: var(--avatar-radius);
     background: var(--paper-raised);
     color: var(--ink-soft);
-    font: 500 20px/1 var(--font-mono);
+    font: 500 1.25rem/1 var(--font-mono);
   }
 
   .preview img {

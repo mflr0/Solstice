@@ -92,7 +92,7 @@
 
   .theme {
     display: grid;
-    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-columns: 14.375rem minmax(0, 1fr);
     gap: 28px;
     padding: 22px 0;
     border-bottom: 1px solid var(--rule);
@@ -106,7 +106,7 @@
   }
 
   .name {
-    font-size: 21px;
+    font-size: 1.3125rem;
   }
 
   .description {
@@ -125,12 +125,12 @@
 
   .small {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .previews {
     display: grid;
-    grid-template-columns: repeat(2, 440px);
+    grid-template-columns: repeat(2, 27.5rem);
     gap: 16px;
   }
 
@@ -147,8 +147,8 @@
   .preview :global(.skin-preview),
   .placeholder {
     display: block;
-    width: 440px;
-    height: 262px;
+    width: 27.5rem;
+    height: 16.375rem;
     border: 1px solid var(--rule-strong);
     border-radius: var(--radius-s);
   }
@@ -168,7 +168,7 @@
   }
 
   .caption {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 
@@ -181,7 +181,7 @@
 
   @media (max-width: 980px) {
     .previews {
-      grid-template-columns: minmax(0, 440px);
+      grid-template-columns: minmax(0, 27.5rem);
     }
 
     .preview :global(.skin-preview),

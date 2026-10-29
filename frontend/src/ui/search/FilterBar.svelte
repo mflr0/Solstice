@@ -496,9 +496,9 @@
 
   .filter-text {
     position: relative;
-    flex: 1 1 240px;
+    flex: 1 1 15rem;
     min-width: 0;
-    max-width: 420px;
+    max-width: 26.25rem;
   }
 
   .filter-text .glass {
@@ -507,12 +507,12 @@
     top: 50%;
     transform: translateY(-52%);
     color: var(--muted);
-    font-size: 16px;
+    font-size: 1rem;
     pointer-events: none;
   }
 
   .filter-text .input {
-    height: 32px;
+    height: 2rem;
     padding-left: 28px;
   }
 
@@ -535,22 +535,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--ink-soft);
   }
 
   .role-field :global(.select) {
     flex: 1;
-    height: 28px;
+    height: 1.75rem;
     padding-block: 2px;
     padding-left: 6px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .role-hint,
   .busy-note {
     margin: 4px 0 6px;
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     line-height: 1.35;
     color: var(--muted);
   }
@@ -580,7 +580,7 @@
   }
 
   .clear-all {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     margin-left: 4px;
   }
 

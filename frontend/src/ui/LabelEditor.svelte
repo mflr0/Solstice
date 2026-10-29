@@ -75,12 +75,12 @@
 
   .add {
     flex: 1;
-    min-width: 70px;
+    min-width: 4.375rem;
     border: none;
     border-bottom: 1px dashed var(--rule-strong);
     background: transparent;
     padding: 2px 0;
-    font: 12.5px var(--font-mono);
+    font: 0.78125rem var(--font-mono);
   }
 
   .add:focus {

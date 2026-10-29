@@ -49,7 +49,7 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
     gap: 8px;
   }
 
@@ -62,7 +62,7 @@
     border-radius: var(--radius-s);
     background: var(--paper-raised);
     cursor: pointer;
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
 
   .language:hover {

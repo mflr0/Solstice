@@ -263,12 +263,12 @@
   .lead {
     max-width: 80ch;
     margin: 0 0 14px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
     color: var(--ink-soft);
   }
 
   .note {
-    font: var(--title-italic) 14px/1.5 var(--font-title);
+    font: var(--title-italic) 0.875rem/1.5 var(--font-title);
   }
 
   /* Positioned, so hidden labels (.sr-only) stay inside the scrolling box. */
@@ -286,7 +286,7 @@
   }
 
   .wf {
-    min-width: 160px;
+    min-width: 10rem;
   }
 
   .wf-name {

@@ -96,14 +96,14 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 30px;
+    height: 1.875rem;
     max-width: 12ch;
     padding: 0 8px;
     border: 1px solid var(--rule);
     border-radius: var(--radius-s);
     background: none;
     color: var(--bar-ink-soft);
-    font: 500 12.5px/1 var(--font-mono);
+    font: 500 0.78125rem/1 var(--font-mono);
     cursor: pointer;
   }
 
@@ -119,19 +119,19 @@
   }
 
   .caret {
-    font-size: 10px;
+    font-size: 0.625rem;
   }
 
   .scope-menu {
     left: 0;
     top: calc(100% + 8px);
-    min-width: 260px;
-    max-height: calc(100dvh - 72px);
+    min-width: 16.25rem;
+    max-height: calc(100dvh - 3.375rem - 18px);
   }
 
   .scope-menu .key {
     min-width: 6ch;
-    font: 500 12px/1 var(--font-mono);
+    font: 500 0.75rem/1 var(--font-mono);
     color: var(--muted);
   }
 

@@ -422,7 +422,7 @@
   }
 
   .fiche {
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   h2.title {
@@ -432,7 +432,7 @@
   /* Specific enough to beat every skin's own title-bar type; skins keep their margins. */
   aside.fiche.card > h2.title {
     justify-content: flex-start;
-    font-size: 18px;
+    font-size: 1.125rem;
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: 0;
@@ -456,12 +456,12 @@
   /* Ruled like an index card, in pale blue ink. */
   .line {
     display: grid;
-    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-columns: 7rem minmax(0, 1fr);
     gap: 10px;
     align-items: start;
     padding: 7px 14px 6px;
     border-bottom: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
-    min-height: 34px;
+    min-height: 2.125rem;
   }
 
   .line:last-child {
@@ -469,7 +469,7 @@
   }
 
   dt {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
     padding-top: 2px;
   }
@@ -486,7 +486,7 @@
   }
 
   .small {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .date {
@@ -494,7 +494,7 @@
     background: transparent;
     padding: 1px 4px;
     margin-left: -5px;
-    font: 13px var(--font-mono);
+    font: 0.8125rem var(--font-mono);
   }
 
   .date:hover {
@@ -529,21 +529,21 @@
     display: flex;
     flex-wrap: wrap;
     gap: 2px 10px;
-    font: 12px var(--font-mono);
+    font: 0.75rem var(--font-mono);
     color: var(--ink-soft);
   }
 
   .estimates {
     display: grid;
     /* Side by side when there is room, each wide enough for the longest placeholder. */
-    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
     gap: 4px 14px;
   }
 
   .estimates label {
     display: grid;
     gap: 1px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .est {
@@ -551,7 +551,7 @@
     background: transparent;
     padding: 1px 4px;
     margin-left: -5px;
-    font: 12.5px var(--font-mono);
+    font: 0.78125rem var(--font-mono);
     width: 100%;
   }
 
@@ -571,6 +571,6 @@
   }
 
   dd :global(.wiki) {
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 </style>

@@ -231,7 +231,7 @@
 <style>
   .count {
     margin-left: 6px;
-    font: 500 14px/1 var(--font-mono);
+    font: 500 0.875rem/1 var(--font-mono);
   }
 
   .desc {

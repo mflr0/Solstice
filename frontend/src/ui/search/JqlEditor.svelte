@@ -405,11 +405,11 @@
   .jql-input {
     grid-area: 1 / 1;
     margin: 0;
-    min-height: 62px;
+    min-height: 3.875rem;
     padding: 8px 10px;
     border: var(--frame) solid transparent;
     border-radius: var(--radius-xs);
-    font: 13.5px/1.6 var(--font-mono);
+    font: 0.84375rem/1.6 var(--font-mono);
     letter-spacing: 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -480,14 +480,14 @@
   }
 
   .jql-suggestions {
-    width: 280px;
-    max-height: 260px;
+    width: 17.5rem;
+    max-height: 16.25rem;
     list-style: none;
     margin: 0;
   }
 
   .jql-suggestions .label {
-    font: 13px var(--font-mono);
+    font: 0.8125rem var(--font-mono);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -497,7 +497,7 @@
   .jql-suggestions .detail {
     margin-left: auto;
     padding-left: 10px;
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     color: var(--muted);
     white-space: nowrap;
   }
@@ -511,7 +511,7 @@
   }
 
   .jql-foot .hint {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -520,7 +520,7 @@
     padding: 6px 10px;
     border-left: 3px solid var(--accent);
     background: var(--accent-wash);
-    font: 13px/1.5 var(--font-body);
+    font: 0.8125rem/1.5 var(--font-body);
   }
 
   @media (max-width: 600px) {

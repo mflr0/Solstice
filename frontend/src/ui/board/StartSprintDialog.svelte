@@ -83,10 +83,10 @@
 
   .goal {
     font: inherit;
-    min-height: 70px;
+    min-height: 4.375rem;
   }
 
   .end {
-    max-width: 240px;
+    max-width: 15rem;
   }
 </style>

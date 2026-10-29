@@ -409,12 +409,12 @@
   .intro {
     max-width: 70ch;
     margin: 0 0 6px;
-    font: var(--title-italic) 15px/1.5 var(--font-title);
+    font: var(--title-italic) 0.9375rem/1.5 var(--font-title);
     color: var(--ink-soft);
   }
 
   .matrix th {
-    width: 280px;
+    width: 17.5rem;
     text-align: left;
     text-transform: none;
     letter-spacing: 0;
@@ -425,13 +425,13 @@
 
   .label {
     display: block;
-    font: 600 14px/1.3 var(--font-body);
+    font: 600 0.875rem/1.3 var(--font-body);
     color: var(--ink);
   }
 
   .help {
     display: block;
-    font: 400 12.5px/1.35 var(--font-body);
+    font: 400 0.78125rem/1.35 var(--font-body);
     color: var(--muted);
   }
 
@@ -453,11 +453,11 @@
 
   .holder {
     font-family: var(--font-body);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .holder .kind {
-    font: 500 11px/1 var(--font-body);
+    font: 500 0.6875rem/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -469,18 +469,18 @@
   .nobody {
     color: var(--muted);
     font-style: italic;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .adder {
     position: relative;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .add {
     left: 0;
     top: calc(100% + 6px);
-    width: 280px;
+    width: 17.5rem;
     padding: 12px;
     display: grid;
     gap: 10px;
@@ -504,7 +504,7 @@
 
   .roles div {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 12.5rem 1fr;
     gap: 10px;
     padding: 6px 0;
     border-bottom: 1px solid var(--rule);

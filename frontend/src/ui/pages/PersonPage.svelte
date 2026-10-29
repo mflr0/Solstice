@@ -83,15 +83,15 @@
     display: grid;
     place-items: center;
     border: 1.5px solid var(--ink);
-    font: 500 18px/1 var(--font-mono);
+    font: 500 1.125rem/1 var(--font-mono);
     background: var(--paper-raised);
   }
 
   /* Its size outweighs a skin's small-avatar rules (0-4-0); its look does not. */
   .id .mark.avatar-large {
-    width: 54px;
-    height: 54px;
-    font-size: 18px;
+    width: 3.375rem;
+    height: 3.375rem;
+    font-size: 1.125rem;
   }
 
   .meta {

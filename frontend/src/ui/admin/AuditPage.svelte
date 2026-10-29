@@ -396,7 +396,7 @@
 <style>
   .count {
     margin-left: 6px;
-    font: 500 14px/1 var(--font-mono);
+    font: 500 0.875rem/1 var(--font-mono);
   }
 
   .filters {
@@ -408,7 +408,7 @@
   }
 
   .filters .grow {
-    flex: 1 1 200px;
+    flex: 1 1 12.5rem;
   }
 
   .filters .grow .input {
@@ -451,14 +451,14 @@
 
   .detail {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
     gap: 8px 24px;
     margin: 0;
     padding: 10px 0 4px;
   }
 
   .detail dt {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -469,7 +469,7 @@
 
   .retention {
     margin-top: 32px;
-    max-width: 720px;
+    max-width: 45rem;
   }
 
   .retention-row {

@@ -167,7 +167,7 @@
     position: fixed;
     left: auto;
     margin: 0;
-    min-width: 200px;
+    min-width: 12.5rem;
     color: var(--ink);
   }
 

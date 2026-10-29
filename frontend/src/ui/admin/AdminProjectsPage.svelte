@@ -372,15 +372,15 @@
 <style>
   .count {
     margin-left: 6px;
-    font: 500 14px/1 var(--font-mono);
+    font: 500 0.875rem/1 var(--font-mono);
   }
 
   .c-key {
-    width: 90px;
+    width: 5.625rem;
   }
 
   .name {
-    font: var(--title-weight) 15.5px/1.3 var(--font-title);
+    font: var(--title-weight) 0.96875rem/1.3 var(--font-title);
     text-decoration: none;
   }
 
@@ -390,7 +390,7 @@
 
   .kind {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .stamp {

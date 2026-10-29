@@ -299,13 +299,13 @@
 <style>
   .facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
     gap: 12px 28px;
     margin: 4px 0 8px;
   }
 
   .facts dt {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 

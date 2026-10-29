@@ -136,13 +136,13 @@
 <style>
   /* Real sizes, shrunk: the skin's stylesheet sees an ordinary page. */
   .mock {
-    width: 1000px;
+    width: 62.5rem;
     zoom: 0.44;
   }
 
   .split {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-columns: minmax(0, 1fr) 16.25rem;
     gap: 28px;
     align-items: start;
   }
@@ -188,8 +188,8 @@
   }
 
   dt {
-    min-width: 80px;
-    font-size: 12px;
+    min-width: 5rem;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -207,11 +207,11 @@
   dd .avatar {
     display: grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
+    width: 1.375rem;
+    height: 1.375rem;
     border: var(--frame) solid var(--ink-soft);
     border-radius: var(--avatar-radius);
-    font: 500 10px/1 var(--font-mono);
+    font: 500 0.625rem/1 var(--font-mono);
   }
 
   .board {

@@ -225,11 +225,11 @@
 
   .short {
     min-height: 0;
-    font: 14px/1.4 var(--font-body);
+    font: 0.875rem/1.4 var(--font-body);
   }
 
   .member-list {
-    max-height: 220px;
+    max-height: 13.75rem;
     overflow: auto;
   }
 </style>

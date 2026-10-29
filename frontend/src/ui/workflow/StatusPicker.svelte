@@ -131,20 +131,20 @@
 <style>
   .adder {
     position: relative;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .popover {
     left: 0;
     top: calc(100% + 6px);
-    width: 300px;
-    max-height: 380px;
+    width: 18.75rem;
+    max-height: 23.75rem;
   }
 
   .filter {
     margin: 4px 8px 6px;
     width: calc(100% - 16px);
-    height: 30px;
+    height: 1.875rem;
   }
 
   ul {
@@ -155,14 +155,14 @@
 
   .cat {
     margin-left: auto;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .none {
     margin: 4px 12px 8px;
     color: var(--muted);
     font-style: italic;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .create {
@@ -176,7 +176,7 @@
   .create legend {
     padding: 0;
     margin-bottom: 6px;
-    font: 500 12.5px/1.3 var(--font-body);
+    font: 500 0.78125rem/1.3 var(--font-body);
     color: var(--ink);
     overflow-wrap: anywhere;
   }
@@ -189,12 +189,12 @@
 
   .hint {
     margin: 0;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
   .error-text {
     margin: 0 12px 8px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 </style>

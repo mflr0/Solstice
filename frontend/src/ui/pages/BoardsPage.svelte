@@ -236,7 +236,7 @@
 
 <style>
   .filter {
-    max-width: 260px;
+    max-width: 16.25rem;
     margin-bottom: 4px;
   }
 
@@ -253,7 +253,7 @@
   }
 
   .name {
-    font: var(--title-weight) 15px/1.3 var(--font-title);
+    font: var(--title-weight) 0.9375rem/1.3 var(--font-title);
     text-decoration: none;
   }
 
@@ -309,7 +309,7 @@
   }
 
   .kind .hint {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 </style>

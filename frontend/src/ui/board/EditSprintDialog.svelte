@@ -106,19 +106,19 @@
 
   .goal {
     font: inherit;
-    min-height: 70px;
+    min-height: 4.375rem;
   }
 
   .days {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 240px));
+    grid-template-columns: repeat(2, minmax(0, 15rem));
     gap: 12px;
   }
 
   .hint {
     margin: 0;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   @media (max-width: 640px) {

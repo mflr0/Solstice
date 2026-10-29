@@ -125,7 +125,7 @@
     gap: 6px;
     align-items: center;
     margin: 8px 0 0;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-soft);
   }
 
@@ -143,7 +143,7 @@
   }
 
   dt {
-    font: 500 12px/1 var(--font-body);
+    font: 500 0.75rem/1 var(--font-body);
     color: var(--muted);
   }
 

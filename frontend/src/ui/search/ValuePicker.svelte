@@ -263,7 +263,7 @@
   .filter-search {
     margin: 8px 8px 4px;
     width: calc(100% - 16px);
-    height: 30px;
+    height: 1.875rem;
     flex: none;
   }
 
@@ -289,7 +289,7 @@
     border-radius: var(--radius-xs);
     background-color: var(--paper);
     color: var(--accent-text);
-    font-size: 11px;
+    font-size: 0.6875rem;
     line-height: 1;
   }
 
@@ -307,7 +307,7 @@
     padding-left: 10px;
     min-width: 3ch;
     text-align: right;
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     font-variant-numeric: tabular-nums;
     color: var(--ink-soft);
   }
@@ -323,7 +323,7 @@
   .hint {
     margin-left: auto;
     padding-left: 8px;
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -331,7 +331,7 @@
   .none {
     padding: 8px 12px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .picker-foot {

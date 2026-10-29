@@ -155,7 +155,7 @@
 
   .caret {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 0.625rem;
   }
 
   .filter-clear {
@@ -165,7 +165,7 @@
     border-bottom-left-radius: 0;
     border-color: var(--ink-soft);
     background-color: var(--paper-sunk);
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   .filter-clear:hover {
@@ -175,8 +175,8 @@
   .filter-popover {
     left: 0;
     top: calc(100% + 4px);
-    width: 290px;
-    max-height: min(440px, 70vh);
+    width: 18.125rem;
+    max-height: min(27.5rem, 70vh);
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -184,7 +184,7 @@
   }
 
   .filter-popover.wide {
-    width: 320px;
+    width: 20rem;
   }
 
   .filter-popover:focus {

@@ -38,6 +38,6 @@
   .hint {
     margin: 0 0 6px;
     max-width: 62ch;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 </style>

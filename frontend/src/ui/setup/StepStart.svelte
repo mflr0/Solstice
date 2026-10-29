@@ -47,7 +47,7 @@
 <style>
   .choices {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
     gap: 12px;
   }
 
@@ -69,7 +69,7 @@
   }
 
   .choice-title {
-    font: var(--title-weight) 18px/1.2 var(--font-title);
+    font: var(--title-weight) 1.125rem/1.2 var(--font-title);
     color: var(--ink);
   }
 

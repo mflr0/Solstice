@@ -189,7 +189,7 @@
   }
 
   .strength-text {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-soft);
   }
 
@@ -200,7 +200,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 18px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--muted);
   }
 
@@ -210,6 +210,6 @@
 
   .advice {
     margin: -6px 0 0;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 </style>

@@ -100,7 +100,7 @@
     align-items: center;
     gap: 10px;
     margin: 14px 0;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 

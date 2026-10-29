@@ -170,11 +170,11 @@
   }
 
   .kind {
-    min-width: 180px;
+    min-width: 11.25rem;
   }
 
   .target {
-    width: 140px;
+    width: 8.75rem;
     font-family: var(--font-mono);
     text-transform: uppercase;
   }
@@ -184,7 +184,7 @@
   }
 
   .relation {
-    font: 500 12px/1.4 var(--font-body);
+    font: 500 0.75rem/1.4 var(--font-body);
     color: var(--muted);
     margin: 0 0 4px;
   }
@@ -212,7 +212,7 @@
   }
 
   .arrow {
-    width: 18px;
+    width: 1.125rem;
     text-align: center;
     color: var(--muted);
   }
@@ -222,7 +222,7 @@
     background: none;
     color: var(--muted);
     cursor: pointer;
-    font-size: 15px;
+    font-size: 0.9375rem;
     padding: 0 4px;
   }
 

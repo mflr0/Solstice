@@ -257,7 +257,7 @@
   .textarea.short {
     min-height: 0;
     font-family: var(--font-body);
-    font-size: 14px;
+    font-size: 0.875rem;
   }
 
   .catalog-form .form-hint {

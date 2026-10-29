@@ -127,7 +127,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 40px;
+    min-height: 2.5rem;
     padding: 5px 2px;
     border-bottom: 1px solid var(--rule);
     background: var(--paper);
@@ -164,19 +164,19 @@
     align-items: center;
     gap: 4px 10px;
     min-width: 0;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 
   .num {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
   }
 
   .start {
     font-family: var(--font-body);
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     color: var(--ink-soft);
     border-color: var(--rule-strong);
   }
@@ -189,7 +189,7 @@
   }
 
   .tools .btn {
-    min-width: 26px;
+    min-width: 1.625rem;
     justify-content: center;
   }
 
@@ -206,7 +206,7 @@
   }
 
   .hint {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 </style>

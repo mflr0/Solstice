@@ -329,7 +329,7 @@
 <style>
   .crumbs {
     margin: 18px 0 10px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .head {
@@ -340,13 +340,13 @@
   }
 
   .name {
-    font-size: 22px;
+    font-size: 1.375rem;
     overflow-wrap: anywhere;
   }
 
   .note {
     margin: 10px 0 0;
-    font: var(--title-italic) 14px/1.5 var(--font-title);
+    font: var(--title-italic) 0.875rem/1.5 var(--font-title);
     color: var(--ink-soft);
   }
 
@@ -365,11 +365,11 @@
   .fields {
     display: grid;
     gap: 14px;
-    max-width: 440px;
+    max-width: 27.5rem;
   }
 
   .hint {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -382,8 +382,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 26px;
-    font-size: 13.5px;
+    min-height: 1.625rem;
+    font-size: 0.84375rem;
   }
 
   .served {
@@ -403,14 +403,14 @@
   }
 
   .follows {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .types {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 14px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .facts {
@@ -425,7 +425,7 @@
   }
 
   .facts dt {
-    font: 500 12px/1.2 var(--font-body);
+    font: 500 0.75rem/1.2 var(--font-body);
     color: var(--ink-soft);
   }
 

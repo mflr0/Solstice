@@ -191,12 +191,12 @@
   }
 
   .bulk-count {
-    font: 12.5px var(--font-mono);
+    font: 0.78125rem var(--font-mono);
     margin-right: auto;
   }
 
   .syntax {
-    font: 13px/1.5 var(--font-mono);
+    font: 0.8125rem/1.5 var(--font-mono);
     padding: 8px 12px;
     border-left: 3px solid var(--accent);
     background: var(--accent-wash);

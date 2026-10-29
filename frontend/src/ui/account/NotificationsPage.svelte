@@ -191,7 +191,7 @@
 
 <style>
   .mail-off {
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 18px;
     display: grid;
     gap: 4px;
@@ -239,7 +239,7 @@
   }
 
   .hour {
-    max-width: 200px;
+    max-width: 12.5rem;
   }
 
   .legend {

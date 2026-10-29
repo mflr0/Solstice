@@ -268,7 +268,7 @@
     overflow: hidden;
     padding-left: 8px;
     border-left: 1px solid currentColor;
-    font: 500 12.5px/1.2 var(--font-body);
+    font: 500 0.78125rem/1.2 var(--font-body);
     color: var(--bar-ink-soft);
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -316,7 +316,7 @@
 
   .theme-head {
     padding-top: 6px;
-    font: 500 11.5px/1 var(--font-body);
+    font: 500 0.71875rem/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -331,7 +331,7 @@
 
   .skin-name {
     overflow: hidden;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -387,7 +387,7 @@
   }
 
   .account-menu .hint {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
     white-space: nowrap;
   }

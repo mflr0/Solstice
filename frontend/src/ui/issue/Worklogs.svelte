@@ -227,16 +227,16 @@
 
 <style>
   .c-day {
-    width: 130px;
+    width: 8.125rem;
     white-space: nowrap;
   }
 
   .c-who {
-    width: 190px;
+    width: 11.875rem;
   }
 
   .c-body :global(.wiki) {
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .c-body :global(.wiki p) {
@@ -244,7 +244,7 @@
   }
 
   .c-dur {
-    width: 80px;
+    width: 5rem;
   }
 
   .c-tools {
@@ -255,7 +255,7 @@
   .tools {
     display: flex;
     gap: 12px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .tools .armed {
@@ -288,11 +288,11 @@
   }
 
   .dur {
-    width: 170px;
+    width: 10.625rem;
   }
 
   .grow {
     flex: 1;
-    min-width: 180px;
+    min-width: 11.25rem;
   }
 </style>

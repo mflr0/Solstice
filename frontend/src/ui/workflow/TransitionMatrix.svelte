@@ -130,16 +130,16 @@
 
   /* Equal columns, the row headers aside; past the page width, it scrolls. */
   .matrix {
-    --head: 190px;
-    --col: 128px;
+    --head: 11.875rem;
+    --col: 8rem;
     table-layout: fixed;
     width: max(100%, calc(var(--head) + var(--n) * var(--col)));
   }
 
   @media (max-width: 760px) {
     .matrix {
-      --head: 118px;
-      --col: 112px;
+      --head: 7.375rem;
+      --col: 7rem;
     }
   }
 
@@ -151,7 +151,7 @@
   }
 
   .corner span {
-    font: 500 11px/1.2 var(--font-body);
+    font: 500 0.6875rem/1.2 var(--font-body);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -217,7 +217,7 @@
   }
 
   .any-label {
-    font: italic 500 12.5px/1.3 var(--font-body);
+    font: italic 500 0.78125rem/1.3 var(--font-body);
     color: var(--ink-soft);
   }
 
@@ -244,7 +244,7 @@
     background: none;
     padding: 0 2px;
     margin: 0 -2px;
-    font: 12.5px/1.35 var(--font-body);
+    font: 0.78125rem/1.35 var(--font-body);
     color: var(--ink);
     text-align: left;
     overflow-wrap: anywhere;
@@ -267,8 +267,8 @@
   .name {
     flex: 1 1 100%;
     min-width: 0;
-    height: 26px;
+    height: 1.625rem;
     padding: 2px 6px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 </style>

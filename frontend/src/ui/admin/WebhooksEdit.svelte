@@ -416,7 +416,7 @@
 <style>
   .event-groups {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
     gap: 16px 24px;
   }
 
@@ -427,13 +427,13 @@
   }
 
   .all {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 400;
   }
 
   .code {
     margin-left: 4px;
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     overflow-wrap: anywhere;
   }
 
@@ -455,7 +455,7 @@
 
   .test {
     margin-top: 28px;
-    max-width: 720px;
+    max-width: 45rem;
   }
 
   .danger {

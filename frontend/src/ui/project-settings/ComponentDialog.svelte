@@ -144,7 +144,7 @@
   }
 
   .hint {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 </style>

@@ -130,7 +130,7 @@
     gap: 12px;
     padding: 5px 0;
     border-bottom: 1px solid var(--rule);
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .label {
@@ -153,7 +153,7 @@
   .n {
     min-width: 3ch;
     text-align: right;
-    font: 500 12.5px var(--font-mono);
+    font: 500 0.78125rem var(--font-mono);
   }
 
   .loading {

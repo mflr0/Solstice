@@ -77,7 +77,7 @@
 <style>
   .settings-layout {
     display: grid;
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 13.125rem minmax(0, 1fr);
     gap: 36px;
     align-items: start;
   }
@@ -85,7 +85,7 @@
   .side-nav {
     position: sticky;
     top: 16px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .side-title {
@@ -103,7 +103,7 @@
   .side-group-label {
     margin: 0 0 4px;
     padding: 0 10px;
-    font: 600 11.5px/1.3 var(--font-body);
+    font: 600 0.71875rem/1.3 var(--font-body);
     color: var(--muted);
   }
 
@@ -157,7 +157,7 @@
     .side-toggle {
       display: flex;
       width: 100%;
-      height: 36px;
+      height: 2.25rem;
       justify-content: space-between;
       text-align: left;
     }

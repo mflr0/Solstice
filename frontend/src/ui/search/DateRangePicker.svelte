@@ -108,7 +108,7 @@
   .custom .group-label {
     display: block;
     padding: 8px 12px 6px;
-    font: 500 11.5px/1 var(--font-body);
+    font: 500 0.71875rem/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -120,8 +120,8 @@
   }
 
   .days .input {
-    height: 30px;
-    font-size: 13px;
+    height: 1.875rem;
+    font-size: 0.8125rem;
     padding: 4px 6px;
   }
 

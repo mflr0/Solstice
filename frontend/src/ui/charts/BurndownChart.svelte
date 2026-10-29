@@ -129,7 +129,7 @@
   .tick {
     fill: var(--muted);
     font-family: var(--font-body);
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .now {
@@ -163,7 +163,7 @@
     gap: 4px 16px;
     margin-top: 8px;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .key::before {
