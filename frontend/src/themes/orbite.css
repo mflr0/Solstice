@@ -71,12 +71,12 @@
   --font-title: 'Jost Variable', 'Jost', system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-size: 14px;
+  --font-size: 0.875rem;
   --title-weight: 500;
   --h1-weight: 500;
   --title-tracking: -0.01em;
   --title-italic: normal;
-  --empty-font: 400 14px/1.5 var(--font-body);
+  --empty-font: 400 0.875rem/1.5 var(--font-body);
 
   --frame: 1px;
   --radius-xs: 4px;
@@ -86,7 +86,7 @@
   --avatar-radius: 50%;
   --card-top: 1px solid var(--rule);
 
-  --stamp-font: 500 11.5px/1.25 var(--font-body);
+  --stamp-font: 500 0.71875rem/1.25 var(--font-body);
   --stamp-case: none;
   --stamp-tracking: 0.01em;
   --stamp-border: 1px;
@@ -94,7 +94,7 @@
   --stamp-padding: 2px 9px 2px 6px;
   --stamp-fill: 10%;
   --stamp-dot: inline-block;
-  --stamp-large-size: 12.5px;
+  --stamp-large-size: 0.78125rem;
   --stamp-large-padding: 4px 12px 4px 8px;
   --stamp-large-border: 1px;
   --stamp-large-tracking: 0.01em;
@@ -285,7 +285,7 @@
 
 /* The wash reaches the bottom of the window, so it never ends mid-screen. */
 [data-skin='orbite'] .app-main > .page {
-  min-height: calc(100vh - 55px);
+  min-height: calc(100vh - 3.375rem - 1px);
 }
 
 /*
@@ -378,7 +378,7 @@
 }
 
 [data-skin='orbite'] .wordmark {
-  font: 500 20px/1 var(--font-title);
+  font: 500 1.25rem/1 var(--font-title);
   letter-spacing: 0.015em;
 }
 
@@ -431,7 +431,7 @@
 }
 
 [data-skin='orbite'] .topbar-search .input {
-  height: 30px;
+  height: 1.875rem;
   padding-left: 14px;
   border-color: var(--orb-bar-edge);
   border-radius: 999px;
@@ -492,8 +492,8 @@
 
 /* The avatar in the bar, on its own orbit. */
 [data-skin='orbite'] .account-button .avatar.avatar {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   border: 1px solid color-mix(in srgb, var(--bar-ink) 45%, transparent);
   background: color-mix(in srgb, var(--bar-ink) 6%, transparent);
   color: var(--bar-ink);
@@ -533,7 +533,7 @@
 }
 
 [data-skin='orbite'] .page-head .page-title {
-  font-size: 30px;
+  font-size: 1.875rem;
 }
 
 /* The eyebrow is a reading on a dial: mono, spaced, after a small sun. */
@@ -541,7 +541,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 0.6875rem/1.2 var(--font-mono);
   letter-spacing: 0.14em;
 }
 
@@ -560,7 +560,7 @@
 [data-skin='orbite'] .section-title {
   align-items: center;
   margin-top: 32px;
-  font: 500 15.5px/1.2 var(--font-title);
+  font: 500 0.96875rem/1.2 var(--font-title);
   letter-spacing: 0.005em;
 }
 
@@ -573,12 +573,12 @@
   padding: 3px 7px 2px;
   border: 1px solid var(--rule-strong);
   border-radius: 999px;
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   color: var(--ink-soft);
 }
 
 [data-skin='orbite'] .page-crumbs {
-  font: 12.5px/1.3 var(--font-mono);
+  font: 0.78125rem/1.3 var(--font-mono);
   gap: 10px;
 }
 
@@ -595,13 +595,13 @@
 /* Buttons ------------------------------------------------------------------- */
 
 [data-skin='orbite'] .btn {
-  height: 30px;
+  height: 1.875rem;
   padding: 0 13px;
   border: 1px solid var(--orb-edge);
   border-radius: var(--radius-s);
   background: var(--paper-raised);
   color: var(--ink);
-  font: 500 13px/1 var(--font-body);
+  font: 500 0.8125rem/1 var(--font-body);
   letter-spacing: 0.005em;
 }
 
@@ -616,9 +616,9 @@
 }
 
 [data-skin='orbite'] .btn-small {
-  height: 25px;
+  height: 1.5625rem;
   padding: 0 9px;
-  font-size: 12px;
+  font-size: 0.75rem;
   border-radius: 6px;
 }
 
@@ -702,7 +702,7 @@
   padding: 2px 5px 2px;
   border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
   border-radius: 4px;
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   opacity: 0.85;
 }
 
@@ -772,13 +772,13 @@
 }
 
 [data-skin='orbite'] .textarea {
-  font: 13px/1.6 var(--font-mono);
+  font: 0.8125rem/1.6 var(--font-mono);
 }
 
 /* Field labels read like instrument labels. */
 [data-skin='orbite'] .field > span:first-child,
 [data-skin='orbite'] .field-label {
-  font: 500 10.5px/1.2 var(--font-mono);
+  font: 500 0.65625rem/1.2 var(--font-mono);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -825,7 +825,7 @@
   border: 1px solid var(--rule-strong);
   border-radius: 999px;
   background: var(--paper-sunk);
-  font: 12px/1.5 var(--font-mono);
+  font: 0.75rem/1.5 var(--font-mono);
 }
 
 [data-skin='orbite'] a.chip:hover {
@@ -853,7 +853,7 @@
 [data-skin='orbite'] .ledger th.num {
   padding: 13px 10px 9px;
   border-bottom: 1px solid var(--rule-strong);
-  font: 500 10.5px/1 var(--font-mono);
+  font: 500 0.65625rem/1 var(--font-mono);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted);
@@ -926,7 +926,7 @@
     linear-gradient(var(--rule) 0 0) left bottom / 100% 1px no-repeat,
     repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
       4px no-repeat;
-  font: 500 11px/1 var(--font-mono);
+  font: 500 0.6875rem/1 var(--font-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink);
@@ -997,7 +997,7 @@
 }
 
 [data-skin='orbite'] .login-card .wordmark {
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -1044,13 +1044,13 @@
 
 /* Issue types are small bodies: a ring and a letter; epics are solid. */
 [data-skin='orbite'] .type-mark.type-mark {
-  width: 19px;
-  height: 19px;
+  width: 1.1875rem;
+  height: 1.1875rem;
   border: 1.25px solid var(--tone);
   border-radius: 50%;
   background: color-mix(in srgb, var(--tone) 8%, var(--paper-raised));
   color: var(--tone);
-  font: 600 9.5px/1 var(--font-mono);
+  font: 600 0.59375rem/1 var(--font-mono);
 }
 
 [data-skin='orbite'] .type-mark[data-type='bug'] {
@@ -1077,7 +1077,7 @@
 }
 
 [data-skin='orbite'] .priority-mark .glyph {
-  font-size: 10px;
+  font-size: 0.625rem;
   letter-spacing: -0.5px;
 }
 
@@ -1144,7 +1144,7 @@
 
 [data-skin='orbite'] .popover .group-label {
   padding: 8px 10px 4px;
-  font: 500 10px/1 var(--font-mono);
+  font: 500 0.625rem/1 var(--font-mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1177,7 +1177,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font: 500 20px/1.2 var(--font-title);
+  font: 500 1.25rem/1.2 var(--font-title);
 }
 
 [data-skin='orbite'] .modal-title::before {
@@ -1194,8 +1194,8 @@
 
 /* Close: a round button with a drawn cross; the label stays for readers. */
 [data-skin='orbite'] .btn.modal-close {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   padding: 0;
   justify-content: center;
   border: 1px solid var(--orb-edge);
@@ -1297,7 +1297,7 @@
   padding: 3px 11px;
   border: 0;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -1468,7 +1468,7 @@
 }
 
 [data-skin='orbite'] .wiki .panel-title {
-  font: 500 11px/1.2 var(--font-mono);
+  font: 500 0.6875rem/1.2 var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1520,7 +1520,7 @@
 /* Boards ------------------------------------------------------------------------- */
 
 [data-skin='orbite'] .sprint-name {
-  font: 500 19px/1.2 var(--font-title);
+  font: 500 1.1875rem/1.2 var(--font-title);
 }
 
 [data-skin='orbite'] .board {
@@ -1544,7 +1544,7 @@
 }
 
 [data-skin='orbite'] .board-column-title {
-  font: 500 10.5px/1.2 var(--font-mono);
+  font: 500 0.65625rem/1.2 var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1553,7 +1553,7 @@
   padding: 2px 6px;
   border: 1px solid var(--rule-strong);
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 
 [data-skin='orbite'] .board-column.is-over {
@@ -1739,12 +1739,12 @@
 
   [data-skin='orbite'] .topbar .nav-link {
     white-space: nowrap;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   [data-skin='orbite'] .btn.topbar-create {
-    width: 32px;
-    height: 32px;
+    width: 2rem;
+    height: 2rem;
     padding: 0;
     justify-content: center;
     border-radius: 50%;
@@ -1782,7 +1782,7 @@
 
   [data-skin='orbite'] table.ledger:has(.c-summary) tbody tr {
     display: grid;
-    grid-template-columns: 20px auto minmax(0, 1fr) auto;
+    grid-template-columns: 1.25rem auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 7px 10px;
     padding: 11px 14px;
@@ -1819,7 +1819,7 @@
 
   [data-skin='orbite'] table.ledger:has(.c-summary) td.num {
     grid-area: 1 / 3 / 2 / 5;
-    font-size: 11.5px;
+    font-size: 0.71875rem;
   }
 
   /* Row 2: the summary, full width. */
@@ -1845,7 +1845,7 @@
   [data-skin='orbite'] table.ledger:has(.c-summary) td.c-who {
     grid-area: 3 / 3;
     max-width: none;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   [data-skin='orbite'] table.ledger:has(.c-summary) td.c-due {
@@ -1856,7 +1856,7 @@
 
 @media (max-width: 760px) {
   [data-skin='orbite'] .page-head .page-title {
-    font-size: 25px;
+    font-size: 1.5625rem;
   }
 
   [data-skin='orbite'] .ledger th:first-child,
