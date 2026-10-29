@@ -515,7 +515,7 @@
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
     padding: 6px 8px;
-    min-height: 34px;
+    min-height: 2.125rem;
     display: flex;
     align-items: center;
   }

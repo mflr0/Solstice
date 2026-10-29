@@ -249,12 +249,12 @@
     left: auto;
     right: 0;
     top: calc(100% + 6px);
-    width: min(460px, calc(100vw - 24px));
-    max-height: min(70vh, 520px);
+    width: min(28.75rem, calc(100vw - 24px));
+    max-height: min(70vh, 32.5rem);
     list-style: none;
     margin: 0;
     color: var(--ink);
-    font: 13.5px/1.35 var(--font-body);
+    font: 0.84375rem/1.35 var(--font-body);
   }
 
   .quick-search-results li[role='option'] {
@@ -280,13 +280,13 @@
   }
 
   .who {
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     color: var(--muted);
   }
 
   .hint {
     flex: none;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -303,7 +303,7 @@
     display: inline-flex;
     width: auto;
     padding: 3px 8px 5px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--ink-soft);
     text-decoration: underline;
     text-decoration-style: dotted;
@@ -312,7 +312,7 @@
 
   .glass {
     color: var(--muted);
-    width: 18px;
+    width: 1.125rem;
     text-align: center;
   }
 

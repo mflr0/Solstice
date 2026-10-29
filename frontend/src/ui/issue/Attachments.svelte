@@ -176,7 +176,7 @@
   }
 
   .ext {
-    font: 600 13px/1 var(--font-mono);
+    font: 600 0.8125rem/1 var(--font-mono);
     letter-spacing: 0.06em;
     padding: 4px 7px;
     border: 1.5px solid var(--ink-soft);
@@ -196,14 +196,14 @@
   }
 
   .name {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .sub {
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     color: var(--muted);
   }
 
@@ -211,8 +211,8 @@
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 22px;
-    height: 22px;
+    width: 1.375rem;
+    height: 1.375rem;
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
     cursor: pointer;
@@ -234,7 +234,7 @@
     width: auto;
     padding: 0 6px;
     opacity: 1;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .drop {
@@ -244,7 +244,7 @@
     place-items: center;
     margin: 0;
     background: color-mix(in srgb, var(--paper) 85%, transparent);
-    font: var(--title-italic) 16px var(--font-title);
+    font: var(--title-italic) 1rem var(--font-title);
     color: var(--accent-text);
     pointer-events: none;
   }

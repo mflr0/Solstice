@@ -41,8 +41,8 @@
   .glyph {
     color: var(--priority-color, var(--ink-soft));
     display: inline-block;
-    min-width: 18px;
-    font-size: 10.5px;
+    min-width: 1.125rem;
+    font-size: 0.65625rem;
     letter-spacing: -1px;
     line-height: 1;
   }

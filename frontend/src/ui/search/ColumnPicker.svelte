@@ -128,7 +128,7 @@
     align-items: center;
     gap: 8px;
     padding: 4px 0;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
     cursor: pointer;
   }
 
@@ -147,7 +147,7 @@
     margin: 6px 0 2px;
     padding: 6px 12px 0;
     border-top: 1px solid var(--rule);
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 

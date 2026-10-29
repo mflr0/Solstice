@@ -21,7 +21,7 @@
 <style>
   .source-links {
     margin: 0;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 </style>

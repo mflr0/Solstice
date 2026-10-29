@@ -159,7 +159,7 @@
 <style>
   .textarea.plain {
     min-height: 0;
-    font: 14px/1.5 var(--font-body);
+    font: 0.875rem/1.5 var(--font-body);
   }
 
   .count {

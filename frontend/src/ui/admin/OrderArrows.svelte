@@ -38,7 +38,7 @@
 
 <style>
   .arrow {
-    width: 24px;
+    width: 1.5rem;
     padding: 0;
     justify-content: center;
   }

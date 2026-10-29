@@ -274,11 +274,11 @@
 
   .field > .link-btn.hint {
     justify-self: start;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .mono {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 </style>

@@ -526,7 +526,7 @@
     display: flex;
     gap: 8px;
     align-items: baseline;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--muted);
     margin-bottom: 10px;
   }
@@ -546,7 +546,7 @@
   }
 
   h1 {
-    font-size: 29px;
+    font-size: 1.8125rem;
     line-height: 1.2;
     max-width: 62ch;
   }
@@ -568,7 +568,7 @@
 
   .summary-input {
     width: 100%;
-    font: var(--title-weight) 29px/1.2 var(--font-title);
+    font: var(--title-weight) 1.8125rem/1.2 var(--font-title);
     border: none;
     border-bottom: 2px solid var(--accent);
     background: transparent;
@@ -585,11 +585,11 @@
     align-items: center;
     gap: 8px 10px;
     margin-top: 14px;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .resolution {
-    font: var(--title-italic) 14px var(--font-title);
+    font: var(--title-italic) 0.875rem var(--font-title);
     color: var(--ink-soft);
   }
 
@@ -606,7 +606,7 @@
     display: inline-flex;
     gap: 5px;
     align-items: center;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .actions {
@@ -617,7 +617,7 @@
   }
 
   .n {
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     color: var(--muted);
   }
 
@@ -628,7 +628,7 @@
   .more .popover {
     right: 0;
     top: calc(100% + 4px);
-    min-width: 240px;
+    min-width: 15rem;
   }
 
   .danger {
@@ -638,13 +638,13 @@
 
   .note {
     margin: 12px 0 0;
-    font: var(--title-italic) 13.5px var(--font-title);
+    font: var(--title-italic) 0.84375rem var(--font-title);
     color: var(--stamp-doing);
   }
 
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) 21.25rem;
     gap: 40px;
     align-items: start;
   }
@@ -690,8 +690,8 @@
   }
 
   .subtasks .who {
-    width: 150px;
-    font-size: 13px;
+    width: 9.375rem;
+    font-size: 0.8125rem;
   }
 
   .activity {

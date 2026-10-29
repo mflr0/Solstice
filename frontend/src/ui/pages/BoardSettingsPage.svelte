@@ -691,16 +691,16 @@
   .fields {
     display: grid;
     gap: 14px;
-    max-width: 720px;
+    max-width: 45rem;
   }
 
   .narrow {
-    max-width: 320px;
+    max-width: 20rem;
   }
 
   .mono {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .query {
@@ -708,12 +708,12 @@
     padding: 6px 8px;
     background: var(--paper-sunk);
     border: 1px solid var(--rule);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     overflow-wrap: anywhere;
   }
 
   .hint {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
     margin: 0;
   }
@@ -736,7 +736,7 @@
 
   .sub {
     margin: 18px 0 6px;
-    font: 600 13px/1.2 var(--font-body);
+    font: 600 0.8125rem/1.2 var(--font-body);
   }
 
   .bar {
@@ -753,13 +753,13 @@
   }
 
   .unsaved {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   /* Columns, side by side like on the board. */
   .columns {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(13.75rem, 1fr));
     gap: 12px;
     margin: 0;
     padding: 0;
@@ -809,7 +809,7 @@
 
   .icon {
     padding: 0 6px;
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
 
   .tools {
@@ -825,7 +825,7 @@
   .add-column {
     display: grid;
     place-items: center;
-    min-height: 120px;
+    min-height: 7.5rem;
     border: 1px dashed var(--rule-strong);
     border-radius: var(--radius-m);
   }
@@ -848,7 +848,7 @@
     width: auto;
     padding-block: 2px;
     padding-left: 6px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   /* Quick filters and lanes: one row each. */
@@ -862,7 +862,7 @@
 
   .row-edit {
     display: grid;
-    grid-template-columns: minmax(140px, 1fr) minmax(220px, 2fr) minmax(140px, 1fr) auto;
+    grid-template-columns: minmax(8.75rem, 1fr) minmax(13.75rem, 2fr) minmax(8.75rem, 1fr) auto;
     gap: 8px;
     align-items: end;
     padding-bottom: 10px;
@@ -879,7 +879,7 @@
     align-items: center;
     padding-bottom: 6px;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .check input,
@@ -915,7 +915,7 @@
 
   .field-choice :global(.select) {
     width: auto;
-    min-width: 200px;
+    min-width: 12.5rem;
   }
 
   @media (max-width: 760px) {

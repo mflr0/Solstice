@@ -191,7 +191,7 @@
     flex-wrap: wrap;
     gap: 6px 12px;
     margin-bottom: 6px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   header :global(.who) {
@@ -199,7 +199,7 @@
   }
 
   .when {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .edited {
@@ -207,7 +207,7 @@
   }
 
   .restricted {
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     color: var(--accent-text);
     border: 1px solid var(--margin-line);
     padding: 0 5px;
@@ -217,7 +217,7 @@
     margin-left: auto;
     display: flex;
     gap: 12px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .tools .armed {

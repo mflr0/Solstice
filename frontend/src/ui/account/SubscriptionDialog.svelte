@@ -186,6 +186,6 @@
   }
 
   .hour {
-    max-width: 200px;
+    max-width: 12.5rem;
   }
 </style>

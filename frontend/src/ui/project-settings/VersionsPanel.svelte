@@ -395,7 +395,7 @@
   }
 
   .c-order {
-    width: 64px;
+    width: 4rem;
     white-space: nowrap;
   }
 
@@ -411,7 +411,7 @@
 
   /* Five actions: let them wrap rather than widen the table. */
   td.row-actions {
-    max-width: 280px;
+    max-width: 17.5rem;
     white-space: normal;
   }
 </style>

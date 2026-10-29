@@ -439,13 +439,13 @@
 <style>
   /* As wide as the board, so switching views keeps the header in place. */
   .backlog-page {
-    max-width: 1640px;
+    max-width: 102.5rem;
   }
 
   .notice {
     margin: 0 0 12px;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .backlog-section {
@@ -465,7 +465,7 @@
     margin: 0;
     padding: 10px 4px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
     text-align: center;
   }
 </style>

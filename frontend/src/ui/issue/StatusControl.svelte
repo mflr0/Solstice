@@ -138,7 +138,7 @@
 
   .caret {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .trigger:hover .caret {
@@ -148,7 +148,7 @@
   .popover {
     left: 0;
     top: calc(100% + 6px);
-    min-width: 280px;
+    min-width: 17.5rem;
   }
 
   .item {

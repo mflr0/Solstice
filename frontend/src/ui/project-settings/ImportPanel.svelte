@@ -242,7 +242,7 @@
   }
 
   td.summary {
-    min-width: 200px;
+    min-width: 12.5rem;
     overflow-wrap: anywhere;
   }
 

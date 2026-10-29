@@ -55,7 +55,7 @@
     border-bottom: 1px solid var(--rule-strong);
     background: var(--paper-sunk);
     color: var(--ink);
-    font-size: 13.5px;
+    font-size: 0.84375rem;
     line-height: 1.45;
   }
 
@@ -71,6 +71,6 @@
   }
 
   :global(.app-banner-hide) {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 </style>

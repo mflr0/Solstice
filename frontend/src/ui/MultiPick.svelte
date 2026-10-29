@@ -162,7 +162,7 @@
     align-items: center;
     gap: 6px;
     width: 100%;
-    min-height: 26px;
+    min-height: 1.625rem;
     border: 1px solid transparent;
     background: none;
     padding: 2px 4px;
@@ -192,19 +192,19 @@
   .caret {
     margin-left: auto;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .popover {
     left: -6px;
     top: calc(100% + 4px);
-    width: 260px;
+    width: 16.25rem;
   }
 
   .filter {
     margin: 4px 8px 6px;
     width: calc(100% - 16px);
-    height: 28px;
+    height: 1.75rem;
   }
 
   .create {
@@ -212,7 +212,7 @@
   }
 
   .note {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .pad {

@@ -334,11 +334,11 @@
 <style>
   .count {
     margin-left: 6px;
-    font: 500 14px/1 var(--font-mono);
+    font: 500 0.875rem/1 var(--font-mono);
   }
 
   .c-order {
-    width: 92px;
+    width: 5.75rem;
     white-space: nowrap;
   }
 
@@ -346,7 +346,7 @@
     display: inline-block;
     width: 14px;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 0.6875rem;
     letter-spacing: -2px;
     cursor: grab;
   }

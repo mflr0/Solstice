@@ -39,7 +39,7 @@
   }
 
   .range {
-    font: 12.5px var(--font-mono);
+    font: 0.78125rem var(--font-mono);
     color: var(--muted);
     margin-right: 6px;
   }

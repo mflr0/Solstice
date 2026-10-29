@@ -147,9 +147,9 @@
 
   .pick-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(11.875rem, 1fr));
     gap: 6px 14px;
-    max-height: 200px;
+    max-height: 12.5rem;
     overflow: auto;
   }
 </style>

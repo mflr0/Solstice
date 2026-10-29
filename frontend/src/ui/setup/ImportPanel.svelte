@@ -270,7 +270,7 @@
     padding: 0;
     display: grid;
     gap: 4px;
-    max-height: 320px;
+    max-height: 20rem;
     overflow: auto;
   }
 
@@ -309,12 +309,12 @@
   }
 
   .who .key {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--ink-soft);
   }
 
   .who .muted {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     overflow-wrap: anywhere;
   }
 </style>

@@ -278,9 +278,9 @@
 
   .group-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(11.25rem, 1fr));
     gap: 6px 14px;
-    max-height: 220px;
+    max-height: 13.75rem;
     overflow: auto;
   }
 </style>

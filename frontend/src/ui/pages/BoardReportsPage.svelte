@@ -310,7 +310,7 @@
 
 <style>
   .reports-page {
-    max-width: 1100px;
+    max-width: 68.75rem;
   }
 
   .kinds {
@@ -321,29 +321,29 @@
   }
 
   .average {
-    max-width: 320px;
+    max-width: 20rem;
   }
 
   .over {
     display: block;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .picker {
-    max-width: 360px;
+    max-width: 22.5rem;
     margin: 0 0 16px;
   }
 
   .notice {
     margin: 0 0 12px;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .totals {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(8.125rem, 1fr));
     gap: 8px;
     margin: 16px 0 24px;
   }
@@ -357,13 +357,13 @@
 
   .total dt {
     color: var(--ink-soft);
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .total dd {
     margin: 4px 0 0;
     color: var(--ink);
-    font-size: 18px;
+    font-size: 1.125rem;
     font-variant-numeric: tabular-nums;
   }
 
@@ -373,7 +373,7 @@
 
   .section-title .count {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: normal;
   }
 
@@ -393,21 +393,21 @@
   }
 
   .report-issue .summary {
-    flex: 1 1 200px;
+    flex: 1 1 12.5rem;
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
   .added {
     color: var(--accent-text);
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   .estimate {
     min-width: 4em;
     margin-left: auto;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
     text-align: right;
   }

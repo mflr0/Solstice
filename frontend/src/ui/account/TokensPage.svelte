@@ -226,7 +226,7 @@
   .secret {
     display: grid;
     gap: 10px;
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 22px;
   }
 
@@ -235,12 +235,12 @@
   }
 
   .new {
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 8px;
   }
 
   .date {
-    max-width: 220px;
+    max-width: 13.75rem;
   }
 
   @media (max-width: 760px) {

@@ -422,12 +422,12 @@
   .legend {
     flex: 1;
     margin: 0;
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
   .field-error {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--accent-text);
   }
 
@@ -436,7 +436,7 @@
   }
 
   .summary {
-    font: var(--title-weight) 16px/1.3 var(--font-title);
+    font: var(--title-weight) 1rem/1.3 var(--font-title);
     padding: 8px 10px;
   }
 
@@ -444,7 +444,7 @@
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
     padding: 6px 8px;
-    min-height: 34px;
+    min-height: 2.125rem;
     display: flex;
     align-items: center;
   }

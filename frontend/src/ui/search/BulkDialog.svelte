@@ -355,7 +355,7 @@
   }
 
   .item .hint {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 
@@ -373,7 +373,7 @@
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
     padding: 6px 8px;
-    min-height: 34px;
+    min-height: 2.125rem;
     display: flex;
     align-items: center;
     flex-wrap: wrap;

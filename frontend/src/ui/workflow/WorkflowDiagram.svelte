@@ -147,7 +147,7 @@
 
   .caption {
     padding-top: 2px;
-    font: 500 11px/1.2 var(--font-body);
+    font: 500 0.6875rem/1.2 var(--font-body);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--muted);
@@ -223,7 +223,7 @@
 
   .bus text {
     fill: var(--muted);
-    font: italic 400 11.5px var(--font-body);
+    font: italic 400 0.71875rem var(--font-body);
   }
 
   .start {

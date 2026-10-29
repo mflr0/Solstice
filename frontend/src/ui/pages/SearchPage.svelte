@@ -241,14 +241,14 @@
 
   .modified {
     margin-left: 8px;
-    font: italic 400 14px/1 var(--font-body);
+    font: italic 400 0.875rem/1 var(--font-body);
     color: var(--accent-text);
     vertical-align: 0.25em;
   }
 
   .description {
     margin: 6px 0 0;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
   }
 
   .head-actions {
@@ -257,14 +257,14 @@
 
   .search-layout {
     display: grid;
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 13.125rem minmax(0, 1fr);
     gap: 28px;
     align-items: start;
   }
 
   .search-layout > :global(.saved-filters) {
     position: sticky;
-    top: 74px;
+    top: calc(3.375rem + 20px);
   }
 
   .gone {
@@ -282,7 +282,7 @@
     border: 1px solid var(--rule);
     border-radius: var(--radius-xs);
     background: var(--paper-sunk);
-    font: 12.5px/1.5 var(--font-mono);
+    font: 0.78125rem/1.5 var(--font-mono);
     overflow-wrap: anywhere;
   }
 

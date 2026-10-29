@@ -300,7 +300,7 @@
 
   .grip {
     color: var(--muted);
-    font-size: 11px;
+    font-size: 0.6875rem;
     letter-spacing: -2px;
     cursor: grab;
   }
@@ -340,35 +340,35 @@
    */
   @media (min-width: 1000px) {
     section :global(th.c-key) {
-      min-width: 90px;
+      min-width: 5.625rem;
     }
 
     section :global(th.c-status) {
-      min-width: 128px;
+      min-width: 8rem;
     }
 
     section :global(th.c-priority) {
-      min-width: 40px;
+      min-width: 2.5rem;
     }
 
     section :global(th.c-assignee) {
-      min-width: 160px;
+      min-width: 10rem;
     }
 
     section :global(th.c-due) {
-      min-width: 140px;
+      min-width: 8.75rem;
     }
 
     section :global(th.c-updated) {
-      min-width: 156px;
+      min-width: 9.75rem;
     }
 
     section :global(.ledger:not(:has(.c-assignee)) th.c-priority) {
-      min-width: calc(40px + 160px);
+      min-width: calc(2.5rem + 10rem);
     }
 
     section :global(.ledger:not(:has(.c-due)) th.c-updated) {
-      min-width: calc(156px + 140px);
+      min-width: calc(9.75rem + 8.75rem);
     }
   }
 

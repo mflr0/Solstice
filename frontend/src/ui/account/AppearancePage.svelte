@@ -175,7 +175,7 @@
 
   .skins {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
     gap: 8px;
   }
 
@@ -246,6 +246,6 @@
   }
 
   .gallery {
-    max-width: 720px;
+    max-width: 45rem;
   }
 </style>

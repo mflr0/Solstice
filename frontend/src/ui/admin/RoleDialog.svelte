@@ -107,6 +107,6 @@
 
   .short {
     min-height: 0;
-    font: 14px/1.4 var(--font-body);
+    font: 0.875rem/1.4 var(--font-body);
   }
 </style>

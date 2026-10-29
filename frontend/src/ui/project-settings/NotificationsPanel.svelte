@@ -176,6 +176,6 @@
 
   th.cell {
     white-space: normal;
-    min-width: 90px;
+    min-width: 5.625rem;
   }
 </style>

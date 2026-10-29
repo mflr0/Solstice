@@ -225,7 +225,7 @@
   .stage {
     display: grid;
     gap: 12px;
-    max-width: 720px;
+    max-width: 45rem;
   }
 
   .stage p,
@@ -236,7 +236,7 @@
   .warning {
     display: grid;
     gap: 8px;
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 22px;
   }
 

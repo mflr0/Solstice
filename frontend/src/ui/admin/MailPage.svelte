@@ -449,7 +449,7 @@
 
 <style>
   .problem {
-    max-width: 720px;
+    max-width: 45rem;
     margin-bottom: 22px;
   }
 
@@ -463,7 +463,7 @@
 
   .test {
     margin-top: 28px;
-    max-width: 720px;
+    max-width: 45rem;
   }
 
   .test-row {
@@ -474,7 +474,7 @@
   }
 
   .test-row .grow {
-    min-width: 220px;
+    min-width: 13.75rem;
   }
 
   .kind {

@@ -283,7 +283,7 @@
   }
 
   .count {
-    font: 12.5px var(--font-mono);
+    font: 0.78125rem var(--font-mono);
     color: var(--muted);
     margin-right: auto;
   }
@@ -298,22 +298,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--ink-soft);
     white-space: nowrap;
   }
 
   .sort-field :global(.select) {
     width: auto;
-    height: 28px;
+    height: 1.75rem;
     padding-block: 2px;
     padding-left: 6px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .sort-dir {
-    font-size: 14px;
-    min-width: 26px;
+    font-size: 0.875rem;
+    min-width: 1.625rem;
     justify-content: center;
   }
 
@@ -339,7 +339,7 @@
     padding: 6px 10px;
     border-left: 3px solid var(--stamp-doing);
     background-color: var(--paper-sunk);
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-soft);
   }
 

@@ -39,7 +39,7 @@
   }
 
   .sheet {
-    width: min(360px, 100%);
+    width: min(22.5rem, 100%);
     background: var(--paper-raised);
     border: var(--frame) solid var(--rule);
     border-radius: var(--radius-l);
@@ -55,24 +55,24 @@
   }
 
   .wordmark {
-    font: var(--title-weight) 34px/1 var(--font-title);
+    font: var(--title-weight) 2.125rem/1 var(--font-title);
     letter-spacing: -0.015em;
   }
 
   .tagline {
     margin: 6px 0 24px;
     color: var(--muted);
-    font: var(--title-italic) 15px var(--font-title);
+    font: var(--title-italic) 0.9375rem var(--font-title);
   }
 
   .sheet :global(.auth-title) {
     margin: 0 0 8px;
-    font: var(--title-weight) 20px/1.2 var(--font-title);
+    font: var(--title-weight) 1.25rem/1.2 var(--font-title);
   }
 
   .sheet :global(.auth-lead) {
     margin: 0 0 16px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     line-height: 1.5;
     color: var(--muted);
   }
@@ -84,13 +84,13 @@
 
   .sheet :global(.submit) {
     justify-content: center;
-    height: 36px;
+    height: 2.25rem;
     margin-top: 4px;
   }
 
   .sheet :global(.aside) {
     margin: 14px 0 0;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--muted);
   }
 
@@ -102,7 +102,7 @@
     margin: 18px 0 0;
     padding-top: 12px;
     border-top: 1px solid var(--rule);
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--muted);
   }
 </style>

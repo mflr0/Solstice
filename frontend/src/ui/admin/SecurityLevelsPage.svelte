@@ -261,7 +261,7 @@
 
 <style>
   .project-pick {
-    min-width: 260px;
+    min-width: 16.25rem;
   }
 
   .levels {
@@ -302,16 +302,16 @@
   }
 
   .label {
-    min-width: 64px;
+    min-width: 4rem;
   }
 
   .member {
     font-family: var(--font-body);
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .kind {
-    font: 500 11px/1 var(--font-body);
+    font: 500 0.6875rem/1 var(--font-body);
     color: var(--muted);
   }
 

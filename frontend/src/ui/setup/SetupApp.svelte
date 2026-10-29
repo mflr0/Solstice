@@ -212,7 +212,7 @@
 <style>
   .setup {
     min-height: 100vh;
-    max-width: 780px;
+    max-width: 48.75rem;
     margin: 0 auto;
     padding: 32px 20px 40px;
   }
@@ -242,7 +242,7 @@
   }
 
   .wordmark {
-    font: var(--title-weight) 26px/1 var(--font-title);
+    font: var(--title-weight) 1.625rem/1 var(--font-title);
     letter-spacing: -0.015em;
   }
 
@@ -280,18 +280,18 @@
     align-items: center;
     gap: 7px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   .setup-steps .num {
     display: inline-grid;
     place-items: center;
-    min-width: 22px;
-    height: 22px;
+    min-width: 1.375rem;
+    height: 1.375rem;
     padding: 0 4px;
     border: var(--frame) solid var(--rule-strong);
     border-radius: var(--radius-xs);
-    font: 500 11.5px/1 var(--font-mono);
+    font: 500 0.71875rem/1 var(--font-mono);
   }
 
   .setup-steps li.is-done .num {
@@ -311,7 +311,7 @@
 
   .counter {
     margin: 0 0 6px;
-    font: 500 11px/1.2 var(--font-body);
+    font: 500 0.6875rem/1.2 var(--font-body);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--muted);
@@ -324,7 +324,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 4px 12px;
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
     color: var(--muted);
   }
 

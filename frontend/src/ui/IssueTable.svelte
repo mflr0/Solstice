@@ -261,13 +261,13 @@
   }
 
   .c-who {
-    max-width: 180px;
+    max-width: 11.25rem;
     white-space: nowrap;
   }
 
   .c-due {
     white-space: nowrap;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 
   .late {
@@ -280,7 +280,7 @@
 
   .c-extra .text {
     display: inline-block;
-    max-width: 220px;
+    max-width: 13.75rem;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;

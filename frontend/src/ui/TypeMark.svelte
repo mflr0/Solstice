@@ -34,14 +34,14 @@
     --tone: var(--tone-task);
     display: inline-grid;
     place-items: center;
-    width: 18px;
-    height: 18px;
+    width: 1.125rem;
+    height: 1.125rem;
     flex: none;
     border: 1px solid var(--tone);
     border-radius: var(--radius-xs);
     color: var(--tone);
     background: var(--paper-raised);
-    font: 600 10.5px/1 var(--font-mono);
+    font: 600 0.65625rem/1 var(--font-mono);
   }
 
   .bug {

@@ -72,11 +72,11 @@ docker compose logs solstice</pre>
 
 <style>
   .code-field {
-    max-width: 260px;
+    max-width: 16.25rem;
   }
 
   .code-input {
-    font: 500 22px/1.2 var(--font-mono);
+    font: 500 1.375rem/1.2 var(--font-mono);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 8px 12px;

@@ -83,12 +83,12 @@
 
   .saved-title {
     margin: 0 0 8px;
-    font: var(--title-weight) 15px/1.2 var(--font-title);
+    font: var(--title-weight) 0.9375rem/1.2 var(--font-title);
   }
 
   .group-label {
     margin: 14px 0 4px;
-    font: 500 11.5px/1 var(--font-body);
+    font: 500 0.71875rem/1 var(--font-body);
     color: var(--muted);
   }
 
@@ -111,13 +111,13 @@
 
   .star {
     flex: none;
-    width: 24px;
-    height: 26px;
+    width: 1.5rem;
+    height: 1.625rem;
     border: none;
     background: none;
     padding: 0;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 0.875rem;
     cursor: pointer;
   }
 
@@ -134,7 +134,7 @@
     min-width: 0;
     padding: 4px 6px 4px 0;
     text-decoration: none;
-    font-size: 13.5px;
+    font-size: 0.84375rem;
     line-height: 1.3;
   }
 
@@ -147,12 +147,12 @@
   }
 
   .owner {
-    font-size: 11.5px;
+    font-size: 0.71875rem;
     color: var(--muted);
   }
 
   .small {
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
 
   /* Narrow screens: a button unfolds the list above the search. */

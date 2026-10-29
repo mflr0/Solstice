@@ -159,7 +159,7 @@
   }
 
   .current:not(.select) {
-    min-height: 26px;
+    min-height: 1.625rem;
     border: 1px solid transparent;
     background: none;
     padding: 2px 4px;
@@ -179,7 +179,7 @@
   .framed .current :global(.who .avatar.avatar) {
     width: auto;
     height: 100%;
-    max-height: 20px;
+    max-height: 1.25rem;
     aspect-ratio: 1;
   }
 
@@ -194,7 +194,7 @@
   .caret {
     margin-left: auto;
     color: var(--muted);
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
 
   .nobody {
@@ -205,13 +205,13 @@
   .popover {
     left: -6px;
     top: calc(100% + 4px);
-    width: 260px;
+    width: 16.25rem;
   }
 
   .filter {
     margin: 4px 8px 6px;
     width: calc(100% - 16px);
-    height: 28px;
+    height: 1.75rem;
   }
 
   ul {
@@ -222,6 +222,6 @@
 
   .item .user {
     margin-left: auto;
-    font: 11.5px var(--font-mono);
+    font: 0.71875rem var(--font-mono);
   }
 </style>

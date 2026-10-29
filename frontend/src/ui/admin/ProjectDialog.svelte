@@ -373,14 +373,14 @@
 
   .mono {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
     letter-spacing: 0.04em;
   }
 
   /* A line of explanation under a field, close to it. */
   .note {
     margin: -8px 0 0;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     line-height: 1.45;
   }
 
@@ -389,7 +389,7 @@
   }
 
   .field-error {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--accent-text);
   }
 
@@ -418,7 +418,7 @@
 
   .type-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
     gap: 6px 14px;
   }
 
@@ -430,7 +430,7 @@
   }
 
   .hint {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 

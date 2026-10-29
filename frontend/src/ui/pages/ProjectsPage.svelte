@@ -98,7 +98,7 @@
 
 <style>
   .c-key {
-    width: 90px;
+    width: 5.625rem;
   }
 
   .c-name {
@@ -110,7 +110,7 @@
   }
 
   .name {
-    font: var(--title-weight) 15.5px/1.3 var(--font-title);
+    font: var(--title-weight) 0.96875rem/1.3 var(--font-title);
     text-decoration: none;
   }
 
@@ -120,7 +120,7 @@
 
   .kind {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: 0.75rem;
   }
 
   td.num a {

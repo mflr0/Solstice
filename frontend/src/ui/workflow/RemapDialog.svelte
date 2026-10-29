@@ -108,7 +108,7 @@
 
   .group {
     margin: 6px 0 0;
-    font: 600 13px/1.4 var(--font-body);
+    font: 600 0.8125rem/1.4 var(--font-body);
     color: var(--ink-soft);
   }
 
@@ -123,12 +123,12 @@
   }
 
   .moves :global(.select) {
-    min-width: 160px;
+    min-width: 10rem;
   }
 
   .hint {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 </style>

@@ -239,12 +239,12 @@
 <style>
   .type-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr));
     gap: 6px 14px;
   }
 
   .hint {
-    font-size: 12.5px;
+    font-size: 0.78125rem;
     color: var(--muted);
   }
 </style>

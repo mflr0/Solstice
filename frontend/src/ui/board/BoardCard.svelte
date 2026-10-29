@@ -157,7 +157,7 @@
   }
 
   .parent {
-    font: 11.5px/1 var(--font-mono);
+    font: 0.71875rem/1 var(--font-mono);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -223,14 +223,14 @@
   .avatar {
     display: inline-grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
+    width: 1.375rem;
+    height: 1.375rem;
     flex: none;
     border: 1px solid var(--rule-strong);
     border-radius: var(--avatar-radius);
     background: var(--paper);
     color: var(--ink-soft);
-    font: 500 9.5px/1 var(--font-mono);
+    font: 500 0.59375rem/1 var(--font-mono);
   }
 
   /* Backlog rows: everything on one line. */
@@ -256,7 +256,7 @@
   }
 
   .backlog-row .epic {
-    max-width: 180px;
+    max-width: 11.25rem;
   }
 
   .backlog-row .tools {

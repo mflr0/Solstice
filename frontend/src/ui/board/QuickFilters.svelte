@@ -44,13 +44,13 @@
   }
 
   .label {
-    font: 500 12px/1.2 var(--font-body);
+    font: 500 0.75rem/1.2 var(--font-body);
     color: var(--muted);
     margin-right: 4px;
   }
 
   .link-btn {
     margin-left: 6px;
-    font-size: 12.5px;
+    font-size: 0.78125rem;
   }
 </style>
