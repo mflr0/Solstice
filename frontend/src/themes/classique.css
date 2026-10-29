@@ -104,12 +104,12 @@
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
-  --font-size: 14px;
+  --font-size: 0.875rem;
   --title-weight: 600;
   --h1-weight: 600;
   --title-tracking: -0.01em;
   --title-italic: normal;
-  --empty-font: 400 14px/1.5 var(--font-body);
+  --empty-font: 400 0.875rem/1.5 var(--font-body);
 
   --frame: 1px;
   --radius-xs: 3px;
@@ -120,7 +120,7 @@
   --card-top: 1px solid var(--rule);
 
   /* Lozenges: bold capitals on a tint of their own ink, no outline. */
-  --stamp-font: 700 11px/1.35 var(--font-body);
+  --stamp-font: 700 0.6875rem/1.35 var(--font-body);
   --stamp-case: uppercase;
   --stamp-tracking: 0.02em;
   --stamp-border: 0px;
@@ -128,7 +128,7 @@
   --stamp-padding: 1px 5px;
   --stamp-fill: 14%;
   --stamp-dot: none;
-  --stamp-large-size: 12px;
+  --stamp-large-size: 0.75rem;
   --stamp-large-padding: 5px 9px;
   --stamp-large-border: 0px;
   --stamp-large-tracking: 0.02em;
@@ -304,12 +304,12 @@
 }
 
 [data-skin='classique'] h1 {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1.25;
 }
 
 [data-skin='classique'] h2 {
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 [data-skin='classique'] a {
@@ -342,7 +342,7 @@
 
 [data-skin='classique'] .topbar-inner {
   max-width: none;
-  --bar-height: 52px;
+  --bar-height: 3.25rem;
   padding: 0 20px;
   column-gap: 8px;
 }
@@ -360,7 +360,7 @@
 }
 
 [data-skin='classique'] .topbar .wordmark {
-  font: 600 17px/1 var(--font-body);
+  font: 600 1.0625rem/1 var(--font-body);
   letter-spacing: -0.005em;
 }
 
@@ -434,16 +434,16 @@
 
 /* The cells grow to share the row; the padding is only their least. */
 [data-skin='classique'] .topbar.is-stacked .nav-link {
-  height: 40px;
+  height: 2.5rem;
   padding: 0 4px;
 }
 
 [data-skin='classique'] .topbar-search {
-  width: min(280px, 26vw);
+  width: min(17.5rem, 26vw);
 }
 
 [data-skin='classique'] .topbar-search .input {
-  height: 32px;
+  height: 2rem;
   padding: 5px 30px 5px 32px;
   border: 1px solid var(--cl-bar-field-border);
   border-radius: var(--radius-s);
@@ -453,7 +453,7 @@
   background-repeat: no-repeat;
   background-position: 11px center;
   color: var(--bar-ink);
-  font: 400 14px/1.3 var(--font-body);
+  font: 400 0.875rem/1.3 var(--font-body);
   box-shadow: none;
 }
 
@@ -483,7 +483,7 @@
   color: var(--bar-ink-soft);
   border-color: currentColor;
   border-bottom-width: 1px;
-  font: 600 11px/1 var(--font-body);
+  font: 600 0.6875rem/1 var(--font-body);
   padding: 2px 5px;
   opacity: 1;
 }
@@ -506,8 +506,8 @@
 }
 
 [data-skin='classique'] .topbar .topbar-themes {
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
   color: var(--bar-ink-soft);
 }
@@ -538,8 +538,8 @@
 [data-skin='classique'] .topbar .account-button {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
 }
 
@@ -549,12 +549,12 @@
 }
 
 [data-skin='classique'] .topbar .account-button .avatar {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   border: 0;
   background: var(--cl-bar-avatar);
   color: var(--cl-avatar-ink);
-  font: 600 12px/1 var(--font-body);
+  font: 600 0.75rem/1 var(--font-body);
 }
 
 [data-skin='classique'] .topbar .account-menu {
@@ -584,14 +584,14 @@
 
 [data-skin='classique'] .eyebrow {
   margin-bottom: 4px;
-  font: 400 13px/1.3 var(--font-body);
+  font: 400 0.8125rem/1.3 var(--font-body);
   letter-spacing: 0;
   text-transform: none;
   color: var(--muted);
 }
 
 [data-skin='classique'] h1.page-title {
-  font: 600 24px/1.25 var(--font-body);
+  font: 600 1.5rem/1.25 var(--font-body);
   letter-spacing: -0.01em;
   color: var(--ink);
 }
@@ -608,14 +608,14 @@
   border-radius: var(--radius-s);
   background: var(--cl-avatar);
   color: var(--cl-avatar-ink);
-  font: 700 13px/1 var(--font-body);
+  font: 700 0.8125rem/1 var(--font-body);
   letter-spacing: 0.02em;
   vertical-align: 3px;
 }
 
 /* Result counts beside titles and filters. */
 [data-skin='classique'] .page span.count.muted {
-  font: 400 13px/1.3 var(--font-body);
+  font: 400 0.8125rem/1.3 var(--font-body);
   color: var(--muted);
 }
 
@@ -624,7 +624,7 @@
   align-items: center;
   gap: 8px;
   margin: 26px 0 8px;
-  font: 600 16px/1.3 var(--font-body);
+  font: 600 1rem/1.3 var(--font-body);
   letter-spacing: 0;
   color: var(--ink);
 }
@@ -638,19 +638,19 @@
   border-radius: 10px;
   background: var(--cl-count);
   color: var(--ink-soft);
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='classique'] .section-title .actions {
   margin-left: auto;
   font-weight: 400;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='classique'] .section-title .link-btn {
   color: var(--accent-text);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='classique'] .section-title .link-btn:hover {
@@ -660,7 +660,7 @@
 [data-skin='classique'] .page-crumbs {
   gap: 6px;
   margin-bottom: 8px;
-  font: 400 14px/1.4 var(--font-body);
+  font: 400 0.875rem/1.4 var(--font-body);
   color: var(--muted);
 }
 
@@ -684,14 +684,14 @@
 /* Buttons ------------------------------------------------------------------- */
 
 [data-skin='classique'] .btn {
-  height: 32px;
+  height: 2rem;
   padding: 0 12px;
   gap: 6px;
   border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: var(--cl-btn);
   color: var(--ink);
-  font: 500 14px/1 var(--font-body);
+  font: 500 0.875rem/1 var(--font-body);
 }
 
 [data-skin='classique'] .btn:hover:not([disabled]) {
@@ -759,9 +759,9 @@
 }
 
 [data-skin='classique'] .btn.btn-small {
-  height: 28px;
+  height: 1.75rem;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 [data-skin='classique'] .btn[disabled],
@@ -787,7 +787,7 @@
   padding: 2px 4px;
   border: 1px solid currentColor;
   border-radius: var(--radius-xs);
-  font: 600 10.5px/1 var(--font-body);
+  font: 600 0.65625rem/1 var(--font-body);
   opacity: 0.75;
 }
 
@@ -811,12 +811,12 @@
   background-color: var(--cl-field);
   color: var(--ink);
   padding: 5px 8px;
-  font: 400 14px/1.4 var(--font-body);
+  font: 400 0.875rem/1.4 var(--font-body);
 }
 
 [data-skin='classique'] .input,
 [data-skin='classique'] .select {
-  min-height: 32px;
+  min-height: 2rem;
 }
 
 [data-skin='classique'] .input:hover,
@@ -878,12 +878,12 @@
 
 [data-skin='classique'] .field > span:first-child,
 [data-skin='classique'] .field-label {
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 0.75rem/1.3 var(--font-body);
   color: var(--ink-soft);
 }
 
 [data-skin='classique'] .field .hint {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -906,7 +906,7 @@
 
 /* Pickers framed like fields inside forms (the new issue dialog). */
 [data-skin='classique'] dialog.modal .boxed {
-  min-height: 32px;
+  min-height: 2rem;
   padding: 3px 8px;
   border: 1px solid var(--cl-field-border);
   border-radius: var(--radius-s);
@@ -928,7 +928,7 @@
 }
 
 [data-skin='classique'] .labels .add {
-  font: 400 14px/1.4 var(--font-body);
+  font: 400 0.875rem/1.4 var(--font-body);
 }
 
 [data-skin='classique'] .labels .add::placeholder {
@@ -937,9 +937,9 @@
 
 /* The search bar: a drawn magnifier, room for it, plain type. */
 [data-skin='classique'] .search .input {
-  height: 34px;
+  height: 2.125rem;
   padding-left: 32px;
-  font: 400 14px/1.4 var(--font-body);
+  font: 400 0.875rem/1.4 var(--font-body);
 }
 
 [data-skin='classique'] .search .glass {
@@ -953,7 +953,7 @@
 
 [data-skin='classique'] .search .mode {
   border-radius: var(--radius-xs);
-  font: 700 10px/1 var(--font-body);
+  font: 700 0.625rem/1 var(--font-body);
 }
 
 /* Chips, keys and marks ----------------------------------------------------- */
@@ -964,7 +964,7 @@
   border-radius: var(--radius-s);
   background: var(--paper-sunk);
   color: var(--ink-soft);
-  font: 400 12px/1.6 var(--font-body);
+  font: 400 0.75rem/1.6 var(--font-body);
 }
 
 [data-skin='classique'] a.chip,
@@ -979,7 +979,7 @@
 
 /* Issue keys read as plain blue links, not code. */
 [data-skin='classique'] .key {
-  font: 500 14px/1.3 var(--font-body);
+  font: 500 0.875rem/1.3 var(--font-body);
   letter-spacing: 0;
 }
 
@@ -1008,13 +1008,13 @@
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
   border: 0;
   border-radius: var(--radius-xs);
   background: var(--tone-task);
   color: var(--paper-raised);
-  font: 700 10px/1 var(--font-body);
+  font: 700 0.625rem/1 var(--font-body);
 }
 
 [data-skin='classique'] .type-mark.type-mark[data-type='bug'] {
@@ -1035,7 +1035,7 @@
 }
 
 [data-skin='classique'] .priority-mark .glyph {
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: -1.5px;
 }
 
@@ -1045,25 +1045,25 @@
   border-radius: 50%;
   background: var(--cl-avatar);
   color: var(--cl-avatar-ink);
-  font: 600 9px/1 var(--font-body);
+  font: 600 0.5625rem/1 var(--font-body);
   letter-spacing: 0;
 }
 
 [data-skin='classique'] .who .avatar.avatar {
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
 /* Tables -------------------------------------------------------------------- */
 
 [data-skin='classique'] table.ledger {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='classique'] .ledger th {
   padding: 6px 8px 7px;
   border-bottom: 2px solid var(--rule);
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 0.75rem/1.3 var(--font-body);
   color: var(--muted);
   vertical-align: bottom;
 }
@@ -1088,13 +1088,13 @@
 }
 
 [data-skin='classique'] .ledger .num {
-  font: 400 13px/1.3 var(--font-body);
+  font: 400 0.8125rem/1.3 var(--font-body);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 
 [data-skin='classique'] .ledger th.num {
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='classique'] .ledger td.num a {
@@ -1102,7 +1102,7 @@
 }
 
 [data-skin='classique'] .ledger .c-type {
-  width: 24px;
+  width: 1.5rem;
 }
 
 /* Overdue dates in red: blue is for links here. */
@@ -1112,12 +1112,12 @@
 }
 
 [data-skin='classique'] .ledger td .who {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 /* Projects list: project names as links. */
 [data-skin='classique'] .ledger a.name {
-  font: 500 14px/1.3 var(--font-body);
+  font: 500 0.875rem/1.3 var(--font-body);
   color: var(--accent-text);
 }
 
@@ -1137,7 +1137,7 @@
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: 500 14px/1.2 var(--font-body);
+  font: 500 0.875rem/1.2 var(--font-body);
 }
 
 [data-skin='classique'] .tabs .tab.tab + .tab {
@@ -1164,7 +1164,7 @@
   border-radius: 9px;
   background: var(--cl-count);
   color: var(--ink-soft);
-  font: 600 11px/1.3 var(--font-body);
+  font: 600 0.6875rem/1.3 var(--font-body);
 }
 
 /* The editor's Write / Preview switch: a small segmented control. */
@@ -1181,7 +1181,7 @@
   border-radius: 0;
   background: var(--paper-raised);
   color: var(--ink-soft);
-  font: 500 12px/1.3 var(--font-body);
+  font: 500 0.75rem/1.3 var(--font-body);
 }
 
 [data-skin='classique'] .tabs.tabs-folder .tab.tab + .tab {
@@ -1228,7 +1228,7 @@
 [data-skin='classique'] .popover .item {
   padding: 7px 16px;
   color: var(--ink);
-  font: 400 14px/1.35 var(--font-body);
+  font: 400 0.875rem/1.35 var(--font-body);
 }
 
 [data-skin='classique'] .popover .item:hover,
@@ -1262,7 +1262,7 @@
 
 [data-skin='classique'] .popover .group-label {
   padding: 8px 16px 4px;
-  font: 700 11px/1.2 var(--font-body);
+  font: 700 0.6875rem/1.2 var(--font-body);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1275,7 +1275,7 @@
 /* Dialogs ------------------------------------------------------------------- */
 
 [data-skin='classique'] dialog.modal {
-  width: min(760px, 94vw);
+  width: min(47.5rem, 94vw);
   border: 0;
   border-radius: var(--radius-l);
   background: var(--paper-raised);
@@ -1296,14 +1296,14 @@
 
 [data-skin='classique'] .modal-head h2,
 [data-skin='classique'] .modal-title {
-  font: 600 20px/1.3 var(--font-body);
+  font: 600 1.25rem/1.3 var(--font-body);
   letter-spacing: -0.01em;
 }
 
 /* The close button as a plain cross. */
 [data-skin='classique'] .btn.modal-close {
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
   justify-content: center;
   background: transparent;
@@ -1356,12 +1356,12 @@
   border-bottom: 1px solid var(--rule);
   border-radius: var(--radius-m) var(--radius-m) 0 0;
   background: var(--paper-sunk);
-  font: 600 14px/1.2 var(--font-body);
+  font: 600 0.875rem/1.2 var(--font-body);
   color: var(--ink);
 }
 
 [data-skin='classique'] .card .card-head .key {
-  font: 400 13px/1 var(--font-body);
+  font: 400 0.8125rem/1 var(--font-body);
   color: var(--muted);
 }
 
@@ -1377,7 +1377,7 @@
 }
 
 [data-skin='classique'] .fiche dt {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--muted);
 }
@@ -1402,11 +1402,11 @@
 }
 
 [data-skin='classique'] .fiche .nums {
-  font: 400 12px/1.4 var(--font-body);
+  font: 400 0.75rem/1.4 var(--font-body);
 }
 
 [data-skin='classique'] .fiche .date {
-  font: 400 14px/1.3 var(--font-body);
+  font: 400 0.875rem/1.3 var(--font-body);
 }
 
 [data-skin='classique'] .fiche .dropdown.quiet {
@@ -1433,7 +1433,7 @@
   border-radius: var(--radius-m);
   background: var(--paper-raised);
   box-shadow: var(--cl-shadow-lift);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 /* A round sign before the message: "i" for news, "!" for trouble. */
@@ -1450,7 +1450,7 @@
   border-radius: 50%;
   background: var(--accent);
   color: var(--paper-raised);
-  font: 700 12px/1 var(--font-body);
+  font: 700 0.75rem/1 var(--font-body);
 }
 
 [data-skin='classique'] .toast.error::before {
@@ -1459,7 +1459,7 @@
 }
 
 [data-skin='classique'] .toast .link-btn {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* Empty, lost, waiting ------------------------------------------------------ */
@@ -1523,7 +1523,7 @@
 }
 
 [data-skin='classique'] .issue-head h1.page-title {
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1.3;
 }
 
@@ -1534,7 +1534,7 @@
 }
 
 [data-skin='classique'] .issue-head .summary-input {
-  font: 600 24px/1.3 var(--font-body);
+  font: 600 1.5rem/1.3 var(--font-body);
   border: 1px solid var(--focus);
   border-radius: var(--radius-s);
   box-shadow: 0 0 0 1px var(--focus);
@@ -1545,7 +1545,7 @@
 [data-skin='classique'] .issue-meta.issue-meta {
   gap: 8px 10px;
   margin-top: 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='classique'] .issue-meta .dot {
@@ -1553,11 +1553,11 @@
 }
 
 [data-skin='classique'] .issue-meta .created {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 [data-skin='classique'] .issue-meta .n {
-  font: 600 12px/1 var(--font-body);
+  font: 600 0.75rem/1 var(--font-body);
   color: inherit;
   opacity: 0.8;
 }
@@ -1603,13 +1603,13 @@
 }
 
 [data-skin='classique'] .issue-meta .resolution {
-  font: 600 13px/1 var(--font-body);
+  font: 600 0.8125rem/1 var(--font-body);
   color: var(--stamp-done);
 }
 
 [data-skin='classique'] .issue-layout.issue-layout {
   gap: 32px;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 21.25rem;
 }
 
 @media (max-width: 980px) {
@@ -1630,7 +1630,7 @@
 }
 
 [data-skin='classique'] .issue-sheet .relation {
-  font: 600 12px/1.4 var(--font-body);
+  font: 600 0.75rem/1.4 var(--font-body);
   color: var(--muted);
 }
 
@@ -1648,7 +1648,7 @@
   border-radius: var(--radius-s);
   border-color: var(--margin-line);
   color: var(--accent-text);
-  font: 500 12px/1.5 var(--font-body);
+  font: 500 0.75rem/1.5 var(--font-body);
 }
 
 [data-skin='classique'] .issue-activity .comment .wiki:not(.editor-content),
@@ -1675,7 +1675,7 @@
   border-radius: var(--radius-s);
   background: var(--cl-avatar);
   color: var(--cl-avatar-ink);
-  font: 700 12px/1 var(--font-body);
+  font: 700 0.75rem/1 var(--font-body);
   letter-spacing: 0.04em;
   padding: 6px 8px;
 }
@@ -1692,7 +1692,7 @@
 /* Wiki text ----------------------------------------------------------------- */
 
 [data-skin='classique'] .wiki {
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
@@ -1707,15 +1707,15 @@
 }
 
 [data-skin='classique'] .wiki h1 {
-  font-size: 20px;
+  font-size: 1.25rem;
 }
 
 [data-skin='classique'] .wiki h2 {
-  font-size: 17px;
+  font-size: 1.0625rem;
 }
 
 [data-skin='classique'] .wiki h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 [data-skin='classique'] .wiki pre {
@@ -1803,11 +1803,11 @@
 }
 
 [data-skin='classique'] .sprint-name {
-  font: 600 18px/1.25 var(--font-body);
+  font: 600 1.125rem/1.25 var(--font-body);
 }
 
 [data-skin='classique'] .sprint-dates {
-  font: 400 13px/1.3 var(--font-body);
+  font: 400 0.8125rem/1.3 var(--font-body);
 }
 
 [data-skin='classique'] .board {
@@ -1827,7 +1827,7 @@
 }
 
 [data-skin='classique'] .board-column-title {
-  font: 600 12px/1.2 var(--font-body);
+  font: 600 0.75rem/1.2 var(--font-body);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1839,7 +1839,7 @@
   border-radius: 9px;
   background: var(--cl-count);
   color: var(--ink-soft);
-  font: 600 11px/1.2 var(--font-body);
+  font: 600 0.6875rem/1.2 var(--font-body);
 }
 
 [data-skin='classique'] .board-column.is-over {
@@ -1868,7 +1868,7 @@
   border-radius: var(--radius-s);
   background: var(--paper-raised);
   box-shadow: var(--cl-shadow-card);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 [data-skin='classique'] .board-card:hover {
@@ -1888,7 +1888,7 @@
 /* Sign-in ------------------------------------------------------------------- */
 
 [data-skin='classique'] .login-card.login-card {
-  width: min(380px, 100%);
+  width: min(23.75rem, 100%);
   padding: 30px 32px 24px;
   border: 1px solid var(--rule);
   border-radius: var(--radius-m);
@@ -1906,19 +1906,19 @@
 }
 
 [data-skin='classique'] .login-card .wordmark {
-  font: 600 26px/1 var(--font-body);
+  font: 600 1.625rem/1 var(--font-body);
   letter-spacing: -0.015em;
 }
 
 [data-skin='classique'] .login-card .tagline {
   margin: 8px 0 22px;
   text-align: center;
-  font: 400 14px/1.4 var(--font-body);
+  font: 400 0.875rem/1.4 var(--font-body);
   color: var(--muted);
 }
 
 [data-skin='classique'] .login-card .submit {
-  height: 36px;
+  height: 2.25rem;
 }
 
 /* Motion: short and quiet, and only for those who have not asked for less. */
@@ -2033,7 +2033,7 @@
 
   [data-skin='classique'] h1.page-title,
   [data-skin='classique'] .issue-head h1.page-title {
-    font-size: 21px;
+    font-size: 1.3125rem;
   }
 }
 
@@ -2057,7 +2057,7 @@
 
   /* The create button shrinks to a square "+"; its label stays for screen readers. */
   [data-skin='classique'] .topbar .btn-primary.topbar-create {
-    width: 32px;
+    width: 2rem;
     margin-left: 2px;
     padding: 0;
     justify-content: center;
