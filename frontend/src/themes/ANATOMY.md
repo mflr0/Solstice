@@ -23,8 +23,9 @@ Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `pl
   pseudo-element and filter that.
 - **Sizes in rem**: `--font-size`, every font size and the layout sizes
   (`--bar-height`, page and column widths, control heights) in rem, at 16 px
-  to the rem (14px → `0.875rem`), so they follow the browser's font size.
-  Paddings, gaps, borders, radii, shadows and `@media` widths stay px.
+  to the rem (14px → `0.875rem`), so they follow the browser's font size
+  and the wide-screen steps of app.css (1rem grows by 1/16 at 1600, 1920 and
+  2560 px). No px font size but `0`: a test fails on one. Paddings, gaps, borders, radii, shadows and `@media` widths stay px.
 - No `!important` unless a Svelte inline `style=` forces it.
 
 ### How the file is loaded (you do not need to do anything)

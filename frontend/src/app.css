@@ -135,9 +135,30 @@
   box-sizing: border-box;
 }
 
-/* The browser's font size sets 1rem, so a user's preference scales every size. */
+/*
+ * The browser's font size sets 1rem, so a user's preference scales every size.
+ * Wide screens add 1/16 of it per step.
+ */
 :root {
   font-size: 100%;
+}
+
+@media (min-width: 1600px) {
+  :root {
+    font-size: 106.25%;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    font-size: 112.5%;
+  }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    font-size: 118.75%;
+  }
 }
 
 /* The skin root: <html>, or a preview in the theme gallery. */
