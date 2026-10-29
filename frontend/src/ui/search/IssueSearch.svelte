@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    clickSort,
     currentSort,
     emptyFilters,
     filtersToJql,
@@ -10,6 +11,7 @@
     type FilterState,
     type SortField,
   } from '../../core/filters.js';
+  import type { SortTerm } from '../../core/jql.js';
   import { readLocation, writeLocation, type SearchLocation } from '../../core/filters-url.js';
   import {
     exportColumns,
@@ -165,8 +167,12 @@
     go({ jql, mode: 'jql', page: loc.page });
   }
 
+  function setOrder(order: SortTerm[]) {
+    applyFilters({ ...filters, order }, `sort:${Date.now()}`);
+  }
+
   function setSort(field: SortField, desc: boolean) {
-    applyFilters({ ...filters, order: sortBy(field, desc) }, `sort:${Date.now()}`);
+    setOrder(sortBy(field, desc));
   }
 </script>
 
@@ -259,6 +265,8 @@
         columns={chosen}
         {names}
         {selectable}
+        sort={filters.order}
+        onsort={visual ? (column) => setOrder(clickSort(column, filters.order)) : undefined}
         page={loc.page}
         ontotal={(n) => (total = n)}
         onerror={(m, at) => {

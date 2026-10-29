@@ -433,13 +433,73 @@ export function currentSort(order: SortTerm[]): { field: SortField; desc: boolea
 }
 
 /** A single-field sort; the default (latest updates first) is written as nothing. */
-export function sortBy(field: SortField, desc: boolean): SortTerm[] {
+export function sortBy(field: string, desc: boolean): SortTerm[] {
   return field === 'updated' && desc ? [] : [{ field, desc }];
 }
 
-/** The natural direction of a sort. */
-export function naturalDesc(field: SortField): boolean {
-  return SORTS.find((s) => s.field === field)?.desc ?? false;
+/** The natural direction of a sort: dates newest first, counts and priority highest first. */
+export function naturalDesc(field: string): boolean {
+  return SORTS.find((s) => s.field === field)?.desc ?? (field === 'votes' || field === 'watchers');
+}
+
+/** The ORDER BY field of each system column of the search results the server sorts by. */
+const COLUMN_SORTS: Record<string, string> = {
+  issuekey: 'key',
+  summary: 'summary',
+  issuetype: 'type',
+  project: 'project',
+  status: 'status',
+  priority: 'priority',
+  resolution: 'resolution',
+  resolutiondate: 'resolved',
+  assignee: 'assignee',
+  reporter: 'reporter',
+  creator: 'creator',
+  created: 'created',
+  updated: 'updated',
+  duedate: 'due',
+  labels: 'labels',
+  components: 'component',
+  fixVersions: 'fixVersion',
+  versions: 'affectedVersion',
+  parent: 'parent',
+  security: 'level',
+  watches: 'watchers',
+  votes: 'votes',
+  timeoriginalestimate: 'originalEstimate',
+  timeestimate: 'remainingEstimate',
+  timespent: 'timeSpent',
+  epic: 'Epic Link',
+  sprint: 'sprint',
+};
+
+/** The field ORDER BY sorts a column by; null for a column it can't take. */
+export function columnSort(column: string): string | null {
+  const custom = /^customfield_(\d+)$/.exec(column);
+  if (custom) return `cf[${custom[1]}]`;
+  return Object.hasOwn(COLUMN_SORTS, column) ? (COLUMN_SORTS[column] ?? null) : null;
+}
+
+const sortName = (field: string) => (fieldInfo(field)?.name ?? field).toLowerCase();
+
+/** How an order sorts by a column first: true descending, false ascending, null not by it. */
+export function columnDirection(column: string, order: readonly SortTerm[]): boolean | null {
+  const field = columnSort(column);
+  const first = order[0] ?? { field: 'updated', desc: true };
+  return field !== null && sortName(first.field) === sortName(field) ? first.desc : null;
+}
+
+/**
+ * The order after a click on a column header: the column in its natural
+ * direction, then reversed, then the default order.
+ */
+export function clickSort(column: string, order: SortTerm[]): SortTerm[] {
+  const field = columnSort(column);
+  if (field === null) return order;
+  const natural = naturalDesc(field);
+  const now = columnDirection(column, order);
+  if (now === null) return sortBy(field, natural);
+  return now === natural ? sortBy(field, !natural) : [];
 }
 
 /* Dates --------------------------------------------------------------------- */

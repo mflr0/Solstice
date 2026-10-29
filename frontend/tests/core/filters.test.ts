@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   categoryClause,
+  clickSort,
+  columnDirection,
+  columnSort,
   currentSort,
   dayRange,
   emptyFilters,
@@ -305,6 +308,51 @@ describe('sorting', () => {
     expect(currentSort([{ field: 'rank', desc: false }])).toBeNull();
     expect(sortBy('updated', true)).toEqual([]);
     expect(sortBy('updated', false)).toEqual([{ field: 'updated', desc: false }]);
+  });
+
+  it('maps columns to the fields ORDER BY takes', () => {
+    expect(columnSort('duedate')).toBe('due');
+    expect(columnSort('issuetype')).toBe('type');
+    expect(columnSort('issuekey')).toBe('key');
+    expect(columnSort('security')).toBe('level');
+    expect(columnSort('customfield_10100')).toBe('cf[10100]');
+    expect(columnSort('description')).toBeNull();
+    expect(columnSort('worklog')).toBeNull();
+    expect(columnSort('toString')).toBeNull();
+  });
+
+  it('reads which column an order sorts by', () => {
+    expect(columnDirection('updated', [])).toBe(true);
+    expect(columnDirection('duedate', [{ field: 'duedate', desc: false }])).toBe(false);
+    expect(columnDirection('issuetype', [{ field: 'Type', desc: true }])).toBe(true);
+    expect(columnDirection('status', [{ field: 'priority', desc: true }])).toBeNull();
+    expect(columnDirection('status', [])).toBeNull();
+    expect(columnDirection('description', [{ field: 'description', desc: true }])).toBeNull();
+  });
+
+  it('cycles a header click through natural, reversed and default', () => {
+    const due1 = clickSort('duedate', []);
+    expect(due1).toEqual([{ field: 'due', desc: false }]);
+    const due2 = clickSort('duedate', due1);
+    expect(due2).toEqual([{ field: 'due', desc: true }]);
+    expect(clickSort('duedate', due2)).toEqual([]);
+
+    const created1 = clickSort('created', [{ field: 'key', desc: false }]);
+    expect(created1).toEqual([{ field: 'created', desc: true }]);
+    expect(clickSort('created', created1)).toEqual([{ field: 'created', desc: false }]);
+    expect(clickSort('votes', [])).toEqual([{ field: 'votes', desc: true }]);
+    expect(clickSort('customfield_7', [])).toEqual([{ field: 'cf[7]', desc: false }]);
+  });
+
+  it('cycles updated in two steps, its natural order being the default', () => {
+    const reversed = clickSort('updated', []);
+    expect(reversed).toEqual([{ field: 'updated', desc: false }]);
+    expect(clickSort('updated', reversed)).toEqual([]);
+  });
+
+  it('leaves the order alone for a column with no sort', () => {
+    const order = [{ field: 'key', desc: false }];
+    expect(clickSort('description', order)).toBe(order);
   });
 });
 

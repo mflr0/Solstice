@@ -163,6 +163,11 @@ func TestCompileOrder(t *testing.T) {
 	if !strings.Contains(order, "FROM priorities WHERE id = i.priority_id) ASC") || !strings.HasSuffix(order, "p.pkey ASC, i.num ASC") {
 		t.Errorf("order %s", order)
 	}
+	for _, f := range []string{"creator", "votes", "watchers", "level", "labels", "parent"} {
+		if _, _, _, err := Compile(&Query{Order: []Sort{{Field: f}}}, Env{}); err != nil {
+			t.Errorf("ORDER BY %s: %v", f, err)
+		}
+	}
 	_, _, order = compile(t, `project = DEMO`)
 	if order != "i.updated_at DESC" {
 		t.Errorf("default order %s", order)

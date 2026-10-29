@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { SortTerm } from '../core/jql.js';
   import { serverColumns } from '../core/search-columns.js';
   import type { IssuePage } from '../core/types.js';
   import { t } from '../i18n/t.js';
@@ -32,6 +33,9 @@
     names?: Record<string, string> | undefined;
     /** Rows can be selected and changed together (edit, status, move, delete). */
     selectable?: boolean | undefined;
+    /** The query's order and what a header click does (IssueTable's). */
+    sort?: readonly SortTerm[] | undefined;
+    onsort?: ((column: string) => void) | undefined;
   }
   const {
     q = '',
@@ -47,6 +51,8 @@
     columns,
     names,
     selectable = false,
+    sort,
+    onsort,
   }: Props = $props();
 
   let selected = $state<string[]>([]);
@@ -150,6 +156,8 @@
     {columns}
     {names}
     {selected}
+    {sort}
+    {onsort}
     onselect={selectable ? (keys) => (selected = keys) : undefined}
   />
   {#if onpage}
