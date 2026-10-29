@@ -1093,6 +1093,20 @@ func systemSort(field, dir string) ([]string, bool) {
 		expr = "(SELECT display_name FROM users WHERE id = i.assignee_id)"
 	case "reporter":
 		expr = "(SELECT display_name FROM users WHERE id = i.reporter_id)"
+	case "creator":
+		expr = "(SELECT display_name FROM users WHERE id = i.creator_id)"
+	case "votes":
+		expr = "(SELECT COUNT(*) FROM votes WHERE issue_id = i.id)"
+	case "watchers":
+		expr = "(SELECT COUNT(*) FROM watchers WHERE issue_id = i.id)"
+	case "level":
+		expr = "(SELECT name FROM security_levels WHERE id = i.security_level_id)"
+	case "labels":
+		expr = "(SELECT MIN(l.label) FROM labels l WHERE l.issue_id = i.id AND l.field_id IS NULL)"
+	case "parent":
+		return []string{"i.parent_id IS NULL",
+			"(SELECT p2.pkey FROM issues i2 JOIN projects p2 ON p2.id = i2.project_id WHERE i2.id = i.parent_id)" + dir,
+			"(SELECT i2.num FROM issues i2 WHERE i2.id = i.parent_id)" + dir}, true
 	case "project":
 		expr = "p.pkey"
 	case "type", "issuetype":

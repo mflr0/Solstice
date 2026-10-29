@@ -511,6 +511,7 @@ func TestJQLQueriesRun(t *testing.T) {
 		`"Epic Link" is not EMPTY ORDER BY "Epic Link", "Story Points" DESC, fixVersion, component`,
 		`timespent > 2h OR originalEstimate >= 1d OR remainingEstimate < 30`,
 		`key in issueHistory()`,
+		`ORDER BY creator, votes DESC, watchers DESC, level, labels, parent`,
 	} {
 		status, body := c.do("GET", "/api/issues?q="+url.QueryEscape(q), nil)
 		if status != 200 {

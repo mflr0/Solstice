@@ -1,5 +1,7 @@
 <script lang="ts">
   import { isOverdue } from '../core/dates.js';
+  import { columnDirection, columnSort } from '../core/filters.js';
+  import type { SortTerm } from '../core/jql.js';
   import { paths } from '../core/route.js';
   import { shortcutFor } from '../core/shortcuts.js';
   import type { IssueSummary } from '../core/types.js';
@@ -32,6 +34,10 @@
      */
     selected?: readonly string[] | undefined;
     onselect?: ((keys: string[]) => void) | undefined;
+    /** The query's order, which the headers show. */
+    sort?: readonly SortTerm[] | undefined;
+    /** With it, the headers of the columns ORDER BY takes are buttons that report a click. */
+    onsort?: ((column: string) => void) | undefined;
   }
   const {
     issues,
@@ -40,6 +46,8 @@
     names = {},
     selected = [],
     onselect,
+    sort = [],
+    onsort,
   }: Props = $props();
   const allSelected = $derived(issues.length > 0 && issues.every((i) => selected.includes(i.key)));
   const someSelected = $derived(!allSelected && issues.some((i) => selected.includes(i.key)));
@@ -75,6 +83,12 @@
     resolution: t.search.fields.resolution,
   };
 
+  function ariaSort(column: string): 'ascending' | 'descending' | undefined {
+    if (!onsort) return undefined;
+    const desc = columnDirection(column, sort);
+    return desc === null ? undefined : desc ? 'descending' : 'ascending';
+  }
+
   function open(e: MouseEvent, key: string) {
     if ((e.target as Element).closest('a, button, label, input')) return;
     router.navigate(paths.issue(key));
@@ -108,6 +122,27 @@
 
 <svelte:window onkeydown={keys} />
 
+{#snippet label(column: string, name: string, hidden = false)}
+  {#if onsort && columnSort(column) !== null}
+    {@const desc = columnDirection(column, sort)}
+    <button
+      type="button"
+      class="sort"
+      class:sorted={desc !== null}
+      onclick={() => onsort?.(column)}
+    >
+      {#if hidden}<span class="sr-only">{name}</span>{:else}{name}{/if}<span
+        class="arrow"
+        aria-hidden="true">{desc === null ? '↕' : desc ? '↓' : '↑'}</span
+      >
+    </button>
+  {:else if hidden}
+    <span class="sr-only">{name}</span>
+  {:else}
+    {name}
+  {/if}
+{/snippet}
+
 <div class="issue-table">
   <table class="ledger">
     <thead>
@@ -125,23 +160,31 @@
             </label>
           </th>
         {/if}
-        {#if showType}<th class="c-type"><span class="sr-only">{t.table.type}</span></th>{/if}
-        <th class="c-key">{t.table.key}</th>
-        <th class="c-summary">{t.table.summary}</th>
+        {#if showType}
+          <th class="c-type" aria-sort={ariaSort('issuetype')}
+            >{@render label('issuetype', t.table.type, true)}</th
+          >
+        {/if}
+        <th class="c-key" aria-sort={ariaSort('issuekey')}
+          >{@render label('issuekey', t.table.key)}</th
+        >
+        <th class="c-summary" aria-sort={ariaSort('summary')}
+          >{@render label('summary', t.table.summary)}</th
+        >
         {#each rest as c (c)}
           {@const name = headers[c] ?? names[c] ?? c}
           {#if c === 'priority'}
-            <th class="c-priority"><span class="sr-only">{name}</span></th>
+            <th class="c-priority" aria-sort={ariaSort(c)}>{@render label(c, name, true)}</th>
           {:else if c === 'status'}
-            <th class="c-status">{name}</th>
+            <th class="c-status" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else if c === 'assignee'}
-            <th class="c-assignee">{name}</th>
+            <th class="c-assignee" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else if c === 'duedate'}
-            <th class="c-due">{name}</th>
+            <th class="c-due" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else if c === 'updated'}
-            <th class="num c-updated">{name}</th>
+            <th class="num c-updated" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else}
-            <th class="c-extra">{name}</th>
+            <th class="c-extra" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {/if}
         {/each}
       </tr>
@@ -214,6 +257,36 @@
 
   tbody tr {
     cursor: pointer;
+  }
+
+  .sort {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .sort:hover,
+  .sorted {
+    color: var(--ink);
+  }
+
+  .arrow {
+    opacity: 0;
+  }
+
+  .sort:hover .arrow,
+  .sort:focus-visible .arrow,
+  .sorted .arrow {
+    opacity: 1;
   }
 
   tbody tr:focus-visible {
