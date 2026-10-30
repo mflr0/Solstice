@@ -146,10 +146,10 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) error {
 		args = append(args, t)
 	}
 	if v := strings.TrimSpace(params.Get("q")); v != "" {
-		like := "%" + sqlq.EscapeLike(strings.ToLower(v)) + "%"
-		where = append(where, `(LOWER(a.target_label) LIKE ? OR LOWER(a.target_id) LIKE ? OR LOWER(a.username) LIKE ?
-			OR a.ip LIKE ? OR LOWER(a.details) LIKE ?)`)
-		args = append(args, like, like, like, like, like)
+		match, matchArgs := sqlq.LikeWords(strings.ToLower(v),
+			"LOWER(a.target_label)", "LOWER(a.target_id)", "LOWER(a.username)", "a.ip", "LOWER(a.details)")
+		where = append(where, match)
+		args = append(args, matchArgs...)
 	}
 	from := ` FROM audit_log a LEFT JOIN users u ON u.id = a.user_id WHERE ` + strings.Join(where, " AND ")
 	var total int

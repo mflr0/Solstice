@@ -104,6 +104,26 @@ func TestEscapeLike(t *testing.T) {
 	}
 }
 
+func TestLikeWords(t *testing.T) {
+	for _, tc := range []struct {
+		q    string
+		cols []string
+		cond string
+		args []any
+	}{
+		{"  ", []string{"a"}, "TRUE", nil},
+		{"alice", []string{"a", "b"}, "((a LIKE ? OR b LIKE ?))", []any{"%alice%", "%alice%"}},
+		{" smith  alice ", []string{"a", "b"}, "((a LIKE ? OR b LIKE ?) AND (a LIKE ? OR b LIKE ?))",
+			[]any{"%smith%", "%smith%", "%alice%", "%alice%"}},
+		{"50%_off x", []string{"a"}, "((a LIKE ?) AND (a LIKE ?))", []any{`%50\%\_off%`, "%x%"}},
+	} {
+		cond, args := LikeWords(tc.q, tc.cols...)
+		if cond != tc.cond || !reflect.DeepEqual(args, tc.args) {
+			t.Errorf("LikeWords(%q, %v) = %q, %#v, want %q, %#v", tc.q, tc.cols, cond, args, tc.cond, tc.args)
+		}
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	for _, tc := range []struct {
 		in   string

@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +47,25 @@ type jobView struct {
 	} `json:"steps"`
 	Warnings []string `json:"warnings"`
 	Error    string   `json:"error"`
+}
+
+// accounts lists the user names of the imported accounts matching q.
+func (c *wizard) accounts(q string) []string {
+	c.t.Helper()
+	req := httptest.NewRequest("GET", "/api/setup/accounts?q="+url.QueryEscape(q), nil)
+	req.RemoteAddr = c.ip + ":40000"
+	req.AddCookie(c.cookie)
+	w := httptest.NewRecorder()
+	c.h.ServeHTTP(w, req)
+	var out []struct{ Username string }
+	if err := json.Unmarshal(w.Body.Bytes(), &out); w.Code != 200 || err != nil {
+		c.t.Fatalf("accounts?q=%s: %d %v %s", q, w.Code, err, w.Body)
+	}
+	var names []string
+	for _, a := range out {
+		names = append(names, a.Username)
+	}
+	return names
 }
 
 // TestImportJob runs the import of the wizard, then the one of the
@@ -138,6 +159,11 @@ func TestImportJob(t *testing.T) {
 		conn.QueryRow(`SELECT COUNT(*) FROM audit_log WHERE action LIKE 'import.%'`).Scan(&audited)
 		if audited != 0 {
 			t.Errorf("%d import entries in the audit log after the wizard", audited)
+		}
+		for q, want := range wordQueries("paul", "martin") {
+			if got := slices.Contains(c.accounts(q), "paul.martin"); got != want {
+				t.Errorf("accounts, q=%q: found paul.martin %v, want %v", q, got, want)
+			}
 		}
 		if status, body := c.call("POST", "/api/setup/admin", "", map[string]string{"existing": "admin"}); status != 200 {
 			t.Fatalf("administrator: %d %v", status, body)

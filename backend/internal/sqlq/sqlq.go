@@ -121,6 +121,28 @@ var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 // pattern so they match as characters; the caller adds the % wildcards.
 func EscapeLike(s string) string { return likeEscaper.Replace(s) }
 
+// LikeWords is a condition that holds when every word of q, split on spaces,
+// is a substring of one of the columns, with its bind arguments; a blank q
+// gives "TRUE". The words are matched as given, so the caller lowers q for
+// case-insensitive columns.
+func LikeWords(q string, cols ...string) (string, []any) {
+	words := strings.Fields(q)
+	if len(words) == 0 {
+		return "TRUE", nil
+	}
+	var conds []string
+	var args []any
+	one := "(" + strings.Join(cols, " LIKE ? OR ") + " LIKE ?)"
+	for _, w := range words {
+		conds = append(conds, one)
+		like := "%" + EscapeLike(w) + "%"
+		for range cols {
+			args = append(args, like)
+		}
+	}
+	return "(" + strings.Join(conds, " AND ") + ")", args
+}
+
 // VarcharWidth is the width, in characters, of the VARCHAR(255) columns that
 // hold names, summaries and descriptions.
 const VarcharWidth = 255

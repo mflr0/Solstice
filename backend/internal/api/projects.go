@@ -231,10 +231,10 @@ func (s *Server) assignableUsers(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	match, matchArgs := sqlq.LikeWords(strings.ToLower(r.URL.Query().Get("q")), "username", "LOWER(display_name)")
 	out := []userRef{}
 	err = sqlq.Each(ctx, s.db, `SELECT id, username, display_name, active FROM users
-		WHERE active AND id IN (`+holders+`) AND (username LIKE ? OR LOWER(display_name) LIKE ?)
+		WHERE active AND id IN (`+holders+`) AND `+match+`
 		ORDER BY display_name LIMIT 30`, func(rows *sql.Rows) error {
 		var u userRef
 		if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Active); err != nil {
@@ -242,7 +242,7 @@ func (s *Server) assignableUsers(w http.ResponseWriter, r *http.Request) error {
 		}
 		out = append(out, u)
 		return nil
-	}, append(args, like, like)...)
+	}, append(args, matchArgs...)...)
 	if err != nil {
 		return err
 	}
