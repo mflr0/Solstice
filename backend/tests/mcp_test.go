@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -186,4 +187,62 @@ func mcpResultText(res *mcp.CallToolResult) string {
 		}
 	}
 	return b.String()
+}
+
+func TestMCPAgile(t *testing.T) {
+	needDB(t)
+	marie := login(t, "marie.durand", jirafixture.Password)
+	board, sprint := scopeBoard(t, marie, "WEB")
+	boardID, _ := strconv.ParseInt(board, 10, 64)
+	writes := []string{"update_sprint", "delete_sprint", "move_issues_to_sprint", "move_issues_to_backlog", "rank_issues"}
+
+	// A read token lists boards and sprints, but no tool that changes them.
+	reader := mcpSession(t, mcpToken(t, "marie.durand", auth.ScopeRead))
+	if tools := mcpToolNames(t, reader); slices.ContainsFunc(writes, func(w string) bool { return slices.Contains(tools, w) }) {
+		t.Errorf("read token lists agile writes: %v", tools)
+	}
+	var boards struct{ Values []struct{ ID int64 } }
+	mcpCall(t, reader, "list_boards", map[string]any{"projectKeyOrId": "WEB", "type": "scrum"}, &boards)
+	if !slices.ContainsFunc(boards.Values, func(b struct{ ID int64 }) bool { return b.ID == boardID }) {
+		t.Errorf("list_boards: %+v, want board %d", boards, boardID)
+	}
+	var sprints struct {
+		Values []struct {
+			ID    int64
+			State string
+		}
+	}
+	mcpCall(t, reader, "list_sprints", map[string]any{"boardId": boardID}, &sprints)
+	if len(sprints.Values) != 1 || sprints.Values[0].ID != sprint || sprints.Values[0].State != "future" {
+		t.Errorf("list_sprints: %+v, want future sprint %d", sprints, sprint)
+	}
+	res := mcpRawCall(t, reader, "update_sprint", map[string]any{"sprintId": sprint, "state": "active"})
+	if !res.IsError || !strings.Contains(mcpResultText(res), "agile:write") {
+		t.Errorf("read token calls update_sprint: %s", mcpResultText(res))
+	}
+
+	// An agile:write token starts the sprint, fills it and ranks its issues.
+	writer := mcpSession(t, mcpToken(t, "marie.durand", auth.ScopeAgile))
+	var started struct{ State, StartDate string }
+	mcpCall(t, writer, "update_sprint", map[string]any{"sprintId": sprint, "state": "active",
+		"endDate": "2999-01-01T00:00:00.000+0000"}, &started)
+	if started.State != "active" || started.StartDate == "" {
+		t.Errorf("update_sprint: %+v", started)
+	}
+	first, second := createIssue(t, marie, "WEB", "Planifié par un agent", ""), createIssue(t, marie, "WEB", "Classé par un agent", "")
+	if res := mcpRawCall(t, writer, "move_issues_to_sprint", map[string]any{"sprintId": sprint, "issues": []string{first, second}}); res.IsError {
+		t.Fatalf("move_issues_to_sprint: %s", mcpResultText(res))
+	}
+	if res := mcpRawCall(t, writer, "rank_issues", map[string]any{"issues": []string{second}, "rankBeforeIssue": first}); res.IsError {
+		t.Fatalf("rank_issues: %s", mcpResultText(res))
+	}
+	var inSprint struct{ Issues []struct{ Key string } }
+	mcpCall(t, reader, "list_sprint_issues", map[string]any{"sprintId": sprint}, &inSprint)
+	if len(inSprint.Issues) != 2 || inSprint.Issues[0].Key != second || inSprint.Issues[1].Key != first {
+		t.Errorf("list_sprint_issues: %+v, want %s then %s", inSprint, second, first)
+	}
+	// A rank needs exactly one anchor, as on REST.
+	if res := mcpRawCall(t, writer, "rank_issues", map[string]any{"issues": []string{second}}); !res.IsError {
+		t.Errorf("rank_issues without an anchor: %s", mcpResultText(res))
+	}
 }
