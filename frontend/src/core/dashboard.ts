@@ -4,9 +4,17 @@
  * issues counted by a field) or built in.
  */
 
-import { EMPTY, JQL_FIELD, listClause, type ListField } from './filters.js';
+import {
+  columnDirection,
+  columnSort,
+  EMPTY,
+  JQL_FIELD,
+  listClause,
+  naturalDesc,
+  type ListField,
+} from './filters.js';
 import { toJql } from './filters-url.js';
-import { format, formatOrder, parse, quote } from './jql.js';
+import { format, formatOrder, parse, quote, type SortTerm } from './jql.js';
 
 export type GadgetKind = 'results' | 'count' | 'assigned' | 'reported' | 'recent';
 
@@ -38,6 +46,8 @@ export const MAX_GADGETS = 20;
 export interface GadgetConfig {
   columns?: string[] | undefined;
   size?: number | undefined;
+  /** Replaces the order of the gadget's query; absent, the query keeps its own. */
+  sort?: SortTerm | undefined;
   field?: CountField | undefined;
 }
 
@@ -79,6 +89,45 @@ export function onFilter(kind: GadgetKind): kind is 'results' | 'count' {
 export function gadgetQuery(g: Gadget): string | null {
   if (onFilter(g.kind)) return g.unavailable ? null : (g.filter?.query ?? null);
   return BUILTIN_QUERIES[g.kind];
+}
+
+/** The query in JQL, ordered by sort instead of its own order; as it is when it does not parse. */
+export function sortedQuery(query: string, sort: SortTerm | undefined): string {
+  if (!sort) return query;
+  try {
+    return format({ where: parse(toJql(query)).where, order: [sort] });
+  } catch {
+    return query;
+  }
+}
+
+/** The order of a query in either syntax; none when it does not parse. */
+export function queryOrder(query: string): SortTerm[] {
+  try {
+    return parse(toJql(query)).order;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The gadget's sort after a click on a column header, given the order it
+ * shows: the column in its natural direction (the other one when the gadget
+ * already shows it sorted), then reversed, then none (the query's own order).
+ */
+export function clickGadgetSort(
+  column: string,
+  sort: SortTerm | undefined,
+  shown: readonly SortTerm[],
+): SortTerm | undefined {
+  const field = columnSort(column);
+  if (field === null) return sort;
+  const natural = naturalDesc(field);
+  if (sort && columnDirection(column, [sort]) !== null) {
+    return sort.desc === natural ? { field, desc: !natural } : undefined;
+  }
+  const now = columnDirection(column, shown);
+  return { field, desc: now === null ? natural : !now };
 }
 
 /**

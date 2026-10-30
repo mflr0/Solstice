@@ -10,10 +10,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"solstice/internal/i18n"
+	"solstice/internal/jql"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -30,12 +33,40 @@ const (
 	maxGadgetCols = 30
 )
 
-// gadgetConfig is a gadget's settings: columns and size for a list, field for
-// a count.
+// gadgetConfig is a gadget's settings: columns, size and sort for a list,
+// field for a count.
 type gadgetConfig struct {
 	Columns []string `json:"columns,omitempty"`
 	Size    int      `json:"size,omitempty"`
-	Field   string   `json:"field,omitempty"`
+	// Replaces the order of the gadget's query; absent, the query's own.
+	Sort  *gadgetSort `json:"sort,omitempty"`
+	Field string      `json:"field,omitempty"`
+}
+
+// gadgetSort is an ORDER BY term: a system field clause or cf[id].
+type gadgetSort struct {
+	Field string `json:"field"`
+	Desc  bool   `json:"desc"`
+}
+
+var cfSort = regexp.MustCompile(`^cf\[(\d+)\]$`)
+
+// sortable reports whether ORDER BY takes the field.
+func sortable(field string, custom []customFieldDef) bool {
+	if jql.Sortable(field) {
+		return true
+	}
+	m := cfSort.FindStringSubmatch(field)
+	if m == nil {
+		return false
+	}
+	id, _ := strconv.ParseInt(m[1], 10, 64)
+	for _, f := range custom {
+		if f.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 type gadgetFilter struct {
@@ -188,10 +219,14 @@ func checkGadget(g *gadgetIn, before map[int64]gadgetRow, visible map[int64]*fil
 		if c.Field != "labels" && facetColumns[c.Field] == "" {
 			return failf(http.StatusBadRequest, i18n.DashboardCountFieldUnknown, c.Field)
 		}
-		c.Columns, c.Size = nil, 0
+		c.Columns, c.Size, c.Sort = nil, 0, nil
 		return nil
 	}
 	c.Field = ""
+	// A sort it can't read is dropped, the gadget keeping its query's order.
+	if c.Sort != nil && !sortable(c.Sort.Field, custom) {
+		c.Sort = nil
+	}
 	if c.Size < 0 || c.Size > maxGadgetSize {
 		return failf(http.StatusBadRequest, i18n.DashboardSizeInvalid, maxGadgetSize)
 	}

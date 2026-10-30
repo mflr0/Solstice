@@ -77,7 +77,11 @@
         config:
           kind === 'count'
             ? { field }
-            : { size: Math.min(MAX_SIZE, Math.max(1, Math.round(size) || DEFAULT_SIZE)), columns },
+            : {
+                size: Math.min(MAX_SIZE, Math.max(1, Math.round(size) || DEFAULT_SIZE)),
+                columns,
+                sort: gadget?.config.sort,
+              },
       });
       onclose();
     } catch (err) {
