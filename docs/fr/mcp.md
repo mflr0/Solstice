@@ -36,7 +36,7 @@ voir reste caché, dans les recherches comme par sa clé.
 Les outils répondent dans le JSON de l'API REST de Jira Server (voir
 [rest-api.md](rest-api.md)). Chacun demande une portée ; la liste des outils
 ne montre que ceux que les portées du jeton permettent, et appeler un autre
-outil échoue en nommant la portée qui manque. Tous les outils ci-dessous
+outil échoue en nommant la portée qui manque. Les outils ci-dessous
 demandent `read`.
 
 | Outil | Donne |
@@ -57,8 +57,15 @@ demandent `read`.
 | `search_groups`, `list_group_members` | Les groupes et leurs membres |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | Les catalogues de l'instance |
 | `get_server_info` | La version et l'adresse du serveur |
+| `list_favourite_filters`, `get_filter` | Les filtres enregistrés : les favoris de l'utilisateur, ou un filtre par son id |
 
-Les tableaux, sprints, filtres, versions et composants, et les outils qui
+Ces outils modifient quelque chose, chacun sous sa propre portée :
+
+| Outil | Portée | Fait |
+|---|---|---|
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
+
+Les tableaux, sprints, versions et composants, et les autres outils qui
 modifient quelque chose, ne sont pas encore proposés.
 
 ## Connecter Claude Code

@@ -1,14 +1,16 @@
 package api
 
 // The tools of the MCP endpoint. Each one runs a handler of the REST API on
-// a GET rewritten from its arguments, so that what an agent sees and may do
-// stays exactly what the REST API allows.
+// a request rewritten from its arguments, so that what an agent sees and may
+// do stays exactly what the REST API allows.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,6 +27,7 @@ import (
 type mcpTool struct {
 	name, desc string
 	scope      auth.Scope
+	method     string
 	path       string // under /rest/api/2; {v} stands for the path value v
 	h          func(*Server, http.ResponseWriter, *http.Request) error
 	params     []mcpParam
@@ -33,11 +36,12 @@ type mcpTool struct {
 }
 
 // mcpParam is an argument of a tool: a query parameter of the REST
-// operation, or its path value pathValue.
+// operation, its path value pathValue, or a field of its JSON body.
 type mcpParam struct {
-	name, kind, desc string // kind: string, integer, boolean or list (of strings)
+	name, kind, desc string // kind: string, integer, boolean, list (of strings) or objects
 	required         bool
 	pathValue        string
+	body             bool
 }
 
 // Arguments shared by several tools.
@@ -51,8 +55,25 @@ var (
 )
 
 func mcpRead(name, path string, h func(*Server, http.ResponseWriter, *http.Request) error, desc string, params ...mcpParam) mcpTool {
-	return mcpTool{name: name, desc: desc, scope: auth.ScopeRead, path: path, h: h, params: params}
+	return mcpTool{name: name, desc: desc, scope: auth.ScopeRead, method: http.MethodGet, path: path, h: h, params: params}
 }
+
+func mcpWrite(name string, scope auth.Scope, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error,
+	desc string, params ...mcpParam) mcpTool {
+	return mcpTool{name: name, desc: desc, scope: scope, method: method, path: path, h: h, params: params}
+}
+
+// Arguments of the filter tools.
+var (
+	mcpFilterID   = mcpParam{name: "filterId", kind: "string", desc: "Filter id.", required: true, pathValue: "id"}
+	mcpFilterBody = []mcpParam{
+		{name: "description", kind: "string", desc: "Description; empty to clear it.", body: true},
+		{name: "favourite", kind: "boolean", desc: "Whether the filter is among the user's favourites.", body: true},
+		{name: "sharePermissions", kind: "objects", body: true, desc: `Who else sees the filter, replacing the current shares: ` +
+			`{"type":"global"}, {"type":"group","group":{"name":"..."}}, {"type":"project","project":{"key":"..."}}, ` +
+			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"..."}} or {"type":"user","user":{"name":"..."}}.`},
+	}
+)
 
 // mcpTools are the tools of the endpoint.
 var mcpTools = []mcpTool{
@@ -167,6 +188,26 @@ var mcpTools = []mcpTool{
 	mcpRead("list_issue_link_types", "/issueLinkType", (*Server).restLinkTypes,
 		"Kinds of issue links, with their inward and outward names."),
 	mcpRead("get_server_info", "/serverInfo", (*Server).restServerInfo, "This server's version, base URL and time."),
+
+	mcpRead("list_favourite_filters", "/filter/favourite", (*Server).restFavouriteFilters,
+		"The user's favourite saved filters: id, name, JQL, owner, shares."),
+	mcpRead("get_filter", "/filter/{id}", (*Server).restFilter,
+		"One saved filter the user can see: name, description, JQL, owner, shares, whether a favourite.",
+		mcpFilterID),
+	mcpWrite("create_filter", auth.ScopeFilters, http.MethodPost, "/filter", (*Server).restSaveFilter,
+		"Saves a new filter owned by the user, private unless sharePermissions says otherwise.",
+		append([]mcpParam{{name: "name", kind: "string", desc: "Name.", required: true, body: true},
+			{name: "jql", kind: "string", desc: "JQL query of the filter.", required: true, body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("update_filter", auth.ScopeFilters, http.MethodPut, "/filter/{id}", (*Server).restSaveFilter,
+		"Changes a saved filter the user may edit; arguments left out stay as they are. "+
+			"favourite alone works on any filter the user can see.",
+		append([]mcpParam{mcpFilterID, {name: "name", kind: "string", desc: "New name.", body: true},
+			{name: "jql", kind: "string", desc: "New JQL query.", body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("delete_filter", auth.ScopeFilters, http.MethodDelete, "/filter/{id}", (*Server).deleteFilter,
+		"Deletes a saved filter the user may edit.",
+		mcpFilterID),
 }
 
 func init() {
@@ -176,8 +217,11 @@ func init() {
 			AdditionalProperties: &jsonschema.Schema{Not: &jsonschema.Schema{}}}
 		for _, p := range t.params {
 			ps := &jsonschema.Schema{Type: p.kind, Description: p.desc}
-			if p.kind == "list" {
+			switch p.kind {
+			case "list":
 				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "string"}
+			case "objects":
+				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "object"}
 			}
 			t.schema.Properties[p.name] = ps
 			t.schema.PropertyOrder = append(t.schema.PropertyOrder, p.name)
@@ -193,8 +237,14 @@ func init() {
 }
 
 func (t *mcpTool) tool() *mcp.Tool {
-	return &mcp.Tool{Name: t.name, Description: t.desc, InputSchema: t.schema,
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: t.scope == auth.ScopeRead, OpenWorldHint: new(false)}}
+	a := &mcp.ToolAnnotations{ReadOnlyHint: t.method == http.MethodGet, OpenWorldHint: new(false)}
+	switch t.method {
+	case http.MethodPost:
+		a.DestructiveHint = new(false)
+	case http.MethodPut, http.MethodDelete:
+		a.IdempotentHint = true
+	}
+	return &mcp.Tool{Name: t.name, Description: t.desc, InputSchema: t.schema, Annotations: a}
 }
 
 // mcpCall runs tool t for the request r of the MCP endpoint.
@@ -210,10 +260,14 @@ func (s *Server) mcpCall(r *http.Request, t *mcpTool) mcp.ToolHandler {
 			return mcpText(true, "Arguments: "+err.Error()), nil
 		}
 		path, query := t.path, url.Values{}
-		values := map[string]string{}
+		values, body := map[string]string{}, map[string]any{}
 		for _, p := range t.params {
 			v, ok := args[p.name]
 			if !ok {
+				continue
+			}
+			if p.body {
+				body[p.name] = v
 				continue
 			}
 			if p.pathValue != "" {
@@ -238,9 +292,17 @@ func (s *Server) mcpCall(r *http.Request, t *mcpTool) mcp.ToolHandler {
 		// r carries the user and lasts the whole call: a stateless POST is
 		// answered once its tools are done.
 		req := r.Clone(r.Context())
-		req.Method, req.URL = http.MethodGet, &url.URL{Path: issue.RESTAPIPath + path, RawQuery: query.Encode()}
-		req.RequestURI, req.Pattern = req.URL.RequestURI(), "GET "+issue.RESTAPIPath+t.path
+		req.Method, req.URL = t.method, &url.URL{Path: issue.RESTAPIPath + path, RawQuery: query.Encode()}
+		req.RequestURI, req.Pattern = req.URL.RequestURI(), t.method+" "+issue.RESTAPIPath+t.path
 		req.Body, req.ContentLength = http.NoBody, 0
+		if t.method == http.MethodPost || t.method == http.MethodPut {
+			raw, err := json.Marshal(body)
+			if err != nil {
+				return nil, err
+			}
+			req.Body, req.ContentLength = io.NopCloser(bytes.NewReader(raw)), int64(len(raw))
+			req.Header.Set("Content-Type", "application/json")
+		}
 		for k, v := range values {
 			req.SetPathValue(k, v)
 		}
@@ -251,6 +313,9 @@ func (s *Server) mcpCall(r *http.Request, t *mcpTool) mcp.ToolHandler {
 		}
 		if err := boundary(s.log, "MCP tool failed", req, err); err != nil {
 			return mcpError(req, err), nil
+		}
+		if rec.body.Len() == 0 {
+			return mcpText(false, "Done."), nil
 		}
 		return mcpText(false, rec.body.String()), nil
 	}

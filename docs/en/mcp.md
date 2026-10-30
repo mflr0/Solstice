@@ -31,7 +31,7 @@ issue the owner cannot see stays hidden, from search and by key.
 The tools answer in the JSON of the Jira Server REST API (see
 [rest-api.md](rest-api.md)). Each one needs a scope; the tool list only shows
 the tools the token's scopes allow, and calling another one fails with the
-scope it needs. Every tool below needs `read`.
+scope it needs. The tools below need `read`.
 
 | Tool | Gives |
 |---|---|
@@ -51,8 +51,15 @@ scope it needs. Every tool below needs `read`.
 | `search_groups`, `list_group_members` | Groups and their members |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | The instance's catalogues |
 | `get_server_info` | The server's version and address |
+| `list_favourite_filters`, `get_filter` | Saved filters: the user's favourites, or one by id |
 
-Boards, sprints, filters, versions and components, and the tools that change
+These tools change things, each under its own scope:
+
+| Tool | Scope | Does |
+|---|---|---|
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
+
+Boards, sprints, versions and components, and the other tools that change
 things, are not offered yet.
 
 ## Connecting Claude Code

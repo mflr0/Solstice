@@ -13,12 +13,12 @@ import (
 	"solstice/internal/issue"
 )
 
-// Every read of the REST API has its tool, with the route's scope, apart
-// from those other tools will cover.
+// Every tool runs a route of the REST API with its scope, and every read has
+// its tool, apart from those other tools will cover.
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Handler(http.NotFoundHandler())
-	later := []string{"/filter/", "/version/", "/component/", "/versions", "/components"}
+	later := []string{"/version/", "/component/", "/versions", "/components"}
 	tools := map[string]*mcpTool{}
 	names := map[string]bool{}
 	for i := range mcpTools {
@@ -27,7 +27,7 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 			t.Errorf("tool %s twice", tool.name)
 		}
 		names[tool.name] = true
-		pattern := "GET " + issue.RESTAPIPath + tool.path
+		pattern := tool.method + " " + issue.RESTAPIPath + tool.path
 		scope, ok := s.routeScopes[pattern]
 		switch {
 		case !ok:
