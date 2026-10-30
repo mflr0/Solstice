@@ -73,6 +73,98 @@ export function menu(node: HTMLElement, close: () => void) {
   };
 }
 
+/** Options of layer. */
+export interface LayerOptions {
+  /** What the node opens against, usually the button that opens it. */
+  anchor: HTMLElement | undefined;
+  /** Makes the node at least as wide as the anchor. */
+  matchWidth?: boolean | undefined;
+  /** Called on a press outside the node and the anchor. */
+  onoutside?: (() => void) | undefined;
+}
+
+/**
+ * Shows a popover="manual" node in the top layer, so neither a dialog's
+ * scrolling nor the window's edge clips it: fixed under its anchor, or above
+ * it when there is more room there. It follows the anchor on scroll and
+ * resize, and is placed again when its content grows. Escape pressed inside
+ * it does not close a dialog around it.
+ */
+export function layer(node: HTMLElement, options: LayerOptions) {
+  let current = options;
+  let up = false;
+  let frame = 0;
+  node.showPopover?.();
+  node.style.position = 'fixed';
+  node.style.inset = 'auto';
+  node.style.margin = '0';
+  const place = () => {
+    frame = 0;
+    const { anchor, matchWidth } = current;
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect();
+    const width = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    if (matchWidth) node.style.minWidth = `${r.width}px`;
+    node.style.maxHeight = '';
+    // The stylesheet's own limit, if any, still holds.
+    const cap = parseFloat(getComputedStyle(node).maxHeight) || Infinity;
+    node.style.left = `${Math.max(8, Math.min(r.left, width - 8 - node.offsetWidth))}px`;
+    const below = height - r.bottom - 12;
+    const above = r.top - 12;
+    // It only changes side when it no longer fits where it is, so a list
+    // that shrinks while filtering stays put.
+    const [here, there] = up ? [above, below] : [below, above];
+    if (node.offsetHeight > here && there > here) up = !up;
+    if (up) {
+      node.style.top = 'auto';
+      node.style.bottom = `${height - r.top + 4}px`;
+      node.style.maxHeight = `${Math.min(cap, above)}px`;
+    } else {
+      node.style.bottom = 'auto';
+      node.style.top = `${r.bottom + 4}px`;
+      node.style.maxHeight = `${Math.min(cap, below)}px`;
+    }
+  };
+  place();
+  const onPointer = (e: PointerEvent) => {
+    const target = e.target as Node;
+    if (!node.contains(target) && !current.anchor?.contains(target)) current.onoutside?.();
+  };
+  // The dialog closes on Escape's default action, whatever stops its propagation.
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') e.preventDefault();
+  };
+  const onScroll = (e: Event) => {
+    if (!node.contains(e.target as Node)) place();
+  };
+  // In the next frame: placing changes the node's size inside the observer's callback.
+  const watch =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          frame ||= requestAnimationFrame(place);
+        })
+      : undefined;
+  watch?.observe(node);
+  node.addEventListener('keydown', onKey);
+  document.addEventListener('pointerdown', onPointer, true);
+  addEventListener('scroll', onScroll, { capture: true, passive: true });
+  addEventListener('resize', place);
+  return {
+    update(next: LayerOptions) {
+      current = next;
+    },
+    destroy() {
+      watch?.disconnect();
+      node.removeEventListener('keydown', onKey);
+      if (frame) cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', onPointer, true);
+      removeEventListener('scroll', onScroll, { capture: true });
+      removeEventListener('resize', place);
+    },
+  };
+}
+
 /** Focuses the node once mounted. */
 export function autofocus(node: HTMLElement) {
   queueMicrotask(() => node.focus());

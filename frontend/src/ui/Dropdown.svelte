@@ -13,6 +13,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { t } from '../i18n/t.js';
+  import { layer } from '../lib/actions.js';
 
   /**
    * One value from a short list, like a native select but drawn by the skin,
@@ -187,49 +188,6 @@
     if (!open || !list) return;
     list.querySelector(`#${CSS.escape(optionId(active))}`)?.scrollIntoView?.({ block: 'nearest' });
   });
-
-  /** Shows the list in the top layer, under the button or above it, inside the window. */
-  function layer(el: HTMLUListElement) {
-    el.showPopover?.();
-    const place = () => {
-      if (!button) return;
-      const r = button.getBoundingClientRect();
-      const width = document.documentElement.clientWidth;
-      const height = document.documentElement.clientHeight;
-      el.style.minWidth = `${r.width}px`;
-      el.style.maxHeight = '';
-      el.style.left = `${Math.max(8, Math.min(r.left, width - 8 - el.offsetWidth))}px`;
-      const below = height - r.bottom - 12;
-      const above = r.top - 12;
-      if (el.offsetHeight > below && above > below) {
-        el.style.top = '';
-        el.style.bottom = `${height - r.top + 4}px`;
-        el.style.maxHeight = `${above}px`;
-      } else {
-        el.style.bottom = '';
-        el.style.top = `${r.bottom + 4}px`;
-        el.style.maxHeight = `${below}px`;
-      }
-    };
-    place();
-    const onPointer = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (!el.contains(target) && !button?.contains(target)) hide();
-    };
-    const onScroll = (e: Event) => {
-      if (e.target !== el) place();
-    };
-    document.addEventListener('pointerdown', onPointer, true);
-    addEventListener('scroll', onScroll, { capture: true, passive: true });
-    addEventListener('resize', place);
-    return {
-      destroy() {
-        document.removeEventListener('pointerdown', onPointer, true);
-        removeEventListener('scroll', onScroll, { capture: true });
-        removeEventListener('resize', place);
-      },
-    };
-  }
 </script>
 
 <button
@@ -270,7 +228,7 @@
     role="listbox"
     aria-label={label}
     popover="manual"
-    use:layer
+    use:layer={{ anchor: button, matchWidth: true, onoutside: hide }}
     onmousedown={(e) => e.preventDefault()}
   >
     {#each sections as sec, k (sec.items[0]!.o.value)}
@@ -367,9 +325,6 @@
 
   /* In the top layer: fixed to the window, placed by script. */
   .dropdown-list {
-    position: fixed;
-    inset: auto;
-    margin: 0;
     list-style: none;
     max-width: calc(100vw - 16px);
     color: var(--ink);

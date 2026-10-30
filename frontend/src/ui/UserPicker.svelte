@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
-  import { autofocus, outside } from '../lib/actions.js';
+  import { autofocus, layer, outside } from '../lib/actions.js';
   import Who from './Who.svelte';
 
   /**
@@ -36,6 +36,7 @@
   let active = $state(0);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
+  let button: HTMLButtonElement | undefined = $state();
   const uid = $props.id();
   const listId = `users-${uid}`;
 
@@ -91,6 +92,7 @@
 
 <div class="picker" class:framed={field} use:outside={() => (open = false)}>
   <button
+    bind:this={button}
     type="button"
     class="current"
     class:select={field}
@@ -108,7 +110,7 @@
     {#if !disabled && !field}<span class="caret" aria-hidden="true">▾</span>{/if}
   </button>
   {#if open}
-    <div class="popover">
+    <div class="popover" popover="manual" use:layer={{ anchor: button }}>
       <input
         class="input filter"
         bind:value={q}
@@ -183,10 +185,6 @@
     aspect-ratio: 1;
   }
 
-  .framed .popover {
-    left: 0;
-  }
-
   .current[disabled] {
     cursor: default;
   }
@@ -203,8 +201,6 @@
   }
 
   .popover {
-    left: -6px;
-    top: calc(100% + 4px);
     width: 16.25rem;
   }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n/t.js';
-  import { autofocus, outside } from '../lib/actions.js';
+  import { autofocus, layer, outside } from '../lib/actions.js';
   import { errorMessage } from '../lib/api.js';
 
   /**
@@ -29,6 +29,7 @@
   let q = $state('');
   let creating = $state(false);
   let error = $state('');
+  let button: HTMLButtonElement | undefined = $state();
   const shown = $derived.by(() => {
     const needle = q.trim().toLowerCase();
     return needle ? options.filter((o) => o.name.toLowerCase().includes(needle)) : options;
@@ -94,6 +95,7 @@
 
 <div class="multi" use:outside={close}>
   <button
+    bind:this={button}
     type="button"
     class="current"
     aria-haspopup="true"
@@ -110,7 +112,7 @@
     {#if !disabled}<span class="caret" aria-hidden="true">▾</span>{/if}
   </button>
   {#if open}
-    <div class="popover">
+    <div class="popover" popover="manual" use:layer={{ anchor: button }}>
       <input
         class="input filter"
         bind:value={q}
@@ -196,8 +198,6 @@
   }
 
   .popover {
-    left: -6px;
-    top: calc(100% + 4px);
     width: 16.25rem;
   }
 
