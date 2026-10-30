@@ -6,7 +6,7 @@ import { SKINS } from '../../src/core/appearance.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
-import { appearance, applyMode, dialogs } from '../../src/lib/ui.svelte.js';
+import { appearance, applyMode, applySkin, dialogs } from '../../src/lib/ui.svelte.js';
 import TopBar from '../../src/ui/TopBar.svelte';
 
 vi.mock('../../src/lib/api.js', () => ({
@@ -191,7 +191,7 @@ describe('TopBar keyboard', () => {
     expect(checked()).toEqual([carnetDark]);
 
     key(focused(), 'End');
-    const gallery = document.querySelector<HTMLAnchorElement>('.theme-menu [role="menuitem"]')!;
+    const gallery = document.querySelector<HTMLAnchorElement>('.theme-menu a[role="menuitem"]')!;
     expect(focused()).toBe(gallery);
     expect(gallery.getAttribute('href')).toBe(paths.themes());
     expect(gallery.textContent?.trim()).toBe(t.nav.allThemes);
@@ -200,6 +200,33 @@ describe('TopBar keyboard', () => {
     expect(document.querySelector('.theme-menu')).toBeNull();
     expect(focused()).toBe(themes);
   });
+
+  it.each(['system', 'light', 'dark'] as const)(
+    'switches skin by its name and keeps the mode %s',
+    async (mode) => {
+      applyMode(mode);
+      applySkin('carnet');
+      button(t.nav.themes).click();
+      await settle();
+      const names = [...document.querySelectorAll<HTMLButtonElement>('.theme-menu .skin-name')];
+      expect(names.map((n) => [n.getAttribute('role'), n.textContent?.trim()])).toEqual(
+        SKINS.map((s) => ['menuitem', t.nav.skins[s]]),
+      );
+      const other = SKINS.indexOf('orbite');
+      key(focused(), 'Home');
+      for (let i = 0; i < other * 3; i++) key(focused(), 'ArrowDown');
+      expect(focused()).toBe(names[other]);
+      names[other]!.click();
+      flushSync();
+      expect(appearance.skin).toBe('orbite');
+      expect(appearance.mode).toBe(mode);
+      expect(localStorage.getItem('solstice.theme')).toBe(mode);
+      expect(names[other]!.hasAttribute('aria-checked')).toBe(false);
+      await settle();
+      expect(focused()).toBe(names[other]);
+      applySkin('carnet');
+    },
+  );
 
   it('starts the scope menu on the current project and closes it when focus moves on', async () => {
     const scope = button(t.nav.scopeLabel('Beta'));
