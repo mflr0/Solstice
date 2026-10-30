@@ -18,7 +18,7 @@ https://tickets.exemple.fr/browse/KEY-1
 ————————————————————
 
 --
-Vous recevez ce courriel car vous observez ce ticket.
+Vous recevez cet e-mail car vous observez ce ticket.
 Gérer mes notifications : https://tickets.exemple.fr/settings/notifications
 
 --- html
@@ -37,7 +37,7 @@ Gérer mes notifications : https://tickets.exemple.fr/settings/notifications
 </div>
 <p style="margin:14px 0 0;"><a href="https://tickets.exemple.fr/browse/KEY-1" style="color:#c2321b;">Ouvrir le ticket</a></p>
 </div>
-<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #e6e0d4;color:#6c685e;font-size:12px;">Vous recevez ce courriel car vous observez ce ticket.<br><a href="https://tickets.exemple.fr/settings/notifications" style="color:#6c685e;">Gérer mes notifications</a></p>
+<p style="margin:24px 0 0;padding-top:12px;border-top:1px solid #e6e0d4;color:#6c685e;font-size:12px;">Vous recevez cet e-mail car vous observez ce ticket.<br><a href="https://tickets.exemple.fr/settings/notifications" style="color:#6c685e;">Gérer mes notifications</a></p>
 </div>
 </body></html>
 
