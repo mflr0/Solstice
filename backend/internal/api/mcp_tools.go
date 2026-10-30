@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,8 +28,9 @@ import (
 type mcpTool struct {
 	name, desc string
 	scope      auth.Scope
-	method     string
-	path       string // under /rest/api/2; {v} stands for the path value v
+	method     string // GET if empty
+	api        string // issue.RESTAPIPath if empty
+	path       string // under api; {v} stands for the path value v
 	h          func(*Server, http.ResponseWriter, *http.Request) error
 	params     []mcpParam
 	schema     *jsonschema.Schema
@@ -52,12 +54,31 @@ var (
 	mcpMaxResults = mcpParam{name: "maxResults", kind: "integer", desc: "Most results to return."}
 	mcpFields     = mcpParam{name: "fields", kind: "list", desc: `Fields to return: ids or names, "*all", "*navigable", "-field" to leave one out.`}
 	mcpExpand     = mcpParam{name: "expand", kind: "list", desc: "Expansions, such as renderedFields, names, changelog, transitions."}
+	mcpBoardID    = mcpParam{name: "boardId", kind: "integer", desc: "Board id.", required: true, pathValue: "id"}
+	mcpSprintID   = mcpParam{name: "sprintId", kind: "integer", desc: "Sprint id.", required: true, pathValue: "id"}
+	mcpEpicKey    = mcpParam{name: "epicKey", kind: "string", desc: "Epic key (DEMO-3) or id.", required: true, pathValue: "key"}
+	mcpJQL        = mcpParam{name: "jql", kind: "string", desc: "JQL the issues must also match."}
+	mcpIssueList  = mcpParam{name: "issues", kind: "list", desc: "Issue keys or ids, at most 50.", required: true, body: true}
+	mcpRankBefore = mcpParam{name: "rankBeforeIssue", kind: "string", desc: "Put the issues just before this one in the board order.", body: true}
+	mcpRankAfter  = mcpParam{name: "rankAfterIssue", kind: "string", desc: "Put the issues just after this one in the board order.", body: true}
 )
 
 func mcpRead(name, path string, h func(*Server, http.ResponseWriter, *http.Request) error, desc string, params ...mcpParam) mcpTool {
-	return mcpTool{name: name, desc: desc, scope: auth.ScopeRead, method: http.MethodGet, path: path, h: h, params: params}
+	return mcpTool{name: name, desc: desc, scope: auth.ScopeRead, path: path, h: h, params: params}
 }
 
+// mcpAgile is a tool of the Agile REST API: a read, or a change that needs
+// agile:write.
+func mcpAgile(name, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error, desc string, params ...mcpParam) mcpTool {
+	scope := auth.ScopeRead
+	if method != http.MethodGet {
+		scope = auth.ScopeAgile
+	}
+	return mcpTool{name: name, desc: desc, scope: scope, method: method, api: issue.AgileAPIPath, path: path, h: h,
+		params: params}
+}
+
+// mcpWrite is a tool of the REST API that changes things under scope.
 func mcpWrite(name string, scope auth.Scope, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error,
 	desc string, params ...mcpParam) mcpTool {
 	return mcpTool{name: name, desc: desc, scope: scope, method: method, path: path, h: h, params: params}
@@ -208,6 +229,57 @@ var mcpTools = []mcpTool{
 	mcpWrite("delete_filter", auth.ScopeFilters, http.MethodDelete, "/filter/{id}", (*Server).deleteFilter,
 		"Deletes a saved filter the user may edit.",
 		mcpFilterID),
+
+	mcpAgile("list_boards", "GET", "/board", (*Server).agileBoards,
+		"Boards the user can see: id, name, type (scrum or kanban), project.",
+		mcpParam{name: "projectKeyOrId", kind: "string", desc: "Only the boards of this project."},
+		mcpParam{name: "type", kind: "string", desc: "scrum or kanban."},
+		mcpParam{name: "name", kind: "string", desc: "Only boards whose name contains this text."},
+		mcpStartAt, mcpMaxResults),
+	mcpAgile("get_board", "GET", "/board/{id}", (*Server).agileBoard,
+		"One board: name, type, project.", mcpBoardID),
+	mcpAgile("get_board_configuration", "GET", "/board/{id}/configuration", (*Server).agileBoardConfiguration,
+		"A board's columns and their statuses, its filter and its estimation field.", mcpBoardID),
+	mcpAgile("list_sprints", "GET", "/board/{id}/sprint", (*Server).agileBoardSprints,
+		"Sprints of a Scrum board, closed first, then active, then future.",
+		mcpBoardID, mcpParam{name: "state", kind: "string", desc: "Only these states, comma-separated: active, future, closed."},
+		mcpStartAt, mcpMaxResults),
+	mcpAgile("list_board_issues", "GET", "/board/{id}/issue", (*Server).agileBoardIssues,
+		"Issues of a board, in board order, a page at a time (50 by default, at most 1000).",
+		mcpBoardID, mcpJQL, mcpStartAt, mcpMaxResults, mcpFields, mcpExpand),
+	mcpAgile("get_backlog", "GET", "/board/{id}/backlog", (*Server).agileBacklog,
+		"Issues in a board's backlog, in board order: not done and in no open sprint of the board.",
+		mcpBoardID, mcpJQL, mcpStartAt, mcpMaxResults, mcpFields, mcpExpand),
+	mcpAgile("get_sprint", "GET", "/sprint/{id}", (*Server).agileSprint,
+		"One sprint: name, state, goal, dates, board.", mcpSprintID),
+	mcpAgile("list_sprint_issues", "GET", "/sprint/{id}/issue", (*Server).agileSprintIssues,
+		"Issues in a sprint, in board order.",
+		mcpSprintID, mcpJQL, mcpStartAt, mcpMaxResults, mcpFields, mcpExpand),
+	mcpAgile("get_epic", "GET", "/epic/{key}", (*Server).agileEpic,
+		"One epic: key, name, summary, whether done.", mcpEpicKey),
+	mcpAgile("list_epic_issues", "GET", "/epic/{key}/issue", (*Server).agileEpicIssues,
+		"Issues of an epic, in board order.",
+		mcpEpicKey, mcpJQL, mcpStartAt, mcpMaxResults, mcpFields, mcpExpand),
+	mcpAgile("update_sprint", "POST", "/sprint/{id}", (*Server).agileEditSprint,
+		"Changes a sprint; what is not given stays. state active starts a future sprint, closed completes "+
+			"the active one and sends its open issues back to the backlog. Returns the sprint.",
+		mcpSprintID,
+		mcpParam{name: "name", kind: "string", desc: "New name.", body: true},
+		mcpParam{name: "goal", kind: "string", desc: "New goal.", body: true},
+		mcpParam{name: "startDate", kind: "string", desc: "Planned start, ISO 8601; empty clears it.", body: true},
+		mcpParam{name: "endDate", kind: "string", desc: "Planned end, ISO 8601; empty clears it.", body: true},
+		mcpParam{name: "state", kind: "string", desc: "active or closed.", body: true}),
+	mcpAgile("delete_sprint", "DELETE", "/sprint/{id}", (*Server).agileDeleteSprint,
+		"Deletes a sprint that has not started; its issues go back to the backlog.", mcpSprintID),
+	mcpAgile("move_issues_to_sprint", "POST", "/sprint/{id}/issue", (*Server).agileMoveToSprint,
+		"Puts issues in an open sprint, and ranks them if rankBeforeIssue or rankAfterIssue is given.",
+		mcpSprintID, mcpIssueList, mcpRankBefore, mcpRankAfter),
+	mcpAgile("move_issues_to_backlog", "POST", "/backlog/issue", (*Server).agileMoveToBacklog,
+		"Takes issues out of their open sprint.", mcpIssueList),
+	mcpAgile("rank_issues", "PUT", "/issue/rank", (*Server).agileRank,
+		"Moves issues, in the given order, just before or just after another one in the board order. "+
+			"Give exactly one of rankBeforeIssue and rankAfterIssue.",
+		mcpIssueList, mcpRankBefore, mcpRankAfter),
 }
 
 func init() {
@@ -237,14 +309,8 @@ func init() {
 }
 
 func (t *mcpTool) tool() *mcp.Tool {
-	a := &mcp.ToolAnnotations{ReadOnlyHint: t.method == http.MethodGet, OpenWorldHint: new(false)}
-	switch t.method {
-	case http.MethodPost:
-		a.DestructiveHint = new(false)
-	case http.MethodPut, http.MethodDelete:
-		a.IdempotentHint = true
-	}
-	return &mcp.Tool{Name: t.name, Description: t.desc, InputSchema: t.schema, Annotations: a}
+	return &mcp.Tool{Name: t.name, Description: t.desc, InputSchema: t.schema,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: t.scope == auth.ScopeRead, OpenWorldHint: new(false)}}
 }
 
 // mcpCall runs tool t for the request r of the MCP endpoint.
@@ -266,41 +332,34 @@ func (s *Server) mcpCall(r *http.Request, t *mcpTool) mcp.ToolHandler {
 			if !ok {
 				continue
 			}
-			if p.body {
+			switch list, isList := v.([]any); {
+			case p.body:
 				body[p.name] = v
-				continue
-			}
-			if p.pathValue != "" {
-				s := v.(string)
+			case p.pathValue != "":
+				s := mcpScalar(v)
 				values[p.pathValue] = s
 				path = strings.Replace(path, "{"+p.pathValue+"}", url.PathEscape(s), 1)
-				continue
-			}
-			switch v := v.(type) {
-			case string:
-				query.Set(p.name, v)
-			case bool:
-				query.Set(p.name, strconv.FormatBool(v))
-			case float64:
-				query.Set(p.name, strconv.FormatFloat(v, 'f', -1, 64))
-			case []any:
-				for _, e := range v {
+			case isList:
+				for _, e := range list {
 					query.Add(p.name, e.(string))
 				}
+			default:
+				query.Set(p.name, mcpScalar(v))
 			}
 		}
+		method, api := cmp.Or(t.method, http.MethodGet), cmp.Or(t.api, issue.RESTAPIPath)
 		// r carries the user and lasts the whole call: a stateless POST is
 		// answered once its tools are done.
 		req := r.Clone(r.Context())
-		req.Method, req.URL = t.method, &url.URL{Path: issue.RESTAPIPath + path, RawQuery: query.Encode()}
-		req.RequestURI, req.Pattern = req.URL.RequestURI(), t.method+" "+issue.RESTAPIPath+t.path
+		req.Method, req.URL = method, &url.URL{Path: api + path, RawQuery: query.Encode()}
+		req.RequestURI, req.Pattern = req.URL.RequestURI(), method+" "+api+t.path
 		req.Body, req.ContentLength = http.NoBody, 0
-		if t.method == http.MethodPost || t.method == http.MethodPut {
-			raw, err := json.Marshal(body)
+		if method != http.MethodGet && method != http.MethodDelete {
+			b, err := json.Marshal(body)
 			if err != nil {
 				return nil, err
 			}
-			req.Body, req.ContentLength = io.NopCloser(bytes.NewReader(raw)), int64(len(raw))
+			req.Body, req.ContentLength = io.NopCloser(bytes.NewReader(b)), int64(len(b))
 			req.Header.Set("Content-Type", "application/json")
 		}
 		for k, v := range values {
@@ -314,11 +373,20 @@ func (s *Server) mcpCall(r *http.Request, t *mcpTool) mcp.ToolHandler {
 		if err := boundary(s.log, "MCP tool failed", req, err); err != nil {
 			return mcpError(req, err), nil
 		}
-		if rec.body.Len() == 0 {
-			return mcpText(false, "Done."), nil
-		}
-		return mcpText(false, rec.body.String()), nil
+		// Changes Jira answers with 204 No Content.
+		return mcpText(false, cmp.Or(rec.body.String(), "Done.")), nil
 	}
+}
+
+// mcpScalar is a string, boolean or number argument as text.
+func mcpScalar(v any) string {
+	switch v := v.(type) {
+	case bool:
+		return strconv.FormatBool(v)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	}
+	return v.(string)
 }
 
 func mcpText(isError bool, text string) *mcp.CallToolResult {
