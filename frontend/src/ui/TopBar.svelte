@@ -29,6 +29,10 @@
   /** Following the system stays on Account → Appearance: a pick here is explicit. */
   function pickLook(skin: Skin, scheme: Scheme, item: HTMLElement) {
     applyMode(scheme);
+    pickSkin(skin, item);
+  }
+  /** Switches skin and keeps the mode, following the system included. */
+  function pickSkin(skin: Skin, item: HTMLElement) {
     applySkin(skin);
     // The page is hidden while a skin's stylesheet loads, which drops focus;
     // a skin that hides the theme button on this screen hides the menu too.
@@ -147,7 +151,11 @@
           <div role="group" aria-label={t.nav.themes}>
             {#each SKINS as skin (skin)}
               <div class="theme-row">
-                <span class="skin-name" aria-hidden="true">{t.nav.skins[skin]}</span>
+                <button
+                  class="item skin-name"
+                  role="menuitem"
+                  onclick={(e) => pickSkin(skin, e.currentTarget)}>{t.nav.skins[skin]}</button
+                >
                 {#each SCHEMES as scheme (scheme)}
                   {@const sw = SCHEME_SWATCHES[skin][scheme]}
                   {@const label = t.nav.skinMode(t.nav.skins[skin], t.nav.modes[scheme])}
@@ -329,9 +337,14 @@
     text-transform: uppercase;
   }
 
-  .skin-name {
+  /* The text lines up with the heading; the hover background reaches into the row's padding.
+     Above the skins' [data-skin] .popover .item, which load later. */
+  .theme-menu .theme-row .skin-name {
+    display: block;
+    width: calc(100% + 8px);
+    margin-left: -8px;
+    padding: 6px 8px;
     overflow: hidden;
-    font-size: 0.84375rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
