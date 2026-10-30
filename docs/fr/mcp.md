@@ -101,7 +101,14 @@ Les filtres enregistrés :
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
 
-Les versions et composants ne sont pas encore proposés.
+Les versions et composants d'un projet :
+
+| Outil | Portée | Fait |
+|---|---|---|
+| `list_versions`, `get_version` | `read` | Les versions d'un projet, ou une seule par son id |
+| `list_components`, `get_component` | `read` | Les composants d'un projet, ou un seul par son id |
+| `create_version`, `update_version`, `delete_version` | `projects:write` | Ajoute, modifie (dates, livrée, archivée) ou supprime une version, dans un projet que l'utilisateur administre |
+| `create_component`, `update_component`, `delete_component` | `projects:write` | Ajoute, modifie (responsable, assigné par défaut) ou supprime un composant, dans un projet que l'utilisateur administre |
 
 ## Connecter Claude Code
 

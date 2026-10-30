@@ -529,3 +529,66 @@ func TestMCPAgile(t *testing.T) {
 		t.Errorf("rank_issues without an anchor: %s", mcpResultText(res))
 	}
 }
+
+// A projects:write token manages the versions and components of the projects
+// its owner administers, and only those.
+func TestMCPVersionsComponents(t *testing.T) {
+	needDB(t)
+	// paul.martin leads WEB, which makes him its administrator, but not DEMO's.
+	reader := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeRead))
+	if tools := mcpToolNames(t, reader); slices.Contains(tools, "create_version") || !slices.Contains(tools, "list_versions") {
+		t.Errorf("read token's tools: %v", tools)
+	}
+	if res := mcpRawCall(t, reader, "create_version", map[string]any{"project": "WEB", "name": "9.2-mcp-read"}); !res.IsError ||
+		!strings.Contains(mcpResultText(res), string(auth.ScopeProjects)) {
+		t.Errorf("read token calls create_version: %s", mcpResultText(res))
+	}
+
+	session := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeProjects))
+	var v struct{ ID, Name, ReleaseDate string }
+	mcpCall(t, session, "create_version", map[string]any{"project": "WEB", "name": "9.2-mcp", "releaseDate": "2026-12-01"}, &v)
+	if v.ID == "" || v.Name != "9.2-mcp" || v.ReleaseDate != "2026-12-01" {
+		t.Fatalf("create_version: %+v", v)
+	}
+	var released struct{ Released bool }
+	mcpCall(t, session, "update_version", map[string]any{"versionId": v.ID, "released": true}, &released)
+	if !released.Released {
+		t.Errorf("update_version: not released")
+	}
+	var list []struct{ ID string }
+	mcpCall(t, reader, "list_versions", map[string]any{"projectKey": "WEB"}, &list)
+	if !slices.ContainsFunc(list, func(e struct{ ID string }) bool { return e.ID == v.ID }) {
+		t.Errorf("list_versions of WEB: %+v, want %s", list, v.ID)
+	}
+	if res := mcpRawCall(t, session, "delete_version", map[string]any{"versionId": v.ID}); res.IsError {
+		t.Errorf("delete_version: %s", mcpResultText(res))
+	}
+	if res := mcpRawCall(t, reader, "get_version", map[string]any{"versionId": v.ID}); !res.IsError {
+		t.Errorf("get_version after delete_version: %s", mcpResultText(res))
+	}
+
+	var c struct {
+		ID, Name, AssigneeType string
+		Lead                   struct{ Name string }
+	}
+	mcpCall(t, session, "create_component", map[string]any{"project": "WEB", "name": "mcp-composant",
+		"leadUserName": "paul.martin", "assigneeType": "COMPONENT_LEAD"}, &c)
+	if c.ID == "" || c.Lead.Name != "paul.martin" || c.AssigneeType != "COMPONENT_LEAD" {
+		t.Fatalf("create_component: %+v", c)
+	}
+	if res := mcpRawCall(t, session, "delete_component", map[string]any{"componentId": c.ID}); res.IsError {
+		t.Errorf("delete_component: %s", mcpResultText(res))
+	}
+
+	// The same scope does not reach a project its owner does not administer.
+	status, _ := restBasicAs(t, "paul.martin")("POST", "/rest/api/2/version", map[string]any{"project": "DEMO", "name": "9.2-mcp-paul"})
+	res := mcpRawCall(t, session, "create_version", map[string]any{"project": "DEMO", "name": "9.2-mcp-paul"})
+	if status != 403 || !res.IsError {
+		t.Errorf("create_version in DEMO: MCP %s, REST %d", mcpResultText(res), status)
+	}
+	var demo []struct{ Name string }
+	mcpCall(t, reader, "list_versions", map[string]any{"projectKey": "DEMO"}, &demo)
+	if slices.ContainsFunc(demo, func(e struct{ Name string }) bool { return e.Name == "9.2-mcp-paul" }) {
+		t.Errorf("refused create_version still added a version to DEMO")
+	}
+}

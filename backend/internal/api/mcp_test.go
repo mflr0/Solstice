@@ -14,13 +14,12 @@ import (
 	"solstice/internal/issue"
 )
 
-// Every read of the REST API, every change to issues, comments, work logs and
-// filters, and every operation of the Agile API has its tool,
-// with the route's scope, apart from those other tools will cover.
+// Every read of the REST API, every change to issues, comments, work logs,
+// filters, versions and components, and every operation of the Agile API has
+// its tool, with the route's scope.
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Handler(http.NotFoundHandler())
-	later := []string{"/version/", "/component/", "/versions", "/components"}
 	tools := map[string]*mcpTool{}
 	names := map[string]bool{}
 	for i := range mcpTools {
@@ -50,7 +49,8 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 	for pattern, scope := range s.routeScopes {
 		method, path, _ := strings.Cut(pattern, " ")
 		rest := strings.HasPrefix(path, issue.RESTAPIPath+"/") && (method == "GET" ||
-			slices.Contains([]auth.Scope{auth.ScopeIssues, auth.ScopeComments, auth.ScopeWorklogs, auth.ScopeFilters}, scope))
+			slices.Contains([]auth.Scope{auth.ScopeIssues, auth.ScopeComments, auth.ScopeWorklogs, auth.ScopeFilters,
+				auth.ScopeProjects}, scope))
 		if !rest && !strings.HasPrefix(path, issue.AgileAPIPath+"/") || tools[pattern] != nil {
 			continue
 		}
@@ -58,8 +58,6 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 		if (method == "PUT" && tools["POST "+path] != nil) || (method == "POST" && tools["PUT "+path] != nil) {
 			continue
 		}
-		if !slices.ContainsFunc(later, func(l string) bool { return strings.Contains(pattern, l) }) {
-			t.Errorf("%s has no tool", pattern)
-		}
+		t.Errorf("%s has no tool", pattern)
 	}
 }
