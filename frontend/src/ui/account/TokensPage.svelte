@@ -10,7 +10,7 @@
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
   import type { AccessToken, TokenScope } from '../../core/admin-types.js';
   import { isoDay } from '../../core/dates.js';
-  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -238,7 +238,7 @@
                 class="muted small"
                 title={tok.expires ? formatDateTime(tok.expires) : undefined}
               >
-                {tok.expires ? relative(tok.expires) : t.tokensPage.never}
+                {tok.expires ? relativeAhead(tok.expires) : t.tokensPage.never}
               </span>
             </td>
             <td class="row-actions">

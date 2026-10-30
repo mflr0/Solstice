@@ -5,7 +5,7 @@
  */
 
 import { parseDay } from '../core/dates.js';
-import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo } from './format.js';
+import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo, timeIn } from './format.js';
 import type { Messages } from './types.js';
 
 export const hi: Messages = {
@@ -18,6 +18,10 @@ export const hi: Messages = {
     hoursAgo: (n: number) => timeAgo(n, 'hour'),
     yesterday: 'कल',
     daysAgo: (n: number) => timeAgo(n, 'day'),
+    inMinutes: (n: number) => timeIn(n, 'minute'),
+    inHours: (n: number) => timeIn(n, 'hour'),
+    tomorrow: 'कल',
+    inDays: (n: number) => timeIn(n, 'day'),
     /** An absolute date inside a sentence: "created on …". */
     onDate: (date: string) => `${date} को`,
     /** "2 घं 30 मि", "2 घं", "45 मि": CLDR's narrow Hindi units. */

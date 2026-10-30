@@ -4,7 +4,7 @@
  */
 
 import { parseDay } from '../core/dates.js';
-import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo } from './format.js';
+import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo, timeIn } from './format.js';
 import type { Messages } from './types.js';
 
 export const de: Messages = {
@@ -17,6 +17,10 @@ export const de: Messages = {
     hoursAgo: (n: number) => timeAgo(n, 'hour'),
     yesterday: 'gestern',
     daysAgo: (n: number) => timeAgo(n, 'day'),
+    inMinutes: (n: number) => timeIn(n, 'minute'),
+    inHours: (n: number) => timeIn(n, 'hour'),
+    tomorrow: 'morgen',
+    inDays: (n: number) => timeIn(n, 'day'),
     /** An absolute date inside a sentence: "created on …". */
     onDate: (date: string) => `am ${date}`,
     /** "2 h 30 min", "2 h", "45 min": units the work log field also reads back. */

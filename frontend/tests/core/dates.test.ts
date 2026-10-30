@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   ago,
+  ahead,
   isOverdue,
   parseDay,
   parseDuration,
@@ -13,6 +14,7 @@ import {
   formatDuration,
   formatSize,
   relative,
+  relativeAhead,
   renderDay,
   useMessages,
 } from '../../src/i18n/t.js';
@@ -45,6 +47,23 @@ describe('ago', () => {
   });
 });
 
+describe('ahead', () => {
+  it('counts minutes, hours, "tomorrow", days, then the date', () => {
+    expect(ahead(at(2026, 3, 12, 15, 5), NOW)).toEqual({ kind: 'inMinutes', n: 5 });
+    expect(ahead(at(2026, 3, 12, 18, 0), NOW)).toEqual({ kind: 'inHours', n: 3 });
+    expect(ahead(at(2026, 3, 13, 15, 0), NOW)).toEqual({ kind: 'tomorrow' });
+    expect(ahead(at(2026, 3, 15, 15, 0), NOW)).toEqual({ kind: 'inDays', n: 3 });
+    expect(ahead(at(2026, 4, 11, 15, 0), NOW)).toEqual({
+      kind: 'date',
+      day: { y: 2026, m: 4, d: 11 },
+    });
+  });
+
+  it('reads an instant already past as ago does', () => {
+    expect(ahead(at(2026, 3, 9, 10), NOW)).toEqual({ kind: 'days', n: 3 });
+  });
+});
+
 describe('French wording', () => {
   beforeAll(() => {
     useMessages(fr);
@@ -59,6 +78,12 @@ describe('French wording', () => {
     expect(relative(at(2026, 3, 12, 12, 0), NOW)).toBe('il y a 3 h');
     expect(relative(at(2026, 3, 11, 9, 0), NOW)).toBe('hier');
     expect(relative(at(2026, 2, 1, 9, 0), NOW)).toBe('1er février 2026');
+  });
+
+  it('renders instants ahead', () => {
+    expect(relativeAhead(at(2026, 3, 12, 15, 5), NOW)).toBe('dans 5 min');
+    expect(relativeAhead(at(2026, 3, 13, 9, 0), NOW)).toBe('demain');
+    expect(relativeAhead(at(2026, 3, 15, 9, 0), NOW)).toBe('dans 3 j');
   });
 
   it('renders calendar days without shifting them', () => {
