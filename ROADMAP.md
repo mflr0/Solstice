@@ -11,16 +11,22 @@ The detailed list of what remains before 1.0 is in `todo.md`.
 - **Jira audit without migrating.** `solstice import -check` reads a Jira
   database and reports what a migration would bring and what it would lose,
   without writing anything. Useful to any Jira administrator, even one who
-  never migrates.
+  never migrates. Done (#26).
 - **Anonymous diagnostic.** The same report without any content (counts,
   schema shapes, errors), safe to attach to a public issue. It gives real
-  feedback on real instances without anyone sharing their data.
+  feedback on real instances without anyone sharing their data. Open (#561).
 - **Every Jira version, with messy data.** The synthetic Jira generator
   covers every major Jira version whose distribution can be downloaded, and
   the quirks that old instances accumulate. The import is tested against
-  each of them.
+  each of them. Done (#27).
 - **Migration guide.** Dry run, parallel run, cutover, rollback, and keeping
-  the domain name so that `/browse/KEY-1` links keep working.
+  the domain name so that `/browse/KEY-1` links keep working. Done (#25,
+  `docs/en/migration.md`).
+
+Also in 1.0, ahead of the plan: dashboards and agile reports, bulk edit,
+clone and move, keyboard shortcuts, configurable columns, CSV import,
+LDAP/Active Directory and OpenID Connect sign-in. In progress: an MCP server
+with scoped tokens and OAuth (#484), and theme packages (#526 to #529).
 
 ## 1.x
 
@@ -38,9 +44,7 @@ The detailed list of what remains before 1.0 is in `todo.md`.
 - **Other sources.** Import from other issue trackers (Redmine, OpenProject,
   Huly and others), on the same model as the Jira import: read the source,
   report, then import.
-- **PostgreSQL for Solstice itself**, not only as an import source. After the
-  refactoring of `internal/api` into a service layer (see `todo.md`), so the
-  SQL is changed once.
+- **PostgreSQL for Solstice itself**, not only as an import source.
 
 ## Project health
 
