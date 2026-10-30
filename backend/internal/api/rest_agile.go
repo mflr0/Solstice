@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
@@ -320,6 +321,61 @@ func (s *Server) agileSprint(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, s.restOut(r).sprintJSON(sp, board))
+}
+
+// agileCreateSprint creates a future sprint on originBoardId as Jira's
+// create does, with an optional goal and planned dates.
+func (s *Server) agileCreateSprint(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Name          string `json:"name"`
+		OriginBoardID *int64 `json:"originBoardId"`
+		Goal          string `json:"goal"`
+		StartDate     string `json:"startDate"`
+		EndDate       string `json:"endDate"`
+	}
+	if err := readRESTJSON(r, &in); err != nil {
+		return err
+	}
+	if in.OriginBoardID == nil {
+		return fieldError("originBoardId", failf(http.StatusBadRequest, i18n.FieldRequired, "originBoardId"))
+	}
+	dates := map[string]any{}
+	var plan sprintInput
+	for _, f := range []struct {
+		key, to, v string
+		t          **time.Time
+	}{{"startDate", "start", in.StartDate, &plan.Start}, {"endDate", "end", in.EndDate, &plan.End}} {
+		if strings.TrimSpace(f.v) == "" {
+			continue
+		}
+		t, ok := parseJiraTime(f.v)
+		if !ok {
+			return fieldError(f.key, failf(http.StatusBadRequest, i18n.FieldValueInvalid, f.key))
+		}
+		dates[f.to], *f.t = t, &t
+	}
+	// Check the dates before creating, so that bad ones leave no sprint behind.
+	if _, err := planSprintEdit(&sprintOut{State: issue.SprintFuture}, plan,
+		map[string]bool{"start": plan.Start != nil, "end": plan.End != nil}, time.Now().UTC()); err != nil {
+		return err
+	}
+	board := strconv.FormatInt(*in.OriginBoardID, 10)
+	var created struct{ ID int64 }
+	if err := s.uiCall(r, s.createSprint, http.MethodPost, nil, map[string]string{"id": board},
+		map[string]any{"name": in.Name, "goal": in.Goal}, &created); err != nil {
+		return err
+	}
+	if len(dates) > 0 {
+		if err := s.uiCall(r, s.editSprint, http.MethodPatch, nil,
+			map[string]string{"id": strconv.FormatInt(created.ID, 10)}, dates, nil); err != nil {
+			return err
+		}
+	}
+	sp, err := s.sprintByID(r.Context(), *in.OriginBoardID, created.ID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusCreated, s.restOut(r).sprintJSON(*sp, *in.OriginBoardID))
 }
 
 // agileEditSprint changes a sprint as Jira's update does: name, goal, start

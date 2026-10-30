@@ -153,6 +153,7 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route routeFunc) {
 		rest("GET "+p+"/board/{id}/sprint", s.agileBoardSprints, auth.ScopeRead)
 		rest("GET "+p+"/board/{id}/issue", s.agileBoardIssues, auth.ScopeRead)
 		rest("GET "+p+"/board/{id}/backlog", s.agileBacklog, auth.ScopeRead)
+		rest("POST "+p+"/sprint", s.agileCreateSprint, auth.ScopeAgile)
 		rest("GET "+p+"/sprint/{id}", s.agileSprint, auth.ScopeRead)
 		rest("POST "+p+"/sprint/{id}", s.agileEditSprint, auth.ScopeAgile)
 		rest("PUT "+p+"/sprint/{id}", s.agileEditSprint, auth.ScopeAgile)

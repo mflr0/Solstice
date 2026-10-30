@@ -370,6 +370,7 @@ Under `/rest/agile/1.0`:
 | `GET /board/{id}/sprint` | Scrum boards only. `state=active,future,closed`. |
 | `GET /board/{id}/issue` | The board's issues, in its columns. |
 | `GET /board/{id}/backlog` | |
+| `POST /sprint` | `{"name": "Sprint 12", "originBoardId": 1}`, optional `goal`, `startDate`, `endDate`. Creates a future sprint on a Scrum board; answers 201 with the sprint. |
 | `GET /sprint/{id}` | |
 | `POST /sprint/{id}`, `PUT /sprint/{id}` | Change name, goal, dates, and state. Both work as a partial update: what is not given is left alone. `state: "active"` starts a future sprint; `state: "closed"` completes an active one, and its open issues return to the backlog. |
 | `DELETE /sprint/{id}` | Only a sprint that has not started; its issues return to the backlog. |
@@ -380,8 +381,7 @@ Under `/rest/agile/1.0`:
 | `GET /epic/{key}` | |
 | `GET /epic/{key}/issue` | |
 
-Boards cannot be created or changed, and sprints cannot be created, through
-the API.
+Boards cannot be created or changed through the API.
 
 ## Not supported
 

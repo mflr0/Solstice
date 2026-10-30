@@ -478,7 +478,7 @@ func TestMCPAgile(t *testing.T) {
 	marie := login(t, "marie.durand", jirafixture.Password)
 	board, sprint := scopeBoard(t, marie, "WEB")
 	boardID, _ := strconv.ParseInt(board, 10, 64)
-	writes := []string{"update_sprint", "delete_sprint", "move_issues_to_sprint", "move_issues_to_backlog", "rank_issues"}
+	writes := []string{"create_sprint", "update_sprint", "delete_sprint", "move_issues_to_sprint", "move_issues_to_backlog", "rank_issues"}
 
 	// A read token lists boards and sprints, but no tool that changes them.
 	reader := mcpSession(t, mcpToken(t, "marie.durand", auth.ScopeRead))

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"solstice/internal/auth"
 	"solstice/internal/jirafixture"
 )
 
@@ -206,4 +207,57 @@ func pickOptional(query string, args ...any) string {
 		return ""
 	}
 	return s
+}
+
+func TestRESTCreateSprint(t *testing.T) {
+	marie := login(t, "marie.durand", jirafixture.Password)
+	board := boardID(t, "DEMO — Scrum")
+	boardNum, _ := strconv.ParseInt(board, 10, 64)
+	rest := func(token, method, path string, body any) (int, map[string]any, []byte) {
+		status, _, out := call(t, nil, testURL, method, path, body,
+			func(r *http.Request) { bearer(token)(r); r.Header.Set(csrfHeader, "1") })
+		var v map[string]any
+		json.Unmarshal(out, &v)
+		return status, v, out
+	}
+	writer := mcpToken(t, "marie.durand", auth.ScopeAgile)
+	futureCount := func() int {
+		_, future := sprintsOf(t, marie, board)
+		return len(future)
+	}
+	before := futureCount()
+
+	status, v, out := rest(writer, "POST", "/rest/agile/1.0/sprint", map[string]any{"name": "Sprint créé par script",
+		"originBoardId": boardNum, "goal": "Ouvrir le suivant", "startDate": "2026-11-16T09:00:00.000+0100",
+		"endDate": "2026-11-27T18:00:00.000+0100"})
+	if status != 201 || str(v, "state") != "future" || int64(num(v, "originBoardId")) != boardNum {
+		t.Fatalf("create: %d %s", status, out)
+	}
+	path := "/rest/agile/1.0/sprint/" + strconv.Itoa(num(v, "id"))
+	t.Cleanup(func() { rest(writer, "DELETE", path, nil) })
+	status, got, out := rest(writer, "GET", path, nil)
+	if status != 200 || str(got, "name") != "Sprint créé par script" || str(got, "goal") != "Ouvrir le suivant" ||
+		str(got, "state") != "future" || !strings.HasPrefix(str(got, "startDate"), "2026-11-16T08:00:00.000") ||
+		!strings.HasPrefix(str(got, "endDate"), "2026-11-27T17:00:00.000") || str(got, "self") != str(v, "self") {
+		t.Errorf("read back: %d %s, created %v", status, out, v)
+	}
+
+	// Refused: a token without agile:write, a user who may not manage the board, a missing board, bad dates.
+	body := map[string]any{"name": "Refusé", "originBoardId": boardNum}
+	if status, _, out := rest(mcpToken(t, "marie.durand"), "POST", "/rest/agile/1.0/sprint", body); status != 403 {
+		t.Errorf("read token: %d %s", status, out)
+	}
+	if status, _, out := rest(mcpToken(t, "paul.martin", auth.ScopeAgile), "POST", "/rest/agile/1.0/sprint", body); status != 403 {
+		t.Errorf("developer: %d %s", status, out)
+	}
+	if status, _, out := rest(writer, "POST", "/rest/agile/1.0/sprint", map[string]any{"name": "Sans tableau"}); status != 400 {
+		t.Errorf("no originBoardId: %d %s", status, out)
+	}
+	if status, _, out := rest(writer, "POST", "/rest/agile/1.0/sprint", map[string]any{"name": "À l'envers",
+		"originBoardId": boardNum, "startDate": "2026-11-27T00:00:00.000Z", "endDate": "2026-11-16T00:00:00.000Z"}); status != 400 {
+		t.Errorf("end before start: %d %s", status, out)
+	}
+	if n := futureCount(); n != before+1 {
+		t.Errorf("future sprints: %d, want %d", n, before+1)
+	}
 }
