@@ -11,6 +11,7 @@ import {
   creatorsProblem,
   filterTokens,
   importReady,
+  refreshDaysValid,
   retentionProblem,
   sameCreators,
   splitUptime,
@@ -173,6 +174,18 @@ describe('who may create tokens', () => {
     expect(sameCreators(saved, 'group', 5)).toBe(false);
     expect(sameCreators(saved, 'admins', null)).toBe(false);
     expect(sameCreators({ who: 'admins', group: null }, 'admins', 9)).toBe(true);
+  });
+});
+
+describe('the OAuth refresh token lifetime', () => {
+  it('takes whole days from 1 to a year', () => {
+    expect(refreshDaysValid('1')).toBe(true);
+    expect(refreshDaysValid(' 30 ')).toBe(true);
+    expect(refreshDaysValid('365')).toBe(true);
+    expect(refreshDaysValid('0')).toBe(false);
+    expect(refreshDaysValid('366')).toBe(false);
+    expect(refreshDaysValid('7.5')).toBe(false);
+    expect(refreshDaysValid('')).toBe(false);
   });
 });
 

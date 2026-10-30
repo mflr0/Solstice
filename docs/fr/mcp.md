@@ -10,12 +10,59 @@ Les exemples utilisent l'hôte `solstice.example.org` et le jeton `sol_example`.
 
 ## Connexion
 
-Le point d'accès n'accepte qu'un jeton d'accès personnel, dans l'en-tête
-`Authorization: Bearer sol_example`. Les mots de passe, l'authentification
-Basic, les cookies de session et les jetons passés dans l'adresse sont
-refusés.
+Le point d'accès accepte un jeton porteur, dans l'en-tête
+`Authorization: Bearer …` : un jeton d'accès OAuth que le client obtient en
+vous faisant vous connecter (ci-dessous), ou un jeton d'accès personnel. Les
+mots de passe, l'authentification Basic, les cookies de session et les jetons
+passés dans l'adresse sont refusés.
 
-Créez un jeton dans « Mes paramètres », « Jetons d'accès », avec la portée
+### Avec OAuth
+
+Les clients qui gèrent l'autorisation MCP (connecteurs de claude.ai, Claude
+Code, certains IDE) n'ont besoin que de l'adresse
+`https://solstice.example.org/mcp`. À la première requête, ils ouvrent le
+navigateur sur Solstice : vous vous connectez comme d'habitude (mot de passe,
+LDAP ou authentification unique), puis une page de consentement nomme
+l'application, l'adresse où elle revient et les portées qu'elle demande.
+Décochez ce dont elle n'a pas besoin, puis autorisez ou refusez. `read` est
+toujours accordée ; `admin` ne l'est jamais, et aucun outil n'en a besoin.
+
+Solstice est le serveur d'autorisation OAuth 2.1 de `/mcp`, comme le décrit la
+[spécification d'autorisation MCP](https://modelcontextprotocol.io/specification/latest/basic/authorization) :
+
+- ses métadonnées (RFC 8414) sont à l'adresse
+  `https://solstice.example.org/.well-known/oauth-authorization-server` ;
+- le flux du code d'autorisation, avec PKCE (`S256` seulement), le paramètre
+  `iss` dans la réponse (RFC 9207), et le paramètre `resource` obligatoire et
+  égal à `https://solstice.example.org/mcp` (RFC 8707) ;
+- les clients sont identifiés par un Client ID Metadata Document : leur
+  `client_id` est une adresse HTTPS qui sert un document JSON avec
+  `client_id`, `client_name` et `redirect_uris`. Solstice le lit au moment où
+  vous autorisez, sans suivre de redirection et jamais depuis une adresse
+  privée ou de bouclage. L'enregistrement dynamique des clients n'est pas
+  encore géré ;
+- les jetons d'accès (`solo_…`) durent une heure. Les jetons de
+  rafraîchissement (`solor_…`) sont remplacés à chaque usage ; un jeton
+  utilisé deux fois révoque tous ceux qu'il a donnés. Un jeton de
+  rafraîchissement inutilisé pendant 30 jours expire (un administrateur peut
+  changer ce nombre de jours, à côté de la politique des jetons), et le client
+  vous redemande l'autorisation ;
+- ces jetons ne servent que sur `/mcp` : l'API de l'interface et l'API REST
+  les refusent.
+
+Qui peut autoriser une application suit la politique des jetons, comme pour
+les jetons d'accès personnels (voir [administration.md](administration.md)) ;
+une application déjà autorisée continue de fonctionner si la politique change.
+Les autorisations, refus et révocations vont dans le journal d'audit.
+
+« Mes paramètres », « Applications connectées » liste les applications que
+vous avez autorisées, avec leurs portées et leur dernière utilisation. En
+révoquer une met fin à ses jetons aussitôt. Changer votre mot de passe, ou la
+désactivation de votre compte, les révoque toutes.
+
+### Avec un jeton d'accès personnel
+
+L'en-tête est `Authorization: Bearer sol_example`. Créez un jeton dans « Mes paramètres », « Jetons d'accès », avec la portée
 `read`, plus `issues:write` si l'agent doit modifier des tickets,
 `comments:write` pour commenter, `worklogs:write` pour saisir du temps passé et
 `agile:write` pour planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
@@ -25,8 +72,8 @@ REST.
 
 Une requête sans jeton valide reçoit un 401 avec
 `WWW-Authenticate: Bearer resource_metadata="https://solstice.example.org/.well-known/oauth-protected-resource"`.
-Ce document (RFC 9728) nomme la ressource et les portées que peuvent avoir les
-jetons.
+Ce document (RFC 9728) nomme la ressource, son serveur d'autorisation et les
+portées que peuvent avoir les jetons.
 
 ## Ce que l'agent peut faire
 
@@ -113,9 +160,12 @@ Les versions et composants d'un projet :
 ## Connecter Claude Code
 
 ```sh
-claude mcp add --transport http solstice https://solstice.example.org/mcp \
-  --header "Authorization: Bearer sol_example"
+claude mcp add --transport http solstice https://solstice.example.org/mcp
 ```
+
+Lancez ensuite `/mcp` dans Claude Code et choisissez le serveur pour vous
+connecter dans le navigateur. Avec un jeton d'accès personnel, ajoutez plutôt
+`--header "Authorization: Bearer sol_example"`.
 
 Ajoutez `--scope user` pour l'utiliser dans tous les projets. `/mcp` dans
 Claude Code liste ensuite le serveur et ses outils.
@@ -140,11 +190,15 @@ l'enregistrer dans le fichier :
 }
 ```
 
-Les autres clients ont besoin des deux mêmes choses : l'adresse
-`https://solstice.example.org/mcp` et l'en-tête `Authorization: Bearer <jeton>`.
+Les autres clients ont besoin de l'adresse `https://solstice.example.org/mcp`
+et, s'ils ne gèrent pas OAuth, de l'en-tête `Authorization: Bearer <jeton>`.
 
 ## Derrière un proxy inverse
 
 Rien à ajouter : `/mcp` répond à chaque POST en JSON et ne garde aucun flux
-ouvert, donc le `location /` de [reverse-proxy.md](reverse-proxy.md) suffit.
-Le proxy doit transmettre l'en-tête `Authorization`, ce qu'il fait par défaut.
+ouvert, donc le `location /` de [reverse-proxy.md](reverse-proxy.md) suffit,
+comme pour `/oauth/` et `/.well-known/`. Le proxy doit transmettre l'en-tête
+`Authorization`, ce qu'il fait par défaut. Les adresses des métadonnées,
+émetteur compris, viennent de `SOLSTICE_HTTP_BASEURL` s'il est défini, sinon
+de la requête : définissez-le derrière un proxy, ou des clients pourraient
+refuser l'émetteur.

@@ -9,11 +9,54 @@ Examples use the host `solstice.example.org` and the token `sol_example`.
 
 ## Signing in
 
-The endpoint only accepts a personal access token, in the header
-`Authorization: Bearer sol_example`. Passwords, Basic credentials, session
-cookies and tokens in the address are refused.
+The endpoint accepts a bearer token, in the header
+`Authorization: Bearer …`: an OAuth access token that the client gets by
+having you sign in (below), or a personal access token. Passwords, Basic
+credentials, session cookies and tokens in the address are refused.
 
-Create a token under "My settings", "Access tokens", and give it the `read`
+### With OAuth
+
+Clients that support MCP authorization (claude.ai connectors, Claude Code,
+some IDEs) only need the address `https://solstice.example.org/mcp`. On the
+first request they open the browser on Solstice: you sign in as usual
+(password, LDAP or single sign-on), and a consent page names the
+application, the address it goes back to, and the scopes it asks for. Untick
+what it does not need, then allow or deny. `read` is always given; `admin`
+never is, and no tool needs it.
+
+Solstice is the OAuth 2.1 authorization server of `/mcp`, as the
+[MCP authorization spec](https://modelcontextprotocol.io/specification/latest/basic/authorization)
+describes:
+
+- its metadata (RFC 8414) is at
+  `https://solstice.example.org/.well-known/oauth-authorization-server`;
+- the authorization code flow, with PKCE (`S256` only), the `iss` parameter
+  in the answer (RFC 9207), and the `resource` parameter required and equal to
+  `https://solstice.example.org/mcp` (RFC 8707);
+- clients are identified by a Client ID Metadata Document: their `client_id`
+  is an HTTPS address serving a JSON document with `client_id`, `client_name`
+  and `redirect_uris`. Solstice fetches it when you authorize, without
+  following redirects and never from a private or loopback address. Dynamic
+  client registration is not supported yet;
+- access tokens (`solo_…`) last one hour. Refresh tokens (`solor_…`) are
+  replaced at each use; one used twice revokes every token it led to. A
+  refresh token unused for 30 days expires (an administrator can change the
+  number of days next to the token policy), and the client asks you again;
+- these tokens work on `/mcp` only: the interface's API and the REST API
+  refuse them.
+
+Who may authorize an application follows the token policy, as for personal
+access tokens (see [administration.md](administration.md)); an application
+already authorized keeps working if the policy changes. Authorizations,
+refusals and revocations go in the audit log.
+
+"My settings", "Connected apps" lists the applications you authorized, with
+their scopes and last use. Revoking one ends its tokens at once. Changing
+your password, or the deactivation of your account, revokes them all.
+
+### With a personal access token
+
+The header is `Authorization: Bearer sol_example`. Create a token under "My settings", "Access tokens", and give it the `read`
 scope, plus `issues:write` if the agent is to change issues, `comments:write`
 to comment, `worklogs:write` to log work and `agile:write` to plan sprints. Only people allowed by the administrator's token policy can create
 tokens (see [administration.md](administration.md)). A token keeps working
@@ -21,7 +64,8 @@ if the policy changes later, as on the REST API.
 
 A request without a valid token answers 401 with
 `WWW-Authenticate: Bearer resource_metadata="https://solstice.example.org/.well-known/oauth-protected-resource"`.
-That document (RFC 9728) names the resource and the scopes tokens can have.
+That document (RFC 9728) names the resource, its authorization server and
+the scopes tokens can have.
 
 ## What the agent can do
 
@@ -106,9 +150,12 @@ Versions and components of a project:
 ## Connecting Claude Code
 
 ```sh
-claude mcp add --transport http solstice https://solstice.example.org/mcp \
-  --header "Authorization: Bearer sol_example"
+claude mcp add --transport http solstice https://solstice.example.org/mcp
 ```
+
+Then run `/mcp` in Claude Code and choose the server to sign in through the
+browser. With a personal access token instead, add
+`--header "Authorization: Bearer sol_example"`.
 
 Add `--scope user` to use it in every project. `/mcp` in Claude Code then
 lists the server and its tools.
@@ -133,11 +180,14 @@ it in the file:
 }
 ```
 
-Other clients need the same two things: the address `https://solstice.example.org/mcp`
-and the header `Authorization: Bearer <token>`.
+Other clients need the address `https://solstice.example.org/mcp`, and,
+unless they support OAuth, the header `Authorization: Bearer <token>`.
 
 ## Behind a reverse proxy
 
 Nothing to add: `/mcp` answers each POST with JSON and keeps no stream open,
-so the `location /` of [reverse-proxy.md](reverse-proxy.md) covers it. The
-proxy must pass the `Authorization` header on, which it does by default.
+so the `location /` of [reverse-proxy.md](reverse-proxy.md) covers it, as it
+covers `/oauth/` and `/.well-known/`. The proxy must pass the `Authorization`
+header on, which it does by default. The addresses in the metadata, the
+issuer included, come from `SOLSTICE_HTTP_BASEURL` when it is set, otherwise
+from the request: set it behind a proxy, or clients may refuse the issuer.

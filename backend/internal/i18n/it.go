@@ -63,6 +63,18 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenScopeAdminOnly:     "Solo un amministratore può dare a un token l'ambito admin.",
 	TokenScopeMissing:       "Questo token di accesso non ha l'ambito %s.",
 
+	// OAuth authorization of MCP clients.
+	OAuthTokenCannotAuthorize: "Un token di accesso non può autorizzare applicazioni: accedi con la tua password.",
+	OAuthClientInvalid:        "L'identificativo dell'applicazione non è un indirizzo HTTPS valido.",
+	OAuthClientDocument:       "La descrizione dell'applicazione all'indirizzo %s non è leggibile o non è valida.",
+	OAuthRedirectInvalid:      "L'applicazione chiede di tornare a un indirizzo che la sua descrizione non elenca.",
+	OAuthResponseType:         "L'applicazione chiede un tipo di risposta non supportato: è supportato solo “code”.",
+	OAuthPKCERequired:         "L'applicazione deve proteggere la richiesta con PKCE (code challenge S256).",
+	OAuthResourceInvalid:      "L'applicazione deve chiedere l'accesso a %s.",
+	OAuthScopeUnknown:         "L'applicazione chiede un ambito sconosciuto: %s.",
+	OAuthNotAllowed:           "Il tuo account non può autorizzare applicazioni: rivolgiti a un amministratore.",
+	OAuthRefreshDaysInvalid:   "La durata dei token di aggiornamento deve essere compresa tra 1 e %d giorni.",
+
 	// Groups.
 	GroupNotFound:   "Gruppo non trovato.",
 	GroupExists:     "Il gruppo «%s» esiste già.",

@@ -305,9 +305,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		return fail(http.StatusBadRequest, i18n.AccountOwnPasswordInProfile)
 	case self && emailChanged:
 		return fail(http.StatusBadRequest, i18n.AccountOwnEmailInProfile)
-	case me.TokenID != 0 && in.Password != nil:
+	case me.ByToken() && in.Password != nil:
 		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
-	case me.TokenID != 0 && emailChanged:
+	case me.ByToken() && emailChanged:
 		return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
 	}
 	if in.Email != nil {

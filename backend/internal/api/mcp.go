@@ -4,8 +4,9 @@ package api
 // through tools, one per operation of the Jira-compatible REST API (see
 // mcp_tools.go).
 //
-// Sign-in is "Authorization: Bearer <personal access token>" only: no
-// cookie, so no request can be forged cross-site, and no password. A
+// Sign-in is "Authorization: Bearer <token>" only, a personal access token
+// or an OAuth access token (oauth.go): no cookie, so no request can be
+// forged cross-site, and no password. A
 // request without a valid token is answered 401, pointing to the protected
 // resource metadata (RFC 9728) as the MCP authorization spec asks.
 //
@@ -48,13 +49,12 @@ func (s *Server) mcpRoutes(mux *http.ServeMux) {
 // mcpMetadata serves the protected resource metadata of the endpoint.
 func (s *Server) mcpMetadata(w http.ResponseWriter, r *http.Request) {
 	base := s.restOut(r).base
-	scopes := make([]string, len(solauth.Scopes))
-	for i, sc := range solauth.Scopes {
-		scopes[i] = string(sc)
-	}
+	// No admin tool exists, and OAuth never grants admin.
+	scopes := scopeNames(grantableScopes())
 	auth.ProtectedResourceMetadataHandler(&oauthex.ProtectedResourceMetadata{
 		Resource:               base + mcpPath,
 		ResourceName:           "Solstice",
+		AuthorizationServers:   []string{base},
 		ScopesSupported:        scopes,
 		BearerMethodsSupported: []string{"header"},
 	}).ServeHTTP(w, r)
@@ -103,7 +103,11 @@ func (s *Server) mcpUser(r *http.Request) (*solauth.User, error) {
 		return nil, fail(http.StatusUnauthorized, i18n.RequestSignIn)
 	}
 	token = strings.TrimSpace(token)
-	u, err := solauth.LookupToken(r.Context(), s.db, token)
+	lookup := solauth.LookupToken
+	if solauth.LooksLikeOAuthToken(token) {
+		lookup = solauth.LookupOAuthToken
+	}
+	u, err := lookup(r.Context(), s.db, token)
 	if errors.Is(err, solauth.ErrNoSession) {
 		s.rejectToken(r, token)
 		return nil, fail(http.StatusUnauthorized, i18n.RequestCredentialsRefused)

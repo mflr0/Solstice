@@ -135,6 +135,28 @@ export interface TokenSettings {
   who: 'everyone' | 'admins' | 'group';
   /** For "group": the group, null if it is gone. */
   group: IdName | null;
+  /** Days an unused OAuth refresh token lasts. */
+  refreshDays: number;
+}
+
+/** An application (MCP client) the user authorized through OAuth. */
+export interface OAuthGrant {
+  id: number;
+  clientId: string;
+  clientName: string;
+  /** The host of the client's address, which vouches for its name. */
+  clientHost: string;
+  scopes: TokenScope[];
+  created: string;
+  lastUsed: string | null;
+}
+
+/** What the consent page asks the user to allow. */
+export interface OAuthRequest {
+  client: { id: string; name: string; host: string };
+  /** Where the browser goes back: host and port. */
+  redirectHost: string;
+  scopes: TokenScope[];
 }
 
 /* Audit log ----------------------------------------------------------------- */

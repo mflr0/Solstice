@@ -107,6 +107,10 @@ const (
 	WebhookUpdate        = "webhook.update"
 	WebhookDelete        = "webhook.delete"
 	SettingsTokens       = "settings.tokens"
+	// OAuth clients a user authorized, refused or revoked.
+	OAuthGrant  = "oauth.grant"
+	OAuthDeny   = "oauth.deny"
+	OAuthRevoke = "oauth.revoke"
 	// Issue security levels of a project, and who may see their issues.
 	SecurityLevelCreate       = "securitylevel.create"
 	SecurityLevelUpdate       = "securitylevel.update"
@@ -124,25 +128,26 @@ type TargetType string
 // Target types. Catalogue items use their catalogue's name (issuetype,
 // priority, resolution, linktype).
 const (
-	TargetUser       TargetType = "user"
-	TargetGroup      TargetType = "group"
-	TargetRole       TargetType = "role"
-	TargetToken      TargetType = "token"
-	TargetProject    TargetType = "project"
-	TargetCategory   TargetType = "category"
-	TargetComponent  TargetType = "component"
-	TargetVersion    TargetType = "version"
-	TargetField      TargetType = "field"
-	TargetStatus     TargetType = "status"
-	TargetWorkflow   TargetType = "workflow"
-	TargetBoard      TargetType = "board"
-	TargetSprint     TargetType = "sprint"
-	TargetFilter     TargetType = "filter"
-	TargetIssue      TargetType = "issue"
-	TargetAttachment TargetType = "attachment"
-	TargetWebhook    TargetType = "webhook"
-	TargetSettings   TargetType = "settings"
-	TargetImport     TargetType = "import"
+	TargetUser        TargetType = "user"
+	TargetGroup       TargetType = "group"
+	TargetRole        TargetType = "role"
+	TargetToken       TargetType = "token"
+	TargetProject     TargetType = "project"
+	TargetCategory    TargetType = "category"
+	TargetComponent   TargetType = "component"
+	TargetVersion     TargetType = "version"
+	TargetField       TargetType = "field"
+	TargetStatus      TargetType = "status"
+	TargetWorkflow    TargetType = "workflow"
+	TargetBoard       TargetType = "board"
+	TargetSprint      TargetType = "sprint"
+	TargetFilter      TargetType = "filter"
+	TargetIssue       TargetType = "issue"
+	TargetAttachment  TargetType = "attachment"
+	TargetWebhook     TargetType = "webhook"
+	TargetSettings    TargetType = "settings"
+	TargetImport      TargetType = "import"
+	TargetOAuthClient TargetType = "oauthclient" // ID: the client_id URL
 )
 
 // Target is what an action was done to: a user, a project, a token…

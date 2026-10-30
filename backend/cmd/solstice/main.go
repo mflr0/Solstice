@@ -329,8 +329,8 @@ func runServe(ctx context.Context, args []string) error {
 }
 
 // purgeExpired deletes expired sessions hourly: they are useless. Audit
-// log entries past their retention period, and expired or used reset and
-// invitation links, go at the same time.
+// log entries past their retention period, expired or used reset and
+// invitation links, and expired OAuth codes and tokens go at the same time.
 func purgeExpired(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -348,6 +348,9 @@ func purgeExpired(ctx context.Context, conn *sql.DB, log *slog.Logger) {
 				}
 				if _, err := auth.PurgeAccountTokens(ctx, conn, time.Now()); err != nil {
 					log.Warn("expired reset and invitation links purge failed", "err", err)
+				}
+				if err := auth.PurgeOAuth(ctx, conn, time.Now()); err != nil {
+					log.Warn("expired OAuth codes and tokens purge failed", "err", err)
 				}
 			})
 		}

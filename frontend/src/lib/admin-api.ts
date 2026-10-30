@@ -43,6 +43,8 @@ import type {
   MySubscription,
   Subscription,
   SubscriptionInput,
+  OAuthGrant,
+  OAuthRequest,
   TokenScope,
   TokenSettings,
   Webhook,
@@ -224,8 +226,8 @@ export const adminApi = {
   revokeToken: (id: number) => request<void>('DELETE', `/api/admin/tokens/${id}`),
   /** Who may create tokens. */
   tokenSettings: () => request<TokenSettings>('GET', '/api/admin/tokens/settings'),
-  saveTokenSettings: (who: TokenSettings['who'], group?: number) =>
-    request<TokenSettings>('PUT', '/api/admin/tokens/settings', { who, group }),
+  saveTokenSettings: (who: TokenSettings['who'], group: number | undefined, refreshDays: number) =>
+    request<TokenSettings>('PUT', '/api/admin/tokens/settings', { who, group, refreshDays }),
 
   // Audit log.
   audit: (q: AuditQuery) =>
@@ -313,6 +315,16 @@ export const accountApi = {
   revokeToken: (id: number) => request<void>('DELETE', `/api/me/tokens/${id}`),
   /** Whether the instance lets this user create a token now. */
   tokenPolicy: () => request<{ canCreate: boolean }>('GET', '/api/me/tokens/policy'),
+
+  // Applications authorized through OAuth.
+  grants: () => request<OAuthGrant[]>('GET', '/api/me/oauth-grants'),
+  revokeGrant: (id: number) => request<void>('DELETE', `/api/me/oauth-grants/${id}`),
+  /** Checks an authorization request: query is the search of /oauth/authorize. */
+  checkAuthorization: (query: string) =>
+    request<OAuthRequest>('GET', `/api/oauth/authorize${query}`),
+  /** Allows or refuses it; the answer is where to send the browser. */
+  consent: (query: string, allow: boolean, scopes: TokenScope[]) =>
+    request<{ redirect: string }>('POST', '/api/oauth/consent', { request: query, allow, scopes }),
 
   // E-mail notifications.
   notifications: () => request<NotificationPrefs>('GET', '/api/me/notifications'),

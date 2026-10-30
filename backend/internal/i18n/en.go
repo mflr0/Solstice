@@ -61,6 +61,18 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenScopeAdminOnly:     "Only an administrator may give a token the admin scope.",
 	TokenScopeMissing:       "This access token does not have the scope %s.",
 
+	// OAuth authorization of MCP clients.
+	OAuthTokenCannotAuthorize: "An access token cannot authorize applications: sign in with your password.",
+	OAuthClientInvalid:        "The application's identifier is not a valid HTTPS address.",
+	OAuthClientDocument:       "The application's description at %s cannot be read or is invalid.",
+	OAuthRedirectInvalid:      "The application asked to come back to an address its description does not list.",
+	OAuthResponseType:         "The application asked for an unsupported response type: only “code” is supported.",
+	OAuthPKCERequired:         "The application must protect its request with PKCE (S256 code challenge).",
+	OAuthResourceInvalid:      "The application must ask for access to %s.",
+	OAuthScopeUnknown:         "The application asked for an unknown scope: %s.",
+	OAuthNotAllowed:           "Your account may not authorize applications: ask an administrator.",
+	OAuthRefreshDaysInvalid:   "The refresh token lifetime must be between 1 and %d days.",
+
 	// Groups.
 	GroupNotFound:   "Group not found.",
 	GroupExists:     "The group “%s” already exists.",

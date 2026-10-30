@@ -215,7 +215,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 			// The address receives the links that reset the account: as for
 			// the password, a token cannot change it and the current password
 			// is asked for.
-			if u.TokenID != 0 {
+			if u.ByToken() {
 				return fail(http.StatusForbidden, i18n.AccountTokenCannotChangeEmail)
 			}
 			emailChanged = true
@@ -245,7 +245,7 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	if in.NewPassword != nil || emailChanged {
-		if u.TokenID != 0 {
+		if u.ByToken() {
 			return fail(http.StatusForbidden, i18n.AccountTokenCannotChangePassword)
 		}
 		if in.CurrentPassword == nil || *in.CurrentPassword == "" {

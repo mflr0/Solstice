@@ -64,6 +64,18 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenScopeAdminOnly:     "केवल एडमिनिस्ट्रेटर ही किसी टोकन को admin स्कोप दे सकता है।",
 	TokenScopeMissing:       "इस एक्सेस टोकन के पास स्कोप %s नहीं है।",
 
+	// OAuth authorization of MCP clients.
+	OAuthTokenCannotAuthorize: "एक्सेस टोकन से ऐप्लिकेशन अधिकृत नहीं किए जा सकते: अपने पासवर्ड से साइन इन करें।",
+	OAuthClientInvalid:        "ऐप्लिकेशन का पहचानकर्ता मान्य HTTPS पता नहीं है।",
+	OAuthClientDocument:       "%s पर ऐप्लिकेशन का विवरण पढ़ा नहीं जा सकता या अमान्य है।",
+	OAuthRedirectInvalid:      "ऐप्लिकेशन ऐसे पते पर लौटना चाहता है जो उसके विवरण में नहीं है।",
+	OAuthResponseType:         "ऐप्लिकेशन ने असमर्थित प्रतिक्रिया प्रकार माँगा: केवल “code” समर्थित है।",
+	OAuthPKCERequired:         "ऐप्लिकेशन को अपना अनुरोध PKCE (S256 code challenge) से सुरक्षित करना होगा।",
+	OAuthResourceInvalid:      "ऐप्लिकेशन को %s तक पहुँच माँगनी होगी।",
+	OAuthScopeUnknown:         "ऐप्लिकेशन ने अज्ञात स्कोप माँगा: %s।",
+	OAuthNotAllowed:           "आपका खाता ऐप्लिकेशन अधिकृत नहीं कर सकता: किसी व्यवस्थापक से पूछें।",
+	OAuthRefreshDaysInvalid:   "रीफ़्रेश टोकन की अवधि 1 से %d दिनों के बीच होनी चाहिए।",
+
 	// Groups.
 	GroupNotFound:   "ग्रुप नहीं मिला।",
 	GroupExists:     "ग्रुप “%s” पहले से मौजूद है।",
