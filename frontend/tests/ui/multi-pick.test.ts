@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 
 import { t } from '../../src/i18n/t.js';
@@ -12,10 +12,20 @@ const options = [
 ];
 
 let component: ReturnType<typeof mount> | undefined;
+let shown: HTMLElement[] = [];
+
+beforeEach(() => {
+  // jsdom has no top layer.
+  HTMLElement.prototype.showPopover = function (this: HTMLElement) {
+    shown.push(this);
+  };
+});
 
 afterEach(() => {
   if (component) unmount(component);
   component = undefined;
+  shown = [];
+  delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
 });
 
 function open(oncreate?: (name: string) => Promise<number>, onchange = (_: number[]) => {}) {
@@ -38,6 +48,8 @@ function type(text: string) {
 const names = () =>
   [...document.querySelectorAll('[role="menuitemcheckbox"]')].map((b) => b.textContent);
 const createItem = () => document.querySelector('.item.create');
+const popover = () => document.querySelector('.popover') as HTMLElement | null;
+const button = () => document.querySelector('button.current') as HTMLButtonElement;
 
 describe('MultiPick', () => {
   it('narrows the options by name, ignoring case', () => {
@@ -81,5 +93,35 @@ describe('MultiPick', () => {
     (document.querySelector('button.current') as HTMLButtonElement).click();
     flushSync();
     expect(chosen).toEqual([4]);
+  });
+
+  it('opens the list in the top layer', () => {
+    open();
+    expect(popover()?.getAttribute('popover')).toBe('manual');
+    expect(shown).toEqual([popover()]);
+  });
+
+  it('closes on Escape and a press outside, applying the choice once', () => {
+    const changes: number[][] = [];
+    open(undefined, (ids) => changes.push(ids));
+    (document.querySelector('[role="menuitemcheckbox"]') as HTMLButtonElement).click();
+    flushSync();
+    expect(popover()).not.toBeNull();
+    const filter = document.querySelector('input.filter') as HTMLInputElement;
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    filter.dispatchEvent(escape);
+    flushSync();
+    expect(popover()).toBeNull();
+    // A dialog around it stays open.
+    expect(escape.defaultPrevented).toBe(true);
+    expect(changes).toEqual([[1]]);
+
+    button().click();
+    flushSync();
+    expect(popover()).not.toBeNull();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    flushSync();
+    expect(popover()).toBeNull();
+    expect(changes).toEqual([[1]]);
   });
 });

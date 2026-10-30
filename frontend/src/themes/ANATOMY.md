@@ -188,7 +188,13 @@ form, `.note`. Wiki `{panel}`: `.wiki .panel`, `.wiki .panel-title`.
 **Fields** — `.field` > `.field-label` (or first `span`), `.input`, `.select` (a dropdown's button),
 `.textarea`, `input.checkbox`, `.hint`; `.field-box` (also `.boxed`) frames a
 picker like an input in the create dialog (assignee, components, versions,
-labels). `.chip` (labels, values). `.key` (issue keys, mono).
+labels). A person picker is `.picker` (`.framed` in a form) with
+`button.current` and `.popover` (`input.filter`, then `ul[role=listbox]` >
+`li` > `button.item`); a multi-value one is `.multi` with `button.current` and
+`.popover` (`input.filter`, then `[role=menu]` >
+`button.item[role=menuitemcheckbox]`). Their `.popover` opens in the top
+layer, like a dropdown's list. `.chip` (labels, values). `.key` (issue keys,
+mono).
 
 **Tables** — `table.ledger` > `thead th`, `tbody tr`, `td`; `.num` (right-aligned
 numbers); `tr.is-selected` (reserved). Rows are clickable (`cursor: pointer`).
@@ -216,6 +222,9 @@ sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name` (`.name.none`
 top layer > `li.item[role=option]` (`.active` = highlighted,
 `[aria-selected='true']` = the value, ✓ after it) > `.icon` + `.name`. Grouped
 options sit in `li[role=group]` > `.group-label` + `ul.group` > `li.item`.
+A list in the top layer is fixed to the window and placed by script (under
+its button, or above it when there is more room there): don't give it a
+`position`, `inset` or `margin`; its `max-height` still holds.
 
 **Dialogs** — `dialog.modal` (`::backdrop`) > `header.modal-head` (title bar) >
 `h2.modal-title` + `button.modal-close` (label « Fermer Échap »; restyle it,
