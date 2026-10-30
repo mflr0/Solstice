@@ -71,6 +71,13 @@
     );
   }
 
+  /** Back to the plain search, in the same mode; Back reopens the filter. */
+  function closeFilter() {
+    router.navigate(
+      `${router.path}${writeLocation({ jql: null, mode: loc.mode, filter: null, page: 1 })}`,
+    );
+  }
+
   function ask(which: 'save' | 'rename' | 'delete') {
     dialogError = '';
     name = which === 'rename' && current ? current.name : '';
@@ -179,7 +186,7 @@
   </header>
 
   <div class="search-layout">
-    <SavedFilters {filters} current={loc.filter} onstar={star} />
+    <SavedFilters {filters} current={loc.filter} onstar={star} onclose={closeFilter} />
     <div class="search-main">
       {#if gone}<p class="error-text gone" role="alert">{t.saved.gone}</p>{/if}
       <IssueSearch {fallback} autofocus={loc.filter === null && loc.jql === null} selectable />

@@ -47,7 +47,7 @@ type mcpTool struct {
 // mcpParam is an argument of a tool: a query parameter of the REST
 // operation, its path value pathValue, or a field of its JSON body.
 type mcpParam struct {
-	name, kind, desc string // kind: string, integer, boolean, object or list (of strings)
+	name, kind, desc string // kind: string, integer, boolean, object, list (of strings) or objects
 	required         bool
 	pathValue        string
 	body             bool
@@ -72,11 +72,6 @@ var (
 
 func mcpRead(name, path string, h func(*Server, http.ResponseWriter, *http.Request) error, desc string, params ...mcpParam) mcpTool {
 	return mcpTool{name: name, desc: desc, scope: auth.ScopeRead, path: path, h: h, params: params}
-}
-
-func mcpWrite(name, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error, desc string,
-	params ...mcpParam) mcpTool {
-	return mcpTool{name: name, desc: desc, scope: auth.ScopeIssues, method: method, path: path, h: h, params: params}
 }
 
 // mcpOn is the handler of a REST operation that adds (on) or removes.
@@ -113,6 +108,24 @@ func mcpAgile(name, method, path string, h func(*Server, http.ResponseWriter, *h
 	return mcpTool{name: name, desc: desc, scope: scope, method: method, api: issue.AgileAPIPath, path: path, h: h,
 		params: params}
 }
+
+// mcpWrite is a tool of the REST API that changes things under scope.
+func mcpWrite(name string, scope auth.Scope, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error,
+	desc string, params ...mcpParam) mcpTool {
+	return mcpTool{name: name, desc: desc, scope: scope, method: method, path: path, h: h, params: params}
+}
+
+// Arguments of the filter tools.
+var (
+	mcpFilterID   = mcpParam{name: "filterId", kind: "string", desc: "Filter id.", required: true, pathValue: "id"}
+	mcpFilterBody = []mcpParam{
+		{name: "description", kind: "string", desc: "Description; empty to clear it.", body: true},
+		{name: "favourite", kind: "boolean", desc: "Whether the filter is among the user's favourites.", body: true},
+		{name: "sharePermissions", kind: "objects", body: true, desc: `Who else sees the filter, replacing the current shares: ` +
+			`{"type":"global"}, {"type":"group","group":{"name":"..."}}, {"type":"project","project":{"key":"..."}}, ` +
+			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"..."}} or {"type":"user","user":{"name":"..."}}.`},
+	}
+)
 
 // mcpTools are the tools of the endpoint.
 var mcpTools = []mcpTool{
@@ -228,34 +241,34 @@ var mcpTools = []mcpTool{
 		"Kinds of issue links, with their inward and outward names."),
 	mcpRead("get_server_info", "/serverInfo", (*Server).restServerInfo, "This server's version, base URL and time."),
 
-	mcpWrite("create_issue", http.MethodPost, "/issue", (*Server).restCreateIssue,
+	mcpWrite("create_issue", auth.ScopeIssues, http.MethodPost, "/issue", (*Server).restCreateIssue,
 		`Creates an issue. fields needs project ({"key": "DEMO"}), issuetype ({"name": "Bug"}) and summary. `+
 			"Returns the new issue's id and key.",
 		mcpEditFields, mcpEditUpdate),
-	mcpWrite("edit_issue", http.MethodPut, "/issue/{key}", (*Server).restUpdateIssue,
+	mcpWrite("edit_issue", auth.ScopeIssues, http.MethodPut, "/issue/{key}", (*Server).restUpdateIssue,
 		"Changes the fields of an issue: fields sets values, update adds, removes or sets them one by one.",
 		mcpIssueKey, mcpEditFields, mcpEditUpdate),
-	mcpWrite("delete_issue", http.MethodDelete, "/issue/{key}", (*Server).restDeleteIssue,
+	mcpWrite("delete_issue", auth.ScopeIssues, http.MethodDelete, "/issue/{key}", (*Server).restDeleteIssue,
 		"Deletes an issue for good, with its comments, work log and attachments.",
 		mcpIssueKey, mcpParam{name: "deleteSubtasks", kind: "boolean", desc: "Also delete its sub-tasks; without it, an issue that has some is kept."}),
-	mcpWrite("assign_issue", http.MethodPut, "/issue/{key}/assignee", (*Server).restAssign,
+	mcpWrite("assign_issue", auth.ScopeIssues, http.MethodPut, "/issue/{key}/assignee", (*Server).restAssign,
 		"Assigns an issue to a user, to nobody, or to the project's default assignee.",
 		mcpIssueKey, mcpBody("name", "string", `User name; "-1" for the project's default assignee; leave it out for nobody.`)),
-	mcpWrite("transition_issue", http.MethodPost, "/issue/{key}/transitions", (*Server).restTransition,
+	mcpWrite("transition_issue", auth.ScopeIssues, http.MethodPost, "/issue/{key}/transitions", (*Server).restTransition,
 		"Moves an issue along its workflow, setting the fields of the transition's screen. "+
 			"get_transitions lists the transitions the user can take.",
 		mcpIssueKey,
 		mcpParam{name: "transition", kind: "object", desc: `The transition: {"id": "21"} or {"name": "Start progress"}.`, required: true, body: true},
 		mcpEditFields, mcpEditUpdate),
-	mcpWrite("add_watcher", http.MethodPost, "/issue/{key}/watchers", mcpOn((*Server).restWatch, true),
+	mcpWrite("add_watcher", auth.ScopeIssues, http.MethodPost, "/issue/{key}/watchers", mcpOn((*Server).restWatch, true),
 		"Makes the user, or another one, watch an issue.",
 		mcpIssueKey, mcpParam{name: "username", kind: "string", desc: "Who; the user by default."}),
-	mcpWrite("remove_watcher", http.MethodDelete, "/issue/{key}/watchers", mcpOn((*Server).restWatch, false),
+	mcpWrite("remove_watcher", auth.ScopeIssues, http.MethodDelete, "/issue/{key}/watchers", mcpOn((*Server).restWatch, false),
 		"Stops the user, or another one, watching an issue.",
 		mcpIssueKey, mcpParam{name: "username", kind: "string", desc: "Who; the user by default."}),
-	mcpWrite("add_vote", http.MethodPost, "/issue/{key}/votes", mcpOn((*Server).restVote, true),
+	mcpWrite("add_vote", auth.ScopeIssues, http.MethodPost, "/issue/{key}/votes", mcpOn((*Server).restVote, true),
 		"Votes for an issue.", mcpIssueKey),
-	mcpWrite("remove_vote", http.MethodDelete, "/issue/{key}/votes", mcpOn((*Server).restVote, false),
+	mcpWrite("remove_vote", auth.ScopeIssues, http.MethodDelete, "/issue/{key}/votes", mcpOn((*Server).restVote, false),
 		"Takes the user's vote back from an issue.", mcpIssueKey),
 	{name: "add_attachment", scope: auth.ScopeIssues, method: http.MethodPost, path: "/issue/{key}/attachments",
 		h: (*Server).restAttach, encode: mcpAttachment,
@@ -264,32 +277,52 @@ var mcpTools = []mcpTool{
 			{name: "filename", kind: "string", desc: "File name.", required: true},
 			{name: "content", kind: "string", desc: "The file's content, base64-encoded.", required: true},
 			{name: "mimeType", kind: "string", desc: "Media type, e.g. image/png; application/octet-stream by default."}}},
-	mcpWrite("delete_attachment", http.MethodDelete, "/attachment/{id}", (*Server).deleteAttachment,
+	mcpWrite("delete_attachment", auth.ScopeIssues, http.MethodDelete, "/attachment/{id}", (*Server).deleteAttachment,
 		"Deletes an attachment.",
 		mcpParam{name: "attachmentId", kind: "string", desc: "Attachment id.", required: true, pathValue: "id"}),
-	mcpWrite("link_issues", http.MethodPost, "/issueLink", (*Server).restLink,
+	mcpWrite("link_issues", auth.ScopeIssues, http.MethodPost, "/issueLink", (*Server).restLink,
 		`Links two issues; the inward issue is the source: type Blocks, inwardIssue A, outwardIssue B means "A blocks B". `+
 			"list_issue_link_types lists the types.",
 		mcpParam{name: "type", kind: "object", desc: `Link type: {"name": "Blocks"} or {"id": "10000"}.`, required: true, body: true},
 		mcpParam{name: "inwardIssue", kind: "object", desc: `{"key": "DEMO-1"}`, required: true, body: true},
 		mcpParam{name: "outwardIssue", kind: "object", desc: `{"key": "DEMO-2"}`, required: true, body: true},
 		mcpBody("comment", "object", `Comment to add to the inward issue: {"body": "…"}.`)),
-	mcpWrite("delete_issue_link", http.MethodDelete, "/issueLink/{id}", (*Server).deleteLink,
+	mcpWrite("delete_issue_link", auth.ScopeIssues, http.MethodDelete, "/issueLink/{id}", (*Server).deleteLink,
 		"Removes a link between two issues; get_issue gives the ids of its links.",
 		mcpParam{name: "linkId", kind: "string", desc: "Issue link id.", required: true, pathValue: "id"}),
-	mcpWrite("add_remote_link", http.MethodPost, "/issue/{key}/remotelink", (*Server).restAddRemoteLink,
+	mcpWrite("add_remote_link", auth.ScopeIssues, http.MethodPost, "/issue/{key}/remotelink", (*Server).restAddRemoteLink,
 		"Links an issue to an outside page, or updates the link with the same globalId.",
 		append([]mcpParam{mcpIssueKey}, mcpRemoteLinkBody...)...),
-	mcpWrite("edit_remote_link", http.MethodPut, "/issue/{key}/remotelink/{linkId}", (*Server).restEditRemoteLink,
+	mcpWrite("edit_remote_link", auth.ScopeIssues, http.MethodPut, "/issue/{key}/remotelink/{linkId}", (*Server).restEditRemoteLink,
 		"Changes a link from an issue to an outside page.",
 		append([]mcpParam{mcpIssueKey, {name: "linkId", kind: "string", desc: "Remote link id.", required: true, pathValue: "linkId"}},
 			mcpRemoteLinkBody...)...),
-	mcpWrite("delete_remote_link", http.MethodDelete, "/issue/{key}/remotelink/{linkId}", (*Server).restDeleteRemoteLink,
+	mcpWrite("delete_remote_link", auth.ScopeIssues, http.MethodDelete, "/issue/{key}/remotelink/{linkId}", (*Server).restDeleteRemoteLink,
 		"Removes a link from an issue to an outside page.",
 		mcpIssueKey, mcpParam{name: "linkId", kind: "string", desc: "Remote link id.", required: true, pathValue: "linkId"}),
-	mcpWrite("delete_remote_link_by_global_id", http.MethodDelete, "/issue/{key}/remotelink", (*Server).restDeleteRemoteLink,
+	mcpWrite("delete_remote_link_by_global_id", auth.ScopeIssues, http.MethodDelete, "/issue/{key}/remotelink", (*Server).restDeleteRemoteLink,
 		"Removes the link from an issue to an outside page that has this global id.",
 		mcpIssueKey, mcpParam{name: "globalId", kind: "string", desc: "Global id of the link.", required: true}),
+
+	mcpRead("list_favourite_filters", "/filter/favourite", (*Server).restFavouriteFilters,
+		"The user's favourite saved filters: id, name, JQL, owner, shares."),
+	mcpRead("get_filter", "/filter/{id}", (*Server).restFilter,
+		"One saved filter the user can see: name, description, JQL, owner, shares, whether a favourite.",
+		mcpFilterID),
+	mcpWrite("create_filter", auth.ScopeFilters, http.MethodPost, "/filter", (*Server).restSaveFilter,
+		"Saves a new filter owned by the user, private unless sharePermissions says otherwise.",
+		append([]mcpParam{{name: "name", kind: "string", desc: "Name.", required: true, body: true},
+			{name: "jql", kind: "string", desc: "JQL query of the filter.", required: true, body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("update_filter", auth.ScopeFilters, http.MethodPut, "/filter/{id}", (*Server).restSaveFilter,
+		"Changes a saved filter the user may edit; arguments left out stay as they are. "+
+			"favourite alone works on any filter the user can see.",
+		append([]mcpParam{mcpFilterID, {name: "name", kind: "string", desc: "New name.", body: true},
+			{name: "jql", kind: "string", desc: "New JQL query.", body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("delete_filter", auth.ScopeFilters, http.MethodDelete, "/filter/{id}", (*Server).deleteFilter,
+		"Deletes a saved filter the user may edit.",
+		mcpFilterID),
 
 	mcpAgile("list_boards", "GET", "/board", (*Server).agileBoards,
 		"Boards the user can see: id, name, type (scrum or kanban), project.",
@@ -350,8 +383,11 @@ func init() {
 			AdditionalProperties: &jsonschema.Schema{Not: &jsonschema.Schema{}}}
 		for _, p := range t.params {
 			ps := &jsonschema.Schema{Type: p.kind, Description: p.desc}
-			if p.kind == "list" {
+			switch p.kind {
+			case "list":
 				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "string"}
+			case "objects":
+				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "object"}
 			}
 			t.schema.Properties[p.name] = ps
 			t.schema.PropertyOrder = append(t.schema.PropertyOrder, p.name)

@@ -654,6 +654,7 @@ export const en = {
     delete: 'Delete',
     star: (name: string) => `Add “${name}” to favorites`,
     unstar: (name: string) => `Remove “${name}” from favorites`,
+    close: (name: string) => `Close “${name}”`,
     name: 'Name',
     description: 'Description',
     newTitle: 'Save search',

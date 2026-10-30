@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -325,6 +326,75 @@ func mcpResultText(res *mcp.CallToolResult) string {
 		}
 	}
 	return b.String()
+}
+
+func TestMCPFilters(t *testing.T) {
+	needDB(t)
+	paul := login(t, "paul.martin", jirafixture.Password)
+	marie := login(t, "marie.durand", jirafixture.Password)
+	visible := createIssue(t, paul, "DEMO", "Trouvé par un filtre favori", "")
+
+	// A read token runs a favourite filter: lists it, then searches its JQL.
+	var fav struct{ ID int64 }
+	paul.call("POST", "/api/filters", map[string]any{"name": unique("Favori MCP "), "query": "key = " + visible}, 201, &fav)
+	t.Cleanup(func() { paul.do("DELETE", fmt.Sprintf("/api/filters/%d", fav.ID), nil) })
+	paul.call("PUT", fmt.Sprintf("/api/filters/%d/favourite", fav.ID), nil, 204, nil)
+	read := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeRead))
+	var favourites []struct{ ID, JQL string }
+	mcpCall(t, read, "list_favourite_filters", nil, &favourites)
+	i := slices.IndexFunc(favourites, func(f struct{ ID, JQL string }) bool { return f.ID == strconv.FormatInt(fav.ID, 10) })
+	if i < 0 {
+		t.Fatalf("list_favourite_filters lacks %d: %+v", fav.ID, favourites)
+	}
+	var found struct{ Issues []struct{ Key string } }
+	mcpCall(t, read, "search_issues", map[string]any{"jql": favourites[i].JQL}, &found)
+	if len(found.Issues) != 1 || found.Issues[0].Key != visible {
+		t.Errorf("search_issues %q: %+v, want %s", favourites[i].JQL, found, visible)
+	}
+
+	// The read token lists no write tool, and calling one names the scope.
+	if tools := mcpToolNames(t, read); slices.Contains(tools, "create_filter") {
+		t.Errorf("read token lists create_filter: %v", tools)
+	}
+	res := mcpRawCall(t, read, "delete_filter", map[string]any{"filterId": strconv.FormatInt(fav.ID, 10)})
+	if !res.IsError || !strings.Contains(mcpResultText(res), string(auth.ScopeFilters)) {
+		t.Errorf("read token calls delete_filter: %s", mcpResultText(res))
+	}
+
+	// Another user's private filter stays hidden.
+	var private struct{ ID int64 }
+	marie.call("POST", "/api/filters", map[string]any{"name": unique("Privé MCP "), "query": "project = DEMO"}, 201, &private)
+	t.Cleanup(func() { marie.do("DELETE", fmt.Sprintf("/api/filters/%d", private.ID), nil) })
+	if res := mcpRawCall(t, read, "get_filter", map[string]any{"filterId": strconv.FormatInt(private.ID, 10)}); !res.IsError {
+		t.Errorf("get_filter of marie.durand's private filter: %s", mcpResultText(res))
+	}
+
+	// A filters:write token creates a filter and deletes it.
+	write := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeFilters))
+	name := unique("Créé par MCP ")
+	var created struct{ ID, Name, JQL string }
+	mcpCall(t, write, "create_filter", map[string]any{"name": name, "jql": "project = DEMO", "favourite": true}, &created)
+	if created.Name != name || created.JQL != "project = DEMO" {
+		t.Errorf("create_filter: %+v", created)
+	}
+	t.Cleanup(func() { paul.do("DELETE", "/api/filters/"+created.ID, nil) })
+	var got struct {
+		Name      string
+		Favourite bool
+	}
+	mcpCall(t, write, "get_filter", map[string]any{"filterId": created.ID}, &got)
+	if got.Name != name || !got.Favourite {
+		t.Errorf("get_filter after create_filter: %+v", got)
+	}
+	if res := mcpRawCall(t, write, "delete_filter", map[string]any{"filterId": created.ID}); res.IsError {
+		t.Fatalf("delete_filter: %s", mcpResultText(res))
+	}
+	if res := mcpRawCall(t, write, "get_filter", map[string]any{"filterId": created.ID}); !res.IsError {
+		t.Errorf("get_filter after delete_filter: %s", mcpResultText(res))
+	}
+	if res := mcpRawCall(t, write, "delete_filter", map[string]any{"filterId": strconv.FormatInt(private.ID, 10)}); !res.IsError {
+		t.Errorf("delete_filter of marie.durand's private filter: %s", mcpResultText(res))
+	}
 }
 
 func TestMCPAgile(t *testing.T) {

@@ -665,6 +665,7 @@ export const de: Messages = {
     delete: 'Löschen',
     star: (name: string) => `„${name}“ zu den Favoriten hinzufügen`,
     unstar: (name: string) => `„${name}“ aus den Favoriten entfernen`,
+    close: (name: string) => `„${name}“ schließen`,
     name: 'Name',
     description: 'Beschreibung',
     newTitle: 'Suche speichern',

@@ -59,6 +59,7 @@ demandent `read`.
 | `search_groups`, `list_group_members` | Les groupes et leurs membres |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | Les catalogues de l'instance |
 | `get_server_info` | La version et l'adresse du serveur |
+| `list_favourite_filters`, `get_filter` | Les filtres enregistrés : les favoris de l'utilisateur, ou un filtre par son id |
 
 Ces outils demandent `issues:write` :
 
@@ -86,8 +87,14 @@ Les tableaux et les sprints, de l'API Agile de Jira Software :
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Planifie des tickets dans un sprint, ou les en retire |
 | `rank_issues` | `agile:write` | Place des tickets avant ou après un autre dans l'ordre du tableau |
 
-Les filtres, versions et composants, et les outils qui modifient les
-commentaires ou le temps passé, ne sont pas encore proposés.
+Les filtres enregistrés :
+
+| Outil | Portée | Fait |
+|---|---|---|
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
+
+Les versions et composants, et les outils qui modifient les commentaires ou
+le temps passé, ne sont pas encore proposés.
 
 ## Connecter Claude Code
 

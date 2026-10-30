@@ -53,6 +53,7 @@ scope it needs. Every tool of this table needs `read`.
 | `search_groups`, `list_group_members` | Groups and their members |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | The instance's catalogues |
 | `get_server_info` | The server's version and address |
+| `list_favourite_filters`, `get_filter` | Saved filters: the user's favourites, or one by id |
 
 These tools need `issues:write`:
 
@@ -80,8 +81,14 @@ Boards and sprints, from Jira Software's Agile API:
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Plans issues in a sprint, or takes them out |
 | `rank_issues` | `agile:write` | Moves issues before or after another in the board order |
 
-Filters, versions and components, and the tools that change comments or
-work logs, are not offered yet.
+Saved filters:
+
+| Tool | Scope | Does |
+|---|---|---|
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
+
+Versions and components, and the tools that change comments or work logs,
+are not offered yet.
 
 ## Connecting Claude Code
 
