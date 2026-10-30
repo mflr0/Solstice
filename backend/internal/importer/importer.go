@@ -43,7 +43,10 @@ type Options struct {
 	// Operator is the user name of the administrator who started the import
 	// from Solstice: they keep their account, password and rights.
 	Operator string
-	Log      *slog.Logger
+	// Anonymous, for Check only, leaves out of the report everything that
+	// comes from the Jira database's content (see CheckReport.Anonymous).
+	Anonymous bool
+	Log       *slog.Logger
 	// Progress, when set, is told how the import advances: as each phase
 	// starts, now and then while it copies rows, and once at the end. It runs
 	// on the importing goroutine and must return quickly.

@@ -206,6 +206,14 @@ en JSON. Le code de sortie est 0 si l'import fonctionnerait, 1 s'il
 refuserait la source, par exemple un schéma antérieur à Jira 7, et 2 si la base
 n'a pas pu être lue.
 
+Pour joindre le rapport à un ticket public, ajoutez `-anonymous` : il garde les
+nombres, la version de Jira, le moteur de base, les types de champs
+personnalisés, les éléments laissés de côté et les avertissements avec leurs
+nombres, et la raison d'un refus, mais masque tout nom, clé ou identifiant
+choisi par quelqu'un (projets, workflows, champs personnalisés), les textes
+d'erreur qui citent la base, et la version du serveur de base de données. Le
+rapport indique qu'il est anonyme.
+
 Le rapport final liste ce qui a été repris et ce qui mérite un coup d'œil. Ce
 qui est repris :
 
