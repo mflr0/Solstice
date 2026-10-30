@@ -157,7 +157,7 @@ func (s *Server) myTokens(w http.ResponseWriter, r *http.Request) error {
 // its revocation.
 func (s *Server) createToken(w http.ResponseWriter, r *http.Request) error {
 	u := currentUser(r)
-	if u.TokenID != 0 {
+	if u.ByToken() {
 		return fail(http.StatusForbidden, i18n.TokenCannotCreate)
 	}
 	if ok, err := s.mayCreateTokens(r.Context(), u); err != nil {

@@ -30,10 +30,12 @@ type tokenPolicy struct {
 	Group int64  `json:"group,omitempty"`
 }
 
-// tokenPolicyOut is the policy as the administration reads it.
+// tokenPolicyOut is the policy as the administration reads it, with the
+// lifetime of OAuth refresh tokens (oauth.go).
 type tokenPolicyOut struct {
-	Who   string  `json:"who"`
-	Group *idName `json:"group"` // for "group", while the group exists
+	Who         string  `json:"who"`
+	Group       *idName `json:"group"` // for "group", while the group exists
+	RefreshDays int     `json:"refreshDays"`
 }
 
 // tokenPolicy reads the policy; a missing or unreadable one means
@@ -80,7 +82,7 @@ func (s *Server) myTokenPolicy(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	// A token cannot make tokens, whatever the policy.
-	return writeJSON(w, http.StatusOK, map[string]bool{"canCreate": ok && u.TokenID == 0})
+	return writeJSON(w, http.StatusOK, map[string]bool{"canCreate": ok && !u.ByToken()})
 }
 
 // groupRef names a group, nil when it is gone.
@@ -113,18 +115,27 @@ func (s *Server) adminTokenSettings(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
+	out.RefreshDays = s.refreshDays(r.Context())
 	return writeJSON(w, http.StatusOK, out)
 }
 
 // putTokenSettings changes who may create tokens: {"who": "everyone" |
-// "admins" | "group", "group": <id, for "group">}.
+// "admins" | "group", "group": <id, for "group">, "refreshDays": <days an
+// unused OAuth refresh token lasts, optional>}.
 func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	var in tokenPolicy
-	if err := readJSON(r, &in); err != nil {
+	var body struct {
+		tokenPolicy
+		RefreshDays *int `json:"refreshDays"`
+	}
+	if err := readJSON(r, &body); err != nil {
 		return err
+	}
+	in := body.tokenPolicy
+	if d := body.RefreshDays; d != nil && (*d < 1 || *d > maxRefreshDays) {
+		return failf(http.StatusBadRequest, i18n.OAuthRefreshDaysInvalid, maxRefreshDays)
 	}
 	ctx := r.Context()
 	switch in.Who {
@@ -140,17 +151,24 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	default:
 		return fail(http.StatusBadRequest, i18n.TokenPolicyInvalid)
 	}
-	before := s.tokenPolicy(ctx)
+	before, beforeDays := s.tokenPolicy(ctx), s.refreshDays(ctx)
 	if err := s.out.settings.SetJSON(ctx, tokenCreatorsSetting, in); err != nil {
 		return err
 	}
-	s.auditLog(r, audit.SettingsTokens, audit.Target{Type: audit.TargetSettings, ID: tokenCreatorsSetting},
-		map[string]any{"who": map[string]any{"from": before.Who, "to": in.Who},
-			"group": s.groupNames(ctx, nonZero(in.Group))})
+	details := map[string]any{"who": map[string]any{"from": before.Who, "to": in.Who},
+		"group": s.groupNames(ctx, nonZero(in.Group))}
+	if d := body.RefreshDays; d != nil && *d != beforeDays {
+		if err := s.out.settings.SetJSON(ctx, oauthRefreshSetting, *d); err != nil {
+			return err
+		}
+		details["refreshDays"] = map[string]any{"from": beforeDays, "to": *d}
+	}
+	s.auditLog(r, audit.SettingsTokens, audit.Target{Type: audit.TargetSettings, ID: tokenCreatorsSetting}, details)
 	out, err := s.policyOut(ctx, in)
 	if err != nil {
 		return err
 	}
+	out.RefreshDays = s.refreshDays(ctx)
 	return writeJSON(w, http.StatusOK, out)
 }
 

@@ -44,7 +44,7 @@ func (s Scope) Known() bool { return slices.Contains(Scopes, s) }
 // Allows tells whether the user may use a route that requires scope: always
 // when signed in otherwise than with a token.
 func (u *User) Allows(scope Scope) bool {
-	if u.TokenID == 0 {
+	if !u.ByToken() {
 		return true
 	}
 	return slices.Contains(u.Scopes, scope) || (scope == ScopeRead && len(u.Scopes) > 0)

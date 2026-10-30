@@ -25,6 +25,7 @@ const DYNAMIC: Record<string, string> = {
   'hooksAdmin.eventNames': 'the server’s webhook events',
   'auditAdmin.actions': 'the audit actions the server writes (admin-ops.test.ts pins them)',
   'auditAdmin.detailKeys': 'the keys of the server’s audit details',
+  'auditAdmin.targets': 'the target types of the server’s audit entries',
   'projects.kinds': 'the project types the server stores',
   'login.ssoErrors': 'the codes the server’s single sign-on sends back to /login?error=',
   seeded: 'the keys the server tags seeded catalogue entries with (seeded.test.ts pins them)',

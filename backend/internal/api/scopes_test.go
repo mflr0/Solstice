@@ -27,6 +27,7 @@ func TestRouteScopes(t *testing.T) {
 		"GET /api/settings/public", "GET /api/setup/status",
 		"GET /rest/api/2/serverInfo", "GET /rest/api/latest/serverInfo", "POST /rest/auth/1/session",
 		"GET /.well-known/oauth-protected-resource",
+		"GET /.well-known/oauth-authorization-server", "POST /oauth/token", "POST /oauth/revoke",
 	}
 	readingWrites := []string{
 		"POST /api/refs", "POST /rest/api/2/search", "POST /rest/api/latest/search", "DELETE /rest/auth/1/session",

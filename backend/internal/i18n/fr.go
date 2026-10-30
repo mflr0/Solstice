@@ -62,6 +62,18 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	TokenScopeAdminOnly:     "Seul un administrateur peut donner la portée admin à un jeton.",
 	TokenScopeMissing:       "Ce jeton d'accès n'a pas la portée %s.",
 
+	// OAuth authorization of MCP clients.
+	OAuthTokenCannotAuthorize: "Un jeton d'accès ne peut pas autoriser d'application : connectez-vous avec votre mot de passe.",
+	OAuthClientInvalid:        "L'identifiant de l'application n'est pas une adresse HTTPS valide.",
+	OAuthClientDocument:       "La description de l'application à l'adresse %s est illisible ou invalide.",
+	OAuthRedirectInvalid:      "L'application demande à revenir à une adresse que sa description ne liste pas.",
+	OAuthResponseType:         "L'application demande un type de réponse non pris en charge : seul « code » l'est.",
+	OAuthPKCERequired:         "L'application doit protéger sa demande avec PKCE (code challenge S256).",
+	OAuthResourceInvalid:      "L'application doit demander l'accès à %s.",
+	OAuthScopeUnknown:         "L'application demande une portée inconnue : %s.",
+	OAuthNotAllowed:           "Votre compte ne peut pas autoriser d'application : adressez-vous à un administrateur.",
+	OAuthRefreshDaysInvalid:   "La durée de vie des jetons de rafraîchissement doit être comprise entre 1 et %d jours.",
+
 	// Groups.
 	GroupNotFound:   "Groupe introuvable.",
 	GroupExists:     "Le groupe « %s » existe déjà.",

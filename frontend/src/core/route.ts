@@ -33,6 +33,7 @@ export type Route =
   | { name: 'boardReports'; id: number }
   | { name: 'boardSettings'; id: number }
   | { name: 'legacyBoard' }
+  | { name: 'oauthAuthorize' }
   | { name: 'notFound' };
 
 function decode(segment: string): string | null {
@@ -87,6 +88,7 @@ export function matchRoute(pathname: string): Route {
         if (section) return { name: 'account', section };
       }
       if (a === 'boards' && boardId(b)) return { name: 'board', id: Number(b) };
+      if (a === 'oauth' && b === 'authorize') return { name: 'oauthAuthorize' };
       if (a === 'secure' && (b === 'RapidBoard.jspa' || b === 'RapidView.jspa')) {
         return { name: 'legacyBoard' };
       }

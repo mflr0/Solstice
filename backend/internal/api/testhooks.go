@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 	"time"
 )
 
@@ -45,6 +46,11 @@ func (h TestHooks) RunSchedules(ctx context.Context) error { return h.s.out.noti
 // SkipDelays stops holding back wrong passwords, so throttling tests run
 // at full speed.
 func (h TestHooks) SkipDelays() { h.s.sleep = func(context.Context, time.Duration) {} }
+
+// SetOAuthFetcher replaces the HTTP client that fetches OAuth client
+// metadata documents, which refuses private addresses such as a test
+// server's.
+func (h TestHooks) SetOAuthFetcher(c *http.Client) { h.s.oauthFetch = c }
 
 // ForgotFloor returns the least time the answer to "forgot your password"
 // takes.

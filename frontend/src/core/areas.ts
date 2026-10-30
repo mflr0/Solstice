@@ -92,6 +92,7 @@ export const ACCOUNT_SECTIONS = [
   'appearance',
   'notifications',
   'tokens',
+  'apps',
   'subscriptions',
 ] as const;
 

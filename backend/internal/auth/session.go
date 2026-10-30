@@ -30,8 +30,13 @@ type User struct {
 	Locale      string  // interface language chosen by the user, "" to follow the browser
 	Directory   string  // the directory that made the account its own ("ldap", "oidc"), "" for a local account
 	TokenID     int64   // the personal access token the request signed in with, 0 for none
-	Scopes      []Scope // the token's scopes, when TokenID is set
+	GrantID     int64   // the OAuth grant whose access token the request signed in with, 0 for none
+	Scopes      []Scope // the token's scopes, when ByToken
 }
+
+// ByToken tells whether the request signed in with a personal access token
+// or an OAuth access token, rather than a session or a password.
+func (u *User) ByToken() bool { return u.TokenID != 0 || u.GrantID != 0 }
 
 // ErrNoSession means the token matches no valid session.
 var ErrNoSession = errors.New("no valid session")
@@ -169,8 +174,8 @@ func SetPasswordHash(ctx context.Context, ex execer, userID int64, hash, keep st
 }
 
 // EndCredentials ends the sessions of an account, except the one whose token
-// hash is keep ("" for none), deletes its personal access tokens and revokes
-// the links mailed to it, after a password change, a deactivation or a
+// hash is keep ("" for none), deletes its personal access tokens and OAuth
+// grants and revokes the links mailed to it, after a password change, a deactivation or a
 // reactivation. It returns how many access tokens it deleted.
 func EndCredentials(ctx context.Context, ex execer, userID int64, keep string) (revoked int64, err error) {
 	if _, err := ex.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?`, userID, keep); err != nil {
@@ -181,6 +186,9 @@ func EndCredentials(ctx context.Context, ex execer, userID int64, keep string) (
 		return 0, err
 	}
 	if revoked, err = res.RowsAffected(); err != nil {
+		return 0, err
+	}
+	if _, err := ex.ExecContext(ctx, `DELETE FROM oauth_grants WHERE user_id = ?`, userID); err != nil {
 		return 0, err
 	}
 	return revoked, RevokeAccountTokens(ctx, ex, userID, time.Now())

@@ -118,6 +118,7 @@ export const AUDIT_FAMILIES = [
   'login',
   'password',
   'token',
+  'oauth',
   'user',
   'admin',
   'group',

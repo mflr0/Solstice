@@ -41,12 +41,16 @@ func (s *Server) auditLog(r *http.Request, action string, target audit.Target, d
 	e := audit.Entry{IP: clientIP(r, s.proxies), Action: action, Target: target, Details: details}
 	if u := currentUser(r); u != nil {
 		e.UserID, e.Username = u.ID, u.Username
-		if u.TokenID != 0 {
-			// Which personal access token did it, should it leak.
+		if u.ByToken() {
+			// Which personal access token or OAuth grant did it, should it leak.
 			if e.Details == nil {
 				e.Details = map[string]any{}
 			}
-			e.Details["pat"] = u.TokenID
+			if u.TokenID != 0 {
+				e.Details["pat"] = u.TokenID
+			} else {
+				e.Details["oauthGrant"] = u.GrantID
+			}
 		}
 	}
 	record(r.Context(), s.db, s.log, e)

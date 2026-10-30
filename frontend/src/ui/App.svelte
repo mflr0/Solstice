@@ -117,6 +117,14 @@
   {#key route.token}<ResetPage token={route.token} />{/key}
 {:else if !session.me || route.name === 'login'}
   <LoginPage />
+{:else if route.name === 'oauthAuthorize'}
+  {#await import('./pages/ConsentPage.svelte')}
+    {@render pending()}
+  {:then { default: ConsentPage }}
+    <ConsentPage />
+  {:catch}
+    {@render failed()}
+  {/await}
 {:else}
   <div class="app-shell">
     <TopBar {project} />

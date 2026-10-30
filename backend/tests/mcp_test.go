@@ -27,18 +27,19 @@ func TestMCP(t *testing.T) {
 	needDB(t)
 	paul := login(t, "paul.martin", jirafixture.Password)
 
-	// The metadata names the resource and every scope.
+	// The metadata names the resource and every scope but admin, which no
+	// tool needs.
 	var meta struct {
 		Resource        string   `json:"resource"`
 		ScopesSupported []string `json:"scopes_supported"`
 	}
 	anonymous(t).call("GET", "/.well-known/oauth-protected-resource", nil, 200, &meta)
-	if !strings.HasSuffix(meta.Resource, "/mcp") || len(meta.ScopesSupported) != len(auth.Scopes) {
+	if !strings.HasSuffix(meta.Resource, "/mcp") || len(meta.ScopesSupported) != len(auth.Scopes)-1 {
 		t.Errorf("metadata: %+v", meta)
 	}
 	for _, sc := range auth.Scopes {
-		if !slices.Contains(meta.ScopesSupported, string(sc)) {
-			t.Errorf("metadata lacks scope %s: %v", sc, meta.ScopesSupported)
+		if slices.Contains(meta.ScopesSupported, string(sc)) == (sc == auth.ScopeAdmin) {
+			t.Errorf("metadata scopes: %v", meta.ScopesSupported)
 		}
 	}
 

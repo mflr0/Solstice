@@ -34,6 +34,9 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'token.create',
   'token.revoke',
   'token.reject',
+  'oauth.grant',
+  'oauth.deny',
+  'oauth.revoke',
   'user.create',
   'user.update',
   'user.deactivate',
@@ -188,11 +191,20 @@ export function creatorsProblem(
 
 /** Whether two policies are the same choice. */
 export function sameCreators(
-  saved: TokenSettings,
+  saved: Pick<TokenSettings, 'who' | 'group'>,
   who: TokenSettings['who'],
   group: number | null,
 ): boolean {
   return saved.who === who && (who !== 'group' || saved.group?.id === group);
+}
+
+/** The longest lifetime of an unused OAuth refresh token, in days (the server's maxRefreshDays). */
+export const REFRESH_MAX_DAYS = 365;
+
+/** Whether a typed refresh token lifetime is a whole number of days from 1 to REFRESH_MAX_DAYS. */
+export function refreshDaysValid(raw: string): boolean {
+  const s = raw.trim();
+  return /^\d{1,3}$/.test(s) && Number(s) >= 1 && Number(s) <= REFRESH_MAX_DAYS;
 }
 
 /* Jira import --------------------------------------------------------------- */

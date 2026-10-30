@@ -46,6 +46,7 @@ type Server struct {
 	maxStorage int64             // bytes in all attachments, 0 for no limit; see SetMaxStorage
 	out        *outgoing         // event bus, e-mail and webhooks (notifications.go)
 	dir        auth.Directory    // LDAP, nil when off; see SetDirectory
+	oauthFetch *http.Client      // fetches OAuth client metadata documents (oauth_client.go)
 	sso        auth.SingleSignOn // OpenID Connect, nil when off; see SetSingleSignOn
 
 	// Set by New; tests replace them to run without a database or a real wait.
@@ -77,7 +78,7 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
 		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
-		tokenAud: map[int64]time.Time{}}
+		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher()}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
@@ -227,6 +228,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// REST API (/rest/…) for scripts and tools.
 	s.integrationRoutes(mux, route)
 	s.mcpRoutes(mux)
+	s.oauthRoutes(mux, route)
 
 	// E-mail notifications, filter subscriptions, webhooks.
 	s.notificationRoutes(route)

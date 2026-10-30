@@ -3,12 +3,16 @@
   import { t } from '../../i18n/t.js';
   import SettingsLayout from '../SettingsLayout.svelte';
   import AppearancePage from './AppearancePage.svelte';
+  import AppsPage from './AppsPage.svelte';
   import NotificationsPage from './NotificationsPage.svelte';
   import ProfilePage from './ProfilePage.svelte';
   import SubscriptionsPage from './SubscriptionsPage.svelte';
   import TokensPage from './TokensPage.svelte';
 
-  /** One's own settings (/settings): profile, language and look, e-mails, tokens, subscriptions. */
+  /**
+   * One's own settings (/settings): profile, language and look, e-mails, tokens,
+   * authorized applications, subscriptions.
+   */
   interface Props {
     section: AccountSection;
   }
@@ -41,6 +45,8 @@
       <NotificationsPage />
     {:else if section === 'tokens'}
       <TokensPage />
+    {:else if section === 'apps'}
+      <AppsPage />
     {:else}
       <SubscriptionsPage />
     {/if}

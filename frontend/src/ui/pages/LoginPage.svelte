@@ -36,10 +36,12 @@
     e.preventDefault();
     pending = true;
     error = '';
+    // Read before signing in: App may already leave /login once the session is set.
+    const next = safeNext(router.param('next'));
     try {
       const me = await api.login(username.trim(), password);
       await session.signedIn(me);
-      router.navigate(safeNext(router.param('next')), { replace: true });
+      router.navigate(next, { replace: true });
     } catch (err) {
       error = errorMessage(err);
       password = '';

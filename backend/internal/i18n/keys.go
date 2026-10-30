@@ -67,6 +67,20 @@ const (
 	TokenScopeMissing       Key = "TokenScopeMissing"
 )
 
+// OAuth authorization of MCP clients.
+const (
+	OAuthTokenCannotAuthorize Key = "OAuthTokenCannotAuthorize"
+	OAuthClientInvalid        Key = "OAuthClientInvalid"
+	OAuthClientDocument       Key = "OAuthClientDocument"
+	OAuthRedirectInvalid      Key = "OAuthRedirectInvalid"
+	OAuthResponseType         Key = "OAuthResponseType"
+	OAuthPKCERequired         Key = "OAuthPKCERequired"
+	OAuthResourceInvalid      Key = "OAuthResourceInvalid"
+	OAuthScopeUnknown         Key = "OAuthScopeUnknown"
+	OAuthNotAllowed           Key = "OAuthNotAllowed"
+	OAuthRefreshDaysInvalid   Key = "OAuthRefreshDaysInvalid"
+)
+
 // Groups.
 const (
 	GroupNotFound   Key = "GroupNotFound"

@@ -4,6 +4,8 @@
     TOKEN_SHOWS,
     creatorsProblem,
     filterTokens,
+    refreshDaysValid,
+    REFRESH_MAX_DAYS,
     sameCreators,
     type TokenShow,
   } from '../../core/admin-ops.js';
@@ -34,18 +36,24 @@
   let groups = $state<Group[]>([]);
   let who = $state<TokenSettings['who']>('admins');
   let group = $state<number | null>(null);
+  let refreshDays = $state('');
   let policyError = $state('');
   let saving = $state(false);
 
   const now = $derived(new Date());
   const list = $derived(filterTokens(tokens ?? [], q, show, now));
   const groupProblem = $derived(creatorsProblem(who, group));
-  const dirty = $derived(policy !== null && !sameCreators(policy, who, group));
+  const refreshProblem = $derived(!refreshDaysValid(refreshDays));
+  const dirty = $derived(
+    policy !== null &&
+      (!sameCreators(policy, who, group) || refreshDays.trim() !== String(policy.refreshDays)),
+  );
 
   function adopt(s: TokenSettings) {
     policy = s;
     who = s.who;
     group = s.group?.id ?? null;
+    refreshDays = String(s.refreshDays);
   }
 
   async function load() {
@@ -71,12 +79,16 @@
 
   async function save(e: SubmitEvent) {
     e.preventDefault();
-    if (groupProblem) return;
+    if (groupProblem || refreshProblem) return;
     saving = true;
     policyError = '';
     try {
       adopt(
-        await adminApi.saveTokenSettings(who, who === 'group' ? (group ?? undefined) : undefined),
+        await adminApi.saveTokenSettings(
+          who,
+          who === 'group' ? (group ?? undefined) : undefined,
+          Number(refreshDays.trim()),
+        ),
       );
       notify(t.tokensAdmin.policySaved);
     } catch (err) {
@@ -142,11 +154,28 @@
             <p class="field-error">{t.tokensAdmin.problems[groupProblem]}</p>
           {/if}
         {/if}
+        <label class="field refresh">
+          <span>{t.tokensAdmin.refreshDays}</span>
+          <input
+            class="input"
+            inputmode="numeric"
+            bind:value={refreshDays}
+            aria-invalid={refreshProblem}
+            aria-describedby="token-refresh-hint"
+          />
+          {#if refreshProblem}
+            <span class="field-error" id="token-refresh-hint"
+              >{t.tokensAdmin.refreshDaysInvalid(REFRESH_MAX_DAYS)}</span
+            >
+          {:else}
+            <span class="hint" id="token-refresh-hint">{t.tokensAdmin.refreshDaysHint}</span>
+          {/if}
+        </label>
         <div>
           <button
             class="btn btn-primary"
             type="submit"
-            disabled={saving || !dirty || !!groupProblem}
+            disabled={saving || !dirty || !!groupProblem || refreshProblem}
             >{saving ? t.common.saving : t.common.save}</button
           >
         </div>
@@ -286,6 +315,10 @@
   .policy-form {
     display: grid;
     gap: 12px;
+  }
+
+  .refresh {
+    max-width: 22rem;
   }
 
   @media (max-width: 760px) {
