@@ -10,6 +10,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import FieldDialog from './FieldDialog.svelte';
   import FieldOptionsDialog from './FieldOptionsDialog.svelte';
 
@@ -156,11 +157,14 @@
           {#each list as f (f.id)}
             <tr>
               <td>
-                <strong>{f.name}</strong>
-                {#if f.description}<span class="muted small desc">{f.description}</span>{/if}
+                <strong><Highlight text={f.name} search={q} /></strong>
+                {#if f.description}<span class="muted small desc"
+                    ><Highlight text={f.description} search={q} /></span
+                  >{/if}
               </td>
               <td class="c-type">
-                {f.type ? t.fieldsAdmin.types[f.type] : t.fieldsAdmin.otherType}
+                {#if f.type}<Highlight text={t.fieldsAdmin.types[f.type]} search={q} />{:else}{t
+                    .fieldsAdmin.otherType}{/if}
               </td>
               <td class="c-context">
                 {#each contextParts(f) as part (part)}

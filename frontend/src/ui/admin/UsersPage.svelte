@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { canResendInvitation } from '../../core/account-links.js';
   import { filterUsers, USER_SHOWS, type UserShow } from '../../core/admin-lists.js';
@@ -14,6 +15,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import PasswordDialog from './PasswordDialog.svelte';
   import UserDialog from './UserDialog.svelte';
 
@@ -22,6 +24,8 @@
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
+  /** The search the shown rows were loaded with. */
+  let searched = $state('');
   let show = $state<UserShow>('all');
   let dialog = $state<{ user: UserRow | null } | null>(null);
   let password = $state<UserRow | null>(null);
@@ -34,9 +38,11 @@
   async function load() {
     const mine = ++seq;
     try {
-      const found = await adminApi.users(q.trim());
+      const search = q.trim();
+      const found = await adminApi.users(search);
       if (mine === seq) {
         users = found;
+        searched = search;
         error = '';
       }
     } catch (e) {
@@ -44,15 +50,15 @@
     }
   }
 
+  // Untracked: load reads q, so the effect would rerun on every keystroke.
   $effect(() => {
-    void load();
+    untrack(() => void load());
     adminApi
       .groups()
       .then((g) => (groups = g))
       .catch((e: unknown) => notify(errorMessage(e), 'error'));
   });
 
-  // Not in the effect above: load reads q, so that one reruns on every keystroke.
   $effect(() => () => clearTimeout(timer));
 
   function typed() {
@@ -154,10 +160,14 @@
         {#each list as u (u.id)}
           <tr class:is-off={!u.active}>
             <td>
-              <button class="link-btn name" onclick={() => (dialog = { user: u })}>{u.name}</button>
-              <span class="key muted">{u.username}</span>
+              <button class="link-btn name" onclick={() => (dialog = { user: u })}
+                ><Highlight text={u.name} search={searched} /></button
+              >
+              <span class="key muted"><Highlight text={u.username} search={searched} /></span>
             </td>
-            <td class="c-email">{u.email || '—'}</td>
+            <td class="c-email">
+              {#if u.email}<Highlight text={u.email} search={searched} />{:else}—{/if}
+            </td>
             <td class="c-groups">
               {#if u.groups?.length}
                 <span class="tag-list">

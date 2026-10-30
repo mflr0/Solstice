@@ -19,6 +19,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import TypedConfirmDialog from '../TypedConfirmDialog.svelte';
   import Who from '../Who.svelte';
   import CategoryDialog from './CategoryDialog.svelte';
@@ -239,15 +240,22 @@
         <tbody>
           {#each list as p (p.id)}
             <tr class:is-off={p.archived}>
-              <td class="c-key"><a class="key" href={paths.project(p.key)}>{p.key}</a></td>
+              <td class="c-key"
+                ><a class="key" href={paths.project(p.key)}><Highlight text={p.key} search={q} /></a
+                ></td
+              >
               <td>
-                <a class="name" href={paths.project(p.key)}>{p.name}</a>
+                <a class="name" href={paths.project(p.key)}
+                  ><Highlight text={p.name} search={q} /></a
+                >
                 {#if p.archived}<span class="stamp">{t.projects.archived}</span>{/if}
                 <span class="muted kind">{t.projects.kinds[p.kind] ?? p.kind}</span>
               </td>
-              <td class="c-lead"><Who user={p.lead} empty="—" /></td>
+              <td class="c-lead"><Who user={p.lead} empty="—" search={q} /></td>
               <td class="c-category">
-                {#if p.category}{p.category.name}{:else}<span class="muted">—</span>{/if}
+                {#if p.category}<Highlight text={p.category.name} search={q} />{:else}<span
+                    class="muted">—</span
+                  >{/if}
               </td>
               <td class="num c-issues" class:muted={p.issues === 0}>{formatNumber(p.issues)}</td>
               <td class="row-actions">

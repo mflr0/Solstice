@@ -24,6 +24,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
 
   /**
    * Every account's personal access tokens and OAuth grants, to revoke, and
@@ -279,13 +280,13 @@
           <tr class:is-off={state === 'expired' || tok.user?.active === false}>
             <td>
               {#if tok.user}
-                {tok.user.name}
-                <span class="key muted">{tok.user.username}</span>
+                <Highlight text={tok.user.name} search={q} />
+                <span class="key muted"><Highlight text={tok.user.username} search={q} /></span>
                 {#if !tok.user.active}<span class="stamp">{t.tokensAdmin.inactiveOwner}</span>{/if}
               {/if}
             </td>
             <td>
-              {tok.name}
+              <Highlight text={tok.name} search={q} />
               <span class="scopes-below">{@render scopeList(tok)}</span>
             </td>
             <td class="c-scopes">{@render scopeList(tok)}</td>

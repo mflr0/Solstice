@@ -18,6 +18,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import PriorityMark from '../PriorityMark.svelte';
   import TypeMark from '../TypeMark.svelte';
   import CatalogDialog from './CatalogDialog.svelte';
@@ -240,6 +241,7 @@
                       type={{ id: String(item.id), name: item.name, subtask: !!item.subtask }}
                       withName
                       asStored
+                      search={q}
                     />
                     {#if item.subtask}<span class="chip">{t.catalogAdmin.subtask}</span>{/if}
                   {:else if kind === 'priorities'}
@@ -251,23 +253,26 @@
                       }}
                       withName
                       asStored
+                      search={q}
                     />
                     {#if item.color}<span class="muted mono">{item.color}</span>{/if}
                     {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span
                       >{/if}
                   {:else}
-                    <strong>{item.name}</strong>
+                    <strong><Highlight text={item.name} search={q} /></strong>
                     {#if item.default}<span class="stamp done">{t.catalogAdmin.isDefault}</span
                       >{/if}
                   {/if}
                 </span>
-                {#if item.description}<span class="muted small desc">{item.description}</span>{/if}
+                {#if item.description}<span class="muted small desc"
+                    ><Highlight text={item.description} search={q} /></span
+                  >{/if}
               </td>
               {#if kind === 'linkTypes'}
                 <td class="c-extra">
-                  <span class="verb">{item.outward}</span>
+                  <span class="verb"><Highlight text={item.outward ?? ''} search={q} /></span>
                   <span class="muted small">/</span>
-                  <span class="verb">{item.inward}</span>
+                  <span class="verb"><Highlight text={item.inward ?? ''} search={q} /></span>
                 </td>
               {/if}
               <td class="num c-usage" class:muted={usageOf(item) === 0}>

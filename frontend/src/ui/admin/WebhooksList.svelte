@@ -9,6 +9,7 @@
   import { errorMessage } from '../../lib/api.js';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
 
   /** Every webhook: where it calls, what for, and how its last call went. */
   let hooks = $state<Webhook[] | null>(null);
@@ -89,8 +90,12 @@
             {@const d = w.lastDelivery}
             <tr class:is-off={!w.enabled}>
               <td class="c-name">
-                <a class="name" href={paths.admin('webhooks', w.id)}>{w.name}</a>
-                <span class="mono muted url" title={w.url}>{w.url}</span>
+                <a class="name" href={paths.admin('webhooks', w.id)}
+                  ><Highlight text={w.name} search={q} /></a
+                >
+                <span class="mono muted url" title={w.url}
+                  ><Highlight text={w.url} search={q} /></span
+                >
                 {#if w.jql}<span class="muted small jql" title={w.jql}>{t.hooksAdmin.filtered}</span
                   >{/if}
               </td>
