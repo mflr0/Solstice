@@ -656,6 +656,7 @@ export const it: Messages = {
     delete: 'Elimina',
     star: (name: string) => `Aggiungi «${name}» ai preferiti`,
     unstar: (name: string) => `Rimuovi «${name}» dai preferiti`,
+    close: (name: string) => `Chiudi «${name}»`,
     name: 'Nome',
     description: 'Descrizione',
     newTitle: 'Salva la ricerca',
