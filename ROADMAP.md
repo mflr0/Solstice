@@ -14,7 +14,7 @@ The detailed list of what remains before 1.0 is in `todo.md`.
   never migrates. Done (#26).
 - **Anonymous diagnostic.** The same report without any content (counts,
   schema shapes, errors), safe to attach to a public issue. It gives real
-  feedback on real instances without anyone sharing their data. Open (#561).
+  feedback on real instances without anyone sharing their data. Done (#561).
 - **Every Jira version, with messy data.** The synthetic Jira generator
   covers every major Jira version whose distribution can be downloaded, and
   the quirks that old instances accumulate. The import is tested against

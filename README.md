@@ -192,6 +192,13 @@ would give. `-json` prints the same as JSON. The exit status is 0 if the import
 would work, 1 if it would refuse the source, for example a schema older than
 Jira 7, and 2 if the database could not be read.
 
+To attach the report to a public issue, add `-anonymous`: it keeps the counts,
+the Jira version, the database engine, the custom field types, the left-out
+lines and warnings with their counts, and the refusal reason, but hides every
+name, key and id chosen by people (projects, workflows, custom fields), the
+error texts that quote the database, and the database server's version. The
+report says it is anonymous.
+
 The final report lists what was imported and what deserves a look. Imported:
 
 - Accounts: users (from the directory with priority), groups (nested groups

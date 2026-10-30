@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jiradb"
 )
 
@@ -184,6 +186,57 @@ func TestWriteText(t *testing.T) {
 	rep.WriteText(&b)
 	if !strings.Contains(b.String(), "would refuse this source: too old") {
 		t.Errorf("a refusal is not reported:\n%s", b.String())
+	}
+}
+
+// An anonymous check hides the names and error texts in its left-out lines
+// and warnings, and keeps their counts and the schema they name.
+func TestSummariseAnonymous(t *testing.T) {
+	summarise := func(anonymous bool) string {
+		r := &run{opt: Options{Anonymous: anonymous}, rep: &Report{}, check: &checkData{
+			workflows: []workflowFacts{{"Secret flow", workflowLogic{conditions: 2}}, {"Other flow", workflowLogic{functions: 1}}},
+			broken:    map[string]error{"Broken flow": errors.New(`line 3: "Secret value"`)},
+		}}
+		r.rep.warn(i18n.M(i18n.ImportWarnWorkflowMissing, "Secret flow"))
+		r.rep.warn(i18n.M(i18n.ImportWarnNoPermissionScheme, "SECRET"))
+		r.rep.warn(i18n.N(2, i18n.ImportWarnFormerFieldTypeOne, i18n.ImportWarnFormerFieldTypeMany, "customfield_10042"))
+		r.rep.warn(i18n.N(3, i18n.ImportWarnUnknownValuesOne, i18n.ImportWarnUnknownValuesMany, "statuses"))
+		rep := &CheckReport{}
+		r.summarise(rep)
+		b, err := json.Marshal(rep)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	if plain := summarise(false); !strings.Contains(plain, "Secret flow") || !strings.Contains(plain, "SECRET") {
+		t.Fatalf("the normal report lacks the names: %s", plain)
+	}
+	got := summarise(true)
+	for _, secret := range []string{"Secret", "SECRET", "Other", "Broken", "10042"} {
+		if strings.Contains(got, secret) {
+			t.Errorf("the anonymous report holds %q: %s", secret, got)
+		}
+	}
+	for _, want := range []string{
+		`{"what":"workflow #1: conditions","count":2,`,
+		`{"what":"workflow #2: post-functions","count":1,`,
+		`{"what":"workflow #3","count":1,"reason":"its definition cannot be read"}`,
+		`workflow \"[hidden]\" not found`, "project [hidden]: no permission scheme",
+		"2 values stored for a former type of their custom field, not imported (fields [hidden])",
+		"3 unknown values from Jira in statuses",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the anonymous report lacks %q: %s", want, got)
+		}
+	}
+}
+
+func TestWriteTextAnonymous(t *testing.T) {
+	var b bytes.Buffer
+	(&CheckReport{Source: CheckSource{Database: "mysql"}, Anonymous: true}).WriteText(&b)
+	if !strings.Contains(b.String(), "Anonymous report") {
+		t.Errorf("the report does not say it is anonymous:\n%s", b.String())
 	}
 }
 

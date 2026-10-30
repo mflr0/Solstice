@@ -35,6 +35,10 @@ type CheckReport struct {
 	Steps    []Step    `json:"steps"` // the lines of an import's report
 	LeftOut  []LeftOut `json:"leftOut"`
 	Warnings []string  `json:"warnings"` // those of an import
+	// Anonymous tells that the report holds no content from the Jira
+	// database: no name, key or id chosen by people, no text of an error, and
+	// not the database server's version.
+	Anonymous bool `json:"anonymous,omitempty"`
 }
 
 // CheckSource names the database that was read.
@@ -119,6 +123,10 @@ func check(ctx context.Context, src *sql.DB, engine jiradb.Engine, opt Options) 
 		return nil, err
 	}
 	r.summarise(rep)
+	if opt.Anonymous {
+		rep.Source.Server = ""
+		rep.Anonymous = true
+	}
 	return rep, nil
 }
 
@@ -424,6 +432,9 @@ func (r *run) summarise(rep *CheckReport) {
 	rep.Steps = r.rep.Steps
 	rep.Warnings = make([]string, len(r.rep.Warnings))
 	for i, w := range r.rep.Warnings {
+		if r.opt.Anonymous {
+			w = anonymise(w)
+		}
 		rep.Warnings[i] = w.String()
 	}
 	rep.LeftOut = []LeftOut{}
@@ -440,20 +451,63 @@ func (r *run) summarise(rep *CheckReport) {
 		rep.LeftOut = append(rep.LeftOut, LeftOut{"attachment files", c.attachmentsWithout,
 			"not found in the Jira home: only the metadata is imported"})
 	}
+	workflow := func(name string) string { return `workflow "` + name + `"` }
+	if r.opt.Anonymous {
+		numbers := map[string]int{}
+		workflow = func(name string) string {
+			if numbers[name] == 0 {
+				numbers[name] = len(numbers) + 1
+			}
+			return fmt.Sprintf("workflow #%d", numbers[name])
+		}
+	}
 	for _, w := range c.workflows {
 		for _, l := range []struct {
 			what string
 			n    int
 		}{{"conditions", w.logic.conditions}, {"validators", w.logic.validators}, {"post-functions", w.logic.functions}} {
 			if l.n > 0 {
-				rep.LeftOut = append(rep.LeftOut, LeftOut{fmt.Sprintf("workflow \"%s\": %s", w.name, l.what), l.n,
+				rep.LeftOut = append(rep.LeftOut, LeftOut{workflow(w.name) + ": " + l.what, l.n,
 					"Java code: Solstice applies its own rules (permissions, resolution set on a done status)"})
 			}
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(c.broken)) {
-		rep.LeftOut = append(rep.LeftOut, LeftOut{fmt.Sprintf("workflow \"%s\"", name), 1, c.broken[name].Error()})
+		reason := c.broken[name].Error()
+		if r.opt.Anonymous {
+			reason = "its definition cannot be read"
+		}
+		rep.LeftOut = append(rep.LeftOut, LeftOut{workflow(name), 1, reason})
 	}
+}
+
+// hidden stands, in an anonymous report, for a value from the Jira database.
+const hidden = "[hidden]"
+
+// schemaWarnings are the warnings whose values name a type or a table, never
+// content: an anonymous report keeps them whole.
+var schemaWarnings = []i18n.Key{
+	i18n.ImportWarnUnknownValuesOne, i18n.ImportWarnUnknownValuesMany, // a Solstice table
+	i18n.ImportWarnPermissionTypeOne, i18n.ImportWarnPermissionTypeMany, // a Jira grantee type
+}
+
+// anonymise hides the values of a warning, its counts kept. A warning not
+// known to name schema only is hidden, so that a new one leaks nothing.
+func anonymise(m i18n.Message) i18n.Message {
+	if m.Key == "" {
+		return i18n.Raw(hidden)
+	}
+	if slices.Contains(schemaWarnings, m.Key) {
+		return m
+	}
+	args := slices.Clone(m.Args)
+	for i, a := range args {
+		if _, count := a.(int); !count {
+			args[i] = hidden
+		}
+	}
+	m.Args = args
+	return m
 }
 
 // WriteText prints the report for a person.
@@ -470,6 +524,9 @@ func (c *CheckReport) WriteText(w io.Writer) {
 		fmt.Fprintf(w, "\nJira version:  %s", s.Jira+s.Build)
 	default:
 		fmt.Fprint(w, "\nJira version:  not recorded in the database")
+	}
+	if c.Anonymous {
+		fmt.Fprint(w, "\n\nAnonymous report: names, keys, ids and error texts from the Jira database are hidden.")
 	}
 	if c.Refused != "" {
 		fmt.Fprintf(w, "\n\nThe import would refuse this source: %s\n", c.Refused)

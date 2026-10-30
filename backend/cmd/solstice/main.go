@@ -511,6 +511,8 @@ func runImport(ctx context.Context, args []string) error {
 	check := fs.Bool("check", false, "audit the Jira database without importing: what there is, what would be left out and why; "+
 		"writes nothing, needs no Solstice database, exits with status 1 if the import would refuse the source, 2 if it cannot read it")
 	asJSON := fs.Bool("json", false, "print the report as JSON")
+	anonymous := fs.Bool("anonymous", false, "with -check: leave out of the report every name, key, id and error text "+
+		"from the Jira database, so that it can be attached to a public issue")
 	fs.Parse(args)
 	if *from == "" || (*tz == "" && !*check) {
 		fs.Usage()
@@ -522,6 +524,9 @@ func runImport(ctx context.Context, args []string) error {
 	if *check && *replace {
 		return errors.New("-replace has no meaning with -check, which writes nothing")
 	}
+	if *anonymous && !*check {
+		return errors.New("-anonymous goes with -check")
+	}
 	var loc *time.Location
 	if *tz != "" {
 		var err error
@@ -530,7 +535,7 @@ func runImport(ctx context.Context, args []string) error {
 		}
 	}
 	if *check {
-		rep, err := importer.Check(ctx, importer.Options{SourceURL: *from, SourceTZ: loc, JiraHome: *jiraHome})
+		rep, err := importer.Check(ctx, importer.Options{SourceURL: *from, SourceTZ: loc, JiraHome: *jiraHome, Anonymous: *anonymous})
 		if err != nil { // not a refusal: the source could not be read
 			slog.Error(err.Error())
 			os.Exit(2)
