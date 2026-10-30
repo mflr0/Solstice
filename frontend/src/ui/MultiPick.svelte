@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { matches } from '../core/text.js';
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
   import { errorMessage } from '../lib/api.js';
@@ -30,10 +31,7 @@
   let creating = $state(false);
   let error = $state('');
   let button: HTMLButtonElement | undefined = $state();
-  const shown = $derived.by(() => {
-    const needle = q.trim().toLowerCase();
-    return needle ? options.filter((o) => o.name.toLowerCase().includes(needle)) : options;
-  });
+  const shown = $derived(options.filter((o) => matches(q, o.name)));
   const createName = $derived.by(() => {
     const name = q.trim();
     if (!oncreate || !name) return '';

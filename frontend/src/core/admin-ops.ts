@@ -9,6 +9,7 @@ import { sortedDays } from './account-settings.js';
 import { typedMatches } from './admin-forms.js';
 import { tokenState, type TokenState } from './admin-integrations.js';
 import type { AccessToken, AuditEntry, TokenSettings } from './admin-types.js';
+import { matches } from './text.js';
 
 /* Audit log ----------------------------------------------------------------- */
 
@@ -169,12 +170,8 @@ export function filterTokens(
   show: TokenShow,
   now: Date,
 ): AccessToken[] {
-  const needle = q.trim().toLowerCase();
   return list.filter((tok) => {
-    if (needle) {
-      const text = [tok.name, tok.user?.name, tok.user?.username].join('\n').toLowerCase();
-      if (!text.includes(needle)) return false;
-    }
+    if (!matches(q, tok.name, tok.user?.name, tok.user?.username)) return false;
     if (show === 'all') return true;
     const state: TokenState = tokenState(tok, now);
     return show === 'active' ? state !== 'expired' : state === show;

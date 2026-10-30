@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { sameValue, toggle } from '../../core/filters.js';
+  import { matches } from '../../core/text.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
   import type { Option } from './sources.svelte.js';
@@ -70,7 +71,6 @@
 
   const isChosen = (v: string) => selected.some((s) => sameValue(s, v));
   const pick = (v: string) => onchange(toggle(selected, v));
-  const matching = (text: string) => text.toLowerCase().includes(q.trim().toLowerCase());
   /**
    * The count of an option: the sum over its keys, when counts are known. An
    * empty bucket ("") the server did not report is unknown, not zero.
@@ -85,7 +85,7 @@
     const out: Row[] = [];
     const group = special.length || shortcuts.length ? t.search.shortcuts : undefined;
     for (const [i, s] of shortcuts.entries()) {
-      if (matching(s.label)) {
+      if (matches(q, s.label)) {
         out.push({
           key: `s${i}`,
           label: s.label,
@@ -97,7 +97,7 @@
       }
     }
     for (const o of special) {
-      if (matching(o.label)) {
+      if (matches(q, o.label)) {
         out.push({
           key: `v${o.value}`,
           label: o.label,

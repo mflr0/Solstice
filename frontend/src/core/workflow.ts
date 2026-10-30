@@ -13,7 +13,7 @@ import {
   type Workflow,
   type WorkflowInput,
 } from './types.js';
-import { fold } from './text.js';
+import { matches } from './text.js';
 
 /** A transition being edited. `key` tells rows apart; id is null until saved. */
 export interface DraftTransition {
@@ -268,10 +268,7 @@ export function byCategory(
 
 /** Catalogue statuses matching a search, those already in the workflow left out. */
 export function searchStatuses(catalogue: StatusRef[], taken: StatusRef[], q: string): StatusRef[] {
-  const needle = fold(q.trim());
-  return catalogue.filter(
-    (s) => !taken.some((x) => x.id === s.id) && (!needle || fold(s.name).includes(needle)),
-  );
+  return catalogue.filter((s) => !taken.some((x) => x.id === s.id) && matches(q, s.name));
 }
 
 /** The catalogue's status of that name, case aside (the server matches the same way). */
