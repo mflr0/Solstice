@@ -10,11 +10,14 @@
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import GroupDialog from './GroupDialog.svelte';
 
   let groups = $state<Group[] | null>(null);
   let error = $state('');
   let q = $state(router.param('q') ?? '');
+  /** The search the shown rows were loaded with. */
+  let searched = $state('');
   let dialog = $state<{ group: Group | null } | null>(null);
   let removing = $state<Group | null>(null);
   let blocked = $state<{ comments: number; worklogs: number } | null>(null);
@@ -35,9 +38,11 @@
   async function load() {
     const mine = ++seq;
     try {
-      const found = await adminApi.groups(q.trim());
+      const search = q.trim();
+      const found = await adminApi.groups(search);
       if (mine === seq) {
         groups = found;
+        searched = search;
         error = '';
       }
     } catch (e) {
@@ -143,7 +148,8 @@
         {#each groups as g (g.id)}
           <tr>
             <td>
-              <button class="link-btn name" onclick={() => (dialog = { group: g })}>{g.name}</button
+              <button class="link-btn name" onclick={() => (dialog = { group: g })}
+                ><Highlight text={g.name} search={searched} /></button
               >
             </td>
             <td class="c-description">{g.description || '—'}</td>

@@ -2,6 +2,7 @@
   import { paths } from '../core/route.js';
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
+  import Highlight from './Highlight.svelte';
   import Picture from './Picture.svelte';
 
   /** A person: their picture, else initials, in a small square, then the name, linking to their page. */
@@ -11,8 +12,16 @@
     empty?: string | undefined;
     /** False inside a link or a button, where a link is not valid. */
     link?: boolean | undefined;
+    /** A search whose matches the name marks. */
+    search?: string | undefined;
   }
-  const { user, initialsBox = true, empty = t.common.unassigned, link = true }: Props = $props();
+  const {
+    user,
+    initialsBox = true,
+    empty = t.common.unassigned,
+    link = true,
+    search = '',
+  }: Props = $props();
 </script>
 
 {#if user}
@@ -24,7 +33,9 @@
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
     {#if initialsBox}<span class="initials avatar" aria-hidden="true"><Picture {user} /></span>{/if}
-    <span class="name">{user.name}</span>
+    <span class="name"
+      >{#if search}<Highlight text={user.name} {search} />{:else}{user.name}{/if}</span
+    >
   </svelte:element>
 {:else}
   <span class="nobody">{empty}</span>

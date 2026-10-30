@@ -16,6 +16,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import Pager from '../Pager.svelte';
 
   /**
@@ -25,6 +26,8 @@
    */
   let query = $state<AuditQuery>(auditQuery(router.search));
   let list = $state<AuditList | null>(null);
+  /** The text search the shown entries were loaded with. */
+  let searched = $state('');
   let error = $state('');
   let open = $state<Record<number, boolean>>({});
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -73,9 +76,11 @@
   async function load() {
     const mine = ++seq;
     try {
+      const search = query.q.trim();
       const found = await adminApi.audit(query);
       if (mine === seq) {
         list = found;
+        searched = search;
         error = '';
       }
     } catch (e) {
@@ -275,8 +280,14 @@
             </td>
             <td class="c-who">
               {#if who}
-                {who.name}
-                {#if who.name !== who.username}<span class="key muted">{who.username}</span>{/if}
+                <!-- The server searches the recorded user name, not the account's display name. -->
+                <Highlight text={who.name} search={e.user ? '' : searched} />
+                {#if who.name !== who.username}<span class="key muted"
+                    ><Highlight
+                      text={who.username}
+                      search={who.username === e.username ? searched : ''}
+                    /></span
+                  >{/if}
               {:else}
                 <span class="muted">{e.ip ? t.auditAdmin.unknownWho : t.auditAdmin.system}</span>
               {/if}
@@ -289,7 +300,7 @@
             <td class="c-target">
               {#if e.target}
                 <span class="muted small">{targetLabel(e.target.type)}</span>
-                {e.target.label ?? e.target.id ?? ''}
+                <Highlight text={e.target.label ?? e.target.id ?? ''} search={searched} />
               {:else}
                 <span class="muted">—</span>
               {/if}
@@ -316,13 +327,13 @@
                   {#if e.ip}
                     <div>
                       <dt>{t.auditAdmin.address}</dt>
-                      <dd class="mono">{e.ip}</dd>
+                      <dd class="mono"><Highlight text={e.ip} search={searched} /></dd>
                     </div>
                   {/if}
                   {#if e.username && who && e.username !== who.username}
                     <div>
                       <dt>{t.auditAdmin.recordedAs}</dt>
-                      <dd class="mono">{e.username}</dd>
+                      <dd class="mono"><Highlight text={e.username} search={searched} /></dd>
                     </div>
                   {/if}
                   {#each lines as l, i (i)}
@@ -330,9 +341,12 @@
                       <dt>{detailKey(l.key)}</dt>
                       <dd>
                         {#if l.kind === 'change'}
-                          {t.auditAdmin.changed(value(l.from), value(l.to))}
+                          <Highlight
+                            text={t.auditAdmin.changed(value(l.from), value(l.to))}
+                            search={searched}
+                          />
                         {:else}
-                          {value(l.value)}
+                          <Highlight text={value(l.value)} search={searched} />
                         {/if}
                       </dd>
                     </div>

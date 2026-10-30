@@ -2,6 +2,7 @@
   import { typeLetter, typeTone } from '../core/marks.js';
   import type { TypeRef } from '../core/types.js';
   import { session } from '../lib/session.svelte.js';
+  import Highlight from './Highlight.svelte';
 
   /** An issue type as a small lettered box, optionally followed by its name. */
   interface Props {
@@ -9,8 +10,10 @@
     withName?: boolean | undefined;
     /** Shows the name as stored, not as a seeded default in the viewer's language. */
     asStored?: boolean | undefined;
+    /** A search whose matches the shown name marks. */
+    search?: string | undefined;
   }
-  const { type, withName = false, asStored = false }: Props = $props();
+  const { type, withName = false, asStored = false, search = '' }: Props = $props();
   const tone = $derived(typeTone(type.name, type.subtask));
   const name = $derived(asStored ? type.name : session.typeName(type));
 </script>
@@ -19,7 +22,9 @@
   <span class="box type-mark {tone}" data-type={tone} aria-hidden={withName}
     >{typeLetter(name)}</span
   >
-  {#if withName}<span>{name}</span>{:else}<span class="sr-only">{name}</span>{/if}
+  {#if withName}<span
+      >{#if search}<Highlight text={name} {search} />{:else}{name}{/if}</span
+    >{:else}<span class="sr-only">{name}</span>{/if}
 </span>
 
 <style>

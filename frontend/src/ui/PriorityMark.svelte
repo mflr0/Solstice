@@ -2,6 +2,7 @@
   import { PRIORITY_GLYPHS, priorityLevel } from '../core/marks.js';
   import type { PriorityRef } from '../core/types.js';
   import { session } from '../lib/session.svelte.js';
+  import Highlight from './Highlight.svelte';
 
   /** A priority as stacked triangles, tinted with the priority's colour. */
   interface Props {
@@ -9,8 +10,10 @@
     withName?: boolean | undefined;
     /** Shows the name as stored, not as a seeded default in the viewer's language. */
     asStored?: boolean | undefined;
+    /** A search whose matches the shown name marks. */
+    search?: string | undefined;
   }
-  const { priority, withName = false, asStored = false }: Props = $props();
+  const { priority, withName = false, asStored = false, search = '' }: Props = $props();
   const name = $derived(priority && !asStored ? session.priorityName(priority) : priority?.name);
 
   const index = $derived(priority ? session.priorityIndex(priority) : -1);
@@ -25,7 +28,9 @@
       style:--priority-color={priority.color || null}
       aria-hidden="true">{PRIORITY_GLYPHS[level]}</span
     >
-    {#if withName}<span>{name}</span>{:else}<span class="sr-only">{name}</span>{/if}
+    {#if withName}<span
+        >{#if search}<Highlight text={name ?? ''} {search} />{:else}{name}{/if}</span
+      >{:else}<span class="sr-only">{name}</span>{/if}
   </span>
 {/if}
 

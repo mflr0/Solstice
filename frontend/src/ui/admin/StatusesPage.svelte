@@ -11,6 +11,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import Highlight from '../Highlight.svelte';
   import Modal from '../Modal.svelte';
   import OrderArrows from './OrderArrows.svelte';
   import StatusDialog from './StatusDialog.svelte';
@@ -219,10 +220,10 @@
                   onmove={(by) => step(item, by)}
                 />
               </td>
-              <td><strong>{item.name}</strong></td>
+              <td><strong><Highlight text={item.name} search={q} /></strong></td>
               <td class="c-category">
                 <span class="stamp {item.category}" data-category={item.category}
-                  >{t.categories[item.category]}</span
+                  ><Highlight text={t.categories[item.category]} search={q} /></span
                 >
               </td>
               <td class="num c-usage" class:muted={statusUnused(item)}>
