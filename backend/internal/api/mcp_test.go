@@ -19,7 +19,7 @@ import (
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Handler(http.NotFoundHandler())
-	later := []string{"/filter/", "/version/", "/component/", "/versions", "/components"}
+	later := []string{"/version/", "/component/", "/versions", "/components"}
 	tools := map[string]*mcpTool{}
 	names := map[string]bool{}
 	for i := range mcpTools {

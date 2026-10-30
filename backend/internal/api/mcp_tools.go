@@ -40,7 +40,7 @@ type mcpTool struct {
 // mcpParam is an argument of a tool: a query parameter of the REST
 // operation, its path value pathValue, or a field of its JSON body.
 type mcpParam struct {
-	name, kind, desc string // kind: string, integer, boolean or list (of strings)
+	name, kind, desc string // kind: string, integer, boolean, list (of strings) or objects
 	required         bool
 	pathValue        string
 	body             bool
@@ -77,6 +77,24 @@ func mcpAgile(name, method, path string, h func(*Server, http.ResponseWriter, *h
 	return mcpTool{name: name, desc: desc, scope: scope, method: method, api: issue.AgileAPIPath, path: path, h: h,
 		params: params}
 }
+
+// mcpWrite is a tool of the REST API that changes things under scope.
+func mcpWrite(name string, scope auth.Scope, method, path string, h func(*Server, http.ResponseWriter, *http.Request) error,
+	desc string, params ...mcpParam) mcpTool {
+	return mcpTool{name: name, desc: desc, scope: scope, method: method, path: path, h: h, params: params}
+}
+
+// Arguments of the filter tools.
+var (
+	mcpFilterID   = mcpParam{name: "filterId", kind: "string", desc: "Filter id.", required: true, pathValue: "id"}
+	mcpFilterBody = []mcpParam{
+		{name: "description", kind: "string", desc: "Description; empty to clear it.", body: true},
+		{name: "favourite", kind: "boolean", desc: "Whether the filter is among the user's favourites.", body: true},
+		{name: "sharePermissions", kind: "objects", body: true, desc: `Who else sees the filter, replacing the current shares: ` +
+			`{"type":"global"}, {"type":"group","group":{"name":"..."}}, {"type":"project","project":{"key":"..."}}, ` +
+			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"..."}} or {"type":"user","user":{"name":"..."}}.`},
+	}
+)
 
 // mcpTools are the tools of the endpoint.
 var mcpTools = []mcpTool{
@@ -192,6 +210,26 @@ var mcpTools = []mcpTool{
 		"Kinds of issue links, with their inward and outward names."),
 	mcpRead("get_server_info", "/serverInfo", (*Server).restServerInfo, "This server's version, base URL and time."),
 
+	mcpRead("list_favourite_filters", "/filter/favourite", (*Server).restFavouriteFilters,
+		"The user's favourite saved filters: id, name, JQL, owner, shares."),
+	mcpRead("get_filter", "/filter/{id}", (*Server).restFilter,
+		"One saved filter the user can see: name, description, JQL, owner, shares, whether a favourite.",
+		mcpFilterID),
+	mcpWrite("create_filter", auth.ScopeFilters, http.MethodPost, "/filter", (*Server).restSaveFilter,
+		"Saves a new filter owned by the user, private unless sharePermissions says otherwise.",
+		append([]mcpParam{{name: "name", kind: "string", desc: "Name.", required: true, body: true},
+			{name: "jql", kind: "string", desc: "JQL query of the filter.", required: true, body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("update_filter", auth.ScopeFilters, http.MethodPut, "/filter/{id}", (*Server).restSaveFilter,
+		"Changes a saved filter the user may edit; arguments left out stay as they are. "+
+			"favourite alone works on any filter the user can see.",
+		append([]mcpParam{mcpFilterID, {name: "name", kind: "string", desc: "New name.", body: true},
+			{name: "jql", kind: "string", desc: "New JQL query.", body: true}},
+			mcpFilterBody...)...),
+	mcpWrite("delete_filter", auth.ScopeFilters, http.MethodDelete, "/filter/{id}", (*Server).deleteFilter,
+		"Deletes a saved filter the user may edit.",
+		mcpFilterID),
+
 	mcpAgile("list_boards", "GET", "/board", (*Server).agileBoards,
 		"Boards the user can see: id, name, type (scrum or kanban), project.",
 		mcpParam{name: "projectKeyOrId", kind: "string", desc: "Only the boards of this project."},
@@ -251,8 +289,11 @@ func init() {
 			AdditionalProperties: &jsonschema.Schema{Not: &jsonschema.Schema{}}}
 		for _, p := range t.params {
 			ps := &jsonschema.Schema{Type: p.kind, Description: p.desc}
-			if p.kind == "list" {
+			switch p.kind {
+			case "list":
 				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "string"}
+			case "objects":
+				ps.Type, ps.Items = "array", &jsonschema.Schema{Type: "object"}
 			}
 			t.schema.Properties[p.name] = ps
 			t.schema.PropertyOrder = append(t.schema.PropertyOrder, p.name)
