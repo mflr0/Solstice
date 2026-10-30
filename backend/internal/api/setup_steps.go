@@ -561,11 +561,10 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 	if job == nil || job.view("").State != "done" {
 		return fail(http.StatusConflict, i18n.ImportNotFinished)
 	}
-	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	match, args := sqlq.LikeWords(strings.ToLower(r.URL.Query().Get("q")), "username", "LOWER(display_name)", "LOWER(email)")
 	out := []setupAccount{}
 	err := sqlq.Each(r.Context(), conn, `SELECT username, display_name, email, is_admin FROM users
-		WHERE active AND password_hash IS NOT NULL
-		AND (username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?)
+		WHERE active AND password_hash IS NOT NULL AND `+match+`
 		ORDER BY is_admin DESC, display_name, username LIMIT 50`, func(rows *sql.Rows) error {
 		var a setupAccount
 		if err := rows.Scan(&a.Username, &a.Name, &a.Email, &a.Admin); err != nil {
@@ -573,7 +572,7 @@ func (w *Setup) importedAccounts(rw http.ResponseWriter, r *http.Request) error 
 		}
 		out = append(out, a)
 		return nil
-	}, like, like, like)
+	}, args...)
 	if err != nil {
 		return err
 	}

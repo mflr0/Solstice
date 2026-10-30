@@ -88,10 +88,10 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	like := "%" + sqlq.EscapeLike(q) + "%"
+	match, args := sqlq.LikeWords(q, "username", "LOWER(display_name)", "LOWER(email)")
 	out := []adminUser{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT `+adminUserColumns+` FROM users
-		WHERE username LIKE ? OR LOWER(display_name) LIKE ? OR LOWER(email) LIKE ?
+		WHERE `+match+`
 		ORDER BY active DESC, display_name LIMIT 200`, func(rows *sql.Rows) error {
 		u, err := scanAdminUser(rows)
 		if err != nil {
@@ -99,7 +99,7 @@ func (s *Server) adminUsers(w http.ResponseWriter, r *http.Request) error {
 		}
 		out = append(out, u)
 		return nil
-	}, like, like, like)
+	}, args...)
 	if err != nil {
 		return err
 	}

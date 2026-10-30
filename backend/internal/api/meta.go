@@ -19,11 +19,10 @@ func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
 
 // searchUsers backs user pickers: active users matching a name.
 func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
-	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-	like := "%" + sqlq.EscapeLike(q) + "%"
+	match, args := sqlq.LikeWords(strings.ToLower(r.URL.Query().Get("q")), "username", "LOWER(display_name)")
 	out := []userRef{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT id, username, display_name, active FROM users
-		WHERE active AND (username LIKE ? OR LOWER(display_name) LIKE ?) ORDER BY display_name LIMIT 20`,
+		WHERE active AND `+match+` ORDER BY display_name LIMIT 20`,
 		func(rows *sql.Rows) error {
 			var u userRef
 			if err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Active); err != nil {
@@ -31,7 +30,7 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) error {
 			}
 			out = append(out, u)
 			return nil
-		}, like, like)
+		}, args...)
 	if err != nil {
 		return err
 	}

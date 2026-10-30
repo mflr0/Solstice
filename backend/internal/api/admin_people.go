@@ -95,11 +95,11 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
-	like := "%" + sqlq.EscapeLike(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))) + "%"
+	match, args := sqlq.LikeWords(strings.ToLower(r.URL.Query().Get("q")), "g.name")
 	out := []groupOut{}
 	err := sqlq.Each(r.Context(), s.db, `SELECT g.id, g.name, g.description,
 		(SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id)
-		FROM user_groups g WHERE g.name LIKE ? ORDER BY g.name`, func(rows *sql.Rows) error {
+		FROM user_groups g WHERE `+match+` ORDER BY g.name`, func(rows *sql.Rows) error {
 		var g groupOut
 		var desc sql.NullString
 		if err := rows.Scan(&g.ID, &g.Name, &desc, &g.Members); err != nil {
@@ -108,7 +108,7 @@ func (s *Server) listGroups(w http.ResponseWriter, r *http.Request) error {
 		g.Description = sqlq.String(desc)
 		out = append(out, g)
 		return nil
-	}, like)
+	}, args...)
 	if err != nil {
 		return err
 	}
