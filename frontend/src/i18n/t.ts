@@ -5,8 +5,8 @@
  * (en.ts) is the source language and the catalogue until boot.
  */
 
-import type { Ago, Day } from '../core/dates.js';
-import { ago, parseDay, splitDuration } from '../core/dates.js';
+import type { Ago, Ahead, Day } from '../core/dates.js';
+import { ago, ahead, parseDay, splitDuration } from '../core/dates.js';
 import type { JqlCode, JqlError, JqlMessages } from '../core/jql.js';
 import type { Grant, Holder, Permission, StatusCategory } from '../core/types.js';
 import { dateTime, formatNumber, longDay } from './format.js';
@@ -18,7 +18,7 @@ export function renderDay(day: Day): string {
   return longDay(day);
 }
 
-export function renderAgo(a: Ago): string {
+export function renderAgo(a: Ago | Ahead): string {
   switch (a.kind) {
     case 'now':
       return t.time.justNow;
@@ -30,6 +30,14 @@ export function renderAgo(a: Ago): string {
       return t.time.yesterday;
     case 'days':
       return t.time.daysAgo(a.n);
+    case 'inMinutes':
+      return t.time.inMinutes(a.n);
+    case 'inHours':
+      return t.time.inHours(a.n);
+    case 'tomorrow':
+      return t.time.tomorrow;
+    case 'inDays':
+      return t.time.inDays(a.n);
     case 'date':
       return longDay(a.day);
   }
@@ -38,6 +46,11 @@ export function renderAgo(a: Ago): string {
 /** Relative wording for an instant, e.g. "il y a 3 h". */
 export function relative(iso: string, now?: Date): string {
   return renderAgo(ago(iso, now));
+}
+
+/** Relative wording for an instant meant to be ahead, e.g. "dans 3 j". */
+export function relativeAhead(iso: string, now?: Date): string {
+  return renderAgo(ahead(iso, now));
 }
 
 /** "12 mars 2026 à 14:05". */

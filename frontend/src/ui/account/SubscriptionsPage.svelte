@@ -4,7 +4,7 @@
   import { paths } from '../../core/route.js';
   import type { SavedFilter } from '../../core/types.js';
   import { formatList, formatLocale } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -126,7 +126,9 @@
               {schedule(s)}
               {#if s.emptyToo}<span class="muted small">{t.subscriptionsPage.emptyToo}</span>{/if}
             </td>
-            <td class="c-next muted" title={formatDateTime(s.nextRun)}>{relative(s.nextRun)}</td>
+            <td class="c-next muted" title={formatDateTime(s.nextRun)}
+              >{relativeAhead(s.nextRun)}</td
+            >
             <td class="c-last muted" title={s.lastRun ? formatDateTime(s.lastRun) : undefined}>
               {s.lastRun ? relative(s.lastRun) : t.subscriptionsPage.notSent}
             </td>

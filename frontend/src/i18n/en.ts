@@ -4,7 +4,7 @@
  */
 
 import { parseDay } from '../core/dates.js';
-import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo } from './format.js';
+import { dayMonth, formatList, formatNumber, plural, shortDay, timeAgo, timeIn } from './format.js';
 
 export const en = {
   appName: 'Solstice',
@@ -16,6 +16,10 @@ export const en = {
     hoursAgo: (n: number) => timeAgo(n, 'hour'),
     yesterday: 'yesterday',
     daysAgo: (n: number) => timeAgo(n, 'day'),
+    inMinutes: (n: number) => timeIn(n, 'minute'),
+    inHours: (n: number) => timeIn(n, 'hour'),
+    tomorrow: 'tomorrow',
+    inDays: (n: number) => timeIn(n, 'day'),
     /** An absolute date inside a sentence: "created on …". */
     onDate: (date: string) => `on ${date}`,
     /** "2h 30m", "2h", "45m": the way people type it in a work log. */

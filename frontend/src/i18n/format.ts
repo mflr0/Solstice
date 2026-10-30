@@ -65,6 +65,14 @@ export function timeAgo(n: number, unit: 'minute' | 'hour' | 'day'): string {
   );
 }
 
+/** "in 3 minutes", "in 3 Stunden", "3 दिन में": Intl's own wording. */
+export function timeIn(n: number, unit: 'minute' | 'hour' | 'day'): string {
+  return cached('ago', () => new Intl.RelativeTimeFormat(tag, { numeric: 'always' })).format(
+    n,
+    unit,
+  );
+}
+
 /**
  * Intl's parts, with the one rule it lacks: French writes the first of the
  * month as an ordinal, « 1er mars ».

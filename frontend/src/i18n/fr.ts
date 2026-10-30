@@ -15,6 +15,10 @@ export const fr: Messages = {
     hoursAgo: (n: number) => `il y a ${n} h`,
     yesterday: 'hier',
     daysAgo: (n: number) => `il y a ${n} j`,
+    inMinutes: (n: number) => `dans ${n} min`,
+    inHours: (n: number) => `dans ${n} h`,
+    tomorrow: 'demain',
+    inDays: (n: number) => `dans ${n} j`,
     /** An absolute date inside a sentence: "created on …". */
     onDate: (date: string) => `le ${date}`,
     /** "2 h 30", "2 h", "45 min". */

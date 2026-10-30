@@ -11,7 +11,7 @@
   } from '../../core/admin-ops.js';
   import type { AccessToken, Group, TokenSettings } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
-  import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -265,7 +265,7 @@
                 class="muted small"
                 title={tok.expires ? formatDateTime(tok.expires) : undefined}
               >
-                {tok.expires ? relative(tok.expires) : t.tokensAdmin.never}
+                {tok.expires ? relativeAhead(tok.expires) : t.tokensAdmin.never}
               </span>
             </td>
             <td class="row-actions">

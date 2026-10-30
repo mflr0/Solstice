@@ -18,6 +18,13 @@ export type Ago =
   | { kind: 'days'; n: number }
   | { kind: 'date'; day: Day };
 
+/** How far ahead an instant is, in the words of ago's mirror. */
+export type Ahead =
+  | { kind: 'inMinutes'; n: number }
+  | { kind: 'inHours'; n: number }
+  | { kind: 'tomorrow' }
+  | { kind: 'inDays'; n: number };
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 
@@ -46,6 +53,23 @@ export function ago(iso: string, now: Date = new Date()): Ago {
   if (days === 0) return { kind: 'hours', n: Math.floor(diff / HOUR) };
   if (days === 1) return { kind: 'yesterday' };
   if (days < 7) return { kind: 'days', n: days };
+  return { kind: 'date', day: dayOf(then) };
+}
+
+/**
+ * When an instant meant to be ahead (an expiry, a next run) falls: minutes,
+ * hours while it is still today, "tomorrow", days within a week, then the
+ * date itself. An instant already past reads as ago does.
+ */
+export function ahead(iso: string, now: Date = new Date()): Ago | Ahead {
+  const then = new Date(iso);
+  const diff = then.getTime() - now.getTime();
+  if (diff <= 0) return ago(iso, now);
+  if (diff < HOUR) return { kind: 'inMinutes', n: Math.max(1, Math.floor(diff / MINUTE)) };
+  const days = calendarDiff(now, then);
+  if (days === 0) return { kind: 'inHours', n: Math.floor(diff / HOUR) };
+  if (days === 1) return { kind: 'tomorrow' };
+  if (days < 7) return { kind: 'inDays', n: days };
   return { kind: 'date', day: dayOf(then) };
 }
 
