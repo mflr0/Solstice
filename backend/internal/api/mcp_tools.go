@@ -91,6 +91,14 @@ var (
 			"get_create_meta and get_edit_meta list the fields and their allowed values.")
 	mcpEditUpdate = mcpBody("update", "object",
 		`Operations per field, as in Jira: {"labels": [{"add": "urgent"}], "comment": [{"add": {"body": "…"}}]}.`)
+	mcpCommentID   = mcpParam{name: "commentId", kind: "string", desc: "Comment id.", required: true, pathValue: "id"}
+	mcpWorklogID   = mcpParam{name: "worklogId", kind: "string", desc: "Work log id.", required: true, pathValue: "id"}
+	mcpWorklogBody = []mcpParam{
+		mcpBody("timeSpent", "string", `Time spent, e.g. "1h 30m".`),
+		mcpBody("timeSpentSeconds", "integer", "Time spent in seconds, instead of timeSpent."),
+		mcpBody("started", "string", "When the work started, e.g. 2026-10-30T09:00:00.000+0100; now by default."),
+		mcpBody("comment", "string", "What was done."),
+	}
 	mcpRemoteLinkBody = []mcpParam{
 		mcpBody("globalId", "string", "Identifier of the linked page; a second add with the same one updates that link."),
 		mcpBody("relationship", "string", `How the issue relates to the page, e.g. "mentioned in".`),
@@ -156,13 +164,13 @@ var mcpTools = []mcpTool{
 		mcpParam{name: "orderBy", kind: "string", desc: "created, or -created for newest first."}),
 	mcpRead("get_comment", "/issue/{key}/comment/{id}", (*Server).restComment,
 		"One comment of an issue.",
-		mcpIssueKey, mcpParam{name: "commentId", kind: "string", desc: "Comment id.", required: true, pathValue: "id"}),
+		mcpIssueKey, mcpCommentID),
 	mcpRead("list_worklogs", "/issue/{key}/worklog", (*Server).restWorklogs,
 		"Work logged on an issue: author, time spent, start, comment.",
 		mcpIssueKey, mcpStartAt, mcpMaxResults),
 	mcpRead("get_worklog", "/issue/{key}/worklog/{id}", (*Server).restWorklog,
 		"One work log entry of an issue.",
-		mcpIssueKey, mcpParam{name: "worklogId", kind: "string", desc: "Work log id.", required: true, pathValue: "id"}),
+		mcpIssueKey, mcpWorklogID),
 	mcpRead("get_watchers", "/issue/{key}/watchers", (*Server).restWatchers,
 		"Who watches an issue, and whether the user does.",
 		mcpIssueKey),
@@ -304,6 +312,25 @@ var mcpTools = []mcpTool{
 		"Removes the link from an issue to an outside page that has this global id.",
 		mcpIssueKey, mcpParam{name: "globalId", kind: "string", desc: "Global id of the link.", required: true}),
 
+	mcpWrite("add_comment", auth.ScopeComments, http.MethodPost, "/issue/{key}/comment", (*Server).restAddComment,
+		"Comments on an issue, for everyone who sees it or only a group or project role. Returns the comment.",
+		mcpIssueKey, mcpParam{name: "body", kind: "string", desc: "Text.", required: true, body: true},
+		mcpBody("visibility", "object", `Who sees it: {"type": "group", "value": "developers"} or {"type": "role", "value": "Developers"}; everyone by default.`)),
+	mcpWrite("edit_comment", auth.ScopeComments, http.MethodPut, "/issue/{key}/comment/{id}", (*Server).restEditComment,
+		"Changes the text of a comment; who sees it stays as it is. Returns the comment.",
+		mcpIssueKey, mcpCommentID, mcpParam{name: "body", kind: "string", desc: "New text.", required: true, body: true}),
+	mcpWrite("delete_comment", auth.ScopeComments, http.MethodDelete, "/issue/{key}/comment/{id}", (*Server).restDeleteComment,
+		"Deletes a comment.", mcpIssueKey, mcpCommentID),
+	mcpWrite("add_worklog", auth.ScopeWorklogs, http.MethodPost, "/issue/{key}/worklog", (*Server).restAddWorklog,
+		"Logs work on an issue: give timeSpent or timeSpentSeconds. The remaining estimate goes down by the time spent. "+
+			"Returns the work log.",
+		append([]mcpParam{mcpIssueKey}, mcpWorklogBody...)...),
+	mcpWrite("edit_worklog", auth.ScopeWorklogs, http.MethodPut, "/issue/{key}/worklog/{id}", (*Server).restEditWorklog,
+		"Changes a work log; arguments left out stay as they are. Returns the work log.",
+		append([]mcpParam{mcpIssueKey, mcpWorklogID}, mcpWorklogBody...)...),
+	mcpWrite("delete_worklog", auth.ScopeWorklogs, http.MethodDelete, "/issue/{key}/worklog/{id}", (*Server).restDeleteWorklog,
+		"Deletes a work log.", mcpIssueKey, mcpWorklogID),
+
 	mcpRead("list_favourite_filters", "/filter/favourite", (*Server).restFavouriteFilters,
 		"The user's favourite saved filters: id, name, JQL, owner, shares."),
 	mcpRead("get_filter", "/filter/{id}", (*Server).restFilter,
@@ -405,8 +432,9 @@ func init() {
 func (t *mcpTool) tool() *mcp.Tool {
 	a := &mcp.ToolAnnotations{ReadOnlyHint: t.scope == auth.ScopeRead, OpenWorldHint: new(false),
 		IdempotentHint: t.method == http.MethodPut || t.method == http.MethodDelete}
-	// Adding an issue, a link, a vote… destroys nothing; a transition may overwrite fields.
-	if t.scope == auth.ScopeIssues && t.method == http.MethodPost && t.name != "transition_issue" {
+	// Adding an issue, a link, a comment… destroys nothing; a transition may overwrite fields.
+	if (t.scope == auth.ScopeIssues || t.scope == auth.ScopeComments || t.scope == auth.ScopeWorklogs) &&
+		t.method == http.MethodPost && t.name != "transition_issue" {
 		a.DestructiveHint = new(false)
 	}
 	return &mcp.Tool{Name: t.name, Description: t.desc, InputSchema: t.schema, Annotations: a}

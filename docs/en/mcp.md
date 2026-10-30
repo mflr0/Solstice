@@ -14,8 +14,8 @@ The endpoint only accepts a personal access token, in the header
 cookies and tokens in the address are refused.
 
 Create a token under "My settings", "Access tokens", and give it the `read`
-scope, plus `issues:write` if the agent is to change issues and `agile:write`
-if it is to plan sprints. Only people allowed by the administrator's token policy can create
+scope, plus `issues:write` if the agent is to change issues, `comments:write`
+to comment, `worklogs:write` to log work and `agile:write` to plan sprints. Only people allowed by the administrator's token policy can create
 tokens (see [administration.md](administration.md)). A token keeps working
 if the policy changes later, as on the REST API.
 
@@ -81,14 +81,20 @@ Boards and sprints, from Jira Software's Agile API:
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Plans issues in a sprint, or takes them out |
 | `rank_issues` | `agile:write` | Moves issues before or after another in the board order |
 
+Comments and work logs:
+
+| Tool | Scope | Does |
+|---|---|---|
+| `add_comment`, `edit_comment`, `delete_comment` | `comments:write` | Comments on an issue, changes the text of a comment, or deletes it |
+| `add_worklog`, `edit_worklog`, `delete_worklog` | `worklogs:write` | Logs work on an issue, changes or deletes a work log; the time tracking follows |
+
 Saved filters:
 
 | Tool | Scope | Does |
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
 
-Versions and components, and the tools that change comments or work logs,
-are not offered yet.
+Versions and components are not offered yet.
 
 ## Connecting Claude Code
 
