@@ -16,7 +16,8 @@ Basic, les cookies de session et les jetons passés dans l'adresse sont
 refusés.
 
 Créez un jeton dans « Mes paramètres », « Jetons d'accès », avec la portée
-`read`, et `issues:write` pour que l'agent puisse modifier des tickets. Seules les personnes que la politique des jetons de l'administrateur
+`read`, plus `issues:write` si l'agent doit modifier des tickets et
+`agile:write` s'il doit planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
 autorise peuvent en créer (voir [administration.md](administration.md)). Un
 jeton continue de fonctionner si la politique change ensuite, comme sur l'API
 REST.
@@ -37,9 +38,8 @@ voir reste caché, dans les recherches comme par sa clé.
 Les outils répondent dans le JSON de l'API REST de Jira Server (voir
 [rest-api.md](rest-api.md)). Chacun demande une portée ; la liste des outils
 ne montre que ceux que les portées du jeton permettent, et appeler un autre
-outil échoue en nommant la portée qui manque.
-
-Ces outils demandent `read` :
+outil échoue en nommant la portée qui manque. Tous les outils de ce tableau
+demandent `read`.
 
 | Outil | Donne |
 |---|---|
@@ -73,9 +73,21 @@ Ces outils demandent `issues:write` :
 | `link_issues`, `delete_issue_link` | Lie deux tickets, ou supprime le lien |
 | `add_remote_link`, `edit_remote_link`, `delete_remote_link`, `delete_remote_link_by_global_id` | Lie un ticket à une page extérieure, modifie ou supprime le lien |
 
-Les outils qui modifient les commentaires ou le temps passé, et les
-tableaux, sprints, filtres, versions et composants, ne sont pas encore
-proposés.
+Les tableaux et les sprints, de l'API Agile de Jira Software :
+
+| Outil | Portée | Fait |
+|---|---|---|
+| `list_boards`, `get_board`, `get_board_configuration` | `read` | Les tableaux, leurs colonnes, leur filtre et leur estimation |
+| `list_sprints`, `get_sprint` | `read` | Les sprints d'un tableau Scrum |
+| `list_board_issues`, `get_backlog`, `list_sprint_issues` | `read` | Les tickets d'un tableau, de son backlog ou d'un sprint, dans l'ordre du tableau |
+| `get_epic`, `list_epic_issues` | `read` | Une epic et ses tickets |
+| `update_sprint` | `agile:write` | Renomme un sprint, change ses dates, le démarre ou le termine |
+| `delete_sprint` | `agile:write` | Supprime un sprint pas encore démarré |
+| `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Planifie des tickets dans un sprint, ou les en retire |
+| `rank_issues` | `agile:write` | Place des tickets avant ou après un autre dans l'ordre du tableau |
+
+Les filtres, versions et composants, et les outils qui modifient les
+commentaires ou le temps passé, ne sont pas encore proposés.
 
 ## Connecter Claude Code
 

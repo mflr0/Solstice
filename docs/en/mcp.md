@@ -14,7 +14,8 @@ The endpoint only accepts a personal access token, in the header
 cookies and tokens in the address are refused.
 
 Create a token under "My settings", "Access tokens", and give it the `read`
-scope, plus `issues:write` for the agent to change issues. Only people allowed by the administrator's token policy can create
+scope, plus `issues:write` if the agent is to change issues and `agile:write`
+if it is to plan sprints. Only people allowed by the administrator's token policy can create
 tokens (see [administration.md](administration.md)). A token keeps working
 if the policy changes later, as on the REST API.
 
@@ -32,9 +33,7 @@ issue the owner cannot see stays hidden, from search and by key.
 The tools answer in the JSON of the Jira Server REST API (see
 [rest-api.md](rest-api.md)). Each one needs a scope; the tool list only shows
 the tools the token's scopes allow, and calling another one fails with the
-scope it needs.
-
-These tools need `read`:
+scope it needs. Every tool of this table needs `read`.
 
 | Tool | Gives |
 |---|---|
@@ -68,8 +67,21 @@ These tools need `issues:write`:
 | `link_issues`, `delete_issue_link` | Links two issues, or removes the link |
 | `add_remote_link`, `edit_remote_link`, `delete_remote_link`, `delete_remote_link_by_global_id` | Links an issue to an outside page, changes or removes the link |
 
-Tools that change comments or work logs, and boards, sprints, filters,
-versions and components, are not offered yet.
+Boards and sprints, from Jira Software's Agile API:
+
+| Tool | Scope | Does |
+|---|---|---|
+| `list_boards`, `get_board`, `get_board_configuration` | `read` | Boards, their columns, filter and estimation |
+| `list_sprints`, `get_sprint` | `read` | Sprints of a Scrum board |
+| `list_board_issues`, `get_backlog`, `list_sprint_issues` | `read` | Issues of a board, its backlog or a sprint, in board order |
+| `get_epic`, `list_epic_issues` | `read` | An epic and its issues |
+| `update_sprint` | `agile:write` | Renames, dates, starts or completes a sprint |
+| `delete_sprint` | `agile:write` | Deletes a sprint that has not started |
+| `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Plans issues in a sprint, or takes them out |
+| `rank_issues` | `agile:write` | Moves issues before or after another in the board order |
+
+Filters, versions and components, and the tools that change comments or
+work logs, are not offered yet.
 
 ## Connecting Claude Code
 
