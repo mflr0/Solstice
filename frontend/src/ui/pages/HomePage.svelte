@@ -1,13 +1,17 @@
 <script lang="ts">
   import { arrowAfterMove, moveItem } from '../../core/catalogs.js';
   import {
+    clickGadgetSort,
     gadgetQuery,
     MAX_GADGETS,
+    queryOrder,
+    sortedQuery,
     toInput,
     type Dashboard,
     type Gadget,
   } from '../../core/dashboard.js';
   import { localParts } from '../../core/dates.js';
+  import type { SortTerm } from '../../core/jql.js';
   import { paths } from '../../core/route.js';
   import { scopeGadgetQuery } from '../../core/scope.js';
   import { NATIVE_COLUMNS, type ColumnChoice } from '../../core/search-columns.js';
@@ -93,6 +97,23 @@
     return known.length
       ? cols.filter((c) => known.some((x) => x.id === c))
       : cols.filter((c) => NATIVE_COLUMNS.has(c));
+  }
+
+  /** The query the gadget shows: its own, scoped, in the order saved on it. */
+  function shownQuery(g: Gadget): string | null {
+    const q = scopeGadgetQuery(gadgetQuery(g), g.kind, session.scope);
+    if (q === null || g.kind === 'count') return q;
+    const sort = g.config.sort;
+    // A custom field gone since the sort was saved: the query's own order.
+    const cf = sort && /^cf\[(\d+)\]$/.exec(sort.field);
+    const gone = cf && choices?.length && !choices.some((c) => c.id === `customfield_${cf[1]}`);
+    return sortedQuery(q, gone ? undefined : sort);
+  }
+
+  function sortGadget(g: Gadget, column: string, shown: SortTerm[]) {
+    if (saving) return;
+    const sort = clickGadgetSort(column, g.config.sort, shown);
+    saveQuietly(gadgets.map((x) => (x === g ? { ...g, config: { ...g.config, sort } } : x)));
   }
 
   /** Saves the gadgets in this order; the list shows the change at once. */
@@ -184,7 +205,7 @@
   {:else}
     {#if editing}<p class="muted small order-hint">{t.home.orderHint}</p>{/if}
     {#each gadgets as g, i (keyOf(g, i))}
-      {@const q = scopeGadgetQuery(gadgetQuery(g), g.kind, session.scope)}
+      {@const q = shownQuery(g)}
       <section
         class="gadget"
         class:editing
@@ -243,6 +264,7 @@
         {:else if g.kind === 'count' && g.config.field}
           <CountGadget query={q} field={g.config.field} />
         {:else if choices !== null}
+          {@const order = queryOrder(q)}
           <IssueQuery
             {q}
             size={g.config.size || 10}
@@ -250,6 +272,8 @@
             showAssignee={g.kind !== 'assigned'}
             columns={columnsOf(g)}
             {names}
+            sort={order}
+            onsort={(column) => sortGadget(g, column, order)}
             ontotal={(n) => (totals[keyOf(g, i)] = n)}
           />
         {/if}

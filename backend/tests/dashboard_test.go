@@ -24,7 +24,11 @@ type gadgetOut struct {
 	Config      struct {
 		Columns []string `json:"columns"`
 		Size    int      `json:"size"`
-		Field   string   `json:"field"`
+		Sort    *struct {
+			Field string `json:"field"`
+			Desc  bool   `json:"desc"`
+		} `json:"sort"`
+		Field string `json:"field"`
 	} `json:"config"`
 }
 
@@ -103,6 +107,58 @@ func TestDashboardValidation(t *testing.T) {
 	d := dashboard(hugo, "GET", nil)
 	if d.Customised {
 		t.Errorf("a refused save changed the dashboard: %+v", d)
+	}
+}
+
+// A list gadget keeps the sort saved on it; one ORDER BY can't take is
+// dropped, and a count gadget has none.
+func TestDashboardSort(t *testing.T) {
+	resetDashboard(t, "hugo.robert")
+	t.Cleanup(func() { resetDashboard(t, "hugo.robert") })
+	hugo := login(t, "hugo.robert", jirafixture.Password)
+	var own filterOut
+	hugo.call("POST", "/api/filters", map[string]any{"name": unique("Tri tableau de bord "), "query": "project = DEMO ORDER BY created DESC"}, 201, &own)
+	t.Cleanup(func() { hugo.do("DELETE", fmt.Sprintf("/api/filters/%d", own.ID), nil) })
+	var cf int64
+	if err := testDB.QueryRow(`SELECT MIN(id) FROM custom_fields`).Scan(&cf); err != nil {
+		t.Fatal(err)
+	}
+	custom := fmt.Sprintf("cf[%d]", cf)
+
+	sort := func(field string, desc bool) map[string]any {
+		return map[string]any{"sort": map[string]any{"field": field, "desc": desc}}
+	}
+	d := dashboard(hugo, "PUT", map[string]any{"gadgets": []map[string]any{
+		{"kind": "assigned", "config": sort("updated", false)},
+		{"kind": "results", "filter": own.ID, "config": sort(custom, true)},
+		{"kind": "recent", "config": sort("nonsense", true)},
+		{"kind": "reported", "config": sort("cf[999999999]", true)},
+		{"kind": "count", "filter": own.ID, "config": map[string]any{"field": "status", "sort": map[string]any{"field": "updated"}}},
+	}})
+	read := dashboard(hugo, "GET", nil)
+	for i, g := range read.Gadgets {
+		got := "none"
+		if s := g.Config.Sort; s != nil {
+			got = fmt.Sprintf("%s %v", s.Field, s.Desc)
+		}
+		want := []string{"updated false", custom + " true", "none", "none", "none"}[i]
+		if got != want {
+			t.Errorf("gadget %d (%s): sort %s, want %s", i, g.Kind, got, want)
+		}
+	}
+	if len(d.Gadgets) != 5 {
+		t.Fatalf("saved dashboard: %+v", d)
+	}
+
+	if status, body := hugo.do("PUT", "/api/dashboard", map[string]any{"gadgets": []map[string]any{
+		{"kind": "recent", "config": map[string]any{"sort": map[string]any{"field": "updated", "desc": "yes"}}},
+	}}); status != 400 {
+		t.Errorf("unreadable direction: %d %s", status, body)
+	}
+
+	// The saved filter keeps its own order.
+	if f := read.Gadgets[1].Filter; f == nil || !strings.HasSuffix(f.Query, "ORDER BY created DESC") {
+		t.Errorf("filter changed: %+v", f)
 	}
 }
 
