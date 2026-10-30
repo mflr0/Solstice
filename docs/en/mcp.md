@@ -1,8 +1,8 @@
 # MCP endpoint
 
 Solstice has a built-in [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp`, so that AI agents (Claude Code, IDE assistants) can search
-and read issues. It speaks the Streamable HTTP transport, without sessions:
+server at `/mcp`, so that AI agents (Claude Code, IDE assistants) can search,
+read and change issues. It speaks the Streamable HTTP transport, without sessions:
 every request carries its own credentials and gets a JSON answer.
 
 Examples use the host `solstice.example.org` and the token `sol_example`.
@@ -14,7 +14,7 @@ The endpoint only accepts a personal access token, in the header
 cookies and tokens in the address are refused.
 
 Create a token under "My settings", "Access tokens", and give it the `read`
-scope. Only people allowed by the administrator's token policy can create
+scope, plus `issues:write` for the agent to change issues. Only people allowed by the administrator's token policy can create
 tokens (see [administration.md](administration.md)). A token keeps working
 if the policy changes later, as on the REST API.
 
@@ -24,14 +24,17 @@ That document (RFC 9728) names the resource and the scopes tokens can have.
 
 ## What the agent can do
 
-An agent sees and reads what the token's owner may see in the interface: the
-same permissions, security levels and restricted comments apply. A secured
+An agent sees and does what the token's owner may see and do in the
+interface: the same permissions, workflows, security levels and restricted
+comments apply, and the history records the owner as the author of changes. A secured
 issue the owner cannot see stays hidden, from search and by key.
 
 The tools answer in the JSON of the Jira Server REST API (see
 [rest-api.md](rest-api.md)). Each one needs a scope; the tool list only shows
 the tools the token's scopes allow, and calling another one fails with the
-scope it needs. Every tool below needs `read`.
+scope it needs.
+
+These tools need `read`:
 
 | Tool | Gives |
 |---|---|
@@ -52,8 +55,21 @@ scope it needs. Every tool below needs `read`.
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | The instance's catalogues |
 | `get_server_info` | The server's version and address |
 
-Boards, sprints, filters, versions and components, and the tools that change
-things, are not offered yet.
+These tools need `issues:write`:
+
+| Tool | Does |
+|---|---|
+| `create_issue`, `edit_issue`, `delete_issue` | Creates, changes or deletes an issue |
+| `assign_issue` | Assigns an issue, or unassigns it |
+| `transition_issue` | Moves an issue along its workflow |
+| `add_watcher`, `remove_watcher` | Starts or stops someone watching an issue |
+| `add_vote`, `remove_vote` | Votes for an issue, or takes the vote back |
+| `add_attachment`, `delete_attachment` | Attaches a file (base64-encoded, up to the upload limit), or deletes one |
+| `link_issues`, `delete_issue_link` | Links two issues, or removes the link |
+| `add_remote_link`, `edit_remote_link`, `delete_remote_link`, `delete_remote_link_by_global_id` | Links an issue to an outside page, changes or removes the link |
+
+Tools that change comments or work logs, and boards, sprints, filters,
+versions and components, are not offered yet.
 
 ## Connecting Claude Code
 

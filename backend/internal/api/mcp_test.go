@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,8 +14,9 @@ import (
 	"solstice/internal/issue"
 )
 
-// Every read of the REST API has its tool, with the route's scope, apart
-// from those other tools will cover.
+// Every read of the REST API, and every change to issues apart from comments
+// and work logs, has its tool, with the route's scope, apart from those other
+// tools will cover.
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Handler(http.NotFoundHandler())
@@ -27,7 +29,7 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 			t.Errorf("tool %s twice", tool.name)
 		}
 		names[tool.name] = true
-		pattern := "GET " + issue.RESTAPIPath + tool.path
+		pattern := cmp.Or(tool.method, "GET") + " " + issue.RESTAPIPath + tool.path
 		scope, ok := s.routeScopes[pattern]
 		switch {
 		case !ok:
@@ -40,10 +42,15 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 			if p.pathValue != "" && !strings.Contains(tool.path, "{"+p.pathValue+"}") {
 				t.Errorf("%s: %s fills no path value", tool.name, p.name)
 			}
+			if p.body && (tool.method == "" || tool.encode != nil) {
+				t.Errorf("%s: %s is a body it does not send", tool.name, p.name)
+			}
 		}
 	}
-	for pattern := range s.routeScopes {
-		if !strings.HasPrefix(pattern, "GET "+issue.RESTAPIPath+"/") || tools[pattern] != nil {
+	for pattern, scope := range s.routeScopes {
+		method, path, _ := strings.Cut(pattern, " ")
+		if !strings.HasPrefix(path, issue.RESTAPIPath+"/") || tools[pattern] != nil ||
+			(method != "GET" && scope != auth.ScopeIssues) {
 			continue
 		}
 		if !slices.ContainsFunc(later, func(l string) bool { return strings.Contains(pattern, l) }) {

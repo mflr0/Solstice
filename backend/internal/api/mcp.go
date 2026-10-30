@@ -15,6 +15,7 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -67,8 +68,9 @@ func (s *Server) mcpEndpoint() http.Handler {
 		// loopback: every request behind a reverse proxy on the same machine.
 		// It guards servers that trust whoever reaches them; this one needs a
 		// token, which a page rebound to the address cannot have.
-		DisableLocalhostProtection:   true,
-		MaxRequestBodyBytes:          maxJSONBody,
+		DisableLocalhostProtection: true,
+		// Limited below, once the token's scopes are known.
+		MaxRequestBodyBytes:          -1,
 		PropagateRequestCancellation: true,
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +87,11 @@ func (s *Server) mcpEndpoint() http.Handler {
 			}
 			return
 		}
+		limit := int64(maxJSONBody)
+		if u.Allows(solauth.ScopeIssues) { // add_attachment takes a file of up to maxUpload, base64-encoded
+			limit += int64(base64.StdEncoding.EncodedLen(int(s.maxUpload)))
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, u)))
 	})
 }
