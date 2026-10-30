@@ -30,7 +30,7 @@ import (
 const (
 	oauthMeta      = "/.well-known/oauth-authorization-server"
 	oauthAuthorize = "/oauth/authorize"
-	oauthToken     = "/oauth/token"
+	oauthToken     = "/oauth/token" // #nosec G101 -- a path, not a credential
 	oauthRevoke    = "/oauth/revoke"
 )
 
