@@ -2,7 +2,7 @@
 
 Solstice intègre un serveur [Model Context Protocol](https://modelcontextprotocol.io)
 à l'adresse `/mcp`, pour que des agents d'IA (Claude Code, assistants des
-IDE) puissent chercher et lire des tickets. Il parle le transport Streamable
+IDE) puissent chercher, lire et modifier des tickets. Il parle le transport Streamable
 HTTP, sans session : chaque requête porte ses propres identifiants et reçoit
 une réponse JSON.
 
@@ -16,7 +16,8 @@ Basic, les cookies de session et les jetons passés dans l'adresse sont
 refusés.
 
 Créez un jeton dans « Mes paramètres », « Jetons d'accès », avec la portée
-`read`, et `agile:write` si l'agent doit planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
+`read`, plus `issues:write` si l'agent doit modifier des tickets et
+`agile:write` s'il doit planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
 autorise peuvent en créer (voir [administration.md](administration.md)). Un
 jeton continue de fonctionner si la politique change ensuite, comme sur l'API
 REST.
@@ -28,9 +29,10 @@ jetons.
 
 ## Ce que l'agent peut faire
 
-Un agent voit et lit ce que le propriétaire du jeton peut voir dans
-l'interface : mêmes permissions, mêmes niveaux de sécurité, mêmes
-commentaires restreints. Un ticket sécurisé que le propriétaire ne peut pas
+Un agent voit et fait ce que le propriétaire du jeton peut voir et faire
+dans l'interface : mêmes permissions, mêmes workflows, mêmes niveaux de
+sécurité, mêmes commentaires restreints, et l'historique attribue les
+modifications au propriétaire. Un ticket sécurisé que le propriétaire ne peut pas
 voir reste caché, dans les recherches comme par sa clé.
 
 Les outils répondent dans le JSON de l'API REST de Jira Server (voir
@@ -59,6 +61,19 @@ demandent `read`.
 | `get_server_info` | La version et l'adresse du serveur |
 | `list_favourite_filters`, `get_filter` | Les filtres enregistrés : les favoris de l'utilisateur, ou un filtre par son id |
 
+Ces outils demandent `issues:write` :
+
+| Outil | Fait |
+|---|---|
+| `create_issue`, `edit_issue`, `delete_issue` | Crée, modifie ou supprime un ticket |
+| `assign_issue` | Attribue un ticket, ou retire son responsable |
+| `transition_issue` | Fait avancer un ticket dans son workflow |
+| `add_watcher`, `remove_watcher` | Fait suivre un ticket à quelqu'un, ou arrête |
+| `add_vote`, `remove_vote` | Vote pour un ticket, ou retire le vote |
+| `add_attachment`, `delete_attachment` | Joint un fichier (encodé en base64, jusqu'à la limite d'envoi), ou en supprime un |
+| `link_issues`, `delete_issue_link` | Lie deux tickets, ou supprime le lien |
+| `add_remote_link`, `edit_remote_link`, `delete_remote_link`, `delete_remote_link_by_global_id` | Lie un ticket à une page extérieure, modifie ou supprime le lien |
+
 Les tableaux et les sprints, de l'API Agile de Jira Software :
 
 | Outil | Portée | Fait |
@@ -78,8 +93,8 @@ Les filtres enregistrés :
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
 
-Les versions et composants, et les outils qui modifient les tickets, ne sont
-pas encore proposés.
+Les versions et composants, et les outils qui modifient les commentaires ou
+le temps passé, ne sont pas encore proposés.
 
 ## Connecter Claude Code
 

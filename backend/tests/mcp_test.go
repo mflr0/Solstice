@@ -5,16 +5,20 @@ package tests
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"solstice/internal/api"
 	"solstice/internal/auth"
 	"solstice/internal/jirafixture"
 )
@@ -105,6 +109,135 @@ func TestMCP(t *testing.T) {
 	}
 }
 
+// A token with issues:write creates and changes issues as its owner, within
+// what the REST API allows.
+func TestMCPWrite(t *testing.T) {
+	needDB(t)
+	if tools := mcpToolNames(t, mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeRead))); slices.Contains(tools, "create_issue") {
+		t.Errorf("read token lists create_issue: %v", tools)
+	}
+	session := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeIssues))
+	if tools := mcpToolNames(t, session); !slices.Contains(tools, "create_issue") || !slices.Contains(tools, "get_issue") {
+		t.Errorf("issues:write token's tools: %v", tools)
+	}
+
+	typeID := standardType(t, login(t, "paul.martin", jirafixture.Password), "DEMO")
+	var created struct{ Key string }
+	mcpCall(t, session, "create_issue", map[string]any{"fields": map[string]any{
+		"project": map[string]string{"key": "DEMO"}, "issuetype": map[string]string{"id": typeID}, "summary": "Créé par un agent"}}, &created)
+	if created.Key == "" {
+		t.Fatal("create_issue returned no key")
+	}
+
+	var before, after struct{ Transitions []struct{ ID string } }
+	mcpCall(t, session, "get_transitions", map[string]any{"issueKey": created.Key}, &before)
+	if len(before.Transitions) == 0 {
+		t.Fatalf("no transition from the initial status of %s", created.Key)
+	}
+	taken := before.Transitions[0].ID
+	if res := mcpRawCall(t, session, "transition_issue", map[string]any{"issueKey": created.Key,
+		"transition": map[string]string{"id": taken}}); res.IsError {
+		t.Fatalf("transition_issue: %s", mcpResultText(res))
+	}
+	var got struct {
+		Fields struct {
+			Status struct{ ID string }
+		}
+		Changelog struct {
+			Histories []struct {
+				Author struct{ Name string }
+				Items  []struct{ Field string }
+			}
+		}
+	}
+	mcpCall(t, session, "get_issue", map[string]any{"issueKey": created.Key, "fields": []string{"status"},
+		"expand": []string{"changelog"}}, &got)
+	recorded := false
+	for _, h := range got.Changelog.Histories {
+		for _, it := range h.Items {
+			if it.Field == "status" {
+				recorded = h.Author.Name == "paul.martin"
+			}
+		}
+	}
+	if !recorded {
+		t.Errorf("history of %s: %+v, want the status change by paul.martin", created.Key, got.Changelog)
+	}
+
+	// A transition the issue's status does not offer fails as on REST, and
+	// changes nothing.
+	mcpCall(t, session, "get_transitions", map[string]any{"issueKey": created.Key}, &after)
+	forbidden := "999999"
+	for _, tr := range before.Transitions {
+		if !slices.ContainsFunc(after.Transitions, func(a struct{ ID string }) bool { return a.ID == tr.ID }) {
+			forbidden = tr.ID
+		}
+	}
+	body := map[string]any{"transition": map[string]string{"id": forbidden}}
+	status, rest := restBasicAs(t, "paul.martin")("POST", "/rest/api/2/issue/"+created.Key+"/transitions", body)
+	res := mcpRawCall(t, session, "transition_issue", map[string]any{"issueKey": created.Key, "transition": body["transition"]})
+	if want := str(rest, "errors", "transition"); status != 400 || want == "" || !res.IsError || mcpResultText(res) != want {
+		t.Errorf("forbidden transition %s: MCP %q, REST %d %v", forbidden, mcpResultText(res), status, rest)
+	}
+	var now struct {
+		Fields struct{ Status struct{ ID string } }
+	}
+	mcpCall(t, session, "get_issue", map[string]any{"issueKey": created.Key, "fields": []string{"status"}}, &now)
+	if now.Fields.Status.ID != got.Fields.Status.ID {
+		t.Errorf("status after a forbidden transition: %s, want %s", now.Fields.Status.ID, got.Fields.Status.ID)
+	}
+
+	// A read token may not call a write tool, and is told the scope.
+	reader := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeRead))
+	res = mcpRawCall(t, reader, "delete_issue", map[string]any{"issueKey": created.Key})
+	if !res.IsError || !strings.Contains(mcpResultText(res), string(auth.ScopeIssues)) {
+		t.Errorf("read token calls delete_issue: %s", mcpResultText(res))
+	}
+	if res := mcpRawCall(t, session, "edit_issue", map[string]any{"issueKey": created.Key,
+		"fields": map[string]string{"summary": "Modifié par un agent"}}); res.IsError {
+		t.Errorf("edit_issue: %s", mcpResultText(res))
+	}
+}
+
+// add_attachment takes base64 content, up to the same limit as an upload.
+func TestMCPAttachmentLimit(t *testing.T) {
+	needDB(t)
+	srv := api.New(testDB, t.TempDir(), time.UTC, quiet())
+	srv.SetMaxUpload(64 << 10)
+	ts := httptest.NewServer(srv.Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+	paul := loginAt(t, ts.URL, "paul.martin", jirafixture.Password)
+	key := createIssue(t, paul, "DEMO", unique("mcp attach"), "")
+	session := mcpSessionAt(t, ts.URL, mcpToken(t, "paul.martin", auth.ScopeIssues))
+
+	var added []struct {
+		Filename string
+		Size     int
+	}
+	mcpCall(t, session, "add_attachment", map[string]any{"issueKey": key, "filename": "petit.txt",
+		"content": base64.StdEncoding.EncodeToString([]byte(strings.Repeat("a", 10<<10)))}, &added)
+	if len(added) != 1 || added[0].Filename != "petit.txt" || added[0].Size != 10<<10 {
+		t.Errorf("add_attachment: %+v", added)
+	}
+	res := mcpRawCall(t, session, "add_attachment", map[string]any{"issueKey": key, "filename": "gros.txt",
+		"content": base64.StdEncoding.EncodeToString([]byte(strings.Repeat("b", 100<<10)))})
+	if !res.IsError || mcpResultText(res) != "File too large (100 MB at most)." {
+		t.Errorf("add_attachment over the limit: %s", mcpResultText(res))
+	}
+	if n := storedFiles(t, key); n != "1" {
+		t.Errorf("%s attachments stored, want 1", n)
+	}
+
+	// Under the default limit, a file whose base64 is over the 4 MiB of an
+	// MCP request without issues:write.
+	big := base64.StdEncoding.EncodeToString(make([]byte, 5<<20))
+	mcpCall(t, mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeIssues)), "add_attachment",
+		map[string]any{"issueKey": key, "filename": "grand.bin", "content": big}, &added)
+	if len(added) != 1 || added[0].Size != 5<<20 {
+		t.Errorf("add_attachment of 5 MiB: %+v", added)
+	}
+}
+
 // mcpToken creates a token with these scopes straight in the database. With
 // none, its stored scopes are cleared: every scope implies read and the API
 // creates no token without one, so this is the only token without read.
@@ -135,8 +268,13 @@ func (b bearerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 func mcpSession(t *testing.T, token string) *mcp.ClientSession {
 	t.Helper()
+	return mcpSessionAt(t, testURL, token)
+}
+
+func mcpSessionAt(t *testing.T, base, token string) *mcp.ClientSession {
+	t.Helper()
 	client := mcp.NewClient(&mcp.Implementation{Name: "solstice-tests", Version: "1"}, nil)
-	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: testURL + "/mcp",
+	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: base + "/mcp",
 		HTTPClient: &http.Client{Transport: bearerTransport(token)}, DisableStandaloneSSE: true}, nil)
 	if err != nil {
 		t.Fatalf("connect: %v", err)

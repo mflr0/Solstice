@@ -1,8 +1,8 @@
 # MCP endpoint
 
 Solstice has a built-in [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp`, so that AI agents (Claude Code, IDE assistants) can search
-and read issues. It speaks the Streamable HTTP transport, without sessions:
+server at `/mcp`, so that AI agents (Claude Code, IDE assistants) can search,
+read and change issues. It speaks the Streamable HTTP transport, without sessions:
 every request carries its own credentials and gets a JSON answer.
 
 Examples use the host `solstice.example.org` and the token `sol_example`.
@@ -14,7 +14,8 @@ The endpoint only accepts a personal access token, in the header
 cookies and tokens in the address are refused.
 
 Create a token under "My settings", "Access tokens", and give it the `read`
-scope, plus `agile:write` if the agent is to plan sprints. Only people allowed by the administrator's token policy can create
+scope, plus `issues:write` if the agent is to change issues and `agile:write`
+if it is to plan sprints. Only people allowed by the administrator's token policy can create
 tokens (see [administration.md](administration.md)). A token keeps working
 if the policy changes later, as on the REST API.
 
@@ -24,8 +25,9 @@ That document (RFC 9728) names the resource and the scopes tokens can have.
 
 ## What the agent can do
 
-An agent sees and reads what the token's owner may see in the interface: the
-same permissions, security levels and restricted comments apply. A secured
+An agent sees and does what the token's owner may see and do in the
+interface: the same permissions, workflows, security levels and restricted
+comments apply, and the history records the owner as the author of changes. A secured
 issue the owner cannot see stays hidden, from search and by key.
 
 The tools answer in the JSON of the Jira Server REST API (see
@@ -53,6 +55,19 @@ scope it needs. Every tool of this table needs `read`.
 | `get_server_info` | The server's version and address |
 | `list_favourite_filters`, `get_filter` | Saved filters: the user's favourites, or one by id |
 
+These tools need `issues:write`:
+
+| Tool | Does |
+|---|---|
+| `create_issue`, `edit_issue`, `delete_issue` | Creates, changes or deletes an issue |
+| `assign_issue` | Assigns an issue, or unassigns it |
+| `transition_issue` | Moves an issue along its workflow |
+| `add_watcher`, `remove_watcher` | Starts or stops someone watching an issue |
+| `add_vote`, `remove_vote` | Votes for an issue, or takes the vote back |
+| `add_attachment`, `delete_attachment` | Attaches a file (base64-encoded, up to the upload limit), or deletes one |
+| `link_issues`, `delete_issue_link` | Links two issues, or removes the link |
+| `add_remote_link`, `edit_remote_link`, `delete_remote_link`, `delete_remote_link_by_global_id` | Links an issue to an outside page, changes or removes the link |
+
 Boards and sprints, from Jira Software's Agile API:
 
 | Tool | Scope | Does |
@@ -72,8 +87,8 @@ Saved filters:
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
 
-Versions and components, and the tools that change issues, are not offered
-yet.
+Versions and components, and the tools that change comments or work logs,
+are not offered yet.
 
 ## Connecting Claude Code
 

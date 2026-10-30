@@ -14,8 +14,9 @@ import (
 	"solstice/internal/issue"
 )
 
-// Every read of the REST API and every operation of the Agile API has its
-// tool, with the route's scope, apart from those other tools will cover.
+// Every read of the REST API, every change to issues (apart from comments and
+// work logs) and filters, and every operation of the Agile API has its tool,
+// with the route's scope, apart from those other tools will cover.
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	s.Handler(http.NotFoundHandler())
@@ -41,12 +42,15 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 			if p.pathValue != "" && !strings.Contains(tool.path, "{"+p.pathValue+"}") {
 				t.Errorf("%s: %s fills no path value", tool.name, p.name)
 			}
+			if p.body && (tool.method == "" || tool.encode != nil) {
+				t.Errorf("%s: %s is a body it does not send", tool.name, p.name)
+			}
 		}
 	}
-	for pattern := range s.routeScopes {
+	for pattern, scope := range s.routeScopes {
 		method, path, _ := strings.Cut(pattern, " ")
-		if !strings.HasPrefix(pattern, "GET "+issue.RESTAPIPath+"/") && !strings.HasPrefix(path, issue.AgileAPIPath+"/") ||
-			tools[pattern] != nil {
+		rest := strings.HasPrefix(path, issue.RESTAPIPath+"/") && (method == "GET" || scope == auth.ScopeIssues || scope == auth.ScopeFilters)
+		if !rest && !strings.HasPrefix(path, issue.AgileAPIPath+"/") || tools[pattern] != nil {
 			continue
 		}
 		// Jira takes PUT and POST alike for some changes: one tool runs both.
