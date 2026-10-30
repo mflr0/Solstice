@@ -668,6 +668,22 @@ export const en = {
     by: (who: string) => `by ${who}`,
     current: 'Filter',
     gone: 'This filter no longer exists, or isn’t shared with you.',
+    manage: 'Manage',
+    manageDone: 'Done',
+    selectAll: 'Select all',
+    select: (name: string) => `Select “${name}”`,
+    actions: 'Change the selected filters',
+    favouriteMany: (n: number) => `Favorite (${n})`,
+    unfavouriteMany: (n: number) => `Unfavorite (${n})`,
+    deleteMany: (n: number) => `Delete (${n})`,
+    deleteManyTitle: (n: number) => `Delete ${plural(n, 'filter', 'filters')}?`,
+    confirmDeleteMany: (n: number, skipped: number) =>
+      `Delete ${plural(n, 'filter', 'filters')}? ${n === 1 ? 'The people it is shared with will no longer see it.' : 'The people they are shared with will no longer see them.'}` +
+      (skipped > 0
+        ? ` ${plural(skipped, 'selected filter isn’t', 'selected filters aren’t')} yours to delete and will stay.`
+        : ''),
+    deletedMany: (n: number) => `${plural(n, 'filter', 'filters')} deleted.`,
+    failedMany: (n: number) => `${plural(n, 'filter', 'filters')} could not be changed.`,
   },
 
   table: {

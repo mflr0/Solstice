@@ -306,8 +306,11 @@ back / forward.
   `.detail`). `.jql-foot` (`.hint`, the run button), `p.error-text.jql-error`.
 - Saved filters (search page): `.search-page` > `.search-layout` >
   `aside.saved-filters` + `.search-main`. In the aside: `button.saved-toggle`
-  (shown ≤ 1000 px, unfolds `.saved-body.open`), `h2.saved-title`,
-  `h3.group-label` (Favoris, Mes filtres, Partagés avec moi),
+  (shown ≤ 1000 px, unfolds `.saved-body.open`), `.saved-head` >
+  `h2.saved-title` + `button.manage`; in manage mode, `.manage-bar` >
+  `label.pick-all` + `.manage-actions` (small buttons, wrapping), and each
+  `li.saved-item` holds `label.pick` (checkbox, `.label` > `.name`, `.owner`)
+  instead of the star and link. Then `h3.group-label` (Favoris, Mes filtres, Partagés avec moi),
   `li.saved-item` (`.is-current`) > `button.star` (`[aria-pressed='true']`
   for a favourite) + `a` (`[aria-current='page']`; `.name`, `.owner`). The
   page head shows `.modified` (« modifié ») when the open filter was changed.

@@ -670,6 +670,23 @@ export const it: Messages = {
     by: (who: string) => `di ${who}`,
     current: 'Filtro',
     gone: 'Questo filtro non esiste più, o non è condiviso con te.',
+    manage: 'Gestisci',
+    manageDone: 'Fatto',
+    selectAll: 'Seleziona tutti',
+    select: (name: string) => `Seleziona «${name}»`,
+    actions: 'Modifica i filtri selezionati',
+    favouriteMany: (n: number) => `Ai preferiti (${n})`,
+    unfavouriteMany: (n: number) => `Togli dai preferiti (${n})`,
+    deleteMany: (n: number) => `Elimina (${n})`,
+    deleteManyTitle: (n: number) => `Eliminare ${plural(n, 'filtro', 'filtri')}?`,
+    confirmDeleteMany: (n: number, skipped: number) =>
+      `Eliminare ${plural(n, 'filtro', 'filtri')}? ${n === 1 ? 'Le persone con cui è condiviso non lo vedranno più.' : 'Le persone con cui sono condivisi non li vedranno più.'}` +
+      (skipped > 0
+        ? ` ${plural(skipped, 'filtro selezionato non è tuo e resta', 'filtri selezionati non sono tuoi e restano')}.`
+        : ''),
+    deletedMany: (n: number) => `${plural(n, 'filtro eliminato', 'filtri eliminati')}.`,
+    failedMany: (n: number) =>
+      `${plural(n, 'filtro non è stato modificato', 'filtri non sono stati modificati')}.`,
   },
 
   table: {
