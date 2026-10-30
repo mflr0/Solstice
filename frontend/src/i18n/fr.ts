@@ -1574,6 +1574,7 @@ export const fr: Messages = {
       'oauth.grant': 'Application autorisée',
       'oauth.deny': 'Application refusée',
       'oauth.revoke': 'Application révoquée',
+      'oauth.register': 'Application enregistrée',
       'user.create': 'Compte créé',
       'user.update': 'Compte modifié',
       'user.deactivate': 'Compte désactivé',
@@ -1712,6 +1713,8 @@ export const fr: Messages = {
       removed: 'Retiré',
       pat: 'Jeton d’accès (id)',
       oauthGrant: 'Autorisation d’application (id)',
+      registration: 'Auto-enregistrement',
+      redirectUris: 'Adresses de retour',
       grant: 'Autorisation (id)',
       scopes: 'Portées',
       refreshDays: 'Les applications restent connectées (jours)',
@@ -1854,6 +1857,23 @@ export const fr: Messages = {
     refreshDaysHint:
       'Une application autorisée par OAuth et inutilisée pendant cette durée doit être autorisée à nouveau.',
     refreshDaysInvalid: (max: number) => `Saisissez un nombre entier de jours, de 1 à ${max}.`,
+    registration: 'Laisser les applications s’enregistrer elles-mêmes',
+    registrationHint:
+      'Les clients MCP sans document de métadonnées s’enregistrent par Dynamic Client Registration. Désactiver ce réglage bloque les nouveaux enregistrements : les applications déjà enregistrées continuent de fonctionner.',
+    grantsTitle: 'Applications autorisées',
+    grantsIntro:
+      'Les applications que des personnes ont autorisées à utiliser leur compte par OAuth, comme des agents IA. En révoquer une arrête ses jetons immédiatement.',
+    grantsEmpty: 'Aucune application n’est autorisée.',
+    grantsEmptyHint:
+      'Un client MCP demande l’autorisation de son utilisateur à sa première connexion.',
+    colApp: 'Application',
+    colAuthorized: 'Autorisée',
+    registered: 'auto-enregistrée',
+    registeredHint: 'Elle s’est enregistrée elle-même : son nom n’est pas vérifié.',
+    revokeGrantTitle: (name: string) => `Révoquer ${name} ?`,
+    revokeGrantBody: (owner: string) =>
+      `L’application perd immédiatement l’accès au compte de ${owner}, et doit redemander l’autorisation pour revenir. Cette action est irréversible.`,
+    grantRevoked: 'Application révoquée.',
     search: 'Rechercher par compte ou nom de jeton',
     show: 'Afficher',
     shows: {
@@ -1894,6 +1914,8 @@ export const fr: Messages = {
     checking: 'Vérification de la demande…',
     leaving: 'Retour à l’application…',
     backTo: (client: string) => `Revenir à ${client}`,
+    unverified:
+      'Cette application s’est enregistrée elle-même : rien ne vérifie son nom. Ne l’autorisez que si vous venez de la lancer vous-même.',
   },
 
   appsPage: {

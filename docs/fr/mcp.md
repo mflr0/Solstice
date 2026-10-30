@@ -39,8 +39,17 @@ Solstice est le serveur d'autorisation OAuth 2.1 de `/mcp`, comme le décrit la
   `client_id` est une adresse HTTPS qui sert un document JSON avec
   `client_id`, `client_name` et `redirect_uris`. Solstice le lit au moment où
   vous autorisez, sans suivre de redirection et jamais depuis une adresse
-  privée ou de bouclage. L'enregistrement dynamique des clients n'est pas
-  encore géré ;
+  privée ou de bouclage ;
+- les clients sans un tel document s'enregistrent par Dynamic Client
+  Registration (RFC 7591), à `https://solstice.example.org/register`, que les
+  métadonnées nomment `registration_endpoint`. Seulement des clients publics
+  (`token_endpoint_auth_method` `none`), avec un `client_name` et des
+  adresses de retour en HTTPS ou sur une adresse de bouclage
+  (`http://127.0.0.1:…`, `http://localhost:…`, tout port). Une adresse peut
+  enregistrer 10 clients par heure. Un client que personne n'autorise dans la
+  journée est supprimé. Son nom n'engage que lui : la page de consentement le
+  dit au lieu de nommer un hôte. Un administrateur peut désactiver
+  l'enregistrement ; les clients déjà enregistrés continuent de fonctionner ;
 - les jetons d'accès (`solo_…`) durent une heure. Les jetons de
   rafraîchissement (`solor_…`) sont remplacés à chaque usage ; un jeton
   utilisé deux fois révoque tous ceux qu'il a donnés. Un jeton de
@@ -53,7 +62,9 @@ Solstice est le serveur d'autorisation OAuth 2.1 de `/mcp`, comme le décrit la
 Qui peut autoriser une application suit la politique des jetons, comme pour
 les jetons d'accès personnels (voir [administration.md](administration.md)) ;
 une application déjà autorisée continue de fonctionner si la politique change.
-Les autorisations, refus et révocations vont dans le journal d'audit.
+Les enregistrements, autorisations, refus et révocations vont dans le journal
+d'audit, et les administrateurs peuvent lister et révoquer toutes les
+autorisations.
 
 « Mes paramètres », « Applications connectées » liste les applications que
 vous avez autorisées, avec leurs portées et leur dernière utilisation. En

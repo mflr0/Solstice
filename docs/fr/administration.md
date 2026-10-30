@@ -550,6 +550,23 @@ jetons existants : révoquez-les depuis la liste. Un jeton ne peut pas créer
 d'autres jetons. Réinitialiser un mot de passe par un lien de réinitialisation
 supprime aussi les jetons du compte.
 
+La même politique dit qui peut autoriser des applications (clients MCP) par
+OAuth (voir [mcp.md](mcp.md)). À côté :
+
+- **Les applications restent connectées (jours)** : une application autorisée
+  inutilisée pendant cette durée doit être autorisée à nouveau. 30 jours par
+  défaut.
+- **Laisser les applications s'enregistrer elles-mêmes** (activé par défaut) :
+  les clients MCP sans document de métadonnées s'enregistrent par Dynamic
+  Client Registration. Désactivé, les nouveaux enregistrements sont refusés ;
+  les applications déjà enregistrées continuent de fonctionner.
+
+« Applications autorisées », sous les jetons, liste ce que chacun a autorisé :
+le compte, l'application, ses portées, sa date d'autorisation et de dernier
+usage. Une application **auto-enregistrée** a choisi son nom elle-même, et
+rien ne le vérifie. Révoquer une autorisation met fin aux jetons de
+l'application aussitôt ; elle doit redemander l'autorisation pour revenir.
+
 ## Système
 
 ### Journal d'audit

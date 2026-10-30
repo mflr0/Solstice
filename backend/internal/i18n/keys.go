@@ -71,6 +71,7 @@ const (
 const (
 	OAuthTokenCannotAuthorize Key = "OAuthTokenCannotAuthorize"
 	OAuthClientInvalid        Key = "OAuthClientInvalid"
+	OAuthClientUnknown        Key = "OAuthClientUnknown"
 	OAuthClientDocument       Key = "OAuthClientDocument"
 	OAuthRedirectInvalid      Key = "OAuthRedirectInvalid"
 	OAuthResponseType         Key = "OAuthResponseType"

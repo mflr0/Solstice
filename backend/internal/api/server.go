@@ -33,21 +33,22 @@ import (
 
 // Server holds what handlers share.
 type Server struct {
-	db         *sql.DB
-	perms      *perm.Store
-	hub        *live.Hub
-	dataDir    string
-	log        *slog.Logger
-	tz         *time.Location // for dates typed without a time zone (JQL)
-	limiter    *auth.Limiter
-	baseURL    string            // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
-	proxies    []netip.Prefix    // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
-	maxUpload  int64             // bytes in one upload request; see SetMaxUpload
-	maxStorage int64             // bytes in all attachments, 0 for no limit; see SetMaxStorage
-	out        *outgoing         // event bus, e-mail and webhooks (notifications.go)
-	dir        auth.Directory    // LDAP, nil when off; see SetDirectory
-	oauthFetch *http.Client      // fetches OAuth client metadata documents (oauth_client.go)
-	sso        auth.SingleSignOn // OpenID Connect, nil when off; see SetSingleSignOn
+	db            *sql.DB
+	perms         *perm.Store
+	hub           *live.Hub
+	dataDir       string
+	log           *slog.Logger
+	tz            *time.Location // for dates typed without a time zone (JQL)
+	limiter       *auth.Limiter
+	baseURL       string             // public address (SOLSTICE_HTTP_BASEURL), "" when not set; see SetBaseURL
+	proxies       []netip.Prefix     // reverse proxies to believe (SOLSTICE_HTTP_TRUSTEDPROXIES); see SetTrustedProxies
+	maxUpload     int64              // bytes in one upload request; see SetMaxUpload
+	maxStorage    int64              // bytes in all attachments, 0 for no limit; see SetMaxStorage
+	out           *outgoing          // event bus, e-mail and webhooks (notifications.go)
+	dir           auth.Directory     // LDAP, nil when off; see SetDirectory
+	oauthFetch    *http.Client       // fetches OAuth client metadata documents (oauth_client.go)
+	registrations *registrationLimit // OAuth client registrations per address (oauth_register.go)
+	sso           auth.SingleSignOn  // OpenID Connect, nil when off; see SetSingleSignOn
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -78,7 +79,8 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 	s := &Server{db: db, perms: perm.NewStore(db), hub: live.NewHub(), dataDir: dataDir, tz: tz, log: log,
 		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
-		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher()}
+		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher(),
+		registrations: newRegistrationLimit()}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}

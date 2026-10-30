@@ -41,9 +41,10 @@ var ErrOAuthGrant = errors.New("auth: invalid OAuth grant")
 // presented again: the tokens it gave are revoked.
 var ErrOAuthReplay = errors.New("auth: OAuth code or refresh token replayed")
 
-// OAuthClient is an OAuth client as its metadata document describes it.
+// OAuthClient is an OAuth client as its metadata document or its
+// registration describes it.
 type OAuthClient struct {
-	ID   string // the document's URL
+	ID   string // the document's URL, or the client_id given at registration
 	Name string
 }
 
@@ -297,12 +298,21 @@ func LookupOAuthToken(ctx context.Context, db *sql.DB, token string) (*User, err
 	return &u, nil
 }
 
-// PurgeOAuth deletes the expired authorization codes and OAuth tokens.
+// OAuthUnusedClientLifetime is how long a registered client that no user
+// authorized is kept.
+const OAuthUnusedClientLifetime = 24 * time.Hour
+
+// PurgeOAuth deletes the expired authorization codes and OAuth tokens, and
+// the registered clients nobody authorized in time.
 func PurgeOAuth(ctx context.Context, db *sql.DB, now time.Time) error {
 	now = now.UTC()
 	if _, err := db.ExecContext(ctx, `DELETE FROM oauth_codes WHERE expires_at < ?`, now); err != nil {
 		return err
 	}
-	_, err := db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ?`, now)
+	if _, err := db.ExecContext(ctx, `DELETE FROM oauth_tokens WHERE expires_at < ?`, now); err != nil {
+		return err
+	}
+	_, err := db.ExecContext(ctx, `DELETE FROM oauth_clients WHERE authorized_at IS NULL AND created_at < ?`,
+		now.Add(-OAuthUnusedClientLifetime))
 	return err
 }

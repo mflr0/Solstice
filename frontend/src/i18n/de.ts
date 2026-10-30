@@ -1587,6 +1587,7 @@ export const de: Messages = {
       'oauth.grant': 'Anwendung autorisiert',
       'oauth.deny': 'Anwendung abgelehnt',
       'oauth.revoke': 'Anwendung widerrufen',
+      'oauth.register': 'Anwendung registriert',
       'user.create': 'Konto erstellt',
       'user.update': 'Konto geändert',
       'user.deactivate': 'Konto deaktiviert',
@@ -1725,6 +1726,8 @@ export const de: Messages = {
       removed: 'Entfernt',
       pat: 'Zugriffstoken (ID)',
       oauthGrant: 'Autorisierung der Anwendung (ID)',
+      registration: 'Selbstregistrierung',
+      redirectUris: 'Rücksprungadressen',
       grant: 'Autorisierung (ID)',
       scopes: 'Bereiche',
       refreshDays: 'Anwendungen bleiben angemeldet (Tage)',
@@ -1868,6 +1871,22 @@ export const de: Messages = {
       'Eine über OAuth autorisierte Anwendung, die so lange nicht genutzt wird, muss erneut autorisiert werden.',
     refreshDaysInvalid: (max: number) =>
       `Geben Sie eine ganze Zahl von Tagen ein, von 1 bis ${max}.`,
+    registration: 'Anwendungen dürfen sich selbst registrieren',
+    registrationHint:
+      'MCP-Clients ohne Metadatendokument registrieren sich per Dynamic Client Registration. Ist dies aus, sind keine neuen Registrierungen möglich: Bereits registrierte Anwendungen funktionieren weiter.',
+    grantsTitle: 'Autorisierte Anwendungen',
+    grantsIntro:
+      'Anwendungen wie KI-Agenten, denen Personen per OAuth Zugriff auf ihr Konto gegeben haben. Wird eine widerrufen, funktionieren ihre Tokens sofort nicht mehr.',
+    grantsEmpty: 'Keine Anwendung ist autorisiert.',
+    grantsEmptyHint: 'Ein MCP-Client bittet beim ersten Verbinden um Autorisierung.',
+    colApp: 'Anwendung',
+    colAuthorized: 'Autorisiert',
+    registered: 'selbst registriert',
+    registeredHint: 'Sie hat sich selbst registriert, ihr Name ist nicht überprüft.',
+    revokeGrantTitle: (name: string) => `${name} widerrufen?`,
+    revokeGrantBody: (owner: string) =>
+      `Die Anwendung verliert sofort den Zugriff auf das Konto von ${owner} und muss erneut fragen, um zurückzukommen. Dies kann nicht rückgängig gemacht werden.`,
+    grantRevoked: 'Anwendung widerrufen.',
     search: 'Nach Konto oder Tokenname suchen',
     show: 'Anzeigen',
     shows: {
@@ -1908,6 +1927,8 @@ export const de: Messages = {
     checking: 'Anfrage wird geprüft…',
     leaving: 'Zurück zur Anwendung…',
     backTo: (client: string) => `Zurück zu ${client}`,
+    unverified:
+      'Diese Anwendung hat sich selbst registriert: Nichts überprüft ihren Namen. Erlauben Sie sie nur, wenn Sie sie gerade selbst gestartet haben.',
   },
 
   appsPage: {

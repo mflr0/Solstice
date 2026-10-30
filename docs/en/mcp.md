@@ -36,8 +36,17 @@ describes:
 - clients are identified by a Client ID Metadata Document: their `client_id`
   is an HTTPS address serving a JSON document with `client_id`, `client_name`
   and `redirect_uris`. Solstice fetches it when you authorize, without
-  following redirects and never from a private or loopback address. Dynamic
-  client registration is not supported yet;
+  following redirects and never from a private or loopback address;
+- clients without such a document register through Dynamic Client
+  Registration (RFC 7591), at `https://solstice.example.org/register`, which
+  the metadata names as `registration_endpoint`. Only public clients
+  (`token_endpoint_auth_method` `none`), with `client_name` and redirect
+  addresses in HTTPS or on a loopback address (`http://127.0.0.1:…`,
+  `http://localhost:…`, any port). An address may register 10 clients an
+  hour. A client nobody authorizes within a day is deleted. Its name is its
+  own claim: the consent page says so instead of naming a host. An
+  administrator can turn registration off; clients already registered keep
+  working;
 - access tokens (`solo_…`) last one hour. Refresh tokens (`solor_…`) are
   replaced at each use; one used twice revokes every token it led to. A
   refresh token unused for 30 days expires (an administrator can change the
@@ -47,8 +56,9 @@ describes:
 
 Who may authorize an application follows the token policy, as for personal
 access tokens (see [administration.md](administration.md)); an application
-already authorized keeps working if the policy changes. Authorizations,
-refusals and revocations go in the audit log.
+already authorized keeps working if the policy changes. Registrations,
+authorizations, refusals and revocations go in the audit log, and
+administrators can list and revoke every authorization.
 
 "My settings", "Connected apps" lists the applications you authorized, with
 their scopes and last use. Revoking one ends its tokens at once. Changing

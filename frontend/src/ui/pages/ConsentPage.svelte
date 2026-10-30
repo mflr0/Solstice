@@ -9,9 +9,9 @@
 
   /**
    * The consent page of OAuth (/oauth/authorize): an MCP client asks to use
-   * the account. The user sees which application, where the browser goes
-   * back, and the scopes asked for, unticks what it does not need, then
-   * allows or refuses. Either way the server gives the address to go back to.
+   * the account. The user sees which application (or that a registered one's
+   * name is unverified), where the browser goes back, and the scopes asked
+   * for, unticks what it does not need, then allows or refuses. Either way the server gives the address to go back to.
    */
   const query = router.search;
 
@@ -66,9 +66,10 @@
   {:else if req}
     <h1 class="auth-title">{t.oauth.title(req.client.name)}</h1>
     <p class="auth-lead">
-      {t.oauth.identified(req.client.host)}
+      {#if !req.client.registered}{t.oauth.identified(req.client.host)}{/if}
       {#if session.me}{t.oauth.signedIn(session.me.name)}{/if}
     </p>
+    {#if req.client.registered}<p class="unverified">{t.oauth.unverified}</p>{/if}
     <form
       onsubmit={(e) => {
         e.preventDefault();
@@ -122,6 +123,11 @@
 
   .scopes .key {
     margin-right: 6px;
+  }
+
+  .unverified {
+    margin: 0 0 12px;
+    font-weight: 600;
   }
 
   .back {

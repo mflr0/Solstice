@@ -1575,6 +1575,7 @@ export const it: Messages = {
       'oauth.grant': 'Applicazione autorizzata',
       'oauth.deny': 'Applicazione rifiutata',
       'oauth.revoke': 'Applicazione revocata',
+      'oauth.register': 'Applicazione registrata',
       'user.create': 'Account creato',
       'user.update': 'Account modificato',
       'user.deactivate': 'Account disattivato',
@@ -1713,6 +1714,8 @@ export const it: Messages = {
       removed: 'Rimosso',
       pat: 'Token di accesso (id)',
       oauthGrant: 'Autorizzazione dell’applicazione (id)',
+      registration: 'Auto-registrazione',
+      redirectUris: 'Indirizzi di ritorno',
       grant: 'Autorizzazione (id)',
       scopes: 'Ambiti',
       refreshDays: 'Le applicazioni restano collegate (giorni)',
@@ -1855,6 +1858,22 @@ export const it: Messages = {
     refreshDaysHint:
       'Un’applicazione autorizzata tramite OAuth e inutilizzata per questo periodo deve essere autorizzata di nuovo.',
     refreshDaysInvalid: (max: number) => `Inserisci un numero intero di giorni, da 1 a ${max}.`,
+    registration: 'Consenti alle applicazioni di registrarsi da sole',
+    registrationHint:
+      'I client MCP senza documento di metadati si registrano tramite Dynamic Client Registration. Disattivandola si bloccano le nuove registrazioni: le applicazioni già registrate continuano a funzionare.',
+    grantsTitle: 'Applicazioni autorizzate',
+    grantsIntro:
+      'Le applicazioni, come gli agenti IA, che le persone hanno autorizzato a usare il proprio account tramite OAuth. Revocarne una ne blocca subito i token.',
+    grantsEmpty: 'Nessuna applicazione è autorizzata.',
+    grantsEmptyHint: 'Un client MCP chiede l’autorizzazione al suo utente al primo collegamento.',
+    colApp: 'Applicazione',
+    colAuthorized: 'Autorizzata',
+    registered: 'auto-registrata',
+    registeredHint: 'Si è registrata da sola: il suo nome non è verificato.',
+    revokeGrantTitle: (name: string) => `Revocare ${name}?`,
+    revokeGrantBody: (owner: string) =>
+      `L’applicazione perde subito l’accesso all’account di ${owner} e deve chiedere di nuovo per tornare. L’operazione è irreversibile.`,
+    grantRevoked: 'Applicazione revocata.',
     search: 'Cerca per account o nome del token',
     show: 'Mostra',
     shows: {
@@ -1895,6 +1914,8 @@ export const it: Messages = {
     checking: 'Verifica della richiesta…',
     leaving: 'Ritorno all’applicazione…',
     backTo: (client: string) => `Torna a ${client}`,
+    unverified:
+      'Questa applicazione si è registrata da sola: niente ne verifica il nome. Autorizzala solo se l’hai appena avviata tu.',
   },
 
   appsPage: {

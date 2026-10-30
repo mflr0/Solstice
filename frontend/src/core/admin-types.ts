@@ -137,6 +137,8 @@ export interface TokenSettings {
   group: IdName | null;
   /** Days an unused OAuth refresh token lasts. */
   refreshDays: number;
+  /** Whether OAuth clients may register themselves (/register). */
+  registration: boolean;
 }
 
 /** An application (MCP client) the user authorized through OAuth. */
@@ -151,9 +153,17 @@ export interface OAuthGrant {
   lastUsed: string | null;
 }
 
+/** An OAuth grant, in the administrators' list of everyone's. */
+export interface AdminOAuthGrant extends OAuthGrant {
+  user: UserRef;
+  /** The client registered itself: its name is its own claim. */
+  registered: boolean;
+}
+
 /** What the consent page asks the user to allow. */
 export interface OAuthRequest {
-  client: { id: string; name: string; host: string };
+  /** host is empty for a registered client, whose name nothing vouches for. */
+  client: { id: string; name: string; host: string; registered: boolean };
   /** Where the browser goes back: host and port. */
   redirectHost: string;
   scopes: TokenScope[];

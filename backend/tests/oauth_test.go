@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"solstice/internal/auth"
 	"solstice/internal/jirafixture"
@@ -424,5 +425,206 @@ func TestOAuthRefreshSetting(t *testing.T) {
 	days := pick(t, `SELECT DATEDIFF(expires_at, created_at) FROM oauth_tokens WHERE token_hash = ?`, auth.TokenHash(tok.RefreshToken))
 	if days != "7" {
 		t.Errorf("refresh token lasts %s days, want 7", days)
+	}
+}
+
+// register registers a client at /register and returns the status and the
+// answer.
+func (e *oauthEnv) register(body map[string]any) (int, map[string]any) {
+	e.t.Helper()
+	status, _, raw := call(e.t, nil, e.base, "POST", "/register", body, nil)
+	return status, obj(e.t, raw)
+}
+
+type adminGrantRow struct {
+	ID         int64
+	ClientID   string
+	Registered bool
+	User       struct{ Username string }
+}
+
+// A client registered at /register goes through the flow like one known by
+// its metadata document, and an administrator can revoke what it was given.
+func TestOAuthRegisteredClient(t *testing.T) {
+	e := newOAuthEnv(t)
+	admin := loginAt(t, e.base, "admin", "admin")
+	status, reg := e.register(map[string]any{"client_name": "Agent enregistré", "redirect_uris": []string{e.redirect},
+		"token_endpoint_auth_method": "none", "grant_types": []string{"authorization_code", "refresh_token"},
+		"response_types": []string{"code"}, "logo_uri": "https://example.com/logo.png"})
+	id := str(reg, "client_id")
+	if status != 201 || !strings.HasPrefix(id, "solc_") || reg["client_name"] != "Agent enregistré" ||
+		reg["token_endpoint_auth_method"] != "none" {
+		t.Fatalf("register: %d %v", status, reg)
+	}
+	e.clientID = id
+	t.Cleanup(func() {
+		testDB.Exec(`DELETE FROM oauth_grants WHERE client_id = ?`, id)
+		testDB.Exec(`DELETE FROM oauth_clients WHERE client_id = ?`, id)
+	})
+	if n := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'oauth.register' AND target_id = ?`, id); n == "0" {
+		t.Error("no oauth.register audit entry")
+	}
+
+	verifier, challenge := pkce("regclien")
+	query := e.request(challenge, map[string]string{"scope": "issues:write"})
+	var check struct {
+		Client struct {
+			Name       string
+			Registered bool
+		}
+	}
+	admin.call("GET", "/api/oauth/authorize?"+query, nil, 200, &check)
+	if check.Client.Name != "Agent enregistré" || !check.Client.Registered {
+		t.Errorf("check: %+v", check)
+	}
+	// A redirect URI it did not register is refused, without going back.
+	status, raw := admin.do("GET", "/api/oauth/authorize?"+e.request(challenge,
+		map[string]string{"redirect_uri": "http://127.0.0.1:9/other"}), nil)
+	if status != 400 || str(obj(t, raw), "redirect") != "" {
+		t.Errorf("unregistered redirect: %d %s", status, raw)
+	}
+
+	status, tok := e.exchange(e.authorize(admin, query, "issues:write"), verifier, nil)
+	if status != 200 || tok.Scope != "read issues:write" || !e.mcpSignedIn(tok.AccessToken) {
+		t.Fatalf("token: %d %+v", status, tok)
+	}
+	if pick(t, `SELECT authorized_at IS NOT NULL FROM oauth_clients WHERE client_id = ?`, id) != "1" {
+		t.Error("authorized_at not set at consent")
+	}
+
+	// The administration lists every grant and revokes any: its tokens stop.
+	var grants []adminGrantRow
+	admin.call("GET", "/api/admin/oauth-grants", nil, 200, &grants)
+	i := slices.IndexFunc(grants, func(g adminGrantRow) bool { return g.ClientID == id })
+	if i < 0 || !grants[i].Registered || grants[i].User.Username != "admin" {
+		t.Fatalf("admin grants: %+v", grants)
+	}
+	paul := loginAt(t, e.base, "paul.martin", jirafixture.Password)
+	if status, _ := paul.do("GET", "/api/admin/oauth-grants", nil); status != 403 {
+		t.Errorf("a non-admin lists grants: %d", status)
+	}
+	if status, _ := paul.do("DELETE", "/api/admin/oauth-grants/"+strconv.FormatInt(grants[i].ID, 10), nil); status != 403 {
+		t.Errorf("a non-admin revokes a grant: %d", status)
+	}
+	if status, _ := paul.do("DELETE", "/api/me/oauth-grants/"+strconv.FormatInt(grants[i].ID, 10), nil); status != 404 {
+		t.Errorf("a user revokes another's grant: %d", status)
+	}
+	admin.call("DELETE", "/api/admin/oauth-grants/"+strconv.FormatInt(grants[i].ID, 10), nil, 204, nil)
+	if e.mcpSignedIn(tok.AccessToken) {
+		t.Error("token of a grant revoked by an administrator still works")
+	}
+	if status, _ := e.refresh(tok.RefreshToken); status != 400 {
+		t.Errorf("refresh of a revoked grant: %d", status)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'oauth.revoke' AND target_id = ?`, id); n == "0" {
+		t.Error("no oauth.revoke audit entry")
+	}
+
+	// An unknown registered client is refused, without going back.
+	status, raw = admin.do("GET", "/api/oauth/authorize?"+e.request(challenge,
+		map[string]string{"client_id": "solc_unknown"}), nil)
+	if status != 400 || str(obj(t, raw), "redirect") != "" {
+		t.Errorf("unknown registered client: %d %s", status, raw)
+	}
+}
+
+func TestOAuthRegistrationRefusals(t *testing.T) {
+	e := newOAuthEnv(t)
+	valid := func(set map[string]any) map[string]any {
+		b := map[string]any{"client_name": "Agent", "redirect_uris": []string{"https://app.example.com/cb"}}
+		for k, v := range set {
+			if v == nil {
+				delete(b, k)
+			} else {
+				b[k] = v
+			}
+		}
+		return b
+	}
+	for name, tc := range map[string]struct {
+		body  map[string]any
+		error string
+	}{
+		"plain HTTP":       {valid(map[string]any{"redirect_uris": []string{"http://app.example.com/cb"}}), "invalid_redirect_uri"},
+		"custom scheme":    {valid(map[string]any{"redirect_uris": []string{"app://cb"}}), "invalid_redirect_uri"},
+		"no redirect":      {valid(map[string]any{"redirect_uris": nil}), "invalid_redirect_uri"},
+		"no name":          {valid(map[string]any{"client_name": " "}), "invalid_client_metadata"},
+		"confidential":     {valid(map[string]any{"token_endpoint_auth_method": "client_secret_basic"}), "invalid_client_metadata"},
+		"implicit grant":   {valid(map[string]any{"grant_types": []string{"implicit"}}), "invalid_client_metadata"},
+		"token response":   {valid(map[string]any{"response_types": []string{"token"}}), "invalid_client_metadata"},
+		"loopback is fine": {valid(map[string]any{"redirect_uris": []string{"http://127.0.0.1/cb"}}), ""},
+	} {
+		status, out := e.register(tc.body)
+		if tc.error == "" {
+			if status != 201 {
+				t.Errorf("%s: %d %v", name, status, out)
+			}
+			testDB.Exec(`DELETE FROM oauth_clients WHERE client_id = ?`, str(out, "client_id"))
+			continue
+		}
+		if status != 400 || out["error"] != tc.error {
+			t.Errorf("%s: %d %v, want %s", name, status, out, tc.error)
+		}
+	}
+
+	// Turned off, /register refuses and the metadata no longer names it.
+	admin := loginAt(t, e.base, "admin", "admin")
+	meta := func() map[string]any {
+		var m map[string]any
+		anonymousAt(t, e.base).call("GET", "/.well-known/oauth-authorization-server", nil, 200, &m)
+		return m
+	}
+	if meta()["registration_endpoint"] != e.base+"/register" {
+		t.Errorf("metadata with registration on: %v", meta())
+	}
+	t.Cleanup(func() {
+		admin.do("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins", "registration": true})
+	})
+	var policy struct{ Registration bool }
+	admin.call("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins", "registration": false}, 200, &policy)
+	if policy.Registration {
+		t.Errorf("registration still on: %+v", policy)
+	}
+	if status, out := e.register(valid(nil)); status != 403 || out["error"] != "access_denied" {
+		t.Errorf("register while off: %d %v", status, out)
+	}
+	if m := meta(); m["registration_endpoint"] != nil {
+		t.Errorf("metadata names registration while off: %v", m)
+	}
+	// Leaving it out of a PUT keeps it.
+	admin.call("PUT", "/api/admin/tokens/settings", map[string]any{"who": "admins"}, 200, &policy)
+	if policy.Registration {
+		t.Errorf("registration after a PUT without it: %+v", policy)
+	}
+}
+
+// A registered client nobody authorized is purged after a day; an
+// authorized one stays.
+func TestOAuthPurgeRegistered(t *testing.T) {
+	e := newOAuthEnv(t)
+	var ids []string
+	for range 2 {
+		status, out := e.register(map[string]any{"client_name": "Purge", "redirect_uris": []string{"https://app.example.com/cb"}})
+		if status != 201 {
+			t.Fatalf("register: %d %v", status, out)
+		}
+		ids = append(ids, str(out, "client_id"))
+	}
+	t.Cleanup(func() { testDB.Exec(`DELETE FROM oauth_clients WHERE client_id IN (?, ?)`, ids[0], ids[1]) })
+	testDB.Exec(`UPDATE oauth_clients SET authorized_at = created_at WHERE client_id = ?`, ids[1])
+	if err := auth.PurgeOAuth(t.Context(), testDB, time.Now().Add(23*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM oauth_clients WHERE client_id IN (?, ?)`, ids[0], ids[1]); n != "2" {
+		t.Errorf("%s clients left before a day, want 2", n)
+	}
+	if err := auth.PurgeOAuth(t.Context(), testDB, time.Now().Add(25*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM oauth_clients WHERE client_id = ?`, ids[0]); n != "0" {
+		t.Error("unauthorized client kept after a day")
+	}
+	if n := pick(t, `SELECT COUNT(*) FROM oauth_clients WHERE client_id = ?`, ids[1]); n != "1" {
+		t.Error("authorized client purged")
 	}
 }

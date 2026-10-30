@@ -6,6 +6,7 @@
 
 import type {
   AccessToken,
+  AdminOAuthGrant,
   AuditPage,
   CatalogItem,
   CatalogKind,
@@ -226,8 +227,21 @@ export const adminApi = {
   revokeToken: (id: number) => request<void>('DELETE', `/api/admin/tokens/${id}`),
   /** Who may create tokens. */
   tokenSettings: () => request<TokenSettings>('GET', '/api/admin/tokens/settings'),
-  saveTokenSettings: (who: TokenSettings['who'], group: number | undefined, refreshDays: number) =>
-    request<TokenSettings>('PUT', '/api/admin/tokens/settings', { who, group, refreshDays }),
+  saveTokenSettings: (
+    who: TokenSettings['who'],
+    group: number | undefined,
+    refreshDays: number,
+    registration: boolean,
+  ) =>
+    request<TokenSettings>('PUT', '/api/admin/tokens/settings', {
+      who,
+      group,
+      refreshDays,
+      registration,
+    }),
+  // Applications authorized through OAuth, everyone's.
+  grants: () => request<AdminOAuthGrant[]>('GET', '/api/admin/oauth-grants'),
+  revokeGrant: (id: number) => request<void>('DELETE', `/api/admin/oauth-grants/${id}`),
 
   // Audit log.
   audit: (q: AuditQuery) =>

@@ -39,6 +39,7 @@ type oauthClientDoc struct {
 	ClientURI    string   `json:"client_uri"`
 	RedirectURIs []string `json:"redirect_uris"`
 	AuthMethod   string   `json:"token_endpoint_auth_method"`
+	Registered   bool     `json:"-"` // registered at /register, not a metadata document
 }
 
 // validClientID tells whether a client_id is a URL a metadata document may

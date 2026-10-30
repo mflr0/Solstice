@@ -2,7 +2,9 @@ package api
 
 import (
 	"net/netip"
+	"strings"
 	"testing"
+	"time"
 
 	"solstice/internal/auth"
 )
@@ -106,5 +108,49 @@ func TestGrantableScopes(t *testing.T) {
 	}
 	if len(grantableScopes()) != len(auth.Scopes)-1 {
 		t.Errorf("grantable: %v", grantableScopes())
+	}
+}
+
+func TestValidRedirectURI(t *testing.T) {
+	for uri, want := range map[string]bool{
+		"https://app.example.com/cb":                           true,
+		"https://app.example.com:8443/cb?x=1":                  true,
+		"http://127.0.0.1:3000/callback":                       true,
+		"http://localhost/callback":                            true,
+		"http://[::1]:5000/cb":                                 true,
+		"http://app.example.com/cb":                            false,
+		"http://192.168.1.10/cb":                               false,
+		"https://app.example.com/cb#x":                         false,
+		"https://user@app.example.com/cb":                      false,
+		"cursor://anysphere.cursor/oauth":                      false,
+		"https:///cb":                                          false,
+		"/cb":                                                  false,
+		"https://app.example.com/" + strings.Repeat("a", 1024): false,
+	} {
+		if got := validRedirectURI(uri); got != want {
+			t.Errorf("validRedirectURI(%q) = %v, want %v", uri, got, want)
+		}
+	}
+}
+
+func TestRegistrationLimit(t *testing.T) {
+	now := time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
+	l := newRegistrationLimit()
+	l.now = func() time.Time { return now }
+	for i := range registrationsMax {
+		if wait := l.take("198.51.100.1"); wait != 0 {
+			t.Fatalf("registration %d waits %s", i+1, wait)
+		}
+	}
+	now = now.Add(20 * time.Minute)
+	if wait := l.take("198.51.100.1"); wait != 40*time.Minute {
+		t.Errorf("over the limit: wait %s, want 40m", wait)
+	}
+	if wait := l.take("198.51.100.2"); wait != 0 {
+		t.Errorf("another address waits %s", wait)
+	}
+	now = now.Add(40 * time.Minute)
+	if wait := l.take("198.51.100.1"); wait != 0 {
+		t.Errorf("after the window: wait %s", wait)
 	}
 }
