@@ -669,6 +669,22 @@ export const hi: Messages = {
     by: (who: string) => `${who} द्वारा`,
     current: 'फ़िल्टर',
     gone: 'यह फ़िल्टर अब मौजूद नहीं है, या आपके साथ साझा नहीं है।',
+    manage: 'प्रबंधित करें',
+    manageDone: 'हो गया',
+    selectAll: 'सभी चुनें',
+    select: (name: string) => `“${name}” चुनें`,
+    actions: 'चुने गए फ़िल्टर बदलें',
+    favouriteMany: (n: number) => `पसंदीदा बनाएँ (${n})`,
+    unfavouriteMany: (n: number) => `पसंदीदा से हटाएँ (${n})`,
+    deleteMany: (n: number) => `मिटाएँ (${n})`,
+    deleteManyTitle: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाएँ?`,
+    confirmDeleteMany: (n: number, skipped: number) =>
+      `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाएँ? जिन लोगों के साथ ये साझा हैं, वे इन्हें फिर नहीं देख पाएँगे।` +
+      (skipped > 0
+        ? ` चुने गए ${plural(skipped, 'फ़िल्टर', 'फ़िल्टर')} आपके नहीं हैं, इसलिए बने रहेंगे।`
+        : ''),
+    deletedMany: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाए गए।`,
+    failedMany: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} नहीं बदले जा सके।`,
   },
 
   table: {

@@ -41,11 +41,14 @@
     }
   });
 
-  let dialog = $state<'save' | 'rename' | 'delete' | null>(null);
+  let dialog = $state<'save' | 'rename' | 'delete' | 'deleteMany' | null>(null);
   let name = $state('');
   let description = $state('');
   let busy = $state(false);
   let dialogError = $state('');
+  /** The filters picked for deletion in manage mode, and how many of them aren't the user's. */
+  let doomed = $state<SavedFilter[]>([]);
+  let skipped = $state(0);
 
   $effect(() => {
     document.title = `${current?.name ?? t.search.title} — ${t.appName}`;
@@ -147,6 +150,47 @@
     }
   }
 
+  /** Runs one call per filter; the others still apply when some fail. */
+  async function each(fs: SavedFilter[], run: (f: SavedFilter) => Promise<unknown>) {
+    const results = await Promise.allSettled(fs.map(run));
+    await reload();
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    if (failed > 0) notify(t.saved.failedMany(failed), 'error');
+    return results;
+  }
+
+  async function starMany(fs: SavedFilter[], on: boolean) {
+    await each(fs, (f) => api.favouriteFilter(f.id, on));
+  }
+
+  function askDeleteMany(fs: SavedFilter[]) {
+    doomed = fs.filter((f) => f.canEdit);
+    skipped = fs.length - doomed.length;
+    dialogError = '';
+    dialog = 'deleteMany';
+  }
+
+  async function removeMany() {
+    busy = true;
+    try {
+      const fs = doomed;
+      // The reload below drops the deleted filter, and its query with it.
+      const kept = jql;
+      const results = await each(fs, (f) => api.deleteFilter(f.id));
+      const gone = fs.filter((_, i) => results[i]!.status === 'fulfilled');
+      if (gone.some((f) => f.id === loc.filter)) {
+        router.navigate(
+          `${router.path}${writeLocation({ jql: kept, mode: loc.mode, filter: null, page: 1 })}`,
+          { replace: true },
+        );
+      }
+      if (gone.length > 0) notify(t.saved.deletedMany(gone.length));
+      dialog = null;
+    } finally {
+      busy = false;
+    }
+  }
+
   async function star(f: SavedFilter) {
     try {
       await api.favouriteFilter(f.id, !f.favourite);
@@ -186,7 +230,14 @@
   </header>
 
   <div class="search-layout">
-    <SavedFilters {filters} current={loc.filter} onstar={star} onclose={closeFilter} />
+    <SavedFilters
+      {filters}
+      current={loc.filter}
+      onstar={star}
+      onclose={closeFilter}
+      onstarmany={starMany}
+      ondeletemany={askDeleteMany}
+    />
     <div class="search-main">
       {#if gone}<p class="error-text gone" role="alert">{t.saved.gone}</p>{/if}
       <IssueSearch {fallback} autofocus={loc.filter === null && loc.jql === null} selectable />
@@ -237,6 +288,20 @@
     <button class="btn" type="button" onclick={() => (dialog = null)}>{t.common.cancel}</button>
     <button class="btn btn-primary" type="button" disabled={busy} onclick={() => void remove()}
       >{t.saved.delete}</button
+    >
+  {/snippet}
+</Modal>
+
+<Modal
+  open={dialog === 'deleteMany'}
+  title={t.saved.deleteManyTitle(doomed.length)}
+  onclose={() => (dialog = null)}
+>
+  <p class="confirm">{t.saved.confirmDeleteMany(doomed.length, skipped)}</p>
+  {#snippet footer()}
+    <button class="btn" type="button" onclick={() => (dialog = null)}>{t.common.cancel}</button>
+    <button class="btn btn-primary" type="button" disabled={busy} onclick={() => void removeMany()}
+      >{t.saved.deleteMany(doomed.length)}</button
     >
   {/snippet}
 </Modal>

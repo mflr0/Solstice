@@ -679,6 +679,23 @@ export const de: Messages = {
     by: (who: string) => `von ${who}`,
     current: 'Filter',
     gone: 'Dieser Filter existiert nicht mehr oder ist nicht mit Ihnen geteilt.',
+    manage: 'Verwalten',
+    manageDone: 'Fertig',
+    selectAll: 'Alle auswählen',
+    select: (name: string) => `„${name}“ auswählen`,
+    actions: 'Ausgewählte Filter ändern',
+    favouriteMany: (n: number) => `Zu Favoriten (${n})`,
+    unfavouriteMany: (n: number) => `Aus Favoriten (${n})`,
+    deleteMany: (n: number) => `Löschen (${n})`,
+    deleteManyTitle: (n: number) => `${plural(n, 'Filter', 'Filter')} löschen?`,
+    confirmDeleteMany: (n: number, skipped: number) =>
+      `${plural(n, 'Filter', 'Filter')} löschen? ${n === 1 ? 'Personen, mit denen er geteilt ist, sehen ihn dann nicht mehr.' : 'Personen, mit denen sie geteilt sind, sehen sie dann nicht mehr.'}` +
+      (skipped > 0
+        ? ` ${plural(skipped, 'ausgewählter Filter gehört', 'ausgewählte Filter gehören')} nicht Ihnen und ${skipped === 1 ? 'bleibt' : 'bleiben'} erhalten.`
+        : ''),
+    deletedMany: (n: number) => `${plural(n, 'Filter', 'Filter')} gelöscht.`,
+    failedMany: (n: number) =>
+      `${plural(n, 'Filter konnte', 'Filter konnten')} nicht geändert werden.`,
   },
 
   table: {
