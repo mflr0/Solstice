@@ -199,6 +199,81 @@ func TestMCPWrite(t *testing.T) {
 	}
 }
 
+// A comments:write token comments but can't log work; a worklogs:write token
+// logs work, and the issue's time tracking follows.
+func TestMCPCommentsWorklogs(t *testing.T) {
+	needDB(t)
+	key := createIssue(t, login(t, "paul.martin", jirafixture.Password), "DEMO", unique("mcp comments"), "")
+
+	commenter := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeComments))
+	if tools := mcpToolNames(t, commenter); !slices.Contains(tools, "add_comment") || slices.Contains(tools, "add_worklog") {
+		t.Errorf("comments:write token's tools: %v", tools)
+	}
+	var c struct {
+		ID, Body string
+		Author   struct{ Name string }
+	}
+	mcpCall(t, commenter, "add_comment", map[string]any{"issueKey": key, "body": "Vu par un agent."}, &c)
+	if c.ID == "" || c.Body != "Vu par un agent." || c.Author.Name != "paul.martin" {
+		t.Fatalf("add_comment: %+v", c)
+	}
+	mcpCall(t, commenter, "edit_comment", map[string]any{"issueKey": key, "commentId": c.ID, "body": "Corrigé par un agent."}, &c)
+	if c.Body != "Corrigé par un agent." {
+		t.Errorf("edit_comment: %+v", c)
+	}
+	if res := mcpRawCall(t, commenter, "delete_comment", map[string]any{"issueKey": key, "commentId": c.ID}); res.IsError {
+		t.Errorf("delete_comment: %s", mcpResultText(res))
+	}
+	var comments struct{ Total int }
+	mcpCall(t, commenter, "list_comments", map[string]any{"issueKey": key}, &comments)
+	if comments.Total != 0 {
+		t.Errorf("%d comments left after delete_comment", comments.Total)
+	}
+	res := mcpRawCall(t, commenter, "add_worklog", map[string]any{"issueKey": key, "timeSpent": "1h"})
+	if !res.IsError || !strings.Contains(mcpResultText(res), string(auth.ScopeWorklogs)) {
+		t.Errorf("comments:write token calls add_worklog: %s", mcpResultText(res))
+	}
+
+	if status, e := restBasicAs(t, "paul.martin")("PUT", "/rest/api/2/issue/"+key,
+		map[string]any{"fields": map[string]any{"timetracking": map[string]string{"originalEstimate": "4h"}}}); status != 204 {
+		t.Fatalf("set the estimate of %s: %d %v", key, status, e)
+	}
+	logger := mcpSession(t, mcpToken(t, "paul.martin", auth.ScopeWorklogs))
+	tracking := func() (spent, remaining int) {
+		t.Helper()
+		var got struct {
+			Fields struct{ Timespent, Timeestimate int }
+		}
+		mcpCall(t, logger, "get_issue", map[string]any{"issueKey": key, "fields": []string{"timespent", "timeestimate"}}, &got)
+		return got.Fields.Timespent, got.Fields.Timeestimate
+	}
+	var wl struct {
+		ID               string
+		TimeSpentSeconds int
+		Comment          string
+	}
+	mcpCall(t, logger, "add_worklog", map[string]any{"issueKey": key, "timeSpent": "1h 30m", "comment": "Analyse"}, &wl)
+	if wl.ID == "" || wl.TimeSpentSeconds != 5400 || wl.Comment != "Analyse" {
+		t.Fatalf("add_worklog: %+v", wl)
+	}
+	if spent, remaining := tracking(); spent != 5400 || remaining != 9000 {
+		t.Errorf("after add_worklog: spent %d, remaining %d; want 5400, 9000", spent, remaining)
+	}
+	mcpCall(t, logger, "edit_worklog", map[string]any{"issueKey": key, "worklogId": wl.ID, "timeSpentSeconds": 7200}, &wl)
+	if wl.TimeSpentSeconds != 7200 || wl.Comment != "Analyse" {
+		t.Errorf("edit_worklog: %+v", wl)
+	}
+	if spent, remaining := tracking(); spent != 7200 || remaining != 7200 {
+		t.Errorf("after edit_worklog: spent %d, remaining %d; want 7200, 7200", spent, remaining)
+	}
+	if res := mcpRawCall(t, logger, "delete_worklog", map[string]any{"issueKey": key, "worklogId": wl.ID}); res.IsError {
+		t.Errorf("delete_worklog: %s", mcpResultText(res))
+	}
+	if spent, _ := tracking(); spent != 0 {
+		t.Errorf("after delete_worklog: spent %d, want 0", spent)
+	}
+}
+
 // add_attachment takes base64 content, up to the same limit as an upload.
 func TestMCPAttachmentLimit(t *testing.T) {
 	needDB(t)

@@ -16,8 +16,9 @@ Basic, les cookies de session et les jetons passés dans l'adresse sont
 refusés.
 
 Créez un jeton dans « Mes paramètres », « Jetons d'accès », avec la portée
-`read`, plus `issues:write` si l'agent doit modifier des tickets et
-`agile:write` s'il doit planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
+`read`, plus `issues:write` si l'agent doit modifier des tickets,
+`comments:write` pour commenter, `worklogs:write` pour saisir du temps passé et
+`agile:write` pour planifier les sprints. Seules les personnes que la politique des jetons de l'administrateur
 autorise peuvent en créer (voir [administration.md](administration.md)). Un
 jeton continue de fonctionner si la politique change ensuite, comme sur l'API
 REST.
@@ -87,14 +88,20 @@ Les tableaux et les sprints, de l'API Agile de Jira Software :
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Planifie des tickets dans un sprint, ou les en retire |
 | `rank_issues` | `agile:write` | Place des tickets avant ou après un autre dans l'ordre du tableau |
 
+Les commentaires et le temps passé :
+
+| Outil | Portée | Fait |
+|---|---|---|
+| `add_comment`, `edit_comment`, `delete_comment` | `comments:write` | Commente un ticket, modifie le texte d'un commentaire, ou le supprime |
+| `add_worklog`, `edit_worklog`, `delete_worklog` | `worklogs:write` | Saisit du temps passé sur un ticket, modifie ou supprime une saisie ; le suivi du temps suit |
+
 Les filtres enregistrés :
 
 | Outil | Portée | Fait |
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
 
-Les versions et composants, et les outils qui modifient les commentaires ou
-le temps passé, ne sont pas encore proposés.
+Les versions et composants ne sont pas encore proposés.
 
 ## Connecter Claude Code
 

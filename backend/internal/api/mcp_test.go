@@ -14,8 +14,8 @@ import (
 	"solstice/internal/issue"
 )
 
-// Every read of the REST API, every change to issues (apart from comments and
-// work logs) and filters, and every operation of the Agile API has its tool,
+// Every read of the REST API, every change to issues, comments, work logs and
+// filters, and every operation of the Agile API has its tool,
 // with the route's scope, apart from those other tools will cover.
 func TestMCPToolsMatchRoutes(t *testing.T) {
 	s := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -49,7 +49,8 @@ func TestMCPToolsMatchRoutes(t *testing.T) {
 	}
 	for pattern, scope := range s.routeScopes {
 		method, path, _ := strings.Cut(pattern, " ")
-		rest := strings.HasPrefix(path, issue.RESTAPIPath+"/") && (method == "GET" || scope == auth.ScopeIssues || scope == auth.ScopeFilters)
+		rest := strings.HasPrefix(path, issue.RESTAPIPath+"/") && (method == "GET" ||
+			slices.Contains([]auth.Scope{auth.ScopeIssues, auth.ScopeComments, auth.ScopeWorklogs, auth.ScopeFilters}, scope))
 		if !rest && !strings.HasPrefix(path, issue.AgileAPIPath+"/") || tools[pattern] != nil {
 			continue
 		}
