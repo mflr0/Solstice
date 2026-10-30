@@ -27,13 +27,12 @@ export interface TextPart {
 }
 
 /**
- * The text cut into plain and matched parts, by the rule of `matches`: each
- * word anywhere, folded. Folding changes lengths ("é" → "e", "İ" → "i̇"), so
+ * The text folded, with for each folded character the span of the original
+ * character it came from. Folding changes lengths ("é" → "e", "İ" → "i̇"), so
  * each character is folded alone and the matches are cut from the original.
  */
-export function highlight(text: string, search: string): TextPart[] {
+function folding(text: string): { folded: string; from: number[]; to: number[] } {
   let folded = '';
-  // For each folded character, the span of the original character it came from.
   const from: number[] = [];
   const to: number[] = [];
   let at = 0;
@@ -45,15 +44,11 @@ export function highlight(text: string, search: string): TextPart[] {
     }
     at += ch.length;
   }
+  return { folded, from, to };
+}
 
-  const spans: [number, number][] = [];
-  for (const word of search.split(/\s+/)) {
-    const w = [...word].map(fold).join('');
-    if (!w) continue;
-    for (let i = folded.indexOf(w); i >= 0; i = folded.indexOf(w, i + 1)) {
-      spans.push([from[i]!, to[i + w.length - 1]!]);
-    }
-  }
+/** The text cut into plain and matched parts at the given spans of it. */
+function cut(text: string, spans: [number, number][]): TextPart[] {
   if (spans.length === 0) return text ? [{ text, match: false }] : [];
   spans.sort((a, b) => a[0] - b[0]);
 
@@ -78,4 +73,25 @@ export function highlight(text: string, search: string): TextPart[] {
   close();
   if (plain < text.length) parts.push({ text: text.slice(plain), match: false });
   return parts;
+}
+
+/** The text cut into plain and matched parts, by the rule of `matches`: each word anywhere, folded. */
+export function highlight(text: string, search: string): TextPart[] {
+  const { folded, from, to } = folding(text);
+  const spans: [number, number][] = [];
+  for (const word of search.split(/\s+/)) {
+    const w = [...word].map(fold).join('');
+    if (!w) continue;
+    for (let i = folded.indexOf(w); i >= 0; i = folded.indexOf(w, i + 1)) {
+      spans.push([from[i]!, to[i + w.length - 1]!]);
+    }
+  }
+  return cut(text, spans);
+}
+
+/** The text cut into plain and matched parts, the typed prefix marked when the text starts with it, folded. */
+export function highlightPrefix(text: string, prefix: string): TextPart[] {
+  const { folded, from, to } = folding(text);
+  const p = [...prefix].map(fold).join('');
+  return cut(text, p && folded.startsWith(p) ? [[from[0]!, to[p.length - 1]!]] : []);
 }

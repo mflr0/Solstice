@@ -2,6 +2,7 @@
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
+  import Highlight from './Highlight.svelte';
   import Who from './Who.svelte';
 
   /**
@@ -132,7 +133,9 @@
               onmouseenter={() => (active = i)}
             >
               {#if u}
-                <span class="name">{u.name}</span><span class="user muted">{u.username}</span>
+                <span class="name"><Highlight text={u.name} search={q} /></span><span
+                  class="user muted"><Highlight text={u.username} search={q} /></span
+                >
               {:else}
                 <span class="nobody">{noneLabel}</span>
               {/if}

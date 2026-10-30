@@ -3,6 +3,7 @@
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
   import { errorMessage } from '../lib/api.js';
+  import Highlight from './Highlight.svelte';
 
   /**
    * Several values from a list (components, versions), narrowed by a filter.
@@ -128,7 +129,9 @@
             aria-checked={draft.includes(o.id)}
             onclick={() => flip(o.id)}
           >
-            <span>{o.name}</span>{#if o.note}<span class="muted note">{o.note}</span>{/if}
+            <span><Highlight text={o.name} search={q} /></span>{#if o.note}<span class="muted note"
+                >{o.note}</span
+              >{/if}
           </button>
         {:else}
           {#if !createName}<p class="empty pad">{t.common.none}</p>{/if}
