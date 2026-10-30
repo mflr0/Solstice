@@ -16,7 +16,7 @@ import type {
   WebhookInput,
 } from './admin-types.js';
 import { isoDay } from './dates.js';
-import { fold } from './text.js';
+import { fold, matches } from './text.js';
 
 /** Problems found in a form, by field. */
 export type Problems<F extends string, P extends string = string> = Partial<Record<F, P>>;
@@ -406,13 +406,8 @@ export function suggestUsername(name: string): string {
     .slice(0, 100);
 }
 
-/** Whether a list matches a typed search: every word in one of the texts. */
-export function matches(search: string, ...texts: (string | null | undefined)[]): boolean {
-  const words = fold(search).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const hay = fold(texts.filter(Boolean).join(' '));
-  return words.every((w) => hay.includes(w));
-}
+/** Re-exported for the admin lists. */
+export { matches };
 
 /** Longest name the server takes, in characters: a 255-character column. */
 export const NAME_MAX = 255;

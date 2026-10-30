@@ -6,7 +6,7 @@
  */
 
 import { EMPTY, literal, ME, type ListField, type PeopleRole } from '../../core/filters.js';
-import { fold } from '../../core/text.js';
+import { fold, matches } from '../../core/text.js';
 import {
   customKind,
   fieldInfo,
@@ -39,13 +39,8 @@ export interface Option {
   facets?: string[] | undefined;
 }
 
-/** Re-exported for the JQL editor's suggestions. */
-export { fold };
-
-export function matches(q: string, ...texts: (string | undefined)[]): boolean {
-  const f = fold(q.trim());
-  return !f || texts.some((x) => x !== undefined && fold(x).includes(f));
-}
+/** Re-exported for the JQL editor's suggestions and the quick search. */
+export { fold, matches };
 
 class Catalog {
   projects = $state<Project[] | null>(null);
