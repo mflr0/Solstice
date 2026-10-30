@@ -135,6 +135,31 @@ var (
 	}
 )
 
+// Arguments of the version and component tools.
+var (
+	mcpVersionID   = mcpParam{name: "versionId", kind: "string", desc: "Version id.", required: true, pathValue: "id"}
+	mcpVersionBody = []mcpParam{
+		mcpBody("description", "string", "Description."),
+		mcpBody("startDate", "string", "Start date, YYYY-MM-DD; empty to clear it."),
+		mcpBody("releaseDate", "string", "Release date, YYYY-MM-DD; empty to clear it."),
+		mcpBody("released", "boolean", "Whether the version is released."),
+		mcpBody("archived", "boolean", "Whether the version is archived."),
+	}
+	mcpComponentID   = mcpParam{name: "componentId", kind: "string", desc: "Component id.", required: true, pathValue: "id"}
+	mcpComponentBody = []mcpParam{
+		mcpBody("description", "string", "Description."),
+		mcpBody("leadUserName", "string", "User name of the component lead; empty for none."),
+		mcpBody("assigneeType", "string",
+			"Who new issues of the component go to: PROJECT_DEFAULT, COMPONENT_LEAD, PROJECT_LEAD or UNASSIGNED."),
+		mcpBody("archived", "boolean", "Whether the component is archived."),
+	}
+)
+
+// mcpParts is the handler that lists a project's versions or components.
+func mcpParts(which string) func(*Server, http.ResponseWriter, *http.Request) error {
+	return func(s *Server, w http.ResponseWriter, r *http.Request) error { return s.restProjectParts(which)(w, r) }
+}
+
 // mcpTools are the tools of the endpoint.
 var mcpTools = []mcpTool{
 	mcpRead("search_issues", "/search", (*Server).restSearch,
@@ -209,6 +234,43 @@ var mcpTools = []mcpTool{
 	mcpRead("get_project_statuses", "/project/{key}/statuses", (*Server).restProjectStatuses,
 		"The statuses each issue type of a project can have.",
 		mcpProjectKey),
+	mcpRead("list_versions", "/project/{key}/versions", mcpParts("versions"),
+		"Versions of a project: id, name, whether released or archived, release date.",
+		mcpProjectKey),
+	mcpRead("get_version", "/version/{id}", (*Server).restVersion,
+		"One version: name, description, start and release dates, whether released, archived or overdue.",
+		mcpVersionID),
+	mcpWrite("create_version", auth.ScopeProjects, http.MethodPost, "/version", (*Server).restSaveVersion,
+		"Adds a version to a project the user administers. Returns the version.",
+		append([]mcpParam{{name: "project", kind: "string", desc: "Project key.", required: true, body: true},
+			{name: "name", kind: "string", desc: "Name, unique in the project.", required: true, body: true}},
+			mcpVersionBody...)...),
+	mcpWrite("update_version", auth.ScopeProjects, http.MethodPut, "/version/{id}", (*Server).restSaveVersion,
+		"Changes a version of a project the user administers; arguments left out stay as they are.",
+		append([]mcpParam{mcpVersionID, mcpBody("name", "string", "New name.")}, mcpVersionBody...)...),
+	mcpWrite("delete_version", auth.ScopeProjects, http.MethodDelete, "/version/{id}", (*Server).restDeleteVersion,
+		"Deletes a version of a project the user administers. Its issues lose it, unless moved to another version.",
+		mcpVersionID,
+		mcpParam{name: "moveFixIssuesTo", kind: "integer", desc: "Version id that issues fixed in this one get instead."},
+		mcpParam{name: "moveAffectedIssuesTo", kind: "integer", desc: "Version id that issues affecting this one get instead."}),
+	mcpRead("list_components", "/project/{key}/components", mcpParts("components"),
+		"Components of a project: id, name, lead, default assignee.",
+		mcpProjectKey),
+	mcpRead("get_component", "/component/{id}", (*Server).restComponent,
+		"One component: name, description, lead, default assignee.",
+		mcpComponentID),
+	mcpWrite("create_component", auth.ScopeProjects, http.MethodPost, "/component", (*Server).restSaveComponent,
+		"Adds a component to a project the user administers. Returns the component.",
+		append([]mcpParam{{name: "project", kind: "string", desc: "Project key.", required: true, body: true},
+			{name: "name", kind: "string", desc: "Name, unique in the project.", required: true, body: true}},
+			mcpComponentBody...)...),
+	mcpWrite("update_component", auth.ScopeProjects, http.MethodPut, "/component/{id}", (*Server).restSaveComponent,
+		"Changes a component of a project the user administers; arguments left out stay as they are.",
+		append([]mcpParam{mcpComponentID, mcpBody("name", "string", "New name.")}, mcpComponentBody...)...),
+	mcpWrite("delete_component", auth.ScopeProjects, http.MethodDelete, "/component/{id}", (*Server).restDeleteComponent,
+		"Deletes a component of a project the user administers. Its issues lose it, unless moved to another component.",
+		mcpComponentID,
+		mcpParam{name: "moveIssuesTo", kind: "integer", desc: "Component id that the issues get instead."}),
 
 	mcpRead("get_myself", "/myself", (*Server).restMyself,
 		"The signed-in user: user name, display name, e-mail, time zone, language.",
@@ -432,8 +494,9 @@ func init() {
 func (t *mcpTool) tool() *mcp.Tool {
 	a := &mcp.ToolAnnotations{ReadOnlyHint: t.scope == auth.ScopeRead, OpenWorldHint: new(false),
 		IdempotentHint: t.method == http.MethodPut || t.method == http.MethodDelete}
-	// Adding an issue, a link, a comment… destroys nothing; a transition may overwrite fields.
-	if (t.scope == auth.ScopeIssues || t.scope == auth.ScopeComments || t.scope == auth.ScopeWorklogs) &&
+	// Adding an issue, a link, a comment, a version… destroys nothing; a transition may overwrite fields.
+	if (t.scope == auth.ScopeIssues || t.scope == auth.ScopeComments || t.scope == auth.ScopeWorklogs ||
+		t.scope == auth.ScopeProjects) &&
 		t.method == http.MethodPost && t.name != "transition_issue" {
 		a.DestructiveHint = new(false)
 	}

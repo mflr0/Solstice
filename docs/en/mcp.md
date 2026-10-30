@@ -94,7 +94,14 @@ Saved filters:
 |---|---|---|
 | `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
 
-Versions and components are not offered yet.
+Versions and components of a project:
+
+| Tool | Scope | Does |
+|---|---|---|
+| `list_versions`, `get_version` | `read` | Versions of a project, or one by id |
+| `list_components`, `get_component` | `read` | Components of a project, or one by id |
+| `create_version`, `update_version`, `delete_version` | `projects:write` | Adds, changes (dates, released, archived) or deletes a version, in a project the user administers |
+| `create_component`, `update_component`, `delete_component` | `projects:write` | Adds, changes (lead, default assignee) or deletes a component, in a project the user administers |
 
 ## Connecting Claude Code
 
