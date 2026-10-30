@@ -240,6 +240,20 @@ kbd,
   font-family: var(--font-mono);
 }
 
+/* What a search matched: bold and underlined, in the text's own colour. */
+mark.match {
+  background: none;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline 2px var(--accent);
+  text-underline-offset: 2px;
+}
+
+/* A skin may repaint the active row: the line follows its ink. */
+.popover .item:is(:hover, .active) mark.match {
+  text-decoration-color: currentColor;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
 }

@@ -9,6 +9,7 @@
   import { api } from '../../lib/api.js';
   import { outside } from '../../lib/actions.js';
   import { router } from '../../lib/router.svelte.js';
+  import Highlight from '../Highlight.svelte';
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
   import { catalog, matches } from './sources.svelte.js';
@@ -214,11 +215,12 @@
               <span class="summary">{row.issue.summary}</span>
               <Stamp status={row.issue.status} />
             {:else if row.project}
-              <span class="key">{row.project.key}</span>
-              <span class="summary">{row.project.name}</span>
+              <span class="key"><Highlight text={row.project.key} search={q} /></span>
+              <span class="summary"><Highlight text={row.project.name} search={q} /></span>
             {:else if row.person && row.kind === 'person'}
               <span class="summary"
-                >{row.person.name} <span class="who">{row.person.username}</span></span
+                ><Highlight text={row.person.name} search={q} />
+                <span class="who"><Highlight text={row.person.username} search={q} /></span></span
               >
               <span class="hint">{t.quick.ticketsOf(row.person.name)}</span>
             {:else if row.person}
