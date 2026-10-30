@@ -655,6 +655,7 @@ export const hi: Messages = {
     delete: 'मिटाएँ',
     star: (name: string) => `“${name}” को पसंदीदा में जोड़ें`,
     unstar: (name: string) => `“${name}” को पसंदीदा से हटाएँ`,
+    close: (name: string) => `“${name}” बंद करें`,
     name: 'नाम',
     description: 'वर्णन',
     newTitle: 'खोज सहेजें',

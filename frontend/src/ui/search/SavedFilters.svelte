@@ -10,8 +10,18 @@
     filters: SavedFilter[] | null;
     current: number | null;
     onstar: (f: SavedFilter) => void;
+    /** Leaves the current filter for the plain search. */
+    onclose: () => void;
   }
-  const { filters, current, onstar }: Props = $props();
+  const { filters, current, onstar, onclose }: Props = $props();
+
+  function close(e: MouseEvent) {
+    // Other clicks (new tab…) still follow the link.
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    open = false;
+    onclose();
+  }
 
   let open = $state(false);
   const uid = $props.id();
@@ -63,11 +73,20 @@
                 href="/issues?filter={f.id}"
                 aria-current={f.id === current ? 'page' : undefined}
                 title={f.description ?? undefined}
-                onclick={() => (open = false)}
+                onclick={f.id === current ? close : () => (open = false)}
               >
                 <span class="name">{f.name}</span>
                 {#if !f.mine && f.owner}<span class="owner">{t.saved.by(f.owner.name)}</span>{/if}
               </a>
+              {#if f.id === current}
+                <button
+                  type="button"
+                  class="close"
+                  aria-label={t.saved.close(f.name)}
+                  title={t.saved.close(f.name)}
+                  onclick={close}><span aria-hidden="true">×</span></button
+                >
+              {/if}
             </li>
           {/each}
         </ul>
@@ -131,11 +150,17 @@
 
   .saved-item a {
     display: grid;
+    flex: 1;
     min-width: 0;
     padding: 4px 6px 4px 0;
     text-decoration: none;
     font-size: 0.84375rem;
     line-height: 1.3;
+  }
+
+  /* The × takes the padding's place, so the name keeps its room. */
+  .saved-item.is-current a {
+    padding-right: 0;
   }
 
   .saved-item a:hover .name {
@@ -144,6 +169,23 @@
 
   .saved-item a[aria-current='page'] .name {
     font-weight: 600;
+  }
+
+  .close {
+    flex: none;
+    width: 1.25rem;
+    height: 1.625rem;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .close:hover {
+    color: var(--ink);
   }
 
   .owner {
