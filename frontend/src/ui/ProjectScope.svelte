@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onBoard, scopeSwitch } from '../core/scope.js';
+  import { readLocation, writeLocation } from '../core/filters-url.js';
+  import { onBoard, scopeSearchSwitch, scopeSwitch } from '../core/scope.js';
   import type { Project } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { menu, outside } from '../lib/actions.js';
@@ -28,15 +29,26 @@
 
   async function choose(key: string | null) {
     open = false;
-    if (key === session.scope) return;
+    const from = session.scope;
+    if (key === from) return;
     try {
       await session.setScope(key);
     } catch (e) {
       notify(errorMessage(e), 'error');
       return;
     }
-    // The board pages follow the new scope; a search already made stays.
+    // The board pages, and a search with no filter of the user's own, follow the new scope.
     const route = router.route;
+    if (route.name === 'search') {
+      const loc = readLocation(router.search).loc;
+      const jql = scopeSearchSwitch(loc, from, key);
+      if (jql !== null) {
+        router.navigate(`${router.path}${writeLocation({ ...loc, jql, page: 1 })}`, {
+          replace: true,
+        });
+      }
+      return;
+    }
     if (route.name !== 'boards' && !onBoard(route)) return;
     let to: string | null;
     try {
