@@ -130,6 +130,7 @@ Boards and sprints, from Jira Software's Agile API:
 | `list_sprints`, `get_sprint` | `read` | Sprints of a Scrum board |
 | `list_board_issues`, `get_backlog`, `list_sprint_issues` | `read` | Issues of a board, its backlog or a sprint, in board order |
 | `get_epic`, `list_epic_issues` | `read` | An epic and its issues |
+| `create_sprint` | `agile:write` | Creates a future sprint on a Scrum board |
 | `update_sprint` | `agile:write` | Renames, dates, starts or completes a sprint |
 | `delete_sprint` | `agile:write` | Deletes a sprint that has not started |
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Plans issues in a sprint, or takes them out |

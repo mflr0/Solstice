@@ -141,6 +141,7 @@ Les tableaux et les sprints, de l'API Agile de Jira Software :
 | `list_sprints`, `get_sprint` | `read` | Les sprints d'un tableau Scrum |
 | `list_board_issues`, `get_backlog`, `list_sprint_issues` | `read` | Les tickets d'un tableau, de son backlog ou d'un sprint, dans l'ordre du tableau |
 | `get_epic`, `list_epic_issues` | `read` | Une epic et ses tickets |
+| `create_sprint` | `agile:write` | Crée un sprint futur sur un tableau Scrum |
 | `update_sprint` | `agile:write` | Renomme un sprint, change ses dates, le démarre ou le termine |
 | `delete_sprint` | `agile:write` | Supprime un sprint pas encore démarré |
 | `move_issues_to_sprint`, `move_issues_to_backlog` | `agile:write` | Planifie des tickets dans un sprint, ou les en retire |

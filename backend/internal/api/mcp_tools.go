@@ -443,6 +443,13 @@ var mcpTools = []mcpTool{
 	mcpAgile("list_epic_issues", "GET", "/epic/{key}/issue", (*Server).agileEpicIssues,
 		"Issues of an epic, in board order.",
 		mcpEpicKey, mcpJQL, mcpStartAt, mcpMaxResults, mcpFields, mcpExpand),
+	mcpAgile("create_sprint", "POST", "/sprint", (*Server).agileCreateSprint,
+		"Creates a future sprint on a Scrum board. Returns the sprint.",
+		mcpParam{name: "originBoardId", kind: "integer", desc: "Board id.", required: true, body: true},
+		mcpParam{name: "name", kind: "string", desc: "Name; without one, the board's name and a number.", body: true},
+		mcpParam{name: "goal", kind: "string", desc: "Goal.", body: true},
+		mcpParam{name: "startDate", kind: "string", desc: "Planned start, ISO 8601.", body: true},
+		mcpParam{name: "endDate", kind: "string", desc: "Planned end, ISO 8601.", body: true}),
 	mcpAgile("update_sprint", "POST", "/sprint/{id}", (*Server).agileEditSprint,
 		"Changes a sprint; what is not given stays. state active starts a future sprint, closed completes "+
 			"the active one and sends its open issues back to the backlog. Returns the sprint.",

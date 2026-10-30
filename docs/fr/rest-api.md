@@ -394,6 +394,7 @@ Sous `/rest/agile/1.0` :
 | `GET /board/{id}/sprint` | Tableaux Scrum seulement. `state=active,future,closed`. |
 | `GET /board/{id}/issue` | Les tickets du tableau, dans ses colonnes. |
 | `GET /board/{id}/backlog` | |
+| `POST /sprint` | `{"name": "Sprint 12", "originBoardId": 1}`, avec `goal`, `startDate` et `endDate` facultatifs. Crée un sprint futur sur un tableau Scrum ; répond 201 avec le sprint. |
 | `GET /sprint/{id}` | |
 | `POST /sprint/{id}`, `PUT /sprint/{id}` | Modifient le nom, l'objectif, les dates et l'état. Les deux fonctionnent en mise à jour partielle : ce qui n'est pas donné reste tel quel. `state: "active"` démarre un sprint futur ; `state: "closed"` termine un sprint actif, et ses tickets ouverts retournent au backlog. |
 | `DELETE /sprint/{id}` | Seulement un sprint non démarré ; ses tickets retournent au backlog. |
@@ -404,8 +405,7 @@ Sous `/rest/agile/1.0` :
 | `GET /epic/{key}` | |
 | `GET /epic/{key}/issue` | |
 
-Les tableaux ne peuvent être ni créés ni modifiés, et les sprints ne peuvent
-pas être créés, par l'API.
+Les tableaux ne peuvent être ni créés ni modifiés par l'API.
 
 ## Non pris en charge
 
