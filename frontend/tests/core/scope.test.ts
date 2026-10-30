@@ -8,6 +8,7 @@ import {
   scopeGadgetQuery,
   scopeQuery,
   scopeSearch,
+  scopeSearchSwitch,
   scopeSwitch,
 } from '../../src/core/scope.js';
 
@@ -89,5 +90,30 @@ describe('switching the scope', () => {
   it('stays on any board for every project, and off the boards', () => {
     expect(scopeSwitch(on('board', 4), boards, null)).toBeNull();
     expect(scopeSwitch({ name: 'search' }, boards, 'OPS')).toBeNull();
+  });
+
+  it('moves a search with no filter of its own to the new project', () => {
+    const at = (jql: string) => ({ ...bare, jql });
+    expect(scopeSearchSwitch(at('project = A'), 'A', 'B')).toBe('project = B');
+    expect(scopeSearchSwitch(at('project = A'), 'A', null)).toBe('');
+    expect(scopeSearchSwitch(at(''), null, 'A')).toBe('project = A');
+    expect(scopeSearchSwitch(at(''), 'A', 'B')).toBe('project = B');
+    expect(scopeSearchSwitch(at('project = A ORDER BY created DESC'), 'A', 'B')).toBe(
+      'project = B ORDER BY created DESC',
+    );
+    expect(scopeSearchSwitch({ ...at('project = A'), mode: 'jql' }, 'A', 'B')).toBe('project = B');
+  });
+
+  it('leaves a search with a filter of its own, or a saved filter', () => {
+    const at = (jql: string) => ({ ...bare, jql });
+    expect(scopeSearchSwitch(at('project = A AND type = Bug'), 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch(at('project = C'), 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch(at('project = A'), null, 'B')).toBeNull();
+    expect(scopeSearchSwitch(at('project in (A, B)'), 'A', 'C')).toBeNull();
+    expect(scopeSearchSwitch(at('text ~ "x"'), 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch(at('project = A OR type = Bug'), 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch({ ...at('project = A'), filter: 12 }, 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch({ ...bare, filter: 12 }, 'A', 'B')).toBeNull();
+    expect(scopeSearchSwitch(bare, 'A', 'B')).toBeNull();
   });
 });

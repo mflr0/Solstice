@@ -5,7 +5,9 @@
 
 import type { BoardSummary } from './board-types.js';
 import { onFilter, type GadgetKind } from './dashboard.js';
+import { emptyFilters, filtersToJql, isBlank, jqlToFilters } from './filters.js';
 import type { SearchLocation } from './filters-url.js';
+import { quote } from './jql.js';
 import { paths, type Route } from './route.js';
 
 /** A simple-syntax query (@moi est:ouvert…) limited to the project. */
@@ -70,4 +72,28 @@ export function onBoard(route: Route): route is BoardRoute {
 export function scopeSearch(loc: SearchLocation, key: string | null): string | null {
   if (!key || loc.jql !== null || loc.filter !== null) return null;
   return `project = ${key}`;
+}
+
+/**
+ * The query a search follows the scope with when it changes from one project
+ * to another: one with no filter but the old project (or none) moves to the
+ * new project, its sort kept. null: the address stays as it is.
+ */
+export function scopeSearchSwitch(
+  loc: SearchLocation,
+  from: string | null,
+  to: string | null,
+): string | null {
+  if (loc.jql === null || loc.filter !== null) return null;
+  const read = jqlToFilters(loc.jql);
+  if (!read.ok) return null;
+  const { project, ...values } = read.state.values;
+  if (project && (from === null || project.length !== 1 || project[0] !== quote(from))) return null;
+  if (!isBlank({ ...read.state, values })) return null;
+  const next = filtersToJql({
+    ...emptyFilters(),
+    values: to ? { project: [quote(to)] } : {},
+    order: read.state.order,
+  });
+  return next === loc.jql ? null : next;
 }
