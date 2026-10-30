@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { highlight, matches } from '../../src/core/text.js';
+import { highlight, highlightPrefix, matches } from '../../src/core/text.js';
 
 describe('matches', () => {
   it('takes the words in any order', () => {
@@ -55,5 +55,29 @@ describe('highlight', () => {
   it('returns the text as one plain part without a match', () => {
     expect(highlight('Alice', 'bob')).toEqual([{ text: 'Alice', match: false }]);
     expect(highlight('Alice', '  ')).toEqual([{ text: 'Alice', match: false }]);
+  });
+});
+
+describe('highlightPrefix', () => {
+  it('marks the typed start, folded', () => {
+    expect(highlightPrefix('Été 2024', 'ete')).toEqual([
+      { text: 'Été', match: true },
+      { text: ' 2024', match: false },
+    ]);
+  });
+
+  it('marks nothing elsewhere in the text', () => {
+    expect(highlightPrefix('assignee', 'sig')).toEqual([{ text: 'assignee', match: false }]);
+  });
+
+  it('marks nothing for an empty prefix', () => {
+    expect(highlightPrefix('status', '')).toEqual([{ text: 'status', match: false }]);
+  });
+
+  it('keeps the original text when folding changes its length', () => {
+    expect(highlightPrefix('İstanbul', 'is')).toEqual([
+      { text: 'İs', match: true },
+      { text: 'tanbul', match: false },
+    ]);
   });
 });

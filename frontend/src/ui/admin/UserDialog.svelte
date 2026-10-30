@@ -13,6 +13,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
+  import Highlight from '../Highlight.svelte';
   import Modal from '../Modal.svelte';
 
   /**
@@ -246,7 +247,7 @@
                   checked={form.groups.includes(g.id)}
                   onchange={(e) => toggleGroup(g.id, e.currentTarget.checked)}
                 />
-                <span>{g.name}</span>
+                <span><Highlight text={g.name} search={groupSearch} /></span>
               </label>
             {/each}
           </div>

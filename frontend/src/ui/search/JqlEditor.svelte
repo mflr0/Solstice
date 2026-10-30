@@ -17,6 +17,7 @@
   import { CATEGORY_JQL } from '../../core/filters.js';
   import { STATUS_CATEGORIES } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import Highlight from '../Highlight.svelte';
   import { catalog, fold, kindOf, listFieldOf, loadOptions } from './sources.svelte.js';
 
   /**
@@ -56,6 +57,9 @@
     back?: number;
     /** Where the replaced text starts, when not at the current word. */
     from?: number;
+    /** What was typed, marked in the label: as a prefix, or as words anywhere (list values). */
+    typed?: string;
+    anywhere?: boolean;
   }
 
   let textarea: HTMLTextAreaElement | undefined = $state();
@@ -130,7 +134,12 @@
     const keywords = (kws: string[]) =>
       kws
         .filter((k) => startsWith(k, p))
-        .map((k) => ({ label: k, insert: k === '(' ? '(' : `${k} `, detail: t.search.keyword }));
+        .map((k) => ({
+          label: k,
+          insert: k === '(' ? '(' : `${k} `,
+          detail: t.search.keyword,
+          typed: p,
+        }));
     switch (c.kind) {
       case 'field': {
         const system = FIELDS.filter(
@@ -144,11 +153,13 @@
             label: f.name,
             insert: `${quoteField(f.name)} `,
             detail: t.search.jqlFields[f.name] ?? '',
+            typed: p,
           })),
           ...custom.map((f) => ({
             label: f.name,
             insert: `${f.jql} `,
             detail: t.search.customField,
+            typed: p,
           })),
           ...keywords(c.keywords),
         ];
@@ -161,6 +172,7 @@
             label: op,
             insert: op.endsWith(' in') || op === 'in' ? `${op} (` : `${op} `,
             detail: t.search.operator,
+            typed: p,
           }));
       case 'keyword':
         return keywords(c.keywords);
@@ -169,6 +181,7 @@
           label: f,
           insert: `${f} `,
           detail: t.search.jqlFields[f] ?? '',
+          typed: p,
         }));
       case 'value':
         return valueItems(c);
@@ -198,7 +211,12 @@
       try {
         const opts = await loadOptions(list, p, project ? [quote(project)] : []);
         for (const o of opts.slice(0, 12)) {
-          out.push({ label: o.label, insert: o.value + end, detail: o.hint ?? '' });
+          out.push({
+            label: o.label,
+            insert: o.value + end,
+            detail: o.hint ?? '',
+            anywhere: true,
+          });
         }
       } catch {
         // Suggestions are a help: without them the editor still works.
@@ -217,7 +235,7 @@
     if (kind !== 'text' && startsWith('EMPTY', p) && c.keywords.includes('EMPTY')) {
       out.push({ label: 'EMPTY', insert: `EMPTY${end}`, detail: t.search.keyword });
     }
-    return out;
+    return out.map((it) => ({ typed: p, ...it }));
   }
 
   /** The caret's place under the text, for the suggestion list. */
@@ -372,7 +390,9 @@
             }}
             onmouseenter={() => (active = i)}
           >
-            <span class="label">{it.label}</span>
+            <span class="label"
+              ><Highlight text={it.label} search={it.typed ?? ''} prefix={!it.anywhere} /></span
+            >
             {#if it.detail}<span class="detail">{it.detail}</span>{/if}
           </li>
         {/each}

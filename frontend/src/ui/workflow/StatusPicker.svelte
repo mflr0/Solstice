@@ -100,7 +100,7 @@
               onclick={() => pick(s)}
               onmouseenter={() => (active = i)}
             >
-              <Stamp status={s} />
+              <Stamp status={s} search={q} />
               <span class="muted cat">{categoryLabels[s.category]}</span>
             </button>
           </li>

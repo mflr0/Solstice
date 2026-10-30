@@ -5,6 +5,7 @@
   import { toggleIn } from '../../core/catalogs.js';
   import type { AdminProjectRow } from '../../core/project-admin.js';
   import { t } from '../../i18n/t.js';
+  import Highlight from '../Highlight.svelte';
 
   /**
    * Where a custom field applies: every project and issue type, or only
@@ -80,7 +81,10 @@
                 onchange={(e) =>
                   (form.projects = toggleIn(form.projects, p.key, e.currentTarget.checked))}
               />
-              <span><strong class="mono">{p.key}</strong> {p.name}</span>
+              <span
+                ><strong class="mono"><Highlight text={p.key} {search} /></strong>
+                <Highlight text={p.name} {search} /></span
+              >
             </label>
           {/each}
         </div>

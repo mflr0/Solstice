@@ -4,6 +4,7 @@
   import { matches } from '../../core/text.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
+  import Highlight from '../Highlight.svelte';
   import type { Option } from './sources.svelte.js';
 
   /**
@@ -58,6 +59,8 @@
     checked: boolean;
     act: () => void;
     count?: number | undefined;
+    /** The typed text offered as a value: shown as is, not as a match. */
+    typed?: boolean | undefined;
   }
 
   let q = $state('');
@@ -131,6 +134,7 @@
       out.push({
         key: `f${v}`,
         label: t.search.addValue(typed),
+        typed: true,
         checked: false,
         act: () => pick(v),
       });
@@ -233,7 +237,9 @@
         onmouseenter={() => (active = i)}
       >
         <span class="box" aria-hidden="true">{row.checked ? '✓' : ''}</span>
-        <span class="label">{row.label}</span>
+        <span class="label"
+          >{#if row.typed}{row.label}{:else}<Highlight text={row.label} search={q} />{/if}</span
+        >
         {#if row.hint}<span class="hint">{row.hint}</span>{/if}
         {#if row.count !== undefined}<span class="count" class:zero={row.count === 0}
             >{row.count}</span

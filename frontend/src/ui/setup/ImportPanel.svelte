@@ -9,6 +9,7 @@
     type SetupFinished,
     type SetupStatus,
   } from '../../lib/setup-api.js';
+  import Highlight from '../Highlight.svelte';
   import AdminForm from './AdminForm.svelte';
   import ImportFields from './ImportFields.svelte';
   import ImportProgress from './ImportProgress.svelte';
@@ -226,9 +227,9 @@
             <label class="account" class:on={chosen === a.username}>
               <input type="radio" name="admin" value={a.username} bind:group={chosen} />
               <span class="who">
-                <strong>{a.name}</strong>
-                <span class="key">{a.username}</span>
-                {#if a.email}<span class="muted">{a.email}</span>{/if}
+                <strong><Highlight text={a.name} search={q} /></strong>
+                <span class="key"><Highlight text={a.username} search={q} /></span>
+                {#if a.email}<span class="muted"><Highlight text={a.email} search={q} /></span>{/if}
               </span>
               {#if a.admin}<span class="chip">{m.import.jiraAdmin}</span>{/if}
             </label>
