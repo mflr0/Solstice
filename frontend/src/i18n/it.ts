@@ -1472,7 +1472,7 @@ export const it: Messages = {
       removeMember: (name: string) => `Rimuovi ${name} dal gruppo`,
       deleteTitle: (name: string) => `Eliminare il gruppo ${name}?`,
       deleteBody:
-        'Il gruppo viene tolto dai permessi, dai ruoli e dai livelli di sicurezza che lo usano. I suoi membri conservano il loro account.',
+        'Il gruppo viene tolto dai permessi, dai ruoli e dai livelli di riservatezza che lo usano. I suoi membri conservano il loro account.',
       deleted: (name: string) => `Gruppo ${name} eliminato.`,
       inUse: (items: string) => `Ancora riservati a questo gruppo: ${items}.`,
     },

@@ -459,7 +459,7 @@ export const fr: Messages = {
       people: 'Personnes',
       type: 'Type',
       status: 'Statut',
-      assignee: 'Responsable',
+      assignee: 'Assigné',
       priority: 'Priorité',
       labels: 'Étiquettes',
       reporter: 'Rapporteur',
@@ -480,13 +480,13 @@ export const fr: Messages = {
     role: 'Rôle',
     roles: {
       participant: 'Toute implication',
-      assignee: 'Responsable',
+      assignee: 'Assigné',
       reporter: 'Rapporteur',
       creator: 'Créateur',
       watcher: 'Observateur',
       commenter: 'Commentateur',
     } as Record<string, string>,
-    roleHint: 'Responsable et Rapporteur ont leur propre filtre : le choix y passe.',
+    roleHint: 'Assigné et Rapporteur ont leur propre filtre : le choix y passe.',
     allTickets: 'Tous ses tickets',
     clearAll: 'Tout effacer',
     clear: (field: string) => `Retirer le filtre ${field}`,
@@ -580,7 +580,7 @@ export const fr: Messages = {
       type: 'type de ticket',
       status: 'statut',
       statusCategory: 'catégorie de statut',
-      assignee: 'responsable',
+      assignee: 'assigné',
       reporter: 'rapporteur',
       creator: 'créateur',
       priority: 'priorité',
@@ -806,7 +806,7 @@ export const fr: Messages = {
     moveSubtasksLost: (n: number) =>
       `${plural(n, 'composant ou version des sous-tâches n’a pas d’équivalent et est supprimé', 'composants et versions des sous-tâches n’ont pas d’équivalent et sont supprimés')}.`,
     moveAssignee: (from: string, to: string) =>
-      `${from} ne peut pas être responsable dans le nouveau projet : le responsable devient ${to}.`,
+      `${from} ne peut pas se voir assigner de tickets dans le nouveau projet : le ticket est assigné à ${to}.`,
     moveNoProject: 'Il n’y a pas d’autre projet où le déplacer.',
     moveRestricted: (n: number) =>
       `${plural(n, 'commentaire ou temps saisi est réservé', 'commentaires et temps saisis sont réservés')} à un rôle du projet actuel. Un rôle appartient à un seul projet : choisissez qui pourra lire ces éléments après le déplacement.`,
@@ -815,7 +815,7 @@ export const fr: Messages = {
     moveRestrictedNone:
       'Le nouveau projet n’a aucun rôle avec des membres et vous n’appartenez à aucun groupe : ces éléments ne peuvent pas y garder leur restriction, le ticket ne peut donc pas être déplacé.',
     moveSubtasksReassigned: (n: number) =>
-      `${plural(n, 'sous-tâche a un responsable qui ne peut pas l’être dans le nouveau projet : il est remplacé', 'sous-tâches ont des responsables qui ne peuvent pas l’être dans le nouveau projet : ils sont remplacés')}.`,
+      `${plural(n, 'sous-tâche est assignée à une personne qui ne peut pas se voir assigner de tickets dans le nouveau projet : son assigné est remplacé', 'sous-tâches sont assignées à des personnes qui ne peuvent pas se voir assigner de tickets dans le nouveau projet : leurs assignés sont remplacés')}.`,
   },
 
   keyboard: {

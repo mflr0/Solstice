@@ -125,7 +125,7 @@ Ces outils demandent `issues:write` :
 | Outil | Fait |
 |---|---|
 | `create_issue`, `edit_issue`, `delete_issue` | Crée, modifie ou supprime un ticket |
-| `assign_issue` | Attribue un ticket, ou retire son responsable |
+| `assign_issue` | Attribue un ticket, ou retire son assigné |
 | `transition_issue` | Fait avancer un ticket dans son workflow |
 | `add_watcher`, `remove_watcher` | Fait suivre un ticket à quelqu'un, ou arrête |
 | `add_vote`, `remove_vote` | Vote pour un ticket, ou retire le vote |

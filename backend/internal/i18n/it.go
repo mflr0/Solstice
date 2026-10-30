@@ -2,7 +2,7 @@ package i18n
 
 // Italian. Terms: ticket, progetto, board (la), sprint, epic, sotto-task,
 // swimlane, filtro rapido, workflow, stato, transizione, livello di
-// sicurezza, scadenza. Users are addressed with « tu ».
+// riservatezza, scadenza. Users are addressed with « tu ».
 var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests: addresses, sign-in, headers, internal errors.
 	RequestUnknownAddress:       "Indirizzo sconosciuto.",
@@ -149,9 +149,9 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportWarnNoPermissionScheme:               "progetto %s: nessuno schema di permessi in Jira, nessuno vi accede finché un amministratore non lo configura",
 	ImportWarnPermissionTypeOne:                "%d permesso Jira di tipo «%s» non importato (accesso rimosso, da riconfigurare se serve)",
 	ImportWarnPermissionTypeMany:               "%d permessi Jira di tipo «%s» non importati (accesso rimosso, da riconfigurare se serve)",
-	ImportWarnLevelMembersOne:                  "%d membro dei livelli di sicurezza non importato (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
-	ImportWarnLevelMembersMany:                 "%d membri dei livelli di sicurezza non importati (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
-	ImportWarnLevelReplaced:                    "progetto %s: un livello di sicurezza non trovato in Jira è stato sostituito da «Restricted (import)», senza membri",
+	ImportWarnLevelMembersOne:                  "%d membro dei livelli di riservatezza non importato (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
+	ImportWarnLevelMembersMany:                 "%d membri dei livelli di riservatezza non importati (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
+	ImportWarnLevelReplaced:                    "progetto %s: un livello di riservatezza non trovato in Jira è stato sostituito da «Restricted (import)», senza membri",
 	ImportWarnLocalAccountsOne:                 "%d account creato in Solstice mantenuto (senza gruppi né ruoli, che vengono da Jira)",
 	ImportWarnLocalAccountsMany:                "%d account creati in Solstice mantenuti (senza gruppi né ruoli, che vengono da Jira)",
 	ImportWarnNoPasswordOne:                    "%d account attivo senza password utilizzabile (directory esterna o vecchio formato): impostarne una con «solstice user passwd»",
@@ -367,7 +367,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueResolutionUnknown:     "Risoluzione sconosciuta.",
 	IssueDueDateInvalid:        "Scadenza non valida (formato atteso AAAA-MM-GG).",
 	IssueEstimateInvalid:       "Stima del tempo non valida (ad esempio 1w 2d 3h 30m).",
-	IssueSecurityLevelUnknown:  "Livello di sicurezza sconosciuto in questo progetto.",
+	IssueSecurityLevelUnknown:  "Livello di riservatezza sconosciuto in questo progetto.",
 	IssueReporterFixed:         "Il segnalatore non può essere cambiato.",
 	IssueTransitionNotAllowed:  "Il workflow del progetto non prevede questo cambio di stato.",
 	IssueEditChanged:           "Il ticket è cambiato durante il salvataggio. Ricaricalo e riprova.",
@@ -377,7 +377,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueParentNotSubtask:      "Solo un tipo sotto-task può avere un padre.",
 	IssueSubtaskParentRequired: "Un sotto-task richiede un ticket padre.",
 	IssueSubtaskTypeChange:     "Un sotto-task può passare solo a un altro tipo di sotto-task.",
-	IssueSubtaskSecurity:       "Un sotto-task ha lo stesso livello di sicurezza del suo ticket padre.",
+	IssueSubtaskSecurity:       "Un sotto-task ha lo stesso livello di riservatezza del suo ticket padre.",
 	IssueSubtaskEpic:           "Un sotto-task appartiene all'epic del suo ticket padre.",
 	IssueEpicNotFound:          "Epic non trovato.",
 	IssueEpicInEpic:            "Un epic non può appartenere a un altro epic.",
