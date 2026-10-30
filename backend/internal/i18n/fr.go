@@ -65,6 +65,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// OAuth authorization of MCP clients.
 	OAuthTokenCannotAuthorize: "Un jeton d'accès ne peut pas autoriser d'application : connectez-vous avec votre mot de passe.",
 	OAuthClientInvalid:        "L'identifiant de l'application n'est pas une adresse HTTPS valide.",
+	OAuthClientUnknown:        "L'application n'est pas enregistrée ici, ou son enregistrement a expiré : elle doit s'enregistrer à nouveau.",
 	OAuthClientDocument:       "La description de l'application à l'adresse %s est illisible ou invalide.",
 	OAuthRedirectInvalid:      "L'application demande à revenir à une adresse que sa description ne liste pas.",
 	OAuthResponseType:         "L'application demande un type de réponse non pris en charge : seul « code » l'est.",

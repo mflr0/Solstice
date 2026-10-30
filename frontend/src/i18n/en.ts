@@ -1561,6 +1561,7 @@ export const en = {
       'oauth.grant': 'Application authorized',
       'oauth.deny': 'Application refused',
       'oauth.revoke': 'Application revoked',
+      'oauth.register': 'Application registered',
       'user.create': 'Account created',
       'user.update': 'Account changed',
       'user.deactivate': 'Account deactivated',
@@ -1699,6 +1700,8 @@ export const en = {
       removed: 'Removed',
       pat: 'Access token (id)',
       oauthGrant: 'Application authorization (id)',
+      registration: 'Self-registration',
+      redirectUris: 'Redirect addresses',
       grant: 'Authorization (id)',
       scopes: 'Scopes',
       refreshDays: 'Applications stay signed in (days)',
@@ -1838,6 +1841,22 @@ export const en = {
     refreshDaysHint:
       'An application authorized through OAuth that goes unused this long must be authorized again.',
     refreshDaysInvalid: (max: number) => `Enter a whole number of days, from 1 to ${max}.`,
+    registration: 'Let applications register themselves',
+    registrationHint:
+      'MCP clients without a client metadata document register through Dynamic Client Registration. Turning this off stops new registrations: applications already registered keep working.',
+    grantsTitle: 'Authorized applications',
+    grantsIntro:
+      'Applications people allowed to use their account through OAuth, such as AI agents. Revoking one stops its tokens at once.',
+    grantsEmpty: 'No application is authorized.',
+    grantsEmptyHint: 'An MCP client asks its user for authorization the first time it connects.',
+    colApp: 'Application',
+    colAuthorized: 'Authorized',
+    registered: 'self-registered',
+    registeredHint: 'It registered itself: its name is not verified.',
+    revokeGrantTitle: (name: string) => `Revoke ${name}?`,
+    revokeGrantBody: (owner: string) =>
+      `The application loses access to the account of ${owner} at once, and must ask again to come back. This cannot be undone.`,
+    grantRevoked: 'Application revoked.',
     search: 'Search by account or token name',
     show: 'Show',
     shows: {
@@ -1877,6 +1896,8 @@ export const en = {
     checking: 'Checking the request…',
     leaving: 'Going back to the application…',
     backTo: (client: string) => `Back to ${client}`,
+    unverified:
+      'This application registered itself: nothing verifies its name. Allow it only if you just started it yourself.',
   },
 
   appsPage: {

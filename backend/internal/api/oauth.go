@@ -53,6 +53,9 @@ func (s *Server) oauthRoutes(mux *http.ServeMux, route routeFunc) {
 	route("POST /api/oauth/consent", s.oauthConsent, auth.ScopeProfile)
 	route("GET /api/me/oauth-grants", s.myGrants, auth.ScopeRead)
 	route("DELETE /api/me/oauth-grants/{id}", s.revokeMyGrant, auth.ScopeProfile)
+	s.handle(mux, "POST "+oauthRegister, scopePublic, http.HandlerFunc(s.oauthRegisterEndpoint))
+	route("GET /api/admin/oauth-grants", s.adminGrants, auth.ScopeAdmin)
+	route("DELETE /api/admin/oauth-grants/{id}", s.adminRevokeGrant, auth.ScopeAdmin)
 }
 
 // grantableScopes are the scopes a client may be given: all but admin.
@@ -71,8 +74,9 @@ func scopeNames(scopes []auth.Scope) []string {
 // oauthMetadata serves the authorization server metadata (RFC 8414).
 func (s *Server) oauthMetadata(w http.ResponseWriter, r *http.Request) {
 	base := s.restOut(r).base
-	w.Header().Set("Cache-Control", "max-age=3600")
-	writeJSON(w, http.StatusOK, map[string]any{
+	// Short, so that turning registration off shows soon.
+	w.Header().Set("Cache-Control", "max-age=300")
+	meta := map[string]any{
 		"issuer":                                         base,
 		"authorization_endpoint":                         base + oauthAuthorize,
 		"token_endpoint":                                 base + oauthToken,
@@ -85,7 +89,11 @@ func (s *Server) oauthMetadata(w http.ResponseWriter, r *http.Request) {
 		"revocation_endpoint_auth_methods_supported":     []string{"none"},
 		"authorization_response_iss_parameter_supported": true,
 		"client_id_metadata_document_supported":          true,
-	})
+	}
+	if s.registrationOn(r.Context()) {
+		meta["registration_endpoint"] = base + oauthRegister
+	}
+	writeJSON(w, http.StatusOK, meta)
 }
 
 // mcpResource is the canonical URI of the MCP endpoint, the only resource
@@ -149,14 +157,9 @@ func (s *Server) readAuthorization(r *http.Request, q url.Values) (*authzRequest
 	if u.ByToken() {
 		return nil, fail(http.StatusForbidden, i18n.OAuthTokenCannotAuthorize)
 	}
-	clientID := q.Get("client_id")
-	if !validClientID(clientID) {
-		return nil, fail(http.StatusBadRequest, i18n.OAuthClientInvalid)
-	}
-	doc, err := s.fetchClient(r.Context(), clientID)
+	doc, err := s.oauthClient(r.Context(), q.Get("client_id"))
 	if err != nil {
-		s.log.Warn("OAuth client document refused", "client", clientID, "err", err)
-		return nil, failf(http.StatusBadRequest, i18n.OAuthClientDocument, clientID)
+		return nil, err
 	}
 	a := &authzRequest{doc: doc, redirectURI: q.Get("redirect_uri"), state: q.Get("state")}
 	if !doc.allowsRedirect(a.redirectURI) {
@@ -204,7 +207,8 @@ func (s *Server) oauthCheck(w http.ResponseWriter, r *http.Request) error {
 	cid, _ := url.Parse(a.doc.ClientID)
 	redirect, _ := url.Parse(a.redirectURI)
 	return writeJSON(w, http.StatusOK, map[string]any{
-		"client":       map[string]string{"id": a.doc.ClientID, "name": a.doc.ClientName, "host": cid.Host},
+		"client": map[string]any{"id": a.doc.ClientID, "name": a.doc.ClientName, "host": cid.Host,
+			"registered": a.doc.Registered},
 		"redirectHost": redirect.Host,
 		"scopes":       a.offered,
 	})
@@ -248,6 +252,12 @@ func (s *Server) oauthConsent(w http.ResponseWriter, r *http.Request) error {
 	}, time.Now())
 	if err != nil {
 		return err
+	}
+	if a.doc.Registered {
+		if _, err := s.db.ExecContext(r.Context(), `UPDATE oauth_clients SET authorized_at = ?
+			WHERE client_id = ? AND authorized_at IS NULL`, time.Now().UTC(), a.doc.ClientID); err != nil {
+			return err
+		}
 	}
 	s.auditLog(r, audit.OAuthGrant, tgt, map[string]any{"grant": grantID, "scopes": scopes})
 	return writeJSON(w, http.StatusOK, map[string]string{
@@ -395,11 +405,7 @@ func (s *Server) myGrants(w http.ResponseWriter, r *http.Request) error {
 			if err := rows.Scan(&g.ID, &g.ClientID, &g.ClientName, &scopes, &g.Created, &used); err != nil {
 				return err
 			}
-			g.Scopes, g.LastUsed = auth.ParseScopes(scopes), sqlq.Time(used)
-			if u, err := url.Parse(g.ClientID); err == nil {
-				g.ClientHost = u.Host
-			}
-			out = append(out, g)
+			out = append(out, oauthGrantRow(g, scopes, used))
 			return nil
 		}, currentUser(r).ID)
 	if err != nil {
@@ -408,28 +414,44 @@ func (s *Server) myGrants(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
+// oauthGrantRow completes a grant read from the database.
+func oauthGrantRow(g oauthGrantOut, scopes string, used sql.NullTime) oauthGrantOut {
+	g.Scopes, g.LastUsed = auth.ParseScopes(scopes), sqlq.Time(used)
+	if u, err := url.Parse(g.ClientID); err == nil {
+		g.ClientHost = u.Host
+	}
+	return g
+}
+
 // revokeMyGrant revokes a client the user authorized, with every token it
 // holds.
 func (s *Server) revokeMyGrant(w http.ResponseWriter, r *http.Request) error {
+	return s.revokeGrant(w, r, currentUser(r).ID)
+}
+
+// revokeGrant deletes a grant, and so its codes and tokens: one of the
+// user's own (owner ≠ 0), or anyone's.
+func (s *Server) revokeGrant(w http.ResponseWriter, r *http.Request, owner int64) error {
 	id, err := pathID(r, "id")
 	if err != nil {
 		return err
 	}
 	ctx := r.Context()
-	var clientID, name string
-	err = s.db.QueryRowContext(ctx, `SELECT client_id, client_name FROM oauth_grants WHERE id = ? AND user_id = ?`,
-		id, currentUser(r).ID).Scan(&clientID, &name)
+	var clientID, name, username string
+	var userID int64
+	err = s.db.QueryRowContext(ctx, `SELECT g.client_id, g.client_name, g.user_id, u.username
+		FROM oauth_grants g JOIN users u ON u.id = g.user_id WHERE g.id = ?`, id).Scan(&clientID, &name, &userID, &username)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && owner != 0 && userID != owner) {
+		return errNotFound
+	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return errNotFound
-		}
 		return err
 	}
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM oauth_grants WHERE id = ?`, id); err != nil {
 		return err
 	}
 	s.auditLog(r, audit.OAuthRevoke, audit.Target{Type: audit.TargetOAuthClient, ID: clientID, Label: name},
-		map[string]any{"grant": id})
+		map[string]any{"grant": id, "owner": username})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

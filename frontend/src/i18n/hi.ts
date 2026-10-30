@@ -1559,6 +1559,7 @@ export const hi: Messages = {
       'oauth.grant': 'ऐप्लिकेशन अधिकृत किया',
       'oauth.deny': 'ऐप्लिकेशन अस्वीकार किया',
       'oauth.revoke': 'ऐप्लिकेशन रद्द किया',
+      'oauth.register': 'ऐप्लिकेशन पंजीकृत हुआ',
       'user.create': 'खाता बनाया',
       'user.update': 'खाता बदला',
       'user.deactivate': 'खाता निष्क्रिय किया',
@@ -1697,6 +1698,8 @@ export const hi: Messages = {
       removed: 'हटाया गया',
       pat: 'एक्सेस टोकन (आईडी)',
       oauthGrant: 'ऐप्लिकेशन प्राधिकरण (id)',
+      registration: 'स्व-पंजीकरण',
+      redirectUris: 'वापसी पते',
       grant: 'प्राधिकरण (id)',
       scopes: 'स्कोप',
       refreshDays: 'ऐप्लिकेशन साइन इन रहते हैं (दिन)',
@@ -1836,6 +1839,22 @@ export const hi: Messages = {
     refreshDaysHint:
       'OAuth से अधिकृत कोई ऐप्लिकेशन इतने समय तक उपयोग न हो तो उसे फिर से अधिकृत करना होगा।',
     refreshDaysInvalid: (max: number) => `1 से ${max} तक दिनों की पूर्ण संख्या दर्ज करें।`,
+    registration: 'ऐप्लिकेशन को स्वयं पंजीकरण करने दें',
+    registrationHint:
+      'बिना मेटाडेटा दस्तावेज़ वाले MCP क्लाइंट Dynamic Client Registration से पंजीकरण करते हैं। इसे बंद करने पर नए पंजीकरण रुक जाते हैं: पहले से पंजीकृत ऐप्लिकेशन काम करते रहते हैं।',
+    grantsTitle: 'अधिकृत ऐप्लिकेशन',
+    grantsIntro:
+      'वे ऐप्लिकेशन, जैसे AI एजेंट, जिन्हें लोगों ने OAuth से अपना खाता उपयोग करने की अनुमति दी है। किसी को रद्द करने पर उसके टोकन तुरंत बंद हो जाते हैं।',
+    grantsEmpty: 'कोई ऐप्लिकेशन अधिकृत नहीं है।',
+    grantsEmptyHint: 'MCP क्लाइंट पहली बार जुड़ने पर अपने उपयोगकर्ता से अनुमति माँगता है।',
+    colApp: 'ऐप्लिकेशन',
+    colAuthorized: 'अधिकृत',
+    registered: 'स्व-पंजीकृत',
+    registeredHint: 'इसने स्वयं पंजीकरण किया है: इसका नाम सत्यापित नहीं है।',
+    revokeGrantTitle: (name: string) => `${name} रद्द करें?`,
+    revokeGrantBody: (owner: string) =>
+      `ऐप्लिकेशन ${owner} के खाते तक पहुँच तुरंत खो देता है, और वापस आने के लिए उसे फिर से पूछना होगा। यह पूर्ववत नहीं किया जा सकता।`,
+    grantRevoked: 'ऐप्लिकेशन रद्द किया गया।',
     search: 'खाते या टोकन के नाम से खोजें',
     show: 'दिखाएँ',
     shows: {
@@ -1876,6 +1895,8 @@ export const hi: Messages = {
     checking: 'अनुरोध जाँचा जा रहा है…',
     leaving: 'ऐप्लिकेशन पर लौट रहे हैं…',
     backTo: (client: string) => `${client} पर लौटें`,
+    unverified:
+      'इस ऐप्लिकेशन ने स्वयं पंजीकरण किया है: इसका नाम कोई सत्यापित नहीं करता। इसे तभी अनुमति दें जब आपने इसे अभी स्वयं शुरू किया हो।',
   },
 
   appsPage: {

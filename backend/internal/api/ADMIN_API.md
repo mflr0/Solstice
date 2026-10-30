@@ -614,11 +614,25 @@ Personal access tokens (`Authorization: Bearer sol_…`):
 - `GET /api/admin/tokens?user=<name>` → everyone's tokens, each with its
   `user` (`userRef`); `DELETE /api/admin/tokens/{id}` revokes any.
 - `GET /api/admin/tokens/settings` → `{who: everyone|admins|group, group:
-  idName | null}`; `PUT` the same with `group` as an id: who may create
-  tokens. Administrators always may; the default is administrators only.
-  Creating a token against the policy answers 403. Tokens that exist keep
-  working.
-  (`settings.tokens`)
+  idName | null, refreshDays, registration}`; `PUT` the same with `group` as
+  an id: who may create tokens and authorize OAuth applications.
+  Administrators always may; the default is administrators only. Creating a
+  token against the policy answers 403. Tokens that exist keep working.
+  `refreshDays` (1 to 365, default 30) is how long an unused OAuth refresh
+  token lasts; `registration` (default true) whether OAuth clients may
+  register at `/register`. Both are optional in a `PUT`: left out, they keep
+  their value. (`settings.tokens`)
+
+OAuth grants (applications authorized for the MCP endpoint, see
+`docs/en/mcp.md`):
+
+- `GET /api/me/oauth-grants` → `[{id, clientId, clientName, clientHost,
+  scopes, created, lastUsed}]`, most recently used first; `DELETE
+  /api/me/oauth-grants/{id}` revokes one, with its tokens. (`oauth.revoke`)
+- `GET /api/admin/oauth-grants` → everyone's, each with its `user`
+  (`userRef`) and `registered` (the client registered itself at `/register`:
+  `clientHost` is empty and its name unverified); `DELETE
+  /api/admin/oauth-grants/{id}` revokes any. (`oauth.revoke`, with `owner`)
 
 Audit log:
 

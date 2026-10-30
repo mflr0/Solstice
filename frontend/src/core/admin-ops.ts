@@ -37,6 +37,7 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'oauth.grant',
   'oauth.deny',
   'oauth.revoke',
+  'oauth.register',
   'user.create',
   'user.update',
   'user.deactivate',

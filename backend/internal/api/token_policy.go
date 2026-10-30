@@ -31,11 +31,13 @@ type tokenPolicy struct {
 }
 
 // tokenPolicyOut is the policy as the administration reads it, with the
-// lifetime of OAuth refresh tokens (oauth.go).
+// lifetime of OAuth refresh tokens (oauth.go) and whether OAuth clients may
+// register (oauth_register.go).
 type tokenPolicyOut struct {
-	Who         string  `json:"who"`
-	Group       *idName `json:"group"` // for "group", while the group exists
-	RefreshDays int     `json:"refreshDays"`
+	Who          string  `json:"who"`
+	Group        *idName `json:"group"` // for "group", while the group exists
+	RefreshDays  int     `json:"refreshDays"`
+	Registration bool    `json:"registration"`
 }
 
 // tokenPolicy reads the policy; a missing or unreadable one means
@@ -115,20 +117,22 @@ func (s *Server) adminTokenSettings(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	out.RefreshDays = s.refreshDays(r.Context())
+	out.RefreshDays, out.Registration = s.refreshDays(r.Context()), s.registrationOn(r.Context())
 	return writeJSON(w, http.StatusOK, out)
 }
 
 // putTokenSettings changes who may create tokens: {"who": "everyone" |
 // "admins" | "group", "group": <id, for "group">, "refreshDays": <days an
-// unused OAuth refresh token lasts, optional>}.
+// unused OAuth refresh token lasts, optional>, "registration": <whether
+// OAuth clients may register, optional>}.
 func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
 	}
 	var body struct {
 		tokenPolicy
-		RefreshDays *int `json:"refreshDays"`
+		RefreshDays  *int  `json:"refreshDays"`
+		Registration *bool `json:"registration"`
 	}
 	if err := readJSON(r, &body); err != nil {
 		return err
@@ -151,7 +155,7 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 	default:
 		return fail(http.StatusBadRequest, i18n.TokenPolicyInvalid)
 	}
-	before, beforeDays := s.tokenPolicy(ctx), s.refreshDays(ctx)
+	before, beforeDays, beforeReg := s.tokenPolicy(ctx), s.refreshDays(ctx), s.registrationOn(ctx)
 	if err := s.out.settings.SetJSON(ctx, tokenCreatorsSetting, in); err != nil {
 		return err
 	}
@@ -163,12 +167,18 @@ func (s *Server) putTokenSettings(w http.ResponseWriter, r *http.Request) error 
 		}
 		details["refreshDays"] = map[string]any{"from": beforeDays, "to": *d}
 	}
+	if on := body.Registration; on != nil && *on != beforeReg {
+		if err := s.out.settings.SetJSON(ctx, oauthRegistrationSetting, *on); err != nil {
+			return err
+		}
+		details["registration"] = map[string]any{"from": beforeReg, "to": *on}
+	}
 	s.auditLog(r, audit.SettingsTokens, audit.Target{Type: audit.TargetSettings, ID: tokenCreatorsSetting}, details)
 	out, err := s.policyOut(ctx, in)
 	if err != nil {
 		return err
 	}
-	out.RefreshDays = s.refreshDays(ctx)
+	out.RefreshDays, out.Registration = s.refreshDays(ctx), s.registrationOn(ctx)
 	return writeJSON(w, http.StatusOK, out)
 }
 

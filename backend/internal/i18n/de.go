@@ -66,6 +66,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// OAuth authorization of MCP clients.
 	OAuthTokenCannotAuthorize: "Ein Zugriffstoken kann keine Anwendungen autorisieren: Melden Sie sich mit Ihrem Passwort an.",
 	OAuthClientInvalid:        "Die Kennung der Anwendung ist keine gültige HTTPS-Adresse.",
+	OAuthClientUnknown:        "Die Anwendung ist hier nicht registriert, oder ihre Registrierung ist abgelaufen: Sie muss sich erneut registrieren.",
 	OAuthClientDocument:       "Die Beschreibung der Anwendung unter %s ist nicht lesbar oder ungültig.",
 	OAuthRedirectInvalid:      "Die Anwendung möchte zu einer Adresse zurückkehren, die ihre Beschreibung nicht aufführt.",
 	OAuthResponseType:         "Die Anwendung verlangt einen nicht unterstützten Antworttyp: Nur „code“ wird unterstützt.",

@@ -9,7 +9,13 @@
     sameCreators,
     type TokenShow,
   } from '../../core/admin-ops.js';
-  import type { AccessToken, Group, TokenSettings } from '../../core/admin-types.js';
+  import type {
+    AccessToken,
+    AdminOAuthGrant,
+    Group,
+    TokenScope,
+    TokenSettings,
+  } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -20,8 +26,10 @@
   import EmptyState from '../EmptyState.svelte';
 
   /**
-   * Every account's personal access tokens, to revoke, and who may create
-   * them: administrators only, the members of a group, or everyone.
+   * Every account's personal access tokens and OAuth grants, to revoke, and
+   * who may create tokens: administrators only, the members of a group, or
+   * everyone; with how long OAuth applications stay signed in and whether
+   * they may register themselves.
    */
   const WHO: TokenSettings['who'][] = ['admins', 'group', 'everyone'];
   const STAMPS: Record<TokenState, string> = { active: 'done', expiring: 'doing', expired: '' };
@@ -37,6 +45,7 @@
   let who = $state<TokenSettings['who']>('admins');
   let group = $state<number | null>(null);
   let refreshDays = $state('');
+  let registration = $state(true);
   let policyError = $state('');
   let saving = $state(false);
 
@@ -46,14 +55,21 @@
   const refreshProblem = $derived(!refreshDaysValid(refreshDays));
   const dirty = $derived(
     policy !== null &&
-      (!sameCreators(policy, who, group) || refreshDays.trim() !== String(policy.refreshDays)),
+      (!sameCreators(policy, who, group) ||
+        refreshDays.trim() !== String(policy.refreshDays) ||
+        registration !== policy.registration),
   );
+
+  let grants = $state<AdminOAuthGrant[] | null>(null);
+  let grantsError = $state('');
+  let revokingGrant = $state<AdminOAuthGrant | null>(null);
 
   function adopt(s: TokenSettings) {
     policy = s;
     who = s.who;
     group = s.group?.id ?? null;
     refreshDays = String(s.refreshDays);
+    registration = s.registration;
   }
 
   async function load() {
@@ -65,8 +81,18 @@
     }
   }
 
+  async function loadGrants() {
+    try {
+      grants = await adminApi.grants();
+      grantsError = '';
+    } catch (e) {
+      grantsError = errorMessage(e);
+    }
+  }
+
   $effect(() => {
     void load();
+    void loadGrants();
     adminApi
       .tokenSettings()
       .then(adopt)
@@ -88,6 +114,7 @@
           who,
           who === 'group' ? (group ?? undefined) : undefined,
           Number(refreshDays.trim()),
+          registration,
         ),
       );
       notify(t.tokensAdmin.policySaved);
@@ -171,6 +198,18 @@
             <span class="hint" id="token-refresh-hint">{t.tokensAdmin.refreshDaysHint}</span>
           {/if}
         </label>
+        <div class="field">
+          <label class="check">
+            <input
+              class="checkbox"
+              type="checkbox"
+              bind:checked={registration}
+              aria-describedby="token-registration-hint"
+            />
+            <span>{t.tokensAdmin.registration}</span>
+          </label>
+          <span class="hint" id="token-registration-hint">{t.tokensAdmin.registrationHint}</span>
+        </div>
         <div>
           <button
             class="btn btn-primary"
@@ -186,7 +225,7 @@
   </div>
 </section>
 
-{#snippet scopeList(tok: AccessToken)}
+{#snippet scopeList(tok: { scopes: TokenScope[] })}
   <span class="scope-list">
     {#each tok.scopes as sc (sc)}
       <span class="chip key" title={t.tokensPage.scopeHints[sc]}>{sc}</span>
@@ -280,6 +319,85 @@
   </div>
 {/if}
 
+<section class="grants" aria-labelledby="oauth-grants">
+  <h2 class="section-title" id="oauth-grants">
+    {t.tokensAdmin.grantsTitle}
+    {#if grants}<span class="count muted">{formatNumber(grants.length)}</span>{/if}
+  </h2>
+  <p class="muted small">{t.tokensAdmin.grantsIntro}</p>
+  {#if grantsError}
+    <p class="error-text" role="alert">{grantsError}</p>
+  {:else if !grants}
+    <p class="muted loading">{t.common.loading}</p>
+  {:else if grants.length === 0}
+    <EmptyState message={t.tokensAdmin.grantsEmpty} hint={t.tokensAdmin.grantsEmptyHint} />
+  {:else}
+    <div class="table-scroll">
+      <table class="ledger tokens">
+        <thead>
+          <tr>
+            <th>{t.tokensAdmin.colOwner}</th>
+            <th>{t.tokensAdmin.colApp}</th>
+            <th class="c-scopes">{t.tokensAdmin.colScopes}</th>
+            <th class="c-created">{t.tokensAdmin.colAuthorized}</th>
+            <th class="c-used">{t.tokensAdmin.colUsed}</th>
+            <th><span class="sr-only">{t.common.actions}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each grants as g (g.id)}
+            <tr class:is-off={!g.user.active}>
+              <td>
+                {g.user.name}
+                <span class="key muted">{g.user.username}</span>
+                {#if !g.user.active}<span class="stamp">{t.tokensAdmin.inactiveOwner}</span>{/if}
+              </td>
+              <td class="app">
+                {g.clientName}
+                {#if g.registered}
+                  <span class="stamp" title={t.tokensAdmin.registeredHint}
+                    >{t.tokensAdmin.registered}</span
+                  >
+                {:else}
+                  <span class="key muted host" title={g.clientId}>{g.clientHost}</span>
+                {/if}
+                <span class="scopes-below">{@render scopeList(g)}</span>
+              </td>
+              <td class="c-scopes">{@render scopeList(g)}</td>
+              <td class="c-created muted" title={formatDateTime(g.created)}
+                >{relative(g.created)}</td
+              >
+              <td class="c-used muted" title={g.lastUsed ? formatDateTime(g.lastUsed) : undefined}>
+                {g.lastUsed ? relative(g.lastUsed) : t.tokensAdmin.neverUsed}
+              </td>
+              <td class="row-actions">
+                <button class="link-btn" onclick={() => (revokingGrant = g)}
+                  >{t.tokensAdmin.revoke}</button
+                >
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+</section>
+
+<ConfirmDialog
+  open={revokingGrant !== null}
+  title={t.tokensAdmin.revokeGrantTitle(revokingGrant?.clientName ?? '')}
+  confirm={t.tokensAdmin.revoke}
+  onclose={() => (revokingGrant = null)}
+  onconfirm={async () => {
+    if (!revokingGrant) return;
+    await adminApi.revokeGrant(revokingGrant.id);
+    notify(t.tokensAdmin.grantRevoked);
+    void loadGrants();
+  }}
+>
+  <p>{t.tokensAdmin.revokeGrantBody(revokingGrant?.user.name ?? '')}</p>
+</ConfirmDialog>
+
 <ConfirmDialog
   open={revoking !== null}
   title={t.tokensAdmin.revokeTitle(revoking?.name ?? '')}
@@ -319,6 +437,16 @@
 
   .refresh {
     max-width: 22rem;
+  }
+
+  .grants {
+    margin-top: 32px;
+  }
+
+  .app .stamp,
+  .app .host {
+    margin-left: 4px;
+    overflow-wrap: anywhere;
   }
 
   @media (max-width: 760px) {

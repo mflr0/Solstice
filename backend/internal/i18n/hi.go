@@ -67,6 +67,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// OAuth authorization of MCP clients.
 	OAuthTokenCannotAuthorize: "एक्सेस टोकन से ऐप्लिकेशन अधिकृत नहीं किए जा सकते: अपने पासवर्ड से साइन इन करें।",
 	OAuthClientInvalid:        "ऐप्लिकेशन का पहचानकर्ता मान्य HTTPS पता नहीं है।",
+	OAuthClientUnknown:        "ऐप्लिकेशन यहाँ पंजीकृत नहीं है, या उसका पंजीकरण समाप्त हो गया है: उसे फिर से पंजीकरण करना होगा।",
 	OAuthClientDocument:       "%s पर ऐप्लिकेशन का विवरण पढ़ा नहीं जा सकता या अमान्य है।",
 	OAuthRedirectInvalid:      "ऐप्लिकेशन ऐसे पते पर लौटना चाहता है जो उसके विवरण में नहीं है।",
 	OAuthResponseType:         "ऐप्लिकेशन ने असमर्थित प्रतिक्रिया प्रकार माँगा: केवल “code” समर्थित है।",

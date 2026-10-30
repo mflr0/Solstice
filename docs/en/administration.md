@@ -497,6 +497,22 @@ Administrators always may. Tightening the policy does not revoke existing
 tokens: revoke them from the list. A token cannot create other tokens.
 Resetting a password through a reset link also deletes the account's tokens.
 
+The same policy says who may authorize applications (MCP clients) through
+OAuth (see [mcp.md](mcp.md)). Next to it:
+
+- **Applications stay signed in for (days)**: an authorized application
+  unused this long must be authorized again. 30 days by default.
+- **Let applications register themselves** (on by default): MCP clients
+  without a client metadata document register through Dynamic Client
+  Registration. Turned off, new registrations are refused; applications
+  already registered keep working.
+
+"Authorized applications", below the tokens, lists what everyone authorized:
+the account, the application, its scopes, when it was authorized and last
+used. A **self-registered** application chose its own name, which nothing
+verifies. Revoking an authorization ends the application's tokens at once;
+it must ask its user again to come back.
+
 ## System
 
 ### Audit log

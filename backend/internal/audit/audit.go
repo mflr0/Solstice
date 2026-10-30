@@ -107,10 +107,12 @@ const (
 	WebhookUpdate        = "webhook.update"
 	WebhookDelete        = "webhook.delete"
 	SettingsTokens       = "settings.tokens"
-	// OAuth clients a user authorized, refused or revoked.
-	OAuthGrant  = "oauth.grant"
-	OAuthDeny   = "oauth.deny"
-	OAuthRevoke = "oauth.revoke"
+	// OAuth clients a user authorized, refused or revoked, and clients that
+	// registered themselves.
+	OAuthGrant    = "oauth.grant"
+	OAuthDeny     = "oauth.deny"
+	OAuthRevoke   = "oauth.revoke"
+	OAuthRegister = "oauth.register"
 	// Issue security levels of a project, and who may see their issues.
 	SecurityLevelCreate       = "securitylevel.create"
 	SecurityLevelUpdate       = "securitylevel.update"
@@ -147,7 +149,7 @@ const (
 	TargetWebhook     TargetType = "webhook"
 	TargetSettings    TargetType = "settings"
 	TargetImport      TargetType = "import"
-	TargetOAuthClient TargetType = "oauthclient" // ID: the client_id URL
+	TargetOAuthClient TargetType = "oauthclient" // ID: the client_id
 )
 
 // Target is what an action was done to: a user, a project, a token…
