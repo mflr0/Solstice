@@ -36,6 +36,8 @@
     /** The query's order and what a header click does (IssueTable's). */
     sort?: readonly SortTerm[] | undefined;
     onsort?: ((column: string) => void) | undefined;
+    /** The words of the query's `text ~`, marked in the summaries (IssueTable's). */
+    textSearch?: string | undefined;
   }
   const {
     q = '',
@@ -53,6 +55,7 @@
     selectable = false,
     sort,
     onsort,
+    textSearch,
   }: Props = $props();
 
   let selected = $state<string[]>([]);
@@ -158,6 +161,7 @@
     {selected}
     {sort}
     {onsort}
+    {textSearch}
     onselect={selectable ? (keys) => (selected = keys) : undefined}
   />
   {#if onpage}

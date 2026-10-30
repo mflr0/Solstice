@@ -266,6 +266,7 @@
         {names}
         {selectable}
         sort={filters.order}
+        textSearch={filters.text}
         onsort={visual ? (column) => setOrder(clickSort(column, filters.order)) : undefined}
         page={loc.page}
         ontotal={(n) => (total = n)}

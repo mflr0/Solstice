@@ -36,6 +36,8 @@
   let open = $state(false);
   let active = $state(-1);
   let issues = $state<IssueSummary[]>([]);
+  /** The words the issues were found with: q may have changed since. */
+  let searched = $state('');
   let people = $state<UserRef[]>([]);
   let input: HTMLInputElement | undefined = $state();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -92,6 +94,7 @@
     if (mine !== seq) return;
     const found = [...(byKey?.issues ?? []), ...(byText?.issues ?? [])];
     issues = found.filter((i, n) => found.findIndex((j) => j.key === i.key) === n).slice(0, 6);
+    searched = words;
     people = users.slice(0, 3);
   }
 
@@ -212,7 +215,9 @@
             {#if row.issue}
               <TypeMark type={row.issue.type} />
               <span class="key">{row.issue.key}</span>
-              <span class="summary">{row.issue.summary}</span>
+              <span class="summary"
+                ><Highlight text={row.issue.summary} search={searched} fulltext /></span
+              >
               <Stamp status={row.issue.status} />
             {:else if row.project}
               <span class="key"><Highlight text={row.project.key} search={q} /></span>

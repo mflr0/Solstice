@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { highlight, highlightPrefix, matches } from '../../src/core/text.js';
+import { highlight, highlightPrefix, highlightText, matches } from '../../src/core/text.js';
 
 describe('matches', () => {
   it('takes the words in any order', () => {
@@ -79,5 +79,43 @@ describe('highlightPrefix', () => {
       { text: 'İs', match: true },
       { text: 'tanbul', match: false },
     ]);
+  });
+});
+
+describe('highlightText', () => {
+  const marked = (text: string, search: string) =>
+    highlightText(text, search)
+      .filter((p) => p.match)
+      .map((p) => p.text);
+
+  it('marks each word where a word of the text starts with it', () => {
+    expect(marked('Login page crashes', 'crash log')).toEqual(['Log', 'crash']);
+    expect(marked('Fix the API', 'api')).toEqual(['API']);
+  });
+
+  it('marks nothing inside a word', () => {
+    expect(marked('rapid', 'api')).toEqual([]);
+  });
+
+  it('falls back to the substring without a word of 3 characters', () => {
+    expect(marked('Go up', 'up')).toEqual(['up']);
+    expect(marked('Go up', 'go u')).toEqual(['Go u']);
+  });
+
+  it('ignores the operators in the search', () => {
+    expect(marked('Login page crashes', '+crash* -"log" (pa)')).toEqual(['Log', 'crash']);
+  });
+
+  it('follows the word boundaries of the index', () => {
+    expect(marked("l'école d'été", 'ecole ete')).toEqual(['école', 'été']);
+    expect(marked('e-mail sender', 'mail')).toEqual(['mail']);
+    expect(marked('foo_bar', 'bar')).toEqual([]);
+    expect(marked('Login crashes', 'crash,')).toEqual(['crash']);
+    expect(marked('हिंदी अनुवाद', 'अनु')).toEqual(['अनु']);
+    expect(marked('अनुवाद', 'वाद')).toEqual([]);
+  });
+
+  it('returns the text as one plain part for a blank search', () => {
+    expect(highlightText('Alice', '  ')).toEqual([{ text: 'Alice', match: false }]);
   });
 });
