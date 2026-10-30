@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Group, UserRow } from '../../core/admin-types.js';
   import { canResendInvitation } from '../../core/account-links.js';
   import { filterUsers, USER_SHOWS, type UserShow } from '../../core/admin-lists.js';
@@ -49,15 +50,15 @@
     }
   }
 
+  // Untracked: load reads q, so the effect would rerun on every keystroke.
   $effect(() => {
-    void load();
+    untrack(() => void load());
     adminApi
       .groups()
       .then((g) => (groups = g))
       .catch((e: unknown) => notify(errorMessage(e), 'error'));
   });
 
-  // Not in the effect above: load reads q, so that one reruns on every keystroke.
   $effect(() => () => clearTimeout(timer));
 
   function typed() {

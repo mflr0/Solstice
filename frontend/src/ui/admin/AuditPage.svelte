@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { auditFiltered, auditParams, auditQuery } from '../../core/admin-forms.js';
   import {
     AUDIT_FAMILIES,
@@ -99,7 +100,8 @@
   }
 
   $effect(() => {
-    void load();
+    // Untracked: load reads the filters, so the effect would rerun on every keystroke.
+    untrack(() => void load());
     void loadRetention();
     return () => clearTimeout(timer);
   });
