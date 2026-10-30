@@ -3,7 +3,16 @@
   import { jiraDuration } from '../core/dates.js';
   import { readEstimate } from '../core/estimates.js';
   import { projectOfIssueKey } from '../core/marks.js';
-  import { newIssueProblems } from '../core/new-issue.js';
+  import {
+    emptyMemory,
+    memoryKey,
+    newIssueProblems,
+    readMemory,
+    recall,
+    remember,
+    startProject,
+    type NewIssueMemory,
+  } from '../core/new-issue.js';
   import { paths } from '../core/route.js';
   import type { Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
@@ -71,12 +80,32 @@
     return v.id;
   }
 
-  function lastProject(): string {
+  function loadMemory(): NewIssueMemory {
+    const id = session.me?.id;
+    if (id === undefined) return emptyMemory;
     try {
-      return localStorage.getItem('solstice.lastProject') ?? '';
+      return readMemory(localStorage.getItem(memoryKey(id)));
     } catch {
-      return '';
+      return emptyMemory;
     }
+  }
+
+  // Fills in what the viewer last chose in this project. The remembered assignee
+  // is kept only if still assignable there; otherwise the default applies.
+  function restore(key: string, d: ProjectDetail) {
+    const r = recall(loadMemory(), key, d.components);
+    components = r.components;
+    assignee = null;
+    const who = r.assignee;
+    if (!who) return;
+    api
+      .assignable(key, who.username)
+      .then((list) => {
+        if (key === projectKey && assignee === null && list.some((u) => u.id === who.id)) {
+          assignee = who;
+        }
+      })
+      .catch(() => {});
   }
 
   // Each opening starts from a clean form.
@@ -95,13 +124,17 @@
     tried = false;
     const prios = session.meta?.priorities ?? [];
     priorityId = prios[Math.floor(prios.length / 2)]?.id ?? '';
-    const wanted =
-      dialogs.createDefaults.project ??
-      (parent ? projectOfIssueKey(parent) : null) ??
-      lastProject();
+    const explicit = dialogs.createDefaults.project ?? (parent ? projectOfIssueKey(parent) : null);
     void api.projects().then((list) => {
       projects = list;
-      projectKey = list.some((p) => p.key === wanted) ? wanted : (list[0]?.key ?? '');
+      const key = startProject(
+        explicit,
+        loadMemory(),
+        list.map((p) => p.key),
+      );
+      // The same project as last time: its detail is loaded, only the fields need restoring.
+      if (key === projectKey && detail) restore(key, detail);
+      else projectKey = key;
     });
   });
 
@@ -112,7 +145,7 @@
     void api.project(key).then((d) => {
       if (key !== projectKey) return;
       detail = d;
-      components = [];
+      restore(key, d);
       fixVersions = [];
       const offered = d.issueTypes.filter((ty) => ty.subtask === (parent !== ''));
       if (!offered.some((ty) => ty.id === typeId)) typeId = offered[0]?.id ?? '';
@@ -149,7 +182,11 @@
     try {
       const { key } = await api.createIssue(fields);
       try {
-        localStorage.setItem('solstice.lastProject', projectKey);
+        const id = session.me?.id;
+        if (id !== undefined) {
+          const m = remember(loadMemory(), projectKey, { assignee, components });
+          localStorage.setItem(memoryKey(id), JSON.stringify(m));
+        }
       } catch {
         // Not remembered: no harm.
       }
