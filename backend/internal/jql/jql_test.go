@@ -450,3 +450,18 @@ func TestCompilePinned(t *testing.T) {
 		}
 	}
 }
+
+func TestCompileTextSkipsStopwords(t *testing.T) {
+	for q, want := range map[string]any{
+		`text ~ "fix the api"`:     "+fix* +api*",
+		`text ~ "The, API with x"`: "+API*",
+		`text ~ "then api"`:        "+then* +api*",
+		`text ~ "the with"`:        "%the with%",
+		`text !~ "for what fixes"`: "+fixes*",
+	} {
+		_, args, _ := compile(t, q)
+		if len(args) != 1 || args[0] != want {
+			t.Errorf("%s: args %v, want [%v]", q, args, want)
+		}
+	}
+}

@@ -99,16 +99,30 @@ export function highlightPrefix(text: string, prefix: string): TextPart[] {
 /** A letter, a digit or `_`: what MariaDB's full-text index keeps inside a word. */
 const WORD_END = /[\p{L}\p{M}\p{N}_]$/u;
 
+/** InnoDB's default stopwords of 3 characters or more, as in `ftStopwords` of backend/internal/jql/compile.go. */
+const STOPWORDS = new Set(
+  'about are com for from how that the this was what when where who will with und www'.split(' '),
+);
+
+/** Whether the server ignores a search word, punctuation around it aside. */
+function stopword(w: string): boolean {
+  return STOPWORDS.has(
+    w.replace(/^[^\p{L}\p{M}\p{N}_]+|[^\p{L}\p{M}\p{N}_]+$/gu, '').toLowerCase(),
+  );
+}
+
 /**
- * The text cut into plain and matched parts, by the server's rule for `text ~`:
+ * The text cut into plain and matched parts, after the server's rule for `text ~`:
  * its operators dropped, each word of 3 characters or more marked where a word
- * of the text starts with it; with no such word, the whole search as a substring.
+ * of the text starts with it, stopwords included though the server ignores
+ * them; with only stopwords or shorter words, the whole search as a substring.
  */
 export function highlightText(text: string, search: string): TextPart[] {
-  const words = search
+  let words = search
     .split(/\s+/)
     .map((w) => w.replace(/[+\-<>()~*"@]/g, ''))
     .filter((w) => [...w].length >= 3);
+  if (words.every(stopword)) words = [];
   const { folded, from, to } = folding(text);
   const spans: [number, number][] = [];
   const mark = (w: string, start: (i: number) => boolean) => {
