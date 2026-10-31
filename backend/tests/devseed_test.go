@@ -29,7 +29,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	type state struct{ accounts, issues, comments, projects string }
+	type state struct{ accounts, issues, comments, projects, boards string }
 	read := func() state {
 		var accounts []string
 		if err := sqlq.Each(ctx, conn, `SELECT username, COALESCE(locale, '-'), is_admin FROM users ORDER BY username`,
@@ -73,7 +73,27 @@ func TestDevSeed(t *testing.T) {
 			}); err != nil {
 			t.Fatal(err)
 		}
-		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " ")}
+		// kind/columns/sprints closed, active, future/issues on the board's projects
+		var boards []string
+		if err := sqlq.Each(ctx, conn, `SELECT b.kind, (SELECT COUNT(*) FROM board_columns WHERE board_id = b.id),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'closed'),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'active'),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'future'),
+			(SELECT COUNT(DISTINCT si.issue_id) FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
+				WHERE sp.board_id = b.id)
+			FROM boards b ORDER BY b.kind`,
+			func(rows *sql.Rows) error {
+				var kind string
+				var columns, closed, active, future, inSprints int
+				if err := rows.Scan(&kind, &columns, &closed, &active, &future, &inSprints); err != nil {
+					return err
+				}
+				boards = append(boards, fmt.Sprintf("%s/%d/%d,%d,%d/%d", kind, columns, closed, active, future, inSprints))
+				return nil
+			}); err != nil {
+			t.Fatal(err)
+		}
+		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " "), strings.Join(boards, " ")}
 	}
 
 	var out strings.Builder
@@ -81,10 +101,23 @@ func TestDevSeed(t *testing.T) {
 		t.Fatalf("first run: %v\n%s", err, out.String())
 	}
 	first := read()
-	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "12", "6",
-		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)"}
+	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "33", "6",
+		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)",
+		"kanban/4/0,0,0/0 scrum/3/2,1,1/18"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
+	}
+	// The reports need a history: closed sprints in the past, in order, and
+	// no change dated after now.
+	var badSprints, future int
+	if err := conn.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM sprints WHERE state <> 'future' AND (start_at >= UTC_TIMESTAMP() - INTERVAL 1 DAY
+			OR (state = 'closed' AND (completed_at >= UTC_TIMESTAMP() - INTERVAL 1 DAY OR completed_at <= start_at)))),
+		(SELECT COUNT(*) FROM change_groups WHERE created_at > UTC_TIMESTAMP())`).Scan(&badSprints, &future); err != nil {
+		t.Fatal(err)
+	}
+	if badSprints != 0 || future != 0 {
+		t.Errorf("%d sprints not dated in the past, %d changes dated in the future", badSprints, future)
 	}
 	var host string
 	if err := conn.QueryRowContext(ctx, `SELECT value FROM settings WHERE name = 'mail'`).Scan(&host); err != nil ||

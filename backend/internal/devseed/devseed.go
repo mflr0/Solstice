@@ -1,7 +1,8 @@
 // Package devseed fills a development database: an administrator, mock users
 // in every interface language, projects of every kind with their categories,
-// components and versions, demo issues, and e-mail sent to a local Mailpit. Only cmd/devseed uses it, so its passwords never ship in
-// the solstice binary.
+// components and versions, demo issues, a Scrum and a Kanban board with a
+// history for their reports, and e-mail sent to a local Mailpit. Only
+// cmd/devseed uses it, so its passwords never ship in the solstice binary.
 package devseed
 
 import (
@@ -108,5 +109,5 @@ func Run(ctx context.Context, conn *sql.DB, opt Options) error {
 	if created > 0 {
 		say("created %d issues in the project %s", created, Project)
 	}
-	return nil
+	return ensureBoards(ctx, conn, srv.URL, admin, ids, say)
 }

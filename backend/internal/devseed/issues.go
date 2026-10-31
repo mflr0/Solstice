@@ -54,15 +54,7 @@ func ensureIssues(ctx context.Context, conn *sql.DB, base string, admin *client,
 	if typ == "" {
 		return 0, errors.New("the project has no standard issue type")
 	}
-	clients := map[string]*client{}
-	as := func(username string) (*client, error) {
-		if c, ok := clients[username]; ok {
-			return c, nil
-		}
-		c, err := login(ctx, base, username, UserPassword)
-		clients[username] = c
-		return c, err
-	}
+	as := newSessions(ctx, base).as
 	created := 0
 	for _, is := range issues {
 		var exists int
@@ -107,6 +99,11 @@ func ensureIssues(ctx context.Context, conn *sql.DB, base string, admin *client,
 
 // moveTo moves an issue to the first status of a category.
 func moveTo(c *client, key string, category issue.StatusCategory) error {
+	return moveToNth(c, key, category, 0)
+}
+
+// moveToNth moves an issue to the nth status of a category, in workflow order.
+func moveToNth(c *client, key string, category issue.StatusCategory, nth int) error {
 	var d struct {
 		Statuses []struct{ ID, Category string }
 	}
@@ -114,9 +111,13 @@ func moveTo(c *client, key string, category issue.StatusCategory) error {
 		return err
 	}
 	for _, s := range d.Statuses {
-		if issue.StatusCategory(s.Category) == category {
+		if issue.StatusCategory(s.Category) != category {
+			continue
+		}
+		if nth == 0 {
 			return c.call("PATCH", "/api/issues/"+key, map[string]any{"status": s.ID}, nil)
 		}
+		nth--
 	}
-	return fmt.Errorf("no %s status", category)
+	return fmt.Errorf("no %s status at that position", category)
 }

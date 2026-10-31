@@ -61,3 +61,26 @@ func (c *client) call(method, path string, body, out any) error {
 	}
 	return json.Unmarshal(raw, out)
 }
+
+// sessions signs in each mock user once, on first use.
+type sessions struct {
+	ctx     context.Context
+	base    string
+	clients map[string]*client
+}
+
+func newSessions(ctx context.Context, base string) *sessions {
+	return &sessions{ctx: ctx, base: base, clients: map[string]*client{}}
+}
+
+func (s *sessions) as(username string) (*client, error) {
+	if c, ok := s.clients[username]; ok {
+		return c, nil
+	}
+	c, err := login(s.ctx, s.base, username, UserPassword)
+	if err != nil {
+		return nil, err
+	}
+	s.clients[username] = c
+	return c, nil
+}

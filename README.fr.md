@@ -327,10 +327,21 @@ archivées) :
 
 | Clé | Type | Catégorie | Responsable |
 | --- | --- | --- | --- |
-| `DEMO` | logiciel, avec une douzaine de tickets | Products | alice |
+| `DEMO` | logiciel, avec des tickets de démonstration | Products | alice |
 | `MOB` | logiciel | Products | hans |
 | `OPS` | métier | Internal | marie |
 | `OLD` | logiciel, archivé | aucune | tom |
+
+et deux tableaux, avec des semaines d'historique pour leurs rapports :
+
+- `Demo Scrum` sur `DEMO`, estimé en Story Points : deux sprints terminés,
+  un actif, un à venir et un backlog.
+- `Mobile and office Kanban` sur `MOB` et `OPS` : un backlog, des tickets dans
+  chaque colonne, une limite de travail en cours, des filtres rapides et des
+  couloirs par responsable.
+
+L'API date tout de maintenant : le remplissage recule donc dans la base
+l'historique de ce qu'il crée.
 
 Il refuse une base qui a des comptes mais pas d'administrateur `seed` : il ne
 touche jamais une vraie instance.
