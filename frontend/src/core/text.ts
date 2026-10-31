@@ -112,16 +112,17 @@ function stopword(w: string): boolean {
 }
 
 /**
- * The text cut into plain and matched parts, by the server's rule for `text ~`:
- * its operators dropped, each word of 3 characters or more that isn't a
- * stopword marked where a word of the text starts with it; with no such word,
- * the whole search as a substring.
+ * The text cut into plain and matched parts, after the server's rule for `text ~`:
+ * its operators dropped, each word of 3 characters or more marked where a word
+ * of the text starts with it, stopwords included though the server ignores
+ * them; with only stopwords or shorter words, the whole search as a substring.
  */
 export function highlightText(text: string, search: string): TextPart[] {
-  const words = search
+  let words = search
     .split(/\s+/)
     .map((w) => w.replace(/[+\-<>()~*"@]/g, ''))
-    .filter((w) => [...w].length >= 3 && !stopword(w));
+    .filter((w) => [...w].length >= 3);
+  if (words.every(stopword)) words = [];
   const { folded, from, to } = folding(text);
   const spans: [number, number][] = [];
   const mark = (w: string, start: (i: number) => boolean) => {

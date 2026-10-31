@@ -115,15 +115,18 @@ describe('highlightText', () => {
     expect(marked('अनुवाद', 'वाद')).toEqual([]);
   });
 
-  it("skips the stopwords the server's index ignores", () => {
-    expect(marked('Fix the API', 'fix the api')).toEqual(['Fix', 'API']);
-    expect(marked('Fix the API', 'The, API')).toEqual(['API']);
+  it("marks the stopwords the server's index ignores, with other words", () => {
+    expect(marked('Fix the API', 'fix the api')).toEqual(['Fix', 'the', 'API']);
+    expect(marked('Fix the API', 'The, API')).toEqual(['the', 'API']);
     expect(marked('Then what', 'then')).toEqual(['Then']);
   });
 
   it('falls back to the substring with stopwords only', () => {
     expect(marked('Fix the API', 'the')).toEqual(['the']);
     expect(marked('Then what', 'the')).toEqual(['The']);
+    expect(marked('Bathe', 'the with')).toEqual([]);
+    expect(marked('Bathe with the', 'the with')).toEqual(['the with']);
+    expect(marked('Bathe', 'the')).toEqual(['the']);
   });
 
   it('returns the text as one plain part for a blank search', () => {
