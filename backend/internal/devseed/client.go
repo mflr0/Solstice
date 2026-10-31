@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
+	"net/textproto"
 )
 
 // client is a signed-in session on the in-process server.
@@ -43,6 +45,35 @@ func (c *client) call(method, path string, body, out any) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	return c.do(req, out)
+}
+
+// upload sends one file as a multipart form, the way the browser does.
+func (c *client) upload(path, name, mimeType string, data []byte) error {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	h := textproto.MIMEHeader{}
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename=%q`, name))
+	h.Set("Content-Type", mimeType)
+	part, err := w.CreatePart(h)
+	if err != nil {
+		return err
+	}
+	if _, err := part.Write(data); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", c.base+path, &body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return c.do(req, nil)
+}
+
+func (c *client) do(req *http.Request, out any) error {
 	req.Header.Set("X-Solstice", "1")
 	res, err := c.http.Do(req)
 	if err != nil {
@@ -54,7 +85,7 @@ func (c *client) call(method, path string, body, out any) error {
 		return err
 	}
 	if res.StatusCode >= 300 {
-		return fmt.Errorf("%s %s: %d %s", method, path, res.StatusCode, bytes.TrimSpace(raw))
+		return fmt.Errorf("%s %s: %d %s", req.Method, req.URL.Path, res.StatusCode, bytes.TrimSpace(raw))
 	}
 	if out == nil {
 		return nil

@@ -1,7 +1,8 @@
 // Command devseed fills a development database with an administrator, mock
-// users, a demo project and e-mail sent to Mailpit. It reads the database
-// like "solstice serve" (SOLSTICE_DB_URL or solstice.conf), migrates it, and
-// refuses a database that has accounts but no seed administrator.
+// users, demo projects and issues, and e-mail sent to Mailpit. It reads the
+// database and the data directory like "solstice serve" (SOLSTICE_DB_URL,
+// SOLSTICE_DATA or solstice.conf), migrates the database, and refuses one that
+// has accounts but no seed administrator.
 //
 //	go run ./cmd/devseed
 package main
@@ -45,7 +46,7 @@ func run(smtp string) error {
 	if err := db.Migrate(ctx, conn); err != nil {
 		return err
 	}
-	if err := devseed.Run(ctx, conn, devseed.Options{SMTP: smtp, Out: os.Stdout}); err != nil {
+	if err := devseed.Run(ctx, conn, devseed.Options{SMTP: smtp, Out: os.Stdout, DataDir: cfg.Data}); err != nil {
 		return err
 	}
 	fmt.Println("development database ready")
