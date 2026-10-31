@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import {
     hasProblems,
     newWebhookForm,
@@ -83,8 +84,7 @@
     touched = {};
   }
 
-  $effect(() => {
-    const wanted = id;
+  function load(wanted: number | null) {
     adminApi
       .webhookEvents()
       .then((e) => (events = e))
@@ -98,6 +98,12 @@
         .then(adopt)
         .catch((e: unknown) => (loadError = errorMessage(e)));
     }
+  }
+
+  // Only id may re-run this: load reads the form it builds.
+  $effect(() => {
+    const wanted = id;
+    untrack(() => load(wanted));
   });
 
   // The name field takes the focus on a new webhook, once the form shows.
