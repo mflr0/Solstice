@@ -14,7 +14,7 @@ Every call re-reads the whole context, so make few of them: send independent cal
 2. Read the code on the latest base, not the main checkout's files: `git fetch -q origin feat/v1.0`, then `git grep -n <pattern> origin/feat/v1.0 -- <paths>` and `git show origin/feat/v1.0:<path> | sed -n '<a>,<b>p'`, several per call. Don't edit, don't switch branches.
 3. Check the problem is still there on `origin/feat/v1.0`. If it is gone, say so with the commit or code that fixed it, and stop.
 4. Find the facts the ticket rests on: where it happens (`file:line`), what the user sees, numbers where they help (sizes, counts, the failing input). Separate what you verified from what you believe. Don't guess a cause you haven't seen in the code: say it is unknown.
-5. In the same turn as the reads, list the open trackers: `gh issue list --state open --limit 200 --json number,title,body -q '.[]|select(.body|test("- \\[[ x]\\] #"))|"\(.number) \(.title)"'`.
+5. In the same turn as the reads, list the open epics: `gh issue list --state open --label epic --limit 200 --json number,title -q '.[]|"\(.number) \(.title)"'`.
 
 ## 2. Settle
 
@@ -56,11 +56,11 @@ Leave out a block that has nothing to say, except the problem, the change, `In s
 **Labels**, from `gh label list` only:
 - kind, one: `bug` (something is broken), `enhancement` (new feature), `polish` (small visual or wording fix), `refactor`, `hardening`, `documentation`;
 - areas, every one that applies: `backend`, `frontend`, `i18n`, `themes`, `accessibility`, `security`, `ci`, `import`.
-- Never `in progress`: it is the claim lock of `solstice-issue`.
+- Never `in progress`: it is the claim lock of `solstice-issue`. Never `epic` on a ticket.
 
 ### Epic
 
-**Title**: the goal, e.g. `Usability pass across the product`. Labels: the kind and areas of its tickets.
+**Title**: the goal, e.g. `Usability pass across the product`. Labels: `epic`, plus the kind and areas of its tickets.
 
 **Body**: what the epic is for and what it covers, in a few lines; what it leaves to other issues (name them); then `Tickets in the order they should be done:` and one `- [ ] #n` line per ticket. `pick.sh` orders tickets by their position in this list.
 
