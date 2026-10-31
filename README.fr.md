@@ -322,9 +322,18 @@ seulement :
 | `alice`, `marie`, `hans`, `giulia`, `priya` | `dev-password` | en, fr, de, it, hi |
 | `tom` | `dev-password` | celle du navigateur |
 
-et un projet `DEMO` d'une douzaine de tickets. Il refuse une base qui a des
-comptes mais pas d'administrateur `seed` : il ne touche jamais une vraie
-instance.
+et ces projets, avec des composants et des versions (publiées, à venir,
+archivées) :
+
+| Clé | Type | Catégorie | Responsable |
+| --- | --- | --- | --- |
+| `DEMO` | logiciel, avec une douzaine de tickets | Products | alice |
+| `MOB` | logiciel | Products | hans |
+| `OPS` | métier | Internal | marie |
+| `OLD` | logiciel, archivé | aucune | tom |
+
+Il refuse une base qui a des comptes mais pas d'administrateur `seed` : il ne
+touche jamais une vraie instance.
 
 ### Autres ports
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	type state struct{ accounts, issues, comments string }
+	type state struct{ accounts, issues, comments, projects string }
 	read := func() state {
 		var accounts []string
 		if err := sqlq.Each(ctx, conn, `SELECT username, COALESCE(locale, '-'), is_admin FROM users ORDER BY username`,
@@ -51,7 +52,28 @@ func TestDevSeed(t *testing.T) {
 			FROM issues i JOIN projects p ON p.id = i.project_id WHERE p.pkey = ?`, devseed.Project).Scan(&issues, &comments); err != nil {
 			t.Fatal(err)
 		}
-		return state{strings.Join(accounts, " "), issues, comments}
+		// key/category/archived/components/versions (released, archived)
+		var projects []string
+		if err := sqlq.Each(ctx, conn, `SELECT p.pkey, COALESCE(c.name, '-'), p.archived,
+			(SELECT COUNT(*) FROM components WHERE project_id = p.id),
+			(SELECT COUNT(*) FROM versions WHERE project_id = p.id),
+			(SELECT COUNT(*) FROM versions WHERE project_id = p.id AND released),
+			(SELECT COUNT(*) FROM versions WHERE project_id = p.id AND archived)
+			FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.pkey`,
+			func(rows *sql.Rows) error {
+				var key, cat string
+				var archived bool
+				var components, versions, released, archivedVersions int
+				if err := rows.Scan(&key, &cat, &archived, &components, &versions, &released, &archivedVersions); err != nil {
+					return err
+				}
+				projects = append(projects, fmt.Sprintf("%s/%s/%t/%d/%d(%d,%d)", key, cat, archived, components,
+					versions, released, archivedVersions))
+				return nil
+			}); err != nil {
+			t.Fatal(err)
+		}
+		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " ")}
 	}
 
 	var out strings.Builder
@@ -59,7 +81,8 @@ func TestDevSeed(t *testing.T) {
 		t.Fatalf("first run: %v\n%s", err, out.String())
 	}
 	first := read()
-	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "12", "6"}
+	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "12", "6",
+		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
 	}

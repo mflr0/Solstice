@@ -299,8 +299,18 @@ The seed (`backend/cmd/devseed`) creates, for the development database only:
 | `alice`, `marie`, `hans`, `giulia`, `priya` | `dev-password` | en, fr, de, it, hi |
 | `tom` | `dev-password` | the browser's |
 
-and a `DEMO` project with a dozen issues. It refuses a database that has
-accounts but no `seed` administrator, so it never touches a real instance.
+and these projects, with components and versions (released, upcoming,
+archived):
+
+| Key | Kind | Category | Lead |
+| --- | --- | --- | --- |
+| `DEMO` | software, with a dozen issues | Products | alice |
+| `MOB` | software | Products | hans |
+| `OPS` | business | Internal | marie |
+| `OLD` | software, archived | none | tom |
+
+It refuses a database that has accounts but no `seed` administrator, so it
+never touches a real instance.
 
 ### Other ports
 
