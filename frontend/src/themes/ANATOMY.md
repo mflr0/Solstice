@@ -323,9 +323,9 @@ back / forward.
   followed by three small options on one line, `li.sub` (`.first` on the
   first) > `a.item.quick-assigned`, `.quick-reported`, `.quick-profile`.
 - Matched letters: `mark.match`, inside the quick search's project keys and
-  names, people's names and `.who`. The base draws it bold, in the text's own
-  colour, underlined with `--accent` (with the ink under a hovered or
-  `.active` popover `.item`), so it reads on any row a skin paints. Override
+  names, people's names and `.who`. The base draws it bold in `--accent-text` (in
+  the row's own ink on a hovered or `.active` popover `.item`, bold only), so
+  it reads on any row a skin paints. Override
   it only if that looks wrong in your skin; a new colour pair needs its
   `/* contrast: … */` line. Don't change its padding or line-height: the row
   must keep its height.

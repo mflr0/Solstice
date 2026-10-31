@@ -240,18 +240,17 @@ kbd,
   font-family: var(--font-mono);
 }
 
-/* What a search matched: bold and underlined, in the text's own colour. */
+/* What a search matched: bold, in the accent colour; bold alone is enough
+   for those who don't see the colour. */
 mark.match {
   background: none;
-  color: inherit;
+  color: var(--accent-text);
   font-weight: 700;
-  text-decoration: underline 2px var(--accent);
-  text-underline-offset: 2px;
 }
 
-/* A skin may repaint the active row: the line follows its ink. */
+/* A skin may repaint the active row: the match takes its ink, bold only. */
 .popover .item:is(:hover, .active) mark.match {
-  text-decoration-color: currentColor;
+  color: inherit;
 }
 
 ::selection {
