@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
@@ -670,7 +671,7 @@ func (c *compiler) text(cl Clause) (string, error) {
 			}
 			return r
 		}, w)
-		if len([]rune(w)) >= 3 {
+		if len([]rune(w)) >= 3 && !stopword(w) {
 			words = append(words, "+"+w+"*")
 		}
 	}
@@ -684,6 +685,23 @@ func (c *compiler) text(cl Clause) (string, error) {
 		return "NOT " + cond, nil
 	}
 	return cond, nil
+}
+
+// ftStopwords is InnoDB's default stopword list (INNODB_FT_DEFAULT_STOPWORD),
+// shorter words left out: the index skips these, so "+the*" would only match
+// longer words such as "then". frontend/src/core/text.ts keeps the same list.
+var ftStopwords = map[string]bool{
+	"about": true, "are": true, "com": true, "for": true, "from": true, "how": true,
+	"that": true, "the": true, "this": true, "was": true, "what": true, "when": true,
+	"where": true, "who": true, "will": true, "with": true, "und": true, "www": true,
+}
+
+// stopword reports whether the index ignores a search word, punctuation around it aside.
+func stopword(w string) bool {
+	w = strings.TrimFunc(w, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsMark(r) && !unicode.IsNumber(r) && r != '_'
+	})
+	return ftStopwords[strings.ToLower(w)]
 }
 
 // comment searches unrestricted comments only: matching restricted ones

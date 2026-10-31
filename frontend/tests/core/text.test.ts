@@ -115,6 +115,17 @@ describe('highlightText', () => {
     expect(marked('अनुवाद', 'वाद')).toEqual([]);
   });
 
+  it("skips the stopwords the server's index ignores", () => {
+    expect(marked('Fix the API', 'fix the api')).toEqual(['Fix', 'API']);
+    expect(marked('Fix the API', 'The, API')).toEqual(['API']);
+    expect(marked('Then what', 'then')).toEqual(['Then']);
+  });
+
+  it('falls back to the substring with stopwords only', () => {
+    expect(marked('Fix the API', 'the')).toEqual(['the']);
+    expect(marked('Then what', 'the')).toEqual(['The']);
+  });
+
   it('returns the text as one plain part for a blank search', () => {
     expect(highlightText('Alice', '  ')).toEqual([{ text: 'Alice', match: false }]);
   });
