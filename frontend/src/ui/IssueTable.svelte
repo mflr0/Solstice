@@ -9,6 +9,7 @@
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { appearance, ignoreShortcut } from '../lib/ui.svelte.js';
+  import Highlight from './Highlight.svelte';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';
   import RelTime from './RelTime.svelte';
@@ -38,6 +39,8 @@
     sort?: readonly SortTerm[] | undefined;
     /** With it, the headers of the columns ORDER BY takes are buttons that report a click. */
     onsort?: ((column: string) => void) | undefined;
+    /** The words of the query's `text ~`, marked in the summaries. */
+    textSearch?: string | undefined;
   }
   const {
     issues,
@@ -48,6 +51,7 @@
     onselect,
     sort = [],
     onsort,
+    textSearch = '',
   }: Props = $props();
   const allSelected = $derived(issues.length > 0 && issues.every((i) => selected.includes(i.key)));
   const someSelected = $derived(!allSelected && issues.some((i) => selected.includes(i.key)));
@@ -211,7 +215,13 @@
           {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
           <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
           <td class="c-summary">
-            <span class="summary">{issue.summary}</span>
+            <span class="summary"
+              >{#if textSearch}<Highlight
+                  text={issue.summary}
+                  search={textSearch}
+                  fulltext
+                />{:else}{issue.summary}{/if}</span
+            >
             {#if issue.confidential}<Lock />{/if}
           </td>
           {#each rest as c (c)}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { highlight, highlightPrefix } from '../core/text.js';
+  import { highlight, highlightPrefix, highlightText } from '../core/text.js';
 
   /** A text with what the search matched in `mark.match`. */
   interface Props {
@@ -7,9 +7,17 @@
     search: string;
     /** Mark the search as a typed prefix, not as words anywhere. */
     prefix?: boolean | undefined;
+    /** Mark the search by the server's rule for `text ~`. */
+    fulltext?: boolean | undefined;
   }
-  const { text, search, prefix = false }: Props = $props();
-  const parts = $derived(prefix ? highlightPrefix(text, search) : highlight(text, search));
+  const { text, search, prefix = false, fulltext = false }: Props = $props();
+  const parts = $derived(
+    fulltext
+      ? highlightText(text, search)
+      : prefix
+        ? highlightPrefix(text, search)
+        : highlight(text, search),
+  );
 </script>
 
 {#each parts as part, i (i)}{#if part.match}<mark class="match">{part.text}</mark

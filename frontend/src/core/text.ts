@@ -95,3 +95,39 @@ export function highlightPrefix(text: string, prefix: string): TextPart[] {
   const p = [...prefix].map(fold).join('');
   return cut(text, p && folded.startsWith(p) ? [[from[0]!, to[p.length - 1]!]] : []);
 }
+
+/** A letter, a digit or `_`: what MariaDB's full-text index keeps inside a word. */
+const WORD_END = /[\p{L}\p{M}\p{N}_]$/u;
+
+/**
+ * The text cut into plain and matched parts, by the server's rule for `text ~`:
+ * its operators dropped, each word of 3 characters or more marked where a word
+ * of the text starts with it; with no such word, the whole search as a substring.
+ */
+export function highlightText(text: string, search: string): TextPart[] {
+  const words = search
+    .split(/\s+/)
+    .map((w) => w.replace(/[+\-<>()~*"@]/g, ''))
+    .filter((w) => [...w].length >= 3);
+  const { folded, from, to } = folding(text);
+  const spans: [number, number][] = [];
+  const mark = (w: string, start: (i: number) => boolean) => {
+    for (let i = folded.indexOf(w); i >= 0; i = folded.indexOf(w, i + 1)) {
+      if (start(i)) spans.push([from[i]!, to[i + w.length - 1]!]);
+    }
+  };
+  if (words.length === 0) {
+    const all = [...search.replace(/^\*+|\*+$/g, '')].map(fold).join('');
+    if (all) mark(all, () => true);
+    return cut(text, spans);
+  }
+  for (const word of words) {
+    // The index splits at punctuation ("crash," finds "crash") and skips what is shorter than 3.
+    for (const run of word.match(/[\p{L}\p{M}\p{N}_]+/gu) ?? []) {
+      const w = [...run].map(fold).join('');
+      if ([...w].length < 3) continue;
+      mark(w, (i) => !WORD_END.test(folded.slice(Math.max(0, i - 2), i)));
+    }
+  }
+  return cut(text, spans);
+}
