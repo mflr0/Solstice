@@ -25,6 +25,11 @@
   margin-top: 0;
 }
 
+/* Forms stacked on one page: the next one's title opens a new section. */
+.settings-area .settings-form + .settings-form {
+  margin-top: 28px;
+}
+
 /* Two fields side by side, each at its own height: a hint under one must not
    stretch the other. */
 .settings-area .form-grid {
