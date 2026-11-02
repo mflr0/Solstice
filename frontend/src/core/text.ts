@@ -99,7 +99,7 @@ export function highlightPrefix(text: string, prefix: string): TextPart[] {
 /** A letter, a digit or `_`: what MariaDB's full-text index keeps inside a word. */
 const WORD_END = /[\p{L}\p{M}\p{N}_]$/u;
 
-/** InnoDB's default stopwords of 3 characters or more, as in `ftStopwords` of backend/internal/jql/compile.go. */
+/** InnoDB's default stopwords of 3 characters or more, as in `ftStopwords` of backend/internal/sqlq/sqlq.go. */
 const STOPWORDS = new Set(
   'about are com for from how that the this was what when where who will with und www'.split(' '),
 );

@@ -60,6 +60,22 @@ func TestSQLText(t *testing.T) {
 	}
 }
 
+// The index skips stopwords: "+the*" would only match longer words.
+func TestSQLTextSkipsStopwords(t *testing.T) {
+	sql, args := Parse(`fix The api -the "fix the api"`).SQL(1)
+	if sql != "MATCH(i.summary, i.description) AGAINST (? IN BOOLEAN MODE)" {
+		t.Fatalf("got %s", sql)
+	}
+	if args[0] != `+fix* +api* +"fix the api"` {
+		t.Fatalf("boolean query %q", args[0])
+	}
+	sql, args = Parse(`the -with`).SQL(1)
+	want := "(i.summary LIKE ? OR i.description LIKE ?) AND NOT (i.summary LIKE ? OR i.description LIKE ?)"
+	if sql != want || !reflect.DeepEqual(args, []any{"%the%", "%the%", "%with%", "%with%"}) {
+		t.Fatalf("stopwords only: %s %v", sql, args)
+	}
+}
+
 func TestSQLStripsFullTextOperators(t *testing.T) {
 	_, args := Parse(`a+b*(c) "x" @`).SQL(1)
 	for _, a := range args {

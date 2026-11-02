@@ -292,11 +292,15 @@ func filterSQL(f Field, v string, me int64) (string, []any) {
 
 // textSQL searches words in the summary and description. Words of three
 // letters or more use the full-text index; shorter ones (below InnoDB's
-// minimum token size) fall back to LIKE on the summary.
+// minimum token size) fall back to LIKE on the summary. Stopwords, which the
+// index skips, are left out, unless every word is one: then they use LIKE.
 func textSQL(words []string) (string, []any) {
-	var boolean []string
-	var conds []string
-	var args []any
+	type word struct {
+		not   bool
+		parts []string
+	}
+	var ws []word
+	allStop := true
 	for _, w := range words {
 		not := strings.HasPrefix(w, "-") && len(w) > 1
 		if not {
@@ -312,7 +316,21 @@ func textSQL(words []string) (string, []any) {
 		if len(parts) == 0 {
 			continue
 		}
-		short := false
+		if len(parts) > 1 || !sqlq.Stopword(parts[0]) {
+			allStop = false
+		}
+		ws = append(ws, word{not, parts})
+	}
+	var boolean []string
+	var conds []string
+	var args []any
+	for _, w := range ws {
+		not, parts := w.not, w.parts
+		stop := len(parts) == 1 && sqlq.Stopword(parts[0])
+		if stop && !allStop {
+			continue
+		}
+		short := stop
 		for _, p := range parts {
 			if len([]rune(p)) < 3 {
 				short = true
