@@ -138,11 +138,12 @@ type tokenOut struct {
 }
 
 type prefsOut struct {
-	Delivery    string          `json:"delivery"`
-	OwnChanges  bool            `json:"ownChanges"`
-	Events      map[string]bool `json:"events"`
-	DueReminder bool            `json:"dueReminder"`
-	MailEnabled bool            `json:"mailEnabled"`
+	Delivery       string          `json:"delivery"`
+	DigestInterval int             `json:"digestInterval"`
+	OwnChanges     bool            `json:"ownChanges"`
+	Events         map[string]bool `json:"events"`
+	DueReminder    bool            `json:"dueReminder"`
+	MailEnabled    bool            `json:"mailEnabled"`
 }
 
 type subscriptionOut struct {

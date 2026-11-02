@@ -419,6 +419,95 @@ func TestNotificationPreferences(t *testing.T) {
 	}
 }
 
+// Periodic: one e-mail for every change made in the interval after the
+// first one, whatever the issue.
+func TestPeriodicNotifications(t *testing.T) {
+	env := newNotifyEnv(t)
+	paul := env.login("paul.martin", jirafixture.Password)
+	chloe := env.login("chloe.simon", jirafixture.Password)
+
+	var p prefsOut
+	chloe.call("GET", "/api/me/notifications", nil, 200, &p)
+	if p.DigestInterval != 60 {
+		t.Errorf("default interval %d, want 60", p.DigestInterval)
+	}
+	for _, bad := range []map[string]any{{"digestInterval": 14}, {"digestInterval": 721}, {"digestInterval": "x"},
+		{"delivery": "periodic", "digestInterval": 0}} {
+		chloe.call("PUT", "/api/me/notifications", bad, 400, nil)
+	}
+	chloe.call("PUT", "/api/me/notifications", map[string]any{"delivery": "periodic", "digestInterval": 30}, 200, &p)
+	if p.Delivery != "periodic" || p.DigestInterval != 30 {
+		t.Fatalf("after choosing periodic: %+v", p)
+	}
+
+	a := createIssue(t, paul, "WEB", "Périodique A", "")
+	b := createIssue(t, paul, "WEB", "Périodique B", "")
+	for _, k := range []string{a, b} {
+		chloe.call("PUT", "/api/issues/"+k+"/watch", nil, 200, nil)
+	}
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := testDB.Exec(q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env.hooks.Settle()
+	exec(`DELETE FROM notification_batches`) // the creations, before chloe.simon watched
+	comment := func(k, body string) {
+		paul.call("POST", "/api/issues/"+k+"/comments", map[string]any{"body": body}, 201, nil)
+		env.hooks.Settle()
+	}
+	// back moves the waiting batch d into the past, as if that time had gone.
+	back := func(d time.Duration) {
+		exec(`UPDATE notification_batches SET first_at = first_at - INTERVAL ? MICROSECOND,
+			send_at = send_at - INTERVAL ? MICROSECOND`, d.Microseconds(), d.Microseconds())
+	}
+
+	comment(a, "Premier changement")
+	back(5 * time.Minute)
+	comment(b, "Deuxième changement")
+	if got := to(env.deliverAt(time.Minute), "chloe.simon@exemple.fr"); len(got) != 0 {
+		t.Fatalf("mailed at +5 min: %d e-mails", len(got))
+	}
+	// The second change did not push the batch back: due at +30 min.
+	got := to(env.deliverAt(26*time.Minute), "chloe.simon@exemple.fr")
+	if len(got) != 1 || got[0].Subject != "Your notifications (every 30 min)" ||
+		!strings.Contains(got[0].Text, "Premier changement") || !strings.Contains(got[0].Text, "Deuxième changement") ||
+		!strings.Contains(got[0].Text, "every 30 min") {
+		t.Fatalf("at +30 min, want one e-mail with both changes: %+v", got)
+	}
+
+	// A change after that opens a new batch.
+	comment(a, "Troisième changement")
+	if got := to(env.deliverAt(29*time.Minute), "chloe.simon@exemple.fr"); len(got) != 0 {
+		t.Fatalf("the new batch went out before its interval: %d e-mails", len(got))
+	}
+	if got := to(env.deliverAt(31*time.Minute), "chloe.simon@exemple.fr"); len(got) != 1 ||
+		!strings.Contains(got[0].Text, "Troisième changement") || strings.Contains(got[0].Text, "Premier changement") {
+		t.Fatalf("new batch: %+v", got)
+	}
+
+	// Saving moves a waiting batch: a shorter interval, in the recipient's
+	// language; then back to the daily digest.
+	comment(b, "Quatrième changement")
+	exec(`UPDATE users SET locale = 'fr' WHERE username = 'chloe.simon'`)
+	chloe.call("PUT", "/api/me/notifications", map[string]any{"digestInterval": 15}, 200, nil)
+	got = to(env.deliverAt(16*time.Minute), "chloe.simon@exemple.fr")
+	if len(got) != 1 || got[0].Subject != "Vos notifications (toutes les 15 min)" {
+		t.Fatalf("after shortening the interval: %+v", got)
+	}
+	comment(b, "Cinquième changement")
+	hour := (time.Now().UTC().Hour() + 3) % 24 // the test server runs in UTC
+	chloe.call("PUT", "/api/me/notifications", map[string]any{"delivery": "digest", "digestHour": hour}, 200, nil)
+	if got := to(env.deliverAt(time.Hour), "chloe.simon@exemple.fr"); len(got) != 0 {
+		t.Fatalf("back on the daily digest, mailed within the hour: %+v", got)
+	}
+	got = to(env.deliverAt(25*time.Hour), "chloe.simon@exemple.fr")
+	if len(got) != 1 || !strings.HasPrefix(got[0].Subject, "Vos notifications du ") {
+		t.Fatalf("back on the daily digest: %+v", got)
+	}
+}
+
 func TestProjectNotificationSettings(t *testing.T) {
 	env := newNotifyEnv(t)
 	marie := env.login("marie.durand", jirafixture.Password) // administers WEB

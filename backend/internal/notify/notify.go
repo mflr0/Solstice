@@ -478,20 +478,21 @@ func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.U
 
 // enqueue files an item in the user's open batch for the issue, the bulk
 // change (bulk not 0) or their digest, creating it if needed. A batch is sent
-// Window after its last change, but no later than MaxWait after its first.
+// Window after its last change, but no later than MaxWait after its first; a
+// digest at the digest hour, or the interval after its first change.
 func (s *Service) enqueue(ctx context.Context, userID int64, p Prefs, issueID, bulk int64, it item) error {
 	data, err := json.Marshal(it)
 	if err != nil {
 		return err
 	}
 	now := s.Now().UTC()
-	digest := p.Delivery == Digest
+	digest := p.Delivery == Digest || p.Delivery == Periodic
 	batchIssue := issueID
 	sendAt := now.Add(Window)
 	switch {
 	case digest:
 		batchIssue, bulk = 0, 0
-		sendAt = nextAt(now, s.zone(), p.DigestHour, nil)
+		sendAt = s.digestDue(p, now)
 	case bulk != 0:
 		batchIssue = 0
 	}

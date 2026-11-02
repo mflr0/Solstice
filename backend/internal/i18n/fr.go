@@ -620,7 +620,8 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "Heure invalide : de 0 à 23.",
-	NotifyDeliveryUnknown:     "Mode d'envoi inconnu : immediate, digest ou none.",
+	NotifyIntervalInvalid:     "Intervalle invalide : de 15 à 720 minutes.",
+	NotifyDeliveryUnknown:     "Mode d'envoi inconnu : immediate, digest, periodic ou none.",
 	NotifyEventUnknown:        "Événement inconnu : %s.",
 	NotifyRecipientUnknown:    "Destinataire inconnu : group ou role.",
 	NotifyManage:              "Gérer mes notifications",
@@ -635,6 +636,11 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyUnassigned:          "Non assigné",
 	NotifyDigestSubject:       "Vos notifications du %s",
 	NotifyWhyDigest:           "Vous recevez ce résumé quotidien d'après vos préférences de notification.",
+	NotifyPeriodicSubject:     "Vos notifications (toutes les %s)",
+	NotifyWhyPeriodic:         "Vous recevez ce résumé toutes les %s d'après vos préférences de notification.",
+	NotifyMinutes:             "%d min",
+	NotifyHours:               "%d h",
+	NotifyHoursMinutes:        "%d h %d min",
 	NotifyWhyAssignee:         "Vous recevez cet e-mail car ce ticket vous est assigné.",
 	NotifyWhyReporter:         "Vous recevez cet e-mail car vous avez signalé ce ticket.",
 	NotifyWhyMention:          "Vous recevez cet e-mail car quelqu'un vous a mentionné.",

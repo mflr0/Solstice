@@ -263,12 +263,13 @@ func checkHour(h int) error {
 // their value.
 func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
-		Delivery     *string         `json:"delivery"`
-		DigestHour   *int            `json:"digestHour"`
-		OwnChanges   *bool           `json:"ownChanges"`
-		Events       map[string]bool `json:"events"`
-		DueReminder  *bool           `json:"dueReminder"`
-		ReminderHour *int            `json:"reminderHour"`
+		Delivery       *string         `json:"delivery"`
+		DigestHour     *int            `json:"digestHour"`
+		DigestInterval *int            `json:"digestInterval"`
+		OwnChanges     *bool           `json:"ownChanges"`
+		Events         map[string]bool `json:"events"`
+		DueReminder    *bool           `json:"dueReminder"`
+		ReminderHour   *int            `json:"reminderHour"`
 		// Read-only fields sent back as received are accepted.
 		TimeZone    *string `json:"timeZone"`
 		MailEnabled *bool   `json:"mailEnabled"`
@@ -283,7 +284,7 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	if in.Delivery != nil {
-		if !slices.Contains([]string{notify.Immediate, notify.Digest, notify.None}, *in.Delivery) {
+		if !slices.Contains([]string{notify.Immediate, notify.Digest, notify.Periodic, notify.None}, *in.Delivery) {
 			return fail(http.StatusBadRequest, i18n.NotifyDeliveryUnknown)
 		}
 		p.Delivery = *in.Delivery
@@ -298,6 +299,12 @@ func (s *Server) putMyNotifications(w http.ResponseWriter, r *http.Request) erro
 			}
 			*h.out = *h.in
 		}
+	}
+	if in.DigestInterval != nil {
+		if *in.DigestInterval < notify.MinInterval || *in.DigestInterval > notify.MaxInterval {
+			return fail(http.StatusBadRequest, i18n.NotifyIntervalInvalid)
+		}
+		p.DigestInterval = *in.DigestInterval
 	}
 	if in.OwnChanges != nil {
 		p.OwnChanges = *in.OwnChanges

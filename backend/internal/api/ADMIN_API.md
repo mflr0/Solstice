@@ -662,10 +662,14 @@ Filter subscriptions (scheduled e-mail of a filter's results):
 
 `GET|PUT /api/me/notifications` — everyone signed in:
 
-- GET → `{delivery, digestHour, ownChanges, events, dueReminder,
-  reminderHour, timeZone, mailEnabled}`.
+- GET → `{delivery, digestHour, digestInterval, ownChanges, events,
+  dueReminder, reminderHour, timeZone, mailEnabled}`.
   - `delivery`: `immediate` (within a couple of minutes, default) | `digest`
-    (once a day) | `none` (no notification e-mails).
+    (once a day) | `periodic` (every `digestInterval` minutes) | `none` (no
+    notification e-mails).
+  - `digestInterval`: 15–720 minutes, default 60. The first change waiting
+    starts the period; the e-mail goes out when it ends, with every change
+    made meanwhile, and nothing goes out when nothing changed.
   - `digestHour`, `reminderHour`: 0–23, default 8, in `timeZone` (the
     server's time zone).
   - `ownChanges`: also e-mail the user's own changes (default false).
@@ -675,11 +679,13 @@ Filter subscriptions (scheduled e-mail of a filter's results):
     default).
   - `timeZone` and `mailEnabled` are read-only (the hours' time zone above;
     whether this Solstice sends e-mail at all).
-- PUT any subset `{delivery?, digestHour?, ownChanges?, events? (one switch
-  per group), dueReminder?, reminderHour?}`; fields left out keep their
-  value. 400 for an unknown delivery or event group, or an hour outside
-  0–23. Answers GET. E-mails already waiting follow: `none` drops them, a
-  new digest hour moves the digest.
+- PUT any subset `{delivery?, digestHour?, digestInterval?, ownChanges?,
+  events? (one switch per group), dueReminder?, reminderHour?}`; fields left
+  out keep their value. 400 for an unknown delivery or event group, an hour
+  outside 0–23 or an interval outside 15–720. Answers GET. E-mails already
+  waiting follow: `none` drops them, a new digest hour moves the digest, a
+  new interval (or switching to `periodic`) moves it to the interval after
+  its first change.
 
 `GET|PUT /api/projects/{key}/notifications` — project admin:
 
@@ -732,8 +738,8 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   the last messages and the last failures (newest first) each `[{id, kind,
   to, subject, status, attempts, lastError (string | null), created,
   nextAttempt (instant | null), sent (instant | null)}]`, and the
-  notification batches waiting now (`batching`) and the digest batches
-  (`digests`).
+  notification batches waiting now (`batching`) and the digest batches,
+  daily and periodic (`digests`).
 - `POST /api/admin/mail/queue/retry` → `{retried}`: failed messages go back
   in the queue (resets and invitations excepted).
 

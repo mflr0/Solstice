@@ -32,22 +32,31 @@ var Groups = []string{GroupCreated, GroupAssigned, GroupCommented, GroupMentione
 const (
 	Immediate = "immediate" // within a couple of minutes, changes to an issue batched
 	Digest    = "digest"    // once a day, at DigestHour
+	Periodic  = "periodic"  // every DigestInterval minutes, counted from the first change waiting
 	None      = "none"      // no notification e-mails
+)
+
+// Bounds of Prefs.DigestInterval, in minutes.
+const (
+	MinInterval = 15
+	MaxInterval = 720
 )
 
 // Prefs is what a user wants by e-mail. Hours are in the server's time zone.
 type Prefs struct {
-	Delivery     string          `json:"delivery"`
-	DigestHour   int             `json:"digestHour"`
-	OwnChanges   bool            `json:"ownChanges"`
-	Events       map[string]bool `json:"events"`
-	DueReminder  bool            `json:"dueReminder"`
-	ReminderHour int             `json:"reminderHour"`
+	Delivery   string `json:"delivery"`
+	DigestHour int    `json:"digestHour"`
+	// DigestInterval is the period of Periodic, in minutes.
+	DigestInterval int             `json:"digestInterval"`
+	OwnChanges     bool            `json:"ownChanges"`
+	Events         map[string]bool `json:"events"`
+	DueReminder    bool            `json:"dueReminder"`
+	ReminderHour   int             `json:"reminderHour"`
 }
 
 // Defaults are the preferences of someone who never changed them.
 func Defaults() Prefs {
-	p := Prefs{Delivery: Immediate, DigestHour: 8, ReminderHour: 8, Events: map[string]bool{}}
+	p := Prefs{Delivery: Immediate, DigestHour: 8, DigestInterval: 60, ReminderHour: 8, Events: map[string]bool{}}
 	for _, g := range Groups {
 		p.Events[g] = true
 	}
@@ -67,9 +76,10 @@ func (p Prefs) disabled() string {
 	return strings.Join(off, ",")
 }
 
-func scanPrefs(delivery string, digestHour int, own bool, disabled string, reminder bool, reminderHour int) Prefs {
+func scanPrefs(delivery string, digestHour, interval int, own bool, disabled string, reminder bool, reminderHour int) Prefs {
 	p := Defaults()
-	p.Delivery, p.DigestHour, p.OwnChanges, p.DueReminder, p.ReminderHour = delivery, digestHour, own, reminder, reminderHour
+	p.Delivery, p.DigestHour, p.DigestInterval = delivery, digestHour, interval
+	p.OwnChanges, p.DueReminder, p.ReminderHour = own, reminder, reminderHour
 	for g := range strings.SplitSeq(disabled, ",") {
 		if _, ok := p.Events[g]; ok {
 			p.Events[g] = false
@@ -100,7 +110,7 @@ func (s *Service) prefsOf(ctx context.Context, ids ...int64) (map[int64]Prefs, e
 	if len(args) == 0 {
 		return out, nil
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT user_id, delivery, digest_hour, own_changes, disabled_events,
+	rows, err := s.db.QueryContext(ctx, `SELECT user_id, delivery, digest_hour, digest_interval, own_changes, disabled_events,
 		due_reminder, reminder_hour FROM notification_prefs WHERE user_id IN (`+sqlq.Marks(len(args))+`)`, args...)
 	if err != nil {
 		return nil, err
@@ -109,31 +119,31 @@ func (s *Service) prefsOf(ctx context.Context, ids ...int64) (map[int64]Prefs, e
 	for rows.Next() {
 		var id int64
 		var delivery, disabled string
-		var digestHour, reminderHour int
+		var digestHour, interval, reminderHour int
 		var own, reminder bool
-		if err := rows.Scan(&id, &delivery, &digestHour, &own, &disabled, &reminder, &reminderHour); err != nil {
+		if err := rows.Scan(&id, &delivery, &digestHour, &interval, &own, &disabled, &reminder, &reminderHour); err != nil {
 			return nil, err
 		}
-		out[id] = scanPrefs(delivery, digestHour, own, disabled, reminder, reminderHour)
+		out[id] = scanPrefs(delivery, digestHour, interval, own, disabled, reminder, reminderHour)
 	}
 	return out, rows.Err()
 }
 
 // SavePrefs writes a user's preferences (checked by the caller). Changes to
-// e-mails already waiting follow: none drops them, a new digest hour moves
-// the digest.
+// e-mails already waiting follow: none drops them, a new digest hour or
+// interval moves the digest.
 func (s *Service) SavePrefs(ctx context.Context, userID int64, p Prefs) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_prefs (user_id, delivery, digest_hour, own_changes,
-		disabled_events, due_reminder, reminder_hour, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO notification_prefs (user_id, delivery, digest_hour, digest_interval,
+		own_changes, disabled_events, due_reminder, reminder_hour, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE delivery = VALUES(delivery), digest_hour = VALUES(digest_hour),
-		own_changes = VALUES(own_changes), disabled_events = VALUES(disabled_events),
+		digest_interval = VALUES(digest_interval), own_changes = VALUES(own_changes), disabled_events = VALUES(disabled_events),
 		due_reminder = VALUES(due_reminder), reminder_hour = VALUES(reminder_hour), updated_at = VALUES(updated_at)`,
-		userID, p.Delivery, p.DigestHour, p.OwnChanges, p.disabled(), p.DueReminder, p.ReminderHour,
+		userID, p.Delivery, p.DigestHour, p.DigestInterval, p.OwnChanges, p.disabled(), p.DueReminder, p.ReminderHour,
 		s.Now().UTC()); err != nil {
 		return err
 	}
@@ -142,13 +152,32 @@ func (s *Service) SavePrefs(ctx context.Context, userID int64, p Prefs) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM notification_batches WHERE user_id = ?`, userID); err != nil {
 			return err
 		}
-	case Digest:
+	case Digest, Periodic:
+		var first time.Time
+		err := tx.QueryRowContext(ctx, `SELECT first_at FROM notification_batches WHERE user_id = ? AND digest FOR UPDATE`,
+			userID).Scan(&first)
+		if errors.Is(err, sql.ErrNoRows) {
+			break
+		}
+		if err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE notification_batches SET send_at = ? WHERE user_id = ? AND digest`,
-			nextAt(s.Now(), s.zone(), p.DigestHour, nil), userID); err != nil {
+			s.digestDue(p, first), userID); err != nil {
 			return err
 		}
 	}
 	return tx.Commit()
+}
+
+// digestDue is when a digest whose first change came at first goes out: the
+// next digest hour, or the interval after first for a periodic one (already
+// past when the interval was shortened: then at the next flush).
+func (s *Service) digestDue(p Prefs, first time.Time) time.Time {
+	if p.Delivery == Periodic {
+		return first.Add(time.Duration(p.DigestInterval) * time.Minute).UTC()
+	}
+	return nextAt(s.Now(), s.zone(), p.DigestHour, nil)
 }
 
 // ExtraRecipient is a group or project role that also receives an event

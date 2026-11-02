@@ -691,6 +691,7 @@ const (
 // Notification preferences and notification e-mails.
 const (
 	NotifyHourInvalid         Key = "NotifyHourInvalid"
+	NotifyIntervalInvalid     Key = "NotifyIntervalInvalid"
 	NotifyDeliveryUnknown     Key = "NotifyDeliveryUnknown"
 	NotifyEventUnknown        Key = "NotifyEventUnknown"
 	NotifyRecipientUnknown    Key = "NotifyRecipientUnknown"
@@ -706,6 +707,11 @@ const (
 	NotifyUnassigned          Key = "NotifyUnassigned"
 	NotifyDigestSubject       Key = "NotifyDigestSubject"
 	NotifyWhyDigest           Key = "NotifyWhyDigest"
+	NotifyPeriodicSubject     Key = "NotifyPeriodicSubject"
+	NotifyWhyPeriodic         Key = "NotifyWhyPeriodic"
+	NotifyMinutes             Key = "NotifyMinutes"
+	NotifyHours               Key = "NotifyHours"
+	NotifyHoursMinutes        Key = "NotifyHoursMinutes"
 	NotifyWhyAssignee         Key = "NotifyWhyAssignee"
 	NotifyWhyReporter         Key = "NotifyWhyReporter"
 	NotifyWhyMention          Key = "NotifyWhyMention"

@@ -202,11 +202,13 @@ export interface AuditQuery {
 
 /* Notifications ------------------------------------------------------------- */
 
-export type Delivery = 'immediate' | 'digest' | 'none';
+export type Delivery = 'immediate' | 'digest' | 'periodic' | 'none';
 
 export interface NotificationPrefs {
   delivery: Delivery;
   digestHour: number;
+  /** The period of `periodic`, in minutes (15–720). */
+  digestInterval: number;
   ownChanges: boolean;
   /** Event group → whether it sends an e-mail. */
   events: Record<string, boolean>;
