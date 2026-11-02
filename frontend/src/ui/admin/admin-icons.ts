@@ -11,14 +11,6 @@ export const ADMIN_ICONS: Record<Exclude<AdminSection, 'overview'>, string[]> = 
     'M9.5 5.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
     'M10.5 9.3c2.3 0 4 1.4 4 3.7',
   ],
-  roles: [
-    'M2.5 4h11v9h-11z',
-    'M6.5 2.5h3v3h-3z',
-    'M5.3 8a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
-    'M4.5 11.2c.3-1.1 1-1.6 2-1.6s1.7.5 2 1.6',
-    'M10 8h1.8',
-    'M10 10.5h1.8',
-  ],
   projects: ['M2 3.5h4.5L8 5.5h6v7H2z'],
   securityLevels: ['M3.5 7.5h9v6h-9z', 'M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5', 'M8 10v1.5'],
   issueTypes: [

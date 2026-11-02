@@ -77,14 +77,10 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	OAuthRefreshDaysInvalid:   "La durata dei token di aggiornamento deve essere compresa tra 1 e %d giorni.",
 
 	// Groups.
-	GroupNotFound:   "Gruppo non trovato.",
-	GroupExists:     "Il gruppo «%s» esiste già.",
-	GroupRestricted: "Alcuni commenti o tempi registrati sono riservati a questo gruppo: non può essere eliminato.",
-
-	// Project roles.
-	RoleNotFound:   "Ruolo non trovato.",
-	RoleExists:     "Il ruolo «%s» esiste già.",
-	RoleRestricted: "Alcuni commenti o tempi registrati sono riservati a questo ruolo: non può essere eliminato.",
+	GroupNotFound:    "Gruppo non trovato.",
+	GroupExists:      "Il gruppo «%s» esiste già.",
+	GroupRestricted:  "Alcuni commenti o tempi registrati sono riservati a questo gruppo: non può essere eliminato.",
+	GroupMemberCycle: "Un gruppo non può essere membro di se stesso, nemmeno tramite altri gruppi.",
 
 	// Instance settings.
 	SettingsNameRequired:          "Il nome dell'istanza è obbligatorio (al massimo %d caratteri).",
@@ -152,8 +148,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportWarnLevelMembersOne:                  "%d membro dei livelli di riservatezza non importato (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
 	ImportWarnLevelMembersMany:                 "%d membri dei livelli di riservatezza non importati (tipo non supportato): questi ticket sono visibili a meno persone di prima, mai a più",
 	ImportWarnLevelReplaced:                    "progetto %s: un livello di riservatezza non trovato in Jira è stato sostituito da «Restricted (import)», senza membri",
-	ImportWarnLocalAccountsOne:                 "%d account creato in Solstice mantenuto (senza gruppi né ruoli, che vengono da Jira)",
-	ImportWarnLocalAccountsMany:                "%d account creati in Solstice mantenuti (senza gruppi né ruoli, che vengono da Jira)",
+	ImportWarnLocalAccountsOne:                 "%d account creato in Solstice mantenuto (senza gruppi, che vengono da Jira)",
+	ImportWarnLocalAccountsMany:                "%d account creati in Solstice mantenuti (senza gruppi, che vengono da Jira)",
 	ImportWarnNoPasswordOne:                    "%d account attivo senza password utilizzabile (directory esterna o vecchio formato): impostarne una con «solstice user passwd»",
 	ImportWarnNoPasswordMany:                   "%d account attivi senza password utilizzabile (directory esterna o vecchio formato): impostarne una con «solstice user passwd»",
 	ImportWarnDeletedUsersOne:                  "%d utente eliminato da Jira mantenuto come account inattivo (autori di vecchi ticket)",
@@ -223,7 +219,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Digita la chiave attuale del progetto per confermare la modifica.",
 	ProjectKeysBusy:            "Un'altra modifica di una chiave di progetto è in corso. Riprova tra un momento.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, the statuses of the project templates.
 	DefaultTypeTask:                  "Task",
 	DefaultTypeBug:                   "Bug",
 	DefaultTypeStory:                 "Story",
@@ -249,9 +245,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultLinkClonesName:            "Clone",
 	DefaultLinkClonesInward:          "è clonato da",
 	DefaultLinkClonesOutward:         "clona",
-	DefaultRoleAdministrators:        "Amministratori",
-	DefaultRoleDevelopers:            "Sviluppatori",
-	DefaultRoleUsers:                 "Utenti",
 	DefaultStatusToDo:                "Da fare",
 	DefaultStatusInProgress:          "In corso",
 	DefaultStatusInReview:            "In revisione",
@@ -400,8 +393,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "Una sotto-attività si sposta con il suo padre: sposta il ticket padre.",
 	IssueMoveChoiceNeeded:      "Da scegliere prima di spostare: %s.",
 	IssueMoveChanged:           "Il ticket è cambiato durante lo spostamento. Ricaricalo e riprova.",
-	IssueMoveRestrictedRefused: "I commenti e i registri di lavoro riservati a un ruolo di questo progetto non possono restare invariati in un altro progetto.",
-	IssueMoveRestrictedHidden:  "%d commenti e registri di lavoro riservati a un ruolo di questo progetto non sono leggibili da te, e il progetto di destinazione non ha un ruolo con lo stesso nome. Un amministratore può spostare il ticket.",
+	IssueMoveRestrictedRefused: "I commenti e i registri di lavoro riservati a un gruppo i cui membri cambiano da un progetto all'altro non possono restare invariati.",
+	IssueMoveRestrictedHidden:  "%d commenti e registri di lavoro riservati a un gruppo i cui membri cambiano da un progetto all'altro non sono leggibili da te, e quel gruppo non ha membri nel progetto di destinazione. Un amministratore può spostare il ticket.",
 	IssueMoveSecurityNeeded:    "Spostare un ticket che ha un livello di riservatezza richiede il permesso Riservatezza nel progetto di destinazione, e in questo progetto per sceglierne un altro.",
 	IssueMoveNoSubtaskType:     "Il ticket ha dei sotto-task, e il progetto di destinazione non ha alcun tipo di sotto-task da assegnare loro. Aggiungine prima uno al progetto.",
 	IssueMoveUseAction:         "Un ticket cambia progetto con l'azione Sposta.",
@@ -413,12 +406,11 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Comments and their visibility.
 	CommentEmpty:           "Il commento è vuoto.",
 	CommentGroupNotMember:  "Non fai parte di questo gruppo.",
-	CommentRoleNotHeld:     "Non hai questo ruolo nel progetto.",
 	CommentVisibilityFixed: "La visibilità di un commento esistente non può essere modificata.",
 
 	// Work logs.
 	WorkLogDurationInvalid: "Durata non valida.",
-	WorkLogRestricted:      "Un tempo registrato non può essere limitato a un gruppo o a un ruolo.",
+	WorkLogRestricted:      "Un tempo registrato non può essere limitato a un gruppo.",
 
 	// Issue links.
 	LinkTypeUnknown:      "Tipo di collegamento sconosciuto.",
@@ -502,12 +494,12 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintNotOnBoard:      "Il progetto del ticket non è nella board di questo sprint.",
 
 	// Saved filters and their shares.
-	FilterNameRequired:        "Il nome del filtro è obbligatorio (massimo 255 caratteri).",
-	FilterIncomplete:          "Un filtro richiede un nome e una query.",
-	FilterShareKindUnknown:    "Tipo di condivisione sconosciuto: %s.",
-	FilterShareGroupNotMember: "Puoi condividere solo con un gruppo di cui fai parte.",
-	FilterShareRoleNotHeld:    "Puoi condividere solo con un ruolo che hai nel progetto.",
-	FilterSharePersonNotFound: "Utente non trovato.",
+	FilterNameRequired:               "Il nome del filtro è obbligatorio (massimo 255 caratteri).",
+	FilterIncomplete:                 "Un filtro richiede un nome e una query.",
+	FilterShareKindUnknown:           "Tipo di condivisione sconosciuto: %s.",
+	FilterShareGroupNotMember:        "Puoi condividere solo con un gruppo di cui fai parte.",
+	FilterShareProjectGroupNotMember: "Puoi condividere solo con un gruppo di cui fai parte nel progetto.",
+	FilterSharePersonNotFound:        "Utente non trovato.",
 
 	// The personal dashboard.
 	DashboardTooManyGadgets:    "Una dashboard contiene al massimo %d gadget.",
@@ -630,7 +622,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyIntervalInvalid:     "Intervallo non valido: da 15 a 720 minuti.",
 	NotifyDeliveryUnknown:     "Modalità di invio sconosciuta: immediate, digest, periodic o none.",
 	NotifyEventUnknown:        "Evento sconosciuto: %s.",
-	NotifyRecipientUnknown:    "Destinatario sconosciuto: group o role.",
+	NotifyRecipientUnknown:    "Destinatario sconosciuto: group.",
 	NotifyManage:              "Gestisci le mie notifiche",
 	NotifyChangeInPreferences: "Puoi regolare le notifiche nelle tue preferenze, in Solstice.",
 	NotifyOpenIssue:           "Apri il ticket",

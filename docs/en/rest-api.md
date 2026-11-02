@@ -245,7 +245,7 @@ A transition that is not available answers 400 on `transition`.
 | Request | Notes |
 |---|---|
 | `GET /rest/api/2/issue/{key}/comment` | `startAt`, `maxResults`, `orderBy`. Only comments the user may read. |
-| `POST /rest/api/2/issue/{key}/comment` | `{"body": "…", "visibility": {"type": "group", "value": "staff"}}`. `type` is `group` or `role`. 201. |
+| `POST /rest/api/2/issue/{key}/comment` | `{"body": "…", "visibility": {"type": "group", "value": "staff"}}`. `type` is `group` or `role`: a role names the group made from it (see Migration). Visibility always comes back as `group`. 201. |
 | `GET /rest/api/2/issue/{key}/comment/{id}` | |
 | `PUT /rest/api/2/issue/{key}/comment/{id}` | |
 | `DELETE /rest/api/2/issue/{key}/comment/{id}` | |
@@ -354,7 +354,7 @@ and broader.
 | `DELETE /rest/api/2/filter/{id}` | The filter's owner or an administrator. 204. |
 
 `sharePermissions` takes Jira's types: `global`, `group`, `project`,
-`projectRole` and `user`. `favourite` is the requesting user's own. An
+`projectRole` and `user`; `projectRole` narrows a project share to a group's members there, and its `role.id` is that group's id. `favourite` is the requesting user's own. An
 administrator who unshares someone else's filter can no longer see it, and
 gets 204 instead of the filter. Run a filter by searching with its `jql`.
 

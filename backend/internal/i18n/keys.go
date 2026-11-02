@@ -84,16 +84,10 @@ const (
 
 // Groups.
 const (
-	GroupNotFound   Key = "GroupNotFound"
-	GroupExists     Key = "GroupExists"
-	GroupRestricted Key = "GroupRestricted"
-)
-
-// Project roles.
-const (
-	RoleNotFound   Key = "RoleNotFound"
-	RoleExists     Key = "RoleExists"
-	RoleRestricted Key = "RoleRestricted"
+	GroupNotFound    Key = "GroupNotFound"
+	GroupExists      Key = "GroupExists"
+	GroupRestricted  Key = "GroupRestricted"
+	GroupMemberCycle Key = "GroupMemberCycle"
 )
 
 // Instance settings.
@@ -247,7 +241,7 @@ const (
 	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )
 
-// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
+// Data a new instance starts with: issue types, priorities, resolutions, link types, the statuses of the project templates.
 const (
 	DefaultTypeTask                  Key = "DefaultTypeTask"
 	DefaultTypeBug                   Key = "DefaultTypeBug"
@@ -274,9 +268,6 @@ const (
 	DefaultLinkClonesName            Key = "DefaultLinkClonesName"
 	DefaultLinkClonesInward          Key = "DefaultLinkClonesInward"
 	DefaultLinkClonesOutward         Key = "DefaultLinkClonesOutward"
-	DefaultRoleAdministrators        Key = "DefaultRoleAdministrators"
-	DefaultRoleDevelopers            Key = "DefaultRoleDevelopers"
-	DefaultRoleUsers                 Key = "DefaultRoleUsers"
 	DefaultStatusToDo                Key = "DefaultStatusToDo"
 	DefaultStatusInProgress          Key = "DefaultStatusInProgress"
 	DefaultStatusInReview            Key = "DefaultStatusInReview"
@@ -456,7 +447,6 @@ const (
 const (
 	CommentEmpty           Key = "CommentEmpty"
 	CommentGroupNotMember  Key = "CommentGroupNotMember"
-	CommentRoleNotHeld     Key = "CommentRoleNotHeld"
 	CommentVisibilityFixed Key = "CommentVisibilityFixed"
 )
 
@@ -561,12 +551,12 @@ const (
 
 // Saved filters and their shares.
 const (
-	FilterNameRequired        Key = "FilterNameRequired"
-	FilterIncomplete          Key = "FilterIncomplete"
-	FilterShareKindUnknown    Key = "FilterShareKindUnknown"
-	FilterShareGroupNotMember Key = "FilterShareGroupNotMember"
-	FilterShareRoleNotHeld    Key = "FilterShareRoleNotHeld"
-	FilterSharePersonNotFound Key = "FilterSharePersonNotFound"
+	FilterNameRequired               Key = "FilterNameRequired"
+	FilterIncomplete                 Key = "FilterIncomplete"
+	FilterShareKindUnknown           Key = "FilterShareKindUnknown"
+	FilterShareGroupNotMember        Key = "FilterShareGroupNotMember"
+	FilterShareProjectGroupNotMember Key = "FilterShareProjectGroupNotMember"
+	FilterSharePersonNotFound        Key = "FilterSharePersonNotFound"
 )
 
 // The personal dashboard.

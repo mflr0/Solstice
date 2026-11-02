@@ -222,7 +222,7 @@ export interface NotificationPrefs {
 
 export interface ExtraRecipient {
   event: string;
-  kind: 'group' | 'role';
+  kind: 'group';
   id: number;
   name: string;
 }
@@ -304,7 +304,7 @@ export type GeneralSettingsInput = {
   [K in GeneralField]?: GeneralSettings[K] | null;
 };
 
-/* Users, groups, roles ------------------------------------------------------ */
+/* Users and groups ---------------------------------------------------------- */
 
 export interface UserRow {
   id: number;
@@ -346,7 +346,8 @@ export interface Group {
 
 export interface GroupUsage {
   grants: number;
-  roles: number;
+  /** Its project members, and the projects where it is one. */
+  projectMembers: number;
   securityLevels: number;
   comments: number;
   worklogs: number;
@@ -360,20 +361,12 @@ export interface GroupDetail {
   usage: GroupUsage;
 }
 
-export interface RoleRow {
-  id: number;
-  name: string;
-  description: string;
-  /** Projects with members in the role. */
-  projects: number;
-  /** Grants naming the role. */
-  grants: number;
-}
-
-export interface ProjectRole {
+/** A group with its project members in one project: users, and groups whose members there count. */
+export interface ProjectGroup {
   id: number;
   name: string;
   description: string | null;
+  fromDirectory: boolean;
   users: UserRef[];
   groups: IdName[];
 }
@@ -382,8 +375,7 @@ export interface ProjectRole {
 
 export type ProjectTemplate = 'software' | 'simple';
 
-export type ProjectAccess =
-  { holder: 'group'; id: number } | { holder: 'role'; id: number } | { holder: 'everyone' } | null;
+export type ProjectAccess = { holder: 'group'; id: number } | { holder: 'everyone' } | null;
 
 export interface ProjectInput {
   key: string;

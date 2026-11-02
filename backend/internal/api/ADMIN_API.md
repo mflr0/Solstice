@@ -228,7 +228,9 @@ picture already turned the right way. Both answer 204; `DELETE` also answers
 - `GET /api/admin/groups?q=` → `[{id, name, description, members}]`
   (`members`: count).
 - `GET /api/admin/groups/{id}` → `{id, name, description, members:
-  [userRef], usage: {grants, roles, securityLevels, comments, worklogs}}`.
+  [userRef], usage: {grants, projectMembers, securityLevels, comments,
+  worklogs}}`. `projectMembers` counts its project members and the projects
+  where it is one.
 - `POST /api/admin/groups` `{name, description?}` → 201 group (as in the
   list). Names are stored lower-case, unique (409). (`group.create`)
 - `PATCH /api/admin/groups/{id}` `{name?, description?}` → group. Renaming
@@ -236,35 +238,33 @@ picture already turned the right way. Both answer 204; `DELETE` also answers
   (`group.update`)
 - `DELETE /api/admin/groups/{id}` → 204. 409 `{usage}` while comments or
   work logs are restricted to the group (deleting it would hide them from
-  everyone). Grants, role memberships and security level memberships go with
-  the group. (`group.delete`)
+  everyone). Grants, project members, project memberships and security level
+  memberships go with the group. (`group.delete`)
 - `POST /api/admin/groups/{id}/members` `{users: [userId]}` → group detail.
 - `DELETE /api/admin/groups/{id}/members/{userId}` → 204. (`group.members`)
 
-## 5. Project roles
+## 5. Project group members
 
-Roles are shared by all projects; who holds them is set per project.
-
-- `GET /api/admin/roles` → `[{id, name, description, projects, grants}]`
-  (projects with members in the role; grants naming the role). Global admin.
-- `POST /api/admin/roles` `{name, description?}` → 201 role. (`role.create`)
-- `PATCH /api/admin/roles/{id}` `{name?, description?}` → role.
-  (`role.update`)
-- `DELETE /api/admin/roles/{id}` → 204; 409 `{usage: {comments,
-  worklogs}}` while comments or work logs are restricted to it.
-  (`role.delete`)
+A group has global members (section 4) and, per project, project members:
+users, or other groups whose members in that project count. Being in a group
+in a project means a global member, or a project member there, directly or
+through a member group, recursively. Grants, security levels, restricted
+comments and work logs, and notification recipients of a project go by its
+members in that project. A directory group (`fromDirectory`) can have project
+members too; the directory only sets its global members.
 
 Per project — project admin:
 
-- `GET /api/projects/{key}/roles` → `[{id, name, description, users:
-  [userRef], groups: [idName]}]` (every role, with this project's members).
-- `PUT /api/projects/{key}/roles/{roleId}` `{users: [userId], groups:
-  [groupId]}` → that role's entry. Replaces its members in this project.
-  (`project.roles`)
+- `GET /api/projects/{key}/groups` → `[{id, name, description, fromDirectory,
+  users: [userRef], groups: [idName]}]` (every group, with its project
+  members in this project).
+- `PUT /api/projects/{key}/groups/{groupId}` `{users: [userId], groups:
+  [groupId]}` → that group's entry. Replaces its project members in this
+  project. 400 when a member group would make the group, directly or through
+  others, a member of itself there. (`project.groups`)
 
 Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
-(holders: `everyone`, `user`, `group`, `role`, `lead`, `reporter`,
-`assignee`).
+(holders: `everyone`, `user`, `group`, `lead`, `reporter`, `assignee`).
 
 ---
 
@@ -294,14 +294,13 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
   language. Statuses are reused by name (any case) or created; the project
   gets one workflow where any status can be reached from any other.
 - `access`: who else works in the project — `{"holder": "group", "id"}`,
-  `{"holder": "role", "id"}` (the lead is added to the role in this
-  project), `{"holder": "everyone"}`, or `null`/absent (only the lead).
+  `{"holder": "everyone"}`, or `null`/absent (only the lead).
   That holder gets browse, create, edit, comment, transition, assign,
   assignable, attach, link, worklog. The lead gets every permission; global
   admins configure every project anyway.
 - `issueTypes`: default all issue types.
 - On the very first project of a fresh instance, empty catalogues (issue
-  types, priorities, resolutions, link types, roles) are filled with
+  types, priorities, resolutions, link types) are filled with
   defaults in the instance's language.
 
 → 201 `{id, key}`. 400 messages name the field at fault. (`project.create`)
@@ -357,7 +356,7 @@ stay readable by those who could see them, but nothing in it can be changed.
 (no issues) needs no confirmation. Otherwise 409 `{issues: n}` unless
 `confirm` is the project key. Everything in the project goes: issues and all
 they hold (comments, attachments and their files, history…), components,
-versions, workflows, grants, role members, security levels, former keys.
+versions, workflows, grants, group project members, security levels, former keys.
 Boards and filters remain (they may show nothing). (`project.delete`)
 
 ### Change the key — global admin
@@ -608,8 +607,8 @@ Solstice's own configuration survives it, from the administration and from
   language, last sign-in, open sessions, and Solstice administrator rights
   (someone made administrator in Solstice stays one).
 - **Accounts created in Solstice** (not from Jira) whose user name does not
-  exist in Jira are kept, with their password, but without groups or roles
-  (those come from Jira).
+  exist in Jira are kept, with their password, but without groups (those
+  come from Jira).
 - **The administrator who starts the import** from the administration keeps
   their account, password, administrator rights and session, even when Jira
   has an account of the same name (Solstice's password wins for that one
@@ -724,11 +723,11 @@ Filter subscriptions (scheduled e-mail of a filter's results):
   `updated`, `attachments`, `deleted`.
   - `enabled` (default true): false stops every notification e-mail about
     the project's issues.
-  - `extra`: `[{event, kind: group|role, id, name}]` — a group or role that
-    also receives one of those events.
+  - `extra`: `[{event, kind: group, id, name}]` — a group whose members in
+    the project also receive one of those events.
 - PUT `{enabled?, extra?}`; `extra` replaces the list, each entry
-  `{event, kind: "group"|"role", id}`. 400 for an unknown event group or a
-  group or role that does not exist. Answers GET.
+  `{event, kind: "group", id}`. 400 for an unknown event group or a group
+  that does not exist. Answers GET.
 
 ---
 
@@ -860,7 +859,7 @@ another project.
 
 - `GET /api/projects/{key}/security-levels` → `[{id, name, description,
   issues, memberCount, members: [{id, holder, user: userRef|null, group:
-  idName|null, role: idName|null}]}]`, by name. `issues` is how many issues
+  idName|null}]}]`, by name. `issues` is how many issues
   are at the level.
 - `POST /api/projects/{key}/security-levels` `{name, description?}` → 201
   level. Names unique in the project (409).
@@ -874,8 +873,9 @@ another project.
   Both together is 400. The change is written to each issue's history.
 - `POST /api/projects/{key}/security-levels/{id}/members` `{holder, id?}` →
   201 level. `holder` is one of exactly the kinds the permission checks
-  know: `everyone` (any signed-in account), `user`, `group`, `role` (these
-  three with the `id` of the user, group or project role), `lead` (the
+  know: `everyone` (any signed-in account), `user`, `group` (these
+  two with the `id` of the user or group; a group's members in the project),
+  `lead` (the
   project lead), `reporter`, `assignee` (of each issue). Already a member:
   409; unknown holder or id: 400.
 - `DELETE /api/projects/{key}/security-levels/{id}/members/{member}` → 204;
@@ -911,7 +911,7 @@ Request, with `project` (a key) the only field always needed:
 ```json
 {"project": "KEY", "check": false, "type": "bug", "subtaskType": "sub-task",
  "status": "open", "components": [3], "affectsVersions": [4], "fixVersions": [5],
- "securityLevel": 2, "restricted": {"to": "role", "role": 7}}
+ "securityLevel": 2, "restricted": {"to": "group", "group": 7}}
 ```
 
 - `check: true` is a dry run: nothing is written, the answer says what is
@@ -920,8 +920,8 @@ Request, with `project` (a key) the only field always needed:
   target project's own components, versions and security levels. A list given
   is the whole list the issue ends with; `securityLevel` is an id, or `null`
   for none.
-- `restricted` is `{"to": "role", "role": id}`, `{"to": "group", "group":
-  id}` or `{"to": "refuse"}`.
+- `restricted` is `{"to": "keep"}`, `{"to": "group", "group": id}` or
+  `{"to": "refuse"}`.
 
 What is matched by itself: the type, when the target has it; the status, when
 it is in the target's workflow for that type; components and versions by name
@@ -944,7 +944,7 @@ The dry run answers 200 with:
  "affectsVersions": {"unmatched": [], "options": []},
  "fixVersions": {"unmatched": [], "options": []},
  "securityLevel": {"unmatched": [], "options": []},
- "restricted": {"comments": 0, "worklogs": 0, "roles": [], "groups": []},
+ "restricted": {"comments": 0, "worklogs": 0, "groups": []},
  "droppedFields": [], "sprints": [],
  "assignee": {"from": null, "to": null},
  "subtasks": {"count": 0, "reset": 0, "lost": 0, "reassigned": 0}}
@@ -957,14 +957,16 @@ The dry run answers 200 with:
   offers. Lists are never `null`.
 - `securityLevel`: the target's levels are listed only to a user with the
   Security right in both projects.
-- `restricted`: the comments and work logs restricted to a project role the
-  user can read, since roles are held per project; `roles` are the target's
-  roles that have a member (empty to a user who cannot browse the whole
-  target), `groups` the groups the user belongs to (all of them for an
-  administrator). The ones the user cannot read are not offered a choice: they
-  take the role of the same name in the target (one with a member there). An
-  item already restricted to a group keeps it. A global administrator reads
-  them all.
+- `restricted`: the comments and work logs the user can read that are
+  restricted to a group with project members in the source or the target:
+  its members differ there, so who reads them would change. `keep` leaves
+  them on that group (its members in the target); `groups` are the groups
+  the user may pick instead: those the user is in, in the target, and, to a
+  user who browses the whole target, those with members there (every group
+  for an administrator). The ones the user cannot read are not offered a
+  choice: they keep their group if it has members in the target. Items
+  restricted to a group without project members in either project keep it
+  and are not counted. A global administrator reads them all.
 - `droppedFields` (names), `sprints` (names) and `assignee` (`userRef`s,
   present when it changes) say what is lost or changed. `subtasks.reset`
   counts the sub-tasks that start over at an initial status, `lost` the
@@ -981,10 +983,11 @@ Errors:
   target; moving an issue that has a security level without the Security
   right in the target, or choosing a level without it in both projects.
 - 400: no `project`, or the issue's own project; a sub-task; a choice that is
-  not one of the target's (type, status, component, version, level, role,
-  group); `restricted` set to `refuse`; comments restricted to a role the user
-  cannot read, with no same-named role in the target (the message says an
-  administrator can move the issue); sub-tasks and no sub-task type in the
+  not one of the target's (type, status, component, version, level,
+  group); `restricted` set to `refuse`; comments restricted to a group the
+  user cannot read, whose members differ by project, and which has no
+  members in the target (the message says an administrator can move the
+  issue); sub-tasks and no sub-task type in the
   target; choices still missing.
 - 409: the issue or a sub-task changed after the plan was made, or while the
   move ran. Nothing moved; reload and try again.

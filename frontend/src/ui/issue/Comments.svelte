@@ -101,11 +101,7 @@
             {/if}
           </span>
           {#if c.visibility}
-            <span class="restricted"
-              >{t.comments.visibleTo(
-                [c.visibility.group, c.visibility.role].filter(Boolean).join(', '),
-              )}</span
-            >
+            <span class="restricted">{t.comments.visibleTo(c.visibility.group ?? '')}</span>
           {/if}
           {#if c.canEdit && editing !== c.id}
             <span class="tools">

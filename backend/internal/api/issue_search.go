@@ -118,6 +118,17 @@ func (s *Server) compileJQL(ctx context.Context, sub *perm.Subject, src string) 
 			}, args...)
 			return out, err
 		},
+		MembersOf: func(group string) (string, []any, error) {
+			var id int64
+			err := s.db.QueryRowContext(ctx, `SELECT id FROM user_groups WHERE name = ?`, group).Scan(&id)
+			if errors.Is(err, sql.ErrNoRows) {
+				return "SELECT NULL FROM DUAL WHERE FALSE", nil, nil
+			}
+			if err != nil {
+				return "", nil, err
+			}
+			return s.perms.MembersSQL(ctx, 0, id)
+		},
 	})
 	if err != nil {
 		return "", nil, "", jqlError(err)

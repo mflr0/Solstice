@@ -31,6 +31,10 @@ type Env struct {
 	// can turn the values they look for into a list of literals: matching
 	// the change log against a subquery is many times slower.
 	Query func(sql string, args []any) ([]string, error)
+	// MembersOf, when set, returns a query selecting the ids of a group's
+	// members (lower-case name), project members included. Without it,
+	// membersOf() only finds global members.
+	MembersOf func(group string) (string, []any, error)
 }
 
 // Compile turns a query into a SQL condition on issues (alias i, projects
@@ -144,8 +148,7 @@ func (c *compiler) clause(cl Clause) (string, error) {
 		return c.userSet(cl, "SELECT 1 FROM watchers w WHERE w.issue_id = i.id", "w.user_id")
 	case "commenter":
 		// Restricted comments are left out: who wrote them is not for everyone.
-		return c.userSet(cl, "SELECT 1 FROM comments cm WHERE cm.issue_id = i.id AND cm.visibility_group IS NULL "+
-			"AND cm.visibility_role_id IS NULL", "cm.author_id")
+		return c.userSet(cl, "SELECT 1 FROM comments cm WHERE cm.issue_id = i.id AND cm.visibility_group IS NULL", "cm.author_id")
 	case "participant", "participants", "involves":
 		return c.participant(cl)
 	case "voter":
@@ -364,8 +367,17 @@ func (c *compiler) users(vals []Value) (sub string, empty bool, err error) {
 			if len(v.Args) != 1 {
 				return "", false, fail(i18n.JQLMembersOfGroup)
 			}
-			parts = append(parts, "SELECT m.user_id FROM group_members m JOIN user_groups g ON g.id = m.group_id WHERE g.name = ?")
-			c.arg(strings.ToLower(v.Args[0]))
+			if c.env.MembersOf == nil {
+				parts = append(parts, "SELECT m.user_id FROM group_members m JOIN user_groups g ON g.id = m.group_id WHERE g.name = ?")
+				c.arg(strings.ToLower(v.Args[0]))
+				continue
+			}
+			q, args, err := c.env.MembersOf(strings.ToLower(v.Args[0]))
+			if err != nil {
+				return "", false, err
+			}
+			parts = append(parts, q)
+			c.arg(args...)
 		case v.Func != "":
 			return "", false, fail(i18n.JQLFunctionUser, v.Func)
 		default:
@@ -698,7 +710,7 @@ func (c *compiler) comment(cl Clause) (string, error) {
 	}
 	c.arg("%" + sqlq.EscapeLike(strings.Trim(texts[0], "*")) + "%")
 	cond := "EXISTS (SELECT 1 FROM comments cm WHERE cm.issue_id = i.id AND cm.visibility_group IS NULL " +
-		"AND cm.visibility_role_id IS NULL AND cm.body LIKE ?)"
+		"AND cm.body LIKE ?)"
 	if cl.Op == "!~" {
 		return "NOT " + cond, nil
 	}
@@ -1154,7 +1166,7 @@ func (c *compiler) participant(cl Clause) (string, error) {
 	if err != nil || sub.sql == "" {
 		return "FALSE", err
 	}
-	public := " AND x.visibility_group IS NULL AND x.visibility_role_id IS NULL"
+	public := " AND x.visibility_group IS NULL"
 	f := join("(i.assignee_id IN (", sub, ") OR i.reporter_id IN (", sub, ") OR i.creator_id IN (", sub, ")",
 		" OR EXISTS (SELECT 1 FROM watchers x WHERE x.issue_id = i.id AND x.user_id IN (", sub, "))",
 		" OR EXISTS (SELECT 1 FROM comments x WHERE x.issue_id = i.id"+public+" AND x.author_id IN (", sub, "))",

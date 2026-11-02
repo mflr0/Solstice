@@ -43,7 +43,7 @@ func (r *run) importFilters() error {
 	}
 	r.rep.step("saved filters", ins.total, 0)
 
-	shares := r.inserter("filter_shares", "filter_id", "kind", "group_id", "project_id", "role_id", "user_id")
+	shares := r.inserter("filter_shares", "filter_id", "kind", "group_id", "project_id", "user_id")
 	skipped := 0
 	if err := r.each(`SELECT entityid, sharetype, param1, param2 FROM sharepermissions
 		WHERE entitytype = 'SearchRequest'`, func(rows *sql.Rows) error {
@@ -58,28 +58,30 @@ func (r *run) importFilters() error {
 		}
 		switch kind.String {
 		case "global", "loggedin":
-			return shares.add(filter.Int64, issue.ShareEveryone, nil, nil, nil, nil)
+			return shares.add(filter.Int64, issue.ShareEveryone, nil, nil, nil)
 		case "group":
 			if gid, ok := r.groups[strings.ToLower(p1.String)]; ok {
-				return shares.add(filter.Int64, issue.ShareGroup, gid, nil, nil, nil)
+				return shares.add(filter.Int64, issue.ShareGroup, gid, nil, nil)
 			}
 		case "project":
 			pid, err := strconv.ParseInt(p1.String, 10, 64)
 			if err == nil && r.projects[pid] != nil {
-				var role any
+				// A share with a project role goes to that role's group in the project.
+				var group any
 				if p2.String != "" {
 					rid, err := strconv.ParseInt(p2.String, 10, 64)
-					if err != nil || !r.roles[rid] {
+					rg, ok := r.roles[rid]
+					if err != nil || !ok {
 						skipped++
 						return nil
 					}
-					role = rid
+					group = rg.id
 				}
-				return shares.add(filter.Int64, issue.ShareProject, nil, pid, role, nil)
+				return shares.add(filter.Int64, issue.ShareProject, group, pid, nil)
 			}
 		case "user":
 			if uid, ok := r.users[p1.String]; ok {
-				return shares.add(filter.Int64, issue.ShareUser, nil, nil, nil, uid)
+				return shares.add(filter.Int64, issue.ShareUser, nil, nil, uid)
 			}
 		}
 		skipped++

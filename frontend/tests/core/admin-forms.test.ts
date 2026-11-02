@@ -19,7 +19,6 @@ import {
   offeredScopes,
   readLocked,
   restrictionUsage,
-  roleProblems,
   securityLevelProblem,
   suggestUsername,
   TOKEN_SCOPES,
@@ -157,24 +156,22 @@ describe('name length', () => {
   });
 });
 
-describe('group and role forms', () => {
+describe('group forms', () => {
   it('asks for a name, trimmed, of 255 characters at most', () => {
     expect(groupProblems({ name: '  ', description: '' })).toEqual({ name: 'nameRequired' });
-    expect(roleProblems({ name: '', description: '' })).toEqual({ name: 'nameRequired' });
     expect(hasProblems(groupProblems({ name: ` ${'a'.repeat(255)} `, description: '' }))).toBe(
       false,
     );
-    expect(roleProblems({ name: 'é'.repeat(256), description: '' })).toEqual({
+    expect(groupProblems({ name: 'é'.repeat(256), description: '' })).toEqual({
       name: 'nameTooLong',
     });
   });
 
-  it('limits the description of a group only', () => {
+  it('limits the description', () => {
     const description = 'x'.repeat(256);
     expect(groupProblems({ name: 'devs', description })).toEqual({
       description: 'descriptionTooLong',
     });
-    expect(hasProblems(roleProblems({ name: 'Developers', description }))).toBe(false);
   });
 
   it('sends trimmed texts, an empty description clearing it', () => {
@@ -372,15 +369,15 @@ describe('security levels', () => {
 
   it('offers exactly the holders of the permission checks', () => {
     expect([...LEVEL_HOLDERS].sort()).toEqual(
-      ['assignee', 'everyone', 'group', 'lead', 'reporter', 'role', 'user'].sort(),
+      ['assignee', 'everyone', 'group', 'lead', 'reporter', 'user'].sort(),
     );
-    expect(LEVEL_HOLDERS.filter(holderNeedsId).sort()).toEqual(['group', 'role', 'user']);
+    expect(LEVEL_HOLDERS.filter(holderNeedsId).sort()).toEqual(['group', 'user']);
   });
 
-  it('sends the one chosen for a user, a group or a role, and nothing for the others', () => {
+  it('sends the one chosen for a user or a group, and nothing for the others', () => {
     expect(memberPayload('group', 4)).toEqual({ holder: 'group', id: 4 });
     expect(memberPayload('user', null)).toBeNull();
-    expect(memberPayload('role', null)).toBeNull();
+    expect(memberPayload('group', null)).toBeNull();
     expect(memberPayload('lead', null)).toEqual({ holder: 'lead' });
     expect(memberPayload('everyone', 7)).toEqual({ holder: 'everyone' });
   });

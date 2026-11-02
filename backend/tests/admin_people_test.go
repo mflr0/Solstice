@@ -1,6 +1,6 @@
 package tests
 
-// Accounts, groups and project roles, as global administrators manage them,
+// Accounts and groups, as global administrators manage them,
 // and the profile people change themselves.
 
 import (
@@ -133,7 +133,7 @@ type groupDetail struct {
 	Name        string
 	Description *string
 	Members     []userRef
-	Usage       struct{ Grants, Roles, SecurityLevels, Comments, Worklogs int }
+	Usage       struct{ Grants, ProjectMembers, SecurityLevels, Comments, Worklogs int }
 }
 
 func TestGroups(t *testing.T) {
@@ -224,66 +224,76 @@ func TestGroupMembersFailureAddsNone(t *testing.T) {
 	}
 }
 
-func TestRoles(t *testing.T) {
+func TestProjectGroupMembers(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := login(t, "paul.martin", jirafixture.Password)
 	chloe := login(t, "chloe.simon", jirafixture.Password)
-	type role struct {
-		ID          int64
-		Name        string
-		Description *string
-		Projects    int
-		Grants      int
-	}
-	var r role
-	name := unique("Relecteurs ")
-	admin.call("POST", "/api/admin/roles", map[string]any{"name": name}, 201, &r)
-	t.Cleanup(func() { admin.do("DELETE", fmt.Sprintf("/api/admin/roles/%d", r.ID), nil) })
-	admin.call("POST", "/api/admin/roles", map[string]any{"name": strings.ToUpper(name)}, 409, nil)
-	paul.call("POST", "/api/admin/roles", map[string]any{"name": "x"}, 403, nil)
-	admin.call("PATCH", fmt.Sprintf("/api/admin/roles/%d", r.ID), map[string]any{"description": "Relisent"}, 200, &r)
-	if r.Name != name || r.Description == nil || *r.Description != "Relisent" {
-		t.Errorf("after PATCH: %+v", r)
-	}
+	var g, sub struct{ ID int64 }
+	name := strings.ToLower(unique("relecteurs "))
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": name}, 201, &g)
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": strings.ToLower(unique("sous-relecteurs "))}, 201, &sub)
+	t.Cleanup(func() {
+		admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
+		admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", sub.ID), nil)
+	})
 
-	// A project whose access is this role: its lead joins it, others are added.
-	key := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "role", "id": r.ID}})
+	// A project whose access is this group: its members in the project see it.
+	key := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "group", "id": g.ID}})
+	other := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "group", "id": g.ID}})
 	if status := chloe.get("/api/projects/"+key, nil); status != 404 {
-		t.Errorf("chloe.simon sees %s before joining the role: %d", key, status)
+		t.Errorf("chloe.simon sees %s before joining the group: %d", key, status)
 	}
 	type member struct {
 		ID     int64
+		Name   string
 		Users  []userRef
 		Groups []idName
 	}
-	var roles []member
-	admin.call("GET", "/api/projects/"+key+"/roles", nil, 200, &roles)
-	i := slices.IndexFunc(roles, func(m member) bool { return m.ID == r.ID })
-	if i < 0 || len(roles[i].Users) != 1 || roles[i].Users[0].Username != "admin" {
-		t.Fatalf("the role in %s: %+v", key, roles)
+	var groups []member
+	admin.call("GET", "/api/projects/"+key+"/groups", nil, 200, &groups)
+	i := slices.IndexFunc(groups, func(m member) bool { return m.ID == g.ID })
+	if i < 0 || groups[i].Name != name || len(groups[i].Users) != 0 || len(groups[i].Groups) != 0 {
+		t.Fatalf("the group in %s: %+v", key, groups)
 	}
 	var m member
-	rolePath := fmt.Sprintf("/api/projects/%s/roles/%d", key, r.ID)
-	admin.call("PUT", rolePath, map[string]any{"users": []int64{userID(t, "admin"), userID(t, "chloe.simon")},
-		"groups": []int64{}}, 200, &m)
-	if len(m.Users) != 2 {
+	path := fmt.Sprintf("/api/projects/%s/groups/%d", key, g.ID)
+	admin.call("PUT", path, map[string]any{"users": []int64{userID(t, "chloe.simon")}, "groups": []int64{sub.ID}}, 200, &m)
+	if len(m.Users) != 1 || len(m.Groups) != 1 || m.Groups[0].ID != sub.ID {
 		t.Errorf("members after PUT: %+v", m)
 	}
-	admin.call("PUT", rolePath, map[string]any{"users": []int64{999999}}, 400, nil)
+	admin.call("PUT", path, map[string]any{"users": []int64{999999}}, 400, nil)
+	admin.call("PUT", path, map[string]any{"groups": []int64{999999}}, 400, nil)
+	paul.call("PUT", path, map[string]any{"users": []int64{}}, 404, nil)
+	paul.call("GET", "/api/projects/"+key+"/groups", nil, 404, nil) // not found, or no access
+
+	// A project member holds the group's grants in that project only.
 	if status := chloe.get("/api/projects/"+key, nil); status != 200 {
-		t.Errorf("chloe.simon GET %s in the role: %d", key, status)
+		t.Errorf("chloe.simon GET %s as a project member: %d", key, status)
 	}
-	paul.call("GET", "/api/projects/"+key+"/roles", nil, 404, nil) // not found, or no access
-	var all []role
-	admin.call("GET", "/api/admin/roles", nil, 200, &all)
-	if j := slices.IndexFunc(all, func(x role) bool { return x.ID == r.ID }); j < 0 || all[j].Projects != 1 || all[j].Grants == 0 {
-		t.Errorf("roles list: %+v", all)
+	if status := chloe.get("/api/projects/"+other, nil); status != 404 {
+		t.Errorf("chloe.simon GET %s, a project member elsewhere: %d", other, status)
+	}
+	// Through a member group too.
+	admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", sub.ID), map[string]any{"users": []int64{userID(t, "paul.martin")}}, 200, nil)
+	if status := paul.get("/api/projects/"+key, nil); status != 200 {
+		t.Errorf("paul.martin GET %s through a member group: %d", key, status)
+	}
+	// A group can't be in itself, directly or through another.
+	admin.call("PUT", path, map[string]any{"groups": []int64{g.ID}}, 400, nil)
+	admin.call("PUT", fmt.Sprintf("/api/projects/%s/groups/%d", key, sub.ID), map[string]any{"groups": []int64{g.ID}}, 400, nil)
+	// …but the same pair the other way round in another project is no cycle.
+	admin.call("PUT", fmt.Sprintf("/api/projects/%s/groups/%d", other, sub.ID), map[string]any{"groups": []int64{g.ID}}, 200, nil)
+
+	var usage groupDetail
+	admin.call("GET", fmt.Sprintf("/api/admin/groups/%d", sub.ID), nil, 200, &usage)
+	if usage.Usage.ProjectMembers != 2 {
+		t.Errorf("usage of a group with project memberships: %+v", usage.Usage)
 	}
 
-	// Deleted: its members lose what it gave.
-	admin.call("DELETE", fmt.Sprintf("/api/admin/roles/%d", r.ID), nil, 204, nil)
+	// Emptied: its project members lose what it gave.
+	admin.call("PUT", path, map[string]any{"users": []int64{}, "groups": []int64{}}, 200, nil)
 	if status := chloe.get("/api/projects/"+key, nil); status != 404 {
-		t.Errorf("chloe.simon GET %s after the role went: %d", key, status)
+		t.Errorf("chloe.simon GET %s after leaving the group: %d", key, status)
 	}
 }
 

@@ -1,10 +1,9 @@
 package api
 
-// Groups and project roles. Groups are global; roles too, but who holds a
-// role is set per project (users and groups), and grants name roles.
-// Comments and work logs restricted to a group (by name) or a role must
-// never become visible to more people: renaming a group carries them along,
-// and a group or role they still use cannot be deleted.
+// Groups. A group has global members and, per project, project members
+// (users and groups). Comments and work logs restricted to a group (by name)
+// must never become visible to more people: renaming a group carries them
+// along, and a group they still use cannot be deleted.
 
 import (
 	"context"
@@ -28,7 +27,7 @@ type groupOut struct {
 
 type groupUsage struct {
 	Grants         int `json:"grants"`
-	Roles          int `json:"roles"`
+	ProjectMembers int `json:"projectMembers"`
 	SecurityLevels int `json:"securityLevels"`
 	Comments       int `json:"comments"`
 	Worklogs       int `json:"worklogs"`
@@ -132,11 +131,11 @@ func (s *Server) groupUsage(ctx context.Context, g groupOut) (groupUsage, error)
 	var u groupUsage
 	err := s.db.QueryRowContext(ctx, `SELECT
 		(SELECT COUNT(*) FROM project_permissions WHERE group_id = ?),
-		(SELECT COUNT(*) FROM project_role_members WHERE group_id = ?),
+		(SELECT COUNT(*) FROM group_project_members WHERE group_id = ? OR member_group_id = ?),
 		(SELECT COUNT(*) FROM security_level_members WHERE group_id = ?),
 		(SELECT COUNT(*) FROM comments WHERE visibility_group = ?),
-		(SELECT COUNT(*) FROM worklogs WHERE visibility_group = ?)`, g.ID, g.ID, g.ID, g.Name, g.Name).
-		Scan(&u.Grants, &u.Roles, &u.SecurityLevels, &u.Comments, &u.Worklogs)
+		(SELECT COUNT(*) FROM worklogs WHERE visibility_group = ?)`, g.ID, g.ID, g.ID, g.ID, g.Name, g.Name).
+		Scan(&u.Grants, &u.ProjectMembers, &u.SecurityLevels, &u.Comments, &u.Worklogs)
 	return u, err
 }
 
@@ -208,6 +207,7 @@ func (s *Server) createGroup(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	id, _ := res.LastInsertId()
+	s.perms.Invalidate() // restrictions find groups by name
 	s.auditLog(r, audit.GroupCreate, target(audit.TargetGroup, id, name), nil)
 	g, err := s.groupByID(ctx, id)
 	if err != nil {
@@ -312,7 +312,7 @@ func (s *Server) deleteGroup(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.perms.Invalidate()
 	s.auditLog(r, audit.GroupDelete, target(audit.TargetGroup, id, g.Name),
-		map[string]any{"members": g.Members, "grants": usage.Grants, "roles": usage.Roles,
+		map[string]any{"members": g.Members, "grants": usage.Grants, "projectMembers": usage.ProjectMembers,
 			"securityLevels": usage.SecurityLevels})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -397,216 +397,46 @@ func (s *Server) removeGroupMember(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
-type roleAdminOut struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Projects    int     `json:"projects"`
-	Grants      int     `json:"grants"`
+type projectGroupOut struct {
+	ID            int64     `json:"id"`
+	Name          string    `json:"name"`
+	Description   *string   `json:"description"`
+	FromDirectory bool      `json:"fromDirectory"`
+	Users         []userRef `json:"users"`
+	Groups        []idName  `json:"groups"`
 }
 
-func (s *Server) rolesList(ctx context.Context, where string, args ...any) ([]roleAdminOut, error) {
-	out := []roleAdminOut{}
-	err := sqlq.Each(ctx, s.db, `SELECT r.id, r.name, r.description,
-		(SELECT COUNT(DISTINCT m.project_id) FROM project_role_members m WHERE m.role_id = r.id),
-		(SELECT COUNT(*) FROM project_permissions p WHERE p.role_id = r.id)
-			+ (SELECT COUNT(*) FROM security_level_members l WHERE l.role_id = r.id)
-		FROM project_roles r WHERE `+where+` ORDER BY r.name`, func(rows *sql.Rows) error {
-		var ro roleAdminOut
-		var desc sql.NullString
-		if err := rows.Scan(&ro.ID, &ro.Name, &desc, &ro.Projects, &ro.Grants); err != nil {
-			return err
-		}
-		ro.Description = sqlq.String(desc)
-		out = append(out, ro)
-		return nil
-	}, args...)
-	return out, err
-}
-
-func (s *Server) listRoles(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
-	}
-	out, err := s.rolesList(r.Context(), "TRUE")
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusOK, out)
-}
-
-func (s *Server) roleByID(ctx context.Context, id int64) (roleAdminOut, error) {
-	list, err := s.rolesList(ctx, "r.id = ?", id)
-	if err != nil {
-		return roleAdminOut{}, err
-	}
-	if len(list) == 0 {
-		return roleAdminOut{}, errNotFound
-	}
-	return list[0], nil
-}
-
-func (s *Server) createRole(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
-	}
-	var in struct {
-		Name        string  `json:"name"`
-		Description *string `json:"description"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	name, err := cleanName(in.Name, sqlq.VarcharWidth)
-	if err != nil {
-		return err
-	}
-	ctx := r.Context()
-	if err := s.nameTaken(ctx, "project_roles", name, 0, i18n.RoleExists); err != nil {
-		return err
-	}
-	res, err := s.db.ExecContext(ctx, `INSERT INTO project_roles (name, description) VALUES (?, ?)`, name,
-		optDescription(in.Description))
-	if err != nil {
-		return err
-	}
-	id, _ := res.LastInsertId()
-	s.auditLog(r, audit.RoleCreate, target(audit.TargetRole, id, name), nil)
-	ro, err := s.roleByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	return writeJSON(w, http.StatusCreated, ro)
-}
-
-func (s *Server) updateRole(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
-	}
-	id, err := pathID(r, "id")
-	if err != nil {
-		return err
-	}
-	var in struct {
-		Name        *string `json:"name"`
-		Description *string `json:"description"`
-	}
-	if err := readJSON(r, &in); err != nil {
-		return err
-	}
-	ctx := r.Context()
-	ro, err := s.roleByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	details := map[string]any{}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if in.Name != nil {
-		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
-		if err != nil {
-			return err
-		}
-		if err := s.nameTaken(ctx, "project_roles", name, id, i18n.RoleExists); err != nil {
-			return err
-		}
-		diff(details, "name", ro.Name, name)
-		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET name = ? WHERE id = ?`, name, id); err != nil {
-			return err
-		}
-	}
-	if in.Description != nil {
-		details["description"] = optDescription(in.Description)
-		if _, err := tx.ExecContext(ctx, `UPDATE project_roles SET description = ? WHERE id = ?`,
-			optDescription(in.Description), id); err != nil {
-			return err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	ro, err = s.roleByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if len(details) > 0 {
-		s.auditLog(r, audit.RoleUpdate, target(audit.TargetRole, id, ro.Name), details)
-	}
-	return writeJSON(w, http.StatusOK, ro)
-}
-
-func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) error {
-	if err := requireAdmin(r); err != nil {
-		return err
-	}
-	id, err := pathID(r, "id")
-	if err != nil {
-		return err
-	}
-	ctx := r.Context()
-	ro, err := s.roleByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	var comments, worklogs int
-	if err := s.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?),
-		(SELECT COUNT(*) FROM worklogs WHERE visibility_role_id = ?)`, id, id).Scan(&comments, &worklogs); err != nil {
-		return err
-	}
-	if comments+worklogs > 0 {
-		return &httpError{status: http.StatusConflict,
-			extra: map[string]any{"usage": map[string]int{"comments": comments, "worklogs": worklogs}},
-			msg:   i18n.M(i18n.RoleRestricted)}
-	}
-	if _, err := s.db.ExecContext(ctx, `DELETE FROM project_roles WHERE id = ?`, id); err != nil {
-		return err
-	}
-	s.perms.Invalidate()
-	s.auditLog(r, audit.RoleDelete, target(audit.TargetRole, id, ro.Name),
-		map[string]any{"projects": ro.Projects, "grants": ro.Grants})
-	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-
-type projectRoleOut struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description"`
-	Users       []userRef `json:"users"`
-	Groups      []idName  `json:"groups"`
-}
-
-func (s *Server) projectRoles(ctx context.Context, projectID int64) ([]projectRoleOut, error) {
-	out := []projectRoleOut{}
+// projectGroups lists every group with its project members in a project.
+func (s *Server) projectGroups(ctx context.Context, projectID int64) ([]projectGroupOut, error) {
+	out := []projectGroupOut{}
 	index := map[int64]int{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name, description FROM project_roles ORDER BY name`, func(rows *sql.Rows) error {
-		var ro projectRoleOut
-		var desc sql.NullString
-		if err := rows.Scan(&ro.ID, &ro.Name, &desc); err != nil {
-			return err
-		}
-		ro.Description = sqlq.String(desc)
-		ro.Users, ro.Groups = []userRef{}, []idName{}
-		index[ro.ID] = len(out)
-		out = append(out, ro)
-		return nil
-	}); err != nil {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, description, from_directory FROM user_groups ORDER BY name`,
+		func(rows *sql.Rows) error {
+			var g projectGroupOut
+			var desc sql.NullString
+			if err := rows.Scan(&g.ID, &g.Name, &desc, &g.FromDirectory); err != nil {
+				return err
+			}
+			g.Description = sqlq.String(desc)
+			g.Users, g.Groups = []userRef{}, []idName{}
+			index[g.ID] = len(out)
+			out = append(out, g)
+			return nil
+		}); err != nil {
 		return nil, err
 	}
-	err := sqlq.Each(ctx, s.db, `SELECT m.role_id, u.id, u.username, u.display_name, u.active, g.id, g.name
-		FROM project_role_members m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
+	err := sqlq.Each(ctx, s.db, `SELECT m.group_id, u.id, u.username, u.display_name, u.active, g.id, g.name
+		FROM group_project_members m LEFT JOIN users u ON u.id = m.user_id
+		LEFT JOIN user_groups g ON g.id = m.member_group_id
 		WHERE m.project_id = ? ORDER BY u.display_name, g.name`, func(rows *sql.Rows) error {
-		var role int64
+		var group int64
 		var uid, gid sql.NullInt64
 		var username, name, gname sql.NullString
 		var active sql.NullBool
-		if err := rows.Scan(&role, &uid, &username, &name, &active, &gid, &gname); err != nil {
+		if err := rows.Scan(&group, &uid, &username, &name, &active, &gid, &gname); err != nil {
 			return err
 		}
-		i, ok := index[role]
+		i, ok := index[group]
 		if !ok {
 			return nil
 		}
@@ -621,25 +451,54 @@ func (s *Server) projectRoles(ctx context.Context, projectID int64) ([]projectRo
 	return out, err
 }
 
-func (s *Server) getProjectRoles(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) getProjectGroups(w http.ResponseWriter, r *http.Request) error {
 	id, err := s.configurableProject(r)
 	if err != nil {
 		return err
 	}
-	out, err := s.projectRoles(r.Context(), id)
+	out, err := s.projectGroups(r.Context(), id)
 	if err != nil {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// putProjectRole replaces who holds a role in a project.
-func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
+// memberCycle reports whether making members project members of group in
+// a project would make group, through them, a member of itself there.
+func memberCycle(ctx context.Context, tx *sql.Tx, projectID, group int64, members []int64) (bool, error) {
+	children := map[int64][]int64{} // group → its member groups in the project
+	if err := sqlq.Each(ctx, tx, `SELECT group_id, member_group_id FROM group_project_members
+		WHERE project_id = ? AND member_group_id IS NOT NULL AND group_id <> ?`, func(rows *sql.Rows) error {
+		var parent, child int64
+		err := rows.Scan(&parent, &child)
+		children[parent] = append(children[parent], child)
+		return err
+	}, projectID, group); err != nil {
+		return false, err
+	}
+	seen := map[int64]bool{}
+	queue := slices.Clone(members)
+	for len(queue) > 0 {
+		g := queue[0]
+		queue = queue[1:]
+		if g == group {
+			return true, nil
+		}
+		if !seen[g] {
+			seen[g] = true
+			queue = append(queue, children[g]...)
+		}
+	}
+	return false, nil
+}
+
+// putProjectGroup replaces the project members of a group in a project.
+func (s *Server) putProjectGroup(w http.ResponseWriter, r *http.Request) error {
 	projectID, err := s.configurableProject(r)
 	if err != nil {
 		return err
 	}
-	roleID, err := pathID(r, "role")
+	groupID, err := pathID(r, "group")
 	if err != nil {
 		return err
 	}
@@ -651,7 +510,7 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	role, err := s.roleByID(ctx, roleID)
+	group, err := s.groupByID(ctx, groupID)
 	if err != nil {
 		return err
 	}
@@ -661,7 +520,7 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkGroups(ctx, in.Groups); err != nil {
 		return err
 	}
-	before, err := s.projectRoles(ctx, projectID)
+	before, err := s.projectGroups(ctx, projectID)
 	if err != nil {
 		return err
 	}
@@ -670,21 +529,32 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM project_role_members WHERE project_id = ? AND role_id = ?`,
-		projectID, roleID); err != nil {
+	// Serializes concurrent changes to the project's members, so two of them
+	// cannot close a cycle together.
+	if _, err := tx.ExecContext(ctx, `SELECT id FROM projects WHERE id = ? FOR UPDATE`, projectID); err != nil {
 		return err
 	}
 	slices.Sort(in.Users)
 	slices.Sort(in.Groups)
-	for _, u := range slices.Compact(in.Users) {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`,
-			projectID, roleID, u); err != nil {
+	in.Users, in.Groups = slices.Compact(in.Users), slices.Compact(in.Groups)
+	if cycle, err := memberCycle(ctx, tx, projectID, groupID, in.Groups); err != nil {
+		return err
+	} else if cycle {
+		return fail(http.StatusBadRequest, i18n.GroupMemberCycle)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM group_project_members WHERE project_id = ? AND group_id = ?`,
+		projectID, groupID); err != nil {
+		return err
+	}
+	for _, u := range in.Users {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO group_project_members (group_id, project_id, user_id)
+			VALUES (?, ?, ?)`, groupID, projectID, u); err != nil {
 			return err
 		}
 	}
-	for _, g := range slices.Compact(in.Groups) {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO project_role_members (project_id, role_id, group_id) VALUES (?, ?, ?)`,
-			projectID, roleID, g); err != nil {
+	for _, g := range in.Groups {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO group_project_members (group_id, project_id, member_group_id)
+			VALUES (?, ?, ?)`, groupID, projectID, g); err != nil {
 			return err
 		}
 	}
@@ -692,38 +562,35 @@ func (s *Server) putProjectRole(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.perms.Invalidate()
-	after, err := s.projectRoles(ctx, projectID)
+	after, err := s.projectGroups(ctx, projectID)
 	if err != nil {
 		return err
 	}
-	var entry projectRoleOut
-	for _, ro := range after {
-		if ro.ID == roleID {
-			entry = ro
+	find := func(list []projectGroupOut) projectGroupOut {
+		for _, g := range list {
+			if g.ID == groupID {
+				return g
+			}
 		}
+		return projectGroupOut{}
 	}
-	var old projectRoleOut
-	for _, ro := range before {
-		if ro.ID == roleID {
-			old = ro
-		}
-	}
-	names := func(ro projectRoleOut) map[string][]string {
+	names := func(g projectGroupOut) map[string][]string {
 		out := map[string][]string{"users": {}, "groups": {}}
-		for _, u := range ro.Users {
+		for _, u := range g.Users {
 			out["users"] = append(out["users"], u.Username)
 		}
-		for _, g := range ro.Groups {
-			out["groups"] = append(out["groups"], g.Name)
+		for _, m := range g.Groups {
+			out["groups"] = append(out["groups"], m.Name)
 		}
 		slices.Sort(out["users"])
 		slices.Sort(out["groups"])
 		return out
 	}
-	from, to := names(old), names(entry)
+	entry := find(after)
+	from, to := names(find(before)), names(entry)
 	if changed(from, to) {
-		s.auditLog(r, audit.ProjectRoles, target(audit.TargetProject, projectID, s.auditProjectKey(ctx, projectID)),
-			map[string]any{"role": role.Name, "from": from, "to": to})
+		s.auditLog(r, audit.ProjectGroups, target(audit.TargetProject, projectID, s.auditProjectKey(ctx, projectID)),
+			map[string]any{"group": group.Name, "from": from, "to": to})
 	}
 	return writeJSON(w, http.StatusOK, entry)
 }

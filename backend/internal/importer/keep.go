@@ -10,7 +10,7 @@ package importer
 //     sessions, interface language, last sign-in and administrator rights are kept for
 //     the accounts that still exist afterwards, matched by user name;
 //   - accounts created in Solstice (no Jira key) whose user name Jira does
-//     not have are kept, without groups or roles;
+//     not have are kept, without groups;
 //   - the operator (Options.Operator), who starts the import from the
 //     administration, keeps their account, password, rights and session.
 //

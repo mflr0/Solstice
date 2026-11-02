@@ -16,9 +16,8 @@ type Event struct {
 	By    int64      `json:"by"`   // user who made the change
 	Issue perm.Issue `json:"-"`    // who may hear about it
 	// A change to a restricted comment is only announced to those who may
-	// read it: its group (lower-case name) and/or project role.
+	// read it: its group (lower-case name).
 	Group string `json:"-"`
-	Role  int64  `json:"-"`
 }
 
 type subscriber struct {

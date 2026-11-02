@@ -445,12 +445,7 @@ export function groupProblems(f: NamedForm): Problems<'name' | 'description', Na
   return out;
 }
 
-export function roleProblems(f: NamedForm): Problems<'name', 'nameRequired' | 'nameTooLong'> {
-  const name = nameProblem(f.name);
-  return name ? { name } : {};
-}
-
-/** What to send for a group or a role: trimmed; an empty description clears it. */
+/** What to send for a group: trimmed; an empty description clears it. */
 export function namedPayload(f: NamedForm): { name: string; description: string } {
   return { name: f.name.trim(), description: f.description.trim() };
 }
@@ -473,7 +468,7 @@ export function namedPatch(
 }
 
 /**
- * The comments and work logs that keep a group or a role from being deleted,
+ * The comments and work logs that keep a group from being deleted,
  * read from the server's 409 answer; null when the answer does not say.
  */
 export function restrictionUsage(data: unknown): { comments: number; worklogs: number } | null {
@@ -512,21 +507,13 @@ export function levelTargets<T extends { id: number }>(levels: readonly T[], rem
 }
 
 /** The kinds of holder a level takes (those of the permission checks), in the order offered. */
-export const LEVEL_HOLDERS = [
-  'group',
-  'role',
-  'user',
-  'everyone',
-  'lead',
-  'reporter',
-  'assignee',
-] as const;
+export const LEVEL_HOLDERS = ['group', 'user', 'everyone', 'lead', 'reporter', 'assignee'] as const;
 
 export type LevelHolder = (typeof LEVEL_HOLDERS)[number];
 
-/** Whether a holder kind names someone: a user, a group or a role. */
+/** Whether a holder kind names someone: a user or a group. */
 export function holderNeedsId(holder: LevelHolder): boolean {
-  return holder === 'user' || holder === 'group' || holder === 'role';
+  return holder === 'user' || holder === 'group';
 }
 
 /** What to send to add a holder; null while the one it names is not chosen. */

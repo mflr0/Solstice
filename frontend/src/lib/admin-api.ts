@@ -26,8 +26,7 @@ import type {
   KeyCheck,
   ProjectInput,
   ProjectPatch,
-  ProjectRole,
-  RoleRow,
+  ProjectGroup,
   StatusRow,
   StatusUsage,
   SystemInfo,
@@ -61,13 +60,12 @@ const enc = encodeURIComponent;
 /** The SMTP settings, and what keeps them from sending: saved with a username, no encryption, a remote server. */
 export type MailSettingsReply = MailSettings & { problem?: 'credentialsNeedTLS' };
 
-/** Who may see the issues at a security level: one holder, with the user, group or role it names. */
+/** Who may see the issues at a security level: one holder, with the user or group it names. */
 export interface SecurityMember {
   id: number;
-  holder: 'everyone' | 'user' | 'group' | 'role' | 'lead' | 'reporter' | 'assignee';
+  holder: 'everyone' | 'user' | 'group' | 'lead' | 'reporter' | 'assignee';
   user: UserRef | null;
   group: IdName | null;
-  role: IdName | null;
 }
 
 /** An issue security level of a project. */
@@ -122,14 +120,6 @@ export const adminApi = {
     request<GroupDetail>('POST', `/api/admin/groups/${id}/members`, { users }),
   removeMember: (id: number, user: number) =>
     request<void>('DELETE', `/api/admin/groups/${id}/members/${user}`),
-
-  // Roles (shared by every project).
-  roles: () => request<RoleRow[]>('GET', '/api/admin/roles'),
-  createRole: (r: { name: string; description?: string }) =>
-    request<RoleRow>('POST', '/api/admin/roles', r),
-  updateRole: (id: number, r: { name?: string; description?: string }) =>
-    request<RoleRow>('PATCH', `/api/admin/roles/${id}`, r),
-  deleteRole: (id: number) => request<void>('DELETE', `/api/admin/roles/${id}`),
 
   // Projects.
   /** Every project, archived ones included, seen or not. */
@@ -259,9 +249,10 @@ export const projectAdminApi = {
   settings: (key: string) => request<ProjectSettings>('GET', `/api/projects/${enc(key)}/settings`),
   update: (key: string, patch: ProjectPatch) =>
     request<ProjectSettings>('PATCH', `/api/projects/${enc(key)}`, patch),
-  roles: (key: string) => request<ProjectRole[]>('GET', `/api/projects/${enc(key)}/roles`),
-  setRole: (key: string, role: number, members: { users: number[]; groups: number[] }) =>
-    request<ProjectRole>('PUT', `/api/projects/${enc(key)}/roles/${role}`, members),
+  /** Every group, with its project members in this project. */
+  groups: (key: string) => request<ProjectGroup[]>('GET', `/api/projects/${enc(key)}/groups`),
+  setGroupMembers: (key: string, group: number, members: { users: number[]; groups: number[] }) =>
+    request<ProjectGroup>('PUT', `/api/projects/${enc(key)}/groups/${group}`, members),
 
   components: (key: string) =>
     request<ComponentRow[]>('GET', `/api/projects/${enc(key)}/components`),

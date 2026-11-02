@@ -31,12 +31,8 @@ func (s *Server) adminRoutes(route routeFunc) {
 	route("DELETE /api/admin/groups/{id}", s.deleteGroup, auth.ScopeAdmin)
 	route("POST /api/admin/groups/{id}/members", s.addGroupMembers, auth.ScopeAdmin)
 	route("DELETE /api/admin/groups/{id}/members/{user}", s.removeGroupMember, auth.ScopeAdmin)
-	route("GET /api/admin/roles", s.listRoles, auth.ScopeAdmin)
-	route("POST /api/admin/roles", s.createRole, auth.ScopeAdmin)
-	route("PATCH /api/admin/roles/{id}", s.updateRole, auth.ScopeAdmin)
-	route("DELETE /api/admin/roles/{id}", s.deleteRole, auth.ScopeAdmin)
-	route("GET /api/projects/{key}/roles", s.getProjectRoles, auth.ScopeRead)
-	route("PUT /api/projects/{key}/roles/{role}", s.putProjectRole, auth.ScopeProjects)
+	route("GET /api/projects/{key}/groups", s.getProjectGroups, auth.ScopeRead)
+	route("PUT /api/projects/{key}/groups/{group}", s.putProjectGroup, auth.ScopeProjects)
 
 	// Projects.
 	route("POST /api/projects", s.createProject, auth.ScopeProjects)

@@ -5,7 +5,7 @@
     memberPayload,
     type LevelHolder,
   } from '../../core/admin-forms.js';
-  import type { Group, RoleRow } from '../../core/admin-types.js';
+  import type { Group } from '../../core/admin-types.js';
   import type { UserRef } from '../../core/types.js';
   import { holderLabels, t } from '../../i18n/t.js';
   import { adminApi, securityApi, type SecurityLevel } from '../../lib/admin-api.js';
@@ -15,7 +15,7 @@
   import UserPicker from '../UserPicker.svelte';
 
   /**
-   * Adding someone to a security level: a group, a project role, a person,
+   * Adding someone to a security level: a group (its members in the project), a person,
    * everyone, or the project lead, the reporter or the assignee of each issue.
    */
   interface Props {
@@ -32,7 +32,6 @@
   let pick = $state('');
   let user = $state<UserRef | null>(null);
   let groups = $state<Group[]>([]);
-  let roles = $state<RoleRow[]>([]);
   let tried = $state(false);
   let error = $state('');
   let busy = $state(false);
@@ -47,11 +46,9 @@
     user = null;
     tried = false;
     error = '';
-    void Promise.all([adminApi.groups(), adminApi.roles()])
-      .then(([g, r]) => {
-        groups = g;
-        roles = r;
-      })
+    void adminApi
+      .groups()
+      .then((g) => (groups = g))
       .catch((e: unknown) => (error = errorMessage(e)));
   });
 
@@ -91,13 +88,13 @@
         }}
       />
     </div>
-    {#if holder === 'group' || holder === 'role'}
+    {#if holder === 'group'}
       <div class="field">
-        <span>{holder === 'group' ? t.securityAdmin.chooseGroup : t.securityAdmin.chooseRole}</span>
+        <span>{t.securityAdmin.chooseGroup}</span>
         <Dropdown
-          label={holder === 'group' ? t.securityAdmin.chooseGroup : t.securityAdmin.chooseRole}
+          label={t.securityAdmin.chooseGroup}
           value={pick}
-          options={(holder === 'group' ? groups : roles).map((x) => ({
+          options={groups.map((x) => ({
             value: String(x.id),
             label: x.name,
           }))}

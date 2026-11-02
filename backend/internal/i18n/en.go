@@ -75,14 +75,10 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	OAuthRefreshDaysInvalid:   "The refresh token lifetime must be between 1 and %d days.",
 
 	// Groups.
-	GroupNotFound:   "Group not found.",
-	GroupExists:     "The group “%s” already exists.",
-	GroupRestricted: "Some comments or work logs are restricted to this group: it cannot be deleted.",
-
-	// Project roles.
-	RoleNotFound:   "Role not found.",
-	RoleExists:     "The role “%s” already exists.",
-	RoleRestricted: "Some comments or work logs are restricted to this role: it cannot be deleted.",
+	GroupNotFound:    "Group not found.",
+	GroupExists:      "The group “%s” already exists.",
+	GroupRestricted:  "Some comments or work logs are restricted to this group: it cannot be deleted.",
+	GroupMemberCycle: "A group cannot be a member of itself, even through other groups.",
 
 	// Instance settings.
 	SettingsNameRequired:          "The instance name is required (%d characters at most).",
@@ -150,8 +146,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportWarnLevelMembersOne:                  "%d member of security levels not imported (unsupported type): these issues are visible by fewer people than before, never by more",
 	ImportWarnLevelMembersMany:                 "%d members of security levels not imported (unsupported type): these issues are visible by fewer people than before, never by more",
 	ImportWarnLevelReplaced:                    "project %s: a security level not found in Jira was replaced by \"Restricted (import)\", with no member",
-	ImportWarnLocalAccountsOne:                 "%d account created in Solstice kept (without groups or roles, which come from Jira)",
-	ImportWarnLocalAccountsMany:                "%d accounts created in Solstice kept (without groups or roles, which come from Jira)",
+	ImportWarnLocalAccountsOne:                 "%d account created in Solstice kept (without groups, which come from Jira)",
+	ImportWarnLocalAccountsMany:                "%d accounts created in Solstice kept (without groups, which come from Jira)",
 	ImportWarnNoPasswordOne:                    "%d active account without a usable password (external directory or old format): set one with \"solstice user passwd\"",
 	ImportWarnNoPasswordMany:                   "%d active accounts without a usable password (external directory or old format): set one with \"solstice user passwd\"",
 	ImportWarnDeletedUsersOne:                  "%d user deleted from Jira kept as an inactive account (authors of old issues)",
@@ -221,7 +217,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Type the current key of the project to confirm the change.",
 	ProjectKeysBusy:            "Another change of a project key is in progress. Try again in a moment.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, the statuses of the project templates.
 	DefaultTypeTask:                  "Task",
 	DefaultTypeBug:                   "Bug",
 	DefaultTypeStory:                 "Story",
@@ -247,9 +243,6 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultLinkClonesName:            "Clone",
 	DefaultLinkClonesInward:          "is cloned by",
 	DefaultLinkClonesOutward:         "clones",
-	DefaultRoleAdministrators:        "Administrators",
-	DefaultRoleDevelopers:            "Developers",
-	DefaultRoleUsers:                 "Users",
 	DefaultStatusToDo:                "To Do",
 	DefaultStatusInProgress:          "In Progress",
 	DefaultStatusInReview:            "In Review",
@@ -398,8 +391,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "A sub-task moves with its parent: move the parent issue.",
 	IssueMoveChoiceNeeded:      "Choose before moving: %s.",
 	IssueMoveChanged:           "The issue changed while it was being moved. Reload it and try again.",
-	IssueMoveRestrictedRefused: "Comments and work logs restricted to a role of this project cannot stay as they are in another project.",
-	IssueMoveRestrictedHidden:  "%d comments and work logs restricted to a role of this project are not readable by you, and the target project has no role of the same name. An administrator can move the issue.",
+	IssueMoveRestrictedRefused: "Comments and work logs restricted to a group whose members differ in another project cannot stay as they are.",
+	IssueMoveRestrictedHidden:  "%d comments and work logs restricted to a group whose members differ in another project are not readable by you, and that group has no members in the target project. An administrator can move the issue.",
 	IssueMoveSecurityNeeded:    "Moving an issue that has a security level takes the Security level permission in the target project, and in this project to choose another level.",
 	IssueMoveNoSubtaskType:     "The issue has sub-tasks, and the target project has no sub-task type to give them. Add one to the project first.",
 	IssueMoveUseAction:         "An issue changes project with the Move action.",
@@ -411,12 +404,11 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Comments and their visibility.
 	CommentEmpty:           "The comment is empty.",
 	CommentGroupNotMember:  "You are not a member of this group.",
-	CommentRoleNotHeld:     "You do not have this role in the project.",
 	CommentVisibilityFixed: "The visibility of an existing comment cannot be changed.",
 
 	// Work logs.
 	WorkLogDurationInvalid: "Invalid duration.",
-	WorkLogRestricted:      "A work log cannot be restricted to a group or a role.",
+	WorkLogRestricted:      "A work log cannot be restricted to a group.",
 
 	// Issue links.
 	LinkTypeUnknown:      "Unknown link type.",
@@ -500,12 +492,12 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintNotOnBoard:      "The issue's project is not on this sprint's board.",
 
 	// Saved filters and their shares.
-	FilterNameRequired:        "A filter name is required (255 characters at most).",
-	FilterIncomplete:          "A filter needs a name and a query.",
-	FilterShareKindUnknown:    "Unknown kind of share: %s.",
-	FilterShareGroupNotMember: "You can only share with a group you belong to.",
-	FilterShareRoleNotHeld:    "You can only share with a role you have in the project.",
-	FilterSharePersonNotFound: "Person not found.",
+	FilterNameRequired:               "A filter name is required (255 characters at most).",
+	FilterIncomplete:                 "A filter needs a name and a query.",
+	FilterShareKindUnknown:           "Unknown kind of share: %s.",
+	FilterShareGroupNotMember:        "You can only share with a group you belong to.",
+	FilterShareProjectGroupNotMember: "You can only share with a group you belong to in the project.",
+	FilterSharePersonNotFound:        "Person not found.",
 
 	// The personal dashboard.
 	DashboardTooManyGadgets:    "A dashboard holds %d gadgets at most.",
@@ -628,7 +620,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyIntervalInvalid:     "Invalid interval: from 15 to 720 minutes.",
 	NotifyDeliveryUnknown:     "Unknown delivery mode: immediate, digest, periodic or none.",
 	NotifyEventUnknown:        "Unknown event: %s.",
-	NotifyRecipientUnknown:    "Unknown recipient: group or role.",
+	NotifyRecipientUnknown:    "Unknown recipient: group.",
 	NotifyManage:              "Manage my notifications",
 	NotifyChangeInPreferences: "You can change your notifications in your preferences in Solstice.",
 	NotifyOpenIssue:           "Open the issue",

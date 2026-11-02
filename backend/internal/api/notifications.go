@@ -155,7 +155,7 @@ func (s *Server) toLive(e events.Event) {
 	}
 	ev := live.Event{Key: e.Key, What: e.Live, By: e.ActorID, Issue: e.Access}
 	if e.Comment != nil {
-		ev.Group, ev.Role = e.Comment.Group, e.Comment.RoleID
+		ev.Group = e.Comment.Group
 	}
 	s.hub.Publish(ev)
 	// Someone who just lost access must learn the issue changed too.
@@ -375,11 +375,6 @@ func (s *Server) putProjectNotifications(w http.ResponseWriter, r *http.Request)
 				err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_groups WHERE id = ?`, e.ID).Scan(&n)
 				if err == nil && n == 0 {
 					return fail(http.StatusBadRequest, i18n.GroupNotFound)
-				}
-			case "role":
-				err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM project_roles WHERE id = ?`, e.ID).Scan(&n)
-				if err == nil && n == 0 {
-					return fail(http.StatusBadRequest, i18n.RoleNotFound)
 				}
 			default:
 				return fail(http.StatusBadRequest, i18n.NotifyRecipientUnknown)
@@ -1079,7 +1074,7 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, flusher ht
 	can := func(e live.Event) bool {
 		s := <-current
 		current <- s
-		return s.CanSee(e.Issue) && s.SeesRestricted(e.Issue.ProjectID, e.Group, e.Role)
+		return s.CanSee(e.Issue) && s.SeesRestricted(e.Issue.ProjectID, e.Group)
 	}
 	ch, unsubscribe := s.hub.Subscribe(can)
 	defer unsubscribe()

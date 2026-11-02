@@ -119,8 +119,8 @@ describe('project creation', () => {
       category: null,
       access: null,
     });
-    expect(projectPayload(form({ access: 'role', accessId: 3, category: 4 }))).toMatchObject({
-      access: { holder: 'role', id: 3 },
+    expect(projectPayload(form({ access: 'group', accessId: 3, category: 4 }))).toMatchObject({
+      access: { holder: 'group', id: 3 },
       category: 4,
     });
     expect(projectPayload(form({ access: 'everyone' })).access).toEqual({ holder: 'everyone' });
@@ -213,7 +213,7 @@ describe('project notifications', () => {
 
   it('tells unsaved changes from the saved ones', () => {
     const r = { event: 'created', kind: 'group' as const, id: 4, name: 'dev' };
-    const other = { event: 'status', kind: 'role' as const, id: 2, name: 'qa' };
+    const other = { event: 'status', kind: 'group' as const, id: 2, name: 'qa' };
     const saved = { enabled: true, extra: [r, other] };
     expect(notificationsChanged(saved, true, [other, r])).toBe(false);
     expect(notificationsChanged(saved, false, [r, other])).toBe(true);

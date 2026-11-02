@@ -359,7 +359,7 @@ func (s *Service) visibleItems(ctx context.Context, sub *perm.Subject, cur *even
 			continue
 		}
 		if it.Comment != nil {
-			ok, err := s.seesRestricted(ctx, sub, "comments", it.Comment.ID, it.Comment.Group, it.Comment.RoleID,
+			ok, err := s.seesRestricted(ctx, sub, "comments", it.Comment.ID, it.Comment.Group,
 				it.Access.ProjectID, access.ProjectID)
 			if err != nil {
 				return nil, err
@@ -369,7 +369,7 @@ func (s *Service) visibleItems(ctx context.Context, sub *perm.Subject, cur *even
 			}
 		}
 		if it.Worklog != nil {
-			ok, err := s.seesRestricted(ctx, sub, "worklogs", it.Worklog.ID, it.Worklog.Group, it.Worklog.RoleID,
+			ok, err := s.seesRestricted(ctx, sub, "worklogs", it.Worklog.ID, it.Worklog.Group,
 				it.Access.ProjectID, access.ProjectID)
 			if err != nil {
 				return nil, err
@@ -384,23 +384,21 @@ func (s *Service) visibleItems(ctx context.Context, sub *perm.Subject, cur *even
 }
 
 // seesRestricted tells whether sub may read a comment or work log (table
-// names which): by its restriction as it is now, or as it was (group, role
-// in project then) when it is gone. A move gives one restricted to a role
+// names which): by its restriction as it is now, or as it was (group in
+// project then) when it is gone. A move can give one restricted to a group
 // another restriction.
-func (s *Service) seesRestricted(ctx context.Context, sub *perm.Subject, table string, id int64, group string, role int64,
+func (s *Service) seesRestricted(ctx context.Context, sub *perm.Subject, table string, id int64, group string,
 	projectThen, projectNow int64) (bool, error) {
 	var g sql.NullString
-	var r sql.NullInt64
 	project := projectThen
-	err := s.db.QueryRowContext(ctx, `SELECT visibility_group, visibility_role_id FROM `+table+` WHERE id = ?`, id).
-		Scan(&g, &r)
+	err := s.db.QueryRowContext(ctx, `SELECT visibility_group FROM `+table+` WHERE id = ?`, id).Scan(&g)
 	switch {
 	case err == nil:
-		group, role, project = g.String, r.Int64, projectNow
+		group, project = g.String, projectNow
 	case !errors.Is(err, sql.ErrNoRows):
 		return false, err
 	}
-	return sub.SeesRestricted(project, group, role), nil
+	return sub.SeesRestricted(project, group), nil
 }
 
 // entryFor writes one item for the recipient. It reports false when nothing
@@ -437,7 +435,7 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 	}
 	if it.Comment != nil {
 		en.Text = excerpt(it.Comment.Body, 4000)
-		if it.Comment.Group != "" || it.Comment.RoleID != 0 {
+		if it.Comment.Group != "" {
 			en.Note = i18n.M(i18n.NotifyRestrictedComment).In(loc)
 		}
 	}
@@ -445,7 +443,7 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 		en.Changes = append(en.Changes, changeRow{Field: fieldLabel(loc, "timespent"), To: issue.Duration(w.Seconds)},
 			changeRow{Field: i18n.M(i18n.NotifyWorklogStarted).In(loc), To: formatTime(loc, w.Started.In(s.zone()))})
 		en.Text = excerpt(w.Body, 4000)
-		if w.Group != "" || w.RoleID != 0 {
+		if w.Group != "" {
 			en.Note = i18n.M(i18n.NotifyRestrictedWorklog).In(loc)
 		}
 	}

@@ -237,7 +237,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// E-mail notifications, filter subscriptions, webhooks.
 	s.notificationRoutes(route)
 
-	// Instance settings, projects, catalogues, custom fields, groups, roles,
+	// Instance settings, projects, catalogues, custom fields, groups,
 	// system information and Jira import, configured in the interface.
 	s.adminRoutes(route)
 

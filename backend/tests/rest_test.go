@@ -933,3 +933,46 @@ func TestAgileREST(t *testing.T) {
 		t.Errorf("paul.martin ranked an RH issue: %d", status)
 	}
 }
+
+// TestRESTRoleVisibilityNamesTheGroupMadeFromTheRole checks that a Jira
+// client restricting a comment to a project role gets the group the role
+// became: the one with " (role)" when the role's name was a group's already.
+func TestRESTRoleVisibilityNamesTheGroupMadeFromTheRole(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	base := strings.ToLower(unique("relecteurs"))
+	other := strings.ToLower(unique("vérificateurs"))
+	names := []string{base, base + " (role)", other}
+	for _, name := range names {
+		var g struct{ ID int64 }
+		admin.call("POST", "/api/admin/groups", map[string]any{"name": name}, 201, &g)
+		admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", g.ID), map[string]any{"users": []int64{userID(t, "admin")}}, 200, nil)
+		t.Cleanup(func() {
+			testDB.Exec(`DELETE FROM comments WHERE visibility_group = ?`, name)
+			admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
+		})
+	}
+	key := newTestIssue(t, admin, "Visibilité par rôle", nil)
+	post := func(role string) (int, map[string]any) {
+		t.Helper()
+		status, _, raw := call(t, admin, testURL, "POST", "/rest/api/2/issue/"+key+"/comment",
+			map[string]any{"body": "Pour le rôle " + role, "visibility": map[string]string{"type": "role", "value": role}},
+			func(r *http.Request) { r.Header.Set(csrfHeader, "1") })
+		var m map[string]any
+		json.Unmarshal(raw, &m)
+		return status, m
+	}
+
+	status, c := post(strings.ToUpper(base))
+	if status != 201 || str(c, "visibility", "type") != "group" || str(c, "visibility", "value") != base+" (role)" {
+		t.Errorf("a role whose name a group had: %d %v", status, c)
+	}
+	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ?`, str(c, "id")); g != base+" (role)" {
+		t.Errorf("stored restriction: %q", g)
+	}
+	if status, c := post(strings.ToUpper(other)); status != 201 || str(c, "visibility", "value") != other {
+		t.Errorf("a role of its own name: %d %v", status, c)
+	}
+	if status, _ := post(unique("inconnu")); status != 400 {
+		t.Errorf("an unknown role: %d, want 400", status)
+	}
+}

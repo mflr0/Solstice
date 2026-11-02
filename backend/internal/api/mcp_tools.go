@@ -131,7 +131,7 @@ var (
 		{name: "favourite", kind: "boolean", desc: "Whether the filter is among the user's favourites.", body: true},
 		{name: "sharePermissions", kind: "objects", body: true, desc: `Who else sees the filter, replacing the current shares: ` +
 			`{"type":"global"}, {"type":"group","group":{"name":"..."}}, {"type":"project","project":{"key":"..."}}, ` +
-			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"..."}} or {"type":"user","user":{"name":"..."}}.`},
+			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"<group id>"}} (the project's members of that group) or {"type":"user","user":{"name":"..."}}.`},
 	}
 )
 
@@ -375,9 +375,9 @@ var mcpTools = []mcpTool{
 		mcpIssueKey, mcpParam{name: "globalId", kind: "string", desc: "Global id of the link.", required: true}),
 
 	mcpWrite("add_comment", auth.ScopeComments, http.MethodPost, "/issue/{key}/comment", (*Server).restAddComment,
-		"Comments on an issue, for everyone who sees it or only a group or project role. Returns the comment.",
+		"Comments on an issue, for everyone who sees it or only a group. Returns the comment.",
 		mcpIssueKey, mcpParam{name: "body", kind: "string", desc: "Text.", required: true, body: true},
-		mcpBody("visibility", "object", `Who sees it: {"type": "group", "value": "developers"} or {"type": "role", "value": "Developers"}; everyone by default.`)),
+		mcpBody("visibility", "object", `Who sees it: {"type": "group", "value": "developers"}; everyone by default.`)),
 	mcpWrite("edit_comment", auth.ScopeComments, http.MethodPut, "/issue/{key}/comment/{id}", (*Server).restEditComment,
 		"Changes the text of a comment; who sees it stays as it is. Returns the comment.",
 		mcpIssueKey, mcpCommentID, mcpParam{name: "body", kind: "string", desc: "New text.", required: true, body: true}),

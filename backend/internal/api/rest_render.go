@@ -341,11 +341,8 @@ func (o *restOut) comment(iss *issueRow, c commentRow, users map[int64]*jiraUser
 	out := map[string]any{"self": o.api + "/issue/" + o.id(iss.ID) + "/comment/" + o.id(c.id), "id": o.id(c.id),
 		"author": userOf(users, c.author.Int64), "body": c.body, "updateAuthor": userOf(users, updatedBy.Int64),
 		"created": o.time(c.created), "updated": o.time(c.updated)}
-	switch {
-	case c.group.Valid:
+	if c.group.Valid {
 		out["visibility"] = map[string]any{"type": "group", "value": c.group.String}
-	case c.roleID.Valid:
-		out["visibility"] = map[string]any{"type": "role", "value": c.roleName.String}
 	}
 	return out
 }
@@ -359,11 +356,8 @@ func (o *restOut) worklog(iss *issueRow, w worklogData, users map[int64]*jiraUse
 		"issueId": o.id(iss.ID), "author": userOf(users, w.author.Int64), "updateAuthor": userOf(users, updatedBy.Int64),
 		"comment": w.body.String, "created": o.time(w.created), "updated": o.time(w.updated),
 		"started": o.time(w.started), "timeSpent": issue.Duration(w.seconds), "timeSpentSeconds": w.seconds}
-	switch {
-	case w.group.Valid:
+	if w.group.Valid {
 		out["visibility"] = map[string]any{"type": "group", "value": w.group.String}
-	case w.roleName.Valid:
-		out["visibility"] = map[string]any{"type": "role", "value": w.roleName.String}
 	}
 	return out
 }

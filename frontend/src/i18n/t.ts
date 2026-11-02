@@ -81,7 +81,6 @@ export function grantLabel(g: Grant): string {
   switch (g.holder) {
     case 'user':
     case 'group':
-    case 'role':
       return g.name ? `${g.name}` : `${holderLabels[g.holder]} ${g.id ?? ''}`;
     default:
       return holderLabels[g.holder];

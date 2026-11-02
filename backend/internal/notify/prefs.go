@@ -180,11 +180,11 @@ func (s *Service) digestDue(p Prefs, first time.Time) time.Time {
 	return nextAt(s.Now(), s.zone(), p.DigestHour, nil)
 }
 
-// ExtraRecipient is a group or project role that also receives an event
-// group in a project.
+// ExtraRecipient is a group that also receives an event group in a project:
+// its members in that project.
 type ExtraRecipient struct {
 	Event string `json:"event"`
-	Kind  string `json:"kind"` // group, role
+	Kind  string `json:"kind"` // group
 	ID    int64  `json:"id"`
 	Name  string `json:"name"`
 }
@@ -203,24 +203,17 @@ func (s *Service) ProjectSettings(ctx context.Context, projectID int64) (*Projec
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT r.event, r.group_id, r.role_id, COALESCE(g.name, pr.name, '')
-		FROM project_notification_recipients r
-		LEFT JOIN user_groups g ON g.id = r.group_id LEFT JOIN project_roles pr ON pr.id = r.role_id
+	rows, err := s.db.QueryContext(ctx, `SELECT r.event, r.group_id, g.name
+		FROM project_notification_recipients r JOIN user_groups g ON g.id = r.group_id
 		WHERE r.project_id = ? ORDER BY r.event, r.id`, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var e ExtraRecipient
-		var group, role sql.NullInt64
-		if err := rows.Scan(&e.Event, &group, &role, &e.Name); err != nil {
+		e := ExtraRecipient{Kind: "group"}
+		if err := rows.Scan(&e.Event, &e.ID, &e.Name); err != nil {
 			return nil, err
-		}
-		if group.Valid {
-			e.Kind, e.ID = "group", group.Int64
-		} else {
-			e.Kind, e.ID = "role", role.Int64
 		}
 		ps.Extra = append(ps.Extra, e)
 	}
@@ -242,14 +235,8 @@ func (s *Service) SaveProjectSettings(ctx context.Context, projectID int64, ps P
 		return err
 	}
 	for _, e := range ps.Extra {
-		var group, role any
-		if e.Kind == "group" {
-			group = e.ID
-		} else {
-			role = e.ID
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO project_notification_recipients (project_id, event, group_id, role_id)
-			VALUES (?, ?, ?, ?)`, projectID, e.Event, group, role); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO project_notification_recipients (project_id, event, group_id)
+			VALUES (?, ?, ?)`, projectID, e.Event, e.ID); err != nil {
 			return err
 		}
 	}
@@ -264,15 +251,9 @@ func (s *Service) extraMembers(ctx context.Context, projectID int64, extra []Ext
 		if !slices.Contains(groups, e.Event) {
 			continue
 		}
-		var q string
-		var args []any
-		if e.Kind == "group" {
-			q, args = `SELECT user_id FROM group_members WHERE group_id = ?`, []any{e.ID}
-		} else {
-			q = `SELECT user_id FROM project_role_members WHERE project_id = ? AND role_id = ? AND user_id IS NOT NULL
-				UNION SELECT m.user_id FROM project_role_members r JOIN group_members m ON m.group_id = r.group_id
-				WHERE r.project_id = ? AND r.role_id = ?`
-			args = []any{projectID, e.ID, projectID, e.ID}
+		q, args, err := s.perms.MembersSQL(ctx, projectID, e.ID)
+		if err != nil {
+			return nil, err
 		}
 		if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 			var id int64

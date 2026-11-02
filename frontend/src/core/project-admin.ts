@@ -90,7 +90,7 @@ export function keyProblem(key: string): KeyProblem | null {
 
 /* Creation form ------------------------------------------------------------- */
 
-export type AccessKind = 'lead' | 'group' | 'role' | 'everyone';
+export type AccessKind = 'lead' | 'group' | 'everyone';
 
 export interface ProjectForm {
   name: string;
@@ -118,7 +118,7 @@ export function projectProblems(
   else if (tooLong(name)) out.name = 'nameTooLong';
   const k = keyProblem(f.key);
   if (k) out.key = k;
-  if ((f.access === 'group' || f.access === 'role') && !f.accessId) out.access = 'accessRequired';
+  if (f.access === 'group' && !f.accessId) out.access = 'accessRequired';
   return out;
 }
 
@@ -137,8 +137,8 @@ export function projectPayload(f: ProjectForm) {
     access:
       f.access === 'everyone'
         ? ({ holder: 'everyone' } as const)
-        : (f.access === 'group' || f.access === 'role') && f.accessId
-          ? { holder: f.access, id: f.accessId }
+        : f.access === 'group' && f.accessId
+          ? ({ holder: 'group', id: f.accessId } as const)
           : null,
   };
 }
@@ -310,13 +310,13 @@ export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
 export function hasExtra(
   extra: readonly ExtraRecipient[],
   event: string,
-  kind: 'group' | 'role',
+  kind: 'group',
   id: number,
 ): boolean {
   return extra.some((e) => e.event === event && e.kind === kind && e.id === id);
 }
 
-/** Adds or removes a group or role among those an event is sent to. */
+/** Adds or removes a group among those an event is sent to. */
 export function toggleExtra(
   extra: readonly ExtraRecipient[],
   r: ExtraRecipient,

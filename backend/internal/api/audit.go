@@ -314,14 +314,13 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 }
 
 // projectGrants lists a project's grants as readable lines
-// ("edit: role Developers"), for comparing them before and after a change.
+// ("edit: group developers"), for comparing them before and after a change.
 func (s *Server) projectGrants(ctx context.Context, projectID int64) (map[string]bool, error) {
 	out := map[string]bool{}
-	err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(u.username, ug.name, pr.name, '')
+	err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(u.username, ug.name, '')
 		FROM project_permissions g
 		LEFT JOIN users u ON u.id = g.user_id
 		LEFT JOIN user_groups ug ON ug.id = g.group_id
-		LEFT JOIN project_roles pr ON pr.id = g.role_id
 		WHERE g.project_id = ?`, func(rows *sql.Rows) error {
 		var p, holder, name string
 		if err := rows.Scan(&p, &holder, &name); err != nil {
@@ -413,7 +412,7 @@ func boardChanges(in boardInput) []string {
 }
 
 // shareNames describes filter shares for the audit log: "everyone",
-// "group developpeurs", "project DEMO", "project DEMO, role Developers",
+// "group developpeurs", "project DEMO", "project DEMO, group developers",
 // "user paul.martin".
 func (s *Server) shareNames(ctx context.Context, shares []filterShare) []string {
 	out := []string{}
@@ -432,8 +431,8 @@ func (s *Server) shareNames(ctx context.Context, shares []filterShare) []string 
 			out = append(out, "group "+name(`SELECT name FROM user_groups WHERE id = ?`, sh.ID))
 		case issue.ShareProject:
 			v := "project " + name(`SELECT pkey FROM projects WHERE id = ?`, sh.ID)
-			if sh.Role != 0 {
-				v += ", role " + name(`SELECT name FROM project_roles WHERE id = ?`, sh.Role)
+			if sh.Group != 0 {
+				v += ", group " + name(`SELECT name FROM user_groups WHERE id = ?`, sh.Group)
 			}
 			out = append(out, v)
 		case issue.ShareUser:

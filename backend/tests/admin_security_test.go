@@ -306,13 +306,13 @@ func TestSecurityLevelsProjectAdmin(t *testing.T) {
 	grants := append(perms.Grants, grantOut{Permission: "admin", Holder: "user", ID: userID(t, "paul.martin")})
 	admin.call("PUT", "/api/projects/"+mine+"/permissions", map[string]any{"grants": grants}, 200, nil)
 	paul.call("GET", "/api/projects/"+mine+"/permissions", nil, 200, nil)
-	paul.call("GET", "/api/admin/roles", nil, 403, nil)
+	paul.call("GET", "/api/admin/groups", nil, 403, nil)
 
 	// A confidential level of mine, and one of a project paul.martin cannot see.
-	var role struct{ ID int64 }
-	admin.call("POST", "/api/admin/roles", map[string]any{"name": unique("Fermés ")}, 201, &role)
-	t.Cleanup(func() { admin.do("DELETE", fmt.Sprintf("/api/admin/roles/%d", role.ID), nil) })
-	theirs := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "role", "id": role.ID}})
+	var closed struct{ ID int64 }
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": unique("fermés ")}, 201, &closed)
+	t.Cleanup(func() { admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", closed.ID), nil) })
+	theirs := newProject(t, admin, map[string]any{"access": map[string]any{"holder": "group", "id": closed.ID}})
 	levels := map[string]securityLevelAdmin{}
 	for _, key := range []string{mine, theirs} {
 		base := "/api/projects/" + key + "/security-levels"

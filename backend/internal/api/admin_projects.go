@@ -118,7 +118,7 @@ var memberPermissions = []string{perm.Browse, perm.Create, perm.Edit, perm.Comme
 	perm.Assignable, perm.Attach, perm.Link, perm.Worklog}
 
 type accessInput struct {
-	Holder string `json:"holder"` // everyone, group, role
+	Holder string `json:"holder"` // everyone, group
 	ID     int64  `json:"id"`
 }
 
@@ -254,12 +254,6 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 			if err := s.checkGroups(ctx, []int64{a.ID}); err != nil {
 				return nil, err
 			}
-		case perm.Role:
-			if _, err := s.roleByID(ctx, a.ID); errors.Is(err, errNotFound) {
-				return nil, fail(http.StatusBadRequest, i18n.RoleNotFound)
-			} else if err != nil {
-				return nil, err
-			}
 		default:
 			return nil, failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, a.Holder)
 		}
@@ -391,13 +385,13 @@ func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) er
 // grantAccess writes the project's grants, as the import stores them: the
 // lead may do everything, the people given access work on issues.
 func grantAccess(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
-	grant := func(permission, holder string, user, group, role any) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,
-			group_id, role_id) VALUES (?, ?, ?, ?, ?, ?)`, id, permission, holder, user, group, role)
+	grant := func(permission, holder string, group any) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, group_id)
+			VALUES (?, ?, ?, ?)`, id, permission, holder, group)
 		return err
 	}
 	for _, pm := range perm.All {
-		if err := grant(pm, perm.Lead, nil, nil, nil); err != nil {
+		if err := grant(pm, perm.Lead, nil); err != nil {
 			return err
 		}
 	}
@@ -405,19 +399,12 @@ func grantAccess(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error
 	if a == nil {
 		return nil
 	}
-	var group, role any
-	switch a.Holder {
-	case perm.Group:
+	var group any
+	if a.Holder == perm.Group {
 		group = a.ID
-	case perm.Role:
-		role = a.ID
-		if _, err := tx.ExecContext(ctx, `INSERT INTO project_role_members (project_id, role_id, user_id)
-			VALUES (?, ?, ?)`, id, a.ID, p.lead); err != nil {
-			return err
-		}
 	}
 	for _, pm := range memberPermissions {
-		if err := grant(pm, a.Holder, nil, group, role); err != nil {
+		if err := grant(pm, a.Holder, group); err != nil {
 			return err
 		}
 	}
@@ -517,15 +504,6 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 	for _, st := range steps {
 		if err := insert(st.table, st.cols, st.rows); err != nil {
 			return err
-		}
-	}
-	if ok, err := empty("project_roles"); err != nil {
-		return err
-	} else if ok {
-		for _, name := range []string{t(i18n.M(i18n.DefaultRoleAdministrators)), t(i18n.M(i18n.DefaultRoleDevelopers)), t(i18n.M(i18n.DefaultRoleUsers))} {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO project_roles (name) VALUES (?)`, name); err != nil {
-				return err
-			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
