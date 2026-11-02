@@ -254,6 +254,8 @@ export const hi: Messages = {
     yes: 'हाँ',
     no: 'नहीं',
     filter: 'फ़िल्टर करें…',
+    filterOptions: 'विकल्प फ़िल्टर करें',
+    noMatch: 'कोई विकल्प मेल नहीं खाता।',
     createNamed: (name: string) => `“${name}” बनाएँ`,
     ctrlEnter: 'भेजने के लिए Ctrl + Enter',
     /** Between a label and its value (French puts a space before the colon). */

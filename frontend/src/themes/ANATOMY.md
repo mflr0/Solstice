@@ -222,6 +222,11 @@ sidebar; `[aria-expanded='true']` while open) > `.icon` + `.name` (`.name.none`
 top layer > `li.item[role=option]` (`.active` = highlighted,
 `[aria-selected='true']` = the value, ✓ after it) > `.icon` + `.name`. Grouped
 options sit in `li[role=group]` > `.group-label` + `ul.group` > `li.item`.
+A searchable dropdown's list is `div.popover.dropdown-list.searchable` >
+`input.input.filter[role=combobox]` (it keeps the focus; the options scroll
+under it), `ul[role=listbox]` (the options as above, the matched letters in
+`mark.match`), then `p.no-match` (« No option matches. », empty while some
+do).
 A list in the top layer is fixed to the window and placed by script (under
 its button, or above it when there is more room there): don't give it a
 `position`, `inset` or `margin`; its `max-height` still holds.
