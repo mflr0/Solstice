@@ -47,6 +47,7 @@
   let due = $state('');
   let estimate = $state('');
   let level = $state('');
+  const labelsId = $props.id();
   let pending = $state(false);
   let error = $state('');
   // Fields show their problems once a submit has been tried.
@@ -285,17 +286,16 @@
     <div class="three">
       <div class="field">
         <span class="field-label">{t.create.assignee}</span>
-        <div class="boxed field-box">
-          <UserPicker
-            value={assignee}
-            label={t.create.assignee}
-            noneLabel={detail?.defaultAssignee === 'lead'
-              ? t.create.defaultAssignee
-              : t.common.unassigned}
-            search={(q) => api.assignable(projectKey, q)}
-            onpick={(u) => (assignee = u)}
-          />
-        </div>
+        <UserPicker
+          field
+          value={assignee}
+          label={t.create.assignee}
+          noneLabel={detail?.defaultAssignee === 'lead'
+            ? t.create.defaultAssignee
+            : t.common.unassigned}
+          search={(q) => api.assignable(projectKey, q)}
+          onpick={(u) => (assignee = u)}
+        />
       </div>
       <label class="field">
         <span>{t.create.due}</span>
@@ -321,29 +321,27 @@
         {#if detail.components.length || configure}
           <div class="field">
             <span class="field-label">{t.create.components}</span>
-            <div class="boxed field-box">
-              <MultiPick
-                options={detail.components.filter((c) => !c.archived)}
-                selected={components}
-                label={t.create.components}
-                oncreate={configure ? createComponent : undefined}
-                onchange={(ids) => (components = ids)}
-              />
-            </div>
+            <MultiPick
+              field
+              options={detail.components.filter((c) => !c.archived)}
+              selected={components}
+              label={t.create.components}
+              oncreate={configure ? createComponent : undefined}
+              onchange={(ids) => (components = ids)}
+            />
           </div>
         {/if}
         {#if detail.versions.length || configure}
           <div class="field">
             <span class="field-label">{t.create.fixVersions}</span>
-            <div class="boxed field-box">
-              <MultiPick
-                options={detail.versions.filter((v) => !v.archived && !v.released)}
-                selected={fixVersions}
-                label={t.create.fixVersions}
-                oncreate={configure ? createVersion : undefined}
-                onchange={(ids) => (fixVersions = ids)}
-              />
-            </div>
+            <MultiPick
+              field
+              options={detail.versions.filter((v) => !v.archived && !v.released)}
+              selected={fixVersions}
+              label={t.create.fixVersions}
+              oncreate={configure ? createVersion : undefined}
+              onchange={(ids) => (fixVersions = ids)}
+            />
           </div>
         {/if}
         {#if detail.securityLevels.length}
@@ -369,7 +367,9 @@
 
     <div class="field">
       <span class="field-label">{t.create.labels}</span>
-      <div class="boxed field-box"><LabelEditor {labels} onchange={(l) => (labels = l)} /></div>
+      <label class="boxed field-box" for={labelsId}>
+        <LabelEditor id={labelsId} {labels} onchange={(l) => (labels = l)} />
+      </label>
     </div>
   </form>
 
@@ -484,6 +484,7 @@
     min-height: 2.125rem;
     display: flex;
     align-items: center;
+    cursor: text;
   }
 
   @media (max-width: 640px) {

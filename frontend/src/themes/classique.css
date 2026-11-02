@@ -904,7 +904,7 @@
   mask: var(--cl-chevron-mask) center / 10px 6px no-repeat;
 }
 
-/* Pickers framed like fields inside forms (the new issue dialog). */
+/* The label editor framed like a field inside forms. */
 [data-skin='classique'] dialog.modal .boxed {
   min-height: 2rem;
   padding: 3px 8px;

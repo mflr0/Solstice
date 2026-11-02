@@ -23,8 +23,18 @@
     disabled?: boolean | undefined;
     /** Creates a value with that name and resolves to its id, once `options` has it. */
     oncreate?: ((name: string) => Promise<number>) | undefined;
+    /** Draw it as a form field (a frame, like an input) rather than inline text. */
+    field?: boolean | undefined;
   }
-  const { options, selected, label, onchange, disabled = false, oncreate }: Props = $props();
+  const {
+    options,
+    selected,
+    label,
+    onchange,
+    disabled = false,
+    oncreate,
+    field = false,
+  }: Props = $props();
 
   let open = $state(false);
   let draft = $state<number[]>([]);
@@ -92,11 +102,12 @@
   }
 </script>
 
-<div class="multi" use:outside={close}>
+<div class="multi" class:framed={field} use:outside={close}>
   <button
     bind:this={button}
     type="button"
     class="current"
+    class:select={field}
     aria-haspopup="true"
     aria-expanded={open}
     aria-label={label}
@@ -108,7 +119,7 @@
     {:else}
       <span class="none">{t.common.none}</span>
     {/if}
-    {#if !disabled}<span class="caret" aria-hidden="true">▾</span>{/if}
+    {#if !disabled && !field}<span class="caret" aria-hidden="true">▾</span>{/if}
   </button>
   {#if open}
     <div class="popover" popover="manual" use:layer={{ anchor: button }}>
@@ -165,16 +176,19 @@
     align-items: center;
     gap: 6px;
     width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .current:not(.select) {
     min-height: 1.625rem;
     border: 1px solid transparent;
     background: none;
     padding: 2px 4px;
     margin: -3px -5px;
-    text-align: left;
-    cursor: pointer;
   }
 
-  .current:hover:not([disabled]) {
+  .current:not(.select):hover:not([disabled]) {
     border-color: var(--rule-strong);
     background: var(--paper);
   }
@@ -185,6 +199,14 @@
 
   .values {
     overflow-wrap: anywhere;
+  }
+
+  /* One line, like a select: the skin may fix the field's height. */
+  .framed .values {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .none {

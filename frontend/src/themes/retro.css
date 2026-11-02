@@ -1305,33 +1305,13 @@
   border: 0;
 }
 
-/* Boxes in the new-issue form that hold pickers look like fields. */
+/* The label editor's box in forms looks like a field. */
 [data-skin='retro'] .modal .boxed.boxed {
   min-height: 1.375rem;
   padding: 2px 5px;
   border: 0;
   background: var(--rt-well);
   box-shadow: var(--rt-sunken);
-}
-
-[data-skin='retro'] .modal .boxed :is(.picker, .multi) > .current {
-  margin: -2px -5px;
-  padding: 2px 0 2px 5px;
-  width: calc(100% + 10px);
-  min-height: 1.375rem;
-}
-
-[data-skin='retro'] .modal .boxed :is(.picker, .multi) > .current:hover:not([disabled]) {
-  background: none;
-  box-shadow: none;
-}
-
-[data-skin='retro'] .modal .boxed :is(.picker, .multi) > .current .caret {
-  align-self: stretch;
-  width: 16px;
-  margin: 0 2px 0 auto;
-  background: var(--rt-img-select) center / 16px 18px no-repeat;
-  color: transparent;
 }
 
 [data-skin='retro'] .labels .add {
@@ -1681,7 +1661,7 @@
 }
 
 /* Pickers inside wells: a field look when pointed at. */
-[data-skin='retro'] :is(.picker, .multi) > .current:hover:not([disabled]),
+[data-skin='retro'] :is(.picker, .multi) > .current:not(.select):hover:not([disabled]),
 [data-skin='retro'] .dropdown.quiet:hover:not([disabled]),
 [data-skin='retro'] .dropdown.quiet[aria-expanded='true'] {
   border-color: transparent;
@@ -1689,7 +1669,7 @@
   box-shadow: var(--rt-sunken);
 }
 
-[data-skin='retro'] :is(.picker, .multi) > .current[aria-expanded='true'] {
+[data-skin='retro'] :is(.picker, .multi) > .current:not(.select)[aria-expanded='true'] {
   background: var(--rt-well);
   box-shadow: var(--rt-sunken);
 }

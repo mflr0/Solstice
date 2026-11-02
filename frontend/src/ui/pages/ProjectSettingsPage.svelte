@@ -319,17 +319,16 @@
                               {:else if kind === 'user'}
                                 <div class="field">
                                   <span class="field-label">{t.settings.chooseUser}</span>
-                                  <div class="boxed">
-                                    <UserPicker
-                                      value={null}
-                                      label={t.settings.chooseUser}
-                                      allowNone={false}
-                                      noneLabel="…"
-                                      search={(q) => api.users(q)}
-                                      onpick={(u: UserRef | null) =>
-                                        u && add(p, { holder: 'user', id: u.id, name: u.name })}
-                                    />
-                                  </div>
+                                  <UserPicker
+                                    field
+                                    value={null}
+                                    label={t.settings.chooseUser}
+                                    allowNone={false}
+                                    noneLabel="…"
+                                    search={(q) => api.users(q)}
+                                    onpick={(u: UserRef | null) =>
+                                      u && add(p, { holder: 'user', id: u.id, name: u.name })}
+                                  />
                                 </div>
                               {/if}
                               {#if kind !== 'user'}
@@ -489,11 +488,6 @@
 
   .add .field {
     width: 100%;
-  }
-
-  .boxed {
-    border: 1px solid var(--rule-strong);
-    padding: 6px 8px;
   }
 
   .roles {

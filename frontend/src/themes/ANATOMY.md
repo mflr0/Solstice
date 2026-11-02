@@ -186,11 +186,12 @@ form, `.note`. Wiki `{panel}`: `.wiki .panel`, `.wiki .panel-title`.
 `[disabled]`. `.link-btn` (text button). `kbd` inside buttons.
 
 **Fields** — `.field` > `.field-label` (or first `span`), `.input`, `.select` (a dropdown's button),
-`.textarea`, `input.checkbox`, `.hint`; `.field-box` (also `.boxed`) frames a
-picker like an input in the create dialog (assignee, components, versions,
-labels). A person picker is `.picker` (`.framed` in a form) with
-`button.current` and `.popover` (`input.filter`, then `ul[role=listbox]` >
-`li` > `button.item`); a multi-value one is `.multi` with `button.current` and
+`.textarea`, `input.checkbox`, `.hint`; `.boxed` (`label.field-box` in the
+create dialog) frames the label editor like an input in forms. A person picker
+is `.picker` with `button.current` and `.popover` (`input.filter`, then
+`ul[role=listbox]` > `li` > `button.item`); in a form it is `.framed` and its
+`button.current` is also a `.select`. A multi-value one is `.multi` (`.framed`
+in a form, the same way) with `button.current` and
 `.popover` (`input.filter`, then `[role=menu]` >
 `button.item[role=menuitemcheckbox]`). Their `.popover` opens in the top
 layer, like a dropdown's list. `.chip` (labels, values). `.key` (issue keys,
