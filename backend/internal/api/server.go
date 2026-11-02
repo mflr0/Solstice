@@ -139,6 +139,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/dashboard", s.getDashboard, auth.ScopeRead)
 	route("PUT /api/dashboard", s.putDashboard, auth.ScopeProfile)
 	route("PATCH /api/me", s.updateMe, auth.ScopeProfile)
+	route("PUT /api/me/preferences/{key}", s.putPreference, auth.ScopeProfile)
+	route("DELETE /api/me/preferences/{key}", s.deletePreference, auth.ScopeProfile)
 	route("PUT /api/me/avatar", s.putMyAvatar, auth.ScopeProfile)
 	route("DELETE /api/me/avatar", s.deleteMyAvatar, auth.ScopeProfile)
 	route("GET /api/avatars/{userId}", s.getAvatar, auth.ScopeRead)

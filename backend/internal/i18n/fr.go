@@ -517,6 +517,13 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardSizeInvalid:       "Une liste montre de 1 à %d tickets.",
 	DashboardColumnsTooMany:    "Une liste montre %d colonnes au plus.",
 
+	// Interface preferences on the account.
+	PreferenceUnknown:                 "Préférence inconnue : %s.",
+	PreferenceInvalid:                 "Valeur non valide pour la préférence %s.",
+	PreferenceShortcutActionUnknown:   "Action de raccourci inconnue : %s.",
+	PreferenceShortcutBindingsTooMany: "Un raccourci compte %d touches au plus.",
+	PreferenceShortcutBindingInvalid:  "Une touche de raccourci compte de 1 à %d caractères, sans espace.",
+
 	// Exports.
 	ExportColumnUnknown: "Colonne inconnue : %s.",
 

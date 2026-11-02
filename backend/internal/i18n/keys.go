@@ -579,6 +579,15 @@ const (
 	DashboardColumnsTooMany    Key = "DashboardColumnsTooMany"
 )
 
+// Interface preferences on the account.
+const (
+	PreferenceUnknown                 Key = "PreferenceUnknown"
+	PreferenceInvalid                 Key = "PreferenceInvalid"
+	PreferenceShortcutActionUnknown   Key = "PreferenceShortcutActionUnknown"
+	PreferenceShortcutBindingsTooMany Key = "PreferenceShortcutBindingsTooMany"
+	PreferenceShortcutBindingInvalid  Key = "PreferenceShortcutBindingInvalid"
+)
+
 // Exports.
 const (
 	ExportColumnUnknown Key = "ExportColumnUnknown"

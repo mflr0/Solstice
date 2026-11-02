@@ -518,6 +518,13 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardSizeInvalid:       "सूची में 1 से %d टिकट दिखते हैं।",
 	DashboardColumnsTooMany:    "सूची में अधिकतम %d कॉलम दिखते हैं।",
 
+	// Interface preferences on the account.
+	PreferenceUnknown:                 "अज्ञात प्राथमिकता: %s।",
+	PreferenceInvalid:                 "प्राथमिकता %s का मान अमान्य है।",
+	PreferenceShortcutActionUnknown:   "अज्ञात शॉर्टकट क्रिया: %s।",
+	PreferenceShortcutBindingsTooMany: "एक शॉर्टकट में अधिकतम %d कुंजियाँ हो सकती हैं।",
+	PreferenceShortcutBindingInvalid:  "शॉर्टकट कुंजी 1 से %d अक्षरों की होती है, बिना रिक्त स्थान के।",
+
 	// Exports.
 	ExportColumnUnknown: "अज्ञात कॉलम: %s।",
 
