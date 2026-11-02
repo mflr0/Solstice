@@ -18,6 +18,37 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   hi: 'हिन्दी',
 };
 
+/** A language as the language choosers list it: its code badge, its own name, and what finds it. */
+export interface LocaleOption {
+  value: Locale;
+  /** The badge: "EN", "FR"… */
+  code: string;
+  label: string;
+  lang: Locale;
+  /** The code and the language's name in the interface language ("German" for de in English). */
+  keywords: string[];
+}
+
+/**
+ * The options of every language chooser, in LOCALES order, keeping only
+ * those of `only` when given. `display` is the interface language.
+ */
+export function localeOptions(display: string, only?: readonly string[]): LocaleOption[] {
+  let names: Intl.DisplayNames | null = null;
+  try {
+    names = new Intl.DisplayNames([display], { type: 'language' });
+  } catch {
+    // No display names here: the code and the native name still find it.
+  }
+  return LOCALES.filter((l) => !only || only.includes(l)).map((l) => ({
+    value: l,
+    code: l.toUpperCase(),
+    label: LOCALE_NAMES[l],
+    lang: l,
+    keywords: [l, names?.of(l) ?? ''].filter(Boolean),
+  }));
+}
+
 export const LOCALE_STORAGE_KEY = 'solstice.locale';
 
 export function parseLocale(value: unknown): Locale | null {

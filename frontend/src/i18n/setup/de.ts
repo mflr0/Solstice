@@ -43,6 +43,9 @@ export const de: SetupMessages = {
     title: 'Sprache',
     lead: 'Die Sprache dieses Assistenten. In Solstice wählt später jede Person ihre eigene.',
     legend: 'Sprache des Assistenten',
+    filter: 'Filtern…',
+    filterOptions: 'Optionen filtern',
+    noMatch: 'Keine Option passt.',
   },
 
   code: {

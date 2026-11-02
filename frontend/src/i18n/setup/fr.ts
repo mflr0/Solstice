@@ -44,6 +44,9 @@ export const fr: SetupMessages = {
     title: 'Langue',
     lead: 'La langue de cet assistant. Chacun choisira ensuite la sienne dans Solstice.',
     legend: "Langue de l'assistant",
+    filter: 'Filtrer…',
+    filterOptions: 'Filtrer les options',
+    noMatch: 'Aucune option ne correspond.',
   },
 
   code: {

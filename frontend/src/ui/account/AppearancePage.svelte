@@ -2,12 +2,13 @@
   import { MODES, SKINS, SWATCHES } from '../../core/appearance.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
-  import { LOCALE_NAMES, LOCALES, locale, type Locale } from '../../i18n/index.js';
-  import { LOCALE_STORAGE_KEY, negotiate } from '../../i18n/locales.js';
+  import { LOCALE_NAMES, locale, type Locale } from '../../i18n/index.js';
+  import { LOCALE_STORAGE_KEY, localeOptions, negotiate, parseLocale } from '../../i18n/locales.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { chooseLocale } from '../../lib/locale.js';
   import { session } from '../../lib/session.svelte.js';
+  import LanguageDropdown from '../LanguageDropdown.svelte';
   import {
     appearance,
     applyMode,
@@ -29,6 +30,20 @@
     typeof navigator !== 'undefined' ? navigator.languages : [],
   );
   let busy = $state(false);
+
+  const options = [
+    {
+      value: '',
+      label: t.account.followBrowser,
+      hint: t.account.followBrowserHint(LOCALE_NAMES[browserLocale]),
+    },
+    ...localeOptions(locale),
+  ];
+
+  function choose(v: string) {
+    const l = parseLocale(v);
+    void (l ? pick(l) : followBrowser());
+  }
 
   async function pick(l: Locale) {
     if (busy) return;
@@ -77,27 +92,15 @@
 
 <section class="settings-form" aria-labelledby="lang-title">
   <h2 class="section-title" id="lang-title">{t.account.language}</h2>
-  <fieldset class="choices" disabled={busy}>
-    <legend class="sr-only">{t.account.language}</legend>
-    {#each LOCALES as l (l)}
-      <label class="check">
-        <input
-          type="radio"
-          name="locale"
-          checked={!following && locale === l}
-          onchange={() => void pick(l)}
-        />
-        <span lang={l}>{LOCALE_NAMES[l]}</span>
-      </label>
-    {/each}
-    <label class="check">
-      <input type="radio" name="locale" checked={following} onchange={() => void followBrowser()} />
-      <span>
-        {t.account.followBrowser}
-        <span class="muted small">{t.account.followBrowserHint(LOCALE_NAMES[browserLocale])}</span>
-      </span>
-    </label>
-  </fieldset>
+  <div class="field language">
+    <LanguageDropdown
+      {options}
+      value={following ? '' : locale}
+      label={t.account.language}
+      disabled={busy}
+      onchange={choose}
+    />
+  </div>
   <p class="form-hint">{t.account.languageHint}</p>
 </section>
 
@@ -171,6 +174,10 @@
 <style>
   .look {
     margin-top: 28px;
+  }
+
+  .language {
+    max-width: 20rem;
   }
 
   .skins {

@@ -10,14 +10,15 @@
     type GeneralForm,
   } from '../../core/admin-general.js';
   import type { GeneralField, GeneralSettings } from '../../core/admin-types.js';
-  import { labelOf, t } from '../../i18n/t.js';
+  import { t } from '../../i18n/t.js';
   import { guessBaseURL, timeZones } from '../../core/setup.js';
-  import { LOCALE_NAMES, LOCALES } from '../../i18n/index.js';
+  import { locale } from '../../i18n/index.js';
+  import { localeOptions } from '../../i18n/locales.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
-  import Dropdown from '../Dropdown.svelte';
+  import LanguageDropdown from '../LanguageDropdown.svelte';
 
   /**
    * The instance as a whole: its name, public address, time zone, default
@@ -192,15 +193,14 @@
       </div>
       <div class="field">
         <label class="field-label" for="set-lang">{t.settingsAdmin.defaultLanguage}</label>
-        <Dropdown
+        <LanguageDropdown
           id="set-lang"
           label={t.settingsAdmin.defaultLanguage}
           value={form.defaultLanguage}
-          options={(settings.languages.length ? settings.languages : LOCALES).map((l) => ({
-            value: l,
-            label: labelOf(LOCALE_NAMES, l),
-            lang: l,
-          }))}
+          options={localeOptions(
+            locale,
+            settings.languages.length ? settings.languages : undefined,
+          )}
           onchange={(v) => form && (form.defaultLanguage = v)}
         />
         <span class="hint">{t.settingsAdmin.defaultLanguageHint}</span>

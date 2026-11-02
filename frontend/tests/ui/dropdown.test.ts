@@ -307,6 +307,21 @@ describe('Dropdown search', () => {
     expect(blurred).toBe(1);
   });
 
+  it('takes the search texts it is given, for a page without the catalogue', () => {
+    const { button } = dropdown('en', {
+      options: languages,
+      search: true,
+      messages: { filter: 'Filtrer…', filterOptions: 'Filtrer les options', noMatch: 'Rien.' },
+    });
+    press(button, 'ArrowDown');
+    expect(field()!.placeholder).toBe('Filtrer…');
+    expect(field()!.getAttribute('aria-label')).toBe('Filtrer les options');
+    field()!.value = 'zzz';
+    field()!.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    expect(document.querySelector('.no-match')?.textContent).toBe('Rien.');
+  });
+
   it('has no field without the option', () => {
     const { button } = dropdown();
     press(button, 'ArrowDown');

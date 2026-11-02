@@ -42,6 +42,9 @@ export const it: SetupMessages = {
     title: 'Lingua',
     lead: 'La lingua di questa procedura guidata. In Solstice ognuno sceglierà poi la propria.',
     legend: 'Lingua della procedura',
+    filter: 'Filtra…',
+    filterOptions: 'Filtra le opzioni',
+    noMatch: 'Nessuna opzione corrisponde.',
   },
 
   code: {

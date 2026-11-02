@@ -47,6 +47,9 @@ export const en = {
     title: 'Language',
     lead: 'The language of this wizard. Everyone can pick their own in Solstice later.',
     legend: 'Wizard language',
+    filter: 'Filter…',
+    filterOptions: 'Filter the options',
+    noMatch: 'No option matches.',
   },
 
   code: {
