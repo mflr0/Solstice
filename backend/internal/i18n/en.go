@@ -515,6 +515,13 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardSizeInvalid:       "A list shows between 1 and %d issues.",
 	DashboardColumnsTooMany:    "A list shows %d columns at most.",
 
+	// Interface preferences on the account.
+	PreferenceUnknown:                 "Unknown preference: %s.",
+	PreferenceInvalid:                 "Invalid value for the preference %s.",
+	PreferenceShortcutActionUnknown:   "Unknown shortcut action: %s.",
+	PreferenceShortcutBindingsTooMany: "A shortcut has %d keys at most.",
+	PreferenceShortcutBindingInvalid:  "A shortcut key is 1 to %d characters long, without spaces.",
+
 	// Exports.
 	ExportColumnUnknown: "Unknown column: %s.",
 

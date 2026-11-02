@@ -6,8 +6,8 @@ package importer
 //
 //   - settings, webhooks and the audit log stay as they are (the audit log's
 //     and webhooks' links to accounts are restored by user name);
-//   - personal access tokens, notification preferences, open sessions,
-//     interface language, last sign-in and administrator rights are kept for
+//   - personal access tokens, notification and interface preferences, open
+//     sessions, interface language, last sign-in and administrator rights are kept for
 //     the accounts that still exist afterwards, matched by user name;
 //   - accounts created in Solstice (no Jira key) whose user name Jira does
 //     not have are kept, without groups or roles;
@@ -38,6 +38,7 @@ var userRows = []struct{ table, column string }{
 	{"api_tokens", "user_id"},
 	{"notification_prefs", "user_id"},
 	{"sessions", "user_id"},
+	{"user_preferences", "user_id"},
 }
 
 // savedRows are rows of a table, all columns, with the user name of their

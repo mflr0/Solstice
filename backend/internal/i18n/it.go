@@ -517,6 +517,13 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardSizeInvalid:       "Un elenco mostra da 1 a %d ticket.",
 	DashboardColumnsTooMany:    "Un elenco mostra al massimo %d colonne.",
 
+	// Interface preferences on the account.
+	PreferenceUnknown:                 "Preferenza sconosciuta: %s.",
+	PreferenceInvalid:                 "Valore non valido per la preferenza %s.",
+	PreferenceShortcutActionUnknown:   "Azione di scorciatoia sconosciuta: %s.",
+	PreferenceShortcutBindingsTooMany: "Una scorciatoia ha al massimo %d tasti.",
+	PreferenceShortcutBindingInvalid:  "Un tasto di scorciatoia ha da 1 a %d caratteri, senza spazi.",
+
 	// Exports.
 	ExportColumnUnknown: "Colonna sconosciuta: %s.",
 

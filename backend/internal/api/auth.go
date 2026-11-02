@@ -26,23 +26,31 @@ type meResponse struct {
 	Directory string `json:"directory"`
 	// Project scopes Work, Boards and Search; null covers every project.
 	Project *projectBrief `json:"project"`
+	// Preferences are the stored interface preferences, by name; one left
+	// out has its default.
+	Preferences map[string]json.RawMessage `json:"preferences"`
 }
 
 func meOf(u *auth.User) meResponse {
 	me := meResponse{ID: u.ID, Username: u.Username, Name: u.DisplayName, Email: u.Email, Admin: u.Admin,
-		Directory: u.Directory}
+		Directory: u.Directory, Preferences: map[string]json.RawMessage{}}
 	if u.Locale != "" {
 		me.Locale = &u.Locale
 	}
 	return me
 }
 
-// meFor is meOf with the project the user scoped their pages to. A project
-// they can no longer browse is forgotten.
+// meFor is meOf with the user's preferences and the project they scoped
+// their pages to. A project they can no longer browse is forgotten.
 func (s *Server) meFor(ctx context.Context, u *auth.User) (meResponse, error) {
 	me := meOf(u)
+	prefs, err := s.preferences(ctx, u.ID)
+	if err != nil {
+		return me, err
+	}
+	me.Preferences = prefs
 	var p projectBrief
-	err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name FROM users u JOIN projects p ON p.id = u.scope_project_id
+	err = s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name FROM users u JOIN projects p ON p.id = u.scope_project_id
 		WHERE u.id = ?`, u.ID).Scan(&p.ID, &p.Key, &p.Name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return me, nil

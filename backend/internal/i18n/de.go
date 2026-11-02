@@ -517,6 +517,13 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardSizeInvalid:       "Eine Liste zeigt 1 bis %d Vorgänge.",
 	DashboardColumnsTooMany:    "Eine Liste zeigt höchstens %d Spalten.",
 
+	// Interface preferences on the account.
+	PreferenceUnknown:                 "Unbekannte Einstellung: %s.",
+	PreferenceInvalid:                 "Ungültiger Wert für die Einstellung %s.",
+	PreferenceShortcutActionUnknown:   "Unbekannte Tastenkürzel-Aktion: %s.",
+	PreferenceShortcutBindingsTooMany: "Ein Tastenkürzel hat höchstens %d Tasten.",
+	PreferenceShortcutBindingInvalid:  "Eine Taste eines Tastenkürzels hat 1 bis %d Zeichen, ohne Leerzeichen.",
+
 	// Exports.
 	ExportColumnUnknown: "Unbekannte Spalte: %s.",
 

@@ -131,6 +131,28 @@ signs the user's other sessions out. An address change is refused to a
 personal access token (403); an unchanged address needs nothing. Answers `GET /api/me`'s object. (`profile.update`,
 `password.change`)
 
+### `PUT /api/me/preferences/{key}`, `DELETE /api/me/preferences/{key}`
+
+Interface preferences that follow the user across devices. `GET /api/me`
+answers them as `preferences`, an object of the stored keys; a key left out
+has its default. `PUT` takes the value as its body and replaces it; `DELETE`
+puts the default back (also when none was stored). Both answer `GET /api/me`'s
+object. Only these keys are known (400 "Unknown preference" otherwise), and
+the server checks the value's shape, not clashes between keys (400):
+
+- `shortcutsEnabled`: `true` or `false`.
+- `shortcuts`: the bindings that differ from the defaults, from action name
+  (`search`, `create`, `help`, `next`, `previous`, `open`, `select`,
+  `editSummary`, `assignToMe`, `comment`, `status`, `watch`) to a list of at
+  most 4 keys, each 1 to 32 characters without spaces (`"Alt-k"`, `"/"`). An
+  empty list leaves the action without a key.
+
+```json
+{"search": ["Alt-k", "/"], "watch": []}
+```
+
+Not audited.
+
 ### `PUT /api/me/avatar`, `DELETE /api/me/avatar`
 
 `PUT` takes a multipart body (as attachments do) whose first file is the
