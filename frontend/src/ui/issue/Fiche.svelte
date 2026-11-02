@@ -115,7 +115,7 @@
           <button
             class="link-btn small"
             onclick={() => void onchange({ assignee: session.me?.id ?? null })}
-            >{t.issue.assignToMe}</button
+            >{t.common.assignToMe}</button
           >
         {/if}
       </dd>

@@ -47,6 +47,8 @@
   let due = $state('');
   let estimate = $state('');
   let level = $state('');
+  // The viewer as the chosen project's assignable list returns them; null when they can't be assigned there.
+  let me = $state<UserRef | null>(null);
   const labelsId = $props.id();
   let pending = $state(false);
   let error = $state('');
@@ -137,6 +139,19 @@
       if (key === projectKey && detail) restore(key, detail);
       else projectKey = key;
     });
+  });
+
+  $effect(() => {
+    me = null;
+    const key = projectKey;
+    const who = session.me;
+    if (!dialogs.create || !key || !who) return;
+    api
+      .assignable(key, who.username)
+      .then((list) => {
+        if (key === projectKey) me = list.find((u) => u.id === who.id) ?? null;
+      })
+      .catch(() => {});
   });
 
   $effect(() => {
@@ -284,8 +299,13 @@
     </div>
 
     <div class="three">
-      <div class="field">
+      <div class="field assignee">
         <span class="field-label">{t.create.assignee}</span>
+        {#if me && assignee?.id !== me.id}
+          <button type="button" class="link-btn take" onclick={() => (assignee = me)}
+            >{t.common.assignToMe}</button
+          >
+        {/if}
         <UserPicker
           field
           value={assignee}
@@ -470,6 +490,23 @@
 
   .form :global([aria-invalid='true']) {
     border-color: var(--accent);
+  }
+
+  /* The link sits on the label's line, at its right. */
+  .assignee {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: 8px;
+  }
+
+  .assignee > :global(.picker) {
+    grid-column: 1 / -1;
+  }
+
+  .take {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .summary {
