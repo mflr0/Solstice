@@ -28,6 +28,7 @@
   import { refs } from '../../lib/refs.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
+  import UserOption from '../UserOption.svelte';
   import {
     applyLink,
     insertMention,
@@ -732,8 +733,7 @@
           onmousedown={(e) => e.preventDefault()}
           onclick={() => pick(u)}
         >
-          <span class="name">{u.name}</span>
-          <span class="muted">{u.username}{u.active ? '' : ` · ${t.common.inactive}`}</span>
+          <UserOption user={u} name={u.name} username={u.username} search={mention.query} />
         </button>
       {:else}
         <p class="empty editor-menu-empty">

@@ -42,7 +42,7 @@ export interface Option {
   /** The type it stands for, drawn as its mark. */
   type?: TypeRef | undefined;
   /** The person it stands for, drawn as their avatar. */
-  user?: { id: number } | undefined;
+  user?: { id: number; active?: boolean | undefined } | undefined;
 }
 
 /** Re-exported for the JQL editor's suggestions and the quick search. */
