@@ -317,6 +317,15 @@ field of each type the administration offers has values on some of them.
 Each thing is done by one of the mock users. The issues' own fields are set
 when the seed creates them: to see them on an older database, recreate it.
 
+Two groups split the mock users: `developers` (alice, hans, giulia, priya)
+and `office` (marie, tom). On `DEMO`, the developers may set the security
+level and moderate, and one issue has the level `Developers only`: tom does
+not see it. A comment and a work log on `DEMO` are restricted to the
+developers too. `OPS` also sends the e-mails about new issues to `office`,
+and its tasks follow the workflow `Purchases`, with the custom status
+`Awaiting approval`. A webhook, `Local listener (not running)`, points at a
+local port where nothing listens, so its deliveries fail.
+
 The seed also makes two boards, with weeks of history for their reports:
 
 - `Demo Scrum` on `DEMO`, estimated in Story points: two completed sprints,

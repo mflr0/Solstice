@@ -1,8 +1,10 @@
 // Package devseed fills a development database: an administrator, mock users
-// in every interface language, projects of every kind with their categories,
-// components and versions, custom fields of every type, demo issues of every
-// type with what people do on them, a Scrum and a Kanban board with a history
-// for their reports, and e-mail sent to a local Mailpit. Only
+// in every interface language and groups of them, projects of every kind with
+// their categories, components, versions, permissions, a security level, a
+// custom workflow and notification settings, custom fields of every type, demo
+// issues of every type with what people do on them, some restricted to a
+// group, a Scrum and a Kanban board with a history for their reports, a
+// webhook that fails, and e-mail sent to a local Mailpit. Only
 // cmd/devseed uses it, so its passwords never ship in the solstice binary.
 package devseed
 
@@ -110,8 +112,22 @@ func Run(ctx context.Context, conn *sql.DB, opt Options) error {
 	if err := ensureProjects(ctx, conn, admin, ids, say); err != nil {
 		return err
 	}
-	if err := ensureIssues(ctx, conn, srv.URL, admin, ids, say); err != nil {
+	levels, err := ensureAccess(ctx, conn, admin, ids, say)
+	if err != nil {
+		return err
+	}
+	if err := ensureIssues(ctx, conn, srv.URL, admin, ids, levels, say); err != nil {
 		return fmt.Errorf("demo issues: %w", err)
 	}
-	return ensureBoards(ctx, conn, srv.URL, admin, ids, say)
+	if err := ensureBoards(ctx, conn, srv.URL, admin, ids, say); err != nil {
+		return err
+	}
+	if err := ensureWorkflow(ctx, conn, admin, say); err != nil {
+		return fmt.Errorf("workflow: %w", err)
+	}
+	// Last, so that nothing the seed does goes to it.
+	if err := ensureWebhook(ctx, conn, admin, say); err != nil {
+		return fmt.Errorf("webhook: %w", err)
+	}
+	return nil
 }

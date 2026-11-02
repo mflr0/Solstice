@@ -23,8 +23,11 @@ import (
 
 // The dev seed on an empty database, twice: the second run adds nothing.
 // The counts pin what the issues cover: every type, epics and sub-tasks,
-// links, work logs, attachments and custom field values.
-// Then a database with accounts but no seed administrator is refused.
+// links, work logs, attachments and custom field values; and the groups,
+// the security level, group grants and recipients, the restricted comment
+// and work log, the custom workflow and the webhook. Through the API, tom
+// sees neither the confidential issue nor what is restricted, a developer
+// does. Then a database with accounts but no seed administrator is refused.
 func TestDevSeed(t *testing.T) {
 	dsn := emptyDB(t)
 	ctx := context.Background()
@@ -37,7 +40,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	type state struct{ accounts, issues, comments, projects, types, extras, boards string }
+	type state struct{ accounts, issues, comments, projects, types, extras, boards, access string }
 	read := func() state {
 		var accounts []string
 		if err := sqlq.Each(ctx, conn, `SELECT username, COALESCE(locale, '-'), is_admin FROM users ORDER BY username`,
@@ -148,8 +151,41 @@ func TestDevSeed(t *testing.T) {
 			}); err != nil {
 			t.Fatal(err)
 		}
+		// One string column per row, rows joined by spaces.
+		var access []string
+		for _, q := range []string{
+			`SELECT CONCAT(g.name, '=', GROUP_CONCAT(u.username ORDER BY u.username)) FROM user_groups g
+				JOIN group_members m ON m.group_id = g.id JOIN users u ON u.id = m.user_id GROUP BY g.name ORDER BY g.name`,
+			`SELECT CONCAT(p.pkey, '/', l.name, '=', GROUP_CONCAT(m.holder, ':', COALESCE(g.name, '-')), '/',
+				(SELECT COUNT(*) FROM issues WHERE security_level_id = l.id))
+				FROM security_levels l JOIN projects p ON p.id = l.project_id
+				JOIN security_level_members m ON m.level_id = l.id LEFT JOIN user_groups g ON g.id = m.group_id
+				GROUP BY p.pkey, l.id, l.name ORDER BY p.pkey, l.name`,
+			`SELECT CONCAT(p.pkey, ':', g.name, '=', GROUP_CONCAT(pp.permission ORDER BY pp.permission))
+				FROM project_permissions pp JOIN projects p ON p.id = pp.project_id JOIN user_groups g ON g.id = pp.group_id
+				GROUP BY p.pkey, g.name ORDER BY p.pkey, g.name`,
+			`SELECT CONCAT(p.pkey, ':', r.event, '>', g.name) FROM project_notification_recipients r
+				JOIN projects p ON p.id = r.project_id JOIN user_groups g ON g.id = r.group_id ORDER BY 1`,
+			`SELECT CONCAT('restricted-comments=', COUNT(*)) FROM comments WHERE visibility_group IS NOT NULL`,
+			`SELECT CONCAT('restricted-worklogs=', COUNT(*)) FROM worklogs WHERE visibility_group IS NOT NULL`,
+			`SELECT CONCAT(p.pkey, '/', w.name, '=', (SELECT GROUP_CONCAT(s.name ORDER BY ws.position, s.name)
+				FROM workflow_statuses ws JOIN statuses s ON s.id = ws.status_id WHERE ws.workflow_id = w.id), '/',
+				(SELECT GROUP_CONCAT(t.name ORDER BY t.name) FROM workflow_issue_types wt
+				JOIN issue_types t ON t.id = wt.issue_type_id WHERE wt.workflow_id = w.id))
+				FROM workflows w JOIN projects p ON p.id = w.project_id WHERE NOT w.is_default ORDER BY 1`,
+			`SELECT CONCAT('webhook:', name, '>', url) FROM webhooks ORDER BY 1`,
+		} {
+			if err := sqlq.Each(ctx, conn, q, func(rows *sql.Rows) error {
+				var v string
+				err := rows.Scan(&v)
+				access = append(access, v)
+				return err
+			}); err != nil {
+				t.Fatalf("%v\n%s", err, q)
+			}
+		}
 		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " "),
-			strings.Join(types, " "), strings.Join(extras, " "), strings.Join(boards, " ")}
+			strings.Join(types, " "), strings.Join(extras, " "), strings.Join(boards, " "), strings.Join(access, " ")}
 	}
 
 	var out strings.Builder
@@ -157,14 +193,17 @@ func TestDevSeed(t *testing.T) {
 		t.Fatalf("first run: %v\n%s", err, out.String())
 	}
 	first := read()
-	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "40", "13",
+	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "41", "15",
 		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)",
-		"DEMO:Bug=7 DEMO:Epic=2 DEMO:Story=24 DEMO:Sub-task=3 DEMO:Task=4 " +
+		"DEMO:Bug=8 DEMO:Epic=2 DEMO:Story=24 DEMO:Sub-task=3 DEMO:Task=4 " +
 			"MOB:Bug=1 MOB:Epic=1 MOB:Story=1 MOB:Sub-task=1 MOB:Task=10 OPS:Bug=1 OPS:Epic=1 OPS:Task=6",
-		"subtasks=4 in-epics=5 priorities=5 resolved=24 overdue=3 estimated=9 labels=15 components=16 " +
-			"fix-versions=11 links=8 cross-links=3 link-types=4 worklogs=12 worklog-authors=6 attachments=4 " +
-			"votes=12 watchers=66 fields=13 field-types=13 field-values=49 reporters=6",
-		"kanban/4/0,0,0/0 scrum/3/2,1,1/18"}
+		"subtasks=4 in-epics=5 priorities=5 resolved=24 overdue=3 estimated=9 labels=16 components=17 " +
+			"fix-versions=12 links=8 cross-links=3 link-types=4 worklogs=13 worklog-authors=6 attachments=4 " +
+			"votes=12 watchers=67 fields=13 field-types=13 field-values=49 reporters=6",
+		"kanban/4/0,0,0/0 scrum/3/2,1,1/18",
+		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
+			"DEMO:developers=moderate,security OPS:created>office restricted-comments=1 restricted-worklogs=1 " +
+			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
 	}
@@ -206,13 +245,50 @@ func TestDevSeed(t *testing.T) {
 	if status, body := alice.do("POST", "/api/login", map[string]string{"username": "alice", "password": devseed.UserPassword}); status != 200 {
 		t.Fatalf("login alice: %d %s", status, body)
 	}
+	as := func(username string) *client {
+		jar, _ := cookiejar.New(nil)
+		c := &client{t: t, base: ts.URL, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
+		if status, body := c.do("POST", "/api/login", map[string]string{"username": username,
+			"password": devseed.UserPassword}); status != 200 {
+			t.Fatalf("login %s: %d %s", username, status, body)
+		}
+		return c
+	}
+
+	// What a group restricts, seen by tom (in no group of the level) and by
+	// hans (a developer).
+	var confidential, umlaut string
+	key := `(SELECT CONCAT(p.pkey, '-', i.num) FROM issues i JOIN projects p ON p.id = i.project_id WHERE i.summary = ?)`
+	if err := conn.QueryRowContext(ctx, `SELECT `+key+`, `+key, "Session cookie sent to other subdomains",
+		"Suche nach Umlauten findet nichts").Scan(&confidential, &umlaut); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		user                  string
+		issue, comments, logs int
+	}{{"tom", 404, 2, 3}, {"hans", 200, 3, 4}} {
+		u := as(c.user)
+		var comments []struct{ Body string }
+		var logs []struct{ ID int64 }
+		if status := u.get("/api/issues/"+confidential, nil); status != c.issue {
+			t.Errorf("%s reads the confidential issue %s: %d, want %d", c.user, confidential, status, c.issue)
+		}
+		if status := u.get("/api/issues/"+umlaut+"/comments", &comments); status != 200 || len(comments) != c.comments {
+			t.Errorf("%s reads the comments of %s: %d, %d comments, want %d", c.user, umlaut, status, len(comments),
+				c.comments)
+		}
+		if status := u.get("/api/issues/"+umlaut+"/worklogs", &logs); status != 200 || len(logs) != c.logs {
+			t.Errorf("%s reads the work logs of %s: %d, %d work logs, want %d", c.user, umlaut, status, len(logs),
+				c.logs)
+		}
+	}
 	for q, want := range map[string]int{
 		`labels = auth`:                      2,
 		`priority = "Very high"`:             3,
 		`"Severity" = Blocker`:               2,
 		`"QA owner" = giulia`:                1,
 		`"Story points" > 4`:                 13,
-		`project = DEMO ORDER BY "Severity"`: 40,
+		`project = DEMO ORDER BY "Severity"`: 41,
 	} {
 		var res struct{ Total int }
 		if status := alice.get("/api/issues?q="+url.QueryEscape(q), &res); status != 200 || res.Total != want {

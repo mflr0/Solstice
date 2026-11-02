@@ -34,13 +34,22 @@ type demoIssue struct {
 	components         []string
 	fixVersions        []string
 	custom             map[string]any // values by field name, as the REST API takes them
+	level              string         // a security level of its project, by name
 	comments           []note
 	worklogs           []worklog
+	groupComments      []groupNote
+	groupWorklogs      []groupWorklog
 	attachments        []attachment
 	votes, watchers    []string
 }
 
 type note struct{ author, body string }
+
+// groupNote is a comment only a group sees.
+type groupNote struct {
+	group string
+	note
+}
 
 // worklog is time someone logged, daysAgo days ago.
 type worklog struct {
@@ -48,6 +57,12 @@ type worklog struct {
 	daysAgo int
 	spent   time.Duration
 	body    string
+}
+
+// groupWorklog is a work log only a group sees.
+type groupWorklog struct {
+	group string
+	worklog
 }
 
 type attachment struct{ author, name string }
@@ -108,7 +123,10 @@ var issues = []demoIssue{
 		comments: []note{{"hans", "Die Sortierung der Datenbank ist schuld."}, {"alice", "Does it also break the ß?"}},
 		worklogs: []worklog{{"hans", 4, 3 * time.Hour, "Kollation untersucht"},
 			{"hans", 2, 150 * time.Minute, "Index neu aufgebaut"}, {"tom", 2, 30 * time.Minute, "Reproduced on staging"}},
-		votes: []string{"marie", "giulia"}},
+		groupComments: []groupNote{{Developers,
+			note{"hans", "Intern: der Kunde hat uns seinen Datenbank-Dump geschickt, bitte nicht weitergeben."}}},
+		groupWorklogs: []groupWorklog{{Developers, worklog{"priya", 1, time.Hour, "Checked the customer's database dump"}}},
+		votes:         []string{"marie", "giulia"}},
 	{ref: "pdf", typ: i18n.DefaultTypeStory, reporter: "hans", assignee: "giulia",
 		summary: "Attachment preview for PDF files", priority: i18n.DefaultPriorityLow, estimate: "3d",
 		components: []string{"Frontend"}, custom: map[string]any{"Story points": 8},
@@ -143,6 +161,10 @@ var issues = []demoIssue{
 		summary: "Clear the cookie on sign-out", estimate: "1h"},
 	{ref: "index", typ: i18n.DefaultTypeSubtask, parent: "slow", reporter: "alice", assignee: "hans",
 		summary: "Add an index on the labels table", status: issue.Doing},
+	{ref: "cookieleak", typ: i18n.DefaultTypeBug, reporter: "hans", assignee: "alice",
+		summary: "Session cookie sent to other subdomains", level: Confidential, priority: i18n.DefaultPriorityHigh,
+		labels: []string{"security"}, components: []string{"Backend"}, fixVersions: []string{"1.1"},
+		comments: []note{{"alice", "Confirmed: the cookie has a Domain attribute, it should be host-only."}}},
 	{ref: "twomails", typ: i18n.DefaultTypeBug, reporter: "tom", summary: "Two e-mails for one comment",
 		status: issue.Done, resolution: i18n.DefaultResolutionDuplicate, priority: i18n.DefaultPriorityLow},
 	{ref: "oldreset", reporter: "tom", assignee: "tom", summary: "Remove the old password reset page",
@@ -260,7 +282,7 @@ func (c counts) say(say func(string, ...any)) {
 // missing (by project and summary), each issue by its reporter, then what is
 // missing around them and the links between them, each by the user it names.
 func ensureIssues(ctx context.Context, conn *sql.DB, base string, admin *client, ids map[string]int64,
-	say func(string, ...any)) error {
+	levels map[[2]string]int64, say func(string, ...any)) error {
 	cat, err := readCatalogue(admin)
 	if err != nil {
 		return err
@@ -294,7 +316,7 @@ func ensureIssues(ctx context.Context, conn *sql.DB, base string, admin *client,
 					return fmt.Errorf("project %s: %w", project, err)
 				}
 			}
-			s, err = createIssue(ctx, conn, as, cat, parts[project], fieldIDs, ids, byRef, project, is)
+			s, err = createIssue(ctx, conn, as, cat, parts[project], fieldIDs, ids, levels, byRef, project, is)
 			if err == nil {
 				created[project]++
 			}
@@ -353,7 +375,8 @@ func readParts(admin *client, key string) (*projectParts, error) {
 }
 
 func createIssue(ctx context.Context, conn *sql.DB, as func(string) (*client, error), cat *catalogue,
-	parts *projectParts, fieldIDs, ids map[string]int64, byRef map[string]seeded, project string, is demoIssue) (seeded, error) {
+	parts *projectParts, fieldIDs, ids map[string]int64, levels map[[2]string]int64, byRef map[string]seeded, project string,
+	is demoIssue) (seeded, error) {
 	typ := is.typ
 	if typ == "" {
 		typ = i18n.DefaultTypeTask
@@ -386,6 +409,13 @@ func createIssue(ctx context.Context, conn *sql.DB, as func(string) (*client, er
 	}
 	if is.due != "" {
 		in["due"] = is.due
+	}
+	if is.level != "" {
+		id, ok := levels[[2]string{project, is.level}]
+		if !ok {
+			return seeded{}, fmt.Errorf("the project has no security level %s", is.level)
+		}
+		in["securityLevel"] = id
 	}
 	if is.estimate != "" {
 		in["originalEstimate"] = is.estimate
@@ -457,18 +487,41 @@ func ensureAround(ctx context.Context, conn *sql.DB, as func(string) (*client, e
 	}
 	var steps []step
 	path := "/api/issues/" + s.key
+	var comments []groupNote
 	for _, n := range is.comments {
+		comments = append(comments, groupNote{"", n})
+	}
+	comments = append(comments, is.groupComments...)
+	for _, n := range comments {
 		steps = append(steps, step{"comment", n.author,
 			`SELECT 1 FROM comments WHERE issue_id = ? AND author_id = ? AND body = ?`, []any{n.body},
-			func(c *client) error { return c.call("POST", path+"/comments", map[string]any{"body": n.body}, nil) }})
+			func(c *client) error {
+				in := map[string]any{"body": n.body}
+				if n.group != "" {
+					in["visibility"] = map[string]any{"group": n.group}
+				}
+				return c.call("POST", path+"/comments", in, nil)
+			}})
 	}
+	var worklogs []groupWorklog
 	for _, w := range is.worklogs {
+		worklogs = append(worklogs, groupWorklog{"", w})
+	}
+	worklogs = append(worklogs, is.groupWorklogs...)
+	for _, w := range worklogs {
 		steps = append(steps, step{"work log", w.author,
 			`SELECT 1 FROM worklogs WHERE issue_id = ? AND author_id = ? AND body = ?`, []any{w.body},
 			func(c *client) error {
-				return c.call("POST", path+"/worklogs", map[string]any{
+				var out struct{ ID int64 }
+				if err := c.call("POST", path+"/worklogs", map[string]any{
 					"started": time.Now().AddDate(0, 0, -w.daysAgo).Truncate(time.Hour),
-					"seconds": int64(w.spent / time.Second), "body": w.body}, nil)
+					"seconds": int64(w.spent / time.Second), "body": w.body}, &out); err != nil || w.group == "" {
+					return err
+				}
+				// The API offers no restricted work logs: only a Jira import
+				// makes them, and stores them this way.
+				_, err := conn.ExecContext(ctx, `UPDATE worklogs SET visibility_group = ? WHERE id = ?`, w.group, out.ID)
+				return err
 			}})
 	}
 	for _, a := range is.attachments {
