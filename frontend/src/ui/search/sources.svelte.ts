@@ -22,6 +22,8 @@ import {
   type Project,
   type ProjectValue,
   type SprintSuggestion,
+  type TypeRef,
+  type UserRef,
 } from '../../core/types.js';
 import { categoryLabels, t } from '../../i18n/t.js';
 import { api } from '../../lib/api.js';
@@ -37,6 +39,10 @@ export interface Option {
   group?: string | undefined;
   /** Its keys in the server's counts: ids, project keys, label text ("" for none). */
   facets?: string[] | undefined;
+  /** The type it stands for, drawn as its mark. */
+  type?: TypeRef | undefined;
+  /** The person it stands for, drawn as their avatar. */
+  user?: { id: number } | undefined;
 }
 
 /** Re-exported for the JQL editor's suggestions and the quick search. */
@@ -47,6 +53,8 @@ class Catalog {
   sprints = $state<Record<string, SprintSuggestion>>({});
   epics = $state<Record<string, string>>({});
   fields = $state<CustomFieldRef[] | null>(null);
+  /** People seen in the pickers, by lowercase username. */
+  people = $state<Record<string, UserRef>>({});
   private loadingProjects: Promise<Project[]> | null = null;
   private loadingFields: Promise<CustomFieldRef[]> | null = null;
   private sprintsLoaded = false;
@@ -148,6 +156,7 @@ export async function loadOptions(
             value: quote(ty.name),
             label,
             facets: [ty.id],
+            type: ty,
           });
       }
       return [...byName.values()];
@@ -175,12 +184,16 @@ export async function loadOptions(
     case 'assignee':
     case 'reporter': {
       const users = await api.users(q.trim());
-      for (const u of users) refs.users[u.username.toLowerCase()] = u.name;
+      for (const u of users) {
+        refs.users[u.username.toLowerCase()] = u.name;
+        catalog.people[u.username.toLowerCase()] = u;
+      }
       return users.map((u) => ({
         value: quote(u.username),
         label: u.name,
         hint: u.username,
         facets: [String(u.id)],
+        user: u,
       }));
     }
     case 'labels': {
@@ -213,21 +226,22 @@ export async function loadOptions(
 export function specialValues(field: ListField, role: PeopleRole = 'participant'): Option[] {
   const s = t.search.special;
   const me = session.me ? [String(session.me.id)] : [];
+  const user = session.me ?? undefined;
   switch (field) {
     case 'people':
       // Only watchers and commenters can be nobody.
       return [
-        { value: ME, label: s.me },
+        { value: ME, label: s.me, user },
         ...(role === 'watcher' ? [{ value: EMPTY, label: s.noWatcher }] : []),
         ...(role === 'commenter' ? [{ value: EMPTY, label: s.noComment }] : []),
       ];
     case 'assignee':
       return [
-        { value: ME, label: s.me, facets: me },
+        { value: ME, label: s.me, facets: me, user },
         { value: EMPTY, label: s.unassigned, facets: [''] },
       ];
     case 'reporter':
-      return [{ value: ME, label: s.me, facets: me }];
+      return [{ value: ME, label: s.me, facets: me, user }];
     case 'resolution':
       return [{ value: EMPTY, label: s.unresolved, facets: [''] }];
     case 'sprint':
@@ -294,6 +308,21 @@ export function labelOf(field: ListField, value: string, role?: PeopleRole): str
     default:
       return text;
   }
+}
+
+/** Whether a field's values are drawn with a mark: types and people. */
+export function hasMarks(field: ListField): boolean {
+  return field === 'type' || field === 'people' || field === 'assignee' || field === 'reporter';
+}
+
+/** The mark of a chosen value, when it can be found. */
+export function markOf(field: ListField, value: string): Pick<Option, 'type' | 'user'> {
+  const text = literal(value)?.toLowerCase();
+  if (!text) return {};
+  if (field === 'type') {
+    return { type: session.meta?.issueTypes.find((ty) => ty.name.toLowerCase() === text) };
+  }
+  return { user: catalog.people[text] };
 }
 
 /** A field's kind for the editor: a system field, else a custom field by name or cf[id]. */
