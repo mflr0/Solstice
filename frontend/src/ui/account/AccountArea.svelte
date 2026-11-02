@@ -6,11 +6,13 @@
   import AppsPage from './AppsPage.svelte';
   import NotificationsPage from './NotificationsPage.svelte';
   import ProfilePage from './ProfilePage.svelte';
+  import ShortcutsPage from './ShortcutsPage.svelte';
   import SubscriptionsPage from './SubscriptionsPage.svelte';
   import TokensPage from './TokensPage.svelte';
 
   /**
-   * One's own settings (/settings): profile, language and look, e-mails, tokens,
+   * One's own settings (/settings): profile, language and look, keyboard
+   * shortcuts, e-mails, tokens,
    * authorized applications, subscriptions.
    */
   interface Props {
@@ -41,6 +43,8 @@
       <ProfilePage />
     {:else if section === 'appearance'}
       <AppearancePage />
+    {:else if section === 'shortcuts'}
+      <ShortcutsPage />
     {:else if section === 'notifications'}
       <NotificationsPage />
     {:else if section === 'tokens'}

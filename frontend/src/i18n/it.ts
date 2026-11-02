@@ -2151,6 +2151,7 @@ export const it: Messages = {
     sections: {
       profile: 'Profilo',
       appearance: 'Lingua e aspetto',
+      shortcuts: 'Scorciatoie da tastiera',
       notifications: 'Notifiche',
       tokens: 'Token di accesso',
       apps: 'Applicazioni collegate',

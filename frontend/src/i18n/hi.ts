@@ -2131,6 +2131,7 @@ export const hi: Messages = {
     sections: {
       profile: 'प्रोफ़ाइल',
       appearance: 'भाषा और रूप-रंग',
+      shortcuts: 'कीबोर्ड शॉर्टकट',
       notifications: 'सूचनाएँ',
       tokens: 'एक्सेस टोकन',
       apps: 'जुड़े ऐप्लिकेशन',

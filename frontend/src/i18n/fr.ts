@@ -2150,6 +2150,7 @@ export const fr: Messages = {
     sections: {
       profile: 'Profil',
       appearance: 'Langue et apparence',
+      shortcuts: 'Raccourcis clavier',
       notifications: 'Notifications',
       tokens: 'Jetons d’accès',
       apps: 'Applications connectées',

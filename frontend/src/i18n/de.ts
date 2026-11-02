@@ -2166,6 +2166,7 @@ export const de: Messages = {
     sections: {
       profile: 'Profil',
       appearance: 'Sprache und Darstellung',
+      shortcuts: 'Tastenkürzel',
       notifications: 'Benachrichtigungen',
       tokens: 'Zugriffstoken',
       apps: 'Verbundene Anwendungen',
