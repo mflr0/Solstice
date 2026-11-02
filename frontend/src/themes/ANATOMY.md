@@ -194,7 +194,11 @@ is `.picker` with `button.current` and `.popover` (`input.filter`, then
 in a form, the same way) with `button.current` and
 `.popover` (`input.filter`, then `[role=menu]` >
 `button.item[role=menuitemcheckbox]`). Their `.popover` opens in the top
-layer, like a dropdown's list. `.chip` (labels, values). `.key` (issue keys,
+layer, like a dropdown's list. Every list that offers people (these
+pickers, the search filter's people, the editor's « @ » list) draws a person
+as these children of its `.item` (`UserOption`): `.avatar`, `span.name`
+(`.inactive` once deactivated: struck out), `span.user.muted` (the username,
+then « deactivated » when so). `.chip` (labels, values). `.key` (issue keys,
 mono).
 
 **Tables** — `table.ledger` > `thead th`, `tbody tr`, `td`; `.num` (right-aligned
@@ -290,7 +294,7 @@ back / forward.
   categories) and `li.item.filter-option[role=option]` (`[aria-selected='true']`
   when ticked, `.active` under the keyboard; `.box` = the tick box, `.mark` (Type and people pickers: a `.type-mark` or an
   `.avatar`, empty on « Non assigné »), `.label`,
-  `.hint`, `.count` = issues it would show, `.zero` when none; counts come
+  `.hint`; a person instead has the person parts of Fields, then `.count` = issues it would show, `.zero` when none; counts come
   in a moment after the list), then `.picker-foot` (« Effacer »). Dates: `.date-picker` >
   `fieldset.date-presets` > `label.item.date-preset` (`.active`), `.custom` >
   two `input.input[type=date]`.
@@ -357,7 +361,7 @@ rules style it, so text looks the same while edited. Inside it:
 `[data-kind]`; a dashed outline by default), `p.is-empty::before`
 (placeholder), `.selectedCell`, `.ProseMirror-selectednode`. Around it:
 `textarea.textarea.editor-source` (source mode), `.popover.editor-menu`
-(people for "@", `.item`), `.popover.editor-link` (link form, `.field`s),
+(people for "@", `.item` with the person parts of Fields), `.popover.editor-link` (link form, `.field`s),
 `.editor-status` (upload in progress), `.editor-hint` (shortcut hints).
 
 **Boards** (`/boards/<id>`, `/boards/<id>/backlog`; base styles in `app.css`) —

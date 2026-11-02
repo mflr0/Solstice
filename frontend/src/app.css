@@ -1808,11 +1808,6 @@ div.editor-raw {
   max-width: calc(100% - 8px);
 }
 
-.editor-menu .item .muted {
-  margin-left: auto;
-  font-size: 0.75rem;
-}
-
 .editor-menu-empty {
   margin: 0;
   padding: 6px 12px;

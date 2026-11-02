@@ -2,7 +2,7 @@
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
-  import Highlight from './Highlight.svelte';
+  import UserOption from './UserOption.svelte';
   import Who from './Who.svelte';
 
   /**
@@ -133,9 +133,7 @@
               onmouseenter={() => (active = i)}
             >
               {#if u}
-                <span class="name"><Highlight text={u.name} search={q} /></span><span
-                  class="user muted"><Highlight text={u.username} search={q} /></span
-                >
+                <UserOption user={u} name={u.name} username={u.username} search={q} />
               {:else}
                 <span class="nobody">{noneLabel}</span>
               {/if}
@@ -217,10 +215,5 @@
     list-style: none;
     margin: 0;
     padding: 0;
-  }
-
-  .item .user {
-    margin-left: auto;
-    font: 0.71875rem var(--font-mono);
   }
 </style>

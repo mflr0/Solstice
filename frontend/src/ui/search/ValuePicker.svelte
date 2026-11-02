@@ -4,9 +4,9 @@
   import { matches } from '../../core/text.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
-  import Avatar from '../Avatar.svelte';
   import Highlight from '../Highlight.svelte';
   import TypeMark from '../TypeMark.svelte';
+  import UserOption from '../UserOption.svelte';
   import type { Option } from './sources.svelte.js';
 
   /**
@@ -252,15 +252,17 @@
         onmouseenter={() => (active = i)}
       >
         <span class="box" aria-hidden="true">{row.checked ? '✓' : ''}</span>
-        {#if markOf}<span class="mark" aria-hidden="true"
-            >{#if row.type}<TypeMark type={row.type} />{:else if row.user}<Avatar
-                user={row.user}
-              />{/if}</span
-          >{/if}
-        <span class="label"
-          >{#if row.typed}{row.label}{:else}<Highlight text={row.label} search={q} />{/if}</span
-        >
-        {#if row.hint}<span class="hint">{row.hint}</span>{/if}
+        {#if markOf && row.user}
+          <UserOption user={row.user} name={row.label} username={row.hint} search={q} />
+        {:else}
+          {#if markOf}<span class="mark" aria-hidden="true"
+              >{#if row.type}<TypeMark type={row.type} />{/if}</span
+            >{/if}
+          <span class="label"
+            >{#if row.typed}{row.label}{:else}<Highlight text={row.label} search={q} />{/if}</span
+          >
+          {#if row.hint}<span class="hint">{row.hint}</span>{/if}
+        {/if}
         {#if row.count !== undefined}<span class="count" class:zero={row.count === 0}
             >{row.count}</span
           >{/if}
@@ -346,7 +348,8 @@
     color: var(--ink-soft);
   }
 
-  .hint + .count {
+  .hint + .count,
+  .filter-option :global(.user + .count) {
     margin-left: 0;
   }
 
