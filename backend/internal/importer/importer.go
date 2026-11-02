@@ -262,7 +262,10 @@ type run struct {
 	userGroups  map[int64][]int64
 	projects    map[int64]*project
 	unsafeKeys  map[string]bool // project keys already reported as unusable in a path
-	roles       map[int64]bool
+	// Jira project roles become groups with project members: role id → group.
+	roles       map[int64]roleGroup
+	groupNames  map[string]bool // group names taken, or found on restricted items
+	nextGroup   int64
 	issueTypes  map[string]bool
 	statuses    map[string]bool
 	priorities  map[string]bool

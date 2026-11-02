@@ -1,10 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import type { ProjectGroup } from '../../core/admin-types.js';
   import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
   import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
   import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
+  import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -32,6 +34,8 @@
   const { projectKey }: Props = $props();
 
   let data = $state<ProjectPermissions | null>(null);
+  /** The groups with project members here, and those members. */
+  let members = $state<ProjectGroup[]>([]);
   let grants = $state<Grant[]>([]);
   let saved = $state('');
   let error = $state('');
@@ -101,6 +105,7 @@
     loadedKey = key;
     document.title = `${t.settings.title} ${key} — ${t.appName}`;
     data = null;
+    members = [];
     grants = [];
     saved = '';
     error = '';
@@ -119,9 +124,16 @@
         if (e instanceof ApiError && e.status === 403) forbidden = true;
         else error = errorMessage(e);
       });
+    // Only shown beside the grants: the page works without it.
+    projectAdminApi
+      .groups(key)
+      .then((list) => {
+        if (key === projectKey) members = list.filter((g) => g.users.length || g.groups.length);
+      })
+      .catch(() => {});
   });
 
-  const kinds: Holder[] = ['everyone', 'group', 'role', 'user', 'lead', 'reporter', 'assignee'];
+  const kinds: Holder[] = ['everyone', 'group', 'user', 'lead', 'reporter', 'assignee'];
 
   function holdersOf(p: Permission): Grant[] {
     return grants.filter((g) => g.permission === p);
@@ -140,9 +152,8 @@
 
   function addPicked(p: Permission) {
     if (!data) return;
-    if (kind === 'group' || kind === 'role') {
-      const list = kind === 'group' ? data.groups : data.roles;
-      const found = list.find((x) => String(x.id) === pick);
+    if (kind === 'group') {
+      const found = data.groups.find((x) => String(x.id) === pick);
       if (found) add(p, { holder: kind, id: found.id, name: found.name });
     } else if (kind !== 'user') {
       add(p, { holder: kind });
@@ -239,12 +250,7 @@
           id="panel-notifications"
           aria-labelledby="tab-notifications"
         >
-          <NotificationsPanel
-            {projectKey}
-            groups={data.groups}
-            roles={data.roles}
-            ondirty={(d) => (panelDirty = d)}
-          />
+          <NotificationsPanel {projectKey} groups={data.groups} ondirty={(d) => (panelDirty = d)} />
         </div>
       {:else if tab === 'import'}
         <div class="panel" role="tabpanel" id="panel-import" aria-labelledby="tab-import">
@@ -266,8 +272,8 @@
                       <div class="holders">
                         {#each holdersOf(p) as g (signature([g]))}
                           <span class="chip holder {g.holder}">
-                            {#if g.holder === 'group' || g.holder === 'role' || g.holder === 'user'}<span
-                                class="kind">{holderLabels[g.holder]}</span
+                            {#if g.holder === 'group' || g.holder === 'user'}<span class="kind"
+                                >{holderLabels[g.holder]}</span
                               >{/if}
                             {grantLabel(g)}
                             <button
@@ -301,17 +307,16 @@
                                   onchange={(v) => (kind = v as Holder)}
                                 />
                               </div>
-                              {#if kind === 'group' || kind === 'role'}
-                                {@const pickLabel =
-                                  kind === 'group' ? t.settings.chooseGroup : t.settings.chooseRole}
+                              {#if kind === 'group'}
                                 <div class="field">
-                                  <span>{pickLabel}</span>
+                                  <span>{t.settings.chooseGroup}</span>
                                   <Dropdown
-                                    label={pickLabel}
+                                    label={t.settings.chooseGroup}
                                     value={pick}
-                                    options={(kind === 'group' ? data.groups : data.roles).map(
-                                      (x) => ({ value: String(x.id), label: x.name }),
-                                    )}
+                                    options={data.groups.map((x) => ({
+                                      value: String(x.id),
+                                      label: x.name,
+                                    }))}
                                     placeholder="…"
                                     onchange={(v) => (pick = v)}
                                   />
@@ -334,7 +339,7 @@
                               {#if kind !== 'user'}
                                 <button
                                   class="btn btn-small btn-primary"
-                                  disabled={(kind === 'group' || kind === 'role') && !pick}
+                                  disabled={kind === 'group' && !pick}
                                   onclick={() => addPicked(p)}>{t.common.add}</button
                                 >
                               {/if}
@@ -349,22 +354,24 @@
             </table>
           </div>
 
-          <h2 class="section-title">{t.settings.roles}</h2>
-          <dl class="roles">
-            {#each data.roles as r (r.id)}
-              <div>
-                <dt>{r.name}</dt>
-                <dd>
-                  {#each r.groups as g (g.id)}<span class="chip">{holderLabels.group} {g.name}</span
-                    >{/each}
-                  {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
-                  {#if !r.groups.length && !r.users.length}<span class="nobody"
-                      >{t.settings.noMembers}</span
-                    >{/if}
-                </dd>
-              </div>
-            {/each}
-          </dl>
+          <h2 class="section-title">{t.settings.projectMembers}</h2>
+          {#if members.length}
+            <dl class="roles">
+              {#each members as r (r.id)}
+                <div>
+                  <dt>{r.name}</dt>
+                  <dd>
+                    {#each r.groups as g (g.id)}<span class="chip"
+                        >{holderLabels.group} {g.name}</span
+                      >{/each}
+                    {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
+                  </dd>
+                </div>
+              {/each}
+            </dl>
+          {:else}
+            <p class="nobody">{t.settings.noProjectMembers}</p>
+          {/if}
 
           {#if dirty}
             <div class="savebar" role="region" aria-label={t.settings.unsaved}>

@@ -59,11 +59,10 @@ export interface MoveParts {
   options: IdName[];
 }
 
-/** The comments and work logs restricted to a role of the current project, and what they can be restricted to instead. */
+/** The comments and work logs restricted to a group whose members differ between the two projects, and the groups they can be restricted to instead. */
 export interface MoveRestricted {
   comments: number;
   worklogs: number;
-  roles: IdName[];
   groups: IdName[];
 }
 
@@ -125,8 +124,8 @@ export interface MoveChoices {
   fixVersions?: number[];
   /** A level of the new project, or null for none. */
   securityLevel?: number | null;
-  /** A role of the new project, or a group, for what was restricted to a role of the current one; or giving the move up. */
-  restricted?: { to: 'role'; role: number } | { to: 'group'; group: number } | { to: 'refuse' };
+  /** For what is restricted to a group whose members differ by project: keep that group, take another, or give the move up. */
+  restricted?: { to: 'keep' } | { to: 'group'; group: number } | { to: 'refuse' };
 }
 
 export class ApiError extends Error {

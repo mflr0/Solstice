@@ -95,9 +95,16 @@ Without `-password`, a password is generated and printed.
 ### Groups
 
 Groups gather people to give them permissions together. They are used in
-project permissions, in project roles, to restrict comments and work logs, to
+project permissions, in security levels, to restrict comments and work logs, to
 share filters, and in the access token policy. Group names are stored in lower
 case and are unique.
+
+A group has global members, the same in every project, and can also have
+project members: people, or other groups, who count as its members in one
+project only. In a project, a group's members are its global members, plus its
+project members there, plus the members there of the groups among them. A Jira
+import turns each project role into a group whose members are the role's
+holders, as project members of each project.
 
 The Groups page lists every group with its description and its number of
 members. A search box filters by name or description. "New group" asks for a
@@ -109,13 +116,13 @@ it, change its description or manage its members.
   added and removed at once, without "Save". People can also be put in groups
   from the account dialog (see Users).
 - **Deleting** asks for confirmation. The group disappears from the
-  permissions, roles and security levels that use it; its members keep their
-  accounts.
+  permissions, project memberships and security levels that use it; its
+  members keep their accounts.
 
 Watch for:
 
-- Deleting a group removes its grants, role memberships and security level
-  memberships. It is refused while comments or work logs are restricted to the
+- Deleting a group removes its grants, project members, project memberships
+  and security level memberships. It is refused while comments or work logs are restricted to the
   group, because deleting it would hide them from everyone. The dialog then says
   how many comments and work logs still depend on the group.
 - Renaming a group keeps the comments and work logs restricted to it.
@@ -227,21 +234,6 @@ Watch for:
 - Failed sign-ins are in the audit log (method `oidc`), and the server log says
   why.
 
-### Roles
-
-Project roles are shared by all projects. Who holds a role is set for each
-project, in the project settings, under "Roles in this project". A role can
-then be given permissions in that project, like a group.
-
-The Roles page lists the roles with their description. You can create a role,
-change its name and description, and delete it. Only the role itself is
-managed here; its holders are chosen project by project.
-
-Watch for:
-
-- Deleting a role removes it from every project. It is refused while comments
-  or work logs are restricted to it, and the dialog says how many.
-
 ## Projects
 
 ### Projects page
@@ -254,7 +246,7 @@ links to each project's settings.
   from every current and former key. You also choose the starting workflow
   (Software: To Do, In Progress, In Review, Done; or Simple: three statuses),
   the lead (you by default), who can work in the project (only the lead,
-  everyone with an account, a group or a role), the issue types and the
+  everyone with an account, or a group), the issue types and the
   default assignee. The lead gets every permission. The first project of a
   fresh instance also fills the empty catalogues with defaults, in the
   instance's language.
@@ -273,7 +265,7 @@ links to each project's settings.
 Each project has its own rules. Nothing is shared through schemes, so a change
 touches no other project. Only the project's administrators (and global
 administrators) can open the settings. The page has six tabs, in this order:
-General, Components, Versions, Permissions and roles, Workflows and
+General, Components, Versions, Permissions and members, Workflows and
 Notifications. It opens on General. Changes in General, Notifications and
 Workflows wait for "Save", and the page asks before you leave a tab with
 unsaved changes. Components and Versions act at once, from their dialogs.
@@ -320,11 +312,13 @@ release date.
   get in its place, or none.
 - The moves are recorded in the issues' history.
 
-**Permissions and roles.** A table of what each holder may do. The
+**Permissions and members.** A table of what each holder may do. The
 permissions are: browse, create, edit, comment, change status, assign,
 assignable, attach files, link, log work, delete, moderate, manage watchers,
 security level and administer. A permission is granted to everyone, a user, a
-group, a role, the project lead, the reporter or the assignee.
+group (its members in this project), the project lead, the reporter or the
+assignee. Below the table, "Group members in this project" lists the groups
+that have project members here, and who they are.
 
 Watch for:
 
@@ -345,10 +339,9 @@ else receives it.
 - "Send email notifications for this project" turns off all e-mail about the
   project's issues when unchecked, whatever each person chose in their own
   settings. It needs working e-mail (see E-mail).
-- "More recipients" is a table of events against the instance's groups and the
-  project's roles. A group or role checked for an event also receives that
-  event's e-mail in this project, on top of the people who already follow the
-  issue. Everyone still chooses, in their own settings, which events reach them.
+- "More recipients" is a table of events against the instance's groups. The
+  members in this project of a group checked for an event also receive that
+  event's e-mail, on top of the people who already follow the issue. Everyone still chooses, in their own settings, which events reach them.
 
 ### Workflows
 

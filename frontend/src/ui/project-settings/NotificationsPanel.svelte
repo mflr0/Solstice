@@ -10,18 +10,17 @@
 
   /**
    * The Notifications tab: whether this project sends email at all, and the
-   * groups and roles that also receive an event's email in it. Changes wait
+   * groups whose members in it also receive an event's email. Changes wait
    * for « Save ».
    */
   interface Props {
     projectKey: string;
-    /** What can be chosen: the instance's groups and the project's roles. */
+    /** What can be chosen: the instance's groups. */
     groups: IdName[];
-    roles: IdName[];
     /** Tells the page whether there are unsaved changes (it asks before leaving). */
     ondirty: (dirty: boolean) => void;
   }
-  const { projectKey, groups, roles, ondirty }: Props = $props();
+  const { projectKey, groups, ondirty }: Props = $props();
 
   let saved = $state<ProjectNotifications | null>(null);
   let enabled = $state(true);
@@ -30,10 +29,7 @@
   let saving = $state(false);
 
   const dirty = $derived(saved ? notificationsChanged(saved, enabled, extra) : false);
-  const rows = $derived([
-    ...groups.map((g) => ({ kind: 'group' as const, ...g })),
-    ...roles.map((r) => ({ kind: 'role' as const, id: r.id, name: r.name })),
-  ]);
+  const rows = $derived(groups.map((g) => ({ kind: 'group' as const, ...g })));
   const eventLabel = (e: string) =>
     (t.account.eventLabels as Record<string, { label: string }>)[e]?.label ?? e;
 

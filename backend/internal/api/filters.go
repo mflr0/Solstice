@@ -18,14 +18,14 @@ import (
 )
 
 // Saved filters: a name on a query (JQL or simple syntax), private to their
-// owner unless shared with everyone, a group, a project (or a role in it),
+// owner unless shared with everyone, a group, a project (or a group in it),
 // or a person.
 
 type filterShare struct {
-	Kind issue.ShareKind `json:"kind"`
-	ID   int64           `json:"id,omitempty"`
-	Role int64           `json:"role,omitempty"` // with kind project: only this role
-	Name string          `json:"name,omitempty"`
+	Kind  issue.ShareKind `json:"kind"`
+	ID    int64           `json:"id,omitempty"`
+	Group int64           `json:"group,omitempty"` // with kind project: only this group's members there
+	Name  string          `json:"name,omitempty"`
 }
 
 type filterOut struct {
@@ -48,9 +48,8 @@ type filterRow struct {
 
 type shareRow struct {
 	kind                            issue.ShareKind
-	group, project, role, user      sql.NullInt64
+	group, project, user            sql.NullInt64
 	groupName, projectKey, userName sql.NullString
-	roleName                        sql.NullString
 }
 
 // visible reports whether a share lets the subject see the filter.
@@ -64,7 +63,7 @@ func (sh shareRow) visible(sub *perm.Subject) bool {
 		if !sub.CanBrowseProject(sh.project.Int64) {
 			return false
 		}
-		return !sh.role.Valid || sub.HasRole(sh.project.Int64, sh.role.Int64)
+		return !sh.group.Valid || sub.InGroupIn(sh.project.Int64, sh.group.Int64)
 	case issue.ShareUser:
 		return sh.user.Int64 == sub.UserID
 	}
@@ -94,12 +93,11 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	shares := `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.role_id, sh.user_id,
-		g.name, p.pkey, r.name, u.display_name
+	shares := `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.user_id,
+		g.name, p.pkey, u.display_name
 		FROM filter_shares sh
 		LEFT JOIN user_groups g ON g.id = sh.group_id
 		LEFT JOIN projects p ON p.id = sh.project_id
-		LEFT JOIN project_roles r ON r.id = sh.role_id
 		LEFT JOIN users u ON u.id = sh.user_id`
 	var shareArgs []any
 	if only != 0 {
@@ -109,8 +107,8 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	if err := sqlq.Each(ctx, s.db, shares, func(rows *sql.Rows) error {
 		var id int64
 		var sh shareRow
-		if err := rows.Scan(&id, &sh.kind, &sh.group, &sh.project, &sh.role, &sh.user, &sh.groupName, &sh.projectKey,
-			&sh.roleName, &sh.userName); err != nil {
+		if err := rows.Scan(&id, &sh.kind, &sh.group, &sh.project, &sh.user, &sh.groupName, &sh.projectKey,
+			&sh.userName); err != nil {
 			return err
 		}
 		if f, ok := byID[id]; ok {
@@ -142,9 +140,9 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 			case issue.ShareGroup:
 				fs.ID, fs.Name = sh.group.Int64, sh.groupName.String
 			case issue.ShareProject:
-				fs.ID, fs.Name, fs.Role = sh.project.Int64, sh.projectKey.String, sh.role.Int64
-				if sh.role.Valid {
-					fs.Name += " · " + sh.roleName.String
+				fs.ID, fs.Name, fs.Group = sh.project.Int64, sh.projectKey.String, sh.group.Int64
+				if sh.group.Valid {
+					fs.Name += " · " + sh.groupName.String
 				}
 			case issue.ShareUser:
 				fs.ID, fs.Name = sh.user.Int64, sh.userName.String
@@ -217,7 +215,7 @@ type filterInput struct {
 }
 
 // checkFilter validates a filter's name, query and shares. One may only share
-// with a group one belongs to, a project one sees, a role one holds.
+// with a group one belongs to, a project one sees, a group one is in there.
 func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterInput) error {
 	if in.Name != nil {
 		n := strings.TrimSpace(*in.Name)
@@ -244,8 +242,8 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 			if !sub.CanBrowseProject(sh.ID) {
 				return fail(http.StatusBadRequest, i18n.ProjectNotFound)
 			}
-			if sh.Role != 0 && !sub.HasRole(sh.ID, sh.Role) && !sub.Admin {
-				return fail(http.StatusBadRequest, i18n.FilterShareRoleNotHeld)
+			if sh.Group != 0 && !sub.InGroupIn(sh.ID, sh.Group) && !sub.Admin {
+				return fail(http.StatusBadRequest, i18n.FilterShareProjectGroupNotMember)
 			}
 		case issue.ShareUser:
 			var n int
@@ -267,20 +265,20 @@ func writeShares(ctx context.Context, tx *sql.Tx, filter int64, shares []filterS
 		return err
 	}
 	for _, sh := range shares {
-		var group, project, role, user any
+		var group, project, user any
 		switch sh.Kind {
 		case issue.ShareGroup:
 			group = sh.ID
 		case issue.ShareProject:
 			project = sh.ID
-			if sh.Role != 0 {
-				role = sh.Role
+			if sh.Group != 0 {
+				group = sh.Group
 			}
 		case issue.ShareUser:
 			user = sh.ID
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO filter_shares (filter_id, kind, group_id, project_id, role_id, user_id)
-			VALUES (?, ?, ?, ?, ?, ?)`, filter, sh.Kind, group, project, role, user); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO filter_shares (filter_id, kind, group_id, project_id, user_id)
+			VALUES (?, ?, ?, ?, ?)`, filter, sh.Kind, group, project, user); err != nil {
 			return err
 		}
 	}

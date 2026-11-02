@@ -501,13 +501,16 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 			}
 			proj := map[string]any{"id": o.id(sh.ID), "key": key, "name": name, "self": o.api + "/project/" + o.id(sh.ID)}
 			p = map[string]any{"type": "project", "project": proj}
-			if sh.Role != 0 {
-				var role string
-				if err := s.db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, sh.Role).
-					Scan(&role); err != nil {
+			// Jira narrows a project share to a role, Solstice to a group:
+			// the group stands in for the role.
+			if sh.Group != 0 {
+				var group string
+				if err := s.db.QueryRowContext(ctx, `SELECT name FROM user_groups WHERE id = ?`, sh.Group).
+					Scan(&group); err != nil {
 					return nil, err
 				}
-				p = map[string]any{"type": "projectRole", "project": proj, "role": map[string]any{"id": sh.Role, "name": role}}
+				p = map[string]any{"type": "projectRole", "project": proj,
+					"role": map[string]any{"id": o.id(sh.Group), "name": group}}
 			}
 		case issue.ShareUser:
 			users, err := s.jiraUsers(ctx, o, sh.ID)

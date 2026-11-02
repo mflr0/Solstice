@@ -255,15 +255,8 @@ func (s *Server) assignableUsers(w http.ResponseWriter, r *http.Request) error {
 type grantOut struct {
 	Permission string `json:"permission"`
 	Holder     string `json:"holder"`
-	ID         int64  `json:"id,omitempty"` // user, group or role id
+	ID         int64  `json:"id,omitempty"` // user or group id
 	Name       string `json:"name,omitempty"`
-}
-
-type roleOut struct {
-	ID     int64     `json:"id"`
-	Name   string    `json:"name"`
-	Users  []userRef `json:"users"`
-	Groups []idName  `json:"groups"`
 }
 
 // browsableProject loads the subject and the project of the path's key,
@@ -305,12 +298,11 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	grants := []grantOut{}
-	if err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, g.role_id, 0),
-		COALESCE(u.display_name, ug.name, pr.name, '')
+	if err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, 0),
+		COALESCE(u.display_name, ug.name, '')
 		FROM project_permissions g
 		LEFT JOIN users u ON u.id = g.user_id
 		LEFT JOIN user_groups ug ON ug.id = g.group_id
-		LEFT JOIN project_roles pr ON pr.id = g.role_id
 		WHERE g.project_id = ? ORDER BY g.permission, g.holder, 4`, func(rows *sql.Rows) error {
 		var g grantOut
 		if err := rows.Scan(&g.Permission, &g.Holder, &g.ID, &g.Name); err != nil {
@@ -320,14 +312,6 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}, id); err != nil {
 		return err
-	}
-	out, err := s.projectRoles(ctx, id)
-	if err != nil {
-		return err
-	}
-	roles := make([]roleOut, len(out))
-	for i, ro := range out {
-		roles[i] = roleOut{ID: ro.ID, Name: ro.Name, Users: ro.Users, Groups: ro.Groups}
 	}
 	groups := []idName{}
 	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM user_groups ORDER BY name`, func(rows *sql.Rows) error {
@@ -341,7 +325,7 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
-		"permissions": perm.All, "grants": grants, "roles": roles, "groups": groups,
+		"permissions": perm.All, "grants": grants, "groups": groups,
 	})
 }
 
@@ -376,7 +360,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 			continue
 		}
 		seen[g] = true
-		var user, group, role any
+		var user, group any
 		table := ""
 		switch g.Holder {
 		case perm.Everyone, perm.Lead, perm.Reporter, perm.Assignee:
@@ -384,8 +368,6 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 			user, table = g.ID, "users"
 		case perm.Group:
 			group, table = g.ID, "user_groups"
-		case perm.Role:
-			role, table = g.ID, "project_roles"
 		default:
 			return failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, g.Holder)
 		}
@@ -399,7 +381,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,
-			group_id, role_id) VALUES (?, ?, ?, ?, ?, ?)`, id, g.Permission, g.Holder, user, group, role); err != nil {
+			group_id) VALUES (?, ?, ?, ?, ?)`, id, g.Permission, g.Holder, user, group); err != nil {
 			return err
 		}
 	}

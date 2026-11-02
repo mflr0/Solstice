@@ -77,14 +77,10 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	OAuthRefreshDaysInvalid:   "Die Lebensdauer der Aktualisierungstoken muss zwischen 1 und %d Tagen liegen.",
 
 	// Groups.
-	GroupNotFound:   "Gruppe nicht gefunden.",
-	GroupExists:     "Die Gruppe „%s“ existiert bereits.",
-	GroupRestricted: "Kommentare oder erfasste Zeiten sind nur für diese Gruppe sichtbar, daher kann sie nicht gelöscht werden.",
-
-	// Project roles.
-	RoleNotFound:   "Rolle nicht gefunden.",
-	RoleExists:     "Die Rolle „%s“ existiert bereits.",
-	RoleRestricted: "Kommentare oder erfasste Zeiten sind nur für diese Rolle sichtbar, daher kann sie nicht gelöscht werden.",
+	GroupNotFound:    "Gruppe nicht gefunden.",
+	GroupExists:      "Die Gruppe „%s“ existiert bereits.",
+	GroupRestricted:  "Kommentare oder erfasste Zeiten sind nur für diese Gruppe sichtbar, daher kann sie nicht gelöscht werden.",
+	GroupMemberCycle: "Eine Gruppe kann nicht Mitglied von sich selbst sein, auch nicht über andere Gruppen.",
 
 	// Instance settings.
 	SettingsNameRequired:          "Der Instanzname ist erforderlich (höchstens %d Zeichen).",
@@ -152,8 +148,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportWarnLevelMembersOne:                  "%d Mitglied von Sicherheitsstufen nicht importiert (Typ nicht unterstützt): diese Vorgänge sehen weniger Personen als vorher, nie mehr",
 	ImportWarnLevelMembersMany:                 "%d Mitglieder von Sicherheitsstufen nicht importiert (Typ nicht unterstützt): diese Vorgänge sehen weniger Personen als vorher, nie mehr",
 	ImportWarnLevelReplaced:                    "Projekt %s: eine in Jira nicht gefundene Sicherheitsstufe wurde durch „Restricted (import)“ ohne Mitglieder ersetzt",
-	ImportWarnLocalAccountsOne:                 "%d in Solstice angelegtes Konto behalten (ohne Gruppen und Rollen, die aus Jira kommen)",
-	ImportWarnLocalAccountsMany:                "%d in Solstice angelegte Konten behalten (ohne Gruppen und Rollen, die aus Jira kommen)",
+	ImportWarnLocalAccountsOne:                 "%d in Solstice angelegtes Konto behalten (ohne Gruppen, die aus Jira kommen)",
+	ImportWarnLocalAccountsMany:                "%d in Solstice angelegte Konten behalten (ohne Gruppen, die aus Jira kommen)",
 	ImportWarnNoPasswordOne:                    "%d aktives Konto ohne verwendbares Passwort (externes Verzeichnis oder altes Format): mit „solstice user passwd“ eines setzen",
 	ImportWarnNoPasswordMany:                   "%d aktive Konten ohne verwendbares Passwort (externes Verzeichnis oder altes Format): mit „solstice user passwd“ eines setzen",
 	ImportWarnDeletedUsersOne:                  "%d aus Jira gelöschter Benutzer als inaktives Konto behalten (Autoren alter Vorgänge)",
@@ -223,7 +219,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
 	ProjectKeysBusy:            "Eine andere Änderung eines Projektschlüssels läuft gerade. Versuchen Sie es gleich noch einmal.",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, the statuses of the project templates.
 	DefaultTypeTask:                  "Aufgabe",
 	DefaultTypeBug:                   "Fehler",
 	DefaultTypeStory:                 "Story",
@@ -249,9 +245,6 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultLinkClonesName:            "Klon",
 	DefaultLinkClonesInward:          "ist geklont von",
 	DefaultLinkClonesOutward:         "klont",
-	DefaultRoleAdministrators:        "Administratoren",
-	DefaultRoleDevelopers:            "Entwickler",
-	DefaultRoleUsers:                 "Benutzer",
 	DefaultStatusToDo:                "Zu erledigen",
 	DefaultStatusInProgress:          "In Arbeit",
 	DefaultStatusInReview:            "In Prüfung",
@@ -400,8 +393,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "Ein Teilvorgang wird mit seinem übergeordneten Vorgang verschoben: Verschieben Sie den übergeordneten Vorgang.",
 	IssueMoveChoiceNeeded:      "Vor dem Verschieben auswählen: %s.",
 	IssueMoveChanged:           "Der Vorgang wurde während des Verschiebens geändert. Laden Sie ihn neu und versuchen Sie es erneut.",
-	IssueMoveRestrictedRefused: "Auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle können in einem anderen Projekt nicht unverändert bleiben.",
-	IssueMoveRestrictedHidden:  "%d auf eine Rolle dieses Projekts beschränkte Kommentare und Arbeitsprotokolle sind für Sie nicht lesbar, und das Zielprojekt hat keine Rolle mit demselben Namen. Ein Administrator kann den Vorgang verschieben.",
+	IssueMoveRestrictedRefused: "Kommentare und Arbeitsprotokolle, die auf eine Gruppe mit projektabhängigen Mitgliedern beschränkt sind, können nicht unverändert bleiben.",
+	IssueMoveRestrictedHidden:  "%d Kommentare und Arbeitsprotokolle, die auf eine Gruppe mit projektabhängigen Mitgliedern beschränkt sind, sind für Sie nicht lesbar, und diese Gruppe hat im Zielprojekt keine Mitglieder. Ein Administrator kann den Vorgang verschieben.",
 	IssueMoveSecurityNeeded:    "Das Verschieben eines Vorgangs mit Sicherheitsstufe erfordert die Berechtigung Sicherheitsstufe im Zielprojekt, und in diesem Projekt, um eine andere Stufe zu wählen.",
 	IssueMoveNoSubtaskType:     "Der Vorgang hat Unteraufgaben, und das Zielprojekt hat keinen Unteraufgabentyp für sie. Fügen Sie dem Projekt zuerst einen hinzu.",
 	IssueMoveUseAction:         "Ein Vorgang wechselt das Projekt über die Aktion „Verschieben“.",
@@ -413,12 +406,11 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Comments and their visibility.
 	CommentEmpty:           "Der Kommentar ist leer.",
 	CommentGroupNotMember:  "Sie gehören dieser Gruppe nicht an.",
-	CommentRoleNotHeld:     "Sie haben diese Rolle im Projekt nicht.",
 	CommentVisibilityFixed: "Die Sichtbarkeit eines bestehenden Kommentars kann nicht geändert werden.",
 
 	// Work logs.
 	WorkLogDurationInvalid: "Ungültige Dauer.",
-	WorkLogRestricted:      "Ein Zeiteintrag kann nicht auf eine Gruppe oder Rolle beschränkt werden.",
+	WorkLogRestricted:      "Ein Zeiteintrag kann nicht auf eine Gruppe beschränkt werden.",
 
 	// Issue links.
 	LinkTypeUnknown:      "Unbekannter Verknüpfungstyp.",
@@ -502,12 +494,12 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintNotOnBoard:      "Das Projekt des Vorgangs gehört nicht zum Board dieses Sprints.",
 
 	// Saved filters and their shares.
-	FilterNameRequired:        "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",
-	FilterIncomplete:          "Ein Filter braucht einen Namen und eine Abfrage.",
-	FilterShareKindUnknown:    "Unbekannte Freigabeart: %s.",
-	FilterShareGroupNotMember: "Sie können nur mit einer Gruppe teilen, der Sie angehören.",
-	FilterShareRoleNotHeld:    "Sie können nur mit einer Rolle teilen, die Sie im Projekt haben.",
-	FilterSharePersonNotFound: "Benutzer nicht gefunden.",
+	FilterNameRequired:               "Ein Filtername ist erforderlich (höchstens 255 Zeichen).",
+	FilterIncomplete:                 "Ein Filter braucht einen Namen und eine Abfrage.",
+	FilterShareKindUnknown:           "Unbekannte Freigabeart: %s.",
+	FilterShareGroupNotMember:        "Sie können nur mit einer Gruppe teilen, der Sie angehören.",
+	FilterShareProjectGroupNotMember: "Sie können nur mit einer Gruppe teilen, der Sie im Projekt angehören.",
+	FilterSharePersonNotFound:        "Benutzer nicht gefunden.",
 
 	// The personal dashboard.
 	DashboardTooManyGadgets:    "Ein Dashboard enthält höchstens %d Gadgets.",
@@ -623,7 +615,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyIntervalInvalid:     "Ungültiges Intervall: 15 bis 720 Minuten.",
 	NotifyDeliveryUnknown:     "Unbekannte Zustellart: immediate, digest, periodic oder none.",
 	NotifyEventUnknown:        "Unbekanntes Ereignis: %s.",
-	NotifyRecipientUnknown:    "Unbekannter Empfänger: group oder role.",
+	NotifyRecipientUnknown:    "Unbekannter Empfänger: group.",
 	NotifyManage:              "Meine Benachrichtigungen verwalten",
 	NotifyChangeInPreferences: "Ihre Benachrichtigungen stellen Sie in Ihren Einstellungen in Solstice ein.",
 	NotifyOpenIssue:           "Vorgang öffnen",

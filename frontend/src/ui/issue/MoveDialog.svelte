@@ -68,8 +68,7 @@
   let affectsIds = $state<number[]>([]);
   let fixIds = $state<number[]>([]);
   let levelId = $state('');
-  let restrictTo = $state<'role' | 'group'>('role');
-  let roleId = $state('');
+  let restrictTo = $state<'keep' | 'group'>('keep');
   let groupId = $state('');
 
   const targetProject = $derived(projects.find((p) => p.key === target));
@@ -85,10 +84,6 @@
       fixVersions !== null ||
       securityLevel !== null ||
       restricted !== null,
-  );
-  // Nothing to restrict the items to: the move cannot be made.
-  const stuck = $derived(
-    restricted !== null && !restricted.roles.length && !restricted.groups.length,
   );
 
   function forget() {
@@ -107,7 +102,6 @@
     affectsIds = [];
     fixIds = [];
     levelId = '';
-    roleId = '';
     groupId = '';
   }
 
@@ -181,8 +175,7 @@
     }
     if (c.restricted && !restricted) {
       restricted = c.restricted;
-      restrictTo = c.restricted.roles.length ? 'role' : 'group';
-      roleId = String(c.restricted.roles[0]?.id ?? '');
+      restrictTo = 'keep';
       groupId = String(c.restricted.groups[0]?.id ?? '');
       news = true;
     }
@@ -200,9 +193,7 @@
     if (securityLevel) c.securityLevel = levelId === '' ? null : Number(levelId);
     if (restricted) {
       c.restricted =
-        restrictTo === 'role'
-          ? { to: 'role', role: Number(roleId) }
-          : { to: 'group', group: Number(groupId) };
+        restrictTo === 'keep' ? { to: 'keep' } : { to: 'group', group: Number(groupId) };
     }
     return c;
   }
@@ -401,35 +392,22 @@
       {#if restricted}
         <fieldset class="restricted">
           <legend>{t.issue.moveRestricted(restricted.comments + restricted.worklogs)}</legend>
-          {#if stuck}
-            <p class="hint">{t.issue.moveRestrictedNone}</p>
-          {:else}
-            {#if restricted.roles.length}
-              <label class="check">
-                <input type="radio" name="move-restrict" value="role" bind:group={restrictTo} />
-                <span>{t.issue.moveRestrictedRole}</span>
-              </label>
-              <Dropdown
-                label={t.issue.moveRestrictedRole}
-                value={roleId}
-                options={restricted.roles.map((r) => ({ value: String(r.id), label: r.name }))}
-                disabled={restrictTo !== 'role'}
-                onchange={(v) => (roleId = v)}
-              />
-            {/if}
-            {#if restricted.groups.length}
-              <label class="check">
-                <input type="radio" name="move-restrict" value="group" bind:group={restrictTo} />
-                <span>{t.issue.moveRestrictedGroup}</span>
-              </label>
-              <Dropdown
-                label={t.issue.moveRestrictedGroup}
-                value={groupId}
-                options={restricted.groups.map((g) => ({ value: String(g.id), label: g.name }))}
-                disabled={restrictTo !== 'group'}
-                onchange={(v) => (groupId = v)}
-              />
-            {/if}
+          <label class="check">
+            <input type="radio" name="move-restrict" value="keep" bind:group={restrictTo} />
+            <span>{t.issue.moveRestrictedKeep}</span>
+          </label>
+          {#if restricted.groups.length}
+            <label class="check">
+              <input type="radio" name="move-restrict" value="group" bind:group={restrictTo} />
+              <span>{t.issue.moveRestrictedGroup}</span>
+            </label>
+            <Dropdown
+              label={t.issue.moveRestrictedGroup}
+              value={groupId}
+              options={restricted.groups.map((g) => ({ value: String(g.id), label: g.name }))}
+              disabled={restrictTo !== 'group'}
+              onchange={(v) => (groupId = v)}
+            />
           {/if}
         </fieldset>
       {/if}
@@ -489,7 +467,7 @@
       <button
         type="button"
         class="btn btn-primary"
-        disabled={busy || (step === 'project' && !target) || (step === 'choices' && stuck)}
+        disabled={busy || (step === 'project' && !target)}
         onclick={step === 'project' ? toChoices : toConfirm}
         >{busy ? t.adminArea.working : t.issue.moveNext}</button
       >

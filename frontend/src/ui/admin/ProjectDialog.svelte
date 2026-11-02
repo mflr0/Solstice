@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
-  import type { Category, Group, KeyCheck, RoleRow } from '../../core/admin-types.js';
+  import type { Category, Group, KeyCheck } from '../../core/admin-types.js';
   import {
     issueTypesProblem,
     keyProblem,
@@ -35,7 +35,7 @@
   }
   const { open, onclose, oncreated }: Props = $props();
 
-  const ACCESS: AccessKind[] = ['lead', 'everyone', 'group', 'role'];
+  const ACCESS: AccessKind[] = ['lead', 'everyone', 'group'];
 
   const blank = (): ProjectForm => {
     const me = session.me;
@@ -61,7 +61,6 @@
   let busy = $state(false);
   let categories = $state<Category[]>([]);
   let groups = $state<Group[]>([]);
-  let roles = $state<RoleRow[]>([]);
   let keyState = $state<{ key: string; check: KeyCheck | null } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
@@ -106,10 +105,6 @@
       .groups()
       .then((g) => (groups = g))
       .catch(() => (groups = []));
-    adminApi
-      .roles()
-      .then((r) => (roles = r))
-      .catch(() => (roles = []));
   });
 
   function nameTyped(e: Event & { currentTarget: HTMLInputElement }) {
@@ -280,18 +275,16 @@
           }}
         />
       </div>
-      {#if form.access === 'group' || form.access === 'role'}
+      {#if form.access === 'group'}
         <div class="field grid-end">
           <Dropdown
             label={t.projectsAdmin.accessKinds[form.access]}
             value={form.accessId === null ? '' : String(form.accessId)}
-            options={(form.access === 'group' ? groups : roles).map((x) => ({
+            options={groups.map((x) => ({
               value: String(x.id),
               label: x.name,
             }))}
-            placeholder={form.access === 'group'
-              ? t.projectsAdmin.chooseGroup
-              : t.projectsAdmin.chooseRole}
+            placeholder={t.projectsAdmin.chooseGroup}
             invalid={!!shown('access')}
             onblur={() => (touched.access = true)}
             onchange={(v) => (form.accessId = Number(v))}

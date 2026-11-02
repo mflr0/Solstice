@@ -396,7 +396,7 @@ func (r *run) importIssueDetails() error {
 
 // actionRefs are the Solstice values a comment or work log points to.
 type actionRefs struct {
-	author, updater, group, role any
+	author, updater, group any
 }
 
 // refsOf resolves the author, last editor and visibility of a comment or
@@ -410,30 +410,32 @@ func (r *run) refsOf(author, updater, group sql.NullString, role sql.NullInt64) 
 	if ref.updater, err = r.user(updater); err != nil {
 		return ref, err
 	}
-	if ref.role, err = r.visibilityRole(role); err != nil {
-		return ref, err
-	}
+	// One restriction only: a group, else the group made from a role.
 	if group.String != "" {
 		ref.group = strings.ToLower(group.String)
+	} else if ref.group, err = r.visibilityRole(role); err != nil {
+		return ref, err
 	}
 	return ref, nil
 }
 
-// visibilityRole returns the role a comment or work log is restricted to. A
-// role deleted from Jira is recreated without members, so the restricted
-// content stays hidden instead of becoming public.
+// visibilityRole returns the name of the group made from the role a comment
+// or work log is restricted to. A role deleted from Jira becomes a group
+// without members, so the restricted content stays hidden instead of
+// becoming public.
 func (r *run) visibilityRole(role sql.NullInt64) (any, error) {
 	if !role.Valid || role.Int64 == 0 {
 		return nil, nil
 	}
-	if !r.roles[role.Int64] {
-		if _, err := r.dst.ExecContext(r.ctx, `INSERT INTO project_roles (id, name) VALUES (?, ?)`,
-			role.Int64, fmt.Sprintf("Deleted role (%d)", role.Int64)); err != nil {
+	rg, ok := r.roles[role.Int64]
+	if !ok {
+		rg = r.newRoleGroup(fmt.Sprintf("Deleted role (%d)", role.Int64))
+		if _, err := r.dst.ExecContext(r.ctx, `INSERT INTO user_groups (id, name) VALUES (?, ?)`, rg.id, rg.name); err != nil {
 			return nil, err
 		}
-		r.roles[role.Int64] = true
+		r.roles[role.Int64] = rg
 	}
-	return role.Int64, nil
+	return rg.name, nil
 }
 
 func (r *run) importCommentsAndWorklogs() error {
@@ -449,7 +451,7 @@ func (r *run) importCommentsAndWorklogs() error {
 	}
 
 	ins := r.inserter("comments", "id", "issue_id", "author_id", "body", "created_at", "updated_at", "updated_by_id",
-		"visibility_group", "visibility_role_id")
+		"visibility_group")
 	skipped, restricted := 0, 0
 	if err := r.each(`SELECT id, issueid, author, actionlevel, rolelevel, actionbody, created, updateauthor, updated
 		FROM jiraaction WHERE actiontype = 'comment'`, func(rows *sql.Rows) error {
@@ -468,11 +470,11 @@ func (r *run) importCommentsAndWorklogs() error {
 		if err != nil {
 			return err
 		}
-		if ref.group != nil || ref.role != nil {
+		if ref.group != nil {
 			restricted++
 		}
 		c := stamp(created, updated)
-		return ins.add(id, issue.Int64, ref.author, body.String, c, stamp(updated, created), ref.updater, ref.group, ref.role)
+		return ins.add(id, issue.Int64, ref.author, body.String, c, stamp(updated, created), ref.updater, ref.group)
 	}); err != nil {
 		return err
 	}
@@ -484,7 +486,7 @@ func (r *run) importCommentsAndWorklogs() error {
 	r.rep.step("of which restricted comments", restricted, 0)
 
 	ins = r.inserter("worklogs", "id", "issue_id", "author_id", "body", "started_at", "seconds", "created_at",
-		"updated_at", "updated_by_id", "visibility_group", "visibility_role_id")
+		"updated_at", "updated_by_id", "visibility_group")
 	skipped = 0
 	if err := r.each(`SELECT id, issueid, author, grouplevel, rolelevel, worklogbody, created, updateauthor, updated,
 		startdate, timeworked FROM worklog`, func(rows *sql.Rows) error {
@@ -505,7 +507,7 @@ func (r *run) importCommentsAndWorklogs() error {
 		}
 		c := stamp(created, updated)
 		return ins.add(id, issue.Int64, ref.author, sqlq.Value(body), stamp(started, created), seconds.Int64, c,
-			stamp(updated, created), ref.updater, ref.group, ref.role)
+			stamp(updated, created), ref.updater, ref.group)
 	}); err != nil {
 		return err
 	}

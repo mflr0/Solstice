@@ -80,7 +80,7 @@ type worklogData struct {
 	started              time.Time
 	created, updated     time.Time
 	seconds              int64
-	group, roleName      sql.NullString
+	group                sql.NullString
 }
 
 type customFieldDef struct {
@@ -535,19 +535,18 @@ func (s *Server) loadComments(ctx context.Context, sub *perm.Subject, set *issue
 func (s *Server) loadWorklogs(ctx context.Context, sub *perm.Subject, set *issueSet, ids []int64) error {
 	return s.scanIn(ctx, ids, func(in string) string {
 		return `SELECT w.issue_id, w.id, w.author_id, w.updated_by_id, w.body, w.started_at, w.created_at, w.updated_at,
-			w.seconds, w.visibility_group, w.visibility_role_id, pr.name
-			FROM worklogs w LEFT JOIN project_roles pr ON pr.id = w.visibility_role_id
+			w.seconds, w.visibility_group
+			FROM worklogs w
 			WHERE w.issue_id IN ` + in + ` ORDER BY w.started_at, w.id`
 	}, func(rows *sql.Rows) error {
 		var id int64
 		var wl worklogData
-		var role sql.NullInt64
 		if err := rows.Scan(&id, &wl.id, &wl.author, &wl.updateAuthor, &wl.body, &wl.started, &wl.created,
-			&wl.updated, &wl.seconds, &wl.group, &role, &wl.roleName); err != nil {
+			&wl.updated, &wl.seconds, &wl.group); err != nil {
 			return err
 		}
 		d := set.byID[id]
-		if sub.SeesRestricted(d.row.ProjectID, wl.group.String, role.Int64) {
+		if sub.SeesRestricted(d.row.ProjectID, wl.group.String) {
 			d.worklogs = append(d.worklogs, wl)
 		}
 		return nil

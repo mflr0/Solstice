@@ -39,6 +39,7 @@ CREATE TABLE `api_tokens` (
   `user_id` bigint(20) NOT NULL,
   `name` varchar(255) NOT NULL,
   `token_hash` char(64) NOT NULL,
+  `scopes` varchar(255) NOT NULL,
   `created_at` datetime(3) NOT NULL,
   `expires_at` datetime(3) DEFAULT NULL,
   `last_used_at` datetime(3) DEFAULT NULL,
@@ -347,6 +348,7 @@ CREATE TABLE `boards` (
   `done_cutoff` varchar(20) DEFAULT NULL,
   `created_at` datetime(3) NOT NULL,
   `updated_at` datetime(3) NOT NULL,
+  `kanban_backlog` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `ix_boards_filter` (`filter_id`),
   KEY `fk_boards_owner` (`owner_id`),
@@ -356,10 +358,10 @@ CREATE TABLE `boards` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `boards` DISABLE KEYS */;
-INSERT INTO `boards` VALUES (1,'DEMO — Scrum','scrum',10004,NULL,2,'none','customfield_10100',NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000');
-INSERT INTO `boards` VALUES (2,'WEB — Kanban','kanban',10005,'fixVersion in unreleasedVersions() OR fixVersion is EMPTY',3,'custom',NULL,'2w','2026-10-01 18:00:00.000','2026-10-01 18:00:00.000');
-INSERT INTO `boards` VALUES (3,'OPS — Exploitation','kanban',10006,NULL,7,'assignee',NULL,NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000');
-INSERT INTO `boards` VALUES (4,'RH','scrum',10007,NULL,8,'none','timeoriginalestimate',NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000');
+INSERT INTO `boards` VALUES (1,'DEMO — Scrum','scrum',10004,NULL,2,'none','customfield_10100',NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000',0);
+INSERT INTO `boards` VALUES (2,'WEB — Kanban','kanban',10005,'fixVersion in unreleasedVersions() OR fixVersion is EMPTY',3,'custom',NULL,'2w','2026-10-01 18:00:00.000','2026-10-01 18:00:00.000',0);
+INSERT INTO `boards` VALUES (3,'OPS — Exploitation','kanban',10006,NULL,7,'assignee',NULL,NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000',1);
+INSERT INTO `boards` VALUES (4,'RH','scrum',10007,NULL,8,'none','timeoriginalestimate',NULL,'2026-10-01 18:00:00.000','2026-10-01 18:00:00.000',0);
 /*!40000 ALTER TABLE `boards` ENABLE KEYS */;
 DROP TABLE IF EXISTS `change_groups`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2263,627 +2265,624 @@ CREATE TABLE `comments` (
   `updated_at` datetime(3) NOT NULL,
   `updated_by_id` bigint(20) DEFAULT NULL,
   `visibility_group` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
-  `visibility_role_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_comments_issue` (`issue_id`,`created_at`),
   KEY `fk_comments_author` (`author_id`),
   KEY `fk_comments_updated_by` (`updated_by_id`),
-  KEY `fk_comments_role` (`visibility_role_id`),
   CONSTRAINT `fk_comments_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_comments_issue` FOREIGN KEY (`issue_id`) REFERENCES `issues` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_comments_role` FOREIGN KEY (`visibility_role_id`) REFERENCES `project_roles` (`id`),
   CONSTRAINT `fk_comments_updated_by` FOREIGN KEY (`updated_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=10607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `comments` DISABLE KEYS */;
-INSERT INTO `comments` VALUES (10000,10000,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-09-11 11:25:37.000','2025-09-11 11:25:37.000',2,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10001,10001,7,'Même cause que DEMO-1, je fais le lien.','2025-09-05 08:00:15.000','2025-09-05 08:00:15.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10002,10001,3,'C\'est bon pour moi, on peut fermer.','2025-09-11 13:50:13.000','2025-09-11 13:50:13.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10003,10001,12,'[~lucas.bernard] tu peux regarder quand tu as un moment ?','2025-09-15 13:28:19.000','2025-09-15 13:28:19.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10004,10001,2,'[~marie.durand] tu peux regarder quand tu as un moment ?','2025-09-21 12:20:57.000','2025-09-21 12:20:57.000',2,NULL,10002);
-INSERT INTO `comments` VALUES (10005,10001,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-09-24 15:27:20.000','2025-09-24 15:27:20.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10006,10001,15,'Point fait avec le client ce matin, il valide la solution proposée.','2025-09-30 14:06:58.000','2025-09-30 14:06:58.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10007,10002,2,'C\'est bon pour moi, on peut fermer.','2025-09-13 11:23:43.000','2025-09-13 11:23:43.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10008,10002,6,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-16 17:11:19.000','2025-09-16 17:11:19.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10009,10002,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-20 14:23:40.000','2025-09-20 14:23:40.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10010,10003,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-11 17:59:18.000','2025-09-11 17:59:18.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10011,10004,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-19 07:34:53.000','2025-09-19 07:34:53.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10012,10004,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-28 06:26:36.000','2025-09-28 06:26:36.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10013,10005,2,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-19 15:57:04.000','2025-09-19 15:57:04.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10014,10007,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-19 17:45:37.000','2025-09-19 17:45:37.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10015,10007,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-09-26 10:05:26.000','2025-09-26 10:05:26.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10016,10008,17,'Je confirme, reproduit sur l\'environnement de recette.','2025-10-01 07:01:45.000','2025-10-01 07:01:45.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10017,10008,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-12 17:29:10.000','2025-10-12 17:29:10.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10018,10010,6,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-09-24 14:01:29.000','2025-09-24 14:01:29.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10019,10010,24,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-09-24 16:59:42.000','2025-09-24 16:59:42.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10020,10010,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-08 08:29:07.000','2025-10-08 08:29:07.000',15,NULL,10002);
-INSERT INTO `comments` VALUES (10021,10011,17,'[~julien.roux] tu peux regarder quand tu as un moment ?','2025-10-04 11:57:51.000','2025-10-04 11:57:51.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10022,10011,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-10-06 08:08:02.000','2025-10-06 08:08:02.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10023,10011,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-10-19 08:34:01.000','2025-10-19 08:34:01.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10024,10011,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-01 13:03:54.000','2025-11-01 13:03:54.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10025,10012,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-03 12:19:05.000','2025-10-03 12:19:05.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10026,10012,12,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-10-11 16:54:26.000','2025-10-11 16:54:26.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10027,10012,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-14 09:34:48.000','2025-10-14 09:34:48.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10028,10014,8,'C\'est bon pour moi, on peut fermer.','2025-10-01 16:38:46.000','2025-10-01 16:38:46.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10029,10014,14,'Point fait avec le client ce matin, il valide la solution proposée.','2025-10-02 17:33:16.000','2025-10-02 17:33:16.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10030,10014,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-10-17 14:47:06.000','2025-10-17 14:47:06.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10031,10014,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-19 14:46:12.000','2025-10-19 14:46:12.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10032,10014,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-02 16:20:06.000','2025-11-02 16:20:06.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10033,10014,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-15 16:05:35.000','2025-11-15 17:02:56.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10034,10015,9,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-02 07:09:29.000','2025-10-02 07:09:29.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10035,10015,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-16 15:44:28.000','2025-10-16 15:44:28.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10036,10015,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-17 10:37:02.000','2025-10-17 10:37:02.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10037,10015,2,'[~camille.petit] tu peux regarder quand tu as un moment ?','2025-10-18 06:57:57.000','2025-10-18 06:57:57.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10038,10017,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-06 17:30:21.000','2025-10-06 17:30:21.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10039,10017,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-19 16:01:57.000','2025-10-19 16:01:57.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10040,10017,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-03 18:31:04.000','2025-11-03 18:31:04.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10041,10020,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-10-27 07:02:05.000','2025-10-27 07:02:05.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10042,10020,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-06 07:48:52.000','2025-11-06 07:48:52.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10043,10020,2,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-10 08:49:02.000','2025-11-10 08:49:02.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10044,10020,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-17 17:04:22.000','2025-11-17 17:04:22.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10045,10023,9,'C\'est bon pour moi, on peut fermer.','2025-10-28 08:04:21.000','2025-10-28 08:04:21.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10046,10023,20,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-12 14:46:12.000','2025-11-12 14:46:12.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10047,10023,7,'Même cause que WEB-1, je fais le lien.','2025-11-12 18:49:42.000','2025-11-13 16:05:33.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10048,10025,13,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-31 13:56:50.000','2025-10-31 13:56:50.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10049,10025,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-06 10:18:46.000','2025-11-06 10:18:46.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10050,10025,10,'[~paul.martin] tu peux regarder quand tu as un moment ?','2025-11-10 10:44:23.000','2025-11-10 10:44:23.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10051,10025,13,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-15 08:20:45.000','2025-11-15 08:20:45.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10052,10025,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-16 16:32:38.000','2025-11-16 16:32:38.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10053,10025,17,'C\'est bon pour moi, on peut fermer.','2025-11-24 10:55:43.000','2025-11-24 10:55:43.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10054,10029,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-03 14:27:32.000','2025-11-03 14:27:32.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10055,10029,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-07 18:38:15.000','2025-11-07 18:38:15.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10056,10030,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-30 15:58:09.000','2025-10-30 15:58:09.000',24,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10057,10032,2,'C\'est bon pour moi, on peut fermer.','2025-10-31 16:08:24.000','2025-10-31 16:08:24.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10058,10032,11,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-13 17:19:20.000','2025-11-13 17:19:20.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10059,10033,11,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-03 12:47:28.000','2025-11-03 12:47:28.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10060,10034,16,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-08 13:07:37.000','2025-11-08 13:07:37.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10061,10034,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-17 09:59:13.000','2025-11-17 09:59:13.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10062,10035,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-07 13:13:03.000','2025-11-07 14:37:22.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10063,10036,11,'C\'est bon pour moi, on peut fermer.','2025-11-06 11:33:59.000','2025-11-06 11:33:59.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10064,10037,7,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2025-11-06 16:54:33.000','2025-11-06 16:54:33.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10065,10038,24,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-06 14:45:39.000','2025-11-06 14:45:39.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10066,10038,11,'C\'est bon pour moi, on peut fermer.','2025-11-21 14:39:39.000','2025-11-21 14:39:39.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10067,10039,4,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-06 18:59:11.000','2025-11-06 18:59:11.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10068,10039,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-20 12:31:31.000','2025-11-20 12:31:31.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10069,10039,17,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-23 10:07:26.000','2025-11-23 10:07:26.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10070,10040,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-22 15:14:16.000','2025-11-22 15:14:16.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10071,10040,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-26 09:09:31.000','2025-11-26 09:09:31.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10072,10040,12,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-28 07:04:16.000','2025-11-28 07:04:16.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10073,10040,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-28 14:09:16.000','2025-11-28 14:44:34.000',19,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10074,10040,13,'[~ines.david] tu peux regarder quand tu as un moment ?','2025-12-11 18:03:59.000','2025-12-11 18:03:59.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10075,10040,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-18 07:42:28.000','2025-12-18 07:42:28.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10076,10041,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-15 12:18:02.000','2025-11-17 07:30:31.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10077,10041,13,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-30 11:07:32.000','2025-11-30 11:07:32.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10078,10041,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-02 11:16:30.000','2025-12-02 11:16:30.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10079,10042,5,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-12 10:12:28.000','2025-11-12 10:12:28.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10080,10042,20,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-22 10:00:22.000','2025-11-22 10:00:22.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10081,10042,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-30 10:11:51.000','2025-11-30 10:11:51.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10082,10042,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-03 09:18:55.000','2025-12-03 09:18:55.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10083,10042,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-06 07:10:49.000','2025-12-06 07:10:49.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10084,10042,2,'Même cause que WEB-7, je fais le lien.','2025-12-21 15:22:48.000','2025-12-21 15:22:48.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10085,10043,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-17 14:32:32.000','2025-11-17 14:32:32.000',24,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10086,10043,23,'Même cause que OPS-2, je fais le lien.','2025-11-21 08:51:44.000','2025-11-24 17:56:46.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10087,10044,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-14 16:01:09.000','2025-11-15 12:25:25.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10088,10045,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-16 16:35:13.000','2025-11-16 16:35:13.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10089,10045,2,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2025-11-23 13:36:28.000','2025-11-23 13:36:28.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10090,10046,10,'Même cause que DEMO-21, je fais le lien.','2025-11-18 15:12:31.000','2025-11-18 15:12:31.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10091,10046,3,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-29 07:51:26.000','2025-11-29 07:51:26.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10092,10046,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-09 16:08:16.000','2025-12-09 16:08:16.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10093,10047,24,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-29 18:21:56.000','2025-11-29 18:21:56.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10094,10047,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-05 11:00:46.000','2025-12-05 11:00:46.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10095,10047,19,'Même cause que OPS-6, je fais le lien.','2025-12-14 07:07:17.000','2025-12-14 07:07:17.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10096,10047,24,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-23 15:34:27.000','2025-12-23 15:34:27.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10097,10047,9,'C\'est bon pour moi, on peut fermer.','2025-12-27 16:59:34.000','2025-12-27 16:59:34.000',9,NULL,10002);
-INSERT INTO `comments` VALUES (10098,10048,22,'C\'est bon pour moi, on peut fermer.','2025-12-02 13:12:12.000','2025-12-02 13:12:12.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10099,10048,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-13 09:51:23.000','2025-12-13 09:51:23.000',24,NULL,NULL);
-INSERT INTO `comments` VALUES (10100,10048,23,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-15 07:14:11.000','2025-12-15 07:14:11.000',23,NULL,10002);
-INSERT INTO `comments` VALUES (10101,10048,15,'[~camille.petit] tu peux regarder quand tu as un moment ?','2025-12-25 17:19:13.000','2025-12-25 17:19:13.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10102,10049,10,'C\'est bon pour moi, on peut fermer.','2025-11-22 13:54:12.000','2025-11-22 13:54:12.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10103,10049,9,'C\'est bon pour moi, on peut fermer.','2025-12-04 13:32:24.000','2025-12-04 13:32:24.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10104,10049,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-14 18:47:00.000','2025-12-14 18:47:00.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10105,10051,19,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-20 10:56:20.000','2025-11-20 10:56:20.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10106,10051,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-22 07:49:27.000','2025-11-22 07:49:27.000',24,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10107,10052,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-23 15:11:29.000','2025-11-23 15:11:29.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10108,10053,21,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2025-11-21 15:53:58.000','2025-11-21 15:53:58.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10109,10054,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-04 08:35:33.000','2025-12-04 08:35:33.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10110,10054,5,'Je confirme, reproduit sur l\'environnement de recette.','2025-12-12 16:44:14.000','2025-12-12 16:44:14.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10111,10054,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-24 15:06:28.000','2025-12-24 15:06:28.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10112,10054,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-06 18:52:58.000','2026-01-06 18:52:58.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10113,10055,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-07 16:29:22.000','2025-12-08 07:28:28.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10114,10055,17,'Même cause que WEB-7, je fais le lien.','2025-12-21 08:01:24.000','2025-12-21 08:01:24.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10115,10055,17,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-29 12:18:02.000','2025-12-29 12:18:02.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10116,10055,13,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-31 08:59:30.000','2025-12-31 08:59:30.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10117,10055,10,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-01-01 07:26:23.000','2026-01-01 07:26:23.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10118,10056,11,'C\'est bon pour moi, on peut fermer.','2025-12-08 13:53:24.000','2025-12-08 13:53:24.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10119,10057,11,'[~marie.durand] tu peux regarder quand tu as un moment ?','2025-12-10 10:09:25.000','2025-12-10 10:09:25.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10120,10057,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-24 12:37:16.000','2025-12-24 12:37:16.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10121,10057,22,'C\'est bon pour moi, on peut fermer.','2026-01-07 14:23:14.000','2026-01-07 14:23:14.000',22,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10122,10057,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-12 09:25:46.000','2026-01-13 11:28:57.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10123,10058,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-12 15:29:09.000','2025-12-12 15:29:09.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10124,10058,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-16 15:03:52.000','2025-12-16 15:03:52.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10125,10058,10,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-26 13:17:53.000','2025-12-26 13:17:53.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10126,10059,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-29 16:00:36.000','2025-11-29 16:00:36.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10127,10059,5,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-12-11 18:47:11.000','2025-12-11 18:47:11.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10128,10060,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-01 18:22:28.000','2025-12-01 18:22:28.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10129,10064,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-17 09:52:53.000','2025-12-17 09:52:53.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10130,10065,2,'C\'est bon pour moi, on peut fermer.','2025-12-17 11:07:25.000','2025-12-17 11:07:25.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10131,10066,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-10 14:01:57.000','2025-12-10 14:01:57.000',7,NULL,10002);
-INSERT INTO `comments` VALUES (10132,10067,23,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-15 12:16:52.000','2025-12-15 12:16:52.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10133,10067,7,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-23 14:17:29.000','2025-12-23 14:17:29.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10134,10067,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-01-01 11:52:16.000','2026-01-01 11:52:16.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10135,10068,7,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-12-17 15:21:09.000','2025-12-17 15:21:09.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10136,10068,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-12-20 11:27:50.000','2025-12-20 11:27:50.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10137,10069,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-23 15:16:48.000','2025-12-23 15:16:48.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10138,10069,17,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2025-12-29 14:24:14.000','2025-12-29 14:24:14.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10139,10069,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-02 16:33:15.000','2026-01-02 16:33:15.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10140,10069,3,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-15 08:08:40.000','2026-01-15 08:08:40.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10141,10069,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-30 16:37:15.000','2026-01-30 16:37:15.000',4,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10142,10069,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 09:22:21.000','2026-01-31 09:22:21.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10143,10073,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-13 09:41:45.000','2025-12-13 09:41:45.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10144,10073,16,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-21 17:41:59.000','2025-12-21 17:41:59.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10145,10073,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-04 10:19:31.000','2026-01-04 10:19:31.000',19,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10146,10073,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-17 13:56:34.000','2026-01-17 13:56:34.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10147,10073,3,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-21 14:35:57.000','2026-01-21 14:35:57.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10148,10074,13,'Même cause que DEMO-12, je fais le lien.','2025-12-21 07:38:47.000','2025-12-21 07:38:47.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10149,10074,13,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-26 17:14:18.000','2025-12-26 17:14:18.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10150,10074,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-08 16:04:23.000','2026-01-08 16:04:23.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10151,10074,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-17 07:56:40.000','2026-01-17 07:56:40.000',13,NULL,10002);
-INSERT INTO `comments` VALUES (10152,10075,3,'Même cause que DEMO-1, je fais le lien.','2025-12-29 13:32:46.000','2025-12-29 13:32:46.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10153,10076,7,'Même cause que WEB-15, je fais le lien.','2025-12-21 08:01:03.000','2025-12-21 08:01:03.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10154,10076,19,'[~julien.roux] tu peux regarder quand tu as un moment ?','2025-12-21 17:48:31.000','2025-12-21 17:48:31.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10155,10076,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-21 18:30:14.000','2025-12-21 18:30:14.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10156,10077,3,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-16 15:36:26.000','2025-12-16 15:36:26.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10157,10077,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-27 10:11:33.000','2025-12-27 10:11:33.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10158,10077,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-27 12:05:01.000','2025-12-27 12:05:01.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10159,10079,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-24 18:12:23.000','2025-12-24 18:12:23.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10160,10079,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-30 16:45:44.000','2025-12-30 16:45:44.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10161,10079,14,'Même cause que RH-2, je fais le lien.','2025-12-31 11:57:09.000','2025-12-31 18:10:38.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10162,10081,17,'Même cause que WEB-12, je fais le lien.','2026-01-05 18:18:05.000','2026-01-05 18:18:05.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10163,10081,19,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-01-11 12:10:18.000','2026-01-11 12:10:18.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10164,10081,9,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2026-01-24 17:26:32.000','2026-01-24 17:26:32.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10165,10081,4,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-01-28 14:17:49.000','2026-01-30 07:15:24.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10166,10081,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-28 15:10:45.000','2026-01-28 15:10:45.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10167,10082,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-28 08:38:55.000','2025-12-28 08:38:55.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10168,10082,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-29 17:06:33.000','2025-12-29 17:43:57.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10169,10083,7,'Même cause que WEB-5, je fais le lien.','2025-12-29 18:21:09.000','2025-12-29 18:21:09.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10170,10083,4,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-29 18:31:17.000','2025-12-29 18:31:17.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10171,10083,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-05 16:21:24.000','2026-01-05 16:21:24.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10172,10083,2,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-01-05 16:59:00.000','2026-01-05 16:59:00.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10173,10084,2,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-12 17:05:34.000','2026-01-12 17:05:34.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10174,10084,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-16 10:32:18.000','2026-01-16 10:32:18.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10175,10084,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-24 08:39:30.000','2026-01-24 08:39:30.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10176,10086,2,'C\'est bon pour moi, on peut fermer.','2026-01-10 10:52:03.000','2026-01-10 16:06:56.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10177,10086,12,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-18 14:42:40.000','2026-01-18 14:42:40.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10178,10087,6,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-01-14 11:48:06.000','2026-01-14 11:48:06.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10179,10087,4,'Même cause que DEMO-11, je fais le lien.','2026-01-29 10:56:28.000','2026-01-29 10:56:28.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10180,10087,17,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-02-02 08:07:11.000','2026-02-02 08:07:11.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10181,10088,7,'[~jeanne.dupont] tu peux regarder quand tu as un moment ?','2026-01-11 13:18:26.000','2026-01-11 13:18:26.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10182,10088,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-16 14:42:26.000','2026-01-16 14:42:26.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10183,10088,9,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-26 12:43:06.000','2026-01-26 12:43:06.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10184,10088,20,'C\'est bon pour moi, on peut fermer.','2026-02-10 18:40:58.000','2026-02-10 18:40:58.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10185,10092,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-12 15:23:32.000','2026-01-12 15:23:32.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10186,10093,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-20 17:46:08.000','2026-01-20 17:46:08.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10187,10093,5,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-01-23 07:39:03.000','2026-01-23 07:39:03.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10188,10093,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-30 11:07:48.000','2026-01-30 11:07:48.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10189,10093,9,'Même cause que DEMO-25, je fais le lien.','2026-02-10 13:43:12.000','2026-02-10 13:43:12.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10190,10095,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-04 18:25:47.000','2026-02-04 18:25:47.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10191,10095,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-17 15:26:18.000','2026-02-17 15:26:18.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10192,10095,8,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-17 16:33:58.000','2026-02-17 16:33:58.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10193,10097,14,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-31 12:31:40.000','2026-01-31 12:31:40.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10194,10097,14,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-12 15:19:41.000','2026-02-13 18:14:53.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10195,10097,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-17 10:15:50.000','2026-02-17 10:15:50.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10196,10097,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-19 10:52:01.000','2026-02-19 10:52:01.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10197,10098,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-30 07:48:50.000','2026-01-30 07:48:50.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10198,10100,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-03 09:05:39.000','2026-02-03 09:05:39.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10199,10100,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-13 12:47:25.000','2026-02-13 12:47:25.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10200,10101,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 14:19:33.000','2026-01-31 14:19:33.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10201,10101,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 17:37:34.000','2026-01-31 17:37:34.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10202,10101,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-02-04 09:32:00.000','2026-02-04 09:32:00.000',18,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10203,10101,2,'C\'est bon pour moi, on peut fermer.','2026-02-08 14:49:37.000','2026-02-08 14:49:37.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10204,10101,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-12 13:20:20.000','2026-02-12 13:20:20.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10205,10101,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-25 16:05:51.000','2026-02-25 16:05:51.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10206,10103,5,'C\'est bon pour moi, on peut fermer.','2026-02-04 10:21:44.000','2026-02-04 10:21:44.000',5,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10207,10104,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-12 09:36:04.000','2026-02-12 09:36:04.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10208,10104,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-27 11:03:11.000','2026-02-28 10:36:25.000',1,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10209,10105,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-14 18:38:00.000','2026-02-14 18:38:00.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10210,10105,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-19 10:15:14.000','2026-02-19 10:15:14.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10211,10105,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-02-27 09:57:38.000','2026-02-27 09:57:38.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10212,10105,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-09 15:27:25.000','2026-03-09 15:27:25.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10213,10107,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-12 07:55:18.000','2026-02-12 07:55:18.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10214,10107,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-02-12 11:36:54.000','2026-02-12 11:36:54.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10215,10107,11,'Même cause que WEB-6, je fais le lien.','2026-02-22 10:27:20.000','2026-02-22 10:27:20.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10216,10107,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-02-28 15:46:59.000','2026-02-28 15:46:59.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10217,10107,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-05 16:59:57.000','2026-03-05 16:59:57.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10218,10107,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-09 15:09:46.000','2026-03-09 15:09:46.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10219,10109,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-20 11:31:43.000','2026-02-20 11:31:43.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10220,10109,11,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-04 11:58:33.000','2026-03-04 11:58:33.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10221,10109,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-09 12:37:57.000','2026-03-11 10:55:12.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10222,10109,17,'Même cause que DEMO-24, je fais le lien.','2026-03-20 10:29:23.000','2026-03-20 10:29:23.000',17,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10223,10110,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-16 13:50:22.000','2026-02-16 13:50:22.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10224,10113,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-22 10:42:47.000','2026-02-24 11:22:13.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10225,10113,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-27 18:45:48.000','2026-02-27 18:45:48.000',15,NULL,10002);
-INSERT INTO `comments` VALUES (10226,10118,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-01 09:35:56.000','2026-03-01 09:35:56.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10227,10118,22,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-12 10:47:40.000','2026-03-12 10:47:40.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10228,10118,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-16 08:29:50.000','2026-03-16 08:29:50.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10229,10118,21,'Même cause que OPS-12, je fais le lien.','2026-03-26 16:29:10.000','2026-03-26 16:29:10.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10230,10118,21,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-03-28 17:38:31.000','2026-03-28 17:38:31.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10231,10118,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-31 12:53:52.000','2026-03-31 12:53:52.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10232,10119,15,'Même cause que DEMO-50, je fais le lien.','2026-02-27 12:10:46.000','2026-02-27 12:10:46.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10233,10119,15,'Même cause que DEMO-50, je fais le lien.','2026-03-11 11:46:44.000','2026-03-11 11:46:44.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10234,10121,12,'Même cause que OPS-20, je fais le lien.','2026-03-01 07:49:39.000','2026-03-01 07:49:39.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10235,10121,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-08 09:11:18.000','2026-03-08 09:11:18.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10236,10122,5,'[~camille.petit] tu peux regarder quand tu as un moment ?','2026-03-03 09:30:29.000','2026-03-03 09:30:29.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10237,10122,5,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2026-03-04 10:21:00.000','2026-03-04 10:21:00.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10238,10122,5,'Même cause que WEB-16, je fais le lien.','2026-03-10 16:51:22.000','2026-03-10 16:51:22.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10239,10123,21,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-28 08:20:39.000','2026-02-28 08:20:39.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10240,10126,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-24 18:46:34.000','2026-02-24 18:46:34.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10241,10127,10,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-05 08:30:15.000','2026-03-05 08:30:15.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10242,10127,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-20 13:23:11.000','2026-03-20 13:23:11.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10243,10127,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-28 10:55:37.000','2026-03-28 10:55:37.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10244,10128,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-28 16:55:30.000','2026-03-03 17:08:18.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10245,10128,3,'C\'est bon pour moi, on peut fermer.','2026-03-14 13:35:09.000','2026-03-14 13:35:09.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10246,10128,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-03-24 15:56:05.000','2026-03-24 15:56:05.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10247,10128,18,'C\'est bon pour moi, on peut fermer.','2026-04-08 11:39:25.000','2026-04-08 11:39:25.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10248,10128,2,'C\'est bon pour moi, on peut fermer.','2026-04-09 11:00:38.000','2026-04-09 11:00:38.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10249,10128,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-12 16:36:15.000','2026-04-12 16:36:15.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10250,10129,12,'C\'est bon pour moi, on peut fermer.','2026-03-01 18:11:39.000','2026-03-04 07:43:09.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10251,10129,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-16 08:02:50.000','2026-03-16 08:02:50.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10252,10131,3,'Même cause que WEB-34, je fais le lien.','2026-03-12 14:48:49.000','2026-03-12 14:48:49.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10253,10131,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-13 09:47:38.000','2026-03-13 09:47:38.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10254,10131,5,'Même cause que WEB-32, je fais le lien.','2026-03-23 07:35:48.000','2026-03-23 07:35:48.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10255,10131,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-05 14:23:59.000','2026-04-05 14:23:59.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10256,10131,11,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-10 06:43:37.000','2026-04-10 06:43:37.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10257,10132,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-21 07:15:21.000','2026-03-21 07:15:21.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10258,10132,7,'C\'est bon pour moi, on peut fermer.','2026-03-25 17:31:15.000','2026-03-27 11:14:54.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10259,10132,11,'C\'est bon pour moi, on peut fermer.','2026-04-06 13:05:35.000','2026-04-06 13:05:35.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10260,10133,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-21 09:07:28.000','2026-03-21 09:07:28.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10261,10133,15,'Même cause que DEMO-10, je fais le lien.','2026-03-28 12:22:38.000','2026-03-28 12:22:38.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10262,10133,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-01 06:24:30.000','2026-04-01 10:11:25.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10263,10133,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-13 07:59:04.000','2026-04-13 07:59:04.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10264,10134,7,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-03-15 10:00:25.000','2026-03-15 10:00:25.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10265,10134,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-17 16:59:24.000','2026-03-17 16:59:24.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10266,10134,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-22 15:32:36.000','2026-03-22 15:32:36.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10267,10136,17,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-19 09:03:19.000','2026-03-19 09:03:19.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10268,10136,6,'C\'est bon pour moi, on peut fermer.','2026-03-27 11:05:02.000','2026-03-27 11:05:02.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10269,10139,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-03-20 13:53:47.000','2026-03-20 13:53:47.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10270,10139,7,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-04 17:48:37.000','2026-04-04 17:48:37.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10271,10140,2,'C\'est bon pour moi, on peut fermer.','2026-03-25 14:07:27.000','2026-03-25 14:07:27.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10272,10140,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-31 09:24:45.000','2026-03-31 09:24:45.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10273,10141,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-22 15:15:52.000','2026-03-22 15:15:52.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10274,10141,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-06 15:12:14.000','2026-04-09 12:28:39.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10275,10141,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-15 09:22:52.000','2026-04-15 09:22:52.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10276,10142,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-28 17:40:41.000','2026-03-28 17:40:41.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10277,10142,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-02 09:56:44.000','2026-04-04 09:49:34.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10278,10142,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-06 15:06:12.000','2026-04-06 15:06:12.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10279,10142,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-17 17:51:36.000','2026-04-17 17:51:36.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10280,10143,23,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-29 10:34:59.000','2026-03-29 10:34:59.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10281,10143,15,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-10 06:14:40.000','2026-04-10 06:14:40.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10282,10144,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-04 06:25:35.000','2026-04-04 06:25:35.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10283,10145,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-24 13:39:38.000','2026-03-24 13:39:38.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10284,10145,10,'Même cause que WEB-9, je fais le lien.','2026-03-25 17:28:37.000','2026-03-25 17:28:37.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10285,10145,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-08 10:01:19.000','2026-04-08 10:01:19.000',6,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10286,10145,6,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-18 12:55:03.000','2026-04-18 12:55:03.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10287,10145,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-29 13:08:32.000','2026-04-29 13:08:32.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10288,10145,12,'Même cause que WEB-37, je fais le lien.','2026-05-03 14:36:16.000','2026-05-03 14:36:16.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10289,10146,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-26 17:08:09.000','2026-03-26 17:08:09.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10290,10147,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-06 16:23:20.000','2026-04-07 12:35:24.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10291,10148,23,'C\'est bon pour moi, on peut fermer.','2026-04-09 12:31:52.000','2026-04-09 12:31:52.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10292,10148,11,'Même cause que OPS-22, je fais le lien.','2026-04-13 13:54:01.000','2026-04-13 13:54:01.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10293,10151,10,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-04-14 17:46:26.000','2026-04-14 17:47:26.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10294,10151,8,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-14 17:53:30.000','2026-04-14 17:53:30.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10295,10151,14,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-28 17:36:15.000','2026-04-30 14:57:19.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10296,10152,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-16 07:01:41.000','2026-04-16 07:01:41.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10297,10152,13,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-04-29 12:26:35.000','2026-04-29 12:26:35.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10298,10152,17,'C\'est bon pour moi, on peut fermer.','2026-05-01 16:29:05.000','2026-05-01 16:29:05.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10299,10153,17,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-04-22 15:13:29.000','2026-04-22 15:13:29.000',17,NULL,10002);
-INSERT INTO `comments` VALUES (10300,10153,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-22 17:59:01.000','2026-04-22 17:59:01.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10301,10153,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-01 14:02:17.000','2026-05-01 14:02:17.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10302,10154,16,'C\'est bon pour moi, on peut fermer.','2026-04-14 17:58:16.000','2026-04-14 17:58:16.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10303,10154,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-17 08:38:28.000','2026-04-17 08:38:28.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10304,10154,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-18 09:31:54.000','2026-04-18 09:31:54.000',17,NULL,10002);
-INSERT INTO `comments` VALUES (10305,10156,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-21 11:14:05.000','2026-04-21 11:14:05.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10306,10156,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-28 17:23:08.000','2026-04-28 17:23:08.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10307,10157,8,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-04-19 08:38:04.000','2026-04-19 08:38:04.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10308,10158,6,'C\'est bon pour moi, on peut fermer.','2026-04-19 07:05:28.000','2026-04-21 11:37:33.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10309,10159,12,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-04-22 14:07:13.000','2026-04-22 14:07:13.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10310,10159,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-22 14:11:04.000','2026-04-22 14:11:04.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10311,10160,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-24 10:05:56.000','2026-04-24 10:05:56.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10312,10161,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-19 10:10:27.000','2026-04-19 10:10:27.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10313,10161,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-02 10:09:49.000','2026-05-02 10:09:49.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10314,10161,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-11 11:32:00.000','2026-05-11 11:32:00.000',2,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10315,10162,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-17 15:56:55.000','2026-04-17 15:56:55.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10316,10162,12,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-04-29 13:53:14.000','2026-04-29 13:53:14.000',12,NULL,10002);
-INSERT INTO `comments` VALUES (10317,10164,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-22 12:37:32.000','2026-04-22 12:37:32.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10318,10164,5,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-03 15:48:43.000','2026-05-03 15:48:43.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10319,10166,15,'C\'est bon pour moi, on peut fermer.','2026-04-28 10:42:34.000','2026-04-28 10:42:34.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10320,10167,5,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-05-02 16:33:10.000','2026-05-02 16:33:10.000',5,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10321,10167,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-02 16:37:47.000','2026-05-02 16:37:47.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10322,10168,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-24 12:36:25.000','2026-04-24 12:36:25.000',9,NULL,10002);
-INSERT INTO `comments` VALUES (10323,10168,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-03 15:02:22.000','2026-05-03 15:02:22.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10324,10168,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-06 09:43:42.000','2026-05-08 11:20:57.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10325,10169,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-03 14:53:29.000','2026-05-03 14:53:29.000',11,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10326,10169,10,'[~lucas.bernard] tu peux regarder quand tu as un moment ?','2026-05-06 08:22:28.000','2026-05-06 08:22:28.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10327,10170,6,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-07 17:04:32.000','2026-05-08 07:33:17.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10328,10170,9,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-05-16 07:06:36.000','2026-05-16 07:06:36.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10329,10170,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-20 10:58:02.000','2026-05-20 10:58:02.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10330,10170,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-23 08:54:48.000','2026-05-23 08:54:48.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10331,10171,14,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-05-06 07:59:39.000','2026-05-06 07:59:39.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10332,10172,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-29 17:42:42.000','2026-04-29 17:42:42.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10333,10172,6,'C\'est bon pour moi, on peut fermer.','2026-05-13 16:21:02.000','2026-05-13 16:21:02.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10334,10174,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-06 15:22:12.000','2026-05-07 14:46:05.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10335,10174,6,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-05-11 07:49:57.000','2026-05-11 12:12:35.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10336,10174,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-24 10:37:08.000','2026-05-24 10:37:08.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10337,10175,12,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-11 17:47:34.000','2026-05-11 17:47:34.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10338,10175,22,'Même cause que OPS-16, je fais le lien.','2026-05-24 07:08:33.000','2026-05-24 07:08:33.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10339,10175,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-01 15:19:45.000','2026-06-01 15:19:45.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10340,10175,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-07 16:13:52.000','2026-06-07 16:13:52.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10341,10175,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-20 10:05:42.000','2026-06-20 10:05:42.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10342,10175,2,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-06-25 08:03:02.000','2026-06-25 08:03:02.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10343,10176,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-07 14:37:18.000','2026-05-07 14:37:18.000',12,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10344,10176,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-20 13:57:21.000','2026-05-22 07:07:55.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10345,10176,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-31 14:43:29.000','2026-05-31 14:43:29.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10346,10176,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-03 15:17:25.000','2026-06-03 15:17:25.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10347,10177,7,'Même cause que OPS-22, je fais le lien.','2026-05-17 09:14:51.000','2026-05-17 09:14:51.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10348,10178,11,'Même cause que WEB-21, je fais le lien.','2026-05-18 09:16:40.000','2026-05-18 09:16:40.000',11,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10349,10178,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-25 10:28:31.000','2026-05-25 10:28:31.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10350,10178,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-05 17:41:49.000','2026-06-05 17:41:49.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10351,10178,20,'C\'est bon pour moi, on peut fermer.','2026-06-07 07:06:49.000','2026-06-07 07:06:49.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10352,10179,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-15 11:56:25.000','2026-05-15 11:56:25.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10353,10180,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-12 09:19:44.000','2026-05-12 11:06:22.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10354,10180,1,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-20 08:15:20.000','2026-05-20 08:15:20.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10355,10181,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-16 13:19:47.000','2026-05-16 13:19:47.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10356,10181,15,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-31 16:38:20.000','2026-05-31 16:38:20.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10357,10181,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-02 10:37:30.000','2026-06-02 14:58:19.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10358,10181,5,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-08 09:10:13.000','2026-06-08 09:10:13.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10359,10182,5,'C\'est bon pour moi, on peut fermer.','2026-05-16 17:51:57.000','2026-05-16 17:51:57.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10360,10182,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-05-20 15:55:45.000','2026-05-21 16:06:11.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10361,10185,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-22 09:27:03.000','2026-05-22 09:27:03.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10362,10185,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-05-27 09:40:14.000','2026-05-27 09:40:14.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10363,10185,2,'Même cause que WEB-51, je fais le lien.','2026-05-27 12:56:40.000','2026-05-27 12:56:40.000',2,NULL,10002);
-INSERT INTO `comments` VALUES (10364,10185,4,'Même cause que WEB-19, je fais le lien.','2026-06-06 09:19:53.000','2026-06-06 09:19:53.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10365,10187,11,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-23 16:03:12.000','2026-05-23 16:03:12.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10366,10187,22,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-23 17:16:33.000','2026-05-26 16:37:37.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10367,10187,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-04 11:56:00.000','2026-06-04 11:56:00.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10368,10188,15,'Même cause que DEMO-67, je fais le lien.','2026-05-29 15:51:45.000','2026-05-29 15:51:45.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10369,10189,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-23 12:53:24.000','2026-05-23 12:53:24.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10370,10190,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-01 12:51:38.000','2026-06-01 12:51:38.000',3,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10371,10190,6,'Même cause que DEMO-59, je fais le lien.','2026-06-05 13:49:28.000','2026-06-05 13:49:28.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10372,10190,3,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-12 06:10:01.000','2026-06-12 06:10:01.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10373,10190,6,'Même cause que DEMO-54, je fais le lien.','2026-06-23 11:03:27.000','2026-06-23 11:03:27.000',6,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10374,10190,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-26 13:11:45.000','2026-06-26 13:11:45.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10375,10192,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-01 11:05:15.000','2026-06-01 11:05:15.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10376,10192,13,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-13 12:50:38.000','2026-06-13 12:50:38.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10377,10192,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-14 12:02:09.000','2026-06-14 12:02:09.000',17,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10378,10194,1,'Même cause que RH-8, je fais le lien.','2026-05-31 13:25:14.000','2026-05-31 13:25:14.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10379,10194,1,'C\'est bon pour moi, on peut fermer.','2026-06-09 08:51:57.000','2026-06-09 08:51:57.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10380,10194,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-18 10:13:29.000','2026-06-18 10:13:29.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10381,10195,4,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-23 08:43:34.000','2026-05-23 08:43:34.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10382,10195,5,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-05 07:40:48.000','2026-06-05 07:40:48.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10383,10195,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-20 06:30:22.000','2026-06-20 06:30:22.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10384,10196,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-23 11:32:00.000','2026-05-23 11:32:00.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10385,10196,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-01 15:33:55.000','2026-06-01 15:33:55.000',12,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10386,10196,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-14 13:20:44.000','2026-06-14 13:20:44.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10387,10197,14,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-06 06:13:33.000','2026-06-06 06:13:33.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10388,10197,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-09 06:53:47.000','2026-06-09 06:53:47.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10389,10198,10,'Même cause que WEB-39, je fais le lien.','2026-06-08 09:14:25.000','2026-06-08 15:41:05.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10390,10199,16,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-29 12:31:15.000','2026-05-29 12:31:15.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10391,10199,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-06 16:06:22.000','2026-06-06 16:06:22.000',11,NULL,10002);
-INSERT INTO `comments` VALUES (10392,10199,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-12 10:25:33.000','2026-06-12 10:25:33.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10393,10199,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-15 12:47:09.000','2026-06-15 12:47:09.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10394,10199,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-21 16:27:34.000','2026-06-21 16:27:34.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10395,10200,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-30 12:24:50.000','2026-05-30 12:24:50.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10396,10200,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-12 14:19:18.000','2026-06-12 14:19:18.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10397,10201,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-29 11:07:47.000','2026-05-29 11:07:47.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10398,10201,6,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-31 13:09:06.000','2026-05-31 13:09:06.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10399,10202,12,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-29 06:10:54.000','2026-05-29 06:10:54.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10400,10202,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-01 14:50:24.000','2026-06-02 16:08:34.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10401,10202,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-12 12:28:13.000','2026-06-14 10:24:39.000',18,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10402,10203,10,'C\'est bon pour moi, on peut fermer.','2026-06-01 10:05:10.000','2026-06-01 10:05:10.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10403,10203,10,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-04 06:48:41.000','2026-06-04 06:48:41.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10404,10204,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-09 13:58:42.000','2026-06-09 13:58:42.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10405,10205,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-06 10:51:34.000','2026-06-06 10:51:34.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10406,10205,22,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-17 09:54:20.000','2026-06-17 09:54:20.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10407,10207,12,'C\'est bon pour moi, on peut fermer.','2026-06-01 14:13:12.000','2026-06-01 14:13:12.000',12,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10408,10207,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-11 10:03:02.000','2026-06-11 10:03:02.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10409,10207,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-16 14:55:44.000','2026-06-16 14:55:44.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10410,10207,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-30 10:44:02.000','2026-06-30 10:44:02.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10411,10207,17,'Même cause que WEB-53, je fais le lien.','2026-07-04 07:24:28.000','2026-07-04 07:24:28.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10412,10208,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-10 08:40:34.000','2026-06-10 08:40:34.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10413,10208,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-19 15:23:12.000','2026-06-19 15:23:12.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10414,10209,21,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-06-09 12:35:51.000','2026-06-09 12:35:51.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10415,10211,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-20 07:49:25.000','2026-06-21 09:30:52.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10416,10214,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-23 09:20:20.000','2026-06-23 09:20:20.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10417,10214,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-26 17:49:20.000','2026-06-26 17:49:20.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10418,10214,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-29 15:01:53.000','2026-06-29 15:01:53.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10419,10215,17,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-18 07:34:15.000','2026-06-18 07:34:15.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10420,10216,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-29 14:43:34.000','2026-06-29 14:43:34.000',16,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10421,10216,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-13 09:49:58.000','2026-07-13 09:49:58.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10422,10216,11,'C\'est bon pour moi, on peut fermer.','2026-07-19 11:37:51.000','2026-07-19 11:37:51.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10423,10216,6,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-07-19 13:01:12.000','2026-07-19 13:01:12.000',6,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10424,10216,13,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-07-24 06:58:20.000','2026-07-24 06:58:20.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10425,10216,16,'[~camille.petit] tu peux regarder quand tu as un moment ?','2026-07-24 11:59:37.000','2026-07-24 11:59:37.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10426,10217,17,'C\'est bon pour moi, on peut fermer.','2026-06-26 08:10:20.000','2026-06-26 08:10:20.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10427,10217,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-03 12:49:20.000','2026-07-03 12:49:20.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10428,10217,17,'Même cause que DEMO-14, je fais le lien.','2026-07-09 07:32:20.000','2026-07-09 07:32:20.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10429,10217,4,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-18 06:42:58.000','2026-07-18 06:42:58.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10430,10217,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-20 17:28:03.000','2026-07-21 11:27:04.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10431,10218,9,'Même cause que WEB-39, je fais le lien.','2026-06-30 15:30:52.000','2026-06-30 15:30:52.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10432,10219,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-19 15:53:37.000','2026-06-19 15:53:37.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10433,10219,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-21 16:21:50.000','2026-06-21 16:21:50.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10434,10219,15,'Même cause que DEMO-17, je fais le lien.','2026-07-03 10:06:07.000','2026-07-03 10:06:07.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10435,10219,15,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-07-06 09:32:24.000','2026-07-06 09:32:24.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10436,10220,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-24 10:01:02.000','2026-06-24 10:01:02.000',7,NULL,10002);
-INSERT INTO `comments` VALUES (10437,10223,19,'Même cause que WEB-2, je fais le lien.','2026-06-27 09:03:02.000','2026-06-27 09:03:02.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10438,10223,2,'C\'est bon pour moi, on peut fermer.','2026-07-11 14:04:12.000','2026-07-11 14:04:12.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10439,10223,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-16 17:08:14.000','2026-07-16 17:08:14.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10440,10223,13,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-27 08:03:34.000','2026-07-27 08:03:34.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10441,10224,21,'Même cause que OPS-22, je fais le lien.','2026-07-02 17:49:29.000','2026-07-02 17:49:29.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10442,10224,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-07-10 15:36:15.000','2026-07-10 15:36:15.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10443,10226,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-27 06:01:37.000','2026-06-27 06:01:37.000',12,NULL,10002);
-INSERT INTO `comments` VALUES (10444,10226,9,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-06-28 13:37:14.000','2026-06-28 15:25:49.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10445,10226,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-06 13:36:18.000','2026-07-06 13:36:18.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10446,10226,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-06 15:11:53.000','2026-07-06 15:11:53.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10447,10228,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-04 09:03:38.000','2026-07-04 09:03:38.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10448,10228,9,'Même cause que WEB-23, je fais le lien.','2026-07-14 08:16:13.000','2026-07-14 08:16:13.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10449,10229,5,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-14 09:01:35.000','2026-07-14 09:01:35.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10450,10229,7,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-07-18 15:29:34.000','2026-07-18 15:29:34.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10451,10230,17,'Même cause que WEB-26, je fais le lien.','2026-07-07 17:13:41.000','2026-07-07 17:13:41.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10452,10230,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-11 17:42:55.000','2026-07-11 17:42:55.000',3,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10453,10230,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-18 12:25:10.000','2026-07-18 12:25:10.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10454,10231,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-07-15 13:50:11.000','2026-07-15 13:50:11.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10455,10231,7,'Même cause que WEB-16, je fais le lien.','2026-07-25 06:41:00.000','2026-07-25 06:41:00.000',7,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10456,10231,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-05 07:48:30.000','2026-08-05 07:48:30.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10457,10231,15,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-14 16:40:16.000','2026-08-16 07:03:25.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10458,10231,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-17 15:28:18.000','2026-08-17 15:28:18.000',7,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10459,10231,10,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-08-31 10:52:36.000','2026-08-31 10:52:36.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10460,10233,12,'C\'est bon pour moi, on peut fermer.','2026-07-11 10:29:05.000','2026-07-11 10:29:05.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10461,10233,9,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-22 13:38:55.000','2026-07-22 13:38:55.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10462,10233,2,'Point fait avec le client ce matin, il valide la solution proposée.','2026-07-22 16:47:04.000','2026-07-22 16:47:04.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10463,10234,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-17 06:13:27.000','2026-07-17 06:13:27.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10464,10234,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-19 08:56:47.000','2026-07-19 08:56:47.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10465,10234,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-26 09:09:41.000','2026-07-26 09:09:41.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10466,10234,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-04 14:13:19.000','2026-08-04 14:13:19.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10467,10234,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-10 13:00:03.000','2026-08-10 13:00:03.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10468,10236,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-12 06:50:26.000','2026-07-12 06:50:26.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10469,10237,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-16 08:15:11.000','2026-07-16 08:15:11.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10470,10238,13,'Même cause que DEMO-80, je fais le lien.','2026-07-19 09:46:03.000','2026-07-19 09:46:03.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10471,10239,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-19 17:41:52.000','2026-07-19 17:41:52.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10472,10239,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-02 13:55:03.000','2026-08-02 13:55:03.000',3,NULL,10002);
-INSERT INTO `comments` VALUES (10473,10241,5,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-07-25 09:48:24.000','2026-07-25 09:48:24.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10474,10241,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-08 10:25:10.000','2026-08-08 10:25:10.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10475,10244,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-30 06:47:32.000','2026-07-30 06:47:32.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10476,10244,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-04 14:53:40.000','2026-08-05 14:34:03.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10477,10244,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-17 07:21:39.000','2026-08-17 07:21:39.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10478,10244,4,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-29 11:33:15.000','2026-08-29 11:33:15.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10479,10245,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-21 15:59:53.000','2026-07-21 15:59:53.000',10,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10480,10245,2,'C\'est bon pour moi, on peut fermer.','2026-07-31 15:25:23.000','2026-07-31 15:25:23.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10481,10245,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-07 09:45:51.000','2026-08-07 09:45:51.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10482,10245,2,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-08-10 11:44:07.000','2026-08-10 11:44:07.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10483,10245,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-25 14:02:59.000','2026-08-25 14:02:59.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10484,10245,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-08-28 11:19:44.000','2026-08-28 11:19:44.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10485,10247,14,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-26 07:18:59.000','2026-07-26 07:18:59.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10486,10247,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-02 07:13:44.000','2026-08-02 07:13:44.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10487,10247,10,'C\'est bon pour moi, on peut fermer.','2026-08-05 06:06:54.000','2026-08-05 06:06:54.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10488,10247,8,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-05 11:05:12.000','2026-08-05 11:05:12.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10489,10247,14,'C\'est bon pour moi, on peut fermer.','2026-08-18 09:59:33.000','2026-08-18 09:59:33.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10490,10249,18,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-30 13:42:29.000','2026-07-30 13:42:29.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10491,10249,3,'Même cause que DEMO-43, je fais le lien.','2026-07-31 13:00:49.000','2026-07-31 13:00:49.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10492,10251,2,'Même cause que DEMO-8, je fais le lien.','2026-07-30 12:27:34.000','2026-07-30 12:27:34.000',2,NULL,10002);
-INSERT INTO `comments` VALUES (10493,10251,2,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-08-01 17:29:20.000','2026-08-01 17:29:20.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10494,10251,16,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-04 08:32:09.000','2026-08-04 08:32:09.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10495,10251,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-10 12:57:15.000','2026-08-10 12:57:15.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10496,10252,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-14 11:49:23.000','2026-08-14 11:49:23.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10497,10253,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-31 17:33:31.000','2026-07-31 17:33:31.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10498,10253,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-15 12:44:58.000','2026-08-15 12:44:58.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10499,10253,20,'Même cause que WEB-57, je fais le lien.','2026-08-16 08:34:24.000','2026-08-16 08:34:24.000',20,NULL,NULL);
-INSERT INTO `comments` VALUES (10500,10254,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-12 12:57:17.000','2026-08-12 12:57:17.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10501,10254,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-20 10:52:22.000','2026-08-20 10:52:22.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10502,10254,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-24 13:25:49.000','2026-08-25 17:52:03.000',16,NULL,10002);
-INSERT INTO `comments` VALUES (10503,10255,14,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-08 09:43:09.000','2026-08-08 09:43:09.000',14,NULL,NULL);
-INSERT INTO `comments` VALUES (10504,10256,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-08-18 13:27:07.000','2026-08-18 13:27:07.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10505,10256,5,'Même cause que WEB-61, je fais le lien.','2026-08-20 16:46:38.000','2026-08-20 16:46:38.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10506,10256,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-26 06:22:39.000','2026-08-26 06:22:39.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10507,10258,23,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-08-08 14:59:16.000','2026-08-08 14:59:16.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10508,10258,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-13 17:26:13.000','2026-08-13 17:26:13.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10509,10259,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-21 10:21:24.000','2026-08-21 10:21:24.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10510,10259,9,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-08-30 07:26:29.000','2026-08-30 07:26:29.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10511,10260,9,'Même cause que OPS-17, je fais le lien.','2026-08-23 12:49:52.000','2026-08-23 12:49:52.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10512,10260,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-30 17:34:31.000','2026-08-30 17:34:31.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10513,10260,23,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-03 08:59:54.000','2026-09-03 08:59:54.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10514,10260,22,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-18 16:26:57.000','2026-09-18 16:26:57.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10515,10261,23,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-08-21 06:34:56.000','2026-08-23 17:45:29.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10516,10261,7,'C\'est bon pour moi, on peut fermer.','2026-09-03 10:20:44.000','2026-09-03 10:20:44.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10517,10261,23,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-05 09:34:15.000','2026-09-05 09:34:15.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10518,10261,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-20 07:19:43.000','2026-09-20 07:19:43.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10519,10261,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-22 07:28:26.000','2026-09-22 07:28:26.000',7,NULL,10002);
-INSERT INTO `comments` VALUES (10520,10262,19,'Même cause que OPS-13, je fais le lien.','2026-08-22 13:48:45.000','2026-08-22 13:48:45.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10521,10262,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-04 09:37:19.000','2026-09-04 09:37:19.000',19,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10522,10262,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-16 16:40:03.000','2026-09-16 16:40:03.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10523,10262,22,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-20 10:42:49.000','2026-09-20 10:42:49.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10524,10264,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-21 16:58:54.000','2026-08-21 16:58:54.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10525,10264,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-24 17:59:33.000','2026-08-24 17:59:33.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10526,10265,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-27 11:03:56.000','2026-08-27 11:03:56.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10527,10265,4,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-05 13:38:38.000','2026-09-05 15:44:57.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10528,10265,20,'[~jeanne.dupont] tu peux regarder quand tu as un moment ?','2026-09-13 12:36:06.000','2026-09-14 13:22:12.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10529,10266,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-01 17:43:56.000','2026-09-01 17:43:56.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10530,10266,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-04 09:07:07.000','2026-09-04 09:07:07.000',5,NULL,NULL);
-INSERT INTO `comments` VALUES (10531,10266,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-12 08:58:10.000','2026-09-12 08:58:10.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10532,10266,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-27 15:11:07.000','2026-09-29 13:41:30.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10533,10266,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10534,10267,7,'C\'est bon pour moi, on peut fermer.','2026-08-26 16:54:30.000','2026-08-26 16:54:30.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10535,10267,21,'C\'est bon pour moi, on peut fermer.','2026-09-10 08:11:51.000','2026-09-13 12:51:32.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10536,10267,21,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-16 16:06:56.000','2026-09-16 16:06:56.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10537,10267,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-26 07:15:39.000','2026-09-26 07:15:39.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10538,10268,10,'C\'est bon pour moi, on peut fermer.','2026-09-03 17:56:33.000','2026-09-03 17:56:33.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10539,10268,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-17 06:40:19.000','2026-09-17 06:40:19.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10540,10270,1,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-28 13:49:00.000','2026-08-28 13:49:00.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10541,10270,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-09 13:40:27.000','2026-09-09 13:40:27.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10542,10270,10,'Même cause que RH-20, je fais le lien.','2026-09-13 15:39:09.000','2026-09-13 15:39:09.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10543,10271,20,'Même cause que DEMO-26, je fais le lien.','2026-09-06 08:59:02.000','2026-09-06 13:45:04.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10544,10271,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-16 17:14:42.000','2026-09-16 17:14:42.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10545,10271,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-18 14:48:29.000','2026-09-18 14:48:29.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10546,10272,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-29 15:16:42.000','2026-08-29 15:16:42.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10547,10273,3,'C\'est bon pour moi, on peut fermer.','2026-08-31 12:45:19.000','2026-08-31 12:45:19.000',3,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10548,10273,6,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-06 15:45:07.000','2026-09-07 08:51:14.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10549,10275,11,'[~marie.durand] tu peux regarder quand tu as un moment ?','2026-09-06 08:48:31.000','2026-09-06 08:48:31.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10550,10275,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-06 16:20:30.000','2026-09-06 16:20:30.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10551,10275,23,'Même cause que OPS-8, je fais le lien.','2026-09-14 12:59:46.000','2026-09-14 12:59:46.000',23,NULL,NULL);
-INSERT INTO `comments` VALUES (10552,10275,12,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-28 14:30:13.000','2026-09-28 14:30:13.000',12,NULL,10002);
-INSERT INTO `comments` VALUES (10553,10275,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-30 08:39:54.000','2026-09-30 08:39:54.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10554,10275,7,'C\'est bon pour moi, on peut fermer.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',7,NULL,NULL);
-INSERT INTO `comments` VALUES (10555,10277,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-09 16:40:11.000','2026-09-09 16:40:11.000',19,NULL,10002);
-INSERT INTO `comments` VALUES (10556,10278,8,'Même cause que RH-25, je fais le lien.','2026-09-02 08:10:31.000','2026-09-02 08:10:31.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10557,10278,8,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-09 07:45:32.000','2026-09-09 07:45:32.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10558,10278,8,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-16 07:39:30.000','2026-09-17 16:53:33.000',8,NULL,NULL);
-INSERT INTO `comments` VALUES (10559,10279,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-12 10:30:05.000','2026-09-12 10:30:05.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10560,10280,18,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-06 16:46:46.000','2026-09-06 16:46:46.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10561,10281,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-10 14:53:07.000','2026-09-10 14:53:07.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10562,10281,15,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-09-14 08:37:26.000','2026-09-14 08:37:26.000',15,NULL,10002);
-INSERT INTO `comments` VALUES (10563,10281,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-15 09:15:44.000','2026-09-15 09:15:44.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10564,10281,15,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-22 11:16:08.000','2026-09-22 11:16:08.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10565,10281,16,'C\'est bon pour moi, on peut fermer.','2026-09-28 06:44:15.000','2026-09-29 15:39:26.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10566,10283,21,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-16 12:03:35.000','2026-09-16 12:03:35.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10567,10283,12,'C\'est bon pour moi, on peut fermer.','2026-09-29 17:58:26.000','2026-09-29 17:58:26.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10568,10283,23,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',23,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10569,10283,21,'C\'est bon pour moi, on peut fermer.','2026-10-01 16:00:01.000','2026-10-01 16:00:02.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10570,10283,21,'Point fait avec le client ce matin, il valide la solution proposée.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',21,NULL,NULL);
-INSERT INTO `comments` VALUES (10571,10283,9,'Même cause que OPS-48, je fais le lien.','2026-10-01 16:00:03.000','2026-10-01 16:00:03.000',9,NULL,NULL);
-INSERT INTO `comments` VALUES (10572,10284,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-13 09:02:20.000','2026-09-13 09:02:20.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10573,10284,15,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-09-21 12:18:25.000','2026-09-21 12:18:25.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10574,10285,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-17 16:51:25.000','2026-09-17 16:51:25.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10575,10286,6,'Même cause que WEB-18, je fais le lien.','2026-09-24 16:22:18.000','2026-09-24 16:22:18.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10576,10286,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-28 10:48:40.000','2026-09-28 10:48:40.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10577,10287,11,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-13 14:03:46.000','2026-09-13 14:03:46.000',11,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10578,10288,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-15 07:42:55.000','2026-09-15 07:42:55.000',4,NULL,NULL);
-INSERT INTO `comments` VALUES (10579,10288,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-30 16:18:17.000','2026-09-30 16:18:17.000',12,NULL,NULL);
-INSERT INTO `comments` VALUES (10580,10289,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-20 10:40:01.000','2026-09-20 10:40:01.000',11,NULL,NULL);
-INSERT INTO `comments` VALUES (10581,10289,11,'C\'est bon pour moi, on peut fermer.','2026-09-27 09:51:17.000','2026-09-27 09:51:17.000',11,'developpeurs',NULL);
-INSERT INTO `comments` VALUES (10582,10289,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10583,10289,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10584,10289,17,'Même cause que DEMO-110, je fais le lien.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10585,10290,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-23 13:13:49.000','2026-09-23 14:08:00.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10586,10290,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-25 11:06:31.000','2026-09-25 11:06:31.000',13,NULL,NULL);
-INSERT INTO `comments` VALUES (10587,10290,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10588,10290,17,'Même cause que WEB-73, je fais le lien.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',17,NULL,NULL);
-INSERT INTO `comments` VALUES (10589,10292,15,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-27 08:38:48.000','2026-09-27 08:38:48.000',15,NULL,NULL);
-INSERT INTO `comments` VALUES (10590,10292,10,'C\'est bon pour moi, on peut fermer.','2026-09-29 16:22:45.000','2026-09-30 12:44:25.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10591,10292,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',18,NULL,NULL);
-INSERT INTO `comments` VALUES (10592,10292,3,'Point fait avec le client ce matin, il valide la solution proposée.','2026-10-01 16:00:01.000','2026-10-01 16:00:02.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10593,10293,19,'C\'est bon pour moi, on peut fermer.','2026-09-28 16:34:19.000','2026-09-28 16:34:19.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10594,10294,19,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10595,10294,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10596,10294,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',19,NULL,NULL);
-INSERT INTO `comments` VALUES (10597,10294,3,'Même cause que WEB-51, je fais le lien.','2026-10-01 16:00:03.000','2026-10-01 16:00:04.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10598,10295,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:01.000',1,NULL,NULL);
-INSERT INTO `comments` VALUES (10599,10295,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',2,NULL,NULL);
-INSERT INTO `comments` VALUES (10600,10296,22,'Je confirme, reproduit sur l\'environnement de recette.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10601,10296,22,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',22,NULL,NULL);
-INSERT INTO `comments` VALUES (10602,10297,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-30 11:46:21.000','2026-09-30 11:46:21.000',6,NULL,NULL);
-INSERT INTO `comments` VALUES (10603,10297,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',10,NULL,NULL);
-INSERT INTO `comments` VALUES (10604,10297,16,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',16,NULL,NULL);
-INSERT INTO `comments` VALUES (10605,10298,3,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',3,NULL,NULL);
-INSERT INTO `comments` VALUES (10606,10299,1,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',1,NULL,NULL);
+INSERT INTO `comments` VALUES (10000,10000,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-09-11 11:25:37.000','2025-09-11 11:25:37.000',2,'developpeurs');
+INSERT INTO `comments` VALUES (10001,10001,7,'Même cause que DEMO-1, je fais le lien.','2025-09-05 08:00:15.000','2025-09-05 08:00:15.000',7,NULL);
+INSERT INTO `comments` VALUES (10002,10001,3,'C\'est bon pour moi, on peut fermer.','2025-09-11 13:50:13.000','2025-09-11 13:50:13.000',3,NULL);
+INSERT INTO `comments` VALUES (10003,10001,12,'[~lucas.bernard] tu peux regarder quand tu as un moment ?','2025-09-15 13:28:19.000','2025-09-15 13:28:19.000',12,NULL);
+INSERT INTO `comments` VALUES (10004,10001,2,'[~marie.durand] tu peux regarder quand tu as un moment ?','2025-09-21 12:20:57.000','2025-09-21 12:20:57.000',2,'administrators');
+INSERT INTO `comments` VALUES (10005,10001,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-09-24 15:27:20.000','2025-09-24 15:27:20.000',24,NULL);
+INSERT INTO `comments` VALUES (10006,10001,15,'Point fait avec le client ce matin, il valide la solution proposée.','2025-09-30 14:06:58.000','2025-09-30 14:06:58.000',15,NULL);
+INSERT INTO `comments` VALUES (10007,10002,2,'C\'est bon pour moi, on peut fermer.','2025-09-13 11:23:43.000','2025-09-13 11:23:43.000',2,NULL);
+INSERT INTO `comments` VALUES (10008,10002,6,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-16 17:11:19.000','2025-09-16 17:11:19.000',6,NULL);
+INSERT INTO `comments` VALUES (10009,10002,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-20 14:23:40.000','2025-09-20 14:23:40.000',16,NULL);
+INSERT INTO `comments` VALUES (10010,10003,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-11 17:59:18.000','2025-09-11 17:59:18.000',5,NULL);
+INSERT INTO `comments` VALUES (10011,10004,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-19 07:34:53.000','2025-09-19 07:34:53.000',11,NULL);
+INSERT INTO `comments` VALUES (10012,10004,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-28 06:26:36.000','2025-09-28 06:26:36.000',10,NULL);
+INSERT INTO `comments` VALUES (10013,10005,2,'Je confirme, reproduit sur l\'environnement de recette.','2025-09-19 15:57:04.000','2025-09-19 15:57:04.000',2,NULL);
+INSERT INTO `comments` VALUES (10014,10007,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-09-19 17:45:37.000','2025-09-19 17:45:37.000',17,NULL);
+INSERT INTO `comments` VALUES (10015,10007,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-09-26 10:05:26.000','2025-09-26 10:05:26.000',9,NULL);
+INSERT INTO `comments` VALUES (10016,10008,17,'Je confirme, reproduit sur l\'environnement de recette.','2025-10-01 07:01:45.000','2025-10-01 07:01:45.000',17,NULL);
+INSERT INTO `comments` VALUES (10017,10008,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-12 17:29:10.000','2025-10-12 17:29:10.000',16,NULL);
+INSERT INTO `comments` VALUES (10018,10010,6,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-09-24 14:01:29.000','2025-09-24 14:01:29.000',6,NULL);
+INSERT INTO `comments` VALUES (10019,10010,24,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-09-24 16:59:42.000','2025-09-24 16:59:42.000',24,NULL);
+INSERT INTO `comments` VALUES (10020,10010,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-08 08:29:07.000','2025-10-08 08:29:07.000',15,'administrators');
+INSERT INTO `comments` VALUES (10021,10011,17,'[~julien.roux] tu peux regarder quand tu as un moment ?','2025-10-04 11:57:51.000','2025-10-04 11:57:51.000',17,NULL);
+INSERT INTO `comments` VALUES (10022,10011,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-10-06 08:08:02.000','2025-10-06 08:08:02.000',11,NULL);
+INSERT INTO `comments` VALUES (10023,10011,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-10-19 08:34:01.000','2025-10-19 08:34:01.000',19,NULL);
+INSERT INTO `comments` VALUES (10024,10011,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-01 13:03:54.000','2025-11-01 13:03:54.000',3,NULL);
+INSERT INTO `comments` VALUES (10025,10012,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-03 12:19:05.000','2025-10-03 12:19:05.000',12,NULL);
+INSERT INTO `comments` VALUES (10026,10012,12,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-10-11 16:54:26.000','2025-10-11 16:54:26.000',12,NULL);
+INSERT INTO `comments` VALUES (10027,10012,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-14 09:34:48.000','2025-10-14 09:34:48.000',20,NULL);
+INSERT INTO `comments` VALUES (10028,10014,8,'C\'est bon pour moi, on peut fermer.','2025-10-01 16:38:46.000','2025-10-01 16:38:46.000',8,NULL);
+INSERT INTO `comments` VALUES (10029,10014,14,'Point fait avec le client ce matin, il valide la solution proposée.','2025-10-02 17:33:16.000','2025-10-02 17:33:16.000',14,NULL);
+INSERT INTO `comments` VALUES (10030,10014,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-10-17 14:47:06.000','2025-10-17 14:47:06.000',14,NULL);
+INSERT INTO `comments` VALUES (10031,10014,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-19 14:46:12.000','2025-10-19 14:46:12.000',8,NULL);
+INSERT INTO `comments` VALUES (10032,10014,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-02 16:20:06.000','2025-11-02 16:20:06.000',10,NULL);
+INSERT INTO `comments` VALUES (10033,10014,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-15 16:05:35.000','2025-11-15 17:02:56.000',8,NULL);
+INSERT INTO `comments` VALUES (10034,10015,9,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-02 07:09:29.000','2025-10-02 07:09:29.000',9,NULL);
+INSERT INTO `comments` VALUES (10035,10015,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-16 15:44:28.000','2025-10-16 15:44:28.000',11,NULL);
+INSERT INTO `comments` VALUES (10036,10015,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-10-17 10:37:02.000','2025-10-17 10:37:02.000',11,NULL);
+INSERT INTO `comments` VALUES (10037,10015,2,'[~camille.petit] tu peux regarder quand tu as un moment ?','2025-10-18 06:57:57.000','2025-10-18 06:57:57.000',2,NULL);
+INSERT INTO `comments` VALUES (10038,10017,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-06 17:30:21.000','2025-10-06 17:30:21.000',16,NULL);
+INSERT INTO `comments` VALUES (10039,10017,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-19 16:01:57.000','2025-10-19 16:01:57.000',16,NULL);
+INSERT INTO `comments` VALUES (10040,10017,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-03 18:31:04.000','2025-11-03 18:31:04.000',11,NULL);
+INSERT INTO `comments` VALUES (10041,10020,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-10-27 07:02:05.000','2025-10-27 07:02:05.000',11,NULL);
+INSERT INTO `comments` VALUES (10042,10020,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-06 07:48:52.000','2025-11-06 07:48:52.000',7,NULL);
+INSERT INTO `comments` VALUES (10043,10020,2,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-10 08:49:02.000','2025-11-10 08:49:02.000',2,NULL);
+INSERT INTO `comments` VALUES (10044,10020,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-17 17:04:22.000','2025-11-17 17:04:22.000',7,NULL);
+INSERT INTO `comments` VALUES (10045,10023,9,'C\'est bon pour moi, on peut fermer.','2025-10-28 08:04:21.000','2025-10-28 08:04:21.000',9,NULL);
+INSERT INTO `comments` VALUES (10046,10023,20,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-12 14:46:12.000','2025-11-12 14:46:12.000',20,NULL);
+INSERT INTO `comments` VALUES (10047,10023,7,'Même cause que WEB-1, je fais le lien.','2025-11-12 18:49:42.000','2025-11-13 16:05:33.000',7,NULL);
+INSERT INTO `comments` VALUES (10048,10025,13,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-10-31 13:56:50.000','2025-10-31 13:56:50.000',13,NULL);
+INSERT INTO `comments` VALUES (10049,10025,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-06 10:18:46.000','2025-11-06 10:18:46.000',24,NULL);
+INSERT INTO `comments` VALUES (10050,10025,10,'[~paul.martin] tu peux regarder quand tu as un moment ?','2025-11-10 10:44:23.000','2025-11-10 10:44:23.000',10,NULL);
+INSERT INTO `comments` VALUES (10051,10025,13,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-15 08:20:45.000','2025-11-15 08:20:45.000',13,NULL);
+INSERT INTO `comments` VALUES (10052,10025,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-16 16:32:38.000','2025-11-16 16:32:38.000',24,NULL);
+INSERT INTO `comments` VALUES (10053,10025,17,'C\'est bon pour moi, on peut fermer.','2025-11-24 10:55:43.000','2025-11-24 10:55:43.000',17,NULL);
+INSERT INTO `comments` VALUES (10054,10029,11,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-03 14:27:32.000','2025-11-03 14:27:32.000',11,NULL);
+INSERT INTO `comments` VALUES (10055,10029,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-07 18:38:15.000','2025-11-07 18:38:15.000',19,NULL);
+INSERT INTO `comments` VALUES (10056,10030,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-10-30 15:58:09.000','2025-10-30 15:58:09.000',24,'developpeurs');
+INSERT INTO `comments` VALUES (10057,10032,2,'C\'est bon pour moi, on peut fermer.','2025-10-31 16:08:24.000','2025-10-31 16:08:24.000',2,NULL);
+INSERT INTO `comments` VALUES (10058,10032,11,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-13 17:19:20.000','2025-11-13 17:19:20.000',11,NULL);
+INSERT INTO `comments` VALUES (10059,10033,11,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-03 12:47:28.000','2025-11-03 12:47:28.000',11,NULL);
+INSERT INTO `comments` VALUES (10060,10034,16,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-08 13:07:37.000','2025-11-08 13:07:37.000',16,NULL);
+INSERT INTO `comments` VALUES (10061,10034,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-17 09:59:13.000','2025-11-17 09:59:13.000',2,NULL);
+INSERT INTO `comments` VALUES (10062,10035,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-07 13:13:03.000','2025-11-07 14:37:22.000',10,NULL);
+INSERT INTO `comments` VALUES (10063,10036,11,'C\'est bon pour moi, on peut fermer.','2025-11-06 11:33:59.000','2025-11-06 11:33:59.000',11,NULL);
+INSERT INTO `comments` VALUES (10064,10037,7,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2025-11-06 16:54:33.000','2025-11-06 16:54:33.000',7,NULL);
+INSERT INTO `comments` VALUES (10065,10038,24,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-06 14:45:39.000','2025-11-06 14:45:39.000',24,NULL);
+INSERT INTO `comments` VALUES (10066,10038,11,'C\'est bon pour moi, on peut fermer.','2025-11-21 14:39:39.000','2025-11-21 14:39:39.000',11,NULL);
+INSERT INTO `comments` VALUES (10067,10039,4,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-06 18:59:11.000','2025-11-06 18:59:11.000',4,NULL);
+INSERT INTO `comments` VALUES (10068,10039,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-20 12:31:31.000','2025-11-20 12:31:31.000',15,NULL);
+INSERT INTO `comments` VALUES (10069,10039,17,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-23 10:07:26.000','2025-11-23 10:07:26.000',17,NULL);
+INSERT INTO `comments` VALUES (10070,10040,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-22 15:14:16.000','2025-11-22 15:14:16.000',16,NULL);
+INSERT INTO `comments` VALUES (10071,10040,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-26 09:09:31.000','2025-11-26 09:09:31.000',15,NULL);
+INSERT INTO `comments` VALUES (10072,10040,12,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-28 07:04:16.000','2025-11-28 07:04:16.000',12,NULL);
+INSERT INTO `comments` VALUES (10073,10040,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-11-28 14:09:16.000','2025-11-28 14:44:34.000',19,'developpeurs');
+INSERT INTO `comments` VALUES (10074,10040,13,'[~ines.david] tu peux regarder quand tu as un moment ?','2025-12-11 18:03:59.000','2025-12-11 18:03:59.000',13,NULL);
+INSERT INTO `comments` VALUES (10075,10040,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-18 07:42:28.000','2025-12-18 07:42:28.000',18,NULL);
+INSERT INTO `comments` VALUES (10076,10041,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-15 12:18:02.000','2025-11-17 07:30:31.000',9,NULL);
+INSERT INTO `comments` VALUES (10077,10041,13,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-30 11:07:32.000','2025-11-30 11:07:32.000',13,NULL);
+INSERT INTO `comments` VALUES (10078,10041,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-02 11:16:30.000','2025-12-02 11:16:30.000',17,NULL);
+INSERT INTO `comments` VALUES (10079,10042,5,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-12 10:12:28.000','2025-11-12 10:12:28.000',5,NULL);
+INSERT INTO `comments` VALUES (10080,10042,20,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-22 10:00:22.000','2025-11-22 10:00:22.000',20,NULL);
+INSERT INTO `comments` VALUES (10081,10042,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-30 10:11:51.000','2025-11-30 10:11:51.000',5,NULL);
+INSERT INTO `comments` VALUES (10082,10042,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-03 09:18:55.000','2025-12-03 09:18:55.000',4,NULL);
+INSERT INTO `comments` VALUES (10083,10042,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-06 07:10:49.000','2025-12-06 07:10:49.000',4,NULL);
+INSERT INTO `comments` VALUES (10084,10042,2,'Même cause que WEB-7, je fais le lien.','2025-12-21 15:22:48.000','2025-12-21 15:22:48.000',2,NULL);
+INSERT INTO `comments` VALUES (10085,10043,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-11-17 14:32:32.000','2025-11-17 14:32:32.000',24,'developpeurs');
+INSERT INTO `comments` VALUES (10086,10043,23,'Même cause que OPS-2, je fais le lien.','2025-11-21 08:51:44.000','2025-11-24 17:56:46.000',1,NULL);
+INSERT INTO `comments` VALUES (10087,10044,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-11-14 16:01:09.000','2025-11-15 12:25:25.000',16,NULL);
+INSERT INTO `comments` VALUES (10088,10045,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-16 16:35:13.000','2025-11-16 16:35:13.000',16,NULL);
+INSERT INTO `comments` VALUES (10089,10045,2,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2025-11-23 13:36:28.000','2025-11-23 13:36:28.000',2,NULL);
+INSERT INTO `comments` VALUES (10090,10046,10,'Même cause que DEMO-21, je fais le lien.','2025-11-18 15:12:31.000','2025-11-18 15:12:31.000',10,NULL);
+INSERT INTO `comments` VALUES (10091,10046,3,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-29 07:51:26.000','2025-11-29 07:51:26.000',3,NULL);
+INSERT INTO `comments` VALUES (10092,10046,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-09 16:08:16.000','2025-12-09 16:08:16.000',17,NULL);
+INSERT INTO `comments` VALUES (10093,10047,24,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-11-29 18:21:56.000','2025-11-29 18:21:56.000',24,NULL);
+INSERT INTO `comments` VALUES (10094,10047,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-05 11:00:46.000','2025-12-05 11:00:46.000',19,NULL);
+INSERT INTO `comments` VALUES (10095,10047,19,'Même cause que OPS-6, je fais le lien.','2025-12-14 07:07:17.000','2025-12-14 07:07:17.000',19,NULL);
+INSERT INTO `comments` VALUES (10096,10047,24,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-23 15:34:27.000','2025-12-23 15:34:27.000',24,NULL);
+INSERT INTO `comments` VALUES (10097,10047,9,'C\'est bon pour moi, on peut fermer.','2025-12-27 16:59:34.000','2025-12-27 16:59:34.000',9,'administrators');
+INSERT INTO `comments` VALUES (10098,10048,22,'C\'est bon pour moi, on peut fermer.','2025-12-02 13:12:12.000','2025-12-02 13:12:12.000',22,NULL);
+INSERT INTO `comments` VALUES (10099,10048,24,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-13 09:51:23.000','2025-12-13 09:51:23.000',24,NULL);
+INSERT INTO `comments` VALUES (10100,10048,23,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-15 07:14:11.000','2025-12-15 07:14:11.000',23,'administrators');
+INSERT INTO `comments` VALUES (10101,10048,15,'[~camille.petit] tu peux regarder quand tu as un moment ?','2025-12-25 17:19:13.000','2025-12-25 17:19:13.000',15,NULL);
+INSERT INTO `comments` VALUES (10102,10049,10,'C\'est bon pour moi, on peut fermer.','2025-11-22 13:54:12.000','2025-11-22 13:54:12.000',10,NULL);
+INSERT INTO `comments` VALUES (10103,10049,9,'C\'est bon pour moi, on peut fermer.','2025-12-04 13:32:24.000','2025-12-04 13:32:24.000',9,NULL);
+INSERT INTO `comments` VALUES (10104,10049,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-14 18:47:00.000','2025-12-14 18:47:00.000',10,NULL);
+INSERT INTO `comments` VALUES (10105,10051,19,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-20 10:56:20.000','2025-11-20 10:56:20.000',19,NULL);
+INSERT INTO `comments` VALUES (10106,10051,24,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-11-22 07:49:27.000','2025-11-22 07:49:27.000',24,'developpeurs');
+INSERT INTO `comments` VALUES (10107,10052,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-11-23 15:11:29.000','2025-11-23 15:11:29.000',7,NULL);
+INSERT INTO `comments` VALUES (10108,10053,21,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2025-11-21 15:53:58.000','2025-11-21 15:53:58.000',21,NULL);
+INSERT INTO `comments` VALUES (10109,10054,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-04 08:35:33.000','2025-12-04 08:35:33.000',16,NULL);
+INSERT INTO `comments` VALUES (10110,10054,5,'Je confirme, reproduit sur l\'environnement de recette.','2025-12-12 16:44:14.000','2025-12-12 16:44:14.000',5,NULL);
+INSERT INTO `comments` VALUES (10111,10054,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-24 15:06:28.000','2025-12-24 15:06:28.000',16,NULL);
+INSERT INTO `comments` VALUES (10112,10054,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-06 18:52:58.000','2026-01-06 18:52:58.000',7,NULL);
+INSERT INTO `comments` VALUES (10113,10055,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-07 16:29:22.000','2025-12-08 07:28:28.000',17,NULL);
+INSERT INTO `comments` VALUES (10114,10055,17,'Même cause que WEB-7, je fais le lien.','2025-12-21 08:01:24.000','2025-12-21 08:01:24.000',17,NULL);
+INSERT INTO `comments` VALUES (10115,10055,17,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-29 12:18:02.000','2025-12-29 12:18:02.000',17,NULL);
+INSERT INTO `comments` VALUES (10116,10055,13,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-31 08:59:30.000','2025-12-31 08:59:30.000',13,NULL);
+INSERT INTO `comments` VALUES (10117,10055,10,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-01-01 07:26:23.000','2026-01-01 07:26:23.000',10,NULL);
+INSERT INTO `comments` VALUES (10118,10056,11,'C\'est bon pour moi, on peut fermer.','2025-12-08 13:53:24.000','2025-12-08 13:53:24.000',11,NULL);
+INSERT INTO `comments` VALUES (10119,10057,11,'[~marie.durand] tu peux regarder quand tu as un moment ?','2025-12-10 10:09:25.000','2025-12-10 10:09:25.000',11,NULL);
+INSERT INTO `comments` VALUES (10120,10057,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-24 12:37:16.000','2025-12-24 12:37:16.000',15,NULL);
+INSERT INTO `comments` VALUES (10121,10057,22,'C\'est bon pour moi, on peut fermer.','2026-01-07 14:23:14.000','2026-01-07 14:23:14.000',22,'developpeurs');
+INSERT INTO `comments` VALUES (10122,10057,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-12 09:25:46.000','2026-01-13 11:28:57.000',9,NULL);
+INSERT INTO `comments` VALUES (10123,10058,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-12 15:29:09.000','2025-12-12 15:29:09.000',7,NULL);
+INSERT INTO `comments` VALUES (10124,10058,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-16 15:03:52.000','2025-12-16 15:03:52.000',19,NULL);
+INSERT INTO `comments` VALUES (10125,10058,10,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-26 13:17:53.000','2025-12-26 13:17:53.000',10,NULL);
+INSERT INTO `comments` VALUES (10126,10059,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-11-29 16:00:36.000','2025-11-29 16:00:36.000',9,NULL);
+INSERT INTO `comments` VALUES (10127,10059,5,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-12-11 18:47:11.000','2025-12-11 18:47:11.000',5,NULL);
+INSERT INTO `comments` VALUES (10128,10060,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-01 18:22:28.000','2025-12-01 18:22:28.000',18,NULL);
+INSERT INTO `comments` VALUES (10129,10064,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-17 09:52:53.000','2025-12-17 09:52:53.000',16,NULL);
+INSERT INTO `comments` VALUES (10130,10065,2,'C\'est bon pour moi, on peut fermer.','2025-12-17 11:07:25.000','2025-12-17 11:07:25.000',2,NULL);
+INSERT INTO `comments` VALUES (10131,10066,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-10 14:01:57.000','2025-12-10 14:01:57.000',7,'administrators');
+INSERT INTO `comments` VALUES (10132,10067,23,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-15 12:16:52.000','2025-12-15 12:16:52.000',23,NULL);
+INSERT INTO `comments` VALUES (10133,10067,7,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-23 14:17:29.000','2025-12-23 14:17:29.000',7,NULL);
+INSERT INTO `comments` VALUES (10134,10067,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-01-01 11:52:16.000','2026-01-01 11:52:16.000',7,NULL);
+INSERT INTO `comments` VALUES (10135,10068,7,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2025-12-17 15:21:09.000','2025-12-17 15:21:09.000',7,NULL);
+INSERT INTO `comments` VALUES (10136,10068,7,'Je confirme, reproduit sur l\'environnement de recette.','2025-12-20 11:27:50.000','2025-12-20 11:27:50.000',7,NULL);
+INSERT INTO `comments` VALUES (10137,10069,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-23 15:16:48.000','2025-12-23 15:16:48.000',4,NULL);
+INSERT INTO `comments` VALUES (10138,10069,17,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2025-12-29 14:24:14.000','2025-12-29 14:24:14.000',17,NULL);
+INSERT INTO `comments` VALUES (10139,10069,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-02 16:33:15.000','2026-01-02 16:33:15.000',4,NULL);
+INSERT INTO `comments` VALUES (10140,10069,3,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-15 08:08:40.000','2026-01-15 08:08:40.000',3,NULL);
+INSERT INTO `comments` VALUES (10141,10069,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-30 16:37:15.000','2026-01-30 16:37:15.000',4,'developpeurs');
+INSERT INTO `comments` VALUES (10142,10069,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 09:22:21.000','2026-01-31 09:22:21.000',4,NULL);
+INSERT INTO `comments` VALUES (10143,10073,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-13 09:41:45.000','2025-12-13 09:41:45.000',19,NULL);
+INSERT INTO `comments` VALUES (10144,10073,16,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2025-12-21 17:41:59.000','2025-12-21 17:41:59.000',16,NULL);
+INSERT INTO `comments` VALUES (10145,10073,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-04 10:19:31.000','2026-01-04 10:19:31.000',19,'developpeurs');
+INSERT INTO `comments` VALUES (10146,10073,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-17 13:56:34.000','2026-01-17 13:56:34.000',13,NULL);
+INSERT INTO `comments` VALUES (10147,10073,3,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-21 14:35:57.000','2026-01-21 14:35:57.000',3,NULL);
+INSERT INTO `comments` VALUES (10148,10074,13,'Même cause que DEMO-12, je fais le lien.','2025-12-21 07:38:47.000','2025-12-21 07:38:47.000',13,NULL);
+INSERT INTO `comments` VALUES (10149,10074,13,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-26 17:14:18.000','2025-12-26 17:14:18.000',13,NULL);
+INSERT INTO `comments` VALUES (10150,10074,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-08 16:04:23.000','2026-01-08 16:04:23.000',4,NULL);
+INSERT INTO `comments` VALUES (10151,10074,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-17 07:56:40.000','2026-01-17 07:56:40.000',13,'administrators');
+INSERT INTO `comments` VALUES (10152,10075,3,'Même cause que DEMO-1, je fais le lien.','2025-12-29 13:32:46.000','2025-12-29 13:32:46.000',3,NULL);
+INSERT INTO `comments` VALUES (10153,10076,7,'Même cause que WEB-15, je fais le lien.','2025-12-21 08:01:03.000','2025-12-21 08:01:03.000',7,NULL);
+INSERT INTO `comments` VALUES (10154,10076,19,'[~julien.roux] tu peux regarder quand tu as un moment ?','2025-12-21 17:48:31.000','2025-12-21 17:48:31.000',19,NULL);
+INSERT INTO `comments` VALUES (10155,10076,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-21 18:30:14.000','2025-12-21 18:30:14.000',2,NULL);
+INSERT INTO `comments` VALUES (10156,10077,3,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-16 15:36:26.000','2025-12-16 15:36:26.000',3,NULL);
+INSERT INTO `comments` VALUES (10157,10077,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2025-12-27 10:11:33.000','2025-12-27 10:11:33.000',17,NULL);
+INSERT INTO `comments` VALUES (10158,10077,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-27 12:05:01.000','2025-12-27 12:05:01.000',2,NULL);
+INSERT INTO `comments` VALUES (10159,10079,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2025-12-24 18:12:23.000','2025-12-24 18:12:23.000',10,NULL);
+INSERT INTO `comments` VALUES (10160,10079,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-30 16:45:44.000','2025-12-30 16:45:44.000',8,NULL);
+INSERT INTO `comments` VALUES (10161,10079,14,'Même cause que RH-2, je fais le lien.','2025-12-31 11:57:09.000','2025-12-31 18:10:38.000',14,NULL);
+INSERT INTO `comments` VALUES (10162,10081,17,'Même cause que WEB-12, je fais le lien.','2026-01-05 18:18:05.000','2026-01-05 18:18:05.000',17,NULL);
+INSERT INTO `comments` VALUES (10163,10081,19,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-01-11 12:10:18.000','2026-01-11 12:10:18.000',19,NULL);
+INSERT INTO `comments` VALUES (10164,10081,9,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2026-01-24 17:26:32.000','2026-01-24 17:26:32.000',9,NULL);
+INSERT INTO `comments` VALUES (10165,10081,4,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-01-28 14:17:49.000','2026-01-30 07:15:24.000',4,NULL);
+INSERT INTO `comments` VALUES (10166,10081,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-28 15:10:45.000','2026-01-28 15:10:45.000',12,NULL);
+INSERT INTO `comments` VALUES (10167,10082,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2025-12-28 08:38:55.000','2025-12-28 08:38:55.000',10,NULL);
+INSERT INTO `comments` VALUES (10168,10082,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2025-12-29 17:06:33.000','2025-12-29 17:43:57.000',1,NULL);
+INSERT INTO `comments` VALUES (10169,10083,7,'Même cause que WEB-5, je fais le lien.','2025-12-29 18:21:09.000','2025-12-29 18:21:09.000',7,NULL);
+INSERT INTO `comments` VALUES (10170,10083,4,'Point fait avec le client ce matin, il valide la solution proposée.','2025-12-29 18:31:17.000','2025-12-29 18:31:17.000',4,NULL);
+INSERT INTO `comments` VALUES (10171,10083,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-05 16:21:24.000','2026-01-05 16:21:24.000',6,NULL);
+INSERT INTO `comments` VALUES (10172,10083,2,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-01-05 16:59:00.000','2026-01-05 16:59:00.000',2,NULL);
+INSERT INTO `comments` VALUES (10173,10084,2,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-12 17:05:34.000','2026-01-12 17:05:34.000',2,NULL);
+INSERT INTO `comments` VALUES (10174,10084,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-16 10:32:18.000','2026-01-16 10:32:18.000',18,NULL);
+INSERT INTO `comments` VALUES (10175,10084,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-24 08:39:30.000','2026-01-24 08:39:30.000',9,NULL);
+INSERT INTO `comments` VALUES (10176,10086,2,'C\'est bon pour moi, on peut fermer.','2026-01-10 10:52:03.000','2026-01-10 16:06:56.000',1,NULL);
+INSERT INTO `comments` VALUES (10177,10086,12,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-18 14:42:40.000','2026-01-18 14:42:40.000',12,NULL);
+INSERT INTO `comments` VALUES (10178,10087,6,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-01-14 11:48:06.000','2026-01-14 11:48:06.000',6,NULL);
+INSERT INTO `comments` VALUES (10179,10087,4,'Même cause que DEMO-11, je fais le lien.','2026-01-29 10:56:28.000','2026-01-29 10:56:28.000',4,NULL);
+INSERT INTO `comments` VALUES (10180,10087,17,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-02-02 08:07:11.000','2026-02-02 08:07:11.000',17,NULL);
+INSERT INTO `comments` VALUES (10181,10088,7,'[~jeanne.dupont] tu peux regarder quand tu as un moment ?','2026-01-11 13:18:26.000','2026-01-11 13:18:26.000',7,NULL);
+INSERT INTO `comments` VALUES (10182,10088,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-01-16 14:42:26.000','2026-01-16 14:42:26.000',9,NULL);
+INSERT INTO `comments` VALUES (10183,10088,9,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-26 12:43:06.000','2026-01-26 12:43:06.000',9,NULL);
+INSERT INTO `comments` VALUES (10184,10088,20,'C\'est bon pour moi, on peut fermer.','2026-02-10 18:40:58.000','2026-02-10 18:40:58.000',20,NULL);
+INSERT INTO `comments` VALUES (10185,10092,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-12 15:23:32.000','2026-01-12 15:23:32.000',4,NULL);
+INSERT INTO `comments` VALUES (10186,10093,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-01-20 17:46:08.000','2026-01-20 17:46:08.000',18,NULL);
+INSERT INTO `comments` VALUES (10187,10093,5,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-01-23 07:39:03.000','2026-01-23 07:39:03.000',5,NULL);
+INSERT INTO `comments` VALUES (10188,10093,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-01-30 11:07:48.000','2026-01-30 11:07:48.000',2,NULL);
+INSERT INTO `comments` VALUES (10189,10093,9,'Même cause que DEMO-25, je fais le lien.','2026-02-10 13:43:12.000','2026-02-10 13:43:12.000',9,NULL);
+INSERT INTO `comments` VALUES (10190,10095,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-04 18:25:47.000','2026-02-04 18:25:47.000',10,NULL);
+INSERT INTO `comments` VALUES (10191,10095,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-17 15:26:18.000','2026-02-17 15:26:18.000',8,NULL);
+INSERT INTO `comments` VALUES (10192,10095,8,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-17 16:33:58.000','2026-02-17 16:33:58.000',8,NULL);
+INSERT INTO `comments` VALUES (10193,10097,14,'Point fait avec le client ce matin, il valide la solution proposée.','2026-01-31 12:31:40.000','2026-01-31 12:31:40.000',14,NULL);
+INSERT INTO `comments` VALUES (10194,10097,14,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-12 15:19:41.000','2026-02-13 18:14:53.000',1,NULL);
+INSERT INTO `comments` VALUES (10195,10097,8,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-17 10:15:50.000','2026-02-17 10:15:50.000',8,NULL);
+INSERT INTO `comments` VALUES (10196,10097,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-19 10:52:01.000','2026-02-19 10:52:01.000',10,NULL);
+INSERT INTO `comments` VALUES (10197,10098,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-30 07:48:50.000','2026-01-30 07:48:50.000',10,NULL);
+INSERT INTO `comments` VALUES (10198,10100,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-03 09:05:39.000','2026-02-03 09:05:39.000',15,NULL);
+INSERT INTO `comments` VALUES (10199,10100,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-13 12:47:25.000','2026-02-13 12:47:25.000',15,NULL);
+INSERT INTO `comments` VALUES (10200,10101,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 14:19:33.000','2026-01-31 14:19:33.000',16,NULL);
+INSERT INTO `comments` VALUES (10201,10101,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-01-31 17:37:34.000','2026-01-31 17:37:34.000',19,NULL);
+INSERT INTO `comments` VALUES (10202,10101,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-02-04 09:32:00.000','2026-02-04 09:32:00.000',18,'developpeurs');
+INSERT INTO `comments` VALUES (10203,10101,2,'C\'est bon pour moi, on peut fermer.','2026-02-08 14:49:37.000','2026-02-08 14:49:37.000',2,NULL);
+INSERT INTO `comments` VALUES (10204,10101,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-12 13:20:20.000','2026-02-12 13:20:20.000',6,NULL);
+INSERT INTO `comments` VALUES (10205,10101,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-25 16:05:51.000','2026-02-25 16:05:51.000',19,NULL);
+INSERT INTO `comments` VALUES (10206,10103,5,'C\'est bon pour moi, on peut fermer.','2026-02-04 10:21:44.000','2026-02-04 10:21:44.000',5,'developpeurs');
+INSERT INTO `comments` VALUES (10207,10104,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-02-12 09:36:04.000','2026-02-12 09:36:04.000',16,NULL);
+INSERT INTO `comments` VALUES (10208,10104,10,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-27 11:03:11.000','2026-02-28 10:36:25.000',1,'developpeurs');
+INSERT INTO `comments` VALUES (10209,10105,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-14 18:38:00.000','2026-02-14 18:38:00.000',11,NULL);
+INSERT INTO `comments` VALUES (10210,10105,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-19 10:15:14.000','2026-02-19 10:15:14.000',12,NULL);
+INSERT INTO `comments` VALUES (10211,10105,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-02-27 09:57:38.000','2026-02-27 09:57:38.000',20,NULL);
+INSERT INTO `comments` VALUES (10212,10105,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-09 15:27:25.000','2026-03-09 15:27:25.000',5,NULL);
+INSERT INTO `comments` VALUES (10213,10107,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-12 07:55:18.000','2026-02-12 07:55:18.000',7,NULL);
+INSERT INTO `comments` VALUES (10214,10107,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-02-12 11:36:54.000','2026-02-12 11:36:54.000',4,NULL);
+INSERT INTO `comments` VALUES (10215,10107,11,'Même cause que WEB-6, je fais le lien.','2026-02-22 10:27:20.000','2026-02-22 10:27:20.000',11,NULL);
+INSERT INTO `comments` VALUES (10216,10107,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-02-28 15:46:59.000','2026-02-28 15:46:59.000',10,NULL);
+INSERT INTO `comments` VALUES (10217,10107,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-05 16:59:57.000','2026-03-05 16:59:57.000',2,NULL);
+INSERT INTO `comments` VALUES (10218,10107,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-09 15:09:46.000','2026-03-09 15:09:46.000',20,NULL);
+INSERT INTO `comments` VALUES (10219,10109,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-20 11:31:43.000','2026-02-20 11:31:43.000',19,NULL);
+INSERT INTO `comments` VALUES (10220,10109,11,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-04 11:58:33.000','2026-03-04 11:58:33.000',11,NULL);
+INSERT INTO `comments` VALUES (10221,10109,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-09 12:37:57.000','2026-03-11 10:55:12.000',7,NULL);
+INSERT INTO `comments` VALUES (10222,10109,17,'Même cause que DEMO-24, je fais le lien.','2026-03-20 10:29:23.000','2026-03-20 10:29:23.000',17,'developpeurs');
+INSERT INTO `comments` VALUES (10223,10110,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-16 13:50:22.000','2026-02-16 13:50:22.000',5,NULL);
+INSERT INTO `comments` VALUES (10224,10113,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-02-22 10:42:47.000','2026-02-24 11:22:13.000',2,NULL);
+INSERT INTO `comments` VALUES (10225,10113,15,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-27 18:45:48.000','2026-02-27 18:45:48.000',15,'administrators');
+INSERT INTO `comments` VALUES (10226,10118,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-01 09:35:56.000','2026-03-01 09:35:56.000',15,NULL);
+INSERT INTO `comments` VALUES (10227,10118,22,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-12 10:47:40.000','2026-03-12 10:47:40.000',22,NULL);
+INSERT INTO `comments` VALUES (10228,10118,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-16 08:29:50.000','2026-03-16 08:29:50.000',7,NULL);
+INSERT INTO `comments` VALUES (10229,10118,21,'Même cause que OPS-12, je fais le lien.','2026-03-26 16:29:10.000','2026-03-26 16:29:10.000',21,NULL);
+INSERT INTO `comments` VALUES (10230,10118,21,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-03-28 17:38:31.000','2026-03-28 17:38:31.000',21,NULL);
+INSERT INTO `comments` VALUES (10231,10118,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-31 12:53:52.000','2026-03-31 12:53:52.000',12,NULL);
+INSERT INTO `comments` VALUES (10232,10119,15,'Même cause que DEMO-50, je fais le lien.','2026-02-27 12:10:46.000','2026-02-27 12:10:46.000',15,NULL);
+INSERT INTO `comments` VALUES (10233,10119,15,'Même cause que DEMO-50, je fais le lien.','2026-03-11 11:46:44.000','2026-03-11 11:46:44.000',15,NULL);
+INSERT INTO `comments` VALUES (10234,10121,12,'Même cause que OPS-20, je fais le lien.','2026-03-01 07:49:39.000','2026-03-01 07:49:39.000',12,NULL);
+INSERT INTO `comments` VALUES (10235,10121,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-08 09:11:18.000','2026-03-08 09:11:18.000',12,NULL);
+INSERT INTO `comments` VALUES (10236,10122,5,'[~camille.petit] tu peux regarder quand tu as un moment ?','2026-03-03 09:30:29.000','2026-03-03 09:30:29.000',5,NULL);
+INSERT INTO `comments` VALUES (10237,10122,5,'[~thomas.moreau] tu peux regarder quand tu as un moment ?','2026-03-04 10:21:00.000','2026-03-04 10:21:00.000',5,NULL);
+INSERT INTO `comments` VALUES (10238,10122,5,'Même cause que WEB-16, je fais le lien.','2026-03-10 16:51:22.000','2026-03-10 16:51:22.000',5,NULL);
+INSERT INTO `comments` VALUES (10239,10123,21,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-02-28 08:20:39.000','2026-02-28 08:20:39.000',21,NULL);
+INSERT INTO `comments` VALUES (10240,10126,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-02-24 18:46:34.000','2026-02-24 18:46:34.000',19,NULL);
+INSERT INTO `comments` VALUES (10241,10127,10,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-05 08:30:15.000','2026-03-05 08:30:15.000',10,NULL);
+INSERT INTO `comments` VALUES (10242,10127,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-20 13:23:11.000','2026-03-20 13:23:11.000',9,NULL);
+INSERT INTO `comments` VALUES (10243,10127,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-28 10:55:37.000','2026-03-28 10:55:37.000',9,NULL);
+INSERT INTO `comments` VALUES (10244,10128,19,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-02-28 16:55:30.000','2026-03-03 17:08:18.000',19,NULL);
+INSERT INTO `comments` VALUES (10245,10128,3,'C\'est bon pour moi, on peut fermer.','2026-03-14 13:35:09.000','2026-03-14 13:35:09.000',3,NULL);
+INSERT INTO `comments` VALUES (10246,10128,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-03-24 15:56:05.000','2026-03-24 15:56:05.000',10,NULL);
+INSERT INTO `comments` VALUES (10247,10128,18,'C\'est bon pour moi, on peut fermer.','2026-04-08 11:39:25.000','2026-04-08 11:39:25.000',18,NULL);
+INSERT INTO `comments` VALUES (10248,10128,2,'C\'est bon pour moi, on peut fermer.','2026-04-09 11:00:38.000','2026-04-09 11:00:38.000',2,NULL);
+INSERT INTO `comments` VALUES (10249,10128,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-12 16:36:15.000','2026-04-12 16:36:15.000',2,NULL);
+INSERT INTO `comments` VALUES (10250,10129,12,'C\'est bon pour moi, on peut fermer.','2026-03-01 18:11:39.000','2026-03-04 07:43:09.000',1,NULL);
+INSERT INTO `comments` VALUES (10251,10129,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-16 08:02:50.000','2026-03-16 08:02:50.000',10,NULL);
+INSERT INTO `comments` VALUES (10252,10131,3,'Même cause que WEB-34, je fais le lien.','2026-03-12 14:48:49.000','2026-03-12 14:48:49.000',3,NULL);
+INSERT INTO `comments` VALUES (10253,10131,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-13 09:47:38.000','2026-03-13 09:47:38.000',5,NULL);
+INSERT INTO `comments` VALUES (10254,10131,5,'Même cause que WEB-32, je fais le lien.','2026-03-23 07:35:48.000','2026-03-23 07:35:48.000',5,NULL);
+INSERT INTO `comments` VALUES (10255,10131,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-05 14:23:59.000','2026-04-05 14:23:59.000',20,NULL);
+INSERT INTO `comments` VALUES (10256,10131,11,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-10 06:43:37.000','2026-04-10 06:43:37.000',11,NULL);
+INSERT INTO `comments` VALUES (10257,10132,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-03-21 07:15:21.000','2026-03-21 07:15:21.000',2,NULL);
+INSERT INTO `comments` VALUES (10258,10132,7,'C\'est bon pour moi, on peut fermer.','2026-03-25 17:31:15.000','2026-03-27 11:14:54.000',7,NULL);
+INSERT INTO `comments` VALUES (10259,10132,11,'C\'est bon pour moi, on peut fermer.','2026-04-06 13:05:35.000','2026-04-06 13:05:35.000',11,NULL);
+INSERT INTO `comments` VALUES (10260,10133,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-21 09:07:28.000','2026-03-21 09:07:28.000',13,NULL);
+INSERT INTO `comments` VALUES (10261,10133,15,'Même cause que DEMO-10, je fais le lien.','2026-03-28 12:22:38.000','2026-03-28 12:22:38.000',15,NULL);
+INSERT INTO `comments` VALUES (10262,10133,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-01 06:24:30.000','2026-04-01 10:11:25.000',1,NULL);
+INSERT INTO `comments` VALUES (10263,10133,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-13 07:59:04.000','2026-04-13 07:59:04.000',2,NULL);
+INSERT INTO `comments` VALUES (10264,10134,7,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-03-15 10:00:25.000','2026-03-15 10:00:25.000',7,NULL);
+INSERT INTO `comments` VALUES (10265,10134,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-17 16:59:24.000','2026-03-17 16:59:24.000',12,NULL);
+INSERT INTO `comments` VALUES (10266,10134,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-22 15:32:36.000','2026-03-22 15:32:36.000',16,NULL);
+INSERT INTO `comments` VALUES (10267,10136,17,'Point fait avec le client ce matin, il valide la solution proposée.','2026-03-19 09:03:19.000','2026-03-19 09:03:19.000',17,NULL);
+INSERT INTO `comments` VALUES (10268,10136,6,'C\'est bon pour moi, on peut fermer.','2026-03-27 11:05:02.000','2026-03-27 11:05:02.000',6,NULL);
+INSERT INTO `comments` VALUES (10269,10139,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-03-20 13:53:47.000','2026-03-20 13:53:47.000',16,NULL);
+INSERT INTO `comments` VALUES (10270,10139,7,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-04 17:48:37.000','2026-04-04 17:48:37.000',7,NULL);
+INSERT INTO `comments` VALUES (10271,10140,2,'C\'est bon pour moi, on peut fermer.','2026-03-25 14:07:27.000','2026-03-25 14:07:27.000',2,NULL);
+INSERT INTO `comments` VALUES (10272,10140,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-03-31 09:24:45.000','2026-03-31 09:24:45.000',16,NULL);
+INSERT INTO `comments` VALUES (10273,10141,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-22 15:15:52.000','2026-03-22 15:15:52.000',11,NULL);
+INSERT INTO `comments` VALUES (10274,10141,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-06 15:12:14.000','2026-04-09 12:28:39.000',1,NULL);
+INSERT INTO `comments` VALUES (10275,10141,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-15 09:22:52.000','2026-04-15 09:22:52.000',6,NULL);
+INSERT INTO `comments` VALUES (10276,10142,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-28 17:40:41.000','2026-03-28 17:40:41.000',7,NULL);
+INSERT INTO `comments` VALUES (10277,10142,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-02 09:56:44.000','2026-04-04 09:49:34.000',9,NULL);
+INSERT INTO `comments` VALUES (10278,10142,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-06 15:06:12.000','2026-04-06 15:06:12.000',7,NULL);
+INSERT INTO `comments` VALUES (10279,10142,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-17 17:51:36.000','2026-04-17 17:51:36.000',7,NULL);
+INSERT INTO `comments` VALUES (10280,10143,23,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-03-29 10:34:59.000','2026-03-29 10:34:59.000',23,NULL);
+INSERT INTO `comments` VALUES (10281,10143,15,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-10 06:14:40.000','2026-04-10 06:14:40.000',15,NULL);
+INSERT INTO `comments` VALUES (10282,10144,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-04 06:25:35.000','2026-04-04 06:25:35.000',15,NULL);
+INSERT INTO `comments` VALUES (10283,10145,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-24 13:39:38.000','2026-03-24 13:39:38.000',6,NULL);
+INSERT INTO `comments` VALUES (10284,10145,10,'Même cause que WEB-9, je fais le lien.','2026-03-25 17:28:37.000','2026-03-25 17:28:37.000',10,NULL);
+INSERT INTO `comments` VALUES (10285,10145,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-08 10:01:19.000','2026-04-08 10:01:19.000',6,'developpeurs');
+INSERT INTO `comments` VALUES (10286,10145,6,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-18 12:55:03.000','2026-04-18 12:55:03.000',6,NULL);
+INSERT INTO `comments` VALUES (10287,10145,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-29 13:08:32.000','2026-04-29 13:08:32.000',7,NULL);
+INSERT INTO `comments` VALUES (10288,10145,12,'Même cause que WEB-37, je fais le lien.','2026-05-03 14:36:16.000','2026-05-03 14:36:16.000',12,NULL);
+INSERT INTO `comments` VALUES (10289,10146,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-03-26 17:08:09.000','2026-03-26 17:08:09.000',20,NULL);
+INSERT INTO `comments` VALUES (10290,10147,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-06 16:23:20.000','2026-04-07 12:35:24.000',18,NULL);
+INSERT INTO `comments` VALUES (10291,10148,23,'C\'est bon pour moi, on peut fermer.','2026-04-09 12:31:52.000','2026-04-09 12:31:52.000',23,NULL);
+INSERT INTO `comments` VALUES (10292,10148,11,'Même cause que OPS-22, je fais le lien.','2026-04-13 13:54:01.000','2026-04-13 13:54:01.000',11,NULL);
+INSERT INTO `comments` VALUES (10293,10151,10,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-04-14 17:46:26.000','2026-04-14 17:47:26.000',10,NULL);
+INSERT INTO `comments` VALUES (10294,10151,8,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-14 17:53:30.000','2026-04-14 17:53:30.000',8,NULL);
+INSERT INTO `comments` VALUES (10295,10151,14,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-04-28 17:36:15.000','2026-04-30 14:57:19.000',1,NULL);
+INSERT INTO `comments` VALUES (10296,10152,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-16 07:01:41.000','2026-04-16 07:01:41.000',4,NULL);
+INSERT INTO `comments` VALUES (10297,10152,13,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-04-29 12:26:35.000','2026-04-29 12:26:35.000',13,NULL);
+INSERT INTO `comments` VALUES (10298,10152,17,'C\'est bon pour moi, on peut fermer.','2026-05-01 16:29:05.000','2026-05-01 16:29:05.000',17,NULL);
+INSERT INTO `comments` VALUES (10299,10153,17,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-04-22 15:13:29.000','2026-04-22 15:13:29.000',17,'administrators');
+INSERT INTO `comments` VALUES (10300,10153,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-04-22 17:59:01.000','2026-04-22 17:59:01.000',15,NULL);
+INSERT INTO `comments` VALUES (10301,10153,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-01 14:02:17.000','2026-05-01 14:02:17.000',17,NULL);
+INSERT INTO `comments` VALUES (10302,10154,16,'C\'est bon pour moi, on peut fermer.','2026-04-14 17:58:16.000','2026-04-14 17:58:16.000',16,NULL);
+INSERT INTO `comments` VALUES (10303,10154,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-17 08:38:28.000','2026-04-17 08:38:28.000',17,NULL);
+INSERT INTO `comments` VALUES (10304,10154,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-04-18 09:31:54.000','2026-04-18 09:31:54.000',17,'administrators');
+INSERT INTO `comments` VALUES (10305,10156,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-21 11:14:05.000','2026-04-21 11:14:05.000',10,NULL);
+INSERT INTO `comments` VALUES (10306,10156,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-28 17:23:08.000','2026-04-28 17:23:08.000',6,NULL);
+INSERT INTO `comments` VALUES (10307,10157,8,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-04-19 08:38:04.000','2026-04-19 08:38:04.000',8,NULL);
+INSERT INTO `comments` VALUES (10308,10158,6,'C\'est bon pour moi, on peut fermer.','2026-04-19 07:05:28.000','2026-04-21 11:37:33.000',6,NULL);
+INSERT INTO `comments` VALUES (10309,10159,12,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-04-22 14:07:13.000','2026-04-22 14:07:13.000',12,NULL);
+INSERT INTO `comments` VALUES (10310,10159,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-22 14:11:04.000','2026-04-22 14:11:04.000',19,NULL);
+INSERT INTO `comments` VALUES (10311,10160,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-24 10:05:56.000','2026-04-24 10:05:56.000',11,NULL);
+INSERT INTO `comments` VALUES (10312,10161,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-19 10:10:27.000','2026-04-19 10:10:27.000',16,NULL);
+INSERT INTO `comments` VALUES (10313,10161,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-02 10:09:49.000','2026-05-02 10:09:49.000',3,NULL);
+INSERT INTO `comments` VALUES (10314,10161,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-11 11:32:00.000','2026-05-11 11:32:00.000',2,'developpeurs');
+INSERT INTO `comments` VALUES (10315,10162,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-17 15:56:55.000','2026-04-17 15:56:55.000',9,NULL);
+INSERT INTO `comments` VALUES (10316,10162,12,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-04-29 13:53:14.000','2026-04-29 13:53:14.000',12,'administrators');
+INSERT INTO `comments` VALUES (10317,10164,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-04-22 12:37:32.000','2026-04-22 12:37:32.000',4,NULL);
+INSERT INTO `comments` VALUES (10318,10164,5,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-03 15:48:43.000','2026-05-03 15:48:43.000',5,NULL);
+INSERT INTO `comments` VALUES (10319,10166,15,'C\'est bon pour moi, on peut fermer.','2026-04-28 10:42:34.000','2026-04-28 10:42:34.000',15,NULL);
+INSERT INTO `comments` VALUES (10320,10167,5,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-05-02 16:33:10.000','2026-05-02 16:33:10.000',5,'developpeurs');
+INSERT INTO `comments` VALUES (10321,10167,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-02 16:37:47.000','2026-05-02 16:37:47.000',17,NULL);
+INSERT INTO `comments` VALUES (10322,10168,9,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-04-24 12:36:25.000','2026-04-24 12:36:25.000',9,'administrators');
+INSERT INTO `comments` VALUES (10323,10168,9,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-03 15:02:22.000','2026-05-03 15:02:22.000',9,NULL);
+INSERT INTO `comments` VALUES (10324,10168,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-06 09:43:42.000','2026-05-08 11:20:57.000',5,NULL);
+INSERT INTO `comments` VALUES (10325,10169,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-03 14:53:29.000','2026-05-03 14:53:29.000',11,'developpeurs');
+INSERT INTO `comments` VALUES (10326,10169,10,'[~lucas.bernard] tu peux regarder quand tu as un moment ?','2026-05-06 08:22:28.000','2026-05-06 08:22:28.000',10,NULL);
+INSERT INTO `comments` VALUES (10327,10170,6,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-07 17:04:32.000','2026-05-08 07:33:17.000',1,NULL);
+INSERT INTO `comments` VALUES (10328,10170,9,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-05-16 07:06:36.000','2026-05-16 07:06:36.000',9,NULL);
+INSERT INTO `comments` VALUES (10329,10170,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-20 10:58:02.000','2026-05-20 10:58:02.000',10,NULL);
+INSERT INTO `comments` VALUES (10330,10170,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-23 08:54:48.000','2026-05-23 08:54:48.000',18,NULL);
+INSERT INTO `comments` VALUES (10331,10171,14,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-05-06 07:59:39.000','2026-05-06 07:59:39.000',14,NULL);
+INSERT INTO `comments` VALUES (10332,10172,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-04-29 17:42:42.000','2026-04-29 17:42:42.000',6,NULL);
+INSERT INTO `comments` VALUES (10333,10172,6,'C\'est bon pour moi, on peut fermer.','2026-05-13 16:21:02.000','2026-05-13 16:21:02.000',6,NULL);
+INSERT INTO `comments` VALUES (10334,10174,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-06 15:22:12.000','2026-05-07 14:46:05.000',7,NULL);
+INSERT INTO `comments` VALUES (10335,10174,6,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-05-11 07:49:57.000','2026-05-11 12:12:35.000',1,NULL);
+INSERT INTO `comments` VALUES (10336,10174,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-24 10:37:08.000','2026-05-24 10:37:08.000',20,NULL);
+INSERT INTO `comments` VALUES (10337,10175,12,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-11 17:47:34.000','2026-05-11 17:47:34.000',12,NULL);
+INSERT INTO `comments` VALUES (10338,10175,22,'Même cause que OPS-16, je fais le lien.','2026-05-24 07:08:33.000','2026-05-24 07:08:33.000',22,NULL);
+INSERT INTO `comments` VALUES (10339,10175,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-01 15:19:45.000','2026-06-01 15:19:45.000',7,NULL);
+INSERT INTO `comments` VALUES (10340,10175,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-07 16:13:52.000','2026-06-07 16:13:52.000',19,NULL);
+INSERT INTO `comments` VALUES (10341,10175,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-20 10:05:42.000','2026-06-20 10:05:42.000',9,NULL);
+INSERT INTO `comments` VALUES (10342,10175,2,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-06-25 08:03:02.000','2026-06-25 08:03:02.000',2,NULL);
+INSERT INTO `comments` VALUES (10343,10176,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-07 14:37:18.000','2026-05-07 14:37:18.000',12,'developpeurs');
+INSERT INTO `comments` VALUES (10344,10176,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-20 13:57:21.000','2026-05-22 07:07:55.000',17,NULL);
+INSERT INTO `comments` VALUES (10345,10176,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-31 14:43:29.000','2026-05-31 14:43:29.000',4,NULL);
+INSERT INTO `comments` VALUES (10346,10176,5,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-03 15:17:25.000','2026-06-03 15:17:25.000',5,NULL);
+INSERT INTO `comments` VALUES (10347,10177,7,'Même cause que OPS-22, je fais le lien.','2026-05-17 09:14:51.000','2026-05-17 09:14:51.000',7,NULL);
+INSERT INTO `comments` VALUES (10348,10178,11,'Même cause que WEB-21, je fais le lien.','2026-05-18 09:16:40.000','2026-05-18 09:16:40.000',11,'developpeurs');
+INSERT INTO `comments` VALUES (10349,10178,4,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-25 10:28:31.000','2026-05-25 10:28:31.000',4,NULL);
+INSERT INTO `comments` VALUES (10350,10178,18,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-05 17:41:49.000','2026-06-05 17:41:49.000',18,NULL);
+INSERT INTO `comments` VALUES (10351,10178,20,'C\'est bon pour moi, on peut fermer.','2026-06-07 07:06:49.000','2026-06-07 07:06:49.000',20,NULL);
+INSERT INTO `comments` VALUES (10352,10179,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-15 11:56:25.000','2026-05-15 11:56:25.000',7,NULL);
+INSERT INTO `comments` VALUES (10353,10180,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-05-12 09:19:44.000','2026-05-12 11:06:22.000',1,NULL);
+INSERT INTO `comments` VALUES (10354,10180,1,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-20 08:15:20.000','2026-05-20 08:15:20.000',1,NULL);
+INSERT INTO `comments` VALUES (10355,10181,13,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-16 13:19:47.000','2026-05-16 13:19:47.000',13,NULL);
+INSERT INTO `comments` VALUES (10356,10181,15,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-31 16:38:20.000','2026-05-31 16:38:20.000',15,NULL);
+INSERT INTO `comments` VALUES (10357,10181,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-02 10:37:30.000','2026-06-02 14:58:19.000',20,NULL);
+INSERT INTO `comments` VALUES (10358,10181,5,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-08 09:10:13.000','2026-06-08 09:10:13.000',5,NULL);
+INSERT INTO `comments` VALUES (10359,10182,5,'C\'est bon pour moi, on peut fermer.','2026-05-16 17:51:57.000','2026-05-16 17:51:57.000',5,NULL);
+INSERT INTO `comments` VALUES (10360,10182,4,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-05-20 15:55:45.000','2026-05-21 16:06:11.000',4,NULL);
+INSERT INTO `comments` VALUES (10361,10185,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-22 09:27:03.000','2026-05-22 09:27:03.000',5,NULL);
+INSERT INTO `comments` VALUES (10362,10185,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-05-27 09:40:14.000','2026-05-27 09:40:14.000',12,NULL);
+INSERT INTO `comments` VALUES (10363,10185,2,'Même cause que WEB-51, je fais le lien.','2026-05-27 12:56:40.000','2026-05-27 12:56:40.000',2,'administrators');
+INSERT INTO `comments` VALUES (10364,10185,4,'Même cause que WEB-19, je fais le lien.','2026-06-06 09:19:53.000','2026-06-06 09:19:53.000',4,NULL);
+INSERT INTO `comments` VALUES (10365,10187,11,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-05-23 16:03:12.000','2026-05-23 16:03:12.000',11,NULL);
+INSERT INTO `comments` VALUES (10366,10187,22,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-05-23 17:16:33.000','2026-05-26 16:37:37.000',22,NULL);
+INSERT INTO `comments` VALUES (10367,10187,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-04 11:56:00.000','2026-06-04 11:56:00.000',7,NULL);
+INSERT INTO `comments` VALUES (10368,10188,15,'Même cause que DEMO-67, je fais le lien.','2026-05-29 15:51:45.000','2026-05-29 15:51:45.000',15,NULL);
+INSERT INTO `comments` VALUES (10369,10189,20,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-23 12:53:24.000','2026-05-23 12:53:24.000',20,NULL);
+INSERT INTO `comments` VALUES (10370,10190,3,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-01 12:51:38.000','2026-06-01 12:51:38.000',3,'developpeurs');
+INSERT INTO `comments` VALUES (10371,10190,6,'Même cause que DEMO-59, je fais le lien.','2026-06-05 13:49:28.000','2026-06-05 13:49:28.000',6,NULL);
+INSERT INTO `comments` VALUES (10372,10190,3,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-12 06:10:01.000','2026-06-12 06:10:01.000',3,NULL);
+INSERT INTO `comments` VALUES (10373,10190,6,'Même cause que DEMO-54, je fais le lien.','2026-06-23 11:03:27.000','2026-06-23 11:03:27.000',6,'developpeurs');
+INSERT INTO `comments` VALUES (10374,10190,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-26 13:11:45.000','2026-06-26 13:11:45.000',2,NULL);
+INSERT INTO `comments` VALUES (10375,10192,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-01 11:05:15.000','2026-06-01 11:05:15.000',19,NULL);
+INSERT INTO `comments` VALUES (10376,10192,13,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-13 12:50:38.000','2026-06-13 12:50:38.000',13,NULL);
+INSERT INTO `comments` VALUES (10377,10192,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-14 12:02:09.000','2026-06-14 12:02:09.000',17,'developpeurs');
+INSERT INTO `comments` VALUES (10378,10194,1,'Même cause que RH-8, je fais le lien.','2026-05-31 13:25:14.000','2026-05-31 13:25:14.000',1,NULL);
+INSERT INTO `comments` VALUES (10379,10194,1,'C\'est bon pour moi, on peut fermer.','2026-06-09 08:51:57.000','2026-06-09 08:51:57.000',1,NULL);
+INSERT INTO `comments` VALUES (10380,10194,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-18 10:13:29.000','2026-06-18 10:13:29.000',14,NULL);
+INSERT INTO `comments` VALUES (10381,10195,4,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-23 08:43:34.000','2026-05-23 08:43:34.000',4,NULL);
+INSERT INTO `comments` VALUES (10382,10195,5,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-05 07:40:48.000','2026-06-05 07:40:48.000',5,NULL);
+INSERT INTO `comments` VALUES (10383,10195,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-20 06:30:22.000','2026-06-20 06:30:22.000',6,NULL);
+INSERT INTO `comments` VALUES (10384,10196,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-23 11:32:00.000','2026-05-23 11:32:00.000',17,NULL);
+INSERT INTO `comments` VALUES (10385,10196,12,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-01 15:33:55.000','2026-06-01 15:33:55.000',12,'developpeurs');
+INSERT INTO `comments` VALUES (10386,10196,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-14 13:20:44.000','2026-06-14 13:20:44.000',13,NULL);
+INSERT INTO `comments` VALUES (10387,10197,14,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-06 06:13:33.000','2026-06-06 06:13:33.000',14,NULL);
+INSERT INTO `comments` VALUES (10388,10197,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-06-09 06:53:47.000','2026-06-09 06:53:47.000',10,NULL);
+INSERT INTO `comments` VALUES (10389,10198,10,'Même cause que WEB-39, je fais le lien.','2026-06-08 09:14:25.000','2026-06-08 15:41:05.000',10,NULL);
+INSERT INTO `comments` VALUES (10390,10199,16,'Point fait avec le client ce matin, il valide la solution proposée.','2026-05-29 12:31:15.000','2026-05-29 12:31:15.000',16,NULL);
+INSERT INTO `comments` VALUES (10391,10199,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-06 16:06:22.000','2026-06-06 16:06:22.000',11,'administrators');
+INSERT INTO `comments` VALUES (10392,10199,6,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-12 10:25:33.000','2026-06-12 10:25:33.000',6,NULL);
+INSERT INTO `comments` VALUES (10393,10199,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-15 12:47:09.000','2026-06-15 12:47:09.000',11,NULL);
+INSERT INTO `comments` VALUES (10394,10199,18,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-21 16:27:34.000','2026-06-21 16:27:34.000',18,NULL);
+INSERT INTO `comments` VALUES (10395,10200,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-05-30 12:24:50.000','2026-05-30 12:24:50.000',2,NULL);
+INSERT INTO `comments` VALUES (10396,10200,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-12 14:19:18.000','2026-06-12 14:19:18.000',2,NULL);
+INSERT INTO `comments` VALUES (10397,10201,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-29 11:07:47.000','2026-05-29 11:07:47.000',11,NULL);
+INSERT INTO `comments` VALUES (10398,10201,6,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-05-31 13:09:06.000','2026-05-31 13:09:06.000',6,NULL);
+INSERT INTO `comments` VALUES (10399,10202,12,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-05-29 06:10:54.000','2026-05-29 06:10:54.000',12,NULL);
+INSERT INTO `comments` VALUES (10400,10202,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-01 14:50:24.000','2026-06-02 16:08:34.000',1,NULL);
+INSERT INTO `comments` VALUES (10401,10202,18,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-12 12:28:13.000','2026-06-14 10:24:39.000',18,'developpeurs');
+INSERT INTO `comments` VALUES (10402,10203,10,'C\'est bon pour moi, on peut fermer.','2026-06-01 10:05:10.000','2026-06-01 10:05:10.000',10,NULL);
+INSERT INTO `comments` VALUES (10403,10203,10,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-04 06:48:41.000','2026-06-04 06:48:41.000',10,NULL);
+INSERT INTO `comments` VALUES (10404,10204,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-09 13:58:42.000','2026-06-09 13:58:42.000',11,NULL);
+INSERT INTO `comments` VALUES (10405,10205,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-06 10:51:34.000','2026-06-06 10:51:34.000',15,NULL);
+INSERT INTO `comments` VALUES (10406,10205,22,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-17 09:54:20.000','2026-06-17 09:54:20.000',22,NULL);
+INSERT INTO `comments` VALUES (10407,10207,12,'C\'est bon pour moi, on peut fermer.','2026-06-01 14:13:12.000','2026-06-01 14:13:12.000',12,'developpeurs');
+INSERT INTO `comments` VALUES (10408,10207,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-11 10:03:02.000','2026-06-11 10:03:02.000',16,NULL);
+INSERT INTO `comments` VALUES (10409,10207,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-16 14:55:44.000','2026-06-16 14:55:44.000',13,NULL);
+INSERT INTO `comments` VALUES (10410,10207,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-30 10:44:02.000','2026-06-30 10:44:02.000',17,NULL);
+INSERT INTO `comments` VALUES (10411,10207,17,'Même cause que WEB-53, je fais le lien.','2026-07-04 07:24:28.000','2026-07-04 07:24:28.000',17,NULL);
+INSERT INTO `comments` VALUES (10412,10208,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-10 08:40:34.000','2026-06-10 08:40:34.000',17,NULL);
+INSERT INTO `comments` VALUES (10413,10208,20,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-19 15:23:12.000','2026-06-19 15:23:12.000',20,NULL);
+INSERT INTO `comments` VALUES (10414,10209,21,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-06-09 12:35:51.000','2026-06-09 12:35:51.000',21,NULL);
+INSERT INTO `comments` VALUES (10415,10211,7,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-20 07:49:25.000','2026-06-21 09:30:52.000',7,NULL);
+INSERT INTO `comments` VALUES (10416,10214,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-23 09:20:20.000','2026-06-23 09:20:20.000',17,NULL);
+INSERT INTO `comments` VALUES (10417,10214,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-26 17:49:20.000','2026-06-26 17:49:20.000',2,NULL);
+INSERT INTO `comments` VALUES (10418,10214,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-06-29 15:01:53.000','2026-06-29 15:01:53.000',2,NULL);
+INSERT INTO `comments` VALUES (10419,10215,17,'Point fait avec le client ce matin, il valide la solution proposée.','2026-06-18 07:34:15.000','2026-06-18 07:34:15.000',17,NULL);
+INSERT INTO `comments` VALUES (10420,10216,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-06-29 14:43:34.000','2026-06-29 14:43:34.000',16,'developpeurs');
+INSERT INTO `comments` VALUES (10421,10216,20,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-13 09:49:58.000','2026-07-13 09:49:58.000',20,NULL);
+INSERT INTO `comments` VALUES (10422,10216,11,'C\'est bon pour moi, on peut fermer.','2026-07-19 11:37:51.000','2026-07-19 11:37:51.000',11,NULL);
+INSERT INTO `comments` VALUES (10423,10216,6,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-07-19 13:01:12.000','2026-07-19 13:01:12.000',6,'developpeurs');
+INSERT INTO `comments` VALUES (10424,10216,13,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-07-24 06:58:20.000','2026-07-24 06:58:20.000',13,NULL);
+INSERT INTO `comments` VALUES (10425,10216,16,'[~camille.petit] tu peux regarder quand tu as un moment ?','2026-07-24 11:59:37.000','2026-07-24 11:59:37.000',16,NULL);
+INSERT INTO `comments` VALUES (10426,10217,17,'C\'est bon pour moi, on peut fermer.','2026-06-26 08:10:20.000','2026-06-26 08:10:20.000',17,NULL);
+INSERT INTO `comments` VALUES (10427,10217,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-03 12:49:20.000','2026-07-03 12:49:20.000',6,NULL);
+INSERT INTO `comments` VALUES (10428,10217,17,'Même cause que DEMO-14, je fais le lien.','2026-07-09 07:32:20.000','2026-07-09 07:32:20.000',17,NULL);
+INSERT INTO `comments` VALUES (10429,10217,4,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-18 06:42:58.000','2026-07-18 06:42:58.000',4,NULL);
+INSERT INTO `comments` VALUES (10430,10217,17,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-20 17:28:03.000','2026-07-21 11:27:04.000',1,NULL);
+INSERT INTO `comments` VALUES (10431,10218,9,'Même cause que WEB-39, je fais le lien.','2026-06-30 15:30:52.000','2026-06-30 15:30:52.000',9,NULL);
+INSERT INTO `comments` VALUES (10432,10219,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-19 15:53:37.000','2026-06-19 15:53:37.000',2,NULL);
+INSERT INTO `comments` VALUES (10433,10219,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-06-21 16:21:50.000','2026-06-21 16:21:50.000',19,NULL);
+INSERT INTO `comments` VALUES (10434,10219,15,'Même cause que DEMO-17, je fais le lien.','2026-07-03 10:06:07.000','2026-07-03 10:06:07.000',15,NULL);
+INSERT INTO `comments` VALUES (10435,10219,15,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-07-06 09:32:24.000','2026-07-06 09:32:24.000',15,NULL);
+INSERT INTO `comments` VALUES (10436,10220,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-06-24 10:01:02.000','2026-06-24 10:01:02.000',7,'administrators');
+INSERT INTO `comments` VALUES (10437,10223,19,'Même cause que WEB-2, je fais le lien.','2026-06-27 09:03:02.000','2026-06-27 09:03:02.000',19,NULL);
+INSERT INTO `comments` VALUES (10438,10223,2,'C\'est bon pour moi, on peut fermer.','2026-07-11 14:04:12.000','2026-07-11 14:04:12.000',2,NULL);
+INSERT INTO `comments` VALUES (10439,10223,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-16 17:08:14.000','2026-07-16 17:08:14.000',2,NULL);
+INSERT INTO `comments` VALUES (10440,10223,13,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-27 08:03:34.000','2026-07-27 08:03:34.000',13,NULL);
+INSERT INTO `comments` VALUES (10441,10224,21,'Même cause que OPS-22, je fais le lien.','2026-07-02 17:49:29.000','2026-07-02 17:49:29.000',21,NULL);
+INSERT INTO `comments` VALUES (10442,10224,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-07-10 15:36:15.000','2026-07-10 15:36:15.000',7,NULL);
+INSERT INTO `comments` VALUES (10443,10226,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-06-27 06:01:37.000','2026-06-27 06:01:37.000',12,'administrators');
+INSERT INTO `comments` VALUES (10444,10226,9,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-06-28 13:37:14.000','2026-06-28 15:25:49.000',9,NULL);
+INSERT INTO `comments` VALUES (10445,10226,11,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-06 13:36:18.000','2026-07-06 13:36:18.000',11,NULL);
+INSERT INTO `comments` VALUES (10446,10226,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-06 15:11:53.000','2026-07-06 15:11:53.000',7,NULL);
+INSERT INTO `comments` VALUES (10447,10228,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-04 09:03:38.000','2026-07-04 09:03:38.000',16,NULL);
+INSERT INTO `comments` VALUES (10448,10228,9,'Même cause que WEB-23, je fais le lien.','2026-07-14 08:16:13.000','2026-07-14 08:16:13.000',9,NULL);
+INSERT INTO `comments` VALUES (10449,10229,5,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-14 09:01:35.000','2026-07-14 09:01:35.000',5,NULL);
+INSERT INTO `comments` VALUES (10450,10229,7,'[~ines.david] tu peux regarder quand tu as un moment ?','2026-07-18 15:29:34.000','2026-07-18 15:29:34.000',7,NULL);
+INSERT INTO `comments` VALUES (10451,10230,17,'Même cause que WEB-26, je fais le lien.','2026-07-07 17:13:41.000','2026-07-07 17:13:41.000',17,NULL);
+INSERT INTO `comments` VALUES (10452,10230,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-11 17:42:55.000','2026-07-11 17:42:55.000',3,'developpeurs');
+INSERT INTO `comments` VALUES (10453,10230,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-18 12:25:10.000','2026-07-18 12:25:10.000',11,NULL);
+INSERT INTO `comments` VALUES (10454,10231,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-07-15 13:50:11.000','2026-07-15 13:50:11.000',2,NULL);
+INSERT INTO `comments` VALUES (10455,10231,7,'Même cause que WEB-16, je fais le lien.','2026-07-25 06:41:00.000','2026-07-25 06:41:00.000',7,'developpeurs');
+INSERT INTO `comments` VALUES (10456,10231,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-05 07:48:30.000','2026-08-05 07:48:30.000',18,NULL);
+INSERT INTO `comments` VALUES (10457,10231,15,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-14 16:40:16.000','2026-08-16 07:03:25.000',1,NULL);
+INSERT INTO `comments` VALUES (10458,10231,7,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-17 15:28:18.000','2026-08-17 15:28:18.000',7,'developpeurs');
+INSERT INTO `comments` VALUES (10459,10231,10,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-08-31 10:52:36.000','2026-08-31 10:52:36.000',10,NULL);
+INSERT INTO `comments` VALUES (10460,10233,12,'C\'est bon pour moi, on peut fermer.','2026-07-11 10:29:05.000','2026-07-11 10:29:05.000',12,NULL);
+INSERT INTO `comments` VALUES (10461,10233,9,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-22 13:38:55.000','2026-07-22 13:38:55.000',9,NULL);
+INSERT INTO `comments` VALUES (10462,10233,2,'Point fait avec le client ce matin, il valide la solution proposée.','2026-07-22 16:47:04.000','2026-07-22 16:47:04.000',2,NULL);
+INSERT INTO `comments` VALUES (10463,10234,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-17 06:13:27.000','2026-07-17 06:13:27.000',10,NULL);
+INSERT INTO `comments` VALUES (10464,10234,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-07-19 08:56:47.000','2026-07-19 08:56:47.000',10,NULL);
+INSERT INTO `comments` VALUES (10465,10234,8,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-26 09:09:41.000','2026-07-26 09:09:41.000',8,NULL);
+INSERT INTO `comments` VALUES (10466,10234,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-04 14:13:19.000','2026-08-04 14:13:19.000',10,NULL);
+INSERT INTO `comments` VALUES (10467,10234,10,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-10 13:00:03.000','2026-08-10 13:00:03.000',10,NULL);
+INSERT INTO `comments` VALUES (10468,10236,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-07-12 06:50:26.000','2026-07-12 06:50:26.000',13,NULL);
+INSERT INTO `comments` VALUES (10469,10237,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-16 08:15:11.000','2026-07-16 08:15:11.000',18,NULL);
+INSERT INTO `comments` VALUES (10470,10238,13,'Même cause que DEMO-80, je fais le lien.','2026-07-19 09:46:03.000','2026-07-19 09:46:03.000',13,NULL);
+INSERT INTO `comments` VALUES (10471,10239,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-19 17:41:52.000','2026-07-19 17:41:52.000',16,NULL);
+INSERT INTO `comments` VALUES (10472,10239,3,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-02 13:55:03.000','2026-08-02 13:55:03.000',3,'administrators');
+INSERT INTO `comments` VALUES (10473,10241,5,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-07-25 09:48:24.000','2026-07-25 09:48:24.000',5,NULL);
+INSERT INTO `comments` VALUES (10474,10241,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-08 10:25:10.000','2026-08-08 10:25:10.000',11,NULL);
+INSERT INTO `comments` VALUES (10475,10244,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-07-30 06:47:32.000','2026-07-30 06:47:32.000',7,NULL);
+INSERT INTO `comments` VALUES (10476,10244,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-04 14:53:40.000','2026-08-05 14:34:03.000',16,NULL);
+INSERT INTO `comments` VALUES (10477,10244,7,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-17 07:21:39.000','2026-08-17 07:21:39.000',7,NULL);
+INSERT INTO `comments` VALUES (10478,10244,4,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-29 11:33:15.000','2026-08-29 11:33:15.000',4,NULL);
+INSERT INTO `comments` VALUES (10479,10245,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-07-21 15:59:53.000','2026-07-21 15:59:53.000',10,'developpeurs');
+INSERT INTO `comments` VALUES (10480,10245,2,'C\'est bon pour moi, on peut fermer.','2026-07-31 15:25:23.000','2026-07-31 15:25:23.000',2,NULL);
+INSERT INTO `comments` VALUES (10481,10245,16,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-07 09:45:51.000','2026-08-07 09:45:51.000',16,NULL);
+INSERT INTO `comments` VALUES (10482,10245,2,'[~nicolas.laurent] tu peux regarder quand tu as un moment ?','2026-08-10 11:44:07.000','2026-08-10 11:44:07.000',2,NULL);
+INSERT INTO `comments` VALUES (10483,10245,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-25 14:02:59.000','2026-08-25 14:02:59.000',2,NULL);
+INSERT INTO `comments` VALUES (10484,10245,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-08-28 11:19:44.000','2026-08-28 11:19:44.000',2,NULL);
+INSERT INTO `comments` VALUES (10485,10247,14,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-26 07:18:59.000','2026-07-26 07:18:59.000',14,NULL);
+INSERT INTO `comments` VALUES (10486,10247,14,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-02 07:13:44.000','2026-08-02 07:13:44.000',14,NULL);
+INSERT INTO `comments` VALUES (10487,10247,10,'C\'est bon pour moi, on peut fermer.','2026-08-05 06:06:54.000','2026-08-05 06:06:54.000',10,NULL);
+INSERT INTO `comments` VALUES (10488,10247,8,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-05 11:05:12.000','2026-08-05 11:05:12.000',8,NULL);
+INSERT INTO `comments` VALUES (10489,10247,14,'C\'est bon pour moi, on peut fermer.','2026-08-18 09:59:33.000','2026-08-18 09:59:33.000',14,NULL);
+INSERT INTO `comments` VALUES (10490,10249,18,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-30 13:42:29.000','2026-07-30 13:42:29.000',18,NULL);
+INSERT INTO `comments` VALUES (10491,10249,3,'Même cause que DEMO-43, je fais le lien.','2026-07-31 13:00:49.000','2026-07-31 13:00:49.000',3,NULL);
+INSERT INTO `comments` VALUES (10492,10251,2,'Même cause que DEMO-8, je fais le lien.','2026-07-30 12:27:34.000','2026-07-30 12:27:34.000',2,'administrators');
+INSERT INTO `comments` VALUES (10493,10251,2,'[~hugo.robert] tu peux regarder quand tu as un moment ?','2026-08-01 17:29:20.000','2026-08-01 17:29:20.000',2,NULL);
+INSERT INTO `comments` VALUES (10494,10251,16,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-04 08:32:09.000','2026-08-04 08:32:09.000',16,NULL);
+INSERT INTO `comments` VALUES (10495,10251,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-10 12:57:15.000','2026-08-10 12:57:15.000',2,NULL);
+INSERT INTO `comments` VALUES (10496,10252,13,'Point fait avec le client ce matin, il valide la solution proposée.','2026-08-14 11:49:23.000','2026-08-14 11:49:23.000',13,NULL);
+INSERT INTO `comments` VALUES (10497,10253,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-07-31 17:33:31.000','2026-07-31 17:33:31.000',17,NULL);
+INSERT INTO `comments` VALUES (10498,10253,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-15 12:44:58.000','2026-08-15 12:44:58.000',9,NULL);
+INSERT INTO `comments` VALUES (10499,10253,20,'Même cause que WEB-57, je fais le lien.','2026-08-16 08:34:24.000','2026-08-16 08:34:24.000',20,NULL);
+INSERT INTO `comments` VALUES (10500,10254,17,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-12 12:57:17.000','2026-08-12 12:57:17.000',17,NULL);
+INSERT INTO `comments` VALUES (10501,10254,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-20 10:52:22.000','2026-08-20 10:52:22.000',13,NULL);
+INSERT INTO `comments` VALUES (10502,10254,16,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-24 13:25:49.000','2026-08-25 17:52:03.000',16,'administrators');
+INSERT INTO `comments` VALUES (10503,10255,14,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-08 09:43:09.000','2026-08-08 09:43:09.000',14,NULL);
+INSERT INTO `comments` VALUES (10504,10256,5,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-08-18 13:27:07.000','2026-08-18 13:27:07.000',5,NULL);
+INSERT INTO `comments` VALUES (10505,10256,5,'Même cause que WEB-61, je fais le lien.','2026-08-20 16:46:38.000','2026-08-20 16:46:38.000',5,NULL);
+INSERT INTO `comments` VALUES (10506,10256,2,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-26 06:22:39.000','2026-08-26 06:22:39.000',2,NULL);
+INSERT INTO `comments` VALUES (10507,10258,23,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-08-08 14:59:16.000','2026-08-08 14:59:16.000',23,NULL);
+INSERT INTO `comments` VALUES (10508,10258,7,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-08-13 17:26:13.000','2026-08-13 17:26:13.000',7,NULL);
+INSERT INTO `comments` VALUES (10509,10259,2,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-21 10:21:24.000','2026-08-21 10:21:24.000',2,NULL);
+INSERT INTO `comments` VALUES (10510,10259,9,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-08-30 07:26:29.000','2026-08-30 07:26:29.000',9,NULL);
+INSERT INTO `comments` VALUES (10511,10260,9,'Même cause que OPS-17, je fais le lien.','2026-08-23 12:49:52.000','2026-08-23 12:49:52.000',9,NULL);
+INSERT INTO `comments` VALUES (10512,10260,9,'Je confirme, reproduit sur l\'environnement de recette.','2026-08-30 17:34:31.000','2026-08-30 17:34:31.000',9,NULL);
+INSERT INTO `comments` VALUES (10513,10260,23,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-03 08:59:54.000','2026-09-03 08:59:54.000',23,NULL);
+INSERT INTO `comments` VALUES (10514,10260,22,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-18 16:26:57.000','2026-09-18 16:26:57.000',22,NULL);
+INSERT INTO `comments` VALUES (10515,10261,23,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-08-21 06:34:56.000','2026-08-23 17:45:29.000',1,NULL);
+INSERT INTO `comments` VALUES (10516,10261,7,'C\'est bon pour moi, on peut fermer.','2026-09-03 10:20:44.000','2026-09-03 10:20:44.000',7,NULL);
+INSERT INTO `comments` VALUES (10517,10261,23,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-05 09:34:15.000','2026-09-05 09:34:15.000',23,NULL);
+INSERT INTO `comments` VALUES (10518,10261,11,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-20 07:19:43.000','2026-09-20 07:19:43.000',11,NULL);
+INSERT INTO `comments` VALUES (10519,10261,7,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-22 07:28:26.000','2026-09-22 07:28:26.000',7,'administrators');
+INSERT INTO `comments` VALUES (10520,10262,19,'Même cause que OPS-13, je fais le lien.','2026-08-22 13:48:45.000','2026-08-22 13:48:45.000',19,NULL);
+INSERT INTO `comments` VALUES (10521,10262,19,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-04 09:37:19.000','2026-09-04 09:37:19.000',19,'developpeurs');
+INSERT INTO `comments` VALUES (10522,10262,15,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-16 16:40:03.000','2026-09-16 16:40:03.000',15,NULL);
+INSERT INTO `comments` VALUES (10523,10262,22,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-20 10:42:49.000','2026-09-20 10:42:49.000',22,NULL);
+INSERT INTO `comments` VALUES (10524,10264,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-21 16:58:54.000','2026-08-21 16:58:54.000',12,NULL);
+INSERT INTO `comments` VALUES (10525,10264,7,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-08-24 17:59:33.000','2026-08-24 17:59:33.000',7,NULL);
+INSERT INTO `comments` VALUES (10526,10265,17,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-27 11:03:56.000','2026-08-27 11:03:56.000',17,NULL);
+INSERT INTO `comments` VALUES (10527,10265,4,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-05 13:38:38.000','2026-09-05 15:44:57.000',1,NULL);
+INSERT INTO `comments` VALUES (10528,10265,20,'[~jeanne.dupont] tu peux regarder quand tu as un moment ?','2026-09-13 12:36:06.000','2026-09-14 13:22:12.000',1,NULL);
+INSERT INTO `comments` VALUES (10529,10266,2,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-01 17:43:56.000','2026-09-01 17:43:56.000',2,NULL);
+INSERT INTO `comments` VALUES (10530,10266,5,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-04 09:07:07.000','2026-09-04 09:07:07.000',5,NULL);
+INSERT INTO `comments` VALUES (10531,10266,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-12 08:58:10.000','2026-09-12 08:58:10.000',6,NULL);
+INSERT INTO `comments` VALUES (10532,10266,17,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-27 15:11:07.000','2026-09-29 13:41:30.000',17,NULL);
+INSERT INTO `comments` VALUES (10533,10266,17,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',17,NULL);
+INSERT INTO `comments` VALUES (10534,10267,7,'C\'est bon pour moi, on peut fermer.','2026-08-26 16:54:30.000','2026-08-26 16:54:30.000',7,NULL);
+INSERT INTO `comments` VALUES (10535,10267,21,'C\'est bon pour moi, on peut fermer.','2026-09-10 08:11:51.000','2026-09-13 12:51:32.000',21,NULL);
+INSERT INTO `comments` VALUES (10536,10267,21,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-16 16:06:56.000','2026-09-16 16:06:56.000',21,NULL);
+INSERT INTO `comments` VALUES (10537,10267,2,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-26 07:15:39.000','2026-09-26 07:15:39.000',2,NULL);
+INSERT INTO `comments` VALUES (10538,10268,10,'C\'est bon pour moi, on peut fermer.','2026-09-03 17:56:33.000','2026-09-03 17:56:33.000',10,NULL);
+INSERT INTO `comments` VALUES (10539,10268,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-17 06:40:19.000','2026-09-17 06:40:19.000',10,NULL);
+INSERT INTO `comments` VALUES (10540,10270,1,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-08-28 13:49:00.000','2026-08-28 13:49:00.000',1,NULL);
+INSERT INTO `comments` VALUES (10541,10270,10,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-09 13:40:27.000','2026-09-09 13:40:27.000',10,NULL);
+INSERT INTO `comments` VALUES (10542,10270,10,'Même cause que RH-20, je fais le lien.','2026-09-13 15:39:09.000','2026-09-13 15:39:09.000',10,NULL);
+INSERT INTO `comments` VALUES (10543,10271,20,'Même cause que DEMO-26, je fais le lien.','2026-09-06 08:59:02.000','2026-09-06 13:45:04.000',1,NULL);
+INSERT INTO `comments` VALUES (10544,10271,19,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-16 17:14:42.000','2026-09-16 17:14:42.000',19,NULL);
+INSERT INTO `comments` VALUES (10545,10271,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-18 14:48:29.000','2026-09-18 14:48:29.000',16,NULL);
+INSERT INTO `comments` VALUES (10546,10272,12,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-08-29 15:16:42.000','2026-08-29 15:16:42.000',12,NULL);
+INSERT INTO `comments` VALUES (10547,10273,3,'C\'est bon pour moi, on peut fermer.','2026-08-31 12:45:19.000','2026-08-31 12:45:19.000',3,'developpeurs');
+INSERT INTO `comments` VALUES (10548,10273,6,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-06 15:45:07.000','2026-09-07 08:51:14.000',6,NULL);
+INSERT INTO `comments` VALUES (10549,10275,11,'[~marie.durand] tu peux regarder quand tu as un moment ?','2026-09-06 08:48:31.000','2026-09-06 08:48:31.000',11,NULL);
+INSERT INTO `comments` VALUES (10550,10275,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-06 16:20:30.000','2026-09-06 16:20:30.000',19,NULL);
+INSERT INTO `comments` VALUES (10551,10275,23,'Même cause que OPS-8, je fais le lien.','2026-09-14 12:59:46.000','2026-09-14 12:59:46.000',23,NULL);
+INSERT INTO `comments` VALUES (10552,10275,12,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-28 14:30:13.000','2026-09-28 14:30:13.000',12,'administrators');
+INSERT INTO `comments` VALUES (10553,10275,19,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-30 08:39:54.000','2026-09-30 08:39:54.000',19,NULL);
+INSERT INTO `comments` VALUES (10554,10275,7,'C\'est bon pour moi, on peut fermer.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',7,NULL);
+INSERT INTO `comments` VALUES (10555,10277,19,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-09-09 16:40:11.000','2026-09-09 16:40:11.000',19,'administrators');
+INSERT INTO `comments` VALUES (10556,10278,8,'Même cause que RH-25, je fais le lien.','2026-09-02 08:10:31.000','2026-09-02 08:10:31.000',8,NULL);
+INSERT INTO `comments` VALUES (10557,10278,8,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-09 07:45:32.000','2026-09-09 07:45:32.000',8,NULL);
+INSERT INTO `comments` VALUES (10558,10278,8,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-16 07:39:30.000','2026-09-17 16:53:33.000',8,NULL);
+INSERT INTO `comments` VALUES (10559,10279,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-12 10:30:05.000','2026-09-12 10:30:05.000',19,NULL);
+INSERT INTO `comments` VALUES (10560,10280,18,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-06 16:46:46.000','2026-09-06 16:46:46.000',18,NULL);
+INSERT INTO `comments` VALUES (10561,10281,16,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-10 14:53:07.000','2026-09-10 14:53:07.000',16,NULL);
+INSERT INTO `comments` VALUES (10562,10281,15,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-09-14 08:37:26.000','2026-09-14 08:37:26.000',15,'administrators');
+INSERT INTO `comments` VALUES (10563,10281,15,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-15 09:15:44.000','2026-09-15 09:15:44.000',15,NULL);
+INSERT INTO `comments` VALUES (10564,10281,15,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-22 11:16:08.000','2026-09-22 11:16:08.000',15,NULL);
+INSERT INTO `comments` VALUES (10565,10281,16,'C\'est bon pour moi, on peut fermer.','2026-09-28 06:44:15.000','2026-09-29 15:39:26.000',16,NULL);
+INSERT INTO `comments` VALUES (10566,10283,21,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-16 12:03:35.000','2026-09-16 12:03:35.000',21,NULL);
+INSERT INTO `comments` VALUES (10567,10283,12,'C\'est bon pour moi, on peut fermer.','2026-09-29 17:58:26.000','2026-09-29 17:58:26.000',12,NULL);
+INSERT INTO `comments` VALUES (10568,10283,23,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',23,'developpeurs');
+INSERT INTO `comments` VALUES (10569,10283,21,'C\'est bon pour moi, on peut fermer.','2026-10-01 16:00:01.000','2026-10-01 16:00:02.000',21,NULL);
+INSERT INTO `comments` VALUES (10570,10283,21,'Point fait avec le client ce matin, il valide la solution proposée.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',21,NULL);
+INSERT INTO `comments` VALUES (10571,10283,9,'Même cause que OPS-48, je fais le lien.','2026-10-01 16:00:03.000','2026-10-01 16:00:03.000',9,NULL);
+INSERT INTO `comments` VALUES (10572,10284,10,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-13 09:02:20.000','2026-09-13 09:02:20.000',10,NULL);
+INSERT INTO `comments` VALUES (10573,10284,15,'[~antoine.lefebvre] tu peux regarder quand tu as un moment ?','2026-09-21 12:18:25.000','2026-09-21 12:18:25.000',15,NULL);
+INSERT INTO `comments` VALUES (10574,10285,15,'Point fait avec le client ce matin, il valide la solution proposée.','2026-09-17 16:51:25.000','2026-09-17 16:51:25.000',15,NULL);
+INSERT INTO `comments` VALUES (10575,10286,6,'Même cause que WEB-18, je fais le lien.','2026-09-24 16:22:18.000','2026-09-24 16:22:18.000',6,NULL);
+INSERT INTO `comments` VALUES (10576,10286,4,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-09-28 10:48:40.000','2026-09-28 10:48:40.000',4,NULL);
+INSERT INTO `comments` VALUES (10577,10287,11,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-13 14:03:46.000','2026-09-13 14:03:46.000',11,'developpeurs');
+INSERT INTO `comments` VALUES (10578,10288,4,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-09-15 07:42:55.000','2026-09-15 07:42:55.000',4,NULL);
+INSERT INTO `comments` VALUES (10579,10288,12,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-09-30 16:18:17.000','2026-09-30 16:18:17.000',12,NULL);
+INSERT INTO `comments` VALUES (10580,10289,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-20 10:40:01.000','2026-09-20 10:40:01.000',11,NULL);
+INSERT INTO `comments` VALUES (10581,10289,11,'C\'est bon pour moi, on peut fermer.','2026-09-27 09:51:17.000','2026-09-27 09:51:17.000',11,'developpeurs');
+INSERT INTO `comments` VALUES (10582,10289,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',2,NULL);
+INSERT INTO `comments` VALUES (10583,10289,6,'Corrigé dans la branche {{fix/panier-vide}}, à valider en recette.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',6,NULL);
+INSERT INTO `comments` VALUES (10584,10289,17,'Même cause que DEMO-110, je fais le lien.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',17,NULL);
+INSERT INTO `comments` VALUES (10585,10290,11,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-23 13:13:49.000','2026-09-23 14:08:00.000',1,NULL);
+INSERT INTO `comments` VALUES (10586,10290,13,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-25 11:06:31.000','2026-09-25 11:06:31.000',13,NULL);
+INSERT INTO `comments` VALUES (10587,10290,16,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',16,NULL);
+INSERT INTO `comments` VALUES (10588,10290,17,'Même cause que WEB-73, je fais le lien.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',17,NULL);
+INSERT INTO `comments` VALUES (10589,10292,15,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-09-27 08:38:48.000','2026-09-27 08:38:48.000',15,NULL);
+INSERT INTO `comments` VALUES (10590,10292,10,'C\'est bon pour moi, on peut fermer.','2026-09-29 16:22:45.000','2026-09-30 12:44:25.000',10,NULL);
+INSERT INTO `comments` VALUES (10591,10292,18,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',18,NULL);
+INSERT INTO `comments` VALUES (10592,10292,3,'Point fait avec le client ce matin, il valide la solution proposée.','2026-10-01 16:00:01.000','2026-10-01 16:00:02.000',3,NULL);
+INSERT INTO `comments` VALUES (10593,10293,19,'C\'est bon pour moi, on peut fermer.','2026-09-28 16:34:19.000','2026-09-28 16:34:19.000',19,NULL);
+INSERT INTO `comments` VALUES (10594,10294,19,'[~maxime.bertrand] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',19,NULL);
+INSERT INTO `comments` VALUES (10595,10294,6,'Logs de la nuit :\n{noformat}\nWARN quota disque à 92 %\n{noformat}','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',6,NULL);
+INSERT INTO `comments` VALUES (10596,10294,19,'Attention : *ne pas déployer avant vendredi*, la migration n\'est pas prête.','2026-10-01 16:00:02.000','2026-10-01 16:00:02.000',19,NULL);
+INSERT INTO `comments` VALUES (10597,10294,3,'Même cause que WEB-51, je fais le lien.','2026-10-01 16:00:03.000','2026-10-01 16:00:04.000',1,NULL);
+INSERT INTO `comments` VALUES (10598,10295,2,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:01.000',1,NULL);
+INSERT INTO `comments` VALUES (10599,10295,2,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',2,NULL);
+INSERT INTO `comments` VALUES (10600,10296,22,'Je confirme, reproduit sur l\'environnement de recette.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',22,NULL);
+INSERT INTO `comments` VALUES (10601,10296,22,'[~julien.roux] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',22,NULL);
+INSERT INTO `comments` VALUES (10602,10297,6,'Je confirme, reproduit sur l\'environnement de recette.','2026-09-30 11:46:21.000','2026-09-30 11:46:21.000',6,NULL);
+INSERT INTO `comments` VALUES (10603,10297,10,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',10,NULL);
+INSERT INTO `comments` VALUES (10604,10297,16,'[~paul.martin] tu peux regarder quand tu as un moment ?','2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',16,NULL);
+INSERT INTO `comments` VALUES (10605,10298,3,'Pas reproduit chez moi. Tu as une capture ou les logs ?','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',3,NULL);
+INSERT INTO `comments` VALUES (10606,10299,1,'Estimation revue à la hausse : il faut aussi reprendre l\'export.','2026-10-01 16:00:00.000','2026-10-01 16:00:00.000',1,NULL);
 /*!40000 ALTER TABLE `comments` ENABLE KEYS */;
 DROP TABLE IF EXISTS `components`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -3538,6 +3537,39 @@ INSERT INTO `custom_fields` VALUES (10111,'com.pyxis.greenhopper.jira:gh-sprint'
 INSERT INTO `custom_fields` VALUES (10112,'com.pyxis.greenhopper.jira:gh-lexo-rank','com.pyxis.greenhopper.jira:gh-lexo-rank-searcher','Rank','Champ « Rank »');
 INSERT INTO `custom_fields` VALUES (10113,'com.pyxis.greenhopper.jira:gh-global-rank','com.pyxis.greenhopper.jira:gh-global-rank-searcher','Rank (Obsolete)','Champ « Rank (Obsolete) »');
 /*!40000 ALTER TABLE `custom_fields` ENABLE KEYS */;
+DROP TABLE IF EXISTS `dashboard_gadgets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dashboard_gadgets` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL,
+  `position` int(11) NOT NULL,
+  `kind` varchar(20) NOT NULL,
+  `filter_id` bigint(20) DEFAULT NULL,
+  `config` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ix_dg_user` (`user_id`,`position`),
+  KEY `fk_dg_filter` (`filter_id`),
+  CONSTRAINT `fk_dg_filter` FOREIGN KEY (`filter_id`) REFERENCES `filters` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_dg_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `dashboard_gadgets` DISABLE KEYS */;
+/*!40000 ALTER TABLE `dashboard_gadgets` ENABLE KEYS */;
+DROP TABLE IF EXISTS `dashboards`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dashboards` (
+  `user_id` bigint(20) NOT NULL,
+  `updated_at` datetime(3) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_dashboards_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `dashboards` DISABLE KEYS */;
+/*!40000 ALTER TABLE `dashboards` ENABLE KEYS */;
 DROP TABLE IF EXISTS `filter_favourites`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -3569,31 +3601,28 @@ CREATE TABLE `filter_shares` (
   `kind` varchar(20) NOT NULL,
   `group_id` bigint(20) DEFAULT NULL,
   `project_id` bigint(20) DEFAULT NULL,
-  `role_id` bigint(20) DEFAULT NULL,
   `user_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_fs_filter` (`filter_id`),
   KEY `fk_fs_group` (`group_id`),
   KEY `fk_fs_project` (`project_id`),
-  KEY `fk_fs_role` (`role_id`),
   KEY `fk_fs_user` (`user_id`),
   CONSTRAINT `fk_fs_filter` FOREIGN KEY (`filter_id`) REFERENCES `filters` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fs_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fs_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_fs_role` FOREIGN KEY (`role_id`) REFERENCES `project_roles` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `filter_shares` DISABLE KEYS */;
-INSERT INTO `filter_shares` VALUES (1,10000,'everyone',NULL,NULL,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (2,10001,'project',NULL,10000,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (3,10002,'group',3,NULL,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (4,10003,'project',NULL,10002,10000,NULL);
-INSERT INTO `filter_shares` VALUES (5,10004,'project',NULL,10000,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (6,10005,'project',NULL,10001,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (7,10006,'project',NULL,10003,NULL,NULL);
-INSERT INTO `filter_shares` VALUES (8,10007,'project',NULL,10002,10000,NULL);
+INSERT INTO `filter_shares` VALUES (1,10000,'everyone',NULL,NULL,NULL);
+INSERT INTO `filter_shares` VALUES (2,10001,'project',NULL,10000,NULL);
+INSERT INTO `filter_shares` VALUES (3,10002,'group',3,NULL,NULL);
+INSERT INTO `filter_shares` VALUES (4,10003,'project',8,10002,NULL);
+INSERT INTO `filter_shares` VALUES (5,10004,'project',NULL,10000,NULL);
+INSERT INTO `filter_shares` VALUES (6,10005,'project',NULL,10001,NULL);
+INSERT INTO `filter_shares` VALUES (7,10006,'project',NULL,10003,NULL);
+INSERT INTO `filter_shares` VALUES (8,10007,'project',8,10002,NULL);
 /*!40000 ALTER TABLE `filter_shares` ENABLE KEYS */;
 DROP TABLE IF EXISTS `filter_subscriptions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -3713,6 +3742,43 @@ INSERT INTO `group_members` VALUES (7,21);
 INSERT INTO `group_members` VALUES (7,22);
 INSERT INTO `group_members` VALUES (7,23);
 /*!40000 ALTER TABLE `group_members` ENABLE KEYS */;
+DROP TABLE IF EXISTS `group_project_members`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `group_project_members` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `group_id` bigint(20) NOT NULL,
+  `project_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `member_group_id` bigint(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_gpm_user` (`group_id`,`project_id`,`user_id`),
+  UNIQUE KEY `uq_gpm_group` (`group_id`,`project_id`,`member_group_id`),
+  KEY `ix_gpm_project` (`project_id`,`group_id`),
+  KEY `ix_gpm_user` (`user_id`),
+  KEY `fk_gpm_member_group` (`member_group_id`),
+  CONSTRAINT `fk_gpm_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_gpm_member_group` FOREIGN KEY (`member_group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_gpm_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_gpm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `group_project_members` DISABLE KEYS */;
+INSERT INTO `group_project_members` VALUES (1,8,10000,NULL,2);
+INSERT INTO `group_project_members` VALUES (2,9,10000,NULL,3);
+INSERT INTO `group_project_members` VALUES (3,9,10000,9,NULL);
+INSERT INTO `group_project_members` VALUES (4,10,10000,1,NULL);
+INSERT INTO `group_project_members` VALUES (5,8,10001,NULL,2);
+INSERT INTO `group_project_members` VALUES (6,9,10001,NULL,3);
+INSERT INTO `group_project_members` VALUES (7,9,10001,9,NULL);
+INSERT INTO `group_project_members` VALUES (8,10,10001,1,NULL);
+INSERT INTO `group_project_members` VALUES (9,8,10002,NULL,5);
+INSERT INTO `group_project_members` VALUES (10,8,10003,NULL,2);
+INSERT INTO `group_project_members` VALUES (11,9,10003,NULL,3);
+INSERT INTO `group_project_members` VALUES (12,9,10003,9,NULL);
+INSERT INTO `group_project_members` VALUES (13,10,10003,1,NULL);
+/*!40000 ALTER TABLE `group_project_members` ENABLE KEYS */;
 DROP TABLE IF EXISTS `issue_components`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -3992,17 +4058,20 @@ CREATE TABLE `issue_types` (
   `description` text DEFAULT NULL,
   `subtask` tinyint(1) NOT NULL DEFAULT 0,
   `position` int(11) NOT NULL DEFAULT 0,
+  `color` varchar(7) DEFAULT NULL,
+  `fill` varchar(20) DEFAULT NULL,
+  `icon` varchar(30) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `issue_types` DISABLE KEYS */;
-INSERT INTO `issue_types` VALUES ('1','Bug','Un problème qui empêche le produit de fonctionner normalement.',0,0);
-INSERT INTO `issue_types` VALUES ('10000','Epic','Un chantier qui regroupe plusieurs tickets.',0,4);
-INSERT INTO `issue_types` VALUES ('10001','Story','Un besoin exprimé du point de vue de l\'utilisateur.',0,5);
-INSERT INTO `issue_types` VALUES ('3','Task','Une tâche à réaliser.',0,1);
-INSERT INTO `issue_types` VALUES ('4','Improvement','L\'amélioration d\'une fonctionnalité existante.',0,2);
-INSERT INTO `issue_types` VALUES ('5','Sub-task','Une partie d\'un ticket plus large.',1,3);
+INSERT INTO `issue_types` VALUES ('1','Bug','Un problème qui empêche le produit de fonctionner normalement.',0,0,NULL,NULL,NULL);
+INSERT INTO `issue_types` VALUES ('10000','Epic','Un chantier qui regroupe plusieurs tickets.',0,4,NULL,NULL,NULL);
+INSERT INTO `issue_types` VALUES ('10001','Story','Un besoin exprimé du point de vue de l\'utilisateur.',0,5,NULL,NULL,NULL);
+INSERT INTO `issue_types` VALUES ('3','Task','Une tâche à réaliser.',0,1,NULL,NULL,NULL);
+INSERT INTO `issue_types` VALUES ('4','Improvement','L\'amélioration d\'une fonctionnalité existante.',0,2,NULL,NULL,NULL);
+INSERT INTO `issue_types` VALUES ('5','Sub-task','Une partie d\'un ticket plus large.',1,3,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `issue_types` ENABLE KEYS */;
 DROP TABLE IF EXISTS `issue_versions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5037,8 +5106,9 @@ CREATE TABLE `notification_batches` (
   `issue_id` bigint(20) NOT NULL,
   `first_at` datetime(3) NOT NULL,
   `send_at` datetime(3) NOT NULL,
+  `bulk_id` bigint(20) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_nb` (`user_id`,`digest`,`issue_id`),
+  UNIQUE KEY `uq_nb` (`user_id`,`digest`,`issue_id`,`bulk_id`),
   KEY `ix_nb_send` (`send_at`),
   CONSTRAINT `fk_nb_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
@@ -5070,6 +5140,7 @@ CREATE TABLE `notification_prefs` (
   `user_id` bigint(20) NOT NULL,
   `delivery` varchar(10) NOT NULL DEFAULT 'immediate',
   `digest_hour` tinyint(4) NOT NULL DEFAULT 8,
+  `digest_interval` smallint(6) NOT NULL DEFAULT 60,
   `own_changes` tinyint(1) NOT NULL DEFAULT 0,
   `disabled_events` varchar(255) NOT NULL DEFAULT '',
   `due_reminder` tinyint(1) NOT NULL DEFAULT 0,
@@ -5083,6 +5154,88 @@ CREATE TABLE `notification_prefs` (
 
 /*!40000 ALTER TABLE `notification_prefs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `notification_prefs` ENABLE KEYS */;
+DROP TABLE IF EXISTS `oauth_clients`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `oauth_clients` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `client_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `client_name` varchar(255) NOT NULL,
+  `redirect_uris` text NOT NULL,
+  `created_at` datetime(3) NOT NULL,
+  `authorized_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_oauth_clients_id` (`client_id`),
+  KEY `ix_oauth_clients_unused` (`authorized_at`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `oauth_clients` DISABLE KEYS */;
+/*!40000 ALTER TABLE `oauth_clients` ENABLE KEYS */;
+DROP TABLE IF EXISTS `oauth_codes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `oauth_codes` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `grant_id` bigint(20) NOT NULL,
+  `code_hash` char(64) NOT NULL,
+  `redirect_uri` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `code_challenge` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `scopes` varchar(255) NOT NULL,
+  `expires_at` datetime(3) NOT NULL,
+  `used_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_oauth_codes_hash` (`code_hash`),
+  KEY `fk_oauth_codes_grant` (`grant_id`),
+  CONSTRAINT `fk_oauth_codes_grant` FOREIGN KEY (`grant_id`) REFERENCES `oauth_grants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `oauth_codes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `oauth_codes` ENABLE KEYS */;
+DROP TABLE IF EXISTS `oauth_grants`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `oauth_grants` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL,
+  `client_id` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `client_key` char(64) NOT NULL,
+  `client_name` varchar(255) NOT NULL,
+  `scopes` varchar(255) NOT NULL,
+  `created_at` datetime(3) NOT NULL,
+  `last_used_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_oauth_grants_client` (`user_id`,`client_key`),
+  CONSTRAINT `fk_oauth_grants_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `oauth_grants` DISABLE KEYS */;
+/*!40000 ALTER TABLE `oauth_grants` ENABLE KEYS */;
+DROP TABLE IF EXISTS `oauth_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `oauth_tokens` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `grant_id` bigint(20) NOT NULL,
+  `family` bigint(20) NOT NULL,
+  `kind` varchar(10) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `scopes` varchar(255) NOT NULL,
+  `created_at` datetime(3) NOT NULL,
+  `expires_at` datetime(3) NOT NULL,
+  `used_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_oauth_tokens_hash` (`token_hash`),
+  KEY `ix_oauth_tokens_family` (`family`),
+  KEY `fk_oauth_tokens_grant` (`grant_id`),
+  CONSTRAINT `fk_oauth_tokens_grant` FOREIGN KEY (`grant_id`) REFERENCES `oauth_grants` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `oauth_tokens` DISABLE KEYS */;
+/*!40000 ALTER TABLE `oauth_tokens` ENABLE KEYS */;
 DROP TABLE IF EXISTS `priorities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -5180,14 +5333,11 @@ CREATE TABLE `project_notification_recipients` (
   `project_id` bigint(20) NOT NULL,
   `event` varchar(20) NOT NULL,
   `group_id` bigint(20) DEFAULT NULL,
-  `role_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_pnr_project` (`project_id`),
   KEY `fk_pnr_group` (`group_id`),
-  KEY `fk_pnr_role` (`role_id`),
   CONSTRAINT `fk_pnr_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pnr_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pnr_role` FOREIGN KEY (`role_id`) REFERENCES `project_roles` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_pnr_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -5216,144 +5366,89 @@ CREATE TABLE `project_permissions` (
   `holder` varchar(20) NOT NULL,
   `user_id` bigint(20) DEFAULT NULL,
   `group_id` bigint(20) DEFAULT NULL,
-  `role_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_pp_project` (`project_id`,`permission`),
   KEY `fk_pp_user` (`user_id`),
   KEY `fk_pp_group` (`group_id`),
-  KEY `fk_pp_role` (`role_id`),
   CONSTRAINT `fk_pp_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pp_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pp_role` FOREIGN KEY (`role_id`) REFERENCES `project_roles` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_pp_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `project_permissions` DISABLE KEYS */;
-INSERT INTO `project_permissions` VALUES (1,10000,'browse','everyone',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (2,10000,'create','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (3,10000,'edit','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (4,10000,'comment','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (5,10000,'transition','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (6,10000,'attach','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (7,10000,'link','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (8,10000,'worklog','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (9,10000,'assignable','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (10,10000,'assign','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (11,10000,'watchers','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (12,10000,'security','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (13,10000,'delete','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (14,10000,'admin','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (15,10000,'edit','reporter',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (16,10000,'transition','assignee',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (17,10000,'admin','lead',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (18,10000,'admin','user',2,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (19,10000,'link','group',NULL,3,NULL);
-INSERT INTO `project_permissions` VALUES (20,10000,'moderate','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (21,10001,'browse','everyone',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (22,10001,'create','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (23,10001,'edit','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (24,10001,'comment','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (25,10001,'transition','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (26,10001,'attach','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (27,10001,'link','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (28,10001,'worklog','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (29,10001,'assignable','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (30,10001,'assign','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (31,10001,'watchers','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (32,10001,'security','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (33,10001,'delete','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (34,10001,'admin','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (35,10001,'edit','reporter',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (36,10001,'transition','assignee',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (37,10001,'admin','lead',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (38,10001,'admin','user',2,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (39,10001,'link','group',NULL,3,NULL);
-INSERT INTO `project_permissions` VALUES (40,10001,'moderate','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (41,10002,'browse','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (42,10002,'browse','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (43,10002,'create','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (44,10002,'edit','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (45,10002,'comment','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (46,10002,'transition','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (47,10002,'assign','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (48,10002,'assignable','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (49,10002,'attach','group',NULL,5,NULL);
-INSERT INTO `project_permissions` VALUES (50,10002,'admin','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (51,10002,'delete','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (52,10003,'browse','everyone',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (53,10003,'create','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (54,10003,'edit','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (55,10003,'comment','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (56,10003,'transition','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (57,10003,'attach','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (58,10003,'link','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (59,10003,'worklog','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (60,10003,'assignable','role',NULL,NULL,10000);
-INSERT INTO `project_permissions` VALUES (61,10003,'assign','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (62,10003,'watchers','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (63,10003,'security','role',NULL,NULL,10001);
-INSERT INTO `project_permissions` VALUES (64,10003,'delete','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (65,10003,'admin','role',NULL,NULL,10002);
-INSERT INTO `project_permissions` VALUES (66,10003,'edit','reporter',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (67,10003,'transition','assignee',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (68,10003,'admin','lead',NULL,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (69,10003,'admin','user',2,NULL,NULL);
-INSERT INTO `project_permissions` VALUES (70,10003,'link','group',NULL,3,NULL);
-INSERT INTO `project_permissions` VALUES (71,10003,'moderate','role',NULL,NULL,10002);
+INSERT INTO `project_permissions` VALUES (1,10000,'browse','everyone',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (2,10000,'create','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (3,10000,'edit','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (4,10000,'comment','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (5,10000,'transition','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (6,10000,'attach','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (7,10000,'link','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (8,10000,'worklog','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (9,10000,'assignable','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (10,10000,'assign','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (11,10000,'watchers','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (12,10000,'security','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (13,10000,'delete','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (14,10000,'admin','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (15,10000,'edit','reporter',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (16,10000,'transition','assignee',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (17,10000,'admin','lead',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (18,10000,'admin','user',2,NULL);
+INSERT INTO `project_permissions` VALUES (19,10000,'link','group',NULL,3);
+INSERT INTO `project_permissions` VALUES (20,10000,'moderate','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (21,10001,'browse','everyone',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (22,10001,'create','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (23,10001,'edit','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (24,10001,'comment','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (25,10001,'transition','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (26,10001,'attach','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (27,10001,'link','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (28,10001,'worklog','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (29,10001,'assignable','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (30,10001,'assign','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (31,10001,'watchers','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (32,10001,'security','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (33,10001,'delete','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (34,10001,'admin','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (35,10001,'edit','reporter',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (36,10001,'transition','assignee',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (37,10001,'admin','lead',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (38,10001,'admin','user',2,NULL);
+INSERT INTO `project_permissions` VALUES (39,10001,'link','group',NULL,3);
+INSERT INTO `project_permissions` VALUES (40,10001,'moderate','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (41,10002,'browse','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (42,10002,'browse','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (43,10002,'create','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (44,10002,'edit','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (45,10002,'comment','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (46,10002,'transition','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (47,10002,'assign','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (48,10002,'assignable','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (49,10002,'attach','group',NULL,5);
+INSERT INTO `project_permissions` VALUES (50,10002,'admin','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (51,10002,'delete','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (52,10003,'browse','everyone',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (53,10003,'create','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (54,10003,'edit','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (55,10003,'comment','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (56,10003,'transition','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (57,10003,'attach','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (58,10003,'link','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (59,10003,'worklog','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (60,10003,'assignable','group',NULL,8);
+INSERT INTO `project_permissions` VALUES (61,10003,'assign','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (62,10003,'watchers','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (63,10003,'security','group',NULL,9);
+INSERT INTO `project_permissions` VALUES (64,10003,'delete','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (65,10003,'admin','group',NULL,10);
+INSERT INTO `project_permissions` VALUES (66,10003,'edit','reporter',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (67,10003,'transition','assignee',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (68,10003,'admin','lead',NULL,NULL);
+INSERT INTO `project_permissions` VALUES (69,10003,'admin','user',2,NULL);
+INSERT INTO `project_permissions` VALUES (70,10003,'link','group',NULL,3);
+INSERT INTO `project_permissions` VALUES (71,10003,'moderate','group',NULL,10);
 /*!40000 ALTER TABLE `project_permissions` ENABLE KEYS */;
-DROP TABLE IF EXISTS `project_role_members`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_role_members` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `project_id` bigint(20) NOT NULL,
-  `role_id` bigint(20) NOT NULL,
-  `user_id` bigint(20) DEFAULT NULL,
-  `group_id` bigint(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ix_prm_project` (`project_id`,`role_id`),
-  KEY `fk_prm_role` (`role_id`),
-  KEY `fk_prm_user` (`user_id`),
-  KEY `fk_prm_group` (`group_id`),
-  CONSTRAINT `fk_prm_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_prm_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_prm_role` FOREIGN KEY (`role_id`) REFERENCES `project_roles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_prm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
-/*!40000 ALTER TABLE `project_role_members` DISABLE KEYS */;
-INSERT INTO `project_role_members` VALUES (1,10000,10000,NULL,2);
-INSERT INTO `project_role_members` VALUES (2,10000,10001,NULL,3);
-INSERT INTO `project_role_members` VALUES (3,10000,10001,9,NULL);
-INSERT INTO `project_role_members` VALUES (4,10000,10002,1,NULL);
-INSERT INTO `project_role_members` VALUES (5,10001,10000,NULL,2);
-INSERT INTO `project_role_members` VALUES (6,10001,10001,NULL,3);
-INSERT INTO `project_role_members` VALUES (7,10001,10001,9,NULL);
-INSERT INTO `project_role_members` VALUES (8,10001,10002,1,NULL);
-INSERT INTO `project_role_members` VALUES (9,10002,10000,NULL,5);
-INSERT INTO `project_role_members` VALUES (10,10003,10000,NULL,2);
-INSERT INTO `project_role_members` VALUES (11,10003,10001,NULL,3);
-INSERT INTO `project_role_members` VALUES (12,10003,10001,9,NULL);
-INSERT INTO `project_role_members` VALUES (13,10003,10002,1,NULL);
-/*!40000 ALTER TABLE `project_role_members` ENABLE KEYS */;
-DROP TABLE IF EXISTS `project_roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_roles` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10003 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
-/*!40000 ALTER TABLE `project_roles` DISABLE KEYS */;
-INSERT INTO `project_roles` VALUES (10000,'Users','Utilisateurs du projet');
-INSERT INTO `project_roles` VALUES (10001,'Developers','Développeurs du projet');
-INSERT INTO `project_roles` VALUES (10002,'Administrators','Administrateurs du projet');
-/*!40000 ALTER TABLE `project_roles` ENABLE KEYS */;
 DROP TABLE IF EXISTS `projects`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -5393,24 +5488,26 @@ CREATE TABLE `remote_links` (
   `url` text NOT NULL,
   `title` varchar(255) NOT NULL,
   `relationship` varchar(255) DEFAULT NULL,
+  `global_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_remote_links_global_id` (`issue_id`,`global_id`),
   KEY `ix_remote_links_issue` (`issue_id`),
   CONSTRAINT `fk_remote_links_issue` FOREIGN KEY (`issue_id`) REFERENCES `issues` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=10011 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `remote_links` DISABLE KEYS */;
-INSERT INTO `remote_links` VALUES (10000,10282,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/100','MR !100 — la gestion des rôles','mentionné dans');
-INSERT INTO `remote_links` VALUES (10001,10017,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/107','MR !107 — les traductions anglaises','mentionné dans');
-INSERT INTO `remote_links` VALUES (10002,10089,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/114','MR !114 — la gestion des rôles','mentionné dans');
-INSERT INTO `remote_links` VALUES (10003,10142,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/121','MR !121 — le système de notifications','mentionné dans');
-INSERT INTO `remote_links` VALUES (10004,10215,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/128','MR !128 — la configuration du cache','mentionné dans');
-INSERT INTO `remote_links` VALUES (10005,10229,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/135','MR !135 — la configuration du cache','mentionné dans');
-INSERT INTO `remote_links` VALUES (10006,10244,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/142','MR !142 — la configuration du cache','mentionné dans');
-INSERT INTO `remote_links` VALUES (10007,10011,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/149','MR !149 — les traductions anglaises','mentionné dans');
-INSERT INTO `remote_links` VALUES (10008,10208,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/156','MR !156 — les tests de bout en bout','mentionné dans');
-INSERT INTO `remote_links` VALUES (10009,10072,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/163','MR !163 — le parcours d\'inscription','mentionné dans');
-INSERT INTO `remote_links` VALUES (10010,10215,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/170','MR !170 — le parcours d\'inscription','mentionné dans');
+INSERT INTO `remote_links` VALUES (10000,10282,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/100','MR !100 — la gestion des rôles','mentionné dans','gitlab:mr:100');
+INSERT INTO `remote_links` VALUES (10001,10017,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/107','MR !107 — les traductions anglaises','mentionné dans','gitlab:mr:107');
+INSERT INTO `remote_links` VALUES (10002,10089,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/114','MR !114 — la gestion des rôles','mentionné dans','gitlab:mr:114');
+INSERT INTO `remote_links` VALUES (10003,10142,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/121','MR !121 — le système de notifications','mentionné dans','gitlab:mr:121');
+INSERT INTO `remote_links` VALUES (10004,10215,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/128','MR !128 — la configuration du cache','mentionné dans','gitlab:mr:128');
+INSERT INTO `remote_links` VALUES (10005,10229,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/135','MR !135 — la configuration du cache','mentionné dans','gitlab:mr:135');
+INSERT INTO `remote_links` VALUES (10006,10244,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/142','MR !142 — la configuration du cache','mentionné dans','gitlab:mr:142');
+INSERT INTO `remote_links` VALUES (10007,10011,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/149','MR !149 — les traductions anglaises','mentionné dans','gitlab:mr:149');
+INSERT INTO `remote_links` VALUES (10008,10208,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/156','MR !156 — les tests de bout en bout','mentionné dans','gitlab:mr:156');
+INSERT INTO `remote_links` VALUES (10009,10072,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/163','MR !163 — le parcours d\'inscription','mentionné dans','gitlab:mr:163');
+INSERT INTO `remote_links` VALUES (10010,10215,'https://gitlab.exemple.fr/boutique/web/-/merge_requests/170','MR !170 — le parcours d\'inscription','mentionné dans','gitlab:mr:170');
 /*!40000 ALTER TABLE `remote_links` ENABLE KEYS */;
 DROP TABLE IF EXISTS `resolutions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5456,6 +5553,19 @@ INSERT INTO `schema_migrations` VALUES ('0009_api_tokens_audit','2026-10-01 18:0
 INSERT INTO `schema_migrations` VALUES ('0010_admin','2026-10-01 18:00:00.000');
 INSERT INTO `schema_migrations` VALUES ('0011_default_resolution','2026-10-01 18:00:00.000');
 INSERT INTO `schema_migrations` VALUES ('0012_account_tokens','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0013_remote_link_global_id','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0014_directory','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0015_bulk_notifications','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0016_oidc','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0017_dashboards','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0017_kanban_backlog','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0018_user_scope_project','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0019_token_scopes','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0020_oauth','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0021_oauth_clients','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0022_notify_interval','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0023_issue_type_style','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0024_group_project_members','2026-10-01 18:00:00.000');
 /*!40000 ALTER TABLE `schema_migrations` ENABLE KEYS */;
 DROP TABLE IF EXISTS `security_level_members`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5466,24 +5576,21 @@ CREATE TABLE `security_level_members` (
   `holder` varchar(20) NOT NULL,
   `user_id` bigint(20) DEFAULT NULL,
   `group_id` bigint(20) DEFAULT NULL,
-  `role_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_slm_level` (`level_id`),
   KEY `fk_slm_user` (`user_id`),
   KEY `fk_slm_group` (`group_id`),
-  KEY `fk_slm_role` (`role_id`),
   CONSTRAINT `fk_slm_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_slm_level` FOREIGN KEY (`level_id`) REFERENCES `security_levels` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_slm_role` FOREIGN KEY (`role_id`) REFERENCES `project_roles` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_slm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `security_level_members` DISABLE KEYS */;
-INSERT INTO `security_level_members` VALUES (1,1,'group',NULL,3,NULL);
-INSERT INTO `security_level_members` VALUES (2,2,'reporter',NULL,NULL,NULL);
-INSERT INTO `security_level_members` VALUES (3,2,'user',2,NULL,NULL);
-INSERT INTO `security_level_members` VALUES (4,2,'role',NULL,NULL,10002);
+INSERT INTO `security_level_members` VALUES (1,1,'group',NULL,3);
+INSERT INTO `security_level_members` VALUES (2,2,'reporter',NULL,NULL);
+INSERT INTO `security_level_members` VALUES (3,2,'user',2,NULL);
+INSERT INTO `security_level_members` VALUES (4,2,'group',NULL,10);
 /*!40000 ALTER TABLE `security_level_members` ENABLE KEYS */;
 DROP TABLE IF EXISTS `security_levels`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5656,19 +5763,23 @@ CREATE TABLE `user_groups` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   `description` varchar(255) DEFAULT NULL,
+  `from_directory` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_groups_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `user_groups` DISABLE KEYS */;
-INSERT INTO `user_groups` VALUES (1,'jira-administrators','Administrateurs de Jira');
-INSERT INTO `user_groups` VALUES (2,'jira-software-users','Utilisateurs de Jira Software');
-INSERT INTO `user_groups` VALUES (3,'developpeurs','Équipe de développement');
-INSERT INTO `user_groups` VALUES (4,'equipe-mobile','Équipe mobile');
-INSERT INTO `user_groups` VALUES (5,'rh','Ressources humaines');
-INSERT INTO `user_groups` VALUES (6,'direction','Direction');
-INSERT INTO `user_groups` VALUES (7,'ldap-devs','Développeurs (annuaire LDAP)');
+INSERT INTO `user_groups` VALUES (1,'jira-administrators','Administrateurs de Jira',0);
+INSERT INTO `user_groups` VALUES (2,'jira-software-users','Utilisateurs de Jira Software',0);
+INSERT INTO `user_groups` VALUES (3,'developpeurs','Équipe de développement',0);
+INSERT INTO `user_groups` VALUES (4,'equipe-mobile','Équipe mobile',0);
+INSERT INTO `user_groups` VALUES (5,'rh','Ressources humaines',0);
+INSERT INTO `user_groups` VALUES (6,'direction','Direction',0);
+INSERT INTO `user_groups` VALUES (7,'ldap-devs','Développeurs (annuaire LDAP)',0);
+INSERT INTO `user_groups` VALUES (8,'users','Utilisateurs du projet',0);
+INSERT INTO `user_groups` VALUES (9,'developers','Développeurs du projet',0);
+INSERT INTO `user_groups` VALUES (10,'administrators','Administrateurs du projet',0);
 /*!40000 ALTER TABLE `user_groups` ENABLE KEYS */;
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5685,37 +5796,44 @@ CREATE TABLE `users` (
   `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `locale` varchar(10) DEFAULT NULL,
   `last_login_at` datetime(3) DEFAULT NULL,
+  `directory` varchar(16) NOT NULL DEFAULT '',
+  `oidc_issuer` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `oidc_subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `scope_project_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_users_username` (`username`),
-  UNIQUE KEY `uq_users_user_key` (`user_key`)
+  UNIQUE KEY `uq_users_user_key` (`user_key`),
+  UNIQUE KEY `uq_users_oidc` (`oidc_issuer`,`oidc_subject`),
+  KEY `fk_users_scope_project` (`scope_project_id`),
+  CONSTRAINT `fk_users_scope_project` FOREIGN KEY (`scope_project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','admin','Administrateur Jira','admin@exemple.fr','{PKCS5S2}MEAB9soi6lXWxnAi1ZpQwI1Bf+9UqaV7kvMi6emYcDosZpNrngOkUxMQIlyX+0pj',1,1,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (2,'marie.durand','JIRAUSER10000','Marie Durand','marie.durand@exemple.fr','{PKCS5S2}1xI6CHqVLCEfl7Duq/h22Z/yitXzJWGl450MB3HSU/Wcl0fct2e13UWwAUO2wJ7a',1,1,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (3,'paul.martin','paul.martin','Paul Martin','paul.martin@exemple.fr','{PKCS5S2}WwhSmXA0CGrztvGuxebc4QsW7R8rB7aMJeJg1asX8/oi5L2A3NG6OQABKMpzOzEt',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (4,'jeanne.dupont','jdoe','Jeanne Dupont','jeanne.dupont@exemple.fr','{PKCS5S2}v6mZ9DwXFyhV8m+VCB4A3EzU3iBT/x8DBOKfiZgOL/jIUYzodF9/GJuZuQJhTCNO',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (5,'lucas.bernard','JIRAUSER10001','Lucas Bernard','lucas.bernard@exemple.fr','{PKCS5S2}z2N+TUT/qyWiWp2ojK65e4O9Qcq6Q5KVtwmY30uz7x3bFafwatIzUHwOKtR1xKIi',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (6,'camille.petit','JIRAUSER10002','Camille Petit','camille.petit@exemple.fr','{PKCS5S2}6r9hQ81LQT0rbKPhh2aHoLSI9lMiEQWNkGXTvLkFiT61vhI4HGpxb0KWJ1H8AOR9',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (7,'hugo.robert','JIRAUSER10003','Hugo Robert','hugo.robert@exemple.fr','{PKCS5S2}6UQhrlSm26oCeJrPTKv0rnl+ueVw+5xoR9vS4/zNnh0Ic38qIzQ3sgT4Q6gGUtDj',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (8,'lea.richard','JIRAUSER10004','Léa Richard','lea.richard@exemple.fr','{PKCS5S2}6I7TEdI3lg3+88ddVNYh35rC9i5FDEvBmR3cHFySG6TsAX0D0y3av5udC8ScxvQ4',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (9,'thomas.moreau','JIRAUSER10005','Thomas Moreau','thomas.moreau@exemple.fr','{PKCS5S2}29D1E6H00sm5djR3IxKaSqEbDV3/GdtTxDCoWsQpQwVC4n0FuNUq3ePyXRWYEaEg',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (10,'chloe.simon','JIRAUSER10006','Chloé Simon','chloe.simon@exemple.fr','{PKCS5S2}ahwnq6vPfFoaRWYvoz4wM2oOcrJQGckMdJnuszVOw1lQgaAJo5SPbpneMRf9j8ft',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (11,'nicolas.laurent','JIRAUSER10007','Nicolas Laurent','nicolas.laurent@exemple.fr','{PKCS5S2}/w9gPWT/wkk2Shq06LxRqdv/cfwI7AxybaZIuDXvCyFGIt1sYJIU+qu66dARZ0XV',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (12,'manon.michel','JIRAUSER10008','Manon Michel','manon.michel@exemple.fr','{PKCS5S2}YWHtqgs0QOE+9n/+0Ppj1Xchkrt6N7kMR/lB6mnIRZ4010s6+t2BkzFE8iGX7KBf',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (13,'antoine.lefebvre','JIRAUSER10009','Antoine Lefebvre','antoine.lefebvre@exemple.fr','{PKCS5S2}MX6rG8c2yKcqP4EgUmN/axEA60AnAf03J64YJmgxrVKnMtZ3r3vgpZV4qjo0umRG',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (14,'sarah.leroy','JIRAUSER10010','Sarah Leroy','sarah.leroy@exemple.fr','{PKCS5S2}Gql35gzIbjAzfSBj+JqLT09XLeuD5XSwIsxOkLKS89J/TZRoYOkQkKHre6ANI1/2',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (15,'julien.roux','JIRAUSER10011','Julien Roux','julien.roux@exemple.fr','{PKCS5S2}sSEgMNRLVb9NYwGxD70KjpscpugvkwKck4tqVxf6jv1d/AiNDunkWGO0iOV7IIOz',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (16,'ines.david','JIRAUSER10012','Inès David','ines.david@exemple.fr','{PKCS5S2}p9ZHfYOA0EvBGcRJbQQyzGdkrUZPNTMno9LVTRSL8ftknYDylA0aK/nIWkTuiER1',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (17,'maxime.bertrand','JIRAUSER10013','Maxime Bertrand','maxime.bertrand@exemple.fr','{PKCS5S2}THLXZ8im4C9PXEUPx/c9HjtiszGsVRwze9yFkVNh72ttctMBJeePMG5Eatk1+IrW',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (18,'emma.morel','JIRAUSER10014','Emma Morel','emma.morel@exemple.fr','{PKCS5S2}jlKB2JfAa8eQ+5rl9gHPteeEbuk6U0pKPxe95oBeaUiVEHuP1zbR2pSijyWgqd8e',0,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (19,'louis.fournier','JIRAUSER10015','Louis Fournier','louis.fournier@exemple.fr','{PKCS5S2}phU4eqwYkpFgaMv1q2euaI5VYvJNyPZKx2hhAETsNYnehjencvKODSei9E8kev2x',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (20,'alice.girard','JIRAUSER10016','Alice Girard','alice.girard@exemple.fr','{PKCS5S2}CEWY1Fj6oLEnaUogvH2cFZVFCsFk1Onvfw5MgP+eu4+BwQswu1Hm58Qssadm4rE3',1,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (21,'karim.benali','JIRAUSER10017','Karim Benali','karim.benali@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (22,'sophie.lambert','JIRAUSER10018','Sophie Lambert','sophie.lambert@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (23,'yann.lecomte','JIRAUSER10019','Yann Lecomte','yann.lecomte@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL);
-INSERT INTO `users` VALUES (24,'ancien.collegue','JIRAUSER10099','ancien.collegue','',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL);
+INSERT INTO `users` VALUES (1,'admin','admin','Administrateur Jira','admin@exemple.fr','{PKCS5S2}MEAB9soi6lXWxnAi1ZpQwI1Bf+9UqaV7kvMi6emYcDosZpNrngOkUxMQIlyX+0pj',1,1,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (2,'marie.durand','JIRAUSER10000','Marie Durand','marie.durand@exemple.fr','{PKCS5S2}1xI6CHqVLCEfl7Duq/h22Z/yitXzJWGl450MB3HSU/Wcl0fct2e13UWwAUO2wJ7a',1,1,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (3,'paul.martin','paul.martin','Paul Martin','paul.martin@exemple.fr','{PKCS5S2}WwhSmXA0CGrztvGuxebc4QsW7R8rB7aMJeJg1asX8/oi5L2A3NG6OQABKMpzOzEt',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (4,'jeanne.dupont','jdoe','Jeanne Dupont','jeanne.dupont@exemple.fr','{PKCS5S2}v6mZ9DwXFyhV8m+VCB4A3EzU3iBT/x8DBOKfiZgOL/jIUYzodF9/GJuZuQJhTCNO',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (5,'lucas.bernard','JIRAUSER10001','Lucas Bernard','lucas.bernard@exemple.fr','{PKCS5S2}z2N+TUT/qyWiWp2ojK65e4O9Qcq6Q5KVtwmY30uz7x3bFafwatIzUHwOKtR1xKIi',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (6,'camille.petit','JIRAUSER10002','Camille Petit','camille.petit@exemple.fr','{PKCS5S2}6r9hQ81LQT0rbKPhh2aHoLSI9lMiEQWNkGXTvLkFiT61vhI4HGpxb0KWJ1H8AOR9',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (7,'hugo.robert','JIRAUSER10003','Hugo Robert','hugo.robert@exemple.fr','{PKCS5S2}6UQhrlSm26oCeJrPTKv0rnl+ueVw+5xoR9vS4/zNnh0Ic38qIzQ3sgT4Q6gGUtDj',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (8,'lea.richard','JIRAUSER10004','Léa Richard','lea.richard@exemple.fr','{PKCS5S2}6I7TEdI3lg3+88ddVNYh35rC9i5FDEvBmR3cHFySG6TsAX0D0y3av5udC8ScxvQ4',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (9,'thomas.moreau','JIRAUSER10005','Thomas Moreau','thomas.moreau@exemple.fr','{PKCS5S2}29D1E6H00sm5djR3IxKaSqEbDV3/GdtTxDCoWsQpQwVC4n0FuNUq3ePyXRWYEaEg',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (10,'chloe.simon','JIRAUSER10006','Chloé Simon','chloe.simon@exemple.fr','{PKCS5S2}ahwnq6vPfFoaRWYvoz4wM2oOcrJQGckMdJnuszVOw1lQgaAJo5SPbpneMRf9j8ft',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (11,'nicolas.laurent','JIRAUSER10007','Nicolas Laurent','nicolas.laurent@exemple.fr','{PKCS5S2}/w9gPWT/wkk2Shq06LxRqdv/cfwI7AxybaZIuDXvCyFGIt1sYJIU+qu66dARZ0XV',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (12,'manon.michel','JIRAUSER10008','Manon Michel','manon.michel@exemple.fr','{PKCS5S2}YWHtqgs0QOE+9n/+0Ppj1Xchkrt6N7kMR/lB6mnIRZ4010s6+t2BkzFE8iGX7KBf',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (13,'antoine.lefebvre','JIRAUSER10009','Antoine Lefebvre','antoine.lefebvre@exemple.fr','{PKCS5S2}MX6rG8c2yKcqP4EgUmN/axEA60AnAf03J64YJmgxrVKnMtZ3r3vgpZV4qjo0umRG',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (14,'sarah.leroy','JIRAUSER10010','Sarah Leroy','sarah.leroy@exemple.fr','{PKCS5S2}Gql35gzIbjAzfSBj+JqLT09XLeuD5XSwIsxOkLKS89J/TZRoYOkQkKHre6ANI1/2',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (15,'julien.roux','JIRAUSER10011','Julien Roux','julien.roux@exemple.fr','{PKCS5S2}sSEgMNRLVb9NYwGxD70KjpscpugvkwKck4tqVxf6jv1d/AiNDunkWGO0iOV7IIOz',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (16,'ines.david','JIRAUSER10012','Inès David','ines.david@exemple.fr','{PKCS5S2}p9ZHfYOA0EvBGcRJbQQyzGdkrUZPNTMno9LVTRSL8ftknYDylA0aK/nIWkTuiER1',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (17,'maxime.bertrand','JIRAUSER10013','Maxime Bertrand','maxime.bertrand@exemple.fr','{PKCS5S2}THLXZ8im4C9PXEUPx/c9HjtiszGsVRwze9yFkVNh72ttctMBJeePMG5Eatk1+IrW',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (18,'emma.morel','JIRAUSER10014','Emma Morel','emma.morel@exemple.fr','{PKCS5S2}jlKB2JfAa8eQ+5rl9gHPteeEbuk6U0pKPxe95oBeaUiVEHuP1zbR2pSijyWgqd8e',0,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (19,'louis.fournier','JIRAUSER10015','Louis Fournier','louis.fournier@exemple.fr','{PKCS5S2}phU4eqwYkpFgaMv1q2euaI5VYvJNyPZKx2hhAETsNYnehjencvKODSei9E8kev2x',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (20,'alice.girard','JIRAUSER10016','Alice Girard','alice.girard@exemple.fr','{PKCS5S2}CEWY1Fj6oLEnaUogvH2cFZVFCsFk1Onvfw5MgP+eu4+BwQswu1Hm58Qssadm4rE3',1,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (21,'karim.benali','JIRAUSER10017','Karim Benali','karim.benali@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (22,'sophie.lambert','JIRAUSER10018','Sophie Lambert','sophie.lambert@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (23,'yann.lecomte','JIRAUSER10019','Yann Lecomte','yann.lecomte@exemple.fr',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
+INSERT INTO `users` VALUES (24,'ancien.collegue','JIRAUSER10099','ancien.collegue','',NULL,0,0,'2026-10-01 18:00:00.000',NULL,NULL,'',NULL,NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 DROP TABLE IF EXISTS `versions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -6865,178 +6983,175 @@ CREATE TABLE `worklogs` (
   `updated_at` datetime(3) NOT NULL,
   `updated_by_id` bigint(20) DEFAULT NULL,
   `visibility_group` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
-  `visibility_role_id` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_worklogs_issue` (`issue_id`),
   KEY `fk_worklogs_author` (`author_id`),
   KEY `fk_worklogs_updated_by` (`updated_by_id`),
-  KEY `fk_worklogs_role` (`visibility_role_id`),
   CONSTRAINT `fk_worklogs_author` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_worklogs_issue` FOREIGN KEY (`issue_id`) REFERENCES `issues` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_worklogs_role` FOREIGN KEY (`visibility_role_id`) REFERENCES `project_roles` (`id`),
   CONSTRAINT `fk_worklogs_updated_by` FOREIGN KEY (`updated_by_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=10158 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `worklogs` DISABLE KEYS */;
-INSERT INTO `worklogs` VALUES (10000,10008,5,'Tests et recette','2025-09-19 10:36:16.000',27900,'2025-09-19 13:37:16.000','2025-09-19 13:37:16.000',5,'developpeurs',NULL);
-INSERT INTO `worklogs` VALUES (10001,10008,5,NULL,'2025-09-28 08:15:40.000',10800,'2025-09-28 09:28:19.000','2025-09-28 09:28:19.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10002,10008,5,'Tests et recette','2025-09-29 07:46:16.000',27000,'2025-09-29 17:31:07.000','2025-09-29 17:31:07.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10003,10013,10,'Point avec le client','2025-09-28 10:47:06.000',28800,'2025-09-28 17:11:05.000','2025-09-28 17:11:05.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10004,10013,10,'Revue de code','2025-10-06 07:45:53.000',8100,'2025-10-06 09:41:16.000','2025-10-06 09:41:16.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10005,10013,10,'Analyse','2025-10-07 12:16:45.000',8100,'2025-10-07 16:56:47.000','2025-10-07 16:56:47.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10006,10013,10,'Analyse','2025-10-10 17:27:42.000',20700,'2025-10-10 17:32:26.000','2025-10-10 17:32:26.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10007,10015,11,'Analyse','2025-10-08 13:56:07.000',2700,'2025-10-08 16:22:19.000','2025-10-08 16:22:19.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10008,10015,11,'Point avec le client','2025-10-15 09:41:05.000',7200,'2025-10-15 14:52:20.000','2025-10-15 14:52:20.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10009,10015,11,NULL,'2025-10-19 14:48:05.000',22500,'2025-10-19 15:00:29.000','2025-10-19 15:00:29.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10010,10027,9,'Point avec le client','2025-10-26 13:20:17.000',27900,'2025-10-26 17:10:02.000','2025-10-26 17:10:02.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10011,10027,9,'Revue de code','2025-11-03 12:28:49.000',27000,'2025-11-03 16:50:48.000','2025-11-03 16:50:48.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10012,10027,9,'Revue de code','2025-11-03 14:26:16.000',3600,'2025-11-03 18:55:28.000','2025-11-03 18:55:28.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10013,10027,9,NULL,'2025-11-03 18:42:25.000',14400,'2025-11-03 18:51:16.000','2025-11-03 18:51:16.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10014,10029,11,'Analyse','2025-10-27 18:44:16.000',9900,'2025-10-27 18:58:43.000','2025-10-27 18:58:43.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10015,10029,11,NULL,'2025-11-05 14:10:50.000',7200,'2025-11-05 17:53:37.000','2025-11-05 17:53:37.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10016,10029,11,NULL,'2025-11-05 18:58:35.000',11700,'2025-11-05 18:58:36.000','2025-11-05 18:58:36.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10017,10039,4,NULL,'2025-11-09 14:30:39.000',17100,'2025-11-09 17:12:17.000','2025-11-09 17:12:17.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10018,10039,4,'Point avec le client','2025-11-15 08:41:45.000',9900,'2025-11-15 14:01:24.000','2025-11-15 14:01:24.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10019,10039,4,'Développement','2025-11-25 14:40:22.000',1800,'2025-11-25 15:42:51.000','2025-11-25 15:42:51.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10020,10039,4,'Développement','2025-12-02 17:16:06.000',22500,'2025-12-02 18:19:05.000','2025-12-02 18:19:05.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10021,10040,13,NULL,'2025-11-11 10:30:30.000',14400,'2025-11-11 11:08:44.000','2025-11-11 11:08:44.000',13,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10022,10040,6,'Analyse','2025-11-21 13:42:32.000',14400,'2025-11-21 17:34:33.000','2025-11-21 17:34:33.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10023,10040,3,'Tests et recette','2025-11-26 08:23:18.000',2700,'2025-11-26 11:30:33.000','2025-11-26 11:30:33.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10024,10040,2,NULL,'2025-12-01 12:38:28.000',22500,'2025-12-01 17:16:15.000','2025-12-01 17:16:15.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10025,10043,7,'Point avec le client','2025-11-17 13:27:46.000',18900,'2025-11-17 16:50:05.000','2025-11-17 16:50:05.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10026,10043,7,NULL,'2025-11-25 14:46:31.000',11700,'2025-11-25 16:15:27.000','2025-11-25 16:15:27.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10027,10043,7,'Analyse','2025-11-26 08:58:09.000',13500,'2025-11-26 15:51:51.000','2025-11-26 15:51:51.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10028,10043,7,NULL,'2025-11-29 12:38:13.000',13500,'2025-11-29 12:38:29.000','2025-11-29 12:38:29.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10029,10056,6,'Point avec le client','2025-12-02 18:13:26.000',19800,'2025-12-02 18:15:53.000','2025-12-02 18:15:53.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10030,10056,6,'Déploiement','2025-12-05 08:22:59.000',26100,'2025-12-05 10:08:47.000','2025-12-05 10:08:47.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10031,10056,6,'Point avec le client','2025-12-10 17:30:07.000',15300,'2025-12-10 17:42:54.000','2025-12-10 17:42:54.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10032,10056,6,'Point avec le client','2025-12-19 13:02:39.000',27000,'2025-12-19 15:16:06.000','2025-12-19 15:16:06.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10033,10057,22,'Point avec le client','2025-11-30 15:18:30.000',6300,'2025-11-30 15:28:21.000','2025-11-30 15:28:21.000',22,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10034,10062,4,NULL,'2025-12-04 10:12:13.000',15300,'2025-12-04 12:10:18.000','2025-12-04 12:10:18.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10035,10064,16,NULL,'2025-12-04 18:21:48.000',11700,'2025-12-04 18:35:26.000','2025-12-04 18:35:26.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10036,10064,16,'Point avec le client','2025-12-04 18:25:56.000',8100,'2025-12-04 18:26:02.000','2025-12-04 18:26:02.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10037,10064,16,'Revue de code','2025-12-12 14:19:48.000',2700,'2025-12-12 17:51:10.000','2025-12-12 17:51:10.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10038,10064,16,'Point avec le client','2025-12-21 15:14:07.000',7200,'2025-12-21 16:25:15.000','2025-12-21 16:25:15.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10039,10075,3,'Déploiement','2025-12-19 11:46:54.000',18000,'2025-12-19 13:40:38.000','2025-12-19 13:40:38.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10040,10077,3,NULL,'2025-12-25 08:32:19.000',3600,'2025-12-25 10:45:42.000','2025-12-25 10:45:42.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10041,10077,16,'Point avec le client','2025-12-30 15:42:10.000',2700,'2025-12-30 16:49:28.000','2025-12-30 16:49:28.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10042,10078,14,'Tests et recette','2025-12-21 17:10:34.000',9900,'2025-12-21 17:53:02.000','2025-12-21 17:53:02.000',14,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10043,10078,14,'Analyse','2025-12-28 11:31:54.000',14400,'2025-12-28 15:49:21.000','2025-12-28 15:49:21.000',14,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10044,10078,14,'Déploiement','2025-12-31 10:17:38.000',24300,'2025-12-31 17:29:23.000','2025-12-31 17:29:23.000',14,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10045,10081,17,NULL,'2025-12-28 08:06:58.000',18000,'2025-12-28 09:23:18.000','2025-12-28 09:23:18.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10046,10081,17,'Point avec le client','2025-12-28 11:36:11.000',12600,'2025-12-28 12:13:31.000','2025-12-28 12:13:31.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10047,10085,3,'Développement','2026-01-01 13:55:50.000',9000,'2026-01-01 16:30:58.000','2026-01-01 16:30:58.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10048,10085,3,'Tests et recette','2026-01-05 07:47:50.000',28800,'2026-01-05 16:52:32.000','2026-01-05 16:52:32.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10049,10085,3,'Déploiement','2026-01-05 15:58:04.000',26100,'2026-01-05 18:53:37.000','2026-01-05 18:53:37.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10050,10086,21,'Analyse','2026-01-09 08:02:49.000',11700,'2026-01-09 11:10:40.000','2026-01-09 11:10:40.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10051,10086,21,'Développement','2026-01-10 09:06:32.000',8100,'2026-01-10 16:50:55.000','2026-01-10 16:50:55.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10052,10086,21,NULL,'2026-01-17 11:22:28.000',25200,'2026-01-17 17:31:51.000','2026-01-17 17:31:51.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10053,10086,21,'Point avec le client','2026-01-27 17:53:03.000',16200,'2026-01-27 18:57:24.000','2026-01-27 18:57:24.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10054,10089,6,'Point avec le client','2026-01-06 08:28:30.000',12600,'2026-01-06 15:12:27.000','2026-01-06 15:12:27.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10055,10091,6,'Analyse','2026-01-11 12:09:00.000',5400,'2026-01-11 13:55:47.000','2026-01-11 13:55:47.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10056,10091,7,NULL,'2026-01-18 10:05:04.000',16200,'2026-01-18 11:25:52.000','2026-01-18 11:25:52.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10057,10094,5,'Développement','2026-01-25 15:06:42.000',24300,'2026-01-25 17:23:32.000','2026-01-25 17:23:32.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10058,10094,5,'Déploiement','2026-02-02 13:13:41.000',20700,'2026-02-02 17:08:24.000','2026-02-02 17:08:24.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10059,10094,5,NULL,'2026-02-11 15:06:41.000',14400,'2026-02-11 17:05:37.000','2026-02-11 17:05:37.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10060,10094,5,'Point avec le client','2026-02-21 12:38:46.000',9900,'2026-02-21 16:43:40.000','2026-02-21 16:43:40.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10061,10096,15,NULL,'2026-01-31 16:17:22.000',20700,'2026-01-31 18:45:15.000','2026-01-31 18:45:15.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10062,10096,15,NULL,'2026-02-10 18:48:53.000',27900,'2026-02-10 18:59:50.000','2026-02-10 18:59:50.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10063,10096,15,'Développement','2026-02-16 10:26:19.000',9900,'2026-02-16 17:08:46.000','2026-02-16 17:08:46.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10064,10096,15,'Revue de code','2026-02-16 18:59:41.000',15300,'2026-02-16 18:59:54.000','2026-02-16 18:59:54.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10065,10097,14,'Revue de code','2026-02-03 18:16:26.000',28800,'2026-02-03 18:21:58.000','2026-02-03 18:21:58.000',14,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10066,10097,14,'Revue de code','2026-02-09 16:40:49.000',7200,'2026-02-09 17:45:32.000','2026-02-09 17:45:32.000',14,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10067,10109,11,'Analyse','2026-02-13 15:42:12.000',5400,'2026-02-13 17:36:02.000','2026-02-13 17:36:02.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10068,10109,11,'Analyse','2026-02-20 17:10:01.000',5400,'2026-02-20 17:26:29.000','2026-02-20 17:26:29.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10069,10113,7,'Tests et recette','2026-02-14 17:42:22.000',19800,'2026-02-14 17:44:21.000','2026-02-14 17:44:21.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10070,10113,21,NULL,'2026-02-24 16:05:43.000',24300,'2026-02-24 17:41:24.000','2026-02-24 17:41:24.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10071,10123,15,'Point avec le client','2026-02-24 15:25:31.000',24300,'2026-02-24 17:12:15.000','2026-02-24 17:12:15.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10072,10124,15,'Tests et recette','2026-02-24 17:07:19.000',2700,'2026-02-24 18:05:17.000','2026-02-24 18:05:17.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10073,10124,15,'Revue de code','2026-02-26 10:42:45.000',19800,'2026-02-26 18:10:26.000','2026-02-26 18:10:26.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10074,10124,15,NULL,'2026-03-08 11:30:17.000',15300,'2026-03-08 12:38:56.000','2026-03-08 12:38:56.000',15,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10075,10126,4,'Analyse','2026-03-01 15:21:16.000',23400,'2026-03-01 18:19:22.000','2026-03-01 18:19:22.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10076,10126,4,'Tests et recette','2026-03-10 11:40:04.000',26100,'2026-03-10 15:30:27.000','2026-03-10 15:30:27.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10077,10126,4,'Déploiement','2026-03-20 17:51:10.000',18900,'2026-03-20 18:40:43.000','2026-03-20 18:40:43.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10078,10130,3,NULL,'2026-03-08 07:40:59.000',900,'2026-03-08 09:31:41.000','2026-03-08 09:31:41.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10079,10149,7,'Revue de code','2026-04-12 13:07:42.000',4500,'2026-04-12 13:59:00.000','2026-04-12 13:59:00.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10080,10149,7,'Développement','2026-04-15 14:02:33.000',18000,'2026-04-15 15:49:15.000','2026-04-15 15:49:15.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10081,10150,10,'Point avec le client','2026-04-11 15:27:09.000',25200,'2026-04-11 16:56:24.000','2026-04-11 16:56:24.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10082,10150,10,'Point avec le client','2026-04-21 11:29:26.000',10800,'2026-04-21 13:59:32.000','2026-04-21 13:59:32.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10083,10150,10,'Revue de code','2026-04-25 10:25:23.000',3600,'2026-04-25 13:31:49.000','2026-04-25 13:31:49.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10084,10158,3,'Développement','2026-04-22 16:17:55.000',9000,'2026-04-22 17:27:31.000','2026-04-22 17:27:31.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10085,10158,3,'Développement','2026-04-30 09:49:49.000',6300,'2026-04-30 16:32:43.000','2026-04-30 16:32:43.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10086,10162,22,'Point avec le client','2026-04-22 17:34:12.000',5400,'2026-04-22 17:48:05.000','2026-04-22 17:48:05.000',22,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10087,10162,23,'Développement','2026-04-28 11:47:01.000',6300,'2026-04-28 16:56:40.000','2026-04-28 16:56:40.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10088,10162,23,'Revue de code','2026-04-28 15:56:42.000',10800,'2026-04-28 17:07:35.000','2026-04-28 17:07:35.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10089,10163,9,'Point avec le client','2026-04-19 15:31:20.000',18900,'2026-04-19 17:21:35.000','2026-04-19 17:21:35.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10090,10163,3,NULL,'2026-04-25 11:46:39.000',19800,'2026-04-25 13:18:17.000','2026-04-25 13:18:17.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10091,10163,3,NULL,'2026-05-02 11:24:50.000',900,'2026-05-02 17:50:36.000','2026-05-02 17:50:36.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10092,10171,8,NULL,'2026-04-24 17:59:47.000',20700,'2026-04-24 17:59:52.000','2026-04-24 17:59:52.000',8,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10093,10171,8,NULL,'2026-04-26 13:50:25.000',11700,'2026-04-26 16:39:17.000','2026-04-26 16:39:17.000',8,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10094,10173,6,'Revue de code','2026-05-07 17:31:42.000',10800,'2026-05-07 17:58:52.000','2026-05-07 17:58:52.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10095,10173,6,'Point avec le client','2026-05-07 17:58:57.000',24300,'2026-05-07 17:59:44.000','2026-05-07 17:59:44.000',6,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10096,10174,2,'Analyse','2026-05-03 10:17:22.000',27900,'2026-05-03 10:49:22.000','2026-05-03 10:49:22.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10097,10174,2,'Analyse','2026-05-08 10:00:53.000',16200,'2026-05-08 15:00:39.000','2026-05-08 15:00:39.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10098,10178,2,NULL,'2026-05-20 07:35:41.000',12600,'2026-05-20 17:30:25.000','2026-05-20 17:30:25.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10099,10178,2,'Déploiement','2026-05-21 07:48:52.000',18900,'2026-05-21 17:34:24.000','2026-05-21 17:34:24.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10100,10178,2,NULL,'2026-05-21 12:11:15.000',19800,'2026-05-21 13:26:00.000','2026-05-21 13:26:00.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10101,10188,4,NULL,'2026-05-20 16:03:18.000',2700,'2026-05-20 17:58:52.000','2026-05-20 17:58:52.000',4,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10102,10198,3,'Analyse','2026-05-30 11:14:03.000',3600,'2026-05-30 12:52:20.000','2026-05-30 12:52:20.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10103,10198,3,'Point avec le client','2026-06-07 14:23:50.000',9000,'2026-06-07 16:46:17.000','2026-06-07 16:46:17.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10104,10201,9,'Développement','2026-05-29 06:51:19.000',20700,'2026-05-29 10:02:26.000','2026-05-29 10:02:26.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10105,10204,11,'Point avec le client','2026-06-06 09:52:45.000',12600,'2026-06-06 13:56:16.000','2026-06-06 13:56:16.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10106,10204,11,'Point avec le client','2026-06-12 09:26:47.000',15300,'2026-06-12 09:39:02.000','2026-06-12 09:39:02.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10107,10204,11,'Déploiement','2026-06-18 15:51:11.000',4500,'2026-06-18 17:12:56.000','2026-06-18 17:12:56.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10108,10208,17,'Tests et recette','2026-06-11 15:21:56.000',9900,'2026-06-11 17:03:58.000','2026-06-11 17:03:58.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10109,10214,2,'Revue de code','2026-06-16 11:34:58.000',20700,'2026-06-16 14:04:51.000','2026-06-16 14:04:51.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10110,10214,2,'Revue de code','2026-06-25 17:08:30.000',22500,'2026-06-25 17:30:00.000','2026-06-25 17:30:00.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10111,10214,2,'Point avec le client','2026-06-30 08:41:01.000',7200,'2026-06-30 10:56:12.000','2026-06-30 10:56:12.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10112,10217,17,'Revue de code','2026-06-19 11:56:09.000',6300,'2026-06-19 17:23:08.000','2026-06-19 17:23:08.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10113,10217,17,'Tests et recette','2026-06-27 10:07:33.000',27000,'2026-06-27 10:52:24.000','2026-06-27 10:52:24.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10114,10217,17,'Déploiement','2026-06-27 14:39:02.000',11700,'2026-06-27 16:23:47.000','2026-06-27 16:23:47.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10115,10225,8,NULL,'2026-06-28 11:52:22.000',16200,'2026-06-28 13:52:42.000','2026-06-28 13:52:42.000',8,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10116,10232,3,'Développement','2026-07-11 12:46:55.000',8100,'2026-07-11 17:50:03.000','2026-07-11 17:50:03.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10117,10232,3,'Revue de code','2026-07-21 06:00:24.000',18900,'2026-07-21 13:34:15.000','2026-07-21 13:34:15.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10118,10232,3,'Analyse','2026-07-31 13:20:20.000',6300,'2026-07-31 16:07:22.000','2026-07-31 16:07:22.000',3,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10119,10234,10,NULL,'2026-07-10 16:10:58.000',7200,'2026-07-10 16:35:56.000','2026-07-10 16:35:56.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10120,10234,10,'Revue de code','2026-07-10 17:29:12.000',21600,'2026-07-10 17:35:53.000','2026-07-10 17:35:53.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10121,10234,10,'Développement','2026-07-10 17:42:48.000',18900,'2026-07-10 17:45:20.000','2026-07-10 17:45:20.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10122,10234,10,'Tests et recette','2026-07-11 16:43:07.000',1800,'2026-07-11 16:56:43.000','2026-07-11 16:56:43.000',10,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10123,10239,16,'Tests et recette','2026-07-20 06:31:41.000',24300,'2026-07-20 08:44:01.000','2026-07-20 08:44:01.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10124,10239,16,'Analyse','2026-07-23 09:00:06.000',27000,'2026-07-23 17:16:40.000','2026-07-23 17:16:40.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10125,10241,5,NULL,'2026-07-20 10:54:45.000',1800,'2026-07-20 15:37:49.000','2026-07-20 15:37:49.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10126,10241,5,'Analyse','2026-07-20 15:16:37.000',22500,'2026-07-20 16:28:22.000','2026-07-20 16:28:22.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10127,10248,21,'Déploiement','2026-08-02 13:01:24.000',15300,'2026-08-02 13:31:33.000','2026-08-02 13:31:33.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10128,10248,21,'Point avec le client','2026-08-08 11:40:31.000',4500,'2026-08-08 16:54:36.000','2026-08-08 16:54:36.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10129,10249,2,NULL,'2026-07-30 09:23:33.000',5400,'2026-07-30 15:17:07.000','2026-07-30 15:17:07.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10130,10249,2,'Déploiement','2026-08-01 06:50:38.000',7200,'2026-08-01 09:57:15.000','2026-08-01 09:57:15.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10131,10249,2,'Point avec le client','2026-08-06 16:17:20.000',18900,'2026-08-06 17:00:30.000','2026-08-06 17:00:30.000',2,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10132,10250,23,'Développement','2026-07-31 09:18:29.000',27900,'2026-07-31 11:42:38.000','2026-07-31 11:42:38.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10133,10250,23,'Analyse','2026-08-05 16:31:59.000',10800,'2026-08-05 17:25:15.000','2026-08-05 17:25:15.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10134,10254,16,NULL,'2026-08-05 06:29:16.000',22500,'2026-08-05 08:41:49.000','2026-08-05 08:41:49.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10135,10254,16,'Développement','2026-08-09 16:34:13.000',24300,'2026-08-09 17:27:49.000','2026-08-09 17:27:49.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10136,10254,16,NULL,'2026-08-16 15:55:22.000',9000,'2026-08-16 17:29:29.000','2026-08-16 17:29:29.000',16,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10137,10257,13,'Développement','2026-08-12 08:41:48.000',17100,'2026-08-12 16:56:43.000','2026-08-12 16:56:43.000',13,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10138,10260,22,'Tests et recette','2026-08-14 06:34:47.000',18000,'2026-08-14 12:03:57.000','2026-08-14 12:03:57.000',22,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10139,10265,17,'Analyse','2026-08-26 17:57:08.000',5400,'2026-08-26 17:59:05.000','2026-08-26 17:59:05.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10140,10265,17,NULL,'2026-09-02 10:07:04.000',1800,'2026-09-02 17:18:47.000','2026-09-02 17:18:47.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10141,10265,17,'Développement','2026-09-02 13:51:35.000',7200,'2026-09-02 14:27:21.000','2026-09-02 14:27:21.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10142,10265,17,NULL,'2026-09-02 17:29:52.000',26100,'2026-09-02 17:38:50.000','2026-09-02 17:38:50.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10143,10275,23,'Point avec le client','2026-09-08 07:53:34.000',21600,'2026-09-08 13:33:23.000','2026-09-08 13:33:23.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10144,10275,23,NULL,'2026-09-13 10:05:16.000',23400,'2026-09-13 16:06:56.000','2026-09-13 16:06:56.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10145,10275,23,NULL,'2026-09-20 12:05:44.000',4500,'2026-09-20 17:17:12.000','2026-09-20 17:17:12.000',23,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10146,10287,7,'Déploiement','2026-09-19 09:23:54.000',25200,'2026-09-19 12:58:44.000','2026-09-19 12:58:44.000',7,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10147,10287,11,'Déploiement','2026-09-23 17:22:17.000',6300,'2026-09-23 17:59:01.000','2026-09-23 17:59:01.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10148,10287,11,'Développement','2026-09-28 07:01:02.000',13500,'2026-09-28 17:04:25.000','2026-09-28 17:04:25.000',11,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10149,10287,9,'Revue de code','2026-09-28 15:58:59.000',27000,'2026-09-28 17:15:06.000','2026-09-28 17:15:06.000',9,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10150,10290,17,'Tests et recette','2026-09-25 13:01:20.000',4500,'2026-09-25 13:46:57.000','2026-09-25 13:46:57.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10151,10290,17,NULL,'2026-09-27 13:10:11.000',6300,'2026-09-27 15:08:06.000','2026-09-27 15:08:06.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10152,10290,17,NULL,'2026-09-27 15:51:40.000',4500,'2026-09-27 17:32:35.000','2026-09-27 17:32:35.000',17,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10153,10293,21,'Déploiement','2026-09-27 14:00:32.000',23400,'2026-09-27 17:14:45.000','2026-09-27 17:14:45.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10154,10293,21,NULL,'2026-09-29 07:37:52.000',27900,'2026-09-29 10:40:49.000','2026-09-29 10:40:49.000',21,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10155,10296,22,'Revue de code','2026-09-29 11:00:50.000',21600,'2026-09-29 13:27:08.000','2026-09-29 13:27:08.000',22,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10156,10297,5,NULL,'2026-09-28 13:49:24.000',9900,'2026-09-28 15:09:31.000','2026-09-28 15:09:31.000',5,NULL,NULL);
-INSERT INTO `worklogs` VALUES (10157,10299,8,'Développement','2026-10-01 16:00:00.000',26100,'2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',8,NULL,NULL);
+INSERT INTO `worklogs` VALUES (10000,10008,5,'Tests et recette','2025-09-19 10:36:16.000',27900,'2025-09-19 13:37:16.000','2025-09-19 13:37:16.000',5,'developpeurs');
+INSERT INTO `worklogs` VALUES (10001,10008,5,NULL,'2025-09-28 08:15:40.000',10800,'2025-09-28 09:28:19.000','2025-09-28 09:28:19.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10002,10008,5,'Tests et recette','2025-09-29 07:46:16.000',27000,'2025-09-29 17:31:07.000','2025-09-29 17:31:07.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10003,10013,10,'Point avec le client','2025-09-28 10:47:06.000',28800,'2025-09-28 17:11:05.000','2025-09-28 17:11:05.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10004,10013,10,'Revue de code','2025-10-06 07:45:53.000',8100,'2025-10-06 09:41:16.000','2025-10-06 09:41:16.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10005,10013,10,'Analyse','2025-10-07 12:16:45.000',8100,'2025-10-07 16:56:47.000','2025-10-07 16:56:47.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10006,10013,10,'Analyse','2025-10-10 17:27:42.000',20700,'2025-10-10 17:32:26.000','2025-10-10 17:32:26.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10007,10015,11,'Analyse','2025-10-08 13:56:07.000',2700,'2025-10-08 16:22:19.000','2025-10-08 16:22:19.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10008,10015,11,'Point avec le client','2025-10-15 09:41:05.000',7200,'2025-10-15 14:52:20.000','2025-10-15 14:52:20.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10009,10015,11,NULL,'2025-10-19 14:48:05.000',22500,'2025-10-19 15:00:29.000','2025-10-19 15:00:29.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10010,10027,9,'Point avec le client','2025-10-26 13:20:17.000',27900,'2025-10-26 17:10:02.000','2025-10-26 17:10:02.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10011,10027,9,'Revue de code','2025-11-03 12:28:49.000',27000,'2025-11-03 16:50:48.000','2025-11-03 16:50:48.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10012,10027,9,'Revue de code','2025-11-03 14:26:16.000',3600,'2025-11-03 18:55:28.000','2025-11-03 18:55:28.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10013,10027,9,NULL,'2025-11-03 18:42:25.000',14400,'2025-11-03 18:51:16.000','2025-11-03 18:51:16.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10014,10029,11,'Analyse','2025-10-27 18:44:16.000',9900,'2025-10-27 18:58:43.000','2025-10-27 18:58:43.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10015,10029,11,NULL,'2025-11-05 14:10:50.000',7200,'2025-11-05 17:53:37.000','2025-11-05 17:53:37.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10016,10029,11,NULL,'2025-11-05 18:58:35.000',11700,'2025-11-05 18:58:36.000','2025-11-05 18:58:36.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10017,10039,4,NULL,'2025-11-09 14:30:39.000',17100,'2025-11-09 17:12:17.000','2025-11-09 17:12:17.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10018,10039,4,'Point avec le client','2025-11-15 08:41:45.000',9900,'2025-11-15 14:01:24.000','2025-11-15 14:01:24.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10019,10039,4,'Développement','2025-11-25 14:40:22.000',1800,'2025-11-25 15:42:51.000','2025-11-25 15:42:51.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10020,10039,4,'Développement','2025-12-02 17:16:06.000',22500,'2025-12-02 18:19:05.000','2025-12-02 18:19:05.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10021,10040,13,NULL,'2025-11-11 10:30:30.000',14400,'2025-11-11 11:08:44.000','2025-11-11 11:08:44.000',13,NULL);
+INSERT INTO `worklogs` VALUES (10022,10040,6,'Analyse','2025-11-21 13:42:32.000',14400,'2025-11-21 17:34:33.000','2025-11-21 17:34:33.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10023,10040,3,'Tests et recette','2025-11-26 08:23:18.000',2700,'2025-11-26 11:30:33.000','2025-11-26 11:30:33.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10024,10040,2,NULL,'2025-12-01 12:38:28.000',22500,'2025-12-01 17:16:15.000','2025-12-01 17:16:15.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10025,10043,7,'Point avec le client','2025-11-17 13:27:46.000',18900,'2025-11-17 16:50:05.000','2025-11-17 16:50:05.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10026,10043,7,NULL,'2025-11-25 14:46:31.000',11700,'2025-11-25 16:15:27.000','2025-11-25 16:15:27.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10027,10043,7,'Analyse','2025-11-26 08:58:09.000',13500,'2025-11-26 15:51:51.000','2025-11-26 15:51:51.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10028,10043,7,NULL,'2025-11-29 12:38:13.000',13500,'2025-11-29 12:38:29.000','2025-11-29 12:38:29.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10029,10056,6,'Point avec le client','2025-12-02 18:13:26.000',19800,'2025-12-02 18:15:53.000','2025-12-02 18:15:53.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10030,10056,6,'Déploiement','2025-12-05 08:22:59.000',26100,'2025-12-05 10:08:47.000','2025-12-05 10:08:47.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10031,10056,6,'Point avec le client','2025-12-10 17:30:07.000',15300,'2025-12-10 17:42:54.000','2025-12-10 17:42:54.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10032,10056,6,'Point avec le client','2025-12-19 13:02:39.000',27000,'2025-12-19 15:16:06.000','2025-12-19 15:16:06.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10033,10057,22,'Point avec le client','2025-11-30 15:18:30.000',6300,'2025-11-30 15:28:21.000','2025-11-30 15:28:21.000',22,NULL);
+INSERT INTO `worklogs` VALUES (10034,10062,4,NULL,'2025-12-04 10:12:13.000',15300,'2025-12-04 12:10:18.000','2025-12-04 12:10:18.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10035,10064,16,NULL,'2025-12-04 18:21:48.000',11700,'2025-12-04 18:35:26.000','2025-12-04 18:35:26.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10036,10064,16,'Point avec le client','2025-12-04 18:25:56.000',8100,'2025-12-04 18:26:02.000','2025-12-04 18:26:02.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10037,10064,16,'Revue de code','2025-12-12 14:19:48.000',2700,'2025-12-12 17:51:10.000','2025-12-12 17:51:10.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10038,10064,16,'Point avec le client','2025-12-21 15:14:07.000',7200,'2025-12-21 16:25:15.000','2025-12-21 16:25:15.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10039,10075,3,'Déploiement','2025-12-19 11:46:54.000',18000,'2025-12-19 13:40:38.000','2025-12-19 13:40:38.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10040,10077,3,NULL,'2025-12-25 08:32:19.000',3600,'2025-12-25 10:45:42.000','2025-12-25 10:45:42.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10041,10077,16,'Point avec le client','2025-12-30 15:42:10.000',2700,'2025-12-30 16:49:28.000','2025-12-30 16:49:28.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10042,10078,14,'Tests et recette','2025-12-21 17:10:34.000',9900,'2025-12-21 17:53:02.000','2025-12-21 17:53:02.000',14,NULL);
+INSERT INTO `worklogs` VALUES (10043,10078,14,'Analyse','2025-12-28 11:31:54.000',14400,'2025-12-28 15:49:21.000','2025-12-28 15:49:21.000',14,NULL);
+INSERT INTO `worklogs` VALUES (10044,10078,14,'Déploiement','2025-12-31 10:17:38.000',24300,'2025-12-31 17:29:23.000','2025-12-31 17:29:23.000',14,NULL);
+INSERT INTO `worklogs` VALUES (10045,10081,17,NULL,'2025-12-28 08:06:58.000',18000,'2025-12-28 09:23:18.000','2025-12-28 09:23:18.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10046,10081,17,'Point avec le client','2025-12-28 11:36:11.000',12600,'2025-12-28 12:13:31.000','2025-12-28 12:13:31.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10047,10085,3,'Développement','2026-01-01 13:55:50.000',9000,'2026-01-01 16:30:58.000','2026-01-01 16:30:58.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10048,10085,3,'Tests et recette','2026-01-05 07:47:50.000',28800,'2026-01-05 16:52:32.000','2026-01-05 16:52:32.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10049,10085,3,'Déploiement','2026-01-05 15:58:04.000',26100,'2026-01-05 18:53:37.000','2026-01-05 18:53:37.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10050,10086,21,'Analyse','2026-01-09 08:02:49.000',11700,'2026-01-09 11:10:40.000','2026-01-09 11:10:40.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10051,10086,21,'Développement','2026-01-10 09:06:32.000',8100,'2026-01-10 16:50:55.000','2026-01-10 16:50:55.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10052,10086,21,NULL,'2026-01-17 11:22:28.000',25200,'2026-01-17 17:31:51.000','2026-01-17 17:31:51.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10053,10086,21,'Point avec le client','2026-01-27 17:53:03.000',16200,'2026-01-27 18:57:24.000','2026-01-27 18:57:24.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10054,10089,6,'Point avec le client','2026-01-06 08:28:30.000',12600,'2026-01-06 15:12:27.000','2026-01-06 15:12:27.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10055,10091,6,'Analyse','2026-01-11 12:09:00.000',5400,'2026-01-11 13:55:47.000','2026-01-11 13:55:47.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10056,10091,7,NULL,'2026-01-18 10:05:04.000',16200,'2026-01-18 11:25:52.000','2026-01-18 11:25:52.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10057,10094,5,'Développement','2026-01-25 15:06:42.000',24300,'2026-01-25 17:23:32.000','2026-01-25 17:23:32.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10058,10094,5,'Déploiement','2026-02-02 13:13:41.000',20700,'2026-02-02 17:08:24.000','2026-02-02 17:08:24.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10059,10094,5,NULL,'2026-02-11 15:06:41.000',14400,'2026-02-11 17:05:37.000','2026-02-11 17:05:37.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10060,10094,5,'Point avec le client','2026-02-21 12:38:46.000',9900,'2026-02-21 16:43:40.000','2026-02-21 16:43:40.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10061,10096,15,NULL,'2026-01-31 16:17:22.000',20700,'2026-01-31 18:45:15.000','2026-01-31 18:45:15.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10062,10096,15,NULL,'2026-02-10 18:48:53.000',27900,'2026-02-10 18:59:50.000','2026-02-10 18:59:50.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10063,10096,15,'Développement','2026-02-16 10:26:19.000',9900,'2026-02-16 17:08:46.000','2026-02-16 17:08:46.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10064,10096,15,'Revue de code','2026-02-16 18:59:41.000',15300,'2026-02-16 18:59:54.000','2026-02-16 18:59:54.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10065,10097,14,'Revue de code','2026-02-03 18:16:26.000',28800,'2026-02-03 18:21:58.000','2026-02-03 18:21:58.000',14,NULL);
+INSERT INTO `worklogs` VALUES (10066,10097,14,'Revue de code','2026-02-09 16:40:49.000',7200,'2026-02-09 17:45:32.000','2026-02-09 17:45:32.000',14,NULL);
+INSERT INTO `worklogs` VALUES (10067,10109,11,'Analyse','2026-02-13 15:42:12.000',5400,'2026-02-13 17:36:02.000','2026-02-13 17:36:02.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10068,10109,11,'Analyse','2026-02-20 17:10:01.000',5400,'2026-02-20 17:26:29.000','2026-02-20 17:26:29.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10069,10113,7,'Tests et recette','2026-02-14 17:42:22.000',19800,'2026-02-14 17:44:21.000','2026-02-14 17:44:21.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10070,10113,21,NULL,'2026-02-24 16:05:43.000',24300,'2026-02-24 17:41:24.000','2026-02-24 17:41:24.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10071,10123,15,'Point avec le client','2026-02-24 15:25:31.000',24300,'2026-02-24 17:12:15.000','2026-02-24 17:12:15.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10072,10124,15,'Tests et recette','2026-02-24 17:07:19.000',2700,'2026-02-24 18:05:17.000','2026-02-24 18:05:17.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10073,10124,15,'Revue de code','2026-02-26 10:42:45.000',19800,'2026-02-26 18:10:26.000','2026-02-26 18:10:26.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10074,10124,15,NULL,'2026-03-08 11:30:17.000',15300,'2026-03-08 12:38:56.000','2026-03-08 12:38:56.000',15,NULL);
+INSERT INTO `worklogs` VALUES (10075,10126,4,'Analyse','2026-03-01 15:21:16.000',23400,'2026-03-01 18:19:22.000','2026-03-01 18:19:22.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10076,10126,4,'Tests et recette','2026-03-10 11:40:04.000',26100,'2026-03-10 15:30:27.000','2026-03-10 15:30:27.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10077,10126,4,'Déploiement','2026-03-20 17:51:10.000',18900,'2026-03-20 18:40:43.000','2026-03-20 18:40:43.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10078,10130,3,NULL,'2026-03-08 07:40:59.000',900,'2026-03-08 09:31:41.000','2026-03-08 09:31:41.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10079,10149,7,'Revue de code','2026-04-12 13:07:42.000',4500,'2026-04-12 13:59:00.000','2026-04-12 13:59:00.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10080,10149,7,'Développement','2026-04-15 14:02:33.000',18000,'2026-04-15 15:49:15.000','2026-04-15 15:49:15.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10081,10150,10,'Point avec le client','2026-04-11 15:27:09.000',25200,'2026-04-11 16:56:24.000','2026-04-11 16:56:24.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10082,10150,10,'Point avec le client','2026-04-21 11:29:26.000',10800,'2026-04-21 13:59:32.000','2026-04-21 13:59:32.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10083,10150,10,'Revue de code','2026-04-25 10:25:23.000',3600,'2026-04-25 13:31:49.000','2026-04-25 13:31:49.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10084,10158,3,'Développement','2026-04-22 16:17:55.000',9000,'2026-04-22 17:27:31.000','2026-04-22 17:27:31.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10085,10158,3,'Développement','2026-04-30 09:49:49.000',6300,'2026-04-30 16:32:43.000','2026-04-30 16:32:43.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10086,10162,22,'Point avec le client','2026-04-22 17:34:12.000',5400,'2026-04-22 17:48:05.000','2026-04-22 17:48:05.000',22,NULL);
+INSERT INTO `worklogs` VALUES (10087,10162,23,'Développement','2026-04-28 11:47:01.000',6300,'2026-04-28 16:56:40.000','2026-04-28 16:56:40.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10088,10162,23,'Revue de code','2026-04-28 15:56:42.000',10800,'2026-04-28 17:07:35.000','2026-04-28 17:07:35.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10089,10163,9,'Point avec le client','2026-04-19 15:31:20.000',18900,'2026-04-19 17:21:35.000','2026-04-19 17:21:35.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10090,10163,3,NULL,'2026-04-25 11:46:39.000',19800,'2026-04-25 13:18:17.000','2026-04-25 13:18:17.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10091,10163,3,NULL,'2026-05-02 11:24:50.000',900,'2026-05-02 17:50:36.000','2026-05-02 17:50:36.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10092,10171,8,NULL,'2026-04-24 17:59:47.000',20700,'2026-04-24 17:59:52.000','2026-04-24 17:59:52.000',8,NULL);
+INSERT INTO `worklogs` VALUES (10093,10171,8,NULL,'2026-04-26 13:50:25.000',11700,'2026-04-26 16:39:17.000','2026-04-26 16:39:17.000',8,NULL);
+INSERT INTO `worklogs` VALUES (10094,10173,6,'Revue de code','2026-05-07 17:31:42.000',10800,'2026-05-07 17:58:52.000','2026-05-07 17:58:52.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10095,10173,6,'Point avec le client','2026-05-07 17:58:57.000',24300,'2026-05-07 17:59:44.000','2026-05-07 17:59:44.000',6,NULL);
+INSERT INTO `worklogs` VALUES (10096,10174,2,'Analyse','2026-05-03 10:17:22.000',27900,'2026-05-03 10:49:22.000','2026-05-03 10:49:22.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10097,10174,2,'Analyse','2026-05-08 10:00:53.000',16200,'2026-05-08 15:00:39.000','2026-05-08 15:00:39.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10098,10178,2,NULL,'2026-05-20 07:35:41.000',12600,'2026-05-20 17:30:25.000','2026-05-20 17:30:25.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10099,10178,2,'Déploiement','2026-05-21 07:48:52.000',18900,'2026-05-21 17:34:24.000','2026-05-21 17:34:24.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10100,10178,2,NULL,'2026-05-21 12:11:15.000',19800,'2026-05-21 13:26:00.000','2026-05-21 13:26:00.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10101,10188,4,NULL,'2026-05-20 16:03:18.000',2700,'2026-05-20 17:58:52.000','2026-05-20 17:58:52.000',4,NULL);
+INSERT INTO `worklogs` VALUES (10102,10198,3,'Analyse','2026-05-30 11:14:03.000',3600,'2026-05-30 12:52:20.000','2026-05-30 12:52:20.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10103,10198,3,'Point avec le client','2026-06-07 14:23:50.000',9000,'2026-06-07 16:46:17.000','2026-06-07 16:46:17.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10104,10201,9,'Développement','2026-05-29 06:51:19.000',20700,'2026-05-29 10:02:26.000','2026-05-29 10:02:26.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10105,10204,11,'Point avec le client','2026-06-06 09:52:45.000',12600,'2026-06-06 13:56:16.000','2026-06-06 13:56:16.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10106,10204,11,'Point avec le client','2026-06-12 09:26:47.000',15300,'2026-06-12 09:39:02.000','2026-06-12 09:39:02.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10107,10204,11,'Déploiement','2026-06-18 15:51:11.000',4500,'2026-06-18 17:12:56.000','2026-06-18 17:12:56.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10108,10208,17,'Tests et recette','2026-06-11 15:21:56.000',9900,'2026-06-11 17:03:58.000','2026-06-11 17:03:58.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10109,10214,2,'Revue de code','2026-06-16 11:34:58.000',20700,'2026-06-16 14:04:51.000','2026-06-16 14:04:51.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10110,10214,2,'Revue de code','2026-06-25 17:08:30.000',22500,'2026-06-25 17:30:00.000','2026-06-25 17:30:00.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10111,10214,2,'Point avec le client','2026-06-30 08:41:01.000',7200,'2026-06-30 10:56:12.000','2026-06-30 10:56:12.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10112,10217,17,'Revue de code','2026-06-19 11:56:09.000',6300,'2026-06-19 17:23:08.000','2026-06-19 17:23:08.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10113,10217,17,'Tests et recette','2026-06-27 10:07:33.000',27000,'2026-06-27 10:52:24.000','2026-06-27 10:52:24.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10114,10217,17,'Déploiement','2026-06-27 14:39:02.000',11700,'2026-06-27 16:23:47.000','2026-06-27 16:23:47.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10115,10225,8,NULL,'2026-06-28 11:52:22.000',16200,'2026-06-28 13:52:42.000','2026-06-28 13:52:42.000',8,NULL);
+INSERT INTO `worklogs` VALUES (10116,10232,3,'Développement','2026-07-11 12:46:55.000',8100,'2026-07-11 17:50:03.000','2026-07-11 17:50:03.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10117,10232,3,'Revue de code','2026-07-21 06:00:24.000',18900,'2026-07-21 13:34:15.000','2026-07-21 13:34:15.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10118,10232,3,'Analyse','2026-07-31 13:20:20.000',6300,'2026-07-31 16:07:22.000','2026-07-31 16:07:22.000',3,NULL);
+INSERT INTO `worklogs` VALUES (10119,10234,10,NULL,'2026-07-10 16:10:58.000',7200,'2026-07-10 16:35:56.000','2026-07-10 16:35:56.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10120,10234,10,'Revue de code','2026-07-10 17:29:12.000',21600,'2026-07-10 17:35:53.000','2026-07-10 17:35:53.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10121,10234,10,'Développement','2026-07-10 17:42:48.000',18900,'2026-07-10 17:45:20.000','2026-07-10 17:45:20.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10122,10234,10,'Tests et recette','2026-07-11 16:43:07.000',1800,'2026-07-11 16:56:43.000','2026-07-11 16:56:43.000',10,NULL);
+INSERT INTO `worklogs` VALUES (10123,10239,16,'Tests et recette','2026-07-20 06:31:41.000',24300,'2026-07-20 08:44:01.000','2026-07-20 08:44:01.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10124,10239,16,'Analyse','2026-07-23 09:00:06.000',27000,'2026-07-23 17:16:40.000','2026-07-23 17:16:40.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10125,10241,5,NULL,'2026-07-20 10:54:45.000',1800,'2026-07-20 15:37:49.000','2026-07-20 15:37:49.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10126,10241,5,'Analyse','2026-07-20 15:16:37.000',22500,'2026-07-20 16:28:22.000','2026-07-20 16:28:22.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10127,10248,21,'Déploiement','2026-08-02 13:01:24.000',15300,'2026-08-02 13:31:33.000','2026-08-02 13:31:33.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10128,10248,21,'Point avec le client','2026-08-08 11:40:31.000',4500,'2026-08-08 16:54:36.000','2026-08-08 16:54:36.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10129,10249,2,NULL,'2026-07-30 09:23:33.000',5400,'2026-07-30 15:17:07.000','2026-07-30 15:17:07.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10130,10249,2,'Déploiement','2026-08-01 06:50:38.000',7200,'2026-08-01 09:57:15.000','2026-08-01 09:57:15.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10131,10249,2,'Point avec le client','2026-08-06 16:17:20.000',18900,'2026-08-06 17:00:30.000','2026-08-06 17:00:30.000',2,NULL);
+INSERT INTO `worklogs` VALUES (10132,10250,23,'Développement','2026-07-31 09:18:29.000',27900,'2026-07-31 11:42:38.000','2026-07-31 11:42:38.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10133,10250,23,'Analyse','2026-08-05 16:31:59.000',10800,'2026-08-05 17:25:15.000','2026-08-05 17:25:15.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10134,10254,16,NULL,'2026-08-05 06:29:16.000',22500,'2026-08-05 08:41:49.000','2026-08-05 08:41:49.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10135,10254,16,'Développement','2026-08-09 16:34:13.000',24300,'2026-08-09 17:27:49.000','2026-08-09 17:27:49.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10136,10254,16,NULL,'2026-08-16 15:55:22.000',9000,'2026-08-16 17:29:29.000','2026-08-16 17:29:29.000',16,NULL);
+INSERT INTO `worklogs` VALUES (10137,10257,13,'Développement','2026-08-12 08:41:48.000',17100,'2026-08-12 16:56:43.000','2026-08-12 16:56:43.000',13,NULL);
+INSERT INTO `worklogs` VALUES (10138,10260,22,'Tests et recette','2026-08-14 06:34:47.000',18000,'2026-08-14 12:03:57.000','2026-08-14 12:03:57.000',22,NULL);
+INSERT INTO `worklogs` VALUES (10139,10265,17,'Analyse','2026-08-26 17:57:08.000',5400,'2026-08-26 17:59:05.000','2026-08-26 17:59:05.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10140,10265,17,NULL,'2026-09-02 10:07:04.000',1800,'2026-09-02 17:18:47.000','2026-09-02 17:18:47.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10141,10265,17,'Développement','2026-09-02 13:51:35.000',7200,'2026-09-02 14:27:21.000','2026-09-02 14:27:21.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10142,10265,17,NULL,'2026-09-02 17:29:52.000',26100,'2026-09-02 17:38:50.000','2026-09-02 17:38:50.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10143,10275,23,'Point avec le client','2026-09-08 07:53:34.000',21600,'2026-09-08 13:33:23.000','2026-09-08 13:33:23.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10144,10275,23,NULL,'2026-09-13 10:05:16.000',23400,'2026-09-13 16:06:56.000','2026-09-13 16:06:56.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10145,10275,23,NULL,'2026-09-20 12:05:44.000',4500,'2026-09-20 17:17:12.000','2026-09-20 17:17:12.000',23,NULL);
+INSERT INTO `worklogs` VALUES (10146,10287,7,'Déploiement','2026-09-19 09:23:54.000',25200,'2026-09-19 12:58:44.000','2026-09-19 12:58:44.000',7,NULL);
+INSERT INTO `worklogs` VALUES (10147,10287,11,'Déploiement','2026-09-23 17:22:17.000',6300,'2026-09-23 17:59:01.000','2026-09-23 17:59:01.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10148,10287,11,'Développement','2026-09-28 07:01:02.000',13500,'2026-09-28 17:04:25.000','2026-09-28 17:04:25.000',11,NULL);
+INSERT INTO `worklogs` VALUES (10149,10287,9,'Revue de code','2026-09-28 15:58:59.000',27000,'2026-09-28 17:15:06.000','2026-09-28 17:15:06.000',9,NULL);
+INSERT INTO `worklogs` VALUES (10150,10290,17,'Tests et recette','2026-09-25 13:01:20.000',4500,'2026-09-25 13:46:57.000','2026-09-25 13:46:57.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10151,10290,17,NULL,'2026-09-27 13:10:11.000',6300,'2026-09-27 15:08:06.000','2026-09-27 15:08:06.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10152,10290,17,NULL,'2026-09-27 15:51:40.000',4500,'2026-09-27 17:32:35.000','2026-09-27 17:32:35.000',17,NULL);
+INSERT INTO `worklogs` VALUES (10153,10293,21,'Déploiement','2026-09-27 14:00:32.000',23400,'2026-09-27 17:14:45.000','2026-09-27 17:14:45.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10154,10293,21,NULL,'2026-09-29 07:37:52.000',27900,'2026-09-29 10:40:49.000','2026-09-29 10:40:49.000',21,NULL);
+INSERT INTO `worklogs` VALUES (10155,10296,22,'Revue de code','2026-09-29 11:00:50.000',21600,'2026-09-29 13:27:08.000','2026-09-29 13:27:08.000',22,NULL);
+INSERT INTO `worklogs` VALUES (10156,10297,5,NULL,'2026-09-28 13:49:24.000',9900,'2026-09-28 15:09:31.000','2026-09-28 15:09:31.000',5,NULL);
+INSERT INTO `worklogs` VALUES (10157,10299,8,'Développement','2026-10-01 16:00:00.000',26100,'2026-10-01 16:00:01.000','2026-10-01 16:00:01.000',8,NULL);
 /*!40000 ALTER TABLE `worklogs` ENABLE KEYS */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

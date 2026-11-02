@@ -27,7 +27,6 @@ type levelMemberOut struct {
 	Holder string   `json:"holder"`
 	User   *userRef `json:"user"`
 	Group  *idName  `json:"group"`
-	Role   *idName  `json:"role"`
 }
 
 // label names a member in the audit log.
@@ -37,8 +36,6 @@ func (m levelMemberOut) label() string {
 		return m.User.Username
 	case m.Group != nil:
 		return m.Group.Name
-	case m.Role != nil:
-		return m.Role.Name
 	}
 	return m.Holder
 }
@@ -80,19 +77,17 @@ func (s *Server) securityLevels(ctx context.Context, projectID int64, only *int6
 		return nil, err
 	}
 	err = sqlq.Each(ctx, s.db, `SELECT m.level_id, m.id, m.holder, u.id, u.username, u.display_name, u.active,
-		g.id, g.name, r.id, r.name
+		g.id, g.name
 		FROM security_level_members m JOIN security_levels l ON l.id = m.level_id
 		LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.group_id
-		LEFT JOIN project_roles r ON r.id = m.role_id
 		WHERE l.project_id = ?`+filter+`
-		ORDER BY m.holder, COALESCE(u.display_name, g.name, r.name, ''), m.id`, func(rows *sql.Rows) error {
+		ORDER BY m.holder, COALESCE(u.display_name, g.name, ''), m.id`, func(rows *sql.Rows) error {
 		var level int64
 		var m levelMemberOut
-		var uid, gid, rid sql.NullInt64
-		var username, display, gname, rname sql.NullString
+		var uid, gid sql.NullInt64
+		var username, display, gname sql.NullString
 		var active sql.NullBool
-		if err := rows.Scan(&level, &m.ID, &m.Holder, &uid, &username, &display, &active, &gid, &gname, &rid,
-			&rname); err != nil {
+		if err := rows.Scan(&level, &m.ID, &m.Holder, &uid, &username, &display, &active, &gid, &gname); err != nil {
 			return err
 		}
 		if uid.Valid {
@@ -100,9 +95,6 @@ func (s *Server) securityLevels(ctx context.Context, projectID int64, only *int6
 		}
 		if gid.Valid {
 			m.Group = &idName{gid.Int64, gname.String}
-		}
-		if rid.Valid {
-			m.Role = &idName{rid.Int64, rname.String}
 		}
 		i := index[level]
 		out[i].Members = append(out[i].Members, m)
@@ -374,7 +366,7 @@ func (s *Server) deleteSecurityLevel(w http.ResponseWriter, r *http.Request) err
 }
 
 // addSecurityLevelMember adds a holder to a level: everyone, a user, a group
-// or a project role who sees the issues of the level, the project lead, or
+// who sees the issues of the level, the project lead, or
 // the reporter or assignee of each issue.
 func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) error {
 	projectID, err := s.levelProject(r)
@@ -397,7 +389,7 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return err
 	}
-	var user, group, role any
+	var user, group any
 	table := ""
 	switch in.Holder {
 	case perm.Everyone, perm.Lead, perm.Reporter, perm.Assignee:
@@ -405,8 +397,6 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 		table = "users"
 	case perm.Group:
 		table = "user_groups"
-	case perm.Role:
-		table = "project_roles"
 	default:
 		return failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, in.Holder)
 	}
@@ -426,8 +416,6 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 			user = *in.ID
 		case perm.Group:
 			group = *in.ID
-		case perm.Role:
-			role = *in.ID
 		}
 	}
 	// The level row is locked so that two submissions of the same holder
@@ -446,14 +434,14 @@ func (s *Server) addSecurityLevelMember(w http.ResponseWriter, r *http.Request) 
 	}
 	var n int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM security_level_members WHERE level_id = ? AND holder = ?
-		AND user_id <=> ? AND group_id <=> ? AND role_id <=> ?`, levelID, in.Holder, user, group, role).Scan(&n); err != nil {
+		AND user_id <=> ? AND group_id <=> ?`, levelID, in.Holder, user, group).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
 		return fail(http.StatusConflict, i18n.SecurityMemberExists)
 	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO security_level_members (level_id, holder, user_id, group_id, role_id)
-		VALUES (?, ?, ?, ?, ?)`, levelID, in.Holder, user, group, role)
+	res, err := tx.ExecContext(ctx, `INSERT INTO security_level_members (level_id, holder, user_id, group_id)
+		VALUES (?, ?, ?, ?)`, levelID, in.Holder, user, group)
 	if err != nil {
 		return err
 	}

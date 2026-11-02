@@ -266,7 +266,7 @@ Une transition indisponible répond 400 sur `transition`.
 | Requête | Remarques |
 |---|---|
 | `GET /rest/api/2/issue/{key}/comment` | `startAt`, `maxResults`, `orderBy`. Seulement les commentaires que l'utilisateur peut lire. |
-| `POST /rest/api/2/issue/{key}/comment` | `{"body": "…", "visibility": {"type": "group", "value": "staff"}}`. `type` vaut `group` ou `role`. 201. |
+| `POST /rest/api/2/issue/{key}/comment` | `{"body": "…", "visibility": {"type": "group", "value": "staff"}}`. `type` vaut `group` ou `role` : un rôle désigne le groupe qui en est fait (voir Migration). La visibilité revient toujours en `group`. 201. |
 | `GET /rest/api/2/issue/{key}/comment/{id}` | |
 | `PUT /rest/api/2/issue/{key}/comment/{id}` | |
 | `DELETE /rest/api/2/issue/{key}/comment/{id}` | |
@@ -377,7 +377,7 @@ Solstice, qui sont moins nombreux et plus larges.
 | `DELETE /rest/api/2/filter/{id}` | Le propriétaire du filtre ou un administrateur. 204. |
 
 `sharePermissions` prend les types de Jira : `global`, `group`, `project`,
-`projectRole` et `user`. `favourite` est propre à l'utilisateur de la requête.
+`projectRole` et `user` ; `projectRole` restreint un partage de projet aux membres d'un groupe dans ce projet, et son `role.id` est l'id de ce groupe. `favourite` est propre à l'utilisateur de la requête.
 Un administrateur qui retire le partage du filtre de quelqu'un d'autre ne le
 voit plus, et reçoit 204 au lieu du filtre. Pour exécuter un filtre, cherchez
 avec son `jql`.

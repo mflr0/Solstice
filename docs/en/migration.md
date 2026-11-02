@@ -113,7 +113,7 @@ and from `-replace` alike:
   personal access tokens, notification preferences, interface language, last
   sign-in, open sessions and administrator rights.
 - Accounts created in Solstice whose user name Jira does not have are kept,
-  with their password, but without groups or roles.
+  with their password, but without groups.
 - The administrator who starts the import from the administration keeps their
   account, password, rights and session, even when Jira has an account of the
   same name.
@@ -136,13 +136,13 @@ can be run again.
 | Administrators | Members of the groups that hold Jira's Administer or System Administer permission become Solstice administrators. |
 | Application access | Accounts that are not in a licensed group (and are not administrators) are imported inactive, as Jira would refuse them. |
 | Projects | Key, name, description, lead, category, former keys of renamed projects, the issue types each project offers, components, versions. |
-| Roles | Project roles and who holds them in each project. |
+| Roles | Each project role becomes a group, named after it (with ` (role)` when a group already has that name), whose project members in each project are the role's holders there. |
 | Permissions | Each project gets its own copy of its permission scheme, and of its issue security scheme (levels and members). |
 | Catalogues | Issue types, statuses and their categories, priorities, resolutions, link types. |
 | Workflows | Each project gets its own copy of the workflows its scheme uses: statuses, transitions, initial status, and which issue types follow which workflow. |
 | Custom fields | Definitions, options (including cascading levels), the projects and issue types they apply to, and all their values. |
 | Issues | All fields, sub-tasks, epics, links, remote links, labels, watchers, votes, security levels, the old keys of moved issues. |
-| Comments and work logs | With their visibility restrictions to groups and roles. |
+| Comments and work logs | With their visibility restrictions to groups, and to roles, then to the group made from the role. |
 | Attachments | Metadata always. Files when `-jira-home` is given. |
 | History | The full change history of each issue. |
 | Filters | Saved filters with their JQL, shares and favourites. |

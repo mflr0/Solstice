@@ -122,7 +122,6 @@ export const AUDIT_FAMILIES = [
   'user',
   'admin',
   'group',
-  'role',
   'project',
   'category',
   'component',

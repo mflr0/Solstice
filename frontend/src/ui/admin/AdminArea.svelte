@@ -13,7 +13,6 @@
   import GroupsPage from './GroupsPage.svelte';
   import ImportPage from './ImportPage.svelte';
   import MailPage from './MailPage.svelte';
-  import RolesPage from './RolesPage.svelte';
   import SecurityLevelsPage from './SecurityLevelsPage.svelte';
   import SettingsPage from './SettingsPage.svelte';
   import StatusesPage from './StatusesPage.svelte';
@@ -69,8 +68,6 @@
         <UsersPage />
       {:else if section === 'groups'}
         <GroupsPage />
-      {:else if section === 'roles'}
-        <RolesPage />
       {:else if section === 'projects'}
         <AdminProjectsPage />
       {:else if section === 'securityLevels'}

@@ -548,7 +548,9 @@ func (s *Server) applySprint(ctx context.Context, sub *perm.Subject, iss *issueR
 }
 
 // commentVisibility translates a Jira comment (body and visibility) into
-// the interface API's.
+// the interface API's. Project roles are groups now: a role names the group
+// made from it (" (role)" was added to the name where a group had it), else
+// the group of that name.
 func (s *Server) commentVisibility(ctx context.Context, projectID int64, body string, raw json.RawMessage) (commentInput, error) {
 	in := commentInput{Body: body}
 	if len(raw) == 0 || string(raw) == "null" {
@@ -562,16 +564,19 @@ func (s *Server) commentVisibility(ctx context.Context, projectID int64, body st
 	}
 	in.Visibility = &struct {
 		Group string `json:"group"`
-		Role  int64  `json:"role"`
 	}{}
 	switch strings.ToLower(v.Type) {
 	case "group":
 		in.Visibility.Group = strings.ToLower(v.Value)
 	case "role":
-		err := s.db.QueryRowContext(ctx, `SELECT id FROM project_roles WHERE LOWER(name) = LOWER(?)
-			ORDER BY id LIMIT 1`, v.Value).Scan(&in.Visibility.Role)
-		if err != nil {
+		name := strings.ToLower(v.Value)
+		err := s.db.QueryRowContext(ctx, `SELECT name FROM user_groups WHERE name IN (?, ?)
+			ORDER BY name = ? DESC LIMIT 1`, name+" (role)", name, name+" (role)").Scan(&in.Visibility.Group)
+		if errors.Is(err, sql.ErrNoRows) {
 			return in, unknownValue("visibility", v.Value)
+		}
+		if err != nil {
+			return in, err
 		}
 	default:
 		return in, invalidValue("visibility")

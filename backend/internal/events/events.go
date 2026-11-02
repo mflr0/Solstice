@@ -59,8 +59,7 @@ type Comment struct {
 	UpdatedBy int64
 	Body      string
 	OldBody   string // before an edit
-	Group     string // restricted to this group (lower-case name)…
-	RoleID    int64  // …and/or this project role
+	Group     string // restricted to this group (lower-case name)
 	Created   time.Time
 	Updated   time.Time
 }
@@ -71,8 +70,7 @@ type Worklog struct {
 	AuthorID  int64
 	UpdatedBy int64 // who last changed it, 0 when never
 	Body      string
-	Group     string // restricted to this group (lower-case name)…
-	RoleID    int64  // …and/or this project role
+	Group     string // restricted to this group (lower-case name)
 	Started   time.Time
 	Seconds   int64
 	Created   time.Time

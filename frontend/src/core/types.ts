@@ -232,7 +232,6 @@ export interface HiddenIssue {
 
 export interface Visibility {
   group?: string;
-  role?: string;
 }
 
 export interface Comment {
@@ -313,7 +312,7 @@ export interface ProjectDetail {
   can: Can;
 }
 
-export type Holder = 'everyone' | 'user' | 'group' | 'role' | 'lead' | 'reporter' | 'assignee';
+export type Holder = 'everyone' | 'user' | 'group' | 'lead' | 'reporter' | 'assignee';
 
 export interface Grant {
   permission: Permission;
@@ -322,17 +321,9 @@ export interface Grant {
   name?: string;
 }
 
-export interface Role {
-  id: number;
-  name: string;
-  users: UserRef[];
-  groups: IdName[];
-}
-
 export interface ProjectPermissions {
   permissions: Permission[];
   grants: Grant[];
-  roles: Role[];
   groups: IdName[];
 }
 
@@ -420,8 +411,8 @@ export interface StrandedDefault {
 export interface FilterShare {
   kind: 'everyone' | 'group' | 'project' | 'user';
   id?: number;
-  /** With kind project: only this role. */
-  role?: number;
+  /** With kind project: only this group's members in the project. */
+  group?: number;
   name?: string;
 }
 

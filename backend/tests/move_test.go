@@ -43,7 +43,7 @@ type moveCheckOut struct {
 	Subtasks        struct{ Count, Reset, Lost, Reassigned int }
 	Restricted      *struct {
 		Comments, Worklogs int
-		Roles, Groups      []idName
+		Groups             []idName
 	}
 }
 
@@ -843,52 +843,60 @@ func TestMoveChoosingOrRemovingTheLevelTakesTheSecurityRightInBothProjects(t *te
 }
 
 // restrictedMove is a move env where the issue and its sub-task carry comments
-// and work logs restricted to a role of the source project, to a group, and to
-// no one. The administrator holds the source role, and a role of the target
-// other than the one the test will choose.
+// and work logs restricted to a group with project members in the source,
+// to a global group, and to no one. The administrator is a project member of
+// the source group in the source, and of another group in the target.
 type restrictedMove struct {
 	*moveEnv
-	srcRole, dstRole, otherRole int64
-	restricted                  []int64 // comments restricted to the source role
-	worklog, groupComment       int64
+	srcGroup, dstGroup, otherGroup namedGroup // the source group, one with members in the target, the administrator's there
+	restricted                     []int64    // comments restricted to the source group
+	worklog                        int64
+	groupComment                   int64
+}
+
+type namedGroup struct {
+	ID   int64
+	Name string
+}
+
+// projectMember makes a user a project member of a group in a project.
+func projectMember(t *testing.T, project, group int64, user string) {
+	t.Helper()
+	moveInsert(t, `INSERT IGNORE INTO group_project_members (group_id, project_id, user_id) VALUES (?, ?, ?)`,
+		group, project, userID(t, user))
+}
+
+// newGroup creates a group with no member, deleted with what is restricted to it.
+func newGroup(t *testing.T, admin *client, prefix string) namedGroup {
+	t.Helper()
+	g := namedGroup{Name: strings.ToLower(unique(prefix))}
+	admin.call("POST", "/api/admin/groups", map[string]any{"name": g.Name}, 201, &g)
+	t.Cleanup(func() {
+		testDB.Exec(`DELETE FROM comments WHERE visibility_group = ?`, g.Name)
+		testDB.Exec(`DELETE FROM worklogs WHERE visibility_group = ?`, g.Name)
+		admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
+	})
+	return g
 }
 
 func newRestrictedMove(t *testing.T) *restrictedMove {
 	t.Helper()
 	e := &restrictedMove{moveEnv: newMoveEnv(t)}
-	role := func() int64 {
-		var r struct{ ID int64 }
-		e.admin.call("POST", "/api/admin/roles", map[string]any{"name": unique("Rôle ")}, 201, &r)
-		return r.ID
-	}
-	e.srcRole, e.dstRole, e.otherRole = role(), role(), role()
-	t.Cleanup(func() {
-		testDB.Exec(`DELETE FROM comments WHERE visibility_role_id IN (?, ?, ?)`, e.srcRole, e.dstRole, e.otherRole)
-		testDB.Exec(`DELETE FROM worklogs WHERE visibility_role_id IN (?, ?, ?)`, e.srcRole, e.dstRole, e.otherRole)
-		for _, id := range []int64{e.srcRole, e.dstRole, e.otherRole} {
-			e.admin.do("DELETE", fmt.Sprintf("/api/admin/roles/%d", id), nil)
-		}
-	})
+	e.srcGroup, e.dstGroup, e.otherGroup = newGroup(t, e.admin, "groupe "), newGroup(t, e.admin, "groupe "), newGroup(t, e.admin, "groupe ")
+	projectMember(t, e.srcID, e.srcGroup.ID, "admin")
+	projectMember(t, e.dstID, e.otherGroup.ID, "admin")
+	projectMember(t, e.dstID, e.dstGroup.ID, "paul.martin")
 	admin := userID(t, "admin")
-	member := func(project, role int64) {
-		moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, project, role, admin)
+	comment := func(issue int64, body string, group any) int64 {
+		return moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group)
+			VALUES (?, ?, ?, NOW(3), NOW(3), ?)`, issue, admin, body, group)
 	}
-	member(e.srcID, e.srcRole)
-	member(e.dstID, e.otherRole)
-	// A role that has no member in the target is not one of its roles.
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.dstID, e.dstRole,
-		userID(t, "paul.martin"))
-
-	comment := func(issue int64, body string, group any, role any) int64 {
-		return moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group,
-			visibility_role_id) VALUES (?, ?, ?, NOW(3), NOW(3), ?, ?)`, issue, admin, body, group, role)
-	}
-	e.restricted = []int64{comment(e.issueID, "Réservé au rôle", nil, e.srcRole),
-		comment(e.childID, "Réservé au rôle (sous-tâche)", nil, e.srcRole)}
-	e.groupComment = comment(e.issueID, "Réservé au groupe", "developpeurs", nil)
-	comment(e.issueID, "Pour tous", nil, nil)
+	e.restricted = []int64{comment(e.issueID, "Réservé au groupe du projet", e.srcGroup.Name),
+		comment(e.childID, "Réservé au groupe du projet (sous-tâche)", e.srcGroup.Name)}
+	e.groupComment = comment(e.issueID, "Réservé au groupe", "developpeurs")
+	comment(e.issueID, "Pour tous", nil)
 	e.worklog = moveInsert(t, `INSERT INTO worklogs (issue_id, author_id, started_at, seconds, created_at, updated_at,
-		visibility_role_id) VALUES (?, ?, NOW(3), 600, NOW(3), NOW(3), ?)`, e.issueID, admin, e.srcRole)
+		visibility_group) VALUES (?, ?, NOW(3), 600, NOW(3), NOW(3), ?)`, e.issueID, admin, e.srcGroup.Name)
 	return e
 }
 
@@ -904,41 +912,39 @@ func (e *restrictedMove) seen(key string) []int64 {
 	return out
 }
 
-func TestMoveAsksWhatBecomesOfRoleRestrictedItems(t *testing.T) {
+// onGroup counts the items of the moved issue and sub-task restricted to a group.
+func (e *restrictedMove) onGroup(table, group string) int64 {
+	e.t.Helper()
+	return dbInt(e.t, `SELECT COUNT(*) FROM `+table+` WHERE visibility_group = ? AND issue_id IN (?, ?)`, group,
+		e.issueID, e.childID)
+}
+
+func TestMoveAsksWhatBecomesOfProjectGroupRestrictedItems(t *testing.T) {
 	e := newRestrictedMove(t)
 	path := "/api/issues/" + e.issue + "/move"
 	c := e.check(e.admin, e.issue, e.allChoices)
+	// The comment restricted to a group without project members moves as it is.
 	if c.Ready || !slices.Contains(c.Missing, "restricted") || c.Restricted == nil || c.Restricted.Comments != 2 ||
 		c.Restricted.Worklogs != 1 {
 		t.Fatalf("the dry run does not count the restricted items: %+v", c)
 	}
-	// Only the roles that have a member in the target are offered.
-	if got := c.Restricted.Roles; len(got) != 2 {
-		t.Errorf("roles offered: %+v", got)
-	}
-	if !slices.ContainsFunc(c.Restricted.Roles, func(r idName) bool { return r.ID == e.dstRole }) ||
-		slices.ContainsFunc(c.Restricted.Roles, func(r idName) bool { return r.ID == e.srcRole }) {
-		t.Errorf("roles offered: %+v", c.Restricted.Roles)
-	}
-	if len(c.Restricted.Groups) == 0 {
-		t.Error("an administrator is offered no group")
+	for _, g := range []namedGroup{e.srcGroup, e.dstGroup, e.otherGroup} {
+		if !slices.ContainsFunc(c.Restricted.Groups, func(o idName) bool { return o.ID == g.ID }) {
+			t.Errorf("an administrator is not offered %s: %+v", g.Name, c.Restricted.Groups)
+		}
 	}
 
 	// Without a choice the move is refused, and so are bad ones: nothing changes.
 	refused := map[string]map[string]any{
-		"no choice":                 nil,
-		"a refusal":                 {"to": "refuse"},
-		"a role of the source":      {"to": "role", "role": e.srcRole},
-		"no role":                   {"to": "role"},
-		"a group that is unknown":   {"to": "group", "group": -1},
-		"something else":            {"to": "public"},
-		"a role with a group's key": {"to": "role", "group": 1},
+		"no choice":               nil,
+		"a refusal":               {"to": "refuse"},
+		"no group":                {"to": "group"},
+		"a group that is unknown": {"to": "group", "group": -1},
+		"something else":          {"to": "public"},
+		"a role":                  {"to": "role", "role": e.dstGroup.ID},
 	}
 	for name, choice := range refused {
-		body := map[string]any{}
-		for k, v := range e.allChoices {
-			body[k] = v
-		}
+		body := maps.Clone(e.allChoices)
 		if choice != nil {
 			body["restricted"] = choice
 		}
@@ -947,76 +953,78 @@ func TestMoveAsksWhatBecomesOfRoleRestrictedItems(t *testing.T) {
 		}
 	}
 	if dbInt(t, `SELECT project_id FROM issues WHERE id = ?`, e.issueID) != e.srcID ||
-		dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?`, e.srcRole) != 2 {
+		e.onGroup("comments", e.srcGroup.Name) != 2 {
 		t.Error("a refused move changed something")
 	}
 	status, msg, _ := e.admin.errorIn("fr", "POST", path, map[string]any{"project": e.dst, "restricted": map[string]any{"to": "refuse"}})
-	if status != 400 || !strings.Contains(msg, "rôle") {
+	if status != 400 || !strings.Contains(msg, "groupe") {
 		t.Errorf("refusal in French: %d %q", status, msg)
 	}
 }
 
-func TestMoveKeepsRoleRestrictedItemsToARoleOfTheTarget(t *testing.T) {
+func TestMoveRestrictsProjectGroupItemsToAGroupOfTheTarget(t *testing.T) {
 	e := newRestrictedMove(t)
-	body := map[string]any{"restricted": map[string]any{"to": "role", "role": e.dstRole}}
-	for k, v := range e.allChoices {
-		body[k] = v
-	}
+	body := maps.Clone(e.allChoices)
+	body["restricted"] = map[string]any{"to": "group", "group": e.dstGroup.ID}
 	if c := e.check(e.admin, e.issue, body); !c.Ready {
 		t.Fatalf("the dry run with a choice: %+v", c)
 	}
 	var moved struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
 
-	// The role is the chosen one, on the issue's and the sub-task's, comments and work logs.
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ? AND issue_id IN (?, ?)`, e.dstRole,
-		e.issueID, e.childID); n != 2 {
-		t.Errorf("%d comments on the chosen role, want 2", n)
+	// The group is the chosen one, on the issue's and the sub-task's, comments and work logs.
+	if n := e.onGroup("comments", e.dstGroup.Name); n != 2 {
+		t.Errorf("%d comments on the chosen group, want 2", n)
 	}
-	if dbInt(t, `SELECT visibility_role_id FROM worklogs WHERE id = ?`, e.worklog) != e.dstRole {
+	if pick(t, `SELECT visibility_group FROM worklogs WHERE id = ?`, e.worklog) != e.dstGroup.Name {
 		t.Error("the work log did not follow")
 	}
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?`, e.srcRole); n != 0 {
-		t.Errorf("%d comments still on the role of the source", n)
+	if n := e.onGroup("comments", e.srcGroup.Name); n != 0 {
+		t.Errorf("%d comments still on the group of the source", n)
 	}
-	// What was restricted to a group stays so.
+	// What was restricted to a group with no project members stays so.
 	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ?`, e.groupComment); g != "developpeurs" {
 		t.Errorf("group-restricted comment: %q", g)
 	}
 
-	// The administrator holds another role of the target: the items are hidden from them, until they hold the chosen one.
+	// The administrator is in another group of the target: the items are hidden
+	// from them, until they are a project member of the chosen one there.
 	hidden := func(want bool) {
 		t.Helper()
 		got := e.seen(moved.Key)
-		for _, id := range e.restricted[:1] {
-			if slices.Contains(got, id) == want {
-				t.Errorf("comment %d readable = %v, want %v", id, !want, want)
-			}
+		if slices.Contains(got, e.restricted[0]) == want {
+			t.Errorf("comment %d readable = %v, want %v", e.restricted[0], !want, want)
 		}
 	}
 	hidden(true)
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.dstID, e.dstRole,
-		userID(t, "admin"))
+	projectMember(t, e.dstID, e.dstGroup.ID, "admin")
 	hidden(false)
 }
 
-func TestMoveRestrictsRoleRestrictedItemsToAGroup(t *testing.T) {
+func TestMoveKeepsGroupRestrictedItemsOnTheirGroupWhenAsked(t *testing.T) {
 	e := newRestrictedMove(t)
-	var g struct{ ID int64 }
-	name := strings.ToLower(unique("pivot"))
-	e.admin.call("POST", "/api/admin/groups", map[string]any{"name": name}, 201, &g)
-	t.Cleanup(func() {
-		testDB.Exec(`UPDATE comments SET visibility_group = NULL WHERE visibility_group = ?`, name)
-		testDB.Exec(`UPDATE worklogs SET visibility_group = NULL WHERE visibility_group = ?`, name)
-		e.admin.do("DELETE", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil)
-	})
-	both := moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group,
-		visibility_role_id) VALUES (?, ?, 'Groupe et rôle', NOW(3), NOW(3), 'developpeurs', ?)`,
-		e.issueID, userID(t, "admin"), e.srcRole)
-	body := map[string]any{"restricted": map[string]any{"to": "group", "group": g.ID}}
-	for k, v := range e.allChoices {
-		body[k] = v
+	body := maps.Clone(e.allChoices)
+	body["restricted"] = map[string]any{"to": "keep"}
+	var moved struct{ Key string }
+	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
+	if n := e.onGroup("comments", e.srcGroup.Name); n != 2 || e.onGroup("worklogs", e.srcGroup.Name) != 1 {
+		t.Errorf("%d comments kept on the group, want 2, and the work log", n)
 	}
+	// Its members are now those of the target: the administrator was one in the source only.
+	if slices.Contains(e.seen(moved.Key), e.restricted[0]) {
+		t.Error("a project member of the group in the source only reads the comment in the target")
+	}
+	projectMember(t, e.dstID, e.srcGroup.ID, "admin")
+	if !slices.Contains(e.seen(moved.Key), e.restricted[0]) {
+		t.Error("a project member of the group in the target does not read the comment")
+	}
+}
+
+func TestMoveRestrictsProjectGroupItemsToAGlobalGroup(t *testing.T) {
+	e := newRestrictedMove(t)
+	pivot := newGroup(t, e.admin, "pivot")
+	body := maps.Clone(e.allChoices)
+	body["restricted"] = map[string]any{"to": "group", "group": pivot.ID}
 	var moved struct{ Key string }
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, &moved)
 
@@ -1026,21 +1034,14 @@ func TestMoveRestrictsRoleRestrictedItemsToAGroup(t *testing.T) {
 		return a.Target != nil && a.Target.Label != nil && *a.Target.Label == moved.Key
 	}); i < 0 {
 		t.Errorf("audit entries: %+v", page.Entries)
-	} else if choice, _ := page.Entries[i].Details["restricted"].(map[string]any); choice["to"] != "group" || choice["group"] != float64(g.ID) {
+	} else if choice, _ := page.Entries[i].Details["restricted"].(map[string]any); choice["to"] != "group" || choice["group"] != float64(pivot.ID) {
 		t.Errorf("audited choice: %v", page.Entries[i].Details["restricted"])
 	}
 
-	// One already restricted to a group and a role keeps its group.
-	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ? AND visibility_role_id IS NULL`, both); g != "developpeurs" {
-		t.Errorf("comment restricted to a group and a role: %q", g)
-	}
-
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = ? AND visibility_role_id IS NULL
-		AND id IN (?, ?)`, name, e.restricted[0], e.restricted[1]); n != 2 {
+	if n := e.onGroup("comments", pivot.Name); n != 2 {
 		t.Errorf("%d comments on the chosen group, want 2", n)
 	}
-	if n := dbInt(t, `SELECT COUNT(*) FROM worklogs WHERE id = ? AND visibility_group = ? AND visibility_role_id IS NULL`,
-		e.worklog, name); n != 1 {
+	if pick(t, `SELECT visibility_group FROM worklogs WHERE id = ?`, e.worklog) != pivot.Name {
 		t.Error("the work log did not follow")
 	}
 	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ?`, e.groupComment); g != "developpeurs" {
@@ -1050,16 +1051,16 @@ func TestMoveRestrictsRoleRestrictedItemsToAGroup(t *testing.T) {
 	if slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a user outside the group reads the comment")
 	}
-	e.admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", g.ID), map[string]any{"users": []int64{userID(t, "admin")}}, 200, nil)
+	e.admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", pivot.ID), map[string]any{"users": []int64{userID(t, "admin")}}, 200, nil)
 	if !slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a member of the group does not read the comment")
 	}
 }
 
-// moverWithoutTheRole is a user who may move the issue but holds none of the
-// roles its comments are restricted to. The issue loses its security level
-// first, which only someone who may set levels could carry over.
-func (e *restrictedMove) moverWithoutTheRole() (*client, map[string]any) {
+// moverOutsideTheGroup is a user who may move the issue but is in none of the
+// groups its comments are restricted to, in the source. The issue loses its
+// security level first, which only someone who may set levels could carry over.
+func (e *restrictedMove) moverOutsideTheGroup() (*client, map[string]any) {
 	e.t.Helper()
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
 	body := map[string]any{}
@@ -1071,22 +1072,19 @@ func (e *restrictedMove) moverWithoutTheRole() (*client, map[string]any) {
 	return login(e.t, "paul.martin", jirafixture.Password), body
 }
 
-func TestMoveRefusesRoleRestrictedItemsTheMoverCannotRead(t *testing.T) {
+func TestMoveRefusesProjectGroupItemsTheMoverCannotRead(t *testing.T) {
 	e := newRestrictedMove(t)
-	paul, body := e.moverWithoutTheRole()
+	paul, body := e.moverOutsideTheGroup()
 	path := "/api/issues/" + e.issue + "/move"
 	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
 
-	// The target has no role of the same name, and a choice does not help.
+	// The group has no members in the target, and a choice does not help.
 	for name, choice := range map[string]map[string]any{
-		"no choice": nil,
-		"a group":   {"to": "group", "group": developers},
-		"a role":    {"to": "role", "role": e.dstRole},
+		"no choice":      nil,
+		"a group":        {"to": "group", "group": developers},
+		"keep the group": {"to": "keep"},
 	} {
-		in := map[string]any{}
-		for k, v := range body {
-			in[k] = v
-		}
+		in := maps.Clone(body)
 		if choice != nil {
 			in["restricted"] = choice
 		}
@@ -1103,29 +1101,22 @@ func TestMoveRefusesRoleRestrictedItemsTheMoverCannotRead(t *testing.T) {
 		t.Errorf("refusal in French: %d %q", status, msg)
 	}
 	if dbInt(t, `SELECT project_id FROM issues WHERE id = ?`, e.issueID) != e.srcID ||
-		dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?`, e.srcRole) != 2 {
+		e.onGroup("comments", e.srcGroup.Name) != 2 {
 		t.Error("a refused move changed something")
 	}
 }
 
-func TestMoveKeepsUnreadableRoleRestrictedItemsOnTheSameNamedRole(t *testing.T) {
+func TestMoveKeepsUnreadableProjectGroupItemsOnTheirGroup(t *testing.T) {
 	e := newRestrictedMove(t)
-	paul, body := e.moverWithoutTheRole()
+	paul, body := e.moverOutsideTheGroup()
 	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
-	// The target has the role of the source, held by someone else; and the mover
-	// reads one comment, restricted to a role of theirs.
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.dstID, e.srcRole,
-		userID(t, "admin"))
-	var mine struct{ ID int64 }
-	e.admin.call("POST", "/api/admin/roles", map[string]any{"name": unique("Rôle de paul ")}, 201, &mine)
-	t.Cleanup(func() {
-		testDB.Exec(`DELETE FROM comments WHERE visibility_role_id = ?`, mine.ID)
-		e.admin.do("DELETE", fmt.Sprintf("/api/admin/roles/%d", mine.ID), nil)
-	})
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, mine.ID,
-		userID(t, "paul.martin"))
-	readable := moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_role_id)
-		VALUES (?, ?, 'Pour le rôle de paul', NOW(3), NOW(3), ?)`, e.issueID, userID(t, "admin"), mine.ID)
+	// The group has members in the target, someone else; and the mover reads
+	// one comment, restricted to a group they are a project member of.
+	projectMember(t, e.dstID, e.srcGroup.ID, "admin")
+	mine := newGroup(t, e.admin, "groupe de paul ")
+	projectMember(t, e.srcID, mine.ID, "paul.martin")
+	readable := moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group)
+		VALUES (?, ?, 'Pour le groupe de paul', NOW(3), NOW(3), ?)`, e.issueID, userID(t, "admin"), mine.Name)
 
 	// Only the comment the mover reads is counted, and a group of theirs is offered for it.
 	c := moveCheckOf(t, paul, e.issue, body)
@@ -1142,31 +1133,29 @@ func TestMoveKeepsUnreadableRoleRestrictedItemsOnTheSameNamedRole(t *testing.T) 
 	if g := pick(t, `SELECT visibility_group FROM comments WHERE id = ?`, readable); g != "developpeurs" {
 		t.Errorf("the comment the mover reads: group %q", g)
 	}
-	// What the mover could not read keeps its role, which the target has.
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ? AND issue_id IN (?, ?)`, e.srcRole,
-		e.issueID, e.childID); n != 2 {
-		t.Errorf("%d comments on the role of the same name, want 2", n)
+	// What the mover could not read keeps its group, which has members in the target.
+	if n := e.onGroup("comments", e.srcGroup.Name); n != 2 {
+		t.Errorf("%d comments on their group, want 2", n)
 	}
-	if dbInt(t, `SELECT visibility_role_id FROM worklogs WHERE id = ?`, e.worklog) != e.srcRole {
-		t.Error("the work log did not keep its role")
+	if pick(t, `SELECT visibility_group FROM worklogs WHERE id = ?`, e.worklog) != e.srcGroup.Name {
+		t.Error("the work log did not keep its group")
 	}
 }
 
-func TestMoveDoesNotLimitAGlobalAdministratorToTheirRoles(t *testing.T) {
+func TestMoveDoesNotLimitAGlobalAdministratorToTheirGroups(t *testing.T) {
 	e := newRestrictedMove(t)
-	testDB.Exec(`DELETE FROM project_role_members WHERE project_id = ? AND role_id = ?`, e.srcID, e.srcRole)
+	// The group still has project members, but not the administrator.
+	testDB.Exec(`DELETE FROM group_project_members WHERE project_id = ? AND group_id = ?`, e.srcID, e.srcGroup.ID)
+	projectMember(t, e.srcID, e.srcGroup.ID, "chloe.simon")
 	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
-	body := map[string]any{"restricted": map[string]any{"to": "group", "group": developers}}
-	for k, v := range e.allChoices {
-		body[k] = v
-	}
+	body := maps.Clone(e.allChoices)
+	body["restricted"] = map[string]any{"to": "group", "group": developers}
 	if c := e.check(e.admin, e.issue, body); !c.Ready {
 		t.Fatalf("the dry run: %+v", c)
 	}
 	e.admin.call("POST", "/api/issues/"+e.issue+"/move", body, 200, nil)
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = 'developpeurs' AND visibility_role_id IS NULL
-		AND id IN (?, ?)`, e.restricted[0], e.restricted[1]); n != 2 {
-		t.Errorf("%d comments on the chosen group, want 2", n)
+	if n := e.onGroup("comments", "developpeurs"); n != 3 {
+		t.Errorf("%d comments on the chosen group, want 3 (2 moved, 1 there already)", n)
 	}
 }
 
@@ -1178,8 +1167,7 @@ func TestMoveDryRunSendsEmptyListsNotNull(t *testing.T) {
 		t.Fatalf("dry run: %d %s", status, raw)
 	}
 	out := obj(t, raw)
-	for _, path := range [][2]string{{"components", "options"}, {"fixVersions", "options"}, {"securityLevel", "options"},
-		{"restricted", "roles"}} {
+	for _, path := range [][2]string{{"components", "options"}, {"fixVersions", "options"}, {"securityLevel", "options"}} {
 		part, _ := out[path[0]].(map[string]any)
 		if list, ok := part[path[1]].([]any); !ok || len(list) != 0 {
 			t.Errorf("%s.%s: %v, want an empty list", path[0], path[1], part[path[1]])
@@ -1309,12 +1297,11 @@ func TestMoveDoesNotAnnounceTheNewKeyToWhoCannotSeeIt(t *testing.T) {
 	}
 }
 
-func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) {
+func TestMoveDoesNotListTheTargetGroupsToWhoSeesOnlyTheirOwnIssues(t *testing.T) {
 	e := newRestrictedMove(t)
 	paul := login(t, "paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
-		userID(t, "paul.martin"))
+	projectMember(t, e.srcID, e.srcGroup.ID, "paul.martin")
 	e.refreshRules(e.src)
 	body := map[string]any{}
 	for k, v := range e.allChoices {
@@ -1322,10 +1309,14 @@ func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) 
 			body[k] = v
 		}
 	}
+	// The administrator's group of the target is one paul.martin is not in.
+	offersOther := func(c moveCheckOut) bool {
+		return slices.ContainsFunc(c.Restricted.Groups, func(g idName) bool { return g.ID == e.otherGroup.ID })
+	}
 
 	c := e.check(paul, e.issue, body)
-	if c.Restricted == nil || c.Restricted.Comments != 2 || len(c.Restricted.Roles) == 0 {
-		t.Fatalf("a member of the target is not offered its roles: %+v", c.Restricted)
+	if c.Restricted == nil || c.Restricted.Comments != 2 || !offersOther(c) {
+		t.Fatalf("one who sees the target is not offered its groups: %+v", c.Restricted)
 	}
 
 	var perms struct{ Grants []grantOut }
@@ -1338,8 +1329,8 @@ func TestMoveDoesNotListTheTargetRolesToWhoSeesOnlyTheirOwnIssues(t *testing.T) 
 	}
 	e.admin.call("PUT", "/api/projects/"+e.dst+"/permissions", map[string]any{"grants": grants}, 200, nil)
 	c = e.check(paul, e.issue, body)
-	if c.Restricted == nil || c.Restricted.Comments != 2 || len(c.Restricted.Roles) != 0 {
-		t.Errorf("the roles of a project one sees only the own issues of: %+v", c.Restricted)
+	if c.Restricted == nil || c.Restricted.Comments != 2 || offersOther(c) {
+		t.Errorf("the groups of a project one sees only the own issues of: %+v", c.Restricted)
 	}
 }
 
@@ -1349,16 +1340,15 @@ func TestMoveRestrictsAPendingNotificationByTheCommentsNewRestriction(t *testing
 	admin := env.login("admin", "admin")
 	paul := env.login("paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
-	// paul.martin holds the role in both projects, so the old restriction would let him read.
+	// paul.martin is in the group in both projects, so the old restriction would let him read.
 	for _, project := range []int64{e.srcID, e.dstID} {
-		moveInsert(t, `INSERT IGNORE INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`,
-			project, e.srcRole, userID(t, "paul.martin"))
+		projectMember(t, project, e.srcGroup.ID, "paul.martin")
 	}
 	e.refreshRules(e.src)
 	e.refreshRules(e.dst)
 	paul.call("PUT", "/api/issues/"+e.issue+"/watch", nil, 200, nil)
 	admin.call("POST", "/api/issues/"+e.issue+"/comments", map[string]any{"body": "Réservé, en attente",
-		"visibility": map[string]any{"role": e.srcRole}}, 201, nil)
+		"visibility": map[string]any{"group": e.srcGroup.Name}}, 201, nil)
 	env.hooks.Settle()
 
 	var g struct{ ID int64 }
@@ -1544,8 +1534,8 @@ func TestMoveRefusesWhenASubtaskOrAnItemChangedAfterThePlan(t *testing.T) {
 	stayed("a sub-task edited after the plan")
 
 	if status := e.moveWhile(e.issueID, body, func(tx *sql.Tx) {
-		tx.Exec(`INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_role_id)
-			VALUES (?, ?, 'Réservé, arrivé entre-temps', NOW(3), NOW(3), ?)`, e.issueID, userID(t, "admin"), e.srcRole)
+		tx.Exec(`INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group)
+			VALUES (?, ?, 'Réservé, arrivé entre-temps', NOW(3), NOW(3), ?)`, e.issueID, userID(t, "admin"), e.srcGroup.Name)
 	}); status != 409 {
 		t.Errorf("a restricted comment added after the plan: %d, want 409", status)
 	}
@@ -1632,8 +1622,7 @@ func TestMoveOffersAndAcceptsOnlyTheGroupsOfWhoMoves(t *testing.T) {
 	e := newRestrictedMove(t)
 	paul := login(t, "paul.martin", jirafixture.Password)
 	e.admin.call("PATCH", "/api/issues/"+e.issue, map[string]any{"securityLevel": nil}, 200, nil)
-	moveInsert(t, `INSERT INTO project_role_members (project_id, role_id, user_id) VALUES (?, ?, ?)`, e.srcID, e.srcRole,
-		userID(t, "paul.martin"))
+	projectMember(t, e.srcID, e.srcGroup.ID, "paul.martin")
 	e.refreshRules(e.src)
 	var stranger struct{ ID int64 }
 	name := strings.ToLower(unique("etranger"))
@@ -1663,14 +1652,14 @@ func TestMoveOffersAndAcceptsOnlyTheGroupsOfWhoMoves(t *testing.T) {
 		t.Errorf("a group the mover is not in: %d, want 400", status)
 	}
 	if dbInt(t, `SELECT COUNT(*) FROM issues WHERE id = ? AND project_id = ?`, e.issueID, e.srcID) != 1 ||
-		dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_role_id = ?`, e.srcRole) != 2 {
+		e.onGroup("comments", e.srcGroup.Name) != 2 {
 		t.Error("a refused move changed the issue or its comments")
 	}
 
 	developers := dbInt(t, `SELECT id FROM user_groups WHERE name = 'developpeurs'`)
 	body["restricted"] = map[string]any{"to": "group", "group": developers}
 	paul.call("POST", path, body, 200, nil)
-	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = 'developpeurs' AND visibility_role_id IS NULL
+	if n := dbInt(t, `SELECT COUNT(*) FROM comments WHERE visibility_group = 'developpeurs'
 		AND id IN (?, ?)`, e.restricted[0], e.restricted[1]); n != 2 {
 		t.Errorf("%d comments on the chosen group, want 2", n)
 	}

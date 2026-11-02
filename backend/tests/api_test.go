@@ -87,7 +87,7 @@ func TestRestrictedProject(t *testing.T) {
 }
 
 func TestSecurityLevels(t *testing.T) {
-	// "Restreint": its reporter, marie.durand and the Administrators role only.
+	// "Restreint": its reporter, marie.durand and the group made from the Administrators role only.
 	restricted := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		JOIN security_levels l ON l.id = i.security_level_id JOIN users u ON u.id = i.reporter_id
 		WHERE l.name = 'Restreint' AND u.username NOT IN ('paul.martin', 'marie.durand') AND u.active
@@ -720,7 +720,7 @@ func TestBoardVisibility(t *testing.T) {
 	if status := login(t, "paul.martin", jirafixture.Password).get("/api/boards/"+boardID(t, "RH"), nil); status != 404 {
 		t.Errorf("paul.martin GET RH board: %d", status)
 	}
-	// The RH board's filter is shared with a role of the RH project.
+	// The RH board's filter is shared with the RH project's members of a group made from a role.
 	if status := login(t, "chloe.simon", jirafixture.Password).get("/api/boards/"+boardID(t, "RH"), nil); status != 200 {
 		t.Errorf("chloe.simon GET RH board: %d", status)
 	}

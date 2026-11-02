@@ -392,7 +392,8 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 				if in.Role == nil {
 					return nil, invalidValue("sharePermissions")
 				}
-				if share.Role, err = strconv.ParseInt(in.Role.ID.String(), 10, 64); err != nil {
+				// The role's id is a group's, as sharePermissions return it.
+				if share.Group, err = strconv.ParseInt(in.Role.ID.String(), 10, 64); err != nil {
 					return nil, invalidValue("sharePermissions")
 				}
 			}

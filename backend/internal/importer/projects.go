@@ -297,17 +297,49 @@ func (r *run) projectAssociations(sinkEntity string) (map[int64]int64, error) {
 	return out, err
 }
 
+// roleGroup is the group a Jira project role becomes.
+type roleGroup struct {
+	id   int64
+	name string
+}
+
+// importRoles turns each Jira project role into a group whose members are
+// the role's actors, as project members of each project.
 func (r *run) importRoles() error {
-	r.roles = map[int64]bool{}
-	ins := r.inserter("project_roles", "id", "name", "description")
-	if err := r.each(`SELECT id, name, description FROM projectrole`, func(rows *sql.Rows) error {
+	r.roles = map[int64]roleGroup{}
+	r.groupNames = map[string]bool{}
+	for name, id := range r.groups {
+		r.groupNames[name] = true
+		r.nextGroup = max(r.nextGroup, id)
+	}
+	// A comment restricted to a group Jira no longer has must not become
+	// visible to a role that takes its name.
+	for _, q := range []string{`SELECT DISTINCT actionlevel FROM jiraaction WHERE actionlevel IS NOT NULL`,
+		`SELECT DISTINCT grouplevel FROM worklog WHERE grouplevel IS NOT NULL`} {
+		if err := r.each(q, func(rows *sql.Rows) error {
+			var name string
+			err := rows.Scan(&name)
+			r.groupNames[strings.ToLower(name)] = true
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+
+	ins := r.inserter("user_groups", "id", "name", "description")
+	if err := r.each(`SELECT id, name, description FROM projectrole ORDER BY id`, func(rows *sql.Rows) error {
 		var id int64
 		var name, desc sql.NullString
 		if err := rows.Scan(&id, &name, &desc); err != nil {
 			return err
 		}
-		r.roles[id] = true
-		return ins.add(id, truncate(name.String, sqlq.VarcharWidth), sqlq.Value(desc))
+		g := r.newRoleGroup(name.String)
+		r.roles[id] = g
+		var d any
+		if desc.Valid {
+			d = truncate(desc.String, sqlq.VarcharWidth)
+		}
+		return ins.add(g.id, g.name, d)
 	}); err != nil {
 		return err
 	}
@@ -316,7 +348,23 @@ func (r *run) importRoles() error {
 	}
 	r.rep.step("roles", ins.total, 0)
 
-	ins = r.inserter("project_role_members", "project_id", "role_id", "user_id", "group_id")
+	ins = r.inserter("group_project_members", "group_id", "project_id", "user_id", "member_group_id")
+	seen := map[[4]int64]bool{}
+	add := func(group, pid, uid, gid int64) error {
+		k := [4]int64{group, pid, uid, gid}
+		if seen[k] {
+			return nil
+		}
+		seen[k] = true
+		var u, g any
+		if uid != 0 {
+			u = uid
+		}
+		if gid != 0 {
+			g = gid
+		}
+		return ins.add(group, pid, u, g)
+	}
 	skipped := 0
 	if err := r.each(`SELECT pid, projectroleid, roletype, roletypeparameter FROM projectroleactor
 		WHERE pid IS NOT NULL`, func(rows *sql.Rows) error {
@@ -325,18 +373,19 @@ func (r *run) importRoles() error {
 		if err := rows.Scan(&pid, &role, &kind, &param); err != nil {
 			return err
 		}
-		if r.projects[pid] == nil || !r.roles[role] {
+		rg, ok := r.roles[role]
+		if r.projects[pid] == nil || !ok {
 			skipped++
 			return nil
 		}
 		switch kind.String {
 		case "atlassian-user-role-actor":
 			if uid, ok := r.users[param.String]; ok {
-				return ins.add(pid, role, uid, nil)
+				return add(rg.id, pid, uid, 0)
 			}
 		case "atlassian-group-role-actor":
 			if gid, ok := r.groups[strings.ToLower(param.String)]; ok {
-				return ins.add(pid, role, nil, gid)
+				return add(rg.id, pid, 0, gid)
 			}
 		}
 		skipped++
@@ -349,6 +398,23 @@ func (r *run) importRoles() error {
 	}
 	r.rep.step("role members", ins.total, skipped)
 	return nil
+}
+
+// newRoleGroup picks the group for a role: its name in lower case, or with
+// " (role)", " (role 2)"… when a group or restricted item already has it.
+func (r *run) newRoleGroup(role string) roleGroup {
+	base := strings.ToLower(truncate(role, sqlq.VarcharWidth))
+	name := base
+	for n := 1; r.groupNames[name]; n++ {
+		suffix := " (role)"
+		if n > 1 {
+			suffix = fmt.Sprintf(" (role %d)", n)
+		}
+		name = truncate(base, sqlq.VarcharWidth-len([]rune(suffix))) + suffix
+	}
+	r.groupNames[name] = true
+	r.nextGroup++
+	return roleGroup{id: r.nextGroup, name: name}
 }
 
 // importProjectIssueTypes resolves each project's issue type scheme into the
@@ -485,7 +551,8 @@ func (r *run) holder(kind, param sql.NullString) ([]perm.Grant, bool) {
 		return one(perm.Grant{Holder: perm.User, UserID: uid}, ok)
 	case "projectrole":
 		rid, err := strconv.ParseInt(param.String, 10, 64)
-		return one(perm.Grant{Holder: perm.Role, RoleID: rid}, err == nil && r.roles[rid])
+		rg, ok := r.roles[rid]
+		return one(perm.Grant{Holder: perm.Group, GroupID: rg.id}, err == nil && ok)
 	case "lead":
 		return one(perm.Grant{Holder: perm.Lead}, true)
 	case "reporter":
@@ -496,18 +563,15 @@ func (r *run) holder(kind, param sql.NullString) ([]perm.Grant, bool) {
 	return nil, false
 }
 
-func grantArgs(g perm.Grant) (any, any, any) {
-	var u, gr, ro any
+func grantArgs(g perm.Grant) (any, any) {
+	var u, gr any
 	if g.UserID != 0 {
 		u = g.UserID
 	}
 	if g.GroupID != 0 {
 		gr = g.GroupID
 	}
-	if g.RoleID != 0 {
-		ro = g.RoleID
-	}
-	return u, gr, ro
+	return u, gr
 }
 
 // errTooOld is why the import refuses a Jira database older than version 7.
@@ -554,7 +618,7 @@ func (r *run) importPermissions() error {
 		return err
 	}
 
-	ins := r.inserter("project_permissions", "project_id", "permission", "holder", "user_id", "group_id", "role_id")
+	ins := r.inserter("project_permissions", "project_id", "permission", "holder", "user_id", "group_id")
 	unsupported := map[string]int{}
 	for _, pid := range r.projectIDs() {
 		p := r.projects[pid]
@@ -574,8 +638,8 @@ func (r *run) importPermissions() error {
 				return nil
 			}
 			seen[dedupe] = true
-			u, gr, ro := grantArgs(h)
-			return ins.add(pid, sp, h.Holder, u, gr, ro)
+			u, gr := grantArgs(h)
+			return ins.add(pid, sp, h.Holder, u, gr)
 		}
 		editAll, deleteAll := map[perm.Grant]bool{}, map[perm.Grant]bool{}
 		for _, g := range grants {
@@ -662,7 +726,7 @@ func (r *run) importSecurityLevels() error {
 
 	r.levels = map[[2]int64]int64{}
 	lins := r.inserter("security_levels", "id", "project_id", "name", "description")
-	mins := r.inserter("security_level_members", "level_id", "holder", "user_id", "group_id", "role_id")
+	mins := r.inserter("security_level_members", "level_id", "holder", "user_id", "group_id")
 	var next int64
 	skipped := 0
 	for _, pid := range r.projectIDs() {
@@ -683,8 +747,8 @@ func (r *run) importSecurityLevels() error {
 					continue
 				}
 				for _, h := range holders {
-					u, gr, ro := grantArgs(h)
-					if err := mins.add(next, h.Holder, u, gr, ro); err != nil {
+					u, gr := grantArgs(h)
+					if err := mins.add(next, h.Holder, u, gr); err != nil {
 						return err
 					}
 				}

@@ -32,7 +32,6 @@ type editableWorklog struct {
 	created time.Time
 	body    sql.NullString
 	group   string
-	role    int64
 }
 
 // worklogForEdit loads the work log of the path, if the user may read and
@@ -44,23 +43,22 @@ func (s *Server) worklogForEdit(r *http.Request, sub *perm.Subject) (*editableWo
 	}
 	var issueID int64
 	var group sql.NullString
-	var role sql.NullInt64
 	w := &editableWorklog{id: id}
 	err = s.db.QueryRowContext(r.Context(), `SELECT issue_id, author_id, body, started_at, seconds, created_at,
-		visibility_group, visibility_role_id FROM worklogs WHERE id = ?`, id).
-		Scan(&issueID, &w.author, &w.body, &w.started, &w.seconds, &w.created, &group, &role)
+		visibility_group FROM worklogs WHERE id = ?`, id).
+		Scan(&issueID, &w.author, &w.body, &w.started, &w.seconds, &w.created, &group)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	w.group, w.role = group.String, role.Int64
+	w.group = group.String
 	if w.issue, err = s.findIssueByID(r.Context(), issueID); err != nil {
 		return nil, err
 	}
 	pi := w.issue.perm()
-	if !sub.CanSee(pi) || !sub.SeesRestricted(w.issue.ProjectID, w.group, w.role) {
+	if !sub.CanSee(pi) || !sub.SeesRestricted(w.issue.ProjectID, w.group) {
 		return nil, errNotFound
 	}
 	own := w.author.Valid && w.author.Int64 == sub.UserID && sub.Can(perm.Worklog, w.issue.ProjectID, &pi)
@@ -72,7 +70,7 @@ func (s *Server) worklogForEdit(r *http.Request, sub *perm.Subject) (*editableWo
 
 // event describes the work log as it is in an announcement.
 func (w *editableWorklog) event() *events.Worklog {
-	return &events.Worklog{ID: w.id, AuthorID: w.author.Int64, Body: w.body.String, Group: w.group, RoleID: w.role,
+	return &events.Worklog{ID: w.id, AuthorID: w.author.Int64, Body: w.body.String, Group: w.group,
 		Started: w.started, Seconds: w.seconds, Created: w.created}
 }
 
@@ -224,21 +222,19 @@ func (s *Server) visibleWorklogs(ctx context.Context, sub *perm.Subject, iss *is
 	}
 	var list []row
 	var ids []int64
-	err := sqlq.Each(ctx, s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group,
-		w.visibility_role_id, pr.name FROM worklogs w LEFT JOIN project_roles pr ON pr.id = w.visibility_role_id
-		WHERE w.issue_id = ? ORDER BY w.started_at, w.id`, func(rows *sql.Rows) error {
+	err := sqlq.Each(ctx, s.db, `SELECT w.id, w.author_id, w.started_at, w.seconds, w.body, w.visibility_group
+		FROM worklogs w WHERE w.issue_id = ? ORDER BY w.started_at, w.id`, func(rows *sql.Rows) error {
 		var x row
-		var body, group, roleName sql.NullString
-		var role sql.NullInt64
-		if err := rows.Scan(&x.out.ID, &x.author, &x.out.Started, &x.out.Seconds, &body, &group, &role, &roleName); err != nil {
+		var body, group sql.NullString
+		if err := rows.Scan(&x.out.ID, &x.author, &x.out.Started, &x.out.Seconds, &body, &group); err != nil {
 			return err
 		}
-		if !sub.SeesRestricted(iss.ProjectID, group.String, role.Int64) {
+		if !sub.SeesRestricted(iss.ProjectID, group.String) {
 			return nil
 		}
 		x.out.Body = sqlq.String(body)
-		if group.Valid || role.Valid {
-			x.out.Visibility = &visibility{Group: group.String, Role: roleName.String}
+		if group.Valid {
+			x.out.Visibility = &visibility{Group: group.String}
 		}
 		list = append(list, x)
 		ids = append(ids, x.author.Int64)

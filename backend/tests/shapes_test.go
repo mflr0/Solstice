@@ -106,7 +106,6 @@ type commentOut struct {
 	Body       string   `json:"body"`
 	Visibility *struct {
 		Group string `json:"group"`
-		Role  string `json:"role"`
 	} `json:"visibility"`
 	CanEdit bool `json:"canEdit"`
 }

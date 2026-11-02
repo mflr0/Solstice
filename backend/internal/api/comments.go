@@ -17,7 +17,6 @@ import (
 
 type visibility struct {
 	Group string `json:"group,omitempty"`
-	Role  string `json:"role,omitempty"`
 }
 
 type commentOut struct {
@@ -37,23 +36,19 @@ type commentRow struct {
 	body              string
 	created, updated  time.Time
 	group             sql.NullString
-	roleID            sql.NullInt64
-	roleName          sql.NullString
 }
 
 // visibleComments returns an issue's comments that the user may read.
 func (s *Server) visibleComments(ctx context.Context, sub *perm.Subject, iss *issueRow) ([]commentRow, error) {
 	var out []commentRow
 	err := sqlq.Each(ctx, s.db, `SELECT c.id, c.author_id, c.updated_by_id, c.body, c.created_at, c.updated_at,
-		c.visibility_group, c.visibility_role_id, r.name FROM comments c
-		LEFT JOIN project_roles r ON r.id = c.visibility_role_id
+		c.visibility_group FROM comments c
 		WHERE c.issue_id = ? ORDER BY c.created_at, c.id`, func(rows *sql.Rows) error {
 		var c commentRow
-		if err := rows.Scan(&c.id, &c.author, &c.updatedBy, &c.body, &c.created, &c.updated, &c.group, &c.roleID,
-			&c.roleName); err != nil {
+		if err := rows.Scan(&c.id, &c.author, &c.updatedBy, &c.body, &c.created, &c.updated, &c.group); err != nil {
 			return err
 		}
-		if sub.SeesRestricted(iss.ProjectID, c.group.String, c.roleID.Int64) {
+		if sub.SeesRestricted(iss.ProjectID, c.group.String) {
 			out = append(out, c)
 		}
 		return nil
@@ -77,8 +72,8 @@ func (s *Server) commentsOut(ctx context.Context, sub *perm.Subject, iss *issueR
 	for _, c := range rows {
 		o := commentOut{ID: c.id, Author: refOf(users, c.author), Body: c.body, Created: c.created, Updated: c.updated,
 			UpdatedBy: refOf(users, c.updatedBy), CanEdit: moderate || (comment && c.author.Int64 == sub.UserID)}
-		if c.group.Valid || c.roleID.Valid {
-			o.Visibility = &visibility{Group: c.group.String, Role: c.roleName.String}
+		if c.group.Valid {
+			o.Visibility = &visibility{Group: c.group.String}
 		}
 		out = append(out, o)
 	}
@@ -109,7 +104,6 @@ type commentInput struct {
 	Body       string `json:"body"`
 	Visibility *struct {
 		Group string `json:"group"`
-		Role  int64  `json:"role"`
 	} `json:"visibility"`
 }
 
@@ -134,26 +128,16 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 	if strings.TrimSpace(in.Body) == "" {
 		return fail(http.StatusBadRequest, i18n.CommentEmpty)
 	}
-	var group, role any
+	var group any
 	var eventGroup string
-	var eventRole int64
-	if v := in.Visibility; v != nil {
-		// One can only restrict a comment to a group or role one belongs to,
-		// otherwise one could not read one's own comment.
-		if v.Group != "" {
-			if !sub.SeesRestricted(iss.ProjectID, strings.ToLower(v.Group), 0) {
-				return fail(http.StatusBadRequest, i18n.CommentGroupNotMember)
-			}
-			group = strings.ToLower(v.Group)
-			eventGroup = strings.ToLower(v.Group)
+	if v := in.Visibility; v != nil && v.Group != "" {
+		// One can only restrict a comment to a group one is in, in the
+		// project, otherwise one could not read one's own comment.
+		eventGroup = strings.ToLower(v.Group)
+		if !sub.SeesRestricted(iss.ProjectID, eventGroup) {
+			return fail(http.StatusBadRequest, i18n.CommentGroupNotMember)
 		}
-		if v.Role != 0 {
-			if !sub.SeesRestricted(iss.ProjectID, "", v.Role) {
-				return fail(http.StatusBadRequest, i18n.CommentRoleNotHeld)
-			}
-			role = v.Role
-			eventRole = v.Role
-		}
+		group = eventGroup
 	}
 	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -162,8 +146,8 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer tx.Rollback()
 	res, err := tx.ExecContext(ctx, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at,
-		visibility_group, visibility_role_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		iss.ID, sub.UserID, in.Body, now, now, group, role)
+		visibility_group) VALUES (?, ?, ?, ?, ?, ?)`,
+		iss.ID, sub.UserID, in.Body, now, now, group)
 	if err != nil {
 		return err
 	}
@@ -175,7 +159,7 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(commentEvent(events.CommentCreated, iss, sub.UserID, &events.Comment{ID: id, AuthorID: sub.UserID,
-		Body: in.Body, Group: eventGroup, RoleID: eventRole, Created: now, Updated: now}))
+		Body: in.Body, Group: eventGroup, Created: now, Updated: now}))
 	return s.respondComment(w, r, sub, iss, id, http.StatusCreated)
 }
 
@@ -201,7 +185,6 @@ type editableComment struct {
 	issue   *issueRow
 	id      int64
 	group   string
-	role    int64
 	author  int64
 	body    string
 	created time.Time
@@ -216,11 +199,10 @@ func (s *Server) commentForEdit(r *http.Request, sub *perm.Subject) (*editableCo
 	var issueID int64
 	var author sql.NullInt64
 	var group sql.NullString
-	var role sql.NullInt64
 	var body string
 	var created time.Time
-	err = s.db.QueryRowContext(r.Context(), `SELECT issue_id, author_id, visibility_group, visibility_role_id, body,
-		created_at FROM comments WHERE id = ?`, id).Scan(&issueID, &author, &group, &role, &body, &created)
+	err = s.db.QueryRowContext(r.Context(), `SELECT issue_id, author_id, visibility_group, body,
+		created_at FROM comments WHERE id = ?`, id).Scan(&issueID, &author, &group, &body, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
 	}
@@ -232,14 +214,14 @@ func (s *Server) commentForEdit(r *http.Request, sub *perm.Subject) (*editableCo
 		return nil, err
 	}
 	pi := iss.perm()
-	if !sub.CanSee(pi) || !sub.SeesRestricted(iss.ProjectID, group.String, role.Int64) {
+	if !sub.CanSee(pi) || !sub.SeesRestricted(iss.ProjectID, group.String) {
 		return nil, errNotFound
 	}
 	own := author.Valid && author.Int64 == sub.UserID && sub.Can(perm.Comment, iss.ProjectID, &pi)
 	if !own && !sub.Can(perm.Moderate, iss.ProjectID, &pi) {
 		return nil, errForbidden
 	}
-	return &editableComment{issue: iss, id: id, group: group.String, role: role.Int64, author: author.Int64, body: body,
+	return &editableComment{issue: iss, id: id, group: group.String, author: author.Int64, body: body,
 		created: created}, nil
 }
 
@@ -267,7 +249,7 @@ func (s *Server) editComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(commentEvent(events.CommentUpdated, c.issue, sub.UserID, &events.Comment{ID: c.id, AuthorID: c.author,
-		UpdatedBy: sub.UserID, Body: in.Body, OldBody: c.body, Group: c.group, RoleID: c.role, Created: c.created,
+		UpdatedBy: sub.UserID, Body: in.Body, OldBody: c.body, Group: c.group, Created: c.created,
 		Updated: now}))
 	return s.respondComment(w, r, sub, c.issue, c.id, http.StatusOK)
 }
@@ -285,7 +267,7 @@ func (s *Server) deleteComment(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.emit(commentEvent(events.CommentDeleted, c.issue, sub.UserID, &events.Comment{ID: c.id, AuthorID: c.author,
-		Body: c.body, Group: c.group, RoleID: c.role, Created: c.created, Updated: c.created}))
+		Body: c.body, Group: c.group, Created: c.created, Updated: c.created}))
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

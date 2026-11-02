@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"database/sql"
 	"net/url"
 	"slices"
 	"strconv"
@@ -139,7 +138,7 @@ func (b *builder) issue(iss *events.Issue) map[string]any {
 	return out
 }
 
-func (b *builder) comment(ctx context.Context, db *sql.DB, issueID int64, c *events.Comment) map[string]any {
+func (b *builder) comment(issueID int64, c *events.Comment) map[string]any {
 	id := strconv.FormatInt(c.ID, 10)
 	out := map[string]any{"id": id, "body": c.Body, "author": b.userID(c.AuthorID), "created": jtime(c.Created),
 		"updated": jtime(c.Updated)}
@@ -149,13 +148,8 @@ func (b *builder) comment(ctx context.Context, db *sql.DB, issueID int64, c *eve
 		out["updateAuthor"] = b.userID(c.AuthorID)
 	}
 	b.put(out, "self", issue.RESTAPIPath+"/issue/"+strconv.FormatInt(issueID, 10)+"/comment/"+id)
-	switch {
-	case c.Group != "":
+	if c.Group != "" {
 		out["visibility"] = map[string]any{"type": "group", "value": c.Group}
-	case c.RoleID != 0:
-		var name string
-		db.QueryRowContext(ctx, `SELECT name FROM project_roles WHERE id = ?`, c.RoleID).Scan(&name)
-		out["visibility"] = map[string]any{"type": "role", "value": name}
 	}
 	return out
 }
@@ -269,7 +263,7 @@ func (s *Service) payload(ctx context.Context, e *events.Event, name string) (ma
 		p["changelog"] = map[string]any{"items": items}
 	}
 	if e.Comment != nil {
-		p["comment"] = b.comment(ctx, s.db, e.IssueID, e.Comment)
+		p["comment"] = b.comment(e.IssueID, e.Comment)
 	}
 	if e.Worklog != nil {
 		p["worklog"] = b.worklog(e.IssueID, e.Worklog)

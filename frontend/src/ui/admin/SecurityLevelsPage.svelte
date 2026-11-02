@@ -96,9 +96,9 @@
     await load();
   }
 
-  /** Who a member is: the name of the user, group or role, else the kind of holder. */
+  /** Who a member is: the name of the user or group, else the kind of holder. */
   function memberName(m: SecurityMember): string {
-    return m.user?.name ?? m.group?.name ?? m.role?.name ?? holderLabels[m.holder];
+    return m.user?.name ?? m.group?.name ?? holderLabels[m.holder];
   }
 </script>
 
@@ -169,8 +169,7 @@
           <span class="muted small label">{t.securityAdmin.members}</span>
           {#each level.members as m (m.id)}
             <span class="chip member">
-              {#if m.user || m.group || m.role}<span class="kind">{holderLabels[m.holder]}</span
-                >{/if}
+              {#if m.user || m.group}<span class="kind">{holderLabels[m.holder]}</span>{/if}
               {memberName(m)}
               <button
                 type="button"

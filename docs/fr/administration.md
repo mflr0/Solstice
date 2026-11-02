@@ -100,10 +100,18 @@ Sans `-password`, un mot de passe est généré et affiché.
 ### Groupes
 
 Les groupes rassemblent des personnes pour leur donner des droits ensemble. On
-les retrouve dans les permissions des projets, dans les rôles de projet, pour
-restreindre des commentaires et des saisies de temps, pour partager des
-filtres et dans la politique des jetons d'accès. Les noms de groupe sont
-stockés en minuscules et sont uniques.
+les retrouve dans les permissions des projets, dans les niveaux de
+confidentialité, pour restreindre des commentaires et des saisies de temps,
+pour partager des filtres et dans la politique des jetons d'accès. Les noms de
+groupe sont stockés en minuscules et sont uniques.
+
+Un groupe a des membres globaux, les mêmes dans tous les projets, et peut aussi
+avoir des membres de projet : des personnes, ou d'autres groupes, qui ne
+comptent comme ses membres que dans un projet. Dans un projet, les membres d'un
+groupe sont ses membres globaux, plus ses membres de projet là, plus les
+membres là des groupes qui en font partie. Un import Jira fait de chaque rôle
+de projet un groupe dont les membres sont les titulaires du rôle, comme membres
+de projet de chaque projet.
 
 La page Groupes liste tous les groupes avec leur description et leur nombre de
 membres. Un champ de recherche filtre par nom ou par description. « Nouveau
@@ -117,13 +125,13 @@ membres.
   sans « Enregistrer ». On peut aussi mettre des personnes dans des groupes
   depuis la fenêtre du compte (voir Utilisateurs).
 - **Supprimer** demande une confirmation. Le groupe disparaît des permissions,
-  des rôles et des niveaux de confidentialité qui l'utilisent ; ses membres
-  gardent leur compte.
+  des appartenances dans les projets et des niveaux de confidentialité qui
+  l'utilisent ; ses membres gardent leur compte.
 
 À surveiller :
 
-- Supprimer un groupe retire ses permissions, ses appartenances à des rôles et
-  à des niveaux de confidentialité. La suppression est refusée tant que des
+- Supprimer un groupe retire ses permissions, ses membres de projet, ses
+  appartenances dans les projets et à des niveaux de confidentialité. La suppression est refusée tant que des
   commentaires ou des saisies de temps sont restreints au groupe, car elle les
   cacherait à tout le monde. La fenêtre indique alors combien de commentaires
   et de saisies de temps dépendent encore du groupe.
@@ -249,23 +257,6 @@ Attention :
 - Les connexions refusées sont dans le journal d'audit (méthode `oidc`), et le
   journal du serveur en donne la raison.
 
-### Rôles
-
-Les rôles de projet sont communs à tous les projets. Qui tient un rôle se règle
-projet par projet, dans les réglages du projet, sous « Rôles dans ce
-projet ». On peut ensuite donner des permissions à ce rôle dans le projet,
-comme à un groupe.
-
-La page Rôles liste les rôles avec leur description. On peut créer un rôle,
-changer son nom et sa description, et le supprimer. Seul le rôle lui-même se
-gère ici ; ses titulaires se choisissent projet par projet.
-
-À surveiller :
-
-- Supprimer un rôle le retire de tous les projets. La suppression est refusée
-  tant que des commentaires ou des saisies de temps lui sont restreints, et la
-  fenêtre indique combien.
-
 ## Projets
 
 ### Page Projets
@@ -278,8 +269,8 @@ nombre de tickets et leur état, et renvoie vers les réglages de chacun.
   différer de toutes les clés actuelles et anciennes. Vous choisissez aussi le
   workflow de départ (Logiciel : To Do, In Progress, In Review, Done ; ou
   Simple : trois statuts), le responsable (vous par défaut), qui peut travailler
-  dans le projet (le responsable seul, tous les titulaires d'un compte, un
-  groupe ou un rôle), les types de ticket et l'assigné par défaut. Le
+  dans le projet (le responsable seul, tous les titulaires d'un compte, ou un
+  groupe), les types de ticket et l'assigné par défaut. Le
   responsable reçoit toutes les permissions. Le premier projet d'une instance
   neuve remplit aussi les catalogues vides avec des valeurs par défaut, dans la
   langue de l'instance.
@@ -298,8 +289,8 @@ nombre de tickets et leur état, et renvoie vers les réglages de chacun.
 Chaque projet a ses propres règles. Rien n'est partagé par des schémas : un
 changement ne touche aucun autre projet. Seuls les administrateurs du projet
 (et les administrateurs globaux) peuvent ouvrir les réglages. La page compte
-six onglets, dans cet ordre : Général, Composants, Versions, Permissions et
-rôles, Workflows et Notifications. Elle s'ouvre sur Général. Les changements
+six onglets, dans cet ordre : Général, Composants, Versions, Droits et
+membres, Workflows et Notifications. Elle s'ouvre sur Général. Les changements
 de Général, de Notifications et de Workflows attendent « Enregistrer », et la
 page demande confirmation avant de quitter un onglet aux modifications non
 enregistrées. Composants et Versions agissent aussitôt, depuis leurs fenêtres.
@@ -348,12 +339,14 @@ peut pas suivre la date de livraison.
   corrigés dans celle-ci et ceux qu'elle touche, ou aucune.
 - Les déplacements sont consignés dans l'historique des tickets.
 
-**Permissions et rôles.** Un tableau de ce que chaque titulaire peut faire. Les
+**Droits et membres.** Un tableau de ce que chaque titulaire peut faire. Les
 permissions sont : voir, créer, modifier, commenter, changer le statut,
 assigner, être assigné, joindre des fichiers, lier, saisir du temps,
 supprimer, modérer, gérer les observateurs, confidentialité et administrer.
-Une permission s'accorde à tout le monde, à un utilisateur, à un groupe, à un
-rôle, au responsable du projet, au rapporteur ou à l'assigné.
+Une permission s'accorde à tout le monde, à un utilisateur, à un groupe (ses
+membres dans ce projet), au responsable du projet, au rapporteur ou à
+l'assigné. Sous le tableau, « Membres des groupes dans ce projet » liste les
+groupes qui ont des membres de projet ici, et qui ils sont.
 
 À surveiller :
 
@@ -375,9 +368,9 @@ d'autre les reçoit.
   les e-mails sur les tickets du projet, quels que soient les réglages de
   chacun. Il faut que l'envoi d'e-mails fonctionne (voir E-mail).
 - « Destinataires supplémentaires » est un tableau des événements en regard des
-  groupes de l'instance et des rôles du projet. Un groupe ou un rôle coché pour
-  un événement reçoit aussi l'e-mail de cet événement dans ce projet, en plus
-  des personnes qui suivent déjà le ticket. Chacun choisit toujours, dans ses
+  groupes de l'instance. Les membres dans ce projet d'un groupe coché pour un
+  événement reçoivent aussi l'e-mail de cet événement, en plus des personnes
+  qui suivent déjà le ticket. Chacun choisit toujours, dans ses
   propres réglages, les événements qui lui parviennent.
 
 ### Workflows

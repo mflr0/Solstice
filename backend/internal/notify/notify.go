@@ -1,6 +1,6 @@
 // Package notify e-mails people about what happens to the issues they
 // follow, as Jira does: watchers, reporter and assignee by default, plus
-// whoever is mentioned and the groups or roles a project adds.
+// whoever is mentioned and the groups a project adds.
 //
 // Who gets what is decided twice: when the change happens, and again when
 // the e-mail is written, so nobody receives an issue or a restricted comment
@@ -134,7 +134,6 @@ type itemComment struct {
 	ID     int64  `json:"id"`
 	Body   string `json:"body"`
 	Group  string `json:"group,omitempty"`
-	RoleID int64  `json:"role,omitempty"`
 	Edited bool   `json:"edited,omitempty"`
 }
 
@@ -144,7 +143,6 @@ type itemWorklog struct {
 	Started time.Time `json:"started"`
 	Body    string    `json:"body,omitempty"`
 	Group   string    `json:"group,omitempty"`
-	RoleID  int64     `json:"role,omitempty"`
 }
 
 // item is one event waiting in a batch, as one recipient will see it.
@@ -341,12 +339,11 @@ func (s *Service) Handle(ctx context.Context, e *events.Event) error {
 		d.access = e.Access
 	}
 	if e.Comment != nil {
-		d.comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group, RoleID: e.Comment.RoleID,
+		d.comment = &itemComment{ID: e.Comment.ID, Body: e.Comment.Body, Group: e.Comment.Group,
 			Edited: e.Kind == events.CommentUpdated}
 	}
 	if w := e.Worklog; w != nil {
-		d.worklog = &itemWorklog{ID: w.ID, Seconds: w.Seconds, Started: w.Started, Body: w.Body, Group: w.Group,
-			RoleID: w.RoleID}
+		d.worklog = &itemWorklog{ID: w.ID, Seconds: w.Seconds, Started: w.Started, Body: w.Body, Group: w.Group}
 	}
 	for _, id := range ids {
 		it, ok, err := s.wantsItem(ctx, d, id, users[id], prefs[id], reasons[id])
@@ -449,10 +446,10 @@ func (s *Service) wantsItem(ctx context.Context, d *draft, id int64, u *events.U
 	if !sub.CanSee(d.access) {
 		return item{}, false, nil
 	}
-	if d.comment != nil && !sub.SeesRestricted(iss.ProjectID, d.comment.Group, d.comment.RoleID) {
+	if d.comment != nil && !sub.SeesRestricted(iss.ProjectID, d.comment.Group) {
 		return item{}, false, nil
 	}
-	if d.worklog != nil && !sub.SeesRestricted(iss.ProjectID, d.worklog.Group, d.worklog.RoleID) {
+	if d.worklog != nil && !sub.SeesRestricted(iss.ProjectID, d.worklog.Group) {
 		return item{}, false, nil
 	}
 	var keep []line

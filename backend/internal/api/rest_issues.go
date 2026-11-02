@@ -496,11 +496,10 @@ func (s *Server) restEditComment(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		var group string
-		var role int64
 		if v.Visibility != nil {
-			group, role = v.Visibility.Group, v.Visibility.Role
+			group = v.Visibility.Group
 		}
-		if group != c.group.String || role != c.roleID.Int64 {
+		if group != c.group.String {
 			return fieldError("visibility", fail(http.StatusBadRequest, i18n.CommentVisibilityFixed))
 		}
 	}

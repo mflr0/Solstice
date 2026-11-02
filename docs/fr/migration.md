@@ -119,7 +119,7 @@ l'administration comme avec `-replace` :
   de l'interface, dernière connexion, sessions ouvertes et droits
   d'administrateur.
 - Les comptes créés dans Solstice dont l'identifiant n'existe pas dans Jira
-  sont conservés, avec leur mot de passe, mais sans groupes ni rôles.
+  sont conservés, avec leur mot de passe, mais sans groupes.
 - L'administrateur qui lance l'import depuis l'administration garde son compte,
   son mot de passe, ses droits et sa session, même si Jira a un compte du même
   nom.
@@ -144,13 +144,13 @@ relancé.
 | Administrateurs | Les membres des groupes qui détiennent la permission Administer ou System Administer de Jira deviennent administrateurs de Solstice. |
 | Accès à l'application | Les comptes qui ne sont dans aucun groupe sous licence (et ne sont pas administrateurs) sont importés inactifs, comme Jira les aurait refusés. |
 | Projets | Clé, nom, description, responsable, catégorie, anciennes clés des projets renommés, types de ticket proposés par chaque projet, composants, versions. |
-| Rôles | Les rôles de projet et qui les tient dans chaque projet. |
+| Rôles | Chaque rôle de projet devient un groupe à son nom (avec ` (role)` quand un groupe a déjà ce nom), dont les membres de projet dans chaque projet sont les titulaires du rôle. |
 | Permissions | Chaque projet reçoit sa propre copie de son schéma de permissions et de son schéma de sécurité des tickets (niveaux et membres). |
 | Catalogues | Types de ticket, statuts et leurs catégories, priorités, résolutions, types de lien. |
 | Workflows | Chaque projet reçoit sa propre copie des workflows que son schéma utilise : statuts, transitions, statut initial, et quels types de ticket suivent quel workflow. |
 | Champs personnalisés | Définitions, options (niveaux en cascade compris), projets et types de ticket concernés, et toutes leurs valeurs. |
 | Tickets | Tous les champs, sous-tâches, épopées, liens, liens distants, étiquettes, observateurs, votes, niveaux de sécurité, anciennes clés des tickets déplacés. |
-| Commentaires et temps saisi | Avec leurs restrictions de visibilité à des groupes et des rôles. |
+| Commentaires et temps saisi | Avec leurs restrictions de visibilité à des groupes, et à des rôles, alors au groupe fait du rôle. |
 | Pièces jointes | Les métadonnées toujours. Les fichiers quand `-jira-home` est donné. |
 | Historique | L'historique complet des modifications de chaque ticket. |
 | Filtres | Les filtres enregistrés avec leur JQL, leurs partages et leurs favoris. |

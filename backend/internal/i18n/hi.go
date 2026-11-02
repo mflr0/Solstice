@@ -78,14 +78,10 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	OAuthRefreshDaysInvalid:   "रीफ़्रेश टोकन की अवधि 1 से %d दिनों के बीच होनी चाहिए।",
 
 	// Groups.
-	GroupNotFound:   "ग्रुप नहीं मिला।",
-	GroupExists:     "ग्रुप “%s” पहले से मौजूद है।",
-	GroupRestricted: "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
-
-	// Project roles.
-	RoleNotFound:   "भूमिका नहीं मिली।",
-	RoleExists:     "भूमिका “%s” पहले से मौजूद है।",
-	RoleRestricted: "टिप्पणियाँ या दर्ज समय इस भूमिका तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
+	GroupNotFound:    "ग्रुप नहीं मिला।",
+	GroupExists:      "ग्रुप “%s” पहले से मौजूद है।",
+	GroupRestricted:  "टिप्पणियाँ या दर्ज समय इस ग्रुप तक सीमित हैं: इसे मिटाया नहीं जा सकता।",
+	GroupMemberCycle: "कोई ग्रुप खुद का सदस्य नहीं हो सकता, दूसरे ग्रुप के ज़रिए भी नहीं।",
 
 	// Instance settings.
 	SettingsNameRequired:          "इंस्टेंस का नाम आवश्यक है (अधिकतम %d वर्ण)।",
@@ -153,8 +149,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ImportWarnLevelMembersOne:                  "सुरक्षा स्तरों का %d सदस्य इम्पोर्ट नहीं हुआ (असमर्थित प्रकार): ये टिकट पहले से कम लोगों को दिखते हैं, कभी ज़्यादा को नहीं",
 	ImportWarnLevelMembersMany:                 "सुरक्षा स्तरों के %d सदस्य इम्पोर्ट नहीं हुए (असमर्थित प्रकार): ये टिकट पहले से कम लोगों को दिखते हैं, कभी ज़्यादा को नहीं",
 	ImportWarnLevelReplaced:                    "प्रोजेक्ट %s: Jira में न मिला एक सुरक्षा स्तर \"Restricted (import)\" से बदला गया, बिना किसी सदस्य के",
-	ImportWarnLocalAccountsOne:                 "Solstice में बनाया गया %d खाता रखा गया (समूहों या भूमिकाओं के बिना, जो Jira से आते हैं)",
-	ImportWarnLocalAccountsMany:                "Solstice में बनाए गए %d खाते रखे गए (समूहों या भूमिकाओं के बिना, जो Jira से आते हैं)",
+	ImportWarnLocalAccountsOne:                 "Solstice में बनाया गया %d खाता रखा गया (समूहों के बिना, जो Jira से आते हैं)",
+	ImportWarnLocalAccountsMany:                "Solstice में बनाए गए %d खाते रखे गए (समूहों के बिना, जो Jira से आते हैं)",
 	ImportWarnNoPasswordOne:                    "बिना उपयोगी पासवर्ड का %d सक्रिय खाता (बाहरी डायरेक्टरी या पुराना फ़ॉर्मैट): \"solstice user passwd\" से पासवर्ड सेट करें",
 	ImportWarnNoPasswordMany:                   "बिना उपयोगी पासवर्ड के %d सक्रिय खाते (बाहरी डायरेक्टरी या पुराना फ़ॉर्मैट): \"solstice user passwd\" से पासवर्ड सेट करें",
 	ImportWarnDeletedUsersOne:                  "Jira से हटाया गया %d यूज़र निष्क्रिय खाते के रूप में रखा गया (पुराने टिकटों के लेखक)",
@@ -224,7 +220,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectRenameConfirm:       "बदलाव की पुष्टि के लिए प्रोजेक्ट की मौजूदा कुंजी टाइप करें।",
 	ProjectKeysBusy:            "प्रोजेक्ट कुंजी का एक और बदलाव चल रहा है। थोड़ी देर बाद फिर कोशिश करें।",
 
-	// Data a new instance starts with: issue types, priorities, resolutions, link types, roles, the statuses of the project templates.
+	// Data a new instance starts with: issue types, priorities, resolutions, link types, the statuses of the project templates.
 	DefaultTypeTask:                  "टास्क",
 	DefaultTypeBug:                   "बग",
 	DefaultTypeStory:                 "स्टोरी",
@@ -250,9 +246,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultLinkClonesName:            "क्लोन",
 	DefaultLinkClonesInward:          "क्लोन किया गया है",
 	DefaultLinkClonesOutward:         "क्लोन करता है",
-	DefaultRoleAdministrators:        "एडमिन",
-	DefaultRoleDevelopers:            "डेवलपर",
-	DefaultRoleUsers:                 "यूज़र",
 	DefaultStatusToDo:                "करना है",
 	DefaultStatusInProgress:          "प्रगति में",
 	DefaultStatusInReview:            "समीक्षा में",
@@ -401,8 +394,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	IssueMoveSubtask:           "उप-कार्य अपने मूल टिकट के साथ ही स्थानांतरित होता है: मूल टिकट को स्थानांतरित करें।",
 	IssueMoveChoiceNeeded:      "स्थानांतरित करने से पहले चुनें: %s।",
 	IssueMoveChanged:           "स्थानांतरित करते समय टिकट बदल गया। उसे फिर से लोड करके दोबारा कोशिश करें।",
-	IssueMoveRestrictedRefused: "इस प्रोजेक्ट की किसी भूमिका तक सीमित टिप्पणियाँ और कार्य-लॉग किसी दूसरे प्रोजेक्ट में जस के तस नहीं रह सकते।",
-	IssueMoveRestrictedHidden:  "इस प्रोजेक्ट की किसी भूमिका तक सीमित %d टिप्पणियाँ और कार्य-लॉग आपके लिए पढ़ने योग्य नहीं हैं, और लक्ष्य प्रोजेक्ट में उसी नाम की कोई भूमिका नहीं है। कोई प्रशासक टिकट को स्थानांतरित कर सकता है।",
+	IssueMoveRestrictedRefused: "ऐसे ग्रुप तक सीमित टिप्पणियाँ और कार्य-लॉग, जिसके सदस्य हर प्रोजेक्ट में अलग हैं, जस के तस नहीं रह सकते।",
+	IssueMoveRestrictedHidden:  "ऐसे ग्रुप तक सीमित %d टिप्पणियाँ और कार्य-लॉग, जिसके सदस्य हर प्रोजेक्ट में अलग हैं, आपके लिए पढ़ने योग्य नहीं हैं, और लक्ष्य प्रोजेक्ट में उस ग्रुप का कोई सदस्य नहीं है। कोई प्रशासक टिकट को स्थानांतरित कर सकता है।",
 	IssueMoveSecurityNeeded:    "सुरक्षा स्तर वाले टिकट को स्थानांतरित करने के लिए लक्ष्य प्रोजेक्ट में सुरक्षा स्तर की अनुमति चाहिए, और दूसरा स्तर चुनने के लिए इस प्रोजेक्ट में भी।",
 	IssueMoveNoSubtaskType:     "टिकट में सब-टास्क हैं, और लक्ष्य प्रोजेक्ट में उन्हें देने के लिए कोई सब-टास्क प्रकार नहीं है। पहले प्रोजेक्ट में एक जोड़ें।",
 	IssueMoveUseAction:         "टिकट का प्रोजेक्ट ‘स्थानांतरित करें’ कार्रवाई से बदलता है।",
@@ -414,12 +407,11 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	// Comments and their visibility.
 	CommentEmpty:           "टिप्पणी खाली है।",
 	CommentGroupNotMember:  "आप इस ग्रुप के सदस्य नहीं हैं।",
-	CommentRoleNotHeld:     "प्रोजेक्ट में आपकी यह भूमिका नहीं है।",
 	CommentVisibilityFixed: "किसी मौजूदा टिप्पणी की दृश्यता बदली नहीं जा सकती।",
 
 	// Work logs.
 	WorkLogDurationInvalid: "अमान्य अवधि।",
-	WorkLogRestricted:      "दर्ज समय को किसी ग्रुप या भूमिका तक सीमित नहीं किया जा सकता।",
+	WorkLogRestricted:      "दर्ज समय को किसी ग्रुप तक सीमित नहीं किया जा सकता।",
 
 	// Issue links.
 	LinkTypeUnknown:      "अज्ञात लिंक प्रकार।",
@@ -503,12 +495,12 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SprintNotOnBoard:      "इस टिकट का प्रोजेक्ट इस स्प्रिंट के बोर्ड पर नहीं है।",
 
 	// Saved filters and their shares.
-	FilterNameRequired:        "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",
-	FilterIncomplete:          "फ़िल्टर के लिए नाम और क्वेरी दोनों ज़रूरी हैं।",
-	FilterShareKindUnknown:    "अज्ञात शेयर प्रकार: %s।",
-	FilterShareGroupNotMember: "आप केवल उसी ग्रुप के साथ शेयर कर सकते हैं जिसके आप सदस्य हैं।",
-	FilterShareRoleNotHeld:    "आप केवल उसी भूमिका के साथ शेयर कर सकते हैं जो प्रोजेक्ट में आपकी है।",
-	FilterSharePersonNotFound: "यूज़र नहीं मिला।",
+	FilterNameRequired:               "फ़िल्टर का नाम आवश्यक है (अधिकतम 255 वर्ण)।",
+	FilterIncomplete:                 "फ़िल्टर के लिए नाम और क्वेरी दोनों ज़रूरी हैं।",
+	FilterShareKindUnknown:           "अज्ञात शेयर प्रकार: %s।",
+	FilterShareGroupNotMember:        "आप केवल उसी ग्रुप के साथ शेयर कर सकते हैं जिसके आप सदस्य हैं।",
+	FilterShareProjectGroupNotMember: "आप केवल उसी ग्रुप के साथ शेयर कर सकते हैं जिसके आप प्रोजेक्ट में सदस्य हैं।",
+	FilterSharePersonNotFound:        "यूज़र नहीं मिला।",
 
 	// The personal dashboard.
 	DashboardTooManyGadgets:    "एक डैशबोर्ड में अधिकतम %d गैजेट हो सकते हैं।",
@@ -624,7 +616,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyIntervalInvalid:     "अमान्य अंतराल: 15 से 720 मिनट तक।",
 	NotifyDeliveryUnknown:     "अज्ञात भेजने का तरीका: immediate, digest, periodic या none।",
 	NotifyEventUnknown:        "अज्ञात इवेंट: %s।",
-	NotifyRecipientUnknown:    "अज्ञात प्राप्तकर्ता: group या role।",
+	NotifyRecipientUnknown:    "अज्ञात प्राप्तकर्ता: group।",
 	NotifyManage:              "मेरी सूचनाएँ प्रबंधित करें",
 	NotifyChangeInPreferences: "अपनी सूचनाएँ Solstice में अपनी प्राथमिकताओं में बदलें।",
 	NotifyOpenIssue:           "टिकट खोलें",
