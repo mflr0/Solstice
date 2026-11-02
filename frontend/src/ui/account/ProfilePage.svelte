@@ -203,13 +203,21 @@
   <section class="settings-form">
     <h2 class="section-title">{t.account.picture}</h2>
     <div class="picture">
-      <span class="preview" aria-hidden="true">
+      <!-- The "Change picture" button is the keyboard and screen-reader control. -->
+      <button
+        type="button"
+        class="preview"
+        tabindex="-1"
+        aria-hidden="true"
+        disabled={pictureBusy}
+        onclick={() => fileInput?.click()}
+      >
         {#if picture}
           <img src={picture} alt="" onerror={() => (picture = null)} />
         {:else}
           {initials(session.me.name)}
         {/if}
-      </span>
+      </button>
       <div class="picture-actions">
         <p class="form-hint">{t.account.pictureHint}</p>
         <input bind:this={fileInput} type="file" accept="image/*" hidden onchange={changePicture} />
@@ -390,12 +398,18 @@
     width: 64px;
     height: 64px;
     flex: none;
+    padding: 0;
     overflow: hidden;
     border: 1px solid var(--rule-strong);
     border-radius: var(--avatar-radius);
     background: var(--paper-raised);
     color: var(--ink-soft);
     font: 500 1.25rem/1 var(--font-mono);
+    cursor: pointer;
+  }
+
+  .preview:disabled {
+    cursor: progress;
   }
 
   .preview img {
