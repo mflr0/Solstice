@@ -155,9 +155,11 @@ func (s *Server) fieldDetail(ctx context.Context, id int64) (*fieldDetailOut, er
 		return nil, errNotFound
 	}
 	f := &fieldDetailOut{fieldAdminOut: list[0], Options: []optionOut{}}
+	// A cast takes the connection's collation, which need not be the column's:
+	// COLLATE utf8mb4_bin wins the comparison, exact for digits.
 	if err := sqlq.Each(ctx, s.db, `SELECT o.id, o.value, o.disabled, o.position,
 		(SELECT COUNT(DISTINCT v.issue_id) FROM custom_field_values v WHERE v.field_id = o.field_id
-			AND v.string_value IN (SELECT CAST(c.id AS CHAR) FROM custom_field_options c
+			AND v.string_value IN (SELECT CAST(c.id AS CHAR) COLLATE utf8mb4_bin FROM custom_field_options c
 				WHERE c.id = o.id OR c.parent_id = o.id)),
 		(SELECT COUNT(*) FROM custom_field_options c WHERE c.parent_id = o.id)
 		FROM custom_field_options o WHERE o.field_id = ? AND o.parent_id IS NULL ORDER BY o.position, o.id`,
