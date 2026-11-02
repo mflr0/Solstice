@@ -3,6 +3,7 @@
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api } from '../../lib/api.js';
+  import { ADMIN_ICONS } from './admin-icons.js';
 
   /**
    * The administration's front page: what still needs doing on a fresh
@@ -68,8 +69,22 @@
       <ul>
         {#each g.items.filter((i) => i !== 'overview') as item (item)}
           <li>
-            <a href={adminPath(item)}>{t.adminArea.sections[item]}</a>
-            <span class="muted small">{t.adminArea.descriptions[item]}</span>
+            <a
+              class="admin-card"
+              href={adminPath(item)}
+              aria-labelledby="admin-card-{item}"
+              aria-describedby="admin-card-{item}-text"
+            >
+              <svg class="admin-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                {#each ADMIN_ICONS[item as keyof typeof ADMIN_ICONS] as d, i (i)}<path {d} />{/each}
+              </svg>
+              <span class="admin-card-title" id="admin-card-{item}"
+                >{t.adminArea.sections[item]}</span
+              >
+              <span class="admin-card-text muted small" id="admin-card-{item}-text"
+                >{t.adminArea.descriptions[item]}</span
+              >
+            </a>
           </li>
         {/each}
       </ul>
@@ -110,20 +125,55 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 9px;
+    gap: 8px;
   }
 
-  .group li {
+  .admin-card {
     display: grid;
-    gap: 1px;
-  }
-
-  .group a {
-    font-weight: 600;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 2px 8px;
+    padding: 9px 12px;
+    background: var(--paper-raised);
+    border: var(--frame) solid var(--rule);
+    border-radius: var(--radius-m);
     text-decoration: none;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      transform 0.12s ease;
   }
 
-  .group a:hover {
-    text-decoration: underline;
+  .admin-card:hover {
+    background: var(--paper-sunk);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .admin-icon {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .admin-card-title {
+    font-weight: 600;
+  }
+
+  .admin-card-text {
+    grid-column: 2;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .admin-card {
+      transition: none;
+    }
+
+    .admin-card:hover {
+      transform: none;
+    }
   }
 </style>
