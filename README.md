@@ -304,14 +304,22 @@ archived):
 
 | Key | Kind | Category | Lead |
 | --- | --- | --- | --- |
-| `DEMO` | software, with demo issues | Products | alice |
-| `MOB` | software | Products | hans |
-| `OPS` | business | Internal | marie |
+| `DEMO` | software, with about twenty issues | Products | alice |
+| `MOB` | software, with a few issues | Products | hans |
+| `OPS` | business, with a few issues | Internal | marie |
 | `OLD` | software, archived | none | tom |
 
-and two boards, with weeks of history for their reports:
+The issues cover every issue type, epics with their issues, sub-tasks, every
+priority, labels, due dates (past and future), estimates, components, fix
+versions and resolutions. People comment on them in their languages, log
+work, attach files, vote, watch and link them, across projects too. A custom
+field of each type the administration offers has values on some of them.
+Each thing is done by one of the mock users. The issues' own fields are set
+when the seed creates them: to see them on an older database, recreate it.
 
-- `Demo Scrum` on `DEMO`, estimated in Story Points: two completed sprints,
+The seed also makes two boards, with weeks of history for their reports:
+
+- `Demo Scrum` on `DEMO`, estimated in Story points: two completed sprints,
   an active one, a future one and a backlog.
 - `Mobile and office Kanban` over `MOB` and `OPS`: a backlog, issues in every
   column, a work-in-progress limit, quick filters and swimlanes by assignee.

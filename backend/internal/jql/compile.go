@@ -793,8 +793,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 		if err != nil || sub == "" {
 			return "FALSE", err
 		}
-		// COLLATE: a cast takes the connection's collation, not the column's.
-		cond = having("v.string_value IN (SELECT CAST(id AS CHAR) COLLATE utf8mb4_bin FROM users WHERE id IN (" + sub + "))")
+		cond = having("v.string_value IN (SELECT id FROM users WHERE id IN (" + sub + "))")
 	case issue.KindEpicLink:
 		texts, _, err := split(cl.Values)
 		if err != nil {
@@ -812,7 +811,7 @@ func (c *compiler) custom(cl Clause, f Field) (string, error) {
 		}
 		m := sqlq.Marks(len(texts))
 		cond = having("(v.string_value IN (" + m + ") OR CAST(v.number_value AS CHAR) IN (" + m + ")" +
-			fmt.Sprintf(" OR v.string_value IN (SELECT CAST(o.id AS CHAR) COLLATE utf8mb4_bin FROM custom_field_options o WHERE o.field_id = %d", f.ID) +
+			fmt.Sprintf(" OR v.string_value IN (SELECT o.id FROM custom_field_options o WHERE o.field_id = %d", f.ID) +
 			" AND o.value IN (" + m + ")))")
 		c.bind(texts, 3, nil)
 	}
@@ -1065,7 +1064,7 @@ func (c *compiler) order(sorts []Sort) (string, error) {
 			for _, e := range []string{
 				fmt.Sprintf("(SELECT MIN(v.number_value) FROM custom_field_values v WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
 				fmt.Sprintf("(SELECT MIN(o.position) FROM custom_field_values v JOIN custom_field_options o "+
-					"ON CAST(o.id AS CHAR) COLLATE utf8mb4_bin = v.string_value WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
+					"ON o.id = v.string_value WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
 				fmt.Sprintf("(SELECT MIN(COALESCE(v.string_value, v.text_value)) FROM custom_field_values v "+
 					"WHERE v.issue_id = i.id AND v.field_id = %d)", f.ID),
 			} {

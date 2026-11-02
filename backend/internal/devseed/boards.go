@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/issue"
 )
 
@@ -46,8 +47,8 @@ type seedSprint struct {
 	issues     []boardIssue
 }
 
-// StoryPoints is the number field the Scrum board estimates with.
-const StoryPoints = "Story Points"
+// storyPoints is the number field of the seed the Scrum board estimates with.
+const storyPoints = "Story points"
 
 // ScrumBoard and KanbanBoard are the names of the boards the seed makes.
 const (
@@ -117,8 +118,8 @@ type boardSeed struct {
 	users *sessions
 	ids   map[string]int64
 	h     *history
-	types map[string]string // project key → its standard issue type
-	field string            // the Story Points field, as customfield_<id>
+	cat   *catalogue
+	field string            // the Story points field, as customfield_<id>
 	keys  map[string]string // project/summary → key of the issues made, for walk
 }
 
@@ -127,7 +128,12 @@ type boardSeed struct {
 func ensureBoards(ctx context.Context, conn *sql.DB, base string, admin *client, ids map[string]int64,
 	say func(string, ...any)) error {
 	s := &boardSeed{ctx: ctx, conn: conn, admin: admin, users: newSessions(ctx, base), ids: ids,
-		h: newHistory(conn), types: map[string]string{}, keys: map[string]string{}}
+		h: newHistory(conn), keys: map[string]string{}}
+	cat, err := readCatalogue(admin)
+	if err != nil {
+		return err
+	}
+	s.cat = cat
 	for _, b := range []struct {
 		name string
 		make func() (int, error)
@@ -171,9 +177,12 @@ func (s *boardSeed) createBoard(name, kind, project string) (int64, *boardOut, e
 }
 
 func (s *boardSeed) scrum() (int, error) {
-	if err := s.ensureStoryPoints(); err != nil {
-		return 0, err
+	var field int64
+	if err := s.conn.QueryRowContext(s.ctx, `SELECT id FROM custom_fields WHERE name = ?`, storyPoints).
+		Scan(&field); err != nil {
+		return 0, fmt.Errorf("the %s field: %w", storyPoints, err)
 	}
+	s.field = "customfield_" + strconv.FormatInt(field, 10)
 	id, _, err := s.createBoard(ScrumBoard, "scrum", Project)
 	if err != nil {
 		return 0, err
@@ -240,7 +249,7 @@ func (s *boardSeed) scrum() (int, error) {
 		}
 	}
 	for _, is := range scrumBacklog {
-		if _, err := s.create(is, is.day); err != nil {
+		if _, err := s.create(is, is.day, i18n.DefaultTypeStory); err != nil {
 			return n, err
 		}
 		n++
@@ -250,7 +259,7 @@ func (s *boardSeed) scrum() (int, error) {
 
 // joinSprint creates the issue and adds it to the sprint, on its day.
 func (s *boardSeed) joinSprint(board, sprint int64, is boardIssue) error {
-	key, err := s.create(is, is.day-2)
+	key, err := s.create(is, is.day-2, i18n.DefaultTypeStory)
 	if err != nil {
 		return err
 	}
@@ -261,9 +270,9 @@ func (s *boardSeed) joinSprint(board, sprint int64, is boardIssue) error {
 	return s.h.changed(s.ctx, key, s.h.at(is.day))
 }
 
-// create makes the issue as its assignee, dated day.
-func (s *boardSeed) create(is boardIssue, day int) (string, error) {
-	typ, err := s.issueType(is.project)
+// create makes the issue as its assignee, of the given type, dated day.
+func (s *boardSeed) create(is boardIssue, day int, typeKey i18n.Key) (string, error) {
+	typ, err := lookup(s.cat.types, typeKey)
 	if err != nil {
 		return "", err
 	}
@@ -307,7 +316,7 @@ func (s *boardSeed) walk(issues []boardIssue) error {
 		case inReview:
 			err = moveToNth(c, m.key, issue.Doing, 1)
 		case done:
-			err = moveTo(c, m.key, issue.Done)
+			err = moveTo(c, m.key, issue.Done, "")
 		}
 		if err != nil {
 			return fmt.Errorf("%s: %w", m.key, err)
@@ -360,50 +369,29 @@ func (s *boardSeed) kanban() (int, error) {
 		return 0, err
 	}
 	for _, is := range kanbanIssues {
-		if _, err := s.create(is, is.day); err != nil {
+		if _, err := s.create(is, is.day, i18n.DefaultTypeTask); err != nil {
 			return 0, err
 		}
 	}
 	return len(kanbanIssues), s.walk(kanbanIssues)
 }
 
-// issueType is the first standard issue type of a project.
-func (s *boardSeed) issueType(project string) (string, error) {
-	if t, ok := s.types[project]; ok {
-		return t, nil
+// moveToNth moves an issue to the nth status of a category, in workflow order.
+func moveToNth(c *client, key string, category issue.StatusCategory, nth int) error {
+	var d struct {
+		Statuses []struct{ ID, Category string }
 	}
-	var p struct {
-		IssueTypes []struct {
-			ID      string
-			Subtask bool
-		}
-	}
-	if err := s.admin.call("GET", "/api/projects/"+project, nil, &p); err != nil {
-		return "", err
-	}
-	for _, t := range p.IssueTypes {
-		if !t.Subtask {
-			s.types[project] = t.ID
-			return t.ID, nil
-		}
-	}
-	return "", fmt.Errorf("the project %s has no standard issue type", project)
-}
-
-// ensureStoryPoints finds the Story Points field, or creates it.
-func (s *boardSeed) ensureStoryPoints() error {
-	var id int64
-	err := s.conn.QueryRowContext(s.ctx, `SELECT id FROM custom_fields WHERE name = ?`, StoryPoints).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		var made struct{ ID int64 }
-		if err := s.admin.call("POST", "/api/admin/fields", map[string]any{"name": StoryPoints, "type": "number"},
-			&made); err != nil {
-			return err
-		}
-		id = made.ID
-	} else if err != nil {
+	if err := c.call("GET", "/api/issues/"+key, nil, &d); err != nil {
 		return err
 	}
-	s.field = "customfield_" + strconv.FormatInt(id, 10)
-	return nil
+	for _, st := range d.Statuses {
+		if issue.StatusCategory(st.Category) != category {
+			continue
+		}
+		if nth == 0 {
+			return c.call("PATCH", "/api/issues/"+key, map[string]any{"status": st.ID}, nil)
+		}
+		nth--
+	}
+	return fmt.Errorf("no %s status at that position", category)
 }

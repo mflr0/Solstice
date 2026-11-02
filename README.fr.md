@@ -327,14 +327,24 @@ archivées) :
 
 | Clé | Type | Catégorie | Responsable |
 | --- | --- | --- | --- |
-| `DEMO` | logiciel, avec des tickets de démonstration | Products | alice |
-| `MOB` | logiciel | Products | hans |
-| `OPS` | métier | Internal | marie |
+| `DEMO` | logiciel, avec une vingtaine de tickets | Products | alice |
+| `MOB` | logiciel, avec quelques tickets | Products | hans |
+| `OPS` | métier, avec quelques tickets | Internal | marie |
 | `OLD` | logiciel, archivé | aucune | tom |
 
-et deux tableaux, avec des semaines d'historique pour leurs rapports :
+Les tickets couvrent tous les types, des épopées avec leurs tickets, des
+sous-tâches, toutes les priorités, des étiquettes, des échéances (passées et
+à venir), des estimations, des composants, des versions corrigées et des
+résolutions. Chacun les commente dans sa langue, y saisit du temps, y joint
+des fichiers, vote, les suit et les lie, entre projets aussi. Un champ
+personnalisé de chaque type que propose l'administration a des valeurs sur
+certains. Chaque action est faite par l'un des comptes fictifs. Les champs
+d'un ticket sont remplis quand le remplissage le crée : pour les voir sur une
+base plus ancienne, recréez-la.
 
-- `Demo Scrum` sur `DEMO`, estimé en Story Points : deux sprints terminés,
+Il crée aussi deux tableaux, avec des semaines d'historique pour leurs rapports :
+
+- `Demo Scrum` sur `DEMO`, estimé en Story points : deux sprints terminés,
   un actif, un à venir et un backlog.
 - `Mobile and office Kanban` sur `MOB` et `OPS` : un backlog, des tickets dans
   chaque colonne, une limite de travail en cours, des filtres rapides et des
