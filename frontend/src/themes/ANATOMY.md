@@ -400,7 +400,9 @@ report a `table.ledger.report`, the password meter `.meter[data-score]` > four
 
 > `svg.admin-icon` (16 × 16 strokes in `currentColor`, glyphs from
 > `src/ui/admin/admin-icons.ts`) + `.admin-card-title` + `.admin-card-text`.
-> Its hover moves it up 1 px, except under `prefers-reduced-motion: reduce`.
+> Its hover moves it up 1 px, except under `prefers-reduced-motion: reduce`;
+> a skin that draws its own card sets `transform: none` there (Rétro 98 bevels it,
+> Terminal turns it inverse, Plan fills it with ink).
 > The « to do » cards above are `ul.todo-list` > `li.card`.
 
 **Gallery** (`/themes`) — each preview is
