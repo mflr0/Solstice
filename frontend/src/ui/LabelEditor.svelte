@@ -10,8 +10,10 @@
     labels: string[];
     onchange: (labels: string[]) => void;
     editable?: boolean | undefined;
+    /** The input's id, so a `<label for>` around the editor focuses it. */
+    id?: string | undefined;
   }
-  const { labels, onchange, editable = true }: Props = $props();
+  const { labels, onchange, editable = true, id }: Props = $props();
   let draft = $state('');
 
   function commit() {
@@ -47,6 +49,7 @@
   {/each}
   {#if editable}
     <input
+      {id}
       class="add"
       bind:value={draft}
       onkeydown={keydown}

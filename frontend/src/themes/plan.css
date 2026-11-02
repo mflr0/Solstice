@@ -622,7 +622,7 @@
   color: var(--muted);
 }
 
-/* Pickers in the new-issue form read as fields too. */
+/* The label editor's box in forms reads as a field too. */
 [data-skin='plan'] .modal-body .boxed {
   border: 0;
   border-bottom: 1px solid var(--rule-strong);

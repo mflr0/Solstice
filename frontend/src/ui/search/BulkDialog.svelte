@@ -33,6 +33,7 @@
     ondone: (refused: string[]) => void;
   }
   const { op, keys, onclose, ondone }: Props = $props();
+  const labelsId = $props.id();
 
   type Mode = BulkSet<unknown>['mode'];
   const MODES: Mode[] = ['add', 'remove', 'replace'];
@@ -243,15 +244,16 @@
           labelsMode = m;
           if (m !== 'add') useLabels = true;
         })}
-        <div class="boxed grow">
+        <label class="boxed grow" for={labelsId}>
           <LabelEditor
+            id={labelsId}
             {labels}
             onchange={(l) => {
               labels = l;
               if (l.length) useLabels = true;
             }}
           />
-        </div>
+        </label>
       </div>
     </div>
     <div class="item">
@@ -266,8 +268,9 @@
           },
           !oneProject,
         )}
-        <div class="boxed grow">
+        <div class="grow">
           <MultiPick
+            field
             options={project?.components ?? []}
             selected={componentIds}
             label={t.issue.components}
@@ -292,8 +295,9 @@
           },
           !oneProject,
         )}
-        <div class="boxed grow">
+        <div class="grow">
           <MultiPick
+            field
             options={(project?.versions ?? []).map((v) => ({ id: v.id, name: v.name }))}
             selected={fixIds}
             label={t.issue.fixVersions}
@@ -423,5 +427,6 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    cursor: text;
   }
 </style>

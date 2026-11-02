@@ -1004,7 +1004,7 @@
   background: var(--cr-red);
 }
 
-/* NewIssueDialog wraps its pickers in a box that should read as a field. */
+/* Forms wrap the label editor in a box that should read as a field. */
 [data-skin='crayon'] dialog .boxed {
   border: var(--frame) solid transparent;
   border-image: var(--cr-frame) 14 / 14px / 6px stretch;
@@ -1093,7 +1093,7 @@
   background-size: 10px 7px;
 }
 
-[data-skin='crayon'] button.current:hover:not([disabled]) {
+[data-skin='crayon'] button.current:not(.select):hover:not([disabled]) {
   border-color: var(--cr-line-soft);
   background: var(--cr-smudge) center / 100% 100% no-repeat;
 }

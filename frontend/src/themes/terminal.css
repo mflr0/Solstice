@@ -900,7 +900,7 @@
   box-shadow: var(--term-glow-box);
 }
 
-/* Pickers boxed like fields (new issue form). */
+/* The label editor boxed like a field (new issue form). */
 [data-skin='terminal'] .field .boxed {
   border-color: var(--rule-strong);
   background: var(--paper-sunk);

@@ -1706,7 +1706,7 @@
   gap: 12px;
 }
 
-/* Picker fields in the form look like the other inputs. */
+/* The label editor's box in forms looks like the other inputs. */
 [data-skin='luna'] dialog.modal .boxed {
   border-color: var(--rule-strong);
   border-radius: 2px;

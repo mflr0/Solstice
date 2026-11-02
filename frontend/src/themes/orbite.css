@@ -809,7 +809,7 @@
     center / 14px no-repeat;
 }
 
-/* Boxed pickers in forms (assignee, components, labels) match the fields. */
+/* The label editor's box in forms matches the fields. */
 [data-skin='orbite'] .modal .boxed.boxed {
   border: 1px solid var(--orb-edge);
   border-radius: var(--radius-s);

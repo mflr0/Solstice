@@ -286,9 +286,7 @@
 {#snippet pick(label: string, parts: MoveParts, value: number[], set: (ids: number[]) => void)}
   <div class="field">
     <span class="field-label">{label}</span>
-    <div class="boxed">
-      <MultiPick options={parts.options} selected={value} {label} onchange={set} />
-    </div>
+    <MultiPick field options={parts.options} selected={value} {label} onchange={set} />
     <span class="hint">{t.issue.moveUnmatched(formatList(parts.unmatched.map((u) => u.name)))}</span
     >
   </div>
@@ -509,15 +507,6 @@
 
   .form :global(p) {
     margin: 0;
-  }
-
-  .boxed {
-    border: 1px solid var(--rule-strong);
-    background: var(--paper-raised);
-    padding: 6px 8px;
-    min-height: 2.125rem;
-    display: flex;
-    align-items: center;
   }
 
   .restricted {
