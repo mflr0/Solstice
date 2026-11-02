@@ -342,6 +342,17 @@ certains. Chaque action est faite par l'un des comptes fictifs. Les champs
 d'un ticket sont remplis quand le remplissage le crée : pour les voir sur une
 base plus ancienne, recréez-la.
 
+Il crée aussi deux tableaux, avec des semaines d'historique pour leurs rapports :
+
+- `Demo Scrum` sur `DEMO`, estimé en Story points : deux sprints terminés,
+  un actif, un à venir et un backlog.
+- `Mobile and office Kanban` sur `MOB` et `OPS` : un backlog, des tickets dans
+  chaque colonne, une limite de travail en cours, des filtres rapides et des
+  couloirs par responsable.
+
+L'API date tout de maintenant : le remplissage recule donc dans la base
+l'historique de ce qu'il crée.
+
 Il refuse une base qui a des comptes mais pas d'administrateur `seed` : il ne
 touche jamais une vraie instance.
 

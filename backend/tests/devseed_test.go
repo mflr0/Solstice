@@ -37,7 +37,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	type state struct{ accounts, issues, comments, projects, types, extras string }
+	type state struct{ accounts, issues, comments, projects, types, extras, boards string }
 	read := func() state {
 		var accounts []string
 		if err := sqlq.Each(ctx, conn, `SELECT username, COALESCE(locale, '-'), is_admin FROM users ORDER BY username`,
@@ -128,8 +128,28 @@ func TestDevSeed(t *testing.T) {
 			}
 			extras = append(extras, fmt.Sprintf("%s=%d", c.name, n))
 		}
+		// kind/columns/sprints closed, active, future/issues on the board's projects
+		var boards []string
+		if err := sqlq.Each(ctx, conn, `SELECT b.kind, (SELECT COUNT(*) FROM board_columns WHERE board_id = b.id),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'closed'),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'active'),
+			(SELECT COUNT(*) FROM sprints WHERE board_id = b.id AND state = 'future'),
+			(SELECT COUNT(DISTINCT si.issue_id) FROM sprint_issues si JOIN sprints sp ON sp.id = si.sprint_id
+				WHERE sp.board_id = b.id)
+			FROM boards b ORDER BY b.kind`,
+			func(rows *sql.Rows) error {
+				var kind string
+				var columns, closed, active, future, inSprints int
+				if err := rows.Scan(&kind, &columns, &closed, &active, &future, &inSprints); err != nil {
+					return err
+				}
+				boards = append(boards, fmt.Sprintf("%s/%d/%d,%d,%d/%d", kind, columns, closed, active, future, inSprints))
+				return nil
+			}); err != nil {
+			t.Fatal(err)
+		}
 		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " "),
-			strings.Join(types, " "), strings.Join(extras, " ")}
+			strings.Join(types, " "), strings.Join(extras, " "), strings.Join(boards, " ")}
 	}
 
 	var out strings.Builder
@@ -137,15 +157,28 @@ func TestDevSeed(t *testing.T) {
 		t.Fatalf("first run: %v\n%s", err, out.String())
 	}
 	first := read()
-	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "19", "13",
+	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "40", "13",
 		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)",
-		"DEMO:Bug=7 DEMO:Epic=2 DEMO:Story=3 DEMO:Sub-task=3 DEMO:Task=4 " +
-			"MOB:Bug=1 MOB:Epic=1 MOB:Story=1 MOB:Sub-task=1 MOB:Task=1 OPS:Bug=1 OPS:Epic=1 OPS:Task=2",
-		"subtasks=4 in-epics=5 priorities=5 resolved=8 overdue=3 estimated=9 labels=15 components=16 " +
+		"DEMO:Bug=7 DEMO:Epic=2 DEMO:Story=24 DEMO:Sub-task=3 DEMO:Task=4 " +
+			"MOB:Bug=1 MOB:Epic=1 MOB:Story=1 MOB:Sub-task=1 MOB:Task=10 OPS:Bug=1 OPS:Epic=1 OPS:Task=6",
+		"subtasks=4 in-epics=5 priorities=5 resolved=24 overdue=3 estimated=9 labels=15 components=16 " +
 			"fix-versions=11 links=8 cross-links=3 link-types=4 worklogs=12 worklog-authors=6 attachments=4 " +
-			"votes=12 watchers=32 fields=13 field-types=13 field-values=28 reporters=6"}
+			"votes=12 watchers=66 fields=13 field-types=13 field-values=49 reporters=6",
+		"kanban/4/0,0,0/0 scrum/3/2,1,1/18"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
+	}
+	// The reports need a history: closed sprints in the past, in order, and
+	// no change dated after now.
+	var badSprints, future int
+	if err := conn.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM sprints WHERE state <> 'future' AND (start_at >= UTC_TIMESTAMP() - INTERVAL 1 DAY
+			OR (state = 'closed' AND (completed_at >= UTC_TIMESTAMP() - INTERVAL 1 DAY OR completed_at <= start_at)))),
+		(SELECT COUNT(*) FROM change_groups WHERE created_at > UTC_TIMESTAMP())`).Scan(&badSprints, &future); err != nil {
+		t.Fatal(err)
+	}
+	if badSprints != 0 || future != 0 {
+		t.Errorf("%d sprints not dated in the past, %d changes dated in the future", badSprints, future)
 	}
 	var host string
 	if err := conn.QueryRowContext(ctx, `SELECT value FROM settings WHERE name = 'mail'`).Scan(&host); err != nil ||
@@ -178,8 +211,8 @@ func TestDevSeed(t *testing.T) {
 		`priority = "Very high"`:             3,
 		`"Severity" = Blocker`:               2,
 		`"QA owner" = giulia`:                1,
-		`"Story points" > 4`:                 3,
-		`project = DEMO ORDER BY "Severity"`: 19,
+		`"Story points" > 4`:                 13,
+		`project = DEMO ORDER BY "Severity"`: 40,
 	} {
 		var res struct{ Total int }
 		if status := alice.get("/api/issues?q="+url.QueryEscape(q), &res); status != 200 || res.Total != want {

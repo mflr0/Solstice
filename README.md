@@ -317,6 +317,16 @@ field of each type the administration offers has values on some of them.
 Each thing is done by one of the mock users. The issues' own fields are set
 when the seed creates them: to see them on an older database, recreate it.
 
+The seed also makes two boards, with weeks of history for their reports:
+
+- `Demo Scrum` on `DEMO`, estimated in Story points: two completed sprints,
+  an active one, a future one and a backlog.
+- `Mobile and office Kanban` over `MOB` and `OPS`: a backlog, issues in every
+  column, a work-in-progress limit, quick filters and swimlanes by assignee.
+
+The API dates everything now, so the seed moves the history of what it creates
+back in time in the database.
+
 It refuses a database that has accounts but no `seed` administrator, so it
 never touches a real instance.
 
