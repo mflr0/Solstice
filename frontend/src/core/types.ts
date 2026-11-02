@@ -51,10 +51,39 @@ export interface NamedRef {
   seed?: SeedKey;
 }
 
+/** How an issue type's mark is filled with its colour. */
+export type TypeFill = 'filled' | 'subtle' | 'outline';
+
+/** The pictograms an issue type may be drawn with (see ADMIN_API.md). */
+export type TypeIcon =
+  | 'bug'
+  | 'story'
+  | 'epic'
+  | 'task'
+  | 'subtask'
+  | 'bolt'
+  | 'flag'
+  | 'star'
+  | 'check'
+  | 'bookmark'
+  | 'question'
+  | 'wrench'
+  | 'shield'
+  | 'doc'
+  | 'rocket'
+  | 'lightbulb'
+  | 'gear'
+  | 'lock';
+
 export interface TypeRef {
   id: string;
   name: string;
   subtask: boolean;
+  /** "#rrggbb"; unset keeps the tone guessed from the name. */
+  color?: string;
+  fill?: TypeFill;
+  /** Unset draws the name's first letter. */
+  icon?: TypeIcon;
   seed?: SeedKey;
 }
 
