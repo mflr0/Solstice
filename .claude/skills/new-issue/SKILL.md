@@ -18,11 +18,12 @@ Every call re-reads the whole context, so make few of them: send independent cal
 
 ## 2. Settle
 
-If the problem leaves real choices open (what the expected behaviour is, how far the change goes), grill me with the `grilling` skill, with your recommendation for each. Otherwise go on without asking.
+If the problem leaves real choices open (what the expected behaviour is, how far the change goes), grill me with the `grilling` skill, with your recommendation for each. Otherwise go on without asking. Settle them here, not in the ticket: names, API shapes, what happens to existing data, edge cases a migration or a permission check must decide. A choice left open costs the worker a grilling round mid-change.
 
 Then choose the shape:
 - **One ticket** when one pull request of reasonable size solves it.
 - **An epic** when it needs several pull requests, or holds independent changes: one tracker issue and one small ticket per change. Each ticket is one pull request a session can finish alone. Order them so the foundations land first, and give a ticket a `Waits for #n` line only when it truly can't start before #n is merged.
+  - Size each ticket. Too big for one: its `In scope` spans more than about three areas (a backend package, the importer, the REST API, the interface, i18n), or it would touch more than about 25 files. Split it, in the same epic: an epic holds a flat list, never sub-epics. When the change replaces or removes something many places use (a concept, a table, an endpoint), split it expand/contract: first add the new thing beside the old, then one ticket per area that moves to it, then one that removes the old. Each ticket must leave `feat/v1.0` building and working on its own.
   - A ticket also waits for one whose change it relies on to come out right, even with no file in common. For each ticket, ask what its result depends on that another ticket changes, and read that code on `origin/feat/v1.0`. Example: converting px to rem renders the same only once the shared-styles ticket sets `:root` to `font-size: 100%`. Until then, 1rem is the skin's `--font-size`, so the component and skin tickets wait for it.
 
 ## 3. Draft
