@@ -550,6 +550,36 @@ func TestJQLTextIgnoresStopwords(t *testing.T) {
 	}
 }
 
+// TestSimpleSearchIgnoresStopwords: the simple syntax drops "the" like JQL
+// does, and a search of stopwords only falls back to LIKE.
+func TestSimpleSearchIgnoresStopwords(t *testing.T) {
+	c := login(t, "admin", "admin")
+	tag := unique("stopword")
+	key := createIssue(t, c, "DEMO", "Fix the API "+tag, "")
+	other := createIssue(t, c, "DEMO", "Then what "+tag, "")
+	keys := func(q string) []string {
+		t.Helper()
+		var res struct{ Issues []struct{ Key string } }
+		if status := c.get("/api/issues?q="+url.QueryEscape(q), &res); status != 200 {
+			t.Fatalf("%s: %d", q, status)
+		}
+		var out []string
+		for _, it := range res.Issues {
+			out = append(out, it.Key)
+		}
+		return out
+	}
+	if got := keys("fix the api " + tag); !slices.Equal(got, []string{key}) {
+		t.Errorf("fix the api: %v, want [%s]", got, key)
+	}
+	if got := keys(`"fix the api" ` + tag); !slices.Equal(got, []string{key}) {
+		t.Errorf(`"fix the api": %v, want [%s]`, got, key)
+	}
+	if got := keys("the " + tag); !slices.Contains(got, key) || !slices.Contains(got, other) {
+		t.Errorf("the: %v, want %s and %s", got, key, other)
+	}
+}
+
 func TestJQLErrorsAreExplained(t *testing.T) {
 	c := login(t, "admin", "admin")
 	for _, q := range []string{`project = "DEMO`, `couleur = bleu`, `summary was x`, `rank = 3`} {

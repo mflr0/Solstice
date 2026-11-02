@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Marks returns n comma-separated bind markers, "?, ?, ?", for IN lists and
@@ -157,4 +158,22 @@ func Truncate(s string, n int) string {
 		n--
 	}
 	return s
+}
+
+// ftStopwords is InnoDB's default stopword list (INNODB_FT_DEFAULT_STOPWORD),
+// shorter words left out: the index skips these, so "+the*" would only match
+// longer words such as "then". frontend/src/core/text.ts keeps the same list.
+var ftStopwords = map[string]bool{
+	"about": true, "are": true, "com": true, "for": true, "from": true, "how": true,
+	"that": true, "the": true, "this": true, "was": true, "what": true, "when": true,
+	"where": true, "who": true, "will": true, "with": true, "und": true, "www": true,
+}
+
+// Stopword reports whether the full-text index ignores a search word,
+// punctuation around it aside.
+func Stopword(w string) bool {
+	w = strings.TrimFunc(w, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsMark(r) && !unicode.IsNumber(r) && r != '_'
+	})
+	return ftStopwords[strings.ToLower(w)]
 }
