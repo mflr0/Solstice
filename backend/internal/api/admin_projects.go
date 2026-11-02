@@ -497,9 +497,10 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 		table, cols string
 		rows        [][]any
 	}{
-		{"issue_types", "id, name, subtask, position", [][]any{
-			{t(i18n.M(i18n.DefaultTypeTask)), false}, {t(i18n.M(i18n.DefaultTypeBug)), false}, {t(i18n.M(i18n.DefaultTypeStory)), false},
-			{t(i18n.M(i18n.DefaultTypeEpic)), false}, {t(i18n.M(i18n.DefaultTypeSubtask)), true}}},
+		{"issue_types", "id, name, subtask, icon, position", [][]any{
+			{t(i18n.M(i18n.DefaultTypeTask)), false, "task"}, {t(i18n.M(i18n.DefaultTypeBug)), false, "bug"},
+			{t(i18n.M(i18n.DefaultTypeStory)), false, "story"}, {t(i18n.M(i18n.DefaultTypeEpic)), false, "epic"},
+			{t(i18n.M(i18n.DefaultTypeSubtask)), true, "subtask"}}},
 		{"priorities", "id, name, color, is_default, position", [][]any{
 			{t(i18n.M(i18n.DefaultPriorityVeryHigh)), "#c9372c", false}, {t(i18n.M(i18n.DefaultPriorityHigh)), "#e2483d", false},
 			{t(i18n.M(i18n.DefaultPriorityMedium)), "#e98d23", true}, {t(i18n.M(i18n.DefaultPriorityLow)), "#2a7ab0", false},
