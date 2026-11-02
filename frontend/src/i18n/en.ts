@@ -2198,12 +2198,20 @@ export const en = {
     deliveries: {
       immediate: { title: 'Right away', hint: 'An email on every change.' },
       digest: { title: 'Daily digest', hint: 'A single email per day, at the chosen time.' },
+      periodic: {
+        title: 'Periodic',
+        hint: 'One email every chosen interval, with all the changes since.',
+      },
       none: {
         title: 'No email',
         hint: 'You will receive nothing anymore; everything stays in Solstice.',
       },
     },
     digestHour: 'Digest time',
+    digestInterval: 'Every',
+    intervalUnit: 'Unit',
+    intervalUnits: { minutes: 'minutes', hours: 'hours' },
+    intervalInvalid: 'From 15 minutes to 12 hours, in whole minutes.',
     timeZone: (tz: string) => `All times follow the ${tz} time zone.`,
     events: 'Events',
     eventsHint: 'Check the ones that deserve an email.',

@@ -2216,12 +2216,20 @@ export const fr: Messages = {
     deliveries: {
       immediate: { title: 'Tout de suite', hint: 'Un e-mail à chaque changement.' },
       digest: { title: 'Résumé quotidien', hint: 'Un seul e-mail par jour, à l’heure choisie.' },
+      periodic: {
+        title: 'Périodique',
+        hint: 'Un e-mail à l’intervalle choisi, avec tous les changements depuis.',
+      },
       none: {
         title: 'Aucun e-mail',
         hint: 'Vous ne recevrez plus rien ; tout reste dans Solstice.',
       },
     },
     digestHour: 'Heure du résumé',
+    digestInterval: 'Toutes les',
+    intervalUnit: 'Unité',
+    intervalUnits: { minutes: 'minutes', hours: 'heures' },
+    intervalInvalid: 'De 15 minutes à 12 heures, en minutes entières.',
     timeZone: (tz: string) => `Toutes les heures suivent le fuseau ${tz}.`,
     events: 'Événements',
     eventsHint: 'Cochez ceux qui méritent un e-mail.',

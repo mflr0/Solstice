@@ -12,12 +12,15 @@
   import Dropdown from '../Dropdown.svelte';
 
   /**
-   * What Solstice sends by e-mail: when (each change, a daily digest, never),
+   * What Solstice sends by e-mail: when (each change, a daily digest, every
+   * few minutes or hours, never),
    * for which events, one's own changes or not, and the due-date reminder.
    * E-mails link here (/settings/notifications).
    */
 
-  const DELIVERIES: Delivery[] = ['immediate', 'digest', 'none'];
+  const DELIVERIES: Delivery[] = ['immediate', 'digest', 'periodic', 'none'];
+  const INTERVAL = { min: 15, max: 720 };
+  type Unit = 'minutes' | 'hours';
   const EVENTS = [
     'created',
     'assigned',
@@ -36,6 +39,14 @@
   let loadError = $state('');
   let saveError = $state('');
   let saving = $state(false);
+  // The interval as typed: a number of minutes or hours.
+  let amount = $state<number | null>(60);
+  let unit = $state<Unit>('hours');
+
+  const interval = $derived(amount === null ? NaN : amount * (unit === 'hours' ? 60 : 1));
+  const intervalBad = $derived(
+    !Number.isInteger(interval) || interval < INTERVAL.min || interval > INTERVAL.max,
+  );
 
   const dirty = $derived(prefs !== null && JSON.stringify(prefsPayload(prefs)) !== saved);
   const hour = (h: number) => hourLabel(h, formatLocale());
@@ -45,7 +56,17 @@
     for (const e of EVENTS) if (p.events[e] === undefined) p.events[e] = true;
     prefs = p;
     saved = JSON.stringify(prefsPayload(p));
+    showInterval(p.digestInterval);
   }
+
+  function showInterval(minutes: number) {
+    unit = minutes % 60 === 0 ? 'hours' : 'minutes';
+    amount = unit === 'hours' ? minutes / 60 : minutes;
+  }
+
+  $effect(() => {
+    if (prefs && !intervalBad) prefs.digestInterval = interval;
+  });
 
   $effect(() => {
     accountApi
@@ -56,7 +77,7 @@
 
   async function save(e: SubmitEvent) {
     e.preventDefault();
-    if (!prefs) return;
+    if (!prefs || (prefs.delivery === 'periodic' && intervalBad)) return;
     saving = true;
     saveError = '';
     try {
@@ -71,6 +92,7 @@
 
   function discard() {
     if (prefs) prefs = { ...prefs, ...JSON.parse(saved) };
+    if (prefs) showInterval(prefs.digestInterval);
     saveError = '';
   }
 </script>
@@ -123,7 +145,37 @@
         />
       </div>
     {/if}
-    {#if prefs.delivery !== 'none'}
+    {#if prefs.delivery === 'periodic'}
+      <div class="field">
+        <label class="field-label" for="notify-interval">{t.account.digestInterval}</label>
+        <div class="interval">
+          <input
+            id="notify-interval"
+            class="input"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            step="1"
+            bind:value={amount}
+            aria-invalid={intervalBad}
+            aria-describedby={intervalBad ? 'notify-interval-error' : undefined}
+          />
+          <Dropdown
+            label={t.account.intervalUnit}
+            value={unit}
+            options={(['minutes', 'hours'] as const).map((u) => ({
+              value: u,
+              label: t.account.intervalUnits[u],
+            }))}
+            onchange={(v) => (unit = v as Unit)}
+          />
+        </div>
+        {#if intervalBad}
+          <span class="field-error" id="notify-interval-error">{t.account.intervalInvalid}</span>
+        {/if}
+      </div>
+    {/if}
+    {#if prefs.delivery === 'digest' || prefs.delivery === 'immediate'}
       <p class="form-hint">{t.account.timeZone(prefs.timeZone)}</p>
     {/if}
 
@@ -181,7 +233,10 @@
       <div class="savebar" role="region" aria-label={t.settings.unsaved}>
         <span>{t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={discard}>{t.settings.discard}</button>
-        <button class="btn btn-primary" type="submit" disabled={saving}
+        <button
+          class="btn btn-primary"
+          type="submit"
+          disabled={saving || (prefs.delivery === 'periodic' && intervalBad)}
           >{saving ? t.common.saving : t.common.save}</button
         >
       </div>
@@ -203,7 +258,7 @@
 
   .deliveries {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
     padding: 0;
@@ -240,6 +295,17 @@
 
   .hour {
     max-width: 12.5rem;
+  }
+
+  .interval {
+    display: flex;
+    gap: 8px;
+    max-width: 18rem;
+  }
+
+  .interval .input {
+    width: 6rem;
+    flex: none;
   }
 
   .legend {

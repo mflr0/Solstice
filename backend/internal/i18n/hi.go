@@ -621,7 +621,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 
 	// Notification preferences and notification e-mails.
 	NotifyHourInvalid:         "अमान्य घंटा: 0 से 23 तक।",
-	NotifyDeliveryUnknown:     "अज्ञात भेजने का तरीका: immediate, digest या none।",
+	NotifyIntervalInvalid:     "अमान्य अंतराल: 15 से 720 मिनट तक।",
+	NotifyDeliveryUnknown:     "अज्ञात भेजने का तरीका: immediate, digest, periodic या none।",
 	NotifyEventUnknown:        "अज्ञात इवेंट: %s।",
 	NotifyRecipientUnknown:    "अज्ञात प्राप्तकर्ता: group या role।",
 	NotifyManage:              "मेरी सूचनाएँ प्रबंधित करें",
@@ -636,6 +637,11 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	NotifyUnassigned:          "असाइन नहीं",
 	NotifyDigestSubject:       "%s की आपकी सूचनाएँ",
 	NotifyWhyDigest:           "आपकी सूचना प्राथमिकताओं के अनुसार आपको यह दैनिक सारांश मिला है।",
+	NotifyPeriodicSubject:     "आपकी सूचनाएँ (हर %s)",
+	NotifyWhyPeriodic:         "आपकी सूचना प्राथमिकताओं के अनुसार आपको यह सारांश हर %s मिलता है।",
+	NotifyMinutes:             "%d मिनट",
+	NotifyHours:               "%d घंटे",
+	NotifyHoursMinutes:        "%d घंटे %d मिनट",
 	NotifyWhyAssignee:         "आपको यह ईमेल इसलिए मिला है क्योंकि यह टिकट आपको असाइन है।",
 	NotifyWhyReporter:         "आपको यह ईमेल इसलिए मिला है क्योंकि आपने यह टिकट रिपोर्ट किया है।",
 	NotifyWhyMention:          "आपको यह ईमेल इसलिए मिला है क्योंकि किसी ने आपका उल्लेख किया है।",

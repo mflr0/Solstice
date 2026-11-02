@@ -2198,12 +2198,20 @@ export const hi: Messages = {
     deliveries: {
       immediate: { title: 'तुरंत', hint: 'हर बदलाव पर एक ईमेल।' },
       digest: { title: 'रोज़ का सारांश', hint: 'दिन में एक ही ईमेल, चुने हुए समय पर।' },
+      periodic: {
+        title: 'समय-समय पर',
+        hint: 'चुने हुए अंतराल पर एक ईमेल, तब से हुए सभी बदलावों के साथ।',
+      },
       none: {
         title: 'कोई ईमेल नहीं',
         hint: 'आपको और कुछ नहीं मिलेगा; सब कुछ Solstice में रहता है।',
       },
     },
     digestHour: 'सारांश का समय',
+    digestInterval: 'हर',
+    intervalUnit: 'इकाई',
+    intervalUnits: { minutes: 'मिनट', hours: 'घंटे' },
+    intervalInvalid: '15 मिनट से 12 घंटे तक, पूरे मिनटों में।',
     timeZone: (tz: string) => `सारे समय ${tz} समय क्षेत्र के अनुसार चलते हैं।`,
     events: 'इवेंट',
     eventsHint: 'जो ईमेल के लायक हैं उन पर टिक करें।',

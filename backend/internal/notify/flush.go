@@ -239,6 +239,7 @@ type batchFacts struct {
 	created     bool     // an issue's creation is among the items
 	threadIssue int64    // the last issue shown
 	actor       string   // who made the last entry shown
+	period      int      // a periodic digest's interval in minutes, 0 for a daily one
 }
 
 // renderBatch writes a batch for its recipient, checking again what they may
@@ -275,6 +276,15 @@ func (s *Service) renderBatch(ctx context.Context, userID int64, digest bool, it
 	}
 	if len(p.Sections) == 0 {
 		return nil, nil
+	}
+	if digest {
+		prefs, err := s.Prefs(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if prefs.Delivery == Periodic {
+			facts.period = prefs.DigestInterval
+		}
 	}
 	return s.compose(cfg, rc, digest, p, facts), nil
 }
@@ -455,12 +465,19 @@ func (s *Service) entryFor(ctx context.Context, rc *recipient, keys *keyAccess, 
 func (s *Service) compose(cfg mail.Config, rc *recipient, digest bool, p *page, facts batchFacts) *mail.Message {
 	loc := rc.locale
 	msg := &mail.Message{UserID: rc.user.ID, To: rc.user.Email, ToName: rc.user.Name, MessageID: mail.NewMessageID(cfg.Domain())}
-	if digest {
+	switch {
+	case digest && facts.period > 0:
+		msg.Kind = mail.KindDigest
+		every := formatMinutes(loc, facts.period)
+		p.Heading = i18n.M(i18n.NotifyPeriodicSubject, every).In(loc)
+		msg.Subject = p.Heading
+		s.footer(p, i18n.M(i18n.NotifyWhyPeriodic, every).In(loc))
+	case digest:
 		msg.Kind = mail.KindDigest
 		p.Heading = i18n.M(i18n.NotifyDigestSubject, formatDate(loc, s.Now().In(s.zone()))).In(loc)
 		msg.Subject = p.Heading
 		s.footer(p, i18n.M(i18n.NotifyWhyDigest).In(loc))
-	} else {
+	default:
 		msg.Kind = mail.KindNotification
 		if len(p.Sections) > 1 {
 			// A bulk change: one e-mail for several issues, in no issue's
@@ -483,6 +500,18 @@ func (s *Service) compose(cfg mail.Config, rc *recipient, digest bool, p *page, 
 	msg.HTML = p.html()
 	msg.Text = p.text()
 	return msg
+}
+
+// formatMinutes writes a duration of whole minutes as hours and minutes.
+func formatMinutes(loc string, minutes int) string {
+	h, m := minutes/60, minutes%60
+	switch {
+	case h == 0:
+		return i18n.M(i18n.NotifyMinutes, m).In(loc)
+	case m == 0:
+		return i18n.M(i18n.NotifyHours, h).In(loc)
+	}
+	return i18n.M(i18n.NotifyHoursMinutes, h, m).In(loc)
 }
 
 func strongest(reasons []string) string {

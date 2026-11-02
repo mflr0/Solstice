@@ -308,6 +308,7 @@ export function prefsPayload(p: NotificationPrefs): Partial<NotificationPrefs> {
   return {
     delivery: p.delivery,
     digestHour: p.digestHour,
+    digestInterval: p.digestInterval,
     ownChanges: p.ownChanges,
     events: { ...p.events },
     dueReminder: p.dueReminder,
