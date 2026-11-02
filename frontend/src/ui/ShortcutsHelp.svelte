@@ -19,7 +19,7 @@
   {#if !appearance.shortcuts}
     <p class="form-hint off">
       {t.keyboard.off}
-      <a href={paths.account('appearance')} onclick={() => (dialogs.shortcuts = false)}
+      <a href={paths.account('shortcuts')} onclick={() => (dialogs.shortcuts = false)}
         >{t.keyboard.settings}</a
       >
     </p>

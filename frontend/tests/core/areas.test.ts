@@ -64,14 +64,15 @@ describe('accountPath', () => {
   it.each<[AccountSection, string]>([
     ['profile', '/settings'],
     ['notifications', '/settings/notifications'],
+    ['shortcuts', '/settings/shortcuts'],
   ])('%s is %s', (section, want) => {
     expect(accountPath(section)).toBe(want);
   });
 });
 
 describe('accountSectionOf', () => {
-  it('names notifications', () => {
-    expect(accountSectionOf('notifications')).toBe('notifications');
+  it.each(['notifications', 'shortcuts'])('names %s', (slug) => {
+    expect(accountSectionOf(slug)).toBe(slug);
   });
 
   it.each(['profile', '', 'nope'])('does not name %s', (slug) => {

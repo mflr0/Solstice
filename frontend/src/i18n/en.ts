@@ -2132,6 +2132,7 @@ export const en = {
     sections: {
       profile: 'Profile',
       appearance: 'Language and appearance',
+      shortcuts: 'Keyboard shortcuts',
       notifications: 'Notifications',
       tokens: 'Access tokens',
       apps: 'Connected apps',
