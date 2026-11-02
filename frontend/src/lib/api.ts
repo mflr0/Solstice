@@ -110,6 +110,9 @@ export interface BulkEdit {
   fixVersions?: BulkSet<number>;
   /** An open sprint, or 0 to take the issues out of theirs. */
   sprint?: number;
+  /** A status each issue reaches through its own workflow, and the resolution to set with it. */
+  status?: string;
+  resolution?: string | null;
 }
 
 /** The choices a move can be given; a list replaces the whole list the issue ends with. */
@@ -350,7 +353,6 @@ export const api = {
     keys: string[],
     change:
       | ({ op: 'edit' } & BulkEdit)
-      | { op: 'transition'; status: string; resolution?: string | null }
       | { op: 'move'; move: MoveChoices & { project: string } }
       | { op: 'delete' },
   ) => request<{ results: BulkResult[] }>('POST', '/api/issues/bulk', { keys, ...change }),

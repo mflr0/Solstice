@@ -194,7 +194,7 @@ func (s *Server) checkBulk(ctx context.Context, sub *perm.Subject, in *bulkInput
 	switch in.Op {
 	case "edit":
 		if len(in.Assignee) == 0 && len(in.Priority) == 0 && in.Labels == nil && in.Components == nil &&
-			in.FixVersions == nil && in.Sprint == nil {
+			in.FixVersions == nil && in.Sprint == nil && in.Status == "" && len(in.Resolution) == 0 {
 			return fail(http.StatusBadRequest, i18n.BulkNothingToChange)
 		}
 		for _, f := range []struct {
@@ -281,10 +281,8 @@ func (s *Server) bulkOne(r *http.Request, sub *perm.Subject, in *bulkInput, iss 
 	case "edit":
 		return "", s.bulkEdit(ctx, sub, in, iss)
 	case "transition":
-		f := fields{"status": jsonOf(in.Status)}
-		if len(in.Resolution) > 0 {
-			f["resolution"] = in.Resolution
-		}
+		f := fields{}
+		addStatus(f, in)
 		return "", s.applyEdit(ctx, sub, nil, iss, f, nil)
 	case "move":
 		plan, err := s.bulkPlanMove(ctx, sub, iss, in.Move)
@@ -301,6 +299,16 @@ func (s *Server) bulkOne(r *http.Request, sub *perm.Subject, in *bulkInput, iss 
 	}
 }
 
+// addStatus adds the status and resolution of in, those given, to f.
+func addStatus(f fields, in *bulkInput) {
+	if in.Status != "" {
+		f["status"] = jsonOf(in.Status)
+	}
+	if len(in.Resolution) > 0 {
+		f["resolution"] = in.Resolution
+	}
+}
+
 func jsonOf(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b
@@ -309,6 +317,7 @@ func jsonOf(v any) json.RawMessage {
 // bulkEdit turns the bulk fields into the issue's own edit, then its sprint.
 func (s *Server) bulkEdit(ctx context.Context, sub *perm.Subject, in *bulkInput, iss *issueRow) error {
 	f := fields{}
+	addStatus(f, in)
 	if len(in.Assignee) > 0 {
 		f["assignee"] = in.Assignee
 	}

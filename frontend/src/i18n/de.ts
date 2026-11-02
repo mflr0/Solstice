@@ -423,11 +423,9 @@ export const de: Messages = {
       actions: 'Ausgewählte Vorgänge ändern',
       clear: 'Auswahl aufheben',
       edit: 'Bearbeiten',
-      transition: 'Status ändern',
       move: 'Verschieben',
       delete: 'Löschen',
       editTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} bearbeiten`,
-      transitionTitle: (n: number) => `Status von ${plural(n, 'Vorgang', 'Vorgängen')} ändern`,
       moveTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} verschieben`,
       deleteTitle: (n: number) => `${plural(n, 'Vorgang', 'Vorgänge')} löschen?`,
       deleteBody: (n: number) =>
@@ -435,8 +433,7 @@ export const de: Messages = {
       typeToConfirm: (n: number) => `Zur Bestätigung ${n} eingeben`,
       deleteSubmit: 'Löschen',
       editHint:
-        'Kreuzen Sie die zu ändernden Felder an; die übrigen bleiben bei jedem Vorgang, wie sie sind.',
-      change: (field: string) => `${field} ändern`,
+        'Die angekreuzten Felder werden übernommen; die übrigen bleiben bei jedem Vorgang, wie sie sind.',
       modes: { add: 'Hinzufügen', remove: 'Entfernen', replace: 'Alle ersetzen durch' },
       oneProject:
         'Komponenten und Lösungsversionen lassen sich nur ändern, wenn alle ausgewählten Vorgänge im selben Projekt sind.',
