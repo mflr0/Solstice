@@ -282,7 +282,8 @@ back / forward.
 - Inside a popover: `.value-picker` > `input.input.filter-search` +
   `ul.filter-options[role=listbox]` > `li.group-label` (« Raccourcis », status
   categories) and `li.item.filter-option[role=option]` (`[aria-selected='true']`
-  when ticked, `.active` under the keyboard; `.box` = the tick box, `.label`,
+  when ticked, `.active` under the keyboard; `.box` = the tick box, `.mark` (Type and people pickers: a `.type-mark` or an
+  `.avatar`, empty on « Non assigné »), `.label`,
   `.hint`, `.count` = issues it would show, `.zero` when none; counts come
   in a moment after the list), then `.picker-foot` (« Effacer »). Dates: `.date-picker` >
   `fieldset.date-presets` > `label.item.date-preset` (`.active`), `.custom` >

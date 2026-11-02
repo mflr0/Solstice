@@ -27,7 +27,7 @@
   import Dropdown from '../Dropdown.svelte';
   import DateRangePicker from './DateRangePicker.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { labelOf, loadOptions, specialValues } from './sources.svelte.js';
+  import { hasMarks, labelOf, loadOptions, markOf, specialValues } from './sources.svelte.js';
   import ValuePicker from './ValuePicker.svelte';
 
   /**
@@ -358,6 +358,7 @@
         : undefined}
       onreset={() => clearField(field)}
       counts={countsFor(field)}
+      markOf={hasMarks(field) ? (v) => markOf(field, v) : undefined}
     />
   </FilterPopover>
 {/snippet}
@@ -391,6 +392,7 @@
       special={specialValues('people', peopleRole)}
       labelOf={(v) => labelOf('people', v, peopleRole)}
       onreset={() => clearField('people')}
+      markOf={(v) => markOf('people', v)}
     />
   </FilterPopover>
 {/snippet}

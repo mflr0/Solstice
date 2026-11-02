@@ -4,7 +4,9 @@
   import { matches } from '../../core/text.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
+  import Avatar from '../Avatar.svelte';
   import Highlight from '../Highlight.svelte';
+  import TypeMark from '../TypeMark.svelte';
   import type { Option } from './sources.svelte.js';
 
   /**
@@ -37,6 +39,8 @@
     onreset: () => void;
     /** Issues per value key (Option.facets), for the search without this filter. */
     counts?: Record<string, number> | null | undefined;
+    /** Draws each value with a mark (type, avatar); the mark of a chosen value the list does not show. */
+    markOf?: ((value: string) => Pick<Option, 'type' | 'user'>) | undefined;
   }
   const {
     label,
@@ -49,9 +53,10 @@
     free,
     onreset,
     counts = null,
+    markOf,
   }: Props = $props();
 
-  interface Row {
+  interface Row extends Pick<Option, 'type' | 'user'> {
     key: string;
     label: string;
     hint?: string | undefined;
@@ -108,6 +113,8 @@
           checked: isChosen(o.value),
           act: () => pick(o.value),
           count: countOf(o),
+          type: o.type,
+          user: o.user,
         });
       }
     }
@@ -115,7 +122,13 @@
     const listed = [...special, ...options];
     for (const v of selected) {
       if (listed.some((o) => sameValue(o.value, v))) continue;
-      out.push({ key: `c${v}`, label: labelOf(v), checked: true, act: () => pick(v) });
+      out.push({
+        key: `c${v}`,
+        label: labelOf(v),
+        checked: true,
+        act: () => pick(v),
+        ...markOf?.(v),
+      });
     }
     for (const o of options) {
       out.push({
@@ -126,6 +139,8 @@
         checked: isChosen(o.value),
         act: () => pick(o.value),
         count: countOf(o),
+        type: o.type,
+        user: o.user,
       });
     }
     const typed = q.trim();
@@ -237,6 +252,11 @@
         onmouseenter={() => (active = i)}
       >
         <span class="box" aria-hidden="true">{row.checked ? '✓' : ''}</span>
+        {#if markOf}<span class="mark" aria-hidden="true"
+            >{#if row.type}<TypeMark type={row.type} />{:else if row.user}<Avatar
+                user={row.user}
+              />{/if}</span
+          >{/if}
         <span class="label"
           >{#if row.typed}{row.label}{:else}<Highlight text={row.label} search={q} />{/if}</span
         >
@@ -301,6 +321,14 @@
 
   .filter-option[aria-selected='true'] .box {
     border-color: var(--accent);
+  }
+
+  /* Rows without a mark keep the slot, so the names line up. */
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.25rem;
+    flex: none;
   }
 
   .label {

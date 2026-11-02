@@ -1171,6 +1171,13 @@
   --stamp-todo: var(--term-inv-ink);
   --stamp-doing: var(--term-inv-ink);
   --stamp-done: var(--term-inv-ink);
+  --tone-bug: var(--term-inv-ink);
+  --tone-story: var(--term-inv-ink);
+  --tone-epic: var(--term-inv-ink);
+  --tone-task: var(--term-inv-ink);
+  --tone-subtask: var(--term-inv-ink);
+  --rule-strong: var(--term-inv-ink);
+  --accent-text: var(--term-inv-ink);
   --paper: var(--term-inv);
   --focus: var(--term-inv-ink);
   --ink-blend: normal;

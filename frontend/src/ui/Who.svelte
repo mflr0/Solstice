@@ -2,8 +2,8 @@
   import { paths } from '../core/route.js';
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
+  import Avatar from './Avatar.svelte';
   import Highlight from './Highlight.svelte';
-  import Picture from './Picture.svelte';
 
   /** A person: their picture, else initials, in a small square, then the name, linking to their page. */
   interface Props {
@@ -32,7 +32,7 @@
     href={link ? paths.person(user.username) : undefined}
     title={user.active ? user.username : `${user.username} — ${t.common.inactive}`}
   >
-    {#if initialsBox}<span class="initials avatar" aria-hidden="true"><Picture {user} /></span>{/if}
+    {#if initialsBox}<Avatar {user} />{/if}
     <span class="name"
       >{#if search}<Highlight text={user.name} {search} />{:else}{user.name}{/if}</span
     >
@@ -53,21 +53,6 @@
 
   .who[href]:hover .name {
     text-decoration: underline;
-  }
-
-  .initials {
-    display: inline-grid;
-    place-items: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    flex: none;
-    border: 1px solid var(--rule-strong);
-    border-radius: var(--avatar-radius);
-    background: var(--paper-raised);
-    color: var(--ink-soft);
-    font: 500 0.59375rem/1 var(--font-mono);
-    letter-spacing: 0.02em;
-    overflow: hidden;
   }
 
   .name {
