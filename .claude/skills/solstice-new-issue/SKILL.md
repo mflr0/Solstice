@@ -1,10 +1,10 @@
 ---
 name: solstice-new-issue
-description: Turn a problem or idea I describe into GitHub issues of mflr0/Solstice (one ticket, or an epic with small tickets), in the format the solstice-issue skill works from. Use when I ask to write, file or open a ticket or issue for Solstice.
+description: Turn a problem or idea I describe into GitHub issues of mflr0/Solstice (one ticket, or an epic with small tickets), in the format the work-issue skill works from. Use when I ask to write, file or open a ticket or issue for Solstice.
 argument-hint: "<problem, in my words>"
 ---
 
-Write the issues of mflr0/Solstice for the problem in `$ARGUMENTS` (or the conversation), so that the `solstice-issue` skill can pick and deliver them without asking me. Don't fix the problem here.
+Write the issues of mflr0/Solstice for the problem in `$ARGUMENTS` (or the conversation), so that the `work-issue` skill can pick and deliver them without asking me. Don't fix the problem here.
 
 Every call re-reads the whole context, so make few of them: send independent calls in the same turn.
 
@@ -56,7 +56,7 @@ Leave out a block that has nothing to say, except the problem, the change, `In s
 **Labels**, from `gh label list` only:
 - kind, one: `bug` (something is broken), `enhancement` (new feature), `polish` (small visual or wording fix), `refactor`, `hardening`, `documentation`;
 - areas, every one that applies: `backend`, `frontend`, `i18n`, `themes`, `accessibility`, `security`, `ci`, `import`.
-- Never `in progress`: it is the claim lock of `solstice-issue`. Never `epic` on a ticket.
+- Never `in progress`: it is the claim lock of `work-issue`. Never `epic` on a ticket.
 
 ### Epic
 
