@@ -1,5 +1,5 @@
 ---
-name: solstice-new-issue
+name: new-issue
 description: Turn a problem or idea I describe into GitHub issues of mflr0/Solstice (one ticket, or an epic with small tickets), in the format the work-issue skill works from. Use when I ask to write, file or open a ticket or issue for Solstice.
 argument-hint: "<problem, in my words>"
 ---
