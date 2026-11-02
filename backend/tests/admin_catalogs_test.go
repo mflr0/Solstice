@@ -17,6 +17,8 @@ type catalogueItem struct {
 	ID          json.RawMessage `json:"id"` // text, a number for link types
 	Name        string          `json:"name"`
 	Color       *string         `json:"color"`
+	Fill        *string         `json:"fill"`
+	Icon        *string         `json:"icon"`
 	Default     *bool           `json:"default"`
 	Subtask     *bool           `json:"subtask"`
 	Description *string         `json:"description"`
@@ -268,6 +270,64 @@ func TestIssueTypes(t *testing.T) {
 	}
 	sameJSON(t, "audit of the deletion", auditDetails(t, "issuetype.delete", it.id()),
 		fmt.Sprintf(`{"moved": 1, "movedTo": %q}`, standardName))
+}
+
+func TestIssueTypeStyle(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	var it catalogueItem
+	admin.call("POST", "/api/admin/issue-types", map[string]any{"name": unique("Incident "), "color": "#1A2B3C",
+		"fill": "subtle", "icon": "rocket"}, 201, &it)
+	path := "/api/admin/issue-types/" + it.id()
+	styleOf := func() (color, fill, icon *string) {
+		t.Helper()
+		for _, c := range catalogue(t, admin, "issue-types") {
+			if c.id() == it.id() {
+				return c.Color, c.Fill, c.Icon
+			}
+		}
+		t.Fatalf("%s not listed", it.id())
+		return
+	}
+	str := func(p *string) string {
+		if p == nil {
+			return "<unset>"
+		}
+		return *p
+	}
+	if color, fill, icon := styleOf(); str(color) != "#1a2b3c" || str(fill) != "subtle" || str(icon) != "rocket" {
+		t.Errorf("style: %s %s %s, want #1a2b3c subtle rocket", str(color), str(fill), str(icon))
+	}
+	// The session catalogue, as the interface gets it.
+	session := func() map[string]any {
+		t.Helper()
+		var meta struct {
+			IssueTypes []map[string]any `json:"issueTypes"`
+		}
+		admin.get("/api/meta", &meta)
+		for _, c := range meta.IssueTypes {
+			if c["id"] == it.id() {
+				return c
+			}
+		}
+		t.Fatalf("%s not in the session catalogue", it.id())
+		return nil
+	}
+	if c := session(); c["color"] != "#1a2b3c" || c["fill"] != "subtle" || c["icon"] != "rocket" {
+		t.Errorf("session catalogue: %v", c)
+	}
+	for _, body := range []map[string]any{
+		{"fill": "dotted"}, {"icon": "unicorn"}, {"color": "rouge"}, {"icon": 3},
+	} {
+		admin.call("PATCH", path, body, 400, nil)
+	}
+	admin.call("PATCH", path, map[string]any{"color": "", "fill": "", "icon": ""}, 200, nil)
+	if color, fill, icon := styleOf(); color != nil || fill != nil || icon != nil {
+		t.Errorf("style after clearing: %s %s %s, want all unset", str(color), str(fill), str(icon))
+	}
+	if c := session(); c["color"] != nil || c["fill"] != nil || c["icon"] != nil {
+		t.Errorf("session catalogue after clearing: %v", c)
+	}
+	admin.call("DELETE", path, nil, 204, nil)
 }
 
 func TestResolutions(t *testing.T) {

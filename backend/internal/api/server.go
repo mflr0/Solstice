@@ -590,6 +590,9 @@ type typeRef struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Subtask bool     `json:"subtask"`
+	Color   string   `json:"color,omitempty"`
+	Fill    string   `json:"fill,omitempty"`
+	Icon    string   `json:"icon,omitempty"`
 	Seed    i18n.Key `json:"seed,omitempty"`
 }
 
@@ -686,9 +689,10 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = sqlq.Each(ctx, s.db, `SELECT id, name, subtask FROM issue_types ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, subtask, COALESCE(color, ''), COALESCE(fill, ''), COALESCE(icon, '')
+		FROM issue_types ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v typeRef
-		if err := rows.Scan(&v.ID, &v.Name, &v.Subtask); err != nil {
+		if err := rows.Scan(&v.ID, &v.Name, &v.Subtask, &v.Color, &v.Fill, &v.Icon); err != nil {
 			return err
 		}
 		v.Seed = i18n.Match(v.Name, seededIssueTypes...)

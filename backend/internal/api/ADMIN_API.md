@@ -417,7 +417,7 @@ Shared by all projects. Each list is in display order.
 
 | Catalogue | List | Item fields | Usage counted |
 |---|---|---|---|
-| Issue types | `GET /api/admin/issue-types` | `id, name, description, subtask, position` | `issues, projects` |
+| Issue types | `GET /api/admin/issue-types` | `id, name, description, subtask, color?, fill?, icon?, position` | `issues, projects` |
 | Priorities | `GET /api/admin/priorities` | `id, name, description, color, position, default` | `issues` |
 | Resolutions | `GET /api/admin/resolutions` | `id, name, description, position, default` | `issues` |
 | Link types | `GET /api/admin/link-types` | `id, name, inward, outward, position` | `links` |
@@ -426,7 +426,7 @@ Shared by all projects. Each list is in display order.
 For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
 
 - `POST /api/admin/{kind}` → 201 item. Names unique (409).
-  - issue types: `{name, description?, subtask?}`
+  - issue types: `{name, description?, subtask?, color?: "#rrggbb", fill?, icon?}`
   - priorities: `{name, description?, color?: "#rrggbb"}`
   - resolutions: `{name, description?}`
   - link types: `{name, inward, outward}`
@@ -437,6 +437,14 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   stay unresolved). One default per catalogue: setting it moves it.
   Deleting the default leaves none. An issue type's `subtask` flag
   only changes while no issue uses it (409).
+- An issue type's style: `color` `#rrggbb` (stored lower case), `fill` one
+  of `filled`, `subtle`, `outline`, and `icon` one of `bug`, `story`,
+  `epic`, `task`, `subtask`, `bolt`, `flag`, `star`, `check`, `bookmark`,
+  `question`, `wrench`, `shield`, `doc`, `rocket`, `lightbulb`, `gear`,
+  `lock`. Without an icon, the type shows its first letter. Any other
+  value: 400. `""` clears a field; unset fields are left out of the item,
+  and of the issue types of `GET /api/meta`. Default types get their icon
+  (`bug`, `story`, `epic`, `task`, `subtask`) and no colour or fill.
 - `POST /api/admin/{kind}/order` `{ids: [...]}` → the list.
   `POST /api/admin/statuses/order` too.
 - `DELETE /api/admin/{kind}/{id}` body optional `{moveTo: id}` → 204.

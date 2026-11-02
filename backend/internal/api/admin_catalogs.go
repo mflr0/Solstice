@@ -42,8 +42,8 @@ type catalogueKind struct {
 type catalogueMove func(ctx context.Context, tx *sql.Tx, by int64, from, to catalogueItem) (int, error)
 
 var catalogueKinds = map[string]catalogueKind{
-	"issue-types": {table: "issue_types", audit: "issuetype", fields: []string{"description", "subtask"},
-		query: `SELECT t.id, t.name, t.description, t.position, t.subtask,
+	"issue-types": {table: "issue_types", audit: "issuetype", fields: []string{"description", "subtask", "color", "fill", "icon"},
+		query: `SELECT t.id, t.name, t.description, t.position, t.subtask, t.color, t.fill, t.icon,
 			(SELECT COUNT(*) FROM issues i WHERE i.issue_type_id = t.id),
 			(SELECT COUNT(*) FROM project_issue_types p WHERE p.issue_type_id = t.id) FROM issue_types t`,
 		scan: scanIssueType, move: moveIssueType, checkDelete: keepLastIssueType, checkReplacement: sameSubtask},
@@ -70,6 +70,8 @@ type catalogueItem struct {
 	// Kind-specific.
 	Subtask  *bool   `json:"subtask,omitempty"`
 	Color    *string `json:"color,omitempty"`
+	Fill     *string `json:"fill,omitempty"`
+	Icon     *string `json:"icon,omitempty"`
 	Default  *bool   `json:"default,omitempty"`
 	Inward   *string `json:"inward,omitempty"`
 	Outward  *string `json:"outward,omitempty"`
@@ -105,12 +107,21 @@ func (it catalogueItem) MarshalJSON() ([]byte, error) {
 
 func scanIssueType(rows *sql.Rows) (catalogueItem, error) {
 	var it catalogueItem
-	var desc sql.NullString
+	var desc, color, fill, icon sql.NullString
 	var sub bool
 	var issues, projects int
-	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &sub, &issues, &projects)
+	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &sub, &color, &fill, &icon, &issues, &projects)
 	it.Description, it.Subtask, it.Issues, it.Projects = &desc.String, &sub, &issues, &projects
+	it.Color, it.Fill, it.Icon = nullable(color), nullable(fill), nullable(icon)
 	return it, err
+}
+
+// nullable gives the text of v, nil when NULL.
+func nullable(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	return &v.String
 }
 
 func scanPriority(rows *sql.Rows) (catalogueItem, error) {
@@ -181,6 +192,14 @@ func (s *Server) listCatalogue(c catalogueKind) handler {
 }
 
 var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// The fills and icons an issue type may be drawn with. Without an icon, it
+// shows its first letter.
+var (
+	issueTypeFills = []string{"filled", "subtle", "outline"}
+	issueTypeIcons = []string{"bug", "story", "epic", "task", "subtask", "bolt", "flag", "star", "check", "bookmark",
+		"question", "wrench", "shield", "doc", "rocket", "lightbulb", "gear", "lock"}
+)
 
 // saveCatalogueItem creates an item (no id in the path) or changes one.
 func (s *Server) saveCatalogueItem(c catalogueKind) handler {
@@ -303,6 +322,22 @@ func (s *Server) parseCatalogueFields(ctx context.Context, c catalogueKind, raw 
 			sets["color"] = strings.ToLower(v)
 			if v == "" {
 				sets["color"] = nil
+			}
+		case "fill", "icon":
+			v, err := str(k)
+			if err != nil {
+				return nil, err
+			}
+			allowed := issueTypeFills
+			if k == "icon" {
+				allowed = issueTypeIcons
+			}
+			if v != "" && !containsStr(allowed, v) {
+				return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)
+			}
+			sets[k] = v
+			if v == "" {
+				sets[k] = nil
 			}
 		case "subtask":
 			var v bool
