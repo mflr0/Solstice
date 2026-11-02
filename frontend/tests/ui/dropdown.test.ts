@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 
 import Dropdown from '../../src/ui/Dropdown.svelte';
@@ -169,5 +169,149 @@ describe('Dropdown required', () => {
   it('says nothing when it is optional', () => {
     const { button } = dropdown();
     expect(button.hasAttribute('aria-required')).toBe(false);
+  });
+});
+
+describe('Dropdown search', () => {
+  const languages = [
+    { value: 'en', label: 'English' },
+    { value: 'fr', label: 'Français', keywords: ['fr', 'French'] },
+    { value: 'de', label: 'Deutsch', keywords: ['de', 'German'] },
+    { value: 'ft', label: 'Fête' },
+  ];
+
+  // jsdom has no showPopover: its popovers stay hidden, and nothing hidden takes the focus.
+  const shownPopovers = document.createElement('style');
+  shownPopovers.textContent = '[popover] { display: block !important; }';
+  beforeAll(() => {
+    document.head.append(shownPopovers);
+  });
+  afterAll(() => shownPopovers.remove());
+
+  const field = () => document.querySelector('input.filter') as HTMLInputElement | null;
+  const shown = () =>
+    [...document.querySelectorAll('[role="option"]')].map((o) => o.textContent?.trim());
+  const pointed = () =>
+    document
+      .getElementById(field()?.getAttribute('aria-activedescendant') ?? '')
+      ?.textContent?.trim();
+
+  function type(text: string) {
+    const input = field()!;
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+  }
+
+  function open(value = 'en') {
+    const d = dropdown(value, { options: languages, search: true });
+    press(d.button, 'ArrowDown');
+    return d;
+  }
+
+  it('opens with the field first, focused, named and empty', () => {
+    open();
+    const input = field()!;
+    expect(input).not.toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('');
+    expect(input.getAttribute('aria-label')).toBe('Filter the options');
+    expect(input.placeholder).toBe('Filter…');
+    expect(input.parentElement?.firstElementChild).toBe(input);
+    expect(shown()).toEqual(['English', 'Français', 'Deutsch', 'Fête']);
+    expect(pointed()).toBe('English');
+  });
+
+  it('filters as the user types, ignoring case and accents', () => {
+    open();
+    type('FRANC');
+    expect(shown()).toEqual(['Français']);
+    type('fete');
+    expect(shown()).toEqual(['Fête']);
+    type('');
+    expect(shown()).toHaveLength(4);
+  });
+
+  it('finds an option by its keywords without showing them', () => {
+    open();
+    type('german');
+    expect(shown()).toEqual(['Deutsch']);
+    expect(list()?.textContent).not.toContain('German');
+  });
+
+  it('moves through the filtered options with the arrows and picks one with Enter', () => {
+    const { button, chosen } = open();
+    type('f');
+    expect(shown()).toEqual(['Français', 'Fête']);
+    expect(pointed()).toBe('Français');
+    press(field()!, 'ArrowDown');
+    expect(pointed()).toBe('Fête');
+    press(field()!, 'ArrowDown');
+    expect(pointed()).toBe('Fête');
+    press(field()!, 'ArrowUp');
+    expect(pointed()).toBe('Français');
+    expect(document.activeElement).toBe(field());
+    press(field()!, 'Enter');
+    expect(chosen).toEqual(['fr']);
+    expect(list()).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('closes on Escape, gives the focus back to the button and keeps the key', () => {
+    const { button, chosen } = open();
+    let outer = 0;
+    const count = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') outer++;
+    };
+    document.body.addEventListener('keydown', count);
+    type('de');
+    press(field()!, 'Escape');
+    expect(list()).toBeNull();
+    expect(document.activeElement).toBe(button);
+    expect(chosen).toEqual([]);
+    expect(outer).toBe(0);
+    document.body.removeEventListener('keydown', count);
+  });
+
+  it('says so when no option matches', () => {
+    const { chosen } = open();
+    expect(document.querySelector('.no-match')?.textContent).toBe('');
+    type('zz');
+    expect(shown()).toEqual([]);
+    expect(document.querySelector('[role="status"]')?.textContent).toBe('No option matches.');
+    expect(field()!.hasAttribute('aria-activedescendant')).toBe(false);
+    press(field()!, 'Enter');
+    expect(chosen).toEqual([]);
+  });
+
+  it('starts the search with a letter typed on the closed button', () => {
+    const { button } = dropdown('en', { options: languages, search: true });
+    press(button, 'd');
+    expect(field()?.value).toBe('d');
+    expect(shown()).toEqual(['Deutsch']);
+  });
+
+  it('stays open while the focus moves between the button and the field', () => {
+    let blurred = 0;
+    const { button } = dropdown('en', {
+      options: languages,
+      search: true,
+      onblur: () => blurred++,
+    });
+    press(button, 'ArrowDown');
+    expect(document.activeElement).toBe(field());
+    expect(list()).not.toBeNull();
+    field()!.blur();
+    flushSync();
+    expect(list()).toBeNull();
+    expect(blurred).toBe(1);
+  });
+
+  it('has no field without the option', () => {
+    const { button } = dropdown();
+    press(button, 'ArrowDown');
+    expect(list()).not.toBeNull();
+    expect(field()).toBeNull();
+    expect(document.activeElement).toBe(button);
   });
 });

@@ -7,13 +7,17 @@
     group?: string | undefined;
     /** The language of the label, when it differs from the page's. */
     lang?: string | undefined;
+    /** More words the search finds it by, not shown (a code, another language's name). */
+    keywords?: string[] | undefined;
   }
 </script>
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { matches } from '../core/text.js';
   import { t } from '../i18n/t.js';
   import { layer } from '../lib/actions.js';
+  import Highlight from './Highlight.svelte';
 
   /**
    * One value from a short list, like a native select but drawn by the skin,
@@ -39,6 +43,8 @@
     invalid?: boolean | undefined;
     required?: boolean | undefined;
     onblur?: (() => void) | undefined;
+    /** A field at the top of the open list filters the options; it takes the focus. */
+    search?: boolean | undefined;
   }
   const {
     options,
@@ -54,6 +60,7 @@
     invalid = false,
     required = false,
     onblur,
+    search = false,
   }: Props = $props();
 
   const uid = $props.id();
@@ -61,17 +68,27 @@
   const optionId = (i: number) => `dd-${uid}-${i}`;
 
   let button: HTMLButtonElement | undefined = $state();
-  let list: HTMLUListElement | undefined = $state();
+  let list: HTMLElement | undefined = $state();
+  let field: HTMLInputElement | undefined = $state();
   let open = $state(false);
   let active = $state(-1);
+  let query = $state('');
 
   const selected = $derived(options.findIndex((o) => o.value === value));
   const current = $derived(options[selected]);
 
+  /** The indexes of the options listed: those the search matches. */
+  const shown = $derived(
+    options.flatMap((o, i) =>
+      !search || matches(query, o.label, ...(o.keywords ?? [])) ? [i] : [],
+    ),
+  );
+
   /** Runs of consecutive options under the same heading, keeping their indexes. */
   const sections = $derived.by(() => {
     const out: { group: string | undefined; items: { o: DropdownOption; i: number }[] }[] = [];
-    options.forEach((o, i) => {
+    shown.forEach((i) => {
+      const o = options[i]!;
       const last = out[out.length - 1];
       if (last && last.group === o.group) last.items.push({ o, i });
       else out.push({ group: o.group, items: [{ o, i }] });
@@ -84,8 +101,20 @@
 
   function show(at = selected) {
     if (disabled || !options.length) return;
+    query = '';
     active = at >= 0 ? at : 0;
     open = true;
+  }
+
+  /** The option `by` places from the highlighted one among those listed, without wrapping. */
+  function step(by: number): number {
+    if (!shown.length) return -1;
+    const at = shown.indexOf(active);
+    return shown[Math.max(0, Math.min(shown.length - 1, at + by))]!;
+  }
+
+  function filter() {
+    if (!shown.includes(active)) active = shown[0] ?? -1;
   }
 
   function hide() {
@@ -121,6 +150,14 @@
     const last = options.length - 1;
     const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
     const typing = printable && (e.key !== ' ' || Date.now() - typedAt < 500);
+    if (search && printable && e.key !== ' ' && !open) {
+      // The letter starts the search.
+      e.preventDefault();
+      show();
+      query = e.key;
+      filter();
+      return;
+    }
     if (typing) {
       e.preventDefault();
       const i = typeahead(e.key);
@@ -175,6 +212,44 @@
     e.preventDefault();
   }
 
+  /** The search field's keys: the caret keeps Home, End and the letters. */
+  function fieldKeydown(e: KeyboardEvent) {
+    switch (e.key) {
+      case 'ArrowDown':
+        active = step(1);
+        break;
+      case 'ArrowUp':
+        if (e.altKey) choose(active);
+        else active = step(-1);
+        break;
+      case 'PageDown':
+        active = step(10);
+        break;
+      case 'PageUp':
+        active = step(-10);
+        break;
+      case 'Enter':
+        choose(active);
+        break;
+      case 'Escape':
+        e.stopPropagation();
+        hide();
+        button?.focus();
+        break;
+      case 'Tab':
+        choose(active);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
+  /** Whether the focus went from one part of the dropdown to another. */
+  const inside = (e: FocusEvent) =>
+    e.relatedTarget instanceof Node &&
+    (e.relatedTarget === button || !!list?.contains(e.relatedTarget));
+
   // A native listener: Svelte's delegated one would stop Escape only once
   // the handlers around (a menu, a dialog) had already seen it.
   $effect(() => {
@@ -182,6 +257,14 @@
     if (!el) return;
     el.addEventListener('keydown', keydown);
     return () => el.removeEventListener('keydown', keydown);
+  });
+
+  $effect(() => {
+    const el = field;
+    if (!el) return;
+    el.addEventListener('keydown', fieldKeydown);
+    el.focus();
+    return () => el.removeEventListener('keydown', fieldKeydown);
   });
 
   $effect(() => {
@@ -204,10 +287,11 @@
   aria-required={required || undefined}
   aria-expanded={open}
   aria-controls={open ? listId : undefined}
-  aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
+  aria-activedescendant={open && !search && active >= 0 ? optionId(active) : undefined}
   {disabled}
   onclick={() => (open ? hide() : show())}
-  onblur={() => {
+  onblur={(e) => {
+    if (search && inside(e)) return;
     hide();
     onblur?.();
   }}
@@ -219,7 +303,47 @@
     <span class="name none">{placeholder ?? t.common.none}</span>
   {/if}
 </button>
-{#if open}
+{#if open && search}
+  <!-- The field keeps the focus and handles the keys; a press elsewhere here only must not take it. -->
+  <div
+    bind:this={list}
+    class="popover dropdown-list searchable"
+    popover="manual"
+    use:layer={{ anchor: button, matchWidth: true, onoutside: hide }}
+    onmousedown={(e) => {
+      if (e.target !== field) e.preventDefault();
+    }}
+  >
+    <input
+      bind:this={field}
+      value={query}
+      class="input filter"
+      type="text"
+      role="combobox"
+      autocomplete="off"
+      spellcheck="false"
+      aria-label={t.common.filterOptions}
+      aria-autocomplete="list"
+      aria-expanded="true"
+      aria-controls={listId}
+      aria-activedescendant={active >= 0 ? optionId(active) : undefined}
+      placeholder={t.common.filter}
+      oninput={(e) => {
+        query = e.currentTarget.value;
+        filter();
+      }}
+      onblur={(e) => {
+        if (inside(e)) return;
+        hide();
+        onblur?.();
+      }}
+    />
+    <ul id={listId} role="listbox" aria-label={label}>
+      {@render rows()}
+    </ul>
+    <p class="no-match" role="status">{shown.length ? '' : t.common.noMatch}</p>
+  </div>
+{:else if open}
   <!-- The button keeps the focus and handles the keys; a press here only must not take it. -->
   <ul
     bind:this={list}
@@ -231,24 +355,28 @@
     use:layer={{ anchor: button, matchWidth: true, onoutside: hide }}
     onmousedown={(e) => e.preventDefault()}
   >
-    {#each sections as sec, k (sec.items[0]!.o.value)}
-      {#if sec.group === undefined}
-        {#each sec.items as { o, i } (o.value)}
-          {@render item(o, i)}
-        {/each}
-      {:else}
-        <li role="group" aria-labelledby="{listId}-g{k}">
-          <span id="{listId}-g{k}" class="group-label" role="presentation">{sec.group}</span>
-          <ul class="group" role="none">
-            {#each sec.items as { o, i } (o.value)}
-              {@render item(o, i)}
-            {/each}
-          </ul>
-        </li>
-      {/if}
-    {/each}
+    {@render rows()}
   </ul>
 {/if}
+
+{#snippet rows()}
+  {#each sections as sec, k (sec.items[0]!.o.value)}
+    {#if sec.group === undefined}
+      {#each sec.items as { o, i } (o.value)}
+        {@render item(o, i)}
+      {/each}
+    {:else}
+      <li role="group" aria-labelledby="{listId}-g{k}">
+        <span id="{listId}-g{k}" class="group-label" role="presentation">{sec.group}</span>
+        <ul class="group" role="none">
+          {#each sec.items as { o, i } (o.value)}
+            {@render item(o, i)}
+          {/each}
+        </ul>
+      </li>
+    {/if}
+  {/each}
+{/snippet}
 
 {#snippet item(o: DropdownOption, i: number)}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -262,7 +390,9 @@
     onclick={() => choose(i)}
   >
     {#if icon}<span class="icon" aria-hidden="true">{@render icon(o.value)}</span>{/if}
-    <span class="name" lang={o.lang}>{o.label}</span>
+    <span class="name" lang={o.lang}
+      >{#if search}<Highlight text={o.label} search={query} />{:else}{o.label}{/if}</span
+    >
   </li>
 {/snippet}
 
@@ -346,5 +476,41 @@
 
   .dropdown-list .item .name {
     flex: 1;
+  }
+
+  /* The field stays at the top while the options scroll under it. */
+  .dropdown-list.searchable {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .searchable > ul {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .filter {
+    flex: none;
+    margin: 4px 8px 6px;
+    width: calc(100% - 16px);
+    height: 1.75rem;
+  }
+
+  .no-match {
+    margin: 0;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-size: 0.84375rem;
+    font-style: italic;
+  }
+
+  /* Kept in the page while empty, so that a screen reader announces the line. */
+  .no-match:empty {
+    padding: 0;
   }
 </style>

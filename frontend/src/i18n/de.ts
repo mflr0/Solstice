@@ -257,6 +257,8 @@ export const de: Messages = {
     yes: 'ja',
     no: 'nein',
     filter: 'Filtern…',
+    filterOptions: 'Optionen filtern',
+    noMatch: 'Keine Option passt.',
     createNamed: (name: string) => `„${name}“ anlegen`,
     ctrlEnter: 'Strg + Enter zum Senden',
     /** Between a label and its value (French puts a space before the colon). */

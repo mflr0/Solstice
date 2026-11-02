@@ -250,6 +250,8 @@ export const en = {
     yes: 'yes',
     no: 'no',
     filter: 'Filter…',
+    filterOptions: 'Filter the options',
+    noMatch: 'No option matches.',
     createNamed: (name: string) => `Create “${name}”`,
     ctrlEnter: 'Ctrl + Enter to send',
     /** Between a label and its value (French puts a space before the colon). */
