@@ -36,36 +36,49 @@
   const category = $derived(new Map(statuses.map((s) => [s.id, s.category])));
   const nameOf = $derived(new Map(statuses.map((s) => [s.id, s.name])));
 
+  let figure: HTMLElement | undefined = $state();
   let lane: HTMLElement | undefined = $state();
   let boxes = $state.raw<Record<string, Box>>({});
-  let size = $state.raw({ w: 0, h: 0 });
+  // The lane's laid-out size, and the scale that fits its width to the figure.
+  let fit = $state.raw({ w: 0, h: 0, scale: 1 });
   const drawn = $derived(layout(order, boxes, edges, initial || null));
 
   function measure() {
-    if (!lane) return;
+    if (!lane || !figure) return;
+    const style = getComputedStyle(figure);
+    const space =
+      figure.getBoundingClientRect().width -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight);
+    const own = getComputedStyle(lane);
+    const w = parseFloat(own.width);
+    const h = parseFloat(own.height);
+    fit = { w, h, scale: w > space && space > 0 ? space / w : 1 };
+    // Rects come back scaled; the wires are drawn in the lane's own pixels.
     const base = lane.getBoundingClientRect();
+    const k = base.width / w || 1;
     const next: Record<string, Box> = {};
     for (const el of lane.querySelectorAll<HTMLElement>('[data-node]')) {
       const r = el.getBoundingClientRect();
       next[el.dataset.node ?? ''] = {
-        x: r.left - base.left,
-        y: r.top - base.top,
-        w: r.width,
-        h: r.height,
+        x: (r.left - base.left) / k,
+        y: (r.top - base.top) / k,
+        w: r.width / k,
+        h: r.height / k,
       };
     }
     boxes = next;
-    size = { w: lane.scrollWidth, h: lane.scrollHeight };
   }
 
-  // Measure after each change of the row, and whenever a stamp resizes
-  // (fonts arriving, another skin).
+  // Measure after each change of the row, and whenever the figure or a stamp
+  // resizes (fonts arriving, another skin, a narrower window).
   $effect(() => {
     void order;
     void room;
-    if (!lane) return;
+    if (!lane || !figure) return;
     measure();
     const watch = new ResizeObserver(measure);
+    watch.observe(figure);
     watch.observe(lane);
     for (const el of lane.querySelectorAll('[data-node]')) watch.observe(el);
     return () => watch.disconnect();
@@ -79,12 +92,19 @@
 </script>
 
 <figure
+  bind:this={figure}
   class="diagram"
   role="img"
   aria-label={t.workflows.diagramLabel(statuses.length, transitions.length)}
 >
-  <div class="lane" bind:this={lane}>
-    <svg class="wires" width={size.w} height={size.h} viewBox="0 0 {size.w} {size.h}">
+  <div
+    class="lane"
+    bind:this={lane}
+    style:transform={fit.scale < 1 ? `scale(${fit.scale})` : null}
+    style:margin-right={fit.scale < 1 ? `${fit.w * (fit.scale - 1)}px` : null}
+    style:margin-bottom={fit.scale < 1 ? `${fit.h * (fit.scale - 1)}px` : null}
+  >
+    <svg class="wires">
       {#if drawn.bus}
         <g class="bus">
           <text x={drawn.bus.x1} y={drawn.bus.y - 6}>{t.workflows.anyStatus}</text>
@@ -124,15 +144,17 @@
 <style>
   .diagram {
     margin: 0;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    padding: 8px;
   }
 
+  /* Scaled down from its top left corner when wider than the figure; the
+     negative margins give back the room the scaling frees. */
   .lane {
     position: relative;
-    display: inline-flex;
+    display: flex;
+    width: max-content;
     min-width: 100%;
-    padding: 0 8px;
+    transform-origin: 0 0;
   }
 
   .group {
@@ -172,8 +194,9 @@
 
   .wires {
     position: absolute;
-    left: 0;
-    top: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     overflow: visible;
     pointer-events: none;
     fill: none;
