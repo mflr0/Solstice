@@ -9,6 +9,15 @@
     lang?: string | undefined;
     /** More words the search finds it by, not shown (a code, another language's name). */
     keywords?: string[] | undefined;
+    /** A line under the name in the list, e.g. what "Follow the browser" follows now. */
+    hint?: string | undefined;
+  }
+
+  /** The search field's texts, for a page without the application's catalogue (the setup wizard). */
+  export interface DropdownMessages {
+    filter: string;
+    filterOptions: string;
+    noMatch: string;
   }
 </script>
 
@@ -45,6 +54,8 @@
     onblur?: (() => void) | undefined;
     /** A field at the top of the open list filters the options; it takes the focus. */
     search?: boolean | undefined;
+    /** The search field's texts; the application's catalogue by default. */
+    messages?: DropdownMessages | undefined;
   }
   const {
     options,
@@ -61,7 +72,10 @@
     required = false,
     onblur,
     search = false,
+    messages,
   }: Props = $props();
+
+  const words = $derived(messages ?? t.common);
 
   const uid = $props.id();
   const listId = `dd-${uid}`;
@@ -322,12 +336,12 @@
       role="combobox"
       autocomplete="off"
       spellcheck="false"
-      aria-label={t.common.filterOptions}
+      aria-label={words.filterOptions}
       aria-autocomplete="list"
       aria-expanded="true"
       aria-controls={listId}
       aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-      placeholder={t.common.filter}
+      placeholder={words.filter}
       oninput={(e) => {
         query = e.currentTarget.value;
         filter();
@@ -341,7 +355,7 @@
     <ul id={listId} role="listbox" aria-label={label}>
       {@render rows()}
     </ul>
-    <p class="no-match" role="status">{shown.length ? '' : t.common.noMatch}</p>
+    <p class="no-match" role="status">{shown.length ? '' : words.noMatch}</p>
   </div>
 {:else if open}
   <!-- The button keeps the focus and handles the keys; a press here only must not take it. -->
@@ -390,10 +404,21 @@
     onclick={() => choose(i)}
   >
     {#if icon}<span class="icon" aria-hidden="true">{@render icon(o.value)}</span>{/if}
-    <span class="name" lang={o.lang}
-      >{#if search}<Highlight text={o.label} search={query} />{:else}{o.label}{/if}</span
-    >
+    {#if o.hint}
+      <span class="text">
+        {@render name(o)}
+        <span class="option-hint">{o.hint}</span>
+      </span>
+    {:else}
+      {@render name(o)}
+    {/if}
   </li>
+{/snippet}
+
+{#snippet name(o: DropdownOption)}
+  <span class="name" lang={o.lang}
+    >{#if search}<Highlight text={o.label} search={query} />{:else}{o.label}{/if}</span
+  >
 {/snippet}
 
 <style>
@@ -476,6 +501,18 @@
 
   .dropdown-list .item .name {
     flex: 1;
+  }
+
+  .dropdown-list .text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .option-hint {
+    color: var(--muted);
+    font-size: 0.75rem;
+    white-space: normal;
   }
 
   /* The field stays at the top while the options scroll under it. */

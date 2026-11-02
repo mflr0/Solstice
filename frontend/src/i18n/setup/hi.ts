@@ -42,6 +42,9 @@ export const hi: SetupMessages = {
     title: 'भाषा',
     lead: 'इस सहायक की भाषा। बाद में Solstice में हर व्यक्ति अपनी भाषा चुन सकेगा।',
     legend: 'सहायक की भाषा',
+    filter: 'फ़िल्टर करें…',
+    filterOptions: 'विकल्प फ़िल्टर करें',
+    noMatch: 'कोई विकल्प मेल नहीं खाता।',
   },
 
   code: {
