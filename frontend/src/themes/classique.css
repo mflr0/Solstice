@@ -1796,6 +1796,12 @@
   border-radius: var(--radius-s);
 }
 
+/* Administration overview ----------------------------------------------------- */
+
+[data-skin='classique'] .admin-card.admin-card {
+  box-shadow: var(--cl-shadow-card);
+}
+
 /* Boards -------------------------------------------------------------------- */
 
 [data-skin='classique'] .sprint-head {

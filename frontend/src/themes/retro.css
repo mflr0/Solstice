@@ -2114,6 +2114,32 @@
   font-weight: 700;
 }
 
+/* Administration overview: each section a raised button, the menu highlight on hover - */
+
+[data-skin='retro'] .admin-card.admin-card {
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: var(--rt-raised);
+  transition: none;
+}
+
+[data-skin='retro'] .admin-card.admin-card:hover {
+  --muted: var(--rt-select-ink);
+  background: var(--rt-select);
+  color: var(--rt-select-ink);
+  transform: none;
+}
+
+[data-skin='retro'] .admin-card.admin-card:active {
+  box-shadow: var(--rt-pressed);
+}
+
+[data-skin='retro'] .admin-card.admin-card:focus-visible {
+  outline: 1px dotted var(--focus);
+  outline-offset: -5px;
+}
+
 /* Scrollbars ------------------------------------------------------------------------------ */
 
 /*

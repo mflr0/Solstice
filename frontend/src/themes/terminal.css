@@ -1807,6 +1807,25 @@
   font-style: normal;
 }
 
+/* Administration overview: boxed sections, inverse video under the pointer --------------- */
+
+[data-skin='terminal'] .admin-card.admin-card {
+  border: 3px double var(--term-frame);
+  border-radius: 0;
+  background: var(--term-scan), var(--paper);
+  transition: none;
+}
+
+[data-skin='terminal'] .admin-card.admin-card:hover {
+  --muted: var(--term-inv-muted);
+  --term-glow: none;
+  border-color: var(--term-inv);
+  background: var(--term-inv);
+  color: var(--term-inv-ink);
+  text-shadow: none;
+  transform: none;
+}
+
 /* Motion -------------------------------------------------------------------------------- */
 
 @keyframes term-blink {

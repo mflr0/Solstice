@@ -393,6 +393,18 @@ native `progress` and `ol.phases` > `li.phase` (`.done`, `.current`), its
 report a `table.ledger.report`, the password meter `.meter[data-score]` > four
 `span` (`.on`). Everything sits on the sheet: nothing is drawn on `--desk`.
 
+**Administration overview** (`/admin`; base styles in
+`AdminOverview.svelte`) — `.groups` > `section.group` (`h2.section-title`, then
+`ul` > `li`) per group of sections. Each section is one link,
+`a.admin-card` (the whole card; `--paper-raised`, `--paper-sunk` on hover)
+
+> `svg.admin-icon` (16 × 16 strokes in `currentColor`, glyphs from
+> `src/ui/admin/admin-icons.ts`) + `.admin-card-title` + `.admin-card-text`.
+> Its hover moves it up 1 px, except under `prefers-reduced-motion: reduce`;
+> a skin that draws its own card sets `transform: none` there (Rétro 98 bevels it,
+> Terminal turns it inverse, Plan fills it with ink).
+> The « to do » cards above are `ul.todo-list` > `li.card`.
+
 **Gallery** (`/themes`) — each preview is
 `.skin-preview[data-skin][data-scheme]` (`inert`, `contain: paint`, so a
 `position: fixed` overlay on your root stays inside it) holding `.app-shell` >

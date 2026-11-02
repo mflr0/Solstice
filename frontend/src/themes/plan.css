@@ -1288,6 +1288,33 @@
   margin: -14px 14px 8px auto;
 }
 
+/* Administration overview: double-line boxes that fill with ink ------------------ */
+
+[data-skin='plan'] .admin-card.admin-card {
+  border: 1px solid var(--plan-line);
+  border-radius: 0;
+  background-color: var(--paper-raised);
+  background-image: linear-gradient(var(--ink), var(--ink));
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 0% 100%;
+  box-shadow:
+    inset 0 0 0 3px var(--paper-raised),
+    inset 0 0 0 4px var(--plan-line);
+}
+
+[data-skin='plan'] .admin-card.admin-card:hover {
+  --muted: var(--paper);
+  border-color: var(--ink);
+  background-color: var(--paper-raised);
+  background-size: 100% 100%;
+  box-shadow:
+    inset 0 0 0 3px var(--ink),
+    inset 0 0 0 4px var(--paper);
+  color: var(--paper);
+  transform: none;
+}
+
 /* Wiki text ---------------------------------------------------------------------- */
 
 [data-skin='plan'] .wiki h1,
@@ -1341,7 +1368,8 @@
 /* Motion: only for those who have not asked for less -------------------------- */
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-skin='plan'] .btn {
+  [data-skin='plan'] .btn,
+  [data-skin='plan'] .admin-card.admin-card {
     transition:
       background-size 0.18s ease-out,
       color 0.18s ease-out,

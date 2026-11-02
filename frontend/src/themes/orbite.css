@@ -1517,6 +1517,17 @@
   font-family: var(--font-mono);
 }
 
+/* Administration overview: small instrument panels ------------------------------- */
+
+[data-skin='orbite'] .admin-card.admin-card {
+  background: var(--orb-corners), var(--paper-raised);
+  box-shadow: var(--orb-panel-shadow);
+}
+
+[data-skin='orbite'] .admin-card.admin-card:hover {
+  background: var(--orb-corners), var(--paper-sunk);
+}
+
 /* Boards ------------------------------------------------------------------------- */
 
 [data-skin='orbite'] .sprint-name {
