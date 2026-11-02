@@ -5,10 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"solstice/internal/api"
 	"solstice/internal/config"
 	"solstice/internal/db"
 	"solstice/internal/devseed"
@@ -156,6 +162,29 @@ func TestDevSeed(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("the second run created something:\n%s", out.String())
+	}
+
+	// JQL on what the seed set, custom fields included. The database is
+	// created with a collation other than the connection's, as in CI.
+	ts := httptest.NewServer(api.New(conn, t.TempDir(), time.UTC, quiet()).Handler(http.NotFoundHandler()))
+	defer ts.Close()
+	jar, _ := cookiejar.New(nil)
+	alice := &client{t: t, base: ts.URL, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
+	if status, body := alice.do("POST", "/api/login", map[string]string{"username": "alice", "password": devseed.UserPassword}); status != 200 {
+		t.Fatalf("login alice: %d %s", status, body)
+	}
+	for q, want := range map[string]int{
+		`labels = auth`:                      2,
+		`priority = "Very high"`:             3,
+		`"Severity" = Blocker`:               2,
+		`"QA owner" = giulia`:                1,
+		`"Story points" > 4`:                 3,
+		`project = DEMO ORDER BY "Severity"`: 19,
+	} {
+		var res struct{ Total int }
+		if status := alice.get("/api/issues?q="+url.QueryEscape(q), &res); status != 200 || res.Total != want {
+			t.Errorf("%s: %d, %d issues, want %d", q, status, res.Total, want)
+		}
 	}
 
 	if _, err := conn.ExecContext(ctx, `UPDATE users SET username = 'not-seed' WHERE username = ?`, devseed.Admin); err != nil {
