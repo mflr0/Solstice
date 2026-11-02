@@ -417,19 +417,17 @@ export const fr: Messages = {
       actions: 'Modifier les tickets sélectionnés',
       clear: 'Désélectionner',
       edit: 'Modifier',
-      transition: 'Changer le statut',
       move: 'Déplacer',
       delete: 'Supprimer',
       editTitle: (n: number) => `Modifier ${plural(n, 'ticket', 'tickets')}`,
-      transitionTitle: (n: number) => `Changer le statut de ${plural(n, 'ticket', 'tickets')}`,
       moveTitle: (n: number) => `Déplacer ${plural(n, 'ticket', 'tickets')}`,
       deleteTitle: (n: number) => `Supprimer ${plural(n, 'ticket', 'tickets')} ?`,
       deleteBody: (n: number) =>
         `Cela supprime définitivement ${plural(n, 'ticket', 'tickets')}, avec leurs sous-tâches, commentaires et fichiers. C’est irréversible.`,
       typeToConfirm: (n: number) => `Saisissez ${n} pour confirmer`,
       deleteSubmit: 'Supprimer',
-      editHint: 'Cochez les champs à modifier ; les autres restent tels quels sur chaque ticket.',
-      change: (field: string) => `Modifier : ${field}`,
+      editHint:
+        'Les champs cochés sont appliqués ; les autres restent tels quels sur chaque ticket.',
       modes: { add: 'Ajouter', remove: 'Retirer', replace: 'Remplacer tout par' },
       oneProject:
         'Les composants et les versions corrigées ne se modifient que si tous les tickets sélectionnés sont dans le même projet.',

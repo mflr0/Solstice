@@ -59,7 +59,7 @@
   }: Props = $props();
 
   let selected = $state<string[]>([]);
-  let bulk = $state<'edit' | 'transition' | 'move' | 'delete' | null>(null);
+  let bulk = $state<'edit' | 'move' | 'delete' | null>(null);
 
   /** The columns the server sends values for, as the request names them. */
   const extra = $derived(columns ? serverColumns(columns).join(',') : '');
@@ -138,9 +138,6 @@
       <span class="bulk-count" aria-live="polite">{t.search.bulk.selected(selected.length)}</span>
       <button type="button" class="btn btn-small" onclick={() => (bulk = 'edit')}
         >{t.search.bulk.edit}</button
-      >
-      <button type="button" class="btn btn-small" onclick={() => (bulk = 'transition')}
-        >{t.search.bulk.transition}</button
       >
       <button type="button" class="btn btn-small" onclick={() => (bulk = 'move')}
         >{t.search.bulk.move}</button

@@ -21,12 +21,12 @@
   import BulkReport from './BulkReport.svelte';
 
   /**
-   * One change to the selected issues: edit some fields, change the status,
-   * or delete them. Each issue is changed as if on its own page; those the
+   * One change to the selected issues: edit some fields, the status among
+   * them, or delete them. Each issue is changed as if on its own page; those the
    * server refuses are listed afterwards.
    */
   interface Props {
-    op: 'edit' | 'transition' | 'delete' | null;
+    op: 'edit' | 'delete' | null;
     keys: string[];
     onclose: () => void;
     /** After a change: the keys that were refused, to keep selected. */
@@ -61,11 +61,21 @@
   let fixIds = $state<number[]>([]);
   let useSprint = $state(false);
   let sprint = $state('0');
+  let useStatus = $state(false);
   let status = $state('');
   let resolution = $state('');
 
+  const firstPriority = () => session.meta?.priorities[0]?.id ?? '';
+  const firstStatus = () => session.meta?.statuses[0]?.id ?? '';
+
   const nothing = $derived(
-    !useAssignee && !usePriority && !useLabels && !useComponents && !useFix && !useSprint,
+    !useAssignee &&
+      !usePriority &&
+      !useLabels &&
+      !useComponents &&
+      !useFix &&
+      !useSprint &&
+      !useStatus,
   );
 
   // Each opening starts afresh.
@@ -74,15 +84,22 @@
     untrack(() => {
       error = '';
       busy = false;
-      useAssignee = usePriority = useLabels = useComponents = useFix = useSprint = false;
+      useAssignee =
+        usePriority =
+        useLabels =
+        useComponents =
+        useFix =
+        useSprint =
+        useStatus =
+          false;
       assignee = null;
-      priority = session.meta?.priorities[0]?.id ?? '';
+      priority = firstPriority();
       labelsMode = componentsMode = fixMode = 'add';
       labels = [];
       componentIds = [];
       fixIds = [];
       sprint = '0';
-      status = session.meta?.statuses[0]?.id ?? '';
+      status = firstStatus();
       resolution = '';
       if (op === 'edit') void load();
     });
@@ -111,6 +128,10 @@
     if (useComponents) c.components = { mode: componentsMode, values: componentIds };
     if (useFix) c.fixVersions = { mode: fixMode, values: fixIds };
     if (useSprint) c.sprint = Number(sprint);
+    if (useStatus) {
+      c.status = status;
+      if (resolution) c.resolution = resolution;
+    }
     return c;
   }
 
@@ -129,11 +150,7 @@
     busy = true;
     error = '';
     try {
-      await send(
-        op === 'edit'
-          ? { op: 'edit', ...change() }
-          : { op: 'transition', status, ...(resolution ? { resolution } : {}) },
-      );
+      await send({ op: 'edit', ...change() });
       onclose();
     } catch (e) {
       error = errorMessage(e);
@@ -152,26 +169,25 @@
       {disabled}
       onchange={(e) => set(e.currentTarget.checked)}
     />
-    <span>{t.search.bulk.change(label)}</span>
+    <span>{label}</span>
   </label>
 {/snippet}
 
-{#snippet modes(label: string, value: Mode, set: (m: Mode) => void)}
+{#snippet modes(label: string, value: Mode, set: (m: Mode) => void, disabled = false)}
   <span class="mode">
     <Dropdown
       {label}
       {value}
       options={MODES.map((m) => ({ value: m, label: t.search.bulk.modes[m] }))}
       onchange={(v) => set(v as Mode)}
+      {disabled}
     />
   </span>
 {/snippet}
 
 <Modal
-  open={op === 'edit' || op === 'transition'}
-  title={op === 'edit'
-    ? t.search.bulk.editTitle(keys.length)
-    : t.search.bulk.transitionTitle(keys.length)}
+  open={op === 'edit'}
+  title={t.search.bulk.editTitle(keys.length)}
   onclose={() => !busy && onclose()}
 >
   <form
@@ -182,119 +198,145 @@
       void apply();
     }}
   >
-    {#if op === 'edit'}
-      <p class="muted">{t.search.bulk.editHint}</p>
-      <div class="item">
-        {@render toggle(t.issue.assignee, useAssignee, (v) => (useAssignee = v))}
-        {#if useAssignee}
-          <UserPicker
-            field
-            value={assignee}
-            label={t.issue.assignee}
-            search={(q) => (oneProject ? api.assignable(oneProject, q) : api.users(q))}
-            onpick={(u) => (assignee = u)}
+    <p class="muted">{t.search.bulk.editHint}</p>
+    <div class="item">
+      {@render toggle(t.issue.assignee, useAssignee, (v) => (useAssignee = v))}
+      <UserPicker
+        field
+        value={assignee}
+        label={t.issue.assignee}
+        search={(q) => (oneProject ? api.assignable(oneProject, q) : api.users(q))}
+        onpick={(u) => {
+          assignee = u;
+          if (u) useAssignee = true;
+        }}
+      />
+    </div>
+    <div class="item">
+      {@render toggle(t.issue.priority, usePriority, (v) => (usePriority = v))}
+      <Dropdown
+        label={t.issue.priority}
+        value={priority}
+        options={[
+          ...(session.meta?.priorities ?? []).map((p) => ({
+            value: p.id,
+            label: session.priorityName(p),
+          })),
+          { value: '', label: t.search.bulk.noPriority },
+        ]}
+        onchange={(v) => {
+          priority = v;
+          if (v !== firstPriority()) usePriority = true;
+        }}
+      >
+        {#snippet icon(id)}
+          {#if id}
+            <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
+          {/if}
+        {/snippet}
+      </Dropdown>
+    </div>
+    <div class="item">
+      {@render toggle(t.issue.labels, useLabels, (v) => (useLabels = v))}
+      <div class="row">
+        {@render modes(t.issue.labels, labelsMode, (m) => {
+          labelsMode = m;
+          if (m !== 'add') useLabels = true;
+        })}
+        <div class="boxed grow">
+          <LabelEditor
+            {labels}
+            onchange={(l) => {
+              labels = l;
+              if (l.length) useLabels = true;
+            }}
           />
-        {/if}
+        </div>
       </div>
-      <div class="item">
-        {@render toggle(t.issue.priority, usePriority, (v) => (usePriority = v))}
-        {#if usePriority}
-          <Dropdown
-            label={t.issue.priority}
-            value={priority}
-            options={[
-              ...(session.meta?.priorities ?? []).map((p) => ({
-                value: p.id,
-                label: session.priorityName(p),
-              })),
-              { value: '', label: t.search.bulk.noPriority },
-            ]}
-            onchange={(v) => (priority = v)}
-          >
-            {#snippet icon(id)}
-              {#if id}
-                <PriorityMark
-                  priority={session.meta?.priorities.find((p) => p.id === id) ?? null}
-                />
-              {/if}
-            {/snippet}
-          </Dropdown>
-        {/if}
-      </div>
-      <div class="item">
-        {@render toggle(t.issue.labels, useLabels, (v) => (useLabels = v))}
-        {#if useLabels}
-          <div class="row">
-            {@render modes(t.issue.labels, labelsMode, (m) => (labelsMode = m))}
-            <div class="boxed grow">
-              <LabelEditor {labels} onchange={(l) => (labels = l)} />
-            </div>
-          </div>
-        {/if}
-      </div>
-      <div class="item">
-        {@render toggle(t.issue.components, useComponents, (v) => (useComponents = v), !oneProject)}
-        {#if useComponents && project}
-          <div class="row">
-            {@render modes(t.issue.components, componentsMode, (m) => (componentsMode = m))}
-            <div class="boxed grow">
-              <MultiPick
-                options={project.components}
-                selected={componentIds}
-                label={t.issue.components}
-                onchange={(ids) => (componentIds = ids)}
-              />
-            </div>
-          </div>
-        {/if}
-      </div>
-      <div class="item">
-        {@render toggle(t.issue.fixVersions, useFix, (v) => (useFix = v), !oneProject)}
-        {#if useFix && project}
-          <div class="row">
-            {@render modes(t.issue.fixVersions, fixMode, (m) => (fixMode = m))}
-            <div class="boxed grow">
-              <MultiPick
-                options={project.versions.map((v) => ({ id: v.id, name: v.name }))}
-                selected={fixIds}
-                label={t.issue.fixVersions}
-                onchange={(ids) => (fixIds = ids)}
-              />
-            </div>
-          </div>
-        {/if}
-        {#if !oneProject}<p class="hint">{t.search.bulk.oneProject}</p>{/if}
-      </div>
-      <div class="item">
-        {@render toggle(t.boards.sprint, useSprint, (v) => (useSprint = v))}
-        {#if useSprint}
-          <Dropdown
-            label={t.boards.sprint}
-            value={sprint}
-            options={[
-              { value: '0', label: t.search.bulk.noSprint },
-              ...sprints.map((sp) => ({
-                value: String(sp.id),
-                label: `${sp.name} — ${sp.boardName}`,
-              })),
-            ]}
-            onchange={(v) => (sprint = v)}
+    </div>
+    <div class="item">
+      {@render toggle(t.issue.components, useComponents, (v) => (useComponents = v), !oneProject)}
+      <div class="row">
+        {@render modes(
+          t.issue.components,
+          componentsMode,
+          (m) => {
+            componentsMode = m;
+            if (m !== 'add') useComponents = true;
+          },
+          !oneProject,
+        )}
+        <div class="boxed grow">
+          <MultiPick
+            options={project?.components ?? []}
+            selected={componentIds}
+            label={t.issue.components}
+            disabled={!oneProject}
+            onchange={(ids) => {
+              componentIds = ids;
+              if (ids.length) useComponents = true;
+            }}
           />
-        {/if}
+        </div>
       </div>
-    {:else if op === 'transition'}
-      <div class="field">
-        <span>{t.search.bulk.status}</span>
+    </div>
+    <div class="item">
+      {@render toggle(t.issue.fixVersions, useFix, (v) => (useFix = v), !oneProject)}
+      <div class="row">
+        {@render modes(
+          t.issue.fixVersions,
+          fixMode,
+          (m) => {
+            fixMode = m;
+            if (m !== 'add') useFix = true;
+          },
+          !oneProject,
+        )}
+        <div class="boxed grow">
+          <MultiPick
+            options={(project?.versions ?? []).map((v) => ({ id: v.id, name: v.name }))}
+            selected={fixIds}
+            label={t.issue.fixVersions}
+            disabled={!oneProject}
+            onchange={(ids) => {
+              fixIds = ids;
+              if (ids.length) useFix = true;
+            }}
+          />
+        </div>
+      </div>
+      {#if !oneProject}<p class="hint">{t.search.bulk.oneProject}</p>{/if}
+    </div>
+    <div class="item">
+      {@render toggle(t.boards.sprint, useSprint, (v) => (useSprint = v))}
+      <Dropdown
+        label={t.boards.sprint}
+        value={sprint}
+        options={[
+          { value: '0', label: t.search.bulk.noSprint },
+          ...sprints.map((sp) => ({
+            value: String(sp.id),
+            label: `${sp.name} — ${sp.boardName}`,
+          })),
+        ]}
+        onchange={(v) => {
+          sprint = v;
+          if (v !== '0') useSprint = true;
+        }}
+      />
+    </div>
+    <div class="item">
+      {@render toggle(t.search.fields.status, useStatus, (v) => (useStatus = v))}
+      <div class="row">
         <Dropdown
           label={t.search.bulk.status}
           value={status}
           options={(session.meta?.statuses ?? []).map((st) => ({ value: st.id, label: st.name }))}
-          onchange={(v) => (status = v)}
+          onchange={(v) => {
+            status = v;
+            if (v !== firstStatus()) useStatus = true;
+          }}
         />
-        <span class="hint">{t.search.bulk.statusHint}</span>
-      </div>
-      <div class="field">
-        <span>{t.issue.chooseResolution}</span>
         <Dropdown
           label={t.issue.chooseResolution}
           value={resolution}
@@ -305,10 +347,14 @@
               label: session.resolutionName(x),
             })),
           ]}
-          onchange={(v) => (resolution = v)}
+          onchange={(v) => {
+            resolution = v;
+            if (v) useStatus = true;
+          }}
         />
       </div>
-    {/if}
+      <p class="hint">{t.search.bulk.statusHint}</p>
+    </div>
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
   {#snippet footer()}
@@ -319,7 +365,7 @@
       type="submit"
       form="bulk-form"
       class="btn btn-primary"
-      disabled={busy || (op === 'edit' && nothing) || (op === 'transition' && !status)}
+      disabled={busy || nothing || (useStatus && !status)}
       >{busy ? t.adminArea.working : t.search.bulk.apply}</button
     >
   {/snippet}

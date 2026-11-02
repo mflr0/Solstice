@@ -121,25 +121,7 @@ func TestBulkTransition(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := login(t, "paul.martin", jirafixture.Password)
 	project := newProject(t, admin, nil)
-
-	// A straight line: first, then second, then third.
-	var wl workflowList
-	admin.call("GET", "/api/projects/"+project+"/workflows", nil, 200, &wl)
-	wf := wl.Workflows[0]
-	first := wf.Initial.ID
-	var others []string
-	for _, st := range wf.Statuses {
-		if st.ID != first {
-			others = append(others, st.ID)
-		}
-	}
-	if len(others) < 2 {
-		t.Fatalf("the new project's workflow has %d statuses", len(wf.Statuses))
-	}
-	second, third := others[0], others[1]
-	admin.call("PUT", fmt.Sprintf("/api/workflows/%d", wf.ID), map[string]any{"name": wf.Name, "initial": first,
-		"statuses": []string{first, second, third}, "transitions": []map[string]any{
-			{"name": "Un", "from": first, "to": second}, {"name": "Deux", "from": second, "to": third}}}, 200, nil)
+	first, second, third := lineWorkflow(t, admin, project)
 
 	moved := createIssue(t, paul, project, "Avancé", "")
 	stays := createIssue(t, paul, project, "Resté", "")
@@ -152,6 +134,61 @@ func TestBulkTransition(t *testing.T) {
 	if statusOf(t, moved) != third || statusOf(t, stays) != first {
 		t.Errorf("statuses after: %s %s, want %s %s", statusOf(t, moved), statusOf(t, stays), third, first)
 	}
+}
+
+// An edit carries a status with the other fields, or a status alone.
+func TestBulkEditStatus(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", jirafixture.Password)
+	project := newProject(t, admin, nil)
+	first, second, third := lineWorkflow(t, admin, project)
+	a := createIssue(t, paul, project, "Statut A", "")
+	b := createIssue(t, paul, project, "Statut B", "")
+	priority := pick(t, `SELECT id FROM priorities WHERE NOT is_default ORDER BY position LIMIT 1`)
+
+	got := bulk(t, paul, map[string]any{"op": "edit", "keys": []string{a, b}, "priority": priority, "status": second})
+	if !got[a].OK || !got[b].OK {
+		t.Fatalf("results: %+v", got)
+	}
+	var d issueDetail
+	for _, key := range []string{a, b} {
+		paul.get("/api/issues/"+key, &d)
+		if d.Priority == nil || d.Priority.ID != priority || statusOf(t, key) != second {
+			t.Errorf("%s after bulk: priority %+v, status %s (from %s)", key, d.Priority, statusOf(t, key), first)
+		}
+	}
+
+	got = bulk(t, paul, map[string]any{"op": "edit", "keys": []string{a, b}, "status": third})
+	if !got[a].OK || !got[b].OK {
+		t.Fatalf("status alone: %+v", got)
+	}
+	if statusOf(t, a) != third || statusOf(t, b) != third {
+		t.Errorf("statuses after: %s %s, want %s", statusOf(t, a), statusOf(t, b), third)
+	}
+}
+
+// lineWorkflow makes the workflow of project a straight line: first, then
+// second, then third.
+func lineWorkflow(t *testing.T, admin *client, project string) (first, second, third string) {
+	t.Helper()
+	var wl workflowList
+	admin.call("GET", "/api/projects/"+project+"/workflows", nil, 200, &wl)
+	wf := wl.Workflows[0]
+	first = wf.Initial.ID
+	var others []string
+	for _, st := range wf.Statuses {
+		if st.ID != first {
+			others = append(others, st.ID)
+		}
+	}
+	if len(others) < 2 {
+		t.Fatalf("the new project's workflow has %d statuses", len(wf.Statuses))
+	}
+	second, third = others[0], others[1]
+	admin.call("PUT", fmt.Sprintf("/api/workflows/%d", wf.ID), map[string]any{"name": wf.Name, "initial": first,
+		"statuses": []string{first, second, third}, "transitions": []map[string]any{
+			{"name": "Un", "from": first, "to": second}, {"name": "Deux", "from": second, "to": third}}}, 200, nil)
+	return first, second, third
 }
 
 // Deleting a parent with its sub-task selected deletes both, the sub-task
