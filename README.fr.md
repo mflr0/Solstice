@@ -360,6 +360,13 @@ Il crée aussi deux tableaux, avec des semaines d'historique pour leurs rapports
   chaque colonne, une limite de travail en cours, des filtres rapides et des
   couloirs par responsable.
 
+Les comptes fictifs ont des filtres enregistrés : privés, ou partagés avec
+tout le monde, un groupe, un projet ou une personne, certains en favoris.
+alice est abonnée à `Open DEMO bugs` chaque jour à 8 h : ses résultats
+arrivent dans Mailpit (ou tout de suite : `Envoyer maintenant` sur sa page
+d'abonnements). alice, hans et marie ont des tableaux de bord avec des gadgets sur
+ces filtres, et hans reçoit ses notifications en résumé quotidien.
+
 L'API date tout de maintenant : le remplissage recule donc dans la base
 l'historique de ce qu'il crée.
 

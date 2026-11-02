@@ -333,6 +333,13 @@ The seed also makes two boards, with weeks of history for their reports:
 - `Mobile and office Kanban` over `MOB` and `OPS`: a backlog, issues in every
   column, a work-in-progress limit, quick filters and swimlanes by assignee.
 
+The mock users have saved filters: private ones, and ones shared with
+everyone, a group, a project or a person, some of them favourites. alice
+subscribes to `Open DEMO bugs` every day at 8, so its results reach Mailpit
+(or right away: `Send now` on her subscriptions page). alice, hans and marie
+have dashboards with gadgets on these filters, and hans gets his
+notifications as a daily digest.
+
 The API dates everything now, so the seed moves the history of what it creates
 back in time in the database.
 
