@@ -25,9 +25,11 @@ import (
 // The counts pin what the issues cover: every type, epics and sub-tasks,
 // links, work logs, attachments and custom field values; and the groups,
 // the security level, group grants and recipients, the restricted comment
-// and work log, the custom workflow and the webhook. Through the API, tom
-// sees neither the confidential issue nor what is restricted, a developer
-// does. Then a database with accounts but no seed administrator is refused.
+// and work log, the custom workflow and the webhook; the mock users' saved
+// filters, favourites, subscription, dashboards and notification preferences.
+// Through the API, tom sees neither the confidential issue nor what is
+// restricted, a developer does, and every gadget of a dashboard finds its
+// filter. Then a database with accounts but no seed administrator is refused.
 func TestDevSeed(t *testing.T) {
 	dsn := emptyDB(t)
 	ctx := context.Background()
@@ -40,7 +42,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	type state struct{ accounts, issues, comments, projects, types, extras, boards, access string }
+	type state struct{ accounts, issues, comments, projects, types, extras, boards, access, saved string }
 	read := func() state {
 		var accounts []string
 		if err := sqlq.Each(ctx, conn, `SELECT username, COALESCE(locale, '-'), is_admin FROM users ORDER BY username`,
@@ -184,8 +186,29 @@ func TestDevSeed(t *testing.T) {
 				t.Fatalf("%v\n%s", err, q)
 			}
 		}
+		// What the mock users saved; the boards' filters are the administrator's.
+		var saved []string
+		for _, c := range []struct{ name, query string }{
+			{"filters", `SELECT COUNT(*) FROM filters f JOIN users u ON u.id = f.owner_id WHERE NOT u.is_admin`},
+			{"shared", `SELECT COUNT(DISTINCT f.id) FROM filters f JOIN users u ON u.id = f.owner_id
+				JOIN filter_shares sh ON sh.filter_id = f.id WHERE NOT u.is_admin`},
+			{"share-kinds", `SELECT COUNT(DISTINCT kind) FROM filter_shares`},
+			{"favourites", `SELECT COUNT(*) FROM filter_favourites`},
+			{"subscriptions", `SELECT COUNT(*) FROM filter_subscriptions`},
+			{"dashboards", `SELECT COUNT(*) FROM dashboards`},
+			{"gadgets", `SELECT COUNT(*) FROM dashboard_gadgets`},
+			{"filter-gadgets", `SELECT COUNT(*) FROM dashboard_gadgets WHERE filter_id IS NOT NULL`},
+			{"notification-prefs", `SELECT COUNT(*) FROM notification_prefs`},
+		} {
+			var n int
+			if err := conn.QueryRowContext(ctx, c.query).Scan(&n); err != nil {
+				t.Fatalf("%s: %v", c.name, err)
+			}
+			saved = append(saved, fmt.Sprintf("%s=%d", c.name, n))
+		}
 		return state{strings.Join(accounts, " "), issues, comments, strings.Join(projects, " "),
-			strings.Join(types, " "), strings.Join(extras, " "), strings.Join(boards, " "), strings.Join(access, " ")}
+			strings.Join(types, " "), strings.Join(extras, " "), strings.Join(boards, " "), strings.Join(access, " "),
+			strings.Join(saved, " ")}
 	}
 
 	var out strings.Builder
@@ -203,7 +226,9 @@ func TestDevSeed(t *testing.T) {
 		"kanban/4/0,0,0/0 scrum/3/2,1,1/18",
 		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
 			"DEMO:developers=moderate,security OPS:created>office restricted-comments=1 restricted-worklogs=1 " +
-			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice"}
+			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice",
+		"filters=7 shared=5 share-kinds=4 favourites=8 subscriptions=1 dashboards=3 gadgets=11 filter-gadgets=8 " +
+			"notification-prefs=1"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
 	}
@@ -282,6 +307,17 @@ func TestDevSeed(t *testing.T) {
 				c.logs)
 		}
 	}
+	for _, user := range []string{"alice", "hans", "marie"} {
+		var d struct {
+			Customised bool
+			Gadgets    []struct{ Unavailable bool }
+		}
+		if status := as(user).get("/api/dashboard", &d); status != 200 || !d.Customised ||
+			slices.ContainsFunc(d.Gadgets, func(g struct{ Unavailable bool }) bool { return g.Unavailable }) {
+			t.Errorf("%s's dashboard: %d %+v, want every gadget on a filter it sees", user, status, d)
+		}
+	}
+
 	for q, want := range map[string]int{
 		`labels = auth`:                      2,
 		`priority = "Very high"`:             3,
