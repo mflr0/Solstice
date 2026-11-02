@@ -304,10 +304,18 @@ archived):
 
 | Key | Kind | Category | Lead |
 | --- | --- | --- | --- |
-| `DEMO` | software, with a dozen issues | Products | alice |
-| `MOB` | software | Products | hans |
-| `OPS` | business | Internal | marie |
+| `DEMO` | software, with about twenty issues | Products | alice |
+| `MOB` | software, with a few issues | Products | hans |
+| `OPS` | business, with a few issues | Internal | marie |
 | `OLD` | software, archived | none | tom |
+
+The issues cover every issue type, epics with their issues, sub-tasks, every
+priority, labels, due dates (past and future), estimates, components, fix
+versions and resolutions. People comment on them in their languages, log
+work, attach files, vote, watch and link them, across projects too. A custom
+field of each type the administration offers has values on some of them.
+Each thing is done by one of the mock users. The issues' own fields are set
+when the seed creates them: to see them on an older database, recreate it.
 
 It refuses a database that has accounts but no `seed` administrator, so it
 never touches a real instance.

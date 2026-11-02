@@ -1,7 +1,8 @@
 // Package devseed fills a development database: an administrator, mock users
 // in every interface language, projects of every kind with their categories,
-// components and versions, demo issues, and e-mail sent to a local Mailpit. Only cmd/devseed uses it, so its passwords never ship in
-// the solstice binary.
+// components and versions, custom fields of every type, demo issues of every
+// type with what people do on them, and e-mail sent to a local Mailpit. Only
+// cmd/devseed uses it, so its passwords never ship in the solstice binary.
 package devseed
 
 import (
@@ -27,7 +28,7 @@ const (
 	UserPassword  = "dev-password"  // #nosec G101 -- development accounts, documented in the README
 )
 
-// Project is the key of the demo project, the one with issues.
+// Project is the key of the demo project, the one with the most issues.
 const Project = "DEMO"
 
 // ErrNotDev is returned for a database with accounts but no seed
@@ -41,6 +42,9 @@ type Options struct {
 	SMTP string
 	// Out receives one line per thing created.
 	Out io.Writer
+	// DataDir is the server's data directory, where attachments go; "" for
+	// a temporary one, removed after the run.
+	DataDir string
 }
 
 // Run seeds conn, a migrated database. It only adds what is missing, so it
@@ -65,11 +69,15 @@ func Run(ctx context.Context, conn *sql.DB, opt Options) error {
 		say("created the administrator %s / %s", Admin, AdminPassword)
 	}
 
-	dataDir, err := os.MkdirTemp("", "solstice-devseed")
-	if err != nil {
-		return err
+	dataDir := opt.DataDir
+	if dataDir == "" {
+		tmp, err := os.MkdirTemp("", "solstice-devseed")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tmp)
+		dataDir = tmp
 	}
-	defer os.RemoveAll(dataDir)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	srv := httptest.NewServer(api.New(conn, dataDir, time.UTC, log).Handler(http.NotFoundHandler()))
 	defer srv.Close()
@@ -101,12 +109,8 @@ func Run(ctx context.Context, conn *sql.DB, opt Options) error {
 	if err := ensureProjects(ctx, conn, admin, ids, say); err != nil {
 		return err
 	}
-	created, err := ensureIssues(ctx, conn, srv.URL, admin, ids)
-	if err != nil {
+	if err := ensureIssues(ctx, conn, srv.URL, admin, ids, say); err != nil {
 		return fmt.Errorf("demo issues: %w", err)
-	}
-	if created > 0 {
-		say("created %d issues in the project %s", created, Project)
 	}
 	return nil
 }
