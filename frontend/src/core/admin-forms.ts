@@ -6,6 +6,8 @@
 
 import { passwordTooShort } from './account-links.js';
 import type {
+  AccessLevel,
+  AccessSource,
   AuditQuery,
   BuiltinGroup,
   MailSecurity,
@@ -15,6 +17,7 @@ import type {
   PermissionRule,
   SubscriptionInput,
   TokenScope,
+  UserAccess,
   WebhookInput,
 } from './admin-types.js';
 import { isoDay } from './dates.js';
@@ -572,4 +575,41 @@ export function defaultsPayload(f: DefaultsForm): PermissionRule[] {
     if (s !== 'unset') out.push({ permission: p, effect: s });
   }
   return out;
+}
+
+/** The words of an effective access sentence, in one language. */
+export interface AccessWords {
+  /** The rule that decided, by level and effect, given who holds it. */
+  rules: Record<Exclude<AccessLevel, 'none'>, Record<Effect, (who: string) => string>>;
+  none: string;
+  group: (name: string) => string;
+  builtin: Record<BuiltinGroup, string>;
+  /** Granted although no allow decided: a global administrator administers every project. */
+  admin: string;
+  /** Not granted although an allow decided: an archived project only lets people browse. */
+  archived: string;
+  /** The rule's sentence, then why the outcome differs from it. */
+  but: (rule: string, why: string) => string;
+}
+
+function accessHolder(s: AccessSource, w: AccessWords): string {
+  switch (s.kind) {
+    case 'group':
+      return w.group(s.name);
+    case 'builtin':
+      return w.builtin[s.name as BuiltinGroup] ?? s.name;
+    default:
+      return s.name;
+  }
+}
+
+/** Why a user has a permission in a project or not: the rule that decided, at which level. */
+export function accessSentence(a: UserAccess, w: AccessWords): string {
+  const rule =
+    a.level === 'none' || !a.effect || !a.source
+      ? w.none
+      : w.rules[a.level][a.effect](accessHolder(a.source, w));
+  const allowed = a.level !== 'none' && a.effect === 'allow';
+  if (a.granted === allowed) return rule;
+  return w.but(rule, a.granted ? w.admin : w.archived);
 }

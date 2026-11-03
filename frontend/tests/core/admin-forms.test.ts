@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { UserAccess } from '../../src/core/admin-types.js';
+import { en } from '../../src/i18n/en.js';
 import {
+  accessSentence,
   defaultPort,
   defaultsForm,
   defaultsPayload,
@@ -29,6 +32,7 @@ import {
   tooLong,
   typedMatches,
   userProblems,
+  type AccessWords,
 } from '../../src/core/admin-forms.js';
 import {
   bannerProblems,
@@ -447,5 +451,46 @@ describe('defaults form', () => {
     expect(f.admin).toBe('deny');
     expect(f.edit).toBe('unset');
     expect(defaultsPayload(f)).toEqual(rules);
+  });
+});
+
+describe('access sentence', () => {
+  const w: AccessWords = { ...en.usersAdmin.accessWhy, builtin: { ...en.holders } };
+  const user = { kind: 'user', id: 7, name: 'Ada' } as const;
+  const devs = { kind: 'group', id: 3, name: 'devs' } as const;
+  const everyone = { kind: 'builtin', name: 'everyone' } as const;
+  const lead = { kind: 'builtin', name: 'lead' } as const;
+  const access = (
+    level: UserAccess['level'],
+    effect: UserAccess['effect'],
+    source: UserAccess['source'],
+    granted = effect === 'allow',
+  ): UserAccess => ({ permission: 'comment', granted, level, effect, source });
+
+  it.each([
+    ['projectUser', 'allow', user, 'Allowed in this project for Ada'],
+    ['projectUser', 'deny', user, 'Denied in this project for Ada'],
+    ['globalUser', 'allow', user, 'Allowed by the global override of Ada'],
+    ['globalUser', 'deny', user, 'Denied by the global override of Ada'],
+    ['projectGroup', 'allow', devs, 'Allowed in this project for the group devs'],
+    ['projectGroup', 'deny', devs, 'Denied in this project for the group devs'],
+    ['projectGroup', 'allow', lead, 'Allowed in this project for Project lead'],
+    ['globalGroup', 'allow', everyone, 'Allowed by the global default of Everyone'],
+    ['globalGroup', 'deny', devs, 'Denied by the global default of the group devs'],
+  ] as const)('%s %s by %o', (level, effect, source, want) => {
+    expect(accessSentence(access(level, effect, source), w)).toBe(want);
+  });
+
+  it('says no rule decided', () => {
+    expect(accessSentence(access('none', null, null), w)).toBe('No rule');
+  });
+
+  it('says why the outcome differs from the rule', () => {
+    expect(accessSentence(access('none', null, null, true), w)).toBe(
+      'No rule, but a Solstice administrator administers every project',
+    );
+    expect(accessSentence(access('globalGroup', 'allow', everyone, false), w)).toBe(
+      'Allowed by the global default of Everyone, but the project is archived',
+    );
   });
 });

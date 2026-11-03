@@ -2357,6 +2357,41 @@ export const hi: Messages = {
       'जब तक व्यक्ति लिंक का उपयोग नहीं करता, पासवर्ड वैसा ही रहता है; लिंक एक बार और एक घंटे तक काम करता है।',
     linkSent: (name: string) => `${name} को रीसेट लिंक भेजा गया।`,
     linkNeedsEmail: 'इस खाते का कोई ईमेल पता नहीं है: पहले एक जोड़ें।',
+    overrides: 'अनुमति अपवाद',
+    overridesHint:
+      'ये इस व्यक्ति पर सभी प्रोजेक्ट में लागू होते हैं, उनके समूहों के नियमों से पहले। किसी प्रोजेक्ट में उनके लिए तय नियम पहले आता है। खाते के साथ सहेजे जाते हैं।',
+    access: 'प्रभावी पहुँच',
+    accessHint:
+      'सहेजे गए नियमों के अनुसार यह व्यक्ति किसी प्रोजेक्ट में क्या कर सकता है, और किस नियम ने तय किया।',
+    accessProject: 'प्रोजेक्ट',
+    accessPick: 'प्रोजेक्ट चुनें',
+    granted: 'मिली',
+    notGranted: 'नहीं मिली',
+    accessWhy: {
+      rules: {
+        projectUser: {
+          allow: (who: string) => `इस प्रोजेक्ट में ${who} के लिए अनुमत`,
+          deny: (who: string) => `इस प्रोजेक्ट में ${who} के लिए अस्वीकृत`,
+        },
+        globalUser: {
+          allow: (who: string) => `${who} के वैश्विक नियम से अनुमत`,
+          deny: (who: string) => `${who} के वैश्विक नियम से अस्वीकृत`,
+        },
+        projectGroup: {
+          allow: (who: string) => `इस प्रोजेक्ट में ${who} के लिए अनुमत`,
+          deny: (who: string) => `इस प्रोजेक्ट में ${who} के लिए अस्वीकृत`,
+        },
+        globalGroup: {
+          allow: (who: string) => `${who} की डिफ़ॉल्ट अनुमति से अनुमत`,
+          deny: (who: string) => `${who} की डिफ़ॉल्ट अनुमति से अस्वीकृत`,
+        },
+      },
+      none: 'कोई नियम नहीं',
+      group: (name: string) => `समूह ${name}`,
+      admin: 'Solstice एडमिन हर प्रोजेक्ट का प्रबंधन करता है',
+      archived: 'प्रोजेक्ट संग्रहीत है',
+      but: (rule: string, why: string) => `${rule}, लेकिन ${why}`,
+    },
   },
 
   settingsAdmin: {

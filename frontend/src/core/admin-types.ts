@@ -363,6 +363,28 @@ export interface PermissionRule {
   effect: Effect;
 }
 
+/** A level of rules, from the most specific; none when no rule decided. */
+export type AccessLevel = 'projectUser' | 'globalUser' | 'projectGroup' | 'globalGroup' | 'none';
+
+/** Who holds the rule that decided an access. */
+export interface AccessSource {
+  kind: 'user' | 'group' | 'builtin';
+  /** The user or group id. */
+  id?: number;
+  /** The user's display name, the group's name, or the built-in group. */
+  name: string;
+}
+
+/** Whether a user has a permission in a project, and which rule decided. */
+export interface UserAccess {
+  permission: Permission;
+  granted: boolean;
+  level: AccessLevel;
+  /** Null when no rule decided. */
+  effect: Effect | null;
+  source: AccessSource | null;
+}
+
 export interface GroupUsage {
   grants: number;
   /** Its project members, and the projects where it is one. */

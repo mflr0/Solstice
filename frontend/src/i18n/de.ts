@@ -2407,6 +2407,41 @@ export const de: Messages = {
       'Das Passwort bleibt unverändert, bis die Person den Link nutzt, der einmal und eine Stunde lang gilt.',
     linkSent: (name: string) => `Link zum Zurücksetzen an ${name} gesendet.`,
     linkNeedsEmail: 'Dieses Konto hat keine E-Mail-Adresse: Tragen Sie zuerst eine ein.',
+    overrides: 'Eigene Berechtigungen',
+    overridesHint:
+      'Sie gelten für diese Person in allen Projekten, vor den Regeln ihrer Gruppen. Eine Regel für sie in einem Projekt hat Vorrang. Wird mit dem Konto gespeichert.',
+    access: 'Tatsächlicher Zugriff',
+    accessHint:
+      'Was diese Person in einem Projekt darf, nach den gespeicherten Regeln, und welche Regel entschieden hat.',
+    accessProject: 'Projekt',
+    accessPick: 'Projekt wählen',
+    granted: 'Erteilt',
+    notGranted: 'Nicht erteilt',
+    accessWhy: {
+      rules: {
+        projectUser: {
+          allow: (who: string) => `In diesem Projekt erlaubt für ${who}`,
+          deny: (who: string) => `In diesem Projekt verweigert für ${who}`,
+        },
+        globalUser: {
+          allow: (who: string) => `Erlaubt durch die globale Regel von ${who}`,
+          deny: (who: string) => `Verweigert durch die globale Regel von ${who}`,
+        },
+        projectGroup: {
+          allow: (who: string) => `In diesem Projekt erlaubt für ${who}`,
+          deny: (who: string) => `In diesem Projekt verweigert für ${who}`,
+        },
+        globalGroup: {
+          allow: (who: string) => `Erlaubt durch die Standardberechtigung von ${who}`,
+          deny: (who: string) => `Verweigert durch die Standardberechtigung von ${who}`,
+        },
+      },
+      none: 'Keine Regel',
+      group: (name: string) => `Gruppe ${name}`,
+      admin: 'ein Solstice-Administrator verwaltet alle Projekte',
+      archived: 'das Projekt ist archiviert',
+      but: (rule: string, why: string) => `${rule}, aber ${why}`,
+    },
   },
 
   settingsAdmin: {

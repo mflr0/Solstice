@@ -50,6 +50,7 @@ import type {
   PermissionRule,
   TokenScope,
   TokenSettings,
+  UserAccess,
   Webhook,
   WebhookDelivery,
   WebhookInput,
@@ -131,6 +132,12 @@ export const adminApi = {
     request<PermissionRule[]>('GET', `/api/admin/builtin-groups/${holder}/permissions`),
   setBuiltinPermissions: (holder: BuiltinGroup, rules: PermissionRule[]) =>
     request<PermissionRule[]>('PUT', `/api/admin/builtin-groups/${holder}/permissions`, rules),
+  userPermissions: (id: number) =>
+    request<PermissionRule[]>('GET', `/api/admin/users/${id}/permissions`),
+  setUserPermissions: (id: number, rules: PermissionRule[]) =>
+    request<PermissionRule[]>('PUT', `/api/admin/users/${id}/permissions`, rules),
+  userAccess: (id: number, project: string) =>
+    request<UserAccess[]>('GET', `/api/admin/users/${id}/access?project=${enc(project)}`),
 
   // Projects.
   /** Every project, archived ones included, seen or not. */

@@ -2365,6 +2365,41 @@ export const en = {
       'The password stays as it is until the person uses the link, which works once and for one hour.',
     linkSent: (name: string) => `Reset link sent to ${name}.`,
     linkNeedsEmail: 'This account has no email address: add one first.',
+    overrides: 'Permission overrides',
+    overridesHint:
+      'They apply to this person in every project, before the rules of their groups. A rule set for them in a project comes first. Saved with the account.',
+    access: 'Effective access',
+    accessHint:
+      'What this person may do in a project, from the saved rules, and which rule decided.',
+    accessProject: 'Project',
+    accessPick: 'Choose a project',
+    granted: 'Granted',
+    notGranted: 'Not granted',
+    accessWhy: {
+      rules: {
+        projectUser: {
+          allow: (who: string) => `Allowed in this project for ${who}`,
+          deny: (who: string) => `Denied in this project for ${who}`,
+        },
+        globalUser: {
+          allow: (who: string) => `Allowed by the global override of ${who}`,
+          deny: (who: string) => `Denied by the global override of ${who}`,
+        },
+        projectGroup: {
+          allow: (who: string) => `Allowed in this project for ${who}`,
+          deny: (who: string) => `Denied in this project for ${who}`,
+        },
+        globalGroup: {
+          allow: (who: string) => `Allowed by the global default of ${who}`,
+          deny: (who: string) => `Denied by the global default of ${who}`,
+        },
+      },
+      none: 'No rule',
+      group: (name: string) => `the group ${name}`,
+      admin: 'a Solstice administrator administers every project',
+      archived: 'the project is archived',
+      but: (rule: string, why: string) => `${rule}, but ${why}`,
+    },
   },
 
   settingsAdmin: {

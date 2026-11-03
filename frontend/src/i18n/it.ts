@@ -2395,6 +2395,41 @@ export const it: Messages = {
       'La password resta invariata finché la persona non usa il link, valido una sola volta e per un’ora.',
     linkSent: (name: string) => `Link di reimpostazione inviato a ${name}.`,
     linkNeedsEmail: 'Questo account non ha un indirizzo e-mail: aggiungine prima uno.',
+    overrides: 'Permessi individuali',
+    overridesHint:
+      'Valgono per questa persona in tutti i progetti, prima delle regole dei suoi gruppi. Una regola definita per lei in un progetto ha la precedenza. Salvati con l’account.',
+    access: 'Accesso effettivo',
+    accessHint:
+      'Cosa può fare questa persona in un progetto, secondo le regole salvate, e quale regola ha deciso.',
+    accessProject: 'Progetto',
+    accessPick: 'Scegli un progetto',
+    granted: 'Concesso',
+    notGranted: 'Non concesso',
+    accessWhy: {
+      rules: {
+        projectUser: {
+          allow: (who: string) => `Consentito in questo progetto per ${who}`,
+          deny: (who: string) => `Negato in questo progetto per ${who}`,
+        },
+        globalUser: {
+          allow: (who: string) => `Consentito dalla regola globale di ${who}`,
+          deny: (who: string) => `Negato dalla regola globale di ${who}`,
+        },
+        projectGroup: {
+          allow: (who: string) => `Consentito in questo progetto per ${who}`,
+          deny: (who: string) => `Negato in questo progetto per ${who}`,
+        },
+        globalGroup: {
+          allow: (who: string) => `Consentito dal permesso predefinito di ${who}`,
+          deny: (who: string) => `Negato dal permesso predefinito di ${who}`,
+        },
+      },
+      none: 'Nessuna regola',
+      group: (name: string) => `gruppo ${name}`,
+      admin: 'un amministratore di Solstice amministra tutti i progetti',
+      archived: 'il progetto è archiviato',
+      but: (rule: string, why: string) => `${rule}, ma ${why}`,
+    },
   },
 
   settingsAdmin: {
