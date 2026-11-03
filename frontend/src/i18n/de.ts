@@ -1471,6 +1471,14 @@ export const de: Messages = {
       updated: (name: string) => `Gruppe ${name} gespeichert.`,
       membersHint: 'Mitglieder werden sofort hinzugefügt und entfernt, ohne zu speichern.',
       noMembers: 'Noch keine Mitglieder.',
+      projectMembers: 'Projektmitglieder',
+      projectMembersHint:
+        'In jedem Projekt festgelegt, unter Berechtigungen und Mitglieder in seinen Einstellungen.',
+      noProjectMembers: 'In keinem Projekt Projektmitglieder.',
+      projectPeople: 'Personen',
+      projectGroups: 'Gruppen',
+      memberOf: 'Projektmitglied von',
+      noMemberOf: 'Projektmitglied keiner Gruppe.',
       addMember: 'Mitglied hinzufügen',
       memberAdded: (name: string) => `${name} wurde zur Gruppe hinzugefügt.`,
       memberRemoved: (name: string) => `${name} wurde aus der Gruppe entfernt.`,
@@ -2557,7 +2565,7 @@ export const de: Messages = {
       software: 'Software: To Do, In Arbeit, In Prüfung, Erledigt',
       simple: 'Einfach: Zu erledigen, In Arbeit, Erledigt',
     },
-    leadHint: 'Standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
+    leadHint: 'Optional, standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
     description: 'Beschreibung',
     access: 'Wer im Projekt arbeiten darf',
     accessKinds: {
@@ -2616,7 +2624,7 @@ export const de: Messages = {
     general: {
       title: 'Allgemein',
       intro: 'Name des Projekts, wer es leitet und wie neue Vorgänge behandelt werden.',
-      leadHint: 'Die Leitung hat alle Rechte im Projekt.',
+      leadHint: 'Optional. Die Leitung hat alle Rechte im Projekt.',
       typesInUse: (list: string) =>
         `Diese Typen werden noch von Vorgängen verwendet und können deshalb nicht entfernt werden: ${list}.`,
       typeUsage: (name: string, issues: number) =>

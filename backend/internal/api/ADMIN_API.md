@@ -228,9 +228,12 @@ picture already turned the right way. Both answer 204; `DELETE` also answers
 - `GET /api/admin/groups?q=` → `[{id, name, description, members}]`
   (`members`: count).
 - `GET /api/admin/groups/{id}` → `{id, name, description, members:
-  [userRef], usage: {grants, projectMembers, securityLevels, comments,
-  worklogs}}`. `projectMembers` counts its project members and the projects
-  where it is one.
+  [userRef], projects: [{project: {id, key, name}, users: [userRef], groups:
+  [idName]}], memberOf: [{project: {id, key, name}, group: idName}], usage:
+  {grants, projectMembers, securityLevels, comments, worklogs}}`. `projects`:
+  its project members (section 5), by project key; `memberOf`: the groups it
+  is a project member of. `projectMembers` counts its project members and the
+  projects where it is one.
 - `POST /api/admin/groups` `{name, description?}` → 201 group (as in the
   list). Names are stored lower-case, unique (409). (`group.create`)
 - `PATCH /api/admin/groups/{id}` `{name?, description?}` → group. Renaming
@@ -287,8 +290,10 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
 
 - `key`: upper-case letters and digits, starts with a letter, 2–10
   characters, unique among current **and former** keys (409).
-- `name` required, unique (409); `lead` an active user (default: the
-  creator); `category` a category id or null.
+- `name` required, unique (409); `lead` an active user, or null for no
+  lead (absent: the creator); `category` a category id or null.
+- `defaultAssignee`: `unassigned` (default) or `lead`; `lead` without a
+  lead is a 400.
 - `template`: `software` (statuses To Do / In Progress / In Review / Done) or
   `simple` (To Do / In Progress / Done), named in the instance's default
   language. Statuses are reused by name (any case) or created; the project
@@ -327,9 +332,9 @@ issues}]`, active first, then archived, by name.
 ### Update — project admin
 
 `PATCH /api/projects/{key}`
-`{name?, description? (null clears), lead?, category? (id | null),
+`{name?, description? (null clears), lead? (id | null), category? (id | null),
 defaultAssignee? ("unassigned" | "lead"), issueTypes?: [typeId]}`
-→ the settings object: `{id, key, name, description, kind, lead (userRef),
+→ the settings object: `{id, key, name, description, kind, lead (userRef | null),
 category (idName | null), defaultAssignee, archived, issueTypes: [typeRef],
 issues}`. Removing an issue type still used by issues: 409 `{inUse:
 [{type: typeRef, issues}]}`. (`project.update`)
@@ -337,7 +342,7 @@ issues}`. Removing an issue type still used by issues: 409 `{inUse:
 ### Project settings — project admin
 
 `GET /api/projects/{key}/settings` → `{id, key, name, description, kind,
-lead (userRef), category (idName | null), defaultAssignee, archived,
+lead (userRef | null), category (idName | null), defaultAssignee, archived,
 issueTypes: [typeRef], issues}` — the project as its administrators
 configure it: the fields `PATCH /api/projects/{key}` changes, with `id`,
 `key`, `kind`, `archived` and `issues` (the issue count).

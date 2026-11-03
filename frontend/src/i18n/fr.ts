@@ -1459,6 +1459,13 @@ export const fr: Messages = {
       updated: (name: string) => `Groupe ${name} enregistré.`,
       membersHint: 'Les membres sont ajoutés et retirés tout de suite, sans enregistrer.',
       noMembers: 'Aucun membre pour l’instant.',
+      projectMembers: 'Membres par projet',
+      projectMembersHint: 'Définis dans chaque projet, sous Droits et membres dans ses réglages.',
+      noProjectMembers: 'Aucun membre dans aucun projet.',
+      projectPeople: 'Personnes',
+      projectGroups: 'Groupes',
+      memberOf: 'Membre d’autres groupes par projet',
+      noMemberOf: 'Membre d’aucun autre groupe dans un projet.',
       addMember: 'Ajouter un membre',
       memberAdded: (name: string) => `${name} a été ajouté au groupe.`,
       memberRemoved: (name: string) => `${name} a été retiré du groupe.`,
@@ -2534,7 +2541,7 @@ export const fr: Messages = {
       software: 'Logiciel : À faire, En cours, En revue, Terminé',
       simple: 'Simple : À faire, En cours, Terminé',
     },
-    leadHint: 'Vous par défaut. Le responsable a tous les droits dans le projet.',
+    leadHint: 'Facultatif, vous par défaut. Le responsable a tous les droits dans le projet.',
     description: 'Description',
     access: 'Qui peut travailler dans le projet',
     accessKinds: {
@@ -2593,7 +2600,7 @@ export const fr: Messages = {
       title: 'Général',
       intro:
         'Le nom du projet, son responsable et la façon dont les nouveaux tickets sont traités.',
-      leadHint: 'Le responsable a tous les droits dans le projet.',
+      leadHint: 'Facultatif. Le responsable a tous les droits dans le projet.',
       typesInUse: (list: string) =>
         `Ces types sont encore utilisés par des tickets, ils ne peuvent donc pas être retirés : ${list}.`,
       typeUsage: (name: string, issues: number) =>

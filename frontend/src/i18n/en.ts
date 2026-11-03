@@ -1450,6 +1450,13 @@ export const en = {
       updated: (name: string) => `Group ${name} saved.`,
       membersHint: 'Members are added and removed right away, without saving.',
       noMembers: 'No members yet.',
+      projectMembers: 'Project members',
+      projectMembersHint: 'Set in each project, under Permissions and members in its settings.',
+      noProjectMembers: 'No project members in any project.',
+      projectPeople: 'People',
+      projectGroups: 'Groups',
+      memberOf: 'Project member of',
+      noMemberOf: 'Not a project member of any group.',
       addMember: 'Add a member',
       memberAdded: (name: string) => `${name} added to the group.`,
       memberRemoved: (name: string) => `${name} removed from the group.`,
@@ -2513,7 +2520,7 @@ export const en = {
       software: 'Software: To Do, In Progress, In Review, Done',
       simple: 'Simple: To do, In progress, Done',
     },
-    leadHint: 'Defaults to you. The lead has every right in the project.',
+    leadHint: 'Optional, you by default. The lead has every right in the project.',
     description: 'Description',
     access: 'Who can work in the project',
     accessKinds: {
@@ -2571,7 +2578,7 @@ export const en = {
     general: {
       title: 'General',
       intro: 'The project’s name, who leads it and how new issues are handled.',
-      leadHint: 'The lead has every right in the project.',
+      leadHint: 'Optional. The lead has every right in the project.',
       typesInUse: (list: string) =>
         `These types are still used by issues, so they cannot be removed: ${list}.`,
       typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'issue', 'issues')})`,

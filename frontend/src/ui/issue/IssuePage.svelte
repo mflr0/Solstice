@@ -19,7 +19,7 @@
   import { live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
-  import { appearance, ignoreShortcut, notify, openCreate } from '../../lib/ui.svelte.js';
+  import { appearance, ignoreShortcut, mac, notify, openCreate } from '../../lib/ui.svelte.js';
   import PriorityMark from '../PriorityMark.svelte';
   import RelTime from '../RelTime.svelte';
   import Stamp from '../Stamp.svelte';
@@ -213,7 +213,7 @@
   function keys(e: KeyboardEvent) {
     if (!issue || ignoreShortcut(e)) return;
     const me = session.me;
-    switch (shortcutFor(e.key, 'issue', appearance.shortcuts)) {
+    switch (shortcutFor(e, 'issue', appearance.shortcuts, appearance.bindings, mac)) {
       case 'editSummary':
         if (!issue.can.edit || editingSummary) return;
         editSummary();

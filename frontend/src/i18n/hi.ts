@@ -1447,6 +1447,13 @@ export const hi: Messages = {
       updated: (name: string) => `समूह ${name} सहेजा गया।`,
       membersHint: 'सदस्य तुरंत जुड़ते और हटते हैं, सहेजने की ज़रूरत नहीं।',
       noMembers: 'अभी कोई सदस्य नहीं।',
+      projectMembers: 'प्रोजेक्ट सदस्य',
+      projectMembersHint: 'हर प्रोजेक्ट में, उसकी सेटिंग के अनुमतियाँ और सदस्य में तय होते हैं।',
+      noProjectMembers: 'किसी प्रोजेक्ट में कोई प्रोजेक्ट सदस्य नहीं।',
+      projectPeople: 'लोग',
+      projectGroups: 'समूह',
+      memberOf: 'प्रोजेक्ट सदस्य है',
+      noMemberOf: 'किसी समूह का प्रोजेक्ट सदस्य नहीं।',
       addMember: 'सदस्य जोड़ें',
       memberAdded: (name: string) => `${name} समूह में जुड़ गए।`,
       memberRemoved: (name: string) => `${name} समूह से हट गए।`,
@@ -2506,7 +2513,7 @@ export const hi: Messages = {
       software: 'सॉफ़्टवेयर: करना है, जारी है, समीक्षा में, पूरा',
       simple: 'सरल: करना है, जारी है, पूरा',
     },
-    leadHint: 'डिफ़ॉल्ट रूप से आप। लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
+    leadHint: 'वैकल्पिक, डिफ़ॉल्ट रूप से आप। लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
     description: 'विवरण',
     access: 'प्रोजेक्ट में कौन काम कर सकता है',
     accessKinds: {
@@ -2564,7 +2571,7 @@ export const hi: Messages = {
     general: {
       title: 'सामान्य',
       intro: 'प्रोजेक्ट का नाम, उसका लीड कौन है और नए टिकट कैसे संभाले जाएँ।',
-      leadHint: 'लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
+      leadHint: 'वैकल्पिक। लीड के पास प्रोजेक्ट के सभी अधिकार होते हैं।',
       typesInUse: (list: string) =>
         `ये प्रकार अभी भी टिकटों में इस्तेमाल हो रहे हैं, इसलिए इन्हें हटाया नहीं जा सकता: ${list}।`,
       typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'टिकट', 'टिकट')})`,

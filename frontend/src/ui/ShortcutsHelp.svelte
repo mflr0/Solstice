@@ -1,13 +1,12 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
-  import { formatShortcut, isMac, SHORTCUTS, type ShortcutScope } from '../core/shortcuts.js';
+  import { formatShortcut, type ShortcutScope } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
-  import { appearance, dialogs } from '../lib/ui.svelte.js';
+  import { appearance, dialogs, mac } from '../lib/ui.svelte.js';
   import Modal from './Modal.svelte';
 
   /** Every keyboard shortcut, by where it works. Opened with "?". */
 
-  const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform : '');
   const scopes: ShortcutScope[] = ['global', 'results', 'issue'];
 </script>
 
@@ -28,7 +27,7 @@
     <section class="group" aria-labelledby={`keys-${scope}`}>
       <h3 class="field-label" id={`keys-${scope}`}>{t.keyboard.scopes[scope]}</h3>
       <dl class="keys">
-        {#each SHORTCUTS.filter((s) => s.scope === scope) as s (s.action)}
+        {#each appearance.bindings.filter((s) => s.scope === scope) as s (s.action)}
           <dt>
             {#each s.keys as key, i (key)}
               {#if i > 0}<span class="muted">{t.keyboard.or}</span>{/if}

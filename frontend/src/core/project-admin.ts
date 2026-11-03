@@ -130,7 +130,7 @@ export function projectPayload(f: ProjectForm) {
     name: f.name.trim(),
     template: f.template,
     ...(description ? { description } : {}),
-    ...(f.lead ? { lead: f.lead.id } : {}),
+    lead: f.lead?.id ?? null,
     ...(f.issueTypes ? { issueTypes: f.issueTypes } : {}),
     ...(f.defaultAssignee ? { defaultAssignee: f.defaultAssignee } : {}),
     category: f.category,
@@ -386,7 +386,7 @@ export function generalPatch(before: ProjectSettings, f: GeneralForm): ProjectPa
   if (name !== before.name) patch.name = name;
   const description = f.description.trim();
   if (description !== (before.description ?? '')) patch.description = description || null;
-  if (f.lead && f.lead.id !== before.lead?.id) patch.lead = f.lead.id;
+  if ((f.lead?.id ?? null) !== (before.lead?.id ?? null)) patch.lead = f.lead?.id ?? null;
   if (f.category !== (before.category?.id ?? null)) patch.category = f.category;
   if (f.defaultAssignee !== before.defaultAssignee) patch.defaultAssignee = f.defaultAssignee;
   const had = before.issueTypes.map((i) => i.id);

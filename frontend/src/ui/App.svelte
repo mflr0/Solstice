@@ -13,6 +13,7 @@
     dialogs,
     ignoreShortcut,
     initAppearance,
+    mac,
     notify,
     openCreate,
   } from '../lib/ui.svelte.js';
@@ -87,7 +88,7 @@
 
   function shortcuts(e: KeyboardEvent) {
     if (!session.me || ignoreShortcut(e)) return;
-    const action = shortcutFor(e.key, 'global', appearance.shortcuts);
+    const action = shortcutFor(e, 'global', appearance.shortcuts, appearance.bindings, mac);
     if (action === 'search') {
       e.preventDefault();
       document.getElementById('quick-search')?.focus();
