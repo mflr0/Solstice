@@ -2560,7 +2560,11 @@ export const it: Messages = {
     types: 'Tipi di ticket',
     typesHint: 'I tipi che si possono scegliere in questo progetto.',
     assignee: 'I nuovi ticket sono assegnati a',
-    assignees: { unassigned: 'Nessuno', lead: 'Il responsabile del progetto' },
+    assignees: {
+      unassigned: 'Nessuno',
+      lead: 'Il responsabile del progetto',
+      reporter: 'Il segnalatore',
+    },
     problems: {
       nameRequired: 'Dai un nome al progetto.',
       nameTooLong: 'Il nome è troppo lungo (al massimo 255 caratteri).',

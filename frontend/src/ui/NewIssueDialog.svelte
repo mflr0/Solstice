@@ -310,7 +310,7 @@
           field
           value={assignee}
           label={t.create.assignee}
-          noneLabel={detail?.defaultAssignee === 'lead'
+          noneLabel={detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter'
             ? t.create.defaultAssignee
             : t.common.unassigned}
           search={(q) => api.assignable(projectKey, q)}

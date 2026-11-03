@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -58,8 +57,8 @@ func clonesLinkType(cat *catalog) (linkTypeRef, bool) {
 }
 
 // cloneAssignee applies the project's assignment rule to a new issue with the
-// components of src.
-func (s *Server) cloneAssignee(ctx context.Context, src *issueRow, lead int64, defaultAssignee string) (any, error) {
+// components of src, reported by reporter.
+func (s *Server) cloneAssignee(ctx context.Context, src *issueRow, lead, reporter int64, defaultAssignee string) (any, error) {
 	ids := []int64{}
 	if err := sqlq.Each(ctx, s.db, `SELECT component_id FROM issue_components WHERE issue_id = ?`,
 		func(rows *sql.Rows) error {
@@ -70,17 +69,7 @@ func (s *Server) cloneAssignee(ctx context.Context, src *issueRow, lead int64, d
 		}, src.ID); err != nil {
 		return nil, err
 	}
-	raw, err := json.Marshal(ids)
-	if err != nil {
-		return nil, err
-	}
-	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, src.ProjectID, lead); err != nil || ok {
-		return who, err
-	}
-	if defaultAssignee == "lead" && lead != 0 {
-		return lead, nil
-	}
-	return nil, nil
+	return s.newIssueAssignee(ctx, src.ProjectID, lead, reporter, defaultAssignee, ids)
 }
 
 // insertClone writes one clone of p.src and everything it copies from it.
@@ -245,7 +234,7 @@ func (s *Server) cloneIssue(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return nil, err
 		}
-		assignee, err := s.cloneAssignee(ctx, src, lead.Int64, defaultAssignee)
+		assignee, err := s.cloneAssignee(ctx, src, lead.Int64, sub.UserID, defaultAssignee)
 		return &clonePlan{src: src, summary: text, status: status, assignee: assignee}, err
 	}
 	clone, err := newPlan(orig, summary)

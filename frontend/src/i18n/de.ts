@@ -2578,7 +2578,7 @@ export const de: Messages = {
     types: 'Vorgangstypen',
     typesHint: 'Die Typen, die in diesem Projekt zur Auswahl stehen.',
     assignee: 'Neue Vorgänge werden zugewiesen an',
-    assignees: { unassigned: 'Niemanden', lead: 'Die Projektleitung' },
+    assignees: { unassigned: 'Niemanden', lead: 'Die Projektleitung', reporter: 'Den Melder' },
     problems: {
       nameRequired: 'Geben Sie dem Projekt einen Namen.',
       nameTooLong: 'Der Name ist zu lang (höchstens 255 Zeichen).',

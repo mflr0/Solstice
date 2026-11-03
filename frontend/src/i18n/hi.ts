@@ -2526,7 +2526,7 @@ export const hi: Messages = {
     types: 'टिकट के प्रकार',
     typesHint: 'इस प्रोजेक्ट में चुने जा सकने वाले प्रकार।',
     assignee: 'नए टिकट सौंपे जाते हैं',
-    assignees: { unassigned: 'किसी को नहीं', lead: 'प्रोजेक्ट लीड को' },
+    assignees: { unassigned: 'किसी को नहीं', lead: 'प्रोजेक्ट लीड को', reporter: 'रिपोर्टर को' },
     problems: {
       nameRequired: 'प्रोजेक्ट को एक नाम दीजिए।',
       nameTooLong: 'नाम बहुत लंबा है (अधिकतम 255 अक्षर)।',

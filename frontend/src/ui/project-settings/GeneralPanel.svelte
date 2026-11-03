@@ -190,8 +190,9 @@
         options={[
           { value: 'unassigned', label: t.projectsAdmin.assignees.unassigned },
           { value: 'lead', label: t.projectsAdmin.assignees.lead, disabled: !form.lead },
+          { value: 'reporter', label: t.projectsAdmin.assignees.reporter },
         ]}
-        onchange={(v) => form && (form.defaultAssignee = v as 'unassigned' | 'lead')}
+        onchange={(v) => form && (form.defaultAssignee = v as 'unassigned' | 'lead' | 'reporter')}
       />
     </div>
 

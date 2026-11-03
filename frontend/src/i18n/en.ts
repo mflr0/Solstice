@@ -2533,7 +2533,7 @@ export const en = {
     types: 'Issue types',
     typesHint: 'The types people can choose in this project.',
     assignee: 'New issues are assigned to',
-    assignees: { unassigned: 'Nobody', lead: 'The project lead' },
+    assignees: { unassigned: 'Nobody', lead: 'The project lead', reporter: 'The reporter' },
     problems: {
       nameRequired: 'Give the project a name.',
       nameTooLong: 'The name is too long (255 characters at most).',

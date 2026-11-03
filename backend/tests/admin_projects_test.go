@@ -526,3 +526,73 @@ func TestProjectWithoutLead(t *testing.T) {
 		t.Errorf("a PATCH without lead set one: %+v", settings)
 	}
 }
+
+// A project whose new issues go to their reporter, when the reporter may be
+// assigned issues there.
+func TestDefaultAssigneeReporter(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", jirafixture.Password) // developpeurs
+	var settings struct{ DefaultAssignee string }
+
+	key := newProject(t, admin, map[string]any{"defaultAssignee": "reporter"})
+	admin.call("GET", "/api/projects/"+key+"/settings", nil, 200, &settings)
+	if settings.DefaultAssignee != "reporter" {
+		t.Fatalf("created with reporter: %+v", settings)
+	}
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"defaultAssignee": "unassigned"}, 200, nil)
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"defaultAssignee": "reporter"}, 200, &settings)
+	if settings.DefaultAssignee != "reporter" {
+		t.Errorf("patched to reporter: %+v", settings)
+	}
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"defaultAssignee": "someone"}, 400, nil)
+
+	assignee := func(c *client, issue string) string {
+		t.Helper()
+		var d issueDetail
+		c.get("/api/issues/"+issue, &d)
+		if d.Assignee == nil {
+			return ""
+		}
+		return d.Assignee.Username
+	}
+	mine := createIssue(t, paul, key, "À moi", "")
+	if got := assignee(paul, mine); got != "paul.martin" {
+		t.Errorf("issue without assignee goes to %q, want its reporter paul.martin", got)
+	}
+	if got := assignee(paul, cloneOf(t, paul, "en", mine, map[string]any{}).Key); got != "paul.martin" {
+		t.Errorf("clone goes to %q, want its reporter paul.martin", got)
+	}
+
+	base := "/api/projects/" + key + "/components"
+	var api, web componentAdmin
+	admin.call("POST", base, map[string]any{"name": "API", "lead": userID(t, "hugo.robert"),
+		"assigneeType": "component_lead"}, 201, &api)
+	admin.call("POST", base, map[string]any{"name": "Web"}, 201, &web)
+	for _, c := range []struct {
+		component int64
+		want      string
+	}{{api.ID, "hugo.robert"}, {web.ID, "paul.martin"}} {
+		var created struct{ Key string }
+		paul.call("POST", "/api/issues", map[string]any{"project": key, "type": standardType(t, paul, key),
+			"summary": "Composant", "components": []int64{c.component}}, 201, &created)
+		if got := assignee(paul, created.Key); got != c.want {
+			t.Errorf("issue in component %d goes to %q, want %s", c.component, got, c.want)
+		}
+	}
+
+	// A reporter who may not be assigned issues here leaves the issue unassigned.
+	var perms struct {
+		Grants []grantOut `json:"grants"`
+	}
+	admin.get("/api/projects/"+key+"/permissions", &perms)
+	kept := slices.DeleteFunc(slices.Clone(perms.Grants), func(g grantOut) bool {
+		return g.Permission == "assignable" && g.Holder == "group"
+	})
+	if len(kept) == len(perms.Grants) {
+		t.Fatalf("no Assignable grant to withdraw from the new project: %+v", perms.Grants)
+	}
+	admin.call("PUT", "/api/projects/"+key+"/permissions", map[string]any{"grants": kept}, 200, nil)
+	if got := assignee(paul, createIssue(t, paul, key, "Pas pour moi", "")); got != "" {
+		t.Errorf("issue from a reporter who can't be assigned goes to %q, want nobody", got)
+	}
+}

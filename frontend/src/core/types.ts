@@ -346,7 +346,7 @@ export interface ProjectDetail {
   components: Component[];
   versions: Version[];
   securityLevels: IdName[];
-  defaultAssignee: 'unassigned' | 'lead';
+  defaultAssignee: 'unassigned' | 'lead' | 'reporter';
   can: Can;
 }
 
