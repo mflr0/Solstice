@@ -20,6 +20,15 @@ export interface Me {
   directory?: string;
   /** The project Work, Boards and Search are scoped to; null or absent: every project. */
   project?: { id: number; key: string; name: string } | null;
+  /** The interface preferences stored on the account; one left out has its default. */
+  preferences?: Preferences;
+}
+
+/** Interface preferences kept on the account (backend/internal/api/ADMIN_API.md). */
+export interface Preferences {
+  shortcutsEnabled?: boolean;
+  /** Bindings that differ from the defaults: action name → keys. */
+  shortcuts?: Record<string, string[]>;
 }
 
 export interface UserRef {

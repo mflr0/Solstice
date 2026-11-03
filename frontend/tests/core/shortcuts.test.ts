@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   formatShortcut,
   isMac,
-  parseShortcutsSetting,
   SHORTCUTS,
   shortcutFor,
+  shortcutsEnabled,
 } from '../../src/core/shortcuts.js';
 
 const fr = { ctrl: 'Ctrl', alt: 'Alt', shift: 'Maj' };
@@ -84,11 +84,12 @@ describe('shortcutFor', () => {
   });
 });
 
-describe('parseShortcutsSetting', () => {
-  it('is on unless stored as off', () => {
-    expect(parseShortcutsSetting(null)).toBe(true);
-    expect(parseShortcutsSetting('on')).toBe(true);
-    expect(parseShortcutsSetting('junk')).toBe(true);
-    expect(parseShortcutsSetting('off')).toBe(false);
+describe('shortcutsEnabled', () => {
+  it('is on unless the account turned it off', () => {
+    expect(shortcutsEnabled(undefined)).toBe(true);
+    expect(shortcutsEnabled({})).toBe(true);
+    expect(shortcutsEnabled({ shortcuts: { create: ['n'] } })).toBe(true);
+    expect(shortcutsEnabled({ shortcutsEnabled: true })).toBe(true);
+    expect(shortcutsEnabled({ shortcutsEnabled: false })).toBe(false);
   });
 });

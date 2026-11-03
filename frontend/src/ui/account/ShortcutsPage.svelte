@@ -1,8 +1,24 @@
 <script lang="ts">
   import { t } from '../../i18n/t.js';
-  import { appearance, applyShortcuts, dialogs } from '../../lib/ui.svelte.js';
+  import { errorMessage } from '../../lib/api.js';
+  import { appearance, applyShortcuts, dialogs, notify } from '../../lib/ui.svelte.js';
 
-  /** The single-key shortcuts (on or off, kept on this browser) and their list. */
+  /** The single-key shortcuts (on or off, kept on the account) and their list. */
+
+  let saving = $state(false);
+
+  async function toggle(input: HTMLInputElement) {
+    saving = true;
+    try {
+      await applyShortcuts(input.checked);
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    } finally {
+      saving = false;
+      // The switch shows what the account holds, also after a failed save.
+      input.checked = appearance.shortcuts;
+    }
+  }
 </script>
 
 <header class="page-head">
@@ -17,7 +33,8 @@
     <input
       type="checkbox"
       checked={appearance.shortcuts}
-      onchange={(e) => applyShortcuts(e.currentTarget.checked)}
+      disabled={saving}
+      onchange={(e) => toggle(e.currentTarget)}
     />
     <span>{t.keyboard.toggle}</span>
   </label>

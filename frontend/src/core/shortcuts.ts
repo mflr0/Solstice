@@ -3,6 +3,8 @@
  * binding ("Mod-Shift-x") written the way the platform's own menus write it.
  */
 
+import type { Preferences } from './types.js';
+
 /** The modifier names a catalogue gives for non-Apple keyboards. */
 export interface KeyNames {
   readonly ctrl: string;
@@ -96,7 +98,7 @@ export function shortcutFor(
   return SHORTCUTS.find((s) => s.scope === scope && s.keys.includes(key))?.action ?? null;
 }
 
-/** The stored setting: on unless turned off. */
-export function parseShortcutsSetting(value: string | null | undefined): boolean {
-  return value !== 'off';
+/** Whether single-key shortcuts work: on unless the account turned them off. */
+export function shortcutsEnabled(preferences: Preferences | undefined): boolean {
+  return preferences?.shortcutsEnabled !== false;
 }

@@ -834,7 +834,7 @@ export const it: Messages = {
     settings: 'Impostazioni di aspetto',
     toggle: 'Scorciatoie a un tasto',
     toggleHint:
-      'Tasti come c o / agiscono senza Ctrl né Alt. Disattivale se disturbano uno screen reader o il controllo vocale. Vale per questo browser.',
+      'Tasti come c o / agiscono senza Ctrl né Alt. Disattivale se disturbano uno screen reader o il controllo vocale.',
     list: 'Vedi tutte le scorciatoie',
   },
   comments: {

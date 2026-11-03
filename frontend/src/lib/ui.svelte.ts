@@ -15,7 +15,9 @@ import {
   type Scheme,
   type Skin,
 } from '../core/appearance.js';
-import { parseShortcutsSetting } from '../core/shortcuts.js';
+import { shortcutsEnabled } from '../core/shortcuts.js';
+import { accountApi } from './admin-api.js';
+import { session } from './session.svelte.js';
 import { isSkinLoaded, loadSkin } from './skins.svelte.js';
 
 export interface CreateDefaults {
@@ -83,13 +85,19 @@ function store(key: string, value: string): void {
 const darkQuery =
   typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
+class Appearance {
+  skin = $state<Skin>(parseSkin(readStored(STORAGE_KEYS.skin)));
+  mode = $state<Mode>(parseMode(readStored(STORAGE_KEYS.mode)));
+  scheme = $state<Scheme>('light');
+
+  /** Whether single-key shortcuts work, as the signed-in account says. */
+  get shortcuts(): boolean {
+    return shortcutsEnabled(session.me?.preferences);
+  }
+}
+
 /** The skin (art direction) and colour mode in use, and whether single-key shortcuts work. */
-export const appearance = $state<{ skin: Skin; mode: Mode; scheme: Scheme; shortcuts: boolean }>({
-  skin: parseSkin(readStored(STORAGE_KEYS.skin)),
-  mode: parseMode(readStored(STORAGE_KEYS.mode)),
-  scheme: 'light',
-  shortcuts: parseShortcutsSetting(readStored(STORAGE_KEYS.shortcuts)),
-});
+export const appearance = new Appearance();
 
 function reveal(): void {
   document.documentElement.removeAttribute('data-skin-loading');
@@ -127,9 +135,9 @@ export function applyMode(mode: Mode): void {
   render();
 }
 
-export function applyShortcuts(on: boolean): void {
-  appearance.shortcuts = on;
-  store(STORAGE_KEYS.shortcuts, on ? 'on' : 'off');
+/** Turns single-key shortcuts on or off on the account. */
+export async function applyShortcuts(on: boolean): Promise<void> {
+  if (session.me) session.me = await accountApi.setPreference('shortcutsEnabled', on);
 }
 
 /** Applies the stored appearance and follows the system's light/dark changes. */

@@ -52,7 +52,7 @@ import type {
   WebhookInput,
 } from '../core/admin-types.js';
 import type { AdminProjectRow, ProjectSettings } from '../core/project-admin.js';
-import type { IdName, Me, UserRef } from '../core/types.js';
+import type { IdName, Me, Preferences, UserRef } from '../core/types.js';
 import { query, request } from './api.js';
 
 const enc = encodeURIComponent;
@@ -312,6 +312,9 @@ export const accountApi = {
     currentPassword?: string;
     newPassword?: string;
   }) => request<Me>('PATCH', '/api/me', patch),
+  /** Stores one interface preference on the account. */
+  setPreference: <K extends keyof Preferences>(key: K, value: NonNullable<Preferences[K]>) =>
+    request<Me>('PUT', `/api/me/preferences/${enc(key)}`, value),
 
   // Access tokens, one's own.
   tokens: () => request<AccessToken[]>('GET', '/api/me/tokens'),
