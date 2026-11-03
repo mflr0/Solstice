@@ -1,9 +1,10 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { restrictionUsage } from '../../core/admin-forms.js';
-  import type { Group } from '../../core/admin-types.js';
+  import { BUILTIN_GROUPS, restrictionUsage } from '../../core/admin-forms.js';
+  import type { BuiltinGroup, Group } from '../../core/admin-types.js';
+  import { matches } from '../../core/text.js';
   import { formatList, formatNumber } from '../../i18n/format.js';
-  import { t } from '../../i18n/t.js';
+  import { holderLabels, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -18,11 +19,14 @@
   let q = $state(router.param('q') ?? '');
   /** The search the shown rows were loaded with. */
   let searched = $state('');
-  let dialog = $state<{ group: Group | null } | null>(null);
+  let dialog = $state<{ group: Group | null; builtin?: BuiltinGroup } | null>(null);
   let removing = $state<Group | null>(null);
   let blocked = $state<{ comments: number; worklogs: number } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
+
+  /** The built-in groups the search matches; they always come first. */
+  const builtins = $derived(BUILTIN_GROUPS.filter((b) => matches(searched, holderLabels[b])));
 
   const restrictedTo = $derived(
     blocked
@@ -120,13 +124,13 @@
   <p class="error-text" role="alert">{error}</p>
 {:else if !groups}
   <p class="muted loading">{t.common.loading}</p>
-{:else if groups.length === 0 && q.trim() === ''}
+{:else if groups.length === 0 && builtins.length === 0 && q.trim() === ''}
   <EmptyState message={t.adminArea.groupsPage.empty} hint={t.adminArea.groupsPage.emptyHint}>
     <button class="btn btn-primary" onclick={() => (dialog = { group: null })}
       >{t.adminArea.groupsPage.newGroup}</button
     >
   </EmptyState>
-{:else if groups.length === 0}
+{:else if groups.length === 0 && builtins.length === 0}
   <EmptyState kind="search" message={t.adminArea.noMatch}>
     <button class="btn" onclick={clear}>{t.adminArea.clearSearch}</button>
     <button class="btn btn-primary" onclick={() => (dialog = { group: null })}
@@ -145,6 +149,23 @@
         </tr>
       </thead>
       <tbody>
+        {#each builtins as b (b)}
+          <tr>
+            <td>
+              <button class="link-btn name" onclick={() => (dialog = { group: null, builtin: b })}
+                ><Highlight text={holderLabels[b]} search={searched} /></button
+              >
+              <span class="stamp">{t.builtInGroups.mark}</span>
+            </td>
+            <td class="c-description">{t.adminArea.groupsPage.builtinDescriptions[b]}</td>
+            <td class="num muted">—</td>
+            <td class="row-actions">
+              <button class="link-btn" onclick={() => (dialog = { group: null, builtin: b })}
+                >{t.common.edit}</button
+              >
+            </td>
+          </tr>
+        {/each}
         {#each groups as g (g.id)}
           <tr>
             <td>
@@ -170,6 +191,7 @@
 <GroupDialog
   open={dialog !== null}
   group={dialog?.group ?? null}
+  builtin={dialog?.builtin ?? null}
   onclose={() => (dialog = null)}
   onsaved={saved}
   onchanged={() => void load()}

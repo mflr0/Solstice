@@ -7,16 +7,19 @@
 import { passwordTooShort } from './account-links.js';
 import type {
   AuditQuery,
+  BuiltinGroup,
   MailSecurity,
   MailSettings,
   MailSettingsInput,
   NotificationPrefs,
+  PermissionRule,
   SubscriptionInput,
   TokenScope,
   WebhookInput,
 } from './admin-types.js';
 import { isoDay } from './dates.js';
 import { fold, matches } from './text.js';
+import type { Effect, Permission } from './types.js';
 
 /** Problems found in a form, by field. */
 export type Problems<F extends string, P extends string = string> = Partial<Record<F, P>>;
@@ -523,4 +526,50 @@ export function memberPayload(
 ): { holder: LevelHolder; id?: number } | null {
   if (!holderNeedsId(holder)) return { holder };
   return id === null ? null : { holder, id };
+}
+
+/** The built-in groups, in the order the Groups page lists them. */
+export const BUILTIN_GROUPS: readonly BuiltinGroup[] = ['everyone', 'lead', 'reporter', 'assignee'];
+
+/** Every permission, in the server's order (perm.All). */
+export const PERMISSIONS: readonly Permission[] = [
+  'browse',
+  'create',
+  'edit',
+  'comment',
+  'transition',
+  'assign',
+  'assignable',
+  'attach',
+  'link',
+  'worklog',
+  'delete',
+  'moderate',
+  'watchers',
+  'security',
+  'admin',
+];
+
+/** A permission's global default: no rule, or one rule. */
+export type DefaultState = 'unset' | Effect;
+
+export const DEFAULT_STATES: readonly DefaultState[] = ['unset', 'allow', 'deny'];
+
+export type DefaultsForm = Record<Permission, DefaultState>;
+
+/** The defaults form of a holder's global rules. */
+export function defaultsForm(rules: readonly PermissionRule[]): DefaultsForm {
+  const f = Object.fromEntries(PERMISSIONS.map((p) => [p, 'unset'])) as DefaultsForm;
+  for (const r of rules) if (r.permission in f) f[r.permission] = r.effect;
+  return f;
+}
+
+/** What to send for the defaults: one rule per permission that is set, in the server's order. */
+export function defaultsPayload(f: DefaultsForm): PermissionRule[] {
+  const out: PermissionRule[] = [];
+  for (const p of PERMISSIONS) {
+    const s = f[p];
+    if (s !== 'unset') out.push({ permission: p, effect: s });
+  }
+  return out;
 }

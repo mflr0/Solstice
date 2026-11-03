@@ -1529,6 +1529,20 @@ export const fr: Messages = {
         'Le groupe disparaît des droits, des appartenances dans les projets et des niveaux de sécurité qui l’utilisent. Ses membres gardent leur compte.',
       deleted: (name: string) => `Groupe ${name} supprimé.`,
       inUse: (items: string) => `Encore réservés à ce groupe : ${items}.`,
+      notSet: 'Non défini',
+      defaults: 'Permissions par défaut',
+      defaultsHint:
+        'Elles s’appliquent dans tous les projets. Une règle définie dans un projet, ou pour une personne, passe avant. Enregistrées avec le groupe.',
+      defaultName: (group: string, permission: string, state: string) =>
+        `${group}, ${permission} : ${state}`,
+      builtinHint:
+        'Un groupe intégré : qui en fait partie dépend du projet ou du ticket, il n’a donc ni nom ni membres à modifier.',
+      builtinDescriptions: {
+        everyone: 'Toute personne ayant un compte.',
+        lead: 'Le responsable de chaque projet.',
+        reporter: 'La personne qui a signalé le ticket.',
+        assignee: 'La personne à qui le ticket est attribué.',
+      },
     },
   },
 

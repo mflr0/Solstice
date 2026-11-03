@@ -1,9 +1,20 @@
 <script lang="ts">
-  import { groupProblems, hasProblems, namedPatch, namedPayload } from '../../core/admin-forms.js';
-  import type { Group, GroupDetail } from '../../core/admin-types.js';
+  import {
+    DEFAULT_STATES,
+    defaultsForm,
+    defaultsPayload,
+    groupProblems,
+    hasProblems,
+    namedPatch,
+    namedPayload,
+    PERMISSIONS,
+    type DefaultsForm,
+    type DefaultState,
+  } from '../../core/admin-forms.js';
+  import type { BuiltinGroup, Group, GroupDetail, PermissionRule } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
   import type { UserRef } from '../../core/types.js';
-  import { t } from '../../i18n/t.js';
+  import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -13,11 +24,13 @@
   interface Props {
     open: boolean;
     group: Group | null;
+    /** A built-in group: only its default permissions are shown. */
+    builtin?: BuiltinGroup | null;
     onclose: () => void;
     onsaved: (message: string) => void;
     onchanged: () => void;
   }
-  const { open, group, onclose, onsaved, onchanged }: Props = $props();
+  const { open, group, builtin = null, onclose, onsaved, onchanged }: Props = $props();
 
   let name = $state('');
   let description = $state('');
@@ -27,7 +40,18 @@
   let busy = $state(false);
   let changing = $state(false);
   let detail = $state<GroupDetail | null>(null);
+  let defaults = $state<DefaultsForm | null>(null);
+  /** The defaults as loaded, as sent. */
+  let savedDefaults = '';
   let seq = 0;
+
+  const holderName = $derived(builtin ? holderLabels[builtin] : (group?.name ?? ''));
+  const marks: Record<DefaultState, string> = { unset: '/', allow: '✓', deny: '✗' };
+  const stateLabels = $derived<Record<DefaultState, string>>({
+    unset: t.adminArea.groupsPage.notSet,
+    allow: t.settings.states.allow,
+    deny: t.settings.states.deny,
+  });
 
   const problems = $derived(groupProblems({ name, description }));
   const shownName = $derived(
@@ -45,17 +69,38 @@
     touched = false;
     error = '';
     detail = null;
+    defaults = null;
     const mine = ++seq;
-    if (!group) return;
-    adminApi
-      .group(group.id)
-      .then((d) => {
-        if (mine === seq) detail = d;
+    const failed = (e: unknown) => {
+      if (mine === seq) error = errorMessage(e);
+    };
+    if (group)
+      adminApi
+        .group(group.id)
+        .then((d) => {
+          if (mine === seq) detail = d;
+        })
+        .catch(failed);
+    const rules = builtin
+      ? adminApi.builtinPermissions(builtin)
+      : group
+        ? adminApi.groupPermissions(group.id)
+        : null;
+    rules
+      ?.then((r) => {
+        if (mine !== seq) return;
+        defaults = defaultsForm(r);
+        savedDefaults = JSON.stringify(defaultsPayload(defaults));
       })
-      .catch((e: unknown) => {
-        if (mine === seq) error = errorMessage(e);
-      });
+      .catch(failed);
   });
+
+  /** The defaults to send, or null when they did not change (or did not load). */
+  function changedDefaults(): PermissionRule[] | null {
+    if (!defaults) return null;
+    const rules = defaultsPayload(defaults);
+    return JSON.stringify(rules) === savedDefaults ? null : rules;
+  }
 
   async function candidates(q: string): Promise<UserRef[]> {
     const members = new Set((detail?.members ?? []).map((m) => m.id));
@@ -97,25 +142,49 @@
     e.preventDefault();
     tried = true;
     error = '';
+    const rules = changedDefaults();
+    if (builtin) {
+      if (!rules) {
+        onclose();
+        return;
+      }
+      busy = true;
+      try {
+        await adminApi.setBuiltinPermissions(builtin, rules);
+        onsaved(t.adminArea.groupsPage.updated(holderName));
+        onclose();
+      } catch (err) {
+        error = errorMessage(err);
+      } finally {
+        busy = false;
+      }
+      return;
+    }
     if (hasProblems(problems)) return;
     const patch = group ? namedPatch({ name, description }, group, true) : null;
-    if (patch && Object.keys(patch).length === 0) {
+    if (patch && Object.keys(patch).length === 0 && !rules) {
       onclose();
       return;
     }
     busy = true;
+    let saved: Group | null = null;
     try {
-      const saved = group
-        ? await adminApi.updateGroup(group.id, patch ?? {})
-        : await adminApi.createGroup(namedPayload({ name, description }));
+      if (!group) saved = await adminApi.createGroup(namedPayload({ name, description }));
+      else if (patch && Object.keys(patch).length > 0)
+        saved = await adminApi.updateGroup(group.id, patch);
+      if (group && rules) {
+        await adminApi.setGroupPermissions(group.id, rules);
+        savedDefaults = JSON.stringify(rules);
+      }
+      const shown = saved?.name ?? group?.name ?? '';
       onsaved(
-        group
-          ? t.adminArea.groupsPage.updated(saved.name)
-          : t.adminArea.groupsPage.created(saved.name),
+        group ? t.adminArea.groupsPage.updated(shown) : t.adminArea.groupsPage.created(shown),
       );
       onclose();
     } catch (err) {
       error = errorMessage(err);
+      // The name was saved, the defaults were not.
+      if (saved) onchanged();
     } finally {
       busy = false;
     }
@@ -124,34 +193,79 @@
 
 <Modal
   {open}
-  title={group ? t.adminArea.groupsPage.editTitle(group.name) : t.adminArea.groupsPage.newGroup}
+  title={builtin || group
+    ? t.adminArea.groupsPage.editTitle(holderName)
+    : t.adminArea.groupsPage.newGroup}
   onclose={() => !busy && onclose()}
 >
   <form id="group-form" class="group-form" onsubmit={submit} novalidate>
-    <label class="field">
-      <span>{t.adminArea.groupsPage.name}</span>
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        class="input"
-        bind:value={name}
-        autocomplete="off"
-        autofocus
-        aria-invalid={!!shownName}
-        onblur={() => (touched = true)}
-      />
-      <span class="form-hint">{t.adminArea.groupsPage.nameHint}</span>
-      {#if shownName}<span class="field-error">{shownName}</span>{/if}
-    </label>
-    <label class="field">
-      <span>{t.adminArea.groupsPage.description}</span>
-      <textarea
-        class="textarea short"
-        bind:value={description}
-        rows="2"
-        aria-invalid={!!shownDescription}
-      ></textarea>
-      {#if shownDescription}<span class="field-error">{shownDescription}</span>{/if}
-    </label>
+    {#if builtin}
+      <p class="form-hint">{t.adminArea.groupsPage.builtinHint}</p>
+    {:else}
+      <label class="field">
+        <span>{t.adminArea.groupsPage.name}</span>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="input"
+          bind:value={name}
+          autocomplete="off"
+          autofocus
+          aria-invalid={!!shownName}
+          onblur={() => (touched = true)}
+        />
+        <span class="form-hint">{t.adminArea.groupsPage.nameHint}</span>
+        {#if shownName}<span class="field-error">{shownName}</span>{/if}
+      </label>
+      <label class="field">
+        <span>{t.adminArea.groupsPage.description}</span>
+        <textarea
+          class="textarea short"
+          bind:value={description}
+          rows="2"
+          aria-invalid={!!shownDescription}
+        ></textarea>
+        {#if shownDescription}<span class="field-error">{shownDescription}</span>{/if}
+      </label>
+    {/if}
+
+    {#if builtin || group}
+      <fieldset class="choices">
+        <legend class="field-label">{t.adminArea.groupsPage.defaults}</legend>
+        <p class="form-hint">{t.adminArea.groupsPage.defaultsHint}</p>
+        {#if !defaults}
+          {#if !error}<p class="muted loading">{t.common.loading}</p>{/if}
+        {:else}
+          <ul class="defaults">
+            {#each PERMISSIONS as p (p)}
+              {@const perm = permissionLabels[p].label}
+              <li>
+                <span class="perm" id="perm-{p}" title={permissionLabels[p].help}>{perm}</span>
+                <span class="states" role="radiogroup" aria-labelledby="perm-{p}">
+                  {#each DEFAULT_STATES as st (st)}
+                    <label class="state {st}" class:on={defaults[p] === st}>
+                      <input
+                        type="radio"
+                        class="sr-only"
+                        name="default-{p}"
+                        value={st}
+                        bind:group={defaults[p]}
+                        aria-label={t.adminArea.groupsPage.defaultName(
+                          holderName,
+                          perm,
+                          stateLabels[st],
+                        )}
+                      />
+                      <span aria-hidden="true">{marks[st]}</span>
+                      {stateLabels[st]}
+                    </label>
+                  {/each}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </fieldset>
+    {/if}
 
     {#if group}
       <fieldset class="choices">
@@ -259,7 +373,11 @@
       >{t.common.cancel}</button
     >
     <button class="btn btn-primary" type="submit" form="group-form" disabled={busy}
-      >{busy ? t.common.saving : group ? t.common.save : t.adminArea.groupsPage.create}</button
+      >{busy
+        ? t.common.saving
+        : group || builtin
+          ? t.common.save
+          : t.adminArea.groupsPage.create}</button
     >
   {/snippet}
 </Modal>
@@ -303,6 +421,77 @@
 
   .where p {
     margin: 2px 0 0;
+  }
+
+  .defaults {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .defaults li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+  }
+
+  .perm {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Each state has its own glyph and word, so color is never the only cue. */
+  .states {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .state {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+
+  .state:hover {
+    background: var(--accent-wash);
+    color: var(--ink);
+  }
+
+  .state:has(input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .state.on {
+    font-weight: 700;
+  }
+
+  .state.unset.on {
+    background: var(--paper-sunk);
+    color: var(--ink-soft);
+  }
+
+  .state.allow.on {
+    border-color: var(--stamp-done);
+    background: var(--stamp-done);
+    color: var(--paper);
+  }
+
+  .state.deny.on {
+    border-color: var(--tone-bug);
+    background: var(--tone-bug);
+    color: var(--paper);
   }
 
   .member-list {

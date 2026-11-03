@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   defaultPort,
+  defaultsForm,
+  defaultsPayload,
   groupProblems,
   hasProblems,
   holderNeedsId,
@@ -418,5 +420,32 @@ describe('token scopes', () => {
     expect(offeredScopes(true)).toEqual(TOKEN_SCOPES);
     expect(offeredScopes(false)).not.toContain('admin');
     expect(offeredScopes(false)).toHaveLength(TOKEN_SCOPES.length - 1);
+  });
+});
+
+describe('defaults form', () => {
+  it('sends only the permissions that are set, in the server order', () => {
+    const f = defaultsForm([]);
+    expect(defaultsPayload(f)).toEqual([]);
+    f.delete = 'deny';
+    f.edit = 'allow';
+    expect(defaultsPayload(f)).toEqual([
+      { permission: 'edit', effect: 'allow' },
+      { permission: 'delete', effect: 'deny' },
+    ]);
+    f.edit = 'unset';
+    expect(defaultsPayload(f)).toEqual([{ permission: 'delete', effect: 'deny' }]);
+  });
+
+  it('reads the rules back', () => {
+    const rules = [
+      { permission: 'browse', effect: 'allow' },
+      { permission: 'admin', effect: 'deny' },
+    ] as const;
+    const f = defaultsForm(rules);
+    expect(f.browse).toBe('allow');
+    expect(f.admin).toBe('deny');
+    expect(f.edit).toBe('unset');
+    expect(defaultsPayload(f)).toEqual(rules);
   });
 });

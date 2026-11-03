@@ -5,7 +5,16 @@
  */
 
 import type { ProjectBrief } from './board-types.js';
-import type { IdName, StatusCategory, TypeFill, TypeIcon, UserRef } from './types.js';
+import type {
+  Effect,
+  Holder,
+  IdName,
+  Permission,
+  StatusCategory,
+  TypeFill,
+  TypeIcon,
+  UserRef,
+} from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
 
@@ -343,6 +352,15 @@ export interface Group {
   description: string;
   /** Number of members. */
   members: number;
+}
+
+/** A built-in group: who is in it depends on the project or the issue. */
+export type BuiltinGroup = Exclude<Holder, 'user' | 'group'>;
+
+/** A global rule of a group, a built-in group or a user. */
+export interface PermissionRule {
+  permission: Permission;
+  effect: Effect;
 }
 
 export interface GroupUsage {

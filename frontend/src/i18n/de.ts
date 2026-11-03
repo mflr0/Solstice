@@ -1544,6 +1544,20 @@ export const de: Messages = {
         'Die Gruppe wird aus den Berechtigungen, Projektmitgliedschaften und Sicherheitsstufen entfernt, die sie verwenden. Ihre Mitglieder behalten ihre Konten.',
       deleted: (name: string) => `Gruppe ${name} gelöscht.`,
       inUse: (items: string) => `Noch auf diese Gruppe beschränkt: ${items}.`,
+      notSet: 'Nicht gesetzt',
+      defaults: 'Standardberechtigungen',
+      defaultsHint:
+        'Sie gelten in jedem Projekt. Eine Regel in einem Projekt oder für eine Person geht vor. Wird mit der Gruppe gespeichert.',
+      defaultName: (group: string, permission: string, state: string) =>
+        `${group}, ${permission}: ${state}`,
+      builtinHint:
+        'Eine integrierte Gruppe: Wer dazugehört, hängt vom Projekt oder vom Vorgang ab, daher gibt es keinen Namen und keine Mitglieder zu bearbeiten.',
+      builtinDescriptions: {
+        everyone: 'Alle mit einem Konto.',
+        lead: 'Die Leitung jedes Projekts.',
+        reporter: 'Die Person, die den Vorgang gemeldet hat.',
+        assignee: 'Die Person, der der Vorgang zugewiesen ist.',
+      },
     },
   },
 
