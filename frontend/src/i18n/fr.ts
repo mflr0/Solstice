@@ -836,7 +836,7 @@ export const fr: Messages = {
     settings: 'Réglages d’apparence',
     toggle: 'Raccourcis à une touche',
     toggleHint:
-      'Des touches comme c ou / agissent sans Ctrl ni Alt. Désactivez-les si elles gênent un lecteur d’écran ou la commande vocale. S’applique à ce navigateur.',
+      'Des touches comme c ou / agissent sans Ctrl ni Alt. Désactivez-les si elles gênent un lecteur d’écran ou la commande vocale.',
     list: 'Voir tous les raccourcis',
   },
   comments: {

@@ -830,7 +830,7 @@ export const en = {
     settings: 'Appearance settings',
     toggle: 'Single-key shortcuts',
     toggleHint:
-      'Keys such as c or / act without Ctrl or Alt. Turn them off if they get in the way of a screen reader or voice control. Applies to this browser.',
+      'Keys such as c or / act without Ctrl or Alt. Turn them off if they get in the way of a screen reader or voice control.',
     list: 'See every shortcut',
   },
   comments: {

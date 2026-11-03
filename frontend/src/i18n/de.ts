@@ -844,7 +844,7 @@ export const de: Messages = {
     settings: 'Darstellungseinstellungen',
     toggle: 'Einzeltasten-Kürzel',
     toggleHint:
-      'Tasten wie c oder / wirken ohne Strg oder Alt. Schalten Sie sie aus, wenn sie einen Screenreader oder die Sprachsteuerung stören. Gilt für diesen Browser.',
+      'Tasten wie c oder / wirken ohne Strg oder Alt. Schalten Sie sie aus, wenn sie einen Screenreader oder die Sprachsteuerung stören.',
     list: 'Alle Tastenkürzel anzeigen',
   },
   comments: {
