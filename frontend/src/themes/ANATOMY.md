@@ -137,10 +137,13 @@ visually hidden (still read) and `.plus` shows, sized `1.55em` — a skin that
 sets the button's `font-size: 0` to draw its own « + » hides it too; ≤ 420 px
 `.theme-picker` goes (the gallery stays on Account → Appearance).
 
-**Logo** — `svg.logo` > `.logo-sun`, `.logo-line`, `.logo-faint` (Carnet);
-Orbite: `.logo-orbit`, `.logo-planet`; Crayonné: `.logo-sketch`, `.logo-ray`.
+**Logo** — `svg.logo` > `.logo-sun`, `.logo-line`, `.logo-faint` (Carnet).
 To use your own mark: `[data-skin='x'] .logo > * { display: none }` and paint
 `.logo` with `background: url('./x/logo.svg') center / contain no-repeat`.
+For a mark that follows `--sun` or `currentColor` in light and dark, mask it
+instead: `mask: url('./x/logo.svg') center / contain no-repeat` and give the
+colours as `background` layers (Plan, Orbite, Crayonné). A mask clips
+`filter`, so draw a glow as a gradient.
 
 **Page** — `.page` (the sheet; `[data-title]` holds the page's title, for a
 window title bar: `content: attr(data-title)`), `header.page-head` (wraps

@@ -4,7 +4,6 @@
  * the appearance (skin and colour mode).
  */
 
-import { getContext, setContext } from 'svelte';
 import {
   htmlAttributes,
   parseMode,
@@ -173,18 +172,6 @@ export function initAppearance(): () => void {
   };
   darkQuery?.addEventListener('change', onChange);
   return () => darkQuery?.removeEventListener('change', onChange);
-}
-
-const PREVIEW_SKIN = Symbol('preview-skin');
-
-/** Marks a component's subtree as a preview of a skin (theme gallery). Call during setup. */
-export function setPreviewSkin(skin: () => Skin): void {
-  setContext(PREVIEW_SKIN, skin);
-}
-
-/** The skin a component is drawn in: its preview's, else the page's. Call during setup. */
-export function skinInEffect(): () => Skin {
-  return getContext<(() => Skin) | undefined>(PREVIEW_SKIN) ?? (() => appearance.skin);
 }
 
 /** Inputs a letter does nothing in, so shortcuts still work from them. */
