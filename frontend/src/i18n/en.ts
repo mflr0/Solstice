@@ -78,6 +78,13 @@ export const en = {
     assignee: 'Issue assignee',
   },
 
+  /** Holders shown as groups (the security levels, the permissions): the mark and the list headings. */
+  builtInGroups: {
+    mark: 'Built-in group',
+    heading: 'Built-in groups',
+    groups: 'Groups',
+  },
+
   historyFields: {
     status: 'Status',
     assignee: 'Assignee',

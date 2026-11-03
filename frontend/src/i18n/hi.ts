@@ -83,6 +83,12 @@ export const hi: Messages = {
     assignee: 'टिकट का असाइनी',
   },
 
+  builtInGroups: {
+    mark: 'अंतर्निहित समूह',
+    heading: 'अंतर्निहित समूह',
+    groups: 'समूह',
+  },
+
   historyFields: {
     status: 'स्टेटस',
     assignee: 'असाइनी',

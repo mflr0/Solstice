@@ -85,6 +85,12 @@ export const de: Messages = {
     assignee: 'Bearbeiter des Vorgangs',
   },
 
+  builtInGroups: {
+    mark: 'Integrierte Gruppe',
+    heading: 'Integrierte Gruppen',
+    groups: 'Gruppen',
+  },
+
   historyFields: {
     status: 'Status',
     assignee: 'Bearbeiter',

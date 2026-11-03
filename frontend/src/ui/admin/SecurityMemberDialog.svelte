@@ -1,11 +1,7 @@
 <script lang="ts">
-  import {
-    holderNeedsId,
-    LEVEL_HOLDERS,
-    memberPayload,
-    type LevelHolder,
-  } from '../../core/admin-forms.js';
+  import { memberPayload } from '../../core/admin-forms.js';
   import type { Group } from '../../core/admin-types.js';
+  import { groupKeyHolder, holderGroups } from '../../core/project-admin.js';
   import type { UserRef } from '../../core/types.js';
   import { holderLabels, t } from '../../i18n/t.js';
   import { adminApi, securityApi, type SecurityLevel } from '../../lib/admin-api.js';
@@ -15,8 +11,8 @@
   import UserPicker from '../UserPicker.svelte';
 
   /**
-   * Adding someone to a security level: a group (its members in the project), a person,
-   * everyone, or the project lead, the reporter or the assignee of each issue.
+   * Adding someone to a security level: a person, or a group (its members in the project),
+   * the built-in ones first: everyone, the project lead, the reporter or the assignee of each issue.
    */
   interface Props {
     open: boolean;
@@ -28,7 +24,7 @@
   }
   const { open, project, level, onclose, onsaved }: Props = $props();
 
-  let holder = $state<LevelHolder>('group');
+  let kind = $state<'group' | 'user'>('group');
   let pick = $state('');
   let user = $state<UserRef | null>(null);
   let groups = $state<Group[]>([]);
@@ -36,12 +32,20 @@
   let error = $state('');
   let busy = $state(false);
 
-  const chosen = $derived(holder === 'user' ? (user?.id ?? null) : pick ? Number(pick) : null);
-  const payload = $derived(memberPayload(holder, chosen));
+  const payload = $derived(
+    kind === 'user' ? memberPayload('user', user?.id ?? null) : groupKeyHolder(pick),
+  );
+  const groupOptions = $derived(
+    holderGroups(holderLabels, groups).map((g) => ({
+      value: g.key,
+      label: g.label,
+      group: g.builtin ? t.builtInGroups.heading : t.builtInGroups.groups,
+    })),
+  );
 
   $effect(() => {
     if (!open) return;
-    holder = 'group';
+    kind = 'group';
     pick = '';
     user = null;
     tried = false;
@@ -79,31 +83,28 @@
       <span>{t.securityAdmin.kind}</span>
       <Dropdown
         label={t.securityAdmin.kind}
-        value={holder}
-        options={LEVEL_HOLDERS.map((h) => ({ value: h, label: holderLabels[h] }))}
+        value={kind}
+        options={(['group', 'user'] as const).map((h) => ({ value: h, label: holderLabels[h] }))}
         onchange={(v) => {
-          holder = v as LevelHolder;
+          kind = v as 'group' | 'user';
           pick = '';
           user = null;
         }}
       />
     </div>
-    {#if holder === 'group'}
+    {#if kind === 'group'}
       <div class="field">
         <span>{t.securityAdmin.chooseGroup}</span>
         <Dropdown
           label={t.securityAdmin.chooseGroup}
           value={pick}
-          options={groups.map((x) => ({
-            value: String(x.id),
-            label: x.name,
-          }))}
+          options={groupOptions}
           placeholder={t.securityAdmin.choose}
           invalid={tried && !payload}
           onchange={(v) => (pick = v)}
         />
       </div>
-    {:else if holder === 'user'}
+    {:else}
       <div class="field">
         <span>{t.securityAdmin.chooseUser}</span>
         <UserPicker
@@ -115,10 +116,11 @@
           onpick={(u) => (user = u)}
         />
       </div>
-    {:else if holder === 'everyone'}
+    {/if}
+    {#if pick === 'builtin:everyone'}
       <p class="muted small">{t.securityAdmin.everyoneHint}</p>
     {/if}
-    {#if tried && !payload && holderNeedsId(holder)}
+    {#if tried && !payload}
       <p class="field-error">{t.securityAdmin.mustChoose}</p>
     {/if}
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
