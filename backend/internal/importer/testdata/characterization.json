@@ -168,6 +168,10 @@
       "count": 0,
       "sha256": "f4db8b93873d79936c5adbda50028093fe11a016be363b4c22057026ed56c3bb"
     },
+    "permission_rules": {
+      "count": 71,
+      "sha256": "0c3a992dbb545418512413f2b90650b09f6ab1772f96b1bed94484b366ff46f7"
+    },
     "priorities": {
       "count": 5,
       "sha256": "f79b331d7700f2f540f98df44b1ea3bf5434eedaa7a168b3032b51334cbf1b41"
@@ -191,10 +195,6 @@
     "project_notifications": {
       "count": 0,
       "sha256": "9f05d201d6c3d6fe070b0d0d18743493ef68bd206bf5c548701290933f513d10"
-    },
-    "project_permissions": {
-      "count": 71,
-      "sha256": "ad847ee277e44b9777c13b6f39a97bff5e0b7af8b304bc6094abb54e795ec15f"
     },
     "projects": {
       "count": 4,
@@ -231,6 +231,10 @@
     "user_groups": {
       "count": 10,
       "sha256": "5864cd3e201e1318235b5a9e21d5ffb0eeae26a6af959f60a9800dbe816f0a52"
+    },
+    "user_preferences": {
+      "count": 0,
+      "sha256": "d0df9e993b74fbcf180fecd7d8ed7da0f7299fc81df6e195fbe3fb78d5477304"
     },
     "users": {
       "count": 24,

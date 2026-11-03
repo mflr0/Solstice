@@ -300,10 +300,10 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	grants := []grantOut{}
 	if err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(g.user_id, g.group_id, 0),
 		COALESCE(u.display_name, ug.name, '')
-		FROM project_permissions g
+		FROM permission_rules g
 		LEFT JOIN users u ON u.id = g.user_id
 		LEFT JOIN user_groups ug ON ug.id = g.group_id
-		WHERE g.project_id = ? ORDER BY g.permission, g.holder, 4`, func(rows *sql.Rows) error {
+		WHERE g.project_id = ? AND g.effect = 'allow' ORDER BY g.permission, g.holder, 4`, func(rows *sql.Rows) error {
 		var g grantOut
 		if err := rows.Scan(&g.Permission, &g.Holder, &g.ID, &g.Name); err != nil {
 			return err
@@ -350,7 +350,7 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM project_permissions WHERE project_id = ?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM permission_rules WHERE project_id = ? AND effect = 'allow'`, id); err != nil {
 		return err
 	}
 	seen := map[grantOut]bool{}
@@ -380,8 +380,8 @@ func (s *Server) putPermissions(w http.ResponseWriter, r *http.Request) error {
 				return fail(http.StatusBadRequest, i18n.ProjectGranteeNotFound)
 			}
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, user_id,
-			group_id) VALUES (?, ?, ?, ?, ?)`, id, g.Permission, g.Holder, user, group); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO permission_rules (project_id, permission, effect, holder,
+			user_id, group_id) VALUES (?, ?, 'allow', ?, ?, ?)`, id, g.Permission, g.Holder, user, group); err != nil {
 			return err
 		}
 	}

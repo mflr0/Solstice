@@ -9,10 +9,11 @@ import (
 	"time"
 )
 
-// testRules builds an empty rule set. Tests fill only the grants they need.
+// testRules builds an empty rule set. Tests fill only the rules they need.
 func testRules() *rules {
 	return &rules{
-		grants:   map[int64]map[string][]Grant{},
+		project:  map[int64]map[string][]Rule{},
+		global:   map[string][]Rule{},
 		leads:    map[int64]int64{},
 		archived: map[int64]bool{},
 		levels:   map[int64]level{},
@@ -29,13 +30,12 @@ func (r *rules) member(project, group, parent int64) {
 	r.parents[project][group] = append(r.parents[project][group], parent)
 }
 
-// grant adds one grant for a permission in a project.
-func (r *rules) grant(project int64, p string, g Grant) {
-	if r.grants[project] == nil {
-		r.grants[project] = map[string][]Grant{}
-	}
-	r.grants[project][p] = append(r.grants[project][p], g)
-}
+// grant adds an allow for a permission in a project, or a global one
+// (project 0).
+func (r *rules) grant(project int64, p string, g Grant) { r.add(project, p, Rule{Grant: g}) }
+
+// deny adds a deny for a permission in a project, or a global one (project 0).
+func (r *rules) deny(project int64, p string, g Grant) { r.add(project, p, Rule{Grant: g, Deny: true}) }
 
 // subject builds a subject on the rules with no groups.
 func subject(r *rules, userID int64, admin bool) *Subject {
@@ -814,5 +814,203 @@ func TestAccessors(t *testing.T) {
 	}
 	if !sub.InGroupIn(7, 5) || sub.InGroupIn(7, 6) || sub.InGroupIn(8, 5) || !sub.InGroupIn(8, 3) {
 		t.Error("InGroupIn: wrong group")
+	}
+}
+
+// TestRuleLevels checks the order in which the four levels of rules decide:
+// a user rule of the project, a global user rule, the group rules of the
+// project, then the global group rules, deny beating allow within a level.
+func TestRuleLevels(t *testing.T) {
+	const p int64 = 7
+	reported := &Issue{ProjectID: p, ReporterID: 42}
+	for _, c := range []struct {
+		name   string
+		rules  func(r *rules)
+		groups []int64 // project groups of user 42 in p
+		perm   string
+		is     *Issue
+		want   bool
+	}{
+		{"a project user allow beats a project group deny", func(r *rules) {
+			r.deny(p, Edit, Grant{Holder: Group, GroupID: 5})
+			r.grant(p, Edit, Grant{Holder: User, UserID: 42})
+		}, []int64{5}, Edit, nil, true},
+		{"a project user deny beats a global user allow", func(r *rules) {
+			r.grant(0, Edit, Grant{Holder: User, UserID: 42})
+			r.deny(p, Edit, Grant{Holder: User, UserID: 42})
+		}, nil, Edit, nil, false},
+		{"a project group deny beats a global group allow", func(r *rules) {
+			r.grant(0, Edit, Grant{Holder: Everyone})
+			r.deny(p, Edit, Grant{Holder: Group, GroupID: 5})
+		}, []int64{5}, Edit, nil, false},
+		{"a global group allow applies without a project rule", func(r *rules) {
+			r.grant(0, Edit, Grant{Holder: Everyone})
+			r.deny(p, Edit, Grant{Holder: Group, GroupID: 5})
+		}, nil, Edit, nil, true},
+		{"a global user deny beats a project group allow", func(r *rules) {
+			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
+			r.deny(0, Edit, Grant{Holder: User, UserID: 42})
+		}, []int64{5}, Edit, nil, false},
+		{"two groups at one level, one allow and one deny: deny", func(r *rules) {
+			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
+			r.deny(p, Edit, Grant{Holder: Group, GroupID: 6})
+		}, []int64{5, 6}, Edit, nil, false},
+		{"a deny of a group the user is not in leaves the allow", func(r *rules) {
+			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
+			r.deny(p, Edit, Grant{Holder: Group, GroupID: 6})
+		}, []int64{5}, Edit, nil, true},
+		{"a built-in group deny beats a group allow at its level", func(r *rules) {
+			r.grant(p, Browse, Grant{Holder: Everyone})
+			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
+			r.deny(p, Edit, Grant{Holder: Reporter})
+		}, []int64{5}, Edit, reported, false},
+		{"a rule of another permission does not decide", func(r *rules) {
+			r.deny(p, Comment, Grant{Holder: User, UserID: 42})
+			r.grant(p, Edit, Grant{Holder: Everyone})
+		}, nil, Edit, nil, true},
+		{"no rule at any level: not granted", func(r *rules) {
+			r.grant(p, Edit, Grant{Holder: Group, GroupID: 6})
+		}, []int64{5}, Edit, nil, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := testRules()
+			c.rules(r)
+			sub := subject(r, 42, false)
+			for _, g := range c.groups {
+				addProjectGroup(sub, p, g)
+			}
+			if got := sub.Can(c.perm, p, c.is); got != c.want {
+				t.Errorf("Can(%s) = %v, want %v", c.perm, got, c.want)
+			}
+		})
+	}
+}
+
+// TestGlobalReporterRule checks that a global rule for the built-in reporter
+// grants Edit on the issues a user reported, in every project.
+func TestGlobalReporterRule(t *testing.T) {
+	r := testRules()
+	r.grant(0, Browse, Grant{Holder: Everyone})
+	r.grant(0, Edit, Grant{Holder: Reporter})
+	sub := subject(r, 42, false)
+	for _, p := range []int64{7, 8} {
+		if !sub.Can(Edit, p, &Issue{ProjectID: p, ReporterID: 42}) {
+			t.Errorf("project %d: the reporter may not edit its issue", p)
+		}
+		if sub.Can(Edit, p, &Issue{ProjectID: p, ReporterID: 43}) {
+			t.Errorf("project %d: edits someone else's issue", p)
+		}
+		if sub.Can(Edit, p, nil) {
+			t.Errorf("project %d: a reporter rule matched without an issue", p)
+		}
+	}
+}
+
+// TestBrowseDeny checks that a Browse deny hides the project from VisibleSQL
+// and CanBrowseProject, also for an issue the user reported.
+func TestBrowseDeny(t *testing.T) {
+	const p int64 = 7
+	for _, c := range []struct {
+		name   string
+		rules  func(r *rules)
+		groups []int64
+	}{
+		{"user deny", func(r *rules) {
+			r.grant(p, Browse, Grant{Holder: Everyone})
+			r.grant(p, Browse, Grant{Holder: Reporter})
+			r.deny(p, Browse, Grant{Holder: User, UserID: 42})
+		}, nil},
+		{"group deny at the reporter's level", func(r *rules) {
+			r.grant(p, Browse, Grant{Holder: Reporter})
+			r.deny(p, Browse, Grant{Holder: Group, GroupID: 5})
+		}, []int64{5}},
+		{"global user deny over a global reporter allow", func(r *rules) {
+			r.grant(0, Browse, Grant{Holder: Reporter})
+			r.deny(0, Browse, Grant{Holder: User, UserID: 42})
+		}, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := testRules()
+			r.leads[p] = 0
+			c.rules(r)
+			sub := subject(r, 42, false)
+			for _, g := range c.groups {
+				addProjectGroup(sub, p, g)
+			}
+			if where, args := sub.VisibleSQL("i"); where != "FALSE" || args != nil {
+				t.Errorf("VisibleSQL = %q %v, want FALSE", where, args)
+			}
+			if sub.CanBrowseProject(p) {
+				t.Error("CanBrowseProject = true")
+			}
+			if sub.CanSee(Issue{ProjectID: p, ReporterID: 42, AssigneeID: 42}) {
+				t.Error("CanSee of a reported issue = true")
+			}
+		})
+	}
+}
+
+// TestVisibleSQLRules checks the filter for what only rules beyond
+// project allows give: global rules and relation masks from denies.
+func TestVisibleSQLRules(t *testing.T) {
+	t.Run("a global allow covers every project", func(t *testing.T) {
+		r := testRules()
+		r.leads[8], r.leads[7] = 0, 0
+		r.grant(0, Browse, Grant{Holder: Everyone})
+		where, args := subject(r, 42, false).VisibleSQL("i")
+		want := "(i.project_id IN (?, ?)) AND (i.security_level_id IS NULL)"
+		if where != want || !reflect.DeepEqual(args, []any{int64(7), int64(8)}) {
+			t.Errorf("VisibleSQL = %q %v, want %q [7 8]", where, args, want)
+		}
+	})
+
+	t.Run("everything but the reported issues", func(t *testing.T) {
+		r := testRules()
+		r.grant(7, Browse, Grant{Holder: Everyone})
+		r.deny(7, Browse, Grant{Holder: Reporter})
+		sub := subject(r, 42, false)
+		where, args := sub.VisibleSQL("i")
+		want := "((i.project_id IN (?) AND ((NOT (i.reporter_id <=> ?) AND NOT (i.assignee_id <=> ?)) OR " +
+			"(NOT (i.reporter_id <=> ?) AND i.assignee_id = ?)))) AND (i.security_level_id IS NULL)"
+		wantArgs := []any{int64(7), int64(42), int64(42), int64(42), int64(42)}
+		if where != want || !reflect.DeepEqual(args, wantArgs) {
+			t.Errorf("VisibleSQL\n got %q %v\nwant %q %v", where, args, want, wantArgs)
+		}
+		if !sub.CanBrowseProject(7) {
+			t.Error("CanBrowseProject = false")
+		}
+	})
+}
+
+// TestAdministersWithDeny checks that a global administrator still
+// administers a project where Admin is denied to it.
+func TestAdministersWithDeny(t *testing.T) {
+	r := testRules()
+	r.deny(7, Admin, Grant{Holder: User, UserID: 1})
+	r.deny(0, Admin, Grant{Holder: Everyone})
+	if !subject(r, 1, true).Administers(7) {
+		t.Error("a global administrator denied Admin does not administer")
+	}
+	if subject(r, 1, false).Administers(7) {
+		t.Error("a user denied Admin administers")
+	}
+}
+
+// TestHoldersSQLWithDenies checks the query listing holders once a deny
+// applies: one term per level, less the users a more specific level decided.
+func TestHoldersSQLWithDenies(t *testing.T) {
+	r := testRules()
+	r.grant(7, Edit, Grant{Holder: Group, GroupID: 3})
+	r.deny(7, Edit, Grant{Holder: User, UserID: 42})
+	r.grant(0, Edit, Grant{Holder: User, UserID: 43})
+	r.deny(0, Edit, Grant{Holder: Everyone})
+	s := &Store{rules: r, loadedAt: time.Now()}
+	q, args, err := s.HoldersSQL(context.Background(), 7, Edit)
+	want := "SELECT id FROM users WHERE " +
+		"(id NOT IN (SELECT ?) AND id IN (SELECT ?)) OR " +
+		"(id NOT IN (SELECT ?) AND id NOT IN (SELECT ?) AND id IN (" + groupSQL(1) + "))"
+	wantArgs := []any{int64(42), int64(43), int64(42), int64(43), int64(3), int64(7), int64(3)}
+	if err != nil || q != want || !reflect.DeepEqual(args, wantArgs) {
+		t.Errorf("HoldersSQL\n got %q %v %v\nwant %q %v", q, args, err, want, wantArgs)
 	}
 }
