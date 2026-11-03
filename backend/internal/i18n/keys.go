@@ -238,6 +238,9 @@ const (
 	ProjectDeleteConfirm       Key = "ProjectDeleteConfirm"
 	ProjectGranteeUnknown      Key = "ProjectGranteeUnknown"
 	ProjectGranteeNotFound     Key = "ProjectGranteeNotFound"
+	PermissionUnknown          Key = "PermissionUnknown"
+	PermissionEffectUnknown    Key = "PermissionEffectUnknown"
+	PermissionTwice            Key = "PermissionTwice"
 	ProjectRenameConfirm       Key = "ProjectRenameConfirm"
 	ProjectKeysBusy            Key = "ProjectKeysBusy"
 )

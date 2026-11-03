@@ -317,16 +317,16 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 // ("edit: group developers"), for comparing them before and after a change.
 func (s *Server) projectGrants(ctx context.Context, projectID int64) (map[string]bool, error) {
 	out := map[string]bool{}
-	err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.holder, COALESCE(u.username, ug.name, '')
+	err := sqlq.Each(ctx, s.db, `SELECT g.permission, g.effect, g.holder, COALESCE(u.username, ug.name, '')
 		FROM permission_rules g
 		LEFT JOIN users u ON u.id = g.user_id
 		LEFT JOIN user_groups ug ON ug.id = g.group_id
-		WHERE g.project_id = ? AND g.effect = 'allow'`, func(rows *sql.Rows) error {
-		var p, holder, name string
-		if err := rows.Scan(&p, &holder, &name); err != nil {
+		WHERE g.project_id = ?`, func(rows *sql.Rows) error {
+		var p, effect, holder, name string
+		if err := rows.Scan(&p, &effect, &holder, &name); err != nil {
 			return err
 		}
-		out[strings.TrimSpace(p+": "+holder+" "+name)] = true
+		out[projectRuleLabel(p, effect, holder, name)] = true
 		return nil
 	}, projectID)
 	return out, err

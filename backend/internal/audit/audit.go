@@ -71,6 +71,8 @@ const (
 	GroupUpdate          = "group.update"
 	GroupDelete          = "group.delete"
 	GroupMembers         = "group.members"
+	GroupPerms           = "group.permissions"
+	UserPerms            = "user.permissions"
 	ProjectGroups        = "project.groups"
 	ProjectCreate        = "project.create"
 	ProjectUpdate        = "project.update"

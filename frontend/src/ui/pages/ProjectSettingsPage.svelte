@@ -218,9 +218,12 @@
     try {
       const d = await api.savePermissions(
         key,
-        grants.map(({ permission, holder, id }) =>
-          id ? { permission, holder, id } : { permission, holder },
-        ),
+        grants.map(({ permission, holder, id, effect }) => ({
+          permission,
+          holder,
+          ...(id ? { id } : {}),
+          ...(effect ? { effect } : {}),
+        })),
       );
       if (key === projectKey) {
         data = d;

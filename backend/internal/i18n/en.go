@@ -215,6 +215,9 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "This project contains issues: type its key to confirm the deletion.",
 	ProjectGranteeUnknown:      "Unknown grantee: %s.",
 	ProjectGranteeNotFound:     "Grantee not found.",
+	PermissionUnknown:          "Unknown permission: %s.",
+	PermissionEffectUnknown:    "Unknown effect: %s. Use allow or deny.",
+	PermissionTwice:            "Permission %s is listed twice.",
 	ProjectRenameConfirm:       "Type the current key of the project to confirm the change.",
 	ProjectKeysBusy:            "Another change of a project key is in progress. Try again in a moment.",
 

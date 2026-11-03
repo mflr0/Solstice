@@ -218,6 +218,9 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: मिटाने की पुष्टि के लिए इसकी कुंजी टाइप करें।",
 	ProjectGranteeUnknown:      "अज्ञात अनुमति-प्राप्तकर्ता: %s।",
 	ProjectGranteeNotFound:     "अनुमति-प्राप्तकर्ता नहीं मिला।",
+	PermissionUnknown:          "अज्ञात अनुमति: %s।",
+	PermissionEffectUnknown:    "अज्ञात प्रभाव: %s। allow या deny का उपयोग करें।",
+	PermissionTwice:            "अनुमति %s दो बार दी गई है।",
 	ProjectRenameConfirm:       "बदलाव की पुष्टि के लिए प्रोजेक्ट की मौजूदा कुंजी टाइप करें।",
 	ProjectKeysBusy:            "प्रोजेक्ट कुंजी का एक और बदलाव चल रहा है। थोड़ी देर बाद फिर कोशिश करें।",
 

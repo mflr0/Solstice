@@ -31,6 +31,13 @@ func (s *Server) adminRoutes(route routeFunc) {
 	route("DELETE /api/admin/groups/{id}", s.deleteGroup, auth.ScopeAdmin)
 	route("POST /api/admin/groups/{id}/members", s.addGroupMembers, auth.ScopeAdmin)
 	route("DELETE /api/admin/groups/{id}/members/{user}", s.removeGroupMember, auth.ScopeAdmin)
+	route("GET /api/admin/groups/{id}/permissions", s.getRules(s.groupHolder), auth.ScopeAdmin)
+	route("PUT /api/admin/groups/{id}/permissions", s.putRules(s.groupHolder), auth.ScopeAdmin)
+	route("GET /api/admin/builtin-groups/{holder}/permissions", s.getRules(s.builtinHolder), auth.ScopeAdmin)
+	route("PUT /api/admin/builtin-groups/{holder}/permissions", s.putRules(s.builtinHolder), auth.ScopeAdmin)
+	route("GET /api/admin/users/{id}/permissions", s.getRules(s.userHolder), auth.ScopeAdmin)
+	route("PUT /api/admin/users/{id}/permissions", s.putRules(s.userHolder), auth.ScopeAdmin)
+	route("GET /api/admin/users/{id}/access", s.userAccess, auth.ScopeAdmin)
 	route("GET /api/projects/{key}/groups", s.getProjectGroups, auth.ScopeRead)
 	route("PUT /api/projects/{key}/groups/{group}", s.putProjectGroup, auth.ScopeProjects)
 

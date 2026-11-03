@@ -266,8 +266,7 @@ Per project — project admin:
   project. 400 when a member group would make the group, directly or through
   others, a member of itself there. (`project.groups`)
 
-Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
-(holders: `everyone`, `user`, `group`, `lead`, `reporter`, `assignee`).
+Permission rules, of a project or global, are in section 16.
 
 ---
 
@@ -1002,3 +1001,56 @@ Errors:
   target; choices still missing.
 - 409: the issue or a sub-task changed after the plan was made, or while the
   move ran. Nothing moved; reload and try again.
+
+---
+
+## 16. Permission rules
+
+A rule allows a permission to a holder, or denies it, in one project or
+globally (in every project). Holders: `user`, `group`, and the built-in
+groups `everyone`, `lead`, `reporter`, `assignee`. The most specific level
+with a rule matching the user decides: a user rule of the project
+(`projectUser`), a global user rule (`globalUser`), the group rules of the
+project, built-in groups included (`projectGroup`), then the global group
+rules (`globalGroup`). Within a level, deny beats allow. With no matching rule
+at any level, the permission is not granted. In an archived project only
+`browse` is granted. Changes apply at once.
+
+Per project — project admin:
+
+- `GET /api/projects/{key}/permissions` → `{permissions: [name], grants:
+  [{permission, holder, id?, name?, effect}], groups: [idName]}`. `id` and
+  `name`: the user or group.
+- `PUT /api/projects/{key}/permissions` `{grants: [{permission, holder, id?,
+  effect?}]}` → as GET. Replaces every rule of the project. `effect` is
+  `allow` or `deny`, `allow` when left out. Unknown permissions are skipped;
+  400 for an unknown holder, effect, user or group. (`project.permissions`,
+  details `{added, removed}`)
+
+Global — global admin. Each holder has at most one rule per permission, and
+only the permissions with a rule are listed (`[{permission, effect}]`, in the
+order of `permissions`):
+
+- `GET|PUT /api/admin/groups/{id}/permissions` (`group.permissions`).
+- `GET|PUT /api/admin/builtin-groups/{holder}/permissions`, `holder` one of
+  `everyone`, `lead`, `reporter`, `assignee` (`group.permissions`, the target
+  id is the holder).
+- `GET|PUT /api/admin/users/{id}/permissions` (`user.permissions`).
+
+PUT takes the whole list, `[{permission, effect?}]` (`effect` `allow` when
+left out), and answers the rules as GET. 400 for an unknown permission or
+effect, or a permission given twice; 404 for an unknown group, user or
+built-in group. The audit entry, written when something changed, has details
+`{added, removed}` (`"browse: allow"`).
+
+Effective access — global admin:
+
+- `GET /api/admin/users/{id}/access?project=KEY` → `[{permission, granted,
+  level, effect, source}]`, one per permission. `level`: `projectUser`,
+  `globalUser`, `projectGroup`, `globalGroup` or `none`; `effect` (`allow`,
+  `deny`) and `source` (`{kind: user|group|builtin, id?, name}`, the holder of
+  the deciding rule) are null for `none`. It is computed outside any issue:
+  `reporter` and `assignee` rules never match. In an archived project a rule
+  may decide and `granted` still be false. A global administrator is granted
+  `admin` with or without a rule. 400 without `project`, 404 for an unknown
+  user or project.

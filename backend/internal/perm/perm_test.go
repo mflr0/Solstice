@@ -1014,3 +1014,54 @@ func TestHoldersSQLWithDenies(t *testing.T) {
 		t.Errorf("HoldersSQL\n got %q %v %v\nwant %q %v", q, args, err, want, wantArgs)
 	}
 }
+
+// TestAccess checks that Access names the level and the rule that decide,
+// as Can decides.
+func TestAccess(t *testing.T) {
+	const p int64 = 7
+	r := testRules()
+	r.grant(0, Browse, Grant{Holder: Everyone})
+	r.grant(0, Create, Grant{Holder: Group, GroupID: 3})
+	r.deny(p, Create, Grant{Holder: Group, GroupID: 3})
+	r.grant(p, Create, Grant{Holder: Everyone})
+	r.grant(0, Edit, Grant{Holder: Group, GroupID: 3})
+	r.deny(0, Edit, Grant{Holder: User, UserID: 42})
+	r.deny(0, Comment, Grant{Holder: Everyone})
+	r.grant(p, Comment, Grant{Holder: User, UserID: 42})
+	r.leads[p] = 9
+
+	user := subject(r, 42, false)
+	addGroup(user, 3, "")
+	for _, c := range []struct {
+		perm    string
+		granted bool
+		level   string
+		rule    Rule
+	}{
+		{Browse, true, LevelGlobalGroup, Rule{Grant: Grant{Holder: Everyone}}},
+		{Create, false, LevelProjectGroup, Rule{Grant: Grant{Holder: Group, GroupID: 3}, Deny: true}},
+		{Edit, false, LevelGlobalUser, Rule{Grant: Grant{Holder: User, UserID: 42}, Deny: true}},
+		{Comment, true, LevelProjectUser, Rule{Grant: Grant{Holder: User, UserID: 42}}},
+		{Delete, false, LevelNone, Rule{}},
+	} {
+		a := user.Access(c.perm, p)
+		if a != (Access{c.granted, c.level, c.rule}) {
+			t.Errorf("Access(%s) = %+v, want %v %s %+v", c.perm, a, c.granted, c.level, c.rule)
+		}
+		if a.Granted != user.Can(c.perm, p, nil) {
+			t.Errorf("Access(%s).Granted = %v, Can disagrees", c.perm, a.Granted)
+		}
+	}
+
+	r.archived[p] = true
+	if a := user.Access(Comment, p); a.Granted || a.Level != LevelProjectUser {
+		t.Errorf("archived: Access(comment) = %+v, want refused, still naming the project user rule", a)
+	}
+	if a := user.Access(Browse, p); !a.Granted {
+		t.Errorf("archived: Access(browse) = %+v, want granted", a)
+	}
+	admin := subject(r, 1, true)
+	if a := admin.Access(Admin, p); !a.Granted || a.Level != LevelNone {
+		t.Errorf("global admin: Access(admin) = %+v, want granted with no rule", a)
+	}
+}
