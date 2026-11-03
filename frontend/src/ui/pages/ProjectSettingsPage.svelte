@@ -44,6 +44,11 @@
   let adding = $state<Permission | null>(null);
   let kind = $state<Holder>('group');
   let pick = $state('');
+  /** The group whose "add a member" box is open, or 0 for the "add a group" box. */
+  let addingTo = $state<number | null>(null);
+  let memberKind = $state<'user' | 'group'>('user');
+  let memberPick = $state('');
+  let changing = $state(false);
 
   const signature = (list: Grant[]) =>
     list
@@ -111,6 +116,7 @@
     error = '';
     forbidden = false;
     adding = null;
+    addingTo = null;
     api
       .permissions(key)
       .then((d) => {
@@ -158,6 +164,52 @@
     } else if (kind !== 'user') {
       add(p, { holder: kind });
     }
+  }
+
+  function openAdder(id: number) {
+    addingTo = addingTo === id ? null : id;
+    memberKind = 'user';
+    memberPick = '';
+  }
+
+  function addGroup() {
+    const found = data?.groups.find((x) => String(x.id) === memberPick);
+    addingTo = null;
+    if (!found || members.some((m) => m.id === found.id)) return;
+    members = [
+      ...members,
+      {
+        id: found.id,
+        name: found.name,
+        description: null,
+        fromDirectory: false,
+        users: [],
+        groups: [],
+      },
+    ];
+  }
+
+  /** Saves a group's project members at once; on failure nothing changes. */
+  async function setMembers(g: ProjectGroup, users: number[], groups: number[]) {
+    const key = projectKey;
+    changing = true;
+    try {
+      const next = await projectAdminApi.setGroupMembers(key, g.id, { users, groups });
+      if (key === projectKey) members = members.map((m) => (m.id === g.id ? next : m));
+      addingTo = null;
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    } finally {
+      changing = false;
+    }
+  }
+
+  const userIds = (g: ProjectGroup) => g.users.map((u) => u.id);
+  const groupIds = (g: ProjectGroup) => g.groups.map((x) => x.id);
+
+  async function memberCandidates(g: ProjectGroup, q: string): Promise<UserRef[]> {
+    const ids = new Set(userIds(g));
+    return (await api.users(q)).filter((u) => !ids.has(u.id));
   }
 
   async function save() {
@@ -362,9 +414,102 @@
                   <dt>{r.name}</dt>
                   <dd>
                     {#each r.groups as g (g.id)}<span class="chip"
-                        >{holderLabels.group} {g.name}</span
+                        ><span class="kind">{holderLabels.group}</span>
+                        {g.name}<button
+                          type="button"
+                          disabled={changing}
+                          aria-label={`${t.common.remove} ${g.name}`}
+                          onclick={() =>
+                            void setMembers(
+                              r,
+                              userIds(r),
+                              groupIds(r).filter((x) => x !== g.id),
+                            )}>×</button
+                        ></span
                       >{/each}
-                    {#each r.users as u (u.id)}<span class="chip">{u.name}</span>{/each}
+                    {#each r.users as u (u.id)}<span class="chip"
+                        >{u.name}<button
+                          type="button"
+                          disabled={changing}
+                          aria-label={`${t.common.remove} ${u.name}`}
+                          onclick={() =>
+                            void setMembers(
+                              r,
+                              userIds(r).filter((x) => x !== u.id),
+                              groupIds(r),
+                            )}>×</button
+                        ></span
+                      >{/each}
+                    {#if !r.users.length && !r.groups.length}
+                      <span class="nobody">{t.settings.noMembers}</span>
+                    {/if}
+                    <span class="adder" use:outside={() => addingTo === r.id && (addingTo = null)}>
+                      <button
+                        type="button"
+                        class="link-btn"
+                        aria-expanded={addingTo === r.id}
+                        aria-label={t.settings.addMemberTo(r.name)}
+                        onclick={() => openAdder(r.id)}>+ {t.settings.addMember}</button
+                      >
+                      {#if addingTo === r.id}
+                        <div class="popover add">
+                          <div class="field">
+                            <span>{t.settings.memberKind}</span>
+                            <Dropdown
+                              label={t.settings.memberKind}
+                              value={memberKind}
+                              options={(['user', 'group'] as const).map((k) => ({
+                                value: k,
+                                label: holderLabels[k],
+                              }))}
+                              onchange={(v) => {
+                                memberKind = v as 'user' | 'group';
+                                memberPick = '';
+                              }}
+                            />
+                          </div>
+                          {#if memberKind === 'user'}
+                            <div class="field">
+                              <span class="field-label">{t.settings.chooseUser}</span>
+                              <UserPicker
+                                field
+                                value={null}
+                                label={t.settings.chooseUser}
+                                allowNone={false}
+                                noneLabel="…"
+                                disabled={changing}
+                                search={(q) => memberCandidates(r, q)}
+                                onpick={(u: UserRef | null) =>
+                                  u && void setMembers(r, [...userIds(r), u.id], groupIds(r))}
+                              />
+                            </div>
+                          {:else}
+                            <div class="field">
+                              <span>{t.settings.chooseGroup}</span>
+                              <Dropdown
+                                label={t.settings.chooseGroup}
+                                value={memberPick}
+                                search
+                                options={data.groups
+                                  .filter((x) => x.id !== r.id && !groupIds(r).includes(x.id))
+                                  .map((x) => ({ value: String(x.id), label: x.name }))}
+                                placeholder="…"
+                                onchange={(v) => (memberPick = v)}
+                              />
+                            </div>
+                            <button
+                              class="btn btn-small btn-primary"
+                              disabled={!memberPick || changing}
+                              onclick={() =>
+                                void setMembers(r, userIds(r), [
+                                  ...groupIds(r),
+                                  Number(memberPick),
+                                ])}>{t.common.add}</button
+                            >
+                          {/if}
+                        </div>
+                      {/if}
+                    </span>
                   </dd>
                 </div>
               {/each}
@@ -372,6 +517,34 @@
           {:else}
             <p class="nobody">{t.settings.noProjectMembers}</p>
           {/if}
+          <div class="adder group-adder" use:outside={() => addingTo === 0 && (addingTo = null)}>
+            <button
+              type="button"
+              class="link-btn"
+              aria-expanded={addingTo === 0}
+              onclick={() => openAdder(0)}>+ {t.settings.addGroup}</button
+            >
+            {#if addingTo === 0}
+              <div class="popover add">
+                <div class="field">
+                  <span>{t.settings.chooseGroup}</span>
+                  <Dropdown
+                    label={t.settings.chooseGroup}
+                    value={memberPick}
+                    search
+                    options={data.groups
+                      .filter((x) => !members.some((m) => m.id === x.id))
+                      .map((x) => ({ value: String(x.id), label: x.name }))}
+                    placeholder="…"
+                    onchange={(v) => (memberPick = v)}
+                  />
+                </div>
+                <button class="btn btn-small btn-primary" disabled={!memberPick} onclick={addGroup}
+                  >{t.common.add}</button
+                >
+              </div>
+            {/if}
+          </div>
 
           {#if dirty}
             <div class="savebar" role="region" aria-label={t.settings.unsaved}>
@@ -503,7 +676,7 @@
     gap: 6px;
   }
 
-  .roles div {
+  .roles > div {
     display: grid;
     grid-template-columns: 12.5rem 1fr;
     gap: 10px;
@@ -520,6 +693,31 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .roles .kind {
+    font: 500 0.6875rem/1 var(--font-body);
+    color: var(--muted);
+  }
+
+  .group-adder {
+    display: inline-block;
+    margin-top: 8px;
+  }
+
+  /* On a phone the group's name goes above its members, and "add a member"
+     starts its own line, so its box opens at the left edge and fits. */
+  @media (max-width: 600px) {
+    .roles > div {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+
+    .roles .adder {
+      flex-basis: 100%;
+    }
   }
 
   /* On a phone the tabs scroll sideways rather than widen the page. The box
