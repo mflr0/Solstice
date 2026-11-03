@@ -1532,6 +1532,20 @@ export const it: Messages = {
         'Il gruppo viene tolto dai permessi, dalle appartenenze ai progetti e dai livelli di riservatezza che lo usano. I suoi membri conservano il loro account.',
       deleted: (name: string) => `Gruppo ${name} eliminato.`,
       inUse: (items: string) => `Ancora riservati a questo gruppo: ${items}.`,
+      notSet: 'Non impostato',
+      defaults: 'Permessi predefiniti',
+      defaultsHint:
+        'Valgono in ogni progetto. Una regola impostata in un progetto, o per una persona, ha la precedenza. Salvati con il gruppo.',
+      defaultName: (group: string, permission: string, state: string) =>
+        `${group}, ${permission}: ${state}`,
+      builtinHint:
+        'Un gruppo predefinito: chi ne fa parte dipende dal progetto o dal ticket, quindi non ha nome né membri da modificare.',
+      builtinDescriptions: {
+        everyone: 'Chiunque abbia un account.',
+        lead: 'Il responsabile di ogni progetto.',
+        reporter: 'La persona che ha aperto il ticket.',
+        assignee: 'La persona a cui è assegnato il ticket.',
+      },
     },
   },
 

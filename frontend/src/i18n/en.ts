@@ -1519,6 +1519,20 @@ export const en = {
         'The group is removed from the permissions, project memberships and security levels that use it. Its members keep their accounts.',
       deleted: (name: string) => `Group ${name} deleted.`,
       inUse: (items: string) => `Still restricted to this group: ${items}.`,
+      notSet: 'Not set',
+      defaults: 'Default permissions',
+      defaultsHint:
+        'They apply in every project. A rule set in a project, or for a person, comes first. Saved with the group.',
+      defaultName: (group: string, permission: string, state: string) =>
+        `${group}, ${permission}: ${state}`,
+      builtinHint:
+        'A built-in group: who is in it depends on the project or the issue, so it has no name or members to edit.',
+      builtinDescriptions: {
+        everyone: 'Everyone with an account.',
+        lead: 'The lead of each project.',
+        reporter: 'The person who reported the issue.',
+        assignee: 'The person the issue is assigned to.',
+      },
     },
   },
 

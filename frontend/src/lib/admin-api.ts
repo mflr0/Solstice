@@ -8,6 +8,7 @@ import type {
   AccessToken,
   AdminOAuthGrant,
   AuditPage,
+  BuiltinGroup,
   CatalogInput,
   CatalogItem,
   CatalogKind,
@@ -46,6 +47,7 @@ import type {
   SubscriptionInput,
   OAuthGrant,
   OAuthRequest,
+  PermissionRule,
   TokenScope,
   TokenSettings,
   Webhook,
@@ -121,6 +123,14 @@ export const adminApi = {
     request<GroupDetail>('POST', `/api/admin/groups/${id}/members`, { users }),
   removeMember: (id: number, user: number) =>
     request<void>('DELETE', `/api/admin/groups/${id}/members/${user}`),
+  groupPermissions: (id: number) =>
+    request<PermissionRule[]>('GET', `/api/admin/groups/${id}/permissions`),
+  setGroupPermissions: (id: number, rules: PermissionRule[]) =>
+    request<PermissionRule[]>('PUT', `/api/admin/groups/${id}/permissions`, rules),
+  builtinPermissions: (holder: BuiltinGroup) =>
+    request<PermissionRule[]>('GET', `/api/admin/builtin-groups/${holder}/permissions`),
+  setBuiltinPermissions: (holder: BuiltinGroup, rules: PermissionRule[]) =>
+    request<PermissionRule[]>('PUT', `/api/admin/builtin-groups/${holder}/permissions`, rules),
 
   // Projects.
   /** Every project, archived ones included, seen or not. */
