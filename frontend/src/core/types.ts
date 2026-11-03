@@ -357,6 +357,7 @@ export interface Grant {
   holder: Holder;
   id?: number;
   name?: string;
+  effect?: 'allow' | 'deny';
 }
 
 export interface ProjectPermissions {

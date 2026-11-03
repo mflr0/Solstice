@@ -416,37 +416,83 @@ func (s *Subject) CanSee(is Issue) bool { return s.Can(Browse, is.ProjectID, &is
 // possibly only the issues it reported or is assigned.
 func (s *Subject) CanBrowseProject(project int64) bool { return s.browseMask(project) != 0 }
 
+// Levels of rules, from the most specific.
+const (
+	LevelProjectUser  = "projectUser"
+	LevelGlobalUser   = "globalUser"
+	LevelProjectGroup = "projectGroup"
+	LevelGlobalGroup  = "globalGroup"
+	LevelNone         = "none"
+)
+
 // decide applies the rules of permission p in a project to the subject, on
-// an issue when is is not nil: the first level with a rule the subject
-// matches decides (user rules of the project, then global ones, then group
-// rules of the project, then global ones), deny beating allow within it.
+// an issue when is is not nil.
 func (s *Subject) decide(p string, project int64, is *Issue) bool {
-	if s.UserID == 0 {
-		return false
-	}
-	scopes := [2][]Rule{s.rules.project[project][p], s.rules.global[p]}
-	for _, users := range []bool{true, false} {
-		for _, rs := range scopes {
-			if allow, decided := s.level(rs, users, project, is); decided {
-				return allow
-			}
-		}
-	}
-	return false
+	rl, lvl := s.perm(p, project, is)
+	return lvl != LevelNone && !rl.Deny
 }
 
-// level applies the user rules of rs (users) or its group rules (!users).
-func (s *Subject) level(rs []Rule, users bool, project int64, is *Issue) (allow, decided bool) {
+// perm returns the rule of permission p that decides for the subject in a
+// project, on an issue when is is not nil, and its level: the first level
+// with a rule the subject matches decides (user rules of the project, then
+// global ones, then group rules of the project, then global ones), a deny
+// beating an allow within it. With no such rule, the level is LevelNone.
+func (s *Subject) perm(p string, project int64, is *Issue) (Rule, string) {
+	if s.UserID == 0 {
+		return Rule{}, LevelNone
+	}
+	levels := [4]struct {
+		name  string
+		rs    []Rule
+		users bool
+	}{
+		{LevelProjectUser, s.rules.project[project][p], true},
+		{LevelGlobalUser, s.rules.global[p], true},
+		{LevelProjectGroup, s.rules.project[project][p], false},
+		{LevelGlobalGroup, s.rules.global[p], false},
+	}
+	for _, l := range levels {
+		if rl, decided := s.level(l.rs, l.users, project, is); decided {
+			return rl, l.name
+		}
+	}
+	return Rule{}, LevelNone
+}
+
+// level returns the rule that decides among the user rules of rs (users) or
+// its group rules (!users): the first deny the subject matches, else the
+// first allow.
+func (s *Subject) level(rs []Rule, users bool, project int64, is *Issue) (rule Rule, decided bool) {
 	for _, rl := range rs {
 		if (rl.Holder == User) != users || !s.holds(rl.Grant, project, is) {
 			continue
 		}
 		if rl.Deny {
-			return false, true
+			return rl, true
 		}
-		decided = true
+		if !decided {
+			rule, decided = rl, true
+		}
 	}
-	return decided, decided
+	return rule, decided
+}
+
+// Access is whether a subject has a permission in a project, and why.
+type Access struct {
+	Granted bool
+	Level   string // LevelNone when no rule decided
+	Rule    Rule   // the deciding rule, unless Level is LevelNone
+}
+
+// Access tells whether the subject has permission p in a project, outside
+// any issue, as Can and Administers decide, with the rule that decided.
+func (s *Subject) Access(p string, project int64) Access {
+	rl, lvl := s.perm(p, project, nil)
+	granted := s.Can(p, project, nil)
+	if p == Admin {
+		granted = s.Administers(project)
+	}
+	return Access{Granted: granted, Level: lvl, Rule: rl}
 }
 
 // The subject's relations to an issue that rules can depend on, as the bits

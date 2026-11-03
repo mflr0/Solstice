@@ -183,6 +183,7 @@ type grantOut struct {
 	Holder     string `json:"holder"`
 	ID         int64  `json:"id,omitempty"`
 	Name       string `json:"name,omitempty"`
+	Effect     string `json:"effect,omitempty"`
 }
 
 type updateStateOut struct {

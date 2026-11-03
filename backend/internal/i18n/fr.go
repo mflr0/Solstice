@@ -217,6 +217,9 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.",
 	ProjectGranteeUnknown:      "Bénéficiaire inconnu : %s.",
 	ProjectGranteeNotFound:     "Bénéficiaire introuvable.",
+	PermissionUnknown:          "Permission inconnue : %s.",
+	PermissionEffectUnknown:    "Effet inconnu : %s. Utilisez allow ou deny.",
+	PermissionTwice:            "La permission %s figure deux fois.",
 	ProjectRenameConfirm:       "Tapez la clé actuelle du projet pour confirmer le changement.",
 	ProjectKeysBusy:            "Un autre changement de clé de projet est en cours. Réessayez dans un instant.",
 

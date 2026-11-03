@@ -217,6 +217,9 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectDeleteConfirm:       "Dieses Projekt enthält Vorgänge: Geben Sie seinen Schlüssel ein, um die Löschung zu bestätigen.",
 	ProjectGranteeUnknown:      "Unbekannter Berechtigungsempfänger: %s.",
 	ProjectGranteeNotFound:     "Berechtigungsempfänger nicht gefunden.",
+	PermissionUnknown:          "Unbekannte Berechtigung: %s.",
+	PermissionEffectUnknown:    "Unbekannte Wirkung: %s. Erlaubt sind allow und deny.",
+	PermissionTwice:            "Die Berechtigung %s ist doppelt angegeben.",
 	ProjectRenameConfirm:       "Geben Sie den aktuellen Schlüssel des Projekts ein, um die Änderung zu bestätigen.",
 	ProjectKeysBusy:            "Eine andere Änderung eines Projektschlüssels läuft gerade. Versuchen Sie es gleich noch einmal.",
 
