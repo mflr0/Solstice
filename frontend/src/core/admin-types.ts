@@ -405,7 +405,7 @@ export interface ProjectInput {
   template: ProjectTemplate;
   access?: ProjectAccess;
   issueTypes?: string[];
-  defaultAssignee?: 'unassigned' | 'lead';
+  defaultAssignee?: 'unassigned' | 'lead' | 'reporter';
 }
 
 export interface ProjectPatch {
@@ -413,7 +413,7 @@ export interface ProjectPatch {
   description?: string | null;
   lead?: number | null;
   category?: number | null;
-  defaultAssignee?: 'unassigned' | 'lead';
+  defaultAssignee?: 'unassigned' | 'lead' | 'reporter';
   issueTypes?: string[];
 }
 

@@ -174,9 +174,10 @@ func checkIssueTypes(cat *catalog, ids []string) ([]string, error) {
 	return out, nil
 }
 
-// checkAssigneeType refuses a default assignee other than unassigned or lead.
+// checkAssigneeType refuses a default assignee other than unassigned, lead or
+// reporter.
 func checkAssigneeType(t string) error {
-	if t != "unassigned" && t != "lead" {
+	if t != "unassigned" && t != "lead" && t != "reporter" {
 		return fail(http.StatusBadRequest, i18n.ProjectAssigneeTypeUnknown)
 	}
 	return nil

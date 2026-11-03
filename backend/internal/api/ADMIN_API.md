@@ -292,8 +292,9 @@ Grants themselves stay on `GET|PUT /api/projects/{key}/permissions`
   characters, unique among current **and former** keys (409).
 - `name` required, unique (409); `lead` an active user, or null for no
   lead (absent: the creator); `category` a category id or null.
-- `defaultAssignee`: `unassigned` (default) or `lead`; `lead` without a
-  lead is a 400.
+- `defaultAssignee`: `unassigned` (default), `lead` or `reporter`; `lead`
+  without a lead is a 400. `reporter` sends a new issue to its reporter when
+  they may be assigned issues in the project, otherwise leaves it unassigned.
 - `template`: `software` (statuses To Do / In Progress / In Review / Done) or
   `simple` (To Do / In Progress / Done), named in the instance's default
   language. Statuses are reused by name (any case) or created; the project
@@ -333,7 +334,7 @@ issues}]`, active first, then archived, by name.
 
 `PATCH /api/projects/{key}`
 `{name?, description? (null clears), lead? (id | null), category? (id | null),
-defaultAssignee? ("unassigned" | "lead"), issueTypes?: [typeId]}`
+defaultAssignee? ("unassigned" | "lead" | "reporter"), issueTypes?: [typeId]}`
 → the settings object: `{id, key, name, description, kind, lead (userRef | null),
 category (idName | null), defaultAssignee, archived, issueTypes: [typeRef],
 issues}`. Removing an issue type still used by issues: 409 `{inUse:

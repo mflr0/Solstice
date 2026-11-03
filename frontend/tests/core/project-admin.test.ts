@@ -256,6 +256,9 @@ describe('creation: issue types and default assignee', () => {
     expect(
       projectPayload({ ...form, issueTypes: ['task'], defaultAssignee: 'lead' }),
     ).toMatchObject({ issueTypes: ['task'], defaultAssignee: 'lead' });
+    expect(projectPayload({ ...form, defaultAssignee: 'reporter' })).toMatchObject({
+      defaultAssignee: 'reporter',
+    });
   });
 });
 

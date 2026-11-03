@@ -245,7 +245,7 @@ func (s *Server) moveAssigneeFor(ctx context.Context, d *moveDest, row *issueRow
 	for _, c := range components {
 		ids = append(ids, c.ID)
 	}
-	return s.newIssueAssignee(ctx, d.id, d.lead, d.defaultAssignee, ids)
+	return s.newIssueAssignee(ctx, d.id, d.lead, row.ReporterID.Int64, d.defaultAssignee, ids)
 }
 
 // movedFields are the custom fields with values on an issue that do not

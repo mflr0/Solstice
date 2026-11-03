@@ -1159,7 +1159,7 @@ func (s *Server) planIssue(ctx context.Context, sub *perm.Subject, f fields, o c
 				return nil, err
 			}
 		}
-		if p.assignee, err = s.newIssueAssignee(ctx, projectID, leadID, defaultAssignee, components); err != nil {
+		if p.assignee, err = s.newIssueAssignee(ctx, projectID, leadID, p.reporter, defaultAssignee, components); err != nil {
 			return nil, err
 		}
 	}
@@ -1371,8 +1371,9 @@ func (s *Server) projectHasLevel(ctx context.Context, projectID, levelID int64) 
 
 // newIssueAssignee is who a new issue with these components is assigned to
 // when nobody is named: the first component that decides, else the project's
-// lead if that is its rule.
-func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead int64, defaultAssignee string, components []int64) (any, error) {
+// lead or the issue's reporter if that is its rule.
+func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead, reporter int64, defaultAssignee string,
+	components []int64) (any, error) {
 	raw, err := json.Marshal(components)
 	if err != nil {
 		return nil, err
@@ -1380,8 +1381,16 @@ func (s *Server) newIssueAssignee(ctx context.Context, projectID, lead int64, de
 	if who, ok, err := s.componentAssignee(ctx, fields{"components": raw}, projectID, lead); err != nil || ok {
 		return who, err
 	}
-	if defaultAssignee == "lead" && lead != 0 {
-		return lead, nil
+	switch defaultAssignee {
+	case "lead":
+		if lead != 0 {
+			return lead, nil
+		}
+	case "reporter":
+		if ok, err := s.isAssignable(ctx, projectID, reporter); err != nil || !ok {
+			return nil, err
+		}
+		return reporter, nil
 	}
 	return nil, nil
 }

@@ -44,7 +44,7 @@ export interface ProjectSettings {
   kind: string;
   lead: UserRef | null;
   category: IdName | null;
-  defaultAssignee: 'unassigned' | 'lead';
+  defaultAssignee: 'unassigned' | 'lead' | 'reporter';
   archived: boolean;
   /** The issue types allowed in the project, in order. */
   issueTypes: TypeRef[];
@@ -104,7 +104,7 @@ export interface ProjectForm {
   /** The issue types offered in the project; left out, the server offers them all. */
   issueTypes?: string[];
   /** Who new issues go to when nobody is chosen; left out, nobody. */
-  defaultAssignee?: 'unassigned' | 'lead';
+  defaultAssignee?: 'unassigned' | 'lead' | 'reporter';
 }
 
 export type ProjectProblem = 'nameRequired' | 'nameTooLong' | KeyProblem | 'accessRequired';
@@ -342,7 +342,7 @@ export interface GeneralForm {
   description: string;
   lead: UserRef | null;
   category: number | null;
-  defaultAssignee: 'unassigned' | 'lead';
+  defaultAssignee: 'unassigned' | 'lead' | 'reporter';
   /** The issue types offered, in the project's order. */
   issueTypes: string[];
 }
