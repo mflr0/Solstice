@@ -24,11 +24,12 @@ import (
 // The dev seed on an empty database, twice: the second run adds nothing.
 // The counts pin what the issues cover: every type, epics and sub-tasks,
 // links, work logs, attachments and custom field values; and the groups,
-// the security level, group grants and recipients, the restricted comment
-// and work log, the custom workflow and the webhook; the mock users' saved
+// the security level, group grants and recipients, a group's project
+// members, the restricted comments and work log, the custom workflow and the webhook; the mock users' saved
 // filters, favourites, subscription, dashboards and notification preferences.
 // Through the API, tom sees neither the confidential issue nor what is
-// restricted, a developer does, and every gadget of a dashboard finds its
+// restricted, a developer does, a group's project members, direct or through
+// a member group, see the comment restricted to it, and every gadget of a dashboard finds its
 // filter. Then a database with accounts but no seed administrator is refused.
 func TestDevSeed(t *testing.T) {
 	dsn := emptyDB(t)
@@ -166,6 +167,11 @@ func TestDevSeed(t *testing.T) {
 			`SELECT CONCAT(p.pkey, ':', g.name, '=', GROUP_CONCAT(pp.permission ORDER BY pp.permission))
 				FROM project_permissions pp JOIN projects p ON p.id = pp.project_id JOIN user_groups g ON g.id = pp.group_id
 				GROUP BY p.pkey, g.name ORDER BY p.pkey, g.name`,
+			`SELECT CONCAT(p.pkey, ':', g.name, '+=', GROUP_CONCAT(COALESCE(u.username, CONCAT('group:', mg.name))
+				ORDER BY COALESCE(u.username, CONCAT('group:', mg.name))))
+				FROM group_project_members m JOIN projects p ON p.id = m.project_id JOIN user_groups g ON g.id = m.group_id
+				LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups mg ON mg.id = m.member_group_id
+				GROUP BY p.pkey, g.name ORDER BY p.pkey, g.name`,
 			`SELECT CONCAT(p.pkey, ':', r.event, '>', g.name) FROM project_notification_recipients r
 				JOIN projects p ON p.id = r.project_id JOIN user_groups g ON g.id = r.group_id ORDER BY 1`,
 			`SELECT CONCAT('restricted-comments=', COUNT(*)) FROM comments WHERE visibility_group IS NOT NULL`,
@@ -216,7 +222,7 @@ func TestDevSeed(t *testing.T) {
 		t.Fatalf("first run: %v\n%s", err, out.String())
 	}
 	first := read()
-	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "41", "15",
+	want := state{"alice:en giulia:it hans:de marie:fr priya:hi seed*:- tom:-", "41", "16",
 		"DEMO/Products/false/3/3(2,1) MOB/Products/false/2/2(1,0) OLD/-/true/1/1(1,0) OPS/Internal/false/2/0(0,0)",
 		"DEMO:Bug=8 DEMO:Epic=2 DEMO:Story=24 DEMO:Sub-task=3 DEMO:Task=4 " +
 			"MOB:Bug=1 MOB:Epic=1 MOB:Story=1 MOB:Sub-task=1 MOB:Task=10 OPS:Bug=1 OPS:Epic=1 OPS:Task=6",
@@ -225,7 +231,7 @@ func TestDevSeed(t *testing.T) {
 			"votes=12 watchers=67 fields=13 field-types=13 field-values=49 reporters=6",
 		"kanban/4/0,0,0/0 scrum/3/2,1,1/18",
 		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
-			"DEMO:developers=moderate,security OPS:created>office restricted-comments=1 restricted-worklogs=1 " +
+			"DEMO:developers=moderate,security DEMO:release+=group:developers,marie OPS:created>office restricted-comments=2 restricted-worklogs=1 " +
 			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice",
 		"filters=7 shared=5 share-kinds=4 favourites=8 subscriptions=1 dashboards=3 gadgets=11 filter-gadgets=8 " +
 			"notification-prefs=1"}
@@ -307,6 +313,19 @@ func TestDevSeed(t *testing.T) {
 				c.logs)
 		}
 	}
+	// The comment restricted to release, seen by its project members on DEMO,
+	// direct (marie) or through developers (alice), and by tom, in neither.
+	var translate string
+	if err := conn.QueryRowContext(ctx, `SELECT `+key, "Traduire les libellés du tableau de bord").Scan(&translate); err != nil {
+		t.Fatal(err)
+	}
+	for user, want := range map[string]int{"marie": 2, "alice": 2, "tom": 1} {
+		var comments []struct{ Visibility *struct{ Group string } }
+		if status := as(user).get("/api/issues/"+translate+"/comments", &comments); status != 200 || len(comments) != want {
+			t.Errorf("%s reads the comments of %s: %d, %d comments, want %d", user, translate, status, len(comments), want)
+		}
+	}
+
 	for _, user := range []string{"alice", "hans", "marie"} {
 		var d struct {
 			Customised bool

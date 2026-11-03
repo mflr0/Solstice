@@ -321,9 +321,11 @@ Two groups split the mock users: `developers` (alice, hans, giulia, priya)
 and `office` (marie, tom). On `DEMO`, the developers may set the security
 level and moderate, and one issue has the level `Developers only`: tom does
 not see it. A comment and a work log on `DEMO` are restricted to the
-developers too. `OPS` also sends the e-mails about new issues to `office`,
-and its tasks follow the workflow `Purchases`, with the custom status
-`Awaiting approval`. A webhook, `Local listener (not running)`, points at a
+developers too. A third group, `release`, has no global members: on `DEMO`,
+its project members are marie and the group `developers`, and a comment there
+is restricted to it, so tom does not see it either. `OPS` also sends the
+e-mails about new issues to `office`, and its tasks follow the workflow
+`Purchases`, with the custom status `Awaiting approval`. A webhook, `Local listener (not running)`, points at a
 local port where nothing listens, so its deliveries fail.
 
 The seed also makes two boards, with weeks of history for their reports:
