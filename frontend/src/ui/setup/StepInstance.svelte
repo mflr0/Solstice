@@ -76,6 +76,7 @@
       hint={m.instance.tzHint}
       bind:value={tz}
       id="instance-tz"
+      messages={m.language}
     />
 
     <dl class="setup-facts">

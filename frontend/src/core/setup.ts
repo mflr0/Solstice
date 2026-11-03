@@ -136,6 +136,77 @@ export function timeZones(): string[] {
   }
 }
 
+/** A zone's offset from UTC at `at`: `UTC`, `UTC+01:00`, `UTC-05:30`; '' when the browser doesn't know the zone. */
+export function zoneOffset(zone: string, at = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(at);
+    const name = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    return name
+      ? `UTC${name
+          .replace(/^GMT/, '')
+          .replace('\u2212', '-')
+          .replace(/^[+-]00:00$/, '')}`
+      : '';
+  } catch {
+    return '';
+  }
+}
+
+/** A time zone to pick: its IANA name, its current offset and the words the search finds it by. */
+export interface ZoneChoice {
+  zone: string;
+  /** The short offset shown in the badge: `UTC`, `UTC+1`, `UTC\u22125`, `UTC+5:30`. */
+  offset: string;
+  /** The offset in minutes, east of UTC positive. */
+  minutes: number;
+  keywords: string[];
+}
+
+/**
+ * The zones the browser knows, west to east by their offset now, UTC first
+ * among those at UTC, then by name. The search finds a zone by its offset in
+ * short and long form, as UTC or GMT (UTC+1, GMT+01:00), and by its short name
+ * in `locale`, the browser's by default (EST).
+ */
+export function zoneChoices(locale?: string, at = new Date()): ZoneChoice[] {
+  const zones = timeZones();
+  if (!zones.length) return [];
+  const choices = ['UTC', ...zones.filter((z) => z !== 'UTC')].map((zone) => {
+    const long = (zoneOffset(zone, at) || 'UTC').slice(3);
+    const [h = 0, m = 0] = long.slice(1).split(':').map(Number);
+    const minutes = (long.startsWith('-') ? -1 : 1) * (h * 60 + m);
+    const short = long.replace(/^([+-])0?(\d+)(?::00|(:\d+))$/, '$1$2$3');
+    const keywords = [zone.replaceAll('_', ' ')];
+    if (long) keywords.push(`UTC${long}`, `UTC${short}`, `GMT${short}`, `GMT${long}`);
+    else keywords.push('GMT');
+    const abbr = shortZoneName(zone, locale, at);
+    if (abbr && !abbr.startsWith('GMT') && !abbr.startsWith('UTC')) keywords.push(abbr);
+    return { zone, offset: `UTC${short.replace('-', '\u2212')}`, minutes, keywords };
+  });
+  // Stable: UTC, listed first, stays first among the zones at UTC.
+  return choices.sort(
+    (a, b) =>
+      a.minutes - b.minutes ||
+      Number(b.zone === 'UTC') - Number(a.zone === 'UTC') ||
+      (a.zone < b.zone ? -1 : a.zone > b.zone ? 1 : 0),
+  );
+}
+
+function shortZoneName(zone: string, locale: string | undefined, at: Date): string {
+  try {
+    return (
+      new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: 'short' })
+        .formatToParts(at)
+        .find((p) => p.type === 'timeZoneName')?.value ?? ''
+    );
+  } catch {
+    return '';
+  }
+}
+
 /** A public address guessed from the page's own: scheme and host, no path. */
 export function guessBaseURL(origin: string): string {
   try {
