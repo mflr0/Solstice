@@ -212,6 +212,13 @@ export const adminApi = {
   deliveries: (id: number) =>
     request<WebhookDelivery[]>('GET', `/api/admin/webhooks/${id}/deliveries`),
   testWebhook: (id: number) => request<WebhookDelivery>('POST', `/api/admin/webhooks/${id}/test`),
+  /** Tests an address not saved yet; nothing is stored. */
+  testUnsavedWebhook: (input: {
+    name: string;
+    url: string;
+    secret: string;
+    excludeBody: boolean;
+  }) => request<WebhookDelivery>('POST', '/api/admin/webhooks/test', input),
 
   // Access tokens, everyone's.
   tokens: (user: string) => request<AccessToken[]>('GET', `/api/admin/tokens${query({ user })}`),

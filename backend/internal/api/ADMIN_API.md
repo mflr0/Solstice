@@ -815,6 +815,11 @@ and `nextAttempt` are null when unknown.
   `[delivery]`, newest first.
 - `POST /api/admin/webhooks/{id}/test` → the delivery of a `solstice:test`
   event sent now.
+- `POST /api/admin/webhooks/test` `{name, url, secret, excludeBody}` → a
+  `solstice:test` event sent now to an address not saved yet, signed with
+  `secret` when not empty: `{status, statusCode, durationMs, error, …}` as a
+  delivery. The address is checked as when saving. Nothing is stored: no
+  webhook, no delivery, no audit entry.
 
 ### Updates
 

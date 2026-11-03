@@ -91,6 +91,22 @@ type webhookInput struct {
 	LastDelivery any    `json:"lastDelivery"`
 }
 
+// checkHookURL refuses a webhook address that can't be saved.
+func checkHookURL(ctx context.Context, raw string) error {
+	if len(raw) > 2000 {
+		return fail(http.StatusBadRequest, i18n.WebhookURLTooLong)
+	}
+	switch err := webhook.CheckURL(ctx, raw); {
+	case errors.Is(err, webhook.ErrBlocked):
+		return fail(http.StatusBadRequest, i18n.WebhookURLForbidden)
+	case errors.Is(err, webhook.ErrScheme):
+		return fail(http.StatusBadRequest, i18n.WebhookURLScheme)
+	case err != nil:
+		return fail(http.StatusBadRequest, i18n.WebhookURLNoHost)
+	}
+	return nil
+}
+
 // readWebhook applies a request to a webhook, checking every field.
 func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, error) {
 	var in webhookInput
@@ -106,16 +122,8 @@ func (s *Server) readWebhook(r *http.Request, wh *webhook.Webhook) (*string, err
 	if in.URL != nil {
 		wh.URL = strings.TrimSpace(*in.URL)
 	}
-	if len(wh.URL) > 2000 {
-		return nil, fail(http.StatusBadRequest, i18n.WebhookURLTooLong)
-	}
-	switch err := webhook.CheckURL(r.Context(), wh.URL); {
-	case errors.Is(err, webhook.ErrBlocked):
-		return nil, fail(http.StatusBadRequest, i18n.WebhookURLForbidden)
-	case errors.Is(err, webhook.ErrScheme):
-		return nil, fail(http.StatusBadRequest, i18n.WebhookURLScheme)
-	case err != nil:
-		return nil, fail(http.StatusBadRequest, i18n.WebhookURLNoHost)
+	if err := checkHookURL(r.Context(), wh.URL); err != nil {
+		return nil, err
 	}
 	if in.Events != nil {
 		wh.Events = nil
@@ -284,6 +292,36 @@ func (s *Server) testWebhook(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	d, err := s.out.hooks.Test(r.Context(), wh.ID, currentUser(r).ID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, d)
+}
+
+// testUnsavedWebhook sends a test event to an address not saved yet, with
+// the form's secret, and returns how it went. Nothing is stored.
+func (s *Server) testUnsavedWebhook(w http.ResponseWriter, r *http.Request) error {
+	if err := requireAdmin(r); err != nil {
+		return err
+	}
+	var in struct {
+		Name        string `json:"name"`
+		URL         string `json:"url"`
+		Secret      string `json:"secret"`
+		ExcludeBody bool   `json:"excludeBody"`
+	}
+	if err := readJSON(r, &in); err != nil {
+		return err
+	}
+	in.URL = strings.TrimSpace(in.URL)
+	if err := checkHookURL(r.Context(), in.URL); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(in.Secret) > sqlq.VarcharWidth {
+		return fail(http.StatusBadRequest, i18n.WebhookSecretTooLong)
+	}
+	d, err := s.out.hooks.TestUnsaved(r.Context(), strings.TrimSpace(in.Name), in.URL, in.Secret, in.ExcludeBody,
+		currentUser(r).ID)
 	if err != nil {
 		return err
 	}

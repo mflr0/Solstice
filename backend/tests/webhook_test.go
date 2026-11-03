@@ -1,7 +1,8 @@
 package tests
 
 // Webhook deliveries: payload and signature, the JQL filter, retries and
-// giving up, test sends, and the guard against metadata addresses.
+// giving up, test sends (saved or not), and the guard against metadata
+// addresses.
 
 import (
 	"context"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"solstice/internal/events"
+	"solstice/internal/jirafixture"
 	"solstice/internal/mail/mailtest"
 	"solstice/internal/secret"
 	"solstice/internal/webhook"
@@ -199,5 +201,86 @@ func TestDeliveries(t *testing.T) {
 	log, _ = s.Deliveries(ctx, meta.ID, 1)
 	if len(log) != 1 || log[0].Status != "failed" || log[0].Error == nil || !strings.Contains(*log[0].Error, "refused") {
 		t.Errorf("delivery to a metadata address: %+v", log)
+	}
+}
+
+func TestUnsavedWebhookTest(t *testing.T) {
+	env := newNotifyEnv(t)
+	admin := env.login("admin", "admin")
+	rc := newHookReceiver(t)
+	rc.code = 202
+	audits := pick(t, `SELECT COUNT(*) FROM audit_log WHERE action LIKE 'webhook.%'`)
+	const secretText = "s3cret-unsaved-test"
+
+	var d struct {
+		Status     string
+		StatusCode *int
+		DurationMs *int
+		Error      *string
+	}
+	raw := admin.call("POST", "/api/admin/webhooks/test", map[string]any{"name": "Pas encore", "url": rc.srv.URL + "/in",
+		"secret": secretText, "excludeBody": false}, 200, &d)
+	if d.Status != "sent" || d.StatusCode == nil || *d.StatusCode != 202 || d.DurationMs == nil || d.Error != nil {
+		t.Errorf("result: %s", raw)
+	}
+	if strings.Contains(string(raw), secretText) {
+		t.Error("the secret is in the response")
+	}
+	got := rc.take()
+	if len(got) != 1 {
+		t.Fatalf("received %d requests", len(got))
+	}
+	var p struct {
+		WebhookEvent string `json:"webhookEvent"`
+		Webhook      struct {
+			ID   *int64
+			Name string
+		}
+	}
+	if err := json.Unmarshal(got[0].body, &p); err != nil || p.WebhookEvent != webhook.TestEvent ||
+		p.Webhook.Name != "Pas encore" || p.Webhook.ID != nil {
+		t.Errorf("body %s (%v)", got[0].body, err)
+	}
+	mac := hmac.New(sha256.New, []byte(secretText))
+	mac.Write(got[0].body)
+	if sig := got[0].header.Get("X-Hub-Signature"); sig != "sha256="+hex.EncodeToString(mac.Sum(nil)) {
+		t.Errorf("signature %q does not match the body", sig)
+	}
+	if ev := got[0].header.Get("X-Solstice-Event"); ev != webhook.TestEvent {
+		t.Errorf("event header %q", ev)
+	}
+
+	// Without a body nor a secret.
+	admin.call("POST", "/api/admin/webhooks/test", map[string]any{"name": "", "url": rc.srv.URL, "secret": "",
+		"excludeBody": true}, 200, &d)
+	if got := rc.take(); len(got) != 1 || len(got[0].body) != 0 || got[0].header.Get("X-Hub-Signature") != "" {
+		t.Errorf("excludeBody: %+v", got)
+	}
+
+	// The receiver fails: reported, not an error of the call.
+	rc.code = 500
+	admin.call("POST", "/api/admin/webhooks/test", map[string]any{"url": rc.srv.URL}, 200, &d)
+	if d.Status != "failed" || d.StatusCode == nil || *d.StatusCode != 500 || d.Error == nil {
+		t.Errorf("after a 500: %+v", d)
+	}
+	rc.take()
+
+	// The address is checked as when saving.
+	forbidden := map[string]any{"name": "x", "url": "http://169.254.169.254/", "secret": "", "excludeBody": false}
+	if status, msg, _ := admin.errorIn("en", "POST", "/api/admin/webhooks/test", forbidden); status != 400 ||
+		!strings.Contains(msg, "link-local and cloud metadata addresses") {
+		t.Errorf("metadata address: %d %q", status, msg)
+	}
+	paul := env.login("paul.martin", jirafixture.Password)
+	paul.call("POST", "/api/admin/webhooks/test", map[string]any{"url": rc.srv.URL}, 403, nil)
+	if got := rc.take(); len(got) != 0 {
+		t.Errorf("refused tests reached the receiver: %d", len(got))
+	}
+
+	for q, want := range map[string]string{`SELECT COUNT(*) FROM webhooks`: "0",
+		`SELECT COUNT(*) FROM webhook_deliveries`: "0", `SELECT COUNT(*) FROM audit_log WHERE action LIKE 'webhook.%'`: audits} {
+		if n := pick(t, q); n != want {
+			t.Errorf("%s: %s, want %s", q, n, want)
+		}
 	}
 }
