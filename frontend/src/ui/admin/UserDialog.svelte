@@ -1,24 +1,32 @@
 <script lang="ts">
   import {
+    accessSentence,
+    defaultsForm,
+    defaultsPayload,
     hasProblems,
     matches,
     newUserForm,
     suggestUsername,
     userProblems,
+    type AccessWords,
+    type DefaultsForm,
     type UserForm,
   } from '../../core/admin-forms.js';
-  import type { Group, UserRow } from '../../core/admin-types.js';
-  import { t } from '../../i18n/t.js';
+  import type { Group, PermissionRule, UserAccess, UserRow } from '../../core/admin-types.js';
+  import type { AdminProjectRow } from '../../core/project-admin.js';
+  import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import Highlight from '../Highlight.svelte';
   import Modal from '../Modal.svelte';
+  import PermissionStates from './PermissionStates.svelte';
 
   /**
    * Creating an account, or changing one: name, e-mail, administrator
-   * rights, whether it may sign in, and its groups.
+   * rights, whether it may sign in, its groups, its permission overrides,
+   * and what it may do in a project.
    */
   interface Props {
     open: boolean;
@@ -39,6 +47,15 @@
   let groupSearch = $state('');
   /** The user name follows the display name until typed by hand. */
   let usernameTyped = $state(false);
+  let overrides = $state<DefaultsForm | null>(null);
+  /** The overrides as loaded, as sent. */
+  let savedOverrides = '';
+  let projects = $state<AdminProjectRow[] | null>(null);
+  let project = $state('');
+  let access = $state<UserAccess[] | null>(null);
+  let accessError = $state('');
+  let seq = 0;
+  let accessSeq = 0;
 
   const isNew = $derived(user === null);
   const isSelf = $derived(user !== null && user.id === session.me?.id);
@@ -74,7 +91,62 @@
     error = '';
     groupSearch = '';
     usernameTyped = false;
+    overrides = null;
+    projects = null;
+    project = '';
+    access = null;
+    accessError = '';
+    const mine = ++seq;
+    if (!user) return;
+    adminApi
+      .userPermissions(user.id)
+      .then((r) => {
+        if (mine !== seq) return;
+        overrides = defaultsForm(r);
+        savedOverrides = JSON.stringify(defaultsPayload(overrides));
+      })
+      .catch((e: unknown) => {
+        if (mine === seq) error = errorMessage(e);
+      });
+    adminApi
+      .projects()
+      .then((ps) => {
+        if (mine === seq) projects = ps;
+      })
+      .catch((e: unknown) => {
+        if (mine === seq) accessError = errorMessage(e);
+      });
   });
+
+  const accessWords = $derived<AccessWords>({
+    ...t.usersAdmin.accessWhy,
+    builtin: {
+      everyone: holderLabels.everyone,
+      lead: holderLabels.lead,
+      reporter: holderLabels.reporter,
+      assignee: holderLabels.assignee,
+    },
+  });
+
+  async function loadAccess() {
+    access = null;
+    accessError = '';
+    if (!user || !project) return;
+    const mine = ++accessSeq;
+    try {
+      const a = await adminApi.userAccess(user.id, project);
+      if (mine === accessSeq) access = a;
+    } catch (e) {
+      if (mine === accessSeq) accessError = errorMessage(e);
+    }
+  }
+
+  /** The overrides to send, or null when they did not change (or did not load). */
+  function changedOverrides(): PermissionRule[] | null {
+    if (!overrides) return null;
+    const rules = defaultsPayload(overrides);
+    return JSON.stringify(rules) === savedOverrides ? null : rules;
+  }
 
   function nameTyped() {
     if (isNew && !usernameTyped) form.username = suggestUsername(form.name);
@@ -109,16 +181,25 @@
         if (form.email.trim() !== user.email) patch.email = form.email.trim();
         if (!isSelf && form.admin !== user.admin) patch.admin = form.admin;
         if (!isSelf && form.active !== user.active) patch.active = form.active;
-        if (Object.keys(patch).length) await adminApi.updateUser(user.id, patch);
         const before = (user.groups ?? []).map((g) => g.id).sort();
-        if (groups && before.join() !== [...form.groups].sort().join()) {
-          try {
-            await adminApi.setUserGroups(user.id, form.groups);
-          } catch (err) {
-            if (Object.keys(patch).length)
-              onsaved(t.usersAdmin.updated(form.name.trim() || user.username));
-            throw err;
+        const rules = changedOverrides();
+        let saved = false;
+        try {
+          if (Object.keys(patch).length) {
+            await adminApi.updateUser(user.id, patch);
+            saved = true;
           }
+          if (groups && before.join() !== [...form.groups].sort().join()) {
+            await adminApi.setUserGroups(user.id, form.groups);
+            saved = true;
+          }
+          if (rules) {
+            await adminApi.setUserPermissions(user.id, rules);
+            savedOverrides = JSON.stringify(rules);
+          }
+        } catch (err) {
+          if (saved) onsaved(t.usersAdmin.updated(form.name.trim() || user.username));
+          throw err;
         }
         onsaved(t.usersAdmin.updated(form.name.trim() || user.username));
       }
@@ -255,6 +336,54 @@
       </fieldset>
     {/if}
 
+    {#if user}
+      <fieldset class="choices">
+        <legend class="field-label">{t.usersAdmin.overrides}</legend>
+        <p class="form-hint">{t.usersAdmin.overridesHint}</p>
+        {#if overrides}
+          <PermissionStates bind:value={overrides} holder={user.name} prefix="user" />
+        {:else if !error}
+          <p class="muted loading">{t.common.loading}</p>
+        {/if}
+      </fieldset>
+
+      <section class="access" aria-labelledby="access-title">
+        <h3 class="field-label" id="access-title">{t.usersAdmin.access}</h3>
+        <p class="form-hint">{t.usersAdmin.accessHint}</p>
+        {#if projects}
+          <label class="field">
+            <span>{t.usersAdmin.accessProject}</span>
+            <select class="select" bind:value={project} onchange={() => void loadAccess()}>
+              <option value="">{t.usersAdmin.accessPick}</option>
+              {#each projects as p (p.id)}
+                <option value={p.key}>{p.name} ({p.key})</option>
+              {/each}
+            </select>
+          </label>
+        {:else if !accessError}
+          <p class="muted loading">{t.common.loading}</p>
+        {/if}
+        {#if accessError}
+          <p class="error-text" role="alert">{accessError}</p>
+        {:else if project && !access}
+          <p class="muted loading">{t.common.loading}</p>
+        {:else if access}
+          <ul class="access-list">
+            {#each access as a (a.permission)}
+              <li>
+                <span class="perm">{permissionLabels[a.permission].label}</span>
+                <span class="verdict" class:granted={a.granted}
+                  ><span aria-hidden="true">{a.granted ? '✓' : '✗'}</span>
+                  {a.granted ? t.usersAdmin.granted : t.usersAdmin.notGranted}</span
+                >
+                <span class="why">{accessSentence(a, accessWords)}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+    {/if}
+
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
   </form>
   {#snippet footer()}
@@ -273,8 +402,55 @@
     gap: 14px;
   }
 
-  .choices .form-hint {
+  .choices .form-hint,
+  .access .form-hint {
     margin: 0;
+  }
+
+  .access {
+    display: grid;
+    gap: 6px;
+  }
+
+  .access h3 {
+    margin: 0;
+  }
+
+  .access-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .access-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 12px;
+  }
+
+  .perm,
+  .why {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .why {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  /* The glyph and word carry the outcome; the color only repeats it. */
+  .verdict {
+    color: var(--tone-bug);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+
+  .verdict.granted {
+    color: var(--stamp-done);
   }
 
   .group-list {
