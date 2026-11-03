@@ -391,9 +391,32 @@ export const en = {
     intro:
       'These rules apply to this project only: nothing is shared through schemes, so a change here touches no other project.',
     permissions: 'Who can do what',
-    addHolder: 'Add',
-    nobody: 'Nobody',
-    chooseKind: 'Grant to',
+    matrix: 'Permissions of each group and user',
+    matrixHint:
+      'Each cell inherits, allows or denies. An inherited cell shows what the group or user gets without a rule in this project, and where it comes from.',
+    holder: 'Group or user',
+    addRow: 'Add a group or a user',
+    rowKind: 'Kind',
+    removeRow: (name: string) => `Remove ${name} and its rules in this project`,
+    states: { inherit: 'Inherit', allow: 'Allow', deny: 'Deny' },
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `allowed by the global default of ${name}`
+          : `denied by the global default of ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed ? `allowed in this project for ${name}` : `denied in this project for ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `allowed by the global override of ${name}`
+          : `denied by the global override of ${name}`,
+      none: 'not allowed: no rule',
+      noneShort: 'no rule',
+      loading: 'loading…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `inherit, ${detail}`,
     chooseGroup: 'Group',
     chooseUser: 'User',
     projectMembers: 'Group members in this project',

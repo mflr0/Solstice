@@ -393,9 +393,32 @@ export const fr: Messages = {
     intro:
       'Ces règles ne valent que pour ce projet : il n’y a pas de schéma partagé, modifier ici ne touche aucun autre projet.',
     permissions: 'Qui peut faire quoi',
-    addHolder: 'Ajouter',
-    nobody: 'Personne',
-    chooseKind: 'Type de bénéficiaire',
+    matrix: 'Droits de chaque groupe et utilisateur',
+    matrixHint:
+      'Chaque case hérite, autorise ou refuse. Une case héritée montre ce que le groupe ou l’utilisateur obtient sans règle dans ce projet, et d’où cela vient.',
+    holder: 'Groupe ou utilisateur',
+    addRow: 'Ajouter un groupe ou un utilisateur',
+    rowKind: 'Type',
+    removeRow: (name: string) => `Retirer ${name} et ses règles dans ce projet`,
+    states: { inherit: 'Hérité', allow: 'Autorisé', deny: 'Refusé' },
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `autorisé par le défaut global de ${name}`
+          : `refusé par le défaut global de ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed ? `autorisé dans ce projet pour ${name}` : `refusé dans ce projet pour ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `autorisé par la règle globale de ${name}`
+          : `refusé par la règle globale de ${name}`,
+      none: 'non autorisé : aucune règle',
+      noneShort: 'aucune règle',
+      loading: 'chargement…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission} : ${state}`,
+    inherited: (detail: string) => `hérité, ${detail}`,
     chooseGroup: 'Groupe',
     chooseUser: 'Utilisateur',
     projectMembers: 'Membres des groupes dans ce projet',

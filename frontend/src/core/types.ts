@@ -357,13 +357,36 @@ export interface Grant {
   holder: Holder;
   id?: number;
   name?: string;
-  effect?: 'allow' | 'deny';
+  effect?: Effect;
+}
+
+export type Effect = 'allow' | 'deny';
+
+/** A global rule of a group or a built-in group. */
+export interface GroupRule {
+  permission: Permission;
+  holder: Holder;
+  /** The group's id; none for a built-in group. */
+  id?: number;
+  effect: Effect;
+}
+
+/** What a user inherits in a project when no project rule of theirs decides. */
+export interface PermUser {
+  id: number;
+  name: string;
+  /** The groups the user is in here: `builtin:<holder>` or `group:<id>`. */
+  groups: string[];
+  /** The user's global rules. */
+  rules: { permission: Permission; effect: Effect }[];
 }
 
 export interface ProjectPermissions {
   permissions: Permission[];
   grants: Grant[];
   groups: IdName[];
+  globals: GroupRule[];
+  users: PermUser[];
 }
 
 export interface Person {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -83,6 +84,9 @@ func TestCanGrantSources(t *testing.T) {
 	addProjectGroup(projectMember, p, 5)
 	lead := subject(r, 9, false)
 	stranger := subject(r, 45, false)
+	if !lead.Leads(p) || lead.Leads(q) || user.Leads(p) {
+		t.Error("Leads must name the project's lead only")
+	}
 
 	cases := []struct {
 		name    string
@@ -424,6 +428,12 @@ func TestProjectMembers(t *testing.T) {
 	}
 	if !viaGroup.InGroup(8) || !direct.InGroup(5) || direct.InGroup(8) {
 		t.Error("InGroup must count membership in any project")
+	}
+	if got := viaGroup.GroupsIn(p); !slices.Equal(got, []int64{3, 6, 8}) {
+		t.Errorf("GroupsIn(p) = %v, want [3 6 8]", got)
+	}
+	if got := viaGroup.GroupsIn(q); !slices.Equal(got, []int64{3}) {
+		t.Errorf("GroupsIn(q) = %v, want [3]", got)
 	}
 
 	cycle := testRules()

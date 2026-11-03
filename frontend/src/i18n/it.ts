@@ -392,9 +392,34 @@ export const it: Messages = {
     intro:
       'Queste regole valgono solo per questo progetto: non ci sono schemi condivisi, quindi una modifica qui non tocca nessun altro progetto.',
     permissions: 'Chi può fare cosa',
-    addHolder: 'Aggiungi',
-    nobody: 'Nessuno',
-    chooseKind: 'Tipo di beneficiario',
+    matrix: 'Permessi di ogni gruppo e persona',
+    matrixHint:
+      'Ogni casella eredita, consente o nega. Una casella ereditata mostra cosa ottiene il gruppo o la persona senza una regola in questo progetto, e da dove viene.',
+    holder: 'Gruppo o persona',
+    addRow: 'Aggiungi un gruppo o una persona',
+    rowKind: 'Tipo',
+    removeRow: (name: string) => `Rimuovi ${name} e le sue regole in questo progetto`,
+    states: { inherit: 'Ereditato', allow: 'Consentito', deny: 'Negato' },
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `consentito dal predefinito globale di ${name}`
+          : `negato dal predefinito globale di ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `consentito in questo progetto per ${name}`
+          : `negato in questo progetto per ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `consentito dalla regola globale di ${name}`
+          : `negato dalla regola globale di ${name}`,
+      none: 'non consentito: nessuna regola',
+      noneShort: 'nessuna regola',
+      loading: 'caricamento…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `ereditato, ${detail}`,
     chooseGroup: 'Gruppo',
     chooseUser: 'Persona',
     projectMembers: 'Membri dei gruppi in questo progetto',

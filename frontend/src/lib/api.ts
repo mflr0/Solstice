@@ -20,6 +20,7 @@ import type {
   Person,
   Project,
   ProjectDetail,
+  PermUser,
   ProjectPermissions,
   ProjectWorkflows,
   Refs,
@@ -298,6 +299,9 @@ export const api = {
     request<ProjectPermissions>('GET', `/api/projects/${enc(key)}/permissions`),
   savePermissions: (key: string, grants: Grant[]) =>
     request<ProjectPermissions>('PUT', `/api/projects/${enc(key)}/permissions`, { grants }),
+  /** What a user inherits in the project, for a row added before saving. */
+  permissionUser: (key: string, id: number) =>
+    request<PermUser>('GET', `/api/projects/${enc(key)}/permissions/users/${id}`),
 
   issues: (params: {
     q?: string | undefined;

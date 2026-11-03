@@ -1,10 +1,31 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { ProjectGroup } from '../../core/admin-types.js';
-  import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
+  import {
+    cellAccess,
+    cellState,
+    grantsPayload,
+    grantsSignature,
+    matrixRows,
+    nextCellState,
+    nextTab,
+    parseTab,
+    PROJECT_TABS,
+    removeRow,
+    setCell,
+    type CellState,
+    type MatrixRow,
+    type ProjectTab,
+  } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
-  import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
-  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
+  import type {
+    Grant,
+    Permission,
+    PermUser,
+    ProjectPermissions,
+    UserRef,
+  } from '../../core/types.js';
+  import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
@@ -41,21 +62,38 @@
   let error = $state('');
   let forbidden = $state(false);
   let saving = $state(false);
-  let adding = $state<Permission | null>(null);
-  let kind = $state<Holder>('group');
+  /** What the users with a row inherit, loaded with the rules or when added. */
+  let users = $state<PermUser[]>([]);
+  /** Rows added and still without a rule: they go away on saving. */
+  let extra = $state<string[]>([]);
+  let adding = $state(false);
+  let kind = $state<'group' | 'user'>('group');
   let pick = $state('');
+  /** Read out after a cell changes: its new state. */
+  let announced = $state('');
   /** The group whose "add a member" box is open, or 0 for the "add a group" box. */
   let addingTo = $state<number | null>(null);
   let memberKind = $state<'user' | 'group'>('user');
   let memberPick = $state('');
   let changing = $state(false);
 
-  const signature = (list: Grant[]) =>
-    list
-      .map((g) => `${g.permission}:${g.holder}:${g.id ?? ''}`)
-      .sort()
-      .join('|');
-  const dirty = $derived(signature(grants) !== saved);
+  const dirty = $derived(grantsSignature(grants) !== saved);
+  const rows = $derived(
+    data
+      ? matrixRows(
+          {
+            everyone: holderLabels.everyone,
+            lead: holderLabels.lead,
+            reporter: holderLabels.reporter,
+            assignee: holderLabels.assignee,
+          },
+          grants,
+          data.groups,
+          users,
+          extra,
+        )
+      : [],
+  );
 
   const tab = $derived(parseTab(router.param('tab'), !forbidden));
   const tabLabels = $derived<Record<ProjectTab, string>>({
@@ -112,10 +150,12 @@
     data = null;
     members = [];
     grants = [];
+    users = [];
+    extra = [];
     saved = '';
     error = '';
     forbidden = false;
-    adding = null;
+    adding = false;
     addingTo = null;
     api
       .permissions(key)
@@ -123,7 +163,8 @@
         if (key !== projectKey) return;
         data = d;
         grants = d.grants;
-        saved = signature(d.grants);
+        users = d.users;
+        saved = grantsSignature(d.grants);
       })
       .catch((e: unknown) => {
         if (key !== projectKey) return;
@@ -139,31 +180,66 @@
       .catch(() => {});
   });
 
-  const kinds: Holder[] = ['everyone', 'group', 'user', 'lead', 'reporter', 'assignee'];
-
-  function holdersOf(p: Permission): Grant[] {
-    return grants.filter((g) => g.permission === p);
+  function cycle(row: MatrixRow, p: Permission) {
+    const next = nextCellState(cellState(grants, row.key, p));
+    grants = setCell(grants, row, p, next);
+    announced = cellName(row, p, next);
   }
 
-  function remove(g: Grant) {
-    grants = grants.filter((x) => x !== g);
+  function dropRow(row: MatrixRow) {
+    grants = removeRow(grants, row.key);
+    extra = extra.filter((k) => k !== row.key);
   }
 
-  function add(p: Permission, g: Omit<Grant, 'permission'>) {
-    const grant: Grant = { permission: p, ...g };
-    if (!grants.some((x) => signature([x]) === signature([grant]))) grants = [...grants, grant];
-    adding = null;
+  function addRow(key: string) {
+    if (!rows.some((r) => r.key === key)) extra = [...extra, key];
+    adding = false;
     pick = '';
   }
 
-  function addPicked(p: Permission) {
-    if (!data) return;
-    if (kind === 'group') {
-      const found = data.groups.find((x) => String(x.id) === pick);
-      if (found) add(p, { holder: kind, id: found.id, name: found.name });
-    } else if (kind !== 'user') {
-      add(p, { holder: kind });
+  async function addUser(u: UserRef) {
+    const key = projectKey;
+    addRow(`user:${u.id}`);
+    if (users.some((x) => x.id === u.id)) return;
+    try {
+      const pu = await api.permissionUser(key, u.id);
+      if (key === projectKey && !users.some((x) => x.id === pu.id)) users = [...users, pu];
+    } catch (e) {
+      notify(errorMessage(e), 'error');
     }
+  }
+
+  /** The name of the holder a row key stands for. */
+  function holderName(key: string): string {
+    const [kind, rest] = key.split(':', 2);
+    const id = Number(rest);
+    if (kind === 'builtin') return holderLabels[rest as keyof typeof holderLabels] ?? key;
+    if (kind === 'group') return data?.groups.find((g) => g.id === id)?.name ?? key;
+    return rows.find((r) => r.key === key)?.label ?? key;
+  }
+
+  /** What an inherited cell gets: whether, and from which rule, short and in full. */
+  function inherited(row: MatrixRow, p: Permission) {
+    const s = t.settings.source;
+    const a = cellAccess(row.key, p, { grants, globals: data?.globals ?? [], users }, false);
+    if (!a) return { granted: null, short: s.loading, long: s.loading };
+    if (a.level === 'none' || !a.source)
+      return { granted: false, short: s.noneShort, long: s.none };
+    const name = holderName(a.source);
+    const say =
+      a.level === 'globalUser'
+        ? s.globalUser
+        : a.level === 'projectGroup'
+          ? s.projectGroup
+          : s.globalGroup;
+    return { granted: a.granted, short: name, long: say(a.granted, name) };
+  }
+
+  /** A cell's accessible name: the holder, the permission and the state. */
+  function cellName(row: MatrixRow, p: Permission, state: CellState): string {
+    const word =
+      state === 'inherit' ? t.settings.inherited(inherited(row, p).long) : t.settings.states[state];
+    return t.settings.cell(row.label, permissionLabels[p].label, word);
   }
 
   function openAdder(id: number) {
@@ -216,19 +292,13 @@
     const key = projectKey;
     saving = true;
     try {
-      const d = await api.savePermissions(
-        key,
-        grants.map(({ permission, holder, id, effect }) => ({
-          permission,
-          holder,
-          ...(id ? { id } : {}),
-          ...(effect ? { effect } : {}),
-        })),
-      );
+      const d = await api.savePermissions(key, grantsPayload(grants));
       if (key === projectKey) {
         data = d;
         grants = d.grants;
-        saved = signature(d.grants);
+        users = d.users;
+        extra = [];
+        saved = grantsSignature(d.grants);
       }
       notify(t.settings.saved);
     } catch (e) {
@@ -314,99 +384,138 @@
       {:else}
         <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
           <h2 class="section-title">{t.settings.permissions}</h2>
-          <div class="table-scroll">
+          <p class="matrix-hint">{t.settings.matrixHint}</p>
+          <div class="table-scroll matrix-scroll">
             <table class="ledger matrix">
+              <caption class="sr-only">{t.settings.matrix}</caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="who">{t.settings.holder}</th>
+                  {#each data.permissions as p (p)}
+                    <th scope="col" title={permissionLabels[p].help}>{permissionLabels[p].label}</th
+                    >
+                  {/each}
+                </tr>
+              </thead>
               <tbody>
-                {#each data.permissions as p (p)}
+                {#each rows as row (row.key)}
                   <tr>
-                    <th scope="row">
-                      <span class="label">{permissionLabels[p].label}</span>
-                      <span class="help">{permissionLabels[p].help}</span>
-                    </th>
-                    <td>
-                      <div class="holders">
-                        {#each holdersOf(p) as g (signature([g]))}
-                          <span class="chip holder {g.holder}">
-                            {#if g.holder === 'group' || g.holder === 'user'}<span class="kind"
-                                >{holderLabels[g.holder]}</span
-                              >{/if}
-                            {grantLabel(g)}
-                            <button
-                              type="button"
-                              aria-label={`${t.common.remove} ${grantLabel(g)}`}
-                              onclick={() => remove(g)}>×</button
-                            >
-                          </span>
-                        {:else}
-                          <span class="nobody">{t.settings.nobody}</span>
-                        {/each}
-                        <span class="adder" use:outside={() => adding === p && (adding = null)}>
+                    <th scope="row" class="who">
+                      <span class="who-line">
+                        <span class="who-name">{row.label}</span>
+                        {#if !row.builtin}
                           <button
                             type="button"
-                            class="link-btn"
-                            aria-expanded={adding === p}
-                            onclick={() => {
-                              adding = adding === p ? null : p;
-                              kind = 'group';
-                              pick = '';
-                            }}>+ {t.settings.addHolder}</button
+                            class="drop"
+                            aria-label={t.settings.removeRow(row.label)}
+                            title={t.settings.removeRow(row.label)}
+                            onclick={() => dropRow(row)}>×</button
                           >
-                          {#if adding === p}
-                            <div class="popover add">
-                              <div class="field">
-                                <span>{t.settings.chooseKind}</span>
-                                <Dropdown
-                                  label={t.settings.chooseKind}
-                                  value={kind}
-                                  options={kinds.map((k) => ({ value: k, label: holderLabels[k] }))}
-                                  onchange={(v) => (kind = v as Holder)}
-                                />
-                              </div>
-                              {#if kind === 'group'}
-                                <div class="field">
-                                  <span>{t.settings.chooseGroup}</span>
-                                  <Dropdown
-                                    label={t.settings.chooseGroup}
-                                    value={pick}
-                                    options={data.groups.map((x) => ({
-                                      value: String(x.id),
-                                      label: x.name,
-                                    }))}
-                                    placeholder="…"
-                                    onchange={(v) => (pick = v)}
-                                  />
-                                </div>
-                              {:else if kind === 'user'}
-                                <div class="field">
-                                  <span class="field-label">{t.settings.chooseUser}</span>
-                                  <UserPicker
-                                    field
-                                    value={null}
-                                    label={t.settings.chooseUser}
-                                    allowNone={false}
-                                    noneLabel="…"
-                                    search={(q) => api.users(q)}
-                                    onpick={(u: UserRef | null) =>
-                                      u && add(p, { holder: 'user', id: u.id, name: u.name })}
-                                  />
-                                </div>
-                              {/if}
-                              {#if kind !== 'user'}
-                                <button
-                                  class="btn btn-small btn-primary"
-                                  disabled={kind === 'group' && !pick}
-                                  onclick={() => addPicked(p)}>{t.common.add}</button
-                                >
-                              {/if}
-                            </div>
+                        {/if}
+                      </span>
+                      <span class="kind"
+                        >{row.builtin ? t.builtInGroups.mark : holderLabels[row.holder]}</span
+                      >
+                    </th>
+                    {#each data.permissions as p (p)}
+                      {@const state = cellState(grants, row.key, p)}
+                      {@const from = state === 'inherit' ? inherited(row, p) : null}
+                      <td>
+                        <button
+                          type="button"
+                          class="cell {state}"
+                          aria-label={cellName(row, p, state)}
+                          title={from ? from.long : undefined}
+                          onclick={() => cycle(row, p)}
+                        >
+                          <span class="word"
+                            ><span class="mark" aria-hidden="true"
+                              >{state === 'allow' ? '✓' : state === 'deny' ? '⊘' : '–'}</span
+                            >{t.settings.states[state]}</span
+                          >
+                          {#if from}
+                            <span class="from" class:no={from.granted === false}
+                              ><span aria-hidden="true"
+                                >{from.granted === null ? '' : from.granted ? '✓' : '✗'}</span
+                              >
+                              {from.short}</span
+                            >
                           {/if}
-                        </span>
-                      </div>
-                    </td>
+                        </button>
+                      </td>
+                    {/each}
                   </tr>
                 {/each}
               </tbody>
             </table>
+          </div>
+          <p class="sr-only" aria-live="polite">{announced}</p>
+          <div class="adder row-adder" use:outside={() => adding && (adding = false)}>
+            <button
+              type="button"
+              class="link-btn"
+              aria-expanded={adding}
+              onclick={() => {
+                adding = !adding;
+                kind = 'group';
+                pick = '';
+              }}>+ {t.settings.addRow}</button
+            >
+            {#if adding}
+              <div class="popover add">
+                <div class="field">
+                  <span>{t.settings.rowKind}</span>
+                  <Dropdown
+                    label={t.settings.rowKind}
+                    value={kind}
+                    options={(['group', 'user'] as const).map((k) => ({
+                      value: k,
+                      label: holderLabels[k],
+                    }))}
+                    onchange={(v) => {
+                      kind = v as 'group' | 'user';
+                      pick = '';
+                    }}
+                  />
+                </div>
+                {#if kind === 'group'}
+                  <div class="field">
+                    <span>{t.settings.chooseGroup}</span>
+                    <Dropdown
+                      label={t.settings.chooseGroup}
+                      value={pick}
+                      search
+                      options={data.groups
+                        .filter((x) => !rows.some((r) => r.key === `group:${x.id}`))
+                        .map((x) => ({ value: String(x.id), label: x.name }))}
+                      placeholder="…"
+                      onchange={(v) => (pick = v)}
+                    />
+                  </div>
+                  <button
+                    class="btn btn-small btn-primary"
+                    disabled={!pick}
+                    onclick={() => addRow(`group:${pick}`)}>{t.common.add}</button
+                  >
+                {:else}
+                  <div class="field">
+                    <span class="field-label">{t.settings.chooseUser}</span>
+                    <UserPicker
+                      field
+                      value={null}
+                      label={t.settings.chooseUser}
+                      allowNone={false}
+                      noneLabel="…"
+                      search={async (q) =>
+                        (await api.users(q)).filter(
+                          (u) => !rows.some((r) => r.key === `user:${u.id}`),
+                        )}
+                      onpick={(u: UserRef | null) => u && void addUser(u)}
+                    />
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
 
           <h2 class="section-title">{t.settings.projectMembers}</h2>
@@ -554,8 +663,11 @@
               <span>{t.settings.unsaved}</span>
               <button
                 class="btn btn-quiet"
-                onclick={() => data && ((grants = data.grants), undefined)}
-                >{t.settings.discard}</button
+                onclick={() => {
+                  if (!data) return;
+                  grants = data.grants;
+                  extra = [];
+                }}>{t.settings.discard}</button
               >
               <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
                 >{saving ? t.common.saving : t.common.save}</button
@@ -595,57 +707,162 @@
     color: var(--ink-soft);
   }
 
-  .matrix th {
-    width: 17.5rem;
-    text-align: left;
-    text-transform: none;
-    letter-spacing: 0;
-    vertical-align: top;
-    padding: 9px 16px 9px 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .label {
-    display: block;
-    font: 600 0.875rem/1.3 var(--font-body);
-    color: var(--ink);
-  }
-
-  .help {
-    display: block;
-    font: 400 0.78125rem/1.35 var(--font-body);
+  .matrix-hint {
+    max-width: 70ch;
+    margin: 0 0 10px;
+    font-size: 0.8125rem;
     color: var(--muted);
   }
 
+  /* The matrix scrolls in its own box, both ways: the holders stay on the
+     left and the permissions on top. */
+  .matrix-scroll {
+    max-height: 70vh;
+    overflow: auto;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .matrix {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-width: 6.5rem;
+    max-width: 8rem;
+    padding: 8px 6px;
+    white-space: normal;
+    line-height: 1.2;
+    vertical-align: bottom;
+    background: var(--paper);
+  }
+
+  .matrix .who {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 11rem;
+    max-width: 14rem;
+    padding: 6px 10px;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .matrix thead .who {
+    z-index: 3;
+  }
+
+  .who-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .who-name {
+    font: 600 0.84375rem/1.3 var(--font-body);
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .who .kind {
+    display: block;
+    font: 500 0.6875rem/1.2 var(--font-body);
+    color: var(--muted);
+  }
+
+  .drop {
+    margin-left: auto;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .drop:hover {
+    color: var(--accent-text);
+  }
+
   .matrix td {
-    vertical-align: top;
-    padding-top: 10px;
+    padding: 4px;
+    vertical-align: middle;
   }
 
   .matrix tbody tr:hover td {
     background: none;
   }
 
-  .holders {
+  /* Allow is filled, deny outlined with a struck pattern, inherit plain:
+     each also has its own mark and word, so color is never the only cue. */
+  .cell {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 4px 7px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-s, 3px);
+    background: transparent;
+    color: var(--muted);
+    font: 400 0.75rem/1.2 var(--font-body);
+    text-align: left;
+    cursor: pointer;
   }
 
-  .holder {
-    font-family: var(--font-body);
-    font-size: 0.78125rem;
+  .cell .word {
+    display: inline-flex;
+    gap: 4px;
+    font-weight: 600;
   }
 
-  .holder .kind {
-    font: 500 0.6875rem/1 var(--font-body);
+  .cell .mark {
+    width: 1em;
+    text-align: center;
+  }
+
+  .cell.allow {
+    border-color: var(--stamp-done);
+    background: var(--stamp-done);
+    color: var(--paper);
+  }
+
+  .cell.deny {
+    border: 2px solid var(--accent-text);
+    background: repeating-linear-gradient(135deg, transparent 0 6px, var(--accent-wash) 6px 9px);
+    color: var(--accent-text);
+  }
+
+  .cell .from {
+    font-size: 0.6875rem;
+    color: var(--ink-soft);
+    overflow-wrap: anywhere;
+  }
+
+  .cell .from.no {
     color: var(--muted);
   }
 
-  .holder.everyone {
-    border-color: var(--ink-soft);
-    font-weight: 600;
+  .cell:hover {
+    border-color: var(--rule-strong);
+  }
+
+  .row-adder {
+    display: inline-block;
+    margin: 8px 0 18px;
   }
 
   .nobody {

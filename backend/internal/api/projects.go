@@ -325,8 +325,25 @@ func (s *Server) getPermissions(w http.ResponseWriter, r *http.Request) error {
 	}); err != nil {
 		return err
 	}
+	globals, err := s.groupGlobalRules(ctx)
+	if err != nil {
+		return err
+	}
+	users := []permUserOut{}
+	seen := map[int64]bool{}
+	for _, g := range grants {
+		if g.Holder != perm.User || seen[g.ID] {
+			continue
+		}
+		seen[g.ID] = true
+		u, err := s.permUser(ctx, id, g.ID)
+		if err != nil {
+			return err
+		}
+		users = append(users, u)
+	}
 	return writeJSON(w, http.StatusOK, map[string]any{
-		"permissions": perm.All, "grants": grants, "groups": groups,
+		"permissions": perm.All, "grants": grants, "groups": groups, "globals": globals, "users": users,
 	})
 }
 

@@ -162,6 +162,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/projects/{key}/assignable", s.assignableUsers, auth.ScopeRead)
 	route("GET /api/projects/{key}/permissions", s.getPermissions, auth.ScopeRead)
 	route("PUT /api/projects/{key}/permissions", s.putPermissions, auth.ScopeProjects)
+	route("GET /api/projects/{key}/permissions/users/{id}", s.getPermissionUser, auth.ScopeRead)
 	route("GET /api/projects/{key}/workflows", s.listWorkflows, auth.ScopeRead)
 	route("POST /api/projects/{key}/workflows", s.createWorkflow, auth.ScopeProjects)
 	route("POST /api/projects/{key}/import.csv", s.importIssues, auth.ScopeIssues)

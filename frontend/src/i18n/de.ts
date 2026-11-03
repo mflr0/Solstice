@@ -399,9 +399,34 @@ export const de: Messages = {
     intro:
       'Diese Regeln gelten nur für dieses Projekt: Es gibt keine gemeinsamen Schemata, eine Änderung hier betrifft kein anderes Projekt.',
     permissions: 'Wer darf was',
-    addHolder: 'Hinzufügen',
-    nobody: 'Niemand',
-    chooseKind: 'Art der Berechtigung',
+    matrix: 'Rechte jeder Gruppe und jedes Benutzers',
+    matrixHint:
+      'Jede Zelle erbt, erlaubt oder verweigert. Eine geerbte Zelle zeigt, was die Gruppe oder der Benutzer ohne Regel in diesem Projekt bekommt, und woher.',
+    holder: 'Gruppe oder Benutzer',
+    addRow: 'Gruppe oder Benutzer hinzufügen',
+    rowKind: 'Art',
+    removeRow: (name: string) => `${name} und die Regeln in diesem Projekt entfernen`,
+    states: { inherit: 'Geerbt', allow: 'Erlaubt', deny: 'Verweigert' },
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `erlaubt durch die globale Vorgabe von ${name}`
+          : `verweigert durch die globale Vorgabe von ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `in diesem Projekt erlaubt für ${name}`
+          : `in diesem Projekt verweigert für ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `erlaubt durch die globale Regel von ${name}`
+          : `verweigert durch die globale Regel von ${name}`,
+      none: 'nicht erlaubt: keine Regel',
+      noneShort: 'keine Regel',
+      loading: 'wird geladen…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `geerbt, ${detail}`,
     chooseGroup: 'Gruppe',
     chooseUser: 'Benutzer',
     projectMembers: 'Gruppenmitglieder in diesem Projekt',
