@@ -211,6 +211,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectCategoryNotFound:    "Catégorie introuvable.",
 	ProjectTemplateUnknown:     "Modèle inconnu : software ou simple.",
 	ProjectAssigneeTypeUnknown: "Assignation par défaut : unassigned ou lead.",
+	ProjectAssigneeNoLead:      "Les nouveaux tickets ne peuvent pas aller au responsable : le projet n'en a pas.",
 	ProjectIssueTypeRequired:   "Choisissez au moins un type de ticket qui ne soit pas une sous-tâche.",
 	ProjectRemovedTypesInUse:   "Des tickets utilisent encore les types retirés : changez leur type d'abord.",
 	ProjectDeleteConfirm:       "Ce projet contient des tickets : tapez sa clé pour confirmer la suppression.",

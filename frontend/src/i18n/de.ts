@@ -2565,7 +2565,7 @@ export const de: Messages = {
       software: 'Software: To Do, In Arbeit, In Prüfung, Erledigt',
       simple: 'Einfach: Zu erledigen, In Arbeit, Erledigt',
     },
-    leadHint: 'Standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
+    leadHint: 'Optional, standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
     description: 'Beschreibung',
     access: 'Wer im Projekt arbeiten darf',
     accessKinds: {
@@ -2624,7 +2624,7 @@ export const de: Messages = {
     general: {
       title: 'Allgemein',
       intro: 'Name des Projekts, wer es leitet und wie neue Vorgänge behandelt werden.',
-      leadHint: 'Die Leitung hat alle Rechte im Projekt.',
+      leadHint: 'Optional. Die Leitung hat alle Rechte im Projekt.',
       typesInUse: (list: string) =>
         `Diese Typen werden noch von Vorgängen verwendet und können deshalb nicht entfernt werden: ${list}.`,
       typeUsage: (name: string, issues: number) =>

@@ -232,6 +232,7 @@ const (
 	ProjectCategoryNotFound    Key = "ProjectCategoryNotFound"
 	ProjectTemplateUnknown     Key = "ProjectTemplateUnknown"
 	ProjectAssigneeTypeUnknown Key = "ProjectAssigneeTypeUnknown"
+	ProjectAssigneeNoLead      Key = "ProjectAssigneeNoLead"
 	ProjectIssueTypeRequired   Key = "ProjectIssueTypeRequired"
 	ProjectRemovedTypesInUse   Key = "ProjectRemovedTypesInUse"
 	ProjectDeleteConfirm       Key = "ProjectDeleteConfirm"

@@ -125,6 +125,10 @@ describe('project creation', () => {
     });
     expect(projectPayload(form({ access: 'everyone' })).access).toEqual({ holder: 'everyone' });
   });
+
+  it('sends an emptied lead as null', () => {
+    expect(projectPayload(form({ lead: null }))).toMatchObject({ lead: null });
+  });
 });
 
 describe('settings tabs', () => {
@@ -355,6 +359,8 @@ describe('general tab', () => {
       defaultAssignee: 'lead',
     });
     expect(generalPatch(settings, { ...f, lead: { ...lead, id: 9 } })).toEqual({ lead: 9 });
+    expect(generalPatch(settings, { ...f, lead: null })).toEqual({ lead: null });
+    expect(generalPatch({ ...settings, lead: null }, { ...f, lead: null })).toEqual({});
     expect(generalPatch(settings, { ...f, issueTypes: ['1'] })).toEqual({ issueTypes: ['1'] });
   });
 

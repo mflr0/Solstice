@@ -209,6 +209,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectCategoryNotFound:    "Category not found.",
 	ProjectTemplateUnknown:     "Unknown template: software or simple.",
 	ProjectAssigneeTypeUnknown: "Default assignment: unassigned or lead.",
+	ProjectAssigneeNoLead:      "New issues can't go to the project lead: the project has no lead.",
 	ProjectIssueTypeRequired:   "Choose at least one issue type that is not a sub-task.",
 	ProjectRemovedTypesInUse:   "Some issues still use the removed types: change their type first.",
 	ProjectDeleteConfirm:       "This project contains issues: type its key to confirm the deletion.",
