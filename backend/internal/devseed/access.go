@@ -21,9 +21,25 @@ type seedGroup struct {
 // comments and work logs restricted to it; tom is not in it.
 const Developers = "developers"
 
+// Release is the group whose members are set per project only: on the demo
+// project, marie and the developers. A comment there is restricted to it.
+const Release = "release"
+
 var groups = []seedGroup{
 	{Developers, "People who build the products.", []string{"alice", "hans", "giulia", "priya"}},
 	{"office", "People who run the office.", []string{"marie", "tom"}},
+	{Release, "People who sign off a release.", nil},
+}
+
+// projectMembers makes users and groups project members of a group in a
+// project.
+type projectMembers struct {
+	project, group string
+	users, groups  []string
+}
+
+var members = []projectMembers{
+	{Project, Release, []string{"marie"}, []string{Developers}},
 }
 
 // seedLevel is a security level whose issues only a group sees.
@@ -73,6 +89,11 @@ func ensureAccess(ctx context.Context, conn *sql.DB, admin *client, ids map[stri
 			return nil, fmt.Errorf("group %s: %w", g.name, err)
 		}
 		groupIDs[g.name] = id
+	}
+	for _, m := range members {
+		if err := ensureProjectMembers(admin, ids, groupIDs, m, say); err != nil {
+			return nil, fmt.Errorf("project members of %s in %s: %w", m.group, m.project, err)
+		}
 	}
 	levelIDs := map[[2]string]int64{}
 	for _, l := range levels {
@@ -179,6 +200,55 @@ func ensureGrant(admin *client, g groupGrant, group int64, say func(string, ...a
 		return err
 	}
 	say("granted %d permissions of the project %s to the group %s", len(all)-len(cur.Grants), g.project, g.group)
+	return nil
+}
+
+// ensureProjectMembers adds the project members a group lacks in a project.
+// The API replaces every project member of the group, so the others are
+// sent back.
+func ensureProjectMembers(admin *client, ids, groupIDs map[string]int64, m projectMembers,
+	say func(string, ...any)) error {
+	var cur []struct {
+		ID     int64
+		Users  []struct{ ID int64 }
+		Groups []struct{ ID int64 }
+	}
+	if err := admin.call("GET", "/api/projects/"+m.project+"/groups", nil, &cur); err != nil {
+		return err
+	}
+	var users, groups []int64
+	for _, g := range cur {
+		if g.ID != groupIDs[m.group] {
+			continue
+		}
+		for _, u := range g.Users {
+			users = append(users, u.ID)
+		}
+		for _, sub := range g.Groups {
+			groups = append(groups, sub.ID)
+		}
+	}
+	added := 0
+	for _, u := range m.users {
+		if !slices.Contains(users, ids[u]) {
+			users = append(users, ids[u])
+			added++
+		}
+	}
+	for _, g := range m.groups {
+		if !slices.Contains(groups, groupIDs[g]) {
+			groups = append(groups, groupIDs[g])
+			added++
+		}
+	}
+	if added == 0 {
+		return nil
+	}
+	if err := admin.call("PUT", fmt.Sprintf("/api/projects/%s/groups/%d", m.project, groupIDs[m.group]),
+		map[string]any{"users": users, "groups": groups}, nil); err != nil {
+		return err
+	}
+	say("added %d project members to the group %s in the project %s", added, m.group, m.project)
 	return nil
 }
 

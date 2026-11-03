@@ -346,9 +346,12 @@ Deux groupes répartissent les comptes fictifs : `developers` (alice, hans,
 giulia, priya) et `office` (marie, tom). Sur `DEMO`, les développeurs peuvent
 choisir le niveau de sécurité et modérer, et un ticket a le niveau
 `Developers only` : tom ne le voit pas. Un commentaire et un temps saisi de
-`DEMO` sont aussi réservés aux développeurs. `OPS` envoie aussi les e-mails
-des nouveaux tickets à `office`, et ses tâches suivent le workflow
-`Purchases`, avec le statut personnalisé `Awaiting approval`. Un webhook,
+`DEMO` sont aussi réservés aux développeurs. Un troisième groupe, `release`,
+n'a pas de membres globaux : sur `DEMO`, ses membres de projet sont marie et
+le groupe `developers`, et un commentaire y est réservé : tom ne le voit pas
+non plus. `OPS` envoie aussi les e-mails des nouveaux tickets à `office`, et
+ses tâches suivent le workflow `Purchases`, avec le statut personnalisé
+`Awaiting approval`. Un webhook,
 `Local listener (not running)`, vise un port local où rien n'écoute : ses
 envois échouent.
 
