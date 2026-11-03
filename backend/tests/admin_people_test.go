@@ -133,7 +133,20 @@ type groupDetail struct {
 	Name        string
 	Description *string
 	Members     []userRef
-	Usage       struct{ Grants, ProjectMembers, SecurityLevels, Comments, Worklogs int }
+	Projects    []struct {
+		Project struct {
+			ID   int64
+			Key  string
+			Name string
+		}
+		Users  []userRef
+		Groups []idName
+	}
+	MemberOf []struct {
+		Project struct{ Key string }
+		Group   idName
+	}
+	Usage struct{ Grants, ProjectMembers, SecurityLevels, Comments, Worklogs int }
 }
 
 func TestGroups(t *testing.T) {
@@ -288,6 +301,23 @@ func TestProjectGroupMembers(t *testing.T) {
 	admin.call("GET", fmt.Sprintf("/api/admin/groups/%d", sub.ID), nil, 200, &usage)
 	if usage.Usage.ProjectMembers != 2 {
 		t.Errorf("usage of a group with project memberships: %+v", usage.Usage)
+	}
+	// The detail says where: its project members, and where it is one.
+	if p := usage.Projects; len(p) != 1 || p[0].Project.Key != other || p[0].Project.ID == 0 || p[0].Project.Name == "" ||
+		len(p[0].Users) != 0 || len(p[0].Groups) != 1 || p[0].Groups[0].ID != g.ID {
+		t.Errorf("projects of %d: %+v", sub.ID, p)
+	}
+	if m := usage.MemberOf; len(m) != 1 || m[0].Project.Key != key || m[0].Group.ID != g.ID || m[0].Group.Name != name {
+		t.Errorf("memberOf of %d: %+v", sub.ID, m)
+	}
+	var detail groupDetail
+	admin.call("GET", fmt.Sprintf("/api/admin/groups/%d", g.ID), nil, 200, &detail)
+	if p := detail.Projects; len(p) != 1 || p[0].Project.Key != key || len(p[0].Users) != 1 ||
+		p[0].Users[0].Username != "chloe.simon" || len(p[0].Groups) != 1 || p[0].Groups[0].ID != sub.ID {
+		t.Errorf("projects of %d: %+v", g.ID, p)
+	}
+	if m := detail.MemberOf; len(m) != 1 || m[0].Project.Key != other || m[0].Group.ID != sub.ID {
+		t.Errorf("memberOf of %d: %+v", g.ID, m)
 	}
 
 	// Emptied: its project members lose what it gave.
