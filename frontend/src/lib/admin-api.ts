@@ -323,6 +323,9 @@ export const accountApi = {
   /** Stores one interface preference on the account. */
   setPreference: <K extends keyof Preferences>(key: K, value: NonNullable<Preferences[K]>) =>
     request<Me>('PUT', `/api/me/preferences/${enc(key)}`, value),
+  /** Puts one interface preference back to its default. */
+  deletePreference: (key: keyof Preferences) =>
+    request<Me>('DELETE', `/api/me/preferences/${enc(key)}`),
 
   // Access tokens, one's own.
   tokens: () => request<AccessToken[]>('GET', '/api/me/tokens'),

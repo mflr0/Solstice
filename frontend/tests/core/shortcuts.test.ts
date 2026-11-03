@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  bindingFromPress,
   bindingsInUse,
   clashes,
   formatShortcut,
+  heldModifiers,
   isMac,
   isRefused,
   type KeyPress,
+  matchesBinding,
+  overridesFrom,
+  parseBinding,
   type Shortcut,
   type ShortcutScope,
   SHORTCUTS,
   shortcutFor,
+  shortcutParts,
   shortcutsEnabled,
 } from '../../src/core/shortcuts.js';
 
@@ -44,6 +50,10 @@ describe('formatShortcut', () => {
     expect(formatShortcut('Ctrl-Shift-Enter', true, fr)).toBe('⌃⇧Enter');
   });
 
+  it('keeps Meta off a Mac', () => {
+    expect(formatShortcut('Meta-k', false, de)).toBe('Meta+K');
+  });
+
   it('keeps a hyphen key and named keys as they are', () => {
     expect(formatShortcut('Mod--', false, fr)).toBe('Ctrl+-');
     expect(formatShortcut('Mod-Enter', false, fr)).toBe('Ctrl+Enter');
@@ -54,6 +64,35 @@ describe('formatShortcut', () => {
     expect(formatShortcut('c', true, fr)).toBe('c');
     expect(formatShortcut('Enter', true, fr)).toBe('Enter');
     expect(formatShortcut('Alt-k', false, de)).toBe('Alt+K');
+  });
+});
+
+describe('shortcutParts', () => {
+  it('gives one key cap per key, in the platform’s order', () => {
+    expect(shortcutParts('Mod-g', true, fr)).toEqual(['⌘', 'G']);
+    expect(shortcutParts('Mod-Shift-x', true, fr)).toEqual(['⇧', '⌘', 'X']);
+    expect(shortcutParts('Shift-Mod-x', false, de)).toEqual(['Strg', 'Umschalt', 'X']);
+    expect(shortcutParts('Mod--', false, fr)).toEqual(['Ctrl', '-']);
+  });
+
+  it('keeps a key alone as typed', () => {
+    expect(shortcutParts('c', true, fr)).toEqual(['c']);
+    expect(shortcutParts('?', false, fr)).toEqual(['?']);
+    expect(shortcutParts('Space', false, fr)).toEqual(['Space']);
+  });
+});
+
+describe('heldModifiers', () => {
+  it('names the modifiers held, as the key caps do', () => {
+    expect(heldModifiers({ key: 'Meta', metaKey: true, shiftKey: true }, true, fr)).toEqual([
+      '⇧',
+      '⌘',
+    ]);
+    expect(heldModifiers({ key: 'Alt', altKey: true, ctrlKey: true }, false, de)).toEqual([
+      'Strg',
+      'Alt',
+    ]);
+    expect(heldModifiers({ key: 'Shift' }, false, fr)).toEqual([]);
   });
 });
 
@@ -169,6 +208,78 @@ describe('bindingsInUse', () => {
 
   it('ignores names that are not actions', () => {
     expect(bindingsInUse({ toString: ['z'], nope: ['z'] })).toEqual(SHORTCUTS);
+  });
+});
+
+describe('overridesFrom', () => {
+  const defaults = Object.fromEntries(SHORTCUTS.map((s) => [s.action, s.keys]));
+
+  it('keeps only the actions whose keys changed', () => {
+    expect(overridesFrom({ ...defaults, create: ['Alt-n'], watch: [] })).toEqual({
+      create: ['Alt-n'],
+      watch: [],
+    });
+    expect(overridesFrom({ ...defaults, open: ['Enter', 'o'] })).toEqual({ open: ['Enter', 'o'] });
+  });
+
+  it('is empty once every action is back to its defaults', () => {
+    expect(overridesFrom(defaults)).toEqual({});
+    expect(overridesFrom({})).toEqual({});
+  });
+
+  it('gives back what bindingsInUse took', () => {
+    const stored = { create: ['Alt-n'], next: ['j', 'ArrowDown'] };
+    const inUse = Object.fromEntries(bindingsInUse(stored).map((s) => [s.action, s.keys]));
+    expect(overridesFrom(inUse)).toEqual(stored);
+  });
+});
+
+describe('bindingFromPress', () => {
+  it('writes a key alone as it is typed, Shift included', () => {
+    expect(bindingFromPress({ key: 'c' }, false)).toBe('c');
+    expect(bindingFromPress({ key: '?', shiftKey: true }, false)).toBe('?');
+    expect(bindingFromPress({ key: 'J', shiftKey: true }, false)).toBe('J');
+    expect(bindingFromPress({ key: ' ' }, false)).toBe('Space');
+    expect(bindingFromPress({ key: 'Enter', shiftKey: true }, false)).toBe('Shift-Enter');
+  });
+
+  it('writes Ctrl off a Mac and Cmd on a Mac as Mod', () => {
+    expect(bindingFromPress({ key: 'k', ctrlKey: true, keyCode: 75 }, false)).toBe('Mod-k');
+    expect(bindingFromPress({ key: 'k', metaKey: true, keyCode: 75 }, true)).toBe('Mod-k');
+    expect(bindingFromPress({ key: 'k', ctrlKey: true, keyCode: 75 }, true)).toBe('Ctrl-k');
+    expect(bindingFromPress({ key: 'k', metaKey: true, keyCode: 75 }, false)).toBe('Meta-k');
+  });
+
+  it('names the key under the fingers when a modifier changes the character', () => {
+    expect(bindingFromPress({ key: 'Dead', altKey: true, keyCode: 78 }, true)).toBe('Alt-n');
+    expect(bindingFromPress({ key: '˚', altKey: true, keyCode: 75 }, true)).toBe('Alt-k');
+    expect(bindingFromPress({ key: 'K', altKey: true, shiftKey: true, keyCode: 75 }, false)).toBe(
+      'Alt-Shift-k',
+    );
+  });
+
+  it('waits for a key while only modifiers are down', () => {
+    for (const key of ['Shift', 'Control', 'Alt', 'Meta', 'Unidentified'])
+      expect(bindingFromPress({ key, altKey: key === 'Alt' }, false), key).toBeNull();
+  });
+
+  it('records what the same press then matches', () => {
+    const presses: KeyPress[] = [
+      { key: 'c' },
+      { key: '?', shiftKey: true },
+      { key: 'J', shiftKey: true },
+      { key: ' ' },
+      { key: 'ArrowDown', shiftKey: true },
+      { key: 'n', altKey: true, keyCode: 78 },
+      { key: '!', altKey: true, shiftKey: true, keyCode: 49 },
+      { key: 'Enter', ctrlKey: true, keyCode: 13 },
+    ];
+    for (const mac of [false, true]) {
+      for (const e of presses) {
+        const b = parseBinding(bindingFromPress(e, mac) ?? '', mac);
+        expect(b && matchesBinding(e, b), `${e.key} ${mac}`).toBe(true);
+      }
+    }
   });
 });
 

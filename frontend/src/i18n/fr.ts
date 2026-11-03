@@ -849,6 +849,24 @@ export const fr: Messages = {
     toggleHint:
       'Des touches comme c ou / agissent sans Ctrl ni Alt. Désactivez-les si elles gênent un lecteur d’écran ou la commande vocale.',
     list: 'Voir tous les raccourcis',
+    bindings: 'Touches',
+    bindingsHint:
+      'Choisissez « Ajouter une touche », puis appuyez sur les touches. Les nouvelles touches agissent une fois enregistrées.',
+    noKey: 'Aucune touche',
+    addKey: 'Ajouter une touche',
+    recording: 'Appuyez sur les touches, ou Échap pour annuler',
+    recorded: (key: string, action: string) => `${key} ajouté à « ${action} ».`,
+    cancelled: 'Aucune touche ajoutée.',
+    refused: (key: string) =>
+      `${key} ne peut pas servir de raccourci : le navigateur ou la page le garde.`,
+    already: (key: string) => `${key} est déjà une touche de cette action.`,
+    removeKey: (key: string) => `Retirer ${key}`,
+    reset: 'Rétablir',
+    resetAction: (action: string) => `Rétablir « ${action} »`,
+    resetAll: 'Tout rétablir',
+    clashWith: (action: string) => `Aussi pris par « ${action} »`,
+    clashBlocked: 'Deux actions partagent une touche. Changez-en une pour enregistrer.',
+    saved: 'Raccourcis enregistrés.',
   },
   comments: {
     empty: 'Pas encore de commentaire.',

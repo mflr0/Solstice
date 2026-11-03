@@ -15,7 +15,13 @@ import {
   type Scheme,
   type Skin,
 } from '../core/appearance.js';
-import { bindingsInUse, isMac, type Shortcut, shortcutsEnabled } from '../core/shortcuts.js';
+import {
+  bindingsInUse,
+  isMac,
+  type Shortcut,
+  type ShortcutOverrides,
+  shortcutsEnabled,
+} from '../core/shortcuts.js';
 import { accountApi } from './admin-api.js';
 import { session } from './session.svelte.js';
 import { isSkinLoaded, loadSkin } from './skins.svelte.js';
@@ -95,13 +101,11 @@ class Appearance {
     return shortcutsEnabled(session.me?.preferences);
   }
 
-  /** The shortcuts in use: the defaults, with the account's overrides once it can set them. */
-  get bindings(): readonly Shortcut[] {
-    return DEFAULT_BINDINGS;
-  }
+  /** The shortcuts in use: the defaults, with the account's overrides. */
+  readonly bindings: readonly Shortcut[] = $derived(
+    bindingsInUse(session.me?.preferences?.shortcuts ?? {}),
+  );
 }
-
-const DEFAULT_BINDINGS = bindingsInUse({});
 
 /** Whether Mod means Cmd on this device. */
 export const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform : '');
@@ -148,6 +152,17 @@ export function applyMode(mode: Mode): void {
 /** Turns single-key shortcuts on or off on the account. */
 export async function applyShortcuts(on: boolean): Promise<void> {
   if (session.me) session.me = await accountApi.setPreference('shortcutsEnabled', on);
+}
+
+/** Stores the bindings that differ from the defaults on the account; none puts the defaults back. */
+export async function applyBindings(overrides: ShortcutOverrides): Promise<void> {
+  if (!session.me) return;
+  session.me = Object.keys(overrides).length
+    ? await accountApi.setPreference(
+        'shortcuts',
+        Object.fromEntries(Object.entries(overrides).map(([a, k]) => [a, [...k]])),
+      )
+    : await accountApi.deletePreference('shortcuts');
 }
 
 /** Applies the stored appearance and follows the system's light/dark changes. */

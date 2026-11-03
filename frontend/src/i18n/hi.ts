@@ -845,6 +845,23 @@ export const hi: Messages = {
     toggleHint:
       'c या / जैसी कुंजियाँ Ctrl या Alt के बिना काम करती हैं। अगर ये स्क्रीन रीडर या वॉइस कंट्रोल में बाधा डालें, तो इन्हें बंद करें।',
     list: 'सभी शॉर्टकट देखें',
+    bindings: 'कुंजियाँ',
+    bindingsHint:
+      '“कुंजी जोड़ें” चुनें, फिर जोड़ने वाली कुंजियाँ दबाएँ। नई कुंजियाँ सहेजने के बाद काम करती हैं।',
+    noKey: 'कोई कुंजी नहीं',
+    addKey: 'कुंजी जोड़ें',
+    recording: 'कुंजियाँ दबाएँ, या रद्द करने के लिए Escape',
+    recorded: (key: string, action: string) => `${key} “${action}” में जोड़ी गई।`,
+    cancelled: 'कोई कुंजी नहीं जोड़ी गई।',
+    refused: (key: string) => `${key} शॉर्टकट नहीं बन सकती: ब्राउज़र या पेज इसे अपने पास रखता है।`,
+    already: (key: string) => `${key} पहले से इस क्रिया की कुंजी है।`,
+    removeKey: (key: string) => `${key} हटाएँ`,
+    reset: 'डिफ़ॉल्ट पर लौटाएँ',
+    resetAction: (action: string) => `“${action}” को डिफ़ॉल्ट पर लौटाएँ`,
+    resetAll: 'सब डिफ़ॉल्ट पर लौटाएँ',
+    clashWith: (action: string) => `“${action}” में भी लगी है`,
+    clashBlocked: 'दो क्रियाएँ एक ही कुंजी साझा करती हैं। सहेजने के लिए उनमें से एक बदलें।',
+    saved: 'शॉर्टकट सहेजे गए।',
   },
   comments: {
     empty: 'अभी तक कोई टिप्पणी नहीं।',

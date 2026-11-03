@@ -1,8 +1,9 @@
 <script lang="ts">
   import { paths } from '../core/route.js';
-  import { formatShortcut, type ShortcutScope } from '../core/shortcuts.js';
+  import { formatShortcut, shortcutParts, type ShortcutScope } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
   import { appearance, dialogs, mac } from '../lib/ui.svelte.js';
+  import KeyCaps from './KeyCaps.svelte';
   import Modal from './Modal.svelte';
 
   /** Every keyboard shortcut, by where it works. Opened with "?". */
@@ -31,7 +32,10 @@
           <dt>
             {#each s.keys as key, i (key)}
               {#if i > 0}<span class="muted">{t.keyboard.or}</span>{/if}
-              <kbd>{formatShortcut(key, mac, t.editor.keys)}</kbd>
+              <KeyCaps
+                parts={shortcutParts(key, mac, t.editor.keys)}
+                label={formatShortcut(key, mac, t.editor.keys)}
+              />
             {/each}
           </dt>
           <dd>{t.keyboard.actions[s.action]}</dd>
