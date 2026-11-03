@@ -1,6 +1,7 @@
 <script lang="ts">
   import { SCHEME_SWATCHES, SKINS, type Scheme, type Skin } from '../core/appearance.js';
   import { paths } from '../core/route.js';
+  import { bindingWorks, formatShortcut } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
   import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
@@ -10,7 +11,7 @@
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
   import { isSkinLoaded, loadSkin } from '../lib/skins.svelte.js';
-  import { appearance, applyMode, applySkin, openCreate } from '../lib/ui.svelte.js';
+  import { appearance, applyMode, applySkin, mac, openCreate } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
   import ProjectScope from './ProjectScope.svelte';
@@ -73,6 +74,11 @@
     if (session.me?.admin) void updateNotice.load();
   });
   const update = $derived(session.me?.admin ? updateNotice.latest : null);
+  const createKey = $derived(
+    appearance.bindings
+      .find((s) => s.action === 'create')
+      ?.keys.find((k) => bindingWorks(k, appearance.shortcuts, mac)),
+  );
 
   // On a narrow bar the links scroll sideways: bring the current one into view.
   $effect(() => {
@@ -189,7 +195,7 @@
     >
       <span class="plus" aria-hidden="true">+</span>
       <span class="label">{t.nav.create}</span>
-      {#if appearance.shortcuts}<kbd>c</kbd>{/if}
+      {#if createKey}<kbd>{formatShortcut(createKey, mac, t.editor.keys)}</kbd>{/if}
     </button>
 
     {#if session.me}

@@ -15,7 +15,7 @@ import {
   type Scheme,
   type Skin,
 } from '../core/appearance.js';
-import { shortcutsEnabled } from '../core/shortcuts.js';
+import { bindingsInUse, isMac, type Shortcut, shortcutsEnabled } from '../core/shortcuts.js';
 import { accountApi } from './admin-api.js';
 import { session } from './session.svelte.js';
 import { isSkinLoaded, loadSkin } from './skins.svelte.js';
@@ -94,7 +94,17 @@ class Appearance {
   get shortcuts(): boolean {
     return shortcutsEnabled(session.me?.preferences);
   }
+
+  /** The shortcuts in use: the defaults, with the account's overrides once it can set them. */
+  get bindings(): readonly Shortcut[] {
+    return DEFAULT_BINDINGS;
+  }
 }
+
+const DEFAULT_BINDINGS = bindingsInUse({});
+
+/** Whether Mod means Cmd on this device. */
+export const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform : '');
 
 /** The skin (art direction) and colour mode in use, and whether single-key shortcuts work. */
 export const appearance = new Appearance();
@@ -173,16 +183,13 @@ export function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Whether a key press is not for the page's shortcuts: with a modifier, while
- * typing, or while a dialog is open.
+ * Whether a key press is not for the page's shortcuts: while typing, or while
+ * a dialog is open.
  */
 export function ignoreShortcut(e: KeyboardEvent): boolean {
   return (
     e.defaultPrevented ||
     e.isComposing ||
-    e.ctrlKey ||
-    e.metaKey ||
-    e.altKey ||
     dialogs.create ||
     dialogs.shortcuts ||
     isTyping(e.target) ||
