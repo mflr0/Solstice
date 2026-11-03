@@ -11,7 +11,7 @@
   } from '../../core/admin-general.js';
   import type { GeneralField, GeneralSettings } from '../../core/admin-types.js';
   import { t } from '../../i18n/t.js';
-  import { guessBaseURL, timeZones } from '../../core/setup.js';
+  import { guessBaseURL, timeZones, zoneChoices } from '../../core/setup.js';
   import { locale } from '../../i18n/index.js';
   import { localeOptions } from '../../i18n/locales.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -19,6 +19,7 @@
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import LanguageDropdown from '../LanguageDropdown.svelte';
+  import TimeZoneDropdown from '../TimeZoneDropdown.svelte';
 
   /**
    * The instance as a whole: its name, public address, time zone, default
@@ -29,6 +30,7 @@
   type Field = keyof GeneralForm;
 
   const zones = timeZones();
+  const zoneList = zoneChoices(locale);
 
   let settings = $state<GeneralSettings | null>(null);
   let form = $state<GeneralForm | null>(null);
@@ -170,20 +172,29 @@
     <div class="form-grid">
       <div class="field">
         <label class="field-label" for="set-zone">{t.settingsAdmin.timeZone}</label>
-        <input
-          id="set-zone"
-          class="input"
-          bind:value={form.timeZone}
-          list="admin-zones"
-          placeholder={t.settingsAdmin.serverZone}
-          autocomplete="off"
-          spellcheck="false"
-          aria-invalid={!!shown('timeZone')}
-          onblur={() => (touched.timeZone = true)}
-        />
-        <datalist id="admin-zones">
-          {#each zones as z (z)}<option value={z}></option>{/each}
-        </datalist>
+        {#if zoneList.length}
+          <TimeZoneDropdown
+            id="set-zone"
+            zones={zoneList}
+            label={t.settingsAdmin.timeZone}
+            value={form.timeZone}
+            first={{ value: '', label: t.settingsAdmin.serverZone }}
+            invalid={!!shown('timeZone')}
+            onchange={(v) => form && (form.timeZone = v)}
+            onblur={() => (touched.timeZone = true)}
+          />
+        {:else}
+          <input
+            id="set-zone"
+            class="input"
+            bind:value={form.timeZone}
+            placeholder={t.settingsAdmin.serverZone}
+            autocomplete="off"
+            spellcheck="false"
+            aria-invalid={!!shown('timeZone')}
+            onblur={() => (touched.timeZone = true)}
+          />
+        {/if}
         {#if shown('timeZone')}
           <span class="field-error">{shown('timeZone')}</span>
         {:else}

@@ -28,7 +28,13 @@
   />
   <span class="hint" id="source-url-hint">{m.import.urlHint}</span>
 </label>
-<TimeZoneField label={m.import.tz} hint={m.import.tzHint} bind:value={form.tz} id="source-tz" />
+<TimeZoneField
+  label={m.import.tz}
+  hint={m.import.tzHint}
+  bind:value={form.tz}
+  id="source-tz"
+  messages={m.language}
+/>
 <label class="field">
   <span>{m.import.home}</span>
   <input
