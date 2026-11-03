@@ -1005,12 +1005,28 @@
   height: 9px;
 }
 
+/* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
+[data-skin='retro'] .type-mark {
+  --type-tone: var(--type-color);
+  --type-ink: var(--type-tone, var(--tone));
+}
+
+@supports (color: oklch(from red l c h)) {
+  [data-skin='retro'] .type-mark {
+    --type-tone: oklch(from var(--type-color) min(l, 0.52) c h);
+  }
+
+  [data-skin='retro'][data-scheme='dark'] .type-mark {
+    --type-tone: oklch(from var(--type-color) max(l, 0.72) c h);
+  }
+}
+
 [data-skin='retro'] .type-mark.type-mark {
   width: 1rem;
   height: 1rem;
   border: 1px solid var(--rt-dark);
   border-radius: 0;
-  background: var(--tone);
+  background: var(--type-ink);
   color: var(--rt-tone-ink);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.4),
@@ -1038,8 +1054,32 @@
 [data-skin='retro'] .type-mark.type-mark[data-type='subtask'] {
   --tone: var(--tone-subtask);
   background: var(--rt-well);
-  color: var(--tone);
-  border-color: var(--tone);
+  color: var(--type-ink);
+  border-color: var(--type-ink);
+  box-shadow: none;
+}
+
+/* An admin's fill, drawn the Retro way. */
+[data-skin='retro'] .type-mark.type-mark[data-fill='filled'] {
+  border-color: var(--rt-dark);
+  background: var(--type-ink);
+  color: var(--rt-tone-ink);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.4),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-skin='retro'] .type-mark.type-mark[data-fill='subtle'] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--type-ink) 18%, var(--rt-well));
+  color: var(--type-ink);
+  box-shadow: none;
+}
+
+[data-skin='retro'] .type-mark.type-mark[data-fill='outline'] {
+  border-color: var(--type-ink);
+  background: var(--rt-well);
+  color: var(--type-ink);
   box-shadow: none;
 }
 
