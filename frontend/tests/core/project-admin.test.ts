@@ -5,6 +5,7 @@ import type { ComponentRow, VersionRow } from '../../src/core/admin-types.js';
 import {
   assignColumn,
   ASSIGNEE_TYPES,
+  BUILTIN_HOLDERS,
   categoryProblem,
   componentForm,
   componentPayload,
@@ -18,7 +19,10 @@ import {
   generalForm,
   generalPatch,
   generalProblems,
+  groupKeyHolder,
   hasExtra,
+  holderGroupKey,
+  holderGroups,
   keyProblem,
   moveItem,
   notificationsChanged,
@@ -538,5 +542,36 @@ describe('versions', () => {
     expect(versionPayload({ ...f, releaseDate: '2026-02-15' }, row)).toEqual({
       releaseDate: '2026-02-15',
     });
+  });
+});
+
+describe('built-in groups', () => {
+  it('maps each built-in holder to its group and back', () => {
+    for (const h of BUILTIN_HOLDERS) {
+      const key = holderGroupKey(h);
+      expect(key).toBe(`builtin:${h}`);
+      expect(groupKeyHolder(key!)).toEqual({ holder: h });
+    }
+  });
+
+  it('leaves a real group and a user as they are', () => {
+    expect(groupKeyHolder(holderGroupKey('group', 5)!)).toEqual({ holder: 'group', id: 5 });
+    expect(holderGroupKey('user', 3)).toBeNull();
+    expect(holderGroupKey('group')).toBeNull();
+    expect(groupKeyHolder('user:3')).toBeNull();
+    expect(groupKeyHolder('builtin:group')).toBeNull();
+    expect(groupKeyHolder('group:x')).toBeNull();
+    expect(groupKeyHolder('')).toBeNull();
+  });
+
+  it('lists the built-in groups first, marked', () => {
+    const labels = { everyone: 'E', lead: 'L', reporter: 'R', assignee: 'A' };
+    expect(holderGroups(labels, [{ id: 9, name: 'Devs' }])).toEqual([
+      { key: 'builtin:everyone', label: 'E', builtin: true },
+      { key: 'builtin:lead', label: 'L', builtin: true },
+      { key: 'builtin:reporter', label: 'R', builtin: true },
+      { key: 'builtin:assignee', label: 'A', builtin: true },
+      { key: 'group:9', label: 'Devs', builtin: false },
+    ]);
   });
 });

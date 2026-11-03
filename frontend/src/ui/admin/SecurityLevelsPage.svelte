@@ -1,6 +1,6 @@
 <script lang="ts">
   import { levelTargets } from '../../core/admin-forms.js';
-  import type { AdminProjectRow } from '../../core/project-admin.js';
+  import { isBuiltinHolder, type AdminProjectRow } from '../../core/project-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { holderLabels, t } from '../../i18n/t.js';
   import {
@@ -169,7 +169,9 @@
           <span class="muted small label">{t.securityAdmin.members}</span>
           {#each level.members as m (m.id)}
             <span class="chip member">
-              {#if m.user || m.group}<span class="kind">{holderLabels[m.holder]}</span>{/if}
+              <span class="kind"
+                >{isBuiltinHolder(m.holder) ? t.builtInGroups.mark : holderLabels[m.holder]}</span
+              >
               {memberName(m)}
               <button
                 type="button"

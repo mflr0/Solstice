@@ -18,7 +18,7 @@ import type {
   VersionRow,
 } from './admin-types.js';
 import { fold } from './text.js';
-import type { IdName, TypeRef, UserRef } from './types.js';
+import type { Holder, IdName, TypeRef, UserRef } from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
 
@@ -543,4 +543,54 @@ export function notificationsChanged(
   extra: readonly ExtraRecipient[],
 ): boolean {
   return saved.enabled !== enabled || extraSignature(saved.extra) !== extraSignature(extra);
+}
+
+/* Built-in groups ------------------------------------------------------------ */
+
+/** The holders shown as built-in groups, in the order group lists offer them. */
+export const BUILTIN_HOLDERS = ['everyone', 'lead', 'reporter', 'assignee'] as const;
+
+export type BuiltinHolder = (typeof BUILTIN_HOLDERS)[number];
+
+/** Whether a holder is shown as a built-in group. */
+export function isBuiltinHolder(holder: Holder): holder is BuiltinHolder {
+  return (BUILTIN_HOLDERS as readonly string[]).includes(holder);
+}
+
+/** A group a holder list offers: a built-in group, or a group of the instance. */
+export interface HolderGroup {
+  /** Stable across languages: `builtin:<holder>` or `group:<id>`. */
+  key: string;
+  label: string;
+  builtin: boolean;
+}
+
+/** The key of the group a holder is; null for a user, or a group without its id. */
+export function holderGroupKey(holder: Holder, id?: number | null): string | null {
+  if (isBuiltinHolder(holder)) return `builtin:${holder}`;
+  if (holder === 'group' && id != null) return `group:${id}`;
+  return null;
+}
+
+/** The holder a group's key stands for, as the API stores it; null for an unknown key. */
+export function groupKeyHolder(key: string): { holder: Holder; id?: number } | null {
+  const [kind, rest] = key.split(':', 2);
+  if (kind === 'builtin') {
+    const holder = BUILTIN_HOLDERS.find((h) => h === rest);
+    return holder ? { holder } : null;
+  }
+  if (kind === 'group' && rest && /^[0-9]+$/.test(rest))
+    return { holder: 'group', id: Number(rest) };
+  return null;
+}
+
+/** The groups a holder list offers: the built-in ones first, then the instance's. */
+export function holderGroups(
+  labels: Record<BuiltinHolder, string>,
+  groups: readonly Pick<IdName, 'id' | 'name'>[],
+): HolderGroup[] {
+  return [
+    ...BUILTIN_HOLDERS.map((h) => ({ key: `builtin:${h}`, label: labels[h], builtin: true })),
+    ...groups.map((g) => ({ key: `group:${g.id}`, label: g.name, builtin: false })),
+  ];
 }

@@ -78,6 +78,12 @@ export const fr: Messages = {
     assignee: 'Assigné du ticket',
   },
 
+  builtInGroups: {
+    mark: 'Groupe intégré',
+    heading: 'Groupes intégrés',
+    groups: 'Groupes',
+  },
+
   /** Jira's history field names (lower case), as Solstice shows them. */
   historyFields: {
     status: 'Statut',

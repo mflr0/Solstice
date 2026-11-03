@@ -82,6 +82,12 @@ export const it: Messages = {
     assignee: 'Assegnatario del ticket',
   },
 
+  builtInGroups: {
+    mark: 'Gruppo predefinito',
+    heading: 'Gruppi predefiniti',
+    groups: 'Gruppi',
+  },
+
   historyFields: {
     status: 'Stato',
     assignee: 'Assegnatario',
