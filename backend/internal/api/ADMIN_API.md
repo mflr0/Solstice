@@ -228,9 +228,12 @@ picture already turned the right way. Both answer 204; `DELETE` also answers
 - `GET /api/admin/groups?q=` → `[{id, name, description, members}]`
   (`members`: count).
 - `GET /api/admin/groups/{id}` → `{id, name, description, members:
-  [userRef], usage: {grants, projectMembers, securityLevels, comments,
-  worklogs}}`. `projectMembers` counts its project members and the projects
-  where it is one.
+  [userRef], projects: [{project: {id, key, name}, users: [userRef], groups:
+  [idName]}], memberOf: [{project: {id, key, name}, group: idName}], usage:
+  {grants, projectMembers, securityLevels, comments, worklogs}}`. `projects`:
+  its project members (section 5), by project key; `memberOf`: the groups it
+  is a project member of. `projectMembers` counts its project members and the
+  projects where it is one.
 - `POST /api/admin/groups` `{name, description?}` → 201 group (as in the
   list). Names are stored lower-case, unique (409). (`group.create`)
 - `PATCH /api/admin/groups/{id}` `{name?, description?}` → group. Renaming

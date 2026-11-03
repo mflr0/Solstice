@@ -161,8 +161,67 @@ func (s *Server) writeGroup(w http.ResponseWriter, r *http.Request, id int64, st
 	}, id); err != nil {
 		return err
 	}
+	projects, err := s.groupProjects(ctx, id)
+	if err != nil {
+		return err
+	}
+	memberOf := []groupMemberOf{}
+	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, g.id, g.name FROM group_project_members m
+		JOIN projects p ON p.id = m.project_id JOIN user_groups g ON g.id = m.group_id
+		WHERE m.member_group_id = ? ORDER BY p.pkey, g.name`, func(rows *sql.Rows) error {
+		var e groupMemberOf
+		if err := rows.Scan(&e.Project.ID, &e.Project.Key, &e.Project.Name, &e.Group.ID, &e.Group.Name); err != nil {
+			return err
+		}
+		memberOf = append(memberOf, e)
+		return nil
+	}, id); err != nil {
+		return err
+	}
 	return writeJSON(w, status, map[string]any{"id": g.ID, "name": g.Name, "description": g.Description,
-		"members": members, "usage": usage})
+		"members": members, "projects": projects, "memberOf": memberOf, "usage": usage})
+}
+
+// groupProject is a group's project members in one project.
+type groupProject struct {
+	Project projectBrief `json:"project"`
+	Users   []userRef    `json:"users"`
+	Groups  []idName     `json:"groups"`
+}
+
+// groupMemberOf is a group that has another as a project member.
+type groupMemberOf struct {
+	Project projectBrief `json:"project"`
+	Group   idName       `json:"group"`
+}
+
+// groupProjects lists a group's project members, by project key.
+func (s *Server) groupProjects(ctx context.Context, id int64) ([]groupProject, error) {
+	out := []groupProject{}
+	err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, u.id, u.username, u.display_name, u.active, g.id, g.name
+		FROM group_project_members m JOIN projects p ON p.id = m.project_id
+		LEFT JOIN users u ON u.id = m.user_id LEFT JOIN user_groups g ON g.id = m.member_group_id
+		WHERE m.group_id = ? ORDER BY p.pkey, u.display_name, g.name`, func(rows *sql.Rows) error {
+		var p projectBrief
+		var uid, gid sql.NullInt64
+		var username, name, gname sql.NullString
+		var active sql.NullBool
+		if err := rows.Scan(&p.ID, &p.Key, &p.Name, &uid, &username, &name, &active, &gid, &gname); err != nil {
+			return err
+		}
+		if len(out) == 0 || out[len(out)-1].Project.ID != p.ID {
+			out = append(out, groupProject{Project: p, Users: []userRef{}, Groups: []idName{}})
+		}
+		last := &out[len(out)-1]
+		if uid.Valid {
+			last.Users = append(last.Users, userRef{uid.Int64, username.String, name.String, active.Bool})
+		}
+		if gid.Valid {
+			last.Groups = append(last.Groups, idName{gid.Int64, gname.String})
+		}
+		return nil
+	}, id)
+	return out, err
 }
 
 func (s *Server) getGroup(w http.ResponseWriter, r *http.Request) error {

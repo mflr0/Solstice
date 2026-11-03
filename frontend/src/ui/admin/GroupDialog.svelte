@@ -1,6 +1,7 @@
 <script lang="ts">
   import { groupProblems, hasProblems, namedPatch, namedPayload } from '../../core/admin-forms.js';
   import type { Group, GroupDetail } from '../../core/admin-types.js';
+  import { paths } from '../../core/route.js';
   import type { UserRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -198,6 +199,57 @@
           {/if}
         {/if}
       </fieldset>
+
+      {#if detail}
+        <section class="where-block">
+          <h3 class="field-label">{t.adminArea.groupsPage.projectMembers}</h3>
+          <p class="form-hint">{t.adminArea.groupsPage.projectMembersHint}</p>
+          {#if detail.projects.length === 0}
+            <p class="muted">{t.adminArea.groupsPage.noProjectMembers}</p>
+          {:else}
+            <ul class="where">
+              {#each detail.projects as p (p.project.id)}
+                <li>
+                  <a href="{paths.projectSettings(p.project.key)}?tab=rights"
+                    >{p.project.name} <span class="key muted">{p.project.key}</span></a
+                  >
+                  {#if p.users.length > 0}
+                    <p>
+                      <span class="muted">{t.adminArea.groupsPage.projectPeople}</span>
+                      {p.users.map((u) => u.name).join(', ')}
+                    </p>
+                  {/if}
+                  {#if p.groups.length > 0}
+                    <p>
+                      <span class="muted">{t.adminArea.groupsPage.projectGroups}</span>
+                      {p.groups.map((g) => g.name).join(', ')}
+                    </p>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+
+        <section class="where-block">
+          <h3 class="field-label">{t.adminArea.groupsPage.memberOf}</h3>
+          {#if detail.memberOf.length === 0}
+            <p class="muted">{t.adminArea.groupsPage.noMemberOf}</p>
+          {:else}
+            <ul class="where">
+              {#each detail.memberOf as m (`${m.project.id}-${m.group.id}`)}
+                <li>
+                  {m.group.name}
+                  <span class="muted">·</span>
+                  <a href="{paths.projectSettings(m.project.key)}?tab=rights"
+                    >{m.project.name} <span class="key muted">{m.project.key}</span></a
+                  >
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+      {/if}
     {/if}
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
@@ -219,13 +271,38 @@
   }
 
   .field .form-hint,
-  .choices .form-hint {
+  .choices .form-hint,
+  .where-block .form-hint {
     margin: 0;
   }
 
   .short {
     min-height: 0;
     font: 0.875rem/1.4 var(--font-body);
+  }
+
+  .where-block {
+    display: grid;
+    gap: 6px;
+  }
+
+  .where-block h3 {
+    margin: 0;
+  }
+
+  .where {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 13.75rem;
+    overflow: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .where p {
+    margin: 2px 0 0;
   }
 
   .member-list {

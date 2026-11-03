@@ -4,6 +4,7 @@
  * Dates are RFC 3339 strings in UTC.
  */
 
+import type { ProjectBrief } from './board-types.js';
 import type { IdName, StatusCategory, UserRef } from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
@@ -358,7 +359,24 @@ export interface GroupDetail {
   name: string;
   description: string;
   members: UserRef[];
+  /** Its project members, by project key. */
+  projects: GroupProject[];
+  /** The groups it is a project member of. */
+  memberOf: GroupMemberOf[];
   usage: GroupUsage;
+}
+
+/** A group's project members in one project. */
+export interface GroupProject {
+  project: ProjectBrief;
+  users: UserRef[];
+  groups: IdName[];
+}
+
+/** A group that has another as a project member, in one project. */
+export interface GroupMemberOf {
+  project: ProjectBrief;
+  group: IdName;
 }
 
 /** A group with its project members in one project: users, and groups whose members there count. */
