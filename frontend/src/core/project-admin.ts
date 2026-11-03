@@ -18,7 +18,17 @@ import type {
   VersionRow,
 } from './admin-types.js';
 import { fold } from './text.js';
-import type { Holder, IdName, TypeRef, UserRef } from './types.js';
+import type {
+  Effect,
+  Grant,
+  GroupRule,
+  Holder,
+  IdName,
+  Permission,
+  PermUser,
+  TypeRef,
+  UserRef,
+} from './types.js';
 
 /* Shapes (backend/internal/api/admin_projects.go) --------------------------- */
 
@@ -593,4 +603,265 @@ export function holderGroups(
     ...BUILTIN_HOLDERS.map((h) => ({ key: `builtin:${h}`, label: labels[h], builtin: true })),
     ...groups.map((g) => ({ key: `group:${g.id}`, label: g.name, builtin: false })),
   ];
+}
+
+/* Permission matrix ---------------------------------------------------------- */
+
+/** A cell of the permission matrix: the row's project rule, or none. */
+export type CellState = 'inherit' | Effect;
+
+/** The states in the order the switch shows them: block, inherit, grant. */
+export const CELL_STATES: readonly CellState[] = ['deny', 'inherit', 'allow'];
+
+/** The state Space moves a cell to: inherit, then grant, then block. */
+export function nextCellState(s: CellState): CellState {
+  return s === 'inherit' ? 'allow' : s === 'allow' ? 'deny' : 'inherit';
+}
+
+/** A row of the matrix: a built-in group, a group or a user. */
+export interface MatrixRow {
+  /** `builtin:<holder>`, `group:<id>` or `user:<id>`. */
+  key: string;
+  holder: Holder;
+  id?: number;
+  label: string;
+  builtin: boolean;
+}
+
+/** The key of the row a grant belongs to; null for a group or user without its id. */
+export function grantRowKey(g: Pick<Grant, 'holder' | 'id'>): string | null {
+  if (g.holder === 'user') return g.id != null ? `user:${g.id}` : null;
+  return holderGroupKey(g.holder, g.id);
+}
+
+/**
+ * The rows of the matrix: the built-in groups, then the groups and the users
+ * with a project rule or just added (`extra`), each by name.
+ */
+export function matrixRows(
+  labels: Record<BuiltinHolder, string>,
+  grants: readonly Grant[],
+  groups: readonly Pick<IdName, 'id' | 'name'>[],
+  users: readonly Pick<PermUser, 'id' | 'name'>[],
+  extra: readonly string[] = [],
+): MatrixRow[] {
+  const keys = new Set(extra);
+  for (const g of grants) {
+    const k = grantRowKey(g);
+    if (k) keys.add(k);
+  }
+  const groupRows: MatrixRow[] = [];
+  const userRows: MatrixRow[] = [];
+  for (const k of keys) {
+    const [kind, rest] = k.split(':', 2);
+    const id = Number(rest);
+    if (kind === 'group') {
+      const name =
+        groups.find((g) => g.id === id)?.name ?? grants.find((g) => grantRowKey(g) === k)?.name;
+      groupRows.push({ key: k, holder: 'group', id, label: name ?? rest ?? '', builtin: false });
+    } else if (kind === 'user') {
+      const name =
+        users.find((u) => u.id === id)?.name ?? grants.find((g) => grantRowKey(g) === k)?.name;
+      userRows.push({ key: k, holder: 'user', id, label: name ?? rest ?? '', builtin: false });
+    }
+  }
+  const byName = (a: MatrixRow, b: MatrixRow) => a.label.localeCompare(b.label);
+  return [
+    ...BUILTIN_HOLDERS.map((h) => ({
+      key: `builtin:${h}`,
+      holder: h,
+      label: labels[h],
+      builtin: true,
+    })),
+    ...groupRows.sort(byName),
+    ...userRows.sort(byName),
+  ];
+}
+
+/** A cell's project rule: deny if the row has both, as the server decides. */
+export function cellState(grants: readonly Grant[], row: string, p: Permission): CellState {
+  let state: CellState = 'inherit';
+  for (const g of grants) {
+    if (g.permission !== p || grantRowKey(g) !== row) continue;
+    if ((g.effect ?? 'allow') === 'deny') return 'deny';
+    state = 'allow';
+  }
+  return state;
+}
+
+/** The grants with a cell set to a state. */
+export function setCell(
+  grants: readonly Grant[],
+  row: MatrixRow,
+  p: Permission,
+  s: CellState,
+): Grant[] {
+  const out = grants.filter((g) => g.permission !== p || grantRowKey(g) !== row.key);
+  if (s === 'inherit') return out;
+  const g: Grant = { permission: p, holder: row.holder, effect: s };
+  if (row.id != null) {
+    g.id = row.id;
+    g.name = row.label;
+  }
+  return [...out, g];
+}
+
+/** The grants with every cell of some rows and permissions set to a state: a whole row or column. */
+export function setCells(
+  grants: readonly Grant[],
+  rows: readonly MatrixRow[],
+  perms: readonly Permission[],
+  s: CellState,
+): Grant[] {
+  let out = [...grants];
+  for (const row of rows) for (const p of perms) out = setCell(out, row, p, s);
+  return out;
+}
+
+/**
+ * The state a key sets on a cell: 1, 2, 3, or the language's letter for
+ * each state (`letters`, matched in any case); null for another key.
+ */
+export function stateForKey(key: string, letters: Record<CellState, string>): CellState | null {
+  const digit = ['1', '2', '3'].indexOf(key);
+  if (digit >= 0) return CELL_STATES[digit] ?? null;
+  const k = key.toLowerCase();
+  return CELL_STATES.find((s) => letters[s].toLowerCase() === k) ?? null;
+}
+
+/** The cell an arrow, Home or End key moves to in a grid; null for another key. */
+export function moveCell(
+  at: { row: number; col: number },
+  key: string,
+  rows: number,
+  cols: number,
+): { row: number; col: number } | null {
+  const clamp = (n: number, max: number) => Math.max(0, Math.min(max - 1, n));
+  switch (key) {
+    case 'ArrowUp':
+      return { row: clamp(at.row - 1, rows), col: at.col };
+    case 'ArrowDown':
+      return { row: clamp(at.row + 1, rows), col: at.col };
+    case 'ArrowLeft':
+      return { row: at.row, col: clamp(at.col - 1, cols) };
+    case 'ArrowRight':
+      return { row: at.row, col: clamp(at.col + 1, cols) };
+    case 'Home':
+      return { row: at.row, col: 0 };
+    case 'End':
+      return { row: at.row, col: cols - 1 };
+  }
+  return null;
+}
+
+/** The grants without any rule of a row. */
+export function removeRow(grants: readonly Grant[], row: string): Grant[] {
+  return grants.filter((g) => grantRowKey(g) !== row);
+}
+
+/** Levels of rules, from the most specific (backend/internal/perm). */
+export type RuleLevel = 'projectUser' | 'globalUser' | 'projectGroup' | 'globalGroup' | 'none';
+
+/** What a row gets for a permission, and the rule that decides. */
+export interface CellAccess {
+  granted: boolean;
+  level: RuleLevel;
+  /** The holder of the deciding rule, as a row key; null for level none. */
+  source: string | null;
+}
+
+/** What decides the inherited values: the project's rules and what they inherit. */
+export interface MatrixRules {
+  grants: readonly Grant[];
+  globals: readonly GroupRule[];
+  users: readonly PermUser[];
+}
+
+/** Among rules of one level, the first deny, else the first allow. */
+function decide<T extends { effect?: Effect }>(
+  rules: T[],
+  key: (r: T) => string | null,
+  level: RuleLevel,
+): CellAccess | null {
+  const rl = rules.find((r) => r.effect === 'deny') ?? rules[0];
+  return rl ? { granted: rl.effect !== 'deny', level, source: key(rl) } : null;
+}
+
+/**
+ * What a row gets for a permission, in the server's order: a project user
+ * rule, a global user rule, the project rules of the groups the user is in,
+ * then their global rules; deny beats allow within a level. A group row
+ * stands for its own rules only. With `own` false, the row's own project
+ * rule is left out: what the cell inherits. Null for a user whose context
+ * is not loaded yet.
+ */
+export function cellAccess(
+  row: string,
+  p: Permission,
+  m: MatrixRules,
+  own = true,
+): CellAccess | null {
+  const grants = m.grants.filter((g) => g.permission === p);
+  const globals = m.globals.filter((g) => g.permission === p);
+  const effect = (g: Grant) => ({ ...g, effect: g.effect ?? 'allow' });
+  const none: CellAccess = { granted: false, level: 'none', source: null };
+  if (!row.startsWith('user:')) {
+    const mine = grants.filter((g) => grantRowKey(g) === row).map(effect);
+    return (
+      (own ? decide(mine, grantRowKey, 'projectGroup') : null) ??
+      decide(
+        globals.filter((g) => holderGroupKey(g.holder, g.id) === row),
+        (g) => holderGroupKey(g.holder, g.id),
+        'globalGroup',
+      ) ??
+      none
+    );
+  }
+  if (own) {
+    const mine = decide(
+      grants.filter((g) => grantRowKey(g) === row).map(effect),
+      grantRowKey,
+      'projectUser',
+    );
+    if (mine) return mine;
+  }
+  const user = m.users.find((u) => `user:${u.id}` === row);
+  if (!user) return null;
+  const inGroup = (k: string | null) => k != null && user.groups.includes(k);
+  return (
+    decide(
+      user.rules.filter((r) => r.permission === p),
+      () => row,
+      'globalUser',
+    ) ??
+    decide(
+      grants.filter((g) => g.holder !== 'user' && inGroup(grantRowKey(g))).map(effect),
+      grantRowKey,
+      'projectGroup',
+    ) ??
+    decide(
+      globals.filter((g) => inGroup(holderGroupKey(g.holder, g.id))),
+      (g) => holderGroupKey(g.holder, g.id),
+      'globalGroup',
+    ) ??
+    none
+  );
+}
+
+/** The project rules as the server takes them. */
+export function grantsPayload(grants: readonly Grant[]): Grant[] {
+  return grants.map(({ permission, holder, id, effect }) => ({
+    permission,
+    holder,
+    ...(id ? { id } : {}),
+    ...(effect ? { effect } : {}),
+  }));
+}
+
+/** Compares two sets of project rules, whatever their order. */
+export function grantsSignature(grants: readonly Grant[]): string {
+  return grants
+    .map((g) => `${g.permission}:${g.holder}:${g.id ?? ''}:${g.effect ?? 'allow'}`)
+    .sort()
+    .join('|');
 }

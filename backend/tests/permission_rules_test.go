@@ -254,3 +254,63 @@ func TestUserAccess(t *testing.T) {
 	e.admin.call("GET", fmt.Sprintf("/api/admin/users/%d/access", e.userID), nil, 400, nil)
 	e.admin.call("GET", fmt.Sprintf("/api/admin/users/%d/access?project=NOPE9", e.userID), nil, 404, nil)
 }
+
+// The project's rules come with what they inherit: the global rules of the
+// groups, and for each user with a project rule, their global rules and the
+// groups they are in there.
+func TestProjectPermissionsInherited(t *testing.T) {
+	e := newRuleEnv(t)
+	groupPath := fmt.Sprintf("/api/admin/groups/%d/permissions", e.groupID)
+	userPath := fmt.Sprintf("/api/admin/users/%d/permissions", e.userID)
+	t.Cleanup(func() { e.admin.do("PUT", userPath, []any{}) })
+	e.admin.call("PUT", groupPath, []map[string]any{{"permission": "edit"}}, 200, nil)
+	e.admin.call("PUT", userPath, []map[string]any{{"permission": "delete", "effect": "deny"}}, 200, nil)
+	e.addProjectRules(t, grantOut{Permission: "comment", Holder: "user", ID: e.userID})
+
+	type user struct {
+		ID     int64               `json:"id"`
+		Name   string              `json:"name"`
+		Groups []string            `json:"groups"`
+		Rules  []map[string]string `json:"rules"`
+	}
+	var perms struct {
+		Globals []grantOut `json:"globals"`
+		Users   []user     `json:"users"`
+	}
+	e.admin.get("/api/projects/"+e.key+"/permissions", &perms)
+	if !slices.Contains(perms.Globals, grantOut{Permission: "edit", Holder: "group", ID: e.groupID, Effect: "allow"}) {
+		t.Errorf("the group's global rule is missing from %+v", perms.Globals)
+	}
+	if slices.ContainsFunc(perms.Globals, func(g grantOut) bool { return g.Holder == "user" }) {
+		t.Errorf("globals list a user rule: %+v", perms.Globals)
+	}
+	i := slices.IndexFunc(perms.Users, func(u user) bool { return u.ID == e.userID })
+	if i < 0 {
+		t.Fatalf("the user with a project rule is missing from %+v", perms.Users)
+	}
+	u := perms.Users[i]
+	if !slices.Contains(u.Groups, "builtin:everyone") || !slices.Contains(u.Groups, fmt.Sprintf("group:%d", e.groupID)) ||
+		slices.Contains(u.Groups, "builtin:lead") {
+		t.Errorf("groups = %v, want everyone and group:%d, not lead", u.Groups, e.groupID)
+	}
+	if want := []map[string]string{{"permission": "delete", "effect": "deny"}}; !reflect.DeepEqual(u.Rules, want) {
+		t.Errorf("rules = %v, want %v", u.Rules, want)
+	}
+
+	var one user
+	e.admin.get(fmt.Sprintf("/api/projects/%s/permissions/users/%d", e.key, e.userID), &one)
+	if !reflect.DeepEqual(one, u) {
+		t.Errorf("one user = %+v, want %+v", one, u)
+	}
+	e.admin.call("GET", fmt.Sprintf("/api/projects/%s/permissions/users/999999999", e.key), nil, 404, nil)
+	e.user.call("GET", fmt.Sprintf("/api/projects/%s/permissions/users/%d", e.key, e.userID), nil, 404, nil)
+
+	// The project's lead administers it without being a global administrator.
+	lead := login(t, "paul.martin", jirafixture.Password)
+	key := newProject(t, e.admin, map[string]any{"lead": userID(t, "paul.martin")})
+	var mine user
+	lead.get(fmt.Sprintf("/api/projects/%s/permissions/users/%d", key, userID(t, "paul.martin")), &mine)
+	if !slices.Contains(mine.Groups, "builtin:lead") {
+		t.Errorf("the lead's groups = %v, want builtin:lead", mine.Groups)
+	}
+}

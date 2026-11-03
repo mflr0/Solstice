@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ComponentRow, VersionRow } from '../../src/core/admin-types.js';
+import type { Grant, GroupRule, PermUser } from '../../src/core/types.js';
 
 import {
   assignColumn,
   ASSIGNEE_TYPES,
   BUILTIN_HOLDERS,
   categoryProblem,
+  cellAccess,
+  cellState,
   componentForm,
   componentPayload,
   datesProblem,
@@ -19,11 +22,20 @@ import {
   generalForm,
   generalPatch,
   generalProblems,
+  grantsPayload,
+  grantsSignature,
   groupKeyHolder,
   hasExtra,
   holderGroupKey,
   holderGroups,
   keyProblem,
+  matrixRows,
+  moveCell,
+  nextCellState,
+  removeRow,
+  setCell,
+  setCells,
+  stateForKey,
   moveItem,
   notificationsChanged,
   nextTab,
@@ -573,5 +585,220 @@ describe('built-in groups', () => {
       { key: 'builtin:assignee', label: 'A', builtin: true },
       { key: 'group:9', label: 'Devs', builtin: false },
     ]);
+  });
+});
+
+describe('permission matrix', () => {
+  const labels = { everyone: 'E', lead: 'L', reporter: 'R', assignee: 'A' };
+  const devs = 'group:1';
+  const ops = 'group:2';
+  const alice: PermUser = {
+    id: 7,
+    name: 'Alice',
+    groups: ['builtin:everyone', devs, ops],
+    rules: [],
+  };
+
+  it('lists the built-in groups, then groups and users with a rule, by name', () => {
+    const grants: Grant[] = [
+      { permission: 'edit', holder: 'user', id: 7, name: 'Alice' },
+      { permission: 'edit', holder: 'group', id: 2, name: 'Ops' },
+      { permission: 'browse', holder: 'everyone' },
+    ];
+    const rows = matrixRows(
+      labels,
+      grants,
+      [
+        { id: 1, name: 'Devs' },
+        { id: 2, name: 'Ops' },
+      ],
+      [],
+      [devs],
+    );
+    expect(rows.map((r) => r.key)).toEqual([
+      'builtin:everyone',
+      'builtin:lead',
+      'builtin:reporter',
+      'builtin:assignee',
+      devs,
+      ops,
+      'user:7',
+    ]);
+    expect(rows[4]).toEqual({ key: devs, holder: 'group', id: 1, label: 'Devs', builtin: false });
+    expect(rows[6]?.label).toBe('Alice');
+  });
+
+  it('sets, changes and clears a cell', () => {
+    const [, , , , row] = matrixRows(labels, [], [{ id: 1, name: 'Devs' }], [], [devs]);
+    let grants = setCell([], row!, 'edit', 'allow');
+    expect(grants).toEqual([
+      { permission: 'edit', holder: 'group', id: 1, name: 'Devs', effect: 'allow' },
+    ]);
+    expect(cellState(grants, devs, 'edit')).toBe('allow');
+    grants = setCell(grants, row!, 'edit', nextCellState('allow'));
+    expect(cellState(grants, devs, 'edit')).toBe('deny');
+    expect(nextCellState('deny')).toBe('inherit');
+    expect(setCell(grants, row!, 'edit', 'inherit')).toEqual([]);
+    expect(removeRow(grants, devs)).toEqual([]);
+  });
+
+  it('reads a cell with both an allow and a deny as a deny, and no effect as an allow', () => {
+    const both: Grant[] = [
+      { permission: 'edit', holder: 'everyone' },
+      { permission: 'edit', holder: 'everyone', effect: 'deny' },
+    ];
+    expect(cellState(both, 'builtin:everyone', 'edit')).toBe('deny');
+    expect(cellState(both.slice(0, 1), 'builtin:everyone', 'edit')).toBe('allow');
+    expect(cellState(both, 'builtin:lead', 'edit')).toBe('inherit');
+  });
+
+  it('notices a changed effect, whatever the order', () => {
+    const a: Grant[] = [
+      { permission: 'edit', holder: 'everyone' },
+      { permission: 'browse', holder: 'lead' },
+    ];
+    expect(grantsSignature(a)).toBe(grantsSignature([...a].reverse()));
+    expect(grantsSignature(a)).toBe(grantsSignature([{ ...a[0]!, effect: 'allow' }, a[1]!]));
+    expect(grantsSignature(a)).not.toBe(grantsSignature([{ ...a[0]!, effect: 'deny' }, a[1]!]));
+    expect(
+      grantsPayload([{ permission: 'edit', holder: 'group', id: 3, name: 'X', effect: 'deny' }]),
+    ).toEqual([{ permission: 'edit', holder: 'group', id: 3, effect: 'deny' }]);
+  });
+
+  it('sets a whole row or column at once', () => {
+    const rows = matrixRows(labels, [], [{ id: 1, name: 'Devs' }], [], [devs]);
+    const everyone = rows[0]!;
+    const all = setCells([], [everyone], ['browse', 'edit'], 'deny');
+    expect(all.map((g) => [g.permission, g.effect])).toEqual([
+      ['browse', 'deny'],
+      ['edit', 'deny'],
+    ]);
+    const column = setCells(all, rows, ['edit'], 'allow');
+    expect(rows.map((r) => cellState(column, r.key, 'edit'))).toEqual(rows.map(() => 'allow'));
+    expect(cellState(column, everyone.key, 'browse')).toBe('deny');
+    expect(setCells(column, rows, ['browse', 'edit'], 'inherit')).toEqual([]);
+  });
+
+  it('reads the keys that set a state', () => {
+    const letters = { inherit: 'h', allow: 'a', deny: 'b' };
+    expect(
+      ['1', '2', '3', 'A', 'b', 'h', 'x', 'Enter'].map((k) => stateForKey(k, letters)),
+    ).toEqual(['deny', 'inherit', 'allow', 'allow', 'deny', 'inherit', null, null]);
+  });
+
+  it('moves between cells and stops at the edges', () => {
+    const at = { row: 0, col: 0 };
+    expect(moveCell(at, 'ArrowDown', 3, 4)).toEqual({ row: 1, col: 0 });
+    expect(moveCell(at, 'ArrowUp', 3, 4)).toEqual(at);
+    expect(moveCell(at, 'ArrowLeft', 3, 4)).toEqual(at);
+    expect(moveCell(at, 'End', 3, 4)).toEqual({ row: 0, col: 3 });
+    expect(moveCell({ row: 2, col: 3 }, 'ArrowRight', 3, 4)).toEqual({ row: 2, col: 3 });
+    expect(moveCell({ row: 2, col: 3 }, 'Home', 3, 4)).toEqual({ row: 2, col: 0 });
+    expect(moveCell(at, 'a', 3, 4)).toBeNull();
+  });
+
+  describe('effective value and source', () => {
+    const globals: GroupRule[] = [
+      { permission: 'edit', holder: 'group', id: 1, effect: 'allow' },
+      { permission: 'browse', holder: 'everyone', effect: 'allow' },
+    ];
+    const at = (grants: Grant[], users: PermUser[] = [alice]) => ({ grants, globals, users });
+
+    it('a group row: its project rule, else its global rule, else no rule', () => {
+      const deny: Grant[] = [{ permission: 'edit', holder: 'group', id: 1, effect: 'deny' }];
+      expect(cellAccess(devs, 'edit', at(deny))).toEqual({
+        granted: false,
+        level: 'projectGroup',
+        source: devs,
+      });
+      expect(cellAccess(devs, 'edit', at(deny), false)).toEqual({
+        granted: true,
+        level: 'globalGroup',
+        source: devs,
+      });
+      expect(cellAccess(ops, 'edit', at([]))).toEqual({
+        granted: false,
+        level: 'none',
+        source: null,
+      });
+      expect(cellAccess('builtin:everyone', 'browse', at([]))).toEqual({
+        granted: true,
+        level: 'globalGroup',
+        source: 'builtin:everyone',
+      });
+    });
+
+    it('project user > global user > project group > global group', () => {
+      const user = 'user:7';
+      const overridden = {
+        ...alice,
+        rules: [{ permission: 'edit' as const, effect: 'deny' as const }],
+      };
+      const projectGroupAllow: Grant[] = [{ permission: 'edit', holder: 'group', id: 2 }];
+      const projectUserAllow: Grant[] = [
+        ...projectGroupAllow,
+        { permission: 'edit', holder: 'user', id: 7 },
+      ];
+
+      expect(cellAccess(user, 'edit', at([]))).toEqual({
+        granted: true,
+        level: 'globalGroup',
+        source: devs,
+      });
+      expect(
+        cellAccess(
+          user,
+          'edit',
+          at([{ permission: 'edit', holder: 'group', id: 1, effect: 'deny' }]),
+        ),
+      ).toEqual({ granted: false, level: 'projectGroup', source: devs });
+      expect(cellAccess(user, 'edit', at(projectGroupAllow, [overridden]))).toEqual({
+        granted: false,
+        level: 'globalUser',
+        source: user,
+      });
+      expect(cellAccess(user, 'edit', at(projectUserAllow, [overridden]))).toEqual({
+        granted: true,
+        level: 'projectUser',
+        source: user,
+      });
+      expect(cellAccess(user, 'edit', at(projectUserAllow, [overridden]), false)).toEqual({
+        granted: false,
+        level: 'globalUser',
+        source: user,
+      });
+    });
+
+    it('among groups at one level, deny beats allow', () => {
+      const grants: Grant[] = [
+        { permission: 'edit', holder: 'group', id: 1 },
+        { permission: 'edit', holder: 'group', id: 2, effect: 'deny' },
+        { permission: 'edit', holder: 'everyone' },
+      ];
+      expect(cellAccess('user:7', 'edit', at(grants))).toEqual({
+        granted: false,
+        level: 'projectGroup',
+        source: ops,
+      });
+      const denied: GroupRule = { permission: 'edit', holder: 'group', id: 2, effect: 'deny' };
+      expect(cellAccess('user:7', 'edit', { ...at([]), globals: [...globals, denied] })).toEqual({
+        granted: false,
+        level: 'globalGroup',
+        source: ops,
+      });
+    });
+
+    it("ignores the rules of groups the user isn't in, and waits for a user not loaded", () => {
+      const grants: Grant[] = [{ permission: 'edit', holder: 'group', id: 3, effect: 'deny' }];
+      expect(cellAccess('user:7', 'edit', at(grants))).toEqual({
+        granted: true,
+        level: 'globalGroup',
+        source: devs,
+      });
+      expect(cellAccess('user:8', 'edit', at([]))).toBeNull();
+      expect(
+        cellAccess('user:8', 'edit', at([{ permission: 'edit', holder: 'user', id: 8 }]))?.level,
+      ).toBe('projectUser');
+    });
   });
 });

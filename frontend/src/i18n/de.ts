@@ -399,9 +399,36 @@ export const de: Messages = {
     intro:
       'Diese Regeln gelten nur für dieses Projekt: Es gibt keine gemeinsamen Schemata, eine Änderung hier betrifft kein anderes Projekt.',
     permissions: 'Wer darf was',
-    addHolder: 'Hinzufügen',
-    nobody: 'Niemand',
-    chooseKind: 'Art der Berechtigung',
+    matrix: 'Rechte jeder Gruppe und jedes Benutzers',
+    matrixHint:
+      'Jede Zelle sperrt (✗), erbt (/) oder gewährt (✓). Zeigen Sie auf eine geerbte Zelle, um zu sehen, was die Gruppe oder der Benutzer ohne Regel hier bekommt, und woher. Tastatur: Die Pfeiltasten wechseln die Zelle; 1, 2, 3 oder S, E, G setzen sie.',
+    holder: 'Gruppe oder Benutzer',
+    addRow: 'Gruppe oder Benutzer hinzufügen',
+    rowKind: 'Art',
+    removeRow: (name: string) => `${name} und die Regeln in diesem Projekt entfernen`,
+    states: { inherit: 'Erben', allow: 'Gewähren', deny: 'Sperren' },
+    keys: { inherit: 'e', allow: 'g', deny: 's' },
+    setRow: (name: string) => `Alle Rechte von ${name} setzen`,
+    setColumn: (permission: string) => `${permission} für alle Zeilen setzen`,
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `gewährt durch die globale Vorgabe von ${name}`
+          : `gesperrt durch die globale Vorgabe von ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `in diesem Projekt gewährt für ${name}`
+          : `in diesem Projekt gesperrt für ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `gewährt durch die globale Regel von ${name}`
+          : `gesperrt durch die globale Regel von ${name}`,
+      none: 'nicht gewährt: keine Regel',
+      loading: 'wird geladen…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `geerbt, ${detail}`,
     chooseGroup: 'Gruppe',
     chooseUser: 'Benutzer',
     projectMembers: 'Gruppenmitglieder in diesem Projekt',

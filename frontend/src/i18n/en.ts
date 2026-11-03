@@ -391,9 +391,34 @@ export const en = {
     intro:
       'These rules apply to this project only: nothing is shared through schemes, so a change here touches no other project.',
     permissions: 'Who can do what',
-    addHolder: 'Add',
-    nobody: 'Nobody',
-    chooseKind: 'Grant to',
+    matrix: 'Permissions of each group and user',
+    matrixHint:
+      'Each cell blocks (✗), inherits (/) or grants (✓). Hover an inherited cell to see what the group or user gets without a rule here, and where it comes from. Keyboard: the arrow keys move between cells; 1, 2, 3 or B, I, G set a cell.',
+    holder: 'Group or user',
+    addRow: 'Add a group or a user',
+    rowKind: 'Kind',
+    removeRow: (name: string) => `Remove ${name} and its rules in this project`,
+    states: { inherit: 'Inherit', allow: 'Grant', deny: 'Block' },
+    keys: { inherit: 'i', allow: 'g', deny: 'b' },
+    setRow: (name: string) => `Set every permission of ${name}`,
+    setColumn: (permission: string) => `Set ${permission} for every row`,
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `granted by the global default of ${name}`
+          : `blocked by the global default of ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed ? `granted in this project for ${name}` : `blocked in this project for ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `granted by the global override of ${name}`
+          : `blocked by the global override of ${name}`,
+      none: 'not granted: no rule',
+      loading: 'loading…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `inherit, ${detail}`,
     chooseGroup: 'Group',
     chooseUser: 'User',
     projectMembers: 'Group members in this project',

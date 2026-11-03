@@ -1019,8 +1019,17 @@ at any level, the permission is not granted. In an archived project only
 Per project — project admin:
 
 - `GET /api/projects/{key}/permissions` → `{permissions: [name], grants:
-  [{permission, holder, id?, name?, effect}], groups: [idName]}`. `id` and
-  `name`: the user or group.
+  [{permission, holder, id?, name?, effect}], groups: [idName], globals:
+  [{permission, holder, id?, effect}], users: [permUser]}`. `id` and `name`:
+  the user or group. `globals`: the global rules of every group and built-in
+  group. `users`: one per user with a rule in the project.
+- `GET /api/projects/{key}/permissions/users/{id}` → `permUser`, what a user
+  inherits when no project user rule decides: `{id, name, groups: [key],
+  rules: [{permission, effect}]}`. `groups`: the groups the user is in here,
+  as `builtin:everyone`, `builtin:lead` (the project's lead) and `group:<id>`
+  (global and project members, through member groups); `reporter` and
+  `assignee` depend on an issue and are never listed. `rules`: the user's
+  global rules. 404 for an unknown user.
 - `PUT /api/projects/{key}/permissions` `{grants: [{permission, holder, id?,
   effect?}]}` → as GET. Replaces every rule of the project. `effect` is
   `allow` or `deny`, `allow` when left out. Unknown permissions are skipped;

@@ -392,9 +392,36 @@ export const it: Messages = {
     intro:
       'Queste regole valgono solo per questo progetto: non ci sono schemi condivisi, quindi una modifica qui non tocca nessun altro progetto.',
     permissions: 'Chi può fare cosa',
-    addHolder: 'Aggiungi',
-    nobody: 'Nessuno',
-    chooseKind: 'Tipo di beneficiario',
+    matrix: 'Permessi di ogni gruppo e persona',
+    matrixHint:
+      'Ogni casella blocca (✗), eredita (/) o concede (✓). Passa sopra una casella ereditata per vedere cosa ottiene il gruppo o la persona senza una regola qui, e da dove viene. Da tastiera: le frecce passano da una casella all’altra; 1, 2, 3 oppure B, E, C impostano una casella.',
+    holder: 'Gruppo o persona',
+    addRow: 'Aggiungi un gruppo o una persona',
+    rowKind: 'Tipo',
+    removeRow: (name: string) => `Rimuovi ${name} e le sue regole in questo progetto`,
+    states: { inherit: 'Ereditare', allow: 'Concedere', deny: 'Bloccare' },
+    keys: { inherit: 'e', allow: 'c', deny: 'b' },
+    setRow: (name: string) => `Imposta tutti i permessi di ${name}`,
+    setColumn: (permission: string) => `Imposta ${permission} per tutte le righe`,
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `concesso dal predefinito globale di ${name}`
+          : `bloccato dal predefinito globale di ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `concesso in questo progetto per ${name}`
+          : `bloccato in questo progetto per ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `concesso dalla regola globale di ${name}`
+          : `bloccato dalla regola globale di ${name}`,
+      none: 'non concesso: nessuna regola',
+      loading: 'caricamento…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `ereditato, ${detail}`,
     chooseGroup: 'Gruppo',
     chooseUser: 'Persona',
     projectMembers: 'Membri dei gruppi in questo progetto',

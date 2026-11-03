@@ -1,10 +1,35 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { ProjectGroup } from '../../core/admin-types.js';
-  import { nextTab, parseTab, PROJECT_TABS, type ProjectTab } from '../../core/project-admin.js';
+  import {
+    cellAccess,
+    cellState,
+    grantsPayload,
+    grantsSignature,
+    matrixRows,
+    moveCell,
+    nextCellState,
+    nextTab,
+    parseTab,
+    PROJECT_TABS,
+    removeRow,
+    setCell,
+    setCells,
+    stateForKey,
+    CELL_STATES,
+    type CellState,
+    type MatrixRow,
+    type ProjectTab,
+  } from '../../core/project-admin.js';
   import { paths } from '../../core/route.js';
-  import type { Grant, Holder, Permission, ProjectPermissions, UserRef } from '../../core/types.js';
-  import { grantLabel, holderLabels, permissionLabels, t } from '../../i18n/t.js';
+  import type {
+    Grant,
+    Permission,
+    PermUser,
+    ProjectPermissions,
+    UserRef,
+  } from '../../core/types.js';
+  import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { outside } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
@@ -41,21 +66,68 @@
   let error = $state('');
   let forbidden = $state(false);
   let saving = $state(false);
-  let adding = $state<Permission | null>(null);
-  let kind = $state<Holder>('group');
+  /** What the users with a row inherit, loaded with the rules or when added. */
+  let users = $state<PermUser[]>([]);
+  /** Rows added and still without a rule: they go away on saving. */
+  let extra = $state<string[]>([]);
+  let adding = $state(false);
+  let kind = $state<'group' | 'user'>('group');
   let pick = $state('');
+  /** Read out after a cell changes: its new state. */
+  let announced = $state('');
+  /** The cell the grid's one Tab stop is on. */
+  let at = $state({ row: 0, col: 0 });
+  /** The open "set all" menu: `row:<row key>` or `col:<permission>`. */
+  let menu = $state<string | null>(null);
+  /** Where the open menu goes: fixed, so the matrix's scroll box doesn't clip it. */
+  let menuAt = $state<{ top?: number; bottom?: number; left: number }>({ left: 0 });
+  let menuButton: HTMLElement | null = null;
+
+  function openMenu(id: string, e: MouseEvent) {
+    if (menu === id) {
+      menu = null;
+      return;
+    }
+    menuButton = e.currentTarget as HTMLElement;
+    const r = menuButton.getBoundingClientRect();
+    const left = Math.max(4, Math.min(r.left, window.innerWidth - 170));
+    // Opens upwards when the three choices don't fit below.
+    menuAt =
+      r.bottom + 130 > window.innerHeight
+        ? { bottom: window.innerHeight - r.top + 4, left }
+        : { top: r.bottom + 4, left };
+    menu = id;
+  }
+
+  function menuKey(e: KeyboardEvent) {
+    if (!menu || e.key !== 'Escape') return;
+    e.preventDefault();
+    menu = null;
+    menuButton?.focus();
+  }
   /** The group whose "add a member" box is open, or 0 for the "add a group" box. */
   let addingTo = $state<number | null>(null);
   let memberKind = $state<'user' | 'group'>('user');
   let memberPick = $state('');
   let changing = $state(false);
 
-  const signature = (list: Grant[]) =>
-    list
-      .map((g) => `${g.permission}:${g.holder}:${g.id ?? ''}`)
-      .sort()
-      .join('|');
-  const dirty = $derived(signature(grants) !== saved);
+  const dirty = $derived(grantsSignature(grants) !== saved);
+  const rows = $derived(
+    data
+      ? matrixRows(
+          {
+            everyone: holderLabels.everyone,
+            lead: holderLabels.lead,
+            reporter: holderLabels.reporter,
+            assignee: holderLabels.assignee,
+          },
+          grants,
+          data.groups,
+          users,
+          extra,
+        )
+      : [],
+  );
 
   const tab = $derived(parseTab(router.param('tab'), !forbidden));
   const tabLabels = $derived<Record<ProjectTab, string>>({
@@ -112,10 +184,12 @@
     data = null;
     members = [];
     grants = [];
+    users = [];
+    extra = [];
     saved = '';
     error = '';
     forbidden = false;
-    adding = null;
+    adding = false;
     addingTo = null;
     api
       .permissions(key)
@@ -123,7 +197,8 @@
         if (key !== projectKey) return;
         data = d;
         grants = d.grants;
-        saved = signature(d.grants);
+        users = d.users;
+        saved = grantsSignature(d.grants);
       })
       .catch((e: unknown) => {
         if (key !== projectKey) return;
@@ -139,31 +214,106 @@
       .catch(() => {});
   });
 
-  const kinds: Holder[] = ['everyone', 'group', 'user', 'lead', 'reporter', 'assignee'];
+  const marks: Record<CellState, string> = { deny: '✗', inherit: '/', allow: '✓' };
 
-  function holdersOf(p: Permission): Grant[] {
-    return grants.filter((g) => g.permission === p);
+  function setTo(row: MatrixRow, p: Permission, next: CellState) {
+    grants = setCell(grants, row, p, next);
+    announced = cellName(row, p, next);
   }
 
-  function remove(g: Grant) {
-    grants = grants.filter((x) => x !== g);
+  function setRow(row: MatrixRow, next: CellState) {
+    if (!data) return;
+    grants = setCells(grants, [row], data.permissions, next);
+    menu = null;
+    announced = `${t.settings.setRow(row.label)}: ${t.settings.states[next]}`;
   }
 
-  function add(p: Permission, g: Omit<Grant, 'permission'>) {
-    const grant: Grant = { permission: p, ...g };
-    if (!grants.some((x) => signature([x]) === signature([grant]))) grants = [...grants, grant];
-    adding = null;
+  function setColumn(p: Permission, next: CellState) {
+    grants = setCells(grants, rows, [p], next);
+    menu = null;
+    announced = `${t.settings.setColumn(permissionLabels[p].label)}: ${t.settings.states[next]}`;
+  }
+
+  function focusCell(row: number, col: number) {
+    at = { row, col };
+    void tick().then(() =>
+      document.querySelector<HTMLElement>(`[data-cell="${row}-${col}"]`)?.focus(),
+    );
+  }
+
+  function cellKey(e: KeyboardEvent, r: number, c: number, row: MatrixRow, p: Permission) {
+    if (e.altKey || e.ctrlKey || e.metaKey || !data) return;
+    const to = moveCell({ row: r, col: c }, e.key, rows.length, data.permissions.length);
+    const next =
+      e.key === ' ' || e.key === 'Enter'
+        ? nextCellState(cellState(grants, row.key, p))
+        : stateForKey(e.key, t.settings.keys);
+    if (!to && !next) return;
+    e.preventDefault();
+    if (to) focusCell(to.row, to.col);
+    else if (next) setTo(row, p, next);
+  }
+
+  /** The cell holding the Tab stop, kept inside the grid when rows go. */
+  const cur = $derived({
+    row: Math.min(at.row, Math.max(rows.length - 1, 0)),
+    col: at.col,
+  });
+
+  function dropRow(row: MatrixRow) {
+    grants = removeRow(grants, row.key);
+    extra = extra.filter((k) => k !== row.key);
+  }
+
+  function addRow(key: string) {
+    if (!rows.some((r) => r.key === key)) extra = [...extra, key];
+    adding = false;
     pick = '';
   }
 
-  function addPicked(p: Permission) {
-    if (!data) return;
-    if (kind === 'group') {
-      const found = data.groups.find((x) => String(x.id) === pick);
-      if (found) add(p, { holder: kind, id: found.id, name: found.name });
-    } else if (kind !== 'user') {
-      add(p, { holder: kind });
+  async function addUser(u: UserRef) {
+    const key = projectKey;
+    addRow(`user:${u.id}`);
+    if (users.some((x) => x.id === u.id)) return;
+    try {
+      const pu = await api.permissionUser(key, u.id);
+      if (key === projectKey && !users.some((x) => x.id === pu.id)) users = [...users, pu];
+    } catch (e) {
+      notify(errorMessage(e), 'error');
     }
+  }
+
+  /** The name of the holder a row key stands for. */
+  function holderName(key: string): string {
+    const [kind, rest] = key.split(':', 2);
+    const id = Number(rest);
+    if (kind === 'builtin') return holderLabels[rest as keyof typeof holderLabels] ?? key;
+    if (kind === 'group') return data?.groups.find((g) => g.id === id)?.name ?? key;
+    return rows.find((r) => r.key === key)?.label ?? key;
+  }
+
+  /** What an inherited cell gets: whether, and from which rule. */
+  function inherited(row: MatrixRow, p: Permission) {
+    const s = t.settings.source;
+    const a = cellAccess(row.key, p, { grants, globals: data?.globals ?? [], users }, false);
+    if (!a) return { granted: null, long: s.loading };
+    // No rule: not granted, but nothing blocks it either.
+    if (a.level === 'none' || !a.source) return { granted: null, long: s.none };
+    const name = holderName(a.source);
+    const say =
+      a.level === 'globalUser'
+        ? s.globalUser
+        : a.level === 'projectGroup'
+          ? s.projectGroup
+          : s.globalGroup;
+    return { granted: a.granted, long: say(a.granted, name) };
+  }
+
+  /** A cell's accessible name: the holder, the permission and the state. */
+  function cellName(row: MatrixRow, p: Permission, state: CellState): string {
+    const word =
+      state === 'inherit' ? t.settings.inherited(inherited(row, p).long) : t.settings.states[state];
+    return t.settings.cell(row.label, permissionLabels[p].label, word);
   }
 
   function openAdder(id: number) {
@@ -216,19 +366,13 @@
     const key = projectKey;
     saving = true;
     try {
-      const d = await api.savePermissions(
-        key,
-        grants.map(({ permission, holder, id, effect }) => ({
-          permission,
-          holder,
-          ...(id ? { id } : {}),
-          ...(effect ? { effect } : {}),
-        })),
-      );
+      const d = await api.savePermissions(key, grantsPayload(grants));
       if (key === projectKey) {
         data = d;
         grants = d.grants;
-        saved = signature(d.grants);
+        users = d.users;
+        extra = [];
+        saved = grantsSignature(d.grants);
       }
       notify(t.settings.saved);
     } catch (e) {
@@ -238,6 +382,38 @@
     }
   }
 </script>
+
+<svelte:window onscroll={() => (menu = null)} onkeydown={menuKey} onresize={() => (menu = null)} />
+
+{#snippet setAll(id: string, label: string, pick: (s: CellState) => void)}
+  <span class="set-all" use:outside={() => menu === id && (menu = null)}>
+    <button
+      type="button"
+      class="set-all-btn"
+      aria-label={label}
+      title={label}
+      aria-haspopup="true"
+      aria-expanded={menu === id}
+      onclick={(e) => openMenu(id, e)}>▾</button
+    >
+    {#if menu === id}
+      <span
+        class="popover set-all-menu"
+        role="group"
+        aria-label={label}
+        style:top={menuAt.top != null ? `${menuAt.top}px` : undefined}
+        style:bottom={menuAt.bottom != null ? `${menuAt.bottom}px` : undefined}
+        style:left="{menuAt.left}px"
+      >
+        {#each CELL_STATES as st (st)}
+          <button type="button" class="seg-item {st}" onclick={() => pick(st)}
+            ><span aria-hidden="true">{marks[st]}</span> {t.settings.states[st]}</button
+          >
+        {/each}
+      </span>
+    {/if}
+  </span>
+{/snippet}
 
 {#if error}
   <NotFoundPage message={error} />
@@ -314,99 +490,156 @@
       {:else}
         <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
           <h2 class="section-title">{t.settings.permissions}</h2>
-          <div class="table-scroll">
-            <table class="ledger matrix">
-              <tbody>
-                {#each data.permissions as p (p)}
-                  <tr>
-                    <th scope="row">
-                      <span class="label">{permissionLabels[p].label}</span>
-                      <span class="help">{permissionLabels[p].help}</span>
+          <p class="matrix-hint">{t.settings.matrixHint}</p>
+          <div class="table-scroll matrix-scroll" onscroll={() => (menu = null)}>
+            <table class="ledger matrix" role="grid" aria-label={t.settings.matrix}>
+              <thead>
+                <tr>
+                  <th scope="col" class="who">{t.settings.holder}</th>
+                  {#each data.permissions as p (p)}
+                    <th scope="col" title={permissionLabels[p].help}>
+                      <span class="col-head">
+                        <span>{permissionLabels[p].label}</span>
+                        {@render setAll(
+                          `col:${p}`,
+                          t.settings.setColumn(permissionLabels[p].label),
+                          (v) => setColumn(p, v),
+                        )}
+                      </span>
                     </th>
-                    <td>
-                      <div class="holders">
-                        {#each holdersOf(p) as g (signature([g]))}
-                          <span class="chip holder {g.holder}">
-                            {#if g.holder === 'group' || g.holder === 'user'}<span class="kind"
-                                >{holderLabels[g.holder]}</span
-                              >{/if}
-                            {grantLabel(g)}
-                            <button
-                              type="button"
-                              aria-label={`${t.common.remove} ${grantLabel(g)}`}
-                              onclick={() => remove(g)}>×</button
-                            >
-                          </span>
-                        {:else}
-                          <span class="nobody">{t.settings.nobody}</span>
-                        {/each}
-                        <span class="adder" use:outside={() => adding === p && (adding = null)}>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody>
+                {#each rows as row, r (row.key)}
+                  <tr>
+                    <th scope="row" class="who">
+                      <span class="who-line">
+                        <span class="who-name">{row.label}</span>
+                        {@render setAll(`row:${row.key}`, t.settings.setRow(row.label), (v) =>
+                          setRow(row, v),
+                        )}
+                        {#if !row.builtin}
                           <button
                             type="button"
-                            class="link-btn"
-                            aria-expanded={adding === p}
-                            onclick={() => {
-                              adding = adding === p ? null : p;
-                              kind = 'group';
-                              pick = '';
-                            }}>+ {t.settings.addHolder}</button
+                            class="drop"
+                            aria-label={t.settings.removeRow(row.label)}
+                            title={t.settings.removeRow(row.label)}
+                            onclick={() => dropRow(row)}>×</button
                           >
-                          {#if adding === p}
-                            <div class="popover add">
-                              <div class="field">
-                                <span>{t.settings.chooseKind}</span>
-                                <Dropdown
-                                  label={t.settings.chooseKind}
-                                  value={kind}
-                                  options={kinds.map((k) => ({ value: k, label: holderLabels[k] }))}
-                                  onchange={(v) => (kind = v as Holder)}
-                                />
-                              </div>
-                              {#if kind === 'group'}
-                                <div class="field">
-                                  <span>{t.settings.chooseGroup}</span>
-                                  <Dropdown
-                                    label={t.settings.chooseGroup}
-                                    value={pick}
-                                    options={data.groups.map((x) => ({
-                                      value: String(x.id),
-                                      label: x.name,
-                                    }))}
-                                    placeholder="…"
-                                    onchange={(v) => (pick = v)}
-                                  />
-                                </div>
-                              {:else if kind === 'user'}
-                                <div class="field">
-                                  <span class="field-label">{t.settings.chooseUser}</span>
-                                  <UserPicker
-                                    field
-                                    value={null}
-                                    label={t.settings.chooseUser}
-                                    allowNone={false}
-                                    noneLabel="…"
-                                    search={(q) => api.users(q)}
-                                    onpick={(u: UserRef | null) =>
-                                      u && add(p, { holder: 'user', id: u.id, name: u.name })}
-                                  />
-                                </div>
-                              {/if}
-                              {#if kind !== 'user'}
-                                <button
-                                  class="btn btn-small btn-primary"
-                                  disabled={kind === 'group' && !pick}
-                                  onclick={() => addPicked(p)}>{t.common.add}</button
-                                >
-                              {/if}
-                            </div>
-                          {/if}
+                        {/if}
+                      </span>
+                      <span class="kind"
+                        >{row.builtin ? t.builtInGroups.mark : holderLabels[row.holder]}</span
+                      >
+                    </th>
+                    {#each data.permissions as p, c (p)}
+                      {@const state = cellState(grants, row.key, p)}
+                      {@const from = state === 'inherit' ? inherited(row, p) : null}
+                      <td
+                        role="gridcell"
+                        class="cell {state}"
+                        data-cell="{r}-{c}"
+                        tabindex={cur.row === r && cur.col === c ? 0 : -1}
+                        aria-label={cellName(row, p, state)}
+                        title={from ? from.long : undefined}
+                        onfocus={() => (at = { row: r, col: c })}
+                        onkeydown={(e) => cellKey(e, r, c, row, p)}
+                      >
+                        <span class="switch" aria-hidden="true">
+                          {#each CELL_STATES as st (st)}
+                            <button
+                              type="button"
+                              tabindex="-1"
+                              class="seg {st}"
+                              class:on={state === st}
+                              class:yes={st === 'inherit' && from?.granted === true}
+                              class:no={st === 'inherit' && from?.granted === false}
+                              title={st === 'inherit' && from
+                                ? `${t.settings.states.inherit}: ${from.long}`
+                                : t.settings.states[st]}
+                              onmousedown={(e) => e.preventDefault()}
+                              onclick={() => {
+                                setTo(row, p, st);
+                                focusCell(r, c);
+                              }}>{marks[st]}</button
+                            >
+                          {/each}
                         </span>
-                      </div>
-                    </td>
+                      </td>
+                    {/each}
                   </tr>
                 {/each}
               </tbody>
             </table>
+          </div>
+          <p class="sr-only" aria-live="polite">{announced}</p>
+          <div class="adder row-adder" use:outside={() => adding && (adding = false)}>
+            <button
+              type="button"
+              class="link-btn"
+              aria-expanded={adding}
+              onclick={() => {
+                adding = !adding;
+                kind = 'group';
+                pick = '';
+              }}>+ {t.settings.addRow}</button
+            >
+            {#if adding}
+              <div class="popover add">
+                <div class="field">
+                  <span>{t.settings.rowKind}</span>
+                  <Dropdown
+                    label={t.settings.rowKind}
+                    value={kind}
+                    options={(['group', 'user'] as const).map((k) => ({
+                      value: k,
+                      label: holderLabels[k],
+                    }))}
+                    onchange={(v) => {
+                      kind = v as 'group' | 'user';
+                      pick = '';
+                    }}
+                  />
+                </div>
+                {#if kind === 'group'}
+                  <div class="field">
+                    <span>{t.settings.chooseGroup}</span>
+                    <Dropdown
+                      label={t.settings.chooseGroup}
+                      value={pick}
+                      search
+                      options={data.groups
+                        .filter((x) => !rows.some((r) => r.key === `group:${x.id}`))
+                        .map((x) => ({ value: String(x.id), label: x.name }))}
+                      placeholder="…"
+                      onchange={(v) => (pick = v)}
+                    />
+                  </div>
+                  <button
+                    class="btn btn-small btn-primary"
+                    disabled={!pick}
+                    onclick={() => addRow(`group:${pick}`)}>{t.common.add}</button
+                  >
+                {:else}
+                  <div class="field">
+                    <span class="field-label">{t.settings.chooseUser}</span>
+                    <UserPicker
+                      field
+                      value={null}
+                      label={t.settings.chooseUser}
+                      allowNone={false}
+                      noneLabel="…"
+                      search={async (q) =>
+                        (await api.users(q)).filter(
+                          (u) => !rows.some((r) => r.key === `user:${u.id}`),
+                        )}
+                      onpick={(u: UserRef | null) => u && void addUser(u)}
+                    />
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
 
           <h2 class="section-title">{t.settings.projectMembers}</h2>
@@ -554,8 +787,11 @@
               <span>{t.settings.unsaved}</span>
               <button
                 class="btn btn-quiet"
-                onclick={() => data && ((grants = data.grants), undefined)}
-                >{t.settings.discard}</button
+                onclick={() => {
+                  if (!data) return;
+                  grants = data.grants;
+                  extra = [];
+                }}>{t.settings.discard}</button
               >
               <button class="btn btn-primary" disabled={saving} onclick={() => void save()}
                 >{saving ? t.common.saving : t.common.save}</button
@@ -595,57 +831,236 @@
     color: var(--ink-soft);
   }
 
-  .matrix th {
-    width: 17.5rem;
-    text-align: left;
-    text-transform: none;
-    letter-spacing: 0;
-    vertical-align: top;
-    padding: 9px 16px 9px 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .label {
-    display: block;
-    font: 600 0.875rem/1.3 var(--font-body);
-    color: var(--ink);
-  }
-
-  .help {
-    display: block;
-    font: 400 0.78125rem/1.35 var(--font-body);
+  .matrix-hint {
+    max-width: 70ch;
+    margin: 0 0 10px;
+    font-size: 0.8125rem;
     color: var(--muted);
   }
 
+  /* The matrix scrolls in its own box, both ways: the holders stay on the
+     left and the permissions on top. */
+  .matrix-scroll {
+    max-height: 70vh;
+    overflow: auto;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .matrix {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .matrix thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-width: 6.5rem;
+    max-width: 8rem;
+    padding: 8px 6px;
+    white-space: normal;
+    line-height: 1.2;
+    vertical-align: bottom;
+    background: var(--paper);
+  }
+
+  .matrix .who {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 11rem;
+    max-width: 14rem;
+    padding: 6px 10px;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+    background: var(--paper);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .matrix thead .who {
+    z-index: 3;
+  }
+
+  .who-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .who-name {
+    font: 600 0.84375rem/1.3 var(--font-body);
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .who .kind {
+    display: block;
+    font: 500 0.6875rem/1.2 var(--font-body);
+    color: var(--muted);
+  }
+
+  .drop {
+    margin-left: auto;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .drop:hover {
+    color: var(--accent-text);
+  }
+
   .matrix td {
-    vertical-align: top;
-    padding-top: 10px;
+    padding: 4px;
+    vertical-align: middle;
   }
 
   .matrix tbody tr:hover td {
     background: none;
   }
 
-  .holders {
+  .col-head {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
+    align-items: flex-end;
+    gap: 2px;
   }
 
-  .holder {
-    font-family: var(--font-body);
-    font-size: 0.78125rem;
+  /* Each cell is three bare icons: block, inherit, grant. Only the chosen
+     one is filled, each with its own glyph, so color is never the only cue.
+     A chosen inherit tints its slash with what it resolves to. */
+  .cell {
+    cursor: default;
   }
 
-  .holder .kind {
-    font: 500 0.6875rem/1 var(--font-body);
+  .cell:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+
+  .switch {
+    display: inline-flex;
+    gap: 2px;
+  }
+
+  .seg {
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
     color: var(--muted);
+    font: 400 0.8125rem/1 var(--font-body);
+    cursor: pointer;
   }
 
-  .holder.everyone {
-    border-color: var(--ink-soft);
-    font-weight: 600;
+  .seg:hover {
+    background: var(--accent-wash);
+    color: var(--ink);
+  }
+
+  .seg.on {
+    font-weight: 700;
+  }
+
+  .seg.deny.on {
+    background: var(--tone-bug);
+    color: var(--paper);
+  }
+
+  .seg.inherit.on {
+    background: var(--paper-sunk);
+    color: var(--ink-soft);
+  }
+
+  .seg.inherit.on.yes {
+    color: var(--stamp-done);
+  }
+
+  .seg.inherit.on.no {
+    color: var(--tone-bug);
+  }
+
+  .seg.allow.on {
+    background: var(--stamp-done);
+    color: var(--paper);
+  }
+
+  .set-all {
+    position: relative;
+    display: inline-block;
+  }
+
+  .set-all-btn {
+    padding: 0 3px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .set-all-btn:hover,
+  .set-all-btn[aria-expanded='true'] {
+    color: var(--ink);
+  }
+
+  /* With a mouse, the "set all" arrows show only on the row or column
+     pointed at; touch screens keep them. */
+  @media (hover: hover) {
+    .set-all-btn {
+      opacity: 0;
+    }
+
+    th:hover .set-all-btn,
+    .set-all-btn:focus-visible,
+    .set-all-btn[aria-expanded='true'] {
+      opacity: 1;
+    }
+  }
+
+  /* The header holding an open menu goes above the sticky headers after it. */
+  .matrix th:has(.set-all-menu) {
+    z-index: 5;
+  }
+
+  .set-all-menu {
+    position: fixed;
+    min-width: 8rem;
+    padding: 4px;
+    display: grid;
+    gap: 2px;
+  }
+
+  .seg-item {
+    padding: 5px 8px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: 400 0.8125rem/1.2 var(--font-body);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .seg-item:hover,
+  .seg-item:focus-visible {
+    background: var(--accent-wash);
+  }
+
+  .row-adder {
+    display: inline-block;
+    margin: 8px 0 18px;
   }
 
   .nobody {

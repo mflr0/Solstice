@@ -393,9 +393,34 @@ export const fr: Messages = {
     intro:
       'Ces règles ne valent que pour ce projet : il n’y a pas de schéma partagé, modifier ici ne touche aucun autre projet.',
     permissions: 'Qui peut faire quoi',
-    addHolder: 'Ajouter',
-    nobody: 'Personne',
-    chooseKind: 'Type de bénéficiaire',
+    matrix: 'Droits de chaque groupe et utilisateur',
+    matrixHint:
+      'Chaque case bloque (✗), hérite (/) ou accorde (✓). Survolez une case héritée pour voir ce que le groupe ou l’utilisateur obtient sans règle ici, et d’où cela vient. Au clavier : les flèches passent d’une case à l’autre ; 1, 2, 3 ou B, H, A règlent une case.',
+    holder: 'Groupe ou utilisateur',
+    addRow: 'Ajouter un groupe ou un utilisateur',
+    rowKind: 'Type',
+    removeRow: (name: string) => `Retirer ${name} et ses règles dans ce projet`,
+    states: { inherit: 'Hériter', allow: 'Accorder', deny: 'Bloquer' },
+    keys: { inherit: 'h', allow: 'a', deny: 'b' },
+    setRow: (name: string) => `Régler tous les droits de ${name}`,
+    setColumn: (permission: string) => `Régler ${permission} pour toutes les lignes`,
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed
+          ? `accordé par le défaut global de ${name}`
+          : `bloqué par le défaut global de ${name}`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed ? `accordé dans ce projet pour ${name}` : `bloqué dans ce projet pour ${name}`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed
+          ? `accordé par la règle globale de ${name}`
+          : `bloqué par la règle globale de ${name}`,
+      none: 'non accordé : aucune règle',
+      loading: 'chargement…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission} : ${state}`,
+    inherited: (detail: string) => `hérité, ${detail}`,
     chooseGroup: 'Groupe',
     chooseUser: 'Utilisateur',
     projectMembers: 'Membres des groupes dans ce projet',

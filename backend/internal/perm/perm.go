@@ -699,6 +699,20 @@ func (s *Subject) Administers(project int64) bool {
 	return s.Admin || s.Can(Admin, project, nil)
 }
 
+// GroupsIn returns the groups the subject is in, in a project, sorted.
+func (s *Subject) GroupsIn(project int64) []int64 {
+	set, ok := s.inProject[project]
+	if !ok {
+		set = s.global
+	}
+	return slices.Sorted(maps.Keys(set))
+}
+
+// Leads reports whether the subject is the project's lead.
+func (s *Subject) Leads(project int64) bool {
+	return s.UserID != 0 && s.rules.leads[project] == s.UserID
+}
+
 // Archived reports whether a project is archived.
 func (s *Subject) Archived(project int64) bool { return s.rules.archived[project] }
 

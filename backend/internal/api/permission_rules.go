@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"solstice/internal/audit"
@@ -188,6 +189,82 @@ func (s *Server) putRules(resolve func(*http.Request) (ruleHolder, error)) handl
 		}
 		return writeJSON(w, http.StatusOK, after)
 	}
+}
+
+// groupRuleOut is a global rule of a group or a built-in group.
+type groupRuleOut struct {
+	Permission string `json:"permission"`
+	Holder     string `json:"holder"`
+	ID         int64  `json:"id,omitempty"` // group id
+	Effect     string `json:"effect"`
+}
+
+// groupGlobalRules returns the global rules of every group and built-in group.
+func (s *Server) groupGlobalRules(ctx context.Context) ([]groupRuleOut, error) {
+	out := []groupRuleOut{}
+	err := sqlq.Each(ctx, s.db, `SELECT permission, holder, COALESCE(group_id, 0), effect FROM permission_rules
+		WHERE project_id IS NULL AND holder <> ? ORDER BY holder, 3, permission`, func(rows *sql.Rows) error {
+		var rl groupRuleOut
+		if err := rows.Scan(&rl.Permission, &rl.Holder, &rl.ID, &rl.Effect); err != nil {
+			return err
+		}
+		out = append(out, rl)
+		return nil
+	}, perm.User)
+	return out, err
+}
+
+// permUserOut is what a user inherits in a project when no project rule of
+// theirs decides: their global rules, and the groups they are in there.
+type permUserOut struct {
+	ID     int64     `json:"id"`
+	Name   string    `json:"name"`
+	Groups []string  `json:"groups"` // builtin:<holder> or group:<id>
+	Rules  []ruleOut `json:"rules"`
+}
+
+// permUser loads what a user inherits in a project. Reporter and assignee
+// are left out: they depend on an issue.
+func (s *Server) permUser(ctx context.Context, project, userID int64) (permUserOut, error) {
+	u := permUserOut{ID: userID}
+	err := s.db.QueryRowContext(ctx, `SELECT display_name FROM users WHERE id = ?`, userID).Scan(&u.Name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return u, errNotFound
+	}
+	if err != nil {
+		return u, err
+	}
+	sub, err := s.perms.Subject(ctx, userID, false)
+	if err != nil {
+		return u, err
+	}
+	u.Groups = []string{"builtin:" + perm.Everyone}
+	if sub.Leads(project) {
+		u.Groups = append(u.Groups, "builtin:"+perm.Lead)
+	}
+	for _, g := range sub.GroupsIn(project) {
+		u.Groups = append(u.Groups, "group:"+strconv.FormatInt(g, 10))
+	}
+	u.Rules, err = s.globalRules(ctx, ruleHolder{holder: perm.User, id: userID})
+	return u, err
+}
+
+// getPermissionUser answers what a user inherits in a project, for a user row
+// added to the project's rules before they are saved.
+func (s *Server) getPermissionUser(w http.ResponseWriter, r *http.Request) error {
+	project, err := s.configurableProject(r)
+	if err != nil {
+		return err
+	}
+	id, err := pathID(r, "id")
+	if err != nil {
+		return err
+	}
+	u, err := s.permUser(r.Context(), project, id)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, u)
 }
 
 // ruleEffect checks the effect of a rule: allow when left out.

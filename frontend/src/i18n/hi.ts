@@ -391,9 +391,30 @@ export const hi: Messages = {
     intro:
       'ये नियम सिर्फ़ इसी प्रोजेक्ट पर लागू होते हैं: कोई साझा स्कीम नहीं है, इसलिए यहाँ किया गया बदलाव किसी और प्रोजेक्ट पर असर नहीं डालता।',
     permissions: 'कौन क्या कर सकता है',
-    addHolder: 'जोड़ें',
-    nobody: 'कोई नहीं',
-    chooseKind: 'किसे दें',
+    matrix: 'हर समूह और व्यक्ति की अनुमतियाँ',
+    matrixHint:
+      'हर खाना रोकता है (✗), विरासत लेता है (/) या अनुमति देता है (✓)। विरासत वाले खाने पर पॉइंटर ले जाएँ और देखें कि यहाँ नियम के बिना समूह या व्यक्ति को क्या मिलता है, और कहाँ से। कीबोर्ड: तीर कुंजियाँ एक खाने से दूसरे पर ले जाती हैं; 1, 2, 3 या B, I, G खाना तय करते हैं।',
+    holder: 'समूह या व्यक्ति',
+    addRow: 'समूह या व्यक्ति जोड़ें',
+    rowKind: 'प्रकार',
+    removeRow: (name: string) => `${name} और इस प्रोजेक्ट में उसके नियम हटाएँ`,
+    states: { inherit: 'विरासत', allow: 'अनुमति दें', deny: 'रोकें' },
+    keys: { inherit: 'i', allow: 'g', deny: 'b' },
+    setRow: (name: string) => `${name} की सभी अनुमतियाँ तय करें`,
+    setColumn: (permission: string) => `सभी पंक्तियों के लिए ${permission} तय करें`,
+    source: {
+      globalGroup: (allowed: boolean, name: string) =>
+        allowed ? `${name} के वैश्विक डिफ़ॉल्ट से अनुमति` : `${name} के वैश्विक डिफ़ॉल्ट से रोक`,
+      projectGroup: (allowed: boolean, name: string) =>
+        allowed ? `इस प्रोजेक्ट में ${name} के लिए अनुमति` : `इस प्रोजेक्ट में ${name} के लिए रोक`,
+      globalUser: (allowed: boolean, name: string) =>
+        allowed ? `${name} के वैश्विक नियम से अनुमति` : `${name} के वैश्विक नियम से रोक`,
+      none: 'अनुमति नहीं: कोई नियम नहीं',
+      loading: 'लोड हो रहा है…',
+    },
+    cell: (holder: string, permission: string, state: string) =>
+      `${holder}, ${permission}: ${state}`,
+    inherited: (detail: string) => `विरासत, ${detail}`,
     chooseGroup: 'समूह',
     chooseUser: 'व्यक्ति',
     projectMembers: 'इस प्रोजेक्ट में समूहों के सदस्य',
