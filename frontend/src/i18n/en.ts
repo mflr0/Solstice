@@ -2513,7 +2513,7 @@ export const en = {
       software: 'Software: To Do, In Progress, In Review, Done',
       simple: 'Simple: To do, In progress, Done',
     },
-    leadHint: 'Defaults to you. The lead has every right in the project.',
+    leadHint: 'Optional, you by default. The lead has every right in the project.',
     description: 'Description',
     access: 'Who can work in the project',
     accessKinds: {
@@ -2571,7 +2571,7 @@ export const en = {
     general: {
       title: 'General',
       intro: 'The project’s name, who leads it and how new issues are handled.',
-      leadHint: 'The lead has every right in the project.',
+      leadHint: 'Optional. The lead has every right in the project.',
       typesInUse: (list: string) =>
         `These types are still used by issues, so they cannot be removed: ${list}.`,
       typeUsage: (name: string, issues: number) => `${name} (${plural(issues, 'issue', 'issues')})`,

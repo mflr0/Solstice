@@ -139,8 +139,15 @@
     }, 300);
   }
 
+  /** Without a lead, nothing may rest on the lead: access is then to choose again. */
   function setLead(u: UserRef | null) {
     form.lead = u;
+    if (u) return;
+    if (form.defaultAssignee === 'lead') form.defaultAssignee = 'unassigned';
+    if (form.access === 'lead') {
+      form.access = 'group';
+      accessChanged();
+    }
   }
 
   function toggleType(id: string, on: boolean) {
@@ -224,7 +231,7 @@
           field
           value={form.lead}
           label={t.projects.lead}
-          allowNone={false}
+          noneLabel={t.projectConfig.components.noLead}
           search={(q) => api.users(q)}
           onpick={setLead}
         />
@@ -268,7 +275,11 @@
         <Dropdown
           label={t.projectsAdmin.access}
           value={form.access}
-          options={ACCESS.map((a) => ({ value: a, label: t.projectsAdmin.accessKinds[a] }))}
+          options={ACCESS.map((a) => ({
+            value: a,
+            label: t.projectsAdmin.accessKinds[a],
+            disabled: a === 'lead' && !form.lead,
+          }))}
           onchange={(v) => {
             form.access = v as AccessKind;
             accessChanged();
@@ -329,7 +340,7 @@
         value={form.defaultAssignee ?? 'unassigned'}
         options={[
           { value: 'unassigned', label: t.projectsAdmin.assignees.unassigned },
-          { value: 'lead', label: t.projectsAdmin.assignees.lead },
+          { value: 'lead', label: t.projectsAdmin.assignees.lead, disabled: !form.lead },
         ]}
         onchange={(v) => (form.defaultAssignee = v as 'unassigned' | 'lead')}
       />

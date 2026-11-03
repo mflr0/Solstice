@@ -82,6 +82,12 @@
       .catch(() => (categories = []));
   });
 
+  function setLead(u: UserRef | null) {
+    if (!form) return;
+    form.lead = u;
+    if (!u && form.defaultAssignee === 'lead') form.defaultAssignee = 'unassigned';
+  }
+
   function discard() {
     if (!settings) return;
     form = generalForm(settings);
@@ -156,9 +162,9 @@
           field
           value={form.lead}
           label={t.projects.lead}
-          allowNone={false}
+          noneLabel={t.projectConfig.components.noLead}
           search={(q) => api.users(q)}
-          onpick={(u: UserRef | null) => form && (form.lead = u)}
+          onpick={setLead}
         />
         <span class="hint">{t.projectConfig.general.leadHint}</span>
       </div>
@@ -183,7 +189,7 @@
         value={form.defaultAssignee}
         options={[
           { value: 'unassigned', label: t.projectsAdmin.assignees.unassigned },
-          { value: 'lead', label: t.projectsAdmin.assignees.lead },
+          { value: 'lead', label: t.projectsAdmin.assignees.lead, disabled: !form.lead },
         ]}
         onchange={(v) => form && (form.defaultAssignee = v as 'unassigned' | 'lead')}
       />

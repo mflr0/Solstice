@@ -2538,7 +2538,8 @@ export const it: Messages = {
       software: 'Software: Da fare, In corso, In revisione, Completato',
       simple: 'Semplice: Da fare, In corso, Completato',
     },
-    leadHint: 'Per impostazione predefinita, tu. Il responsabile ha tutti i diritti nel progetto.',
+    leadHint:
+      'Facoltativo, per impostazione predefinita tu. Il responsabile ha tutti i diritti nel progetto.',
     description: 'Descrizione',
     access: 'Chi può lavorare nel progetto',
     accessKinds: {
@@ -2596,7 +2597,7 @@ export const it: Messages = {
     general: {
       title: 'Generale',
       intro: 'Il nome del progetto, chi lo guida e come vengono gestiti i nuovi ticket.',
-      leadHint: 'Il responsabile ha tutti i diritti nel progetto.',
+      leadHint: 'Facoltativo. Il responsabile ha tutti i diritti nel progetto.',
       typesInUse: (list: string) =>
         `Questi tipi sono ancora usati da dei ticket, quindi non si possono rimuovere: ${list}.`,
       typeUsage: (name: string, issues: number) =>

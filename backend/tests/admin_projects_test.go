@@ -484,3 +484,45 @@ func TestVersions(t *testing.T) {
 func firstResolution(t *testing.T) string {
 	return pick(t, `SELECT id FROM resolutions ORDER BY position LIMIT 1`)
 }
+
+// A project may have no lead: chosen on create, cleared later, never with
+// new issues going to the lead.
+func TestProjectWithoutLead(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	var settings struct {
+		Lead            *userRef
+		DefaultAssignee string
+	}
+
+	key := newProjectKey()
+	admin.call("POST", "/api/projects", map[string]any{"key": key, "name": "Projet " + key, "lead": nil,
+		"defaultAssignee": "lead"}, 400, nil)
+	key = newProject(t, admin, map[string]any{"lead": nil})
+	admin.call("GET", "/api/projects/"+key+"/settings", nil, 200, &settings)
+	if settings.Lead != nil {
+		t.Errorf("created with lead null: %+v", settings)
+	}
+	// The lead grants stay and match nobody; the group gets its own.
+	if n := pick(t, `SELECT COUNT(*) FROM project_permissions pp JOIN projects p ON p.id = pp.project_id
+		WHERE p.pkey = ? AND pp.holder NOT IN ('lead', 'group')`, key); n != "0" {
+		t.Errorf("%s grants other than lead and group", n)
+	}
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"defaultAssignee": "lead"}, 400, nil)
+
+	// An absent lead is still the creator; null clears it.
+	key = newProject(t, admin, map[string]any{"defaultAssignee": "lead"})
+	admin.call("GET", "/api/projects/"+key+"/settings", nil, 200, &settings)
+	if settings.Lead == nil || settings.Lead.Username != "admin" {
+		t.Errorf("created without lead: %+v", settings)
+	}
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"lead": nil}, 400, nil)
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"lead": nil, "defaultAssignee": "lead"}, 400, nil)
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"lead": nil, "defaultAssignee": "unassigned"}, 200, &settings)
+	if settings.Lead != nil || settings.DefaultAssignee != "unassigned" {
+		t.Errorf("after clearing the lead: %+v", settings)
+	}
+	admin.call("PATCH", "/api/projects/"+key, map[string]any{"name": "Sans responsable " + key}, 200, &settings)
+	if settings.Lead != nil {
+		t.Errorf("a PATCH without lead set one: %+v", settings)
+	}
+}

@@ -381,7 +381,8 @@ export interface ProjectInput {
   key: string;
   name: string;
   description?: string;
-  lead?: number;
+  /** Null for no lead; left out, the creator. */
+  lead?: number | null;
   category?: number | null;
   template: ProjectTemplate;
   access?: ProjectAccess;
@@ -392,7 +393,7 @@ export interface ProjectInput {
 export interface ProjectPatch {
   name?: string;
   description?: string | null;
-  lead?: number;
+  lead?: number | null;
   category?: number | null;
   defaultAssignee?: 'unassigned' | 'lead';
   issueTypes?: string[];

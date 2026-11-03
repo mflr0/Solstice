@@ -2534,7 +2534,7 @@ export const fr: Messages = {
       software: 'Logiciel : À faire, En cours, En revue, Terminé',
       simple: 'Simple : À faire, En cours, Terminé',
     },
-    leadHint: 'Vous par défaut. Le responsable a tous les droits dans le projet.',
+    leadHint: 'Facultatif, vous par défaut. Le responsable a tous les droits dans le projet.',
     description: 'Description',
     access: 'Qui peut travailler dans le projet',
     accessKinds: {
@@ -2593,7 +2593,7 @@ export const fr: Messages = {
       title: 'Général',
       intro:
         'Le nom du projet, son responsable et la façon dont les nouveaux tickets sont traités.',
-      leadHint: 'Le responsable a tous les droits dans le projet.',
+      leadHint: 'Facultatif. Le responsable a tous les droits dans le projet.',
       typesInUse: (list: string) =>
         `Ces types sont encore utilisés par des tickets, ils ne peuvent donc pas être retirés : ${list}.`,
       typeUsage: (name: string, issues: number) =>

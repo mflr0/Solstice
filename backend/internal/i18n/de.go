@@ -211,6 +211,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectCategoryNotFound:    "Kategorie nicht gefunden.",
 	ProjectTemplateUnknown:     "Unbekanntes Vorlagenmodell: software oder simple.",
 	ProjectAssigneeTypeUnknown: "Standardzuweisung: unassigned oder lead.",
+	ProjectAssigneeNoLead:      "Neue Vorgänge können nicht an die Projektleitung gehen: Das Projekt hat keine.",
 	ProjectIssueTypeRequired:   "Wählen Sie mindestens einen Vorgangstyp aus, der keine Unteraufgabe ist.",
 	ProjectRemovedTypesInUse:   "Einige Vorgänge verwenden noch die entfernten Typen: Ändern Sie zuerst deren Vorgangstyp.",
 	ProjectDeleteConfirm:       "Dieses Projekt enthält Vorgänge: Geben Sie seinen Schlüssel ein, um die Löschung zu bestätigen.",

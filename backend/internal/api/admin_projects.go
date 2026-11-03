@@ -182,6 +182,15 @@ func checkAssigneeType(t string) error {
 	return nil
 }
 
+// checkAssigneeLead refuses to send new issues to the lead of a project
+// without one.
+func checkAssigneeLead(hasLead bool, t string) error {
+	if !hasLead && t == "lead" {
+		return fail(http.StatusBadRequest, i18n.ProjectAssigneeNoLead)
+	}
+	return nil
+}
+
 type newProjectInput struct {
 	Key             string       `json:"key"`
 	Name            string       `json:"name"`
@@ -198,7 +207,7 @@ type newProjectInput struct {
 type newProject struct {
 	key, name   string
 	description *string
-	lead        int64
+	lead        *int64
 	category    *int64
 	template    string
 	kind        string
@@ -208,11 +217,12 @@ type newProject struct {
 	types       []string
 }
 
-// checkNewProject checks a project to create, led by lead unless it names
-// another. A fresh instance gets its catalogues first, so that the default
-// issue types exist.
-func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead int64) (*newProject, error) {
-	p := &newProject{key: strings.ToUpper(strings.TrimSpace(in.Key)), description: in.Description, lead: lead,
+// checkNewProject checks a project to create, raw telling which fields were
+// sent: led by lead unless it names another, or null for none. A fresh
+// instance gets its catalogues first, so that the default issue types exist.
+func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw map[string]json.RawMessage,
+	lead int64) (*newProject, error) {
+	p := &newProject{key: strings.ToUpper(strings.TrimSpace(in.Key)), description: in.Description, lead: &lead,
 		category: in.Category, template: in.Template, assignTo: "unassigned", access: in.Access}
 	if err := s.checkProjectKey(ctx, s.db, p.key, 0); err != nil {
 		return nil, err
@@ -224,11 +234,13 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 	if err := s.projectNameTaken(ctx, p.name, 0); err != nil {
 		return nil, err
 	}
-	if in.Lead != nil {
-		p.lead = *in.Lead
+	if _, ok := raw["lead"]; ok {
+		p.lead = in.Lead
 	}
-	if err := s.activeUser(ctx, p.lead); err != nil {
-		return nil, err
+	if p.lead != nil {
+		if err := s.activeUser(ctx, *p.lead); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.checkCategory(ctx, p.category); err != nil {
 		return nil, err
@@ -246,6 +258,9 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, lead 
 			return nil, err
 		}
 		p.assignTo = *in.DefaultAssignee
+	}
+	if err := checkAssigneeLead(p.lead != nil, p.assignTo); err != nil {
+		return nil, err
 	}
 	if a := p.access; a != nil {
 		switch a.Holder {
@@ -282,11 +297,12 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in newProjectInput
-	if err := readJSON(r, &in); err != nil {
+	raw, err := readJSONFields(r, &in) // null lead: none
+	if err != nil {
 		return err
 	}
 	ctx := r.Context()
-	p, err := s.checkNewProject(ctx, &in, currentUser(r).ID)
+	p, err := s.checkNewProject(ctx, &in, raw, currentUser(r).ID)
 	if err != nil {
 		return err
 	}
@@ -322,7 +338,11 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	release()
 	s.perms.Invalidate()
 	s.forgetCatalogue()
-	details := map[string]any{"name": p.name, "template": p.template, "lead": s.userNames(ctx, []int64{p.lead}),
+	var leads []int64
+	if p.lead != nil {
+		leads = append(leads, *p.lead)
+	}
+	details := map[string]any{"name": p.name, "template": p.template, "lead": s.userNames(ctx, leads),
 		"issueTypes": p.types}
 	if a := p.access; a != nil {
 		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
@@ -588,7 +608,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in projectChangesInput
-	raw, err := readJSONFields(r, &in) // null clears description and category
+	raw, err := readJSONFields(r, &in) // null clears description, lead and category
 	if err != nil {
 		return err
 	}
@@ -597,7 +617,7 @@ func (s *Server) updateProject(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	sets, types, err := s.checkProjectChanges(ctx, id, &in, raw)
+	sets, types, err := s.checkProjectChanges(ctx, before, &in, raw)
 	if err != nil {
 		return err
 	}
@@ -624,11 +644,12 @@ type projectChangesInput struct {
 	IssueTypes      []string `json:"issueTypes"`
 }
 
-// checkProjectChanges checks a change to project id's settings, raw telling
-// which fields were sent. It returns the columns to set and, when they
-// change, the issue types to offer.
-func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectChangesInput,
+// checkProjectChanges checks a change to the settings before of a project,
+// raw telling which fields were sent. It returns the columns to set and, when
+// they change, the issue types to offer.
+func (s *Server) checkProjectChanges(ctx context.Context, before *projectSettingsOut, in *projectChangesInput,
 	raw map[string]json.RawMessage) (map[string]any, []string, error) {
+	id := before.ID
 	sets := map[string]any{}
 	if in.Name != nil {
 		name, err := cleanName(*in.Name, sqlq.VarcharWidth)
@@ -643,11 +664,14 @@ func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectC
 	if _, ok := raw["description"]; ok {
 		sets["description"] = optDescription(in.Description)
 	}
-	if in.Lead != nil {
-		if err := s.activeUser(ctx, *in.Lead); err != nil {
-			return nil, nil, err
+	_, leadSent := raw["lead"]
+	if leadSent {
+		if in.Lead != nil {
+			if err := s.activeUser(ctx, *in.Lead); err != nil {
+				return nil, nil, err
+			}
 		}
-		sets["lead_id"] = *in.Lead
+		sets["lead_id"] = in.Lead
 	}
 	if _, ok := raw["category"]; ok {
 		if err := s.checkCategory(ctx, in.Category); err != nil {
@@ -660,6 +684,20 @@ func (s *Server) checkProjectChanges(ctx context.Context, id int64, in *projectC
 			return nil, nil, err
 		}
 		sets["default_assignee"] = *in.DefaultAssignee
+	}
+	// Checked only when the request touches either, so that other changes
+	// still save on a project imported in that state.
+	if leadSent || in.DefaultAssignee != nil {
+		lead, assignTo := before.Lead != nil, before.DefaultAssignee
+		if leadSent {
+			lead = in.Lead != nil
+		}
+		if in.DefaultAssignee != nil {
+			assignTo = *in.DefaultAssignee
+		}
+		if err := checkAssigneeLead(lead, assignTo); err != nil {
+			return nil, nil, err
+		}
 	}
 	if in.IssueTypes == nil {
 		return sets, nil, nil

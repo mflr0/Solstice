@@ -212,6 +212,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectCategoryNotFound:    "श्रेणी नहीं मिली।",
 	ProjectTemplateUnknown:     "अज्ञात टेम्पलेट: software या simple।",
 	ProjectAssigneeTypeUnknown: "डिफ़ॉल्ट असाइनमेंट: unassigned या lead।",
+	ProjectAssigneeNoLead:      "नए टिकट प्रोजेक्ट लीड को नहीं जा सकते: प्रोजेक्ट की कोई लीड नहीं है।",
 	ProjectIssueTypeRequired:   "कम से कम एक ऐसा टिकट प्रकार चुनें जो सब-टास्क न हो।",
 	ProjectRemovedTypesInUse:   "कुछ टिकट अभी भी हटाए गए प्रकार इस्तेमाल करते हैं: पहले उनका टिकट प्रकार बदलें।",
 	ProjectDeleteConfirm:       "इस प्रोजेक्ट में टिकट हैं: मिटाने की पुष्टि के लिए इसकी कुंजी टाइप करें।",

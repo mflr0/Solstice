@@ -11,6 +11,8 @@
     keywords?: string[] | undefined;
     /** A line under the name in the list, e.g. what "Follow the browser" follows now. */
     hint?: string | undefined;
+    /** Listed but not chosen. */
+    disabled?: boolean | undefined;
   }
 
   /** The search field's texts, for a page without the application's catalogue (the setup wizard). */
@@ -137,6 +139,7 @@
 
   function choose(i: number) {
     const o = options[i];
+    if (o?.disabled) return;
     hide();
     button?.focus();
     if (o && o.value !== value) onchange(o.value);
@@ -400,6 +403,7 @@
     class:active={i === active}
     role="option"
     aria-selected={i === selected}
+    aria-disabled={o.disabled || undefined}
     onpointermove={() => (active = i)}
     onclick={() => choose(i)}
   >
@@ -487,6 +491,11 @@
 
   .dropdown-list .item {
     white-space: nowrap;
+  }
+
+  .dropdown-list .item[aria-disabled='true'] {
+    color: var(--muted);
+    cursor: not-allowed;
   }
 
   .dropdown-list .group {
