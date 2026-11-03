@@ -7,6 +7,7 @@
     MAX_BINDINGS,
     overridesFrom,
     SHORTCUTS,
+    shortcutParts,
     type Shortcut,
     type ShortcutAction,
     type ShortcutScope,
@@ -21,6 +22,7 @@
     mac,
     notify,
   } from '../../lib/ui.svelte.js';
+  import KeyCaps from '../KeyCaps.svelte';
   import ShortcutRecorder from './ShortcutRecorder.svelte';
 
   /** The single-key shortcuts (on or off, kept on the account), their list, and their keys. */
@@ -144,7 +146,7 @@
               {#each s.keys as key, i (i)}
                 {@const others = clashing(s.action, key)}
                 <span class="key" class:clash={others.length > 0}>
-                  <kbd>{shown(key)}</kbd>
+                  <KeyCaps parts={shortcutParts(key, mac, t.editor.keys)} label={shown(key)} />
                   <button
                     type="button"
                     class="btn btn-quiet btn-small"
@@ -163,12 +165,6 @@
               {/each}
             </span>
             <span class="tools">
-              <ShortcutRecorder
-                id={`add-key-${s.action}`}
-                action={name}
-                disabled={saving || s.keys.length >= MAX_BINDINGS}
-                onrecord={(b) => add(s.action, b)}
-              />
               {#if !isDefault(s.action)}
                 <button
                   type="button"
@@ -178,6 +174,12 @@
                   onclick={() => reset(s.action)}>{t.keyboard.reset}</button
                 >
               {/if}
+              <ShortcutRecorder
+                id={`add-key-${s.action}`}
+                action={name}
+                disabled={saving || s.keys.length >= MAX_BINDINGS}
+                onrecord={(b) => add(s.action, b)}
+              />
             </span>
           </li>
         {/each}
@@ -238,21 +240,23 @@
   .key {
     display: inline-flex;
     flex-wrap: wrap;
-    gap: 2px 4px;
+    gap: 2px 2px;
     align-items: center;
-    padding: 0 0 0 6px;
-    border: 1px solid var(--rule-strong);
+    padding: 3px 0 3px 4px;
+    border: 2px solid transparent;
     border-radius: var(--radius-s);
+    background: var(--paper-sunk);
     max-width: 100%;
   }
 
   .key.clash {
-    border: 2px solid var(--accent);
+    border-color: var(--accent);
   }
 
   .clash-text {
     flex-basis: 100%;
     padding-inline-end: 6px;
+    font-family: var(--font-body);
     font-size: 0.75rem;
   }
 

@@ -20,27 +20,44 @@ export function isMac(platform: string): boolean {
 
 /** "Mod-Shift-x": "Ctrl+Shift+X", or "⇧⌘X" on a Mac. A key alone stays as typed: "c". */
 export function formatShortcut(binding: string, mac: boolean, names: KeyNames): string {
+  return shortcutParts(binding, mac, names).join(mac ? '' : '+');
+}
+
+/** The keys of a binding, one per key cap: ["⇧", "⌘", "X"], or ["Ctrl", "Shift", "X"] off a Mac. */
+export function shortcutParts(binding: string, mac: boolean, names: KeyNames): string[] {
   const parts = binding.split(/-(?!$)/);
   const key = parts.pop() ?? '';
+  if (!parts.length) return [key === ' ' ? 'Space' : key];
   const mods = new Set(parts.map((p) => (p === 'Mod' ? (mac ? 'Meta' : 'Ctrl') : p)));
-  if (!parts.length) return key === ' ' ? 'Space' : key;
-  const shown = key.length === 1 ? key.toUpperCase() : key;
-  if (mac) {
-    const glyphs: [string, string][] = [
-      ['Ctrl', '⌃'],
-      ['Alt', '⌥'],
-      ['Shift', '⇧'],
-      ['Meta', '⌘'],
-    ];
-    return glyphs.map(([m, g]) => (mods.has(m) ? g : '')).join('') + shown;
-  }
-  const words: [string, string][] = [
-    ['Ctrl', names.ctrl],
-    ['Alt', names.alt],
-    ['Shift', names.shift],
-    ['Meta', 'Meta'],
-  ];
-  return [...words.filter(([m]) => mods.has(m)).map(([, w]) => w), shown].join('+');
+  return [...modifierNames(mods, mac, names), key.length === 1 ? key.toUpperCase() : key];
+}
+
+/** The modifiers held during a press, one per key cap, as shortcutParts writes them. */
+export function heldModifiers(e: KeyPress, mac: boolean, names: KeyNames): string[] {
+  const mods = new Set<string>();
+  if (e.ctrlKey) mods.add('Ctrl');
+  if (e.altKey) mods.add('Alt');
+  if (e.shiftKey) mods.add('Shift');
+  if (e.metaKey) mods.add('Meta');
+  return modifierNames(mods, mac, names);
+}
+
+/** Modifier names in the platform's order: Apple's symbols on a Mac, the catalogue's words elsewhere. */
+function modifierNames(mods: ReadonlySet<string>, mac: boolean, names: KeyNames): string[] {
+  const order: [string, string][] = mac
+    ? [
+        ['Ctrl', '⌃'],
+        ['Alt', '⌥'],
+        ['Shift', '⇧'],
+        ['Meta', '⌘'],
+      ]
+    : [
+        ['Ctrl', names.ctrl],
+        ['Alt', names.alt],
+        ['Shift', names.shift],
+        ['Meta', 'Meta'],
+      ];
+  return order.filter(([m]) => mods.has(m)).map(([, n]) => n);
 }
 
 /** Where a shortcut works: everywhere, in a search's results, or on an issue. */

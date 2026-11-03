@@ -1,7 +1,13 @@
 <script lang="ts">
-  import { bindingFromPress, formatShortcut, isRefused } from '../../core/shortcuts.js';
+  import {
+    bindingFromPress,
+    formatShortcut,
+    heldModifiers,
+    isRefused,
+  } from '../../core/shortcuts.js';
   import { t } from '../../i18n/t.js';
   import { mac } from '../../lib/ui.svelte.js';
+  import KeyCaps from '../KeyCaps.svelte';
 
   /** A button that records the next key press as a binding of one action. Escape cancels. */
 
@@ -20,6 +26,8 @@
   } = $props();
 
   let recording = $state(false);
+  /** The modifiers held so far, shown until the key that completes the binding. */
+  let held = $state<string[]>([]);
   let message = $state('');
   let error = $state(false);
   // The press that ends a recording is released on the button: its keyup
@@ -34,11 +42,13 @@
   function start() {
     if (recording) return;
     recording = true;
+    held = [];
     say(t.keyboard.recording);
   }
 
   function stop() {
     recording = false;
+    held = [];
     swallowKeyup = true;
   }
 
@@ -59,7 +69,10 @@
       return;
     }
     const binding = bindingFromPress(e, mac);
-    if (!binding) return;
+    if (!binding) {
+      held = heldModifiers(e, mac, t.editor.keys);
+      return;
+    }
     stop();
     const shown = formatShortcut(binding, mac, t.editor.keys);
     if (isRefused(binding)) say(t.keyboard.refused(shown), true);
@@ -68,6 +81,7 @@
   }
 
   function keyup(e: KeyboardEvent) {
+    if (recording) held = heldModifiers(e, mac, t.editor.keys);
     if (!swallowKeyup) return;
     swallowKeyup = false;
     e.preventDefault();
@@ -76,6 +90,7 @@
   function blur() {
     if (!recording) return;
     recording = false;
+    held = [];
     say(t.keyboard.cancelled);
   }
 </script>
@@ -90,7 +105,10 @@
     onclick={start}
     onkeydown={keydown}
     onkeyup={keyup}
-    onblur={blur}>{recording ? t.keyboard.recording : t.keyboard.addKey}</button
+    onblur={blur}
+    >{#if recording && held.length}<KeyCaps parts={held} /><span aria-hidden="true">+ …</span><span
+        class="sr-only">{t.keyboard.recording}</span
+      >{:else}{recording ? t.keyboard.recording : t.keyboard.addKey}{/if}</button
   >
   <span role="status" class={error ? 'message error-text' : 'sr-only'}>{message}</span>
 </span>

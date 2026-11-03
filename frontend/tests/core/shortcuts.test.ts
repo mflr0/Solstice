@@ -5,6 +5,7 @@ import {
   bindingsInUse,
   clashes,
   formatShortcut,
+  heldModifiers,
   isMac,
   isRefused,
   type KeyPress,
@@ -15,6 +16,7 @@ import {
   type ShortcutScope,
   SHORTCUTS,
   shortcutFor,
+  shortcutParts,
   shortcutsEnabled,
 } from '../../src/core/shortcuts.js';
 
@@ -62,6 +64,35 @@ describe('formatShortcut', () => {
     expect(formatShortcut('c', true, fr)).toBe('c');
     expect(formatShortcut('Enter', true, fr)).toBe('Enter');
     expect(formatShortcut('Alt-k', false, de)).toBe('Alt+K');
+  });
+});
+
+describe('shortcutParts', () => {
+  it('gives one key cap per key, in the platform’s order', () => {
+    expect(shortcutParts('Mod-g', true, fr)).toEqual(['⌘', 'G']);
+    expect(shortcutParts('Mod-Shift-x', true, fr)).toEqual(['⇧', '⌘', 'X']);
+    expect(shortcutParts('Shift-Mod-x', false, de)).toEqual(['Strg', 'Umschalt', 'X']);
+    expect(shortcutParts('Mod--', false, fr)).toEqual(['Ctrl', '-']);
+  });
+
+  it('keeps a key alone as typed', () => {
+    expect(shortcutParts('c', true, fr)).toEqual(['c']);
+    expect(shortcutParts('?', false, fr)).toEqual(['?']);
+    expect(shortcutParts('Space', false, fr)).toEqual(['Space']);
+  });
+});
+
+describe('heldModifiers', () => {
+  it('names the modifiers held, as the key caps do', () => {
+    expect(heldModifiers({ key: 'Meta', metaKey: true, shiftKey: true }, true, fr)).toEqual([
+      '⇧',
+      '⌘',
+    ]);
+    expect(heldModifiers({ key: 'Alt', altKey: true, ctrlKey: true }, false, de)).toEqual([
+      'Strg',
+      'Alt',
+    ]);
+    expect(heldModifiers({ key: 'Shift' }, false, fr)).toEqual([]);
   });
 });
 
