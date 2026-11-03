@@ -259,7 +259,14 @@ marker). The arrows draw with `currentColor`; restyle strokes, not colours.
 
 **Marks** — `span.stamp` (`.todo` / `.doing` / `.done`, `[data-category]`,
 `.large` on the issue page; `::before` is the optional dot, `--stamp-dot`).
-`.type-mark[data-type='bug|story|epic|task|subtask']`. `.priority-mark` >
+`.type-mark[data-type='bug|story|epic|task|subtask']` (`data-type` is the
+family guessed from the name). An admin may style a type: its colour comes in
+an inline `--type-color` (unset without one), its fill in
+`data-fill='filled|subtle|outline'`, and its icon as an `svg` child in place
+of the letter (draw it with `currentColor`; a `::before` symbol would clash
+with it). Let all three win over the family look: draw with
+`var(--type-color, <your tone>)`, or clamp its lightness into a variable that
+is unset without one, as the bundled skins do with `--type-ink`. `.priority-mark` >
 `.glyph[data-level='highest|high|medium|low|lowest|other']` (its colour comes
 from the server in an inline `--priority-color`, drawn with
 `color: var(--priority-color, var(--ink-soft))`: override `color`, or mix the

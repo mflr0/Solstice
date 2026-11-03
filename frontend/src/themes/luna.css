@@ -1176,18 +1176,34 @@
   height: 9px;
 }
 
+/* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
+[data-skin='luna'] .type-mark {
+  --type-tone: var(--type-color);
+  --type-ink: var(--type-tone, var(--tone));
+}
+
+@supports (color: oklch(from red l c h)) {
+  [data-skin='luna'] .type-mark {
+    --type-tone: oklch(from var(--type-color) min(l, 0.55) c h);
+  }
+
+  [data-skin='luna'][data-scheme='dark'] .type-mark {
+    --type-tone: oklch(from var(--type-color) max(l, 0.72) c h);
+  }
+}
+
 /* Issue types: glossy lettered tiles. */
 [data-skin='luna'] .type-mark[data-type] {
   --tone: var(--tone-task);
   width: 1rem;
   height: 1rem;
-  border: 1px solid color-mix(in srgb, var(--tone) 70%, black);
+  border: 1px solid color-mix(in srgb, var(--type-ink) 70%, black);
   border-radius: 3px;
   background: linear-gradient(
     180deg,
-    var(--tone) 0%,
-    var(--tone) 50%,
-    color-mix(in srgb, var(--tone) 80%, black) 100%
+    var(--type-ink) 0%,
+    var(--type-ink) 50%,
+    color-mix(in srgb, var(--type-ink) 80%, black) 100%
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   color: var(--luna-on-tone);
@@ -1195,12 +1211,12 @@
 }
 
 [data-skin='luna'][data-scheme='dark'] .type-mark[data-type] {
-  border-color: color-mix(in srgb, var(--tone) 60%, black);
+  border-color: color-mix(in srgb, var(--type-ink) 60%, black);
   background: linear-gradient(
     180deg,
-    var(--tone) 0%,
-    var(--tone) 55%,
-    color-mix(in srgb, var(--tone) 90%, black) 100%
+    var(--type-ink) 0%,
+    var(--type-ink) 55%,
+    color-mix(in srgb, var(--type-ink) 90%, black) 100%
   );
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
@@ -1221,6 +1237,20 @@
   --tone: var(--tone-subtask);
   border-style: solid;
   border-radius: 8px;
+}
+
+/* An admin's fill, drawn the Luna way. */
+[data-skin='luna'] .type-mark[data-type][data-fill='subtle'] {
+  border-color: color-mix(in srgb, var(--type-ink) 35%, var(--paper-raised));
+  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
+  color: var(--type-ink);
+}
+
+[data-skin='luna'] .type-mark[data-type][data-fill='outline'] {
+  border-color: var(--type-ink);
+  background: var(--paper-raised);
+  box-shadow: none;
+  color: var(--type-ink);
 }
 
 /* People: initials on a small framed picture tile. */

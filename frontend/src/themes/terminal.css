@@ -975,13 +975,29 @@
   padding-inline: 4px;
 }
 
+/* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
+[data-skin='terminal'] .type-mark {
+  --type-tone: var(--term-type-ink, var(--type-color));
+  --type-ink: var(--type-tone, var(--tone));
+}
+
+@supports (color: oklch(from red l c h)) {
+  [data-skin='terminal'] .type-mark {
+    --type-tone: var(--term-type-ink, oklch(from var(--type-color) min(l, 0.55) c h));
+  }
+
+  [data-skin='terminal'][data-scheme='dark'] .type-mark {
+    --type-tone: var(--term-type-ink, oklch(from var(--type-color) max(l, 0.72) c h));
+  }
+}
+
 /* Issue types: a letter on a block of its colour; sub-tasks only outlined. */
 [data-skin='terminal'] .type-mark[data-type] {
   width: 1.125rem;
   height: 1.125rem;
-  border: 1px solid var(--tone);
+  border: 1px solid var(--type-ink);
   border-radius: 0;
-  background: var(--tone);
+  background: var(--type-ink);
   color: var(--paper);
   font: 600 0.75rem/1 var(--font-mono);
   text-shadow: none;
@@ -990,13 +1006,30 @@
 [data-skin='terminal'] .type-mark[data-type='subtask'] {
   border-style: dashed;
   background: transparent;
-  color: var(--tone);
+  color: var(--type-ink);
 }
 
 [data-skin='terminal'] .type-mark[data-type='epic'] {
   box-shadow:
     0 0 0 1px var(--paper),
-    0 0 0 2px var(--tone);
+    0 0 0 2px var(--type-ink);
+}
+
+/* An admin's fill, drawn the Terminal way. */
+[data-skin='terminal'] .type-mark[data-type][data-fill='filled'] {
+  background: var(--type-ink);
+  color: var(--paper);
+}
+
+[data-skin='terminal'] .type-mark[data-type][data-fill='subtle'] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper));
+  color: var(--type-ink);
+}
+
+[data-skin='terminal'] .type-mark[data-type][data-fill='outline'] {
+  background: transparent;
+  color: var(--type-ink);
 }
 
 /* The server tints priorities; here they stay in phosphor (or ink). */
@@ -1115,6 +1148,7 @@
   --tone-epic: var(--term-inv-ink);
   --tone-task: var(--term-inv-ink);
   --tone-subtask: var(--term-inv-ink);
+  --term-type-ink: var(--term-inv-ink);
   --rule-strong: var(--term-inv-ink);
   --paper: var(--term-inv);
   --focus: var(--term-inv-ink);
@@ -1176,6 +1210,7 @@
   --tone-epic: var(--term-inv-ink);
   --tone-task: var(--term-inv-ink);
   --tone-subtask: var(--term-inv-ink);
+  --term-type-ink: var(--term-inv-ink);
   --rule-strong: var(--term-inv-ink);
   --accent-text: var(--term-inv-ink);
   --paper: var(--term-inv);

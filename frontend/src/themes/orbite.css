@@ -1042,14 +1042,30 @@
   height: 12px;
 }
 
+/* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
+[data-skin='orbite'] .type-mark {
+  --type-tone: var(--type-color);
+  --type-ink: var(--type-tone, var(--tone));
+}
+
+@supports (color: oklch(from red l c h)) {
+  [data-skin='orbite'] .type-mark {
+    --type-tone: oklch(from var(--type-color) min(l, 0.55) c h);
+  }
+
+  [data-skin='orbite'][data-scheme='dark'] .type-mark {
+    --type-tone: oklch(from var(--type-color) max(l, 0.72) c h);
+  }
+}
+
 /* Issue types are small bodies: a ring and a letter; epics are solid. */
 [data-skin='orbite'] .type-mark.type-mark {
   width: 1.1875rem;
   height: 1.1875rem;
-  border: 1.25px solid var(--tone);
+  border: 1.25px solid var(--type-ink);
   border-radius: 50%;
-  background: color-mix(in srgb, var(--tone) 8%, var(--paper-raised));
-  color: var(--tone);
+  background: color-mix(in srgb, var(--type-ink) 8%, var(--paper-raised));
+  color: var(--type-ink);
   font: 600 0.59375rem/1 var(--font-mono);
 }
 
@@ -1067,13 +1083,30 @@
 
 [data-skin='orbite'] .type-mark.type-mark[data-type='epic'] {
   --tone: var(--tone-epic);
-  background: var(--tone);
+  background: var(--type-ink);
   color: var(--paper);
 }
 
 [data-skin='orbite'] .type-mark.type-mark[data-type='subtask'] {
   --tone: var(--tone-subtask);
   border-style: dashed;
+}
+
+/* An admin's fill, drawn the Orbite way. */
+[data-skin='orbite'] .type-mark.type-mark[data-fill='filled'] {
+  background: var(--type-ink);
+  color: var(--paper);
+}
+
+[data-skin='orbite'] .type-mark.type-mark[data-fill='subtle'] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
+  color: var(--type-ink);
+}
+
+[data-skin='orbite'] .type-mark.type-mark[data-fill='outline'] {
+  background: transparent;
+  color: var(--type-ink);
 }
 
 [data-skin='orbite'] .priority-mark .glyph {
