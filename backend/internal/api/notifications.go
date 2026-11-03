@@ -1007,6 +1007,7 @@ func (s *Server) notificationRoutes(route routeFunc) {
 	route("GET /api/admin/webhooks", s.listWebhooks, auth.ScopeAdmin)
 	route("POST /api/admin/webhooks", s.createWebhook, auth.ScopeAdmin)
 	route("GET /api/admin/webhooks/events", s.webhookEvents, auth.ScopeAdmin)
+	route("POST /api/admin/webhooks/test", s.testUnsavedWebhook, auth.ScopeAdmin)
 	route("GET /api/admin/webhooks/{id}", s.getWebhook, auth.ScopeAdmin)
 	route("PUT /api/admin/webhooks/{id}", s.updateWebhook, auth.ScopeAdmin)
 	route("DELETE /api/admin/webhooks/{id}", s.deleteWebhook, auth.ScopeAdmin)

@@ -164,8 +164,24 @@ type result struct {
 	permanent bool
 }
 
-// post sends a body to a webhook, signed when it has a secret.
-func (s *Service) post(ctx context.Context, target, event string, delivery int64, body []byte, sealed string) result {
+// send opens a webhook's sealed secret, then posts.
+func (s *Service) send(ctx context.Context, target, event string, delivery int64, body []byte, sealed string) result {
+	var key []byte
+	if sealed != "" {
+		box, err := s.box()
+		if err != nil {
+			return result{err: err}
+		}
+		if key, err = box.Open(secretLabel, sealed); err != nil {
+			return result{err: err}
+		}
+	}
+	return s.post(ctx, target, event, delivery, body, key)
+}
+
+// post sends a body to a webhook, signed when there is a key. A delivery of
+// 0 (an unsaved test) sends no delivery id.
+func (s *Service) post(ctx context.Context, target, event string, delivery int64, body []byte, key []byte) result {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		return result{err: err, permanent: true}
@@ -176,16 +192,10 @@ func (s *Service) post(ctx context.Context, target, event string, delivery int64
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("User-Agent", "Solstice-Webhook/1")
 	req.Header.Set("X-Solstice-Event", event)
-	req.Header.Set("X-Solstice-Delivery", strconv.FormatInt(delivery, 10))
-	if sealed != "" {
-		box, err := s.box()
-		if err != nil {
-			return result{err: err}
-		}
-		key, err := box.Open(secretLabel, sealed)
-		if err != nil {
-			return result{err: err}
-		}
+	if delivery != 0 {
+		req.Header.Set("X-Solstice-Delivery", strconv.FormatInt(delivery, 10))
+	}
+	if len(key) > 0 {
 		mac := hmac.New(sha256.New, key)
 		mac.Write(body)
 		req.Header.Set("X-Hub-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
@@ -261,7 +271,7 @@ func (s *Service) DeliverDue(ctx context.Context) (int, error) {
 		if ctx.Err() != nil {
 			break
 		}
-		res := s.post(bg, r.url, r.event, r.id, r.body, r.sec)
+		res := s.send(bg, r.url, r.event, r.id, r.body, r.sec)
 		s.record(bg, r.id, r.attempts+1, res)
 		if res.err == nil {
 			sent++
@@ -336,6 +346,20 @@ func (s *Service) Run(ctx context.Context) {
 	}
 }
 
+// testBody is the payload of a test event; id is nil for an unsaved webhook.
+func (s *Service) testBody(ctx context.Context, actor int64, id any, name string, excludeBody bool) ([]byte, error) {
+	if excludeBody {
+		return nil, nil
+	}
+	users, err := events.LoadUsers(ctx, s.db, actor)
+	if err != nil {
+		return nil, err
+	}
+	b := &builder{base: s.BaseURL(), locale: s.DefaultLocale(), users: users}
+	return json.Marshal(map[string]any{"timestamp": s.Now().UTC().UnixMilli(), "webhookEvent": TestEvent,
+		"user": b.userID(actor), "webhook": map[string]any{"id": id, "name": name}})
+}
+
 // Test sends a test event to a webhook now and returns how it went. It
 // appears in the delivery log, and is not retried.
 func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, error) {
@@ -343,20 +367,11 @@ func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, e
 	if err != nil {
 		return nil, err
 	}
-	users, err := events.LoadUsers(ctx, s.db, actor)
+	body, err := s.testBody(ctx, actor, w.ID, w.Name, w.ExcludeBody)
 	if err != nil {
 		return nil, err
 	}
-	b := &builder{base: s.BaseURL(), locale: s.DefaultLocale(), users: users}
 	now := s.Now().UTC()
-	body, err := json.Marshal(map[string]any{"timestamp": now.UnixMilli(), "webhookEvent": TestEvent,
-		"user": b.userID(actor), "webhook": map[string]any{"id": w.ID, "name": w.Name}})
-	if err != nil {
-		return nil, err
-	}
-	if w.ExcludeBody {
-		body = nil
-	}
 	target := urlVariables.ReplaceAllString(w.URL, "")
 	res, err := s.db.ExecContext(ctx, `INSERT INTO webhook_deliveries (webhook_id, event, url, payload, status, attempts,
 		next_attempt_at, created_at) VALUES (?, ?, ?, ?, 'sending', 0, ?, ?)`, w.ID, TestEvent, target, string(body), now, now)
@@ -364,7 +379,7 @@ func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, e
 		return nil, err
 	}
 	did, _ := res.LastInsertId()
-	r := s.post(ctx, target, TestEvent, did, body, w.sealed)
+	r := s.send(ctx, target, TestEvent, did, body, w.sealed)
 	r.permanent = true // a test is not retried
 	s.record(context.WithoutCancel(ctx), did, 1, r)
 	s.prune(context.WithoutCancel(ctx), w.ID)
@@ -373,4 +388,27 @@ func (s *Service) Test(ctx context.Context, id int64, actor int64) (*Delivery, e
 		return nil, err
 	}
 	return &list[0], nil
+}
+
+// TestUnsaved sends a test event to a webhook not saved yet, signed with
+// secretText when not empty, and returns how it went. Nothing is stored.
+func (s *Service) TestUnsaved(ctx context.Context, name, target, secretText string, excludeBody bool, actor int64) (*Delivery, error) {
+	body, err := s.testBody(ctx, actor, nil, name, excludeBody)
+	if err != nil {
+		return nil, err
+	}
+	now := s.Now().UTC()
+	r := s.post(ctx, urlVariables.ReplaceAllString(target, ""), TestEvent, 0, body, []byte(secretText))
+	d := &Delivery{Event: TestEvent, Status: "sent", Attempts: 1, Created: now, Attempted: &now}
+	ms := int(r.duration.Milliseconds())
+	d.DurationMs = &ms
+	if r.code != 0 {
+		d.StatusCode = &r.code
+	}
+	if r.err != nil {
+		d.Status = "failed"
+		msg := sqlq.Truncate(r.err.Error(), 1000)
+		d.Error = &msg
+	}
+	return d, nil
 }

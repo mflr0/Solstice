@@ -152,14 +152,26 @@
   }
 
   async function test() {
-    if (id === null) return;
+    if (!form) return;
     testResult = null;
     testError = '';
-    if (dirty && !(await save())) return;
+    if (id === null) {
+      touched.url = true;
+      if (problems.url) return;
+    } else if (dirty && !(await save())) return;
     testing = true;
     try {
-      testResult = await adminApi.testWebhook(id);
-      deliveriesKey++;
+      if (id === null) {
+        testResult = await adminApi.testUnsavedWebhook({
+          name: form.name.trim(),
+          url: form.url.trim(),
+          secret: form.secret,
+          excludeBody: form.excludeBody,
+        });
+      } else {
+        testResult = await adminApi.testWebhook(id);
+        deliveriesKey++;
+      }
     } catch (e) {
       testError = errorMessage(e);
     } finally {
@@ -355,7 +367,7 @@
     {/if}
   </form>
 
-  {#if hook && id !== null}
+  {#if isNew || hook}
     <section class="card test" aria-labelledby="hook-test">
       <h2 class="card-head" id="hook-test">{t.hooksAdmin.testTitle}</h2>
       <div class="card-body">
@@ -364,7 +376,7 @@
           <button class="btn btn-primary" disabled={testing || saving} onclick={() => void test()}
             >{testing
               ? t.hooksAdmin.testing
-              : dirty
+              : dirty && !isNew
                 ? t.hooksAdmin.saveAndTest
                 : t.hooksAdmin.test}</button
           >
@@ -383,17 +395,25 @@
           >
             <strong>{tone === 'failed' ? t.hooksAdmin.testFailed : t.hooksAdmin.testOk}</strong>
             <p class="detail">
-              {testResult.statusCode !== null
-                ? t.hooksAdmin.httpAnswer(testResult.statusCode)
-                : t.hooksAdmin.noAnswer}{#if testResult.durationMs !== null}
-                · {t.hooksAdmin.duration(formatNumber(testResult.durationMs))}{/if}
+              {[
+                testResult.statusCode !== null
+                  ? t.hooksAdmin.httpAnswer(testResult.statusCode)
+                  : t.hooksAdmin.noAnswer,
+                testResult.durationMs !== null
+                  ? t.hooksAdmin.duration(formatNumber(testResult.durationMs))
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
             {#if testResult.error}<p class="detail">{testResult.error}</p>{/if}
           </div>
         {/if}
       </div>
     </section>
+  {/if}
 
+  {#if hook && id !== null}
     {#key deliveriesKey}<WebhooksDeliveries {id} />{/key}
 
     <h2 class="section-title">{t.hooksAdmin.dangerTitle}</h2>
