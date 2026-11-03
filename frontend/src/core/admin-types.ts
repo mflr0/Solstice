@@ -5,7 +5,7 @@
  */
 
 import type { ProjectBrief } from './board-types.js';
-import type { IdName, StatusCategory, UserRef } from './types.js';
+import type { IdName, StatusCategory, TypeFill, TypeIcon, UserRef } from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
 
@@ -484,8 +484,12 @@ export interface CatalogItem {
   position: number;
   /** Issue types. */
   subtask?: boolean;
-  /** Priorities. */
+  /** Priorities and issue types: "#rrggbb". */
   color?: string;
+  /** Issue types. */
+  fill?: TypeFill;
+  /** Issue types. */
+  icon?: TypeIcon;
   /** Priorities and resolutions. */
   default?: boolean;
   /** Link types. */
@@ -496,6 +500,12 @@ export interface CatalogItem {
   projects?: number;
   links?: number;
 }
+
+/** What creating or changing a catalogue item sends: "" clears an issue type's fill or icon. */
+export type CatalogInput = Omit<Partial<CatalogItem>, 'fill' | 'icon'> & {
+  fill?: TypeFill | '';
+  icon?: TypeIcon | '';
+};
 
 /** Where a status is used (GET /api/admin/statuses/{id}/usage). */
 export interface StatusUsage {

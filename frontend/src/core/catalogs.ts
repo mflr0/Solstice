@@ -7,6 +7,7 @@
  */
 
 import type {
+  CatalogInput,
   CatalogItem,
   CatalogKind,
   FieldOption,
@@ -14,6 +15,7 @@ import type {
   FieldType,
   StatusRow,
 } from './admin-types.js';
+import type { TypeFill, TypeIcon } from './types.js';
 import { tooLong, type Problems } from './admin-forms.js';
 
 /** The four catalogues of the "Tickets" group, as the navigation names them. */
@@ -79,6 +81,10 @@ export interface CatalogForm {
   description: string;
   subtask: boolean;
   color: string;
+  /** Issue types; '' keeps the skin's look. */
+  fill: TypeFill | '';
+  /** Issue types; '' draws the name's first letter. */
+  icon: TypeIcon | '';
   default: boolean;
   outward: string;
   inward: string;
@@ -93,6 +99,8 @@ export function catalogForm(item: CatalogItem | null): CatalogForm {
     description: item?.description ?? '',
     subtask: item?.subtask ?? false,
     color: item?.color ?? '',
+    fill: item?.fill ?? '',
+    icon: item?.icon ?? '',
     default: item?.default ?? false,
     outward: item?.outward ?? '',
     inward: item?.inward ?? '',
@@ -119,7 +127,8 @@ export function catalogProblems(
   if (!f.name.trim()) out.name = 'nameRequired';
   else if (tooLong(f.name)) out.name = 'nameTooLong';
   else if (nameTaken(f.name, items, editing)) out.name = 'nameTaken';
-  if (section === 'priorities' && normalizeColor(f.color) === null) out.color = 'colorInvalid';
+  if ((section === 'priorities' || section === 'issueTypes') && normalizeColor(f.color) === null)
+    out.color = 'colorInvalid';
   if (section === 'linkTypes') {
     if (!f.outward.trim()) out.outward = 'verbRequired';
     else if (tooLong(f.outward)) out.outward = 'nameTooLong';
@@ -129,6 +138,8 @@ export function catalogProblems(
   return out;
 }
 
+const STRING_FIELDS = new Set<keyof CatalogItem>(['description', 'color', 'fill', 'icon']);
+
 /**
  * What to send for an item: only the fields its catalogue takes (the
  * server refuses others) and, for a change, only those that changed.
@@ -137,10 +148,15 @@ export function catalogPayload(
   section: CatalogSection,
   f: CatalogForm,
   before: CatalogItem | null,
-): Partial<CatalogItem> {
-  const all: Partial<CatalogItem> = { name: f.name.trim() };
+): CatalogInput {
+  const all: CatalogInput = { name: f.name.trim() };
   if (section !== 'linkTypes') all.description = f.description.trim();
-  if (section === 'issueTypes') all.subtask = f.subtask;
+  if (section === 'issueTypes') {
+    all.subtask = f.subtask;
+    all.color = normalizeColor(f.color) ?? '';
+    all.fill = f.fill;
+    all.icon = f.icon;
+  }
   if (section === 'priorities') {
     all.color = normalizeColor(f.color) ?? '';
     // Only ever set: another priority becoming the default unsets this one.
@@ -153,9 +169,9 @@ export function catalogPayload(
     all.inward = f.inward.trim();
   }
   if (!before) return all;
-  const out: Partial<CatalogItem> = {};
-  for (const [k, v] of Object.entries(all) as [keyof CatalogItem, unknown][]) {
-    const was = before[k] ?? (k === 'description' || k === 'color' ? '' : undefined);
+  const out: CatalogInput = {};
+  for (const [k, v] of Object.entries(all) as [keyof CatalogInput, unknown][]) {
+    const was = before[k] ?? (STRING_FIELDS.has(k) ? '' : undefined);
     if (k === 'default' ? (before.default ?? false) !== v : was !== v)
       (out as Record<string, unknown>)[k] = v;
   }

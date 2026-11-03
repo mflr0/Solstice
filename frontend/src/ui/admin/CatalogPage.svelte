@@ -238,7 +238,14 @@
                 <span class="item-name">
                   {#if kind === 'issueTypes'}
                     <TypeMark
-                      type={{ id: String(item.id), name: item.name, subtask: !!item.subtask }}
+                      type={{
+                        id: String(item.id),
+                        name: item.name,
+                        subtask: !!item.subtask,
+                        ...(item.color ? { color: item.color } : {}),
+                        ...(item.fill ? { fill: item.fill } : {}),
+                        ...(item.icon ? { icon: item.icon } : {}),
+                      }}
                       withName
                       asStored
                       search={q}

@@ -8,6 +8,7 @@ import type {
   AccessToken,
   AdminOAuthGrant,
   AuditPage,
+  CatalogInput,
   CatalogItem,
   CatalogKind,
   Category,
@@ -144,9 +145,9 @@ export const adminApi = {
 
   // Catalogues.
   catalog: (kind: CatalogKind) => request<CatalogItem[]>('GET', `/api/admin/${kind}`),
-  createCatalogItem: (kind: CatalogKind, item: Partial<CatalogItem>) =>
+  createCatalogItem: (kind: CatalogKind, item: CatalogInput) =>
     request<CatalogItem>('POST', `/api/admin/${kind}`, item),
-  updateCatalogItem: (kind: CatalogKind, id: string | number, item: Partial<CatalogItem>) =>
+  updateCatalogItem: (kind: CatalogKind, id: string | number, item: CatalogInput) =>
     request<CatalogItem>('PATCH', `/api/admin/${kind}/${enc(String(id))}`, item),
   orderCatalog: (kind: CatalogKind | 'statuses', ids: (string | number)[]) =>
     request<CatalogItem[]>('POST', `/api/admin/${kind}/order`, { ids }),

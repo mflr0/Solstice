@@ -5,6 +5,7 @@ import {
   arrowAfterMove,
   catalogForm,
   catalogPayload,
+  catalogProblems,
   fieldChanges,
   fieldContextPayload,
   fieldFormOf,
@@ -55,6 +56,48 @@ describe('catalogPayload default', () => {
     expect(
       catalogPayload('issueTypes', { ...catalogForm(null), name: 'Bug', default: true }, null),
     ).not.toHaveProperty('default');
+  });
+});
+
+describe('issue type style', () => {
+  const bug = item({ name: 'Bug', subtask: false, color: '#d04437', fill: 'filled', icon: 'bug' });
+
+  it('refuses a bad colour and takes a short one', () => {
+    const f = { ...catalogForm(bug), color: '#12' };
+    expect(catalogProblems('issueTypes', f, [bug], bug.id).color).toBe('colorInvalid');
+    expect(catalogProblems('issueTypes', { ...f, color: 'abc' }, [bug], bug.id)).toEqual({});
+    expect(catalogPayload('issueTypes', { ...f, color: 'ABC' }, bug)).toEqual({ color: '#aabbcc' });
+  });
+
+  it('sends only the style fields that changed', () => {
+    expect(catalogPayload('issueTypes', catalogForm(bug), bug)).toEqual({});
+    expect(catalogPayload('issueTypes', { ...catalogForm(bug), fill: 'outline' }, bug)).toEqual({
+      fill: 'outline',
+    });
+    expect(catalogPayload('issueTypes', { ...catalogForm(bug), icon: 'star' }, bug)).toEqual({
+      icon: 'star',
+    });
+  });
+
+  it('sends "" to clear each style field', () => {
+    expect(
+      catalogPayload('issueTypes', { ...catalogForm(bug), color: '', fill: '', icon: '' }, bug),
+    ).toEqual({ color: '', fill: '', icon: '' });
+  });
+
+  it('sends nothing for a type without style left without style', () => {
+    const plain = item({ name: 'Task', subtask: false });
+    expect(catalogPayload('issueTypes', catalogForm(plain), plain)).toEqual({});
+  });
+
+  it('sends no style for other catalogues', () => {
+    const p = catalogPayload(
+      'resolutions',
+      { ...catalogForm(null), name: 'Fixed', icon: 'bug' },
+      null,
+    );
+    expect(p).not.toHaveProperty('icon');
+    expect(p).not.toHaveProperty('fill');
   });
 });
 
