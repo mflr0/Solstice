@@ -618,7 +618,7 @@ func (r *run) importPermissions() error {
 		return err
 	}
 
-	ins := r.inserter("project_permissions", "project_id", "permission", "holder", "user_id", "group_id")
+	ins := r.inserter("permission_rules", "project_id", "permission", "effect", "holder", "user_id", "group_id")
 	unsupported := map[string]int{}
 	for _, pid := range r.projectIDs() {
 		p := r.projects[pid]
@@ -639,7 +639,7 @@ func (r *run) importPermissions() error {
 			}
 			seen[dedupe] = true
 			u, gr := grantArgs(h)
-			return ins.add(pid, sp, h.Holder, u, gr)
+			return ins.add(pid, sp, perm.Allow, h.Holder, u, gr)
 		}
 		editAll, deleteAll := map[perm.Grant]bool{}, map[perm.Grant]bool{}
 		for _, g := range grants {

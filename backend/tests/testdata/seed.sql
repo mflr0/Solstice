@@ -5236,6 +5236,100 @@ CREATE TABLE `oauth_tokens` (
 
 /*!40000 ALTER TABLE `oauth_tokens` DISABLE KEYS */;
 /*!40000 ALTER TABLE `oauth_tokens` ENABLE KEYS */;
+DROP TABLE IF EXISTS `permission_rules`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `permission_rules` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `project_id` bigint(20) DEFAULT NULL,
+  `permission` varchar(40) NOT NULL,
+  `effect` enum('allow','deny') NOT NULL,
+  `holder` varchar(20) NOT NULL,
+  `group_id` bigint(20) DEFAULT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ix_pr_project` (`project_id`,`permission`),
+  KEY `ix_pr_group` (`group_id`),
+  KEY `fk_pr_user` (`user_id`),
+  CONSTRAINT `fk_pr_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pr_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pr_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `permission_rules` DISABLE KEYS */;
+INSERT INTO `permission_rules` VALUES (1,10000,'browse','allow','everyone',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (2,10000,'create','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (3,10000,'edit','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (4,10000,'comment','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (5,10000,'transition','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (6,10000,'attach','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (7,10000,'link','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (8,10000,'worklog','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (9,10000,'assignable','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (10,10000,'assign','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (11,10000,'watchers','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (12,10000,'security','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (13,10000,'delete','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (14,10000,'admin','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (15,10000,'edit','allow','reporter',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (16,10000,'transition','allow','assignee',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (17,10000,'admin','allow','lead',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (18,10000,'admin','allow','user',NULL,2);
+INSERT INTO `permission_rules` VALUES (19,10000,'link','allow','group',3,NULL);
+INSERT INTO `permission_rules` VALUES (20,10000,'moderate','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (21,10001,'browse','allow','everyone',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (22,10001,'create','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (23,10001,'edit','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (24,10001,'comment','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (25,10001,'transition','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (26,10001,'attach','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (27,10001,'link','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (28,10001,'worklog','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (29,10001,'assignable','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (30,10001,'assign','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (31,10001,'watchers','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (32,10001,'security','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (33,10001,'delete','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (34,10001,'admin','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (35,10001,'edit','allow','reporter',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (36,10001,'transition','allow','assignee',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (37,10001,'admin','allow','lead',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (38,10001,'admin','allow','user',NULL,2);
+INSERT INTO `permission_rules` VALUES (39,10001,'link','allow','group',3,NULL);
+INSERT INTO `permission_rules` VALUES (40,10001,'moderate','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (41,10002,'browse','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (42,10002,'browse','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (43,10002,'create','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (44,10002,'edit','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (45,10002,'comment','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (46,10002,'transition','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (47,10002,'assign','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (48,10002,'assignable','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (49,10002,'attach','allow','group',5,NULL);
+INSERT INTO `permission_rules` VALUES (50,10002,'admin','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (51,10002,'delete','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (52,10003,'browse','allow','everyone',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (53,10003,'create','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (54,10003,'edit','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (55,10003,'comment','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (56,10003,'transition','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (57,10003,'attach','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (58,10003,'link','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (59,10003,'worklog','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (60,10003,'assignable','allow','group',8,NULL);
+INSERT INTO `permission_rules` VALUES (61,10003,'assign','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (62,10003,'watchers','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (63,10003,'security','allow','group',9,NULL);
+INSERT INTO `permission_rules` VALUES (64,10003,'delete','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (65,10003,'admin','allow','group',10,NULL);
+INSERT INTO `permission_rules` VALUES (66,10003,'edit','allow','reporter',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (67,10003,'transition','allow','assignee',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (68,10003,'admin','allow','lead',NULL,NULL);
+INSERT INTO `permission_rules` VALUES (69,10003,'admin','allow','user',NULL,2);
+INSERT INTO `permission_rules` VALUES (70,10003,'link','allow','group',3,NULL);
+INSERT INTO `permission_rules` VALUES (71,10003,'moderate','allow','group',10,NULL);
+/*!40000 ALTER TABLE `permission_rules` ENABLE KEYS */;
 DROP TABLE IF EXISTS `priorities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -5356,99 +5450,6 @@ CREATE TABLE `project_notifications` (
 
 /*!40000 ALTER TABLE `project_notifications` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_notifications` ENABLE KEYS */;
-DROP TABLE IF EXISTS `project_permissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_permissions` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `project_id` bigint(20) NOT NULL,
-  `permission` varchar(40) NOT NULL,
-  `holder` varchar(20) NOT NULL,
-  `user_id` bigint(20) DEFAULT NULL,
-  `group_id` bigint(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ix_pp_project` (`project_id`,`permission`),
-  KEY `fk_pp_user` (`user_id`),
-  KEY `fk_pp_group` (`group_id`),
-  CONSTRAINT `fk_pp_group` FOREIGN KEY (`group_id`) REFERENCES `user_groups` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pp_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_pp_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
-/*!40000 ALTER TABLE `project_permissions` DISABLE KEYS */;
-INSERT INTO `project_permissions` VALUES (1,10000,'browse','everyone',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (2,10000,'create','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (3,10000,'edit','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (4,10000,'comment','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (5,10000,'transition','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (6,10000,'attach','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (7,10000,'link','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (8,10000,'worklog','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (9,10000,'assignable','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (10,10000,'assign','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (11,10000,'watchers','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (12,10000,'security','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (13,10000,'delete','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (14,10000,'admin','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (15,10000,'edit','reporter',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (16,10000,'transition','assignee',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (17,10000,'admin','lead',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (18,10000,'admin','user',2,NULL);
-INSERT INTO `project_permissions` VALUES (19,10000,'link','group',NULL,3);
-INSERT INTO `project_permissions` VALUES (20,10000,'moderate','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (21,10001,'browse','everyone',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (22,10001,'create','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (23,10001,'edit','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (24,10001,'comment','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (25,10001,'transition','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (26,10001,'attach','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (27,10001,'link','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (28,10001,'worklog','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (29,10001,'assignable','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (30,10001,'assign','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (31,10001,'watchers','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (32,10001,'security','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (33,10001,'delete','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (34,10001,'admin','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (35,10001,'edit','reporter',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (36,10001,'transition','assignee',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (37,10001,'admin','lead',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (38,10001,'admin','user',2,NULL);
-INSERT INTO `project_permissions` VALUES (39,10001,'link','group',NULL,3);
-INSERT INTO `project_permissions` VALUES (40,10001,'moderate','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (41,10002,'browse','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (42,10002,'browse','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (43,10002,'create','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (44,10002,'edit','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (45,10002,'comment','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (46,10002,'transition','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (47,10002,'assign','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (48,10002,'assignable','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (49,10002,'attach','group',NULL,5);
-INSERT INTO `project_permissions` VALUES (50,10002,'admin','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (51,10002,'delete','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (52,10003,'browse','everyone',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (53,10003,'create','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (54,10003,'edit','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (55,10003,'comment','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (56,10003,'transition','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (57,10003,'attach','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (58,10003,'link','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (59,10003,'worklog','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (60,10003,'assignable','group',NULL,8);
-INSERT INTO `project_permissions` VALUES (61,10003,'assign','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (62,10003,'watchers','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (63,10003,'security','group',NULL,9);
-INSERT INTO `project_permissions` VALUES (64,10003,'delete','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (65,10003,'admin','group',NULL,10);
-INSERT INTO `project_permissions` VALUES (66,10003,'edit','reporter',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (67,10003,'transition','assignee',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (68,10003,'admin','lead',NULL,NULL);
-INSERT INTO `project_permissions` VALUES (69,10003,'admin','user',2,NULL);
-INSERT INTO `project_permissions` VALUES (70,10003,'link','group',NULL,3);
-INSERT INTO `project_permissions` VALUES (71,10003,'moderate','group',NULL,10);
-/*!40000 ALTER TABLE `project_permissions` ENABLE KEYS */;
 DROP TABLE IF EXISTS `projects`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -5461,7 +5462,7 @@ CREATE TABLE `projects` (
   `category_id` bigint(20) DEFAULT NULL,
   `url` varchar(255) DEFAULT NULL,
   `kind` varchar(60) NOT NULL DEFAULT 'software',
-  `default_assignee` enum('unassigned','lead') NOT NULL DEFAULT 'unassigned',
+  `default_assignee` enum('unassigned','lead','reporter') NOT NULL DEFAULT 'unassigned',
   `issue_counter` bigint(20) NOT NULL DEFAULT 0,
   `archived` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
@@ -5566,6 +5567,9 @@ INSERT INTO `schema_migrations` VALUES ('0021_oauth_clients','2026-10-01 18:00:0
 INSERT INTO `schema_migrations` VALUES ('0022_notify_interval','2026-10-01 18:00:00.000');
 INSERT INTO `schema_migrations` VALUES ('0023_issue_type_style','2026-10-01 18:00:00.000');
 INSERT INTO `schema_migrations` VALUES ('0024_group_project_members','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0024_user_preferences','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0025_reporter_assignee','2026-10-01 18:00:00.000');
+INSERT INTO `schema_migrations` VALUES ('0026_permission_rules','2026-10-01 18:00:00.000');
 /*!40000 ALTER TABLE `schema_migrations` ENABLE KEYS */;
 DROP TABLE IF EXISTS `security_level_members`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -5781,6 +5785,20 @@ INSERT INTO `user_groups` VALUES (8,'users','Utilisateurs du projet',0);
 INSERT INTO `user_groups` VALUES (9,'developers','Développeurs du projet',0);
 INSERT INTO `user_groups` VALUES (10,'administrators','Administrateurs du projet',0);
 /*!40000 ALTER TABLE `user_groups` ENABLE KEYS */;
+DROP TABLE IF EXISTS `user_preferences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_preferences` (
+  `user_id` bigint(20) NOT NULL,
+  `name` varchar(40) NOT NULL,
+  `value` text NOT NULL,
+  PRIMARY KEY (`user_id`,`name`),
+  CONSTRAINT `fk_user_preferences_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `user_preferences` DISABLE KEYS */;
+/*!40000 ALTER TABLE `user_preferences` ENABLE KEYS */;
 DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;

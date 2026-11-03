@@ -130,7 +130,7 @@ func (s *Server) groupByID(ctx context.Context, id int64) (groupOut, error) {
 func (s *Server) groupUsage(ctx context.Context, g groupOut) (groupUsage, error) {
 	var u groupUsage
 	err := s.db.QueryRowContext(ctx, `SELECT
-		(SELECT COUNT(*) FROM project_permissions WHERE group_id = ?),
+		(SELECT COUNT(*) FROM permission_rules WHERE group_id = ?),
 		(SELECT COUNT(*) FROM group_project_members WHERE group_id = ? OR member_group_id = ?),
 		(SELECT COUNT(*) FROM security_level_members WHERE group_id = ?),
 		(SELECT COUNT(*) FROM comments WHERE visibility_group = ?),

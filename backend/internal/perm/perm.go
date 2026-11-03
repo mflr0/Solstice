@@ -1,9 +1,13 @@
 // Package perm decides who may see and do what in a project.
 //
-// Each project lists its own grants (there are no shared schemes): a
-// permission is granted to everyone signed in, a group, a user, or to the
-// project lead, the issue's reporter or its assignee. An issue security level
-// further restricts who sees an issue.
+// A permission is allowed or denied by rules, of a project or global (for
+// every project), to a user or to a group: a group of users, or a built-in one
+// (everyone signed in, the project lead, the issue's reporter or its
+// assignee). The most specific level with a rule matching the user decides: a
+// user rule of the project, a global user rule, the group rules of the
+// project, then the global group rules. Within a level, deny beats allow. With
+// no rule at any level, the permission is not granted. An issue security
+// level further restricts who sees an issue.
 //
 // A group has global members and, per project, project members: users or
 // other groups. Being in a group in a project means a global member, or a
@@ -69,6 +73,18 @@ type Grant struct {
 	GroupID int64
 }
 
+// Rule allows a permission to a holder, or denies it.
+type Rule struct {
+	Grant
+	Deny bool
+}
+
+// Effects of a rule, as stored.
+const (
+	Allow = "allow"
+	Deny  = "deny"
+)
+
 // Issue is what checks need to know about an issue.
 type Issue struct {
 	ProjectID     int64
@@ -82,11 +98,12 @@ type level struct {
 	members []Grant
 }
 
-// rules are the grants of every project, shared by all requests.
+// rules are the permission rules of every project, shared by all requests.
 type rules struct {
-	grants   map[int64]map[string][]Grant // project → permission → grants
-	leads    map[int64]int64              // project → lead user id
-	archived map[int64]bool               // archived projects: read-only
+	project  map[int64]map[string][]Rule // project → permission → rules
+	global   map[string][]Rule           // permission → global rules
+	leads    map[int64]int64             // project → lead user id
+	archived map[int64]bool              // archived projects: read-only
 	levels   map[int64]level
 	// parents: project → group → the groups it is a project member of there.
 	parents map[int64]map[int64][]int64
@@ -108,7 +125,7 @@ type Store struct {
 
 func NewStore(db *sql.DB) *Store { return &Store{db: db} }
 
-// Invalidate must be called after any change to grants, groups, project
+// Invalidate must be called after any change to rules, groups, project
 // members, leads or levels.
 func (s *Store) Invalidate() {
 	s.mu.Lock()
@@ -126,26 +143,25 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancel()
 	r := &rules{
-		grants:   map[int64]map[string][]Grant{},
+		project:  map[int64]map[string][]Rule{},
+		global:   map[string][]Rule{},
 		leads:    map[int64]int64{},
 		archived: map[int64]bool{},
 		levels:   map[int64]level{},
 		parents:  map[int64]map[int64][]int64{},
 		groupID:  map[string]int64{},
 	}
-	err := sqlq.Each(ctx, s.db, `SELECT project_id, permission, holder,
-		COALESCE(user_id, 0), COALESCE(group_id, 0) FROM project_permissions`,
+	err := sqlq.Each(ctx, s.db, `SELECT COALESCE(project_id, 0), permission, effect, holder,
+		COALESCE(user_id, 0), COALESCE(group_id, 0) FROM permission_rules ORDER BY id`,
 		func(rows *sql.Rows) error {
 			var project int64
-			var p string
-			var g Grant
-			if err := rows.Scan(&project, &p, &g.Holder, &g.UserID, &g.GroupID); err != nil {
+			var p, effect string
+			var rl Rule
+			if err := rows.Scan(&project, &p, &effect, &rl.Holder, &rl.UserID, &rl.GroupID); err != nil {
 				return err
 			}
-			if r.grants[project] == nil {
-				r.grants[project] = map[string][]Grant{}
-			}
-			r.grants[project][p] = append(r.grants[project][p], g)
+			rl.Deny = effect == Deny
+			r.add(project, p, rl)
 			return nil
 		})
 	if err != nil {
@@ -223,6 +239,18 @@ func (s *Store) load(ctx context.Context) (*rules, error) {
 	}
 	s.rules, s.loadedAt = r, time.Now()
 	return r, nil
+}
+
+// add adds a rule for a permission in a project, or a global one (project 0).
+func (r *rules) add(project int64, p string, rl Rule) {
+	if project == 0 {
+		r.global[p] = append(r.global[p], rl)
+		return
+	}
+	if r.project[project] == nil {
+		r.project[project] = map[string][]Rule{}
+	}
+	r.project[project][p] = append(r.project[project][p], rl)
 }
 
 // closure adds to set every group that one of its groups is a project
@@ -340,7 +368,7 @@ func (s *Subject) InGroupIn(project, group int64) bool {
 	return s.global[group]
 }
 
-// holds reports whether the subject matches a grant. Without an issue,
+// holds reports whether the subject matches a grant or a rule. Without an issue,
 // reporter and assignee grants never match. A subject without a user
 // (UserID 0) holds nothing: a project with no lead is cached with lead 0, and
 // an Everyone grant is meant for accounts, not for a visitor with none.
@@ -372,10 +400,10 @@ func (s *Subject) Can(p string, project int64, is *Issue) bool {
 	if p != Browse && s.rules.archived[project] {
 		return false
 	}
-	if !s.granted(p, project, is) {
+	if !s.decide(p, project, is) {
 		return false
 	}
-	if is != nil && p != Browse && !s.granted(Browse, project, is) {
+	if is != nil && p != Browse && !s.decide(Browse, project, is) {
 		return false
 	}
 	return is == nil || s.passesLevel(is)
@@ -386,22 +414,77 @@ func (s *Subject) CanSee(is Issue) bool { return s.Can(Browse, is.ProjectID, &is
 
 // CanBrowseProject reports whether the subject sees the project at all,
 // possibly only the issues it reported or is assigned.
-func (s *Subject) CanBrowseProject(project int64) bool {
-	for _, g := range s.rules.grants[project][Browse] {
-		if g.Holder == Reporter || g.Holder == Assignee || s.holds(g, project, nil) {
-			return true
+func (s *Subject) CanBrowseProject(project int64) bool { return s.browseMask(project) != 0 }
+
+// decide applies the rules of permission p in a project to the subject, on
+// an issue when is is not nil: the first level with a rule the subject
+// matches decides (user rules of the project, then global ones, then group
+// rules of the project, then global ones), deny beating allow within it.
+func (s *Subject) decide(p string, project int64, is *Issue) bool {
+	if s.UserID == 0 {
+		return false
+	}
+	scopes := [2][]Rule{s.rules.project[project][p], s.rules.global[p]}
+	for _, users := range []bool{true, false} {
+		for _, rs := range scopes {
+			if allow, decided := s.level(rs, users, project, is); decided {
+				return allow
+			}
 		}
 	}
 	return false
 }
 
-func (s *Subject) granted(p string, project int64, is *Issue) bool {
-	for _, g := range s.rules.grants[project][p] {
-		if s.holds(g, project, is) {
-			return true
+// level applies the user rules of rs (users) or its group rules (!users).
+func (s *Subject) level(rs []Rule, users bool, project int64, is *Issue) (allow, decided bool) {
+	for _, rl := range rs {
+		if (rl.Holder == User) != users || !s.holds(rl.Grant, project, is) {
+			continue
+		}
+		if rl.Deny {
+			return false, true
+		}
+		decided = true
+	}
+	return decided, decided
+}
+
+// The subject's relations to an issue that rules can depend on, as the bits
+// of a mask: neither its reporter nor its assignee, reporter only, assignee
+// only, or both.
+const (
+	asNeither = 1 << iota
+	asReporter
+	asAssignee
+	asBoth
+	asAny = asNeither | asReporter | asAssignee | asBoth
+)
+
+// browseMask returns the relations to an issue of a project under which the
+// subject may see it.
+func (s *Subject) browseMask(project int64) int {
+	relative := func(rl Rule) bool { return rl.Holder == Reporter || rl.Holder == Assignee }
+	if !slices.ContainsFunc(s.rules.project[project][Browse], relative) &&
+		!slices.ContainsFunc(s.rules.global[Browse], relative) {
+		if s.decide(Browse, project, nil) {
+			return asAny
+		}
+		return 0
+	}
+	mask := 0
+	for i, rel := range [4]struct{ reporter, assignee bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
+		is := &Issue{ProjectID: project}
+		if rel.reporter {
+			is.ReporterID = s.UserID
+		}
+		if rel.assignee {
+			is.AssigneeID = s.UserID
+		}
+		if s.decide(Browse, project, is) {
+			mask |= 1 << i
 		}
 	}
-	return false
+	return mask
 }
 
 func (s *Subject) passesLevel(is *Issue) bool {
@@ -436,8 +519,8 @@ func (s *Subject) SeesRestricted(project int64, group string) bool {
 // order, so a subject gets the same SQL every time.
 func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	var projects visible
-	for project, perms := range s.rules.grants {
-		projects.add(project, perms[Browse], func(g Grant) bool { return s.holds(g, project, nil) })
+	for project := range s.rules.browsable() {
+		projects.addMask(project, s.browseMask(project))
 	}
 	cond, args := projects.where(alias, "project_id", s.UserID)
 	if len(cond) == 0 {
@@ -452,10 +535,52 @@ func (s *Subject) VisibleSQL(alias string) (string, []any) {
 	return "(" + strings.Join(cond, " OR ") + ") AND (" + strings.Join(sec, " OR ") + ")", append(args, levelArgs...)
 }
 
+// browsable returns the projects that have a Browse rule: all of them when
+// a global one exists.
+func (r *rules) browsable() map[int64]bool {
+	out := map[int64]bool{}
+	for project, perms := range r.project {
+		if len(perms[Browse]) > 0 {
+			out[project] = true
+		}
+	}
+	if len(r.global[Browse]) > 0 {
+		for project := range r.leads {
+			out[project] = true
+		}
+	}
+	return out
+}
+
 // visible groups project or security level ids by what a subject sees of
-// their issues: all of them, or only those it reports or is assigned.
+// their issues: all of them, only those it reports or is assigned, or, in
+// other, those of a relation mask that only denies can give (a project where
+// the subject sees all issues except those it reported, say).
 type visible struct {
 	all, byReporter, byAssignee []int64
+	other                       map[int][]int64
+}
+
+// addMask puts id in v by the relations to an issue under which the subject
+// sees the issue.
+func (v *visible) addMask(id int64, mask int) {
+	switch mask {
+	case 0:
+	case asAny:
+		v.all = append(v.all, id)
+	case asReporter | asBoth:
+		v.byReporter = append(v.byReporter, id)
+	case asAssignee | asBoth:
+		v.byAssignee = append(v.byAssignee, id)
+	case asReporter | asAssignee | asBoth:
+		v.byReporter = append(v.byReporter, id)
+		v.byAssignee = append(v.byAssignee, id)
+	default:
+		if v.other == nil {
+			v.other = map[int][]int64{}
+		}
+		v.other[mask] = append(v.other[mask], id)
+	}
 }
 
 // add puts id in v by its grants gs: in all when the subject holds one of
@@ -497,6 +622,27 @@ func (v visible) where(alias, col string, user int64) ([]string, []any) {
 	in(v.all, "")
 	in(v.byReporter, "reporter_id")
 	in(v.byAssignee, "assignee_id")
+	for _, mask := range slices.Sorted(maps.Keys(v.other)) {
+		ids := slices.Sorted(slices.Values(v.other[mask]))
+		for _, id := range ids {
+			args = append(args, id)
+		}
+		var rels []string
+		for i := range 4 {
+			if mask&(1<<i) == 0 {
+				continue
+			}
+			is := func(owner string, yes bool) string {
+				if yes {
+					return alias + "." + owner + " = ?"
+				}
+				return "NOT (" + alias + "." + owner + " <=> ?)"
+			}
+			rels = append(rels, is("reporter_id", i&1 != 0)+" AND "+is("assignee_id", i&2 != 0))
+			args = append(args, user, user)
+		}
+		cond = append(cond, "("+alias+"."+col+" IN ("+sqlq.Marks(len(ids))+") AND (("+strings.Join(rels, ") OR (")+")))")
+	}
 	return cond, args
 }
 

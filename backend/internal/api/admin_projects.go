@@ -407,8 +407,8 @@ func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) er
 // lead may do everything, the people given access work on issues.
 func grantAccess(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
 	grant := func(permission, holder string, group any) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO project_permissions (project_id, permission, holder, group_id)
-			VALUES (?, ?, ?, ?)`, id, permission, holder, group)
+		_, err := tx.ExecContext(ctx, `INSERT INTO permission_rules (project_id, permission, effect, holder, group_id)
+			VALUES (?, ?, 'allow', ?, ?)`, id, permission, holder, group)
 		return err
 	}
 	for _, pm := range perm.All {

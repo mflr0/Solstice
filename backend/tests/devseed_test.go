@@ -165,7 +165,7 @@ func TestDevSeed(t *testing.T) {
 				JOIN security_level_members m ON m.level_id = l.id LEFT JOIN user_groups g ON g.id = m.group_id
 				GROUP BY p.pkey, l.id, l.name ORDER BY p.pkey, l.name`,
 			`SELECT CONCAT(p.pkey, ':', g.name, '=', GROUP_CONCAT(pp.permission ORDER BY pp.permission))
-				FROM project_permissions pp JOIN projects p ON p.id = pp.project_id JOIN user_groups g ON g.id = pp.group_id
+				FROM permission_rules pp JOIN projects p ON p.id = pp.project_id JOIN user_groups g ON g.id = pp.group_id
 				GROUP BY p.pkey, g.name ORDER BY p.pkey, g.name`,
 			`SELECT CONCAT(p.pkey, ':', g.name, '+=', GROUP_CONCAT(COALESCE(u.username, CONCAT('group:', mg.name))
 				ORDER BY COALESCE(u.username, CONCAT('group:', mg.name))))

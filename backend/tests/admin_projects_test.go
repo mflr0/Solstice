@@ -503,7 +503,7 @@ func TestProjectWithoutLead(t *testing.T) {
 		t.Errorf("created with lead null: %+v", settings)
 	}
 	// The lead grants stay and match nobody; the group gets its own.
-	if n := pick(t, `SELECT COUNT(*) FROM project_permissions pp JOIN projects p ON p.id = pp.project_id
+	if n := pick(t, `SELECT COUNT(*) FROM permission_rules pp JOIN projects p ON p.id = pp.project_id
 		WHERE p.pkey = ? AND pp.holder NOT IN ('lead', 'group')`, key); n != "0" {
 		t.Errorf("%s grants other than lead and group", n)
 	}
