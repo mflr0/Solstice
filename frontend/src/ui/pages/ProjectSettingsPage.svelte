@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { ProjectGroup } from '../../core/admin-types.js';
   import {
     cellAccess,
@@ -7,12 +7,16 @@
     grantsPayload,
     grantsSignature,
     matrixRows,
+    moveCell,
     nextCellState,
     nextTab,
     parseTab,
     PROJECT_TABS,
     removeRow,
     setCell,
+    setCells,
+    stateForKey,
+    CELL_STATES,
     type CellState,
     type MatrixRow,
     type ProjectTab,
@@ -71,6 +75,36 @@
   let pick = $state('');
   /** Read out after a cell changes: its new state. */
   let announced = $state('');
+  /** The cell the grid's one Tab stop is on. */
+  let at = $state({ row: 0, col: 0 });
+  /** The open "set all" menu: `row:<row key>` or `col:<permission>`. */
+  let menu = $state<string | null>(null);
+  /** Where the open menu goes: fixed, so the matrix's scroll box doesn't clip it. */
+  let menuAt = $state<{ top?: number; bottom?: number; left: number }>({ left: 0 });
+  let menuButton: HTMLElement | null = null;
+
+  function openMenu(id: string, e: MouseEvent) {
+    if (menu === id) {
+      menu = null;
+      return;
+    }
+    menuButton = e.currentTarget as HTMLElement;
+    const r = menuButton.getBoundingClientRect();
+    const left = Math.max(4, Math.min(r.left, window.innerWidth - 170));
+    // Opens upwards when the three choices don't fit below.
+    menuAt =
+      r.bottom + 130 > window.innerHeight
+        ? { bottom: window.innerHeight - r.top + 4, left }
+        : { top: r.bottom + 4, left };
+    menu = id;
+  }
+
+  function menuKey(e: KeyboardEvent) {
+    if (!menu || e.key !== 'Escape') return;
+    e.preventDefault();
+    menu = null;
+    menuButton?.focus();
+  }
   /** The group whose "add a member" box is open, or 0 for the "add a group" box. */
   let addingTo = $state<number | null>(null);
   let memberKind = $state<'user' | 'group'>('user');
@@ -180,11 +214,51 @@
       .catch(() => {});
   });
 
-  function cycle(row: MatrixRow, p: Permission) {
-    const next = nextCellState(cellState(grants, row.key, p));
+  const marks: Record<CellState, string> = { inherit: '–', allow: '✓', deny: '⊘' };
+
+  function setTo(row: MatrixRow, p: Permission, next: CellState) {
     grants = setCell(grants, row, p, next);
     announced = cellName(row, p, next);
   }
+
+  function setRow(row: MatrixRow, next: CellState) {
+    if (!data) return;
+    grants = setCells(grants, [row], data.permissions, next);
+    menu = null;
+    announced = `${t.settings.setRow(row.label)}: ${t.settings.states[next]}`;
+  }
+
+  function setColumn(p: Permission, next: CellState) {
+    grants = setCells(grants, rows, [p], next);
+    menu = null;
+    announced = `${t.settings.setColumn(permissionLabels[p].label)}: ${t.settings.states[next]}`;
+  }
+
+  function focusCell(row: number, col: number) {
+    at = { row, col };
+    void tick().then(() =>
+      document.querySelector<HTMLElement>(`[data-cell="${row}-${col}"]`)?.focus(),
+    );
+  }
+
+  function cellKey(e: KeyboardEvent, r: number, c: number, row: MatrixRow, p: Permission) {
+    if (e.altKey || e.ctrlKey || e.metaKey || !data) return;
+    const to = moveCell({ row: r, col: c }, e.key, rows.length, data.permissions.length);
+    const next =
+      e.key === ' ' || e.key === 'Enter'
+        ? nextCellState(cellState(grants, row.key, p))
+        : stateForKey(e.key, t.settings.keys);
+    if (!to && !next) return;
+    e.preventDefault();
+    if (to) focusCell(to.row, to.col);
+    else if (next) setTo(row, p, next);
+  }
+
+  /** The cell holding the Tab stop, kept inside the grid when rows go. */
+  const cur = $derived({
+    row: Math.min(at.row, Math.max(rows.length - 1, 0)),
+    col: at.col,
+  });
 
   function dropRow(row: MatrixRow) {
     grants = removeRow(grants, row.key);
@@ -309,6 +383,38 @@
   }
 </script>
 
+<svelte:window onscroll={() => (menu = null)} onkeydown={menuKey} onresize={() => (menu = null)} />
+
+{#snippet setAll(id: string, label: string, pick: (s: CellState) => void)}
+  <span class="set-all" use:outside={() => menu === id && (menu = null)}>
+    <button
+      type="button"
+      class="set-all-btn"
+      aria-label={label}
+      title={label}
+      aria-haspopup="true"
+      aria-expanded={menu === id}
+      onclick={(e) => openMenu(id, e)}>▾</button
+    >
+    {#if menu === id}
+      <span
+        class="popover set-all-menu"
+        role="group"
+        aria-label={label}
+        style:top={menuAt.top != null ? `${menuAt.top}px` : undefined}
+        style:bottom={menuAt.bottom != null ? `${menuAt.bottom}px` : undefined}
+        style:left="{menuAt.left}px"
+      >
+        {#each CELL_STATES as st (st)}
+          <button type="button" class="seg-item {st}" onclick={() => pick(st)}
+            ><span aria-hidden="true">{marks[st]}</span> {t.settings.states[st]}</button
+          >
+        {/each}
+      </span>
+    {/if}
+  </span>
+{/snippet}
+
 {#if error}
   <NotFoundPage message={error} />
 {:else if !data && !forbidden}
@@ -385,24 +491,34 @@
         <div class="panel" role="tabpanel" id="panel-rights" aria-labelledby="tab-rights">
           <h2 class="section-title">{t.settings.permissions}</h2>
           <p class="matrix-hint">{t.settings.matrixHint}</p>
-          <div class="table-scroll matrix-scroll">
-            <table class="ledger matrix">
-              <caption class="sr-only">{t.settings.matrix}</caption>
+          <div class="table-scroll matrix-scroll" onscroll={() => (menu = null)}>
+            <table class="ledger matrix" role="grid" aria-label={t.settings.matrix}>
               <thead>
                 <tr>
                   <th scope="col" class="who">{t.settings.holder}</th>
                   {#each data.permissions as p (p)}
-                    <th scope="col" title={permissionLabels[p].help}>{permissionLabels[p].label}</th
-                    >
+                    <th scope="col" title={permissionLabels[p].help}>
+                      <span class="col-head">
+                        <span>{permissionLabels[p].label}</span>
+                        {@render setAll(
+                          `col:${p}`,
+                          t.settings.setColumn(permissionLabels[p].label),
+                          (v) => setColumn(p, v),
+                        )}
+                      </span>
+                    </th>
                   {/each}
                 </tr>
               </thead>
               <tbody>
-                {#each rows as row (row.key)}
+                {#each rows as row, r (row.key)}
                   <tr>
                     <th scope="row" class="who">
                       <span class="who-line">
                         <span class="who-name">{row.label}</span>
+                        {@render setAll(`row:${row.key}`, t.settings.setRow(row.label), (v) =>
+                          setRow(row, v),
+                        )}
                         {#if !row.builtin}
                           <button
                             type="button"
@@ -417,31 +533,41 @@
                         >{row.builtin ? t.builtInGroups.mark : holderLabels[row.holder]}</span
                       >
                     </th>
-                    {#each data.permissions as p (p)}
+                    {#each data.permissions as p, c (p)}
                       {@const state = cellState(grants, row.key, p)}
                       {@const from = state === 'inherit' ? inherited(row, p) : null}
-                      <td>
-                        <button
-                          type="button"
-                          class="cell {state}"
-                          aria-label={cellName(row, p, state)}
-                          title={from ? from.long : undefined}
-                          onclick={() => cycle(row, p)}
-                        >
-                          <span class="word"
-                            ><span class="mark" aria-hidden="true"
-                              >{state === 'allow' ? '✓' : state === 'deny' ? '⊘' : '–'}</span
-                            >{t.settings.states[state]}</span
-                          >
-                          {#if from}
-                            <span class="from" class:no={from.granted === false}
-                              ><span aria-hidden="true"
-                                >{from.granted === null ? '' : from.granted ? '✓' : '✗'}</span
-                              >
-                              {from.short}</span
+                      <td
+                        role="gridcell"
+                        class="cell {state}"
+                        data-cell="{r}-{c}"
+                        tabindex={cur.row === r && cur.col === c ? 0 : -1}
+                        aria-label={cellName(row, p, state)}
+                        title={from ? from.long : undefined}
+                        onfocus={() => (at = { row: r, col: c })}
+                        onkeydown={(e) => cellKey(e, r, c, row, p)}
+                      >
+                        <span class="switch" aria-hidden="true">
+                          {#each CELL_STATES as st (st)}
+                            <button
+                              type="button"
+                              tabindex="-1"
+                              class="seg {st}"
+                              class:on={state === st}
+                              title={t.settings.states[st]}
+                              onmousedown={(e) => e.preventDefault()}
+                              onclick={() => {
+                                setTo(row, p, st);
+                                focusCell(r, c);
+                              }}>{marks[st]}</button
                             >
-                          {/if}
-                        </button>
+                          {/each}
+                        </span>
+                        {#if from}
+                          <span class="from" class:no={from.granted === false} aria-hidden="true"
+                            >{from.granted === null ? '' : from.granted ? '✓' : '✗'}
+                            {from.short}</span
+                          >
+                        {/if}
                       </td>
                     {/each}
                   </tr>
@@ -804,49 +930,71 @@
     background: none;
   }
 
-  /* Allow is filled, deny outlined with a struck pattern, inherit plain:
-     each also has its own mark and word, so color is never the only cue. */
-  .cell {
+  .col-head {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 2px;
-    width: 100%;
-    min-height: 2.75rem;
-    padding: 4px 7px;
-    border: 1px solid var(--rule);
+  }
+
+  /* Each cell is a three-way switch: inherit, allow, deny. The pressed
+     segment is filled for allow, framed and struck for deny, shaded for inherit; each
+     has its own mark, so color is never the only cue. */
+  .cell {
+    cursor: default;
+  }
+
+  .cell:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+
+  .switch {
+    display: inline-flex;
+    border: 1px solid var(--rule-strong);
     border-radius: var(--radius-s, 3px);
+    overflow: hidden;
+  }
+
+  .seg {
+    width: 1.75rem;
+    height: 1.625rem;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--rule);
     background: transparent;
     color: var(--muted);
-    font: 400 0.75rem/1.2 var(--font-body);
-    text-align: left;
+    font: 600 0.8125rem/1 var(--font-body);
     cursor: pointer;
   }
 
-  .cell .word {
-    display: inline-flex;
-    gap: 4px;
-    font-weight: 600;
+  .seg:first-child {
+    border-left: 0;
   }
 
-  .cell .mark {
-    width: 1em;
-    text-align: center;
+  .seg:hover {
+    background: var(--accent-wash);
+    color: var(--ink);
   }
 
-  .cell.allow {
-    border-color: var(--stamp-done);
+  .seg.inherit.on {
+    background: var(--paper-sunk);
+    color: var(--ink);
+  }
+
+  .seg.allow.on {
     background: var(--stamp-done);
     color: var(--paper);
   }
 
-  .cell.deny {
-    border: 2px solid var(--accent-text);
-    background: repeating-linear-gradient(135deg, transparent 0 6px, var(--accent-wash) 6px 9px);
+  .seg.deny.on {
+    box-shadow: inset 0 0 0 2px var(--accent-text);
+    background: repeating-linear-gradient(135deg, transparent 0 4px, var(--accent-wash) 4px 7px);
     color: var(--accent-text);
   }
 
   .cell .from {
+    display: block;
+    margin-top: 2px;
     font-size: 0.6875rem;
     color: var(--ink-soft);
     overflow-wrap: anywhere;
@@ -856,8 +1004,53 @@
     color: var(--muted);
   }
 
-  .cell:hover {
-    border-color: var(--rule-strong);
+  .set-all {
+    position: relative;
+    display: inline-block;
+  }
+
+  .set-all-btn {
+    padding: 0 3px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .set-all-btn:hover,
+  .set-all-btn[aria-expanded='true'] {
+    color: var(--ink);
+  }
+
+  /* The header holding an open menu goes above the sticky headers after it. */
+  .matrix th:has(.set-all-menu) {
+    z-index: 5;
+  }
+
+  .set-all-menu {
+    position: fixed;
+    min-width: 8rem;
+    padding: 4px;
+    display: grid;
+    gap: 2px;
+  }
+
+  .seg-item {
+    padding: 5px 8px;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: 400 0.8125rem/1.2 var(--font-body);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .seg-item:hover,
+  .seg-item:focus-visible {
+    background: var(--accent-wash);
   }
 
   .row-adder {

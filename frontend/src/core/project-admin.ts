@@ -705,6 +705,54 @@ export function setCell(
   return [...out, g];
 }
 
+/** The grants with every cell of some rows and permissions set to a state: a whole row or column. */
+export function setCells(
+  grants: readonly Grant[],
+  rows: readonly MatrixRow[],
+  perms: readonly Permission[],
+  s: CellState,
+): Grant[] {
+  let out = [...grants];
+  for (const row of rows) for (const p of perms) out = setCell(out, row, p, s);
+  return out;
+}
+
+/**
+ * The state a key sets on a cell: 1, 2, 3, or the language's letter for
+ * each state (`letters`, matched in any case); null for another key.
+ */
+export function stateForKey(key: string, letters: Record<CellState, string>): CellState | null {
+  const digit = ['1', '2', '3'].indexOf(key);
+  if (digit >= 0) return CELL_STATES[digit] ?? null;
+  const k = key.toLowerCase();
+  return CELL_STATES.find((s) => letters[s].toLowerCase() === k) ?? null;
+}
+
+/** The cell an arrow, Home or End key moves to in a grid; null for another key. */
+export function moveCell(
+  at: { row: number; col: number },
+  key: string,
+  rows: number,
+  cols: number,
+): { row: number; col: number } | null {
+  const clamp = (n: number, max: number) => Math.max(0, Math.min(max - 1, n));
+  switch (key) {
+    case 'ArrowUp':
+      return { row: clamp(at.row - 1, rows), col: at.col };
+    case 'ArrowDown':
+      return { row: clamp(at.row + 1, rows), col: at.col };
+    case 'ArrowLeft':
+      return { row: at.row, col: clamp(at.col - 1, cols) };
+    case 'ArrowRight':
+      return { row: at.row, col: clamp(at.col + 1, cols) };
+    case 'Home':
+      return { row: at.row, col: 0 };
+    case 'End':
+      return { row: at.row, col: cols - 1 };
+  }
+  return null;
+}
+
 /** The grants without any rule of a row. */
 export function removeRow(grants: readonly Grant[], row: string): Grant[] {
   return grants.filter((g) => grantRowKey(g) !== row);

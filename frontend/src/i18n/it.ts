@@ -394,12 +394,15 @@ export const it: Messages = {
     permissions: 'Chi può fare cosa',
     matrix: 'Permessi di ogni gruppo e persona',
     matrixHint:
-      'Ogni casella eredita, consente o nega. Una casella ereditata mostra cosa ottiene il gruppo o la persona senza una regola in questo progetto, e da dove viene.',
+      'Ogni casella eredita (–), consente (✓) o nega (⊘). Una casella ereditata mostra cosa ottiene il gruppo o la persona senza una regola in questo progetto, e da dove viene. Da tastiera: le frecce passano da una casella all’altra; 1, 2, 3 oppure E, C, N impostano una casella.',
     holder: 'Gruppo o persona',
     addRow: 'Aggiungi un gruppo o una persona',
     rowKind: 'Tipo',
     removeRow: (name: string) => `Rimuovi ${name} e le sue regole in questo progetto`,
     states: { inherit: 'Ereditato', allow: 'Consentito', deny: 'Negato' },
+    keys: { inherit: 'e', allow: 'c', deny: 'n' },
+    setRow: (name: string) => `Imposta tutti i permessi di ${name}`,
+    setColumn: (permission: string) => `Imposta ${permission} per tutte le righe`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed

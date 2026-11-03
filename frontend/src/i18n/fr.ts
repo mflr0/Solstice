@@ -395,12 +395,15 @@ export const fr: Messages = {
     permissions: 'Qui peut faire quoi',
     matrix: 'Droits de chaque groupe et utilisateur',
     matrixHint:
-      'Chaque case hérite, autorise ou refuse. Une case héritée montre ce que le groupe ou l’utilisateur obtient sans règle dans ce projet, et d’où cela vient.',
+      'Chaque case hérite (–), autorise (✓) ou refuse (⊘). Une case héritée montre ce que le groupe ou l’utilisateur obtient sans règle dans ce projet, et d’où cela vient. Au clavier : les flèches passent d’une case à l’autre ; 1, 2, 3 ou H, A, R règlent une case.',
     holder: 'Groupe ou utilisateur',
     addRow: 'Ajouter un groupe ou un utilisateur',
     rowKind: 'Type',
     removeRow: (name: string) => `Retirer ${name} et ses règles dans ce projet`,
     states: { inherit: 'Hérité', allow: 'Autorisé', deny: 'Refusé' },
+    keys: { inherit: 'h', allow: 'a', deny: 'r' },
+    setRow: (name: string) => `Régler tous les droits de ${name}`,
+    setColumn: (permission: string) => `Régler ${permission} pour toutes les lignes`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed

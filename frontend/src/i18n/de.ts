@@ -401,12 +401,15 @@ export const de: Messages = {
     permissions: 'Wer darf was',
     matrix: 'Rechte jeder Gruppe und jedes Benutzers',
     matrixHint:
-      'Jede Zelle erbt, erlaubt oder verweigert. Eine geerbte Zelle zeigt, was die Gruppe oder der Benutzer ohne Regel in diesem Projekt bekommt, und woher.',
+      'Jede Zelle erbt (–), erlaubt (✓) oder verweigert (⊘). Eine geerbte Zelle zeigt, was die Gruppe oder der Benutzer ohne Regel in diesem Projekt bekommt, und woher. Tastatur: Die Pfeiltasten wechseln die Zelle; 1, 2, 3 oder G, E, V setzen sie.',
     holder: 'Gruppe oder Benutzer',
     addRow: 'Gruppe oder Benutzer hinzufügen',
     rowKind: 'Art',
     removeRow: (name: string) => `${name} und die Regeln in diesem Projekt entfernen`,
     states: { inherit: 'Geerbt', allow: 'Erlaubt', deny: 'Verweigert' },
+    keys: { inherit: 'g', allow: 'e', deny: 'v' },
+    setRow: (name: string) => `Alle Rechte von ${name} setzen`,
+    setColumn: (permission: string) => `${permission} für alle Zeilen setzen`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed

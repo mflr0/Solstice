@@ -393,12 +393,15 @@ export const en = {
     permissions: 'Who can do what',
     matrix: 'Permissions of each group and user',
     matrixHint:
-      'Each cell inherits, allows or denies. An inherited cell shows what the group or user gets without a rule in this project, and where it comes from.',
+      'Each cell inherits (–), allows (✓) or denies (⊘). An inherited cell shows what the group or user gets without a rule in this project, and where it comes from. Keyboard: the arrow keys move between cells; 1, 2, 3 or I, A, D set a cell.',
     holder: 'Group or user',
     addRow: 'Add a group or a user',
     rowKind: 'Kind',
     removeRow: (name: string) => `Remove ${name} and its rules in this project`,
     states: { inherit: 'Inherit', allow: 'Allow', deny: 'Deny' },
+    keys: { inherit: 'i', allow: 'a', deny: 'd' },
+    setRow: (name: string) => `Set every permission of ${name}`,
+    setColumn: (permission: string) => `Set ${permission} for every row`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed

@@ -30,9 +30,12 @@ import {
   holderGroups,
   keyProblem,
   matrixRows,
+  moveCell,
   nextCellState,
   removeRow,
   setCell,
+  setCells,
+  stateForKey,
   moveItem,
   notificationsChanged,
   nextTab,
@@ -660,6 +663,38 @@ describe('permission matrix', () => {
     expect(
       grantsPayload([{ permission: 'edit', holder: 'group', id: 3, name: 'X', effect: 'deny' }]),
     ).toEqual([{ permission: 'edit', holder: 'group', id: 3, effect: 'deny' }]);
+  });
+
+  it('sets a whole row or column at once', () => {
+    const rows = matrixRows(labels, [], [{ id: 1, name: 'Devs' }], [], [devs]);
+    const everyone = rows[0]!;
+    const all = setCells([], [everyone], ['browse', 'edit'], 'deny');
+    expect(all.map((g) => [g.permission, g.effect])).toEqual([
+      ['browse', 'deny'],
+      ['edit', 'deny'],
+    ]);
+    const column = setCells(all, rows, ['edit'], 'allow');
+    expect(rows.map((r) => cellState(column, r.key, 'edit'))).toEqual(rows.map(() => 'allow'));
+    expect(cellState(column, everyone.key, 'browse')).toBe('deny');
+    expect(setCells(column, rows, ['browse', 'edit'], 'inherit')).toEqual([]);
+  });
+
+  it('reads the keys that set a state', () => {
+    const letters = { inherit: 'h', allow: 'a', deny: 'r' };
+    expect(
+      ['1', '2', '3', 'A', 'r', 'h', 'x', 'Enter'].map((k) => stateForKey(k, letters)),
+    ).toEqual(['inherit', 'allow', 'deny', 'allow', 'deny', 'inherit', null, null]);
+  });
+
+  it('moves between cells and stops at the edges', () => {
+    const at = { row: 0, col: 0 };
+    expect(moveCell(at, 'ArrowDown', 3, 4)).toEqual({ row: 1, col: 0 });
+    expect(moveCell(at, 'ArrowUp', 3, 4)).toEqual(at);
+    expect(moveCell(at, 'ArrowLeft', 3, 4)).toEqual(at);
+    expect(moveCell(at, 'End', 3, 4)).toEqual({ row: 0, col: 3 });
+    expect(moveCell({ row: 2, col: 3 }, 'ArrowRight', 3, 4)).toEqual({ row: 2, col: 3 });
+    expect(moveCell({ row: 2, col: 3 }, 'Home', 3, 4)).toEqual({ row: 2, col: 0 });
+    expect(moveCell(at, 'a', 3, 4)).toBeNull();
   });
 
   describe('effective value and source', () => {
