@@ -158,29 +158,41 @@ export function zoneOffset(zone: string, at = new Date()): string {
 /** A time zone to pick: its IANA name, its current offset and the words the search finds it by. */
 export interface ZoneChoice {
   zone: string;
+  /** The short offset shown in the badge: `UTC`, `UTC+1`, `UTC\u22125`, `UTC+5:30`. */
   offset: string;
+  /** The offset in minutes, east of UTC positive. */
+  minutes: number;
   keywords: string[];
 }
 
 /**
- * The zones the browser knows, UTC first, each with its offset now. The
- * search finds a zone by its offset in short and long form, as UTC or GMT
- * (UTC+1, GMT+01:00), and by its short name in `locale`, the browser's by default (CET, EST).
+ * The zones the browser knows, west to east by their offset now, UTC first
+ * among those at UTC, then by name. The search finds a zone by its offset in
+ * short and long form, as UTC or GMT (UTC+1, GMT+01:00), and by its short name
+ * in `locale`, the browser's by default (EST).
  */
 export function zoneChoices(locale?: string, at = new Date()): ZoneChoice[] {
   const zones = timeZones();
   if (!zones.length) return [];
-  return ['UTC', ...zones.filter((z) => z !== 'UTC')].map((zone) => {
-    const offset = zoneOffset(zone, at) || 'UTC';
-    const long = offset.slice(3);
-    const short = long.replace(/^([+-])0?(\d+):00$/, '$1$2').replace(/^([+-])0?(\d+:\d+)$/, '$1$2');
+  const choices = ['UTC', ...zones.filter((z) => z !== 'UTC')].map((zone) => {
+    const long = (zoneOffset(zone, at) || 'UTC').slice(3);
+    const [h = 0, m = 0] = long.slice(1).split(':').map(Number);
+    const minutes = (long.startsWith('-') ? -1 : 1) * (h * 60 + m);
+    const short = long.replace(/^([+-])0?(\d+)(?::00|(:\d+))$/, '$1$2$3');
     const keywords = [zone.replaceAll('_', ' ')];
-    if (long) keywords.push(offset, `UTC${short}`, `GMT${short}`, `GMT${long}`);
+    if (long) keywords.push(`UTC${long}`, `UTC${short}`, `GMT${short}`, `GMT${long}`);
     else keywords.push('GMT');
     const abbr = shortZoneName(zone, locale, at);
     if (abbr && !abbr.startsWith('GMT') && !abbr.startsWith('UTC')) keywords.push(abbr);
-    return { zone, offset, keywords };
+    return { zone, offset: `UTC${short.replace('-', '\u2212')}`, minutes, keywords };
   });
+  // Stable: UTC, listed first, stays first among the zones at UTC.
+  return choices.sort(
+    (a, b) =>
+      a.minutes - b.minutes ||
+      Number(b.zone === 'UTC') - Number(a.zone === 'UTC') ||
+      (a.zone < b.zone ? -1 : a.zone > b.zone ? 1 : 0),
+  );
 }
 
 function shortZoneName(zone: string, locale: string | undefined, at: Date): string {

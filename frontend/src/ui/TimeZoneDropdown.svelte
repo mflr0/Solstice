@@ -40,11 +40,10 @@
 </Dropdown>
 
 <style>
-  /* The same width for every offset, so the names line up. */
+  /* The same width for whole-hour offsets, so most names line up. */
   .offset {
     justify-content: center;
-    min-width: 5.5rem;
+    min-width: 3.75rem;
     line-height: 1.25;
-    font-variant-numeric: tabular-nums;
   }
 </style>

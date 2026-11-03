@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { flushSync, mount, unmount } from 'svelte';
 
-import { zoneChoices, zoneOffset } from '../../src/core/setup.js';
+import { zoneChoices } from '../../src/core/setup.js';
 import TimeZoneDropdown from '../../src/ui/TimeZoneDropdown.svelte';
 
 const zones = zoneChoices('en-US');
@@ -46,15 +46,18 @@ const names = () =>
 describe('TimeZoneDropdown', () => {
   it('shows the zone behind its offset badge', () => {
     const { button } = open('Europe/Paris');
-    expect(button.querySelector('.offset')?.textContent).toBe(zoneOffset('Europe/Paris'));
+    expect(button.querySelector('.offset')?.textContent).toBe(
+      zones.find((z) => z.zone === 'Europe/Paris')?.offset,
+    );
     expect(button.querySelector('.name')?.textContent).toBe('Europe/Paris');
   });
 
   it('finds a zone by its offset, as UTC or GMT', () => {
     open('UTC');
-    const paris = zoneOffset('Europe/Paris')
-      .slice(3)
-      .replace(/^([+-])0?(\d+):00$/, '$1$2');
+    const paris = zones
+      .find((z) => z.zone === 'Europe/Paris')!
+      .offset.slice(3)
+      .replace('\u2212', '-');
     type(`UTC${paris}`);
     expect(names()).toContain('Europe/Paris');
     type(`GMT${paris}`);
@@ -65,6 +68,6 @@ describe('TimeZoneDropdown', () => {
 
   it('keeps a value no zone has, and lists the first option before the zones', () => {
     open('Mars/Olympus', { first: { value: '', label: 'The server’s' } });
-    expect(names().slice(0, 3)).toEqual(['The server’s', 'Mars/Olympus', 'UTC']);
+    expect(names().slice(0, 2)).toEqual(['The server’s', 'Mars/Olympus']);
   });
 });
