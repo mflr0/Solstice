@@ -8,7 +8,7 @@
   import { formatDay, t } from '../i18n/t.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
-  import { appearance, ignoreShortcut } from '../lib/ui.svelte.js';
+  import { appearance, ignoreShortcut, mac } from '../lib/ui.svelte.js';
   import Highlight from './Highlight.svelte';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';
@@ -102,7 +102,7 @@
 
   function keys(e: KeyboardEvent) {
     if (!onselect || !body || ignoreShortcut(e)) return;
-    const action = shortcutFor(e.key, 'results', appearance.shortcuts);
+    const action = shortcutFor(e, 'results', appearance.shortcuts, appearance.bindings, mac);
     if (!action) return;
     const rows = [...body.rows];
     const current = rows.findIndex((r) => r.contains(document.activeElement));
