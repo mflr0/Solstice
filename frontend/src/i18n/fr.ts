@@ -395,28 +395,27 @@ export const fr: Messages = {
     permissions: 'Qui peut faire quoi',
     matrix: 'Droits de chaque groupe et utilisateur',
     matrixHint:
-      'Chaque case hérite (–), autorise (✓) ou refuse (⊘). Une case héritée montre ce que le groupe ou l’utilisateur obtient sans règle dans ce projet, et d’où cela vient. Au clavier : les flèches passent d’une case à l’autre ; 1, 2, 3 ou H, A, R règlent une case.',
+      'Chaque case bloque (✗), hérite (/) ou accorde (✓). Survolez une case héritée pour voir ce que le groupe ou l’utilisateur obtient sans règle ici, et d’où cela vient. Au clavier : les flèches passent d’une case à l’autre ; 1, 2, 3 ou B, H, A règlent une case.',
     holder: 'Groupe ou utilisateur',
     addRow: 'Ajouter un groupe ou un utilisateur',
     rowKind: 'Type',
     removeRow: (name: string) => `Retirer ${name} et ses règles dans ce projet`,
-    states: { inherit: 'Hérité', allow: 'Autorisé', deny: 'Refusé' },
-    keys: { inherit: 'h', allow: 'a', deny: 'r' },
+    states: { inherit: 'Hériter', allow: 'Accorder', deny: 'Bloquer' },
+    keys: { inherit: 'h', allow: 'a', deny: 'b' },
     setRow: (name: string) => `Régler tous les droits de ${name}`,
     setColumn: (permission: string) => `Régler ${permission} pour toutes les lignes`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `autorisé par le défaut global de ${name}`
-          : `refusé par le défaut global de ${name}`,
+          ? `accordé par le défaut global de ${name}`
+          : `bloqué par le défaut global de ${name}`,
       projectGroup: (allowed: boolean, name: string) =>
-        allowed ? `autorisé dans ce projet pour ${name}` : `refusé dans ce projet pour ${name}`,
+        allowed ? `accordé dans ce projet pour ${name}` : `bloqué dans ce projet pour ${name}`,
       globalUser: (allowed: boolean, name: string) =>
         allowed
-          ? `autorisé par la règle globale de ${name}`
-          : `refusé par la règle globale de ${name}`,
-      none: 'non autorisé : aucune règle',
-      noneShort: 'aucune règle',
+          ? `accordé par la règle globale de ${name}`
+          : `bloqué par la règle globale de ${name}`,
+      none: 'non accordé : aucune règle',
       loading: 'chargement…',
     },
     cell: (holder: string, permission: string, state: string) =>

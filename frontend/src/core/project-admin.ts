@@ -610,11 +610,12 @@ export function holderGroups(
 /** A cell of the permission matrix: the row's project rule, or none. */
 export type CellState = 'inherit' | Effect;
 
-export const CELL_STATES: readonly CellState[] = ['inherit', 'allow', 'deny'];
+/** The states in the order the switch shows them: block, inherit, grant. */
+export const CELL_STATES: readonly CellState[] = ['deny', 'inherit', 'allow'];
 
-/** The state a cell takes when clicked. */
+/** The state Space moves a cell to: inherit, then grant, then block. */
 export function nextCellState(s: CellState): CellState {
-  return CELL_STATES[(CELL_STATES.indexOf(s) + 1) % CELL_STATES.length] ?? 'inherit';
+  return s === 'inherit' ? 'allow' : s === 'allow' ? 'deny' : 'inherit';
 }
 
 /** A row of the matrix: a built-in group, a group or a user. */

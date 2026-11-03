@@ -394,30 +394,29 @@ export const it: Messages = {
     permissions: 'Chi può fare cosa',
     matrix: 'Permessi di ogni gruppo e persona',
     matrixHint:
-      'Ogni casella eredita (–), consente (✓) o nega (⊘). Una casella ereditata mostra cosa ottiene il gruppo o la persona senza una regola in questo progetto, e da dove viene. Da tastiera: le frecce passano da una casella all’altra; 1, 2, 3 oppure E, C, N impostano una casella.',
+      'Ogni casella blocca (✗), eredita (/) o concede (✓). Passa sopra una casella ereditata per vedere cosa ottiene il gruppo o la persona senza una regola qui, e da dove viene. Da tastiera: le frecce passano da una casella all’altra; 1, 2, 3 oppure B, E, C impostano una casella.',
     holder: 'Gruppo o persona',
     addRow: 'Aggiungi un gruppo o una persona',
     rowKind: 'Tipo',
     removeRow: (name: string) => `Rimuovi ${name} e le sue regole in questo progetto`,
-    states: { inherit: 'Ereditato', allow: 'Consentito', deny: 'Negato' },
-    keys: { inherit: 'e', allow: 'c', deny: 'n' },
+    states: { inherit: 'Ereditare', allow: 'Concedere', deny: 'Bloccare' },
+    keys: { inherit: 'e', allow: 'c', deny: 'b' },
     setRow: (name: string) => `Imposta tutti i permessi di ${name}`,
     setColumn: (permission: string) => `Imposta ${permission} per tutte le righe`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `consentito dal predefinito globale di ${name}`
-          : `negato dal predefinito globale di ${name}`,
+          ? `concesso dal predefinito globale di ${name}`
+          : `bloccato dal predefinito globale di ${name}`,
       projectGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `consentito in questo progetto per ${name}`
-          : `negato in questo progetto per ${name}`,
+          ? `concesso in questo progetto per ${name}`
+          : `bloccato in questo progetto per ${name}`,
       globalUser: (allowed: boolean, name: string) =>
         allowed
-          ? `consentito dalla regola globale di ${name}`
-          : `negato dalla regola globale di ${name}`,
-      none: 'non consentito: nessuna regola',
-      noneShort: 'nessuna regola',
+          ? `concesso dalla regola globale di ${name}`
+          : `bloccato dalla regola globale di ${name}`,
+      none: 'non concesso: nessuna regola',
       loading: 'caricamento…',
     },
     cell: (holder: string, permission: string, state: string) =>

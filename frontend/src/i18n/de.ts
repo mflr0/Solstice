@@ -401,30 +401,29 @@ export const de: Messages = {
     permissions: 'Wer darf was',
     matrix: 'Rechte jeder Gruppe und jedes Benutzers',
     matrixHint:
-      'Jede Zelle erbt (–), erlaubt (✓) oder verweigert (⊘). Eine geerbte Zelle zeigt, was die Gruppe oder der Benutzer ohne Regel in diesem Projekt bekommt, und woher. Tastatur: Die Pfeiltasten wechseln die Zelle; 1, 2, 3 oder G, E, V setzen sie.',
+      'Jede Zelle sperrt (✗), erbt (/) oder gewährt (✓). Zeigen Sie auf eine geerbte Zelle, um zu sehen, was die Gruppe oder der Benutzer ohne Regel hier bekommt, und woher. Tastatur: Die Pfeiltasten wechseln die Zelle; 1, 2, 3 oder S, E, G setzen sie.',
     holder: 'Gruppe oder Benutzer',
     addRow: 'Gruppe oder Benutzer hinzufügen',
     rowKind: 'Art',
     removeRow: (name: string) => `${name} und die Regeln in diesem Projekt entfernen`,
-    states: { inherit: 'Geerbt', allow: 'Erlaubt', deny: 'Verweigert' },
-    keys: { inherit: 'g', allow: 'e', deny: 'v' },
+    states: { inherit: 'Erben', allow: 'Gewähren', deny: 'Sperren' },
+    keys: { inherit: 'e', allow: 'g', deny: 's' },
     setRow: (name: string) => `Alle Rechte von ${name} setzen`,
     setColumn: (permission: string) => `${permission} für alle Zeilen setzen`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `erlaubt durch die globale Vorgabe von ${name}`
-          : `verweigert durch die globale Vorgabe von ${name}`,
+          ? `gewährt durch die globale Vorgabe von ${name}`
+          : `gesperrt durch die globale Vorgabe von ${name}`,
       projectGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `in diesem Projekt erlaubt für ${name}`
-          : `in diesem Projekt verweigert für ${name}`,
+          ? `in diesem Projekt gewährt für ${name}`
+          : `in diesem Projekt gesperrt für ${name}`,
       globalUser: (allowed: boolean, name: string) =>
         allowed
-          ? `erlaubt durch die globale Regel von ${name}`
-          : `verweigert durch die globale Regel von ${name}`,
-      none: 'nicht erlaubt: keine Regel',
-      noneShort: 'keine Regel',
+          ? `gewährt durch die globale Regel von ${name}`
+          : `gesperrt durch die globale Regel von ${name}`,
+      none: 'nicht gewährt: keine Regel',
       loading: 'wird geladen…',
     },
     cell: (holder: string, permission: string, state: string) =>

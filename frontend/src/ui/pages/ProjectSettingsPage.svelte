@@ -214,7 +214,7 @@
       .catch(() => {});
   });
 
-  const marks: Record<CellState, string> = { inherit: '–', allow: '✓', deny: '⊘' };
+  const marks: Record<CellState, string> = { deny: '✗', inherit: '/', allow: '✓' };
 
   function setTo(row: MatrixRow, p: Permission, next: CellState) {
     grants = setCell(grants, row, p, next);
@@ -292,13 +292,13 @@
     return rows.find((r) => r.key === key)?.label ?? key;
   }
 
-  /** What an inherited cell gets: whether, and from which rule, short and in full. */
+  /** What an inherited cell gets: whether, and from which rule. */
   function inherited(row: MatrixRow, p: Permission) {
     const s = t.settings.source;
     const a = cellAccess(row.key, p, { grants, globals: data?.globals ?? [], users }, false);
-    if (!a) return { granted: null, short: s.loading, long: s.loading };
-    if (a.level === 'none' || !a.source)
-      return { granted: false, short: s.noneShort, long: s.none };
+    if (!a) return { granted: null, long: s.loading };
+    // No rule: not granted, but nothing blocks it either.
+    if (a.level === 'none' || !a.source) return { granted: null, long: s.none };
     const name = holderName(a.source);
     const say =
       a.level === 'globalUser'
@@ -306,7 +306,7 @@
         : a.level === 'projectGroup'
           ? s.projectGroup
           : s.globalGroup;
-    return { granted: a.granted, short: name, long: say(a.granted, name) };
+    return { granted: a.granted, long: say(a.granted, name) };
   }
 
   /** A cell's accessible name: the holder, the permission and the state. */
@@ -553,7 +553,11 @@
                               tabindex="-1"
                               class="seg {st}"
                               class:on={state === st}
-                              title={t.settings.states[st]}
+                              class:yes={st === 'inherit' && from?.granted === true}
+                              class:no={st === 'inherit' && from?.granted === false}
+                              title={st === 'inherit' && from
+                                ? `${t.settings.states.inherit}: ${from.long}`
+                                : t.settings.states[st]}
                               onmousedown={(e) => e.preventDefault()}
                               onclick={() => {
                                 setTo(row, p, st);
@@ -562,12 +566,6 @@
                             >
                           {/each}
                         </span>
-                        {#if from}
-                          <span class="from" class:no={from.granted === false} aria-hidden="true"
-                            >{from.granted === null ? '' : from.granted ? '✓' : '✗'}
-                            {from.short}</span
-                          >
-                        {/if}
                       </td>
                     {/each}
                   </tr>
@@ -936,9 +934,9 @@
     gap: 2px;
   }
 
-  /* Each cell is a three-way switch: inherit, allow, deny. The pressed
-     segment is filled for allow, framed and struck for deny, shaded for inherit; each
-     has its own mark, so color is never the only cue. */
+  /* Each cell is three bare icons: block, inherit, grant. Only the chosen
+     one is filled, each with its own glyph, so color is never the only cue.
+     A chosen inherit tints its slash with what it resolves to. */
   .cell {
     cursor: default;
   }
@@ -950,25 +948,19 @@
 
   .switch {
     display: inline-flex;
-    border: 1px solid var(--rule-strong);
-    border-radius: var(--radius-s, 3px);
-    overflow: hidden;
+    gap: 2px;
   }
 
   .seg {
-    width: 1.75rem;
-    height: 1.625rem;
+    width: 1.5rem;
+    height: 1.5rem;
     padding: 0;
     border: 0;
-    border-left: 1px solid var(--rule);
+    border-radius: 4px;
     background: transparent;
     color: var(--muted);
-    font: 600 0.8125rem/1 var(--font-body);
+    font: 400 0.8125rem/1 var(--font-body);
     cursor: pointer;
-  }
-
-  .seg:first-child {
-    border-left: 0;
   }
 
   .seg:hover {
@@ -976,32 +968,31 @@
     color: var(--ink);
   }
 
+  .seg.on {
+    font-weight: 700;
+  }
+
+  .seg.deny.on {
+    background: var(--tone-bug);
+    color: var(--paper);
+  }
+
   .seg.inherit.on {
     background: var(--paper-sunk);
-    color: var(--ink);
+    color: var(--ink-soft);
+  }
+
+  .seg.inherit.on.yes {
+    color: var(--stamp-done);
+  }
+
+  .seg.inherit.on.no {
+    color: var(--tone-bug);
   }
 
   .seg.allow.on {
     background: var(--stamp-done);
     color: var(--paper);
-  }
-
-  .seg.deny.on {
-    box-shadow: inset 0 0 0 2px var(--accent-text);
-    background: repeating-linear-gradient(135deg, transparent 0 4px, var(--accent-wash) 4px 7px);
-    color: var(--accent-text);
-  }
-
-  .cell .from {
-    display: block;
-    margin-top: 2px;
-    font-size: 0.6875rem;
-    color: var(--ink-soft);
-    overflow-wrap: anywhere;
-  }
-
-  .cell .from.no {
-    color: var(--muted);
   }
 
   .set-all {
@@ -1022,6 +1013,20 @@
   .set-all-btn:hover,
   .set-all-btn[aria-expanded='true'] {
     color: var(--ink);
+  }
+
+  /* With a mouse, the "set all" arrows show only on the row or column
+     pointed at; touch screens keep them. */
+  @media (hover: hover) {
+    .set-all-btn {
+      opacity: 0;
+    }
+
+    th:hover .set-all-btn,
+    .set-all-btn:focus-visible,
+    .set-all-btn[aria-expanded='true'] {
+      opacity: 1;
+    }
   }
 
   /* The header holding an open menu goes above the sticky headers after it. */

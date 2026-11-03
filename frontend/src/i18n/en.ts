@@ -393,28 +393,27 @@ export const en = {
     permissions: 'Who can do what',
     matrix: 'Permissions of each group and user',
     matrixHint:
-      'Each cell inherits (–), allows (✓) or denies (⊘). An inherited cell shows what the group or user gets without a rule in this project, and where it comes from. Keyboard: the arrow keys move between cells; 1, 2, 3 or I, A, D set a cell.',
+      'Each cell blocks (✗), inherits (/) or grants (✓). Hover an inherited cell to see what the group or user gets without a rule here, and where it comes from. Keyboard: the arrow keys move between cells; 1, 2, 3 or B, I, G set a cell.',
     holder: 'Group or user',
     addRow: 'Add a group or a user',
     rowKind: 'Kind',
     removeRow: (name: string) => `Remove ${name} and its rules in this project`,
-    states: { inherit: 'Inherit', allow: 'Allow', deny: 'Deny' },
-    keys: { inherit: 'i', allow: 'a', deny: 'd' },
+    states: { inherit: 'Inherit', allow: 'Grant', deny: 'Block' },
+    keys: { inherit: 'i', allow: 'g', deny: 'b' },
     setRow: (name: string) => `Set every permission of ${name}`,
     setColumn: (permission: string) => `Set ${permission} for every row`,
     source: {
       globalGroup: (allowed: boolean, name: string) =>
         allowed
-          ? `allowed by the global default of ${name}`
-          : `denied by the global default of ${name}`,
+          ? `granted by the global default of ${name}`
+          : `blocked by the global default of ${name}`,
       projectGroup: (allowed: boolean, name: string) =>
-        allowed ? `allowed in this project for ${name}` : `denied in this project for ${name}`,
+        allowed ? `granted in this project for ${name}` : `blocked in this project for ${name}`,
       globalUser: (allowed: boolean, name: string) =>
         allowed
-          ? `allowed by the global override of ${name}`
-          : `denied by the global override of ${name}`,
-      none: 'not allowed: no rule',
-      noneShort: 'no rule',
+          ? `granted by the global override of ${name}`
+          : `blocked by the global override of ${name}`,
+      none: 'not granted: no rule',
       loading: 'loading…',
     },
     cell: (holder: string, permission: string, state: string) =>

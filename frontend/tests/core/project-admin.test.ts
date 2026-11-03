@@ -680,10 +680,10 @@ describe('permission matrix', () => {
   });
 
   it('reads the keys that set a state', () => {
-    const letters = { inherit: 'h', allow: 'a', deny: 'r' };
+    const letters = { inherit: 'h', allow: 'a', deny: 'b' };
     expect(
-      ['1', '2', '3', 'A', 'r', 'h', 'x', 'Enter'].map((k) => stateForKey(k, letters)),
-    ).toEqual(['inherit', 'allow', 'deny', 'allow', 'deny', 'inherit', null, null]);
+      ['1', '2', '3', 'A', 'b', 'h', 'x', 'Enter'].map((k) => stateForKey(k, letters)),
+    ).toEqual(['deny', 'inherit', 'allow', 'allow', 'deny', 'inherit', null, null]);
   });
 
   it('moves between cells and stops at the edges', () => {
