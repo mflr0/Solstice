@@ -846,6 +846,24 @@ export const de: Messages = {
     toggleHint:
       'Tasten wie c oder / wirken ohne Strg oder Alt. Schalten Sie sie aus, wenn sie einen Screenreader oder die Sprachsteuerung stören.',
     list: 'Alle Tastenkürzel anzeigen',
+    bindings: 'Tasten',
+    bindingsHint:
+      'Wählen Sie „Taste hinzufügen“ und drücken Sie dann die Tasten. Die neuen Tasten wirken nach dem Speichern.',
+    noKey: 'Keine Taste',
+    addKey: 'Taste hinzufügen',
+    recording: 'Tasten drücken oder Esc zum Abbrechen',
+    recorded: (key: string, action: string) => `${key} zu „${action}“ hinzugefügt.`,
+    cancelled: 'Keine Taste hinzugefügt.',
+    refused: (key: string) =>
+      `${key} kann kein Tastenkürzel sein: Der Browser oder die Seite belegt es.`,
+    already: (key: string) => `${key} gehört schon zu dieser Aktion.`,
+    removeKey: (key: string) => `${key} entfernen`,
+    reset: 'Zurücksetzen',
+    resetAction: (action: string) => `„${action}“ zurücksetzen`,
+    resetAll: 'Alle zurücksetzen',
+    clashWith: (action: string) => `Auch belegt durch „${action}“`,
+    clashBlocked: 'Zwei Aktionen teilen sich eine Taste. Ändern Sie eine davon, um zu speichern.',
+    saved: 'Tastenkürzel gespeichert.',
   },
   comments: {
     empty: 'Noch keine Kommentare.',

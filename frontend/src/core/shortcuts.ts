@@ -38,6 +38,7 @@ export function formatShortcut(binding: string, mac: boolean, names: KeyNames): 
     ['Ctrl', names.ctrl],
     ['Alt', names.alt],
     ['Shift', names.shift],
+    ['Meta', 'Meta'],
   ];
   return [...words.filter(([m]) => mods.has(m)).map(([, w]) => w), shown].join('+');
 }
@@ -82,6 +83,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { scope: 'issue', action: 'watch', keys: ['w'] },
 ];
 
+/** The most bindings an action can have, as the server allows. */
+export const MAX_BINDINGS = 4;
+
 /** An account's bindings by action; each list replaces the action's defaults. */
 export type ShortcutOverrides = Readonly<Record<string, readonly string[]>>;
 
@@ -90,6 +94,19 @@ export function bindingsInUse(overrides: ShortcutOverrides): readonly Shortcut[]
   return SHORTCUTS.map((s) =>
     Object.hasOwn(overrides, s.action) ? { ...s, keys: overrides[s.action] ?? [] } : s,
   );
+}
+
+/** The bindings of the actions whose keys differ from the defaults: what an account stores. */
+export function overridesFrom(
+  keys: Readonly<Partial<Record<ShortcutAction, readonly string[]>>>,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const s of SHORTCUTS) {
+    const k = keys[s.action];
+    if (k && (k.length !== s.keys.length || k.some((b, i) => b !== s.keys[i])))
+      out[s.action] = [...k];
+  }
+  return out;
 }
 
 /** A binding taken apart, with Mod resolved for the platform. */
@@ -157,6 +174,36 @@ function baseKey(e: KeyPress): string | null {
   if (code < 65 || code > 90) return null;
   const letter = String.fromCharCode(code);
   return e.shiftKey ? letter : letter.toLowerCase();
+}
+
+/** Keys that only modify another one: a press of them alone is no binding yet. */
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'CapsLock']);
+
+/**
+ * The binding a key press records ("Alt-n", "?", "Mod-Shift-k"), with Cmd on a
+ * Mac and Ctrl elsewhere written Mod; null for a modifier alone or a key the
+ * browser can't name.
+ */
+export function bindingFromPress(e: KeyPress, mac: boolean): string | null {
+  if (MODIFIER_KEYS.has(e.key)) return null;
+  const modified = !!(e.ctrlKey || e.altKey || e.metaKey);
+  // With a modifier, the key code names the key under the fingers: Alt+N is
+  // a dead key on a Mac. Without one, Shift is in what the key types ("?", "J").
+  const base = modified ? baseKey(e) : null;
+  let key = e.key === ' ' ? 'Space' : e.key;
+  if (base) key = base.toLowerCase();
+  else if (['Dead', 'Unidentified', 'Process', ''].includes(e.key)) return null;
+  else if (isTypedKey(e.key)) {
+    if (!modified) return key;
+    key = key.toLowerCase();
+  }
+  const mods = [
+    e.ctrlKey ? (mac ? 'Ctrl' : 'Mod') : '',
+    e.metaKey ? (mac ? 'Mod' : 'Meta') : '',
+    e.altKey ? 'Alt' : '',
+    e.shiftKey ? 'Shift' : '',
+  ].filter(Boolean);
+  return [...mods, key].join('-');
 }
 
 /** Whether a press is a binding's key with exactly its modifiers. */

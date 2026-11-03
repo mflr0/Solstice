@@ -836,6 +836,24 @@ export const it: Messages = {
     toggleHint:
       'Tasti come c o / agiscono senza Ctrl né Alt. Disattivale se disturbano uno screen reader o il controllo vocale.',
     list: 'Vedi tutte le scorciatoie',
+    bindings: 'Tasti',
+    bindingsHint:
+      'Scegli «Aggiungi un tasto», poi premi i tasti. I nuovi tasti funzionano dopo il salvataggio.',
+    noKey: 'Nessun tasto',
+    addKey: 'Aggiungi un tasto',
+    recording: 'Premi i tasti, o Esc per annullare',
+    recorded: (key: string, action: string) => `${key} aggiunto a «${action}».`,
+    cancelled: 'Nessun tasto aggiunto.',
+    refused: (key: string) =>
+      `${key} non può essere una scorciatoia: lo tiene il browser o la pagina.`,
+    already: (key: string) => `${key} è già un tasto di questa azione.`,
+    removeKey: (key: string) => `Rimuovi ${key}`,
+    reset: 'Ripristina',
+    resetAction: (action: string) => `Ripristina «${action}»`,
+    resetAll: 'Ripristina tutto',
+    clashWith: (action: string) => `Usato anche da «${action}»`,
+    clashBlocked: 'Due azioni condividono un tasto. Cambiane una per salvare.',
+    saved: 'Scorciatoie salvate.',
   },
   comments: {
     empty: 'Ancora nessun commento.',
