@@ -382,20 +382,23 @@
   letter-spacing: 0.015em;
 }
 
-[data-skin='orbite'] .logo .logo-sun {
-  fill: var(--sun);
-  filter: drop-shadow(0 0 2.2px color-mix(in srgb, var(--sun) 75%, transparent));
+/* The mark (./orbite/logo.svg). The sun's glow is a gradient: a mask clips filter. */
+[data-skin='orbite'] .logo > * {
+  display: none;
 }
 
-[data-skin='orbite'] .logo .logo-orbit {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  opacity: 0.6;
-}
-
-[data-skin='orbite'] .logo .logo-planet {
-  fill: currentColor;
+[data-skin='orbite'] .logo {
+  background:
+    radial-gradient(35.42% 35.42% at 50% 52.08%, var(--sun) 58%, currentColor 76%), currentColor;
+  mask:
+    url('./orbite/logo.svg') center / contain no-repeat,
+    radial-gradient(
+      35.42% 35.42% at 50% 52.08%,
+      rgb(0 0 0 / 22%) 49.4%,
+      rgb(0 0 0 / 12%) 65.9%,
+      rgb(0 0 0 / 4%) 82.4%,
+      transparent 100%
+    );
 }
 
 [data-skin='orbite'] .topbar-nav {

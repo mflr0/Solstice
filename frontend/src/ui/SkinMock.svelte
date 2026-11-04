@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Scheme, Skin } from '../core/appearance.js';
   import { t } from '../i18n/t.js';
-  import { setPreviewSkin } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import TypeMark from './TypeMark.svelte';
 
@@ -15,7 +14,6 @@
     scheme: Scheme;
   }
   const { skin, scheme }: Props = $props();
-  setPreviewSkin(() => skin);
 
   const m = t.themes.mock;
   const first = m.rows[0];
