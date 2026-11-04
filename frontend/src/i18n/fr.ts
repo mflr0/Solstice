@@ -153,16 +153,6 @@ export const fr: Messages = {
     eyebrow: 'Apparence',
     intro:
       'Chaque thème redessine toute l’interface, pour vous seul. Cliquez sur un aperçu pour l’appliquer ; le mode clair ou sombre suit votre choix.',
-    descriptions: {
-      carnet: 'Le carnet de chantier : papier crème, encre noire, un trait vermillon.',
-      orbite: 'Observatoire de nuit : bleu profond, étoiles discrètes, le soleil en accent.',
-      crayon: 'Esquisse au crayon : graphite, papier grainé ; en sombre, un tableau noir.',
-      luna: 'Bureau des années 2000 : barres de titre bleues, bouton vert, tons beiges.',
-      retro: 'Bureau de la fin des années 90 : gris en relief, fenêtres marine, fond sarcelle.',
-      classique: 'Familier pour qui vient de l’outil d’origine : blanc, bleu, sobre.',
-      terminal: 'Écran phosphore vert ; en clair, un listing sur papier zébré.',
-      plan: 'Plan d’architecte : bleu, quadrillage blanc, cartouches ; en clair, un tirage.',
-    },
     current: 'Thème actuel',
     use: 'Utiliser ce thème',
     apply: (name: string, scheme: string) => `Appliquer ${name}, ${scheme}`,

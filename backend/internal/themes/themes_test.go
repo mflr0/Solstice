@@ -53,6 +53,15 @@ func TestParseManifest(t *testing.T) {
 	if err != nil || len(light.Schemes) != 1 {
 		t.Errorf("light only: %v %v", light.Schemes, err)
 	}
+	about, err := ParseManifest(manifestWith(t, func(m map[string]any) {
+		m["about"] = map[string]string{"en": "A barn owl at dusk.", "fr": "Une chouette au crépuscule."}
+	}))
+	if err != nil || about.About["fr"] != "Une chouette au crépuscule." {
+		t.Errorf("with about: %v %v", about.About, err)
+	}
+	if m.About != nil {
+		t.Errorf("without about: %v", m.About)
+	}
 }
 
 func TestParseManifestRefuses(t *testing.T) {
@@ -79,6 +88,9 @@ func TestParseManifestRefuses(t *testing.T) {
 		"name blank text":   set("name", map[string]string{"en": "Owl", "fr": " "}),
 		"name a string":     set("name", "Owl"),
 		"description no en": set("description", map[string]string{"de": "Eule"}),
+		"about without en":  set("about", map[string]string{"fr": "Une chouette."}),
+		"about empty":       set("about", map[string]string{}),
+		"about blank text":  set("about", map[string]string{"en": "An owl.", "de": "\t"}),
 		"author missing":    func(m map[string]any) { delete(m, "author") },
 		"author blank":      set("author", "  "),
 		"schemes dark only": set("schemes", []string{"dark"}),
@@ -268,6 +280,9 @@ func TestBuiltin(t *testing.T) {
 	var got []string
 	for _, m := range Builtin().Index().Themes {
 		got = append(got, m.ID)
+		if m.About["en"] == "" {
+			t.Errorf("%s: no English about", m.ID)
+		}
 	}
 	want := []string{"carnet", "orbite", "crayon", "luna", "retro", "classique", "terminal", "plan"}
 	if !slices.Equal(got, want) {

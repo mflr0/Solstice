@@ -33,8 +33,9 @@ type Manifest struct {
 	ID          string             `json:"id"`
 	Contract    int                `json:"contract"`
 	Version     string             `json:"version"`
-	Name        map[string]string  `json:"name"`        // locale → text
-	Description map[string]string  `json:"description"` // locale → text
+	Name        map[string]string  `json:"name"`            // locale → text
+	Description map[string]string  `json:"description"`     // locale → text
+	About       map[string]string  `json:"about,omitempty"` // locale → text, optional
 	Author      string             `json:"author"`
 	Schemes     []string           `json:"schemes"`
 	Preview     map[string]Preview `json:"preview"` // scheme → colours
@@ -81,7 +82,10 @@ func (m Manifest) check() error {
 	if !semverPattern.MatchString(m.Version) {
 		return fmt.Errorf("version %q: not a semantic version", m.Version)
 	}
-	for field, texts := range map[string]map[string]string{"name": m.Name, "description": m.Description} {
+	for field, texts := range map[string]map[string]string{"name": m.Name, "description": m.Description, "about": m.About} {
+		if field == "about" && texts == nil {
+			continue
+		}
 		if texts["en"] == "" {
 			return fmt.Errorf("%s: no English (en) text", field)
 		}

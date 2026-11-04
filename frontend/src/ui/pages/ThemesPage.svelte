@@ -26,10 +26,9 @@
     return skinSheets[skin]?.dark === false ? ['light'] : ['light', 'dark'];
   }
 
-  /** The gallery's longer description of a built-in, else the manifest's. */
+  /** The manifest's longer sentence, else its few words on the look. */
   function description(theme: ThemeManifest): string {
-    const long: Partial<Record<string, string>> = t.themes.descriptions;
-    return long[theme.id] ?? localized(theme.description, locale);
+    return localized(theme.about ?? theme.description, locale);
   }
 
   /** Applies the skin; picking the other scheme's preview switches the mode too. */

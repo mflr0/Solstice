@@ -16,6 +16,13 @@
     "it": "mina di matita",
     "hi": "पेंसिल का ग्रेफ़ाइट"
   },
+  "about": {
+    "en": "A pencil sketch: graphite on grainy paper; in dark mode, a blackboard.",
+    "fr": "Esquisse au crayon : graphite, papier grainé ; en sombre, un tableau noir.",
+    "de": "Eine Bleistiftskizze: Graphit auf körnigem Papier; im Dunkelmodus eine Schultafel.",
+    "it": "Schizzo a matita: grafite su carta ruvida; in scuro, una lavagna.",
+    "hi": "पेंसिल स्केच: दानेदार कागज़ पर ग्रेफ़ाइट; डार्क मोड में, एक ब्लैकबोर्ड।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

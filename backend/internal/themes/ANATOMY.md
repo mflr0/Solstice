@@ -485,6 +485,7 @@ Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
   "version": "1.0.0",
   "name": { "en": "Night owl", "fr": "Chouette" },
   "description": { "en": "Dark and calm." },
+  "about": { "en": "A night sky: deep blue, a pale moon, an orange accent." },
   "author": "Someone",
   "schemes": ["light", "dark"],
   "preview": {
@@ -500,6 +501,9 @@ Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
 - `name`, `description`: locale → text, `en` required, no empty text. The menus
   show the name and, under it, the description: a few words on the look.
   A missing locale shows the English text.
+- `about`: optional, locale → text like `name`, `en` required when present.
+  The theme gallery (`/themes`) shows it under the name: a sentence on the
+  theme. Without it, the gallery shows the description.
 - `author`: not empty.
 - `schemes`: `["light"]` or `["light", "dark"]`.
 - `preview`: for each scheme, and only those, `bar`, `paper`, `ink` and

@@ -154,16 +154,6 @@ export const en = {
     eyebrow: 'Appearance',
     intro:
       'Each theme redraws the whole interface, for you alone. Click a preview to apply it; light or dark mode follows your choice.',
-    descriptions: {
-      carnet: 'The site notebook: cream paper, black ink, a vermilion stroke.',
-      orbite: 'A night observatory: deep blue, faint stars, the sun as the accent.',
-      crayon: 'A pencil sketch: graphite on grainy paper; in dark mode, a blackboard.',
-      luna: 'A 2000s desktop: blue title bars, a green button, beige tones.',
-      retro: 'A late-’90s desktop: raised grey, navy windows, a teal background.',
-      classique: 'Familiar if you come from the original tool: white, blue, understated.',
-      terminal: 'A green phosphor screen; in light mode, a printout on striped paper.',
-      plan: 'An architect’s plan: blue, a white grid, title blocks; in light mode, a print.',
-    },
     current: 'Current theme',
     use: 'Use this theme',
     apply: (name: string, scheme: string) => `Apply ${name}, ${scheme}`,

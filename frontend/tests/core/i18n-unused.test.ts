@@ -27,7 +27,6 @@ const DYNAMIC: Record<string, string> = {
   'auditAdmin.detailKeys': 'the keys of the server’s audit details',
   'auditAdmin.targets': 'the target types of the server’s audit entries',
   'projects.kinds': 'the project types the server stores',
-  'themes.descriptions': 'the ids of the built-in themes (backend/internal/themes/builtin)',
   'login.ssoErrors': 'the codes the server’s single sign-on sends back to /login?error=',
   seeded: 'the keys the server tags seeded catalogue entries with (seeded.test.ts pins them)',
 };

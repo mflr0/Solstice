@@ -16,6 +16,13 @@
     "it": "barre blu, toni beige",
     "hi": "नीली पट्टियाँ, बेज रंग"
   },
+  "about": {
+    "en": "A 2000s desktop: blue title bars, a green button, beige tones.",
+    "fr": "Bureau des années 2000 : barres de titre bleues, bouton vert, tons beiges.",
+    "de": "Ein Desktop der 2000er: blaue Titelleisten, ein grüner Knopf, Beigetöne.",
+    "it": "Desktop degli anni 2000: barre del titolo blu, pulsante verde, toni beige.",
+    "hi": "2000 के दशक का डेस्कटॉप: नीली टाइटल बार, हरा बटन, बेज रंग।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",
