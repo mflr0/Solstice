@@ -377,3 +377,121 @@ func TestBuiltinThemeDisable(t *testing.T) {
 		t.Errorf("an enabled built-in's file: %d", status)
 	}
 }
+
+// exportedFiles downloads a theme's package, and returns its files.
+func exportedFiles(t *testing.T, c *client, id string) (http.Header, map[string][]byte) {
+	t.Helper()
+	status, h, body := call(t, c, c.base, "GET", "/api/themes/"+id+"/export", nil, nil)
+	if status != 200 {
+		t.Fatalf("export %s: %d\n%s", id, status, body)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string][]byte{}
+	for _, f := range zr.File {
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[f.Name], err = io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return h, files
+}
+
+func zipFiles(t *testing.T, files map[string][]byte) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	zw := zip.NewWriter(&b)
+	for name, data := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write(data); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func TestThemeExportBuiltinRoundTrip(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	user := login(t, "paul.martin", jirafixture.Password)
+	h, files := exportedFiles(t, user, "orbite")
+	if h.Get("Content-Type") != "application/zip" || !strings.HasPrefix(h.Get("Content-Disposition"), `attachment; filename=orbite-`) {
+		t.Errorf("headers %v", h)
+	}
+	root := os.DirFS("../internal/themes/builtin/orbite")
+	var count int
+	err := fs.WalkDir(root, ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		count++
+		want, err := fs.ReadFile(root, name)
+		if err == nil && !bytes.Equal(files[name], want) {
+			t.Errorf("%s differs in the export", name)
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != count {
+		t.Errorf("%d files exported, the package has %d", len(files), count)
+	}
+
+	// This instance has the id already: the import takes another, and keeps the anchor.
+	e := importTheme(t, admin, zipFiles(t, files))
+	if e.ID != "orbite-2" || e.ManifestID != "orbite" || e.Origin != "imported" {
+		t.Errorf("import of the export %+v", e)
+	}
+	status, css := themeServes(t, e.ID)
+	if status != 200 || css != string(files["theme.css"]) {
+		t.Errorf("%s: %d: the imported stylesheet differs", e.ID, status)
+	}
+}
+
+func TestThemeExportImported(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	user := login(t, "paul.martin", jirafixture.Password)
+	id := unique("chk")
+	data := themeZip(t, id, "1.2.3", nil)
+	importTheme(t, admin, data)
+	second := importTheme(t, admin, data)
+
+	// A second copy, served under a suffix, exports under its package's id.
+	h, files := exportedFiles(t, user, second.ID)
+	if got := h.Get("Content-Disposition"); !strings.Contains(got, id+"-1.2.3.zip") {
+		t.Errorf("Content-Disposition %q", got)
+	}
+	var m struct{ ID string }
+	if err := json.Unmarshal(files["theme.json"], &m); err != nil || m.ID != id {
+		t.Errorf("exported manifest id %q, %v", m.ID, err)
+	}
+
+	admin.call("POST", "/api/admin/themes/"+second.ID+"/disable", nil, 200, nil)
+	user.call("GET", "/api/themes/"+second.ID+"/export", nil, 404, nil)
+	exportedFiles(t, admin, second.ID)
+}
+
+func TestThemeExportRefused(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	user := login(t, "paul.martin", jirafixture.Password)
+	anonymous(t).call("GET", "/api/themes/carnet/export", nil, 401, nil)
+	user.call("GET", "/api/themes/nobody/export", nil, 404, nil)
+
+	admin.call("POST", "/api/admin/themes/plan/disable", nil, 200, nil)
+	t.Cleanup(func() { admin.do("POST", "/api/admin/themes/plan/enable", nil) })
+	user.call("GET", "/api/themes/plan/export", nil, 404, nil)
+	exportedFiles(t, admin, "plan")
+}

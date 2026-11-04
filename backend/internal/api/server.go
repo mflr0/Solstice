@@ -252,6 +252,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	// Theme packages, public: the sign-in page is themed too.
 	route("GET /api/themes", themeIndex(s.themes), scopePublic)
 	route("GET /api/themes/{id}/{path...}", themeFile(s.themes), scopePublic)
+	route("GET /api/themes/{id}/export", s.exportTheme, auth.ScopeRead)
 	s.themeAdminRoutes(route)
 
 	// The setup wizard is over: it only learns so.

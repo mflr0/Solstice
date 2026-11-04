@@ -536,6 +536,9 @@ instance (`<data>/themes/<id>`) by English name, each with the id it is served u
 `fonts/…`, with an ETag, and under `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`
 so an SVG opened on its own runs no script. `theme.json` and other files are not served.
 
+`GET /api/themes/<id>/export`, for a signed-in user, answers the package as a zip an
+import takes, under its manifest's id. Only an administrator can export a disabled theme.
+
 An administrator imports a package as a zip (`POST /api/admin/themes`, see
 `backend/internal/api/ADMIN_API.md`). `theme.json` and `theme.css` sit at the
 root of the zip, not in a folder. An import takes less than a built-in package
