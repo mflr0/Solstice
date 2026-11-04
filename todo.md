@@ -51,8 +51,8 @@ Each epic lists its tickets in the order they should be done.
   are the OAuth authorization server (#492) and dynamic client registration
   with the admin view of grants (#493).
 - Theme packages: built-in themes load from packages (#526), admins import,
-  export and manage them (#527), users submit themes for approval (#528), and
-  a theme authoring kit (#529).
+  export and manage them (#527), users import private themes in their browser
+  (#528), and a theme authoring kit (#529).
 - Highlight what searches match (#517), starting with one every-word match
   rule for list filters (#518).
 - REST: create a sprint through `POST /rest/agile/1.0/sprint` (#562).
