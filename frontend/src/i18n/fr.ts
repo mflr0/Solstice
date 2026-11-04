@@ -1427,6 +1427,7 @@ export const fr: Messages = {
       overview: 'Vue d’ensemble',
       settings: 'Réglages généraux',
       banner: 'Bandeau d’annonce',
+      themes: 'Thèmes',
       users: 'Utilisateurs',
       groups: 'Groupes',
       projects: 'Projets',
@@ -1449,6 +1450,7 @@ export const fr: Messages = {
       overview: 'Ce qui reste à régler, et toutes les sections.',
       settings: 'Nom de l’instance, adresse publique, langue par défaut.',
       banner: 'Un message affiché en haut de toutes les pages.',
+      themes: 'Importer, activer, désactiver, supprimer et exporter les thèmes.',
       users: 'Créer des comptes, les désactiver, changer un mot de passe.',
       groups: 'Rassembler des personnes pour leur donner des droits ensemble.',
       projects: 'Créer, renommer, archiver ou supprimer un projet.',
@@ -2472,6 +2474,37 @@ export const fr: Messages = {
     saved: 'Réglages généraux enregistrés.',
   },
 
+  themesAdmin: {
+    intro:
+      'Les thèmes que chacun peut choisir. Désactiver ou supprimer un thème renvoie ceux qui l’utilisent au thème par défaut au prochain chargement de page.',
+    contractNote: (contract: number) =>
+      `Cette version de Solstice lit le contrat de thème ${contract}.`,
+    import: 'Importer un thème',
+    uploading: 'Envoi du paquet…',
+    refused: (file: string) => `${file} a été refusé`,
+    author: 'Auteur',
+    version: 'Version',
+    contract: 'Contrat',
+    origins: { builtin: 'intégré', imported: 'importé' },
+    on: 'activé',
+    off: 'désactivé',
+    preview: 'Aperçu',
+    hidePreview: 'Masquer l’aperçu',
+    previewOff: 'Activez ce thème pour le prévisualiser.',
+    previewFailed: 'Impossible de charger l’aperçu.',
+    export: 'Exporter',
+    enable: 'Activer',
+    disable: 'Désactiver',
+    replace: 'Remplacer',
+    imported: (name: string) => `${name} importé`,
+    replaced: (name: string, version: string) => `${name} remplacé par la version ${version}`,
+    enabled: (name: string) => `${name} activé`,
+    disabled: (name: string) => `${name} désactivé`,
+    deleted: (name: string) => `${name} supprimé`,
+    deleteTitle: (name: string) => `Supprimer ${name}\u00a0?`,
+    deleteBody: (fallback: string) =>
+      `Les personnes qui utilisent ce thème reviennent à ${fallback}. Cette action est irréversible.`,
+  },
   bannerAdmin: {
     intro:
       'Un message en haut de toutes les pages, pour tout le monde : une maintenance prévue, une nouveauté. Chacun peut le masquer ; il revient si le texte change.',

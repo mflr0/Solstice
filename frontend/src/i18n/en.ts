@@ -1417,6 +1417,7 @@ export const en = {
       overview: 'Overview',
       settings: 'General settings',
       banner: 'Announcement banner',
+      themes: 'Themes',
       users: 'Users',
       groups: 'Groups',
       projects: 'Projects',
@@ -1439,6 +1440,7 @@ export const en = {
       overview: 'What is left to set up, and every section.',
       settings: 'Instance name, public address, default language.',
       banner: 'A message shown at the top of every page.',
+      themes: 'Import, turn on or off, delete and export the themes.',
       users: 'Create accounts, deactivate them, change a password.',
       groups: 'Gather people to give them permissions together.',
       projects: 'Create, rename, archive or delete a project.',
@@ -2451,6 +2453,37 @@ export const en = {
     saved: 'General settings saved.',
   },
 
+  themesAdmin: {
+    intro:
+      'The themes people can choose from. Turning a theme off or deleting it sends those using it back to the default theme the next time they load a page.',
+    contractNote: (contract: number) =>
+      `This version of Solstice reads theme contract ${contract}.`,
+    import: 'Import a theme',
+    uploading: 'Sending the package…',
+    refused: (file: string) => `${file} was refused`,
+    author: 'Author',
+    version: 'Version',
+    contract: 'Contract',
+    origins: { builtin: 'built-in', imported: 'imported' },
+    on: 'enabled',
+    off: 'disabled',
+    preview: 'Preview',
+    hidePreview: 'Hide preview',
+    previewOff: 'Enable this theme to preview it.',
+    previewFailed: 'The preview could not be loaded.',
+    export: 'Export',
+    enable: 'Enable',
+    disable: 'Disable',
+    replace: 'Replace',
+    imported: (name: string) => `${name} imported`,
+    replaced: (name: string, version: string) => `${name} replaced with version ${version}`,
+    enabled: (name: string) => `${name} enabled`,
+    disabled: (name: string) => `${name} disabled`,
+    deleted: (name: string) => `${name} deleted`,
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteBody: (fallback: string) =>
+      `Anyone using this theme goes back to ${fallback}. This cannot be undone.`,
+  },
   bannerAdmin: {
     intro:
       'A message at the top of every page, for everyone: planned maintenance, something new. Anyone can hide it; it comes back if the text changes.',

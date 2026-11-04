@@ -1410,6 +1410,7 @@ export const hi: Messages = {
       overview: 'अवलोकन',
       settings: 'सामान्य सेटिंग्स',
       banner: 'घोषणा बैनर',
+      themes: 'थीम',
       users: 'उपयोगकर्ता',
       groups: 'समूह',
       projects: 'प्रोजेक्ट',
@@ -1432,6 +1433,7 @@ export const hi: Messages = {
       overview: 'क्या-क्या अभी सेट करना बाकी है, और सभी भाग।',
       settings: 'इंस्टेंस का नाम, सार्वजनिक पता, डिफ़ॉल्ट भाषा।',
       banner: 'सभी पेजों के ऊपर दिखने वाला संदेश।',
+      themes: 'थीम इंपोर्ट, चालू, बंद, हटाना और एक्सपोर्ट करना।',
       users: 'खाते बनाना, उन्हें निष्क्रिय करना, पासवर्ड बदलना।',
       groups: 'लोगों को एक साथ जोड़कर उन्हें साथ में अनुमतियाँ देना।',
       projects: 'प्रोजेक्ट बनाना, नाम बदलना, संग्रह करना या मिटाना।',
@@ -2440,6 +2442,37 @@ export const hi: Messages = {
     saved: 'सामान्य सेटिंग्स सहेजी गईं।',
   },
 
+  themesAdmin: {
+    intro:
+      'वे थीम जिनमें से सभी चुन सकते हैं। किसी थीम को बंद करने या हटाने पर, उसका उपयोग करने वाले लोग अगली बार पेज लोड होने पर डिफ़ॉल्ट थीम पर लौट आते हैं।',
+    contractNote: (contract: number) =>
+      `Solstice का यह वर्ज़न थीम कॉन्ट्रैक्ट ${contract} पढ़ता है।`,
+    import: 'थीम इंपोर्ट करें',
+    uploading: 'पैकेज भेजा जा रहा है…',
+    refused: (file: string) => `${file} अस्वीकार कर दिया गया`,
+    author: 'लेखक',
+    version: 'वर्ज़न',
+    contract: 'कॉन्ट्रैक्ट',
+    origins: { builtin: 'अंतर्निहित', imported: 'इंपोर्ट किया गया' },
+    on: 'चालू',
+    off: 'बंद',
+    preview: 'पूर्वावलोकन',
+    hidePreview: 'पूर्वावलोकन छिपाएँ',
+    previewOff: 'पूर्वावलोकन देखने के लिए यह थीम चालू करें।',
+    previewFailed: 'पूर्वावलोकन लोड नहीं हो सका।',
+    export: 'एक्सपोर्ट करें',
+    enable: 'चालू करें',
+    disable: 'बंद करें',
+    replace: 'बदलें',
+    imported: (name: string) => `${name} इंपोर्ट किया गया`,
+    replaced: (name: string, version: string) => `${name} को वर्ज़न ${version} से बदला गया`,
+    enabled: (name: string) => `${name} चालू किया गया`,
+    disabled: (name: string) => `${name} बंद किया गया`,
+    deleted: (name: string) => `${name} हटाया गया`,
+    deleteTitle: (name: string) => `${name} हटाएँ?`,
+    deleteBody: (fallback: string) =>
+      `इस थीम का उपयोग करने वाले लोग ${fallback} पर लौट आएँगे। इसे पूर्ववत नहीं किया जा सकता।`,
+  },
   bannerAdmin: {
     intro:
       'सभी पेजों के ऊपर सबको दिखने वाला संदेश: पहले से तय मेंटेनेंस, कोई नई बात। कोई भी इसे छिपा सकता है; टेक्स्ट बदलने पर यह फिर दिखने लगता है।',

@@ -28,6 +28,12 @@ export function loadThemes(): Promise<void> {
   return listing;
 }
 
+/** Fetches the list again: a theme was added, changed or removed. */
+export function reloadThemes(): Promise<void> {
+  listing = undefined;
+  return loadThemes();
+}
+
 /** What is known of each loaded skin: whether it draws a dark variant. */
 export const skinSheets = $state<Partial<Record<Skin, { dark: boolean }>>>({});
 
@@ -49,9 +55,12 @@ function bootFetch(skin: Skin): Promise<string | null> | undefined {
   return boot.css;
 }
 
-async function fetchCss(skin: Skin): Promise<string | null> {
+async function fetchCss(skin: Skin, cache?: RequestCache): Promise<string | null> {
   try {
-    const res = await fetch(`/api/themes/${skin}/theme.css`, { credentials: 'same-origin' });
+    const res = await fetch(`/api/themes/${skin}/theme.css`, {
+      credentials: 'same-origin',
+      ...(cache ? { cache } : {}),
+    });
     return res.ok ? await res.text() : null;
   } catch {
     return null;
@@ -63,10 +72,10 @@ export function isSkinLoaded(skin: Skin): boolean {
 }
 
 /** Resolves to whether the skin's stylesheet is in. */
-export function loadSkin(skin: Skin): Promise<boolean> {
+export function loadSkin(skin: Skin, cache?: RequestCache): Promise<boolean> {
   let p = pending[skin];
   if (!p) {
-    p = (bootFetch(skin) ?? fetchCss(skin)).then((source) => {
+    p = (bootFetch(skin) ?? fetchCss(skin, cache)).then((source) => {
       if (source === null) {
         // Try again next time.
         delete pending[skin];
@@ -83,4 +92,13 @@ export function loadSkin(skin: Skin): Promise<boolean> {
     pending[skin] = p;
   }
   return p;
+}
+
+/** Fetches a skin already asked for again, its package having changed; the old stylesheet stays until the new one is in. */
+export async function reloadSkin(skin: Skin): Promise<void> {
+  if (!pending[skin]) return;
+  delete pending[skin];
+  const stale = [...document.head.querySelectorAll(`style[data-skin-css="${skin}"]`)];
+  // The server allows stale-while-revalidate, which would answer the old stylesheet.
+  if (await loadSkin(skin, 'no-cache')) for (const style of stale) style.remove();
 }

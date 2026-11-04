@@ -55,6 +55,7 @@ import type {
   WebhookDelivery,
   WebhookInput,
 } from '../core/admin-types.js';
+import type { AdminTheme, AdminThemes } from '../core/admin-themes.js';
 import type { AdminProjectRow, ProjectSettings } from '../core/project-admin.js';
 import type { IdName, Me, Preferences, UserRef } from '../core/types.js';
 import { query, request } from './api.js';
@@ -267,6 +268,24 @@ export const adminApi = {
   auditSettings: () => request<{ retentionDays: number }>('GET', '/api/admin/audit/settings'),
   saveAuditSettings: (retentionDays: number) =>
     request<{ retentionDays: number }>('PUT', '/api/admin/audit/settings', { retentionDays }),
+
+  // Themes.
+  themes: () => request<AdminThemes>('GET', '/api/admin/themes'),
+  /** A refused package answers 400 with its findings in the error's data. */
+  importTheme: (file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<AdminTheme>('POST', '/api/admin/themes', form);
+  },
+  replaceTheme: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return request<AdminTheme>('PUT', `/api/admin/themes/${enc(id)}`, form);
+  },
+  switchTheme: (id: string, on: boolean) =>
+    request<AdminTheme>('POST', `/api/admin/themes/${enc(id)}/${on ? 'enable' : 'disable'}`),
+  deleteTheme: (id: string) => request<void>('DELETE', `/api/admin/themes/${enc(id)}`),
+  themeExportUrl: (id: string) => `/api/themes/${enc(id)}/export`,
 };
 
 /** What a project administrator changes in a project (project settings). */

@@ -4,6 +4,12 @@ import type { AdminSection } from '../../core/areas.js';
 export const ADMIN_ICONS: Record<Exclude<AdminSection, 'overview'>, string[]> = {
   settings: ['M2.5 4.5h11', 'M2.5 8h11', 'M2.5 11.5h11', 'M5.5 3v3', 'M10.5 6.5v3', 'M7 10v3'],
   banner: ['M3.5 14V2.5', 'M3.5 3h8.5l-2 3 2 3H3.5'],
+  themes: [
+    'M8 2a6 6 0 1 0 0 12c1 0 1.5-.6 1.5-1.3c0-1-.9-1.2-.9-2c0-.7.6-1.2 1.4-1.2H12a2 2 0 0 0 2-2C14 4.4 11.3 2 8 2z',
+    'M4.8 7.5h.01',
+    'M7.5 4.8h.01',
+    'M10.8 5.8h.01',
+  ],
   users: ['M5.5 5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0', 'M3 13.5c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5'],
   groups: [
     'M3.5 5.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
