@@ -8,6 +8,7 @@ import { onFilter, type GadgetKind } from './dashboard.js';
 import { emptyFilters, filtersToJql, isBlank, jqlToFilters } from './filters.js';
 import type { SearchLocation } from './filters-url.js';
 import { quote } from './jql.js';
+import { projectOfIssueKey } from './marks.js';
 import { paths, type Route } from './route.js';
 
 /** A simple-syntax query (@moi est:ouvert…) limited to the project. */
@@ -43,7 +44,8 @@ export function boardsLanding(boards: BoardSummary[], key: string | null): strin
 }
 
 /**
- * Where a page goes when the scope changes to the project: the board list,
+ * Where a page goes when the scope changes to the project: the project pages
+ * go to the new project's page (the list for every project); the board list,
  * and a board of another project, go to the project's landing. null: it stays.
  */
 export function scopeSwitch(
@@ -51,11 +53,52 @@ export function scopeSwitch(
   boards: BoardSummary[],
   key: string | null,
 ): string | null {
+  if (onProjects(route)) return key ? paths.project(key) : paths.projects();
   if (route.name === 'boards') return boardsLanding(boards, key) ?? paths.boards();
   if (!onBoard(route) || !key) return null;
   const board = boards.find((b) => b.id === route.id);
   if (board?.projects.some((p) => p.key === key)) return null;
   return boardsLanding(boards, key);
+}
+
+/** Whether the route is the project list, a project's page or its settings. */
+export function onProjects(route: Route): boolean {
+  return ['projects', 'project', 'projectSettings'].includes(route.name);
+}
+
+/**
+ * The project a board page stands for: the scoped one when the board covers
+ * it, else the board's first. null: the board has no project.
+ */
+export function boardProject(projects: { key: string }[], key: string | null): string | null {
+  if (key && projects.some((p) => p.key === key)) return key;
+  return projects[0]?.key ?? null;
+}
+
+/** Where a board's way back to the list goes: the list of the project it stands for. */
+export function boardListPath(projects: { key: string }[], key: string | null): string {
+  return paths.boards(boardProject(projects, key) ?? undefined);
+}
+
+/**
+ * The project New issue offers first: the page's (a project, an issue's, the
+ * board shown), else the scoped one. board: the projects of the board the
+ * route shows, null while it loads.
+ */
+export function createProject(
+  route: Route,
+  key: string | null,
+  board: { key: string }[] | null,
+): string | undefined {
+  switch (route.name) {
+    case 'project':
+    case 'projectSettings':
+      return route.key;
+    case 'issue':
+      return projectOfIssueKey(route.key) ?? key ?? undefined;
+  }
+  if (onBoard(route) && board) return boardProject(board, key) ?? key ?? undefined;
+  return key ?? undefined;
 }
 
 type BoardRoute = Extract<Route, { name: 'board' | 'backlog' | 'boardReports' | 'boardSettings' }>;

@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { BoardSummary } from '../../src/core/board-types.js';
 import type { SearchLocation } from '../../src/core/filters-url.js';
 import {
+  boardListPath,
   boardsLanding,
+  createProject,
   scopeBoards,
   scopeGadgetQuery,
   scopeQuery,
@@ -87,6 +89,15 @@ describe('switching the scope', () => {
     expect(scopeSwitch(on('boardSettings', 99), boards, 'OPS')).toBe('/boards/4');
   });
 
+  it('sends the project pages to the new project, or the list for every project', () => {
+    expect(scopeSwitch({ name: 'projects' }, [], 'OPS')).toBe('/projects/OPS');
+    expect(scopeSwitch({ name: 'project', key: 'WEB' }, [], 'OPS')).toBe('/projects/OPS');
+    expect(scopeSwitch({ name: 'projectSettings', key: 'WEB' }, [], 'OPS')).toBe('/projects/OPS');
+    expect(scopeSwitch({ name: 'projects' }, [], null)).toBe('/projects');
+    expect(scopeSwitch({ name: 'project', key: 'WEB' }, [], null)).toBe('/projects');
+    expect(scopeSwitch({ name: 'projectSettings', key: 'WEB' }, [], null)).toBe('/projects');
+  });
+
   it('stays on any board for every project, and off the boards', () => {
     expect(scopeSwitch(on('board', 4), boards, null)).toBeNull();
     expect(scopeSwitch({ name: 'search' }, boards, 'OPS')).toBeNull();
@@ -115,5 +126,37 @@ describe('switching the scope', () => {
     expect(scopeSearchSwitch({ ...at('project = A'), filter: 12 }, 'A', 'B')).toBeNull();
     expect(scopeSearchSwitch({ ...bare, filter: 12 }, 'A', 'B')).toBeNull();
     expect(scopeSearchSwitch(bare, 'A', 'B')).toBeNull();
+  });
+});
+
+describe('a board page', () => {
+  const keys = (...k: string[]) => k.map((key) => ({ key }));
+  const on = { name: 'board', id: 3 } as const;
+
+  it('offers its own project to New issue', () => {
+    expect(createProject(on, 'WEB', keys('OPS'))).toBe('OPS');
+    expect(createProject({ name: 'backlog', id: 3 }, null, keys('OPS'))).toBe('OPS');
+    expect(createProject(on, 'WEB', keys('DEMO', 'WEB'))).toBe('WEB');
+    expect(createProject(on, 'OPS', keys('DEMO', 'WEB'))).toBe('DEMO');
+    expect(createProject(on, null, keys('DEMO', 'WEB'))).toBe('DEMO');
+  });
+
+  it('offers the scope while the board loads, or when it has no project', () => {
+    expect(createProject(on, 'WEB', null)).toBe('WEB');
+    expect(createProject(on, 'WEB', [])).toBe('WEB');
+    expect(createProject(on, null, null)).toBeUndefined();
+  });
+
+  it('leaves the other pages to theirs', () => {
+    expect(createProject({ name: 'project', key: 'OPS' }, 'WEB', null)).toBe('OPS');
+    expect(createProject({ name: 'issue', key: 'OPS-12' }, 'WEB', null)).toBe('OPS');
+    expect(createProject({ name: 'home' }, 'WEB', keys('OPS'))).toBe('WEB');
+  });
+
+  it('leads back to the list of its project', () => {
+    expect(boardListPath(keys('OPS'), 'WEB')).toBe('/boards?project=OPS');
+    expect(boardListPath(keys('DEMO', 'WEB'), 'WEB')).toBe('/boards?project=WEB');
+    expect(boardListPath(keys('DEMO', 'WEB'), null)).toBe('/boards?project=DEMO');
+    expect(boardListPath([], 'WEB')).toBe('/boards');
   });
 });

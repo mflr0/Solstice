@@ -107,7 +107,7 @@
       >
       <a
         class="nav-link"
-        href={paths.projects()}
+        href={session.scope ? paths.project(session.scope) : paths.projects()}
         aria-current={section === 'projects' ? 'page' : undefined}>{t.nav.projects}</a
       >
       <a

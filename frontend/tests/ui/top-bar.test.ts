@@ -106,11 +106,11 @@ describe('TopBar keyboard', () => {
     expect(document.querySelector('header [onclick], header div[role="button"]')).toBeNull();
   });
 
-  it('links each page to its address', () => {
+  it('links each page to its address, Projects to the scoped one', () => {
     const hrefs = [...document.querySelectorAll('.topbar-nav a')].map((a) =>
       a.getAttribute('href'),
     );
-    expect(hrefs).toEqual([paths.home(), paths.projects(), paths.boards(), paths.search()]);
+    expect(hrefs).toEqual([paths.home(), paths.project('BETA'), paths.boards(), paths.search()]);
     expect(document.querySelector('.brand')?.getAttribute('href')).toBe(paths.home());
   });
 

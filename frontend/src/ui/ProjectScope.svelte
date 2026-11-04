@@ -1,6 +1,6 @@
 <script lang="ts">
   import { readLocation, writeLocation } from '../core/filters-url.js';
-  import { onBoard, scopeSearchSwitch, scopeSwitch } from '../core/scope.js';
+  import { onBoard, onProjects, scopeSearchSwitch, scopeSwitch } from '../core/scope.js';
   import type { Project } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { menu, outside } from '../lib/actions.js';
@@ -9,7 +9,7 @@
   import { session } from '../lib/session.svelte.js';
   import { notify } from '../lib/ui.svelte.js';
 
-  /** The top bar's project switcher: which project Work, Boards and Search cover. */
+  /** The top bar's project switcher: which project Work, Projects, Boards and Search cover. */
   let open = $state(false);
   let projects = $state<Project[] | null>(null);
   const current = $derived(session.me?.project ?? null);
@@ -37,7 +37,7 @@
       notify(errorMessage(e), 'error');
       return;
     }
-    // The board pages, and a search with no filter of the user's own, follow the new scope.
+    // The project and board pages, and a search with no filter of the user's own, follow the new scope.
     const route = router.route;
     if (route.name === 'search') {
       const loc = readLocation(router.search).loc;
@@ -47,6 +47,11 @@
           replace: true,
         });
       }
+      return;
+    }
+    if (onProjects(route)) {
+      const to = scopeSwitch(route, [], key);
+      if (to && to !== router.path) router.navigate(to, { replace: true });
       return;
     }
     if (route.name !== 'boards' && !onBoard(route)) return;
@@ -71,6 +76,9 @@
     title={current?.name ?? t.nav.scopeAllProjects}
     onclick={toggle}
   >
+    <span class="scope-caption">{t.nav.scopeCaption}</span>
+    <span class="scope-caption" aria-hidden="true">·</span>
+    <span class="scope-name">{current?.name ?? t.nav.scopeAllProjects}</span>
     <span class="scope-key">{current?.key ?? t.nav.scopeAll}</span>
     <span class="caret" aria-hidden="true">▾</span>
   </button>
@@ -109,25 +117,54 @@
     align-items: center;
     gap: 4px;
     height: 1.875rem;
-    max-width: 12ch;
+    max-width: 18rem;
     padding: 0 8px;
     border: 1px solid var(--rule);
     border-radius: var(--radius-s);
     background: none;
     color: var(--bar-ink-soft);
-    font: 500 0.78125rem/1 var(--font-mono);
+    font: 500 0.8125rem/1 var(--font-body);
     cursor: pointer;
+  }
+
+  .scope-caption {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .scope-name,
+  .scope-key {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scope-key {
+    display: none;
+    font: 500 0.78125rem/1 var(--font-mono);
+  }
+
+  /* A narrow bar has room for the key alone. */
+  @media (max-width: 600px) {
+    .scope-button {
+      max-width: 12ch;
+    }
+
+    .scope-caption,
+    .scope-name {
+      display: none;
+    }
+
+    .scope-key {
+      display: inline;
+    }
   }
 
   .scope-button:hover,
   .scope-button[aria-expanded='true'] {
     color: var(--bar-ink);
-  }
-
-  .scope-key {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .caret {

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { legacyBoardPath } from '../core/board.js';
-  import { projectOfIssueKey } from '../core/marks.js';
   import { isPublicRoute, paths, safeNext } from '../core/route.js';
+  import { createProject, onBoard } from '../core/scope.js';
   import { shortcutFor } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
   import { live } from '../lib/live.svelte.js';
@@ -16,6 +16,7 @@
     mac,
     notify,
     openCreate,
+    shownBoard,
   } from '../lib/ui.svelte.js';
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
@@ -35,17 +36,13 @@
   const route = $derived(router.route);
 
   /** The project offered first when creating an issue: the page's, else the scoped one. */
-  const project = $derived.by(() => {
-    switch (route.name) {
-      case 'project':
-      case 'projectSettings':
-        return route.key;
-      case 'issue':
-        return projectOfIssueKey(route.key) ?? session.scope ?? undefined;
-      default:
-        return session.scope ?? undefined;
-    }
-  });
+  const project = $derived(
+    createProject(
+      route,
+      session.scope,
+      onBoard(route) && shownBoard.id === route.id ? shownBoard.projects : null,
+    ),
+  );
 
   onMount(() => {
     const stopAppearance = initAppearance();

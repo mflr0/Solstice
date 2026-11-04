@@ -129,7 +129,8 @@ export const en = {
     /** The project switcher: which project Work, Boards and Search cover. */
     scopeAll: 'All',
     scopeAllProjects: 'All projects',
-    scopeLabel: (name: string) => `Projects shown: ${name}`,
+    scopeCaption: 'Project',
+    scopeLabel: (name: string) => `Project: ${name}`,
     skins: {
       carnet: 'Notebook',
       orbite: 'Orbit',
