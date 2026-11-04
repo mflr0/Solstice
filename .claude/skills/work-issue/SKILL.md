@@ -11,7 +11,7 @@ Every call re-reads the whole context, so make few of them: send independent cal
 
 ## 1. Pick
 
-Run `pick.sh $ARGUMENTS` and `ListAgents` in the same turn.
+Run `pick.sh $ARGUMENTS`.
 - With a number, it checks that ticket only, whatever its assignee.
 - Without one, it lists open, unassigned tickets. It leaves out `enhancement` unless that is a filter, and other label words narrow the list.
 - Order: position in the ticket's "Tracked in #N" issue, then issue number.
@@ -27,10 +27,9 @@ If one names an open ticket or an unmerged PR, add it to the ticket's "Waits for
 
 ## 2. Claim
 
-1. Take this session's short ref from the `ListAgents` output: the bracketed id after its name (e.g. `0dd017`). Session names can contain spaces, which the claim comment can't hold.
-2. Choose a short `<topic>` for the branch, then run `pick.sh --start N <session> <topic>`. It checks the main checkout has a local git identity, fetches, claims the ticket and creates the worktree `../Solstice-<topic>` on a new branch `v1.0/<topic>` from `origin/feat/v1.0`.
-   - Exit 3: another session holds or just won the ticket. Go back to step 1 with the next candidate. The label is the lock: don't message the other sessions.
-   - No local identity: ask me, the global one is not for this repo.
+Choose a short `<topic>` for the branch, then run `pick.sh --start N <topic>`. It checks the main checkout has a local git identity, fetches, claims the ticket with the `in progress` label and creates the worktree `../Solstice-<topic>` on a new branch `v1.0/<topic>` from `origin/feat/v1.0`.
+- Exit 3: another session holds the ticket. Go back to step 1 with the next candidate. The label is the lock: don't message the other sessions.
+- No local identity: ask me, the global one is not for this repo.
 
 If the work is dropped at any point, run `pick.sh --release N`.
 

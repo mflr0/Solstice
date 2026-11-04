@@ -3,17 +3,16 @@
 #
 #   pick.sh [number] [label...]      list candidates (or check one ticket),
 #                                     then print the first free one in full
-#   pick.sh --start N SESSION TOPIC   claim N and create its worktree; exit 3
-#                                     if another session won
-#   pick.sh --claim N SESSION         claim N only; exit 3 if another session won
+#   pick.sh --start N TOPIC           claim N and create its worktree; exit 3
+#                                     if another session holds it
+#   pick.sh --claim N                 claim N only; exit 3 if another session holds it
 #   pick.sh --release N               drop a claim
 #   pick.sh --ship N TOPIC draft|ready [--title T] [--note T]
 #                                     push, open the PR, comment "Closes #N."
 #   pick.sh --finish N PR TOPIC       wait for CI, merge, run --done, remove the
 #                                     worktree and branches, pull the base;
 #                                     exit 4 if a check failed
-#   pick.sh --done N PR               after merge: unlabel, drop claim comments,
-#                                     close, tick tracker
+#   pick.sh --done N PR               after merge: unlabel, close, tick tracker
 set -euo pipefail
 
 R=mflr0/Solstice
@@ -58,7 +57,7 @@ stale() {
 }
 
 claim() {
-  local n=$1 session=$2 has id at winner
+  local n=$1 has
   has=$(gh issue view "$n" -R "$R" --json state,labels \
     --jq "[.state, (.labels | map(.name) | index(\"$LABEL\") != null)] | @tsv")
   case $has in
@@ -75,21 +74,11 @@ claim() {
   gh label create "$LABEL" -R "$R" --color FBCA04 \
     --description 'A Claude session is working on it' >/dev/null 2>&1 || true
   gh issue edit "$n" -R "$R" --add-label "$LABEL" >/dev/null
-  id=$(gh api "repos/$R/issues/$n/comments" -f body="Claimed by session $session." --jq .id)
-  # Every session uses the same GitHub account, so the label's actor cannot
-  # break a race: the first claim comment since the label was set does.
-  at=$(labeled_at "$n")
-  winner=$(gh api "repos/$R/issues/$n/comments?per_page=100" --jq \
-    "[.[] | select(.created_at >= \"$at\") | .body | capture(\"^Claimed by session (?<s>.+)\\\\.\$\") | .s] | first // empty")
-  if [ "$winner" != "$session" ]; then
-    gh api -X DELETE "repos/$R/issues/comments/$id" >/dev/null
-    echo "#$n: claimed first by $winner"; exit 3
-  fi
-  echo "#$n: claimed by $session"
+  echo "#$n: claimed"
 }
 
 start() {
-  local n=$1 session=$2 topic=$3 main wt br=v1.0/$3
+  local n=$1 topic=$2 main wt br=v1.0/$2
   main=$(main_checkout)
   wt=$(worktree_of "$main" "$topic")
   [ -n "$(git -C "$main" config --local user.email)" ] ||
@@ -97,7 +86,7 @@ start() {
   [ ! -e "$wt" ] || die "$wt already exists"
   ! git -C "$main" show-ref --verify --quiet "refs/heads/$br" || die "branch $br already exists"
   git -C "$main" fetch -q origin
-  claim "$n" "$session"
+  claim "$n"
   git -C "$main" worktree add -q -b "$br" "$wt" "origin/$BASE"
   echo "worktree: $wt (branch $br from origin/$BASE)"
 }
@@ -190,13 +179,8 @@ release() {
 }
 
 done_() {
-  local n=$1 pr=$2 tracker body new id
+  local n=$1 pr=$2 tracker body new
   gh issue edit "$n" -R "$R" --remove-label "$LABEL" >/dev/null 2>&1 || true
-  for id in $(gh api "repos/$R/issues/$n/comments?per_page=100" --jq \
-    '.[] | select(.body | test("^Claimed by session .+\\.$")) | .id'); do
-    gh api -X DELETE "repos/$R/issues/comments/$id" >/dev/null
-  done
-  echo "#$n: claim comments deleted"
   if [ "$(gh issue view "$n" -R "$R" --json state --jq .state)" = OPEN ]; then
     gh issue close "$n" -R "$R" -c "Done in #$pr." >/dev/null
   fi
@@ -317,17 +301,16 @@ list() {
   echo
   gh issue view "$first" -R "$R" --json number,title,body,comments --jq '
     "=== #\(.number) \(.title)\n\n\(.body)"
-    + (.comments | map(select(.body | test("^Claimed by session .+\\.$") | not)
-        | "\n\n--- \(.author.login), \(.createdAt[:10]):\n\(.body)") | join(""))'
+    + (.comments | map("\n\n--- \(.author.login), \(.createdAt[:10]):\n\(.body)") | join(""))'
 }
 
 case ${1:-} in
-  --start) [ $# -eq 4 ] || die "usage: pick.sh --start N SESSION TOPIC"; start "$2" "$3" "$4" ;;
-  --claim) [ $# -eq 3 ] || die "usage: pick.sh --claim N SESSION"; claim "$2" "$3" ;;
+  --start) [ $# -eq 3 ] || die "usage: pick.sh --start N TOPIC"; start "$2" "$3" ;;
+  --claim) [ $# -eq 2 ] || die "usage: pick.sh --claim N"; claim "$2" ;;
   --release) [ $# -eq 2 ] || die "usage: pick.sh --release N"; release "$2" ;;
   --ship) [ $# -ge 4 ] || die "usage: pick.sh --ship N TOPIC draft|ready [--title T] [--note T]"; shift; ship "$@" ;;
   --finish) [ $# -eq 4 ] || die "usage: pick.sh --finish N PR TOPIC"; finish "$2" "$3" "$4" ;;
   --done) [ $# -eq 3 ] || die "usage: pick.sh --done N PR"; done_ "$2" "$3" ;;
-  -h|--help) sed -n '2,16p' "$0" ;;
+  -h|--help) sed -n '2,15p' "$0" ;;
   *) list "$@" ;;
 esac
