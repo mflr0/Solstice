@@ -358,9 +358,10 @@
    * The lists stack, so they share their column widths and line up; a list
    * without the assignee or due column keeps the room it would take. Each
    * width holds the column's usual widest content (a nine-character key,
-   * « IN PROGRESS », two triangles, avatar and name, the longest date). They
-   * are minimums: the summary claims the whole row, and a plain width gives
-   * way to it. Narrower screens need that room for the summary.
+   * « IN PROGRESS », « PRIORITÄT » and its arrow, avatar and name, the
+   * longest date). They are minimums: the summary claims the whole row, and a
+   * plain width gives way to it. Narrower screens need that room for the
+   * summary.
    */
   @media (min-width: 1000px) {
     section :global(th.c-key) {
@@ -372,7 +373,7 @@
     }
 
     section :global(th.c-priority) {
-      min-width: 2.5rem;
+      min-width: 7rem;
     }
 
     section :global(th.c-assignee) {
@@ -388,7 +389,7 @@
     }
 
     section :global(.ledger:not(:has(.c-assignee)) th.c-priority) {
-      min-width: calc(2.5rem + 10rem);
+      min-width: calc(7rem + 10rem);
     }
 
     section :global(.ledger:not(:has(.c-due)) th.c-updated) {
