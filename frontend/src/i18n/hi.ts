@@ -2201,6 +2201,10 @@ export const hi: Messages = {
     followBrowserHint: (name: string) => `ब्राउज़र की माँगी गई भाषा: ${name}।`,
     theme: 'थीम',
     themeHint: 'थीम और लाइट या डार्क मोड सिर्फ़ आप पर लागू होते हैं।',
+    themeRescueHint:
+      'अगर कोई थीम पेज बिगाड़ दे, तो पेज को डिफ़ॉल्ट थीम में खोलने के लिए पते में ?skin=carnet जोड़ें।',
+    themeFallback:
+      'थीम लोड नहीं हो सकी, इसलिए डिफ़ॉल्ट थीम दिखाई जा रही है। आपकी पसंद सुरक्षित है।',
     gallery: 'थीम गैलरी खोलें',
     galleryHint: 'हर थीम गैलरी में प्रीव्यू के साथ आज़माई जा सकती है।',
     notificationsIntro:

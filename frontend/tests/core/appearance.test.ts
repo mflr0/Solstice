@@ -6,9 +6,11 @@ import {
   htmlAttributes,
   localized,
   MODES,
+  offeredSkin,
   parseMode,
   parseSkin,
   resolveScheme,
+  startingSkin,
   type Mode,
   type Skin,
 } from '../../src/core/appearance.js';
@@ -32,6 +34,36 @@ describe('parsing stored values', () => {
     expect(parseMode('system')).toBe('system');
     expect(parseMode(undefined)).toBe('system');
     expect(parseMode('sepia')).toBe('system');
+  });
+});
+
+describe('the skin of a page load', () => {
+  it('takes the query over storage', () => {
+    expect(startingSkin('?skin=carnet', 'retro')).toBe('carnet');
+    expect(startingSkin('?a=1&skin=orbite', 'retro')).toBe('orbite');
+  });
+
+  it('takes storage without a query', () => {
+    expect(startingSkin('', 'retro')).toBe('retro');
+    expect(startingSkin('?skin=', 'retro')).toBe('retro');
+    expect(startingSkin('', null)).toBe('carnet');
+  });
+
+  it('gives Carnet on a query that is no id', () => {
+    expect(startingSkin('?skin=../neon', 'retro')).toBe('carnet');
+  });
+});
+
+describe('a skin the server does not list', () => {
+  const offered = [{ id: 'carnet' }, { id: 'retro' }];
+
+  it('gives Carnet', () => {
+    expect(offeredSkin('nope', offered)).toBe('carnet');
+    expect(offeredSkin('retro', offered)).toBe('retro');
+  });
+
+  it('stays when the list did not arrive', () => {
+    expect(offeredSkin('retro', [])).toBe('retro');
   });
 });
 
@@ -72,6 +104,8 @@ function boot(
   stored: Record<string, string>,
   systemDark: boolean,
   fetched: string[] = [],
+  search = '',
+  written: string[] = [],
 ): Record<string, string> {
   const attrs: Record<string, string> = {};
   const script = readFileSync(new URL('../../public/theme-boot.js', import.meta.url), 'utf8');
@@ -82,7 +116,12 @@ function boot(
         removeAttribute: (k: string) => delete attrs[k],
       },
     },
-    localStorage: { getItem: (k: string) => stored[k] ?? null },
+    localStorage: {
+      getItem: (k: string) => stored[k] ?? null,
+      setItem: (k: string) => written.push(k),
+    },
+    location: { search },
+    URLSearchParams,
     window: { matchMedia: () => ({ matches: systemDark }) },
     fetch: (url: string) => {
       fetched.push(url);
@@ -105,6 +144,22 @@ describe('the boot script', () => {
     const got = boot({ 'solstice.skin': '../../etc/passwd' }, false, fetched);
     expect(got['data-skin']).toBe('carnet');
     expect(fetched).toEqual(['/api/themes/carnet/theme.css']);
+  });
+
+  it('takes the query over storage and stores nothing', () => {
+    const fetched: string[] = [];
+    const written: string[] = [];
+    const got = boot({ 'solstice.skin': 'retro' }, false, fetched, '?skin=carnet', written);
+    expect(got['data-skin']).toBe('carnet');
+    expect(fetched).toEqual(['/api/themes/carnet/theme.css']);
+    expect(written).toEqual([]);
+  });
+
+  it('gives Carnet on a query that is no id, as the application does', () => {
+    const search = '?skin=../neon';
+    const got = boot({ 'solstice.skin': 'retro' }, false, [], search);
+    expect(got['data-skin']).toBe(startingSkin(search, 'retro'));
+    expect(got['data-skin']).toBe('carnet');
   });
 
   it('applies the same rules as the application', () => {

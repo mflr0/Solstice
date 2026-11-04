@@ -2206,6 +2206,10 @@ export const en = {
     followBrowserHint: (name: string) => `Language requested by the browser: ${name}.`,
     theme: 'Theme',
     themeHint: 'The theme and the light or dark mode apply to you only.',
+    themeRescueHint:
+      'If a theme breaks the page, add ?skin=carnet to the address to load it with the default theme.',
+    themeFallback:
+      'The theme could not be loaded, so the default theme is shown. Your choice is kept.',
     gallery: 'Open the theme gallery',
     galleryHint: 'Each theme can be tried in the gallery, with a preview.',
     notificationsIntro:

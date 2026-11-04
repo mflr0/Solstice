@@ -47,10 +47,16 @@ rewrites `[data-skin='<id>']` to `:scope`: your rules then stop at any nested
 element carrying another `data-skin` (gallery previews), and specificity is
 unchanged. `@font-face`, `@keyframes`, `@import`, `@property`,
 `@counter-style` stay top-level. While the file loads, `<html>` carries
-`data-skin-loading` and the page is hidden (10 s at most).
+`data-skin-loading` and the page is hidden.
 
-Carnet loads the same way. It is the default, and the fallback when the stored
-theme can't be loaded.
+Carnet loads the same way. It is the default, and the fallback for this page
+load when the theme isn't in `GET /api/themes`, when its file fails to load, or
+when it isn't in within 5 s: a toast says so, and the stored choice stays, so
+the theme comes back once it works.
+
+**Escape hatch**: `?skin=<id>` in the address forces that theme for this page
+load and doesn't change the stored choice. If a theme breaks the interface,
+`?skin=carnet` gets the page back.
 
 ## 2. Tokens
 
