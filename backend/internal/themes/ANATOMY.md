@@ -16,9 +16,10 @@ Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
   `html` or `body` as the anchor: the skin root is either `<html>` or a
   `<div class="skin-preview">` in the theme gallery.
 - **Fonts**: woff2 files in `fonts/` with the font's licence file next
-  to them, declared by `@font-face` rules at the top of the file with
-  `src: url('fonts/x.woff2') format('woff2')`. No `@import`: a test
-  fails on one. Free licences only.
+  to them (`<family>-OFL.txt` for `<family>-….woff2`, or a `.txt` with no
+  hyphen in its name for the whole folder), declared by `@font-face` rules at the top of the file with
+  `src: url('fonts/x.woff2') format('woff2')`. No `@import`: the
+  validator refuses one. Free licences only.
   System fonts (Tahoma, Verdana, …) only as `font-family` fallbacks, never
   bundled. No Microsoft or Atlassian names, logos, icons, fonts or assets,
   anywhere (code, comments, UI).
@@ -30,7 +31,7 @@ Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
   (`--bar-height`, page and column widths, control heights) in rem, at 16 px
   to the rem (14px → `0.875rem`), so they follow the browser's font size
   and the wide-screen steps of app.css (1rem grows by 1/16 at 1600, 1920 and
-  2560 px). No px font size but `0`: a test fails on one. Paddings, gaps, borders, radii, shadows and `@media` widths stay px.
+  2560 px). No px font size but `0`: the validator refuses one. Paddings, gaps, borders, radii, shadows and `@media` widths stay px.
 - No `!important` unless a Svelte inline `style=` forces it.
 
 ### How the file is loaded (you do not need to do anything)
@@ -51,7 +52,7 @@ fallback. Its first token block is therefore `:where(:root), [data-skin='carnet'
 
 ## 2. Tokens
 
-Two token blocks, written **exactly** like this (the contrast test parses them):
+Two token blocks, written **exactly** like this (the validator parses them):
 
 ```css
 [data-skin='<id>'] {
@@ -64,7 +65,7 @@ Two token blocks, written **exactly** like this (the contrast test parses them):
 }
 ```
 
-The first block must declare **every** token Carnet declares (the test checks
+The first block must declare **every** token Carnet declares (the validator checks
 this): a preview of your skin sits inside a page of another skin, and anything
 you leave out would be inherited from it. No dark block = a light-only skin
 (the gallery hides the mode buttons, the dark mode shows your light look).
@@ -91,7 +92,7 @@ New since the Orbite/Crayonné blocks were copied out of `app.css`: `--desk`,
 `--accent-text`, `--focus`, `--bar`, `--bar-ink`, `--bar-ink-soft`,
 `--font-size`. `--accent-ink` is gone (use `--primary-ink`).
 
-### Contrast (tests/core/contrast.test.ts, every skin × scheme, no exceptions)
+### Contrast (`validate.go`, every skin × scheme, no exceptions)
 
 Text, 4.5:1 — `--ink`, `--ink-soft`, `--muted` on `--paper`, `--paper-raised`,
 `--paper-sunk`; `--accent-text` on `--paper`, `--paper-raised`; each stamp ink
@@ -101,7 +102,7 @@ on `--paper`, `--paper-raised` and on its own tint (`--stamp-fill`); tones on
 Non-text, 3:1 — `--focus` and `--accent` on `--paper`.
 
 Any other pair your file draws (title bars, inverted rows…): declare it in a
-comment anywhere in the file and the test checks it too, in every scheme:
+comment anywhere in the file and the validator checks it too, in every scheme:
 
 ```css
 /* contrast: --title-bar-ink on --title-bar */
@@ -454,8 +455,10 @@ static there.
   sign in as `marie.durand` / `motdepasse`, choose your theme in the account
   menu, or open `/themes` to see it next to the others (and Carnet inside it).
   Editing your file reloads the page.
-- `pnpm exec vitest run tests/core/contrast.test.ts` — token completeness and
-  AA for your skin (skipped while your file does not exist).
+- `go test ./internal/themes -run TestValidateBuiltin` (from `backend/`) — runs
+  the validator on every built-in package: manifest, token completeness, AA,
+  font sizes, `url()` targets, licences, `schemes` and `preview`. Each finding
+  gives the rule, the file and the line.
 - `pnpm exec prettier --write ../backend/internal/themes/builtin/<id>/theme.css` —
   format your own file only.
 - The gallery shows « Ce thème est encore en cours de dessin » while your
@@ -505,10 +508,12 @@ Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
   The theme gallery (`/themes`) shows it under the name: a sentence on the
   theme. Without it, the gallery shows the description.
 - `author`: not empty.
-- `schemes`: `["light"]` or `["light", "dark"]`.
+- `schemes`: `["light"]` or `["light", "dark"]`, the latter exactly when
+  `theme.css` has a dark block.
 - `preview`: for each scheme, and only those, `bar`, `paper`, `ink` and
-  `accent` as `#rrggbb`. The theme menu draws its swatches with them, and
-  Account → Appearance with the light ones.
+  `accent` as `#rrggbb`, equal to the tokens of that name in that scheme (for
+  a gradient, one of its stops). The theme menu draws its swatches with them,
+  and Account → Appearance with the light ones.
 - No other field.
 
 `GET /api/themes` (no sign-in needed) answers `{"contract": 1, "themes": [manifest…]}`,

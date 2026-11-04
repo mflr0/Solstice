@@ -154,7 +154,7 @@
 
 /* Tokens -------------------------------------------------------------------- */
 
-/* Pairs this file draws beyond the standard ones (checked by the contrast test). */
+/* Pairs this file draws beyond the standard ones (checked by the theme validator). */
 /* contrast: --term-bright on --paper */
 /* contrast: --term-bright on --paper-raised */
 /* contrast: --term-alert on --paper */

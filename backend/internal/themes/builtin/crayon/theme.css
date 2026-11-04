@@ -18,7 +18,7 @@
  * and code in IBM Plex Mono. Hooks: backend/internal/themes/ANATOMY.md.
  *
  * The extra pairs below (red pencil text; text on sticky notes, i.e. board
- * cards and toasts) are checked by tests/core/contrast.test.ts.
+ * cards and toasts) are checked by the theme validator.
  */
 /* contrast: --cr-red on --paper */
 /* contrast: --cr-red on --paper-raised */

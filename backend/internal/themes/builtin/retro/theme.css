@@ -15,7 +15,7 @@
  * with the same navy-blue title bars.
  */
 
-/* Contrast pairs drawn beyond the standard ones (checked by tests/core/contrast.test.ts). */
+/* Contrast pairs drawn beyond the standard ones (checked by the theme validator). */
 /* contrast: --rt-title-ink on --rt-title-a */
 /* contrast: --rt-title-ink on --rt-title-b */
 /* contrast: --rt-title-soft on --rt-title-b */

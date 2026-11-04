@@ -513,7 +513,7 @@
   color-scheme: dark;
 }
 
-/* Pairs this skin draws beyond the standard ones (checked by the contrast test). */
+/* Pairs this skin draws beyond the standard ones (checked by the theme validator). */
 
 /* contrast: --paper on --ink */
 /* contrast: --paper on --accent */

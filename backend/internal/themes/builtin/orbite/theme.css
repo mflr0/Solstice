@@ -563,7 +563,7 @@
   color-scheme: dark;
 }
 
-/* Pairs this file draws beyond the standard ones (read by the contrast test). */
+/* Pairs this file draws beyond the standard ones (read by the theme validator). */
 /* contrast: --orb-edge on --paper 3 */
 /* contrast: --orb-edge on --paper-raised 3 */
 /* contrast: --orb-edge on --paper-sunk 3 */
