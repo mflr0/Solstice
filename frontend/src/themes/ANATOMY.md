@@ -1,8 +1,9 @@
 # Theme anatomy
 
-How a theme ("skin") plugs into Solstice. Carnet is the base look and lives in
-`src/app.css`; every other skin is one file, `src/themes/<id>.css`, plus an
-optional folder `src/themes/<id>/` for its images.
+How a theme ("skin") plugs into Solstice. `src/app.css` is the structure every
+skin builds on, drawn from the tokens. Each skin, Carnet the default included,
+is one file, `src/themes/<id>.css`, plus an optional folder `src/themes/<id>/`
+for its fonts and images.
 
 Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `plan`.
 
@@ -32,7 +33,7 @@ Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `pl
 
 ### How the file is loaded (you do not need to do anything)
 
-`src/lib/skins.ts` imports the file on demand (`?inline`, code-split) and
+`src/lib/skins.svelte.ts` imports the file on demand (`?inline`, code-split) and
 injects it as `<style data-skin-css="<id>">` after every other stylesheet, so
 **your rules win specificity ties**. When the browser supports `@scope`, the
 loader wraps the file in `@scope ([data-skin='<id>']) to ([data-skin])` and
@@ -41,6 +42,10 @@ element carrying another `data-skin` (gallery previews), and specificity is
 unchanged. `@font-face`, `@keyframes`, `@import`, `@property`,
 `@counter-style` stay top-level. While the file loads, `<html>` carries
 `data-skin-loading` and the page is hidden (1.2 s at most).
+
+Carnet is the exception: `src/main.ts` imports `carnet.css` with the main
+stylesheet, unscoped, so it paints on first load with no wait, and it is the
+fallback. Its first token block is therefore `:where(:root), [data-skin='carnet']`.
 
 ## 2. Tokens
 

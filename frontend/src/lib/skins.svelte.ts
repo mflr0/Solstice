@@ -2,12 +2,13 @@
  * Skin stylesheets: src/themes/<id>.css, each its own chunk, fetched the
  * first time the skin is shown (chosen, or previewed in the gallery) and
  * added to the end of <head>, so its rules win ties with the base ones.
+ * Carnet's is part of the main stylesheet (src/main.ts) instead.
  */
 
 import type { Skin } from '../core/appearance.js';
 import { hasDarkVariant, scopeSkinCss } from '../core/skin-css.js';
 
-const sources = import.meta.glob<string>('../themes/*.css', {
+const sources = import.meta.glob<string>(['../themes/*.css', '!../themes/carnet.css'], {
   query: '?inline',
   import: 'default',
 });

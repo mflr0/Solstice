@@ -4,17 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { SKINS, type Scheme, type Skin } from '../../src/core/appearance.js';
 
 /**
- * Reads the colour tokens of every skin × scheme — Carnet from app.css, the
- * others from src/themes/<id>.css — resolving them the way the cascade does,
- * and checks WCAG AA contrast on the pairs the interface draws, plus any pair
- * a theme declares in a comment: `/* contrast: --a on --b [minimum] *\/`.
+ * Reads the colour tokens of every skin × scheme from src/themes/<id>.css,
+ * resolving them the way the cascade does, and checks WCAG AA contrast on the
+ * pairs the interface draws, plus any pair a theme declares in a comment: `/* contrast: --a on --b [minimum] *\/`.
  * See src/themes/ANATOMY.md.
  */
 
 const themesDir = new URL('../../src/themes/', import.meta.url);
 
 function source(skin: Skin): string | null {
-  if (skin === 'carnet') return readFileSync(new URL('../../src/app.css', import.meta.url), 'utf8');
   const file = new URL(`${skin}.css`, themesDir);
   return existsSync(file) ? readFileSync(file, 'utf8') : null;
 }
