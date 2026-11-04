@@ -31,13 +31,13 @@
   "preview": {
     "light": {
       "bar": "#c6c5bf",
-      "paper": "#1a7a77",
+      "paper": "#c6c5bf",
       "ink": "#111111",
       "accent": "#0b2a84"
     },
     "dark": {
       "bar": "#3c3d40",
-      "paper": "#0f3735",
+      "paper": "#3c3d40",
       "ink": "#ecebe6",
       "accent": "#91b3ff"
     }

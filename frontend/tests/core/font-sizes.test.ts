@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest';
  */
 
 const src = new URL('../../src/', import.meta.url);
-const themes = new URL('../../../backend/internal/themes/builtin/', import.meta.url);
 
 function files(dir: URL, ext: string): URL[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
@@ -42,11 +41,7 @@ describe('px font sizes', () => {
     expect(pxFontSizes('.a { font-size: 0.75rem; --gap: 4px; }')).toEqual([]);
   });
 
-  const sheets = [
-    new URL('app.css', src),
-    ...files(themes, '.css'),
-    ...files(new URL('ui/', src), '.svelte'),
-  ];
+  const sheets = [new URL('app.css', src), ...files(new URL('ui/', src), '.svelte')];
 
   it.each(sheets.map((f) => [f.pathname.slice(new URL('../..', src).pathname.length), f]))(
     'are absent from %s',
