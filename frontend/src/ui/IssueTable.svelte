@@ -126,7 +126,7 @@
 
 <svelte:window onkeydown={keys} />
 
-{#snippet label(column: string, name: string, hidden = false)}
+{#snippet label(column: string, name: string)}
   {#if onsort && columnSort(column) !== null}
     {@const desc = columnDirection(column, sort)}
     <button
@@ -135,13 +135,8 @@
       class:sorted={desc !== null}
       onclick={() => onsort?.(column)}
     >
-      {#if hidden}<span class="sr-only">{name}</span>{:else}{name}{/if}<span
-        class="arrow"
-        aria-hidden="true">{desc === null ? '↕' : desc ? '↓' : '↑'}</span
-      >
+      {name}<span class="arrow" aria-hidden="true">{desc === null ? '↕' : desc ? '↓' : '↑'}</span>
     </button>
-  {:else if hidden}
-    <span class="sr-only">{name}</span>
   {:else}
     {name}
   {/if}
@@ -166,7 +161,7 @@
         {/if}
         {#if showType}
           <th class="c-type" aria-sort={ariaSort('issuetype')}
-            >{@render label('issuetype', t.table.type, true)}</th
+            >{@render label('issuetype', t.table.type)}</th
           >
         {/if}
         <th class="c-key" aria-sort={ariaSort('issuekey')}
@@ -178,7 +173,7 @@
         {#each rest as c (c)}
           {@const name = headers[c] ?? names[c] ?? c}
           {#if c === 'priority'}
-            <th class="c-priority" aria-sort={ariaSort(c)}>{@render label(c, name, true)}</th>
+            <th class="c-priority" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else if c === 'status'}
             <th class="c-status" aria-sort={ariaSort(c)}>{@render label(c, name)}</th>
           {:else if c === 'assignee'}
@@ -320,7 +315,7 @@
     background: var(--accent-wash);
   }
 
-  .c-type {
+  td.c-type {
     width: 28px;
     padding-right: 0;
   }
