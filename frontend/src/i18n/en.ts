@@ -350,6 +350,9 @@ export const en = {
     uncategorised: 'Uncategorized',
     empty: 'You don’t have access to any project.',
     settings: 'Settings',
+    copyLink: 'Copy the project link',
+    linkCopied: 'Link copied',
+    copyLinkFailed: (url: string) => `Couldn’t copy the link: ${url}`,
     kinds: { software: 'software', business: 'business', service_desk: 'service desk' } as Record<
       string,
       string
