@@ -1063,3 +1063,34 @@ Effective access — global admin:
   may decide and `granted` still be false. A global administrator is granted
   `admin` with or without a rule. 400 without `project`, 404 for an unknown
   user or project.
+
+---
+
+## Themes — global admin
+
+`GET /api/themes` lists the themes on offer to everyone; these routes are for
+managing them. `theme` = the manifest (`internal/themes/ANATOMY.md`, section 5),
+with `id` the id it is served under, plus `manifestId`, `origin` (`builtin` or
+`imported`), `enabled`, and for an imported one `importedBy` and `importedAt`.
+
+- `GET /api/admin/themes` → `{contract, themes: [theme]}`: disabled ones too, the
+  built-in ones first, then the imported ones by English name.
+- `POST /api/admin/themes`, multipart, part `file` holding one zip → 201 theme.
+  (`theme.import`) It is served under its manifest's id when free, else that id
+  with a suffix (`retro-2`).
+  - 400 `{error, findings: [{rule, message, file, line?}]}` when the zip breaks a
+    limit (`rule: "zip"`: at most 100 files and 10 MiB unpacked, an entry over 1 MiB
+    compressed at most 100 times, no absolute path, `..` or link, only the files
+    of ANATOMY.md section 5) or the validator finds anything. Nothing is stored.
+  - 400 without a `file` part. 413 over the size limit.
+- `PUT /api/admin/themes/{id}`, multipart like the import → theme. (`theme.replace`,
+  with `from` and `to`, the versions) Replaces the files of an imported theme with
+  a new version of the same manifest id; another id is a finding (`rule:
+  "manifest"`). It stays enabled or disabled. 409 on a built-in theme, 404 when
+  unknown.
+- `POST /api/admin/themes/{id}/enable`, `/disable` → theme. (`theme.enable`,
+  `theme.disable`, only when it changes something) A disabled theme is not offered
+  and its files answer 404, so users on it go back to Carnet. 409 on disabling
+  Carnet, the fallback.
+- `DELETE /api/admin/themes/{id}` → 204. (`theme.delete`) 409 on a built-in theme:
+  disable it instead.

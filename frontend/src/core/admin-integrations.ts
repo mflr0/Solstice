@@ -143,6 +143,7 @@ export const AUDIT_FAMILIES = [
   'update',
   'setup',
   'webhook',
+  'theme',
   'securitylevel',
 ] as const;
 

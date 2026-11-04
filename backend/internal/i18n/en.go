@@ -703,4 +703,11 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityTargetNotFound: "Replacement level not found in this project.",
 	SecurityMoveOrClear:    "Choose a replacement level or clear the level, not both.",
 	SecurityMemberExists:   "This holder is already a member of the level.",
+
+	// Theme packages.
+	ThemeFileMissing:      "No theme package was sent.",
+	ThemeFileTooLarge:     "The theme package is larger than %d MiB.",
+	ThemePackageRefused:   "The theme package was refused: see its findings.",
+	ThemeBuiltinFixed:     "A built-in theme can't be replaced or deleted. It can be disabled.",
+	ThemeFallbackRequired: "Carnet can't be disabled: it is the theme users go back to.",
 }

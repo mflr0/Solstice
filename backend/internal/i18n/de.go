@@ -705,4 +705,11 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityTargetNotFound: "Ersatzstufe in diesem Projekt nicht gefunden.",
 	SecurityMoveOrClear:    "Wählen Sie eine Ersatzstufe oder entfernen Sie die Stufe, nicht beides.",
 	SecurityMemberExists:   "Dieser Inhaber gehört bereits zur Stufe.",
+
+	// Theme packages.
+	ThemeFileMissing:      "Es wurde kein Themenpaket gesendet.",
+	ThemeFileTooLarge:     "Das Themenpaket ist größer als %d MiB.",
+	ThemePackageRefused:   "Das Themenpaket wurde abgelehnt: siehe die Befunde.",
+	ThemeBuiltinFixed:     "Ein integriertes Thema kann weder ersetzt noch gelöscht werden. Es kann deaktiviert werden.",
+	ThemeFallbackRequired: "Carnet kann nicht deaktiviert werden: Zu diesem Thema kehren die Benutzer zurück.",
 }
