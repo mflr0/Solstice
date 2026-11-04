@@ -70,6 +70,49 @@ func (sh shareRow) visible(sub *perm.Subject) bool {
 	return false
 }
 
+// out is the share as the API shows it.
+func (sh shareRow) out() filterShare {
+	fs := filterShare{Kind: sh.kind}
+	switch sh.kind {
+	case issue.ShareGroup:
+		fs.ID, fs.Name = sh.group.Int64, sh.groupName.String
+	case issue.ShareProject:
+		fs.ID, fs.Name, fs.Group = sh.project.Int64, sh.projectKey.String, sh.group.Int64
+		if sh.group.Valid {
+			fs.Name += " · " + sh.groupName.String
+		}
+	case issue.ShareUser:
+		fs.ID, fs.Name = sh.user.Int64, sh.userName.String
+	}
+	return fs
+}
+
+const shareQuery = `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.user_id,
+	g.name, p.pkey, u.display_name
+	FROM filter_shares sh
+	LEFT JOIN user_groups g ON g.id = sh.group_id
+	LEFT JOIN projects p ON p.id = sh.project_id
+	LEFT JOIN users u ON u.id = sh.user_id`
+
+func scanShare(rows *sql.Rows) (filter int64, sh shareRow, err error) {
+	err = rows.Scan(&filter, &sh.kind, &sh.group, &sh.project, &sh.user, &sh.groupName, &sh.projectKey, &sh.userName)
+	return filter, sh, err
+}
+
+// sharesOfFilter returns a filter's shares, whoever asks.
+func (s *Server) sharesOfFilter(ctx context.Context, filter int64) ([]filterShare, error) {
+	out := []filterShare{}
+	err := sqlq.Each(ctx, s.db, shareQuery+` WHERE sh.filter_id = ? ORDER BY sh.id`, func(rows *sql.Rows) error {
+		_, sh, err := scanShare(rows)
+		if err != nil {
+			return err
+		}
+		out = append(out, sh.out())
+		return nil
+	}, filter)
+	return out, err
+}
+
 // loadFilters returns the filters the user may see (all of them for id 0,
 // or just that one).
 func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64) ([]*filterRow, error) {
@@ -93,22 +136,15 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, args...); err != nil {
 		return nil, err
 	}
-	shares := `SELECT sh.filter_id, sh.kind, sh.group_id, sh.project_id, sh.user_id,
-		g.name, p.pkey, u.display_name
-		FROM filter_shares sh
-		LEFT JOIN user_groups g ON g.id = sh.group_id
-		LEFT JOIN projects p ON p.id = sh.project_id
-		LEFT JOIN users u ON u.id = sh.user_id`
+	shares := shareQuery
 	var shareArgs []any
 	if only != 0 {
 		shares += ` WHERE sh.filter_id = ?`
 		shareArgs = append(shareArgs, only)
 	}
 	if err := sqlq.Each(ctx, s.db, shares, func(rows *sql.Rows) error {
-		var id int64
-		var sh shareRow
-		if err := rows.Scan(&id, &sh.kind, &sh.group, &sh.project, &sh.user, &sh.groupName, &sh.projectKey,
-			&sh.userName); err != nil {
+		id, sh, err := scanShare(rows)
+		if err != nil {
 			return err
 		}
 		if f, ok := byID[id]; ok {
@@ -135,19 +171,7 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 		f.out.CanEdit = f.out.Mine || sub.Admin
 		f.out.Shares = []filterShare{}
 		for _, sh := range f.shares {
-			fs := filterShare{Kind: sh.kind}
-			switch sh.kind {
-			case issue.ShareGroup:
-				fs.ID, fs.Name = sh.group.Int64, sh.groupName.String
-			case issue.ShareProject:
-				fs.ID, fs.Name, fs.Group = sh.project.Int64, sh.projectKey.String, sh.group.Int64
-				if sh.group.Valid {
-					fs.Name += " · " + sh.groupName.String
-				}
-			case issue.ShareUser:
-				fs.ID, fs.Name = sh.user.Int64, sh.userName.String
-			}
-			f.out.Shares = append(f.out.Shares, fs)
+			f.out.Shares = append(f.out.Shares, sh.out())
 		}
 		owners = append(owners, f.owner.Int64)
 		out = append(out, f)
@@ -238,12 +262,20 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 			if !sub.InGroup(sh.ID) && !sub.Admin {
 				return fail(http.StatusBadRequest, i18n.FilterShareGroupNotMember)
 			}
+			if err := s.checkGroupExists(ctx, sh.ID); err != nil {
+				return err
+			}
 		case issue.ShareProject:
 			if !sub.CanBrowseProject(sh.ID) {
 				return fail(http.StatusBadRequest, i18n.ProjectNotFound)
 			}
-			if sh.Group != 0 && !sub.InGroupIn(sh.ID, sh.Group) && !sub.Admin {
-				return fail(http.StatusBadRequest, i18n.FilterShareProjectGroupNotMember)
+			if sh.Group != 0 {
+				if !sub.InGroupIn(sh.ID, sh.Group) && !sub.Admin {
+					return fail(http.StatusBadRequest, i18n.FilterShareProjectGroupNotMember)
+				}
+				if err := s.checkGroupExists(ctx, sh.Group); err != nil {
+					return err
+				}
 			}
 		case issue.ShareUser:
 			var n int
@@ -256,6 +288,19 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 		default:
 			return failf(http.StatusBadRequest, i18n.FilterShareKindUnknown, sh.Kind)
 		}
+	}
+	return nil
+}
+
+// checkGroupExists keeps an administrator, who may name any group, from
+// reaching the foreign key with one that doesn't exist.
+func (s *Server) checkGroupExists(ctx context.Context, group int64) error {
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM user_groups WHERE id = ?`, group).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return fail(http.StatusBadRequest, i18n.GroupNotFound)
 	}
 	return nil
 }

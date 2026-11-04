@@ -3,7 +3,7 @@
  * 3339 strings in UTC.
  */
 
-import type { IssueBrief, IssueSummary, StatusRef, UserRef } from './types.js';
+import type { FilterShare, IssueBrief, IssueSummary, StatusRef, UserRef } from './types.js';
 
 export type BoardKind = 'kanban' | 'scrum';
 export type SwimlaneStrategy = 'none' | 'custom' | 'assignee' | 'epic' | 'parent';
@@ -76,6 +76,7 @@ export interface BoardSettings {
   name: string;
   kind: BoardKind;
   filterId: number;
+  filterName: string;
   query: string;
   subQuery: string | null;
   swimlanes: SwimlaneStrategy;
@@ -97,7 +98,9 @@ export interface BoardDetail {
   /** Open sprints, the active one first. */
   sprints: Sprint[];
   estimateFields: { id: string; name: string }[];
-  can: { manage: boolean };
+  /** Who sees the board: whom its filter is shared with. */
+  shares: FilterShare[];
+  can: { manage: boolean; share: boolean };
 }
 
 export interface BoardCard extends IssueSummary {

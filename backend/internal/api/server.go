@@ -207,6 +207,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/boards/{id}", s.getBoard, auth.ScopeRead)
 	route("PUT /api/boards/{id}", s.updateBoard, auth.ScopeAgile)
 	route("DELETE /api/boards/{id}", s.deleteBoard, auth.ScopeAgile)
+	route("PUT /api/boards/{id}/shares", s.setBoardShares, auth.ScopeAgile)
 	route("GET /api/boards/{id}/cards", s.boardCards, auth.ScopeRead)
 	route("GET /api/boards/{id}/backlog", s.backlog, auth.ScopeRead)
 	route("POST /api/boards/{id}/move", s.moveCard, auth.ScopeAgile)
