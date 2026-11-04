@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     findingPlace,
+    previewOpen,
     themeActions,
     themeFindings,
     type AdminThemes,
@@ -33,8 +34,9 @@
   let uploadError = $state('');
   let refused = $state<{ file: string; findings: ThemeFinding[] } | null>(null);
   let removing = $state<AdminTheme | null>(null);
-  let previewing = $state<string | null>(null);
-  let previewFailed = $state(false);
+  /** The previews the administrator opened or closed; the others follow previewOpen. */
+  let toggled = $state<Record<string, boolean>>({});
+  let previewFailed = $state<Record<string, boolean>>({});
 
   const nameOf = (theme: AdminTheme) => localized(theme.name, locale);
   const schemes = (skin: Skin): Scheme[] =>
@@ -54,14 +56,13 @@
     void load();
   });
 
-  // A theme that is off has no stylesheet to fetch: the server only serves enabled ones.
   $effect(() => {
-    const theme = data?.themes.find((candidate) => candidate.id === previewing);
-    previewFailed = false;
-    if (!theme?.enabled) return;
-    void loadSkin(theme.id).then((loaded) => {
-      if (previewing === theme.id) previewFailed = !loaded;
-    });
+    for (const theme of data?.themes ?? []) {
+      if (!previewOpen(theme, toggled[theme.id]) || skinSheets[theme.id]) continue;
+      void loadSkin(theme.id).then((loaded) => {
+        previewFailed[theme.id] = !loaded;
+      });
+    }
   });
 
   /** Brings the page and the theme menus up to date after a change. */
@@ -117,7 +118,6 @@
     if (!removing) return;
     const theme = removing;
     await adminApi.deleteTheme(theme.id);
-    if (previewing === theme.id) previewing = null;
     await changed();
     notify(m.deleted(nameOf(theme)));
   }
@@ -167,9 +167,20 @@
     {#each data.themes as theme (theme.id)}
       {@const name = nameOf(theme)}
       {@const can = themeActions(theme)}
-      {@const open = previewing === theme.id}
+      {@const open = previewOpen(theme, toggled[theme.id])}
       <li class="theme" class:off={!theme.enabled}>
         <div class="head">
+          <button
+            class="btn btn-small btn-icon toggle"
+            aria-expanded={open}
+            aria-label={m.previewOf(name)}
+            title={m.previewOf(name)}
+            onclick={() => (toggled[theme.id] = !open)}
+          >
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+              <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
           <h2 class="name">{name}</h2>
           <span class="id">{theme.id}</span>
           <span class="stamp">{m.origins[theme.origin]}</span>
@@ -190,12 +201,6 @@
           </div>
         </dl>
         <div class="actions" role="group" aria-label={name}>
-          <button
-            class="btn btn-small"
-            aria-expanded={open}
-            onclick={() => (previewing = open ? null : theme.id)}
-            >{open ? m.hidePreview : m.preview}</button
-          >
           <a class="btn btn-small" href={adminApi.themeExportUrl(theme.id)} download>{m.export}</a>
           {#if can.switchOff || !theme.enabled}
             <button
@@ -225,9 +230,7 @@
                   <figcaption>{t.themes.schemes[scheme]}</figcaption>
                 </figure>
               {/each}
-            {:else if !theme.enabled}
-              <p class="muted">{m.previewOff}</p>
-            {:else if previewFailed}
+            {:else if previewFailed[theme.id]}
               <p class="error-text" role="alert">{m.previewFailed}</p>
             {:else}
               <p class="muted loading">{t.themes.preparing}</p>
@@ -324,6 +327,18 @@
 
   .name {
     font-size: 1rem;
+  }
+
+  .head {
+    align-items: center;
+  }
+
+  .toggle svg {
+    transition: transform 0.12s;
+  }
+
+  .toggle[aria-expanded='true'] svg {
+    transform: rotate(90deg);
   }
 
   .id {

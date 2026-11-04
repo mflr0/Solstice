@@ -133,7 +133,7 @@ func TestServeStored(t *testing.T) {
 func TestRegistryServeBuiltinFirst(t *testing.T) {
 	r := storedRegistry(t)
 	w := httptest.NewRecorder()
-	ok, err := r.Serve(w, httptest.NewRequest("GET", "/api/themes/fixture/theme.css", nil), "fixture", cssFile)
+	ok, err := r.Serve(w, httptest.NewRequest("GET", "/api/themes/fixture/theme.css", nil), "fixture", cssFile, nil)
 	if err != nil || !ok || w.Body.String() == "the stored copy" {
 		t.Errorf("fixture: %v %v %q", ok, err, w.Body)
 	}
@@ -146,8 +146,29 @@ func TestNewRegistryWithoutDatabase(t *testing.T) {
 		t.Errorf("index %+v, %v", idx, err)
 	}
 	w := httptest.NewRecorder()
-	if ok, err := r.Serve(w, httptest.NewRequest("GET", "/api/themes/owl-2/theme.css", nil), "owl-2", cssFile); ok || err != nil {
+	if ok, err := r.Serve(w, httptest.NewRequest("GET", "/api/themes/owl-2/theme.css", nil), "owl-2", cssFile, nil); ok || err != nil {
 		t.Errorf("served a stored theme: %v %v", ok, err)
+	}
+}
+
+func TestServeDisabled(t *testing.T) {
+	never := func(*http.Request) bool { return false }
+	always := func(*http.Request) bool { return true }
+	for name, may := range map[string]func(*http.Request) bool{"nil": nil, "refused": never} {
+		w := httptest.NewRecorder()
+		if serveDisabled(w, httptest.NewRequest("GET", "/", nil), may) {
+			t.Errorf("%s: allowed", name)
+		}
+		if got := w.Header().Get("Cache-Control"); got != "" {
+			t.Errorf("%s: Cache-Control %q", name, got)
+		}
+	}
+	w := httptest.NewRecorder()
+	if !serveDisabled(w, httptest.NewRequest("GET", "/", nil), always) {
+		t.Error("refused the allowed request")
+	}
+	if got := w.Header().Get("Cache-Control"); got != "private, no-cache" {
+		t.Errorf("Cache-Control %q", got)
 	}
 }
 

@@ -46,6 +46,14 @@ func themeRefused(findings []themes.Finding) error {
 	return &httpError{status: http.StatusBadRequest, msg: i18n.M(i18n.ThemePackageRefused), extra: map[string]any{"findings": findings}}
 }
 
+// seesDisabledThemes says whether a request comes from an administrator, who
+// previews the disabled themes. Theme files are public, so nothing has
+// authenticated it yet.
+func (s *Server) seesDisabledThemes(r *http.Request) bool {
+	u, err := s.authenticate(r)
+	return err == nil && u.Admin && u.Allows(auth.ScopeRead)
+}
+
 // exportTheme answers a theme's package as a zip. Administrators also see the
 // disabled themes, in their list.
 func (s *Server) exportTheme(w http.ResponseWriter, r *http.Request) error {

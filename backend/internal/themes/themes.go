@@ -304,6 +304,8 @@ func serveFile(w http.ResponseWriter, r *http.Request, name, contentType, etag s
 	h.Set("ETag", etag)
 	// The first paint uses the copy at hand and refreshes it behind: waiting for
 	// a revalidation would delay every page load by a round trip.
-	h.Set("Cache-Control", "public, max-age=0, stale-while-revalidate=604800")
+	if h.Get("Cache-Control") == "" {
+		h.Set("Cache-Control", "public, max-age=0, stale-while-revalidate=604800")
+	}
 	http.ServeContent(w, r, name, time.Time{}, content)
 }

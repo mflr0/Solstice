@@ -151,15 +151,16 @@ func (r *Registry) storedOne(ctx context.Context, id string) (storedTheme, error
 }
 
 // Serve answers a file of theme id; false, with nothing written, when there
-// is no such enabled theme or file.
-func (r *Registry) Serve(w http.ResponseWriter, req *http.Request, id, name string) (bool, error) {
+// is no such file or theme, or the theme is disabled and mayDisabled, asked only
+// then, doesn't let this request see it. A nil mayDisabled lets no request.
+func (r *Registry) Serve(w http.ResponseWriter, req *http.Request, id, name string, mayDisabled func(*http.Request) bool) (bool, error) {
 	if _, ok := r.builtin.byID[id]; ok {
 		if r.db != nil {
 			disabled, err := r.disabledBuiltin(req.Context())
 			if err != nil {
 				return false, err
 			}
-			if slices.Contains(disabled, id) {
+			if slices.Contains(disabled, id) && !serveDisabled(w, req, mayDisabled) {
 				return false, nil
 			}
 		}
@@ -170,13 +171,26 @@ func (r *Registry) Serve(w http.ResponseWriter, req *http.Request, id, name stri
 	}
 	var enabled bool
 	err := r.db.QueryRowContext(req.Context(), `SELECT enabled FROM themes WHERE id = ?`, id).Scan(&enabled)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && !enabled) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
+	if !enabled && !serveDisabled(w, req, mayDisabled) {
+		return false, nil
+	}
 	return r.serveStored(w, req, id, name)
+}
+
+// serveDisabled says whether this request may see a disabled theme. Its answer
+// depends on who asks, so no shared cache may keep it.
+func serveDisabled(w http.ResponseWriter, req *http.Request, mayDisabled func(*http.Request) bool) bool {
+	if mayDisabled == nil || !mayDisabled(req) {
+		return false
+	}
+	w.Header().Set("Cache-Control", "private, no-cache")
+	return true
 }
 
 // serveStored answers a file of a stored theme, from the same paths and types

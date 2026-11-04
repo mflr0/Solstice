@@ -42,6 +42,14 @@ export function findingPlace(f: Pick<ThemeFinding, 'file' | 'line'>): string {
   return f.line ? `${f.file}:${f.line}` : f.file;
 }
 
+/** Whether a theme's preview is open: as the administrator left it, else open when enabled. */
+export function previewOpen(
+  theme: Pick<AdminTheme, 'enabled'>,
+  toggled: boolean | undefined,
+): boolean {
+  return toggled ?? theme.enabled;
+}
+
 /**
  * What the server lets an administrator do to a theme, beyond previewing and
  * exporting: built-in ones stay, and the default can't be turned off since

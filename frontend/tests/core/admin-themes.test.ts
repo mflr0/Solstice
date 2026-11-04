@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { findingPlace, themeActions, themeFindings } from '../../src/core/admin-themes.js';
+import {
+  findingPlace,
+  previewOpen,
+  themeActions,
+  themeFindings,
+} from '../../src/core/admin-themes.js';
 
 describe('themeFindings', () => {
   it('reads the findings of a refused import', () => {
@@ -23,6 +28,18 @@ describe('findingPlace', () => {
 
   it('gives the file alone when the finding concerns all of it', () => {
     expect(findingPlace({ file: 'theme.json' })).toBe('theme.json');
+  });
+});
+
+describe('previewOpen', () => {
+  it('opens an enabled theme and keeps a disabled one collapsed', () => {
+    expect(previewOpen({ enabled: true }, undefined)).toBe(true);
+    expect(previewOpen({ enabled: false }, undefined)).toBe(false);
+  });
+
+  it('follows the administrator once they toggled it', () => {
+    expect(previewOpen({ enabled: true }, false)).toBe(false);
+    expect(previewOpen({ enabled: false }, true)).toBe(true);
   });
 });
 

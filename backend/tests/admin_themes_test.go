@@ -322,6 +322,11 @@ func TestThemeDisableAndDelete(t *testing.T) {
 	if status, _ := themeServes(t, e.ID); status != 404 {
 		t.Errorf("a disabled theme's file: %d, want 404", status)
 	}
+	themeCSS := "/api/themes/" + e.ID + "/theme.css"
+	login(t, "paul.martin", jirafixture.Password).call("GET", themeCSS, nil, 404, nil)
+	if status, h, _ := call(t, admin, admin.base, "GET", themeCSS, nil, nil); status != 200 || h.Get("Cache-Control") != "private, no-cache" {
+		t.Errorf("an administrator's preview of a disabled theme: %d, Cache-Control %q", status, h.Get("Cache-Control"))
+	}
 	if got, ok := adminTheme(t, admin, e.ID); !ok || got.Enabled {
 		t.Errorf("administrators should still see it, disabled: %+v, %v", got, ok)
 	}
