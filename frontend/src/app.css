@@ -87,7 +87,7 @@
   --stamp-large-padding: 4px 10px 3px;
   --stamp-large-border: 1.5px;
   --stamp-large-tracking: 0.1em;
-  --stamp-large-turn: rotate(-1deg);
+  --stamp-large-turn: rotate(1deg);
 
   /* Page background, section rules, loading mark. */
   --page-texture: none;
