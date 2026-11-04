@@ -144,6 +144,7 @@ type file struct {
 type Package struct {
 	Manifest Manifest
 	files    map[string]file // theme.css, assets/…, fonts/…
+	dir      fs.FS           // the package as it is, for an export
 }
 
 // Set is the theme packages a server offers.
@@ -186,7 +187,7 @@ func loadPackage(dir fs.FS) (*Package, error) {
 	if err != nil {
 		return nil, fmt.Errorf("theme.json: %w", err)
 	}
-	p := &Package{Manifest: m, files: map[string]file{}}
+	p := &Package{Manifest: m, files: map[string]file{}, dir: dir}
 	names := []string{"theme.css"}
 	for _, sub := range []string{"assets", "fonts"} {
 		err := fs.WalkDir(dir, sub, func(name string, d fs.DirEntry, err error) error {

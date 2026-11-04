@@ -6,7 +6,9 @@ package api
 import (
 	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"strconv"
 
 	"solstice/internal/audit"
 	"solstice/internal/auth"
@@ -42,6 +44,21 @@ func themeError(err error) error {
 
 func themeRefused(findings []themes.Finding) error {
 	return &httpError{status: http.StatusBadRequest, msg: i18n.M(i18n.ThemePackageRefused), extra: map[string]any{"findings": findings}}
+}
+
+// exportTheme answers a theme's package as a zip. Administrators also see the
+// disabled themes, in their list.
+func (s *Server) exportTheme(w http.ResponseWriter, r *http.Request) error {
+	name, data, err := s.themes.Export(r.Context(), r.PathValue("id"), currentUser(r).Admin)
+	if err != nil {
+		return themeError(err)
+	}
+	h := w.Header()
+	h.Set("Content-Type", "application/zip")
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
+	h.Set("Content-Length", strconv.Itoa(len(data)))
+	_, err = w.Write(data)
+	return err
 }
 
 // readThemeZip reads the part "file" of a request.
