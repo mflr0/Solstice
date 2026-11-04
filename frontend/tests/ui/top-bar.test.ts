@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
-import { SKINS, THEMES } from '../../src/core/appearance.js';
+import { THEMES } from './themes-fixture.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
@@ -11,6 +11,7 @@ import TopBar from '../../src/ui/TopBar.svelte';
 
 vi.mock('../../src/lib/api.js', () => ({
   api: {
+    themes: () => import('./themes-fixture.js').then((f) => ({ contract: 1, themes: f.THEMES })),
     projects: () =>
       Promise.resolve([
         { id: 1, key: 'ALPHA', name: 'Alpha' },
@@ -22,6 +23,8 @@ vi.mock('../../src/lib/api.js', () => ({
   errorMessage: String,
   pictureUrl: (id: number) => `/api/users/${id}/picture`,
 }));
+
+vi.stubGlobal('fetch', () => Promise.resolve(new Response("[data-skin='x'] { }")));
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -237,7 +240,7 @@ describe('TopBar keyboard', () => {
       expect(names.map((n) => [n.getAttribute('role'), n.textContent?.trim()])).toEqual(
         THEMES.map((m) => ['menuitem', m.name.en]),
       );
-      const other = SKINS.indexOf('orbite');
+      const other = THEMES.findIndex((m) => m.id === 'orbite');
       key(focused(), 'Home');
       for (let i = 0; i < 1 + other * 3; i++) key(focused(), 'ArrowDown');
       expect(focused()).toBe(names[other]);

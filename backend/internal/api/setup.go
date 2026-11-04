@@ -33,6 +33,7 @@ import (
 	"solstice/internal/config"
 	"solstice/internal/db"
 	"solstice/internal/i18n"
+	"solstice/internal/themes"
 )
 
 // SetupOptions configures the wizard.
@@ -220,6 +221,10 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 		return &httpError{status: http.StatusServiceUnavailable, extra: map[string]any{"setup": true},
 			msg: i18n.M(i18n.SetupNotDone)}
 	}, false)
+	// The wizard is themed too, and the interface holds no theme of its own.
+	builtin := themes.Builtin()
+	mux.Handle("GET /api/themes", w.wrap(themeIndex(builtin), false))
+	mux.Handle("GET /api/themes/{id}/{path...}", w.wrap(themeFile(builtin), false))
 	mux.Handle("/api/", notInstalled)
 	mux.Handle("/rest/", notInstalled)
 	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {

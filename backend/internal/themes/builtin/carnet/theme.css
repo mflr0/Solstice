@@ -3,16 +3,13 @@
  * light: cream paper, black ink, one vermilion accent, statuses printed like
  * rubber stamps, hairline rules, the issue record on a plain card.
  *
- * The base (src/app.css) draws it from these tokens. Unlike the other skins it
- * is part of the main stylesheet (src/main.ts), so it paints on first load;
- * its first token block also covers :where(:root), the fallback whatever the
- * skin attribute says.
+ * The base (src/app.css) draws it from these tokens.
  *
  * Titles in Source Serif 4, text and controls in IBM Plex Sans, keys and code
  * in IBM Plex Mono.
  */
 
-/* Fonts: ./carnet/fonts/, from fontsource, under the SIL OFL (licences there). */
+/* Fonts: fonts/, from fontsource, under the SIL OFL (licences there). */
 
 @font-face {
   font-family: 'Source Serif 4 Variable';
@@ -365,7 +362,6 @@
 
 /* Tokens ------------------------------------------------------------------ */
 
-:where(:root),
 [data-skin='carnet'] {
   --desk: var(--paper);
   --paper: #f4f1ea;

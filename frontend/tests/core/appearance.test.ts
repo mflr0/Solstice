@@ -9,8 +9,6 @@ import {
   parseMode,
   parseSkin,
   resolveScheme,
-  SKINS,
-  THEMES,
   type Mode,
   type Skin,
 } from '../../src/core/appearance.js';
@@ -22,9 +20,10 @@ describe('parsing stored values', () => {
     expect(parseSkin('retro')).toBe('retro');
     expect(parseSkin('plan')).toBe('plan');
     expect(parseSkin('carnet')).toBe('carnet');
-    expect(parseSkin('constructor')).toBe('carnet');
+    expect(parseSkin('a-theme-2')).toBe('a-theme-2');
     expect(parseSkin(null)).toBe('carnet');
-    expect(parseSkin('neon')).toBe('carnet');
+    expect(parseSkin('../neon')).toBe('carnet');
+    expect(parseSkin('Neon')).toBe('carnet');
   });
 
   it('keeps light and dark, anything else follows the system', () => {
@@ -56,23 +55,6 @@ describe('the scheme in effect', () => {
       'data-scheme': 'light',
     });
   });
-
-  it('lists the built-in themes in the order of the menus', () => {
-    expect(SKINS).toEqual([
-      'carnet',
-      'orbite',
-      'crayon',
-      'luna',
-      'retro',
-      'classique',
-      'terminal',
-      'plan',
-    ]);
-  });
-
-  it('has a light and a dark swatch for every built-in theme', () => {
-    for (const m of THEMES) expect(Object.keys(m.preview).sort(), m.id).toEqual(['dark', 'light']);
-  });
 });
 
 describe('manifest texts', () => {
@@ -83,8 +65,14 @@ describe('manifest texts', () => {
   });
 });
 
+const SKINS = ['carnet', 'orbite', 'a-theme-2'];
+
 /** Runs public/theme-boot.js against a fake page and returns <html>'s attributes. */
-function boot(stored: Record<string, string>, systemDark: boolean): Record<string, string> {
+function boot(
+  stored: Record<string, string>,
+  systemDark: boolean,
+  fetched: string[] = [],
+): Record<string, string> {
   const attrs: Record<string, string> = {};
   const script = readFileSync(new URL('../../public/theme-boot.js', import.meta.url), 'utf8');
   runInNewContext(script, {
@@ -96,12 +84,29 @@ function boot(stored: Record<string, string>, systemDark: boolean): Record<strin
     },
     localStorage: { getItem: (k: string) => stored[k] ?? null },
     window: { matchMedia: () => ({ matches: systemDark }) },
+    fetch: (url: string) => {
+      fetched.push(url);
+      return Promise.resolve({ ok: true, text: () => Promise.resolve('') });
+    },
     setTimeout: () => 0,
   });
   return attrs;
 }
 
 describe('the boot script', () => {
+  it('starts the fetch of the stored skin', () => {
+    const fetched: string[] = [];
+    boot({ 'solstice.skin': 'a-theme-2' }, false, fetched);
+    expect(fetched).toEqual(['/api/themes/a-theme-2/theme.css']);
+  });
+
+  it('falls back to Carnet on a value that is no id', () => {
+    const fetched: string[] = [];
+    const got = boot({ 'solstice.skin': '../../etc/passwd' }, false, fetched);
+    expect(got['data-skin']).toBe('carnet');
+    expect(fetched).toEqual(['/api/themes/carnet/theme.css']);
+  });
+
   it('applies the same rules as the application', () => {
     for (const skin of SKINS) {
       for (const mode of MODES) {
@@ -111,8 +116,7 @@ describe('the boot script', () => {
           for (const [name, value] of Object.entries(expected)) {
             expect(got[name] ?? null, `${skin}/${mode}/${systemDark} ${name}`).toBe(value);
           }
-          // Hidden until the skin's stylesheet arrives; Carnet's is the main one.
-          expect('data-skin-loading' in got).toBe(skin !== 'carnet');
+          expect('data-skin-loading' in got).toBe(true);
         }
       }
     }
@@ -122,6 +126,7 @@ describe('the boot script', () => {
     expect(boot({ 'solstice.skin': '<script>', 'solstice.theme': 'x' }, false)).toEqual({
       'data-skin': 'carnet',
       'data-scheme': 'light',
+      'data-skin-loading': '',
     });
   });
 });

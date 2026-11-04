@@ -4,6 +4,7 @@
  * ApiError with the server's message, in the interface's language, ready to show.
  */
 
+import type { ThemeIndex } from '../core/appearance.js';
 import { avatarUrl } from '../core/avatar.js';
 import type { Dashboard, GadgetInput } from '../core/dashboard.js';
 import type { ColumnChoice } from '../core/search-columns.js';
@@ -289,6 +290,7 @@ export const api = {
   useLink: (token: string, password: string) =>
     request<Me>('POST', '/api/auth/reset', { token, password }),
   me: () => request<Me>('GET', '/api/me'),
+  themes: () => request<ThemeIndex>('GET', '/api/themes'),
   meta: () => request<Meta>('GET', '/api/meta'),
 
   projects: () => request<Project[]>('GET', '/api/projects'),

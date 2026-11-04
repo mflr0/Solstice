@@ -4,12 +4,11 @@
 // src/i18n/locales.ts — keep them in step.
 (function () {
   var root = document.documentElement;
-  var skins = ['carnet', 'orbite', 'crayon', 'luna', 'retro', 'classique', 'terminal', 'plan'];
   var skin = 'carnet';
   var mode = 'system';
   try {
     var s = localStorage.getItem('solstice.skin');
-    if (skins.indexOf(s) >= 0) skin = s;
+    if (s && /^[a-z0-9-]{1,32}$/.test(s)) skin = s;
     var m = localStorage.getItem('solstice.theme');
     if (m === 'light' || m === 'dark') mode = m;
   } catch {
@@ -47,12 +46,21 @@
   root.setAttribute('data-skin', skin);
   if (mode !== 'system') root.setAttribute('data-theme', mode);
   root.setAttribute('data-scheme', dark ? 'dark' : 'light');
-  if (skin !== 'carnet') {
-    // The page stays blank until the skin's stylesheet is in (src/lib/skins.svelte.ts);
-    // this only guards against the application never starting.
-    root.setAttribute('data-skin-loading', '');
-    setTimeout(function () {
-      root.removeAttribute('data-skin-loading');
-    }, 3000);
-  }
+  // The page stays blank until the skin's stylesheet is in (src/lib/skins.svelte.ts);
+  // the timer only guards against the application never starting.
+  root.setAttribute('data-skin-loading', '');
+  setTimeout(function () {
+    root.removeAttribute('data-skin-loading');
+  }, 10000);
+  // Started here, so the stylesheet doesn't wait for the application's scripts.
+  window.solsticeBootSkin = {
+    id: skin,
+    css: fetch('/api/themes/' + skin + '/theme.css', { credentials: 'same-origin' })
+      .then(function (res) {
+        return res.ok ? res.text() : null;
+      })
+      .catch(function () {
+        return null;
+      }),
+  };
 })();

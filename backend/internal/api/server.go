@@ -248,15 +248,8 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	s.updateRoutes(route)
 
 	// Theme packages, public: the sign-in page is themed too.
-	route("GET /api/themes", func(w http.ResponseWriter, _ *http.Request) error {
-		return writeJSON(w, http.StatusOK, s.themes.Index())
-	}, scopePublic)
-	route("GET /api/themes/{id}/{path...}", func(w http.ResponseWriter, r *http.Request) error {
-		if !s.themes.Serve(w, r, r.PathValue("id"), r.PathValue("path")) {
-			return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
-		}
-		return nil
-	}, scopePublic)
+	route("GET /api/themes", themeIndex(s.themes), scopePublic)
+	route("GET /api/themes/{id}/{path...}", themeFile(s.themes), scopePublic)
 
 	// The setup wizard is over: it only learns so.
 	route("GET /api/setup/status", s.setupDone, scopePublic)
@@ -308,6 +301,21 @@ func securityHeaders(next http.Handler) http.Handler {
 }
 
 type handler func(http.ResponseWriter, *http.Request) error
+
+func themeIndex(set *themes.Set) handler {
+	return func(w http.ResponseWriter, _ *http.Request) error {
+		return writeJSON(w, http.StatusOK, set.Index())
+	}
+}
+
+func themeFile(set *themes.Set) handler {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if !set.Serve(w, r, r.PathValue("id"), r.PathValue("path")) {
+			return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
+		}
+		return nil
+	}
+}
 
 type ctxKey int
 

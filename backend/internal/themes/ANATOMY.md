@@ -23,7 +23,7 @@ Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
   System fonts (Tahoma, Verdana, …) only as `font-family` fallbacks, never
   bundled. No Microsoft or Atlassian names, logos, icons, fonts or assets,
   anywhere (code, comments, UI).
-- **Images**: `url('assets/thing.svg')` — relative to `theme.css`; Vite emits them.
+- **Images**: `url('assets/thing.svg')` — relative to `theme.css`; the loader points them at `/api/themes/<id>/`.
 - **Motion**: wrap animations in `@media (prefers-reduced-motion: no-preference)`.
 - **SVG filters** (roughness…) on frames only, never on text: draw the frame on a
   pseudo-element and filter that.
@@ -36,19 +36,21 @@ Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
 
 ### How the file is loaded (you do not need to do anything)
 
-`src/lib/skins.svelte.ts` imports the file on demand (`?inline`, code-split) and
-injects it as `<style data-skin-css="<id>">` after every other stylesheet, so
+`src/lib/skins.svelte.ts` fetches the file from `GET /api/themes/<id>/theme.css`
+(`public/theme-boot.js` starts this for the stored skin, before the application's
+scripts). It rewrites the anchor to the id the server serves the package under and
+package-relative `url()`s to `/api/themes/<id>/…`, then injects the file as
+`<style data-skin-css="<id>">` after every other stylesheet, so
 **your rules win specificity ties**. When the browser supports `@scope`, the
 loader wraps the file in `@scope ([data-skin='<id>']) to ([data-skin])` and
 rewrites `[data-skin='<id>']` to `:scope`: your rules then stop at any nested
 element carrying another `data-skin` (gallery previews), and specificity is
 unchanged. `@font-face`, `@keyframes`, `@import`, `@property`,
 `@counter-style` stay top-level. While the file loads, `<html>` carries
-`data-skin-loading` and the page is hidden (1.2 s at most).
+`data-skin-loading` and the page is hidden (10 s at most).
 
-Carnet is the exception: `src/main.ts` imports `carnet.css` with the main
-stylesheet, unscoped, so it paints on first load with no wait, and it is the
-fallback. Its first token block is therefore `:where(:root), [data-skin='carnet']`.
+Carnet loads the same way. It is the default, and the fallback when the stored
+theme can't be loaded.
 
 ## 2. Tokens
 
