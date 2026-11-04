@@ -141,6 +141,7 @@
     {/each}
   </fieldset>
   <p class="form-hint">{t.account.themeHint}</p>
+  <p class="form-hint">{t.account.themeRescueHint}</p>
 
   <div class="card gallery">
     <div class="card-body">

@@ -2225,6 +2225,10 @@ export const fr: Messages = {
     followBrowserHint: (name: string) => `Langue demandée par le navigateur : ${name}.`,
     theme: 'Thème',
     themeHint: 'Le thème et le mode clair ou sombre ne s’appliquent qu’à vous.',
+    themeRescueHint:
+      'Si un thème casse la page, ajoutez ?skin=carnet à l’adresse pour l’afficher avec le thème par défaut.',
+    themeFallback:
+      'Le thème n’a pas pu être chargé : le thème par défaut est affiché. Votre choix est conservé.',
     gallery: 'Ouvrir la galerie des thèmes',
     galleryHint: 'Chaque thème s’essaie dans la galerie, avec un aperçu.',
     notificationsIntro:

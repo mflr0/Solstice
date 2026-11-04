@@ -2229,6 +2229,10 @@ export const it: Messages = {
     followBrowserHint: (name: string) => `Lingua richiesta dal browser: ${name}.`,
     theme: 'Tema',
     themeHint: 'Il tema e la modalità chiara o scura valgono solo per te.',
+    themeRescueHint:
+      'Se un tema rende la pagina inutilizzabile, aggiungi ?skin=carnet all’indirizzo per caricarla con il tema predefinito.',
+    themeFallback:
+      'Non è stato possibile caricare il tema, quindi viene mostrato quello predefinito. La tua scelta resta salvata.',
     gallery: 'Apri la galleria dei temi',
     galleryHint: 'Ogni tema si prova nella galleria, con un’anteprima.',
     notificationsIntro:

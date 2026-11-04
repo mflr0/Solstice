@@ -8,8 +8,9 @@ import {
   htmlAttributes,
   parseMode,
   DEFAULT_SKIN,
-  parseSkin,
+  offeredSkin,
   resolveScheme,
+  startingSkin,
   STORAGE_KEYS,
   type Mode,
   type Scheme,
@@ -22,9 +23,10 @@ import {
   type ShortcutOverrides,
   shortcutsEnabled,
 } from '../core/shortcuts.js';
+import { t } from '../i18n/t.js';
 import { accountApi } from './admin-api.js';
 import { session } from './session.svelte.js';
-import { isSkinLoaded, loadSkin } from './skins.svelte.js';
+import { isSkinLoaded, loadSkin, loadThemes, themes } from './skins.svelte.js';
 
 export interface CreateDefaults {
   project?: string;
@@ -98,7 +100,12 @@ const darkQuery =
   typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
 class Appearance {
-  skin = $state<Skin>(parseSkin(readStored(STORAGE_KEYS.skin)));
+  skin = $state<Skin>(
+    startingSkin(
+      typeof location !== 'undefined' ? location.search : '',
+      readStored(STORAGE_KEYS.skin),
+    ),
+  );
   mode = $state<Mode>(parseMode(readStored(STORAGE_KEYS.mode)));
   scheme = $state<Scheme>('light');
 
@@ -123,6 +130,18 @@ function reveal(): void {
   document.documentElement.removeAttribute('data-skin-loading');
 }
 
+/** How long a skin's stylesheet may take; shorter than the boot script's guard. */
+const SKIN_TIMEOUT_MS = 5000;
+
+/** Shows the default skin for this page load; the stored choice stays for next time. */
+function fallBack(skin: Skin): void {
+  if (appearance.skin !== skin) return;
+  if (skin === DEFAULT_SKIN) return reveal();
+  appearance.skin = DEFAULT_SKIN;
+  render();
+  notify(t.account.themeFallback, 'error');
+}
+
 function render(): void {
   appearance.scheme = resolveScheme(appearance.mode, darkQuery?.matches ?? false);
   const attrs = htmlAttributes(appearance.skin, appearance.mode, darkQuery?.matches ?? false);
@@ -133,16 +152,14 @@ function render(): void {
   const skin = appearance.skin;
   if (isSkinLoaded(skin)) return reveal();
   // A blank page until the skin's stylesheet is in, rather than a flash of an
-  // unstyled page; the timer only guards against a fetch that hangs.
+  // unstyled page.
   document.documentElement.setAttribute('data-skin-loading', '');
-  const timer = setTimeout(reveal, 10000);
+  const timer = setTimeout(() => fallBack(skin), SKIN_TIMEOUT_MS);
   void loadSkin(skin).then((loaded) => {
-    if (appearance.skin !== skin) return;
     clearTimeout(timer);
-    if (loaded || skin === DEFAULT_SKIN) return reveal();
-    // Gone from the server, or out of reach: the stored choice stays for next time.
-    appearance.skin = DEFAULT_SKIN;
-    render();
+    if (appearance.skin !== skin) return;
+    if (loaded) reveal();
+    else fallBack(skin);
   });
 }
 
@@ -182,6 +199,9 @@ export async function applyBindings(overrides: ShortcutOverrides): Promise<void>
 /** Applies the stored appearance and follows the system's light/dark changes. */
 export function initAppearance(): () => void {
   render();
+  void loadThemes().then(() => {
+    if (offeredSkin(appearance.skin, themes.list) !== appearance.skin) fallBack(appearance.skin);
+  });
   const onChange = () => {
     if (appearance.mode === 'system') render();
   };

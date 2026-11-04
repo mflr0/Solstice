@@ -2243,6 +2243,10 @@ export const de: Messages = {
     followBrowserHint: (name: string) => `Vom Browser angeforderte Sprache: ${name}.`,
     theme: 'Design',
     themeHint: 'Design und Hell- oder Dunkelmodus gelten nur für Sie.',
+    themeRescueHint:
+      'Wenn ein Design die Seite unbrauchbar macht, hängen Sie ?skin=carnet an die Adresse an, um sie mit dem Standarddesign zu laden.',
+    themeFallback:
+      'Das Design konnte nicht geladen werden, daher wird das Standarddesign angezeigt. Ihre Auswahl bleibt erhalten.',
     gallery: 'Design-Galerie öffnen',
     galleryHint: 'Jedes Design lässt sich in der Galerie mit Vorschau ausprobieren.',
     notificationsIntro:

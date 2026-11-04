@@ -6,8 +6,10 @@
   var root = document.documentElement;
   var skin = 'carnet';
   var mode = 'system';
+  // ?skin=<id> is for this page load only: it is never stored.
+  var s = new URLSearchParams(location.search).get('skin');
   try {
-    var s = localStorage.getItem('solstice.skin');
+    if (!s) s = localStorage.getItem('solstice.skin');
     if (s && /^[a-z0-9-]{1,32}$/.test(s)) skin = s;
     var m = localStorage.getItem('solstice.theme');
     if (m === 'light' || m === 'dark') mode = m;
@@ -46,8 +48,9 @@
   root.setAttribute('data-skin', skin);
   if (mode !== 'system') root.setAttribute('data-theme', mode);
   root.setAttribute('data-scheme', dark ? 'dark' : 'light');
-  // The page stays blank until the skin's stylesheet is in (src/lib/skins.svelte.ts);
-  // the timer only guards against the application never starting.
+  // The page stays blank until the skin's stylesheet is in (src/lib/ui.svelte.ts);
+  // the timer only guards against the application never starting, so it outlasts
+  // the application's own timeout.
   root.setAttribute('data-skin-loading', '');
   setTimeout(function () {
     root.removeAttribute('data-skin-loading');

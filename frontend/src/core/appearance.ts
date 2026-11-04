@@ -82,6 +82,16 @@ export function resolveScheme(mode: Mode, systemDark: boolean): Scheme {
   return mode;
 }
 
+/** The skin of a page load: ?skin=<id> in the address, else the stored one. */
+export function startingSkin(search: string, stored: string | null | undefined): Skin {
+  return parseSkin(new URLSearchParams(search).get('skin') || stored);
+}
+
+/** The skin, or the default when the server's list doesn't have it; an empty list says nothing. */
+export function offeredSkin(skin: Skin, offered: readonly { id: Skin }[]): Skin {
+  return offered.length === 0 || offered.some((theme) => theme.id === skin) ? skin : DEFAULT_SKIN;
+}
+
 /** The attributes <html> should carry; null removes the attribute. */
 export function htmlAttributes(
   skin: Skin,
