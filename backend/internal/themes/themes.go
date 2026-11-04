@@ -1,5 +1,5 @@
-// Package themes reads the theme packages built into the binary and serves
-// their files.
+// Package themes reads the theme packages built into the binary and those
+// stored on the instance, and serves their files.
 //
 // A package is a folder named after its id, holding theme.json (see
 // Manifest), theme.css and optional assets/ and fonts/ folders.
@@ -289,15 +289,20 @@ func (s *Set) Serve(w http.ResponseWriter, r *http.Request, id, name string) boo
 	if !ok {
 		return false
 	}
+	serveFile(w, r, name, f.contentType, f.etag, bytes.NewReader(f.data))
+	return true
+}
+
+// serveFile writes a theme's file with the headers every theme file gets.
+func serveFile(w http.ResponseWriter, r *http.Request, name, contentType, etag string, content io.ReadSeeker) {
 	h := w.Header()
-	h.Set("Content-Type", f.contentType)
+	h.Set("Content-Type", contentType)
 	h.Set("X-Content-Type-Options", "nosniff")
 	// An SVG opened on its own is a document: it must not run script.
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
-	h.Set("ETag", f.etag)
+	h.Set("ETag", etag)
 	// The first paint uses the copy at hand and refreshes it behind: waiting for
 	// a revalidation would delay every page load by a round trip.
 	h.Set("Cache-Control", "public, max-age=0, stale-while-revalidate=604800")
-	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(f.data))
-	return true
+	http.ServeContent(w, r, name, time.Time{}, content)
 }

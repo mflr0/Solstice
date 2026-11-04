@@ -22,7 +22,7 @@ const (
 
 // Finding is one rule a theme package breaks.
 type Finding struct {
-	Rule    string // manifest, css, tokens, contrast, font-size, import, url, schemes, preview or licence
+	Rule    string // manifest, css, tokens, contrast, font-size, import, url, schemes, preview, licence or size
 	Message string
 	File    string // path inside the package
 	Line    int    // from 1; 0 when it concerns the whole file
@@ -39,7 +39,7 @@ func (f Finding) String() string {
 // what it breaks, by file and line. Without a valid manifest it skips the
 // rules that need the package's id or schemes.
 func Validate(pkg fs.FS) []Finding {
-	out := checkLicences(pkg)
+	out := append(checkLicences(pkg), checkSize(pkg)...)
 	raw, err := fs.ReadFile(pkg, manifestFile)
 	var m Manifest
 	if err == nil {
@@ -62,6 +62,34 @@ func Validate(pkg fs.FS) []Finding {
 		out = append(out, checkTokens(css, m, string(raw))...)
 	}
 	return sorted(out)
+}
+
+// checkSize holds a package to MaxPackageFiles and MaxPackageBytes.
+func checkSize(pkg fs.FS) []Finding {
+	var files, size int64
+	err := fs.WalkDir(pkg, ".", func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		files++
+		size += info.Size()
+		return nil
+	})
+	var out []Finding
+	if err != nil {
+		out = append(out, Finding{Rule: "size", Message: err.Error(), File: "."})
+	}
+	if files > MaxPackageFiles {
+		out = append(out, Finding{Rule: "size", Message: fmt.Sprintf("%d files: the most a package may hold is %d", files, MaxPackageFiles), File: "."})
+	}
+	if size > MaxPackageBytes {
+		out = append(out, Finding{Rule: "size", Message: fmt.Sprintf("%d bytes: the most a package may hold is %d", size, MaxPackageBytes), File: "."})
+	}
+	return out
 }
 
 func sorted(out []Finding) []Finding {

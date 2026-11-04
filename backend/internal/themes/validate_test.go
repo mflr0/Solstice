@@ -1,6 +1,7 @@
 package themes
 
 import (
+	"fmt"
 	"io/fs"
 	"maps"
 	"math"
@@ -97,6 +98,15 @@ func TestValidateRules(t *testing.T) {
 			swap(t, pkg, manifestFile, `"version": "1.0.0"`, `"version": "one"`)
 		}, []string{"manifest"}, "not a semantic version"},
 		{"no theme.css", func(t *testing.T, pkg fstest.MapFS) { delete(pkg, cssFile) }, []string{"css"}, ""},
+
+		{"too many files", func(t *testing.T, pkg fstest.MapFS) {
+			for i := range MaxPackageFiles {
+				pkg[fmt.Sprintf("assets/extra-%d.png", i)] = &fstest.MapFile{}
+			}
+		}, []string{"size"}, "files"},
+		{"too large", func(t *testing.T, pkg fstest.MapFS) {
+			pkg["assets/large.png"] = &fstest.MapFile{Data: make([]byte, MaxPackageBytes)}
+		}, []string{"size"}, "bytes"},
 
 		{"token missing", func(t *testing.T, pkg fstest.MapFS) {
 			swap(t, pkg, cssFile, "--desk: var(--paper);", "")

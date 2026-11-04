@@ -32,7 +32,7 @@ var update = flag.Bool("update", false, "rewrite testdata/characterization.json"
 const goldenPath = "testdata/characterization.json"
 
 // Not written by the import (keep.go), or changing at each run.
-var skippedTables = []string{"schema_migrations", "sessions", "settings", "webhooks", "audit_log"}
+var skippedTables = []string{"schema_migrations", "sessions", "settings", "themes", "webhooks", "audit_log"}
 
 // Set to the time of the import: Jira does not store them (as in scripts/e2e-import.sh).
 var skippedColumns = map[string][]string{

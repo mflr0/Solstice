@@ -222,7 +222,7 @@ func (w *Setup) Handler(static http.Handler, isAsset func(string) bool) http.Han
 			msg: i18n.M(i18n.SetupNotDone)}
 	}, false)
 	// The wizard is themed too, and the interface holds no theme of its own.
-	builtin := themes.Builtin()
+	builtin := themes.NewRegistry(nil, "", nil)
 	mux.Handle("GET /api/themes", w.wrap(themeIndex(builtin), false))
 	mux.Handle("GET /api/themes/{id}/{path...}", w.wrap(themeFile(builtin), false))
 	mux.Handle("/api/", notInstalled)
