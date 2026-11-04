@@ -221,6 +221,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("POST /api/sprints/{id}/start", s.startSprint, auth.ScopeAgile)
 	route("POST /api/sprints/{id}/complete", s.completeSprint, auth.ScopeAgile)
 
+	route("GET /api/groups/shareable", s.shareableGroups, auth.ScopeRead)
 	route("GET /api/filters", s.listFilters, auth.ScopeRead)
 	route("POST /api/filters", s.createFilter, auth.ScopeFilters)
 	route("PATCH /api/filters/{id}", s.updateFilter, auth.ScopeFilters)

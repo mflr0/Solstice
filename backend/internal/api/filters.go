@@ -305,6 +305,39 @@ func (s *Server) checkGroupExists(ctx context.Context, group int64) error {
 	return nil
 }
 
+// shareableGroups lists the groups checkFilter lets the user share with: their
+// own, in a project when one is named; for an administrator, every group.
+func (s *Server) shareableGroups(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	belongs := sub.InGroup
+	if v := r.URL.Query().Get("project"); v != "" {
+		project, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || !sub.CanBrowseProject(project) {
+			return fail(http.StatusBadRequest, i18n.ProjectNotFound)
+		}
+		belongs = func(group int64) bool { return sub.InGroupIn(project, group) }
+	}
+	out := []idName{}
+	err = sqlq.Each(ctx, s.db, `SELECT id, name FROM user_groups ORDER BY name, id`, func(rows *sql.Rows) error {
+		var g idName
+		if err := rows.Scan(&g.ID, &g.Name); err != nil {
+			return err
+		}
+		if sub.Admin || belongs(g.ID) {
+			out = append(out, g)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
 func writeShares(ctx context.Context, tx *sql.Tx, filter int64, shares []filterShare) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM filter_shares WHERE filter_id = ?`, filter); err != nil {
 		return err

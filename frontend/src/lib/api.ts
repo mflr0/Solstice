@@ -11,6 +11,7 @@ import type { ColumnChoice } from '../core/search-columns.js';
 import type {
   Comment,
   Grant,
+  FilterShare,
   HiddenIssue,
   HistoryEntry,
   IdName,
@@ -438,6 +439,11 @@ export const api = {
   saveBoard: (id: number, patch: BoardPatch) =>
     request<BoardDetail>('PUT', `/api/boards/${id}`, patch),
   deleteBoard: (id: number) => request<void>('DELETE', `/api/boards/${id}`),
+  setBoardShares: (id: number, shares: FilterShare[]) =>
+    request<{ shares: FilterShare[] }>('PUT', `/api/boards/${id}/shares`, { shares }),
+  /** The groups the user may share with, in a project when one is given. */
+  shareableGroups: (project?: number) =>
+    request<IdName[]>('GET', `/api/groups/shareable${query({ project })}`),
   boardCards: (id: number, params: { quick?: string | undefined; sprint?: number | undefined }) =>
     request<BoardCards>('GET', `/api/boards/${id}/cards${query(params)}`),
   backlog: (id: number, quick?: string) =>
