@@ -1429,6 +1429,7 @@ export const it: Messages = {
       overview: 'Panoramica',
       settings: 'Impostazioni generali',
       banner: 'Banner',
+      themes: 'Temi',
       users: 'Utenti',
       groups: 'Gruppi',
       projects: 'Progetti',
@@ -1451,6 +1452,7 @@ export const it: Messages = {
       overview: 'Cosa resta da configurare, e tutte le sezioni.',
       settings: 'Nome dell’istanza, indirizzo pubblico, lingua predefinita.',
       banner: 'Un messaggio mostrato in cima a tutte le pagine.',
+      themes: 'Importa, attiva, disattiva, elimina ed esporta i temi.',
       users: 'Creare account, disattivarli, cambiare una password.',
       groups: 'Raccogliere persone per dare loro i permessi insieme.',
       projects: 'Creare, rinominare, archiviare o eliminare un progetto.',
@@ -2480,6 +2482,35 @@ export const it: Messages = {
     saved: 'Impostazioni generali salvate.',
   },
 
+  themesAdmin: {
+    intro:
+      'I temi tra cui tutti possono scegliere. Se disattivi o elimini un tema, chi lo usa torna al tema predefinito al prossimo caricamento di una pagina.',
+    contractNote: (contract: number) =>
+      `Questa versione di Solstice legge il contratto dei temi ${contract}.`,
+    import: 'Importa un tema',
+    uploading: 'Invio del pacchetto…',
+    refused: (file: string) => `${file} è stato rifiutato`,
+    author: 'Autore',
+    version: 'Versione',
+    contract: 'Contratto',
+    origins: { builtin: 'integrato', imported: 'importato' },
+    on: 'attivo',
+    off: 'disattivato',
+    previewOf: (name: string) => `Anteprima di ${name}`,
+    previewFailed: 'Impossibile caricare l’anteprima.',
+    export: 'Esporta',
+    enable: 'Attiva',
+    disable: 'Disattiva',
+    replace: 'Sostituisci',
+    imported: (name: string) => `${name} importato`,
+    replaced: (name: string, version: string) => `${name} sostituito con la versione ${version}`,
+    enabled: (name: string) => `${name} attivato`,
+    disabled: (name: string) => `${name} disattivato`,
+    deleted: (name: string) => `${name} eliminato`,
+    deleteTitle: (name: string) => `Eliminare ${name}?`,
+    deleteBody: (fallback: string) =>
+      `Chi usa questo tema torna a ${fallback}. L’operazione non si può annullare.`,
+  },
   bannerAdmin: {
     intro:
       'Un messaggio in cima a tutte le pagine, per tutti: una manutenzione prevista, una novità. Chiunque può nasconderlo; ritorna se il testo cambia.',

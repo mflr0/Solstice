@@ -1090,7 +1090,7 @@ with `id` the id it is served under, plus `manifestId`, `origin` (`builtin` or
   unknown.
 - `POST /api/admin/themes/{id}/enable`, `/disable` → theme. (`theme.enable`,
   `theme.disable`, only when it changes something) A disabled theme is not offered
-  and its files answer 404, so users on it go back to Carnet. 409 on disabling
-  Carnet, the fallback.
+  and its files answer 404, so users on it go back to Carnet; administrators still
+  get them, for the themes page's preview. 409 on disabling Carnet, the fallback.
 - `DELETE /api/admin/themes/{id}` → 204. (`theme.delete`) 409 on a built-in theme:
   disable it instead.

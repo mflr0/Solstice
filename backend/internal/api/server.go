@@ -251,7 +251,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 
 	// Theme packages, public: the sign-in page is themed too.
 	route("GET /api/themes", themeIndex(s.themes), scopePublic)
-	route("GET /api/themes/{id}/{path...}", themeFile(s.themes), scopePublic)
+	route("GET /api/themes/{id}/{path...}", themeFile(s.themes, s.seesDisabledThemes), scopePublic)
 	route("GET /api/themes/{id}/export", s.exportTheme, auth.ScopeRead)
 	s.themeAdminRoutes(route)
 
@@ -316,9 +316,9 @@ func themeIndex(set *themes.Registry) handler {
 	}
 }
 
-func themeFile(set *themes.Registry) handler {
+func themeFile(set *themes.Registry, mayDisabled func(*http.Request) bool) handler {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		ok, err := set.Serve(w, r, r.PathValue("id"), r.PathValue("path"))
+		ok, err := set.Serve(w, r, r.PathValue("id"), r.PathValue("path"), mayDisabled)
 		if err != nil {
 			return err
 		}

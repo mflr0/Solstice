@@ -1,17 +1,20 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { isSkinLoaded, loadSkin } from '../../src/lib/skins.svelte.js';
+import { isSkinLoaded, loadSkin, reloadSkin } from '../../src/lib/skins.svelte.js';
 import { t } from '../../src/i18n/t.js';
 import { appearance, applySkin, notes } from '../../src/lib/ui.svelte.js';
 
 const root = document.documentElement;
 const requests: string[] = [];
+const caches: (RequestCache | undefined)[] = [];
 
 beforeEach(() => {
   requests.length = 0;
-  vi.stubGlobal('fetch', (url: string) => {
+  caches.length = 0;
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
     requests.push(url);
+    caches.push(init?.cache);
     return Promise.resolve(
       url.includes('/gone/')
         ? new Response('', { status: 404 })
@@ -41,6 +44,24 @@ describe('loading a skin', () => {
     expect(await loadSkin('gone')).toBe(false);
     expect(await loadSkin('gone')).toBe(false);
     expect(requests).toHaveLength(2);
+  });
+});
+
+describe('reloading a skin', () => {
+  it('swaps the stylesheet for the new one', async () => {
+    await loadSkin('three');
+    const old = document.querySelector('style[data-skin-css="three"]');
+    await reloadSkin('three');
+    expect(requests).toEqual(['/api/themes/three/theme.css', '/api/themes/three/theme.css']);
+    const styles = document.querySelectorAll('style[data-skin-css="three"]');
+    expect(styles).toHaveLength(1);
+    expect(styles[0]).not.toBe(old);
+    expect(caches).toEqual([undefined, 'no-cache']);
+  });
+
+  it('fetches nothing for a skin never asked for', async () => {
+    await reloadSkin('four');
+    expect(requests).toEqual([]);
   });
 });
 

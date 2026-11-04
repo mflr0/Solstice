@@ -1439,6 +1439,7 @@ export const de: Messages = {
       overview: 'Übersicht',
       settings: 'Allgemeine Einstellungen',
       banner: 'Banner',
+      themes: 'Themes',
       users: 'Benutzer',
       groups: 'Gruppen',
       projects: 'Projekte',
@@ -1461,6 +1462,7 @@ export const de: Messages = {
       overview: 'Was noch zu tun ist, und alle Bereiche.',
       settings: 'Name der Instanz, öffentliche Adresse, Standardsprache.',
       banner: 'Eine Meldung, die oben auf allen Seiten angezeigt wird.',
+      themes: 'Themes importieren, aktivieren, deaktivieren, löschen und exportieren.',
       users: 'Konten anlegen, deaktivieren, Passwörter ändern.',
       groups: 'Personen zusammenfassen, um ihnen gemeinsam Berechtigungen zu geben.',
       projects: 'Ein Projekt anlegen, umbenennen, archivieren oder löschen.',
@@ -2494,6 +2496,35 @@ export const de: Messages = {
     saved: 'Allgemeine Einstellungen gespeichert.',
   },
 
+  themesAdmin: {
+    intro:
+      'Die Themes, aus denen alle wählen können. Wird ein Theme deaktiviert oder gelöscht, erhalten alle, die es verwenden, beim nächsten Laden einer Seite wieder das Standard-Theme.',
+    contractNote: (contract: number) =>
+      `Diese Version von Solstice liest den Theme-Vertrag ${contract}.`,
+    import: 'Theme importieren',
+    uploading: 'Paket wird gesendet…',
+    refused: (file: string) => `${file} wurde abgelehnt`,
+    author: 'Autor',
+    version: 'Version',
+    contract: 'Vertrag',
+    origins: { builtin: 'integriert', imported: 'importiert' },
+    on: 'aktiviert',
+    off: 'deaktiviert',
+    previewOf: (name: string) => `Vorschau von ${name}`,
+    previewFailed: 'Die Vorschau konnte nicht geladen werden.',
+    export: 'Exportieren',
+    enable: 'Aktivieren',
+    disable: 'Deaktivieren',
+    replace: 'Ersetzen',
+    imported: (name: string) => `${name} importiert`,
+    replaced: (name: string, version: string) => `${name} durch Version ${version} ersetzt`,
+    enabled: (name: string) => `${name} aktiviert`,
+    disabled: (name: string) => `${name} deaktiviert`,
+    deleted: (name: string) => `${name} gelöscht`,
+    deleteTitle: (name: string) => `${name} löschen?`,
+    deleteBody: (fallback: string) =>
+      `Alle, die dieses Theme verwenden, kehren zu ${fallback} zurück. Das lässt sich nicht rückgängig machen.`,
+  },
   bannerAdmin: {
     intro:
       'Eine Meldung oben auf allen Seiten, für alle: eine geplante Wartung, eine Neuigkeit. Jeder kann sie ausblenden; sie erscheint wieder, sobald sich der Text ändert.',

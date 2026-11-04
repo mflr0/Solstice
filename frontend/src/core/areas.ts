@@ -8,6 +8,7 @@ export const ADMIN_SECTIONS = [
   'overview',
   'settings',
   'banner',
+  'themes',
   'users',
   'groups',
   'projects',
@@ -33,6 +34,7 @@ const ADMIN_SLUGS: Record<AdminSection, string> = {
   overview: '',
   settings: 'settings',
   banner: 'banner',
+  themes: 'themes',
   users: 'users',
   groups: 'groups',
   projects: 'projects',
@@ -56,7 +58,7 @@ export type AdminGroup = 'general' | 'people' | 'projects' | 'issues' | 'integra
 
 /** The side navigation of the administration, in order. */
 export const ADMIN_NAV: readonly { group: AdminGroup; items: readonly AdminSection[] }[] = [
-  { group: 'general', items: ['overview', 'settings', 'banner'] },
+  { group: 'general', items: ['overview', 'settings', 'banner', 'themes'] },
   { group: 'people', items: ['users', 'groups'] },
   { group: 'projects', items: ['projects', 'securityLevels'] },
   {

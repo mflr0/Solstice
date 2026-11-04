@@ -17,6 +17,7 @@
   import SettingsPage from './SettingsPage.svelte';
   import StatusesPage from './StatusesPage.svelte';
   import SystemPage from './SystemPage.svelte';
+  import ThemesPage from './ThemesPage.svelte';
   import TokensPage from './TokensPage.svelte';
   import UpdatesPage from './UpdatesPage.svelte';
   import UsersPage from './UsersPage.svelte';
@@ -64,6 +65,8 @@
         <SettingsPage />
       {:else if section === 'banner'}
         <BannerPage />
+      {:else if section === 'themes'}
+        <ThemesPage />
       {:else if section === 'users'}
         <UsersPage />
       {:else if section === 'groups'}
