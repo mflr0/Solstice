@@ -1,0 +1,38 @@
+{
+  "id": "plan",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Blueprint",
+    "fr": "Plan",
+    "de": "Blaupause",
+    "it": "Cianografia",
+    "hi": "ब्लूप्रिंट"
+  },
+  "description": {
+    "en": "tracing paper, title blocks",
+    "fr": "calque et cartouches",
+    "de": "Pauspapier, Schriftfelder",
+    "it": "lucido e cartigli",
+    "hi": "ट्रेसिंग पेपर, टाइटल ब्लॉक"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#ffffff",
+      "paper": "#f5f8fa",
+      "ink": "#0f2e57",
+      "accent": "#c42b1c"
+    },
+    "dark": {
+      "bar": "#0a2645",
+      "paper": "#0d2e52",
+      "ink": "#f2f6fb",
+      "accent": "#ff9a84"
+    }
+  }
+}

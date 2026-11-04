@@ -13,6 +13,8 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
+# The built-in themes live with the server; the interface bundles them.
+COPY backend/internal/themes/builtin/ ../backend/internal/themes/builtin/
 # Type-checks, then writes ../backend/internal/web/dist.
 RUN pnpm build
 

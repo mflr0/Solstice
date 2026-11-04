@@ -1,0 +1,38 @@
+{
+  "id": "carnet",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Notebook",
+    "fr": "Carnet",
+    "de": "Notizbuch",
+    "it": "Taccuino",
+    "hi": "नोटबुक"
+  },
+  "description": {
+    "en": "paper and ink",
+    "fr": "papier et encre",
+    "de": "Papier und Tinte",
+    "it": "carta e inchiostro",
+    "hi": "कागज़ और स्याही"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#faf8f3",
+      "paper": "#f4f1ea",
+      "ink": "#1c1b19",
+      "accent": "#d9381e"
+    },
+    "dark": {
+      "bar": "#22211d",
+      "paper": "#1a1916",
+      "ink": "#ebe6da",
+      "accent": "#ec5a3d"
+    }
+  }
+}

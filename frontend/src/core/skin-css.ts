@@ -1,5 +1,5 @@
 /**
- * Turns a skin's stylesheet (src/themes/<id>.css) into one that only reaches
+ * Turns a skin's stylesheet (its package's theme.css) into one that only reaches
  * the elements that skin owns.
  *
  * A skin file anchors every selector on [data-skin='<id>']. Where the browser

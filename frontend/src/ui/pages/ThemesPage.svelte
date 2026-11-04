@@ -1,6 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { MODES, SKINS, type Scheme, type Skin } from '../../core/appearance.js';
+  import {
+    localized,
+    MODES,
+    SKINS,
+    THEMES,
+    type Scheme,
+    type Skin,
+    type ThemeManifest,
+  } from '../../core/appearance.js';
+  import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
   import { loadSkin, skinSheets } from '../../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin } from '../../lib/ui.svelte.js';
@@ -15,6 +24,12 @@
 
   function schemes(skin: Skin): Scheme[] {
     return skinSheets[skin]?.dark === false ? ['light'] : ['light', 'dark'];
+  }
+
+  /** The gallery's longer description of a built-in, else the manifest's. */
+  function description(theme: ThemeManifest): string {
+    const long: Partial<Record<string, string>> = t.themes.descriptions;
+    return long[theme.id] ?? localized(theme.description, locale);
   }
 
   /** Applies the skin; picking the other scheme's preview switches the mode too. */
@@ -33,19 +48,21 @@
     </div>
   </header>
 
-  {#each SKINS as skin (skin)}
+  {#each THEMES as theme (theme.id)}
+    {@const skin = theme.id}
+    {@const name = localized(theme.name, locale)}
     {@const current = appearance.skin === skin}
     <section class="theme" class:current aria-labelledby="theme-{skin}">
       <div class="about">
-        <h2 id="theme-{skin}" class="name">{t.nav.skins[skin]}</h2>
-        <p class="description">{t.themes.descriptions[skin]}</p>
+        <h2 id="theme-{skin}" class="name">{name}</h2>
+        <p class="description">{description(theme)}</p>
         {#if current}
           <p class="in-use"><span class="stamp done">{t.themes.current}</span></p>
         {:else}
           <button class="btn btn-primary" onclick={() => applySkin(skin)}>{t.themes.use}</button>
         {/if}
         {#if schemes(skin).length > 1}
-          <div class="modes" role="group" aria-label="{t.nav.mode} — {t.nav.skins[skin]}">
+          <div class="modes" role="group" aria-label="{t.nav.mode} — {name}">
             {#each MODES as mode (mode)}
               <button
                 class="btn btn-small"
@@ -68,7 +85,7 @@
           <button
             class="preview"
             class:active={current && appearance.scheme === scheme}
-            aria-label={t.themes.apply(t.nav.skins[skin], t.themes.schemes[scheme])}
+            aria-label={t.themes.apply(name, t.themes.schemes[scheme])}
             onclick={() => choose(skin, scheme)}
           >
             {#if skinSheets[skin]}

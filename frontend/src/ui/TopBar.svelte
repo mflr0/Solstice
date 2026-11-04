@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { SCHEME_SWATCHES, SKINS, type Scheme, type Skin } from '../core/appearance.js';
+  import { localized, THEMES, type Scheme, type Skin } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { bindingWorks, formatShortcut } from '../core/shortcuts.js';
+  import { locale } from '../i18n/index.js';
   import { t } from '../i18n/t.js';
   import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
@@ -174,26 +175,28 @@
               >{/each}
           </div>
           <div role="group" aria-label={t.nav.themes}>
-            {#each SKINS as skin (skin)}
+            {#each THEMES as theme (theme.id)}
+              {@const skin = theme.id}
+              {@const name = localized(theme.name, locale)}
               <div class="theme-row">
                 <button
                   class="item skin-name"
                   role="menuitem"
-                  onclick={(e) => pickSkin(skin, e.currentTarget)}>{t.nav.skins[skin]}</button
+                  onclick={(e) => pickSkin(skin, e.currentTarget)}>{name}</button
                 >
                 {#each SCHEMES as scheme (scheme)}
-                  {@const sw = SCHEME_SWATCHES[skin][scheme]}
-                  {@const label = t.nav.skinMode(t.nav.skins[skin], t.nav.modes[scheme])}
+                  {@const sw = theme.preview[scheme]}
+                  {@const label = t.nav.skinMode(name, t.nav.modes[scheme])}
                   <button
                     class="scheme"
                     role="menuitemradio"
                     aria-checked={appearance.skin === skin && appearance.scheme === scheme}
                     aria-label={label}
                     title={label}
-                    style:--sw-bar={sw.bar}
-                    style:--sw-paper={sw.paper}
-                    style:--sw-ink={sw.ink}
-                    style:--sw-accent={sw.accent}
+                    style:--sw-bar={sw?.bar}
+                    style:--sw-paper={sw?.paper}
+                    style:--sw-ink={sw?.ink}
+                    style:--sw-accent={sw?.accent}
                     onclick={(e) => pickLook(skin, scheme, e.currentTarget)}
                   ></button>
                 {/each}

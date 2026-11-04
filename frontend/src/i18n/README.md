@@ -67,7 +67,7 @@ file of the same shape: `fr.ts`, `de.ts`, `it.ts`, `hi.ts`.
 | droits              | permissions  | Berechtigungen | permessi               | अनुमतियाँ     |
 | Mon travail         | My work      | Meine Arbeit   | Il mio lavoro          | मेरा काम      |
 
-Skin names: Carnet → Notebook / Notizbuch / Taccuino / नोटबुक; Orbite → Orbit /
+Skin names (in each theme's `theme.json`, backend/internal/themes/builtin): Carnet → Notebook / Notizbuch / Taccuino / नोटबुक; Orbite → Orbit /
 Orbit / Orbita / ऑर्बिट; Crayonné → Sketch / Skizze / Schizzo / स्केच; Luna,
 Rétro 98 and Terminal stay; Classique → Classic / Klassisch / Classico /
 क्लासिक; Plan → Blueprint / Blaupause / Cianografia / ब्लूप्रिंट.

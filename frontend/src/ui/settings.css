@@ -2,7 +2,7 @@
  * Shared look of the settings areas: the administration (/admin), the
  * personal settings (/settings) and the project settings. Every rule is
  * anchored on .settings-area so nothing leaks into other pages; skins
- * restyle these hooks like any other (src/themes/ANATOMY.md, "Settings").
+ * restyle these hooks like any other (backend/internal/themes/ANATOMY.md, "Settings").
  */
 
 /* The paragraph under a section's title. */

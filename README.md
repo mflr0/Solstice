@@ -427,12 +427,12 @@ backend/
   internal/sqlq/        small helpers around database/sql
   internal/worker/      background work that survives a panic
   internal/web/         serves the built interface
+  internal/themes/      the theme packages and their contract (ANATOMY.md)
 frontend/
   src/core/             pure, tested logic (wiki markup rendering, JQL…)
   src/ui/               Svelte components
   src/lib/              state, router, API client
   src/i18n/             interface texts, one file per language
-  src/themes/           the themes and their contract (ANATOMY.md)
 deploy/                 Docker and Linux installation
 scripts/                end-to-end import test, release archives
 ```

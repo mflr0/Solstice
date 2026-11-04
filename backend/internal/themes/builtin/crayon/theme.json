@@ -1,0 +1,38 @@
+{
+  "id": "crayon",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Sketch",
+    "fr": "Crayonné",
+    "de": "Skizze",
+    "it": "Schizzo",
+    "hi": "स्केच"
+  },
+  "description": {
+    "en": "pencil lead",
+    "fr": "mine de crayon",
+    "de": "Bleistiftgraphit",
+    "it": "mina di matita",
+    "hi": "पेंसिल का ग्रेफ़ाइट"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#f7f5ee",
+      "paper": "#f7f5ee",
+      "ink": "#262522",
+      "accent": "#2c5daa"
+    },
+    "dark": {
+      "bar": "#1f2b27",
+      "paper": "#1f2b27",
+      "ink": "#ecebe4",
+      "accent": "#9cc0f0"
+    }
+  }
+}

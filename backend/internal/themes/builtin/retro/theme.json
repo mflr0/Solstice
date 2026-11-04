@@ -1,0 +1,38 @@
+{
+  "id": "retro",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Retro 98",
+    "fr": "Rétro 98",
+    "de": "Retro 98",
+    "it": "Retro 98",
+    "hi": "Retro 98"
+  },
+  "description": {
+    "en": "raised grey",
+    "fr": "gris en relief",
+    "de": "plastisches Grau",
+    "it": "grigio in rilievo",
+    "hi": "उभरा हुआ स्लेटी"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#c6c5bf",
+      "paper": "#1a7a77",
+      "ink": "#111111",
+      "accent": "#0b2a84"
+    },
+    "dark": {
+      "bar": "#3c3d40",
+      "paper": "#0f3735",
+      "ink": "#ecebe6",
+      "accent": "#91b3ff"
+    }
+  }
+}

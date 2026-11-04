@@ -1,17 +1,22 @@
 /**
- * Skin stylesheets: src/themes/<id>.css, each its own chunk, fetched the
- * first time the skin is shown (chosen, or previewed in the gallery) and
- * added to the end of <head>, so its rules win ties with the base ones.
- * Carnet's is part of the main stylesheet (src/main.ts) instead.
+ * Skin stylesheets: each package's theme.css (backend/internal/themes/builtin),
+ * its own chunk, fetched the first time the skin is shown (chosen, or
+ * previewed in the gallery) and added to the end of <head>, so its rules win
+ * ties with the base ones. Carnet's is part of the main stylesheet
+ * (src/main.ts) instead.
  */
 
 import type { Skin } from '../core/appearance.js';
 import { hasDarkVariant, scopeSkinCss } from '../core/skin-css.js';
 
-const sources = import.meta.glob<string>(['../themes/*.css', '!../themes/carnet.css'], {
-  query: '?inline',
-  import: 'default',
-});
+const builtin = '../../../backend/internal/themes/builtin';
+const sources = import.meta.glob<string>(
+  [
+    '../../../backend/internal/themes/builtin/*/theme.css',
+    '!../../../backend/internal/themes/builtin/carnet/theme.css',
+  ],
+  { query: '?inline', import: 'default' },
+);
 
 /**
  * What is known of each loaded skin: whether it draws a dark variant.
@@ -33,7 +38,7 @@ export function loadSkin(skin: Skin): Promise<void> {
   if (skin === 'carnet') return Promise.resolve();
   let p = pending[skin];
   if (!p) {
-    const source = sources[`../themes/${skin}.css`];
+    const source = sources[`${builtin}/${skin}/theme.css`];
     p = (source ? source() : Promise.resolve(''))
       .then((css) => {
         if (css) {

@@ -91,7 +91,7 @@ export function deliveryTone(d: Pick<WebhookDelivery, 'status' | 'statusCode'>):
   return 'waiting';
 }
 
-/** The stamp class of a tone (src/themes/ANATOMY.md: .stamp.done, .doing, .is-failed). */
+/** The stamp class of a tone (backend/internal/themes/ANATOMY.md: .stamp.done, .doing, .is-failed). */
 export function toneClass(tone: DeliveryTone): string {
   return tone === 'ok' ? 'done' : tone === 'waiting' ? 'doing' : 'is-failed';
 }
