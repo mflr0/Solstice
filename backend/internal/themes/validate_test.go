@@ -86,6 +86,22 @@ func TestValidateBuiltin(t *testing.T) {
 	}
 }
 
+func TestValidateAllowsWhatLoadsNothing(t *testing.T) {
+	for _, css := range []string{
+		`.x::before { content: "\00d7"; }`,
+		`/* @\69mport */`,
+		`.x { background: image-set(url("data:image/png;base64,AA") 1x, "data:image/png;base64,AA" type("image/png") 2x); }`,
+		`.x { background: my-image("https://example.com/a.png"); }`,
+		`@font-face { font-family: "A"; src: local("https://example.com/a"); }`,
+	} {
+		pkg := carnetPackage(t)
+		appendCSS(pkg, css)
+		for _, f := range Validate(pkg) {
+			t.Errorf("%s: %s", css, f)
+		}
+	}
+}
+
 func TestValidateRules(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -193,6 +209,46 @@ func TestValidateRules(t *testing.T) {
 		{"url hiding behind /*", func(t *testing.T, pkg fstest.MapFS) {
 			appendCSS(pkg, ".x { background: url(fonts/a/*.png); } .y { background: url(https://example.com/b.png); } /* */")
 		}, []string{"url"}, "url(https://example.com/b.png)"},
+
+		{"escape in an at-rule name", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `@\69mport "https://example.com/a.css";`)
+		}, []string{"escape"}, "only allowed in strings"},
+		{"escape in a function name", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: u\72l(https://example.com/a.png); }`)
+		}, []string{"escape"}, "only allowed in strings"},
+		{"escape in a selector", func(t *testing.T, pkg fstest.MapFS) { appendCSS(pkg, `.a\/b { color: red; }`) },
+			[]string{"escape"}, ""},
+		{"escape in an unquoted url", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: url(fonts/\61.png); }`)
+		}, []string{"escape", "url"}, "only allowed in strings"},
+		{"escaped quote hiding an @import", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.a\" {} @import "https://example.com/a.css"; .b\" {}`)
+		}, []string{"escape", "import"}, ""},
+
+		{"image-set string", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: image-set("https://example.com/a.png" 1x); }`)
+		}, []string{"url"}, "image-set(https://example.com/a.png): want a file under"},
+		{"-webkit-image-set string", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: -webkit-image-set("https://example.com/a.png" 1x); }`)
+		}, []string{"url"}, "image-set(https://example.com/a.png)"},
+		{"image string", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: image(ltr 'https://example.com/a.png'); }`)
+		}, []string{"url"}, "image(https://example.com/a.png)"},
+		{"src string", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: SRC("https://example.com/a.png"); }`)
+		}, []string{"url"}, "src(https://example.com/a.png)"},
+		{"image-set second string", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: image-set("data:image/png;base64,AA" 1x, "https://example.com/a.png" 2x); }`)
+		}, []string{"url"}, "image-set(https://example.com/a.png)"},
+		{"image-set to a missing file", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: image-set("assets/a.png" type("image/png") 1x); }`)
+		}, []string{"url"}, "image-set(assets/a.png): no such file"},
+		{"image-set through var()", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { --a: "https://example.com/a.png"; background: image-set(var(--a) 1x); }`)
+		}, []string{"load"}, "var() inside image-set()"},
+		{"src through attr()", func(t *testing.T, pkg fstest.MapFS) {
+			appendCSS(pkg, `.x { background: src(attr(data-a)); }`)
+		}, []string{"load"}, "attr() inside src()"},
 
 		{"manifest lists dark, no dark block", func(t *testing.T, pkg fstest.MapFS) {
 			swap(t, pkg, cssFile, "[data-skin='carnet'][data-scheme='dark'] {", ".other {")
