@@ -75,6 +75,16 @@ describe('BoardHeader', () => {
     }
   });
 
+  it('offers sharing, outside the views, whoever looks at the board', () => {
+    for (const manage of [true, false]) {
+      links(detail('kanban', false, manage), 'board');
+      const share = document.querySelector<HTMLButtonElement>('nav + button.btn-icon');
+      expect(share?.getAttribute('aria-label')).toBe(en.boards.share);
+      if (mounted) unmount(mounted);
+      mounted = undefined;
+    }
+  });
+
   it('shows the backlog for scrum and for kanban with a backlog only', () => {
     const shown = (d: BoardDetail) => {
       const has = links(d, 'board').some((a) => a.getAttribute('aria-label') === labels.backlog);

@@ -6,6 +6,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { shownBoard } from '../../lib/ui.svelte.js';
   import { BOARD_VIEW_ICONS } from './board-view-icons.js';
+  import ShareBoardDialog from './ShareBoardDialog.svelte';
 
   /** A board's title block, with the switch between its board, backlog, reports and settings. */
   interface Props {
@@ -24,6 +25,10 @@
       ? [{ id: 'settings', href: paths.boardSettings(b.id), label: t.boards.settings }]
       : []),
   ] as { id: Props['view']; href: string; label: string }[]);
+
+  let sharing = $state(false);
+  // What was just saved, until the page next loads the board.
+  let shares = $derived(detail.shares);
 
   $effect(() => {
     shownBoard.id = b.id;
@@ -64,8 +69,31 @@
         </a>
       {/each}
     </nav>
+    <button
+      type="button"
+      class="btn btn-icon"
+      aria-label={t.boards.share}
+      title={t.boards.share}
+      aria-haspopup="dialog"
+      onclick={() => (sharing = true)}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        {#each BOARD_VIEW_ICONS.share as d, i (i)}<path {d} />{/each}
+      </svg>
+    </button>
   </div>
 </header>
+
+<ShareBoardDialog
+  open={sharing}
+  {detail}
+  {shares}
+  onclose={() => (sharing = false)}
+  onsaved={(saved) => {
+    shares = saved;
+    sharing = false;
+  }}
+/>
 
 <style>
   .board-head {

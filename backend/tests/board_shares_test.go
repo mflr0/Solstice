@@ -189,6 +189,51 @@ func TestBoardSharesUnknownGroup(t *testing.T) {
 	}
 }
 
+// The groups offered are those a save accepts: the caller's own, by project
+// when one is named, and every group for an administrator.
+func TestShareableGroups(t *testing.T) {
+	e := newShareBoardEnv(t)
+	global, inProject, other := newGroup(t, e.admin, "partage "), newGroup(t, e.admin, "partage "), newGroup(t, e.admin, "partage ")
+	owner := userID(t, "jeanne.dupont")
+	e.admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", global.ID), map[string]any{"users": []int64{owner}}, 200, nil)
+	e.admin.call("PUT", fmt.Sprintf("/api/projects/%s/groups/%d", e.project, inProject.ID),
+		map[string]any{"users": []int64{owner}, "groups": []int64{}}, 200, nil)
+
+	listed := func(c *client, query string) map[int64]bool {
+		var groups []struct{ ID int64 }
+		c.call("GET", "/api/groups/shareable"+query, nil, 200, &groups)
+		out := map[int64]bool{}
+		for _, g := range groups {
+			out[g.ID] = true
+		}
+		return out
+	}
+	project := fmt.Sprintf("?project=%v", e.projectShare["id"])
+
+	mine := listed(e.owner, "")
+	if !mine[global.ID] || !mine[inProject.ID] || mine[other.ID] {
+		t.Errorf("own groups: %v", mine)
+	}
+	there := listed(e.owner, project)
+	if !there[inProject.ID] || there[other.ID] {
+		t.Errorf("own groups in the project: %v", there)
+	}
+	all := listed(e.admin, "")
+	if !all[global.ID] || !all[inProject.ID] || !all[other.ID] {
+		t.Errorf("administrator: %v", all)
+	}
+	if got := listed(e.viewer, ""); got[global.ID] || got[inProject.ID] || got[other.ID] {
+		t.Errorf("someone else: %v", got)
+	}
+
+	e.owner.call("GET", "/api/groups/shareable?project=999999999", nil, 400, nil)
+	e.owner.call("GET", "/api/groups/shareable?project=x", nil, 400, nil)
+
+	e.put(e.owner, 200,
+		map[string]any{"kind": "group", "id": global.ID},
+		map[string]any{"kind": "project", "id": e.projectShare["id"], "group": inProject.ID})
+}
+
 // A body without shares changes nothing: it must not read as "no one".
 func TestBoardSharesNeedTheList(t *testing.T) {
 	e := newShareBoardEnv(t)
