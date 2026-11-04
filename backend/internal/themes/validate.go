@@ -22,7 +22,7 @@ const (
 
 // Finding is one rule a theme package breaks.
 type Finding struct {
-	Rule    string // manifest, css, tokens, contrast, font-size, import, url, schemes, preview, licence or size
+	Rule    string // manifest, css, tokens, contrast, font-size, import, escape, url, load, schemes, preview, licence or size
 	Message string
 	File    string // path inside the package
 	Line    int    // from 1; 0 when it concerns the whole file
@@ -56,6 +56,8 @@ func Validate(pkg fs.FS) []Finding {
 	}
 	css := parseCSS(string(data))
 	out = append(out, checkImports(css)...)
+	out = append(out, checkEscapes(css)...)
+	out = append(out, checkLoaders(css)...)
 	out = append(out, checkFontSizes(css)...)
 	out = append(out, checkURLs(pkg, css)...)
 	if manifestOK {
@@ -107,9 +109,14 @@ type stylesheet struct {
 	code  string // comments blanked
 	plain string // comments, strings and url() targets blanked
 	urls  []urlRef
+
+	escapes  []int    // offsets of the backslashes outside strings and comments
+	indirect []urlRef // calls inside a function that loads strings, which may hide a target
 }
 
+// urlRef is a file a stylesheet loads, through call.
 type urlRef struct {
+	call   string
 	target string
 	offset int
 }
@@ -127,7 +134,9 @@ func parseCSS(src string) stylesheet {
 			}
 		}
 	}
-	var urls []urlRef
+	var urls, indirect []urlRef
+	var escapes []int
+	var calls []string // the functions open at i, innermost last
 	for i := 0; i < len(src); {
 		switch {
 		case strings.HasPrefix(src[i:], "/*"):
@@ -138,18 +147,26 @@ func parseCSS(src string) stylesheet {
 			blank(code, i, end)
 			blank(plain, i, end)
 			i = end
+		case src[i] == '\\':
+			// An escaped quote opens no string, nor an escaped "/*" a comment.
+			escapes = append(escapes, i)
+			i += 2
 		case src[i] == '"' || src[i] == '\'':
-			_, end := stringAt(src, i)
+			target, end := stringAt(src, i)
+			if call := loaderOf(calls); call != "" {
+				urls = append(urls, urlRef{call, target, i})
+			}
 			blank(plain, i, end)
 			i = end
 		case isURLCall(src, i):
+			calls = append(calls, "url")
 			start := i + len("url(")
 			for start < len(src) && isCSSSpace(src[start]) {
 				start++
 			}
 			if start < len(src) && (src[start] == '"' || src[start] == '\'') {
 				target, end := stringAt(src, start)
-				urls = append(urls, urlRef{target, i})
+				urls = append(urls, urlRef{"url", target, i})
 				blank(plain, start, end)
 				i = end
 				break
@@ -159,14 +176,29 @@ func parseCSS(src string) stylesheet {
 			if n := strings.IndexByte(src[start:], ')'); n >= 0 {
 				end = start + n
 			}
-			urls = append(urls, urlRef{strings.TrimSpace(src[start:end]), i})
+			if n := strings.IndexByte(src[start:end], '\\'); n >= 0 {
+				escapes = append(escapes, start+n)
+			}
+			urls = append(urls, urlRef{"url", strings.TrimSpace(src[start:end]), i})
 			blank(plain, start, end)
 			i = end
+		case src[i] == '(':
+			name := callName(src, i)
+			if slices.ContainsFunc(calls, isLoader) && !isLoader(name) && name != "type" {
+				indirect = append(indirect, urlRef{loaderOf(calls), name, i})
+			}
+			calls = append(calls, name)
+			i++
+		case src[i] == ')':
+			if len(calls) > 0 {
+				calls = calls[:len(calls)-1]
+			}
+			i++
 		default:
 			i++
 		}
 	}
-	return stylesheet{raw: src, code: string(code), plain: string(plain), urls: urls}
+	return stylesheet{raw: src, code: string(code), plain: string(plain), urls: urls, escapes: escapes, indirect: indirect}
 }
 
 // stringAt reads the CSS string opening at i: its text and the offset after
@@ -184,6 +216,39 @@ func stringAt(src string, i int) (string, int) {
 		}
 	}
 	return src[i+1:], len(src)
+}
+
+// callName is the function a "(" at i opens, lowercase and without a vendor
+// prefix; "" for a bare parenthesis.
+func callName(src string, i int) string {
+	start := i
+	for start > 0 && isIdentByte(src[start-1]) {
+		start--
+	}
+	name := strings.ToLower(src[start:i])
+	if strings.HasPrefix(name, "-") && !strings.HasPrefix(name, "--") {
+		if _, rest, ok := strings.Cut(name[1:], "-"); ok {
+			return rest
+		}
+	}
+	return name
+}
+
+// isLoader reports whether a function takes a bare string as a file to load.
+func isLoader(name string) bool {
+	return name == "image-set" || name == "image" || name == "src"
+}
+
+// loaderOf is the function that would load a string in these open calls: the
+// outermost loader, unless the string belongs to type(), which names a format.
+func loaderOf(calls []string) string {
+	if len(calls) == 0 || calls[len(calls)-1] == "type" {
+		return ""
+	}
+	if i := slices.IndexFunc(calls, isLoader); i >= 0 {
+		return calls[i]
+	}
+	return ""
 }
 
 func isURLCall(src string, i int) bool {
@@ -208,6 +273,28 @@ func checkImports(css stylesheet) []Finding {
 	var out []Finding
 	for _, m := range importPattern.FindAllStringIndex(css.plain, -1) {
 		out = append(out, Finding{Rule: "import", Message: "@import is not allowed", File: cssFile, Line: css.line(m[0])})
+	}
+	return out
+}
+
+// checkEscapes refuses every CSS escape outside strings: "@\\69mport" and
+// "u\\72l(" are @import and url() to a browser, but not to this scanner.
+func checkEscapes(css stylesheet) []Finding {
+	var out []Finding
+	for _, offset := range css.escapes {
+		out = append(out, Finding{Rule: "escape", Message: "CSS escapes are only allowed in strings", File: cssFile, Line: css.line(offset)})
+	}
+	return out
+}
+
+// checkLoaders refuses a call inside a function that loads strings: var() or
+// attr() would hand it a target this scanner never sees. checkURLs reads the
+// strings themselves.
+func checkLoaders(css stylesheet) []Finding {
+	var out []Finding
+	for _, c := range css.indirect {
+		msg := fmt.Sprintf("%s() inside %s(): want strings or url() there", c.target, c.call)
+		out = append(out, Finding{Rule: "load", Message: msg, File: cssFile, Line: css.line(c.offset)})
 	}
 	return out
 }
@@ -240,9 +327,9 @@ func checkURLs(pkg fs.FS, css stylesheet) []Finding {
 		msg := ""
 		name, _, _ := strings.Cut(u.target, "#")
 		if !strings.HasPrefix(name, "assets/") && !strings.HasPrefix(name, "fonts/") || strings.Contains(name, "..") {
-			msg = "url(" + u.target + "): want a file under assets/ or fonts/, or data:"
+			msg = u.call + "(" + u.target + "): want a file under assets/ or fonts/, or data:"
 		} else if info, err := fs.Stat(pkg, name); err != nil || info.IsDir() {
-			msg = "url(" + u.target + "): no such file"
+			msg = u.call + "(" + u.target + "): no such file"
 		}
 		if msg != "" {
 			out = append(out, Finding{Rule: "url", Message: msg, File: cssFile, Line: css.line(u.offset)})

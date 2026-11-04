@@ -24,6 +24,8 @@ Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
   bundled. No Microsoft or Atlassian names, logos, icons, fonts or assets,
   anywhere (code, comments, UI).
 - **Images**: `url('assets/thing.svg')` — relative to `theme.css`; the loader points them at `/api/themes/<id>/`.
+- **CSS escapes** (`\`) only inside strings: the validator refuses them anywhere else, selectors included.
+- **`image-set()`, `image()`, `src()`**: the validator holds their strings to the `url()` rule, and refuses `var()` or any other call in them but `url()` and `type()`.
 - **Motion**: wrap animations in `@media (prefers-reduced-motion: no-preference)`.
 - **SVG filters** (roughness…) on frames only, never on text: draw the frame on a
   pseudo-element and filter that.
@@ -467,7 +469,7 @@ static there.
   Editing your file reloads the page.
 - `go test ./internal/themes -run TestValidateBuiltin` (from `backend/`) — runs
   the validator on every built-in package: manifest, token completeness, AA,
-  font sizes, `url()` targets, licences, `schemes` and `preview`. Each finding
+  font sizes, escapes, file targets, licences, `schemes` and `preview`. Each finding
   gives the rule, the file and the line.
 - `pnpm exec prettier --write ../backend/internal/themes/builtin/<id>/theme.css` —
   format your own file only.
