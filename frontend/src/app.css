@@ -1,133 +1,13 @@
 /*
- * Design tokens and shared styles.
+ * Structure and shared styles, drawn from the skin tokens.
  *
- * Carnet, the default skin, is defined here: a site logbook ("carnet de
- * chantier"), kept light — cream paper, black ink, one vermilion accent,
- * statuses printed like rubber stamps, hairline rules, the issue record on a
- * plain card. Every rule below draws Carnet from tokens; the other skins live
- * in src/themes/<id>.css, redefine the tokens and reshape the hooks listed in
- * src/themes/ANATOMY.md.
+ * Every skin, Carnet the default included, lives in src/themes/<id>.css: it
+ * declares the tokens and reshapes the hooks listed in src/themes/ANATOMY.md.
  *
  * The skin root (<html>, or a .skin-preview in the theme gallery) carries
  * data-skin and data-scheme (the light/dark actually in effect; see
  * src/core/appearance.ts).
  */
-
-/* Carnet ------------------------------------------------------------------ */
-
-:where(:root),
-[data-skin='carnet'] {
-  --desk: var(--paper);
-  --paper: #f4f1ea;
-  --paper-raised: #faf8f3;
-  --paper-sunk: #ece7dc;
-  --ink: #1c1b19;
-  --ink-soft: #4a4740;
-  --muted: #6c685e;
-  --rule: #e6e0d4;
-  --rule-strong: #cfc7b7;
-  --accent: #d9381e;
-  /* The vermilion, a shade deeper, where it is text. */
-  --accent-text: #c2321b;
-  --accent-wash: rgba(217, 56, 30, 0.05);
-  --primary: var(--accent);
-  --primary-ink: #ffffff;
-  --sun: #d9381e;
-  --focus: var(--accent);
-  --bar: var(--paper-raised);
-  --bar-ink: var(--ink);
-  --bar-ink-soft: var(--ink-soft);
-  --margin-line: rgba(217, 56, 30, 0.38);
-  --shadow-pop: 0 10px 30px rgba(28, 27, 25, 0.1), 0 1px 3px rgba(28, 27, 25, 0.08);
-  --backdrop: rgba(28, 27, 25, 0.38);
-  --ink-blend: multiply;
-
-  /* Status inks, one per category. */
-  --stamp-todo: #4a4740;
-  --stamp-doing: #24508f;
-  --stamp-done: #2e6b3c;
-
-  /* Issue type inks. */
-  --tone-bug: #8e2f2f;
-  --tone-story: #3f6b45;
-  --tone-epic: #5d4485;
-  --tone-task: #2f5a8a;
-  --tone-subtask: #6b665c;
-
-  /* Type: title, body and code roles. */
-  --font-title: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
-  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-size: 0.875rem;
-  --title-weight: 600;
-  --h1-weight: 550;
-  --title-tracking: -0.005em;
-  --title-italic: italic;
-  --empty-font: italic 400 0.9375rem/1.45 var(--font-title);
-
-  /* Shapes. */
-  --frame: 1px;
-  --radius-xs: 2px;
-  --radius-s: 3px;
-  --radius-m: 4px;
-  --radius-l: 6px;
-  --avatar-radius: 2px;
-  --card-top: 2px solid var(--accent);
-
-  /* Statuses. */
-  --stamp-font: 500 0.65625rem/1.25 var(--font-body);
-  --stamp-case: uppercase;
-  --stamp-tracking: 0.07em;
-  --stamp-border: 1px;
-  --stamp-radius: 3px;
-  --stamp-padding: 2px 6px 1px;
-  --stamp-fill: 0%;
-  --stamp-dot: none;
-  --stamp-large-size: 0.75rem;
-  --stamp-large-padding: 4px 10px 3px;
-  --stamp-large-border: 1.5px;
-  --stamp-large-tracking: 0.1em;
-  --stamp-large-turn: rotate(1deg);
-
-  /* Page background, section rules, loading mark. */
-  --page-texture: none;
-  --page-texture-size: auto;
-  --rule-stroke: var(--rule);
-  --rule-height: 1px;
-  --loader: none;
-
-  color-scheme: light;
-}
-
-[data-skin='carnet'][data-scheme='dark'] {
-  --paper: #1a1916;
-  --paper-raised: #22211d;
-  --paper-sunk: #151412;
-  --ink: #ebe6da;
-  --ink-soft: #c4beb0;
-  --muted: #8f897b;
-  --rule: #2c2a26;
-  --rule-strong: #403d36;
-  --accent: #ec5a3d;
-  --accent-text: #ec5a3d;
-  --accent-wash: rgba(236, 90, 61, 0.1);
-  /* A deeper fill keeps white text readable on the main button. */
-  --primary: #cb4d34;
-  --sun: #ec5a3d;
-  --margin-line: rgba(236, 90, 61, 0.35);
-  --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --backdrop: rgba(28, 27, 25, 0.38);
-  --ink-blend: normal;
-  --stamp-todo: #b4ad9e;
-  --stamp-doing: #7ea6e0;
-  --stamp-done: #7fbf8c;
-  --tone-bug: #e08a7a;
-  --tone-story: #8fc196;
-  --tone-epic: #b39ad8;
-  --tone-task: #86aedb;
-  --tone-subtask: #a49e90;
-  color-scheme: dark;
-}
 
 *,
 *::before,
@@ -759,14 +639,9 @@ mark.match {
 .select {
   appearance: none;
   padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236c685e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 10px 6px;
-}
-
-[data-skin='carnet'][data-scheme='dark'] .select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f897b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .input:focus,
