@@ -128,7 +128,8 @@ export const fr: Messages = {
     myPage: 'Ma page',
     scopeAll: 'Tous',
     scopeAllProjects: 'Tous les projets',
-    scopeLabel: (name: string) => `Projets affichés : ${name}`,
+    scopeCaption: 'Projet',
+    scopeLabel: (name: string) => `Projet : ${name}`,
     skins: {
       carnet: 'Carnet',
       orbite: 'Orbite',

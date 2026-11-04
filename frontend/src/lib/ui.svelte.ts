@@ -45,6 +45,12 @@ export function openCreate(defaults: CreateDefaults = {}): void {
   dialogs.create = true;
 }
 
+/** The board the page shows, once loaded: New issue offers its project. */
+export const shownBoard = $state<{ id: number; projects: { key: string }[] }>({
+  id: 0,
+  projects: [],
+});
+
 export interface Note {
   id: number;
   text: string;

@@ -134,7 +134,8 @@ export const de: Messages = {
     myPage: 'Meine Seite',
     scopeAll: 'Alle',
     scopeAllProjects: 'Alle Projekte',
-    scopeLabel: (name: string) => `Angezeigte Projekte: ${name}`,
+    scopeCaption: 'Projekt',
+    scopeLabel: (name: string) => `Projekt: ${name}`,
     skins: {
       carnet: 'Notizbuch',
       orbite: 'Orbit',

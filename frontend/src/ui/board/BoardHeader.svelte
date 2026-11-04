@@ -1,7 +1,10 @@
 <script lang="ts">
   import type { BoardDetail } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
+  import { boardListPath } from '../../core/scope.js';
   import { t } from '../../i18n/t.js';
+  import { session } from '../../lib/session.svelte.js';
+  import { shownBoard } from '../../lib/ui.svelte.js';
 
   /** A board's title block, with the switch between its board, backlog and reports. */
   interface Props {
@@ -10,12 +13,18 @@
   }
   const { detail, view }: Props = $props();
   const b = $derived(detail.board);
+
+  $effect(() => {
+    shownBoard.id = b.id;
+    shownBoard.projects = detail.projects;
+  });
 </script>
 
 <header class="page-head board-head">
   <div class="title">
     <p class="eyebrow">
-      <a href={paths.boards()}>{t.boards.title}</a> · {t.boards.kinds[b.kind]}
+      <a href={boardListPath(detail.projects, session.scope)}>{t.boards.title}</a> · {t.boards
+        .kinds[b.kind]}
     </p>
     <h1 class="page-title">{b.name}</h1>
     {#if detail.projects.length}
