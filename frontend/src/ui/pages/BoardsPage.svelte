@@ -8,6 +8,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import BoardKindPicker from '../BoardKindPicker.svelte';
   import Dropdown from '../Dropdown.svelte';
   import Illustration from '../Illustration.svelte';
   import Modal from '../Modal.svelte';
@@ -198,18 +199,7 @@
         />
       {/if}
     </div>
-    <fieldset class="kinds">
-      <legend class="field-label">{t.boards.kind}</legend>
-      {#each ['kanban', 'scrum'] as const as kind (kind)}
-        <label class="kind">
-          <input type="radio" name="kind" value={kind} bind:group={form.kind} />
-          <span>
-            <strong>{t.boards.kinds[kind]}</strong>
-            <span class="hint">{t.boards.kindHints[kind]}</span>
-          </span>
-        </label>
-      {/each}
-    </fieldset>
+    <BoardKindPicker value={form.kind} onchange={(k) => (form.kind = k)} />
     <label class="field">
       <span>{t.boards.name}</span>
       <input class="input" bind:value={form.name} maxlength="255" autocomplete="off" />
@@ -277,39 +267,5 @@
   .help {
     margin: 0;
     color: var(--ink-soft);
-  }
-
-  .kinds {
-    display: grid;
-    gap: 8px;
-    margin: 0;
-    padding: 0;
-    border: none;
-  }
-
-  .kinds legend {
-    padding: 0;
-    margin-bottom: 6px;
-  }
-
-  .kind {
-    display: flex;
-    gap: 10px;
-    align-items: baseline;
-    cursor: pointer;
-  }
-
-  .kind input {
-    accent-color: var(--accent);
-  }
-
-  .kind > span {
-    display: grid;
-    gap: 2px;
-  }
-
-  .kind .hint {
-    font-size: 0.78125rem;
-    color: var(--muted);
   }
 </style>
