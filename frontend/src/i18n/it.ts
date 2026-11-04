@@ -1151,7 +1151,6 @@ export const it: Messages = {
 
   boardSettings: {
     title: 'Impostazioni della board',
-    back: 'Torna alla board',
     forbidden:
       'Solo il proprietario della board e gli amministratori dei suoi progetti possono modificarne le impostazioni.',
     general: 'Generale',

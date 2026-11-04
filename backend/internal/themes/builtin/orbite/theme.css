@@ -1000,6 +1000,11 @@
   box-shadow: 0 0 6px color-mix(in srgb, var(--sun) 70%, transparent);
 }
 
+/* An icon button keeps no room for the planet. */
+[data-skin='orbite'] .btn.btn-icon.on::before {
+  content: none;
+}
+
 [data-skin='orbite'] .btn[disabled] {
   opacity: 0.45;
   cursor: not-allowed;

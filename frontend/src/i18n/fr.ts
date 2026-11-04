@@ -1150,7 +1150,6 @@ export const fr: Messages = {
 
   boardSettings: {
     title: 'Réglages du tableau',
-    back: 'Retour au tableau',
     forbidden:
       'Seuls le propriétaire du tableau et les administrateurs de ses projets peuvent le régler.',
     general: 'Général',

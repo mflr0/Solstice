@@ -5,14 +5,25 @@
   import { t } from '../../i18n/t.js';
   import { session } from '../../lib/session.svelte.js';
   import { shownBoard } from '../../lib/ui.svelte.js';
+  import { BOARD_VIEW_ICONS } from './board-view-icons.js';
 
-  /** A board's title block, with the switch between its board, backlog and reports. */
+  /** A board's title block, with the switch between its board, backlog, reports and settings. */
   interface Props {
     detail: BoardDetail;
     view: 'board' | 'backlog' | 'reports' | 'settings';
   }
   const { detail, view }: Props = $props();
   const b = $derived(detail.board);
+  const views = $derived([
+    { id: 'board', href: paths.board(b.id), label: t.boards.viewBoard },
+    ...(b.kind === 'scrum' || b.kanbanBacklog
+      ? [{ id: 'backlog', href: paths.backlog(b.id), label: t.boards.viewBacklog }]
+      : []),
+    { id: 'reports', href: paths.boardReports(b.id), label: t.boards.viewReports },
+    ...(detail.can.manage
+      ? [{ id: 'settings', href: paths.boardSettings(b.id), label: t.boards.settings }]
+      : []),
+  ] as { id: Props['view']; href: string; label: string }[]);
 
   $effect(() => {
     shownBoard.id = b.id;
@@ -37,35 +48,22 @@
     {/if}
   </div>
   <div class="row">
-    {#if view !== 'settings'}
-      <nav class="views" aria-label={t.boards.views}>
+    <nav class="views" aria-label={t.boards.views}>
+      {#each views as v (v.id)}
         <a
-          class="btn btn-small"
-          class:on={view === 'board'}
-          href={paths.board(b.id)}
-          aria-current={view === 'board' ? 'page' : undefined}>{t.boards.viewBoard}</a
+          class="btn btn-icon"
+          class:on={view === v.id}
+          href={v.href}
+          aria-label={v.label}
+          title={v.label}
+          aria-current={view === v.id ? 'page' : undefined}
         >
-        {#if b.kind === 'scrum' || b.kanbanBacklog}
-          <a
-            class="btn btn-small"
-            class:on={view === 'backlog'}
-            href={paths.backlog(b.id)}
-            aria-current={view === 'backlog' ? 'page' : undefined}>{t.boards.viewBacklog}</a
-          >
-        {/if}
-        <a
-          class="btn btn-small"
-          class:on={view === 'reports'}
-          href={paths.boardReports(b.id)}
-          aria-current={view === 'reports' ? 'page' : undefined}>{t.boards.viewReports}</a
-        >
-      </nav>
-    {/if}
-    {#if view === 'settings'}
-      <a class="btn" href={paths.board(b.id)}>{t.boardSettings.back}</a>
-    {:else if detail.can.manage}
-      <a class="btn" href={paths.boardSettings(b.id)}>{t.boards.settings}</a>
-    {/if}
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            {#each BOARD_VIEW_ICONS[v.id] as d, i (i)}<path {d} />{/each}
+          </svg>
+        </a>
+      {/each}
+    </nav>
   </div>
 </header>
 
@@ -104,6 +102,31 @@
 
   .views {
     display: flex;
-    gap: 2px;
+  }
+
+  .views a {
+    position: relative;
+    border-radius: 0;
+  }
+
+  .views a + a {
+    margin-left: calc(-1 * var(--frame));
+  }
+
+  .views a:first-child {
+    border-start-start-radius: var(--radius-s);
+    border-end-start-radius: var(--radius-s);
+  }
+
+  .views a:last-child {
+    border-start-end-radius: var(--radius-s);
+    border-end-end-radius: var(--radius-s);
+  }
+
+  /* Neighbours overlap by a border: the one that stands out draws its own in full. */
+  .views a:hover,
+  .views a:focus-visible,
+  .views a.on {
+    z-index: 1;
   }
 </style>

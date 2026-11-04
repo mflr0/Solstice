@@ -1159,7 +1159,6 @@ export const de: Messages = {
 
   boardSettings: {
     title: 'Board-Einstellungen',
-    back: 'Zurück zum Board',
     forbidden:
       'Nur der Eigentümer des Boards und die Administratoren seiner Projekte können es konfigurieren.',
     general: 'Allgemein',

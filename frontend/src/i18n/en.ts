@@ -1142,7 +1142,6 @@ export const en = {
 
   boardSettings: {
     title: 'Board settings',
-    back: 'Back to the board',
     forbidden:
       'Only the board’s owner and the administrators of its projects can change its settings.',
     general: 'General',
