@@ -270,6 +270,8 @@ export const fr: Messages = {
     actions: 'Actions',
     breadcrumbs: 'Fil d’Ariane',
     mainNav: 'Navigation principale',
+    showPassword: 'Afficher le mot de passe',
+    hidePassword: 'Masquer le mot de passe',
   },
 
   errors: {

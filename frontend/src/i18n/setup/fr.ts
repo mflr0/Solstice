@@ -23,6 +23,8 @@ export const fr: SetupMessages = {
   loading: 'Chargement…',
   copy: 'Copier',
   copied: 'Copié',
+  showPassword: 'Afficher le mot de passe',
+  hidePassword: 'Masquer le mot de passe',
   version: (v: string) => `Version ${v}`,
   sourceCode: 'Code source',
   licenses: 'Licences',

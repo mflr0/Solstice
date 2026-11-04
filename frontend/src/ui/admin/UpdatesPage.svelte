@@ -13,6 +13,7 @@
     type UpdateState,
   } from '../../lib/updates.svelte.js';
   import Modal from '../Modal.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * Solstice's version, the latest release on GitHub, and the update: in
@@ -332,13 +333,7 @@
     <p>{t.updates.confirmBody}</p>
     <label class="field">
       <span>{t.updates.password}</span>
-      <input
-        class="input"
-        type="password"
-        bind:value={password}
-        required
-        autocomplete="current-password"
-      />
+      <PasswordInput bind:value={password} required autocomplete="current-password" />
       <span class="hint">{t.updates.passwordHint}</span>
     </label>
     {#if applyError}<p class="error-text" role="alert">{applyError}</p>{/if}

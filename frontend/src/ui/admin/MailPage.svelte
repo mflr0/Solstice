@@ -17,6 +17,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import EmptyState from '../EmptyState.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * Outgoing e-mail: the SMTP server, a test message that shows the
@@ -228,9 +229,7 @@
       <div class="field">
         <span class="field-label" id="mail-password">{t.mailAdmin.password}</span>
         {#if form.passwordAction === 'replace' || !settings.passwordSet}
-          <input
-            class="input"
-            type="password"
+          <PasswordInput
             bind:value={form.password}
             aria-labelledby="mail-password"
             autocomplete="new-password"

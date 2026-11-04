@@ -7,6 +7,7 @@
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import CopyField from '../CopyField.svelte';
   import Modal from '../Modal.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * A new password for someone: generated (shown once, to pass on), typed,
@@ -96,9 +97,7 @@
       {#if mode === 'type'}
         <label class="field">
           <span>{t.usersAdmin.newPassword}</span>
-          <input
-            class="input"
-            type="password"
+          <PasswordInput
             bind:value={typed}
             autocomplete="new-password"
             aria-invalid={typed !== '' && short}

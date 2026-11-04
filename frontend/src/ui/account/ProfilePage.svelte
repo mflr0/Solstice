@@ -17,6 +17,7 @@
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /** One's identity (name, e-mail) and password. */
 
@@ -291,10 +292,8 @@
       />
       <label class="field half">
         <span>{t.account.currentPassword}</span>
-        <input
-          class="input"
-          type="password"
-          bind:this={currentInput}
+        <PasswordInput
+          bind:input={currentInput}
           bind:value={form.currentPassword}
           autocomplete="current-password"
           aria-invalid={!!shown('currentPassword')}
@@ -308,9 +307,7 @@
         <div class="form-grid">
           <label class="field">
             <span>{t.account.newPassword}</span>
-            <input
-              class="input"
-              type="password"
+            <PasswordInput
               bind:value={form.newPassword}
               autocomplete="new-password"
               aria-invalid={!!shown('newPassword')}
@@ -324,9 +321,7 @@
           </label>
           <label class="field">
             <span>{t.account.confirmPassword}</span>
-            <input
-              class="input"
-              type="password"
+            <PasswordInput
               bind:value={form.confirmPassword}
               autocomplete="new-password"
               aria-invalid={!!shown('confirmPassword')}

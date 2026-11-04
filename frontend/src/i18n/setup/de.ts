@@ -21,6 +21,8 @@ export const de: SetupMessages = {
   loading: 'Wird geladen…',
   copy: 'Kopieren',
   copied: 'Kopiert',
+  showPassword: 'Passwort anzeigen',
+  hidePassword: 'Passwort verbergen',
   version: (v: string) => `Version ${v}`,
   sourceCode: 'Quellcode',
   licenses: 'Lizenzen',

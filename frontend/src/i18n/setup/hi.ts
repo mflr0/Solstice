@@ -21,6 +21,8 @@ export const hi: SetupMessages = {
   loading: 'लोड हो रहा है…',
   copy: 'कॉपी करें',
   copied: 'कॉपी हो गया',
+  showPassword: 'पासवर्ड दिखाएँ',
+  hidePassword: 'पासवर्ड छिपाएँ',
   version: (v: string) => `वर्ज़न ${v}`,
   sourceCode: 'सोर्स कोड',
   licenses: 'लाइसेंस',

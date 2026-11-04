@@ -277,6 +277,8 @@ export const de: Messages = {
     actions: 'Aktionen',
     breadcrumbs: 'Pfadnavigation',
     mainNav: 'Hauptnavigation',
+    showPassword: 'Passwort anzeigen',
+    hidePassword: 'Passwort verbergen',
   },
 
   errors: {

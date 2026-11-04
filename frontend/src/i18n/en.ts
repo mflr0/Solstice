@@ -271,6 +271,8 @@ export const en = {
     actions: 'Actions',
     breadcrumbs: 'Breadcrumbs',
     mainNav: 'Main navigation',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
 
   errors: {

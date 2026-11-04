@@ -8,6 +8,7 @@
     type DatabaseProbe,
   } from '../../lib/setup-api.js';
   import ConfigNote from './ConfigNote.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   interface Props {
     m: SetupMessages;
@@ -115,9 +116,9 @@
       </label>
       <label class="field">
         <span>{m.database.password}</span>
-        <input
-          class="input"
-          type="password"
+        <PasswordInput
+          showLabel={m.showPassword}
+          hideLabel={m.hidePassword}
           bind:value={form.password}
           autocomplete="new-password"
         />

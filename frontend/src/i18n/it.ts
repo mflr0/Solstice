@@ -273,6 +273,8 @@ export const it: Messages = {
     actions: 'Azioni',
     breadcrumbs: 'Percorso di navigazione',
     mainNav: 'Navigazione principale',
+    showPassword: 'Mostra password',
+    hidePassword: 'Nascondi password',
   },
 
   errors: {

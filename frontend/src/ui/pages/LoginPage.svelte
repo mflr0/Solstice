@@ -7,6 +7,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import AuthSheet from '../AuthSheet.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   let username = $state('');
   let password = $state('');
@@ -67,13 +68,7 @@
     </label>
     <label class="field">
       <span>{t.login.password}</span>
-      <input
-        class="input"
-        type="password"
-        bind:value={password}
-        autocomplete="current-password"
-        required
-      />
+      <PasswordInput bind:value={password} autocomplete="current-password" required />
     </label>
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
     <button class="btn btn-primary submit" disabled={pending}
