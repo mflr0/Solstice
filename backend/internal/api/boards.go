@@ -32,6 +32,7 @@ type boardRow struct {
 	Name      string
 	Kind      string
 	FilterID  int64
+	Filter    string
 	Query     string
 	SubQuery  sql.NullString
 	OwnerID   sql.NullInt64
@@ -41,12 +42,12 @@ type boardRow struct {
 	Backlog   bool // Kanban: the first column's issues are on the backlog page, not on the board
 }
 
-const boardColumns = `b.id, b.name, b.kind, b.filter_id, f.query, b.sub_query, b.owner_id, b.swimlanes, b.estimate,
+const boardColumns = `b.id, b.name, b.kind, b.filter_id, f.name, f.query, b.sub_query, b.owner_id, b.swimlanes, b.estimate,
 	b.done_cutoff, b.kanban_backlog`
 
 func scanBoard(sc scanner) (*boardRow, error) {
 	var b boardRow
-	err := sc.Scan(&b.ID, &b.Name, &b.Kind, &b.FilterID, &b.Query, &b.SubQuery, &b.OwnerID, &b.Swimlanes, &b.Estimate,
+	err := sc.Scan(&b.ID, &b.Name, &b.Kind, &b.FilterID, &b.Filter, &b.Query, &b.SubQuery, &b.OwnerID, &b.Swimlanes, &b.Estimate,
 		&b.Cutoff, &b.Backlog)
 	return &b, err
 }
@@ -75,11 +76,7 @@ func (s *Server) board(r *http.Request, sub *perm.Subject) (*boardRow, error) {
 
 // boardByID loads a board the user may see.
 func (s *Server) boardByID(ctx context.Context, sub *perm.Subject, id int64) (*boardRow, error) {
-	b, err := scanBoard(s.db.QueryRowContext(ctx, `SELECT `+boardColumns+` FROM boards b
-		JOIN filters f ON f.id = b.filter_id WHERE b.id = ?`, id))
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errNotFound
-	}
+	b, err := s.loadBoard(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +88,16 @@ func (s *Server) boardByID(ctx context.Context, sub *perm.Subject, id int64) (*b
 		return nil, errNotFound
 	}
 	return b, nil
+}
+
+// loadBoard loads a board, whoever asks.
+func (s *Server) loadBoard(ctx context.Context, id int64) (*boardRow, error) {
+	b, err := scanBoard(s.db.QueryRowContext(ctx, `SELECT `+boardColumns+` FROM boards b
+		JOIN filters f ON f.id = b.filter_id WHERE b.id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errNotFound
+	}
+	return b, err
 }
 
 // boardProjects returns the projects a board belongs to.
@@ -335,6 +342,10 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	shares, err := s.sharesOfFilter(ctx, b.FilterID)
+	if err != nil {
+		return err
+	}
 	// Number fields a board may estimate with (story points…).
 	estimateFields := []namedRef{}
 	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM custom_fields WHERE type_key LIKE '%:float' ORDER BY name`,
@@ -359,15 +370,97 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"board": map[string]any{
-			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "query": b.Query,
+			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "filterName": b.Filter, "query": b.Query,
 			"subQuery": sqlq.String(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
 			"estimateField": sqlq.String(b.Estimate), "doneCutoff": sqlq.String(b.Cutoff),
 			"kanbanBacklog": b.Backlog,
 		},
 		"estimateFields": estimateFields,
 		"projects":       projects, "columns": columns, "quickFilters": quick, "swimlanes": lanes, "sprints": sprints,
-		"can": map[string]bool{"manage": manage},
+		"shares": shares,
+		"can":    map[string]bool{"manage": manage, "share": manage},
 	})
+}
+
+// setBoardShares replaces who sees a board, that is whom its filter is shared
+// with. It doesn't need the board to be visible, or a manager who shared it
+// away from themselves could never undo that.
+func (s *Server) setBoardShares(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	sub, err := s.subject(r)
+	if err != nil {
+		return err
+	}
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		return errNotFound
+	}
+	b, err := s.loadBoard(ctx, id)
+	if err != nil {
+		return err
+	}
+	manage, err := s.canManage(ctx, sub, b)
+	if err != nil {
+		return err
+	}
+	if !manage {
+		if _, err := s.boardByID(ctx, sub, id); err != nil {
+			return err
+		}
+		return errForbidden
+	}
+	var in struct {
+		Shares *[]filterShare `json:"shares"`
+	}
+	if err := readJSON(r, &in); err != nil {
+		return err
+	}
+	if in.Shares == nil {
+		return failf(http.StatusBadRequest, i18n.RequestInvalid, "shares")
+	}
+	before, err := s.sharesOfFilter(ctx, b.FilterID)
+	if err != nil {
+		return err
+	}
+	// A manager may not be in a group the board is already shared with: only
+	// what they add is theirs to answer for.
+	added := addedShares(before, *in.Shares)
+	if err := s.checkFilter(ctx, sub, filterInput{Shares: &added}); err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `UPDATE filters SET updated_at = ? WHERE id = ?`, time.Now().UTC(), b.FilterID); err != nil {
+		return err
+	}
+	if err := writeShares(ctx, tx, b.FilterID, *in.Shares); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.auditFilterShares(r, b.FilterID, b.Filter, before, *in.Shares)
+	after, err := s.sharesOfFilter(ctx, b.FilterID)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"shares": after})
+}
+
+// addedShares returns the shares of after that before doesn't have.
+func addedShares(before, after []filterShare) []filterShare {
+	var added []filterShare
+	for _, sh := range after {
+		if !slices.ContainsFunc(before, func(old filterShare) bool {
+			return old.Kind == sh.Kind && old.ID == sh.ID && old.Group == sh.Group
+		}) {
+			added = append(added, sh)
+		}
+	}
+	return added
 }
 
 // backlogCond narrows a board's issues to its backlog: sub-tasks travel with

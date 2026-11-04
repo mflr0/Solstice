@@ -35,6 +35,7 @@ const detail: BoardDetail = {
     name: 'Team',
     kind: 'kanban',
     filterId: 1,
+    filterName: 'Filter',
     query: '',
     subQuery: null,
     swimlanes: 'custom',
@@ -55,7 +56,8 @@ const detail: BoardDetail = {
   ],
   sprints: [],
   estimateFields: [],
-  can: { manage: false },
+  shares: [],
+  can: { manage: false, share: false },
 };
 
 vi.mock('../../src/lib/api.js', () => ({

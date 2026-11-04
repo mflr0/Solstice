@@ -13,6 +13,7 @@ function detail(kind: 'scrum' | 'kanban', kanbanBacklog: boolean, manage: boolea
       name: 'Team',
       kind,
       filterId: 1,
+      filterName: 'Filter',
       query: '',
       subQuery: null,
       swimlanes: 'custom',
@@ -27,7 +28,8 @@ function detail(kind: 'scrum' | 'kanban', kanbanBacklog: boolean, manage: boolea
     swimlanes: [],
     sprints: [],
     estimateFields: [],
-    can: { manage },
+    shares: [],
+    can: { manage, share: manage },
   };
 }
 
