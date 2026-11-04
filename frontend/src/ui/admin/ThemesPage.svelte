@@ -65,6 +65,13 @@
     }
   });
 
+  /** A click anywhere on a row folds it, except on its controls or after selecting text. */
+  function rowClick(e: MouseEvent, theme: AdminTheme, open: boolean) {
+    if ((e.target as Element).closest('a, button')) return;
+    if (getSelection()?.toString()) return;
+    toggled[theme.id] = !open;
+  }
+
   /** Brings the page and the theme menus up to date after a change. */
   async function changed() {
     await Promise.all([load(), reloadThemes()]);
@@ -168,7 +175,9 @@
       {@const name = nameOf(theme)}
       {@const can = themeActions(theme)}
       {@const open = previewOpen(theme, toggled[theme.id])}
-      <li class="theme" class:off={!theme.enabled}>
+      <!-- The row's chevron is the same control for the keyboard and screen readers. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <li class="theme" class:off={!theme.enabled} onclick={(e) => rowClick(e, theme, open)}>
         <div class="head">
           <button
             class="btn btn-small btn-icon toggle"
@@ -316,6 +325,7 @@
     align-items: center;
     padding: 14px 0;
     border-bottom: 1px solid var(--rule);
+    cursor: pointer;
   }
 
   .head {
