@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   htmlAttributes,
+  localized,
   MODES,
   parseMode,
   parseSkin,
   resolveScheme,
   SKINS,
-  SCHEME_SWATCHES,
-  SWATCHES,
+  THEMES,
   type Mode,
   type Skin,
 } from '../../src/core/appearance.js';
@@ -57,14 +57,29 @@ describe('the scheme in effect', () => {
     });
   });
 
-  it('has a picker swatch for every skin', () => {
-    expect(Object.keys(SWATCHES).sort()).toEqual([...SKINS].sort());
+  it('lists the built-in themes in the order of the menus', () => {
+    expect(SKINS).toEqual([
+      'carnet',
+      'orbite',
+      'crayon',
+      'luna',
+      'retro',
+      'classique',
+      'terminal',
+      'plan',
+    ]);
   });
 
-  it('has a light and a dark theme-menu swatch for every skin', () => {
-    expect(Object.keys(SCHEME_SWATCHES).sort()).toEqual([...SKINS].sort());
-    for (const s of SKINS)
-      expect(Object.keys(SCHEME_SWATCHES[s]).sort()).toEqual(['dark', 'light']);
+  it('has a light and a dark swatch for every built-in theme', () => {
+    for (const m of THEMES) expect(Object.keys(m.preview).sort(), m.id).toEqual(['dark', 'light']);
+  });
+});
+
+describe('manifest texts', () => {
+  it('are in the locale, else in English', () => {
+    const name = { en: 'Orbit', fr: 'Orbite' };
+    expect(localized(name, 'fr')).toBe('Orbite');
+    expect(localized(name, 'de')).toBe('Orbit');
   });
 });
 

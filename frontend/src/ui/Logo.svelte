@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * The mark: the sun on the horizon line. Skins with their own mark hide
-   * its parts and paint .logo themselves (see themes/ANATOMY.md).
+   * its parts and paint .logo themselves (see backend/internal/themes/ANATOMY.md).
    */
   interface Props {
     size?: number | undefined;

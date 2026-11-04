@@ -1,0 +1,38 @@
+{
+  "id": "luna",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Luna",
+    "fr": "Luna",
+    "de": "Luna",
+    "it": "Luna",
+    "hi": "Luna"
+  },
+  "description": {
+    "en": "blue bars, beige tones",
+    "fr": "barres bleues, tons beiges",
+    "de": "blaue Leisten, Beigetöne",
+    "it": "barre blu, toni beige",
+    "hi": "नीली पट्टियाँ, बेज रंग"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#2253bd",
+      "paper": "#efebde",
+      "ink": "#1a1f2b",
+      "accent": "#2350b5"
+    },
+    "dark": {
+      "bar": "#1a3a83",
+      "paper": "#1d2333",
+      "ink": "#e7ebf4",
+      "accent": "#7ea6ff"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A small drawing above an empty or lost page: an empty box that skins
-   * may show and paint (see src/themes/ANATOMY.md). Carnet shows nothing.
+   * may show and paint (see backend/internal/themes/ANATOMY.md). Carnet shows nothing.
    */
   interface Props {
     kind: 'lost' | 'empty' | 'search';

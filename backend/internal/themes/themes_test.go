@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"testing/fstest"
 )
@@ -243,9 +244,33 @@ func TestLoadRefuses(t *testing.T) {
 	}
 }
 
+func TestSortBy(t *testing.T) {
+	s := testSet(t)
+	if err := s.sortBy([]string{"night-owl", "fixture"}); err != nil {
+		t.Fatal(err)
+	}
+	if idx := s.Index(); idx.Themes[0].ID != "night-owl" || idx.Themes[1].ID != "fixture" {
+		t.Errorf("sorted %+v", idx.Themes)
+	}
+	for _, ids := range [][]string{
+		{"night-owl"},
+		{"night-owl", "fixture", "other"},
+		{"night-owl", "other"},
+		{"night-owl", "night-owl"},
+	} {
+		if err := testSet(t).sortBy(ids); err == nil {
+			t.Errorf("%q: sorted", ids)
+		}
+	}
+}
+
 func TestBuiltin(t *testing.T) {
-	idx := Builtin().Index()
-	if len(idx.Themes) == 0 || idx.Themes[0].ID != "fixture" {
-		t.Errorf("built-in themes %+v", idx.Themes)
+	var got []string
+	for _, m := range Builtin().Index().Themes {
+		got = append(got, m.ID)
+	}
+	want := []string{"carnet", "orbite", "crayon", "luna", "retro", "classique", "terminal", "plan"}
+	if !slices.Equal(got, want) {
+		t.Errorf("built-in themes %q, want %q", got, want)
 	}
 }

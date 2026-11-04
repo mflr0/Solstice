@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MODES, SKINS, SWATCHES } from '../../core/appearance.js';
+  import { localized, MODES, THEMES } from '../../core/appearance.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, locale, type Locale } from '../../i18n/index.js';
@@ -100,7 +100,8 @@
 <section class="settings-form look" aria-labelledby="theme-title">
   <h2 class="section-title" id="theme-title">{t.account.theme}</h2>
   <div class="skins" role="group" aria-labelledby="theme-title">
-    {#each SKINS as skin (skin)}
+    {#each THEMES as theme (theme.id)}
+      {@const skin = theme.id}
       <button
         type="button"
         class="skin"
@@ -110,13 +111,13 @@
         <span
           class="swatch"
           aria-hidden="true"
-          style:--sw-paper={SWATCHES[skin].paper}
-          style:--sw-ink={SWATCHES[skin].ink}
-          style:--sw-accent={SWATCHES[skin].accent}
+          style:--sw-paper={theme.preview.light?.paper}
+          style:--sw-ink={theme.preview.light?.ink}
+          style:--sw-accent={theme.preview.light?.accent}
         ></span>
         <span class="skin-text">
-          <span class="skin-name">{t.nav.skins[skin]}</span>
-          <span class="muted small">{t.nav.skinHints[skin]}</span>
+          <span class="skin-name">{localized(theme.name, locale)}</span>
+          <span class="muted small">{localized(theme.description, locale)}</span>
         </span>
       </button>
     {/each}

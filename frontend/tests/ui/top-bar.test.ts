@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
-import { SKINS } from '../../src/core/appearance.js';
+import { SKINS, THEMES } from '../../src/core/appearance.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
@@ -169,17 +169,17 @@ describe('TopBar keyboard', () => {
       ...document.querySelectorAll<HTMLElement>('.theme-menu [role="menuitemradio"]'),
     ];
     expect(radios.map((i) => i.getAttribute('aria-label'))).toEqual(
-      SKINS.flatMap((s) => [
-        t.nav.skinMode(t.nav.skins[s], t.nav.modes.light),
-        t.nav.skinMode(t.nav.skins[s], t.nav.modes.dark),
+      THEMES.flatMap((m) => [
+        t.nav.skinMode(m.name.en!, t.nav.modes.light),
+        t.nav.skinMode(m.name.en!, t.nav.modes.dark),
       ]),
     );
     const checked = () =>
       radios
         .filter((i) => i.getAttribute('aria-checked') === 'true')
         .map((i) => i.getAttribute('aria-label'));
-    const carnetLight = t.nav.skinMode(t.nav.skins.carnet, t.nav.modes.light);
-    const carnetDark = t.nav.skinMode(t.nav.skins.carnet, t.nav.modes.dark);
+    const carnetLight = t.nav.skinMode('Notebook', t.nav.modes.light);
+    const carnetDark = t.nav.skinMode('Notebook', t.nav.modes.dark);
     expect(checked()).toEqual([carnetLight]);
     expect(focused()).toBe(radios[0]);
 
@@ -235,7 +235,7 @@ describe('TopBar keyboard', () => {
       await settle();
       const names = [...document.querySelectorAll<HTMLButtonElement>('.theme-menu .skin-name')];
       expect(names.map((n) => [n.getAttribute('role'), n.textContent?.trim()])).toEqual(
-        SKINS.map((s) => ['menuitem', t.nav.skins[s]]),
+        THEMES.map((m) => ['menuitem', m.name.en]),
       );
       const other = SKINS.indexOf('orbite');
       key(focused(), 'Home');

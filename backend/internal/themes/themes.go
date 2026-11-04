@@ -144,7 +144,7 @@ type Package struct {
 
 // Set is the theme packages a server offers.
 type Set struct {
-	list []*Package // by id
+	list []*Package // by id, or in the order of sortBy
 	byID map[string]*Package
 }
 
@@ -210,11 +210,32 @@ func loadPackage(dir fs.FS) (*Package, error) {
 	return p, nil
 }
 
+// sortBy puts the packages in the order of ids, which must name each once.
+func (s *Set) sortBy(ids []string) error {
+	if len(ids) != len(s.list) {
+		return fmt.Errorf("order lists %d themes, there are %d", len(ids), len(s.list))
+	}
+	list := make([]*Package, 0, len(ids))
+	for _, id := range ids {
+		p, ok := s.byID[id]
+		if !ok || slices.Contains(list, p) {
+			return fmt.Errorf("order: %q is not a theme, or is listed twice", id)
+		}
+		list = append(list, p)
+	}
+	s.list = list
+	return nil
+}
+
+// builtin holds a folder per package and order.json, the ids in the order
+// the theme menus list them.
+//
 //go:embed builtin
 var builtin embed.FS
 
-// Builtin returns the packages embedded in the binary. It panics on an
-// invalid one: TestBuiltin catches that before a release.
+// Builtin returns the packages embedded in the binary, in the order of
+// order.json. It panics on an invalid one: TestBuiltin catches that before a
+// release.
 func Builtin() *Set {
 	root, err := fs.Sub(builtin, "builtin")
 	if err != nil {
@@ -222,6 +243,17 @@ func Builtin() *Set {
 	}
 	s, err := Load(root)
 	if err != nil {
+		panic(err)
+	}
+	raw, err := fs.ReadFile(root, "order.json")
+	if err != nil {
+		panic(err)
+	}
+	var ids []string
+	if err := json.Unmarshal(raw, &ids); err != nil {
+		panic(fmt.Errorf("order.json: %w", err))
+	}
+	if err := s.sortBy(ids); err != nil {
 		panic(err)
 	}
 	return s

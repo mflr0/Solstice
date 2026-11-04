@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest';
 import { SKINS, type Scheme, type Skin } from '../../src/core/appearance.js';
 
 /**
- * Reads the colour tokens of every skin × scheme from src/themes/<id>.css,
+ * Reads the colour tokens of every skin × scheme from its package's theme.css,
  * resolving them the way the cascade does, and checks WCAG AA contrast on the
  * pairs the interface draws, plus any pair a theme declares in a comment: `/* contrast: --a on --b [minimum] *\/`.
- * See src/themes/ANATOMY.md.
+ * See backend/internal/themes/ANATOMY.md.
  */
 
-const themesDir = new URL('../../src/themes/', import.meta.url);
+const themesDir = new URL('../../../backend/internal/themes/builtin/', import.meta.url);
 
 function source(skin: Skin): string | null {
-  const file = new URL(`${skin}.css`, themesDir);
+  const file = new URL(`${skin}/theme.css`, themesDir);
   return existsSync(file) ? readFileSync(file, 'utf8') : null;
 }
 
@@ -158,10 +158,10 @@ function failures(css: string, t: Record<string, string>, label: string): string
 
 const carnet = tokenBlock(source('carnet')!, 'carnet', false)!;
 
-describe('theme files', () => {
+describe('theme packages', () => {
   it('are all known skins', () => {
-    const files = readdirSync(themesDir).filter((f) => f.endsWith('.css'));
-    for (const f of files) expect(SKINS, f).toContain(f.replace(/\.css$/, ''));
+    const dirs = readdirSync(themesDir, { withFileTypes: true }).filter((e) => e.isDirectory());
+    for (const d of dirs) expect(SKINS, d.name).toContain(d.name);
   });
 });
 

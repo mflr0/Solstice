@@ -1,8 +1,9 @@
 /*
  * Structure and shared styles, drawn from the skin tokens.
  *
- * Every skin, Carnet the default included, lives in src/themes/<id>.css: it
- * declares the tokens and reshapes the hooks listed in src/themes/ANATOMY.md.
+ * Every skin, Carnet the default included, is a theme package
+ * (backend/internal/themes/builtin/<id>/theme.css): it declares the tokens
+ * and reshapes the hooks listed in backend/internal/themes/ANATOMY.md.
  *
  * The skin root (<html>, or a .skin-preview in the theme gallery) carries
  * data-skin and data-scheme (the light/dark actually in effect; see
@@ -65,7 +66,7 @@ body {
 }
 
 /*
- * While a skin's stylesheet loads (public/theme-boot.js, src/lib/skins.ts):
+ * While a skin's stylesheet loads (public/theme-boot.js, src/lib/skins.svelte.ts):
  * a blank page of the right brightness rather than a flash of Carnet.
  */
 :root[data-skin-loading] {

@@ -1,0 +1,38 @@
+{
+  "id": "terminal",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Terminal",
+    "fr": "Terminal",
+    "de": "Terminal",
+    "it": "Terminal",
+    "hi": "Terminal"
+  },
+  "description": {
+    "en": "green phosphor",
+    "fr": "phosphore vert",
+    "de": "grüner Phosphor",
+    "it": "fosfori verdi",
+    "hi": "हरा फ़ॉस्फ़र"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#fbfcf7",
+      "paper": "#fbfcf7",
+      "ink": "#232723",
+      "accent": "#1d6b38"
+    },
+    "dark": {
+      "bar": "#0f1912",
+      "paper": "#0b120d",
+      "ink": "#7ef29d",
+      "accent": "#9dffb5"
+    }
+  }
+}

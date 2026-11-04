@@ -457,12 +457,12 @@ backend/
   internal/sqlq/        petits outils autour de database/sql
   internal/worker/      tâches de fond qui survivent à un panic
   internal/web/         sert l'interface compilée
+  internal/themes/      les paquets de thèmes et leur contrat (ANATOMY.md)
 frontend/
   src/core/             logique pure et testée (rendu du balisage wiki, JQL…)
   src/ui/               composants Svelte
   src/lib/              état, routeur, client API
   src/i18n/             textes de l'interface, un fichier par langue
-  src/themes/           les thèmes et leur contrat (ANATOMY.md)
 deploy/                 installation Docker et Linux
 scripts/                test d'import de bout en bout, archives de publication
 ```

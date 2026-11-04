@@ -12,6 +12,8 @@ export default defineConfig({
   // Component tests mount the browser build of Svelte, not its server one.
   ...(process.env.VITEST ? { resolve: { conditions: ['browser'] } } : {}),
   server: {
+    // The built-in themes live with the server, which embeds them too.
+    fs: { allow: [r('.'), r('../backend/internal/themes/builtin')] },
     proxy: {
       '/api': { target: backend },
       '/rest': { target: backend },

@@ -1,0 +1,38 @@
+{
+  "id": "classique",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Classic",
+    "fr": "Classique",
+    "de": "Klassisch",
+    "it": "Classico",
+    "hi": "क्लासिक"
+  },
+  "description": {
+    "en": "white and blue",
+    "fr": "blanc et bleu",
+    "de": "Weiß und Blau",
+    "it": "bianco e blu",
+    "hi": "सफ़ेद और नीला"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#163463",
+      "paper": "#ffffff",
+      "ink": "#1d2533",
+      "accent": "#1d5bd0"
+    },
+    "dark": {
+      "bar": "#142540",
+      "paper": "#1a1f27",
+      "ink": "#e3e8ef",
+      "accent": "#5b9bf3"
+    }
+  }
+}

@@ -1,11 +1,13 @@
 # Theme anatomy
 
-How a theme ("skin") plugs into Solstice. `src/app.css` is the structure every
-skin builds on, drawn from the tokens. Each skin, Carnet the default included,
-is one file, `src/themes/<id>.css`, plus an optional folder `src/themes/<id>/`
-for its fonts and images.
+How a theme ("skin") plugs into Solstice. `frontend/src/app.css` is the
+structure every skin builds on, drawn from the tokens. Each skin, Carnet the
+default included, is a package (section 5): a folder
+`backend/internal/themes/builtin/<id>/` holding `theme.json`, `theme.css` and
+its fonts and images.
 
-Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `plan`.
+Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
+`orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `plan`.
 
 ## 1. Writing the file
 
@@ -13,14 +15,14 @@ Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `pl
   `[data-skin='<id>'][data-scheme='dark'] …` for the dark variant. Never `:root`,
   `html` or `body` as the anchor: the skin root is either `<html>` or a
   `<div class="skin-preview">` in the theme gallery.
-- **Fonts**: woff2 files in `./<id>/fonts/` with the font's licence file next
+- **Fonts**: woff2 files in `fonts/` with the font's licence file next
   to them, declared by `@font-face` rules at the top of the file with
-  `src: url('./<id>/fonts/x.woff2') format('woff2')`. No `@import`: a test
+  `src: url('fonts/x.woff2') format('woff2')`. No `@import`: a test
   fails on one. Free licences only.
   System fonts (Tahoma, Verdana, …) only as `font-family` fallbacks, never
   bundled. No Microsoft or Atlassian names, logos, icons, fonts or assets,
   anywhere (code, comments, UI).
-- **Images**: `url('./<id>/thing.svg')` — relative to your file; Vite emits them.
+- **Images**: `url('assets/thing.svg')` — relative to `theme.css`; Vite emits them.
 - **Motion**: wrap animations in `@media (prefers-reduced-motion: no-preference)`.
 - **SVG filters** (roughness…) on frames only, never on text: draw the frame on a
   pseudo-element and filter that.
@@ -454,15 +456,16 @@ static there.
   Editing your file reloads the page.
 - `pnpm exec vitest run tests/core/contrast.test.ts` — token completeness and
   AA for your skin (skipped while your file does not exist).
-- `pnpm exec prettier --write src/themes/<id>.css` — format your own file only.
+- `pnpm exec prettier --write ../backend/internal/themes/builtin/<id>/theme.css` —
+  format your own file only.
 - The gallery shows « Ce thème est encore en cours de dessin » while your
   file is missing, and only a light preview if it has no dark block.
 
 ## 5. Package
 
 The server serves theme packages built into its binary, from
-`backend/internal/themes/builtin/<id>/` (for now only a test fixture; the
-built-in themes move there later). **Contract version: 1.** A package
+`backend/internal/themes/builtin/<id>/`; `builtin/order.json` lists their ids in
+the order the menus show them. **Contract version: 1.** A package
 declaring a higher `contract` is refused.
 
 A package is a folder named after its id:
@@ -494,14 +497,17 @@ Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
 - `id`: 1 to 32 of `a-z`, `0-9` and `-`, the folder's name.
 - `contract`: an integer, 1 up to the server's contract version.
 - `version`: a [semantic version](https://semver.org) (`1.0.0`, `2.1.0-beta.1`).
-- `name`, `description`: locale → text, `en` required, no empty text.
+- `name`, `description`: locale → text, `en` required, no empty text. The menus
+  show the name and, under it, the description: a few words on the look.
+  A missing locale shows the English text.
 - `author`: not empty.
 - `schemes`: `["light"]` or `["light", "dark"]`.
 - `preview`: for each scheme, and only those, `bar`, `paper`, `ink` and
-  `accent` as `#rrggbb`. The gallery draws its thumbnail with them.
+  `accent` as `#rrggbb`. The theme menu draws its swatches with them, and
+  Account → Appearance with the light ones.
 - No other field.
 
 `GET /api/themes` (no sign-in needed) answers `{"contract": 1, "themes": [manifest…]}`,
-by id. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
+in that order. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
 `fonts/…`, with an ETag, and under `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`
 so an SVG opened on its own runs no script. `theme.json` and other files are not served.

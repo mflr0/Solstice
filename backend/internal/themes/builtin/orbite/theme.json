@@ -1,0 +1,38 @@
+{
+  "id": "orbite",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": {
+    "en": "Orbit",
+    "fr": "Orbite",
+    "de": "Orbit",
+    "it": "Orbita",
+    "hi": "ऑर्बिट"
+  },
+  "description": {
+    "en": "night and orbits",
+    "fr": "nuit et orbites",
+    "de": "Nacht und Umlaufbahnen",
+    "it": "notte e orbite",
+    "hi": "रात और कक्षाएँ"
+  },
+  "author": "Solstice",
+  "schemes": [
+    "light",
+    "dark"
+  ],
+  "preview": {
+    "light": {
+      "bar": "#0f1a33",
+      "paper": "#f3f6fb",
+      "ink": "#0e1830",
+      "accent": "#c9580c"
+    },
+    "dark": {
+      "bar": "#070c19",
+      "paper": "#0b1122",
+      "ink": "#e6eaf3",
+      "accent": "#ff8a3d"
+    }
+  }
+}
