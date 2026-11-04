@@ -1,0 +1,13 @@
+{
+  "id": "fixture",
+  "contract": 1,
+  "version": "0.1.0",
+  "name": { "en": "Fixture", "fr": "Fixture" },
+  "description": { "en": "A test package, until the built-in themes move here." },
+  "author": "Solstice",
+  "schemes": ["light", "dark"],
+  "preview": {
+    "light": { "bar": "#2f3b52", "paper": "#ffffff", "ink": "#1d2433", "accent": "#3b6fd8" },
+    "dark": { "bar": "#11151d", "paper": "#1b2130", "ink": "#e6e9ef", "accent": "#7aa2f7" }
+  }
+}
