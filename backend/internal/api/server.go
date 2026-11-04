@@ -29,6 +29,7 @@ import (
 	"solstice/internal/live"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
+	"solstice/internal/themes"
 )
 
 // Server holds what handlers share.
@@ -49,6 +50,7 @@ type Server struct {
 	oauthFetch    *http.Client       // fetches OAuth client metadata documents (oauth_client.go)
 	registrations *registrationLimit // OAuth client registrations per address (oauth_register.go)
 	sso           auth.SingleSignOn  // OpenID Connect, nil when off; see SetSingleSignOn
+	themes        *themes.Set        // theme packages built into the binary
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -80,7 +82,7 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
 		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher(),
-		registrations: newRegistrationLimit()}
+		registrations: newRegistrationLimit(), themes: themes.Builtin()}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
@@ -244,6 +246,17 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 
 	// Release checks and updates through the root helper.
 	s.updateRoutes(route)
+
+	// Theme packages, public: the sign-in page is themed too.
+	route("GET /api/themes", func(w http.ResponseWriter, _ *http.Request) error {
+		return writeJSON(w, http.StatusOK, s.themes.Index())
+	}, scopePublic)
+	route("GET /api/themes/{id}/{path...}", func(w http.ResponseWriter, r *http.Request) error {
+		if !s.themes.Serve(w, r, r.PathValue("id"), r.PathValue("path")) {
+			return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
+		}
+		return nil
+	}, scopePublic)
 
 	// The setup wizard is over: it only learns so.
 	route("GET /api/setup/status", s.setupDone, scopePublic)

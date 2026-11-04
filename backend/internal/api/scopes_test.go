@@ -25,6 +25,7 @@ func TestRouteScopes(t *testing.T) {
 		"POST /api/login", "POST /api/logout", "GET /api/auth/oidc/start", "GET /api/auth/oidc/callback",
 		"POST /api/auth/forgot", "GET /api/auth/reset/{token}", "POST /api/auth/reset",
 		"GET /api/settings/public", "GET /api/setup/status",
+		"GET /api/themes", "GET /api/themes/{id}/{path...}",
 		"GET /rest/api/2/serverInfo", "GET /rest/api/latest/serverInfo", "POST /rest/auth/1/session",
 		"GET /.well-known/oauth-protected-resource",
 		"GET /.well-known/oauth-authorization-server", "POST /oauth/token", "POST /oauth/revoke", "POST /register",

@@ -457,3 +457,51 @@ static there.
 - `pnpm exec prettier --write src/themes/<id>.css` — format your own file only.
 - The gallery shows « Ce thème est encore en cours de dessin » while your
   file is missing, and only a light preview if it has no dark block.
+
+## 5. Package
+
+The server serves theme packages built into its binary, from
+`backend/internal/themes/builtin/<id>/` (for now only a test fixture; the
+built-in themes move there later). **Contract version: 1.** A package
+declaring a higher `contract` is refused.
+
+A package is a folder named after its id:
+
+- `theme.json`, the manifest (below);
+- `theme.css`, the file of section 1;
+- `assets/…` (images) and `fonts/…` (fonts and their licence), optional.
+
+Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
+`.gif`, `.woff2`, `.woff`, `.ttf`, `.otf`, `.txt`. Any other file under
+`assets/` or `fonts/` makes the package invalid, and the server does not start.
+
+```json
+{
+  "id": "night-owl",
+  "contract": 1,
+  "version": "1.0.0",
+  "name": { "en": "Night owl", "fr": "Chouette" },
+  "description": { "en": "Dark and calm." },
+  "author": "Someone",
+  "schemes": ["light", "dark"],
+  "preview": {
+    "light": { "bar": "#112233", "paper": "#ffffff", "ink": "#000000", "accent": "#abcdef" },
+    "dark": { "bar": "#000000", "paper": "#111111", "ink": "#eeeeee", "accent": "#ff8800" }
+  }
+}
+```
+
+- `id`: 1 to 32 of `a-z`, `0-9` and `-`, the folder's name.
+- `contract`: an integer, 1 up to the server's contract version.
+- `version`: a [semantic version](https://semver.org) (`1.0.0`, `2.1.0-beta.1`).
+- `name`, `description`: locale → text, `en` required, no empty text.
+- `author`: not empty.
+- `schemes`: `["light"]` or `["light", "dark"]`.
+- `preview`: for each scheme, and only those, `bar`, `paper`, `ink` and
+  `accent` as `#rrggbb`. The gallery draws its thumbnail with them.
+- No other field.
+
+`GET /api/themes` (no sign-in needed) answers `{"contract": 1, "themes": [manifest…]}`,
+by id. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
+`fonts/…`, with an ETag, and under `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`
+so an SVG opened on its own runs no script. `theme.json` and other files are not served.
