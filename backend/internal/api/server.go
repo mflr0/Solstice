@@ -50,7 +50,7 @@ type Server struct {
 	oauthFetch    *http.Client       // fetches OAuth client metadata documents (oauth_client.go)
 	registrations *registrationLimit // OAuth client registrations per address (oauth_register.go)
 	sso           auth.SingleSignOn  // OpenID Connect, nil when off; see SetSingleSignOn
-	themes        *themes.Set        // theme packages built into the binary
+	themes        *themes.Registry   // theme packages, built-in and stored
 
 	// Set by New; tests replace them to run without a database or a real wait.
 	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
@@ -82,7 +82,7 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		limiter: auth.NewLimiter(), maxUpload: int64(config.Defaults().HTTP.MaxUpload),
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
 		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher(),
-		registrations: newRegistrationLimit(), themes: themes.Builtin()}
+		registrations: newRegistrationLimit(), themes: themes.NewRegistry(db, dataDir, log)}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
@@ -302,15 +302,23 @@ func securityHeaders(next http.Handler) http.Handler {
 
 type handler func(http.ResponseWriter, *http.Request) error
 
-func themeIndex(set *themes.Set) handler {
-	return func(w http.ResponseWriter, _ *http.Request) error {
-		return writeJSON(w, http.StatusOK, set.Index())
+func themeIndex(set *themes.Registry) handler {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		idx, err := set.Index(r.Context())
+		if err != nil {
+			return err
+		}
+		return writeJSON(w, http.StatusOK, idx)
 	}
 }
 
-func themeFile(set *themes.Set) handler {
+func themeFile(set *themes.Registry) handler {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		if !set.Serve(w, r, r.PathValue("id"), r.PathValue("path")) {
+		ok, err := set.Serve(w, r, r.PathValue("id"), r.PathValue("path"))
+		if err != nil {
+			return err
+		}
+		if !ok {
 			return fail(http.StatusNotFound, i18n.RequestUnknownAddress)
 		}
 		return nil

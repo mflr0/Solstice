@@ -488,6 +488,8 @@ A package is a folder named after its id:
 Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
 `.gif`, `.woff2`, `.woff`, `.ttf`, `.otf`, `.txt`. Any other file under
 `assets/` or `fonts/` makes the package invalid, and the server does not start.
+A package holds at most 100 files and 10 MiB (`MaxPackageFiles`,
+`MaxPackageBytes`).
 
 ```json
 {
@@ -524,7 +526,8 @@ Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
   and Account → Appearance with the light ones.
 - No other field.
 
-`GET /api/themes` (no sign-in needed) answers `{"contract": 1, "themes": [manifest…]}`,
-in that order. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
+`GET /api/themes` (no sign-in needed) answers `{"contract": 1, "themes": [manifest…]}`:
+the built-in themes in the order of `order.json`, then the enabled themes stored on the
+instance (`<data>/themes/<id>`) by English name, each with the id it is served under. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
 `fonts/…`, with an ETag, and under `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`
 so an SVG opened on its own runs no script. `theme.json` and other files are not served.

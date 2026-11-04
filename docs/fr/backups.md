@@ -9,13 +9,13 @@ et restaurez-les ensemble. Pages liées : [installation](install.md),
 | Quoi | Où | Contenu |
 |---|---|---|
 | La base de données | MariaDB ou MySQL, désignée par `SOLSTICE_DB_URL` | Projets, tickets, commentaires, utilisateurs, réglages, journal d'audit. |
-| Le dossier de données | `SOLSTICE_DATA` : `/var/lib/solstice` sous Linux et dans l'image Docker | `attachments/` (les fichiers joints aux tickets) et `secret.key`. |
+| Le dossier de données | `SOLSTICE_DATA` : `/var/lib/solstice` sous Linux et dans l'image Docker | `attachments/` (les fichiers joints aux tickets), `themes/` (les fichiers des thèmes importés) et `secret.key`. |
 | La configuration | `/etc/solstice/solstice.conf` sous Linux ; `solstice.conf` dans le dossier de données avec Docker | Les réglages, dont le mot de passe de la base. |
 
 Remarques :
 
 - Les fichiers joints sont sur le disque, dans `<données>/attachments`, et non
-  dans la base.
+  dans la base. Les fichiers des thèmes importés aussi, dans `<données>/themes`.
 - Avec Docker, le fichier de configuration est dans le volume `data` : le
   dossier de données le couvre. Gardez aussi `deploy/docker/.env`, qui contient
   les mots de passe de la base, et `compose.yaml` si vous l'avez modifié.
@@ -29,7 +29,8 @@ Remarques :
 - Si vous fixez `SOLSTICE_SECRETKEY` dans l'environnement plutôt que dans le
   fichier de configuration, gardez aussi une copie de cette clé.
 - Faites l'export de la base et la copie du dossier de données à peu près au
-  même moment, pour que les fichiers joints correspondent à la base.
+  même moment, pour que les fichiers joints et les thèmes correspondent à la
+  base.
 - Gardez `secret.key` à part des exports de la base. Voir
   [ce que protège secret.key](#ce-que-protège-secretkey).
 

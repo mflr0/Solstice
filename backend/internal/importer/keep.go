@@ -4,8 +4,9 @@ package importer
 // comes from Jira (users, groups, projects, issues, catalogues…), but not
 // Solstice's configuration:
 //
-//   - settings, webhooks and the audit log stay as they are (the audit log's
-//     and webhooks' links to accounts are restored by user name);
+//   - settings, imported themes, webhooks and the audit log stay as they are
+//     (the audit log's and webhooks' links to accounts are restored by user
+//     name);
 //   - personal access tokens, notification and interface preferences, open
 //     sessions, interface language, last sign-in and administrator rights are kept for
 //     the accounts that still exist afterwards, matched by user name;
@@ -30,7 +31,7 @@ import (
 )
 
 // keptTables are never emptied by an import.
-var keptTables = []string{"schema_migrations", "settings", "webhooks", "audit_log"}
+var keptTables = []string{"schema_migrations", "settings", "themes", "webhooks", "audit_log"}
 
 // userRows are tables whose rows belong to a user: saved before the import
 // and put back for the users that still exist, by user name.

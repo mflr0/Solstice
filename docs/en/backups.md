@@ -9,12 +9,13 @@ together. Related pages: [installation](install.md),
 | What | Where | Holds |
 |---|---|---|
 | The database | MariaDB or MySQL, named by `SOLSTICE_DB_URL` | Projects, issues, comments, users, settings, the audit log. |
-| The data directory | `SOLSTICE_DATA`: `/var/lib/solstice` on Linux and in the Docker image | `attachments/` (the files attached to issues) and `secret.key`. |
+| The data directory | `SOLSTICE_DATA`: `/var/lib/solstice` on Linux and in the Docker image | `attachments/` (the files attached to issues), `themes/` (the files of imported themes) and `secret.key`. |
 | The configuration | `/etc/solstice/solstice.conf` on Linux; `solstice.conf` in the data directory with Docker | Settings, including the database password. |
 
 Notes:
 
 - Attachment files are on disk in `<data>/attachments`, not in the database.
+  So are the files of imported themes, in `<data>/themes`.
 - With Docker, the configuration file is in the `data` volume, so the data
   directory covers it. Also keep `deploy/docker/.env`, which holds the
   database passwords, and `compose.yaml` if you edited it.
@@ -27,7 +28,7 @@ Notes:
 - If you set `SOLSTICE_SECRETKEY` in the environment rather than in the
   configuration file, keep a copy of that key too.
 - Take the dump and the copy of the data directory at about the same time, so
-  that the attachments in the files match the database.
+  that the attachments and themes in the files match the database.
 - Keep `secret.key` apart from the database dumps. See
   [what secret.key protects](#what-secretkey-protects).
 
