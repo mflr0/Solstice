@@ -578,6 +578,29 @@ supprime aussitôt les entrées plus anciennes, après une confirmation, et c'es
 irréversible. Faites d'abord une sauvegarde de la base si vous avez besoin des
 entrées anciennes.
 
+### Thèmes
+
+Les administrateurs ajoutent des thèmes à l'instance sous forme de paquets : un
+zip avec `theme.json` et `theme.css` à sa racine, et en option des images dans
+`assets/` (`.svg`, `.png`, `.webp`, `.jpg`), des polices dans `fonts/` (`.woff2`)
+et des fichiers de licence. Aucune page ne le permet encore : passez par l'API,
+décrite dans `backend/internal/api/ADMIN_API.md`, section « Themes ».
+
+- Un import est refusé, avec la liste des problèmes relevés, si le zip dépasse une
+  limite (100 fichiers, 10 Mio une fois décompressé, un taux de compression
+  anormal, un lien, un chemin qui sort du paquet, un fichier d'un autre type) ou si
+  le validateur relève quoi que ce soit.
+- Si un thème porte déjà l'identifiant du paquet, le nouveau reçoit un suffixe
+  (`retro-2`). Pour mettre à jour un thème, remplacez-le par une nouvelle version
+  du même identifiant.
+- Un thème désactivé n'est plus proposé, et ses utilisateurs reviennent à Carnet.
+  Les thèmes intégrés peuvent être désactivés, mais ni remplacés ni supprimés.
+  Carnet ne peut pas être désactivé.
+- Les fichiers importés sont gardés dans le dossier `themes` du répertoire de
+  données.
+
+Chaque changement est écrit dans le journal d'audit.
+
 ### Import Jira
 
 Remplace tout ce que contient Solstice par les données d'une base Jira. C'est

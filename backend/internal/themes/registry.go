@@ -16,7 +16,10 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
+	"solstice/internal/settings"
 	"solstice/internal/sqlq"
 )
 
@@ -24,6 +27,12 @@ import (
 const (
 	MaxPackageFiles = 100
 	MaxPackageBytes = 10 << 20
+)
+
+const (
+	maxIDLen = 32
+	// disabledSetting holds the ids of the built-in themes turned off, in JSON.
+	disabledSetting = "themes.disabled"
 )
 
 // Registry is the themes a server offers: the built-in ones, then those
@@ -34,6 +43,7 @@ type Registry struct {
 	db      *sql.DB // nil for the built-in themes only
 	dir     string  // <data>/themes, a folder per stored theme
 	log     *slog.Logger
+	mu      sync.Mutex // one change at a time to the stored themes and their files
 }
 
 // NewRegistry returns the registry of an instance. With a nil db, as in the
@@ -45,16 +55,24 @@ func NewRegistry(db *sql.DB, dataDir string, log *slog.Logger) *Registry {
 
 // storedTheme is a row of the themes table.
 type storedTheme struct {
-	id       string // the served id, which may not be the manifest's
-	manifest Manifest
-	enabled  bool
+	id         string // the served id, which may not be the manifest's
+	manifest   Manifest
+	enabled    bool
+	importedBy string
+	importedAt time.Time
 }
 
-// merged lists the built-in themes, then the enabled stored ones by name. A
-// built-in theme hides a stored one of the same id: a new release can bring
-// an id an instance already serves.
-func merged(builtin *Set, stored []storedTheme) Index {
+func byName(a, b storedTheme) int {
+	return cmp.Or(cmp.Compare(strings.ToLower(a.manifest.Name["en"]), strings.ToLower(b.manifest.Name["en"])), cmp.Compare(a.id, b.id))
+}
+
+// merged lists the built-in themes not turned off, then the enabled stored ones
+// by name. A built-in theme hides a stored one of the same id: a new release
+// can bring an id an instance already serves.
+func merged(builtin *Set, disabled []string, stored []storedTheme) Index {
 	out := builtin.Index()
+	out.Themes = slices.DeleteFunc(out.Themes, func(m Manifest) bool { return slices.Contains(disabled, m.ID) })
+	slices.SortFunc(stored, byName)
 	var extra []Manifest
 	for _, t := range stored {
 		if _, taken := builtin.byID[t.id]; t.enabled && !taken {
@@ -63,9 +81,6 @@ func merged(builtin *Set, stored []storedTheme) Index {
 			extra = append(extra, m)
 		}
 	}
-	slices.SortFunc(extra, func(a, b Manifest) int {
-		return cmp.Or(cmp.Compare(strings.ToLower(a.Name["en"]), strings.ToLower(b.Name["en"])), cmp.Compare(a.ID, b.ID))
-	})
 	out.Themes = append(out.Themes, extra...)
 	return out
 }
@@ -75,11 +90,37 @@ func (r *Registry) Index(ctx context.Context) (Index, error) {
 	if r.db == nil {
 		return r.builtin.Index(), nil
 	}
-	var stored []storedTheme
-	err := sqlq.Each(ctx, r.db, `SELECT id, manifest, enabled FROM themes`, func(rows *sql.Rows) error {
-		var t storedTheme
-		var raw string
-		if err := rows.Scan(&t.id, &raw, &t.enabled); err != nil {
+	disabled, err := r.disabledBuiltin(ctx)
+	if err != nil {
+		return Index{}, err
+	}
+	stored, err := r.stored(ctx)
+	if err != nil {
+		return Index{}, err
+	}
+	return merged(r.builtin, disabled, stored), nil
+}
+
+// disabledBuiltin returns the ids of the built-in themes turned off.
+func (r *Registry) disabledBuiltin(ctx context.Context) ([]string, error) {
+	var ids []string
+	_, err := settings.New(r.db).GetJSON(ctx, disabledSetting, &ids)
+	return ids, err
+}
+
+const storedColumns = `id, manifest, enabled, COALESCE(imported_by, ''), imported_at`
+
+func scanStored(rows interface{ Scan(...any) error }) (t storedTheme, raw string, err error) {
+	err = rows.Scan(&t.id, &raw, &t.enabled, &t.importedBy, &t.importedAt)
+	return t, raw, err
+}
+
+// stored reads the themes table.
+func (r *Registry) stored(ctx context.Context) ([]storedTheme, error) {
+	var out []storedTheme
+	err := sqlq.Each(ctx, r.db, `SELECT `+storedColumns+` FROM themes`, func(rows *sql.Rows) error {
+		t, raw, err := scanStored(rows)
+		if err != nil {
 			return err
 		}
 		m, err := ParseManifest([]byte(raw))
@@ -89,19 +130,39 @@ func (r *Registry) Index(ctx context.Context) (Index, error) {
 			return nil
 		}
 		t.manifest = m
-		stored = append(stored, t)
+		out = append(out, t)
 		return nil
 	})
-	if err != nil {
-		return Index{}, err
+	return out, err
+}
+
+// storedOne reads a row of the themes table. A manifest it can't read leaves
+// the theme's manifest empty: such a theme can still be turned off or deleted.
+func (r *Registry) storedOne(ctx context.Context, id string) (storedTheme, error) {
+	t, raw, err := scanStored(r.db.QueryRowContext(ctx, `SELECT `+storedColumns+` FROM themes WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return storedTheme{}, ErrNotFound
 	}
-	return merged(r.builtin, stored), nil
+	if err != nil {
+		return storedTheme{}, err
+	}
+	t.manifest, _ = ParseManifest([]byte(raw))
+	return t, nil
 }
 
 // Serve answers a file of theme id; false, with nothing written, when there
 // is no such enabled theme or file.
 func (r *Registry) Serve(w http.ResponseWriter, req *http.Request, id, name string) (bool, error) {
 	if _, ok := r.builtin.byID[id]; ok {
+		if r.db != nil {
+			disabled, err := r.disabledBuiltin(req.Context())
+			if err != nil {
+				return false, err
+			}
+			if slices.Contains(disabled, id) {
+				return false, nil
+			}
+		}
 		return r.builtin.Serve(w, req, id, name), nil
 	}
 	if r.db == nil || !idPattern.MatchString(id) {

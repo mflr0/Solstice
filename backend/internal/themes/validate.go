@@ -22,10 +22,10 @@ const (
 
 // Finding is one rule a theme package breaks.
 type Finding struct {
-	Rule    string // manifest, css, tokens, contrast, font-size, import, escape, url, load, schemes, preview, licence or size
-	Message string
-	File    string // path inside the package
-	Line    int    // from 1; 0 when it concerns the whole file
+	Rule    string `json:"rule"` // manifest, css, tokens, contrast, font-size, import, escape, url, load, schemes, preview, licence, size or zip
+	Message string `json:"message"`
+	File    string `json:"file"`           // path inside the package
+	Line    int    `json:"line,omitempty"` // from 1; 0 when it concerns the whole file
 }
 
 func (f Finding) String() string {

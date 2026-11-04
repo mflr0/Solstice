@@ -705,4 +705,11 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityTargetNotFound: "Livello di sostituzione non trovato in questo progetto.",
 	SecurityMoveOrClear:    "Scegli un livello di sostituzione oppure rimuovi il livello, non entrambi.",
 	SecurityMemberExists:   "Questo titolare è già membro del livello.",
+
+	// Theme packages.
+	ThemeFileMissing:      "Nessun pacchetto tema inviato.",
+	ThemeFileTooLarge:     "Il pacchetto tema supera %d MiB.",
+	ThemePackageRefused:   "Il pacchetto tema è stato rifiutato: vedi i problemi rilevati.",
+	ThemeBuiltinFixed:     "Un tema integrato non può essere sostituito né eliminato. Può essere disattivato.",
+	ThemeFallbackRequired: "Carnet non può essere disattivato: è il tema a cui tornano gli utenti.",
 }

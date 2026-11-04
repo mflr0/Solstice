@@ -706,4 +706,11 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityTargetNotFound: "रिप्लेसमेंट स्तर इस प्रोजेक्ट में नहीं मिला।",
 	SecurityMoveOrClear:    "रिप्लेसमेंट स्तर चुनें या स्तर हटाएँ, दोनों नहीं।",
 	SecurityMemberExists:   "यह धारक पहले से इस स्तर का सदस्य है।",
+
+	// Theme packages.
+	ThemeFileMissing:      "कोई थीम पैकेज नहीं भेजा गया।",
+	ThemeFileTooLarge:     "थीम पैकेज %d MiB से बड़ा है।",
+	ThemePackageRefused:   "थीम पैकेज अस्वीकार कर दिया गया: मिली समस्याएँ देखें।",
+	ThemeBuiltinFixed:     "अंतर्निहित थीम को बदला या मिटाया नहीं जा सकता। उसे अक्षम किया जा सकता है।",
+	ThemeFallbackRequired: "Carnet को अक्षम नहीं किया जा सकता: उपयोगकर्ता इसी थीम पर लौटते हैं।",
 }

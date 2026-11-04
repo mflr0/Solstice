@@ -522,6 +522,25 @@ everything. Shortening the period deletes the older entries at once, after a
 confirmation, and this cannot be undone. Keep a database backup first if you
 need the older entries.
 
+### Themes
+
+Administrators add themes to the instance as packages: a zip with `theme.json`
+and `theme.css` at its root, plus optional images in `assets/` (`.svg`, `.png`,
+`.webp`, `.jpg`), fonts in `fonts/` (`.woff2`) and licence files. There is no
+page for this yet: use the API, described in
+`backend/internal/api/ADMIN_API.md` under "Themes".
+
+- An import is refused, with the list of problems found, if the zip breaks a limit
+  (100 files, 10 MiB unpacked, an unusual compression ratio, a link, a path
+  leaving the package, a file of another type) or if the validator finds anything.
+- If a theme already holds the package's id, the new one gets a suffix
+  (`retro-2`). To update a theme, replace it with a new version of the same id.
+- A disabled theme isn't offered, and users on it go back to Carnet. Built-in
+  themes can be disabled but not replaced or deleted. Carnet can't be disabled.
+- Imported files are kept in the `themes` folder of the data directory.
+
+Every change is written to the audit log.
+
 ### Jira import
 
 Replaces everything Solstice holds with the data of a Jira database. This is

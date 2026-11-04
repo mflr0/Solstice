@@ -24,7 +24,7 @@ func storedManifest(t *testing.T, manifestID, name string) Manifest {
 
 func TestMerged(t *testing.T) {
 	builtin := testSet(t)
-	idx := merged(builtin, []storedTheme{
+	idx := merged(builtin, nil, []storedTheme{
 		{id: "zebra", manifest: storedManifest(t, "zebra", "Zebra"), enabled: true},
 		{id: "off", manifest: storedManifest(t, "off", "Off"), enabled: false},
 		{id: "retro-2", manifest: storedManifest(t, "retro", "apple"), enabled: true},

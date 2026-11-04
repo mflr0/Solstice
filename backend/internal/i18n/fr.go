@@ -705,4 +705,11 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityTargetNotFound: "Niveau de remplacement introuvable dans ce projet.",
 	SecurityMoveOrClear:    "Choisissez un niveau de remplacement ou retirez le niveau, pas les deux.",
 	SecurityMemberExists:   "Ce titulaire est déjà membre du niveau.",
+
+	// Theme packages.
+	ThemeFileMissing:      "Aucun paquet de thème n’a été envoyé.",
+	ThemeFileTooLarge:     "Le paquet de thème dépasse %d Mio.",
+	ThemePackageRefused:   "Le paquet de thème a été refusé : voir les problèmes relevés.",
+	ThemeBuiltinFixed:     "Un thème intégré ne peut être ni remplacé ni supprimé. Il peut être désactivé.",
+	ThemeFallbackRequired: "Carnet ne peut pas être désactivé : c’est le thème vers lequel les utilisateurs reviennent.",
 }

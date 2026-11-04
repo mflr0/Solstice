@@ -788,3 +788,12 @@ const (
 	SecurityMoveOrClear    Key = "SecurityMoveOrClear"
 	SecurityMemberExists   Key = "SecurityMemberExists"
 )
+
+// Theme packages.
+const (
+	ThemeFileMissing      Key = "ThemeFileMissing"
+	ThemeFileTooLarge     Key = "ThemeFileTooLarge"
+	ThemePackageRefused   Key = "ThemePackageRefused"
+	ThemeBuiltinFixed     Key = "ThemeBuiltinFixed"
+	ThemeFallbackRequired Key = "ThemeFallbackRequired"
+)

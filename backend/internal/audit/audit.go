@@ -118,6 +118,12 @@ const (
 	SecurityLevelDelete       = "securitylevel.delete"
 	SecurityLevelMemberAdd    = "securitylevel.member_add"
 	SecurityLevelMemberRemove = "securitylevel.member_remove"
+	// Theme packages: imported, replaced by a new version, turned on or off, deleted.
+	ThemeImport  = "theme.import"
+	ThemeReplace = "theme.replace"
+	ThemeEnable  = "theme.enable"
+	ThemeDisable = "theme.disable"
+	ThemeDelete  = "theme.delete"
 	// Catalogue items: "<kind>.create", "<kind>.update", "<kind>.delete",
 	// "<kind>.order" with kind issuetype, priority, resolution, linktype.
 )
@@ -148,6 +154,7 @@ const (
 	TargetSettings    TargetType = "settings"
 	TargetImport      TargetType = "import"
 	TargetOAuthClient TargetType = "oauthclient" // ID: the client_id
+	TargetTheme       TargetType = "theme"       // ID: the served id
 )
 
 // Target is what an action was done to: a user, a project, a token…

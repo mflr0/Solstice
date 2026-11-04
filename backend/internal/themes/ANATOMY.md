@@ -535,3 +535,12 @@ the built-in themes in the order of `order.json`, then the enabled themes stored
 instance (`<data>/themes/<id>`) by English name, each with the id it is served under. `GET /api/themes/<id>/<path>` serves `theme.css`, `assets/…` and
 `fonts/…`, with an ETag, and under `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'`
 so an SVG opened on its own runs no script. `theme.json` and other files are not served.
+
+An administrator imports a package as a zip (`POST /api/admin/themes`, see
+`backend/internal/api/ADMIN_API.md`). `theme.json` and `theme.css` sit at the
+root of the zip, not in a folder. An import takes less than a built-in package
+may hold: `assets/*.svg|png|webp|jpg`, `fonts/*.woff2`, and licence files (a
+`.txt` in `assets/` or `fonts/`, or `LICENSE`, `LICENCE` or `COPYING` at the root,
+with `.txt` or `.md` or no extension). The validator must find nothing. If its id
+is taken the theme is served under a suffixed one (`retro-2`), and the loader
+rewrites the anchor: the files don't change.
