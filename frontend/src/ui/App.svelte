@@ -17,6 +17,7 @@
     notify,
     openCreate,
     shownBoard,
+    toggleScheme,
   } from '../lib/ui.svelte.js';
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
@@ -95,6 +96,9 @@
     } else if (action === 'help') {
       e.preventDefault();
       dialogs.shortcuts = true;
+    } else if (action === 'toggleScheme') {
+      e.preventDefault();
+      toggleScheme();
     }
   }
 </script>

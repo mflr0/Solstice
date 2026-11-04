@@ -11,7 +11,14 @@
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
   import { isSkinLoaded, loadSkin } from '../lib/skins.svelte.js';
-  import { appearance, applyMode, applySkin, mac, openCreate } from '../lib/ui.svelte.js';
+  import {
+    appearance,
+    applyMode,
+    applySkin,
+    mac,
+    openCreate,
+    toggleScheme,
+  } from '../lib/ui.svelte.js';
   import Logo from './Logo.svelte';
   import Picture from './Picture.svelte';
   import ProjectScope from './ProjectScope.svelte';
@@ -143,12 +150,24 @@
         onclick={() => (themesOpen = !themesOpen)}
       >
         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-          <circle cx="10" cy="10" r="7.25" />
-          <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" />
+          <path
+            d="M10 2.75a7.25 7.25 0 0 0 0 14.5c1 0 1.6-.65 1.6-1.45 0-.4-.15-.75-.4-1.05-.25-.3-.4-.65-.4-1.05 0-.85.7-1.5 1.5-1.5h1.6a3.35 3.35 0 0 0 3.35-3.35C17.25 5.7 14 2.75 10 2.75Z"
+          />
+          <circle cx="6.25" cy="10" r="1.1" />
+          <circle cx="7.6" cy="6.4" r="1.1" />
+          <circle cx="11.4" cy="5.75" r="1.1" />
+          <circle cx="14.4" cy="8.25" r="1.1" />
         </svg>
       </button>
       {#if themesOpen}
         <div class="popover theme-menu" role="menu" use:menu={() => (themesOpen = false)}>
+          <button
+            class="item"
+            role="menuitemcheckbox"
+            aria-checked={appearance.scheme === 'dark'}
+            onclick={toggleScheme}>{t.nav.darkMode}</button
+          >
+          <div class="sep"></div>
           <div class="theme-head" aria-hidden="true">
             <span>{t.nav.themes}</span>
             {#each SCHEMES as scheme (scheme)}<span class="scheme-name">{t.nav.modes[scheme]}</span

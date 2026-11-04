@@ -303,13 +303,14 @@ mark.match {
   color: var(--bar-ink);
 }
 
-.topbar-themes circle {
+.topbar-themes path {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
+  stroke-linejoin: round;
 }
 
-.topbar-themes path {
+.topbar-themes circle {
   fill: currentColor;
 }
 
