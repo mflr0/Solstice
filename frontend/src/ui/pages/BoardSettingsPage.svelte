@@ -732,6 +732,7 @@
 
   .check .hint {
     display: block;
+    white-space: normal;
   }
 
   .sub {
