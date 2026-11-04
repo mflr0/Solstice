@@ -201,6 +201,31 @@ describe('TopBar keyboard', () => {
     expect(focused()).toBe(themes);
   });
 
+  it('flips the mode from the switch at the top of the theme menu and keeps the skin', async () => {
+    applySkin('orbite');
+    applyMode('light');
+    button(t.nav.themes).click();
+    await settle();
+    const items = [...document.querySelectorAll<HTMLElement>('.theme-menu [role^="menuitem"]')];
+    const sw = items[0]!;
+    expect(sw.getAttribute('role')).toBe('menuitemcheckbox');
+    expect(sw.textContent?.trim()).toBe(t.nav.darkMode);
+    expect(sw.getAttribute('aria-checked')).toBe('false');
+
+    sw.click();
+    flushSync();
+    expect(appearance.mode).toBe('dark');
+    expect(appearance.skin).toBe('orbite');
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    expect(document.querySelector('.theme-menu')).not.toBeNull();
+
+    sw.click();
+    flushSync();
+    expect(appearance.mode).toBe('light');
+    expect(sw.getAttribute('aria-checked')).toBe('false');
+    applySkin('carnet');
+  });
+
   it.each(['system', 'light', 'dark'] as const)(
     'switches skin by its name and keeps the mode %s',
     async (mode) => {
@@ -214,7 +239,7 @@ describe('TopBar keyboard', () => {
       );
       const other = SKINS.indexOf('orbite');
       key(focused(), 'Home');
-      for (let i = 0; i < other * 3; i++) key(focused(), 'ArrowDown');
+      for (let i = 0; i < 1 + other * 3; i++) key(focused(), 'ArrowDown');
       expect(focused()).toBe(names[other]);
       names[other]!.click();
       flushSync();

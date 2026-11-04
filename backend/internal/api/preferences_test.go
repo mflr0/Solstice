@@ -48,6 +48,7 @@ func TestPreferenceValueAccepted(t *testing.T) {
 	for _, c := range []struct{ name, value, want string }{
 		{"shortcutsEnabled", ` false `, `false`},
 		{"shortcuts", `{}`, `{}`},
+		{"shortcuts", `{"toggleScheme": ["d"]}`, `{"toggleScheme":["d"]}`},
 		{"shortcuts", `{"search": ["Alt-k", "/"], "watch": []}`, `{"search":["Alt-k","/"],"watch":[]}`},
 		{"shortcuts", `{"open": ["` + strings.Repeat("é", maxBindingLength) + `", "a", "b", "c"]}`,
 			`{"open":["` + strings.Repeat("é", maxBindingLength) + `","a","b","c"]}`},

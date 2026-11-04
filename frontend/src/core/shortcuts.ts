@@ -67,6 +67,7 @@ export type ShortcutAction =
   | 'search'
   | 'create'
   | 'help'
+  | 'toggleScheme'
   | 'next'
   | 'previous'
   | 'open'
@@ -89,6 +90,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { scope: 'global', action: 'search', keys: ['/'] },
   { scope: 'global', action: 'create', keys: ['c'] },
   { scope: 'global', action: 'help', keys: ['?'] },
+  { scope: 'global', action: 'toggleScheme', keys: ['d'] },
   { scope: 'results', action: 'next', keys: ['j'] },
   { scope: 'results', action: 'previous', keys: ['k'] },
   { scope: 'results', action: 'open', keys: ['o', 'Enter'] },

@@ -116,9 +116,11 @@ connection, `.is-live` while connected). `.app-booting` (first load).
 **Top bar** — `header.topbar` > `.topbar-inner` > `a.brand` (`.logo` +
 `.wordmark`), `nav.topbar-nav` > `a.nav-link` (`[aria-current='page']`),
 `form.topbar-search.quick-search` > `input.input` (see **Search**), `.live-dot` (`.on` when connected),
-`.theme-picker` > `button.topbar-themes` (icon; `[aria-current='page']` on
+`.theme-picker` > `button.topbar-themes` (a palette: stroked `path`, filled
+`circle` dots; `[aria-current='page']` on
 the gallery, `[aria-expanded='true']` while open: give both the same look),
-`.popover.theme-menu` (`.theme-head` > `.scheme-name`s, then a `.theme-row`
+`.popover.theme-menu` (`button.item[role=menuitemcheckbox]`, the dark-mode
+switch, and a `.sep`, then `.theme-head` > `.scheme-name`s, then a `.theme-row`
 per skin > `.skin-name` + two `button.scheme[role=menuitemradio]`, light and
 dark, each a thumbnail drawn from `--sw-*`, not an `.item`; then `a.item` to
 the gallery), `.btn.btn-primary.topbar-create` >

@@ -113,6 +113,7 @@ describe('shortcutFor', () => {
     expect(on('/', 'global', true)).toBe('search');
     expect(on('c', 'global', true)).toBe('create');
     expect(on('?', 'global', true)).toBe('help');
+    expect(on('d', 'global', true)).toBe('toggleScheme');
     expect(on('j', 'results', true)).toBe('next');
     expect(on('k', 'results', true)).toBe('previous');
     expect(on('o', 'results', true)).toBe('open');
@@ -126,6 +127,10 @@ describe('shortcutFor', () => {
     expect(on('j', 'issue', true)).toBeNull();
     expect(on('e', 'results', true)).toBeNull();
     expect(on('Enter', 'global', true)).toBeNull();
+  });
+
+  it('turns d off with the other single keys', () => {
+    expect(on('d', 'global', false)).toBeNull();
   });
 
   it('is case-sensitive: Shift+J is not j', () => {

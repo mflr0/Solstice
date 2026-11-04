@@ -22,7 +22,7 @@ const (
 
 // shortcutActions are the ShortcutAction names of frontend/src/core/shortcuts.ts.
 var shortcutActions = []string{
-	"search", "create", "help", "next", "previous", "open", "select",
+	"search", "create", "help", "toggleScheme", "next", "previous", "open", "select",
 	"editSummary", "assignToMe", "comment", "status", "watch",
 }
 

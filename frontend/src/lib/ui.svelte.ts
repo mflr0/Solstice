@@ -154,6 +154,11 @@ export function applyMode(mode: Mode): void {
   render();
 }
 
+/** Flips between light and dark, keeping the skin; from the system's mode, stores the other one. */
+export function toggleScheme(): void {
+  applyMode(appearance.scheme === 'dark' ? 'light' : 'dark');
+}
+
 /** Turns single-key shortcuts on or off on the account. */
 export async function applyShortcuts(on: boolean): Promise<void> {
   if (session.me) session.me = await accountApi.setPreference('shortcutsEnabled', on);
