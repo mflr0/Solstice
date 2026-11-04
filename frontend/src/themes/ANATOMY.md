@@ -12,8 +12,10 @@ Ids: `carnet`, `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `pl
   `[data-skin='<id>'][data-scheme='dark'] …` for the dark variant. Never `:root`,
   `html` or `body` as the anchor: the skin root is either `<html>` or a
   `<div class="skin-preview">` in the theme gallery.
-- **Fonts**: `@import '@fontsource/<font>/latin-400.css';` at the top of the
-  file (packages in `package.json`; ask main to add one). Free licences only.
+- **Fonts**: woff2 files in `./<id>/fonts/` with the font's licence file next
+  to them, declared by `@font-face` rules at the top of the file with
+  `src: url('./<id>/fonts/x.woff2') format('woff2')`. No `@import`: a test
+  fails on one. Free licences only.
   System fonts (Tahoma, Verdana, …) only as `font-family` fallbacks, never
   bundled. No Microsoft or Atlassian names, logos, icons, fonts or assets,
   anywhere (code, comments, UI).
