@@ -16,6 +16,13 @@
     "it": "bianco e blu",
     "hi": "सफ़ेद और नीला"
   },
+  "about": {
+    "en": "Familiar if you come from the original tool: white, blue, understated.",
+    "fr": "Familier pour qui vient de l’outil d’origine : blanc, bleu, sobre.",
+    "de": "Vertraut, wenn Sie vom bisherigen Tool kommen: Weiß, Blau, schlicht.",
+    "it": "Familiare per chi viene dallo strumento originale: bianco, blu, sobrio.",
+    "hi": "मूल टूल से आने वालों के लिए जाना-पहचाना: सफ़ेद, नीला, सादा।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

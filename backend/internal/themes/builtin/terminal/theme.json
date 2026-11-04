@@ -16,6 +16,13 @@
     "it": "fosfori verdi",
     "hi": "हरा फ़ॉस्फ़र"
   },
+  "about": {
+    "en": "A green phosphor screen; in light mode, a printout on striped paper.",
+    "fr": "Écran phosphore vert ; en clair, un listing sur papier zébré.",
+    "de": "Ein Bildschirm mit grünem Phosphor; im Hellmodus ein Ausdruck auf Endlospapier.",
+    "it": "Schermo a fosfori verdi; in chiaro, un tabulato su modulo continuo a righe.",
+    "hi": "हरे फ़ॉस्फ़र की स्क्रीन; लाइट मोड में, धारीदार कागज़ पर एक प्रिंटआउट।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

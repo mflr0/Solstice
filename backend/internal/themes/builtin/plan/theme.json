@@ -16,6 +16,13 @@
     "it": "lucido e cartigli",
     "hi": "ट्रेसिंग पेपर, टाइटल ब्लॉक"
   },
+  "about": {
+    "en": "An architect’s plan: blue, a white grid, title blocks; in light mode, a print.",
+    "fr": "Plan d’architecte : bleu, quadrillage blanc, cartouches ; en clair, un tirage.",
+    "de": "Ein Architektenplan: Blau, weißes Raster, Schriftfelder; im Hellmodus eine Lichtpause.",
+    "it": "Tavola d’architetto: blu, griglia bianca, cartigli; in chiaro, una copia stampata.",
+    "hi": "आर्किटेक्ट का नक्शा: नीला, सफ़ेद ग्रिड, टाइटल ब्लॉक; लाइट मोड में, एक प्रिंट।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

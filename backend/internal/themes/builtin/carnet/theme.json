@@ -16,6 +16,13 @@
     "it": "carta e inchiostro",
     "hi": "कागज़ और स्याही"
   },
+  "about": {
+    "en": "The site notebook: cream paper, black ink, a vermilion stroke.",
+    "fr": "Le carnet de chantier : papier crème, encre noire, un trait vermillon.",
+    "de": "Das Bautagebuch: cremefarbenes Papier, schwarze Tinte, ein zinnoberroter Strich.",
+    "it": "Il taccuino di cantiere: carta color crema, inchiostro nero, un tratto vermiglio.",
+    "hi": "निर्माण स्थल की नोटबुक: क्रीम कागज़, काली स्याही, एक सिंदूरी रेखा।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

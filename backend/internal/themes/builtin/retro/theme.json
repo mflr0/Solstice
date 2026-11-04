@@ -16,6 +16,13 @@
     "it": "grigio in rilievo",
     "hi": "उभरा हुआ स्लेटी"
   },
+  "about": {
+    "en": "A late-’90s desktop: raised grey, navy windows, a teal background.",
+    "fr": "Bureau de la fin des années 90 : gris en relief, fenêtres marine, fond sarcelle.",
+    "de": "Ein Desktop der späten 90er: plastisches Grau, marineblaue Fenster, ein blaugrüner Hintergrund.",
+    "it": "Desktop di fine anni ’90: grigio in rilievo, finestre blu navy, sfondo verde acqua.",
+    "hi": "90 के दशक के आख़िर का डेस्कटॉप: उभरा हुआ स्लेटी, नेवी ब्लू विंडो, टील बैकग्राउंड।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

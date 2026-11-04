@@ -16,6 +16,13 @@
     "it": "notte e orbite",
     "hi": "रात और कक्षाएँ"
   },
+  "about": {
+    "en": "A night observatory: deep blue, faint stars, the sun as the accent.",
+    "fr": "Observatoire de nuit : bleu profond, étoiles discrètes, le soleil en accent.",
+    "de": "Eine Sternwarte bei Nacht: tiefes Blau, zarte Sterne, die Sonne als Akzent.",
+    "it": "Osservatorio notturno: blu profondo, stelle discrete, il sole come accento.",
+    "hi": "रात की वेधशाला: गहरा नीला, मद्धम तारे, ऐक्सेंट के रूप में सूरज।"
+  },
   "author": "Solstice",
   "schemes": [
     "light",

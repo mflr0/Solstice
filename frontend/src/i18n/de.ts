@@ -159,17 +159,6 @@ export const de: Messages = {
     eyebrow: 'Darstellung',
     intro:
       'Jedes Design gestaltet die gesamte Oberfläche neu, nur für Sie. Klicken Sie auf eine Vorschau, um es anzuwenden; der helle oder dunkle Modus folgt Ihrer Wahl.',
-    descriptions: {
-      carnet: 'Das Bautagebuch: cremefarbenes Papier, schwarze Tinte, ein zinnoberroter Strich.',
-      orbite: 'Eine Sternwarte bei Nacht: tiefes Blau, zarte Sterne, die Sonne als Akzent.',
-      crayon: 'Eine Bleistiftskizze: Graphit auf körnigem Papier; im Dunkelmodus eine Schultafel.',
-      luna: 'Ein Desktop der 2000er: blaue Titelleisten, ein grüner Knopf, Beigetöne.',
-      retro:
-        'Ein Desktop der späten 90er: plastisches Grau, marineblaue Fenster, ein blaugrüner Hintergrund.',
-      classique: 'Vertraut, wenn Sie vom bisherigen Tool kommen: Weiß, Blau, schlicht.',
-      terminal: 'Ein Bildschirm mit grünem Phosphor; im Hellmodus ein Ausdruck auf Endlospapier.',
-      plan: 'Ein Architektenplan: Blau, weißes Raster, Schriftfelder; im Hellmodus eine Lichtpause.',
-    },
     current: 'Aktuelles Design',
     use: 'Dieses Design verwenden',
     apply: (name: string, scheme: string) => `${name} (${scheme}) anwenden`,

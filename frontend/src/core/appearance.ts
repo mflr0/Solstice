@@ -41,6 +41,8 @@ export interface ThemeManifest {
   name: Record<string, string>;
   /** Locale → a few words on the look. */
   description: Record<string, string>;
+  /** Locale → the theme gallery's longer sentence, optional. */
+  about?: Record<string, string>;
   author: string;
   schemes: Scheme[];
   preview: Partial<Record<Scheme, SchemeSwatch>>;

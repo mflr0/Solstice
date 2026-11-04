@@ -156,16 +156,6 @@ export const it: Messages = {
     eyebrow: 'Aspetto',
     intro:
       'Ogni tema ridisegna tutta l’interfaccia, solo per te. Fai clic su un’anteprima per applicarlo; la modalità chiara o scura segue la tua scelta.',
-    descriptions: {
-      carnet: 'Il taccuino di cantiere: carta color crema, inchiostro nero, un tratto vermiglio.',
-      orbite: 'Osservatorio notturno: blu profondo, stelle discrete, il sole come accento.',
-      crayon: 'Schizzo a matita: grafite su carta ruvida; in scuro, una lavagna.',
-      luna: 'Desktop degli anni 2000: barre del titolo blu, pulsante verde, toni beige.',
-      retro: 'Desktop di fine anni ’90: grigio in rilievo, finestre blu navy, sfondo verde acqua.',
-      classique: 'Familiare per chi viene dallo strumento originale: bianco, blu, sobrio.',
-      terminal: 'Schermo a fosfori verdi; in chiaro, un tabulato su modulo continuo a righe.',
-      plan: 'Tavola d’architetto: blu, griglia bianca, cartigli; in chiaro, una copia stampata.',
-    },
     current: 'Tema attuale',
     use: 'Usa questo tema',
     apply: (name: string, scheme: string) => `Applica ${name}, ${scheme}`,
