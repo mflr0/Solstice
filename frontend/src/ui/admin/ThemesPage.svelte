@@ -180,7 +180,7 @@
       <li class="theme" class:off={!theme.enabled} onclick={(e) => rowClick(e, theme, open)}>
         <div class="head">
           <button
-            class="btn btn-small btn-icon toggle"
+            class="toggle"
             aria-expanded={open}
             aria-label={m.previewOf(name)}
             title={m.previewOf(name)}
@@ -323,9 +323,14 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px 20px;
     align-items: center;
-    padding: 14px 0;
+    margin-inline: -10px;
+    padding: 14px 10px;
     border-bottom: 1px solid var(--rule);
     cursor: pointer;
+  }
+
+  .theme:hover {
+    background: var(--paper-sunk);
   }
 
   .head {
@@ -341,6 +346,25 @@
 
   .head {
     align-items: center;
+  }
+
+  .toggle {
+    all: unset;
+    display: inline-grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .theme:hover .toggle {
+    color: var(--ink);
   }
 
   .toggle svg {
