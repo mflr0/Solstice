@@ -292,10 +292,11 @@ func openPackage(data []byte, dir string) (m Manifest, raw string, findings []Fi
 	if err != nil || len(findings) > 0 {
 		return Manifest{}, "", findings, err
 	}
-	if findings = Validate(os.DirFS(dir)); len(findings) > 0 {
+	pkg := os.DirFS(dir)
+	if findings = Validate(pkg); len(findings) > 0 {
 		return Manifest{}, "", findings, nil
 	}
-	content, err := os.ReadFile(filepath.Join(dir, manifestFile))
+	content, err := fs.ReadFile(pkg, manifestFile)
 	if err != nil {
 		return Manifest{}, "", nil, err
 	}
@@ -370,7 +371,7 @@ func unzipPackage(data []byte, dir string) ([]Finding, error) {
 		if err := os.MkdirAll(filepath.Dir(file), 0o750); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(file, content, 0o640); err != nil {
+		if err := os.WriteFile(file, content, 0o600); err != nil {
 			return nil, err
 		}
 	}
