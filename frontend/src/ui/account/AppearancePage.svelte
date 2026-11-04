@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { localized, MODES, THEMES } from '../../core/appearance.js';
+  import { onMount } from 'svelte';
+  import { localized, MODES } from '../../core/appearance.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, locale, type Locale } from '../../i18n/index.js';
@@ -8,6 +9,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { chooseLocale } from '../../lib/locale.js';
   import { session } from '../../lib/session.svelte.js';
+  import { loadThemes, themes } from '../../lib/skins.svelte.js';
   import LanguageDropdown from '../LanguageDropdown.svelte';
   import { appearance, applyMode, applySkin, notify } from '../../lib/ui.svelte.js';
 
@@ -23,6 +25,7 @@
     typeof navigator !== 'undefined' ? navigator.languages : [],
   );
   let busy = $state(false);
+  onMount(() => void loadThemes());
 
   const options = [
     {
@@ -100,7 +103,7 @@
 <section class="settings-form look" aria-labelledby="theme-title">
   <h2 class="section-title" id="theme-title">{t.account.theme}</h2>
   <div class="skins" role="group" aria-labelledby="theme-title">
-    {#each THEMES as theme (theme.id)}
+    {#each themes.list as theme (theme.id)}
       {@const skin = theme.id}
       <button
         type="button"

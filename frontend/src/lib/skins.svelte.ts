@@ -1,58 +1,85 @@
 /**
- * Skin stylesheets: each package's theme.css (backend/internal/themes/builtin),
- * its own chunk, fetched the first time the skin is shown (chosen, or
- * previewed in the gallery) and added to the end of <head>, so its rules win
- * ties with the base ones. Carnet's is part of the main stylesheet
- * (src/main.ts) instead.
+ * Theme packages, from the server: the list (GET /api/themes) and each one's
+ * stylesheet (GET /api/themes/<id>/theme.css), fetched the first time the skin
+ * is shown (chosen, or previewed in the gallery) and added to the end of
+ * <head>, so its rules win ties with the base ones. public/theme-boot.js has
+ * already started the fetch of the stored skin.
  */
 
-import type { Skin } from '../core/appearance.js';
-import { hasDarkVariant, scopeSkinCss } from '../core/skin-css.js';
+import type { Skin, ThemeManifest } from '../core/appearance.js';
+import { hasDarkVariant, rebaseSkinCss, scopeSkinCss } from '../core/skin-css.js';
+import { api } from './api.js';
 
-const builtin = '../../../backend/internal/themes/builtin';
-const sources = import.meta.glob<string>(
-  [
-    '../../../backend/internal/themes/builtin/*/theme.css',
-    '!../../../backend/internal/themes/builtin/carnet/theme.css',
-  ],
-  { query: '?inline', import: 'default' },
-);
+/** The themes the server offers, in the order the theme menus list them. */
+export const themes = $state<{ list: ThemeManifest[] }>({ list: [] });
 
-/**
- * What is known of each loaded skin: whether it draws a dark variant.
- * Carnet is the main stylesheet.
- */
-export const skinSheets = $state<Partial<Record<Skin, { dark: boolean }>>>({
-  carnet: { dark: true },
-});
+let listing: Promise<void> | undefined;
 
-const pending: Partial<Record<Skin, Promise<void>>> = {};
+/** Fetches the list once; a failed attempt can be tried again. */
+export function loadThemes(): Promise<void> {
+  listing ??= api
+    .themes()
+    .then((index) => {
+      themes.list = index.themes;
+    })
+    .catch(() => {
+      listing = undefined;
+    });
+  return listing;
+}
+
+/** What is known of each loaded skin: whether it draws a dark variant. */
+export const skinSheets = $state<Partial<Record<Skin, { dark: boolean }>>>({});
+
+const pending: Partial<Record<Skin, Promise<boolean>>> = {};
 
 const scopeSupported = typeof globalThis !== 'undefined' && 'CSSScopeRule' in globalThis;
+
+declare global {
+  interface Window {
+    /** The fetch public/theme-boot.js started; null when it failed. */
+    solsticeBootSkin?: { id: string; css: Promise<string | null> };
+  }
+}
+
+function bootFetch(skin: Skin): Promise<string | null> | undefined {
+  const boot = typeof window !== 'undefined' ? window.solsticeBootSkin : undefined;
+  if (boot?.id !== skin) return undefined;
+  delete window.solsticeBootSkin;
+  return boot.css;
+}
+
+async function fetchCss(skin: Skin): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/themes/${skin}/theme.css`, { credentials: 'same-origin' });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
 
 export function isSkinLoaded(skin: Skin): boolean {
   return skinSheets[skin] !== undefined;
 }
 
-export function loadSkin(skin: Skin): Promise<void> {
-  if (skin === 'carnet') return Promise.resolve();
+/** Resolves to whether the skin's stylesheet is in. */
+export function loadSkin(skin: Skin): Promise<boolean> {
   let p = pending[skin];
   if (!p) {
-    const source = sources[`${builtin}/${skin}/theme.css`];
-    p = (source ? source() : Promise.resolve(''))
-      .then((css) => {
-        if (css) {
-          const style = document.createElement('style');
-          style.dataset.skinCss = skin;
-          style.textContent = scopeSupported ? scopeSkinCss(css, skin) : css;
-          document.head.append(style);
-        }
-        skinSheets[skin] = { dark: hasDarkVariant(css, skin) };
-      })
-      .catch(() => {
-        // A failed chunk (network): try again next time.
+    p = (bootFetch(skin) ?? fetchCss(skin)).then((source) => {
+      if (source === null) {
+        // Try again next time.
         delete pending[skin];
-      });
+        return false;
+      }
+      const css = rebaseSkinCss(source, skin);
+      const style = document.createElement('style');
+      style.dataset.skinCss = skin;
+      style.textContent = scopeSupported ? scopeSkinCss(css, skin) : css;
+      document.head.append(style);
+      skinSheets[skin] = { dark: hasDarkVariant(css, skin) };
+      return true;
+    });
     pending[skin] = p;
   }
   return p;

@@ -3,21 +3,17 @@
  *
  * The skin and the user's mode choice are stored in localStorage. The page
  * carries these attributes on <html>:
- *   data-skin          one of SKINS
+ *   data-skin          a theme's id
  *   data-theme         light | dark, absent when following the system (as before)
  *   data-scheme        light | dark — the mode actually in effect, which the CSS
  *                      tokens key on, so "system" needs no duplicated media query.
- *   data-skin-loading  present while a skin's stylesheet is on its way
- *                      (Carnet's is the main one, so never for Carnet).
+ *   data-skin-loading  present while a skin's stylesheet is on its way.
  *
- * Each skin is a theme package, backend/internal/themes/builtin/<id>/: its
- * theme.json (THEMES) and theme.css. Carnet's stylesheet is part of the main
- * one, the others are fetched when chosen (src/lib/skins.svelte.ts).
+ * Each skin is a theme package the server holds: its manifest and its
+ * stylesheet are fetched at run time (src/lib/skins.svelte.ts).
  * public/theme-boot.js applies the same rules before the first paint; keep the
  * two in step.
  */
-
-import order from '../../../backend/internal/themes/builtin/order.json';
 
 /** A theme package's id. */
 export type Skin = string;
@@ -48,21 +44,17 @@ export interface ThemeManifest {
   preview: Partial<Record<Scheme, SchemeSwatch>>;
 }
 
-const manifests = import.meta.glob<ThemeManifest>(
-  '../../../backend/internal/themes/builtin/*/theme.json',
-  { eager: true, import: 'default' },
-);
+/** The answer of GET /api/themes (backend/internal/themes, Index). */
+export interface ThemeIndex {
+  contract: number;
+  themes: ThemeManifest[];
+}
 
-/** The built-in themes, in the order the theme menus list them. */
-export const THEMES: readonly ThemeManifest[] = order.map((id) => {
-  const m = manifests[`../../../backend/internal/themes/builtin/${id}/theme.json`];
-  if (!m) throw new Error(`theme ${id}: no theme.json`);
-  return m;
-});
+/** The theme shown when none is stored, or the stored one can't be loaded. */
+export const DEFAULT_SKIN: Skin = 'carnet';
 
-export const SKINS: readonly Skin[] = THEMES.map((m) => m.id);
-
-const ids = new Set(SKINS);
+/** What a theme's id looks like (backend/internal/themes, idPattern). */
+const SKIN_ID = /^[a-z0-9-]{1,32}$/;
 
 /** A manifest text in the locale, else in English. */
 export function localized(texts: Record<string, string>, locale: string): string {
@@ -77,7 +69,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export function parseSkin(value: string | null | undefined): Skin {
-  return value && ids.has(value) ? value : 'carnet';
+  return value && SKIN_ID.test(value) ? value : DEFAULT_SKIN;
 }
 
 export function parseMode(value: string | null | undefined): Mode {

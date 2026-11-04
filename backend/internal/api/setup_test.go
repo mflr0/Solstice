@@ -102,6 +102,13 @@ func TestSetupModeGating(t *testing.T) {
 			t.Errorf("GET %s: %d %q, want the static file", p, w.Code, w.Body.String())
 		}
 	}
+	for _, p := range []string{"/api/themes", "/api/themes/carnet/theme.css"} {
+		w := httptest.NewRecorder()
+		c.h.ServeHTTP(w, httptest.NewRequest("GET", p, nil))
+		if w.Code != 200 || w.Body.Len() == 0 {
+			t.Errorf("GET %s: %d, want the wizard's theme", p, w.Code)
+		}
+	}
 	if w := httptest.NewRecorder(); true {
 		c.h.ServeHTTP(w, httptest.NewRequest("GET", "/setup", nil))
 		if w.Header().Get("Content-Security-Policy") == "" {

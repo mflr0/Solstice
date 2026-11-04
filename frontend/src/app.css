@@ -67,7 +67,7 @@ body {
 
 /*
  * While a skin's stylesheet loads (public/theme-boot.js, src/lib/skins.svelte.ts):
- * a blank page of the right brightness rather than a flash of Carnet.
+ * a blank page of the right brightness rather than a flash of an unstyled page.
  */
 :root[data-skin-loading] {
   background: #ffffff;

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { localized, THEMES, type Scheme, type Skin } from '../core/appearance.js';
+  import { onMount } from 'svelte';
+  import { localized, type Scheme, type Skin } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { bindingWorks, formatShortcut } from '../core/shortcuts.js';
   import { locale } from '../i18n/index.js';
@@ -11,7 +12,7 @@
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { updateNotice } from '../lib/updates.svelte.js';
-  import { isSkinLoaded, loadSkin } from '../lib/skins.svelte.js';
+  import { isSkinLoaded, loadSkin, loadThemes, themes } from '../lib/skins.svelte.js';
   import {
     appearance,
     applyMode,
@@ -33,6 +34,7 @@
 
   let menuOpen = $state(false);
   let themesOpen = $state(false);
+  onMount(() => void loadThemes());
   const SCHEMES: readonly Scheme[] = ['light', 'dark'];
 
   /** Following the system stays on Account → Appearance: a pick here is explicit. */
@@ -148,7 +150,10 @@
         aria-haspopup="menu"
         aria-expanded={themesOpen}
         aria-current={router.route.name === 'themes' ? 'page' : undefined}
-        onclick={() => (themesOpen = !themesOpen)}
+        onclick={() => {
+          themesOpen = !themesOpen;
+          void loadThemes();
+        }}
       >
         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
           <path
@@ -175,7 +180,7 @@
               >{/each}
           </div>
           <div role="group" aria-label={t.nav.themes}>
-            {#each THEMES as theme (theme.id)}
+            {#each themes.list as theme (theme.id)}
               {@const skin = theme.id}
               {@const name = localized(theme.name, locale)}
               <div class="theme-row">

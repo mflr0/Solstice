@@ -180,7 +180,7 @@ func TestServe(t *testing.T) {
 		if got := h.Get("Content-Security-Policy"); got != "default-src 'none'; style-src 'unsafe-inline'" {
 			t.Errorf("%s: Content-Security-Policy %q", name, got)
 		}
-		if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("ETag") == "" || h.Get("Cache-Control") == "" {
+		if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("ETag") == "" || h.Get("Cache-Control") != "public, max-age=0, stale-while-revalidate=604800" {
 			t.Errorf("%s: headers %v", name, h)
 		}
 	}

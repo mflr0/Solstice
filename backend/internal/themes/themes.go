@@ -295,7 +295,9 @@ func (s *Set) Serve(w http.ResponseWriter, r *http.Request, id, name string) boo
 	// An SVG opened on its own is a document: it must not run script.
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
 	h.Set("ETag", f.etag)
-	h.Set("Cache-Control", "public, no-cache")
+	// The first paint uses the copy at hand and refreshes it behind: waiting for
+	// a revalidation would delay every page load by a round trip.
+	h.Set("Cache-Control", "public, max-age=0, stale-while-revalidate=604800")
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(f.data))
 	return true
 }

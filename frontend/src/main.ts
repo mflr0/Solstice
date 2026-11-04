@@ -1,7 +1,6 @@
 import { mount } from 'svelte';
 
 import './app.css';
-import '../../backend/internal/themes/builtin/carnet/theme.css';
 import { initLocale } from './i18n/index.js';
 import App from './ui/App.svelte';
 

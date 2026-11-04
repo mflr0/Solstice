@@ -3,15 +3,13 @@
   import {
     localized,
     MODES,
-    SKINS,
-    THEMES,
     type Scheme,
     type Skin,
     type ThemeManifest,
   } from '../../core/appearance.js';
   import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
-  import { loadSkin, skinSheets } from '../../lib/skins.svelte.js';
+  import { loadSkin, loadThemes, skinSheets, themes } from '../../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin } from '../../lib/ui.svelte.js';
   import SkinMock from '../SkinMock.svelte';
 
@@ -19,7 +17,9 @@
 
   onMount(() => {
     document.title = `${t.themes.title} — ${t.appName}`;
-    for (const skin of SKINS) void loadSkin(skin);
+    void loadThemes().then(() => {
+      for (const theme of themes.list) void loadSkin(theme.id);
+    });
   });
 
   function schemes(skin: Skin): Scheme[] {
@@ -47,7 +47,7 @@
     </div>
   </header>
 
-  {#each THEMES as theme (theme.id)}
+  {#each themes.list as theme (theme.id)}
     {@const skin = theme.id}
     {@const name = localized(theme.name, locale)}
     {@const current = appearance.skin === skin}

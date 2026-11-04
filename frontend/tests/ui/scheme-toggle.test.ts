@@ -16,6 +16,8 @@ const system = vi.hoisted(() => {
 
 import { appearance, applyMode, applySkin, toggleScheme } from '../../src/lib/ui.svelte.js';
 
+vi.stubGlobal('fetch', () => Promise.resolve(new Response("[data-skin='x'] { }")));
+
 afterEach(() => {
   applyMode('system');
   applySkin('carnet');

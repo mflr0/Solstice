@@ -10,6 +10,37 @@
  * At-rules that cannot live in @scope (fonts, keyframes…) stay outside.
  */
 
+const TOKENS =
+  /\/\*[\s\S]*?\*\/|url\(\s*("[^"]*"|'[^']*'|[^'")\s]*)\s*\)|\[data-skin\s*=\s*("[^"]*"|'[^']*'|[\w-]*)\s*\]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+
+/** Leaves absolute addresses alone: data:, https:, /path and #fragment. */
+const ABSOLUTE_URL = /^(?:[a-z][a-z0-9+.-]*:|\/|#)/i;
+
+function unquoted(token: string): string {
+  return token.replace(/^(['"])([\s\S]*)\1$/, '$2');
+}
+
+/**
+ * Makes a package's stylesheet fit the place it is served from: its anchor
+ * (the first one it holds, the manifest's id) becomes the served id, and its
+ * package-relative url()s point at /api/themes/<id>/.
+ */
+export function rebaseSkinCss(css: string, id: string): string {
+  let manifestId: string | undefined;
+  return css.replace(TOKENS, (token, url?: string, anchor?: string) => {
+    if (anchor !== undefined) {
+      const name = unquoted(anchor);
+      manifestId ??= name;
+      return name === manifestId ? `[data-skin='${id}']` : token;
+    }
+    if (url === undefined) return token;
+    const target = unquoted(url);
+    if (target === '' || ABSOLUTE_URL.test(target)) return token;
+    const quote = url.length > target.length ? url[0] : '';
+    return `url(${quote}/api/themes/${id}/${target.replace(/^(?:\.\/)+/, '')}${quote})`;
+  });
+}
+
 /** At-rules kept at the top level, outside @scope. */
 const TOP_LEVEL =
   /^@(?:charset|import|namespace|font-face|(?:-webkit-)?keyframes|property|counter-style|font-feature-values|font-palette-values)\b|^@layer\b[^{]*;$/i;

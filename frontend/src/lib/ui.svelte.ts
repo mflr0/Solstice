@@ -7,6 +7,7 @@
 import {
   htmlAttributes,
   parseMode,
+  DEFAULT_SKIN,
   parseSkin,
   resolveScheme,
   STORAGE_KEYS,
@@ -131,14 +132,17 @@ function render(): void {
   }
   const skin = appearance.skin;
   if (isSkinLoaded(skin)) return reveal();
-  // A blank page until the skin's stylesheet is in, rather than a flash of
-  // another skin; never for long.
+  // A blank page until the skin's stylesheet is in, rather than a flash of an
+  // unstyled page; the timer only guards against a fetch that hangs.
   document.documentElement.setAttribute('data-skin-loading', '');
-  const timer = setTimeout(reveal, 1200);
-  void loadSkin(skin).finally(() => {
+  const timer = setTimeout(reveal, 10000);
+  void loadSkin(skin).then((loaded) => {
     if (appearance.skin !== skin) return;
     clearTimeout(timer);
-    reveal();
+    if (loaded || skin === DEFAULT_SKIN) return reveal();
+    // Gone from the server, or out of reach: the stored choice stays for next time.
+    appearance.skin = DEFAULT_SKIN;
+    render();
   });
 }
 
