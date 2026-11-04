@@ -26,6 +26,8 @@ export const en = {
   loading: 'Loading…',
   copy: 'Copy',
   copied: 'Copied',
+  showPassword: 'Show password',
+  hidePassword: 'Hide password',
   version: (v: string) => `Version ${v}`,
   sourceCode: 'Source code',
   licenses: 'Licenses',

@@ -13,6 +13,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import AuthSheet from '../AuthSheet.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * The page a link from an e-mail leads to: choose a password (a forgotten
@@ -108,10 +109,7 @@
     <form onsubmit={submit} novalidate>
       <label class="field">
         <span>{t.accountLinks.newPassword}</span>
-        <!-- svelte-ignore a11y_autofocus -->
-        <input
-          class="input"
-          type="password"
+        <PasswordInput
           bind:value={password}
           autocomplete="new-password"
           aria-invalid={tried && problem === 'tooShort'}
@@ -126,9 +124,7 @@
       </label>
       <label class="field">
         <span>{t.accountLinks.confirm}</span>
-        <input
-          class="input"
-          type="password"
+        <PasswordInput
           bind:value={confirm}
           autocomplete="new-password"
           aria-invalid={tried && problem === 'mismatch'}

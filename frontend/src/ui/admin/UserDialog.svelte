@@ -22,6 +22,7 @@
   import Highlight from '../Highlight.svelte';
   import Modal from '../Modal.svelte';
   import PermissionStates from './PermissionStates.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * Creating an account, or changing one: name, e-mail, administrator
@@ -273,9 +274,7 @@
     {#if isNew && !inviting}
       <label class="field">
         <span>{t.usersAdmin.password}</span>
-        <input
-          class="input"
-          type="password"
+        <PasswordInput
           bind:value={form.password}
           autocomplete="new-password"
           aria-invalid={!!shown('password')}

@@ -3,6 +3,7 @@
   import { checkPassword, MIN_PASSWORD } from '../../core/setup.js';
   import type { SetupMessages } from '../../i18n/setup/index.js';
   import { setupApi, setupErrorMessage, type SetupFinished } from '../../lib/setup-api.js';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /** The first administrator: a new account, Argon2id-hashed by the server. */
   interface Props {
@@ -84,9 +85,9 @@
   <div class="setup-row">
     <label class="field">
       <span>{m.admin.password}</span>
-      <input
-        class="input"
-        type="password"
+      <PasswordInput
+        showLabel={m.showPassword}
+        hideLabel={m.hidePassword}
         bind:value={form.password}
         required
         minlength={MIN_PASSWORD}
@@ -96,9 +97,9 @@
     </label>
     <label class="field">
       <span>{m.admin.confirm}</span>
-      <input
-        class="input"
-        type="password"
+      <PasswordInput
+        showLabel={m.showPassword}
+        hideLabel={m.hidePassword}
         bind:value={confirm}
         required
         autocomplete="new-password"

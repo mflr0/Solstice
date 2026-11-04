@@ -25,6 +25,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import JqlEditor from '../search/JqlEditor.svelte';
   import WebhooksDeliveries from './WebhooksDeliveries.svelte';
+  import PasswordInput from '../PasswordInput.svelte';
 
   /**
    * One webhook: where it calls, on which events, for which issues, signed
@@ -307,13 +308,12 @@
     <div class="field">
       <span class="field-label" id="hook-secret">{t.hooksAdmin.secretLabel}</span>
       {#if form.secretAction === 'replace' || !hook?.hasSecret}
-        <input
-          class="input mono"
-          type="password"
+        <PasswordInput
+          class="mono"
           bind:value={form.secret}
           aria-labelledby="hook-secret"
           autocomplete="new-password"
-          maxlength="255"
+          maxlength={255}
           oninput={() => form && (form.secretAction = 'replace')}
         />
         {#if hook?.hasSecret}

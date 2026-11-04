@@ -274,6 +274,8 @@ export const hi: Messages = {
     actions: 'कार्रवाइयाँ',
     breadcrumbs: 'नेविगेशन पथ',
     mainNav: 'मुख्य नेविगेशन',
+    showPassword: 'पासवर्ड दिखाएँ',
+    hidePassword: 'पासवर्ड छिपाएँ',
   },
 
   errors: {
