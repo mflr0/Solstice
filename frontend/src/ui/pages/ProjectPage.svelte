@@ -6,7 +6,8 @@
   import { formatDay, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
-  import { openCreate } from '../../lib/ui.svelte.js';
+  import { notify, openCreate } from '../../lib/ui.svelte.js';
+  import { ICONS } from '../editor/icons.js';
   import IssueSearch from '../search/IssueSearch.svelte';
   import Who from '../Who.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
@@ -26,6 +27,34 @@
   function filterHref(key: string, field: string, value: string): string {
     const jql = `${field} = ${quote(value)}`;
     return paths.project(key) + writeLocation({ jql, mode: null, filter: null, page: 1 });
+  }
+
+  /** Plain http has no navigator.clipboard: copy from a throwaway field instead. */
+  function copyBySelection(text: string): boolean {
+    const focused = document.activeElement;
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    const copied = document.execCommand('copy');
+    field.remove();
+    if (focused instanceof HTMLElement) focused.focus();
+    return copied;
+  }
+
+  async function copyLink(key: string) {
+    const url = `${location.origin}${paths.project(key)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      if (!copyBySelection(url)) {
+        notify(t.projects.copyLinkFailed(url), 'error');
+        return;
+      }
+    }
+    notify(t.projects.linkCopied);
   }
 
   $effect(() => {
@@ -63,6 +92,17 @@
           </p>{/if}
       </div>
       <div class="row">
+        <button
+          type="button"
+          class="btn btn-icon"
+          aria-label={t.projects.copyLink}
+          title={t.projects.copyLink}
+          onclick={() => void copyLink(p.key)}
+        >
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            {#each ICONS.link as d, i (i)}<path {d} />{/each}
+          </svg>
+        </button>
         <a class="btn" href={paths.boards(p.key)}>{t.boards.title}</a>
         {#if detail.can.configure}
           <a class="btn" href={paths.projectSettings(p.key)}>{t.projects.settings}</a>

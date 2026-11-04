@@ -352,6 +352,9 @@ export const fr: Messages = {
     uncategorised: 'Sans catégorie',
     empty: 'Aucun projet ne vous est accessible.',
     settings: 'Réglages',
+    copyLink: 'Copier le lien du projet',
+    linkCopied: 'Lien copié',
+    copyLinkFailed: (url: string) => `Impossible de copier le lien\u00a0: ${url}`,
     kinds: { software: 'logiciel', business: 'métier', service_desk: 'support' } as Record<
       string,
       string
