@@ -905,6 +905,12 @@
   color: var(--term-bright);
 }
 
+/* An icon button keeps no room for brackets. */
+[data-skin='terminal'] .btn.btn-icon::before,
+[data-skin='terminal'] .btn.btn-icon::after {
+  content: none;
+}
+
 [data-skin='terminal'] .btn[disabled],
 [data-skin='terminal'] .btn[disabled]::before,
 [data-skin='terminal'] .btn[disabled]::after {

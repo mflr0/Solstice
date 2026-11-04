@@ -581,6 +581,25 @@ mark.match {
   font-size: 0.75rem;
 }
 
+/* A square on the skin's button height. The repeats outrank every skin's .btn, down to retro's .btn.btn. */
+.btn.btn.btn.btn-icon {
+  flex: none;
+  justify-content: center;
+  aspect-ratio: 1;
+  width: auto;
+  min-width: 0;
+  padding: 0;
+}
+
+.btn-icon svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .btn[disabled] {
   opacity: 0.5;
   cursor: default;

@@ -1136,7 +1136,6 @@ export const hi: Messages = {
 
   boardSettings: {
     title: 'बोर्ड सेटिंग्स',
-    back: 'बोर्ड पर वापस',
     forbidden: 'इस बोर्ड की सेटिंग्स सिर्फ़ इसका स्वामी और इसके प्रोजेक्ट के एडमिन बदल सकते हैं।',
     general: 'सामान्य',
     name: 'नाम',

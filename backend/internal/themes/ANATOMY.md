@@ -206,7 +206,9 @@ form, `.note`. Wiki `{panel}`: `.wiki .panel`, `.wiki .panel-title`.
 
 **Buttons** — `.btn` (secondary), `.btn-primary`, `.btn-quiet` (ghost),
 `.btn-danger`, `.btn-small`; pressed: `:active`, `.on` / `[aria-pressed='true']`;
-`[disabled]`. `.link-btn` (text button). `kbd` inside buttons.
+`[disabled]`. `.btn.btn-icon` (a square on the button's height, an `svg` in
+`currentColor` and no text; a `::before` or `::after` in the flow crowds it).
+`.link-btn` (text button). `kbd` inside buttons.
 
 **Fields** — `.field` > `.field-label` (or first `span`), `.input`, `.select` (a dropdown's button),
 `.textarea`, `input.checkbox`, `.hint`; `.boxed` (`label.field-box` in the

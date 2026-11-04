@@ -1053,6 +1053,12 @@
   padding: 1px 11px 0 13px;
 }
 
+/* Pressed, an icon button shifts without growing. */
+[data-skin='retro'] .btn.btn-icon.btn-icon.on,
+[data-skin='retro'] .btn.btn-icon.btn-icon:active:not([disabled]) {
+  padding: 1px 0 0 1px;
+}
+
 [data-skin='retro'] .btn.btn:focus-visible {
   outline: 1px dotted var(--focus);
   outline-offset: -5px;
