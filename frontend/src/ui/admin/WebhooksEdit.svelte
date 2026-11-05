@@ -18,7 +18,7 @@
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { labelOf, t } from '../../i18n/t.js';
-  import { refocusLater } from '../../lib/actions.js';
+  import { pinnedHeight, refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -356,7 +356,12 @@
 
     {#if saveError}<p class="error-text" role="alert">{saveError}</p>{/if}
     {#if dirty || saveError}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+      <div
+        class="savebar"
+        role="region"
+        aria-label={t.settings.unsaved}
+        use:pinnedHeight={'--savebar-height'}
+      >
         <span>{isNew ? t.hooksAdmin.notCreated : t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={discard}
           >{isNew ? t.common.cancel : t.settings.discard}</button

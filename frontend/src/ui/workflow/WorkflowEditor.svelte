@@ -19,6 +19,7 @@
     toInput,
   } from '../../core/workflow.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
@@ -292,7 +293,12 @@
   </section>
 
   {#if dirty || error}
-    <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+    <div
+      class="savebar"
+      role="region"
+      aria-label={t.settings.unsaved}
+      use:pinnedHeight={'--savebar-height'}
+    >
       {#if error}
         <p class="error-text" role="alert">{error}</p>
       {:else}

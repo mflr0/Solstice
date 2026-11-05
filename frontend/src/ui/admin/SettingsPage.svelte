@@ -15,7 +15,7 @@
   import { guessBaseURL, timeZones, zoneChoices } from '../../core/setup.js';
   import { locale } from '../../i18n/index.js';
   import { localeOptions } from '../../i18n/locales.js';
-  import { refocus } from '../../lib/actions.js';
+  import { pinnedHeight, refocus } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
@@ -279,7 +279,12 @@
 
     {#if saveError}<p class="error-text" role="alert">{saveError}</p>{/if}
     {#if dirty}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+      <div
+        class="savebar"
+        role="region"
+        aria-label={t.settings.unsaved}
+        use:pinnedHeight={'--savebar-height'}
+      >
         <span>{t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={() => settings && adopt(settings)}
           >{t.settings.discard}</button

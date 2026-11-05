@@ -61,6 +61,11 @@
   scroll-padding-bottom: calc(var(--statusbar-height, 0px) + 8px);
 }
 
+/* The save bar floats 16px above the status bar (.savebar). */
+:root:has(.savebar) {
+  scroll-padding-bottom: calc(var(--statusbar-height, 0px) + var(--savebar-height, 0px) + 24px);
+}
+
 body,
 .skin-preview {
   font-size: var(--font-size);
