@@ -6,6 +6,9 @@ default included, is a package (section 5): a folder
 `backend/internal/themes/builtin/<id>/` holding `theme.json`, `theme.css` and
 its fonts and images.
 
+This page is the reference, and section 4 is for this repo's own themes. To write
+a theme outside the repo, start from the guide: [docs/en/themes.md](../../../docs/en/themes.md).
+
 Ids, in the order the menus list them (`builtin/order.json`): `carnet`,
 `orbite`, `crayon`, `luna`, `retro`, `classique`, `terminal`, `plan`.
 
@@ -161,9 +164,9 @@ sets the button's `font-size: 0` to draw its own « + » hides it too; ≤ 420 p
 
 **Logo** — `svg.logo` > `.logo-sun`, `.logo-line`, `.logo-faint` (Carnet).
 To use your own mark: `[data-skin='x'] .logo > * { display: none }` and paint
-`.logo` with `background: url('./x/logo.svg') center / contain no-repeat`.
+`.logo` with `background: url('assets/logo.svg') center / contain no-repeat`.
 For a mark that follows `--sun` or `currentColor` in light and dark, mask it
-instead: `mask: url('./x/logo.svg') center / contain no-repeat` and give the
+instead: `mask: url('assets/logo.svg') center / contain no-repeat` and give the
 colours as `background` layers (Plan, Orbite, Crayonné). A mask clips
 `filter`, so draw a glow as a gradient.
 
@@ -554,3 +557,10 @@ may hold: `assets/*.svg|png|webp|jpg`, `fonts/*.woff2`, and licence files (a
 with `.txt` or `.md` or no extension). The validator must find nothing. If its id
 is taken the theme is served under a suffixed one (`retro-2`), and the loader
 rewrites the anchor: the files don't change.
+
+## 6. Contract changes
+
+A change that removes or renames a hook bumps `Contract` (`themes.go`) and adds
+an entry here. Adding a hook does neither.
+
+- **1**: the hooks as of #526.
