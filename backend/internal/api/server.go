@@ -253,7 +253,6 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/themes", themeIndex(s.themes), scopePublic)
 	route("GET /api/themes/{id}/{path...}", themeFile(s.themes, s.seesDisabledThemes), scopePublic)
 	route("GET /api/themes/{id}/export", s.exportTheme, auth.ScopeRead)
-	route("POST /api/themes/check", s.checkTheme, auth.ScopeRead)
 	s.themeAdminRoutes(route)
 
 	// The setup wizard is over: it only learns so.
@@ -298,7 +297,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		// 'unsafe-inline' stays for styles: skins add a <style> block, Svelte
 		// sets style attributes and wiki colours use <span style>.
 		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; "+
-			"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; "+
+			"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; "+
 			"connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; "+
 			"form-action 'self'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)

@@ -1073,15 +1073,6 @@ managing them. `theme` = the manifest (`internal/themes/ANATOMY.md`, section 5),
 with `id` the id it is served under, plus `manifestId`, `origin` (`builtin` or
 `imported`), `enabled`, and for an imported one `importedBy` and `importedAt`.
 
-- `POST /api/themes/check`, any signed-in user, multipart like the import →
-  `{manifest, findings, css}`. Nothing is stored and nothing recorded: `css` is the
-  stylesheet with every `url()` target inlined as a `data:` URL, for a theme kept
-  in the user's own browser. The findings it may hold are `contrast`, `tokens`,
-  `font-size`, `preview`, `schemes` and `licence`.
-  - 400 `{error, findings}`, no `css`, on any other: a limit of the zip, an unreadable
-    manifest or stylesheet, a `contract` newer than the server's, `import`, `url`,
-    `escape`, `load`, or an inlined stylesheet over 8 MiB (`rule: "size"`).
-  - 400 without a `file` part. 413 over the size limit.
 - `GET /api/admin/themes` → `{contract, themes: [theme]}`: disabled ones too, the
   built-in ones first, then the imported ones by English name.
 - `POST /api/admin/themes`, multipart, part `file` holding one zip → 201 theme.

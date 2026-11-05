@@ -315,30 +315,11 @@ func zipFinding(name, format string, args ...any) Finding {
 // It reads the zip as hostile: a finding, and possibly a part of the files in
 // dir, when any entry or limit fails. err is for what fails on this side.
 func unzipPackage(data []byte, dir string) ([]Finding, error) {
-	zr, findings := openZip(data)
-	if len(findings) > 0 {
-		return findings, nil
-	}
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return nil, err
-	}
-	return eachFile(zr, func(name string, content []byte) error {
-		file := filepath.Join(dir, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(file), 0o750); err != nil {
-			return err
-		}
-		return os.WriteFile(file, content, 0o600)
-	})
-}
-
-// openZip reads a package's zip and what its headers declare, without
-// inflating anything: findings when an entry or a limit fails.
-func openZip(data []byte) (*zip.Reader, []Finding) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	// ErrInsecurePath, under one GODEBUG setting, still gives the reader: the
 	// names are checked below whatever the setting.
 	if err != nil && !errors.Is(err, zip.ErrInsecurePath) {
-		return nil, []Finding{zipFinding(".", "not a zip file: %v", err)}
+		return []Finding{zipFinding(".", "not a zip file: %v", err)}, nil
 	}
 	var out []Finding
 	var files int
@@ -370,12 +351,12 @@ func openZip(data []byte) (*zip.Reader, []Finding) {
 	if declared > MaxPackageBytes {
 		out = append(out, zipFinding(".", "over %d bytes once unpacked: the most a package may hold", MaxPackageBytes))
 	}
-	return zr, out
-}
-
-// eachFile inflates the files of a zip openZip took, giving each to put: a
-// finding at the first that fails. err is put's.
-func eachFile(zr *zip.Reader, put func(name string, content []byte) error) ([]Finding, error) {
+	if len(out) > 0 {
+		return out, nil
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return nil, err
+	}
 	var written int64
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
@@ -386,7 +367,11 @@ func eachFile(zr *zip.Reader, put func(name string, content []byte) error) ([]Fi
 			return []Finding{*finding}, nil
 		}
 		written += int64(len(content))
-		if err := put(f.Name, content); err != nil {
+		file := filepath.Join(dir, filepath.FromSlash(f.Name))
+		if err := os.MkdirAll(filepath.Dir(file), 0o750); err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(file, content, 0o600); err != nil {
 			return nil, err
 		}
 	}

@@ -10,7 +10,7 @@ import (
 // styles stay allowed for skins, Svelte attributes and wiki colours.
 func TestSecurityHeadersCSP(t *testing.T) {
 	want := "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-		"img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; " +
+		"img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; " +
 		"frame-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	w := httptest.NewRecorder()
 	securityHeaders(http.NotFoundHandler()).ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
