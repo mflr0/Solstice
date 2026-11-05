@@ -2305,20 +2305,20 @@
 }
 
 [data-skin='retro'] .board {
-  gap: 8px;
+  gap: 12px 16px;
 }
 
 [data-skin='retro'] .board-column {
-  padding: 3px;
+  padding: 5px;
   border: 0;
   border-radius: 0;
   background: var(--paper);
-  box-shadow: var(--rt-window);
+  box-shadow: var(--rt-thin-up);
 }
 
 [data-skin='retro'] .board-column-head {
   align-items: center;
-  padding: 4px 5px 5px;
+  padding: 6px 8px 7px;
   border: 0;
 }
 
@@ -2333,20 +2333,28 @@
 
 [data-skin='retro'] .board-cards {
   flex: 1;
-  gap: 4px;
-  padding: 5px;
+  gap: 8px;
+  padding: 8px;
   background: var(--rt-well);
-  box-shadow: var(--rt-sunken);
+  box-shadow: var(--rt-thin-down);
+}
+
+[data-skin='retro'] .backlog-list .board-cards {
+  gap: 6px;
 }
 
 [data-skin='retro'] .board-card {
-  gap: 4px;
-  padding: 6px 7px;
+  gap: 6px;
+  padding: 10px 12px;
   border: 0;
   border-radius: 0;
   background: var(--paper);
   box-shadow: var(--rt-raised);
   font-size: 0.75rem;
+}
+
+[data-skin='retro'] .board-card.backlog-row {
+  padding: 8px 10px;
 }
 
 [data-skin='retro'] .board-card:hover {
@@ -2373,7 +2381,7 @@
 
 [data-skin='retro'] .board-column.over-limit {
   box-shadow:
-    var(--rt-window),
+    var(--rt-thin-up),
     0 0 0 2px var(--accent-text);
 }
 
