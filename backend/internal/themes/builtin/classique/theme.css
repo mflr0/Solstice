@@ -1843,8 +1843,6 @@
 
 [data-skin='classique'] .board-column-head {
   align-items: center;
-  padding: 10px 10px 6px;
-  border-bottom: 0;
 }
 
 [data-skin='classique'] .board-column-title {
@@ -1877,17 +1875,7 @@
   color: var(--cl-danger-ink);
 }
 
-[data-skin='classique'] .board-cards {
-  gap: 6px;
-  padding: 4px 6px 8px;
-}
-
 [data-skin='classique'] .board-card {
-  gap: 8px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: var(--radius-s);
-  background: var(--paper-raised);
   box-shadow: var(--cl-shadow-card);
   font-size: 0.875rem;
 }

@@ -176,7 +176,7 @@
     color: inherit;
     text-decoration: none;
     overflow-wrap: anywhere;
-    line-height: 1.35;
+    line-height: 1.45;
   }
 
   .summary:focus-visible {
@@ -196,6 +196,7 @@
 
   .foot {
     flex-wrap: wrap;
+    margin-top: 4px;
   }
 
   .push {

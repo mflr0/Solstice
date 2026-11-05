@@ -1894,7 +1894,7 @@
 }
 
 [data-skin='orbite'] .board-column {
-  border: 1px solid var(--rule);
+  border: 1px solid transparent;
   border-radius: var(--radius-m);
   background: color-mix(in srgb, var(--paper-sunk) 70%, transparent);
 }
@@ -1902,11 +1902,8 @@
 [data-skin='orbite'] .board-column-head {
   align-items: center;
   padding: 11px 12px 9px;
-  border-bottom: 0;
-  background:
-    linear-gradient(var(--rule) 0 0) left bottom / 100% 1px no-repeat,
-    repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left bottom / 100%
-      4px no-repeat;
+  background: repeating-linear-gradient(90deg, var(--orb-tick) 0 1px, transparent 1px 8px) left
+    bottom / 100% 4px no-repeat;
 }
 
 [data-skin='orbite'] .board-column-title {
@@ -1940,27 +1937,21 @@
   color: var(--tone-bug);
 }
 
-[data-skin='orbite'] .board-cards {
-  gap: 8px;
-  padding: 10px;
-}
-
 [data-skin='orbite'] .board-card {
-  padding: 10px 12px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
-  background: var(--paper-raised);
   box-shadow: var(--orb-panel-shadow);
 }
 
 [data-skin='orbite'] .board-card:hover {
-  border-color: var(--orb-edge);
+  box-shadow:
+    0 0 0 1px var(--orb-edge),
+    var(--orb-panel-shadow);
 }
 
 [data-skin='orbite'] .board-card.is-dragging {
   opacity: 0.94;
-  border-color: var(--accent);
-  box-shadow: var(--shadow-pop);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    var(--shadow-pop);
   transform: rotate(1.2deg);
 }
 

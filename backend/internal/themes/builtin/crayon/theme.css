@@ -1639,7 +1639,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  border: 1.4px solid var(--cr-line-soft);
+  border: 1.4px solid transparent;
   border-radius: inherit;
   filter: var(--cr-pencil);
   pointer-events: none;
@@ -1695,16 +1695,10 @@
   pointer-events: none;
 }
 
-[data-skin='crayon'] .board-cards {
-  gap: 10px;
-  padding: 10px;
-}
-
 [data-skin='crayon'] .board-card {
   --cr-tilt: -0.5deg;
   position: relative;
-  border: 0;
-  border-radius: 2px 2px 3px 14px / 2px 2px 3px 7px;
+  border-radius: 8px 8px 10px 16px / 8px 8px 10px 10px;
   background-color: var(--cr-note);
   background-image: linear-gradient(rgba(0, 0, 0, 0.035), transparent 14px), var(--page-texture);
   background-size:
@@ -1726,7 +1720,6 @@
 }
 
 [data-skin='crayon'] .board-card:hover {
-  border-color: transparent;
   box-shadow:
     0 1px 1px var(--cr-shade),
     3px 10px 14px -8px rgba(38, 37, 34, 0.45);
@@ -1742,8 +1735,9 @@
 }
 
 [data-skin='crayon'][data-scheme='dark'] .board-card {
-  border: 1.5px solid var(--cr-line-soft);
-  box-shadow: 3px 4px 0 var(--cr-shade);
+  box-shadow:
+    0 1px 1px var(--cr-shade),
+    1px 5px 8px -4px rgba(0, 0, 0, 0.6);
 }
 
 /* Wiki text ----------------------------------------------------------------- */

@@ -1583,6 +1583,7 @@
   border: 1px solid var(--plan-line);
   border-radius: 0;
   background: var(--paper-raised);
+  box-shadow: none;
 }
 
 [data-skin='plan'] .board-card:hover {
