@@ -62,6 +62,8 @@ is `/api/themes/starter`. The zip holds:
   block, an example `@font-face` and asset, and an empty commented heading per
   section of the [hooks](../../backend/internal/themes/ANATOMY.md#3-hooks).
 - `fonts/`, with that font and its licence, and `assets/`, with that image.
+- `ANATOMY.md`, the reference the comments of `theme.css` send you to. It can stay
+  in the zip: an instance keeps it but never serves it.
 
 It passes [the checks](#the-checks) as it is. Replace `my-theme` in both files,
 change the tokens, and keep `preview` in `theme.json` equal to them. Then zip and
@@ -78,6 +80,7 @@ A package is a zip with these files at its root:
 | `assets/` | Images: `.svg`, `.png`, `.webp`, `.jpg`, and their licence as `.txt`. |
 | `fonts/` | Fonts as `.woff2`, and their licence as `.txt`. |
 | `LICENSE`, `LICENCE` or `COPYING` | The licence of the theme, optional, with `.txt`, `.md` or no extension. |
+| `ANATOMY.md` | The reference that comes with the starter package, optional. |
 
 A package holds at most 100 files and 10 MiB once unpacked. An instance refuses
 any other file, so Finder's `__MACOSX` folder and `.DS_Store` files count.

@@ -67,6 +67,20 @@ func TestStarterDeclaresCarnetTokens(t *testing.T) {
 	}
 }
 
+func TestStarterCarriesAnatomy(t *testing.T) {
+	got, err := fs.ReadFile(starterPackage(t), anatomyFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile("ANATOMY.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Error("the starter's ANATOMY.md differs from this package's")
+	}
+}
+
 func TestStarterHasEveryHookSection(t *testing.T) {
 	raw, err := os.ReadFile("ANATOMY.md")
 	if err != nil {

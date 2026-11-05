@@ -139,7 +139,7 @@ func TestUnzipRefusesAHeaderThatUnderstatesTheSize(t *testing.T) {
 
 func TestUnzipWritesAPackage(t *testing.T) {
 	entries := []zipEntry{{name: "assets/"}, {name: "fonts/"}}
-	for _, name := range []string{"theme.json", "theme.css", "LICENSE", "licence.txt", "assets/a.svg", "assets/a.png", "assets/a.webp", "assets/a.JPG", "assets/CREDITS.txt", "fonts/a.woff2", "fonts/a-OFL.txt"} {
+	for _, name := range []string{"theme.json", "theme.css", "ANATOMY.md", "LICENSE", "licence.txt", "assets/a.svg", "assets/a.png", "assets/a.webp", "assets/a.JPG", "assets/CREDITS.txt", "fonts/a.woff2", "fonts/a-OFL.txt"} {
 		entries = append(entries, zipEntry{name: name, data: []byte("content of " + name)})
 	}
 	// Repetitive and small: the ratio doesn't count under its floor.

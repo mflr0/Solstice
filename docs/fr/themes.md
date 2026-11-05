@@ -64,6 +64,9 @@ partant de rien, choisissez **Télécharger le paquet de départ** dans la galer
   par section des
   [points d'accroche](../../backend/internal/themes/ANATOMY.md#3-hooks).
 - `fonts/`, avec cette police et sa licence, et `assets/`, avec cette image.
+- `ANATOMY.md`, la référence (en anglais) vers laquelle renvoient les commentaires
+  de `theme.css`. Il peut rester dans le zip : une instance le garde mais ne le sert
+  jamais.
 
 Il passe [les vérifications](#les-vérifications) tel quel. Remplacez `my-theme`
 dans les deux fichiers, changez les jetons, et gardez `preview` de `theme.json`
@@ -81,6 +84,7 @@ Un paquet est un zip avec ces fichiers à sa racine :
 | `assets/` | Les images : `.svg`, `.png`, `.webp`, `.jpg`, et leur licence en `.txt`. |
 | `fonts/` | Les polices en `.woff2`, et leur licence en `.txt`. |
 | `LICENSE`, `LICENCE` ou `COPYING` | La licence du thème, en option, en `.txt`, en `.md` ou sans extension. |
+| `ANATOMY.md` | La référence livrée avec le paquet de départ, en option. |
 
 Un paquet contient au plus 100 fichiers et 10 Mio une fois décompressé. Une
 instance refuse tout autre fichier, y compris le dossier `__MACOSX` et les fichiers

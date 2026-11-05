@@ -3,6 +3,7 @@ package themes
 import (
 	"archive/zip"
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -18,11 +19,17 @@ const (
 	starterFont    = "fonts/ibm-plex-mono-latin-400-normal.woff2"
 	starterLicence = "fonts/ibm-plex-mono-OFL.txt"
 	starterChevron = "assets/chevron.svg"
+	anatomyFile    = "ANATOMY.md"
 	chevronSVG     = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6">
   <path d="M1 1l4 4 4-4" fill="none" stroke="#8a8578" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
 `
 )
+
+// anatomy is the reference the starter's comments send its reader to.
+//
+//go:embed ANATOMY.md
+var anatomy []byte
 
 // starterGroups sorts Carnet's tokens into commented groups, in the order of
 // ANATOMY.md. A token Carnet adds must join one: TestStarterDeclaresCarnetTokens fails until it does.
@@ -58,7 +65,8 @@ var starterHooks = []string{
 }
 
 // Starter returns the zip of the starter package: Carnet's tokens and preview
-// under placeholders, an example font and asset, and the hooks as empty headings.
+// under placeholders, an example font and asset, the hooks as empty headings,
+// and ANATOMY.md.
 var Starter = sync.OnceValues(func() ([]byte, error) {
 	dir := "builtin/" + FallbackID + "/"
 	raw, err := fs.ReadFile(builtin, dir+manifestFile)
@@ -108,6 +116,7 @@ var Starter = sync.OnceValues(func() ([]byte, error) {
 	}{
 		{manifestFile, append(manifest, '\n')},
 		{cssFile, []byte(css)},
+		{anatomyFile, anatomy},
 		{starterChevron, []byte(chevronSVG)},
 		{starterFont, font},
 		{starterLicence, licence},
