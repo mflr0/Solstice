@@ -156,6 +156,8 @@ export const en = {
       'Each theme redraws the whole interface, for you alone. Click a preview to apply it; light or dark mode follows your choice.',
     current: 'Current theme',
     use: 'Use this theme',
+    outdated: (theme: number, server: number) =>
+      `May look broken: written for theme contract ${theme}, this version of Solstice reads ${server}.`,
     apply: (name: string, scheme: string) => `Apply ${name}, ${scheme}`,
     schemes: { light: 'light', dark: 'dark' },
     lightOnly: 'Light mode only.',

@@ -76,7 +76,9 @@ func TestParseManifestRefuses(t *testing.T) {
 		"id upper case":     set("id", "Night"),
 		"id with a dot":     set("id", "night.owl"),
 		"id too long":       set("id", "abcdefghijklmnopqrstuvwxyz0123456"),
-		"contract 0":        set("contract", 0),
+		"contract missing":  func(m map[string]any) { delete(m, "contract") },
+		"contract null":     set("contract", nil),
+		"contract negative": set("contract", -1),
 		"contract too new":  set("contract", Contract+1),
 		"contract fraction": set("contract", 1.5),
 		"contract a string": set("contract", "1"),
@@ -119,6 +121,13 @@ func TestParseManifestRefuses(t *testing.T) {
 	}
 	if _, err := ParseManifest([]byte(validManifest + `{}`)); err == nil {
 		t.Error("accepted data after the manifest")
+	}
+}
+
+func TestParseManifestOlderContract(t *testing.T) {
+	m, err := ParseManifest(manifestWith(t, func(m map[string]any) { m["contract"] = 0 }))
+	if err != nil || m.Contract != 0 {
+		t.Errorf("contract 0: %+v, %v", m, err)
 	}
 }
 

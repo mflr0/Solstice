@@ -158,6 +158,8 @@ export const it: Messages = {
       'Ogni tema ridisegna tutta l’interfaccia, solo per te. Fai clic su un’anteprima per applicarlo; la modalità chiara o scura segue la tua scelta.',
     current: 'Tema attuale',
     use: 'Usa questo tema',
+    outdated: (theme: number, server: number) =>
+      `Potrebbe apparire difettoso: scritto per il contratto dei temi ${theme}, questa versione di Solstice legge il ${server}.`,
     apply: (name: string, scheme: string) => `Applica ${name}, ${scheme}`,
     schemes: { light: 'chiaro', dark: 'scuro' },
     lightOnly: 'Disponibile solo in chiaro.',

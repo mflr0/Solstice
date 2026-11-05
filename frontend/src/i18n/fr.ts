@@ -155,6 +155,8 @@ export const fr: Messages = {
       'Chaque thème redessine toute l’interface, pour vous seul. Cliquez sur un aperçu pour l’appliquer ; le mode clair ou sombre suit votre choix.',
     current: 'Thème actuel',
     use: 'Utiliser ce thème',
+    outdated: (theme: number, server: number) =>
+      `Peut sembler cassé : écrit pour le contrat de thème ${theme}, cette version de Solstice lit le ${server}.`,
     apply: (name: string, scheme: string) => `Appliquer ${name}, ${scheme}`,
     schemes: { light: 'clair', dark: 'sombre' },
     lightOnly: 'Existe en clair seulement.',

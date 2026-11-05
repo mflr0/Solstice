@@ -161,6 +161,8 @@ export const de: Messages = {
       'Jedes Design gestaltet die gesamte Oberfläche neu, nur für Sie. Klicken Sie auf eine Vorschau, um es anzuwenden; der helle oder dunkle Modus folgt Ihrer Wahl.',
     current: 'Aktuelles Design',
     use: 'Dieses Design verwenden',
+    outdated: (theme: number, server: number) =>
+      `Kann fehlerhaft aussehen: für Theme-Vertrag ${theme} geschrieben, diese Version von Solstice liest ${server}.`,
     apply: (name: string, scheme: string) => `${name} (${scheme}) anwenden`,
     schemes: { light: 'hell', dark: 'dunkel' },
     lightOnly: 'Nur im hellen Modus verfügbar.',

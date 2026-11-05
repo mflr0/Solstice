@@ -12,6 +12,7 @@
   import { loadSkin, loadThemes, skinSheets, themes } from '../../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin } from '../../lib/ui.svelte.js';
   import SkinMock from '../SkinMock.svelte';
+  import ThemeContractFlag from '../ThemeContractFlag.svelte';
 
   /** The theme gallery: every skin drawn live, in each of its schemes. */
 
@@ -55,6 +56,7 @@
       <div class="about">
         <h2 id="theme-{skin}" class="name">{name}</h2>
         <p class="description">{description(theme)}</p>
+        <ThemeContractFlag theme={theme.contract} server={themes.contract} />
         {#if current}
           <p class="in-use"><span class="stamp done">{t.themes.current}</span></p>
         {:else}

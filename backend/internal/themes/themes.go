@@ -25,7 +25,7 @@ import (
 
 // Contract is the version of the interface between the server and theme
 // packages: the hooks and tokens a theme may rely on. A package declaring a
-// higher one is refused.
+// higher one is refused; a lower one is served, and the interface flags it.
 const Contract = 1
 
 // Manifest is a package's theme.json.
@@ -69,6 +69,13 @@ func ParseManifest(data []byte) (Manifest, error) {
 	if _, err := dec.Token(); err != io.EOF {
 		return Manifest{}, errors.New("data after the manifest")
 	}
+	// A missing contract would decode as 0, a version a package can declare.
+	var declared struct {
+		Contract *int `json:"contract"`
+	}
+	if err := json.Unmarshal(data, &declared); err != nil || declared.Contract == nil {
+		return Manifest{}, errors.New("no contract")
+	}
 	return m, m.check()
 }
 
@@ -76,8 +83,8 @@ func (m Manifest) check() error {
 	if !idPattern.MatchString(m.ID) {
 		return fmt.Errorf("id %q: want 1 to 32 of a-z, 0-9 and -", m.ID)
 	}
-	if m.Contract < 1 || m.Contract > Contract {
-		return fmt.Errorf("contract %d: this server supports 1 to %d", m.Contract, Contract)
+	if m.Contract < 0 || m.Contract > Contract {
+		return fmt.Errorf("contract %d: this server supports 0 to %d", m.Contract, Contract)
 	}
 	if !semverPattern.MatchString(m.Version) {
 		return fmt.Errorf("version %q: not a semantic version", m.Version)

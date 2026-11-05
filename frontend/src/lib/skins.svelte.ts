@@ -10,8 +10,11 @@ import type { Skin, ThemeManifest } from '../core/appearance.js';
 import { hasDarkVariant, rebaseSkinCss, scopeSkinCss } from '../core/skin-css.js';
 import { api } from './api.js';
 
-/** The themes the server offers, in the order the theme menus list them. */
-export const themes = $state<{ list: ThemeManifest[] }>({ list: [] });
+/** The themes the server offers, in the order the theme menus list them, and its contract. */
+export const themes = $state<{ list: ThemeManifest[]; contract: number }>({
+  list: [],
+  contract: 0,
+});
 
 let listing: Promise<void> | undefined;
 
@@ -21,6 +24,7 @@ export function loadThemes(): Promise<void> {
     .themes()
     .then((index) => {
       themes.list = index.themes;
+      themes.contract = index.contract;
     })
     .catch(() => {
       listing = undefined;
