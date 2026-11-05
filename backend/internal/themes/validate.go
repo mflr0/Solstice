@@ -18,6 +18,16 @@ import (
 const (
 	manifestFile = "theme.json"
 	cssFile      = "theme.css"
+
+	// What keeps the rules linear in a stylesheet anyone signed in can send
+	// (POST /api/themes/check), and its answer small. No theme comes near them.
+	maxRuleFindings  = 100    // of each rule that reports per occurrence
+	maxURLs          = 10_000 // files a stylesheet loads, counting repeats
+	maxMessageLen    = 500
+	maxContrastPairs = 200  // "contrast:" comments
+	maxTokenChain    = 16   // var() references followed from a token
+	maxColourValue   = 2048 // bytes of a token read for colours
+	maxTokenColours  = 32
 )
 
 // Finding is one rule a theme package breaks.
@@ -52,7 +62,7 @@ func Validate(pkg fs.FS) []Finding {
 	data, err := fs.ReadFile(pkg, cssFile)
 	if err != nil {
 		out = append(out, Finding{Rule: "css", Message: err.Error(), File: cssFile})
-		return sorted(out)
+		return tidy(out)
 	}
 	css := parseCSS(string(data))
 	out = append(out, checkImports(css)...)
@@ -63,7 +73,7 @@ func Validate(pkg fs.FS) []Finding {
 	if manifestOK {
 		out = append(out, checkTokens(css, m, string(raw))...)
 	}
-	return sorted(out)
+	return tidy(out)
 }
 
 // checkSize holds a package to MaxPackageFiles and MaxPackageBytes.
@@ -94,7 +104,14 @@ func checkSize(pkg fs.FS) []Finding {
 	return out
 }
 
-func sorted(out []Finding) []Finding {
+// tidy shortens long messages, which quote the package, sorts the findings and
+// drops the repeated ones.
+func tidy(out []Finding) []Finding {
+	for i, f := range out {
+		if len(f.Message) > maxMessageLen {
+			out[i].Message = f.Message[:maxMessageLen] + "…"
+		}
+	}
 	slices.SortFunc(out, func(a, b Finding) int {
 		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line),
 			cmp.Compare(a.Rule, b.Rule), cmp.Compare(a.Message, b.Message))
@@ -106,12 +123,14 @@ func sorted(out []Finding) []Finding {
 // in one is the same place in the others.
 type stylesheet struct {
 	raw   string
-	code  string // comments blanked
-	plain string // comments, strings and url() targets blanked
-	urls  []urlRef
+	code  string   // comments blanked
+	plain string   // comments, strings and url() targets blanked
+	urls  []urlRef // up to maxURLs
+	over  bool     // it loads more than that
 
-	escapes  []int    // offsets of the backslashes outside strings and comments
-	indirect []urlRef // calls inside a function that loads strings, which may hide a target
+	newlines []int32  // offsets of the line ends
+	escapes  []int    // offsets of the backslashes outside strings and comments, up to maxRuleFindings
+	indirect []urlRef // calls inside a function that loads strings, which may hide a target, up to maxRuleFindings
 }
 
 // urlRef is a file a stylesheet loads, through call.
@@ -119,10 +138,12 @@ type urlRef struct {
 	call   string
 	target string
 	offset int
+	at     int // where target starts in the source
 }
 
 func (s stylesheet) line(offset int) int {
-	return strings.Count(s.raw[:offset], "\n") + 1
+	before, _ := slices.BinarySearch(s.newlines, int32(offset))
+	return before + 1
 }
 
 func parseCSS(src string) stylesheet {
@@ -135,8 +156,28 @@ func parseCSS(src string) stylesheet {
 		}
 	}
 	var urls, indirect []urlRef
+	var over bool
 	var escapes []int
-	var calls []string // the functions open at i, innermost last
+	var newlines []int32
+	for i := range len(src) {
+		if src[i] == '\n' {
+			newlines = append(newlines, int32(i))
+		}
+	}
+	var inType []bool          // for each function open at i, innermost last: is it type()?
+	loader, loaderAt := "", -1 // the outermost loader open at i, and its place in inType
+	load := func(ref urlRef) {
+		if len(urls) < maxURLs {
+			urls = append(urls, ref)
+		} else {
+			over = true
+		}
+	}
+	escape := func(offset int) {
+		if len(escapes) < maxRuleFindings {
+			escapes = append(escapes, offset)
+		}
+	}
 	for i := 0; i < len(src); {
 		switch {
 		case strings.HasPrefix(src[i:], "/*"):
@@ -149,24 +190,25 @@ func parseCSS(src string) stylesheet {
 			i = end
 		case src[i] == '\\':
 			// An escaped quote opens no string, nor an escaped "/*" a comment.
-			escapes = append(escapes, i)
+			escape(i)
 			i += 2
 		case src[i] == '"' || src[i] == '\'':
 			target, end := stringAt(src, i)
-			if call := loaderOf(calls); call != "" {
-				urls = append(urls, urlRef{call, target, i})
+			// A string in type() names a format.
+			if loaderAt >= 0 && !inType[len(inType)-1] {
+				load(urlRef{loader, target, i, i + 1})
 			}
 			blank(plain, i, end)
 			i = end
 		case isURLCall(src, i):
-			calls = append(calls, "url")
+			inType = append(inType, false)
 			start := i + len("url(")
 			for start < len(src) && isCSSSpace(src[start]) {
 				start++
 			}
 			if start < len(src) && (src[start] == '"' || src[start] == '\'') {
 				target, end := stringAt(src, start)
-				urls = append(urls, urlRef{"url", target, i})
+				load(urlRef{"url", target, i, start + 1})
 				blank(plain, start, end)
 				i = end
 				break
@@ -177,28 +219,35 @@ func parseCSS(src string) stylesheet {
 				end = start + n
 			}
 			if n := strings.IndexByte(src[start:end], '\\'); n >= 0 {
-				escapes = append(escapes, start+n)
+				escape(start + n)
 			}
-			urls = append(urls, urlRef{"url", strings.TrimSpace(src[start:end]), i})
+			target := strings.TrimSpace(src[start:end])
+			load(urlRef{"url", target, i, start + strings.Index(src[start:end], target)})
 			blank(plain, start, end)
 			i = end
 		case src[i] == '(':
 			name := callName(src, i)
-			if slices.ContainsFunc(calls, isLoader) && !isLoader(name) && name != "type" {
-				indirect = append(indirect, urlRef{loaderOf(calls), name, i})
+			if loaderAt >= 0 && !isLoader(name) && name != "type" && len(indirect) < maxRuleFindings {
+				indirect = append(indirect, urlRef{call: loader, target: name, offset: i})
 			}
-			calls = append(calls, name)
+			if loaderAt < 0 && isLoader(name) {
+				loader, loaderAt = name, len(inType)
+			}
+			inType = append(inType, name == "type")
 			i++
 		case src[i] == ')':
-			if len(calls) > 0 {
-				calls = calls[:len(calls)-1]
+			if len(inType) > 0 {
+				inType = inType[:len(inType)-1]
+				if loaderAt == len(inType) {
+					loaderAt = -1
+				}
 			}
 			i++
 		default:
 			i++
 		}
 	}
-	return stylesheet{raw: src, code: string(code), plain: string(plain), urls: urls, escapes: escapes, indirect: indirect}
+	return stylesheet{raw: src, code: string(code), plain: string(plain), urls: urls, over: over, newlines: newlines, escapes: escapes, indirect: indirect}
 }
 
 // stringAt reads the CSS string opening at i: its text and the offset after
@@ -239,16 +288,8 @@ func isLoader(name string) bool {
 	return name == "image-set" || name == "image" || name == "src"
 }
 
-// loaderOf is the function that would load a string in these open calls: the
-// outermost loader, unless the string belongs to type(), which names a format.
-func loaderOf(calls []string) string {
-	if len(calls) == 0 || calls[len(calls)-1] == "type" {
-		return ""
-	}
-	if i := slices.IndexFunc(calls, isLoader); i >= 0 {
-		return calls[i]
-	}
-	return ""
+func isDataURL(target string) bool {
+	return len(target) >= 5 && strings.EqualFold(target[:5], "data:")
 }
 
 func isURLCall(src string, i int) bool {
@@ -271,7 +312,7 @@ var importPattern = regexp.MustCompile(`(?i)@import\b`)
 
 func checkImports(css stylesheet) []Finding {
 	var out []Finding
-	for _, m := range importPattern.FindAllStringIndex(css.plain, -1) {
+	for _, m := range importPattern.FindAllStringIndex(css.plain, maxRuleFindings) {
 		out = append(out, Finding{Rule: "import", Message: "@import is not allowed", File: cssFile, Line: css.line(m[0])})
 	}
 	return out
@@ -307,6 +348,9 @@ var (
 func checkFontSizes(css stylesheet) []Finding {
 	var out []Finding
 	for _, m := range fontSizePattern.FindAllStringSubmatchIndex(css.plain, -1) {
+		if len(out) == maxRuleFindings {
+			break
+		}
 		value := strings.TrimSpace(css.plain[m[2]:m[3]])
 		for _, px := range pxPattern.FindAllStringSubmatch(value, -1) {
 			if n, err := strconv.ParseFloat(px[1], 64); err == nil && n > 0 {
@@ -320,8 +364,14 @@ func checkFontSizes(css stylesheet) []Finding {
 
 func checkURLs(pkg fs.FS, css stylesheet) []Finding {
 	var out []Finding
+	if css.over {
+		out = append(out, Finding{Rule: "url", Message: fmt.Sprintf("over %d url() and other loads", maxURLs), File: cssFile})
+	}
 	for _, u := range css.urls {
-		if len(u.target) >= 5 && strings.EqualFold(u.target[:5], "data:") {
+		if len(out) == maxRuleFindings {
+			break
+		}
+		if isDataURL(u.target) {
 			continue
 		}
 		msg := ""
@@ -585,11 +635,20 @@ func (t tokens) colours(name string, seen []string) ([]rgb, error) {
 		if slices.Contains(seen, ref[1]) {
 			return nil, fmt.Errorf("--%s refers to itself", name)
 		}
+		if len(seen) == maxTokenChain {
+			return nil, fmt.Errorf("--%s: over %d var() references in a row", name, maxTokenChain)
+		}
 		return t.colours(ref[1], append(seen, name))
+	}
+	if len(tok.value) > maxColourValue {
+		return nil, fmt.Errorf("--%s: over %d bytes, too long for colours", name, maxColourValue)
 	}
 	found := parseColours(tok.value)
 	if len(found) == 0 {
 		return nil, fmt.Errorf("--%s = %s is not a colour", name, tok.value)
+	}
+	if len(found) > maxTokenColours {
+		return nil, fmt.Errorf("--%s: over %d colours", name, maxTokenColours)
 	}
 	return found, nil
 }
@@ -692,7 +751,12 @@ func checkContrast(css stylesheet, t tokens, scheme string) []Finding {
 	check("focus", "paper", nonTextContrast, 0)
 	check("accent", "paper", nonTextContrast, 0)
 
-	for _, m := range contrastPair.FindAllStringSubmatchIndex(css.raw, -1) {
+	pairs := contrastPair.FindAllStringSubmatchIndex(css.raw, maxContrastPairs+1)
+	if len(pairs) > maxContrastPairs {
+		report(css.line(pairs[maxContrastPairs][0]), "over %d contrast comments: the rest are not checked", maxContrastPairs)
+		pairs = pairs[:maxContrastPairs]
+	}
+	for _, m := range pairs {
 		line := css.line(m[0])
 		minimum := textContrast
 		if m[6] >= 0 {
