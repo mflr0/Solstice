@@ -231,7 +231,7 @@ then « deactivated » when so). `.chip` (labels, values). `.key` (issue keys,
 mono).
 
 **Tables** — `table.ledger` > `thead th`, `tbody tr`, `td`; `.num` (right-aligned
-numbers); `tr.is-selected` (reserved). Rows are clickable (`cursor: pointer`).
+numbers). Rows are clickable (`cursor: pointer`).
 Issue lists: every `th` and `td` carries its column — `.c-type`, `.c-key`,
 `.c-summary` (`.summary` inside), `.c-status`, `.c-priority`, `.c-assignee`
 (also `.c-who`), `.c-due` (`.is-overdue`, also `.late`, when past and not
@@ -243,8 +243,7 @@ be wider than a phone (users, project permissions): it scrolls inside, not
 the page. Users list: `td.tags > .tag-list` (the flex row of marks).
 
 **Tabs** — `.tabs[role=tablist]` > `button.tab[role=tab]`
-(`[aria-selected='true']`). `.tabs.tabs-folder` (reserved) = folder tabs over
-an editor.
+(`[aria-selected='true']`).
 
 **Menus** — `.popover` (`[role=menu]` or `[role=listbox]`) > `.item`
 (`.active`, `[aria-checked='true']`, `[aria-selected='true']`, `.danger`),
@@ -569,4 +568,5 @@ rewrites the anchor: the files don't change.
 A change that removes or renames a hook bumps `Contract` (`themes.go`) and adds
 an entry here. Adding a hook does neither.
 
-- **1**: the hooks as of #526.
+- **1**: the hooks as of #526. `tr.is-selected` and `.tabs.tabs-folder` were
+  removed without a bump: nothing ever set them, so no theme could rely on them.

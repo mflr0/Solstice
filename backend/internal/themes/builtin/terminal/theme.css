@@ -1188,8 +1188,7 @@
 
 /* The row under the pointer (or holding focus) is the selection bar. */
 [data-skin='terminal'] .ledger tbody tr:hover,
-[data-skin='terminal'] .ledger tbody tr:focus-within,
-[data-skin='terminal'] .ledger tbody tr.is-selected {
+[data-skin='terminal'] .ledger tbody tr:focus-within {
   --ink: var(--term-inv-ink);
   --ink-soft: var(--term-inv-ink);
   --muted: var(--term-inv-muted);
@@ -1216,8 +1215,7 @@
 }
 
 [data-skin='terminal'] table.ledger.ledger tbody tr:hover td,
-[data-skin='terminal'] table.ledger.ledger tbody tr:focus-within td,
-[data-skin='terminal'] table.ledger.ledger tbody tr.is-selected td {
+[data-skin='terminal'] table.ledger.ledger tbody tr:focus-within td {
   background: var(--term-inv);
 }
 
@@ -1495,25 +1493,6 @@
   color: var(--term-inv-ink);
   text-decoration: none;
   text-shadow: none;
-}
-
-[data-skin='terminal'] .tabs.tabs-folder {
-  gap: 2px;
-  border-bottom: 0;
-}
-
-[data-skin='terminal'] .tabs.tabs-folder .tab {
-  padding: 4px 10px 3px;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  font-size: 0.8125rem;
-  color: var(--muted);
-}
-
-[data-skin='terminal'] .tabs.tabs-folder .tab[aria-selected='true'] {
-  border-color: var(--rule-strong);
-  background: var(--paper-sunk);
-  color: var(--term-bright);
 }
 
 /* Toasts ---------------------------------------------------------------------------- */

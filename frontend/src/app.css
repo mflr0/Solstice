@@ -990,29 +990,6 @@ dialog.modal::backdrop {
   border-bottom-color: var(--accent);
 }
 
-/* Folder tabs over an editor. */
-.tabs-folder {
-  gap: 2px;
-  margin-bottom: -1px;
-  border-bottom: none;
-}
-
-.tabs-folder .tab {
-  border: 1px solid transparent;
-  border-bottom: none;
-  margin-bottom: 0;
-  padding: 4px 10px;
-  font: inherit;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.tabs-folder .tab[aria-selected='true'] {
-  border-color: var(--rule-strong);
-  background: var(--paper-raised);
-  color: var(--ink);
-}
-
 .toasts {
   position: fixed;
   left: 20px;

@@ -1556,15 +1556,6 @@
   background: var(--luna-select-wash);
 }
 
-[data-skin='luna'] table.ledger tbody tr.is-selected td {
-  background: var(--luna-select);
-  color: var(--luna-select-ink);
-}
-
-[data-skin='luna'] table.ledger tbody tr.is-selected :is(a, .key, .muted, .name) {
-  color: inherit;
-}
-
 [data-skin='luna'] table.ledger .num {
   font: 400 0.75rem var(--font-body);
 }
@@ -1772,31 +1763,11 @@
   color: var(--ink);
 }
 
-[data-skin='luna']
-  :is(.tabs:not(.tabs-folder), :has(> .tabs:not(.tabs-folder)))
-  + [role='tabpanel'] {
+[data-skin='luna'] :is(.tabs, :has(> .tabs)) + [role='tabpanel'] {
   padding: 8px 12px 12px;
   border: 1px solid var(--luna-tab-edge);
   border-top: 0;
   background: var(--paper-raised);
-}
-
-[data-skin='luna'] .tabs.tabs-folder[role='tablist'] {
-  padding-left: 2px;
-  border-bottom: 0;
-}
-
-[data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'] {
-  margin-top: 2px;
-  padding: 3px 10px 2px;
-  font-size: 0.71875rem;
-}
-
-[data-skin='luna'] .tabs.tabs-folder[role='tablist'] > .tab[role='tab'][aria-selected='true'] {
-  margin: 0 0 -1px;
-  padding: 4px 11px 4px;
-  border-color: var(--rule-strong);
-  background: var(--luna-field);
 }
 
 /* Menus ---------------------------------------------------------------------- */

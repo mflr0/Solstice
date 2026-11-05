@@ -1207,13 +1207,8 @@
   background: var(--orb-hover);
 }
 
-[data-skin='orbite'] .ledger tbody tr.is-selected td {
-  background: var(--accent-wash);
-}
-
 /* The row under the pointer gets the sun's mark on its edge. */
-[data-skin='orbite'] .ledger tbody tr:hover td:first-child,
-[data-skin='orbite'] .ledger tbody tr.is-selected td:first-child {
+[data-skin='orbite'] .ledger tbody tr:hover td:first-child {
   box-shadow: inset 2px 0 0 var(--sun);
 }
 
@@ -1585,33 +1580,6 @@
   padding: 1px 6px;
   border-radius: 999px;
   background: var(--paper-sunk);
-}
-
-/* Over an editor: a small segmented switch rather than folder tabs. */
-[data-skin='orbite'] .tabs.tabs-folder {
-  gap: 2px;
-  width: fit-content;
-  margin-bottom: 6px;
-  padding: 2px;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-}
-
-[data-skin='orbite'] .tabs.tabs-folder .tab {
-  padding: 3px 11px;
-  border: 0;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-[data-skin='orbite'] .tabs.tabs-folder .tab[aria-selected='true'] {
-  background: var(--paper-sunk);
-  color: var(--ink);
-}
-
-[data-skin='orbite'] .tabs.tabs-folder .tab[aria-selected='true']::after {
-  content: none;
 }
 
 /* Toasts ----------------------------------------------------------------------- */

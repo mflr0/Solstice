@@ -1093,13 +1093,13 @@
   background: none;
 }
 
-[data-skin='crayon'] .ledger tbody :is(tr.is-selected, tr[aria-selected='true']) {
+[data-skin='crayon'] .ledger tbody tr[aria-selected='true'] {
   background:
     var(--cr-row) left bottom / 100% 4px no-repeat,
     var(--cr-strokes-blue);
 }
 
-[data-skin='crayon'] .ledger tbody :is(tr.is-selected, tr[aria-selected='true']) td:first-child {
+[data-skin='crayon'] .ledger tbody tr[aria-selected='true'] td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
@@ -1144,28 +1144,6 @@
   -webkit-mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
   mask: var(--cr-scribble) 0 0 / 100% 100% no-repeat;
   pointer-events: none;
-}
-
-/* Folder tabs over an editor: the open one is drawn round. */
-[data-skin='crayon'] .tabs-folder {
-  background: none;
-}
-
-[data-skin='crayon'] .tabs-folder .tab {
-  padding: 4px 11px 3px;
-  border: var(--frame) solid transparent;
-  border-bottom: 0;
-  border-radius: 7px 4px 0 0 / 5px 4px 0 0;
-  font: 400 0.9375rem/1.2 var(--font-title);
-}
-
-[data-skin='crayon'] .tabs-folder .tab[aria-selected='true'] {
-  border-color: var(--cr-line);
-  background: var(--paper-raised);
-}
-
-[data-skin='crayon'] .tabs-folder .tab[aria-selected='true']::after {
-  content: none;
 }
 
 /* Menus --------------------------------------------------------------------- */
