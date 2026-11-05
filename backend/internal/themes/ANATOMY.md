@@ -292,7 +292,8 @@ around it, and no horizontal padding, so it lines up with the text around it.
 family guessed from the name). An admin may style a type: its colour comes in
 an inline `--type-color` (unset without one), its fill in
 `data-fill='filled|subtle|outline'`, and its icon as an `svg` child in place
-of the letter. The mark is a bare glyph in a 1.125rem square: draw no border,
+of the letter, named in `data-icon`. Without a fill of its own, an epic or a
+`task` icon is filled, its check in `--paper`. The mark is a bare glyph in a 1.125rem square: draw no border,
 background, tile or `::before` shape behind it. Fills apply to the glyph (an
 icon's `path.detail` is drawn in `--paper` when filled, a `path.line` is never
 filled, a filled letter is weight 800), so change only its font, and its colour

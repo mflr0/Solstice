@@ -57,6 +57,11 @@ describe('TypeMark', () => {
     expect(paths.map((p) => p.classList.contains('detail'))).toEqual([false, true]);
   });
 
+  it('names the icon it draws, so that a task icon can be filled by default', () => {
+    expect(mark({ id: '1', name: 'Task', subtask: false, icon: 'task' }).dataset.icon).toBe('task');
+    expect(mark({ id: '2', name: 'Task', subtask: false }).dataset.icon).toBeUndefined();
+  });
+
   it('falls back to the letter for an icon this build does not draw', () => {
     const el = mark({ id: '1', name: 'Story', subtask: false, icon: 'unknown' as TypeIcon });
     expect(el.textContent).toBe('S');

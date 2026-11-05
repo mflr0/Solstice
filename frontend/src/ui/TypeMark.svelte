@@ -25,6 +25,7 @@
     class="type-mark {tone}"
     data-type={tone}
     data-fill={type.fill || null}
+    data-icon={glyph ? type.icon : null}
     style:--type-color={type.color || null}
     aria-hidden={withName}
     >{#if glyph}<svg viewBox="0 0 16 16" aria-hidden="true"
@@ -86,20 +87,22 @@
   }
 
   /*
-   * An epic without a fill of its own is filled. Most skins' faces stop below
+   * An epic or a task icon without a fill of its own is filled. Most skins' faces stop below
    * 800, where 600 and 800 synthesise the same bold: the stroke keeps them apart.
    */
-  .type-mark:is([data-fill='filled'], .epic:not([data-fill])) {
+  .type-mark:is([data-fill='filled'], .epic:not([data-fill]), [data-icon='task']:not([data-fill])) {
     color: var(--mark-solid);
     font-weight: 800;
     -webkit-text-stroke: 0.04em currentColor;
   }
 
-  .type-mark:is([data-fill='filled'], .epic:not([data-fill])) path:not(.line, .detail) {
+  .type-mark:is([data-fill='filled'], .epic:not([data-fill]), [data-icon='task']:not([data-fill]))
+    path:not(.line, .detail) {
     fill: currentColor;
   }
 
-  .type-mark:is([data-fill='filled'], .epic:not([data-fill])) path.detail {
+  .type-mark:is([data-fill='filled'], .epic:not([data-fill]), [data-icon='task']:not([data-fill]))
+    path.detail {
     stroke: var(--paper);
   }
 
