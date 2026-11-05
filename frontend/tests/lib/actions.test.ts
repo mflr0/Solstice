@@ -1,7 +1,68 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { stackWhenCrowded } from '../../src/lib/actions.js';
+import { outside, stackWhenCrowded } from '../../src/lib/actions.js';
+
+describe('outside', () => {
+  let box: HTMLElement;
+  let elsewhere: HTMLButtonElement;
+  let action: ReturnType<typeof outside>;
+  let closed = 0;
+
+  /** A popover's root: its opener, and a panel with a field in it. */
+  function mountBox(opener: string) {
+    box = document.createElement('div');
+    box.innerHTML = `${opener}<div class="panel"><input class="inner" /></div>`;
+    elsewhere = document.createElement('button');
+    document.body.append(box, elsewhere);
+    closed = 0;
+    action = outside(box, () => closed++);
+  }
+
+  function escape(from: Element) {
+    from.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  }
+
+  afterEach(() => {
+    action.destroy();
+    box.remove();
+    elsewhere.remove();
+  });
+
+  it('gives focus back to the open button on Escape', () => {
+    mountBox('<button class="opener" aria-expanded="true"></button>');
+    const inner = box.querySelector<HTMLElement>('.inner')!;
+    inner.focus();
+    escape(inner);
+    expect(closed).toBe(1);
+    expect(document.activeElement).toBe(box.querySelector('.opener'));
+  });
+
+  it('moves no focus on a press outside', () => {
+    mountBox('<button class="opener" aria-expanded="true"></button>');
+    elsewhere.focus();
+    elsewhere.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(closed).toBe(1);
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
+  it('leaves focus alone on Escape when nothing is open', () => {
+    mountBox('<button class="opener" aria-expanded="false"></button>');
+    const inner = box.querySelector<HTMLElement>('.inner')!;
+    inner.focus();
+    escape(inner);
+    expect(document.activeElement).toBe(inner);
+  });
+
+  it('leaves focus in a search field on Escape', () => {
+    mountBox('<input class="opener" role="combobox" aria-expanded="true" />');
+    const field = box.querySelector<HTMLElement>('.opener')!;
+    field.focus();
+    escape(field);
+    expect(closed).toBe(1);
+    expect(document.activeElement).toBe(field);
+  });
+});
 
 describe('stackWhenCrowded', () => {
   // jsdom lays nothing out: the nav needs 300 px, and on one row the tools

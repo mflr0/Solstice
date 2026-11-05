@@ -40,3 +40,23 @@ describe('a filter button', () => {
     expect(reads(t.search.fields.status, 'Ouvert')).toBe('Statut\u00a0: Ouvert');
   });
 });
+
+describe('a filter panel', () => {
+  it('gives focus back to its button on Escape', () => {
+    component = mount(FilterPopover, {
+      target: document.body,
+      props: {
+        label: 'Type',
+        open: true,
+        children: createRawSnippet(() => ({ render: () => '<input class="inner" />' })),
+      },
+    });
+    flushSync();
+    const inner = document.querySelector('.inner') as HTMLInputElement;
+    inner.focus();
+    inner.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    flushSync();
+    expect(document.querySelector('.inner')).toBeNull();
+    expect(document.activeElement).toBe(document.querySelector('button.filter-button'));
+  });
+});

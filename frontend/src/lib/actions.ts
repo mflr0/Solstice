@@ -1,6 +1,9 @@
 /** Small DOM actions shared by components. */
 
-/** Calls handler on a pointer press outside the node, or on Escape. */
+/**
+ * Calls handler on a pointer press outside the node, or on Escape. Escape also
+ * gives focus back to the node's open button, if it has one.
+ */
 export function outside(node: HTMLElement, handler: () => void) {
   let current = handler;
   const onPointer = (e: PointerEvent) => {
@@ -9,7 +12,9 @@ export function outside(node: HTMLElement, handler: () => void) {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.stopPropagation();
+      const opener = node.querySelector<HTMLElement>(':scope > button[aria-expanded="true"]');
       current();
+      opener?.focus();
     }
   };
   document.addEventListener('pointerdown', onPointer, true);

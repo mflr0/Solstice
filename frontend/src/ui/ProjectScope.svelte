@@ -12,6 +12,7 @@
   /** The top bar's project switcher: which project Work, Projects, Boards and Search cover. */
   let open = $state(false);
   let projects = $state<Project[] | null>(null);
+  let button: HTMLButtonElement | undefined = $state();
   const current = $derived(session.me?.project ?? null);
 
   function toggle() {
@@ -29,6 +30,7 @@
 
   async function choose(key: string | null) {
     open = false;
+    button?.focus();
     const from = session.scope;
     if (key === from) return;
     try {
@@ -69,6 +71,7 @@
 
 <div class="scope" use:outside={() => (open = false)}>
   <button
+    bind:this={button}
     class="scope-button"
     aria-haspopup="menu"
     aria-expanded={open}
