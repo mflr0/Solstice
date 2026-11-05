@@ -165,6 +165,14 @@ export function layer(node: HTMLElement, options: LayerOptions) {
   };
 }
 
+/**
+ * Focuses the target if focus fell to the page when its holder left; a user
+ * who already moved on keeps their place.
+ */
+export function refocus(target: HTMLElement | null | undefined): void {
+  if (document.activeElement === document.body) target?.focus();
+}
+
 /** Focuses the node once mounted. */
 export function autofocus(node: HTMLElement) {
   queueMicrotask(() => node.focus());

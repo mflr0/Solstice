@@ -14,7 +14,7 @@
   import { shortcutFor } from '../../core/shortcuts.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
-  import { outside } from '../../lib/actions.js';
+  import { outside, refocus } from '../../lib/actions.js';
   import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../../lib/api.js';
   import { live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -63,6 +63,8 @@
   let editingDescription = $state(false);
   let descriptionDraft = $state('');
   let savingDescription = $state(false);
+  let summaryButton = $state<HTMLElement>();
+  let descriptionButton = $state<HTMLElement>();
   let menuOpen = $state(false);
   let deleteArmed = $state(false);
   let cloneOpen = $state(false);
@@ -162,17 +164,32 @@
   }
 
   async function saveSummary() {
-    if (!issue) return;
+    // Removing the focused input blurs it too: only the first close counts.
+    if (!issue || !editingSummary) return;
     const v = summaryDraft.trim();
     editingSummary = false;
     if (v && v !== issue.summary) await update({ summary: v });
+  }
+
+  /** Enter or Escape in the summary; a blur saves on its own and leaves focus where it went. */
+  async function leaveSummary(save: boolean) {
+    if (save) void saveSummary();
+    else editingSummary = false;
+    await settled();
+    refocus(summaryButton);
+  }
+
+  async function stopEditingDescription() {
+    editingDescription = false;
+    await settled();
+    refocus(descriptionButton);
   }
 
   async function saveDescription() {
     if (!issue) return;
     savingDescription = true;
     if (await update({ description: descriptionDraft.trim() ? descriptionDraft : null }))
-      editingDescription = false;
+      await stopEditingDescription();
     savingDescription = false;
   }
 
@@ -284,16 +301,23 @@
           aria-label={t.issue.editSummary}
           maxlength="255"
           onkeydown={(e) => {
-            if (e.key === 'Enter') void saveSummary();
-            if (e.key === 'Escape') editingSummary = false;
+            if (e.key === 'Enter') {
+              // Or the same press also activates the button that takes focus back.
+              e.preventDefault();
+              void leaveSummary(true);
+            }
+            if (e.key === 'Escape') void leaveSummary(false);
           }}
           onblur={() => void saveSummary()}
           use:focusSelect
         />
       {:else if issue.can.edit}
         <h1 class="page-title">
-          <button class="summary-btn" title={t.issue.editSummary} onclick={editSummary}
-            >{issue.summary}</button
+          <button
+            bind:this={summaryButton}
+            class="summary-btn"
+            title={t.issue.editSummary}
+            onclick={editSummary}>{issue.summary}</button
           >
         </h1>
       {:else}
@@ -394,6 +418,7 @@
             {#if issue.can.edit && !editingDescription}
               <span class="actions">
                 <button
+                  bind:this={descriptionButton}
                   class="btn btn-small"
                   onclick={() => {
                     descriptionDraft = issue?.description ?? '';
@@ -411,11 +436,11 @@
               attachments={issue.attachments}
               autofocus
               onsubmit={() => void saveDescription()}
-              oncancel={() => (editingDescription = false)}
+              oncancel={() => void stopEditingDescription()}
               uploadTo={issue.can.attach ? issue.key : undefined}
             />
             <div class="row end">
-              <button class="btn btn-quiet" onclick={() => (editingDescription = false)}
+              <button class="btn btn-quiet" onclick={() => void stopEditingDescription()}
                 >{t.common.cancel}</button
               >
               <button
@@ -470,7 +495,7 @@
           </section>
         {/if}
 
-        <Links {issue} onupdated={accept} onreload={() => void load(issue?.key ?? issueKey)} />
+        <Links {issue} onupdated={accept} onreload={() => load(issue?.key ?? issueKey)} />
         <Attachments
           {issue}
           onupdated={accept}

@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { focusAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
   import type { HiddenIssue, IssueDetail, IssueLink } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import { refocus } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -14,7 +17,7 @@
   interface Props {
     issue: IssueDetail;
     onupdated: (d: IssueDetail | HiddenIssue) => void;
-    onreload: () => void;
+    onreload: () => Promise<void>;
   }
   const { issue, onupdated, onreload }: Props = $props();
 
@@ -22,6 +25,7 @@
   let relation = $state('');
   let target = $state('');
   let busy = $state(false);
+  let addButton = $state<HTMLElement>();
 
   const groups = $derived.by(() => {
     const out: [string, IssueLink[]][] = [];
@@ -45,10 +49,18 @@
     return out;
   });
 
-  function startAdding() {
+  async function startAdding() {
     adding = true;
     relation = relations[0]?.value ?? '';
     target = '';
+    await tick();
+    document.getElementById('link-kind')?.focus();
+  }
+
+  async function stopAdding() {
+    adding = false;
+    await tick();
+    refocus(addButton);
   }
 
   async function add(e: SubmitEvent) {
@@ -58,7 +70,7 @@
     busy = true;
     try {
       onupdated(await api.addLink(issue.key, Number(type), direction, target.trim().toUpperCase()));
-      adding = false;
+      await stopAdding();
     } catch (err) {
       notify(errorMessage(err), 'error');
     } finally {
@@ -67,9 +79,19 @@
   }
 
   async function remove(id: number) {
+    const next = focusAfterRemoval(
+      groups.flatMap(([, links]) => links.map((l) => l.id)),
+      id,
+    );
     try {
       await api.deleteLink(id);
-      onreload();
+      await onreload();
+      await tick();
+      refocus(
+        document.getElementById(`link-remove-${next}`) ??
+          addButton ??
+          document.getElementById('link-kind'),
+      );
     } catch (err) {
       notify(errorMessage(err), 'error');
     }
@@ -82,7 +104,9 @@
     <span class="count">{issue.links.length + issue.remoteLinks.length}</span>
     {#if issue.can.link && !adding}
       <span class="actions">
-        <button class="btn btn-small" onclick={startAdding}>{t.issue.addLink}</button>
+        <button bind:this={addButton} class="btn btn-small" onclick={() => void startAdding()}
+          >{t.issue.addLink}</button
+        >
       </span>
     {/if}
   </h2>
@@ -91,6 +115,7 @@
     <form class="add row" onsubmit={add}>
       <span class="kind">
         <Dropdown
+          id="link-kind"
           label={t.issue.linkKind}
           value={relation}
           options={relations}
@@ -109,7 +134,7 @@
       <button class="btn btn-primary btn-small" disabled={busy || !target.trim()}
         >{t.common.add}</button
       >
-      <button type="button" class="btn btn-quiet btn-small" onclick={() => (adding = false)}
+      <button type="button" class="btn btn-quiet btn-small" onclick={() => void stopAdding()}
         >{t.common.cancel}</button
       >
     </form>
@@ -131,6 +156,7 @@
             <Stamp status={l.issue.status} />
             {#if issue.can.link}
               <button
+                id={`link-remove-${l.id}`}
                 class="del"
                 aria-label={`${t.common.remove} ${l.issue.key}`}
                 onclick={() => void remove(l.id)}>×</button
