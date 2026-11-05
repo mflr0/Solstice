@@ -53,6 +53,8 @@
     class?: string | undefined;
     invalid?: boolean | undefined;
     required?: boolean | undefined;
+    /** Takes the focus once mounted and enabled, also after its dialog has opened. */
+    autofocus?: boolean | undefined;
     onblur?: (() => void) | undefined;
     /** A field at the top of the open list filters the options; it takes the focus. */
     search?: boolean | undefined;
@@ -72,6 +74,7 @@
     class: className = '',
     invalid = false,
     required = false,
+    autofocus = false,
     onblur,
     search = false,
     messages,
@@ -88,6 +91,10 @@
   let field: HTMLInputElement | undefined = $state();
   let open = $state(false);
   let active = $state(-1);
+
+  $effect(() => {
+    if (autofocus && !disabled) queueMicrotask(() => button?.focus());
+  });
   let query = $state('');
 
   const selected = $derived(options.findIndex((o) => o.value === value));

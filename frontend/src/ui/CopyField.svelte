@@ -5,8 +5,9 @@
   interface Props {
     value: string;
     label: string;
+    autofocus?: boolean | undefined;
   }
-  const { value, label }: Props = $props();
+  const { value, label, autofocus = false }: Props = $props();
 
   let copied = $state(false);
   let input: HTMLInputElement | undefined = $state();
@@ -25,12 +26,14 @@
 </script>
 
 <div class="copy-field">
+  <!-- svelte-ignore a11y_autofocus -->
   <input
     bind:this={input}
     class="input key"
     readonly
     {value}
     aria-label={label}
+    {autofocus}
     onfocus={(e) => e.currentTarget.select()}
   />
   <button type="button" class="btn btn-primary" onclick={() => void copy()}

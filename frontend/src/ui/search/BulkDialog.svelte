@@ -161,13 +161,21 @@
   }
 </script>
 
-{#snippet toggle(label: string, value: boolean, set: (v: boolean) => void, disabled = false)}
+{#snippet toggle(
+  label: string,
+  value: boolean,
+  set: (v: boolean) => void,
+  disabled = false,
+  autofocus = false,
+)}
   <label class="check">
+    <!-- svelte-ignore a11y_autofocus -->
     <input
       type="checkbox"
       class="checkbox"
       checked={value}
       {disabled}
+      {autofocus}
       onchange={(e) => set(e.currentTarget.checked)}
     />
     <span>{label}</span>
@@ -201,7 +209,7 @@
   >
     <p class="muted">{t.search.bulk.editHint}</p>
     <div class="item">
-      {@render toggle(t.issue.assignee, useAssignee, (v) => (useAssignee = v))}
+      {@render toggle(t.issue.assignee, useAssignee, (v) => (useAssignee = v), false, true)}
       <UserPicker
         field
         value={assignee}

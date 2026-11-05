@@ -312,7 +312,14 @@
 >
   <label class="field">
     <span>{t.projectConfig.versions.releaseDate}</span>
-    <input class="input" type="date" bind:value={releaseDate} aria-invalid={!!releaseProblem} />
+    <!-- svelte-ignore a11y_autofocus -->
+    <input
+      class="input"
+      type="date"
+      bind:value={releaseDate}
+      aria-invalid={!!releaseProblem}
+      autofocus
+    />
     {#if releaseProblem}
       <span class="field-error">{t.projectConfig.problems[releaseProblem]}</span>
     {/if}
@@ -356,6 +363,7 @@
           value={into}
           options={mergeChoices.map((x) => ({ value: String(x.id), label: x.name }))}
           placeholder={t.catalogAdmin.choose}
+          autofocus
           onchange={(v) => (into = v)}
         />
       </div>
