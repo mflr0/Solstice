@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { BoardDetail, BoardPatch, SwimlaneStrategy } from '../../core/board-types.js';
+  import { arrowAfterMove } from '../../core/catalogs.js';
   import { searchHref } from '../../core/filters-url.js';
+  import { focusAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
   import type { StatusRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
@@ -25,6 +28,7 @@
   const { boardId }: Props = $props();
 
   type Part = 'general' | 'columns' | 'quick' | 'lanes' | 'estimate';
+  type ListPart = 'columns' | 'quick' | 'lanes';
 
   interface ColumnDraft {
     id?: number;
@@ -243,6 +247,61 @@
     list[j] = a;
   }
 
+  /**
+   * Moves a row and puts focus on its arrow. By index: a row re-entering the
+   * page drops focus, and an unsaved row's key changes with its place.
+   */
+  async function move<T>(part: ListPart, list: T[], i: number, by: -1 | 1) {
+    shift(list, i, by);
+    const to = i + by;
+    await tick();
+    document.getElementById(`${part}-${arrowAfterMove(by, to, list.length)}-${to}`)?.focus();
+  }
+
+  /** Removes a row; focus goes to the delete button of the next row, else the previous, else add. */
+  async function removeRow<T>(part: ListPart, list: T[], i: number) {
+    const next = focusAfterRemoval(list, list[i]!);
+    list.splice(i, 1);
+    await tick();
+    // The last column can't be deleted: its button is disabled.
+    const button =
+      next === undefined
+        ? null
+        : document.querySelector<HTMLElement>(`#${part}-delete-${list.indexOf(next)}:enabled`);
+    (button ?? document.getElementById(`${part}-add`))?.focus();
+  }
+
+  /** A column's last status leaves focus on what puts it back, in the unmapped list. */
+  async function removeStatus(column: ColumnDraft, at: number, s: StatusRef) {
+    const next = focusAfterRemoval(
+      column.statuses.map((x) => x.id),
+      s.id,
+    );
+    column.statuses = column.statuses.filter((x) => x.id !== s.id);
+    await tick();
+    if (next !== undefined) document.getElementById(`status-remove-${at}-${next}`)?.focus();
+    else
+      (
+        document.getElementById(`status-put-${s.id}`) ??
+        document.getElementById(`columns-name-${at}`)
+      )?.focus();
+  }
+
+  /** Puts an unmapped status in a column; its row goes, so focus goes to its neighbour's chooser. */
+  async function putStatus(s: StatusRef, at: number) {
+    const target = draft?.columns[at];
+    if (!target) return;
+    const next = focusAfterRemoval(
+      unmapped.map((x) => x.id),
+      s.id,
+    );
+    target.statuses.push(s);
+    await tick();
+    document
+      .getElementById(next === undefined ? `status-remove-${at}-${s.id}` : `status-put-${next}`)
+      ?.focus();
+  }
+
   /** The row an error message names (« name », “name”, „name“…), to mark it. */
   function named(part: Part, name: string): boolean {
     const message = errors[part];
@@ -367,6 +426,7 @@
             <div class="card-head">
               <span class="sr-only">{i + 1}.</span>
               <input
+                id="columns-name-{i}"
                 class="input name"
                 bind:value={column.name}
                 required
@@ -396,13 +456,12 @@
                       <li>
                         <Stamp status={s} />
                         <button
+                          id="status-remove-{i}-{s.id}"
                           type="button"
                           class="btn btn-quiet btn-small icon"
                           aria-label={t.boardSettings.remove(s.name)}
                           title={t.boardSettings.remove(s.name)}
-                          onclick={() =>
-                            (column.statuses = column.statuses.filter((x) => x.id !== s.id))}
-                          >×</button
+                          onclick={() => void removeStatus(column, i, s)}>×</button
                         >
                       </li>
                     {/each}
@@ -413,26 +472,29 @@
               </div>
               <div class="tools">
                 <button
+                  id="columns-up-{i}"
                   type="button"
                   class="btn btn-small"
                   disabled={i === 0}
                   aria-label={t.boardSettings.moveLeft(column.name)}
                   title={t.boardSettings.moveLeft(column.name)}
-                  onclick={() => shift(f.columns, i, -1)}>←</button
+                  onclick={() => void move('columns', f.columns, i, -1)}>←</button
                 >
                 <button
+                  id="columns-down-{i}"
                   type="button"
                   class="btn btn-small"
                   disabled={i === f.columns.length - 1}
                   aria-label={t.boardSettings.moveRight(column.name)}
                   title={t.boardSettings.moveRight(column.name)}
-                  onclick={() => shift(f.columns, i, 1)}>→</button
+                  onclick={() => void move('columns', f.columns, i, 1)}>→</button
                 >
                 <button
+                  id="columns-delete-{i}"
                   type="button"
                   class="btn btn-small btn-danger"
                   disabled={f.columns.length === 1}
-                  onclick={() => f.columns.splice(i, 1)}
+                  onclick={() => void removeRow('columns', f.columns, i)}
                   aria-label={t.boardSettings.remove(column.name)}>{t.common.delete}</button
                 >
               </div>
@@ -441,6 +503,7 @@
         {/each}
         <li class="add-column">
           <button
+            id="columns-add"
             type="button"
             class="btn"
             onclick={() =>
@@ -459,15 +522,13 @@
               <li>
                 <Stamp status={s} />
                 <Dropdown
+                  id="status-put-{s.id}"
                   class="put"
                   label={t.boardSettings.putIn(s.name)}
                   value=""
                   options={f.columns.map((c, i) => ({ value: String(i), label: c.name }))}
                   placeholder={t.boardSettings.chooseColumn}
-                  onchange={(v) => {
-                    const target = f.columns[Number(v)];
-                    if (target) target.statuses.push(s);
-                  }}
+                  onchange={(v) => void putStatus(s, Number(v))}
                 />
               </li>
             {/each}
@@ -506,11 +567,12 @@
               <span>{t.boardSettings.description}</span>
               <input class="input" bind:value={q.description} maxlength="255" />
             </label>
-            {@render order(f.quick, i, q.name)}
+            {@render order('quick', f.quick, i, q.name)}
           </li>
         {/each}
       </ol>
       <button
+        id="quick-add"
         type="button"
         class="btn"
         onclick={() =>
@@ -565,11 +627,12 @@
                 />
                 {t.boardSettings.defaultLane}
               </label>
-              {@render order(f.lanes.list, i, lane.name)}
+              {@render order('lanes', f.lanes.list, i, lane.name)}
             </li>
           {/each}
         </ol>
         <button
+          id="lanes-add"
           type="button"
           class="btn"
           onclick={() =>
@@ -611,7 +674,6 @@
             <label for="estimate-field"><strong>{t.boardSettings.estimateField}</strong></label>
             {#if d.estimateFields.length}
               <Dropdown
-                id="estimate-field"
                 label={t.boardSettings.estimateField}
                 value={f.estimate.startsWith('customfield_') ? f.estimate : ''}
                 options={d.estimateFields.map((field) => ({ value: field.id, label: field.name }))}
@@ -656,29 +718,32 @@
   </Modal>
 {/if}
 
-{#snippet order(list: { name: string }[], i: number, name: string)}
+{#snippet order(part: ListPart, list: { name: string }[], i: number, name: string)}
   <div class="tools">
     <button
+      id="{part}-up-{i}"
       type="button"
       class="btn btn-small"
       disabled={i === 0}
       aria-label={t.boardSettings.moveUp(name)}
       title={t.boardSettings.moveUp(name)}
-      onclick={() => shift(list, i, -1)}>↑</button
+      onclick={() => void move(part, list, i, -1)}>↑</button
     >
     <button
+      id="{part}-down-{i}"
       type="button"
       class="btn btn-small"
       disabled={i === list.length - 1}
       aria-label={t.boardSettings.moveDown(name)}
       title={t.boardSettings.moveDown(name)}
-      onclick={() => shift(list, i, 1)}>↓</button
+      onclick={() => void move(part, list, i, 1)}>↓</button
     >
     <button
+      id="{part}-delete-{i}"
       type="button"
       class="btn btn-small btn-danger"
       aria-label={t.boardSettings.remove(name)}
-      onclick={() => list.splice(i, 1)}>{t.common.delete}</button
+      onclick={() => void removeRow(part, list, i)}>{t.common.delete}</button
     >
   </div>
 {/snippet}
