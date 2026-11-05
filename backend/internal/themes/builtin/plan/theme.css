@@ -1481,13 +1481,13 @@
 /* Boards ------------------------------------------------------------------------- */
 
 [data-skin='plan'] .board-column {
-  border: 1px solid var(--plan-line);
-  border-radius: 0;
-  background: color-mix(in srgb, var(--paper-sunk) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--plan-line) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--paper-sunk) 55%, transparent);
 }
 
 [data-skin='plan'] .board-column-head {
-  border-bottom: 3px double var(--plan-line);
+  border-bottom: 1px solid color-mix(in srgb, var(--plan-line) 35%, transparent);
 }
 
 [data-skin='plan'] .board-column-title {
@@ -1514,7 +1514,7 @@
 
 [data-skin='plan'] .board-card {
   border: 1px solid var(--plan-line);
-  border-radius: 0;
+  border-radius: 8px;
   background: var(--paper-raised);
   box-shadow: none;
 }
