@@ -1111,14 +1111,6 @@
   box-shadow: inset 2px 0 0 var(--ink);
 }
 
-[data-skin='plan'] table.ledger tr.is-selected td {
-  background: color-mix(in srgb, var(--ink) 9%, transparent);
-}
-
-[data-skin='plan'] table.ledger tr.is-selected td:first-child {
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
 [data-skin='plan'] table.ledger .num {
   font-family: var(--font-mono);
 }
@@ -1158,25 +1150,6 @@
   margin-left: -4.5px;
   background: var(--accent);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
-}
-
-[data-skin='plan'] .tabs.tabs-folder {
-  border-bottom: 0;
-}
-
-[data-skin='plan'] .tabs.tabs-folder .tab {
-  border: 1px solid transparent;
-  border-bottom: 0;
-  font-size: 0.6875rem;
-}
-
-[data-skin='plan'] .tabs.tabs-folder .tab[aria-selected='true'] {
-  border-color: var(--rule-strong);
-  background: var(--paper-raised);
-}
-
-[data-skin='plan'] .tabs.tabs-folder .tab[aria-selected='true']::after {
-  content: none;
 }
 
 /* Menus: a drawn box with its poché ------------------------------------------ */

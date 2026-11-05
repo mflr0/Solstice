@@ -1380,14 +1380,12 @@
 }
 
 /* The row that holds the keyboard focus is selected, navy and white. */
-[data-skin='retro'] .ledger tbody tr:focus-within td,
-[data-skin='retro'] .ledger tbody tr.is-selected td {
+[data-skin='retro'] .ledger tbody tr:focus-within td {
   background: var(--rt-select);
   color: var(--rt-select-ink);
 }
 
-[data-skin='retro'] .ledger tbody tr:focus-within td :is(a, .muted, .late, .nobody),
-[data-skin='retro'] .ledger tbody tr.is-selected td :is(a, .muted, .late, .nobody) {
+[data-skin='retro'] .ledger tbody tr:focus-within td :is(a, .muted, .late, .nobody) {
   color: var(--rt-select-ink);
 }
 
@@ -1678,17 +1676,6 @@
   padding: 12px 12px 10px;
   background: var(--paper);
   box-shadow: var(--rt-window);
-}
-
-/* Folder tabs over an editor sit on the field instead of a page. */
-[data-skin='retro'] .tabs-folder[role='tablist'] > .tab {
-  padding: 2px 9px;
-  font-size: 0.6875rem;
-}
-
-[data-skin='retro'] .tabs-folder[role='tablist'] > .tab[aria-selected='true'] {
-  margin: 0 -2px 0;
-  padding: 3px 11px 3px;
 }
 
 [data-skin='retro'] .editor [role='tabpanel'] .preview {

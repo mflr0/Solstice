@@ -77,9 +77,6 @@ const BUILT: { names: string[]; file: string; code: string }[] = [
   },
 ];
 
-/** Hooks of the contract that nothing sets yet. */
-const RESERVED = ['is-selected', 'tabs-folder'];
-
 /** The class names in the inline code of the section on hooks. */
 function hookNames(doc: string): string[] {
   const section = /^## 3\. Hooks$([\s\S]*?)^## /m.exec(doc)?.[1] ?? '';
@@ -167,9 +164,7 @@ describe('theme hooks', () => {
   const built = BUILT.flatMap((b) => b.names);
 
   it('all still appear in the interface', () => {
-    const lost = hooks.filter(
-      (h) => !inMarkup.has(h) && !built.includes(h) && !RESERVED.includes(h),
-    );
+    const lost = hooks.filter((h) => !inMarkup.has(h) && !built.includes(h));
     expect(
       lost,
       'ANATOMY.md lists hooks that appear nowhere in frontend/src. ' +
@@ -182,7 +177,7 @@ describe('theme hooks', () => {
   });
 
   it('allow only hooks the markup does not show', () => {
-    const extra = [...built, ...RESERVED].filter((n) => inMarkup.has(n) || !hooks.includes(n));
-    expect(extra, 'Remove these from BUILT or RESERVED.').toEqual([]);
+    const extra = built.filter((n) => inMarkup.has(n) || !hooks.includes(n));
+    expect(extra, 'Remove these from BUILT.').toEqual([]);
   });
 });
