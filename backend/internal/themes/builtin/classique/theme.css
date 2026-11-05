@@ -123,14 +123,8 @@
   --stamp-font: 700 0.6875rem/1.35 var(--font-body);
   --stamp-case: uppercase;
   --stamp-tracking: 0.02em;
-  --stamp-border: 0px;
-  --stamp-radius: 3px;
-  --stamp-padding: 1px 5px;
-  --stamp-fill: 14%;
   --stamp-dot: none;
   --stamp-large-size: 0.75rem;
-  --stamp-large-padding: 5px 9px;
-  --stamp-large-border: 0px;
   --stamp-large-tracking: 0.02em;
   --stamp-large-turn: none;
 
@@ -999,10 +993,6 @@
   text-overflow: ellipsis;
 }
 
-[data-skin='classique'] .stamp.large {
-  border-radius: var(--radius-s);
-}
-
 /* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
 [data-skin='classique'] .type-mark {
   --type-tone: var(--type-color);
@@ -1553,46 +1543,6 @@
   font: 600 0.75rem/1 var(--font-body);
   color: inherit;
   opacity: 0.8;
-}
-
-/* The status as a drop-down lozenge button. */
-[data-skin='classique'] .issue-meta .status > button {
-  gap: 0;
-  padding: 0;
-  border-radius: var(--radius-s);
-}
-
-[data-skin='classique'] .issue-meta .status > button .stamp.large {
-  border-radius: var(--radius-s) 0 0 var(--radius-s);
-}
-
-[data-skin='classique'] .issue-meta .status > button .caret {
-  align-self: stretch;
-  padding: 0 8px;
-  border-left: 1px solid var(--paper-raised);
-  border-radius: 0 var(--radius-s) var(--radius-s) 0;
-  background: color-mix(in srgb, var(--stamp-todo) var(--stamp-fill), transparent);
-  color: var(--stamp-todo);
-}
-
-[data-skin='classique'] .issue-meta .status > button:has(.stamp.doing) .caret {
-  background: color-mix(in srgb, var(--stamp-doing) var(--stamp-fill), transparent);
-  color: var(--stamp-doing);
-}
-
-[data-skin='classique'] .issue-meta .status > button:has(.stamp.done) .caret {
-  background: color-mix(in srgb, var(--stamp-done) var(--stamp-fill), transparent);
-  color: var(--stamp-done);
-}
-
-[data-skin='classique'] .issue-meta .status > button:hover .stamp,
-[data-skin='classique'] .issue-meta .status > button:hover .caret {
-  filter: brightness(0.95);
-}
-
-[data-skin='classique'][data-scheme='dark'] .issue-meta .status > button:hover .stamp,
-[data-skin='classique'][data-scheme='dark'] .issue-meta .status > button:hover .caret {
-  filter: brightness(1.15);
 }
 
 [data-skin='classique'] .issue-meta .resolution {

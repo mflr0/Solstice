@@ -162,10 +162,10 @@ func TestValidateRules(t *testing.T) {
 		{"a stamp as a gradient", func(t *testing.T, pkg fstest.MapFS) {
 			setToken(t, pkg, "stamp-todo", "linear-gradient(#000000, #111111)")
 		}, []string{"contrast"}, "--stamp-todo must be a single colour"},
-		{"stamp on its tint", func(t *testing.T, pkg fstest.MapFS) { setToken(t, pkg, "stamp-fill", "90%") },
-			[]string{"contrast"}, "tinted"},
-		{"stamp-fill not a percentage", func(t *testing.T, pkg fstest.MapFS) { setToken(t, pkg, "stamp-fill", "lots") },
-			[]string{"contrast"}, "--stamp-fill = lots"},
+		{"stamp ink on the paper", func(t *testing.T, pkg fstest.MapFS) { setToken(t, pkg, "stamp-done", "#eeeeee") },
+			[]string{"contrast"}, "--stamp-done on --paper"},
+		{"stamp ink on the raised paper", func(t *testing.T, pkg fstest.MapFS) { setToken(t, pkg, "stamp-done", "#eeeeee") },
+			[]string{"contrast"}, "--stamp-done on --paper-raised"},
 		{"dark scheme only", func(t *testing.T, pkg fstest.MapFS) {
 			swap(t, pkg, cssFile, "color-scheme: dark;", "color-scheme: dark;\n  --muted: #222222;")
 		}, []string{"contrast"}, "dark: --muted on --paper"},
@@ -418,9 +418,6 @@ func TestContrastRatio(t *testing.T) {
 	}
 	if got := contrastRatio(rgb{118, 118, 118}, rgb{255, 255, 255}); math.Abs(got-4.54) > 0.01 {
 		t.Errorf("#767676 on white: %v", got)
-	}
-	if got := over(rgb{100, 100, 100}, rgb{200, 200, 200}, 0.14); got != (rgb{186, 186, 186}) {
-		t.Errorf("over: %v", got)
 	}
 }
 

@@ -242,14 +242,8 @@
   --stamp-font: 500 0.78125rem/1.3 var(--font-mono);
   --stamp-case: uppercase;
   --stamp-tracking: 0.03em;
-  --stamp-border: 0px;
-  --stamp-radius: 0;
-  --stamp-padding: 1px 0;
-  --stamp-fill: 0%;
-  --stamp-dot: inline;
+  --stamp-dot: none;
   --stamp-large-size: 1.375rem;
-  --stamp-large-padding: 3px 4px 1px;
-  --stamp-large-border: 0px;
   --stamp-large-tracking: 0.06em;
   --stamp-large-turn: none;
 
@@ -1060,49 +1054,14 @@
 
 /* Marks --------------------------------------------------------------------------- */
 
-/* Statuses as bracketed labels; work in progress is in inverse video. */
 [data-skin='terminal'] .stamp {
-  gap: 0;
-  border: 0;
-  padding: var(--stamp-padding);
-  background: none;
   text-shadow: var(--term-glow);
-}
-
-[data-skin='terminal'] .stamp::before,
-[data-skin='terminal'] .stamp::after {
-  display: inline;
-  width: auto;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: none;
-}
-
-[data-skin='terminal'] .stamp::before {
-  content: '[';
-}
-
-[data-skin='terminal'] .stamp::after {
-  content: ']';
-}
-
-[data-skin='terminal'] .stamp.doing {
-  padding-inline: 1px;
-  background: var(--c);
-  color: var(--paper);
-  text-shadow: none;
-  box-shadow: var(--term-glow-box);
 }
 
 [data-skin='terminal'] .stamp.large {
   font-family: var(--font-title);
   font-weight: 400;
   line-height: 1;
-}
-
-[data-skin='terminal'] .stamp.large.doing {
-  padding-inline: 4px;
 }
 
 /* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */

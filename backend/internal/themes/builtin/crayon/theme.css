@@ -417,14 +417,8 @@
   --stamp-font: 400 0.875rem/1.2 var(--font-title);
   --stamp-case: none;
   --stamp-tracking: 0;
-  --stamp-border: 0px;
-  --stamp-radius: 50%;
-  --stamp-padding: 2px 11px 1px;
-  --stamp-fill: 0%;
-  --stamp-dot: block;
+  --stamp-dot: none;
   --stamp-large-size: 1.125rem;
-  --stamp-large-padding: 4px 17px 2px;
-  --stamp-large-border: 0px;
   --stamp-large-tracking: 0;
   --stamp-large-turn: rotate(2deg);
 
@@ -467,8 +461,6 @@
   --cr-rough: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='r' x='-.05' y='-.15' width='1.1' height='1.3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='2' seed='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.4' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/svg%3E#r");
   --cr-rough-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='r' x='-.05' y='-.15' width='1.1' height='1.3'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='2' seed='17'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3C/svg%3E#r");
   --cr-loop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M24 5.4C52 2.3 92 3.3 107.6 9.5c10.7 4.3 10.4 15.8.3 20.7C94 37 46 38 20 34 6.5 31.9 2.1 24.6 5 17.5 8.4 9.3 27.6 4.3 55 4.5' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
-  --cr-loop-alt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M96 6.2C70 2.6 30 3.4 13.6 9.2 3 13 2.4 24.4 12.2 29.6 25.6 36.6 74 38.4 101 34.2 114 32.1 118.5 24.8 115.4 17.4 111.8 9.6 92 4.1 63 4.4' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
-  --cr-loop-bold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 40' preserveAspectRatio='none'%3E%3Cpath d='M24 5.4C52 2.3 92 3.3 107.6 9.5c10.7 4.3 10.4 15.8.3 20.7C94 37 46 38 20 34 6.5 31.9 2.1 24.6 5 17.5 8.4 9.3 27.6 4.3 55 4.5' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
   --cr-scribble: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-linecap='round'%3E%3Cpath d='M1.5 4.4C18 3.2 40 4.1 62 3.5S90 3.2 98.5 2.8' stroke-width='2.2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M7 6.6C30 5.3 58 6.2 91 5' stroke-width='1.4' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
   --cr-ring: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M22 3.6c9.4.6 15.4 7.9 14.8 17-.6 9.4-8.3 15.8-17.4 15.2C10 35.2 3.6 27.7 4.2 18.8 4.8 10 11.8 3.8 20.6 4c3 .1 5.4 1 7.4 2.2' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --cr-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 16'%3E%3Cpath d='M2.5 8.8c1.6 1.4 3 3 4.3 4.7C9.3 8.6 12.6 4.6 17.5 2' fill='none' stroke='%23000' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -987,36 +979,6 @@
 }
 
 /* Marks --------------------------------------------------------------------- */
-
-[data-skin='crayon'] .stamp {
-  position: relative;
-  line-height: 1.2;
-}
-
-/* The loop drawn round the status, in the status's own pencil. */
-[data-skin='crayon'] .stamp::before {
-  position: absolute;
-  inset: -3px -2px -2px -3px;
-  width: auto;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: var(--c);
-  -webkit-mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
-  mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
-  pointer-events: none;
-}
-
-[data-skin='crayon'] :is(tr, li, .board-card):nth-child(even) .stamp::before {
-  -webkit-mask-image: var(--cr-loop-alt);
-  mask-image: var(--cr-loop-alt);
-}
-
-[data-skin='crayon'] .stamp.large::before {
-  inset: -3px -4px -2px -5px;
-  -webkit-mask-image: var(--cr-loop-bold);
-  mask-image: var(--cr-loop-bold);
-}
 
 /* The admin's colour, at a lightness the tones keep; unset without one, so --type-ink is the guessed tone. */
 [data-skin='crayon'] .type-mark {

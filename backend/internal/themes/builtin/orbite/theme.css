@@ -403,14 +403,8 @@
   --stamp-font: 500 0.71875rem/1.25 var(--font-body);
   --stamp-case: none;
   --stamp-tracking: 0.01em;
-  --stamp-border: 1px;
-  --stamp-radius: 999px;
-  --stamp-padding: 2px 9px 2px 6px;
-  --stamp-fill: 10%;
   --stamp-dot: inline-block;
   --stamp-large-size: 0.78125rem;
-  --stamp-large-padding: 4px 12px 4px 8px;
-  --stamp-large-border: 1px;
   --stamp-large-tracking: 0.01em;
   --stamp-large-turn: none;
 
@@ -1332,7 +1326,6 @@
 
 [data-skin='orbite'] .stamp {
   gap: 6px;
-  border-color: color-mix(in srgb, var(--c) 42%, transparent);
 }
 
 /* Waiting: an empty orbit, the planet parked at the top. */

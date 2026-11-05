@@ -566,15 +566,6 @@ func contrastRatio(a, b rgb) float64 {
 	return (hi + 0.05) / (lo + 0.05)
 }
 
-// over is a colour laid over another at the given opacity (tinted pills).
-func over(top, bottom rgb, alpha float64) rgb {
-	var out rgb
-	for i := range out {
-		out[i] = int(math.Round(float64(top[i])*alpha + float64(bottom[i])*(1-alpha)))
-	}
-	return out
-}
-
 // colours resolves a token, through var() references, to its colours.
 func (t tokens) colours(name string, seen []string) ([]rgb, error) {
 	tok, ok := t[name]
@@ -594,6 +585,7 @@ func (t tokens) colours(name string, seen []string) ([]rgb, error) {
 	return found, nil
 }
 
+// colour resolves a token that must be one colour, not a gradient.
 func (t tokens) colour(name string) (rgb, error) {
 	found, err := t.colours(name, nil)
 	if err != nil {
@@ -619,10 +611,15 @@ func checkContrast(css stylesheet, t tokens, scheme string) []Finding {
 	report := func(line int, format string, args ...any) {
 		out = append(out, Finding{Rule: "contrast", Message: scheme + ": " + fmt.Sprintf(format, args...), File: cssFile, Line: line})
 	}
-	// checkOn tests fg on bgColours, labelled bg. A line of 0 means fg's own.
-	checkOn := func(fg, bg string, bgColours []rgb, minimum float64, line int) {
+	// check tests fg on bg. A line of 0 means fg's own.
+	check := func(fg, bg string, minimum float64, line int) {
 		if line == 0 {
 			line = t[fg].line
+		}
+		bgColours, err := t.colours(bg, nil)
+		if err != nil {
+			report(line, "%v", err)
+			return
 		}
 		fgColours, err := t.colours(fg, nil)
 		if err != nil {
@@ -632,21 +629,10 @@ func checkContrast(css stylesheet, t tokens, scheme string) []Finding {
 		for _, f := range fgColours {
 			for _, b := range bgColours {
 				if c := contrastRatio(f, b); c < minimum {
-					report(line, "--%s on %s: %.2f, want %g", fg, bg, c, minimum)
+					report(line, "--%s on --%s: %.2f, want %g", fg, bg, c, minimum)
 				}
 			}
 		}
-	}
-	check := func(fg, bg string, minimum float64, line int) {
-		bgColours, err := t.colours(bg, nil)
-		if err != nil {
-			if line == 0 {
-				line = t[fg].line
-			}
-			report(line, "%v", err)
-			return
-		}
-		checkOn(fg, "--"+bg, bgColours, minimum, line)
 	}
 
 	for _, bg := range []string{"paper", "paper-raised", "paper-sunk"} {
@@ -654,32 +640,16 @@ func checkContrast(css stylesheet, t tokens, scheme string) []Finding {
 			check(fg, bg, textContrast, 0)
 		}
 	}
-	fill, fillOK := 0.0, true
-	if f, ok := t["stamp-fill"]; ok {
-		n, err := strconv.ParseFloat(strings.TrimSuffix(f.value, "%"), 64)
-		fill, fillOK = n/100, err == nil
-		if !fillOK {
-			report(f.line, "--stamp-fill = %s is not a percentage", f.value)
+	stampInks := []string{"stamp-todo", "stamp-doing", "stamp-done"}
+	for _, fg := range stampInks {
+		if _, err := t.colour(fg); err != nil {
+			report(t[fg].line, "%v", err)
 		}
 	}
 	for _, bg := range []string{"paper", "paper-raised"} {
 		check("accent-text", bg, textContrast, 0)
-		for _, fg := range []string{"stamp-todo", "stamp-doing", "stamp-done"} {
+		for _, fg := range stampInks {
 			check(fg, bg, textContrast, 0)
-			if !fillOK {
-				continue
-			}
-			top, err := t.colour(fg)
-			if err != nil {
-				report(t[fg].line, "%v", err)
-				continue
-			}
-			bottom, err := t.colour(bg)
-			if err != nil {
-				report(t[bg].line, "%v", err)
-				continue
-			}
-			checkOn(fg, "--"+bg+" tinted", []rgb{over(top, bottom, fill)}, textContrast, 0)
 		}
 	}
 	for _, fg := range []string{"tone-bug", "tone-story", "tone-task", "tone-subtask"} {

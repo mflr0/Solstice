@@ -132,7 +132,7 @@
     gap: 6px;
     border: none;
     background: none;
-    padding: 4px 2px;
+    padding: 4px 0;
     cursor: pointer;
   }
 

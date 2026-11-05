@@ -91,7 +91,7 @@ may be gradients (every `#rrggbb` stop is checked).
 | Accent      | `--accent` (fills, borders, marks), `--accent-text` (accent used as text), `--accent-wash` (hover tint), `--sun` (logo), `--margin-line`, `--focus` (focus ring)                                                                                                                                                                                 |
 | Main button | `--primary`, `--primary-ink`                                                                                                                                                                                                                                                                                                                     |
 | Top bar     | `--bar`, `--bar-ink`, `--bar-ink-soft`                                                                                                                                                                                                                                                                                                           |
-| Statuses    | `--stamp-todo`, `--stamp-doing`, `--stamp-done` + shape tokens `--stamp-font`, `--stamp-case`, `--stamp-tracking`, `--stamp-border`, `--stamp-radius`, `--stamp-padding`, `--stamp-fill` (tint %, checked), `--stamp-dot`, `--stamp-large-size`, `--stamp-large-padding`, `--stamp-large-border`, `--stamp-large-tracking`, `--stamp-large-turn` |
+| Statuses    | `--stamp-todo`, `--stamp-doing`, `--stamp-done` + shape tokens `--stamp-font`, `--stamp-case`, `--stamp-tracking`, `--stamp-dot`, `--stamp-large-size`, `--stamp-large-tracking`, `--stamp-large-turn`                                                                                                                                           |
 | Issue types | `--tone-bug`, `--tone-story`, `--tone-epic`, `--tone-task`, `--tone-subtask`                                                                                                                                                                                                                                                                     |
 | Depth       | `--shadow-pop`, `--backdrop`, `--ink-blend`                                                                                                                                                                                                                                                                                                      |
 | Type        | `--font-title`, `--font-body`, `--font-mono`, `--font-size`, `--title-weight`, `--h1-weight`, `--title-tracking`, `--title-italic`, `--empty-font`                                                                                                                                                                                               |
@@ -106,7 +106,7 @@ New since the Orbite/Crayonné blocks were copied out of `app.css`: `--desk`,
 
 Text, 4.5:1 — `--ink`, `--ink-soft`, `--muted` on `--paper`, `--paper-raised`,
 `--paper-sunk`; `--accent-text` on `--paper`, `--paper-raised`; each stamp ink
-on `--paper`, `--paper-raised` and on its own tint (`--stamp-fill`); tones on
+on `--paper`, `--paper-raised`; tones on
 `--paper-raised`; `--paper` on `--tone-epic`; `--primary-ink` on `--primary`;
 `--bar-ink`, `--bar-ink-soft` on `--bar`.
 Non-text, 3:1 — `--focus` and `--accent` on `--paper`.
@@ -285,7 +285,9 @@ marker). The arrows draw with `currentColor`; restyle strokes, not colours.
 `title` only, nothing to style.
 
 **Marks** — `span.stamp` (`.todo` / `.doing` / `.done`, `[data-category]`,
-`.large` on the issue page; `::before` is the optional dot, `--stamp-dot`).
+`.large` on the issue page; `::before` is the optional dot, `--stamp-dot`). A
+status is its name in its ink: draw no border, background, shadow or frame
+around it, and no horizontal padding, so it lines up with the text around it.
 `.type-mark[data-type='bug|story|epic|task|subtask']` (`data-type` is the
 family guessed from the name). An admin may style a type: its colour comes in
 an inline `--type-color` (unset without one), its fill in
