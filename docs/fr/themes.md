@@ -52,6 +52,24 @@ Pour le modifier encore, changez les fichiers, augmentez `version` dans
 `theme.json`, recompressez et réimportez. Le même id demande s'il faut remplacer
 la version présente, et le thème reste sélectionné.
 
+## Partir de rien
+
+Exporter un thème donne aussi toutes ses règles à démêler. Pour en écrire un en
+partant de rien, choisissez **Télécharger le paquet de départ** dans la galerie
+(`/themes`), c'est-à-dire `/api/themes/starter`. Le zip contient :
+
+- `theme.json`, rempli de valeurs à remplacer.
+- `theme.css`, avec tous les jetons en groupes commentés et les valeurs de Carnet,
+  un bloc sombre, un exemple de `@font-face` et d'image, et un titre commenté vide
+  par section des
+  [points d'accroche](../../backend/internal/themes/ANATOMY.md#3-hooks).
+- `fonts/`, avec cette police et sa licence, et `assets/`, avec cette image.
+
+Il passe [les vérifications](#les-vérifications) tel quel. Remplacez `my-theme`
+dans les deux fichiers, changez les jetons, et gardez `preview` de `theme.json`
+égal à ces jetons. Puis zippez et importez-le comme dans
+[votre premier thème](#votre-premier-thème).
+
 ## Le paquet
 
 Un paquet est un zip avec ces fichiers à sa racine :

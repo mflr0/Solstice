@@ -61,11 +61,24 @@ func (s *Server) exportTheme(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return themeError(err)
 	}
+	return writeThemeZip(w, name, data)
+}
+
+// themeStarter answers the starter package as a zip.
+func (s *Server) themeStarter(w http.ResponseWriter, r *http.Request) error {
+	data, err := themes.Starter()
+	if err != nil {
+		return err
+	}
+	return writeThemeZip(w, themes.StarterName, data)
+}
+
+func writeThemeZip(w http.ResponseWriter, name string, data []byte) error {
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
 	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name}))
 	h.Set("Content-Length", strconv.Itoa(len(data)))
-	_, err = w.Write(data)
+	_, err := w.Write(data)
 	return err
 }
 

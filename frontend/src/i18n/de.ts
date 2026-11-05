@@ -166,6 +166,7 @@ export const de: Messages = {
     apply: (name: string, scheme: string) => `${name} (${scheme}) anwenden`,
     schemes: { light: 'hell', dark: 'dunkel' },
     lightOnly: 'Nur im hellen Modus verfügbar.',
+    starter: 'Startpaket herunterladen',
     preparing: 'Vorschau wird vorbereitet…',
     mock: {
       work: 'Meine Arbeit',

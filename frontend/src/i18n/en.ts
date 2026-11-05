@@ -161,6 +161,7 @@ export const en = {
     apply: (name: string, scheme: string) => `Apply ${name}, ${scheme}`,
     schemes: { light: 'light', dark: 'dark' },
     lightOnly: 'Light mode only.',
+    starter: 'Download the starter package',
     preparing: 'Preparing the preview…',
     mock: {
       work: 'My work',

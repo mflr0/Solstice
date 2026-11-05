@@ -163,6 +163,7 @@ export const it: Messages = {
     apply: (name: string, scheme: string) => `Applica ${name}, ${scheme}`,
     schemes: { light: 'chiaro', dark: 'scuro' },
     lightOnly: 'Disponibile solo in chiaro.',
+    starter: 'Scarica il pacchetto di partenza',
     preparing: 'Anteprima in preparazione…',
     mock: {
       work: 'Il mio lavoro',
