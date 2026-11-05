@@ -5,6 +5,7 @@
   import { createProject, onBoard } from '../core/scope.js';
   import { shortcutFor } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
+  import { pinnedHeight } from '../lib/actions.js';
   import { live } from '../lib/live.svelte.js';
   import { interceptLinks, router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
@@ -228,7 +229,7 @@
         <NotFoundPage />
       {/if}
     </main>
-    <footer class="app-statusbar">
+    <footer class="app-statusbar" use:pinnedHeight={'--statusbar-height'}>
       <span class="statusbar-cell">{t.statusbar.ready}</span>
       <span class="statusbar-cell" class:is-live={live.connected}
         >{live.connected ? t.nav.live : t.nav.offline}</span

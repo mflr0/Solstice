@@ -79,7 +79,9 @@
     gap: 2px;
   }
 
+  /* Positioned so the hidden radio scrolls with the dialog's body when focused. */
   .state {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 4px;

@@ -197,6 +197,27 @@ export function hiddenSides(node: HTMLElement, handler: SidesHandler) {
 }
 
 /**
+ * Keeps a CSS variable on the document at the height of a bar pinned to an edge
+ * of the screen, 0 when the skin doesn't pin it.
+ */
+export function pinnedHeight(node: HTMLElement, name: string) {
+  const root = document.documentElement;
+  const measure = () => {
+    const pinned = ['sticky', 'fixed'].includes(getComputedStyle(node).position);
+    root.style.setProperty(name, pinned ? `${node.offsetHeight}px` : '0px');
+  };
+  measure();
+  const watch = new ResizeObserver(measure);
+  watch.observe(node);
+  return {
+    destroy() {
+      watch.disconnect();
+      root.style.removeProperty(name);
+    },
+  };
+}
+
+/**
  * Keeps is-stacked on a top bar while its .topbar-nav does not fit on one row,
  * so the stylesheet can give the nav a row of its own.
  */

@@ -84,7 +84,13 @@
 
   .side-nav {
     position: sticky;
-    top: 16px;
+    top: calc(var(--topbar-height, 0px) + 16px);
+    /* Its own scroller when taller than the room between the bars. The padding keeps focus rings. */
+    max-height: calc(100dvh - var(--topbar-height, 0px) - var(--statusbar-height, 0px) - 32px);
+    overflow-y: auto;
+    margin: -4px;
+    padding: 4px;
+    scroll-padding-block: 8px;
     font-size: 0.84375rem;
   }
 
@@ -148,6 +154,10 @@
     .side-nav {
       position: relative;
       top: 0;
+      max-height: none;
+      overflow: visible;
+      margin: 0;
+      padding: 0;
     }
 
     .side-title {
