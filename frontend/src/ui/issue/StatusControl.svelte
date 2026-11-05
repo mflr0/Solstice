@@ -2,7 +2,7 @@
   import type { IssueDetail, Transition } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import type { IssueFields } from '../../lib/api.js';
-  import { outside } from '../../lib/actions.js';
+  import { menu, outside } from '../../lib/actions.js';
   import { session } from '../../lib/session.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import Stamp from '../Stamp.svelte';
@@ -32,26 +32,31 @@
     pending = null;
   }
 
-  let menu: HTMLDivElement | undefined = $state();
+  let trigger: HTMLButtonElement | undefined = $state();
 
   /** Opens the list of moves with the first one focused (the "t" key); false when there are none. */
   export function openMenu(): boolean {
     if (!movable) return false;
     open = true;
-    queueMicrotask(() => menu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
     return true;
   }
 
   async function apply(tr: Transition) {
+    if (busy) return;
     if (tr.to.category === 'done' && !pending) {
       pending = tr;
       resolution = defaultResolution;
+      // The item that held the focus is gone.
+      queueMicrotask(() => document.getElementById('status-resolution')?.focus());
       return;
     }
     busy = true;
     const fields: IssueFields = { status: tr.to.id };
     if (tr.to.category === 'done' && resolution) fields.resolution = resolution;
-    if (await onchange(fields)) close();
+    if (await onchange(fields)) {
+      trigger?.focus();
+      close();
+    }
     busy = false;
   }
 </script>
@@ -59,6 +64,7 @@
 <div class="status" use:outside={close}>
   {#if movable}
     <button
+      bind:this={trigger}
       class="trigger status-trigger"
       aria-haspopup="menu"
       aria-expanded={open}
@@ -73,8 +79,8 @@
   {/if}
 
   {#if open}
-    <div class="popover" role="menu" aria-label={t.issue.changeStatus} bind:this={menu}>
-      {#if pending}
+    {#if pending}
+      <div class="popover" use:menu={close}>
         <form
           class="resolve"
           onsubmit={(e) => {
@@ -86,6 +92,7 @@
           <div class="field">
             <span class="field-label">{t.issue.chooseResolution}</span>
             <Dropdown
+              id="status-resolution"
               label={t.issue.chooseResolution}
               value={resolution}
               options={[
@@ -102,21 +109,28 @@
             <button type="button" class="btn btn-quiet btn-small" onclick={() => (pending = null)}
               >{t.common.cancel}</button
             >
-            <button class="btn btn-primary btn-small" disabled={busy}
+            <button class="btn btn-primary btn-small" aria-disabled={busy || undefined}
               >{t.issue.confirmTransition}</button
             >
           </div>
         </form>
-      {:else}
+      </div>
+    {:else}
+      <div class="popover" role="menu" aria-label={t.issue.changeStatus} use:menu={close}>
         <div class="group-label">{t.issue.changeStatus}</div>
         {#each issue.transitions as tr (tr.id)}
-          <button class="item" role="menuitem" disabled={busy} onclick={() => void apply(tr)}>
+          <button
+            class="item"
+            role="menuitem"
+            aria-disabled={busy || undefined}
+            onclick={() => void apply(tr)}
+          >
             <span class="name">{tr.name}</span>
             <span class="to"><Stamp status={tr.to} /></span>
           </button>
         {/each}
-      {/if}
-    </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
