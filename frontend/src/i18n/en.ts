@@ -2183,6 +2183,7 @@ export const en = {
     sections: {
       profile: 'Profile',
       appearance: 'Language and appearance',
+      themes: 'My themes',
       shortcuts: 'Keyboard shortcuts',
       notifications: 'Notifications',
       tokens: 'Access tokens',
@@ -2239,6 +2240,29 @@ export const en = {
     themeHint: 'The theme and the light or dark mode apply to you only.',
     themeRescueHint:
       'If a theme breaks the page, add ?skin=carnet to the address to load it with the default theme.',
+    myThemes: {
+      import: 'Import a theme',
+      hint: 'These themes live in this browser only: no one else sees them, and clearing site data deletes them, so keep your zip.',
+      empty: 'No themes yet.',
+      use: 'Use',
+      export: 'Export',
+      trustTitle: 'Do you trust this file?',
+      trustBody:
+        'Only import themes from people you trust. A theme can change how this app looks and what it appears to say, and nothing checks it.',
+      unreadable:
+        'This zip is not a theme package: it needs a readable theme.json and a theme.css at its root.',
+      replaceTitle: (name: string, from: string, to: string) =>
+        `Replace ${name} v${from} with v${to}?`,
+      replace: 'Replace',
+      replaceBody: 'The version in this browser goes away.',
+      deleteTitle: (name: string) => `Delete ${name}?`,
+      deleteBody: (fallback: string) =>
+        `It goes from this browser. If you are using it, you go back to ${fallback}.`,
+      imported: (name: string) => `${name} imported.`,
+      replaced: (name: string) => `${name} replaced.`,
+      deleted: (name: string) => `${name} deleted.`,
+      previewFailed: 'This theme’s preview could not be drawn.',
+    },
     themeFallback:
       'The theme could not be loaded, so the default theme is shown. Your choice is kept.',
     gallery: 'Open the theme gallery',

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { isSkinLoaded, loadSkin, reloadSkin } from '../../src/lib/skins.svelte.js';
+import { forgetSkin, isSkinLoaded, loadSkin, reloadSkin } from '../../src/lib/skins.svelte.js';
 import { t } from '../../src/i18n/t.js';
 import { appearance, applySkin, notes } from '../../src/lib/ui.svelte.js';
 
@@ -103,6 +103,39 @@ describe('a skin that can not be loaded', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('a local theme', () => {
+  it('that is not in this browser gives Carnet and the toast, without asking the server', async () => {
+    notes.length = 0;
+    applySkin('local-x');
+    await vi.waitFor(() => expect(appearance.skin).toBe('carnet'));
+    expect(requests.filter((url) => url.includes('local-x'))).toEqual([]);
+    expect(notes.map((n) => n.text)).toEqual([t.account.themeFallback]);
+    expect(isSkinLoaded('local-x')).toBe(false);
+  });
+
+  it('comes from the boot script when it read it first', async () => {
+    window.solsticeBootSkin = {
+      id: 'local-y',
+      css: Promise.resolve("[data-skin='y'] { src: url(data:font/woff2;base64,AAAA); }"),
+    };
+    expect(await loadSkin('local-y')).toBe(true);
+    const css = document.querySelector('style[data-skin-css="local-y"]')?.textContent;
+    expect(css).toContain("[data-skin='local-y']");
+    expect(css).toContain('url(data:font/woff2;base64,AAAA)');
+    expect(requests).toEqual([]);
+  });
+
+  it('leaves the page when it is forgotten, and can come back', async () => {
+    window.solsticeBootSkin = { id: 'local-z', css: Promise.resolve("[data-skin='z'] { }") };
+    await loadSkin('local-z');
+    forgetSkin('local-z');
+    expect(isSkinLoaded('local-z')).toBe(false);
+    expect(document.querySelector('style[data-skin-css="local-z"]')).toBeNull();
+    window.solsticeBootSkin = { id: 'local-z', css: Promise.resolve("[data-skin='z'] { }") };
+    expect(await loadSkin('local-z')).toBe(true);
   });
 });
 

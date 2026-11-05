@@ -2201,6 +2201,7 @@ export const fr: Messages = {
     sections: {
       profile: 'Profil',
       appearance: 'Langue et apparence',
+      themes: 'Mes thèmes',
       shortcuts: 'Raccourcis clavier',
       notifications: 'Notifications',
       tokens: 'Jetons d’accès',
@@ -2258,6 +2259,29 @@ export const fr: Messages = {
     themeHint: 'Le thème et le mode clair ou sombre ne s’appliquent qu’à vous.',
     themeRescueHint:
       'Si un thème casse la page, ajoutez ?skin=carnet à l’adresse pour l’afficher avec le thème par défaut.',
+    myThemes: {
+      import: 'Importer un thème',
+      hint: 'Ces thèmes restent dans ce navigateur : personne d’autre ne les voit, et effacer les données du site les supprime. Gardez donc votre zip.',
+      empty: 'Aucun thème pour l’instant.',
+      use: 'Utiliser',
+      export: 'Exporter',
+      trustTitle: 'Faites-vous confiance à ce fichier ?',
+      trustBody:
+        'N’importez que des thèmes de personnes en qui vous avez confiance. Un thème peut changer l’apparence de cette application et ce qu’elle semble dire, et rien ne le vérifie.',
+      unreadable:
+        'Ce zip n’est pas un paquet de thème : il lui faut, à sa racine, un theme.json lisible et un theme.css.',
+      replaceTitle: (name: string, from: string, to: string) =>
+        `Remplacer ${name} v${from} par la v${to} ?`,
+      replace: 'Remplacer',
+      replaceBody: 'La version présente dans ce navigateur disparaît.',
+      deleteTitle: (name: string) => `Supprimer ${name} ?`,
+      deleteBody: (fallback: string) =>
+        `Il disparaît de ce navigateur. Si vous l’utilisez, vous revenez à ${fallback}.`,
+      imported: (name: string) => `${name} importé.`,
+      replaced: (name: string) => `${name} remplacé.`,
+      deleted: (name: string) => `${name} supprimé.`,
+      previewFailed: 'L’aperçu de ce thème n’a pas pu être dessiné.',
+    },
     themeFallback:
       'Le thème n’a pas pu être chargé : le thème par défaut est affiché. Votre choix est conservé.',
     gallery: 'Ouvrir la galerie des thèmes',

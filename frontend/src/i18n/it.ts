@@ -2205,6 +2205,7 @@ export const it: Messages = {
     sections: {
       profile: 'Profilo',
       appearance: 'Lingua e aspetto',
+      themes: 'I miei temi',
       shortcuts: 'Scorciatoie da tastiera',
       notifications: 'Notifiche',
       tokens: 'Token di accesso',
@@ -2262,6 +2263,29 @@ export const it: Messages = {
     themeHint: 'Il tema e la modalità chiara o scura valgono solo per te.',
     themeRescueHint:
       'Se un tema rende la pagina inutilizzabile, aggiungi ?skin=carnet all’indirizzo per caricarla con il tema predefinito.',
+    myThemes: {
+      import: 'Importa un tema',
+      hint: 'Questi temi restano solo in questo browser: nessun altro li vede e cancellando i dati del sito vengono eliminati, quindi conserva il tuo zip.',
+      empty: 'Ancora nessun tema.',
+      use: 'Usa',
+      export: 'Esporta',
+      trustTitle: 'Ti fidi di questo file?',
+      trustBody:
+        'Importa solo temi di persone di cui ti fidi. Un tema può cambiare l’aspetto di questa app e ciò che sembra dire, e nessuno lo controlla.',
+      unreadable:
+        'Questo zip non è un pacchetto tema: nella radice servono un theme.json leggibile e un theme.css.',
+      replaceTitle: (name: string, from: string, to: string) =>
+        `Sostituire ${name} v${from} con v${to}?`,
+      replace: 'Sostituisci',
+      replaceBody: 'La versione in questo browser viene rimossa.',
+      deleteTitle: (name: string) => `Eliminare ${name}?`,
+      deleteBody: (fallback: string) =>
+        `Viene rimosso da questo browser. Se lo stai usando, torni a ${fallback}.`,
+      imported: (name: string) => `${name} importato.`,
+      replaced: (name: string) => `${name} sostituito.`,
+      deleted: (name: string) => `${name} eliminato.`,
+      previewFailed: 'Non è stato possibile disegnare l’anteprima di questo tema.',
+    },
     themeFallback:
       'Non è stato possibile caricare il tema, quindi viene mostrato quello predefinito. La tua scelta resta salvata.',
     gallery: 'Apri la galleria dei temi',

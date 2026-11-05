@@ -3,12 +3,14 @@
  * stylesheet (GET /api/themes/<id>/theme.css), fetched the first time the skin
  * is shown (chosen, or previewed in the gallery) and added to the end of
  * <head>, so its rules win ties with the base ones. public/theme-boot.js has
- * already started the fetch of the stored skin.
+ * already started the fetch of the stored skin. A local theme's stylesheet
+ * comes from this browser instead.
  */
 
-import type { Skin, ThemeManifest } from '../core/appearance.js';
+import { isLocalSkin, type Skin, type ThemeManifest } from '../core/appearance.js';
 import { hasDarkVariant, rebaseSkinCss, scopeSkinCss } from '../core/skin-css.js';
 import { api } from './api.js';
+import { readLocalCss } from './local-themes.js';
 
 /** The themes the server offers, in the order the theme menus list them, and its contract. */
 export const themes = $state<{ list: ThemeManifest[]; contract: number }>({
@@ -60,6 +62,7 @@ function bootFetch(skin: Skin): Promise<string | null> | undefined {
 }
 
 async function fetchCss(skin: Skin, cache?: RequestCache): Promise<string | null> {
+  if (isLocalSkin(skin)) return readLocalCss(skin);
   try {
     const res = await fetch(`/api/themes/${skin}/theme.css`, {
       credentials: 'same-origin',
@@ -96,6 +99,15 @@ export function loadSkin(skin: Skin, cache?: RequestCache): Promise<boolean> {
     pending[skin] = p;
   }
   return p;
+}
+
+/** Takes a skin out of the page: it is gone, and may come back with other rules. */
+export function forgetSkin(skin: Skin): void {
+  delete pending[skin];
+  delete skinSheets[skin];
+  for (const style of document.head.querySelectorAll(`style[data-skin-css="${skin}"]`)) {
+    style.remove();
+  }
 }
 
 /** Fetches a skin already asked for again, its package having changed; the old stylesheet stays until the new one is in. */

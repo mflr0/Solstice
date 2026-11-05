@@ -1,7 +1,7 @@
 // Applies the saved skin and colour mode before the page is drawn, so it
 // never flashes in the wrong theme, and sets <html lang>. A plain script (not
-// a module) loaded in <head>; it mirrors src/core/appearance.ts and
-// src/i18n/locales.ts — keep them in step.
+// a module) loaded in <head>; it mirrors src/core/appearance.ts,
+// src/lib/local-themes.ts and src/i18n/locales.ts — keep them in step.
 (function () {
   var root = document.documentElement;
   var skin = 'carnet';
@@ -10,7 +10,7 @@
   var s = new URLSearchParams(location.search).get('skin');
   try {
     if (!s) s = localStorage.getItem('solstice.skin');
-    if (s && /^[a-z0-9-]{1,32}$/.test(s)) skin = s;
+    if (s && /^[a-z0-9-]{1,38}$/.test(s)) skin = s;
     var m = localStorage.getItem('solstice.theme');
     if (m === 'light' || m === 'dark') mode = m;
   } catch {
@@ -55,15 +55,44 @@
   setTimeout(function () {
     root.removeAttribute('data-skin-loading');
   }, 10000);
+  // A theme kept in this browser: its stylesheet, null when it isn't here.
+  function localCss(id) {
+    return new Promise(function (resolve) {
+      var req = indexedDB.open('solstice-themes', 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore('themes', { keyPath: 'id' });
+      };
+      req.onerror = function () {
+        resolve(null);
+      };
+      req.onsuccess = function () {
+        var db = req.result;
+        var get = db.transaction('themes').objectStore('themes').get(id);
+        get.onerror = function () {
+          db.close();
+          resolve(null);
+        };
+        get.onsuccess = function () {
+          db.close();
+          resolve(get.result ? get.result.css : null);
+        };
+      };
+    }).catch(function () {
+      return null;
+    });
+  }
   // Started here, so the stylesheet doesn't wait for the application's scripts.
   window.solsticeBootSkin = {
     id: skin,
-    css: fetch('/api/themes/' + skin + '/theme.css', { credentials: 'same-origin' })
-      .then(function (res) {
-        return res.ok ? res.text() : null;
-      })
-      .catch(function () {
-        return null;
-      }),
+    css:
+      skin.indexOf('local-') === 0
+        ? localCss(skin)
+        : fetch('/api/themes/' + skin + '/theme.css', { credentials: 'same-origin' })
+            .then(function (res) {
+              return res.ok ? res.text() : null;
+            })
+            .catch(function () {
+              return null;
+            }),
   };
 })();
