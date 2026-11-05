@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { OAuthGrant } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -14,6 +16,8 @@
   let grants = $state<OAuthGrant[] | null>(null);
   let loadError = $state('');
   let revoking = $state<OAuthGrant | null>(null);
+
+  const revokeId = (g: OAuthGrant) => `app-revoke-${g.id}`;
 
   async function load() {
     try {
@@ -32,7 +36,7 @@
 <header class="page-head">
   <div>
     <p class="eyebrow">{t.account.title}</p>
-    <h1 class="page-title">{t.account.sections.apps}</h1>
+    <h1 class="page-title" id="apps-title" tabindex="-1">{t.account.sections.apps}</h1>
   </div>
 </header>
 <p class="lead-text">{t.appsPage.intro}</p>
@@ -76,7 +80,9 @@
               {g.lastUsed ? relative(g.lastUsed) : t.appsPage.neverUsed}
             </td>
             <td class="row-actions">
-              <button class="link-btn" onclick={() => (revoking = g)}>{t.appsPage.revoke}</button>
+              <button id={revokeId(g)} class="link-btn" onclick={() => (revoking = g)}
+                >{t.appsPage.revoke}</button
+              >
             </td>
           </tr>
         {/each}
@@ -92,9 +98,11 @@
   onclose={() => (revoking = null)}
   onconfirm={async () => {
     if (!revoking) return;
+    const focus = focusOrderAfterRemoval(grants ?? [], revoking, revokeId, 'apps-title');
     await accountApi.revokeGrant(revoking.id);
     notify(t.appsPage.revoked);
-    void load();
+    await load();
+    refocusLater(focus);
   }}
 >
   <p>{t.appsPage.revokeBody}</p>

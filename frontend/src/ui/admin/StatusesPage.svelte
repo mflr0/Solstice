@@ -2,9 +2,11 @@
   import { matches } from '../../core/admin-forms.js';
   import type { StatusRow, StatusUsage } from '../../core/admin-types.js';
   import { arrowAfterMove, moveItem, statusUnused } from '../../core/catalogs.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -103,13 +105,17 @@
     void refreshMeta();
   }
 
+  const deleteId = (item: StatusRow) => `status-delete-${item.id}`;
+
   async function remove() {
     const item = removing;
     if (!item) return;
+    const focus = focusOrderAfterRemoval(list, item, deleteId, 'status-new');
     await adminApi.deleteStatus(item.id);
     notify(t.catalogAdmin.deleted(item.name));
     await load();
     void refreshMeta();
+    refocusLater(focus);
   }
 
   async function showWhere(item: StatusRow) {
@@ -141,7 +147,7 @@
       {#if items}<span class="count muted">{formatNumber(items.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
+  <button id="status-new" class="btn btn-primary" onclick={() => (dialog = { item: null })}
     >{t.statusesAdmin.newItem}</button
   >
 </header>
@@ -233,7 +239,7 @@
                 <button class="link-btn" onclick={() => (dialog = { item })}>{t.common.edit}</button
                 >
                 {#if statusUnused(item)}
-                  <button class="link-btn" onclick={() => (removing = item)}
+                  <button id={deleteId(item)} class="link-btn" onclick={() => (removing = item)}
                     >{t.common.delete}</button
                   >
                 {:else}

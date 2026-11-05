@@ -9,8 +9,10 @@
     usageOf,
     type CatalogSection,
   } from '../../core/catalogs.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -119,6 +121,8 @@
     void refreshMeta();
   }
 
+  const deleteId = (item: CatalogItem) => `catalog-delete-${item.id}`;
+
   function askRemove(item: CatalogItem) {
     removing = item;
     moveTo = '';
@@ -130,10 +134,12 @@
     const used = usageOf(item) > 0;
     if (used && !moveTo) throw new Error(t.catalogAdmin.chooseTarget);
     const target = used ? targets.find((x) => String(x.id) === moveTo)?.id : undefined;
+    const focus = focusOrderAfterRemoval(list, item, deleteId, 'catalog-new');
     await adminApi.deleteCatalogItem(apiKind, item.id, target);
     notify(t.catalogAdmin.deleted(item.name));
     await load();
     void refreshMeta();
+    refocusLater(focus);
   }
 
   const usageText = (i: CatalogItem) => {
@@ -151,7 +157,9 @@
       {#if items}<span class="count muted">{formatNumber(items.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (dialog = { item: null })}>{m.newItem}</button>
+  <button id="catalog-new" class="btn btn-primary" onclick={() => (dialog = { item: null })}
+    >{m.newItem}</button
+  >
 </header>
 <p class="lead-text">{m.intro}</p>
 
@@ -290,7 +298,9 @@
               <td class="row-actions">
                 <button class="link-btn" onclick={() => (dialog = { item })}>{t.common.edit}</button
                 >
-                <button class="link-btn" onclick={() => askRemove(item)}>{t.common.delete}</button>
+                <button id={deleteId(item)} class="link-btn" onclick={() => askRemove(item)}
+                  >{t.common.delete}</button
+                >
               </td>
             </tr>
           {/each}

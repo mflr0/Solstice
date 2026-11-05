@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { VersionRow } from '../../core/admin-types.js';
   import { todayISO } from '../../core/dates.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import {
     datesProblem,
     moveItem,
@@ -8,6 +9,7 @@
     releaseTargets,
   } from '../../core/project-admin.js';
   import { formatDay, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -128,6 +130,9 @@
     await load();
   }
 
+  const deleteId = (v: VersionRow) => `version-delete-${v.id}`;
+  const mergeId = (v: VersionRow) => `version-merge-${v.id}`;
+
   function askMerge(v: VersionRow) {
     merging = v;
     into = '';
@@ -138,9 +143,11 @@
     if (!v) return;
     const target = mergeChoices.find((x) => String(x.id) === into);
     if (!target) throw new Error(t.catalogAdmin.chooseTarget);
+    const focus = focusOrderAfterRemoval(items ?? [], v, mergeId, 'version-new');
     await projectAdminApi.mergeVersion(projectKey, v.id, target.id);
     notify(t.projectConfig.versions.merged(v.name, target.name));
     await load();
+    refocusLater(focus);
   }
 
   function askRemove(v: VersionRow) {
@@ -154,12 +161,14 @@
     if (!v) return;
     const fix = removeChoices.find((x) => String(x.id) === fixTo)?.id;
     const affects = removeChoices.find((x) => String(x.id) === affectsTo)?.id;
+    const focus = focusOrderAfterRemoval(items ?? [], v, deleteId, 'version-new');
     await projectAdminApi.deleteVersion(projectKey, v.id, {
       ...(fix ? { fixTo: fix } : {}),
       ...(affects ? { affectsTo: affects } : {}),
     });
     notify(t.projectConfig.versions.deleted(v.name));
     await load();
+    refocusLater(focus);
   }
 </script>
 
@@ -168,8 +177,11 @@
   {#if items}<span class="count">{items.length}</span>{/if}
   {#if items}
     <span class="actions">
-      <button type="button" class="btn btn-small" onclick={() => (dialog = { item: null })}
-        >{t.projectConfig.versions.new}</button
+      <button
+        type="button"
+        id="version-new"
+        class="btn btn-small"
+        onclick={() => (dialog = { item: null })}>{t.projectConfig.versions.new}</button
       >
     </span>
   {/if}
@@ -264,10 +276,10 @@
                       : t.projectConfig.versions.archived(v.name),
                   )}>{v.archived ? t.projectsAdmin.unarchive : t.projectsAdmin.archive}</button
               >
-              <button type="button" class="link-btn" onclick={() => askMerge(v)}
+              <button type="button" id={mergeId(v)} class="link-btn" onclick={() => askMerge(v)}
                 >{t.projectConfig.versions.mergeAction}</button
               >
-              <button type="button" class="link-btn" onclick={() => askRemove(v)}
+              <button type="button" id={deleteId(v)} class="link-btn" onclick={() => askRemove(v)}
                 >{t.common.delete}</button
               >
             </td>

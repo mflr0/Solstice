@@ -11,11 +11,13 @@
     type Gadget,
   } from '../../core/dashboard.js';
   import { localParts } from '../../core/dates.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import type { SortTerm } from '../../core/jql.js';
   import { paths } from '../../core/route.js';
   import { scopeGadgetQuery } from '../../core/scope.js';
   import { NATIVE_COLUMNS, type ColumnChoice } from '../../core/search-columns.js';
   import { renderDay, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -140,6 +142,26 @@
     );
   }
 
+  /**
+   * By position in the ids: once saved, a default gadget gets an id. Refused,
+   * the row comes back, and focus with it.
+   */
+  function removeGadget(i: number) {
+    const focus = focusOrderAfterRemoval(
+      gadgets.map((_, k) => k),
+      i,
+      (k) => `gadget-remove-${k > i ? k - 1 : k}`,
+      'gadget-add',
+    );
+    save(gadgets.filter((_, k) => k !== i)).then(
+      () => refocusLater(focus),
+      (e: unknown) => {
+        notify(errorMessage(e), 'error');
+        refocusLater([`gadget-remove-${i}`]);
+      },
+    );
+  }
+
   function step(i: number, by: -1 | 1) {
     const to = i + by;
     if (saving || to < 0 || to >= gadgets.length) return;
@@ -176,6 +198,7 @@
       <div class="head-actions">
         {#if editing && gadgets.length > 0}
           <button
+            id="gadget-add"
             class="btn"
             disabled={saving || gadgets.length >= MAX_GADGETS}
             title={gadgets.length >= MAX_GADGETS ? t.home.full : undefined}
@@ -198,7 +221,7 @@
     <p class="muted loading">{t.common.loading}</p>
   {:else if gadgets.length === 0}
     <EmptyState message={t.home.emptyDashboard} hint={t.home.emptyDashboardHint}>
-      <button class="btn btn-primary" onclick={() => (dialog = { gadget: null })}
+      <button id="gadget-add" class="btn btn-primary" onclick={() => (dialog = { gadget: null })}
         >{t.home.addGadget}</button
       >
     </EmptyState>
@@ -249,10 +272,10 @@
                 >{t.home.configure}</button
               >
               <button
+                id="gadget-remove-{i}"
                 class="link-btn"
                 disabled={saving}
-                onclick={() => saveQuietly(gadgets.filter((x) => x !== g))}
-                >{t.common.remove}</button
+                onclick={() => removeGadget(i)}>{t.common.remove}</button
               >
             {:else if q !== null}
               <a class="link-btn" href={paths.search(q)}>{t.common.seeAll}</a>
