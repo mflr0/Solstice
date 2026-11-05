@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
 import { THEMES } from './themes-fixture.js';
+import type { ThemeManifest } from '../../src/core/appearance.js';
 import { paths } from '../../src/core/route.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
@@ -22,6 +23,12 @@ vi.mock('../../src/lib/api.js', () => ({
   },
   errorMessage: String,
   pictureUrl: (id: number) => `/api/users/${id}/picture`,
+}));
+
+const localThemes = vi.hoisted(() => ({ list: [] as ThemeManifest[] }));
+vi.mock('../../src/lib/local-themes.js', () => ({
+  localThemeManifests: () => Promise.resolve(localThemes.list),
+  readLocalCss: () => Promise.resolve("[data-skin='x'] { }"),
 }));
 
 vi.stubGlobal('fetch', () => Promise.resolve(new Response("[data-skin='x'] { }")));
@@ -202,6 +209,39 @@ describe('TopBar keyboard', () => {
     key(focused(), 'Escape');
     expect(document.querySelector('.theme-menu')).toBeNull();
     expect(focused()).toBe(themes);
+  });
+
+  it('lists the local themes under their own heading, read again on each opening', async () => {
+    const heading = () =>
+      [...document.querySelectorAll('.theme-menu .theme-head span')].map((e) =>
+        e.textContent?.trim(),
+      );
+    const themes = button(t.nav.themes);
+    themes.click();
+    await settle();
+    expect(heading()).not.toContain(t.account.sections.themes);
+    themes.click();
+    flushSync();
+
+    localThemes.list = [{ ...THEMES[0]!, id: 'local-mine', name: { en: 'Mine' } }];
+    try {
+      themes.click();
+      await settle();
+      expect(heading()).toContain(t.account.sections.themes);
+      const group = document.querySelector<HTMLElement>(
+        `.theme-menu [role="group"][aria-label="${t.account.sections.themes}"]`,
+      )!;
+      const name = group.querySelector<HTMLButtonElement>('.skin-name')!;
+      expect(name.textContent?.trim()).toBe('Mine');
+      // Added after the menu opened, and still past Tab like the rest.
+      expect(tabbable(group)).toEqual([]);
+      name.click();
+      flushSync();
+      expect(appearance.skin).toBe('local-mine');
+    } finally {
+      localThemes.list = [];
+      applySkin('carnet');
+    }
   });
 
   it('flips the mode from the switch at the top of the theme menu and keeps the skin', async () => {

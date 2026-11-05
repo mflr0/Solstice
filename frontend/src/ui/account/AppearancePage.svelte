@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { localized, MODES } from '../../core/appearance.js';
+  import { localized, MODES, type ThemeManifest } from '../../core/appearance.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { LOCALE_NAMES, locale, type Locale } from '../../i18n/index.js';
   import { LOCALE_STORAGE_KEY, localeOptions, negotiate, parseLocale } from '../../i18n/locales.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import { localThemeManifests } from '../../lib/local-themes.js';
   import { chooseLocale } from '../../lib/locale.js';
   import { session } from '../../lib/session.svelte.js';
   import { loadThemes, themes } from '../../lib/skins.svelte.js';
@@ -26,7 +27,11 @@
     typeof navigator !== 'undefined' ? navigator.languages : [],
   );
   let busy = $state(false);
-  onMount(() => void loadThemes());
+  let mine = $state.raw<ThemeManifest[]>([]);
+  onMount(() => {
+    void loadThemes();
+    void localThemeManifests().then((list) => (mine = list));
+  });
 
   const options = [
     {
@@ -105,28 +110,18 @@
   <h2 class="section-title" id="theme-title">{t.account.theme}</h2>
   <div class="skins" role="group" aria-labelledby="theme-title">
     {#each themes.list as theme (theme.id)}
-      {@const skin = theme.id}
-      <button
-        type="button"
-        class="skin"
-        aria-pressed={appearance.skin === skin}
-        onclick={() => applySkin(skin)}
-      >
-        <span
-          class="swatch"
-          aria-hidden="true"
-          style:--sw-paper={theme.preview.light?.paper}
-          style:--sw-ink={theme.preview.light?.ink}
-          style:--sw-accent={theme.preview.light?.accent}
-        ></span>
-        <span class="skin-text">
-          <span class="skin-name">{localized(theme.name, locale)}</span>
-          <span class="muted small">{localized(theme.description, locale)}</span>
-          <ThemeContractFlag theme={theme.contract} server={themes.contract} />
-        </span>
-      </button>
+      {@render entry(theme)}
     {/each}
   </div>
+
+  {#if mine.length > 0}
+    <h3 class="field-label" id="my-themes">{t.account.sections.themes}</h3>
+    <div class="skins" role="group" aria-labelledby="my-themes">
+      {#each mine as theme (theme.id)}
+        {@render entry(theme)}
+      {/each}
+    </div>
+  {/if}
 
   <fieldset class="choices inline">
     <legend class="field-label">{t.nav.mode}</legend>
@@ -152,6 +147,29 @@
     </div>
   </div>
 </section>
+
+{#snippet entry(theme: ThemeManifest)}
+  {@const skin = theme.id}
+  <button
+    type="button"
+    class="skin"
+    aria-pressed={appearance.skin === skin}
+    onclick={() => applySkin(skin)}
+  >
+    <span
+      class="swatch"
+      aria-hidden="true"
+      style:--sw-paper={theme.preview.light?.paper}
+      style:--sw-ink={theme.preview.light?.ink}
+      style:--sw-accent={theme.preview.light?.accent}
+    ></span>
+    <span class="skin-text">
+      <span class="skin-name">{localized(theme.name, locale)}</span>
+      <span class="muted small">{localized(theme.description, locale)}</span>
+      <ThemeContractFlag theme={theme.contract} server={themes.contract} />
+    </span>
+  </button>
+{/snippet}
 
 <style>
   .look {

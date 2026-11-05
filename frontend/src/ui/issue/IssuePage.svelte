@@ -14,7 +14,7 @@
   import { shortcutFor } from '../../core/shortcuts.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
-  import { outside, refocus } from '../../lib/actions.js';
+  import { menu, outside, refocus } from '../../lib/actions.js';
   import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../../lib/api.js';
   import { live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -66,6 +66,7 @@
   let summaryButton = $state<HTMLElement>();
   let descriptionButton = $state<HTMLElement>();
   let menuOpen = $state(false);
+  let moreButton: HTMLButtonElement | undefined = $state();
   let deleteArmed = $state(false);
   let cloneOpen = $state(false);
   let moveOpen = $state(false);
@@ -256,6 +257,18 @@
     e.preventDefault();
   }
 
+  function closeMore() {
+    menuOpen = false;
+    deleteArmed = false;
+  }
+
+  /** Opens a dialog from the More actions menu; the dialog gives focus back to what held it. */
+  function openFromMore(open: () => void) {
+    moreButton?.focus();
+    open();
+    closeMore();
+  }
+
   async function remove() {
     if (!issue) return;
     if (!deleteArmed) {
@@ -371,29 +384,29 @@
             <span class="n">{issue.votes.count}</span>
           </button>
           {#if issue.can.create || issue.can.delete || canMove}
-            <span class="more" use:outside={() => ((menuOpen = false), (deleteArmed = false))}>
+            <span class="more" use:outside={closeMore}>
               <button
+                bind:this={moreButton}
                 class="btn btn-small btn-quiet"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label={t.issue.menu}
-                onclick={() => (menuOpen = !menuOpen)}>⋯</button
+                onclick={() => (menuOpen ? closeMore() : (menuOpen = true))}>⋯</button
               >
               {#if menuOpen}
-                <div class="popover" role="menu">
+                <div class="popover" role="menu" use:menu={closeMore}>
                   {#if issue.can.create}
                     <button
                       class="item"
                       role="menuitem"
-                      onclick={() => ((cloneOpen = true), (menuOpen = false))}
-                      >{t.issue.clone}</button
+                      onclick={() => openFromMore(() => (cloneOpen = true))}>{t.issue.clone}</button
                     >
                   {/if}
                   {#if canMove}
                     <button
                       class="item"
                       role="menuitem"
-                      onclick={() => ((moveOpen = true), (menuOpen = false))}>{t.issue.move}</button
+                      onclick={() => openFromMore(() => (moveOpen = true))}>{t.issue.move}</button
                     >
                   {/if}
                   {#if issue.can.delete}
