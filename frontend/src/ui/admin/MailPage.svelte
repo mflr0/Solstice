@@ -109,6 +109,7 @@
   }
 
   async function test() {
+    if (testing || saving) return;
     testResult = null;
     if (testProblem) return;
     if (dirty && !(await save())) return;
@@ -333,7 +334,11 @@
             aria-invalid={!!testProblem}
           />
         </label>
-        <button class="btn btn-primary" type="submit" disabled={testing || saving || !!testProblem}
+        <button
+          class="btn btn-primary"
+          type="submit"
+          disabled={!!testProblem}
+          aria-disabled={testing || saving || undefined}
           >{testing
             ? t.mailAdmin.testing
             : dirty

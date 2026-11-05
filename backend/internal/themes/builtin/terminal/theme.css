@@ -803,7 +803,7 @@
   content: ']';
 }
 
-[data-skin='terminal'] .btn:hover:not([disabled]),
+[data-skin='terminal'] .btn:hover:not([disabled], [aria-disabled='true']),
 [data-skin='terminal'] .btn:focus-visible {
   border-color: var(--term-inv);
   background: var(--term-inv);
@@ -811,14 +811,14 @@
   text-shadow: none;
 }
 
-[data-skin='terminal'] .btn:hover:not([disabled])::before,
-[data-skin='terminal'] .btn:hover:not([disabled])::after,
+[data-skin='terminal'] .btn:hover:not([disabled], [aria-disabled='true'])::before,
+[data-skin='terminal'] .btn:hover:not([disabled], [aria-disabled='true'])::after,
 [data-skin='terminal'] .btn:focus-visible::before,
 [data-skin='terminal'] .btn:focus-visible::after {
   color: inherit;
 }
 
-[data-skin='terminal'] .btn:active:not([disabled]) {
+[data-skin='terminal'] .btn:active:not([disabled], [aria-disabled='true']) {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
@@ -844,14 +844,14 @@
   color: inherit;
 }
 
-[data-skin='terminal'] .btn.btn-primary:hover:not([disabled]),
+[data-skin='terminal'] .btn.btn-primary:hover:not([disabled], [aria-disabled='true']),
 [data-skin='terminal'] .btn.btn-primary:focus-visible {
   border-color: var(--term-bright);
   background: var(--term-bright);
   color: var(--primary-ink);
 }
 
-[data-skin='terminal'][data-scheme='dark'] .btn.btn-primary:hover:not([disabled]) {
+[data-skin='terminal'][data-scheme='dark'] .btn.btn-primary:hover:not([disabled], [aria-disabled='true']) {
   box-shadow: var(--term-glow-strong);
 }
 
@@ -873,15 +873,15 @@
   color: var(--term-alert);
 }
 
-[data-skin='terminal'] .btn.btn-danger:hover:not([disabled]),
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled], [aria-disabled='true']),
 [data-skin='terminal'] .btn.btn-danger:focus-visible {
   border-color: var(--term-alert);
   background: var(--term-alert);
   color: var(--paper);
 }
 
-[data-skin='terminal'] .btn.btn-danger:hover:not([disabled])::before,
-[data-skin='terminal'] .btn.btn-danger:hover:not([disabled])::after {
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled], [aria-disabled='true'])::before,
+[data-skin='terminal'] .btn.btn-danger:hover:not([disabled], [aria-disabled='true'])::after {
   color: inherit;
 }
 
@@ -905,15 +905,15 @@
   content: none;
 }
 
-[data-skin='terminal'] .btn[disabled],
-[data-skin='terminal'] .btn[disabled]::before,
-[data-skin='terminal'] .btn[disabled]::after {
+[data-skin='terminal'] .btn:is([disabled], [aria-disabled='true']),
+[data-skin='terminal'] .btn:is([disabled], [aria-disabled='true'])::before,
+[data-skin='terminal'] .btn:is([disabled], [aria-disabled='true'])::after {
   opacity: 1;
   color: var(--muted);
   cursor: not-allowed;
 }
 
-[data-skin='terminal'] .btn.btn-primary[disabled] {
+[data-skin='terminal'] .btn.btn-primary:is([disabled], [aria-disabled='true']) {
   border: 1px dashed var(--rule-strong);
   background: transparent;
   box-shadow: none;

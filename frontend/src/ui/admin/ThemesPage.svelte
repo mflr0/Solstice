@@ -79,6 +79,7 @@
   }
 
   function chooseFile(target: AdminTheme | null) {
+    if (uploading) return;
     replacing = target;
     fileInput?.click();
   }
@@ -110,6 +111,7 @@
   }
 
   async function setEnabled(theme: AdminTheme, on: boolean) {
+    if (switching === theme.id) return;
     switching = theme.id;
     try {
       await adminApi.switchTheme(theme.id, on);
@@ -136,8 +138,10 @@
     <p class="eyebrow">{t.adminArea.groups.general}</p>
     <h1 class="page-title">{t.adminArea.sections.themes}</h1>
   </div>
-  <button class="btn btn-primary" disabled={uploading} onclick={() => chooseFile(null)}
-    >{uploading ? m.uploading : m.import}</button
+  <button
+    class="btn btn-primary"
+    aria-disabled={uploading || undefined}
+    onclick={() => chooseFile(null)}>{uploading ? m.uploading : m.import}</button
   >
 </header>
 <p class="lead-text">{m.intro}</p>
@@ -216,14 +220,16 @@
           {#if can.switchOff || !theme.enabled}
             <button
               class="btn btn-small"
-              disabled={switching === theme.id}
+              aria-disabled={switching === theme.id || undefined}
               onclick={() => void setEnabled(theme, !theme.enabled)}
               >{theme.enabled ? m.disable : m.enable}</button
             >
           {/if}
           {#if can.replace}
-            <button class="btn btn-small" disabled={uploading} onclick={() => chooseFile(theme)}
-              >{m.replace}</button
+            <button
+              class="btn btn-small"
+              aria-disabled={uploading || undefined}
+              onclick={() => chooseFile(theme)}>{m.replace}</button
             >
           {/if}
           {#if can.remove}

@@ -228,7 +228,8 @@
     <button
       type="button"
       class="btn btn-small"
-      disabled={jql === null || exporting}
+      disabled={jql === null}
+      aria-disabled={exporting || undefined}
       onclick={() => void exportCsv()}>{t.search.exportCsv}</button
     >
     <div class="mode-switch" role="group" aria-label={t.search.mode}>

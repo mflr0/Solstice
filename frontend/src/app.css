@@ -549,7 +549,7 @@ mark.match {
   text-decoration: none;
 }
 
-.btn:hover:not([disabled]) {
+.btn:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--ink-soft);
 }
 
@@ -559,7 +559,7 @@ mark.match {
   color: var(--primary-ink);
 }
 
-.btn-primary:hover:not([disabled]) {
+.btn-primary:hover:not([disabled], [aria-disabled='true']) {
   background: color-mix(in srgb, var(--primary) 86%, black);
   border-color: color-mix(in srgb, var(--primary) 86%, black);
 }
@@ -570,7 +570,7 @@ mark.match {
   color: var(--ink-soft);
 }
 
-.btn-quiet:hover:not([disabled]) {
+.btn-quiet:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--rule-strong);
   color: var(--ink);
 }
@@ -600,7 +600,7 @@ mark.match {
   stroke-linejoin: round;
 }
 
-.btn[disabled] {
+.btn:is([disabled], [aria-disabled='true']) {
   opacity: 0.5;
   cursor: default;
 }
@@ -615,7 +615,7 @@ mark.match {
   color: var(--accent-text);
 }
 
-.btn-danger:hover:not([disabled]) {
+.btn-danger:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--accent);
 }
 

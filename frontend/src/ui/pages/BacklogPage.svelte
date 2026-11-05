@@ -365,8 +365,10 @@
                   >{t.boards.completeSprint}</button
                 >
               {:else if d.can.manage && section.id === 0 && !kanban}
-                <button class="btn btn-small" disabled={creatingSprint} onclick={createSprint}
-                  >{t.boards.createSprint}</button
+                <button
+                  class="btn btn-small"
+                  aria-disabled={creatingSprint || undefined}
+                  onclick={createSprint}>{t.boards.createSprint}</button
                 >
               {/if}
             {/snippet}
