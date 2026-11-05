@@ -31,7 +31,7 @@ func TestRouteScopes(t *testing.T) {
 		"GET /.well-known/oauth-authorization-server", "POST /oauth/token", "POST /oauth/revoke", "POST /register",
 	}
 	readingWrites := []string{
-		"POST /api/refs", "POST /api/themes/check", "POST /rest/api/2/search", "POST /rest/api/latest/search", "DELETE /rest/auth/1/session",
+		"POST /api/refs", "POST /rest/api/2/search", "POST /rest/api/latest/search", "DELETE /rest/auth/1/session",
 	}
 	var gotPublic []string
 	for _, pattern := range slices.Sorted(maps.Keys(s.routeScopes)) {

@@ -107,23 +107,6 @@ func readThemeZip(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	}
 }
 
-// checkTheme answers what a package's sender needs to use it in their own
-// browser. It stores nothing.
-func (s *Server) checkTheme(w http.ResponseWriter, r *http.Request) error {
-	data, err := readThemeZip(w, r)
-	if err != nil {
-		return err
-	}
-	checked, err := themes.Check(r.Context(), data)
-	if err != nil {
-		return err
-	}
-	if checked.Refused {
-		return themeRefused(checked.Findings)
-	}
-	return writeJSON(w, http.StatusOK, checked)
-}
-
 func (s *Server) adminThemes(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
