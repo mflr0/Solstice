@@ -164,6 +164,7 @@ export const hi: Messages = {
     apply: (name: string, scheme: string) => `${name} (${scheme}) लागू करें`,
     schemes: { light: 'लाइट', dark: 'डार्क' },
     lightOnly: 'सिर्फ़ लाइट मोड में उपलब्ध।',
+    starter: 'स्टार्टर पैकेज डाउनलोड करें',
     preparing: 'प्रीव्यू तैयार हो रहा है…',
     mock: {
       work: 'मेरा काम',

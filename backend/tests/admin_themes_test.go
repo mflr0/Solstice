@@ -550,6 +550,27 @@ func TestThemeExportImported(t *testing.T) {
 	exportedFiles(t, admin, second.ID)
 }
 
+func TestThemeStarterImports(t *testing.T) {
+	anonymous(t).call("GET", "/api/themes/starter", nil, 401, nil)
+
+	user := login(t, "paul.martin", jirafixture.Password)
+	status, h, body := call(t, user, user.base, "GET", "/api/themes/starter", nil, nil)
+	if status != 200 || h.Get("Content-Type") != "application/zip" ||
+		h.Get("Content-Disposition") != "attachment; filename="+themes.StarterName {
+		t.Fatalf("starter: %d, headers %v", status, h)
+	}
+
+	admin := login(t, "admin", "admin")
+	e := importTheme(t, admin, body)
+	t.Cleanup(func() { admin.do("DELETE", "/api/admin/themes/"+e.ID, nil) })
+	if e.ManifestID != "my-theme" || !e.Enabled {
+		t.Errorf("imported %+v", e)
+	}
+	if status, _ := themeServes(t, e.ID); status != 200 {
+		t.Errorf("theme.css: %d", status)
+	}
+}
+
 func TestThemeExportRefused(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	user := login(t, "paul.martin", jirafixture.Password)

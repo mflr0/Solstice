@@ -58,6 +58,7 @@
       <h1 class="page-title">{t.themes.title}</h1>
       <p class="intro muted">{t.themes.intro}</p>
     </div>
+    <a class="btn" href="/api/themes/starter" download>{t.themes.starter}</a>
   </header>
 
   {#each themes.list as theme (theme.id)}

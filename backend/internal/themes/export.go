@@ -67,17 +67,7 @@ func zipPackage(pkg fs.FS) ([]byte, error) {
 		if err != nil {
 			return err
 		}
-		method := zip.Deflate
-		// The import refuses a big entry that inflates too much: don't compress it.
-		if len(content) > ratioFloor {
-			method = zip.Store
-		}
-		w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: method})
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(content)
-		return err
+		return addToZip(zw, name, content)
 	})
 	if err != nil {
 		return nil, err
@@ -86,4 +76,19 @@ func zipPackage(pkg fs.FS) ([]byte, error) {
 		return nil, err
 	}
 	return b.Bytes(), nil
+}
+
+// addToZip writes one file of a package.
+func addToZip(zw *zip.Writer, name string, content []byte) error {
+	method := zip.Deflate
+	// The import refuses a big entry that inflates too much: don't compress it.
+	if len(content) > ratioFloor {
+		method = zip.Store
+	}
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: method})
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(content)
+	return err
 }

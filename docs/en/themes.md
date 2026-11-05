@@ -51,6 +51,22 @@ To change it again, edit the files, raise `version` in `theme.json`, zip and
 import again. The same id asks whether to replace the version you have, and the
 theme stays selected.
 
+## Starting from nothing
+
+Exporting a theme also gives you all its rules to unpick. To write one from
+nothing, choose **Download the starter package** on the gallery (`/themes`), which
+is `/api/themes/starter`. The zip holds:
+
+- `theme.json`, filled with placeholders.
+- `theme.css`, with every token in commented groups and Carnet's values, a dark
+  block, an example `@font-face` and asset, and an empty commented heading per
+  section of the [hooks](../../backend/internal/themes/ANATOMY.md#3-hooks).
+- `fonts/`, with that font and its licence, and `assets/`, with that image.
+
+It passes [the checks](#the-checks) as it is. Replace `my-theme` in both files,
+change the tokens, and keep `preview` in `theme.json` equal to them. Then zip and
+import it as in [your first theme](#your-first-theme).
+
 ## The package
 
 A package is a zip with these files at its root:

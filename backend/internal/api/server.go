@@ -253,6 +253,7 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("GET /api/themes", themeIndex(s.themes), scopePublic)
 	route("GET /api/themes/{id}/{path...}", themeFile(s.themes, s.seesDisabledThemes), scopePublic)
 	route("GET /api/themes/{id}/export", s.exportTheme, auth.ScopeRead)
+	route("GET /api/themes/starter", s.themeStarter, auth.ScopeRead)
 	s.themeAdminRoutes(route)
 
 	// The setup wizard is over: it only learns so.

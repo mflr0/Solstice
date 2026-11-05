@@ -499,6 +499,10 @@ A package is a folder named after its id:
 - `theme.css`, the file of section 1;
 - `assets/…` (images) and `fonts/…` (fonts and their licence), optional.
 
+`GET /api/themes/starter` serves a valid package to start from, generated from
+Carnet by `starter.go`: a token Carnet adds or a section added under Hooks above
+fails its tests until it joins the lists there.
+
 Allowed file types: `.css`, `.svg`, `.png`, `.jpg`, `.jpeg`, `.webp`,
 `.gif`, `.woff2`, `.woff`, `.ttf`, `.otf`, `.txt`. Any other file under
 `assets/` or `fonts/` makes the package invalid, and the server does not start.

@@ -160,6 +160,7 @@ export const fr: Messages = {
     apply: (name: string, scheme: string) => `Appliquer ${name}, ${scheme}`,
     schemes: { light: 'clair', dark: 'sombre' },
     lightOnly: 'Existe en clair seulement.',
+    starter: 'Télécharger le paquet de départ',
     preparing: 'Aperçu en préparation…',
     mock: {
       work: 'Mon travail',
