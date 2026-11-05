@@ -4,6 +4,7 @@
  * the appearance (skin and colour mode).
  */
 
+import { tick } from 'svelte';
 import {
   htmlAttributes,
   parseMode,
@@ -126,8 +127,18 @@ export const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform :
 /** The skin (art direction) and colour mode in use, and whether single-key shortcuts work. */
 export const appearance = new Appearance();
 
+/** What takes focus once the page shows: a hidden page can't keep it. */
+let focusOnReveal: (() => HTMLElement | null) | null = null;
+
 function reveal(): void {
   document.documentElement.removeAttribute('data-skin-loading');
+  const target = focusOnReveal;
+  focusOnReveal = null;
+  if (!target) return;
+  // After the update: a fallback brings back what the chosen skin had replaced.
+  void tick().then(() => {
+    if (document.activeElement === document.body) target()?.focus();
+  });
 }
 
 /** How long a skin's stylesheet may take; shorter than the boot script's guard. */
@@ -153,6 +164,10 @@ function render(): void {
   if (isSkinLoaded(skin)) return reveal();
   // A blank page until the skin's stylesheet is in, rather than a flash of an
   // unstyled page.
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && focused !== document.body) {
+    focusOnReveal ??= () => focused;
+  }
   document.documentElement.setAttribute('data-skin-loading', '');
   const timer = setTimeout(() => fallBack(skin), SKIN_TIMEOUT_MS);
   void loadSkin(skin).then((loaded) => {
@@ -163,9 +178,11 @@ function render(): void {
   });
 }
 
-export function applySkin(skin: Skin): void {
+/** Applies the skin; `focusAfter` finds what takes focus when the focused element goes away with it. */
+export function applySkin(skin: Skin, focusAfter?: () => HTMLElement | null): void {
   appearance.skin = skin;
   store(STORAGE_KEYS.skin, skin);
+  if (focusAfter) focusOnReveal = focusAfter;
   render();
 }
 
