@@ -1,8 +1,10 @@
 <script lang="ts">
   import { levelTargets } from '../../core/admin-forms.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { isBuiltinHolder, type AdminProjectRow } from '../../core/project-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { holderLabels, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import {
     adminApi,
     securityApi,
@@ -70,10 +72,20 @@
     void load();
   }
 
+  const deleteId = (level: SecurityLevel) => `level-delete-${level.id}`;
+  const removeMemberId = (m: SecurityMember) => `member-remove-${m.id}`;
+
   async function removeMember(level: SecurityLevel, m: SecurityMember) {
+    const focus = focusOrderAfterRemoval(
+      level.members,
+      m,
+      removeMemberId,
+      `member-add-${level.id}`,
+    );
     try {
       await securityApi.removeMember(project, level.id, m.id);
-      void load();
+      await load();
+      refocusLater(focus);
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -91,9 +103,11 @@
     const used = level.issues > 0;
     if (used && how === 'move' && !moveTo) throw new Error(t.securityAdmin.chooseTarget);
     const choice = !used ? {} : how === 'move' ? { moveTo: Number(moveTo) } : { clear: true };
+    const focus = focusOrderAfterRemoval(levels ?? [], level, deleteId, 'level-new');
     await securityApi.remove(project, level.id, choice);
     notify(t.securityAdmin.deleted(level.name));
     await load();
+    refocusLater(focus);
   }
 
   /** Who a member is: the name of the user or group, else the kind of holder. */
@@ -108,7 +122,7 @@
     <h1 class="page-title">{t.securityAdmin.title}</h1>
   </div>
   {#if levels}
-    <button class="btn btn-primary" onclick={() => (dialog = { level: null })}
+    <button id="level-new" class="btn btn-primary" onclick={() => (dialog = { level: null })}
       >{t.securityAdmin.newLevel}</button
     >
   {/if}
@@ -162,7 +176,9 @@
           </div>
           <span class="row-actions">
             <button class="link-btn" onclick={() => (dialog = { level })}>{t.common.edit}</button>
-            <button class="link-btn" onclick={() => askRemove(level)}>{t.common.delete}</button>
+            <button id={deleteId(level)} class="link-btn" onclick={() => askRemove(level)}
+              >{t.common.delete}</button
+            >
           </span>
         </div>
         <div class="members">
@@ -175,6 +191,7 @@
               {memberName(m)}
               <button
                 type="button"
+                id={removeMemberId(m)}
                 aria-label={t.securityAdmin.removeMember(memberName(m))}
                 onclick={() => void removeMember(level, m)}>×</button
               >
@@ -182,7 +199,7 @@
           {:else}
             <span class="muted small">{t.securityAdmin.noMembers}</span>
           {/each}
-          <button class="link-btn" onclick={() => (adding = level)}
+          <button id="member-add-{level.id}" class="link-btn" onclick={() => (adding = level)}
             >+ {t.securityAdmin.addMember}</button
           >
         </div>

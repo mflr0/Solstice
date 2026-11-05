@@ -18,6 +18,7 @@
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { labelOf, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -432,6 +433,7 @@
         await adminApi.deleteWebhook(id);
         notify(t.hooksAdmin.deleted(hook?.name ?? ''));
         router.navigate(paths.admin('webhooks'), { replace: true });
+        refocusLater(['webhook-new']);
       }}
     >
       <p>{t.hooksAdmin.deleteBody}</p>

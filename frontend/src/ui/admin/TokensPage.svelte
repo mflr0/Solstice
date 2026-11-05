@@ -16,8 +16,10 @@
     TokenScope,
     TokenSettings,
   } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -72,6 +74,9 @@
     refreshDays = String(s.refreshDays);
     registration = s.registration;
   }
+
+  const revokeId = (tok: AccessToken) => `token-revoke-${tok.id}`;
+  const revokeGrantId = (g: AdminOAuthGrant) => `grant-revoke-${g.id}`;
 
   async function load() {
     try {
@@ -135,7 +140,7 @@
 <header class="page-head">
   <div>
     <p class="eyebrow">{t.adminArea.groups.integrations}</p>
-    <h1 class="page-title">
+    <h1 class="page-title" id="tokens-title" tabindex="-1">
       {t.adminArea.sections.tokens}
       {#if tokens}<span class="count muted">{formatNumber(tokens.length)}</span>{/if}
     </h1>
@@ -309,7 +314,7 @@
               </span>
             </td>
             <td class="row-actions">
-              <button class="link-btn" onclick={() => (revoking = tok)}
+              <button id={revokeId(tok)} class="link-btn" onclick={() => (revoking = tok)}
                 >{t.tokensAdmin.revoke}</button
               >
             </td>
@@ -321,7 +326,7 @@
 {/if}
 
 <section class="grants" aria-labelledby="oauth-grants">
-  <h2 class="section-title" id="oauth-grants">
+  <h2 class="section-title" id="oauth-grants" tabindex="-1">
     {t.tokensAdmin.grantsTitle}
     {#if grants}<span class="count muted">{formatNumber(grants.length)}</span>{/if}
   </h2>
@@ -372,7 +377,7 @@
                 {g.lastUsed ? relative(g.lastUsed) : t.tokensAdmin.neverUsed}
               </td>
               <td class="row-actions">
-                <button class="link-btn" onclick={() => (revokingGrant = g)}
+                <button id={revokeGrantId(g)} class="link-btn" onclick={() => (revokingGrant = g)}
                   >{t.tokensAdmin.revoke}</button
                 >
               </td>
@@ -391,9 +396,16 @@
   onclose={() => (revokingGrant = null)}
   onconfirm={async () => {
     if (!revokingGrant) return;
+    const focus = focusOrderAfterRemoval(
+      grants ?? [],
+      revokingGrant,
+      revokeGrantId,
+      'oauth-grants',
+    );
     await adminApi.revokeGrant(revokingGrant.id);
     notify(t.tokensAdmin.grantRevoked);
-    void loadGrants();
+    await loadGrants();
+    refocusLater(focus);
   }}
 >
   <p>{t.tokensAdmin.revokeGrantBody(revokingGrant?.user.name ?? '')}</p>
@@ -406,9 +418,11 @@
   onclose={() => (revoking = null)}
   onconfirm={async () => {
     if (!revoking) return;
+    const focus = focusOrderAfterRemoval(list, revoking, revokeId, 'tokens-title');
     await adminApi.revokeToken(revoking.id);
     notify(t.tokensAdmin.revoked);
-    void load();
+    await load();
+    refocusLater(focus);
   }}
 >
   <p>{t.tokensAdmin.revokeBody(revoking?.user?.name ?? '')}</p>

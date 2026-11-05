@@ -40,7 +40,9 @@
       {#if hooks?.length}<span class="count muted">{formatNumber(hooks.length)}</span>{/if}
     </h1>
   </div>
-  <a class="btn btn-primary" href={paths.admin('webhooks', 'new')}>{t.hooksAdmin.newHook}</a>
+  <a id="webhook-new" class="btn btn-primary" href={paths.admin('webhooks', 'new')}
+    >{t.hooksAdmin.newHook}</a
+  >
 </header>
 <p class="lead-text">{t.hooksAdmin.intro}</p>
 

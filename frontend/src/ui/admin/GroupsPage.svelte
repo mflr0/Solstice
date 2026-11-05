@@ -2,9 +2,11 @@
   import { untrack } from 'svelte';
   import { BUILTIN_GROUPS, restrictionUsage } from '../../core/admin-forms.js';
   import type { BuiltinGroup, Group } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { matches } from '../../core/text.js';
   import { formatList, formatNumber } from '../../i18n/format.js';
   import { holderLabels, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -72,6 +74,8 @@
     void load();
   }
 
+  const deleteId = (g: Group) => `group-delete-${g.id}`;
+
   function remove(g: Group) {
     blocked = null;
     removing = g;
@@ -79,6 +83,7 @@
 
   async function confirmRemove() {
     if (!removing) return;
+    const focus = focusOrderAfterRemoval(groups ?? [], removing, deleteId, 'group-new');
     try {
       await adminApi.deleteGroup(removing.id);
     } catch (e) {
@@ -86,7 +91,8 @@
       throw e;
     }
     notify(t.adminArea.groupsPage.deleted(removing.name));
-    void load();
+    await load();
+    refocusLater(focus);
   }
 
   function saved(message: string) {
@@ -103,7 +109,7 @@
       {#if groups}<span class="count muted">{formatNumber(groups.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (dialog = { group: null })}
+  <button id="group-new" class="btn btn-primary" onclick={() => (dialog = { group: null })}
     >{t.adminArea.groupsPage.newGroup}</button
   >
 </header>
@@ -179,7 +185,9 @@
               <button class="link-btn" onclick={() => (dialog = { group: g })}
                 >{t.common.edit}</button
               >
-              <button class="link-btn" onclick={() => remove(g)}>{t.common.delete}</button>
+              <button id={deleteId(g)} class="link-btn" onclick={() => remove(g)}
+                >{t.common.delete}</button
+              >
             </td>
           </tr>
         {/each}

@@ -1,10 +1,12 @@
 <script lang="ts">
   import { hourLabel, sortedDays, weekdayName } from '../../core/account-settings.js';
   import type { MySubscription, NotificationPrefs } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
   import type { SavedFilter } from '../../core/types.js';
   import { formatList, formatLocale } from '../../i18n/format.js';
   import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -32,6 +34,8 @@
     const days = formatList(sortedDays(s.days).map((d) => weekdayName(d, locale)));
     return t.subscriptionsPage.weekly(days, hour);
   }
+
+  const unsubscribeId = (s: MySubscription) => `subscription-remove-${s.id}`;
 
   async function load() {
     try {
@@ -80,7 +84,10 @@
     <h1 class="page-title">{t.account.sections.subscriptions}</h1>
   </div>
   {#if subs && subs.length > 0}
-    <button class="btn btn-primary" onclick={() => (dialog = { subscription: null })}
+    <button
+      id="subscription-new"
+      class="btn btn-primary"
+      onclick={() => (dialog = { subscription: null })}
       >{t.subscriptionsPage.newSubscription}</button
     >
   {/if}
@@ -97,7 +104,10 @@
   <p class="muted loading">{t.common.loading}</p>
 {:else if subs.length === 0}
   <EmptyState message={t.subscriptionsPage.empty} hint={t.subscriptionsPage.emptyHint}>
-    <button class="btn btn-primary" onclick={() => (dialog = { subscription: null })}
+    <button
+      id="subscription-new"
+      class="btn btn-primary"
+      onclick={() => (dialog = { subscription: null })}
       >{t.subscriptionsPage.newSubscription}</button
     >
     <a class="btn" href={paths.search()}>{t.subscriptionsPage.openSearch}</a>
@@ -142,7 +152,7 @@
                     >{t.subscriptionsPage.run}</button
                   >
                 {/if}
-                <button class="link-btn" onclick={() => (removing = s)}
+                <button id={unsubscribeId(s)} class="link-btn" onclick={() => (removing = s)}
                   >{t.subscriptionsPage.unsubscribe}</button
                 >
               {/if}
@@ -172,9 +182,11 @@
   onclose={() => (removing = null)}
   onconfirm={async () => {
     if (!removing) return;
+    const focus = focusOrderAfterRemoval(subs ?? [], removing, unsubscribeId, 'subscription-new');
     await accountApi.unsubscribe(removing.filterId, removing.id);
     notify(t.subscriptionsPage.unsubscribed);
-    void load();
+    await load();
+    refocusLater(focus);
   }}
 >
   <p>{t.subscriptionsPage.unsubscribeBody}</p>
