@@ -200,9 +200,8 @@ Project page: `.page-head` (`.eyebrow`, `h1.page-title` > `.pkey`, `p.lead`),
 Person page: `.page-head .id` > `.mark.avatar.avatar-large` (the base sets its
 size at specificity 0-4-0, so skins' small-avatar rules do not shrink it;
 resize it with e.g. `[data-skin='x'] .page-head .avatar.avatar-large`) +
-`h1.page-title` and `p.meta.person-meta`. The former search box
-(`form.search`, `.mode`, `.popover.help`) is gone: see **Search**. Project
-settings: `.intro`, `.savebar` (below).
+`h1.page-title` and `p.meta.person-meta`. Project settings: `.intro`,
+`.savebar` (below).
 
 **Panels / windows** — `.card` with `.card-head` as its title bar (the issue
 record). The sign-in sheet `.card.login-card` has no `.card-head`: its title
@@ -244,7 +243,8 @@ be wider than a phone (users, project permissions): it scrolls inside, not
 the page. Users list: `td.tags > .tag-list` (the flex row of marks).
 
 **Tabs** — `.tabs[role=tablist]` > `button.tab[role=tab]`
-(`[aria-selected='true']`). `.tabs.tabs-folder` = folder tabs over an editor.
+(`[aria-selected='true']`). `.tabs.tabs-folder` (reserved) = folder tabs over
+an editor.
 
 **Menus** — `.popover` (`[role=menu]` or `[role=listbox]`) > `.item`
 (`.active`, `[aria-checked='true']`, `[aria-selected='true']`, `.danger`),
@@ -352,8 +352,10 @@ back / forward.
   (the coloured copy, `aria-hidden`) under a transparent
   `textarea.jql-input`: both draw the same box, so give them the same font,
   padding, line-height and border width (style them together, or leave
-  them). Tokens: `span.jql-token-field`, `-operator`, `-keyword`, `-value`,
-  `-string`, `-function`, `-punct`, `-error` (base inks: `--stamp-doing`,
+  them). Tokens: `span.jql-token-field`, `.jql-token-operator`,
+  `.jql-token-keyword`, `.jql-token-value`, `.jql-token-string`,
+  `.jql-token-function`, `.jql-token-punct`, `.jql-token-error` (base inks:
+  `--stamp-doing`,
   `--muted`, `--tone-epic`, `--ink`, `--stamp-done`, `--tone-task`,
   `--accent-text` with a wavy underline). Suggestions:
   `ul.popover.jql-suggestions[role=listbox]` > `li.item` (`.active`, `.label`,
