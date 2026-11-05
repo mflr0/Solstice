@@ -195,6 +195,7 @@
           label={t.boards.project}
           value={form.project}
           options={(projects ?? []).map((p) => ({ value: p.key, label: `${p.key} — ${p.name}` }))}
+          autofocus
           onchange={(v) => (form.project = v)}
         />
       {/if}

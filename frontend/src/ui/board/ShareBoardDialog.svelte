@@ -134,7 +134,11 @@
   <div class="share">
     <div class="field">
       <span>{t.boards.shareLink}</span>
-      <CopyField value={`${location.origin}${paths.board(b.id)}`} label={t.boards.shareLink} />
+      <CopyField
+        value={`${location.origin}${paths.board(b.id)}`}
+        label={t.boards.shareLink}
+        autofocus
+      />
     </div>
 
     <section aria-labelledby="share-who">

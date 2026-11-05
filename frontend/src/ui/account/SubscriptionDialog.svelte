@@ -51,6 +51,9 @@
     filterId = null;
     tried = false;
     error = '';
+    // Changing a subscription has no filter to pick: its first field is the schedule.
+    if (subscription)
+      queueMicrotask(() => document.getElementById(`schedule-${input.schedule}`)?.focus());
   });
 
   async function submit(e: SubmitEvent) {
@@ -99,6 +102,7 @@
           ]}
           invalid={tried && missingFilter}
           disabled={!filters}
+          autofocus
           onchange={(v) => (filterId = v ? Number(v) : null)}
         />
         {#if tried && missingFilter}
@@ -111,7 +115,13 @@
       <legend class="field-label">{t.subscriptionsPage.frequency}</legend>
       {#each ['daily', 'weekly'] as const as s (s)}
         <label class="check">
-          <input type="radio" name="subscription-schedule" value={s} bind:group={input.schedule} />
+          <input
+            id="schedule-{s}"
+            type="radio"
+            name="subscription-schedule"
+            value={s}
+            bind:group={input.schedule}
+          />
           <span>{t.subscriptionsPage.frequencies[s]}</span>
         </label>
       {/each}

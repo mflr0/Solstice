@@ -299,6 +299,7 @@
             label={t.create.project}
             value={target}
             options={projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` }))}
+            autofocus
             onchange={(v) => (target = v)}
           />
           <span class="hint">{bulk ? t.search.bulk.moveHint : t.issue.moveProjectHint}</span>

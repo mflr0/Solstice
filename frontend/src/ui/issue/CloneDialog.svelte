@@ -51,7 +51,8 @@
 >
   <label class="field">
     <span>{t.create.summary}</span>
-    <input class="input" bind:value={summary} maxlength="255" />
+    <!-- svelte-ignore a11y_autofocus -->
+    <input class="input" bind:value={summary} maxlength="255" autofocus />
     <span class="hint">{t.issue.cloneSummaryHint}</span>
   </label>
   <label class="check">

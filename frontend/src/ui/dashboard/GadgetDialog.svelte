@@ -100,7 +100,8 @@
   <form id="gadget-form" class="gadget-form" onsubmit={submit} novalidate>
     <label class="field">
       <span>{t.home.kindLabel}</span>
-      <select class="select" bind:value={kind}>
+      <!-- svelte-ignore a11y_autofocus -->
+      <select class="select" bind:value={kind} autofocus>
         {#each GADGET_KINDS as k (k)}
           <option value={k}>{t.home.kinds[k]}</option>
         {/each}

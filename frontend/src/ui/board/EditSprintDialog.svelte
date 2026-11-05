@@ -65,7 +65,8 @@
   <form id="edit-sprint" class="form" onsubmit={submit}>
     <label class="field">
       <span>{t.boards.startName}</span>
-      <input class="input" bind:value={name} required maxlength="255" />
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="input" bind:value={name} required maxlength="255" autofocus />
     </label>
     <label class="field">
       <span>{t.boards.startGoal}</span>
