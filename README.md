@@ -143,6 +143,7 @@ Operations guides, in English and in [French](docs/fr/):
   `secret.key` protects.
 - [Upgrades](docs/en/upgrades.md): the integrated update, manual and Docker
   upgrades.
+- [Themes](docs/en/themes.md): write a theme, check it, try it and import it.
 
 ## Migrating from Jira
 

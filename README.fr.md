@@ -153,6 +153,8 @@ Guides d'exploitation, en français et en [anglais](docs/en/) :
   et ce que protège `secret.key`.
 - [Mises à jour](docs/fr/upgrades.md) : la mise à jour intégrée, manuelle ou
   avec Docker.
+- [Thèmes](docs/fr/themes.md) : écrire un thème, le vérifier, l'essayer et
+  l'importer.
 
 ## Migrer depuis Jira
 
