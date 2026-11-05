@@ -422,7 +422,7 @@ func refusedEntry(f *zip.File) string {
 	case !mode.IsRegular():
 		return "not a regular file"
 	case !importable(name):
-		return "this file is not allowed: theme.json, theme.css, assets/*.svg|png|webp|jpg, fonts/*.woff2 and licence files only"
+		return "this file is not allowed: theme.json, theme.css, ANATOMY.md, assets/*.svg|png|webp|jpg, fonts/*.woff2 and licence files only"
 	}
 	return ""
 }
@@ -432,13 +432,14 @@ var rootLicence = regexp.MustCompile(`(?i)^(licen[cs]e|copying)(\.txt|\.md)?$`)
 // importable says whether a package from elsewhere may hold this file. It is
 // narrower than fileTypes, which also covers what the built-in packages may
 // hold. A licence file is a .txt next to what it covers, as the validator reads
-// it, or a usual licence name at the root.
+// it, or a usual licence name at the root. ANATOMY.md comes with the starter, so
+// that zipping its folder works; like a root licence, it is never served.
 func importable(name string) bool {
 	dir, base := path.Split(name)
 	ext := strings.ToLower(path.Ext(base))
 	switch dir {
 	case "":
-		return name == manifestFile || name == cssFile || rootLicence.MatchString(name)
+		return name == manifestFile || name == cssFile || name == anatomyFile || rootLicence.MatchString(name)
 	case "assets/":
 		return slices.Contains([]string{".svg", ".png", ".webp", ".jpg", ".txt"}, ext)
 	case "fonts/":
