@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { focusAfterRemoval } from '../core/focus.js';
   import { paths } from '../core/route.js';
   import { t } from '../i18n/t.js';
+  import { refocus } from '../lib/actions.js';
 
   /**
    * Labels as chips. Typing then Enter, comma or space adds one (labels
@@ -8,13 +11,24 @@
    */
   interface Props {
     labels: string[];
-    onchange: (labels: string[]) => void;
+    /** A save that takes time returns a promise, so focus moves once the chip is gone. */
+    onchange: (labels: string[]) => unknown;
     editable?: boolean | undefined;
     /** The input's id, so a `<label for>` around the editor focuses it. */
     id?: string | undefined;
   }
   const { labels, onchange, editable = true, id }: Props = $props();
   let draft = $state('');
+  let root = $state<HTMLElement>();
+  let input = $state<HTMLElement>();
+
+  async function remove(label: string) {
+    const next = focusAfterRemoval(labels, label);
+    await onchange(labels.filter((x) => x !== label));
+    await tick();
+    const removes = root?.querySelectorAll<HTMLElement>('.chip button');
+    refocus(next === undefined ? input : (removes?.[labels.indexOf(next)] ?? input));
+  }
 
   function commit() {
     const l = draft.trim().replace(/\s+/g, '_');
@@ -32,15 +46,13 @@
   }
 </script>
 
-<div class="labels">
+<div class="labels" bind:this={root}>
   {#each labels as l (l)}
     <span class="chip">
       <a href={paths.search(`#${l}`)}>{l}</a>
       {#if editable}
-        <button
-          type="button"
-          aria-label={`${t.common.remove} ${l}`}
-          onclick={() => onchange(labels.filter((x) => x !== l))}>×</button
+        <button type="button" aria-label={`${t.common.remove} ${l}`} onclick={() => void remove(l)}
+          >×</button
         >
       {/if}
     </span>
@@ -49,6 +61,7 @@
   {/each}
   {#if editable}
     <input
+      bind:this={input}
       {id}
       class="add"
       bind:value={draft}

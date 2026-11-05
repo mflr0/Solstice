@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { tick as settled } from 'svelte';
+  import { focusAfterRemoval } from '../../core/focus.js';
   import type { Comment, IssueDetail } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import { refocus } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import RelTime from '../RelTime.svelte';
@@ -23,6 +26,7 @@
   let editing = $state<number | null>(null);
   let editDraft = $state('');
   let armed = $state<number | null>(null);
+  let compose = $state<HTMLElement>();
 
   async function load(key: string) {
     try {
@@ -55,12 +59,26 @@
     }
   }
 
+  async function stopEditing(id: number) {
+    editing = null;
+    await settled();
+    refocus(document.getElementById(`comment-edit-${id}`));
+  }
+
+  /** The writing box, or the tab for someone who may edit a comment but not write one. */
+  function addControl() {
+    return (
+      compose?.querySelector<HTMLElement>('[contenteditable="true"], textarea') ??
+      document.querySelector<HTMLElement>('.issue-activity [role="tab"][aria-selected="true"]')
+    );
+  }
+
   async function saveEdit(id: number) {
     if (!editDraft.trim()) return;
     try {
       const c = await api.editComment(id, editDraft);
       comments = (comments ?? []).map((x) => (x.id === id ? c : x));
-      editing = null;
+      await stopEditing(id);
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -74,7 +92,14 @@
     armed = null;
     try {
       await api.deleteComment(id);
-      comments = (comments ?? []).filter((x) => x.id !== id);
+      const list = comments ?? [];
+      const next = focusAfterRemoval(
+        list.filter((x) => x.canEdit && x.id !== editing).map((x) => x.id),
+        id,
+      );
+      comments = list.filter((x) => x.id !== id);
+      await settled();
+      refocus(document.getElementById(`comment-delete-${next}`) ?? addControl());
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -106,6 +131,7 @@
           {#if c.canEdit && editing !== c.id}
             <span class="tools">
               <button
+                id={`comment-edit-${c.id}`}
                 class="link-btn"
                 onclick={() => {
                   editing = c.id;
@@ -113,6 +139,7 @@
                 }}>{t.common.edit}</button
               >
               <button
+                id={`comment-delete-${c.id}`}
                 class="link-btn"
                 class:armed={armed === c.id}
                 onclick={() => void remove(c.id)}
@@ -129,11 +156,11 @@
             attachments={issue.attachments}
             autofocus
             onsubmit={() => void saveEdit(c.id)}
-            oncancel={() => (editing = null)}
+            oncancel={() => void stopEditing(c.id)}
             uploadTo={issue.can.attach ? issue.key : undefined}
           />
           <div class="row end">
-            <button class="btn btn-quiet btn-small" onclick={() => (editing = null)}
+            <button class="btn btn-quiet btn-small" onclick={() => void stopEditing(c.id)}
               >{t.common.cancel}</button
             >
             <button class="btn btn-primary btn-small" onclick={() => void saveEdit(c.id)}
@@ -148,7 +175,7 @@
   </ol>
 
   {#if issue.can.comment}
-    <div class="compose">
+    <div class="compose" bind:this={compose}>
       <WikiEditor
         bind:value={draft}
         label={t.comments.placeholder}

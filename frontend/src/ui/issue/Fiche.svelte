@@ -245,7 +245,7 @@
         <LabelEditor
           labels={issue.labels}
           editable={edit}
-          onchange={(l) => void onchange({ labels: l })}
+          onchange={(l) => onchange({ labels: l })}
         />
       </dd>
     </div>
