@@ -290,10 +290,14 @@ marker). The arrows draw with `currentColor`; restyle strokes, not colours.
 family guessed from the name). An admin may style a type: its colour comes in
 an inline `--type-color` (unset without one), its fill in
 `data-fill='filled|subtle|outline'`, and its icon as an `svg` child in place
-of the letter (draw it with `currentColor`; a `::before` symbol would clash
-with it). Let all three win over the family look: draw with
-`var(--type-color, <your tone>)`, or clamp its lightness into a variable that
-is unset without one, as the bundled skins do with `--type-ink`. `.priority-mark` >
+of the letter. The mark is a bare glyph in a 1.125rem square: draw no border,
+background, tile or `::before` shape behind it. Fills apply to the glyph (an
+icon's `path.detail` is drawn in `--paper` when filled, a `path.line` is never
+filled, a filled letter is weight 800), so change only its font, and its colour
+through `--mark` (`--mark-solid` when filled, `--mark-on-tint` when subtle). To
+keep the type's colour, clamp its lightness into a variable that is unset
+without one, as the bundled skins do with `--type-ink`, and keep 3:1 against
+`--paper` and `--paper-raised`. `.priority-mark` >
 `.glyph[data-level='highest|high|medium|low|lowest|other']` (its colour comes
 from the server in an inline `--priority-color`, drawn with
 `color: var(--priority-color, var(--ink-soft))`: override `color`, or mix the

@@ -23,10 +23,6 @@
 /* contrast: --rt-link on --paper */
 /* contrast: --rt-link on --paper-raised */
 /* contrast: --rt-tip-ink on --rt-tip */
-/* contrast: --rt-tone-ink on --tone-bug */
-/* contrast: --rt-tone-ink on --tone-story */
-/* contrast: --rt-tone-ink on --tone-task */
-/* contrast: --rt-tone-ink on --tone-epic */
 /* contrast: --rt-desk-ink on --desk */
 /* contrast: --rt-edge on --paper 3 */
 
@@ -431,7 +427,6 @@
   --rt-link: #0b2a9e;
   --rt-tip: #fff8cc;
   --rt-tip-ink: #111111;
-  --rt-tone-ink: #ffffff;
   --rt-desk-ink: #ffffff;
   --rt-lamp-off: #4f4e49;
   --rt-lamp-on: #2fd04f;
@@ -512,7 +507,6 @@
   --rt-link: #a9c2ff;
   --rt-tip: #ede4a8;
   --rt-tip-ink: #111111;
-  --rt-tone-ink: #1b1b1b;
   --rt-desk-ink: #ffffff;
   --rt-lamp-off: #232427;
   --rt-lamp-on: #3be35d;
@@ -1329,66 +1323,12 @@
   }
 }
 
-[data-skin='retro'] .type-mark.type-mark {
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--rt-dark);
-  border-radius: 0;
-  background: var(--type-ink);
-  color: var(--rt-tone-ink);
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.4),
-    inset -1px -1px 0 rgba(0, 0, 0, 0.3);
-  font: 700 0.625rem/1 var(--font-body);
-}
-
-[data-skin='retro'] .type-mark[data-type='bug'] {
-  --tone: var(--tone-bug);
-}
-
-[data-skin='retro'] .type-mark[data-type='story'] {
-  --tone: var(--tone-story);
-}
-
-[data-skin='retro'] .type-mark[data-type='epic'] {
-  --tone: var(--tone-epic);
-}
-
-[data-skin='retro'] .type-mark[data-type='task'] {
-  --tone: var(--tone-task);
-}
-
-/* Sub-tasks: a hollow tile, so they read as children of a task. */
-[data-skin='retro'] .type-mark.type-mark[data-type='subtask'] {
-  --tone: var(--tone-subtask);
-  background: var(--rt-well);
-  color: var(--type-ink);
-  border-color: var(--type-ink);
-  box-shadow: none;
-}
-
-/* An admin's fill, drawn the Retro way. */
-[data-skin='retro'] .type-mark.type-mark[data-fill='filled'] {
-  border-color: var(--rt-dark);
-  background: var(--type-ink);
-  color: var(--rt-tone-ink);
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.4),
-    inset -1px -1px 0 rgba(0, 0, 0, 0.3);
-}
-
-[data-skin='retro'] .type-mark.type-mark[data-fill='subtle'] {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--rt-well));
-  color: var(--type-ink);
-  box-shadow: none;
-}
-
-[data-skin='retro'] .type-mark.type-mark[data-fill='outline'] {
-  border-color: var(--type-ink);
-  background: var(--rt-well);
-  color: var(--type-ink);
-  box-shadow: none;
+/* Issue types: a bare glyph, its letter in the body face. */
+[data-skin='retro'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
+  font-family: var(--font-body);
 }
 
 [data-skin='retro'] .avatar.avatar {

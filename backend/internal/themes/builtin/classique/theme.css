@@ -1019,34 +1019,12 @@
   }
 }
 
-/* Issue types: filled tiles with the type's initial. */
-[data-skin='classique'] .type-mark.type-mark {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 1rem;
-  height: 1rem;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: var(--type-ink);
-  color: var(--paper-raised);
-  font: 700 0.625rem/1 var(--font-body);
-}
-
-[data-skin='classique'] .type-mark.type-mark[data-type='subtask'] {
-  border-radius: 50%;
-}
-
-/* An admin's fill, drawn the Classique way. */
-[data-skin='classique'] .type-mark.type-mark[data-fill='subtle'] {
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
-  color: var(--type-ink);
-}
-
-[data-skin='classique'] .type-mark.type-mark[data-fill='outline'] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--type-ink);
-  color: var(--type-ink);
+/* Issue types: a bare glyph, its letter in the body face. */
+[data-skin='classique'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
+  font-family: var(--font-body);
 }
 
 [data-skin='classique'] .priority-mark .glyph {

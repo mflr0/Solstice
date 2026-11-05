@@ -1121,45 +1121,12 @@
   }
 }
 
-/* Issue types: a letter on a block of its colour; sub-tasks only outlined. */
-[data-skin='terminal'] .type-mark[data-type] {
-  width: 1.125rem;
-  height: 1.125rem;
-  border: 1px solid var(--type-ink);
-  border-radius: 0;
-  background: var(--type-ink);
-  color: var(--paper);
-  font: 600 0.75rem/1 var(--font-mono);
+/* Issue types: a bare glyph. */
+[data-skin='terminal'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
   text-shadow: none;
-}
-
-[data-skin='terminal'] .type-mark[data-type='subtask'] {
-  border-style: dashed;
-  background: transparent;
-  color: var(--type-ink);
-}
-
-[data-skin='terminal'] .type-mark[data-type='epic'] {
-  box-shadow:
-    0 0 0 1px var(--paper),
-    0 0 0 2px var(--type-ink);
-}
-
-/* An admin's fill, drawn the Terminal way. */
-[data-skin='terminal'] .type-mark[data-type][data-fill='filled'] {
-  background: var(--type-ink);
-  color: var(--paper);
-}
-
-[data-skin='terminal'] .type-mark[data-type][data-fill='subtle'] {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper));
-  color: var(--type-ink);
-}
-
-[data-skin='terminal'] .type-mark[data-type][data-fill='outline'] {
-  background: transparent;
-  color: var(--type-ink);
 }
 
 /* The server tints priorities; here they stay in phosphor (or ink). */
