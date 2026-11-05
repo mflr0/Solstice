@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { tick } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { forgetSkin, isSkinLoaded, loadSkin, reloadSkin } from '../../src/lib/skins.svelte.js';
@@ -103,6 +104,72 @@ describe('a skin that can not be loaded', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('focus while a skin loads', () => {
+  function focusedButton(): HTMLButtonElement {
+    const button = document.createElement('button');
+    document.body.append(button);
+    button.focus();
+    return button;
+  }
+
+  /** What a hidden page does to focus, which jsdom does not do. */
+  function loseFocus(button: HTMLElement) {
+    expect(root.hasAttribute('data-skin-loading')).toBe(true);
+    button.blur();
+    expect(document.activeElement).toBe(document.body);
+  }
+
+  it('comes back to the focused element', async () => {
+    const button = focusedButton();
+    applySkin('focus-a');
+    loseFocus(button);
+    await vi.waitFor(() => expect(document.activeElement).toBe(button));
+    expect(root.hasAttribute('data-skin-loading')).toBe(false);
+    button.remove();
+  });
+
+  it('goes to what replaces the element, once the page shows', async () => {
+    const button = focusedButton();
+    const label = focusedButton();
+    button.focus();
+    applySkin('focus-b', () => label);
+    loseFocus(button);
+    await vi.waitFor(() => expect(document.activeElement).toBe(label));
+    button.remove();
+    label.remove();
+  });
+
+  it('goes to what replaces the element when the skin is already in', async () => {
+    await loadSkin('focus-c');
+    const label = focusedButton();
+    label.blur();
+    applySkin('focus-c', () => label);
+    await vi.waitFor(() => expect(document.activeElement).toBe(label));
+    label.remove();
+  });
+
+  it('leaves focus alone when the user moved it meanwhile', async () => {
+    const button = focusedButton();
+    const other = focusedButton();
+    button.focus();
+    applySkin('focus-d');
+    other.focus();
+    await vi.waitFor(() => expect(root.hasAttribute('data-skin-loading')).toBe(false));
+    await tick();
+    expect(document.activeElement).toBe(other);
+    button.remove();
+    other.remove();
+  });
+
+  it('takes nothing when nothing had focus', async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    applySkin('focus-e');
+    await vi.waitFor(() => expect(root.hasAttribute('data-skin-loading')).toBe(false));
+    await tick();
+    expect(document.activeElement).toBe(document.body);
   });
 });
 

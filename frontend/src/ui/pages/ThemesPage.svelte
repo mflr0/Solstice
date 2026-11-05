@@ -32,6 +32,11 @@
     return localized(theme.about ?? theme.description, locale);
   }
 
+  /** Applies the skin; its button goes away, so focus moves to what replaces it. */
+  function use(skin: Skin) {
+    applySkin(skin, () => document.getElementById(`use-${skin}`));
+  }
+
   /** Applies the skin; picking the other scheme's preview switches the mode too. */
   function choose(skin: Skin, scheme: Scheme) {
     applySkin(skin);
@@ -58,9 +63,13 @@
         <p class="description">{description(theme)}</p>
         <ThemeContractFlag theme={theme.contract} server={themes.contract} />
         {#if current}
-          <p class="in-use"><span class="stamp done">{t.themes.current}</span></p>
+          <p class="in-use">
+            <span id="use-{skin}" class="stamp done" tabindex="-1">{t.themes.current}</span>
+          </p>
         {:else}
-          <button class="btn btn-primary" onclick={() => applySkin(skin)}>{t.themes.use}</button>
+          <button id="use-{skin}" class="btn btn-primary" onclick={() => use(skin)}
+            >{t.themes.use}</button
+          >
         {/if}
         {#if schemes(skin).length > 1}
           <div class="modes" role="group" aria-label="{t.nav.mode} — {name}">
