@@ -9,6 +9,7 @@
   } from '../../core/appearance.js';
   import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
+  import { localThemeManifests } from '../../lib/local-themes.js';
   import { loadSkin, loadThemes, skinSheets, themes } from '../../lib/skins.svelte.js';
   import { appearance, applyMode, applySkin } from '../../lib/ui.svelte.js';
   import SkinMock from '../SkinMock.svelte';
@@ -16,10 +17,16 @@
 
   /** The theme gallery: every skin drawn live, in each of its schemes. */
 
+  let mine = $state.raw<ThemeManifest[]>([]);
+
   onMount(() => {
     document.title = `${t.themes.title} — ${t.appName}`;
     void loadThemes().then(() => {
       for (const theme of themes.list) void loadSkin(theme.id);
+    });
+    void localThemeManifests().then((list) => {
+      mine = list;
+      for (const theme of list) void loadSkin(theme.id);
     });
   });
 
@@ -54,64 +61,81 @@
   </header>
 
   {#each themes.list as theme (theme.id)}
-    {@const skin = theme.id}
-    {@const name = localized(theme.name, locale)}
-    {@const current = appearance.skin === skin}
-    <section class="theme" class:current aria-labelledby="theme-{skin}">
-      <div class="about">
-        <h2 id="theme-{skin}" class="name">{name}</h2>
-        <p class="description">{description(theme)}</p>
-        <ThemeContractFlag theme={theme.contract} server={themes.contract} />
-        {#if current}
-          <p class="in-use">
-            <span id="use-{skin}" class="stamp done" tabindex="-1">{t.themes.current}</span>
-          </p>
-        {:else}
-          <button id="use-{skin}" class="btn btn-primary" onclick={() => use(skin)}
-            >{t.themes.use}</button
-          >
-        {/if}
-        {#if schemes(skin).length > 1}
-          <div class="modes" role="group" aria-label="{t.nav.mode} — {name}">
-            {#each MODES as mode (mode)}
-              <button
-                class="btn btn-small"
-                class:on={current && appearance.mode === mode}
-                aria-pressed={current && appearance.mode === mode}
-                onclick={() => {
-                  applySkin(skin);
-                  applyMode(mode);
-                }}>{t.nav.modes[mode]}</button
-              >
-            {/each}
-          </div>
-        {:else if skinSheets[skin]}
-          <p class="muted small">{t.themes.lightOnly}</p>
-        {/if}
-      </div>
-
-      <div class="previews">
-        {#each schemes(skin) as scheme (scheme)}
-          <button
-            class="preview"
-            class:active={current && appearance.scheme === scheme}
-            aria-label={t.themes.apply(name, t.themes.schemes[scheme])}
-            onclick={() => choose(skin, scheme)}
-          >
-            {#if skinSheets[skin]}
-              <SkinMock {skin} {scheme} />
-            {:else}
-              <span class="placeholder muted loading">{t.themes.preparing}</span>
-            {/if}
-            <span class="caption">{t.themes.schemes[scheme]}</span>
-          </button>
-        {/each}
-      </div>
-    </section>
+    {@render entry(theme, 'h2')}
   {/each}
+
+  {#if mine.length > 0}
+    <section aria-labelledby="my-themes">
+      <h2 id="my-themes" class="section-title mine">{t.account.sections.themes}</h2>
+      {#each mine as theme (theme.id)}
+        {@render entry(theme, 'h3')}
+      {/each}
+    </section>
+  {/if}
 </div>
 
+{#snippet entry(theme: ThemeManifest, heading: 'h2' | 'h3')}
+  {@const skin = theme.id}
+  {@const name = localized(theme.name, locale)}
+  {@const current = appearance.skin === skin}
+  <section class="theme" class:current aria-labelledby="theme-{skin}">
+    <div class="about">
+      <svelte:element this={heading} id="theme-{skin}" class="name">{name}</svelte:element>
+      <p class="description">{description(theme)}</p>
+      <ThemeContractFlag theme={theme.contract} server={themes.contract} />
+      {#if current}
+        <p class="in-use">
+          <span id="use-{skin}" class="stamp done" tabindex="-1">{t.themes.current}</span>
+        </p>
+      {:else}
+        <button id="use-{skin}" class="btn btn-primary" onclick={() => use(skin)}
+          >{t.themes.use}</button
+        >
+      {/if}
+      {#if schemes(skin).length > 1}
+        <div class="modes" role="group" aria-label="{t.nav.mode} — {name}">
+          {#each MODES as mode (mode)}
+            <button
+              class="btn btn-small"
+              class:on={current && appearance.mode === mode}
+              aria-pressed={current && appearance.mode === mode}
+              onclick={() => {
+                applySkin(skin);
+                applyMode(mode);
+              }}>{t.nav.modes[mode]}</button
+            >
+          {/each}
+        </div>
+      {:else if skinSheets[skin]}
+        <p class="muted small">{t.themes.lightOnly}</p>
+      {/if}
+    </div>
+
+    <div class="previews">
+      {#each schemes(skin) as scheme (scheme)}
+        <button
+          class="preview"
+          class:active={current && appearance.scheme === scheme}
+          aria-label={t.themes.apply(name, t.themes.schemes[scheme])}
+          onclick={() => choose(skin, scheme)}
+        >
+          {#if skinSheets[skin]}
+            <SkinMock {skin} {scheme} />
+          {:else}
+            <span class="placeholder muted loading">{t.themes.preparing}</span>
+          {/if}
+          <span class="caption">{t.themes.schemes[scheme]}</span>
+        </button>
+      {/each}
+    </div>
+  </section>
+{/snippet}
+
 <style>
+  .mine {
+    margin: 28px 0 0;
+  }
+
   .intro {
     max-width: 62ch;
     margin: 8px 0 0;

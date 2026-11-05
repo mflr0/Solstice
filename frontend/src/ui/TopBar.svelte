@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { localized, type Scheme, type Skin } from '../core/appearance.js';
+  import { localized, type Scheme, type Skin, type ThemeManifest } from '../core/appearance.js';
   import { paths } from '../core/route.js';
   import { bindingWorks, formatShortcut } from '../core/shortcuts.js';
   import { locale } from '../i18n/index.js';
@@ -8,6 +8,7 @@
   import { menu, outside, pinnedHeight, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
+  import { localThemeManifests } from '../lib/local-themes.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
@@ -34,7 +35,13 @@
 
   let menuOpen = $state(false);
   let themesOpen = $state(false);
-  onMount(() => void loadThemes());
+  let mine = $state.raw<ThemeManifest[]>([]);
+  // The bar outlives the pages where themes get imported and deleted: read again on each opening.
+  const readMine = () => localThemeManifests().then((list) => (mine = list));
+  onMount(() => {
+    void loadThemes();
+    void readMine();
+  });
   const SCHEMES: readonly Scheme[] = ['light', 'dark'];
 
   /** Following the system stays on Account → Appearance: a pick here is explicit. */
@@ -153,6 +160,7 @@
         onclick={() => {
           themesOpen = !themesOpen;
           void loadThemes();
+          void readMine();
         }}
       >
         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
@@ -181,33 +189,19 @@
           </div>
           <div role="group" aria-label={t.nav.themes}>
             {#each themes.list as theme (theme.id)}
-              {@const skin = theme.id}
-              {@const name = localized(theme.name, locale)}
-              <div class="theme-row">
-                <button
-                  class="item skin-name"
-                  role="menuitem"
-                  onclick={(e) => pickSkin(skin, e.currentTarget)}>{name}</button
-                >
-                {#each SCHEMES as scheme (scheme)}
-                  {@const sw = theme.preview[scheme]}
-                  {@const label = t.nav.skinMode(name, t.nav.modes[scheme])}
-                  <button
-                    class="scheme"
-                    role="menuitemradio"
-                    aria-checked={appearance.skin === skin && appearance.scheme === scheme}
-                    aria-label={label}
-                    title={label}
-                    style:--sw-bar={sw?.bar}
-                    style:--sw-paper={sw?.paper}
-                    style:--sw-ink={sw?.ink}
-                    style:--sw-accent={sw?.accent}
-                    onclick={(e) => pickLook(skin, scheme, e.currentTarget)}
-                  ></button>
-                {/each}
-              </div>
+              {@render themeRow(theme)}
             {/each}
           </div>
+          {#if mine.length > 0}
+            <div class="theme-head" aria-hidden="true">
+              <span>{t.account.sections.themes}</span>
+            </div>
+            <div role="group" aria-label={t.account.sections.themes}>
+              {#each mine as theme (theme.id)}
+                {@render themeRow(theme)}
+              {/each}
+            </div>
+          {/if}
           <div class="sep"></div>
           <a class="item" role="menuitem" href={paths.themes()} onclick={() => (themesOpen = false)}
             >{t.nav.allThemes}</a
@@ -301,6 +295,37 @@
     {/if}
   </div>
 </header>
+
+{#snippet themeRow(theme: ThemeManifest)}
+  {@const skin = theme.id}
+  {@const name = localized(theme.name, locale)}
+  <div class="theme-row">
+    <button
+      class="item skin-name"
+      title={name}
+      tabindex="-1"
+      role="menuitem"
+      onclick={(e) => pickSkin(skin, e.currentTarget)}>{name}</button
+    >
+    {#each SCHEMES as scheme (scheme)}
+      {@const sw = theme.preview[scheme]}
+      {@const label = t.nav.skinMode(name, t.nav.modes[scheme])}
+      <button
+        class="scheme"
+        tabindex="-1"
+        role="menuitemradio"
+        aria-checked={appearance.skin === skin && appearance.scheme === scheme}
+        aria-label={label}
+        title={label}
+        style:--sw-bar={sw?.bar}
+        style:--sw-paper={sw?.paper}
+        style:--sw-ink={sw?.ink}
+        style:--sw-accent={sw?.accent}
+        onclick={(e) => pickLook(skin, scheme, e.currentTarget)}
+      ></button>
+    {/each}
+  </div>
+{/snippet}
 
 <style>
   .instance-name {
