@@ -73,6 +73,7 @@
 
   function pick(u: UserRef | null) {
     open = false;
+    button?.focus();
     if ((u?.id ?? null) !== (value?.id ?? null)) onpick(u);
   }
 

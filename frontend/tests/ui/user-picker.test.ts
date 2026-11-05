@@ -99,4 +99,35 @@ describe('UserPicker', () => {
     flushSync();
     expect(closed()).toBe(true);
   });
+
+  it('gives focus back to its button on a pick and on Escape, not on a press outside', async () => {
+    const button = picker();
+    const open = async () => {
+      button.click();
+      await new Promise((r) => setTimeout(r));
+      flushSync();
+      // jsdom doesn't render a [popover], and won't focus what's in it.
+      (document.querySelector('.popover') as HTMLElement).style.display = 'block';
+      const filter = document.querySelector('input.filter') as HTMLInputElement;
+      filter.focus();
+      expect(document.activeElement).toBe(filter);
+    };
+
+    await open();
+    (document.querySelector('button.item') as HTMLButtonElement).click();
+    flushSync();
+    expect(document.activeElement).toBe(button);
+
+    await open();
+    (document.querySelector('input.filter') as HTMLInputElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    flushSync();
+    expect(document.activeElement).toBe(button);
+
+    await open();
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    flushSync();
+    expect(document.activeElement).not.toBe(button);
+  });
 });

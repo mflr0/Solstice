@@ -23,6 +23,7 @@
   let active = $state(0);
   let busy = $state(false);
   let error = $state('');
+  let button: HTMLButtonElement | undefined = $state();
   const uid = $props.id();
   const listId = `statuses-${uid}`;
 
@@ -38,6 +39,7 @@
 
   function pick(s: StatusRef) {
     open = false;
+    button?.focus();
     onpick(s);
   }
 
@@ -70,7 +72,7 @@
 </script>
 
 <div class="adder" use:outside={() => (open = false)}>
-  <button type="button" class="link-btn" aria-expanded={open} onclick={toggle}
+  <button bind:this={button} type="button" class="link-btn" aria-expanded={open} onclick={toggle}
     >+ {t.workflows.addStatus}</button
   >
   {#if open}

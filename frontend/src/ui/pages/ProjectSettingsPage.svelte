@@ -107,6 +107,9 @@
   }
   /** The group whose "add a member" box is open, or 0 for the "add a group" box. */
   let addingTo = $state<number | null>(null);
+  /** The button of each of those boxes, and of the "add a row" box. */
+  const adderButtons = $state<Record<number, HTMLButtonElement | null>>({});
+  let addRowButton: HTMLButtonElement | undefined = $state();
   let memberKind = $state<'user' | 'group'>('user');
   let memberPick = $state('');
   let changing = $state(false);
@@ -225,12 +228,14 @@
     if (!data) return;
     grants = setCells(grants, [row], data.permissions, next);
     menu = null;
+    menuButton?.focus();
     announced = `${t.settings.setRow(row.label)}: ${t.settings.states[next]}`;
   }
 
   function setColumn(p: Permission, next: CellState) {
     grants = setCells(grants, rows, [p], next);
     menu = null;
+    menuButton?.focus();
     announced = `${t.settings.setColumn(permissionLabels[p].label)}: ${t.settings.states[next]}`;
   }
 
@@ -268,6 +273,7 @@
   function addRow(key: string) {
     if (!rows.some((r) => r.key === key)) extra = [...extra, key];
     adding = false;
+    addRowButton?.focus();
     pick = '';
   }
 
@@ -325,6 +331,7 @@
   function addGroup() {
     const found = data?.groups.find((x) => String(x.id) === memberPick);
     addingTo = null;
+    adderButtons[0]?.focus();
     if (!found || members.some((m) => m.id === found.id)) return;
     members = [
       ...members,
@@ -352,6 +359,12 @@
     } finally {
       changing = false;
     }
+  }
+
+  /** A change from the group's row: what was pressed goes away, so focus waits on its adder. */
+  function changeMembers(g: ProjectGroup, users: number[], groups: number[]) {
+    adderButtons[g.id]?.focus();
+    void setMembers(g, users, groups);
   }
 
   const userIds = (g: ProjectGroup) => g.users.map((u) => u.id);
@@ -576,6 +589,7 @@
           <p class="sr-only" aria-live="polite">{announced}</p>
           <div class="adder row-adder" use:outside={() => adding && (adding = false)}>
             <button
+              bind:this={addRowButton}
               type="button"
               class="link-btn"
               aria-expanded={adding}
@@ -656,7 +670,7 @@
                           disabled={changing}
                           aria-label={`${t.common.remove} ${g.name}`}
                           onclick={() =>
-                            void setMembers(
+                            changeMembers(
                               r,
                               userIds(r),
                               groupIds(r).filter((x) => x !== g.id),
@@ -669,7 +683,7 @@
                           disabled={changing}
                           aria-label={`${t.common.remove} ${u.name}`}
                           onclick={() =>
-                            void setMembers(
+                            changeMembers(
                               r,
                               userIds(r).filter((x) => x !== u.id),
                               groupIds(r),
@@ -681,6 +695,7 @@
                     {/if}
                     <span class="adder" use:outside={() => addingTo === r.id && (addingTo = null)}>
                       <button
+                        bind:this={adderButtons[r.id]}
                         type="button"
                         class="link-btn"
                         aria-expanded={addingTo === r.id}
@@ -716,7 +731,7 @@
                                 disabled={changing}
                                 search={(q) => memberCandidates(r, q)}
                                 onpick={(u: UserRef | null) =>
-                                  u && void setMembers(r, [...userIds(r), u.id], groupIds(r))}
+                                  u && changeMembers(r, [...userIds(r), u.id], groupIds(r))}
                               />
                             </div>
                           {:else}
@@ -737,10 +752,8 @@
                               class="btn btn-small btn-primary"
                               disabled={!memberPick || changing}
                               onclick={() =>
-                                void setMembers(r, userIds(r), [
-                                  ...groupIds(r),
-                                  Number(memberPick),
-                                ])}>{t.common.add}</button
+                                changeMembers(r, userIds(r), [...groupIds(r), Number(memberPick)])}
+                              >{t.common.add}</button
                             >
                           {/if}
                         </div>
@@ -755,6 +768,7 @@
           {/if}
           <div class="adder group-adder" use:outside={() => addingTo === 0 && (addingTo = null)}>
             <button
+              bind:this={adderButtons[0]}
               type="button"
               class="link-btn"
               aria-expanded={addingTo === 0}

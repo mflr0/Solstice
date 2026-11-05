@@ -40,12 +40,6 @@
     if (refocus) button?.focus();
   }
 
-  function keydown(e: KeyboardEvent) {
-    if (e.key !== 'Escape') return;
-    e.stopPropagation();
-    close(true);
-  }
-
   /** Shifts the panel left when it would pass the right edge of the window. */
   function fit(el: HTMLElement) {
     // The phone's sheet is fixed and already spans the screen.
@@ -102,7 +96,6 @@
       role="dialog"
       aria-label={label}
       tabindex="-1"
-      onkeydown={keydown}
       use:fit
     >
       <div class="sheet-head">
