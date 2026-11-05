@@ -1099,7 +1099,7 @@ dialog.modal::backdrop {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(15.625rem, 1fr);
-  gap: 12px;
+  gap: 12px 20px;
   align-items: start;
   overflow-x: auto;
   padding-bottom: 8px;
@@ -1109,8 +1109,9 @@ dialog.modal::backdrop {
   display: flex;
   flex-direction: column;
   min-height: 140px;
-  background: var(--paper-sunk);
-  border: var(--frame) solid var(--rule);
+  background: color-mix(in srgb, var(--paper-sunk) 70%, transparent);
+  /* Transparent at rest: the drag-over and over-limit states colour it. */
+  border: var(--frame) solid transparent;
   border-radius: var(--radius-m);
 }
 
@@ -1123,8 +1124,7 @@ dialog.modal::backdrop {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 9px 10px 7px;
-  border-bottom: 1px solid var(--rule);
+  padding: 10px 12px 6px;
 }
 
 .board-column-title {
@@ -1152,23 +1152,32 @@ dialog.modal::backdrop {
 
 .board-cards {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding: 6px 10px 12px;
+}
+
+.backlog-list .board-cards {
+  gap: 6px;
   padding: 8px;
 }
 
 .board-card {
   display: grid;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 12px 14px;
   background: var(--paper-raised);
-  border: var(--frame) solid var(--rule);
-  border-radius: var(--radius-s);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
   font-size: 0.8125rem;
   cursor: grab;
 }
 
 .board-card:hover {
-  border-color: var(--rule-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.board-card.backlog-row {
+  padding: 10px 12px;
 }
 
 .board-card.is-dragging {
@@ -1183,8 +1192,9 @@ dialog.modal::backdrop {
   user-select: none;
 }
 
-/* The copy of a card that follows the finger while it is dragged by touch. */
-.touch-ghost {
+/* The copy of a card that follows the finger while it is dragged by touch.
+   Specific enough to beat the card's scoped position and any skin's card shadow. */
+body > .board-card.touch-ghost {
   position: fixed;
   top: 0;
   left: 0;
@@ -1222,11 +1232,19 @@ dialog.modal::backdrop {
 }
 
 .drop-marker.before {
-  top: -5px;
+  top: -6px;
 }
 
 .drop-marker.after {
-  bottom: -5px;
+  bottom: -6px;
+}
+
+.backlog-row > .drop-marker.before {
+  top: -4px;
+}
+
+.backlog-row > .drop-marker.after {
+  bottom: -4px;
 }
 
 /* In an empty list. */

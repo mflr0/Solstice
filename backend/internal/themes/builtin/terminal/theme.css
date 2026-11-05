@@ -1745,6 +1745,7 @@
   border: 1px solid var(--rule-strong);
   border-radius: 0;
   background: var(--paper);
+  box-shadow: none;
   font-size: 0.875rem;
 }
 
