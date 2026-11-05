@@ -49,6 +49,15 @@ export function listLocalThemes(): Promise<LocalTheme[]> {
   return run('readonly', (store) => store.getAll() as IDBRequest<LocalTheme[]>);
 }
 
+/** The local themes as the theme pickers list them, under their served ids; none when they can't be read. */
+export async function localThemeManifests(): Promise<ThemeManifest[]> {
+  try {
+    return (await listLocalThemes()).map(({ id, manifest }) => ({ ...manifest, id }));
+  } catch {
+    return [];
+  }
+}
+
 /** The stylesheet of a local theme; null when it isn't here or can't be read. */
 export async function readLocalCss(id: Skin): Promise<string | null> {
   try {
