@@ -5,7 +5,7 @@
   import { bindingWorks, formatShortcut } from '../core/shortcuts.js';
   import { locale } from '../i18n/index.js';
   import { t } from '../i18n/t.js';
-  import { menu, outside, stackWhenCrowded } from '../lib/actions.js';
+  import { menu, outside, pinnedHeight, stackWhenCrowded } from '../lib/actions.js';
   import { LICENSES_PATH, SOURCE_URL } from '../lib/links.js';
   import { live } from '../lib/live.svelte.js';
   import { publicSettings } from '../lib/public-settings.svelte.js';
@@ -101,7 +101,7 @@
   });
 </script>
 
-<header class="topbar" use:stackWhenCrowded>
+<header class="topbar" use:stackWhenCrowded use:pinnedHeight={'--topbar-height'}>
   <div class="topbar-inner">
     <a class="brand" href={paths.home()}>
       <Logo />
