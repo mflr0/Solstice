@@ -230,6 +230,8 @@ function keys(handlers: KeyHandlers): Plugin {
     'Mod-Alt-0': setHeading(0),
     'Shift-Enter': lineBreak,
     'Mod-Enter': call(handlers.submit),
+    // On a Mac, Mod is Cmd, but the hint and the source mode promise Ctrl too.
+    'Ctrl-Enter': call(handlers.submit),
     Escape: call(handlers.cancel),
     Enter: splitListItem(N.list_item),
     Tab: chainCommands(goToNextCell(1), sinkListItem(N.list_item)),
