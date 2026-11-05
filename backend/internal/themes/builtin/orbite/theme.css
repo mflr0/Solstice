@@ -1380,55 +1380,11 @@
   }
 }
 
-/* Issue types are small bodies: a ring and a letter; epics are solid. */
-[data-skin='orbite'] .type-mark.type-mark {
-  width: 1.1875rem;
-  height: 1.1875rem;
-  border: 1.25px solid var(--type-ink);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--type-ink) 8%, var(--paper-raised));
-  color: var(--type-ink);
-  font: 600 0.59375rem/1 var(--font-mono);
-}
-
-[data-skin='orbite'] .type-mark[data-type='bug'] {
-  --tone: var(--tone-bug);
-}
-
-[data-skin='orbite'] .type-mark[data-type='story'] {
-  --tone: var(--tone-story);
-}
-
-[data-skin='orbite'] .type-mark[data-type='task'] {
-  --tone: var(--tone-task);
-}
-
-[data-skin='orbite'] .type-mark.type-mark[data-type='epic'] {
-  --tone: var(--tone-epic);
-  background: var(--type-ink);
-  color: var(--paper);
-}
-
-[data-skin='orbite'] .type-mark.type-mark[data-type='subtask'] {
-  --tone: var(--tone-subtask);
-  border-style: dashed;
-}
-
-/* An admin's fill, drawn the Orbite way. */
-[data-skin='orbite'] .type-mark.type-mark[data-fill='filled'] {
-  background: var(--type-ink);
-  color: var(--paper);
-}
-
-[data-skin='orbite'] .type-mark.type-mark[data-fill='subtle'] {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
-  color: var(--type-ink);
-}
-
-[data-skin='orbite'] .type-mark.type-mark[data-fill='outline'] {
-  background: transparent;
-  color: var(--type-ink);
+/* Issue types: a bare glyph. */
+[data-skin='orbite'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
 }
 
 [data-skin='orbite'] .priority-mark .glyph {

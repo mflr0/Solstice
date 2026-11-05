@@ -455,7 +455,6 @@
   --luna-avatar: linear-gradient(180deg, #eef4fe 0%, #c3d5f6 100%);
   --luna-avatar-edge: #6f82a3;
   --luna-avatar-ink: #163a84;
-  --luna-on-tone: #ffffff;
   --luna-balloon: #fffbe1;
   --luna-balloon-ink: #1e1d14;
   --luna-balloon-edge: #6b6650;
@@ -571,7 +570,6 @@
   --luna-avatar: linear-gradient(180deg, #3f5488 0%, #2c3d6b 100%);
   --luna-avatar-edge: #7085b5;
   --luna-avatar-ink: #e7eeff;
-  --luna-on-tone: #121826;
   --luna-balloon: #f0e8b8;
   --luna-balloon-ink: #1e1d14;
   --luna-balloon-edge: #8f875e;
@@ -638,11 +636,6 @@
 /* contrast: --ink-soft on --luna-tab */
 /* contrast: --luna-chip-ink on --luna-chip */
 /* contrast: --luna-avatar-ink on --luna-avatar */
-/* contrast: --luna-on-tone on --tone-bug */
-/* contrast: --luna-on-tone on --tone-story */
-/* contrast: --luna-on-tone on --tone-epic */
-/* contrast: --luna-on-tone on --tone-task */
-/* contrast: --luna-on-tone on --tone-subtask */
 /* contrast: --luna-balloon-ink on --luna-balloon */
 /* contrast: --luna-balloon-link on --luna-balloon */
 /* contrast: --luna-status-ink on --luna-status */
@@ -1484,65 +1477,12 @@
   }
 }
 
-/* Issue types: glossy lettered tiles. */
-[data-skin='luna'] .type-mark[data-type] {
-  --tone: var(--tone-task);
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid color-mix(in srgb, var(--type-ink) 70%, black);
-  border-radius: 3px;
-  background: linear-gradient(
-    180deg,
-    var(--type-ink) 0%,
-    var(--type-ink) 50%,
-    color-mix(in srgb, var(--type-ink) 80%, black) 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  color: var(--luna-on-tone);
-  font: 700 0.59375rem/1 var(--font-body);
-}
-
-[data-skin='luna'][data-scheme='dark'] .type-mark[data-type] {
-  border-color: color-mix(in srgb, var(--type-ink) 60%, black);
-  background: linear-gradient(
-    180deg,
-    var(--type-ink) 0%,
-    var(--type-ink) 55%,
-    color-mix(in srgb, var(--type-ink) 90%, black) 100%
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-[data-skin='luna'] .type-mark[data-type='bug'] {
-  --tone: var(--tone-bug);
-}
-
-[data-skin='luna'] .type-mark[data-type='story'] {
-  --tone: var(--tone-story);
-}
-
-[data-skin='luna'] .type-mark[data-type='epic'] {
-  --tone: var(--tone-epic);
-}
-
-[data-skin='luna'] .type-mark[data-type='subtask'] {
-  --tone: var(--tone-subtask);
-  border-style: solid;
-  border-radius: 8px;
-}
-
-/* An admin's fill, drawn the Luna way. */
-[data-skin='luna'] .type-mark[data-type][data-fill='subtle'] {
-  border-color: color-mix(in srgb, var(--type-ink) 35%, var(--paper-raised));
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
-  color: var(--type-ink);
-}
-
-[data-skin='luna'] .type-mark[data-type][data-fill='outline'] {
-  border-color: var(--type-ink);
-  background: var(--paper-raised);
-  box-shadow: none;
-  color: var(--type-ink);
+/* Issue types: a bare glyph, its letter in the body face. */
+[data-skin='luna'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
+  font-family: var(--font-body);
 }
 
 /* People: initials on a small framed picture tile. */

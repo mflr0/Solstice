@@ -1034,17 +1034,12 @@
   }
 }
 
-/* Type marks: a letter in a little box drawn freehand, each at its own slant. */
-[data-skin='crayon'] .type-mark.type-mark {
-  width: 1.1875rem;
-  height: 1.1875rem;
-  padding-top: 2px;
-  border-width: 1.5px;
-  border-color: var(--type-ink);
-  border-radius: var(--radius-xs);
-  background: transparent;
-  color: var(--type-ink);
-  font: 700 0.78125rem/1 var(--font-title);
+/* Type marks: a bare glyph in the title face, each at its own slant. */
+[data-skin='crayon'] .type-mark.type-mark[data-type] {
+  --mark: var(--type-ink);
+  --mark-solid: var(--type-ink);
+  --mark-on-tint: var(--type-ink);
+  font-family: var(--font-title);
   transform: rotate(-3deg);
 }
 
@@ -1057,31 +1052,11 @@
 }
 
 [data-skin='crayon'] .type-mark.type-mark[data-type='epic'] {
-  background: var(--type-ink);
-  color: var(--paper);
   transform: rotate(3deg);
 }
 
 [data-skin='crayon'] .type-mark.type-mark[data-type='subtask'] {
-  border-style: dashed;
   transform: rotate(1.5deg);
-}
-
-/* An admin's fill, drawn the Crayon way. */
-[data-skin='crayon'] .type-mark.type-mark[data-fill='filled'] {
-  background: var(--type-ink);
-  color: var(--paper);
-}
-
-[data-skin='crayon'] .type-mark.type-mark[data-fill='subtle'] {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--type-ink) 18%, var(--paper-raised));
-  color: var(--type-ink);
-}
-
-[data-skin='crayon'] .type-mark.type-mark[data-fill='outline'] {
-  background: transparent;
-  color: var(--type-ink);
 }
 
 [data-skin='crayon'] .priority-mark .glyph {

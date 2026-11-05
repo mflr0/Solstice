@@ -14,7 +14,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function box(type: TypeRef): HTMLElement {
+function mark(type: TypeRef): HTMLElement {
   const target = document.createElement('div');
   document.body.append(target);
   component = mount(TypeMark, { target, props: { type } });
@@ -26,7 +26,7 @@ function box(type: TypeRef): HTMLElement {
 
 describe('TypeMark', () => {
   it('draws the letter and the guessed tone of an unstyled type', () => {
-    const el = box({ id: '1', name: 'Bug', subtask: false });
+    const el = mark({ id: '1', name: 'Bug', subtask: false });
     expect(el.textContent).toBe('B');
     expect(el.querySelector('svg')).toBeNull();
     expect(el.dataset.type).toBe('bug');
@@ -35,7 +35,7 @@ describe('TypeMark', () => {
   });
 
   it("draws the type's icon, colour and fill", () => {
-    const el = box({
+    const el = mark({
       id: '1',
       name: 'Bug',
       subtask: false,
@@ -50,8 +50,15 @@ describe('TypeMark', () => {
     expect(el.style.getPropertyValue('--type-color')).toBe('#aa3300');
   });
 
+  it('marks the detail paths of a filled icon, and not its outer paths', () => {
+    const el = mark({ id: '1', name: 'Task', subtask: false, icon: 'task', fill: 'filled' });
+    const paths = [...el.querySelectorAll('svg path')];
+    expect(paths.map((p) => p.getAttribute('d'))).toEqual(TYPE_ICONS.task.map((p) => p.d));
+    expect(paths.map((p) => p.classList.contains('detail'))).toEqual([false, true]);
+  });
+
   it('falls back to the letter for an icon this build does not draw', () => {
-    const el = box({ id: '1', name: 'Story', subtask: false, icon: 'unknown' as TypeIcon });
+    const el = mark({ id: '1', name: 'Story', subtask: false, icon: 'unknown' as TypeIcon });
     expect(el.textContent).toBe('S');
   });
 });

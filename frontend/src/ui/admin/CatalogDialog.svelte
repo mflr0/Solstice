@@ -250,7 +250,7 @@
               onkeydown={(e) => iconKey(e, i)}
             >
               {#if ic}<svg viewBox="0 0 16 16" aria-hidden="true"
-                  >{#each TYPE_ICONS[ic] as d, j (j)}<path {d} />{/each}</svg
+                  >{#each TYPE_ICONS[ic] as path, j (j)}<path d={path.d} />{/each}</svg
                 >{:else}<span aria-hidden="true"
                   >{typeLetter(form.name.trim() || m.namePlaceholder)}</span
                 >{/if}
