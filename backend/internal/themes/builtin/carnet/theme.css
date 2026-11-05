@@ -1,7 +1,7 @@
 /*
  * Carnet — a site logbook ("carnet de chantier"), the default skin, kept
- * light: cream paper, black ink, one vermilion accent, statuses printed like
- * rubber stamps, hairline rules, the issue record on a plain card.
+ * light: cream paper, black ink, one vermilion accent, statuses printed in
+ * their ink, hairline rules, the issue record on a plain card.
  *
  * The base (src/app.css) draws it from these tokens.
  *
@@ -424,14 +424,8 @@
   --stamp-font: 500 0.65625rem/1.25 var(--font-body);
   --stamp-case: uppercase;
   --stamp-tracking: 0.07em;
-  --stamp-border: 1px;
-  --stamp-radius: 3px;
-  --stamp-padding: 2px 6px 1px;
-  --stamp-fill: 0%;
   --stamp-dot: none;
   --stamp-large-size: 0.75rem;
-  --stamp-large-padding: 4px 10px 3px;
-  --stamp-large-border: 1.5px;
   --stamp-large-tracking: 0.1em;
   --stamp-large-turn: rotate(1deg);
 

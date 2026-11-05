@@ -2,7 +2,7 @@
   import type { StatusRef } from '../core/types.js';
   import Highlight from './Highlight.svelte';
 
-  /** A status, printed like a rubber stamp in its category's ink. */
+  /** A status: its name in its category's ink. */
   interface Props {
     status: StatusRef;
     large?: boolean | undefined;

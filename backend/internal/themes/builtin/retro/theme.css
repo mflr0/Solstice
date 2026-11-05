@@ -390,14 +390,8 @@
   --stamp-font: 400 0.6875rem/1.3 var(--font-body);
   --stamp-case: none;
   --stamp-tracking: 0;
-  --stamp-border: 0;
-  --stamp-radius: 0;
-  --stamp-padding: 1px 6px 1px 4px;
-  --stamp-fill: 0%;
   --stamp-dot: inline-block;
   --stamp-large-size: 0.75rem;
-  --stamp-large-padding: 3px 9px 3px 6px;
-  --stamp-large-border: 0;
   --stamp-large-tracking: 0;
   --stamp-large-turn: none;
 
@@ -1276,18 +1270,7 @@
 
 /* Statuses, types, people ------------------------------------------------------------- */
 
-/* A bevelled label with a lamp in the status colour. */
-[data-skin='retro'] .stamp {
-  gap: 5px;
-  border: 0;
-  background: var(--paper);
-  box-shadow:
-    var(--rt-thin-up),
-    1px 1px 0 var(--rt-dark);
-  color: var(--c);
-  mix-blend-mode: normal;
-}
-
+/* A lamp in the status colour. */
 [data-skin='retro'] .stamp::before {
   width: 7px;
   height: 7px;
@@ -1298,7 +1281,6 @@
 }
 
 [data-skin='retro'] .stamp.large {
-  box-shadow: var(--rt-raised);
   font-weight: 700;
 }
 
@@ -1842,13 +1824,13 @@
   place-items: center;
   align-self: stretch;
   width: 16px;
-  margin-left: -1px;
+  margin-left: 6px;
   background: var(--paper) var(--rt-img-select) center / 16px 18px no-repeat;
   color: transparent;
   box-shadow: var(--rt-raised);
 }
 
-[data-skin='retro'] .status .trigger[aria-haspopup][aria-expanded='true'] .stamp {
+[data-skin='retro'] .status .trigger[aria-haspopup][aria-expanded='true'] .caret {
   box-shadow: var(--rt-pressed);
 }
 

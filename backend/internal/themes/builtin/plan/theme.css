@@ -419,18 +419,12 @@
   --avatar-radius: 50%;
   --card-top: 1px solid var(--plan-line);
 
-  /* Statuses: the frame is drawn by .stamp below, with stencil bridges. */
+  /* Statuses */
   --stamp-font: 400 0.6875rem/1 'Saira Stencil One', var(--font-mono);
   --stamp-case: uppercase;
   --stamp-tracking: 0.08em;
-  --stamp-border: 0px;
-  --stamp-radius: 0;
-  --stamp-padding: 4px 7px 4px 6px;
-  --stamp-fill: 0%;
   --stamp-dot: inline-block;
   --stamp-large-size: 0.75rem;
-  --stamp-large-padding: 7px 12px 7px 10px;
-  --stamp-large-border: 0px;
   --stamp-large-tracking: 0.12em;
   --stamp-large-turn: none;
 
@@ -1016,25 +1010,9 @@
 
 /* Marks --------------------------------------------------------------------- */
 
-/*
- * Statuses: a stencilled box (the frame has bridges at mid-length) keyed by a
- * legend square: empty to do, hatched in progress, solid done.
- */
+/* Statuses: keyed by a legend square: empty to do, hatched in progress, solid done. */
 [data-skin='plan'] .stamp {
-  --plan-w: 1px;
-  --plan-gap: 3px;
   gap: 6px;
-  background:
-    linear-gradient(var(--c), var(--c)) left top / calc(50% - var(--plan-gap)) var(--plan-w)
-      no-repeat,
-    linear-gradient(var(--c), var(--c)) right top / calc(50% - var(--plan-gap)) var(--plan-w)
-      no-repeat,
-    linear-gradient(var(--c), var(--c)) left bottom / calc(50% - var(--plan-gap)) var(--plan-w)
-      no-repeat,
-    linear-gradient(var(--c), var(--c)) right bottom / calc(50% - var(--plan-gap)) var(--plan-w)
-      no-repeat,
-    linear-gradient(var(--c), var(--c)) left top / var(--plan-w) 100% no-repeat,
-    linear-gradient(var(--c), var(--c)) right top / var(--plan-w) 100% no-repeat;
 }
 
 [data-skin='plan'] .stamp::before {
@@ -1054,8 +1032,6 @@
 }
 
 [data-skin='plan'] .stamp.large {
-  --plan-w: 1.5px;
-  --plan-gap: 5px;
   gap: 8px;
 }
 

@@ -718,10 +718,6 @@ mark.match {
   align-items: center;
   gap: 5px;
   color: var(--c);
-  border: var(--stamp-border) solid var(--c);
-  border-radius: var(--stamp-radius);
-  padding: var(--stamp-padding);
-  background: color-mix(in srgb, var(--c) var(--stamp-fill), transparent);
   font: var(--stamp-font);
   letter-spacing: var(--stamp-tracking);
   text-transform: var(--stamp-case);
@@ -751,8 +747,6 @@ mark.match {
 
 .stamp.large {
   font-size: var(--stamp-large-size);
-  padding: var(--stamp-large-padding);
-  border-width: var(--stamp-large-border);
   letter-spacing: var(--stamp-large-tracking);
   transform: var(--stamp-large-turn);
 }
