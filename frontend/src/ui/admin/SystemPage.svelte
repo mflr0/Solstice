@@ -64,8 +64,11 @@
     <p class="eyebrow">{t.adminArea.groups.system}</p>
     <h1 class="page-title">{t.adminArea.sections.system}</h1>
   </div>
-  <button type="button" class="btn" disabled={loading} onclick={() => void load()}
-    >{t.adminArea.refresh}</button
+  <button
+    type="button"
+    class="btn"
+    aria-disabled={loading || undefined}
+    onclick={() => !loading && void load()}>{t.adminArea.refresh}</button
   >
 </header>
 <p class="lead-text">{t.systemAdmin.intro}</p>

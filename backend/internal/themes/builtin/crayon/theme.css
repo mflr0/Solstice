@@ -739,8 +739,8 @@
 [data-skin='crayon']
   :is(
     .btn,
-    .btn:hover:not([disabled]),
-    .btn-primary:hover:not([disabled]),
+    .btn:hover:not([disabled], [aria-disabled='true']),
+    .btn-primary:hover:not([disabled], [aria-disabled='true']),
     .btn.on,
     .btn[aria-pressed='true']
   ) {
@@ -764,14 +764,14 @@
   filter: var(--cr-rough-alt);
 }
 
-[data-skin='crayon'] .btn:hover:not([disabled])::before {
+[data-skin='crayon'] .btn:hover:not([disabled], [aria-disabled='true'])::before {
   border-color: var(--ink);
   background:
     var(--cr-smudge) center / 100% 100% no-repeat,
     var(--paper-raised);
 }
 
-[data-skin='crayon'] .btn:active:not([disabled]) {
+[data-skin='crayon'] .btn:active:not([disabled], [aria-disabled='true']) {
   transform: translate(0.5px, 1px);
 }
 
@@ -783,14 +783,14 @@
 }
 
 [data-skin='crayon'] .btn-primary::before,
-[data-skin='crayon'] .btn-primary:hover:not([disabled])::before {
+[data-skin='crayon'] .btn-primary:hover:not([disabled], [aria-disabled='true'])::before {
   border-color: var(--cr-primary-strokes);
   background:
     repeating-linear-gradient(-58deg, transparent 0 3px, var(--cr-primary-grain) 3px 4.2px),
     var(--primary);
 }
 
-[data-skin='crayon'] .btn-primary:hover:not([disabled])::before {
+[data-skin='crayon'] .btn-primary:hover:not([disabled], [aria-disabled='true'])::before {
   background:
     repeating-linear-gradient(-58deg, transparent 0 2px, var(--cr-primary-grain) 2px 3.6px),
     var(--primary);
@@ -809,11 +809,11 @@
   background: transparent;
 }
 
-[data-skin='crayon'] .btn-quiet:hover:not([disabled]) {
+[data-skin='crayon'] .btn-quiet:hover:not([disabled], [aria-disabled='true']) {
   color: var(--ink);
 }
 
-[data-skin='crayon'] .btn-quiet:hover:not([disabled])::before {
+[data-skin='crayon'] .btn-quiet:hover:not([disabled], [aria-disabled='true'])::before {
   border-color: var(--cr-line-soft);
   background: var(--cr-smudge) center / 100% 100% no-repeat;
 }
@@ -824,11 +824,11 @@
 }
 
 [data-skin='crayon'] .btn-danger::before,
-[data-skin='crayon'] .btn-danger:hover:not([disabled])::before {
+[data-skin='crayon'] .btn-danger:hover:not([disabled], [aria-disabled='true'])::before {
   border-color: var(--cr-red);
 }
 
-[data-skin='crayon'] .btn-danger:hover:not([disabled])::before {
+[data-skin='crayon'] .btn-danger:hover:not([disabled], [aria-disabled='true'])::before {
   background: var(--cr-strokes-red), var(--paper-raised);
 }
 
@@ -838,7 +838,7 @@
   background: var(--cr-strokes-blue), var(--paper-raised);
 }
 
-[data-skin='crayon'] :is(.btn.on, .btn[aria-pressed='true']):hover:not([disabled])::before {
+[data-skin='crayon'] :is(.btn.on, .btn[aria-pressed='true']):hover:not([disabled], [aria-disabled='true'])::before {
   border-color: var(--accent);
   background:
     var(--cr-smudge) center / 100% 100% no-repeat,
@@ -847,18 +847,18 @@
 }
 
 /* Disabled: hatched over, the line gone dashed. */
-[data-skin='crayon'] .btn[disabled] {
+[data-skin='crayon'] .btn:is([disabled], [aria-disabled='true']) {
   opacity: 0.62;
   cursor: not-allowed;
 }
 
-[data-skin='crayon'] .btn[disabled]::before {
+[data-skin='crayon'] .btn:is([disabled], [aria-disabled='true'])::before {
   border-style: dashed;
   border-color: var(--cr-line-soft);
   background: var(--cr-hatch), var(--paper-sunk);
 }
 
-[data-skin='crayon'] .btn-primary[disabled]::before {
+[data-skin='crayon'] .btn-primary:is([disabled], [aria-disabled='true'])::before {
   border-color: var(--cr-primary-strokes);
   background: var(--cr-hatch), var(--primary);
 }

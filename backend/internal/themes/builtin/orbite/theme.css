@@ -916,12 +916,12 @@
   letter-spacing: 0.005em;
 }
 
-[data-skin='orbite'] .btn:hover:not([disabled]) {
+[data-skin='orbite'] .btn:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 4%, var(--paper-raised));
 }
 
-[data-skin='orbite'] .btn:active:not([disabled]) {
+[data-skin='orbite'] .btn:active:not([disabled], [aria-disabled='true']) {
   background: var(--paper-sunk);
   transform: translateY(0.5px);
 }
@@ -940,7 +940,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-[data-skin='orbite'] .btn.btn-primary:hover:not([disabled]) {
+[data-skin='orbite'] .btn.btn-primary:hover:not([disabled], [aria-disabled='true']) {
   border-color: color-mix(in srgb, var(--primary) 80%, #6b2a00);
   background: color-mix(in srgb, var(--primary) 88%, #ffffff);
   box-shadow:
@@ -948,7 +948,7 @@
     var(--orb-sun-glow);
 }
 
-[data-skin='orbite'] .btn.btn-primary:active:not([disabled]) {
+[data-skin='orbite'] .btn.btn-primary:active:not([disabled], [aria-disabled='true']) {
   background: color-mix(in srgb, var(--primary) 90%, #6b2a00);
   box-shadow: inset 0 1px 2px rgba(80, 30, 0, 0.3);
 }
@@ -959,7 +959,7 @@
   color: var(--ink-soft);
 }
 
-[data-skin='orbite'] .btn.btn-quiet:hover:not([disabled]) {
+[data-skin='orbite'] .btn.btn-quiet:hover:not([disabled], [aria-disabled='true']) {
   border-color: transparent;
   background: color-mix(in srgb, var(--ink) 7%, transparent);
   color: var(--ink);
@@ -970,7 +970,7 @@
   color: var(--tone-bug);
 }
 
-[data-skin='orbite'] .btn.btn-danger:hover:not([disabled]) {
+[data-skin='orbite'] .btn.btn-danger:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--tone-bug);
   background: color-mix(in srgb, var(--tone-bug) 10%, var(--paper-raised));
 }
@@ -999,14 +999,14 @@
   content: none;
 }
 
-[data-skin='orbite'] .btn[disabled] {
+[data-skin='orbite'] .btn:is([disabled], [aria-disabled='true']) {
   opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 /* A sun not yet risen: dimmed, not muddied. */
-[data-skin='orbite'] .btn.btn-primary[disabled] {
+[data-skin='orbite'] .btn.btn-primary:is([disabled], [aria-disabled='true']) {
   opacity: 1;
   border-color: transparent;
   background: color-mix(in srgb, var(--primary) 24%, var(--paper-raised));
@@ -1531,7 +1531,7 @@
     );
 }
 
-[data-skin='orbite'] .btn.modal-close:hover:not([disabled]) {
+[data-skin='orbite'] .btn.modal-close:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--ink-soft);
   color: var(--ink);
 }

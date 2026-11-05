@@ -104,6 +104,7 @@
   }
 
   async function check() {
+    if (checking) return;
     checking = true;
     try {
       show(await updatesApi.check());
@@ -163,8 +164,12 @@
     <p class="eyebrow">{t.adminArea.groups.system}</p>
     <h1 class="page-title">{t.updates.title}</h1>
   </div>
-  <button type="button" class="btn" disabled={checking || !info} onclick={() => void check()}
-    >{checking ? t.updates.checking : t.updates.checkNow}</button
+  <button
+    type="button"
+    class="btn"
+    disabled={!info}
+    aria-disabled={checking || undefined}
+    onclick={() => void check()}>{checking ? t.updates.checking : t.updates.checkNow}</button
   >
 </header>
 

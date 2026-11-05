@@ -786,13 +786,13 @@
   letter-spacing: 0.08em;
 }
 
-[data-skin='plan'] .btn:hover:not([disabled]) {
+[data-skin='plan'] .btn:hover:not([disabled], [aria-disabled='true']) {
   background-size: 100% 100%;
   border-color: var(--plan-fill, var(--ink));
   color: var(--paper);
 }
 
-[data-skin='plan'] .btn:active:not([disabled]) {
+[data-skin='plan'] .btn:active:not([disabled], [aria-disabled='true']) {
   background-size: 100% 100%;
   color: var(--paper);
   box-shadow: inset 0 0 0 2px var(--paper);
@@ -816,12 +816,12 @@
     inset 0 0 0 3px var(--primary-ink);
 }
 
-[data-skin='plan'] .btn.btn-primary:hover:not([disabled]) {
+[data-skin='plan'] .btn.btn-primary:hover:not([disabled], [aria-disabled='true']) {
   border-color: var(--primary);
   color: var(--primary-ink);
 }
 
-[data-skin='plan'] .btn.btn-primary:active:not([disabled]) {
+[data-skin='plan'] .btn.btn-primary:active:not([disabled], [aria-disabled='true']) {
   color: var(--primary-ink);
   box-shadow: inset 0 0 0 1px var(--primary-ink);
 }
@@ -833,7 +833,7 @@
   color: var(--ink-soft);
 }
 
-[data-skin='plan'] .btn.btn-quiet:hover:not([disabled]) {
+[data-skin='plan'] .btn.btn-quiet:hover:not([disabled], [aria-disabled='true']) {
   border: 1px dashed var(--rule-strong);
   background-color: var(--accent-wash);
   color: var(--ink);
@@ -845,7 +845,7 @@
   color: var(--accent-text);
 }
 
-[data-skin='plan'] .btn.btn-danger:hover:not([disabled]) {
+[data-skin='plan'] .btn.btn-danger:hover:not([disabled], [aria-disabled='true']) {
   color: var(--paper);
 }
 
@@ -859,17 +859,17 @@
 
 [data-skin='plan'] .btn.on .n,
 [data-skin='plan'] .btn[aria-pressed='true'] .n,
-[data-skin='plan'] .btn:hover:not([disabled]) .n {
+[data-skin='plan'] .btn:hover:not([disabled], [aria-disabled='true']) .n {
   color: inherit;
 }
 
 /* Disabled: drawn in hidden lines. */
-[data-skin='plan'] .btn[disabled] {
+[data-skin='plan'] .btn:is([disabled], [aria-disabled='true']) {
   opacity: 0.55;
   border-style: dashed;
 }
 
-[data-skin='plan'] .btn.btn-primary[disabled] {
+[data-skin='plan'] .btn.btn-primary:is([disabled], [aria-disabled='true']) {
   border-color: var(--rule-strong);
   background-color: transparent;
   color: var(--ink-soft);
