@@ -16,11 +16,13 @@ import (
 	"testing"
 
 	"solstice/internal/jirafixture"
+	"solstice/internal/themes"
 )
 
 type themeEntry struct {
 	ID         string `json:"id"`
 	ManifestID string `json:"manifestId"`
+	Contract   int    `json:"contract"`
 	Version    string `json:"version"`
 	Origin     string `json:"origin"`
 	Enabled    bool   `json:"enabled"`
@@ -30,6 +32,12 @@ type themeEntry struct {
 // themeZip is the built-in Carnet as a package of its own, under id and
 // version. change, if any, edits its stylesheet.
 func themeZip(t *testing.T, id, version string, change func(css string) string) []byte {
+	t.Helper()
+	return themeZipOnContract(t, id, version, themes.Contract, change)
+}
+
+// themeZipOnContract is themeZip, declaring contract.
+func themeZipOnContract(t *testing.T, id, version string, contract int, change func(css string) string) []byte {
 	t.Helper()
 	root := os.DirFS("../internal/themes/builtin/carnet")
 	var b bytes.Buffer
@@ -54,7 +62,7 @@ func themeZip(t *testing.T, id, version string, change func(css string) string) 
 			if err := json.Unmarshal(data, &m); err != nil {
 				return err
 			}
-			m["id"], m["version"] = id, version
+			m["id"], m["version"], m["contract"] = id, version, contract
 			if data, err = json.Marshal(m); err != nil {
 				return err
 			}
@@ -191,6 +199,59 @@ func TestThemeImportTakesAFreeID(t *testing.T) {
 	builtin := importTheme(t, admin, themeZip(t, "carnet", "1.0.0", nil))
 	if builtin.ID != "carnet-2" || builtin.ManifestID != "carnet" {
 		t.Errorf("import of a built-in's id %+v", builtin)
+	}
+}
+
+func TestThemeImportOlderContract(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	id := unique("chk")
+
+	if e := importTheme(t, admin, themeZipOnContract(t, id, "1.0.0", 0, nil)); e.Contract != 0 || !e.Enabled {
+		t.Errorf("imported %+v", e)
+	}
+	var public struct {
+		Contract int
+		Themes   []themeEntry
+	}
+	anonymous(t).call("GET", "/api/themes", nil, 200, &public)
+	if public.Contract != themes.Contract {
+		t.Errorf("public list: server's contract %d, want %d", public.Contract, themes.Contract)
+	}
+	listed := false
+	for _, e := range public.Themes {
+		if e.ID == id {
+			listed = e.Contract == 0
+		}
+	}
+	if !listed {
+		t.Errorf("%s is not listed on contract 0: %+v", id, public.Themes)
+	}
+	var listing struct {
+		Contract int
+		Themes   []themeEntry
+	}
+	admin.call("GET", "/api/admin/themes", nil, 200, &listing)
+	if listing.Contract != themes.Contract {
+		t.Errorf("admin list: server's contract %d, want %d", listing.Contract, themes.Contract)
+	}
+	if e, ok := adminTheme(t, admin, id); !ok || e.Contract != 0 {
+		t.Errorf("admin list: %+v, %v", e, ok)
+	}
+	if status, _ := themeServes(t, id); status != 200 {
+		t.Errorf("theme.css: %d", status)
+	}
+}
+
+func TestThemeImportNewerContractRefused(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	id := unique("chk")
+
+	status, raw := sendTheme(t, admin, "POST", "/api/admin/themes", themeZipOnContract(t, id, "1.0.0", themes.Contract+1, nil))
+	if status != 400 || !strings.Contains(string(raw), `"rule":"manifest"`) {
+		t.Errorf("%d\n%s", status, raw)
+	}
+	if themeListed(t, id) {
+		t.Error("a refused package is listed")
 	}
 }
 

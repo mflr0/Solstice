@@ -11,6 +11,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { loadThemes, themes } from '../../lib/skins.svelte.js';
   import LanguageDropdown from '../LanguageDropdown.svelte';
+  import ThemeContractFlag from '../ThemeContractFlag.svelte';
   import { appearance, applyMode, applySkin, notify } from '../../lib/ui.svelte.js';
 
   /**
@@ -121,6 +122,7 @@
         <span class="skin-text">
           <span class="skin-name">{localized(theme.name, locale)}</span>
           <span class="muted small">{localized(theme.description, locale)}</span>
+          <ThemeContractFlag theme={theme.contract} server={themes.contract} />
         </span>
       </button>
     {/each}

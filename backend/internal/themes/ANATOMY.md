@@ -481,7 +481,8 @@ static there.
 The server serves theme packages built into its binary, from
 `backend/internal/themes/builtin/<id>/`; `builtin/order.json` lists their ids in
 the order the menus show them. **Contract version: 1.** A package
-declaring a higher `contract` is refused.
+declaring a higher `contract` is refused. One declaring a lower `contract` can
+still be used; the interface says it may look broken.
 
 A package is a folder named after its id:
 
@@ -513,7 +514,7 @@ A package holds at most 100 files and 10 MiB (`MaxPackageFiles`,
 ```
 
 - `id`: 1 to 32 of `a-z`, `0-9` and `-`, the folder's name.
-- `contract`: an integer, 1 up to the server's contract version.
+- `contract`: an integer, required, 0 up to the server's contract version.
 - `version`: a [semantic version](https://semver.org) (`1.0.0`, `2.1.0-beta.1`).
 - `name`, `description`: locale → text, `en` required, no empty text. The menus
   show the name and, under it, the description: a few words on the look.

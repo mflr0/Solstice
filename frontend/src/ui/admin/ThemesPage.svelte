@@ -17,6 +17,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import SkinMock from '../SkinMock.svelte';
+  import ThemeContractFlag from '../ThemeContractFlag.svelte';
 
   /**
    * The instance's themes: built-in and imported ones, each with its preview.
@@ -209,6 +210,7 @@
             <dd>{theme.contract}</dd>
           </div>
         </dl>
+        <ThemeContractFlag theme={theme.contract} server={data.contract} />
         <div class="actions" role="group" aria-label={name}>
           <a class="btn btn-small" href={adminApi.themeExportUrl(theme.id)} download>{m.export}</a>
           {#if can.switchOff || !theme.enabled}
