@@ -12,6 +12,7 @@
   import { initials } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { api, errorMessage, hasPicture, pictureChanged, pictureUrl } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
@@ -337,7 +338,12 @@
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
     {#if dirty}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+      <div
+        class="savebar"
+        role="region"
+        aria-label={t.settings.unsaved}
+        use:pinnedHeight={'--savebar-height'}
+      >
         <span>{t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={reset}>{t.settings.discard}</button>
         <button class="btn btn-primary" type="submit" disabled={saving}

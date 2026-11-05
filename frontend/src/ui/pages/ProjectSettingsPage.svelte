@@ -30,7 +30,7 @@
     UserRef,
   } from '../../core/types.js';
   import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
-  import { outside } from '../../lib/actions.js';
+  import { outside, pinnedHeight } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -797,7 +797,12 @@
           </div>
 
           {#if dirty}
-            <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+            <div
+              class="savebar"
+              role="region"
+              aria-label={t.settings.unsaved}
+              use:pinnedHeight={'--savebar-height'}
+            >
               <span>{t.settings.unsaved}</span>
               <button
                 class="btn btn-quiet"

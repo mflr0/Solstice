@@ -3,6 +3,7 @@
   import type { BannerSettings } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
@@ -133,7 +134,12 @@
 
     {#if saveError}<p class="error-text" role="alert">{saveError}</p>{/if}
     {#if dirty}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+      <div
+        class="savebar"
+        role="region"
+        aria-label={t.settings.unsaved}
+        use:pinnedHeight={'--savebar-height'}
+      >
         <span>{t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={() => stored && adopt(stored)}
           >{t.settings.discard}</button

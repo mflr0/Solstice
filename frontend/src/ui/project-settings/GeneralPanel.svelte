@@ -15,6 +15,7 @@
   import type { UserRef } from '../../core/types.js';
   import { formatList } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { adminApi, projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -231,7 +232,12 @@
   </form>
 
   {#if dirty}
-    <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+    <div
+      class="savebar"
+      role="region"
+      aria-label={t.settings.unsaved}
+      use:pinnedHeight={'--savebar-height'}
+    >
       <span>{t.settings.unsaved}</span>
       <button type="button" class="btn btn-quiet" disabled={saving} onclick={discard}
         >{t.settings.discard}</button

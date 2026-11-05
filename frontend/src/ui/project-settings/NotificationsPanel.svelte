@@ -4,6 +4,7 @@
   import { hasExtra, notificationsChanged, toggleExtra } from '../../core/project-admin.js';
   import type { IdName } from '../../core/types.js';
   import { holderLabels, t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -141,7 +142,12 @@
   {/if}
 
   {#if dirty}
-    <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+    <div
+      class="savebar"
+      role="region"
+      aria-label={t.settings.unsaved}
+      use:pinnedHeight={'--savebar-height'}
+    >
       <span>{t.settings.unsaved}</span>
       <button type="button" class="btn btn-quiet" disabled={saving} onclick={discard}
         >{t.settings.discard}</button

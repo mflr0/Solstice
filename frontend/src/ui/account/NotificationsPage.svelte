@@ -5,6 +5,7 @@
   import { adminPath } from '../../core/areas.js';
   import { formatLocale } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -230,7 +231,12 @@
 
     {#if saveError}<p class="error-text" role="alert">{saveError}</p>{/if}
     {#if dirty}
-      <div class="savebar" role="region" aria-label={t.settings.unsaved}>
+      <div
+        class="savebar"
+        role="region"
+        aria-label={t.settings.unsaved}
+        use:pinnedHeight={'--savebar-height'}
+      >
         <span>{t.settings.unsaved}</span>
         <button type="button" class="btn btn-quiet" onclick={discard}>{t.settings.discard}</button>
         <button
