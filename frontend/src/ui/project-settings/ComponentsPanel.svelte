@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { ComponentRow } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { otherComponents } from '../../core/project-admin.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -52,6 +54,8 @@
     void load();
   }
 
+  const deleteId = (c: ComponentRow) => `component-delete-${c.id}`;
+
   function askRemove(c: ComponentRow) {
     removing = c;
     moveTo = '';
@@ -61,9 +65,11 @@
     const c = removing;
     if (!c) return;
     const target = targets.find((x) => String(x.id) === moveTo)?.id;
+    const focus = focusOrderAfterRemoval(items ?? [], c, deleteId, 'component-new');
     await projectAdminApi.deleteComponent(projectKey, c.id, target);
     notify(t.projectConfig.components.deleted(c.name));
     await load();
+    refocusLater(focus);
   }
 </script>
 
@@ -72,8 +78,11 @@
   {#if items}<span class="count">{items.length}</span>{/if}
   {#if items}
     <span class="actions">
-      <button type="button" class="btn btn-small" onclick={() => (dialog = { item: null })}
-        >{t.projectConfig.components.new}</button
+      <button
+        type="button"
+        id="component-new"
+        class="btn btn-small"
+        onclick={() => (dialog = { item: null })}>{t.projectConfig.components.new}</button
       >
     </span>
   {/if}
@@ -118,7 +127,7 @@
               <button type="button" class="link-btn" onclick={() => (dialog = { item: c })}
                 >{t.common.edit}</button
               >
-              <button type="button" class="link-btn" onclick={() => askRemove(c)}
+              <button type="button" id={deleteId(c)} class="link-btn" onclick={() => askRemove(c)}
                 >{t.common.delete}</button
               >
             </td>

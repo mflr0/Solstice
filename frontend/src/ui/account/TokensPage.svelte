@@ -10,7 +10,9 @@
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
   import type { AccessToken, TokenScope } from '../../core/admin-types.js';
   import { isoDay } from '../../core/dates.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
@@ -47,6 +49,8 @@
   const locked = $derived(readLocked(scopes));
   const problems = $derived(tokenProblems(name, scopes, choice, date, now));
   const shown = $derived(tried ? problems : {});
+
+  const revokeId = (tok: AccessToken) => `token-revoke-${tok.id}`;
 
   async function load() {
     try {
@@ -89,7 +93,7 @@
 <header class="page-head">
   <div>
     <p class="eyebrow">{t.account.title}</p>
-    <h1 class="page-title">{t.account.sections.tokens}</h1>
+    <h1 class="page-title" id="tokens-title" tabindex="-1">{t.account.sections.tokens}</h1>
   </div>
 </header>
 <p class="lead-text">{t.tokensPage.intro} <code class="mono">Authorization: Bearer …</code></p>
@@ -242,7 +246,7 @@
               </span>
             </td>
             <td class="row-actions">
-              <button class="link-btn" onclick={() => (revoking = tok)}
+              <button id={revokeId(tok)} class="link-btn" onclick={() => (revoking = tok)}
                 >{t.tokensPage.revoke}</button
               >
             </td>
@@ -260,9 +264,11 @@
   onclose={() => (revoking = null)}
   onconfirm={async () => {
     if (!revoking) return;
+    const focus = focusOrderAfterRemoval(tokens ?? [], revoking, revokeId, 'tokens-title');
     await accountApi.revokeToken(revoking.id);
     notify(t.tokensPage.revoked);
-    void load();
+    await load();
+    refocusLater(focus);
   }}
 >
   <p>{t.tokensPage.revokeBody}</p>

@@ -2,9 +2,11 @@
   import { matches, typedMatches } from '../../core/admin-forms.js';
   import type { CatalogItem, FieldRow, FieldTypeInfo } from '../../core/admin-types.js';
   import { optionsEditable } from '../../core/catalogs.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import type { AdminProjectRow } from '../../core/project-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -72,6 +74,8 @@
     void load();
   }
 
+  const deleteId = (f: FieldRow) => `field-delete-${f.id}`;
+
   function askRemove(f: FieldRow) {
     removing = f;
     typed = '';
@@ -81,9 +85,11 @@
     const f = removing;
     if (!f) return;
     if (f.issues > 0 && !typedMatches(typed, f.name)) throw new Error(t.fieldsAdmin.nameMismatch);
+    const focus = focusOrderAfterRemoval(list, f, deleteId, 'field-new');
     await adminApi.deleteField(f.id, f.issues > 0 ? typed.trim() : undefined);
     notify(t.catalogAdmin.deleted(f.name));
     await load();
+    refocusLater(focus);
   }
 
   /** "KEY1, KEY2, KEY3 +2". */
@@ -110,7 +116,7 @@
       {#if items}<span class="count muted">{formatNumber(items.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (dialog = { item: null })}
+  <button id="field-new" class="btn btn-primary" onclick={() => (dialog = { item: null })}
     >{t.fieldsAdmin.newItem}</button
   >
 </header>
@@ -185,7 +191,9 @@
                     >{t.fieldsAdmin.optionsAction}</button
                   >
                 {/if}
-                <button class="link-btn" onclick={() => askRemove(f)}>{t.common.delete}</button>
+                <button id={deleteId(f)} class="link-btn" onclick={() => askRemove(f)}
+                  >{t.common.delete}</button
+                >
               </td>
             </tr>
           {/each}

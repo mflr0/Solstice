@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { DEFAULT_SKIN, localized, type Scheme, type Skin } from '../../core/appearance.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { errorMessage } from '../../lib/api.js';
   import {
     deleteLocalTheme,
@@ -100,14 +102,18 @@
     await save(replacing.next, m.replaced(nameOf(replacing.next)));
   }
 
+  const deleteId = (theme: LocalTheme) => `my-theme-delete-${theme.id}`;
+
   async function confirmRemove() {
     if (!removing) return;
     const theme = removing;
+    const focus = focusOrderAfterRemoval(list, theme, deleteId, 'my-theme-import');
     await deleteLocalTheme(theme.id);
     if (appearance.skin === theme.id) applySkin(DEFAULT_SKIN);
     forgetSkin(theme.id);
     await refresh();
     notify(m.deleted(nameOf(theme)));
+    refocusLater(focus);
   }
 
   function exportZip(theme: LocalTheme) {
@@ -125,8 +131,11 @@
     <p class="eyebrow">{t.account.title}</p>
     <h1 class="page-title">{t.account.sections.themes}</h1>
   </div>
-  <button type="button" class="btn btn-primary" onclick={() => fileInput?.click()}
-    >{m.import}</button
+  <button
+    type="button"
+    id="my-theme-import"
+    class="btn btn-primary"
+    onclick={() => fileInput?.click()}>{m.import}</button
   >
 </header>
 <p class="lead-text">{m.hint}</p>
@@ -170,8 +179,11 @@
             <button type="button" class="btn btn-small" onclick={() => exportZip(theme)}
               >{m.export}</button
             >
-            <button type="button" class="btn btn-small btn-quiet" onclick={() => (removing = theme)}
-              >{t.common.delete}</button
+            <button
+              type="button"
+              id={deleteId(theme)}
+              class="btn btn-small btn-quiet"
+              onclick={() => (removing = theme)}>{t.common.delete}</button
             >
           </div>
         </div>

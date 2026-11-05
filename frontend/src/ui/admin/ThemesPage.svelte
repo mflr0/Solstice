@@ -9,8 +9,10 @@
     type ThemeFinding,
   } from '../../core/admin-themes.js';
   import { DEFAULT_SKIN, localized, type Scheme, type Skin } from '../../core/appearance.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { loadSkin, reloadSkin, reloadThemes, skinSheets } from '../../lib/skins.svelte.js';
@@ -124,12 +126,16 @@
     }
   }
 
+  const deleteId = (theme: AdminTheme) => `theme-delete-${theme.id}`;
+
   async function confirmRemove() {
     if (!removing) return;
     const theme = removing;
+    const focus = focusOrderAfterRemoval(data?.themes ?? [], theme, deleteId, 'theme-import');
     await adminApi.deleteTheme(theme.id);
     await changed();
     notify(m.deleted(nameOf(theme)));
+    refocusLater(focus);
   }
 </script>
 
@@ -139,6 +145,7 @@
     <h1 class="page-title">{t.adminArea.sections.themes}</h1>
   </div>
   <button
+    id="theme-import"
     class="btn btn-primary"
     aria-disabled={uploading || undefined}
     onclick={() => chooseFile(null)}>{uploading ? m.uploading : m.import}</button
@@ -233,7 +240,7 @@
             >
           {/if}
           {#if can.remove}
-            <button class="btn btn-small" onclick={() => (removing = theme)}
+            <button id={deleteId(theme)} class="btn btn-small" onclick={() => (removing = theme)}
               >{t.common.delete}</button
             >
           {/if}

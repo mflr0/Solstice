@@ -4,8 +4,10 @@
   import { canResendInvitation } from '../../core/account-links.js';
   import { filterUsers, USER_SHOWS, type UserShow } from '../../core/admin-lists.js';
   import { adminPath } from '../../core/areas.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
@@ -34,6 +36,14 @@
   let seq = 0;
 
   const list = $derived(filterUsers(users ?? [], show));
+
+  const stateId = (u: UserRow) => `user-state-${u.id}`;
+
+  /** The action changes button; under a filter, the row may go. */
+  const stateFocus = (u: UserRow) => [
+    stateId(u),
+    ...focusOrderAfterRemoval(list, u, stateId, 'user-new'),
+  ];
 
   async function load() {
     const mine = ++seq;
@@ -77,10 +87,12 @@
   }
 
   async function reactivate(u: UserRow) {
+    const focus = stateFocus(u);
     try {
       await adminApi.updateUser(u.id, { active: true });
       notify(t.usersAdmin.reactivated(u.name));
       await load();
+      refocusLater(focus);
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -109,7 +121,7 @@
       {#if users}<span class="count muted">{formatNumber(users.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (dialog = { user: null })}
+  <button id="user-new" class="btn btn-primary" onclick={() => (dialog = { user: null })}
     >{t.usersAdmin.newUser}</button
   >
 </header>
@@ -215,11 +227,11 @@
                   >
                 {/if}
                 {#if u.active}
-                  <button class="link-btn" onclick={() => (deactivating = u)}
+                  <button id={stateId(u)} class="link-btn" onclick={() => (deactivating = u)}
                     >{t.usersAdmin.deactivate}</button
                   >
                 {:else}
-                  <button class="link-btn" onclick={() => void reactivate(u)}
+                  <button id={stateId(u)} class="link-btn" onclick={() => void reactivate(u)}
                     >{t.usersAdmin.activate}</button
                   >
                 {/if}
@@ -254,9 +266,11 @@
   onclose={() => (deactivating = null)}
   onconfirm={async () => {
     if (!deactivating) return;
+    const focus = stateFocus(deactivating);
     await adminApi.updateUser(deactivating.id, { active: false });
     notify(t.usersAdmin.deactivated(deactivating.name));
-    void load();
+    await load();
+    refocusLater(focus);
   }}
 >
   <p>{t.usersAdmin.deactivateBody}</p>

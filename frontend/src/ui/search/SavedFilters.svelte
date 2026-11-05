@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { refocus } from '../../lib/actions.js';
   import type { SavedFilter } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
 
@@ -9,7 +11,7 @@
   interface Props {
     filters: SavedFilter[] | null;
     current: number | null;
-    onstar: (f: SavedFilter) => void;
+    onstar: (f: SavedFilter) => void | Promise<void>;
     /** Leaves the current filter for the plain search. */
     onclose: () => void;
     /** Stars (or unstars) the given filters, from manage mode. */
@@ -31,6 +33,8 @@
   let managing = $state(false);
   let picked = $state<number[]>([]);
   let busy = $state(false);
+  let manageButton = $state<HTMLButtonElement>();
+  let selectAll = $state<HTMLInputElement>();
   const uid = $props.id();
   const id = `saved-${uid}`;
 
@@ -61,9 +65,24 @@
     picked = on ? (filters ?? []).map((f) => f.id) : [];
   }
 
-  function done() {
+  async function manage() {
+    managing = true;
+    await tick();
+    selectAll?.focus();
+  }
+
+  async function done() {
     managing = false;
     picked = [];
+    await tick();
+    manageButton?.focus();
+  }
+
+  /** The star moves its filter to another group, which builds a new button. */
+  async function star(f: SavedFilter) {
+    await onstar(f);
+    await tick();
+    refocus(document.getElementById(`${id}-star-${f.id}`));
   }
 
   async function starMany(fs: SavedFilter[], on: boolean) {
@@ -92,9 +111,10 @@
       <h2 class="saved-title" id="{id}-title">{t.saved.title}</h2>
       {#if !managing && filters?.length}
         <button
+          bind:this={manageButton}
           type="button"
           class="btn btn-small btn-quiet manage"
-          onclick={() => (managing = true)}>{t.saved.manage}</button
+          onclick={() => void manage()}>{t.saved.manage}</button
         >
       {/if}
     </div>
@@ -102,6 +122,7 @@
       <div class="manage-bar" role="group" aria-label={t.saved.actions}>
         <label class="pick-all">
           <input
+            bind:this={selectAll}
             type="checkbox"
             checked={allPicked}
             indeterminate={somePicked}
@@ -130,7 +151,7 @@
             disabled={busy || deletable.length === 0}
             onclick={() => ondeletemany(selection)}>{t.saved.deleteMany(deletable.length)}</button
           >
-          <button type="button" class="btn btn-small btn-quiet" onclick={done}
+          <button type="button" class="btn btn-small btn-quiet" onclick={() => void done()}
             >{t.saved.manageDone}</button
           >
         </div>
@@ -162,12 +183,13 @@
                 </label>
               {:else}
                 <button
+                  id="{id}-star-{f.id}"
                   type="button"
                   class="star"
                   aria-pressed={f.favourite}
                   aria-label={f.favourite ? t.saved.unstar(f.name) : t.saved.star(f.name)}
                   title={f.favourite ? t.saved.unstar(f.name) : t.saved.star(f.name)}
-                  onclick={() => onstar(f)}
+                  onclick={() => void star(f)}
                   ><span aria-hidden="true">{f.favourite ? '★' : '☆'}</span></button
                 >
                 <a

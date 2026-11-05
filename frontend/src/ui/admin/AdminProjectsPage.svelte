@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Category } from '../../core/admin-types.js';
+  import { focusOrderAfterRemoval } from '../../core/focus.js';
   import {
     filterProjects,
     parseCategoryFilter,
@@ -12,6 +13,7 @@
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
+  import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -49,6 +51,10 @@
 
   const list = $derived(filterProjects(projects ?? [], q, show, category));
   const filtered = $derived(q.trim() !== '' || show !== 'all' || category !== 'all');
+
+  const archiveId = (p: AdminProject) => `project-archive-${p.id}`;
+  const deleteId = (p: AdminProject) => `project-delete-${p.id}`;
+  const deleteCategoryId = (c: Category) => `category-delete-${c.id}`;
 
   async function load() {
     try {
@@ -117,10 +123,13 @@
   }
 
   async function unarchive(p: AdminProject) {
+    // The action changes button; under a filter, the row may go.
+    const focus = [archiveId(p), ...focusOrderAfterRemoval(list, p, archiveId, 'project-new')];
     try {
       await adminApi.archiveProject(p.key, false);
       notify(t.projectsAdmin.unarchived(p.name));
       await load();
+      refocusLater(focus);
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -129,9 +138,11 @@
   async function archive() {
     const p = archiving;
     if (!p) return;
+    const focus = [archiveId(p), ...focusOrderAfterRemoval(list, p, archiveId, 'project-new')];
     await adminApi.archiveProject(p.key, true);
     notify(t.projectsAdmin.archived(p.name));
     await load();
+    refocusLater(focus);
   }
 
   function renamed(oldKey: string, newKey: string, name: string) {
@@ -142,9 +153,11 @@
   async function remove() {
     const p = deleting;
     if (!p) return;
+    const focus = focusOrderAfterRemoval(list, p, deleteId, 'project-new');
     await adminApi.deleteProject(p.key, p.key);
     notify(t.projectsAdmin.deleted(p.name));
     await Promise.all([load(), loadCategories()]);
+    refocusLater(focus);
   }
 
   function categorySaved(c: Category, isNew: boolean) {
@@ -155,6 +168,7 @@
   async function removeCategory() {
     const c = removingCategory;
     if (!c) return;
+    const focus = focusOrderAfterRemoval(categories ?? [], c, deleteCategoryId, 'category-new');
     await adminApi.deleteCategory(c.id);
     notify(t.projectsAdmin.categoryDeleted(c.name));
     if (category === c.id) {
@@ -162,6 +176,7 @@
       keepFilters();
     }
     await Promise.all([loadCategories(), load()]);
+    refocusLater(focus);
   }
 </script>
 
@@ -173,7 +188,7 @@
       {#if projects}<span class="count muted">{formatNumber(projects.length)}</span>{/if}
     </h1>
   </div>
-  <button class="btn btn-primary" onclick={() => (creating = true)}
+  <button id="project-new" class="btn btn-primary" onclick={() => (creating = true)}
     >{t.projectsAdmin.newProject}</button
   >
 </header>
@@ -261,18 +276,20 @@
               <td class="row-actions">
                 <a class="link-btn" href={paths.projectSettings(p.key)}>{t.projects.settings}</a>
                 {#if p.archived}
-                  <button class="link-btn" onclick={() => void unarchive(p)}
+                  <button id={archiveId(p)} class="link-btn" onclick={() => void unarchive(p)}
                     >{t.projectsAdmin.unarchive}</button
                   >
                 {:else}
-                  <button class="link-btn" onclick={() => (archiving = p)}
+                  <button id={archiveId(p)} class="link-btn" onclick={() => (archiving = p)}
                     >{t.projectsAdmin.archive}</button
                   >
                 {/if}
                 <button class="link-btn" onclick={() => (renaming = p)}
                   >{t.projectsAdmin.changeKey}</button
                 >
-                <button class="link-btn" onclick={() => (deleting = p)}>{t.common.delete}</button>
+                <button id={deleteId(p)} class="link-btn" onclick={() => (deleting = p)}
+                  >{t.common.delete}</button
+                >
               </td>
             </tr>
           {/each}
@@ -286,8 +303,10 @@
   <section class="categories" aria-labelledby="categories-title">
     <div class="section-head">
       <h2 class="section-title" id="categories-title">{t.projectsAdmin.categoriesTitle}</h2>
-      <button class="btn btn-small" onclick={() => (categoryDialog = { category: null })}
-        >{t.projectsAdmin.newCategory}</button
+      <button
+        id="category-new"
+        class="btn btn-small"
+        onclick={() => (categoryDialog = { category: null })}>{t.projectsAdmin.newCategory}</button
       >
     </div>
     <p class="lead-text">{t.projectsAdmin.categoriesIntro}</p>
@@ -314,8 +333,10 @@
                   <button class="link-btn" onclick={() => (categoryDialog = { category: c })}
                     >{t.common.edit}</button
                   >
-                  <button class="link-btn" onclick={() => (removingCategory = c)}
-                    >{t.common.delete}</button
+                  <button
+                    id={deleteCategoryId(c)}
+                    class="link-btn"
+                    onclick={() => (removingCategory = c)}>{t.common.delete}</button
                   >
                 </td>
               </tr>

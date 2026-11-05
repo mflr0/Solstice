@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
   import {
     canReset,
@@ -14,7 +15,7 @@
   import { guessBaseURL, timeZones, zoneChoices } from '../../core/setup.js';
   import { locale } from '../../i18n/index.js';
   import { localeOptions } from '../../i18n/locales.js';
-  import { pinnedHeight } from '../../lib/actions.js';
+  import { pinnedHeight, refocus } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
@@ -29,6 +30,15 @@
    */
 
   type Field = keyof GeneralForm;
+
+  const fieldIds: Record<Exclude<GeneralField, 'banner'>, string> = {
+    instanceName: 'set-name',
+    baseURL: 'set-url',
+    timeZone: 'set-zone',
+    defaultLanguage: 'set-lang',
+    sessionDays: 'set-days',
+    passwordMinLength: 'set-pwlen',
+  };
 
   const zones = timeZones();
   const zoneList = zoneChoices(locale);
@@ -93,16 +103,19 @@
     void send(generalPatch(form, settings), t.settingsAdmin.saved);
   }
 
-  function reset(field: GeneralField) {
-    void send({ [field]: null }, t.settingsAdmin.resetDone);
+  /** The link goes once the field is reset, so focus moves to the field. */
+  async function reset(field: keyof typeof fieldIds) {
+    await send({ [field]: null }, t.settingsAdmin.resetDone);
+    await tick();
+    refocus(document.getElementById(fieldIds[field]));
   }
 </script>
 
-{#snippet origin(field: GeneralField)}
+{#snippet origin(field: keyof typeof fieldIds)}
   {#if sourceNote(field)}
     <span class="hint source">{sourceNote(field)}</span>
   {:else if canReset(settings?.sources[field])}
-    <button type="button" class="link-btn hint" disabled={saving} onclick={() => reset(field)}
+    <button type="button" class="link-btn hint" disabled={saving} onclick={() => void reset(field)}
       >{t.settingsAdmin.reset}</button
     >
   {/if}

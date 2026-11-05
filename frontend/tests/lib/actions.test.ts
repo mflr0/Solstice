@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { outside, stackWhenCrowded } from '../../src/lib/actions.js';
+import { outside, refocusLater, stackWhenCrowded } from '../../src/lib/actions.js';
 
 describe('outside', () => {
   let box: HTMLElement;
@@ -135,5 +135,37 @@ describe('stackWhenCrowded', () => {
     const action = stackWhenCrowded(bar);
     action.destroy?.();
     expect(bar.classList.contains('is-stacked')).toBe(false);
+  });
+});
+
+describe('refocusLater', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<button id="b"></button><button id="c"></button>';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+
+  it('waits for the next task, then focuses the first id on the page', () => {
+    refocusLater(['gone', 'b', 'c']);
+    expect(document.activeElement).toBe(document.body);
+    vi.runAllTimers();
+    expect(document.activeElement?.id).toBe('b');
+  });
+
+  it('leaves focus alone when it did not fall to the page', () => {
+    document.getElementById('c')?.focus();
+    refocusLater(['b']);
+    vi.runAllTimers();
+    expect(document.activeElement?.id).toBe('c');
+  });
+
+  it('does nothing when no id is on the page', () => {
+    refocusLater(['gone']);
+    vi.runAllTimers();
+    expect(document.activeElement).toBe(document.body);
   });
 });

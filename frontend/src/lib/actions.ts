@@ -178,6 +178,18 @@ export function refocus(target: HTMLElement | null | undefined): void {
   if (document.activeElement === document.body) target?.focus();
 }
 
+/**
+ * Refocuses the first of these ids on the page, in the next task: by then, a
+ * dialog whose action just ended has closed (a closed dialog returns focus to
+ * its opener, and a modal one keeps the page inert) and the list has rendered.
+ */
+export function refocusLater(ids: readonly string[]): void {
+  setTimeout(() => {
+    const target = ids.map((id) => document.getElementById(id)).find(Boolean);
+    refocus(target);
+  });
+}
+
 /** Focuses the node once mounted. */
 export function autofocus(node: HTMLElement) {
   queueMicrotask(() => node.focus());
