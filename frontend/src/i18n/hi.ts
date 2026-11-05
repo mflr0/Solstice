@@ -2177,6 +2177,7 @@ export const hi: Messages = {
     sections: {
       profile: 'प्रोफ़ाइल',
       appearance: 'भाषा और रूप-रंग',
+      themes: 'मेरी थीम',
       shortcuts: 'कीबोर्ड शॉर्टकट',
       notifications: 'सूचनाएँ',
       tokens: 'एक्सेस टोकन',
@@ -2234,6 +2235,29 @@ export const hi: Messages = {
     themeHint: 'थीम और लाइट या डार्क मोड सिर्फ़ आप पर लागू होते हैं।',
     themeRescueHint:
       'अगर कोई थीम पेज बिगाड़ दे, तो पेज को डिफ़ॉल्ट थीम में खोलने के लिए पते में ?skin=carnet जोड़ें।',
+    myThemes: {
+      import: 'थीम आयात करें',
+      hint: 'ये थीम केवल इसी ब्राउज़र में रहती हैं: इन्हें कोई और नहीं देखता, और साइट का डेटा मिटाने पर ये हट जाती हैं, इसलिए अपनी zip फ़ाइल सँभालकर रखें।',
+      empty: 'अभी कोई थीम नहीं।',
+      use: 'उपयोग करें',
+      export: 'निर्यात करें',
+      trustTitle: 'क्या आपको इस फ़ाइल पर भरोसा है?',
+      trustBody:
+        'केवल उन्हीं लोगों की थीम आयात करें जिन पर आपको भरोसा है। थीम इस ऐप का रूप और उसमें दिखने वाली बातें बदल सकती है, और इसकी कोई जाँच नहीं होती।',
+      unreadable:
+        'यह zip थीम पैकेज नहीं है: इसके मूल में पढ़ने योग्य theme.json और theme.css होना चाहिए।',
+      replaceTitle: (name: string, from: string, to: string) =>
+        `${name} v${from} को v${to} से बदलें?`,
+      replace: 'बदलें',
+      replaceBody: 'इस ब्राउज़र में मौजूद संस्करण हट जाएगा।',
+      deleteTitle: (name: string) => `${name} हटाएँ?`,
+      deleteBody: (fallback: string) =>
+        `यह इस ब्राउज़र से हट जाएगी। अगर आप इसका उपयोग कर रहे हैं, तो आप ${fallback} पर लौट जाएँगे।`,
+      imported: (name: string) => `${name} आयात हो गई।`,
+      replaced: (name: string) => `${name} बदल दी गई।`,
+      deleted: (name: string) => `${name} हटा दी गई।`,
+      previewFailed: 'इस थीम का पूर्वावलोकन नहीं बन सका।',
+    },
     themeFallback:
       'थीम लोड नहीं हो सकी, इसलिए डिफ़ॉल्ट थीम दिखाई जा रही है। आपकी पसंद सुरक्षित है।',
     gallery: 'थीम गैलरी खोलें',

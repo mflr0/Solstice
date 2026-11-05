@@ -2219,6 +2219,7 @@ export const de: Messages = {
     sections: {
       profile: 'Profil',
       appearance: 'Sprache und Darstellung',
+      themes: 'Meine Themes',
       shortcuts: 'Tastenkürzel',
       notifications: 'Benachrichtigungen',
       tokens: 'Zugriffstoken',
@@ -2276,6 +2277,29 @@ export const de: Messages = {
     themeHint: 'Design und Hell- oder Dunkelmodus gelten nur für Sie.',
     themeRescueHint:
       'Wenn ein Design die Seite unbrauchbar macht, hängen Sie ?skin=carnet an die Adresse an, um sie mit dem Standarddesign zu laden.',
+    myThemes: {
+      import: 'Theme importieren',
+      hint: 'Diese Themes gibt es nur in diesem Browser: Niemand sonst sieht sie, und beim Löschen der Websitedaten gehen sie verloren. Bewahren Sie also Ihre ZIP-Datei auf.',
+      empty: 'Noch keine Themes.',
+      use: 'Verwenden',
+      export: 'Exportieren',
+      trustTitle: 'Vertrauen Sie dieser Datei?',
+      trustBody:
+        'Importieren Sie nur Themes von Personen, denen Sie vertrauen. Ein Theme kann das Aussehen dieser App ändern und auch das, was sie scheinbar sagt, und niemand prüft es.',
+      unreadable:
+        'Diese ZIP-Datei ist kein Theme-Paket: Sie braucht im Stammverzeichnis eine lesbare theme.json und eine theme.css.',
+      replaceTitle: (name: string, from: string, to: string) =>
+        `${name} v${from} durch v${to} ersetzen?`,
+      replace: 'Ersetzen',
+      replaceBody: 'Die Version in diesem Browser verschwindet.',
+      deleteTitle: (name: string) => `${name} löschen?`,
+      deleteBody: (fallback: string) =>
+        `Es verschwindet aus diesem Browser. Falls Sie es verwenden, kehren Sie zu ${fallback} zurück.`,
+      imported: (name: string) => `${name} importiert.`,
+      replaced: (name: string) => `${name} ersetzt.`,
+      deleted: (name: string) => `${name} gelöscht.`,
+      previewFailed: 'Die Vorschau dieses Themes konnte nicht gezeichnet werden.',
+    },
     themeFallback:
       'Das Design konnte nicht geladen werden, daher wird das Standarddesign angezeigt. Ihre Auswahl bleibt erhalten.',
     gallery: 'Design-Galerie öffnen',

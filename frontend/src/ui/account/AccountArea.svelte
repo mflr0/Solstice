@@ -4,6 +4,7 @@
   import SettingsLayout from '../SettingsLayout.svelte';
   import AppearancePage from './AppearancePage.svelte';
   import AppsPage from './AppsPage.svelte';
+  import MyThemesPage from './MyThemesPage.svelte';
   import NotificationsPage from './NotificationsPage.svelte';
   import ProfilePage from './ProfilePage.svelte';
   import ShortcutsPage from './ShortcutsPage.svelte';
@@ -11,7 +12,7 @@
   import TokensPage from './TokensPage.svelte';
 
   /**
-   * One's own settings (/settings): profile, language and look, keyboard
+   * One's own settings (/settings): profile, language and look, my themes, keyboard
    * shortcuts, e-mails, tokens,
    * authorized applications, subscriptions.
    */
@@ -43,6 +44,8 @@
       <ProfilePage />
     {:else if section === 'appearance'}
       <AppearancePage />
+    {:else if section === 'themes'}
+      <MyThemesPage />
     {:else if section === 'shortcuts'}
       <ShortcutsPage />
     {:else if section === 'notifications'}

@@ -90,6 +90,7 @@ export const ADMIN_ITEM_SECTIONS: readonly AdminSection[] = ['webhooks'];
 export const ACCOUNT_SECTIONS = [
   'profile',
   'appearance',
+  'themes',
   'shortcuts',
   'notifications',
   'tokens',

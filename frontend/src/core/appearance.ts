@@ -9,8 +9,9 @@
  *                      tokens key on, so "system" needs no duplicated media query.
  *   data-skin-loading  present while a skin's stylesheet is on its way.
  *
- * Each skin is a theme package the server holds: its manifest and its
- * stylesheet are fetched at run time (src/lib/skins.svelte.ts).
+ * A skin is a theme package the server holds, whose manifest and stylesheet are
+ * fetched at run time (src/lib/skins.svelte.ts), or one kept in this browser,
+ * named local-<its id> (src/lib/local-themes.ts).
  * public/theme-boot.js applies the same rules before the first paint; keep the
  * two in step.
  */
@@ -53,8 +54,17 @@ export interface ThemeIndex {
 /** The theme shown when none is stored, or the stored one can't be loaded. */
 export const DEFAULT_SKIN: Skin = 'carnet';
 
-/** What a theme's id looks like (backend/internal/themes, idPattern). */
-const SKIN_ID = /^[a-z0-9-]{1,32}$/;
+/** What a theme's id looks like (backend/internal/themes, idPattern), with room for local-. */
+const SKIN_ID = /^[a-z0-9-]{1,38}$/;
+
+/** The id a theme kept in this browser is served under. */
+export function localSkinId(manifestId: string): Skin {
+  return `local-${manifestId}`;
+}
+
+export function isLocalSkin(skin: Skin): boolean {
+  return skin.startsWith('local-');
+}
 
 /** A manifest text in the locale, else in English. */
 export function localized(texts: Record<string, string>, locale: string): string {
@@ -87,9 +97,14 @@ export function startingSkin(search: string, stored: string | null | undefined):
   return parseSkin(new URLSearchParams(search).get('skin') || stored);
 }
 
-/** The skin, or the default when the server's list doesn't have it; an empty list says nothing. */
+/**
+ * The skin, or the default when the server's list doesn't have it; an empty list
+ * says nothing, and a local theme is not the server's to list.
+ */
 export function offeredSkin(skin: Skin, offered: readonly { id: Skin }[]): Skin {
-  return offered.length === 0 || offered.some((theme) => theme.id === skin) ? skin : DEFAULT_SKIN;
+  return isLocalSkin(skin) || offered.length === 0 || offered.some((theme) => theme.id === skin)
+    ? skin
+    : DEFAULT_SKIN;
 }
 
 /** The attributes <html> should carry; null removes the attribute. */

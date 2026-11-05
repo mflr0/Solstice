@@ -6,6 +6,8 @@ import {
   htmlAttributes,
   localized,
   MODES,
+  isLocalSkin,
+  localSkinId,
   offeredSkin,
   parseMode,
   parseSkin,
@@ -64,6 +66,16 @@ describe('a skin the server does not list', () => {
 
   it('stays when the list did not arrive', () => {
     expect(offeredSkin('retro', [])).toBe('retro');
+  });
+
+  it('leaves a local theme alone: the server does not list it', () => {
+    expect(offeredSkin('local-retro', [{ id: 'carnet' }])).toBe('local-retro');
+  });
+
+  it('has room for a local theme of the longest id', () => {
+    const id = localSkinId('a'.repeat(32));
+    expect(isLocalSkin(id)).toBe(true);
+    expect(startingSkin(`?skin=${id}`, null)).toBe(id);
   });
 });
 
