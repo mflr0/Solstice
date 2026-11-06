@@ -70,6 +70,8 @@ export type ShortcutAction =
   | 'toggleScheme'
   | 'next'
   | 'previous'
+  | 'left'
+  | 'right'
   | 'open'
   | 'select'
   | 'editSummary'
@@ -93,6 +95,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { scope: 'global', action: 'toggleScheme', keys: ['d'] },
   { scope: 'results', action: 'next', keys: ['j'] },
   { scope: 'results', action: 'previous', keys: ['k'] },
+  { scope: 'results', action: 'left', keys: ['h', 'ArrowLeft'] },
+  { scope: 'results', action: 'right', keys: ['l', 'ArrowRight'] },
   { scope: 'results', action: 'open', keys: ['o', 'Enter'] },
   { scope: 'results', action: 'select', keys: ['x'] },
   { scope: 'issue', action: 'editSummary', keys: ['e'] },

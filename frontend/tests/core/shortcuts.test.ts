@@ -109,6 +109,19 @@ function on(
 }
 
 describe('shortcutFor', () => {
+  it('moves sideways in the results, with letters or arrows', () => {
+    const keysOf = (action: string) => SHORTCUTS.find((s) => s.action === action)?.keys;
+    expect(keysOf('left')).toEqual(['h', 'ArrowLeft']);
+    expect(keysOf('right')).toEqual(['l', 'ArrowRight']);
+    expect(on('h', 'results', true)).toBe('left');
+    expect(on('l', 'results', true)).toBe('right');
+    expect(on('ArrowLeft', 'results', true)).toBe('left');
+    expect(on('ArrowRight', 'results', true)).toBe('right');
+    expect(on('ArrowLeft', 'issue', true)).toBeNull();
+    expect(on('h', 'results', false)).toBeNull();
+    expect(on('ArrowLeft', 'results', false)).toBe('left');
+  });
+
   it('finds each key in its own scope only', () => {
     expect(on('/', 'global', true)).toBe('search');
     expect(on('c', 'global', true)).toBe('create');
@@ -140,7 +153,7 @@ describe('shortcutFor', () => {
   it('leaves only the non-character keys when turned off', () => {
     for (const s of SHORTCUTS) {
       for (const key of s.keys) {
-        expect(on(key, s.scope, false)).toBe(key === 'Enter' ? s.action : null);
+        expect(on(key, s.scope, false)).toBe(key.length > 1 ? s.action : null);
       }
     }
   });

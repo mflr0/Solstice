@@ -833,6 +833,8 @@ export const hi: Messages = {
       toggleScheme: 'लाइट और डार्क के बीच बदलें',
       next: 'अगला परिणाम',
       previous: 'पिछला परिणाम',
+      left: 'बाएँ जाएँ',
+      right: 'दाएँ जाएँ',
       open: 'परिणाम खोलें',
       select: 'परिणाम चुनें',
       editSummary: 'सारांश संपादित करें',

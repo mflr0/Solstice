@@ -49,6 +49,8 @@ func TestPreferenceValueAccepted(t *testing.T) {
 		{"shortcutsEnabled", ` false `, `false`},
 		{"shortcuts", `{}`, `{}`},
 		{"shortcuts", `{"toggleScheme": ["d"]}`, `{"toggleScheme":["d"]}`},
+		{"shortcuts", `{"left": ["h"]}`, `{"left":["h"]}`},
+		{"shortcuts", `{"right": ["l", "ArrowRight"]}`, `{"right":["l","ArrowRight"]}`},
 		{"shortcuts", `{"search": ["Alt-k", "/"], "watch": []}`, `{"search":["Alt-k","/"],"watch":[]}`},
 		{"shortcuts", `{"open": ["` + strings.Repeat("é", maxBindingLength) + `", "a", "b", "c"]}`,
 			`{"open":["` + strings.Repeat("é", maxBindingLength) + `","a","b","c"]}`},

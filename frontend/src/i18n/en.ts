@@ -836,6 +836,8 @@ export const en = {
       toggleScheme: 'Switch between light and dark',
       next: 'Next result',
       previous: 'Previous result',
+      left: 'Move left',
+      right: 'Move right',
       open: 'Open the result',
       select: 'Select the result',
       editSummary: 'Edit the summary',
