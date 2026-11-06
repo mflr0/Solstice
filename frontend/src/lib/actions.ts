@@ -78,6 +78,52 @@ export function menu(node: HTMLElement, close: () => void) {
   };
 }
 
+/**
+ * Keyboard for a tablist that selects as focus moves. The selected tab
+ * (aria-selected, set by the page) is the only Tab stop; Left and Right, swapped
+ * right to left, move with wrap; Home and End go to the ends. Calls select with
+ * the new tab.
+ */
+export function tabs(node: HTMLElement, select: (tab: HTMLElement) => void) {
+  let current = select;
+  const list = () => [...node.querySelectorAll<HTMLElement>('[role="tab"]')];
+  const rove = () => {
+    for (const tab of list()) tab.tabIndex = tab.getAttribute('aria-selected') === 'true' ? 0 : -1;
+  };
+  rove();
+  const watch = new MutationObserver(rove);
+  watch.observe(node, { subtree: true, attributeFilter: ['aria-selected'] });
+
+  const onKey = (e: KeyboardEvent) => {
+    // Alt+Left is the browser's back.
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const all = list();
+    const at = all.indexOf(e.target as HTMLElement);
+    if (at < 0) return;
+    const step = getComputedStyle(node).direction === 'rtl' ? -1 : 1;
+    let next = -1;
+    if (e.key === 'ArrowRight') next = (at + step + all.length) % all.length;
+    else if (e.key === 'ArrowLeft') next = (at - step + all.length) % all.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = all.length - 1;
+    const tab = all[next];
+    if (!tab) return;
+    e.preventDefault();
+    tab.focus();
+    current(tab);
+  };
+  node.addEventListener('keydown', onKey);
+  return {
+    update(next: (tab: HTMLElement) => void) {
+      current = next;
+    },
+    destroy() {
+      watch.disconnect();
+      node.removeEventListener('keydown', onKey);
+    },
+  };
+}
+
 /** Options of layer. */
 export interface LayerOptions {
   /** What the node opens against, usually the button that opens it. */

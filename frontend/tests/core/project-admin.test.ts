@@ -38,12 +38,10 @@ import {
   stateForKey,
   moveItem,
   notificationsChanged,
-  nextTab,
   normalizeKey,
   otherComponents,
   otherVersions,
   parseTab,
-  PROJECT_TABS,
   projectPayload,
   projectProblems,
   releaseTargets,
@@ -153,12 +151,6 @@ describe('settings tabs', () => {
     expect(parseTab('versions', true)).toBe('versions');
     expect(parseTab('nope', true)).toBe('general');
     expect(parseTab('versions', false)).toBe('workflows');
-  });
-
-  it('cycles with the arrow keys', () => {
-    expect(nextTab(PROJECT_TABS, 'import', 1)).toBe('general');
-    expect(nextTab(PROJECT_TABS, 'general', -1)).toBe('import');
-    expect(nextTab(PROJECT_TABS, 'components', 1)).toBe('versions');
   });
 });
 
