@@ -841,6 +841,8 @@ export const fr: Messages = {
       toggleScheme: 'Passer du mode clair au mode sombre',
       next: 'Résultat suivant',
       previous: 'Résultat précédent',
+      left: 'Aller à gauche',
+      right: 'Aller à droite',
       open: 'Ouvrir le résultat',
       select: 'Sélectionner le résultat',
       editSummary: 'Modifier le résumé',

@@ -142,8 +142,8 @@ the server checks the value's shape, not clashes between keys (400):
 
 - `shortcutsEnabled`: `true` or `false`.
 - `shortcuts`: the bindings that differ from the defaults, from action name
-  (`search`, `create`, `help`, `toggleScheme`, `next`, `previous`, `open`,
-  `select`, `editSummary`, `assignToMe`, `comment`, `status`, `watch`) to a
+  (`search`, `create`, `help`, `toggleScheme`, `next`, `previous`, `left`,
+  `right`, `open`, `select`, `editSummary`, `assignToMe`, `comment`, `status`, `watch`) to a
   list of at most 4 keys, each 1 to 32 characters without spaces (`"Alt-k"`,
   `"/"`). An empty list leaves the action without a key.
 

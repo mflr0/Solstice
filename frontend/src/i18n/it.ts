@@ -841,6 +841,8 @@ export const it: Messages = {
       toggleScheme: 'Passa tra chiaro e scuro',
       next: 'Risultato successivo',
       previous: 'Risultato precedente',
+      left: 'Vai a sinistra',
+      right: 'Vai a destra',
       open: 'Apri il risultato',
       select: 'Seleziona il risultato',
       editSummary: 'Modifica il riepilogo',

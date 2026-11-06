@@ -103,7 +103,8 @@
   function keys(e: KeyboardEvent) {
     if (!onselect || !body || ignoreShortcut(e)) return;
     const action = shortcutFor(e, 'results', appearance.shortcuts, appearance.bindings, mac);
-    if (!action) return;
+    // The table has no columns to move between: the arrows keep scrolling it.
+    if (!action || action === 'left' || action === 'right') return;
     const rows = [...body.rows];
     const current = rows.findIndex((r) => r.contains(document.activeElement));
     if (action === 'next' || action === 'previous') {

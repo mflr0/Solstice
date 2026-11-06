@@ -850,6 +850,8 @@ export const de: Messages = {
       toggleScheme: 'Zwischen hell und dunkel wechseln',
       next: 'Nächstes Ergebnis',
       previous: 'Vorheriges Ergebnis',
+      left: 'Nach links',
+      right: 'Nach rechts',
       open: 'Ergebnis öffnen',
       select: 'Ergebnis auswählen',
       editSummary: 'Zusammenfassung bearbeiten',

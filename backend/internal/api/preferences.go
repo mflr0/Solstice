@@ -22,8 +22,8 @@ const (
 
 // shortcutActions are the ShortcutAction names of frontend/src/core/shortcuts.ts.
 var shortcutActions = []string{
-	"search", "create", "help", "toggleScheme", "next", "previous", "open", "select",
-	"editSummary", "assignToMe", "comment", "status", "watch",
+	"search", "create", "help", "toggleScheme", "next", "previous", "left", "right",
+	"open", "select", "editSummary", "assignToMe", "comment", "status", "watch",
 }
 
 // preferenceChecks check the value of each known preference.
