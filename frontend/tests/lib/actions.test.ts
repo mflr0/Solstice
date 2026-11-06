@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { outside, refocusLater, stackWhenCrowded } from '../../src/lib/actions.js';
+import { outside, refocusLater, stackWhenCrowded, tabs } from '../../src/lib/actions.js';
 
 describe('outside', () => {
   let box: HTMLElement;
@@ -167,5 +167,93 @@ describe('refocusLater', () => {
     refocusLater(['gone']);
     vi.runAllTimers();
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+describe('tabs', () => {
+  let list: HTMLElement;
+  let action: ReturnType<typeof tabs>;
+  let selected: string[];
+
+  function tab(name: string) {
+    return list.querySelector<HTMLElement>(`#${name}`)!;
+  }
+
+  function select(name: string) {
+    for (const t of list.children) t.setAttribute('aria-selected', String(t.id === name));
+  }
+
+  function press(key: string, init: KeyboardEventInit = {}) {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+    (document.activeElement as HTMLElement).dispatchEvent(event);
+    return event;
+  }
+
+  beforeEach(() => {
+    list = document.createElement('div');
+    list.innerHTML = ['a', 'b', 'c']
+      .map((id) => `<button role="tab" id="${id}" aria-selected="${id === 'a'}"></button>`)
+      .join('');
+    document.body.append(list);
+    selected = [];
+    action = tabs(list, (t) => {
+      selected.push(t.id);
+      select(t.id);
+    });
+    tab('a').focus();
+  });
+
+  afterEach(() => {
+    action.destroy();
+    list.remove();
+  });
+
+  it('leaves one Tab stop, the selected tab, and follows the selection', async () => {
+    expect([...list.children].map((t) => (t as HTMLElement).tabIndex)).toEqual([0, -1, -1]);
+    select('c');
+    await Promise.resolve();
+    expect([...list.children].map((t) => (t as HTMLElement).tabIndex)).toEqual([-1, -1, 0]);
+  });
+
+  it('moves and selects with Left and Right, with wrap', () => {
+    expect(press('ArrowRight').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(tab('b'));
+    press('ArrowLeft');
+    press('ArrowLeft');
+    expect(document.activeElement).toBe(tab('c'));
+    press('ArrowRight');
+    expect(document.activeElement).toBe(tab('a'));
+    expect(selected).toEqual(['b', 'a', 'c', 'a']);
+  });
+
+  it('goes to the ends with Home and End', () => {
+    press('End');
+    expect(document.activeElement).toBe(tab('c'));
+    press('Home');
+    expect(document.activeElement).toBe(tab('a'));
+    expect(selected).toEqual(['c', 'a']);
+  });
+
+  it('swaps Left and Right, right to left', () => {
+    list.style.direction = 'rtl';
+    press('ArrowLeft');
+    expect(document.activeElement).toBe(tab('b'));
+    press('ArrowRight');
+    expect(document.activeElement).toBe(tab('a'));
+  });
+
+  it('leaves other keys and browser shortcuts alone', () => {
+    expect(press('ArrowRight', { altKey: true }).defaultPrevented).toBe(false);
+    expect(press('Tab').defaultPrevented).toBe(false);
+    expect(press('a').defaultPrevented).toBe(false);
+    expect(selected).toEqual([]);
+  });
+
+  it('calls the latest handler after an update', () => {
+    const next = vi.fn();
+    action.update(next);
+    press('ArrowRight');
+    expect(next).toHaveBeenCalledWith(tab('b'));
+    expect(selected).toEqual([]);
   });
 });

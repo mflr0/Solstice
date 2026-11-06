@@ -14,7 +14,7 @@
   import { shortcutFor } from '../../core/shortcuts.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
-  import { menu, outside, refocus } from '../../lib/actions.js';
+  import { menu, outside, refocus, tabs } from '../../lib/actions.js';
   import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../../lib/api.js';
   import { live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -54,7 +54,8 @@
 
   let issue = $state<IssueDetail | null>(null);
   let missing = $state('');
-  let tab = $state<'comments' | 'history' | 'worklogs'>('comments');
+  type ActivityTab = 'comments' | 'history' | 'worklogs';
+  let tab = $state<ActivityTab>('comments');
   let tick = $state(0);
   let note = $state('');
 
@@ -516,10 +517,18 @@
         />
 
         <section class="activity issue-activity" aria-label={t.issue.activity}>
-          <div class="tabs" role="tablist" aria-label={t.issue.activity}>
+          <div
+            class="tabs"
+            role="tablist"
+            aria-label={t.issue.activity}
+            use:tabs={(el) => (tab = el.dataset['tab'] as ActivityTab)}
+          >
             <button
               class="tab"
               role="tab"
+              id="tab-comments"
+              data-tab="comments"
+              aria-controls="activity-panel"
               aria-selected={tab === 'comments'}
               class:active={tab === 'comments'}
               onclick={() => (tab = 'comments')}
@@ -528,6 +537,9 @@
             <button
               class="tab"
               role="tab"
+              id="tab-history"
+              data-tab="history"
+              aria-controls="activity-panel"
               aria-selected={tab === 'history'}
               class:active={tab === 'history'}
               onclick={() => (tab = 'history')}>{t.issue.tabs.history}</button
@@ -535,12 +547,22 @@
             <button
               class="tab"
               role="tab"
+              id="tab-worklogs"
+              data-tab="worklogs"
+              aria-controls="activity-panel"
               aria-selected={tab === 'worklogs'}
               class:active={tab === 'worklogs'}
               onclick={() => (tab = 'worklogs')}>{t.issue.tabs.worklogs}</button
             >
           </div>
-          <div role="tabpanel" class="panel">
+          <!-- A Tab stop of its own: the history has nothing else to land on. -->
+          <div
+            role="tabpanel"
+            class="panel"
+            id="activity-panel"
+            aria-labelledby="tab-{tab}"
+            tabindex="0"
+          >
             {#if tab === 'comments'}
               <Comments {issue} {tick} />
             {:else if tab === 'history'}

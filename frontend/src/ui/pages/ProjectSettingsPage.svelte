@@ -9,7 +9,6 @@
     matrixRows,
     moveCell,
     nextCellState,
-    nextTab,
     parseTab,
     PROJECT_TABS,
     removeRow,
@@ -30,7 +29,7 @@
     UserRef,
   } from '../../core/types.js';
   import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
-  import { outside, pinnedHeight } from '../../lib/actions.js';
+  import { outside, pinnedHeight, tabs } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -166,14 +165,6 @@
   function showTab(next: ProjectTab) {
     if (next === tab) return;
     guard(() => router.setParams({ tab: next === 'general' ? null : next, workflow: null }));
-  }
-
-  function tabKey(e: KeyboardEvent) {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const next = nextTab(PROJECT_TABS, tab, e.key === 'ArrowRight' ? 1 : -1);
-    showTab(next);
-    queueMicrotask(() => document.getElementById(`tab-${next}`)?.focus());
   }
 
   // The guard above bounces back to the same project: that must not reload
@@ -447,18 +438,22 @@
 
     {#if !forbidden}
       <div class="tabs-scroll">
-        <div class="tabs" role="tablist" aria-label={t.workflows.tabsLabel}>
+        <div
+          class="tabs"
+          role="tablist"
+          aria-label={t.workflows.tabsLabel}
+          use:tabs={(el) => showTab(el.dataset['tab'] as ProjectTab)}
+        >
           {#each PROJECT_TABS as k (k)}
             <button
               type="button"
               class="tab"
               role="tab"
               id="tab-{k}"
+              data-tab={k}
               aria-controls="panel-{k}"
               aria-selected={tab === k}
-              tabindex={tab === k ? 0 : -1}
-              onclick={() => showTab(k)}
-              onkeydown={tabKey}>{tabLabels[k]}</button
+              onclick={() => showTab(k)}>{tabLabels[k]}</button
             >
           {/each}
         </div>
