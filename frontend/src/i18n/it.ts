@@ -122,6 +122,7 @@ export const it: Messages = {
   },
 
   nav: {
+    skipToContent: 'Vai al contenuto',
     work: 'Il mio lavoro',
     projects: 'Progetti',
     boards: 'Board',

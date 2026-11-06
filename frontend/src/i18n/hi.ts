@@ -123,6 +123,7 @@ export const hi: Messages = {
   },
 
   nav: {
+    skipToContent: 'सामग्री पर जाएँ',
     work: 'मेरा काम',
     projects: 'प्रोजेक्ट',
     boards: 'बोर्ड',

@@ -119,6 +119,7 @@ export const fr: Messages = {
   },
 
   nav: {
+    skipToContent: 'Aller au contenu',
     work: 'Mon travail',
     projects: 'Projets',
     boards: 'Tableaux',

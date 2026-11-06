@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { isAppLink, isPublicRoute, matchRoute, paths, safeNext } from '../../src/core/route.js';
+import {
+  focusesPageHeading,
+  isAppLink,
+  isPublicRoute,
+  matchRoute,
+  paths,
+  safeNext,
+} from '../../src/core/route.js';
 
 describe('matchRoute', () => {
   it.each([
@@ -107,5 +114,17 @@ describe('the pages of the e-mailed links', () => {
     for (const path of ['/', '/projects', '/admin', '/settings', '/browse/DEMO-1', '/nope']) {
       expect(isPublicRoute(matchRoute(path))).toBe(false);
     }
+  });
+});
+
+describe('focusesPageHeading', () => {
+  it('asks for the heading on a push to another path', () => {
+    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '' }, false)).toBe(true);
+  });
+
+  it('keeps the focus on a query-only change, a replace or a hash target', () => {
+    expect(focusesPageHeading('/issues', { pathname: '/issues', hash: '' }, false)).toBe(false);
+    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '' }, true)).toBe(false);
+    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '#a' }, false)).toBe(false);
   });
 });
