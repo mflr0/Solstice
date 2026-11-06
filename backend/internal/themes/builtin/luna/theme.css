@@ -667,6 +667,11 @@
   outline-color: var(--luna-focus-bar);
 }
 
+/* The menus of the top bar open on paper, not on the bar. */
+[data-skin='luna'] .topbar .popover :focus-visible {
+  outline-color: var(--focus);
+}
+
 [data-skin='luna']::-webkit-scrollbar,
 [data-skin='luna'] ::-webkit-scrollbar {
   width: 15px;

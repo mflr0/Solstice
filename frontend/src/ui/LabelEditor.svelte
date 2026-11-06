@@ -100,7 +100,6 @@
   }
 
   .add:focus {
-    outline: none;
     border-bottom-color: var(--accent);
   }
 

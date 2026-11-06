@@ -154,6 +154,11 @@ mark.match {
   outline-offset: 2px;
 }
 
+::-webkit-calendar-picker-indicator:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -180,6 +185,11 @@ mark.match {
 
 .skip-link:focus {
   transform: none;
+}
+
+/* Inside its own paper: it opens over the top bar, which may be the colour of --focus. */
+.skip-link.skip-link:focus-visible {
+  outline-offset: -4px;
 }
 
 /* The focus lands here after a page change or a skip: nothing to act on, no ring. */
@@ -702,7 +712,6 @@ mark.match {
 .input:focus,
 .select:focus,
 .textarea:focus {
-  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
@@ -904,6 +913,11 @@ table.ledger {
 .popover .item:hover,
 .popover .item.active {
   background: var(--accent-wash);
+}
+
+/* The menu clips what passes its edge. */
+.popover .item:focus-visible {
+  outline-offset: -2px;
 }
 
 .popover .item[aria-checked='true']::after {
@@ -1496,6 +1510,11 @@ body > .board-card.touch-ghost {
 .editor:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+.editor:has(.editor-content:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .editor-toolbar {

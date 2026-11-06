@@ -613,10 +613,6 @@
     padding: 0 0 2px;
   }
 
-  .summary-input:focus {
-    outline: none;
-  }
-
   .meta {
     display: flex;
     flex-wrap: wrap;

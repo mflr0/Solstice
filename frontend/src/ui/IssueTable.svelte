@@ -142,7 +142,11 @@
   {/if}
 {/snippet}
 
-<div class="issue-table">
+<!-- The browser leaves a control partly in view where it is, its ring cut by the scroll box. -->
+<div
+  class="issue-table"
+  onfocusin={(e) => (e.target as Element).scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+>
   <table class="ledger">
     <thead>
       <tr>
@@ -258,6 +262,10 @@
   .issue-table {
     container: issue-table / inline-size;
     overflow-x: auto;
+    /* A scroll box clips at its padding edge: this leaves room for the focus ring. */
+    margin: -6px;
+    padding: 6px;
+    scroll-padding: 6px;
   }
 
   tbody tr {
@@ -295,7 +303,7 @@
   }
 
   tbody tr:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
