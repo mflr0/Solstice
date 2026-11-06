@@ -7,7 +7,7 @@
   import { t } from '../i18n/t.js';
   import { pinnedHeight } from '../lib/actions.js';
   import { live } from '../lib/live.svelte.js';
-  import { interceptLinks, router } from '../lib/router.svelte.js';
+  import { focusTransient, interceptLinks, router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import {
     appearance,
@@ -85,6 +85,13 @@
     }
   });
 
+  let main: HTMLElement | undefined = $state();
+
+  function skipToContent(e: MouseEvent) {
+    e.preventDefault();
+    if (main) focusTransient(main);
+  }
+
   function shortcuts(e: KeyboardEvent) {
     if (!session.me || ignoreShortcut(e)) return;
     const action = shortcutFor(e, 'global', appearance.shortcuts, appearance.bindings, mac);
@@ -130,9 +137,10 @@
   {/await}
 {:else}
   <div class="app-shell">
+    <a class="skip-link" href="#main-content" onclick={skipToContent}>{t.nav.skipToContent}</a>
     <TopBar {project} />
     <ShellBanner />
-    <main class="app-main">
+    <main id="main-content" class="app-main" bind:this={main}>
       {#if route.name === 'home'}
         <HomePage />
       {:else if route.name === 'projects'}

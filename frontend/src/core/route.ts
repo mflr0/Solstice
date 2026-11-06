@@ -152,6 +152,18 @@ export function isAppLink(url: URL, origin: string): boolean {
   return !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/rest/');
 }
 
+/**
+ * Whether moving from one path to an address lands on a new page, whose heading
+ * then takes the focus: not a query-only change, a replace or a hash target.
+ */
+export function focusesPageHeading(
+  from: string,
+  to: { pathname: string; hash: string },
+  replace: boolean,
+): boolean {
+  return !replace && to.pathname !== from && to.hash === '';
+}
+
 /** A safe "next" address after signing in: only same-site paths. */
 export function safeNext(next: string | null): string {
   if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/';

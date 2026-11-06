@@ -125,6 +125,7 @@ export const de: Messages = {
   },
 
   nav: {
+    skipToContent: 'Zum Inhalt springen',
     work: 'Meine Arbeit',
     projects: 'Projekte',
     boards: 'Boards',

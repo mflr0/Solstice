@@ -119,6 +119,7 @@ export const en = {
   },
 
   nav: {
+    skipToContent: 'Skip to content',
     work: 'My work',
     projects: 'Projects',
     boards: 'Boards',

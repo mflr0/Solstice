@@ -165,6 +165,29 @@ mark.match {
 
 /* Shell and top bar ------------------------------------------------------- */
 
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 80;
+  padding: 8px 12px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* The focus lands here after a page change or a skip: nothing to act on, no ring. */
+.app-main:focus-visible,
+.app-main h1:focus-visible {
+  outline: none;
+}
+
 /* A column at least a screen tall, so a status bar sits at the foot of short pages. */
 .app-shell {
   display: flex;
