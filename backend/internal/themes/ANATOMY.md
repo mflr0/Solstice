@@ -114,6 +114,11 @@ on `--paper`, `--paper-raised`; tones on
 `--bar-ink`, `--bar-ink-soft` on `--bar`.
 Non-text, 3:1 — `--focus` and `--accent` on `--paper`.
 
+The focus ring is at least 2px thick, in `--focus`, in any style (solid, dotted,
+dashed). `outline: none` in a `:focus` or `:focus-visible` rule needs a 2px
+`box-shadow: 0 0 0 2px …` in the same rule. `frontend/tests/core/focus-ring.test.ts`
+checks it.
+
 Any other pair your file draws (title bars, inverted rows…): declare it in a
 comment anywhere in the file and the validator checks it too, in every scheme:
 

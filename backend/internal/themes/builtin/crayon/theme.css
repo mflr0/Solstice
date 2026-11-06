@@ -899,10 +899,6 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
-[data-skin='crayon'] :is(.input, .select, .textarea):focus-visible {
-  outline: none;
-}
-
 [data-skin='crayon'] :is(.input, .select, .textarea):disabled {
   border-image-source: var(--cr-frame-soft);
   background-image: var(--cr-hatch);

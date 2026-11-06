@@ -646,6 +646,10 @@
   box-shadow: var(--term-glow-box);
 }
 
+[data-skin='terminal'] .topbar-nav .nav-link[aria-current='page']:focus-visible {
+  outline-color: var(--bar);
+}
+
 [data-skin='terminal'] .topbar-search::before {
   content: '>';
   position: absolute;
@@ -1274,8 +1278,12 @@
   --term-glow-box: none;
   background: var(--term-inv);
   color: var(--term-inv-ink);
-  outline: none;
   text-shadow: none;
+}
+
+/* Well inside the row: at its edge, the ring of the row's light ink melts into the menu. */
+[data-skin='terminal'] .popover .item:focus-visible {
+  outline-offset: -4px;
 }
 
 [data-skin='terminal'] .popover .item[aria-checked]::after {

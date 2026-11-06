@@ -345,6 +345,11 @@
   outline-color: var(--cl-bar-focus);
 }
 
+/* The menus of the top bar open on paper, not on the bar. */
+[data-skin='classique'] .topbar .popover :focus-visible {
+  outline-color: var(--focus);
+}
+
 [data-skin='classique'] .topbar .brand {
   gap: 9px;
   margin-right: 14px;
@@ -822,7 +827,6 @@
 [data-skin='classique'] .input:focus,
 [data-skin='classique'] .select:focus,
 [data-skin='classique'] .textarea:focus {
-  outline: none;
   border-color: var(--focus);
   background-color: var(--paper-raised);
   box-shadow: 0 0 0 1px var(--focus);
