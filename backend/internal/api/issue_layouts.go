@@ -158,8 +158,7 @@ func (s *Server) inheritedLayout(ctx context.Context, projectID int64, typeID st
 	return out, nil
 }
 
-// resolvedLayout gives the layout of a form for a project and an issue type,
-// with the custom fields their context offers.
+// resolvedLayout serves the layout of a form for a project and an issue type.
 func (s *Server) resolvedLayout(w http.ResponseWriter, r *http.Request) error {
 	sub, err := s.subject(r)
 	if err != nil {
@@ -182,31 +181,42 @@ func (s *Server) resolvedLayout(w http.ResponseWriter, r *http.Request) error {
 		}
 		return failf(http.StatusBadRequest, i18n.IssueTypeNotInProject, typeID)
 	}
-	override, err := s.layoutTemplate(ctx, projectID, typeID, form)
+	out, err := s.resolveLayout(ctx, projectID, typeID, form)
 	if err != nil {
 		return err
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+// resolveLayout gives the layout of a form for a project and an issue type,
+// with the custom fields their context offers.
+func (s *Server) resolveLayout(ctx context.Context, projectID int64, typeID string, form layout.Form) (layoutOut, error) {
+	out := layoutOut{Form: form, Source: layoutFromDefault}
+	override, err := s.layoutTemplate(ctx, projectID, typeID, form)
+	if err != nil {
+		return out, err
 	}
 	typ, err := s.layoutTemplate(ctx, 0, typeID, form)
 	if err != nil {
-		return err
+		return out, err
 	}
 	custom, err := s.placeableCustom(ctx)
 	if err != nil {
-		return err
+		return out, err
 	}
 	outside, err := s.fieldsOutside(ctx, projectID, typeID, custom)
 	if err != nil {
-		return err
+		return out, err
 	}
 	offered := slices.DeleteFunc(custom, func(id int64) bool { return slices.Contains(outside, id) })
-	out := layoutOut{Form: form, Source: layoutFromDefault, Fields: layout.Resolve(form, override, typ, offered)}
+	out.Fields = layout.Resolve(form, override, typ, offered)
 	switch {
 	case len(override) > 0:
 		out.Source = layoutFromProject
 	case len(typ) > 0:
 		out.Source = layoutFromType
 	}
-	return writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 // typeLayout serves a type's template to global administrators: GET reads
