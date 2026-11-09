@@ -104,6 +104,10 @@
       "count": 175,
       "sha256": "50368557e681767de2c19d2fe6c16afee0ecc3b18d5f926a94d82c7ff4484bee"
     },
+    "issue_layout_fields": {
+      "count": 0,
+      "sha256": "25a46a70220f4246d0747a118634ec033879ebdd3c01d4ad115413f34980ab27"
+    },
     "issue_links": {
       "count": 60,
       "sha256": "23701606ae61e34e3ecd0eb92b1a351a793a165f5740ee0f8a11fcf16e728a13"

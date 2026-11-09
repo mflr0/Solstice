@@ -1094,3 +1094,41 @@ with `id` the id it is served under, plus `manifestId`, `origin` (`builtin` or
   get them, for the themes page's preview. 409 on disabling Carnet, the fallback.
 - `DELETE /api/admin/themes/{id}` → 204. (`theme.delete`) 409 on a built-in theme:
   disable it instead.
+
+## Issue layouts
+
+Which fields an issue type's create and view forms show, in which order, and
+where. A layout comes from the project's override for the type, else the
+type's template, else the built-in default (what the forms showed before
+layouts). A template with no fields is not customised.
+
+- `layout` = `{form: "create"|"view", source: "project"|"type"|"default",
+  fields: [{field, zone?, hidden, required?}]}`, fields in order. `field` is a
+  Jira REST id: `description`, `environment`, `priority`, `assignee`,
+  `reporter`, `components`, `fixVersions`, `versions`, `labels`, `duedate`,
+  `timetracking`, `security`, and for the view only `created`, `updated`,
+  `resolutiondate`, `epic`, `sprint`; or `customfield_<id>`. `zone`, `main` or
+  `side`, is set on every field of a view and on none of a create form.
+  `required` is for the create form only.
+- Project, issue type and summary are fixed: no layout places them (in the
+  view, the type stays at the top of the side card).
+- `GET /api/issue-layouts?project={key}&issueType={id}&form=create|view` —
+  browse permission → the `layout` that applies. Custom fields the project and
+  type offer (as `GET /api/projects/{key}/fields`) that it doesn't place come
+  last, shown, not required, in the side zone of the view; placed ones they
+  don't offer are left out. System fields it doesn't place follow, hidden.
+  400 for an unknown form or a type the project doesn't offer.
+- Type templates — global admin: `GET /api/admin/issue-types/{id}/layouts/{form}`
+  → `layout` (the template, else the default). `PUT` `{fields}` → `layout`
+  replaces it. `DELETE` → 204 goes back to the default.
+- Project overrides — project admin, for the types the project offers (404
+  otherwise): `GET /api/projects/{key}/issue-types/{id}/layouts/{form}` →
+  `layout` (the override, else what it inherits). `PUT` `{fields}` →
+  `layout`. `DELETE` → 204 goes back to the type's template.
+- A `PUT` replaces every field of the template at once. 400 for an unknown or
+  fixed field (or a custom field whose type the forms don't show), a field
+  placed twice, `required` in a view or on a hidden field, a `zone` in a
+  create form, a view field without one. A removed custom field, type or
+  project takes its rows with it. (`issuelayout.update` with `form` and
+  `fields`, `issuelayout.reset` with `form`; on the issue type, or on the
+  project with `issueType`)

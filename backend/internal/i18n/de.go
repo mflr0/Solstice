@@ -705,6 +705,15 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityMoveOrClear:    "Wählen Sie eine Ersatzstufe oder entfernen Sie die Stufe, nicht beides.",
 	SecurityMemberExists:   "Dieser Inhaber gehört bereits zur Stufe.",
 
+	// Issue layouts.
+	LayoutFormUnknown:    "Unbekanntes Formular: %s. Verwenden Sie create oder view.",
+	LayoutFieldFixed:     "Das Feld %s steht immer an seinem eigenen Platz: Ein Layout kann es nicht platzieren.",
+	LayoutFieldTwice:     "Das Feld %s ist doppelt platziert.",
+	LayoutZoneOnCreate:   "Das Erstellformular hat keine Bereiche: Entfernen Sie den Bereich von %s.",
+	LayoutZoneInvalid:    "Platzieren Sie %s im Haupt- oder im Seitenbereich.",
+	LayoutRequiredOnView: "Nur das Erstellformular macht ein Feld zur Pflicht: %s.",
+	LayoutRequiredHidden: "Das Feld %s kann nicht zugleich ausgeblendet und Pflicht sein.",
+
 	// Theme packages.
 	ThemeFileMissing:      "Es wurde kein Themenpaket gesendet.",
 	ThemeFileTooLarge:     "Das Themenpaket ist größer als %d MiB.",
