@@ -501,3 +501,49 @@ export function legacyBoardPath(pathname: string, search: string): string | null
   const view = params.get('view') ?? '';
   return view.startsWith('planning') ? `/boards/${id}/backlog` : `/boards/${id}`;
 }
+
+/** A card's place on the board: its lane, its column and its rank in that cell. */
+export interface CardSpot {
+  lane: number;
+  column: number;
+  index: number;
+}
+
+/**
+ * Where a board key moves the focus. counts[lane][column] is the number of
+ * cards in each cell (0 for a collapsed lane). next and previous go down and
+ * up the column, on into the same column of the next or previous lane; left
+ * and right go to the nearest column of the lane that has cards, at the same
+ * rank or its last card. At the edges the focus stays. From nowhere, any key
+ * goes to the board's first card. Null on a board without cards.
+ */
+export function boardStep(
+  counts: readonly (readonly number[])[],
+  at: CardSpot | null,
+  dir: 'next' | 'previous' | 'left' | 'right',
+): CardSpot | null {
+  const count = (lane: number, column: number) => counts[lane]?.[column] ?? 0;
+  if (!at) {
+    for (let lane = 0; lane < counts.length; lane++)
+      for (let column = 0; column < (counts[lane]?.length ?? 0); column++)
+        if (count(lane, column) > 0) return { lane, column, index: 0 };
+    return null;
+  }
+  const { lane, column, index } = at;
+  if (dir === 'next' || dir === 'previous') {
+    const step = dir === 'next' ? 1 : -1;
+    if (index + step >= 0 && index + step < count(lane, column))
+      return { lane, column, index: index + step };
+    for (let l = lane + step; l >= 0 && l < counts.length; l += step) {
+      const n = count(l, column);
+      if (n > 0) return { lane: l, column, index: step > 0 ? 0 : n - 1 };
+    }
+    return at;
+  }
+  const step = dir === 'right' ? 1 : -1;
+  for (let c = column + step; c >= 0 && c < (counts[lane]?.length ?? 0); c += step) {
+    const n = count(lane, c);
+    if (n > 0) return { lane, column: c, index: Math.min(index, n - 1) };
+  }
+  return at;
+}
