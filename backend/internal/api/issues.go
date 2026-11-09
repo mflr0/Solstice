@@ -20,6 +20,7 @@ import (
 	"solstice/internal/events"
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/layout"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -1012,6 +1013,9 @@ func (s *Server) newIssue(ctx context.Context, sub *perm.Subject, f fields, extr
 	if err != nil {
 		return nil, err
 	}
+	if err := s.checkRequired(ctx, p); err != nil {
+		return nil, err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -1287,6 +1291,124 @@ func (s *Server) planIssue(ctx context.Context, sub *perm.Subject, f fields, o c
 		}
 	}
 	return p, nil
+}
+
+// Required fields -------------------------------------------------------------
+
+// layoutKeys are the interface's keys of the system fields a create template
+// places, by their id in the template. The reporter is always set.
+var layoutKeys = map[string]string{
+	"description": "description", "environment": "environment", "priority": "priority", "assignee": "assignee",
+	"labels": "labels", "components": "components", "fixVersions": "fixVersions", "versions": "affectsVersions",
+	"duedate": "due", "timetracking": "originalEstimate", "security": "securityLevel",
+}
+
+// emptyValue reports whether a value of the interface's API leaves a field
+// empty: null, a blank text or an empty list.
+func emptyValue(raw json.RawMessage) bool {
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		return false
+	}
+	switch v := v.(type) {
+	case nil:
+		return true
+	case string:
+		return strings.TrimSpace(v) == ""
+	case []any:
+		return len(v) == 0
+	}
+	return false
+}
+
+// requiredFields lists the fields the create template of a project's issue
+// type requires, in its order.
+func (s *Server) requiredFields(ctx context.Context, projectID int64, typeID string) ([]layout.Field, error) {
+	l, err := s.resolveLayout(ctx, projectID, typeID, layout.Create)
+	return slices.DeleteFunc(l.Fields, func(f layout.Field) bool { return !f.Required || f.Hidden }), err
+}
+
+// missingField is the error for a required field left empty.
+func (s *Server) missingField(ctx context.Context, id string) error {
+	var name any = systemFieldName(id)
+	if custom := (layout.Field{ID: id}).Custom(); custom != 0 {
+		all, err := s.customFields(ctx)
+		if err != nil {
+			return err
+		}
+		for _, f := range all {
+			if f.ID == custom {
+				name = f.Name
+			}
+		}
+	}
+	return fieldError(id, failf(http.StatusBadRequest, i18n.FieldRequired, name))
+}
+
+// checkRequired refuses a creation that leaves empty a field the create
+// template requires. A default (priority, assignee) fills the field.
+func (s *Server) checkRequired(ctx context.Context, p *issuePlan) error {
+	required, err := s.requiredFields(ctx, p.projectID, p.typeID)
+	if err != nil || len(required) == 0 {
+		return err
+	}
+	set := map[string]bool{
+		"description": p.description != nil, "environment": p.environment != nil, "priority": p.priority != nil,
+		"assignee": p.assignee != nil, "duedate": p.due != nil, "timetracking": p.times.Original.Valid,
+		// A sub-task has its parent's level.
+		"security": p.level != nil || p.parentID != nil || p.parent != nil,
+	}
+	for _, id := range []string{"labels", "components", "fixVersions", "versions"} {
+		key := layoutKeys[id]
+		set[id] = p.f.has(key) && !emptyValue(p.f[key])
+	}
+	for _, w := range p.custom {
+		set[customID(w.field.ID)] = len(w.rows)+len(w.labels) > 0
+	}
+	for _, f := range required {
+		if !set[f.ID] {
+			return s.missingField(ctx, f.ID)
+		}
+	}
+	return nil
+}
+
+// checkCleared refuses an edit that empties a field the create template of
+// the issue's type requires. An edit that changes the type is not checked.
+func (s *Server) checkCleared(ctx context.Context, iss *issueRow, f fields, custom []customWrite) error {
+	if f.has("type") {
+		var typeID string
+		if err := f.get("type", &typeID); err != nil {
+			return err
+		}
+		if typeID != iss.TypeID {
+			return nil
+		}
+	}
+	var cleared []string
+	for id, key := range layoutKeys {
+		if f.has(key) && emptyValue(f[key]) {
+			cleared = append(cleared, id)
+		}
+	}
+	for _, w := range custom {
+		if len(w.rows)+len(w.labels) == 0 {
+			cleared = append(cleared, customID(w.field.ID))
+		}
+	}
+	if len(cleared) == 0 {
+		return nil
+	}
+	required, err := s.requiredFields(ctx, iss.ProjectID, iss.TypeID)
+	if err != nil {
+		return err
+	}
+	for _, f := range required {
+		if slices.Contains(cleared, f.ID) {
+			return s.missingField(ctx, f.ID)
+		}
+	}
+	return nil
 }
 
 // insertIssue stores a planned issue in tx and sets p.id. Its parent and
@@ -1618,6 +1740,9 @@ func (s *Server) applyEdit(ctx context.Context, sub *perm.Subject, o *restOut, i
 	}
 	if f.has("parent") {
 		return fail(http.StatusBadRequest, i18n.IssueParentUnsupported)
+	}
+	if err := s.checkCleared(ctx, iss, f, custom); err != nil {
+		return err
 	}
 	cat, err := s.catalogue(ctx)
 	if err != nil {

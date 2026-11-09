@@ -17,6 +17,7 @@ import (
 
 	"solstice/internal/i18n"
 	"solstice/internal/issue"
+	"solstice/internal/layout"
 	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
@@ -367,6 +368,22 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 			field["autoCompleteUrl"] = b.o.api + "/user/search?username="
 		}
 		out[customID(f.ID)] = field
+	}
+	if creating {
+		l, err := b.s.resolveLayout(b.ctx, p.id, typ.ID, layout.Create)
+		if err != nil {
+			return nil, err
+		}
+		for _, f := range l.Fields {
+			if field, ok := out[f.ID].(map[string]any); ok && f.Required {
+				field["required"] = true
+			}
+			// The built-in layout hides what the create form never showed,
+			// which REST clients set all the same.
+			if f.Hidden && l.Source != layoutFromDefault {
+				delete(out, f.ID)
+			}
+		}
 	}
 	return out, nil
 }
