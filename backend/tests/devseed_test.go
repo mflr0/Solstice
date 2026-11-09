@@ -26,7 +26,7 @@ import (
 // links, work logs, attachments and custom field values; and the groups,
 // the security level, group grants and recipients, a group's project
 // members, the restricted comments and work log, the custom workflow and the webhook; the mock users' saved
-// filters, favourites, subscription, dashboards and notification preferences.
+// filters, subscription, dashboards (with the views that replace favourites) and notification preferences.
 // Through the API, tom sees neither the confidential issue nor what is
 // restricted, a developer does, a group's project members, direct or through
 // a member group, see the comment restricted to it, and every gadget of a dashboard finds its
@@ -233,7 +233,7 @@ func TestDevSeed(t *testing.T) {
 		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
 			"DEMO:developers=moderate,security DEMO:release+=group:developers,marie OPS:created>office restricted-comments=2 restricted-worklogs=1 " +
 			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice",
-		"filters=7 shared=5 share-kinds=4 favourites=8 subscriptions=1 dashboards=3 gadgets=9 filter-gadgets=6 " +
+		"filters=7 shared=5 share-kinds=4 favourites=0 subscriptions=1 dashboards=6 gadgets=22 filter-gadgets=10 " +
 			"notification-prefs=1"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
@@ -326,7 +326,7 @@ func TestDevSeed(t *testing.T) {
 		}
 	}
 
-	for _, user := range []string{"alice", "hans", "marie"} {
+	for _, user := range []string{"alice", "giulia", "hans", "marie", "priya", "tom"} {
 		var d struct {
 			Customised bool
 			Gadgets    []struct{ Unavailable bool }

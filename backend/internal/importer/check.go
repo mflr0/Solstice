@@ -364,7 +364,7 @@ var skipReasons = map[string]string{
 	"field options":            "orphan: custom field not imported",
 	"boards":                   "its filter no longer exists in Jira",
 	"filter shares":            "share Solstice cannot express, or its filter, project or role not imported",
-	"favorite filters":         "orphan: user or filter not imported, or repeated",
+	"favorite filters":         "orphan: user or filter not imported, or repeated; or beyond the 20 views of My space",
 	"workflows (per project)":  "workflow whose definition cannot be read",
 }
 

@@ -4,7 +4,7 @@
 // custom workflow and notification settings, custom fields of every type, demo
 // issues of every type with what people do on them, some restricted to a
 // group, a Scrum and a Kanban board with a history for their reports, saved
-// filters with favourites and a subscription, dashboards, a webhook that
+// filters with a subscription, dashboards with views on them, a webhook that
 // fails, and e-mail sent to a local Mailpit. Only
 // cmd/devseed uses it, so its passwords never ship in the solstice binary.
 package devseed

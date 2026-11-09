@@ -153,7 +153,7 @@ relancé.
 | Commentaires et temps saisi | Avec leurs restrictions de visibilité à des groupes, et à des rôles, alors au groupe fait du rôle. |
 | Pièces jointes | Les métadonnées toujours. Les fichiers quand `-jira-home` est donné. |
 | Historique | L'historique complet des modifications de chaque ticket. |
-| Filtres | Les filtres enregistrés avec leur JQL, leurs partages et leurs favoris. |
+| Filtres | Les filtres enregistrés avec leur JQL et leurs partages. Les filtres favoris d'un utilisateur deviennent des vues de son Mon espace, après les vues intégrées et dans leur ordre Jira, jusqu'à 20 vues ; le rapport compte les favoris qui n'y tenaient pas. |
 | Jira Software | Les tableaux avec leurs colonnes, filtres rapides et couloirs, les sprints et les tickets qu'ils ont contenus, le classement dans les tableaux, les liens d'épopée. |
 
 À savoir :

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -18,23 +20,22 @@ import (
 // default ones.
 type seedFilter struct {
 	owner, name, query, share string
-	favourites                []string
 	columns                   []string
 }
 
 var filters = []seedFilter{
 	{"alice", "Open DEMO bugs", `project = DEMO AND type = Bug AND resolution is EMPTY ORDER BY priority DESC`,
-		"everyone", []string{"alice", "hans", "marie"}, []string{"status", "priority", "assignee"}},
+		"everyone", []string{"status", "priority", "assignee"}},
 	{"alice", "My open work", `assignee = currentUser() AND resolution is EMPTY ORDER BY updated DESC`,
-		"", nil, nil},
+		"", nil},
 	{"hans", "Mobile – offen", `project = MOB AND resolution is EMPTY ORDER BY priority DESC`,
-		"group:" + Developers, []string{"hans", "giulia"}, nil},
-	{"hans", "Große Stories", `"Story points" > 4 ORDER BY "Story points" DESC`, "", nil, nil},
+		"group:" + Developers, nil},
+	{"hans", "Große Stories", `"Story points" > 4 ORDER BY "Story points" DESC`, "", nil},
 	{"marie", "Bureau en cours", `project = OPS AND resolution is EMPTY ORDER BY created DESC`,
-		"group:office", []string{"marie", "tom"}, nil},
+		"group:office", nil},
 	{"priya", "Overdue", `duedate < now() AND resolution is EMPTY ORDER BY duedate ASC`,
-		"project:" + Project, []string{"priya"}, []string{"assignee", "duedate"}},
-	{"giulia", "Etichetta auth", `labels = auth`, "user:alice", nil, nil},
+		"project:" + Project, []string{"assignee", "duedate"}},
+	{"giulia", "Etichetta auth", `labels = auth`, "user:alice", nil},
 }
 
 // seedSubscription mails a filter's results to its subscriber every day.
@@ -66,7 +67,21 @@ var dashboards = map[string][]seedGadget{
 	"marie": {
 		{"results", "Bureau en cours", map[string]any{"size": 10}},
 		{"assigned", "", map[string]any{"size": 10}},
+		{"results", "Open DEMO bugs", map[string]any{}},
 	},
+	"giulia": withBuiltins(seedGadget{"results", "Mobile – offen", map[string]any{}}),
+	"priya":  withBuiltins(seedGadget{"results", "Overdue", map[string]any{}}),
+	"tom":    withBuiltins(seedGadget{"results", "Bureau en cours", map[string]any{}}),
+}
+
+// withBuiltins is the default dashboard followed by these gadgets, as an
+// import makes it from Jira favourites.
+func withBuiltins(gadgets ...seedGadget) []seedGadget {
+	return append([]seedGadget{
+		{"assigned", "", map[string]any{"size": 15}},
+		{"reported", "", map[string]any{"size": 15}},
+		{"recent", "", map[string]any{"size": 12}},
+	}, gadgets...)
 }
 
 // notificationPrefs are the notification preferences some users set.
@@ -76,7 +91,7 @@ var notificationPrefs = map[string]map[string]any{
 }
 
 // ensureFilters creates the saved filters that are missing (by owner and
-// name), with their favourites and subscriptions, then the dashboards and
+// name), with their subscriptions, then the dashboards and
 // notification preferences of users who have none. What exists is left as
 // it is.
 func ensureFilters(ctx context.Context, conn *sql.DB, base string, ids map[string]int64, say func(string, ...any)) error {
@@ -89,7 +104,7 @@ func ensureFilters(ctx context.Context, conn *sql.DB, base string, ids map[strin
 		}
 		filterIDs[f.name] = id
 	}
-	for _, username := range []string{"alice", "hans", "marie"} {
+	for _, username := range slices.Sorted(maps.Keys(dashboards)) {
 		if err := ensureDashboard(ctx, conn, users, ids[username], username, filterIDs, say); err != nil {
 			return fmt.Errorf("dashboard of %s: %w", username, err)
 		}
@@ -158,15 +173,6 @@ func ensureFilter(ctx context.Context, conn *sql.DB, users *sessions, ids map[st
 		return 0, err
 	}
 	path := "/api/filters/" + strconv.FormatInt(made.ID, 10)
-	for _, u := range f.favourites {
-		fc, err := users.as(u)
-		if err != nil {
-			return 0, err
-		}
-		if err := fc.call("PUT", path+"/favourite", nil, nil); err != nil {
-			return 0, fmt.Errorf("favourite of %s: %w", u, err)
-		}
-	}
 	for _, s := range subscriptions {
 		if s.filter != f.name {
 			continue

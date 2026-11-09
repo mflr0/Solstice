@@ -620,8 +620,8 @@ func TestFilterVisibility(t *testing.T) {
 	if _, ok := hr["Créés cette semaine"]; ok {
 		t.Error("lea.richard sees the filter shared with developpeurs")
 	}
-	if f, ok := dev["Mes tickets ouverts"]; !ok || !f.Favourite || f.Mine || f.CanEdit {
-		t.Errorf("filter shared with everyone, favourite of paul.martin: %+v", f)
+	if f, ok := dev["Mes tickets ouverts"]; !ok || f.Mine || f.CanEdit {
+		t.Errorf("filter shared with everyone: %+v", f)
 	}
 }
 

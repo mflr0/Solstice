@@ -73,16 +73,16 @@
       "sha256": "d3011e0a5d5e5b37478c78f9d93f461193c418fe52359412406059735888e24b"
     },
     "dashboard_gadgets": {
-      "count": 0,
-      "sha256": "15bec5a73c561563e8d292e02636260abd9be9c166365f4b1da20b5d5d149430"
+      "count": 22,
+      "sha256": "9b81247fff45c1defef34c014bbce79d0b7b7dd2eecca92d29da80e6cbb4c338"
     },
     "dashboards": {
-      "count": 0,
-      "sha256": "df2909dd207975128507145ab92544c84e0011e03b58e5a5a7dc7cb64066170a"
+      "count": 5,
+      "sha256": "d51cf76f9f2f933182a19371c57b255813bd2700e34bfb3d0d5dffd8c95240af"
     },
     "filter_favourites": {
-      "count": 7,
-      "sha256": "05140f26e3c4b760357a2cb96d9e16b03ce875e41d046b3ac120a4100ff8237c"
+      "count": 0,
+      "sha256": "3ca6affce7664961389195e6cf6d38567fd67310f1a473db0c0a9a479724ee50"
     },
     "filter_shares": {
       "count": 8,

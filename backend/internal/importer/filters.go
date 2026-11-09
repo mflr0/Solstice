@@ -2,6 +2,8 @@ package importer
 
 import (
 	"database/sql"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +12,8 @@ import (
 	"solstice/internal/sqlq"
 )
 
-// importFilters copies saved searches with their shares and favourites. JQL
+// importFilters copies saved searches with their shares, and favourites as
+// views of My space. JQL
 // is kept as written: Solstice understands it. A share Solstice cannot express is
 // dropped, so a filter is never shown to more people than in Jira.
 func (r *run) importFilters() error {
@@ -94,10 +97,25 @@ func (r *run) importFilters() error {
 	}
 	r.rep.step("filter shares", shares.total, skipped)
 
-	favs := r.inserter("filter_favourites", "filter_id", "user_id")
+	return r.importFavourites(filters)
+}
+
+// The views of My space, as the API's defaultDashboard and maxGadgets have them.
+var builtinGadgets = []struct{ kind, config string }{
+	{"assigned", `{"size":15}`}, {"reported", `{"size":15}`}, {"recent", `{"size":12}`},
+}
+
+const maxGadgets = 20
+
+// importFavourites turns each user's favourite filters into views of their
+// My space, after the built-in ones and in Jira's order. Favourites beyond
+// maxGadgets are left out.
+func (r *run) importFavourites(filters map[int64]bool) error {
+	favs := map[int64][]int64{}
 	seen := map[[2]int64]bool{}
-	skipped = 0
-	if err := r.each(`SELECT username, entityid FROM favouriteassociations WHERE entitytype = 'SearchRequest'`, func(rows *sql.Rows) error {
+	skipped := 0
+	if err := r.each(`SELECT username, entityid FROM favouriteassociations WHERE entitytype = 'SearchRequest'
+		ORDER BY sequence, id`, func(rows *sql.Rows) error {
 		var user sql.NullString
 		var filter sql.NullInt64
 		if err := rows.Scan(&user, &filter); err != nil {
@@ -110,13 +128,42 @@ func (r *run) importFilters() error {
 			return nil
 		}
 		seen[k] = true
-		return favs.add(filter.Int64, uid)
+		favs[uid] = append(favs[uid], filter.Int64)
+		return nil
 	}); err != nil {
 		return err
 	}
-	if err := favs.flush(); err != nil {
+	now := time.Now().UTC()
+	dashboards := r.inserter("dashboards", "user_id", "updated_at")
+	gadgets := r.inserter("dashboard_gadgets", "id", "user_id", "position", "kind", "filter_id", "config")
+	var id int64
+	views := 0
+	for _, uid := range slices.Sorted(maps.Keys(favs)) {
+		if err := dashboards.add(uid, now); err != nil {
+			return err
+		}
+		for i, g := range builtinGadgets {
+			id++
+			if err := gadgets.add(id, uid, i, g.kind, nil, g.config); err != nil {
+				return err
+			}
+		}
+		fit := favs[uid][:min(len(favs[uid]), maxGadgets-len(builtinGadgets))]
+		skipped += len(favs[uid]) - len(fit)
+		for i, f := range fit {
+			id++
+			if err := gadgets.add(id, uid, len(builtinGadgets)+i, "results", f, "{}"); err != nil {
+				return err
+			}
+		}
+		views += len(fit)
+	}
+	if err := dashboards.flush(); err != nil {
 		return err
 	}
-	r.rep.step("favorite filters", favs.total, skipped)
+	if err := gadgets.flush(); err != nil {
+		return err
+	}
+	r.rep.step("favorite filters", views, skipped)
 	return nil
 }
