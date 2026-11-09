@@ -119,11 +119,10 @@ type historyEntry struct {
 }
 
 type filterOut struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Mine      bool   `json:"mine"`
-	Favourite bool   `json:"favourite"`
-	CanEdit   bool   `json:"canEdit"`
+	ID      int64  `json:"id"`
+	Name    string `json:"name"`
+	Mine    bool   `json:"mine"`
+	CanEdit bool   `json:"canEdit"`
 }
 
 type tokenOut struct {

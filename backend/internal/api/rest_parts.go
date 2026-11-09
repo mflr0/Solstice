@@ -418,7 +418,7 @@ func (s *Server) filterShares(ctx context.Context, raw json.RawMessage) ([]filte
 func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	creating := r.PathValue("id") == ""
-	in, err := restBody(r, []string{"name", "description", "jql", "favourite", "sharePermissions"},
+	in, err := restBody(r, []string{"name", "description", "jql", "sharePermissions"},
 		"self", "id", "owner", "viewUrl", "searchUrl", "subscriptions", "sharedUsers", "editPermissions",
 		"approximateLastUsed")
 	if err != nil {
@@ -441,22 +441,11 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	var favourite *bool
-	if raw, ok := in["favourite"]; ok {
-		if json.Unmarshal(raw, &favourite) != nil {
-			return invalidValue("favourite")
-		}
-	}
 	var saved filterOut
-	// A body with only "favourite" changes nothing else, so there is nothing to save.
-	favouriteOnly := !creating && len(ui) == 0 && favourite != nil
 	id := r.PathValue("id")
-	switch {
-	case creating:
+	if creating {
 		err = s.uiCall(r, s.createFilter, http.MethodPost, nil, nil, ui, &saved)
-	case favouriteOnly:
-		saved.ID, _ = strconv.ParseInt(id, 10, 64)
-	default:
+	} else {
 		err = s.uiCall(r, s.updateFilter, http.MethodPatch, nil, map[string]string{"id": id}, ui, &saved)
 		if err == nil && saved.ID == 0 {
 			saved.ID, _ = strconv.ParseInt(id, 10, 64)
@@ -464,22 +453,6 @@ func (s *Server) restSaveFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err != nil {
 		return err
-	}
-	if favourite != nil {
-		id, method := strconv.FormatInt(saved.ID, 10), http.MethodDelete
-		if *favourite {
-			method = http.MethodPut
-		}
-		// The save and the favourite are two steps, not one transaction. When
-		// the save went through, a failing favourite is logged, not answered
-		// with an error: the client would take the saved change for a failed one.
-		if err := s.uiCall(r, s.setFavourite(*favourite), method, nil,
-			map[string]string{"id": id}, nil, nil); err != nil {
-			if favouriteOnly {
-				return err
-			}
-			s.log.Warn("setting the favourite of a saved filter failed", "filter", saved.ID, "err", err)
-		}
 	}
 	sub, err := s.subject(r)
 	if err != nil {

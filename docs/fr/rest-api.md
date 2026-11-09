@@ -53,7 +53,7 @@ Les mots de passe et les cookies de session ont toutes les portées.
 | `comments:write` | Les commentaires. |
 | `worklogs:write` | Le temps passé. |
 | `agile:write` | Tableaux, sprints, rang (`/rest/agile/1.0`). |
-| `filters:write` | Filtres et favoris. |
+| `filters:write` | Filtres. |
 | `projects:write` | Versions et composants. |
 | `profile:write` | Le profil, l'avatar et les réglages de l'utilisateur. |
 | `admin` | L'administration. Seul un administrateur peut créer un jeton qui l'a. |
@@ -371,13 +371,12 @@ Solstice, qui sont moins nombreux et plus larges.
 | Requête | Remarques |
 |---|---|
 | `GET /rest/api/2/filter/{id}` | Un filtre enregistré que l'utilisateur peut voir. |
-| `GET /rest/api/2/filter/favourite` | Les filtres favoris de l'utilisateur. |
-| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `favourite`, `sharePermissions`. `name` et `jql` sont obligatoires. |
+| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `sharePermissions`. `name` et `jql` sont obligatoires. |
 | `PUT /rest/api/2/filter/{id}` | Les mêmes champs. Seuls les champs donnés changent. Le propriétaire du filtre ou un administrateur. |
 | `DELETE /rest/api/2/filter/{id}` | Le propriétaire du filtre ou un administrateur. 204. |
 
 `sharePermissions` prend les types de Jira : `global`, `group`, `project`,
-`projectRole` et `user` ; `projectRole` restreint un partage de projet aux membres d'un groupe dans ce projet, et son `role.id` est l'id de ce groupe. `favourite` est propre à l'utilisateur de la requête.
+`projectRole` et `user` ; `projectRole` restreint un partage de projet aux membres d'un groupe dans ce projet, et son `role.id` est l'id de ce groupe.
 Un administrateur qui retire le partage du filtre de quelqu'un d'autre ne le
 voit plus, et reçoit 204 au lieu du filtre. Pour exécuter un filtre, cherchez
 avec son `jql`.

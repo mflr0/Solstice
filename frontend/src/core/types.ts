@@ -487,7 +487,6 @@ export interface SavedFilter {
   query: string;
   owner: UserRef | null;
   mine: boolean;
-  favourite: boolean;
   canEdit: boolean;
   shares: FilterShare[];
   /** The boards on the filter: who sees it sees them. */

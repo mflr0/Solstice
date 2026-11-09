@@ -2033,7 +2033,7 @@ export const en = {
       'comments:write': 'Add, edit and delete comments.',
       'worklogs:write': 'Log time and change logged time.',
       'agile:write': 'Boards, sprints and rank.',
-      'filters:write': 'Filters, favourites and subscriptions.',
+      'filters:write': 'Filters and subscriptions.',
       'projects:write': 'Project settings, versions, components, workflows and statuses.',
       'profile:write': 'Your own account, dashboard and notification settings.',
       admin: 'The administration. For administrators only.',

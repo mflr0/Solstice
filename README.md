@@ -223,7 +223,7 @@ The final report lists what was imported and what deserves a look. Imported:
   comments with their visibility restrictions, work logs, attachments, custom
   fields, full history, old keys of moved issues.
 - Boards and sprints, with the board order (rank) and epics; saved filters
-  with their shares and favourites.
+  with their shares; favourite filters become views of My space.
 
 Not imported: dashboards, and notification schemes (Solstice has its own
 notification settings).
@@ -337,7 +337,7 @@ The seed also makes two boards, with weeks of history for their reports:
   column, a work-in-progress limit, quick filters and swimlanes by assignee.
 
 The mock users have saved filters: private ones, and ones shared with
-everyone, a group, a project or a person, some of them favourites. alice
+everyone, a group, a project or a person. alice
 subscribes to `Open DEMO bugs` every day at 8, so its results reach Mailpit
 (or right away: `Send now` on her subscriptions page). alice, hans and marie
 have dashboards with gadgets on these filters, and hans gets his

@@ -226,8 +226,6 @@ func (s *Server) Handler(static http.Handler) http.Handler {
 	route("POST /api/filters", s.createFilter, auth.ScopeFilters)
 	route("PATCH /api/filters/{id}", s.updateFilter, auth.ScopeFilters)
 	route("DELETE /api/filters/{id}", s.deleteFilter, auth.ScopeFilters)
-	route("PUT /api/filters/{id}/favourite", s.setFavourite(true), auth.ScopeFilters)
-	route("DELETE /api/filters/{id}/favourite", s.setFavourite(false), auth.ScopeFilters)
 
 	route("GET /api/admin/users", s.adminUsers, auth.ScopeAdmin)
 	route("POST /api/admin/users", s.adminCreateUser, auth.ScopeAdmin)

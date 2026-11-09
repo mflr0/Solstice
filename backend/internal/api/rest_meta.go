@@ -525,8 +525,8 @@ func (s *Server) jiraFilter(ctx context.Context, o *restOut, f filterOut) (map[s
 	}
 	out := map[string]any{"self": o.api + "/filter/" + o.id(f.ID), "id": o.id(f.ID), "name": f.Name,
 		"owner": owner, "jql": f.Query, "viewUrl": o.base + "/issues/?filter=" + o.id(f.ID),
-		"searchUrl": o.api + "/search?jql=" + url.QueryEscape(f.Query), "favourite": f.Favourite,
-		"sharePermissions": shares, "subscriptions": map[string]any{"size": 0, "items": []any{}}}
+		"searchUrl": o.api + "/search?jql=" + url.QueryEscape(f.Query), "sharePermissions": shares,
+		"subscriptions": map[string]any{"size": 0, "items": []any{}}}
 	if f.Description != nil {
 		out["description"] = *f.Description
 	}
@@ -553,30 +553,6 @@ func (s *Server) restFilter(w http.ResponseWriter, r *http.Request) error {
 	out, err := s.jiraFilter(r.Context(), s.restOut(r), rows[0].out)
 	if err != nil {
 		return err
-	}
-	return writeJSON(w, http.StatusOK, out)
-}
-
-func (s *Server) restFavouriteFilters(w http.ResponseWriter, r *http.Request) error {
-	sub, err := s.subject(r)
-	if err != nil {
-		return err
-	}
-	rows, err := s.loadFilters(r.Context(), sub, 0)
-	if err != nil {
-		return err
-	}
-	o := s.restOut(r)
-	out := []any{}
-	for _, f := range rows {
-		if !f.out.Favourite {
-			continue
-		}
-		jf, err := s.jiraFilter(r.Context(), o, f.out)
-		if err != nil {
-			return err
-		}
-		out = append(out, jf)
 	}
 	return writeJSON(w, http.StatusOK, out)
 }

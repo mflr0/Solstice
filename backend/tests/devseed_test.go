@@ -199,7 +199,6 @@ func TestDevSeed(t *testing.T) {
 			{"shared", `SELECT COUNT(DISTINCT f.id) FROM filters f JOIN users u ON u.id = f.owner_id
 				JOIN filter_shares sh ON sh.filter_id = f.id WHERE NOT u.is_admin`},
 			{"share-kinds", `SELECT COUNT(DISTINCT kind) FROM filter_shares`},
-			{"favourites", `SELECT COUNT(*) FROM filter_favourites`},
 			{"subscriptions", `SELECT COUNT(*) FROM filter_subscriptions`},
 			{"dashboards", `SELECT COUNT(*) FROM dashboards`},
 			{"gadgets", `SELECT COUNT(*) FROM dashboard_gadgets`},
@@ -233,7 +232,7 @@ func TestDevSeed(t *testing.T) {
 		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
 			"DEMO:developers=moderate,security DEMO:release+=group:developers,marie OPS:created>office restricted-comments=2 restricted-worklogs=1 " +
 			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice",
-		"filters=7 shared=5 share-kinds=4 favourites=0 subscriptions=1 dashboards=6 gadgets=22 filter-gadgets=10 " +
+		"filters=7 shared=5 share-kinds=4 subscriptions=1 dashboards=6 gadgets=22 filter-gadgets=10 " +
 			"notification-prefs=1"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)

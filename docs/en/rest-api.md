@@ -49,7 +49,7 @@ Passwords and session cookies have every scope.
 | `comments:write` | Comments. |
 | `worklogs:write` | Work logs. |
 | `agile:write` | Boards, sprints, rank (`/rest/agile/1.0`). |
-| `filters:write` | Filters and favourites. |
+| `filters:write` | Filters. |
 | `projects:write` | Versions and components. |
 | `profile:write` | The user's own profile, avatar and settings. |
 | `admin` | The administration. Only an administrator may create a token with it. |
@@ -348,13 +348,12 @@ and broader.
 | Request | Notes |
 |---|---|
 | `GET /rest/api/2/filter/{id}` | A saved filter the user may see. |
-| `GET /rest/api/2/filter/favourite` | The user's favourite filters. |
-| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `favourite`, `sharePermissions`. `name` and `jql` are required. |
+| `POST /rest/api/2/filter` | `name`, `jql`, `description`, `sharePermissions`. `name` and `jql` are required. |
 | `PUT /rest/api/2/filter/{id}` | The same fields. Only the fields given change. The filter's owner or an administrator. |
 | `DELETE /rest/api/2/filter/{id}` | The filter's owner or an administrator. 204. |
 
 `sharePermissions` takes Jira's types: `global`, `group`, `project`,
-`projectRole` and `user`; `projectRole` narrows a project share to a group's members there, and its `role.id` is that group's id. `favourite` is the requesting user's own. An
+`projectRole` and `user`; `projectRole` narrows a project share to a group's members there, and its `role.id` is that group's id. An
 administrator who unshares someone else's filter can no longer see it, and
 gets 204 instead of the filter. Run a filter by searching with its `jql`.
 

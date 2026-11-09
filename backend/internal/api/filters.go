@@ -36,7 +36,6 @@ type filterOut struct {
 	Query       string        `json:"query"`
 	Owner       *userRef      `json:"owner"`
 	Mine        bool          `json:"mine"`
-	Favourite   bool          `json:"favourite"`
 	CanEdit     bool          `json:"canEdit"`
 	Shares      []filterShare `json:"shares"`
 	// The boards on the filter: they are visible like it.
@@ -124,16 +123,15 @@ func (s *Server) sharesOfFilter(ctx context.Context, filter int64) ([]filterShar
 func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64) ([]*filterRow, error) {
 	byID := map[int64]*filterRow{}
 	var list []*filterRow
-	q := `SELECT f.id, f.name, f.description, f.query, f.owner_id, f.columns, fav.user_id IS NOT NULL
-		FROM filters f LEFT JOIN filter_favourites fav ON fav.filter_id = f.id AND fav.user_id = ?`
-	args := []any{sub.UserID}
+	q := `SELECT f.id, f.name, f.description, f.query, f.owner_id, f.columns FROM filters f`
+	var args []any
 	if only != 0 {
 		q += ` WHERE f.id = ?`
 		args = append(args, only)
 	}
 	if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 		f := &filterRow{}
-		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.columns, &f.out.Favourite); err != nil {
+		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.columns); err != nil {
 			return err
 		}
 		if f.columns.Valid {
@@ -232,11 +230,8 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) error {
 			out = append(out, f.out)
 		}
 	}
-	// Favourites first, then mine, then the rest, by name.
+	// Mine first, then the rest, by name.
 	sort.SliceStable(out, func(a, b int) bool {
-		if out[a].Favourite != out[b].Favourite {
-			return out[a].Favourite
-		}
 		if out[a].Mine != out[b].Mine {
 			return out[a].Mine
 		}
@@ -571,29 +566,4 @@ func (s *Server) deleteFilter(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
-}
-
-func (s *Server) setFavourite(on bool) handler {
-	return func(w http.ResponseWriter, r *http.Request) error {
-		sub, err := s.subject(r)
-		if err != nil {
-			return err
-		}
-		f, err := s.visibleFilter(r, sub)
-		if err != nil {
-			return err
-		}
-		if on {
-			_, err = s.db.ExecContext(r.Context(), `INSERT IGNORE INTO filter_favourites (filter_id, user_id) VALUES (?, ?)`,
-				f.out.ID, sub.UserID)
-		} else {
-			_, err = s.db.ExecContext(r.Context(), `DELETE FROM filter_favourites WHERE filter_id = ? AND user_id = ?`,
-				f.out.ID, sub.UserID)
-		}
-		if err != nil {
-			return err
-		}
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
 }

@@ -118,7 +118,7 @@ demandent `read`.
 | `search_groups`, `list_group_members` | Les groupes et leurs membres |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | Les catalogues de l'instance |
 | `get_server_info` | La version et l'adresse du serveur |
-| `list_favourite_filters`, `get_filter` | Les filtres enregistrés : les favoris de l'utilisateur, ou un filtre par son id |
+| `get_filter` | Un filtre enregistré, par son id |
 
 Ces outils demandent `issues:write` :
 
@@ -158,7 +158,7 @@ Les filtres enregistrés :
 
 | Outil | Portée | Fait |
 |---|---|---|
-| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre, ses partages et s'il est en favori |
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Enregistre, modifie ou supprime un filtre et ses partages |
 
 Les versions et composants d'un projet :
 
