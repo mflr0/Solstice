@@ -938,13 +938,13 @@ func TestBoardSettings(t *testing.T) {
 	if len(b.Columns) < 2 {
 		t.Fatalf("columns: %+v", b.Columns)
 	}
-	// Merge the first two columns, cap the result at 3 and add a quick filter.
+	// Merge the first two columns and add a quick filter.
 	first, second := b.Columns[0], b.Columns[1]
 	statuses := []string{}
 	for _, s := range append(first.Statuses, second.Statuses...) {
 		statuses = append(statuses, s.ID)
 	}
-	columns := []map[string]any{{"id": first.ID, "name": "Entrée", "max": 3, "statuses": statuses}}
+	columns := []map[string]any{{"id": first.ID, "name": "Entrée", "statuses": statuses}}
 	for _, c := range b.Columns[2:] {
 		ids := []string{}
 		for _, s := range c.Statuses {

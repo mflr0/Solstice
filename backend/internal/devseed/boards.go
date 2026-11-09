@@ -339,7 +339,7 @@ func (s *boardSeed) kanban() (int, error) {
 		return 0, err
 	}
 	// To Do, In Progress (In Progress, In Review), Done: In Review gets its own
-	// column, In Progress a limit, To Do the backlog page.
+	// column, To Do the backlog page.
 	if len(b.Columns) != 3 || len(b.Columns[1].Statuses) != 2 {
 		return 0, errors.New("unexpected default columns")
 	}
@@ -352,7 +352,7 @@ func (s *boardSeed) kanban() (int, error) {
 	}
 	columns := []map[string]any{
 		{"id": b.Columns[0].ID, "name": b.Columns[0].Name, "statuses": statuses(0)},
-		{"id": b.Columns[1].ID, "name": b.Columns[1].Name, "max": 3, "statuses": statuses(1)[:1]},
+		{"id": b.Columns[1].ID, "name": b.Columns[1].Name, "statuses": statuses(1)[:1]},
 		{"name": "Review", "statuses": statuses(1)[1:]},
 		{"id": b.Columns[2].ID, "name": b.Columns[2].Name, "statuses": statuses(2)},
 	}

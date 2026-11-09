@@ -197,27 +197,20 @@ func (r *run) importBoards() error {
 	}
 
 	columns := map[int64]bool{}
-	cins := r.inserter("board_columns", "id", "board_id", "name", "position", "min_issues", "max_issues")
-	if err := r.each(r.aoSelect("AO_60DB71_COLUMN", "ID", "RAPID_VIEW_ID", "NAME", "POS", "MINIM", "MAXIM"), func(rows *sql.Rows) error {
+	// Jira's column limits (MINIM, MAXIM) are left behind: Solstice has no WIP limits.
+	cins := r.inserter("board_columns", "id", "board_id", "name", "position")
+	if err := r.each(r.aoSelect("AO_60DB71_COLUMN", "ID", "RAPID_VIEW_ID", "NAME", "POS"), func(rows *sql.Rows) error {
 		var id int64
 		var board, pos sql.NullInt64
 		var name sql.NullString
-		var minimum, maximum sql.NullFloat64
-		if err := rows.Scan(&id, &board, &name, &pos, &minimum, &maximum); err != nil {
+		if err := rows.Scan(&id, &board, &name, &pos); err != nil {
 			return err
 		}
 		if !boards[board.Int64] {
 			return nil
 		}
 		columns[id] = true
-		var lo, hi any
-		if minimum.Valid && minimum.Float64 >= 0 {
-			lo = int(minimum.Float64)
-		}
-		if maximum.Valid && maximum.Float64 >= 0 {
-			hi = int(maximum.Float64)
-		}
-		return cins.add(id, board.Int64, truncate(name.String, sqlq.VarcharWidth), pos.Int64, lo, hi)
+		return cins.add(id, board.Int64, truncate(name.String, sqlq.VarcharWidth), pos.Int64)
 	}); err != nil {
 		return err
 	}

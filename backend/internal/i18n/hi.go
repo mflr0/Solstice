@@ -469,7 +469,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardEstimationUnknown:       "अनुमान: timeoriginalestimate या customfield_<id>।",
 	BoardColumnRequired:          "बोर्ड में कम से कम एक कॉलम होना चाहिए।",
 	BoardColumnNameRequired:      "हर कॉलम का नाम होना चाहिए।",
-	BoardColumnLimits:            "कॉलम “%s”: न्यूनतम मान अधिकतम से ज़्यादा है।",
 	BoardColumnUnknown:           "इस बोर्ड पर अज्ञात कॉलम।",
 	BoardStatusInTwoColumns:      "स्टेटस “%s” दो कॉलम में है।",
 	BoardBacklogColumns:          "कानबान बैकलॉग के लिए कम से कम दो कॉलम चाहिए, पहले में कोई स्टेटस हो।",

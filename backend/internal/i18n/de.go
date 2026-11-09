@@ -468,7 +468,6 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardEstimationUnknown:       "Schätzung: timeoriginalestimate oder customfield_<id>.",
 	BoardColumnRequired:          "Ein Board braucht mindestens eine Spalte.",
 	BoardColumnNameRequired:      "Jede Spalte braucht einen Namen.",
-	BoardColumnLimits:            "Spalte „%s“: Das Minimum ist größer als das Maximum.",
 	BoardColumnUnknown:           "Unbekannte Spalte auf diesem Board.",
 	BoardStatusInTwoColumns:      "Der Status „%s“ ist in zwei Spalten.",
 	BoardBacklogColumns:          "Ein Kanban-Backlog braucht mindestens zwei Spalten, die erste mit einem Status.",

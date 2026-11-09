@@ -24,8 +24,6 @@ type boardInput struct {
 	Columns    *[]struct {
 		ID       int64    `json:"id"`
 		Name     string   `json:"name"`
-		Min      *int     `json:"min"`
-		Max      *int     `json:"max"`
 		Statuses []string `json:"statuses"`
 	} `json:"columns"`
 	QuickFilters *[]struct {
@@ -131,9 +129,6 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 			if strings.TrimSpace(c.Name) == "" {
 				return fail(http.StatusBadRequest, i18n.BoardColumnNameRequired)
 			}
-			if c.Min != nil && c.Max != nil && *c.Min > *c.Max {
-				return failf(http.StatusBadRequest, i18n.BoardColumnLimits, c.Name)
-			}
 			for _, st := range c.Statuses {
 				if _, ok := cat.status[st]; !ok {
 					return failf(http.StatusBadRequest, i18n.StatusNameUnknown, st)
@@ -211,13 +206,13 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 				if exists == 0 {
 					return fail(http.StatusBadRequest, i18n.BoardColumnUnknown)
 				}
-				if _, err := tx.ExecContext(ctx, `UPDATE board_columns SET name = ?, position = ?, min_issues = ?,
-					max_issues = ? WHERE id = ?`, sqlq.Truncate(strings.TrimSpace(c.Name), sqlq.VarcharWidth), pos, c.Min, c.Max, id); err != nil {
+				if _, err := tx.ExecContext(ctx, `UPDATE board_columns SET name = ?, position = ? WHERE id = ?`,
+					sqlq.Truncate(strings.TrimSpace(c.Name), sqlq.VarcharWidth), pos, id); err != nil {
 					return err
 				}
 			} else {
-				res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position, min_issues, max_issues)
-					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(strings.TrimSpace(c.Name), sqlq.VarcharWidth), pos, c.Min, c.Max)
+				res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position) VALUES (?, ?, ?)`,
+					b.ID, sqlq.Truncate(strings.TrimSpace(c.Name), sqlq.VarcharWidth), pos)
 				if err != nil {
 					return err
 				}
