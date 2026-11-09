@@ -308,6 +308,21 @@ export const fr: Messages = {
     saved: 'Mot de passe enregistré. Connexion établie.',
   },
 
+  gettingStarted: {
+    title: 'Premiers pas',
+    progress: (done: number, total: number) =>
+      `${formatNumber(done)}/${formatNumber(total)} faites`,
+    hide: 'Masquer',
+    done: 'faite',
+    notDone: 'à faire',
+    steps: {
+      projects: 'Créer un projet',
+      users: 'Inviter des personnes',
+      mail: 'Configurer l’e-mail',
+      boards: 'Créer un tableau',
+      issues: 'Créer le premier ticket',
+    },
+  },
   home: {
     title: 'Mon espace',
     intro: 'Vos vues, et celles que l’on a partagées avec vous.',

@@ -315,6 +315,21 @@ export const de: Messages = {
     saved: 'Passwort gespeichert. Sie sind angemeldet.',
   },
 
+  gettingStarted: {
+    title: 'Erste Schritte',
+    progress: (done: number, total: number) =>
+      `${formatNumber(done)}/${formatNumber(total)} erledigt`,
+    hide: 'Ausblenden',
+    done: 'erledigt',
+    notDone: 'offen',
+    steps: {
+      projects: 'Projekt anlegen',
+      users: 'Personen einladen',
+      mail: 'E-Mail einrichten',
+      boards: 'Board anlegen',
+      issues: 'Ersten Vorgang anlegen',
+    },
+  },
   home: {
     title: 'Mein Bereich',
     intro: 'Ihre Ansichten und die, die andere mit Ihnen geteilt haben.',

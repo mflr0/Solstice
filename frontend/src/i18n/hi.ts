@@ -309,6 +309,20 @@ export const hi: Messages = {
     saved: 'पासवर्ड सहेज लिया गया। आप साइन इन हैं।',
   },
 
+  gettingStarted: {
+    title: 'शुरुआत करें',
+    progress: (done: number, total: number) => `${formatNumber(done)}/${formatNumber(total)} पूरे`,
+    hide: 'छिपाएँ',
+    done: 'पूरा',
+    notDone: 'बाकी',
+    steps: {
+      projects: 'प्रोजेक्ट बनाएँ',
+      users: 'लोगों को आमंत्रित करें',
+      mail: 'ईमेल सेट अप करें',
+      boards: 'बोर्ड बनाएँ',
+      issues: 'पहला टिकट बनाएँ',
+    },
+  },
   home: {
     title: 'मेरा स्पेस',
     intro: 'आपके व्यू, और वे जो दूसरों ने आपके साथ शेयर किए हैं।',

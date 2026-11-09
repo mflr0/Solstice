@@ -306,6 +306,20 @@ export const en = {
     saved: 'Password saved. You are signed in.',
   },
 
+  gettingStarted: {
+    title: 'Getting started',
+    progress: (done: number, total: number) => `${formatNumber(done)}/${formatNumber(total)} done`,
+    hide: 'Hide',
+    done: 'done',
+    notDone: 'not done',
+    steps: {
+      projects: 'Create a project',
+      users: 'Invite people',
+      mail: 'Set up email',
+      boards: 'Create a board',
+      issues: 'Create the first issue',
+    },
+  },
   home: {
     title: 'My space',
     intro: 'Your views, and the ones people shared with you.',
