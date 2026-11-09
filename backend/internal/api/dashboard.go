@@ -34,13 +34,14 @@ const (
 )
 
 // gadgetConfig is a gadget's settings: columns, size and sort for a list,
-// field for a count.
+// field for a count, and whether the user folded it.
 type gadgetConfig struct {
 	Columns []string `json:"columns,omitempty"`
 	Size    int      `json:"size,omitempty"`
 	// Replaces the order of the gadget's query; absent, the query's own.
-	Sort  *gadgetSort `json:"sort,omitempty"`
-	Field string      `json:"field,omitempty"`
+	Sort      *gadgetSort `json:"sort,omitempty"`
+	Field     string      `json:"field,omitempty"`
+	Collapsed bool        `json:"collapsed,omitempty"`
 }
 
 // gadgetSort is an ORDER BY term: a system field clause or cf[id].
