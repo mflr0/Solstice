@@ -428,6 +428,8 @@ export const fr: Messages = {
       reset: 'Colonnes par défaut',
     },
     exportCsv: 'Exporter en CSV',
+    moreActions: 'Plus d’actions',
+    resultsMenu: 'Résultats',
     bulk: {
       select: (key: string) => `Sélectionner ${key}`,
       selectPage: 'Sélectionner tous les tickets de cette page',
@@ -574,7 +576,6 @@ export const fr: Messages = {
       const d = parseDay(ymd);
       return d ? shortDay(d) : ymd;
     },
-    sortBy: 'Trier par',
     sorts: {
       updated: 'Mis à jour',
       created: 'Créé',
@@ -584,10 +585,13 @@ export const fr: Messages = {
       status: 'Statut',
       resolved: 'Résolu',
     },
-    customSort: 'Tri de la requête',
-    ascending: 'Ordre croissant',
-    descending: 'Ordre décroissant',
-    mode: 'Affichage de la recherche',
+    /** Follows the count of results, from its separator on. */
+    sortedBy: (field: string, way: string) => `, triés par ${field}, ${way}`,
+    sortWays: {
+      age: { desc: 'les plus récents d’abord', asc: 'les plus anciens d’abord' },
+      size: { desc: 'les plus élevés d’abord', asc: 'les plus bas d’abord' },
+      value: { desc: 'ordre décroissant', asc: 'ordre croissant' },
+    },
     modeFilters: 'Filtres',
     modeJql: 'JQL',
     tooComplex: 'Requête trop complexe pour les filtres',

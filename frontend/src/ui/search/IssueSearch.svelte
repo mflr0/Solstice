@@ -1,13 +1,10 @@
 <script lang="ts">
   import {
     clickSort,
-    currentSort,
     emptyFilters,
     filtersToJql,
     jqlToFilters,
-    naturalDesc,
-    SORTS,
-    sortBy,
+    readSort,
     type FilterState,
     type SortField,
   } from '../../core/filters.js';
@@ -24,15 +21,15 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
-  import Dropdown from '../Dropdown.svelte';
+  import CardMenu from '../board/CardMenu.svelte';
   import IssueQuery from '../IssueQuery.svelte';
   import ColumnPicker from './ColumnPicker.svelte';
   import FilterBar from './FilterBar.svelte';
   import JqlEditor from './JqlEditor.svelte';
 
   /**
-   * A search kept in the address: the filter bar (or the JQL editor), the
-   * sort, the count, then the results. Every change is a new address, so
+   * A search kept in the address: the filter bar (or the JQL editor) with
+   * the tools at its end, the count and the sort, then the results. Every change is a new address, so
    * back and forward walk through the searches and any link can be shared.
    */
   interface Props {
@@ -53,7 +50,6 @@
   const filters = $derived<FilterState>(reading?.ok ? reading.state : emptyFilters());
   const readable = $derived(reading?.ok ?? true);
   const visual = $derived(loc.mode !== 'jql' && readable);
-  const sort = $derived(currentSort(filters.order));
   /** The address holds a query the filters cannot show: it opens in the editor. */
   const tooComplex = $derived(
     loc.mode !== 'jql' && reading !== null && !reading.ok && reading.reason === 'complex',
@@ -73,6 +69,16 @@
   let chosen = $state<string[]>([]);
   let exporting = $state(false);
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
+
+  /** The order in words, after the count; empty for one that takes more. */
+  const sortText = $derived.by(() => {
+    const s = reading?.ok ? readSort(reading.state.order) : null;
+    if (!s) return '';
+    const name = Object.hasOwn(t.search.sorts, s.field)
+      ? t.search.sorts[s.field as SortField]
+      : s.column && names[s.column];
+    return name ? t.search.sortedBy(name, t.search.sortWays[s.way][s.desc ? 'desc' : 'asc']) : '';
+  });
 
   function readStored(): string | null {
     try {
@@ -170,18 +176,36 @@
   function setOrder(order: SortTerm[]) {
     applyFilters({ ...filters, order }, `sort:${Date.now()}`);
   }
-
-  function setSort(field: SortField, desc: boolean) {
-    setOrder(sortBy(field, desc));
-  }
 </script>
+
+{#snippet tools()}
+  {#if choices?.length}
+    <ColumnPicker {choices} {chosen} onchange={setColumns} />
+  {/if}
+  <button
+    type="button"
+    class="btn btn-small btn-quiet mode-toggle"
+    onclick={() => (visual ? showJql() : showFilters())}
+    >{visual ? t.search.modeJql : t.search.modeFilters}</button
+  >
+  <CardMenu
+    label={t.search.moreActions}
+    groups={() => [
+      {
+        label: t.search.resultsMenu,
+        items: [{ label: t.search.exportCsv, run: () => void exportCsv(), disabled: exporting }],
+      },
+    ]}
+  />
+{/snippet}
 
 <div class="issue-search">
   {#if jql === null}
     <p class="muted loading">{t.common.loading}</p>
   {:else if visual}
-    <FilterBar {filters} onchange={applyFilters} {project} {autofocus} />
+    <FilterBar {filters} onchange={applyFilters} {project} {autofocus} {tools} />
   {:else}
+    <div class="jql-tools">{@render tools()}</div>
     <JqlEditor
       value={jql}
       bind:draft
@@ -193,60 +217,9 @@
     />
   {/if}
 
-  <div class="search-tools">
-    <span class="count" aria-live="polite">{total === null ? '' : t.search.results(total)}</span>
-    {#if visual && jql !== null}
-      <div class="sort">
-        <div class="sort-field">
-          <span>{t.search.sortBy}</span>
-          <Dropdown
-            label={t.search.sortBy}
-            value={sort?.field ?? ''}
-            options={SORTS.map((s) => ({ value: s.field, label: t.search.sorts[s.field] }))}
-            placeholder={t.search.customSort}
-            onchange={(v) => {
-              const f = v as SortField;
-              setSort(f, naturalDesc(f));
-            }}
-          />
-        </div>
-        {#if sort}
-          <button
-            type="button"
-            class="btn btn-small btn-quiet sort-dir"
-            aria-label={sort.desc ? t.search.descending : t.search.ascending}
-            title={sort.desc ? t.search.descending : t.search.ascending}
-            onclick={() => setSort(sort.field, !sort.desc)}
-            ><span aria-hidden="true">{sort.desc ? '↓' : '↑'}</span></button
-          >
-        {/if}
-      </div>
-    {/if}
-    {#if choices?.length}
-      <ColumnPicker {choices} {chosen} onchange={setColumns} />
-    {/if}
-    <button
-      type="button"
-      class="btn btn-small"
-      disabled={jql === null}
-      aria-disabled={exporting || undefined}
-      onclick={() => void exportCsv()}>{t.search.exportCsv}</button
-    >
-    <div class="mode-switch" role="group" aria-label={t.search.mode}>
-      <button
-        type="button"
-        class="btn btn-small"
-        aria-pressed={visual}
-        onclick={() => !visual && showFilters()}>{t.search.modeFilters}</button
-      >
-      <button
-        type="button"
-        class="btn btn-small"
-        aria-pressed={!visual}
-        onclick={() => visual && showJql()}>{t.search.modeJql}</button
-      >
-    </div>
-  </div>
+  <p class="search-summary" aria-live="polite">
+    {#if total !== null}<strong>{t.search.results(total)}</strong>{sortText}{/if}
+  </p>
 
   {#if refused || tooComplex}
     <p class="refused" role="status">
@@ -282,66 +255,34 @@
 </div>
 
 <style>
-  .search-tools {
+  .jql-tools {
     display: flex;
-    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
-    gap: 8px 14px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .mode-toggle {
+    height: 2rem;
+    font-family: var(--font-mono);
+  }
+
+  .issue-search :global(.card-menu-toggle) {
+    height: 2rem;
+    padding: 0 8px;
+  }
+
+  .search-summary {
+    min-height: 1.25rem;
     margin: 12px 0 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .count {
-    font: 0.78125rem var(--font-mono);
-    color: var(--muted);
-    margin-right: auto;
-  }
-
-  .sort {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .sort-field {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.78125rem;
-    color: var(--ink-soft);
-    white-space: nowrap;
-  }
-
-  .sort-field :global(.select) {
-    width: auto;
-    height: 1.75rem;
-    padding-block: 2px;
-    padding-left: 6px;
     font-size: 0.8125rem;
+    color: var(--ink-soft);
   }
 
-  .sort-dir {
-    font-size: 0.875rem;
-    min-width: 1.625rem;
-    justify-content: center;
-  }
-
-  .mode-switch {
-    display: inline-flex;
-  }
-
-  .mode-switch .btn {
-    border-radius: 0;
-  }
-
-  .mode-switch .btn:first-child {
-    border-radius: var(--radius-s) 0 0 var(--radius-s);
-  }
-
-  .mode-switch .btn:last-child {
-    margin-left: calc(-1 * var(--frame));
-    border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  .search-summary strong {
+    font-weight: 600;
+    color: var(--ink);
   }
 
   .refused {

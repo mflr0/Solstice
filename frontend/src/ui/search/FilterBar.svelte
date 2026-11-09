@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { tick, untrack, type Snippet } from 'svelte';
   import {
     EMPTY,
     emptyFilters,
@@ -45,8 +45,10 @@
     /** A project the search is already limited to (project page). */
     project?: string | undefined;
     autofocus?: boolean | undefined;
+    /** Buttons for the whole search, at the right end of the row. */
+    tools?: Snippet | undefined;
   }
-  const { filters, onchange, project, autofocus = false }: Props = $props();
+  const { filters, onchange, project, autofocus = false, tools }: Props = $props();
 
   type Field = ListField | DateField;
   const GROUPS: { id: 'common' | 'dates' | 'planning'; fields: Field[] }[] = [
@@ -602,6 +604,9 @@
       >
     {/if}
   </div>
+  {#if tools}
+    <div class="filter-tools">{@render tools()}</div>
+  {/if}
 </div>
 
 <style>
@@ -642,6 +647,13 @@
     gap: 6px;
     min-width: 0;
     flex: 1 1 auto;
+  }
+
+  .filter-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
   }
 
   .role {

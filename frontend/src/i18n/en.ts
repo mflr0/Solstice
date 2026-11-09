@@ -426,6 +426,8 @@ export const en = {
       reset: 'Default columns',
     },
     exportCsv: 'Export CSV',
+    moreActions: 'More actions',
+    resultsMenu: 'Results',
     bulk: {
       select: (key: string) => `Select ${key}`,
       selectPage: 'Select all issues on this page',
@@ -570,7 +572,6 @@ export const en = {
       const d = parseDay(ymd);
       return d ? shortDay(d) : ymd;
     },
-    sortBy: 'Sort by',
     sorts: {
       updated: 'Updated',
       created: 'Created',
@@ -580,10 +581,13 @@ export const en = {
       status: 'Status',
       resolved: 'Resolved',
     },
-    customSort: 'Query order',
-    ascending: 'Ascending',
-    descending: 'Descending',
-    mode: 'Search view',
+    /** Follows the count of results, from its separator on. */
+    sortedBy: (field: string, way: string) => `, sorted by ${field}, ${way}`,
+    sortWays: {
+      age: { desc: 'newest first', asc: 'oldest first' },
+      size: { desc: 'highest first', asc: 'lowest first' },
+      value: { desc: 'descending', asc: 'ascending' },
+    },
     modeFilters: 'Filters',
     modeJql: 'JQL',
     tooComplex: 'Query too complex for the filters',

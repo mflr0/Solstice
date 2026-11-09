@@ -435,6 +435,8 @@ export const de: Messages = {
       reset: 'Standardspalten',
     },
     exportCsv: 'Als CSV exportieren',
+    moreActions: 'Weitere Aktionen',
+    resultsMenu: 'Ergebnisse',
     bulk: {
       select: (key: string) => `${key} auswählen`,
       selectPage: 'Alle Vorgänge dieser Seite auswählen',
@@ -580,7 +582,6 @@ export const de: Messages = {
       const d = parseDay(ymd);
       return d ? shortDay(d) : ymd;
     },
-    sortBy: 'Sortieren nach',
     sorts: {
       updated: 'Aktualisiert',
       created: 'Erstellt',
@@ -590,10 +591,13 @@ export const de: Messages = {
       status: 'Status',
       resolved: 'Gelöst',
     },
-    customSort: 'Sortierung der Abfrage',
-    ascending: 'Aufsteigend',
-    descending: 'Absteigend',
-    mode: 'Suchansicht',
+    /** Follows the count of results, from its separator on. */
+    sortedBy: (field: string, way: string) => `, sortiert nach ${field}, ${way}`,
+    sortWays: {
+      age: { desc: 'neueste zuerst', asc: 'älteste zuerst' },
+      size: { desc: 'höchste zuerst', asc: 'niedrigste zuerst' },
+      value: { desc: 'absteigend', asc: 'aufsteigend' },
+    },
     modeFilters: 'Filter',
     modeJql: 'JQL',
     tooComplex: 'Abfrage zu komplex für die Filter',

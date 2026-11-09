@@ -360,10 +360,14 @@ back / forward.
 - ≤ 600 px a popover is a sheet along the bottom of the screen
   (`position: fixed`), over `.filter-veil` (painted with `--backdrop`), with
   `.sheet-head` (name + close button) shown; the bar wraps.
-- Under the bar: `.search-tools` > `.count`, `.sort` (`button.dropdown.select`,
-  `button.sort-dir`), `.mode-switch[role=group]` (two `.btn.btn-small`,
-  `[aria-pressed='true']` on the current mode); `p.refused` (« Requête trop
-  complexe pour les filtres »); `.results` (the `.ledger`).
+- At the end of the bar: `.filter-tools` > `.column-picker` (« Colonnes »),
+  `button.btn.btn-small.btn-quiet.mode-toggle` (« JQL », or « Filtres » in the
+  editor), then the ⋯ menu as on a card: `.card-menu-toggle` and its
+  `.popover.card-menu` (« Exporter en CSV »). In JQL mode the same buttons sit
+  in `.jql-tools`, above the editor.
+- Under the bar: `p.search-summary` (`strong` = the count, then the order in
+  words); `p.refused` (« Requête trop complexe pour les filtres »); `.results`
+  (the `.ledger`).
 - JQL mode: `.jql-editor` (`.has-error`) > `.jql-field` > `pre.jql-highlight`
   (the coloured copy, `aria-hidden`) under a transparent
   `textarea.jql-input`: both draw the same box, so give them the same font,
@@ -587,3 +591,5 @@ an entry here. Adding a hook does neither.
 
 - **1**: the hooks as of #526. `tr.is-selected` and `.tabs.tabs-folder` were
   removed without a bump: nothing ever set them, so no theme could rely on them.
+  `.search-tools` (with its `.count`, `.sort`, `.sort-dir`) and `.mode-switch`
+  went the same way in #812: no release had shipped them yet.
