@@ -59,14 +59,16 @@ export interface Note {
   id: number;
   text: string;
   kind: 'error' | 'info';
+  /** Where the note's text leads, if anywhere. */
+  href?: string;
 }
 
 export const notes = $state<Note[]>([]);
 let nextNote = 1;
 
-export function notify(text: string, kind: Note['kind'] = 'info'): void {
+export function notify(text: string, kind: Note['kind'] = 'info', href?: string): void {
   const id = nextNote++;
-  notes.push({ id, text, kind });
+  notes.push(href ? { id, text, kind, href } : { id, text, kind });
   setTimeout(() => dismiss(id), kind === 'error' ? 8000 : 4000);
 }
 

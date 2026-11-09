@@ -5,6 +5,7 @@
   import type { ProjectDetail } from '../../core/types.js';
   import { formatDay, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import { copyText } from '../../lib/clipboard.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify, openCreate } from '../../lib/ui.svelte.js';
@@ -33,32 +34,10 @@
     return paths.project(key) + writeLocation({ jql, mode: null, filter: null, page: 1 });
   }
 
-  /** Plain http has no navigator.clipboard: copy from a throwaway field instead. */
-  function copyBySelection(text: string): boolean {
-    const focused = document.activeElement;
-    const field = document.createElement('textarea');
-    field.value = text;
-    field.style.position = 'fixed';
-    field.style.opacity = '0';
-    document.body.append(field);
-    field.select();
-    const copied = document.execCommand('copy');
-    field.remove();
-    if (focused instanceof HTMLElement) focused.focus();
-    return copied;
-  }
-
   async function copyLink(key: string) {
     const url = `${location.origin}${paths.project(key)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      if (!copyBySelection(url)) {
-        notify(t.projects.copyLinkFailed(url), 'error');
-        return;
-      }
-    }
-    notify(t.projects.linkCopied);
+    if (await copyText(url)) notify(t.projects.linkCopied);
+    else notify(t.projects.copyLinkFailed(url), 'error');
   }
 
   $effect(() => {

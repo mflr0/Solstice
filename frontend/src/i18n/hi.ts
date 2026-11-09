@@ -1107,6 +1107,12 @@ export const hi: Messages = {
     otherIssues: 'अन्य टिकट',
 
     cardActions: (key: string) => `${key} पर कार्रवाइयाँ`,
+    issueGroup: 'टिकट',
+    duplicate: 'कॉपी बनाएँ…',
+    stopWatching: 'वॉच करना बंद करें',
+    copyLink: 'लिंक कॉपी करें',
+    watched: (key: string) => `आप ${key} को वॉच कर रहे हैं।`,
+    unwatched: (key: string) => `आपने ${key} को वॉच करना बंद कर दिया।`,
     moveTo: 'ले जाएँ',
     order: 'क्रम',
     moveUp: 'ऊपर ले जाएँ',

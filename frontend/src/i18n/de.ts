@@ -1125,6 +1125,12 @@ export const de: Messages = {
     otherIssues: 'Weitere Vorgänge',
 
     cardActions: (key: string) => `Aktionen für ${key}`,
+    issueGroup: 'Vorgang',
+    duplicate: 'Duplizieren…',
+    stopWatching: 'Nicht mehr beobachten',
+    copyLink: 'Link kopieren',
+    watched: (key: string) => `Sie beobachten ${key}.`,
+    unwatched: (key: string) => `Sie beobachten ${key} nicht mehr.`,
     moveTo: 'Verschieben nach',
     order: 'Reihenfolge',
     moveUp: 'Nach oben',

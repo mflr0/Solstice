@@ -24,7 +24,9 @@
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
+  import { issueGroup } from '../board/issue-menu.js';
   import QuickFilters from '../board/QuickFilters.svelte';
+  import CloneDialog from '../issue/CloneDialog.svelte';
   import FilterBar from '../search/FilterBar.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
@@ -49,6 +51,7 @@
   let cards = $state<Card[] | null>(null);
   let truncated = $state(false);
   let listError = $state('');
+  let duplicating = $state<string | null>(null);
   let announcement = $state('');
   let starting = $state<Sprint | null>(null);
   let completing = $state<Sprint | null>(null);
@@ -180,6 +183,10 @@
     }
   }
 
+  function watched(key: string, on: boolean) {
+    if (cards) cards = cards.map((c) => (c.key === key ? { ...c, watching: on } : c));
+  }
+
   function menuFor(card: Card, section: Section): () => MenuGroup[] {
     return () => {
       const keys = section.cards.map((c) => c.key);
@@ -190,6 +197,7 @@
         run: () => m && void move(m, message, true),
       });
       return [
+        issueGroup(card, (key) => (duplicating = key), watched),
         {
           label: t.boards.moveTo,
           items: sections.map((s) => ({
@@ -452,6 +460,12 @@
     {future}
     onclose={() => (completing = null)}
     oncompleted={afterSprintChange}
+  />
+  <CloneDialog
+    open={duplicating !== null}
+    issueKey={duplicating ?? ''}
+    onclose={() => (duplicating = null)}
+    onopen={reload}
   />
   <EditSprintDialog sprint={editing} onclose={() => (editing = null)} onsaved={afterSprintChange} />
   <ConfirmDialog
