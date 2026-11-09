@@ -4,10 +4,14 @@ import {
   emptyMemory,
   memoryKey,
   newIssueProblems,
+  notAttached,
+  queueFiles,
+  queueFor,
   readMemory,
   recall,
   remember,
   startProject,
+  unqueueFile,
 } from '../../src/core/new-issue.js';
 import { fr } from '../../src/i18n/fr.js';
 
@@ -104,5 +108,37 @@ describe('startProject', () => {
       ),
     ).toBe('MOB');
     expect(startProject(undefined, emptyMemory, [])).toBe('');
+  });
+});
+
+describe('file queue', () => {
+  const file = (name: string, body = name) => new File([body], name);
+
+  it('adds files in order', () => {
+    const q = queueFiles(queueFiles([], [file('a.pdf')]), [file('b.png'), file('c.txt')]);
+    expect(q.map((f) => f.name)).toEqual(['a.pdf', 'b.png', 'c.txt']);
+  });
+
+  it('keeps one file per name, the last one added, at the end', () => {
+    const q = queueFiles([file('a.pdf', 'old'), file('b.png')], [file('a.pdf', 'newer')]);
+    expect(q.map((f) => f.name)).toEqual(['b.png', 'a.pdf']);
+    expect(q[1]!.size).toBe(5);
+  });
+
+  it('removes a file by name', () => {
+    const q = unqueueFile([file('a.pdf'), file('b.png')], 'a.pdf');
+    expect(q.map((f) => f.name)).toEqual(['b.png']);
+  });
+
+  it('is cleared for a project without attach, kept otherwise', () => {
+    const q = [file('a.pdf')];
+    expect(queueFor(q, false)).toEqual([]);
+    expect(queueFor(q, true)).toEqual(q);
+  });
+
+  it('names the files the issue does not hold', () => {
+    const q = [file('a.pdf'), file('b.png')];
+    expect(notAttached(q, [{ filename: 'b.png' }])).toEqual(['a.pdf']);
+    expect(notAttached(q, [])).toEqual(['a.pdf', 'b.png']);
   });
 });

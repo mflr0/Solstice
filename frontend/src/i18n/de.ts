@@ -1040,6 +1040,9 @@ export const de: Messages = {
     defaultAssignee: 'Standard',
     required: 'Pflichtfeld',
     checkFields: 'Bitte prüfen Sie die markierten Felder.',
+    dropFiles: 'Dateien ablegen, um sie an den neuen Vorgang anzuhängen',
+    notAttached: (names: string) =>
+      `Nicht angehängt: ${names}. Hängen Sie sie im Vorgang erneut an.`,
     addPerson: 'Person hinzufügen',
     missing: {
       project: 'Wählen Sie ein Projekt.',

@@ -75,6 +75,8 @@
     oncancel?: (() => void) | undefined;
     /** Issue that pasted or dropped files are attached to; none, no upload. */
     uploadTo?: string | undefined;
+    /** Takes pasted, dropped or picked files in place of uploading them, once their references are in. */
+    onfiles?: ((files: File[]) => void) | undefined;
   }
   let {
     value = $bindable(),
@@ -86,6 +88,7 @@
     onsubmit,
     oncancel,
     uploadTo,
+    onfiles,
   }: Props = $props();
 
   const LANGUAGES = [
@@ -131,6 +134,7 @@
   const id = `editor-${uid}`;
   const files = $derived(new Map([...attachments, ...added].map((a) => [a.filename, a.url])));
   const resolver = $derived(refs.resolver(files));
+  const takesFiles = $derived(!!uploadTo || !!onfiles);
   const live = new Set<Live>();
 
   function newState(doc: ParsedWiki['doc']): EditorState {
@@ -204,13 +208,13 @@
       },
       handlePaste(_view, event) {
         const list = [...(event.clipboardData?.files ?? [])];
-        if (list.length === 0 || !uploadTo) return false;
+        if (list.length === 0 || !takesFiles) return false;
         void upload(list, v.state.selection.from);
         return true;
       },
       handleDrop(_view, event, _slice, moved) {
         const list = [...(event.dataTransfer?.files ?? [])];
-        if (moved || list.length === 0 || !uploadTo) return false;
+        if (moved || list.length === 0 || !takesFiles) return false;
         const pos = v.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
         void upload(list, pos ?? v.state.selection.from);
         return true;
@@ -489,9 +493,25 @@
     return new File([file], `capture-${stamp}.${ext}`, { type: file.type });
   }
 
+  /** Pictures shown in the text, other files linked; names the markup can't hold are left out. */
+  function references(names: string[]) {
+    return names
+      .filter((name) => !/[[\]|]/.test(name))
+      .map((name) =>
+        IMAGE_EXT_RE.test(name) && !name.includes('!')
+          ? schema.nodes.raw_inline.create({ wiki: `!${name}!`, kind: 'image' })
+          : schema.nodes.raw_inline.create({ wiki: `[^${name}]`, kind: 'file' }),
+      );
+  }
+
   async function upload(list: File[], pos: number): Promise<void> {
-    if (!uploadTo) return;
     const sent = list.map(named);
+    if (onfiles) {
+      if (view) insertReferences(view, pos, references(sent.map((f) => f.name)));
+      onfiles(sent);
+      return;
+    }
+    if (!uploadTo) return;
     const names = sent.map((f) => f.name).join(', ');
     const spot = { pos };
     pending = [...pending, spot];
@@ -501,15 +521,8 @@
       if (!isVisible(d)) return;
       added = d.attachments;
       const known = new Set(d.attachments.map((a) => a.filename));
-      const refsToInsert = sent
-        .map((f) => f.name)
-        .filter((name) => known.has(name) && !/[[\]|]/.test(name))
-        .map((name) =>
-          IMAGE_EXT_RE.test(name) && !name.includes('!')
-            ? schema.nodes.raw_inline.create({ wiki: `!${name}!`, kind: 'image' })
-            : schema.nodes.raw_inline.create({ wiki: `[^${name}]`, kind: 'file' }),
-        );
-      if (view) insertReferences(view, spot.pos, refsToInsert);
+      const kept = sent.map((f) => f.name).filter((name) => known.has(name));
+      if (view) insertReferences(view, spot.pos, references(kept));
     } catch (e) {
       notify(errorMessage(e), 'error');
     } finally {
@@ -527,7 +540,7 @@
 
   /** Files from outside, not text or a moved selection. */
   const carriesFiles = (e: DragEvent): boolean =>
-    !!uploadTo && (e.dataTransfer?.types.includes('Files') ?? false);
+    takesFiles && (e.dataTransfer?.types.includes('Files') ?? false);
 
   function endDrag(): void {
     depth = 0;
@@ -555,7 +568,7 @@
         const ours = dragging;
         endDrag();
         // The text already took it (handleDrop), or nothing is uploaded here.
-        if (!ours || e.defaultPrevented || !uploadTo) return;
+        if (!ours || e.defaultPrevented || !takesFiles) return;
         const list = [...(e.dataTransfer?.files ?? [])];
         if (list.length === 0) return;
         e.preventDefault();
@@ -704,7 +717,7 @@
             return true;
           })}><span aria-hidden="true">@</span></button
       >
-      {#if uploadTo}
+      {#if takesFiles}
         <button
           type="button"
           class="editor-button editor-attach"
@@ -768,7 +781,7 @@
 
   <div bind:this={host} class="editor-host" hidden={source}></div>
 
-  {#if uploadTo}
+  {#if takesFiles}
     <!-- Outside the toolbar, so its arrow keys never stop on it. -->
     <input
       bind:this={picker}
