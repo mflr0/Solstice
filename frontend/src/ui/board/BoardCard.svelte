@@ -2,6 +2,7 @@
   import type { BoardCard } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
+  import { isPlainClick, showIssue } from '../../lib/router.svelte.js';
   import Lock from '../Lock.svelte';
   import Picture from '../Picture.svelte';
   import PriorityMark from '../PriorityMark.svelte';
@@ -11,7 +12,8 @@
 
   /**
    * One issue on a board (a card) or in a backlog (a row). The summary is
-   * the link and covers the whole card; the menu button sits above it.
+   * the link and covers the whole card; the menu button sits above it. A
+   * plain click opens the issue in the modal, any other its page.
    */
   interface Props {
     card: BoardCard;
@@ -37,6 +39,12 @@
     ondragstart,
     ondragend,
   }: Props = $props();
+
+  function open(e: MouseEvent) {
+    if (!isPlainClick(e)) return;
+    e.preventDefault();
+    showIssue(card.key);
+  }
 </script>
 
 {#snippet who()}
@@ -97,7 +105,7 @@
   {#if layout === 'row'}
     <TypeMark type={card.type} />
     <span class="key" aria-hidden="true">{card.key}</span>
-    <a class="summary" href={paths.issue(card.key)} draggable="false"
+    <a class="summary" href={paths.issue(card.key)} draggable="false" onclick={open}
       ><span class="sr-only">{card.key} </span>{card.summary}</a
     >
     {#if card.confidential}<Lock />{/if}
@@ -117,7 +125,7 @@
       {#if card.confidential}<Lock />{/if}
       <span class="tools"><CardMenu label={t.boards.cardActions(card.key)} groups={menu} /></span>
     </div>
-    <a class="summary" href={paths.issue(card.key)} draggable="false"
+    <a class="summary" href={paths.issue(card.key)} draggable="false" onclick={open}
       ><span class="sr-only">{card.key} </span>{card.summary}</a
     >
     {#if card.epic || showStatus || card.assignee || card.priority || (estimate && card.estimate !== null)}

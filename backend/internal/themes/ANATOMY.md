@@ -278,7 +278,13 @@ its button, or above it when there is more room there): don't give it a
 **Dialogs** — `dialog.modal` (`::backdrop`) > `header.modal-head` (title bar) >
 `h2.modal-title` + `button.modal-close` (label « Fermer Échap »; restyle it,
 e.g. as a ✕ box with `font-size: 0` and a `::before`), `.modal-body`,
-`footer.modal-foot`.
+`footer.modal-foot`. Some dialogs put buttons in the title bar, in
+`.modal-actions` before the Close button.
+`dialog.modal.issue-modal` shows an issue over a board or a backlog: its title
+is the issue key as a link (`h2.modal-title > a.key`), its `.modal-body` has
+no padding and holds the issue view (`.page.issue`, without the page's
+margin, border and shadow, with the skin's page padding). It is about as wide
+as the issue page and fills the screen under 760 px.
 
 **Save bar** — `.savebar` (unsaved changes, sticky at the bottom of the page):
 its first child is the message (or a `.error-text`), then `.btn.btn-quiet`

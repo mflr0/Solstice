@@ -20,6 +20,7 @@
     onreload: () => Promise<void>;
   }
   const { issue, onupdated, onreload }: Props = $props();
+  const uid = $props.id();
 
   let adding = $state(false);
   let relation = $state('');
@@ -54,7 +55,7 @@
     relation = relations[0]?.value ?? '';
     target = '';
     await tick();
-    document.getElementById('link-kind')?.focus();
+    document.getElementById(`link-kind-${uid}`)?.focus();
   }
 
   async function stopAdding() {
@@ -88,9 +89,9 @@
       await onreload();
       await tick();
       refocus(
-        document.getElementById(`link-remove-${next}`) ??
+        document.getElementById(`link-remove-${next}-${uid}`) ??
           addButton ??
-          document.getElementById('link-kind'),
+          document.getElementById(`link-kind-${uid}`),
       );
     } catch (err) {
       notify(errorMessage(err), 'error');
@@ -115,16 +116,16 @@
     <form class="add row" onsubmit={add}>
       <span class="kind">
         <Dropdown
-          id="link-kind"
+          id="link-kind-{uid}"
           label={t.issue.linkKind}
           value={relation}
           options={relations}
           onchange={(v) => (relation = v)}
         />
       </span>
-      <label class="sr-only" for="link-target">{t.issue.linkTarget}</label>
+      <label class="sr-only" for="link-target-{uid}">{t.issue.linkTarget}</label>
       <input
-        id="link-target"
+        id="link-target-{uid}"
         class="input target"
         bind:value={target}
         placeholder={t.issue.linkPlaceholder}
@@ -156,7 +157,7 @@
             <Stamp status={l.issue.status} />
             {#if issue.can.link}
               <button
-                id={`link-remove-${l.id}`}
+                id={`link-remove-${l.id}-${uid}`}
                 class="del"
                 aria-label={`${t.common.remove} ${l.issue.key}`}
                 onclick={() => void remove(l.id)}>×</button

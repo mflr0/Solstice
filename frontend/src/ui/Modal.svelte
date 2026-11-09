@@ -14,8 +14,22 @@
     onclose: () => void;
     children: Snippet;
     footer?: Snippet | undefined;
+    /** Drawn in the title instead of the plain text of `title`. */
+    heading?: Snippet | undefined;
+    /** Buttons in the title bar, before Close. */
+    actions?: Snippet | undefined;
+    class?: string | undefined;
   }
-  const { open, title, onclose, children, footer }: Props = $props();
+  const {
+    open,
+    title,
+    onclose,
+    children,
+    footer,
+    heading,
+    actions,
+    class: className = '',
+  }: Props = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
   const uid = $props.id();
@@ -54,7 +68,7 @@
 
 <dialog
   bind:this={dialog}
-  class="modal"
+  class={['modal', className]}
   aria-labelledby={titleId}
   {onclose}
   {oncancel}
@@ -63,7 +77,10 @@
 >
   {#if open}
     <header class="modal-head">
-      <h2 class="modal-title" id={titleId}>{title}</h2>
+      <h2 class="modal-title" id={titleId}>
+        {#if heading}{@render heading()}{:else}{title}{/if}
+      </h2>
+      {#if actions}<div class="modal-actions">{@render actions()}</div>{/if}
       <button type="button" class="btn btn-quiet btn-small modal-close" onclick={onclose}
         >{t.common.close} <kbd>{t.common.escKey}</kbd></button
       >

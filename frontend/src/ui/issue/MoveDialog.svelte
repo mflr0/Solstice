@@ -36,8 +36,17 @@
     /** After a bulk move: the keys that were refused. */
     ondone?: ((refused: string[]) => void) | undefined;
     onclose: () => void;
+    /** Shows the moved issue. By default this goes to its page. */
+    onopen?: (key: string) => void;
   }
-  const { open, issue, keys = [], ondone, onclose }: Props = $props();
+  const {
+    open,
+    issue,
+    keys = [],
+    ondone,
+    onclose,
+    onopen = (key) => router.navigate(paths.issue(key)),
+  }: Props = $props();
   const bulk = $derived(!issue);
   /** The issues of a bulk move that cannot move, as the last dry run said. */
   let refused = $state<BulkResult[]>([]);
@@ -264,7 +273,7 @@
       const { key } = await api.moveIssue(issue.key, target, choices());
       notify(t.issue.moved(issue.key, key));
       onclose();
-      router.navigate(paths.issue(key));
+      onopen(key);
     });
   }
 

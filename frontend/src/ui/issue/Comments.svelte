@@ -18,6 +18,7 @@
     tick: number;
   }
   const { issue, tick }: Props = $props();
+  const uid = $props.id();
 
   let comments = $state<Comment[] | null>(null);
   let error = $state('');
@@ -27,6 +28,7 @@
   let editDraft = $state('');
   let armed = $state<number | null>(null);
   let compose = $state<HTMLElement>();
+  let thread = $state<HTMLElement>();
 
   async function load(key: string) {
     try {
@@ -62,14 +64,16 @@
   async function stopEditing(id: number) {
     editing = null;
     await settled();
-    refocus(document.getElementById(`comment-edit-${id}`));
+    refocus(document.getElementById(`comment-edit-${id}-${uid}`));
   }
 
   /** The writing box, or the tab for someone who may edit a comment but not write one. */
   function addControl() {
     return (
       compose?.querySelector<HTMLElement>('[contenteditable="true"], textarea') ??
-      document.querySelector<HTMLElement>('.issue-activity [role="tab"][aria-selected="true"]')
+      thread
+        ?.closest('.issue-activity')
+        ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
     );
   }
 
@@ -99,7 +103,7 @@
       );
       comments = list.filter((x) => x.id !== id);
       await settled();
-      refocus(document.getElementById(`comment-delete-${next}`) ?? addControl());
+      refocus(document.getElementById(`comment-delete-${next}-${uid}`) ?? addControl());
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -114,7 +118,7 @@
   {#if comments.length === 0}
     <p class="empty">{t.comments.empty}</p>
   {/if}
-  <ol class="thread">
+  <ol class="thread" bind:this={thread}>
     {#each comments as c (c.id)}
       <li class="comment list-row" id={`comment-${c.id}`}>
         <header>
@@ -131,7 +135,7 @@
           {#if c.canEdit && editing !== c.id}
             <span class="tools">
               <button
-                id={`comment-edit-${c.id}`}
+                id={`comment-edit-${c.id}-${uid}`}
                 class="link-btn"
                 onclick={() => {
                   editing = c.id;
@@ -139,7 +143,7 @@
                 }}>{t.common.edit}</button
               >
               <button
-                id={`comment-delete-${c.id}`}
+                id={`comment-delete-${c.id}-${uid}`}
                 class="link-btn"
                 class:armed={armed === c.id}
                 onclick={() => void remove(c.id)}
