@@ -74,6 +74,20 @@ func insertGadgets(t *testing.T, username string, gadgets ...rawGadget) {
 	}
 }
 
+// The import turned jeanne.dupont's Jira favourite into a view of My space,
+// after the built-in ones.
+func TestDashboardImportedFavourite(t *testing.T) {
+	d := dashboard(login(t, "jeanne.dupont", jirafixture.Password), "GET", nil)
+	var kinds []string
+	for _, g := range d.Gadgets {
+		kinds = append(kinds, g.Kind)
+	}
+	if !d.Customised || strings.Join(kinds, " ") != "assigned reported recent results" ||
+		d.Gadgets[3].Unavailable || d.Gadgets[3].Filter.Name != "Bugs DEMO en cours" {
+		t.Errorf("jeanne.dupont's dashboard: %+v", d)
+	}
+}
+
 func TestDashboardDefaults(t *testing.T) {
 	resetDashboard(t, "hugo.robert")
 	t.Cleanup(func() { resetDashboard(t, "hugo.robert") })

@@ -3552,10 +3552,32 @@ CREATE TABLE `dashboard_gadgets` (
   KEY `fk_dg_filter` (`filter_id`),
   CONSTRAINT `fk_dg_filter` FOREIGN KEY (`filter_id`) REFERENCES `filters` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_dg_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `dashboard_gadgets` DISABLE KEYS */;
+INSERT INTO `dashboard_gadgets` VALUES (1,2,0,'assigned',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (2,2,1,'reported',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (3,2,2,'recent',NULL,'{\"size\":12}');
+INSERT INTO `dashboard_gadgets` VALUES (4,2,3,'results',10000,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (5,3,0,'assigned',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (6,3,1,'reported',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (7,3,2,'recent',NULL,'{\"size\":12}');
+INSERT INTO `dashboard_gadgets` VALUES (8,3,3,'results',10001,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (9,3,4,'results',10000,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (10,4,0,'assigned',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (11,4,1,'reported',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (12,4,2,'recent',NULL,'{\"size\":12}');
+INSERT INTO `dashboard_gadgets` VALUES (13,4,3,'results',10001,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (14,7,0,'assigned',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (15,7,1,'reported',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (16,7,2,'recent',NULL,'{\"size\":12}');
+INSERT INTO `dashboard_gadgets` VALUES (17,7,3,'results',10002,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (18,7,4,'results',10000,'{}');
+INSERT INTO `dashboard_gadgets` VALUES (19,8,0,'assigned',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (20,8,1,'reported',NULL,'{\"size\":15}');
+INSERT INTO `dashboard_gadgets` VALUES (21,8,2,'recent',NULL,'{\"size\":12}');
+INSERT INTO `dashboard_gadgets` VALUES (22,8,3,'results',10003,'{}');
 /*!40000 ALTER TABLE `dashboard_gadgets` ENABLE KEYS */;
 DROP TABLE IF EXISTS `dashboards`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -3569,6 +3591,11 @@ CREATE TABLE `dashboards` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `dashboards` DISABLE KEYS */;
+INSERT INTO `dashboards` VALUES (2,'2026-10-01 18:00:00.000');
+INSERT INTO `dashboards` VALUES (3,'2026-10-01 18:00:00.000');
+INSERT INTO `dashboards` VALUES (4,'2026-10-01 18:00:00.000');
+INSERT INTO `dashboards` VALUES (7,'2026-10-01 18:00:00.000');
+INSERT INTO `dashboards` VALUES (8,'2026-10-01 18:00:00.000');
 /*!40000 ALTER TABLE `dashboards` ENABLE KEYS */;
 DROP TABLE IF EXISTS `filter_favourites`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -3584,13 +3611,6 @@ CREATE TABLE `filter_favourites` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `filter_favourites` DISABLE KEYS */;
-INSERT INTO `filter_favourites` VALUES (10000,2);
-INSERT INTO `filter_favourites` VALUES (10000,3);
-INSERT INTO `filter_favourites` VALUES (10000,7);
-INSERT INTO `filter_favourites` VALUES (10001,3);
-INSERT INTO `filter_favourites` VALUES (10001,4);
-INSERT INTO `filter_favourites` VALUES (10002,7);
-INSERT INTO `filter_favourites` VALUES (10003,8);
 /*!40000 ALTER TABLE `filter_favourites` ENABLE KEYS */;
 DROP TABLE IF EXISTS `filter_shares`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

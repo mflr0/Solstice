@@ -62,7 +62,7 @@ dump() { # mariadb-dump options...
 # The tables whose datetime columns are all set when the import runs (the
 # fixture's dates in the other tables are already stable).
 normalise() {
-  sed -E "/^INSERT INTO \`(boards|filters|schema_migrations|users)\` /s/'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+'/'$fixed_date'/g"
+  sed -E "/^INSERT INTO \`(boards|dashboards|filters|schema_migrations|users)\` /s/'[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+'/'$fixed_date'/g"
 }
 
 echo "› dump of solstice_e2e_my"

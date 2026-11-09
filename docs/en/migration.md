@@ -145,7 +145,7 @@ can be run again.
 | Comments and work logs | With their visibility restrictions to groups, and to roles, then to the group made from the role. |
 | Attachments | Metadata always. Files when `-jira-home` is given. |
 | History | The full change history of each issue. |
-| Filters | Saved filters with their JQL, shares and favourites. |
+| Filters | Saved filters with their JQL and shares. A user's favourite filters become views in their My space, after the built-in ones and in their Jira order, up to 20 views; the report counts the favourites that did not fit. |
 | Jira Software | Boards with their columns, quick filters and swimlanes, sprints and which issues were in them, board ranking, epic links. |
 
 Rules to know:

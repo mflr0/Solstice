@@ -102,7 +102,8 @@ one_version() { # distribution
     cols=$(mariadb -e "SELECT GROUP_CONCAT(column_name ORDER BY ordinal_position) FROM information_schema.columns
                        WHERE table_schema = 'solstice_e2e_pg' AND table_name = '$t'
                        AND NOT (table_name = 'users' AND column_name = 'created_at')
-                       AND NOT (table_name IN ('filters', 'boards') AND column_name IN ('created_at', 'updated_at'))")
+                       AND NOT (table_name IN ('filters', 'boards') AND column_name IN ('created_at', 'updated_at'))
+                       AND NOT (table_name = 'dashboards' AND column_name = 'updated_at')")
     a=$(mariadb -e "SELECT COUNT(*), COALESCE(SUM(CRC32(CONCAT_WS('|', $cols))), 0) FROM solstice_e2e_pg.$t")
     b=$(mariadb -e "SELECT COUNT(*), COALESCE(SUM(CRC32(CONCAT_WS('|', $cols))), 0) FROM solstice_e2e_my.$t")
     check "$t" "$a" "$b"
@@ -136,7 +137,7 @@ one_version() { # distribution
     "$(count "users WHERE password_hash LIKE '{PKCS5S2}%'")"
   check "filtres enregistrés" "$(expect filters)" "$(count filters)"
   check "partages de filtres" "$(expect filter_shares)" "$(count filter_shares)"
-  check "filtres favoris" "$(expect filter_favourites)" "$(count filter_favourites)"
+  check "filtres favoris" "$(expect filter_favourites)" "$(count "dashboard_gadgets WHERE kind = 'results'")"
   check "tableaux" "$(expect boards)" "$(count boards)"
   check "colonnes de tableaux" "$(expect board_columns)" "$(count board_columns)"
   check "statuts des colonnes" "$(expect board_column_statuses)" "$(count board_column_statuses)"

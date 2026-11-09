@@ -36,9 +36,10 @@ var skippedTables = []string{"schema_migrations", "sessions", "settings", "theme
 
 // Set to the time of the import: Jira does not store them (as in scripts/e2e-import.sh).
 var skippedColumns = map[string][]string{
-	"users":   {"created_at"},
-	"filters": {"created_at", "updated_at"},
-	"boards":  {"created_at", "updated_at"},
+	"users":      {"created_at"},
+	"filters":    {"created_at", "updated_at"},
+	"boards":     {"created_at", "updated_at"},
+	"dashboards": {"updated_at"},
 }
 
 // characterization is what an import of the synthetic Jira wrote.
