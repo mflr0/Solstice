@@ -1,6 +1,7 @@
 <script lang="ts">
   import { readLocation, toJql, writeLocation } from '../../core/filters-url.js';
   import { scopeSearch } from '../../core/scope.js';
+  import { storeColumns } from '../../core/search-columns.js';
   import type { SavedFilter } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
@@ -14,7 +15,8 @@
   /**
    * Search across every project, with the saved filters beside it. The
    * search lives in the address (?jql=…); ?filter=12 opens a saved filter,
-   * and a change made to it shows as "modified" until it is saved.
+   * and a change made to it (its query or its columns) shows as "modified"
+   * until it is saved. A filter the user can't edit takes their own columns.
    */
   let filters = $state<SavedFilter[] | null>(null);
   const loc = $derived(readLocation(router.search).loc);
@@ -29,9 +31,27 @@
     return current ? toJql(current.query) : '';
   });
   const jql = $derived(loc.jql ?? fallback ?? '');
-  const modified = $derived(
-    current !== null && loc.jql !== null && loc.jql.trim() !== toJql(current.query).trim(),
+  /** The columns changed while a filter is open, kept until it is saved or another opens. */
+  let columnEdit = $state<{ filter: number; columns: string[] } | null>(null);
+  const editedColumns = $derived(
+    columnEdit !== null && columnEdit.filter === loc.filter ? columnEdit.columns : null,
   );
+  const columnsModified = $derived(
+    !!current?.canEdit &&
+      editedColumns !== null &&
+      editedColumns.join() !== (current.columns?.join() ?? null),
+  );
+  const modified = $derived(
+    current !== null &&
+      ((loc.jql !== null && loc.jql.trim() !== toJql(current.query).trim()) || columnsModified),
+  );
+  let shownColumns = $state<string[]>([]);
+
+  function setColumns(next: string[]) {
+    if (!current) return;
+    columnEdit = { filter: current.id, columns: next };
+    if (!current.canEdit) storeColumns(next);
+  }
 
   // A new search starts in the scoped project, in the address like any other.
   $effect(() => {
@@ -106,6 +126,7 @@
       const f = await api.createFilter({
         name: name.trim(),
         query: jql,
+        columns: shownColumns,
         ...(description.trim() ? { description: description.trim() } : {}),
       });
       await reload();
@@ -139,7 +160,11 @@
     if (!current) return;
     busy = true;
     try {
-      await api.updateFilter(current.id, { query: jql });
+      await api.updateFilter(current.id, {
+        query: jql,
+        ...(columnsModified ? { columns: editedColumns } : {}),
+      });
+      columnEdit = null;
       await reload();
       notify(t.saved.updated(current.name));
       openFilter(current.id);
@@ -244,6 +269,10 @@
         {fallback}
         autofocus={!router.arrived && loc.filter === null && loc.jql === null}
         selectable
+        columns={current ? (editedColumns ?? current.columns) : null}
+        oncolumns={current ? setColumns : undefined}
+        columnsNote={current?.canEdit ? t.search.columns.withView : t.search.columns.inBrowser}
+        onshown={(c) => (shownColumns = c)}
       />
     </div>
   </div>

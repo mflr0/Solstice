@@ -489,10 +489,12 @@ export const api = {
 
   // Search: saved filters and values to pick from.
   filters: () => request<SavedFilter[]>('GET', '/api/filters'),
-  createFilter: (f: { name: string; query: string; description?: string }) =>
+  createFilter: (f: { name: string; query: string; description?: string; columns?: string[] }) =>
     request<SavedFilter>('POST', '/api/filters', f),
-  updateFilter: (id: number, patch: { name?: string; query?: string; description?: string }) =>
-    request<SavedFilter | undefined>('PATCH', `/api/filters/${id}`, patch),
+  updateFilter: (
+    id: number,
+    patch: { name?: string; query?: string; description?: string; columns?: string[] | null },
+  ) => request<SavedFilter | undefined>('PATCH', `/api/filters/${id}`, patch),
   deleteFilter: (id: number) => request<void>('DELETE', `/api/filters/${id}`),
   favouriteFilter: (id: number, on: boolean) =>
     request<void>(on ? 'PUT' : 'DELETE', `/api/filters/${id}/favourite`),
