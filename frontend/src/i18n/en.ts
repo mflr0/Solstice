@@ -701,6 +701,34 @@ export const en = {
     profileOf: (name: string) => `View the profile of ${name}`,
   },
 
+  viewShare: {
+    open: (name: string) => `Share ${name}`,
+    button: 'Share',
+    title: (name: string) => `Share “${name}”`,
+    intro: 'They can add it to their space. Only you can change it.',
+    search: 'Person, group or project',
+    placeholder: 'Person, group or project…',
+    share: 'Share',
+    who: 'Who sees it',
+    you: '(you)',
+    owner: 'Owner',
+    kinds: {
+      user: 'person',
+      group: 'group',
+      project: 'project, everyone in it',
+      projectGroup: 'project, one group in it',
+    },
+    remove: (name: string) => `Stop sharing with ${name}`,
+    everyone: (app: string) => `Everyone in ${app}`,
+    boards: (n: number, names: string) =>
+      `Also changes who sees the ${n === 1 ? 'board' : 'boards'} ${names}.`,
+    link: 'Link',
+    linkLabel: 'Link to the view',
+    linkHint:
+      'The link opens the view for anyone it is shared with. Others see that they have no access.',
+    done: 'Done',
+  },
+
   view: {
     title: 'View',
     untitled: 'New view',

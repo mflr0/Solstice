@@ -39,6 +39,8 @@ type filterOut struct {
 	Favourite   bool          `json:"favourite"`
 	CanEdit     bool          `json:"canEdit"`
 	Shares      []filterShare `json:"shares"`
+	// The boards on the filter: they are visible like it.
+	Boards []idName `json:"boards"`
 	// The columns of the filter's results, nil for the default ones.
 	Columns []string `json:"columns"`
 }
@@ -162,6 +164,23 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}, shareArgs...); err != nil {
 		return nil, err
 	}
+	boards := `SELECT id, name, filter_id FROM boards`
+	if only != 0 {
+		boards += ` WHERE filter_id = ?`
+	}
+	if err := sqlq.Each(ctx, s.db, boards+` ORDER BY name, id`, func(rows *sql.Rows) error {
+		var b idName
+		var id int64
+		if err := rows.Scan(&b.ID, &b.Name, &id); err != nil {
+			return err
+		}
+		if f, ok := byID[id]; ok {
+			f.out.Boards = append(f.out.Boards, b)
+		}
+		return nil
+	}, shareArgs...); err != nil {
+		return nil, err
+	}
 
 	var out []*filterRow
 	var owners []int64
@@ -178,6 +197,9 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 		// left behind by people who are gone.
 		f.out.CanEdit = f.out.Mine || sub.Admin
 		f.out.Shares = []filterShare{}
+		if f.out.Boards == nil {
+			f.out.Boards = []idName{}
+		}
 		for _, sh := range f.shares {
 			f.out.Shares = append(f.out.Shares, sh.out())
 		}

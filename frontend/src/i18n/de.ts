@@ -712,6 +712,34 @@ export const de: Messages = {
     profileOf: (name: string) => `Profil von ${name} anzeigen`,
   },
 
+  viewShare: {
+    open: (name: string) => `${name} teilen`,
+    button: 'Teilen',
+    title: (name: string) => `„${name}“ teilen`,
+    intro: 'Sie können sie zu ihrem Bereich hinzufügen. Nur Sie können sie ändern.',
+    search: 'Person, Gruppe oder Projekt',
+    placeholder: 'Person, Gruppe oder Projekt…',
+    share: 'Teilen',
+    who: 'Wer sie sieht',
+    you: '(Sie)',
+    owner: 'Eigentümer',
+    kinds: {
+      user: 'Person',
+      group: 'Gruppe',
+      project: 'Projekt, alle darin',
+      projectGroup: 'Projekt, eine Gruppe darin',
+    },
+    remove: (name: string) => `Nicht mehr mit ${name} teilen`,
+    everyone: (app: string) => `Alle in ${app}`,
+    boards: (n: number, names: string) =>
+      `Ändert auch, wer ${n === 1 ? 'das Board' : 'die Boards'} ${names} sieht.`,
+    link: 'Link',
+    linkLabel: 'Link zur Ansicht',
+    linkHint:
+      'Der Link öffnet die Ansicht für alle, mit denen sie geteilt ist. Andere sehen, dass sie keinen Zugriff haben.',
+    done: 'Fertig',
+  },
+
   view: {
     title: 'Ansicht',
     untitled: 'Neue Ansicht',

@@ -493,7 +493,13 @@ export const api = {
     request<SavedFilter>('POST', '/api/filters', f),
   updateFilter: (
     id: number,
-    patch: { name?: string; query?: string; description?: string; columns?: string[] | null },
+    patch: {
+      name?: string;
+      query?: string;
+      description?: string;
+      columns?: string[] | null;
+      shares?: FilterShare[];
+    },
   ) => request<SavedFilter | undefined>('PATCH', `/api/filters/${id}`, patch),
   deleteFilter: (id: number) => request<void>('DELETE', `/api/filters/${id}`),
   favouriteFilter: (id: number, on: boolean) =>

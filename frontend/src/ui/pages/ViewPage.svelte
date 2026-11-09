@@ -10,6 +10,7 @@
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
+  import ShareViewDialog from '../dashboard/ShareViewDialog.svelte';
   import IssueSearch from '../search/IssueSearch.svelte';
 
   interface Props {
@@ -58,6 +59,7 @@
    */
   const gadget = Number(new URLSearchParams(router.search).get('gadget')) || null;
   let busy = $state(false);
+  let sharing = $state(false);
 
   function setColumns(next: string[]) {
     if (!current) return;
@@ -203,6 +205,11 @@
             >{t.view.discard}</button
           >
         {/if}
+        {#if current?.mine}
+          <button type="button" class="btn" onclick={() => (sharing = true)}
+            >{t.viewShare.button}</button
+          >
+        {/if}
         {#if viewId === null || current}
           <button type="button" class="btn" disabled={busy} onclick={() => void saveNew()}
             >{t.view.saveAsNew}</button
@@ -235,6 +242,12 @@
     />
   {/if}
 </div>
+
+<ShareViewDialog
+  filter={sharing ? current : null}
+  onclose={() => (sharing = false)}
+  onsaved={(f) => (filter = f)}
+/>
 
 <style>
   .view-head {

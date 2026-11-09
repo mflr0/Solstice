@@ -490,6 +490,8 @@ export interface SavedFilter {
   favourite: boolean;
   canEdit: boolean;
   shares: FilterShare[];
+  /** The boards on the filter: who sees it sees them. */
+  boards: IdName[];
   /** The columns of the filter's results, shared by all who see it; null for the default ones. */
   columns: string[] | null;
 }

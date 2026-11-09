@@ -706,6 +706,34 @@ export const fr: Messages = {
     profileOf: (name: string) => `Voir le profil de ${name}`,
   },
 
+  viewShare: {
+    open: (name: string) => `Partager ${name}`,
+    button: 'Partager',
+    title: (name: string) => `Partager «\u00a0${name}\u00a0»`,
+    intro: 'Ces personnes peuvent l’ajouter à leur espace. Vous seul pouvez la modifier.',
+    search: 'Personne, groupe ou projet',
+    placeholder: 'Personne, groupe ou projet…',
+    share: 'Partager',
+    who: 'Qui la voit',
+    you: '(vous)',
+    owner: 'Propriétaire',
+    kinds: {
+      user: 'personne',
+      group: 'groupe',
+      project: 'projet, tous ses membres',
+      projectGroup: 'projet, un de ses groupes',
+    },
+    remove: (name: string) => `Ne plus partager avec ${name}`,
+    everyone: (app: string) => `Tout le monde dans ${app}`,
+    boards: (n: number, names: string) =>
+      `Change aussi qui voit ${n === 1 ? 'le tableau' : 'les tableaux'} ${names}.`,
+    link: 'Lien',
+    linkLabel: 'Lien vers la vue',
+    linkHint:
+      'Le lien ouvre la vue pour toute personne avec qui elle est partagée. Les autres voient qu’ils n’y ont pas accès.',
+    done: 'Terminé',
+  },
+
   view: {
     title: 'Vue',
     untitled: 'Nouvelle vue',

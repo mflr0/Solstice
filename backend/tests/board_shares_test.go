@@ -268,3 +268,41 @@ func TestBoardSharesAudit(t *testing.T) {
 		t.Errorf("details: %s", details)
 	}
 }
+
+// GET /api/filters lists the boards on each filter: sharing it changes who sees them.
+func TestFilterListsItsBoards(t *testing.T) {
+	e := newShareBoardEnv(t)
+	boardName := pick(t, `SELECT name FROM boards WHERE id = ?`, e.board)
+	var mine struct {
+		ID int64 `json:"id"`
+	}
+	e.owner.call("POST", "/api/filters", map[string]any{"name": unique("No board "), "query": "project = " + e.project}, 201, &mine)
+	t.Cleanup(func() { e.owner.do("DELETE", fmt.Sprintf("/api/filters/%d", mine.ID), nil) })
+
+	var list []struct {
+		ID     int64 `json:"id"`
+		Boards []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"boards"`
+	}
+	e.owner.call("GET", "/api/filters", nil, 200, &list)
+	found := 0
+	for _, f := range list {
+		switch fmt.Sprint(f.ID) {
+		case e.filter:
+			found++
+			if len(f.Boards) != 1 || fmt.Sprint(f.Boards[0].ID) != e.board || f.Boards[0].Name != boardName {
+				t.Errorf("boards of the board's filter: %+v, want %s %q", f.Boards, e.board, boardName)
+			}
+		case fmt.Sprint(mine.ID):
+			found++
+			if f.Boards == nil || len(f.Boards) != 0 {
+				t.Errorf("boards of a filter without one: %#v", f.Boards)
+			}
+		}
+	}
+	if found != 2 {
+		t.Fatalf("listed %d of the 2 filters", found)
+	}
+}

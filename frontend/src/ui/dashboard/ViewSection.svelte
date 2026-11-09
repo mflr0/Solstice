@@ -37,6 +37,8 @@
     sort: SortTerm[];
     onsort: (column: string) => void;
     ontoggle: () => void;
+    /** Opens the share dialog: on one's own views only. */
+    onshare?: (() => void) | undefined;
     menu: () => MenuGroup[];
   }
   const {
@@ -56,6 +58,7 @@
     sort,
     onsort,
     ontoggle,
+    onshare,
     menu,
   }: Props = $props();
 
@@ -91,7 +94,22 @@
     {#if href}
       <a class="filters" {href} title={t.home.editFilters}><QuerySummary {jql} /></a>
     {/if}
-    <CardMenu label={t.home.actions(title)} groups={menu} />
+    <div class="tools">
+      {#if onshare}
+        <button
+          type="button"
+          class="icon-btn"
+          aria-label={t.viewShare.open(title)}
+          title={t.viewShare.open(title)}
+          onclick={onshare}
+        >
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"
+            ><path d="M8 10V2.5M5 5.5l3-3 3 3M3 9v4.5h10V9" /></svg
+          >
+        </button>
+      {/if}
+      <CardMenu label={t.home.actions(title)} groups={menu} />
+    </div>
   </div>
 
   <div id="view-body-{key}" class="body" hidden={collapsed}>
@@ -197,6 +215,38 @@
 
   .gap {
     flex: 1 1 40px;
+  }
+
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .icon-btn {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .icon-btn:hover {
+    background: var(--paper-sunk);
+    color: var(--ink);
+  }
+
+  .icon-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .filters {
