@@ -5,7 +5,14 @@
 
 import { tick } from 'svelte';
 
-import { focusesPageHeading, isAppLink, matchRoute, type Route } from '../core/route.js';
+import {
+  focusesPageHeading,
+  isAppLink,
+  matchRoute,
+  modalIssue,
+  withModalIssue,
+  type Route,
+} from '../core/route.js';
 
 /** How long a page may take to draw its heading before the focus settles on main. */
 const HEADING_WAIT_MS = 5000;
@@ -100,12 +107,13 @@ class Router {
     return new URLSearchParams(this.search).get(name);
   }
 
-  navigate(to: string, opts: { replace?: boolean } = {}): void {
+  /** Goes to an address; a replace keeps the entry's history state, a push sets `state`. */
+  navigate(to: string, opts: { replace?: boolean; state?: unknown } = {}): void {
     const url = new URL(to, location.origin);
     const target = url.pathname + url.search + url.hash;
     if (target === this.here + location.hash) return;
-    if (opts.replace) history.replaceState(null, '', target);
-    else history.pushState(null, '', target);
+    if (opts.replace) history.replaceState(history.state, '', target);
+    else history.pushState(opts.state ?? null, '', target);
     const pageChanged = url.pathname !== this.path;
     this.sync(opts.replace ?? false);
     if (pageChanged && !opts.replace) window.scrollTo(0, 0);
@@ -126,15 +134,47 @@ class Router {
 
 export const router = new Router();
 
+/** How many entries back the page is without its modal issue; 0 when unknown. */
+function issueDepth(): number {
+  const d = (history.state as { issueDepth?: unknown } | null)?.issueDepth;
+  return typeof d === 'number' ? d : 0;
+}
+
+/** Shows an issue in the modal over the current page, in a new history entry unless replacing. */
+export function showIssue(key: string, opts: { replace?: boolean } = {}): void {
+  const to = router.path + withModalIssue(router.search, key);
+  if (opts.replace) return router.navigate(to, { replace: true });
+  const depth = modalIssue(router.search) ? issueDepth() : 0;
+  const known = depth > 0 || !modalIssue(router.search);
+  router.navigate(to, { state: known ? { issueDepth: depth + 1 } : null });
+}
+
+let closing = false;
+
+/** Closes the modal: back to the entry it opened over, or the same page without it. */
+export function closeIssue(): void {
+  // history.go lands later: a second close meanwhile would go back further.
+  if (closing) return;
+  const depth = issueDepth();
+  if (modalIssue(router.search) && depth > 0) {
+    closing = true;
+    window.addEventListener('popstate', () => (closing = false), { once: true });
+    history.go(-depth);
+  } else router.navigate(router.path + withModalIssue(router.search, null), { replace: true });
+}
+
+/** A plain left click: no modifier key, not the middle button. */
+export function isPlainClick(e: MouseEvent): boolean {
+  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+}
+
 /**
  * Document-level click handler: plain left clicks on same-site links are
  * routed in place; anything else (new tab, download, API file) is left to
  * the browser.
  */
 export function interceptLinks(e: MouseEvent): void {
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-    return;
-  }
+  if (e.defaultPrevented || !isPlainClick(e)) return;
   const a = (e.target as Element | null)?.closest?.('a');
   if (!a || !a.href || a.target === '_blank' || a.hasAttribute('download')) return;
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a throwaway value, not state

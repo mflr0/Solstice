@@ -35,9 +35,14 @@
   $effect(() => {
     const key = issue.project.key;
     if (!edit) return;
+    // Not `issue` in the callback: by then the view may have let go of it.
+    let current = true;
     void api.project(key).then((p) => {
-      if (key === issue.project.key) project = p;
+      if (current) project = p;
     });
+    return () => {
+      current = false;
+    };
   });
 
   const types = $derived(

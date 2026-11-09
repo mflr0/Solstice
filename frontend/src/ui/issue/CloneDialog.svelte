@@ -11,8 +11,15 @@
     open: boolean;
     issueKey: string;
     onclose: () => void;
+    /** Shows the new issue. By default this goes to its page. */
+    onopen?: (key: string) => void;
   }
-  const { open, issueKey, onclose }: Props = $props();
+  const {
+    open,
+    issueKey,
+    onclose,
+    onopen = (key) => router.navigate(paths.issue(key)),
+  }: Props = $props();
 
   let summary = $state('');
   let includeSubtasks = $state(false);
@@ -37,7 +44,7 @@
     });
     notify(t.create.created(key));
     for (const w of warnings) notify(w, 'error');
-    router.navigate(paths.issue(key));
+    onopen(key);
   }
 </script>
 

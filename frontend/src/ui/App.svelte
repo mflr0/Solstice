@@ -20,6 +20,7 @@
     shownBoard,
     toggleScheme,
   } from '../lib/ui.svelte.js';
+  import IssueModal from './issue/IssueModal.svelte';
   import IssuePage from './issue/IssuePage.svelte';
   import NewIssueDialog from './NewIssueDialog.svelte';
   import Notes from './Notes.svelte';
@@ -254,6 +255,7 @@
   </div>
   <NewIssueDialog />
   <ShortcutsHelp />
+  <IssueModal />
 {/if}
 <Notes />
 

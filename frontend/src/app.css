@@ -1021,6 +1021,60 @@ dialog.modal::backdrop {
   border-top: 1px solid var(--rule);
 }
 
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* The issue modal: about as wide as the issue page, the whole screen on a phone. */
+dialog.modal.issue-modal[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(80rem, 96vw);
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+}
+
+dialog.modal.issue-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+}
+
+/* The title is the issue key: a link that reads as the title. */
+dialog.modal.issue-modal .modal-title a {
+  color: inherit;
+}
+
+dialog.modal.issue-modal .modal-title a:hover {
+  text-decoration: underline;
+}
+
+/* The view sits in the dialog's frame, not in a page frame of its own; it
+   keeps the skin's page padding, which some skins' bars rely on. */
+dialog.modal.issue-modal .page.issue {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  dialog.modal.issue-modal[open] {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
 /* Panels, tabs, toasts ------------------------------------------------------ */
 
 /* A framed panel with a title bar: the issue record, the sign-in sheet. */

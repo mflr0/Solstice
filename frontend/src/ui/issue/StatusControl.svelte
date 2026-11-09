@@ -17,6 +17,7 @@
     onchange: (fields: IssueFields) => Promise<boolean>;
   }
   const { issue, onchange }: Props = $props();
+  const uid = $props.id();
 
   let open = $state(false);
   let pending = $state<Transition | null>(null);
@@ -47,7 +48,7 @@
       pending = tr;
       resolution = defaultResolution;
       // The item that held the focus is gone.
-      queueMicrotask(() => document.getElementById('status-resolution')?.focus());
+      queueMicrotask(() => document.getElementById(`status-resolution-${uid}`)?.focus());
       return;
     }
     busy = true;
@@ -92,7 +93,7 @@
           <div class="field">
             <span class="field-label">{t.issue.chooseResolution}</span>
             <Dropdown
-              id="status-resolution"
+              id="status-resolution-{uid}"
               label={t.issue.chooseResolution}
               value={resolution}
               options={[

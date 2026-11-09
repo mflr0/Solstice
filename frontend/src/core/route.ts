@@ -169,6 +169,31 @@ export function isAppLink(url: URL, origin: string): boolean {
   return !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/rest/');
 }
 
+/** The issue shown in the modal over the page (`?issue=KEY`), or null. */
+export function modalIssue(search: string): string | null {
+  const key = new URLSearchParams(search).get('issue')?.trim();
+  return key ? key.toUpperCase() : null;
+}
+
+/** A query string with the modal's issue set, or removed for null; the other parameters stay. */
+export function withModalIssue(search: string, key: string | null): string {
+  const sp = new URLSearchParams(search);
+  if (key) sp.set('issue', key);
+  else sp.delete('issue');
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+/**
+ * The issue an in-app link leads to (/browse/KEY), or null. A link with a
+ * query or a hash (a comment) wants the full page.
+ */
+export function issueLinkKey(url: URL, origin: string): string | null {
+  if (!isAppLink(url, origin) || url.search || url.hash) return null;
+  const route = matchRoute(url.pathname);
+  return route.name === 'issue' ? route.key : null;
+}
+
 /**
  * Whether moving from one path to an address lands on a new page, whose heading
  * then takes the focus: not a query-only change, a replace or a hash target.

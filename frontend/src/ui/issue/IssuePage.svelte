@@ -57,6 +57,10 @@
     ownsTitle?: boolean;
     /** Whether its keyboard shortcuts are on: off while it is not the active view. */
     shortcuts?: boolean;
+    /** Shows another issue (a clone, a moved issue). By default this goes to its page. */
+    onopen?: (key: string) => void;
+    /** The issue is not there (or no longer). By default the view says so in place. */
+    onmissing?: ((message: string) => void) | undefined;
   }
   const {
     issueKey,
@@ -64,7 +68,12 @@
     ongone = (projectKey) => router.navigate(paths.project(projectKey)),
     ownsTitle = true,
     shortcuts = true,
+    onopen = (key) => router.navigate(paths.issue(key)),
+    onmissing,
   }: Props = $props();
+
+  // Two views can share the document (one in the issue modal): ids stay unique.
+  const uid = $props.id();
 
   let root = $state<HTMLElement>();
 
@@ -89,6 +98,10 @@
   let moveOpen = $state(false);
   // A sub-task moves with its parent.
   const canMove = $derived(!!issue?.can.edit && !issue.parent);
+
+  $effect(() => {
+    if (missing && onmissing) untrack(() => onmissing(missing));
+  });
 
   async function load(key: string) {
     try {
@@ -246,7 +259,7 @@
   }
 
   function keys(e: KeyboardEvent) {
-    if (!shortcuts || !issue || ignoreShortcut(e)) return;
+    if (!shortcuts || !issue || ignoreShortcut(e, root)) return;
     const me = session.me;
     switch (shortcutFor(e, 'issue', appearance.shortcuts, appearance.bindings, mac)) {
       case 'editSummary':
@@ -306,7 +319,7 @@
 <svelte:window onkeydown={keys} />
 
 {#if missing}
-  <NotFoundPage message={missing} />
+  {#if !onmissing}<NotFoundPage message={missing} />{/if}
 {:else if !issue}
   <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
@@ -542,9 +555,9 @@
             <button
               class="tab"
               role="tab"
-              id="tab-comments"
+              id="tab-comments-{uid}"
               data-tab="comments"
-              aria-controls="activity-panel"
+              aria-controls="activity-panel-{uid}"
               aria-selected={tab === 'comments'}
               class:active={tab === 'comments'}
               onclick={() => (tab = 'comments')}
@@ -553,9 +566,9 @@
             <button
               class="tab"
               role="tab"
-              id="tab-history"
+              id="tab-history-{uid}"
               data-tab="history"
-              aria-controls="activity-panel"
+              aria-controls="activity-panel-{uid}"
               aria-selected={tab === 'history'}
               class:active={tab === 'history'}
               onclick={() => (tab = 'history')}>{t.issue.tabs.history}</button
@@ -563,9 +576,9 @@
             <button
               class="tab"
               role="tab"
-              id="tab-worklogs"
+              id="tab-worklogs-{uid}"
               data-tab="worklogs"
-              aria-controls="activity-panel"
+              aria-controls="activity-panel-{uid}"
               aria-selected={tab === 'worklogs'}
               class:active={tab === 'worklogs'}
               onclick={() => (tab = 'worklogs')}>{t.issue.tabs.worklogs}</button
@@ -575,8 +588,8 @@
           <div
             role="tabpanel"
             class="panel"
-            id="activity-panel"
-            aria-labelledby="tab-{tab}"
+            id="activity-panel-{uid}"
+            aria-labelledby="tab-{tab}-{uid}"
             tabindex="0"
           >
             {#if tab === 'comments'}
@@ -593,8 +606,8 @@
       <Fiche {issue} onchange={update} />
     </div>
   </article>
-  <CloneDialog open={cloneOpen} issueKey={issue.key} onclose={() => (cloneOpen = false)} />
-  <MoveDialog open={moveOpen} {issue} onclose={() => (moveOpen = false)} />
+  <CloneDialog open={cloneOpen} issueKey={issue.key} onclose={() => (cloneOpen = false)} {onopen} />
+  <MoveDialog open={moveOpen} {issue} onclose={() => (moveOpen = false)} {onopen} />
 {/if}
 
 <style>

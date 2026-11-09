@@ -238,15 +238,16 @@ export function isTyping(target: EventTarget | null): boolean {
 
 /**
  * Whether a key press is not for the page's shortcuts: while typing, or while
- * a dialog is open.
+ * a dialog is open. A view inside a dialog (`within`) still gets them while
+ * no other dialog is open.
  */
-export function ignoreShortcut(e: KeyboardEvent): boolean {
+export function ignoreShortcut(e: KeyboardEvent, within?: Element): boolean {
   return (
     e.defaultPrevented ||
     e.isComposing ||
     dialogs.create ||
     dialogs.shortcuts ||
     isTyping(e.target) ||
-    document.querySelector('dialog[open]') !== null
+    [...document.querySelectorAll('dialog[open]')].some((d) => !within || !d.contains(within))
   );
 }

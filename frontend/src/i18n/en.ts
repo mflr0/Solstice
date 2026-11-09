@@ -827,6 +827,7 @@ export const en = {
     moved: (oldKey: string, key: string) => `${oldKey} is now ${key}.`,
     editSummary: 'Edit summary',
     menu: 'More actions',
+    openFullPage: 'Open full page',
     clone: 'Clone',
     cloneTitle: (key: string) => `Clone ${key}`,
     cloneSummaryHint: 'Leave empty to reuse the original summary with a prefix.',

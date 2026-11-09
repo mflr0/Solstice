@@ -832,6 +832,7 @@ export const fr: Messages = {
     moved: (oldKey: string, key: string) => `${oldKey} s’appelle désormais ${key}.`,
     editSummary: 'Modifier le résumé',
     menu: 'Autres actions',
+    openFullPage: 'Ouvrir en pleine page',
     clone: 'Cloner',
     cloneTitle: (key: string) => `Cloner ${key}`,
     cloneSummaryHint: 'Laissez vide pour reprendre le résumé d’origine, précédé d’un préfixe.',

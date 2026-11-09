@@ -831,6 +831,7 @@ export const it: Messages = {
     moved: (oldKey: string, key: string) => `${oldKey} ora si chiama ${key}.`,
     editSummary: 'Modifica il riepilogo',
     menu: 'Altre azioni',
+    openFullPage: 'Apri a pagina intera',
     clone: 'Clona',
     cloneTitle: (key: string) => `Clona ${key}`,
     cloneSummaryHint: 'Lascia vuoto per riusare il riepilogo originale con un prefisso.',
