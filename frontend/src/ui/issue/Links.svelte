@@ -1,10 +1,11 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { focusAfterRemoval } from '../../core/focus.js';
+  import { findIssues } from '../../core/issue-search.js';
   import { paths } from '../../core/route.js';
-  import type { HiddenIssue, IssueDetail, IssueLink } from '../../core/types.js';
+  import type { HiddenIssue, IssueDetail, IssueLink, IssueSummary } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
-  import { refocus } from '../../lib/actions.js';
+  import { outside, refocus } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
@@ -26,6 +27,13 @@
   let target = $state('');
   let busy = $state(false);
   let addButton = $state<HTMLElement>();
+  let suggestions = $state<IssueSummary[]>([]);
+  let open = $state(false);
+  let active = $state(-1);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let seq = 0;
+  const listId = 'link-target-list';
+  const optionId = (i: number) => `${listId}-${i}`;
 
   const groups = $derived.by(() => {
     const out: [string, IssueLink[]][] = [];
@@ -53,14 +61,67 @@
     adding = true;
     relation = relations[0]?.value ?? '';
     target = '';
+    closeList();
     await tick();
     document.getElementById('link-kind')?.focus();
   }
 
   async function stopAdding() {
     adding = false;
+    closeList();
     await tick();
     refocus(addButton);
+  }
+
+  function closeList() {
+    clearTimeout(timer);
+    seq++;
+    open = false;
+    active = -1;
+    suggestions = [];
+  }
+
+  async function fetchSuggestions() {
+    const mine = ++seq;
+    const exclude = [issue.key, ...issue.links.map((l) => l.issue.key)];
+    const found = await findIssues(target, api.issues, { exclude });
+    if (mine === seq) suggestions = found;
+  }
+
+  function typed() {
+    open = true;
+    active = -1;
+    clearTimeout(timer);
+    if (!target.trim()) return closeList();
+    timer = setTimeout(() => void fetchSuggestions(), 160);
+  }
+
+  function pick(i: IssueSummary) {
+    target = i.key;
+    closeList();
+    document.getElementById('link-target')?.focus();
+  }
+
+  function keydown(e: KeyboardEvent) {
+    const n = suggestions.length;
+    const current = suggestions[active];
+    if (e.key === 'ArrowDown' && n) {
+      e.preventDefault();
+      open = true;
+      active = (active + 1) % n;
+    } else if (e.key === 'ArrowUp' && n) {
+      e.preventDefault();
+      open = true;
+      active = active <= 0 ? n - 1 : active - 1;
+    } else if (e.key === 'Enter' && open && current) {
+      e.preventDefault();
+      pick(current);
+    } else if (e.key === 'Escape' && open && n) {
+      e.preventDefault();
+      e.stopPropagation();
+      open = false;
+      active = -1;
+    }
   }
 
   async function add(e: SubmitEvent) {
@@ -123,14 +184,50 @@
         />
       </span>
       <label class="sr-only" for="link-target">{t.issue.linkTarget}</label>
-      <input
-        id="link-target"
-        class="input target"
-        bind:value={target}
-        placeholder={t.issue.linkPlaceholder}
-        autocomplete="off"
-        spellcheck="false"
-      />
+      <span class="pick" use:outside={() => (open = false)}>
+        <input
+          id="link-target"
+          class="input target"
+          bind:value={target}
+          oninput={typed}
+          onkeydown={keydown}
+          onfocus={() => target.trim() && (open = true)}
+          placeholder={t.issue.linkPlaceholder}
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
+        />
+        {#if open && suggestions.length}
+          <ul
+            class="popover suggestions"
+            id={listId}
+            role="listbox"
+            aria-label={t.issue.linkTarget}
+          >
+            {#each suggestions as s, i (s.key)}
+              <li id={optionId(i)} role="option" aria-selected={i === active}>
+                <button
+                  type="button"
+                  class="item"
+                  class:active={i === active}
+                  tabindex="-1"
+                  onclick={() => pick(s)}
+                  onmouseenter={() => (active = i)}
+                >
+                  <TypeMark type={s.type} />
+                  <span class="key">{s.key}</span>
+                  <span class="summary">{s.summary}</span>
+                  <Stamp status={s.status} />
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </span>
       <button class="btn btn-primary btn-small" disabled={busy || !target.trim()}
         >{t.common.add}</button
       >
@@ -199,10 +296,28 @@
     min-width: 11.25rem;
   }
 
+  .pick {
+    position: relative;
+    flex: 1 1 16rem;
+    max-width: 22rem;
+  }
+
   .target {
-    width: 8.75rem;
+    width: 100%;
+  }
+
+  .suggestions {
+    left: 0;
+    top: calc(100% + 4px);
+    width: min(28.75rem, calc(100vw - 32px));
+    list-style: none;
+    margin: 0;
+  }
+
+  .suggestions .key {
+    flex: none;
     font-family: var(--font-mono);
-    text-transform: uppercase;
+    color: var(--ink-soft);
   }
 
   .group + .group {
