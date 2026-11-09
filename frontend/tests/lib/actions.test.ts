@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { outside, refocusLater, stackWhenCrowded, tabs } from '../../src/lib/actions.js';
+import { listKeys, outside, refocusLater, stackWhenCrowded, tabs } from '../../src/lib/actions.js';
 
 describe('outside', () => {
   let box: HTMLElement;
@@ -255,5 +255,109 @@ describe('tabs', () => {
     press('ArrowRight');
     expect(next).toHaveBeenCalledWith(tab('b'));
     expect(selected).toEqual([]);
+  });
+});
+
+describe('listKeys', () => {
+  let list: HTMLElement;
+  let field: HTMLInputElement;
+  let action: ReturnType<typeof listKeys>;
+  let opened: string[];
+  let picked: string[];
+
+  function mount(withSelect: boolean) {
+    list = document.createElement('ul');
+    list.innerHTML = ['A-1', 'A-2', 'A-3']
+      .map((k) => `<li data-key="${k}"><a href="#${k}">${k}</a></li>`)
+      .join('');
+    field = document.createElement('input');
+    document.body.append(field, list);
+    opened = [];
+    picked = [];
+    action = listKeys(list, {
+      rows: 'li',
+      open: (row) => opened.push(row.dataset.key!),
+      select: withSelect ? (row) => picked.push(row.dataset.key!) : undefined,
+    });
+  }
+
+  const row = (i: number) => list.querySelectorAll('li')[i]!;
+
+  function press(key: string, from: Element = document.activeElement ?? document.body) {
+    const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    from.dispatchEvent(e);
+    return e;
+  }
+
+  afterEach(() => {
+    action.destroy();
+    list.remove();
+    field.remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+
+  it('makes the rows focusable by the keys only', () => {
+    mount(false);
+    expect(row(0).getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('focuses the first row on j from nowhere', () => {
+    mount(false);
+    press('j');
+    expect(document.activeElement).toBe(row(0));
+    press('j');
+    expect(document.activeElement).toBe(row(1));
+  });
+
+  it('stays on the first row on k', () => {
+    mount(false);
+    row(0).focus();
+    press('k');
+    expect(document.activeElement).toBe(row(0));
+  });
+
+  it('opens the focused row on o and on Enter', () => {
+    mount(false);
+    row(1).focus();
+    press('o');
+    press('Enter');
+    expect(opened).toEqual(['A-2', 'A-2']);
+  });
+
+  it('leaves Enter on a link in the row to the link', () => {
+    mount(false);
+    row(1).querySelector('a')!.focus();
+    expect(press('Enter').defaultPrevented).toBe(false);
+    expect(opened).toEqual([]);
+  });
+
+  it('selects on x only with select', () => {
+    mount(false);
+    row(2).focus();
+    expect(press('x').defaultPrevented).toBe(false);
+    action.destroy();
+    list.remove();
+    field.remove();
+    mount(true);
+    row(2).focus();
+    press('x');
+    expect(picked).toEqual(['A-3']);
+  });
+
+  it('does nothing while typing in a field', () => {
+    mount(false);
+    field.focus();
+    press('j', field);
+    press('o', field);
+    expect(document.activeElement).toBe(field);
+    expect(opened).toEqual([]);
+  });
+
+  it('leaves the keys to the list around it', () => {
+    mount(false);
+    const inner = listKeys(list.querySelector('li')!, { rows: 'a', open: () => {} });
+    press('j');
+    expect(document.activeElement).toBe(row(0));
+    inner.destroy();
   });
 });

@@ -1,5 +1,8 @@
 /** Small DOM actions shared by components. */
 
+import { shortcutFor } from '../core/shortcuts.js';
+import { appearance, ignoreShortcut, mac } from './ui.svelte.js';
+
 /**
  * Calls handler on a pointer press outside the node, or on Escape. Escape also
  * gives focus back to the node's open button, if it has one.
@@ -120,6 +123,85 @@ export function tabs(node: HTMLElement, select: (tab: HTMLElement) => void) {
     destroy() {
       watch.disconnect();
       node.removeEventListener('keydown', onKey);
+    },
+  };
+}
+
+/** Options of listKeys. */
+export interface ListKeysOptions {
+  /** Selects the rows inside the node, in reading order. */
+  rows: string;
+  /** Called on o or Enter with the row that holds the focus. */
+  open: (row: HTMLElement) => void;
+  /** Called on x with the row that holds the focus; without it, x does nothing. */
+  select?: ((row: HTMLElement) => void) | undefined;
+}
+
+const LIST = 'data-list-keys';
+
+/**
+ * The search results' keys on a list of rows: j and k move the focus from row
+ * to row (j from nowhere goes to the first), o or Enter opens, x selects.
+ * Rows inside [hidden] are skipped. A list inside another leaves the keys to
+ * it; of several lists, the one holding the focus takes them, else the first.
+ */
+export function listKeys(node: HTMLElement, options: ListKeysOptions) {
+  let current = options;
+  node.setAttribute(LIST, '');
+  const rows = () =>
+    [...node.querySelectorAll<HTMLElement>(current.rows)].filter((r) => !r.closest('[hidden]'));
+  // Reachable by the keys, not by Tab.
+  const mark = () => {
+    for (const row of node.querySelectorAll<HTMLElement>(current.rows))
+      if (!row.hasAttribute('tabindex')) row.tabIndex = -1;
+  };
+  mark();
+  const watch = new MutationObserver(mark);
+  watch.observe(node, { childList: true, subtree: true });
+
+  const owner = () => {
+    const lists = [...document.querySelectorAll(`[${LIST}]`)].filter(
+      (l) => !l.parentElement?.closest(`[${LIST}]`),
+    );
+    return lists.find((l) => l.contains(document.activeElement)) ?? lists[0];
+  };
+
+  const onKey = (e: KeyboardEvent) => {
+    if (ignoreShortcut(e) || owner() !== node) return;
+    const action = shortcutFor(e, 'results', appearance.shortcuts, appearance.bindings, mac);
+    // A list has no columns to move between: the arrows keep scrolling it.
+    if (!action || action === 'left' || action === 'right') return;
+    const all = rows();
+    const at = all.findIndex((r) => r.contains(document.activeElement));
+    if (action === 'next' || action === 'previous') {
+      if (!all.length) return;
+      e.preventDefault();
+      const step = action === 'next' ? 1 : -1;
+      const to = at < 0 ? 0 : Math.min(Math.max(at + step, 0), all.length - 1);
+      all[to]?.focus();
+      return;
+    }
+    const row = all[at];
+    // Enter on a link or a checkbox in the row keeps its own meaning.
+    if (!row || (e.key === 'Enter' && document.activeElement !== row)) return;
+    if (action === 'open') {
+      e.preventDefault();
+      current.open(row);
+    } else if (action === 'select' && current.select) {
+      e.preventDefault();
+      current.select(row);
+    }
+  };
+  addEventListener('keydown', onKey);
+  return {
+    update(next: ListKeysOptions) {
+      current = next;
+      mark();
+    },
+    destroy() {
+      watch.disconnect();
+      removeEventListener('keydown', onKey);
+      node.removeAttribute(LIST);
     },
   };
 }

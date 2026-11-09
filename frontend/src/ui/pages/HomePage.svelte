@@ -23,7 +23,7 @@
   import type { FilterShare, SavedFilter } from '../../core/types.js';
   import { formatList } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
-  import { refocusLater } from '../../lib/actions.js';
+  import { listKeys, refocusLater } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
@@ -362,7 +362,14 @@
   {:else if gadgets.length === 0}
     <EmptyState message={t.home.emptyDashboard} hint={t.home.emptyDashboardHint} />
   {:else}
-    <div class="views">
+    <!-- One list for every view: j and k walk on from one to the next. -->
+    <div
+      class="views"
+      use:listKeys={{
+        rows: 'tbody tr',
+        open: (row) => row.dataset.key && router.navigate(paths.issue(row.dataset.key)),
+      }}
+    >
       {#each gadgets as g, i (keyOf(g, i))}
         {@const q = shownQuery(g)}
         {@const order = q === null ? [] : queryOrder(q)}

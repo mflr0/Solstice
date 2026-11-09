@@ -10,7 +10,9 @@
     totalEstimate,
   } from '../../core/board.js';
   import type { BoardCard as Card, BoardDetail, CardMove, Sprint } from '../../core/board-types.js';
+  import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
+  import { listKeys } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
@@ -322,7 +324,14 @@
   <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
   {@const d = detail}
-  <div class="page backlog-page" data-title={`${t.boards.backlog} — ${d.board.name}`}>
+  <div
+    class="page backlog-page"
+    data-title={`${t.boards.backlog} — ${d.board.name}`}
+    use:listKeys={{
+      rows: '.board-card',
+      open: (row) => row.dataset.key && router.navigate(paths.issue(row.dataset.key)),
+    }}
+  >
     <BoardHeader detail={d} view="backlog" />
     <QuickFilters filters={d.quickFilters} selected={quick} />
 
@@ -439,6 +448,11 @@
 {/if}
 
 <style>
+  .backlog-page :global(.board-card:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
   /* As wide as the board, so switching views keeps the header in place. */
   .backlog-page {
     max-width: 102.5rem;
