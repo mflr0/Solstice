@@ -658,10 +658,10 @@ func TestFilterLifecycle(t *testing.T) {
 // Boards and sprints --------------------------------------------------------------
 
 type boardCard struct {
-	Key    string `json:"key"`
-	Column int64  `json:"column"`
-	Lane   *int64 `json:"lane"`
-	Status struct {
+	Key     string `json:"key"`
+	Column  int64  `json:"column"`
+	Section *int64 `json:"section"`
+	Status  struct {
 		ID       string `json:"id"`
 		Category string `json:"category"`
 	} `json:"status"`
@@ -865,12 +865,12 @@ func TestKanbanMoveFollowsWorkflow(t *testing.T) {
 	}
 	lanes := 0
 	for _, c := range cards.Cards {
-		if c.Lane != nil {
+		if c.Section != nil {
 			lanes++
 		}
 	}
 	if lanes != len(cards.Cards) {
-		t.Errorf("%d of %d cards have a swimlane", lanes, len(cards.Cards))
+		t.Errorf("%d of %d cards have a section", lanes, len(cards.Cards))
 	}
 	// A "to do" card moved to the "in progress" column takes that column's status.
 	var todo, doing int64
@@ -973,7 +973,7 @@ func TestBoardSettings(t *testing.T) {
 		{"columns": []map[string]any{{"name": "A", "statuses": []string{statuses[0]}}, {"name": "B", "statuses": []string{statuses[0]}}}},
 		{"quickFilters": []map[string]any{{"name": "Cassé", "query": "assignee = = moi"}}},
 		{"doneCutoff": "deux semaines"},
-		{"swimlanes": "planètes"},
+		{"sectionBy": "planètes"},
 	} {
 		if status, _ := marie.do("PUT", "/api/boards/"+id, bad); status != 400 {
 			t.Errorf("PUT %v: %d, want 400", bad, status)

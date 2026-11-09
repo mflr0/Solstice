@@ -1,7 +1,7 @@
 package i18n
 
 // German. Terms: Vorgang, Projekt, Board, Sprint, Epic, Unteraufgabe,
-// Swimlane, Schnellfilter, Workflow, Status, Übergang, Sicherheitsstufe,
+// Abschnitt, Schnellfilter, Workflow, Status, Übergang, Sicherheitsstufe,
 // Fälligkeitsdatum. Users are addressed as „Sie“.
 var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests: addresses, sign-in, headers, internal errors.
@@ -464,7 +464,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardQueryInvalid:            "%s: %s",
 	BoardSubFilter:               "Unterfilter",
 	BoardPeriodInvalid:           "Ungültiger Zeitraum: eine Zahl gefolgt von d, w oder m (zum Beispiel 2w).",
-	BoardSwimlanesUnknown:        "Swimlanes: none, custom, assignee, epic oder parent.",
+	BoardSectionByUnknown:        "Abschnitte: none, custom, assignee, epic oder parent.",
 	BoardEstimationUnknown:       "Schätzung: timeoriginalestimate oder customfield_<id>.",
 	BoardColumnRequired:          "Ein Board braucht mindestens eine Spalte.",
 	BoardColumnNameRequired:      "Jede Spalte braucht einen Namen.",
@@ -473,8 +473,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardBacklogColumns:          "Ein Kanban-Backlog braucht mindestens zwei Spalten, die erste mit einem Status.",
 	BoardQuickFilterNameRequired: "Jeder Schnellfilter braucht einen Namen.",
 	BoardQuickFilterNamed:        "Schnellfilter „%s“",
-	BoardSwimlaneNameRequired:    "Jede Swimlane braucht einen Namen.",
-	BoardSwimlaneNamed:           "Swimlane „%s“",
+	BoardSectionNameRequired:     "Jeder Abschnitt braucht einen Namen.",
+	BoardSectionNamed:            "Abschnitt „%s“",
 	BoardMoveNotAllowed:          "Der Workflow erlaubt es nicht, diesen Vorgang aus seinem aktuellen Status in diese Spalte zu verschieben.",
 	BoardIssueCount:              "Zwischen 1 und 50 Vorgänge auf einmal.",
 	BoardRankTargetRequired:      "Geben Sie rankBeforeIssue oder rankAfterIssue an.",

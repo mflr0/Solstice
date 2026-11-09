@@ -28,13 +28,13 @@
       "count": 12,
       "sha256": "c86519fc35fa4643c4cbd7fcc0a13d9e9cae27be8ad089fcb5707aab10edc2c6"
     },
-    "board_swimlanes": {
+    "board_sections": {
       "count": 2,
       "sha256": "af26be447207e5e5314656459b6a44acafbb87eb7ca479781ef98662b4be98f1"
     },
     "boards": {
       "count": 4,
-      "sha256": "769d9b58d8357b04f8f8192377c13809f69d8ee3dfc2e463073bdfead0171c1a"
+      "sha256": "f8c3e325d6d2f1732c94cf786d7fcad68ad44de4ce9bd65c384b08c1c95b23c5"
     },
     "change_groups": {
       "count": 858,

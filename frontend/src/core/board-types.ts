@@ -77,7 +77,7 @@ export interface BoardSettings {
   filterName: string;
   query: string;
   subQuery: string | null;
-  swimlanes: SwimlaneStrategy;
+  sectionBy: SwimlaneStrategy;
   estimate: '' | 'points' | 'time';
   /** 'timeoriginalestimate' or 'customfield_N'. */
   estimateField: string | null;
@@ -92,7 +92,7 @@ export interface BoardDetail {
   projects: ProjectBrief[];
   columns: BoardColumn[];
   quickFilters: QuickFilter[];
-  swimlanes: Swimlane[];
+  sections: Swimlane[];
   /** Open sprints, the active one first. */
   sprints: Sprint[];
   estimateFields: { id: string; name: string }[];
@@ -107,8 +107,8 @@ export interface BoardCard extends IssueSummary {
   /** Story points, or hours. */
   estimate: number | null;
   column: number;
-  /** Custom swimlanes only. */
-  lane?: number;
+  /** Custom sections only. */
+  section?: number;
   /** Backlog only. */
   sprint?: number;
   /** What the user may do with the issue. */
@@ -142,7 +142,7 @@ export interface BoardPatch {
   name?: string;
   subQuery?: string;
   doneCutoff?: string;
-  swimlanes?: SwimlaneStrategy;
+  sectionBy?: SwimlaneStrategy;
   estimate?: string;
   kanbanBacklog?: boolean;
   columns?: {
@@ -151,5 +151,5 @@ export interface BoardPatch {
     statuses: string[];
   }[];
   quickFilters?: { id?: number; name: string; query: string; description?: string }[];
-  lanes?: { id?: number; name: string; query?: string; default: boolean }[];
+  sections?: { id?: number; name: string; query?: string; default: boolean }[];
 }

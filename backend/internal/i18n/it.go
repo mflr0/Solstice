@@ -1,7 +1,7 @@
 package i18n
 
 // Italian. Terms: ticket, progetto, board (la), sprint, epic, sotto-task,
-// swimlane, filtro rapido, workflow, stato, transizione, livello di
+// sezione, filtro rapido, workflow, stato, transizione, livello di
 // riservatezza, scadenza. Users are addressed with « tu ».
 var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credentials
 	// Requests: addresses, sign-in, headers, internal errors.
@@ -464,7 +464,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardQueryInvalid:            "%s: %s",
 	BoardSubFilter:               "Sottofiltro",
 	BoardPeriodInvalid:           "Periodo non valido: un numero seguito da d, w o m (ad esempio 2w).",
-	BoardSwimlanesUnknown:        "Swimlane: none, custom, assignee, epic o parent.",
+	BoardSectionByUnknown:        "Sezioni: none, custom, assignee, epic o parent.",
 	BoardEstimationUnknown:       "Stima: timeoriginalestimate o customfield_<id>.",
 	BoardColumnRequired:          "Una board deve avere almeno una colonna.",
 	BoardColumnNameRequired:      "Ogni colonna deve avere un nome.",
@@ -473,8 +473,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardBacklogColumns:          "Un backlog Kanban richiede almeno due colonne, la prima con uno stato.",
 	BoardQuickFilterNameRequired: "Ogni filtro rapido deve avere un nome.",
 	BoardQuickFilterNamed:        "Filtro rapido «%s»",
-	BoardSwimlaneNameRequired:    "Ogni swimlane deve avere un nome.",
-	BoardSwimlaneNamed:           "Swimlane «%s»",
+	BoardSectionNameRequired:     "Ogni sezione deve avere un nome.",
+	BoardSectionNamed:            "Sezione «%s»",
 	BoardMoveNotAllowed:          "Il workflow non consente di spostare questo ticket in questa colonna dal suo stato attuale.",
 	BoardIssueCount:              "Tra 1 e 50 ticket alla volta.",
 	BoardRankTargetRequired:      "Indica rankBeforeIssue o rankAfterIssue.",

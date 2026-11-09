@@ -58,7 +58,8 @@ func millis(ms sql.NullInt64) any {
 	return time.UnixMilli(ms.Int64).UTC()
 }
 
-var swimlaneStrategies = map[string]string{
+// sectionStrategies maps Jira's swimlane strategies to boards.section_by.
+var sectionStrategies = map[string]string{
 	"none": "none", "custom": "custom", "assignee": "assignee", "assigneeUnassignedFirst": "assignee",
 	"epic": "epic", "parentChild": "parent",
 }
@@ -126,7 +127,7 @@ func (r *run) importBoards() error {
 
 	boards := map[int64]bool{}
 	now := time.Now().UTC()
-	bins := r.inserter("boards", "id", "name", "kind", "filter_id", "sub_query", "owner_id", "swimlanes", "estimate",
+	bins := r.inserter("boards", "id", "name", "kind", "filter_id", "sub_query", "owner_id", "section_by", "estimate",
 		"done_cutoff", "kanban_backlog", "created_at", "updated_at")
 	pins := r.inserter("board_projects", "board_id", "project_id")
 	skipped := 0
@@ -157,9 +158,9 @@ func (r *run) importBoards() error {
 		if sprints.Bool {
 			kind = "scrum"
 		}
-		lanes, ok := swimlaneStrategies[swimlanes.String]
+		sectionBy, ok := sectionStrategies[swimlanes.String]
 		if !ok {
-			lanes = "none"
+			sectionBy = "none"
 		}
 		var sub, estimate any
 		if s, ok := subQueries[id]; ok && strings.TrimSpace(s) != "" {
@@ -181,7 +182,7 @@ func (r *run) importBoards() error {
 			}
 		}
 		return bins.add(id, truncate(orDefault(name, "Board "+strconv.FormatInt(id, 10)), sqlq.VarcharWidth), kind, filter.Int64,
-			sub, ownerID, lanes, estimate, sqlq.Value(cutoff), kind == "kanban" && kanPlan.Bool, now, now)
+			sub, ownerID, sectionBy, estimate, sqlq.Value(cutoff), kind == "kanban" && kanPlan.Bool, now, now)
 	}); err != nil {
 		return err
 	}
@@ -263,7 +264,7 @@ func (r *run) importBoards() error {
 	}
 
 	if r.hasTable("AO_60DB71_SWIMLANE") {
-		sins := r.inserter("board_swimlanes", "id", "board_id", "name", "query", "position", "is_default")
+		sins := r.inserter("board_sections", "id", "board_id", "name", "query", "position", "is_default")
 		if err := r.each(r.aoSelect("AO_60DB71_SWIMLANE", "ID", "RAPID_VIEW_ID", "NAME", "QUERY", "LONG_QUERY", "POS", "DEFAULT_LANE"), func(rows *sql.Rows) error {
 			var id int64
 			var board, pos sql.NullInt64

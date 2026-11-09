@@ -1,7 +1,7 @@
 package tests
 
 // What a board's settings and a card move write: columns removed, statuses
-// moved between columns, quick filters and swimlanes updated by id, unknown
+// moved between columns, quick filters and sections updated by id, unknown
 // ids, and moves that send a column and a rank in one request.
 
 import (
@@ -15,13 +15,16 @@ import (
 )
 
 type boardSettings struct {
+	Board struct {
+		SectionBy string `json:"sectionBy"`
+	} `json:"board"`
 	Columns []struct {
 		ID       int64       `json:"id"`
 		Name     string      `json:"name"`
 		Statuses []statusRef `json:"statuses"`
 	} `json:"columns"`
 	QuickFilters []boardQuery `json:"quickFilters"`
-	Swimlanes    []boardQuery `json:"swimlanes"`
+	Sections     []boardQuery `json:"sections"`
 }
 
 type boardQuery struct {
@@ -229,20 +232,26 @@ func TestBoardQuickFilterUpdateByID(t *testing.T) {
 	}
 }
 
-func TestBoardLaneDefault(t *testing.T) {
+func TestBoardSectionDefault(t *testing.T) {
 	marie := login(t, "marie.durand", jirafixture.Password)
 	path := ownBoard(t, marie)
-	createIssue(t, marie, "OPS", "Une carte pour les couloirs", "")
-	marie.call("PUT", path, map[string]any{"swimlanes": "custom", "lanes": []map[string]any{
+	createIssue(t, marie, "OPS", "Une carte pour les sections", "")
+	marie.call("PUT", path, map[string]any{"sectionBy": "custom", "sections": []map[string]any{
 		{"name": "OPS", "query": "project = OPS"},
 		{"name": "Reste", "default": true},
 	}}, 200, nil)
 	b := readBoard(t, marie, path)
-	if len(b.Swimlanes) != 2 || b.Swimlanes[0].Default || !b.Swimlanes[1].Default {
-		t.Fatalf("lanes: %+v", b.Swimlanes)
+	if len(b.Sections) != 2 || b.Sections[0].Default || !b.Sections[1].Default {
+		t.Fatalf("sections: %+v", b.Sections)
 	}
-	ops, rest := b.Swimlanes[0], b.Swimlanes[1]
-	lanesOfCards := func() map[int64]int {
+	if b.Board.SectionBy != "custom" {
+		t.Errorf("sectionBy: %q, want custom", b.Board.SectionBy)
+	}
+	// The swimlane names are gone from the API.
+	marie.call("PUT", path, map[string]any{"swimlanes": "none"}, 400, nil)
+	marie.call("PUT", path, map[string]any{"lanes": []map[string]any{}}, 400, nil)
+	ops, rest := b.Sections[0], b.Sections[1]
+	sectionsOfCards := func() map[int64]int {
 		t.Helper()
 		var cards struct{ Cards []boardCard }
 		marie.call("GET", path+"/cards", nil, 200, &cards)
@@ -251,39 +260,39 @@ func TestBoardLaneDefault(t *testing.T) {
 		}
 		out := map[int64]int{}
 		for _, c := range cards.Cards {
-			if c.Lane == nil {
-				t.Fatalf("%s has no lane", c.Key)
+			if c.Section == nil {
+				t.Fatalf("%s has no section", c.Key)
 			}
-			out[*c.Lane]++
+			out[*c.Section]++
 		}
 		return out
 	}
-	if got := lanesOfCards(); len(got) != 1 || got[ops.ID] == 0 {
-		t.Errorf("cards by lane: %v, want all in %d", got, ops.ID)
+	if got := sectionsOfCards(); len(got) != 1 || got[ops.ID] == 0 {
+		t.Errorf("cards by section: %v, want all in %d", got, ops.ID)
 	}
 
-	// The default moves by id: the default lane's query is not read, so every
-	// card falls to the other lane's query.
-	marie.call("PUT", path, map[string]any{"lanes": []map[string]any{
+	// The default moves by id: the default section's query is not read, so every
+	// card falls to the other section's query.
+	marie.call("PUT", path, map[string]any{"sections": []map[string]any{
 		{"id": ops.ID, "name": "OPS", "query": "project = OPS", "default": true},
 		{"id": rest.ID, "name": "Reste", "query": "project = OPS"},
 	}}, 200, nil)
 	b = readBoard(t, marie, path)
-	if len(b.Swimlanes) != 2 || b.Swimlanes[0].ID != ops.ID || !b.Swimlanes[0].Default ||
-		b.Swimlanes[1].ID != rest.ID || b.Swimlanes[1].Default {
-		t.Fatalf("lanes after moving the default: %+v", b.Swimlanes)
+	if len(b.Sections) != 2 || b.Sections[0].ID != ops.ID || !b.Sections[0].Default ||
+		b.Sections[1].ID != rest.ID || b.Sections[1].Default {
+		t.Fatalf("sections after moving the default: %+v", b.Sections)
 	}
-	if got := lanesOfCards(); len(got) != 1 || got[rest.ID] == 0 {
-		t.Errorf("cards by lane: %v, want all in %d", got, rest.ID)
+	if got := sectionsOfCards(); len(got) != 1 || got[rest.ID] == 0 {
+		t.Errorf("cards by section: %v, want all in %d", got, rest.ID)
 	}
 
-	// An unknown lane id is ignored; the lanes not sent are removed.
-	marie.call("PUT", path, map[string]any{"lanes": []map[string]any{
+	// An unknown section id is ignored; the sections not sent are removed.
+	marie.call("PUT", path, map[string]any{"sections": []map[string]any{
 		{"id": rest.ID, "name": "Reste", "default": true},
 		{"id": 999999999, "name": "Fantôme"},
 	}}, 200, nil)
-	if l := readBoard(t, marie, path).Swimlanes; len(l) != 1 || l[0].ID != rest.ID || !l[0].Default {
-		t.Errorf("lanes after an unknown id: %+v", l)
+	if l := readBoard(t, marie, path).Sections; len(l) != 1 || l[0].ID != rest.ID || !l[0].Default {
+		t.Errorf("sections after an unknown id: %+v", l)
 	}
 }
 

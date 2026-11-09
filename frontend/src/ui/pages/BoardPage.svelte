@@ -130,7 +130,7 @@
   const columns = $derived(detail ? detail.columns.filter((c) => c.id !== backlogColumn?.id) : []);
 
   const lanes = $derived(
-    detail && cards ? groupLanes(cards, detail.board.swimlanes, detail.swimlanes) : [],
+    detail && cards ? groupLanes(cards, detail.board.sectionBy, detail.sections) : [],
   );
   const banded = $derived(lanes.length > 0 && lanes[0]?.kind !== 'all');
   const counts = $derived.by(() => {

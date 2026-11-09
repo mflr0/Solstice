@@ -85,8 +85,8 @@
         description: q.description ?? '',
       })),
       lanes: {
-        strategy: d.board.swimlanes,
-        list: d.swimlanes.map((l) => ({
+        strategy: d.board.sectionBy,
+        list: d.sections.map((l) => ({
           id: l.id,
           name: l.name,
           query: l.query ?? '',
@@ -169,10 +169,10 @@
         };
       case 'lanes':
         return {
-          swimlanes: d.lanes.strategy,
+          sectionBy: d.lanes.strategy,
           ...(d.lanes.strategy === 'custom'
             ? {
-                lanes: d.lanes.list.map((l) => ({
+                sections: d.lanes.list.map((l) => ({
                   ...(l.id ? { id: l.id } : {}),
                   name: l.name,
                   ...(l.query.trim() ? { query: l.query } : {}),

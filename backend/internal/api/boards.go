@@ -36,18 +36,18 @@ type boardRow struct {
 	Query     string
 	SubQuery  sql.NullString
 	OwnerID   sql.NullInt64
-	Swimlanes string
+	SectionBy string
 	Estimate  sql.NullString
 	Cutoff    sql.NullString
 	Backlog   bool // Kanban: the first column's issues are on the backlog page, not on the board
 }
 
-const boardColumns = `b.id, b.name, b.kind, b.filter_id, f.name, f.query, b.sub_query, b.owner_id, b.swimlanes, b.estimate,
+const boardColumns = `b.id, b.name, b.kind, b.filter_id, f.name, f.query, b.sub_query, b.owner_id, b.section_by, b.estimate,
 	b.done_cutoff, b.kanban_backlog`
 
 func scanBoard(sc scanner) (*boardRow, error) {
 	var b boardRow
-	err := sc.Scan(&b.ID, &b.Name, &b.Kind, &b.FilterID, &b.Filter, &b.Query, &b.SubQuery, &b.OwnerID, &b.Swimlanes, &b.Estimate,
+	err := sc.Scan(&b.ID, &b.Name, &b.Kind, &b.FilterID, &b.Filter, &b.Query, &b.SubQuery, &b.OwnerID, &b.SectionBy, &b.Estimate,
 		&b.Cutoff, &b.Backlog)
 	return &b, err
 }
@@ -302,8 +302,8 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	}, b.ID); err != nil {
 		return err
 	}
-	lanes := []namedQuery{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name, query, is_default FROM board_swimlanes WHERE board_id = ?
+	sections := []namedQuery{}
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name, query, is_default FROM board_sections WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var q namedQuery
 		var query sql.NullString
@@ -311,7 +311,7 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		q.Query = sqlq.String(query)
-		lanes = append(lanes, q)
+		sections = append(sections, q)
 		return nil
 	}, b.ID); err != nil {
 		return err
@@ -360,12 +360,12 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, map[string]any{
 		"board": map[string]any{
 			"id": b.ID, "name": b.Name, "kind": b.Kind, "filterId": b.FilterID, "filterName": b.Filter, "query": b.Query,
-			"subQuery": sqlq.String(b.SubQuery), "swimlanes": b.Swimlanes, "estimate": estimate,
+			"subQuery": sqlq.String(b.SubQuery), "sectionBy": b.SectionBy, "estimate": estimate,
 			"estimateField": sqlq.String(b.Estimate), "doneCutoff": sqlq.String(b.Cutoff),
 			"kanbanBacklog": b.Backlog,
 		},
 		"estimateFields": estimateFields,
-		"projects":       projects, "columns": columns, "quickFilters": quick, "swimlanes": lanes, "sprints": sprints,
+		"projects":       projects, "columns": columns, "quickFilters": quick, "sections": sections, "sprints": sprints,
 		"shares": shares,
 		"can":    map[string]bool{"manage": manage, "share": manage},
 	})
@@ -549,7 +549,7 @@ type card struct {
 	Parent   *issueBrief `json:"parent"`
 	Estimate *float64    `json:"estimate"`
 	Column   int64       `json:"column"`
-	Lane     *int64      `json:"lane,omitempty"`
+	Section  *int64      `json:"section,omitempty"`
 	Sprint   *int64      `json:"sprint,omitempty"`
 	Can      cardCan     `json:"can"`
 	Watching bool        `json:"watching"`
@@ -733,25 +733,25 @@ func (s *Server) estimates(ctx context.Context, b *boardRow, cards []*card) (map
 	return out, nil
 }
 
-// assignLanes puts each card in the first custom swimlane whose query
-// matches it, or the default lane.
-func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow, cards []*card) error {
-	if b.Swimlanes != "custom" || len(cards) == 0 {
+// assignSections puts each card in the first custom section whose query
+// matches it, or the default section.
+func (s *Server) assignSections(ctx context.Context, sub *perm.Subject, b *boardRow, cards []*card) error {
+	if b.SectionBy != "custom" || len(cards) == 0 {
 		return nil
 	}
-	type lane struct {
+	type section struct {
 		id    int64
 		query sql.NullString
 		def   bool
 	}
-	var lanes []lane
-	if err := sqlq.Each(ctx, s.db, `SELECT id, query, is_default FROM board_swimlanes WHERE board_id = ?
+	var sections []section
+	if err := sqlq.Each(ctx, s.db, `SELECT id, query, is_default FROM board_sections WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
-		var l lane
+		var l section
 		if err := rows.Scan(&l.id, &l.query, &l.def); err != nil {
 			return err
 		}
-		lanes = append(lanes, l)
+		sections = append(sections, l)
 		return nil
 	}, b.ID); err != nil {
 		return err
@@ -763,7 +763,7 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		byID[c.ID] = c
 	}
 	var fallback *int64
-	for _, l := range lanes {
+	for _, l := range sections {
 		if l.def || !l.query.Valid {
 			id := l.id
 			fallback = &id
@@ -771,7 +771,7 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		}
 		cond, args, err := s.queryCondition(ctx, sub, l.query.String)
 		if err != nil {
-			continue // a lane whose query no longer compiles keeps no card
+			continue // a section whose query no longer compiles keeps no card
 		}
 		err = sqlq.Each(ctx, s.db, `SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
 			WHERE i.id IN (`+sqlq.Marks(len(ids))+`) AND (`+cond+`)`, func(rows *sql.Rows) error {
@@ -779,9 +779,9 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 			if err := rows.Scan(&id); err != nil {
 				return err
 			}
-			if c := byID[id]; c != nil && c.Lane == nil {
+			if c := byID[id]; c != nil && c.Section == nil {
 				lid := l.id
-				c.Lane = &lid
+				c.Section = &lid
 			}
 			return nil
 		}, append(slices.Clone(ids), args...)...)
@@ -790,8 +790,8 @@ func (s *Server) assignLanes(ctx context.Context, sub *perm.Subject, b *boardRow
 		}
 	}
 	for _, c := range cards {
-		if c.Lane == nil {
-			c.Lane = fallback
+		if c.Section == nil {
+			c.Section = fallback
 		}
 	}
 	return nil
@@ -855,7 +855,7 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := s.assignLanes(ctx, sub, b, cards); err != nil {
+	if err := s.assignSections(ctx, sub, b, cards); err != nil {
 		return err
 	}
 	if cards == nil {
