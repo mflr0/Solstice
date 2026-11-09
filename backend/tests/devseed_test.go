@@ -233,7 +233,7 @@ func TestDevSeed(t *testing.T) {
 		"developers=alice,giulia,hans,priya office=marie,tom DEMO/Developers only=group:developers/1 " +
 			"DEMO:developers=moderate,security DEMO:release+=group:developers,marie OPS:created>office restricted-comments=2 restricted-worklogs=1 " +
 			"OPS/Purchases=To Do,In Progress,Done,Awaiting approval/Task webhook:Local listener (not running)>http://127.0.0.1:9/solstice",
-		"filters=7 shared=5 share-kinds=4 favourites=8 subscriptions=1 dashboards=3 gadgets=11 filter-gadgets=8 " +
+		"filters=7 shared=5 share-kinds=4 favourites=8 subscriptions=1 dashboards=3 gadgets=9 filter-gadgets=6 " +
 			"notification-prefs=1"}
 	if first != want {
 		t.Fatalf("after the first run: %+v, want %+v", first, want)
