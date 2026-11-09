@@ -359,7 +359,7 @@ func (s *boardSeed) kanban() (int, error) {
 	if err := s.admin.call("PUT", "/api/boards/"+strconv.FormatInt(id, 10), map[string]any{
 		"columns":       columns,
 		"kanbanBacklog": true,
-		"swimlanes":     "assignee",
+		"sectionBy":     "assignee",
 		"quickFilters": []map[string]any{
 			{"name": "Mobile", "query": "project = MOB"},
 			{"name": "Office", "query": "project = OPS"},

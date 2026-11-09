@@ -76,10 +76,10 @@ describe('groupLanes', () => {
   it('follows custom lanes in the board order, the rest last', () => {
     const lanes = groupLanes(
       [
-        card('A-1', { lane: 20 }),
-        card('A-2', { lane: 10 }),
+        card('A-1', { section: 20 }),
+        card('A-2', { section: 10 }),
         card('A-3'),
-        card('A-4', { lane: 20 }),
+        card('A-4', { section: 20 }),
       ],
       'custom',
       [

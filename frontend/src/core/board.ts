@@ -46,9 +46,9 @@ export function groupLanes(
         id: `lane-${l.id}`,
         kind: 'custom',
         name: l.name,
-        cards: cards.filter((c) => c.lane === l.id),
+        cards: cards.filter((c) => c.section === l.id),
       }));
-      const rest = cards.filter((c) => c.lane === undefined || !known.has(c.lane));
+      const rest = cards.filter((c) => c.section === undefined || !known.has(c.section));
       if (rest.length) out.push({ id: 'other', kind: 'other', cards: rest });
       return out;
     }

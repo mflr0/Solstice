@@ -18,7 +18,7 @@ type boardInput struct {
 	Name       *string `json:"name"`
 	SubQuery   *string `json:"subQuery"`
 	DoneCutoff *string `json:"doneCutoff"`
-	Swimlanes  *string `json:"swimlanes"`
+	SectionBy  *string `json:"sectionBy"`
 	Estimate   *string `json:"estimate"` // "", "timeoriginalestimate" or "customfield_<id>"
 	Backlog    *bool   `json:"kanbanBacklog"`
 	Columns    *[]struct {
@@ -32,15 +32,15 @@ type boardInput struct {
 		Query       string  `json:"query"`
 		Description *string `json:"description"`
 	} `json:"quickFilters"`
-	Lanes *[]struct {
+	Sections *[]struct {
 		ID      int64   `json:"id"`
 		Name    string  `json:"name"`
 		Query   *string `json:"query"`
 		Default bool    `json:"default"`
-	} `json:"lanes"`
+	} `json:"sections"`
 }
 
-var laneStrategies = map[string]bool{"none": true, "custom": true, "assignee": true, "epic": true, "parent": true}
+var sectionStrategies = map[string]bool{"none": true, "custom": true, "assignee": true, "epic": true, "parent": true}
 
 // updateBoard changes a board's settings. Lists given replace the current
 // ones: items with an id are kept and updated, new ones are added, missing
@@ -104,11 +104,11 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 		}
 		sets, args = append(sets, "done_cutoff = ?"), append(args, sqlq.NullIf(c))
 	}
-	if in.Swimlanes != nil {
-		if !laneStrategies[*in.Swimlanes] {
-			return fail(http.StatusBadRequest, i18n.BoardSwimlanesUnknown)
+	if in.SectionBy != nil {
+		if !sectionStrategies[*in.SectionBy] {
+			return fail(http.StatusBadRequest, i18n.BoardSectionByUnknown)
 		}
-		sets, args = append(sets, "swimlanes = ?"), append(args, *in.Swimlanes)
+		sets, args = append(sets, "section_by = ?"), append(args, *in.SectionBy)
 	}
 	if in.Estimate != nil {
 		e := *in.Estimate
@@ -150,13 +150,13 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
-	if in.Lanes != nil {
-		for _, l := range *in.Lanes {
+	if in.Sections != nil {
+		for _, l := range *in.Sections {
 			if strings.TrimSpace(l.Name) == "" {
-				return fail(http.StatusBadRequest, i18n.BoardSwimlaneNameRequired)
+				return fail(http.StatusBadRequest, i18n.BoardSectionNameRequired)
 			}
 			if l.Query != nil && strings.TrimSpace(*l.Query) != "" {
-				if err := checkQuery(i18n.M(i18n.BoardSwimlaneNamed, l.Name), *l.Query); err != nil {
+				if err := checkQuery(i18n.M(i18n.BoardSectionNamed, l.Name), *l.Query); err != nil {
 					return err
 				}
 			}
@@ -281,26 +281,26 @@ func (s *Server) updateBoard(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
-	if in.Lanes != nil {
+	if in.Sections != nil {
 		var keep []int64
-		for _, l := range *in.Lanes {
+		for _, l := range *in.Sections {
 			if l.ID != 0 {
 				keep = append(keep, l.ID)
 			}
 		}
-		if err := keepOnly("board_swimlanes", keep); err != nil {
+		if err := keepOnly("board_sections", keep); err != nil {
 			return err
 		}
-		for pos, l := range *in.Lanes {
+		for pos, l := range *in.Sections {
 			var q any
 			if l.Query != nil {
 				q = sqlq.NullIfBlank(*l.Query)
 			}
 			if l.ID != 0 {
-				_, err = tx.ExecContext(ctx, `UPDATE board_swimlanes SET name = ?, query = ?, position = ?, is_default = ?
+				_, err = tx.ExecContext(ctx, `UPDATE board_sections SET name = ?, query = ?, position = ?, is_default = ?
 					WHERE id = ? AND board_id = ?`, sqlq.Truncate(l.Name, sqlq.VarcharWidth), q, pos, l.Default, l.ID, b.ID)
 			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO board_swimlanes (board_id, name, query, position, is_default)
+				_, err = tx.ExecContext(ctx, `INSERT INTO board_sections (board_id, name, query, position, is_default)
 					VALUES (?, ?, ?, ?, ?)`, b.ID, sqlq.Truncate(l.Name, sqlq.VarcharWidth), q, pos, l.Default)
 			}
 			if err != nil {

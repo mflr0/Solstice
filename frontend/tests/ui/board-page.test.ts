@@ -27,7 +27,7 @@ function card(key: string, column: number, lane: number): BoardCard {
     parent: null,
     estimate: null,
     column,
-    lane,
+    section: lane,
     can: { create: true, edit: true },
     watching: false,
   };
@@ -42,7 +42,7 @@ const detail: BoardDetail = {
     filterName: 'Filter',
     query: '',
     subQuery: null,
-    swimlanes: 'custom',
+    sectionBy: 'custom',
     estimate: '',
     estimateField: null,
     doneCutoff: null,
@@ -54,7 +54,7 @@ const detail: BoardDetail = {
     { id: 20, name: 'Done', statuses: [status] },
   ],
   quickFilters: [],
-  swimlanes: [
+  sections: [
     { id: 1, name: 'Urgent', query: null },
     { id: 2, name: 'Later', query: null },
   ],
