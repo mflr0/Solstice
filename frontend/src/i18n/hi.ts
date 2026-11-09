@@ -698,6 +698,34 @@ export const hi: Messages = {
     profileOf: (name: string) => `${name} की प्रोफ़ाइल देखें`,
   },
 
+  viewShare: {
+    open: (name: string) => `${name} शेयर करें`,
+    button: 'शेयर करें',
+    title: (name: string) => `“${name}” शेयर करें`,
+    intro: 'वे इसे अपने स्पेस में जोड़ सकते हैं। सिर्फ़ आप इसे बदल सकते हैं।',
+    search: 'व्यक्ति, समूह या प्रोजेक्ट',
+    placeholder: 'व्यक्ति, समूह या प्रोजेक्ट…',
+    share: 'शेयर करें',
+    who: 'इसे कौन देखता है',
+    you: '(आप)',
+    owner: 'मालिक',
+    kinds: {
+      user: 'व्यक्ति',
+      group: 'समूह',
+      project: 'प्रोजेक्ट, उसमें सभी',
+      projectGroup: 'प्रोजेक्ट, उसका एक समूह',
+    },
+    remove: (name: string) => `${name} के साथ शेयर करना बंद करें`,
+    everyone: (app: string) => `${app} में सभी`,
+    boards: (n: number, names: string) =>
+      `इससे यह भी बदलता है कि ${names} ${n === 1 ? 'बोर्ड' : 'बोर्ड'} कौन देखता है।`,
+    link: 'लिंक',
+    linkLabel: 'व्यू का लिंक',
+    linkHint:
+      'लिंक उन सभी के लिए व्यू खोलता है जिनके साथ यह शेयर किया गया है। बाकी लोग देखते हैं कि उनके पास पहुँच नहीं है।',
+    done: 'हो गया',
+  },
+
   view: {
     title: 'व्यू',
     untitled: 'नया व्यू',

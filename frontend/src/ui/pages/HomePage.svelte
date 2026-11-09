@@ -31,6 +31,7 @@
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import NewViewMenu from '../dashboard/NewViewMenu.svelte';
+  import ShareViewDialog from '../dashboard/ShareViewDialog.svelte';
   import ViewSection from '../dashboard/ViewSection.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Modal from '../Modal.svelte';
@@ -48,6 +49,7 @@
   let filters = $state<SavedFilter[]>([]);
   let renaming = $state<{ filter: SavedFilter; name: string } | null>(null);
   let deleting = $state<SavedFilter | null>(null);
+  let sharing = $state<SavedFilter | null>(null);
 
   const gadgets = $derived(dash?.gadgets ?? []);
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
@@ -381,12 +383,22 @@
           sort={order}
           onsort={(column) => sortGadget(g, column, order)}
           ontoggle={() => toggle(i)}
+          onshare={filterOf(g)?.mine ? () => (sharing = filterOf(g) ?? null) : undefined}
           menu={() => menu(g, i)}
         />
       {/each}
     </div>
   {/if}
 </div>
+
+<ShareViewDialog
+  filter={sharing}
+  onclose={() => (sharing = null)}
+  onsaved={(f) => {
+    sharing = f;
+    filters = filters.map((x) => (x.id === f.id ? f : x));
+  }}
+/>
 
 <Modal open={renaming !== null} title={t.home.renameTitle} onclose={() => (renaming = null)}>
   {#if renaming}
