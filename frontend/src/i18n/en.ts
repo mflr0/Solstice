@@ -789,7 +789,7 @@ export const en = {
     remoteLinks: 'External links',
     attachments: 'Attachments',
     attach: 'Attach files',
-    dropHere: 'Drop files here',
+    dropToAttach: (key: string) => `Drop files to attach to ${key}`,
     uploading: 'Uploading…',
     missingFile: 'file not migrated from Jira',
     download: 'Download',
