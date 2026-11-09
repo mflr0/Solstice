@@ -322,6 +322,8 @@ export const fr: Messages = {
     full: (n: number) => `Votre espace compte ${n} vues au plus.`,
     collapseAll: 'Tout replier',
     expandAll: 'Tout déplier',
+    viewIndex: 'Vues',
+    jumpToView: 'Aller à une vue',
     collapse: (name: string) => `Replier ${name}`,
     expand: (name: string) => `Déplier ${name}`,
     sharedWith: (who: string) => `Partagée avec ${who}`,

@@ -329,6 +329,8 @@ export const de: Messages = {
     full: (n: number) => `Ihr Bereich enthält höchstens ${n} Ansichten.`,
     collapseAll: 'Alle zuklappen',
     expandAll: 'Alle aufklappen',
+    viewIndex: 'Ansichten',
+    jumpToView: 'Zu einer Ansicht springen',
     collapse: (name: string) => `${name} zuklappen`,
     expand: (name: string) => `${name} aufklappen`,
     sharedWith: (who: string) => `Geteilt mit ${who}`,

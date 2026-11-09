@@ -323,6 +323,8 @@ export const hi: Messages = {
     full: (n: number) => `आपके स्पेस में अधिकतम ${n} व्यू हो सकते हैं।`,
     collapseAll: 'सभी समेटें',
     expandAll: 'सभी फैलाएँ',
+    viewIndex: 'व्यू',
+    jumpToView: 'किसी व्यू पर जाएँ',
     collapse: (name: string) => `${name} समेटें`,
     expand: (name: string) => `${name} फैलाएँ`,
     sharedWith: (who: string) => `${who} के साथ शेयर किया गया`,

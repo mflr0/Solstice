@@ -170,3 +170,19 @@ export function setCollapsed(
 ): Gadget[] {
   return gadgets.map((g) => (which(g) ? { ...g, config: { ...g.config, collapsed: on } } : g));
 }
+
+/**
+ * The address hash naming a gadget in the space, without "#": its filter, or
+ * its kind for a built-in. An unavailable view has no filter left: its gadget
+ * id, which it always has, the space being saved.
+ */
+export function viewHash(g: Gadget): string {
+  if (!onFilter(g.kind)) return `view-${g.kind}`;
+  return g.filter ? `view-${g.filter.id}` : `view-g${g.id}`;
+}
+
+/** The position of the first gadget the hash names, with or without "#"; -1 for none. */
+export function gadgetAtHash(gadgets: readonly Gadget[], hash: string): number {
+  const h = hash.replace(/^#/, '');
+  return h ? gadgets.findIndex((g) => viewHash(g) === h) : -1;
+}

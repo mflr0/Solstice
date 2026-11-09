@@ -320,6 +320,8 @@ export const en = {
     full: (n: number) => `Your space holds ${n} views at most.`,
     collapseAll: 'Collapse all',
     expandAll: 'Expand all',
+    viewIndex: 'Views',
+    jumpToView: 'Jump to a view',
     collapse: (name: string) => `Collapse ${name}`,
     expand: (name: string) => `Expand ${name}`,
     sharedWith: (who: string) => `Shared with ${who}`,

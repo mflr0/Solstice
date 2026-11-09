@@ -40,6 +40,8 @@
     /** Opens the share dialog: on one's own views only. */
     onshare?: (() => void) | undefined;
     menu: () => MenuGroup[];
+    /** The count the header shows, null until known. */
+    ontotal?: ((total: number | null) => void) | undefined;
   }
   const {
     key,
@@ -60,15 +62,20 @@
     ontoggle,
     onshare,
     menu,
+    ontotal,
   }: Props = $props();
 
   let total = $state<number | null>(null);
   let extra = $state(0);
   const shown = $derived(Math.min(size + extra, MAX_SHOWN));
   const more = $derived(total === null ? 0 : Math.min(size, total - shown, MAX_SHOWN - shown));
+
+  $effect(() => {
+    ontotal?.(query === null ? null : total);
+  });
 </script>
 
-<section class="view" aria-labelledby="view-title-{key}">
+<section id="view-section-{key}" class="view" aria-labelledby="view-title-{key}">
   <div class="head">
     <button
       id="view-toggle-{key}"
@@ -143,6 +150,7 @@
 <style>
   .view {
     min-width: 0;
+    scroll-margin-top: calc(var(--topbar-height, 0px) + var(--view-index-height, 0px) + 16px);
     border: 1px solid var(--rule);
     border-radius: var(--radius-m);
     background: var(--paper-raised);

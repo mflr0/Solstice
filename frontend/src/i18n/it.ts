@@ -324,6 +324,8 @@ export const it: Messages = {
     full: (n: number) => `Il tuo spazio contiene al massimo ${n} viste.`,
     collapseAll: 'Comprimi tutto',
     expandAll: 'Espandi tutto',
+    viewIndex: 'Viste',
+    jumpToView: 'Vai a una vista',
     collapse: (name: string) => `Comprimi ${name}`,
     expand: (name: string) => `Espandi ${name}`,
     sharedWith: (who: string) => `Condivisa con ${who}`,
