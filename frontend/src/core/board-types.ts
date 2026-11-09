@@ -114,6 +114,9 @@ export interface BoardCard extends IssueSummary {
   lane?: number;
   /** Backlog only. */
   sprint?: number;
+  /** What the user may do with the issue. */
+  can: { create: boolean; edit: boolean };
+  watching: boolean;
 }
 
 export interface BoardCards {

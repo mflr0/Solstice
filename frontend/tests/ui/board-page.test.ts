@@ -28,6 +28,8 @@ function card(key: string, column: number, lane: number): BoardCard {
     estimate: null,
     column,
     lane,
+    can: { create: true, edit: true },
+    watching: false,
   };
 }
 

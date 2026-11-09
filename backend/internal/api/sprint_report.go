@@ -277,7 +277,7 @@ func (s *Server) replaySprint(ctx context.Context, sub *perm.Subject, b *boardRo
 	if len(ids) > 0 {
 		vis, args := sub.VisibleSQL("i")
 		var err error
-		cards, _, err = s.loadCards(ctx, b, vis+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, append(args, ids...), cat)
+		cards, _, err = s.loadCards(ctx, sub, b, vis+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, append(args, ids...), cat)
 		if err != nil {
 			return report.Report{}, nil, err
 		}
