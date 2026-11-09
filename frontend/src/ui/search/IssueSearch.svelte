@@ -238,7 +238,8 @@
     <p class="search-summary" aria-live="polite">
       {#if total !== null}<strong>{t.search.results(total)}</strong>{sortText}{/if}
     </p>
-    {#if saveHref}<a class="btn btn-small btn-quiet save-as" href={saveHref}>{t.view.saveAsNew}</a>{/if}
+    {#if saveHref}<a class="btn btn-small btn-quiet save-as" href={saveHref}>{t.view.saveAsNew}</a
+      >{/if}
   </div>
 
   {#if refused || tooComplex}
