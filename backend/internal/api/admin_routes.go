@@ -17,6 +17,8 @@ func (s *Server) adminRoutes(route routeFunc) {
 	route("GET /api/settings/public", s.publicSettings, scopePublic)
 	route("GET /api/admin/settings", s.getSettings, auth.ScopeAdmin)
 	route("PUT /api/admin/settings", s.putSettings, auth.ScopeAdmin)
+	route("GET /api/admin/onboarding", s.getOnboarding, auth.ScopeAdmin)
+	route("PUT /api/admin/onboarding", s.putOnboarding, auth.ScopeAdmin)
 
 	// People.
 	route("GET /api/admin/users/{id}", s.adminGetUser, auth.ScopeAdmin)

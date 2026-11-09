@@ -1,28 +1,78 @@
 <script lang="ts">
   import { ADMIN_NAV, adminPath } from '../../core/areas.js';
+  import type { Onboarding } from '../../core/admin-types.js';
+  import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { api } from '../../lib/api.js';
+  import { openCreate } from '../../lib/ui.svelte.js';
   import { ADMIN_ICONS } from './admin-icons.js';
 
   /**
-   * The administration's front page: what still needs doing on a fresh
-   * install (a first project, e-mail), then every section with a line on
-   * what it holds.
+   * The administration's front page: the setup steps a fresh install still
+   * lacks, then every section with a line on what it holds.
    */
 
-  let projects = $state<number | null>(null);
-  let mailOn = $state<boolean | null>(null);
+  let onboarding = $state<Onboarding | null>(null);
 
   $effect(() => {
-    api
-      .projects()
-      .then((p) => (projects = p.length))
-      .catch(() => (projects = null));
     adminApi
-      .mail()
-      .then((m) => (mailOn = m.enabled))
-      .catch(() => (mailOn = null));
+      .onboarding()
+      .then((o) => (onboarding = o))
+      .catch(() => (onboarding = null));
+  });
+
+  type Step = { title: string; hint: string; action: string; primary?: boolean } & (
+    { href: string } | { onclick: () => void }
+  );
+
+  const steps = $derived.by((): Step[] => {
+    const o = onboarding;
+    if (!o) return [];
+    const a = t.adminArea;
+    const out: Step[] = [];
+    if (!o.projects) {
+      out.push({
+        title: a.noProject,
+        hint: a.noProjectHint,
+        action: a.createProject,
+        href: `${adminPath('projects')}?new=1`,
+        primary: true,
+      });
+    }
+    if (!o.otherUsers) {
+      out.push({
+        title: a.noUsers,
+        hint: a.noUsersHint,
+        action: a.addUsers,
+        href: adminPath('users'),
+      });
+    }
+    if (!o.mail) {
+      out.push({
+        title: a.mailOff,
+        hint: a.mailOffHint,
+        action: a.setUpMail,
+        href: adminPath('mail'),
+      });
+    }
+    if (!o.boards) {
+      out.push({
+        title: a.noBoards,
+        hint: a.noBoardsHint,
+        action: a.createBoard,
+        href: paths.boards(),
+      });
+    }
+    // An issue needs a project: the dialog would have nothing to offer.
+    if (!o.issues && o.projects) {
+      out.push({
+        title: a.noIssues,
+        hint: a.noIssuesHint,
+        action: a.createIssue,
+        onclick: () => openCreate(),
+      });
+    }
+    return out;
   });
 </script>
 
@@ -34,30 +84,23 @@
 </header>
 <p class="lead-text">{t.adminArea.intro}</p>
 
-{#if projects === 0 || mailOn === false}
+{#if steps.length > 0}
   <section class="todo" aria-labelledby="admin-todo">
     <h2 class="section-title" id="admin-todo">{t.adminArea.todo}</h2>
     <ul class="todo-list">
-      {#if projects === 0}
+      {#each steps as step (step.title)}
         <li class="card">
           <div>
-            <strong>{t.adminArea.noProject}</strong>
-            <p class="muted small">{t.adminArea.noProjectHint}</p>
+            <strong>{step.title}</strong>
+            <p class="muted small">{step.hint}</p>
           </div>
-          <a class="btn btn-primary" href={`${adminPath('projects')}?new=1`}
-            >{t.adminArea.createProject}</a
-          >
+          {#if 'href' in step}
+            <a class="btn" class:btn-primary={step.primary} href={step.href}>{step.action}</a>
+          {:else}
+            <button class="btn" type="button" onclick={step.onclick}>{step.action}</button>
+          {/if}
         </li>
-      {/if}
-      {#if mailOn === false}
-        <li class="card">
-          <div>
-            <strong>{t.adminArea.mailOff}</strong>
-            <p class="muted small">{t.adminArea.mailOffHint}</p>
-          </div>
-          <a class="btn" href={adminPath('mail')}>{t.adminArea.setUpMail}</a>
-        </li>
-      {/if}
+      {/each}
     </ul>
   </section>
 {/if}

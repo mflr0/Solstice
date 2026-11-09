@@ -300,6 +300,18 @@ export interface GeneralSettings {
   languages: string[];
 }
 
+/** What a new instance has already (GET /api/admin/onboarding). */
+export interface Onboarding {
+  projects: boolean;
+  /** An active account other than the caller's. */
+  otherUsers: boolean;
+  mail: boolean;
+  boards: boolean;
+  issues: boolean;
+  /** An administrator hid the Getting started checklist. */
+  dismissed: boolean;
+}
+
 export type GeneralField =
   | 'instanceName'
   | 'baseURL'

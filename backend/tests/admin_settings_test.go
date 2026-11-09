@@ -4,9 +4,13 @@ package tests
 // how a change applies at once (banner, default language, password length).
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"solstice/internal/api"
 	"solstice/internal/jirafixture"
 )
 
@@ -107,5 +111,75 @@ func TestInstanceSettings(t *testing.T) {
 		if _, msg, _ := anonymous(t).errorIn("", "GET", "/api/nope", nil); msg != want {
 			t.Errorf("default language back to %s: %q", before.DefaultLanguage, msg)
 		}
+	}
+}
+
+type onboardingSteps struct {
+	Projects, OtherUsers, Mail, Boards, Issues, Dismissed bool
+}
+
+// On a new instance the setup steps start undone and each one is done as
+// its record appears; hiding the checklist is remembered and audited.
+func TestOnboarding(t *testing.T) {
+	needDB(t)
+	dsn := emptyDB(t)
+	s, c := unlocked(t, api.SetupOptions{Done: func(api.SetupResult) {}})
+	if status, body := c.call("POST", "/api/setup/database", "", dbFields(t, dsn)); status != 200 {
+		t.Fatalf("database: %d %v", status, body)
+	}
+	if status, body := c.call("POST", "/api/setup/admin", "", map[string]string{"username": "chef",
+		"email": "chef@exemple.fr", "password": "une phrase de passe longue"}); status != 200 {
+		t.Fatalf("admin: %d %v", status, body)
+	}
+	ts := httptest.NewServer(api.New(s.DB(), t.TempDir(), time.UTC, quiet()).Handler(http.NotFoundHandler()))
+	t.Cleanup(ts.Close)
+	admin := loginAt(t, ts.URL, "chef", "une phrase de passe longue")
+
+	var want onboardingSteps
+	check := func(step string) {
+		t.Helper()
+		var got onboardingSteps
+		admin.call("GET", "/api/admin/onboarding", nil, 200, &got)
+		if got != want {
+			t.Fatalf("after %s: %+v, want %+v", step, got, want)
+		}
+	}
+	check("setup")
+
+	admin.call("POST", "/api/projects", map[string]any{"key": "ONB", "name": "Onboarding"}, 201, nil)
+	want.Projects = true
+	check("a project")
+	admin.call("POST", "/api/admin/users", map[string]any{"username": "second", "email": "second@exemple.fr",
+		"password": "une autre phrase longue"}, 201, nil)
+	want.OtherUsers = true
+	check("a second user")
+	admin.call("PUT", "/api/admin/mail", map[string]any{"enabled": true, "host": "127.0.0.1", "port": 2525,
+		"security": "none", "from": "solstice@exemple.fr"}, 200, nil)
+	want.Mail = true
+	check("mail")
+	admin.call("POST", "/api/boards", map[string]any{"kind": "kanban", "project": "ONB"}, 201, nil)
+	want.Boards = true
+	check("a board")
+	var project struct {
+		IssueTypes []struct{ ID string } `json:"issueTypes"`
+	}
+	admin.call("GET", "/api/projects/ONB/settings", nil, 200, &project)
+	if len(project.IssueTypes) == 0 {
+		t.Fatal("the new project offers no issue type")
+	}
+	admin.call("POST", "/api/issues", map[string]any{"project": "ONB", "type": project.IssueTypes[0].ID,
+		"summary": "La première"}, 201, nil)
+	want.Issues = true
+	check("an issue")
+
+	admin.call("PUT", "/api/admin/onboarding", map[string]any{}, 400, nil)
+	admin.call("PUT", "/api/admin/onboarding", map[string]any{"dismissed": true}, 200, nil)
+	want.Dismissed = true
+	check("hiding the checklist")
+	var audited int
+	s.DB().QueryRow(`SELECT COUNT(*) FROM audit_log WHERE action = 'settings.general' AND target_type = 'settings'
+		AND target_id = 'onboarding' AND username = 'chef'`).Scan(&audited)
+	if audited != 1 {
+		t.Errorf("%d audit entries for hiding the checklist, want 1", audited)
 	}
 }

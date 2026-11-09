@@ -108,6 +108,21 @@ Validation (400): empty or too long instance name (100 max); base URL not
 `http(s)://host[:port]` without path; unknown time zone; unsupported language;
 banner text over 500 characters or unknown level; numbers out of range.
 
+### `GET /api/admin/onboarding` — global admin
+
+```json
+{"projects": true, "otherUsers": false, "mail": false, "boards": false, "issues": true, "dismissed": false}
+```
+
+What a new instance has already: a project, an active account other than
+the caller, e-mail sending on, a board, an issue; and whether an
+administrator hid the Getting started checklist.
+
+### `PUT /api/admin/onboarding` — global admin
+
+Body: `{"dismissed": true}` (required). Answers like GET.
+(`settings.general` on target `onboarding`, details: `dismissed` from/to)
+
 ---
 
 ## 2. Profile (everyone signed in)
