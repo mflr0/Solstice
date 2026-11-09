@@ -289,7 +289,13 @@ below, `.any` from the dotted `.bus`; `.to-todo|.to-doing|.to-done` set
 marker). The arrows draw with `currentColor`; restyle strokes, not colours.
 
 **Toasts** — `.toasts` > `p.toast` (`.error`, `.info`). Tooltips: native
-`title` only, nothing to style.
+`title` only, nothing to style, but for relative dates.
+
+**Relative dates** — `time.reltime` ("3 hours ago", a dotted underline). On
+hover, `.reltime-tip` (a `popover` in the top layer, `position: fixed`,
+placed by script above the date: style it, don't position it) >
+`.reltime-day` (the full day) + `.reltime-time` (the time and the time zone).
+Base: `--ink` ground, `--paper` text.
 
 **Marks** — `span.stamp` (`.todo` / `.doing` / `.done`, `[data-category]`,
 `.large` on the issue page; `::before` is the optional dot, `--stamp-dot`). A

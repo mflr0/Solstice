@@ -19,6 +19,7 @@ function card(key: string, column: number, lane: number): BoardCard {
     reporter: null,
     created: '2026-01-01T00:00:00Z',
     updated: '2026-01-01T00:00:00Z',
+    resolved: null,
     due: null,
     confidential: false,
     epic: null,

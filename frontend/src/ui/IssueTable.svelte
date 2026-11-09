@@ -84,6 +84,7 @@
     updated: t.table.updated,
     reporter: t.search.fields.reporter,
     created: t.search.fields.created,
+    resolutiondate: t.search.fields.resolved,
     resolution: t.search.fields.resolution,
   };
 
@@ -243,6 +244,10 @@
               <td class="num muted c-updated"><RelTime iso={issue.updated} /></td>
             {:else if c === 'created'}
               <td class="num muted c-extra"><RelTime iso={issue.created} /></td>
+            {:else if c === 'resolutiondate'}
+              <td class="num muted c-extra">
+                {#if issue.resolved}<RelTime iso={issue.resolved} />{/if}
+              </td>
             {:else if c === 'resolution'}
               <td class="c-extra"
                 >{issue.resolution ? session.resolutionName(issue.resolution) : ''}</td

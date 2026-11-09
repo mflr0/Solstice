@@ -120,6 +120,33 @@ export function dayMonth(iso: string): string {
   ).format(new Date(iso));
 }
 
+/** The local weekday and date of an instant: "mardi 27 octobre 2026", "Tuesday 27 October 2026". */
+export function weekdayDate(iso: string): string {
+  const f = cached(
+    'weekdayDate',
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+  );
+  return join(f.formatToParts(new Date(iso)));
+}
+
+/** The local time of an instant: "14:32", "2:32 PM". */
+export function clockTime(iso: string): string {
+  return cached('clockTime', () => new Intl.DateTimeFormat(tag, { timeStyle: 'short' })).format(
+    new Date(iso),
+  );
+}
+
+/** The time zone instants are shown in: "Europe/Paris". */
+export function timeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 /** The local date and time of an instant: "12 mars 2026 à 14:05", "March 12, 2026 at 2:05 PM". */
 export function dateTime(iso: string): string {
   const f = cached(

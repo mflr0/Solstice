@@ -36,6 +36,7 @@ export const NATIVE_COLUMNS: ReadonlySet<string> = new Set([
   'reporter',
   'created',
   'updated',
+  'resolutiondate',
   'duedate',
 ]);
 

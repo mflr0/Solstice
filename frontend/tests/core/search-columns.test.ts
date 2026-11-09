@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_COLUMNS,
   exportColumns,
+  NATIVE_COLUMNS,
   parseColumns,
   serverColumns,
 } from '../../src/core/search-columns.js';
@@ -44,6 +45,11 @@ describe('what the choice asks of the server', () => {
 
   it('asks for values only for the columns the table cannot draw by itself', () => {
     expect(serverColumns(chosen)).toEqual(['customfield_10', 'labels']);
+  });
+
+  it('draws the resolution date itself, as a relative date', () => {
+    expect(NATIVE_COLUMNS.has('resolutiondate')).toBe(true);
+    expect(serverColumns(['resolutiondate', 'labels'])).toEqual(['labels']);
   });
 
   it('exports in the table order: type, key, summary, then the choice', () => {
