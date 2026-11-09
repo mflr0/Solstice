@@ -118,6 +118,7 @@ type issueSummary struct {
 	Reporter     *userRef     `json:"reporter"`
 	Created      time.Time    `json:"created"`
 	Updated      time.Time    `json:"updated"`
+	Resolved     *time.Time   `json:"resolved"`
 	Due          *string      `json:"due"`
 	Confidential bool         `json:"confidential"`
 	// Values holds the columns asked for, as text (as in the CSV export).
@@ -163,7 +164,8 @@ func summarize(i *issueRow, c *catalog, users map[int64]userRef) issueSummary {
 		Key: i.Key(), Summary: i.Summary, Type: c.typeOf(i.TypeID), Status: c.statusOf(i.StatusID),
 		Priority: c.priorityOf(i.PriorityID), Resolution: c.resolutionOf(i.ResolutionID),
 		Assignee: refOf(users, i.AssigneeID), Reporter: refOf(users, i.ReporterID),
-		Created: i.Created, Updated: i.Updated, Due: dateOnly(i.Due), Confidential: i.LevelID.Valid,
+		Created: i.Created, Updated: i.Updated, Resolved: sqlq.Time(i.Resolved), Due: dateOnly(i.Due),
+		Confidential: i.LevelID.Valid,
 	}
 }
 
@@ -302,7 +304,6 @@ type issueDetail struct {
 	Description     *string         `json:"description"`
 	Environment     *string         `json:"environment"`
 	Creator         *userRef        `json:"creator"`
-	Resolved        *time.Time      `json:"resolved"`
 	Time            timeTracking    `json:"time"`
 	SecurityLevel   *idName         `json:"securityLevel"`
 	Parent          *issueBrief     `json:"parent"`
@@ -406,7 +407,6 @@ func detailBase(sub *perm.Subject, iss *issueRow) *issueDetail {
 		Attachments: []attachmentOut{}, CustomFields: []customValue{}, SecurityLevels: []idName{},
 		Sprints: []sprintRef{}, Can: map[string]bool{},
 	}
-	d.Resolved = sqlq.Time(iss.Resolved)
 	for _, p := range perm.All {
 		d.Can[p] = sub.Can(p, iss.ProjectID, &pi)
 	}

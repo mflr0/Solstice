@@ -48,6 +48,7 @@ function card(key: string, extra: Partial<BoardCard> = {}): BoardCard {
     reporter: null,
     created: '2026-10-01T10:00:00Z',
     updated: '2026-10-01T10:00:00Z',
+    resolved: null,
     due: null,
     confidential: false,
     epic: null,

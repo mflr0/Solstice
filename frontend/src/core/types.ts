@@ -132,6 +132,7 @@ export interface IssueSummary {
   reporter: UserRef | null;
   created: string;
   updated: string;
+  resolved: string | null;
   due: string | null;
   confidential: boolean;
   /** The extra columns asked for, as text. */
@@ -235,7 +236,6 @@ export interface IssueDetail extends IssueSummary {
   description: string | null;
   environment: string | null;
   creator: UserRef | null;
-  resolved: string | null;
   time: TimeTracking;
   securityLevel: IdName | null;
   parent: IssueBrief | null;

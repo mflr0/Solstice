@@ -60,7 +60,7 @@ var starterFontTokens = map[string]string{
 // starterHooks are the sections of ANATOMY.md's hooks, in its order.
 var starterHooks = []string{
 	"Shell", "Top bar", "Logo", "Page", "Panels / windows", "Buttons", "Fields", "Tables", "Tabs", "Menus",
-	"Dropdowns", "Dialogs", "Save bar", "Workflows", "Toasts", "Marks", "Empty and waiting", "Pager", "Search",
+	"Dropdowns", "Dialogs", "Save bar", "Workflows", "Toasts", "Relative dates", "Marks", "Empty and waiting", "Pager", "Search",
 	"Wiki text", "Editor", "Boards", "Setup wizard", "Administration overview", "Gallery",
 }
 

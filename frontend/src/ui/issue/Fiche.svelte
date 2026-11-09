@@ -312,7 +312,7 @@
       <div class="line card-row">
         <dt>{t.issue.resolved}</dt>
         <dd>
-          <span title={formatDateTime(issue.resolved)}><RelTime iso={issue.resolved} /></span>
+          <RelTime iso={issue.resolved} />
           {#if issue.resolution}<span class="muted"
               >· {session.resolutionName(issue.resolution)}</span
             >{/if}
