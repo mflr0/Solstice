@@ -1115,6 +1115,12 @@ export const it: Messages = {
     otherIssues: 'Altri ticket',
 
     cardActions: (key: string) => `Azioni su ${key}`,
+    issueGroup: 'Ticket',
+    duplicate: 'Duplica…',
+    stopWatching: 'Smetti di osservare',
+    copyLink: 'Copia link',
+    watched: (key: string) => `Stai osservando ${key}.`,
+    unwatched: (key: string) => `Non osservi più ${key}.`,
     moveTo: 'Sposta in',
     order: 'Ordine',
     moveUp: 'Sposta su',

@@ -1107,6 +1107,12 @@ export const en = {
     otherIssues: 'Other issues',
 
     cardActions: (key: string) => `Actions for ${key}`,
+    issueGroup: 'Issue',
+    duplicate: 'Duplicate…',
+    stopWatching: 'Stop watching',
+    copyLink: 'Copy link',
+    watched: (key: string) => `You’re watching ${key}.`,
+    unwatched: (key: string) => `You stopped watching ${key}.`,
     moveTo: 'Move to',
     order: 'Rank',
     moveUp: 'Move up',

@@ -65,11 +65,13 @@ const detail: BoardDetail = {
 };
 
 const boardCards = vi.hoisted(() => vi.fn());
+const watch = vi.hoisted(() => vi.fn());
 
 vi.mock('../../src/lib/api.js', () => ({
   api: {
     board: () => Promise.resolve(detail),
     boardCards,
+    watch,
   },
   errorMessage: String,
 }));
@@ -84,7 +86,7 @@ vi.stubGlobal(
 
 boardCards.mockImplementation(() =>
   Promise.resolve({
-    cards: [card('T-1', 10, 1), card('T-2', 20, 2)],
+    cards: [card('T-1', 10, 1), { ...card('T-2', 20, 2), can: { create: false, edit: true } }],
     sprint: null,
     truncated: false,
   }),
@@ -98,6 +100,21 @@ afterEach(() => {
   router.setParams({ jql: null, quick: null });
   boardCards.mockClear();
 });
+
+HTMLElement.prototype.hidePopover = function () {};
+
+/** Opens a card's menu the way the browser would, and lists it by group. */
+function openMenu(key: string): { label: string; items: HTMLButtonElement[] }[] {
+  const menu = document.querySelector(`.board-card[data-key="${key}"] .card-menu`);
+  menu?.dispatchEvent(Object.assign(new Event('beforetoggle'), { newState: 'open' }));
+  flushSync();
+  return [...(menu?.querySelectorAll('[role="group"]') ?? [])].map((g) => ({
+    label: g.getAttribute('aria-label') ?? '',
+    items: [...g.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')],
+  }));
+}
+
+const labels = (items: HTMLButtonElement[]) => items.map((b) => b.textContent);
 
 async function settle() {
   for (let i = 0; i < 5; i++) await tick();
@@ -116,6 +133,32 @@ describe('BoardPage', () => {
     );
     expect(order.filter((o) => o?.startsWith('lane'))).toEqual(['lane Urgent', 'lane Later']);
     expect(order.indexOf('lane Later')).toBeLessThan(order.indexOf('T-1'));
+  });
+
+  it('starts the card menu with the issue entries', async () => {
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    const groups = openMenu('T-1');
+    expect(groups.map((g) => g.label).slice(0, 2)).toEqual(['Issue', 'Move to']);
+    expect(labels(groups[0]?.items ?? [])).toEqual(['Duplicate…', 'Watch', 'Copy link']);
+  });
+
+  it('offers no duplicate without the right to create', async () => {
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    expect(labels(openMenu('T-2')[0]?.items ?? [])).toEqual(['Watch', 'Copy link']);
+  });
+
+  it('turns Watch into Stop watching once clicked', async () => {
+    watch.mockResolvedValue({ count: 1, me: true });
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    openMenu('T-1')[0]
+      ?.items.find((b) => b.textContent === 'Watch')
+      ?.click();
+    await settle();
+    expect(watch).toHaveBeenCalledWith('T-1', true);
+    expect(labels(openMenu('T-1')[0]?.items ?? [])).toContain('Stop watching');
   });
 
   it('shows no limit for a column the API sends with one', async () => {

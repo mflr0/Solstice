@@ -8,7 +8,7 @@
 <div class="toasts" role="status" aria-live="polite">
   {#each notes as n (n.id)}
     <p class="toast {n.kind}">
-      <span>{n.text}</span>
+      {#if n.href}<a href={n.href}>{n.text}</a>{:else}<span>{n.text}</span>{/if}
       <button type="button" class="link-btn" onclick={() => dismiss(n.id)}>{t.common.close}</button>
     </p>
   {/each}

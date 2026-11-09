@@ -42,7 +42,7 @@
       includeLinks,
       includeAttachments,
     });
-    notify(t.create.created(key));
+    notify(t.create.created(key), 'info', paths.issue(key));
     for (const w of warnings) notify(w, 'error');
     onopen(key);
   }
