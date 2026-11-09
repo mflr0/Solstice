@@ -30,6 +30,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import NewViewMenu from '../dashboard/NewViewMenu.svelte';
   import ViewSection from '../dashboard/ViewSection.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Modal from '../Modal.svelte';
@@ -103,6 +104,10 @@
         return t.home.emptyReported;
       case 'recent':
         return t.home.emptyRecent;
+      case 'watching':
+        return t.home.emptyWatching;
+      case 'due':
+        return t.home.emptyDue;
       default:
         return t.home.emptyFilter;
     }
@@ -223,6 +228,13 @@
     );
   }
 
+  /** Adds the view at the end of the space, expanded. */
+  function add(g: Gadget) {
+    if (saving || gadgets.length >= MAX_GADGETS) return;
+    const at = gadgets.length;
+    saveQuietly([...gadgets, g], () => focusToggle(at));
+  }
+
   /** A built-in view edited becomes a new view of the user's, in its place. */
   async function editBuiltin(i: number) {
     try {
@@ -336,11 +348,7 @@
             >{allCollapsed ? t.home.expandAll : t.home.collapseAll}</button
           >
         {/if}
-        <a id="view-new" class="btn" href={paths.search()}>
-          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"
-            ><path d="M7 2v10M2 7h10" /></svg
-          >{t.home.newView}</a
-        >
+        <NewViewMenu {gadgets} {filters} busy={saving} onadd={add} />
       </div>
     {/if}
   </header>
@@ -440,19 +448,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 16px;
-  }
-
-  .head-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .head-actions svg {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.6;
-    stroke-linecap: round;
   }
 
   .views {

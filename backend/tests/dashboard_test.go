@@ -6,6 +6,7 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -71,6 +72,33 @@ func TestDashboardDefaults(t *testing.T) {
 	d = dashboard(hugo, "GET", nil)
 	if !d.Customised || len(d.Gadgets) != 0 {
 		t.Errorf("emptied dashboard, read back: %+v", d)
+	}
+}
+
+// The ready-made views beyond the defaults are built-in kinds too, with no
+// filter, and the queries the interface gives them run.
+func TestDashboardWatchingAndDue(t *testing.T) {
+	resetDashboard(t, "hugo.robert")
+	t.Cleanup(func() { resetDashboard(t, "hugo.robert") })
+	hugo := login(t, "hugo.robert", jirafixture.Password)
+
+	d := dashboard(hugo, "PUT", map[string]any{"gadgets": []map[string]any{
+		{"kind": "watching", "filter": 999999999, "config": map[string]any{"size": 5}},
+		{"kind": "due", "config": map[string]any{"sort": map[string]any{"field": "due", "desc": false}}},
+	}})
+	if len(d.Gadgets) != 2 || d.Gadgets[0].Kind != "watching" || d.Gadgets[0].Filter != nil || d.Gadgets[0].Config.Size != 5 ||
+		d.Gadgets[1].Kind != "due" || d.Gadgets[1].Config.Sort == nil {
+		t.Fatalf("saved: %+v", d)
+	}
+
+	// As frontend/src/core/dashboard.ts writes them.
+	for _, q := range []string{
+		"watcher = currentUser() ORDER BY updated DESC",
+		"statusCategory != Done AND due >= startOfDay() AND due <= 7d ORDER BY due ASC",
+	} {
+		if status, body := hugo.do("GET", "/api/issues?jql="+url.QueryEscape(q), nil); status != 200 {
+			t.Errorf("%s: %d %s", q, status, body)
+		}
 	}
 }
 

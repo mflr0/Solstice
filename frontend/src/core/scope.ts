@@ -7,13 +7,22 @@ import type { BoardSummary } from './board-types.js';
 import { onFilter, type GadgetKind } from './dashboard.js';
 import { emptyFilters, filtersToJql, isBlank, jqlToFilters } from './filters.js';
 import type { SearchLocation } from './filters-url.js';
-import { quote } from './jql.js';
+import { format, formatOrder, looksLikeJql, parse, quote } from './jql.js';
 import { projectOfIssueKey } from './marks.js';
 import { paths, type Route } from './route.js';
 
-/** A simple-syntax query (@moi est:ouvert…) limited to the project. */
+/** A query (simple syntax or JQL) limited to the project; as it is when it does not parse. */
 export function scopeQuery(q: string, key: string | null): string {
-  return key ? `projet:${key} ${q}` : q;
+  if (!key) return q;
+  if (!looksLikeJql(q)) return `projet:${key} ${q}`;
+  try {
+    const { where, order } = parse(q);
+    const project = `project = ${quote(key)}`;
+    const scoped = where ? `${project} AND (${format({ where, order: [] })})` : project;
+    return [scoped, formatOrder(order)].filter((s) => s !== '').join(' ');
+  } catch {
+    return q;
+  }
 }
 
 /**
