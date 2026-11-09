@@ -51,7 +51,6 @@ describe('one project', () => {
 
   it('leaves saved filter gadgets to their own projects', () => {
     expect(scopeGadgetQuery('project = WEB', 'results', 'DEMO')).toBe('project = WEB');
-    expect(scopeGadgetQuery('project = WEB', 'count', 'DEMO')).toBe('project = WEB');
     expect(scopeGadgetQuery(null, 'assigned', 'DEMO')).toBeNull();
   });
 

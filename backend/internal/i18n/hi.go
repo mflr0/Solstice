@@ -510,7 +510,6 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardTooManyGadgets:    "एक डैशबोर्ड में अधिकतम %d गैजेट हो सकते हैं।",
 	DashboardGadgetKindUnknown: "अज्ञात गैजेट: %s।",
 	DashboardFilterRequired:    "ऐसा फ़िल्टर चुनें जो आपको दिखता है।",
-	DashboardCountFieldUnknown: "गिनती %s के अनुसार समूह नहीं बना सकती।",
 	DashboardSizeInvalid:       "सूची में 1 से %d टिकट दिखते हैं।",
 	DashboardColumnsTooMany:    "सूची में अधिकतम %d कॉलम दिखते हैं।",
 

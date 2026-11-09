@@ -1,9 +1,8 @@
 package api
 
 // The personal dashboard on the home page: an ordered list of gadgets, each
-// on a saved filter (its results, or its issues counted by a field) or built
-// in (assigned to me, reported by me, recently updated, watched, due within a
-// week). Until the user edits it, the dashboard holds the built-in gadgets
+// on a saved filter (its results) or built in (assigned to me, reported by
+// me, recently updated, watched, due within a week). Until the user edits it, the dashboard holds the built-in gadgets
 // that the home page used to show.
 
 import (
@@ -13,7 +12,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"solstice/internal/i18n"
@@ -24,7 +22,6 @@ import (
 
 const (
 	gadgetResults  = "results"
-	gadgetCount    = "count"
 	gadgetAssigned = "assigned"
 	gadgetReported = "reported"
 	gadgetRecent   = "recent"
@@ -36,14 +33,12 @@ const (
 	maxGadgetCols = 30
 )
 
-// gadgetConfig is a gadget's settings: columns, size and sort for a list,
-// field for a count, and whether the user folded it.
+// gadgetConfig is a gadget's settings: its size and sort, and whether the
+// user folded it. The columns are its filter's.
 type gadgetConfig struct {
-	Columns []string `json:"columns,omitempty"`
-	Size    int      `json:"size,omitempty"`
+	Size int `json:"size,omitempty"`
 	// Replaces the order of the gadget's query; absent, the query's own.
 	Sort      *gadgetSort `json:"sort,omitempty"`
-	Field     string      `json:"field,omitempty"`
 	Collapsed bool        `json:"collapsed,omitempty"`
 }
 
@@ -105,7 +100,7 @@ type dashboardIn struct {
 	Gadgets []gadgetIn `json:"gadgets"`
 }
 
-func onFilter(kind string) bool { return kind == gadgetResults || kind == gadgetCount }
+func onFilter(kind string) bool { return kind == gadgetResults }
 
 // defaultDashboard is what a user who never edited the dashboard sees.
 func defaultDashboard() []gadgetOut {
@@ -203,7 +198,7 @@ func (s *Server) getDashboard(w http.ResponseWriter, r *http.Request) error {
 // still be moved or reconfigured, and the user never learns its filter.
 func checkGadget(g *gadgetIn, before map[int64]gadgetRow, visible map[int64]*filterOut, custom []customFieldDef) error {
 	switch g.Kind {
-	case gadgetResults, gadgetCount:
+	case gadgetResults:
 		old, existed := before[g.ID]
 		if existed && onFilter(old.kind) && (g.Filter == nil || old.filter.Valid && *g.Filter == old.filter.Int64) {
 			g.Filter = nil
@@ -219,28 +214,12 @@ func checkGadget(g *gadgetIn, before map[int64]gadgetRow, visible map[int64]*fil
 		return failf(http.StatusBadRequest, i18n.DashboardGadgetKindUnknown, g.Kind)
 	}
 	c := &g.Config
-	if g.Kind == gadgetCount {
-		if c.Field != "labels" && facetColumns[c.Field] == "" {
-			return failf(http.StatusBadRequest, i18n.DashboardCountFieldUnknown, c.Field)
-		}
-		c.Columns, c.Size, c.Sort = nil, 0, nil
-		return nil
-	}
-	c.Field = ""
 	// A sort it can't read is dropped, the gadget keeping its query's order.
 	if c.Sort != nil && !sortable(c.Sort.Field, custom) {
 		c.Sort = nil
 	}
 	if c.Size < 0 || c.Size > maxGadgetSize {
 		return failf(http.StatusBadRequest, i18n.DashboardSizeInvalid, maxGadgetSize)
-	}
-	if len(c.Columns) > maxGadgetCols {
-		return failf(http.StatusBadRequest, i18n.DashboardColumnsTooMany, maxGadgetCols)
-	}
-	if len(c.Columns) > 0 {
-		if _, err := parseColumns(strings.Join(c.Columns, ","), "", custom); err != nil {
-			return err
-		}
 	}
 	return nil
 }

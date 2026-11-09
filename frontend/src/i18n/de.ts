@@ -360,8 +360,6 @@ export const de: Messages = {
     emptyWatching: 'Sie beobachten keine Vorgänge.',
     emptyDue: 'In den nächsten 7 Tagen ist nichts fällig.',
     emptyFilter: 'Keine Vorgänge entsprechen dieser Ansicht.',
-    emptyCount: 'Keine Vorgänge zu zählen.',
-    none: 'Keine',
     emptyDashboard: 'Ihr Bereich ist leer.',
     emptyDashboardHint: 'Erstellen Sie eine Ansicht, um hier eine Suche zu verfolgen.',
     unavailable: 'Diese Ansicht ist für Sie nicht mehr verfügbar.',

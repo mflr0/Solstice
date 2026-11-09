@@ -128,16 +128,17 @@ func TestMigrationFilterColumns(t *testing.T) {
 	}
 	shared, others := newFilter(marie), newFilter(marie)
 
-	dashboard(marie, "PUT", map[string]any{"gadgets": []map[string]any{
-		{"kind": "results", "filter": shared},
-		{"kind": "count", "filter": shared, "config": map[string]any{"field": "status"}},
-		{"kind": "results", "filter": shared, "config": map[string]any{"columns": []string{"status", "assignee"}}},
-		{"kind": "results", "filter": shared, "config": map[string]any{"columns": []string{"priority"}}},
-	}})
-	paulBefore := dashboard(paul, "PUT", map[string]any{"gadgets": []map[string]any{
-		{"kind": "results", "filter": shared, "config": map[string]any{"columns": []string{"created"}}},
-		{"kind": "results", "filter": others, "config": map[string]any{"columns": []string{"reporter"}}},
-	}})
+	insertGadgets(t, "marie.durand",
+		rawGadget{kind: "results", filter: shared, config: `{}`},
+		rawGadget{kind: "count", filter: shared, config: `{"field":"status"}`},
+		rawGadget{kind: "results", filter: shared, config: `{"columns":["status","assignee"]}`},
+		rawGadget{kind: "results", filter: shared, config: `{"columns":["priority"]}`},
+	)
+	insertGadgets(t, "paul.martin",
+		rawGadget{kind: "results", filter: shared, config: `{"columns":["created"]}`},
+		rawGadget{kind: "results", filter: others, config: `{"columns":["reporter"]}`},
+	)
+	paulBefore := dashboard(paul, "GET", nil)
 	marieBefore := dashboard(marie, "GET", nil)
 
 	if _, err := testDB.Exec(update); err != nil {

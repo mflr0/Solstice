@@ -1,35 +1,15 @@
 /**
  * The personal dashboard on the home page (GET and PUT /api/dashboard): an
- * ordered list of gadgets, each on a saved filter (its results, or its
- * issues counted by a field) or built in.
+ * ordered list of gadgets, each on a saved filter (its results) or built in.
  */
 
-import {
-  columnDirection,
-  columnSort,
-  EMPTY,
-  JQL_FIELD,
-  listClause,
-  naturalDesc,
-  type ListField,
-} from './filters.js';
+import { columnDirection, columnSort, naturalDesc } from './filters.js';
 import { toJql } from './filters-url.js';
-import { format, formatOrder, parse, quote, type SortTerm } from './jql.js';
+import { format, parse, type SortTerm } from './jql.js';
 
-export type GadgetKind =
-  'results' | 'count' | 'assigned' | 'reported' | 'recent' | 'watching' | 'due';
+export type GadgetKind = 'results' | 'assigned' | 'reported' | 'recent' | 'watching' | 'due';
 
-export type BuiltinKind = Exclude<GadgetKind, 'results' | 'count'>;
-
-export const GADGET_KINDS: readonly GadgetKind[] = [
-  'results',
-  'count',
-  'assigned',
-  'reported',
-  'recent',
-  'watching',
-  'due',
-];
+export type BuiltinKind = Exclude<GadgetKind, 'results'>;
 
 /** The ready-made views the New view menu offers, in its order. */
 export const BUILTIN_KINDS: readonly BuiltinKind[] = [
@@ -40,29 +20,15 @@ export const BUILTIN_KINDS: readonly BuiltinKind[] = [
   'due',
 ];
 
-/** The fields a count gadget groups by: those the server counts (GET /api/issues/facets). */
-export const COUNT_FIELDS = [
-  'status',
-  'assignee',
-  'priority',
-  'type',
-  'project',
-  'resolution',
-  'reporter',
-  'labels',
-] as const satisfies readonly ListField[];
-export type CountField = (typeof COUNT_FIELDS)[number];
-
 export const DEFAULT_SIZE = 10;
 export const MAX_SIZE = 50;
 export const MAX_GADGETS = 20;
 
+/** A gadget's settings; the columns are its filter's. */
 export interface GadgetConfig {
-  columns?: string[] | undefined;
   size?: number | undefined;
   /** Replaces the order of the gadget's query; absent, the query keeps its own. */
   sort?: SortTerm | undefined;
-  field?: CountField | undefined;
   /** Folded in the user's space. */
   collapsed?: boolean | undefined;
 }
@@ -99,8 +65,8 @@ export const BUILTIN_QUERIES: Record<BuiltinKind, string> = {
   due: 'statusCategory != Done AND due >= startOfDay() AND due <= 7d ORDER BY due ASC',
 };
 
-export function onFilter(kind: GadgetKind): kind is 'results' | 'count' {
-  return kind === 'results' || kind === 'count';
+export function onFilter(kind: GadgetKind): kind is 'results' {
+  return kind === 'results';
 }
 
 /** The query a gadget shows, or null when it has none to show. */
@@ -159,28 +125,6 @@ export function toInput(g: Gadget): GadgetInput {
     filter: onFilter(g.kind) ? (g.filter?.id ?? null) : null,
     config: g.config,
   };
-}
-
-/**
- * A search narrowed to one counted value (a JQL value, or EMPTY for none),
- * as JQL, keeping the query's order. Null when the query does not parse.
- */
-export function narrowedJql(query: string, field: CountField, value: string): string | null {
-  let q;
-  try {
-    q = parse(toJql(query));
-  } catch {
-    return null;
-  }
-  const clause = listClause(JQL_FIELD[field], [value]);
-  const where = q.where ? `(${format({ where: q.where, order: [] })}) AND ${clause}` : clause;
-  const order = formatOrder(q.order);
-  return order ? `${where} ${order}` : where;
-}
-
-/** A counted value as a JQL value: "" (none) becomes EMPTY. */
-export function jqlValue(text: string): string {
-  return text === '' ? EMPTY : quote(text);
 }
 
 /** A gadget's query as a view: in JQL, in the order saved on the gadget. */

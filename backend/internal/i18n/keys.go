@@ -568,7 +568,6 @@ const (
 	DashboardTooManyGadgets    Key = "DashboardTooManyGadgets"
 	DashboardGadgetKindUnknown Key = "DashboardGadgetKindUnknown"
 	DashboardFilterRequired    Key = "DashboardFilterRequired"
-	DashboardCountFieldUnknown Key = "DashboardCountFieldUnknown"
 	DashboardSizeInvalid       Key = "DashboardSizeInvalid"
 	DashboardColumnsTooMany    Key = "DashboardColumnsTooMany"
 )

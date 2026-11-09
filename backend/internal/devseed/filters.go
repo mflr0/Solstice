@@ -13,25 +13,28 @@ import (
 )
 
 // seedFilter is a saved filter of a mock user. share is "" for a private
-// filter, "everyone", or "group:", "project:" or "user:" and a name.
+// filter, "everyone", or "group:", "project:" or "user:" and a name. Its
+// columns leave out key and summary, which every list shows; nil for the
+// default ones.
 type seedFilter struct {
 	owner, name, query, share string
 	favourites                []string
+	columns                   []string
 }
 
 var filters = []seedFilter{
 	{"alice", "Open DEMO bugs", `project = DEMO AND type = Bug AND resolution is EMPTY ORDER BY priority DESC`,
-		"everyone", []string{"alice", "hans", "marie"}},
+		"everyone", []string{"alice", "hans", "marie"}, []string{"status", "priority", "assignee"}},
 	{"alice", "My open work", `assignee = currentUser() AND resolution is EMPTY ORDER BY updated DESC`,
-		"", nil},
+		"", nil, nil},
 	{"hans", "Mobile – offen", `project = MOB AND resolution is EMPTY ORDER BY priority DESC`,
-		"group:" + Developers, []string{"hans", "giulia"}},
-	{"hans", "Große Stories", `"Story points" > 4 ORDER BY "Story points" DESC`, "", nil},
+		"group:" + Developers, []string{"hans", "giulia"}, nil},
+	{"hans", "Große Stories", `"Story points" > 4 ORDER BY "Story points" DESC`, "", nil, nil},
 	{"marie", "Bureau en cours", `project = OPS AND resolution is EMPTY ORDER BY created DESC`,
-		"group:office", []string{"marie", "tom"}},
+		"group:office", []string{"marie", "tom"}, nil},
 	{"priya", "Overdue", `duedate < now() AND resolution is EMPTY ORDER BY duedate ASC`,
-		"project:" + Project, []string{"priya"}},
-	{"giulia", "Etichetta auth", `labels = auth`, "user:alice", nil},
+		"project:" + Project, []string{"priya"}, []string{"assignee", "duedate"}},
+	{"giulia", "Etichetta auth", `labels = auth`, "user:alice", nil, nil},
 }
 
 // seedSubscription mails a filter's results to its subscriber every day.
@@ -42,8 +45,7 @@ type seedSubscription struct {
 
 var subscriptions = []seedSubscription{{"alice", "Open DEMO bugs", 8}}
 
-// seedGadget is a dashboard gadget: on a filter for results and count. Its
-// columns leave out key and summary, which every list shows.
+// seedGadget is a dashboard gadget, on a filter for results.
 type seedGadget struct {
 	kind, filter string
 	config       map[string]any
@@ -51,20 +53,18 @@ type seedGadget struct {
 
 var dashboards = map[string][]seedGadget{
 	"alice": {
-		{"results", "Open DEMO bugs", map[string]any{"columns": []string{"status", "priority", "assignee"}, "size": 10}},
-		{"count", "Open DEMO bugs", map[string]any{"field": "assignee"}},
-		{"results", "Overdue", map[string]any{"columns": []string{"assignee", "duedate"}, "size": 10}},
+		{"results", "Open DEMO bugs", map[string]any{"size": 10}},
+		{"results", "Overdue", map[string]any{"size": 10}},
 		{"assigned", "", map[string]any{"size": 10}},
 	},
 	"hans": {
-		{"count", "Mobile – offen", map[string]any{"field": "status"}},
+		{"results", "Mobile – offen", map[string]any{"size": 10}},
 		{"results", "Große Stories", map[string]any{"size": 10}},
 		{"results", "Open DEMO bugs", map[string]any{"size": 5}},
 		{"recent", "", map[string]any{"size": 10}},
 	},
 	"marie": {
 		{"results", "Bureau en cours", map[string]any{"size": 10}},
-		{"count", "Bureau en cours", map[string]any{"field": "assignee"}},
 		{"assigned", "", map[string]any{"size": 10}},
 	},
 }
@@ -150,8 +150,11 @@ func ensureFilter(ctx context.Context, conn *sql.DB, users *sessions, ids map[st
 		return 0, err
 	}
 	var made struct{ ID int64 }
-	if err := c.call("POST", "/api/filters", map[string]any{"name": f.name, "query": f.query, "shares": shares},
-		&made); err != nil {
+	in := map[string]any{"name": f.name, "query": f.query, "shares": shares}
+	if f.columns != nil {
+		in["columns"] = f.columns
+	}
+	if err := c.call("POST", "/api/filters", in, &made); err != nil {
 		return 0, err
 	}
 	path := "/api/filters/" + strconv.FormatInt(made.ID, 10)

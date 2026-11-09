@@ -509,7 +509,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DashboardTooManyGadgets:    "Una dashboard contiene al massimo %d gadget.",
 	DashboardGadgetKindUnknown: "Gadget sconosciuto: %s.",
 	DashboardFilterRequired:    "Scegli un filtro che puoi vedere.",
-	DashboardCountFieldUnknown: "Un conteggio non può raggruppare per %s.",
 	DashboardSizeInvalid:       "Un elenco mostra da 1 a %d ticket.",
 	DashboardColumnsTooMany:    "Un elenco mostra al massimo %d colonne.",
 
