@@ -2,8 +2,9 @@ package api
 
 // The personal dashboard on the home page: an ordered list of gadgets, each
 // on a saved filter (its results, or its issues counted by a field) or built
-// in (assigned to me, reported by me, recently updated). Until the user edits
-// it, the dashboard holds the built-in gadgets that the home page used to show.
+// in (assigned to me, reported by me, recently updated, watched, due within a
+// week). Until the user edits it, the dashboard holds the built-in gadgets
+// that the home page used to show.
 
 import (
 	"context"
@@ -27,6 +28,8 @@ const (
 	gadgetAssigned = "assigned"
 	gadgetReported = "reported"
 	gadgetRecent   = "recent"
+	gadgetWatching = "watching"
+	gadgetDue      = "due"
 
 	maxGadgets    = 20
 	maxGadgetSize = 50
@@ -210,7 +213,7 @@ func checkGadget(g *gadgetIn, before map[int64]gadgetRow, visible map[int64]*fil
 		} else if g.Filter == nil || visible[*g.Filter] == nil {
 			return fail(http.StatusBadRequest, i18n.DashboardFilterRequired)
 		}
-	case gadgetAssigned, gadgetReported, gadgetRecent:
+	case gadgetAssigned, gadgetReported, gadgetRecent, gadgetWatching, gadgetDue:
 		g.Filter = nil
 	default:
 		return failf(http.StatusBadRequest, i18n.DashboardGadgetKindUnknown, g.Kind)

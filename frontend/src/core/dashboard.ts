@@ -16,7 +16,10 @@ import {
 import { toJql } from './filters-url.js';
 import { format, formatOrder, parse, quote, type SortTerm } from './jql.js';
 
-export type GadgetKind = 'results' | 'count' | 'assigned' | 'reported' | 'recent';
+export type GadgetKind =
+  'results' | 'count' | 'assigned' | 'reported' | 'recent' | 'watching' | 'due';
+
+export type BuiltinKind = Exclude<GadgetKind, 'results' | 'count'>;
 
 export const GADGET_KINDS: readonly GadgetKind[] = [
   'results',
@@ -24,6 +27,17 @@ export const GADGET_KINDS: readonly GadgetKind[] = [
   'assigned',
   'reported',
   'recent',
+  'watching',
+  'due',
+];
+
+/** The ready-made views the New view menu offers, in its order. */
+export const BUILTIN_KINDS: readonly BuiltinKind[] = [
+  'assigned',
+  'reported',
+  'recent',
+  'watching',
+  'due',
 ];
 
 /** The fields a count gadget groups by: those the server counts (GET /api/issues/facets). */
@@ -76,11 +90,13 @@ export interface GadgetInput {
   config: GadgetConfig;
 }
 
-/** The queries of the built-in gadgets. */
-export const BUILTIN_QUERIES: Record<'assigned' | 'reported' | 'recent', string> = {
+/** The queries of the built-in gadgets; backend/tests/dashboard_test.go runs the JQL ones. */
+export const BUILTIN_QUERIES: Record<BuiltinKind, string> = {
   assigned: '@moi est:ouvert tri:priorité',
   reported: 'par:@moi est:ouvert',
   recent: 'tri:maj',
+  watching: 'watcher = currentUser() ORDER BY updated DESC',
+  due: 'statusCategory != Done AND due >= startOfDay() AND due <= 7d ORDER BY due ASC',
 };
 
 export function onFilter(kind: GadgetKind): kind is 'results' | 'count' {
@@ -193,6 +209,13 @@ export function swapToFilter(gadgets: Gadget[], id: number, filter: number): Gad
   if (i < 0) next.push(swapped);
   else next[i] = swapped;
   return next;
+}
+
+/** Whether the space already shows the built-in view, or a view on the filter. */
+export function inSpace(gadgets: Gadget[], what: BuiltinKind | { filter: number }): boolean {
+  return gadgets.some((g) =>
+    typeof what === 'string' ? g.kind === what : onFilter(g.kind) && g.filter?.id === what.filter,
+  );
 }
 
 /** The gadgets with these ones folded or unfolded. */

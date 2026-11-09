@@ -39,6 +39,14 @@ describe('one project', () => {
   it('limits the work queries to it', () => {
     expect(scopeQuery('par:@moi est:ouvert', 'DEMO')).toBe('projet:DEMO par:@moi est:ouvert');
     expect(scopeGadgetQuery('tri:maj', 'recent', 'DEMO')).toBe('projet:DEMO tri:maj');
+    expect(
+      scopeGadgetQuery(
+        'watcher = currentUser() OR due <= 7d ORDER BY updated DESC',
+        'watching',
+        'DEMO',
+      ),
+    ).toBe('project = DEMO AND (watcher = currentUser() OR due <= 7d) ORDER BY updated DESC');
+    expect(scopeQuery('ORDER BY due ASC', 'DEMO')).toBe('project = DEMO ORDER BY due ASC');
   });
 
   it('leaves saved filter gadgets to their own projects', () => {

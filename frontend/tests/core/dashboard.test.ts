@@ -5,6 +5,7 @@ import {
   clickGadgetSort,
   copyOnEditPath,
   gadgetQuery,
+  inSpace,
   jqlValue,
   narrowedJql,
   queryOrder,
@@ -15,6 +16,7 @@ import {
   viewJql,
   type Gadget,
 } from '../../src/core/dashboard.js';
+import { filtersToJql, jqlToFilters } from '../../src/core/filters.js';
 import { toJql } from '../../src/core/filters-url.js';
 
 const gadget = (over: Partial<Gadget>): Gadget => ({
@@ -161,5 +163,23 @@ describe('copyOnEditPath', () => {
     expect(url.pathname).toBe('/views/new');
     expect(url.searchParams.get('jql')).toBe(jql);
     expect(url.searchParams.get('gadget')).toBe('4');
+  });
+});
+
+describe('the ready-made views', () => {
+  it('open as filters, unchanged', () => {
+    for (const kind of ['watching', 'due'] as const) {
+      const read = jqlToFilters(BUILTIN_QUERIES[kind]);
+      expect(read.ok && filtersToJql(read.state)).toBe(BUILTIN_QUERIES[kind]);
+    }
+  });
+
+  it('are in the space when a gadget shows them', () => {
+    const gadgets = [gadget({ kind: 'watching', filter: null }), gadget({ kind: 'count' })];
+    expect(inSpace(gadgets, 'watching')).toBe(true);
+    expect(inSpace(gadgets, 'due')).toBe(false);
+    expect(inSpace(gadgets, { filter: 3 })).toBe(true);
+    expect(inSpace(gadgets, { filter: 4 })).toBe(false);
+    expect(inSpace([gadget({ unavailable: true, filter: null })], { filter: 3 })).toBe(false);
   });
 });
