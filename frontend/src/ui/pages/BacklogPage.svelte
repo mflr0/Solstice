@@ -2,8 +2,13 @@
   import { tick } from 'svelte';
   import {
     applyMove,
+    cardFacets,
     dropIndex,
+    filterCards,
+    hasCardFilter,
+    knownCardFilter,
     neighbours,
+    parseCardFilter,
     parseQuick,
     staysInPlace,
     stepMove,
@@ -16,13 +21,14 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import CardFilters from '../board/CardFilters.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
-  import QuickFilters from '../board/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -56,6 +62,18 @@
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
+  const me = $derived(session.me?.id ?? null);
+  const asked = $derived(parseCardFilter((name) => router.param(name)));
+  const facets = $derived(
+    cardFacets(
+      cards ?? [],
+      asked,
+      { types: session.meta?.issueTypes, priorities: session.meta?.priorities },
+      me,
+    ),
+  );
+  const cardFilter = $derived(knownCardFilter(asked, facets));
+  const filtered = $derived(quick.length > 0 || hasCardFilter(cardFilter));
 
   function loadDetail() {
     api
@@ -115,7 +133,7 @@
   const boardColumn = $derived(kanban ? detail?.columns[1] : undefined);
 
   const sections = $derived.by((): Section[] => {
-    const all = cards ?? [];
+    const all = cards ? filterCards(cards, cardFilter, me) : [];
     return [
       ...(boardColumn ? [{ id: BOARD, sprint: null, cards: [] }] : []),
       ...sprints.map((s) => ({ id: s.id, sprint: s, cards: all.filter((c) => c.sprint === s.id) })),
@@ -333,7 +351,7 @@
     }}
   >
     <BoardHeader detail={d} view="backlog" />
-    <QuickFilters filters={d.quickFilters} selected={quick} />
+    <CardFilters filter={cardFilter} {facets} quickFilters={d.quickFilters} {quick} />
 
     {#if listError}
       <p class="error-text" role="alert">{listError}</p>
@@ -357,8 +375,11 @@
                 >
                 <button
                   class="btn btn-small btn-quiet"
-                  onclick={() => (deleting = { sprint: s, issues: section.cards.length })}
-                  >{t.boards.deleteSprint}</button
+                  onclick={() =>
+                    (deleting = {
+                      sprint: s,
+                      issues: (cards ?? []).filter((c) => c.sprint === s.id).length,
+                    })}>{t.boards.deleteSprint}</button
                 >
                 <button
                   class="btn btn-small"
@@ -404,7 +425,11 @@
                 />
               {:else}
                 <p class="drop-empty">
-                  {section.id === 0 ? t.boards.backlogEmpty : t.boards.dropHere}
+                  {section.id !== BOARD && filtered
+                    ? t.boards.emptyFiltered
+                    : section.id === 0
+                      ? t.boards.backlogEmpty
+                      : t.boards.dropHere}
                   {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
                     ></span>{/if}
                 </p>
