@@ -10,22 +10,31 @@
    */
   interface Props {
     label: string;
+    /** The button's and the panel's accessible name, when the label alone is too short. */
+    name?: string | undefined;
+    /** A sign drawn before the label ("+"), hidden from screen readers. */
+    lead?: string | undefined;
     /** The chosen values, as they read on the button. */
     summary?: string | undefined;
     active?: boolean | undefined;
     open: boolean;
     onclear?: (() => void) | undefined;
-    /** Wider panel (dates, the "more" list). */
+    /** Wider panel (dates, the field picker). */
     wide?: boolean | undefined;
+    /** The panel stays where it opened while the button moves (chips added before it). */
+    pinned?: boolean | undefined;
     children: Snippet;
   }
   let {
     label,
+    name,
+    lead,
     summary = '',
     active = false,
     open = $bindable(),
     onclear,
     wide = false,
+    pinned = false,
     children,
   }: Props = $props();
 
@@ -44,14 +53,22 @@
   function fit(el: HTMLElement) {
     // The phone's sheet is fixed and already spans the screen.
     if (getComputedStyle(el).position === 'fixed') return;
+    // Pinned, the panel is placed in the wrap's positioned ancestor, under the button.
+    let left = 0;
+    if (pinned && button) {
+      left = button.offsetLeft;
+      el.style.left = `${left}px`;
+      el.style.top = `${button.offsetTop + button.offsetHeight + 4}px`;
+    }
     const r = el.getBoundingClientRect();
     const edge = document.documentElement.clientWidth - 8;
-    if (r.right > edge) el.style.left = `${Math.max(8 - r.left, edge - r.right)}px`;
+    if (r.right > edge) el.style.left = `${left + Math.max(8 - r.left, edge - r.right)}px`;
   }
 </script>
 
 <div
   class="filter-wrap"
+  class:pinned
   bind:this={wrap}
   use:outside={() => close(false)}
   onfocusout={(e) => {
@@ -68,13 +85,15 @@
     class:with-clear={active && !!onclear}
     aria-expanded={open}
     aria-controls={open ? id : undefined}
+    aria-label={name}
     onclick={() => (open ? close(false) : (open = true))}
   >
+    {#if lead}<span class="lead" aria-hidden="true">{lead}</span>{/if}
     <span class="filter-name"
       >{label}{#if summary}<span class="sep">{t.common.labelSep}</span>{/if}</span
     >
     {#if summary}<span class="filter-value">{summary}</span>{/if}
-    <span class="caret" aria-hidden="true">▾</span>
+    {#if !lead}<span class="caret" aria-hidden="true">▾</span>{/if}
   </button>
   {#if active && onclear}
     <button
@@ -94,12 +113,12 @@
       class:wide
       {id}
       role="dialog"
-      aria-label={label}
+      aria-label={name ?? label}
       tabindex="-1"
       use:fit
     >
       <div class="sheet-head">
-        <strong>{label}</strong>
+        <strong>{name ?? label}</strong>
         <button type="button" class="btn btn-quiet btn-small" onclick={() => close(true)}
           >{t.search.close}</button
         >
@@ -115,6 +134,10 @@
     display: inline-flex;
     min-width: 0;
     max-width: 100%;
+  }
+
+  .filter-wrap.pinned {
+    position: static;
   }
 
   .filter-button {
@@ -144,6 +167,11 @@
     text-overflow: ellipsis;
     font-weight: 400;
     max-width: 22ch;
+  }
+
+  .lead {
+    font-size: 0.9375rem;
+    line-height: 1;
   }
 
   .caret {
