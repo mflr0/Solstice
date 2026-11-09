@@ -26,6 +26,7 @@ import type {
   ImportSource,
   ImportView,
   KeyCheck,
+  Onboarding,
   ProjectInput,
   ProjectPatch,
   ProjectGroup,
@@ -95,6 +96,9 @@ export const adminApi = {
   settings: () => request<GeneralSettings>('GET', '/api/admin/settings'),
   saveSettings: (input: GeneralSettingsInput) =>
     request<GeneralSettings>('PUT', '/api/admin/settings', input),
+  onboarding: () => request<Onboarding>('GET', '/api/admin/onboarding'),
+  saveOnboarding: (dismissed: boolean) =>
+    request<Onboarding>('PUT', '/api/admin/onboarding', { dismissed }),
 
   // Users.
   users: (q: string) => request<UserRow[]>('GET', `/api/admin/users${query({ q })}`),
