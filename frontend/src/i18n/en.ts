@@ -371,7 +371,13 @@ export const en = {
     lead: 'Lead',
     open: 'Open',
     uncategorised: 'Uncategorized',
-    empty: 'You don’t have access to any project.',
+    empty: 'No project yet',
+    emptyHintAdmin:
+      'A project holds issues, the boards that follow them, and the people who work on them. Create the first one.',
+    emptyHintMember: 'Ask an administrator to add you to a project.',
+    noIssues: 'No issue yet',
+    noIssuesHint:
+      'Issues created in this project show here, and its boards follow them from To do to Done.',
     settings: 'Settings',
     copyLink: 'Copy the project link',
     linkCopied: 'Link copied',
@@ -1027,7 +1033,9 @@ export const en = {
     activeSprint: 'Active sprint',
     project: 'Project',
     allProjects: 'All projects',
-    empty: 'You don’t have access to any board.',
+    empty: 'No board yet',
+    emptyHint:
+      'A board shows a project’s issues in columns, from To do to Done. Create one to follow the work.',
     emptyProject: (key: string) => `No boards for project ${key}.`,
     count: (n: number) => plural(n, 'board', 'boards'),
     create: 'Create board',

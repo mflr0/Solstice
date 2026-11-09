@@ -8,7 +8,7 @@
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ProjectDialog from '../admin/ProjectDialog.svelte';
-  import Illustration from '../Illustration.svelte';
+  import EmptyState from '../EmptyState.svelte';
   import Who from '../Who.svelte';
 
   /** Every project one may see, grouped by category. */
@@ -56,8 +56,16 @@
   {:else if !projects}
     <p class="muted loading">{t.common.loading}</p>
   {:else if projects.length === 0}
-    <Illustration kind="empty" />
-    <p class="empty">{t.projects.empty}</p>
+    <EmptyState
+      message={t.projects.empty}
+      hint={session.me?.admin ? t.projects.emptyHintAdmin : t.projects.emptyHintMember}
+    >
+      {#if session.me?.admin}
+        <button class="btn btn-primary" onclick={() => (creating = true)}
+          >{t.projects.newProject}</button
+        >
+      {/if}
+    </EmptyState>
   {:else}
     {#each groups as [category, list] (category)}
       <section>

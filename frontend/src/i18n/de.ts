@@ -381,7 +381,13 @@ export const de: Messages = {
     lead: 'Leitung',
     open: 'Offen',
     uncategorised: 'Ohne Kategorie',
-    empty: 'Sie haben auf kein Projekt Zugriff.',
+    empty: 'Noch kein Projekt',
+    emptyHintAdmin:
+      'Ein Projekt enthält Vorgänge, die Boards, die sie verfolgen, und die Personen, die daran arbeiten. Legen Sie das erste an.',
+    emptyHintMember: 'Bitten Sie einen Administrator, Sie zu einem Projekt hinzuzufügen.',
+    noIssues: 'Noch kein Vorgang',
+    noIssuesHint:
+      'In diesem Projekt erstellte Vorgänge erscheinen hier, und seine Boards verfolgen sie von Zu erledigen bis Erledigt.',
     settings: 'Einstellungen',
     copyLink: 'Projektlink kopieren',
     linkCopied: 'Link kopiert',
@@ -1041,7 +1047,9 @@ export const de: Messages = {
     activeSprint: 'Aktiver Sprint',
     project: 'Projekt',
     allProjects: 'Alle Projekte',
-    empty: 'Sie haben auf kein Board Zugriff.',
+    empty: 'Noch kein Board',
+    emptyHint:
+      'Ein Board zeigt die Vorgänge eines Projekts in Spalten, von Zu erledigen bis Erledigt. Legen Sie eins an, um die Arbeit zu verfolgen.',
     emptyProject: (key: string) => `Keine Boards für das Projekt ${key}.`,
     count: (n: number) => plural(n, 'Board', 'Boards'),
     create: 'Board erstellen',

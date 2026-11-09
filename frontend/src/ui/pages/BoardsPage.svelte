@@ -10,7 +10,7 @@
   import { notify } from '../../lib/ui.svelte.js';
   import BoardKindPicker from '../BoardKindPicker.svelte';
   import Dropdown from '../Dropdown.svelte';
-  import Illustration from '../Illustration.svelte';
+  import EmptyState from '../EmptyState.svelte';
   import Modal from '../Modal.svelte';
   import Who from '../Who.svelte';
 
@@ -140,8 +140,12 @@
     {/if}
 
     {#if shown.length === 0}
-      <Illustration kind="empty" />
-      <p class="empty">{project ? t.boards.emptyProject(project) : t.boards.empty}</p>
+      <EmptyState
+        message={project ? t.boards.emptyProject(project) : t.boards.empty}
+        hint={t.boards.emptyHint}
+      >
+        <button class="btn btn-primary" onclick={openCreate}>{t.boards.create}</button>
+      </EmptyState>
     {:else}
       <h2 class="section-title">
         {project || t.boards.allProjects} <span class="count">{t.boards.count(shown.length)}</span>

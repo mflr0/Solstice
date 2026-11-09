@@ -5,9 +5,11 @@
   import type { ProjectDetail } from '../../core/types.js';
   import { formatDay, t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { notify, openCreate } from '../../lib/ui.svelte.js';
   import { ICONS } from '../editor/icons.js';
+  import EmptyState from '../EmptyState.svelte';
   import IssueSearch from '../search/IssueSearch.svelte';
   import Who from '../Who.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
@@ -22,6 +24,8 @@
   const DEFAULT_JQL = 'statusCategory != Done';
   let detail = $state<ProjectDetail | null>(null);
   let error = $state('');
+  /** Whether the project holds any issue, whatever the search; null until known. */
+  let hasIssues = $state<boolean | null>(null);
 
   /** This page, its list filtered by a field's value (a version, a component). */
   function filterHref(key: string, field: string, value: string): string {
@@ -70,6 +74,27 @@
         if (d.project.key !== key) router.navigate(paths.project(d.project.key), { replace: true });
       })
       .catch((e: unknown) => (error = errorMessage(e)));
+  });
+
+  $effect(() => {
+    const key = projectKey;
+    hasIssues = null;
+    const probe = () =>
+      api
+        .issues({ project: key, size: 1 })
+        .then((r) => {
+          if (key === projectKey) hasIssues = r.total > 0;
+        })
+        // The search says what went wrong.
+        .catch(() => {
+          if (key === projectKey) hasIssues = true;
+        });
+    void probe();
+    return live.onChange(
+      debounce(() => {
+        if (hasIssues === false) void probe();
+      }, 700),
+    );
   });
 </script>
 
@@ -148,15 +173,28 @@
       </dl>
     {/if}
 
-    <IssueSearch
-      project={p.key}
-      fallback={DEFAULT_JQL}
-      selectable
-      saveAs={(q) => {
-        const jql = projectViewJql(p.key, q);
-        return jql === null ? null : searchHref(jql);
-      }}
-    />
+    {#if hasIssues === null}
+      <p class="muted loading">{t.common.loading}</p>
+    {:else if !hasIssues}
+      <EmptyState message={t.projects.noIssues} hint={t.projects.noIssuesHint}>
+        {#if detail.can.create}
+          <button class="btn btn-primary" onclick={() => openCreate({ project: p.key })}
+            >{t.nav.create}</button
+          >
+        {/if}
+        <a class="btn" href={paths.boards(p.key)}>{t.boards.title}</a>
+      </EmptyState>
+    {:else}
+      <IssueSearch
+        project={p.key}
+        fallback={DEFAULT_JQL}
+        selectable
+        saveAs={(q) => {
+          const jql = projectViewJql(p.key, q);
+          return jql === null ? null : searchHref(jql);
+        }}
+      />
+    {/if}
   </div>
 {/if}
 

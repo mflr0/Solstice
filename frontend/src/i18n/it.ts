@@ -376,7 +376,13 @@ export const it: Messages = {
     lead: 'Responsabile',
     open: 'Aperti',
     uncategorised: 'Senza categoria',
-    empty: 'Non hai accesso a nessun progetto.',
+    empty: 'Ancora nessun progetto',
+    emptyHintAdmin:
+      'Un progetto raccoglie i ticket, le board che li seguono e le persone che ci lavorano. Crea il primo.',
+    emptyHintMember: 'Chiedi a un amministratore di aggiungerti a un progetto.',
+    noIssues: 'Ancora nessun ticket',
+    noIssuesHint:
+      'I ticket creati in questo progetto compaiono qui, e le sue board li seguono da Da fare a Completato.',
     settings: 'Impostazioni',
     copyLink: 'Copia il link del progetto',
     linkCopied: 'Link copiato',
@@ -1034,7 +1040,9 @@ export const it: Messages = {
     activeSprint: 'Sprint in corso',
     project: 'Progetto',
     allProjects: 'Tutti i progetti',
-    empty: 'Non hai accesso a nessuna board.',
+    empty: 'Ancora nessuna board',
+    emptyHint:
+      'Una board mostra i ticket di un progetto in colonne, da Da fare a Completato. Creane una per seguire il lavoro.',
     emptyProject: (key: string) => `Nessuna board per il progetto ${key}.`,
     count: (n: number) => plural(n, 'board', 'board'),
     create: 'Crea una board',
