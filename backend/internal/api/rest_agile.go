@@ -142,14 +142,7 @@ func (s *Server) agileBoardConfiguration(w http.ResponseWriter, r *http.Request)
 		for _, st := range c.Statuses {
 			statuses = append(statuses, map[string]any{"id": st.ID, "self": o.api + "/status/" + st.ID})
 		}
-		col := map[string]any{"name": c.Name, "statuses": statuses}
-		if c.Min != nil {
-			col["min"] = *c.Min
-		}
-		if c.Max != nil {
-			col["max"] = *c.Max
-		}
-		columns = append(columns, col)
+		columns = append(columns, map[string]any{"name": c.Name, "statuses": statuses})
 	}
 	out := o.boardJSON(sum)
 	out["filter"] = map[string]any{"id": o.id(view.Board.FilterID), "self": o.api + "/filter/" + o.id(view.Board.FilterID)}

@@ -5,8 +5,10 @@ package tests
 // ids, and moves that send a column and a rank in one request.
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"solstice/internal/jirafixture"
@@ -16,8 +18,6 @@ type boardSettings struct {
 	Columns []struct {
 		ID       int64       `json:"id"`
 		Name     string      `json:"name"`
-		Min      *int        `json:"min"`
-		Max      *int        `json:"max"`
 		Statuses []statusRef `json:"statuses"`
 	} `json:"columns"`
 	QuickFilters []boardQuery `json:"quickFilters"`
@@ -87,7 +87,7 @@ func TestBoardColumnRemovalAndStatusMove(t *testing.T) {
 	marie.call("PUT", path, map[string]any{"columns": []map[string]any{
 		{"name": "Nouvelle", "statuses": []string{}},
 		{"id": first.ID, "name": first.Name, "statuses": kept},
-		{"id": second.ID, "name": "Deux", "min": 1, "max": 2, "statuses": append(statusIDs(second.Statuses), moved)},
+		{"id": second.ID, "name": "Deux", "statuses": append(statusIDs(second.Statuses), moved)},
 	}}, 200, nil)
 
 	b = readBoard(t, marie, path)
@@ -105,9 +105,6 @@ func TestBoardColumnRemovalAndStatusMove(t *testing.T) {
 	if got2.ID != second.ID || got2.Name != "Deux" || !slices.Equal(statusIDs(got2.Statuses), want2) {
 		t.Errorf("column %d: %+v, want Deux with %v", second.ID, got2, want2)
 	}
-	if got2.Min == nil || *got2.Min != 1 || got2.Max == nil || *got2.Max != 2 {
-		t.Errorf("limits of Deux: %v %v", got2.Min, got2.Max)
-	}
 	if n := rowCount(t, `board_column_statuses WHERE status_id = ? AND column_id IN (?, ?)`, moved, first.ID, second.ID); n != "1" {
 		t.Errorf("status %s is in %s columns, want 1", moved, n)
 	}
@@ -117,15 +114,36 @@ func TestBoardColumnRemovalAndStatusMove(t *testing.T) {
 	if n := rowCount(t, `board_column_statuses WHERE column_id = ?`, last.ID); n != "0" {
 		t.Errorf("the removed column keeps %s statuses", n)
 	}
+}
 
-	// Limits given and then left out are cleared.
-	marie.call("PUT", path, map[string]any{"columns": []map[string]any{
-		{"id": added.ID, "name": "Nouvelle", "statuses": []string{}},
-		{"id": first.ID, "name": first.Name, "statuses": kept},
-		{"id": second.ID, "name": "Deux", "statuses": want2},
-	}}, 200, nil)
-	if c := readBoard(t, marie, path).Columns[2]; c.Min != nil || c.Max != nil {
-		t.Errorf("limits after leaving them out: %v %v", c.Min, c.Max)
+// Columns have no WIP limits: a limit is an unknown field, and none is shown.
+func TestBoardColumnLimitsGone(t *testing.T) {
+	marie := login(t, "marie.durand", jirafixture.Password)
+	path := ownBoard(t, marie)
+	before := readBoard(t, marie, path)
+	for _, limit := range []string{"min", "max"} {
+		var columns []map[string]any
+		for _, c := range before.Columns {
+			columns = append(columns, map[string]any{"id": c.ID, "name": c.Name, "statuses": statusIDs(c.Statuses)})
+		}
+		columns[0][limit] = 1
+		status, msg, _ := marie.errorIn("en", "PUT", path, map[string]any{"columns": columns})
+		if status != 400 || !strings.Contains(msg, `unknown field "`+limit+`"`) {
+			t.Errorf("column with %s: %d %q, want 400 unknown field", limit, status, msg)
+		}
+	}
+	_, body := marie.do("GET", path, nil)
+	var raw struct{ Columns []map[string]any }
+	if err := json.Unmarshal(body, &raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range raw.Columns {
+		if _, ok := c["min"]; ok {
+			t.Errorf("column %v still has min", c["name"])
+		}
+		if _, ok := c["max"]; ok {
+			t.Errorf("column %v still has max", c["name"])
+		}
 	}
 }
 

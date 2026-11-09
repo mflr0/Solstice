@@ -468,7 +468,6 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	BoardEstimationUnknown:       "Stima: timeoriginalestimate o customfield_<id>.",
 	BoardColumnRequired:          "Una board deve avere almeno una colonna.",
 	BoardColumnNameRequired:      "Ogni colonna deve avere un nome.",
-	BoardColumnLimits:            "Colonna «%s»: il minimo supera il massimo.",
 	BoardColumnUnknown:           "Colonna sconosciuta in questa board.",
 	BoardStatusInTwoColumns:      "Lo stato «%s» è in due colonne.",
 	BoardBacklogColumns:          "Un backlog Kanban richiede almeno due colonne, la prima con uno stato.",
