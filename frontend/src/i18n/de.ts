@@ -1084,7 +1084,7 @@ export const de: Messages = {
     truncated:
       'Nur die ersten 1.000 Vorgänge werden angezeigt: Grenzen Sie den Board-Filter ein oder verwenden Sie einen Schnellfilter.',
     emptyBoard: 'Keine Vorgänge auf diesem Board.',
-    emptyFiltered: 'Keine Vorgänge entsprechen diesen Schnellfiltern.',
+    emptyFiltered: 'Keine Vorgänge entsprechen diesen Filtern.',
     noActiveSprint: 'Kein aktiver Sprint.',
     noActiveSprintHint: 'Sprints werden im Backlog geplant und gestartet.',
     openBacklog: 'Backlog öffnen',

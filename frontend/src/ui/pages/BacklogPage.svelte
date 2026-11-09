@@ -5,11 +5,13 @@
     dropIndex,
     neighbours,
     parseQuick,
+    readBoardSearch,
     staysInPlace,
     stepMove,
     totalEstimate,
   } from '../../core/board.js';
   import type { BoardCard as Card, BoardDetail, CardMove, Sprint } from '../../core/board-types.js';
+  import { filtersToJql, type FilterState } from '../../core/filters.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { listKeys } from '../../lib/actions.js';
@@ -23,6 +25,7 @@
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import QuickFilters from '../board/QuickFilters.svelte';
+  import FilterBar from '../search/FilterBar.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -56,6 +59,16 @@
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
+  const search = $derived(readBoardSearch(router.param('jql')));
+  const filtered = $derived(quick.length > 0 || search.jql !== undefined);
+
+  // One history entry per interaction with the filter row, as on the search page.
+  let lastBurst: string | null = null;
+  function applyFilters(next: FilterState, burst: string) {
+    const replace = burst === lastBurst;
+    lastBurst = burst;
+    router.setParams({ jql: filtersToJql(next) }, { replace });
+  }
 
   function loadDetail() {
     api
@@ -74,11 +87,11 @@
   let pending = 0;
   let seq = 0;
 
-  async function loadList(id: number, q: string) {
+  async function loadList(id: number, q: string, jql: string | undefined) {
     if (pending > 0) return;
     const mine = ++seq;
     try {
-      const res = await api.backlog(id, q || undefined);
+      const res = await api.backlog(id, { quick: q || undefined, jql });
       if (mine !== seq || pending > 0) return;
       sprints = res.sprints.map((s) => s.sprint);
       cards = [
@@ -93,11 +106,11 @@
   }
 
   function reload() {
-    void loadList(boardId, quickParam);
+    void loadList(boardId, quickParam, search.jql);
   }
 
   $effect(() => {
-    void loadList(boardId, quickParam);
+    void loadList(boardId, quickParam, search.jql);
   });
 
   $effect(() => live.onChange(debounce(reload, 400)));
@@ -333,6 +346,10 @@
     }}
   >
     <BoardHeader detail={d} view="backlog" />
+    <div class="board-search">
+      <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+    </div>
+    {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
     <QuickFilters filters={d.quickFilters} selected={quick} />
 
     {#if listError}
@@ -404,7 +421,11 @@
                 />
               {:else}
                 <p class="drop-empty">
-                  {section.id === 0 ? t.boards.backlogEmpty : t.boards.dropHere}
+                  {section.id !== 0
+                    ? t.boards.dropHere
+                    : filtered
+                      ? t.boards.emptyFiltered
+                      : t.boards.backlogEmpty}
                   {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
                     ></span>{/if}
                 </p>
@@ -456,6 +477,10 @@
   /* As wide as the board, so switching views keeps the header in place. */
   .backlog-page {
     max-width: 102.5rem;
+  }
+
+  .board-search {
+    margin-bottom: 10px;
   }
 
   .notice {

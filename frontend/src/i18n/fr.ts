@@ -1076,7 +1076,7 @@ export const fr: Messages = {
     truncated:
       'Seuls les 1 000 premiers tickets sont affichés : resserrez le filtre du tableau ou utilisez un filtre rapide.',
     emptyBoard: 'Aucun ticket sur ce tableau.',
-    emptyFiltered: 'Aucun ticket ne correspond à ces filtres rapides.',
+    emptyFiltered: 'Aucun ticket ne correspond à ces filtres.',
     noActiveSprint: 'Aucun sprint en cours.',
     noActiveSprintHint: 'Les sprints se préparent et se démarrent depuis le backlog.',
     openBacklog: 'Ouvrir le backlog',

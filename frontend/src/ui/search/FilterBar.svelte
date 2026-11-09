@@ -47,8 +47,17 @@
     autofocus?: boolean | undefined;
     /** Buttons for the whole search, at the right end of the row. */
     tools?: Snippet | undefined;
+    /** Issues per value in the lists; off where the search's counts aren't the page's (boards). */
+    valueCounts?: boolean | undefined;
   }
-  const { filters, onchange, project, autofocus = false, tools }: Props = $props();
+  const {
+    filters,
+    onchange,
+    project,
+    autofocus = false,
+    tools,
+    valueCounts = true,
+  }: Props = $props();
 
   type Field = ListField | DateField;
   const GROUPS: { id: 'common' | 'dates' | 'planning'; fields: Field[] }[] = [
@@ -346,7 +355,7 @@
     const mine = ++countSeq;
     counts = null;
     const field = FACET_FIELDS.find((f) => f === id);
-    if (!field) return;
+    if (!field || !valueCounts) return;
     try {
       const r = await api.facets({ jql: facetJql(filters, field), project, fields: field });
       if (mine === countSeq) counts = { field, values: r.facets[field] ?? {} };

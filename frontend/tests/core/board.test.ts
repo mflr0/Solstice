@@ -10,6 +10,7 @@ import {
   legacyBoardPath,
   neighbours,
   parseQuick,
+  readBoardSearch,
   sprintEnd,
   staysInPlace,
   stepMove,
@@ -270,6 +271,25 @@ describe('sprint dates', () => {
   it('counts days forward across months', () => {
     expect(dayAfter(14, now)).toBe('2026-10-27');
     expect(dayAfter(20, now)).toBe('2026-11-02');
+  });
+});
+
+describe('the filter row in the address', () => {
+  it('sends what the row can show', () => {
+    const r = readBoardSearch(' assignee = currentUser() AND text ~ "panier" ');
+    expect(r.jql).toBe('assignee = currentUser() AND text ~ "panier"');
+    expect(r.filters.text).toBe('panier');
+    expect(r.refused).toBe(false);
+  });
+
+  it('sends nothing for no query', () => {
+    for (const p of [null, '', '  '])
+      expect(readBoardSearch(p)).toMatchObject({ jql: undefined, refused: false });
+  });
+
+  it('refuses, and sends nothing for, a query the row cannot show', () => {
+    for (const p of ['status = Done OR assignee is EMPTY', 'summary ~'])
+      expect(readBoardSearch(p)).toMatchObject({ jql: undefined, refused: true });
   });
 });
 

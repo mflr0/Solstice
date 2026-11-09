@@ -1070,7 +1070,7 @@ export const en = {
     truncated:
       'Only the first 1,000 issues are shown: narrow the board’s filter or use a quick filter.',
     emptyBoard: 'No issues on this board.',
-    emptyFiltered: 'No issues match these quick filters.',
+    emptyFiltered: 'No issues match these filters.',
     noActiveSprint: 'No active sprint.',
     noActiveSprintHint: 'Sprints are planned and started from the backlog.',
     openBacklog: 'Open the backlog',

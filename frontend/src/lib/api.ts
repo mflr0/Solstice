@@ -444,10 +444,12 @@ export const api = {
   /** The groups the user may share with, in a project when one is given. */
   shareableGroups: (project?: number) =>
     request<IdName[]>('GET', `/api/groups/shareable${query({ project })}`),
-  boardCards: (id: number, params: { quick?: string | undefined; sprint?: number | undefined }) =>
-    request<BoardCards>('GET', `/api/boards/${id}/cards${query(params)}`),
-  backlog: (id: number, quick?: string) =>
-    request<Backlog>('GET', `/api/boards/${id}/backlog${query({ quick })}`),
+  boardCards: (
+    id: number,
+    params: { quick?: string | undefined; jql?: string | undefined; sprint?: number | undefined },
+  ) => request<BoardCards>('GET', `/api/boards/${id}/cards${query(params)}`),
+  backlog: (id: number, params: { quick?: string | undefined; jql?: string | undefined }) =>
+    request<Backlog>('GET', `/api/boards/${id}/backlog${query(params)}`),
   reportSprints: (id: number) => request<Sprint[]>('GET', `/api/boards/${id}/reports/sprints`),
   sprintReport: (id: number, sprint: number) =>
     request<SprintReport>('GET', `/api/boards/${id}/sprints/${sprint}/report`),

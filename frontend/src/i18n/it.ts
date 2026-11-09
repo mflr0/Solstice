@@ -1077,7 +1077,7 @@ export const it: Messages = {
     truncated:
       'Sono mostrati solo i primi 1.000 ticket: restringi il filtro della board o usa un filtro rapido.',
     emptyBoard: 'Nessun ticket su questa board.',
-    emptyFiltered: 'Nessun ticket corrisponde a questi filtri rapidi.',
+    emptyFiltered: 'Nessun ticket corrisponde a questi filtri.',
     noActiveSprint: 'Nessuno sprint in corso.',
     noActiveSprintHint: 'Gli sprint si preparano e si avviano dal backlog.',
     openBacklog: 'Apri il backlog',

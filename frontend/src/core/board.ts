@@ -13,6 +13,7 @@ import type {
   SwimlaneStrategy,
 } from './board-types.js';
 import type { IssueBrief, UserRef } from './types.js';
+import { emptyFilters, jqlToFilters, type FilterState } from './filters.js';
 import { isoDay, parseDay } from './dates.js';
 import { formatLocale } from '../i18n/format.js';
 
@@ -328,6 +329,24 @@ export function parseQuick(param: string | null): number[] {
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isInteger(n) && n > 0);
   return [...new Set(ids)];
+}
+
+/** The filter row's search kept in a board's address (?jql=). */
+export interface BoardSearch {
+  /** What the row shows; empty for a query it can't show. */
+  filters: FilterState;
+  /** The query to send; undefined for none, or for one the row can't show. */
+  jql: string | undefined;
+  /** The address holds a query the row can't show: the whole board is shown. */
+  refused: boolean;
+}
+
+export function readBoardSearch(param: string | null): BoardSearch {
+  const jql = param?.trim();
+  if (!jql) return { filters: emptyFilters(), jql: undefined, refused: false };
+  const r = jqlToFilters(jql);
+  if (!r.ok) return { filters: emptyFilters(), jql: undefined, refused: true };
+  return { filters: r.state, jql, refused: false };
 }
 
 /** Turns a quick filter on or off; the address form, '' when none is left. */

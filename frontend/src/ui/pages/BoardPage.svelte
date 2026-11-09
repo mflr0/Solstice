@@ -6,6 +6,7 @@
     groupLanes,
     neighbours,
     parseQuick,
+    readBoardSearch,
     staysInPlace,
     stepMove,
     wipState,
@@ -18,6 +19,7 @@
     CardMove,
     Sprint,
   } from '../../core/board-types.js';
+  import { filtersToJql, type FilterState } from '../../core/filters.js';
   import { paths } from '../../core/route.js';
   import type { IssueBrief } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
@@ -33,6 +35,7 @@
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import QuickFilters from '../board/QuickFilters.svelte';
+  import FilterBar from '../search/FilterBar.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import Illustration from '../Illustration.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -66,6 +69,16 @@
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
+  const search = $derived(readBoardSearch(router.param('jql')));
+  const filtered = $derived(quick.length > 0 || search.jql !== undefined);
+
+  // One history entry per interaction with the filter row, as on the search page.
+  let lastBurst: string | null = null;
+  function applyFilters(next: FilterState, burst: string) {
+    const replace = burst === lastBurst;
+    lastBurst = burst;
+    router.setParams({ jql: filtersToJql(next) }, { replace });
+  }
 
   function loadDetail() {
     api
@@ -85,11 +98,11 @@
   let pending = 0;
   let seq = 0;
 
-  async function loadCards(id: number, q: string) {
+  async function loadCards(id: number, q: string, jql: string | undefined) {
     if (pending > 0) return;
     const mine = ++seq;
     try {
-      const res = await api.boardCards(id, { quick: q || undefined });
+      const res = await api.boardCards(id, { quick: q || undefined, jql });
       if (mine !== seq || pending > 0) return;
       cards = res.cards;
       sprint = res.sprint;
@@ -101,11 +114,11 @@
   }
 
   function reload() {
-    void loadCards(boardId, quickParam);
+    void loadCards(boardId, quickParam, search.jql);
   }
 
   $effect(() => {
-    void loadCards(boardId, quickParam);
+    void loadCards(boardId, quickParam, search.jql);
   });
 
   $effect(() => live.onChange(debounce(reload, 400)));
@@ -369,6 +382,10 @@
       </SprintHead>
     {/if}
 
+    <div class="board-search">
+      <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+    </div>
+    {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
     <QuickFilters filters={d.quickFilters} selected={quick} />
 
     {#if cardsError}
@@ -382,7 +399,7 @@
     {:else}
       {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
       {#if cards.length === 0}
-        <p class="empty">{quick.length ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
+        <p class="empty">{filtered ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
       {/if}
       <div
         class="board"
@@ -517,6 +534,10 @@
 <style>
   .board-page {
     max-width: 102.5rem;
+  }
+
+  .board-search {
+    margin-bottom: 10px;
   }
 
   .notice {
