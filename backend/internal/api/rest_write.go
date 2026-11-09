@@ -105,8 +105,12 @@ func unknownValue(field, value string) error {
 	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueUnknown, value))
 }
 
-func invalidValue(field string) error {
-	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueInvalid, field))
+func invalidValue(field string) error { return invalidNamed(field, field) }
+
+// invalidNamed is invalidValue for a field whose message names it otherwise
+// than by its id, such as a custom field by its name.
+func invalidNamed(field, name string) error {
+	return fieldError(field, failf(http.StatusBadRequest, i18n.FieldValueInvalid, name))
 }
 
 // named finds an id among (id, name) pairs: by id, or by name ignoring case.

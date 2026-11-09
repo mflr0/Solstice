@@ -84,7 +84,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	case issue.KindEpicLink:
 		var key *string
 		if json.Unmarshal(raw, &key) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		b, _ := json.Marshal(key)
 		edit.ui["epic"] = b
@@ -99,11 +99,11 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 			case json.Unmarshal(raw, &list) == nil && len(list) == 1:
 				n = list[0]
 			default:
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 			v, err := n.Int64()
 			if err != nil {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 			id = v
 		}
@@ -131,18 +131,18 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	case issue.KindURL:
 		var v string
 		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		if strings.TrimSpace(v) != "" {
 			if !safeURL(v) {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 			addText("string", v)
 		}
 	case issue.KindTextField, issue.KindEpicLabel:
 		var v string
 		if json.Unmarshal(raw, &v) != nil || utf8.RuneCountInString(v) > sqlq.VarcharWidth {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		if strings.TrimSpace(v) != "" {
 			addText("string", v)
@@ -150,7 +150,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	case issue.KindTextArea:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		if strings.TrimSpace(v) != "" {
 			addText("text", v)
@@ -161,18 +161,18 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		if json.Unmarshal(raw, &str) == nil {
 			n = json.Number(strings.TrimSpace(str))
 		} else if json.Unmarshal(raw, &n) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		v, err := n.Float64()
 		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		w.rows = append(w.rows, customRaw{num: sql.NullFloat64{Float64: v, Valid: true}})
 		display = append(display, strconv.FormatFloat(v, 'f', -1, 64))
 	case issue.KindDatePicker:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		d, err := time.Parse(time.DateOnly, v)
 		if err != nil {
@@ -183,11 +183,11 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	case issue.KindDateTime:
 		var v string
 		if json.Unmarshal(raw, &v) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		t, ok := parseJiraTime(v)
 		if !ok {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		w.rows = append(w.rows, customRaw{date: sql.NullTime{Time: t.UTC(), Valid: true}})
 		display = append(display, t.UTC().Format(time.RFC3339))
@@ -200,12 +200,12 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		if f.Kind == issue.KindMultiSelect || f.Kind == issue.KindMultiCheckboxes {
 			var ok bool
 			if refs, ok = parseRefs(raw); !ok {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 		} else {
 			r, ok := parseRef(raw)
 			if !ok {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 			refs = []ref{r}
 		}
@@ -238,12 +238,12 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 		if f.Kind == issue.KindMultiUserPicker {
 			var ok bool
 			if refs, ok = parseRefs(raw); !ok {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 		} else {
 			r, ok := parseRef(raw)
 			if !ok {
-				return invalidValue(field)
+				return invalidNamed(field, f.Name)
 			}
 			refs = []ref{r}
 		}
@@ -262,7 +262,7 @@ func (s *Server) translateCustom(ctx context.Context, p *editProject, edit *jira
 	case "labels":
 		var v []string
 		if json.Unmarshal(raw, &v) != nil {
-			return invalidValue(field)
+			return invalidNamed(field, f.Name)
 		}
 		seen := map[string]bool{}
 		for _, l := range v {
