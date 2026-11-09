@@ -80,10 +80,6 @@
       "count": 5,
       "sha256": "d51cf76f9f2f933182a19371c57b255813bd2700e34bfb3d0d5dffd8c95240af"
     },
-    "filter_favourites": {
-      "count": 0,
-      "sha256": "3ca6affce7664961389195e6cf6d38567fd67310f1a473db0c0a9a479724ee50"
-    },
     "filter_shares": {
       "count": 8,
       "sha256": "0201ba2e94e28cc0b08865b481852cc072dc12a91767fcd77b9929713a0f34c9"

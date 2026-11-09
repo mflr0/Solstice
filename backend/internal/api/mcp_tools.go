@@ -128,7 +128,6 @@ var (
 	mcpFilterID   = mcpParam{name: "filterId", kind: "string", desc: "Filter id.", required: true, pathValue: "id"}
 	mcpFilterBody = []mcpParam{
 		{name: "description", kind: "string", desc: "Description; empty to clear it.", body: true},
-		{name: "favourite", kind: "boolean", desc: "Whether the filter is among the user's favourites.", body: true},
 		{name: "sharePermissions", kind: "objects", body: true, desc: `Who else sees the filter, replacing the current shares: ` +
 			`{"type":"global"}, {"type":"group","group":{"name":"..."}}, {"type":"project","project":{"key":"..."}}, ` +
 			`{"type":"projectRole","project":{"key":"..."},"role":{"id":"<group id>"}} (the project's members of that group) or {"type":"user","user":{"name":"..."}}.`},
@@ -393,10 +392,8 @@ var mcpTools = []mcpTool{
 	mcpWrite("delete_worklog", auth.ScopeWorklogs, http.MethodDelete, "/issue/{key}/worklog/{id}", (*Server).restDeleteWorklog,
 		"Deletes a work log.", mcpIssueKey, mcpWorklogID),
 
-	mcpRead("list_favourite_filters", "/filter/favourite", (*Server).restFavouriteFilters,
-		"The user's favourite saved filters: id, name, JQL, owner, shares."),
 	mcpRead("get_filter", "/filter/{id}", (*Server).restFilter,
-		"One saved filter the user can see: name, description, JQL, owner, shares, whether a favourite.",
+		"One saved filter the user can see: name, description, JQL, owner, shares.",
 		mcpFilterID),
 	mcpWrite("create_filter", auth.ScopeFilters, http.MethodPost, "/filter", (*Server).restSaveFilter,
 		"Saves a new filter owned by the user, private unless sharePermissions says otherwise.",
@@ -404,8 +401,7 @@ var mcpTools = []mcpTool{
 			{name: "jql", kind: "string", desc: "JQL query of the filter.", required: true, body: true}},
 			mcpFilterBody...)...),
 	mcpWrite("update_filter", auth.ScopeFilters, http.MethodPut, "/filter/{id}", (*Server).restSaveFilter,
-		"Changes a saved filter the user may edit; arguments left out stay as they are. "+
-			"favourite alone works on any filter the user can see.",
+		"Changes a saved filter the user may edit; arguments left out stay as they are.",
 		append([]mcpParam{mcpFilterID, {name: "name", kind: "string", desc: "New name.", body: true},
 			{name: "jql", kind: "string", desc: "New JQL query.", body: true}},
 			mcpFilterBody...)...),

@@ -2050,7 +2050,7 @@ export const it: Messages = {
       'comments:write': 'Aggiungere, modificare ed eliminare commenti.',
       'worklogs:write': 'Registrare il tempo e modificare i tempi registrati.',
       'agile:write': 'Board, sprint e posizione.',
-      'filters:write': 'Filtri, preferiti e iscrizioni.',
+      'filters:write': 'Filtri e iscrizioni.',
       'projects:write': 'Impostazioni dei progetti, versioni, componenti, workflow e stati.',
       'profile:write': 'Il tuo account, la tua dashboard e le impostazioni delle notifiche.',
       admin: 'L’amministrazione. Solo per gli amministratori.',

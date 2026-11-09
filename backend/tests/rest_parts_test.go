@@ -281,9 +281,9 @@ func TestRESTFilters(t *testing.T) {
 	paul, hugo, admin := restAs(t, "paul.martin"), restAs(t, "hugo.robert"), restAs(t, "admin")
 
 	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Mes bugs (REST)", "description": "Via l'API",
-		"jql": "project = DEMO ORDER BY key", "favourite": true})
+		"jql": "project = DEMO ORDER BY key"})
 	if status != 200 || str(f, "name") != "Mes bugs (REST)" || str(f, "jql") != "project = DEMO ORDER BY key" ||
-		str(f, "description") != "Via l'API" || f["favourite"] != true || str(f, "owner", "name") != "paul.martin" ||
+		str(f, "description") != "Via l'API" || f["favourite"] != nil || str(f, "owner", "name") != "paul.martin" ||
 		str(f, "self") != testURL+"/rest/api/2/filter/"+str(f, "id") {
 		t.Fatalf("create: %d %v", status, f)
 	}
@@ -291,15 +291,14 @@ func TestRESTFilters(t *testing.T) {
 	path := "/rest/api/2/filter/" + id
 	// What was created shows in the interface.
 	var ui []struct {
-		ID        int64
-		Name      string
-		Query     string
-		Favourite bool
+		ID    int64
+		Name  string
+		Query string
 	}
 	login(t, "paul.martin", jirafixture.Password).get("/api/filters", &ui)
 	found := false
 	for _, v := range ui {
-		found = found || (strconv.FormatInt(v.ID, 10) == id && v.Query == "project = DEMO ORDER BY key" && v.Favourite)
+		found = found || (strconv.FormatInt(v.ID, 10) == id && v.Query == "project = DEMO ORDER BY key")
 	}
 	if !found {
 		t.Errorf("the interface does not list the filter: %+v", ui)
@@ -314,11 +313,11 @@ func TestRESTFilters(t *testing.T) {
 
 	// Shared with everyone, it is read by others but changed by its owner (or an administrator) only.
 	status, f = paul("PUT", path, map[string]any{"name": "Bugs partagés", "jql": "project = DEMO AND statusCategory != Done",
-		"description": nil, "favourite": false, "self": "x", "id": id, "sharedUsers": map[string]any{"size": 0},
+		"description": nil, "self": "x", "id": id, "sharedUsers": map[string]any{"size": 0},
 		"editPermissions": []any{}, "approximateLastUsed": "2026-01-01T00:00:00.000+0000",
 		"sharePermissions": []any{map[string]any{"type": "global"}}})
 	if status != 200 || str(f, "name") != "Bugs partagés" || str(f, "jql") != "project = DEMO AND statusCategory != Done" ||
-		f["description"] != nil && str(f, "description") != "" || f["favourite"] != false ||
+		f["description"] != nil && str(f, "description") != "" ||
 		str(f, "sharePermissions", 0, "type") != "global" {
 		t.Fatalf("edit: %d %v", status, f)
 	}
@@ -363,8 +362,8 @@ func TestRESTFilters(t *testing.T) {
 	if status, _ := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Faux", "jql": "project = "}); status != 400 {
 		t.Errorf("invalid JQL: %d", status)
 	}
-	if status, _ := paul("PUT", path, map[string]any{"favourite": "oui"}); status != 400 {
-		t.Errorf("invalid favourite: %d", status)
+	if status, e := paul("PUT", path, map[string]any{"favourite": true}); status != 400 || at(e, "errors", "favourite") == nil {
+		t.Errorf("favourite: %d %v", status, e)
 	}
 	if status, _ := paul("PUT", "/rest/api/2/filter/0", map[string]any{"name": "x"}); status != 404 {
 		t.Errorf("unknown filter: %d", status)
@@ -415,9 +414,6 @@ func TestFilterIDZero(t *testing.T) {
 	if status, _ := ui.do("DELETE", "/api/filters/0", nil); status != 404 {
 		t.Errorf("interface DELETE filter 0: %d", status)
 	}
-	if status, _ := ui.do("PUT", "/api/filters/0/favourite", nil); status != 404 {
-		t.Errorf("interface favourite filter 0: %d", status)
-	}
 	if got := pick(t, `SELECT COUNT(*) FROM filters`); got != count {
 		t.Errorf("filters before %s, after %s", count, got)
 	}
@@ -426,11 +422,11 @@ func TestFilterIDZero(t *testing.T) {
 	}
 }
 
-// "favourite" alone changes the favourite only; once a change is saved, a
-// favourite that fails does not turn the answer into an error.
-func TestRESTFilterFavourite(t *testing.T) {
+// A reader of a shared filter may not change it; an administrator who
+// unshares someone else's filter saves the change, then no longer sees it.
+func TestRESTFilterReader(t *testing.T) {
 	paul, hugo, admin := restAs(t, "paul.martin"), restAs(t, "hugo.robert"), restAs(t, "admin")
-	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Favori (REST)", "jql": "project = DEMO",
+	status, f := paul("POST", "/rest/api/2/filter", map[string]any{"name": "Partagé (REST)", "jql": "project = DEMO",
 		"sharePermissions": []any{map[string]any{"type": "global"}}})
 	if status != 200 {
 		t.Fatalf("create: %d %v", status, f)
@@ -439,28 +435,11 @@ func TestRESTFilterFavourite(t *testing.T) {
 	path := "/rest/api/2/filter/" + id
 	defer admin("DELETE", path, nil)
 
-	// Someone who only reads the filter may still make it a favourite of theirs.
-	status, got := hugo("PUT", path, map[string]any{"favourite": true, "self": "x", "id": id})
-	if status != 200 || got["favourite"] != true || str(got, "name") != "Favori (REST)" {
-		t.Errorf("favourite alone by a reader: %d %v", status, got)
-	}
-	if status, got = paul("GET", path, nil); status != 200 || got["favourite"] != false {
-		t.Errorf("the favourite of another user changed: %d %v", status, got)
-	}
-	if status, got = hugo("PUT", path, map[string]any{"favourite": false}); status != 200 || got["favourite"] != false {
-		t.Errorf("removing the favourite: %d %v", status, got)
-	}
-	if status, _ := hugo("PUT", path, map[string]any{"favourite": true, "name": "x"}); status != 403 {
+	if status, _ := hugo("PUT", path, map[string]any{"name": "x"}); status != 403 {
 		t.Errorf("a reader changing the name: %d", status)
 	}
-	if status, _ := hugo("PUT", "/rest/api/2/filter/0", map[string]any{"favourite": true}); status != 404 {
-		t.Errorf("favourite of filter 0: %d", status)
-	}
-
-	// An administrator unshares paul's filter and asks for a favourite: the change
-	// is saved, then the filter is out of sight, so the favourite cannot be set.
-	if status, _ := admin("PUT", path, map[string]any{"sharePermissions": []any{}, "favourite": true}); status != 204 {
-		t.Errorf("saved change with a failing favourite: %d", status)
+	if status, _ := admin("PUT", path, map[string]any{"sharePermissions": []any{}}); status != 204 {
+		t.Errorf("admin unsharing: %d", status)
 	}
 	if n := pick(t, `SELECT COUNT(*) FROM filter_shares WHERE filter_id = ?`, id); n != "0" {
 		t.Errorf("the change was not saved: %s shares", n)

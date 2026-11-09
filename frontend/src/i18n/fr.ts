@@ -2048,7 +2048,7 @@ export const fr: Messages = {
       'comments:write': 'Ajouter, modifier et supprimer des commentaires.',
       'worklogs:write': 'Saisir du temps et modifier le temps saisi.',
       'agile:write': 'Tableaux, sprints et rang.',
-      'filters:write': 'Filtres, favoris et abonnements.',
+      'filters:write': 'Filtres et abonnements.',
       'projects:write': 'Paramètres des projets, versions, composants, workflows et statuts.',
       'profile:write': 'Votre compte, votre tableau de bord et vos réglages de notification.',
       admin: 'L’administration. Pour les administrateurs seulement.',

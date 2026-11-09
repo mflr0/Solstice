@@ -502,8 +502,6 @@ export const api = {
     },
   ) => request<SavedFilter | undefined>('PATCH', `/api/filters/${id}`, patch),
   deleteFilter: (id: number) => request<void>('DELETE', `/api/filters/${id}`),
-  favouriteFilter: (id: number, on: boolean) =>
-    request<void>(on ? 'PUT' : 'DELETE', `/api/filters/${id}/favourite`),
   labels: (q: string, project?: string) =>
     request<string[]>('GET', `/api/labels${query({ q, project })}`),
   sprintSuggestions: (q: string) =>

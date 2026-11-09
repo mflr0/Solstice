@@ -28,7 +28,7 @@ const (
 	ScopeComments Scope = "comments:write" // comments
 	ScopeWorklogs Scope = "worklogs:write" // work logs
 	ScopeAgile    Scope = "agile:write"    // boards, sprints, rank
-	ScopeFilters  Scope = "filters:write"  // filters, favourites, subscriptions
+	ScopeFilters  Scope = "filters:write"  // filters, subscriptions
 	ScopeProjects Scope = "projects:write" // project settings, versions, components, workflows, statuses
 	ScopeProfile  Scope = "profile:write"  // the user's own account, dashboard and notification settings
 	ScopeAdmin    Scope = "admin"          // /api/admin; only for administrators

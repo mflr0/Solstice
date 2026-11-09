@@ -382,11 +382,14 @@ func TestRESTShapes(t *testing.T) {
 	for _, path := range []string{"/rest/api/2/priority", "/rest/api/2/status", "/rest/api/2/issuetype",
 		"/rest/api/2/resolution", "/rest/api/2/field", "/rest/api/2/project", "/rest/api/2/project/DEMO/statuses",
 		"/rest/api/2/project/DEMO/versions", "/rest/api/2/project/DEMO/components", "/rest/api/2/user/search?username=mar",
-		"/rest/api/2/user/assignable/search?project=DEMO", "/rest/api/2/filter/favourite", "/rest/api/latest/priority"} {
-		if list, ok := get(path).([]any); !ok || (len(list) == 0 && !strings.Contains(path, "favourite") &&
-			!strings.Contains(path, "components")) {
+		"/rest/api/2/user/assignable/search?project=DEMO", "/rest/api/latest/priority"} {
+		if list, ok := get(path).([]any); !ok || (len(list) == 0 && !strings.Contains(path, "components")) {
 			t.Errorf("GET %s: %v", path, list)
 		}
+	}
+	// Favourites made way for the views of My space.
+	if status, _, body := call(t, paul, testURL, "GET", "/rest/api/2/filter/favourite", nil, nil); status != 404 {
+		t.Errorf("GET /rest/api/2/filter/favourite: %d %s", status, body)
 	}
 	fields := get("/rest/api/2/field").([]any)
 	if !slices.ContainsFunc(fields, func(v any) bool { return str(v, "id") == "customfield_10100" && str(v, "schema", "type") == "number" }) {

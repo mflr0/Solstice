@@ -125,7 +125,6 @@ func (s *Server) integrationRoutes(mux *http.ServeMux, route routeFunc) {
 		rest("GET "+p+"/status", s.restStatuses, auth.ScopeRead)
 		rest("GET "+p+"/issuetype", s.restIssueTypes, auth.ScopeRead)
 		rest("GET "+p+"/resolution", s.restResolutions, auth.ScopeRead)
-		rest("GET "+p+"/filter/favourite", s.restFavouriteFilters, auth.ScopeRead)
 		rest("GET "+p+"/filter/{id}", s.restFilter, auth.ScopeRead)
 		rest("POST "+p+"/filter", s.restSaveFilter, auth.ScopeFilters)
 		rest("PUT "+p+"/filter/{id}", s.restSaveFilter, auth.ScopeFilters)

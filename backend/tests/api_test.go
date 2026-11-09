@@ -647,11 +647,8 @@ func TestFilterLifecycle(t *testing.T) {
 	if status, _ := login(t, "hugo.robert", jirafixture.Password).do("DELETE", "/api/filters/"+strconv.FormatInt(f.ID, 10), nil); status != 404 {
 		t.Errorf("someone else deleted a private filter: %d", status)
 	}
-	if status, _ := paul.do("PUT", "/api/filters/"+strconv.FormatInt(f.ID, 10)+"/favourite", nil); status != 204 {
+	if status, _ := paul.do("PUT", "/api/filters/"+strconv.FormatInt(f.ID, 10)+"/favourite", nil); status != 404 {
 		t.Errorf("favourite: %d", status)
-	}
-	if !filterNames(t, paul)["Mes bugs"].Favourite {
-		t.Error("favourite not recorded")
 	}
 	if status, _ := paul.do("DELETE", "/api/filters/"+strconv.FormatInt(f.ID, 10), nil); status != 204 {
 		t.Errorf("delete: %d", status)

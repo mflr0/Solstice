@@ -107,7 +107,7 @@ scope it needs. Every tool of this table needs `read`.
 | `search_groups`, `list_group_members` | Groups and their members |
 | `list_fields`, `list_issue_types`, `list_statuses`, `list_priorities`, `list_resolutions`, `list_issue_link_types` | The instance's catalogues |
 | `get_server_info` | The server's version and address |
-| `list_favourite_filters`, `get_filter` | Saved filters: the user's favourites, or one by id |
+| `get_filter` | A saved filter, by id |
 
 These tools need `issues:write`:
 
@@ -147,7 +147,7 @@ Saved filters:
 
 | Tool | Scope | Does |
 |---|---|---|
-| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter, its shares and whether it is a favourite |
+| `create_filter`, `update_filter`, `delete_filter` | `filters:write` | Saves, changes or deletes a filter and its shares |
 
 Versions and components of a project:
 
