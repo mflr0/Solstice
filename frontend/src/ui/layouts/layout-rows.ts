@@ -73,36 +73,36 @@ function normalise(form: LayoutForm, f: LayoutField): LayoutField {
   return { field: f.field, hidden: f.hidden, required: !f.hidden && !!f.required };
 }
 
-/** The rows of a zone (the view) or all of them (the create form). */
+/** The shown rows of a zone (the view) or of the whole form (create), in order. */
 export function zoneRows(rows: readonly LayoutField[], zone?: LayoutZone): LayoutField[] {
-  return zone ? rows.filter((r) => r.zone === zone) : [...rows];
+  return rows.filter((r) => !r.hidden && (!zone || r.zone === zone));
 }
 
-/** Moves a row one step among the rows of its zone. */
+/** The hidden rows, by name: their order changes no form. */
+export function hiddenRows(rows: readonly LayoutField[], nameOf: (field: string) => string) {
+  return rows
+    .filter((r) => r.hidden)
+    .sort((a, b) => nameOf(a.field).localeCompare(nameOf(b.field)));
+}
+
+/** Moves a shown row one step among the shown rows of its zone. */
 export function stepRow(rows: readonly LayoutField[], field: string, by: -1 | 1): LayoutField[] {
   const row = rows.find((r) => r.field === field);
-  if (!row) return [...rows];
+  if (!row || row.hidden) return [...rows];
   const peers = zoneRows(rows, row.zone);
   const next = peers[peers.indexOf(row) + by];
   if (!next) return [...rows];
   return moveItem(rows, rows.indexOf(row), rows.indexOf(next));
 }
 
-/** Puts a row at the end of another zone. */
-export function setZone(
-  rows: readonly LayoutField[],
-  field: string,
-  zone: LayoutZone,
-): LayoutField[] {
-  const row = rows.find((r) => r.field === field);
-  if (!row || row.zone === zone) return [...rows];
-  return [...rows.filter((r) => r !== row), { ...row, zone }];
-}
-
-/** Where a dragged row lands: on another row (it takes its place), or at the end of a zone. */
+/**
+ * Where a dragged row lands: on a shown row (it takes its place), at the end
+ * of a zone or of the create form (no field), or in the hidden tray.
+ */
 export interface DropTarget {
   field?: string | undefined;
   zone?: LayoutZone | undefined;
+  tray?: boolean | undefined;
 }
 
 /** Drops a row on a target, as the mouse and the finger do. */
@@ -113,25 +113,30 @@ export function dropRow(
 ): LayoutField[] {
   const row = rows.find((r) => r.field === field);
   if (!row || target.field === field) return [...rows];
-  const on = rows.find((r) => r.field === target.field);
+  if (target.tray) return hide(rows, field);
+  const on = rows.find((r) => r.field === target.field && !r.hidden);
   const zone = on?.zone ?? target.zone ?? row.zone;
-  if (!on) return zone && zone !== row.zone ? setZone(rows, field, zone) : [...rows];
-  if (on.zone === row.zone) return moveItem(rows, rows.indexOf(row), rows.indexOf(on));
+  const moved: LayoutField = { ...row, hidden: false, ...(zone ? { zone } : {}) };
   const rest = rows.filter((r) => r !== row);
-  rest.splice(rest.indexOf(on), 0, zone ? { ...row, zone } : row);
+  if (!on) return [...rest, moved];
+  if (!row.hidden && on.zone === row.zone) {
+    return moveItem(rows, rows.indexOf(row), rows.indexOf(on));
+  }
+  rest.splice(rest.indexOf(on), 0, moved);
   return rest;
 }
 
-/** Shows or hides a row; a hidden field can't be required. */
-export function setShown(rows: readonly LayoutField[], field: string, shown: boolean) {
+/** Shows a hidden row at the end of a zone (the view) or of the form. */
+export function show(rows: readonly LayoutField[], field: string, zone?: LayoutZone) {
+  return dropRow(rows, field, { zone });
+}
+
+/** Hides a row; a hidden field can't be required. */
+export function hide(rows: readonly LayoutField[], field: string): LayoutField[] {
   return rows.map((r) =>
     r.field !== field
       ? r
-      : {
-          ...r,
-          hidden: !shown,
-          ...(r.required !== undefined && !shown ? { required: false } : {}),
-        },
+      : { ...r, hidden: true, ...(r.required !== undefined ? { required: false } : {}) },
   );
 }
 

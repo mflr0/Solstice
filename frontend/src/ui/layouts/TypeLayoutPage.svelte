@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type {
     CatalogItem,
     FieldRow,
@@ -124,6 +125,8 @@
     layouts[form] = await adminApi.typeLayout(typeId, form);
     resetting = false;
     notify(t.layouts.resetDone);
+    await tick();
+    document.getElementById(`layout-tab-${form}`)?.focus();
   }
 </script>
 
@@ -153,14 +156,6 @@
       {/if}
     </h1>
   </div>
-  {#if layout}
-    <button
-      type="button"
-      class="btn"
-      disabled={layout.source === 'default'}
-      onclick={() => (resetting = true)}>{t.layouts.reset}</button
-    >
-  {/if}
 </header>
 <p class="lead-text">{t.layouts.intro}</p>
 
@@ -170,30 +165,37 @@
 {:else if !type || !layout}
   <p class="muted loading">{t.common.loading}</p>
 {:else}
-  <div
-    class="tabs"
-    role="tablist"
-    aria-label={t.layouts.tabsLabel}
-    use:tabs={(el) => showTab(el.dataset['tab'] as LayoutForm)}
-  >
-    {#each FORMS as f (f)}
-      <button
-        type="button"
-        class="tab"
-        role="tab"
-        id="layout-tab-{f}"
-        data-tab={f}
-        aria-controls="layout-panel-{f}"
-        aria-selected={tab === f}
-        onclick={() => showTab(f)}>{t.layouts.tabs[f]}</button
-      >
-    {/each}
+  <div class="tab-bar">
+    <div
+      class="tabs"
+      role="tablist"
+      aria-label={t.layouts.tabsLabel}
+      use:tabs={(el) => showTab(el.dataset['tab'] as LayoutForm)}
+    >
+      {#each FORMS as f (f)}
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          id="layout-tab-{f}"
+          data-tab={f}
+          aria-controls="layout-panel-{f}"
+          aria-selected={tab === f}
+          onclick={() => showTab(f)}>{t.layouts.tabs[f]}</button
+        >
+      {/each}
+    </div>
+    {#if layout.source !== 'default'}
+      <span class="reset">
+        <span class="stamp">{t.layouts.customised}</span>
+        <button type="button" class="btn btn-small" onclick={() => (resetting = true)}
+          >{t.layouts.reset}</button
+        >
+      </span>
+    {/if}
   </div>
   <div class="panel" role="tabpanel" id="layout-panel-{tab}" aria-labelledby="layout-tab-{tab}">
-    <p class="muted source">
-      {layout.source === 'default' ? t.layouts.sourceDefault : t.layouts.sourceType}
-      — {tab === 'create' ? t.layouts.createIntro : t.layouts.viewIntro}
-    </p>
+    <p class="muted source">{tab === 'create' ? t.layouts.createIntro : t.layouts.viewIntro}</p>
     {#key tab}
       <LayoutEditor
         form={tab}
@@ -241,6 +243,26 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+  }
+
+  .tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .tab-bar .tabs {
+    border-bottom: none;
+  }
+
+  .reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 4px;
   }
 
   .panel {
