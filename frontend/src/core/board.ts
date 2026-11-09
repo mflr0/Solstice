@@ -1,7 +1,7 @@
 /**
  * Board rules that do not touch the page: grouping cards into swimlanes,
- * where a dropped card lands, WIP limits, sprint arithmetic, old board
- * addresses. Pure functions, tested in tests/core/board.test.ts.
+ * where a dropped card lands, WIP limits, sprint arithmetic, card filters,
+ * old board addresses. Pure functions, tested in tests/core/board.test.ts.
  */
 
 import type {
@@ -12,7 +12,7 @@ import type {
   Swimlane,
   SwimlaneStrategy,
 } from './board-types.js';
-import type { IssueBrief, UserRef } from './types.js';
+import type { IssueBrief, PriorityRef, TypeRef, UserRef } from './types.js';
 import { isoDay, parseDay } from './dates.js';
 import { formatLocale } from '../i18n/format.js';
 
@@ -334,6 +334,155 @@ export function parseQuick(param: string | null): number[] {
 export function toggleQuick(selected: number[], id: number): string {
   const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
   return next.join(',');
+}
+
+/** The cards a board shows by type, assignee and priority; an empty facet takes any. */
+export interface CardFilter {
+  types: string[];
+  /** User ids, 'me' (the signed-in user) or 'none' (unassigned). */
+  assignees: (number | 'me' | 'none')[];
+  /** Priority ids or 'none' (no priority). */
+  priorities: string[];
+}
+
+/** The values of an address param ("1,2,none") that pass keep, without repeats. */
+function paramList(param: string | null, keep: (s: string) => boolean): string[] {
+  if (!param) return [];
+  return [...new Set(param.split(',').map((s) => s.trim()))].filter((s) => s !== '' && keep(s));
+}
+
+/**
+ * The card filter kept in the address (?type=1,2&assignee=me,none,5&priority=3,none).
+ * Type and priority ids are any text; whether they exist is for knownCardFilter.
+ */
+export function parseCardFilter(param: (name: string) => string | null): CardFilter {
+  return {
+    types: paramList(param('type'), () => true),
+    assignees: paramList(
+      param('assignee'),
+      (s) => s === 'me' || s === 'none' || /^[1-9]\d*$/.test(s),
+    ).map((s) => (s === 'me' || s === 'none' ? s : Number(s))),
+    priorities: paramList(param('priority'), () => true),
+  };
+}
+
+/** The address params of a card filter; null drops the param. */
+export function cardFilterParams(
+  f: CardFilter,
+): Record<'type' | 'assignee' | 'priority', string | null> {
+  const join = (xs: (string | number)[]) => (xs.length ? xs.join(',') : null);
+  return { type: join(f.types), assignee: join(f.assignees), priority: join(f.priorities) };
+}
+
+/** Whether a card filter leaves any card out. */
+export function hasCardFilter(f: CardFilter): boolean {
+  return f.types.length > 0 || f.assignees.length > 0 || f.priorities.length > 0;
+}
+
+/** Adds a value to a facet's choice, or takes it out. */
+export function toggleIn<T>(list: T[], value: T): T[] {
+  return list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
+}
+
+/** What each facet offers. */
+export interface CardFacets {
+  types: TypeRef[];
+  /** Other people than the signed-in one, who is "me". */
+  users: UserRef[];
+  priorities: PriorityRef[];
+  noPriority: boolean;
+}
+
+/**
+ * The values each facet offers: those on the cards, plus the chosen types and
+ * priorities the catalogues still know (a quick filter may have hidden their
+ * cards). Types and people by name, priorities in the catalogue's order.
+ */
+export function cardFacets(
+  cards: BoardCard[],
+  chosen: CardFilter,
+  catalogues: {
+    types?: readonly TypeRef[] | undefined;
+    priorities?: readonly PriorityRef[] | undefined;
+  },
+  me: number | null,
+): CardFacets {
+  const types = new Map<string, TypeRef>();
+  const users = new Map<number, UserRef>();
+  const priorities = new Map<string, PriorityRef>();
+  let noPriority = chosen.priorities.includes('none');
+  for (const c of cards) {
+    types.set(c.type.id, c.type);
+    if (c.assignee && (c.assignee.id !== me || chosen.assignees.includes(c.assignee.id)))
+      users.set(c.assignee.id, c.assignee);
+    if (c.priority) priorities.set(c.priority.id, c.priority);
+    else noPriority = true;
+  }
+  for (const ty of catalogues.types ?? [])
+    if (chosen.types.includes(ty.id) && !types.has(ty.id)) types.set(ty.id, ty);
+  for (const p of catalogues.priorities ?? [])
+    if (chosen.priorities.includes(p.id) && !priorities.has(p.id)) priorities.set(p.id, p);
+  const byName = (a: { name: string }, b: { name: string }) =>
+    a.name.localeCompare(b.name, formatLocale());
+  const order = (p: PriorityRef) => {
+    const i = catalogues.priorities?.findIndex((x) => x.id === p.id) ?? -1;
+    return i < 0 ? Infinity : i;
+  };
+  return {
+    types: [...types.values()].sort(byName),
+    users: [...users.values()].sort(byName),
+    priorities: [...priorities.values()].sort((a, b) => order(a) - order(b) || byName(a, b)),
+    noPriority,
+  };
+}
+
+/** A card filter without the ids its facets don't offer. */
+export function knownCardFilter(f: CardFilter, facets: CardFacets): CardFilter {
+  return {
+    types: f.types.filter((id) => facets.types.some((x) => x.id === id)),
+    assignees: f.assignees.filter(
+      (a) => typeof a === 'string' || facets.users.some((u) => u.id === a),
+    ),
+    priorities: f.priorities.filter(
+      (id) => id === 'none' || facets.priorities.some((p) => p.id === id),
+    ),
+  };
+}
+
+/**
+ * The cards a filter shows: any of the values chosen in a facet, every facet.
+ * "me" is the signed-in user, none when nobody is.
+ */
+export function filterCards(cards: BoardCard[], f: CardFilter, me: number | null): BoardCard[] {
+  if (!hasCardFilter(f)) return cards;
+  return cards.filter((c) => {
+    if (f.types.length && !f.types.includes(c.type.id)) return false;
+    if (
+      f.assignees.length &&
+      !f.assignees.some((a) =>
+        a === 'none'
+          ? !c.assignee
+          : a === 'me'
+            ? me !== null && c.assignee?.id === me
+            : c.assignee?.id === a,
+      )
+    )
+      return false;
+    if (f.priorities.length && !f.priorities.includes(c.priority?.id ?? 'none')) return false;
+    return true;
+  });
+}
+
+/** The board filters of an address's query ("?quick=1&type=2"), for a link to another view of the board. */
+export function boardFilterQuery(search: string): string {
+  const from = new URLSearchParams(search);
+  const out = new URLSearchParams();
+  for (const k of ['quick', 'type', 'assignee', 'priority']) {
+    const v = from.get(k);
+    if (v) out.set(k, v);
+  }
+  const s = out.toString();
+  return s ? `?${s}` : '';
 }
 
 /**

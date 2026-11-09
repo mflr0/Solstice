@@ -2,9 +2,14 @@
   import { tick } from 'svelte';
   import {
     applyMove,
+    cardFacets,
     dropIndex,
+    filterCards,
     groupLanes,
+    hasCardFilter,
+    knownCardFilter,
     neighbours,
+    parseCardFilter,
     parseQuick,
     staysInPlace,
     stepMove,
@@ -26,13 +31,14 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
+  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import CardFilters from '../board/CardFilters.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
-  import QuickFilters from '../board/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import Illustration from '../Illustration.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -66,6 +72,19 @@
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
+  const me = $derived(session.me?.id ?? null);
+  const asked = $derived(parseCardFilter((name) => router.param(name)));
+  const facets = $derived(
+    cardFacets(
+      cards ?? [],
+      asked,
+      { types: session.meta?.issueTypes, priorities: session.meta?.priorities },
+      me,
+    ),
+  );
+  const cardFilter = $derived(knownCardFilter(asked, facets));
+  const filtered = $derived(quick.length > 0 || hasCardFilter(cardFilter));
+  const shown = $derived(cards ? filterCards(cards, cardFilter, me) : []);
 
   function loadDetail() {
     api
@@ -115,7 +134,7 @@
   const columns = $derived(detail ? detail.columns.filter((c) => c.id !== backlogColumn?.id) : []);
 
   const lanes = $derived(
-    detail && cards ? groupLanes(cards, detail.board.swimlanes, detail.swimlanes) : [],
+    detail && cards ? groupLanes(shown, detail.board.swimlanes, detail.swimlanes) : [],
   );
   const banded = $derived(lanes.length > 0 && lanes[0]?.kind !== 'all');
   const counts = $derived.by(() => {
@@ -369,7 +388,7 @@
       </SprintHead>
     {/if}
 
-    <QuickFilters filters={d.quickFilters} selected={quick} />
+    <CardFilters filter={cardFilter} {facets} quickFilters={d.quickFilters} {quick} />
 
     {#if cardsError}
       <p class="error-text" role="alert">{cardsError}</p>
@@ -381,8 +400,8 @@
       <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
     {:else}
       {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
-      {#if cards.length === 0}
-        <p class="empty">{quick.length ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
+      {#if shown.length === 0}
+        <p class="empty">{filtered ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
       {/if}
       <div
         class="board"

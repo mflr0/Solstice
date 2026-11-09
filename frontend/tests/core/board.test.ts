@@ -2,23 +2,30 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyMove,
+  boardFilterQuery,
+  cardFacets,
+  cardFilterParams,
   dayAfter,
   daysLeft,
   dropIndex,
   edgeScroll,
+  filterCards,
   groupLanes,
+  knownCardFilter,
   legacyBoardPath,
   neighbours,
+  parseCardFilter,
   parseQuick,
   sprintEnd,
   staysInPlace,
   stepMove,
+  toggleIn,
   toggleQuick,
   totalEstimate,
   wipState,
 } from '../../src/core/board.js';
 import type { BoardCard } from '../../src/core/board-types.js';
-import type { IssueBrief, UserRef } from '../../src/core/types.js';
+import type { IssueBrief, PriorityRef, TypeRef, UserRef } from '../../src/core/types.js';
 import { matchRoute, paths } from '../../src/core/route.js';
 
 const user = (id: number, name: string): UserRef => ({
@@ -283,6 +290,85 @@ describe('quick filters in the address', () => {
     expect(toggleQuick([1, 3], 3)).toBe('1');
     expect(toggleQuick([1], 5)).toBe('1,5');
     expect(toggleQuick([1], 1)).toBe('');
+  });
+});
+
+describe('card filters', () => {
+  const bug: TypeRef = { id: '1', name: 'Bug', subtask: false };
+  const task: TypeRef = { id: '3', name: 'Task', subtask: false };
+  const high: PriorityRef = { id: '2', name: 'High' };
+  const low: PriorityRef = { id: '4', name: 'Low' };
+  const ann = user(5, 'Ann');
+  const bob = user(6, 'Bob');
+  const cards = [
+    card('A-1', { type: bug, assignee: ann, priority: high }),
+    card('A-2', { type: task, assignee: bob, priority: low }),
+    card('A-3', { type: bug, assignee: null, priority: null }),
+    card('A-4', { type: task, assignee: ann, priority: null }),
+  ];
+  const params = (q: string) => {
+    const sp = new URLSearchParams(q);
+    return parseCardFilter((n) => sp.get(n));
+  };
+  const known = (q: string, me: number | null = null) => {
+    const f = params(q);
+    return knownCardFilter(f, cardFacets(cards, f, {}, me));
+  };
+
+  it('reads the address and writes it back, dropping unknown ids', () => {
+    const f = known('type=1,99,1&assignee=me,none,5,77,x,-2&priority=2,none,zz');
+    expect(f).toEqual({ types: ['1'], assignees: ['me', 'none', 5], priorities: ['2', 'none'] });
+    expect(cardFilterParams(f)).toEqual({ type: '1', assignee: 'me,none,5', priority: '2,none' });
+    expect(cardFilterParams(params(''))).toEqual({ type: null, assignee: null, priority: null });
+  });
+
+  it('keeps a chosen type or priority the catalogue knows when no card has it', () => {
+    const story: TypeRef = { id: '7', name: 'Story', subtask: false };
+    const f = params('type=7&priority=9');
+    const facets = cardFacets(cards, f, { types: [story], priorities: [high, low] }, null);
+    expect(knownCardFilter(f, facets)).toEqual({ types: ['7'], assignees: [], priorities: [] });
+    expect(facets.types.map((x) => x.name)).toEqual(['Bug', 'Story', 'Task']);
+  });
+
+  it('offers the values on the cards, the signed-in user as "me"', () => {
+    const facets = cardFacets(cards, params(''), { priorities: [high, low] }, 5);
+    expect(facets.types.map((x) => x.id)).toEqual(['1', '3']);
+    expect(facets.users.map((u) => u.name)).toEqual(['Bob']);
+    expect(facets.priorities.map((p) => p.id)).toEqual(['2', '4']);
+    expect(facets.noPriority).toBe(true);
+    expect(cardFacets(cards.slice(0, 2), params(''), {}, null).noPriority).toBe(false);
+  });
+
+  it('shows any of the values of a facet', () => {
+    expect(keys(filterCards(cards, known('assignee=5,6'), null))).toEqual(['A-1', 'A-2', 'A-4']);
+    expect(keys(filterCards(cards, known(''), null))).toEqual(['A-1', 'A-2', 'A-3', 'A-4']);
+  });
+
+  it('shows the cards matching every facet', () => {
+    expect(keys(filterCards(cards, known('type=1&assignee=5'), null))).toEqual(['A-1']);
+    expect(keys(filterCards(cards, known('type=3&priority=none'), null))).toEqual(['A-4']);
+  });
+
+  it('takes "me" as the signed-in user, nobody when signed out', () => {
+    expect(keys(filterCards(cards, known('assignee=me', 6), 6))).toEqual(['A-2']);
+    expect(keys(filterCards(cards, known('assignee=me'), null))).toEqual([]);
+  });
+
+  it('takes "none" as unassigned or without priority', () => {
+    expect(keys(filterCards(cards, known('assignee=none'), null))).toEqual(['A-3']);
+    expect(keys(filterCards(cards, known('priority=none'), null))).toEqual(['A-3', 'A-4']);
+  });
+
+  it('toggles a value', () => {
+    expect(toggleIn(['1', '3'], '3')).toEqual(['1']);
+    expect(toggleIn<number | 'me'>([5], 'me')).toEqual([5, 'me']);
+  });
+
+  it('carries the board filters to another view', () => {
+    expect(boardFilterQuery('?quick=1,2&type=3&sprint=4&assignee=me&priority=none')).toBe(
+      '?quick=1%2C2&type=3&assignee=me&priority=none',
+    );
+    expect(boardFilterQuery('?sprint=4')).toBe('');
   });
 });
 

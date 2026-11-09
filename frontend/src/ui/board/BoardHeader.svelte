@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { boardFilterQuery } from '../../core/board.js';
   import type { BoardDetail } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import { boardListPath } from '../../core/scope.js';
   import { t } from '../../i18n/t.js';
+  import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { shownBoard } from '../../lib/ui.svelte.js';
   import { BOARD_VIEW_ICONS } from './board-view-icons.js';
@@ -15,12 +17,14 @@
   }
   const { detail, view }: Props = $props();
   const b = $derived(detail.board);
+  // The board's filters follow from one view to the next.
+  const kept = $derived(boardFilterQuery(router.search));
   const views = $derived([
-    { id: 'board', href: paths.board(b.id), label: t.boards.viewBoard },
+    { id: 'board', href: paths.board(b.id) + kept, label: t.boards.viewBoard },
     ...(b.kind === 'scrum' || b.kanbanBacklog
-      ? [{ id: 'backlog', href: paths.backlog(b.id), label: t.boards.viewBacklog }]
+      ? [{ id: 'backlog', href: paths.backlog(b.id) + kept, label: t.boards.viewBacklog }]
       : []),
-    { id: 'reports', href: paths.boardReports(b.id), label: t.boards.viewReports },
+    { id: 'reports', href: paths.boardReports(b.id) + kept, label: t.boards.viewReports },
     ...(detail.can.manage
       ? [{ id: 'settings', href: paths.boardSettings(b.id), label: t.boards.settings }]
       : []),
