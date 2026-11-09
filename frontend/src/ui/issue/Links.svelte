@@ -104,6 +104,7 @@
 
   function keydown(e: KeyboardEvent) {
     const n = suggestions.length;
+    const current = suggestions[active];
     if (e.key === 'ArrowDown' && n) {
       e.preventDefault();
       open = true;
@@ -112,9 +113,9 @@
       e.preventDefault();
       open = true;
       active = active <= 0 ? n - 1 : active - 1;
-    } else if (e.key === 'Enter' && open && suggestions[active]) {
+    } else if (e.key === 'Enter' && open && current) {
       e.preventDefault();
-      pick(suggestions[active]);
+      pick(current);
     } else if (e.key === 'Escape' && open && n) {
       e.preventDefault();
       e.stopPropagation();
