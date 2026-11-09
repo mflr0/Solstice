@@ -48,8 +48,8 @@ const detail: BoardDetail = {
   },
   projects: [],
   columns: [
-    { id: 10, name: 'To Do', min: null, max: null, statuses: [status] },
-    { id: 20, name: 'Done', min: null, max: null, statuses: [status] },
+    { id: 10, name: 'To Do', statuses: [status] },
+    { id: 20, name: 'Done', min: 1, max: 3, statuses: [status] },
   ],
   quickFilters: [],
   swimlanes: [
@@ -114,6 +114,14 @@ describe('BoardPage', () => {
     );
     expect(order.filter((o) => o?.startsWith('lane'))).toEqual(['lane Urgent', 'lane Later']);
     expect(order.indexOf('lane Later')).toBeLessThan(order.indexOf('T-1'));
+  });
+
+  it('shows no limit for a column the API sends with one', async () => {
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    expect(document.querySelectorAll('.board-column')).toHaveLength(2);
+    expect(document.querySelector('.wip-limit')).toBeNull();
+    expect(document.querySelector('#col-20')?.closest('header')?.textContent).not.toMatch(/max|3/);
   });
 
   it('sends the query of the filter row with the quick filters', async () => {

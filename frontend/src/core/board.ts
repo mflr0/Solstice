@@ -1,6 +1,6 @@
 /**
  * Board rules that do not touch the page: grouping cards into swimlanes,
- * where a dropped card lands, WIP limits, sprint arithmetic, card filters,
+ * where a dropped card lands, sprint arithmetic, card filters,
  * old board addresses. Pure functions, tested in tests/core/board.test.ts.
  */
 
@@ -199,15 +199,6 @@ export function applyMove(cards: BoardCard[], move: CardMove): BoardCard[] {
   }
   rest.splice(index, 0, moved);
   return rest;
-}
-
-export type WipState = 'ok' | 'over' | 'under';
-
-/** A column's work-in-progress state: over its maximum, under its minimum, or fine. */
-export function wipState(count: number, min: number | null, max: number | null): WipState {
-  if (max !== null && count > max) return 'over';
-  if (min !== null && count < min) return 'under';
-  return 'ok';
 }
 
 /** The sum of the cards' estimates, or null when none has one. */

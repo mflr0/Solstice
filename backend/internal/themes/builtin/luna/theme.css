@@ -2348,11 +2348,6 @@
   font: 700 0.65625rem/1.2 var(--font-body);
 }
 
-[data-skin='luna'] .wip-limit {
-  color: var(--luna-pane-head-ink);
-  font: 400 0.6875rem/1.2 var(--font-body);
-}
-
 [data-skin='luna'] .board-card {
   box-shadow: 0 1px 2px rgba(6, 24, 72, 0.14);
   font-size: 0.75rem;
@@ -2377,23 +2372,6 @@
   border-color: var(--focus);
   background: var(--luna-select-wash);
   box-shadow: inset 0 0 0 1px var(--focus);
-}
-
-[data-skin='luna'] .board-column.over-limit {
-  border-color: var(--luna-danger);
-}
-
-[data-skin='luna'] .board-column.over-limit .board-column-head {
-  background: linear-gradient(90deg, #ffffff 0%, #fbe3dc 55%, #f5c6b8 100%);
-}
-
-[data-skin='luna'][data-scheme='dark'] .board-column.over-limit .board-column-head {
-  background: linear-gradient(90deg, #4a3036 0%, #43292e 55%, #3b2328 100%);
-}
-
-[data-skin='luna'] .board-column.over-limit .wip-limit {
-  color: var(--luna-danger);
-  font-weight: 700;
 }
 
 /* Administration overview: list-view tiles with the button's orange glow ----- */

@@ -1102,12 +1102,6 @@ export const en = {
     noActiveSprint: 'No active sprint.',
     noActiveSprintHint: 'Sprints are planned and started from the backlog.',
     openBacklog: 'Open the backlog',
-    wip: (min: number | null, max: number | null) =>
-      [min !== null ? `min ${min}` : '', max !== null ? `max ${max}` : '']
-        .filter(Boolean)
-        .join(' · '),
-    wipOver: 'over the limit',
-    wipUnder: 'under the minimum',
     unassigned: 'Unassigned',
     noEpic: 'No epic',
     otherIssues: 'Other issues',
@@ -1247,8 +1241,6 @@ export const en = {
     columnsHint:
       'Dragging an issue into a column gives it the column’s first status that its workflow can reach.',
     columnName: 'Column name',
-    min: 'Minimum',
-    max: 'Maximum',
     statuses: 'Statuses',
     noStatus: 'No statuses: this column will stay empty.',
     addColumn: 'Add column',

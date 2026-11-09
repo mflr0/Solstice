@@ -52,8 +52,9 @@ export interface BoardSummary {
 export interface BoardColumn {
   id: number;
   name: string;
-  min: number | null;
-  max: number | null;
+  /** Still sent by the API; the interface ignores it. */
+  min?: number | null;
+  max?: number | null;
   statuses: StatusRef[];
 }
 
@@ -147,8 +148,6 @@ export interface BoardPatch {
   columns?: {
     id?: number;
     name: string;
-    min: number | null;
-    max: number | null;
     statuses: string[];
   }[];
   quickFilters?: { id?: number; name: string; query: string; description?: string }[];

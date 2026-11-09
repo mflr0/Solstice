@@ -33,8 +33,6 @@
   interface ColumnDraft {
     id?: number;
     name: string;
-    min: string;
-    max: string;
     statuses: StatusRef[];
   }
   interface QuickDraft {
@@ -77,8 +75,6 @@
       columns: d.columns.map((c) => ({
         id: c.id,
         name: c.name,
-        min: c.min === null ? '' : String(c.min),
-        max: c.max === null ? '' : String(c.max),
         statuses: [...c.statuses],
       })),
       kanbanBacklog: d.board.kanbanBacklog,
@@ -146,11 +142,6 @@
   const mapped = $derived(new Set(draft?.columns.flatMap((c) => c.statuses.map((s) => s.id))));
   const unmapped = $derived(pool.filter((s) => !mapped.has(s.id)));
 
-  function count(v: string): number | null {
-    const n = Number(v);
-    return v.trim() === '' || !Number.isFinite(n) ? null : Math.max(0, Math.round(n));
-  }
-
   function patchFor(part: Part, d: Drafts, kanban: boolean): BoardPatch {
     switch (part) {
       case 'general':
@@ -164,8 +155,6 @@
           columns: d.columns.map((c) => ({
             ...(c.id ? { id: c.id } : {}),
             name: c.name,
-            min: count(c.min),
-            max: count(c.max),
             statuses: c.statuses.map((s) => s.id),
           })),
         };
@@ -438,16 +427,6 @@
               {/if}
             </div>
             <div class="column-body">
-              <div class="limits">
-                <label class="field">
-                  <span>{t.boardSettings.min}</span>
-                  <input class="input" type="number" min="0" bind:value={column.min} />
-                </label>
-                <label class="field">
-                  <span>{t.boardSettings.max}</span>
-                  <input class="input" type="number" min="0" bind:value={column.max} />
-                </label>
-              </div>
               <div class="field">
                 <span class="field-label">{t.boardSettings.statuses}</span>
                 {#if column.statuses.length}
@@ -506,8 +485,7 @@
             id="columns-add"
             type="button"
             class="btn"
-            onclick={() =>
-              f.columns.push({ name: t.boardSettings.newColumn, min: '', max: '', statuses: [] })}
+            onclick={() => f.columns.push({ name: t.boardSettings.newColumn, statuses: [] })}
             >{t.boardSettings.addColumn}</button
           >
         </li>
@@ -850,12 +828,6 @@
     display: grid;
     gap: 12px;
     padding: 10px;
-  }
-
-  .limits {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
   }
 
   .statuses {

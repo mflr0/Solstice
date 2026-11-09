@@ -106,11 +106,10 @@
               </article>
             </div>
           </section>
-          <section class="board-column over-limit">
+          <section class="board-column">
             <header class="board-column-head">
               <span class="board-column-title">{m.doing}</span>
               <span class="board-column-count">2</span>
-              <span class="wip-limit">{t.boards.wip(null, 1)}</span>
             </header>
             <div class="board-cards">
               <article class="board-card">

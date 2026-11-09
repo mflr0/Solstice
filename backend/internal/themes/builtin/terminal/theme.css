@@ -1612,8 +1612,7 @@
   text-shadow: var(--term-glow-strong);
 }
 
-[data-skin='terminal'] .board-column-count,
-[data-skin='terminal'] .wip-limit {
+[data-skin='terminal'] .board-column-count {
   font: 400 1.3125rem/1 var(--font-title);
   color: var(--muted);
 }
@@ -1630,27 +1629,6 @@
   border-style: dashed;
   border-color: var(--focus);
   background: var(--accent-wash);
-}
-
-[data-skin='terminal'] .board-column.over-limit {
-  border-color: var(--term-alert);
-}
-
-[data-skin='terminal'] .board-column.over-limit .board-column-head {
-  border-bottom-color: var(--term-alert);
-}
-
-[data-skin='terminal'] .board-column.over-limit .wip-limit {
-  color: var(--term-alert);
-}
-
-[data-skin='terminal'] .board-column.over-limit .wip-limit::before {
-  content: '!';
-  margin-right: 0.6ch;
-  padding: 0 0.3ch;
-  background: var(--term-alert);
-  color: var(--paper);
-  text-shadow: none;
 }
 
 [data-skin='terminal'] .board-card {

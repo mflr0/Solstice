@@ -154,7 +154,6 @@
   --cl-avatar: #dbe4f3;
   --cl-avatar-ink: #1b3e7d;
   --cl-column: #eef1f5;
-  --cl-over-limit: #fbeceb;
   --cl-selection: #cbdcf8;
   --cl-scroll-thumb: #b9c1cd;
   --cl-scroll-thumb-hover: #97a1b0;
@@ -235,7 +234,6 @@
   --cl-avatar: #2c3f60;
   --cl-avatar-ink: #d3e2fb;
   --cl-column: #171c23;
-  --cl-over-limit: #3a2326;
   --cl-selection: #2c4a7c;
   --cl-scroll-thumb: #434c5c;
   --cl-scroll-thumb-hover: #5a6577;
@@ -1741,8 +1739,7 @@
   color: var(--muted);
 }
 
-[data-skin='classique'] .board-column-count,
-[data-skin='classique'] .board-column .wip-limit {
+[data-skin='classique'] .board-column-count {
   padding: 2px 6px;
   border-radius: 9px;
   background: var(--cl-count);
@@ -1753,15 +1750,6 @@
 [data-skin='classique'] .board-column.is-over {
   background: var(--accent-wash);
   box-shadow: inset 0 0 0 2px var(--accent);
-}
-
-[data-skin='classique'] .board-column.over-limit {
-  background: var(--cl-over-limit);
-}
-
-[data-skin='classique'] .board-column.over-limit .wip-limit {
-  background: var(--cl-danger);
-  color: var(--cl-danger-ink);
 }
 
 [data-skin='classique'] .board-card {

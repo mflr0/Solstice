@@ -18,7 +18,6 @@ import {
   stepMove,
   toggleQuick,
   totalEstimate,
-  wipState,
 } from '../../src/core/board.js';
 import type { BoardCard } from '../../src/core/board-types.js';
 import type { IssueBrief, UserRef } from '../../src/core/types.js';
@@ -233,15 +232,7 @@ describe('applyMove', () => {
   });
 });
 
-describe('limits and sums', () => {
-  it('tells a column over or under its limits', () => {
-    expect(wipState(3, null, null)).toBe('ok');
-    expect(wipState(3, 1, 3)).toBe('ok');
-    expect(wipState(4, 1, 3)).toBe('over');
-    expect(wipState(0, 1, 3)).toBe('under');
-    expect(wipState(0, null, 0)).toBe('ok');
-  });
-
+describe('sums', () => {
   it('adds up estimates, null when there is none', () => {
     expect(totalEstimate([card('A-1'), card('A-2')])).toBeNull();
     expect(

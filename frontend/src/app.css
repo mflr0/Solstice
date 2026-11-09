@@ -1220,7 +1220,7 @@ dialog.modal.issue-modal .page.issue {
   flex-direction: column;
   min-height: 140px;
   background: color-mix(in srgb, var(--paper-sunk) 70%, transparent);
-  /* Transparent at rest: the drag-over and over-limit states colour it. */
+  /* Transparent at rest: the drag-over state colours it. */
   border: var(--frame) solid transparent;
   border-radius: var(--radius-m);
 }
@@ -1242,22 +1242,9 @@ dialog.modal.issue-modal .page.issue {
   color: var(--ink);
 }
 
-.board-column-count,
-.wip-limit {
+.board-column-count {
   font: 500 0.6875rem/1 var(--font-mono);
   color: var(--muted);
-}
-
-.wip-limit {
-  margin-left: auto;
-}
-
-.board-column.over-limit {
-  border-color: var(--accent);
-}
-
-.board-column.over-limit .wip-limit {
-  color: var(--accent-text);
 }
 
 .board-cards {
@@ -1312,11 +1299,6 @@ body > .board-card.touch-ghost {
   margin: 0;
   pointer-events: none;
   box-shadow: var(--shadow-pop);
-}
-
-.board-column.under-limit .wip-limit {
-  color: var(--ink);
-  font-weight: 600;
 }
 
 .sprint-meta {

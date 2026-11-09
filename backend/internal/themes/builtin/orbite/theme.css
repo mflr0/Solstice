@@ -1840,19 +1840,6 @@
   background: color-mix(in srgb, var(--sun) 7%, var(--paper-sunk));
 }
 
-[data-skin='orbite'] .board-column.over-limit {
-  border-color: color-mix(in srgb, var(--tone-bug) 60%, var(--rule));
-}
-
-[data-skin='orbite'] .board-column.over-limit .board-column-head {
-  box-shadow: inset 0 2px 0 var(--tone-bug);
-  border-radius: calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px) 0 0;
-}
-
-[data-skin='orbite'] .board-column.over-limit .wip-limit {
-  color: var(--tone-bug);
-}
-
 [data-skin='orbite'] .board-card {
   box-shadow: var(--orb-panel-shadow);
 }
