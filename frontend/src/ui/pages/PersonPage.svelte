@@ -4,6 +4,7 @@
   import type { Person } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import { debounce, live } from '../../lib/live.svelte.js';
   import IssueTable from '../IssueTable.svelte';
   import Picture from '../Picture.svelte';
 
@@ -27,6 +28,21 @@
         document.title = `${p.user.name} — ${t.appName}`;
       })
       .catch((e: unknown) => (error = errorMessage(e)));
+  });
+
+  // What is open in their name changes with any issue: refetch quietly.
+  $effect(() => {
+    const u = username;
+    return live.onChange(
+      debounce(() => {
+        api
+          .person(u)
+          .then((p) => {
+            if (u === username) person = p;
+          })
+          .catch(() => {});
+      }, 700),
+    );
   });
 </script>
 
