@@ -1,7 +1,11 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { ADMIN_NAV, adminPath, type AdminSection } from '../../core/areas.js';
   import { t } from '../../i18n/t.js';
+  import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
+  import TypeLayoutPage from '../layouts/TypeLayoutPage.svelte';
+  import Modal from '../Modal.svelte';
   import NotFoundPage from '../pages/NotFoundPage.svelte';
   import SettingsLayout from '../SettingsLayout.svelte';
   import AdminOverview from './AdminOverview.svelte';
@@ -32,8 +36,31 @@
     /** A page below the section (a webhook's id, "new"). */
     item: string | null;
   }
-  const { section, item }: Props = $props();
+  const props: Props = $props();
 
+  /** A page has unsaved changes: leaving it asks first. */
+  let dirty = $state(false);
+  let leaving = $state<(() => void) | null>(null);
+
+  // Another page, reached while this one has unsaved changes (a link, the
+  // back button): the address goes back to where the page was and the switch
+  // waits for the answer.
+  let shown = $state(untrack(() => ({ section: props.section, item: props.item })));
+  let shownAt = untrack(() => router.here);
+  $effect.pre(() => {
+    const next = { section: props.section, item: props.item };
+    const here = router.here;
+    if ((next.section === shown.section && next.item === shown.item) || !untrack(() => dirty)) {
+      if (next.section !== shown.section || next.item !== shown.item) shown = next;
+      shownAt = here;
+      return;
+    }
+    leaving = () => router.navigate(here, { replace: true });
+    router.navigate(shownAt, { replace: true });
+  });
+
+  const section = $derived(shown.section);
+  const item = $derived(shown.item);
   const label = $derived(t.adminArea.sections[section]);
   const groups = $derived(
     ADMIN_NAV.map((g) => ({
@@ -47,6 +74,7 @@
   );
 
   $effect(() => {
+    if (section === 'issueTypes' && item !== null) return;
     document.title =
       section === 'overview'
         ? `${t.adminArea.title} — ${t.appName}`
@@ -75,6 +103,8 @@
         <AdminProjectsPage />
       {:else if section === 'securityLevels'}
         <SecurityLevelsPage />
+      {:else if section === 'issueTypes' && item !== null}
+        <TypeLayoutPage typeId={item} ondirty={(d) => (dirty = d)} />
       {:else if section === 'issueTypes' || section === 'priorities' || section === 'resolutions' || section === 'linkTypes'}
         <CatalogPage kind={section} />
       {:else if section === 'statuses'}
@@ -98,4 +128,23 @@
       {/if}
     {/key}
   </SettingsLayout>
+
+  <Modal open={leaving !== null} title={t.workflows.leaveTitle} onclose={() => (leaving = null)}>
+    <p>{t.layouts.leaveBody}</p>
+    {#snippet footer()}
+      <button type="button" class="btn btn-quiet" onclick={() => (leaving = null)}
+        >{t.workflows.stay}</button
+      >
+      <button
+        type="button"
+        class="btn btn-danger"
+        onclick={() => {
+          const go = leaving;
+          leaving = null;
+          dirty = false;
+          go?.();
+        }}>{t.workflows.leave}</button
+      >
+    {/snippet}
+  </Modal>
 {/if}

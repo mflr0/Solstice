@@ -637,6 +637,31 @@ export interface FieldInput {
   context?: { projects: string[]; issueTypes: string[] };
 }
 
+/* Issue layouts ------------------------------------------------------------- */
+
+/** A form a layout shapes: the new issue dialog or the issue view. */
+export type LayoutForm = 'create' | 'view';
+
+/** Where a field goes in the issue view: under the summary or in the side card. */
+export type LayoutZone = 'main' | 'side';
+
+/** One field of a layout: a system field's Jira id, or customfield_<id>. */
+export interface LayoutField {
+  field: string;
+  /** View only. */
+  zone?: LayoutZone;
+  hidden: boolean;
+  /** Create only. */
+  required?: boolean;
+}
+
+/** A template, or what it inherits when it isn't customised (source). */
+export interface IssueLayout {
+  form: LayoutForm;
+  source: 'project' | 'type' | 'default';
+  fields: LayoutField[];
+}
+
 /* System and import --------------------------------------------------------- */
 
 export interface SystemInfo {

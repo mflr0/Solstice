@@ -7,6 +7,8 @@ export interface TouchDragHandlers {
   move(x: number, y: number): void;
   drop(x: number, y: number): void;
   cancel(): void;
+  /** What a hold picks up; `.board-card` by default. */
+  selector?: string;
 }
 
 // Long enough to tell a hold from a swipe, short enough to beat the
@@ -15,7 +17,7 @@ const HOLD_MS = 350;
 const SLOP_PX = 10;
 
 /**
- * Drags the node's `.board-card`s by touch: hold a card still, then move
+ * Drags the node's `.board-card`s (or what `selector` picks) by touch: hold a card still, then move
  * it. A copy follows the finger and the node scrolls sideways (the page
  * up and down) when the finger nears an edge. A swipe still scrolls and a
  * tap still opens the card.
@@ -84,8 +86,8 @@ export function touchDrag(node: HTMLElement, handlers: TouchDragHandlers) {
   function onStart(e: TouchEvent) {
     if (touch !== null || e.touches.length > 1) return abort();
     const target = e.target as Element;
-    const card = target.closest<HTMLElement>('.board-card');
-    if (!card || !node.contains(card) || target.closest('button')) return;
+    const card = target.closest<HTMLElement>(current.selector ?? '.board-card');
+    if (!card || !node.contains(card) || target.closest('button, input, select, label')) return;
     const t = e.changedTouches[0];
     if (!t) return;
     touch = t.identifier;
