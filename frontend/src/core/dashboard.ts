@@ -49,6 +49,8 @@ export interface GadgetConfig {
   /** Replaces the order of the gadget's query; absent, the query keeps its own. */
   sort?: SortTerm | undefined;
   field?: CountField | undefined;
+  /** Folded in the user's space. */
+  collapsed?: boolean | undefined;
 }
 
 export interface Gadget {

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -38,12 +39,15 @@ type filterOut struct {
 	Favourite   bool          `json:"favourite"`
 	CanEdit     bool          `json:"canEdit"`
 	Shares      []filterShare `json:"shares"`
+	// The columns of the filter's results, nil for the default ones.
+	Columns []string `json:"columns"`
 }
 
 type filterRow struct {
-	out    filterOut
-	owner  sql.NullInt64
-	shares []shareRow
+	out     filterOut
+	owner   sql.NullInt64
+	columns sql.NullString
+	shares  []shareRow
 }
 
 type shareRow struct {
@@ -118,7 +122,7 @@ func (s *Server) sharesOfFilter(ctx context.Context, filter int64) ([]filterShar
 func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64) ([]*filterRow, error) {
 	byID := map[int64]*filterRow{}
 	var list []*filterRow
-	q := `SELECT f.id, f.name, f.description, f.query, f.owner_id, fav.user_id IS NOT NULL
+	q := `SELECT f.id, f.name, f.description, f.query, f.owner_id, f.columns, fav.user_id IS NOT NULL
 		FROM filters f LEFT JOIN filter_favourites fav ON fav.filter_id = f.id AND fav.user_id = ?`
 	args := []any{sub.UserID}
 	if only != 0 {
@@ -127,8 +131,12 @@ func (s *Server) loadFilters(ctx context.Context, sub *perm.Subject, only int64)
 	}
 	if err := sqlq.Each(ctx, s.db, q, func(rows *sql.Rows) error {
 		f := &filterRow{}
-		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.out.Favourite); err != nil {
+		if err := rows.Scan(&f.out.ID, &f.out.Name, &f.out.Description, &f.out.Query, &f.owner, &f.columns, &f.out.Favourite); err != nil {
 			return err
+		}
+		if f.columns.Valid {
+			// Columns that no longer read give the default ones.
+			_ = json.Unmarshal([]byte(f.columns.String), &f.out.Columns)
 		}
 		byID[f.out.ID] = f
 		list = append(list, f)
@@ -236,6 +244,8 @@ type filterInput struct {
 	Description *string        `json:"description"`
 	Query       *string        `json:"query"`
 	Shares      *[]filterShare `json:"shares"`
+	// Absent leaves the columns as they are, null sets the default ones.
+	Columns json.RawMessage `json:"columns"`
 }
 
 // checkFilter validates a filter's name, query and shares. One may only share
@@ -290,6 +300,38 @@ func (s *Server) checkFilter(ctx context.Context, sub *perm.Subject, in filterIn
 		}
 	}
 	return nil
+}
+
+// filterColumns validates the columns given for a filter and returns them as
+// stored: a JSON list of known column ids, or nil for the default ones. The
+// key and the summary are always shown, so they are dropped.
+func (s *Server) filterColumns(ctx context.Context, raw json.RawMessage) (any, error) {
+	var ids []string
+	if err := json.Unmarshal(raw, &ids); err != nil {
+		return nil, badBody(err)
+	}
+	if ids == nil {
+		return nil, nil
+	}
+	if len(ids) > maxGadgetCols {
+		return nil, failf(http.StatusBadRequest, i18n.DashboardColumnsTooMany, maxGadgetCols)
+	}
+	custom, err := s.customFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cols, err := parseColumns(strings.Join(ids, ","), "", custom)
+	if err != nil {
+		return nil, err
+	}
+	kept := []string{}
+	for _, c := range cols {
+		if c.id != "issuekey" && c.id != "summary" {
+			kept = append(kept, c.id)
+		}
+	}
+	b, err := json.Marshal(kept)
+	return string(b), err
 }
 
 // checkGroupExists keeps an administrator, who may name any group, from
@@ -379,6 +421,12 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkFilter(ctx, sub, in); err != nil {
 		return err
 	}
+	var columns any
+	if in.Columns != nil {
+		if columns, err = s.filterColumns(ctx, in.Columns); err != nil {
+			return err
+		}
+	}
 	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -389,8 +437,8 @@ func (s *Server) createFilter(w http.ResponseWriter, r *http.Request) error {
 	if in.Description != nil {
 		desc = sqlq.NullIfBlank(*in.Description)
 	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, description, query, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, sub.UserID, strings.TrimSpace(*in.Name), desc, *in.Query, now, now)
+	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, description, query, columns, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, sub.UserID, strings.TrimSpace(*in.Name), desc, *in.Query, columns, now, now)
 	if err != nil {
 		return err
 	}
@@ -433,13 +481,20 @@ func (s *Server) updateFilter(w http.ResponseWriter, r *http.Request) error {
 	if err := s.checkFilter(ctx, sub, in); err != nil {
 		return err
 	}
+	sets := []string{"updated_at = ?"}
+	args := []any{time.Now().UTC()}
+	if in.Columns != nil {
+		columns, err := s.filterColumns(ctx, in.Columns)
+		if err != nil {
+			return err
+		}
+		sets, args = append(sets, "columns = ?"), append(args, columns)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	sets := []string{"updated_at = ?"}
-	args := []any{time.Now().UTC()}
 	if in.Name != nil {
 		sets, args = append(sets, "name = ?"), append(args, strings.TrimSpace(*in.Name))
 	}

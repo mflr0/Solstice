@@ -18,6 +18,7 @@ const filter = (id: number, name: string): SavedFilter => ({
   favourite: false,
   canEdit: true,
   shares: [],
+  columns: null,
 });
 
 const filters = [filter(1, 'Open bugs'), filter(2, 'My work')];

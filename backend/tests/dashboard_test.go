@@ -28,7 +28,8 @@ type gadgetOut struct {
 			Field string `json:"field"`
 			Desc  bool   `json:"desc"`
 		} `json:"sort"`
-		Field string `json:"field"`
+		Field     string `json:"field"`
+		Collapsed bool   `json:"collapsed"`
 	} `json:"config"`
 }
 
