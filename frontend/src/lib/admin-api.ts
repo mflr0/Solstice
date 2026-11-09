@@ -22,10 +22,13 @@ import type {
   GeneralSettingsInput,
   Group,
   GroupDetail,
+  IssueLayout,
   ImportCheck,
   ImportSource,
   ImportView,
   KeyCheck,
+  LayoutField,
+  LayoutForm,
   Onboarding,
   ProjectInput,
   ProjectPatch,
@@ -188,6 +191,14 @@ export const adminApi = {
   updateStatus: (id: string, s: { name?: string; category?: string }) =>
     request<StatusRow>('PATCH', `/api/statuses/${enc(id)}`, s),
   deleteStatus: (id: string) => request<void>('DELETE', `/api/statuses/${enc(id)}`),
+
+  // Issue layouts: an issue type's templates.
+  typeLayout: (type: string | number, form: LayoutForm) =>
+    request<IssueLayout>('GET', `/api/admin/issue-types/${type}/layouts/${form}`),
+  saveTypeLayout: (type: string | number, form: LayoutForm, fields: LayoutField[]) =>
+    request<IssueLayout>('PUT', `/api/admin/issue-types/${type}/layouts/${form}`, { fields }),
+  resetTypeLayout: (type: string | number, form: LayoutForm) =>
+    request<void>('DELETE', `/api/admin/issue-types/${type}/layouts/${form}`),
 
   // Custom fields.
   fields: () => request<FieldRow[]>('GET', '/api/admin/fields'),

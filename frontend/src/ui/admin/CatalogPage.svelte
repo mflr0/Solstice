@@ -10,6 +10,7 @@
     type CatalogSection,
   } from '../../core/catalogs.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
+  import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
@@ -296,6 +297,13 @@
                   : usageText(item)}
               </td>
               <td class="row-actions">
+                {#if kind === 'issueTypes'}
+                  <a
+                    class="link-btn"
+                    href={paths.admin('issueTypes', item.id)}
+                    aria-label={t.layouts.actionLabel(item.name)}>{t.layouts.action}</a
+                  >
+                {/if}
                 <button class="link-btn" onclick={() => (dialog = { item })}>{t.common.edit}</button
                 >
                 <button id={deleteId(item)} class="link-btn" onclick={() => askRemove(item)}

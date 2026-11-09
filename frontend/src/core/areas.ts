@@ -85,7 +85,7 @@ export function adminPath(item: AdminSection, sub?: string | number): string {
 }
 
 /** Sections that have pages below them (/admin/<slug>/<item>). */
-export const ADMIN_ITEM_SECTIONS: readonly AdminSection[] = ['webhooks'];
+export const ADMIN_ITEM_SECTIONS: readonly AdminSection[] = ['issueTypes', 'webhooks'];
 
 export const ACCOUNT_SECTIONS = [
   'profile',
