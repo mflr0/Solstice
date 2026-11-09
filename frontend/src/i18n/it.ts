@@ -355,8 +355,6 @@ export const it: Messages = {
     emptyWatching: 'Non segui nessun ticket.',
     emptyDue: 'Nulla in scadenza nei prossimi 7 giorni.',
     emptyFilter: 'Nessun ticket corrisponde a questa vista.',
-    emptyCount: 'Nessun ticket da contare.',
-    none: 'Nessuno',
     emptyDashboard: 'Il tuo spazio è vuoto.',
     emptyDashboardHint: 'Crea una vista per seguire qui una ricerca.',
     unavailable: 'Questa vista non è più disponibile per te.',

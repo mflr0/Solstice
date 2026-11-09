@@ -6,8 +6,6 @@ import {
   copyOnEditPath,
   gadgetQuery,
   inSpace,
-  jqlValue,
-  narrowedJql,
   queryOrder,
   setCollapsed,
   sortedQuery,
@@ -26,32 +24,6 @@ const gadget = (over: Partial<Gadget>): Gadget => ({
   unavailable: false,
   config: {},
   ...over,
-});
-
-describe('narrowedJql', () => {
-  it('adds the value to the query, keeping its order', () => {
-    expect(
-      narrowedJql('project = DEMO OR type = Bug ORDER BY created DESC', 'status', '"Done"'),
-    ).toBe('(project = DEMO OR type = Bug) AND status = "Done" ORDER BY created DESC');
-  });
-
-  it('narrows a query in the simple syntax', () => {
-    expect(narrowedJql('', 'assignee', 'EMPTY')).toBe('assignee is EMPTY');
-    expect(narrowedJql('#ui', 'priority', '"High"')).toMatch(
-      /^\(.*labels.*\) AND priority = "High"/,
-    );
-  });
-
-  it('gives up on a query that does not parse', () => {
-    expect(narrowedJql('project = (', 'status', '"Done"')).toBeNull();
-  });
-});
-
-describe('jqlValue', () => {
-  it('quotes a value, and reads none as EMPTY', () => {
-    expect(jqlValue('In progress')).toBe('"In progress"');
-    expect(jqlValue('')).toBe('EMPTY');
-  });
 });
 
 describe('gadgetQuery', () => {
@@ -175,7 +147,7 @@ describe('the ready-made views', () => {
   });
 
   it('are in the space when a gadget shows them', () => {
-    const gadgets = [gadget({ kind: 'watching', filter: null }), gadget({ kind: 'count' })];
+    const gadgets = [gadget({ kind: 'watching', filter: null }), gadget({})];
     expect(inSpace(gadgets, 'watching')).toBe(true);
     expect(inSpace(gadgets, 'due')).toBe(false);
     expect(inSpace(gadgets, { filter: 3 })).toBe(true);

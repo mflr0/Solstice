@@ -350,8 +350,6 @@ export const en = {
     emptyWatching: 'You aren’t watching any issues.',
     emptyDue: 'Nothing is due in the next 7 days.',
     emptyFilter: 'No issues match this view.',
-    emptyCount: 'No issues to count.',
-    none: 'None',
     emptyDashboard: 'Your space is empty.',
     emptyDashboardHint: 'Create a view to follow a search here.',
     unavailable: 'This view is no longer available to you.',

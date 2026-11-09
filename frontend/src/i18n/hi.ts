@@ -354,8 +354,6 @@ export const hi: Messages = {
     emptyWatching: 'आप किसी टिकट को वॉच नहीं करते।',
     emptyDue: 'अगले 7 दिनों में कुछ भी देय नहीं है।',
     emptyFilter: 'इस व्यू से कोई टिकट मेल नहीं खाता।',
-    emptyCount: 'गिनने के लिए कोई टिकट नहीं।',
-    none: 'कोई नहीं',
     emptyDashboard: 'आपका स्पेस खाली है।',
     emptyDashboardHint: 'किसी खोज को यहाँ देखने के लिए एक व्यू बनाएँ।',
     unavailable: 'यह व्यू अब आपके लिए उपलब्ध नहीं है।',

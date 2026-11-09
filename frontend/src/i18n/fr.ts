@@ -353,8 +353,6 @@ export const fr: Messages = {
     emptyWatching: 'Vous ne suivez aucun ticket.',
     emptyDue: 'Rien à rendre dans les 7 prochains jours.',
     emptyFilter: 'Aucun ticket ne correspond à cette vue.',
-    emptyCount: 'Aucun ticket à compter.',
-    none: 'Aucun',
     emptyDashboard: 'Votre espace est vide.',
     emptyDashboardHint: 'Créez une vue pour suivre ici une recherche.',
     unavailable: 'Cette vue ne vous est plus accessible.',

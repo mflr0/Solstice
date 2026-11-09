@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -23,14 +24,12 @@ type gadgetOut struct {
 	} `json:"filter"`
 	Unavailable bool `json:"unavailable"`
 	Config      struct {
-		Columns []string `json:"columns"`
-		Size    int      `json:"size"`
-		Sort    *struct {
+		Size int `json:"size"`
+		Sort *struct {
 			Field string `json:"field"`
 			Desc  bool   `json:"desc"`
 		} `json:"sort"`
-		Field     string `json:"field"`
-		Collapsed bool   `json:"collapsed"`
+		Collapsed bool `json:"collapsed"`
 	} `json:"config"`
 }
 
@@ -51,6 +50,28 @@ func resetDashboard(t *testing.T, username string) {
 	id := userID(t, username)
 	testDB.Exec(`DELETE FROM dashboard_gadgets WHERE user_id = ?`, id)
 	testDB.Exec(`DELETE FROM dashboards WHERE user_id = ?`, id)
+}
+
+// rawGadget is a dashboard_gadgets row, for kinds and settings the API no longer takes.
+type rawGadget struct {
+	kind   string
+	filter int64
+	config string
+}
+
+// insertGadgets gives the user a dashboard of these gadgets, bypassing the API.
+func insertGadgets(t *testing.T, username string, gadgets ...rawGadget) {
+	t.Helper()
+	id := userID(t, username)
+	if _, err := testDB.Exec(`INSERT INTO dashboards (user_id, updated_at) VALUES (?, NOW())`, id); err != nil {
+		t.Fatal(err)
+	}
+	for i, g := range gadgets {
+		if _, err := testDB.Exec(`INSERT INTO dashboard_gadgets (user_id, position, kind, filter_id, config) VALUES (?, ?, ?, NULLIF(?, 0), ?)`,
+			id, i, g.kind, g.filter, g.config); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestDashboardDefaults(t *testing.T) {
@@ -123,10 +144,9 @@ func TestDashboardValidation(t *testing.T) {
 		"unknown kind":      []map[string]any{{"kind": "burndown"}},
 		"no filter":         []map[string]any{{"kind": "results"}},
 		"someone's private": []map[string]any{{"kind": "results", "filter": private.ID}},
-		"missing filter":    []map[string]any{{"kind": "count", "filter": 999999999, "config": map[string]any{"field": "status"}}},
-		"count field":       []map[string]any{{"kind": "assigned"}, {"kind": "count", "filter": own.ID, "config": map[string]any{"field": "summary"}}},
+		"missing filter":    []map[string]any{{"kind": "results", "filter": 999999999}},
+		"count":             []map[string]any{{"kind": "assigned"}, {"kind": "count", "filter": own.ID}},
 		"size":              []map[string]any{{"kind": "recent", "config": map[string]any{"size": 51}}},
-		"column":            []map[string]any{{"kind": "recent", "config": map[string]any{"columns": []string{"status", "nonsense"}}}},
 		"too many":          many,
 	} {
 		if status, body := hugo.do("PUT", "/api/dashboard", map[string]any{"gadgets": gadgets}); status != 400 {
@@ -139,8 +159,7 @@ func TestDashboardValidation(t *testing.T) {
 	}
 }
 
-// A list gadget keeps the sort saved on it; one ORDER BY can't take is
-// dropped, and a count gadget has none.
+// A list gadget keeps the sort saved on it; one ORDER BY can't take is dropped.
 func TestDashboardSort(t *testing.T) {
 	resetDashboard(t, "hugo.robert")
 	t.Cleanup(func() { resetDashboard(t, "hugo.robert") })
@@ -162,7 +181,6 @@ func TestDashboardSort(t *testing.T) {
 		{"kind": "results", "filter": own.ID, "config": sort(custom, true)},
 		{"kind": "recent", "config": sort("nonsense", true)},
 		{"kind": "reported", "config": sort("cf[999999999]", true)},
-		{"kind": "count", "filter": own.ID, "config": map[string]any{"field": "status", "sort": map[string]any{"field": "updated"}}},
 	}})
 	read := dashboard(hugo, "GET", nil)
 	for i, g := range read.Gadgets {
@@ -170,12 +188,12 @@ func TestDashboardSort(t *testing.T) {
 		if s := g.Config.Sort; s != nil {
 			got = fmt.Sprintf("%s %v", s.Field, s.Desc)
 		}
-		want := []string{"updated false", custom + " true", "none", "none", "none"}[i]
+		want := []string{"updated false", custom + " true", "none", "none"}[i]
 		if got != want {
 			t.Errorf("gadget %d (%s): sort %s, want %s", i, g.Kind, got, want)
 		}
 	}
-	if len(d.Gadgets) != 5 {
+	if len(d.Gadgets) != 4 {
 		t.Fatalf("saved dashboard: %+v", d)
 	}
 
@@ -207,19 +225,19 @@ func TestDashboardFilterGadgets(t *testing.T) {
 
 	d := dashboard(paul, "PUT", map[string]any{"gadgets": []map[string]any{
 		{"kind": "assigned", "config": map[string]any{"size": 5}},
-		{"kind": "results", "filter": f.ID, "config": map[string]any{"columns": []string{"status", "assignee"}, "size": 10}},
-		{"kind": "count", "filter": f.ID, "config": map[string]any{"field": "status"}},
+		{"kind": "results", "filter": f.ID, "config": map[string]any{"size": 10}},
+		{"kind": "results", "filter": f.ID, "config": map[string]any{"collapsed": true}},
 	}})
 	if len(d.Gadgets) != 3 {
 		t.Fatalf("saved: %+v", d)
 	}
-	res, count := d.Gadgets[1], d.Gadgets[2]
+	res, folded := d.Gadgets[1], d.Gadgets[2]
 	if res.Kind != "results" || res.Filter == nil || res.Filter.Name != name || res.Filter.Query != "project = DEMO" ||
-		res.Unavailable || res.Config.Size != 10 || len(res.Config.Columns) != 2 {
+		res.Unavailable || res.Config.Size != 10 {
 		t.Errorf("results gadget: %+v", res)
 	}
-	if count.Kind != "count" || count.Filter == nil || count.Config.Field != "status" || count.Unavailable {
-		t.Errorf("count gadget: %+v", count)
+	if folded.Filter == nil || folded.Filter.ID != f.ID || !folded.Config.Collapsed || folded.Unavailable {
+		t.Errorf("second gadget on the filter: %+v", folded)
 	}
 
 	unshare := func() {
@@ -247,7 +265,7 @@ func TestDashboardFilterGadgets(t *testing.T) {
 	// A new gadget on it is refused.
 	if status, body := paul.do("PUT", "/api/dashboard", map[string]any{"gadgets": []map[string]any{
 		{"id": res.ID, "kind": "results"},
-		{"kind": "count", "filter": f.ID, "config": map[string]any{"field": "status"}},
+		{"kind": "results", "filter": f.ID},
 	}}); status != 400 {
 		t.Errorf("new gadget on an unshared filter: %d %s", status, body)
 	}
@@ -286,4 +304,51 @@ func TestDashboardFilterGadgets(t *testing.T) {
 	if other.Customised {
 		t.Errorf("marie.durand's dashboard: %+v", other)
 	}
+}
+
+// Migration 0029 turns a count gadget into a list of the same filter, in its
+// place, and leaves the other gadgets alone.
+func TestMigrationCountGadgets(t *testing.T) {
+	body, err := os.ReadFile("../internal/db/migrations/0029_count_gadgets.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resetDashboard(t, "hugo.robert")
+	t.Cleanup(func() { resetDashboard(t, "hugo.robert") })
+	hugo := login(t, "hugo.robert", jirafixture.Password)
+	var f filterOut
+	hugo.call("POST", "/api/filters", map[string]any{"name": unique("Migration décompte "), "query": "project = DEMO"}, 201, &f)
+	t.Cleanup(func() { hugo.do("DELETE", fmt.Sprintf("/api/filters/%d", f.ID), nil) })
+	insertGadgets(t, "hugo.robert",
+		rawGadget{kind: "recent", config: `{"size":12}`},
+		rawGadget{kind: "count", filter: f.ID, config: `{"field":"status","collapsed":true}`},
+		rawGadget{kind: "results", filter: f.ID, config: `{"size":5,"columns":["status"]}`},
+	)
+	before := dashboard(hugo, "GET", nil)
+
+	if _, err := testDB.Exec(string(body)); err != nil {
+		t.Fatal(err)
+	}
+
+	d := dashboard(hugo, "GET", nil)
+	if len(d.Gadgets) != 3 {
+		t.Fatalf("dashboard after the migration: %+v", d)
+	}
+	if g := d.Gadgets[1]; g.ID != before.Gadgets[1].ID || g.Kind != "results" || g.Filter == nil || g.Filter.ID != f.ID ||
+		g.Unavailable || !g.Config.Collapsed {
+		t.Errorf("count gadget after the migration: %+v", g)
+	}
+	for _, i := range []int{0, 2} {
+		was, _ := json.Marshal(before.Gadgets[i])
+		now, _ := json.Marshal(d.Gadgets[i])
+		if string(was) != string(now) {
+			t.Errorf("gadget %d changed:\n%s\n%s", i, was, now)
+		}
+	}
+	// It still saves as it reads.
+	var in []map[string]any
+	for _, g := range d.Gadgets {
+		in = append(in, map[string]any{"id": g.ID, "kind": g.Kind})
+	}
+	dashboard(hugo, "PUT", map[string]any{"gadgets": in})
 }
