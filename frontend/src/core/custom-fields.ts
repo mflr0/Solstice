@@ -1,6 +1,6 @@
 // Custom field values as issue forms hold them, and as the REST API reads them.
 
-import type { OfferedField, UserRef } from './types.js';
+import type { CustomValue, OfferedField, UserRef } from './types.js';
 
 /**
  * What an editor holds: the text typed (text, number, URL, dates), the
@@ -69,4 +69,37 @@ export function restValue(field: OfferedField, draft: CustomDraft): unknown {
       return s.trim() ? s : undefined;
     }
   }
+}
+
+/**
+ * The draft of a field's stored value, as the issue view shows it: options
+ * by label, dates and times as the server writes them. Labels of options no
+ * longer offered are left out.
+ */
+export function draftOf(field: OfferedField, value: CustomValue | undefined): CustomDraft {
+  if (!value) return emptyDraft(field);
+  switch (field.type) {
+    case 'select':
+    case 'radio':
+    case 'multiselect':
+    case 'checkboxes':
+      return value.values.flatMap((v) => field.options.find((o) => o.value === v)?.id ?? []);
+    case 'labels':
+      return [...value.values];
+    case 'user':
+    case 'multiuser':
+      return [...(value.users ?? [])];
+    case 'datetime':
+      return value.values[0] ? localDateTime(value.values[0]) : '';
+    default:
+      return value.values[0] ?? '';
+  }
+}
+
+// An instant as a datetime-local input holds it, in the browser's zone.
+function localDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { type CustomDraft } from '../core/custom-fields.js';
-  import type { OfferedField, UserRef } from '../core/types.js';
+  import type { Attachment, OfferedField, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { api } from '../lib/api.js';
   import Dropdown from './Dropdown.svelte';
@@ -9,6 +9,7 @@
   import UserPicker from './UserPicker.svelte';
   import WikiEditor from './WikiEditor.svelte';
   import Who from './Who.svelte';
+  import WikiText from './WikiText.svelte';
 
   /** One editor for a custom field, by its type. */
   interface Props {
@@ -20,8 +21,29 @@
     invalid?: boolean | undefined;
     /** The id of the field's error message. */
     describedby?: string | undefined;
+    /** Draw it as inline text, framed on hover, like the issue card's own fields. */
+    quiet?: boolean | undefined;
+    /** The issue's files, for the images a quiet wiki field shows. */
+    attachments?: Attachment[] | undefined;
   }
-  const { field, value, onchange, id, invalid = false, describedby }: Props = $props();
+  const {
+    field,
+    value,
+    onchange,
+    id,
+    invalid = false,
+    describedby,
+    quiet = false,
+    attachments = [],
+  }: Props = $props();
+
+  // A quiet wiki field shows its text until asked to edit it.
+  let opened = $state(false);
+
+  function closeOnLeave(e: FocusEvent) {
+    const to = e.relatedTarget;
+    if (!(to instanceof Node && (e.currentTarget as HTMLElement).contains(to))) opened = false;
+  }
 
   const text = $derived(typeof value === 'string' ? value : '');
   const ids = $derived(Array.isArray(value) ? (value as number[]) : []);
@@ -32,15 +54,39 @@
   }
 </script>
 
-{#if field.type === 'textarea'}
+{#if field.type === 'textarea' && quiet && !opened}
+  <div class="shown">
+    {#if text}<WikiText source={text} {attachments} />{:else}<span class="none"
+        >{t.common.none}</span
+      >{/if}
+    <button
+      type="button"
+      class="link-btn"
+      {id}
+      aria-label={`${t.common.edit} ${field.name}`}
+      onclick={() => (opened = true)}>{t.common.edit}</button
+    >
+  </div>
+{:else if field.type === 'textarea' && quiet}
+  <div onfocusout={closeOnLeave} role="group" aria-label={field.name}>
+    <WikiEditor
+      bind:value={() => text, (v) => onchange(v)}
+      label={field.name}
+      rows={3}
+      {attachments}
+      autofocus
+    />
+  </div>
+{:else if field.type === 'textarea'}
   <WikiEditor bind:value={() => text, (v) => onchange(v)} label={field.name} rows={3} />
 {:else if field.type === 'labels'}
-  <label class="boxed" for={id}>
+  <label class:boxed={!quiet} for={id}>
     <LabelEditor {id} labels={value as string[]} onchange={(l) => onchange(l)} />
   </label>
 {:else if field.type === 'select'}
   <Dropdown
     {id}
+    {quiet}
     label={field.name}
     value={ids[0] === undefined ? '' : String(ids[0])}
     options={[
@@ -52,7 +98,7 @@
   />
 {:else if field.type === 'multiselect'}
   <MultiPick
-    field
+    field={!quiet}
     label={field.name}
     options={field.options.map((o) => ({ id: o.id, name: o.value }))}
     selected={ids}
@@ -96,7 +142,7 @@
   </div>
 {:else if field.type === 'user'}
   <UserPicker
-    field
+    field={!quiet}
     value={users[0] ?? null}
     label={field.name}
     noneLabel={t.common.none}
@@ -122,7 +168,7 @@
       </ul>
     {/if}
     <UserPicker
-      field
+      field={!quiet}
       value={null}
       allowNone={false}
       label={`${field.name}: ${t.create.addPerson}`}
@@ -136,7 +182,7 @@
   </div>
 {:else}
   <input
-    class="input"
+    class={quiet ? 'quiet' : 'input'}
     {id}
     type={field.type === 'number'
       ? 'number'
@@ -149,6 +195,7 @@
             : 'text'}
     step={field.type === 'number' ? 'any' : undefined}
     maxlength={field.type === 'text' || field.type === 'url' ? 255 : undefined}
+    placeholder={quiet ? t.common.none : undefined}
     value={text}
     aria-invalid={invalid}
     aria-describedby={describedby}
@@ -165,6 +212,46 @@
     display: flex;
     align-items: center;
     cursor: text;
+  }
+
+  .quiet {
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 1px 4px;
+    margin-left: -5px;
+    width: calc(100% + 5px);
+    font-size: 0.8125rem;
+  }
+
+  .quiet[type='date'],
+  .quiet[type='datetime-local'] {
+    width: auto;
+    font-family: var(--font-mono);
+  }
+
+  .quiet::placeholder {
+    font-style: italic;
+    color: var(--muted);
+  }
+
+  .shown {
+    display: grid;
+    gap: 2px;
+    justify-items: start;
+  }
+
+  .none {
+    font-style: italic;
+    color: var(--muted);
+  }
+
+  .quiet:hover,
+  .quiet:focus {
+    border-color: var(--rule-strong);
+  }
+
+  .quiet[aria-invalid='true'] {
+    border-color: var(--accent-text);
   }
 
   .choices {

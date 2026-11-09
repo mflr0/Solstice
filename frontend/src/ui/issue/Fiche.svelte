@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { draftOf, restValue, type CustomDraft } from '../../core/custom-fields.js';
   import { estimateChanges, estimateText } from '../../core/estimates.js';
   import { paths } from '../../core/route.js';
-  import type { IssueDetail, ProjectDetail } from '../../core/types.js';
+  import type { CustomValue, IssueDetail, OfferedField, ProjectDetail } from '../../core/types.js';
   import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
   import { api, type IssueFields } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
+  import CustomFieldInput from '../CustomFieldInput.svelte';
   import Dropdown from '../Dropdown.svelte';
   import LabelEditor from '../LabelEditor.svelte';
   import Lock from '../Lock.svelte';
@@ -30,6 +32,7 @@
 
   let project = $state<ProjectDetail | null>(null);
   const edit = $derived(issue.can.edit === true);
+  const uid = $props.id();
 
   // Components, versions and types come from the project, only needed to edit.
   $effect(() => {
@@ -94,6 +97,92 @@
   // the control would keep the refused value.
   async function save(el: HTMLInputElement, fields: IssueFields, stored: () => string) {
     if (!(await onchange(fields))) el.value = stored();
+  }
+
+  // The custom fields the project and type offer, only needed to edit.
+  let offered = $state<OfferedField[]>([]);
+  $effect(() => {
+    const key = issue.project.key;
+    const type = issue.type.id;
+    if (!edit) return;
+    let current = true;
+    void api.projectFields(key, type).then((f) => {
+      if (current) offered = f;
+    });
+    return () => {
+      current = false;
+      offered = [];
+    };
+  });
+
+  // Every field with a value, then, for editors, the offered ones without.
+  const customRows = $derived.by(() => {
+    const byId = new Map(offered.map((f) => [f.id, f]));
+    const rows: {
+      id: number;
+      name: string;
+      value?: CustomValue;
+      field?: OfferedField | undefined;
+    }[] = issue.customFields.map((v) => ({
+      id: v.id,
+      name: v.name,
+      value: v,
+      field: byId.get(v.id),
+    }));
+    for (const f of offered) {
+      if (!issue.customFields.some((v) => v.id === f.id))
+        rows.push({ id: f.id, name: f.name, field: f });
+    }
+    return rows.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  });
+
+  // Reassigned, not mutated: a derived value is not deeply reactive.
+  let drafts = $derived<Record<number, CustomDraft>>(
+    Object.fromEntries(
+      offered.map((f) => [
+        f.id,
+        draftOf(
+          f,
+          issue.customFields.find((v) => v.id === f.id),
+        ),
+      ]),
+    ),
+  );
+
+  // Typed values are saved when the field is left, choices as they are made.
+  const typed = ['text', 'textarea', 'url', 'number', 'date', 'datetime'];
+
+  function setCustom(f: OfferedField, v: CustomDraft) {
+    drafts = { ...drafts, [f.id]: v };
+    if (!typed.includes(f.type)) void saveCustom(f);
+  }
+
+  async function saveCustom(f: OfferedField) {
+    const stored = () =>
+      draftOf(
+        f,
+        issue.customFields.find((v) => v.id === f.id),
+      );
+    const next = restValue(f, drafts[f.id] ?? stored());
+    if (JSON.stringify(next) === JSON.stringify(restValue(f, stored()))) return;
+    if (!(await onchange({ customFields: { [String(f.id)]: next ?? null } }))) {
+      drafts = { ...drafts, [f.id]: stored() };
+    }
+  }
+
+  // A row torn down with the focus in it still sends focusout, without its field.
+  function leaveCustom(e: FocusEvent, f: OfferedField | undefined) {
+    if (!f || !typed.includes(f.type)) return;
+    const to = e.relatedTarget;
+    if (to instanceof Node && (e.currentTarget as HTMLElement).contains(to)) return;
+    void saveCustom(f);
+  }
+
+  function customKeys(e: KeyboardEvent, f: OfferedField) {
+    if (e.key === 'Enter' && e.target instanceof HTMLInputElement && typed.includes(f.type)) {
+      e.preventDefault();
+      void saveCustom(f);
+    }
   }
 
   const spentRatio = $derived.by(() => {
@@ -375,44 +464,65 @@
     {/if}
   </dl>
 
-  {#if issue.customFields.length}
+  {#if customRows.length}
     <div class="head card-head sub">{t.issue.customFields}</div>
     <dl>
-      {#each issue.customFields as f (f.id)}
+      {#each customRows as row (row.id)}
+        {@const f = row.value}
+        {@const field = edit ? row.field : undefined}
         <div class="line card-row">
-          <dt>{f.name}</dt>
-          <dd>
-            {#if f.kind === 'user'}
-              <span class="stack">
-                {#each f.users ?? [] as u (u.id)}<Who user={u} />{/each}
-              </span>
-            {:else if f.kind === 'wiki'}
-              {#each f.values as v, i (i)}<WikiText
-                  source={v}
-                  attachments={issue.attachments}
-                />{/each}
-            {:else if f.kind === 'url'}
-              {#each f.values as v, i (i)}
-                {#if isSafeUrl(v)}
-                  <a href={v} rel="nofollow noopener noreferrer" target="_blank">{v}</a>
-                {:else}
-                  {v}
-                {/if}
-              {/each}
-            {:else if f.kind === 'date'}
-              {f.values.map(formatDay).join(', ')}
-            {:else if f.kind === 'datetime'}
-              {f.values.map(formatDateTime).join(', ')}
-            {:else if f.kind === 'issue'}
-              {#each f.values as v (v)}<a class="key" href={paths.issue(v)}>{v}</a>{/each}
-            {:else if f.kind === 'label'}
-              <span class="chips"
-                >{#each f.values as v (v)}<span class="chip">{v}</span>{/each}</span
-              >
-            {:else}
-              {f.values.join(', ')}
-            {/if}
-          </dd>
+          {#if field}
+            <dt><label for="{uid}-cf-{field.id}">{row.name}</label></dt>
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <dd
+              class="cf-edit"
+              onfocusout={(e) => leaveCustom(e, field)}
+              onkeydown={(e) => customKeys(e, field)}
+            >
+              <CustomFieldInput
+                {field}
+                id="{uid}-cf-{field.id}"
+                quiet
+                attachments={issue.attachments}
+                value={drafts[field.id] ?? draftOf(field, f)}
+                onchange={(v) => setCustom(field, v)}
+              />
+            </dd>
+          {:else if f}
+            <dt>{f.name}</dt>
+            <dd>
+              {#if f.kind === 'user'}
+                <span class="stack">
+                  {#each f.users ?? [] as u (u.id)}<Who user={u} />{/each}
+                </span>
+              {:else if f.kind === 'wiki'}
+                {#each f.values as v, i (i)}<WikiText
+                    source={v}
+                    attachments={issue.attachments}
+                  />{/each}
+              {:else if f.kind === 'url'}
+                {#each f.values as v, i (i)}
+                  {#if isSafeUrl(v)}
+                    <a href={v} rel="nofollow noopener noreferrer" target="_blank">{v}</a>
+                  {:else}
+                    {v}
+                  {/if}
+                {/each}
+              {:else if f.kind === 'date'}
+                {f.values.map(formatDay).join(', ')}
+              {:else if f.kind === 'datetime'}
+                {f.values.map(formatDateTime).join(', ')}
+              {:else if f.kind === 'issue'}
+                {#each f.values as v (v)}<a class="key" href={paths.issue(v)}>{v}</a>{/each}
+              {:else if f.kind === 'label'}
+                <span class="chips"
+                  >{#each f.values as v (v)}<span class="chip">{v}</span>{/each}</span
+                >
+              {:else}
+                {f.values.join(', ')}
+              {/if}
+            </dd>
+          {/if}
         </div>
       {/each}
     </dl>
