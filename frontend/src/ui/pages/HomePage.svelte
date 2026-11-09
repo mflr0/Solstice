@@ -1,8 +1,12 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+
   import { moveItem } from '../../core/catalogs.js';
   import {
     clickGadgetSort,
     copyOnEditPath,
+    gadgetAtHash,
     gadgetQuery,
     MAX_GADGETS,
     onFilter,
@@ -10,6 +14,7 @@
     setCollapsed,
     sortedQuery,
     toInput,
+    viewHash,
     viewJql,
     type Dashboard,
     type Gadget,
@@ -32,6 +37,7 @@
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import NewViewMenu from '../dashboard/NewViewMenu.svelte';
   import ShareViewDialog from '../dashboard/ShareViewDialog.svelte';
+  import ViewIndex from '../dashboard/ViewIndex.svelte';
   import ViewSection from '../dashboard/ViewSection.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Modal from '../Modal.svelte';
@@ -50,10 +56,19 @@
   let renaming = $state<{ filter: SavedFilter; name: string } | null>(null);
   let deleting = $state<SavedFilter | null>(null);
   let sharing = $state<SavedFilter | null>(null);
+  /** The section counts, by key, for the index. */
+  const totals = new SvelteMap<string, number | null>();
+  /** Folded views opened by a jump, by hash: for this visit only, the saved state stays. */
+  const openNow = new SvelteSet<string>();
+  /** The section a jump went to, kept aligned while the ones above it load. */
+  let jumped: string | null = null;
+  let viewsEl = $state<HTMLElement>();
 
   const gadgets = $derived(dash?.gadgets ?? []);
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
-  const allCollapsed = $derived(gadgets.length > 0 && gadgets.every((g) => g.config.collapsed));
+  const collapsedOf = (g: Gadget) => !!g.config.collapsed && !openNow.has(viewHash(g));
+  const allCollapsed = $derived(gadgets.length > 0 && gadgets.every(collapsedOf));
+  const ready = $derived(dash !== null && choices !== null && gadgets.length > 0);
 
   $effect(() => {
     document.title = `${t.home.title} — ${t.appName}`;
@@ -71,6 +86,32 @@
     void loadFilters();
   });
 
+  // The hash on arrival, then on Back and Forward, once the sections are drawn.
+  $effect(() => {
+    if (!ready) return;
+    void tick().then(() => jumpToHash(location.hash));
+    const onpop = () => jumpToHash(location.hash);
+    window.addEventListener('popstate', onpop);
+    return () => window.removeEventListener('popstate', onpop);
+  });
+
+  $effect(() => {
+    const el = viewsEl;
+    if (!el) return;
+    const align = () => {
+      if (jumped) document.getElementById(`view-section-${jumped}`)?.scrollIntoView();
+    };
+    const stop = () => (jumped = null);
+    const grow = new ResizeObserver(align);
+    grow.observe(el);
+    const events = ['keydown', 'pointerdown', 'wheel', 'touchstart'] as const;
+    for (const e of events) window.addEventListener(e, stop, { capture: true, passive: true });
+    return () => {
+      grow.disconnect();
+      for (const e of events) window.removeEventListener(e, stop, { capture: true });
+    };
+  });
+
   async function loadFilters() {
     try {
       filters = await api.filters();
@@ -86,6 +127,32 @@
   function focusToggle(i: number) {
     const g = gadgets[i];
     if (g) queueMicrotask(() => document.getElementById(`view-toggle-${keyOf(g, i)}`)?.focus());
+  }
+
+  function jumpToHash(hash: string) {
+    const i = gadgetAtHash(gadgets, hash);
+    if (i >= 0) jump(i);
+  }
+
+  /** Scrolls to the section at i, opened if folded, and focuses its toggle. */
+  function jump(i: number) {
+    const g = gadgets[i];
+    if (!g) return;
+    const key = keyOf(g, i);
+    if (g.config.collapsed) openNow.add(viewHash(g));
+    void tick().then(() => {
+      jumped = key;
+      document.getElementById(`view-section-${key}`)?.scrollIntoView();
+      document.getElementById(`view-toggle-${key}`)?.focus({ preventScroll: true });
+    });
+  }
+
+  function jumpFromIndex(key: string) {
+    const i = gadgets.findIndex((g, k) => keyOf(g, k) === key);
+    const g = gadgets[i];
+    if (!g) return;
+    router.navigate(`${router.here}#${viewHash(g)}`);
+    jump(i);
   }
 
   const filterOf = (g: Gadget) =>
@@ -197,6 +264,7 @@
   function toggle(i: number) {
     const g = gadgets[i];
     if (!g || saving) return;
+    if (openNow.delete(viewHash(g))) return;
     const keep = !dash?.customised;
     saveQuietly(
       setCollapsed(gadgets, (x) => x === g, !g.config.collapsed),
@@ -205,7 +273,10 @@
   }
 
   function toggleAll() {
-    if (!saving) saveQuietly(setCollapsed(gadgets, () => true, !allCollapsed));
+    if (saving) return;
+    const on = !allCollapsed;
+    openNow.clear();
+    saveQuietly(setCollapsed(gadgets, () => true, on));
   }
 
   function step(i: number, by: -1 | 1) {
@@ -362,38 +433,49 @@
   {:else if gadgets.length === 0}
     <EmptyState message={t.home.emptyDashboard} hint={t.home.emptyDashboardHint} />
   {:else}
-    <!-- One list for every view: j and k walk on from one to the next. -->
-    <div
-      class="views"
-      use:listKeys={{
-        rows: 'tbody tr',
-        open: (row) => row.dataset.key && router.navigate(paths.issue(row.dataset.key)),
-      }}
-    >
-      {#each gadgets as g, i (keyOf(g, i))}
-        {@const q = shownQuery(g)}
-        {@const order = q === null ? [] : queryOrder(q)}
-        <ViewSection
-          key={keyOf(g, i)}
-          title={title(g)}
-          query={q}
-          href={hrefOf(g)}
-          jql={viewOf(g) ?? ''}
-          size={g.config.size || 10}
-          collapsed={!!g.config.collapsed}
-          sharedWith={sharedWith(g)}
-          sharedBy={sharedBy(g)}
-          columns={columnsOf(g)}
-          {names}
-          empty={empty(g)}
-          showAssignee={g.kind !== 'assigned'}
-          sort={order}
-          onsort={(column) => sortGadget(g, column, order)}
-          ontoggle={() => toggle(i)}
-          onshare={filterOf(g)?.mine ? () => (sharing = filterOf(g) ?? null) : undefined}
-          menu={() => menu(g, i)}
-        />
-      {/each}
+    <div class="space-body">
+      <ViewIndex
+        entries={gadgets.map((g, i) => {
+          const key = keyOf(g, i);
+          return { key, href: `#${viewHash(g)}`, title: title(g), count: totals.get(key) ?? null };
+        })}
+        onjump={jumpFromIndex}
+      />
+      <!-- One list for every view: j and k walk on from one to the next. -->
+      <div
+        bind:this={viewsEl}
+        class="views"
+        use:listKeys={{
+          rows: 'tbody tr',
+          open: (row) => row.dataset.key && router.navigate(paths.issue(row.dataset.key)),
+        }}
+      >
+        {#each gadgets as g, i (keyOf(g, i))}
+          {@const q = shownQuery(g)}
+          {@const order = q === null ? [] : queryOrder(q)}
+          <ViewSection
+            key={keyOf(g, i)}
+            title={title(g)}
+            query={q}
+            href={hrefOf(g)}
+            jql={viewOf(g) ?? ''}
+            size={g.config.size || 10}
+            collapsed={collapsedOf(g)}
+            sharedWith={sharedWith(g)}
+            sharedBy={sharedBy(g)}
+            columns={columnsOf(g)}
+            {names}
+            empty={empty(g)}
+            showAssignee={g.kind !== 'assigned'}
+            sort={order}
+            onsort={(column) => sortGadget(g, column, order)}
+            ontoggle={() => toggle(i)}
+            onshare={filterOf(g)?.mine ? () => (sharing = filterOf(g) ?? null) : undefined}
+            menu={() => menu(g, i)}
+            ontotal={(n) => totals.set(keyOf(g, i), n)}
+          />
+        {/each}
+      </div>
     </div>
   {/if}
 </div>
@@ -469,7 +551,15 @@
     gap: 8px 16px;
   }
 
+  .space-body {
+    display: grid;
+    grid-template-columns: 13.125rem minmax(0, 1fr);
+    gap: 36px;
+    align-items: start;
+  }
+
   .views {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -477,5 +567,14 @@
 
   .loading {
     padding: 10px 0;
+  }
+
+  @media (max-width: 900px) {
+    .space-body {
+      /* The folded index's sticky bar, for the sections' scroll margin. */
+      --view-index-height: calc(2.25rem + 16px);
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+    }
   }
 </style>

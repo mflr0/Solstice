@@ -202,6 +202,7 @@ type newProjectInput struct {
 	Access          *accessInput `json:"access"`
 	IssueTypes      []string     `json:"issueTypes"`
 	DefaultAssignee *string      `json:"defaultAssignee"`
+	Board           string       `json:"board"` // kanban or scrum; empty for none
 }
 
 // newProject is a project to create, checked.
@@ -216,6 +217,7 @@ type newProject struct {
 	assignTo    string
 	access      *accessInput
 	types       []string
+	board       string
 }
 
 // checkNewProject checks a project to create, raw telling which fields were
@@ -224,7 +226,10 @@ type newProject struct {
 func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw map[string]json.RawMessage,
 	lead int64) (*newProject, error) {
 	p := &newProject{key: strings.ToUpper(strings.TrimSpace(in.Key)), description: in.Description, lead: &lead,
-		category: in.Category, template: in.Template, assignTo: "unassigned", access: in.Access}
+		category: in.Category, template: in.Template, assignTo: "unassigned", access: in.Access, board: in.Board}
+	if p.board != "" && p.board != "kanban" && p.board != "scrum" {
+		return nil, fail(http.StatusBadRequest, i18n.BoardTypeUnknown)
+	}
 	if err := s.checkProjectKey(ctx, s.db, p.key, 0); err != nil {
 		return nil, err
 	}
@@ -333,6 +338,17 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	if err := grantAccess(ctx, tx, id, p); err != nil {
 		return err
 	}
+	var board *newBoard
+	var boardID int64
+	if p.board != "" {
+		board = &newBoard{kind: p.board, owner: currentUser(r).ID, project: id, key: p.key}
+		if p.lead != nil {
+			board.owner = *p.lead
+		}
+		if boardID, err = s.insertBoard(ctx, tx, locale(r), board); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -349,6 +365,9 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
 	}
 	s.auditLog(r, audit.ProjectCreate, target(audit.TargetProject, id, p.key), details)
+	if board != nil {
+		s.boardCreated(r, boardID, board)
+	}
 	return writeJSON(w, http.StatusCreated, map[string]any{"id": id, "key": p.key})
 }
 

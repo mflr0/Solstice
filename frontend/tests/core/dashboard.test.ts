@@ -4,6 +4,7 @@ import {
   BUILTIN_QUERIES,
   clickGadgetSort,
   copyOnEditPath,
+  gadgetAtHash,
   gadgetQuery,
   inSpace,
   queryOrder,
@@ -11,6 +12,7 @@ import {
   sortedQuery,
   swapToFilter,
   toInput,
+  viewHash,
   viewJql,
   type Gadget,
 } from '../../src/core/dashboard.js';
@@ -153,5 +155,37 @@ describe('the ready-made views', () => {
     expect(inSpace(gadgets, { filter: 3 })).toBe(true);
     expect(inSpace(gadgets, { filter: 4 })).toBe(false);
     expect(inSpace([gadget({ unavailable: true, filter: null })], { filter: 3 })).toBe(false);
+  });
+});
+
+describe('viewHash', () => {
+  it('names a view by its filter, a built-in by its kind', () => {
+    expect(viewHash(gadget({}))).toBe('view-3');
+    expect(viewHash(gadget({ id: 0, kind: 'due', filter: null }))).toBe('view-due');
+    expect(viewHash(gadget({ filter: null, unavailable: true }))).toBe('view-g7');
+  });
+});
+
+describe('gadgetAtHash', () => {
+  const gadgets = [
+    gadget({ id: 1, kind: 'assigned', filter: null }),
+    gadget({ id: 2 }),
+    gadget({ id: 4, filter: { id: 5, name: 'Mine', query: '' } }),
+    gadget({ id: 6 }),
+  ];
+
+  it('finds the view the hash names, with or without #', () => {
+    expect(gadgetAtHash(gadgets, '#view-assigned')).toBe(0);
+    expect(gadgetAtHash(gadgets, 'view-5')).toBe(2);
+  });
+
+  it('takes the first of two views on one filter', () => {
+    expect(gadgetAtHash(gadgets, '#view-3')).toBe(1);
+  });
+
+  it('finds none for an unknown or empty hash', () => {
+    expect(gadgetAtHash(gadgets, '#view-due')).toBe(-1);
+    expect(gadgetAtHash(gadgets, '#view-99')).toBe(-1);
+    expect(gadgetAtHash(gadgets, '')).toBe(-1);
   });
 });

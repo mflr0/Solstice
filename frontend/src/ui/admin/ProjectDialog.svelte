@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
   import type { Category, Group, KeyCheck } from '../../core/admin-types.js';
+  import type { BoardKind } from '../../core/board-types.js';
   import {
     issueTypesProblem,
     keyProblem,
@@ -23,8 +24,8 @@
 
   /**
    * Creating a project: name, key (suggested from the name, checked as it is
-   * typed), lead, category, starting workflow, who may work in it and which
-   * issue types it offers. Used by the administration and by the projects
+   * typed), lead, category, starting workflow, who may work in it, which
+   * issue types it offers and the board made with it. Used by the administration and by the projects
    * list, so it carries its own form styles.
    */
   interface Props {
@@ -36,6 +37,7 @@
   const { open, onclose, oncreated }: Props = $props();
 
   const ACCESS: AccessKind[] = ['lead', 'everyone', 'group'];
+  const BOARDS: BoardKind[] = ['kanban', 'scrum'];
 
   const blank = (): ProjectForm => {
     const me = session.me;
@@ -54,6 +56,7 @@
   };
 
   let form = $state<ProjectForm>(blank());
+  let board = $state<BoardKind | ''>('kanban');
   let keyEdited = $state(false);
   let tried = $state(false);
   let touched = $state<Record<string, boolean>>({});
@@ -91,6 +94,7 @@
   $effect(() => {
     if (!open) return;
     form = untrack(blank);
+    board = 'kanban';
     keyEdited = false;
     tried = false;
     touched = {};
@@ -166,7 +170,10 @@
     if (hasProblems(problems) || taken) return;
     busy = true;
     try {
-      const created = await adminApi.createProject(projectPayload(form));
+      const created = await adminApi.createProject({
+        ...projectPayload(form),
+        ...(board ? { board } : {}),
+      });
       oncreated(created, form.name.trim());
       onclose();
     } catch (err) {
@@ -345,6 +352,20 @@
         ]}
         onchange={(v) => (form.defaultAssignee = v as 'unassigned' | 'lead' | 'reporter')}
       />
+    </div>
+
+    <div class="field">
+      <span>{t.projectsAdmin.board}</span>
+      <Dropdown
+        label={t.projectsAdmin.board}
+        value={board}
+        options={[
+          ...BOARDS.map((k) => ({ value: k, label: t.boards.kinds[k] })),
+          { value: '', label: t.projectsAdmin.boardNone },
+        ]}
+        onchange={(v) => (board = v as BoardKind | '')}
+      />
+      <span class="hint">{t.projectsAdmin.boardHint}</span>
     </div>
 
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}

@@ -167,6 +167,10 @@ func (s *Server) restEdit(r *http.Request, sub *perm.Subject, iss *issueRow, edi
 	if err := s.checkCustomContext(ctx, iss.ProjectID, typeID, edit.custom); err != nil {
 		return err
 	}
+	// The custom fields are written apart from the others, after them.
+	if err := s.checkCleared(ctx, iss, edit.ui, edit.custom); err != nil {
+		return err
+	}
 	if edit.sprint != nil && *edit.sprint != 0 {
 		if _, err := s.sprintBoard(ctx, sub, *edit.sprint); err != nil {
 			return fieldError("sprint", err)

@@ -55,6 +55,7 @@ import type {
   WebhookDelivery,
   WebhookInput,
 } from '../core/admin-types.js';
+import type { BoardKind } from '../core/board-types.js';
 import type { AdminTheme, AdminThemes } from '../core/admin-themes.js';
 import type { AdminProjectRow, ProjectSettings } from '../core/project-admin.js';
 import type { IdName, Me, Preferences, UserRef } from '../core/types.js';
@@ -146,7 +147,8 @@ export const adminApi = {
   /** `project` is the project whose key is being changed: its former keys are free to it. */
   checkKey: (key: string, project?: string) =>
     request<KeyCheck>('GET', `/api/admin/project-key${query({ key, project })}`),
-  createProject: (p: ProjectInput) =>
+  /** board: a first board, made with the project; left out, none. */
+  createProject: (p: ProjectInput & { board?: BoardKind }) =>
     request<{ id: number; key: string }>('POST', '/api/projects', p),
   archiveProject: (key: string, on: boolean) =>
     request<ProjectSettings>('POST', `/api/projects/${enc(key)}/${on ? 'archive' : 'unarchive'}`),

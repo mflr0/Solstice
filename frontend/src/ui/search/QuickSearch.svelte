@@ -1,7 +1,8 @@
 <script lang="ts">
   import { emptyFilters, filtersToJql } from '../../core/filters.js';
   import { searchHref } from '../../core/filters-url.js';
-  import { quote, quoteString } from '../../core/jql.js';
+  import { findIssues } from '../../core/issue-search.js';
+  import { quote } from '../../core/jql.js';
   import { isIssueKey } from '../../core/marks.js';
   import { paths } from '../../core/route.js';
   import type { IssueSummary, Project, UserRef } from '../../core/types.js';
@@ -83,17 +84,12 @@
       people = [];
       return;
     }
-    const key = isIssueKey(words) ? words.toUpperCase() : null;
-    const [byKey, byText, users] = await Promise.all([
-      key ? api.issues({ jql: `key = ${quote(key)}`, size: 1 }).catch(() => null) : null,
-      api
-        .issues({ jql: `text ~ ${quoteString(words)} ORDER BY updated DESC`, size: 6 })
-        .catch(() => null),
+    const [found, users] = await Promise.all([
+      findIssues(words, api.issues),
       words.length >= 2 ? api.users(words).catch(() => []) : Promise.resolve([]),
     ]);
     if (mine !== seq) return;
-    const found = [...(byKey?.issues ?? []), ...(byText?.issues ?? [])];
-    issues = found.filter((i, n) => found.findIndex((j) => j.key === i.key) === n).slice(0, 6);
+    issues = found;
     searched = words;
     people = users.slice(0, 3);
   }

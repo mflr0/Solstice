@@ -1187,58 +1187,83 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 	if err := s.db.QueryRowContext(ctx, `SELECT pkey FROM projects WHERE id = ?`, projectID).Scan(&key); err != nil {
 		return err
 	}
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		name = key + " — " + map[string]string{"kanban": "Kanban", "scrum": "Scrum"}[in.Kind]
-	}
-	cat, err := s.catalogue(ctx)
-	if err != nil {
-		return err
-	}
-	// The project's statuses (its workflows', or those its issues use).
-	var statuses []statusRef
-	if err := sqlq.Each(ctx, s.db, `SELECT DISTINCT ws.status_id FROM workflow_statuses ws JOIN workflows w ON w.id = ws.workflow_id
-		WHERE w.project_id = ? UNION SELECT DISTINCT status_id FROM issues WHERE project_id = ?`, func(rows *sql.Rows) error {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return err
-		}
-		statuses = append(statuses, cat.statusOf(id))
-		return nil
-	}, projectID, projectID); err != nil {
-		return err
-	}
-
-	now := time.Now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, query, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		sub.UserID, i18n.Sprintf(locale(r), i18n.BoardFilterName, name), `project = "`+key+`" ORDER BY Rank ASC`, now, now)
+	b := newBoard{name: in.Name, kind: in.Kind, owner: sub.UserID, project: projectID, key: key}
+	boardID, err := s.insertBoard(ctx, tx, locale(r), &b)
 	if err != nil {
 		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.boardCreated(r, boardID, &b)
+	return writeJSON(w, http.StatusCreated, map[string]int64{"id": boardID})
+}
+
+// newBoard is a board to create on one project. An empty name gets the
+// default one, "<KEY> — Kanban".
+type newBoard struct {
+	name, kind string
+	owner      int64
+	project    int64
+	key        string
+}
+
+// insertBoard writes a board for a project: a saved filter on the project,
+// shared with it, and one column per status category of its workflow. It
+// sets b.name to the name stored.
+func (s *Server) insertBoard(ctx context.Context, tx *sql.Tx, lang string, b *newBoard) (int64, error) {
+	b.name = strings.TrimSpace(b.name)
+	if b.name == "" {
+		b.name = b.key + " — " + map[string]string{"kanban": "Kanban", "scrum": "Scrum"}[b.kind]
+	}
+	b.name = sqlq.Truncate(b.name, sqlq.VarcharWidth)
+	// The project's statuses (its workflows', or those its issues use), read
+	// in the transaction: the project may have been created in it.
+	var statuses []statusRef
+	if err := sqlq.Each(ctx, tx, `SELECT ws.status_id, COALESCE(st.category, 'todo') FROM workflow_statuses ws
+		JOIN workflows w ON w.id = ws.workflow_id LEFT JOIN statuses st ON st.id = ws.status_id WHERE w.project_id = ?
+		UNION SELECT i.status_id, COALESCE(st.category, 'todo') FROM issues i LEFT JOIN statuses st ON st.id = i.status_id
+		WHERE i.project_id = ?`, func(rows *sql.Rows) error {
+		var st statusRef
+		if err := rows.Scan(&st.ID, &st.Category); err != nil {
+			return err
+		}
+		statuses = append(statuses, st)
+		return nil
+	}, b.project, b.project); err != nil {
+		return 0, err
+	}
+
+	now := time.Now().UTC()
+	res, err := tx.ExecContext(ctx, `INSERT INTO filters (owner_id, name, query, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		b.owner, i18n.Sprintf(lang, i18n.BoardFilterName, b.name), `project = "`+b.key+`" ORDER BY Rank ASC`, now, now)
+	if err != nil {
+		return 0, err
 	}
 	filterID, _ := res.LastInsertId()
 	if _, err := tx.ExecContext(ctx, `INSERT INTO filter_shares (filter_id, kind, project_id) VALUES (?, 'project', ?)`,
-		filterID, projectID); err != nil {
-		return err
+		filterID, b.project); err != nil {
+		return 0, err
 	}
 	res, err = tx.ExecContext(ctx, `INSERT INTO boards (name, kind, filter_id, owner_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, sqlq.Truncate(name, sqlq.VarcharWidth), in.Kind, filterID, sub.UserID, now, now)
+		VALUES (?, ?, ?, ?, ?, ?)`, b.name, b.kind, filterID, b.owner, now, now)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	boardID, _ := res.LastInsertId()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, boardID, projectID); err != nil {
-		return err
+	if _, err := tx.ExecContext(ctx, `INSERT INTO board_projects (board_id, project_id) VALUES (?, ?)`, boardID, b.project); err != nil {
+		return 0, err
 	}
 	for pos, category := range issue.StatusCategories {
 		res, err := tx.ExecContext(ctx, `INSERT INTO board_columns (board_id, name, position) VALUES (?, ?, ?)`,
 			boardID, category.Name().In(s.defaultLanguage()), pos)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		column, _ := res.LastInsertId()
 		n := 0
@@ -1246,17 +1271,18 @@ func (s *Server) createBoard(w http.ResponseWriter, r *http.Request) error {
 			if st.Category == category {
 				if _, err := tx.ExecContext(ctx, `INSERT INTO board_column_statuses (column_id, status_id, position)
 					VALUES (?, ?, ?)`, column, st.ID, n); err != nil {
-					return err
+					return 0, err
 				}
 				n++
 			}
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.emit(events.Event{Kind: events.BoardCreated, ActorID: sub.UserID,
-		Board: &events.Board{ID: boardID, Name: sqlq.Truncate(name, sqlq.VarcharWidth), Kind: in.Kind}})
-	s.auditBoard(r, audit.BoardCreate, boardID, sqlq.Truncate(name, sqlq.VarcharWidth), map[string]any{"kind": in.Kind, "project": key})
-	return writeJSON(w, http.StatusCreated, map[string]int64{"id": boardID})
+	return boardID, nil
+}
+
+// boardCreated tells the listeners and the audit log about a new board.
+func (s *Server) boardCreated(r *http.Request, id int64, b *newBoard) {
+	s.emit(events.Event{Kind: events.BoardCreated, ActorID: currentUser(r).ID,
+		Board: &events.Board{ID: id, Name: b.name, Kind: b.kind}})
+	s.auditBoard(r, audit.BoardCreate, id, b.name, map[string]any{"kind": b.kind, "project": b.key})
 }
