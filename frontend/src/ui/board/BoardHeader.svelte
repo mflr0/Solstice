@@ -17,14 +17,14 @@
   }
   const { detail, view }: Props = $props();
   const b = $derived(detail.board);
-  // The board's filters follow from one view to the next.
+  // The filters follow between the two views they narrow.
   const kept = $derived(boardFilterQuery(router.search));
   const views = $derived([
     { id: 'board', href: paths.board(b.id) + kept, label: t.boards.viewBoard },
     ...(b.kind === 'scrum' || b.kanbanBacklog
       ? [{ id: 'backlog', href: paths.backlog(b.id) + kept, label: t.boards.viewBacklog }]
       : []),
-    { id: 'reports', href: paths.boardReports(b.id) + kept, label: t.boards.viewReports },
+    { id: 'reports', href: paths.boardReports(b.id), label: t.boards.viewReports },
     ...(detail.can.manage
       ? [{ id: 'settings', href: paths.boardSettings(b.id), label: t.boards.settings }]
       : []),

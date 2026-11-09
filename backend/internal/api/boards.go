@@ -490,9 +490,10 @@ func (s *Server) queryCondition(ctx context.Context, sub *perm.Subject, q string
 var cutoffPattern = regexp.MustCompile(`^(\d+)\s*([dwm])$`)
 
 // boardWhere builds the condition selecting a board's issues: the filter,
-// the Kanban sub-filter and done cutoff, the chosen quick filters, statuses
-// mapped to a column, and what the user may see.
-func (s *Server) boardWhere(ctx context.Context, sub *perm.Subject, b *boardRow, quick []int64) (string, []any, error) {
+// the Kanban sub-filter and done cutoff, the chosen quick filters, the
+// request's JQL, statuses mapped to a column, and what the user may see.
+func (s *Server) boardWhere(ctx context.Context, sub *perm.Subject, b *boardRow, quick []int64, src string) (
+	string, []any, error) {
 	vis, args := sub.VisibleSQL("i")
 	conds := []string{vis}
 	add := func(q string) error {
@@ -524,6 +525,15 @@ func (s *Server) boardWhere(ctx context.Context, sub *perm.Subject, b *boardRow,
 		if err := add(q); err != nil {
 			return "", nil, err
 		}
+	}
+	if src = strings.TrimSpace(src); src != "" {
+		// Always JQL, as on /api/issues: the simple syntax would take a typo.
+		c, a, _, err := s.compileJQL(ctx, sub, src)
+		if err != nil {
+			return "", nil, err
+		}
+		conds = append(conds, "("+c+")")
+		args = append(args, a...)
 	}
 	conds = append(conds, `i.status_id IN (SELECT cs.status_id FROM board_column_statuses cs
 		JOIN board_columns c ON c.id = cs.column_id WHERE c.board_id = ?)`)
@@ -780,7 +790,7 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where, args, err := s.boardWhere(ctx, sub, b, parseIDs(r.URL.Query().Get("quick")))
+	where, args, err := s.boardWhere(ctx, sub, b, parseIDs(r.URL.Query().Get("quick")), r.URL.Query().Get("jql"))
 	if err != nil {
 		return err
 	}
@@ -838,7 +848,7 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where, args, err := s.boardWhere(ctx, sub, b, parseIDs(r.URL.Query().Get("quick")))
+	where, args, err := s.boardWhere(ctx, sub, b, parseIDs(r.URL.Query().Get("quick")), r.URL.Query().Get("jql"))
 	if err != nil {
 		return err
 	}
@@ -1042,7 +1052,7 @@ func (s *Server) visibleBoardIDs(ctx context.Context, sub *perm.Subject) ([]any,
 // issuesOnBoard checks, with one query, that the board lists every issue: they
 // match its filter as the board view reads it.
 func (s *Server) issuesOnBoard(ctx context.Context, sub *perm.Subject, b *boardRow, issues []*issueRow) error {
-	where, args, err := s.boardWhere(ctx, sub, b, nil)
+	where, args, err := s.boardWhere(ctx, sub, b, nil, "")
 	if err != nil {
 		return err
 	}

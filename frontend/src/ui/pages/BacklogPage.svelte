@@ -2,33 +2,30 @@
   import { tick } from 'svelte';
   import {
     applyMove,
-    cardFacets,
     dropIndex,
-    filterCards,
-    hasCardFilter,
-    knownCardFilter,
     neighbours,
-    parseCardFilter,
     parseQuick,
+    readBoardSearch,
     staysInPlace,
     stepMove,
     totalEstimate,
   } from '../../core/board.js';
   import type { BoardCard as Card, BoardDetail, CardMove, Sprint } from '../../core/board-types.js';
+  import { filtersToJql, type FilterState } from '../../core/filters.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { listKeys } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
-  import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
-  import CardFilters from '../board/CardFilters.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
+  import QuickFilters from '../board/QuickFilters.svelte';
+  import FilterBar from '../search/FilterBar.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -62,18 +59,16 @@
 
   const quick = $derived(parseQuick(router.param('quick')));
   const quickParam = $derived(quick.join(','));
-  const me = $derived(session.me?.id ?? null);
-  const asked = $derived(parseCardFilter((name) => router.param(name)));
-  const facets = $derived(
-    cardFacets(
-      cards ?? [],
-      asked,
-      { types: session.meta?.issueTypes, priorities: session.meta?.priorities },
-      me,
-    ),
-  );
-  const cardFilter = $derived(knownCardFilter(asked, facets));
-  const filtered = $derived(quick.length > 0 || hasCardFilter(cardFilter));
+  const search = $derived(readBoardSearch(router.param('jql')));
+  const filtered = $derived(quick.length > 0 || search.jql !== undefined);
+
+  // One history entry per interaction with the filter row, as on the search page.
+  let lastBurst: string | null = null;
+  function applyFilters(next: FilterState, burst: string) {
+    const replace = burst === lastBurst;
+    lastBurst = burst;
+    router.setParams({ jql: filtersToJql(next) }, { replace });
+  }
 
   function loadDetail() {
     api
@@ -92,11 +87,11 @@
   let pending = 0;
   let seq = 0;
 
-  async function loadList(id: number, q: string) {
+  async function loadList(id: number, q: string, jql: string | undefined) {
     if (pending > 0) return;
     const mine = ++seq;
     try {
-      const res = await api.backlog(id, q || undefined);
+      const res = await api.backlog(id, { quick: q || undefined, jql });
       if (mine !== seq || pending > 0) return;
       sprints = res.sprints.map((s) => s.sprint);
       cards = [
@@ -111,11 +106,11 @@
   }
 
   function reload() {
-    void loadList(boardId, quickParam);
+    void loadList(boardId, quickParam, search.jql);
   }
 
   $effect(() => {
-    void loadList(boardId, quickParam);
+    void loadList(boardId, quickParam, search.jql);
   });
 
   $effect(() => live.onChange(debounce(reload, 400)));
@@ -133,7 +128,7 @@
   const boardColumn = $derived(kanban ? detail?.columns[1] : undefined);
 
   const sections = $derived.by((): Section[] => {
-    const all = cards ? filterCards(cards, cardFilter, me) : [];
+    const all = cards ?? [];
     return [
       ...(boardColumn ? [{ id: BOARD, sprint: null, cards: [] }] : []),
       ...sprints.map((s) => ({ id: s.id, sprint: s, cards: all.filter((c) => c.sprint === s.id) })),
@@ -351,7 +346,11 @@
     }}
   >
     <BoardHeader detail={d} view="backlog" />
-    <CardFilters filter={cardFilter} {facets} quickFilters={d.quickFilters} {quick} />
+    <div class="board-search">
+      <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+    </div>
+    {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
+    <QuickFilters filters={d.quickFilters} selected={quick} />
 
     {#if listError}
       <p class="error-text" role="alert">{listError}</p>
@@ -481,6 +480,10 @@
   /* As wide as the board, so switching views keeps the header in place. */
   .backlog-page {
     max-width: 102.5rem;
+  }
+
+  .board-search {
+    margin-bottom: 10px;
   }
 
   .notice {

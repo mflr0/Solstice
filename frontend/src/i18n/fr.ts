@@ -1072,13 +1072,6 @@ export const fr: Messages = {
     shareSaved: 'Partage du tableau enregistré.',
     quickFilters: 'Filtres rapides',
     showAll: 'Tout afficher',
-    cardFilters: 'Filtrer les tickets',
-    filterType: 'Type',
-    filterAssignee: 'Assigné',
-    filterPriority: 'Priorité',
-    filterMe: 'Moi',
-    filterNoPriority: 'Sans priorité',
-    clearFilters: 'Effacer',
     cards: (n: number) => plural(n, 'ticket', 'tickets'),
     truncated:
       'Seuls les 1 000 premiers tickets sont affichés : resserrez le filtre du tableau ou utilisez un filtre rapide.',

@@ -8,10 +8,8 @@
   interface Props {
     filters: QuickFilter[];
     selected: number[];
-    /** Part of a wider filter bar, which has its own clear button and spacing. */
-    inline?: boolean | undefined;
   }
-  const { filters, selected, inline = false }: Props = $props();
+  const { filters, selected }: Props = $props();
 
   function set(value: string) {
     router.setParams({ quick: value || null });
@@ -19,7 +17,7 @@
 </script>
 
 {#if filters.length}
-  <div class="quick" class:inline role="group" aria-label={t.boards.quickFilters}>
+  <div class="quick" role="group" aria-label={t.boards.quickFilters}>
     <span class="label" aria-hidden="true">{t.boards.quickFilters}</span>
     {#each filters as f (f.id)}
       <button
@@ -30,7 +28,7 @@
         onclick={() => set(toggleQuick(selected, f.id))}>{f.name}</button
       >
     {/each}
-    {#if selected.length && !inline}
+    {#if selected.length}
       <button type="button" class="link-btn" onclick={() => set('')}>{t.boards.showAll}</button>
     {/if}
   </div>
@@ -43,10 +41,6 @@
     align-items: center;
     gap: 6px;
     margin: 0 0 14px;
-  }
-
-  .quick.inline {
-    margin: 0;
   }
 
   .label {

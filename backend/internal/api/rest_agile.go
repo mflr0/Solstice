@@ -255,7 +255,7 @@ func (s *Server) agileBoardIssues(w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return err
 	}
-	where, args, err := s.boardWhere(r.Context(), sub, b, nil)
+	where, args, err := s.boardWhere(r.Context(), sub, b, nil, "")
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (s *Server) agileBacklog(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	where, args, err := s.boardWhere(r.Context(), sub, b, nil)
+	where, args, err := s.boardWhere(r.Context(), sub, b, nil, "")
 	if err != nil {
 		return err
 	}

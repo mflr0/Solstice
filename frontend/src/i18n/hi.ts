@@ -1064,13 +1064,6 @@ export const hi: Messages = {
     shareSaved: 'बोर्ड की शेयरिंग सहेजी गई।',
     quickFilters: 'क्विक फ़िल्टर',
     showAll: 'सभी दिखाएँ',
-    cardFilters: 'कार्ड फ़िल्टर करें',
-    filterType: 'प्रकार',
-    filterAssignee: 'असाइनी',
-    filterPriority: 'प्राथमिकता',
-    filterMe: 'मैं',
-    filterNoPriority: 'कोई प्राथमिकता नहीं',
-    clearFilters: 'साफ़ करें',
     cards: (n: number) => plural(n, 'टिकट', 'टिकट'),
     truncated:
       'सिर्फ़ पहले 1,000 टिकट दिखाए गए हैं: बोर्ड का फ़िल्टर सीमित करें या कोई क्विक फ़िल्टर इस्तेमाल करें।',

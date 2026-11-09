@@ -1066,13 +1066,6 @@ export const en = {
     shareSaved: 'Board sharing saved.',
     quickFilters: 'Quick filters',
     showAll: 'Show all',
-    cardFilters: 'Filter the cards',
-    filterType: 'Type',
-    filterAssignee: 'Assignee',
-    filterPriority: 'Priority',
-    filterMe: 'Me',
-    filterNoPriority: 'No priority',
-    clearFilters: 'Clear',
     cards: (n: number) => plural(n, 'issue', 'issues'),
     truncated:
       'Only the first 1,000 issues are shown: narrow the board’s filter or use a quick filter.',

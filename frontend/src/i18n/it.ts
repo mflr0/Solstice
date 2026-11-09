@@ -1073,13 +1073,6 @@ export const it: Messages = {
     shareSaved: 'Condivisione della board salvata.',
     quickFilters: 'Filtri rapidi',
     showAll: 'Mostra tutto',
-    cardFilters: 'Filtra le schede',
-    filterType: 'Tipo',
-    filterAssignee: 'Assegnatario',
-    filterPriority: 'Priorità',
-    filterMe: 'Io',
-    filterNoPriority: 'Senza priorità',
-    clearFilters: 'Cancella',
     cards: (n: number) => plural(n, 'ticket', 'ticket'),
     truncated:
       'Sono mostrati solo i primi 1.000 ticket: restringi il filtro della board o usa un filtro rapido.',

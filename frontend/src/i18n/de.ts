@@ -1080,13 +1080,6 @@ export const de: Messages = {
     shareSaved: 'Freigabe des Boards gespeichert.',
     quickFilters: 'Schnellfilter',
     showAll: 'Alle anzeigen',
-    cardFilters: 'Karten filtern',
-    filterType: 'Typ',
-    filterAssignee: 'Bearbeiter',
-    filterPriority: 'Priorität',
-    filterMe: 'Ich',
-    filterNoPriority: 'Ohne Priorität',
-    clearFilters: 'Zurücksetzen',
     cards: (n: number) => plural(n, 'Vorgang', 'Vorgänge'),
     truncated:
       'Nur die ersten 1.000 Vorgänge werden angezeigt: Grenzen Sie den Board-Filter ein oder verwenden Sie einen Schnellfilter.',

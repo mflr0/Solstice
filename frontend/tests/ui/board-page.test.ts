@@ -8,14 +8,11 @@ import BoardPage from '../../src/ui/pages/BoardPage.svelte';
 
 const status = { id: '1', name: 'To Do', category: 'todo' } as const;
 
-const task = { id: '1', name: 'Task', subtask: false };
-const bug = { id: '2', name: 'Bug', subtask: false };
-
-function card(key: string, column: number, lane: number, type = task): BoardCard {
+function card(key: string, column: number, lane: number): BoardCard {
   return {
     key,
     summary: `Summary ${key}`,
-    type,
+    type: { id: '1', name: 'Task', subtask: false },
     status,
     priority: null,
     resolution: null,
@@ -65,15 +62,12 @@ const detail: BoardDetail = {
   can: { manage: false, share: false },
 };
 
+const boardCards = vi.hoisted(() => vi.fn());
+
 vi.mock('../../src/lib/api.js', () => ({
   api: {
     board: () => Promise.resolve(detail),
-    boardCards: () =>
-      Promise.resolve({
-        cards: [card('T-1', 10, 1), card('T-2', 20, 2), card('T-3', 10, 1, bug)],
-        sprint: null,
-        truncated: false,
-      }),
+    boardCards,
   },
   errorMessage: String,
 }));
@@ -86,23 +80,27 @@ vi.stubGlobal(
   },
 );
 
+boardCards.mockImplementation(() =>
+  Promise.resolve({
+    cards: [card('T-1', 10, 1), card('T-2', 20, 2)],
+    sprint: null,
+    truncated: false,
+  }),
+);
+
 let component: ReturnType<typeof mount> | undefined;
 
 afterEach(() => {
   if (component) unmount(component);
   component = undefined;
-  router.setParams({ type: null });
+  router.setParams({ jql: null, quick: null });
+  boardCards.mockClear();
 });
 
 async function settle() {
   for (let i = 0; i < 5; i++) await tick();
   flushSync();
 }
-
-const shownKeys = () =>
-  [...document.querySelectorAll<HTMLElement>('.board-card')].map((el) => el.dataset.key);
-const columnCount = (id: number) =>
-  document.querySelector(`#col-${id} + .board-column-count [aria-hidden]`)?.textContent;
 
 describe('BoardPage', () => {
   it('puts the swimlane toggles before the cards in the tab order', async () => {
@@ -118,27 +116,24 @@ describe('BoardPage', () => {
     expect(order.indexOf('lane Later')).toBeLessThan(order.indexOf('T-1'));
   });
 
-  it('shows only the cards of a picked type, and counts them', async () => {
+  it('sends the query of the filter row with the quick filters', async () => {
+    router.setParams({ quick: '2', jql: 'assignee is EMPTY AND text ~ "zèbre"' });
     component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
     await settle();
-    expect(shownKeys()).toEqual(['T-1', 'T-3', 'T-2']);
-    expect(columnCount(10)).toBe('2');
+    expect(boardCards).toHaveBeenLastCalledWith(1, {
+      quick: '2',
+      jql: 'assignee is EMPTY AND text ~ "zèbre"',
+    });
+    expect(document.querySelector<HTMLInputElement>('.filter-bar input')?.value).toBe('zèbre');
+  });
 
-    const typeButton = [...document.querySelectorAll<HTMLButtonElement>('.filter-button')].find(
-      (b) => b.textContent?.includes('Type'),
-    );
-    typeButton?.click();
-    flushSync();
-    const bugBox = [...document.querySelectorAll<HTMLLabelElement>('.card-option')]
-      .find((l) => l.textContent?.includes('Bug'))
-      ?.querySelector('input');
-    bugBox?.click();
+  it('sends no query the row cannot show, and says so', async () => {
+    router.setParams({ jql: 'status = Done OR assignee is EMPTY' });
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
     await settle();
-
-    expect(router.param('type')).toBe('2');
-    expect(shownKeys()).toEqual(['T-3']);
-    expect(columnCount(10)).toBe('1');
-    expect(columnCount(20)).toBe('0');
-    expect(typeButton?.textContent).toContain('Bug');
+    expect(boardCards).toHaveBeenLastCalledWith(1, { quick: undefined, jql: undefined });
+    expect(document.querySelector('.notice')?.textContent).toBe(
+      'Query too complex for the filters',
+    );
   });
 });
