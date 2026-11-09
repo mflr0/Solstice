@@ -49,6 +49,8 @@
     columnsNote?: string | undefined;
     /** Hears the columns shown, for saving them with a new filter. */
     onshown?: ((columns: string[]) => void) | undefined;
+    /** The address of a new view holding the search, offered once it differs from the fallback; null for none. */
+    saveAs?: ((jql: string) => string | null) | undefined;
   }
   let {
     project,
@@ -59,6 +61,7 @@
     oncolumns,
     columnsNote,
     onshown,
+    saveAs,
   }: Props = $props();
 
   const read = $derived(readLocation(router.search));
@@ -100,6 +103,9 @@
     onshown?.(chosen);
   });
   let exporting = $state(false);
+  const saveHref = $derived(
+    saveAs && jql !== null && jql.trim() !== fallback?.trim() ? saveAs(jql) : null,
+  );
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
 
   /** The order in words, after the count; empty for one that takes more. */
@@ -228,9 +234,12 @@
     />
   {/if}
 
-  <p class="search-summary" aria-live="polite">
-    {#if total !== null}<strong>{t.search.results(total)}</strong>{sortText}{/if}
-  </p>
+  <div class="summary-row">
+    <p class="search-summary" aria-live="polite">
+      {#if total !== null}<strong>{t.search.results(total)}</strong>{sortText}{/if}
+    </p>
+    {#if saveHref}<a class="btn btn-small btn-quiet save-as" href={saveHref}>{t.view.saveAsNew}</a>{/if}
+  </div>
 
   {#if refused || tooComplex}
     <p class="refused" role="status">
@@ -284,9 +293,22 @@
     padding: 0 8px;
   }
 
+  .summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-top: 12px;
+  }
+
+  .save-as {
+    margin-left: auto;
+  }
+
   .search-summary {
     min-height: 1.25rem;
-    margin: 12px 0 0;
+    margin: 0;
     font-size: 0.8125rem;
     color: var(--ink-soft);
   }

@@ -8,7 +8,7 @@
  * Older links carry ?q= in the former syntax (or JQL): they still work.
  */
 
-import { looksLikeJql } from './jql.js';
+import { conjunction, format, looksLikeJql, parse, type Clause, type Node } from './jql.js';
 import { simpleToJql } from './jql-simple.js';
 
 export interface SearchLocation {
@@ -67,4 +67,33 @@ export function writeLocation(loc: SearchLocation): string {
 /** An unsaved view showing a query. */
 export function searchHref(jql: string): string {
   return `/views/new${writeLocation({ jql, mode: null, filter: null, page: 1 })}`;
+}
+
+function namesProject(c: Clause, key: string): boolean {
+  return (
+    c.field.toLowerCase() === 'project' &&
+    (c.op === '=' || c.op === 'in') &&
+    c.values.length === 1 &&
+    c.values[0]?.kind === 'text' &&
+    c.values[0].text.toUpperCase() === key.toUpperCase()
+  );
+}
+
+/** A project page's search as the query of a view: limited to the project, the sort last; null when it doesn't parse. */
+export function projectViewJql(key: string, jql: string): string | null {
+  let q;
+  try {
+    q = parse(jql);
+  } catch {
+    return null;
+  }
+  if (conjunction(q.where)?.some((c) => namesProject(c, key))) return format(q);
+  const scope: Node = {
+    type: 'clause',
+    field: 'project',
+    op: '=',
+    values: [{ kind: 'text', text: key }],
+    preds: [],
+  };
+  return format({ ...q, where: q.where ? { type: 'and', left: scope, right: q.where } : scope });
 }
