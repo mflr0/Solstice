@@ -786,7 +786,7 @@ export const de: Messages = {
     remoteLinks: 'Externe Links',
     attachments: 'Anhänge',
     attach: 'Dateien anhängen',
-    dropHere: 'Dateien hier ablegen',
+    dropToAttach: (key: string) => `Dateien ablegen, um sie an ${key} anzuhängen`,
     uploading: 'Wird hochgeladen…',
     missingFile: 'Datei nicht aus Jira übernommen',
     download: 'Herunterladen',

@@ -780,7 +780,7 @@ export const fr: Messages = {
     remoteLinks: 'Liens externes',
     attachments: 'Pièces jointes',
     attach: 'Joindre des fichiers',
-    dropHere: 'Déposez les fichiers ici',
+    dropToAttach: (key: string) => `Déposez les fichiers pour les joindre à ${key}`,
     uploading: 'Envoi…',
     missingFile: 'fichier non repris de Jira',
     download: 'Télécharger',

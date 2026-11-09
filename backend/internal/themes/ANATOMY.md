@@ -199,8 +199,8 @@ changes the page's padding.
   `.field`, `.old` struck out, `.arrow`, `.new`).
 - Attachments: `section.attachments` (`.dragging`) > `ul.grid` >
   `li.file` (`.missing`) > `a.thumb` (an `img`, or `.sheet` > `.ext`, the file
-  extension) + `.meta` (`.name`, `.sub`) + `button.del`; `p.drop` while a
-  file is dragged over.
+  extension) + `.meta` (`.name`, `.sub`) + `button.del`; `p.drop` while
+  files are dragged over the issue view: a fixed overlay over the whole view.
 - The record: `aside.card.fiche` > `.card-head`, `dl` > `.line.card-row`
   (`dt` + `dd`); `.card-head.sub` above custom fields.
 

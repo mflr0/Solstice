@@ -14,6 +14,9 @@
   const { issue, onupdated, onreload }: Props = $props();
 
   let dragging = $state(false);
+  /** Nested dragenter/dragleave pairs, so crossing child nodes does not hide the overlay. */
+  let depth = 0;
+  let section: HTMLElement | undefined = $state();
   let uploading = $state(false);
   let input: HTMLInputElement | undefined = $state();
   /** Deleting takes two presses: the first arms the button. */
@@ -32,10 +35,45 @@
     }
   }
 
-  function drop(e: DragEvent) {
-    e.preventDefault();
+  /** Files from outside, not text, links or a dragged issue. */
+  const carriesFiles = (e: DragEvent): boolean => e.dataTransfer?.types.includes('Files') ?? false;
+
+  /** Whether no dialog is open over this view (a background page, the clone dialog). */
+  function inFront(): boolean {
+    const top = [...document.querySelectorAll('dialog:modal')].at(-1);
+    return !top || (!!section && top.contains(section));
+  }
+
+  function endDrag() {
+    depth = 0;
     dragging = false;
-    void send([...(e.dataTransfer?.files ?? [])]);
+  }
+
+  function enter(e: DragEvent) {
+    if (!canAttach || !carriesFiles(e) || !inFront()) return;
+    depth++;
+    dragging = true;
+  }
+
+  function leave(e: DragEvent) {
+    if (!carriesFiles(e) || depth === 0) return;
+    if (--depth === 0) dragging = false;
+  }
+
+  // Taken even without attach, or the browser opens the file in place of the page.
+  function over(e: DragEvent) {
+    if (!carriesFiles(e) || !inFront()) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = canAttach ? 'copy' : 'none';
+  }
+
+  function drop(e: DragEvent) {
+    if (!carriesFiles(e) || !inFront()) return;
+    // An editor already took it and inserted its reference.
+    const taken = e.defaultPrevented;
+    e.preventDefault();
+    endDrag();
+    if (!taken) void send([...(e.dataTransfer?.files ?? [])]);
   }
 
   async function remove(id: number) {
@@ -53,18 +91,9 @@
   }
 </script>
 
-<section
-  class="attachments"
-  class:dragging
-  aria-label={t.issue.attachments}
-  ondragover={(e) => {
-    if (!canAttach) return;
-    e.preventDefault();
-    dragging = true;
-  }}
-  ondragleave={() => (dragging = false)}
-  ondrop={drop}
->
+<svelte:window ondragenter={enter} ondragleave={leave} ondragover={over} ondrop={drop} />
+
+<section bind:this={section} class="attachments" class:dragging aria-label={t.issue.attachments}>
   <h2 class="section-title">
     {t.issue.attachments}
     <span class="count">{issue.attachments.length}</span>
@@ -125,7 +154,7 @@
       {/each}
     </ul>
   {/if}
-  {#if dragging}<p class="drop">{t.issue.dropHere}</p>{/if}
+  {#if dragging}<p class="drop"><span>{t.issue.dropToAttach(issue.key)}</span></p>{/if}
 </section>
 
 <style>
@@ -237,15 +266,26 @@
     font-size: 0.75rem;
   }
 
+  /* Over the whole view: files land anywhere on it. */
   .drop {
-    position: absolute;
+    position: fixed;
     inset: 0;
+    z-index: 65;
     display: grid;
     place-items: center;
     margin: 0;
-    background: color-mix(in srgb, var(--paper) 85%, transparent);
+    outline: 2px dashed var(--accent);
+    outline-offset: -12px;
+    background: color-mix(in srgb, var(--paper) 70%, transparent);
     font: var(--title-italic) 1rem var(--font-title);
     color: var(--accent-text);
     pointer-events: none;
+  }
+
+  .drop span {
+    padding: 10px 18px;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-pop);
   }
 </style>

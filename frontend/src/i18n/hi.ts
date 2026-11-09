@@ -772,7 +772,7 @@ export const hi: Messages = {
     remoteLinks: 'बाहरी लिंक',
     attachments: 'अटैचमेंट',
     attach: 'फ़ाइलें अटैच करें',
-    dropHere: 'फ़ाइलें यहाँ छोड़ें',
+    dropToAttach: (key: string) => `${key} में जोड़ने के लिए फ़ाइलें छोड़ें`,
     uploading: 'अपलोड हो रहा है…',
     missingFile: 'फ़ाइल Jira से माइग्रेट नहीं हुई',
     download: 'डाउनलोड करें',
