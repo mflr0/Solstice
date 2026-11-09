@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { readLocation, searchHref, toJql, writeLocation } from '../../src/core/filters-url.js';
+import {
+  projectViewJql,
+  readLocation,
+  searchHref,
+  toJql,
+  writeLocation,
+} from '../../src/core/filters-url.js';
 
 describe('search address', () => {
   it('reads the defaults', () => {
@@ -64,5 +70,39 @@ describe('search address', () => {
   it('builds links to a search', () => {
     expect(searchHref('text ~ "panier"')).toBe('/views/new?jql=text+%7E+%22panier%22');
     expect(readLocation(searchHref('text ~ "panier"').slice(10)).loc.jql).toBe('text ~ "panier"');
+  });
+});
+
+describe('project search as a view', () => {
+  it('limits the filters to the project', () => {
+    expect(projectViewJql('ACME', 'statusCategory != Done AND assignee = currentUser()')).toBe(
+      'project = ACME AND statusCategory != Done AND assignee = currentUser()',
+    );
+  });
+
+  it('keeps the meaning of an OR query', () => {
+    expect(projectViewJql('ACME', 'priority = High OR labels = urgent')).toBe(
+      'project = ACME AND (priority = High OR labels = urgent)',
+    );
+  });
+
+  it('puts the sort last', () => {
+    expect(projectViewJql('ACME', 'type = Bug OR type = Task ORDER BY created DESC')).toBe(
+      'project = ACME AND (type = Bug OR type = Task) ORDER BY created DESC',
+    );
+    expect(projectViewJql('ACME', 'ORDER BY updated DESC')).toBe(
+      'project = ACME ORDER BY updated DESC',
+    );
+  });
+
+  it('leaves a query that already names the project', () => {
+    expect(projectViewJql('ACME', 'project = acme AND status = Open')).toBe(
+      'project = acme AND status = Open',
+    );
+    expect(projectViewJql('ACME', 'project = OTHER')).toBe('project = ACME AND project = OTHER');
+  });
+
+  it('gives nothing for a query that does not parse', () => {
+    expect(projectViewJql('ACME', 'status = (')).toBeNull();
   });
 });

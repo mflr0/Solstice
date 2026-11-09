@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { writeLocation } from '../../core/filters-url.js';
+  import { projectViewJql, searchHref, writeLocation } from '../../core/filters-url.js';
   import { quote } from '../../core/jql.js';
   import { paths } from '../../core/route.js';
   import type { ProjectDetail } from '../../core/types.js';
@@ -148,7 +148,15 @@
       </dl>
     {/if}
 
-    <IssueSearch project={p.key} fallback={DEFAULT_JQL} />
+    <IssueSearch
+      project={p.key}
+      fallback={DEFAULT_JQL}
+      selectable
+      saveAs={(q) => {
+        const jql = projectViewJql(p.key, q);
+        return jql === null ? null : searchHref(jql);
+      }}
+    />
   </div>
 {/if}
 
