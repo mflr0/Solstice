@@ -1109,12 +1109,6 @@ export const fr: Messages = {
     noActiveSprint: 'Aucun sprint en cours.',
     noActiveSprintHint: 'Les sprints se préparent et se démarrent depuis le backlog.',
     openBacklog: 'Ouvrir le backlog',
-    wip: (min: number | null, max: number | null) =>
-      [min !== null ? `min ${min}` : '', max !== null ? `max ${max}` : '']
-        .filter(Boolean)
-        .join(' · '),
-    wipOver: 'limite dépassée',
-    wipUnder: 'sous le minimum',
     unassigned: 'Non assigné',
     noEpic: 'Sans épopée',
     otherIssues: 'Autres tickets',
@@ -1256,8 +1250,6 @@ export const fr: Messages = {
     columnsHint:
       'Glisser un ticket dans une colonne lui donne le premier statut de la colonne que son workflow permet d’atteindre.',
     columnName: 'Nom de la colonne',
-    min: 'Minimum',
-    max: 'Maximum',
     statuses: 'Statuts',
     noStatus: 'Aucun statut : cette colonne restera vide.',
     addColumn: 'Ajouter une colonne',

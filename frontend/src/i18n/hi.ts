@@ -1100,12 +1100,6 @@ export const hi: Messages = {
     noActiveSprint: 'कोई चालू स्प्रिंट नहीं।',
     noActiveSprintHint: 'स्प्रिंट बैकलॉग से प्लान और शुरू किए जाते हैं।',
     openBacklog: 'बैकलॉग खोलें',
-    wip: (min: number | null, max: number | null) =>
-      [min !== null ? `न्यूनतम ${min}` : '', max !== null ? `अधिकतम ${max}` : '']
-        .filter(Boolean)
-        .join(' · '),
-    wipOver: 'सीमा से ज़्यादा',
-    wipUnder: 'न्यूनतम से कम',
     unassigned: 'असाइन नहीं',
     noEpic: 'बिना एपिक',
     otherIssues: 'अन्य टिकट',
@@ -1241,8 +1235,6 @@ export const hi: Messages = {
     columnsHint:
       'किसी टिकट को कॉलम में खींचने पर उसे उस कॉलम का पहला ऐसा स्टेटस मिलता है जिस तक उसका वर्कफ़्लो पहुँच सकता है।',
     columnName: 'कॉलम का नाम',
-    min: 'न्यूनतम',
-    max: 'अधिकतम',
     statuses: 'स्टेटस',
     noStatus: 'कोई स्टेटस नहीं: यह कॉलम ख़ाली रहेगा।',
     addColumn: 'कॉलम जोड़ें',

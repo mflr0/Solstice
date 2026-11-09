@@ -1453,14 +1453,6 @@
     var(--accent-wash);
 }
 
-[data-skin='plan'] .board-column.over-limit {
-  border-color: var(--accent);
-}
-
-[data-skin='plan'] .board-column.over-limit .board-column-head {
-  border-bottom-color: var(--accent);
-}
-
 [data-skin='plan'] .board-card {
   border: 1px solid var(--plan-line);
   border-radius: 8px;

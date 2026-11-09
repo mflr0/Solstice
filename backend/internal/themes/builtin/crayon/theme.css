@@ -9,7 +9,7 @@
  * in blue pencil, empty states and disabled controls are cross-hatched, hover
  * leaves an eraser smudge, board cards are sticky notes that tilt when
  * touched. One blue pencil for the accent; a red pencil for corrections
- * (errors, overdue dates, struck-out values, a column over its limit).
+ * (errors, overdue dates, struck-out values).
  *
  * Dark: a chalkboard — slate green-grey, chalk strokes, chalk dust and the
  * ghosts of old eraser smears.
@@ -1582,28 +1582,6 @@
 [data-skin='crayon'] .board-column.is-over::before {
   border-style: dashed;
   border-color: var(--accent);
-}
-
-/* Over its limit: the lane and its limit corrected in red pencil. */
-[data-skin='crayon'] .board-column.over-limit::before {
-  border-color: var(--cr-red);
-}
-
-[data-skin='crayon'] .board-column.over-limit .wip-limit {
-  position: relative;
-  padding: 2px 8px 1px;
-  color: var(--cr-red);
-  font: 400 0.875rem/1 var(--font-title);
-}
-
-[data-skin='crayon'] .board-column.over-limit .wip-limit::before {
-  content: '';
-  position: absolute;
-  inset: -3px -2px -2px -3px;
-  background: var(--cr-red);
-  -webkit-mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
-  mask: var(--cr-loop) 0 0 / 100% 100% no-repeat;
-  pointer-events: none;
 }
 
 [data-skin='crayon'] .board-card {

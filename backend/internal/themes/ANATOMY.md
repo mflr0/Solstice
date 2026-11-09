@@ -439,10 +439,9 @@ rules style it, so text looks the same while edited. Inside it:
 `.sprint-head` (`.sprint-name`, `.sprint-dates`, `.sprint-meta` = issue
 count and estimate total, `.sprint-actions`, `.sprint-goal` on its own line)
 heads the board's active sprint and each backlog section.
-`.board` > `section.board-column` (`.is-over` while a card is dragged over it,
-`.over-limit` past its maximum, `.under-limit` under its minimum) >
-`header.board-column-head` (`h2.board-column-title`, `.board-column-count`,
-`.wip-limit`) + `.board-cards` (one per swimlane) > `article.board-card`
+`.board` > `section.board-column` (`.is-over` while a card is dragged over it) >
+`header.board-column-head` (`h2.board-column-title`, `.board-column-count`)
++ `.board-cards` (one per swimlane) > `article.board-card`
 (`.is-dragging`) with `.type-mark`, `.key`, `.chip` (epic, estimate),
 `.stamp` (when a column holds several statuses), `.priority-mark`, `.avatar`
 and the menu button `.card-menu-toggle` (`.btn.btn-quiet.btn-small`; its
@@ -603,4 +602,5 @@ an entry here. Adding a hook does neither.
   `.saved-filters`, `.search-main`, `.saved-toggle`, `.saved-body`,
   `.saved-head`, `.saved-title`, `.manage`, `.manage-bar`, `.pick-all`,
   `.manage-actions`, `.saved-item`, `.owner`, `.star`, `.modified`) went with
-  it in #749, for the same reason.
+  it in #749, for the same reason. The board's WIP limits (`.wip-limit`,
+  `.board-column.over-limit`, `.board-column.under-limit`) went in #733.

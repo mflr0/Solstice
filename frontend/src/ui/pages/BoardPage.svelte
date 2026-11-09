@@ -10,7 +10,6 @@
     readBoardSearch,
     staysInPlace,
     stepMove,
-    wipState,
     type CardSpot,
     type Lane,
   } from '../../core/board.js';
@@ -497,12 +496,9 @@
         {/if}
         {#each columns as column, i (column.id)}
           {@const count = counts[column.id] ?? 0}
-          {@const wip = wipState(count, column.min, column.max)}
           <section
             class="board-column"
             class:is-over={over?.column === column.id}
-            class:over-limit={wip === 'over'}
-            class:under-limit={wip === 'under'}
             aria-labelledby="col-{column.id}"
             style:grid-column={i + 1}
             style:grid-row="1 / span {rows}"
@@ -516,13 +512,6 @@
                   >{t.boards.cards(count)}</span
                 ></span
               >
-              {#if column.min !== null || column.max !== null}
-                <span class="wip-limit"
-                  >{t.boards.wip(column.min, column.max)}{#if wip !== 'ok'}<span class="sr-only"
-                      >, {wip === 'over' ? t.boards.wipOver : t.boards.wipUnder}</span
-                    >{/if}</span
-                >
-              {/if}
             </header>
             {#each lanes as lane, k (lane.id)}
               {#if banded}<div class="band-gap" style:grid-row={bandRow(k)}></div>{/if}

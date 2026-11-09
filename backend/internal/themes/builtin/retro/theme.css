@@ -2299,8 +2299,7 @@
   font: 700 0.75rem/1.2 var(--font-body);
 }
 
-[data-skin='retro'] .board-column-count,
-[data-skin='retro'] .wip-limit {
+[data-skin='retro'] .board-column-count {
   font: 400 0.6875rem/1 var(--font-body);
 }
 
@@ -2350,17 +2349,6 @@
   background: var(--accent-wash);
   outline: 1px dotted var(--ink);
   outline-offset: -4px;
-}
-
-[data-skin='retro'] .board-column.over-limit {
-  box-shadow:
-    var(--rt-thin-up),
-    0 0 0 2px var(--accent-text);
-}
-
-[data-skin='retro'] .board-column.over-limit :is(.wip-limit, .board-column-count) {
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 /* Administration overview: each section a raised button, the menu highlight on hover - */

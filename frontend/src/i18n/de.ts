@@ -1117,12 +1117,6 @@ export const de: Messages = {
     noActiveSprint: 'Kein aktiver Sprint.',
     noActiveSprintHint: 'Sprints werden im Backlog geplant und gestartet.',
     openBacklog: 'Backlog öffnen',
-    wip: (min: number | null, max: number | null) =>
-      [min !== null ? `min ${min}` : '', max !== null ? `max ${max}` : '']
-        .filter(Boolean)
-        .join(' · '),
-    wipOver: 'Limit überschritten',
-    wipUnder: 'unter dem Minimum',
     unassigned: 'Nicht zugewiesen',
     noEpic: 'Ohne Epic',
     otherIssues: 'Weitere Vorgänge',
@@ -1264,8 +1258,6 @@ export const de: Messages = {
     columnsHint:
       'Wird ein Vorgang in eine Spalte gezogen, erhält er den ersten Status der Spalte, den sein Workflow erreichen kann.',
     columnName: 'Spaltenname',
-    min: 'Minimum',
-    max: 'Maximum',
     statuses: 'Status',
     noStatus: 'Kein Status: Diese Spalte bleibt leer.',
     addColumn: 'Spalte hinzufügen',
