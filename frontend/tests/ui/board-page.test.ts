@@ -51,7 +51,7 @@ const detail: BoardDetail = {
   projects: [],
   columns: [
     { id: 10, name: 'To Do', statuses: [status] },
-    { id: 20, name: 'Done', min: 1, max: 3, statuses: [status] },
+    { id: 20, name: 'Done', statuses: [status] },
   ],
   quickFilters: [],
   swimlanes: [
@@ -159,14 +159,6 @@ describe('BoardPage', () => {
     await settle();
     expect(watch).toHaveBeenCalledWith('T-1', true);
     expect(labels(openMenu('T-1')[0]?.items ?? [])).toContain('Stop watching');
-  });
-
-  it('shows no limit for a column the API sends with one', async () => {
-    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
-    await settle();
-    expect(document.querySelectorAll('.board-column')).toHaveLength(2);
-    expect(document.querySelector('.wip-limit')).toBeNull();
-    expect(document.querySelector('#col-20')?.closest('header')?.textContent).not.toMatch(/max|3/);
   });
 
   it('sends the query of the filter row with the quick filters', async () => {

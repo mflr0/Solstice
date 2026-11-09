@@ -228,8 +228,6 @@ func (s *Server) listBoards(w http.ResponseWriter, r *http.Request) error {
 type columnOut struct {
 	ID       int64       `json:"id"`
 	Name     string      `json:"name"`
-	Min      *int        `json:"min"`
-	Max      *int        `json:"max"`
 	Statuses []statusRef `json:"statuses"`
 }
 
@@ -244,20 +242,11 @@ type namedQuery struct {
 func (s *Server) boardColumns(ctx context.Context, cat *catalog, board int64) ([]columnOut, error) {
 	var cols []columnOut
 	index := map[int64]int{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name, min_issues, max_issues FROM board_columns WHERE board_id = ?
+	if err := sqlq.Each(ctx, s.db, `SELECT id, name FROM board_columns WHERE board_id = ?
 		ORDER BY position, id`, func(rows *sql.Rows) error {
 		var c columnOut
-		var lo, hi sql.NullInt64
-		if err := rows.Scan(&c.ID, &c.Name, &lo, &hi); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name); err != nil {
 			return err
-		}
-		if lo.Valid {
-			v := int(lo.Int64)
-			c.Min = &v
-		}
-		if hi.Valid {
-			v := int(hi.Int64)
-			c.Max = &v
 		}
 		c.Statuses = []statusRef{}
 		index[c.ID] = len(cols)

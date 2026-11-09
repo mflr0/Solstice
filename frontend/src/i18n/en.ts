@@ -1025,6 +1025,8 @@ export const en = {
     defaultAssignee: 'Default',
     required: 'Required',
     checkFields: 'Some fields need your attention.',
+    dropFiles: 'Drop files to attach to the new issue',
+    notAttached: (names: string) => `Not attached: ${names}. Attach them again from the issue.`,
     addPerson: 'Add a person',
     missing: {
       project: 'Choose a project.',

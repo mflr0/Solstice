@@ -1023,6 +1023,8 @@ export const hi: Messages = {
     defaultAssignee: 'डिफ़ॉल्ट',
     required: 'ज़रूरी',
     checkFields: 'कुछ फ़ील्ड पर ध्यान देना ज़रूरी है।',
+    dropFiles: 'नए टिकट में जोड़ने के लिए फ़ाइलें छोड़ें',
+    notAttached: (names: string) => `नहीं जुड़ीं: ${names}। इन्हें टिकट से फिर से जोड़ें।`,
     addPerson: 'व्यक्ति जोड़ें',
     missing: {
       project: 'कोई प्रोजेक्ट चुनें।',

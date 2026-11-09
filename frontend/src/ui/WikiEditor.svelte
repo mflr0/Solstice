@@ -34,6 +34,8 @@
     oncancel?: (() => void) | undefined;
     /** Issue that pasted or dropped files are attached to; none, no upload. */
     uploadTo?: string | undefined;
+    /** Takes pasted, dropped or picked files in place of uploading them, once their references are in. */
+    onfiles?: ((files: File[]) => void) | undefined;
   }
   let {
     value = $bindable(),
@@ -45,6 +47,7 @@
     onsubmit,
     oncancel,
     uploadTo,
+    onfiles,
   }: Props = $props();
 
   let Rich = $state(loaded);
@@ -77,6 +80,7 @@
     {onsubmit}
     {oncancel}
     {uploadTo}
+    {onfiles}
   />
 {:else if failed}
   <!-- The editor could not be fetched (offline…): plain markup still works. -->

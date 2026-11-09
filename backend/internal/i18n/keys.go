@@ -521,7 +521,6 @@ const (
 	BoardEstimationUnknown       Key = "BoardEstimationUnknown"
 	BoardColumnRequired          Key = "BoardColumnRequired"
 	BoardColumnNameRequired      Key = "BoardColumnNameRequired"
-	BoardColumnLimits            Key = "BoardColumnLimits"
 	BoardColumnUnknown           Key = "BoardColumnUnknown"
 	BoardStatusInTwoColumns      Key = "BoardStatusInTwoColumns"
 	BoardBacklogColumns          Key = "BoardBacklogColumns"

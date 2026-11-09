@@ -5,7 +5,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import type { OfferedField, ProjectDetail, UserRef } from '../../src/core/types.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
-import { dialogs } from '../../src/lib/ui.svelte.js';
+import { dialogs, notes } from '../../src/lib/ui.svelte.js';
 import NewIssueDialog from '../../src/ui/NewIssueDialog.svelte';
 
 const alice: UserRef = { id: 1, username: 'alice', name: 'Alice Martin', active: true };
@@ -20,6 +20,13 @@ const detail = {
   versions: [],
   securityLevels: [],
   defaultAssignee: 'unassigned',
+  can: { create: true, attach: true },
+} as unknown as ProjectDetail;
+
+// Alice can create issues in Beta, not attach files.
+const beta = {
+  ...detail,
+  project: { id: 2, key: 'BETA', name: 'Beta' },
   can: { create: true },
 } as unknown as ProjectDetail;
 
@@ -29,6 +36,7 @@ let assignable: UserRef[] = [];
 const team: OfferedField = { id: 7, name: 'Team', type: 'text', typeKey: '', options: [] };
 
 const created = vi.fn();
+const uploaded = vi.fn();
 
 vi.mock('../../src/lib/api.js', () => ({
   ApiError: class extends Error {
@@ -41,12 +49,14 @@ vi.mock('../../src/lib/api.js', () => ({
     }
   },
   api: {
-    projects: () => Promise.resolve([detail.project]),
-    project: () => Promise.resolve(detail),
+    projects: () => Promise.resolve([detail.project, beta.project]),
+    project: (key: string) => Promise.resolve(key === 'BETA' ? beta : detail),
     assignable: () => Promise.resolve(assignable),
     projectFields: (_key: string, type: string) => Promise.resolve(type === '1' ? [team] : []),
     createIssue: (fields: unknown) => created(fields),
+    upload: (key: string, files: File[]) => uploaded(key, files),
   },
+  isVisible: () => true,
   errorMessage: (e: Error) => e.message,
   pictureUrl: (id: number) => `/api/users/${id}/picture`,
 }));
@@ -76,6 +86,8 @@ beforeEach(() => {
 
 afterEach(() => {
   created.mockReset();
+  uploaded.mockReset();
+  notes.length = 0;
   if (component) unmount(component);
   component = undefined;
   session.me = null;
@@ -128,7 +140,86 @@ function link(): HTMLButtonElement | undefined {
   );
 }
 
+async function chooseProject(name: string) {
+  const combo = [...document.querySelectorAll<HTMLElement>('[role="combobox"]')].find(
+    (c) => c.getAttribute('aria-label') === t.create.project,
+  )!;
+  combo.click();
+  flushSync();
+  [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+    .find((o) => o.textContent?.includes(name))!
+    .click();
+  await settle();
+}
+
+function pick(...files: File[]) {
+  const input = document.querySelector<HTMLInputElement>('.files input[type="file"]')!;
+  Object.defineProperty(input, 'files', { value: files, configurable: true });
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+}
+
+const queued = () => [...document.querySelectorAll('.queue .name')].map((n) => n.textContent);
+
 describe('NewIssueDialog', () => {
+  it('queues picked files and uploads them once the issue exists', async () => {
+    created.mockResolvedValue({ key: 'ALPHA-1' });
+    uploaded.mockImplementation((_key: string, files: File[]) =>
+      Promise.resolve({ attachments: files.map((f) => ({ filename: f.name })) }),
+    );
+    await open();
+    fill(document.querySelector('input.summary') as HTMLInputElement, 'With files');
+    pick(new File(['%PDF'], 'spec.pdf'), new File(['png'], 'shot.png'));
+    pick(new File(['newer'], 'spec.pdf'));
+    expect(queued()).toEqual(['shot.png', 'spec.pdf']);
+    document
+      .querySelector<HTMLButtonElement>(`[aria-label="${t.common.remove} shot.png"]`)!
+      .click();
+    flushSync();
+    expect(queued()).toEqual(['spec.pdf']);
+    await submit();
+    expect(uploaded).toHaveBeenCalledTimes(1);
+    expect(uploaded.mock.calls[0]![0]).toBe('ALPHA-1');
+    expect((uploaded.mock.calls[0]![1] as File[]).map((f) => f.size)).toEqual([5]);
+    expect(notes.filter((n) => n.kind === 'error')).toEqual([]);
+    expect(dialogs.create).toBe(false);
+  });
+
+  it('keeps the issue and names the files when the upload fails', async () => {
+    const { ApiError } = await import('../../src/lib/api.js');
+    created.mockResolvedValue({ key: 'ALPHA-2' });
+    uploaded.mockRejectedValue(new ApiError('Storage is full.', 413, null));
+    await open();
+    fill(document.querySelector('input.summary') as HTMLInputElement, 'Too big');
+    pick(new File(['a'], 'a.pdf'), new File(['b'], 'b.png'));
+    await submit();
+    expect(dialogs.create).toBe(false);
+    expect(notes.find((n) => n.kind === 'error')?.text).toBe(
+      `Storage is full. ${t.create.notAttached('a.pdf, b.png')}`,
+    );
+  });
+
+  it('hides the files and drops the queue in a project without attach', async () => {
+    await open();
+    pick(new File(['a'], 'a.pdf'));
+    expect(queued()).toEqual(['a.pdf']);
+    await chooseProject('Beta');
+    expect(document.querySelector('.files')).toBeNull();
+    await chooseProject('Alpha');
+    expect(document.querySelector('.files')).not.toBeNull();
+    expect(queued()).toEqual([]);
+  });
+
+  it('drops the queue when the dialog closes', async () => {
+    await open();
+    pick(new File(['a'], 'a.pdf'));
+    dialogs.create = false;
+    await settle();
+    dialogs.create = true;
+    await settle();
+    expect(queued()).toEqual([]);
+  });
+
   it('assigns the issue to the viewer from the Assignee label', async () => {
     assignable = [alice];
     await open();
