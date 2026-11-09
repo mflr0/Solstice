@@ -2775,6 +2775,10 @@ export const it: Messages = {
     chooseGroup: 'Scegli un gruppo…',
     types: 'Tipi di ticket',
     typesHint: 'I tipi che si possono scegliere in questo progetto.',
+    board: 'Board',
+    boardNone: 'Nessuna',
+    boardHint:
+      'Creata con il progetto, sui suoi ticket. Potrai aggiungerne altre in seguito da Board.',
     assignee: 'I nuovi ticket sono assegnati a',
     assignees: {
       unassigned: 'Nessuno',
