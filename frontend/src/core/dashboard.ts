@@ -166,3 +166,40 @@ export function narrowedJql(query: string, field: CountField, value: string): st
 export function jqlValue(text: string): string {
   return text === '' ? EMPTY : quote(text);
 }
+
+/** A gadget's query as a view: in JQL, in the order saved on the gadget. */
+export function viewJql(query: string, sort: SortTerm | undefined): string {
+  return toJql(sortedQuery(query, sort));
+}
+
+/** The new view that copies a built-in gadget; saving it puts the view in the gadget's place. */
+export function copyOnEditPath(jql: string, gadget: number): string {
+  return `/views/new?${new URLSearchParams({ jql, gadget: String(gadget) }).toString()}`;
+}
+
+/**
+ * The gadgets with the one of that id turned into a results gadget on the
+ * filter, folded and sized as it was; appended when it is gone. The order is
+ * now the filter's own.
+ */
+export function swapToFilter(gadgets: Gadget[], id: number, filter: number): GadgetInput[] {
+  const next = gadgets.map(toInput);
+  const i = next.findIndex((g) => g.id === id);
+  const old = next[i];
+  const config: GadgetConfig = {};
+  if (old?.config.size) config.size = old.config.size;
+  if (old?.config.collapsed) config.collapsed = true;
+  const swapped: GadgetInput = { id: old?.id ?? 0, kind: 'results', filter, config };
+  if (i < 0) next.push(swapped);
+  else next[i] = swapped;
+  return next;
+}
+
+/** The gadgets with these ones folded or unfolded. */
+export function setCollapsed(
+  gadgets: Gadget[],
+  which: (g: Gadget) => boolean,
+  on: boolean,
+): Gadget[] {
+  return gadgets.map((g) => (which(g) ? { ...g, config: { ...g.config, collapsed: on } } : g));
+}

@@ -38,6 +38,8 @@
     onsort?: ((column: string) => void) | undefined;
     /** The words of the query's `text ~`, marked in the summaries (IssueTable's). */
     textSearch?: string | undefined;
+    /** Never wider than its box (IssueTable's). */
+    fixed?: boolean | undefined;
   }
   const {
     q = '',
@@ -56,6 +58,7 @@
     sort,
     onsort,
     textSearch,
+    fixed,
   }: Props = $props();
 
   let selected = $state<string[]>([]);
@@ -159,6 +162,7 @@
     {sort}
     {onsort}
     {textSearch}
+    {fixed}
     onselect={selectable ? (keys) => (selected = keys) : undefined}
   />
   {#if onpage}

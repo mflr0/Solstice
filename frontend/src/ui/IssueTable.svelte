@@ -41,6 +41,8 @@
     onsort?: ((column: string) => void) | undefined;
     /** The words of the query's `text ~`, marked in the summaries. */
     textSearch?: string | undefined;
+    /** Never wider than its box: fixed column widths, and the summary gives way. */
+    fixed?: boolean | undefined;
   }
   const {
     issues,
@@ -52,6 +54,7 @@
     sort = [],
     onsort,
     textSearch = '',
+    fixed = false,
   }: Props = $props();
   const allSelected = $derived(issues.length > 0 && issues.every((i) => selected.includes(i.key)));
   const someSelected = $derived(!allSelected && issues.some((i) => selected.includes(i.key)));
@@ -147,6 +150,7 @@
 <!-- The browser leaves a control partly in view where it is, its ring cut by the scroll box. -->
 <div
   class="issue-table"
+  class:fixed
   onfocusin={(e) => (e.target as Element).scrollIntoView({ block: 'nearest', inline: 'nearest' })}
 >
   <table class="ledger">
@@ -378,6 +382,69 @@
     vertical-align: bottom;
   }
 
+  /* The widths hold each column's usual widest content; longer text is cut. */
+  .fixed {
+    overflow-x: clip;
+  }
+
+  .fixed table {
+    table-layout: fixed;
+  }
+
+  .fixed :is(th, td) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fixed .c-pick {
+    width: 1.75rem;
+  }
+
+  .fixed .c-type {
+    width: 3.5rem;
+  }
+
+  .fixed .c-key {
+    width: 5.75rem;
+  }
+
+  .fixed .c-summary {
+    width: auto;
+    max-width: none;
+  }
+
+  .fixed .c-status {
+    width: 8rem;
+  }
+
+  .fixed .c-status :global(.stamp) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .fixed .c-priority {
+    width: 6.5rem;
+  }
+
+  .fixed .c-assignee {
+    width: 10rem;
+  }
+
+  .fixed .c-due {
+    width: 9.5rem;
+  }
+
+  .fixed .c-updated {
+    width: 8.5rem;
+  }
+
+  .fixed .c-extra {
+    width: 9rem;
+  }
+
   @container issue-table (width >= 570px) {
     .c-summary {
       min-width: 10em;
@@ -397,6 +464,25 @@
     .c-assignee,
     .c-extra {
       display: none;
+    }
+  }
+
+  /* Fixed on a phone: the key says enough without the type, and the summary needs the room. */
+  @container issue-table (width < 570px) {
+    .fixed .c-type {
+      display: none;
+    }
+
+    .fixed :is(th, td) {
+      padding-inline: 6px;
+    }
+
+    .fixed .c-key {
+      width: 5.25rem;
+    }
+
+    .fixed .c-status {
+      width: 6rem;
     }
   }
 
