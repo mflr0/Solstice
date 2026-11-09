@@ -1033,6 +1033,8 @@ export const it: Messages = {
     defaultAssignee: 'Predefinito',
     required: 'Obbligatorio',
     checkFields: 'Alcuni campi richiedono la tua attenzione.',
+    dropFiles: 'Rilascia i file per allegarli al nuovo ticket',
+    notAttached: (names: string) => `Non allegati: ${names}. Allegali di nuovo dal ticket.`,
     addPerson: 'Aggiungi una persona',
     missing: {
       project: 'Scegli un progetto.',

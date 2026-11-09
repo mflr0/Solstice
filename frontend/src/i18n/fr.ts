@@ -1032,6 +1032,9 @@ export const fr: Messages = {
     defaultAssignee: 'Par défaut',
     required: 'Obligatoire',
     checkFields: 'Vérifiez les champs signalés.',
+    dropFiles: 'Déposez les fichiers pour les joindre au nouveau ticket',
+    notAttached: (names: string) =>
+      `Non joints : ${names}. Joignez-les à nouveau depuis le ticket.`,
     addPerson: 'Ajouter une personne',
     missing: {
       project: 'Choisissez un projet.',

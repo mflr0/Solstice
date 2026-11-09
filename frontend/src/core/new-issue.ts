@@ -131,3 +131,35 @@ export function recall(
   const live = new Set(components.filter((c) => !c.archived).map((c) => c.id));
   return { assignee: p.assignee, components: p.components.filter((id) => live.has(id)) };
 }
+
+/**
+ * The files waiting to be attached once the issue exists. A file replaces a
+ * queued one of the same name: references in the text match by file name.
+ */
+export function queueFiles(queue: readonly File[], added: readonly File[]): File[] {
+  const byName = new Map(queue.map((f) => [f.name, f]));
+  for (const f of added) {
+    byName.delete(f.name);
+    byName.set(f.name, f);
+  }
+  return [...byName.values()];
+}
+
+/** The queue without the file of that name. */
+export function unqueueFile(queue: readonly File[], name: string): File[] {
+  return queue.filter((f) => f.name !== name);
+}
+
+/** The queue a newly loaded project keeps: none where the viewer can't attach. */
+export function queueFor(queue: readonly File[], canAttach: boolean): File[] {
+  return canAttach ? [...queue] : [];
+}
+
+/** Names of queued files the issue doesn't hold after the upload. */
+export function notAttached(
+  queue: readonly File[],
+  attached: readonly { filename: string }[],
+): string[] {
+  const held = new Set(attached.map((a) => a.filename));
+  return queue.map((f) => f.name).filter((name) => !held.has(name));
+}

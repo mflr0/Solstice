@@ -8,17 +8,21 @@
     emptyMemory,
     memoryKey,
     newIssueProblems,
+    notAttached,
+    queueFiles,
+    queueFor,
     readMemory,
     recall,
     remember,
     startProject,
+    unqueueFile,
     type NewIssueMemory,
   } from '../core/new-issue.js';
   import { paths } from '../core/route.js';
   import type { OfferedField, Project, ProjectDetail, UserRef } from '../core/types.js';
-  import { t } from '../i18n/t.js';
+  import { formatSize, t } from '../i18n/t.js';
   import { projectAdminApi } from '../lib/admin-api.js';
-  import { api, ApiError, errorMessage, type IssueFields } from '../lib/api.js';
+  import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { dialogs, notify } from '../lib/ui.svelte.js';
@@ -61,6 +65,14 @@
   let error = $state('');
   // Fields show their problems once a submit has been tried.
   let tried = $state(false);
+  // Files to attach once the issue exists.
+  let queue = $state<File[]>([]);
+  let uploading = $state(false);
+  let picker: HTMLInputElement | undefined = $state();
+  let form: HTMLFormElement | undefined = $state();
+  let dragging = $state(false);
+  /** Nested dragenter/dragleave pairs, so crossing child nodes does not hide the overlay. */
+  let depth = 0;
 
   // Custom fields that take the form's whole width.
   const wideTypes = ['textarea', 'labels', 'radio', 'checkboxes', 'multiuser'];
@@ -71,6 +83,7 @@
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
   const canCreate = $derived(detail?.can.create === true);
   const configure = $derived(detail?.can.configure === true);
+  const canAttach = $derived(detail?.can.attach === true);
   const problems = $derived(
     newIssueProblems({ project: projectKey, type: typeId, summary, estimate }, t.units.duration),
   );
@@ -140,6 +153,7 @@
     customError = null;
     error = '';
     tried = false;
+    queue = [];
     const prios = session.meta?.priorities ?? [];
     priorityId = prios[Math.floor(prios.length / 2)]?.id ?? '';
     const explicit = dialogs.createDefaults.project ?? (parent ? projectOfIssueKey(parent) : null);
@@ -176,6 +190,7 @@
     void api.project(key).then((d) => {
       if (key !== projectKey) return;
       detail = d;
+      queue = queueFor(queue, d.can.attach === true);
       restore(key, d);
       fixVersions = [];
       const offered = d.issueTypes.filter((ty) => ty.subtask === (parent !== ''));
@@ -224,6 +239,67 @@
 
   function close() {
     dialogs.create = false;
+    queue = [];
+  }
+
+  function enqueue(files: File[]) {
+    if (canAttach && files.length) queue = queueFiles(queue, files);
+  }
+
+  /** Files from outside, not text or links. */
+  const carriesFiles = (e: DragEvent): boolean => e.dataTransfer?.types.includes('Files') ?? false;
+
+  /** Whether this dialog is open and no other dialog is over it. */
+  function inFront(): boolean {
+    const top = [...document.querySelectorAll('dialog:modal')].at(-1);
+    return !!form && !!top && top.contains(form);
+  }
+
+  function endDrag() {
+    depth = 0;
+    dragging = false;
+  }
+
+  function dragEnter(e: DragEvent) {
+    if (!canAttach || !carriesFiles(e) || !inFront()) return;
+    depth++;
+    dragging = true;
+  }
+
+  function dragLeave(e: DragEvent) {
+    if (!carriesFiles(e) || depth === 0) return;
+    if (--depth === 0) dragging = false;
+  }
+
+  // Taken even without attach, or the browser leaves the form for the file.
+  function dragOver(e: DragEvent) {
+    if (!carriesFiles(e) || !inFront()) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = canAttach ? 'copy' : 'none';
+  }
+
+  function drop(e: DragEvent) {
+    if (!carriesFiles(e) || !inFront()) return;
+    // The description editor already queued it and inserted its reference.
+    const taken = e.defaultPrevented;
+    e.preventDefault();
+    endDrag();
+    if (!taken) enqueue([...(e.dataTransfer?.files ?? [])]);
+  }
+
+  // The issue is kept whatever happens here: what failed is named, to attach it from the issue.
+  async function attach(key: string, files: File[]) {
+    uploading = true;
+    try {
+      const d = await api.upload(key, files);
+      const failed = isVisible(d) ? notAttached(files, d.attachments) : [];
+      if (failed.length) notify(t.create.notAttached(failed.join(', ')), 'error');
+    } catch (err) {
+      const names = files.map((f) => f.name).join(', ');
+      notify(`${errorMessage(err)} ${t.create.notAttached(names)}`, 'error');
+    } finally {
+      uploading = false;
+    }
   }
 
   async function submit(e?: SubmitEvent) {
@@ -267,8 +343,9 @@
       } catch {
         // Not remembered: no harm.
       }
-      close();
       notify(t.create.created(key));
+      if (queue.length) await attach(key, queue);
+      close();
       router.navigate(paths.issue(key));
     } catch (err) {
       const f = customFieldOf(err);
@@ -282,12 +359,19 @@
 
 {#snippet req()}<span class="req" aria-hidden="true">*</span>{/snippet}
 
+<svelte:window
+  ondragenter={dragEnter}
+  ondragleave={dragLeave}
+  ondragover={dragOver}
+  ondrop={drop}
+/>
+
 <Modal
   open={dialogs.create}
   title={parent ? t.create.subtaskTitle(parent) : t.create.title}
   onclose={close}
 >
-  <form id="new-issue" class="form" onsubmit={submit} novalidate>
+  <form bind:this={form} id="new-issue" class="form" onsubmit={submit} novalidate>
     <div class="three">
       <div class="field">
         <span class="field-label">{t.create.project}{@render req()}</span>
@@ -358,8 +442,50 @@
 
     <div class="field description" class:kept={offered.length > 0}>
       <span class="field-label">{t.create.description}</span>
-      <WikiEditor bind:value={description} label={t.create.description} rows={4} />
+      <WikiEditor
+        bind:value={description}
+        label={t.create.description}
+        rows={4}
+        onfiles={canAttach ? enqueue : undefined}
+      />
     </div>
+
+    {#if canAttach}
+      <div class="field files">
+        <div class="files-head">
+          <span class="field-label">{t.issue.attachments}</span>
+          <button type="button" class="btn btn-small" onclick={() => picker?.click()}
+            >{t.issue.attach}</button
+          >
+          <input
+            bind:this={picker}
+            type="file"
+            multiple
+            hidden
+            onchange={(e) => {
+              enqueue([...(e.currentTarget.files ?? [])]);
+              e.currentTarget.value = '';
+            }}
+          />
+        </div>
+        {#if queue.length}
+          <ul class="queue">
+            {#each queue as f (f.name)}
+              <li>
+                <span class="name" title={f.name}>{f.name}</span>
+                <span class="size">{formatSize(f.size)}</span>
+                <button
+                  type="button"
+                  class="del"
+                  aria-label={`${t.common.remove} ${f.name}`}
+                  onclick={() => (queue = unqueueFile(queue, f.name))}>×</button
+                >
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
 
     <div class="three">
       <div class="field assignee">
@@ -479,6 +605,7 @@
         {/each}
       </div>
     {/if}
+    {#if dragging}<p class="drop"><span>{t.create.dropFiles}</span></p>{/if}
   </form>
 
   {#snippet footer()}
@@ -487,7 +614,7 @@
     <p class="status" class:error-text={problem} role="alert">{problem}</p>
     <button type="button" class="btn btn-quiet" onclick={close}>{t.common.cancel}</button>
     <button type="submit" form="new-issue" class="btn btn-primary" disabled={pending || !canCreate}
-      >{pending ? t.create.pending : t.create.submit}</button
+      >{uploading ? t.issue.uploading : pending ? t.create.pending : t.create.submit}</button
     >
   {/snippet}
 </Modal>
@@ -619,6 +746,89 @@
 
   .wide {
     grid-column: 1 / -1;
+  }
+
+  /* A long file name is clipped, not widening the form. */
+  .files {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .files-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .queue {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .queue li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px 4px 2px 8px;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    font-size: 0.78125rem;
+  }
+
+  .queue .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .queue .size {
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  .del {
+    flex-shrink: 0;
+    width: 1.375rem;
+    height: 1.375rem;
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+  }
+
+  .del:hover,
+  .del:focus-visible {
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+
+  /* Over the whole view: files land anywhere on the dialog. */
+  .drop {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    outline: 2px dashed var(--accent);
+    outline-offset: -12px;
+    background: color-mix(in srgb, var(--paper) 70%, transparent);
+    font: var(--title-italic) 1rem var(--font-title);
+    color: var(--accent-text);
+    pointer-events: none;
+  }
+
+  .drop span {
+    padding: 10px 18px;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-pop);
   }
 
   @media (max-width: 640px) {
