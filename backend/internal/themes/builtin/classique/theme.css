@@ -1515,7 +1515,8 @@
   grid-template-columns: minmax(0, 1fr) 21.25rem;
 }
 
-@media (max-width: 980px) {
+/* The article's width at a 980 px screen, with this skin's wider margins. */
+@container issue (max-width: 882px) {
   [data-skin='classique'] .issue-layout.issue-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1928,7 +1929,12 @@
     box-shadow: none;
   }
 
-  [data-skin='classique'] h1.page-title,
+  [data-skin='classique'] h1.page-title {
+    font-size: 1.3125rem;
+  }
+}
+
+@container issue (max-width: 728px) {
   [data-skin='classique'] .issue-head h1.page-title {
     font-size: 1.3125rem;
   }

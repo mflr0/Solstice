@@ -183,6 +183,11 @@ the divider, drawn with `--rule-stroke`; `.count`, `.actions`).
 Issue page: `.page.issue` > `nav.page-crumbs`, `header.issue-head`
 (`h1.page-title`, `.issue-meta`), `.issue-layout` (`.issue-sheet`, then
 `aside.card` = the record).
+`.page.issue` is a container named `issue` (it can sit in a modal), so restyle
+the issue view by its width with `@container issue (max-width: …)`, not
+`@media`. With the default page padding its content is 916 px wide at a
+980 px screen, 728 px at 760 px, 568 px at 600 px; measure it in a skin that
+changes the page's padding.
 
 - `.issue-meta` > `.meta-cell` (status, `.resolution`, type, priority,
   `.created`, `.actions`) between `span.meta-sep.dot` (the `·`). Status:
