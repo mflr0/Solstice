@@ -374,7 +374,13 @@ export const fr: Messages = {
     lead: 'Responsable',
     open: 'Ouverts',
     uncategorised: 'Sans catégorie',
-    empty: 'Aucun projet ne vous est accessible.',
+    empty: 'Aucun projet pour l’instant',
+    emptyHintAdmin:
+      'Un projet regroupe des tickets, les tableaux qui les suivent et les personnes qui y travaillent. Créez le premier.',
+    emptyHintMember: 'Demandez à un administrateur de vous ajouter à un projet.',
+    noIssues: 'Aucun ticket pour l’instant',
+    noIssuesHint:
+      'Les tickets créés dans ce projet s’affichent ici, et ses tableaux les suivent de À faire à Terminé.',
     settings: 'Réglages',
     copyLink: 'Copier le lien du projet',
     linkCopied: 'Lien copié',
@@ -1033,7 +1039,9 @@ export const fr: Messages = {
     activeSprint: 'Sprint en cours',
     project: 'Projet',
     allProjects: 'Tous les projets',
-    empty: 'Aucun tableau ne vous est accessible.',
+    empty: 'Aucun tableau pour l’instant',
+    emptyHint:
+      'Un tableau montre les tickets d’un projet en colonnes, de À faire à Terminé. Créez-en un pour suivre le travail.',
     emptyProject: (key: string) => `Aucun tableau pour le projet ${key}.`,
     count: (n: number) => plural(n, 'tableau', 'tableaux'),
     create: 'Créer un tableau',
