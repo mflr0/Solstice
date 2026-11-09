@@ -17,11 +17,13 @@ import {
   literal,
   matchPreset,
   rangeDays,
+  readSort,
   sortBy,
   toggle,
   type FilterState,
 } from '../../src/core/filters.js';
 import { simpleToJql } from '../../src/core/jql-simple.js';
+import { en } from '../../src/i18n/en.js';
 
 const state = (patch: Partial<FilterState>): FilterState => ({ ...emptyFilters(), ...patch });
 
@@ -328,6 +330,28 @@ describe('sorting', () => {
     expect(columnDirection('status', [{ field: 'priority', desc: true }])).toBeNull();
     expect(columnDirection('status', [])).toBeNull();
     expect(columnDirection('description', [{ field: 'description', desc: true }])).toBeNull();
+  });
+
+  it('reads the sort sentence of an order', () => {
+    const says = (order: Parameters<typeof readSort>[0]) => {
+      const s = readSort(order);
+      if (!s) return null;
+      const name = en.search.sorts[s.field as keyof typeof en.search.sorts];
+      return en.search.sortedBy(name, en.search.sortWays[s.way][s.desc ? 'desc' : 'asc']);
+    };
+    expect(readSort([])).toEqual({ field: 'updated', column: 'updated', desc: true, way: 'age' });
+    expect(says([])).toBe(', sorted by Updated, newest first');
+    expect(says([{ field: 'updatedDate', desc: false }])).toBe(', sorted by Updated, oldest first');
+    expect(says([{ field: 'priority', desc: true }])).toBe(', sorted by Priority, highest first');
+    expect(says([{ field: 'issuekey', desc: false }])).toBe(', sorted by Key, ascending');
+    expect(readSort([{ field: 'cf[7]', desc: true }])).toMatchObject({ column: 'customfield_7' });
+    expect(readSort([{ field: 'rank', desc: false }])).toMatchObject({ column: null });
+    expect(
+      readSort([
+        { field: 'priority', desc: true },
+        { field: 'created', desc: false },
+      ]),
+    ).toBeNull();
   });
 
   it('cycles a header click through natural, reversed and default', () => {

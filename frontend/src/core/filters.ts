@@ -502,6 +502,39 @@ export function clickSort(column: string, order: SortTerm[]): SortTerm[] {
   return now === natural ? sortBy(field, !natural) : [];
 }
 
+/** How a sort's direction reads: dates by age, ranks and amounts by size, the rest by value. */
+export type SortWay = 'age' | 'size' | 'value';
+
+/** An order on one field, as the line under the filters says it. */
+export interface SortReading {
+  field: string;
+  /** The column of the results that shows the field, if any. */
+  column: string | null;
+  desc: boolean;
+  way: SortWay;
+}
+
+/** The one field an order sorts by; null for an order on several, which goes unsaid. */
+export function readSort(order: readonly SortTerm[]): SortReading | null {
+  if (order.length > 1) return null;
+  const first = order[0] ?? { field: 'updated', desc: true };
+  const info = fieldInfo(first.field);
+  const field = info?.name ?? first.field;
+  const custom = /^cf\[(\d+)\]$/i.exec(field);
+  const column = custom
+    ? `customfield_${custom[1]}`
+    : (Object.keys(COLUMN_SORTS).find((c) => sortName(COLUMN_SORTS[c] ?? '') === sortName(field)) ??
+      null);
+  const kind = info?.kind;
+  const way: SortWay =
+    kind === 'date'
+      ? 'age'
+      : kind === 'priority' || kind === 'duration' || field === 'votes' || field === 'watchers'
+        ? 'size'
+        : 'value';
+  return { field, column, desc: first.desc, way };
+}
+
 /* Dates --------------------------------------------------------------------- */
 
 export interface DatePreset {

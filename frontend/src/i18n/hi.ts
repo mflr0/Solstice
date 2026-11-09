@@ -422,6 +422,8 @@ export const hi: Messages = {
       reset: 'डिफ़ॉल्ट कॉलम',
     },
     exportCsv: 'CSV में निर्यात करें',
+    moreActions: 'और कार्रवाइयाँ',
+    resultsMenu: 'नतीजे',
     bulk: {
       select: (key: string) => `${key} चुनें`,
       selectPage: 'इस पेज के सभी टिकट चुनें',
@@ -565,7 +567,6 @@ export const hi: Messages = {
       const d = parseDay(ymd);
       return d ? shortDay(d) : ymd;
     },
-    sortBy: 'सॉर्ट करें',
     sorts: {
       updated: 'अपडेट किया गया',
       created: 'बनाया गया',
@@ -575,10 +576,13 @@ export const hi: Messages = {
       status: 'स्टेटस',
       resolved: 'रिज़ॉल्व किया गया',
     },
-    customSort: 'क्वेरी का क्रम',
-    ascending: 'बढ़ते क्रम में',
-    descending: 'घटते क्रम में',
-    mode: 'खोज का व्यू',
+    /** Follows the count of results, from its separator on. */
+    sortedBy: (field: string, way: string) => `, क्रम: ${field}, ${way}`,
+    sortWays: {
+      age: { desc: 'नए पहले', asc: 'पुराने पहले' },
+      size: { desc: 'सबसे ऊँचे पहले', asc: 'सबसे नीचे पहले' },
+      value: { desc: 'घटते क्रम में', asc: 'बढ़ते क्रम में' },
+    },
     modeFilters: 'फ़िल्टर',
     modeJql: 'JQL',
     tooComplex: 'क्वेरी फ़िल्टर के लिए बहुत जटिल है',
