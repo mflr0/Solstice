@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"solstice/internal/i18n"
+	"solstice/internal/issue"
 )
 
 type failingDB struct{}
@@ -42,5 +43,20 @@ func TestTranslateCustomRefusesNullForUnsettableKind(t *testing.T) {
 	}
 	if len(edit.custom) != 0 {
 		t.Errorf("custom writes = %d, want 0", len(edit.custom))
+	}
+}
+
+func TestTranslateCustomNamesInvalidFieldByName(t *testing.T) {
+	p := &editProject{customs: []customFieldDef{{ID: 13, Name: "Gravité", Kind: issue.KindURL}}}
+	err := (&Server{}).translateCustom(context.Background(), p, &jiraEdit{ui: fields{}}, "customfield_13", json.RawMessage(`1`))
+	var he *httpError
+	if !errors.As(err, &he) || he.msg.Key != i18n.FieldValueInvalid {
+		t.Fatalf("err = %v, want %s", err, i18n.FieldValueInvalid)
+	}
+	if len(he.msg.Args) != 1 || he.msg.Args[0] != "Gravité" {
+		t.Errorf("message args = %v, want [Gravité]", he.msg.Args)
+	}
+	if he.extra["field"] != "customfield_13" {
+		t.Errorf("field = %v, want customfield_13", he.extra["field"])
 	}
 }
