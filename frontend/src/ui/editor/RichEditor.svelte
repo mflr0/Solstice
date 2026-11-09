@@ -1,6 +1,7 @@
 <script lang="ts">
   import 'prosemirror-view/style/prosemirror.css';
   import { untrack } from 'svelte';
+  import { on } from 'svelte/events';
   import { Fragment, Slice } from 'prosemirror-model';
   import { EditorState, type Command } from 'prosemirror-state';
   import { EditorView } from 'prosemirror-view';
@@ -117,6 +118,10 @@
   let linkError = $state('');
 
   let uploading = $state<string[]>([]);
+  let picker: HTMLInputElement | undefined = $state();
+  let dragging = $state(false);
+  /** Nested dragenter/dragleave pairs, so crossing child nodes does not hide the overlay. */
+  let depth = 0;
   /** Files attached from here, known before the page reloads the issue. */
   let added = $state<Attachment[]>([]);
   /** Where uploads in progress will insert their references, kept in step with edits. */
@@ -205,12 +210,9 @@
       },
       handleDrop(_view, event, _slice, moved) {
         const list = [...(event.dataTransfer?.files ?? [])];
-        if (moved || list.length === 0) return false;
-        event.preventDefault();
-        if (uploadTo) {
-          const pos = v.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-          void upload(list, pos ?? v.state.selection.from);
-        }
+        if (moved || list.length === 0 || !uploadTo) return false;
+        const pos = v.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        void upload(list, pos ?? v.state.selection.from);
         return true;
       },
       clipboardTextParser(text, $context, plain) {
@@ -516,6 +518,53 @@
     }
   }
 
+  function chosen(input: HTMLInputElement): void {
+    const list = [...(input.files ?? [])];
+    input.value = '';
+    if (view && list.length > 0) void upload(list, view.state.selection.from);
+    view?.focus();
+  }
+
+  /** Files from outside, not text or a moved selection. */
+  const carriesFiles = (e: DragEvent): boolean =>
+    !!uploadTo && (e.dataTransfer?.types.includes('Files') ?? false);
+
+  function endDrag(): void {
+    depth = 0;
+    dragging = false;
+  }
+
+  $effect(() => {
+    if (!frame) return;
+    const el = frame;
+    const off = [
+      on(el, 'dragenter', (e) => {
+        if (!carriesFiles(e)) return;
+        depth++;
+        dragging = true;
+      }),
+      on(el, 'dragleave', (e) => {
+        if (!carriesFiles(e) || depth === 0) return;
+        if (--depth === 0) dragging = false;
+      }),
+      // Lets files land on the toolbar too, not only on the text.
+      on(el, 'dragover', (e) => {
+        if (carriesFiles(e)) e.preventDefault();
+      }),
+      on(el, 'drop', (e) => {
+        const ours = dragging;
+        endDrag();
+        // The text already took it (handleDrop), or nothing is uploaded here.
+        if (!ours || e.defaultPrevented || !uploadTo) return;
+        const list = [...(e.dataTransfer?.files ?? [])];
+        if (list.length === 0) return;
+        e.preventDefault();
+        void upload(list, view?.state.selection.from ?? 0);
+      }),
+    ];
+    return () => off.forEach((f) => f());
+  });
+
   const mac = isMac(typeof navigator !== 'undefined' ? navigator.platform : '');
   const shortcut = (binding: string) => formatShortcut(binding, mac, t.editor.keys);
 
@@ -551,6 +600,13 @@
     onclick={() => run(cmd)}>{@render icon(name)}</button
   >
 {/snippet}
+
+<svelte:window
+  onkeydown={(e) => {
+    if (dragging && e.key === 'Escape') endDrag();
+  }}
+  ondragend={endDrag}
+/>
 
 <div class="editor" class:is-source={source} bind:this={frame}>
   <div
@@ -648,6 +704,17 @@
             return true;
           })}><span aria-hidden="true">@</span></button
       >
+      {#if uploadTo}
+        <button
+          type="button"
+          class="editor-button editor-attach"
+          aria-label={t.editor.attach}
+          title={t.editor.attach}
+          disabled={source}
+          onmousedown={(e) => e.preventDefault()}
+          onclick={() => picker?.click()}>{@render icon('attach')}</button
+        >
+      {/if}
     </div>
 
     <div class="editor-group editor-end">
@@ -700,6 +767,23 @@
   </div>
 
   <div bind:this={host} class="editor-host" hidden={source}></div>
+
+  {#if uploadTo}
+    <!-- Outside the toolbar, so its arrow keys never stop on it. -->
+    <input
+      bind:this={picker}
+      type="file"
+      multiple
+      hidden
+      onchange={(e) => chosen(e.currentTarget)}
+    />
+  {/if}
+
+  {#if dragging}
+    <div class="editor-dropzone" aria-hidden="true">
+      <span>{t.editor.dropFiles}</span>
+    </div>
+  {/if}
 
   {#if source}
     <textarea

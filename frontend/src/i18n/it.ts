@@ -972,6 +972,8 @@ export const it: Messages = {
     people: 'Persone',
     raw: 'Markup mantenuto così com’è; fai doppio clic per aprirlo in modalità Sorgente.',
     uploading: (names: string) => `Caricamento di ${names}…`,
+    attach: 'Allega file',
+    dropFiles: 'Rilascia i file per allegarli',
     escHint: 'Esc per annullare',
   },
 
