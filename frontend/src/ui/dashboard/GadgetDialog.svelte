@@ -144,7 +144,7 @@
       </label>
       <div class="field">
         <span class="field-label">{t.home.columns}</span>
-        <ColumnPicker {choices} chosen={columns} onchange={(next) => (columns = next)} />
+        <ColumnPicker {choices} chosen={columns} inline onchange={(next) => (columns = next)} />
       </div>
     {/if}
 

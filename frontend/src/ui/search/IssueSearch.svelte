@@ -12,9 +12,10 @@
   import { readLocation, writeLocation, type SearchLocation } from '../../core/filters-url.js';
   import {
     exportColumns,
-    parseColumns,
     NATIVE_COLUMNS,
-    STORAGE_KEY,
+    readStoredColumns,
+    storeColumns,
+    viewColumns,
     type ColumnChoice,
   } from '../../core/search-columns.js';
   import { renderJqlError, t } from '../../i18n/t.js';
@@ -40,8 +41,25 @@
     autofocus?: boolean | undefined;
     /** Results can be selected and changed together. */
     selectable?: boolean | undefined;
+    /** The view's own columns (an open saved filter's); null or absent for the stored choice. */
+    columns?: readonly string[] | null | undefined;
+    /** Takes a change of the columns instead of storing it in the browser. */
+    oncolumns?: ((next: string[]) => void) | undefined;
+    /** Where the choice is kept, under the column picker. */
+    columnsNote?: string | undefined;
+    /** Hears the columns shown, for saving them with a new filter. */
+    onshown?: ((columns: string[]) => void) | undefined;
   }
-  const { project, fallback, autofocus = false, selectable = false }: Props = $props();
+  let {
+    project,
+    fallback,
+    autofocus = false,
+    selectable = false,
+    columns,
+    oncolumns,
+    columnsNote,
+    onshown,
+  }: Props = $props();
 
   const read = $derived(readLocation(router.search));
   const loc = $derived(read.loc);
@@ -66,7 +84,21 @@
 
   /** The columns the server knows; null until known, [] if it could not say. */
   let choices = $state<ColumnChoice[] | null>(null);
-  let chosen = $state<string[]>([]);
+  let stored = $state(readStoredColumns());
+  const chosen = $derived.by(() => {
+    if (choices === null) return [];
+    // Without the list, only what the table draws by itself is safe to ask for.
+    if (choices.length === 0)
+      return viewColumns(columns, stored).filter((c) => NATIVE_COLUMNS.has(c));
+    return viewColumns(
+      columns,
+      stored,
+      choices.map((c) => c.id),
+    );
+  });
+  $effect(() => {
+    onshown?.(chosen);
+  });
   let exporting = $state(false);
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
 
@@ -80,38 +112,17 @@
     return name ? t.search.sortedBy(name, t.search.sortWays[s.way][s.desc ? 'desc' : 'asc']) : '';
   });
 
-  function readStored(): string | null {
-    try {
-      return localStorage.getItem(STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  }
-
   $effect(() => {
     api.issueColumns().then(
-      (list) => {
-        choices = list;
-        chosen = parseColumns(
-          readStored(),
-          list.map((c) => c.id),
-        );
-      },
-      () => {
-        // Without the list, only what the table draws by itself is safe to ask for.
-        choices = [];
-        chosen = parseColumns(readStored()).filter((c) => NATIVE_COLUMNS.has(c));
-      },
+      (list) => (choices = list),
+      () => (choices = []),
     );
   });
 
   function setColumns(next: string[]) {
-    chosen = next;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Private browsing: the choice lasts for this page only.
-    }
+    if (oncolumns) return oncolumns(next);
+    storeColumns(next);
+    stored = JSON.stringify(next);
   }
 
   async function exportCsv() {
@@ -180,7 +191,7 @@
 
 {#snippet tools()}
   {#if choices?.length}
-    <ColumnPicker {choices} {chosen} onchange={setColumns} />
+    <ColumnPicker {choices} {chosen} note={columnsNote} onchange={setColumns} />
   {/if}
   <button
     type="button"

@@ -6,6 +6,7 @@ import {
   NATIVE_COLUMNS,
   parseColumns,
   serverColumns,
+  viewColumns,
 } from '../../src/core/search-columns.js';
 
 describe('the stored choice of columns', () => {
@@ -36,6 +37,26 @@ describe('the stored choice of columns', () => {
     expect(parseColumns('["customfield_99","status","sprint","customfield_10"]', known)).toEqual([
       'status',
       'customfield_10',
+    ]);
+  });
+});
+
+describe('the columns of a view', () => {
+  const stored = '["status","assignee"]';
+
+  it("shows a saved filter's columns over the stored choice", () => {
+    expect(viewColumns(['labels', 'status'], stored)).toEqual(['labels', 'status']);
+    expect(viewColumns([], stored)).toEqual([]);
+  });
+
+  it('falls back to the stored choice for a filter without columns', () => {
+    expect(viewColumns(null, stored)).toEqual(['status', 'assignee']);
+    expect(viewColumns(undefined, null)).toEqual(DEFAULT_COLUMNS);
+  });
+
+  it("cleans the filter's columns like a stored choice", () => {
+    expect(viewColumns(['summary', 'customfield_99', 'status'], stored, ['status'])).toEqual([
+      'status',
     ]);
   });
 });
