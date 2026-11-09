@@ -1023,6 +1023,7 @@ export const de: Messages = {
     defaultAssignee: 'Standard',
     required: 'Pflichtfeld',
     checkFields: 'Bitte prüfen Sie die markierten Felder.',
+    addPerson: 'Person hinzufügen',
     missing: {
       project: 'Wählen Sie ein Projekt.',
       type: 'Wählen Sie einen Typ.',

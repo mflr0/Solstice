@@ -1,5 +1,6 @@
 <script lang="ts">
   import { hasProblems } from '../core/admin-forms.js';
+  import { emptyDraft, restValue, type CustomDraft } from '../core/custom-fields.js';
   import { jiraDuration } from '../core/dates.js';
   import { readEstimate } from '../core/estimates.js';
   import { projectOfIssueKey } from '../core/marks.js';
@@ -14,13 +15,14 @@
     type NewIssueMemory,
   } from '../core/new-issue.js';
   import { paths } from '../core/route.js';
-  import type { Project, ProjectDetail, UserRef } from '../core/types.js';
+  import type { OfferedField, Project, ProjectDetail, UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { projectAdminApi } from '../lib/admin-api.js';
-  import { api, errorMessage, type IssueFields } from '../lib/api.js';
+  import { api, ApiError, errorMessage, type IssueFields } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import { dialogs, notify } from '../lib/ui.svelte.js';
+  import CustomFieldInput from './CustomFieldInput.svelte';
   import Dropdown from './Dropdown.svelte';
   import LabelEditor from './LabelEditor.svelte';
   import Modal from './Modal.svelte';
@@ -47,6 +49,11 @@
   let due = $state('');
   let estimate = $state('');
   let level = $state('');
+  // The custom fields the project and type offer, and what was entered in them.
+  let offered = $state<OfferedField[]>([]);
+  let custom = $state<Record<number, CustomDraft>>({});
+  // A server error about one custom field, shown next to it.
+  let customError = $state<{ id: number; message: string } | null>(null);
   // The viewer as the chosen project's assignable list returns them; null when they can't be assigned there.
   let me = $state<UserRef | null>(null);
   const labelsId = $props.id();
@@ -54,6 +61,11 @@
   let error = $state('');
   // Fields show their problems once a submit has been tried.
   let tried = $state(false);
+
+  // Custom fields that take the form's whole width.
+  const wideTypes = ['textarea', 'labels', 'radio', 'checkboxes', 'multiuser'];
+  // Custom fields whose editor is an input or button a `<label for>` can name; the others carry the name themselves.
+  const labelled = ['text', 'url', 'number', 'date', 'datetime', 'select', 'labels'];
 
   const parent = $derived(dialogs.createDefaults.parent ?? '');
   const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
@@ -65,6 +77,7 @@
   const shown = $derived(tried ? problems : {});
   const problem = $derived(
     error ||
+      (customError ? t.create.checkFields : '') ||
       (detail && !canCreate ? t.create.cannotCreate : '') ||
       (hasProblems(shown) ? t.create.checkFields : ''),
   );
@@ -123,6 +136,8 @@
     due = '';
     estimate = '';
     level = '';
+    custom = {};
+    customError = null;
     error = '';
     tried = false;
     const prios = session.meta?.priorities ?? [];
@@ -168,6 +183,45 @@
     });
   });
 
+  // A value of a field the new project or type no longer offers is dropped.
+  $effect(() => {
+    const key = projectKey;
+    const type = typeId;
+    if (!dialogs.create || !key || !type) {
+      offered = [];
+      return;
+    }
+    api
+      .projectFields(key, type)
+      .then((list) => {
+        if (key !== projectKey || type !== typeId) return;
+        offered = list;
+        custom = Object.fromEntries(
+          list.filter((f) => f.id in custom).map((f) => [f.id, custom[f.id]!]),
+        );
+        if (customError && !list.some((f) => f.id === customError?.id)) customError = null;
+      })
+      .catch(() => {
+        if (key === projectKey && type === typeId) offered = [];
+      });
+  });
+
+  function setCustom(id: number, value: CustomDraft) {
+    custom[id] = value;
+    if (customError?.id === id) customError = null;
+  }
+
+  // The custom field a server error names, if the form shows it.
+  function customFieldOf(err: unknown): OfferedField | undefined {
+    if (!(err instanceof ApiError)) return undefined;
+    const data = err.data;
+    if (!data || typeof data !== 'object' || !('field' in data) || typeof data.field !== 'string') {
+      return undefined;
+    }
+    const id = data.field.replace(/^customfield_/, '');
+    return offered.find((f) => String(f.id) === id);
+  }
+
   function close() {
     dialogs.create = false;
   }
@@ -195,6 +249,13 @@
     if (typed.seconds !== null) fields.originalEstimate = jiraDuration(typed.seconds);
     if (parent) fields.parent = parent;
     if (level) fields.securityLevel = Number(level);
+    const values: Record<string, unknown> = {};
+    for (const f of offered) {
+      const v = restValue(f, custom[f.id] ?? emptyDraft(f));
+      if (v !== undefined) values[String(f.id)] = v;
+    }
+    if (Object.keys(values).length) fields.customFields = values;
+    customError = null;
     try {
       const { key } = await api.createIssue(fields);
       try {
@@ -210,7 +271,9 @@
       notify(t.create.created(key));
       router.navigate(paths.issue(key));
     } catch (err) {
-      error = errorMessage(err);
+      const f = customFieldOf(err);
+      if (f) customError = { id: f.id, message: errorMessage(err) };
+      else error = errorMessage(err);
     } finally {
       pending = false;
     }
@@ -293,7 +356,7 @@
       {/if}
     </label>
 
-    <div class="field description">
+    <div class="field description" class:kept={offered.length > 0}>
       <span class="field-label">{t.create.description}</span>
       <WikiEditor bind:value={description} label={t.create.description} rows={4} />
     </div>
@@ -391,6 +454,31 @@
         <LabelEditor id={labelsId} {labels} onchange={(l) => (labels = l)} />
       </label>
     </div>
+
+    {#if offered.length}
+      <div class="three">
+        {#each offered as f (f.id)}
+          {@const fid = `${labelsId}-cf-${f.id}`}
+          {@const problem = customError?.id === f.id ? customError.message : ''}
+          <div class="field" class:wide={wideTypes.includes(f.type)}>
+            {#if labelled.includes(f.type)}
+              <label class="field-label" for={fid}>{f.name}</label>
+            {:else}
+              <span class="field-label">{f.name}</span>
+            {/if}
+            <CustomFieldInput
+              field={f}
+              id={fid}
+              value={custom[f.id] ?? emptyDraft(f)}
+              invalid={!!problem}
+              describedby={problem ? `${fid}-error` : undefined}
+              onchange={(v) => setCustom(f.id, v)}
+            />
+            {#if problem}<span class="field-error" id="{fid}-error">{problem}</span>{/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
   </form>
 
   {#snippet footer()}
@@ -446,6 +534,11 @@
     flex-direction: column;
     flex-shrink: 1;
     min-height: 0;
+  }
+
+  /* With custom fields the form scrolls anyway: the description keeps its rows. */
+  .form > .description.kept {
+    flex-shrink: 0;
   }
 
   .description :global(.editor),
@@ -522,6 +615,10 @@
     display: flex;
     align-items: center;
     cursor: text;
+  }
+
+  .wide {
+    grid-column: 1 / -1;
   }
 
   @media (max-width: 640px) {

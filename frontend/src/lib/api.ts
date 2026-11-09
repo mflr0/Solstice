@@ -39,6 +39,7 @@ import type {
   Facets,
   EpicRef,
   CustomFieldRef,
+  OfferedField,
   ProjectValue,
 } from '../core/types.js';
 import type {
@@ -242,6 +243,8 @@ export interface IssueFields {
   /** Jira durations ("1w 2d 3h 30m"); null clears. */
   originalEstimate?: string | null;
   remainingEstimate?: string | null;
+  /** Custom field values by field id, as Jira's REST API reads them; null clears. */
+  customFields?: Record<string, unknown>;
 }
 
 /** A column of a CSV file to import, and the field it goes to ("": not imported). */
@@ -523,6 +526,8 @@ export const api = {
   epics: (q: string, project?: string) =>
     request<EpicRef[]>('GET', `/api/epics${query({ q, project })}`),
   customFields: () => request<CustomFieldRef[]>('GET', '/api/fields'),
+  projectFields: (key: string, issueType: string) =>
+    request<OfferedField[]>('GET', `/api/projects/${enc(key)}/fields${query({ issueType })}`),
   versions: (q: string, project?: string) =>
     request<ProjectValue[]>('GET', `/api/versions${query({ q, project })}`),
   components: (q: string, project?: string) =>

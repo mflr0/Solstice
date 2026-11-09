@@ -1016,6 +1016,7 @@ export const it: Messages = {
     defaultAssignee: 'Predefinito',
     required: 'Obbligatorio',
     checkFields: 'Alcuni campi richiedono la tua attenzione.',
+    addPerson: 'Aggiungi una persona',
     missing: {
       project: 'Scegli un progetto.',
       type: 'Scegli un tipo.',
