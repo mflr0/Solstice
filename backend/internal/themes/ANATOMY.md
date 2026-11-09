@@ -331,15 +331,21 @@ back / forward.
 
 - Filter bar: `.filter-bar[role=group]` > `.filter-text` (`.glass` = the
   magnifier, `input.input`) + `.filter-buttons` > one `.filter-wrap` per
-  criterion: `button.btn.btn-small.filter-button` (`[aria-expanded]`;
-  `.is-active` when it holds values; inside: `.filter-name`, `.filter-value` =
-  the chosen values, `.caret`), then `button.btn.btn-small.filter-clear` (the
-  ×, only when active), then `.popover.filter-popover[role=dialog]` (`.wide`
-  for dates and « Plus »). « Plus » lists further criteria in
-  `ul.more-list > li > label.item` (checkboxes; `.busy` when disabled, with
-  `p.busy-note`). `.link-btn.clear-all`. The first button, « Personnes », opens
-  with `.role` > `.role-field` (`button.dropdown.select`: the role) + `p.role-hint`
-  above its list.
+  criterion in use (a chip): `button.btn.btn-small.filter-button`
+  (`[aria-expanded]`; `.is-active` when it holds values; inside: `.filter-name`,
+  `.filter-value` = the chosen values, `.caret`), then
+  `button.btn.btn-small.filter-clear` (the ×, only when active), then
+  `.popover.filter-popover[role=dialog]` (`.wide` for dates). Then « Filtre »:
+  `.add-filter` > `.filter-wrap.pinned` with the same button (`.lead` = the +)
+  and a `.popover.filter-popover.wide` > `.add-panel` > `.add-fields`
+  (`input.input.field-search`, `ul.field-list[role=listbox]` > `li.group-label`
+  and `li.item.field-option[role=option]` (`[aria-selected='true']` for the
+  field shown, `.active` under the keyboard, `.in-use` when it holds values),
+  `li.none`; then `ul.more-list > li > label.item`: « Tickets que j’observe »,
+  a checkbox, `.busy` when disabled, with `p.busy-note`) + `.add-values` (the
+  field's picker, as in a chip, or `p.pick-field`). `.link-btn.clear-all`.
+  « Personnes » opens with `.role` > `.role-field` (`button.dropdown.select`:
+  the role) + `p.role-hint` above its list.
   The base sets only `background-color` on these buttons, so a skin can paint
   `background-image` fills (Plan does).
 - Inside a popover: `.value-picker` > `input.input.filter-search` +
