@@ -6,7 +6,7 @@
   import type { IssueSummary } from '../core/types.js';
   import { formatDay, t } from '../i18n/t.js';
   import { listKeys } from '../lib/actions.js';
-  import { router } from '../lib/router.svelte.js';
+  import { isPlainClick, router, showIssue } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
   import Highlight from './Highlight.svelte';
   import Lock from './Lock.svelte';
@@ -96,13 +96,26 @@
     return desc === null ? undefined : desc ? 'descending' : 'ascending';
   }
 
-  function open(e: MouseEvent, key: string) {
-    if ((e.target as Element).closest('a, button, label, input')) return;
-    router.navigate(paths.issue(key));
+  // The modal hands the focus back to the row when it closes.
+  function openRow(row: HTMLElement) {
+    if (!row.dataset.key) return;
+    row.focus({ preventScroll: true });
+    showIssue(row.dataset.key);
   }
 
-  function openRow(row: HTMLElement) {
-    if (row.dataset.key) router.navigate(paths.issue(row.dataset.key));
+  function open(e: MouseEvent) {
+    if ((e.target as Element).closest('a, button, label, input')) return;
+    const row = e.currentTarget as HTMLElement;
+    if (isPlainClick(e)) openRow(row);
+    else if (row.dataset.key) router.navigate(paths.issue(row.dataset.key));
+  }
+
+  function openKey(e: MouseEvent) {
+    if (!isPlainClick(e)) return;
+    const row = (e.currentTarget as Element).closest<HTMLElement>('tr');
+    if (!row) return;
+    e.preventDefault();
+    openRow(row);
   }
 
   function selectRow(row: HTMLElement) {
@@ -181,11 +194,7 @@
     </thead>
     <tbody>
       {#each issues as issue (issue.key)}
-        <tr
-          onclick={(e) => open(e, issue.key)}
-          class:picked={selected.includes(issue.key)}
-          data-key={issue.key}
-        >
+        <tr onclick={open} class:picked={selected.includes(issue.key)} data-key={issue.key}>
           {#if onselect}
             <td class="c-pick">
               <label class="pick">
@@ -199,7 +208,9 @@
             </td>
           {/if}
           {#if showType}<td class="c-type"><TypeMark type={issue.type} /></td>{/if}
-          <td class="c-key"><a class="key" href={paths.issue(issue.key)}>{issue.key}</a></td>
+          <td class="c-key"
+            ><a class="key" href={paths.issue(issue.key)} onclick={openKey}>{issue.key}</a></td
+          >
           <td class="c-summary">
             <span class="summary"
               >{#if textSearch}<Highlight
