@@ -90,7 +90,8 @@ describe('the interface texts', () => {
     expect(code).not.toContain("tagline: 'Issue tracking'");
   });
 
-  it('reads every text of the application catalogue', () => {
+  // One search of the whole source per key: about 5 s on CI runners.
+  it('reads every text of the application catalogue', { timeout: 30_000 }, () => {
     expect(unused(en, '(?:t|en)', DYNAMIC, code)).toEqual([]);
   });
 
