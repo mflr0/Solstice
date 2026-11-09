@@ -596,3 +596,56 @@ func TestDefaultAssigneeReporter(t *testing.T) {
 		t.Errorf("issue from a reporter who can't be assigned goes to %q, want nobody", got)
 	}
 }
+
+// A project created with a board gets one, on that project only, with every
+// status of its workflow on a column; without one it gets none.
+func TestProjectBoard(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	boards := func(key string) []string {
+		return strings.Fields(pick(t, `SELECT COALESCE(GROUP_CONCAT(bp.board_id SEPARATOR ' '), '')
+			FROM board_projects bp JOIN projects p ON p.id = bp.project_id WHERE p.pkey = ?`, key))
+	}
+
+	for kind, label := range map[string]string{"kanban": "Kanban", "scrum": "Scrum"} {
+		key := newProject(t, admin, map[string]any{"board": kind})
+		ids := boards(key)
+		for _, id := range ids {
+			t.Cleanup(func() { admin.do("DELETE", "/api/boards/"+id, nil) })
+		}
+		if len(ids) != 1 {
+			t.Fatalf("%s: %d boards", kind, len(ids))
+		}
+		var b struct {
+			Board   struct{ Name, Kind string }
+			Columns []struct{ Statuses []struct{ ID string } }
+		}
+		admin.call("GET", "/api/boards/"+ids[0], nil, 200, &b)
+		if b.Board.Name != key+" — "+label || b.Board.Kind != kind || len(b.Columns) != 3 {
+			t.Errorf("%s board: %+v", kind, b)
+		}
+		placed := 0
+		for _, c := range b.Columns {
+			placed += len(c.Statuses)
+		}
+		if want := pick(t, `SELECT CAST(COUNT(*) AS CHAR) FROM workflow_statuses ws JOIN workflows w ON w.id = ws.workflow_id
+			JOIN projects p ON p.id = w.project_id WHERE p.pkey = ?`, key); fmt.Sprint(placed) != want {
+			t.Errorf("%s board: %d statuses on columns, want %s", kind, placed, want)
+		}
+		if owner := pick(t, `SELECT u.username FROM boards b JOIN users u ON u.id = b.owner_id WHERE b.id = ?`, ids[0]); owner != "admin" {
+			t.Errorf("%s board owned by %s", kind, owner)
+		}
+	}
+
+	if key := newProject(t, admin, nil); len(boards(key)) != 0 {
+		t.Errorf("a project without board got %v", boards(key))
+	}
+	if key := newProject(t, admin, map[string]any{"board": ""}); len(boards(key)) != 0 {
+		t.Errorf("a project with an empty board got %v", boards(key))
+	}
+
+	key := newProjectKey()
+	admin.call("POST", "/api/projects", map[string]any{"key": key, "name": "Projet " + key, "board": "list"}, 400, nil)
+	if n := pick(t, `SELECT CAST(COUNT(*) AS CHAR) FROM projects WHERE pkey = ?`, key); n != "0" {
+		t.Errorf("an invalid board still created the project")
+	}
+}

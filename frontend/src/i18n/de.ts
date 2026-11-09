@@ -2791,6 +2791,10 @@ export const de: Messages = {
     chooseGroup: 'Gruppe wählen…',
     types: 'Vorgangstypen',
     typesHint: 'Die Typen, die in diesem Projekt zur Auswahl stehen.',
+    board: 'Board',
+    boardNone: 'Keins',
+    boardHint:
+      'Wird mit dem Projekt angelegt und zeigt seine Vorgänge. Weitere können Sie später unter Boards anlegen.',
     assignee: 'Neue Vorgänge werden zugewiesen an',
     assignees: { unassigned: 'Niemanden', lead: 'Die Projektleitung', reporter: 'Den Melder' },
     problems: {

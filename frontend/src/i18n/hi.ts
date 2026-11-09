@@ -2735,6 +2735,9 @@ export const hi: Messages = {
     chooseGroup: 'समूह चुनें…',
     types: 'टिकट के प्रकार',
     typesHint: 'इस प्रोजेक्ट में चुने जा सकने वाले प्रकार।',
+    board: 'बोर्ड',
+    boardNone: 'कोई नहीं',
+    boardHint: 'प्रोजेक्ट के साथ बनता है, उसके टिकटों पर। बाद में बोर्ड पेज से और जोड़ सकते हैं।',
     assignee: 'नए टिकट सौंपे जाते हैं',
     assignees: { unassigned: 'किसी को नहीं', lead: 'प्रोजेक्ट लीड को', reporter: 'रिपोर्टर को' },
     problems: {

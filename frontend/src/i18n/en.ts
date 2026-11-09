@@ -2745,6 +2745,9 @@ export const en = {
     chooseGroup: 'Choose a group…',
     types: 'Issue types',
     typesHint: 'The types people can choose in this project.',
+    board: 'Board',
+    boardNone: 'None',
+    boardHint: 'Created with the project, on its issues. You can add others later from Boards.',
     assignee: 'New issues are assigned to',
     assignees: { unassigned: 'Nobody', lead: 'The project lead', reporter: 'The reporter' },
     problems: {
