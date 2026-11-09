@@ -128,7 +128,7 @@
         {#each subs as s (s.id)}
           <tr>
             <td>
-              <a class="name" href="/issues?filter={s.filterId}">{s.filterName}</a>
+              <a class="name" href={paths.view(s.filterId)}>{s.filterName}</a>
               {#if s.group}<span class="muted small">{t.subscriptionsPage.group(s.group.name)}</span
                 >{/if}
             </td>

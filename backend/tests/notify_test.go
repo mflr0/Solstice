@@ -642,7 +642,7 @@ func TestFilterSubscriptions(t *testing.T) {
 		t.Errorf("%d issues listed, want 200", n)
 	}
 	if !strings.Contains(pm[0].Text, "Only the first 200 issues are listed") ||
-		!strings.Contains(pm[0].HTML, "https://tickets.exemple.fr/issues?q=") {
+		!strings.Contains(pm[0].HTML, fmt.Sprintf(`"https://tickets.exemple.fr/views/%d"`, big.ID)) {
 		t.Error("no note nor link for the issues left out")
 	}
 	paul.call("DELETE", fmt.Sprintf("%s/%d", base, mine.ID), nil, 204, nil)

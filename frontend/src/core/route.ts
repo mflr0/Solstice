@@ -21,7 +21,8 @@ export type Route =
   | { name: 'projects' }
   | { name: 'project'; key: string }
   | { name: 'projectSettings'; key: string }
-  | { name: 'search' }
+  | { name: 'view'; id: number | null }
+  | { name: 'legacySearch' }
   | { name: 'issue'; key: string }
   | { name: 'person'; username: string }
   | { name: 'admin'; section: AdminSection; item: string | null }
@@ -44,8 +45,8 @@ function decode(segment: string): string | null {
   }
 }
 
-/** Whether an address segment is a board id: a positive whole number. */
-function boardId(segment: string | null | undefined): boolean {
+/** Whether an address segment is a record id (board, view): a positive whole number. */
+function recordId(segment: string | null | undefined): boolean {
   return !!segment && /^[1-9]\d{0,15}$/.test(segment);
 }
 
@@ -68,7 +69,7 @@ export function matchRoute(pathname: string): Route {
       if (a === 'login') return { name: 'login' };
       if (a === 'forgot') return { name: 'forgot' };
       if (a === 'projects') return { name: 'projects' };
-      if (a === 'issues') return { name: 'search' };
+      if (a === 'issues') return { name: 'legacySearch' };
       if (a === 'themes') return { name: 'themes' };
       if (a === 'boards') return { name: 'boards' };
       if (a === 'admin') return { name: 'admin', section: 'overview', item: null };
@@ -87,7 +88,9 @@ export function matchRoute(pathname: string): Route {
         const section = accountSectionOf(b);
         if (section) return { name: 'account', section };
       }
-      if (a === 'boards' && boardId(b)) return { name: 'board', id: Number(b) };
+      if (a === 'boards' && recordId(b)) return { name: 'board', id: Number(b) };
+      if (a === 'views' && b === 'new') return { name: 'view', id: null };
+      if (a === 'views' && recordId(b)) return { name: 'view', id: Number(b) };
       if (a === 'oauth' && b === 'authorize') return { name: 'oauthAuthorize' };
       if (a === 'secure' && (b === 'RapidBoard.jspa' || b === 'RapidView.jspa')) {
         return { name: 'legacyBoard' };
@@ -97,13 +100,13 @@ export function matchRoute(pathname: string): Route {
       if (a === 'projects' && b && c === 'settings') {
         return { name: 'projectSettings', key: b.toUpperCase() };
       }
-      if (a === 'boards' && boardId(b) && c === 'backlog') {
+      if (a === 'boards' && recordId(b) && c === 'backlog') {
         return { name: 'backlog', id: Number(b) };
       }
-      if (a === 'boards' && boardId(b) && c === 'reports') {
+      if (a === 'boards' && recordId(b) && c === 'reports') {
         return { name: 'boardReports', id: Number(b) };
       }
-      if (a === 'boards' && boardId(b) && c === 'settings') {
+      if (a === 'boards' && recordId(b) && c === 'settings') {
         return { name: 'boardSettings', id: Number(b) };
       }
       if (a === 'admin' && b && c) {
@@ -126,7 +129,8 @@ export const paths = {
   projects: () => '/projects',
   project: (key: string) => `/projects/${encodeURIComponent(key)}`,
   projectSettings: (key: string) => `/projects/${encodeURIComponent(key)}/settings`,
-  search: (q?: string) => (q ? `/issues?q=${encodeURIComponent(q)}` : '/issues'),
+  search: (q?: string) => (q ? `/views/new?q=${encodeURIComponent(q)}` : '/views/new'),
+  view: (id: number) => `/views/${id}`,
   issue: (key: string) => `/browse/${encodeURIComponent(key)}`,
   person: (username: string) => `/people/${encodeURIComponent(username)}`,
   admin: adminPath,
@@ -142,6 +146,19 @@ export const paths = {
   boardFlow: (id: number) => `/boards/${id}/reports?report=flow`,
   boardSettings: (id: number) => `/boards/${id}/settings`,
 };
+
+/**
+ * Where a former search address (/issues?…) leads: its saved filter's view,
+ * or an unsaved one, with the other parameters kept.
+ */
+export function legacySearchPath(search: string): string {
+  const sp = new URLSearchParams(search);
+  const filter = sp.get('filter');
+  sp.delete('filter');
+  const rest = sp.toString();
+  const to = filter && recordId(filter) ? paths.view(Number(filter)) : '/views/new';
+  return rest ? `${to}?${rest}` : to;
+}
 
 /**
  * Whether a link should be handled by the interface rather than the

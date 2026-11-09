@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -253,7 +252,7 @@ func (s *Service) sendSubscription(ctx context.Context, sub *Subscription) (int,
 		p.Intro = []string{i18n.M(i18n.SubscriptionCount, res.Total, formatTime(loc, s.Now().In(s.zone()))).In(loc)}
 		t := s.issueTable(loc, res.Issues, true)
 		t.Empty = i18n.M(i18n.SubscriptionNoMatch).In(loc)
-		all := s.url("/issues?q=" + url.QueryEscape(res.Query))
+		all := s.url("/views/" + strconv.FormatInt(sub.FilterID, 10))
 		switch {
 		case res.Total > len(res.Issues):
 			t.More, t.MoreURL = i18n.M(i18n.SubscriptionTruncated, len(res.Issues)).In(loc), all

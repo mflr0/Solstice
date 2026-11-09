@@ -100,7 +100,6 @@ describe('TopBar keyboard', () => {
       t.nav.work,
       t.nav.projects,
       t.nav.boards,
-      t.nav.search,
       t.quick.label,
       t.nav.themes,
       expect.stringContaining(t.nav.create),
@@ -120,7 +119,7 @@ describe('TopBar keyboard', () => {
     const hrefs = [...document.querySelectorAll('.topbar-nav a')].map((a) =>
       a.getAttribute('href'),
     );
-    expect(hrefs).toEqual([paths.home(), paths.project('BETA'), paths.boards(), paths.search()]);
+    expect(hrefs).toEqual([paths.home(), paths.project('BETA'), paths.boards()]);
     expect(document.querySelector('.brand')?.getAttribute('href')).toBe(paths.home());
   });
 

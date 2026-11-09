@@ -100,7 +100,7 @@ describe('switching the scope', () => {
 
   it('stays on any board for every project, and off the boards', () => {
     expect(scopeSwitch(on('board', 4), boards, null)).toBeNull();
-    expect(scopeSwitch({ name: 'search' }, boards, 'OPS')).toBeNull();
+    expect(scopeSwitch({ name: 'view', id: null }, boards, 'OPS')).toBeNull();
   });
 
   it('moves a search with no filter of its own to the new project', () => {

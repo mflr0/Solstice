@@ -62,7 +62,7 @@ describe('search address', () => {
   });
 
   it('builds links to a search', () => {
-    expect(searchHref('text ~ "panier"')).toBe('/issues?jql=text+%7E+%22panier%22');
-    expect(readLocation(searchHref('text ~ "panier"').slice(7)).loc.jql).toBe('text ~ "panier"');
+    expect(searchHref('text ~ "panier"')).toBe('/views/new?jql=text+%7E+%22panier%22');
+    expect(readLocation(searchHref('text ~ "panier"').slice(10)).loc.jql).toBe('text ~ "panier"');
   });
 });

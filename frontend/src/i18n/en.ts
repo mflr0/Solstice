@@ -123,7 +123,6 @@ export const en = {
     work: 'My work',
     projects: 'Projects',
     boards: 'Boards',
-    search: 'Search',
     create: 'New issue',
     account: 'Account',
     myPage: 'My page',
@@ -416,7 +415,6 @@ export const en = {
   },
 
   search: {
-    title: 'Search',
     results: (n: number) => plural(n, 'issue', 'issues'),
     empty: 'No issues match.',
     columns: {
@@ -430,7 +428,7 @@ export const en = {
       add: 'Add a column…',
       none: 'No column matches.',
       custom: 'custom',
-      withView: 'Saved with the filter',
+      withView: 'Saved with the view',
       inBrowser: 'Kept in this browser',
     },
     exportCsv: 'Export CSV',
@@ -681,51 +679,17 @@ export const en = {
     profileOf: (name: string) => `View the profile of ${name}`,
   },
 
-  saved: {
-    title: 'Saved filters',
-    toggle: (n: number) => `Saved filters (${n})`,
-    favourites: 'Favorites',
-    mine: 'My filters',
-    shared: 'Shared with me',
-    none: 'No filters yet. Save a search to find it here.',
-    save: 'Save',
-    saveAs: 'Save as…',
-    saveSearch: 'Save search',
-    modified: 'modified',
-    rename: 'Rename',
-    delete: 'Delete',
-    star: (name: string) => `Add “${name}” to favorites`,
-    unstar: (name: string) => `Remove “${name}” from favorites`,
-    close: (name: string) => `Close “${name}”`,
-    name: 'Name',
-    description: 'Description',
-    newTitle: 'Save search',
-    renameTitle: 'Rename filter',
-    deleteTitle: 'Delete filter',
-    created: (name: string) => `Filter “${name}” saved.`,
-    updated: (name: string) => `Filter “${name}” updated.`,
-    deleted: (name: string) => `Filter “${name}” deleted.`,
-    confirmDelete: (name: string) =>
-      `Delete the filter “${name}”? The people it is shared with will no longer see it.`,
-    by: (who: string) => `by ${who}`,
-    current: 'Filter',
-    gone: 'This filter no longer exists, or isn’t shared with you.',
-    manage: 'Manage',
-    manageDone: 'Done',
-    selectAll: 'Select all',
-    select: (name: string) => `Select “${name}”`,
-    actions: 'Change the selected filters',
-    favouriteMany: (n: number) => `Favorite (${n})`,
-    unfavouriteMany: (n: number) => `Unfavorite (${n})`,
-    deleteMany: (n: number) => `Delete (${n})`,
-    deleteManyTitle: (n: number) => `Delete ${plural(n, 'filter', 'filters')}?`,
-    confirmDeleteMany: (n: number, skipped: number) =>
-      `Delete ${plural(n, 'filter', 'filters')}? ${n === 1 ? 'The people it is shared with will no longer see it.' : 'The people they are shared with will no longer see them.'}` +
-      (skipped > 0
-        ? ` ${plural(skipped, 'selected filter isn’t', 'selected filters aren’t')} yours to delete and will stay.`
-        : ''),
-    deletedMany: (n: number) => `${plural(n, 'filter', 'filters')} deleted.`,
-    failedMany: (n: number) => `${plural(n, 'filter', 'filters')} could not be changed.`,
+  view: {
+    title: 'View',
+    untitled: 'New view',
+    name: 'View name',
+    unsaved: 'Unsaved changes',
+    discard: 'Discard',
+    saveAsNew: 'Save as new view',
+    save: 'Save view',
+    created: (name: string) => `View “${name}” saved.`,
+    updated: (name: string) => `View “${name}” updated.`,
+    gone: 'This view doesn’t exist, or isn’t shared with you.',
   },
 
   table: {
