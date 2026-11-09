@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import {
     applyMove,
+    boardStep,
     cardFacets,
     dropIndex,
     filterCards,
@@ -14,6 +15,7 @@
     staysInPlace,
     stepMove,
     wipState,
+    type CardSpot,
     type Lane,
   } from '../../core/board.js';
   import type {
@@ -24,6 +26,7 @@
     Sprint,
   } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
+  import { shortcutFor } from '../../core/shortcuts.js';
   import type { IssueBrief } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { hiddenSides } from '../../lib/actions.js';
@@ -32,7 +35,7 @@
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { appearance, ignoreShortcut, mac, notify } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
   import CardFilters from '../board/CardFilters.svelte';
@@ -257,6 +260,57 @@
     if (m) void move(m, dir < 0 ? t.boards.movedUp(key) : t.boards.movedDown(key), true);
   }
 
+  // Keys -----------------------------------------------------------------------
+
+  function cellCards(lane: Lane, column: BoardColumn): HTMLElement[] {
+    return [
+      ...document.querySelectorAll<HTMLElement>(
+        `.board-cards[data-lane="${lane.id}"][data-column="${column.id}"] > .board-card`,
+      ),
+    ];
+  }
+
+  /** The results keys on the board: the focus moves from card to card. */
+  function onKey(e: KeyboardEvent) {
+    if (ignoreShortcut(e)) return;
+    const active = document.activeElement;
+    const card = active?.closest<HTMLElement>('.board .board-card') ?? null;
+    // An open card menu takes the keys, even before its first item has the focus.
+    if (active?.closest('.card-menu') || card?.querySelector('[aria-expanded="true"]')) return;
+    if (!card && active && active !== document.body) return;
+    let action = shortcutFor(e, 'results', appearance.shortcuts, appearance.bindings, mac);
+    // Down and Up are not bindings: they move between cards like the other arrows.
+    if (!action && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey)
+      action = e.key === 'ArrowDown' ? 'next' : e.key === 'ArrowUp' ? 'previous' : null;
+    // Off a card, the arrows keep scrolling the page.
+    if (!action || (!card && e.key.startsWith('Arrow'))) return;
+    if (action === 'open') {
+      // Enter on the summary link or the menu button keeps its own meaning.
+      if (!card?.dataset.key || (e.key === 'Enter' && active !== card)) return;
+      e.preventDefault();
+      router.navigate(paths.issue(card.dataset.key));
+      return;
+    }
+    if (action !== 'next' && action !== 'previous' && action !== 'left' && action !== 'right')
+      return;
+    const counts = lanes.map((l) => columns.map((c) => cellCards(l, c).length));
+    let at: CardSpot | null = null;
+    if (card) {
+      const box = card.parentElement;
+      const lane = lanes.findIndex((l) => l.id === box?.dataset.lane);
+      const column = columns.findIndex((c) => String(c.id) === box?.dataset.column);
+      const index =
+        lane < 0 || column < 0 ? -1 : cellCards(lanes[lane]!, columns[column]!).indexOf(card);
+      if (index >= 0) at = { lane, column, index };
+    }
+    const to = boardStep(counts, at, action);
+    if (!to) return;
+    e.preventDefault();
+    const lane = lanes[to.lane];
+    const column = columns[to.column];
+    if (lane && column) cellCards(lane, column)[to.index]?.focus();
+  }
+
   // Dragging -------------------------------------------------------------------
 
   let drag = $state<{ key: string; lane: string; column: number } | null>(null);
@@ -363,6 +417,8 @@
     return null;
   }
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 {#if error}
   <NotFoundPage message={error} />
