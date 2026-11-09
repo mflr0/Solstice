@@ -562,13 +562,23 @@ type card struct {
 	Column   int64       `json:"column"`
 	Lane     *int64      `json:"lane,omitempty"`
 	Sprint   *int64      `json:"sprint,omitempty"`
+	Can      cardCan     `json:"can"`
+	Watching bool        `json:"watching"`
 	row      *issueRow
+}
+
+// cardCan says what the requesting user may do with a card's issue.
+type cardCan struct {
+	Create bool `json:"create"`
+	Edit   bool `json:"edit"`
 }
 
 const maxCards = 1000
 
-// loadCards returns the issues matching where, in board order.
-func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args []any, cat *catalog) ([]*card, bool, error) {
+// loadCards returns the issues matching where, in board order, with what
+// sub may do with them.
+func (s *Server) loadCards(ctx context.Context, sub *perm.Subject, b *boardRow, where string, args []any, cat *catalog) (
+	[]*card, bool, error) {
 	var list []*card
 	var userIDs, related []int64
 	err := sqlq.Each(ctx, s.db, `SELECT `+issueColumns+` FROM issues i JOIN projects p ON p.id = i.project_id
@@ -614,8 +624,15 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 	if err != nil {
 		return nil, false, err
 	}
+	watched, err := s.watched(ctx, sub.UserID, list)
+	if err != nil {
+		return nil, false, err
+	}
 	for _, c := range list {
 		c.issueSummary = summarize(c.row, cat, users)
+		pi := c.row.perm()
+		c.Can = cardCan{Create: sub.Can(perm.Create, c.row.ProjectID, &pi), Edit: sub.Can(perm.Edit, c.row.ProjectID, &pi)}
+		c.Watching = watched[c.ID]
 		c.Column = statusColumn[c.row.StatusID]
 		if c.row.EpicID.Valid {
 			c.Epic = briefs[c.row.EpicID.Int64]
@@ -628,6 +645,33 @@ func (s *Server) loadCards(ctx context.Context, b *boardRow, where string, args 
 		}
 	}
 	return list, truncated, nil
+}
+
+// watched returns which of the cards' issues the user watches.
+func (s *Server) watched(ctx context.Context, userID int64, cards []*card) (map[int64]bool, error) {
+	out := map[int64]bool{}
+	if userID == 0 || len(cards) == 0 {
+		return out, nil
+	}
+	ids := make([]any, len(cards))
+	for i, c := range cards {
+		ids[i] = c.ID
+	}
+	for chunk := range slices.Chunk(ids, 500) {
+		err := sqlq.Each(ctx, s.db, `SELECT issue_id FROM watchers WHERE user_id = ? AND issue_id IN (`+sqlq.Marks(len(chunk))+`)`,
+			func(rows *sql.Rows) error {
+				var id int64
+				if err := rows.Scan(&id); err != nil {
+					return err
+				}
+				out[id] = true
+				return nil
+			}, append([]any{userID}, chunk...)...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // briefs loads short descriptions of related issues (epics, parents). Only
@@ -818,7 +862,7 @@ func (s *Server) boardCards(w http.ResponseWriter, r *http.Request) error {
 		where += " AND NOT " + firstColumnCond
 		args = append(args, b.ID)
 	}
-	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
+	cards, truncated, err := s.loadCards(ctx, sub, b, where, args, cat)
 	if err != nil {
 		return err
 	}
@@ -861,7 +905,7 @@ func (s *Server) backlog(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		where += backlogCond
 	}
-	cards, truncated, err := s.loadCards(ctx, b, where, args, cat)
+	cards, truncated, err := s.loadCards(ctx, sub, b, where, args, cat)
 	if err != nil {
 		return err
 	}

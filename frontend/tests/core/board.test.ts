@@ -58,6 +58,8 @@ function card(key: string, extra: Partial<BoardCard> = {}): BoardCard {
     parent: null,
     estimate: null,
     column: 1,
+    can: { create: true, edit: true },
+    watching: false,
     ...extra,
   };
 }
