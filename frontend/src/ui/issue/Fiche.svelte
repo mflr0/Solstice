@@ -482,6 +482,8 @@
               <CustomFieldInput
                 {field}
                 id="{uid}-cf-{field.id}"
+                quiet
+                attachments={issue.attachments}
                 value={drafts[field.id] ?? draftOf(field, f)}
                 onchange={(v) => setCustom(field, v)}
               />
