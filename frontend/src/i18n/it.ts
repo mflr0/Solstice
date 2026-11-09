@@ -310,6 +310,21 @@ export const it: Messages = {
     saved: 'Password salvata. Hai effettuato l’accesso.',
   },
 
+  gettingStarted: {
+    title: 'Primi passi',
+    progress: (done: number, total: number) =>
+      `${formatNumber(done)}/${formatNumber(total)} completati`,
+    hide: 'Nascondi',
+    done: 'completato',
+    notDone: 'da fare',
+    steps: {
+      projects: 'Crea un progetto',
+      users: 'Invita le persone',
+      mail: 'Configura l’email',
+      boards: 'Crea una board',
+      issues: 'Crea il primo ticket',
+    },
+  },
   home: {
     title: 'Il mio spazio',
     intro: 'Le tue viste e quelle che altri hanno condiviso con te.',

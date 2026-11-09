@@ -40,6 +40,7 @@
   import ViewIndex from '../dashboard/ViewIndex.svelte';
   import ViewSection from '../dashboard/ViewSection.svelte';
   import EmptyState from '../EmptyState.svelte';
+  import GettingStarted from '../GettingStarted.svelte';
   import Modal from '../Modal.svelte';
 
   /**
@@ -425,6 +426,8 @@
       </div>
     {/if}
   </header>
+
+  {#if session.me?.admin}<GettingStarted />{/if}
 
   {#if error}
     <p class="error-text" role="alert">{error}</p>
