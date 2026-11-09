@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyMove,
+  boardFilterQuery,
+  boardStep,
   dayAfter,
   daysLeft,
   dropIndex,
@@ -306,6 +308,15 @@ describe('quick filters in the address', () => {
   });
 });
 
+describe('the board filters between views', () => {
+  it('carries the quick filters and the row', () => {
+    expect(boardFilterQuery('?quick=1,2&jql=type+%3D+Bug&sprint=4&type=3')).toBe(
+      '?quick=1%2C2&jql=type+%3D+Bug',
+    );
+    expect(boardFilterQuery('?sprint=4')).toBe('');
+  });
+});
+
 describe('board addresses', () => {
   it.each([
     ['/boards', { name: 'boards' }],
@@ -348,5 +359,87 @@ describe('board addresses', () => {
     ['/browse/WEB-3', '', null],
   ])('%s%s → %s', (path, search, to) => {
     expect(legacyBoardPath(path, search)).toBe(to);
+  });
+});
+
+describe('board keys', () => {
+  // Two lanes of three columns; the first lane's middle column is empty.
+  const counts = [
+    [2, 0, 1],
+    [1, 3, 0],
+  ];
+
+  it('goes from nowhere to the first card', () => {
+    expect(boardStep(counts, null, 'next')).toEqual({ lane: 0, column: 0, index: 0 });
+    expect(boardStep([[0, 2]], null, 'left')).toEqual({ lane: 0, column: 1, index: 0 });
+    expect(boardStep([[0, 0]], null, 'next')).toBeNull();
+  });
+
+  it('goes down and up the column, across lanes', () => {
+    expect(boardStep(counts, { lane: 0, column: 0, index: 0 }, 'next')).toEqual({
+      lane: 0,
+      column: 0,
+      index: 1,
+    });
+    expect(boardStep(counts, { lane: 0, column: 0, index: 1 }, 'next')).toEqual({
+      lane: 1,
+      column: 0,
+      index: 0,
+    });
+    expect(boardStep(counts, { lane: 1, column: 0, index: 0 }, 'previous')).toEqual({
+      lane: 0,
+      column: 0,
+      index: 1,
+    });
+  });
+
+  it('skips lanes with no card in the column', () => {
+    expect(boardStep([[1], [0], [2]], { lane: 0, column: 0, index: 0 }, 'next')).toEqual({
+      lane: 2,
+      column: 0,
+      index: 0,
+    });
+    expect(boardStep([[1], [0], [2]], { lane: 2, column: 0, index: 0 }, 'previous')).toEqual({
+      lane: 0,
+      column: 0,
+      index: 0,
+    });
+  });
+
+  it('skips an empty column', () => {
+    expect(boardStep(counts, { lane: 0, column: 0, index: 0 }, 'right')).toEqual({
+      lane: 0,
+      column: 2,
+      index: 0,
+    });
+    expect(boardStep(counts, { lane: 0, column: 2, index: 0 }, 'left')).toEqual({
+      lane: 0,
+      column: 0,
+      index: 0,
+    });
+  });
+
+  it('lands on the last card of a shorter column', () => {
+    expect(boardStep(counts, { lane: 1, column: 1, index: 2 }, 'left')).toEqual({
+      lane: 1,
+      column: 0,
+      index: 0,
+    });
+    expect(boardStep(counts, { lane: 0, column: 0, index: 1 }, 'right')).toEqual({
+      lane: 0,
+      column: 2,
+      index: 0,
+    });
+  });
+
+  it('stays put at the edges', () => {
+    for (const [at, dir] of [
+      [{ lane: 0, column: 0, index: 0 }, 'previous'],
+      [{ lane: 0, column: 0, index: 0 }, 'left'],
+      [{ lane: 1, column: 1, index: 2 }, 'next'],
+      [{ lane: 1, column: 1, index: 0 }, 'right'],
+      [{ lane: 0, column: 2, index: 0 }, 'right'],
+    ] as const)
+      expect(boardStep(counts, at, dir)).toEqual(at);
   });
 });

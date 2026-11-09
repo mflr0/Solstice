@@ -88,6 +88,7 @@
   class:backlog-row={layout === 'row'}
   data-key={card.key}
   role="listitem"
+  tabindex="-1"
   draggable="true"
   ondragstart={(e) => ondragstart(e, card)}
   {ondragend}
@@ -140,6 +141,7 @@
     min-width: 0;
   }
 
+  .board-card:focus-visible,
   .board-card:has(.summary:focus-visible) {
     outline: 2px solid var(--focus);
     outline-offset: 2px;

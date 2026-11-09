@@ -374,8 +374,11 @@
                 >
                 <button
                   class="btn btn-small btn-quiet"
-                  onclick={() => (deleting = { sprint: s, issues: section.cards.length })}
-                  >{t.boards.deleteSprint}</button
+                  onclick={() =>
+                    (deleting = {
+                      sprint: s,
+                      issues: (cards ?? []).filter((c) => c.sprint === s.id).length,
+                    })}>{t.boards.deleteSprint}</button
                 >
                 <button
                   class="btn btn-small"
@@ -421,11 +424,11 @@
                 />
               {:else}
                 <p class="drop-empty">
-                  {section.id !== 0
-                    ? t.boards.dropHere
-                    : filtered
-                      ? t.boards.emptyFiltered
-                      : t.boards.backlogEmpty}
+                  {section.id !== BOARD && filtered
+                    ? t.boards.emptyFiltered
+                    : section.id === 0
+                      ? t.boards.backlogEmpty
+                      : t.boards.dropHere}
                   {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
                     ></span>{/if}
                 </p>

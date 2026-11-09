@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
 import type { BoardCard, BoardDetail } from '../../src/core/board-types.js';
+import { router } from '../../src/lib/router.svelte.js';
 import BoardPage from '../../src/ui/pages/BoardPage.svelte';
 
 const status = { id: '1', name: 'To Do', category: 'todo' } as const;
@@ -61,15 +62,12 @@ const detail: BoardDetail = {
   can: { manage: false, share: false },
 };
 
+const boardCards = vi.hoisted(() => vi.fn());
+
 vi.mock('../../src/lib/api.js', () => ({
   api: {
     board: () => Promise.resolve(detail),
-    boardCards: () =>
-      Promise.resolve({
-        cards: [card('T-1', 10, 1), card('T-2', 20, 2)],
-        sprint: null,
-        truncated: false,
-      }),
+    boardCards,
   },
   errorMessage: String,
 }));
@@ -82,12 +80,27 @@ vi.stubGlobal(
   },
 );
 
+boardCards.mockImplementation(() =>
+  Promise.resolve({
+    cards: [card('T-1', 10, 1), card('T-2', 20, 2)],
+    sprint: null,
+    truncated: false,
+  }),
+);
+
 let component: ReturnType<typeof mount> | undefined;
 
 afterEach(() => {
   if (component) unmount(component);
   component = undefined;
+  router.setParams({ jql: null, quick: null });
+  boardCards.mockClear();
 });
+
+async function settle() {
+  for (let i = 0; i < 5; i++) await tick();
+  flushSync();
+}
 
 describe('BoardPage', () => {
   it('puts the swimlane toggles before the cards in the tab order', async () => {
@@ -101,5 +114,26 @@ describe('BoardPage', () => {
     );
     expect(order.filter((o) => o?.startsWith('lane'))).toEqual(['lane Urgent', 'lane Later']);
     expect(order.indexOf('lane Later')).toBeLessThan(order.indexOf('T-1'));
+  });
+
+  it('sends the query of the filter row with the quick filters', async () => {
+    router.setParams({ quick: '2', jql: 'assignee is EMPTY AND text ~ "zèbre"' });
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    expect(boardCards).toHaveBeenLastCalledWith(1, {
+      quick: '2',
+      jql: 'assignee is EMPTY AND text ~ "zèbre"',
+    });
+    expect(document.querySelector<HTMLInputElement>('.filter-bar input')?.value).toBe('zèbre');
+  });
+
+  it('sends no query the row cannot show, and says so', async () => {
+    router.setParams({ jql: 'status = Done OR assignee is EMPTY' });
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    expect(boardCards).toHaveBeenLastCalledWith(1, { quick: undefined, jql: undefined });
+    expect(document.querySelector('.notice')?.textContent).toBe(
+      'Query too complex for the filters',
+    );
   });
 });
