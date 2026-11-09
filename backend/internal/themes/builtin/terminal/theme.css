@@ -2017,11 +2017,6 @@
     font-size: 2.125rem;
   }
 
-  [data-skin='terminal'] .issue-head .page-title,
-  [data-skin='terminal'] .issue-head .summary-input {
-    font-size: 2rem;
-  }
-
   [data-skin='terminal'] .page {
     padding-inline: 20px;
   }
@@ -2055,6 +2050,13 @@
 
   [data-skin='terminal'] .ledger .stamp {
     font-size: 0.71875rem;
+  }
+}
+
+@container issue (max-width: 728px) {
+  [data-skin='terminal'] .issue-head .page-title,
+  [data-skin='terminal'] .issue-head .summary-input {
+    font-size: 2rem;
   }
 }
 

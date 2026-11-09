@@ -1959,7 +1959,12 @@
 }
 
 @media (max-width: 760px) {
-  [data-skin='crayon'] .page-title,
+  [data-skin='crayon'] .page-title {
+    font-size: 1.5625rem;
+  }
+}
+
+@container issue (max-width: 728px) {
   [data-skin='crayon'] .page.issue .page-title {
     font-size: 1.5625rem;
   }

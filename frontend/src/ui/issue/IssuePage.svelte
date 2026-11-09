@@ -49,8 +49,24 @@
   /** An issue: its text and activity on the left, its record card on the right. */
   interface Props {
     issueKey: string;
+    /** The issue now has another key (renamed project, moved issue). By default the address follows it. */
+    onkeychange?: (key: string) => void;
+    /** The issue was deleted here or is hidden from now on. By default this goes to its project. */
+    ongone?: (projectKey: string) => void;
+    /** Whether it sets the document title. */
+    ownsTitle?: boolean;
+    /** Whether its keyboard shortcuts are on: off while it is not the active view. */
+    shortcuts?: boolean;
   }
-  const { issueKey }: Props = $props();
+  const {
+    issueKey,
+    onkeychange = (key) => router.navigate(paths.issue(key), { replace: true }),
+    ongone = (projectKey) => router.navigate(paths.project(projectKey)),
+    ownsTitle = true,
+    shortcuts = true,
+  }: Props = $props();
+
+  let root = $state<HTMLElement>();
 
   let issue = $state<IssueDetail | null>(null);
   let missing = $state('');
@@ -80,11 +96,11 @@
       if (key !== issueKey) return;
       issue = d;
       missing = '';
-      document.title = `${d.key} ${d.summary} — ${t.appName}`;
+      if (ownsTitle) document.title = `${d.key} ${d.summary} — ${t.appName}`;
       // An old key (renamed project, moved issue): show the current one.
       if (d.key !== key) {
         notify(t.issue.moved(key, d.key));
-        router.navigate(paths.issue(d.key), { replace: true });
+        onkeychange(d.key);
       }
     } catch (e) {
       if (key !== issueKey) return;
@@ -149,7 +165,7 @@
       tick++;
     } else {
       notify(t.issue.hidden(d.key));
-      router.navigate(paths.project(issue?.project.key ?? ''));
+      ongone(issue?.project.key ?? '');
     }
   }
 
@@ -221,7 +237,7 @@
     tab = 'comments';
     for (let i = 0; i < 40; i++) {
       await settled();
-      const box = document.querySelector<HTMLElement>(
+      const box = root?.querySelector<HTMLElement>(
         '.issue-activity .compose [contenteditable="true"], .issue-activity .compose textarea',
       );
       if (box) return box.focus();
@@ -230,7 +246,7 @@
   }
 
   function keys(e: KeyboardEvent) {
-    if (!issue || ignoreShortcut(e)) return;
+    if (!shortcuts || !issue || ignoreShortcut(e)) return;
     const me = session.me;
     switch (shortcutFor(e, 'issue', appearance.shortcuts, appearance.bindings, mac)) {
       case 'editSummary':
@@ -280,7 +296,7 @@
     try {
       await api.deleteIssue(key);
       notify(t.issue.deleted(key));
-      router.navigate(paths.project(project.key));
+      ongone(project.key);
     } catch (e) {
       notify(errorMessage(e), 'error');
     }
@@ -294,7 +310,7 @@
 {:else if !issue}
   <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}
-  <article class="page issue" data-title={`${issue.key} ${issue.summary}`}>
+  <article bind:this={root} class="page issue" data-title={`${issue.key} ${issue.summary}`}>
     <nav class="crumbs page-crumbs" aria-label={t.common.breadcrumbs}>
       <a href={paths.project(issue.project.key)}>{issue.project.name}</a>
       {#if issue.parent}
@@ -582,6 +598,12 @@
 {/if}
 
 <style>
+  /* The view follows its own width, so it fits a modal as well as the page.
+     Thresholds are the article's content width at the old viewport breakpoints. */
+  .issue {
+    container: issue / inline-size;
+  }
+
   .crumbs {
     display: flex;
     gap: 8px;
@@ -758,14 +780,14 @@
     padding-top: 6px;
   }
 
-  @media (max-width: 980px) {
+  @container issue (max-width: 916px) {
     .layout {
       grid-template-columns: minmax(0, 1fr);
     }
   }
 
   /* A phone: marks on the first line of a sub-task, its summary on the next. */
-  @media (max-width: 600px) {
+  @container issue (max-width: 568px) {
     .subtasks li {
       flex-wrap: wrap;
       row-gap: 2px;
