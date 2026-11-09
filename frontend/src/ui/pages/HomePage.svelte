@@ -1,51 +1,56 @@
 <script lang="ts">
-  import { arrowAfterMove, moveItem } from '../../core/catalogs.js';
+  import { moveItem } from '../../core/catalogs.js';
   import {
     clickGadgetSort,
+    copyOnEditPath,
     gadgetQuery,
     MAX_GADGETS,
+    onFilter,
     queryOrder,
+    setCollapsed,
     sortedQuery,
     toInput,
+    viewJql,
     type Dashboard,
     type Gadget,
   } from '../../core/dashboard.js';
-  import { localParts } from '../../core/dates.js';
+  import { writeLocation } from '../../core/filters-url.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
   import type { SortTerm } from '../../core/jql.js';
   import { paths } from '../../core/route.js';
   import { scopeGadgetQuery } from '../../core/scope.js';
   import { NATIVE_COLUMNS, type ColumnChoice } from '../../core/search-columns.js';
-  import { renderDay, t } from '../../i18n/t.js';
+  import type { FilterShare, SavedFilter } from '../../core/types.js';
+  import { formatList } from '../../i18n/format.js';
+  import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
+  import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
-  import OrderArrows from '../admin/OrderArrows.svelte';
-  import CountGadget from '../dashboard/CountGadget.svelte';
-  import GadgetDialog from '../dashboard/GadgetDialog.svelte';
+  import type { MenuGroup } from '../board/CardMenu.svelte';
+  import ConfirmDialog from '../ConfirmDialog.svelte';
+  import ViewSection from '../dashboard/ViewSection.svelte';
   import EmptyState from '../EmptyState.svelte';
-  import IssueQuery from '../IssueQuery.svelte';
+  import Modal from '../Modal.svelte';
 
   /**
-   * The user's dashboard: gadgets on saved filters (their results, or their
-   * issues counted by a field) and built-in lists of their own work, which
-   * they add, configure, order and remove under "Customise".
+   * The user's space: their views, and the ones shared with them, one
+   * section each, folded, ordered and managed in place. A built-in view is
+   * copied into one of the user's own filters when they change it.
    */
 
   let dash = $state<Dashboard | null>(null);
   let error = $state('');
-  let editing = $state(false);
-  let dialog = $state<{ gadget: Gadget | null } | null>(null);
   let saving = $state(false);
-  let dragged = $state<number | null>(null);
-  let over = $state<number | null>(null);
   let choices = $state<ColumnChoice[] | null>(null);
-  let totals = $state<Record<string, number>>({});
-  const today = renderDay(localParts(new Date().toISOString()));
+  let filters = $state<SavedFilter[]>([]);
+  let renaming = $state<{ filter: SavedFilter; name: string } | null>(null);
+  let deleting = $state<SavedFilter | null>(null);
 
   const gadgets = $derived(dash?.gadgets ?? []);
   const names = $derived(Object.fromEntries((choices ?? []).map((c) => [c.id, c.name])));
+  const allCollapsed = $derived(gadgets.length > 0 && gadgets.every((g) => g.config.collapsed));
 
   $effect(() => {
     document.title = `${t.home.title} — ${t.appName}`;
@@ -60,22 +65,34 @@
       (list) => (choices = list),
       () => (choices = []),
     );
+    void loadFilters();
   });
+
+  async function loadFilters() {
+    try {
+      filters = await api.filters();
+    } catch {
+      // The sections show without who shares them.
+    }
+  }
 
   /** A key per gadget, the defaults having no id yet. */
   const keyOf = (g: Gadget, i: number) => (g.id ? `g${g.id}` : `d${i}`);
 
+  /** Focus to the toggle of the section now at i: saved, a default gadget gets an id. */
+  function focusToggle(i: number) {
+    const g = gadgets[i];
+    if (g) queueMicrotask(() => document.getElementById(`view-toggle-${keyOf(g, i)}`)?.focus());
+  }
+
+  const filterOf = (g: Gadget) =>
+    onFilter(g.kind) && !g.unavailable && g.filter
+      ? filters.find((f) => f.id === g.filter?.id)
+      : undefined;
+
   function title(g: Gadget): string {
-    switch (g.kind) {
-      case 'results':
-        return g.filter?.name ?? t.home.unavailableTitle;
-      case 'count': {
-        const field = g.config.field ? t.search.fields[g.config.field] : '';
-        return g.filter ? t.home.countBy(g.filter.name, field) : t.home.unavailableTitle;
-      }
-      default:
-        return t.home.kinds[g.kind];
-    }
+    if (onFilter(g.kind)) return g.filter?.name ?? t.home.unavailableTitle;
+    return t.home.kinds[g.kind];
   }
 
   function empty(g: Gadget): string {
@@ -91,9 +108,9 @@
     }
   }
 
-  /** The chosen columns the search still knows (a custom field may be gone). */
+  /** The filter's columns the search still knows (a custom field may be gone); the defaults without. */
   function columnsOf(g: Gadget): string[] | undefined {
-    const cols = g.config.columns;
+    const cols = filterOf(g)?.columns;
     if (!cols?.length) return undefined;
     const known = choices ?? [];
     return known.length
@@ -101,21 +118,48 @@
       : cols.filter((c) => NATIVE_COLUMNS.has(c));
   }
 
-  /** The query the gadget shows: its own, scoped, in the order saved on it. */
-  function shownQuery(g: Gadget): string | null {
-    const q = scopeGadgetQuery(gadgetQuery(g), g.kind, session.scope);
-    if (q === null || g.kind === 'count') return q;
+  /** The gadget's sort, unless it is on a custom field gone since. */
+  function sortOf(g: Gadget): SortTerm | undefined {
     const sort = g.config.sort;
-    // A custom field gone since the sort was saved: the query's own order.
     const cf = sort && /^cf\[(\d+)\]$/.exec(sort.field);
     const gone = cf && choices?.length && !choices.some((c) => c.id === `customfield_${cf[1]}`);
-    return sortedQuery(q, gone ? undefined : sort);
+    return gone ? undefined : sort;
   }
 
-  function sortGadget(g: Gadget, column: string, shown: SortTerm[]) {
-    if (saving) return;
-    const sort = clickGadgetSort(column, g.config.sort, shown);
-    saveQuietly(gadgets.map((x) => (x === g ? { ...g, config: { ...g.config, sort } } : x)));
+  /** The gadget's query as a view, in JQL, unscoped; null when it has none. */
+  function viewOf(g: Gadget): string | null {
+    const q = gadgetQuery(g);
+    return q === null ? null : viewJql(q, sortOf(g));
+  }
+
+  /** The query the section shows: its own, scoped, in the order saved on it. */
+  function shownQuery(g: Gadget): string | null {
+    const q = scopeGadgetQuery(gadgetQuery(g), g.kind, session.scope);
+    return q === null ? null : sortedQuery(q, sortOf(g));
+  }
+
+  function hrefOf(g: Gadget): string | null {
+    if (onFilter(g.kind)) return g.filter && !g.unavailable ? paths.view(g.filter.id) : null;
+    const jql = viewOf(g);
+    return jql === null
+      ? null
+      : `/views/new${writeLocation({ jql, mode: null, filter: null, page: 1 })}`;
+  }
+
+  function shareName(s: FilterShare): string {
+    return s.kind === 'everyone' ? t.home.everyone : (s.name ?? t.boards.shareKinds[s.kind]);
+  }
+
+  function sharedWith(g: Gadget): string | null {
+    const f = filterOf(g);
+    return f?.mine && f.shares.length
+      ? t.home.sharedWith(formatList(f.shares.map(shareName)))
+      : null;
+  }
+
+  function sharedBy(g: Gadget) {
+    const f = filterOf(g);
+    return f && !f.mine ? f.owner : null;
   }
 
   /** Saves the gadgets in this order; the list shows the change at once. */
@@ -133,83 +177,169 @@
     }
   }
 
-  function saveQuietly(next: Gadget[], focus?: string) {
-    save(next).then(
-      () => {
-        if (focus) queueMicrotask(() => document.getElementById(focus)?.focus());
-      },
-      (e: unknown) => notify(errorMessage(e), 'error'),
+  function saveQuietly(next: Gadget[], then?: () => void) {
+    save(next).then(then, (e: unknown) => notify(errorMessage(e), 'error'));
+  }
+
+  function sortGadget(g: Gadget, column: string, shown: SortTerm[]) {
+    if (saving) return;
+    const sort = clickGadgetSort(column, g.config.sort, shown);
+    saveQuietly(gadgets.map((x) => (x === g ? { ...g, config: { ...g.config, sort } } : x)));
+  }
+
+  function toggle(i: number) {
+    const g = gadgets[i];
+    if (!g || saving) return;
+    const keep = !dash?.customised;
+    saveQuietly(
+      setCollapsed(gadgets, (x) => x === g, !g.config.collapsed),
+      keep ? () => focusToggle(i) : undefined,
     );
   }
 
-  /**
-   * By position in the ids: once saved, a default gadget gets an id. Refused,
-   * the row comes back, and focus with it.
-   */
-  function removeGadget(i: number) {
-    const focus = focusOrderAfterRemoval(
-      gadgets.map((_, k) => k),
-      i,
-      (k) => `gadget-remove-${k > i ? k - 1 : k}`,
-      'gadget-add',
-    );
-    save(gadgets.filter((_, k) => k !== i)).then(
-      () => refocusLater(focus),
-      (e: unknown) => {
-        notify(errorMessage(e), 'error');
-        refocusLater([`gadget-remove-${i}`]);
-      },
-    );
+  function toggleAll() {
+    if (!saving) saveQuietly(setCollapsed(gadgets, () => true, !allCollapsed));
   }
 
   function step(i: number, by: -1 | 1) {
     const to = i + by;
     if (saving || to < 0 || to >= gadgets.length) return;
-    const dir = arrowAfterMove(by, to, gadgets.length);
-    const moved = moveItem(gadgets, i, to);
-    // Saved, a default gadget gets an id: the arrows' ids follow it.
-    saveQuietly(moved, dash?.customised ? `order-${dir}-${keyOf(gadgets[i]!, to)}` : undefined);
+    saveQuietly(moveItem(gadgets, i, to), () => focusToggle(to));
   }
 
-  function drop(target: number) {
-    if (dragged !== null && !saving && dragged !== target) {
-      saveQuietly(moveItem(gadgets, dragged, target));
+  /** By position in the ids: once saved, a default gadget gets an id. */
+  function remove(i: number) {
+    if (saving) return;
+    const focus = focusOrderAfterRemoval(
+      gadgets.map((_, k) => k),
+      i,
+      (k) => `view-toggle-${keyOf(gadgets[k]!, k)}`,
+      'view-new',
+    );
+    const customised = dash?.customised;
+    save(gadgets.filter((_, k) => k !== i)).then(
+      () => (customised ? refocusLater(focus) : focusToggle(Math.min(i, gadgets.length - 1))),
+      (e: unknown) => notify(errorMessage(e), 'error'),
+    );
+  }
+
+  /** A built-in view edited becomes a new view of the user's, in its place. */
+  async function editBuiltin(i: number) {
+    try {
+      // A default dashboard has no ids yet: the new view needs one to replace.
+      if (!dash?.customised) await save(gadgets);
+      const g = gadgets[i];
+      const jql = g ? viewOf(g) : null;
+      if (g?.id && jql !== null) router.navigate(copyOnEditPath(jql, g.id));
+    } catch (e) {
+      notify(errorMessage(e), 'error');
     }
-    dragged = null;
-    over = null;
   }
 
-  function saved(g: Gadget): Promise<void> {
-    const edited = dialog?.gadget;
-    const next = edited ? gadgets.map((x) => (x === edited ? g : x)) : [...gadgets, g];
-    return save(next);
+  async function duplicate(i: number) {
+    const g = gadgets[i];
+    const query = g ? viewOf(g) : null;
+    if (!g || query === null || saving) return;
+    try {
+      const columns = filterOf(g)?.columns;
+      const f = await api.createFilter({
+        name: t.home.copyName(title(g)),
+        query,
+        ...(columns ? { columns } : {}),
+      });
+      const copy: Gadget = {
+        id: 0,
+        kind: 'results',
+        filter: { id: f.id, name: f.name, query: f.query },
+        unavailable: false,
+        config: g.config.size ? { size: g.config.size } : {},
+      };
+      await save([...gadgets.slice(0, i + 1), copy, ...gadgets.slice(i + 1)]);
+      await loadFilters();
+      notify(t.view.created(f.name));
+      focusToggle(i + 1);
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    }
+  }
+
+  async function rename() {
+    if (!renaming) return;
+    const { filter, name } = renaming;
+    const next = name.trim();
+    if (!next || next === filter.name) {
+      renaming = null;
+      return;
+    }
+    try {
+      await api.updateFilter(filter.id, { name: next });
+      renaming = null;
+      dash = await api.dashboard();
+      await loadFilters();
+    } catch (e) {
+      notify(errorMessage(e), 'error');
+    }
+  }
+
+  async function deleteView(f: SavedFilter) {
+    await api.deleteFilter(f.id);
+    await save(gadgets.filter((g) => !(onFilter(g.kind) && g.filter?.id === f.id)));
+    await loadFilters();
+    notify(t.home.deleted(f.name));
+  }
+
+  function menu(g: Gadget, i: number): MenuGroup[] {
+    const f = filterOf(g);
+    const view: MenuGroup['items'] = [];
+    if (f?.canEdit) {
+      view.push({ label: t.home.rename, run: () => (renaming = { filter: f, name: f.name }) });
+    } else if (!onFilter(g.kind)) {
+      view.push(
+        { label: t.home.rename, run: () => void editBuiltin(i) },
+        { label: t.home.edit, run: () => void editBuiltin(i) },
+      );
+    }
+    if (viewOf(g) !== null) {
+      view.push({
+        label: t.home.duplicate,
+        run: () => void duplicate(i),
+        disabled: gadgets.length >= MAX_GADGETS,
+      });
+    }
+    if (f?.mine) view.push({ label: t.home.deleteView, run: () => (deleting = f) });
+    const place: MenuGroup['items'] = [
+      { label: t.home.moveUp, run: () => step(i, -1), disabled: i === 0 },
+      { label: t.home.moveDown, run: () => step(i, 1), disabled: i === gadgets.length - 1 },
+      { label: t.home.removeFromSpace, run: () => remove(i) },
+    ];
+    return [
+      ...(view.length ? [{ label: t.home.menuView, items: view }] : []),
+      { label: t.home.menuSpace, items: place },
+    ];
   }
 </script>
 
 <div class="page" data-title={t.home.title}>
-  <header class="page-head">
-    <div>
-      <p class="eyebrow">{today}</p>
-      <h1 class="page-title">
-        {session.me ? t.home.greeting(session.me.name.split(' ')[0] ?? '') : t.home.title}
-      </h1>
+  <header class="space-head">
+    <div class="heading">
+      <h1 class="page-title">{t.home.title}</h1>
+      <p class="intro muted">
+        {session.me
+          ? `${t.home.greeting(session.me.name.split(' ')[0] ?? '')} ${t.home.intro}`
+          : t.home.intro}
+      </p>
     </div>
     {#if dash}
       <div class="head-actions">
-        {#if editing && gadgets.length > 0}
-          <button
-            id="gadget-add"
-            class="btn"
-            disabled={saving || gadgets.length >= MAX_GADGETS}
-            title={gadgets.length >= MAX_GADGETS ? t.home.full : undefined}
-            onclick={() => (dialog = { gadget: null })}>{t.home.addGadget}</button
+        {#if gadgets.length > 0}
+          <button type="button" class="link-btn" disabled={saving} onclick={toggleAll}
+            >{allCollapsed ? t.home.expandAll : t.home.collapseAll}</button
           >
         {/if}
-        <button
-          class="btn"
-          class:btn-primary={editing}
-          aria-pressed={editing}
-          onclick={() => (editing = !editing)}>{editing ? t.home.done : t.home.customise}</button
+        <a id="view-new" class="btn" href={paths.search()}>
+          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"
+            ><path d="M7 2v10M2 7h10" /></svg
+          >{t.home.newView}</a
         >
       </div>
     {/if}
@@ -217,212 +347,121 @@
 
   {#if error}
     <p class="error-text" role="alert">{error}</p>
-  {:else if !dash}
+  {:else if !dash || choices === null}
     <p class="muted loading">{t.common.loading}</p>
   {:else if gadgets.length === 0}
-    <EmptyState message={t.home.emptyDashboard} hint={t.home.emptyDashboardHint}>
-      <button id="gadget-add" class="btn btn-primary" onclick={() => (dialog = { gadget: null })}
-        >{t.home.addGadget}</button
-      >
-    </EmptyState>
+    <EmptyState message={t.home.emptyDashboard} hint={t.home.emptyDashboardHint} />
   {:else}
-    {#if editing}<p class="muted small order-hint">{t.home.orderHint}</p>{/if}
-    {#each gadgets as g, i (keyOf(g, i))}
-      {@const q = shownQuery(g)}
-      <section
-        class="gadget"
-        class:editing
-        class:is-dragged={dragged === i}
-        class:is-over={over === i && dragged !== null && dragged !== i}
-        draggable={editing && !saving}
-        aria-label={title(g)}
-        ondragstart={(e) => {
-          dragged = i;
-          e.dataTransfer?.setData('text/plain', keyOf(g, i));
-        }}
-        ondragover={(e) => {
-          if (dragged === null) return;
-          e.preventDefault();
-          over = i;
-        }}
-        ondragleave={() => over === i && (over = null)}
-        ondrop={(e) => {
-          e.preventDefault();
-          drop(i);
-        }}
-        ondragend={() => ((dragged = null), (over = null))}
-      >
-        <h2 class="section-title">
-          {#if editing}<span class="grip" aria-hidden="true">⋮⋮</span>{/if}
-          <span class="name">{title(g)}</span>
-          {#if g.kind !== 'count' && q !== null}
-            <span class="count">{totals[keyOf(g, i)] ?? 0}</span>
-          {/if}
-          <span class="actions">
-            {#if editing}
-              <OrderArrows
-                id={keyOf(g, i)}
-                name={title(g)}
-                first={i === 0}
-                last={i === gadgets.length - 1}
-                disabled={saving}
-                onmove={(by) => step(i, by)}
-              />
-              <button class="link-btn" disabled={saving} onclick={() => (dialog = { gadget: g })}
-                >{t.home.configure}</button
-              >
-              <button
-                id="gadget-remove-{i}"
-                class="link-btn"
-                disabled={saving}
-                onclick={() => removeGadget(i)}>{t.common.remove}</button
-              >
-            {:else if q !== null}
-              <a class="link-btn" href={paths.search(q)}>{t.common.seeAll}</a>
-            {/if}
-          </span>
-        </h2>
-        {#if q === null}
-          <p class="unavailable">{t.home.unavailable}</p>
-        {:else if g.kind === 'count' && g.config.field}
-          <CountGadget query={q} field={g.config.field} />
-        {:else if choices !== null}
-          {@const order = queryOrder(q)}
-          <IssueQuery
-            {q}
-            size={g.config.size || 10}
-            empty={empty(g)}
-            showAssignee={g.kind !== 'assigned'}
-            columns={columnsOf(g)}
-            {names}
-            sort={order}
-            onsort={(column) => sortGadget(g, column, order)}
-            ontotal={(n) => (totals[keyOf(g, i)] = n)}
-          />
-        {/if}
-      </section>
-    {/each}
+    <div class="views">
+      {#each gadgets as g, i (keyOf(g, i))}
+        {@const q = shownQuery(g)}
+        {@const order = q === null ? [] : queryOrder(q)}
+        <ViewSection
+          key={keyOf(g, i)}
+          title={title(g)}
+          query={q}
+          href={hrefOf(g)}
+          jql={viewOf(g) ?? ''}
+          size={g.config.size || 10}
+          collapsed={!!g.config.collapsed}
+          sharedWith={sharedWith(g)}
+          sharedBy={sharedBy(g)}
+          columns={columnsOf(g)}
+          {names}
+          empty={empty(g)}
+          showAssignee={g.kind !== 'assigned'}
+          sort={order}
+          onsort={(column) => sortGadget(g, column, order)}
+          ontoggle={() => toggle(i)}
+          menu={() => menu(g, i)}
+        />
+      {/each}
+    </div>
   {/if}
 </div>
 
-{#if choices}
-  <GadgetDialog
-    open={dialog !== null}
-    gadget={dialog?.gadget ?? null}
-    {choices}
-    onclose={() => (dialog = null)}
-    onsave={saved}
-  />
-{/if}
+<Modal open={renaming !== null} title={t.home.renameTitle} onclose={() => (renaming = null)}>
+  {#if renaming}
+    <form
+      id="view-rename"
+      onsubmit={(e) => {
+        e.preventDefault();
+        void rename();
+      }}
+    >
+      <label class="field">
+        <span>{t.view.name}</span>
+        <input class="input" bind:value={renaming.name} required />
+      </label>
+    </form>
+  {/if}
+  {#snippet footer()}
+    <button type="button" class="btn btn-quiet" onclick={() => (renaming = null)}
+      >{t.common.cancel}</button
+    >
+    <button type="submit" form="view-rename" class="btn btn-primary">{t.common.save}</button>
+  {/snippet}
+</Modal>
+
+<ConfirmDialog
+  open={deleting !== null}
+  title={deleting ? t.home.deleteTitle(deleting.name) : ''}
+  confirm={t.home.deleteView}
+  onconfirm={() => (deleting ? deleteView(deleting) : Promise.resolve())}
+  onclose={() => (deleting = null)}
+>
+  <p>{t.home.deleteBody}</p>
+</ConfirmDialog>
 
 <style>
+  .space-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px 24px;
+    margin-bottom: 28px;
+  }
+
+  .heading {
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+
+  .page-title {
+    margin: 0;
+  }
+
+  .intro {
+    margin: 6px 0 0;
+  }
+
   .head-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    align-items: center;
+    gap: 8px 16px;
   }
 
-  .order-hint {
-    margin: 0 0 12px;
-  }
-
-  .section-title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px;
-  }
-
-  .section-title .name {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .section-title .actions {
+  .head-actions .btn {
     display: inline-flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
   }
 
-  .grip {
-    color: var(--muted);
-    font-size: 0.6875rem;
-    letter-spacing: -2px;
-    cursor: grab;
+  .head-actions svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
   }
 
-  .gadget.editing {
-    padding: 4px 8px 8px;
-    margin-inline: -8px;
-    border: 1px dashed var(--rule);
-  }
-
-  .gadget.is-dragged {
-    opacity: 0.45;
-  }
-
-  .gadget.is-over {
-    box-shadow: inset 0 2px 0 var(--accent);
-  }
-
-  .unavailable {
-    margin: 0;
-    padding: 8px 12px;
-    border-left: 3px solid var(--rule);
-    color: var(--muted);
+  .views {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
 
   .loading {
     padding: 10px 0;
-  }
-
-  /*
-   * The lists stack, so they share their column widths and line up; a list
-   * without the assignee or due column keeps the room it would take. Each
-   * width holds the column's usual widest content (a nine-character key,
-   * « IN PROGRESS », « PRIORITÄT » and its arrow, avatar and name, the
-   * longest date). They are minimums: the summary claims the whole row, and a
-   * plain width gives way to it. Narrower screens need that room for the
-   * summary.
-   */
-  @media (min-width: 1000px) {
-    section :global(th.c-key) {
-      min-width: 5.625rem;
-    }
-
-    section :global(th.c-status) {
-      min-width: 8rem;
-    }
-
-    section :global(th.c-priority) {
-      min-width: 7rem;
-    }
-
-    section :global(th.c-assignee) {
-      min-width: 10rem;
-    }
-
-    section :global(th.c-due) {
-      min-width: 8.75rem;
-    }
-
-    section :global(th.c-updated) {
-      min-width: 9.75rem;
-    }
-
-    section :global(.ledger:not(:has(.c-assignee)) th.c-priority) {
-      min-width: calc(7rem + 10rem);
-    }
-
-    section :global(.ledger:not(:has(.c-due)) th.c-updated) {
-      min-width: calc(9.75rem + 8.75rem);
-    }
-  }
-
-  @media (max-width: 600px) {
-    .grip {
-      display: none;
-    }
   }
 </style>

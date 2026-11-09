@@ -3,12 +3,16 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_QUERIES,
   clickGadgetSort,
+  copyOnEditPath,
   gadgetQuery,
   jqlValue,
   narrowedJql,
   queryOrder,
+  setCollapsed,
   sortedQuery,
+  swapToFilter,
   toInput,
+  viewJql,
   type Gadget,
 } from '../../src/core/dashboard.js';
 import { toJql } from '../../src/core/filters-url.js';
@@ -106,5 +110,56 @@ describe('clickGadgetSort', () => {
   it('keeps the sort for a column ORDER BY cannot take', () => {
     const sort = { field: 'key', desc: false };
     expect(clickGadgetSort('description', sort, [sort])).toBe(sort);
+  });
+});
+
+describe('swapToFilter', () => {
+  const builtins = [
+    gadget({
+      id: 1,
+      kind: 'assigned',
+      filter: null,
+      config: { size: 5, sort: { field: 'key', desc: false } },
+    }),
+    gadget({ id: 2, kind: 'reported', filter: null, config: { collapsed: true } }),
+    gadget({ id: 3, kind: 'recent', filter: null }),
+  ];
+
+  it('turns that gadget into one on the filter, in the same place', () => {
+    const next = swapToFilter(builtins, 2, 40);
+    expect(next.map((g) => [g.id, g.kind, g.filter])).toEqual([
+      [1, 'assigned', null],
+      [2, 'results', 40],
+      [3, 'recent', null],
+    ]);
+    expect(next[1]?.config).toEqual({ collapsed: true });
+  });
+
+  it('keeps its size and drops its sort, now the filter’s order', () => {
+    expect(swapToFilter(builtins, 1, 40)[0]?.config).toEqual({ size: 5 });
+  });
+
+  it('adds the view when the gadget is gone', () => {
+    const next = swapToFilter(builtins, 9, 40);
+    expect(next).toHaveLength(4);
+    expect(next[3]).toEqual({ id: 0, kind: 'results', filter: 40, config: {} });
+  });
+});
+
+describe('collapsed', () => {
+  it('survives a save', () => {
+    const folded = setCollapsed([gadget({}), gadget({ id: 8 })], (g) => g.id === 8, true);
+    expect(folded.map((g) => toInput(g).config.collapsed)).toEqual([undefined, true]);
+  });
+});
+
+describe('copyOnEditPath', () => {
+  it('opens a new view on the gadget’s query, in its order', () => {
+    const jql = viewJql(BUILTIN_QUERIES.assigned, { field: 'key', desc: false });
+    expect(jql).toMatch(/ORDER BY key ASC$/);
+    const url = new URL(copyOnEditPath(jql, 4), 'http://x');
+    expect(url.pathname).toBe('/views/new');
+    expect(url.searchParams.get('jql')).toBe(jql);
+    expect(url.searchParams.get('gadget')).toBe('4');
   });
 });

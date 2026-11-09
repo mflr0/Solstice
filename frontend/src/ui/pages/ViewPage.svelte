@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { swapToFilter } from '../../core/dashboard.js';
   import { readLocation, toJql, writeLocation } from '../../core/filters-url.js';
   import { paths } from '../../core/route.js';
   import { scopeSearch } from '../../core/scope.js';
@@ -51,6 +52,11 @@
   const modified = $derived(queryModified || columnsModified || nameModified);
   const title = $derived(current?.name ?? (viewId === null ? t.view.untitled : t.view.title));
   let shownColumns = $state<string[]>([]);
+  /**
+   * The built-in view of My space this new view copies (/views/new?gadget=):
+   * saved, it takes the gadget's place. Read once, as the search rewrites the address.
+   */
+  const gadget = Number(new URLSearchParams(router.search).get('gadget')) || null;
   let busy = $state(false);
 
   function setColumns(next: string[]) {
@@ -136,6 +142,16 @@
         columns: shownColumns,
       });
       notify(t.view.created(f.name));
+      if (viewId === null && gadget !== null) {
+        try {
+          const d = await api.dashboard();
+          await api.saveDashboard(swapToFilter(d.gadgets, gadget, f.id));
+          router.navigate(paths.home());
+          return;
+        } catch (e) {
+          notify(errorMessage(e), 'error');
+        }
+      }
       router.navigate(paths.view(f.id));
     });
 
