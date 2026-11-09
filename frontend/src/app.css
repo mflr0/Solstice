@@ -1874,6 +1874,29 @@ div.editor-raw {
   padding: 12px;
 }
 
+/* Files dragged over the editor: it does not take the pointer, so the drop
+   still lands where the drop cursor shows. */
+.editor-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--paper-raised) 80%, transparent);
+  color: var(--accent-text);
+  font: 600 0.875rem/1.3 var(--font-body);
+  text-align: center;
+  pointer-events: none;
+}
+
+.editor-dropzone span {
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  background: var(--paper-raised);
+}
+
 .editor-status {
   margin: 0;
   padding: 4px 12px 6px;

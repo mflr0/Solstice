@@ -965,6 +965,8 @@ export const en = {
     people: 'People',
     raw: 'Markup kept as is; double-click to open it in Source mode.',
     uploading: (names: string) => `Uploading ${names}…`,
+    attach: 'Attach files',
+    dropFiles: 'Drop files to attach',
     escHint: 'Esc to cancel',
   },
 

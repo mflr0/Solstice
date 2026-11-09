@@ -971,6 +971,8 @@ export const fr: Messages = {
     people: 'Personnes',
     raw: 'Balisage conservé tel quel ; double-cliquez pour l’ouvrir en mode Source.',
     uploading: (names: string) => `Envoi de ${names}…`,
+    attach: 'Joindre des fichiers',
+    dropFiles: 'Déposez les fichiers pour les joindre',
     escHint: 'Échap pour annuler',
   },
 

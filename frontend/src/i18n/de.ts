@@ -979,6 +979,8 @@ export const de: Messages = {
     people: 'Personen',
     raw: 'Markup unverändert übernommen; doppelklicken Sie, um es im Modus „Quelltext“ zu öffnen.',
     uploading: (names: string) => `Wird hochgeladen: ${names}…`,
+    attach: 'Dateien anhängen',
+    dropFiles: 'Dateien zum Anhängen hier ablegen',
     escHint: 'Esc zum Abbrechen',
   },
 
