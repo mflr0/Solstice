@@ -3,12 +3,11 @@
   import { columnDirection, columnSort } from '../core/filters.js';
   import type { SortTerm } from '../core/jql.js';
   import { paths } from '../core/route.js';
-  import { shortcutFor } from '../core/shortcuts.js';
   import type { IssueSummary } from '../core/types.js';
   import { formatDay, t } from '../i18n/t.js';
+  import { listKeys } from '../lib/actions.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
-  import { appearance, ignoreShortcut, mac } from '../lib/ui.svelte.js';
   import Highlight from './Highlight.svelte';
   import Lock from './Lock.svelte';
   import PriorityMark from './PriorityMark.svelte';
@@ -30,8 +29,8 @@
     /** Column names by id, for the columns the table has no name of its own for. */
     names?: Record<string, string> | undefined;
     /**
-     * With onselect, a checkbox per row and one for the whole page, and the
-     * search results' keys: j and k move between rows, o or Enter opens, x selects.
+     * With onselect, a checkbox per row and one for the whole page, and x
+     * selects the focused row (j and k move between rows, o or Enter opens, always).
      */
     selected?: readonly string[] | undefined;
     onselect?: ((keys: string[]) => void) | undefined;
@@ -102,34 +101,15 @@
     router.navigate(paths.issue(key));
   }
 
-  let body: HTMLTableSectionElement | undefined = $state();
+  function openRow(row: HTMLElement) {
+    if (row.dataset.key) router.navigate(paths.issue(row.dataset.key));
+  }
 
-  function keys(e: KeyboardEvent) {
-    if (!onselect || !body || ignoreShortcut(e)) return;
-    const action = shortcutFor(e, 'results', appearance.shortcuts, appearance.bindings, mac);
-    // The table has no columns to move between: the arrows keep scrolling it.
-    if (!action || action === 'left' || action === 'right') return;
-    const rows = [...body.rows];
-    const current = rows.findIndex((r) => r.contains(document.activeElement));
-    if (action === 'next' || action === 'previous') {
-      if (!rows.length) return;
-      e.preventDefault();
-      const step = action === 'next' ? 1 : -1;
-      const to = current < 0 ? 0 : Math.min(Math.max(current + step, 0), rows.length - 1);
-      rows[to]?.focus();
-      return;
-    }
-    // Enter on a link or a checkbox in the row keeps its own meaning.
-    if (current < 0 || (e.key === 'Enter' && document.activeElement !== rows[current])) return;
-    const issue = issues[current];
-    if (!issue) return;
-    e.preventDefault();
-    if (action === 'open') router.navigate(paths.issue(issue.key));
-    else if (action === 'select') toggle(issue.key, !selected.includes(issue.key));
+  function selectRow(row: HTMLElement) {
+    const key = row.dataset.key;
+    if (key) toggle(key, !selected.includes(key));
   }
 </script>
-
-<svelte:window onkeydown={keys} />
 
 {#snippet label(column: string, name: string)}
   {#if onsort && columnSort(column) !== null}
@@ -152,6 +132,7 @@
   class="issue-table"
   class:fixed
   onfocusin={(e) => (e.target as Element).scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+  use:listKeys={{ rows: 'tbody tr', open: openRow, select: onselect ? selectRow : undefined }}
 >
   <table class="ledger">
     <thead>
@@ -198,12 +179,12 @@
         {/each}
       </tr>
     </thead>
-    <tbody bind:this={body}>
+    <tbody>
       {#each issues as issue (issue.key)}
         <tr
           onclick={(e) => open(e, issue.key)}
           class:picked={selected.includes(issue.key)}
-          tabindex={onselect ? -1 : undefined}
+          data-key={issue.key}
         >
           {#if onselect}
             <td class="c-pick">
