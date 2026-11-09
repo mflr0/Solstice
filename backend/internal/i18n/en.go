@@ -703,6 +703,15 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityMoveOrClear:    "Choose a replacement level or clear the level, not both.",
 	SecurityMemberExists:   "This holder is already a member of the level.",
 
+	// Issue layouts.
+	LayoutFormUnknown:    "Unknown form: %s. Use create or view.",
+	LayoutFieldFixed:     "The %s field always shows in its own place: a layout can't place it.",
+	LayoutFieldTwice:     "The %s field is placed twice.",
+	LayoutZoneOnCreate:   "The create form has no zones: remove the zone of %s.",
+	LayoutZoneInvalid:    "Place %s in the main or the side zone.",
+	LayoutRequiredOnView: "Only the create form makes a field required: %s.",
+	LayoutRequiredHidden: "The %s field can't be both hidden and required.",
+
 	// Theme packages.
 	ThemeFileMissing:      "No theme package was sent.",
 	ThemeFileTooLarge:     "The theme package is larger than %d MiB.",

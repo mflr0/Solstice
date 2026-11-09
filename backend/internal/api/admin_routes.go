@@ -98,6 +98,15 @@ func (s *Server) adminRoutes(route routeFunc) {
 	route("PATCH /api/admin/fields/{id}/options/{option}", s.updateFieldOption, auth.ScopeAdmin)
 	route("DELETE /api/admin/fields/{id}/options/{option}", s.deleteFieldOption, auth.ScopeAdmin)
 
+	// Issue layouts.
+	route("GET /api/issue-layouts", s.resolvedLayout, auth.ScopeRead)
+	route("GET /api/admin/issue-types/{id}/layouts/{form}", s.typeLayout, auth.ScopeAdmin)
+	route("PUT /api/admin/issue-types/{id}/layouts/{form}", s.typeLayout, auth.ScopeAdmin)
+	route("DELETE /api/admin/issue-types/{id}/layouts/{form}", s.typeLayout, auth.ScopeAdmin)
+	route("GET /api/projects/{key}/issue-types/{id}/layouts/{form}", s.projectLayout, auth.ScopeRead)
+	route("PUT /api/projects/{key}/issue-types/{id}/layouts/{form}", s.projectLayout, auth.ScopeProjects)
+	route("DELETE /api/projects/{key}/issue-types/{id}/layouts/{form}", s.projectLayout, auth.ScopeProjects)
+
 	// System and import.
 	route("GET /api/admin/system", s.systemInfo, auth.ScopeAdmin)
 	route("GET /api/admin/import", s.adminImportState, auth.ScopeAdmin)

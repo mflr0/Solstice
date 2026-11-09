@@ -788,6 +788,17 @@ const (
 	SecurityMemberExists   Key = "SecurityMemberExists"
 )
 
+// Issue layouts: the fields of the create and view forms.
+const (
+	LayoutFormUnknown    Key = "LayoutFormUnknown"
+	LayoutFieldFixed     Key = "LayoutFieldFixed"
+	LayoutFieldTwice     Key = "LayoutFieldTwice"
+	LayoutZoneOnCreate   Key = "LayoutZoneOnCreate"
+	LayoutZoneInvalid    Key = "LayoutZoneInvalid"
+	LayoutRequiredOnView Key = "LayoutRequiredOnView"
+	LayoutRequiredHidden Key = "LayoutRequiredHidden"
+)
+
 // Theme packages.
 const (
 	ThemeFileMissing      Key = "ThemeFileMissing"

@@ -706,6 +706,15 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityMoveOrClear:    "रिप्लेसमेंट स्तर चुनें या स्तर हटाएँ, दोनों नहीं।",
 	SecurityMemberExists:   "यह धारक पहले से इस स्तर का सदस्य है।",
 
+	// Issue layouts.
+	LayoutFormUnknown:    "अज्ञात फ़ॉर्म: %s। create या view इस्तेमाल करें।",
+	LayoutFieldFixed:     "फ़ील्ड %s हमेशा अपनी जगह दिखता है: लेआउट उसे नहीं रख सकता।",
+	LayoutFieldTwice:     "फ़ील्ड %s दो बार रखा गया है।",
+	LayoutZoneOnCreate:   "बनाने वाले फ़ॉर्म में ज़ोन नहीं होते: %s का ज़ोन हटाएँ।",
+	LayoutZoneInvalid:    "%s को मुख्य या साइड ज़ोन में रखें।",
+	LayoutRequiredOnView: "सिर्फ़ बनाने वाला फ़ॉर्म किसी फ़ील्ड को ज़रूरी बनाता है: %s।",
+	LayoutRequiredHidden: "फ़ील्ड %s एक साथ छिपा और ज़रूरी नहीं हो सकता।",
+
 	// Theme packages.
 	ThemeFileMissing:      "कोई थीम पैकेज नहीं भेजा गया।",
 	ThemeFileTooLarge:     "थीम पैकेज %d MiB से बड़ा है।",

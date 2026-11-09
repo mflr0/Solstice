@@ -705,6 +705,15 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	SecurityMoveOrClear:    "Scegli un livello di sostituzione oppure rimuovi il livello, non entrambi.",
 	SecurityMemberExists:   "Questo titolare è già membro del livello.",
 
+	// Issue layouts.
+	LayoutFormUnknown:    "Modulo sconosciuto: %s. Usa create o view.",
+	LayoutFieldFixed:     "Il campo %s compare sempre al suo posto: un layout non può collocarlo.",
+	LayoutFieldTwice:     "Il campo %s è collocato due volte.",
+	LayoutZoneOnCreate:   "Il modulo di creazione non ha zone: togli la zona di %s.",
+	LayoutZoneInvalid:    "Colloca %s nella zona principale o laterale.",
+	LayoutRequiredOnView: "Solo il modulo di creazione rende un campo obbligatorio: %s.",
+	LayoutRequiredHidden: "Il campo %s non può essere insieme nascosto e obbligatorio.",
+
 	// Theme packages.
 	ThemeFileMissing:      "Nessun pacchetto tema inviato.",
 	ThemeFileTooLarge:     "Il pacchetto tema supera %d MiB.",

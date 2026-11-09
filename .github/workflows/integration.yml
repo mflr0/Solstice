@@ -41,10 +41,12 @@ jobs:
       - name: Install the MariaDB client
         run: sudo apt-get update && sudo apt-get install --yes mariadb-client
       # Throwaway credentials of a database that lives as long as this job.
+      # solstice_t has the seed's collation: the tables its migrations add
+      # take it, and a foreign key needs the same on both sides.
       - name: Create the databases
         run: |
           mariadb --protocol=tcp -h 127.0.0.1 -uroot -proot <<'SQL'
-          CREATE DATABASE solstice_t CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE DATABASE solstice_t CHARACTER SET utf8mb4 COLLATE utf8mb4_uca1400_ai_ci;
           CREATE DATABASE solstice_t_setup CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
           CREATE USER 'solstice'@'%' IDENTIFIED BY 'solstice';
           GRANT ALL ON solstice_t.* TO 'solstice'@'%';
