@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { legacyBoardPath } from '../core/board.js';
-  import { isPublicRoute, paths, safeNext } from '../core/route.js';
+  import { isPublicRoute, legacySearchPath, paths, safeNext } from '../core/route.js';
   import { createProject, onBoard } from '../core/scope.js';
   import { shortcutFor } from '../core/shortcuts.js';
   import { t } from '../i18n/t.js';
@@ -30,7 +30,7 @@
   import ProjectPage from './pages/ProjectPage.svelte';
   import ProjectsPage from './pages/ProjectsPage.svelte';
   import ResetPage from './pages/ResetPage.svelte';
-  import SearchPage from './pages/SearchPage.svelte';
+  import ViewPage from './pages/ViewPage.svelte';
   import ShellBanner from './ShellBanner.svelte';
   import ShortcutsHelp from './ShortcutsHelp.svelte';
   import TopBar from './TopBar.svelte';
@@ -75,6 +75,13 @@
     if (session.me && route.name === 'legacyBoard') {
       const to = legacyBoardPath(router.path, router.search) ?? paths.boards();
       router.navigate(to, { replace: true });
+    }
+  });
+
+  // Old search addresses (/issues?filter=12&…) lead to the view.
+  $effect(() => {
+    if (session.me && route.name === 'legacySearch') {
+      router.navigate(legacySearchPath(router.search), { replace: true });
     }
   });
 
@@ -155,8 +162,8 @@
         {:catch}
           {@render failed()}
         {/await}
-      {:else if route.name === 'search'}
-        <SearchPage />
+      {:else if route.name === 'view'}
+        {#key route.id}<ViewPage viewId={route.id} />{/key}
       {:else if route.name === 'issue'}
         <IssuePage issueKey={route.key} />
       {:else if route.name === 'person'}
@@ -231,7 +238,7 @@
           {:catch}
             {@render failed()}
           {/await}{/key}
-      {:else if route.name === 'legacyBoard'}
+      {:else if route.name === 'legacyBoard' || route.name === 'legacySearch'}
         <div class="page"><p class="muted loading">{t.common.loading}</p></div>
       {:else}
         <NotFoundPage />

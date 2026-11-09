@@ -380,16 +380,11 @@ back / forward.
   `--accent-text` with a wavy underline). Suggestions:
   `ul.popover.jql-suggestions[role=listbox]` > `li.item` (`.active`, `.label`,
   `.detail`). `.jql-foot` (`.hint`, the run button), `p.error-text.jql-error`.
-- Saved filters (search page): `.search-page` > `.search-layout` >
-  `aside.saved-filters` + `.search-main`. In the aside: `button.saved-toggle`
-  (shown ≤ 1000 px, unfolds `.saved-body.open`), `.saved-head` >
-  `h2.saved-title` + `button.manage`; in manage mode, `.manage-bar` >
-  `label.pick-all` + `.manage-actions` (small buttons, wrapping), and each
-  `li.saved-item` holds `label.pick` (checkbox, `.label` > `.name`, `.owner`)
-  instead of the star and link. Then `h3.group-label` (Favoris, Mes filtres, Partagés avec moi),
-  `li.saved-item` (`.is-current`) > `button.star` (`[aria-pressed='true']`
-  for a favourite) + `a` (`[aria-current='page']`; `.name`, `.owner`). The
-  page head shows `.modified` (« modifié ») when the open filter was changed.
+- View page (`/views/:id`, `/views/new`): `.view-page` > `.view-head` >
+  `a.back`, `h1.view-title` (holding `input.name-input` when the view can be
+  renamed), `.unsaved` once something differs from the saved view, and
+  `.actions` (`.link-btn.discard`, `.btn`s); then `.issue-search`, or
+  `p.empty-state` when the view doesn't exist or isn't shared.
 - Quick search (top bar): `form.topbar-search.quick-search` >
   `input.input#quick-search[role=combobox]`, `kbd`,
   `ul.popover.quick-search-results[role=listbox]` > `li.group-label`, `li.sep`,
@@ -593,3 +588,8 @@ an entry here. Adding a hook does neither.
   removed without a bump: nothing ever set them, so no theme could rely on them.
   `.search-tools` (with its `.count`, `.sort`, `.sort-dir`) and `.mode-switch`
   went the same way in #812: no release had shipped them yet.
+  The search page's saved filters (`.search-page`, `.search-layout`,
+  `.saved-filters`, `.search-main`, `.saved-toggle`, `.saved-body`,
+  `.saved-head`, `.saved-title`, `.manage`, `.manage-bar`, `.pick-all`,
+  `.manage-actions`, `.saved-item`, `.owner`, `.star`, `.modified`) went with
+  it in #749, for the same reason.

@@ -127,7 +127,6 @@ export const hi: Messages = {
     work: 'मेरा काम',
     projects: 'प्रोजेक्ट',
     boards: 'बोर्ड',
-    search: 'खोज',
     create: 'नया टिकट',
     account: 'खाता',
     myPage: 'मेरा पेज',
@@ -412,7 +411,6 @@ export const hi: Messages = {
   },
 
   search: {
-    title: 'खोज',
     results: (n: number) => plural(n, 'टिकट', 'टिकट'),
     empty: 'कोई टिकट मेल नहीं खाता।',
     columns: {
@@ -426,7 +424,7 @@ export const hi: Messages = {
       add: 'कॉलम जोड़ें…',
       none: 'कोई कॉलम मेल नहीं खाता।',
       custom: 'कस्टम',
-      withView: 'फ़िल्टर के साथ सहेजा गया',
+      withView: 'व्यू के साथ सहेजा गया',
       inBrowser: 'इस ब्राउज़र में रखा गया',
     },
     exportCsv: 'CSV में निर्यात करें',
@@ -677,51 +675,17 @@ export const hi: Messages = {
     profileOf: (name: string) => `${name} की प्रोफ़ाइल देखें`,
   },
 
-  saved: {
-    title: 'सहेजे गए फ़िल्टर',
-    toggle: (n: number) => `सहेजे गए फ़िल्टर (${n})`,
-    favourites: 'पसंदीदा',
-    mine: 'मेरे फ़िल्टर',
-    shared: 'मेरे साथ साझा किए गए',
-    none: 'अभी कोई फ़िल्टर नहीं। किसी खोज को यहाँ दोबारा पाने के लिए उसे सहेजें।',
-    save: 'सहेजें',
-    saveAs: 'इस रूप में सहेजें…',
-    saveSearch: 'खोज सहेजें',
-    modified: 'बदला हुआ',
-    rename: 'नाम बदलें',
-    delete: 'मिटाएँ',
-    star: (name: string) => `“${name}” को पसंदीदा में जोड़ें`,
-    unstar: (name: string) => `“${name}” को पसंदीदा से हटाएँ`,
-    close: (name: string) => `“${name}” बंद करें`,
-    name: 'नाम',
-    description: 'वर्णन',
-    newTitle: 'खोज सहेजें',
-    renameTitle: 'फ़िल्टर का नाम बदलें',
-    deleteTitle: 'फ़िल्टर मिटाएँ',
-    created: (name: string) => `फ़िल्टर “${name}” सहेजा गया।`,
-    updated: (name: string) => `फ़िल्टर “${name}” अपडेट किया गया।`,
-    deleted: (name: string) => `फ़िल्टर “${name}” मिटाया गया।`,
-    confirmDelete: (name: string) =>
-      `फ़िल्टर “${name}” मिटाएँ? जिन लोगों के साथ यह साझा है, वे इसे फिर नहीं देख पाएँगे।`,
-    by: (who: string) => `${who} द्वारा`,
-    current: 'फ़िल्टर',
-    gone: 'यह फ़िल्टर अब मौजूद नहीं है, या आपके साथ साझा नहीं है।',
-    manage: 'प्रबंधित करें',
-    manageDone: 'हो गया',
-    selectAll: 'सभी चुनें',
-    select: (name: string) => `“${name}” चुनें`,
-    actions: 'चुने गए फ़िल्टर बदलें',
-    favouriteMany: (n: number) => `पसंदीदा बनाएँ (${n})`,
-    unfavouriteMany: (n: number) => `पसंदीदा से हटाएँ (${n})`,
-    deleteMany: (n: number) => `मिटाएँ (${n})`,
-    deleteManyTitle: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाएँ?`,
-    confirmDeleteMany: (n: number, skipped: number) =>
-      `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाएँ? जिन लोगों के साथ ये साझा हैं, वे इन्हें फिर नहीं देख पाएँगे।` +
-      (skipped > 0
-        ? ` चुने गए ${plural(skipped, 'फ़िल्टर', 'फ़िल्टर')} आपके नहीं हैं, इसलिए बने रहेंगे।`
-        : ''),
-    deletedMany: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} मिटाए गए।`,
-    failedMany: (n: number) => `${plural(n, 'फ़िल्टर', 'फ़िल्टर')} नहीं बदले जा सके।`,
+  view: {
+    title: 'व्यू',
+    untitled: 'नया व्यू',
+    name: 'व्यू का नाम',
+    unsaved: 'बिना सहेजे बदलाव',
+    discard: 'बदलाव छोड़ें',
+    saveAsNew: 'नए व्यू के रूप में सहेजें',
+    save: 'व्यू सहेजें',
+    created: (name: string) => `व्यू “${name}” सहेजा गया।`,
+    updated: (name: string) => `व्यू “${name}” अपडेट किया गया।`,
+    gone: 'यह व्यू मौजूद नहीं है, या आपके साथ साझा नहीं है।',
   },
 
   table: {

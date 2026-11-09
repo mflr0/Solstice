@@ -69,6 +69,7 @@
   const section = $derived.by(() => {
     switch (router.route.name) {
       case 'home':
+      case 'view':
         return 'home';
       case 'projects':
       case 'project':
@@ -80,8 +81,6 @@
       case 'boardReports':
       case 'boardSettings':
         return 'boards';
-      case 'search':
-        return 'search';
       default:
         return '';
     }
@@ -131,11 +130,6 @@
         class="nav-link"
         href={paths.boards()}
         aria-current={section === 'boards' ? 'page' : undefined}>{t.nav.boards}</a
-      >
-      <a
-        class="nav-link"
-        href={paths.search()}
-        aria-current={section === 'search' ? 'page' : undefined}>{t.nav.search}</a
       >
     </nav>
 

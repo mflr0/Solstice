@@ -39,11 +39,11 @@
       notify(errorMessage(e), 'error');
       return;
     }
-    // The project and board pages, and a search with no filter of the user's own, follow the new scope.
+    // The project and board pages, and an unsaved view, follow the new scope.
     const route = router.route;
-    if (route.name === 'search') {
+    if (route.name === 'view') {
       const loc = readLocation(router.search).loc;
-      const jql = scopeSearchSwitch(loc, from, key);
+      const jql = scopeSearchSwitch({ ...loc, filter: route.id }, from, key);
       if (jql !== null) {
         router.navigate(`${router.path}${writeLocation({ ...loc, jql, page: 1 })}`, {
           replace: true,

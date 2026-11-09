@@ -1,8 +1,8 @@
 /**
- * The search page's address: the query as JQL (so a link carries the whole
+ * A search's address: the query as JQL (so a link carries the whole
  * search), how it is shown, the saved filter it came from, the page.
  *
- *   /issues?jql=status+%3D+Open&mode=jql&filter=12&page=2
+ *   /views/12?jql=status+%3D+Open&mode=jql&page=2
  *
  * A missing jql means "the default search"; an empty one means "everything".
  * Older links carry ?q= in the former syntax (or JQL): they still work.
@@ -64,7 +64,7 @@ export function writeLocation(loc: SearchLocation): string {
   return s ? `?${s}` : '';
 }
 
-/** The search page showing a query. */
+/** An unsaved view showing a query. */
 export function searchHref(jql: string): string {
-  return `/issues${writeLocation({ jql, mode: null, filter: null, page: 1 })}`;
+  return `/views/new${writeLocation({ jql, mode: null, filter: null, page: 1 })}`;
 }

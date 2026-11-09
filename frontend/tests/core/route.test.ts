@@ -4,6 +4,7 @@ import {
   focusesPageHeading,
   isAppLink,
   isPublicRoute,
+  legacySearchPath,
   matchRoute,
   paths,
   safeNext,
@@ -16,7 +17,13 @@ describe('matchRoute', () => {
     ['/projects', { name: 'projects' }],
     ['/projects/demo', { name: 'project', key: 'DEMO' }],
     ['/projects/DEMO/settings', { name: 'projectSettings', key: 'DEMO' }],
-    ['/issues', { name: 'search' }],
+    ['/issues', { name: 'legacySearch' }],
+    ['/issues/', { name: 'legacySearch' }],
+    ['/views/new', { name: 'view', id: null }],
+    ['/views/12', { name: 'view', id: 12 }],
+    ['/views/0', { name: 'notFound' }],
+    ['/views/abc', { name: 'notFound' }],
+    ['/views', { name: 'notFound' }],
     ['/browse/demo-12', { name: 'issue', key: 'DEMO-12' }],
     ['/people/marie.durand', { name: 'person', username: 'marie.durand' }],
     ['/people/ren%C3%A9', { name: 'person', username: 'rené' }],
@@ -49,7 +56,9 @@ describe('matchRoute', () => {
       name: 'person',
       username: 'jeanne dupont',
     });
-    expect(paths.search('#urgent @moi')).toBe('/issues?q=%23urgent%20%40moi');
+    expect(paths.search('#urgent @moi')).toBe('/views/new?q=%23urgent%20%40moi');
+    expect(matchRoute(paths.search())).toEqual({ name: 'view', id: null });
+    expect(matchRoute(paths.view(7))).toEqual({ name: 'view', id: 7 });
     expect(paths.admin('overview')).toBe('/admin');
     expect(paths.admin('linkTypes')).toBe('/admin/link-types');
     expect(paths.admin('updates')).toBe('/admin/updates');
@@ -65,6 +74,20 @@ describe('matchRoute', () => {
     });
     expect(paths.account('profile')).toBe('/settings');
     expect(matchRoute(paths.account('tokens'))).toEqual({ name: 'account', section: 'tokens' });
+  });
+});
+
+describe('legacySearchPath', () => {
+  it.each([
+    ['?filter=12&page=2', '/views/12?page=2'],
+    ['?filter=12', '/views/12'],
+    ['?jql=status+%3D+Open&filter=3&mode=jql', '/views/3?jql=status+%3D+Open&mode=jql'],
+    ['', '/views/new'],
+    ['?q=%23urgent', '/views/new?q=%23urgent'],
+    ['?jql=project+%3D+DEMO&mode=jql&page=3', '/views/new?jql=project+%3D+DEMO&mode=jql&page=3'],
+    ['?filter=abc&page=2', '/views/new?page=2'],
+  ])('%s leads to %s', (search, to) => {
+    expect(legacySearchPath(search)).toBe(to);
   });
 });
 
@@ -119,12 +142,16 @@ describe('the pages of the e-mailed links', () => {
 
 describe('focusesPageHeading', () => {
   it('asks for the heading on a push to another path', () => {
-    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '' }, false)).toBe(true);
+    expect(focusesPageHeading('/projects', { pathname: '/views/new', hash: '' }, false)).toBe(true);
   });
 
   it('keeps the focus on a query-only change, a replace or a hash target', () => {
-    expect(focusesPageHeading('/issues', { pathname: '/issues', hash: '' }, false)).toBe(false);
-    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '' }, true)).toBe(false);
-    expect(focusesPageHeading('/projects', { pathname: '/issues', hash: '#a' }, false)).toBe(false);
+    expect(focusesPageHeading('/views/new', { pathname: '/views/new', hash: '' }, false)).toBe(
+      false,
+    );
+    expect(focusesPageHeading('/projects', { pathname: '/views/new', hash: '' }, true)).toBe(false);
+    expect(focusesPageHeading('/projects', { pathname: '/views/new', hash: '#a' }, false)).toBe(
+      false,
+    );
   });
 });

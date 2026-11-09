@@ -223,8 +223,7 @@
     {/if}
 
     <p class="hint">
-      <span>{t.boards.shareFilterBefore}</span><a href="/issues?filter={b.filterId}"
-        >{b.filterName}</a
+      <span>{t.boards.shareFilterBefore}</span><a href={paths.view(b.filterId)}>{b.filterName}</a
       ><span>{t.boards.shareFilterAfter}</span>
     </p>
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}

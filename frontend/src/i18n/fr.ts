@@ -123,7 +123,6 @@ export const fr: Messages = {
     work: 'Mon travail',
     projects: 'Projets',
     boards: 'Tableaux',
-    search: 'Recherche',
     create: 'Nouveau ticket',
     account: 'Compte',
     myPage: 'Ma page',
@@ -418,7 +417,6 @@ export const fr: Messages = {
   },
 
   search: {
-    title: 'Recherche',
     results: (n: number) => plural(n, 'ticket', 'tickets'),
     empty: 'Aucun ticket ne correspond.',
     columns: {
@@ -432,7 +430,7 @@ export const fr: Messages = {
       add: 'Ajouter une colonne…',
       none: 'Aucune colonne ne correspond.',
       custom: 'personnalisé',
-      withView: 'Enregistrées avec le filtre',
+      withView: 'Enregistrées avec la vue',
       inBrowser: 'Gardées dans ce navigateur',
     },
     exportCsv: 'Exporter en CSV',
@@ -685,52 +683,17 @@ export const fr: Messages = {
     profileOf: (name: string) => `Voir le profil de ${name}`,
   },
 
-  saved: {
-    title: 'Filtres enregistrés',
-    toggle: (n: number) => `Filtres enregistrés (${n})`,
-    favourites: 'Favoris',
-    mine: 'Mes filtres',
-    shared: 'Partagés avec moi',
-    none: 'Aucun filtre pour l’instant. Enregistrez une recherche pour la retrouver ici.',
-    save: 'Enregistrer',
-    saveAs: 'Enregistrer sous…',
-    saveSearch: 'Enregistrer la recherche',
-    modified: 'modifié',
-    rename: 'Renommer',
-    delete: 'Supprimer',
-    star: (name: string) => `Ajouter « ${name} » aux favoris`,
-    unstar: (name: string) => `Retirer « ${name} » des favoris`,
-    close: (name: string) => `Fermer « ${name} »`,
-    name: 'Nom',
-    description: 'Description',
-    newTitle: 'Enregistrer la recherche',
-    renameTitle: 'Renommer le filtre',
-    deleteTitle: 'Supprimer le filtre',
-    created: (name: string) => `Filtre « ${name} » enregistré.`,
-    updated: (name: string) => `Filtre « ${name} » mis à jour.`,
-    deleted: (name: string) => `Filtre « ${name} » supprimé.`,
-    confirmDelete: (name: string) =>
-      `Supprimer le filtre « ${name} » ? Les personnes avec qui il est partagé ne le verront plus.`,
-    by: (who: string) => `de ${who}`,
-    current: 'Filtre',
-    gone: 'Ce filtre n’existe plus, ou n’est pas partagé avec vous.',
-    manage: 'Gérer',
-    manageDone: 'Terminé',
-    selectAll: 'Tout sélectionner',
-    select: (name: string) => `Sélectionner « ${name} »`,
-    actions: 'Modifier les filtres sélectionnés',
-    favouriteMany: (n: number) => `Mettre en favori (${n})`,
-    unfavouriteMany: (n: number) => `Retirer des favoris (${n})`,
-    deleteMany: (n: number) => `Supprimer (${n})`,
-    deleteManyTitle: (n: number) => `Supprimer ${plural(n, 'filtre', 'filtres')} ?`,
-    confirmDeleteMany: (n: number, skipped: number) =>
-      `Supprimer ${plural(n, 'filtre', 'filtres')} ? ${n === 1 ? 'Les personnes avec qui il est partagé ne le verront plus.' : 'Les personnes avec qui ils sont partagés ne les verront plus.'}` +
-      (skipped > 0
-        ? ` ${plural(skipped, 'filtre sélectionné ne vous appartient pas et reste', 'filtres sélectionnés ne vous appartiennent pas et restent')}.`
-        : ''),
-    deletedMany: (n: number) => `${plural(n, 'filtre supprimé', 'filtres supprimés')}.`,
-    failedMany: (n: number) =>
-      `${plural(n, 'filtre n’a pas pu être modifié', 'filtres n’ont pas pu être modifiés')}.`,
+  view: {
+    title: 'Vue',
+    untitled: 'Nouvelle vue',
+    name: 'Nom de la vue',
+    unsaved: 'Modifications non enregistrées',
+    discard: 'Annuler les modifications',
+    saveAsNew: 'Enregistrer comme nouvelle vue',
+    save: 'Enregistrer la vue',
+    created: (name: string) => `Vue « ${name} » enregistrée.`,
+    updated: (name: string) => `Vue « ${name} » mise à jour.`,
+    gone: 'Cette vue n’existe pas, ou n’est pas partagée avec vous.',
   },
 
   table: {
