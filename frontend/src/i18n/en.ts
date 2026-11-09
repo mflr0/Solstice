@@ -1009,6 +1009,7 @@ export const en = {
     defaultAssignee: 'Default',
     required: 'Required',
     checkFields: 'Some fields need your attention.',
+    addPerson: 'Add a person',
     missing: {
       project: 'Choose a project.',
       type: 'Choose a type.',

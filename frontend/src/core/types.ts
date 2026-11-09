@@ -531,6 +531,32 @@ export interface CustomFieldRef {
   jql: string;
 }
 
+/** The type of a custom field an issue form can set. */
+export type CustomFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'date'
+  | 'datetime'
+  | 'select'
+  | 'multiselect'
+  | 'checkboxes'
+  | 'radio'
+  | 'user'
+  | 'multiuser'
+  | 'labels'
+  | 'url';
+
+/** A custom field a project and issue type offer (GET /api/projects/{key}/fields). */
+export interface OfferedField {
+  id: number;
+  name: string;
+  type: CustomFieldType;
+  typeKey: string;
+  /** Enabled options, in order, for the choice types. */
+  options: { id: number; value: string }[];
+}
+
 /** A version or component across projects (GET /api/versions, /api/components). */
 export interface ProjectValue {
   id: number;
