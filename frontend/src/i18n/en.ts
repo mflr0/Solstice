@@ -250,7 +250,17 @@ export const en = {
   },
 
   errors: {
-    network: 'The server isn’t responding. Check your connection.',
+    network:
+      'The server can’t be reached right now. Check your connection, or try again in a moment.',
+    sessionEnded: 'Your session has ended. Sign in again.',
+    forbidden: 'You aren’t allowed to do this.',
+    missing: 'Not found, or you don’t have access to it.',
+    tooLarge: 'This is too large for the server to accept.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Too many requests. Wait a moment, then try again.'
+        : `Too many requests. Try again in ${s < 60 ? `${s} s` : `${Math.ceil(s / 60)} min`}.`,
+    server: 'The server ran into a problem. Try again.',
     generic: 'Something went wrong.',
     notFound: 'This page doesn’t exist, or you don’t have access to it.',
     pageLoad: 'This page could not be loaded. Check your connection and reload.',

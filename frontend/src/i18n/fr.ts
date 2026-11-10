@@ -249,7 +249,17 @@ export const fr: Messages = {
   },
 
   errors: {
-    network: 'Le serveur ne répond pas. Vérifiez votre connexion.',
+    network:
+      'Le serveur est injoignable pour le moment. Vérifiez votre connexion, ou réessayez dans un instant.',
+    sessionEnded: 'Votre session a pris fin. Reconnectez-vous.',
+    forbidden: 'Vous n’êtes pas autorisé à faire ceci.',
+    missing: 'Introuvable, ou vous n’y avez pas accès.',
+    tooLarge: 'C’est trop volumineux pour être accepté par le serveur.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Trop de requêtes. Patientez un instant, puis réessayez.'
+        : `Trop de requêtes. Réessayez dans ${s < 60 ? `${s}\u00a0s` : `${Math.ceil(s / 60)}\u00a0min`}.`,
+    server: 'Le serveur a rencontré un problème. Réessayez.',
     generic: 'Une erreur est survenue.',
     notFound: 'Cette page n’existe pas, ou vous n’y avez pas accès.',
     pageLoad: 'Cette page n’a pas pu être chargée. Vérifiez votre connexion et rechargez.',

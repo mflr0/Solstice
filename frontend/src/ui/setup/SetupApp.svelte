@@ -53,7 +53,7 @@
   });
 
   $effect(() => {
-    configureSetupApi(locale, m.errors.network, m.errors.generic);
+    configureSetupApi(locale, m.errors);
     document.title = `${m.steps[step]} — ${m.documentTitle}`;
     document.documentElement.lang = locale;
     if (locale === 'hi') void import('../../i18n/devanagari.css');

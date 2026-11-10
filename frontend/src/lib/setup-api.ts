@@ -6,6 +6,7 @@
  */
 
 import type { ImportCheck, ImportSource, ImportView } from '../core/admin-types.js';
+import { failureMessage, parseBody, serverMessage, type FailureMessages } from '../core/failure.js';
 import type { Locale } from '../i18n/locales.js';
 
 export interface ConfigSave {
@@ -87,11 +88,23 @@ export class SetupError extends Error {
   }
 }
 
-const settings = { locale: 'en' as Locale, network: '', generic: '' };
+const settings: { locale: Locale; errors: FailureMessages } = {
+  locale: 'en',
+  errors: {
+    network: '',
+    sessionEnded: '',
+    forbidden: '',
+    missing: '',
+    tooLarge: '',
+    tooMany: () => '',
+    server: '',
+    generic: '',
+  },
+};
 
 /** The language answers come in, and the messages for failures without one. */
-export function configureSetupApi(locale: Locale, network: string, generic: string): void {
-  Object.assign(settings, { locale, network, generic });
+export function configureSetupApi(locale: Locale, errors: FailureMessages): void {
+  Object.assign(settings, { locale, errors });
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -110,22 +123,23 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
-    throw new SetupError(settings.network, 0);
+    throw new SetupError(settings.errors.network, 0);
   }
   if (!res.ok) {
-    let message = settings.generic;
-    try {
-      const data: unknown = await res.json();
-      if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
-        message = data.error;
-      }
-    } catch {
-      // Not JSON: keep the generic message.
-    }
+    const data = parseBody(await res.text().catch(() => ''));
+    const message =
+      serverMessage(data) ??
+      failureMessage(settings.errors, res.status, res.headers.get('Retry-After'));
     throw new SetupError(message, res.status);
   }
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  const text = await res.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new SetupError(failureMessage(settings.errors, res.status), res.status);
+  }
 }
 
 export const setupApi = {
@@ -144,6 +158,6 @@ export const setupApi = {
 };
 
 /** The message of a failure, or the generic one configureSetupApi stored. */
-export function setupErrorMessage(e: unknown, generic = settings.generic): string {
-  return e instanceof Error && e.message ? e.message : generic;
+export function setupErrorMessage(e: unknown, generic = settings.errors.generic): string {
+  return e instanceof SetupError && e.message ? e.message : generic;
 }

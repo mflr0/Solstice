@@ -16,6 +16,8 @@ class Session {
   me = $state<Me | null>(null);
   meta = $state<Meta | null>(null);
   ready = $state(false);
+  /** The session of this tab ran out: the login page says so. */
+  ended = $state(false);
 
   async init(): Promise<void> {
     setUnauthorizedHandler(() => this.expired());
@@ -34,6 +36,7 @@ class Session {
   }
 
   async signedIn(me: Me): Promise<void> {
+    this.ended = false;
     if (adoptAccountLocale(me.locale)) return;
     this.me = me;
     this.meta = await api.meta();
@@ -50,6 +53,7 @@ class Session {
 
   private expired(): void {
     if (this.me === null && isPublicRoute(router.route)) return;
+    if (this.me !== null) this.ended = true;
     this.me = null;
     if (!isPublicRoute(router.route)) {
       router.navigate(paths.login(router.here), { replace: true });

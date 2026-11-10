@@ -54,6 +54,7 @@
 
 <AuthSheet>
   <h1 class="sr-only">{t.login.title}</h1>
+  {#if session.ended && !error}<p class="ended" role="status">{t.errors.sessionEnded}</p>{/if}
   {#if publicSettings.value.sso}
     <a class="btn btn-primary submit sso" href={ssoHref}
       >{t.login.sso(publicSettings.value.sso.name)}</a
@@ -88,6 +89,10 @@
 </AuthSheet>
 
 <style>
+  .ended {
+    margin: 0 0 14px;
+  }
+
   .sso {
     display: flex;
   }
