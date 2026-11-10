@@ -612,6 +612,7 @@
       <!-- Sections -->
       <section class="part" aria-labelledby="part-sections">
         <h2 class="section-title" id="part-sections">{t.boardSettings.sections}</h2>
+        <p class="hint intro">{t.boardSettings.sectionsHint}</p>
         <fieldset class="choices">
           <legend class="sr-only">{t.boardSettings.sections}</legend>
           {#each ['none', 'custom', 'assignee', 'epic', 'parent'] as const as s (s)}
@@ -683,6 +684,7 @@
       <!-- Estimation -->
       <section class="part" aria-labelledby="part-estimate">
         <h2 class="section-title" id="part-estimate">{t.boardSettings.estimation}</h2>
+        <p class="hint intro">{t.boardSettings.estimationHint}</p>
         <fieldset class="choices">
           <legend class="sr-only">{t.boardSettings.estimation}</legend>
           <label class="choice">
@@ -754,7 +756,7 @@
         <p class="hint">{t.boardSettings.dangerHint}</p>
         <span class="grow"></span>
         <button type="button" class="btn btn-danger" onclick={() => (deleting = true)}
-          >{t.boardSettings.danger}</button
+          >{t.boardSettings.deleteBoard}</button
         >
       </div>
     </section>
@@ -770,7 +772,7 @@
         type="button"
         class="btn btn-primary"
         disabled={deleteBusy}
-        onclick={() => void remove()}>{t.boardSettings.danger}</button
+        onclick={() => void remove()}>{t.boardSettings.deleteBoard}</button
       >
     {/snippet}
   </Modal>
