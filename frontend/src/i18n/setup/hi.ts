@@ -255,7 +255,7 @@ export const hi: SetupMessages = {
       boards: 'बोर्ड',
       'board columns': 'बोर्ड कॉलम',
       'quick filters': 'क्विक फ़िल्टर',
-      swimlanes: 'स्विमलेन',
+      'board sections': 'बोर्ड सेक्शन',
       sprints: 'स्प्रिंट',
       'issues in sprints': 'स्प्रिंट में टिकट',
       'issues ranked': 'क्रम दिए गए टिकट',

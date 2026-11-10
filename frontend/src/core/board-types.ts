@@ -6,7 +6,7 @@
 import type { FilterShare, IssueBrief, IssueSummary, StatusRef, UserRef } from './types.js';
 
 export type BoardKind = 'kanban' | 'scrum';
-export type SwimlaneStrategy = 'none' | 'custom' | 'assignee' | 'epic' | 'parent';
+export type SectionStrategy = 'none' | 'custom' | 'assignee' | 'epic' | 'parent';
 export type SprintState = 'future' | 'active' | 'closed';
 
 export interface ProjectBrief {
@@ -62,7 +62,7 @@ export interface QuickFilter {
   description?: string;
 }
 
-export interface Swimlane {
+export interface BoardSection {
   id: number;
   name: string;
   query: string | null;
@@ -77,7 +77,7 @@ export interface BoardSettings {
   filterName: string;
   query: string;
   subQuery: string | null;
-  sectionBy: SwimlaneStrategy;
+  sectionBy: SectionStrategy;
   estimate: '' | 'points' | 'time';
   /** 'timeoriginalestimate' or 'customfield_N'. */
   estimateField: string | null;
@@ -92,7 +92,7 @@ export interface BoardDetail {
   projects: ProjectBrief[];
   columns: BoardColumn[];
   quickFilters: QuickFilter[];
-  sections: Swimlane[];
+  sections: BoardSection[];
   /** Open sprints, the active one first. */
   sprints: Sprint[];
   estimateFields: { id: string; name: string }[];
@@ -142,7 +142,7 @@ export interface BoardPatch {
   name?: string;
   subQuery?: string;
   doneCutoff?: string;
-  sectionBy?: SwimlaneStrategy;
+  sectionBy?: SectionStrategy;
   estimate?: string;
   kanbanBacklog?: boolean;
   columns?: {

@@ -54,7 +54,7 @@ file of the same shape: `fr.ts`, `de.ts`, `it.ts`, `hi.ts`.
 | résolution          | resolution   | Lösung         | risoluzione            | रिज़ॉल्यूशन   |
 | filtre              | filter       | Filter         | filtro                 | फ़िल्टर       |
 | filtre rapide       | quick filter | Schnellfilter  | filtro rapido          | क्विक फ़िल्टर |
-| couloir             | swimlane     | Swimlane       | corsia                 | स्विमलेन      |
+| section             | section      | Abschnitt      | sezione                | सेक्शन        |
 | étiquette           | label        | Label          | etichetta              | लेबल          |
 | composant           | component    | Komponente     | componente             | कंपोनेंट      |
 | version corrigée    | fix version  | Lösungsversion | versione di correzione | फ़िक्स वर्ज़न |

@@ -1,5 +1,5 @@
 /**
- * Board rules that do not touch the page: grouping cards into swimlanes,
+ * Board rules that do not touch the page: grouping cards into sections,
  * where a dropped card lands, sprint arithmetic, card filters,
  * old board addresses. Pure functions, tested in tests/core/board.test.ts.
  */
@@ -9,8 +9,8 @@ import type {
   CardMove,
   Sprint,
   SprintPatch,
-  Swimlane,
-  SwimlaneStrategy,
+  BoardSection,
+  SectionStrategy,
 } from './board-types.js';
 import type { IssueBrief, UserRef } from './types.js';
 import { emptyFilters, jqlToFilters, type FilterState } from './filters.js';
@@ -18,32 +18,32 @@ import { isoDay, parseDay } from './dates.js';
 import { formatLocale } from '../i18n/format.js';
 
 /** A horizontal band of the board. Wording is left to the interface. */
-export type Lane =
+export type Section =
   | { id: string; kind: 'all'; cards: BoardCard[] }
   | { id: string; kind: 'custom'; name: string; cards: BoardCard[] }
   | { id: string; kind: 'assignee'; user: UserRef | null; cards: BoardCard[] }
   | { id: string; kind: 'epic'; issue: IssueBrief | null; cards: BoardCard[] }
   | { id: string; kind: 'parent'; issue: IssueBrief; cards: BoardCard[] }
-  /** Cards no other lane takes. */
+  /** Cards no other section takes. */
   | { id: string; kind: 'other'; cards: BoardCard[] };
 
 /**
- * Splits cards (in rank order) into swimlanes. Custom lanes follow the
- * board's order (the server tells each card its lane); people are sorted by
- * name, epics and parents come in the order of their first card; the lane
- * for "nobody", "no epic" or "everything else" is last. With parent lanes, a
- * parent heads its lane rather than appearing as a card.
+ * Splits cards (in rank order) into sections. Custom sections follow the
+ * board's order (the server tells each card its section); people are sorted by
+ * name, epics and parents come in the order of their first card; the section
+ * for "nobody", "no epic" or "everything else" is last. With parent sections, a
+ * parent heads its section rather than appearing as a card.
  */
-export function groupLanes(
+export function groupSections(
   cards: BoardCard[],
-  strategy: SwimlaneStrategy,
-  lanes: Swimlane[],
-): Lane[] {
+  strategy: SectionStrategy,
+  sections: BoardSection[],
+): Section[] {
   switch (strategy) {
     case 'custom': {
-      const known = new Set(lanes.map((l) => l.id));
-      const out: Lane[] = lanes.map((l) => ({
-        id: `lane-${l.id}`,
+      const known = new Set(sections.map((l) => l.id));
+      const out: Section[] = sections.map((l) => ({
+        id: `section-${l.id}`,
         kind: 'custom',
         name: l.name,
         cards: cards.filter((c) => c.section === l.id),
@@ -64,7 +64,7 @@ export function groupLanes(
         if (entry) entry.cards.push(c);
         else people.set(c.assignee.id, { user: c.assignee, cards: [c] });
       }
-      const out: Lane[] = [...people.values()]
+      const out: Section[] = [...people.values()]
         .sort((a, b) => a.user.name.localeCompare(b.user.name, formatLocale()))
         .map((p) => ({ id: `user-${p.user.id}`, kind: 'assignee', user: p.user, cards: p.cards }));
       if (nobody.length) out.push({ id: 'user-none', kind: 'assignee', user: null, cards: nobody });
@@ -82,7 +82,7 @@ export function groupLanes(
         if (entry) entry.cards.push(c);
         else epics.set(c.epic.key, { issue: c.epic, cards: [c] });
       }
-      const out: Lane[] = [...epics.values()].map((e) => ({
+      const out: Section[] = [...epics.values()].map((e) => ({
         id: `epic-${e.issue.key}`,
         kind: 'epic',
         issue: e.issue,
@@ -99,7 +99,7 @@ export function groupLanes(
         if (entry) entry.cards.push(c);
         else parents.set(c.parent.key, { issue: c.parent, cards: [c] });
       }
-      const out: Lane[] = [...parents.values()].map((p) => ({
+      const out: Section[] = [...parents.values()].map((p) => ({
         id: `parent-${p.issue.key}`,
         kind: 'parent',
         issue: p.issue,
@@ -375,18 +375,18 @@ export function legacyBoardPath(pathname: string, search: string): string | null
   return view.startsWith('planning') ? `/boards/${id}/backlog` : `/boards/${id}`;
 }
 
-/** A card's place on the board: its lane, its column and its rank in that cell. */
+/** A card's place on the board: its section, its column and its rank in that cell. */
 export interface CardSpot {
-  lane: number;
+  section: number;
   column: number;
   index: number;
 }
 
 /**
- * Where a board key moves the focus. counts[lane][column] is the number of
- * cards in each cell (0 for a collapsed lane). next and previous go down and
- * up the column, on into the same column of the next or previous lane; left
- * and right go to the nearest column of the lane that has cards, at the same
+ * Where a board key moves the focus. counts[section][column] is the number of
+ * cards in each cell (0 for a collapsed section). next and previous go down and
+ * up the column, on into the same column of the next or previous section; left
+ * and right go to the nearest column of the section that has cards, at the same
  * rank or its last card. At the edges the focus stays. From nowhere, any key
  * goes to the board's first card. Null on a board without cards.
  */
@@ -395,28 +395,28 @@ export function boardStep(
   at: CardSpot | null,
   dir: 'next' | 'previous' | 'left' | 'right',
 ): CardSpot | null {
-  const count = (lane: number, column: number) => counts[lane]?.[column] ?? 0;
+  const count = (section: number, column: number) => counts[section]?.[column] ?? 0;
   if (!at) {
-    for (let lane = 0; lane < counts.length; lane++)
-      for (let column = 0; column < (counts[lane]?.length ?? 0); column++)
-        if (count(lane, column) > 0) return { lane, column, index: 0 };
+    for (let section = 0; section < counts.length; section++)
+      for (let column = 0; column < (counts[section]?.length ?? 0); column++)
+        if (count(section, column) > 0) return { section, column, index: 0 };
     return null;
   }
-  const { lane, column, index } = at;
+  const { section, column, index } = at;
   if (dir === 'next' || dir === 'previous') {
     const step = dir === 'next' ? 1 : -1;
-    if (index + step >= 0 && index + step < count(lane, column))
-      return { lane, column, index: index + step };
-    for (let l = lane + step; l >= 0 && l < counts.length; l += step) {
+    if (index + step >= 0 && index + step < count(section, column))
+      return { section, column, index: index + step };
+    for (let l = section + step; l >= 0 && l < counts.length; l += step) {
       const n = count(l, column);
-      if (n > 0) return { lane: l, column, index: step > 0 ? 0 : n - 1 };
+      if (n > 0) return { section: l, column, index: step > 0 ? 0 : n - 1 };
     }
     return at;
   }
   const step = dir === 'right' ? 1 : -1;
-  for (let c = column + step; c >= 0 && c < (counts[lane]?.length ?? 0); c += step) {
-    const n = count(lane, c);
-    if (n > 0) return { lane, column: c, index: Math.min(index, n - 1) };
+  for (let c = column + step; c >= 0 && c < (counts[section]?.length ?? 0); c += step) {
+    const n = count(section, c);
+    if (n > 0) return { section, column: c, index: Math.min(index, n - 1) };
   }
   return at;
 }

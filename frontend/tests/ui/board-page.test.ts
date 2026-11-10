@@ -8,7 +8,7 @@ import BoardPage from '../../src/ui/pages/BoardPage.svelte';
 
 const status = { id: '1', name: 'To Do', category: 'todo' } as const;
 
-function card(key: string, column: number, lane: number): BoardCard {
+function card(key: string, column: number, section: number): BoardCard {
   return {
     key,
     summary: `Summary ${key}`,
@@ -27,7 +27,7 @@ function card(key: string, column: number, lane: number): BoardCard {
     parent: null,
     estimate: null,
     column,
-    section: lane,
+    section,
     can: { create: true, edit: true },
     watching: false,
   };
@@ -122,17 +122,20 @@ async function settle() {
 }
 
 describe('BoardPage', () => {
-  it('puts the swimlane toggles before the cards in the tab order', async () => {
+  it('puts the section toggles before the cards in the tab order', async () => {
     component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
     for (let i = 0; i < 5; i++) await tick();
     flushSync();
     const order = [...document.querySelectorAll('.board button, .board a')].map((el) =>
-      el.classList.contains('board-lane-toggle')
-        ? `lane ${el.querySelector('.board-lane-title')?.textContent}`
+      el.classList.contains('board-section-toggle')
+        ? `section ${el.querySelector('.board-section-title')?.textContent}`
         : el.closest<HTMLElement>('.board-card')?.dataset.key,
     );
-    expect(order.filter((o) => o?.startsWith('lane'))).toEqual(['lane Urgent', 'lane Later']);
-    expect(order.indexOf('lane Later')).toBeLessThan(order.indexOf('T-1'));
+    expect(order.filter((o) => o?.startsWith('section'))).toEqual([
+      'section Urgent',
+      'section Later',
+    ]);
+    expect(order.indexOf('section Later')).toBeLessThan(order.indexOf('T-1'));
   });
 
   it('starts the card menu with the issue entries', async () => {

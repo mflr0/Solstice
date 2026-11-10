@@ -4,14 +4,14 @@
     applyMove,
     boardStep,
     dropIndex,
-    groupLanes,
+    groupSections,
     neighbours,
     parseQuick,
     readBoardSearch,
     staysInPlace,
     stepMove,
     type CardSpot,
-    type Lane,
+    type Section,
   } from '../../core/board.js';
   import type {
     BoardCard as Card,
@@ -47,7 +47,7 @@
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A board: its columns side by side, optionally cut into swimlanes.
+   * A board: its columns side by side, optionally cut into sections.
    * Cards are dragged between columns (a workflow transition) and within
    * one (their rank), with the mouse or by holding a card by touch; each
    * card's menu does the same from the keyboard.
@@ -132,45 +132,46 @@
   const backlogColumn = $derived(detail?.board.kanbanBacklog ? detail.columns[0] : undefined);
   const columns = $derived(detail ? detail.columns.filter((c) => c.id !== backlogColumn?.id) : []);
 
-  const lanes = $derived(
-    detail && cards ? groupLanes(cards, detail.board.sectionBy, detail.sections) : [],
+  const sections = $derived(
+    detail && cards ? groupSections(cards, detail.board.sectionBy, detail.sections) : [],
   );
-  const banded = $derived(lanes.length > 0 && lanes[0]?.kind !== 'all');
+  const banded = $derived(sections.length > 0 && sections[0]?.kind !== 'all');
   const counts = $derived.by(() => {
     const out: Record<number, number> = {};
-    for (const lane of lanes) for (const c of lane.cards) out[c.column] = (out[c.column] ?? 0) + 1;
+    for (const section of sections)
+      for (const c of section.cards) out[c.column] = (out[c.column] ?? 0) + 1;
     return out;
   });
-  const shownCount = $derived(lanes.reduce((n, l) => n + l.cards.length, 0));
+  const shownCount = $derived(sections.reduce((n, l) => n + l.cards.length, 0));
   const futureSprints = $derived(detail?.sprints.filter((s) => s.state === 'future') ?? []);
 
-  function laneName(lane: Lane): string {
-    switch (lane.kind) {
+  function sectionName(section: Section): string {
+    switch (section.kind) {
       case 'custom':
-        return lane.name;
+        return section.name;
       case 'assignee':
-        return lane.user?.name ?? t.boards.unassigned;
+        return section.user?.name ?? t.boards.unassigned;
       case 'epic':
-        return lane.issue ? `${lane.issue.key} ${lane.issue.summary}` : t.boards.noEpic;
+        return section.issue ? `${section.issue.key} ${section.issue.summary}` : t.boards.noEpic;
       case 'parent':
-        return `${lane.issue.key} ${lane.issue.summary}`;
+        return `${section.issue.key} ${section.issue.summary}`;
       default:
         return t.boards.otherIssues;
     }
   }
 
-  /** The issue an epic or parent lane stands for. */
-  function laneIssue(lane: Lane): IssueBrief | null {
-    return lane.kind === 'epic' || lane.kind === 'parent' ? lane.issue : null;
+  /** The issue an epic or parent section stands for. */
+  function sectionIssue(section: Section): IssueBrief | null {
+    return section.kind === 'epic' || section.kind === 'parent' ? section.issue : null;
   }
 
-  function cell(lane: Lane, column: BoardColumn): Card[] {
-    return lane.cards.filter((c) => c.column === column.id);
+  function cell(section: Section, column: BoardColumn): Card[] {
+    return section.cards.filter((c) => c.column === column.id);
   }
 
-  // Rows of the board grid: the column heads, then for each lane its band
-  // (when lanes are shown) and its cells.
-  const rows = $derived(1 + (banded ? 2 : 1) * Math.max(lanes.length, 1));
+  // Rows of the board grid: the column heads, then for each section its band
+  // (when sections are shown) and its cells.
+  const rows = $derived(1 + (banded ? 2 : 1) * Math.max(sections.length, 1));
   const bandRow = (k: number) => 2 + 2 * k;
   const cellRow = (k: number) => (banded ? 3 + 2 * k : 2 + k);
 
@@ -263,10 +264,10 @@
 
   // Keys -----------------------------------------------------------------------
 
-  function cellCards(lane: Lane, column: BoardColumn): HTMLElement[] {
+  function cellCards(section: Section, column: BoardColumn): HTMLElement[] {
     return [
       ...document.querySelectorAll<HTMLElement>(
-        `.board-cards[data-lane="${lane.id}"][data-column="${column.id}"] > .board-card`,
+        `.board-cards[data-section="${section.id}"][data-column="${column.id}"] > .board-card`,
       ),
     ];
   }
@@ -294,34 +295,36 @@
     }
     if (action !== 'next' && action !== 'previous' && action !== 'left' && action !== 'right')
       return;
-    const counts = lanes.map((l) => columns.map((c) => cellCards(l, c).length));
+    const counts = sections.map((l) => columns.map((c) => cellCards(l, c).length));
     let at: CardSpot | null = null;
     if (card) {
       const box = card.parentElement;
-      const lane = lanes.findIndex((l) => l.id === box?.dataset.lane);
+      const section = sections.findIndex((l) => l.id === box?.dataset.section);
       const column = columns.findIndex((c) => String(c.id) === box?.dataset.column);
       const index =
-        lane < 0 || column < 0 ? -1 : cellCards(lanes[lane]!, columns[column]!).indexOf(card);
-      if (index >= 0) at = { lane, column, index };
+        section < 0 || column < 0
+          ? -1
+          : cellCards(sections[section]!, columns[column]!).indexOf(card);
+      if (index >= 0) at = { section, column, index };
     }
     const to = boardStep(counts, at, action);
     if (!to) return;
     e.preventDefault();
-    const lane = lanes[to.lane];
+    const section = sections[to.section];
     const column = columns[to.column];
-    if (lane && column) cellCards(lane, column)[to.index]?.focus();
+    if (section && column) cellCards(section, column)[to.index]?.focus();
   }
 
   // Dragging -------------------------------------------------------------------
 
-  let drag = $state<{ key: string; lane: string; column: number } | null>(null);
-  let over = $state<{ lane: string; column: number; index: number } | null>(null);
+  let drag = $state<{ key: string; section: string; column: number } | null>(null);
+  let over = $state<{ section: string; column: number; index: number } | null>(null);
 
-  function startDrag(e: DragEvent, card: Card, lane: Lane) {
+  function startDrag(e: DragEvent, card: Card, section: Section) {
     if (!e.dataTransfer) return;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', card.key);
-    drag = { key: card.key, lane: lane.id, column: card.column };
+    drag = { key: card.key, section: section.id, column: card.column };
   }
 
   function endDrag() {
@@ -340,38 +343,38 @@
     return dropIndex(middles, y);
   }
 
-  function dragOver(e: DragEvent, lane: Lane, column: BoardColumn) {
-    // Cards stay in their lane: lanes are views (an assignee, an epic), not places.
-    if (!drag || drag.lane !== lane.id) return;
+  function dragOver(e: DragEvent, section: Section, column: BoardColumn) {
+    // Cards stay in their section: sections are views (an assignee, an epic), not places.
+    if (!drag || drag.section !== section.id) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    hover(e.currentTarget as HTMLElement, lane, column, e.clientY);
+    hover(e.currentTarget as HTMLElement, section, column, e.clientY);
   }
 
-  function hover(el: HTMLElement, lane: Lane, column: BoardColumn, y: number) {
+  function hover(el: HTMLElement, section: Section, column: BoardColumn, y: number) {
     const index = indexAt(el, y);
-    if (over?.lane !== lane.id || over.column !== column.id || over.index !== index) {
-      over = { lane: lane.id, column: column.id, index };
+    if (over?.section !== section.id || over.column !== column.id || over.index !== index) {
+      over = { section: section.id, column: column.id, index };
     }
   }
 
-  function dragLeave(e: DragEvent, lane: Lane, column: BoardColumn) {
+  function dragLeave(e: DragEvent, section: Section, column: BoardColumn) {
     const el = e.currentTarget as HTMLElement;
     if (el.contains(e.relatedTarget as Node | null)) return;
-    if (over?.lane === lane.id && over.column === column.id) over = null;
+    if (over?.section === section.id && over.column === column.id) over = null;
   }
 
-  function drop(e: DragEvent, lane: Lane, column: BoardColumn) {
-    if (!drag || drag.lane !== lane.id) return;
+  function drop(e: DragEvent, section: Section, column: BoardColumn) {
+    if (!drag || drag.section !== section.id) return;
     e.preventDefault();
-    land(e.currentTarget as HTMLElement, lane, column, e.clientY);
+    land(e.currentTarget as HTMLElement, section, column, e.clientY);
   }
 
-  function land(el: HTMLElement, lane: Lane, column: BoardColumn, y: number) {
+  function land(el: HTMLElement, section: Section, column: BoardColumn, y: number) {
     if (!drag) return;
     const { key, column: from } = drag;
     const index = indexAt(el, y);
-    const keys = cell(lane, column).map((c) => c.key);
+    const keys = cell(section, column).map((c) => c.key);
     endDrag();
     if (from === column.id && staysInPlace(keys, key, index)) return;
     const m: CardMove = { issue: key, ...neighbours(keys, key, index) };
@@ -379,39 +382,39 @@
     void move(m, from !== column.id ? t.boards.moved(key, column.name) : t.boards.ranked(key));
   }
 
-  /** The cell of the dragged card's lane under a finger, with its lane and column. */
+  /** The cell of the dragged card's section under a finger, with its section and column. */
   function cellAt(x: number, y: number) {
     const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('.board-cards');
-    const lane = lanes.find((l) => l.id === el?.dataset.lane);
+    const section = sections.find((l) => l.id === el?.dataset.section);
     const column = detail?.columns.find((c) => String(c.id) === el?.dataset.column);
-    if (!el || !lane || !column || lane.id !== drag?.lane) return null;
-    return { el, lane, column };
+    if (!el || !section || !column || section.id !== drag?.section) return null;
+    return { el, section, column };
   }
 
   const touch: TouchDragHandlers = {
     start(el) {
       const card = cards?.find((c) => c.key === el.dataset.key);
-      const lane = el.closest<HTMLElement>('.board-cards')?.dataset.lane;
-      if (!card || !lane) return false;
-      drag = { key: card.key, lane, column: card.column };
+      const section = el.closest<HTMLElement>('.board-cards')?.dataset.section;
+      if (!card || !section) return false;
+      drag = { key: card.key, section, column: card.column };
       return true;
     },
     move(x, y) {
       const at = cellAt(x, y);
-      if (at) hover(at.el, at.lane, at.column, y);
+      if (at) hover(at.el, at.section, at.column, y);
       else over = null;
     },
     drop(x, y) {
       const at = cellAt(x, y);
-      if (at) land(at.el, at.lane, at.column, y);
+      if (at) land(at.el, at.section, at.column, y);
       else endDrag();
     },
     cancel: endDrag,
   };
 
   /** The drop line: on the card the dragged one would land above, or below the last. */
-  function markerOf(lane: Lane, column: BoardColumn, list: Card[], card: Card) {
-    if (!over || over.lane !== lane.id || over.column !== column.id) return null;
+  function markerOf(section: Section, column: BoardColumn, list: Card[], card: Card) {
+    if (!over || over.section !== section.id || over.column !== column.id) return null;
     const rest = list.filter((c) => c.key !== drag?.key);
     if (rest[over.index]?.key === card.key) return 'before';
     if (over.index >= rest.length && rest[rest.length - 1]?.key === card.key) return 'after';
@@ -479,26 +482,26 @@
       >
         <!-- Before the columns, so the toggles don't come after every card in the tab order. -->
         {#if banded}
-          {#each lanes as lane, k (lane.id)}
-            {@const issue = laneIssue(lane)}
-            <div class="board-lane" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
+          {#each sections as section, k (section.id)}
+            {@const issue = sectionIssue(section)}
+            <div class="board-section" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
               <button
                 type="button"
-                class="board-lane-toggle"
-                aria-expanded={!collapsed[lane.id]}
-                onclick={() => (collapsed[lane.id] = !collapsed[lane.id])}
+                class="board-section-toggle"
+                aria-expanded={!collapsed[section.id]}
+                onclick={() => (collapsed[section.id] = !collapsed[section.id])}
               >
                 <span class="chevron" aria-hidden="true"></span>
                 {#if issue}
                   <TypeMark type={issue.type} />
                   <span class="key">{issue.key}</span>
-                  <span class="board-lane-title">{issue.summary}</span>
+                  <span class="board-section-title">{issue.summary}</span>
                 {:else}
-                  <span class="board-lane-title">{laneName(lane)}</span>
+                  <span class="board-section-title">{sectionName(section)}</span>
                 {/if}
-                <span class="board-lane-count">{t.boards.cards(lane.cards.length)}</span>
+                <span class="board-section-count">{t.boards.cards(section.cards.length)}</span>
               </button>
-              {#if lane.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
+              {#if section.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
             </div>
           {/each}
         {/if}
@@ -521,21 +524,21 @@
                 ></span
               >
             </header>
-            {#each lanes as lane, k (lane.id)}
+            {#each sections as section, k (section.id)}
               {#if banded}<div class="band-gap" style:grid-row={bandRow(k)}></div>{/if}
-              {#if !collapsed[lane.id]}
-                {@const list = cell(lane, column)}
+              {#if !collapsed[section.id]}
+                {@const list = cell(section, column)}
                 {@const keys = list.map((c) => c.key)}
                 <div
                   class="board-cards"
                   style:grid-row={cellRow(k)}
                   role="list"
-                  data-lane={lane.id}
+                  data-section={section.id}
                   data-column={column.id}
-                  aria-label={banded ? `${column.name} — ${laneName(lane)}` : column.name}
-                  ondragover={(e) => dragOver(e, lane, column)}
-                  ondragleave={(e) => dragLeave(e, lane, column)}
-                  ondrop={(e) => drop(e, lane, column)}
+                  aria-label={banded ? `${column.name} — ${sectionName(section)}` : column.name}
+                  ondragover={(e) => dragOver(e, section, column)}
+                  ondragleave={(e) => dragLeave(e, section, column)}
+                  ondrop={(e) => drop(e, section, column)}
                 >
                   {#each list as card (card.key)}
                     <BoardCard
@@ -543,13 +546,13 @@
                       estimate={d.board.estimate}
                       showStatus={column.statuses.length > 1}
                       dragging={drag?.key === card.key}
-                      marker={markerOf(lane, column, list, card)}
+                      marker={markerOf(section, column, list, card)}
                       menu={menuFor(card, keys)}
-                      ondragstart={(e, c) => startDrag(e, c, lane)}
+                      ondragstart={(e, c) => startDrag(e, c, section)}
                       ondragend={endDrag}
                     />
                   {/each}
-                  {#if list.length === 0 && over?.lane === lane.id && over.column === column.id}
+                  {#if list.length === 0 && over?.section === section.id && over.column === column.id}
                     <span class="drop-marker" aria-hidden="true"></span>
                   {/if}
                 </div>
@@ -654,8 +657,8 @@
     min-height: 56px;
   }
 
-  /* Lane bands cross the columns; their label stays in view when scrolled sideways. */
-  .board-lane {
+  /* Section bands cross the columns; their label stays in view when scrolled sideways. */
+  .board-section {
     position: relative;
     z-index: 1;
     display: flex;
@@ -663,7 +666,7 @@
     gap: 8px;
   }
 
-  .board-lane-toggle {
+  .board-section-toggle {
     position: sticky;
     left: 0;
     display: inline-flex;
@@ -680,7 +683,7 @@
     cursor: pointer;
   }
 
-  .board-lane-toggle .board-lane-title {
+  .board-section-toggle .board-section-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

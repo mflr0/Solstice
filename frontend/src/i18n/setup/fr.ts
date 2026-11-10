@@ -260,7 +260,7 @@ export const fr: SetupMessages = {
       boards: 'Tableaux',
       'board columns': 'Colonnes de tableaux',
       'quick filters': 'Filtres rapides',
-      swimlanes: 'Couloirs',
+      'board sections': 'Sections de tableaux',
       sprints: 'Sprints',
       'issues in sprints': 'Tickets dans les sprints',
       'issues ranked': 'Tickets classés',

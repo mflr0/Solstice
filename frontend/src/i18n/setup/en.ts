@@ -260,7 +260,7 @@ export const en = {
       boards: 'Boards',
       'board columns': 'Board columns',
       'quick filters': 'Quick filters',
-      swimlanes: 'Swimlanes',
+      'board sections': 'Board sections',
       sprints: 'Sprints',
       'issues in sprints': 'Issues in sprints',
       'issues ranked': 'Ranked issues',

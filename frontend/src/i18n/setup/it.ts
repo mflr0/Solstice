@@ -256,7 +256,7 @@ export const it: SetupMessages = {
       boards: 'Board',
       'board columns': 'Colonne delle board',
       'quick filters': 'Filtri rapidi',
-      swimlanes: 'Corsie',
+      'board sections': 'Sezioni delle board',
       sprints: 'Sprint',
       'issues in sprints': 'Ticket negli sprint',
       'issues ranked': 'Ticket ordinati',

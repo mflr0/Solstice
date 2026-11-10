@@ -287,7 +287,7 @@ func (r *run) importBoards() error {
 		if err := sins.flush(); err != nil {
 			return err
 		}
-		r.rep.step("swimlanes", sins.total, 0)
+		r.rep.step("board sections", sins.total, 0)
 	}
 
 	if err := r.importSprints(boards); err != nil {

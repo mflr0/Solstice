@@ -8,7 +8,7 @@ import {
   daysLeft,
   dropIndex,
   edgeScroll,
-  groupLanes,
+  groupSections,
   legacyBoardPath,
   neighbours,
   parseQuick,
@@ -65,16 +65,16 @@ function card(key: string, extra: Partial<BoardCard> = {}): BoardCard {
 
 const keys = (cards: BoardCard[]) => cards.map((c) => c.key);
 
-describe('groupLanes', () => {
-  it('keeps everything in one band without swimlanes', () => {
-    const lanes = groupLanes([card('A-1'), card('A-2')], 'none', []);
-    expect(lanes).toHaveLength(1);
-    expect(lanes[0]?.kind).toBe('all');
-    expect(keys(lanes[0]?.cards ?? [])).toEqual(['A-1', 'A-2']);
+describe('groupSections', () => {
+  it('keeps everything in one band without sections', () => {
+    const sections = groupSections([card('A-1'), card('A-2')], 'none', []);
+    expect(sections).toHaveLength(1);
+    expect(sections[0]?.kind).toBe('all');
+    expect(keys(sections[0]?.cards ?? [])).toEqual(['A-1', 'A-2']);
   });
 
-  it('follows custom lanes in the board order, the rest last', () => {
-    const lanes = groupLanes(
+  it('follows custom sections in the board order, the rest last', () => {
+    const sections = groupSections(
       [
         card('A-1', { section: 20 }),
         card('A-2', { section: 10 }),
@@ -88,14 +88,14 @@ describe('groupLanes', () => {
         { id: 30, name: 'Vide', query: 'labels = x' },
       ],
     );
-    expect(lanes.map((l) => l.id)).toEqual(['lane-10', 'lane-20', 'lane-30', 'other']);
-    expect(lanes.map((l) => keys(l.cards))).toEqual([['A-2'], ['A-1', 'A-4'], [], ['A-3']]);
+    expect(sections.map((l) => l.id)).toEqual(['section-10', 'section-20', 'section-30', 'other']);
+    expect(sections.map((l) => keys(l.cards))).toEqual([['A-2'], ['A-1', 'A-4'], [], ['A-3']]);
   });
 
   it('sorts people by name and puts the unassigned last', () => {
     const zoe = user(1, 'Zoé Martin');
     const anne = user(2, 'Anne Durand');
-    const lanes = groupLanes(
+    const sections = groupSections(
       [
         card('A-1', { assignee: zoe }),
         card('A-2'),
@@ -105,12 +105,12 @@ describe('groupLanes', () => {
       'assignee',
       [],
     );
-    expect(lanes.map((l) => l.id)).toEqual(['user-2', 'user-1', 'user-none']);
-    expect(keys(lanes[1]?.cards ?? [])).toEqual(['A-1', 'A-4']);
+    expect(sections.map((l) => l.id)).toEqual(['user-2', 'user-1', 'user-none']);
+    expect(keys(sections[1]?.cards ?? [])).toEqual(['A-1', 'A-4']);
   });
 
   it('orders epics by their first card, issues without one last', () => {
-    const lanes = groupLanes(
+    const sections = groupSections(
       [
         card('A-1'),
         card('A-2', { epic: brief('A-9') }),
@@ -120,13 +120,13 @@ describe('groupLanes', () => {
       'epic',
       [],
     );
-    expect(lanes.map((l) => l.id)).toEqual(['epic-A-9', 'epic-A-8', 'epic-none']);
-    expect(keys(lanes[0]?.cards ?? [])).toEqual(['A-2', 'A-4']);
-    expect(keys(lanes[2]?.cards ?? [])).toEqual(['A-1']);
+    expect(sections.map((l) => l.id)).toEqual(['epic-A-9', 'epic-A-8', 'epic-none']);
+    expect(keys(sections[0]?.cards ?? [])).toEqual(['A-2', 'A-4']);
+    expect(keys(sections[2]?.cards ?? [])).toEqual(['A-1']);
   });
 
-  it('gives each parent a lane it heads, other issues last', () => {
-    const lanes = groupLanes(
+  it('gives each parent a section it heads, other issues last', () => {
+    const sections = groupSections(
       [
         card('A-1'),
         card('A-2', { parent: brief('A-1') }),
@@ -136,15 +136,15 @@ describe('groupLanes', () => {
       'parent',
       [],
     );
-    expect(lanes.map((l) => l.id)).toEqual(['parent-A-1', 'parent-A-7', 'other']);
-    // A-1 heads its lane rather than appearing as a card.
-    expect(keys(lanes[2]?.cards ?? [])).toEqual(['A-3']);
+    expect(sections.map((l) => l.id)).toEqual(['parent-A-1', 'parent-A-7', 'other']);
+    // A-1 heads its section rather than appearing as a card.
+    expect(keys(sections[2]?.cards ?? [])).toEqual(['A-3']);
   });
 
   it('omits the catch-all band when nothing falls in it', () => {
-    expect(groupLanes([card('A-1', { epic: brief('A-9') })], 'epic', []).map((l) => l.id)).toEqual([
-      'epic-A-9',
-    ]);
+    expect(
+      groupSections([card('A-1', { epic: brief('A-9') })], 'epic', []).map((l) => l.id),
+    ).toEqual(['epic-A-9']);
   });
 });
 
@@ -356,70 +356,70 @@ describe('board addresses', () => {
 });
 
 describe('board keys', () => {
-  // Two lanes of three columns; the first lane's middle column is empty.
+  // Two sections of three columns; the first section's middle column is empty.
   const counts = [
     [2, 0, 1],
     [1, 3, 0],
   ];
 
   it('goes from nowhere to the first card', () => {
-    expect(boardStep(counts, null, 'next')).toEqual({ lane: 0, column: 0, index: 0 });
-    expect(boardStep([[0, 2]], null, 'left')).toEqual({ lane: 0, column: 1, index: 0 });
+    expect(boardStep(counts, null, 'next')).toEqual({ section: 0, column: 0, index: 0 });
+    expect(boardStep([[0, 2]], null, 'left')).toEqual({ section: 0, column: 1, index: 0 });
     expect(boardStep([[0, 0]], null, 'next')).toBeNull();
   });
 
-  it('goes down and up the column, across lanes', () => {
-    expect(boardStep(counts, { lane: 0, column: 0, index: 0 }, 'next')).toEqual({
-      lane: 0,
+  it('goes down and up the column, across sections', () => {
+    expect(boardStep(counts, { section: 0, column: 0, index: 0 }, 'next')).toEqual({
+      section: 0,
       column: 0,
       index: 1,
     });
-    expect(boardStep(counts, { lane: 0, column: 0, index: 1 }, 'next')).toEqual({
-      lane: 1,
+    expect(boardStep(counts, { section: 0, column: 0, index: 1 }, 'next')).toEqual({
+      section: 1,
       column: 0,
       index: 0,
     });
-    expect(boardStep(counts, { lane: 1, column: 0, index: 0 }, 'previous')).toEqual({
-      lane: 0,
+    expect(boardStep(counts, { section: 1, column: 0, index: 0 }, 'previous')).toEqual({
+      section: 0,
       column: 0,
       index: 1,
     });
   });
 
-  it('skips lanes with no card in the column', () => {
-    expect(boardStep([[1], [0], [2]], { lane: 0, column: 0, index: 0 }, 'next')).toEqual({
-      lane: 2,
+  it('skips sections with no card in the column', () => {
+    expect(boardStep([[1], [0], [2]], { section: 0, column: 0, index: 0 }, 'next')).toEqual({
+      section: 2,
       column: 0,
       index: 0,
     });
-    expect(boardStep([[1], [0], [2]], { lane: 2, column: 0, index: 0 }, 'previous')).toEqual({
-      lane: 0,
+    expect(boardStep([[1], [0], [2]], { section: 2, column: 0, index: 0 }, 'previous')).toEqual({
+      section: 0,
       column: 0,
       index: 0,
     });
   });
 
   it('skips an empty column', () => {
-    expect(boardStep(counts, { lane: 0, column: 0, index: 0 }, 'right')).toEqual({
-      lane: 0,
+    expect(boardStep(counts, { section: 0, column: 0, index: 0 }, 'right')).toEqual({
+      section: 0,
       column: 2,
       index: 0,
     });
-    expect(boardStep(counts, { lane: 0, column: 2, index: 0 }, 'left')).toEqual({
-      lane: 0,
+    expect(boardStep(counts, { section: 0, column: 2, index: 0 }, 'left')).toEqual({
+      section: 0,
       column: 0,
       index: 0,
     });
   });
 
   it('lands on the last card of a shorter column', () => {
-    expect(boardStep(counts, { lane: 1, column: 1, index: 2 }, 'left')).toEqual({
-      lane: 1,
+    expect(boardStep(counts, { section: 1, column: 1, index: 2 }, 'left')).toEqual({
+      section: 1,
       column: 0,
       index: 0,
     });
-    expect(boardStep(counts, { lane: 0, column: 0, index: 1 }, 'right')).toEqual({
-      lane: 0,
+    expect(boardStep(counts, { section: 0, column: 0, index: 1 }, 'right')).toEqual({
+      section: 0,
       column: 2,
       index: 0,
     });
@@ -427,11 +427,11 @@ describe('board keys', () => {
 
   it('stays put at the edges', () => {
     for (const [at, dir] of [
-      [{ lane: 0, column: 0, index: 0 }, 'previous'],
-      [{ lane: 0, column: 0, index: 0 }, 'left'],
-      [{ lane: 1, column: 1, index: 2 }, 'next'],
-      [{ lane: 1, column: 1, index: 0 }, 'right'],
-      [{ lane: 0, column: 2, index: 0 }, 'right'],
+      [{ section: 0, column: 0, index: 0 }, 'previous'],
+      [{ section: 0, column: 0, index: 0 }, 'left'],
+      [{ section: 1, column: 1, index: 2 }, 'next'],
+      [{ section: 1, column: 1, index: 0 }, 'right'],
+      [{ section: 0, column: 2, index: 0 }, 'right'],
     ] as const)
       expect(boardStep(counts, at, dir)).toEqual(at);
   });
