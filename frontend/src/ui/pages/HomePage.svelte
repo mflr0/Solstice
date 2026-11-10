@@ -62,7 +62,7 @@
   /** Folded views opened by a jump, by hash: for this visit only, the saved state stays. */
   const openNow = new SvelteSet<string>();
   /** The section a jump went to, kept aligned while the ones above it load. */
-  let jumped: string | null = null;
+  let jumped = $state<string | null>(null);
   let viewsEl = $state<HTMLElement>();
 
   const gadgets = $derived(dash?.gadgets ?? []);
@@ -442,6 +442,7 @@
           const key = keyOf(g, i);
           return { key, href: `#${viewHash(g)}`, title: title(g), count: totals.get(key) ?? null };
         })}
+        {jumped}
         onjump={jumpFromIndex}
       />
       <!-- One list for every view: j and k walk on from one to the next. -->

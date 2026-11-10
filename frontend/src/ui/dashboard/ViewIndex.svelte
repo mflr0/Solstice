@@ -15,9 +15,11 @@
   }
   interface Props {
     entries: Entry[];
+    /** The section a jump went to, until the user scrolls: shown even when it cannot reach the top. */
+    jumped: string | null;
     onjump: (key: string) => void;
   }
-  const { entries, onjump }: Props = $props();
+  const { entries, jumped, onjump }: Props = $props();
 
   let open = $state(false);
   let current = $state<string | null>(null);
@@ -27,6 +29,10 @@
   const listId = `view-index-${uid}`;
   const keys = $derived(entries.map((e) => e.key).join(' '));
   const shown = $derived(entries.find((e) => e.key === current));
+
+  $effect(() => {
+    if (jumped) current = jumped;
+  });
 
   // The topmost section in sight, below the bars: an observer rebuilt when they change size.
   $effect(() => {
@@ -49,7 +55,7 @@
             if (c.isIntersecting) seen.add(key);
             else seen.delete(key);
           }
-          current = order.find((k) => seen.has(k)) ?? current;
+          if (!jumped) current = order.find((k) => seen.has(k)) ?? current;
         },
         { rootMargin: `-${Math.round(top)}px 0px 0px 0px` },
       );
