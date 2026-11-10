@@ -889,6 +889,63 @@ export const fr: Messages = {
       `${plural(n, 'sous-tâche est assignée à une personne qui ne peut pas se voir assigner de tickets dans le nouveau projet : son assigné est remplacé', 'sous-tâches sont assignées à des personnes qui ne peuvent pas se voir assigner de tickets dans le nouveau projet : leurs assignés sont remplacés')}.`,
   },
 
+  tour: {
+    label: 'Visite guidée',
+    position: (i: number, n: number) => `${i}/${n}`,
+    announce: (i: number, n: number, title: string) => `Étape ${i} sur ${n}\u00a0: ${title}`,
+    skip: 'Passer',
+    back: 'Précédent',
+    next: 'Suivant',
+    done: 'Terminer',
+    shortcut: (key: string) => `Raccourci\u00a0: ${key}.`,
+    allShortcuts: (key: string) => `${key} affiche tous les raccourcis.`,
+    steps: {
+      welcome: {
+        title: 'Bienvenue dans Solstice',
+        body: 'Un rapide tour de la barre du haut, commune à toutes les pages. Les flèches passent d’une étape à l’autre\u00a0; Échap termine la visite.',
+      },
+      scope: {
+        title: 'Projet',
+        body: 'Choisissez un projet pour y limiter Mon espace, les tableaux et la recherche. Tous les projets montre de nouveau tout.',
+      },
+      work: {
+        title: 'Mon espace',
+        body: 'Votre page d’accueil, avec les tickets qui vous concernent.',
+      },
+      projects: {
+        title: 'Projets',
+        body: 'Les projets que vous pouvez voir, chacun avec ses tickets et ses réglages.',
+      },
+      boards: {
+        title: 'Tableaux',
+        body: 'Les tableaux montrent les tickets en cartes, par colonnes, pour planifier des sprints ou suivre le flux de travail.',
+      },
+      quickSearch: {
+        title: 'Recherche rapide',
+        body: 'Tapez la clé d’un ticket pour l’ouvrir, ou des mots pour trouver des tickets. Entrée affiche tous les résultats dans une vue.',
+      },
+      create: {
+        title: 'Nouveau ticket',
+        body: 'Crée un ticket dans le projet que vous regardez, ou dans le projet choisi.',
+      },
+      themes: {
+        title: 'Thèmes',
+        body: 'Choisissez un thème, en mode clair ou sombre. Ce choix ne vaut que pour vous.',
+      },
+      account: {
+        title: 'Votre compte',
+        body: 'Mes réglages réunit votre profil, votre langue et vos notifications. Relancez la visite depuis ce menu ou depuis votre profil.',
+      },
+      admin: {
+        title: 'Administration',
+        body: 'En tant qu’administrateur, vous accédez aussi depuis ce menu à l’Administration\u00a0: utilisateurs, projets et réglages de l’instance.',
+      },
+    },
+    replayIntro: 'Un court tour de la barre du haut, commune à toutes les pages.',
+    replayStart: 'Lancer la visite',
+    menuItem: 'Faire la visite',
+  },
+
   keyboard: {
     title: 'Raccourcis clavier',
     scopes: { global: 'Partout', results: 'Résultats de recherche', issue: 'Page d’un ticket' },

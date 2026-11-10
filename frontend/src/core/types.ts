@@ -29,6 +29,8 @@ export interface Preferences {
   shortcutsEnabled?: boolean;
   /** Bindings that differ from the defaults: action name → keys. */
   shortcuts?: Record<string, string[]>;
+  /** Whether the guided tour has been shown, so it no longer starts by itself. */
+  tourSeen?: boolean;
 }
 
 export interface UserRef {

@@ -18,6 +18,7 @@
     appearance,
     applyMode,
     applySkin,
+    dialogs,
     mac,
     openCreate,
     toggleScheme,
@@ -34,6 +35,7 @@
   const { project }: Props = $props();
 
   let menuOpen = $state(false);
+  let accountButton: HTMLButtonElement | undefined = $state();
   let themesOpen = $state(false);
   let mine = $state.raw<ThemeManifest[]>([]);
   // The bar outlives the pages where themes get imported and deleted: read again on each opening.
@@ -118,17 +120,22 @@
     {#if session.me}<ProjectScope />{/if}
 
     <nav class="topbar-nav" bind:this={nav} aria-label={t.common.mainNav}>
-      <a class="nav-link" href={paths.home()} aria-current={section === 'home' ? 'page' : undefined}
-        >{t.nav.work}</a
+      <a
+        class="nav-link"
+        href={paths.home()}
+        data-tour="work"
+        aria-current={section === 'home' ? 'page' : undefined}>{t.nav.work}</a
       >
       <a
         class="nav-link"
         href={session.scope ? paths.project(session.scope) : paths.projects()}
+        data-tour="projects"
         aria-current={section === 'projects' ? 'page' : undefined}>{t.nav.projects}</a
       >
       <a
         class="nav-link"
         href={paths.boards()}
+        data-tour="boards"
         aria-current={section === 'boards' ? 'page' : undefined}>{t.nav.boards}</a
       >
     </nav>
@@ -146,6 +153,7 @@
     <div class="theme-picker" use:outside={() => (themesOpen = false)}>
       <button
         class="topbar-themes"
+        data-tour="themes"
         title={t.nav.themes}
         aria-label={t.nav.themes}
         aria-haspopup="menu"
@@ -206,6 +214,7 @@
 
     <button
       class="btn btn-primary topbar-create"
+      data-tour="create"
       onclick={() => openCreate(project ? { project } : {})}
     >
       <span class="plus" aria-hidden="true">+</span>
@@ -216,7 +225,9 @@
     {#if session.me}
       <div class="account" use:outside={() => (menuOpen = false)}>
         <button
+          bind:this={accountButton}
           class="account-button"
+          data-tour="account"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label={update ? `${t.nav.account} (${t.updates.badge})` : t.nav.account}
@@ -243,6 +254,16 @@
               role="menuitem"
               href={paths.account('profile')}
               onclick={() => (menuOpen = false)}>{t.account.menu}</a
+            >
+            <button
+              class="item"
+              role="menuitem"
+              onclick={() => {
+                menuOpen = false;
+                // The item goes with the menu: the tour gives focus back to the button.
+                accountButton?.focus();
+                dialogs.tour = true;
+              }}>{t.tour.menuItem}</button
             >
             {#if session.me.admin}
               <a
