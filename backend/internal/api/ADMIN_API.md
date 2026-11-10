@@ -499,10 +499,38 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   cannot go.
 - Statuses: create/rename/delete stay on `POST /api/statuses`,
   `PATCH|DELETE /api/statuses/{id}`. `GET /api/admin/statuses/{id}/usage` →
-  where one is used: `{workflows: [{id, name, project: {id, key, name}}],
-  boards: [{id, name, column}], projects: [{key, name, issues}]}`.
+  where one is used: `{workflows: [{id, name, project?: {id, key, name}}],
+  boards: [{id, name, column}], projects: [{key, name, issues}]}`. A global
+  workflow has no `project`. A status a global workflow uses cannot be
+  deleted either (409).
 
 (`issuetype.*`, `priority.*`, `resolution.*`, `linktype.*`, `status.order`)
+
+### Global workflows
+
+Workflows of no project. Projects never follow one: they get a copy, so no
+issue is in a global workflow and no change to one moves an issue. A new
+instance gets "Software" (To Do, In Progress, In Review, Done; the default)
+and "Simple" (To Do, In Progress, Done), named in the instance language at
+the first start, any status reachable from any other. One global workflow is
+the default.
+
+- `GET /api/admin/workflows` → `[{id, name, default, initial: status,
+  statuses: [status], transitions: [{id, name, from: status|null, to:
+  status}]}]`, the default first.
+- `POST /api/admin/workflows` `{name, copyFrom?}` → 201 `{id}`: a copy of
+  the statuses and transitions of global workflow `copyFrom` (0 or left
+  out: the default). An unknown `copyFrom`: 400.
+- `PUT /api/admin/workflows/{id}` `{name, initial, statuses: [id],
+  transitions: [{id?, name, from: id|null, to}], default}` → the list.
+  Same checks as a project's workflow (400). `default: true` takes the flag
+  from the others; `false` does not take it from the default.
+- `DELETE /api/admin/workflows/{id}` → 204. The default cannot go (409),
+  which keeps the last one.
+- `PUT|DELETE /api/workflows/{id}` answer 404 for a global workflow.
+
+(`workflow.create`, `workflow.update`, `workflow.delete`, with no
+`project` in the details)
 
 ---
 

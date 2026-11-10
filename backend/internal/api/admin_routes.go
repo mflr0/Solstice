@@ -87,6 +87,10 @@ func (s *Server) adminRoutes(route routeFunc) {
 	route("GET /api/admin/statuses", s.adminStatuses, auth.ScopeAdmin)
 	route("POST /api/admin/statuses/order", s.orderStatuses, auth.ScopeAdmin)
 	route("GET /api/admin/statuses/{id}/usage", s.adminStatusUsage, auth.ScopeAdmin)
+	route("GET /api/admin/workflows", s.adminWorkflows, auth.ScopeAdmin)
+	route("POST /api/admin/workflows", s.createGlobalWorkflow, auth.ScopeAdmin)
+	route("PUT /api/admin/workflows/{id}", s.updateGlobalWorkflow, auth.ScopeAdmin)
+	route("DELETE /api/admin/workflows/{id}", s.deleteGlobalWorkflow, auth.ScopeAdmin)
 
 	// Custom fields.
 	route("GET /api/admin/fields", s.adminFields, auth.ScopeAdmin)

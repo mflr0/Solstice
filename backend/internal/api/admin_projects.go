@@ -394,8 +394,16 @@ func insertProject(ctx context.Context, tx *sql.Tx, p *newProject) (int64, error
 // insertWorkflow gives the project the default workflow of its template,
 // creating the statuses it lacks.
 func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
+	return writeNewWorkflow(ctx, tx, id, "Workflow "+p.key, true, p.statuses)
+}
+
+// writeNewWorkflow adds a workflow to a project (nil: a global workflow)
+// with these statuses, creating those the catalogue lacks. It starts in the
+// first, and any status can be reached from any other.
+func writeNewWorkflow(ctx context.Context, tx *sql.Tx, projectID any, name string, isDefault bool,
+	list []projectStatus) error {
 	var statuses []string
-	for _, st := range p.statuses {
+	for _, st := range list {
 		sid, err := ensureStatus(ctx, tx, st.name, st.category)
 		if err != nil {
 			return err
@@ -403,7 +411,7 @@ func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) er
 		statuses = append(statuses, sid)
 	}
 	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id)
-		VALUES (?, ?, TRUE, ?)`, id, "Workflow "+p.key, statuses[0])
+		VALUES (?, ?, ?, ?)`, projectID, name, isDefault, statuses[0])
 	if err != nil {
 		return err
 	}
@@ -414,7 +422,7 @@ func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) er
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
-			position) VALUES (?, ?, NULL, ?, ?)`, wf, p.statuses[i].name, st, i); err != nil {
+			position) VALUES (?, ?, NULL, ?, ?)`, wf, list[i].name, st, i); err != nil {
 			return err
 		}
 	}

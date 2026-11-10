@@ -276,6 +276,8 @@ const (
 	DefaultStatusInProgress          Key = "DefaultStatusInProgress"
 	DefaultStatusInReview            Key = "DefaultStatusInReview"
 	DefaultStatusDone                Key = "DefaultStatusDone"
+	DefaultWorkflowSoftware          Key = "DefaultWorkflowSoftware"
+	DefaultWorkflowSimple            Key = "DefaultWorkflowSimple"
 )
 
 // Permission names, as the REST API lists them.
@@ -506,6 +508,7 @@ const (
 	WorkflowTransitionUnknown      Key = "WorkflowTransitionUnknown"
 	WorkflowStatusesRemoved        Key = "WorkflowStatusesRemoved"
 	WorkflowCopyNotFound           Key = "WorkflowCopyNotFound"
+	WorkflowGlobalCopyNotFound     Key = "WorkflowGlobalCopyNotFound"
 	WorkflowDefaultDelete          Key = "WorkflowDefaultDelete"
 	WorkflowDefaultStatusesMissing Key = "WorkflowDefaultStatusesMissing"
 )

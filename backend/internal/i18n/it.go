@@ -253,6 +253,8 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultStatusInProgress:          "In corso",
 	DefaultStatusInReview:            "In revisione",
 	DefaultStatusDone:                "Completato",
+	DefaultWorkflowSoftware:          "Software",
+	DefaultWorkflowSimple:            "Semplice",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Vedere",
@@ -455,6 +457,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "Transizione sconosciuta in questo workflow.",
 	WorkflowStatusesRemoved:        "Alcuni ticket si trovano in stati che il loro workflow non avrà più. Scegli dove spostarli.",
 	WorkflowCopyNotFound:           "Workflow da copiare non trovato in questo progetto.",
+	WorkflowGlobalCopyNotFound:     "Workflow globale da copiare non trovato.",
 	WorkflowDefaultDelete:          "Il workflow predefinito non può essere eliminato. Imposta prima un altro workflow come predefinito.",
 	WorkflowDefaultStatusesMissing: "Alcuni ticket si trovano in stati che il workflow predefinito non ha. Scegli dove spostarli.",
 

@@ -360,13 +360,15 @@ func (s *Server) auditGrants(r *http.Request, projectID int64, before map[string
 		map[string]any{"added": added, "removed": removed})
 }
 
-// auditWorkflow records a change to a project's workflow.
+// auditWorkflow records a change to a project's workflow, or to a global one
+// when projectID is 0.
 func (s *Server) auditWorkflow(r *http.Request, action string, id, projectID int64, name string, details map[string]any) {
-	key := s.auditProjectKey(r.Context(), projectID)
 	if details == nil {
 		details = map[string]any{}
 	}
-	details["project"] = key
+	if projectID != 0 {
+		details["project"] = s.auditProjectKey(r.Context(), projectID)
+	}
 	s.auditLog(r, action, target(audit.TargetWorkflow, id, name), details)
 }
 

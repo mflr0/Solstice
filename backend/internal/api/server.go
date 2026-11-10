@@ -95,6 +95,13 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		}
 	}
 	s.adm.started = time.Now()
+	if db != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		if err := s.seedGlobalWorkflows(ctx); err != nil {
+			log.Error("global workflows not seeded", "err", err)
+		}
+		cancel()
+	}
 	s.startOutgoing()
 	return s
 }
