@@ -12,6 +12,7 @@
     try {
       return sessionStorage.getItem(STORAGE_KEY);
     } catch {
+      // Storage blocked: the banner shows.
       return null;
     }
   }

@@ -86,6 +86,7 @@
     }
     const [found, users] = await Promise.all([
       findIssues(words, api.issues),
+      // People are an extra beside the issues.
       words.length >= 2 ? api.users(words).catch(() => []) : Promise.resolve([]),
     ]);
     if (mine !== seq) return;
@@ -97,7 +98,8 @@
   function typed() {
     open = true;
     active = -1;
-    void catalog.loadProjects();
+    // A suggestion: the issues searched below say when the server fails.
+    catalog.loadProjects().catch(() => {});
     clearTimeout(timer);
     timer = setTimeout(() => void fetchRows(), 160);
   }

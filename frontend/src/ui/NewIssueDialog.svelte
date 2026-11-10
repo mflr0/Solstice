@@ -79,6 +79,11 @@
   const labelsId = $props.id();
   let pending = $state(false);
   let error = $state('');
+  // The projects, the project or the issue to edit could not be loaded: the message takes the form's place.
+  let loadError = $state('');
+  // The custom fields or the layout of the chosen type could not be loaded.
+  let fieldsError = $state('');
+  let layoutError = $state('');
   // Fields show their problems once a submit has been tried.
   let tried = $state(false);
   // Files to attach once the issue exists.
@@ -251,7 +256,9 @@
   );
   const shown = $derived(tried ? problems : {});
   const problem = $derived(
-    error ||
+    fieldsError ||
+      layoutError ||
+      error ||
       (customError ? t.create.checkFields : '') ||
       (detail && (issue || !editing) && !canSubmit
         ? editing
@@ -281,6 +288,7 @@
     try {
       return readMemory(localStorage.getItem(memoryKey(id)));
     } catch {
+      // Storage blocked: the defaults apply.
       return emptyMemory;
     }
   }
@@ -300,6 +308,7 @@
           assignee = who;
         }
       })
+      // The default assignee applies, as on a first visit.
       .catch(() => {});
   }
 
@@ -336,6 +345,7 @@
     custom = {};
     customError = null;
     error = '';
+    loadError = '';
     tried = false;
     queue = [];
     const prios = session.meta?.priorities ?? [];
@@ -353,21 +363,26 @@
           projectKey = iss.project.key;
           typeId = iss.type.id;
         })
-        .catch((err) => (error = errorMessage(err)));
+        .catch((err) => {
+          if (dialogs.createDefaults.edit === edit) loadError = errorMessage(err);
+        });
       return;
     }
     const explicit = dialogs.createDefaults.project ?? (parent ? projectOfIssueKey(parent) : null);
-    void api.projects().then((list) => {
-      projects = list;
-      const key = startProject(
-        explicit,
-        loadMemory(),
-        list.map((p) => p.key),
-      );
-      // The same project as last time: its detail is loaded, only the fields need restoring.
-      if (key === projectKey && detail) restore(key, detail);
-      else projectKey = key;
-    });
+    api
+      .projects()
+      .then((list) => {
+        projects = list;
+        const key = startProject(
+          explicit,
+          loadMemory(),
+          list.map((p) => p.key),
+        );
+        // The same project as last time: its detail is loaded, only the fields need restoring.
+        if (key === projectKey && detail) restore(key, detail);
+        else projectKey = key;
+      })
+      .catch((err: unknown) => (loadError = errorMessage(err)));
   });
 
   $effect(() => {
@@ -380,6 +395,7 @@
       .then((list) => {
         if (key === projectKey) me = list.find((u) => u.id === who.id) ?? null;
       })
+      // Only "assign to me" depends on it; a failing server shows in the project's load.
       .catch(() => {});
   });
 
@@ -387,17 +403,22 @@
     const key = projectKey;
     if (!key) return;
     detail = null;
-    void api.project(key).then((d) => {
-      if (key !== projectKey) return;
-      detail = d;
-      queue = queueFor(queue, d.can.attach === true);
-      if (editing) return;
-      restore(key, d);
-      fixVersions = [];
-      affects = [];
-      const offered = d.issueTypes.filter((ty) => ty.subtask === (parent !== ''));
-      if (!offered.some((ty) => ty.id === typeId)) typeId = offered[0]?.id ?? '';
-    });
+    api
+      .project(key)
+      .then((d) => {
+        if (key !== projectKey) return;
+        detail = d;
+        queue = queueFor(queue, d.can.attach === true);
+        if (editing) return;
+        restore(key, d);
+        fixVersions = [];
+        affects = [];
+        const offered = d.issueTypes.filter((ty) => ty.subtask === (parent !== ''));
+        if (!offered.some((ty) => ty.id === typeId)) typeId = offered[0]?.id ?? '';
+      })
+      .catch((err: unknown) => {
+        if (key === projectKey) loadError = errorMessage(err);
+      });
   });
 
   // A value of a field the new project or type no longer offers is dropped.
@@ -405,6 +426,7 @@
     const key = projectKey;
     const type = typeId;
     const iss = issue;
+    fieldsError = '';
     if (!dialogs.create || !key || !type || (editing && !iss)) {
       offered = [];
       return;
@@ -432,14 +454,17 @@
         }
         if (customError && !list.some((f) => f.id === customError?.id)) customError = null;
       })
-      .catch(() => {
-        if (key === projectKey && type === typeId) offered = [];
+      .catch((err: unknown) => {
+        if (key !== projectKey || type !== typeId) return;
+        offered = [];
+        fieldsError = errorMessage(err);
       });
   });
 
   $effect(() => {
     const key = projectKey;
     const type = typeId;
+    layoutError = '';
     if (!dialogs.create || !key || !type) {
       layout = defaultCreateLayout;
       return;
@@ -449,8 +474,10 @@
       .then((l) => {
         if (key === projectKey && type === typeId) layout = l.fields;
       })
-      .catch(() => {
-        if (key === projectKey && type === typeId) layout = defaultCreateLayout;
+      .catch((err: unknown) => {
+        if (key !== projectKey || type !== typeId) return;
+        layout = defaultCreateLayout;
+        layoutError = errorMessage(err);
       });
   });
 
@@ -555,7 +582,7 @@
 
   async function submit(e?: SubmitEvent) {
     e?.preventDefault();
-    if (!detail || pending) return;
+    if (!detail || pending || fieldsError || layoutError) return;
     tried = true;
     const typed = readEstimate(typedEstimate, t.units.duration);
     if (hasProblems(problems) || !typed.ok) return;
@@ -863,81 +890,89 @@
       : t.create.title}
   onclose={close}
 >
-  <form bind:this={form} id="new-issue" class="form" onsubmit={submit} novalidate>
-    <div class="two">
-      <div class="field">
-        <span class="field-label">{t.create.project}{@render req()}</span>
-        <Dropdown
-          label={t.create.project}
-          value={projectKey}
-          options={projectOptions}
-          disabled={parent !== '' || editing}
-          required
-          invalid={!!shown.project}
-          onchange={(v) => (projectKey = v)}
-        />
-        {#if shown.project}<span class="field-error">{t.create.missing.project}</span>{/if}
-      </div>
-      <div class="field">
-        <span class="field-label">{t.create.type}{@render req()}</span>
-        <Dropdown
-          label={t.create.type}
-          value={typeId}
-          options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
-          disabled={!detail || editing}
-          required
-          invalid={!!shown.type}
-          onchange={(v) => (typeId = v)}
-        >
-          {#snippet icon(id)}
-            {@const ty = types.find((x) => x.id === id)}
-            {#if ty}<TypeMark type={ty} />{/if}
-          {/snippet}
-        </Dropdown>
-        {#if shown.type}<span class="field-error">{t.create.missing.type}</span>{/if}
-      </div>
-    </div>
-
-    <label class="field">
-      <span>{t.create.summary}{@render req()}</span>
-      <!-- The dialog opens on the summary, the one field always needed. -->
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        class="input summary"
-        bind:value={summary}
-        maxlength="255"
-        required
-        autofocus
-        aria-invalid={!!shown.summary}
-        aria-describedby={shown.summary ? 'new-issue-summary-error' : undefined}
-      />
-      {#if shown.summary}
-        <span class="field-error" id="new-issue-summary-error">{t.create.missing.summary}</span>
-      {/if}
-    </label>
-
-    {#each runs as run (run.fields[0]!.field)}
-      {#if run.wide}
-        {@render field(run.fields[0]!)}
-        {#if run.fields[0]!.field === 'description'}{@render files()}{/if}
-      {:else}
-        <div class="two">
-          {#each run.fields as f (f.field)}{@render field(f)}{/each}
+  {#if loadError}
+    <p class="error-text" role="alert">{loadError}</p>
+  {:else}
+    <form bind:this={form} id="new-issue" class="form" onsubmit={submit} novalidate>
+      <div class="two">
+        <div class="field">
+          <span class="field-label">{t.create.project}{@render req()}</span>
+          <Dropdown
+            label={t.create.project}
+            value={projectKey}
+            options={projectOptions}
+            disabled={parent !== '' || editing}
+            required
+            invalid={!!shown.project}
+            onchange={(v) => (projectKey = v)}
+          />
+          {#if shown.project}<span class="field-error">{t.create.missing.project}</span>{/if}
         </div>
-      {/if}
-    {/each}
-    {#if !shows('description')}{@render files()}{/if}
-    {#if dragging}<p class="drop">
-        <span>{editing ? t.create.editDropFiles(editKey) : t.create.dropFiles}</span>
-      </p>{/if}
-  </form>
+        <div class="field">
+          <span class="field-label">{t.create.type}{@render req()}</span>
+          <Dropdown
+            label={t.create.type}
+            value={typeId}
+            options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
+            disabled={!detail || editing}
+            required
+            invalid={!!shown.type}
+            onchange={(v) => (typeId = v)}
+          >
+            {#snippet icon(id)}
+              {@const ty = types.find((x) => x.id === id)}
+              {#if ty}<TypeMark type={ty} />{/if}
+            {/snippet}
+          </Dropdown>
+          {#if shown.type}<span class="field-error">{t.create.missing.type}</span>{/if}
+        </div>
+      </div>
+
+      <label class="field">
+        <span>{t.create.summary}{@render req()}</span>
+        <!-- The dialog opens on the summary, the one field always needed. -->
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="input summary"
+          bind:value={summary}
+          maxlength="255"
+          required
+          autofocus
+          aria-invalid={!!shown.summary}
+          aria-describedby={shown.summary ? 'new-issue-summary-error' : undefined}
+        />
+        {#if shown.summary}
+          <span class="field-error" id="new-issue-summary-error">{t.create.missing.summary}</span>
+        {/if}
+      </label>
+
+      {#each runs as run (run.fields[0]!.field)}
+        {#if run.wide}
+          {@render field(run.fields[0]!)}
+          {#if run.fields[0]!.field === 'description'}{@render files()}{/if}
+        {:else}
+          <div class="two">
+            {#each run.fields as f (f.field)}{@render field(f)}{/each}
+          </div>
+        {/if}
+      {/each}
+      {#if !shows('description')}{@render files()}{/if}
+      {#if dragging}<p class="drop">
+          <span>{editing ? t.create.editDropFiles(editKey) : t.create.dropFiles}</span>
+        </p>{/if}
+    </form>
+  {/if}
 
   {#snippet footer()}
     <!-- In the footer, the reason a ticket can't be created stays in sight. -->
     {#if !problem}<p class="legend" aria-hidden="true">{@render req()}{t.create.required}</p>{/if}
     <p class="status" class:error-text={problem} role="alert">{problem}</p>
     <button type="button" class="btn btn-quiet" onclick={close}>{t.common.cancel}</button>
-    <button type="submit" form="new-issue" class="btn btn-primary" disabled={pending || !canSubmit}
+    <button
+      type="submit"
+      form="new-issue"
+      class="btn btn-primary"
+      disabled={pending || !canSubmit || !!fieldsError || !!layoutError}
       >{uploading
         ? t.issue.uploading
         : editing

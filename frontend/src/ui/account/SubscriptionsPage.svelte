@@ -21,6 +21,7 @@
   let subs = $state<MySubscription[] | null>(null);
   let prefs = $state<NotificationPrefs | null>(null);
   let filters = $state<SavedFilter[] | null>(null);
+  let filtersError = $state('');
   let error = $state('');
   let dialog = $state<{ subscription: MySubscription | null } | null>(null);
   let removing = $state<MySubscription | null>(null);
@@ -48,7 +49,7 @@
 
   $effect(() => {
     void load();
-    // The time zone, whether mail goes out, and the filters to pick from are extras.
+    // The time zone and whether mail goes out are extras.
     accountApi
       .notifications()
       .then((p) => (prefs = p))
@@ -56,7 +57,7 @@
     api
       .filters()
       .then((f) => (filters = f))
-      .catch(() => (filters = []));
+      .catch((e: unknown) => (filtersError = errorMessage(e)));
   });
 
   async function run(s: MySubscription) {
@@ -171,6 +172,7 @@
   open={dialog !== null}
   subscription={dialog?.subscription ?? null}
   {filters}
+  {filtersError}
   onclose={() => (dialog = null)}
   onsaved={saved}
 />

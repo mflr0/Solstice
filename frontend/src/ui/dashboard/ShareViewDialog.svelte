@@ -33,6 +33,7 @@
   let active = $state(0);
   let busy = $state(false);
   let error = $state('');
+  let peopleError = $state('');
   let input: HTMLInputElement | undefined = $state();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
@@ -53,6 +54,7 @@
       picked = null;
       people = [];
       error = '';
+      peopleError = '';
       open = false;
       void loadChoices();
     });
@@ -71,9 +73,13 @@
     const term = q.trim();
     try {
       const found = term ? await api.users(term) : [];
-      if (mine === seq) people = found.filter((u) => u.id !== filter?.owner?.id);
-    } catch {
-      if (mine === seq) people = [];
+      if (mine !== seq) return;
+      people = found.filter((u) => u.id !== filter?.owner?.id);
+      peopleError = '';
+    } catch (err) {
+      if (mine !== seq) return;
+      people = [];
+      peopleError = errorMessage(err);
     }
   }
 
@@ -214,6 +220,7 @@
           onclick={() => void share()}>{t.viewShare.share}</button
         >
       </div>
+      {#if peopleError && !error}<p class="error-text" role="alert">{peopleError}</p>{/if}
 
       <section aria-labelledby="share-who-{uid}">
         <h3 id="share-who-{uid}" class="heading">{t.viewShare.who}</h3>

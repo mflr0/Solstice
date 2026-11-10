@@ -7,7 +7,8 @@ import {
   viewZones,
 } from '../../core/issue-view.js';
 import type { IssueDetail, OfferedField, ProjectDetail } from '../../core/types.js';
-import { api, type IssueFields } from '../../lib/api.js';
+import { api, errorMessage, type IssueFields } from '../../lib/api.js';
+import { notify } from '../../lib/ui.svelte.js';
 
 // Typed values are saved when the field is left, choices as they are made.
 const typed = ['text', 'textarea', 'url', 'number', 'date', 'datetime'];
@@ -62,6 +63,13 @@ export class FieldState {
   readonly onchange: (fields: IssueFields) => Promise<boolean>;
   readonly #issue: () => IssueDetail | null;
   readonly destroy: () => void;
+  // The editing helpers fail together when the server does: one toast for them.
+  #told = false;
+  readonly #fail = (e: unknown) => {
+    if (this.#told) return;
+    this.#told = true;
+    notify(errorMessage(e), 'error');
+  };
 
   constructor(
     issue: () => IssueDetail | null,
@@ -108,7 +116,9 @@ export class FieldState {
           (l) => {
             if (current) this.required = requiredFields(l.fields);
           },
-          () => {},
+          (e: unknown) => {
+            if (current) this.#fail(e);
+          },
         );
         return () => {
           current = false;
@@ -121,9 +131,14 @@ export class FieldState {
         const k = key;
         if (!k || !edit) return;
         let current = true;
-        void api.project(k).then((p) => {
-          if (current) this.project = p;
-        });
+        api.project(k).then(
+          (p) => {
+            if (current) this.project = p;
+          },
+          (e: unknown) => {
+            if (current) this.#fail(e);
+          },
+        );
         return () => {
           current = false;
         };
@@ -135,9 +150,14 @@ export class FieldState {
         const ty = type;
         if (!k || !ty || !edit) return;
         let current = true;
-        void api.projectFields(k, ty).then((f) => {
-          if (current) this.offered = f;
-        });
+        api.projectFields(k, ty).then(
+          (f) => {
+            if (current) this.offered = f;
+          },
+          (e: unknown) => {
+            if (current) this.#fail(e);
+          },
+        );
         return () => {
           current = false;
           this.offered = [];
