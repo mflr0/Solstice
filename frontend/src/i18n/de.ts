@@ -897,6 +897,63 @@ export const de: Messages = {
       `${plural(n, 'Unteraufgabe hat einen Bearbeiter, der im neuen Projekt nicht zugewiesen werden kann: Er wird ersetzt', 'Unteraufgaben haben Bearbeiter, die im neuen Projekt nicht zugewiesen werden können: Sie werden ersetzt')}.`,
   },
 
+  tour: {
+    label: 'Geführte Tour',
+    position: (i: number, n: number) => `${i}/${n}`,
+    announce: (i: number, n: number, title: string) => `Schritt ${i} von ${n}: ${title}`,
+    skip: 'Überspringen',
+    back: 'Zurück',
+    next: 'Weiter',
+    done: 'Fertig',
+    shortcut: (key: string) => `Tastenkürzel: ${key}.`,
+    allShortcuts: (key: string) => `${key} zeigt alle Tastenkürzel.`,
+    steps: {
+      welcome: {
+        title: 'Willkommen bei Solstice',
+        body: 'Ein kurzer Blick auf die obere Leiste, die alle Seiten teilen. Die Pfeiltasten wechseln den Schritt; Esc beendet die Tour.',
+      },
+      scope: {
+        title: 'Projekt',
+        body: 'Wählen Sie ein Projekt, um Mein Bereich, Boards und die Suche darauf zu beschränken. Alle Projekte zeigt wieder alles.',
+      },
+      work: {
+        title: 'Mein Bereich',
+        body: 'Ihre Startseite, mit den Vorgängen, die Sie betreffen.',
+      },
+      projects: {
+        title: 'Projekte',
+        body: 'Die Projekte, die Sie sehen können, jedes mit seinen Vorgängen und Einstellungen.',
+      },
+      boards: {
+        title: 'Boards',
+        body: 'Boards zeigen Vorgänge als Karten in Spalten, um Sprints zu planen oder den Arbeitsfluss zu verfolgen.',
+      },
+      quickSearch: {
+        title: 'Schnellsuche',
+        body: 'Geben Sie einen Vorgangsschlüssel ein, um ihn zu öffnen, oder Wörter, um Vorgänge zu finden. Enter zeigt alle Treffer in einer Ansicht.',
+      },
+      create: {
+        title: 'Neuer Vorgang',
+        body: 'Legt einen Vorgang im Projekt an, das Sie gerade ansehen, oder im gewählten.',
+      },
+      themes: {
+        title: 'Designs',
+        body: 'Wählen Sie ein Design, hell oder dunkel. Die Wahl gilt nur für Sie.',
+      },
+      account: {
+        title: 'Ihr Konto',
+        body: 'Unter Meine Einstellungen finden Sie Profil, Sprache und Benachrichtigungen. Starten Sie die Tour erneut aus diesem Menü oder aus Ihrem Profil.',
+      },
+      admin: {
+        title: 'Administration',
+        body: 'Als Administrator erreichen Sie aus diesem Menü auch die Administration: Benutzer, Projekte und die Einstellungen der Instanz.',
+      },
+    },
+    replayIntro: 'Ein kurzer Rundgang durch die obere Leiste, die alle Seiten teilen.',
+    replayStart: 'Tour starten',
+    menuItem: 'Tour machen',
+  },
+
   keyboard: {
     title: 'Tastenkürzel',
     scopes: { global: 'Überall', results: 'Suchergebnisse', issue: 'Vorgangsseite' },

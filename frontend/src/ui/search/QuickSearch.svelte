@@ -153,6 +153,7 @@
 <form
   class="topbar-search quick-search"
   role="search"
+  data-tour="quick-search"
   onsubmit={submit}
   use:outside={() => (open = false)}
 >

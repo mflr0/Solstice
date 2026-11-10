@@ -69,7 +69,7 @@
   }
 </script>
 
-<div class="scope" use:outside={() => (open = false)}>
+<div class="scope" data-tour="scope" use:outside={() => (open = false)}>
   <button
     bind:this={button}
     class="scope-button"

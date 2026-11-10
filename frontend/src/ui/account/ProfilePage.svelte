@@ -17,7 +17,7 @@
   import { api, errorMessage, hasPicture, pictureChanged, pictureUrl } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { dialogs, notify } from '../../lib/ui.svelte.js';
   import PasswordInput from '../PasswordInput.svelte';
 
   /** One's identity (name, e-mail) and password. */
@@ -352,6 +352,16 @@
       </div>
     {/if}
   </form>
+
+  <section class="settings-form tour-replay">
+    <h2 class="section-title">{t.tour.label}</h2>
+    <p class="form-hint">{t.tour.replayIntro}</p>
+    <div>
+      <button type="button" class="btn" onclick={() => (dialogs.tour = true)}
+        >{t.tour.replayStart}</button
+      >
+    </div>
+  </section>
 {/if}
 
 <style>

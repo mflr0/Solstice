@@ -144,6 +144,7 @@ describe('TopBar keyboard', () => {
     expect(items.map((i) => i.textContent?.trim())).toEqual([
       t.nav.myPage,
       t.account.menu,
+      t.tour.menuItem,
       t.nav.sourceCode,
       t.nav.licenses,
       t.nav.logout,
@@ -155,11 +156,11 @@ describe('TopBar keyboard', () => {
     key(focused(), 'ArrowDown');
     expect(focused()).toBe(items[1]);
     key(focused(), 'End');
-    expect(focused()).toBe(items[4]);
+    expect(focused()).toBe(items[5]);
     key(focused(), 'ArrowDown');
     expect(focused()).toBe(items[0]);
     key(focused(), 'ArrowUp');
-    expect(focused()).toBe(items[4]);
+    expect(focused()).toBe(items[5]);
     key(focused(), 'Home');
     expect(focused()).toBe(items[0]);
 

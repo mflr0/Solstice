@@ -883,6 +883,64 @@ export const en = {
       `${plural(n, 'sub-task has an assignee who can’t be assigned in the new project: the assignee is changed', 'sub-tasks have assignees who can’t be assigned in the new project: the assignees are changed')}.`,
   },
 
+  /** The guided tour of the top bar (src/ui/Tour.svelte). */
+  tour: {
+    label: 'Guided tour',
+    position: (i: number, n: number) => `${i}/${n}`,
+    announce: (i: number, n: number, title: string) => `Step ${i} of ${n}: ${title}`,
+    skip: 'Skip',
+    back: 'Back',
+    next: 'Next',
+    done: 'Done',
+    shortcut: (key: string) => `Shortcut: ${key}.`,
+    allShortcuts: (key: string) => `${key} lists every shortcut.`,
+    steps: {
+      welcome: {
+        title: 'Welcome to Solstice',
+        body: 'A quick look at the top bar, which every page shares. The arrow keys move between steps; Esc ends the tour.',
+      },
+      scope: {
+        title: 'Project',
+        body: 'Pick a project to narrow My space, Boards and search to it. All projects shows everything again.',
+      },
+      work: {
+        title: 'My space',
+        body: 'Your start page, with the issues that concern you.',
+      },
+      projects: {
+        title: 'Projects',
+        body: 'The projects you can see, each with its issues and settings.',
+      },
+      boards: {
+        title: 'Boards',
+        body: 'Boards show issues as cards in columns, to plan sprints or follow the flow of work.',
+      },
+      quickSearch: {
+        title: 'Quick search',
+        body: 'Type an issue key to open it, or words to find issues. Enter shows every result in a view.',
+      },
+      create: {
+        title: 'New issue',
+        body: 'Creates an issue in the project you are looking at, or in the chosen one.',
+      },
+      themes: {
+        title: 'Themes',
+        body: 'Pick a skin, in light or dark mode. The choice is yours alone.',
+      },
+      account: {
+        title: 'Your account',
+        body: 'My settings holds your profile, language and notifications. Take the tour again from this menu or from your profile.',
+      },
+      admin: {
+        title: 'Administration',
+        body: 'As an administrator, you also reach the Administration area from this menu: users, projects and the settings of the instance.',
+      },
+    },
+    replayIntro: 'A short walk through the top bar, which every page shares.',
+    replayStart: 'Start the tour',
+    menuItem: 'Take the tour',
+  },
+
   keyboard: {
     title: 'Keyboard shortcuts',
     scopes: { global: 'Everywhere', results: 'Search results', issue: 'Issue page' },

@@ -35,6 +35,7 @@
   import ShellBanner from './ShellBanner.svelte';
   import ShortcutsHelp from './ShortcutsHelp.svelte';
   import TopBar from './TopBar.svelte';
+  import Tour from './Tour.svelte';
 
   const route = $derived(router.route);
 
@@ -256,6 +257,7 @@
   <NewIssueDialog />
   <ShortcutsHelp />
   <IssueModal />
+  <Tour />
 {/if}
 <Notes />
 

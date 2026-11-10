@@ -38,10 +38,12 @@ export const dialogs = $state<{
   create: boolean;
   createDefaults: CreateDefaults;
   shortcuts: boolean;
+  tour: boolean;
 }>({
   create: false,
   createDefaults: {},
   shortcuts: false,
+  tour: false,
 });
 
 export function openCreate(defaults: CreateDefaults = {}): void {
@@ -199,6 +201,12 @@ export function toggleScheme(): void {
   applyMode(appearance.scheme === 'dark' ? 'light' : 'dark');
 }
 
+/** Remembers on the account that the guided tour has been shown. */
+export async function markTourSeen(): Promise<void> {
+  if (session.me && session.me.preferences?.tourSeen !== true)
+    session.me = await accountApi.setPreference('tourSeen', true);
+}
+
 /** Turns single-key shortcuts on or off on the account. */
 export async function applyShortcuts(on: boolean): Promise<void> {
   if (session.me) session.me = await accountApi.setPreference('shortcutsEnabled', on);
@@ -249,6 +257,7 @@ export function ignoreShortcut(e: KeyboardEvent, within?: Element): boolean {
     e.isComposing ||
     dialogs.create ||
     dialogs.shortcuts ||
+    dialogs.tour ||
     isTyping(e.target) ||
     [...document.querySelectorAll('dialog[open]')].some((d) => !within || !d.contains(within))
   );

@@ -889,6 +889,63 @@ export const it: Messages = {
       `${plural(n, 'sotto-task ha un assegnatario che non può esserlo nel nuovo progetto: viene sostituito', 'sotto-task hanno assegnatari che non possono esserlo nel nuovo progetto: vengono sostituiti')}.`,
   },
 
+  tour: {
+    label: 'Visita guidata',
+    position: (i: number, n: number) => `${i}/${n}`,
+    announce: (i: number, n: number, title: string) => `Passo ${i} di ${n}: ${title}`,
+    skip: 'Salta',
+    back: 'Indietro',
+    next: 'Avanti',
+    done: 'Fine',
+    shortcut: (key: string) => `Scorciatoia: ${key}.`,
+    allShortcuts: (key: string) => `${key} mostra tutte le scorciatoie.`,
+    steps: {
+      welcome: {
+        title: 'Benvenuto in Solstice',
+        body: 'Un rapido sguardo alla barra in alto, comune a tutte le pagine. Le frecce passano da un passo all’altro; Esc chiude la visita.',
+      },
+      scope: {
+        title: 'Progetto',
+        body: 'Scegli un progetto per limitare a esso Il mio spazio, le board e la ricerca. Tutti i progetti mostra di nuovo tutto.',
+      },
+      work: {
+        title: 'Il mio spazio',
+        body: 'La tua pagina iniziale, con i ticket che ti riguardano.',
+      },
+      projects: {
+        title: 'Progetti',
+        body: 'I progetti che puoi vedere, ognuno con i suoi ticket e le sue impostazioni.',
+      },
+      boards: {
+        title: 'Board',
+        body: 'Le board mostrano i ticket come schede in colonne, per pianificare gli sprint o seguire il flusso di lavoro.',
+      },
+      quickSearch: {
+        title: 'Ricerca rapida',
+        body: 'Scrivi la chiave di un ticket per aprirlo, o delle parole per trovare ticket. Invio mostra tutti i risultati in una vista.',
+      },
+      create: {
+        title: 'Nuovo ticket',
+        body: 'Crea un ticket nel progetto che stai guardando, o in quello scelto.',
+      },
+      themes: {
+        title: 'Temi',
+        body: 'Scegli un tema, in modalità chiara o scura. La scelta vale solo per te.',
+      },
+      account: {
+        title: 'Il tuo account',
+        body: 'Le mie impostazioni raccoglie profilo, lingua e notifiche. Rifai la visita da questo menu o dal tuo profilo.',
+      },
+      admin: {
+        title: 'Amministrazione',
+        body: 'Come amministratore, da questo menu raggiungi anche l’Amministrazione: utenti, progetti e impostazioni dell’istanza.',
+      },
+    },
+    replayIntro: 'Un breve giro della barra in alto, comune a tutte le pagine.',
+    replayStart: 'Inizia la visita',
+    menuItem: 'Fai la visita',
+  },
+
   keyboard: {
     title: 'Scorciatoie da tastiera',
     scopes: { global: 'Ovunque', results: 'Risultati della ricerca', issue: 'Pagina del ticket' },
