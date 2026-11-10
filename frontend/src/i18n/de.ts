@@ -831,7 +831,7 @@ export const de: Messages = {
     remainingEstimate: 'Verbleibende Schätzung',
     estimateHint: 'z. B. 1W 2T 3Std 30Min',
     estimateInvalid: 'Diese Zeit ließ sich nicht lesen: Versuchen Sie „1T 4Std“ oder „90Min“.',
-    customFields: 'Weitere Felder',
+    required: 'Pflichtfeld',
     watch: 'Beobachten',
     watching: 'Beobachtet',
     vote: 'Abstimmen',

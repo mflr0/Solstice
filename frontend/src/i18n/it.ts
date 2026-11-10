@@ -824,7 +824,7 @@ export const it: Messages = {
     remainingEstimate: 'Stima rimanente',
     estimateHint: 'ad es. 1sett 2g 3h 30min',
     estimateInvalid: 'Impossibile leggere questo tempo: prova «1g 4h» o «90min».',
-    customFields: 'Altri campi',
+    required: 'Obbligatorio',
     watch: 'Osserva',
     watching: 'Osservato',
     vote: 'Vota',

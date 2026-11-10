@@ -1,541 +1,61 @@
 <script lang="ts">
-  import { draftOf, restValue, type CustomDraft } from '../../core/custom-fields.js';
-  import { estimateChanges, estimateText } from '../../core/estimates.js';
-  import { paths } from '../../core/route.js';
-  import type { CustomValue, IssueDetail, OfferedField, ProjectDetail } from '../../core/types.js';
-  import { formatDateTime, formatDay, formatDuration, t } from '../../i18n/t.js';
-  import { projectAdminApi } from '../../lib/admin-api.js';
-  import { api, type IssueFields } from '../../lib/api.js';
+  import { customFieldId } from '../../core/issue-view.js';
+  import type { IssueDetail } from '../../core/types.js';
+  import { t } from '../../i18n/t.js';
   import { session } from '../../lib/session.svelte.js';
-  import CustomFieldInput from '../CustomFieldInput.svelte';
   import Dropdown from '../Dropdown.svelte';
-  import LabelEditor from '../LabelEditor.svelte';
-  import Lock from '../Lock.svelte';
-  import MultiPick from '../MultiPick.svelte';
-  import PriorityMark from '../PriorityMark.svelte';
-  import RelTime from '../RelTime.svelte';
   import TypeMark from '../TypeMark.svelte';
-  import UserPicker from '../UserPicker.svelte';
-  import Who from '../Who.svelte';
-  import WikiText from '../WikiText.svelte';
-  import { isSafeUrl } from '../../core/wiki.js';
+  import FieldFrame from './FieldFrame.svelte';
+  import type { FieldState } from './field-state.svelte.js';
+  import IssueField from './IssueField.svelte';
 
   /**
-   * The issue's record card: every field on its own ruled line, editable in
-   * place for those allowed to.
+   * The issue's record card: its type, then the fields the view layout puts
+   * in the side zone, each on its own ruled line, editable in place for those
+   * allowed to.
    */
   interface Props {
     issue: IssueDetail;
-    onchange: (fields: IssueFields) => Promise<boolean>;
+    fields: FieldState;
   }
-  const { issue, onchange }: Props = $props();
+  const { issue, fields }: Props = $props();
 
-  let project = $state<ProjectDetail | null>(null);
   const edit = $derived(issue.can.edit === true);
-  const uid = $props.id();
-
-  // Components, versions and types come from the project, only needed to edit.
-  $effect(() => {
-    const key = issue.project.key;
-    if (!edit) return;
-    // Not `issue` in the callback: by then the view may have let go of it.
-    let current = true;
-    void api.project(key).then((p) => {
-      if (current) project = p;
-    });
-    return () => {
-      current = false;
-    };
-  });
-
   const types = $derived(
-    (project?.issueTypes ?? []).filter((ty) => ty.subtask === issue.type.subtask),
+    (fields.project?.issueTypes ?? []).filter((ty) => ty.subtask === issue.type.subtask),
   );
-  const ids = (list: { id: number }[]) => list.map((x) => x.id);
-  const configure = $derived(project?.can.configure === true);
-
-  async function createComponent(name: string): Promise<number> {
-    const c = await projectAdminApi.createComponent(issue.project.key, { name });
-    if (project) project.components = [...project.components, c];
-    return c.id;
-  }
-
-  async function createVersion(name: string): Promise<number> {
-    const v = await projectAdminApi.createVersion(issue.project.key, { name });
-    if (project) project.versions = [...project.versions, v];
-    return v.id;
-  }
-  const meIsAssignee = $derived(issue.assignee?.id === session.me?.id);
-
-  // The estimates as typed, kept in step with the issue.
-  let originalText = $state('');
-  let remainingText = $state('');
-  let estimateError = $state(false);
-
-  $effect(() => {
-    originalText = estimateText(issue.time.original, t.units.duration);
-    remainingText = estimateText(issue.time.remaining, t.units.duration);
-    estimateError = false;
-  });
-
-  async function saveEstimates() {
-    const { fields, invalid } = estimateChanges(
-      { original: originalText, remaining: remainingText },
-      issue.time,
-      t.units.duration,
-    );
-    estimateError = invalid !== null;
-    if (invalid !== null || Object.keys(fields).length === 0) return;
-    if (!(await onchange(fields))) {
-      // The note already says why; the fields show the issue's own values again.
-      originalText = estimateText(issue.time.original, t.units.duration);
-      remainingText = estimateText(issue.time.remaining, t.units.duration);
-    }
-  }
-
-  // A refusal leaves the issue as it was, so Svelte has nothing to redraw and
-  // the control would keep the refused value.
-  async function save(el: HTMLInputElement, fields: IssueFields, stored: () => string) {
-    if (!(await onchange(fields))) el.value = stored();
-  }
-
-  // The custom fields the project and type offer, only needed to edit.
-  let offered = $state<OfferedField[]>([]);
-  $effect(() => {
-    const key = issue.project.key;
-    const type = issue.type.id;
-    if (!edit) return;
-    let current = true;
-    void api.projectFields(key, type).then((f) => {
-      if (current) offered = f;
-    });
-    return () => {
-      current = false;
-      offered = [];
-    };
-  });
-
-  // Every field with a value, then, for editors, the offered ones without.
-  const customRows = $derived.by(() => {
-    const byId = new Map(offered.map((f) => [f.id, f]));
-    const rows: {
-      id: number;
-      name: string;
-      value?: CustomValue;
-      field?: OfferedField | undefined;
-    }[] = issue.customFields.map((v) => ({
-      id: v.id,
-      name: v.name,
-      value: v,
-      field: byId.get(v.id),
-    }));
-    for (const f of offered) {
-      if (!issue.customFields.some((v) => v.id === f.id))
-        rows.push({ id: f.id, name: f.name, field: f });
-    }
-    return rows.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  });
-
-  // Reassigned, not mutated: a derived value is not deeply reactive.
-  let drafts = $derived<Record<number, CustomDraft>>(
-    Object.fromEntries(
-      offered.map((f) => [
-        f.id,
-        draftOf(
-          f,
-          issue.customFields.find((v) => v.id === f.id),
-        ),
-      ]),
-    ),
-  );
-
-  // Typed values are saved when the field is left, choices as they are made.
-  const typed = ['text', 'textarea', 'url', 'number', 'date', 'datetime'];
-
-  function setCustom(f: OfferedField, v: CustomDraft) {
-    drafts = { ...drafts, [f.id]: v };
-    if (!typed.includes(f.type)) void saveCustom(f);
-  }
-
-  async function saveCustom(f: OfferedField) {
-    const stored = () =>
-      draftOf(
-        f,
-        issue.customFields.find((v) => v.id === f.id),
-      );
-    const next = restValue(f, drafts[f.id] ?? stored());
-    if (JSON.stringify(next) === JSON.stringify(restValue(f, stored()))) return;
-    if (!(await onchange({ customFields: { [String(f.id)]: next ?? null } }))) {
-      drafts = { ...drafts, [f.id]: stored() };
-    }
-  }
-
-  // A row torn down with the focus in it still sends focusout, without its field.
-  function leaveCustom(e: FocusEvent, f: OfferedField | undefined) {
-    if (!f || !typed.includes(f.type)) return;
-    const to = e.relatedTarget;
-    if (to instanceof Node && (e.currentTarget as HTMLElement).contains(to)) return;
-    void saveCustom(f);
-  }
-
-  function customKeys(e: KeyboardEvent, f: OfferedField) {
-    if (e.key === 'Enter' && e.target instanceof HTMLInputElement && typed.includes(f.type)) {
-      e.preventDefault();
-      void saveCustom(f);
-    }
-  }
-
-  const spentRatio = $derived.by(() => {
-    const { original, spent } = issue.time;
-    if (!original || !spent) return 0;
-    return Math.min(1, spent / original);
-  });
 </script>
 
 <aside class="fiche card" aria-label={t.issue.fiche}>
   <h2 class="head card-head title">{issue.key}</h2>
   <dl>
-    <div class="line card-row">
-      <dt>{t.issue.assignee}</dt>
-      <dd class="stack">
-        <UserPicker
-          value={issue.assignee}
-          label={t.issue.assignee}
-          disabled={!issue.can.assign}
-          search={(q) => api.assignable(issue.project.key, q)}
-          onpick={(u) => void onchange({ assignee: u?.id ?? null })}
-        />
-        {#if !meIsAssignee && (issue.can.assign || issue.can.assignable) && session.me}
-          <button
-            class="link-btn small"
-            onclick={() => void onchange({ assignee: session.me?.id ?? null })}
-            >{t.common.assignToMe}</button
-          >
-        {/if}
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.reporter}</dt>
-      <dd><Who user={issue.reporter} empty="—" /></dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.priority}</dt>
-      <dd>
-        {#if edit}
-          <Dropdown
-            quiet
-            label={t.issue.priority}
-            value={issue.priority?.id ?? ''}
-            options={(session.meta?.priorities ?? []).map((p) => ({
-              value: p.id,
-              label: session.priorityName(p),
-            }))}
-            onchange={(v) => void onchange({ priority: v || null })}
-          >
-            {#snippet icon(id)}
-              <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
-            {/snippet}
-          </Dropdown>
-        {:else}
-          <PriorityMark priority={issue.priority} withName />
-        {/if}
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.type}</dt>
-      <dd>
-        {#if edit && types.length > 1}
-          <Dropdown
-            quiet
-            label={t.issue.type}
-            value={issue.type.id}
-            options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
-            onchange={(v) => void onchange({ type: v })}
-          >
-            {#snippet icon(id)}
-              <TypeMark type={types.find((ty) => ty.id === id) ?? issue.type} />
-            {/snippet}
-          </Dropdown>
-        {:else}
-          <TypeMark type={issue.type} withName />
-        {/if}
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.components}</dt>
-      <dd>
-        <MultiPick
-          options={project?.components ?? issue.components.map((c) => ({ ...c, archived: false }))}
-          selected={ids(issue.components)}
-          label={t.issue.components}
-          disabled={!edit || !project}
-          oncreate={configure ? createComponent : undefined}
-          onchange={(v) => void onchange({ components: v })}
-        />
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.fixVersions}</dt>
-      <dd>
-        <MultiPick
-          options={(project?.versions ?? issue.fixVersions).map((v) => ({
-            id: v.id,
-            name: v.name,
-            note: 'released' in v && v.released ? t.projects.released : undefined,
-          }))}
-          selected={ids(issue.fixVersions)}
-          label={t.issue.fixVersions}
-          disabled={!edit || !project}
-          oncreate={configure ? createVersion : undefined}
-          onchange={(v) => void onchange({ fixVersions: v })}
-        />
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.affectsVersions}</dt>
-      <dd>
-        <MultiPick
-          options={(project?.versions ?? issue.affectsVersions).map((v) => ({
-            id: v.id,
-            name: v.name,
-          }))}
-          selected={ids(issue.affectsVersions)}
-          label={t.issue.affectsVersions}
-          disabled={!edit || !project}
-          oncreate={configure ? createVersion : undefined}
-          onchange={(v) => void onchange({ affectsVersions: v })}
-        />
-      </dd>
-    </div>
-    {#if issue.epic}
-      <div class="line card-row">
-        <dt>{t.boards.epic}</dt>
-        <dd>
-          <a class="key" href={paths.issue(issue.epic.key)}>{issue.epic.key}</a>
-          {issue.epic.summary}
-        </dd>
-      </div>
-    {/if}
-    {#if issue.sprints?.length}
-      <div class="line card-row">
-        <dt>{t.boards.sprint}</dt>
-        <dd class="sprints">
-          {#each issue.sprints as sp (sp.id)}
-            {#if sp.board && sp.state !== 'closed'}
-              <a href={sp.state === 'active' ? paths.board(sp.board) : paths.backlog(sp.board)}
-                >{sp.name}</a
-              >
-            {:else}
-              <span class:muted={sp.state === 'closed'}>{sp.name}</span>
-            {/if}
-            <span class="muted">({t.boards.sprintStates[sp.state]})</span>
-          {/each}
-        </dd>
-      </div>
-    {/if}
-    <div class="line card-row">
-      <dt>{t.issue.labels}</dt>
-      <dd>
-        <LabelEditor
-          labels={issue.labels}
-          editable={edit}
-          onchange={(l) => onchange({ labels: l })}
-        />
-      </dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.due}</dt>
-      <dd>
-        {#if edit}
-          <input
-            class="date"
-            type="date"
-            aria-label={t.issue.due}
-            value={issue.due ?? ''}
-            onchange={(e) =>
-              void save(
-                e.currentTarget,
-                { due: e.currentTarget.value || null },
-                () => issue.due ?? '',
-              )}
-          />
-        {:else}
-          {issue.due ? formatDay(issue.due) : '—'}
-        {/if}
-      </dd>
-    </div>
-    {#if issue.securityLevel || issue.can.security}
-      <div class="line card-row">
-        <dt>{t.issue.security}</dt>
-        <dd>
-          {#if issue.can.security && issue.securityLevels.length}
-            <Dropdown
-              quiet
-              label={t.issue.security}
-              value={issue.securityLevel ? String(issue.securityLevel.id) : ''}
-              options={[
-                { value: '', label: t.issue.public },
-                ...issue.securityLevels.map((l) => ({ value: String(l.id), label: l.name })),
-              ]}
-              onchange={(v) => void onchange({ securityLevel: v ? Number(v) : null })}
-            >
-              {#snippet icon(id)}
-                {#if id}<Lock />{/if}
-              {/snippet}
-            </Dropdown>
-          {:else if issue.securityLevel}
-            <span class="conf"><Lock /> {issue.securityLevel.name}</span>
-          {:else}
-            {t.issue.public}
-          {/if}
-        </dd>
-      </div>
-    {/if}
+    <FieldFrame zone="side" label={t.issue.type}>
+      {#if edit && types.length > 1}
+        <Dropdown
+          quiet
+          label={t.issue.type}
+          value={issue.type.id}
+          options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
+          onchange={(v) => void fields.onchange({ type: v })}
+        >
+          {#snippet icon(id)}
+            <TypeMark type={types.find((ty) => ty.id === id) ?? issue.type} />
+          {/snippet}
+        </Dropdown>
+      {:else}
+        <TypeMark type={issue.type} withName />
+      {/if}
+    </FieldFrame>
+    {#each fields.zones.side as field (field)}
+      <IssueField {issue} {field} zone="side" {fields} />
+    {/each}
+    {#each fields.zones.unplaced as value (value.id)}
+      <IssueField {issue} field={customFieldId(value.id)} zone="side" {fields} {value} />
+    {/each}
   </dl>
-
-  <dl class="dates">
-    <div class="line card-row">
-      <dt>{t.issue.created}</dt>
-      <dd><RelTime iso={issue.created} /></dd>
-    </div>
-    <div class="line card-row">
-      <dt>{t.issue.updated}</dt>
-      <dd><RelTime iso={issue.updated} /></dd>
-    </div>
-    {#if issue.resolved}
-      <div class="line card-row">
-        <dt>{t.issue.resolved}</dt>
-        <dd>
-          <RelTime iso={issue.resolved} />
-          {#if issue.resolution}<span class="muted"
-              >· {session.resolutionName(issue.resolution)}</span
-            >{/if}
-        </dd>
-      </div>
-    {/if}
-    {#if edit || issue.time.original || issue.time.spent || issue.time.remaining !== null}
-      <div class="line card-row">
-        <dt>{t.issue.time}</dt>
-        <dd class="time">
-          {#if issue.time.original || issue.time.spent || issue.time.remaining !== null}
-            <span class="bar" aria-hidden="true"
-              ><span style:width={`${spentRatio * 100}%`}></span></span
-            >
-            <span class="nums">
-              {#if issue.time.spent}<span>{t.issue.spent} {formatDuration(issue.time.spent)}</span
-                >{/if}
-              {#if issue.time.original}<span
-                  >{t.issue.estimate} {formatDuration(issue.time.original)}</span
-                >{/if}
-              {#if issue.time.remaining !== null}<span
-                  >{t.issue.remaining} {formatDuration(issue.time.remaining)}</span
-                >{/if}
-            </span>
-          {/if}
-          {#if edit}
-            <span class="estimates">
-              <label>
-                <span class="muted">{t.issue.originalEstimate}</span>
-                <input
-                  class="est"
-                  bind:value={originalText}
-                  placeholder={t.issue.estimateHint}
-                  aria-invalid={estimateError}
-                  onchange={() => void saveEstimates()}
-                />
-              </label>
-              <label>
-                <span class="muted">{t.issue.remainingEstimate}</span>
-                <input
-                  class="est"
-                  bind:value={remainingText}
-                  placeholder={t.issue.estimateHint}
-                  aria-invalid={estimateError}
-                  onchange={() => void saveEstimates()}
-                />
-              </label>
-            </span>
-            {#if estimateError}<span class="error-text small" role="alert"
-                >{t.issue.estimateInvalid}</span
-              >{/if}
-          {/if}
-        </dd>
-      </div>
-    {/if}
-  </dl>
-
-  {#if customRows.length}
-    <div class="head card-head sub">{t.issue.customFields}</div>
-    <dl>
-      {#each customRows as row (row.id)}
-        {@const f = row.value}
-        {@const field = edit ? row.field : undefined}
-        <div class="line card-row">
-          {#if field}
-            <dt><label for="{uid}-cf-{field.id}">{row.name}</label></dt>
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <dd
-              class="cf-edit"
-              onfocusout={(e) => leaveCustom(e, field)}
-              onkeydown={(e) => customKeys(e, field)}
-            >
-              <CustomFieldInput
-                {field}
-                id="{uid}-cf-{field.id}"
-                quiet
-                attachments={issue.attachments}
-                value={drafts[field.id] ?? draftOf(field, f)}
-                onchange={(v) => setCustom(field, v)}
-              />
-            </dd>
-          {:else if f}
-            <dt>{f.name}</dt>
-            <dd>
-              {#if f.kind === 'user'}
-                <span class="stack">
-                  {#each f.users ?? [] as u (u.id)}<Who user={u} />{/each}
-                </span>
-              {:else if f.kind === 'wiki'}
-                {#each f.values as v, i (i)}<WikiText
-                    source={v}
-                    attachments={issue.attachments}
-                  />{/each}
-              {:else if f.kind === 'url'}
-                {#each f.values as v, i (i)}
-                  {#if isSafeUrl(v)}
-                    <a href={v} rel="nofollow noopener noreferrer" target="_blank">{v}</a>
-                  {:else}
-                    {v}
-                  {/if}
-                {/each}
-              {:else if f.kind === 'date'}
-                {f.values.map(formatDay).join(', ')}
-              {:else if f.kind === 'datetime'}
-                {f.values.map(formatDateTime).join(', ')}
-              {:else if f.kind === 'issue'}
-                {#each f.values as v (v)}<a class="key" href={paths.issue(v)}>{v}</a>{/each}
-              {:else if f.kind === 'label'}
-                <span class="chips"
-                  >{#each f.values as v (v)}<span class="chip">{v}</span>{/each}</span
-                >
-              {:else}
-                {f.values.join(', ')}
-              {/if}
-            </dd>
-          {/if}
-        </div>
-      {/each}
-    </dl>
-  {/if}
 </aside>
 
 <style>
-  .sprints {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 6px;
-  }
-
   .fiche {
     font-size: 0.84375rem;
   }
@@ -554,138 +74,11 @@
     overflow-wrap: anywhere;
   }
 
-  .head.sub {
-    border-bottom-width: 1px;
-    border-top: 1px solid var(--rule-strong);
-    margin-top: 6px;
-  }
-
   dl {
     margin: 0;
   }
 
-  .dates {
-    border-top: 1px solid var(--rule-strong);
-  }
-
-  /* Ruled like an index card, in pale blue ink. */
-  .line {
-    display: grid;
-    grid-template-columns: 7rem minmax(0, 1fr);
-    gap: 10px;
-    align-items: start;
-    padding: 7px 14px 6px;
-    border-bottom: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
-    min-height: 2.125rem;
-  }
-
-  .line:last-child {
-    border-bottom: none;
-  }
-
-  dt {
-    font-size: 0.75rem;
-    color: var(--muted);
-    padding-top: 2px;
-  }
-
-  dd {
-    margin: 0;
-    min-width: 0;
-  }
-
-  .stack {
-    display: grid;
-    gap: 4px;
-    justify-items: start;
-  }
-
-  .small {
-    font-size: 0.75rem;
-  }
-
-  .date {
-    border: 1px solid transparent;
-    background: transparent;
-    padding: 1px 4px;
-    margin-left: -5px;
-    font: 0.8125rem var(--font-mono);
-  }
-
-  .date:hover {
-    border-color: var(--rule-strong);
-  }
-
-  .conf {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .time {
-    display: grid;
-    gap: 5px;
-  }
-
-  .bar {
-    display: block;
-    height: 5px;
-    background: var(--paper-sunk);
-    border: 1px solid var(--rule);
-  }
-
-  .bar span {
-    display: block;
-    height: 100%;
-    background: var(--stamp-doing);
-  }
-
-  .nums {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 10px;
-    font: 0.75rem var(--font-mono);
-    color: var(--ink-soft);
-  }
-
-  .estimates {
-    display: grid;
-    /* Side by side when there is room, each wide enough for the longest placeholder. */
-    grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
-    gap: 4px 14px;
-  }
-
-  .estimates label {
-    display: grid;
-    gap: 1px;
-    font-size: 0.75rem;
-  }
-
-  .est {
-    border: 1px solid transparent;
-    background: transparent;
-    padding: 1px 4px;
-    margin-left: -5px;
-    font: 0.78125rem var(--font-mono);
-    width: 100%;
-  }
-
-  .est:hover,
-  .est:focus {
-    border-color: var(--rule-strong);
-  }
-
-  .est[aria-invalid='true'] {
-    border-color: var(--accent-text);
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  dd :global(.wiki) {
+  dl :global(.wiki) {
     font-size: 0.84375rem;
   }
 </style>

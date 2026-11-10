@@ -825,7 +825,7 @@ export const fr: Messages = {
     remainingEstimate: 'Temps restant estimé',
     estimateHint: 'ex. : 1sem 2j 3h 30min',
     estimateInvalid: 'Durée illisible : essayez « 1j 4h » ou « 90min ».',
-    customFields: 'Autres champs',
+    required: 'Obligatoire',
     watch: 'Observer',
     watching: 'Observé',
     vote: 'Voter',
