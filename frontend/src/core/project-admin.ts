@@ -230,6 +230,7 @@ export const PROJECT_TABS = [
   'versions',
   'rights',
   'workflows',
+  'layouts',
   'notifications',
   'import',
 ] as const;

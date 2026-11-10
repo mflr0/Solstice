@@ -2904,6 +2904,7 @@ export const fr: Messages = {
       versions: 'Versions',
       notifications: 'Notifications',
       import: 'Import',
+      layouts: 'Dispositions',
     },
     leaveBody: 'Cet onglet a des modifications non enregistrées. Les abandonner ?',
     general: {
@@ -2998,6 +2999,22 @@ export const fr: Messages = {
       deleteAffects: 'Les tickets qu’elle touche reçoivent',
       deleteNone: 'Aucune version : ils la perdent simplement',
       deleted: (name: string) => `Version ${name} supprimée.`,
+    },
+    layouts: {
+      title: 'Dispositions des tickets',
+      intro:
+        'Chaque type de ticket a une disposition pour son formulaire de création et sa vue. Ce projet la suit, ou la personnalise pour ses propres tickets.',
+      type: 'Type de ticket',
+      noTypes: 'Ce projet n’a aucun type de ticket.',
+      follows: 'Suit la disposition du type',
+      followsHint: 'Les modifications de la disposition du type s’appliquent aussi ici.',
+      customised: 'Personnalisée pour ce projet',
+      customise: 'Personnaliser',
+      reset: 'Revenir à la disposition du type',
+      resetTitle: (form: string) => `Ramener « ${form} » à la disposition du type ?`,
+      resetBody:
+        'Ce projet revient à la disposition du type : son ordre, ses champs masqués et ses champs obligatoires sont perdus.',
+      resetDone: 'Formulaire revenu à la disposition du type.',
     },
     notifications: {
       title: 'Notifications',

@@ -2876,6 +2876,7 @@ export const en = {
       versions: 'Versions',
       notifications: 'Notifications',
       import: 'Import',
+      layouts: 'Issue layouts',
     },
     leaveBody: 'This tab has unsaved changes. Discard them?',
     general: {
@@ -2968,6 +2969,22 @@ export const en = {
       deleteAffects: 'Issues it affects get',
       deleteNone: 'No version: they just lose it',
       deleted: (name: string) => `Version ${name} deleted.`,
+    },
+    layouts: {
+      title: 'Issue layouts',
+      intro:
+        'Each issue type has a layout for its create form and its issue view. This project follows it, or customises it for its own issues.',
+      type: 'Issue type',
+      noTypes: 'This project has no issue type.',
+      follows: 'Follows the type’s layout',
+      followsHint: 'Changes to the type’s layout apply here too.',
+      customised: 'Customised for this project',
+      customise: 'Customise',
+      reset: 'Reset to the type’s layout',
+      resetTitle: (form: string) => `Reset the ${form.toLowerCase()} to the type’s layout?`,
+      resetBody:
+        'This project goes back to the type’s layout: its own order, hidden fields and required fields are lost.',
+      resetDone: 'Form back to the type’s layout.',
     },
     notifications: {
       title: 'Notifications',
