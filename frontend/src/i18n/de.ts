@@ -419,7 +419,6 @@ export const de: Messages = {
     copyLink: 'Projektlink kopieren',
     linkCopied: 'Link kopiert',
     copyLinkFailed: (url: string) => `Link konnte nicht kopiert werden: ${url}`,
-    kinds: { software: 'Software', business: 'Business', service_desk: 'Support' },
     components: 'Komponenten',
     versions: 'Versionen',
     released: 'veröffentlicht',

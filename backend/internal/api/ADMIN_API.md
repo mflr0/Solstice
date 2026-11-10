@@ -344,7 +344,7 @@ ones. Each project now has `archived` (bool).
 `issueTypes`, every type allowed in the project.
 
 `GET /api/admin/projects` — global admin. Every project, seen or not:
-`[{id, key, name, kind, lead (userRef), category (idName | null), archived,
+`[{id, key, name, lead (userRef), category (idName | null), archived,
 issues}]`, active first, then archived, by name.
 
 ### Update — project admin
@@ -352,18 +352,18 @@ issues}]`, active first, then archived, by name.
 `PATCH /api/projects/{key}`
 `{name?, description? (null clears), lead? (id | null), category? (id | null),
 defaultAssignee? ("unassigned" | "lead" | "reporter"), issueTypes?: [typeId]}`
-→ the settings object: `{id, key, name, description, kind, lead (userRef | null),
+→ the settings object: `{id, key, name, description, lead (userRef | null),
 category (idName | null), defaultAssignee, archived, issueTypes: [typeRef],
 issues}`. Removing an issue type still used by issues: 409 `{inUse:
 [{type: typeRef, issues}]}`. (`project.update`)
 
 ### Project settings — project admin
 
-`GET /api/projects/{key}/settings` → `{id, key, name, description, kind,
+`GET /api/projects/{key}/settings` → `{id, key, name, description,
 lead (userRef | null), category (idName | null), defaultAssignee, archived,
 issueTypes: [typeRef], issues}` — the project as its administrators
 configure it: the fields `PATCH /api/projects/{key}` changes, with `id`,
-`key`, `kind`, `archived` and `issues` (the issue count).
+`key`, `archived` and `issues` (the issue count).
 
 ### Archive — global admin
 

@@ -82,13 +82,12 @@ func (s *Server) projectKeyCheck(w http.ResponseWriter, r *http.Request) error {
 // projectTemplates are the workflows a new project can start with: its
 // statuses in order. Any status can be reached from any other.
 var projectTemplates = map[string]struct {
-	kind     string
 	statuses []templateStatus
 }{
-	"software": {"software", []templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
+	"software": {[]templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
 		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusInReview), issue.Doing},
 		{i18n.M(i18n.DefaultStatusDone), issue.Done}}},
-	"simple": {"business", []templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
+	"simple": {[]templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
 		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusDone), issue.Done}}},
 }
 
@@ -212,7 +211,6 @@ type newProject struct {
 	lead        *int64
 	category    *int64
 	template    string
-	kind        string
 	statuses    []projectStatus
 	assignTo    string
 	access      *accessInput
@@ -258,7 +256,7 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw m
 	if !ok {
 		return nil, fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
 	}
-	p.kind, p.statuses = tmpl.kind, templateStatuses(tmpl.statuses, s.defaultLanguage())
+	p.statuses = templateStatuses(tmpl.statuses, s.defaultLanguage())
 	if in.DefaultAssignee != nil {
 		if err := checkAssigneeType(*in.DefaultAssignee); err != nil {
 			return nil, err
@@ -374,9 +372,9 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 
 // insertProject writes the project and the issue types it offers.
 func insertProject(ctx context.Context, tx *sql.Tx, p *newProject) (int64, error) {
-	res, err := tx.ExecContext(ctx, `INSERT INTO projects (pkey, name, description, lead_id, category_id, kind,
-		default_assignee) VALUES (?, ?, ?, ?, ?, ?, ?)`, p.key, p.name, optDescription(p.description), p.lead, p.category,
-		p.kind, p.assignTo)
+	res, err := tx.ExecContext(ctx, `INSERT INTO projects (pkey, name, description, lead_id, category_id,
+		default_assignee) VALUES (?, ?, ?, ?, ?, ?)`, p.key, p.name, optDescription(p.description), p.lead, p.category,
+		p.assignTo)
 	if isDuplicate(err) {
 		return 0, failf(http.StatusConflict, i18n.ProjectKeyTaken, p.key)
 	}
@@ -556,7 +554,6 @@ type projectSettingsOut struct {
 	Key             string    `json:"key"`
 	Name            string    `json:"name"`
 	Description     *string   `json:"description"`
-	Kind            string    `json:"kind"`
 	Lead            *userRef  `json:"lead"`
 	Category        *idName   `json:"category"`
 	DefaultAssignee string    `json:"defaultAssignee"`
@@ -569,10 +566,10 @@ func (s *Server) projectSettings(ctx context.Context, id int64) (*projectSetting
 	p := &projectSettingsOut{IssueTypes: []typeRef{}}
 	var desc, category sql.NullString
 	var lead, categoryID sql.NullInt64
-	err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.kind, p.lead_id, c.id, c.name,
+	err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.lead_id, c.id, c.name,
 		p.default_assignee, p.archived, (SELECT COUNT(*) FROM issues i WHERE i.project_id = p.id)
 		FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &categoryID, &category, &p.DefaultAssignee, &p.Archived,
+		Scan(&p.ID, &p.Key, &p.Name, &desc, &lead, &categoryID, &category, &p.DefaultAssignee, &p.Archived,
 			&p.Issues)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
@@ -1066,7 +1063,6 @@ func (s *Server) adminProjects(w http.ResponseWriter, r *http.Request) error {
 		ID       int64    `json:"id"`
 		Key      string   `json:"key"`
 		Name     string   `json:"name"`
-		Kind     string   `json:"kind"`
 		Lead     *userRef `json:"lead"`
 		Category *idName  `json:"category"`
 		Archived bool     `json:"archived"`
@@ -1075,14 +1071,14 @@ func (s *Server) adminProjects(w http.ResponseWriter, r *http.Request) error {
 	}
 	list := []row{}
 	var leads []int64
-	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived,
+	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.lead_id, c.id, c.name, p.archived,
 		(SELECT COUNT(*) FROM issues i WHERE i.project_id = p.id)
 		FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.archived, p.name`,
 		func(rows *sql.Rows) error {
 			var p row
 			var cid sql.NullInt64
 			var cname sql.NullString
-			if err := rows.Scan(&p.ID, &p.Key, &p.Name, &p.Kind, &p.lead, &cid, &cname, &p.Archived, &p.Issues); err != nil {
+			if err := rows.Scan(&p.ID, &p.Key, &p.Name, &p.lead, &cid, &cname, &p.Archived, &p.Issues); err != nil {
 				return err
 			}
 			if cid.Valid {

@@ -341,7 +341,6 @@ describe('general tab', () => {
     key: 'WEB',
     name: 'Site web',
     description: 'The site',
-    kind: 'software',
     lead,
     category: { id: 3, name: 'Internal' },
     defaultAssignee: 'unassigned',

@@ -264,7 +264,6 @@
                   ><Highlight text={p.name} search={q} /></a
                 >
                 {#if p.archived}<span class="stamp">{t.projects.archived}</span>{/if}
-                <span class="muted kind">{t.projects.kinds[p.kind] ?? p.kind}</span>
               </td>
               <td class="c-lead"><Who user={p.lead} empty="—" search={q} /></td>
               <td class="c-category">
@@ -415,11 +414,6 @@
 
   .name:hover {
     text-decoration: underline;
-  }
-
-  .kind {
-    margin-left: 8px;
-    font-size: 0.75rem;
   }
 
   .stamp {

@@ -408,10 +408,6 @@ export const en = {
     copyLink: 'Copy the project link',
     linkCopied: 'Link copied',
     copyLinkFailed: (url: string) => `Couldn’t copy the link: ${url}`,
-    kinds: { software: 'software', business: 'business', service_desk: 'service desk' } as Record<
-      string,
-      string
-    >,
     components: 'Components',
     versions: 'Versions',
     released: 'released',

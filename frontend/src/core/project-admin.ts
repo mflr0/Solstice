@@ -37,7 +37,6 @@ export interface AdminProjectRow {
   id: number;
   key: string;
   name: string;
-  kind: string;
   lead: UserRef | null;
   category: IdName | null;
   archived: boolean;
@@ -51,7 +50,6 @@ export interface ProjectSettings {
   key: string;
   name: string;
   description: string | null;
-  kind: string;
   lead: UserRef | null;
   category: IdName | null;
   defaultAssignee: 'unassigned' | 'lead' | 'reporter';
