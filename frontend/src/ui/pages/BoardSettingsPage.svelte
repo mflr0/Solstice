@@ -15,7 +15,7 @@
   import BoardHeader from '../board/BoardHeader.svelte';
   import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
-  import Stamp from '../Stamp.svelte';
+  import MultiPick from '../MultiPick.svelte';
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
@@ -113,7 +113,7 @@
       .catch((e: unknown) => (error = errorMessage(e)));
   });
 
-  /** The statuses the board's projects use, to offer those without a column. */
+  /** The statuses the board's projects use, to offer in the columns. */
   async function loadPool(d: BoardDetail) {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a throwaway value, not state
     const seen = new Map<string, StatusRef>();
@@ -151,7 +151,56 @@
   );
 
   const mapped = $derived(new Set(draft?.columns.flatMap((c) => c.statuses.map((s) => s.id))));
-  const unmapped = $derived(pool.filter((s) => !mapped.has(s.id)));
+  const unmapped = $derived(byRank(pool.filter((s) => !mapped.has(s.id))));
+
+  /** The admin order of the statuses (`statuses.position`); the pool's order without it. */
+  const rank = $derived(new Map((session.meta?.statuses ?? pool).map((s, i) => [s.id, i])));
+  /** What a column can pick: the pool, and the statuses columns hold outside it. */
+  const known = $derived.by(() => {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a throwaway value, not state
+    const all = new Map(pool.map((s) => [s.id, s]));
+    for (const c of draft?.columns ?? [])
+      for (const s of c.statuses) if (!all.has(s.id)) all.set(s.id, s);
+    return byRank([...all.values()]);
+  });
+
+  function byRank(list: StatusRef[]): StatusRef[] {
+    const at = (s: StatusRef) => rank.get(s.id) ?? rank.size;
+    return [...list].sort((a, b) => at(a) - at(b));
+  }
+
+  function choices(column: ColumnDraft) {
+    return known.map((s) => {
+      const other = draft?.columns.find(
+        (c) => c !== column && c.statuses.some((x) => x.id === s.id),
+      );
+      return {
+        id: s.id,
+        name: s.name,
+        note: other ? t.boardSettings.inColumn(other.name) : undefined,
+      };
+    });
+  }
+
+  /**
+   * The list the server reads in order: the status on drop first, then the
+   * others in status order. A card whose workflow can't reach the first
+   * gets the next it can.
+   */
+  function ordered(drop: string | undefined, list: StatusRef[]): StatusRef[] {
+    const first = list.find((s) => s.id === drop);
+    const rest = byRank(list.filter((s) => s !== first));
+    return first ? [first, ...rest] : rest;
+  }
+
+  /** Sets a column's statuses; one another column holds moves here. */
+  function pick(column: ColumnDraft, ids: string[]) {
+    const chosen = known.filter((s) => ids.includes(s.id));
+    for (const c of draft?.columns ?? [])
+      if (c !== column && c.statuses.some((s) => ids.includes(s.id)))
+        c.statuses = c.statuses.filter((s) => !ids.includes(s.id));
+    column.statuses = ordered(column.statuses[0]?.id, chosen);
+  }
 
   function patchFor(part: Part, d: Drafts, kanban: boolean): BoardPatch {
     switch (part) {
@@ -260,37 +309,6 @@
         ? null
         : document.querySelector<HTMLElement>(`#${part}-delete-${list.indexOf(next)}:enabled`);
     (button ?? document.getElementById(`${part}-add`))?.focus();
-  }
-
-  /** A column's last status leaves focus on what puts it back, in the unmapped list. */
-  async function removeStatus(column: ColumnDraft, at: number, s: StatusRef) {
-    const next = focusAfterRemoval(
-      column.statuses.map((x) => x.id),
-      s.id,
-    );
-    column.statuses = column.statuses.filter((x) => x.id !== s.id);
-    await tick();
-    if (next !== undefined) document.getElementById(`status-remove-${at}-${next}`)?.focus();
-    else
-      (
-        document.getElementById(`status-put-${s.id}`) ??
-        document.getElementById(`columns-name-${at}`)
-      )?.focus();
-  }
-
-  /** Puts an unmapped status in a column; its row goes, so focus goes to its neighbour's chooser. */
-  async function putStatus(s: StatusRef, at: number) {
-    const target = draft?.columns[at];
-    if (!target) return;
-    const next = focusAfterRemoval(
-      unmapped.map((x) => x.id),
-      s.id,
-    );
-    target.statuses.push(s);
-    await tick();
-    document
-      .getElementById(next === undefined ? `status-remove-${at}-${s.id}` : `status-put-${next}`)
-      ?.focus();
   }
 
   /** The row an error message names (« name », “name”, „name“…), to mark it. */
@@ -415,25 +433,27 @@
               <div class="column-body">
                 <div class="field">
                   <span class="field-label">{t.boardSettings.statuses}</span>
-                  {#if column.statuses.length}
-                    <ul class="statuses">
-                      {#each column.statuses as s (s.id)}
-                        <li>
-                          <Stamp status={s} />
-                          <button
-                            id="status-remove-{i}-{s.id}"
-                            type="button"
-                            class="btn btn-quiet btn-small icon"
-                            aria-label={t.boardSettings.remove(s.name)}
-                            title={t.boardSettings.remove(s.name)}
-                            onclick={() => void removeStatus(column, i, s)}>×</button
-                          >
-                        </li>
-                      {/each}
-                    </ul>
-                  {:else}
+                  <MultiPick
+                    field
+                    options={choices(column)}
+                    selected={column.statuses.map((s) => s.id)}
+                    label={t.boardSettings.statusesOf(column.name)}
+                    onchange={(ids) => pick(column, ids)}
+                  />
+                  {#if !column.statuses.length}
                     <span class="hint">{t.boardSettings.noStatus}</span>
                   {/if}
+                </div>
+                <div class="field">
+                  <span class="field-label">{t.boardSettings.dropStatus}</span>
+                  <Dropdown
+                    label={t.boardSettings.dropStatusOf(column.name)}
+                    value={column.statuses[0]?.id ?? ''}
+                    options={column.statuses.map((s) => ({ value: s.id, label: s.name }))}
+                    placeholder={t.common.none}
+                    disabled={!column.statuses.length}
+                    onchange={(v) => (column.statuses = ordered(v, column.statuses))}
+                  />
                 </div>
                 <div class="tools">
                   <button
@@ -477,30 +497,11 @@
           </li>
         </ol>
 
-        <div class="unmapped">
-          <h3 class="sub">{t.boardSettings.unmapped}</h3>
-          {#if unmapped.length}
-            <p class="hint">{t.boardSettings.unmappedHint}</p>
-            <ul class="statuses">
-              {#each unmapped as s (s.id)}
-                <li>
-                  <Stamp status={s} />
-                  <Dropdown
-                    id="status-put-{s.id}"
-                    class="put"
-                    label={t.boardSettings.putIn(s.name)}
-                    value=""
-                    options={f.columns.map((c, i) => ({ value: String(i), label: c.name }))}
-                    placeholder={t.boardSettings.chooseColumn}
-                    onchange={(v) => void putStatus(s, Number(v))}
-                  />
-                </li>
-              {/each}
-            </ul>
-          {:else}
-            <p class="hint">{t.boardSettings.allMapped}</p>
-          {/if}
-        </div>
+        {#if unmapped.length}
+          <p class="hint unmapped">
+            {t.boardSettings.unmapped(unmapped.map((s) => s.name).join(', '))}
+          </p>
+        {/if}
       </section>
 
       <!-- Quick filters -->
@@ -833,26 +834,6 @@
     padding: 10px;
   }
 
-  .statuses {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .statuses li {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .icon {
-    padding: 0 6px;
-    font-size: 0.9375rem;
-  }
-
   .tools {
     display: flex;
     gap: 4px;
@@ -872,24 +853,7 @@
   }
 
   .unmapped {
-    margin-top: 6px;
-  }
-
-  .unmapped .statuses {
-    gap: 8px 14px;
-    margin-top: 8px;
-  }
-
-  .unmapped .statuses li {
-    gap: 6px;
-  }
-
-  .statuses :global(.dropdown.put) {
-    display: inline-flex;
-    width: auto;
-    padding-block: 2px;
-    padding-left: 6px;
-    font-size: 0.78125rem;
+    margin-top: 12px;
   }
 
   /* Quick filters and sections: one row each. */

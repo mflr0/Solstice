@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
 import type { BoardDetail } from '../../src/core/board-types.js';
+import type { Meta } from '../../src/core/types.js';
 import { en } from '../../src/i18n/en.js';
+import { session } from '../../src/lib/session.svelte.js';
 import BoardSettingsPage from '../../src/ui/pages/BoardSettingsPage.svelte';
 
 const status = { id: '1', name: 'To Do', category: 'todo' } as const;
@@ -148,5 +150,97 @@ describe('BoardSettingsPage', () => {
     expect(quickQuery(1).getAttribute('aria-invalid')).toBe('true');
     expect(quickRows()[0]!.classList.contains('invalid')).toBe(false);
     expect(nameInput().value).toBe('Team 2');
+  });
+});
+
+describe('BoardSettingsPage columns', () => {
+  const todo = { id: '1', name: 'To Do', category: 'todo' } as const;
+  const progress = { id: '2', name: 'In Progress', category: 'progress' } as const;
+  const done = { id: '3', name: 'Done', category: 'done' } as const;
+  const review = { id: '4', name: 'In Review', category: 'progress' } as const;
+  const blocked = { id: '5', name: 'Blocked', category: 'progress' } as const;
+
+  beforeEach(() => {
+    HTMLElement.prototype.showPopover = function () {};
+    const board = structuredClone(detail);
+    board.projects = [{ key: 'T' } as BoardDetail['projects'][number]];
+    board.columns = [
+      { id: 10, name: 'To Do', statuses: [todo] },
+      { id: 11, name: 'Doing', statuses: [] },
+      { id: 12, name: 'Finished', statuses: [done] },
+    ];
+    api.board.mockResolvedValue(board);
+    // The workflow's order, not the admin one the page sorts by.
+    api.boardProjectStatuses.mockResolvedValue({
+      workflows: [{ statuses: [blocked, review, done, progress, todo] }],
+    });
+    session.meta = { statuses: [todo, progress, done, review, blocked] } as unknown as Meta;
+  });
+
+  afterEach(() => {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
+    session.meta = null;
+  });
+
+  const byLabel = (label: string) =>
+    document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
+  const item = (name: string) =>
+    [...document.querySelectorAll<HTMLElement>('[role=menuitemcheckbox], [role=option]')].find(
+      (b) => b.textContent?.trim().startsWith(name),
+    )!;
+
+  function pick(column: string, ...names: string[]) {
+    byLabel(en.boardSettings.statusesOf(column)).click();
+    flushSync();
+    for (const n of names) item(n).click();
+    flushSync();
+    byLabel(en.boardSettings.statusesOf(column)).click();
+    flushSync();
+  }
+
+  async function mountPage() {
+    component = mount(BoardSettingsPage, { target: document.body, props: { boardId: 7 } });
+    await settle();
+  }
+
+  it('saves the drop status first, the others in status order, and moves a held status', async () => {
+    api.saveBoard.mockResolvedValue(structuredClone(detail));
+    await mountPage();
+    expect(document.querySelector('.unmapped')?.textContent).toContain(
+      'In Progress, In Review, Blocked',
+    );
+
+    byLabel(en.boardSettings.statusesOf('Doing')).click();
+    flushSync();
+    expect(item('Done').textContent).toContain(en.boardSettings.inColumn('Finished'));
+    byLabel(en.boardSettings.statusesOf('Doing')).click();
+    flushSync();
+
+    pick('Doing', 'In Review', 'Done', 'In Progress');
+    byLabel(en.boardSettings.dropStatusOf('Doing')).click();
+    flushSync();
+    item('In Review').click();
+    flushSync();
+    expect(document.querySelector('.unmapped')?.textContent).toContain('Blocked');
+    expect(document.querySelector('.unmapped')?.textContent).not.toContain('In Review');
+
+    button(en.boardSettings.save).click();
+    await settle();
+    expect(api.saveBoard).toHaveBeenCalledWith(7, {
+      columns: [
+        { id: 10, name: 'To Do', statuses: ['1'] },
+        { id: 11, name: 'Doing', statuses: ['4', '2', '3'] },
+        { id: 12, name: 'Finished', statuses: [] },
+      ],
+    });
+  });
+
+  it('keeps the drop status first when more statuses join', async () => {
+    await mountPage();
+    pick('Doing', 'In Review');
+    pick('Doing', 'Blocked', 'In Progress');
+    expect(byLabel(en.boardSettings.dropStatusOf('Doing')).textContent?.trim()).toBe('In Review');
+    pick('Doing', 'In Review');
+    expect(byLabel(en.boardSettings.dropStatusOf('Doing')).textContent?.trim()).toBe('In Progress');
   });
 });
