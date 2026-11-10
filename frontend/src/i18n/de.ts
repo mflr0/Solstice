@@ -942,7 +942,7 @@ export const de: Messages = {
       },
       account: {
         title: 'Ihr Konto',
-        body: 'Unter Meine Einstellungen finden Sie Profil, Sprache und Benachrichtigungen. Starten Sie die Tour erneut aus diesem Menü oder aus Ihrem Profil.',
+        body: 'Unter Meine Einstellungen finden Sie Profil, Sprache und Benachrichtigungen. Starten Sie die Tour erneut aus Ihrem Profil.',
       },
       admin: {
         title: 'Administration',
@@ -951,7 +951,6 @@ export const de: Messages = {
     },
     replayIntro: 'Ein kurzer Rundgang durch die obere Leiste, die alle Seiten teilen.',
     replayStart: 'Tour starten',
-    menuItem: 'Tour machen',
   },
 
   keyboard: {
