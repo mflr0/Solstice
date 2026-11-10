@@ -6,6 +6,7 @@ import { touchDrag, type TouchDragHandlers } from '../../src/lib/touch-drag.js';
 let board: HTMLElement;
 let action: ReturnType<typeof touchDrag>;
 let calls: string[];
+let handlers: TouchDragHandlers;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -15,7 +16,7 @@ beforeEach(() => {
   // Wide enough that no finger here nears an edge: no auto-scroll.
   board.getBoundingClientRect = () => new DOMRect(0, 0, 1000, 600);
   calls = [];
-  const handlers: TouchDragHandlers = {
+  handlers = {
     start: (el) => (calls.push(`start ${el.dataset.key}`), true),
     move: (x, y) => calls.push(`move ${x},${y}`),
     drop: (x, y) => calls.push(`drop ${x},${y}`),
@@ -51,6 +52,18 @@ describe('touchDrag', () => {
     expect(end.defaultPrevented).toBe(true);
     expect(calls).toEqual(['start T-1', 'move 300,120', 'drop 300,120']);
     expect(document.querySelector('.touch-ghost')).toBeNull();
+  });
+
+  it('with a handle, drags from a button in it, and only from there', () => {
+    action.update({ ...handlers, handle: 'button' });
+    touch('touchstart', link(), 100, 100);
+    vi.advanceTimersByTime(400);
+    expect(calls).toEqual([]);
+    const grip = document.querySelector('.board-card button') as Element;
+    touch('touchstart', grip, 100, 100);
+    vi.advanceTimersByTime(400);
+    expect(calls).toEqual(['start T-1']);
+    touch('touchend', grip, 100, 100);
   });
 
   it('leaves a swipe to scrolling', () => {

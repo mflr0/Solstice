@@ -1329,10 +1329,11 @@ export const fr: Messages = {
     noStatus: 'Aucun statut : cette colonne restera vide.',
     addColumn: 'Ajouter une colonne',
     newColumn: 'Nouvelle colonne',
-    moveUp: (name: string) => `Monter « ${name} »`,
-    moveDown: (name: string) => `Descendre « ${name} »`,
-    moveLeft: (name: string) => `Déplacer « ${name} » vers la gauche`,
-    moveRight: (name: string) => `Déplacer « ${name} » vers la droite`,
+    reorder: (name: string) => `Déplacer « ${name} »`,
+    reorderColumn: 'Glisser, ou Alt+← ou Alt+→',
+    reorderRow: 'Glisser, ou Alt+↑ ou Alt+↓',
+    moved: (name: string, at: number, of: number) =>
+      `« ${name} » est maintenant en position ${at} sur ${of}.`,
     remove: (name: string) => `Retirer « ${name} »`,
     unmapped: (names: string) =>
       `Les tickets dans ces statuts n’apparaissent pas sur le tableau : ${names}.`,

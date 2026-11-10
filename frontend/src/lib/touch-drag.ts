@@ -9,6 +9,8 @@ export interface TouchDragHandlers {
   cancel(): void;
   /** What a hold picks up; `.board-card` by default. */
   selector?: string;
+  /** Where in it a hold must start, if not anywhere; a button there still drags. */
+  handle?: string;
 }
 
 // Long enough to tell a hold from a swipe, short enough to beat the
@@ -87,7 +89,10 @@ export function touchDrag(node: HTMLElement, handlers: TouchDragHandlers) {
     if (touch !== null || e.touches.length > 1) return abort();
     const target = e.target as Element;
     const card = target.closest<HTMLElement>(current.selector ?? '.board-card');
-    if (!card || !node.contains(card) || target.closest('button, input, select, label')) return;
+    if (!card || !node.contains(card)) return;
+    if (current.handle) {
+      if (!target.closest(current.handle)) return;
+    } else if (target.closest('button, input, select, label')) return;
     const t = e.changedTouches[0];
     if (!t) return;
     touch = t.identifier;

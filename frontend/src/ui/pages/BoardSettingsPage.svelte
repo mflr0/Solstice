@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import type { BoardDetail, BoardPatch, SectionStrategy } from '../../core/board-types.js';
-  import { arrowAfterMove } from '../../core/catalogs.js';
+  import { moveItem } from '../../core/catalogs.js';
   import { searchHref } from '../../core/filters-url.js';
   import { focusAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
@@ -11,6 +11,7 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
+  import { touchDrag, type TouchDragHandlers } from '../../lib/touch-drag.js';
   import { notify } from '../../lib/ui.svelte.js';
   import BoardHeader from '../board/BoardHeader.svelte';
   import Dropdown from '../Dropdown.svelte';
@@ -68,6 +69,10 @@
   let pool = $state<StatusRef[]>([]);
   let deleting = $state(false);
   let deleteBusy = $state(false);
+  let drag = $state<{ part: ListPart; from: number } | null>(null);
+  let over = $state<number | null>(null);
+  /** What the last move says to a screen reader. */
+  let moved = $state('');
 
   function fromDetail(d: BoardDetail): Drafts {
     return {
@@ -277,25 +282,89 @@
     failed = [];
   }
 
-  /** Swaps an item with its neighbour. */
-  function shift<T>(list: T[], i: number, step: -1 | 1) {
-    const j = i + step;
-    const a = list[i];
-    const b = list[j];
-    if (a === undefined || b === undefined) return;
-    list[i] = b;
-    list[j] = a;
+  function listOf(part: ListPart): { name: string }[] {
+    if (!draft) return [];
+    if (part === 'columns') return draft.columns;
+    return part === 'quick' ? draft.quick : draft.sections.list;
+  }
+
+  /** Moves a row of the draft; the save bar sends the new order. */
+  function reorder(part: ListPart, from: number, to: number): boolean {
+    const list = listOf(part);
+    if (from === to || to < 0 || to >= list.length) return false;
+    list.splice(0, list.length, ...moveItem(list, from, to));
+    moved = t.boardSettings.moved(list[to]!.name, to + 1, list.length);
+    return true;
   }
 
   /**
-   * Moves a row and puts focus on its arrow. By index: a row re-entering the
-   * page drops focus, and an unsaved row's key changes with its place.
+   * Alt+arrows on a grip move its row one place, and focus follows it. By
+   * index: an unsaved row's key changes with its place.
    */
-  async function move<T>(part: ListPart, list: T[], i: number, by: -1 | 1) {
-    shift(list, i, by);
-    const to = i + by;
+  async function gripKey(e: KeyboardEvent, part: ListPart, i: number) {
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const [back, forward] =
+      part === 'columns' ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+    const by = e.key === back ? -1 : e.key === forward ? 1 : 0;
+    if (!by) return;
+    // Alt+← would otherwise go back in the history.
+    e.preventDefault();
+    if (!reorder(part, i, i + by)) return;
     await tick();
-    document.getElementById(`${part}-${arrowAfterMove(by, to, list.length)}-${to}`)?.focus();
+    document.getElementById(`${part}-grip-${i + by}`)?.focus();
+  }
+
+  const isDragged = (part: ListPart, i: number) => drag?.part === part && drag.from === i;
+  const isOver = (part: ListPart, i: number) =>
+    drag?.part === part && drag.from !== i && over === i;
+
+  function land(to: number | null) {
+    if (drag && to !== null) reorder(drag.part, drag.from, to);
+    drag = null;
+    over = null;
+  }
+
+  /** The row of the dragged row's list under a point, if any. */
+  function rowAt(x: number, y: number): number | null {
+    const row = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-part]');
+    if (!row || row.dataset['part'] !== drag?.part) return null;
+    return Number(row.dataset['index']);
+  }
+
+  const touch: TouchDragHandlers = {
+    selector: '[data-part]',
+    handle: '.grip',
+    start(el) {
+      drag = { part: el.dataset['part'] as ListPart, from: Number(el.dataset['index']) };
+      return true;
+    },
+    move(x, y) {
+      over = rowAt(x, y);
+    },
+    drop(x, y) {
+      land(rowAt(x, y));
+    },
+    cancel() {
+      drag = null;
+      over = null;
+    },
+  };
+
+  /** A row's mouse drop handlers. */
+  function dropRow(part: ListPart, i: number) {
+    return {
+      'data-part': part,
+      'data-index': i,
+      ondragover: (e: DragEvent) => {
+        if (drag?.part !== part) return;
+        e.preventDefault();
+        over = i;
+      },
+      ondrop: (e: DragEvent) => {
+        e.preventDefault();
+        land(i);
+      },
+    };
   }
 
   /** Removes a row; focus goes to the delete button of the next row, else the previous, else add. */
@@ -351,7 +420,7 @@
     <BoardHeader detail={d} view="settings" />
     <p class="eyebrow">{t.boardSettings.title}</p>
 
-    <form onsubmit={save}>
+    <form onsubmit={save} use:touchDrag={touch}>
       <!-- General -->
       <section class="part" aria-labelledby="part-general">
         <h2 class="section-title" id="part-general">{t.boardSettings.general}</h2>
@@ -415,8 +484,14 @@
         {/if}
         <ol class="columns">
           {#each f.columns as column, i (column.id ?? `new-${i}`)}
-            <li class="card column-edit">
+            <li
+              class="card column-edit"
+              class:is-dragged={isDragged('columns', i)}
+              class:is-over={isOver('columns', i)}
+              {...dropRow('columns', i)}
+            >
               <div class="card-head">
+                {@render grip('columns', i, column.name)}
                 <span class="sr-only">{i + 1}.</span>
                 <input
                   id="columns-name-{i}"
@@ -457,24 +532,6 @@
                 </div>
                 <div class="tools">
                   <button
-                    id="columns-up-{i}"
-                    type="button"
-                    class="btn btn-small"
-                    disabled={i === 0}
-                    aria-label={t.boardSettings.moveLeft(column.name)}
-                    title={t.boardSettings.moveLeft(column.name)}
-                    onclick={() => void move('columns', f.columns, i, -1)}>←</button
-                  >
-                  <button
-                    id="columns-down-{i}"
-                    type="button"
-                    class="btn btn-small"
-                    disabled={i === f.columns.length - 1}
-                    aria-label={t.boardSettings.moveRight(column.name)}
-                    title={t.boardSettings.moveRight(column.name)}
-                    onclick={() => void move('columns', f.columns, i, 1)}>→</button
-                  >
-                  <button
                     id="columns-delete-{i}"
                     type="button"
                     class="btn btn-small btn-danger"
@@ -513,7 +570,14 @@
         {#if f.quick.length === 0}<p class="empty">{t.boardSettings.noQuickFilters}</p>{/if}
         <ol class="rows">
           {#each f.quick as q, i (q.id ?? `new-${i}`)}
-            <li class="row-edit" class:invalid={named('quick', q.name)}>
+            <li
+              class="row-edit"
+              class:invalid={named('quick', q.name)}
+              class:is-dragged={isDragged('quick', i)}
+              class:is-over={isOver('quick', i)}
+              {...dropRow('quick', i)}
+            >
+              {@render grip('quick', i, q.name)}
               <label class="field">
                 <span>{t.boardSettings.name}</span>
                 <input class="input" bind:value={q.name} required maxlength="255" />
@@ -531,7 +595,7 @@
                 <span>{t.boardSettings.description}</span>
                 <input class="input" bind:value={q.description} maxlength="255" />
               </label>
-              {@render order('quick', f.quick, i, q.name)}
+              {@render remover('quick', f.quick, i, q.name)}
             </li>
           {/each}
         </ol>
@@ -566,7 +630,14 @@
           {#if f.sections.list.length === 0}<p class="empty">{t.boardSettings.noSections}</p>{/if}
           <ol class="rows">
             {#each f.sections.list as section, i (section.id ?? `new-${i}`)}
-              <li class="row-edit" class:invalid={named('sections', section.name)}>
+              <li
+                class="row-edit"
+                class:invalid={named('sections', section.name)}
+                class:is-dragged={isDragged('sections', i)}
+                class:is-over={isOver('sections', i)}
+                {...dropRow('sections', i)}
+              >
+                {@render grip('sections', i, section.name)}
                 <label class="field">
                   <span>{t.boardSettings.name}</span>
                   <input class="input" bind:value={section.name} required maxlength="255" />
@@ -590,7 +661,7 @@
                   />
                   {t.boardSettings.defaultSection}
                 </label>
-                {@render order('sections', f.sections.list, i, section.name)}
+                {@render remover('sections', f.sections.list, i, section.name)}
               </li>
             {/each}
           </ol>
@@ -607,6 +678,7 @@
           >
         {/if}
       </section>
+      <p class="sr-only" aria-live="polite">{moved}</p>
 
       <!-- Estimation -->
       <section class="part" aria-labelledby="part-estimate">
@@ -704,26 +776,29 @@
   </Modal>
 {/if}
 
-{#snippet order(part: ListPart, list: { name: string }[], i: number, name: string)}
+{#snippet grip(part: ListPart, i: number, name: string)}
+  {@const keys = part === 'columns' ? 'Alt+ArrowLeft Alt+ArrowRight' : 'Alt+ArrowUp Alt+ArrowDown'}
+  <button
+    id="{part}-grip-{i}"
+    type="button"
+    class="grip"
+    draggable="true"
+    aria-label={t.boardSettings.reorder(name)}
+    aria-keyshortcuts={keys}
+    title={part === 'columns' ? t.boardSettings.reorderColumn : t.boardSettings.reorderRow}
+    onkeydown={(e) => void gripKey(e, part, i)}
+    ondragstart={(e) => {
+      drag = { part, from: i };
+      e.dataTransfer?.setData('text/plain', name);
+      const row = e.currentTarget.closest('li');
+      if (row) e.dataTransfer?.setDragImage(row, 12, 12);
+    }}
+    ondragend={() => ((drag = null), (over = null))}>⋮⋮</button
+  >
+{/snippet}
+
+{#snippet remover(part: ListPart, list: { name: string }[], i: number, name: string)}
   <div class="tools">
-    <button
-      id="{part}-up-{i}"
-      type="button"
-      class="btn btn-small"
-      disabled={i === 0}
-      aria-label={t.boardSettings.moveUp(name)}
-      title={t.boardSettings.moveUp(name)}
-      onclick={() => void move(part, list, i, -1)}>↑</button
-    >
-    <button
-      id="{part}-down-{i}"
-      type="button"
-      class="btn btn-small"
-      disabled={i === list.length - 1}
-      aria-label={t.boardSettings.moveDown(name)}
-      title={t.boardSettings.moveDown(name)}
-      onclick={() => void move(part, list, i, 1)}>↓</button
-    >
     <button
       id="{part}-delete-{i}"
       type="button"
@@ -821,10 +896,14 @@
   }
 
   .column-edit .card-head {
+    gap: 6px;
+    align-items: center;
     padding: 8px;
   }
 
   .column-edit .name {
+    flex: 1;
+    min-width: 0;
     font-weight: 600;
   }
 
@@ -867,11 +946,58 @@
 
   .row-edit {
     display: grid;
-    grid-template-columns: minmax(8.75rem, 1fr) minmax(13.75rem, 2fr) minmax(8.75rem, 1fr) auto;
+    grid-template-columns:
+      auto minmax(8.75rem, 1fr) minmax(13.75rem, 2fr) minmax(8.75rem, 1fr)
+      auto;
     gap: 8px;
     align-items: end;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--rule);
+  }
+
+  .grip {
+    align-self: center;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    padding: 4px;
+    border: none;
+    border-radius: var(--radius-s);
+    background: none;
+    color: var(--muted);
+    font-size: 0.6875rem;
+    letter-spacing: -2px;
+    cursor: grab;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .grip:hover {
+    color: var(--ink);
+  }
+
+  .is-dragged {
+    opacity: 0.45;
+  }
+
+  .column-edit.is-over {
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .row-edit.is-over {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+
+  /* The copy of a row that follows the finger while it is dragged by touch. */
+  :global(body > .touch-ghost[data-part]) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 70;
+    margin: 0;
+    list-style: none;
+    pointer-events: none;
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-pop);
   }
 
   .row-edit.invalid .mono {
@@ -930,6 +1056,10 @@
 
     .row-edit .tools {
       justify-content: flex-start;
+    }
+
+    .row-edit .grip {
+      justify-self: start;
     }
   }
 </style>

@@ -85,6 +85,17 @@ const nameInput = () =>
 const quickRows = () => [...document.querySelectorAll<HTMLLIElement>('.row-edit')];
 const quickQuery = (i: number) => quickRows()[i]!.querySelector<HTMLInputElement>('input.mono')!;
 const bar = () => document.querySelector<HTMLElement>('.savebar');
+const announced = () => document.querySelector('[aria-live]')?.textContent?.trim();
+
+/** Presses Alt+key on the focused grip, as many times as asked. */
+async function altKey(key: string, times = 1) {
+  for (let n = 0; n < times; n++) {
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent('keydown', { key, altKey: true, bubbles: true }),
+    );
+    await settle();
+  }
+}
 const button = (label: string) =>
   [...bar()!.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
 
@@ -137,6 +148,31 @@ describe('BoardSettingsPage', () => {
     expect(quickQuery(1).value).toBe('type = Bug');
     expect(bar()).toBeNull();
     expect(api.saveBoard).not.toHaveBeenCalled();
+  });
+
+  it('moves the last quick filter first with the keyboard', async () => {
+    api.saveBoard.mockResolvedValue(structuredClone(detail));
+    component = mount(BoardSettingsPage, { target: document.body, props: { boardId: 7 } });
+    await settle();
+    expect(document.getElementById('quick-grip-1')?.getAttribute('aria-label')).toBe(
+      en.boardSettings.reorder('Bugs'),
+    );
+    document.getElementById('quick-grip-1')!.focus();
+    await altKey('ArrowUp');
+    expect(document.activeElement?.id).toBe('quick-grip-0');
+    expect(announced()).toBe(en.boardSettings.moved('Bugs', 1, 2));
+    // Columns move sideways; a quick filter doesn't.
+    await altKey('ArrowLeft');
+    expect(document.activeElement?.id).toBe('quick-grip-0');
+
+    button(en.boardSettings.save).click();
+    await settle();
+    expect(api.saveBoard).toHaveBeenCalledWith(7, {
+      quickFilters: [
+        { id: 2, name: 'Bugs', query: 'type = Bug' },
+        { id: 1, name: 'Mine', query: 'assignee = currentUser()' },
+      ],
+    });
   });
 
   it('shows a server error in the bar and marks the quick filter it names', async () => {
@@ -231,6 +267,27 @@ describe('BoardSettingsPage columns', () => {
         { id: 10, name: 'To Do', statuses: ['1'] },
         { id: 11, name: 'Doing', statuses: ['4', '2', '3'] },
         { id: 12, name: 'Finished', statuses: [] },
+      ],
+    });
+  });
+
+  it('moves the last column first with the keyboard', async () => {
+    api.saveBoard.mockResolvedValue(structuredClone(detail));
+    await mountPage();
+    document.getElementById('columns-grip-2')!.focus();
+    await altKey('ArrowUp');
+    expect(document.activeElement?.id).toBe('columns-grip-2');
+    await altKey('ArrowLeft', 2);
+    expect(document.activeElement?.id).toBe('columns-grip-0');
+    expect(announced()).toBe(en.boardSettings.moved('Finished', 1, 3));
+
+    button(en.boardSettings.save).click();
+    await settle();
+    expect(api.saveBoard).toHaveBeenCalledWith(7, {
+      columns: [
+        { id: 12, name: 'Finished', statuses: ['3'] },
+        { id: 10, name: 'To Do', statuses: ['1'] },
+        { id: 11, name: 'Doing', statuses: [] },
       ],
     });
   });
