@@ -26,6 +26,8 @@ const inherited = (form: LayoutForm): IssueLayout => ({
 });
 
 let overrides: Partial<Record<string, IssueLayout>> = {};
+// The page tests open on the General tab, which needs the full settings.
+let settings: () => Promise<unknown> = () => Promise.resolve(detail);
 const saved = vi.fn();
 const reset = vi.fn();
 const pending = () => new Promise<never>(() => {});
@@ -34,7 +36,7 @@ vi.mock('../../src/lib/admin-api.js', async (original) => ({
   ...(await original<object>()),
   projectAdminApi: new Proxy(
     {
-      settings: () => Promise.resolve(detail),
+      settings: () => settings(),
       layout: (_key: string, type: string, form: LayoutForm) =>
         Promise.resolve(overrides[`${type}:${form}`] ?? inherited(form)),
       saveLayout: (...args: unknown[]) => {
@@ -95,6 +97,7 @@ afterEach(() => {
   component = undefined;
   overrides = {};
   permissions = pending;
+  settings = () => Promise.resolve(detail);
   saved.mockReset();
   reset.mockReset();
   document.body.innerHTML = '';
@@ -169,6 +172,10 @@ describe('LayoutsPanel', () => {
 });
 
 describe('ProjectSettingsPage, issue layouts', () => {
+  beforeEach(() => {
+    settings = pending;
+  });
+
   it('has no layouts tab for someone who doesn’t administer the project', async () => {
     permissions = () => Promise.reject(new ApiError('forbidden', 403, null));
     component = mount(ProjectSettingsPage, {
