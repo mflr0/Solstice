@@ -526,9 +526,11 @@ need the older entries.
 
 Administrators add themes to the instance as packages: a zip with `theme.json`
 and `theme.css` at its root, plus optional images in `assets/` (`.svg`, `.png`,
-`.webp`, `.jpg`), fonts in `fonts/` (`.woff2`) and licence files. There is no
-page for this yet: use the API, described in
-`backend/internal/api/ADMIN_API.md` under "Themes".
+`.webp`, `.jpg`), fonts in `fonts/` (`.woff2`) and licence files. Manage them
+on **Administration → Themes** (`/admin/themes`): **Import a theme**, then
+**Export**, **Disable** or **Enable**, **Replace** and **Delete** on each row.
+The API does the same, described in `backend/internal/api/ADMIN_API.md` under
+"Themes". To write a theme, see [themes.md](themes.md).
 
 - An import is refused, with the list of problems found, if the zip breaks a limit
   (100 files, 10 MiB unpacked, an unusual compression ratio, a link, a path
