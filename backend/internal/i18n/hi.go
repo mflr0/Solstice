@@ -254,6 +254,8 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultStatusInProgress:          "प्रगति में",
 	DefaultStatusInReview:            "समीक्षा में",
 	DefaultStatusDone:                "पूर्ण",
+	DefaultWorkflowSoftware:          "सॉफ़्टवेयर",
+	DefaultWorkflowSimple:            "सरल",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "देखना",
@@ -456,6 +458,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "इस वर्कफ़्लो में अज्ञात ट्रांज़िशन।",
 	WorkflowStatusesRemoved:        "कुछ टिकट ऐसे स्टेटस में हैं जो उनके वर्कफ़्लो में अब नहीं रहेंगे। चुनें कि उन्हें कहाँ ले जाना है।",
 	WorkflowCopyNotFound:           "कॉपी करने के लिए वर्कफ़्लो इस प्रोजेक्ट में नहीं मिला।",
+	WorkflowGlobalCopyNotFound:     "कॉपी करने के लिए ग्लोबल वर्कफ़्लो नहीं मिला।",
 	WorkflowDefaultDelete:          "डिफ़ॉल्ट वर्कफ़्लो मिटाया नहीं जा सकता। पहले किसी दूसरे वर्कफ़्लो को डिफ़ॉल्ट बनाएँ।",
 	WorkflowDefaultStatusesMissing: "कुछ टिकट ऐसे स्टेटस में हैं जो डिफ़ॉल्ट वर्कफ़्लो में नहीं हैं। चुनें कि उन्हें कहाँ ले जाना है।",
 

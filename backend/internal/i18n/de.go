@@ -253,6 +253,8 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultStatusInProgress:          "In Arbeit",
 	DefaultStatusInReview:            "In Prüfung",
 	DefaultStatusDone:                "Erledigt",
+	DefaultWorkflowSoftware:          "Software",
+	DefaultWorkflowSimple:            "Einfach",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Ansehen",
@@ -455,6 +457,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "Unbekannter Übergang in diesem Workflow.",
 	WorkflowStatusesRemoved:        "Einige Vorgänge haben einen Status, den ihr Workflow nicht mehr haben wird. Wählen Sie, wohin sie verschoben werden sollen.",
 	WorkflowCopyNotFound:           "Der zu kopierende Workflow wurde in diesem Projekt nicht gefunden.",
+	WorkflowGlobalCopyNotFound:     "Der zu kopierende globale Workflow wurde nicht gefunden.",
 	WorkflowDefaultDelete:          "Der Standard-Workflow kann nicht gelöscht werden. Legen Sie zuerst einen anderen Workflow als Standard fest.",
 	WorkflowDefaultStatusesMissing: "Einige Vorgänge haben einen Status, den der Standard-Workflow nicht hat. Wählen Sie, wohin sie verschoben werden sollen.",
 

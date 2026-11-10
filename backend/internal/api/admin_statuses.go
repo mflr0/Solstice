@@ -246,9 +246,9 @@ type statusUsageOut struct {
 }
 
 type statusWorkflow struct {
-	ID      int64        `json:"id"`
-	Name    string       `json:"name"`
-	Project projectBrief `json:"project"`
+	ID      int64         `json:"id"`
+	Name    string        `json:"name"`
+	Project *projectBrief `json:"project,omitempty"` // nil: a global workflow
 }
 
 type statusBoard struct {
@@ -277,13 +277,19 @@ func (s *Server) adminStatusUsage(w http.ResponseWriter, r *http.Request) error 
 		return errNotFound
 	}
 	out := statusUsageOut{Workflows: []statusWorkflow{}, Boards: []statusBoard{}, Projects: []statusProject{}}
+	// Global workflows first: their project key is NULL.
 	if err := sqlq.Each(ctx, s.db, `SELECT w.id, w.name, p.id, p.pkey, p.name FROM workflows w
-		JOIN projects p ON p.id = w.project_id WHERE w.id IN (
+		LEFT JOIN projects p ON p.id = w.project_id WHERE w.id IN (
 			SELECT u.workflow_id FROM (`+statusUseWorkflows+`) u WHERE u.status_id = ?)
 		ORDER BY p.pkey, w.name`, func(rows *sql.Rows) error {
 		var w statusWorkflow
-		if err := rows.Scan(&w.ID, &w.Name, &w.Project.ID, &w.Project.Key, &w.Project.Name); err != nil {
+		var pid sql.NullInt64
+		var key, name sql.NullString
+		if err := rows.Scan(&w.ID, &w.Name, &pid, &key, &name); err != nil {
 			return err
+		}
+		if pid.Valid {
+			w.Project = &projectBrief{ID: pid.Int64, Key: key.String, Name: name.String}
 		}
 		out.Workflows = append(out.Workflows, w)
 		return nil

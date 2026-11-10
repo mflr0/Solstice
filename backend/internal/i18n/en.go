@@ -251,6 +251,8 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	DefaultStatusInProgress:          "In Progress",
 	DefaultStatusInReview:            "In Review",
 	DefaultStatusDone:                "Done",
+	DefaultWorkflowSoftware:          "Software",
+	DefaultWorkflowSimple:            "Simple",
 
 	// Permission names, as the REST API lists them.
 	PermissionBrowse:      "Browse",
@@ -453,6 +455,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	WorkflowTransitionUnknown:      "Unknown transition in this workflow.",
 	WorkflowStatusesRemoved:        "Some issues are in statuses their workflow will no longer have. Choose where to move them.",
 	WorkflowCopyNotFound:           "Workflow to copy not found in this project.",
+	WorkflowGlobalCopyNotFound:     "Global workflow to copy not found.",
 	WorkflowDefaultDelete:          "The default workflow cannot be deleted. Make another workflow the default first.",
 	WorkflowDefaultStatusesMissing: "Some issues are in statuses the default workflow does not have. Choose where to move them.",
 

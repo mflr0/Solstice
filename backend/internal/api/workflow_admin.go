@@ -1,7 +1,8 @@
 package api
 
 // Editing workflows. A workflow belongs to one project — there are no
-// schemes to share it — and lists its statuses and the transitions between
+// schemes to share it; global workflows (admin_workflows.go) are only
+// copied — and lists its statuses and the transitions between
 // them. Project administrators edit their project's workflows; statuses are
 // a shared catalogue they may add to.
 
@@ -79,11 +80,18 @@ func (s *Server) typeWorkflows(ctx context.Context, projectID int64) (map[string
 	return out, rows.Err()
 }
 
-func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID int64) ([]*workflowOut, error) {
+// loadWorkflows reads the workflows of a project, or the global ones when
+// projectID is 0, with their statuses and transitions.
+func (s *Server) loadWorkflows(ctx context.Context, cat *catalog, projectID int64) ([]*workflowOut,
+	map[int64]*workflowOut, error) {
+	scope, args := `w.project_id = ?`, []any{projectID}
+	if projectID == 0 {
+		scope, args = `w.project_id IS NULL`, nil
+	}
 	list := []*workflowOut{}
 	byID := map[int64]*workflowOut{}
-	if err := sqlq.Each(ctx, s.db, `SELECT id, name, is_default, initial_status_id FROM workflows WHERE project_id = ?
-		ORDER BY is_default DESC, name, id`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT w.id, w.name, w.is_default, w.initial_status_id FROM workflows w
+		WHERE `+scope+` ORDER BY w.is_default DESC, w.name, w.id`, func(rows *sql.Rows) error {
 		var w workflowOut
 		var initial string
 		if err := rows.Scan(&w.ID, &w.Name, &w.Default, &initial); err != nil {
@@ -95,11 +103,11 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 		list = append(list, &w)
 		byID[w.ID] = &w
 		return nil
-	}, projectID); err != nil {
-		return nil, err
+	}, args...); err != nil {
+		return nil, nil, err
 	}
 	if err := sqlq.Each(ctx, s.db, `SELECT ws.workflow_id, ws.status_id FROM workflow_statuses ws
-		JOIN workflows w ON w.id = ws.workflow_id WHERE w.project_id = ? ORDER BY ws.position`, func(rows *sql.Rows) error {
+		JOIN workflows w ON w.id = ws.workflow_id WHERE `+scope+` ORDER BY ws.position`, func(rows *sql.Rows) error {
 		var wf int64
 		var st string
 		if err := rows.Scan(&wf, &st); err != nil {
@@ -107,11 +115,11 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 		}
 		byID[wf].Statuses = append(byID[wf].Statuses, cat.statusOf(st))
 		return nil
-	}, projectID); err != nil {
-		return nil, err
+	}, args...); err != nil {
+		return nil, nil, err
 	}
 	if err := sqlq.Each(ctx, s.db, `SELECT t.workflow_id, t.id, t.name, t.from_status_id, t.to_status_id
-		FROM workflow_transitions t JOIN workflows w ON w.id = t.workflow_id WHERE w.project_id = ?
+		FROM workflow_transitions t JOIN workflows w ON w.id = t.workflow_id WHERE `+scope+`
 		ORDER BY t.position, t.id`, func(rows *sql.Rows) error {
 		var wf int64
 		var t workflowTransition
@@ -127,10 +135,17 @@ func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID i
 		t.To = cat.statusOf(to)
 		byID[wf].Transitions = append(byID[wf].Transitions, t)
 		return nil
-	}, projectID); err != nil {
+	}, args...); err != nil {
+		return nil, nil, err
+	}
+	return list, byID, nil
+}
+
+func (s *Server) projectWorkflows(ctx context.Context, cat *catalog, projectID int64) ([]*workflowOut, error) {
+	list, byID, err := s.loadWorkflows(ctx, cat, projectID)
+	if err != nil {
 		return nil, err
 	}
-
 	explicit, err := s.typeWorkflows(ctx, projectID)
 	if err != nil {
 		return nil, err
@@ -199,14 +214,17 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 	})
 }
 
-// workflowForEdit loads a workflow the user administers.
+// workflowForEdit loads a project's workflow the user administers. Global
+// workflows are not found here.
 func (s *Server) workflowForEdit(r *http.Request, sub *perm.Subject) (id, projectID int64, isDefault bool, err error) {
 	if id, err = pathID(r, "id"); err != nil {
 		return 0, 0, false, err
 	}
+	var project sql.NullInt64
 	err = s.db.QueryRowContext(r.Context(), `SELECT project_id, is_default FROM workflows WHERE id = ?`, id).
-		Scan(&projectID, &isDefault)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && !sub.Admin && !sub.CanBrowseProject(projectID)) {
+		Scan(&project, &isDefault)
+	projectID = project.Int64
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && (!project.Valid || (!sub.Admin && !sub.CanBrowseProject(projectID)))) {
 		return 0, 0, false, errNotFound
 	}
 	if err != nil {
@@ -357,8 +375,8 @@ func (s *Server) toDefault(ctx context.Context, cat *catalog, projectID int64, t
 // workflowUpdate is an update of a workflow, and what it does, worked out
 // before anything is written.
 type workflowUpdate struct {
-	id, projectID int64
-	isDefault     bool // whether the workflow is the project's default before the update
+	id, projectID int64 // projectID 0: a global workflow
+	isDefault     bool  // whether the workflow is the project's default before the update
 	in            workflowInput
 	name          string          // trimmed
 	keep          map[string]bool // the statuses the workflow keeps
@@ -505,11 +523,15 @@ func (s *Server) strandedConflict(ctx context.Context, cat *catalog, u *workflow
 }
 
 // save writes the workflow: whether it is the default, its name and initial
-// status, its statuses, transitions and issue types.
+// status, its statuses, transitions and, for a project's workflow, its issue
+// types.
 func (u *workflowUpdate) save(ctx context.Context, tx *sql.Tx) error {
 	if u.in.Default && !u.isDefault {
-		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE project_id = ?`,
-			u.projectID); err != nil {
+		scope, args := `project_id = ?`, []any{u.projectID}
+		if u.projectID == 0 {
+			scope, args = `project_id IS NULL`, nil
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE workflows SET is_default = FALSE WHERE `+scope, args...); err != nil {
 			return err
 		}
 	}
@@ -529,7 +551,7 @@ func (u *workflowUpdate) save(ctx context.Context, tx *sql.Tx) error {
 	if err := writeWorkflowTransitions(ctx, tx, u.id, u.in.Transitions); err != nil {
 		return err
 	}
-	if u.becomesDefault() {
+	if u.becomesDefault() || u.projectID == 0 {
 		return nil
 	}
 	return writeWorkflowIssueTypes(ctx, tx, u.id, u.projectID, u.in.IssueTypes)
@@ -710,31 +732,39 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	id, err := s.copyWorkflow(ctx, projectID, name, initial, source)
 	if err != nil {
 		return err
+	}
+	s.auditWorkflow(r, audit.WorkflowCreate, id, projectID, name, map[string]any{"copyFrom": in.CopyFrom})
+	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
+}
+
+// copyWorkflow adds a workflow that is not the default, a copy of the
+// statuses and transitions of workflow source, to a project (nil: a global
+// workflow).
+func (s *Server) copyWorkflow(ctx context.Context, projectID any, name, initial string, source int64) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
 	}
 	defer tx.Rollback()
 	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, FALSE, ?)`,
 		projectID, sqlq.Truncate(name, sqlq.VarcharWidth), initial)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	id, _ := res.LastInsertId()
 	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_statuses (workflow_id, status_id, position)
 		SELECT ?, status_id, position FROM workflow_statuses WHERE workflow_id = ?`, id, source); err != nil {
-		return err
+		return 0, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO workflow_transitions (workflow_id, name, from_status_id, to_status_id,
 		position) SELECT ?, name, from_status_id, to_status_id, position FROM workflow_transitions WHERE workflow_id = ?`,
 		id, source); err != nil {
-		return err
+		return 0, err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.auditWorkflow(r, audit.WorkflowCreate, id, projectID, name, map[string]any{"copyFrom": in.CopyFrom})
-	return writeJSON(w, http.StatusCreated, map[string]int64{"id": id})
+	return id, tx.Commit()
 }
 
 // deleteWorkflow removes a workflow other than the default; its issue types
