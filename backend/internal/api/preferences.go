@@ -28,8 +28,9 @@ var shortcutActions = []string{
 
 // preferenceChecks check the value of each known preference.
 var preferenceChecks = map[string]func(json.RawMessage) error{
-	"shortcutsEnabled": checkShortcutsEnabled,
+	"shortcutsEnabled": checkBool("shortcutsEnabled"),
 	"shortcuts":        checkShortcuts,
+	"tourSeen":         checkBool("tourSeen"),
 }
 
 // preferenceValue checks a value for the preference name and answers it
@@ -52,12 +53,15 @@ func preferenceValue(name string, raw json.RawMessage) (json.RawMessage, error) 
 	return out.Bytes(), nil
 }
 
-func checkShortcutsEnabled(raw json.RawMessage) error {
-	var on bool
-	if err := json.Unmarshal(raw, &on); err != nil {
-		return failf(http.StatusBadRequest, i18n.PreferenceInvalid, "shortcutsEnabled")
+// checkBool checks that the preference name is true or false.
+func checkBool(name string) func(json.RawMessage) error {
+	return func(raw json.RawMessage) error {
+		var on bool
+		if err := json.Unmarshal(raw, &on); err != nil {
+			return failf(http.StatusBadRequest, i18n.PreferenceInvalid, name)
+		}
+		return nil
 	}
-	return nil
 }
 
 // checkShortcuts checks the bindings that differ from the defaults: action
