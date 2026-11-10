@@ -2894,6 +2894,8 @@ export const de: Messages = {
     chooseGroup: 'Gruppe wählen…',
     types: 'Vorgangstypen',
     typesHint: 'Die Typen, die in diesem Projekt zur Auswahl stehen.',
+    noTypes: 'Es gibt noch keine Vorgangstypen, und ein Projekt braucht mindestens einen.',
+    noTypesLink: 'Vorgangstypen anlegen',
     board: 'Board',
     boardNone: 'Keins',
     boardHint:

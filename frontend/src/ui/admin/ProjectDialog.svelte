@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
   import type { Category, Group, KeyCheck } from '../../core/admin-types.js';
+  import { adminPath } from '../../core/areas.js';
   import type { BoardKind } from '../../core/board-types.js';
   import {
     issueTypesProblem,
@@ -186,6 +187,13 @@
 
 <Modal {open} title={t.projectsAdmin.createTitle} onclose={() => !busy && onclose()}>
   <form id={formId} class="project-form" onsubmit={submit} novalidate>
+    {#if allTypes.length === 0}
+      <!-- First: nothing else in the form helps, and errors appearing above would move the link. -->
+      <p class="no-types">
+        <span class="field-error">{t.projectsAdmin.noTypes}</span>
+        <a href={adminPath('issueTypes')} onclick={onclose}>{t.projectsAdmin.noTypesLink}</a>
+      </p>
+    {/if}
     <div class="grid wide-first">
       <label class="field">
         <span>{t.projects.name}</span>
@@ -328,7 +336,7 @@
                 checked={form.issueTypes?.includes(it.id)}
                 onchange={(e) => toggleType(it.id, e.currentTarget.checked)}
               />
-              <span>{it.name}</span>
+              <span>{session.typeName(it)}</span>
             </label>
           {/each}
         </div>
@@ -412,6 +420,12 @@
 
   .ok {
     color: var(--ink-soft);
+  }
+
+  .no-types {
+    margin: 0;
+    font-size: 0.78125rem;
+    line-height: 1.45;
   }
 
   .field-error {

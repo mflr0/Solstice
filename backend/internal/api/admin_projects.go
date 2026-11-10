@@ -279,9 +279,10 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw m
 			return nil, failf(http.StatusBadRequest, i18n.ProjectGranteeUnknown, a.Holder)
 		}
 	}
-	if err := s.seedCatalogues(ctx); err != nil {
+	if err := seedCatalogues(ctx, s.db, s.defaultLanguage()); err != nil {
 		return nil, err
 	}
+	s.forgetCatalogue()
 	cat, err := s.catalogue(ctx)
 	if err != nil {
 		return nil, err
@@ -480,16 +481,15 @@ func nextCatalogID(ctx context.Context, tx *sql.Tx, table string) (string, error
 }
 
 // seedCatalogues fills the empty catalogues of a fresh instance (no
-// project yet) with defaults, in the instance's language, so that the first
-// project can be used at once.
-func (s *Server) seedCatalogues(ctx context.Context) error {
+// project yet) with defaults, in lang, so that the first project can be
+// used at once. Setup calls it too, for instances started without an import.
+func seedCatalogues(ctx context.Context, db *sql.DB, lang string) error {
 	var projects int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects`).Scan(&projects); err != nil || projects > 0 {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects`).Scan(&projects); err != nil || projects > 0 {
 		return err
 	}
-	lang := s.defaultLanguage()
 	t := func(m i18n.Message) string { return m.In(lang) }
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -546,11 +546,7 @@ func (s *Server) seedCatalogues(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	s.forgetCatalogue()
-	return nil
+	return tx.Commit()
 }
 
 // Settings of one project ------------------------------------------------------------
