@@ -5,6 +5,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import type { IssueDetail, OfferedField } from '../../src/core/types.js';
 import { t } from '../../src/i18n/t.js';
 import Fiche from '../../src/ui/issue/Fiche.svelte';
+import { FieldState } from '../../src/ui/issue/field-state.svelte.js';
 
 const colour: OfferedField = {
   id: 7,
@@ -31,6 +32,7 @@ vi.mock('../../src/lib/api.js', () => ({
         can: {},
       }),
     projectFields: () => fields(),
+    layout: () => Promise.reject(new Error('offline')),
     users: () => Promise.resolve([]),
     assignable: () => Promise.resolve([]),
   },
@@ -75,6 +77,7 @@ function issueOf(edit: boolean): IssueDetail {
 }
 
 let component: ReturnType<typeof mount> | undefined;
+let state: FieldState | undefined;
 let saved: unknown[];
 
 beforeEach(() => {
@@ -87,6 +90,8 @@ afterEach(() => {
   fields.mockClear();
   if (component) unmount(component);
   component = undefined;
+  state?.destroy();
+  state = undefined;
   delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
 });
 
@@ -96,16 +101,15 @@ async function settle() {
 }
 
 async function show(edit: boolean) {
-  component = mount(Fiche, {
-    target: document.body,
-    props: {
-      issue: issueOf(edit),
-      onchange: (f: unknown) => {
-        saved.push(f);
-        return Promise.resolve(true);
-      },
+  const issue = issueOf(edit);
+  state = new FieldState(
+    () => issue,
+    (f) => {
+      saved.push(f);
+      return Promise.resolve(true);
     },
-  });
+  );
+  component = mount(Fiche, { target: document.body, props: { issue, fields: state } });
   await settle();
 }
 

@@ -816,7 +816,7 @@ export const hi: Messages = {
     remainingEstimate: 'बाकी समय का अनुमान',
     estimateHint: 'जैसे 1w 2d 3h 30m',
     estimateInvalid: 'यह समय समझ नहीं आया: “1d 4h” या “90m” आज़माएँ।',
-    customFields: 'अन्य फ़ील्ड',
+    required: 'ज़रूरी',
     watch: 'वॉच करें',
     watching: 'वॉच कर रहे हैं',
     vote: 'वोट करें',

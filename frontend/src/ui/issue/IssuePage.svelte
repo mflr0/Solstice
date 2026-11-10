@@ -9,7 +9,7 @@
 </script>
 
 <script lang="ts">
-  import { tick as settled, untrack } from 'svelte';
+  import { onDestroy, tick as settled, untrack } from 'svelte';
   import { paths } from '../../core/route.js';
   import { shortcutFor } from '../../core/shortcuts.js';
   import type { ChangeEvent, HiddenIssue, IssueDetail } from '../../core/types.js';
@@ -25,13 +25,13 @@
   import Stamp from '../Stamp.svelte';
   import TypeMark from '../TypeMark.svelte';
   import Who from '../Who.svelte';
-  import WikiEditor from '../WikiEditor.svelte';
-  import WikiText from '../WikiText.svelte';
   import NotFoundPage from '../pages/NotFoundPage.svelte';
   import Attachments from './Attachments.svelte';
   import CloneDialog from './CloneDialog.svelte';
   import Comments from './Comments.svelte';
   import Fiche from './Fiche.svelte';
+  import { FieldState } from './field-state.svelte.js';
+  import IssueField from './IssueField.svelte';
   import History from './History.svelte';
   import Links from './Links.svelte';
   import MoveDialog from './MoveDialog.svelte';
@@ -86,11 +86,7 @@
 
   let editingSummary = $state(false);
   let summaryDraft = $state('');
-  let editingDescription = $state(false);
-  let descriptionDraft = $state('');
-  let savingDescription = $state(false);
   let summaryButton = $state<HTMLElement>();
-  let descriptionButton = $state<HTMLElement>();
   let menuOpen = $state(false);
   let moreButton: HTMLButtonElement | undefined = $state();
   let deleteArmed = $state(false);
@@ -98,6 +94,9 @@
   let moveOpen = $state(false);
   // A sub-task moves with its parent.
   const canMove = $derived(!!issue?.can.edit && !issue.parent);
+  // What the main column and the side card share of the issue's fields.
+  const fields = new FieldState(() => issue, update);
+  onDestroy(fields.destroy);
 
   $effect(() => {
     if (missing && onmissing) untrack(() => onmissing(missing));
@@ -131,7 +130,6 @@
       missing = '';
       note = '';
       editingSummary = false;
-      editingDescription = false;
       tab = 'comments';
       void load(key);
     });
@@ -208,20 +206,6 @@
     else editingSummary = false;
     await settled();
     refocus(summaryButton);
-  }
-
-  async function stopEditingDescription() {
-    editingDescription = false;
-    await settled();
-    refocus(descriptionButton);
-  }
-
-  async function saveDescription() {
-    if (!issue) return;
-    savingDescription = true;
-    if (await update({ description: descriptionDraft.trim() ? descriptionDraft : null }))
-      await stopEditingDescription();
-    savingDescription = false;
   }
 
   async function toggle(kind: 'watch' | 'vote') {
@@ -455,57 +439,9 @@
 
     <div class="layout issue-layout">
       <div class="sheet issue-sheet">
-        <section aria-label={t.issue.description}>
-          <h2 class="section-title">
-            {t.issue.description}
-            {#if issue.can.edit && !editingDescription}
-              <span class="actions">
-                <button
-                  bind:this={descriptionButton}
-                  class="btn btn-small"
-                  onclick={() => {
-                    descriptionDraft = issue?.description ?? '';
-                    editingDescription = true;
-                  }}>{issue.description ? t.common.edit : t.issue.addDescription}</button
-                >
-              </span>
-            {/if}
-          </h2>
-          {#if editingDescription}
-            <WikiEditor
-              bind:value={descriptionDraft}
-              label={t.issue.description}
-              rows={12}
-              attachments={issue.attachments}
-              autofocus
-              onsubmit={() => void saveDescription()}
-              oncancel={() => void stopEditingDescription()}
-              uploadTo={issue.can.attach ? issue.key : undefined}
-            />
-            <div class="row end">
-              <button class="btn btn-quiet" onclick={() => void stopEditingDescription()}
-                >{t.common.cancel}</button
-              >
-              <button
-                class="btn btn-primary"
-                disabled={savingDescription}
-                onclick={() => void saveDescription()}
-                >{savingDescription ? t.common.saving : t.common.save}</button
-              >
-            </div>
-          {:else if issue.description}
-            <WikiText source={issue.description} attachments={issue.attachments} />
-          {:else}
-            <p class="empty">{t.issue.noDescription}</p>
-          {/if}
-        </section>
-
-        {#if issue.environment}
-          <section aria-label={t.issue.environment}>
-            <h2 class="section-title">{t.issue.environment}</h2>
-            <WikiText source={issue.environment} attachments={issue.attachments} />
-          </section>
-        {/if}
+        {#each fields.zones.main as field (field)}
+          <IssueField {issue} {field} zone="main" {fields} />
+        {/each}
 
         {#if issue.subtasks.length || (!issue.type.subtask && issue.can.create)}
           <section aria-label={t.issue.subtasks}>
@@ -603,7 +539,7 @@
         </section>
       </div>
 
-      <Fiche {issue} onchange={update} />
+      <Fiche {issue} {fields} />
     </div>
   </article>
   <CloneDialog open={cloneOpen} issueKey={issue.key} onclose={() => (cloneOpen = false)} {onopen} />
@@ -744,13 +680,8 @@
     min-width: 0;
   }
 
-  .sheet > section:first-child :global(.section-title) {
+  .sheet > :global(section:first-child > .section-title) {
     margin-top: 4px;
-  }
-
-  .end {
-    justify-content: flex-end;
-    margin-top: 8px;
   }
 
   .subtasks {

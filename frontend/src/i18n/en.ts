@@ -819,7 +819,7 @@ export const en = {
     remainingEstimate: 'Remaining estimate',
     estimateHint: 'e.g. 1w 2d 3h 30m',
     estimateInvalid: 'Couldn’t read that time: try “1d 4h” or “90m”.',
-    customFields: 'Other fields',
+    required: 'Required',
     watch: 'Watch',
     watching: 'Watching',
     vote: 'Vote',
