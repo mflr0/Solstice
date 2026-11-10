@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import type { BoardDetail, BoardPatch, SwimlaneStrategy } from '../../core/board-types.js';
+  import type { BoardDetail, BoardPatch, SectionStrategy } from '../../core/board-types.js';
   import { arrowAfterMove } from '../../core/catalogs.js';
   import { searchHref } from '../../core/filters-url.js';
   import { focusAfterRemoval } from '../../core/focus.js';
@@ -18,7 +18,7 @@
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A board's settings, one section at a time: each section saves on its
+   * A board's settings, one part at a time: each part saves on its
    * own, so the server's verdict (invalid JQL, a status in two columns…)
    * shows right where the change was made.
    */
@@ -27,8 +27,8 @@
   }
   const { boardId }: Props = $props();
 
-  type Part = 'general' | 'columns' | 'quick' | 'lanes' | 'estimate';
-  type ListPart = 'columns' | 'quick' | 'lanes';
+  type Part = 'general' | 'columns' | 'quick' | 'sections' | 'estimate';
+  type ListPart = 'columns' | 'quick' | 'sections';
 
   interface ColumnDraft {
     id?: number;
@@ -41,7 +41,7 @@
     query: string;
     description: string;
   }
-  interface LaneDraft {
+  interface SectionDraft {
     id?: number;
     name: string;
     query: string;
@@ -52,7 +52,7 @@
     columns: ColumnDraft[];
     kanbanBacklog: boolean;
     quick: QuickDraft[];
-    lanes: { strategy: SwimlaneStrategy; list: LaneDraft[] };
+    sections: { strategy: SectionStrategy; list: SectionDraft[] };
     estimate: string;
   }
 
@@ -84,7 +84,7 @@
         query: q.query ?? '',
         description: q.description ?? '',
       })),
-      lanes: {
+      sections: {
         strategy: d.board.sectionBy,
         list: d.sections.map((l) => ({
           id: l.id,
@@ -127,7 +127,7 @@
   const dirty = $derived.by(() => {
     const out: Partial<Record<Part, boolean>> = {};
     if (!draft || !saved) return out;
-    for (const part of ['general', 'columns', 'quick', 'lanes', 'estimate'] as const) {
+    for (const part of ['general', 'columns', 'quick', 'sections', 'estimate'] as const) {
       out[part] = JSON.stringify(draft[part]) !== JSON.stringify(saved[part]);
     }
     out.columns ||= backlogAllowed && draft.kanbanBacklog !== saved.kanbanBacklog;
@@ -167,12 +167,12 @@
             ...(q.description.trim() ? { description: q.description } : {}),
           })),
         };
-      case 'lanes':
+      case 'sections':
         return {
-          sectionBy: d.lanes.strategy,
-          ...(d.lanes.strategy === 'custom'
+          sectionBy: d.sections.strategy,
+          ...(d.sections.strategy === 'custom'
             ? {
-                sections: d.lanes.list.map((l) => ({
+                sections: d.sections.list.map((l) => ({
                   ...(l.id ? { id: l.id } : {}),
                   name: l.name,
                   ...(l.query.trim() ? { query: l.query } : {}),
@@ -197,14 +197,14 @@
         patchFor(part, draft, detail.board.kind === 'kanban'),
       );
       detail = next;
-      // Only this section takes the server's version: the others keep their edits.
+      // Only this part takes the server's version: the others keep their edits.
       const fresh = fromDetail(next);
       if (part === 'general') draft.general = fresh.general;
       else if (part === 'columns') {
         draft.columns = fresh.columns;
         draft.kanbanBacklog = fresh.kanbanBacklog;
       } else if (part === 'quick') draft.quick = fresh.quick;
-      else if (part === 'lanes') draft.lanes = fresh.lanes;
+      else if (part === 'sections') draft.sections = fresh.sections;
       else draft.estimate = fresh.estimate;
       notify(t.boardSettings.saved);
     } catch (err) {
@@ -222,7 +222,7 @@
       draft.columns = saved.columns;
       draft.kanbanBacklog = saved.kanbanBacklog;
     } else if (part === 'quick') draft.quick = saved.quick;
-    else if (part === 'lanes') draft.lanes = saved.lanes;
+    else if (part === 'sections') draft.sections = saved.sections;
     else draft.estimate = saved.estimate;
   }
 
@@ -560,14 +560,14 @@
       {@render bar('quick')}
     </form>
 
-    <!-- Swimlanes -->
-    <form class="part" onsubmit={(e) => save('lanes', e)} aria-labelledby="part-lanes">
-      <h2 class="section-title" id="part-lanes">{t.boardSettings.swimlanes}</h2>
+    <!-- Sections -->
+    <form class="part" onsubmit={(e) => save('sections', e)} aria-labelledby="part-sections">
+      <h2 class="section-title" id="part-sections">{t.boardSettings.sections}</h2>
       <fieldset class="choices">
-        <legend class="sr-only">{t.boardSettings.swimlanes}</legend>
+        <legend class="sr-only">{t.boardSettings.sections}</legend>
         {#each ['none', 'custom', 'assignee', 'epic', 'parent'] as const as s (s)}
           <label class="choice">
-            <input type="radio" name="strategy" value={s} bind:group={f.lanes.strategy} />
+            <input type="radio" name="strategy" value={s} bind:group={f.sections.strategy} />
             <span>
               <strong>{t.boardSettings.strategies[s]}</strong>
               <span class="hint">{t.boardSettings.strategyHints[s]}</span>
@@ -575,50 +575,50 @@
           </label>
         {/each}
       </fieldset>
-      {#if f.lanes.strategy === 'custom'}
-        <h3 class="sub">{t.boardSettings.lanes}</h3>
-        <p class="hint">{t.boardSettings.defaultLaneHint}</p>
-        {#if f.lanes.list.length === 0}<p class="empty">{t.boardSettings.noLanes}</p>{/if}
+      {#if f.sections.strategy === 'custom'}
+        <h3 class="sub">{t.boardSettings.querySections}</h3>
+        <p class="hint">{t.boardSettings.defaultSectionHint}</p>
+        {#if f.sections.list.length === 0}<p class="empty">{t.boardSettings.noSections}</p>{/if}
         <ol class="rows">
-          {#each f.lanes.list as lane, i (lane.id ?? `new-${i}`)}
-            <li class="row-edit" class:invalid={named('lanes', lane.name)}>
+          {#each f.sections.list as section, i (section.id ?? `new-${i}`)}
+            <li class="row-edit" class:invalid={named('sections', section.name)}>
               <label class="field">
                 <span>{t.boardSettings.name}</span>
-                <input class="input" bind:value={lane.name} required maxlength="255" />
+                <input class="input" bind:value={section.name} required maxlength="255" />
               </label>
               <label class="field wide">
                 <span>{t.boardSettings.query}</span>
                 <input
                   class="input mono"
-                  bind:value={lane.query}
+                  bind:value={section.query}
                   spellcheck="false"
-                  disabled={lane.isDefault}
-                  aria-invalid={named('lanes', lane.name) || undefined}
+                  disabled={section.isDefault}
+                  aria-invalid={named('sections', section.name) || undefined}
                 />
               </label>
               <label class="check">
                 <input
                   type="radio"
-                  name="default-lane"
-                  checked={lane.isDefault}
-                  onchange={() => f.lanes.list.forEach((l, j) => (l.isDefault = j === i))}
+                  name="default-section"
+                  checked={section.isDefault}
+                  onchange={() => f.sections.list.forEach((l, j) => (l.isDefault = j === i))}
                 />
-                {t.boardSettings.defaultLane}
+                {t.boardSettings.defaultSection}
               </label>
-              {@render order('lanes', f.lanes.list, i, lane.name)}
+              {@render order('sections', f.sections.list, i, section.name)}
             </li>
           {/each}
         </ol>
         <button
-          id="lanes-add"
+          id="sections-add"
           type="button"
           class="btn"
           onclick={() =>
-            f.lanes.list.push({ name: t.boardSettings.newLane, query: '', isDefault: false })}
-          >{t.boardSettings.addLane}</button
+            f.sections.list.push({ name: t.boardSettings.newSection, query: '', isDefault: false })}
+          >{t.boardSettings.addSection}</button
         >
       {/if}
-      {@render bar('lanes')}
+      {@render bar('sections')}
     </form>
 
     <!-- Estimation -->
@@ -889,7 +889,7 @@
     font-size: 0.78125rem;
   }
 
-  /* Quick filters and lanes: one row each. */
+  /* Quick filters and sections: one row each. */
   .rows {
     display: grid;
     gap: 10px;

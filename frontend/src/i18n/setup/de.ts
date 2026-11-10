@@ -261,7 +261,7 @@ export const de: SetupMessages = {
       boards: 'Boards',
       'board columns': 'Board-Spalten',
       'quick filters': 'Schnellfilter',
-      swimlanes: 'Swimlanes',
+      'board sections': 'Board-Abschnitte',
       sprints: 'Sprints',
       'issues in sprints': 'Vorgänge in Sprints',
       'issues ranked': 'Gereihte Vorgänge',

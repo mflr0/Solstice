@@ -1344,19 +1344,19 @@ body > .board-card.touch-ghost {
   top: 4px;
 }
 
-/* Swimlanes: a band across the columns, above each lane's cells. */
-.board-lane {
+/* Sections: a band across the columns, above each section's cells. */
+.board-section {
   background: var(--paper);
   border-top: 1px solid var(--rule-strong);
   border-bottom: 1px solid var(--rule);
   font-size: 0.8125rem;
 }
 
-.board-lane-title {
+.board-section-title {
   font-weight: 600;
 }
 
-.board-lane-count {
+.board-section-count {
   font: 0.6875rem var(--font-mono);
   color: var(--muted);
 }

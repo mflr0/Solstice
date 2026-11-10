@@ -441,16 +441,16 @@ count and estimate total, `.sprint-actions`, `.sprint-goal` on its own line)
 heads the board's active sprint and each backlog section.
 `.board` > `section.board-column` (`.is-over` while a card is dragged over it) >
 `header.board-column-head` (`h2.board-column-title`, `.board-column-count`)
-+ `.board-cards` (one per swimlane) > `article.board-card`
++ `.board-cards` (one per section) > `article.board-card`
 (`.is-dragging`) with `.type-mark`, `.key`, `.chip` (epic, estimate),
 `.stamp` (when a column holds several statuses), `.priority-mark`, `.avatar`
 and the menu button `.card-menu-toggle` (`.btn.btn-quiet.btn-small`; its
 `.popover.card-menu` opens in the top layer). `.drop-marker` is the line
 showing where a dragged card lands (`.before` / `.after` a card, or alone at
 the top of an empty list). The board is a grid: columns span every row
-(`grid-template-rows: subgrid`), and with swimlanes a `.board-lane` band
-crosses them above each lane's cells (`button.board-lane-toggle` with
-`[aria-expanded]`, `.board-lane-title`, `.board-lane-count`); the bands come
+(`grid-template-rows: subgrid`), and with sections a `.board-section` band
+crosses them above each section's cells (`button.board-section-toggle` with
+`[aria-expanded]`, `.board-section-title`, `.board-section-count`); the bands come
 before the columns in the markup. A card dragged by touch is copied into a
 `.board-card.touch-ghost` on `body` that follows the finger. Wider than the
 page, the board scrolls sideways: `.more-left` / `.more-right` while columns
