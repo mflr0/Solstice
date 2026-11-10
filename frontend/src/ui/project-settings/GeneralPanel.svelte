@@ -38,6 +38,7 @@
   let settings = $state<ProjectSettings | null>(null);
   let form = $state<GeneralForm | null>(null);
   let categories = $state<Category[]>([]);
+  let categoriesError = $state('');
   let loadError = $state('');
   let error = $state('');
   let tried = $state(false);
@@ -76,11 +77,10 @@
         form = generalForm(s);
       })
       .catch((e: unknown) => (loadError = errorMessage(e)));
-    // The choice of category comes from the server; the form works without it.
     adminApi
       .categories()
       .then((c) => (categories = c))
-      .catch(() => (categories = []));
+      .catch((e: unknown) => (categoriesError = errorMessage(e)));
   });
 
   function setLead(u: UserRef | null) {
@@ -180,6 +180,7 @@
           ]}
           onchange={(v) => form && (form.category = v ? Number(v) : null)}
         />
+        {#if categoriesError}<span class="error-text" role="alert">{categoriesError}</span>{/if}
       </div>
     </div>
 

@@ -127,6 +127,7 @@
       for (const l of lists)
         for (const w of l.workflows) for (const s of w.statuses) seen.set(s.id, s);
     } catch {
+      // Every status then: the columns can still be set up.
       for (const s of session.meta?.statuses ?? []) seen.set(s.id, s);
     }
     pool = [...seen.values()];

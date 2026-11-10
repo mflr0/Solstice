@@ -81,6 +81,7 @@
       .then((d) => {
         if (form.project === key) canCreate = !!d.can.configure;
       })
+      // Unknown: the server says no if it must.
       .catch(() => {
         if (form.project === key) canCreate = null;
       });

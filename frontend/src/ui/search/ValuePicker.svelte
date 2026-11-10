@@ -4,6 +4,7 @@
   import { matches } from '../../core/text.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
+  import { errorMessage } from '../../lib/api.js';
   import Highlight from '../Highlight.svelte';
   import TypeMark from '../TypeMark.svelte';
   import UserOption from '../UserOption.svelte';
@@ -71,6 +72,7 @@
   let q = $state('');
   let options = $state<Option[]>([]);
   let loading = $state(true);
+  let failed = $state('');
   let active = $state(0);
   let seq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -164,8 +166,11 @@
       const found = await load(q);
       if (mine !== seq) return;
       options = found;
-    } catch {
-      if (mine === seq) options = [];
+      failed = '';
+    } catch (e) {
+      if (mine !== seq) return;
+      options = [];
+      failed = errorMessage(e);
     } finally {
       if (mine === seq) loading = false;
     }
@@ -268,12 +273,13 @@
           >{/if}
       </li>
     {/each}
-    {#if rows.length === 0}
+    {#if rows.length === 0 && !failed}
       <li class="none" role="presentation">
         {loading ? t.search.loadingValues : t.search.noValue}
       </li>
     {/if}
   </ul>
+  {#if failed}<p class="failed error-text" role="alert">{failed}</p>{/if}
   {#if anyChosen}
     <div class="picker-foot">
       <button type="button" class="link-btn" onclick={onreset}>{t.search.reset}</button>
@@ -368,6 +374,12 @@
   .none {
     padding: 8px 12px;
     color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  .failed {
+    margin: 0;
+    padding: 8px 12px;
     font-size: 0.8125rem;
   }
 

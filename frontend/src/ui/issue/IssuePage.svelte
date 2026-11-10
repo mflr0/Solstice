@@ -79,6 +79,8 @@
 
   let issue = $state<IssueDetail | null>(null);
   let missing = $state('');
+  // The issue could not be loaded, for another reason than its absence.
+  let loadError = $state('');
   type ActivityTab = 'comments' | 'history' | 'worklogs';
   let tab = $state<ActivityTab>('comments');
   let tick = $state(0);
@@ -108,6 +110,7 @@
       if (key !== issueKey) return;
       issue = d;
       missing = '';
+      loadError = '';
       if (ownsTitle) document.title = `${d.key} ${d.summary} — ${t.appName}`;
       // An old key (renamed project, moved issue): show the current one.
       if (d.key !== key) {
@@ -117,7 +120,8 @@
     } catch (e) {
       if (key !== issueKey) return;
       if (e instanceof ApiError && e.status === 404) missing = e.message;
-      else notify(errorMessage(e), 'error');
+      else if (issue?.key === key) notify(errorMessage(e), 'error');
+      else loadError = errorMessage(e);
     }
   }
 
@@ -128,6 +132,7 @@
       if (issue && issue.key === key) return;
       issue = null;
       missing = '';
+      loadError = '';
       note = '';
       editingSummary = false;
       tab = 'comments';
@@ -304,6 +309,8 @@
 
 {#if missing}
   {#if !onmissing}<NotFoundPage message={missing} />{/if}
+{:else if !issue && loadError}
+  <div class="page"><p class="error-text" role="alert">{loadError}</p></div>
 {:else if !issue}
   <div class="page"><p class="muted loading">{t.common.loading}</p></div>
 {:else}

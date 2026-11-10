@@ -82,6 +82,7 @@
     );
     api.issueColumns().then(
       (list) => (choices = list),
+      // The views then show their built-in columns only.
       () => (choices = []),
     );
     void loadFilters();

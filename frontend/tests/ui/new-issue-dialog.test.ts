@@ -34,6 +34,10 @@ const beta = {
 
 let assignable: UserRef[] = [];
 
+// The request that fails, if any.
+let failing: 'projects' | 'project' | 'fields' | null = null;
+const down = () => Promise.reject(new Error('The server can’t be reached right now.'));
+
 // Offered for tasks only.
 const team: OfferedField = { id: 7, name: 'Team', type: 'text', typeKey: '', options: [] };
 
@@ -63,10 +67,13 @@ vi.mock('../../src/lib/api.js', () => ({
     }
   },
   api: {
-    projects: () => Promise.resolve([detail.project, beta.project]),
-    project: (key: string) => Promise.resolve(key === 'BETA' ? beta : detail),
+    projects: () =>
+      failing === 'projects' ? down() : Promise.resolve([detail.project, beta.project]),
+    project: (key: string) =>
+      failing === 'project' ? down() : Promise.resolve(key === 'BETA' ? beta : detail),
     assignable: () => Promise.resolve(assignable),
-    projectFields: (_key: string, type: string) => Promise.resolve(type === '1' ? [team] : []),
+    projectFields: (_key: string, type: string) =>
+      failing === 'fields' ? down() : Promise.resolve(type === '1' ? [team] : []),
     layout: (key: string, type: string) => layoutFor(key, type),
     createIssue: (fields: unknown) => created(fields),
     issue: () => Promise.resolve(issue),
@@ -106,6 +113,7 @@ afterEach(() => {
   updated.mockReset();
   layoutFor.mockClear();
   layouts = {};
+  failing = null;
   uploaded.mockReset();
   notes.length = 0;
   if (component) unmount(component);
@@ -455,5 +463,29 @@ describe('NewIssueDialog', () => {
       expect(updated).not.toHaveBeenCalled();
       expect(due.getAttribute('aria-invalid')).toBe('true');
     });
+  });
+});
+
+describe('NewIssueDialog when a load fails', () => {
+  const alert = () => [...document.querySelectorAll('[role="alert"]')].map((a) => a.textContent);
+  const submitButton = () =>
+    document.querySelector<HTMLButtonElement>('button[type="submit"][form="new-issue"]')!;
+
+  for (const what of ['projects', 'project'] as const) {
+    it(`shows the error instead of the form when the ${what} can't be loaded`, async () => {
+      failing = what;
+      await open();
+      expect(document.querySelector('form#new-issue')).toBeNull();
+      expect(alert()).toContain('The server can’t be reached right now.');
+      expect(notes).toEqual([]);
+    });
+  }
+
+  it('says why it can’t create when the custom fields can’t be loaded', async () => {
+    failing = 'fields';
+    await open();
+    expect(document.querySelector('form#new-issue')).not.toBeNull();
+    expect(alert()).toContain('The server can’t be reached right now.');
+    expect(submitButton().disabled).toBe(true);
   });
 });

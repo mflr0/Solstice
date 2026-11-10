@@ -2,6 +2,7 @@
   import type { UserRef } from '../core/types.js';
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
+  import { errorMessage } from '../lib/api.js';
   import UserOption from './UserOption.svelte';
   import Who from './Who.svelte';
 
@@ -34,6 +35,7 @@
   let open = $state(false);
   let q = $state('');
   let results = $state<UserRef[]>([]);
+  let failed = $state('');
   let active = $state(0);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
@@ -50,10 +52,14 @@
       const found = await search(q.trim());
       if (mine === seq) {
         results = found;
+        failed = '';
         active = 0;
       }
-    } catch {
-      if (mine === seq) results = [];
+    } catch (e) {
+      if (mine === seq) {
+        results = [];
+        failed = errorMessage(e);
+      }
     }
   }
 
@@ -142,6 +148,7 @@
           </li>
         {/each}
       </ul>
+      {#if failed}<p class="failed error-text" role="alert">{failed}</p>{/if}
     </div>
   {/if}
 </div>
@@ -204,6 +211,12 @@
 
   .popover {
     width: 16.25rem;
+  }
+
+  .failed {
+    margin: 0;
+    padding: 6px 12px 8px;
+    font-size: 0.8125rem;
   }
 
   .filter {

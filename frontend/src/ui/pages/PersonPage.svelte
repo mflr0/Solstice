@@ -40,6 +40,7 @@
           .then((p) => {
             if (u === username) person = p;
           })
+          // The next change refetches.
           .catch(() => {});
       }, 700),
     );

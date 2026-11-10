@@ -66,6 +66,7 @@
     accountApi
       .tokenPolicy()
       .then((p) => (canCreate = p.canCreate))
+      // Unknown: the form shows, and the server says no if it must.
       .catch(() => (canCreate = null));
   });
 

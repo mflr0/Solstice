@@ -63,9 +63,9 @@ class Catalog {
     this.loadingProjects ??= api
       .projects()
       .then((list) => (this.projects = list))
-      .catch(() => {
+      .catch((e: unknown) => {
         this.loadingProjects = null;
-        return [];
+        throw e;
       });
     return this.loadingProjects;
   }
@@ -75,6 +75,7 @@ class Catalog {
     this.loadingFields ??= api
       .customFields()
       .then((list) => (this.fields = list))
+      // Only the JQL suggestions and the labels use them, and both do without.
       .catch(() => {
         this.loadingFields = null;
         return [];
@@ -93,6 +94,7 @@ class Catalog {
   ensureSprints(): void {
     if (this.sprintsLoaded) return;
     this.sprintsLoaded = true;
+    // Labels show the id until a later call succeeds.
     void this.sprintList('').catch(() => (this.sprintsLoaded = false));
   }
 }

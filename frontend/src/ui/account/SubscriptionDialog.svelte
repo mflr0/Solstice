@@ -28,10 +28,12 @@
     subscription: MySubscription | null;
     /** The filters one may pick from when subscribing. */
     filters: SavedFilter[] | null;
+    /** Why the filters could not be loaded. */
+    filtersError?: string;
     onclose: () => void;
     onsaved: (created: boolean) => void;
   }
-  const { open, subscription, filters, onclose, onsaved }: Props = $props();
+  const { open, subscription, filters, filtersError = '', onclose, onsaved }: Props = $props();
 
   const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
@@ -88,6 +90,8 @@
         <span class="muted small">{t.subscriptionsPage.filter}</span>
         <strong>{subscription.filterName}</strong>
       </p>
+    {:else if filtersError}
+      <p class="error-text" role="alert">{filtersError}</p>
     {:else if filters && filters.length === 0}
       <p class="muted">{t.subscriptionsPage.noFilters}</p>
     {:else}
