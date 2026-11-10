@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="Id extends number | string">
   import { matches } from '../core/text.js';
   import { t } from '../i18n/t.js';
   import { autofocus, layer, outside } from '../lib/actions.js';
@@ -11,18 +11,18 @@
    * `oncreate`, a name no option has can be created and selected.
    */
   interface Option {
-    id: number;
+    id: Id;
     name: string;
     note?: string | undefined;
   }
   interface Props {
     options: Option[];
-    selected: number[];
+    selected: Id[];
     label: string;
-    onchange: (ids: number[]) => void;
+    onchange: (ids: Id[]) => void;
     disabled?: boolean | undefined;
     /** Creates a value with that name and resolves to its id, once `options` has it. */
-    oncreate?: ((name: string) => Promise<number>) | undefined;
+    oncreate?: ((name: string) => Promise<Id>) | undefined;
     /** Draw it as a form field (a frame, like an input) rather than inline text. */
     field?: boolean | undefined;
   }
@@ -37,7 +37,7 @@
   }: Props = $props();
 
   let open = $state(false);
-  let draft = $state<number[]>([]);
+  let draft = $state<Id[]>([]);
   let q = $state('');
   let creating = $state(false);
   let error = $state('');
@@ -69,12 +69,12 @@
   function close() {
     if (!open) return;
     open = false;
-    const before = [...selected].sort((a, b) => a - b).join();
-    const after = [...draft].sort((a, b) => a - b).join();
+    const before = selected.map(String).sort().join();
+    const after = draft.map(String).sort().join();
     if (before !== after) onchange(draft);
   }
 
-  function flip(id: number) {
+  function flip(id: Id) {
     draft = draft.includes(id) ? draft.filter((x) => x !== id) : [...draft, id];
   }
 
