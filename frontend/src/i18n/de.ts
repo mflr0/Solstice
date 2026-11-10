@@ -2868,6 +2868,7 @@ export const de: Messages = {
       versions: 'Versionen',
       notifications: 'Benachrichtigungen',
       import: 'Import',
+      layouts: 'Vorgangslayouts',
     },
     leaveBody: 'Dieser Tab hat ungespeicherte Änderungen. Verwerfen?',
     general: {
@@ -2961,6 +2962,22 @@ export const de: Messages = {
       deleteAffects: 'Vorgänge, die sie betrifft, erhalten',
       deleteNone: 'Keine Version: sie verlieren sie nur',
       deleted: (name: string) => `Version ${name} gelöscht.`,
+    },
+    layouts: {
+      title: 'Vorgangslayouts',
+      intro:
+        'Jeder Vorgangstyp hat ein Layout für sein Erstellformular und seine Vorgangsansicht. Dieses Projekt folgt ihm oder passt es für seine eigenen Vorgänge an.',
+      type: 'Vorgangstyp',
+      noTypes: 'Dieses Projekt hat keinen Vorgangstyp.',
+      follows: 'Folgt dem Layout des Typs',
+      followsHint: 'Änderungen am Layout des Typs gelten auch hier.',
+      customised: 'Für dieses Projekt angepasst',
+      customise: 'Anpassen',
+      reset: 'Auf das Layout des Typs zurücksetzen',
+      resetTitle: (form: string) => `„${form}“ auf das Layout des Typs zurücksetzen?`,
+      resetBody:
+        'Dieses Projekt kehrt zum Layout des Typs zurück: seine eigene Reihenfolge, ausgeblendeten Felder und Pflichtfelder gehen verloren.',
+      resetDone: 'Formular auf das Layout des Typs zurückgesetzt.',
     },
     notifications: {
       title: 'Benachrichtigungen',

@@ -39,6 +39,7 @@
   import ComponentsPanel from '../project-settings/ComponentsPanel.svelte';
   import GeneralPanel from '../project-settings/GeneralPanel.svelte';
   import ImportPanel from '../project-settings/ImportPanel.svelte';
+  import LayoutsPanel from '../project-settings/LayoutsPanel.svelte';
   import NotificationsPanel from '../project-settings/NotificationsPanel.svelte';
   import VersionsPanel from '../project-settings/VersionsPanel.svelte';
   import '../settings.css';
@@ -481,6 +482,10 @@
       {:else if tab === 'versions'}
         <div class="panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions">
           <VersionsPanel {projectKey} />
+        </div>
+      {:else if tab === 'layouts'}
+        <div class="panel" role="tabpanel" id="panel-layouts" aria-labelledby="tab-layouts">
+          <LayoutsPanel {projectKey} {guard} ondirty={(d) => (panelDirty = d)} />
         </div>
       {:else if tab === 'notifications'}
         <div

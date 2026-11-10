@@ -2854,6 +2854,7 @@ export const it: Messages = {
       versions: 'Versioni',
       notifications: 'Notifiche',
       import: 'Importazione',
+      layouts: 'Layout dei ticket',
     },
     leaveBody: 'Questa scheda ha modifiche non salvate. Vuoi scartarle?',
     general: {
@@ -2947,6 +2948,22 @@ export const it: Messages = {
       deleteAffects: 'I ticket che interessa ricevono',
       deleteNone: 'Nessuna versione: la perdono e basta',
       deleted: (name: string) => `Versione ${name} eliminata.`,
+    },
+    layouts: {
+      title: 'Layout dei ticket',
+      intro:
+        'Ogni tipo di ticket ha un layout per il suo modulo di creazione e la sua vista. Questo progetto lo segue, oppure lo personalizza per i propri ticket.',
+      type: 'Tipo di ticket',
+      noTypes: 'Questo progetto non ha tipi di ticket.',
+      follows: 'Segue il layout del tipo',
+      followsHint: 'Le modifiche al layout del tipo valgono anche qui.',
+      customised: 'Personalizzato per questo progetto',
+      customise: 'Personalizza',
+      reset: 'Torna al layout del tipo',
+      resetTitle: (form: string) => `Riportare «${form}» al layout del tipo?`,
+      resetBody:
+        'Questo progetto torna al layout del tipo: il suo ordine, i campi nascosti e i campi obbligatori vanno persi.',
+      resetDone: 'Modulo riportato al layout del tipo.',
     },
     notifications: {
       title: 'Notifiche',

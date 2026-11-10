@@ -827,7 +827,8 @@ func (s *Server) projectFields(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx := r.Context()
 	projectID, err := s.projectByKey(ctx, r.PathValue("key"))
-	if err != nil || !sub.CanBrowseProject(projectID) {
+	// Global administrators lay out the forms of every project (Project settings).
+	if err != nil || !sub.Admin && !sub.CanBrowseProject(projectID) {
 		return errNotFound
 	}
 	typeID := r.URL.Query().Get("issueType")

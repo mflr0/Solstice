@@ -340,6 +340,21 @@ export const projectAdminApi = {
     request<void>('POST', `/api/projects/${enc(key)}/versions/${id}/merge`, { into }),
   deleteVersion: (key: string, id: number, to: { fixTo?: number; affectsTo?: number } = {}) =>
     request<void>('DELETE', `/api/projects/${enc(key)}/versions/${id}`, to),
+
+  /** The project's override of a type's template, or what it inherits (source). */
+  layout: (key: string, type: string, form: LayoutForm) =>
+    request<IssueLayout>(
+      'GET',
+      `/api/projects/${enc(key)}/issue-types/${enc(type)}/layouts/${form}`,
+    ),
+  saveLayout: (key: string, type: string, form: LayoutForm, fields: LayoutField[]) =>
+    request<IssueLayout>(
+      'PUT',
+      `/api/projects/${enc(key)}/issue-types/${enc(type)}/layouts/${form}`,
+      { fields },
+    ),
+  resetLayout: (key: string, type: string, form: LayoutForm) =>
+    request<void>('DELETE', `/api/projects/${enc(key)}/issue-types/${enc(type)}/layouts/${form}`),
 };
 
 /** The issue security levels of a project, and who sees the issues at each. */
