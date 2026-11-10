@@ -929,7 +929,7 @@ export const en = {
       },
       account: {
         title: 'Your account',
-        body: 'My settings holds your profile, language and notifications. Take the tour again from this menu or from your profile.',
+        body: 'My settings holds your profile, language and notifications. Take the tour again from your profile.',
       },
       admin: {
         title: 'Administration',
@@ -938,7 +938,6 @@ export const en = {
     },
     replayIntro: 'A short walk through the top bar, which every page shares.',
     replayStart: 'Start the tour',
-    menuItem: 'Take the tour',
   },
 
   keyboard: {

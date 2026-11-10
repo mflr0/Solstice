@@ -18,7 +18,6 @@
     appearance,
     applyMode,
     applySkin,
-    dialogs,
     mac,
     openCreate,
     toggleScheme,
@@ -35,7 +34,6 @@
   const { project }: Props = $props();
 
   let menuOpen = $state(false);
-  let accountButton: HTMLButtonElement | undefined = $state();
   let themesOpen = $state(false);
   let mine = $state.raw<ThemeManifest[]>([]);
   // The bar outlives the pages where themes get imported and deleted: read again on each opening.
@@ -225,7 +223,6 @@
     {#if session.me}
       <div class="account" use:outside={() => (menuOpen = false)}>
         <button
-          bind:this={accountButton}
           class="account-button"
           data-tour="account"
           aria-haspopup="menu"
@@ -254,16 +251,6 @@
               role="menuitem"
               href={paths.account('profile')}
               onclick={() => (menuOpen = false)}>{t.account.menu}</a
-            >
-            <button
-              class="item"
-              role="menuitem"
-              onclick={() => {
-                menuOpen = false;
-                // The item goes with the menu: the tour gives focus back to the button.
-                accountButton?.focus();
-                dialogs.tour = true;
-              }}>{t.tour.menuItem}</button
             >
             {#if session.me.admin}
               <a

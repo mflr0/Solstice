@@ -934,7 +934,7 @@ export const fr: Messages = {
       },
       account: {
         title: 'Votre compte',
-        body: 'Mes réglages réunit votre profil, votre langue et vos notifications. Relancez la visite depuis ce menu ou depuis votre profil.',
+        body: 'Mes réglages réunit votre profil, votre langue et vos notifications. Relancez la visite depuis votre profil.',
       },
       admin: {
         title: 'Administration',
@@ -943,7 +943,6 @@ export const fr: Messages = {
     },
     replayIntro: 'Un court tour de la barre du haut, commune à toutes les pages.',
     replayStart: 'Lancer la visite',
-    menuItem: 'Faire la visite',
   },
 
   keyboard: {
