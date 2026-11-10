@@ -165,8 +165,20 @@ func TestImportJob(t *testing.T) {
 				t.Errorf("accounts, q=%q: found paul.martin %v, want %v", q, got, want)
 			}
 		}
+		catalogues := func() (n [4]int) {
+			for i, table := range []string{"issue_types", "priorities", "resolutions", "link_types"} {
+				if err := conn.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			return n
+		}
+		imported := catalogues()
 		if status, body := c.call("POST", "/api/setup/admin", "", map[string]string{"existing": "admin"}); status != 200 {
 			t.Fatalf("administrator: %d %v", status, body)
+		}
+		if got := catalogues(); got != imported {
+			t.Errorf("catalogues after promoting an imported account: %v, imported %v", got, imported)
 		}
 		if len(done) != 1 {
 			t.Fatalf("Done called %d times", len(done))

@@ -650,6 +650,10 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
+		// In the wizard's language: the instance has none of its own yet.
+		if err := seedCatalogues(ctx, w.db, locale(r)); err != nil {
+			return err
+		}
 		if _, err := w.db.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 			VALUES (?, ?, ?, ?, TRUE)`, username, name, email, hash); err != nil {
 			if isDuplicate(err) {

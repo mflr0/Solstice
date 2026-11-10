@@ -2885,6 +2885,8 @@ export const it: Messages = {
     chooseGroup: 'Scegli un gruppo…',
     types: 'Tipi di ticket',
     typesHint: 'I tipi che si possono scegliere in questo progetto.',
+    noTypes: 'Non ci sono ancora tipi di ticket, e un progetto ne richiede almeno uno.',
+    noTypesLink: 'Aggiungi tipi di ticket',
     board: 'Board',
     boardNone: 'Nessuna',
     boardHint:

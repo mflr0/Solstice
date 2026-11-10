@@ -2880,6 +2880,8 @@ export const fr: Messages = {
     chooseGroup: 'Choisir un groupe…',
     types: 'Types de ticket',
     typesHint: 'Les types que l’on peut choisir dans ce projet.',
+    noTypes: 'Il n’y a encore aucun type de ticket, et un projet en demande au moins un.',
+    noTypesLink: 'Ajouter des types de ticket',
     board: 'Tableau',
     boardNone: 'Aucun',
     boardHint:

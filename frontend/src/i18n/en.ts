@@ -2851,6 +2851,8 @@ export const en = {
     chooseGroup: 'Choose a group…',
     types: 'Issue types',
     typesHint: 'The types people can choose in this project.',
+    noTypes: 'There are no issue types yet, and a project needs at least one.',
+    noTypesLink: 'Add issue types',
     board: 'Board',
     boardNone: 'None',
     boardHint: 'Created with the project, on its issues. You can add others later from Boards.',
