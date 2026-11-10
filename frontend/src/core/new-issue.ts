@@ -1,12 +1,14 @@
 /**
  * The new-issue form: what it needs before it can be sent. The server
  * requires a project, a type and a summary (backend/internal/api/issues.go,
- * planIssue). Problems are keys; the dialog words them (src/i18n, block create).
+ * planIssue), and the fields the create layout requires (checkRequired).
+ * Problems are keys; the dialog words them (src/i18n, block create).
  * It also remembers, per viewer, the project, assignee and components of the
  * last created issues.
  */
 
 import type { Problems } from './admin-forms.js';
+import type { LayoutField } from './admin-types.js';
 import type { DurationUnits } from './dates.js';
 import { readEstimate } from './estimates.js';
 import type { Component, UserRef } from './types.js';
@@ -17,20 +19,55 @@ export interface NewIssueForm {
   type: string;
   summary: string;
   estimate: string;
+  /** The layout fields that hold a value, by layout id. */
+  filled?: readonly string[];
 }
 
-export type NewIssueField = keyof NewIssueForm;
+/** A fixed field of the form, or a layout field by its id (`duedate`, `customfield_7`). */
+export type NewIssueField = 'project' | 'type' | 'summary' | 'estimate' | (string & {});
 export type NewIssueProblem = 'required' | 'unreadable';
 
-const REQUIRED_FIELDS: readonly NewIssueField[] = ['project', 'type', 'summary'];
+const FIXED_FIELDS = ['project', 'type', 'summary'] as const;
 
+/** The form's problems; `required` lists the layout fields the create layout requires. */
 export function newIssueProblems(
   f: NewIssueForm,
+  required: readonly string[] = [],
   units?: DurationUnits,
 ): Problems<NewIssueField, NewIssueProblem> {
   const out: Problems<NewIssueField, NewIssueProblem> = {};
-  for (const k of REQUIRED_FIELDS) if (!f[k].trim()) out[k] = 'required';
+  for (const k of FIXED_FIELDS) if (!f[k].trim()) out[k] = 'required';
+  for (const id of required) if (!f.filled?.includes(id)) out[id] = 'required';
   if (!readEstimate(f.estimate, units).ok) out.estimate = 'unreadable';
+  return out;
+}
+
+/**
+ * The create layout until the server's arrives, or when it can't be read:
+ * the built-in default (backend/internal/layout, defaults).
+ */
+export const defaultCreateLayout: readonly LayoutField[] = [
+  ...['priority', 'description', 'assignee', 'duedate', 'timetracking'],
+  ...['components', 'fixVersions', 'security', 'labels'],
+]
+  .map((field) => ({ field, hidden: false }))
+  .concat(['environment', 'reporter', 'versions'].map((field) => ({ field, hidden: true })));
+
+/** A stretch of the form: one long field, or short ones side by side. */
+export interface FieldRun<T> {
+  wide: boolean;
+  fields: T[];
+}
+
+/** Fields in their order, cut into runs: each long field alone, the short ones between them together. */
+export function fieldRuns<T>(fields: readonly T[], wide: (f: T) => boolean): FieldRun<T>[] {
+  const out: FieldRun<T>[] = [];
+  for (const f of fields) {
+    const w = wide(f);
+    const last = out.at(-1);
+    if (!w && last && !last.wide) last.fields.push(f);
+    else out.push({ wide: w, fields: [f] });
+  }
   return out;
 }
 

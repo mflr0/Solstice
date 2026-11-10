@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
+import type { IssueLayout, LayoutField } from '../../src/core/admin-types.js';
+import { defaultCreateLayout } from '../../src/core/new-issue.js';
 import type { OfferedField, ProjectDetail, UserRef } from '../../src/core/types.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
@@ -35,6 +37,16 @@ let assignable: UserRef[] = [];
 // Offered for tasks only.
 const team: OfferedField = { id: 7, name: 'Team', type: 'text', typeKey: '', options: [] };
 
+// The create layout by type id; the default for the others.
+let layouts: Record<string, LayoutField[]> = {};
+const layoutFor = vi.fn((_key: string, type: string): Promise<IssueLayout> =>
+  Promise.resolve({
+    form: 'create',
+    source: type in layouts ? 'type' : 'default',
+    fields: layouts[type] ?? [...defaultCreateLayout],
+  }),
+);
+
 const created = vi.fn();
 const uploaded = vi.fn();
 
@@ -53,6 +65,7 @@ vi.mock('../../src/lib/api.js', () => ({
     project: (key: string) => Promise.resolve(key === 'BETA' ? beta : detail),
     assignable: () => Promise.resolve(assignable),
     projectFields: (_key: string, type: string) => Promise.resolve(type === '1' ? [team] : []),
+    layout: (key: string, type: string) => layoutFor(key, type),
     createIssue: (fields: unknown) => created(fields),
     upload: (key: string, files: File[]) => uploaded(key, files),
   },
@@ -86,6 +99,8 @@ beforeEach(() => {
 
 afterEach(() => {
   created.mockReset();
+  layoutFor.mockClear();
+  layouts = {};
   uploaded.mockReset();
   notes.length = 0;
   if (component) unmount(component);
@@ -158,6 +173,17 @@ function pick(...files: File[]) {
   input.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 }
+
+// The names of the fields, in the form's order.
+const fieldNames = () =>
+  [...document.querySelectorAll('#new-issue .field:not(.files)')].map((f) =>
+    f.firstElementChild?.textContent?.replace('*', '').trim(),
+  );
+
+const required = (name: string) =>
+  [...document.querySelectorAll('#new-issue .field')]
+    .find((f) => f.firstElementChild?.textContent?.replace('*', '').trim() === name)
+    ?.querySelector('.req') != null;
 
 const queued = () => [...document.querySelectorAll('.queue .name')].map((n) => n.textContent);
 
@@ -267,6 +293,55 @@ describe('NewIssueDialog', () => {
     const error = document.getElementById(teamInput()!.getAttribute('aria-describedby') ?? '');
     expect(error?.textContent).toBe('Not a team.');
     expect(teamInput()!.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('follows the layout of the chosen type, and reloads it with the type', async () => {
+    layouts = {
+      '2': [
+        { field: 'environment', hidden: false },
+        { field: 'duedate', hidden: false, required: true },
+        { field: 'description', hidden: false },
+        { field: 'priority', hidden: false },
+        { field: 'labels', hidden: true },
+        { field: 'assignee', hidden: true },
+      ],
+    };
+    await open();
+    expect(layoutFor).toHaveBeenLastCalledWith('ALPHA', '1');
+    expect(fieldNames()).toContain(t.create.labels);
+    await chooseType('Bug');
+    expect(layoutFor).toHaveBeenLastCalledWith('ALPHA', '2');
+    expect(fieldNames()).toEqual([
+      t.create.project,
+      t.create.type,
+      t.create.summary,
+      t.issue.environment,
+      t.create.due,
+      t.create.description,
+      t.create.priority,
+    ]);
+    expect(fieldNames()).not.toContain(t.create.labels);
+    expect(required(t.create.due)).toBe(true);
+    expect(required(t.issue.environment)).toBe(false);
+    await chooseType('Task');
+    expect(fieldNames()).toContain(t.create.labels);
+    expect(required(t.create.due)).toBe(false);
+  });
+
+  it('blocks creating while a required field is empty', async () => {
+    created.mockResolvedValue({ key: 'ALPHA-3' });
+    layouts = { '1': [{ field: 'duedate', hidden: false, required: true }] };
+    await open();
+    fill(document.querySelector('input.summary') as HTMLInputElement, 'Due soon');
+    await submit();
+    expect(created).not.toHaveBeenCalled();
+    const due = document.querySelector<HTMLInputElement>('#new-issue input[type="date"]')!;
+    expect(due.getAttribute('aria-invalid')).toBe('true');
+    fill(due, '2026-12-01');
+    await submit();
+    expect(created).toHaveBeenCalledTimes(1);
+    expect(created.mock.calls[0]![0]).toMatchObject({ due: '2026-12-01' });
+    expect(created.mock.calls[0]![0]).not.toHaveProperty('labels');
   });
 
   it('offers no link to a viewer who cannot be assigned in the project', async () => {
