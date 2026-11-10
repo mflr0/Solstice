@@ -97,32 +97,30 @@ type optionDef struct {
 
 // issueSet is a page of issues with their data, and what rendering them needs.
 type issueSet struct {
-	list         []*issueData
-	byID         map[int64]*issueData
-	fields       []customFieldDef
-	options      map[int64]optionDef
-	levels       map[int64]string // security level names
-	projectKinds map[int64]string
+	list    []*issueData
+	byID    map[int64]*issueData
+	fields  []customFieldDef
+	options map[int64]optionDef
+	levels  map[int64]string // security level names
 }
 
 // Kinds of data loadIssues can fetch.
 const (
-	loadProjectKinds = "projectKinds"
-	loadLevels       = "levels"
-	loadLabels       = "labels"
-	loadComponents   = "components"
-	loadVersions     = "versions"
-	loadLinks        = "links"
-	loadSubtasks     = "subtasks"
-	loadParent       = "parent"
-	loadEpic         = "epic"
-	loadAttachments  = "attachments"
-	loadCustom       = "custom"
-	loadSprints      = "sprints"
-	loadWatches      = "watches"
-	loadVotes        = "votes"
-	loadComments     = "comments"
-	loadWorklogs     = "worklogs"
+	loadLevels      = "levels"
+	loadLabels      = "labels"
+	loadComponents  = "components"
+	loadVersions    = "versions"
+	loadLinks       = "links"
+	loadSubtasks    = "subtasks"
+	loadParent      = "parent"
+	loadEpic        = "epic"
+	loadAttachments = "attachments"
+	loadCustom      = "custom"
+	loadSprints     = "sprints"
+	loadWatches     = "watches"
+	loadVotes       = "votes"
+	loadComments    = "comments"
+	loadWorklogs    = "worklogs"
 )
 
 // customFields lists the custom fields, by name.
@@ -204,7 +202,7 @@ type loader func(context.Context, *perm.Subject, *issueSet, []int64) error
 func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, fields []customFieldDef, rows []*issueRow,
 	want func(string) bool) (*issueSet, error) {
 	set := &issueSet{byID: map[int64]*issueData{}, fields: fields, options: map[int64]optionDef{},
-		levels: map[int64]string{}, projectKinds: map[int64]string{}}
+		levels: map[int64]string{}}
 	var ids []int64
 	for _, r := range rows {
 		d := &issueData{row: r, labels: []string{}, custom: map[int64][]customRaw{}, customLabels: map[int64][]string{}}
@@ -225,7 +223,7 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, fields []cus
 		kind string
 		load loader
 	}{
-		{loadProjectKinds, s.loadProjectKinds}, {loadLevels, s.loadLevels},
+		{loadLevels, s.loadLevels},
 		{loadLabels, s.loadLabels}, {loadComponents, s.loadComponents}, {loadVersions, s.loadVersions},
 		{loadLinks, s.loadLinks}, {loadSubtasks, s.loadSubtasks},
 		{loadParent, s.loadIssueRef(func(d *issueData) (sql.NullInt64, **issueRow) { return d.row.ParentID, &d.parent })},
@@ -242,18 +240,6 @@ func (s *Server) loadIssues(ctx context.Context, sub *perm.Subject, fields []cus
 		}
 	}
 	return set, nil
-}
-
-func (s *Server) loadProjectKinds(ctx context.Context, _ *perm.Subject, set *issueSet, _ []int64) error {
-	return sqlq.Each(ctx, s.db, `SELECT id, kind FROM projects`, func(rows *sql.Rows) error {
-		var id int64
-		var kind string
-		if err := rows.Scan(&id, &kind); err != nil {
-			return err
-		}
-		set.projectKinds[id] = kind
-		return nil
-	})
 }
 
 func (s *Server) loadLevels(ctx context.Context, _ *perm.Subject, set *issueSet, _ []int64) error {

@@ -25,7 +25,6 @@ import (
 type formProject struct {
 	id        int64
 	key, name string
-	kind      string
 	types     []typeRef // its issue types, in order
 }
 
@@ -258,7 +257,7 @@ func (b *formBuilder) fields(p formProject, typ typeRef, cur *issueRow) (map[str
 	}
 
 	if creating {
-		system("project", true, "set")["allowedValues"] = []any{b.o.projectRef(p.id, p.key, p.name, p.kind)}
+		system("project", true, "set")["allowedValues"] = []any{b.o.projectRef(p.id, p.key, p.name)}
 		system("issuetype", true, "set")["allowedValues"] = []any{b.o.issueType(typ)}
 		if subtask {
 			system("parent", true, "set")
@@ -434,9 +433,9 @@ func (s *Server) restCreateMeta(w http.ResponseWriter, r *http.Request) error {
 	withFields := expandSet(q["expand"]...)["projects.issuetypes.fields"]
 
 	var projects []formProject
-	if err := sqlq.Each(ctx, s.db, `SELECT id, pkey, name, kind FROM projects ORDER BY name, id`, func(rows *sql.Rows) error {
+	if err := sqlq.Each(ctx, s.db, `SELECT id, pkey, name FROM projects ORDER BY name, id`, func(rows *sql.Rows) error {
 		var p formProject
-		if err := rows.Scan(&p.id, &p.key, &p.name, &p.kind); err != nil {
+		if err := rows.Scan(&p.id, &p.key, &p.name); err != nil {
 			return err
 		}
 		// As createIssue asks: to create, and to see the project.
@@ -469,7 +468,7 @@ func (s *Server) restCreateMeta(w http.ResponseWriter, r *http.Request) error {
 		if len(types) == 0 {
 			continue
 		}
-		jp := b.o.projectRef(p.id, p.key, p.name, p.kind)
+		jp := b.o.projectRef(p.id, p.key, p.name)
 		jp["expand"] = "issuetypes"
 		jp["issuetypes"] = types
 		out = append(out, jp)

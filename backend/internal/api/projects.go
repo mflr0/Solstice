@@ -19,7 +19,6 @@ type projectOut struct {
 	Key         string   `json:"key"`
 	Name        string   `json:"name"`
 	Description *string  `json:"description,omitempty"`
-	Kind        string   `json:"kind"`
 	Lead        *userRef `json:"lead"`
 	Category    *string  `json:"category"`
 	CategoryID  *int64   `json:"categoryId"`
@@ -63,12 +62,12 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 	leadOf := map[int64]sql.NullInt64{}
 	// Archived projects only when asked for.
 	withArchived := r.URL.Query().Get("archived") == "1" || r.URL.Query().Get("archived") == "true"
-	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.kind, p.lead_id, c.id, c.name, p.archived FROM projects p
+	if err := sqlq.Each(ctx, s.db, `SELECT p.id, p.pkey, p.name, p.lead_id, c.id, c.name, p.archived FROM projects p
 		LEFT JOIN project_categories c ON c.id = p.category_id ORDER BY p.name`, func(rows *sql.Rows) error {
 		var p projectOut
 		var lead, categoryID sql.NullInt64
 		var category sql.NullString
-		if err := rows.Scan(&p.ID, &p.Key, &p.Name, &p.Kind, &lead, &categoryID, &category, &p.Archived); err != nil {
+		if err := rows.Scan(&p.ID, &p.Key, &p.Name, &lead, &categoryID, &category, &p.Archived); err != nil {
 			return err
 		}
 		if !sub.CanBrowseProject(p.ID) || (p.Archived && !withArchived) {
@@ -134,10 +133,10 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 	var lead, categoryID sql.NullInt64
 	var desc, category sql.NullString
 	var defaultAssignee string
-	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.kind, p.lead_id, c.id, c.name,
+	if err := s.db.QueryRowContext(ctx, `SELECT p.id, p.pkey, p.name, p.description, p.lead_id, c.id, c.name,
 		p.default_assignee, p.archived FROM projects p LEFT JOIN project_categories c ON c.id = p.category_id
 		WHERE p.id = ?`, id).
-		Scan(&p.ID, &p.Key, &p.Name, &desc, &p.Kind, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
+		Scan(&p.ID, &p.Key, &p.Name, &desc, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
 		return err
 	}
 	p.Description, p.Category = sqlq.String(desc), sqlq.String(category)

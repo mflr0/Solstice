@@ -87,8 +87,7 @@
     <header class="page-head">
       <div>
         <p class="eyebrow">
-          {t.projects.title}{#if p.category}&nbsp;· {p.category}{/if} · {t.projects.kinds[p.kind] ??
-            p.kind}
+          {t.projects.title}{#if p.category}&nbsp;· {p.category}{/if}
         </p>
         <h1 class="page-title"><span class="pkey">{p.key}</span> {p.name}</h1>
         {#if p.lead}<p class="lead">

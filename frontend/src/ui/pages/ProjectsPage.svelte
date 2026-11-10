@@ -85,7 +85,6 @@
                 <td class="c-key"><a class="key" href={paths.project(p.key)}>{p.key}</a></td>
                 <td>
                   <a class="name" href={paths.project(p.key)}>{p.name}</a>
-                  <span class="muted kind">{t.projects.kinds[p.kind] ?? p.kind}</span>
                 </td>
                 <td><Who user={p.lead} empty="—" /></td>
                 <td class="num">
@@ -124,11 +123,6 @@
 
   .name:hover {
     text-decoration: underline;
-  }
-
-  .kind {
-    margin-left: 8px;
-    font-size: 0.75rem;
   }
 
   td.num a {

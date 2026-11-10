@@ -327,12 +327,12 @@ seulement :
 et ces projets, avec des composants et des versions (publiées, à venir,
 archivées) :
 
-| Clé | Type | Catégorie | Responsable |
+| Clé | Tickets | Catégorie | Responsable |
 | --- | --- | --- | --- |
-| `DEMO` | logiciel, avec une vingtaine de tickets | Products | alice |
-| `MOB` | logiciel, avec quelques tickets | Products | hans |
-| `OPS` | métier, avec quelques tickets | Internal | marie |
-| `OLD` | logiciel, archivé | aucune | tom |
+| `DEMO` | une vingtaine | Products | alice |
+| `MOB` | quelques-uns | Products | hans |
+| `OPS` | quelques-uns | Internal | marie |
+| `OLD` | aucun, archivé | aucune | tom |
 
 Les tickets couvrent tous les types, des épopées avec leurs tickets, des
 sous-tâches, toutes les priorités, des étiquettes, des échéances (passées et

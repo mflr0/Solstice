@@ -206,7 +206,7 @@ func (s *Server) restProjects(w http.ResponseWriter, r *http.Request) error {
 	o := s.restOut(r)
 	out := []any{}
 	for _, p := range list {
-		jp := o.projectRef(p.ID, p.Key, p.Name, p.Kind)
+		jp := o.projectRef(p.ID, p.Key, p.Name)
 		jp["expand"] = "description,lead,url,projectKeys"
 		if p.Category != nil {
 			jp["projectCategory"] = map[string]any{"name": *p.Category}
@@ -247,7 +247,7 @@ func (s *Server) restProject(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	o := s.restOut(r)
-	out := o.projectRef(p.Project.ID, p.Project.Key, p.Project.Name, p.Project.Kind)
+	out := o.projectRef(p.Project.ID, p.Project.Key, p.Project.Name)
 	out["expand"] = "description,lead,url,projectKeys"
 	out["description"] = ""
 	if p.Project.Description != nil {

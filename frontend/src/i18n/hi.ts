@@ -412,7 +412,6 @@ export const hi: Messages = {
     copyLink: 'प्रोजेक्ट का लिंक कॉपी करें',
     linkCopied: 'लिंक कॉपी हो गया',
     copyLinkFailed: (url: string) => `लिंक कॉपी नहीं हो सका: ${url}`,
-    kinds: { software: 'सॉफ़्टवेयर', business: 'बिज़नेस', service_desk: 'सपोर्ट' },
     components: 'कंपोनेंट',
     versions: 'वर्ज़न',
     released: 'रिलीज़ हुआ',

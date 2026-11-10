@@ -303,12 +303,12 @@ The seed (`backend/cmd/devseed`) creates, for the development database only:
 and these projects, with components and versions (released, upcoming,
 archived):
 
-| Key | Kind | Category | Lead |
+| Key | Issues | Category | Lead |
 | --- | --- | --- | --- |
-| `DEMO` | software, with about twenty issues | Products | alice |
-| `MOB` | software, with a few issues | Products | hans |
-| `OPS` | business, with a few issues | Internal | marie |
-| `OLD` | software, archived | none | tom |
+| `DEMO` | about twenty | Products | alice |
+| `MOB` | a few | Products | hans |
+| `OPS` | a few | Internal | marie |
+| `OLD` | none, archived | none | tom |
 
 The issues cover every issue type, epics with their issues, sub-tasks, every
 priority, labels, due dates (past and future), estimates, components, fix

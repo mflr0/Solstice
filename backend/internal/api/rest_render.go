@@ -145,7 +145,7 @@ func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 		}
 	}
 	need := map[string]bool{
-		loadProjectKinds: sel.hasSystem("project"), loadLevels: sel.hasSystem("security"),
+		loadLevels: sel.hasSystem("security"),
 		loadLabels: sel.hasSystem("labels"), loadComponents: sel.hasSystem("components"),
 		loadVersions: sel.hasSystem("fixVersions") || sel.hasSystem("versions"),
 		loadLinks:    sel.hasSystem("issuelinks"), loadSubtasks: sel.hasSystem("subtasks"),
@@ -173,7 +173,7 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 	put("summary", func() any { return row.Summary })
 	put("issuetype", func() any { return o.issueType(cat.typeOf(row.TypeID)) })
 	put("project", func() any {
-		return o.projectRef(row.ProjectID, row.ProjectKey, row.ProjectName, set.projectKinds[row.ProjectID])
+		return o.projectRef(row.ProjectID, row.ProjectKey, row.ProjectName)
 	})
 	put("status", func() any { return o.status(cat.statusOf(row.StatusID)) })
 	put("priority", func() any { return o.priority(cat.priorityOf(row.PriorityID)) })
@@ -295,12 +295,10 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 		"key": row.Key(), "fields": f}
 }
 
-func (o *restOut) projectRef(id int64, key, name, kind string) map[string]any {
-	if kind == "" {
-		kind = "software"
-	}
+// projectRef renders a project. Solstice has no project types: every project is a software one.
+func (o *restOut) projectRef(id int64, key, name string) map[string]any {
 	return map[string]any{"self": o.api + "/project/" + o.id(id), "id": o.id(id), "key": key, "name": name,
-		"projectTypeKey": kind, "avatarUrls": o.avatars("projectavatar", key)}
+		"projectTypeKey": "software", "avatarUrls": o.avatars("projectavatar", key)}
 }
 
 func (o *restOut) version(v versionData, projectID int64) map[string]any {

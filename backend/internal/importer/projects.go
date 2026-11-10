@@ -214,19 +214,15 @@ func (r *run) importProjects() error {
 	if r.hasColumn("project", "originalkey") {
 		originalKey = "COALESCE(originalkey, pkey)"
 	}
-	projectType := "NULL"
-	if r.hasColumn("project", "projecttype") {
-		projectType = "projecttype"
-	}
 	r.projects = map[int64]*project{}
 	ins = r.inserter("projects", "id", "pkey", "name", "description", "lead_id", "category_id",
-		"url", "kind", "default_assignee", "issue_counter")
+		"url", "default_assignee", "issue_counter")
 	if err := r.each(`SELECT id, pkey, pname, description, `+r.engine.QuoteFolded("lead")+`, url, pcounter, assigneetype, `+
-		projectType+`, `+originalKey+` FROM project`, func(rows *sql.Rows) error {
+		originalKey+` FROM project`, func(rows *sql.Rows) error {
 		var id int64
-		var key, name, desc, lead, url, kind, orig sql.NullString
+		var key, name, desc, lead, url, orig sql.NullString
 		var counter, assigneeType sql.NullInt64
-		if err := rows.Scan(&id, &key, &name, &desc, &lead, &url, &counter, &assigneeType, &kind, &orig); err != nil {
+		if err := rows.Scan(&id, &key, &name, &desc, &lead, &url, &counter, &assigneeType, &orig); err != nil {
 			return err
 		}
 		leadID, err := r.user(lead)
@@ -247,7 +243,7 @@ func (r *run) importProjects() error {
 			defaultAssignee = "lead"
 		}
 		return ins.add(id, key.String, truncate(orDefault(name, key.String), sqlq.VarcharWidth), sqlq.Value(desc), leadID, category,
-			sqlq.Value(url), orDefault(kind, "software"), defaultAssignee, counter.Int64)
+			sqlq.Value(url), defaultAssignee, counter.Int64)
 	}); err != nil {
 		return err
 	}
