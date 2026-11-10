@@ -583,8 +583,11 @@ entrées anciennes.
 Les administrateurs ajoutent des thèmes à l'instance sous forme de paquets : un
 zip avec `theme.json` et `theme.css` à sa racine, et en option des images dans
 `assets/` (`.svg`, `.png`, `.webp`, `.jpg`), des polices dans `fonts/` (`.woff2`)
-et des fichiers de licence. Aucune page ne le permet encore : passez par l'API,
-décrite dans `backend/internal/api/ADMIN_API.md`, section « Themes ».
+et des fichiers de licence. Gérez-les dans **Administration → Thèmes**
+(`/admin/themes`) : **Importer un thème**, puis **Exporter**, **Désactiver**
+ou **Activer**, **Remplacer** et **Supprimer** sur chaque ligne. L'API fait de
+même, décrite dans `backend/internal/api/ADMIN_API.md`, section « Themes ». Pour
+écrire un thème, voir [themes.md](themes.md).
 
 - Un import est refusé, avec la liste des problèmes relevés, si le zip dépasse une
   limite (100 fichiers, 10 Mio une fois décompressé, un taux de compression
