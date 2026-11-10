@@ -1,12 +1,14 @@
 <script lang="ts">
   import { hasProblems } from '../core/admin-forms.js';
   import type { LayoutField } from '../core/admin-types.js';
-  import { emptyDraft, restValue, type CustomDraft } from '../core/custom-fields.js';
+  import { draftOf, emptyDraft, restValue, type CustomDraft } from '../core/custom-fields.js';
   import { jiraDuration } from '../core/dates.js';
-  import { readEstimate } from '../core/estimates.js';
+  import { estimateText, readEstimate } from '../core/estimates.js';
   import { projectOfIssueKey } from '../core/marks.js';
   import {
+    changedFields,
     defaultCreateLayout,
+    editedLayoutFields,
     emptyMemory,
     fieldRuns,
     memoryKey,
@@ -19,10 +21,17 @@
     remember,
     startProject,
     unqueueFile,
+    type EditFields,
     type NewIssueMemory,
   } from '../core/new-issue.js';
   import { paths } from '../core/route.js';
-  import type { OfferedField, Project, ProjectDetail, UserRef } from '../core/types.js';
+  import type {
+    IssueDetail,
+    OfferedField,
+    Project,
+    ProjectDetail,
+    UserRef,
+  } from '../core/types.js';
   import { formatSize, t } from '../i18n/t.js';
   import { projectAdminApi } from '../lib/admin-api.js';
   import { api, ApiError, errorMessage, isVisible, type IssueFields } from '../lib/api.js';
@@ -40,7 +49,7 @@
   import UserPicker from './UserPicker.svelte';
   import WikiEditor from './WikiEditor.svelte';
 
-  /** "Nouveau ticket": the form, with fields offered by the chosen project. */
+  /** "Nouveau ticket": the form, with fields offered by the chosen project; or an issue to edit. */
 
   let projects = $state<Project[]>([]);
   let projectKey = $state('');
@@ -78,6 +87,9 @@
   let picker: HTMLInputElement | undefined = $state();
   let form: HTMLFormElement | undefined = $state();
   let dragging = $state(false);
+  // In edit mode: the issue, and the form as it was filled from it.
+  let issue = $state.raw<IssueDetail | null>(null);
+  let initial = $state.raw<FormState | null>(null);
   /** Nested dragenter/dragleave pairs, so crossing child nodes does not hide the overlay. */
   let depth = 0;
 
@@ -88,8 +100,23 @@
   const labelled = ['text', 'url', 'number', 'date', 'datetime', 'select', 'labels'];
 
   const parent = $derived(dialogs.createDefaults.parent ?? '');
-  const types = $derived((detail?.issueTypes ?? []).filter((ty) => ty.subtask === (parent !== '')));
-  const canCreate = $derived(detail?.can.create === true);
+  const editKey = $derived(dialogs.createDefaults.edit ?? '');
+  const editing = $derived(editKey !== '');
+  const subtask = $derived(editing ? issue?.type.subtask === true : parent !== '');
+  // Editing keeps the type: changing it is Move.
+  const types = $derived(
+    (detail?.issueTypes ?? []).filter((ty) =>
+      editing ? ty.id === typeId : ty.subtask === (parent !== ''),
+    ),
+  );
+  const projectOptions = $derived(
+    editing
+      ? issue
+        ? [{ value: issue.project.key, label: `${issue.project.name} — ${issue.project.key}` }]
+        : []
+      : projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` })),
+  );
+  const canSubmit = $derived(editing ? issue?.can.edit === true : detail?.can.create === true);
   const configure = $derived(detail?.can.configure === true);
   const canAttach = $derived(detail?.can.attach === true);
 
@@ -129,7 +156,68 @@
       return o ? wideTypes.includes(o.type) : wideFields.includes(f.field);
     }),
   );
-  const required = $derived(placed.filter((f) => f.required && !f.hidden).map((f) => f.field));
+  interface FormState {
+    summary: string;
+    description: string;
+    environment: string;
+    priorityId: string;
+    assignee: UserRef | null;
+    labels: string[];
+    components: number[];
+    fixVersions: number[];
+    affects: number[];
+    due: string;
+    estimate: string;
+    level: string;
+    custom: Record<number, CustomDraft>;
+  }
+
+  const formState = (): FormState => ({
+    summary,
+    description,
+    environment,
+    priorityId,
+    assignee,
+    labels,
+    components,
+    fixVersions,
+    affects,
+    due,
+    estimate,
+    level,
+    custom,
+  });
+
+  // Every field an edit can send, shown or not: one left as it was is not sent.
+  function fieldsOf(f: FormState): EditFields {
+    const typed = readEstimate(f.estimate, t.units.duration);
+    return {
+      summary: f.summary.trim(),
+      description: f.description.trim() ? f.description : null,
+      environment: f.environment.trim() ? f.environment : null,
+      priority: f.priorityId || null,
+      assignee: f.assignee?.id ?? null,
+      labels: f.labels,
+      components: f.components,
+      fixVersions: f.fixVersions,
+      affectsVersions: f.affects,
+      due: f.due || null,
+      originalEstimate: typed.ok && typed.seconds !== null ? jiraDuration(typed.seconds) : null,
+      securityLevel: f.level ? Number(f.level) : null,
+      customFields: Object.fromEntries(
+        offered.map((o) => [String(o.id), restValue(o, f.custom[o.id] ?? emptyDraft(o)) ?? null]),
+      ),
+    };
+  }
+
+  const edited = $derived(initial ? changedFields(fieldsOf(initial), fieldsOf(formState())) : {});
+  // An edit checks only the required fields it changes, as the server does: one already empty stays allowed.
+  const required = $derived.by(() => {
+    const ids = placed.filter((f) => f.required && !f.hidden).map((f) => f.field);
+    if (!editing) return ids;
+    const sent = editedLayoutFields(edited);
+    return ids.filter((id) => sent.includes(id));
+  });
   const typedEstimate = $derived(shows('timetracking') ? estimate : '');
   const filled = $derived.by(() => {
     const has: Record<string, boolean> = {
@@ -138,7 +226,9 @@
       priority: !!priorityId,
       // The project's default fills it on the server.
       assignee:
-        !!assignee || detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter',
+        !!assignee ||
+        (!editing &&
+          (detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter')),
       reporter: true,
       components: components.length > 0,
       fixVersions: fixVersions.length > 0,
@@ -146,7 +236,7 @@
       labels: labels.length > 0,
       duedate: !!due,
       timetracking: !!typedEstimate.trim(),
-      security: !!level || parent !== '',
+      security: !!level || subtask,
     };
     for (const f of offered)
       has[customId(f.id)] = restValue(f, custom[f.id] ?? emptyDraft(f)) !== undefined;
@@ -163,7 +253,11 @@
   const problem = $derived(
     error ||
       (customError ? t.create.checkFields : '') ||
-      (detail && !canCreate ? t.create.cannotCreate : '') ||
+      (detail && (issue || !editing) && !canSubmit
+        ? editing
+          ? t.create.cannotEdit
+          : t.create.cannotCreate
+        : '') ||
       (hasProblems(shown) ? t.create.checkFields : ''),
   );
 
@@ -209,6 +303,22 @@
       .catch(() => {});
   }
 
+  function prefill(iss: IssueDetail) {
+    summary = iss.summary;
+    description = iss.description ?? '';
+    environment = iss.environment ?? '';
+    priorityId = iss.priority?.id ?? '';
+    assignee = iss.assignee;
+    labels = [...iss.labels];
+    components = iss.components.map((c) => c.id);
+    fixVersions = iss.fixVersions.map((v) => v.id);
+    affects = iss.affectsVersions.map((v) => v.id);
+    due = iss.due ?? '';
+    estimate = estimateText(iss.time.original, t.units.duration);
+    level = iss.securityLevel ? String(iss.securityLevel.id) : '';
+    initial = $state.snapshot(formState());
+  }
+
   // Each opening starts from a clean form.
   $effect(() => {
     if (!dialogs.create) return;
@@ -230,6 +340,22 @@
     queue = [];
     const prios = session.meta?.priorities ?? [];
     priorityId = prios[Math.floor(prios.length / 2)]?.id ?? '';
+    issue = null;
+    initial = null;
+    const edit = dialogs.createDefaults.edit;
+    if (edit) {
+      api
+        .issue(edit)
+        .then((iss) => {
+          if (!dialogs.create || dialogs.createDefaults.edit !== edit) return;
+          prefill(iss);
+          issue = iss;
+          projectKey = iss.project.key;
+          typeId = iss.type.id;
+        })
+        .catch((err) => (error = errorMessage(err)));
+      return;
+    }
     const explicit = dialogs.createDefaults.project ?? (parent ? projectOfIssueKey(parent) : null);
     void api.projects().then((list) => {
       projects = list;
@@ -265,6 +391,7 @@
       if (key !== projectKey) return;
       detail = d;
       queue = queueFor(queue, d.can.attach === true);
+      if (editing) return;
       restore(key, d);
       fixVersions = [];
       affects = [];
@@ -277,18 +404,32 @@
   $effect(() => {
     const key = projectKey;
     const type = typeId;
-    if (!dialogs.create || !key || !type) {
+    const iss = issue;
+    if (!dialogs.create || !key || !type || (editing && !iss)) {
       offered = [];
       return;
     }
     api
       .projectFields(key, type)
       .then((list) => {
-        if (key !== projectKey || type !== typeId) return;
+        if (key !== projectKey || type !== typeId || iss !== issue) return;
         offered = list;
-        custom = Object.fromEntries(
-          list.filter((f) => f.id in custom).map((f) => [f.id, custom[f.id]!]),
-        );
+        if (iss) {
+          custom = Object.fromEntries(
+            list.map((f) => [
+              f.id,
+              draftOf(
+                f,
+                iss.customFields.find((v) => v.id === f.id),
+              ),
+            ]),
+          );
+          if (initial) initial = { ...initial, custom: $state.snapshot(custom) };
+        } else {
+          custom = Object.fromEntries(
+            list.filter((f) => f.id in custom).map((f) => [f.id, custom[f.id]!]),
+          );
+        }
         if (customError && !list.some((f) => f.id === customError?.id)) customError = null;
       })
       .catch(() => {
@@ -394,6 +535,24 @@
     }
   }
 
+  async function save(key: string) {
+    customError = null;
+    try {
+      if (Object.keys(edited).length) await api.updateIssue(key, edited as IssueFields);
+      notify(t.create.saved(key));
+      if (queue.length) await attach(key, queue);
+      const saved = dialogs.createDefaults.onsaved;
+      close();
+      saved?.();
+    } catch (err) {
+      const f = customFieldOf(err);
+      if (f) customError = { id: f.id, message: errorMessage(err) };
+      else error = errorMessage(err);
+    } finally {
+      pending = false;
+    }
+  }
+
   async function submit(e?: SubmitEvent) {
     e?.preventDefault();
     if (!detail || pending) return;
@@ -402,6 +561,7 @@
     if (hasProblems(problems) || !typed.ok) return;
     pending = true;
     error = '';
+    if (issue) return save(issue.key);
     // Only what the form shows: the server fills the hidden fields with their defaults.
     const fields: IssueFields = { project: projectKey, type: typeId, summary: summary.trim() };
     if (shows('description') && description.trim()) fields.description = description;
@@ -556,7 +716,7 @@
       <span class="field-label">{t.create.components}{@render mark(f)}</span>
       <MultiPick
         field
-        options={detail.components.filter((c) => !c.archived)}
+        options={detail.components.filter((c) => !c.archived || components.includes(c.id))}
         selected={components}
         label={t.create.components}
         oncreate={configure ? createComponent : undefined}
@@ -569,7 +729,9 @@
       <span class="field-label">{t.create.fixVersions}{@render mark(f)}</span>
       <MultiPick
         field
-        options={detail.versions.filter((v) => !v.archived && !v.released)}
+        options={detail.versions.filter(
+          (v) => (!v.archived && !v.released) || fixVersions.includes(v.id),
+        )}
         selected={fixVersions}
         label={t.create.fixVersions}
         oncreate={configure ? createVersion : undefined}
@@ -582,7 +744,7 @@
       <span class="field-label">{t.issue.affectsVersions}{@render mark(f)}</span>
       <MultiPick
         field
-        options={detail.versions.filter((v) => !v.archived)}
+        options={detail.versions.filter((v) => !v.archived || affects.includes(v.id))}
         selected={affects}
         label={t.issue.affectsVersions}
         oncreate={configure ? createVersion : undefined}
@@ -694,7 +856,11 @@
 
 <Modal
   open={dialogs.create}
-  title={parent ? t.create.subtaskTitle(parent) : t.create.title}
+  title={editing
+    ? t.create.editTitle(editKey)
+    : parent
+      ? t.create.subtaskTitle(parent)
+      : t.create.title}
   onclose={close}
 >
   <form bind:this={form} id="new-issue" class="form" onsubmit={submit} novalidate>
@@ -704,8 +870,8 @@
         <Dropdown
           label={t.create.project}
           value={projectKey}
-          options={projects.map((p) => ({ value: p.key, label: `${p.name} — ${p.key}` }))}
-          disabled={parent !== ''}
+          options={projectOptions}
+          disabled={parent !== '' || editing}
           required
           invalid={!!shown.project}
           onchange={(v) => (projectKey = v)}
@@ -718,7 +884,7 @@
           label={t.create.type}
           value={typeId}
           options={types.map((ty) => ({ value: ty.id, label: session.typeName(ty) }))}
-          disabled={!detail}
+          disabled={!detail || editing}
           required
           invalid={!!shown.type}
           onchange={(v) => (typeId = v)}
@@ -761,7 +927,9 @@
       {/if}
     {/each}
     {#if !shows('description')}{@render files()}{/if}
-    {#if dragging}<p class="drop"><span>{t.create.dropFiles}</span></p>{/if}
+    {#if dragging}<p class="drop">
+        <span>{editing ? t.create.editDropFiles(editKey) : t.create.dropFiles}</span>
+      </p>{/if}
   </form>
 
   {#snippet footer()}
@@ -769,8 +937,16 @@
     {#if !problem}<p class="legend" aria-hidden="true">{@render req()}{t.create.required}</p>{/if}
     <p class="status" class:error-text={problem} role="alert">{problem}</p>
     <button type="button" class="btn btn-quiet" onclick={close}>{t.common.cancel}</button>
-    <button type="submit" form="new-issue" class="btn btn-primary" disabled={pending || !canCreate}
-      >{uploading ? t.issue.uploading : pending ? t.create.pending : t.create.submit}</button
+    <button type="submit" form="new-issue" class="btn btn-primary" disabled={pending || !canSubmit}
+      >{uploading
+        ? t.issue.uploading
+        : editing
+          ? pending
+            ? t.common.saving
+            : t.common.save
+          : pending
+            ? t.create.pending
+            : t.create.submit}</button
     >
   {/snippet}
 </Modal>

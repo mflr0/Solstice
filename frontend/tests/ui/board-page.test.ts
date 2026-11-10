@@ -4,6 +4,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 
 import type { BoardCard, BoardDetail } from '../../src/core/board-types.js';
 import { router } from '../../src/lib/router.svelte.js';
+import { dialogs } from '../../src/lib/ui.svelte.js';
 import BoardPage from '../../src/ui/pages/BoardPage.svelte';
 
 const status = { id: '1', name: 'To Do', category: 'todo' } as const;
@@ -86,7 +87,11 @@ vi.stubGlobal(
 
 boardCards.mockImplementation(() =>
   Promise.resolve({
-    cards: [card('T-1', 10, 1), { ...card('T-2', 20, 2), can: { create: false, edit: true } }],
+    cards: [
+      card('T-1', 10, 1),
+      { ...card('T-2', 20, 2), can: { create: false, edit: true } },
+      { ...card('T-3', 20, 2), can: { create: true, edit: false } },
+    ],
     sprint: null,
     truncated: false,
   }),
@@ -143,13 +148,34 @@ describe('BoardPage', () => {
     await settle();
     const groups = openMenu('T-1');
     expect(groups.map((g) => g.label).slice(0, 2)).toEqual(['Issue', 'Move to']);
-    expect(labels(groups[0]?.items ?? [])).toEqual(['Duplicate…', 'Watch', 'Copy link']);
+    expect(labels(groups[0]?.items ?? [])).toEqual(['Edit…', 'Duplicate…', 'Watch', 'Copy link']);
   });
 
   it('offers no duplicate without the right to create', async () => {
     component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
     await settle();
-    expect(labels(openMenu('T-2')[0]?.items ?? [])).toEqual(['Watch', 'Copy link']);
+    expect(labels(openMenu('T-2')[0]?.items ?? [])).toEqual(['Edit…', 'Watch', 'Copy link']);
+  });
+
+  it('offers no edit without the right to edit', async () => {
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    expect(labels(openMenu('T-3')[0]?.items ?? [])).toEqual(['Duplicate…', 'Watch', 'Copy link']);
+  });
+
+  it('opens the issue dialog on the card to edit it', async () => {
+    component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
+    await settle();
+    openMenu('T-1')[0]
+      ?.items.find((b) => b.textContent === 'Edit…')
+      ?.click();
+    expect(dialogs.create).toBe(true);
+    expect(dialogs.createDefaults.edit).toBe('T-1');
+    boardCards.mockClear();
+    dialogs.createDefaults.onsaved?.();
+    await settle();
+    expect(boardCards).toHaveBeenCalledTimes(1);
+    dialogs.create = false;
   });
 
   it('turns Watch into Stop watching once clicked', async () => {

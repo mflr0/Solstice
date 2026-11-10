@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  changedFields,
+  editedLayoutFields,
   emptyMemory,
   memoryKey,
   newIssueProblems,
@@ -150,5 +152,48 @@ describe('file queue', () => {
     const q = [file('a.pdf'), file('b.png')];
     expect(notAttached(q, [{ filename: 'b.png' }])).toEqual(['a.pdf']);
     expect(notAttached(q, [])).toEqual(['a.pdf', 'b.png']);
+  });
+});
+
+describe('changedFields', () => {
+  const before = {
+    summary: 'Old',
+    description: 'Body',
+    labels: ['a'],
+    due: null,
+    customFields: { '7': 'Platform', '8': null },
+  };
+
+  it('keeps only what changed, custom values one by one', () => {
+    expect(
+      changedFields(before, {
+        ...before,
+        summary: 'New',
+        labels: ['a', 'b'],
+        customFields: { '7': 'Core', '8': null },
+      }),
+    ).toEqual({ summary: 'New', labels: ['a', 'b'], customFields: { '7': 'Core' } });
+  });
+
+  it('sends a cleared value as null, and nothing when nothing changed', () => {
+    expect(changedFields(before, { ...before, description: null })).toEqual({ description: null });
+    expect(changedFields(before, { ...before, customFields: { ...before.customFields } })).toEqual(
+      {},
+    );
+  });
+});
+
+describe('editedLayoutFields', () => {
+  it('names the layout ids of the fields sent', () => {
+    expect(
+      editedLayoutFields({
+        summary: 'New',
+        due: null,
+        affectsVersions: [],
+        originalEstimate: '1h',
+        securityLevel: null,
+        customFields: { '7': null },
+      }),
+    ).toEqual(['summary', 'duedate', 'versions', 'timetracking', 'security', 'customfield_7']);
   });
 });

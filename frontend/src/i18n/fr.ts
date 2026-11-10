@@ -1090,6 +1090,10 @@ export const fr: Messages = {
     required: 'Obligatoire',
     checkFields: 'Vérifiez les champs signalés.',
     dropFiles: 'Déposez les fichiers pour les joindre au nouveau ticket',
+    editTitle: (key: string) => `Modifier ${key}`,
+    saved: (key: string) => `${key} enregistré.`,
+    cannotEdit: 'Vous ne pouvez pas modifier ce ticket.',
+    editDropFiles: (key: string) => `Déposez les fichiers pour les joindre à ${key}`,
     notAttached: (names: string) =>
       `Non joints : ${names}. Joignez-les à nouveau depuis le ticket.`,
     addPerson: 'Ajouter une personne',
@@ -1174,6 +1178,7 @@ export const fr: Messages = {
     otherIssues: 'Autres tickets',
 
     cardActions: (key: string) => `Actions sur ${key}`,
+    edit: 'Modifier…',
     issueGroup: 'Ticket',
     duplicate: 'Dupliquer…',
     stopWatching: 'Ne plus observer',
