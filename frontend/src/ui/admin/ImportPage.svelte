@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { reportFailure } from '../../lib/ui.svelte.js';
   import { importReady } from '../../core/admin-ops.js';
   import type { ImportCheck, ImportSource, ImportView } from '../../core/admin-types.js';
   import { browserTimeZone, engineName, sourceEngine } from '../../core/setup.js';
@@ -79,7 +80,7 @@
     try {
       probe = await adminApi.testImport({ ...form });
     } catch (e) {
-      error = errorMessage(e);
+      error = reportFailure(e);
     } finally {
       testing = false;
     }
@@ -96,7 +97,7 @@
       backup = false;
       typed = '';
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       starting = false;
     }

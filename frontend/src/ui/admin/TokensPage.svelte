@@ -22,7 +22,7 @@
   import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, reportFailure } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
@@ -106,7 +106,10 @@
     adminApi
       .groups()
       .then((g) => (groups = g))
-      .catch(() => (groups = []));
+      .catch((e: unknown) => {
+        groups = [];
+        reportFailure(e);
+      });
   });
 
   async function save(e: SubmitEvent) {
@@ -125,7 +128,7 @@
       );
       notify(t.tokensAdmin.policySaved);
     } catch (err) {
-      policyError = errorMessage(err);
+      policyError = reportFailure(err);
     } finally {
       saving = false;
     }

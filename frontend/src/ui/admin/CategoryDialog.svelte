@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import type { Category } from '../../core/admin-types.js';
   import { categoryProblem } from '../../core/project-admin.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import Modal from '../Modal.svelte';
 
   /** Creating a project category, or changing one: its name and description. */
@@ -43,7 +44,10 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (problem) return;
+    if (problem) {
+      void refused(e.currentTarget as HTMLFormElement, shown);
+      return;
+    }
     const input = { name: name.trim(), description: description.trim() };
     busy = true;
     try {
@@ -53,7 +57,7 @@
       onsaved(saved, category === null);
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

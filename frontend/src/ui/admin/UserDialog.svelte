@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import {
     accessSentence,
     defaultsForm,
@@ -161,7 +162,15 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      void refused(
+        e.currentTarget as HTMLFormElement,
+        shown('username'),
+        shown('email'),
+        shown('password'),
+      );
+      return;
+    }
     busy = true;
     try {
       if (!user) {
@@ -206,7 +215,7 @@
       }
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

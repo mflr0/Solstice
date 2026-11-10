@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import type { CatalogItem } from '../../core/admin-types.js';
   import { hasProblems } from '../../core/admin-forms.js';
   import {
@@ -15,7 +16,7 @@
   import type { TypeFill, TypeIcon } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import Modal from '../Modal.svelte';
   import PriorityMark from '../PriorityMark.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -86,7 +87,16 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      void refused(
+        e.currentTarget as HTMLFormElement,
+        shown('name'),
+        shown('color'),
+        shown('outward'),
+        shown('inward'),
+      );
+      return;
+    }
     const payload = catalogPayload(section, form, item);
     if (item && Object.keys(payload).length === 0) {
       onclose();
@@ -101,7 +111,7 @@
       onsaved(saved, item === null);
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

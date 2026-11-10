@@ -1127,6 +1127,11 @@ dialog.modal.issue-modal .page.issue {
   max-width: min(27.5rem, calc(100vw - 40px));
 }
 
+.toasts.in-dialog {
+  top: 16px;
+  bottom: auto;
+}
+
 .toast {
   display: flex;
   gap: 14px;

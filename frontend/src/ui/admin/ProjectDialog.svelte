@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import { untrack } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
   import type { Category, Group, KeyCheck } from '../../core/admin-types.js';
@@ -17,7 +18,7 @@
   import type { UserRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { api, errorMessage } from '../../lib/api.js';
+  import { api } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
@@ -105,11 +106,17 @@
     adminApi
       .categories()
       .then((c) => (categories = c))
-      .catch(() => (categories = []));
+      .catch((e: unknown) => {
+        categories = [];
+        reportFailure(e);
+      });
     adminApi
       .groups()
       .then((g) => (groups = g))
-      .catch(() => (groups = []));
+      .catch((e: unknown) => {
+        groups = [];
+        reportFailure(e);
+      });
   });
 
   function nameTyped(e: Event & { currentTarget: HTMLInputElement }) {
@@ -168,7 +175,16 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (hasProblems(problems) || taken) return;
+    if (hasProblems(problems) || taken) {
+      void refused(
+        e.currentTarget as HTMLFormElement,
+        shown('name'),
+        shown('key') || taken,
+        shown('access'),
+        shown('types'),
+      );
+      return;
+    }
     busy = true;
     try {
       const created = await adminApi.createProject({
@@ -178,7 +194,7 @@
       oncreated(created, form.name.trim());
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

@@ -7,7 +7,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
 
   /**
    * The announcement shown above every page (maintenance tonight, new
@@ -30,6 +30,8 @@
     (tried || length > BANNER_MAX) && problems.text ? t.bannerAdmin.problems[problems.text] : '',
   );
 
+  let formEl = $state<HTMLFormElement>();
+
   function adopt(b: BannerSettings) {
     stored = { ...b };
     form = { ...b };
@@ -48,7 +50,10 @@
   async function save(next: BannerSettings, message: string) {
     tried = true;
     saveError = '';
-    if (bannerProblems(next).text) return;
+    if (bannerProblems(next).text) {
+      void refused(formEl, problem);
+      return;
+    }
     saving = true;
     try {
       const s = await adminApi.saveSettings({ banner: { ...next, text: next.text.trim() } });
@@ -56,7 +61,7 @@
       notify(message);
       await publicSettings.load();
     } catch (e) {
-      saveError = errorMessage(e);
+      saveError = reportFailure(e);
     } finally {
       saving = false;
     }
@@ -86,7 +91,7 @@
 {:else if !stored}
   <p class="muted loading">{t.common.loading}</p>
 {:else}
-  <form class="settings-form" onsubmit={submit} novalidate>
+  <form class="settings-form" bind:this={formEl} onsubmit={submit} novalidate>
     <label class="check">
       <input class="checkbox" type="checkbox" bind:checked={form.enabled} />
       <span>{t.bannerAdmin.enabled}</span>

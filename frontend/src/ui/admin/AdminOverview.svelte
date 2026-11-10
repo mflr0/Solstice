@@ -4,7 +4,7 @@
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { openCreate } from '../../lib/ui.svelte.js';
+  import { openCreate, reportFailure } from '../../lib/ui.svelte.js';
   import { ADMIN_ICONS } from './admin-icons.js';
 
   /**
@@ -18,7 +18,10 @@
     adminApi
       .onboarding()
       .then((o) => (onboarding = o))
-      .catch(() => (onboarding = null));
+      .catch((e: unknown) => {
+        onboarding = null;
+        reportFailure(e);
+      });
   });
 
   type Step = { title: string; hint: string; action: string; primary?: boolean } & (

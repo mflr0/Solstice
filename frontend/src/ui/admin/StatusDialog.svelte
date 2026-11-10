@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import type { StatusRow } from '../../core/admin-types.js';
   import { hasProblems } from '../../core/admin-forms.js';
   import { statusPayload, statusProblems } from '../../core/catalogs.js';
   import { STATUS_CATEGORIES } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import Modal from '../Modal.svelte';
 
   /** Creating a status, or renaming one and changing its category. */
@@ -45,7 +46,10 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      void refused(e.currentTarget as HTMLFormElement, shown);
+      return;
+    }
     const changes = status ? statusPayload(status, name, category) : null;
     if (changes && Object.keys(changes).length === 0) {
       onclose();
@@ -58,7 +62,7 @@
       onsaved(name.trim(), status === null);
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

@@ -19,7 +19,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
   import LanguageDropdown from '../LanguageDropdown.svelte';
   import TimeZoneDropdown from '../TimeZoneDropdown.svelte';
 
@@ -89,7 +89,7 @@
       notify(message);
       void publicSettings.load();
     } catch (e) {
-      saveError = errorMessage(e);
+      saveError = reportFailure(e);
     } finally {
       saving = false;
     }
@@ -99,7 +99,18 @@
     e.preventDefault();
     if (!form || !settings) return;
     tried = true;
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      const fields: Field[] = [
+        'instanceName',
+        'baseURL',
+        'timeZone',
+        'defaultLanguage',
+        'sessionDays',
+        'passwordMinLength',
+      ];
+      void refused(e.currentTarget as HTMLFormElement, ...fields.map(shown));
+      return;
+    }
     void send(generalPatch(form, settings), t.settingsAdmin.saved);
   }
 

@@ -10,7 +10,7 @@
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, reportFailure } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import Modal from '../Modal.svelte';
   import OrderArrows from './OrderArrows.svelte';
@@ -75,7 +75,7 @@
       onchanged();
       return true;
     } catch (e) {
-      error = errorMessage(e);
+      error = reportFailure(e);
       return false;
     } finally {
       busy = false;

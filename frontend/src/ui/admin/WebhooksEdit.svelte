@@ -22,7 +22,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import JqlEditor from '../search/JqlEditor.svelte';
   import WebhooksDeliveries from './WebhooksDeliveries.svelte';
@@ -65,6 +65,8 @@
   const problems = $derived(form ? webhookProblems(form) : {});
   const shown = (f: 'name' | 'url' | 'events') =>
     (tried || touched[f]) && problems[f] ? t.hooksAdmin.problems[problems[f]] : '';
+
+  let formEl = $state<HTMLFormElement>();
 
   function adopt(w: Webhook) {
     hook = w;
@@ -132,7 +134,10 @@
     if (!form) return false;
     tried = true;
     saveError = '';
-    if (hasProblems(problems)) return false;
+    if (hasProblems(problems)) {
+      void refused(formEl, shown('name'), shown('url'), shown('events'));
+      return false;
+    }
     saving = true;
     try {
       const payload = webhookPayload(form);
@@ -146,7 +151,7 @@
       }
       return true;
     } catch (e) {
-      saveError = errorMessage(e);
+      saveError = reportFailure(e);
       return false;
     } finally {
       saving = false;
@@ -175,7 +180,7 @@
         deliveriesKey++;
       }
     } catch (e) {
-      testError = errorMessage(e);
+      testError = reportFailure(e);
     } finally {
       testing = false;
     }
@@ -213,7 +218,7 @@
 {:else if !form || !events}
   <p class="muted loading">{t.common.loading}</p>
 {:else}
-  <form class="settings-form" onsubmit={submit} novalidate>
+  <form class="settings-form" bind:this={formEl} onsubmit={submit} novalidate>
     <h2 class="section-title">{t.hooksAdmin.destination}</h2>
     <label class="field">
       <span>{t.hooksAdmin.name}</span>
