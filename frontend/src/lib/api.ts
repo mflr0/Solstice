@@ -4,6 +4,7 @@
  * ApiError with the server's message, in the interface's language, ready to show.
  */
 
+import type { IssueLayout, LayoutForm } from '../core/admin-types.js';
 import type { ThemeIndex } from '../core/appearance.js';
 import { avatarUrl } from '../core/avatar.js';
 import type { Dashboard, GadgetInput } from '../core/dashboard.js';
@@ -528,6 +529,9 @@ export const api = {
   customFields: () => request<CustomFieldRef[]>('GET', '/api/fields'),
   projectFields: (key: string, issueType: string) =>
     request<OfferedField[]>('GET', `/api/projects/${enc(key)}/fields${query({ issueType })}`),
+  /** The layout of a form for a project's issue type, as it applies. */
+  layout: (project: string, issueType: string, form: LayoutForm) =>
+    request<IssueLayout>('GET', `/api/issue-layouts${query({ project, issueType, form })}`),
   versions: (q: string, project?: string) =>
     request<ProjectValue[]>('GET', `/api/versions${query({ q, project })}`),
   components: (q: string, project?: string) =>

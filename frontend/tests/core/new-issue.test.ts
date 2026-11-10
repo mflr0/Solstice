@@ -35,8 +35,18 @@ describe('newIssueProblems', () => {
     expect(newIssueProblems({ ...filled, estimate: 'soon' })).toEqual({ estimate: 'unreadable' });
   });
 
+  it('asks for a required custom field left empty', () => {
+    const required = ['customfield_7', 'duedate'];
+    expect(newIssueProblems({ ...filled, filled: ['duedate'] }, required)).toEqual({
+      customfield_7: 'required',
+    });
+    expect(newIssueProblems({ ...filled, filled: ['customfield_7', 'duedate'] }, required)).toEqual(
+      {},
+    );
+  });
+
   it('reads the estimate in the viewer’s units', () => {
-    expect(newIssueProblems({ ...filled, estimate: '1j 2h' }, fr.units.duration)).toEqual({});
+    expect(newIssueProblems({ ...filled, estimate: '1j 2h' }, [], fr.units.duration)).toEqual({});
   });
 });
 

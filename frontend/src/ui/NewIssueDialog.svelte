@@ -1,11 +1,14 @@
 <script lang="ts">
   import { hasProblems } from '../core/admin-forms.js';
+  import type { LayoutField } from '../core/admin-types.js';
   import { emptyDraft, restValue, type CustomDraft } from '../core/custom-fields.js';
   import { jiraDuration } from '../core/dates.js';
   import { readEstimate } from '../core/estimates.js';
   import { projectOfIssueKey } from '../core/marks.js';
   import {
+    defaultCreateLayout,
     emptyMemory,
+    fieldRuns,
     memoryKey,
     newIssueProblems,
     notAttached,
@@ -45,11 +48,13 @@
   let typeId = $state('');
   let summary = $state('');
   let description = $state('');
+  let environment = $state('');
   let priorityId = $state('');
   let assignee = $state<UserRef | null>(null);
   let labels = $state<string[]>([]);
   let components = $state<number[]>([]);
   let fixVersions = $state<number[]>([]);
+  let affects = $state<number[]>([]);
   let due = $state('');
   let estimate = $state('');
   let level = $state('');
@@ -58,6 +63,8 @@
   let custom = $state<Record<number, CustomDraft>>({});
   // A server error about one custom field, shown next to it.
   let customError = $state<{ id: number; message: string } | null>(null);
+  // The create layout of the chosen project and type.
+  let layout = $state<readonly LayoutField[]>(defaultCreateLayout);
   // The viewer as the chosen project's assignable list returns them; null when they can't be assigned there.
   let me = $state<UserRef | null>(null);
   const labelsId = $props.id();
@@ -74,7 +81,8 @@
   /** Nested dragenter/dragleave pairs, so crossing child nodes does not hide the overlay. */
   let depth = 0;
 
-  // Custom fields that take the form's whole width.
+  // Fields that take the form's whole width.
+  const wideFields = ['description', 'environment', 'labels'];
   const wideTypes = ['textarea', 'labels', 'radio', 'checkboxes', 'multiuser'];
   // Custom fields whose editor is an input or button a `<label for>` can name; the others carry the name themselves.
   const labelled = ['text', 'url', 'number', 'date', 'datetime', 'select', 'labels'];
@@ -84,8 +92,72 @@
   const canCreate = $derived(detail?.can.create === true);
   const configure = $derived(detail?.can.configure === true);
   const canAttach = $derived(detail?.can.attach === true);
+
+  const customId = (id: number) => `customfield_${id}`;
+  const offeredField = (id: string) => offered.find((o) => customId(o.id) === id);
+
+  // Whether the form can draw a field: a list needs something to pick or the right to add to it.
+  function drawable(f: LayoutField): boolean {
+    switch (f.field) {
+      case 'reporter':
+        // Always the viewer: the form can't set it.
+        return false;
+      case 'components':
+        return !!detail && (detail.components.length > 0 || configure || !!f.required);
+      case 'fixVersions':
+      case 'versions':
+        return !!detail && (detail.versions.length > 0 || configure || !!f.required);
+      case 'security':
+        return !!detail && detail.securityLevels.length > 0;
+      default:
+        return !f.field.startsWith('customfield_') || !!offeredField(f.field);
+    }
+  }
+
+  // Offered custom fields the layout misses come last, as the server places them.
+  const placed = $derived<LayoutField[]>([
+    ...layout,
+    ...offered
+      .filter((o) => !layout.some((f) => f.field === customId(o.id)))
+      .map((o) => ({ field: customId(o.id), hidden: false })),
+  ]);
+  const fieldsShown = $derived(placed.filter((f) => !f.hidden && drawable(f)));
+  const shows = (id: string) => fieldsShown.some((f) => f.field === id);
+  const runs = $derived(
+    fieldRuns(fieldsShown, (f) => {
+      const o = offeredField(f.field);
+      return o ? wideTypes.includes(o.type) : wideFields.includes(f.field);
+    }),
+  );
+  const required = $derived(placed.filter((f) => f.required && !f.hidden).map((f) => f.field));
+  const typedEstimate = $derived(shows('timetracking') ? estimate : '');
+  const filled = $derived.by(() => {
+    const has: Record<string, boolean> = {
+      description: !!description.trim(),
+      environment: !!environment.trim(),
+      priority: !!priorityId,
+      // The project's default fills it on the server.
+      assignee:
+        !!assignee || detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter',
+      reporter: true,
+      components: components.length > 0,
+      fixVersions: fixVersions.length > 0,
+      versions: affects.length > 0,
+      labels: labels.length > 0,
+      duedate: !!due,
+      timetracking: !!typedEstimate.trim(),
+      security: !!level || parent !== '',
+    };
+    for (const f of offered)
+      has[customId(f.id)] = restValue(f, custom[f.id] ?? emptyDraft(f)) !== undefined;
+    return Object.keys(has).filter((k) => has[k]);
+  });
   const problems = $derived(
-    newIssueProblems({ project: projectKey, type: typeId, summary, estimate }, t.units.duration),
+    newIssueProblems(
+      { project: projectKey, type: typeId, summary, estimate: typedEstimate, filled },
+      required,
+      t.units.duration,
+    ),
   );
   const shown = $derived(tried ? problems : {});
   const problem = $derived(
@@ -142,10 +214,12 @@
     if (!dialogs.create) return;
     summary = '';
     description = '';
+    environment = '';
     assignee = null;
     labels = [];
     components = [];
     fixVersions = [];
+    affects = [];
     due = '';
     estimate = '';
     level = '';
@@ -193,6 +267,7 @@
       queue = queueFor(queue, d.can.attach === true);
       restore(key, d);
       fixVersions = [];
+      affects = [];
       const offered = d.issueTypes.filter((ty) => ty.subtask === (parent !== ''));
       if (!offered.some((ty) => ty.id === typeId)) typeId = offered[0]?.id ?? '';
     });
@@ -218,6 +293,23 @@
       })
       .catch(() => {
         if (key === projectKey && type === typeId) offered = [];
+      });
+  });
+
+  $effect(() => {
+    const key = projectKey;
+    const type = typeId;
+    if (!dialogs.create || !key || !type) {
+      layout = defaultCreateLayout;
+      return;
+    }
+    api
+      .layout(key, type, 'create')
+      .then((l) => {
+        if (key === projectKey && type === typeId) layout = l.fields;
+      })
+      .catch(() => {
+        if (key === projectKey && type === typeId) layout = defaultCreateLayout;
       });
   });
 
@@ -306,27 +398,27 @@
     e?.preventDefault();
     if (!detail || pending) return;
     tried = true;
-    const typed = readEstimate(estimate, t.units.duration);
+    const typed = readEstimate(typedEstimate, t.units.duration);
     if (hasProblems(problems) || !typed.ok) return;
     pending = true;
     error = '';
-    const fields: IssueFields = {
-      project: projectKey,
-      type: typeId,
-      summary: summary.trim(),
-      labels,
-      components,
-      fixVersions,
-    };
-    if (description.trim()) fields.description = description;
-    if (priorityId) fields.priority = priorityId;
-    if (assignee) fields.assignee = assignee.id;
-    if (due) fields.due = due;
+    // Only what the form shows: the server fills the hidden fields with their defaults.
+    const fields: IssueFields = { project: projectKey, type: typeId, summary: summary.trim() };
+    if (shows('description') && description.trim()) fields.description = description;
+    if (shows('environment') && environment.trim()) fields.environment = environment;
+    if (shows('priority') && priorityId) fields.priority = priorityId;
+    if (shows('assignee') && assignee) fields.assignee = assignee.id;
+    if (shows('labels')) fields.labels = labels;
+    if (shows('components')) fields.components = components;
+    if (shows('fixVersions')) fields.fixVersions = fixVersions;
+    if (shows('versions')) fields.affectsVersions = affects;
+    if (shows('duedate') && due) fields.due = due;
     if (typed.seconds !== null) fields.originalEstimate = jiraDuration(typed.seconds);
     if (parent) fields.parent = parent;
-    if (level) fields.securityLevel = Number(level);
+    if (shows('security') && level) fields.securityLevel = Number(level);
     const values: Record<string, unknown> = {};
     for (const f of offered) {
+      if (!shows(customId(f.id))) continue;
       const v = restValue(f, custom[f.id] ?? emptyDraft(f));
       if (v !== undefined) values[String(f.id)] = v;
     }
@@ -359,6 +451,240 @@
 
 {#snippet req()}<span class="req" aria-hidden="true">*</span>{/snippet}
 
+{#snippet mark(f: LayoutField)}{#if f.required}{@render req()}{/if}{/snippet}
+
+{#snippet missing(f: LayoutField)}
+  {#if shown[f.field] === 'required'}
+    <span class="field-error" id="{labelsId}-{f.field}-error">{t.create.required}</span>
+  {/if}
+{/snippet}
+
+{#snippet field(f: LayoutField)}
+  {@const invalid = shown[f.field] === 'required'}
+  {@const describedby = invalid ? `${labelsId}-${f.field}-error` : undefined}
+  {#if f.field === 'description'}
+    <div class="field description" class:kept={offered.length > 0}>
+      <span class="field-label">{t.create.description}{@render mark(f)}</span>
+      <WikiEditor
+        bind:value={description}
+        label={t.create.description}
+        rows={4}
+        onfiles={canAttach ? enqueue : undefined}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'environment'}
+    <div class="field">
+      <span class="field-label">{t.issue.environment}{@render mark(f)}</span>
+      <WikiEditor
+        bind:value={environment}
+        label={t.issue.environment}
+        rows={2}
+        onfiles={canAttach ? enqueue : undefined}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'priority'}
+    <div class="field">
+      <span class="field-label">{t.create.priority}{@render mark(f)}</span>
+      <Dropdown
+        label={t.create.priority}
+        value={priorityId}
+        options={(session.meta?.priorities ?? []).map((p) => ({
+          value: p.id,
+          label: session.priorityName(p),
+        }))}
+        {invalid}
+        onchange={(v) => (priorityId = v)}
+      >
+        {#snippet icon(id)}
+          <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
+        {/snippet}
+      </Dropdown>
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'assignee'}
+    <div class="field assignee">
+      <span class="field-label">{t.create.assignee}{@render mark(f)}</span>
+      {#if me && assignee?.id !== me.id}
+        <button type="button" class="link-btn take" onclick={() => (assignee = me)}
+          >{t.common.assignToMe}</button
+        >
+      {/if}
+      <UserPicker
+        field
+        value={assignee}
+        label={t.create.assignee}
+        noneLabel={detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter'
+          ? t.create.defaultAssignee
+          : t.common.unassigned}
+        search={(q) => api.assignable(projectKey, q)}
+        onpick={(u) => (assignee = u)}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'duedate'}
+    <label class="field">
+      <span>{t.create.due}{@render mark(f)}</span>
+      <input
+        class="input"
+        type="date"
+        bind:value={due}
+        aria-invalid={invalid}
+        aria-describedby={describedby}
+      />
+      {@render missing(f)}
+    </label>
+  {:else if f.field === 'timetracking'}
+    <label class="field">
+      <span>{t.create.estimate}{@render mark(f)}</span>
+      <input
+        class="input"
+        bind:value={estimate}
+        placeholder={t.issue.estimateHint}
+        aria-invalid={invalid || !!shown.estimate}
+        aria-describedby={shown.estimate ? 'new-issue-estimate-error' : describedby}
+      />
+      {#if shown.estimate}
+        <span class="field-error" id="new-issue-estimate-error">{t.issue.estimateInvalid}</span>
+      {:else}
+        {@render missing(f)}
+      {/if}
+    </label>
+  {:else if f.field === 'components' && detail}
+    <div class="field">
+      <span class="field-label">{t.create.components}{@render mark(f)}</span>
+      <MultiPick
+        field
+        options={detail.components.filter((c) => !c.archived)}
+        selected={components}
+        label={t.create.components}
+        oncreate={configure ? createComponent : undefined}
+        onchange={(ids) => (components = ids)}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'fixVersions' && detail}
+    <div class="field">
+      <span class="field-label">{t.create.fixVersions}{@render mark(f)}</span>
+      <MultiPick
+        field
+        options={detail.versions.filter((v) => !v.archived && !v.released)}
+        selected={fixVersions}
+        label={t.create.fixVersions}
+        oncreate={configure ? createVersion : undefined}
+        onchange={(ids) => (fixVersions = ids)}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'versions' && detail}
+    <div class="field">
+      <span class="field-label">{t.issue.affectsVersions}{@render mark(f)}</span>
+      <MultiPick
+        field
+        options={detail.versions.filter((v) => !v.archived)}
+        selected={affects}
+        label={t.issue.affectsVersions}
+        oncreate={configure ? createVersion : undefined}
+        onchange={(ids) => (affects = ids)}
+      />
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'security' && detail}
+    <div class="field">
+      <span class="field-label">{t.create.security}{@render mark(f)}</span>
+      <Dropdown
+        label={t.create.security}
+        value={level}
+        options={[
+          { value: '', label: t.issue.public },
+          ...detail.securityLevels.map((l) => ({ value: String(l.id), label: l.name })),
+        ]}
+        {invalid}
+        onchange={(v) => (level = v)}
+      >
+        {#snippet icon(id)}
+          {#if id}<Lock />{/if}
+        {/snippet}
+      </Dropdown>
+      {@render missing(f)}
+    </div>
+  {:else if f.field === 'labels'}
+    <div class="field">
+      <span class="field-label">{t.create.labels}{@render mark(f)}</span>
+      <label class="boxed field-box" class:invalid for={labelsId}>
+        <LabelEditor id={labelsId} {labels} onchange={(l) => (labels = l)} />
+      </label>
+      {@render missing(f)}
+    </div>
+  {:else}
+    {@const o = offeredField(f.field)}
+    {#if o}
+      {@const fid = `${labelsId}-cf-${o.id}`}
+      {@const problem = customError?.id === o.id ? customError.message : ''}
+      <div class="field">
+        {#if labelled.includes(o.type)}
+          <label class="field-label" for={fid}>{o.name}{@render mark(f)}</label>
+        {:else}
+          <span class="field-label">{o.name}{@render mark(f)}</span>
+        {/if}
+        <CustomFieldInput
+          field={o}
+          id={fid}
+          value={custom[o.id] ?? emptyDraft(o)}
+          invalid={!!problem || invalid}
+          describedby={problem ? `${fid}-error` : describedby}
+          onchange={(v) => setCustom(o.id, v)}
+        />
+        {#if problem}
+          <span class="field-error" id="{fid}-error">{problem}</span>
+        {:else}
+          {@render missing(f)}
+        {/if}
+      </div>
+    {/if}
+  {/if}
+{/snippet}
+
+{#snippet files()}
+  {#if canAttach}
+    <div class="field files">
+      <div class="files-head">
+        <span class="field-label">{t.issue.attachments}</span>
+        <button type="button" class="btn btn-small" onclick={() => picker?.click()}
+          >{t.issue.attach}</button
+        >
+        <input
+          bind:this={picker}
+          type="file"
+          multiple
+          hidden
+          onchange={(e) => {
+            enqueue([...(e.currentTarget.files ?? [])]);
+            e.currentTarget.value = '';
+          }}
+        />
+      </div>
+      {#if queue.length}
+        <ul class="queue">
+          {#each queue as f (f.name)}
+            <li>
+              <span class="name" title={f.name}>{f.name}</span>
+              <span class="size">{formatSize(f.size)}</span>
+              <button
+                type="button"
+                class="del"
+                aria-label={`${t.common.remove} ${f.name}`}
+                onclick={() => (queue = unqueueFile(queue, f.name))}>×</button
+              >
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
 <svelte:window
   ondragenter={dragEnter}
   ondragleave={dragLeave}
@@ -372,7 +698,7 @@
   onclose={close}
 >
   <form bind:this={form} id="new-issue" class="form" onsubmit={submit} novalidate>
-    <div class="three">
+    <div class="two">
       <div class="field">
         <span class="field-label">{t.create.project}{@render req()}</span>
         <Dropdown
@@ -404,22 +730,6 @@
         </Dropdown>
         {#if shown.type}<span class="field-error">{t.create.missing.type}</span>{/if}
       </div>
-      <div class="field">
-        <span class="field-label">{t.create.priority}</span>
-        <Dropdown
-          label={t.create.priority}
-          value={priorityId}
-          options={(session.meta?.priorities ?? []).map((p) => ({
-            value: p.id,
-            label: session.priorityName(p),
-          }))}
-          onchange={(v) => (priorityId = v)}
-        >
-          {#snippet icon(id)}
-            <PriorityMark priority={session.meta?.priorities.find((p) => p.id === id) ?? null} />
-          {/snippet}
-        </Dropdown>
-      </div>
     </div>
 
     <label class="field">
@@ -440,171 +750,17 @@
       {/if}
     </label>
 
-    <div class="field description" class:kept={offered.length > 0}>
-      <span class="field-label">{t.create.description}</span>
-      <WikiEditor
-        bind:value={description}
-        label={t.create.description}
-        rows={4}
-        onfiles={canAttach ? enqueue : undefined}
-      />
-    </div>
-
-    {#if canAttach}
-      <div class="field files">
-        <div class="files-head">
-          <span class="field-label">{t.issue.attachments}</span>
-          <button type="button" class="btn btn-small" onclick={() => picker?.click()}
-            >{t.issue.attach}</button
-          >
-          <input
-            bind:this={picker}
-            type="file"
-            multiple
-            hidden
-            onchange={(e) => {
-              enqueue([...(e.currentTarget.files ?? [])]);
-              e.currentTarget.value = '';
-            }}
-          />
+    {#each runs as run (run.fields[0]!.field)}
+      {#if run.wide}
+        {@render field(run.fields[0]!)}
+        {#if run.fields[0]!.field === 'description'}{@render files()}{/if}
+      {:else}
+        <div class="two">
+          {#each run.fields as f (f.field)}{@render field(f)}{/each}
         </div>
-        {#if queue.length}
-          <ul class="queue">
-            {#each queue as f (f.name)}
-              <li>
-                <span class="name" title={f.name}>{f.name}</span>
-                <span class="size">{formatSize(f.size)}</span>
-                <button
-                  type="button"
-                  class="del"
-                  aria-label={`${t.common.remove} ${f.name}`}
-                  onclick={() => (queue = unqueueFile(queue, f.name))}>×</button
-                >
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="three">
-      <div class="field assignee">
-        <span class="field-label">{t.create.assignee}</span>
-        {#if me && assignee?.id !== me.id}
-          <button type="button" class="link-btn take" onclick={() => (assignee = me)}
-            >{t.common.assignToMe}</button
-          >
-        {/if}
-        <UserPicker
-          field
-          value={assignee}
-          label={t.create.assignee}
-          noneLabel={detail?.defaultAssignee === 'lead' || detail?.defaultAssignee === 'reporter'
-            ? t.create.defaultAssignee
-            : t.common.unassigned}
-          search={(q) => api.assignable(projectKey, q)}
-          onpick={(u) => (assignee = u)}
-        />
-      </div>
-      <label class="field">
-        <span>{t.create.due}</span>
-        <input class="input" type="date" bind:value={due} />
-      </label>
-      <label class="field">
-        <span>{t.create.estimate}</span>
-        <input
-          class="input"
-          bind:value={estimate}
-          placeholder={t.issue.estimateHint}
-          aria-invalid={!!shown.estimate}
-          aria-describedby={shown.estimate ? 'new-issue-estimate-error' : undefined}
-        />
-        {#if shown.estimate}
-          <span class="field-error" id="new-issue-estimate-error">{t.issue.estimateInvalid}</span>
-        {/if}
-      </label>
-    </div>
-
-    {#if detail}
-      <div class="three">
-        {#if detail.components.length || configure}
-          <div class="field">
-            <span class="field-label">{t.create.components}</span>
-            <MultiPick
-              field
-              options={detail.components.filter((c) => !c.archived)}
-              selected={components}
-              label={t.create.components}
-              oncreate={configure ? createComponent : undefined}
-              onchange={(ids) => (components = ids)}
-            />
-          </div>
-        {/if}
-        {#if detail.versions.length || configure}
-          <div class="field">
-            <span class="field-label">{t.create.fixVersions}</span>
-            <MultiPick
-              field
-              options={detail.versions.filter((v) => !v.archived && !v.released)}
-              selected={fixVersions}
-              label={t.create.fixVersions}
-              oncreate={configure ? createVersion : undefined}
-              onchange={(ids) => (fixVersions = ids)}
-            />
-          </div>
-        {/if}
-        {#if detail.securityLevels.length}
-          <div class="field">
-            <span class="field-label">{t.create.security}</span>
-            <Dropdown
-              label={t.create.security}
-              value={level}
-              options={[
-                { value: '', label: t.issue.public },
-                ...detail.securityLevels.map((l) => ({ value: String(l.id), label: l.name })),
-              ]}
-              onchange={(v) => (level = v)}
-            >
-              {#snippet icon(id)}
-                {#if id}<Lock />{/if}
-              {/snippet}
-            </Dropdown>
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="field">
-      <span class="field-label">{t.create.labels}</span>
-      <label class="boxed field-box" for={labelsId}>
-        <LabelEditor id={labelsId} {labels} onchange={(l) => (labels = l)} />
-      </label>
-    </div>
-
-    {#if offered.length}
-      <div class="three">
-        {#each offered as f (f.id)}
-          {@const fid = `${labelsId}-cf-${f.id}`}
-          {@const problem = customError?.id === f.id ? customError.message : ''}
-          <div class="field" class:wide={wideTypes.includes(f.type)}>
-            {#if labelled.includes(f.type)}
-              <label class="field-label" for={fid}>{f.name}</label>
-            {:else}
-              <span class="field-label">{f.name}</span>
-            {/if}
-            <CustomFieldInput
-              field={f}
-              id={fid}
-              value={custom[f.id] ?? emptyDraft(f)}
-              invalid={!!problem}
-              describedby={problem ? `${fid}-error` : undefined}
-              onchange={(v) => setCustom(f.id, v)}
-            />
-            {#if problem}<span class="field-error" id="{fid}-error">{problem}</span>{/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
+      {/if}
+    {/each}
+    {#if !shows('description')}{@render files()}{/if}
     {#if dragging}<p class="drop"><span>{t.create.dropFiles}</span></p>{/if}
   </form>
 
@@ -632,9 +788,9 @@
     flex-shrink: 0;
   }
 
-  .three {
+  .two {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-items: start;
   }
@@ -708,7 +864,8 @@
     color: var(--accent-text);
   }
 
-  .form :global([aria-invalid='true']) {
+  .form :global([aria-invalid='true']),
+  .boxed.invalid {
     border-color: var(--accent);
   }
 
@@ -742,10 +899,6 @@
     display: flex;
     align-items: center;
     cursor: text;
-  }
-
-  .wide {
-    grid-column: 1 / -1;
   }
 
   /* A long file name is clipped, not widening the form. */
@@ -832,7 +985,7 @@
   }
 
   @media (max-width: 640px) {
-    .three {
+    .two {
       grid-template-columns: 1fr;
     }
   }
