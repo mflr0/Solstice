@@ -1091,6 +1091,10 @@ export const it: Messages = {
     required: 'Obbligatorio',
     checkFields: 'Alcuni campi richiedono la tua attenzione.',
     dropFiles: 'Rilascia i file per allegarli al nuovo ticket',
+    editTitle: (key: string) => `Modifica ${key}`,
+    saved: (key: string) => `${key} salvato.`,
+    cannotEdit: 'Non puoi modificare questo ticket.',
+    editDropFiles: (key: string) => `Rilascia i file per allegarli a ${key}`,
     notAttached: (names: string) => `Non allegati: ${names}. Allegali di nuovo dal ticket.`,
     addPerson: 'Aggiungi una persona',
     missing: {
@@ -1174,6 +1178,7 @@ export const it: Messages = {
     otherIssues: 'Altri ticket',
 
     cardActions: (key: string) => `Azioni su ${key}`,
+    edit: 'Modifica…',
     issueGroup: 'Ticket',
     duplicate: 'Duplica…',
     stopWatching: 'Smetti di osservare',

@@ -5,15 +5,17 @@ import { api, errorMessage } from '../../lib/api.js';
 import { copyText } from '../../lib/clipboard.js';
 import { notify } from '../../lib/ui.svelte.js';
 
-/** The "Issue" group of a card's menu (a CardMenu group): duplicate, watch, copy the link. */
+/** The "Issue" group of a card's menu (a CardMenu group): edit, duplicate, watch, copy the link. */
 export function issueGroup(
   card: BoardCard,
+  edit: (key: string) => void,
   duplicate: (key: string) => void,
   watched: (key: string, on: boolean) => void,
 ): { label: string; items: { label: string; run: () => void }[] } {
   return {
     label: t.boards.issueGroup,
     items: [
+      ...(card.can.edit ? [{ label: t.boards.edit, run: () => edit(card.key) }] : []),
       ...(card.can.create ? [{ label: t.boards.duplicate, run: () => duplicate(card.key) }] : []),
       {
         label: card.watching ? t.boards.stopWatching : t.issue.watch,

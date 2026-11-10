@@ -4,7 +4,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 
 import type { IssueLayout, LayoutField } from '../../src/core/admin-types.js';
 import { defaultCreateLayout } from '../../src/core/new-issue.js';
-import type { OfferedField, ProjectDetail, UserRef } from '../../src/core/types.js';
+import type { IssueDetail, OfferedField, ProjectDetail, UserRef } from '../../src/core/types.js';
 import { t } from '../../src/i18n/t.js';
 import { session } from '../../src/lib/session.svelte.js';
 import { dialogs, notes } from '../../src/lib/ui.svelte.js';
@@ -48,6 +48,8 @@ const layoutFor = vi.fn((_key: string, type: string): Promise<IssueLayout> =>
 );
 
 const created = vi.fn();
+const updated = vi.fn();
+let issue: IssueDetail;
 const uploaded = vi.fn();
 
 vi.mock('../../src/lib/api.js', () => ({
@@ -67,6 +69,8 @@ vi.mock('../../src/lib/api.js', () => ({
     projectFields: (_key: string, type: string) => Promise.resolve(type === '1' ? [team] : []),
     layout: (key: string, type: string) => layoutFor(key, type),
     createIssue: (fields: unknown) => created(fields),
+    issue: () => Promise.resolve(issue),
+    updateIssue: (key: string, fields: unknown) => updated(key, fields),
     upload: (key: string, files: File[]) => uploaded(key, files),
   },
   isVisible: () => true,
@@ -99,6 +103,7 @@ beforeEach(() => {
 
 afterEach(() => {
   created.mockReset();
+  updated.mockReset();
   layoutFor.mockClear();
   layouts = {};
   uploaded.mockReset();
@@ -184,6 +189,40 @@ const required = (name: string) =>
   [...document.querySelectorAll('#new-issue .field')]
     .find((f) => f.firstElementChild?.textContent?.replace('*', '').trim() === name)
     ?.querySelector('.req') != null;
+
+// ALPHA-5, a task with a description and a Team.
+function existing(): IssueDetail {
+  return {
+    key: 'ALPHA-5',
+    summary: 'Old summary',
+    type: { id: '1', name: 'Task', subtask: false },
+    project: { id: 1, key: 'ALPHA', name: 'Alpha' },
+    description: 'The body',
+    environment: null,
+    priority: null,
+    assignee: alice,
+    labels: ['ui'],
+    components: [],
+    affectsVersions: [],
+    fixVersions: [],
+    due: null,
+    time: { original: 3600, remaining: 3600, spent: null },
+    securityLevel: null,
+    customFields: [{ id: 7, name: 'Team', kind: 'text', values: ['Platform'] }],
+    can: { edit: true },
+  } as unknown as IssueDetail;
+}
+
+async function openEdit(onsaved?: () => void) {
+  dialogs.createDefaults = { edit: 'ALPHA-5', onsaved };
+  await open();
+  await settle();
+}
+
+const combo = (label: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('[role="combobox"]')].find(
+    (c) => c.getAttribute('aria-label') === label,
+  );
 
 const queued = () => [...document.querySelectorAll('.queue .name')].map((n) => n.textContent);
 
@@ -349,5 +388,72 @@ describe('NewIssueDialog', () => {
     await open();
     expect(document.querySelector('.assignee .picker')).not.toBeNull();
     expect(link()).toBeUndefined();
+  });
+
+  describe('edit mode', () => {
+    afterEach(() => {
+      dialogs.createDefaults = {};
+    });
+
+    it('prefills the fields and keeps project and type read-only', async () => {
+      issue = existing();
+      await openEdit();
+      expect(document.querySelector('dialog')?.textContent).toContain(
+        t.create.editTitle('ALPHA-5'),
+      );
+      expect((document.querySelector('input.summary') as HTMLInputElement).value).toBe(
+        'Old summary',
+      );
+      expect(teamInput()!.value).toBe('Platform');
+      expect(
+        document.querySelector('#new-issue .labels, #new-issue .boxed')?.textContent,
+      ).toContain('ui');
+      expect(combo(t.create.project)?.disabled).toBe(true);
+      expect(combo(t.create.project)?.textContent).toContain('ALPHA');
+      expect(combo(t.create.type)?.disabled).toBe(true);
+      expect(combo(t.create.type)?.textContent).toContain('Task');
+      expect(document.querySelector('button[type="submit"]')?.textContent).toBe(t.common.save);
+    });
+
+    it('saves only the changed fields with a PATCH', async () => {
+      issue = existing();
+      updated.mockResolvedValue({ key: 'ALPHA-5' });
+      const onsaved = vi.fn();
+      await openEdit(onsaved);
+      fill(document.querySelector('input.summary') as HTMLInputElement, 'New summary');
+      fill(teamInput()!, 'Core');
+      await submit();
+      expect(created).not.toHaveBeenCalled();
+      expect(updated).toHaveBeenCalledTimes(1);
+      expect(updated.mock.calls[0]).toEqual([
+        'ALPHA-5',
+        { summary: 'New summary', customFields: { '7': 'Core' } },
+      ]);
+      expect(dialogs.create).toBe(false);
+      expect(onsaved).toHaveBeenCalledTimes(1);
+      expect(notes.at(-1)?.text).toBe(t.create.saved('ALPHA-5'));
+    });
+
+    it('saves with a required field the issue never had still empty', async () => {
+      issue = existing();
+      updated.mockResolvedValue({ key: 'ALPHA-5' });
+      layouts = { '1': [{ field: 'duedate', hidden: false, required: true }] };
+      await openEdit();
+      fill(document.querySelector('input.summary') as HTMLInputElement, 'New summary');
+      await submit();
+      expect(updated.mock.calls[0]).toEqual(['ALPHA-5', { summary: 'New summary' }]);
+    });
+
+    it('blocks clearing a required field', async () => {
+      issue = { ...existing(), due: '2026-12-01' };
+      layouts = { '1': [{ field: 'duedate', hidden: false, required: true }] };
+      await openEdit();
+      const due = document.querySelector<HTMLInputElement>('#new-issue input[type="date"]')!;
+      expect(due.value).toBe('2026-12-01');
+      fill(due, '');
+      await submit();
+      expect(updated).not.toHaveBeenCalled();
+      expect(due.getAttribute('aria-invalid')).toBe('true');
+    });
   });
 });

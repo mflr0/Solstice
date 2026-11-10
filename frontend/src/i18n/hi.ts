@@ -1081,6 +1081,10 @@ export const hi: Messages = {
     required: 'ज़रूरी',
     checkFields: 'कुछ फ़ील्ड पर ध्यान देना ज़रूरी है।',
     dropFiles: 'नए टिकट में जोड़ने के लिए फ़ाइलें छोड़ें',
+    editTitle: (key: string) => `${key} संपादित करें`,
+    saved: (key: string) => `${key} सहेजा गया।`,
+    cannotEdit: 'आप इस टिकट को संपादित नहीं कर सकते।',
+    editDropFiles: (key: string) => `${key} में जोड़ने के लिए फ़ाइलें छोड़ें`,
     notAttached: (names: string) => `नहीं जुड़ीं: ${names}। इन्हें टिकट से फिर से जोड़ें।`,
     addPerson: 'व्यक्ति जोड़ें',
     missing: {
@@ -1164,6 +1168,7 @@ export const hi: Messages = {
     otherIssues: 'अन्य टिकट',
 
     cardActions: (key: string) => `${key} पर कार्रवाइयाँ`,
+    edit: 'संपादित करें…',
     issueGroup: 'टिकट',
     duplicate: 'कॉपी बनाएँ…',
     stopWatching: 'वॉच करना बंद करें',

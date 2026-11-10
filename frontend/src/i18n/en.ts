@@ -1084,6 +1084,10 @@ export const en = {
     required: 'Required',
     checkFields: 'Some fields need your attention.',
     dropFiles: 'Drop files to attach to the new issue',
+    editTitle: (key: string) => `Edit ${key}`,
+    saved: (key: string) => `${key} saved.`,
+    cannotEdit: 'You can’t edit this issue.',
+    editDropFiles: (key: string) => `Drop files to attach to ${key}`,
     notAttached: (names: string) => `Not attached: ${names}. Attach them again from the issue.`,
     addPerson: 'Add a person',
     missing: {
@@ -1167,6 +1171,7 @@ export const en = {
     otherIssues: 'Other issues',
 
     cardActions: (key: string) => `Actions for ${key}`,
+    edit: 'Edit…',
     issueGroup: 'Issue',
     duplicate: 'Duplicate…',
     stopWatching: 'Stop watching',

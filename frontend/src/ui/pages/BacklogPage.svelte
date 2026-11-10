@@ -18,7 +18,7 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { debounce, live } from '../../lib/live.svelte.js';
   import { router } from '../../lib/router.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, openEdit } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
@@ -197,7 +197,12 @@
         run: () => m && void move(m, message, true),
       });
       return [
-        issueGroup(card, (key) => (duplicating = key), watched),
+        issueGroup(
+          card,
+          (key) => openEdit(key, reload),
+          (key) => (duplicating = key),
+          watched,
+        ),
         {
           label: t.boards.moveTo,
           items: sections.map((s) => ({

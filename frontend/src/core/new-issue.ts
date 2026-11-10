@@ -200,3 +200,46 @@ export function notAttached(
   const held = new Set(attached.map((a) => a.filename));
   return queue.map((f) => f.name).filter((name) => !held.has(name));
 }
+
+/** The fields an issue form sends, as the REST API reads them. */
+export interface EditFields {
+  [field: string]: unknown;
+  customFields?: Record<string, unknown>;
+}
+
+/**
+ * What an edit sends: the fields of `after` that differ from `before`, and
+ * within customFields only the values that differ.
+ */
+export function changedFields(before: EditFields, after: EditFields): EditFields {
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const out: EditFields = {};
+  for (const [k, v] of Object.entries(after)) {
+    if (k !== 'customFields' && !same(before[k], v)) out[k] = v;
+  }
+  const custom = Object.fromEntries(
+    Object.entries(after.customFields ?? {}).filter(
+      ([id, v]) => !same(before.customFields?.[id], v),
+    ),
+  );
+  if (Object.keys(custom).length) out.customFields = custom;
+  return out;
+}
+
+// Layout ids by the REST field that holds them, where the names differ.
+const layoutIds: Record<string, string> = {
+  affectsVersions: 'versions',
+  due: 'duedate',
+  originalEstimate: 'timetracking',
+  securityLevel: 'security',
+};
+
+/** The layout ids of the fields an edit sends (`duedate`, `customfield_7`). */
+export function editedLayoutFields(sent: EditFields): string[] {
+  return [
+    ...Object.keys(sent)
+      .filter((k) => k !== 'customFields')
+      .map((k) => layoutIds[k] ?? k),
+    ...Object.keys(sent.customFields ?? {}).map((id) => `customfield_${id}`),
+  ];
+}

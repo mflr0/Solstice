@@ -1098,6 +1098,10 @@ export const de: Messages = {
     required: 'Pflichtfeld',
     checkFields: 'Bitte prüfen Sie die markierten Felder.',
     dropFiles: 'Dateien ablegen, um sie an den neuen Vorgang anzuhängen',
+    editTitle: (key: string) => `${key} bearbeiten`,
+    saved: (key: string) => `${key} gespeichert.`,
+    cannotEdit: 'Sie können diesen Vorgang nicht bearbeiten.',
+    editDropFiles: (key: string) => `Dateien ablegen, um sie an ${key} anzuhängen`,
     notAttached: (names: string) =>
       `Nicht angehängt: ${names}. Hängen Sie sie im Vorgang erneut an.`,
     addPerson: 'Person hinzufügen',
@@ -1182,6 +1186,7 @@ export const de: Messages = {
     otherIssues: 'Weitere Vorgänge',
 
     cardActions: (key: string) => `Aktionen für ${key}`,
+    edit: 'Bearbeiten…',
     issueGroup: 'Vorgang',
     duplicate: 'Duplizieren…',
     stopWatching: 'Nicht mehr beobachten',

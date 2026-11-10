@@ -32,6 +32,10 @@ import { isSkinLoaded, loadSkin, loadThemes, themes } from './skins.svelte.js';
 export interface CreateDefaults {
   project?: string;
   parent?: string;
+  /** The issue to edit instead of creating one. */
+  edit?: string;
+  /** Runs once the edited issue is saved. */
+  onsaved?: (() => void) | undefined;
 }
 
 export const dialogs = $state<{
@@ -49,6 +53,11 @@ export const dialogs = $state<{
 export function openCreate(defaults: CreateDefaults = {}): void {
   dialogs.createDefaults = defaults;
   dialogs.create = true;
+}
+
+/** Opens the new issue dialog on an existing issue, to edit it. */
+export function openEdit(key: string, onsaved?: () => void): void {
+  openCreate({ edit: key, onsaved });
 }
 
 /** The board the page shows, once loaded: New issue offers its project. */
