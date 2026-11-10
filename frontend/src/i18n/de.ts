@@ -1332,10 +1332,11 @@ export const de: Messages = {
     noStatus: 'Kein Status: Diese Spalte bleibt leer.',
     addColumn: 'Spalte hinzufügen',
     newColumn: 'Neue Spalte',
-    moveUp: (name: string) => `„${name}“ nach oben verschieben`,
-    moveDown: (name: string) => `„${name}“ nach unten verschieben`,
-    moveLeft: (name: string) => `„${name}“ nach links verschieben`,
-    moveRight: (name: string) => `„${name}“ nach rechts verschieben`,
+    reorder: (name: string) => `„${name}“ verschieben`,
+    reorderColumn: 'Ziehen, oder Alt+← oder Alt+→',
+    reorderRow: 'Ziehen, oder Alt+↑ oder Alt+↓',
+    moved: (name: string, at: number, of: number) =>
+      `„${name}“ steht jetzt an Position ${at} von ${of}.`,
     remove: (name: string) => `„${name}“ entfernen`,
     unmapped: (names: string) =>
       `Vorgänge in diesen Status erscheinen nicht auf dem Board: ${names}.`,
