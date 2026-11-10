@@ -31,6 +31,15 @@ export const fr: SetupMessages = {
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: "Le serveur ne répond pas. Vérifiez qu'il tourne toujours, puis réessayez.",
+    sessionEnded: 'Votre session a pris fin. Reconnectez-vous.',
+    forbidden: 'Vous n’êtes pas autorisé à faire ceci.',
+    missing: 'Introuvable, ou vous n’y avez pas accès.',
+    tooLarge: 'C’est trop volumineux pour être accepté par le serveur.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Trop de requêtes. Patientez un instant, puis réessayez.'
+        : `Trop de requêtes. Réessayez dans ${s < 60 ? `${s}\u00a0s` : `${Math.ceil(s / 60)}\u00a0min`}.`,
+    server: 'Le serveur a rencontré un problème. Réessayez.',
     generic: 'Une erreur est survenue. Réessayez.',
   },
   insecureWarning:

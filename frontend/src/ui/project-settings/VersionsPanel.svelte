@@ -11,7 +11,7 @@
   import { formatDay, t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
   import { projectAdminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+  import { errorMessage, UserError } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import OrderArrows from '../admin/OrderArrows.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -142,7 +142,7 @@
     const v = merging;
     if (!v) return;
     const target = mergeChoices.find((x) => String(x.id) === into);
-    if (!target) throw new Error(t.catalogAdmin.chooseTarget);
+    if (!target) throw new UserError(t.catalogAdmin.chooseTarget);
     const focus = focusOrderAfterRemoval(items ?? [], v, mergeId, 'version-new');
     await projectAdminApi.mergeVersion(projectKey, v.id, target.id);
     notify(t.projectConfig.versions.merged(v.name, target.name));

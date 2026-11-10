@@ -30,6 +30,15 @@ export const de: SetupMessages = {
   errors: {
     network:
       'Der Server antwortet nicht. Prüfen Sie, ob er noch läuft, und versuchen Sie es dann erneut.',
+    sessionEnded: 'Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an.',
+    forbidden: 'Dazu sind Sie nicht berechtigt.',
+    missing: 'Nicht gefunden, oder Sie haben keinen Zugriff darauf.',
+    tooLarge: 'Das ist zu groß, um vom Server angenommen zu werden.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Zu viele Anfragen. Warten Sie einen Moment, und versuchen Sie es dann erneut.'
+        : `Zu viele Anfragen. Versuchen Sie es in ${s < 60 ? `${s} s` : `${Math.ceil(s / 60)} min`} erneut.`,
+    server: 'Auf dem Server ist ein Problem aufgetreten. Versuchen Sie es erneut.',
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
   },
   insecureWarning:

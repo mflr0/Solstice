@@ -11,7 +11,7 @@
     type SecurityLevel,
     type SecurityMember,
   } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+  import { errorMessage, UserError } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
@@ -101,7 +101,7 @@
     const level = removing;
     if (!level) return;
     const used = level.issues > 0;
-    if (used && how === 'move' && !moveTo) throw new Error(t.securityAdmin.chooseTarget);
+    if (used && how === 'move' && !moveTo) throw new UserError(t.securityAdmin.chooseTarget);
     const choice = !used ? {} : how === 'move' ? { moveTo: Number(moveTo) } : { clear: true };
     const focus = focusOrderAfterRemoval(levels ?? [], level, deleteId, 'level-new');
     await securityApi.remove(project, level.id, choice);

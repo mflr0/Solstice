@@ -8,7 +8,7 @@
   import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+  import { errorMessage, UserError } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
@@ -84,7 +84,8 @@
   async function remove() {
     const f = removing;
     if (!f) return;
-    if (f.issues > 0 && !typedMatches(typed, f.name)) throw new Error(t.fieldsAdmin.nameMismatch);
+    if (f.issues > 0 && !typedMatches(typed, f.name))
+      throw new UserError(t.fieldsAdmin.nameMismatch);
     const focus = focusOrderAfterRemoval(list, f, deleteId, 'field-new');
     await adminApi.deleteField(f.id, f.issues > 0 ? typed.trim() : undefined);
     notify(t.catalogAdmin.deleted(f.name));

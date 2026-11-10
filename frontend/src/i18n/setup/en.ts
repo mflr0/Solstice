@@ -34,6 +34,15 @@ export const en = {
   duration: (min: number, sec: number) => (min > 0 ? `${min} min ${sec} s` : `${sec} s`),
   errors: {
     network: 'The server is not answering. Check that it is still running, then try again.',
+    sessionEnded: 'Your session has ended. Sign in again.',
+    forbidden: 'You aren’t allowed to do this.',
+    missing: 'Not found, or you don’t have access to it.',
+    tooLarge: 'This is too large for the server to accept.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Too many requests. Wait a moment, then try again.'
+        : `Too many requests. Try again in ${s < 60 ? `${s} s` : `${Math.ceil(s / 60)} min`}.`,
+    server: 'The server ran into a problem. Try again.',
     generic: 'Something went wrong. Please try again.',
   },
   insecureWarning:

@@ -252,7 +252,17 @@ export const it: Messages = {
   },
 
   errors: {
-    network: 'Il server non risponde. Controlla la connessione.',
+    network:
+      'Il server non è raggiungibile al momento. Controlla la connessione, o riprova tra poco.',
+    sessionEnded: 'La tua sessione è scaduta. Accedi di nuovo.',
+    forbidden: 'Non hai il permesso di farlo.',
+    missing: 'Non trovato, o non hai accesso.',
+    tooLarge: 'È troppo grande perché il server lo accetti.',
+    tooMany: (s: number | null) =>
+      s === null
+        ? 'Troppe richieste. Attendi un momento, poi riprova.'
+        : `Troppe richieste. Riprova tra ${s < 60 ? `${s} s` : `${Math.ceil(s / 60)} min`}.`,
+    server: 'Il server ha avuto un problema. Riprova.',
     generic: 'Si è verificato un errore.',
     notFound: 'Questa pagina non esiste, o non hai i permessi per vederla.',
     pageLoad: 'Impossibile caricare questa pagina. Controlla la connessione e ricarica.',

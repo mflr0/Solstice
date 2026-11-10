@@ -5,7 +5,7 @@
   import { locale } from '../../i18n/index.js';
   import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
-  import { errorMessage } from '../../lib/api.js';
+  import { errorMessage, UserError } from '../../lib/api.js';
   import {
     deleteLocalTheme,
     listLocalThemes,
@@ -91,7 +91,7 @@
   async function importChosen() {
     if (!choosing) return;
     const next = await unpackLocalTheme(choosing);
-    if (!next) throw new Error(m.unreadable);
+    if (!next) throw new UserError(m.unreadable);
     const old = list.find((theme) => theme.id === next.id);
     if (old) replacing = { old, next };
     else await save(next, m.imported(nameOf(next)));

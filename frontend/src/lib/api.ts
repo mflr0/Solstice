@@ -55,6 +55,7 @@ import type {
   SprintPatch,
 } from '../core/board-types.js';
 import type { FlowReport, SprintReport, VelocityReport } from '../core/board-report.js';
+import { failureMessage, parseBody, serverMessage } from '../core/failure.js';
 import { t } from '../i18n/t.js';
 import { locale } from '../i18n/index.js';
 
@@ -133,7 +134,10 @@ export interface MoveChoices {
   restricted?: { to: 'keep' } | { to: 'group'; group: number } | { to: 'refuse' };
 }
 
-export class ApiError extends Error {
+/** An error whose message is written for the person using the interface. */
+export class UserError extends Error {}
+
+export class ApiError extends UserError {
   constructor(
     message: string,
     readonly status: number,
@@ -184,16 +188,7 @@ export async function request<T>(
   }
   if (res.status === 401 && path !== '/api/login') onUnauthorized();
   if (!res.ok) {
-    let message: string = t.errors.generic;
-    let data: unknown;
-    try {
-      data = await res.json();
-      if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
-        message = data.error;
-      }
-    } catch {
-      // Not JSON: keep the generic message.
-    }
+    const data = parseBody(await res.text().catch(() => ''));
     // Not installed yet: the setup wizard comes first.
     if (
       res.status === 503 &&
@@ -204,12 +199,19 @@ export async function request<T>(
     ) {
       location.assign('/setup');
     }
+    const message =
+      serverMessage(data) ?? failureMessage(t.errors, res.status, res.headers.get('Retry-After'));
     throw new ApiError(message, res.status, data);
   }
   if (res.status === 204) return undefined as T;
   if (as === 'blob') return (await res.blob()) as T;
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(failureMessage(t.errors, res.status), res.status);
+  }
 }
 
 const enc = encodeURIComponent;
@@ -574,6 +576,7 @@ export function isVisible(d: IssueDetail | HiddenIssue): d is IssueDetail {
   return !('hidden' in d);
 }
 
+/** The message to show for a failure; a programming or parser error gets the generic one. */
 export function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : t.errors.generic;
+  return e instanceof UserError && e.message ? e.message : t.errors.generic;
 }

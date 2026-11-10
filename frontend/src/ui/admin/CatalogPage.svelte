@@ -15,7 +15,7 @@
   import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { api, errorMessage } from '../../lib/api.js';
+  import { api, errorMessage, UserError } from '../../lib/api.js';
   import { session } from '../../lib/session.svelte.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -133,7 +133,7 @@
     const item = removing;
     if (!item) return;
     const used = usageOf(item) > 0;
-    if (used && !moveTo) throw new Error(t.catalogAdmin.chooseTarget);
+    if (used && !moveTo) throw new UserError(t.catalogAdmin.chooseTarget);
     const target = used ? targets.find((x) => String(x.id) === moveTo)?.id : undefined;
     const focus = focusOrderAfterRemoval(list, item, deleteId, 'catalog-new');
     await adminApi.deleteCatalogItem(apiKind, item.id, target);
