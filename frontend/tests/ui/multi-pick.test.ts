@@ -28,7 +28,10 @@ afterEach(() => {
   delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
 });
 
-function open(oncreate?: (name: string) => Promise<number>, onchange = (_: number[]) => {}) {
+function open(
+  oncreate?: (name: string) => Promise<number>,
+  onchange = (_: (number | string)[]) => {},
+) {
   component = mount(MultiPick, {
     target: document.body,
     props: { options, selected: [], label: t.issue.components, onchange, oncreate },
@@ -75,7 +78,7 @@ describe('MultiPick', () => {
 
   it('selects the value it creates', async () => {
     let asked = '';
-    let chosen: number[] = [];
+    let chosen: (number | string)[] = [];
     open(
       (name) => {
         asked = name;
@@ -102,7 +105,7 @@ describe('MultiPick', () => {
   });
 
   it('closes on Escape and a press outside, applying the choice once', () => {
-    const changes: number[][] = [];
+    const changes: (number | string)[][] = [];
     open(undefined, (ids) => changes.push(ids));
     (document.querySelector('[role="menuitemcheckbox"]') as HTMLButtonElement).click();
     flushSync();
