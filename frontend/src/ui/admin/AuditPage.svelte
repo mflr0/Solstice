@@ -13,7 +13,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import Dropdown from '../Dropdown.svelte';
   import EmptyState from '../EmptyState.svelte';
@@ -143,7 +143,7 @@
       notify(t.auditAdmin.retention.saved);
       void load();
     } catch (e) {
-      retentionError = errorMessage(e);
+      retentionError = reportFailure(e);
     } finally {
       saving = false;
     }
@@ -152,6 +152,7 @@
   function submit(e: SubmitEvent) {
     e.preventDefault();
     tried = true;
+    if (problem) void refused(e.currentTarget as HTMLFormElement, shownProblem);
     if (problem || stored === null) return;
     if (retentionShortens(stored, Number(days.trim()))) shortening = true;
     else void save();

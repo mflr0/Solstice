@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import { memberPayload } from '../../core/admin-forms.js';
   import type { Group } from '../../core/admin-types.js';
   import { groupKeyHolder, holderGroups } from '../../core/project-admin.js';
@@ -60,13 +61,14 @@
     e.preventDefault();
     tried = true;
     error = '';
+    if (!payload) void refused(e.currentTarget as HTMLFormElement, t.securityAdmin.mustChoose);
     if (!level || !payload) return;
     busy = true;
     try {
       onsaved(await securityApi.addMember(project, level.id, payload));
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

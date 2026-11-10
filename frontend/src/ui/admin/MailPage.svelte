@@ -16,7 +16,7 @@
   import { errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
   import EmptyState from '../EmptyState.svelte';
   import PasswordInput from '../PasswordInput.svelte';
 
@@ -88,12 +88,17 @@
     form.security = next;
   }
 
+  let formEl = $state<HTMLFormElement>();
+
   /** Saves; true when the settings are stored. */
   async function save(): Promise<boolean> {
     if (!form) return false;
     tried = true;
     saveError = '';
-    if (hasProblems(problems)) return false;
+    if (hasProblems(problems)) {
+      void refused(formEl, shown('host'), shown('port'), shown('from'), shown('password'));
+      return false;
+    }
     saving = true;
     try {
       adopt(await adminApi.saveMail(mailPayload(form)));
@@ -102,7 +107,7 @@
       notify(t.mailAdmin.saved);
       return true;
     } catch (e) {
-      saveError = errorMessage(e);
+      saveError = reportFailure(e);
       return false;
     } finally {
       saving = false;
@@ -172,7 +177,7 @@
   {#if settings.problem === 'credentialsNeedTLS'}
     <p class="result failed problem" role="alert">{t.mailAdmin.credentialsNeedTls}</p>
   {/if}
-  <form class="settings-form" onsubmit={submit} novalidate>
+  <form class="settings-form" bind:this={formEl} onsubmit={submit} novalidate>
     <h2 class="section-title">{t.mailAdmin.server}</h2>
     <label class="check">
       <input class="checkbox" type="checkbox" bind:checked={form.enabled} />

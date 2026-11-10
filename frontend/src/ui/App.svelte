@@ -17,6 +17,7 @@
     mac,
     notify,
     openCreate,
+    openDialogs,
     shownBoard,
     toggleScheme,
   } from '../lib/ui.svelte.js';
@@ -259,7 +260,7 @@
   <IssueModal />
   <Tour />
 {/if}
-<Notes />
+{#if openDialogs.length === 0}<Notes />{/if}
 
 <style>
   .booting {

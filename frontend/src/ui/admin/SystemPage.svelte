@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { reportFailure } from '../../lib/ui.svelte.js';
   import { splitUptime } from '../../core/admin-ops.js';
   import type { GeneralSettings, SystemInfo } from '../../core/admin-types.js';
   import { adminPath } from '../../core/areas.js';
@@ -43,7 +44,10 @@
     adminApi
       .settings()
       .then((s) => (settings = s))
-      .catch(() => (settings = null));
+      .catch((e: unknown) => {
+        settings = null;
+        reportFailure(e);
+      });
     updatesApi
       .state()
       .then((s) => {

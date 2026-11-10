@@ -9,7 +9,7 @@
   import { refocusLater } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage, UserError } from '../../lib/api.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, reportFailure } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import EmptyState from '../EmptyState.svelte';
   import Highlight from '../Highlight.svelte';
@@ -58,15 +58,15 @@
     adminApi
       .fieldTypes()
       .then((x) => (types = x))
-      .catch(() => {});
+      .catch(reportFailure);
     adminApi
       .projects()
       .then((x) => (projects = x))
-      .catch(() => {});
+      .catch(reportFailure);
     adminApi
       .catalog('issue-types')
       .then((x) => (issueTypes = x))
-      .catch(() => {});
+      .catch(reportFailure);
   });
 
   function saved(name: string, created: boolean) {

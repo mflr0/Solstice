@@ -14,7 +14,7 @@
   import { holderLabels, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, refused, reportFailure } from '../../lib/ui.svelte.js';
   import Modal from '../Modal.svelte';
   import PermissionStates from './PermissionStates.svelte';
   import UserPicker from '../UserPicker.svelte';
@@ -108,7 +108,7 @@
       notify(t.adminArea.groupsPage.memberAdded(user.name));
       onchanged();
     } catch (e) {
-      error = errorMessage(e);
+      error = reportFailure(e);
     } finally {
       changing = false;
     }
@@ -124,7 +124,7 @@
       notify(t.adminArea.groupsPage.memberRemoved(user.name));
       onchanged();
     } catch (e) {
-      error = errorMessage(e);
+      error = reportFailure(e);
     } finally {
       changing = false;
     }
@@ -146,13 +146,16 @@
         onsaved(t.adminArea.groupsPage.updated(holderName));
         onclose();
       } catch (err) {
-        error = errorMessage(err);
+        error = reportFailure(err);
       } finally {
         busy = false;
       }
       return;
     }
-    if (hasProblems(problems)) return;
+    if (hasProblems(problems)) {
+      void refused(e.currentTarget as HTMLFormElement, shownName, shownDescription);
+      return;
+    }
     const patch = group ? namedPatch({ name, description }, group, true) : null;
     if (patch && Object.keys(patch).length === 0 && !rules) {
       onclose();
@@ -174,7 +177,7 @@
       );
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
       // The name was saved, the defaults were not.
       if (saved) onchanged();
     } finally {

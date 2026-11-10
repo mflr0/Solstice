@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { reportFailure } from '../../lib/ui.svelte.js';
   import { passwordModes, passwordTooShort, type PasswordMode } from '../../core/account-links.js';
   import type { UserRow } from '../../core/admin-types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import CopyField from '../CopyField.svelte';
   import Modal from '../Modal.svelte';
@@ -57,7 +58,7 @@
         onclose();
       }
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

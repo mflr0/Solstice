@@ -1,7 +1,9 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import { backdropClick, type Point } from '../core/modal.js';
   import { t } from '../i18n/t.js';
+  import { openDialogs } from '../lib/ui.svelte.js';
+  import Notes from './Notes.svelte';
 
   /**
    * A modal built on <dialog>: the browser traps focus. Escape, the Close
@@ -64,6 +66,17 @@
     if (open && !dialog.open) dialog.showModal();
     else if (!open && dialog.open) dialog.close();
   });
+
+  // Content outside a modal dialog is hidden behind its backdrop and inert: the notes move into the innermost one.
+  $effect(() => {
+    if (!open) return;
+    untrack(() => openDialogs.push(uid));
+    return () =>
+      untrack(() => {
+        const i = openDialogs.lastIndexOf(uid);
+        if (i >= 0) openDialogs.splice(i, 1);
+      });
+  });
 </script>
 
 <dialog
@@ -87,5 +100,6 @@
     </header>
     <div class="modal-body">{@render children()}</div>
     {#if footer}<footer class="modal-foot">{@render footer()}</footer>{/if}
+    {#if openDialogs.at(-1) === uid}<Notes inDialog />{/if}
   {/if}
 </dialog>

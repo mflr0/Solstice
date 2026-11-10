@@ -4,7 +4,7 @@
   import type { StatusCategory } from '../../core/types.js';
   import { formatDateTime, formatDay, relative, t } from '../../i18n/t.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, reportFailure } from '../../lib/ui.svelte.js';
   import {
     inProgress,
     updateNotice,
@@ -110,7 +110,7 @@
       show(await updatesApi.check());
       error = '';
     } catch (e) {
-      error = errorMessage(e);
+      error = reportFailure(e);
     } finally {
       checking = false;
     }
@@ -146,7 +146,7 @@
       notify(t.updates.requested);
       show(s);
     } catch (err) {
-      applyError = errorMessage(err);
+      applyError = reportFailure(err);
     } finally {
       applying = false;
     }

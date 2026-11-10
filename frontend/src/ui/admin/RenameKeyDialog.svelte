@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { reportFailure } from '../../lib/ui.svelte.js';
   import { typedMatches } from '../../core/admin-forms.js';
   import type { KeyCheck } from '../../core/admin-types.js';
   import { keyProblem, normalizeKey } from '../../core/project-admin.js';
   import { t } from '../../i18n/t.js';
   import { autofocus } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import Modal from '../Modal.svelte';
 
   /**
@@ -83,7 +84,7 @@
       onrenamed(project.key, renamed.key, project.name);
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

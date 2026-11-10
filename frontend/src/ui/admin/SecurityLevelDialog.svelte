@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import { securityLevelProblem } from '../../core/admin-forms.js';
   import { t } from '../../i18n/t.js';
   import { securityApi, type SecurityLevel } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+
   import Modal from '../Modal.svelte';
 
   /** Creating a security level of a project, or changing one: its name and description. */
@@ -41,7 +42,10 @@
     e.preventDefault();
     tried = true;
     error = '';
-    if (problem) return;
+    if (problem) {
+      void refused(e.currentTarget as HTMLFormElement, shown);
+      return;
+    }
     const input = { name: name.trim(), description: description.trim() || null };
     busy = true;
     try {
@@ -51,7 +55,7 @@
       onsaved(saved, level === null);
       onclose();
     } catch (err) {
-      error = errorMessage(err);
+      error = reportFailure(err);
     } finally {
       busy = false;
     }

@@ -26,6 +26,7 @@ import {
 } from '../core/shortcuts.js';
 import { t } from '../i18n/t.js';
 import { accountApi } from './admin-api.js';
+import { errorMessage } from './api.js';
 import { session } from './session.svelte.js';
 import { isSkinLoaded, loadSkin, loadThemes, themes } from './skins.svelte.js';
 
@@ -87,6 +88,35 @@ export function dismiss(id: number): void {
   const i = notes.findIndex((n) => n.id === id);
   if (i >= 0) notes.splice(i, 1);
 }
+
+/** Raises an error note for a failed request and returns its message, for the form that also shows it inline. */
+export function reportFailure(e: unknown): string {
+  const message = errorMessage(e);
+  notify(message, 'error');
+  return message;
+}
+
+/**
+ * A submit the form's own checks refused: brings the first field in error
+ * into view and focuses it, or says the first of the problems when that field isn't shown.
+ */
+export async function refused(
+  form: HTMLElement | null | undefined,
+  ...problems: string[]
+): Promise<void> {
+  await tick();
+  const field = form?.querySelector<HTMLElement>('[aria-invalid="true"]');
+  if (field && field.getClientRects().length > 0) {
+    field.scrollIntoView({ block: 'center' });
+    field.focus();
+  } else {
+    const message = problems.find(Boolean);
+    if (message) notify(message, 'error');
+  }
+}
+
+/** The open modal dialogs, innermost last: the notes are drawn in it, above its backdrop. */
+export const openDialogs = $state<string[]>([]);
 
 /** Ticks every 30 s so "il y a 3 min" stays true without reloading. */
 // The Date is replaced, never mutated, so plain Date objects are fine here.

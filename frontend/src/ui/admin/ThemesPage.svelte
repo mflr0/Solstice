@@ -16,7 +16,7 @@
   import { adminApi } from '../../lib/admin-api.js';
   import { ApiError, errorMessage } from '../../lib/api.js';
   import { loadSkin, reloadSkin, reloadThemes, skinSheets } from '../../lib/skins.svelte.js';
-  import { notify } from '../../lib/ui.svelte.js';
+  import { notify, reportFailure } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
   import SkinMock from '../SkinMock.svelte';
   import ThemeContractFlag from '../ThemeContractFlag.svelte';
@@ -104,7 +104,7 @@
     } catch (err) {
       const findings = err instanceof ApiError ? themeFindings(err.data) : [];
       if (findings.length) refused = { file: file.name, findings };
-      else uploadError = errorMessage(err);
+      else uploadError = reportFailure(err);
     } finally {
       uploading = false;
       // The same file, fixed, must fire the change event again.
