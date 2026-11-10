@@ -18,6 +18,7 @@ func TestPreferences(t *testing.T) {
 	t.Cleanup(func() {
 		paul.do("DELETE", "/api/me/preferences/shortcuts", nil)
 		paul.do("DELETE", "/api/me/preferences/shortcutsEnabled", nil)
+		paul.do("DELETE", "/api/me/preferences/tourSeen", nil)
 	})
 	prefs := func(raw []byte) map[string]any {
 		t.Helper()
@@ -80,6 +81,21 @@ func TestPreferences(t *testing.T) {
 		t.Errorf("DELETE shortcuts answers %v", p)
 	}
 	paul.call("DELETE", "/api/me/preferences/shortcuts", nil, 200, nil)
+
+	if p := prefs(paul.call("PUT", "/api/me/preferences/tourSeen", true, 200, nil)); !same(p["tourSeen"], true) {
+		t.Errorf("PUT tourSeen answers %v", p)
+	}
+	if p := me(paul); !same(p["tourSeen"], true) {
+		t.Errorf("tourSeen read back %v", p)
+	}
+	for _, body := range []string{`"yes"`, `null`} {
+		if status, raw := paul.do("PUT", "/api/me/preferences/tourSeen", json.RawMessage(body)); status != 400 {
+			t.Errorf("PUT tourSeen %s: %d %s, want 400", body, status, raw)
+		}
+	}
+	if p := prefs(paul.call("DELETE", "/api/me/preferences/tourSeen", nil, 200, nil)); !same(p, map[string]any{"shortcutsEnabled": false}) {
+		t.Errorf("DELETE tourSeen answers %v", p)
+	}
 
 	// A token without the profile scope reads them but cannot change them.
 	token, _, err := auth.NewToken(context.Background(), testDB, userID(t, "paul.martin"), "test preferences",

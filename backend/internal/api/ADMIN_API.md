@@ -166,6 +166,9 @@ the server checks the value's shape, not clashes between keys (400):
 {"search": ["Alt-k", "/"], "watch": []}
 ```
 
+- `tourSeen`: `true` once the user has seen the guided tour. Absent means
+  not seen.
+
 Not audited.
 
 ### `PUT /api/me/avatar`, `DELETE /api/me/avatar`
