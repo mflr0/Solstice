@@ -7,6 +7,7 @@
   import { paths } from '../../core/route.js';
   import type { StatusRef } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
+  import { pinnedHeight } from '../../lib/actions.js';
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import { session } from '../../lib/session.svelte.js';
@@ -18,9 +19,9 @@
   import NotFoundPage from './NotFoundPage.svelte';
 
   /**
-   * A board's settings, one part at a time: each part saves on its
-   * own, so the server's verdict (invalid JQL, a status in two columns…)
-   * shows right where the change was made.
+   * A board's settings: one save bar sends every changed part in one
+   * patch, and the server's verdict (invalid JQL, a status in two
+   * columns…) marks the row it names.
    */
   interface Props {
     boardId: number;
@@ -29,6 +30,7 @@
 
   type Part = 'general' | 'columns' | 'quick' | 'sections' | 'estimate';
   type ListPart = 'columns' | 'quick' | 'sections';
+  const parts = ['general', 'columns', 'quick', 'sections', 'estimate'] as const;
 
   interface ColumnDraft {
     id?: number;
@@ -59,8 +61,10 @@
   let detail = $state<BoardDetail | null>(null);
   let error = $state('');
   let draft = $state<Drafts | null>(null);
-  let errors = $state<Partial<Record<Part, string>>>({});
-  let saving = $state<Part | null>(null);
+  let saveError = $state('');
+  /** The parts the failed save sent: only their rows can be the ones it names. */
+  let failed = $state<Part[]>([]);
+  let saving = $state(false);
   let pool = $state<StatusRef[]>([]);
   let deleting = $state(false);
   let deleteBusy = $state(false);
@@ -127,12 +131,19 @@
   const dirty = $derived.by(() => {
     const out: Partial<Record<Part, boolean>> = {};
     if (!draft || !saved) return out;
-    for (const part of ['general', 'columns', 'quick', 'sections', 'estimate'] as const) {
+    for (const part of parts) {
       out[part] = JSON.stringify(draft[part]) !== JSON.stringify(saved[part]);
     }
     out.columns ||= backlogAllowed && draft.kanbanBacklog !== saved.kanbanBacklog;
     return out;
   });
+  const changed = $derived(parts.filter((p) => dirty[p]));
+  /** Undoing every change hides the bar, and with it the error. */
+  const shownError = $derived(changed.length ? saveError : '');
+
+  function errorIn(part: Part): string {
+    return failed.includes(part) ? shownError : '';
+  }
 
   /** A Kanban backlog takes the first column: the board keeps the others. */
   const backlogAllowed = $derived(
@@ -186,44 +197,35 @@
     }
   }
 
-  async function save(part: Part, e?: SubmitEvent) {
-    e?.preventDefault();
-    if (!detail || !draft || saving) return;
-    saving = part;
-    errors[part] = '';
+  async function save(e: SubmitEvent) {
+    e.preventDefault();
+    if (!detail || !draft || saving || !changed.length) return;
+    const sent = changed;
+    const kanban = detail.board.kind === 'kanban';
+    saving = true;
+    saveError = '';
+    failed = [];
     try {
-      const next = await api.saveBoard(
-        detail.board.id,
-        patchFor(part, draft, detail.board.kind === 'kanban'),
-      );
-      detail = next;
-      // Only this part takes the server's version: the others keep their edits.
-      const fresh = fromDetail(next);
-      if (part === 'general') draft.general = fresh.general;
-      else if (part === 'columns') {
-        draft.columns = fresh.columns;
-        draft.kanbanBacklog = fresh.kanbanBacklog;
-      } else if (part === 'quick') draft.quick = fresh.quick;
-      else if (part === 'sections') draft.sections = fresh.sections;
-      else draft.estimate = fresh.estimate;
+      const patch = Object.assign(
+        {},
+        ...sent.map((p) => patchFor(p, draft!, kanban)),
+      ) as BoardPatch;
+      detail = await api.saveBoard(detail.board.id, patch);
+      draft = fromDetail(detail);
       notify(t.boardSettings.saved);
     } catch (err) {
-      errors[part] = errorMessage(err);
+      saveError = errorMessage(err);
+      failed = sent;
     } finally {
-      saving = null;
+      saving = false;
     }
   }
 
-  function discard(part: Part) {
-    if (!draft || !saved) return;
-    errors[part] = '';
-    if (part === 'general') draft.general = saved.general;
-    else if (part === 'columns') {
-      draft.columns = saved.columns;
-      draft.kanbanBacklog = saved.kanbanBacklog;
-    } else if (part === 'quick') draft.quick = saved.quick;
-    else if (part === 'sections') draft.sections = saved.sections;
-    else draft.estimate = saved.estimate;
+  function discard() {
+    if (!saved) return;
+    draft = saved;
+    saveError = '';
+    failed = [];
   }
 
   /** Swaps an item with its neighbour. */
@@ -293,7 +295,7 @@
 
   /** The row an error message names (« name », “name”, „name“…), to mark it. */
   function named(part: Part, name: string): boolean {
-    const message = errors[part];
+    const message = errorIn(part);
     if (!name || !message) return false;
     return [`« ${name} »`, `«${name}»`, `“${name}”`, `„${name}“`].some((q) => message.includes(q));
   }
@@ -314,22 +316,6 @@
   }
 </script>
 
-{#snippet bar(part: Part)}
-  <div class="bar">
-    {#if errors[part]}<p class="error-text" role="alert">{errors[part]}</p>{/if}
-    <span class="grow"></span>
-    {#if dirty[part]}
-      <span class="muted unsaved">{t.boardSettings.unsaved}</span>
-      <button type="button" class="link-btn" onclick={() => discard(part)}
-        >{t.boardSettings.discard}</button
-      >
-    {/if}
-    <button type="submit" class="btn btn-primary" disabled={!dirty[part] || saving !== null}
-      >{saving === part ? t.common.saving : t.boardSettings.save}</button
-    >
-  </div>
-{/snippet}
-
 {#if error}
   <NotFoundPage message={error} />
 {:else if !detail || !draft}
@@ -347,324 +333,345 @@
     <BoardHeader detail={d} view="settings" />
     <p class="eyebrow">{t.boardSettings.title}</p>
 
-    <!-- General -->
-    <form class="part" onsubmit={(e) => save('general', e)} aria-labelledby="part-general">
-      <h2 class="section-title" id="part-general">{t.boardSettings.general}</h2>
-      <div class="fields">
-        <label class="field">
-          <span>{t.boardSettings.name}</span>
-          <input class="input" bind:value={f.general.name} required maxlength="255" />
-        </label>
-        <div class="field">
-          <span class="field-label">{t.boardSettings.filter}</span>
-          <code class="query">{d.board.query}</code>
-          <span class="hint"
-            >{t.boardSettings.filterHint}
-            <a href={searchHref(d.board.query)}>{t.boardSettings.seeIssues}</a></span
-          >
-        </div>
-        {#if kanban}
+    <form onsubmit={save}>
+      <!-- General -->
+      <section class="part" aria-labelledby="part-general">
+        <h2 class="section-title" id="part-general">{t.boardSettings.general}</h2>
+        <div class="fields">
           <label class="field">
-            <span>{t.boardSettings.subQuery}</span>
-            <input
-              class="input mono"
-              bind:value={f.general.subQuery}
-              spellcheck="false"
-              aria-invalid={errors.general?.startsWith(t.boardSettings.subQuery) || undefined}
-            />
-            <span class="hint">{t.boardSettings.subQueryHint}</span>
+            <span>{t.boardSettings.name}</span>
+            <input class="input" bind:value={f.general.name} required maxlength="255" />
           </label>
-          <label class="field narrow">
-            <span>{t.boardSettings.doneCutoff}</span>
-            <input class="input mono" bind:value={f.general.doneCutoff} placeholder="2w" />
-            <span class="hint">{t.boardSettings.doneCutoffHint}</span>
-          </label>
-        {/if}
-      </div>
-      {@render bar('general')}
-    </form>
-
-    <!-- Columns -->
-    <form class="part" onsubmit={(e) => save('columns', e)} aria-labelledby="part-columns">
-      <h2 class="section-title" id="part-columns">
-        {t.boardSettings.columns} <span class="count">{f.columns.length}</span>
-      </h2>
-      <p class="hint intro">{t.boardSettings.columnsHint}</p>
-      {#if kanban}
-        <label class="check">
-          <input
-            class="checkbox"
-            type="checkbox"
-            checked={f.kanbanBacklog && backlogAllowed}
-            disabled={!backlogAllowed}
-            onchange={(e) => (f.kanbanBacklog = e.currentTarget.checked)}
-          />
-          <span>
-            {t.boardSettings.kanbanBacklog}
+          <div class="field">
+            <span class="field-label">{t.boardSettings.filter}</span>
+            <code class="query">{d.board.query}</code>
             <span class="hint"
-              >{backlogAllowed
-                ? t.boardSettings.kanbanBacklogHint
-                : t.boardSettings.kanbanBacklogNeeds}</span
+              >{t.boardSettings.filterHint}
+              <a href={searchHref(d.board.query)}>{t.boardSettings.seeIssues}</a></span
             >
-          </span>
-        </label>
-      {/if}
-      <ol class="columns">
-        {#each f.columns as column, i (column.id ?? `new-${i}`)}
-          <li class="card column-edit">
-            <div class="card-head">
-              <span class="sr-only">{i + 1}.</span>
-              <input
-                id="columns-name-{i}"
-                class="input name"
-                bind:value={column.name}
-                required
-                maxlength="255"
-                aria-label={t.boardSettings.columnName}
-              />
-              {#if kanban && i === 0 && f.kanbanBacklog && backlogAllowed}
-                <span class="chip">{t.boards.backlog}</span>
-              {/if}
-            </div>
-            <div class="column-body">
-              <div class="field">
-                <span class="field-label">{t.boardSettings.statuses}</span>
-                {#if column.statuses.length}
-                  <ul class="statuses">
-                    {#each column.statuses as s (s.id)}
-                      <li>
-                        <Stamp status={s} />
-                        <button
-                          id="status-remove-{i}-{s.id}"
-                          type="button"
-                          class="btn btn-quiet btn-small icon"
-                          aria-label={t.boardSettings.remove(s.name)}
-                          title={t.boardSettings.remove(s.name)}
-                          onclick={() => void removeStatus(column, i, s)}>×</button
-                        >
-                      </li>
-                    {/each}
-                  </ul>
-                {:else}
-                  <span class="hint">{t.boardSettings.noStatus}</span>
-                {/if}
-              </div>
-              <div class="tools">
-                <button
-                  id="columns-up-{i}"
-                  type="button"
-                  class="btn btn-small"
-                  disabled={i === 0}
-                  aria-label={t.boardSettings.moveLeft(column.name)}
-                  title={t.boardSettings.moveLeft(column.name)}
-                  onclick={() => void move('columns', f.columns, i, -1)}>←</button
-                >
-                <button
-                  id="columns-down-{i}"
-                  type="button"
-                  class="btn btn-small"
-                  disabled={i === f.columns.length - 1}
-                  aria-label={t.boardSettings.moveRight(column.name)}
-                  title={t.boardSettings.moveRight(column.name)}
-                  onclick={() => void move('columns', f.columns, i, 1)}>→</button
-                >
-                <button
-                  id="columns-delete-{i}"
-                  type="button"
-                  class="btn btn-small btn-danger"
-                  disabled={f.columns.length === 1}
-                  onclick={() => void removeRow('columns', f.columns, i)}
-                  aria-label={t.boardSettings.remove(column.name)}>{t.common.delete}</button
-                >
-              </div>
-            </div>
-          </li>
-        {/each}
-        <li class="add-column">
-          <button
-            id="columns-add"
-            type="button"
-            class="btn"
-            onclick={() => f.columns.push({ name: t.boardSettings.newColumn, statuses: [] })}
-            >{t.boardSettings.addColumn}</button
-          >
-        </li>
-      </ol>
-
-      <div class="unmapped">
-        <h3 class="sub">{t.boardSettings.unmapped}</h3>
-        {#if unmapped.length}
-          <p class="hint">{t.boardSettings.unmappedHint}</p>
-          <ul class="statuses">
-            {#each unmapped as s (s.id)}
-              <li>
-                <Stamp status={s} />
-                <Dropdown
-                  id="status-put-{s.id}"
-                  class="put"
-                  label={t.boardSettings.putIn(s.name)}
-                  value=""
-                  options={f.columns.map((c, i) => ({ value: String(i), label: c.name }))}
-                  placeholder={t.boardSettings.chooseColumn}
-                  onchange={(v) => void putStatus(s, Number(v))}
-                />
-              </li>
-            {/each}
-          </ul>
-        {:else}
-          <p class="hint">{t.boardSettings.allMapped}</p>
-        {/if}
-      </div>
-      {@render bar('columns')}
-    </form>
-
-    <!-- Quick filters -->
-    <form class="part" onsubmit={(e) => save('quick', e)} aria-labelledby="part-quick">
-      <h2 class="section-title" id="part-quick">
-        {t.boardSettings.quickFilters} <span class="count">{f.quick.length}</span>
-      </h2>
-      <p class="hint intro">{t.boardSettings.quickFiltersHint}</p>
-      {#if f.quick.length === 0}<p class="empty">{t.boardSettings.noQuickFilters}</p>{/if}
-      <ol class="rows">
-        {#each f.quick as q, i (q.id ?? `new-${i}`)}
-          <li class="row-edit" class:invalid={named('quick', q.name)}>
+          </div>
+          {#if kanban}
             <label class="field">
-              <span>{t.boardSettings.name}</span>
-              <input class="input" bind:value={q.name} required maxlength="255" />
-            </label>
-            <label class="field wide">
-              <span>{t.boardSettings.query}</span>
+              <span>{t.boardSettings.subQuery}</span>
               <input
                 class="input mono"
-                bind:value={q.query}
+                bind:value={f.general.subQuery}
                 spellcheck="false"
-                aria-invalid={named('quick', q.name) || undefined}
+                aria-invalid={errorIn('general').startsWith(t.boardSettings.subQuery) || undefined}
               />
+              <span class="hint">{t.boardSettings.subQueryHint}</span>
             </label>
-            <label class="field">
-              <span>{t.boardSettings.description}</span>
-              <input class="input" bind:value={q.description} maxlength="255" />
+            <label class="field narrow">
+              <span>{t.boardSettings.doneCutoff}</span>
+              <input class="input mono" bind:value={f.general.doneCutoff} placeholder="2w" />
+              <span class="hint">{t.boardSettings.doneCutoffHint}</span>
             </label>
-            {@render order('quick', f.quick, i, q.name)}
-          </li>
-        {/each}
-      </ol>
-      <button
-        id="quick-add"
-        type="button"
-        class="btn"
-        onclick={() =>
-          f.quick.push({ name: t.boardSettings.newQuickFilter, query: '', description: '' })}
-        >{t.boardSettings.addQuickFilter}</button
-      >
-      {@render bar('quick')}
-    </form>
+          {/if}
+        </div>
+      </section>
 
-    <!-- Sections -->
-    <form class="part" onsubmit={(e) => save('sections', e)} aria-labelledby="part-sections">
-      <h2 class="section-title" id="part-sections">{t.boardSettings.sections}</h2>
-      <fieldset class="choices">
-        <legend class="sr-only">{t.boardSettings.sections}</legend>
-        {#each ['none', 'custom', 'assignee', 'epic', 'parent'] as const as s (s)}
-          <label class="choice">
-            <input type="radio" name="strategy" value={s} bind:group={f.sections.strategy} />
+      <!-- Columns -->
+      <section class="part" aria-labelledby="part-columns">
+        <h2 class="section-title" id="part-columns">
+          {t.boardSettings.columns} <span class="count">{f.columns.length}</span>
+        </h2>
+        <p class="hint intro">{t.boardSettings.columnsHint}</p>
+        {#if kanban}
+          <label class="check">
+            <input
+              class="checkbox"
+              type="checkbox"
+              checked={f.kanbanBacklog && backlogAllowed}
+              disabled={!backlogAllowed}
+              onchange={(e) => (f.kanbanBacklog = e.currentTarget.checked)}
+            />
             <span>
-              <strong>{t.boardSettings.strategies[s]}</strong>
-              <span class="hint">{t.boardSettings.strategyHints[s]}</span>
+              {t.boardSettings.kanbanBacklog}
+              <span class="hint"
+                >{backlogAllowed
+                  ? t.boardSettings.kanbanBacklogHint
+                  : t.boardSettings.kanbanBacklogNeeds}</span
+              >
             </span>
           </label>
-        {/each}
-      </fieldset>
-      {#if f.sections.strategy === 'custom'}
-        <h3 class="sub">{t.boardSettings.querySections}</h3>
-        <p class="hint">{t.boardSettings.defaultSectionHint}</p>
-        {#if f.sections.list.length === 0}<p class="empty">{t.boardSettings.noSections}</p>{/if}
+        {/if}
+        <ol class="columns">
+          {#each f.columns as column, i (column.id ?? `new-${i}`)}
+            <li class="card column-edit">
+              <div class="card-head">
+                <span class="sr-only">{i + 1}.</span>
+                <input
+                  id="columns-name-{i}"
+                  class="input name"
+                  bind:value={column.name}
+                  required
+                  maxlength="255"
+                  aria-label={t.boardSettings.columnName}
+                />
+                {#if kanban && i === 0 && f.kanbanBacklog && backlogAllowed}
+                  <span class="chip">{t.boards.backlog}</span>
+                {/if}
+              </div>
+              <div class="column-body">
+                <div class="field">
+                  <span class="field-label">{t.boardSettings.statuses}</span>
+                  {#if column.statuses.length}
+                    <ul class="statuses">
+                      {#each column.statuses as s (s.id)}
+                        <li>
+                          <Stamp status={s} />
+                          <button
+                            id="status-remove-{i}-{s.id}"
+                            type="button"
+                            class="btn btn-quiet btn-small icon"
+                            aria-label={t.boardSettings.remove(s.name)}
+                            title={t.boardSettings.remove(s.name)}
+                            onclick={() => void removeStatus(column, i, s)}>×</button
+                          >
+                        </li>
+                      {/each}
+                    </ul>
+                  {:else}
+                    <span class="hint">{t.boardSettings.noStatus}</span>
+                  {/if}
+                </div>
+                <div class="tools">
+                  <button
+                    id="columns-up-{i}"
+                    type="button"
+                    class="btn btn-small"
+                    disabled={i === 0}
+                    aria-label={t.boardSettings.moveLeft(column.name)}
+                    title={t.boardSettings.moveLeft(column.name)}
+                    onclick={() => void move('columns', f.columns, i, -1)}>←</button
+                  >
+                  <button
+                    id="columns-down-{i}"
+                    type="button"
+                    class="btn btn-small"
+                    disabled={i === f.columns.length - 1}
+                    aria-label={t.boardSettings.moveRight(column.name)}
+                    title={t.boardSettings.moveRight(column.name)}
+                    onclick={() => void move('columns', f.columns, i, 1)}>→</button
+                  >
+                  <button
+                    id="columns-delete-{i}"
+                    type="button"
+                    class="btn btn-small btn-danger"
+                    disabled={f.columns.length === 1}
+                    onclick={() => void removeRow('columns', f.columns, i)}
+                    aria-label={t.boardSettings.remove(column.name)}>{t.common.delete}</button
+                  >
+                </div>
+              </div>
+            </li>
+          {/each}
+          <li class="add-column">
+            <button
+              id="columns-add"
+              type="button"
+              class="btn"
+              onclick={() => f.columns.push({ name: t.boardSettings.newColumn, statuses: [] })}
+              >{t.boardSettings.addColumn}</button
+            >
+          </li>
+        </ol>
+
+        <div class="unmapped">
+          <h3 class="sub">{t.boardSettings.unmapped}</h3>
+          {#if unmapped.length}
+            <p class="hint">{t.boardSettings.unmappedHint}</p>
+            <ul class="statuses">
+              {#each unmapped as s (s.id)}
+                <li>
+                  <Stamp status={s} />
+                  <Dropdown
+                    id="status-put-{s.id}"
+                    class="put"
+                    label={t.boardSettings.putIn(s.name)}
+                    value=""
+                    options={f.columns.map((c, i) => ({ value: String(i), label: c.name }))}
+                    placeholder={t.boardSettings.chooseColumn}
+                    onchange={(v) => void putStatus(s, Number(v))}
+                  />
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="hint">{t.boardSettings.allMapped}</p>
+          {/if}
+        </div>
+      </section>
+
+      <!-- Quick filters -->
+      <section class="part" aria-labelledby="part-quick">
+        <h2 class="section-title" id="part-quick">
+          {t.boardSettings.quickFilters} <span class="count">{f.quick.length}</span>
+        </h2>
+        <p class="hint intro">{t.boardSettings.quickFiltersHint}</p>
+        {#if f.quick.length === 0}<p class="empty">{t.boardSettings.noQuickFilters}</p>{/if}
         <ol class="rows">
-          {#each f.sections.list as section, i (section.id ?? `new-${i}`)}
-            <li class="row-edit" class:invalid={named('sections', section.name)}>
+          {#each f.quick as q, i (q.id ?? `new-${i}`)}
+            <li class="row-edit" class:invalid={named('quick', q.name)}>
               <label class="field">
                 <span>{t.boardSettings.name}</span>
-                <input class="input" bind:value={section.name} required maxlength="255" />
+                <input class="input" bind:value={q.name} required maxlength="255" />
               </label>
               <label class="field wide">
                 <span>{t.boardSettings.query}</span>
                 <input
                   class="input mono"
-                  bind:value={section.query}
+                  bind:value={q.query}
                   spellcheck="false"
-                  disabled={section.isDefault}
-                  aria-invalid={named('sections', section.name) || undefined}
+                  aria-invalid={named('quick', q.name) || undefined}
                 />
               </label>
-              <label class="check">
-                <input
-                  type="radio"
-                  name="default-section"
-                  checked={section.isDefault}
-                  onchange={() => f.sections.list.forEach((l, j) => (l.isDefault = j === i))}
-                />
-                {t.boardSettings.defaultSection}
+              <label class="field">
+                <span>{t.boardSettings.description}</span>
+                <input class="input" bind:value={q.description} maxlength="255" />
               </label>
-              {@render order('sections', f.sections.list, i, section.name)}
+              {@render order('quick', f.quick, i, q.name)}
             </li>
           {/each}
         </ol>
         <button
-          id="sections-add"
+          id="quick-add"
           type="button"
           class="btn"
           onclick={() =>
-            f.sections.list.push({ name: t.boardSettings.newSection, query: '', isDefault: false })}
-          >{t.boardSettings.addSection}</button
+            f.quick.push({ name: t.boardSettings.newQuickFilter, query: '', description: '' })}
+          >{t.boardSettings.addQuickFilter}</button
         >
-      {/if}
-      {@render bar('sections')}
-    </form>
+      </section>
 
-    <!-- Estimation -->
-    <form class="part" onsubmit={(e) => save('estimate', e)} aria-labelledby="part-estimate">
-      <h2 class="section-title" id="part-estimate">{t.boardSettings.estimation}</h2>
-      <fieldset class="choices">
-        <legend class="sr-only">{t.boardSettings.estimation}</legend>
-        <label class="choice">
-          <input type="radio" name="estimate" value="" bind:group={f.estimate} />
-          <span><strong>{t.boardSettings.estimateNone}</strong></span>
-        </label>
-        <label class="choice">
-          <input
-            type="radio"
-            name="estimate"
-            value="timeoriginalestimate"
-            bind:group={f.estimate}
-          />
-          <span><strong>{t.boardSettings.estimateTime}</strong></span>
-        </label>
-        <div class="choice">
-          <input
-            type="radio"
-            name="estimate"
-            id="estimate-field"
-            checked={f.estimate.startsWith('customfield_')}
-            disabled={d.estimateFields.length === 0}
-            onchange={() => (f.estimate = d.estimateFields[0]?.id ?? '')}
-          />
-          <span class="field-choice">
-            <label for="estimate-field"><strong>{t.boardSettings.estimateField}</strong></label>
-            {#if d.estimateFields.length}
-              <Dropdown
-                label={t.boardSettings.estimateField}
-                value={f.estimate.startsWith('customfield_') ? f.estimate : ''}
-                options={d.estimateFields.map((field) => ({ value: field.id, label: field.name }))}
-                placeholder={t.boardSettings.chooseField}
-                onchange={(v) => (f.estimate = v)}
-              />
-            {:else}
-              <span class="hint">{t.boardSettings.noFields}</span>
-            {/if}
-          </span>
+      <!-- Sections -->
+      <section class="part" aria-labelledby="part-sections">
+        <h2 class="section-title" id="part-sections">{t.boardSettings.sections}</h2>
+        <fieldset class="choices">
+          <legend class="sr-only">{t.boardSettings.sections}</legend>
+          {#each ['none', 'custom', 'assignee', 'epic', 'parent'] as const as s (s)}
+            <label class="choice">
+              <input type="radio" name="strategy" value={s} bind:group={f.sections.strategy} />
+              <span>
+                <strong>{t.boardSettings.strategies[s]}</strong>
+                <span class="hint">{t.boardSettings.strategyHints[s]}</span>
+              </span>
+            </label>
+          {/each}
+        </fieldset>
+        {#if f.sections.strategy === 'custom'}
+          <h3 class="sub">{t.boardSettings.querySections}</h3>
+          <p class="hint">{t.boardSettings.defaultSectionHint}</p>
+          {#if f.sections.list.length === 0}<p class="empty">{t.boardSettings.noSections}</p>{/if}
+          <ol class="rows">
+            {#each f.sections.list as section, i (section.id ?? `new-${i}`)}
+              <li class="row-edit" class:invalid={named('sections', section.name)}>
+                <label class="field">
+                  <span>{t.boardSettings.name}</span>
+                  <input class="input" bind:value={section.name} required maxlength="255" />
+                </label>
+                <label class="field wide">
+                  <span>{t.boardSettings.query}</span>
+                  <input
+                    class="input mono"
+                    bind:value={section.query}
+                    spellcheck="false"
+                    disabled={section.isDefault}
+                    aria-invalid={named('sections', section.name) || undefined}
+                  />
+                </label>
+                <label class="check">
+                  <input
+                    type="radio"
+                    name="default-section"
+                    checked={section.isDefault}
+                    onchange={() => f.sections.list.forEach((l, j) => (l.isDefault = j === i))}
+                  />
+                  {t.boardSettings.defaultSection}
+                </label>
+                {@render order('sections', f.sections.list, i, section.name)}
+              </li>
+            {/each}
+          </ol>
+          <button
+            id="sections-add"
+            type="button"
+            class="btn"
+            onclick={() =>
+              f.sections.list.push({
+                name: t.boardSettings.newSection,
+                query: '',
+                isDefault: false,
+              })}>{t.boardSettings.addSection}</button
+          >
+        {/if}
+      </section>
+
+      <!-- Estimation -->
+      <section class="part" aria-labelledby="part-estimate">
+        <h2 class="section-title" id="part-estimate">{t.boardSettings.estimation}</h2>
+        <fieldset class="choices">
+          <legend class="sr-only">{t.boardSettings.estimation}</legend>
+          <label class="choice">
+            <input type="radio" name="estimate" value="" bind:group={f.estimate} />
+            <span><strong>{t.boardSettings.estimateNone}</strong></span>
+          </label>
+          <label class="choice">
+            <input
+              type="radio"
+              name="estimate"
+              value="timeoriginalestimate"
+              bind:group={f.estimate}
+            />
+            <span><strong>{t.boardSettings.estimateTime}</strong></span>
+          </label>
+          <div class="choice">
+            <input
+              type="radio"
+              name="estimate"
+              id="estimate-field"
+              checked={f.estimate.startsWith('customfield_')}
+              disabled={d.estimateFields.length === 0}
+              onchange={() => (f.estimate = d.estimateFields[0]?.id ?? '')}
+            />
+            <span class="field-choice">
+              <label for="estimate-field"><strong>{t.boardSettings.estimateField}</strong></label>
+              {#if d.estimateFields.length}
+                <Dropdown
+                  label={t.boardSettings.estimateField}
+                  value={f.estimate.startsWith('customfield_') ? f.estimate : ''}
+                  options={d.estimateFields.map((field) => ({
+                    value: field.id,
+                    label: field.name,
+                  }))}
+                  placeholder={t.boardSettings.chooseField}
+                  onchange={(v) => (f.estimate = v)}
+                />
+              {:else}
+                <span class="hint">{t.boardSettings.noFields}</span>
+              {/if}
+            </span>
+          </div>
+        </fieldset>
+      </section>
+
+      {#if changed.length}
+        <div
+          class="savebar"
+          role="region"
+          aria-label={t.boardSettings.unsaved}
+          use:pinnedHeight={'--savebar-height'}
+        >
+          <span>{t.boardSettings.unsaved}</span>
+          <button type="button" class="btn btn-quiet" disabled={saving} onclick={discard}
+            >{t.boardSettings.discard}</button
+          >
+          <button type="submit" class="btn btn-primary" disabled={saving}
+            >{saving ? t.common.saving : t.boardSettings.save}</button
+          >
+          {#if shownError}<p class="error-text" role="alert">{shownError}</p>{/if}
         </div>
-      </fieldset>
-      {@render bar('estimate')}
+      {/if}
     </form>
 
     <!-- Deleting -->
@@ -791,13 +798,9 @@
     margin-top: 16px;
   }
 
-  .bar .error-text {
-    margin: 0;
+  .savebar .error-text {
     flex-basis: 100%;
-  }
-
-  .unsaved {
-    font-size: 0.78125rem;
+    margin: 0;
   }
 
   /* Columns, side by side like on the board. */
