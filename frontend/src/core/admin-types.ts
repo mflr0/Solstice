@@ -22,6 +22,10 @@ import type {
 
 export type MailSecurity = 'none' | 'starttls' | 'tls';
 
+/** A field of the SMTP settings, by its JSON name. */
+export type MailField =
+  'enabled' | 'host' | 'port' | 'security' | 'username' | 'password' | 'from' | 'fromName';
+
 export interface MailSettings {
   enabled: boolean;
   host: string;
@@ -34,17 +38,22 @@ export interface MailSettings {
   passwordSet: boolean;
   /** The public address links in e-mails use; null when not set. */
   baseUrl: string | null;
+  /** The fields the configuration file sets: shown, never saved here. */
+  fromConfig: MailField[];
 }
 
-/** What saving the SMTP settings sends; password left out keeps the stored one, null removes it. */
+/**
+ * What saving the SMTP settings sends; a field left out keeps its stored
+ * value, a null password removes it.
+ */
 export interface MailSettingsInput {
-  enabled: boolean;
-  host: string;
-  port: number;
-  security: MailSecurity;
-  username: string;
-  from: string;
-  fromName: string;
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  security?: MailSecurity;
+  username?: string;
+  from?: string;
+  fromName?: string;
   password?: string | null;
 }
 

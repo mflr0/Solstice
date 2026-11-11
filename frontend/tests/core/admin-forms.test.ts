@@ -58,6 +58,7 @@ const mail: MailSettings = {
   fromName: '',
   passwordSet: true,
   baseUrl: null,
+  fromConfig: [],
 };
 
 describe('areas', () => {
@@ -99,6 +100,23 @@ describe('mail form', () => {
     const f = { ...mailForm(mail), port: ' ', security: 'tls' as const };
     expect(mailPayload(f).port).toBe(465);
     expect(defaultPort('none')).toBe(25);
+  });
+
+  it('leaves the fields of the configuration file out of the payload and the checks', () => {
+    const fromConfig = ['host', 'port', 'security', 'username', 'password'] as const;
+    const saved = {
+      ...mail,
+      enabled: true,
+      from: 'solstice@example.org',
+      fromConfig: [...fromConfig],
+    };
+    const f = { ...mailForm(saved), host: '', port: '0', passwordAction: 'remove' as const };
+    expect(mailProblems(f, saved)).toEqual({});
+    expect(mailPayload(f, fromConfig)).toEqual({
+      enabled: true,
+      from: 'solstice@example.org',
+      fromName: '',
+    });
   });
 
   it('accepts plain addresses only', () => {

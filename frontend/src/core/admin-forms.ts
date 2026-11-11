@@ -10,6 +10,7 @@ import type {
   AccessSource,
   AuditQuery,
   BuiltinHolder,
+  MailField,
   MailSecurity,
   MailSettings,
   MailSettingsInput,
@@ -108,16 +109,20 @@ export function mailProblems(
   saved?: MailSettings,
 ): Problems<'host' | 'port' | 'from' | 'password', MailProblem> {
   const out: Problems<'host' | 'port' | 'from' | 'password', MailProblem> = {};
-  if (f.enabled && !f.host.trim()) out.host = 'hostRequired';
+  const fixed = (field: MailField) => saved?.fromConfig.includes(field) ?? false;
+  if (f.enabled && !f.host.trim() && !fixed('host')) out.host = 'hostRequired';
   const port = Number(f.port);
-  if (f.port.trim() && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+  if (f.port.trim() && !fixed('port') && (!Number.isInteger(port) || port < 1 || port > 65535)) {
     out.port = 'portInvalid';
   }
   const from = f.from.trim();
-  if (from && !isEmail(from)) out.from = 'fromInvalid';
-  else if (f.enabled && !from) out.from = 'fromRequired';
+  if (!fixed('from')) {
+    if (from && !isEmail(from)) out.from = 'fromInvalid';
+    else if (f.enabled && !from) out.from = 'fromRequired';
+  }
   if (
     saved?.passwordSet &&
+    !fixed('password') &&
     mailDestinationChanged(f, saved) &&
     (f.passwordAction === 'keep' || (f.passwordAction === 'replace' && !f.password))
   ) {
@@ -126,7 +131,8 @@ export function mailProblems(
   return out;
 }
 
-export function mailPayload(f: MailForm): MailSettingsInput {
+/** What saving sends: the fields the configuration file sets are left out. */
+export function mailPayload(f: MailForm, fromConfig: readonly MailField[] = []): MailSettingsInput {
   const out: MailSettingsInput = {
     enabled: f.enabled,
     host: f.host.trim(),
@@ -138,6 +144,7 @@ export function mailPayload(f: MailForm): MailSettingsInput {
   };
   if (f.passwordAction === 'replace') out.password = f.password;
   else if (f.passwordAction === 'remove') out.password = null;
+  for (const field of fromConfig) delete out[field];
   return out;
 }
 
