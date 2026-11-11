@@ -709,6 +709,8 @@ export interface SystemInfo {
     path: string;
     found: boolean;
     addr: string;
+    ldap: { enabled: boolean; url: string; userBase: string };
+    oidc: { enabled: boolean; issuer: string; clientId: string };
   };
   import: ImportView | null;
 }

@@ -149,8 +149,9 @@ permissions par défaut, qui s'appliquent dans tous les projets.
 Les personnes peuvent se connecter avec leur mot de passe LDAP ou Active
 Directory. Cela se règle dans le fichier de configuration, pas dans
 l'administration : voir les clés `SOLSTICE_LDAP_*` dans
-[l'installation](install.md). Redémarrez Solstice après un changement.
-Exemple pour Active Directory :
+[l'installation](install.md). Redémarrez Solstice après un changement. Les
+informations système montrent si elle est activée, avec le serveur et la base
+des comptes. Exemple pour Active Directory :
 
 ```sh
 SOLSTICE_LDAP_URL=ldaps://dc1.example.org
@@ -207,7 +208,8 @@ Les personnes peuvent se connecter avec un fournisseur OpenID Connect
 montre alors un bouton « Se connecter avec … » au-dessus du formulaire de mot
 de passe. Cela se règle dans le fichier de configuration : voir les clés
 `SOLSTICE_OIDC_*` dans [installation](install.md). Redémarrez Solstice après
-un changement.
+un changement. Les informations système montrent si elle est activée, avec
+l'émetteur et l'ID client.
 
 Chez le fournisseur, déclarez Solstice comme client confidentiel, avec le flux
 « authorization code » et l'URI de redirection
@@ -622,7 +624,9 @@ maintenance pendant l'import.
 
 La version, la version de Go, l'heure de démarrage, le serveur, le nom et la
 taille de la base, le répertoire de données et la place qu'il occupe, le
-fichier de configuration et l'adresse d'écoute, le nombre de comptes, de
+fichier de configuration et l'adresse d'écoute, l'état des connexions LDAP et
+OpenID Connect (avec leur serveur, base des comptes, émetteur et ID client), le
+nombre de comptes, de
 projets, de tickets, de commentaires et de pièces jointes, la file d'e-mails,
 les webhooks en échec, les migrations de base appliquées et un import en cours.
 Aucun secret n'y figure. Regardez-y en premier quand quelque chose semble

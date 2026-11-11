@@ -247,6 +247,10 @@
     {t.usersAdmin.groupsHint}
     <a href={adminPath('groups')}>{t.adminArea.sections.groups}</a>
   </p>
+  <p class="muted small">
+    {t.usersAdmin.signInHint}
+    <a href={adminPath('system')}>{t.adminArea.sections.system}</a>
+  </p>
 {/if}
 
 <UserDialog

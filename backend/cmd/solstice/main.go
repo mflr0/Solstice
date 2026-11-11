@@ -238,7 +238,8 @@ func runServe(ctx context.Context, args []string) error {
 		}
 		srv.SetInstall(cfg.Install)
 		srv.SetVersion(version)
-		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr})
+		srv.SetConfigInfo(api.ConfigInfo{Version: version, Path: cfg.Path, Found: cfg.Exists, Addr: cfg.HTTP.Addr,
+			LDAP: cfg.LDAP, OIDC: cfg.OIDC})
 		h := srv.Handler(static)
 		appDB.Store(conn)
 		app.Store(srv)
