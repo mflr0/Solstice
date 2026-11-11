@@ -4,6 +4,8 @@ import type { BoardSummary } from '../../src/core/board-types.js';
 import type { SearchLocation } from '../../src/core/filters-url.js';
 import {
   boardListPath,
+  boardProject,
+  boardRail,
   boardsLanding,
   createProject,
   scopeBoards,
@@ -63,6 +65,11 @@ describe('one project', () => {
     expect(boardsLanding(boards, 'OPS')).toBe('/boards/4');
     expect(boardsLanding(boards, 'DEMO')).toBe('/boards?project=DEMO');
     expect(boardsLanding(boards, 'NONE')).toBe('/boards?project=NONE');
+  });
+
+  it('stays on the list when one came to create a board', () => {
+    expect(boardsLanding(boards, 'OPS', true)).toBeNull();
+    expect(boardsLanding(boards, 'DEMO', true)).toBeNull();
   });
 
   it('starts a new search in it, never rewrites one', () => {
@@ -165,5 +172,45 @@ describe('a board page', () => {
     expect(boardListPath(keys('DEMO', 'WEB'), 'WEB')).toBe('/boards?project=WEB');
     expect(boardListPath(keys('DEMO', 'WEB'), null)).toBe('/boards?project=DEMO');
     expect(boardListPath([], 'WEB')).toBe('/boards');
+  });
+});
+
+describe('the board rail', () => {
+  const ids = (rail: ReturnType<typeof boardRail>) => ({
+    current: rail.current.map((b) => b.id),
+    others: rail.others.map((p) => [p.key, p.boards.map((b) => b.id)]),
+  });
+
+  it('lists the project, then the other projects with each of their boards', () => {
+    expect(ids(boardRail(boards, 'WEB'))).toEqual({
+      current: [2, 3],
+      others: [
+        ['DEMO', [1, 3]],
+        ['OPS', [4]],
+      ],
+    });
+  });
+
+  it('stands for the board’s first project under every project', () => {
+    expect(ids(boardRail(boards, boardProject(boards[2]!.projects, null)))).toEqual({
+      current: [1, 3],
+      others: [
+        ['OPS', [4]],
+        ['WEB', [2, 3]],
+      ],
+    });
+  });
+
+  it('lists a project with no boards empty, and none in the others', () => {
+    expect(ids(boardRail(boards, 'NONE'))).toEqual({
+      current: [],
+      others: [
+        ['DEMO', [1, 3]],
+        ['OPS', [4]],
+        ['WEB', [2, 3]],
+      ],
+    });
+    expect(boardRail(boards, null).current).toEqual([]);
+    expect(boardRail([], 'DEMO')).toEqual({ current: [], others: [] });
   });
 });

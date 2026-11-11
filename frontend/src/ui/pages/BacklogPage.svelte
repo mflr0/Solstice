@@ -21,6 +21,7 @@
   import { notify, openEdit } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import BoardRail from '../board/BoardRail.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
@@ -359,99 +360,101 @@
     }}
   >
     <BoardHeader detail={d} view="backlog" />
-    <div class="board-search">
-      <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
-    </div>
-    {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
-    <QuickFilters filters={d.quickFilters} selected={quick} />
+    <BoardRail detail={d}>
+      <div class="board-search">
+        <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+      </div>
+      {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
+      <QuickFilters filters={d.quickFilters} selected={quick} />
 
-    {#if listError}
-      <p class="error-text" role="alert">{listError}</p>
-    {:else if !cards}
-      <p class="muted loading">{t.common.loading}</p>
-    {:else}
-      {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
-      {#each sections as section (section.id)}
-        {@const s = section.sprint}
-        <section class="backlog-section" aria-labelledby="section-{section.id}">
-          <SprintHead
-            id="section-{section.id}"
-            title={sectionName(section.id)}
-            sprint={s}
-            meta={section.id === BOARD ? t.boards.toBoardHint : meta(section.cards)}
-          >
-            {#snippet actions()}
-              {#if d.can.manage && s?.state === 'future'}
-                <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
-                  >{t.boards.editSprint}</button
-                >
-                <button
-                  class="btn btn-small btn-quiet"
-                  onclick={() =>
-                    (deleting = {
-                      sprint: s,
-                      issues: (cards ?? []).filter((c) => c.sprint === s.id).length,
-                    })}>{t.boards.deleteSprint}</button
-                >
-                <button
-                  class="btn btn-small"
-                  disabled={active !== null}
-                  title={active ? t.boards.anotherActive : undefined}
-                  onclick={() => (starting = s)}>{t.boards.startSprint}</button
-                >
-              {:else if d.can.manage && s?.state === 'active'}
-                <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
-                  >{t.boards.editSprint}</button
-                >
-                <button class="btn btn-small" onclick={() => (completing = s)}
-                  >{t.boards.completeSprint}</button
-                >
-              {:else if d.can.manage && section.id === 0 && !kanban}
-                <button
-                  class="btn btn-small"
-                  aria-disabled={creatingSprint || undefined}
-                  onclick={createSprint}>{t.boards.createSprint}</button
-                >
-              {/if}
-            {/snippet}
-          </SprintHead>
-          <div class="board-column backlog-list" class:is-over={over?.section === section.id}>
-            <div
-              class="board-cards"
-              role={section.cards.length ? 'list' : undefined}
-              aria-labelledby="section-{section.id}"
-              ondragover={(e) => dragOver(e, section)}
-              ondragleave={(e) => dragLeave(e, section)}
-              ondrop={(e) => drop(e, section)}
+      {#if listError}
+        <p class="error-text" role="alert">{listError}</p>
+      {:else if !cards}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else}
+        {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
+        {#each sections as section (section.id)}
+          {@const s = section.sprint}
+          <section class="backlog-section" aria-labelledby="section-{section.id}">
+            <SprintHead
+              id="section-{section.id}"
+              title={sectionName(section.id)}
+              sprint={s}
+              meta={section.id === BOARD ? t.boards.toBoardHint : meta(section.cards)}
             >
-              {#each section.cards as card (card.key)}
-                <BoardCard
-                  {card}
-                  layout="row"
-                  estimate={d.board.estimate}
-                  dragging={drag?.key === card.key}
-                  marker={markerOf(section, card)}
-                  menu={menuFor(card, section)}
-                  ondragstart={startDrag}
-                  ondragend={endDrag}
-                />
-              {:else}
-                <p class="drop-empty">
-                  {section.id !== BOARD && filtered
-                    ? t.boards.emptyFiltered
-                    : section.id === 0
-                      ? t.boards.backlogEmpty
-                      : t.boards.dropHere}
-                  {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
-                    ></span>{/if}
-                </p>
-              {/each}
+              {#snippet actions()}
+                {#if d.can.manage && s?.state === 'future'}
+                  <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
+                    >{t.boards.editSprint}</button
+                  >
+                  <button
+                    class="btn btn-small btn-quiet"
+                    onclick={() =>
+                      (deleting = {
+                        sprint: s,
+                        issues: (cards ?? []).filter((c) => c.sprint === s.id).length,
+                      })}>{t.boards.deleteSprint}</button
+                  >
+                  <button
+                    class="btn btn-small"
+                    disabled={active !== null}
+                    title={active ? t.boards.anotherActive : undefined}
+                    onclick={() => (starting = s)}>{t.boards.startSprint}</button
+                  >
+                {:else if d.can.manage && s?.state === 'active'}
+                  <button class="btn btn-small btn-quiet" onclick={() => (editing = s)}
+                    >{t.boards.editSprint}</button
+                  >
+                  <button class="btn btn-small" onclick={() => (completing = s)}
+                    >{t.boards.completeSprint}</button
+                  >
+                {:else if d.can.manage && section.id === 0 && !kanban}
+                  <button
+                    class="btn btn-small"
+                    aria-disabled={creatingSprint || undefined}
+                    onclick={createSprint}>{t.boards.createSprint}</button
+                  >
+                {/if}
+              {/snippet}
+            </SprintHead>
+            <div class="board-column backlog-list" class:is-over={over?.section === section.id}>
+              <div
+                class="board-cards"
+                role={section.cards.length ? 'list' : undefined}
+                aria-labelledby="section-{section.id}"
+                ondragover={(e) => dragOver(e, section)}
+                ondragleave={(e) => dragLeave(e, section)}
+                ondrop={(e) => drop(e, section)}
+              >
+                {#each section.cards as card (card.key)}
+                  <BoardCard
+                    {card}
+                    layout="row"
+                    estimate={d.board.estimate}
+                    dragging={drag?.key === card.key}
+                    marker={markerOf(section, card)}
+                    menu={menuFor(card, section)}
+                    ondragstart={startDrag}
+                    ondragend={endDrag}
+                  />
+                {:else}
+                  <p class="drop-empty">
+                    {section.id !== BOARD && filtered
+                      ? t.boards.emptyFiltered
+                      : section.id === 0
+                        ? t.boards.backlogEmpty
+                        : t.boards.dropHere}
+                    {#if over?.section === section.id}<span class="drop-marker" aria-hidden="true"
+                      ></span>{/if}
+                  </p>
+                {/each}
+              </div>
             </div>
-          </div>
-        </section>
-      {/each}
-    {/if}
-    <p class="sr-only" aria-live="polite">{announcement}</p>
+          </section>
+        {/each}
+      {/if}
+      <p class="sr-only" aria-live="polite">{announcement}</p>
+    </BoardRail>
   </div>
 
   <StartSprintDialog

@@ -42,6 +42,7 @@ const api = vi.hoisted(() => ({
   board: vi.fn(),
   saveBoard: vi.fn(),
   boardProjectStatuses: vi.fn(),
+  boards: () => Promise.resolve([]),
 }));
 
 vi.mock('../../src/lib/api.js', () => ({

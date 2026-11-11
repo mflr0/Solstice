@@ -14,6 +14,7 @@
   import { api, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import BoardRail from '../board/BoardRail.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import BurndownChart from '../charts/BurndownChart.svelte';
   import FlowChart from '../charts/FlowChart.svelte';
@@ -148,163 +149,164 @@
   {@const d = detail}
   <div class="page reports-page" data-title={d.board.name}>
     <BoardHeader detail={d} view="reports" />
-
-    {#if d.board.kind === 'scrum'}
-      <nav class="kinds" aria-label={t.reports.views}>
-        <a
-          class="btn btn-small"
-          class:on={kind === 'sprint'}
-          href={paths.boardReports(d.board.id)}
-          aria-current={kind === 'sprint' ? 'page' : undefined}>{t.reports.title}</a
-        >
-        <a
-          class="btn btn-small"
-          class:on={kind === 'velocity'}
-          href={paths.boardVelocity(d.board.id)}
-          aria-current={kind === 'velocity' ? 'page' : undefined}>{t.reports.velocity}</a
-        >
-        <a
-          class="btn btn-small"
-          class:on={kind === 'flow'}
-          href={paths.boardFlow(d.board.id)}
-          aria-current={kind === 'flow' ? 'page' : undefined}>{t.reports.flow}</a
-        >
-      </nav>
-    {/if}
-
-    {#if kind === 'flow'}
-      <div class="picker">
-        <Dropdown
-          label={t.reports.period}
-          value={String(period)}
-          options={flowPeriods.map((n) => ({ value: String(n), label: t.reports.lastDays(n) }))}
-          onchange={(v) => router.setParams({ days: v === '30' ? null : v })}
-        />
-      </div>
-      {#if flowError}
-        <p class="error-text" role="alert">{flowError}</p>
-      {:else if !shownFlow}
-        <p class="muted loading">{t.common.loading}</p>
-      {:else}
-        <p class="notice">{t.reports.flowNote}</p>
-        <FlowChart report={shownFlow} board={d.board.name} />
-      {/if}
-    {:else if d.board.kind === 'scrum' && kind === 'velocity'}
-      {#if velocityError}
-        <p class="error-text" role="alert">{velocityError}</p>
-      {:else if !velocity}
-        <p class="muted loading">{t.common.loading}</p>
-      {:else if velocity.sprints.length === 0}
-        <Illustration kind="empty" />
-        <p class="empty">{t.reports.velocityNone} {t.reports.velocityNoneHint}</p>
-      {:else}
-        {@const v = velocity}
-        {#if v.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
-        <dl class="totals average">
-          <div class="total">
-            <dt>{t.reports.average}</dt>
-            <dd>
-              {v.estimate === ''
-                ? t.boards.cards(averageCompleted(v) ?? 0)
-                : t.boards.estimateValue(averageCompleted(v) ?? 0, v.estimate)}
-              <span class="over">{t.reports.averageOver(v.sprints.length)}</span>
-            </dd>
-          </div>
-        </dl>
-        <section class="report-section" aria-labelledby="velocity-title">
-          <h2 class="section-title" id="velocity-title">{t.reports.velocity}</h2>
-          <VelocityChart report={v} />
-        </section>
-      {/if}
-    {:else if d.board.kind !== 'scrum' || !chosen}
-      <Illustration kind="empty" />
-      <p class="empty">{t.reports.none} {t.reports.noneHint}</p>
+    <BoardRail detail={d}>
       {#if d.board.kind === 'scrum'}
-        <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
+        <nav class="kinds" aria-label={t.reports.views}>
+          <a
+            class="btn btn-small"
+            class:on={kind === 'sprint'}
+            href={paths.boardReports(d.board.id)}
+            aria-current={kind === 'sprint' ? 'page' : undefined}>{t.reports.title}</a
+          >
+          <a
+            class="btn btn-small"
+            class:on={kind === 'velocity'}
+            href={paths.boardVelocity(d.board.id)}
+            aria-current={kind === 'velocity' ? 'page' : undefined}>{t.reports.velocity}</a
+          >
+          <a
+            class="btn btn-small"
+            class:on={kind === 'flow'}
+            href={paths.boardFlow(d.board.id)}
+            aria-current={kind === 'flow' ? 'page' : undefined}>{t.reports.flow}</a
+          >
+        </nav>
       {/if}
-    {:else}
-      <div class="picker">
-        <Dropdown
-          label={t.boards.sprint}
-          value={String(chosen.id)}
-          options={sprints.map((s) => ({
-            value: String(s.id),
-            label: `${s.name} (${t.boards.sprintStates[s.state]})`,
-          }))}
-          onchange={(v) => router.setParams({ sprint: v })}
-        />
-      </div>
 
-      {#if reportError}
-        <p class="error-text" role="alert">{reportError}</p>
-      {:else if !shown || !groups}
-        <p class="muted loading">{t.common.loading}</p>
-      {:else}
-        {@const r = shown}
-        <SprintHead
-          title={r.sprint.name}
-          sprint={r.sprint}
-          meta={r.sprint.state === 'active'
-            ? t.reports.untilNow
-            : t.boards.dates(t.boards.day(r.sprint.start ?? r.end), t.boards.day(r.end))}
-        />
-        {#if r.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
-
-        <dl class="totals">
-          {#each ['committed', 'added', 'removed', 'completed', 'notCompleted'] as const as k (k)}
+      {#if kind === 'flow'}
+        <div class="picker">
+          <Dropdown
+            label={t.reports.period}
+            value={String(period)}
+            options={flowPeriods.map((n) => ({ value: String(n), label: t.reports.lastDays(n) }))}
+            onchange={(v) => router.setParams({ days: v === '30' ? null : v })}
+          />
+        </div>
+        {#if flowError}
+          <p class="error-text" role="alert">{flowError}</p>
+        {:else if !shownFlow}
+          <p class="muted loading">{t.common.loading}</p>
+        {:else}
+          <p class="notice">{t.reports.flowNote}</p>
+          <FlowChart report={shownFlow} board={d.board.name} />
+        {/if}
+      {:else if d.board.kind === 'scrum' && kind === 'velocity'}
+        {#if velocityError}
+          <p class="error-text" role="alert">{velocityError}</p>
+        {:else if !velocity}
+          <p class="muted loading">{t.common.loading}</p>
+        {:else if velocity.sprints.length === 0}
+          <Illustration kind="empty" />
+          <p class="empty">{t.reports.velocityNone} {t.reports.velocityNoneHint}</p>
+        {:else}
+          {@const v = velocity}
+          {#if v.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
+          <dl class="totals average">
             <div class="total">
-              <dt>
-                {k === 'committed'
-                  ? t.reports.committed
-                  : k === 'added'
-                    ? t.reports.added
-                    : groupTitle(k, r)}
-              </dt>
-              <dd>{work(r.totals[k], r)}</dd>
+              <dt>{t.reports.average}</dt>
+              <dd>
+                {v.estimate === ''
+                  ? t.boards.cards(averageCompleted(v) ?? 0)
+                  : t.boards.estimateValue(averageCompleted(v) ?? 0, v.estimate)}
+                <span class="over">{t.reports.averageOver(v.sprints.length)}</span>
+              </dd>
             </div>
-          {/each}
-        </dl>
-
-        <section class="report-section" aria-labelledby="burndown-title">
-          <h2 class="section-title" id="burndown-title">{t.reports.burndown}</h2>
-          <BurndownChart report={r} />
-        </section>
-
-        {#each order as o (o)}
-          {@const list = groups[o]}
-          <section class="report-section" aria-labelledby="group-{o}">
-            <h2 class="section-title" id="group-{o}">
-              {groupTitle(o, r)} <span class="count">{t.boards.sectionCount(list.length)}</span>
-            </h2>
-            {#if list.length === 0}
-              <p class="muted">{t.reports.emptyGroup}</p>
-            {:else}
-              <ul class="report-issues">
-                {#each list as is (is.key)}
-                  <li class="report-issue">
-                    <TypeMark type={is.type} />
-                    <a class="key" href={paths.issue(is.key)}>{is.key}</a>
-                    <span class="summary">{is.summary}</span>
-                    {#if !is.committed}<span class="added">{t.reports.addedMark}</span>{/if}
-                    <Stamp status={is.status} />
-                    <span class="estimate">
-                      {#if is.startEstimate !== is.endEstimate}
-                        {t.reports.changed(
-                          estimate(is.startEstimate, r),
-                          estimate(is.endEstimate, r),
-                        )}
-                      {:else}
-                        {estimate(is.endEstimate, r)}
-                      {/if}
-                    </span>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
+          </dl>
+          <section class="report-section" aria-labelledby="velocity-title">
+            <h2 class="section-title" id="velocity-title">{t.reports.velocity}</h2>
+            <VelocityChart report={v} />
           </section>
-        {/each}
+        {/if}
+      {:else if d.board.kind !== 'scrum' || !chosen}
+        <Illustration kind="empty" />
+        <p class="empty">{t.reports.none} {t.reports.noneHint}</p>
+        {#if d.board.kind === 'scrum'}
+          <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
+        {/if}
+      {:else}
+        <div class="picker">
+          <Dropdown
+            label={t.boards.sprint}
+            value={String(chosen.id)}
+            options={sprints.map((s) => ({
+              value: String(s.id),
+              label: `${s.name} (${t.boards.sprintStates[s.state]})`,
+            }))}
+            onchange={(v) => router.setParams({ sprint: v })}
+          />
+        </div>
+
+        {#if reportError}
+          <p class="error-text" role="alert">{reportError}</p>
+        {:else if !shown || !groups}
+          <p class="muted loading">{t.common.loading}</p>
+        {:else}
+          {@const r = shown}
+          <SprintHead
+            title={r.sprint.name}
+            sprint={r.sprint}
+            meta={r.sprint.state === 'active'
+              ? t.reports.untilNow
+              : t.boards.dates(t.boards.day(r.sprint.start ?? r.end), t.boards.day(r.end))}
+          />
+          {#if r.estimate === ''}<p class="notice">{t.reports.counted}</p>{/if}
+
+          <dl class="totals">
+            {#each ['committed', 'added', 'removed', 'completed', 'notCompleted'] as const as k (k)}
+              <div class="total">
+                <dt>
+                  {k === 'committed'
+                    ? t.reports.committed
+                    : k === 'added'
+                      ? t.reports.added
+                      : groupTitle(k, r)}
+                </dt>
+                <dd>{work(r.totals[k], r)}</dd>
+              </div>
+            {/each}
+          </dl>
+
+          <section class="report-section" aria-labelledby="burndown-title">
+            <h2 class="section-title" id="burndown-title">{t.reports.burndown}</h2>
+            <BurndownChart report={r} />
+          </section>
+
+          {#each order as o (o)}
+            {@const list = groups[o]}
+            <section class="report-section" aria-labelledby="group-{o}">
+              <h2 class="section-title" id="group-{o}">
+                {groupTitle(o, r)} <span class="count">{t.boards.sectionCount(list.length)}</span>
+              </h2>
+              {#if list.length === 0}
+                <p class="muted">{t.reports.emptyGroup}</p>
+              {:else}
+                <ul class="report-issues">
+                  {#each list as is (is.key)}
+                    <li class="report-issue">
+                      <TypeMark type={is.type} />
+                      <a class="key" href={paths.issue(is.key)}>{is.key}</a>
+                      <span class="summary">{is.summary}</span>
+                      {#if !is.committed}<span class="added">{t.reports.addedMark}</span>{/if}
+                      <Stamp status={is.status} />
+                      <span class="estimate">
+                        {#if is.startEstimate !== is.endEstimate}
+                          {t.reports.changed(
+                            estimate(is.startEstimate, r),
+                            estimate(is.endEstimate, r),
+                          )}
+                        {:else}
+                          {estimate(is.endEstimate, r)}
+                        {/if}
+                      </span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </section>
+          {/each}
+        {/if}
       {/if}
-    {/if}
+    </BoardRail>
   </div>
 {/if}
 

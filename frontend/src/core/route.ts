@@ -138,6 +138,9 @@ export const paths = {
   themes: () => '/themes',
   boards: (project?: string) =>
     project ? `/boards?project=${encodeURIComponent(project)}` : '/boards',
+  /** The board list with the create dialog open, the project chosen in it. */
+  newBoard: (project?: string) =>
+    project ? `/boards?project=${encodeURIComponent(project)}&create=1` : '/boards?create=1',
   board: (id: number) => `/boards/${id}`,
   backlog: (id: number) => `/boards/${id}/backlog`,
   boardReports: (id: number, sprint?: number) =>

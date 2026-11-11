@@ -71,6 +71,7 @@ const watch = vi.hoisted(() => vi.fn());
 vi.mock('../../src/lib/api.js', () => ({
   api: {
     board: () => Promise.resolve(detail),
+    boards: () => Promise.resolve([]),
     boardCards,
     watch,
   },

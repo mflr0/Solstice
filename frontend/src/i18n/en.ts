@@ -1139,6 +1139,13 @@ export const en = {
     notAdmin: 'Only this project’s administrators can create a board for it.',
     noProject: 'You don’t have access to any project.',
 
+    rail: 'Switch board',
+    railCollapse: 'Collapse the board list',
+    railExpand: 'Expand the board list',
+    allBoards: 'All boards',
+    newBoard: 'New board',
+    otherProjects: 'Other projects',
+
     views: 'View',
     viewBoard: 'Board',
     viewBacklog: 'Backlog',
