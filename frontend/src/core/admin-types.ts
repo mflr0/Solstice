@@ -368,10 +368,10 @@ export interface Group {
   members: number;
 }
 
-/** A built-in group: who is in it depends on the project or the issue. */
-export type BuiltinGroup = Exclude<Holder, 'user' | 'group'>;
+/** Everyone, or a role: who holds it depends on the project or the issue. */
+export type BuiltinHolder = Exclude<Holder, 'user' | 'group'>;
 
-/** A global rule of a group, a built-in group or a user. */
+/** A global rule of a group, a built-in holder or a user. */
 export interface PermissionRule {
   permission: Permission;
   effect: Effect;
@@ -385,7 +385,7 @@ export interface AccessSource {
   kind: 'user' | 'group' | 'builtin';
   /** The user or group id. */
   id?: number;
-  /** The user's display name, the group's name, or the built-in group. */
+  /** The user's display name, the group's name, or the built-in holder. */
   name: string;
 }
 

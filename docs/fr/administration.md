@@ -119,6 +119,12 @@ groupe » demande un nom et une description, 255 caractères au plus chacun.
 Ouvrez un groupe pour le renommer, changer sa description ou gérer ses
 membres.
 
+Au-dessus des groupes, « Tout le monde et rôles » liste Tout le monde et les
+rôles : le responsable du projet, le rapporteur et l'assigné du ticket. Ce ne
+sont pas des groupes : qui détient un rôle dépend du projet ou du ticket, ils
+n'ont donc ni nom ni membres à modifier. Ouvrez-en un pour régler ses
+permissions par défaut, qui s'appliquent dans tous les projets.
+
 - **Membres.** Une fois le groupe créé, sa fenêtre permet d'ajouter des
   personnes avec un sélecteur et d'en retirer depuis une liste. Contrairement
   au nom et à la description, les membres sont ajoutés et retirés aussitôt,

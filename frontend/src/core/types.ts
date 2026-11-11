@@ -363,11 +363,11 @@ export interface Grant {
 
 export type Effect = 'allow' | 'deny';
 
-/** A global rule of a group or a built-in group. */
+/** A global rule of a group or a built-in holder. */
 export interface GroupRule {
   permission: Permission;
   holder: Holder;
-  /** The group's id; none for a built-in group. */
+  /** The group's id; none for a built-in holder. */
   id?: number;
   effect: Effect;
 }

@@ -8,6 +8,7 @@
 import { matches, tooLong } from './admin-forms.js';
 import type {
   AssigneeType,
+  BuiltinHolder,
   Category,
   ComponentInput,
   ComponentRow,
@@ -545,24 +546,37 @@ export function notificationsChanged(
   return saved.enabled !== enabled || extraSignature(saved.extra) !== extraSignature(extra);
 }
 
-/* Built-in groups ------------------------------------------------------------ */
+/* Built-in holders ----------------------------------------------------------- */
 
-/** The holders shown as built-in groups, in the order group lists offer them. */
-export const BUILTIN_HOLDERS = ['everyone', 'lead', 'reporter', 'assignee'] as const;
+/** Everyone and the roles, in the order holder lists offer them. */
+export const BUILTIN_HOLDERS: readonly BuiltinHolder[] = [
+  'everyone',
+  'lead',
+  'reporter',
+  'assignee',
+];
 
-export type BuiltinHolder = (typeof BUILTIN_HOLDERS)[number];
-
-/** Whether a holder is shown as a built-in group. */
+/** Whether a holder is everyone or a role, rather than a group or a user. */
 export function isBuiltinHolder(holder: Holder): holder is BuiltinHolder {
-  return (BUILTIN_HOLDERS as readonly string[]).includes(holder);
+  return BUILTIN_HOLDERS.includes(holder as BuiltinHolder);
 }
 
-/** A group a holder list offers: a built-in group, or a group of the instance. */
+/** The tag of a holder in lists: everyone, a role, or its kind (group, user). */
+export function holderTag(
+  holder: Holder,
+  tags: { everyone: string; role: string },
+  kinds: Record<Holder, string>,
+): string {
+  if (holder === 'everyone') return tags.everyone;
+  return isBuiltinHolder(holder) ? tags.role : kinds[holder];
+}
+
+/** What a holder list offers: everyone, a role, or a group of the instance. */
 export interface HolderGroup {
   /** Stable across languages: `builtin:<holder>` or `group:<id>`. */
   key: string;
   label: string;
-  builtin: boolean;
+  kind: 'everyone' | 'role' | 'group';
 }
 
 /** The key of the group a holder is; null for a user, or a group without its id. */
@@ -584,14 +598,18 @@ export function groupKeyHolder(key: string): { holder: Holder; id?: number } | n
   return null;
 }
 
-/** The groups a holder list offers: the built-in ones first, then the instance's. */
+/** What a holder list offers: everyone, then the roles, then the instance's groups. */
 export function holderGroups(
   labels: Record<BuiltinHolder, string>,
   groups: readonly Pick<IdName, 'id' | 'name'>[],
 ): HolderGroup[] {
   return [
-    ...BUILTIN_HOLDERS.map((h) => ({ key: `builtin:${h}`, label: labels[h], builtin: true })),
-    ...groups.map((g) => ({ key: `group:${g.id}`, label: g.name, builtin: false })),
+    ...BUILTIN_HOLDERS.map((h) => ({
+      key: `builtin:${h}`,
+      label: labels[h],
+      kind: h === 'everyone' ? ('everyone' as const) : ('role' as const),
+    })),
+    ...groups.map((g) => ({ key: `group:${g.id}`, label: g.name, kind: 'group' as const })),
   ];
 }
 
@@ -608,7 +626,7 @@ export function nextCellState(s: CellState): CellState {
   return s === 'inherit' ? 'allow' : s === 'allow' ? 'deny' : 'inherit';
 }
 
-/** A row of the matrix: a built-in group, a group or a user. */
+/** A row of the matrix: everyone, a role, a group or a user. */
 export interface MatrixRow {
   /** `builtin:<holder>`, `group:<id>` or `user:<id>`. */
   key: string;
@@ -625,7 +643,7 @@ export function grantRowKey(g: Pick<Grant, 'holder' | 'id'>): string | null {
 }
 
 /**
- * The rows of the matrix: the built-in groups, then the groups and the users
+ * The rows of the matrix: everyone and the roles, then the groups and the users
  * with a project rule or just added (`extra`), each by name.
  */
 export function matrixRows(

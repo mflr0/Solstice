@@ -78,9 +78,10 @@ export const fr: Messages = {
     assignee: 'Assigné du ticket',
   },
 
-  builtInGroups: {
-    mark: 'Groupe intégré',
-    heading: 'Groupes intégrés',
+  holderTags: {
+    everyone: 'Tous les comptes',
+    role: 'Rôle',
+    roles: 'Rôles',
     groups: 'Groupes',
   },
 
@@ -1705,7 +1706,8 @@ export const fr: Messages = {
       defaultName: (group: string, permission: string, state: string) =>
         `${group}, ${permission} : ${state}`,
       builtinHint:
-        'Un groupe intégré : qui en fait partie dépend du projet ou du ticket, il n’a donc ni nom ni membres à modifier.',
+        'Intégré : qui le détient dépend du projet ou du ticket, il n’a donc ni nom ni membres à modifier.',
+      builtinHeading: 'Tout le monde et rôles',
       builtinDescriptions: {
         everyone: 'Toute personne ayant un compte.',
         lead: 'Le responsable de chaque projet.',

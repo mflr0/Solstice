@@ -28,6 +28,7 @@ import {
   hasExtra,
   holderGroupKey,
   holderGroups,
+  holderTag,
   keyProblem,
   matrixRows,
   moveCell,
@@ -552,8 +553,8 @@ describe('versions', () => {
   });
 });
 
-describe('built-in groups', () => {
-  it('maps each built-in holder to its group and back', () => {
+describe('built-in holders', () => {
+  it('maps each built-in holder to its key and back', () => {
     for (const h of BUILTIN_HOLDERS) {
       const key = holderGroupKey(h);
       expect(key).toBe(`builtin:${h}`);
@@ -571,15 +572,26 @@ describe('built-in groups', () => {
     expect(groupKeyHolder('')).toBeNull();
   });
 
-  it('lists the built-in groups first, marked', () => {
+  it('lists everyone, then the roles, then the groups', () => {
     const labels = { everyone: 'E', lead: 'L', reporter: 'R', assignee: 'A' };
     expect(holderGroups(labels, [{ id: 9, name: 'Devs' }])).toEqual([
-      { key: 'builtin:everyone', label: 'E', builtin: true },
-      { key: 'builtin:lead', label: 'L', builtin: true },
-      { key: 'builtin:reporter', label: 'R', builtin: true },
-      { key: 'builtin:assignee', label: 'A', builtin: true },
-      { key: 'group:9', label: 'Devs', builtin: false },
+      { key: 'builtin:everyone', label: 'E', kind: 'everyone' },
+      { key: 'builtin:lead', label: 'L', kind: 'role' },
+      { key: 'builtin:reporter', label: 'R', kind: 'role' },
+      { key: 'builtin:assignee', label: 'A', kind: 'role' },
+      { key: 'group:9', label: 'Devs', kind: 'group' },
     ]);
+  });
+
+  it('tags everyone, the roles, and groups and users by kind', () => {
+    const tags = { everyone: 'All accounts', role: 'Role' };
+    const kinds = { everyone: 'E', user: 'U', group: 'G', lead: 'L', reporter: 'R', assignee: 'A' };
+    expect(holderTag('everyone', tags, kinds)).toBe('All accounts');
+    expect(holderTag('lead', tags, kinds)).toBe('Role');
+    expect(holderTag('reporter', tags, kinds)).toBe('Role');
+    expect(holderTag('assignee', tags, kinds)).toBe('Role');
+    expect(holderTag('group', tags, kinds)).toBe('G');
+    expect(holderTag('user', tags, kinds)).toBe('U');
   });
 });
 
@@ -594,7 +606,7 @@ describe('permission matrix', () => {
     rules: [],
   };
 
-  it('lists the built-in groups, then groups and users with a rule, by name', () => {
+  it('lists everyone and the roles, then groups and users with a rule, by name', () => {
     const grants: Grant[] = [
       { permission: 'edit', holder: 'user', id: 7, name: 'Alice' },
       { permission: 'edit', holder: 'group', id: 2, name: 'Ops' },

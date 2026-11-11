@@ -8,7 +8,12 @@
     namedPayload,
     type DefaultsForm,
   } from '../../core/admin-forms.js';
-  import type { BuiltinGroup, Group, GroupDetail, PermissionRule } from '../../core/admin-types.js';
+  import type {
+    BuiltinHolder,
+    Group,
+    GroupDetail,
+    PermissionRule,
+  } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
   import type { UserRef } from '../../core/types.js';
   import { holderLabels, t } from '../../i18n/t.js';
@@ -22,8 +27,8 @@
   interface Props {
     open: boolean;
     group: Group | null;
-    /** A built-in group: only its default permissions are shown. */
-    builtin?: BuiltinGroup | null;
+    /** Everyone or a role: only its default permissions are shown. */
+    builtin?: BuiltinHolder | null;
     onclose: () => void;
     onsaved: (message: string) => void;
     onchanged: () => void;
@@ -188,9 +193,11 @@
 
 <Modal
   {open}
-  title={builtin || group
-    ? t.adminArea.groupsPage.editTitle(holderName)
-    : t.adminArea.groupsPage.newGroup}
+  title={builtin
+    ? holderName
+    : group
+      ? t.adminArea.groupsPage.editTitle(holderName)
+      : t.adminArea.groupsPage.newGroup}
   onclose={() => !busy && onclose()}
 >
   <form id="group-form" class="group-form" onsubmit={submit} novalidate>

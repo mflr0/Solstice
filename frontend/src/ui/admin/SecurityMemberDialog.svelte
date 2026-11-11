@@ -12,8 +12,8 @@
   import UserPicker from '../UserPicker.svelte';
 
   /**
-   * Adding someone to a security level: a person, or a group (its members in the project),
-   * the built-in ones first: everyone, the project lead, the reporter or the assignee of each issue.
+   * Adding someone to a security level: a person, everyone, a role (the project lead, the
+   * reporter or the assignee of each issue) or a group (its members in the project).
    */
   interface Props {
     open: boolean;
@@ -40,7 +40,12 @@
     holderGroups(holderLabels, groups).map((g) => ({
       value: g.key,
       label: g.label,
-      group: g.builtin ? t.builtInGroups.heading : t.builtInGroups.groups,
+      group:
+        g.kind === 'everyone'
+          ? undefined
+          : g.kind === 'role'
+            ? t.holderTags.roles
+            : t.holderTags.groups,
     })),
   );
 

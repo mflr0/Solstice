@@ -78,10 +78,11 @@ export const en = {
     assignee: 'Issue assignee',
   },
 
-  /** Holders shown as groups (the security levels, the permissions): the mark and the list headings. */
-  builtInGroups: {
-    mark: 'Built-in group',
-    heading: 'Built-in groups',
+  /** The tags of everyone and the roles in holder lists, and the list headings. */
+  holderTags: {
+    everyone: 'All accounts',
+    role: 'Role',
+    roles: 'Roles',
     groups: 'Groups',
   },
 
@@ -1688,7 +1689,8 @@ export const en = {
       defaultName: (group: string, permission: string, state: string) =>
         `${group}, ${permission}: ${state}`,
       builtinHint:
-        'A built-in group: who is in it depends on the project or the issue, so it has no name or members to edit.',
+        'Built in: who holds it depends on the project or the issue, so it has no name or members to edit.',
+      builtinHeading: 'Everyone and roles',
       builtinDescriptions: {
         everyone: 'Everyone with an account.',
         lead: 'The lead of each project.',
