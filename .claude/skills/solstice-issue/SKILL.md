@@ -36,6 +36,8 @@ If the work is dropped at any point, run `pick.sh --release N`.
 ## 3. Plan
 
 - Before planning, read the code each "Stop and say so" condition points to, to see whether it is already met.
+- In the same first batch of reads, check the ticket's premises: each "In scope" path exists, and the data the change needs already reaches the code that draws it (e.g. a field the API must send). A wrong premise found now costs one call; found mid-edit, several.
+- A design linked as an Artifact: don't read the Artifact itself (its type instructions alone are thousands of tokens). Read the one artboard the ticket names, directly by `path` (`project/<Name>.dc.html`); list the files first only if the name isn't clear. Then `grep -n` the saved file for the part you need.
 - If the ticket leaves real design choices open (names, where code lives, sites outside the scope list, a stop condition already met), grill me with the `grilling` skill before editing. If a stop condition triggered it, comment the outcome on the ticket with `gh issue comment`.
 - Otherwise, state the plan in two lines and start.
 - Ignore stop conditions about files under open pull requests.
@@ -58,14 +60,17 @@ If the work is dropped at any point, run `pick.sh --release N`.
 
 Start your own servers from the worktree and drive them with the Playwright MCP tools (`mcp__playwright__*`, headless, one isolated browser per session). Other sessions do the same at the same time, so:
 
-- **Ports from the ticket number**, never 8080 (mine) or another session's: server on `18000+N`, Vite on `19000+N`. Check first with `lsof -iTCP:<port> -sTCP:LISTEN`. A listener whose `lsof -p <pid> -a -d cwd` is your worktree is your own leftover: stop it. Anything else: add 1000 and check again.
+- **Never use my dev server on 8080**: no requests, no setup, no checks, no cleanup. Whenever you need a server to test, set up or clean up, start your own as below, even for a single request. The one exception is migrations.
+
+- **Ports from the ticket number**, never 8080 (mine) or another session's: server on `18000+N`, Vite on `19000+N`. Check first with `lsof -iTCP:<port> -sTCP:LISTEN`. A listener whose `lsof -p <pid> -a -d cwd` is your worktree is your own leftover: stop it with `kill <pid>`. Anything else: add 1000 and check again.
+- **Stopping a server: never `pkill`, `killall`, or anything else that picks processes by name or pattern.** They run on my whole machine, next to other sessions: a `pkill` once took down Docker, my desktop apps and every session's servers. Start each server with the Bash tool's `run_in_background`, even for a single request, never with `&`, `nohup` or a subshell, so `TaskStop` can stop it. Without a task ID, use `kill <pid>` with one PID from `lsof -iTCP:<port> -sTCP:LISTEN`, after checking with `lsof -p <pid> -a -d cwd` that its directory is your worktree or its `backend`/`frontend`. Never `kill -9`, and never a PID you didn't check. If something unexpected dies, stop and tell me.
 - **Server**, in the background, from `<worktree>/backend` once the interface checks have built `dist`:
   `SOLSTICE_CONFIG=<main checkout>/backend/solstice.conf SOLSTICE_DATA=<main checkout>/backend/data SOLSTICE_HTTP_ADDR=127.0.0.1:<18000+N> go run ./cmd/solstice serve`
   Wait for `/healthz` to answer 200.
 - **Interface**, in the background, from `<worktree>/frontend`:
   `SOLSTICE_BACKEND=http://127.0.0.1:<18000+N> pnpm dev --host 127.0.0.1 --port <19000+N> --strictPort`
   Browse `http://127.0.0.1:<19000+N>`: Vite serves the worktree's sources, the server its API.
-- **Shared database.** Every server uses the dev database. If it is down, don't start Docker Compose: ask me. If the branch adds a migration, don't run `migrate` on it: say so and ask. Background jobs (mail, webhooks) run in every server, so don't judge mail delivery from this setup.
+- **Shared database.** Every server uses the dev database. If it is down, start it with `docker compose -f <main checkout>/compose.yaml up -d`, always that file so every session shares the same containers and volumes. Only if the Docker daemon itself isn't running, ask me. If the branch adds a migration, don't run `migrate` on it: say so and ask. Background jobs (mail, webhooks) run in every server, so don't judge mail delivery from this setup.
 - **Shared data.** Don't change instance settings, or the preferences (language, theme) of the mock users: other sessions are logged in as them. Logging in as them changes nothing shared. Name any record you create `check #<N> …` (users `check<N>-…`), and delete it once nobody needs it any more (users: deactivate): right after testing, or, if you leave me something to check, at merge time. Don't edit records you didn't create: to test an edit, create the record first.
 - **Logging in**: on `/login`, fill the first text input and the password input, then press Enter in the password input. `seed` / `seed-dev-only` is the admin and has no language, so it follows the browser.
 - **Other languages, other roles**: in `browser_run_code_unsafe`, open a second context with `page.context().browser().newContext({ locale: 'fr-FR' })` and log in there as the mock user of that language (`marie` fr, `alice` en, …). The mock users aren't admins, so they also show the read-only views. Close the context in a `finally`. A theme check needs a throwaway user.
@@ -73,10 +78,12 @@ Start your own servers from the worktree and drive them with the Playwright MCP 
 - **Failure paths**: make the request fail with `page.route(...)` in `mcp__playwright__browser_run_code_unsafe` (e.g. `route.fulfill({ status: 500, … })`), then `page.unrouteAll()`. The same works to fake a response the database can't easily give (a long error, a failed delivery).
 - **Prove the check can fail**: for a behaviour fix, undo the fix in the worktree (Vite reloads it), run the same check and see it fail, then restore the fix and check `git diff` is back to what it was.
 - **What to read**: `browser_snapshot` or `browser_find` for text, including screen-reader-only text; `browser_evaluate` for attributes and computed styles (measure: `scrollWidth > clientWidth` means clipped; a component's own scoped CSS can change what a shared class does); `browser_console_messages` for errors; a screenshot only when layout matters.
+- **One pass, compact output**: the tool echoes the whole script back, so cover every combination the ticket asks for (users, languages, widths, skins) in one `browser_run_code_unsafe` loop rather than one call each. Return one short line per combination (`alice 1280 carnet: ok`) and details only for what failed, never indented JSON.
+- **Screenshots**: at most one per look you must judge, clipped to the element's `boundingBox()` plus a margin, never at fixed page coordinates (scrolling moves it). Save them in the scratchpad and read them.
 - **What it finds**: fix it in the worktree with a new commit, and say so in the report.
 - **When done testing**, right away, not at cleanup: close the browser. Then:
   - If something is left for me to check in the UI (step 5.3), keep the server and Vite you started running, and the records I need to look at.
-  - Otherwise stop them (`TaskStop`, then check the ports with `lsof`) and delete the records.
+  - Otherwise delete the records and list them to check they are gone (deleting a board leaves its `Board check #<N> …` filter), then stop the servers (`TaskStop`, then check the ports with `lsof`).
   - Either way, leave the Docker containers (database, Mailpit) running.
 
 The `playwright` MCP server is pinned (`@playwright/mcp@0.0.83 --browser chromium`) to the Chromium in `~/Library/Caches/ms-playwright`, and writes its files to `~/Library/Caches/playwright-mcp-output`. If a `.playwright-mcp/` folder shows up in a checkout, delete it. If the Playwright tools are missing, or the browser won't start, don't install anything: tell me and fall back to listing the checks for me.
@@ -91,9 +98,9 @@ The `playwright` MCP server is pinned (`@playwright/mcp@0.0.83 --browser chromiu
    - `--ship` pushes the branch, opens the pull request against `feat/v1.0` with the commit subject as title and an empty description, and comments `Closes #N.` on it. The stale-claim check finds the pull request through this comment.
    - Pass `--note "<text>"` to add to that comment any file changed outside the ticket's scope, and why.
 3. Then:
-   - **Draft**: report what the UI check (step 4.8) verified, check by check, and what it found. Then ask me to test only what the browser couldn't judge (how it looks in a theme, a real screen reader), or say there is nothing left. When something is left, give me the interface URL (`http://127.0.0.1:<19000+N>`), the login to use, and a direct link to each page to open, with the records to look at. Wait for my answer.
+   - **Draft**: report what the UI check (step 4.8) verified, check by check, and what it found. Then ask me to test only what the browser couldn't judge (how it looks in a theme, a real screen reader). Give me the interface URL (`http://127.0.0.1:<19000+N>`), the login to use, and a direct link to each page to open, with the records to look at. Wait for my answer. If your UI check covered everything and nothing is left for me, go to step 4 without asking.
    - **Ready**: go to step 4 without asking.
-4. Merge, once it is ready or once I approve the draft ("good", "all good", "continue"; don't ask whether to merge). Stop any server of the UI check still running and delete the records it left, then run `pick.sh --finish N <PR> <topic>` with the Bash timeout at 600000. It marks a draft ready, waits for every CI check, merges the commit they ran on, closes the issue and ticks it in its tracker (`--done`), removes the worktree and the local and remote branch, and pulls `feat/v1.0` in the main checkout.
+4. Merge, once it is ready, once I approve the draft ("good", "all good", "continue"; don't ask whether to merge), or once nothing is left for me to check. Stop any server of the UI check still running and delete the records it left, then run `pick.sh --finish N <PR> <topic>` with the Bash timeout at 600000. It marks a draft ready, waits for every CI check, merges the commit they ran on, closes the issue and ticks it in its tracker (`--done`), removes the worktree and the local and remote branch, and pulls `feat/v1.0` in the main checkout.
    - Exit 4: a check failed, or was still pending. Fix it with a new commit, push it (`git -C <worktree> push`), and run `--finish` again; or stop and tell me.
    - If it stops on anything else, fix the cause and run it again: it resumes after what is already done.
 5. Report in a few lines: the ticket, the PR, what the change does, what was verified, and anything left open. On a "continue", go back to step 1 for the next ticket.
