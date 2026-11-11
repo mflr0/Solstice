@@ -2180,11 +2180,25 @@ export const it: Messages = {
     revokeTitle: (name: string) => `Revocare ${name}?`,
     revokeBody: 'L’applicazione perde subito l’accesso e deve chiedertelo di nuovo per tornare.',
     revoked: 'Applicazione revocata.',
+    connect: {
+      title: 'Collegare un agente di IA',
+      address: 'I client MCP, come gli agenti di IA, si collegano a questo indirizzo:',
+      addressLabel: 'Indirizzo MCP',
+      oauth:
+        'Un client che supporta l’autorizzazione MCP (OAuth) non ha bisogno d’altro: apre il browser per farti accedere e darti modo di acconsentire, poi compare in questa pagina.',
+      tokenBefore: 'Gli altri client hanno bisogno di un ',
+      tokenLink: 'token di accesso personale',
+      tokenAfter: ', che inviano nell’intestazione',
+      tokenEnd: '.',
+      guide: 'Documentazione MCP (GitHub)',
+    },
   },
 
   tokensPage: {
     intro:
       'Un token permette a uno script, a un job di integrazione continua o a un plugin dell’IDE di usare Solstice a tuo nome, senza la tua password. Lo invia nell’intestazione Authorization.',
+    agents: 'Per collegare un agente di IA, vedi ',
+    agentsEnd: '.',
     restricted:
       'Un amministratore ha limitato chi può creare token di accesso e il tuo account non è tra questi. Puoi comunque revocare i token che hai.',
     newTitle: 'Nuovo token',

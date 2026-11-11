@@ -415,6 +415,19 @@ export const accountApi = {
   // Applications authorized through OAuth.
   grants: () => request<OAuthGrant[]>('GET', '/api/me/oauth-grants'),
   revokeGrant: (id: number) => request<void>('DELETE', `/api/me/oauth-grants/${id}`),
+  /** The MCP endpoint's address, as the server names it, or else this origin's /mcp. */
+  mcpAddress: async (): Promise<string> => {
+    try {
+      const meta = await request<{ resource?: unknown }>(
+        'GET',
+        '/.well-known/oauth-protected-resource',
+      );
+      if (typeof meta?.resource === 'string' && meta.resource) return meta.resource;
+    } catch {
+      // Below.
+    }
+    return `${location.origin}/mcp`;
+  },
   /** Checks an authorization request: query is the search of /oauth/authorize. */
   checkAuthorization: (query: string) =>
     request<OAuthRequest>('GET', `/api/oauth/authorize${query}`),

@@ -2178,11 +2178,25 @@ export const fr: Messages = {
     revokeTitle: (name: string) => `Révoquer ${name} ?`,
     revokeBody: 'L’application perd l’accès aussitôt et doit vous le redemander pour revenir.',
     revoked: 'Application révoquée.',
+    connect: {
+      title: 'Connecter un agent d’IA',
+      address: 'Les clients MCP, comme les agents d’IA, se connectent à cette adresse :',
+      addressLabel: 'Adresse MCP',
+      oauth:
+        'Un client qui gère l’autorisation MCP (OAuth) n’a besoin de rien d’autre : il ouvre votre navigateur pour que vous vous connectiez et donniez votre accord, puis il apparaît sur cette page.',
+      tokenBefore: 'Les autres clients ont besoin d’un ',
+      tokenLink: 'jeton d’accès personnel',
+      tokenAfter: ', qu’ils envoient dans l’en-tête',
+      tokenEnd: '.',
+      guide: 'Documentation MCP (GitHub)',
+    },
   },
 
   tokensPage: {
     intro:
       'Un jeton permet à un script, à une tâche d’intégration continue ou à un module d’éditeur d’utiliser Solstice en votre nom, sans votre mot de passe. Il l’envoie dans l’en-tête Authorization.',
+    agents: 'Pour connecter un agent d’IA, voir ',
+    agentsEnd: '.',
     restricted:
       'Un administrateur a limité la création de jetons d’accès et votre compte n’en fait pas partie. Vous pouvez toujours révoquer vos jetons.',
     newTitle: 'Nouveau jeton',
