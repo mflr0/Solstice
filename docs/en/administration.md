@@ -137,7 +137,8 @@ Watch for:
 
 People can sign in with their LDAP or Active Directory password. It is set in
 the configuration file, not in the administration: see the `SOLSTICE_LDAP_*`
-keys in [installation](install.md). Restart Solstice after a change. Example
+keys in [installation](install.md). Restart Solstice after a change. System
+information shows whether it is on, with the server and the user base. Example
 for Active Directory:
 
 ```sh
@@ -189,7 +190,8 @@ People can sign in with an OpenID Connect provider (Keycloak, Microsoft Entra
 ID, Authentik, Dex, Google…): the sign-in page then shows a "Sign in with …"
 button above the password form. It is set in the configuration file: see the
 `SOLSTICE_OIDC_*` keys in [installation](install.md). Restart Solstice after a
-change.
+change. System information shows whether it is on, with the issuer and the
+client ID.
 
 At the provider, register Solstice as a confidential client using the
 authorization code flow, with the redirect URI
@@ -561,7 +563,8 @@ while it runs.
 
 Version, Go version, start time, the database server, name and size, the data
 directory and the space it uses, the configuration file and listen address,
-counts of accounts, projects, issues, comments and attachments, the e-mail
+whether LDAP and OpenID Connect sign-in are on (with their server, user base,
+issuer and client ID), counts of accounts, projects, issues, comments and attachments, the e-mail
 queue, failing webhooks, applied database migrations and a running import. No
 secret is shown. Look here first when something seems wrong: a growing
 "failed" count in the mail queue, or a failing webhook, shows up here.

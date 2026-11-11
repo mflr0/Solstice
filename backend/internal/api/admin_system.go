@@ -128,7 +128,10 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {
 	}
 	out["migrations"] = map[string]any{"count": len(migrations), "latest": latest, "list": migrations}
 
-	out["config"] = map[string]any{"path": info.Path, "found": info.Found, "addr": info.Addr}
+	// Picked field by field: the bind password and client secret stay here.
+	out["config"] = map[string]any{"path": info.Path, "found": info.Found, "addr": info.Addr,
+		"ldap": map[string]any{"enabled": info.LDAP.URL != "", "url": info.LDAP.URL, "userBase": info.LDAP.UserBase},
+		"oidc": map[string]any{"enabled": info.OIDC.Issuer != "", "issuer": info.OIDC.Issuer, "clientId": info.OIDC.ClientID}}
 
 	var imp any
 	if a := s.currentImport(); a != nil {

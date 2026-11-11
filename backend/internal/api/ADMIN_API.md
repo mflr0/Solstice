@@ -623,7 +623,9 @@ same checks.
   "webhooks": {"total": 4, "failing": [{"id": 2, "name": "CI", "failed": 5, "lastError": "…", "lastAttempt": "…"}]},
   "migrations": {"count": 10, "latest": "0010_admin", "list": [{"version": "0001_init", "appliedAt": "…"}]},
   "config": {
-    "path": "/etc/solstice/solstice.conf", "found": true, "addr": ":8080"
+    "path": "/etc/solstice/solstice.conf", "found": true, "addr": ":8080",
+    "ldap": {"enabled": true, "url": "ldaps://ldap.example.org", "userBase": "ou=people,dc=example,dc=org"},
+    "oidc": {"enabled": false, "issuer": "", "clientId": ""}
   },
   "import": null
 }
@@ -631,7 +633,11 @@ same checks.
 
 `failing` lists webhooks whose deliveries failed in the last 24 hours.
 `dataDir.sizeBytes` is recomputed at most every 5 minutes. No secret is ever
-shown (database password, secret key, SMTP password). `import`: the running
+shown (database password, secret key, SMTP password, LDAP bind password,
+OpenID Connect client secret), not even whether one is set. `config.ldap` and
+`config.oidc` come from the configuration file (`SOLSTICE_LDAP_*`,
+`SOLSTICE_OIDC_*`); `enabled` is false and the other fields empty when that
+sign-in is off. `import`: the running
 or last import from the administration (see 10), or null.
 
 ---

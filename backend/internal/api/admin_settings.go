@@ -20,6 +20,7 @@ import (
 	"unicode/utf8"
 
 	"solstice/internal/audit"
+	"solstice/internal/config"
 	"solstice/internal/i18n"
 	"solstice/internal/sqlq"
 )
@@ -30,6 +31,9 @@ type ConfigInfo struct {
 	Path    string // the configuration file
 	Found   bool   // whether it exists
 	Addr    string // listen address
+	// LDAP and OIDC are the sign-in settings; the page shows none of their secrets.
+	LDAP config.LDAPSettings
+	OIDC config.OIDCSettings
 }
 
 // adminState is what the administration keeps in memory.

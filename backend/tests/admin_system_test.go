@@ -5,10 +5,13 @@ package tests
 
 import (
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
+	"solstice/internal/api"
+	"solstice/internal/config"
 	"solstice/internal/jirafixture"
 	"solstice/internal/mail/mailtest"
 )
@@ -35,6 +38,42 @@ func TestSystemInfo(t *testing.T) {
 	if dsn := os.Getenv("SOLSTICE_TEST_DB"); strings.Contains(dsn, "@") {
 		if user := strings.TrimPrefix(dsn[:strings.Index(dsn, "@")], "mysql://"); strings.Contains(string(raw), user) {
 			t.Error("the database credentials show on the system page")
+		}
+	}
+}
+
+func TestSystemSignIn(t *testing.T) {
+	off := map[string]any{
+		"ldap": map[string]any{"enabled": false, "url": "", "userBase": ""},
+		"oidc": map[string]any{"enabled": false, "issuer": "", "clientId": ""},
+	}
+	info := obj(t, login(t, "admin", "admin").call("GET", "/api/admin/system", nil, 200, nil))
+	for _, k := range []string{"ldap", "oidc"} {
+		if !reflect.DeepEqual(at(info, "config", k), off[k]) {
+			t.Errorf("config.%s by default: %v", k, at(info, "config", k))
+		}
+	}
+
+	srv, base := newServer(t)
+	srv.SetConfigInfo(api.ConfigInfo{Addr: ":8080",
+		LDAP: config.LDAPSettings{URL: "ldaps://ldap.example.org", UserBase: "ou=people,dc=example,dc=org",
+			BindDN: "cn=solstice,dc=example,dc=org", BindPassword: "bind-pw-never-shown"},
+		OIDC: config.OIDCSettings{Issuer: "https://id.example.org/realms/staff", ClientID: "solstice",
+			ClientSecret: "client-secret-never-shown"}})
+	raw := loginAt(t, base, "admin", "admin").call("GET", "/api/admin/system", nil, 200, nil)
+	info = obj(t, raw)
+	want := map[string]any{
+		"ldap": map[string]any{"enabled": true, "url": "ldaps://ldap.example.org", "userBase": "ou=people,dc=example,dc=org"},
+		"oidc": map[string]any{"enabled": true, "issuer": "https://id.example.org/realms/staff", "clientId": "solstice"},
+	}
+	for _, k := range []string{"ldap", "oidc"} {
+		if !reflect.DeepEqual(at(info, "config", k), want[k]) {
+			t.Errorf("config.%s when on: %v", k, at(info, "config", k))
+		}
+	}
+	for _, secret := range []string{"bind-pw-never-shown", "client-secret-never-shown"} {
+		if strings.Contains(string(raw), secret) {
+			t.Errorf("the system page holds %q: %s", secret, raw)
 		}
 	}
 }

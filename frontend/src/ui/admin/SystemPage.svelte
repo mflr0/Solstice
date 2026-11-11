@@ -5,13 +5,15 @@
   import { adminPath } from '../../core/areas.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, formatSize, relative, t } from '../../i18n/t.js';
+  import { locale } from '../../i18n/index.js';
   import { adminApi } from '../../lib/admin-api.js';
+  import { adminGuideURL } from '../../lib/links.js';
   import { errorMessage } from '../../lib/api.js';
   import { updateNotice, updatesApi, type UpdateState } from '../../lib/updates.svelte.js';
 
   /**
    * What runs and where: version, uptime, database, data directory, time
-   * zone, mail, webhooks and the update status. Read-only; each block
+   * zone, sign-in, mail, webhooks and the update status. Read-only; each block
    * points to the page that changes it.
    */
   let info = $state<SystemInfo | null>(null);
@@ -285,6 +287,55 @@
       <dd class="mono">{info.config.addr}</dd>
     </div>
   </dl>
+
+  <h2 class="section-title">{t.systemAdmin.signIn}</h2>
+  {@const ldap = info.config.ldap}
+  {@const oidc = info.config.oidc}
+  <h3 class="sub-title">
+    {t.systemAdmin.ldap}
+    <span class="stamp" class:done={ldap.enabled}
+      >{ldap.enabled ? t.systemAdmin.signInOn : t.systemAdmin.signInOff}</span
+    >
+  </h3>
+  {#if ldap.enabled}
+    <dl class="facts">
+      <div>
+        <dt>{t.systemAdmin.ldapUrl}</dt>
+        <dd class="mono">{ldap.url}</dd>
+      </div>
+      <div>
+        <dt>{t.systemAdmin.ldapUserBase}</dt>
+        <dd class="mono">{ldap.userBase}</dd>
+      </div>
+    </dl>
+  {/if}
+  <h3 class="sub-title">
+    {t.systemAdmin.oidc}
+    <span class="stamp" class:done={oidc.enabled}
+      >{oidc.enabled ? t.systemAdmin.signInOn : t.systemAdmin.signInOff}</span
+    >
+  </h3>
+  {#if oidc.enabled}
+    <dl class="facts">
+      <div>
+        <dt>{t.systemAdmin.oidcIssuer}</dt>
+        <dd class="mono">{oidc.issuer}</dd>
+      </div>
+      <div>
+        <dt>{t.systemAdmin.oidcClientId}</dt>
+        <dd class="mono">{oidc.clientId}</dd>
+      </div>
+    </dl>
+  {/if}
+  <p class="muted small">
+    {t.systemAdmin.signInFile}
+    <a href={adminGuideURL(locale, 'ldap')} target="_blank" rel="noopener noreferrer"
+      >{t.systemAdmin.guideLdap}</a
+    >,
+    <a href={adminGuideURL(locale, 'oidc')} target="_blank" rel="noopener noreferrer"
+      >{t.systemAdmin.guideOidc}</a
+    >.
+  </p>
 
   <h2 class="section-title">{t.systemAdmin.migrations}</h2>
   <p class="muted">
