@@ -85,9 +85,10 @@ export const de: Messages = {
     assignee: 'Bearbeiter des Vorgangs',
   },
 
-  builtInGroups: {
-    mark: 'Integrierte Gruppe',
-    heading: 'Integrierte Gruppen',
+  holderTags: {
+    everyone: 'Alle Konten',
+    role: 'Rolle',
+    roles: 'Rollen',
     groups: 'Gruppen',
   },
 
@@ -1721,7 +1722,8 @@ export const de: Messages = {
       defaultName: (group: string, permission: string, state: string) =>
         `${group}, ${permission}: ${state}`,
       builtinHint:
-        'Eine integrierte Gruppe: Wer dazugehört, hängt vom Projekt oder vom Vorgang ab, daher gibt es keinen Namen und keine Mitglieder zu bearbeiten.',
+        'Integriert: Wer dazugehört, hängt vom Projekt oder vom Vorgang ab, daher gibt es keinen Namen und keine Mitglieder zu bearbeiten.',
+      builtinHeading: 'Alle und Rollen',
       builtinDescriptions: {
         everyone: 'Alle mit einem Konto.',
         lead: 'Die Leitung jedes Projekts.',

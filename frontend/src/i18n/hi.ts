@@ -83,9 +83,10 @@ export const hi: Messages = {
     assignee: 'टिकट का असाइनी',
   },
 
-  builtInGroups: {
-    mark: 'अंतर्निहित समूह',
-    heading: 'अंतर्निहित समूह',
+  holderTags: {
+    everyone: 'सभी खाते',
+    role: 'भूमिका',
+    roles: 'भूमिकाएँ',
     groups: 'समूह',
   },
 
@@ -1687,7 +1688,8 @@ export const hi: Messages = {
       defaultName: (group: string, permission: string, state: string) =>
         `${group}, ${permission}: ${state}`,
       builtinHint:
-        'एक अंतर्निहित समूह: इसमें कौन है यह प्रोजेक्ट या टिकट पर निर्भर करता है, इसलिए इसका कोई नाम या सदस्य बदलने को नहीं है।',
+        'अंतर्निहित: इसमें कौन है यह प्रोजेक्ट या टिकट पर निर्भर करता है, इसलिए इसका कोई नाम या सदस्य बदलने को नहीं है।',
+      builtinHeading: 'सभी और भूमिकाएँ',
       builtinDescriptions: {
         everyone: 'खाते वाला हर व्यक्ति।',
         lead: 'हर प्रोजेक्ट का लीड।',

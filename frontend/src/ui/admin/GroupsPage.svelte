@@ -1,8 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { BUILTIN_GROUPS, restrictionUsage } from '../../core/admin-forms.js';
-  import type { BuiltinGroup, Group } from '../../core/admin-types.js';
+  import { restrictionUsage } from '../../core/admin-forms.js';
+  import type { BuiltinHolder, Group } from '../../core/admin-types.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
+  import { BUILTIN_HOLDERS, holderTag } from '../../core/project-admin.js';
   import { matches } from '../../core/text.js';
   import { formatList, formatNumber } from '../../i18n/format.js';
   import { holderLabels, t } from '../../i18n/t.js';
@@ -21,14 +22,14 @@
   let q = $state(router.param('q') ?? '');
   /** The search the shown rows were loaded with. */
   let searched = $state('');
-  let dialog = $state<{ group: Group | null; builtin?: BuiltinGroup } | null>(null);
+  let dialog = $state<{ group: Group | null; builtin?: BuiltinHolder } | null>(null);
   let removing = $state<Group | null>(null);
   let blocked = $state<{ comments: number; worklogs: number } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
 
-  /** The built-in groups the search matches; they always come first. */
-  const builtins = $derived(BUILTIN_GROUPS.filter((b) => matches(searched, holderLabels[b])));
+  /** Everyone and the roles the search matches; they always come first. */
+  const builtins = $derived(BUILTIN_HOLDERS.filter((b) => matches(searched, holderLabels[b])));
 
   const restrictedTo = $derived(
     blocked
@@ -101,6 +102,17 @@
   }
 </script>
 
+{#snippet head()}
+  <thead>
+    <tr>
+      <th>{t.adminArea.groupsPage.name}</th>
+      <th class="c-description">{t.adminArea.groupsPage.description}</th>
+      <th class="num">{t.adminArea.groupsPage.members}</th>
+      <th><span class="sr-only">{t.common.actions}</span></th>
+    </tr>
+  </thead>
+{/snippet}
+
 <header class="page-head">
   <div>
     <p class="eyebrow">{t.adminArea.groups.people}</p>
@@ -130,12 +142,6 @@
   <p class="error-text" role="alert">{error}</p>
 {:else if !groups}
   <p class="muted loading">{t.common.loading}</p>
-{:else if groups.length === 0 && builtins.length === 0 && q.trim() === ''}
-  <EmptyState message={t.adminArea.groupsPage.empty} hint={t.adminArea.groupsPage.emptyHint}>
-    <button class="btn btn-primary" onclick={() => (dialog = { group: null })}
-      >{t.adminArea.groupsPage.newGroup}</button
-    >
-  </EmptyState>
 {:else if groups.length === 0 && builtins.length === 0}
   <EmptyState kind="search" message={t.adminArea.noMatch}>
     <button class="btn" onclick={clear}>{t.adminArea.clearSearch}</button>
@@ -144,56 +150,69 @@
     >
   </EmptyState>
 {:else}
-  <div class="table-scroll">
-    <table class="ledger groups">
-      <thead>
-        <tr>
-          <th>{t.adminArea.groupsPage.name}</th>
-          <th class="c-description">{t.adminArea.groupsPage.description}</th>
-          <th class="num">{t.adminArea.groupsPage.members}</th>
-          <th><span class="sr-only">{t.common.actions}</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each builtins as b (b)}
-          <tr>
-            <td>
-              <button class="link-btn name" onclick={() => (dialog = { group: null, builtin: b })}
-                ><Highlight text={holderLabels[b]} search={searched} /></button
-              >
-              <span class="stamp">{t.builtInGroups.mark}</span>
-            </td>
-            <td class="c-description">{t.adminArea.groupsPage.builtinDescriptions[b]}</td>
-            <td class="num muted">—</td>
-            <td class="row-actions">
-              <button class="link-btn" onclick={() => (dialog = { group: null, builtin: b })}
-                >{t.common.edit}</button
-              >
-            </td>
-          </tr>
-        {/each}
-        {#each groups as g (g.id)}
-          <tr>
-            <td>
-              <button class="link-btn name" onclick={() => (dialog = { group: g })}
-                ><Highlight text={g.name} search={searched} /></button
-              >
-            </td>
-            <td class="c-description">{g.description || '—'}</td>
-            <td class="num">{t.adminArea.groupsPage.count(g.members)}</td>
-            <td class="row-actions">
-              <button class="link-btn" onclick={() => (dialog = { group: g })}
-                >{t.common.edit}</button
-              >
-              <button id={deleteId(g)} class="link-btn" onclick={() => remove(g)}
-                >{t.common.delete}</button
-              >
-            </td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
+  {#if builtins.length > 0}
+    <h2 class="section-title">{t.adminArea.groupsPage.builtinHeading}</h2>
+    <div class="table-scroll">
+      <table class="ledger groups">
+        {@render head()}
+        <tbody>
+          {#each builtins as b (b)}
+            <tr>
+              <td>
+                <button class="link-btn name" onclick={() => (dialog = { group: null, builtin: b })}
+                  ><Highlight text={holderLabels[b]} search={searched} /></button
+                >
+                <span class="stamp">{holderTag(b, t.holderTags, holderLabels)}</span>
+              </td>
+              <td class="c-description">{t.adminArea.groupsPage.builtinDescriptions[b]}</td>
+              <td class="num muted">—</td>
+              <td class="row-actions">
+                <button class="link-btn" onclick={() => (dialog = { group: null, builtin: b })}
+                  >{t.common.edit}</button
+                >
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+  {#if groups.length > 0}
+    <h2 class="section-title">{t.holderTags.groups}</h2>
+    <div class="table-scroll">
+      <table class="ledger groups">
+        {@render head()}
+        <tbody>
+          {#each groups as g (g.id)}
+            <tr>
+              <td>
+                <button class="link-btn name" onclick={() => (dialog = { group: g })}
+                  ><Highlight text={g.name} search={searched} /></button
+                >
+              </td>
+              <td class="c-description">{g.description || '—'}</td>
+              <td class="num">{t.adminArea.groupsPage.count(g.members)}</td>
+              <td class="row-actions">
+                <button class="link-btn" onclick={() => (dialog = { group: g })}
+                  >{t.common.edit}</button
+                >
+                <button id={deleteId(g)} class="link-btn" onclick={() => remove(g)}
+                  >{t.common.delete}</button
+                >
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {:else if searched === ''}
+    <h2 class="section-title">{t.holderTags.groups}</h2>
+    <EmptyState message={t.adminArea.groupsPage.empty} hint={t.adminArea.groupsPage.emptyHint}>
+      <button class="btn btn-primary" onclick={() => (dialog = { group: null })}
+        >{t.adminArea.groupsPage.newGroup}</button
+      >
+    </EmptyState>
+  {/if}
 {/if}
 
 <GroupDialog

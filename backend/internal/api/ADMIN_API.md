@@ -1071,7 +1071,7 @@ globally (in every project). Holders: `user`, `group`, and the built-in
 groups `everyone`, `lead`, `reporter`, `assignee`. The most specific level
 with a rule matching the user decides: a user rule of the project
 (`projectUser`), a global user rule (`globalUser`), the group rules of the
-project, built-in groups included (`projectGroup`), then the global group
+project, built-in holders included (`projectGroup`), then the global group
 rules (`globalGroup`). Within a level, deny beats allow. With no matching rule
 at any level, the permission is not granted. In an archived project only
 `browse` is granted. Changes apply at once.
@@ -1101,7 +1101,7 @@ only the permissions with a rule are listed (`[{permission, effect}]`, in the
 order of `permissions`):
 
 - `GET|PUT /api/admin/groups/{id}/permissions` (`group.permissions`).
-- `GET|PUT /api/admin/builtin-groups/{holder}/permissions`, `holder` one of
+- `GET|PUT /api/admin/builtin-holders/{holder}/permissions`, `holder` one of
   `everyone`, `lead`, `reporter`, `assignee` (`group.permissions`, the target
   id is the holder).
 - `GET|PUT /api/admin/users/{id}/permissions` (`user.permissions`).
@@ -1109,7 +1109,7 @@ order of `permissions`):
 PUT takes the whole list, `[{permission, effect?}]` (`effect` `allow` when
 left out), and answers the rules as GET. 400 for an unknown permission or
 effect, or a permission given twice; 404 for an unknown group, user or
-built-in group. The audit entry, written when something changed, has details
+built-in holder. The audit entry, written when something changed, has details
 `{added, removed}` (`"browse: allow"`).
 
 Effective access — global admin:

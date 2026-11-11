@@ -6,6 +6,7 @@
     cellState,
     grantsPayload,
     grantsSignature,
+    holderTag,
     matrixRows,
     moveCell,
     nextCellState,
@@ -542,9 +543,7 @@
                           >
                         {/if}
                       </span>
-                      <span class="kind"
-                        >{row.builtin ? t.builtInGroups.mark : holderLabels[row.holder]}</span
-                      >
+                      <span class="kind">{holderTag(row.holder, t.holderTags, holderLabels)}</span>
                     </th>
                     {#each data.permissions as p, c (p)}
                       {@const state = cellState(grants, row.key, p)}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { levelTargets } from '../../core/admin-forms.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
-  import { isBuiltinHolder, type AdminProjectRow } from '../../core/project-admin.js';
+  import { holderTag, type AdminProjectRow } from '../../core/project-admin.js';
   import { formatNumber } from '../../i18n/format.js';
   import { holderLabels, t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
@@ -185,9 +185,7 @@
           <span class="muted small label">{t.securityAdmin.members}</span>
           {#each level.members as m (m.id)}
             <span class="chip member">
-              <span class="kind"
-                >{isBuiltinHolder(m.holder) ? t.builtInGroups.mark : holderLabels[m.holder]}</span
-              >
+              <span class="kind">{holderTag(m.holder, t.holderTags, holderLabels)}</span>
               {memberName(m)}
               <button
                 type="button"

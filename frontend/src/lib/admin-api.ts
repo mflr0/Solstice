@@ -8,7 +8,7 @@ import type {
   AccessToken,
   AdminOAuthGrant,
   AuditPage,
-  BuiltinGroup,
+  BuiltinHolder,
   CatalogInput,
   CatalogItem,
   CatalogKind,
@@ -138,10 +138,10 @@ export const adminApi = {
     request<PermissionRule[]>('GET', `/api/admin/groups/${id}/permissions`),
   setGroupPermissions: (id: number, rules: PermissionRule[]) =>
     request<PermissionRule[]>('PUT', `/api/admin/groups/${id}/permissions`, rules),
-  builtinPermissions: (holder: BuiltinGroup) =>
-    request<PermissionRule[]>('GET', `/api/admin/builtin-groups/${holder}/permissions`),
-  setBuiltinPermissions: (holder: BuiltinGroup, rules: PermissionRule[]) =>
-    request<PermissionRule[]>('PUT', `/api/admin/builtin-groups/${holder}/permissions`, rules),
+  builtinPermissions: (holder: BuiltinHolder) =>
+    request<PermissionRule[]>('GET', `/api/admin/builtin-holders/${holder}/permissions`),
+  setBuiltinPermissions: (holder: BuiltinHolder, rules: PermissionRule[]) =>
+    request<PermissionRule[]>('PUT', `/api/admin/builtin-holders/${holder}/permissions`, rules),
   userPermissions: (id: number) =>
     request<PermissionRule[]>('GET', `/api/admin/users/${id}/permissions`),
   setUserPermissions: (id: number, rules: PermissionRule[]) =>

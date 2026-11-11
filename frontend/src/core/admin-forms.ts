@@ -9,7 +9,7 @@ import type {
   AccessLevel,
   AccessSource,
   AuditQuery,
-  BuiltinGroup,
+  BuiltinHolder,
   MailSecurity,
   MailSettings,
   MailSettingsInput,
@@ -531,9 +531,6 @@ export function memberPayload(
   return id === null ? null : { holder, id };
 }
 
-/** The built-in groups, in the order the Groups page lists them. */
-export const BUILTIN_GROUPS: readonly BuiltinGroup[] = ['everyone', 'lead', 'reporter', 'assignee'];
-
 /** Every permission, in the server's order (perm.All). */
 export const PERMISSIONS: readonly Permission[] = [
   'browse',
@@ -583,7 +580,7 @@ export interface AccessWords {
   rules: Record<Exclude<AccessLevel, 'none'>, Record<Effect, (who: string) => string>>;
   none: string;
   group: (name: string) => string;
-  builtin: Record<BuiltinGroup, string>;
+  builtin: Record<BuiltinHolder, string>;
   /** Granted although no allow decided: a global administrator administers every project. */
   admin: string;
   /** Not granted although an allow decided: an archived project only lets people browse. */
@@ -597,7 +594,7 @@ function accessHolder(s: AccessSource, w: AccessWords): string {
     case 'group':
       return w.group(s.name);
     case 'builtin':
-      return w.builtin[s.name as BuiltinGroup] ?? s.name;
+      return w.builtin[s.name as BuiltinHolder] ?? s.name;
     default:
       return s.name;
   }

@@ -111,6 +111,12 @@ members. A search box filters by name or description. "New group" asks for a
 name and a description, 255 characters at most each. Open a group to rename
 it, change its description or manage its members.
 
+Above the groups, "Everyone and roles" lists Everyone and the roles: the
+project lead, the issue reporter and the issue assignee. They are not groups:
+who holds a role depends on the project or the issue, so they have no name or
+members to edit. Open one to set its default permissions, which apply in every
+project.
+
 - **Members.** Once a group exists, its dialog has a picker to add people and
   a list to remove them. Unlike the name and the description, members are
   added and removed at once, without "Save". People can also be put in groups

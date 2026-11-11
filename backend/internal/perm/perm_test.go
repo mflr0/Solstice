@@ -869,7 +869,7 @@ func TestRuleLevels(t *testing.T) {
 			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
 			r.deny(p, Edit, Grant{Holder: Group, GroupID: 6})
 		}, []int64{5}, Edit, nil, true},
-		{"a built-in group deny beats a group allow at its level", func(r *rules) {
+		{"a built-in holder deny beats a group allow at its level", func(r *rules) {
 			r.grant(p, Browse, Grant{Holder: Everyone})
 			r.grant(p, Edit, Grant{Holder: Group, GroupID: 5})
 			r.deny(p, Edit, Grant{Holder: Reporter})

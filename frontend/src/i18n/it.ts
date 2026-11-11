@@ -82,9 +82,10 @@ export const it: Messages = {
     assignee: 'Assegnatario del ticket',
   },
 
-  builtInGroups: {
-    mark: 'Gruppo predefinito',
-    heading: 'Gruppi predefiniti',
+  holderTags: {
+    everyone: 'Tutti gli account',
+    role: 'Ruolo',
+    roles: 'Ruoli',
     groups: 'Gruppi',
   },
 
@@ -1708,7 +1709,8 @@ export const it: Messages = {
       defaultName: (group: string, permission: string, state: string) =>
         `${group}, ${permission}: ${state}`,
       builtinHint:
-        'Un gruppo predefinito: chi ne fa parte dipende dal progetto o dal ticket, quindi non ha nome né membri da modificare.',
+        'Predefinito: chi ne fa parte dipende dal progetto o dal ticket, quindi non ha nome né membri da modificare.',
+      builtinHeading: 'Tutti e ruoli',
       builtinDescriptions: {
         everyone: 'Chiunque abbia un account.',
         lead: 'Il responsabile di ogni progetto.',

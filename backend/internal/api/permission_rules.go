@@ -1,6 +1,6 @@
 package api
 
-// Global permission rules of a group, a built-in group or a user, and the
+// Global permission rules of a group, a built-in holder or a user, and the
 // effective access of a user, for global administrators.
 
 import (
@@ -26,14 +26,14 @@ type ruleOut struct {
 
 // ruleHolder is whom the global rules of a request are for.
 type ruleHolder struct {
-	holder string // perm.Group, perm.User or a built-in group
+	holder string // perm.Group, perm.User or a built-in holder
 	id     int64  // group or user id
 	action string
 	target audit.Target
 }
 
-// builtinGroups are the built-in groups that can hold global rules.
-var builtinGroups = []string{perm.Everyone, perm.Lead, perm.Reporter, perm.Assignee}
+// builtinHolders are the holders other than a group or a user that can hold global rules.
+var builtinHolders = []string{perm.Everyone, perm.Lead, perm.Reporter, perm.Assignee}
 
 func (s *Server) groupHolder(r *http.Request) (ruleHolder, error) {
 	id, err := pathID(r, "id")
@@ -49,7 +49,7 @@ func (s *Server) groupHolder(r *http.Request) (ruleHolder, error) {
 
 func (s *Server) builtinHolder(r *http.Request) (ruleHolder, error) {
 	h := r.PathValue("holder")
-	if !slices.Contains(builtinGroups, h) {
+	if !slices.Contains(builtinHolders, h) {
 		return ruleHolder{}, errNotFound
 	}
 	return ruleHolder{h, 0, audit.GroupPerms, audit.Target{Type: audit.TargetGroup, ID: h, Label: h}}, nil
@@ -191,7 +191,7 @@ func (s *Server) putRules(resolve func(*http.Request) (ruleHolder, error)) handl
 	}
 }
 
-// groupRuleOut is a global rule of a group or a built-in group.
+// groupRuleOut is a global rule of a group or a built-in holder.
 type groupRuleOut struct {
 	Permission string `json:"permission"`
 	Holder     string `json:"holder"`
@@ -199,7 +199,7 @@ type groupRuleOut struct {
 	Effect     string `json:"effect"`
 }
 
-// groupGlobalRules returns the global rules of every group and built-in group.
+// groupGlobalRules returns the global rules of every group and built-in holder.
 func (s *Server) groupGlobalRules(ctx context.Context) ([]groupRuleOut, error) {
 	out := []groupRuleOut{}
 	err := sqlq.Each(ctx, s.db, `SELECT permission, holder, COALESCE(group_id, 0), effect FROM permission_rules

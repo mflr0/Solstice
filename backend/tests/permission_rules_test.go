@@ -132,7 +132,7 @@ func TestProjectDenyBeatsGlobalGroupAllow(t *testing.T) {
 	e.admin.call("PUT", groupPath, []map[string]any{{"permission": "fly"}}, 400, nil)
 	e.admin.call("PUT", groupPath, []map[string]any{{"permission": "browse", "effect": "maybe"}}, 400, nil)
 	e.admin.call("PUT", "/api/admin/groups/999999999/permissions", []any{}, 404, nil)
-	e.admin.call("PUT", "/api/admin/builtin-groups/robots/permissions", []any{}, 404, nil)
+	e.admin.call("PUT", "/api/admin/builtin-holders/robots/permissions", []any{}, 404, nil)
 	e.admin.call("PUT", groupPath, []any{}, 200, nil)
 }
 
@@ -145,7 +145,7 @@ func TestGlobalRulesNeedGlobalAdmin(t *testing.T) {
 	paulID := userID(t, "paul.martin")
 	for _, path := range []string{
 		fmt.Sprintf("/api/admin/groups/%d/permissions", groupID(t, "developpeurs")),
-		"/api/admin/builtin-groups/everyone/permissions",
+		"/api/admin/builtin-holders/everyone/permissions",
 		fmt.Sprintf("/api/admin/users/%d/permissions", paulID),
 	} {
 		paul.call("GET", path, nil, 403, nil)
@@ -187,8 +187,8 @@ func TestUserAccess(t *testing.T) {
 		grantOut{Permission: "comment", Holder: "user", ID: e.userID},
 		grantOut{Permission: "create", Holder: "group", ID: e.groupID, Effect: "deny"})
 
-	// A built-in group's global rule, removed at once: it applies everywhere.
-	const builtin = "/api/admin/builtin-groups/assignee/permissions"
+	// A built-in holder's global rule, removed at once: it applies everywhere.
+	const builtin = "/api/admin/builtin-holders/assignee/permissions"
 	var kept []map[string]any
 	e.admin.get(builtin, &kept)
 	t.Cleanup(func() { e.admin.do("PUT", builtin, kept) })
